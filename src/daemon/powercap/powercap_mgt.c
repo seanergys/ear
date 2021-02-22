@@ -726,6 +726,24 @@ void pmgt_powercap_status_per_domain(uint action)
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE)){
 		from = DOMAIN_CPU;
 		to = DOMAIN_GPU;
+        /*
+	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
+	    if (abs(cdomain_status[DOMAIN_GPU].strain - cdomain_status[DOMAIN_CPU].strain) < 20){
+	        if (cdomain_status[DOMAIN_GPU].strain > cdomain_status[DOMAIN_CPU].strain){
+                from = DOMAIN_GPU;
+                to = DOMAIN_GPU;
+            } else {
+                from = DOMAIN_CPU;
+                to = DOMAIN_GPU;
+            }
+        }
+	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK)){
+        from = DOMAIN_CPU;
+        to = DOMAIN_GPU;
+	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
+        from = DOMAIN_GPU;
+        to = DOMAIN_GPU;
+        */
 	}else return;
 	uint new_power_recv = pmgt_limit*pdomains[to] + cdomain_status[from].exceed;
 	uint new_power_send = pmgt_limit*pdomains[from] - cdomain_status[from].exceed;
