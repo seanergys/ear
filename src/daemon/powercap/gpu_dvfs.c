@@ -170,6 +170,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     }
     /* Calcular power */
     gpu_data_diff(values_gpu_end,values_gpu_init,values_gpu_diff);
+		if (values_gpu_diff[0].power_w == 0 ) return EAR_SUCCESS;
     mgt_gpu_freq_limit_get_current(&gpu_pc_ctx,c_freq);
     /* Copiar init=end */
     gpu_data_copy(values_gpu_init,values_gpu_end);
@@ -471,6 +472,7 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
             *status = PC_STATUS_GREEDY;
             gpu_dvfs_status = PC_STATUS_OK;
             *tbr = 0;
+						debug("GPU_DVFS status %u",*status);
             return 0;
         }else if ((c_freq[i] >= t_freq[i]) && (gpu_pc_util[i]>0)){
             g_tbr = (uint)((gpu_pc_curr_power[i] - values_gpu_diff[i].power_w) *0.5);
@@ -481,7 +483,9 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     if (*tbr < MIN_GPU_POWER_MARGIN){ 
         *tbr = 0;
         *status = PC_STATUS_OK;
+				debug("GPU_DVFS status %u",*status);
         return 0;
     }else gpu_dvfs_status = *status;
+		debug("GPU_DVFS status %u",*status);
     return 1;
 }

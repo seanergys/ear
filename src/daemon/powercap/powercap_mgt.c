@@ -118,7 +118,7 @@ const char     *pcsyms_names[] ={
 	"get_powercap_status"
 };
 
-#define UTIL_BURST_PERIOD 60000
+#define UTIL_BURST_PERIOD 10000
 #define UTIL_RELAX_PERIOD 60000
 #define CHECK_STATUS_PERIOD 500
 
@@ -678,7 +678,9 @@ void pmgt_run_to_idle(pwr_mgt_t *phandler)
 void pmgt_powercap_status_per_domain(uint action)
 {
 	int i;
-	uint totalok = 0,totalrel =0,totalask = 0;
+	uint totalok = 0;
+	uint totalrel = 0;
+	uint totalask = 0;
 	uint ret,from,to;
 	uint status, tbr, strain;
 	#if USE_GPUS
@@ -710,14 +712,15 @@ void pmgt_powercap_status_per_domain(uint action)
 			totalask += (status == PC_STATUS_ASK_DEF);
 		}
 	}
-    debug("GPU has strain %u and CPU has %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain);
+   debug("GPU has strain %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain,cdomain_status[DOMAIN_CPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
 	if ((action == CHECK_ASK_DEFAULT) || (totalask > 0)){
 		/* Some module needs an urgent power reallocation */
 		if (totalask > 0) pmgt_reset_powercap();
+		debug("action is CHECK_ASK_DEFAULT, not power redistribution");
 		return;
 	}
 	/* If bith are OK or both can release power there is nothing to do between modules */
-	if ((totalok == 2) || (totalrel == 2)) return;
+	if (totalrel == 2) return;
 	/* We check first the CPU */
 	if ((cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE)) {
 		/** Add N watts to the CPU */
@@ -727,10 +730,10 @@ void pmgt_powercap_status_per_domain(uint action)
 		from = DOMAIN_CPU;
 		to = DOMAIN_GPU;
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
-	    if (abs(cdomain_status[DOMAIN_GPU].strain - cdomain_status[DOMAIN_CPU].strain) > 20){
-	        if (cdomain_status[DOMAIN_GPU].strain > cdomain_status[DOMAIN_CPU].strain){
+	    if (abs((int)cdomain_status[DOMAIN_GPU].strain - (int)cdomain_status[DOMAIN_CPU].strain) > 20){
+	        if (cdomain_status[DOMAIN_GPU].strain < cdomain_status[DOMAIN_CPU].strain){
                 from = DOMAIN_GPU;
-                to = DOMAIN_GPU;
+                to = DOMAIN_CPU;
             } else {
                 from = DOMAIN_CPU;
                 to = DOMAIN_GPU;

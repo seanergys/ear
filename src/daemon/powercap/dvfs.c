@@ -329,6 +329,7 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     if (c_freq[0] < c_req_f[0]){
         if (dvfs_ask_def) *status = PC_STATUS_ASK_DEF;
         else *status = PC_STATUS_GREEDY;
+				debug("DVFS status %u",*status);
         return 0; /* Pending for NJObs */
     }
     ctbr = (my_limit -  power_rapl) * 0.5;
@@ -337,8 +338,10 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     if (ctbr < MIN_CPU_POWER_MARGIN){
         *tbr = 0;
         *status = PC_STATUS_OK;
+				debug("DVFS status %u",*status);
         return 0;
     }
     dvfs_status = *status;
+		debug("DVFS status %u",*status);
     return 1;
 }
