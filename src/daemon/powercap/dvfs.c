@@ -46,7 +46,7 @@
 #define DVFS_PERIOD 0.5
 #define DVFS_BURST_DURATION 1000
 #define DVFS_RELAX_DURATION 1000
-static uint current_dvfs_pc=0,set_dvfs_pc=0;
+static uint current_dvfs_pc=0;
 static uint dvfs_pc_enabled=0;
 
 static uint c_status=PC_STATUS_IDLE;
@@ -95,6 +95,8 @@ state_t dvfs_pc_thread_init(void *p)
     debug("DVFS_monitor_init");
 
     s = topology_init(&node_desc);
+    if (s == EAR_ERROR) debug("Error getting node topology");
+
     num_packs=node_desc.socket_count;
     if (num_packs==0){
         error("Num packages cannot be detected in dvfs_pc thread initialization");
@@ -212,7 +214,6 @@ state_t disable()
 
 state_t enable(suscription_t *sus)
 {
-    int ret;
     debug("DVFS");
     if (sus == NULL){
         debug("NULL subscription in DVFS powercap");

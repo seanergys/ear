@@ -39,10 +39,10 @@
 #define MIN_GPU_IDLE_POWER 30
 
 static uint gpu_dvfs_pc_enabled=0;
-static ulong c_req_f;
+//static ulong c_req_f;
 
 /* This  subscription will take care automatically of the power monitoring */
-static ulong current_gpu_pc=0,set_gpu_pc=0;
+static ulong current_gpu_pc=0;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -114,6 +114,7 @@ ulong select_higher_gpu_freq(uint i,ulong f)
   return gpu_freq_list[i][j-1];
 }
 
+/*
 static void printf_gpu_freq_list(const ulong **f, const uint *num_f)
 {
     int i,j;
@@ -125,12 +126,11 @@ static void printf_gpu_freq_list(const ulong **f, const uint *num_f)
         }
     }
 #endif
-}
+}*/
 
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t gpu_dvfs_pc_thread_init(void *p)
 {
-  state_t s;
     if (gpu_load(&ops_met,0,NULL)!=EAR_SUCCESS){
         debug("Error at gpu load");
         gpu_dvfs_pc_enabled = 0;
@@ -159,8 +159,6 @@ state_t gpu_dvfs_pc_thread_init(void *p)
 /************************ This function is called by the monitor in iterative part ************************/
 state_t gpu_dvfs_pc_thread_main(void *p)
 {
-    float power_gpu;
-    char gpu_str[512];
     ulong extra;
     uint i;
     uint gpu_dvfs_local_util = 0;
@@ -304,8 +302,6 @@ state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 {
-    char cmd[256];
-    state_t ret;
     int i;
     float alloc;
     ulong ualloc;

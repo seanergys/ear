@@ -167,8 +167,6 @@ void set_default_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 
 void powercap_end()
 { 
-	char cmd[1024];
-
 	if (pmgt_disable(pcmgr)!=EAR_SUCCESS){
 		error("pmgt_disable");
 	}
@@ -177,8 +175,6 @@ void powercap_end()
 
 int powercap_init()
 {
-	char cmd[1024];
-
 	debug("powercap init");
 	set_default_node_powercap_opt(&my_pc_opt);
 	print_node_powercap_opt(&my_pc_opt);
@@ -227,9 +223,7 @@ int powercap_init()
 
 int set_powercap_value(uint domain,uint limit)
 {
-	char cmd[1024];
 	char c_date[128];
-	state_t ret;
 	if (limit==my_pc_opt.current_pc) return EAR_SUCCESS;
 	debug("%sset_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
 	get_date_str(c_date,sizeof(c_date));
@@ -245,7 +239,6 @@ int set_powercap_value(uint domain,uint limit)
 
 int powercap_idle_to_run()
 {
-	uint next_pc;
 	uint extra;
 	if (!is_powercap_on(&my_pc_opt)) return EAR_SUCCESS;
 	debug("powercap_idle_to_run");
@@ -296,7 +289,6 @@ int powercap_idle_to_run()
 
 int powercap_run_to_idle()
 {
-	uint next_pc;
 	if (!is_powercap_on(&my_pc_opt)) return EAR_SUCCESS;
 	debug("powercap_run_to_idle");
 	while(pthread_mutex_trylock(&my_pc_opt.lock)); 
@@ -309,7 +301,6 @@ int powercap_run_to_idle()
     case PC_STATUS_ASK_DEF:
 		case PC_STATUS_RELEASE:
 		debug("%sGoin from run to idle%s",COL_GRE,COL_CLR);
-		uint rel;
 		my_pc_opt.released=my_pc_opt.last_t1_allocated-my_pc_opt.powercap_idle;
 		my_pc_opt.requested=0;
 		my_pc_opt.powercap_status=PC_STATUS_IDLE;

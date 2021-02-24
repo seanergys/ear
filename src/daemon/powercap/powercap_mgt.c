@@ -50,20 +50,20 @@ cluster_conf_t my_cluster_conf;
 
 
 typedef struct powercap_symbols {
-  state_t (*enable)        (suscription_t *sus);
-  state_t (*disable)       ();
-  state_t (*set_powercap_value)(uint pid,uint domain,uint limit,ulong *util);
-  state_t (*get_powercap_value)(uint pid,ulong *powercap);
-  uint    (*is_powercap_policy_enabled)(uint pid);
-  void    (*set_status)(uint status);
-	void		(*set_pc_mode)(uint mode);
-  uint    (*get_powercap_strategy)();
-  void    (*powercap_to_str)(char *b);
-	void 		(*print_powercap_value)(int fd);
-	void 		(*set_app_req_freq)(ulong *f);
-	void 		(*set_verb_channel)(int fd);	
-	void 		(*set_new_utilization)(ulong *util);	
-	uint    (*get_powercap_status)(uint *status,uint *tbr, uint *strain);
+    state_t (*enable)        (suscription_t *sus);
+    state_t (*disable)       ();
+    state_t (*set_powercap_value)(uint pid, uint domain, uint limit, ulong *util);
+    state_t (*get_powercap_value)(uint pid, uint *powercap);
+    uint    (*is_powercap_policy_enabled)(uint pid);
+    void    (*set_status)(uint status);
+    void    (*set_pc_mode)(uint mode);
+    uint    (*get_powercap_strategy)();
+    void    (*powercap_to_str)(char *b);
+    void    (*print_powercap_value)(int fd);
+    void    (*set_app_req_freq)(ulong *f);
+    void    (*set_verb_channel)(int fd);	
+    void    (*set_new_utilization)(ulong *util);	
+    uint    (*get_powercap_status)(uint *status, uint *tbr, uint *strain);
 } powercapsym_t;
 
 /*****
@@ -96,7 +96,7 @@ static float pdomains_def[NUM_DOMAINS]={1.0,0.9,0,0};
 static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
-static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
+//static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
 const int   pcsyms_n = 14;
 
 static suscription_t *sus[NUM_DOMAINS];
@@ -141,7 +141,7 @@ static uint util_period = 0;
 
 #define CHECK_ASK_DEFAULT 0
 #define CHECK_POWER_RED		1
-static uint pc_plugin_loaded=0;
+//static uint pc_plugin_loaded=0;
 
 #if USE_GPUS
 static suscription_t *sus_util_detection;
@@ -160,7 +160,6 @@ static topology_t pc_topology_info;
 #define TDP_GPU 250
 void compute_power_distribution()
 {
-	int i;
 	float node_ratio = 0.1;
 	uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
 	uint bpd_cpu,bpd_dram,bpd_gpu = 0;
@@ -504,6 +503,7 @@ static void reallocate_power_between_domains()
 		sprintf(buffer,"[DOM=%d W=%.2f Allocated %.1f]",i,pdomains[i],pmgt_limit*pdomains[i]);
 		strcat(buffer2,buffer);
 		ret=freturn(pcsyms_fun[i].set_powercap_value,pid,domain,pmgt_limit*pdomains[i],current_util[i]);
+        if (ret == EAR_ERROR) debug("error when setting powercap value");
 	}
 	debug("%s",buffer2);
 }
@@ -517,7 +517,6 @@ state_t pmgt_reset_powercap()
 state_t pmgt_get_powercap_value(pwr_mgt_t *phandler,uint pid,ulong *powercap)
 {
 	state_t ret,gret;
-	ulong total=0;
     uint parc;
 	int i;
 	if (powercap == NULL) return EAR_ERROR;
@@ -616,7 +615,6 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler,pc_app_info_t *pc_app)
 {
-	int i;
 	if (pcsyms_fun[DOMAIN_NODE].set_app_req_freq != NULL){
   	freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,&pc_app->req_f);
 	}
@@ -727,7 +725,6 @@ void pmgt_powercap_status_per_domain(uint action)
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE)){
 		from = DOMAIN_CPU;
 		to = DOMAIN_GPU;
-#if 0
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
 	    if (abs(cdomain_status[DOMAIN_GPU].strain - cdomain_status[DOMAIN_CPU].strain) < 20){
 	        if (cdomain_status[DOMAIN_GPU].strain > cdomain_status[DOMAIN_CPU].strain){
@@ -737,24 +734,28 @@ void pmgt_powercap_status_per_domain(uint action)
                 from = DOMAIN_CPU;
                 to = DOMAIN_GPU;
             }
+            debug("moving power between greedy domains");
             //min between %power and max_power_reallo
             cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
         }
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK)){
         from = DOMAIN_CPU;
         to = DOMAIN_GPU;
+        debug("moving from ok CPU to greedy GPU");
         cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
         from = DOMAIN_GPU;
         to = DOMAIN_GPU;
+        debug("moving from ok GPU to greedy CPU");
         cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
-#endif
 	}else return;
 	uint new_power_recv = pmgt_limit*pdomains[to] + cdomain_status[from].exceed;
 	uint new_power_send = pmgt_limit*pdomains[from] - cdomain_status[from].exceed;
 	debug("%u Watts have been moved from domain %u to domain %u",cdomain_status[from].exceed,from,to);
 	ret=freturn(pcsyms_fun[from].set_powercap_value,0,from,new_power_send,current_util[from]);
+    if (ret == EAR_ERROR) debug("error setting powercap value");
 	ret=freturn(pcsyms_fun[to].set_powercap_value,0,to,new_power_recv,current_util[to]);
+    if (ret == EAR_ERROR) debug("error setting powercap value");
 
 	#endif
 	
