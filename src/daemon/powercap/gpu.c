@@ -40,7 +40,7 @@
 
 
 
-static uint current_gpu_pc=0,set_gpu_pc=0;
+static uint current_gpu_pc=0;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -58,8 +58,6 @@ static ulong *t_freq;
 static float *pdist;
 static gpu_t *gpu_pc_power_data;
 
-static uint gpu_status = PC_STATUS_OK;
-static uint gpu_ask_def = 0;
 static ulong gpu_pc_total_util = 0;
 static double *gpu_cons_power;
 
@@ -71,7 +69,6 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t gpu_pc_thread_init(void *p)
 {
-  state_t s;
 	if (gpu_read(&gpu_pc_ctx_data,values_gpu_init)!= EAR_SUCCESS){
 		debug("Error in gpu_read in gpu_dvfs_pc");
 		return EAR_ERROR;
@@ -81,8 +78,6 @@ state_t gpu_pc_thread_init(void *p)
 	/************************ This function is called by the monitor in iterative part ************************/
 state_t gpu_pc_thread_main(void *p)
 {
-	char gpu_str[512];
-	ulong extra;
 	uint i;
 	uint gpu_local_util = 0;
 	
@@ -116,7 +111,6 @@ state_t disable()
 state_t enable(suscription_t *sus)
 {
 	state_t ret=EAR_SUCCESS;
-	char cmd[256];
 	debug("GPU: power cap  enable");
 	mgt_gpu_load(NULL);
 	if ((ret = mgt_gpu_init(&gpu_pc_ctx)) != EAR_SUCCESS){
@@ -201,7 +195,6 @@ state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 }
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 {
-	char cmd[256];
 	state_t ret;
 	int i;
 	float alloc,ualloc;
@@ -234,6 +227,7 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 		}
 	}
 	ret = mgt_gpu_power_cap_set(&gpu_pc_ctx,gpu_pc_curr_power);
+    if (ret == EAR_ERROR) debug("Error setting powercap");
   for (i=0;i<gpu_pc_num_gpus;i++) {
     debug("GPU: util_gpu[%d]=%lu power_alloc=%lu",i,gpu_util[i],gpu_pc_curr_power[i]);
   }

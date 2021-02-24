@@ -37,7 +37,7 @@
 
 
 
-static uint current_gpu_pc=0,set_gpu_pc=0;
+static uint current_gpu_pc=0;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -54,8 +54,6 @@ state_t disable()
 
 state_t enable(suscription_t *sus)
 {
-	int ret;
-	char cmd[256];
 	debug("GPU_dummy: power cap  enable");
 	gpu_pc_enabled=1;
 	return EAR_SUCCESS;
@@ -63,7 +61,6 @@ state_t enable(suscription_t *sus)
 
 state_t set_powercap_value(uint pid,uint domain,uint limit,uint *gpu_util)
 {
-	char cmd[256];
 	int i;
 	/* Set data */
 	debug("%sGPU_dummy: set_powercap_value %u%s",COL_BLU,limit,COL_CLR);

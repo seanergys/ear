@@ -39,10 +39,10 @@
 #define MIN_GPU_IDLE_POWER 30
 
 static uint gpu_dvfs_pc_enabled=0;
-static ulong c_req_f;
+//static ulong c_req_f;
 
 /* This  subscription will take care automatically of the power monitoring */
-static ulong current_gpu_pc=0,set_gpu_pc=0;
+static ulong current_gpu_pc=0;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -68,7 +68,7 @@ static uint gpu_dvfs_util = 0;
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
 
-ulong select_lower_gpu_freq(uint i,ulong f)
+ulong select_lower_gpu_freq(uint i, ulong f, uint pstate_steps)
 {
     int j=0,found=0;
     /* If we are the minimum*/
@@ -86,7 +86,10 @@ ulong select_lower_gpu_freq(uint i,ulong f)
         // debug("Frequency %lu found in position %d",f,j);
     }
     if (j < (gpu_num_freqs[i]-1)){
-        return gpu_freq_list[i][j+1];
+        /* When reducing GPU frequency we do it in steps of N instead of 1
+         * since the frequencies list for GPUs is very fine-grained and one
+         * step does not reduce the total power consumption by much*/
+        return gpu_freq_list[i][ear_min(j+pstate_steps, gpu_num_freqs[i]-1)];
     }
     return f;
 }
@@ -111,6 +114,7 @@ ulong select_higher_gpu_freq(uint i,ulong f)
   return gpu_freq_list[i][j-1];
 }
 
+/*
 static void printf_gpu_freq_list(const ulong **f, const uint *num_f)
 {
     int i,j;
@@ -122,12 +126,11 @@ static void printf_gpu_freq_list(const ulong **f, const uint *num_f)
         }
     }
 #endif
-}
+}*/
 
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t gpu_dvfs_pc_thread_init(void *p)
 {
-  state_t s;
     if (gpu_load(&ops_met,0,NULL)!=EAR_SUCCESS){
         debug("Error at gpu load");
         gpu_dvfs_pc_enabled = 0;
@@ -156,8 +159,6 @@ state_t gpu_dvfs_pc_thread_init(void *p)
 /************************ This function is called by the monitor in iterative part ************************/
 state_t gpu_dvfs_pc_thread_main(void *p)
 {
-    float power_gpu;
-    char gpu_str[512];
     ulong extra;
     uint i;
     uint gpu_dvfs_local_util = 0;
@@ -197,8 +198,11 @@ state_t gpu_dvfs_pc_thread_main(void *p)
             if (gpu_dvfs_status == PC_STATUS_RELEASE){
                 gpu_dvfs_ask_def = 1;
             }
-            /* Use the list of freuencies */
-            n_freq[i] = select_lower_gpu_freq(i,c_freq[i]);
+            /* Number of steps is estimated by watching how far are we from the cap.
+             * The further from the cap, the more pstates we reduce. Minimum 1 pstate */
+            uint pstate_steps = ear_max((uint)(values_gpu_diff[i].power_w - gpu_pc_curr_power[i])/10, 1);
+            /* Use the list of frequencies */
+            n_freq[i] = select_lower_gpu_freq(i, c_freq[i], pstate_steps);
             debug("%sReducing the GPU-freq[%d] from %lu to %lu (cpower %lf limit %lu) %s",
                     COL_RED,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w,gpu_pc_curr_power[i],COL_CLR);
         }else{ /* We are below the PC */
@@ -298,8 +302,6 @@ state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 {
-    char cmd[256];
-    state_t ret;
     int i;
     float alloc;
     ulong ualloc;
@@ -343,7 +345,7 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 state_t get_powercap_value(uint pid,ulong *powercap)
 {
     /* copy data */
-    debug("GPU::get_powercap_value");
+    //debug("GPU::get_powercap_value");
     *powercap=current_gpu_pc;
     return EAR_SUCCESS;
 }
@@ -420,13 +422,15 @@ void set_app_req_freq(ulong *f)
 /* X_ask_def means we must ask for our power */
 
 
-uint get_powercap_status(uint *status,uint *tbr)
+uint get_powercap_status(uint *status,uint *tbr, uint *strain)
 {
     int i;
     uint used=0;
     uint g_tbr = 0;
+    uint tmp_strain = 0;
     *status = PC_STATUS_OK;
     *tbr = 0;
+    *strain = 0;
     // debug("GPU_DVFS: get_powercap_status");
     if (!gpu_dvfs_monitor_initialized) return 0;
     if (current_gpu_pc == PC_UNLIMITED){
@@ -452,6 +456,15 @@ uint get_powercap_status(uint *status,uint *tbr)
     /* If we know, we must check */
     *status = PC_STATUS_RELEASE;
     *tbr = 0;
+
+    /* Compute the current strain before checking the status */
+    for (i=0;i<gpu_pc_num_gpus;i++){
+        
+        tmp_strain += powercap_get_strain(gpu_freq_list[0][0], gpu_freq_list[0][gpu_num_freqs[0]-1], t_freq[i], c_freq[i]);
+    }
+    tmp_strain /= gpu_pc_num_gpus;
+    *strain = tmp_strain;
+
     for (i=0;i<gpu_pc_num_gpus;i++){
         if ((c_freq[i] < t_freq[i]) && (gpu_pc_util[i]>0)){ 
             debug("We cannot release power from GPU %d",i);

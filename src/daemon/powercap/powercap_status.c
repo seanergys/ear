@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <common/colors.h>
-//#define SHOW_DEBUGS 0
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <common/states.h>
@@ -178,7 +178,23 @@ uint get_powercap_allocated(node_powercap_opt_t *pc_opt)
   return pc_opt->last_t1_allocated;
 }
 
+/* Returns the strain in the subsystem. The strain level represents the
+ * percentual distance between the current freq and the target freq,
+ * with 0 being functioning as expected and 100 being the worst case. 
+ * The calculation is:
+ *      (target-current)/(max-min) * 100. 
+ * 
+ * If the max_freq and min_freq are the same (error), 0 is returned 
+ * as the distance cannot be computed. */
+uint powercap_get_strain(uint max_freq, uint min_freq, uint t_freq, uint c_freq) 
+{
+    debug("getting strain with %u(max_freq) %u(min_freq) %u(t_freq) and %u(c_freq)", max_freq, min_freq, t_freq, c_freq);
+    uint div = max_freq - min_freq;
+    if (div > 0)
+        return (100*(t_freq - c_freq))/div;
 
+    return 0;
+}
 
 uint compute_power_status(node_powercap_opt_t *pc,uint current_power)
 {
