@@ -93,6 +93,7 @@ static float pdomains_def_dummy[NUM_DOMAINS]={1.0,0.9,0,0};
 #else
 static float pdomains_def[NUM_DOMAINS]={1.0,0.9,0,0};
 #endif
+static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
@@ -604,6 +605,12 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 			pdomains[i] = pdomains[i] - 0.05;
 		}
 		pmgt_reset_powercap();
+		default_pdomains = 0;
+	}else if ((pdomain->platform < pmgt_limit) && (!default_pdomains)){	
+		for (i=0;i< NUM_DOMAINS; i++){
+      pdomains[i] = ear_min(pdomains[i] + 0.02,pdomains_def[i]);
+			if (pdomains[i] == pdomains_def[i]) default_pdomains = 1;
+    }
 	}
 }
 

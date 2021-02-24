@@ -17,8 +17,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
-
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
 #include <database_cache/eardbd_sync.h>
@@ -453,12 +451,11 @@ static void init_types_single(int i, char *name, size_t size, uint percent)
 	//
 	sam_iname[i] = name;
 	typ_sizof[i] = size;
-	typ_prcnt[i] = typ_prcnt[i] + ((typ_prcnt[i] == 0) * percent);
-	typ_prcnl[i] = ((float) typ_prcnt[i]) / 100.0;
+	typ_prcnl[i] = ((float) percent) / 100.0;
 
 	//
-	mb_batch = ceilf(alloc * typ_prcnl[i]);
-	mb_single = ((float) typ_sizof[i]) / 1000000.0;
+	mb_batch     = ceilf(alloc * typ_prcnl[i]);
+	mb_single    = ((float) typ_sizof[i]) / 1000000.0;
 	sam_inmax[i] = (ulong) (mb_batch / mb_single);
 
 	if (sam_inmax[i] < 100 && sam_inmax[i] > 0) {
@@ -527,8 +524,9 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 
 	// Setting master name
 	if (server_iam) sprintf(master_name, "%s-s", master_alia);
-	else sprintf(master_name, "%s-m", master_alia);
+	else            sprintf(master_name, "%s-m", master_alia);
 
+	#if 0
 	// Types allocation counting
 	for (i = 0; i < EARDBD_TYPES; ++i) {
 		per_total += conf_clus->db_manager.mem_size_types[i];
@@ -543,6 +541,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 		typ_prcnt[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
 		typ_prcnt[i_evnts] = conf_clus->db_manager.mem_size_types[6];
 	}
+	#endif
 
 	// Verbose
 	tprintf_init(fderr, STR_MODE_DEF, "15 15 11 9 8");
@@ -555,13 +554,14 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	tprintf("type||memory||sample||elems||%%");
 	tprintf("----||------||------||-----||----");
 
-	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          60);
-	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          22);
-	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          05);
-	init_types_single(i_loops, "loops",        sizeof(loop_t),                 00);
-	init_types_single(i_evnts, "events",       sizeof(ear_event_t),            07);
-	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      05);
-	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), 01);
+
+	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          ALLOC_PERCENT_APPS_MPI);
+	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          ALLOC_PERCENT_APPS_SEQUENTIAL);
+	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          ALLOC_PERCENT_APPS_LEARNING);
+	init_types_single(i_loops, "loops",        sizeof(loop_t),                 ALLOC_PERCENT_LOOPS);
+	init_types_single(i_evnts, "events",       sizeof(ear_event_t),            ALLOC_PERCENT_EVENTS);
+	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      ALLOC_PERCENT_ENERGY_REPS);
+	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), ALLOC_PERCENT_ENERGY_AGGRS);
 
 	float mb_total = typ_vecmb[i_appsm] + typ_vecmb[i_appsn] + typ_vecmb[i_appsl] +
 		 typ_vecmb[i_loops] + typ_vecmb[i_evnts] + typ_vecmb[i_enrgy] + typ_vecmb[i_aggrs];
