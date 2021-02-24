@@ -31,9 +31,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+//#define SHOW_DEBUGS 0
 #include <common/states.h>
 #include <common/config.h>
-//#define SHOW_DEBUGS 0
 #include <common/output/verbose.h>
 #include <common/types/daemon_log.h>
 #include <common/colors.h>
