@@ -345,7 +345,7 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 state_t get_powercap_value(uint pid,ulong *powercap)
 {
     /* copy data */
-    debug("GPU::get_powercap_value");
+    //debug("GPU::get_powercap_value");
     *powercap=current_gpu_pc;
     return EAR_SUCCESS;
 }
@@ -460,7 +460,7 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     /* Compute the current strain before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
         
-        tmp_strain += powercap_get_strain(gpu_freq_list[0][gpu_num_freqs[0]-1], gpu_freq_list[0][0], c_freq[i], t_freq[i]);
+        tmp_strain += powercap_get_strain(gpu_freq_list[0][0], gpu_freq_list[0][gpu_num_freqs[0]-1], t_freq[i], c_freq[i]);
     }
     tmp_strain /= gpu_pc_num_gpus;
     *strain = tmp_strain;

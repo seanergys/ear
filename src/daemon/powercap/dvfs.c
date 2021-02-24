@@ -48,6 +48,7 @@
 #define DVFS_RELAX_DURATION 1000
 static uint current_dvfs_pc=0;
 static uint dvfs_pc_enabled=0;
+static topology_t node_desc;
 
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -89,13 +90,9 @@ void extend_from_cpu_to_list(int cpu, uint *list,uint num_cpus)
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t dvfs_pc_thread_init(void *p)
 {
-    state_t s;
-    topology_t node_desc;
 
     debug("DVFS_monitor_init");
 
-    s = topology_init(&node_desc);
-    if (s == EAR_ERROR) debug("Error getting node topology");
 
     num_packs=node_desc.socket_count;
     if (num_packs==0){
@@ -125,14 +122,6 @@ state_t dvfs_pc_thread_init(void *p)
     verbose(1,"Power measurement initialized in dvfs_pc thread initialization");
     /* RAPL is initialized */
     read_rapl_msr(fd_rapl,values_rapl_init);
-    node_size = node_desc.cpu_count;
-    debug("DVFS:Initializing frequency in dvfs_pc %u cpus",node_size);
-    frequency_init(node_size);
-    num_pstates = frequency_get_num_pstates();
-    c_freq = calloc(node_size,sizeof(ulong));
-    c_req_f = calloc(node_size,sizeof(ulong));
-    c_pstate = calloc(node_size,sizeof(uint));
-    t_pstate = calloc(node_size,sizeof(uint));
     dvfs_monitor_initialized = 1;
     return EAR_SUCCESS;
 }
@@ -214,7 +203,9 @@ state_t disable()
 
 state_t enable(suscription_t *sus)
 {
+    state_t s;
     debug("DVFS");
+
     if (sus == NULL){
         debug("NULL subscription in DVFS powercap");
         return EAR_ERROR;
@@ -223,10 +214,22 @@ state_t enable(suscription_t *sus)
     sus->call_init = dvfs_pc_thread_init;
     sus->time_relax = DVFS_RELAX_DURATION*DVFS_PERIOD;
     sus->time_burst = DVFS_BURST_DURATION*DVFS_PERIOD;
-    sus->suscribe(sus);
     sus_dvfs = sus;
     debug("DVFS Subscription done");
     /* Init data */
+    s = topology_init(&node_desc);
+    if (s == EAR_ERROR) debug("Error getting node topology");
+
+    node_size = node_desc.cpu_count;
+    debug("DVFS:Initializing frequency in dvfs_pc %u cpus",node_size);
+    frequency_init(node_size);
+    num_pstates = frequency_get_num_pstates();
+    c_freq = calloc(node_size,sizeof(ulong));
+    c_req_f = calloc(node_size,sizeof(ulong));
+    c_pstate = calloc(node_size,sizeof(uint));
+    t_pstate = calloc(node_size,sizeof(uint));
+
+    sus->suscribe(sus);
     return EAR_SUCCESS;
 }
 
@@ -243,7 +246,7 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 state_t get_powercap_value(uint pid,ulong *powercap)
 {
     /* copy data */
-    debug("DVFS:get_powercap_value");
+    //debug("DVFS:get_powercap_value");
     *powercap=current_dvfs_pc;
     return EAR_SUCCESS;
 }
@@ -318,7 +321,8 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     /* Return 0 means we cannot release power */
     if (current_dvfs_pc == PC_UNLIMITED) return 0;
     /* If we don't know the req_f we cannot release power */
-    if (c_req_f[0] == 0) return 0;
+
+    if (c_req_f[0] == 0) { debug("unknown req_f"); return 0; }
 
     frequency_get_cpufreq_list(node_size,c_freq);
     *strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 

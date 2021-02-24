@@ -693,7 +693,7 @@ void pmgt_powercap_status_per_domain(uint action)
 	/* We ask each domain its curent status to distribute power accross domains */
 	for (i=0; i< NUM_DOMAINS;i++){
 		if (pcsyms_fun[i].get_powercap_status != NULL){
-			ret=pcsyms_fun[i].get_powercap_status(&status,&tbr, &strain);
+			ret=pcsyms_fun[i].get_powercap_status(&status, &tbr, &strain);
 			#if 0
 			if (ret ){
 				debug("%sDomain %d can share power: status %u, power TBR %u%s",COL_GRE,i,status,tbr,COL_CLR);
@@ -710,6 +710,7 @@ void pmgt_powercap_status_per_domain(uint action)
 			totalask += (status == PC_STATUS_ASK_DEF);
 		}
 	}
+    debug("GPU has strain %u and CPU has %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain);
 	if ((action == CHECK_ASK_DEFAULT) || (totalask > 0)){
 		/* Some module needs an urgent power reallocation */
 		if (totalask > 0) pmgt_reset_powercap();
@@ -726,7 +727,7 @@ void pmgt_powercap_status_per_domain(uint action)
 		from = DOMAIN_CPU;
 		to = DOMAIN_GPU;
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
-	    if (abs(cdomain_status[DOMAIN_GPU].strain - cdomain_status[DOMAIN_CPU].strain) < 20){
+	    if (abs(cdomain_status[DOMAIN_GPU].strain - cdomain_status[DOMAIN_CPU].strain) > 20){
 	        if (cdomain_status[DOMAIN_GPU].strain > cdomain_status[DOMAIN_CPU].strain){
                 from = DOMAIN_GPU;
                 to = DOMAIN_GPU;
@@ -737,6 +738,8 @@ void pmgt_powercap_status_per_domain(uint action)
             debug("moving power between greedy domains");
             //min between %power and max_power_reallo
             cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
+        } else {
+            debug("could not redistribute power, GPU has strain %u and CPU has %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain);
         }
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK)){
         from = DOMAIN_CPU;
