@@ -46,9 +46,9 @@
 #define DVFS_PERIOD 0.5
 #define DVFS_BURST_DURATION 1000
 #define DVFS_RELAX_DURATION 1000
-
 static uint current_dvfs_pc=0,set_dvfs_pc=0;
 static uint dvfs_pc_enabled=0;
+
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
 static ulong *c_req_f;
@@ -168,8 +168,13 @@ state_t dvfs_pc_thread_main(void *p)
         }
         frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
         /* If we are running at the lowest frequency there is nothing else to do */
-        if (c_pstate[0] < (num_pstates-1)){ /*Pending verctor extension*/
-            c_pstate[0]=ear_min(c_pstate[0]+1,num_pstates-1); /* Pending verctor extension */
+        if (c_pstate[0] < (num_pstates-1)){ /*Pending vector extension*/
+            /* If the current power is above by a lot, we reduce 2 pstates instead of 1 */
+            if ((power_rapl - my_limit) > 30) {
+                c_pstate[0]=ear_min(c_pstate[0]+2,num_pstates-1); 
+            } else {
+                c_pstate[0]=ear_min(c_pstate[0]+1,num_pstates-1); 
+            }
             extend_from_cpu_to_list(0,c_pstate,node_size);
             debug("%spower above limit, current freq %lu%s", COL_RED, c_freq[0], COL_CLR);
             frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
@@ -234,7 +239,7 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
     return EAR_SUCCESS;
 }
 
-state_t get_powercap_value(uint pid,uint *powercap)
+state_t get_powercap_value(uint pid,ulong *powercap)
 {
     /* copy data */
     debug("DVFS:get_powercap_value");
@@ -292,25 +297,30 @@ void set_verb_channel(int fd)
 
 #define MIN_CPU_POWER_MARGIN 10
 
-/* Returns 0 when 1) No info, 2) No limit 3) We cannot share power. */
-/* Returns 1 when power can be shared with other modules */
-/* Status can be: PC_STATUS_OK, PC_STATUS_GREEDY, PC_STATUS_RELEASE, PC_STATUS_ASK_DEF */
-/* tbr is > 0 when PC_STATUS_RELEASE , 0 otherwise */
-/* X_status is the plugin status */
-/* X_ask_def means we must ask for our power */
 
-uint get_powercap_status(uint *status,uint *tbr)
+/* Returns 0 when 1) No info, 2) No limit 3) We cannot share power. 
+ * Returns 1 when power can be shared with other modules 
+ * Status can be: PC_STATUS_OK, PC_STATUS_GREEDY, PC_STATUS_RELEASE, PC_STATUS_ASK_DEF 
+ * tbr is > 0 when PC_STATUS_RELEASE , 0 otherwise 
+ * X_status is the plugin status 
+ * X_ask_def means we must ask for our power  */
+
+uint get_powercap_status(uint *status,uint *tbr, uint *strain)
 {
     uint ctbr;
     *status = PC_STATUS_OK;
     *tbr = 0;
+    *strain = 0;
+
     //debug("DVFS: get_powercap_status");
     if (!dvfs_monitor_initialized) return 0;
     /* Return 0 means we cannot release power */
     if (current_dvfs_pc == PC_UNLIMITED) return 0;
     /* If we don't know the req_f we cannot release power */
     if (c_req_f[0] == 0) return 0;
+
     frequency_get_cpufreq_list(node_size,c_freq);
+    *strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
     if (c_freq[0] < c_req_f[0]){
         if (dvfs_ask_def) *status = PC_STATUS_ASK_DEF;
         else *status = PC_STATUS_GREEDY;

@@ -63,7 +63,7 @@ typedef struct powercap_symbols {
 	void 		(*set_app_req_freq)(ulong *f);
 	void 		(*set_verb_channel)(int fd);	
 	void 		(*set_new_utilization)(ulong *util);	
-	uint    (*get_powercap_status)(uint *status,uint *tbr);
+	uint    (*get_powercap_status)(uint *status,uint *tbr, uint *strain);
 } powercapsym_t;
 
 /*****
@@ -76,6 +76,7 @@ typedef struct powercap_symbols {
 typedef struct domain_status{
 	uint ok;
 	uint exceed;
+    uint strain;
 }domain_status_t;
 
 static dom_power_t pdist_per_domain;
@@ -119,6 +120,9 @@ const char     *pcsyms_names[] ={
 #define UTIL_BURST_PERIOD 60000
 #define UTIL_RELAX_PERIOD 60000
 #define CHECK_STATUS_PERIOD 500
+
+#define DOMAINS_REDIST 0.1
+#define DOMAINS_REDIST_MAX 20
 static uint util_period = 0;
 
 
@@ -513,13 +517,13 @@ state_t pmgt_get_powercap_value(pwr_mgt_t *phandler,uint pid,ulong *powercap)
 {
 	state_t ret,gret;
 	ulong total=0;
-  ulong parc;
+    uint parc;
 	int i;
 	if (powercap == NULL) return EAR_ERROR;
 	for (i=0;i<NUM_DOMAINS;i++){
 		powercap[i] = 0;
 		ret=freturn(pcsyms_fun[i].get_powercap_value,pid,&parc);
-		if (domains_loaded[i]) powercap[i] =  parc;
+		if (domains_loaded[i]) powercap[i] = (ulong) parc;
 		if ((ret!=EAR_SUCCESS) && (domains_loaded[i])) gret=ret;
 	}
 	return gret;
@@ -671,7 +675,7 @@ void pmgt_powercap_status_per_domain(uint action)
 	int i;
 	uint totalok = 0,totalrel =0,totalask = 0;
 	uint ret,from,to;
-	uint status, tbr;
+	uint status, tbr, strain;
 	#if USE_GPUS
 	#if 0
 	if (action == CHECK_ASK_DEFAULT){
@@ -684,7 +688,7 @@ void pmgt_powercap_status_per_domain(uint action)
 	/* We ask each domain its curent status to distribute power accross domains */
 	for (i=0; i< NUM_DOMAINS;i++){
 		if (pcsyms_fun[i].get_powercap_status != NULL){
-			ret=pcsyms_fun[i].get_powercap_status(&status,&tbr);
+			ret=pcsyms_fun[i].get_powercap_status(&status,&tbr, &strain);
 			#if 0
 			if (ret ){
 				debug("%sDomain %d can share power: status %u, power TBR %u%s",COL_GRE,i,status,tbr,COL_CLR);
@@ -694,6 +698,7 @@ void pmgt_powercap_status_per_domain(uint action)
 			#endif
 			cdomain_status[i].ok = status;
 			cdomain_status[i].exceed = tbr;
+			cdomain_status[i].strain = strain;
 			/* status = 0 when it's ok and 1 when it can release power */
 			totalok += (status == PC_STATUS_OK);
 			totalrel += (status == PC_STATUS_RELEASE);
@@ -715,7 +720,7 @@ void pmgt_powercap_status_per_domain(uint action)
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE)){
 		from = DOMAIN_CPU;
 		to = DOMAIN_GPU;
-        /*
+#if 0
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
 	    if (abs(cdomain_status[DOMAIN_GPU].strain - cdomain_status[DOMAIN_CPU].strain) < 20){
 	        if (cdomain_status[DOMAIN_GPU].strain > cdomain_status[DOMAIN_CPU].strain){
@@ -725,14 +730,18 @@ void pmgt_powercap_status_per_domain(uint action)
                 from = DOMAIN_CPU;
                 to = DOMAIN_GPU;
             }
+            //min between %power and max_power_reallo
+            cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
         }
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK)){
         from = DOMAIN_CPU;
         to = DOMAIN_GPU;
+        cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
 	}else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
         from = DOMAIN_GPU;
         to = DOMAIN_GPU;
-        */
+        cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
+#endif
 	}else return;
 	uint new_power_recv = pmgt_limit*pdomains[to] + cdomain_status[from].exceed;
 	uint new_power_send = pmgt_limit*pdomains[from] - cdomain_status[from].exceed;
