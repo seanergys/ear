@@ -64,6 +64,9 @@ typedef struct powercap_symbols {
     void    (*set_verb_channel)(int fd);	
     void    (*set_new_utilization)(ulong *util);	
     uint    (*get_powercap_status)(uint *status, uint *tbr, uint *strain);
+		uint 		(*reset)();
+		uint 		(*release)();
+		uint 		(*increase)();
 } powercapsym_t;
 
 /*****
@@ -97,7 +100,7 @@ static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 //static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
-const int   pcsyms_n = 14;
+const int   pcsyms_n = 17;
 
 static suscription_t *sus[NUM_DOMAINS];
 
@@ -115,7 +118,11 @@ const char     *pcsyms_names[] ={
 	"set_app_req_freq",	
 	"set_verb_channel",
 	"set_new_utilization",
-	"get_powercap_status"
+	"get_powercap_status",
+	"reset",
+	"release",
+	"increase"
+	
 };
 
 #define UTIL_BURST_PERIOD 10000

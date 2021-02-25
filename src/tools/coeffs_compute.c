@@ -492,6 +492,7 @@ static state_t db_query(int argc, char *argv[], cluster_conf_t *conf, char *host
     for (t = 0, a = 0; t < *apps_count; t++){
         if (apps_temp[t].job.id != (ulong) -1L) {
             copy_application(&((*apps)[a]), &apps_temp[t]);
+	    (*apps)[a].signature.DC_power = sig_node_power(&apps_temp[t].signature);
 			a += 1;
 		}
 	}
