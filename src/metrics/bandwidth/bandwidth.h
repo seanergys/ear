@@ -54,6 +54,8 @@ int uncore_are_frozen(ullong *dest, int n);
 
 /* Given two uncore counter readings and a period of time computes the memory bandwith in GS/s. T is supposed to be in secs. N is the number of uncore counters */
 int compute_mem_bw(ullong *cas2, ullong *cas1, double *bps, double t,int N);
+int compute_tpi(ullong *cas2, ullong *cas1, double *tpi, ullong inst,int N);
+
 void copy_uncores(ullong *dest, ullong *src, int n);
 ullong uncore_ullong_diff_overflow(ullong begin, ullong end);
 void diff_uncores(ullong * diff,ullong *end,ullong  *begin,int N);
