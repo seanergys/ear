@@ -164,6 +164,8 @@ static int static_load()
 	if (load_test(CUDA_BASE "/lib64/libnvidia-ml.so")) return 1;
 	if (load_test(CUDA_BASE "/lib/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib64/libnvidia-ml.so")) return 1;
+	if (load_test("/usr/lib/x86_64-linux-gnu/libnvidia-ml.so")) return 1;
+	if (load_test("/usr/lib32/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib/libnvidia-ml.so")) return 1;
 	return 0;
 }
