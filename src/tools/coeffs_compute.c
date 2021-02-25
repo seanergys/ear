@@ -580,8 +580,8 @@ static state_t configuration(int argc, char *argv[], cluster_conf_t *conf, my_no
 	if (xtate_fail(s, create_folder(buffer2))) {
 		return s;
 	}
-	// Setting the complete coefficient file.
-	sprintf(buffer1, "%s/%s", buffer2, (*node)->coef_file);
+	// Setting the complete coefficient file (i was using (*node)->coef_file).
+	sprintf(buffer1, "%s/coeffs.%s", buffer2, host_name);
 	if ((*fd = open(buffer1, F_WR|F_CR|F_TR, F_UR|F_UW|F_GR|F_GW|F_OR|F_OW)) < 0) {
 		return_xmsg(EAR_ERROR, "failed opening file '%s' (%s)", buffer1, strerror(errno));
 	}
@@ -595,33 +595,38 @@ static state_t configuration(int argc, char *argv[], cluster_conf_t *conf, my_no
 
 static state_t usage(int argc, char *argv[])
 {
-	int expected_args = 1;
+	int expected_args = 0;
 	int node_name     = 0;
 	int job_list      = 0;
 	int path          = 0;
 	int help          = 0;
+	int verbose       = 0;
 	// More than one means something to process
 	if (argc > 1) {
-		help      = strinargs(argc, argv, "help", NULL);
+		help      = strinargs(argc, argv, "h", NULL);
+		help     |= strinargs(argc, argv, "help", NULL);   
 		job_list  = strinargs(argc, argv, "job-list:", NULL);
 		node_name = strinargs(argc, argv, "node-name:", NULL);
 		path      = strinargs(argc, argv, "root-path:", NULL);
-		expected_args = job_list + node_name + path + 1;
+		verbose   = strinargs(argc, argv, "verbose", NULL);
+		expected_args = job_list + node_name + path + verbose + 1;
 	}
 	// Something happens in the arguments
 	if (argc == expected_args) {
     	return EAR_SUCCESS;
 	}
+#if 0
 	if (!help) {
     	return EAR_SUCCESS;
 	}
+#endif
 	// Showing usage
-    verbose(0, "Usage: %s", argv[0]);
+    verbose(0, "Usage: %s [OPTIONS]", argv[0]);
     verbose(0, "  Computes a coefficient file for current or selected node.");
     verbose(0, "\nOptions:");
-    verbose(0, "\t--node-name <name>\tSets the node to compute its coefficients.");
-	verbose(0, "\t--job-list <list-ids>\tDiscards jobs not present in <list-ids>.");
-    verbose(0, "\t--root-path <path>\tSets the root directory where coefficients will");
+    verbose(0, "\t--node-name=<name>\tSets the node to compute its coefficients.");
+	verbose(0, "\t--job-list=<list-ids>\tDiscards jobs not present in <list-ids>.");
+    verbose(0, "\t--root-path=<path>\tSets the root directory where coefficients will");
     verbose(0, "\t                  \tbe stored.");
     verbose(0, "\t--verbose\t\tVerbose mode. It includes errors.");
 
@@ -630,32 +635,32 @@ static state_t usage(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    char             host_name[SZ_NAME_MEDIUM];
+	char             host_name[SZ_NAME_MEDIUM];
 	int              fd; 
-    my_node_conf_t  *node;
-    cluster_conf_t   conf;
-    topology_t       topo;
-    ctx_t            c;
-    pstate_t        *pstate_list;
-    uint             pstate_count;
-    application_t   *app_list;
-    uint             app_count;
+	my_node_conf_t  *node;
+	cluster_conf_t   conf;
+	topology_t       topo;
+	ctx_t            c;
+	pstate_t        *pstate_list;
+	uint             pstate_count;
+	application_t   *app_list;
+	uint             app_count;
 	matrix_t        *matrix;
 	uint             matrix_count;
 	state_t          s;
 
-    if (xtate_fail(s, usage(argc, argv))) {
-        return 0;
-    }
+	if (xtate_fail(s, usage(argc, argv))) {
+		return 0;
+	}
     
 	state_assert(s, configuration(argc, argv, &conf, &node, host_name, &fd),        return 0);
 	state_assert(s, db_query(argc, argv, &conf, host_name, &app_list, &app_count),  return 0);
 #if 0
 	state_assert(s, topology_init(&topo),                                           return 0);
-    state_assert(s, mgt_cpufreq_load(&topo),                                        return 0); 
-    state_assert(s, mgt_cpufreq_init(&c),                                           return 0);
-    state_assert(s, mgt_cpufreq_alloc_available(&c, &pstate_list, &pstate_count),   return 0);
-    state_assert(s, mgt_cpufreq_get_available_list(&c, pstate_list, NULL),          return 0);
+	state_assert(s, mgt_cpufreq_load(&topo),                                        return 0); 
+	state_assert(s, mgt_cpufreq_init(&c),                                           return 0);
+	state_assert(s, mgt_cpufreq_alloc_available(&c, &pstate_list, &pstate_count),   return 0);
+	state_assert(s, mgt_cpufreq_get_available_list(&c, pstate_list, NULL),          return 0);
 #else
 	state_assert(s, pstate_sort(app_list, app_count, &pstate_list, &pstate_count),  return 0);
 #endif
@@ -665,5 +670,5 @@ int main(int argc, char *argv[])
 	state_assert(s, compute_coefficients(matrix, matrix_count),                     return 0);
 	state_assert(s, write_coefficients(fd, matrix, matrix_count),                   return 0);
 
-    return 0;
+	return 0;
 }
