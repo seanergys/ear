@@ -25,12 +25,35 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <common/colors.h>
-//#define SHOW_DEBUGS 0
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <common/states.h>
 #include <daemon/powercap/powercap.h>
 #include <common/types/pc_app_info.h>
+
+/* This function decides if we have to changed the utilization or not */
+#define MAX_ALLOWED_DIFF 0.25
+uint util_changed(ulong curr,ulong prev)
+{
+  float diff;
+  int idiff,icurr,iprev;
+  icurr=(int)curr;
+  iprev=(int)prev;
+  if ((prev == 0) && (curr)) return 1;
+  if ((curr == 0) && (prev)) return 1;
+  if ((!prev) && (!curr)) return 0;
+  idiff = (icurr - iprev);
+  if (idiff < 0){
+    idiff = idiff * -1;
+    diff = (float)idiff / (float)iprev;
+  }else{
+    diff = (float)idiff / (float)icurr;
+  }
+  // debug("Current util and prev util differs in %.3f prev %lu curr %lu",diff,prev,curr);
+  return (diff >  MAX_ALLOWED_DIFF);
+}
+
 
 uint compute_power_to_release(node_powercap_opt_t *pc_opt,uint current)
 {
@@ -155,7 +178,23 @@ uint get_powercap_allocated(node_powercap_opt_t *pc_opt)
   return pc_opt->last_t1_allocated;
 }
 
+/* Returns the strain in the subsystem. The strain level represents the
+ * percentual distance between the current freq and the target freq,
+ * with 0 being functioning as expected and 100 being the worst case. 
+ * The calculation is:
+ *      (target-current)/(max-min) * 100. 
+ * 
+ * If the max_freq and min_freq are the same (error), 0 is returned 
+ * as the distance cannot be computed. */
+uint powercap_get_strain(uint max_freq, uint min_freq, uint t_freq, uint c_freq) 
+{
+    debug("getting strain with %u(max_freq) %u(min_freq) %u(t_freq) and %u(c_freq)", max_freq, min_freq, t_freq, c_freq);
+    uint div = max_freq - min_freq;
+    if (div > 0)
+        return (100*(t_freq - c_freq))/div;
 
+    return 0;
+}
 
 uint compute_power_status(node_powercap_opt_t *pc,uint current_power)
 {

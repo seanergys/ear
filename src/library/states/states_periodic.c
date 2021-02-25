@@ -41,17 +41,12 @@
 #include <management/cpufreq/frequency.h>
 #include <daemon/local_api/eard_api.h>
 #include <library/policies/policy_state.h>
+#include <library/states/states_comm.h>
 
 
 extern uint mpi_calls_in_period;
 extern masters_info_t masters_info;
 extern float ratio_PPN;
-
-// static defines
-#define FIRST_ITERATION			1
-#define EVALUATING_LOCAL_SIGNATURE	2
-#define EVALUATING_GLOBAL_SIGNATURE 3
-
 
 static projection_t *PP;
 static ulong policy_freq;
@@ -62,13 +57,6 @@ static uint EAR_POLICY_STATE = EAR_POLICY_NO_STATE;
 static ulong global_f;
 static loop_id_t periodic_loop;
 static uint total_th;
-
-#define NEW_FREQ_REPORT() \
-    if (masters_info.my_master_rank>=0 || show_signatures){\
-      float policy_freqf;\
-      policy_freqf=(float)policy_freq/1000000.0; \
-      verbose(1,"\tNew freq %.1fGHz",policy_freqf);\
-    }
 
 
 void states_periodic_end_job(int my_id, FILE *ear_fd, char *app_name)
@@ -130,13 +118,6 @@ void states_periodic_end_period(uint iterations)
 }
 
 
-static void print_loop_signature(char *title, signature_t *loop)
-{
-	float avg_f = (float) loop->avg_f / 1000000.0;
-
-	debug("(%s) Avg. freq: %.2lf (GHz), CPI/TPI: %0.3lf/%0.3lf, GBs: %0.3lf, DC power: %0.3lf, time: %0.3lf, GFLOPS: %0.3lf",
-                title, avg_f, loop->CPI, loop->TPI, loop->GBS, loop->DC_power, loop->time, loop->Gflops);
-}
 
 void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter);
 static void report_loop_signature(uint iterations,loop_t *loop)
@@ -161,9 +142,6 @@ static void report_loop_signature(uint iterations,loop_t *loop)
 */
 void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter)
 {
-	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP,VPI,GPU_POWER;
-	ulong AVGF,GPU_UTIL;
-	float GPU_FREQ;
 	unsigned long long VI;
 	unsigned long prev_f;
 	int result;
@@ -171,6 +149,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 	int ready;
 	state_t st;
 	float AVGFF,prev_ff,policy_freqf;
+	char gpu_buff[512];
 
 	prev_f = ear_frequency;
 	st=policy_new_iteration(&periodic_loop);
@@ -188,7 +167,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 	{
 		case FIRST_ITERATION:
 				EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-				if (masters_info.my_master_rank>=0) traces_policy_state(ear_my_rank, my_id,EVALUATING_LOCAL_SIGNATURE);
+				state_report_traces_state(masters_info.my_master_rank,ear_my_rank, my_id,EVALUATING_LOCAL_SIGNATURE);
 				metrics_compute_signature_begin();
 				// Loop printing algorithm
 				loop.id.event = event;
@@ -198,117 +177,59 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 		case EVALUATING_LOCAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_LOCAL_SIGNATURE");
 				N_iter=1;
-				
 				result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
-
 				if (result != EAR_NOT_READY)
 				{
 					//print_loop_signature("signature computed", &loop_signature.signature);
 
 					loop_with_signature = 1;
 					current_loop_id = event;
-
-					CPI = loop_signature.signature.CPI;
-					GBS = loop_signature.signature.GBS;
-					POWER = loop_signature.signature.DC_power;
-					TPI = loop_signature.signature.TPI;
-					TIME = loop_signature.signature.time;
-					AVGF = loop_signature.signature.avg_f;
-
-		      VI=metrics_vec_inst(&loop_signature.signature);
-		      VPI=(double)VI/(double)loop_signature.signature.instructions;
-
-					ENERGY = TIME * POWER;
-					EDP = ENERGY * TIME;
-
 		      signature_t app_signature;
       		adapt_signature_to_node(&app_signature,&loop_signature.signature,ratio_PPN);
+
+					/* This function executes the CPU and GPU freq selection */
 					st=policy_node_apply(&app_signature,&policy_freq,&ready);
-					signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
 					EAR_POLICY_STATE = ready;
+					signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
 
 					/* When the policy is ready to be evaluated, we go to the next state */
       		if ((EAR_POLICY_STATE == EAR_POLICY_READY) || (EAR_POLICY_STATE == EAR_POLICY_CONTINUE)){
-
 						loop_signature.signature.def_f=prev_f;
 						if (policy_freq != prev_f){
 							if (masters_info.my_master_rank>=0) log_report_new_freq(application.job.id,application.job.step_id,policy_freq);
-						}
-						/* For no masters, ready will be 0, pending */
-						if (masters_info.my_master_rank>=0){
-						traces_new_signature(ear_my_rank, my_id,&loop_signature.signature);
-						traces_frequency(ear_my_rank, my_id, policy_freq);
 						}
 					}
 					if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){
 						EAR_STATE = EVALUATING_GLOBAL_SIGNATURE;
       		}
-        	if (masters_info.my_master_rank>=0) traces_policy_state(ear_my_rank, my_id,EVALUATING_GLOBAL_SIGNATURE);
-
-					if (masters_info.my_master_rank>=0 || show_signatures){
-						#if USE_GPU_LIB
-						GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0;
-						if (loop_signature.signature.gpu_sig.num_gpus>0){
-						uint gpui;
-						for (gpui=0;gpui<loop_signature.signature.gpu_sig.num_gpus;gpui++){
-							GPU_POWER += loop_signature.signature.gpu_sig.gpu_data[gpui].GPU_power;
-							GPU_FREQ += loop_signature.signature.gpu_sig.gpu_data[gpui].GPU_freq;
-							GPU_UTIL += loop_signature.signature.gpu_sig.gpu_data[gpui].GPU_util;
-						}
-						GPU_FREQ = (float)GPU_FREQ/(loop_signature.signature.gpu_sig.num_gpus*1000000.0);
-						GPU_UTIL = GPU_UTIL/loop_signature.signature.gpu_sig.num_gpus;
-						}
-						#endif
-            AVGFF=(float)AVGF/1000000.0;
-            prev_ff=(float)prev_f/1000000.0;
-            policy_freqf=(float)policy_freq/1000000.0;
-						#if USE_GPU_LIB
-						if (GPU_UTIL){
-            verbose(1,
-                  "\n\nEAR+P(%s) at %.2f in %s: LoopID=%lu, LoopSize=%u,iterations=%d\nApp. Signature %s(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec. CPU avg freq %.2fGHz)\n\t              (GPU_power %.2lfW GPU_freq %.1fGHz GPU_util %lu)--> New frequency selected %.2fGHz%s",
-                  ear_app_name, prev_ff, application.node_id,event, period, iterations, COL_GRE,CPI, GBS, POWER, TIME, AVGFF,GPU_POWER,GPU_FREQ,GPU_UTIL, policy_freqf,COL_CLR);
-						}else{
-            verbose(1,
-                  "\n\nEAR+P(%s) at %.2f in %s: LoopID=%lu, LoopSize=%u,iterations=%d\nApp. Signature %s(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec. CPU avg freq %.2fGHz)--> New frequency selected %.2fGHz%s",
-                  ear_app_name, prev_ff, application.node_id,event, period, iterations, COL_GRE,CPI, GBS, POWER, TIME, AVGFF, policy_freqf,COL_CLR);
-						}
-						#else
-            verbose(1,
-                  "\n\nEAR+P(%s) at %.2f in %s: LoopID=%lu, LoopSize=%u,iterations=%d\nApp. Signature %s(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec. CPU avg freq %.2fGHz) --> New frequency selected %.2fGHz%s",
-                  ear_app_name, prev_ff, application.node_id,event, period, iterations, COL_GRE,CPI, GBS, POWER, TIME, AVGFF, policy_freqf,COL_CLR);
-						#endif
-
-					}	
-
-					// Loop printing algorithm
 					signature_copy(&loop.signature, &loop_signature.signature);
+					/* Verbose  */
+          state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
+          state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,"P");
 					report_loop_signature(iterations,&loop);
-				}
-				else{ /* Time was not enough */
+					/* End verbose region */
+				} else{ /* Time was not enough */
 					if (loop_signature.signature.time==0){
 						mpi_calls_in_period=mpi_calls_in_period*2;
 					}
 				}
-
 			break;
 		case EVALUATING_GLOBAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
       	st = policy_app_apply(&policy_freq,&ready);
       	EAR_POLICY_STATE = ready;
       	if (EAR_POLICY_STATE == EAR_POLICY_READY){
-      		NEW_FREQ_REPORT();
 					EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-      		if (policy_freq != prev_f)
-      		{
+      		if (policy_freq != prev_f) {
           	if (masters_info.my_master_rank>=0) log_report_new_freq(application.job.id,application.job.step_id,policy_freq);
       		}
-          if (masters_info.my_master_rank>=0) traces_policy_state(ear_my_rank, my_id,EVALUATING_LOCAL_SIGNATURE);
       }
       break;
 
 
 		default: break;
 	}
+	state_report_traces_state(masters_info.my_master_rank,ear_my_rank, my_id,EAR_STATE);
 }
 
 

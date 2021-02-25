@@ -142,8 +142,6 @@ state_t enable(suscription_t *sus)
 state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 {
 	char cmd[1024];
-	char c_date[128];
-	state_t ret;
 	if (!policy_enabled) return EAR_SUCCESS;
 	debug("INM:inm_set_powercap_value policy %u limit %u",pid,limit);
 	c_limit=limit;
@@ -203,7 +201,6 @@ void set_app_req_freq(ulong *f)
 uint get_powercap_status(uint *in_target,uint *tbr)
 {
 	ulong c_freq;
-	uint ctbr;
 	*in_target = 0;
 	*tbr = 0;
 	if (c_limit == PC_UNLIMITED) return 0;

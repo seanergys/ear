@@ -29,11 +29,18 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <common/config.h>
+#include <common/types/types.h>
 #include <common/system/process.h>
 #include <common/system/sockets.h>
-#include <common/types/types.h>
 #include <common/string_enhanced.h>
 
+#define ALLOC_PERCENT_APPS_MPI        20
+#define ALLOC_PERCENT_APPS_SEQUENTIAL 20
+#define ALLOC_PERCENT_APPS_LEARNING   5
+#define ALLOC_PERCENT_LOOPS           20
+#define ALLOC_PERCENT_EVENTS          2
+#define ALLOC_PERCENT_ENERGY_REPS     20
+#define ALLOC_PERCENT_ENERGY_AGGRS    13
 #define CONTENT_TYPE_PER	1
 #define CONTENT_TYPE_APM	2
 #define CONTENT_TYPE_APN	9
