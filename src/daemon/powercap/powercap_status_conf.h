@@ -119,6 +119,20 @@ typedef struct pc_release_data{
 }pc_release_data_t;
 
 
+/*****
+#define DOMAIN_NODE 0
+#define DOMAIN_CPU 1
+#define DOMAIN_DRAM     2
+#define DOMAIN_GPU      3
+****/
+
+typedef struct domain_status{
+    uint ok;
+    uint exceed;
+    uint strain;
+    uint current_pc;
+}domain_status_t;
+
 
 
 #endif

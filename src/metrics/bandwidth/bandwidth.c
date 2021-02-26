@@ -195,6 +195,21 @@ int compute_mem_bw(ullong *cas2, ullong *cas1, double *bps, double t,int N)
 	return EAR_SUCCESS;
 }
 
+int compute_tpi(ullong *cas2, ullong *cas1, double *tpi, ullong inst,int N)
+{
+  int dev_count = N;
+  ullong accum;
+  if (dev_count == 0) {
+    return_msg(EAR_ERROR, Generr.api_uninitialized);
+  }
+  topology_init(&topo);
+  accum = acum_diff(cas2,cas1,N);
+  debug("Total uncore events %llu cache line size %u\n",accum,topo.cache_line_size);
+  *tpi = (double)(accum * topo.cache_line_size)/(double)inst;
+  return EAR_SUCCESS;
+}
+
+
 int compute_uncores(ullong *cas2, ullong *cas1, double *bps, double units)
 {
 	int dev_count = count_uncores();

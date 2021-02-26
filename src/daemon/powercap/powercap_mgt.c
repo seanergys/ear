@@ -63,24 +63,11 @@ typedef struct powercap_symbols {
     void    (*set_app_req_freq)(ulong *f);
     void    (*set_verb_channel)(int fd);    
     void    (*set_new_utilization)(ulong *util);    
-    uint    (*get_powercap_status)(uint *status, uint *tbr, uint *strain);
+    uint    (*get_powercap_status)(domain_status_t *status);
     state_t (*reset_powercap_value)();
     state_t (*release_powercap_allocation)(uint decrease);
     state_t (*increase_powercap_allocation)(uint increase);
 } powercapsym_t;
-
-/*****
-#define DOMAIN_NODE 0
-#define DOMAIN_CPU 1
-#define DOMAIN_DRAM     2
-#define DOMAIN_GPU      3
-****/
-
-typedef struct domain_status{
-    uint ok;
-    uint exceed;
-    uint strain;
-}domain_status_t;
 
 static dom_power_t pdist_per_domain;
 static uint pmgt_limit;
@@ -101,7 +88,6 @@ static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 //static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
 const int   pcsyms_n = 17;
-static char pc_has_been_released = 0;
 
 static suscription_t *sus[NUM_DOMAINS];
 
@@ -226,7 +212,7 @@ static state_t util_detect_main(void *p)
     uint runnable,total,lastpid;
 
     util_period += CHECK_STATUS_PERIOD;
-    if ((util_period % UTIL_BURST_PERIOD) == 0){
+	if ((pmgt_powercap_status_per_domain(CHECK_ASK_DEFAULT) == 0) && ((util_period % UTIL_BURST_PERIOD) == 0)){
         util_period = 0;
         loadavg(&min,&vmin,&xvmin,&runnable,&total,&lastpid);
         debug("%sCPU load %.2f%s ",COL_MGT,min,COL_CLR);
@@ -266,8 +252,6 @@ static state_t util_detect_main(void *p)
             pmgt_powercap_node_reallocation();
         }
         memcpy(last_dom_util,dom_util,sizeof(ulong)*NUM_DOMAINS);
-    }else{
-        pmgt_powercap_status_per_domain(CHECK_ASK_DEFAULT);    
     }
     return EAR_SUCCESS;
 }
@@ -517,21 +501,14 @@ static void reallocate_power_between_domains()
     debug("%s",buffer2);
 }
 
-state_t pmgt_reset_powercap()
+state_t pmgt_reset_pdomain()
 {
-    int i;
-    state_t ret;
     debug("Doing a reset of powercap limits per domain");
-    if (pc_has_been_released) {
-        for (i = 0; i < NUM_DOMAINS; i++) {
-            ret = freturn(pcsyms_fun[i].reset_powercap_value);
-            if (ret == EAR_ERROR) debug("error when setting powercap value");
-        }
-    }
-    else reallocate_power_between_domains();
+    reallocate_power_between_domains();
     
     return EAR_SUCCESS;
 }
+
 state_t pmgt_get_powercap_value(pwr_mgt_t *phandler,uint pid,ulong *powercap)
 {
     state_t ret,gret;
@@ -546,6 +523,7 @@ state_t pmgt_get_powercap_value(pwr_mgt_t *phandler,uint pid,ulong *powercap)
     }
     return gret;
 }
+
 uint pmgt_is_powercap_enabled(pwr_mgt_t *phandler,uint pid)
 {
     uint ret=0,gret=0;
@@ -621,7 +599,7 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
         for (i=0;i< NUM_DOMAINS; i++){
             pdomains[i] = pdomains[i] - 0.05;
         }
-        pmgt_reset_powercap();
+        pmgt_reset_pdomain();
         default_pdomains = 0;
     }else if ((pdomain->platform < pmgt_limit) && (!default_pdomains)){    
         for (i=0;i< NUM_DOMAINS; i++){
@@ -644,6 +622,17 @@ void pmgt_set_app_req_freq(pwr_mgt_t *phandler,pc_app_info_t *pc_app)
       freturn(pcsyms_fun[DOMAIN_GPU].set_app_req_freq,pc_app->req_gpu_f);
     }
     #endif
+}
+
+void pmgt_set_default_powercap()
+{
+    int i;
+    state_t ret;
+	/* Calls the set_default functions for plugins */
+    for (i = 0; i < NUM_DOMAINS; i++) {
+        ret = freturn(pcsyms_fun[i].reset_powercap_value);
+        if (ret == EAR_ERROR) debug("error when setting powercap value");
+    }
 }
 
 /* Power needs some reallocation internally in components */
@@ -693,15 +682,14 @@ void pmgt_run_to_idle(pwr_mgt_t *phandler)
     pmgt_set_status(phandler,PC_STATUS_IDLE);
 }
 
-void pmgt_powercap_status_per_domain(uint action)
+uint pmgt_powercap_status_per_domain(uint action)
 {
     int i;
     char is_release = 0;
     uint totalok = 0;
     uint totalrel = 0;
     uint totalask = 0;
-    uint ret,from,to;
-    uint status, tbr, strain;
+    uint ret,from = 0,to = 0;
     #if USE_GPUS
     #if 0
     if (action == CHECK_ASK_DEFAULT){
@@ -714,7 +702,7 @@ void pmgt_powercap_status_per_domain(uint action)
     /* We ask each domain its curent status to distribute power accross domains */
     for (i=0; i< NUM_DOMAINS;i++){
         if (pcsyms_fun[i].get_powercap_status != NULL){
-            ret=pcsyms_fun[i].get_powercap_status(&status, &tbr, &strain);
+            ret=pcsyms_fun[i].get_powercap_status(&cdomain_status[i]);
             #if 0
             if (ret ){
                 debug("%sDomain %d can share power: status %u, power TBR %u%s",COL_GRE,i,status,tbr,COL_CLR);
@@ -722,25 +710,25 @@ void pmgt_powercap_status_per_domain(uint action)
                 debug("Domain %d cannot share power status %u, power TBR %u",i,status,tbr);
             }
             #endif
-            cdomain_status[i].ok = status;
-            cdomain_status[i].exceed = tbr;
-            cdomain_status[i].strain = strain;
             /* status = 0 when it's ok and 1 when it can release power */
-            totalok += (status == PC_STATUS_OK);
-            totalrel += (status == PC_STATUS_RELEASE);
-            totalask += (status == PC_STATUS_ASK_DEF);
+            totalok += (cdomain_status[i].ok == PC_STATUS_OK);
+            totalrel += (cdomain_status[i].ok == PC_STATUS_RELEASE);
+            totalask += (cdomain_status[i].ok == PC_STATUS_ASK_DEF);
         }
     }
     debug("GPU has strain %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", 
            cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain,cdomain_status[DOMAIN_CPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
     if ((action == CHECK_ASK_DEFAULT) || (totalask > 0)){
-        /* Some module needs an urgent power reallocation */
-        if (totalask > 0) pmgt_reset_powercap();
         debug("action is CHECK_ASK_DEFAULT, not power redistribution");
-        return;
+        /* Some module needs an urgent power reallocation */
+		if (totalask > 0){ 
+			pmgt_set_default_powercap();
+			return 1;
+		}
+		return 0;
     }
-    /* If bith are OK or both can release power there is nothing to do between modules */
-    if (totalrel == 2) return;
+    /* If both are OK or both can release power there is nothing to do between modules */
+    if (totalrel == 2) return 1;
     /* We check first the CPU */
     if ((cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE)) {
         /** Add N watts to the CPU */
@@ -762,7 +750,7 @@ void pmgt_powercap_status_per_domain(uint action)
             }
             debug("moving power between greedy domains");
             //min between %power and max_power_reallo
-            cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
+            cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
         } else {
             debug("could not redistribute power, GPU has strain %u and CPU has %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain);
         }
@@ -770,31 +758,31 @@ void pmgt_powercap_status_per_domain(uint action)
         from = DOMAIN_CPU;
         to = DOMAIN_GPU;
         debug("moving from ok CPU to greedy GPU");
-        cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
+        cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
     }else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
         from = DOMAIN_GPU;
         to = DOMAIN_GPU;
         debug("moving from ok GPU to greedy CPU");
-        cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
-    }else return;
+        cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
+    }else return 1;
 
-    uint new_power_recv = pmgt_limit*pdomains[to] + cdomain_status[from].exceed;
-    uint new_power_send = pmgt_limit*pdomains[from] - cdomain_status[from].exceed;
     if (is_release) {
         debug("%u Watts have been released from domain %u and added to domain %u",cdomain_status[from].exceed,from,to);
-        ret=freturn(pcsyms_fun[from].release_powercap_allocation,new_power_send);
+        ret=freturn(pcsyms_fun[from].release_powercap_allocation, cdomain_status[from].exceed);
         if (ret == EAR_ERROR) debug("error setting powercap value");
-        ret=freturn(pcsyms_fun[to].increase_powercap_allocation,new_power_recv);
+        ret=freturn(pcsyms_fun[to].increase_powercap_allocation, cdomain_status[from].exceed);
         if (ret == EAR_ERROR) debug("error setting powercap value");
-        pc_has_been_released = 1;
     }
     else {
-        debug("%u Watts have been moved from domain %u to domain %u",cdomain_status[from].exceed,from,to);
-        ret=freturn(pcsyms_fun[from].set_powercap_value,0,from,new_power_send,current_util[from]);
+        uint new_power_send = cdomain_status[from].current_pc - cdomain_status[from].exceed;
+        uint new_power_recv = cdomain_status[to].current_pc + cdomain_status[from].exceed;
+        debug("%u Watts have been moved from domain %u to domain %u. Previous values from %.1lf to %.1lf. New values from: %u to %u",
+                cdomain_status[from].exceed, from, to, pmgt_limit*pdomains[from], pmgt_limit*pdomains[to], new_power_send, new_power_recv);
+        ret=freturn(pcsyms_fun[from].set_powercap_value, 0, from, new_power_send, current_util[from]); /* Receives less power than before */
         if (ret == EAR_ERROR) debug("error setting powercap value");
-        ret=freturn(pcsyms_fun[to].set_powercap_value,0,to,new_power_recv,current_util[to]);
+        ret=freturn(pcsyms_fun[to].set_powercap_value, 0, to, new_power_recv, current_util[to]); /* Receives more power that before */
         if (ret == EAR_ERROR) debug("error setting powercap value");
     }
     #endif
-    
+    return 0;
 }

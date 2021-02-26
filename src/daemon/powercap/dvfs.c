@@ -338,12 +338,13 @@ void set_verb_channel(int fd)
  * X_status is the plugin status 
  * X_ask_def means we must ask for our power  */
 
-uint get_powercap_status(uint *status,uint *tbr, uint *strain)
+uint get_powercap_status(domain_status_t *status)
 {
     uint ctbr;
-    *status = PC_STATUS_OK;
-    *tbr = 0;
-    *strain = 0;
+    status->ok = PC_STATUS_OK;
+    status->exceed = 0;
+    status->strain = 0;
+    status->current_pc = current_dvfs_pc;
 
     //debug("DVFS: get_powercap_status");
     if (!dvfs_monitor_initialized) return 0;
@@ -354,23 +355,23 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     if (c_req_f[0] == 0) { debug("unknown req_f"); return 0; }
 
     frequency_get_cpufreq_list(node_size,c_freq);
-    *strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
+    status->strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
     if (c_freq[0] < c_req_f[0]){
-        if (dvfs_ask_def) *status = PC_STATUS_ASK_DEF;
-        else *status = PC_STATUS_GREEDY;
-				debug("DVFS status %u",*status);
+        if (dvfs_ask_def) status->ok = PC_STATUS_ASK_DEF;
+        else status->ok = PC_STATUS_GREEDY;
+        debug("DVFS status %u", status->ok);
         return 0; /* Pending for NJObs */
     }
     ctbr = (my_limit - power_rapl) * 0.5;
-    *status = PC_STATUS_RELEASE;
-    *tbr = ctbr; 
+    status->ok = PC_STATUS_RELEASE;
+    status->exceed = ctbr; 
     if (ctbr < MIN_CPU_POWER_MARGIN){
-        *tbr = 0;
-        *status = PC_STATUS_OK;
-				debug("DVFS status %u",*status);
+        status->exceed = 0;
+        status->ok = PC_STATUS_OK;
+        debug("DVFS status %u", status->ok);
         return 0;
     }
-    dvfs_status = *status;
-    debug("DVFS status %u",*status);
+    dvfs_status = status->ok;
+    debug("DVFS status %u", status->ok);
     return 1;
 }

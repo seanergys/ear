@@ -68,7 +68,7 @@ void pmgt_run_to_idle(pwr_mgt_t *phandler);
 /* When the measured utilization changes, this funcion re-distributes the power based on that, only internally, it doesn't change the powercap allocated to each component */
 void pmgt_powercap_node_reallocation();
 /* Estimates the powercap status per domain (To be completed )*/
-void pmgt_powercap_status_per_domain();
+uint pmgt_powercap_status_per_domain();
 
 
 

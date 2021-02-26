@@ -307,24 +307,24 @@ state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 state_t reset_powercap_value()
 {
     debug("Reset powercap value to %lu", default_gpu_pc);
-    int_set_powercap_value(default_gpu_pc, gpu_pc_util);
-    return EAR_SUCCESS;
+    gpu_dvfs_status = PC_STATUS_OK;
+    gpu_dvfs_ask_def = 0;
+    return int_set_powercap_value(default_gpu_pc, gpu_pc_util);
 }
 
 state_t release_powercap_allocation(uint decrease) 
 {
     debug("GPU_DVFS:Releasing %u from powercap allocationg", decrease);
     current_gpu_pc -= decrease;
-    int_set_powercap_value(current_gpu_pc, gpu_pc_util);
-    return EAR_SUCCESS;
+    gpu_dvfs_status = PC_STATUS_RELEASE;
+    return int_set_powercap_value(current_gpu_pc, gpu_pc_util);
 }
 
 state_t increase_powercap_allocation(uint increase)
 {
     debug("GPU_DVFS:Increasing %u from powercap allocationg", increase);
     current_gpu_pc += increase;
-    int_set_powercap_value(current_gpu_pc, gpu_pc_util);
-    return EAR_SUCCESS;
+    return int_set_powercap_value(current_gpu_pc, gpu_pc_util);
 }
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
@@ -449,15 +449,18 @@ void set_app_req_freq(ulong *f)
 /* X_ask_def means we must ask for our power */
 
 
-uint get_powercap_status(uint *status,uint *tbr, uint *strain)
+uint get_powercap_status(domain_status_t *status)
 {
     int i;
     uint used=0;
     uint g_tbr = 0;
     uint tmp_strain = 0;
-    *status = PC_STATUS_OK;
-    *tbr = 0;
-    *strain = 0;
+
+    status->ok = PC_STATUS_OK;
+    status->exceed = 0;
+    status->strain = 0;
+    status->current_pc = current_gpu_pc;
+
     // debug("GPU_DVFS: get_powercap_status");
     if (!gpu_dvfs_monitor_initialized) return 0;
     if (current_gpu_pc == PC_UNLIMITED){
@@ -465,7 +468,7 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     }
     /* We need the released power */
     if (gpu_dvfs_ask_def){
-        *status = PC_STATUS_ASK_DEF;
+        status->ok = PC_STATUS_ASK_DEF;
         return 0;
     }
     /* If we are not using th GPU we can release all the power */
@@ -474,15 +477,15 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
         if (t_freq[i] == 0) return 0;
     }
     if (!used){
-        *status = PC_STATUS_RELEASE;
-        if (gpu_pc_num_gpus == 0) *tbr = current_gpu_pc;
-        else *tbr=(current_gpu_pc - (MIN_GPU_IDLE_POWER*gpu_pc_num_gpus));
-        debug("%sCould release %u Watts from the GPU%s",COL_GRE,*tbr,COL_CLR);
+        status->ok = PC_STATUS_RELEASE;
+        if (gpu_pc_num_gpus == 0) status->exceed = current_gpu_pc;
+        else status->exceed=(current_gpu_pc - (MIN_GPU_IDLE_POWER*gpu_pc_num_gpus));
+        debug("%sCould release %u Watts from the GPU%s",COL_GRE,status->exceed,COL_CLR);
         return 1;
     }
     /* If we know, we must check */
-    *status = PC_STATUS_RELEASE;
-    *tbr = 0;
+    status->ok = PC_STATUS_RELEASE;
+    status->exceed = 0;
 
     /* Compute the current strain before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
@@ -490,28 +493,28 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
         tmp_strain += powercap_get_strain(gpu_freq_list[0][0], gpu_freq_list[0][gpu_num_freqs[0]-1], t_freq[i], c_freq[i]);
     }
     tmp_strain /= gpu_pc_num_gpus;
-    *strain = tmp_strain;
+    status->strain = tmp_strain;
 
     for (i=0;i<gpu_pc_num_gpus;i++){
         if ((c_freq[i] < t_freq[i]) && (gpu_pc_util[i]>0)){ 
             debug("We cannot release power from GPU %d",i);
-            *status = PC_STATUS_GREEDY;
+            status->ok = PC_STATUS_GREEDY;
             gpu_dvfs_status = PC_STATUS_OK;
-            *tbr = 0;
-						debug("GPU_DVFS status %u",*status);
+            status->exceed = 0;
+            debug("GPU_DVFS status %u",status->ok);
             return 0;
         }else if ((c_freq[i] >= t_freq[i]) && (gpu_pc_util[i]>0)){
             g_tbr = (uint)((gpu_pc_curr_power[i] - values_gpu_diff[i].power_w) *0.5);
-            *tbr = *tbr +  g_tbr;
+            status->exceed = status->exceed + g_tbr;
             debug("%sWe can release %u W from GPU %d since target = %lu current %lu%s",COL_GRE,g_tbr,i,t_freq[i] ,c_freq[i],COL_CLR);
         }
     }
-    if (*tbr < MIN_GPU_POWER_MARGIN){ 
-        *tbr = 0;
-        *status = PC_STATUS_OK;
-				debug("GPU_DVFS status %u",*status);
+    if (status->exceed < MIN_GPU_POWER_MARGIN){ 
+        status->exceed = 0;
+        status->ok = PC_STATUS_OK;
+        debug("GPU_DVFS status %u",status->ok);
         return 0;
-    }else gpu_dvfs_status = *status;
-		debug("GPU_DVFS status %u",*status);
+    }else gpu_dvfs_status = status->ok;
+		debug("GPU_DVFS status %u",status->ok);
     return 1;
 }

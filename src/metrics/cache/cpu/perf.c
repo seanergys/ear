@@ -127,8 +127,8 @@ state_t cache_perf_read(ctx_t *c, llong *L1_misses, llong *LL_misses)
 	if (L1_misses != NULL) *L1_misses = values[0];
 	if (LL_misses != NULL) *LL_misses = values[1];
 
-	debug("total ins %lld", values[0]);
-	debug("total cyc %lld", values[1]);
+	debug("total L1 misses %lld", values[0]);
+	debug("total LLC misses %lld", values[1]);
 
 	return EAR_SUCCESS;
 }
