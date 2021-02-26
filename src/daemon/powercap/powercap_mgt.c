@@ -733,7 +733,7 @@ uint pmgt_powercap_status_per_domain(uint action)
 		return 0;
 	}
 	/* If bith are OK or both can release power there is nothing to do between modules */
-	if (totalrel == 2) return;
+	if (totalrel == 2) return 0;
 	/* We check first the CPU */
 	if ((cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE)) {
 		/** Add N watts to the CPU */
@@ -767,7 +767,7 @@ uint pmgt_powercap_status_per_domain(uint action)
         to = DOMAIN_GPU;
         debug("moving from ok GPU to greedy CPU");
         cdomain_status[from].exceed = pmgt_limit*pdomains[from]*DOMAINS_REDIST < DOMAINS_REDIST_MAX ? pmgt_limit*pdomains[from]*DOMAINS_REDIST : DOMAINS_REDIST_MAX;
-	}else return;
+	}else return 0;
 	uint new_power_recv = pmgt_limit*pdomains[to] + cdomain_status[from].exceed;
 	uint new_power_send = pmgt_limit*pdomains[from] - cdomain_status[from].exceed;
 	debug("%u Watts have been moved from domain %u to domain %u",cdomain_status[from].exceed,from,to);
@@ -777,5 +777,6 @@ uint pmgt_powercap_status_per_domain(uint action)
     if (ret == EAR_ERROR) debug("error setting powercap value");
 
 	#endif
+	return 0;
 	
 }
