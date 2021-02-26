@@ -118,13 +118,17 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 	double ctime,time_nosimd,time_avx2=0,time_avx512=0,perc_avx512=0,perc_avx2=0;
 	coefficient_t *coeff,*avx512_coeffs;
 	unsigned long nominal;
+	ulong pdest;
 	if ((basic_model_init) && (valid_range(from,to))){
 		coeff=&coefficients[from][to];
 		if (coeff->available){
 			time_nosimd=proj_time(coeff,sign,coeff->pstate_ref,coeff->pstate);
       if (to<=avx512_pstate){
+					/* from > to means from lower cpufreq to high cpufreq */
+					if (from > to) pdest = avx512_pstate;
+					else pdest = 1;
 					unsigned long nominal=frequency_get_nominal_freq();
-					avx512_coeffs=&coefficients[from][1];
+					avx512_coeffs=&coefficients[from][pdest];
           perc_avx512=avx512_vpi(sign);
           time_avx512=proj_time(avx512_coeffs,sign,coeff->pstate_ref,nominal);
       }
@@ -138,21 +142,6 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 	return st;
 }
 
-/*
-				st=project_power(my_app,curr_pstate,i,&power_proj);
-				st=project_time(my_app,curr_pstate,i,&time_proj);
-				if (i>=max_pstate_512){
-					st=project_power(my_app,curr_pstate,min_pstate,&power_proj_avx512);
-					st=project_time(my_app,curr_pstate,min_pstate,&time_proj_avx512);
-				}else{
-					power_proj_avx512=power_proj;
-					time_proj_avx512=time_proj;	
-				}
-				perc_avx512=(double)((my_app->FLOPS[3]/(unsigned long long)16)+(my_app->FLOPS[7]/(unsigned long long)8))/(double)my_app->instructions;
-				time_proj_comb=(time_proj*(1-perc_avx512)+time_proj_avx512*perc_avx512);
-				power_proj_comb=(power_proj*(1-perc_avx512)+power_proj_avx512*perc_avx512);
-
-*/
 
 double avx512_vpi(signature_t *my_app)
 {
@@ -168,6 +157,7 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 	coefficient_t *coeff,*avx512_coeffs;
 	double power_nosimd,power_avx2=0,power_avx512=0,cpower;
 	double perc_avx512=0,perc_avx2=0;
+	ulong pdest;
   debug("projct power init %d valid %d",basic_model_init,valid_range(from,to));
 	if ((basic_model_init) && (valid_range(from,to))){
 		coeff=&coefficients[from][to];
@@ -175,6 +165,10 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 				power_nosimd=proj_power(coeff,sign);
 				// Is this <= or >= ?? :(
 				if (to<=avx512_pstate){
+					/* from > to means from lower cpufreq to high cpufreq */
+          if (from > to) pdest = avx512_pstate;
+          else pdest = 1;
+
 					avx512_coeffs=&coefficients[from][1];
 					perc_avx512=avx512_vpi(sign);	
 					power_avx512=proj_power(avx512_coeffs,sign);

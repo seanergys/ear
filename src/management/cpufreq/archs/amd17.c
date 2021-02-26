@@ -62,7 +62,7 @@ state_t cpufreq_amd17_status(topology_t *_tp)
 {
 	state_t s;
 	debug("testing AMD17 P_STATE control status");
-	#if DISABLE_AMD
+	#if AMD_OSCPUFREQ
 	return EAR_ERROR;
 	#endif
 	if (_tp->vendor != VENDOR_AMD) {

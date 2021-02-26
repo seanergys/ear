@@ -2,11 +2,10 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 ######## OPTIONS
 
-DISABLE_AMD = 0
-
-ifeq ($(DISABLE_AMD), 1)
-DEFS += -DDISABLE_AMD=1
+ifeq ($(FEAT_AMD_OSCPUFREQ), 1)
+DEFS += -DAMD_OSCPUFREQ=1
 endif
+
 
 ######## FILES
 

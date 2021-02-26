@@ -7,6 +7,8 @@ FEAT_AVX512  = @FEAT_AVX512@
 FEAT_RESEARCH = 1
 # This feature enables or not the installation of GPU optimization policies. If 0, only monitoring is supported
 FEAT_GPU_OPT  = 1
+# This feature disables the utilization of virtual PSTATES in AMD and selects OS cpufreq
+FEAT_AMD_OSCPUFREQ = 0
 
 # Compilers
 CC           = @CC@
