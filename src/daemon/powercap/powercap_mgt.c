@@ -226,7 +226,7 @@ static state_t util_detect_main(void *p)
 	uint runnable,total,lastpid;
 
 	util_period += CHECK_STATUS_PERIOD;
-	if ((util_period % UTIL_BURST_PERIOD) == 0){
+	if ((pmgt_powercap_status_per_domain(CHECK_ASK_DEFAULT) == 0) && ((util_period % UTIL_BURST_PERIOD) == 0)){
 		util_period = 0;
 		loadavg(&min,&vmin,&xvmin,&runnable,&total,&lastpid);
 		debug("%sCPU load %.2f%s ",COL_MGT,min,COL_CLR);
@@ -266,8 +266,6 @@ static state_t util_detect_main(void *p)
     	pmgt_powercap_node_reallocation();
   	}
 		memcpy(last_dom_util,dom_util,sizeof(ulong)*NUM_DOMAINS);
-	}else{
-		pmgt_powercap_status_per_domain(CHECK_ASK_DEFAULT);	
 	}
   return EAR_SUCCESS;
 }
@@ -515,7 +513,7 @@ static void reallocate_power_between_domains()
 	debug("%s",buffer2);
 }
 
-state_t pmgt_reset_powercap()
+state_t pmgt_reset_pdomain()
 {
 	debug("Doing a reset of powercap limits per domain");
 	reallocate_power_between_domains();
@@ -610,7 +608,7 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 		for (i=0;i< NUM_DOMAINS; i++){
 			pdomains[i] = pdomains[i] - 0.05;
 		}
-		pmgt_reset_powercap();
+		pmgt_reset_pdomain();
 		default_pdomains = 0;
 	}else if ((pdomain->platform < pmgt_limit) && (!default_pdomains)){	
 		for (i=0;i< NUM_DOMAINS; i++){
@@ -633,6 +631,11 @@ void pmgt_set_app_req_freq(pwr_mgt_t *phandler,pc_app_info_t *pc_app)
   	freturn(pcsyms_fun[DOMAIN_GPU].set_app_req_freq,pc_app->req_gpu_f);
 	}
 	#endif
+}
+
+void pmgt_set_default_powercap()
+{
+	/* Calls the set_default functions for plugins */
 }
 
 /* Power needs some reallocation internally in components */
@@ -682,7 +685,7 @@ void pmgt_run_to_idle(pwr_mgt_t *phandler)
 	pmgt_set_status(phandler,PC_STATUS_IDLE);
 }
 
-void pmgt_powercap_status_per_domain(uint action)
+uint pmgt_powercap_status_per_domain(uint action)
 {
 	int i;
 	uint totalok = 0;
@@ -721,10 +724,13 @@ void pmgt_powercap_status_per_domain(uint action)
 	}
    debug("GPU has strain %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain,cdomain_status[DOMAIN_CPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
 	if ((action == CHECK_ASK_DEFAULT) || (totalask > 0)){
-		/* Some module needs an urgent power reallocation */
-		if (totalask > 0) pmgt_reset_powercap();
 		debug("action is CHECK_ASK_DEFAULT, not power redistribution");
-		return;
+		/* Some module needs an urgent power reallocation */
+		if (totalask > 0){ 
+			pmgt_set_default_powercap();
+			return 1;
+		}
+		return 0;
 	}
 	/* If bith are OK or both can release power there is nothing to do between modules */
 	if (totalrel == 2) return;
