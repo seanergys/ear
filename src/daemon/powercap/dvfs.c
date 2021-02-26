@@ -47,6 +47,7 @@
 #define DVFS_BURST_DURATION 1000
 #define DVFS_RELAX_DURATION 1000
 static uint current_dvfs_pc=0;
+static uint default_dvfs_pc=0;
 static uint dvfs_pc_enabled=0;
 static topology_t node_desc;
 
@@ -237,9 +238,34 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 {
     /* Set data */
     debug("%sDVFS:set_powercap_value %u%s",COL_BLU,limit,COL_CLR);
-    current_dvfs_pc=limit;
+    default_dvfs_pc = limit;
+    current_dvfs_pc = default_dvfs_pc;
     dvfs_status = PC_STATUS_OK;
     dvfs_ask_def = 0;
+    return EAR_SUCCESS;
+}
+
+state_t reset_powercap_value() 
+{
+    debug("Reset powercap value, changing from %u to %u", current_dvfs_pc, default_dvfs_pc);
+    current_dvfs_pc = default_dvfs_pc;
+    dvfs_status = PC_STATUS_OK;
+    dvfs_ask_def = 0;
+    return EAR_SUCCESS;
+}
+
+state_t increase_powercap_allocation(uint increase) 
+{
+    debug("Increasing powercap allocation by %u", increase);
+    current_dvfs_pc += increase;
+    return EAR_SUCCESS;
+}
+
+state_t release_powercap_allocation(uint decrease)
+{
+    debug("Decreasing powercap allocation by %u", decrease);
+    current_dvfs_pc -= decrease;
+    dvfs_status = PC_STATUS_RELEASE;
     return EAR_SUCCESS;
 }
 
@@ -260,6 +286,7 @@ void print_powercap_value(int fd)
 {
     dprintf(fd,"dvfs_powercap_value %u\n",current_dvfs_pc);
 }
+
 void powercap_to_str(char *b)
 {
     sprintf(b,"%u",current_dvfs_pc);
@@ -303,6 +330,8 @@ void set_verb_channel(int fd)
 
 
 /* Returns 0 when 1) No info, 2) No limit 3) We cannot share power. 
+ *
+ * state_t release_powercap_allocation(
  * Returns 1 when power can be shared with other modules 
  * Status can be: PC_STATUS_OK, PC_STATUS_GREEDY, PC_STATUS_RELEASE, PC_STATUS_ASK_DEF 
  * tbr is > 0 when PC_STATUS_RELEASE , 0 otherwise 
@@ -332,7 +361,7 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
 				debug("DVFS status %u",*status);
         return 0; /* Pending for NJObs */
     }
-    ctbr = (my_limit -  power_rapl) * 0.5;
+    ctbr = (my_limit - power_rapl) * 0.5;
     *status = PC_STATUS_RELEASE;
     *tbr = ctbr; 
     if (ctbr < MIN_CPU_POWER_MARGIN){
@@ -342,6 +371,6 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
         return 0;
     }
     dvfs_status = *status;
-		debug("DVFS status %u",*status);
+    debug("DVFS status %u",*status);
     return 1;
 }

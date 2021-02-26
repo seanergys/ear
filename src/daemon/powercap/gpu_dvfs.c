@@ -43,6 +43,7 @@ static uint gpu_dvfs_pc_enabled=0;
 
 /* This  subscription will take care automatically of the power monitoring */
 static ulong current_gpu_pc=0;
+static ulong default_gpu_pc=0;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -294,11 +295,36 @@ state_t enable(suscription_t *sus)
     return ret;
 
 }
+
 state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 {
     gpu_dvfs_status = PC_STATUS_OK;
     gpu_dvfs_ask_def = 0;
-    return int_set_powercap_value(limit,gpu_util);
+    default_gpu_pc = limit;
+    return int_set_powercap_value(default_gpu_pc,gpu_util);
+}
+
+state_t reset_powercap_value()
+{
+    debug("Reset powercap value to %lu", default_gpu_pc);
+    int_set_powercap_value(default_gpu_pc, gpu_pc_util);
+    return EAR_SUCCESS;
+}
+
+state_t release_powercap_allocation(uint decrease) 
+{
+    debug("GPU_DVFS:Releasing %u from powercap allocationg", decrease);
+    current_gpu_pc -= decrease;
+    int_set_powercap_value(current_gpu_pc, gpu_pc_util);
+    return EAR_SUCCESS;
+}
+
+state_t increase_powercap_allocation(uint increase)
+{
+    debug("GPU_DVFS:Increasing %u from powercap allocationg", increase);
+    current_gpu_pc += increase;
+    int_set_powercap_value(current_gpu_pc, gpu_pc_util);
+    return EAR_SUCCESS;
 }
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
@@ -308,7 +334,7 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
     ulong ualloc;
     uint gpu_run=0,total_util=0;
     /* Set data */
-    current_gpu_pc=limit;
+    current_gpu_pc = limit;
     debug("%sGPU-DVFS:set_powercap_value %lu%s",COL_BLU,limit,COL_CLR);
 
     //debug("%s",COL_BLU);
