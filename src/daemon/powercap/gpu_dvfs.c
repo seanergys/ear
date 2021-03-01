@@ -477,6 +477,9 @@ uint get_powercap_status(domain_status_t *status)
         if (t_freq[i] == 0) return 0;
     }
     if (!used){
+        for (i=0;i<gpu_pc_num_gpus;i++){
+         debug("total util is 0, GPU %d util %lu", i, gpu_pc_util[i]);
+        }
         status->ok = PC_STATUS_RELEASE;
         if (gpu_pc_num_gpus == 0) status->exceed = current_gpu_pc;
         else status->exceed=(current_gpu_pc - (MIN_GPU_IDLE_POWER*gpu_pc_num_gpus));
@@ -485,7 +488,6 @@ uint get_powercap_status(domain_status_t *status)
     }
     /* If we know, we must check */
     status->ok = PC_STATUS_RELEASE;
-    status->exceed = 0;
 
     /* Compute the current strain before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
@@ -504,7 +506,16 @@ uint get_powercap_status(domain_status_t *status)
             debug("GPU_DVFS status %u",status->ok);
             return 0;
         }else if ((c_freq[i] >= t_freq[i]) && (gpu_pc_util[i]>0)){
-            g_tbr = (uint)((gpu_pc_curr_power[i] - values_gpu_diff[i].power_w) *0.5);
+            if (values_gpu_diff[i].power_w > gpu_pc_curr_power[i]) // if we are at req_f but we are using more power than we should
+            {
+                status->ok = PC_STATUS_GREEDY;
+                gpu_dvfs_status = PC_STATUS_OK;
+                status->exceed = 0;
+                debug("GPU_DVFS status greedy because we need more power to maintain current speed");
+                return 0;
+            }
+            debug("gpu_pc_curr_power %lu and current_power %lf, exceed: %u", gpu_pc_curr_power[i], values_gpu_diff[i].power_w, status->exceed);
+            g_tbr = (uint)(((double)gpu_pc_curr_power[i] - values_gpu_diff[i].power_w) * 0.5);
             status->exceed = status->exceed + g_tbr;
             debug("%sWe can release %u W from GPU %d since target = %lu current %lu%s",COL_GRE,g_tbr,i,t_freq[i] ,c_freq[i],COL_CLR);
         }
