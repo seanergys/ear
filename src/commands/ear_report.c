@@ -769,6 +769,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
     char query[512];
     int i;
     char all_nodes = 0;
+    char has_gpus = 0;
 
     uint max_power = MAX_ERROR_POWER;
     int def_id = get_default_tag_id(&my_conf);
@@ -841,8 +842,12 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
     {
         if (!strcmp(inc_query, ALL_USERS)) {
             printf( "%15s %15s\n", "Energy (J)", "User");
+            has_gpus = 1;
         } else if (!strcmp(inc_query, ALL_TAGS)) {
             printf( "%15s %15s\n", "Energy (J)", "Energy tag");
+            has_gpus = 1;
+        } else if (!strcmp(inc_query, ALL_ISLANDS)) {
+            printf( "%15s %15s\n", "Energy (J)", "EARDBD");
         } else if (global_end_time > 0) {
 #if USE_GPUS
             printf( "%15s %15s %15s %15s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power");
@@ -860,8 +865,14 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
         { 
 #if USE_GPUS
             for(i = 0; i < num_fields; i++) {
-                if (i != 1 && i != 2 && i != 3)
-                    printf("%15s ", row[i] ? row[i] : "NULL");
+                if (has_gpus) {
+                    if (i != 1 && i != 2 && i != 3)
+                        printf("%15s ", row[i] ? row[i] : "NULL");
+                } else {
+                    for(i = 0; i < num_fields; i++) {
+                        printf("%15s ", row[i] ? row[i] : "NULL");
+                    }
+                }
             }
 #else
             for(i = 0; i < num_fields; i++) {
@@ -954,6 +965,8 @@ void print_all(PGconn *connection, int start_time, int end_time, char *inc_query
             printf( "%15s %15s\n", "Energy (J)", "User");
         } else if (!strcmp(inc_query, ALL_TAGS)) {
             printf( "%15s %15s\n", "Energy (J)", "Energy tag");
+        } else if (!strcmp(inc_query, ALL_ISLANDS)) {
+            printf( "%15s %15s\n", "Energy (J)", "EARDBD");
         } else if (global_end_time > 0) {
                 printf( "%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
             all_nodes = 1;

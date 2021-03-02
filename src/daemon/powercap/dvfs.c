@@ -47,6 +47,7 @@
 #define DVFS_BURST_DURATION 1000
 #define DVFS_RELAX_DURATION 1000
 static uint current_dvfs_pc=0;
+static uint default_dvfs_pc=0;
 static uint dvfs_pc_enabled=0;
 static topology_t node_desc;
 
@@ -167,7 +168,6 @@ state_t dvfs_pc_thread_main(void *p)
                 c_pstate[0]=ear_min(c_pstate[0]+1,num_pstates-1); 
             }
             extend_from_cpu_to_list(0,c_pstate,node_size);
-            debug("%spower above limit, current freq %lu%s", COL_RED, c_freq[0], COL_CLR);
             frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
             frequency_set_with_list(node_size,c_freq);
             debug("%spower above limit, setting freq %lu%s", COL_RED, c_freq[0], COL_CLR);
@@ -237,9 +237,34 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 {
     /* Set data */
     debug("%sDVFS:set_powercap_value %u%s",COL_BLU,limit,COL_CLR);
-    current_dvfs_pc=limit;
+    default_dvfs_pc = limit;
+    current_dvfs_pc = default_dvfs_pc;
     dvfs_status = PC_STATUS_OK;
     dvfs_ask_def = 0;
+    return EAR_SUCCESS;
+}
+
+state_t reset_powercap_value() 
+{
+    debug("Reset powercap value, changing from %u to %u", current_dvfs_pc, default_dvfs_pc);
+    current_dvfs_pc = default_dvfs_pc;
+    dvfs_status = PC_STATUS_OK;
+    dvfs_ask_def = 0;
+    return EAR_SUCCESS;
+}
+
+state_t increase_powercap_allocation(uint increase) 
+{
+    debug("Increasing powercap allocation by %u", increase);
+    current_dvfs_pc += increase;
+    return EAR_SUCCESS;
+}
+
+state_t release_powercap_allocation(uint decrease)
+{
+    debug("Decreasing powercap allocation by %u", decrease);
+    current_dvfs_pc -= decrease;
+    dvfs_status = PC_STATUS_RELEASE;
     return EAR_SUCCESS;
 }
 
@@ -260,6 +285,7 @@ void print_powercap_value(int fd)
 {
     dprintf(fd,"dvfs_powercap_value %u\n",current_dvfs_pc);
 }
+
 void powercap_to_str(char *b)
 {
     sprintf(b,"%u",current_dvfs_pc);
@@ -303,18 +329,21 @@ void set_verb_channel(int fd)
 
 
 /* Returns 0 when 1) No info, 2) No limit 3) We cannot share power. 
+ *
+ * state_t release_powercap_allocation(
  * Returns 1 when power can be shared with other modules 
  * Status can be: PC_STATUS_OK, PC_STATUS_GREEDY, PC_STATUS_RELEASE, PC_STATUS_ASK_DEF 
  * tbr is > 0 when PC_STATUS_RELEASE , 0 otherwise 
  * X_status is the plugin status 
  * X_ask_def means we must ask for our power  */
 
-uint get_powercap_status(uint *status,uint *tbr, uint *strain)
+uint get_powercap_status(domain_status_t *status)
 {
     uint ctbr;
-    *status = PC_STATUS_OK;
-    *tbr = 0;
-    *strain = 0;
+    status->ok = PC_STATUS_OK;
+    status->exceed = 0;
+    status->strain = 0;
+    status->current_pc = current_dvfs_pc;
 
     //debug("DVFS: get_powercap_status");
     if (!dvfs_monitor_initialized) return 0;
@@ -325,23 +354,23 @@ uint get_powercap_status(uint *status,uint *tbr, uint *strain)
     if (c_req_f[0] == 0) { debug("unknown req_f"); return 0; }
 
     frequency_get_cpufreq_list(node_size,c_freq);
-    *strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
+    status->strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
     if (c_freq[0] < c_req_f[0]){
-        if (dvfs_ask_def) *status = PC_STATUS_ASK_DEF;
-        else *status = PC_STATUS_GREEDY;
-				debug("DVFS status %u",*status);
+        if (dvfs_ask_def) status->ok = PC_STATUS_ASK_DEF;
+        else status->ok = PC_STATUS_GREEDY;
+        debug("DVFS status %u", status->ok);
         return 0; /* Pending for NJObs */
     }
-    ctbr = (my_limit -  power_rapl) * 0.5;
-    *status = PC_STATUS_RELEASE;
-    *tbr = ctbr; 
+    ctbr = (my_limit - power_rapl) * 0.5;
+    status->ok = PC_STATUS_RELEASE;
+    status->exceed = ctbr; 
     if (ctbr < MIN_CPU_POWER_MARGIN){
-        *tbr = 0;
-        *status = PC_STATUS_OK;
-				debug("DVFS status %u",*status);
+        status->exceed = 0;
+        status->ok = PC_STATUS_OK;
+        debug("DVFS status %u", status->ok);
         return 0;
     }
-    dvfs_status = *status;
-		debug("DVFS status %u",*status);
+    dvfs_status = status->ok;
+    debug("DVFS status %u", status->ok);
     return 1;
 }
