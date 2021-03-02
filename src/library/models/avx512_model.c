@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <common/types/signature.h>
@@ -107,7 +108,9 @@ double proj_cpi(coefficient_t *coeff,signature_t *sign)
 
 double proj_time(coefficient_t *coeff,signature_t *sign,unsigned long freq_src,unsigned long freq_dst)
 {
+	debug("From %lu to %lu",freq_src,freq_dst);
 	double pcpi=proj_cpi(coeff,sign);
+	debug("((time %lf new_cpi %lf) / orig_cpi %lf) * (freq src %lu / freq_dst %lu)",sign->time,pcpi,sign->CPI,freq_src,freq_dst);
 	return ((sign->time * pcpi) / sign->CPI) * ((double)freq_src / (double)freq_dst);
 	
 }
@@ -123,13 +126,13 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 		coeff=&coefficients[from][to];
 		if (coeff->available){
 			time_nosimd=proj_time(coeff,sign,coeff->pstate_ref,coeff->pstate);
-      if (to<=avx512_pstate){
+      perc_avx512=avx512_vpi(sign);
+      if ((to<=avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
 					if (from > to) pdest = avx512_pstate;
 					else pdest = 1;
-					unsigned long nominal=frequency_get_nominal_freq();
+					unsigned long nominal=frequency_pstate_to_freq(pdest);
 					avx512_coeffs=&coefficients[from][pdest];
-          perc_avx512=avx512_vpi(sign);
           time_avx512=proj_time(avx512_coeffs,sign,coeff->pstate_ref,nominal);
       }
 			ctime=time_nosimd*(1-perc_avx512)+time_avx512*perc_avx512;
@@ -164,13 +167,12 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 		if (coeff->available){
 				power_nosimd=proj_power(coeff,sign);
 				// Is this <= or >= ?? :(
-				if (to<=avx512_pstate){
+				perc_avx512=avx512_vpi(sign);	
+				if ((to<=avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
           if (from > to) pdest = avx512_pstate;
           else pdest = 1;
-
-					avx512_coeffs=&coefficients[from][1];
-					perc_avx512=avx512_vpi(sign);	
+					avx512_coeffs=&coefficients[from][pdest];
 					power_avx512=proj_power(avx512_coeffs,sign);
 				}
 				cpower=power_nosimd*(1-perc_avx512)+power_avx512*perc_avx512;
