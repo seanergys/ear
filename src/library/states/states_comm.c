@@ -44,9 +44,9 @@ extern float ratio_PPN;
 
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
-	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER;
-  float AVGF,AVGGPUF,PFREQ = 0,NFREQ = 0,VI;
-	ulong GPU_UTIL,GPU_FREQ;
+	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0;
+  float AVGF,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI;
+	ulong GPU_UTIL = 0,GPU_FREQ = 0;
 	int gpui;
 	char gpu_buff[256];
 	if (master_rank >= 0 || show){
