@@ -199,7 +199,7 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   if (*freq_set != *(c->ear_frequency))
   {
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
-  	verbose(2,"MR[%d]: Setting frequency_list to %lu (ret=%lu)",masters_info.my_master_rank,*freq_set,*(c->ear_frequency));
+  	verbose(1,"MR[%d]: Setting frequency_list to %lu (ret=%lu), ear_frequency %lu",masters_info.my_master_rank,*freq_set,*(c->ear_frequency),ear_frequency);
   }
 }
 
@@ -325,6 +325,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 		error("Error loading policy %s",obj_path);
 	}
 	ear_frequency									= DEF_FREQ(app_settings->def_freq);
+	verbose(1,"ear_frequency in init %lu add %p",ear_frequency,&ear_frequency);
 	my_pol_ctx.app								= app_settings;
 	my_pol_ctx.reconfigure				= res;
 	my_pol_ctx.user_selected_freq	= DEF_FREQ(app_settings->def_freq);
