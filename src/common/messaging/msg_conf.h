@@ -127,6 +127,7 @@ typedef struct request_header {
 typedef struct eard_policy_info{
     ulong   freq; /* default freq in KH, divide by 1000000 to show Ghz */
     uint    th;     /* th x 100, divide by 100 */
+    uint    id; /* policy id */
 }eard_policy_info_t;
 
 typedef struct status{

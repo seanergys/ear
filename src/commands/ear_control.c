@@ -192,7 +192,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
                 {
 	    	        for (j = 0; j < TOTAL_POLICIES; j++)
         		    {
-	    		        policy_id_to_name(j, temp, &my_cluster_conf);
+	    		        policy_id_to_name(ips[i].policies[j].id, temp, &my_cluster_conf);
                         get_short_policy(final, temp, &my_cluster_conf);
 		        	    printf("  %6s  %.2lf  %3u", final, (double)ips[i].policies[j].freq/1000000.0, ips[i].policies[j].th);
 	    	        }
@@ -276,6 +276,7 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
 			{
 				ips[i].policies[j].freq = status.policy_conf[j].freq;
 				ips[i].policies[j].th = status.policy_conf[j].th;
+                ips[i].policies[j].id = status.policy_conf[j].id;
 			}	
 		}
 }
