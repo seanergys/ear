@@ -274,9 +274,7 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
 			//refactor
 			for (j = 0; j < TOTAL_POLICIES; j++)
 			{
-				ips[i].policies[j].freq = status.policy_conf[j].freq;
-				ips[i].policies[j].th = status.policy_conf[j].th;
-                ips[i].policies[j].id = status.policy_conf[j].id;
+                memcpy(&ips[i].policies[j], &status.policy_conf[j], sizeof(eard_policy_info_t));
 			}	
 		}
 }
