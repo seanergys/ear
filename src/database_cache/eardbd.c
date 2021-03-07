@@ -22,7 +22,7 @@
 #include <database_cache/eardbd_sync.h>
 #include <database_cache/eardbd_signals.h>
 #include <database_cache/eardbd_storage.h>
-#if !OFFLINE
+#if !EDB_OFFLINE
 #include <common/config.h>
 #include <common/database/db_helper.h>
 #endif
@@ -91,20 +91,20 @@ sync_qst_t sync_qst_content;
 sync_ans_t sync_ans_content;
 
 // Data
-time_t glb_time1[MAX_TYPES];
-time_t glb_time2[MAX_TYPES];
-time_t ins_time1[MAX_TYPES];
-time_t ins_time2[MAX_TYPES];
-size_t typ_sizof[MAX_TYPES];
-float  typ_vecmb[MAX_TYPES];
-uint   typ_prcnt[MAX_TYPES];
-float  typ_prcnl[MAX_TYPES];
-uint   typ_index[MAX_TYPES];
-char  *typ_alloc[MAX_TYPES];
-char  *sam_iname[MAX_TYPES];
-ulong  sam_inmax[MAX_TYPES];
-ulong  sam_index[MAX_TYPES];
-uint   sam_recvd[MAX_TYPES];
+time_t glb_time1[EDB_NTYPES];
+time_t glb_time2[EDB_NTYPES];
+time_t ins_time1[EDB_NTYPES];
+time_t ins_time2[EDB_NTYPES];
+size_t typ_sizof[EDB_NTYPES];
+float  typ_vecmb[EDB_NTYPES];
+uint   typ_prcnt[EDB_NTYPES];
+float  typ_prcnl[EDB_NTYPES];
+uint   typ_index[EDB_NTYPES];
+char  *typ_alloc[EDB_NTYPES];
+char  *sam_iname[EDB_NTYPES];
+ulong  sam_inmax[EDB_NTYPES];
+ulong  sam_index[EDB_NTYPES];
+uint   sam_recvd[EDB_NTYPES];
 uint   soc_accpt;
 uint   soc_activ;
 uint   soc_discn;
@@ -171,7 +171,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Configuration
-	#if !OFFLINE
+	#if !EDB_OFFLINE
 	if (get_ear_conf_path(extra_buffer) == EAR_ERROR) {
 		_error("while getting ear.conf path");
 	}
@@ -361,7 +361,7 @@ static void init_sockets(int argc, char **argv, cluster_conf_t *conf_clus)
 	tprintf("server sync||%d||TCP||%s||%d||%d",    ssync_srv->port, str_sta[st3], fd3, errno3);
 	tprintf("mirror sync||%d||TCP||%s||%d||%d",    ssync_mir->port, str_sta[st4], fd4, errno4);
 	verbose_maxxx("TIP! mirror sync socket opens and closes intermittently");
-	verbose_maxxx("maximum #connections per process: %u", MAX_CONNECTIONS);
+	verbose_maxxx("maximum #connections per process: %u", EDB_MAX_CONNECTIONS);
 }
 
 static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -573,9 +573,9 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	sockets_header_clean(&sync_ans_header);
 	sockets_header_clean(&sync_qst_header);
 
-	sync_ans_header.content_type = CONTENT_TYPE_ANS;
+	sync_ans_header.content_type = EDB_TYPE_SYNC_ANSWER;
 	sync_ans_header.content_size = sizeof(sync_ans_t);
-	sync_qst_header.content_type = CONTENT_TYPE_QST;
+	sync_qst_header.content_type = EDB_TYPE_SYNC_QUESTION;
 	sync_qst_header.content_size = sizeof(sync_qst_t);
 }
 

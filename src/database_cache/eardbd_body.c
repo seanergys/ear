@@ -61,18 +61,18 @@ extern int server_too;
 extern int mirror_too;
 
 // Data
-extern time_t glb_time1[MAX_TYPES];
-extern time_t glb_time2[MAX_TYPES];
-extern time_t ins_time1[MAX_TYPES];
-extern time_t ins_time2[MAX_TYPES];
-extern size_t typ_sizof[MAX_TYPES];
-extern uint   typ_prcnt[MAX_TYPES];
-extern uint   typ_index[MAX_TYPES];
-extern char  *typ_alloc[MAX_TYPES];
-extern char  *sam_iname[MAX_TYPES];
-extern ulong  sam_inmax[MAX_TYPES];
-extern ulong  sam_index[MAX_TYPES];
-extern uint   sam_recvd[MAX_TYPES];
+extern time_t glb_time1[EDB_NTYPES];
+extern time_t glb_time2[EDB_NTYPES];
+extern time_t ins_time1[EDB_NTYPES];
+extern time_t ins_time2[EDB_NTYPES];
+extern size_t typ_sizof[EDB_NTYPES];
+extern uint   typ_prcnt[EDB_NTYPES];
+extern uint   typ_index[EDB_NTYPES];
+extern char  *typ_alloc[EDB_NTYPES];
+extern char  *sam_iname[EDB_NTYPES];
+extern ulong  sam_inmax[EDB_NTYPES];
+extern ulong  sam_index[EDB_NTYPES];
+extern uint   sam_recvd[EDB_NTYPES];
 extern uint   soc_accpt;
 extern uint   soc_activ;
 extern uint   soc_discn;
@@ -116,49 +116,35 @@ static void body_alarm(struct timeval *timeout_slct)
 	{
 		time_substract_timeouts();
 
-		if (timeout_aggr.tv_sec == 0)
-		{
-			if (sam_inmax[i_aggrs] > 0)
-			{
+		if (timeout_aggr.tv_sec == 0) {
+			if (sam_inmax[i_aggrs] > 0) {
 				peraggr_t *p = (peraggr_t *) typ_alloc[i_aggrs];
 				peraggr_t *q = (peraggr_t *) &p[sam_index[i_aggrs]];
 
-				if (q->n_samples > 0)
-				{
+				if (q->n_samples > 0) {
 					verbose_xaxxw("completed the aggregation number '%lu' with energy '%lu'",
 						 sam_index[i_aggrs], q->DC_energy);
-
 					// Aggregation time done, so new aggregation incoming
 					storage_sample_add(NULL, sam_inmax[i_aggrs], &sam_index[i_aggrs], NULL, 0, SYNC_AGGRS);
-
 					// Initializing the new element
 					q = (peraggr_t *) &p[sam_index[i_aggrs]];
-
 					init_periodic_aggregation(q, master_name);
 				}
 			}
-
 			//
 			time_reset_timeout_aggr();
 		}
 
-		if (timeout_insr.tv_sec == 0)
-		{
+		if (timeout_insr.tv_sec == 0) {
 			// Synchronizing with the MAIN
-			if (mirror_iam)
-			{
+			if (mirror_iam) {
 				sync_ans_t answer;
-
-				//TODO: MPKFA
 				// Asking the question
-
 				// In case of fail the mirror have to insert the data
-				if(state_fail(sync_question(SYNC_ALL, veteran, &answer)))
-				{
+				if(state_fail(sync_question(SYNC_ALL, veteran, &answer))) {
 					insert_hub(SYNC_ALL, RES_TIME);
 				// In case I'm veteran and the server is not
-				} else if (!answer.veteran && veteran)
-				{
+				} else if (!answer.veteran && veteran) {
 					insert_hub(SYNC_ALL, RES_TIME);
 				// In case of the answer is received just clear the data
 				} else {
@@ -168,14 +154,12 @@ static void body_alarm(struct timeval *timeout_slct)
 				// Server normal insertion
 				insert_hub(SYNC_ALL, RES_TIME);
 			}
-
 			// If server the time reset is do it after the insert
 			time_reset_timeout_insr(0);
-
 			// I'm a veteran
 			veteran = 1;
 		}
-
+		//
 		time_reset_timeout_slct();
 	}
 }
@@ -184,10 +168,8 @@ static void body_alarm(struct timeval *timeout_slct)
 static int body_new_connection(int fd)
 {
 	int nc;
-
 	nc  = !mirror_iam && (fd == smets_srv->fd || fd == ssync_srv->fd);
 	nc |=  mirror_iam && (fd == smets_mir->fd);
-
 	return nc;
 }
 #endif
@@ -210,66 +192,47 @@ static void body_connections()
 					// i      -> listening descriptor
 					// fd_cli -> current communications descriptor
 					// fd_old -> previous communications descriptor
-					s = sockets_accept(i, &fd_cli, &addr_cli);
-
-					if (state_fail(s)) {
+					if (state_fail(s = sockets_accept(i, &fd_cli, &addr_cli))) {
 						break;
 					}
-
 					if (verbosity) {
 						sockets_get_hostname(&addr_cli, extra_buffer, SZ_BUFF_BIG);
 					}
-
-					if (!sync_fd_is_mirror(i))
-					{
+					if (!sync_fd_is_mirror(i)) {
 						// Disconnect if previously connected
 						sockets_get_ip(&addr_cli, &ip);
 
-						if (sync_fd_exists(ip, &fd_old))
-						{
+						if (sync_fd_exists(ip, &fd_old)) {
 							//log("multiple connections from host '%s', disconnecting previous", extra_buffer);
 							if (verbosity) {
 								verbose_xaxxw("disconnecting from host '%s' (host was previously connected)",
 									extra_buffer);
 							}
-
 							sync_fd_disconnect(fd_old);
 						}
 					}
-
 					// Test if the maximum number of connection has been reached
-					// (soc_activ >= MAX_CONNECTIONS), and if fulfills that
+					// (soc_activ >= EDB_MAX_CONNECTIONS), and if fulfills that
 					// condition disconnect inmediately.
-					if (!sync_fd_is_mirror(i) && soc_activ >= MAX_CONNECTIONS)
-					{
+					if (!sync_fd_is_mirror(i) && soc_activ >= EDB_MAX_CONNECTIONS) {
 						if (verbosity) {
 							verbose_xaxxw("disconnecting from host '%s' (maximum connections reached)",
 								extra_buffer);
 						}
-
 						sync_fd_disconnect(fd_old);
-					} else
-					{
+					} else {
 						sync_fd_add(fd_cli, ip);
-
 						if (verbosity) {
 							verbose_xaxxw("accepted fd '%d' from host '%s'", fd_cli, extra_buffer);
 						}
 					}
 				} while(state_ok(s));
 				// Handle data transfers
-			}
-			else
-			{
-				s = sockets_receive(i, &input_header, input_buffer, sizeof(input_buffer), 0);
-
-				if (state_ok(s))
-				{
+			} else {
+				if (state_ok(s = __sockets_recv(i, &input_header, input_buffer, sizeof(input_buffer), 0))) {
 					//
 					storage_sample_receive(i, &input_header, input_buffer);
-				}
-				else
-				{
+				} else {
 					if (state_is(s, EAR_SOCK_DISCONNECTED)) {
 						soc_discn += 1;
 					} if (state_is(s, EAR_TIMEOUT)) {
@@ -277,15 +240,11 @@ static void body_connections()
 					} else {
 						soc_unkwn += 1;
 					}
-
-					if (verbosity)
-					{
+					if (verbosity) {
 						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFF_BIG);
-	
 						verbose_xaxxw("disconnecting from host %s (errno: '%d', strerrno: '%s')",
 								extra_buffer, intern_error_num, intern_error_str);
 					}
-
 					sync_fd_disconnect(i);
 				}
 			}
@@ -295,32 +254,28 @@ static void body_connections()
 
 static void body_insert()
 {
-
 }
 
 void body()
 {
 	int s;
 
-	// BODY
 	while(listening)
 	{
 		fds_incoming = fds_active;
 
-		if ((s = select(fd_max + 1, &fds_incoming, NULL, NULL, &timeout_slct)) == -1)
-		{
-			if (listening && !updating)
-			{
+		if ((s = select(fd_max + 1, &fds_incoming, NULL, NULL, &timeout_slct)) == -1) {
+			if (listening && !updating) {
 				_error("during select (%s)", strerror(errno));
 			}
 		}
-
+		//
 		body_alarm(&timeout_slct);
-
+		//
 		body_connections();
-
+		//
 		body_insert();
-
+		//
 		updating = 0;
 	}
 }
@@ -340,20 +295,18 @@ void release()
 	for(i = fd_max; i >= fd_min && !listening; --i) {
 		close(i);
 	}
-
 	// Cleaning sockets
 	sockets_dispose(smets_srv);
 	sockets_dispose(smets_mir);
 	sockets_dispose(ssync_srv);
 	sockets_dispose(ssync_mir);
-
+	//
 	FD_ZERO(&fds_incoming);
 	FD_ZERO(&fds_active);
-
 	// Freeing data
 	free_cluster_conf(&conf_clus);
 
-	for (i = 0; i < MAX_TYPES; ++i)
+	for (i = 0; i < EDB_NTYPES; ++i)
 	{
 		if (typ_alloc[i] != NULL)
 		{
@@ -361,14 +314,12 @@ void release()
 			typ_alloc[i] = NULL;
 		}
 	}
-
 	// Reconfiguring
 	if (reconfiguring)
 	{
 		sleep(20);
 		reconfiguring = 0;
 	}
-
 	// Process PID cleaning
 	if (server_iam && server_too) {
 		process_pid_file_clean(&proc_data_srv);
@@ -376,10 +327,8 @@ void release()
 	if (mirror_iam && mirror_too) {
 		process_pid_file_clean(&proc_data_mir);
 	}
-
 	//
 	log_close();
-
 	// End releasing
 	releasing = 0;
 }

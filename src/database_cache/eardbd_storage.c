@@ -20,7 +20,7 @@
 #include <database_cache/eardbd_sync.h>
 #include <database_cache/eardbd_signals.h>
 #include <database_cache/eardbd_storage.h>
-#if !OFFLINE
+#if !EDB_OFFLINE
 #include <common/database/db_helper.h>
 #endif
 
@@ -44,18 +44,18 @@ extern struct timeval timeout_slct;
 extern time_t time_slct;
 
 // Data
-extern time_t glb_time1[MAX_TYPES];
-extern time_t glb_time2[MAX_TYPES];
-extern time_t ins_time1[MAX_TYPES];
-extern time_t ins_time2[MAX_TYPES];
-extern size_t typ_sizof[MAX_TYPES];
-extern uint   typ_prcnt[MAX_TYPES];
-extern uint   typ_index[MAX_TYPES];
-extern char  *typ_alloc[MAX_TYPES];
-extern char  *sam_iname[MAX_TYPES];
-extern ulong  sam_inmax[MAX_TYPES];
-extern ulong  sam_index[MAX_TYPES];
-extern uint   sam_recvd[MAX_TYPES];
+extern time_t glb_time1[EDB_NTYPES];
+extern time_t glb_time2[EDB_NTYPES];
+extern time_t ins_time1[EDB_NTYPES];
+extern time_t ins_time2[EDB_NTYPES];
+extern size_t typ_sizof[EDB_NTYPES];
+extern uint   typ_prcnt[EDB_NTYPES];
+extern uint   typ_index[EDB_NTYPES];
+extern char  *typ_alloc[EDB_NTYPES];
+extern char  *sam_iname[EDB_NTYPES];
+extern ulong  sam_inmax[EDB_NTYPES];
+extern ulong  sam_index[EDB_NTYPES];
+extern uint   sam_recvd[EDB_NTYPES];
 extern uint   soc_accpt;
 extern uint   soc_activ;
 extern uint   soc_discn;
@@ -105,7 +105,7 @@ void metrics_print()
 
 	verbose_line();
 
-	for (i = 0, n = 0; i < MAX_TYPES && n == 0; ++i) {
+	for (i = 0, n = 0; i < EDB_NTYPES && n == 0; ++i) {
 		n += (sam_index[i] > 0);
 	}
 
@@ -117,7 +117,7 @@ void metrics_print()
 	tprintf("sample (%d)||recv/alloc||%%||t. insr||t. recv", mirror_iam);
 	tprintf("-----------||----------||--||-------||-------");
 
-	for (i = 0; i < MAX_TYPES; ++i)
+	for (i = 0; i < EDB_NTYPES; ++i)
 	{
 		if (sam_index[i] == 0) {
 			continue;
@@ -191,7 +191,7 @@ void reset_all()
 	reset_aggregations();
 
 	// Generic reset
-	for (i = 0; i < MAX_TYPES; ++i)
+	for (i = 0; i < EDB_NTYPES; ++i)
 	{
 		reset_index(i);
 	}
@@ -202,7 +202,7 @@ void reset_all()
  * Insert
  *
  */
-#if OFFLINE
+#if EDB_OFFLINE
 	#define db_batch_insert_applications(a, b);
 	#define db_batch_insert_applications_no_mpi(a, b);
 	#define db_batch_insert_applications_learning(a, b);
@@ -439,13 +439,13 @@ static int storage_index_extract(int type, char **name)
 		case CONTENT_TYPE_AGG:
 			*name = sam_iname[i_aggrs];
 			return i_aggrs;
-		case CONTENT_TYPE_QST:
+		case EDB_TYPE_SYNC_QUESTION:
 			*name = "sync_question";
 			return -1;
-		case CONTENT_TYPE_ANS:
+		case EDB_TYPE_SYNC_ANSWER:
 			*name = "sync_answer";
 			return -1;
-		case CONTENT_TYPE_PIN:
+		case EDB_TYPE_STATUS:
 			*name = "ping";
 			return -1;
 		default:
@@ -489,59 +489,47 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	//		- a value of the sync option
 
 	// Storage
-	if (type == CONTENT_TYPE_APM)
-	{
+	if (type == CONTENT_TYPE_APM) {
 		//print_application_fd_binary(0, (application_t *) content);
 		storage_sample_add(typ_alloc[index], sam_inmax[index],
 		   &sam_index[index], content, typ_sizof[index], SYNC_APPSM);
 	}
-	else if (type == CONTENT_TYPE_APN)
-	{
+	else if (type == CONTENT_TYPE_APN) {
 		//print_application_fd_binary(0, (application_t *) content);
 		storage_sample_add(typ_alloc[index], sam_inmax[index],
 		   &sam_index[index], content, typ_sizof[index], SYNC_APPSN);
 	}
-	else if (type == CONTENT_TYPE_APL)
-	{
+	else if (type == CONTENT_TYPE_APL) {
 		//print_application_fd_binary(0, (application_t *) content);
 		storage_sample_add(typ_alloc[index], sam_inmax[index],
 			&sam_index[index], content, typ_sizof[index], SYNC_APPSL);
 	}
-	else if (type == CONTENT_TYPE_EVE)
-	{
+	else if (type == CONTENT_TYPE_EVE) {
 		storage_sample_add(typ_alloc[index], sam_inmax[index],
 			&sam_index[index], content, typ_sizof[index], SYNC_EVNTS);
 	}
-	else if (type == CONTENT_TYPE_LOO)
-	{
+	else if (type == CONTENT_TYPE_LOO) {
 		storage_sample_add(typ_alloc[index], sam_inmax[index],
 			&sam_index[index], content, typ_sizof[index], SYNC_LOOPS);
 	}
-	else if (type == CONTENT_TYPE_PER)
-	{
+	else if (type == CONTENT_TYPE_PER) {
 		peraggr_t *p = (peraggr_t *) typ_alloc[i_aggrs];
 		peraggr_t *q = (peraggr_t *) &p[sam_index[i_aggrs]];
 		periodic_metric_t *met = (periodic_metric_t *) content;
-
 		// Add sample to the aggregation
 		add_periodic_aggregation(q, met->DC_energy, met->start_time, met->end_time);
-
 		// Add sample to the energy array
 		storage_sample_add(typ_alloc[index], sam_inmax[index],
 			&sam_index[index], content, typ_sizof[index], SYNC_ENRGY);
 	}
-	else if (type == CONTENT_TYPE_QST)
-	{
+	else if (type == EDB_TYPE_SYNC_QUESTION) {
 		sync_qst_t *question = (sync_qst_t *) content;
-
 		if (veteran || !question->veteran) {
 			// Passing the question option
 			insert_hub(question->sync_option, RES_SYNC);
 		}
-
 		// Answering the mirror question
 		sync_answer(fd, veteran);
-
 		// In case it is a full sync the sync time is resetted before the answer
 		// with a very small offset (5 second is enough)
 		if (sync_option(question->sync_option, SYNC_ALL))
@@ -551,12 +539,16 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 			// substracted from both 'timeout_insr' and 'timeout_aggr', it
 			// also be substracted the passed time.
 			time_t timeout_passed = time_slct - timeout_slct.tv_sec;
-
 			time_reset_timeout_insr(timeout_passed + 5);
-
 			// I'm a veteran
 			veteran = 1;
 		}
+	}
+	else if (type == EDB_TYPE_STATUS)
+	{
+		sockets_header_update(header);
+
+		s = sockets_send_fd(fd, &sync_ans_header, (char *) &sync_ans_content);
 	}
 	
 	// Metrics

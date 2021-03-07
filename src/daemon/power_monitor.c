@@ -472,7 +472,7 @@ void report_powermon_app(powermon_app_t *app) {
 			}
 		}
 		else {
-			edb_state_t state = eardbd_send_application(&app->app);
+			state_t state = eardbd_send_application(&app->app);
 
 			if (edb_state_fail(state)) {
 				error("Error when sending application to eardb");
@@ -1083,7 +1083,7 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 			if (!db_insert_periodic_metric(&current_sample))
 				debug( "Periodic power monitoring sample correctly written");
 		} else {
-			edb_state_t state = eardbd_send_periodic_metric(&current_sample);
+			state_t state = eardbd_send_periodic_metric(&current_sample);
 
 			if (edb_state_fail(state)) {
 				if (state_fail(state.server)){

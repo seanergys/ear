@@ -63,15 +63,15 @@ extern time_t time_aggr;
 extern time_t time_slct;
 
 //
-extern time_t glb_time1[MAX_TYPES];
-extern time_t glb_time2[MAX_TYPES];
-extern time_t ins_time1[MAX_TYPES];
-extern time_t ins_time2[MAX_TYPES];
-extern size_t typ_sizof[MAX_TYPES];
-extern uint   sam_index[MAX_TYPES];
-extern char  *sam_iname[MAX_TYPES];
-extern ulong  sam_inmax[MAX_TYPES];
-extern uint   sam_recvd[MAX_TYPES];
+extern time_t glb_time1[EDB_NTYPES];
+extern time_t glb_time2[EDB_NTYPES];
+extern time_t ins_time1[EDB_NTYPES];
+extern time_t ins_time2[EDB_NTYPES];
+extern size_t typ_sizof[EDB_NTYPES];
+extern uint   sam_index[EDB_NTYPES];
+extern char  *sam_iname[EDB_NTYPES];
+extern ulong  sam_inmax[EDB_NTYPES];
+extern uint   sam_recvd[EDB_NTYPES];
 extern uint   soc_accpt;
 extern uint   soc_activ;
 extern uint   soc_discn;
@@ -232,7 +232,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 		return EAR_ERROR;
 	}
 
-	s = sockets_send(ssync_mir, &sync_qst_header, (char *) &sync_qst_content);
+	s = __sockets_send(ssync_mir, &sync_qst_header, (char *) &sync_qst_content);
 
 	if (state_fail(s)) {
 		verbose_xaxxw("failed to send (%d, %s)", s, intern_error_str);
@@ -244,7 +244,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	s = sockets_timeout_set(ssync_mir->fd, 10);
 
 	// Waiting
-	s = sockets_receive(ssync_mir->fd, &sync_ans_header,
+	s = __sockets_recv(ssync_mir->fd, &sync_ans_header,
 		(char *) &sync_ans_content, sizeof(sync_ans_t), 1);
 
 	// Recovering old timeout
@@ -286,7 +286,7 @@ int sync_answer(int fd, int veteran)
 	sockets_header_update(&sync_ans_header);
 	sync_ans_content.veteran = veteran;
 
-	s = sockets_send(&sync_ans_socket, &sync_ans_header, (char *) &sync_ans_content);
+	s = __sockets_send(&sync_ans_socket, &sync_ans_header, (char *) &sync_ans_content);
 
 	if (state_fail(s)) {
 		verbose_xaxxw("Failed to send to MIRROR (%d, %s)", s, intern_error_str);

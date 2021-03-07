@@ -34,45 +34,45 @@
 #include <common/system/sockets.h>
 #include <common/string_enhanced.h>
 
-#define ALLOC_PERCENT_APPS_MPI        20
-#define ALLOC_PERCENT_APPS_SEQUENTIAL 20
-#define ALLOC_PERCENT_APPS_LEARNING   5
-#define ALLOC_PERCENT_LOOPS           20
-#define ALLOC_PERCENT_EVENTS          2
-#define ALLOC_PERCENT_ENERGY_REPS     20
-#define ALLOC_PERCENT_ENERGY_AGGRS    13
-#define CONTENT_TYPE_PER	1
-#define CONTENT_TYPE_APM	2
-#define CONTENT_TYPE_APN	9
-#define CONTENT_TYPE_APL	10
-#define CONTENT_TYPE_LOO	3
-#define CONTENT_TYPE_EVE	4
-#define CONTENT_TYPE_AGG	5
-#define CONTENT_TYPE_QST	6
-#define CONTENT_TYPE_ANS	7
-#define CONTENT_TYPE_PIN	8
-#define SYNC_ENRGY 			0x001
-#define SYNC_APPSM 			0x002
-#define SYNC_APPSN			0x004
-#define SYNC_APPSL 			0x008
-#define SYNC_LOOPS			0x010
-#define SYNC_EVNTS			0x020
-#define SYNC_AGGRS			0x040
-#define SYNC_ALL			0x100
-#define RES_SYNC			0
-#define RES_TIME			1
-#define RES_OVER			2
-#define RES_FAIL			4
-#define i_appsm 			0
-#define i_appsn				1
-#define i_appsl				2
-#define i_loops				3
-#define i_evnts				4
-#define i_enrgy 			5
-#define i_aggrs				6
-#define MAX_TYPES			7
-#define MAX_CONNECTIONS		FD_SETSIZE - 48
-#define OFFLINE				0
+#define EDB_NTYPES                    7
+#define EDB_MAX_CONNECTIONS           FD_SETSIZE - 48
+#define EDB_OFFLINE                   0 // To test EARDBD offline
+#define ALLOC_PERCENT_APPS_MPI        20 // 20
+#define ALLOC_PERCENT_APPS_SEQUENTIAL 20 // 40
+#define ALLOC_PERCENT_APPS_LEARNING   5  // 45
+#define ALLOC_PERCENT_LOOPS           20 // 65
+#define ALLOC_PERCENT_EVENTS          2  // 67
+#define ALLOC_PERCENT_ENERGY_REPS     20 // 87
+#define ALLOC_PERCENT_ENERGY_AGGRS    13 // 100
+#define CONTENT_TYPE_PER              1
+#define CONTENT_TYPE_APM              2
+#define CONTENT_TYPE_APN              9
+#define CONTENT_TYPE_APL              10
+#define CONTENT_TYPE_LOO              3
+#define CONTENT_TYPE_EVE              4
+#define CONTENT_TYPE_AGG              5
+#define EDB_TYPE_SYNC_QUESTION        6
+#define EDB_TYPE_SYNC_ANSWER          7
+#define EDB_TYPE_STATUS               8
+#define SYNC_ENRGY                    0x001
+#define SYNC_APPSM                    0x002
+#define SYNC_APPSN                    0x004
+#define SYNC_APPSL                    0x008
+#define SYNC_LOOPS                    0x010
+#define SYNC_EVNTS                    0x020
+#define SYNC_AGGRS                    0x040
+#define SYNC_ALL                      0x100
+#define RES_SYNC                      0
+#define RES_TIME                      1
+#define RES_OVER                      2
+#define RES_FAIL                      4
+#define i_appsm                       0
+#define i_appsn                       1
+#define i_appsl                       2
+#define i_loops                       3
+#define i_evnts                       4
+#define i_enrgy                       5
+#define i_aggrs                       6
 
 #define sync_option(option, type) \
 	((option & type) > 0)
