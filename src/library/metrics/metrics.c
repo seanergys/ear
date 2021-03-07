@@ -35,6 +35,9 @@
 #include <metrics/cpi/cpi.h>
 #include <metrics/flops/flops.h>
 #include <metrics/energy/energy_node_lib.h>
+#include <metrics/frequency/cpu.h>
+#include <metrics/frequency/imc.h>
+#include <metrics/frequency/imc/intel63.h>
 #ifdef CACHE_METRICS
 #include <metrics/cache/cache.h>
 #endif
@@ -153,6 +156,7 @@ static long long metrics_l3[2];
 static timestamp init_mpi_time;
 static int first_timestamp=1;
 #define NEW_CPUFREQ 1
+#define NEW_IMCFREQ 1
 #if NEW_CPUFREQ
 static state_t s;
 static ulong cpufreq_data_avg[2];
@@ -160,6 +164,10 @@ static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
 static uint mycpufreq_data_size,mycpufreq_data_count;
 static ulong def_imc_max_khz,def_imc_min_khz;
 static ulong imc_max_khz,imc_min_khz;
+static uint imcfreq_data_size;
+static freq_imc_t imc_init[2],imc_end[2];
+static ulong imc_avg[2];
+
 static ctx_t imc_lib_ctx;
 static uint imc_count;
 static ulong cpufreq_avg;
@@ -188,6 +196,7 @@ static void metrics_global_start()
 {
 	int ret;
 	aux_time = metrics_time();
+	imc_intel63_t *d;
 
 	if (masters_info.my_master_rank>=0)
 	{
@@ -197,6 +206,13 @@ static void metrics_global_start()
 		}
 		#else
 		eards_begin_app_compute_turbo_freq();
+		#endif
+		#if NEW_IMCFREQ
+		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size*sizeof(imc_intel63_t)))){
+			error("IMCFreq data read in global_start");
+		}
+		d = (imc_intel63_t*)imc_init[APP].data;
+		debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
 		#endif
 		// New
 		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
@@ -237,6 +253,7 @@ static void metrics_global_start()
 static void metrics_global_stop()
 {
 	timestamp end_mpi_time;
+	imc_intel63_t *d;
 	//
 	if (masters_info.my_master_rank>=0){ 
     #if NEW_CPUFREQ
@@ -257,6 +274,19 @@ static void metrics_global_stop()
 		#else
 		metrics_avg_frequency[APP] = eards_end_app_compute_turbo_freq();
 		#endif
+    #if NEW_IMCFREQ
+    if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size*sizeof(imc_intel63_t)))){
+      error("IMCFreq data read in global_start");
+    }
+	  d = (imc_intel63_t*)imc_end[APP].data;
+    debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
+
+		if (xtate_fail(s, freq_imc_data_diff(&imc_end[APP],&imc_init[APP],NULL,&imc_avg[APP]))){
+			error("IMC data diff fails");
+		}	
+		verbose(2,"AVG IMC frequency %.lu",imc_avg[APP]);
+    #endif
+
 	}else{
 		metrics_avg_frequency[APP]=0;
 	}
@@ -323,6 +353,12 @@ static void metrics_partial_start()
     #else
 		eards_begin_compute_turbo_freq();
 		#endif
+		#if NEW_IMCFREQ
+    if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size*sizeof(imc_intel63_t)))){
+      error("IMCFreq data read in global_start");
+    }
+		#endif
+
 
 		#if USE_GPU_LIB
 		if (gpu_initialized){
@@ -465,6 +501,18 @@ static int metrics_partial_stop(uint where)
     #else
 		metrics_avg_frequency[LOO] = eards_end_compute_turbo_freq();
 		#endif
+    #if NEW_IMCFREQ
+    if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size*sizeof(imc_intel63_t)))){
+      error("IMCFreq data read in global_start");
+    }
+    if (xtate_fail(s, freq_imc_data_diff(&imc_end[LOO],&imc_init[LOO],NULL,&imc_avg[LOO]))){
+      error("IMC data diff fails");
+    }
+    verbose(2,"AVG IMC frequency %.lu",imc_avg[LOO]);
+
+
+    #endif
+
 
 	/* This code needs to be adapted to read , compute the difference, and copy begin=end 
  	* diff_uncores(values,values_end,values_begin,num_counters);
@@ -785,6 +833,30 @@ int metrics_init(topology_t *topo)
 			error("Cpufreq allocation failed");
 	}
 	verbose(2,"CPUFreq data allocated");
+	#if NEW_IMCFREQ
+	/* To compute IMC average */
+	if (xtate_fail(s, freq_imc_init_lib(topo))){
+		error("IMC metrics init failed");
+	}
+  if (xtate_fail(s, freq_imc_data_alloc(&imc_init[APP], NULL,NULL))){
+		error("IMC data alloc failed");
+	}
+  if (xtate_fail(s, freq_imc_data_alloc(&imc_end[APP], NULL,NULL))){
+		error("IMC data alloc failed");
+	}
+  if (xtate_fail(s, freq_imc_data_alloc(&imc_init[LOO], NULL,NULL) )){
+    error("IMC data alloc failed");
+  }
+  if (xtate_fail(s, freq_imc_data_alloc(&imc_end[LOO], NULL,NULL) )){
+    error("IMC data alloc failed");
+  }
+	if (xtate_fail(s, eards_freq_imc_data_count(&imcfreq_data_size))){
+		error("IMC data count failed");
+	}
+	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
+	#endif
+
+	/* IMC management */
 	if (xtate_fail(s,mgt_imcfreq_load(topo))){
 		error("IMC management load failed");
 	}

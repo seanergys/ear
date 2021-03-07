@@ -193,7 +193,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verbose_maxxx("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-
+	verbose_maxxx("initializing DB API");
 	// Database
 	init_db_helper(&conf_clus->database);
 

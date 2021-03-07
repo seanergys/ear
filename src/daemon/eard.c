@@ -33,6 +33,8 @@
 #include <metrics/energy/energy_node.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/frequency/cpu.h>
+#include <metrics/frequency/imc.h>
+#include <metrics/frequency/imc/intel63.h>
 #include <daemon/local_api/eard_conf_api.h>
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/power_monitor.h>
@@ -774,11 +776,11 @@ int eard_freq(int must_read)
 			write(ear_fd_ack[freq_req],&unc_c,sizeof(uint));
 			break;
 		case UNC_READ:
-			memset(&imc_data_app,0,unc_c);
+			memset(imc_data_app.data,0,unc_c*sizeof(imc_intel63_t));
 			if (xtate_fail(s,freq_imc_read(&imc_data_app))){
 					error("WHen reading unc frequency requested by app (%d, %s)", s, state_msg);
 			}
-			write(ear_fd_ack[freq_req],&imc_data_app.data,unc_c);
+			write(ear_fd_ack[freq_req],imc_data_app.data,unc_c*sizeof(imc_intel63_t));
 			break;
 		case UNC_GET_LIMITS:
 			memset(imc_limits,0,sizeof(imc_limits));

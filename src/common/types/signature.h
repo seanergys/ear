@@ -64,7 +64,9 @@ typedef struct mini_sig
 #endif
 }ssig_t;
 
-
+typedef struct sig_ext{
+	ulong imc_freq;
+}sig_ext_t;
 
 typedef struct signature
 {
@@ -88,6 +90,7 @@ typedef struct signature
     #if USE_GPUS
     gpu_signature_t gpu_sig;
     #endif
+		sig_ext_t *sig_ext;
 } signature_t;
 
 

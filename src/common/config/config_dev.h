@@ -33,7 +33,7 @@
 #define NODE_PROP			0
 /** Specifies if eard's rapi uses dynamic size commands. */
 /* Backwards compatibility: Warning thist must be 0 for version 3.3 or previous compatibility */
-#define DYNAMIC_COMMANDS    0
+#define DYNAMIC_COMMANDS    1
 
 
 /*** EARL ***/

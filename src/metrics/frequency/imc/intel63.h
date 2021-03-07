@@ -19,6 +19,16 @@
 #define METRICS_FREQUENCY_IMC_INTEL63_H
 
 #include <metrics/frequency/imc.h>
+#include <common/system/time.h>
+
+
+typedef struct imc_intel63_s
+{
+  timestamp_t time;
+  ulong freq;
+  uint error;
+} imc_intel63_t;
+
 
 state_t ifreq_intel63_status(topology_t *tp);
 

@@ -5,7 +5,7 @@ ifeq ($(FEAT_MPI_API), 0)
 LIBCC       = $(CC)
 LIBCC_FLAGS = $(CC_FLAGS)
 LIB_CFLAGS  = -DMPI=0
-MPI_VERSION = seq
+MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
@@ -63,7 +63,9 @@ endif
 
 ifdef CUDA_BASE
 core_OBJS += \
-    metrics/gpu.o
+    metrics/gpu.o \
+		api/cupti.o
+		
 endif
 
 ######## RULES
