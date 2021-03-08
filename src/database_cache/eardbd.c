@@ -77,44 +77,42 @@ int server_iam;
 int mirror_iam;
 
 // PID
-char *path_pid, path_tmp_pid[128];;
+char *path_pid, path_tmp_pid[128];
 process_data_t proc_data_srv;
 process_data_t proc_data_mir;
 pid_t server_pid;
 pid_t mirror_pid;
 pid_t others_pid;
 
-// Status
-eardbd_status_t status;
-
 // Synchronization
-packet_header_t sync_ans_header;
-packet_header_t sync_qst_header;
-sync_qst_t sync_qst_content;
-sync_ans_t sync_ans_content;
+packet_header_t header_question;
+packet_header_t header_answer;
+sync_qst_t sync_question;
+sync_ans_t sync_answer;
 
 // Data
-time_t glb_time1[EDB_NTYPES];
-time_t glb_time2[EDB_NTYPES];
-time_t ins_time1[EDB_NTYPES];
-time_t ins_time2[EDB_NTYPES];
-size_t typ_sizof[EDB_NTYPES];
-float  typ_vecmb[EDB_NTYPES];
-uint   typ_prcnt[EDB_NTYPES];
-float  typ_prcnl[EDB_NTYPES];
-uint   typ_index[EDB_NTYPES];
-char  *typ_alloc[EDB_NTYPES];
-char  *sam_iname[EDB_NTYPES];
-ulong  sam_inmax[EDB_NTYPES];
-ulong  sam_index[EDB_NTYPES];
-uint   sam_recvd[EDB_NTYPES];
+time_t time_recv1[EDB_NTYPES];   // Time between first and last sample start
+time_t time_recv2[EDB_NTYPES];   // Time between first and last sample stop
+time_t time_insert1[EDB_NTYPES]; // Insert time start
+time_t time_insert2[EDB_NTYPES]; // Insert time stop
+size_t type_sizeof[EDB_NTYPES];  // Type sizeof
+char  *type_name[EDB_NTYPES];    // Sample name
+char  *type_alloc[EDB_NTYPES];   // Type batch allocation
+float  type_alloc_mbs[EDB_NTYPES]; // Type allocation in megabytes
+uint   type_alloc_100[EDB_NTYPES]; // Type allocation in percentage
+ulong  type_alloc_len[EDB_NTYPES]; // Type allocation in vector length
+ulong  sample_index[EDB_NTYPES]; // Pointer to the next empty space
+uint   sample_recv[EDB_NTYPES];  // Samples received counter
 
 // Sockets info
-uint   soc_accpt;
-uint   soc_activ;
-uint   soc_discn;
-uint   soc_unkwn;
-uint   soc_tmout;
+uint sockets_accepted;
+uint sockets_online;
+uint sockets_disconnected;
+uint sockets_unrecognized;
+uint sockets_timeout;
+
+// Status
+eardbd_status_t status;
 
 // Times (alarms)
 struct timeval timeout_insr;
@@ -124,7 +122,7 @@ time_t time_insr;
 time_t time_aggr;
 time_t time_slct;
 
-// State machine
+// State machine from the main loop
 int reconfiguring;
 int listening;
 int releasing;
@@ -449,34 +447,32 @@ static void init_signals()
 
 static void init_types_single(int i, char *name, size_t size, uint percent)
 {
-	float mb_single;
-	float mb_batch;
-	ulong b_batch;
+	float batch_100;
+	float single_mb;
+	float batch_mb;
+	ulong batch_b;
 
-	//
-	sam_iname[i] = name;
-	typ_sizof[i] = size;
-	typ_prcnl[i] = ((float) percent) / 100.0;
-
-	//
-	mb_batch     = ceilf(alloc * typ_prcnl[i]);
-	mb_single    = ((float) typ_sizof[i]) / 1000000.0;
-	sam_inmax[i] = (ulong) (mb_batch / mb_single);
-
-	if (sam_inmax[i] < 100 && sam_inmax[i] > 0) {
-		sam_inmax[i] = 100;
+	// Obtaining the percentage in floats
+	type_name[i]   = name;
+	type_sizeof[i] = size;
+	batch_100      = ((float) percent) / 100.0;
+	batch_mb       = ceilf(alloc * batch_100[i]);
+	single_mb      = ((float) type_sizeof[i]) / 1000000.0;
+	type_alloc_len[i] = (ulong) (batch_mb / single_mb);
+	// If there are less than 100, allocate at least 100 positions
+	if (type_alloc_len[i] < 100 && type_alloc_len[i] > 0) {
+		type_alloc_len[i] = 100;
 	}
-
 	// Allocation and set
-	b_batch = typ_sizof[i] * sam_inmax[i];
-	typ_vecmb[i] = (double) (b_batch) / 1000000.0;
-
-	typ_alloc[i] = malloc(b_batch);
-	memset(typ_alloc[i], 0, b_batch);
+	batch_b = type_sizeof[i] * type_alloc_len[i];
+	type_alloc_mbs[i] = (double) (batch_b) / 1000000.0;
+	//
+	type_alloc[i] = malloc(batch_b);
+	memset(type_alloc[i], 0, batch_b);
 
 	// Verbosity
 	tprintf("%s||%0.2f MBs||%lu Bs||%lu||%0.2f",
-			sam_iname[i], typ_vecmb[i], typ_sizof[i], sam_inmax[i], typ_prcnl[i]);
+			type_name[i], type_alloc_mbs[i], type_sizeof[i], type_alloc_len[i], batch_100[i]);
 }
 
 static void init_process_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -538,13 +534,13 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	if (per_total > 90 && per_total < 110) {
-		typ_prcnt[i_appsm] = conf_clus->db_manager.mem_size_types[0];
-		typ_prcnt[i_appsn] = conf_clus->db_manager.mem_size_types[1];
-		typ_prcnt[i_appsl] = conf_clus->db_manager.mem_size_types[2];
-		typ_prcnt[i_loops] = conf_clus->db_manager.mem_size_types[3];
-		typ_prcnt[i_enrgy] = conf_clus->db_manager.mem_size_types[4];
-		typ_prcnt[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
-		typ_prcnt[i_evnts] = conf_clus->db_manager.mem_size_types[6];
+		type_alloc_100[i_appsm] = conf_clus->db_manager.mem_size_types[0];
+		type_alloc_100[i_appsn] = conf_clus->db_manager.mem_size_types[1];
+		type_alloc_100[i_appsl] = conf_clus->db_manager.mem_size_types[2];
+		type_alloc_100[i_loops] = conf_clus->db_manager.mem_size_types[3];
+		type_alloc_100[i_enrgy] = conf_clus->db_manager.mem_size_types[4];
+		type_alloc_100[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
+		type_alloc_100[i_evnts] = conf_clus->db_manager.mem_size_types[6];
 	}
 	#endif
 
@@ -559,7 +555,6 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	tprintf("type||memory||sample||elems||%%");
 	tprintf("----||------||------||-----||----");
 
-
 	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          ALLOC_PERCENT_APPS_MPI);
 	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          ALLOC_PERCENT_APPS_SEQUENTIAL);
 	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          ALLOC_PERCENT_APPS_LEARNING);
@@ -568,20 +563,20 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      ALLOC_PERCENT_ENERGY_REPS);
 	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), ALLOC_PERCENT_ENERGY_AGGRS);
 
-	float mb_total = typ_vecmb[i_appsm] + typ_vecmb[i_appsn] + typ_vecmb[i_appsl] +
-		 typ_vecmb[i_loops] + typ_vecmb[i_evnts] + typ_vecmb[i_enrgy] + typ_vecmb[i_aggrs];
-
+	float mb_total = type_alloc_mbs[i_appsm] + type_alloc_mbs[i_appsn] +
+					 type_alloc_mbs[i_appsl] + type_alloc_mbs[i_loops] +
+					 type_alloc_mbs[i_evnts] + type_alloc_mbs[i_enrgy] +
+					 type_alloc_mbs[i_aggrs];
 	tprintf("TOTAL||%0.2f MBs", mb_total);
 	verbose_maxxx("TIP! this allocated space is per process server/mirror");
-
 	// Synchronization headers
-	sockets_header_clean(&sync_ans_header);
-	sockets_header_clean(&sync_qst_header);
+	sockets_header_clean(&header_answer);
+	sockets_header_clean(&header_question);
 
-	sync_ans_header.content_type = EDB_TYPE_SYNC_ANSWER;
-	sync_ans_header.content_size = sizeof(sync_ans_t);
-	sync_qst_header.content_type = EDB_TYPE_SYNC_QUESTION;
-	sync_qst_header.content_size = sizeof(sync_qst_t);
+	header_answer.content_type = EDB_TYPE_SYNC_ANSWER;
+	header_answer.content_size = sizeof(sync_ans_t);
+	header_question.content_type = EDB_TYPE_SYNC_QUESTION;
+	header_question.content_size = sizeof(sync_qst_t);
 }
 
 static void init_pid_files(int argc, char **argv)

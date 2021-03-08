@@ -24,6 +24,24 @@
 #include <common/database/db_helper.h>
 #endif
 
+#if EDB_OFFLINE
+	#define db_batch_insert_applications(a, b);
+	#define db_batch_insert_applications_no_mpi(a, b);
+	#define db_batch_insert_applications_learning(a, b);
+	#define db_batch_insert_loops(a, b);
+	#define db_batch_insert_periodic_metrics(a, b);
+	#define db_batch_insert_periodic_aggregations(a, b);
+	#define db_batch_insert_ear_event(a, b);
+#endif
+
+#define EDB_SYNC_TYPE_ENERGY          0x001
+#define EDB_SYNC_TYPE_APPS_MPI        0x002
+#define EDB_SYNC_TYPE_APPS_SEQ        0x004
+#define EDB_SYNC_TYPE_APPS_LEARN      0x008
+#define EDB_SYNC_TYPE_LOOPS           0x010
+#define EDB_SYNC_TYPE_EVENTS          0x020
+#define EDB_SYNC_TYPE_AGGRS           0x040
+
 // Configuration
 extern cluster_conf_t conf_clus;
 
@@ -44,25 +62,24 @@ extern struct timeval timeout_slct;
 extern time_t time_slct;
 
 // Data
-extern time_t glb_time1[EDB_NTYPES];
-extern time_t glb_time2[EDB_NTYPES];
-extern time_t ins_time1[EDB_NTYPES];
-extern time_t ins_time2[EDB_NTYPES];
-extern size_t typ_sizof[EDB_NTYPES];
-extern uint   typ_prcnt[EDB_NTYPES];
-extern uint   typ_index[EDB_NTYPES];
-extern char  *typ_alloc[EDB_NTYPES];
-extern char  *sam_iname[EDB_NTYPES];
-extern ulong  sam_inmax[EDB_NTYPES];
-extern ulong  sam_index[EDB_NTYPES];
-extern uint   sam_recvd[EDB_NTYPES];
+extern time_t time_recv1[EDB_NTYPES];
+extern time_t time_recv2[EDB_NTYPES];
+extern time_t time_insert1[EDB_NTYPES];
+extern time_t time_insert2[EDB_NTYPES];
+extern size_t type_sizeof[EDB_NTYPES];
+extern uint   type_alloc_100[EDB_NTYPES];
+extern char  *type_alloc[EDB_NTYPES];
+extern char  *type_name[EDB_NTYPES];
+extern ulong  type_alloc_len[EDB_NTYPES];
+extern ulong  sample_index[EDB_NTYPES];
+extern uint   sample_recv[EDB_NTYPES];
 
 // Sockets info
-extern uint   soc_accpt;
-extern uint   soc_activ;
-extern uint   soc_discn;
-extern uint   soc_unkwn;
-extern uint   soc_tmout;
+extern uint   sockets_accepted;
+extern uint   sockets_online;
+extern uint   sockets_disconnected;
+extern uint   sockets_unrecognized;
+extern uint   sockets_timeout;
 
 // State machine
 extern int reconfiguring;
@@ -78,79 +95,64 @@ extern int forked;
 extern char *str_who[2];
 extern int verbosity;
 
+// Status
+extern eardbd_status_t status;
+
 /*
  *
  * Time
  *
  */
 
-void metrics_insert_start(uint i)
-{
-	time(&ins_time1[i]);
-}
-
-void metrics_insert_stop(uint i, ulong max)
-{
-	time(&ins_time2[i]);
-}
-
 void metrics_print()
 {
-	float gtime;
-	float itime;
-	//float alloc;
-	//float block;
-	float prcnt;
-	int n;
-	int i;
+	float time_insert = 0.0f;
+	float time_recv = 0.0f;
+	float percent = 0.0f;
+	int n = 0;
+	int i = 0;
 
 	verbose_line();
-
-	for (i = 0, n = 0; i < EDB_NTYPES && n == 0; ++i) {
-		n += (sam_index[i] > 0);
+	// Counting samples
+	for (; i < EDB_NTYPES && n == 0; ++i) {
+		n += (sample_index[i] > 0);
 	}
-
+	// If there are samples then we can print
 	if (n > 0) {
 	//
 	tprintf_init(verb_channel, STR_MODE_DEF, "15 13 9 10 10");
-
 	//
 	tprintf("sample (%d)||recv/alloc||%%||t. insr||t. recv", mirror_iam);
 	tprintf("-----------||----------||--||-------||-------");
 
 	for (i = 0; i < EDB_NTYPES; ++i)
 	{
-		if (sam_index[i] == 0) {
+		if (sample_index[i] == 0) {
 			continue;
 		}
+		time_insert = ((float) difftime(time_insert2[i], time_insert1[i]));
+		time_recv   = ((float) difftime(time_recv2[i], time_recv1[i]));
+		percent = 0.0f;
 
-		itime = ((float) difftime(ins_time2[i], ins_time1[i]));
-		gtime = ((float) difftime(glb_time2[i], glb_time1[i]));
-		//alloc = ((float) (typ_sizof[i] * sam_inmax[i]) / 1000000.0);
-		//block = ((float) (sam_recvd[i] * typ_sizof[i]) / 1000000.0);
-		prcnt = 0.0f;
-
-		if (sam_inmax[i] > 0.0f) {
-			prcnt = ((float) (sam_recvd[i]) / (float) (sam_inmax[i])) * 100.0f;
+		if (type_alloc_len[i] > 0.0f) {
+			percent = ((float) (sample_recv[i]) / (float) (type_alloc_len[i])) * 100.0f;
 		}
-
 		tprintf("%s||%lu/%lu||%2.2f||%0.2fs||%0.2fs",
-				sam_iname[i], sam_index[i], sam_inmax[i], prcnt, itime, gtime);
+				type_name[i], sample_index[i], type_alloc_len[i], percent, time_insert, time_recv);
 	}
 
 	verbose_xaxxx("--");
 	}
-
 	//
-	verbose_xaxxx("actv./accp. sockets: %u/%u", soc_activ, soc_accpt);
-	verbose_xaxxx("disc./tout. sockets: %u/%u", soc_discn, soc_tmout);
-	verbose_xaxxx("recv. unknown samples: %u", soc_tmout);
+	verbose_xaxxx("actv./accp. sockets: %u/%u", sockets_online, sockets_accepted);
+	verbose_xaxxx("disc./tout. sockets: %u/%u", sockets_disconnected, sockets_timeout);
+	verbose_xaxxx("recv. unknown samples: %u", sockets_timeout);
 	verbose_line();
 
-	soc_accpt = 0;
-	soc_discn = 0;
-	soc_unkwn = 0;
-	soc_tmout = 0;
+	sockets_accepted     = 0;
+	sockets_disconnected = 0;
+	sockets_unrecognized = 0;
+	sockets_timeout      = 0;
 }
 
 /*
@@ -161,39 +163,34 @@ void metrics_print()
 
 static void reset_aggregations()
 {
-	peraggr_t *p = (peraggr_t *) typ_alloc[i_aggrs];
-	peraggr_t  q = (peraggr_t  ) p[sam_index[i_aggrs]];
+	peraggr_t *p = (peraggr_t *) type_alloc[i_aggrs];
+	peraggr_t  q = (peraggr_t  ) p[sample_index[i_aggrs]];
 
-	if (sam_index[i_aggrs] < sam_inmax[i_aggrs] && q.n_samples > 0)
-	{
+	if (sample_index[i_aggrs] < type_alloc_len[i_aggrs] && q.n_samples > 0) {
 		memcpy (p, &q, sizeof(periodic_aggregation_t));
 	} else {
 		init_periodic_aggregation(p, master_name);
 	}
-
-	sam_index[i_aggrs] = 0;
+	sample_index[i_aggrs] = 0;
 }
 
 static void reset_index(int index)
 {
-	glb_time1[index] = 0;
-	glb_time2[index] = 0;
-	ins_time1[index] = 0;
-	ins_time2[index] = 0;
-	sam_recvd[index] = 0;
-	sam_index[index] = 0;
+	time_recv1[index]   = 0;
+	time_recv2[index]   = 0;
+	time_insert1[index] = 0;
+	time_insert2[index] = 0;
+	sample_index[index] = 0;
+	sample_recv[index]  = 0;
 }
 
 void reset_all()
 {
 	int i;
-
 	// Specific resets
 	reset_aggregations();
-
 	// Generic reset
-	for (i = 0; i < EDB_NTYPES; ++i)
-	{
+	for (i = 0; i < EDB_NTYPES; ++i) {
 		reset_index(i);
 	}
 }
@@ -203,153 +200,133 @@ void reset_all()
  * Insert
  *
  */
-#if EDB_OFFLINE
-	#define db_batch_insert_applications(a, b);
-	#define db_batch_insert_applications_no_mpi(a, b);
-	#define db_batch_insert_applications_learning(a, b);
-	#define db_batch_insert_loops(a, b);
-	#define db_batch_insert_periodic_metrics(a, b);
-	#define db_batch_insert_periodic_aggregations(a, b);
-	#define db_batch_insert_ear_event(a, b);
-#endif
 
-static void insert_apps_mpi()
+static void insert_start(uint i)
 {
-	if (typ_prcnt[i_appsm] == 0 || sam_index[i_appsm] <= 0) {
-		return;
-	}
-
-	metrics_insert_start(i_appsm);
-
-	debug("trying to insert '%d' applications (simple: '%d')",
-		  i_appsm, !conf_clus.database.report_sig_detail);
-	db_batch_insert_applications((application_t *) typ_alloc[i_appsm], sam_index[i_appsm]);
-	debug("called db_batch_insert_applications() with result '%d'", r);
-
-	metrics_insert_stop(i_appsm, sam_index[i_appsm]);
+	debug("trying to insert type %d (simple: '%d')",
+		  i, !conf_clus.database.report_sig_detail);
+	// Insert time update
+	time(&time_insert1[i]);
 }
 
-static void insert_apps_non_mpi()
+static void insert_stop(uint i, state_t s)
 {
-	if (typ_prcnt[i_appsn] == 0 || sam_index[i_appsn] <= 0) {
-		return;
-	}
-
-	metrics_insert_start(i_appsn);
-	db_batch_insert_applications_no_mpi((application_t *) typ_alloc[i_appsn], sam_index[i_appsn]);
-	metrics_insert_stop(i_appsn, sam_index[i_appsn]);
+	debug("called insert for type %d with result '%d'", i, s);
+	// Insert time update
+	time(&time_insert2[i]);
+	// Status update (before reset)
+	status.insert_states[i] = s;
+	status.sample_recv[i]   = sample_index[i];
+	status.sockets_online   = sockets_online;
+	// Reset samples
+	reset_index(i);
 }
 
-static void insert_apps_learning()
+static void insert_apps_mpi(int i)
 {
-	if (typ_prcnt[i_appsl] == 0 || sam_index[i_appsl] <= 0) {
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
 		return;
 	}
-
-	metrics_insert_start(i_appsl);
-	db_batch_insert_applications_learning((application_t *) typ_alloc[i_appsl], sam_index[i_appsl]);
-	metrics_insert_stop(i_appsl, sam_index[i_appsl]);
+	insert_start(i);
+	s = db_batch_insert_applications((application_t *) type_alloc[i], sample_index[i]);
+	insert_stop(i, s);
 }
 
-static void insert_loops()
+static void insert_apps_non_mpi(int i)
 {
-	if (typ_prcnt[i_loops] == 0 || sam_index[i_loops] <= 0) {
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
 		return;
 	}
-
-	metrics_insert_start(i_loops);
-	db_batch_insert_loops((loop_t *) typ_alloc[i_loops], sam_index[i_loops]);
-	metrics_insert_stop(i_loops, sam_index[i_loops]);
+	insert_start(i);
+	s = db_batch_insert_applications_no_mpi((application_t *) type_alloc[i], sample_index[i]);
+	insert_stop(i, s);
 }
 
-static void insert_energy()
+static void insert_apps_learning(int i)
 {
-	if (typ_prcnt[i_enrgy] == 0 || sam_index[i_enrgy] <= 0) {
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
 		return;
 	}
-
-	metrics_insert_start(i_enrgy);
-	db_batch_insert_periodic_metrics((periodic_metric_t *) typ_alloc[i_enrgy], sam_index[i_enrgy]);
-	metrics_insert_stop(i_enrgy, sam_index[i_enrgy]);
+	insert_start(i);
+	s = db_batch_insert_applications_learning((application_t *) type_alloc[i], sample_index[i]);
+	insert_stop(i, s);
 }
 
-static void insert_aggregations()
+static void insert_loops(int i)
 {
-	if (typ_prcnt[i_aggrs] == 0 || sam_index[i_aggrs] <= 0) {
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
 		return;
 	}
-
-	metrics_insert_start(i_aggrs);
-	db_batch_insert_periodic_aggregations((periodic_aggregation_t *) typ_alloc[i_aggrs], sam_index[i_aggrs]);
-	metrics_insert_stop(i_aggrs, sam_index[i_aggrs]);
+	insert_start(i);
+	s = db_batch_insert_loops((loop_t *) type_alloc[i], sample_index[i]);
+	insert_stop(i, s);
 }
 
-static void insert_events()
+static void insert_energy(int i)
 {
-	if (typ_prcnt[i_evnts] == 0 || sam_index[i_evnts] <= 0) {
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
 		return;
 	}
+	insert_start(i);
+	s = db_batch_insert_periodic_metrics((periodic_metric_t *) type_alloc[i], sample_index[i]);
+	insert_stop(i, s);
+}
 
-	metrics_insert_start(i_evnts);
-	db_batch_insert_ear_event((ear_event_t *) typ_alloc[i_evnts], sam_index[i_evnts]);
-	metrics_insert_stop(i_evnts, sam_index[i_evnts]);
+static void insert_aggregations(int i)
+{
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+		return;
+	}
+	insert_start(i);
+	s = db_batch_insert_periodic_aggregations((periodic_aggregation_t *) type_alloc[i], sample_index[i]);
+	reset_aggregations();
+	insert_stop(i, s);
+}
+
+static void insert_events(int i)
+{
+	state_t s;
+	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+		return;
+	}
+	insert_start(i);
+	s = db_batch_insert_ear_event((ear_event_t *) type_alloc[i], sample_index[i]);
+	insert_stop(i, s);
 }
 
 void insert_hub(uint option, uint reason)
 {
-	verbose_xaxxw("looking for possible DB insertion (type 0x%x, reason 0x%x)", option, reason);
-	
+	verbose_xaxxw("looking for possible DB insertion (type 0x%x, reason 0x%x)",
+				  option, reason);
+	// Why print is set before inserts?
 	metrics_print();
-
-	if (sync_option_m(option, SYNC_APPSM, SYNC_ALL))
-	{
-		//
-		insert_apps_mpi();
-		//
-		reset_index(i_appsm);
+	// Insert one by one samples
+	if (sync_option_m(option, EDB_SYNC_TYPE_APPS_MPI, EDB_SYNC_ALL)) {
+		insert_apps_mpi(i_appsm);
 	}
-	if (sync_option_m(option, SYNC_APPSN, SYNC_ALL))
-	{
-		//
-		insert_apps_non_mpi();
-		//
-		reset_index(i_appsn);
+	if (sync_option_m(option, EDB_SYNC_TYPE_APPS_SEQ, EDB_SYNC_ALL)) {
+		insert_apps_non_mpi(i_appsn);
 	}
-	if (sync_option_m(option, SYNC_APPSL, SYNC_ALL))
-	{
-		//
-		insert_apps_learning();
-		//
-		reset_index(i_appsl);
+	if (sync_option_m(option, EDB_SYNC_TYPE_APPS_LEARN, EDB_SYNC_ALL)) {
+		insert_apps_learning(i_appsl);
 	}
-	if (sync_option_m(option, SYNC_ENRGY, SYNC_ALL))
-	{
-		//
-		insert_energy();
-		//
-		reset_index(i_enrgy);
+	if (sync_option_m(option, EDB_SYNC_TYPE_ENERGY, EDB_SYNC_ALL)) {
+		insert_energy(i_enrgy);
 	}
-	if (sync_option_m(option, SYNC_AGGRS, SYNC_ALL))
-	{
-		//
-		insert_aggregations();
-		//
-		reset_aggregations();
-		reset_index(i_aggrs);
+	if (sync_option_m(option, EDB_SYNC_TYPE_AGGRS, EDB_SYNC_ALL)) {
+		insert_aggregations(i_aggrs);
 	}
-	if (sync_option_m(option, SYNC_EVNTS, SYNC_ALL))
-	{
-		//
-		insert_events();
-		//
-		reset_index(i_evnts);
+	if (sync_option_m(option, EDB_SYNC_TYPE_EVENTS, EDB_SYNC_ALL)) {
+		insert_events(i_evnts);
 	}
-	if (sync_option_m(option, SYNC_LOOPS, SYNC_ALL))
-	{
-		//
-		insert_loops();
-		//
-		reset_index(i_loops);
+	if (sync_option_m(option, EDB_SYNC_TYPE_LOOPS, EDB_SYNC_ALL)) {
+		insert_loops(i_loops);
 	}
 }
 
@@ -359,26 +336,24 @@ void insert_hub(uint option, uint reason)
  *
  */
 
-void storage_sample_add(char *buf, ulong len, ulong *idx, char *cnt, size_t siz, uint opt)
+void storage_sample_add(char *buf, ulong len, ulong *index, char *cnt, size_t siz, uint opt)
 {
-	ulong address = siz * (*idx);
+	ulong address = siz * (*index);
 
 	if (len == 0) {
 		return;
 	}
-
 	if (cnt != NULL) {
 		memcpy (&buf[address], cnt, siz);
 	}
+	//
+	*index += 1;
 
-	*idx += 1;
-
-	if (*idx == len)
-	{
+	if (*index == len) {
 		if(server_iam) {
-			insert_hub(opt, RES_OVER);
+			insert_hub(opt, EDB_INSERT_BY_FULL);
 		} else if (state_fail(sync_question(opt, veteran, NULL))) {
-			insert_hub(opt, RES_OVER);
+			insert_hub(opt, EDB_INSERT_BY_FULL);
 		}
 	}
 }
@@ -397,21 +372,19 @@ static int storage_type_extract(packet_header_t *header, char *content)
 	//
 	type = header->content_type;
 
-	if (type != CONTENT_TYPE_APM) {
+	if (type != EDB_TYPE_APP_MPI) {
 		return type;
 	}
-
 	//
 	app = (application_t *) content;
 
 	if (app->is_learning) {
-		return CONTENT_TYPE_APL;
+		return EDB_TYPE_APP_LEARN;
 	} else if (app->is_mpi) {
-		return CONTENT_TYPE_APM;
+		return EDB_TYPE_APP_MPI;
 	} else {
-		return CONTENT_TYPE_APN;
+		return EDB_TYPE_APP_SEQ;
 	}
-	
 	return -1;
 }
 
@@ -419,26 +392,26 @@ static int storage_index_extract(int type, char **name)
 {
 	switch (type)
 	{
-		case CONTENT_TYPE_APM:
-			*name = sam_iname[i_appsm];
+		case EDB_TYPE_APP_MPI:
+			*name = type_name[i_appsm];
 			return i_appsm;
-		case CONTENT_TYPE_APN:
-			*name = sam_iname[i_appsn];
+		case EDB_TYPE_APP_SEQ:
+			*name = type_name[i_appsn];
 			return i_appsn;
-		case CONTENT_TYPE_APL:
-			*name = sam_iname[i_appsl];
+		case EDB_TYPE_APP_LEARN:
+			*name = type_name[i_appsl];
 			return i_appsl;
-		case CONTENT_TYPE_PER:
-			*name = sam_iname[i_enrgy];
+		case EDB_TYPE_ENERGY_REP:
+			*name = type_name[i_enrgy];
 			return i_enrgy;
-		case CONTENT_TYPE_EVE:
-			*name = sam_iname[i_evnts];
+		case EDB_TYPE_EVENT:
+			*name = type_name[i_evnts];
 			return i_evnts;
-		case CONTENT_TYPE_LOO:
-			*name = sam_iname[i_loops];
+		case EDB_TYPE_LOOP:
+			*name = type_name[i_loops];
 			return i_loops;
-		case CONTENT_TYPE_AGG:
-			*name = sam_iname[i_aggrs];
+		case EDB_TYPE_ENERGY_AGGR:
+			*name = type_name[i_aggrs];
 			return i_aggrs;
 		case EDB_TYPE_SYNC_QUESTION:
 			*name = "sync_question";
@@ -477,7 +450,7 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	}
 
 	//TODO:
-	// Currently, sam_index and sam_recv are the same. In the near future
+	// Currently, sample_index and sam_recv are the same. In the near future
 	// a struct for every type has to be made. This type have to include
 	// these things:
 	//		- an index to the position of the empty value in the allocation
@@ -491,50 +464,50 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	//		- a value of the sync option
 
 	// Storage
-	if (type == CONTENT_TYPE_APM) {
+	if (type == EDB_TYPE_APP_MPI) {
 		//print_application_fd_binary(0, (application_t *) content);
-		storage_sample_add(typ_alloc[index], sam_inmax[index],
-		   &sam_index[index], content, typ_sizof[index], SYNC_APPSM);
+		storage_sample_add(type_alloc[index], type_alloc_len[index],
+		   &sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_MPI);
 	}
-	else if (type == CONTENT_TYPE_APN) {
+	else if (type == EDB_TYPE_APP_SEQ) {
 		//print_application_fd_binary(0, (application_t *) content);
-		storage_sample_add(typ_alloc[index], sam_inmax[index],
-		   &sam_index[index], content, typ_sizof[index], SYNC_APPSN);
+		storage_sample_add(type_alloc[index], type_alloc_len[index],
+		   &sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_SEQ);
 	}
-	else if (type == CONTENT_TYPE_APL) {
+	else if (type == EDB_TYPE_APP_LEARN) {
 		//print_application_fd_binary(0, (application_t *) content);
-		storage_sample_add(typ_alloc[index], sam_inmax[index],
-			&sam_index[index], content, typ_sizof[index], SYNC_APPSL);
+		storage_sample_add(type_alloc[index], type_alloc_len[index],
+			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_LEARN);
 	}
-	else if (type == CONTENT_TYPE_EVE) {
-		storage_sample_add(typ_alloc[index], sam_inmax[index],
-			&sam_index[index], content, typ_sizof[index], SYNC_EVNTS);
+	else if (type == EDB_TYPE_EVENT) {
+		storage_sample_add(type_alloc[index], type_alloc_len[index],
+			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_EVENTS);
 	}
-	else if (type == CONTENT_TYPE_LOO) {
-		storage_sample_add(typ_alloc[index], sam_inmax[index],
-			&sam_index[index], content, typ_sizof[index], SYNC_LOOPS);
+	else if (type == EDB_TYPE_LOOP) {
+		storage_sample_add(type_alloc[index], type_alloc_len[index],
+			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_LOOPS);
 	}
-	else if (type == CONTENT_TYPE_PER) {
-		peraggr_t *p = (peraggr_t *) typ_alloc[i_aggrs];
-		peraggr_t *q = (peraggr_t *) &p[sam_index[i_aggrs]];
+	else if (type == EDB_TYPE_ENERGY_REP) {
+		peraggr_t *p = (peraggr_t *) type_alloc[i_aggrs];
+		peraggr_t *q = (peraggr_t *) &p[sample_index[i_aggrs]];
 		periodic_metric_t *met = (periodic_metric_t *) content;
 		// Add sample to the aggregation
 		add_periodic_aggregation(q, met->DC_energy, met->start_time, met->end_time);
 		// Add sample to the energy array
-		storage_sample_add(typ_alloc[index], sam_inmax[index],
-			&sam_index[index], content, typ_sizof[index], SYNC_ENRGY);
+		storage_sample_add(type_alloc[index], type_alloc_len[index],
+			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_ENERGY);
 	}
 	else if (type == EDB_TYPE_SYNC_QUESTION) {
 		sync_qst_t *question = (sync_qst_t *) content;
 		if (veteran || !question->veteran) {
 			// Passing the question option
-			insert_hub(question->sync_option, RES_SYNC);
+			insert_hub(question->sync_option, EDB_INSERT_BY_SYNC);
 		}
 		// Answering the mirror question
 		sync_answer(fd, veteran);
 		// In case it is a full sync the sync time is resetted before the answer
 		// with a very small offset (5 second is enough)
-		if (sync_option(question->sync_option, SYNC_ALL))
+		if (sync_option(question->sync_option, EDB_SYNC_ALL))
 		{
 			/// We get the timeout passed since the 'time_slct' got its value
 			// and added to 'timeout_insr', because when 'time_slct' would be
@@ -546,9 +519,8 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 			veteran = 1;
 		}
 	}
-	else if (type == EDB_TYPE_STATUS)
-	{
-		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, , sizeof(eardbd_status_t), 0))) {
+	else if (type == EDB_TYPE_STATUS) {
+		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, &status, sizeof(eardbd_status_t), 0))) {
 			error("Error when sending status: %s", state_msg);
 		}
 	}
@@ -557,11 +529,11 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		return;
 	}
 	//	
-	if (sam_recvd[index] == 0) {
-		time(&glb_time1[index]);
+	if (sample_recv[index] == 0) {
+		time(&time_recv1[index]);
 	}
 	//
-	time(&glb_time2[index]);
+	time(&time_recv2[index]);
 	//
-	sam_recvd[index] += 1;
+	sample_recv[index] += 1;
 }

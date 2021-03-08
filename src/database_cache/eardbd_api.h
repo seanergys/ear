@@ -25,13 +25,6 @@
 #define edb_state_fail(state) \
         state_fail(state.server) || state_fail(state.mirror)
 
-typedef struct eardbd_status_s {
-    char insert_errors[EDB_NTYPES];
-    uint nodes_connected;
-    char server_ok;
-    char mirror_ok;
-} eardbd_status_t;
-
 /**  */
 state_t eardbd_status(char *node, uint port, eardbd_status_t *status);
 

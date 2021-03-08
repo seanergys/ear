@@ -61,23 +61,24 @@ extern int server_too;
 extern int mirror_too;
 
 // Data
-extern time_t glb_time1[EDB_NTYPES];
-extern time_t glb_time2[EDB_NTYPES];
-extern time_t ins_time1[EDB_NTYPES];
-extern time_t ins_time2[EDB_NTYPES];
-extern size_t typ_sizof[EDB_NTYPES];
-extern uint   typ_prcnt[EDB_NTYPES];
-extern uint   typ_index[EDB_NTYPES];
-extern char  *typ_alloc[EDB_NTYPES];
-extern char  *sam_iname[EDB_NTYPES];
-extern ulong  sam_inmax[EDB_NTYPES];
-extern ulong  sam_index[EDB_NTYPES];
-extern uint   sam_recvd[EDB_NTYPES];
-extern uint   soc_accpt;
-extern uint   soc_activ;
-extern uint   soc_discn;
-extern uint   soc_unkwn;
-extern uint   soc_tmout;
+extern time_t time_recv1[EDB_NTYPES];
+extern time_t time_recv2[EDB_NTYPES];
+extern time_t time_insert1[EDB_NTYPES];
+extern time_t time_insert2[EDB_NTYPES];
+extern size_t type_sizeof[EDB_NTYPES];
+extern uint   type_alloc_100[EDB_NTYPES];
+extern char  *type_alloc[EDB_NTYPES];
+extern char  *type_name[EDB_NTYPES];
+extern ulong  type_alloc_len[EDB_NTYPES];
+extern ulong  sample_index[EDB_NTYPES];
+extern uint   sample_recv[EDB_NTYPES];
+
+// Sockets info
+extern uint   sockets_accepted;
+extern uint   sockets_online;
+extern uint   sockets_disconnected;
+extern uint   sockets_unrecognized;
+extern uint   sockets_timeout;
 
 // Times (alarms)
 extern struct timeval timeout_insr;
@@ -117,17 +118,17 @@ static void body_alarm(struct timeval *timeout_slct)
 		time_substract_timeouts();
 
 		if (timeout_aggr.tv_sec == 0) {
-			if (sam_inmax[i_aggrs] > 0) {
-				peraggr_t *p = (peraggr_t *) typ_alloc[i_aggrs];
-				peraggr_t *q = (peraggr_t *) &p[sam_index[i_aggrs]];
+			if (type_alloc_len[i_aggrs] > 0) {
+				peraggr_t *p = (peraggr_t *) type_alloc[i_aggrs];
+				peraggr_t *q = (peraggr_t *) &p[sample_index[i_aggrs]];
 
 				if (q->n_samples > 0) {
 					verbose_xaxxw("completed the aggregation number '%lu' with energy '%lu'",
-						 sam_index[i_aggrs], q->DC_energy);
+						 sample_index[i_aggrs], q->DC_energy);
 					// Aggregation time done, so new aggregation incoming
-					storage_sample_add(NULL, sam_inmax[i_aggrs], &sam_index[i_aggrs], NULL, 0, SYNC_AGGRS);
+					storage_sample_add(NULL, type_alloc_len[i_aggrs], &sample_index[i_aggrs], NULL, 0, EDB_SYNC_TYPE_AGGRS);
 					// Initializing the new element
-					q = (peraggr_t *) &p[sam_index[i_aggrs]];
+					q = (peraggr_t *) &p[sample_index[i_aggrs]];
 					init_periodic_aggregation(q, master_name);
 				}
 			}
@@ -141,18 +142,18 @@ static void body_alarm(struct timeval *timeout_slct)
 				sync_ans_t answer;
 				// Asking the question
 				// In case of fail the mirror have to insert the data
-				if(state_fail(sync_question(SYNC_ALL, veteran, &answer))) {
-					insert_hub(SYNC_ALL, RES_TIME);
+				if(state_fail(sync_question(EDB_SYNC_ALL, veteran, &answer))) {
+					insert_hub(EDB_SYNC_ALL, EDB_INSERT_BY_TIME);
 				// In case I'm veteran and the server is not
 				} else if (!answer.veteran && veteran) {
-					insert_hub(SYNC_ALL, RES_TIME);
+					insert_hub(EDB_SYNC_ALL, EDB_INSERT_BY_TIME);
 				// In case of the answer is received just clear the data
 				} else {
 					reset_all();
 				}
 			} else {
 				// Server normal insertion
-				insert_hub(SYNC_ALL, RES_TIME);
+				insert_hub(EDB_SYNC_ALL, EDB_INSERT_BY_TIME);
 			}
 			// If server the time reset is do it after the insert
 			time_reset_timeout_insr(0);
@@ -212,9 +213,9 @@ static void body_connections()
 						}
 					}
 					// Test if the maximum number of connection has been reached
-					// (soc_activ >= EDB_MAX_CONNECTIONS), and if fulfills that
+					// (sockets_online >= EDB_MAX_CONNECTIONS), and if fulfills that
 					// condition disconnect inmediately.
-					if (!sync_fd_is_mirror(i) && soc_activ >= EDB_MAX_CONNECTIONS) {
+					if (!sync_fd_is_mirror(i) && sockets_online >= EDB_MAX_CONNECTIONS) {
 						if (verbosity) {
 							verbose_xaxxw("disconnecting from host '%s' (maximum connections reached)",
 								extra_buffer);
@@ -234,11 +235,11 @@ static void body_connections()
 					storage_sample_receive(i, &input_header, input_buffer);
 				} else {
 					if (state_is(s, EAR_SOCK_DISCONNECTED)) {
-						soc_discn += 1;
+						sockets_disconnected += 1;
 					} if (state_is(s, EAR_TIMEOUT)) {
-						soc_tmout += 1;
+						sockets_timeout += 1;
 					} else {
-						soc_unkwn += 1;
+						sockets_unrecognized += 1;
 					}
 					if (verbosity) {
 						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFF_BIG);
@@ -308,10 +309,10 @@ void release()
 
 	for (i = 0; i < EDB_NTYPES; ++i)
 	{
-		if (typ_alloc[i] != NULL)
+		if (type_alloc[i] != NULL)
 		{
-			free(typ_alloc[i]);
-			typ_alloc[i] = NULL;
+			free(type_alloc[i]);
+			type_alloc[i] = NULL;
 		}
 	}
 	// Reconfiguring

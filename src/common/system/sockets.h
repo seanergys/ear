@@ -128,12 +128,9 @@ typedef struct socket_header_s {
 	char    host_src[SZ_NAME_SHORT]; // Filled in sockets_send()
     time_t  timestamp;               // Filled in sockets_send()
 #endif
-	size_t  content_size;            // 8 bytes ( 8)
-	ullong  aux_data1;               // 8 bytes (16)
-	uint    aux_data2;               // 4 bytes (20)
-	ushort  content_type;            // 2 byte  (22)
-	uchar   aux_data3;               // 1 byte  (23)
-	uchar   aux_data4;               // 1 byte  (24)
+	size_t  content_size;  // 8 bytes ( 8)
+	ullong  padding;       // 8 bytes (16)
+	uint    content_type;  // 4 byte  (20)
 }  socket_header_t;
 
 #define PACKET_HEADER(buffer) \

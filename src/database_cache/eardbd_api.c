@@ -124,22 +124,22 @@ static state_t static_disconnect(socket_t *socket, state_t s)
 
 state_t eardbd_send_application(application_t *app)
 {
-	return static_send(CONTENT_TYPE_APM, (char *) app, sizeof(application_t));
+	return static_send(EDB_TYPE_APP_MPI, (char *) app, sizeof(application_t));
 }
 
 state_t eardbd_send_periodic_metric(periodic_metric_t *metric)
 {
-	return static_send(CONTENT_TYPE_PER, (char *) metric, sizeof(periodic_metric_t));
+	return static_send(EDB_TYPE_ENERGY_REP, (char *) metric, sizeof(periodic_metric_t));
 }
 
 state_t eardbd_send_event(ear_event_t *event)
 {
-	return static_send(CONTENT_TYPE_EVE, (char *) event, sizeof(ear_event_t));
+	return static_send(EDB_TYPE_EVENT, (char *) event, sizeof(ear_event_t));
 }
 
 state_t eardbd_send_loop(loop_t *loop)
 {
-	return static_send(CONTENT_TYPE_LOO, (char *) loop, sizeof(loop_t));
+	return static_send(EDB_TYPE_LOOP, (char *) loop, sizeof(loop_t));
 }
 
 state_t eardbd_connect(cluster_conf_t *conf, my_node_conf_t *node)

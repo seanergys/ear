@@ -38,10 +38,10 @@ extern socket_t *ssync_srv;
 extern socket_t *ssync_mir;
 
 // Synchronization
-extern packet_header_t sync_ans_header;
-extern packet_header_t sync_qst_header;
-extern sync_qst_t sync_qst_content;
-extern sync_ans_t sync_ans_content;
+extern packet_header_t header_answer;
+extern packet_header_t header_question;
+extern sync_qst_t sync_question;
+extern sync_ans_t sync_answer;
 
 // Descriptors
 extern struct sockaddr_storage addr_cli;
@@ -63,20 +63,20 @@ extern time_t time_aggr;
 extern time_t time_slct;
 
 //
-extern time_t glb_time1[EDB_NTYPES];
-extern time_t glb_time2[EDB_NTYPES];
-extern time_t ins_time1[EDB_NTYPES];
-extern time_t ins_time2[EDB_NTYPES];
-extern size_t typ_sizof[EDB_NTYPES];
-extern uint   sam_index[EDB_NTYPES];
-extern char  *sam_iname[EDB_NTYPES];
-extern ulong  sam_inmax[EDB_NTYPES];
-extern uint   sam_recvd[EDB_NTYPES];
-extern uint   soc_accpt;
-extern uint   soc_activ;
-extern uint   soc_discn;
-extern uint   soc_unkwn;
-extern uint   soc_tmout;
+extern time_t time_recv1[EDB_NTYPES];
+extern time_t time_recv2[EDB_NTYPES];
+extern time_t time_insert1[EDB_NTYPES];
+extern time_t time_insert2[EDB_NTYPES];
+extern size_t type_sizeof[EDB_NTYPES];
+extern uint   sample_index[EDB_NTYPES];
+extern char  *type_name[EDB_NTYPES];
+extern ulong  type_alloc_len[EDB_NTYPES];
+extern uint   sample_recv[EDB_NTYPES];
+extern uint   sockets_accepted;
+extern uint   sockets_online;
+extern uint   sockets_disconnected;
+extern uint   sockets_unrecognized;
+extern uint   sockets_timeout;
 
 // Strings
 extern char *str_who[2];
@@ -176,8 +176,8 @@ void sync_fd_add(int fd, long ip)
 	}
 
 	// Metrics
-	soc_accpt += 1;
-	soc_activ += 1;
+	sockets_accepted += 1;
+	sockets_online += 1;
 }
 
 void sync_fd_get_ip(int fd, long *ip)
@@ -194,7 +194,7 @@ void sync_fd_disconnect(int fd)
 	FD_CLR(fd, &fds_active);
 
 	// Metrics
-	soc_activ -= 1;
+	sockets_online -= 1;
 }
 
 /*
@@ -211,11 +211,11 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	verbose_xaxxw("synchronization started: asking the question to %s (%d)",
 			ssync_mir->host_dst, sync_option);
 
-	sync_qst_content.sync_option = sync_option;
-	sync_qst_content.veteran = veteran;
+	sync_question.sync_option = sync_option;
+	sync_question.veteran = veteran;
 
 	// Preparing packet
-	sockets_header_update(&sync_qst_header);
+	sockets_header_update(&header_question);
 
 	// Synchronization pipeline
 	s = sockets_socket(ssync_mir);
@@ -232,7 +232,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 		return EAR_ERROR;
 	}
 
-	s = __sockets_send(ssync_mir, &sync_qst_header, (char *) &sync_qst_content);
+	s = __sockets_send(ssync_mir, &header_question, (char *) &sync_question);
 
 	if (state_fail(s)) {
 		verbose_xaxxw("failed to send (%d, %s)", s, intern_error_str);
@@ -244,8 +244,8 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	s = sockets_timeout_set(ssync_mir->fd, 10);
 
 	// Waiting
-	s = __sockets_recv(ssync_mir->fd, &sync_ans_header,
-		(char *) &sync_ans_content, sizeof(sync_ans_t), 1);
+	s = __sockets_recv(ssync_mir->fd, &header_answer,
+		(char *) &sync_answer, sizeof(sync_ans_t), 1);
 
 	// Recovering old timeout
 	sockets_timeout_set(ssync_mir->fd, timeout_old);
@@ -262,7 +262,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	}
 
 	if (answer != NULL) {
-		memcpy (answer, &sync_ans_content, sizeof(sync_ans_t));
+		memcpy (answer, &sync_answer, sizeof(sync_ans_t));
 	}
 
 	return EAR_SUCCESS;
@@ -283,10 +283,10 @@ int sync_answer(int fd, int veteran)
 	sync_ans_socket.fd = fd;
 
 	// Header
-	sockets_header_update(&sync_ans_header);
-	sync_ans_content.veteran = veteran;
+	sockets_header_update(&header_answer);
+	sync_answer.veteran = veteran;
 
-	s = __sockets_send(&sync_ans_socket, &sync_ans_header, (char *) &sync_ans_content);
+	s = __sockets_send(&sync_ans_socket, &header_answer, (char *) &sync_answer);
 
 	if (state_fail(s)) {
 		verbose_xaxxw("Failed to send to MIRROR (%d, %s)", s, intern_error_str);
