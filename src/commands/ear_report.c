@@ -855,6 +855,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
             printf( "%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
 #endif
             all_nodes = 1;
+            has_gpus = 1;
         }
         else {
             printf( "%15s %15s\n", "Energy (J)", "Node");
