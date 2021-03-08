@@ -48,8 +48,10 @@
 #define EDB_TYPE_SYNC_QUESTION        6
 #define EDB_TYPE_SYNC_ANSWER          7
 #define EDB_TYPE_STATUS               8
-// Sync options
+// Sync options (is used to accumulate different types in one value).
+#define EDB_SYNC_TYPE_AGGRS           0x040 // Synchronize aggregations
 #define EDB_SYNC_ALL                  0x100 // Synchronize all types
+// The reason to insert data in DB. 
 #define EDB_INSERT_BY_SYNC            0 // Insert by sync request
 #define EDB_INSERT_BY_TIME            1 // Insert by time completed
 #define EDB_INSERT_BY_FULL            2 // Insert by allocation arrays full
@@ -69,12 +71,6 @@
 #define i_evnts                       4
 #define i_enrgy                       5
 #define i_aggrs                       6
-
-#define sync_option(option, type) \
-	((option & type) > 0)
-
-#define sync_option_m(option, type1, type2) \
-	((sync_option(option, type1)) || (sync_option(option, type2)))
 
 typedef struct sync_qst {
 	uint sync_option;

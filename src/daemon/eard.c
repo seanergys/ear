@@ -621,10 +621,9 @@ int eard_system(int must_read) {
 				ret1 = db_insert_ear_event(&req.req_data.event);
 			} else {
 				state_t state = eardbd_send_event(&req.req_data.event);
-
-				if (edb_state_fail(state)) {
-					error("Error sending event to eardb");
-					eardbd_reconnect(&my_cluster_conf, my_node_conf, state);
+				if (state_fail(state)) {
+					error("Error sending event to EARDBD: %s", state_msg);
+					eardbd_reconnect(&my_cluster_conf, my_node_conf);
 					ret1 = EAR_ERROR;
 				}
 			}
@@ -649,10 +648,9 @@ int eard_system(int must_read) {
 						ret1 = db_insert_loop (&req.req_data.loop);
 					} else {
 						state_t state = eardbd_send_loop(&req.req_data.loop);
-
-						if (edb_state_fail(state)){
-							error("Error sending loop to eardb");
-							eardbd_reconnect(&my_cluster_conf, my_node_conf, state);
+						if (state_fail(state)){
+							error("Error sending loop to EARDBD: %s", state_msg);
+							eardbd_reconnect(&my_cluster_conf, my_node_conf);
 							ret1 = EAR_ERROR;
 						}
 					}
@@ -1058,8 +1056,7 @@ void signal_handler(int sig) {
 				{
 					eardbd_disconnect();
 					state_t state = eardbd_connect(&my_cluster_conf, my_node_conf);
-
-					if (edb_state_fail(state)) {
+					if (state_fail(state)) {
 						error("Error connecting with EARDB");
 					} else {
 						verbose(VCONF,"Connecting with EARDBD\n");
@@ -1657,10 +1654,8 @@ int main(int argc, char *argv[]) {
 		if (my_cluster_conf.eard.use_eardbd)
 		{
 			state_t state = eardbd_connect(&my_cluster_conf, my_node_conf);
-
-			if (edb_state_fail(state)) {
-				error("Error connecting with EARDB errnum:%d errmsg:%s\n",
-					intern_error_num,intern_error_str);
+			if (state_fail(state)) {
+				error("Error connecting with EARDB: %s", state_msg);
 			} else {
 				verbose(VCONF,"Connected with EARDBD");
 				eardbd_connected=1;

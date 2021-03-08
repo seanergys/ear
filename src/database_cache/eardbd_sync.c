@@ -40,8 +40,8 @@ extern socket_t *ssync_mir;
 // Synchronization
 extern packet_header_t header_answer;
 extern packet_header_t header_question;
-extern sync_qst_t sync_question;
-extern sync_ans_t sync_answer;
+extern sync_qst_t data_question;
+extern sync_ans_t data_answer;
 
 // Descriptors
 extern struct sockaddr_storage addr_cli;
@@ -211,8 +211,8 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	verbose_xaxxw("synchronization started: asking the question to %s (%d)",
 			ssync_mir->host_dst, sync_option);
 
-	sync_question.sync_option = sync_option;
-	sync_question.veteran = veteran;
+	data_question.sync_option = sync_option;
+	data_question.veteran = veteran;
 
 	// Preparing packet
 	sockets_header_update(&header_question);
@@ -232,7 +232,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 		return EAR_ERROR;
 	}
 
-	s = __sockets_send(ssync_mir, &header_question, (char *) &sync_question);
+	s = __sockets_send(ssync_mir, &header_question, (char *) &data_question);
 
 	if (state_fail(s)) {
 		verbose_xaxxw("failed to send (%d, %s)", s, intern_error_str);
@@ -245,7 +245,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 
 	// Waiting
 	s = __sockets_recv(ssync_mir->fd, &header_answer,
-		(char *) &sync_answer, sizeof(sync_ans_t), 1);
+		(char *) &data_answer, sizeof(sync_ans_t), 1);
 
 	// Recovering old timeout
 	sockets_timeout_set(ssync_mir->fd, timeout_old);
@@ -262,7 +262,7 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	}
 
 	if (answer != NULL) {
-		memcpy (answer, &sync_answer, sizeof(sync_ans_t));
+		memcpy (answer, &data_answer, sizeof(sync_ans_t));
 	}
 
 	return EAR_SUCCESS;
@@ -284,9 +284,9 @@ int sync_answer(int fd, int veteran)
 
 	// Header
 	sockets_header_update(&header_answer);
-	sync_answer.veteran = veteran;
+	data_answer.veteran = veteran;
 
-	s = __sockets_send(&sync_ans_socket, &header_answer, (char *) &sync_answer);
+	s = __sockets_send(&sync_ans_socket, &header_answer, (char *) &data_answer);
 
 	if (state_fail(s)) {
 		verbose_xaxxw("Failed to send to MIRROR (%d, %s)", s, intern_error_str);

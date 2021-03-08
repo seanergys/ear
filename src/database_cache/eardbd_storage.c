@@ -40,7 +40,12 @@
 #define EDB_SYNC_TYPE_APPS_LEARN      0x008
 #define EDB_SYNC_TYPE_LOOPS           0x010
 #define EDB_SYNC_TYPE_EVENTS          0x020
-#define EDB_SYNC_TYPE_AGGRS           0x040
+
+#define sync_option(option, type) \
+    ((option & type) > 0)
+
+#define sync_option_m(option, type1, type2) \
+    ((sync_option(option, type1)) || (sync_option(option, type2)))
 
 // Configuration
 extern cluster_conf_t conf_clus;
@@ -350,9 +355,12 @@ void storage_sample_add(char *buf, ulong len, ulong *index, char *cnt, size_t si
 	*index += 1;
 
 	if (*index == len) {
+		// If server just insert.
 		if(server_iam) {
 			insert_hub(opt, EDB_INSERT_BY_FULL);
+		// If mirror synchronize with server.
 		} else if (state_fail(sync_question(opt, veteran, NULL))) {
+			// If fails, then insert.
 			insert_hub(opt, EDB_INSERT_BY_FULL);
 		}
 	}
@@ -520,7 +528,7 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		}
 	}
 	else if (type == EDB_TYPE_STATUS) {
-		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, &status, sizeof(eardbd_status_t), 0))) {
+		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, (char *) &status, sizeof(eardbd_status_t), 0))) {
 			error("Error when sending status: %s", state_msg);
 		}
 	}

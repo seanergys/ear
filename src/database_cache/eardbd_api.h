@@ -22,10 +22,7 @@
 #include <common/system/sockets.h>
 #include <database_cache/eardbd.h>
 
-#define edb_state_fail(state) \
-        state_fail(state.server) || state_fail(state.mirror)
-
-/**  */
+/** Tests the state of an EARDBD process in a specific node. */
 state_t eardbd_status(char *node, uint port, eardbd_status_t *status);
 
 state_t eardbd_connect(cluster_conf_t *conf, my_node_conf_t *node);

@@ -87,8 +87,8 @@ pid_t others_pid;
 // Synchronization
 packet_header_t header_question;
 packet_header_t header_answer;
-sync_qst_t sync_question;
-sync_ans_t sync_answer;
+sync_qst_t data_question;
+sync_ans_t data_answer;
 
 // Data
 time_t time_recv1[EDB_NTYPES];   // Time between first and last sample start
@@ -456,7 +456,7 @@ static void init_types_single(int i, char *name, size_t size, uint percent)
 	type_name[i]   = name;
 	type_sizeof[i] = size;
 	batch_100      = ((float) percent) / 100.0;
-	batch_mb       = ceilf(alloc * batch_100[i]);
+	batch_mb       = ceilf(alloc * batch_100);
 	single_mb      = ((float) type_sizeof[i]) / 1000000.0;
 	type_alloc_len[i] = (ulong) (batch_mb / single_mb);
 	// If there are less than 100, allocate at least 100 positions
@@ -472,7 +472,7 @@ static void init_types_single(int i, char *name, size_t size, uint percent)
 
 	// Verbosity
 	tprintf("%s||%0.2f MBs||%lu Bs||%lu||%0.2f",
-			type_name[i], type_alloc_mbs[i], type_sizeof[i], type_alloc_len[i], batch_100[i]);
+			type_name[i], type_alloc_mbs[i], type_sizeof[i], type_alloc_len[i], batch_100);
 }
 
 static void init_process_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
