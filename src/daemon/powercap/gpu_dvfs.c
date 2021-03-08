@@ -214,6 +214,10 @@ state_t gpu_dvfs_pc_thread_main(void *p)
                     n_freq[i] = select_higher_gpu_freq(i,c_freq[i]);
                     debug("%sIncreasing the GPU-freq[%d] from %lu to %lu, estimated %lf=(%lf+%lu), limit %lu %s",
                             COL_GRE,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w+extra,values_gpu_diff[i].power_w,extra,gpu_pc_curr_power[i],COL_CLR);
+                } else {
+                    if (gpu_dvfs_status == PC_STATUS_RELEASE && (t_freq[i] > 0)){
+                        gpu_dvfs_ask_def = 1;
+                    }
                 }
             }
         }
@@ -324,6 +328,7 @@ state_t increase_powercap_allocation(uint increase)
 {
     debug("GPU_DVFS:Increasing %u from powercap allocationg", increase);
     current_gpu_pc += increase;
+    if (current_gpu_pc >= default_gpu_pc) gpu_dvfs_status = PC_STATUS_OK;
     return int_set_powercap_value(current_gpu_pc, gpu_pc_util);
 }
 
@@ -471,15 +476,15 @@ uint get_powercap_status(domain_status_t *status)
         status->ok = PC_STATUS_ASK_DEF;
         return 0;
     }
+    for (i=0;i<gpu_pc_num_gpus;i++){
+        debug("total util is 0, GPU %d util %lu", i, gpu_pc_util[i]);
+    }
     /* If we are not using th GPU we can release all the power */
     for (i=0;i<gpu_pc_num_gpus;i++){
         used += (gpu_pc_util[i]>0);
         if (t_freq[i] == 0) return 0;
     }
     if (!used){
-        for (i=0;i<gpu_pc_num_gpus;i++){
-         debug("total util is 0, GPU %d util %lu", i, gpu_pc_util[i]);
-        }
         status->ok = PC_STATUS_RELEASE;
         if (gpu_pc_num_gpus == 0) status->exceed = current_gpu_pc;
         else status->exceed=(current_gpu_pc - (MIN_GPU_IDLE_POWER*gpu_pc_num_gpus));
@@ -491,7 +496,6 @@ uint get_powercap_status(domain_status_t *status)
 
     /* Compute the current strain before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
-        
         tmp_strain += powercap_get_strain(gpu_freq_list[0][0], gpu_freq_list[0][gpu_num_freqs[0]-1], t_freq[i], c_freq[i]);
     }
     tmp_strain /= gpu_pc_num_gpus;
@@ -501,7 +505,6 @@ uint get_powercap_status(domain_status_t *status)
         if ((c_freq[i] < t_freq[i]) && (gpu_pc_util[i]>0)){ 
             debug("We cannot release power from GPU %d",i);
             status->ok = PC_STATUS_GREEDY;
-            gpu_dvfs_status = PC_STATUS_OK;
             status->exceed = 0;
             debug("GPU_DVFS status %u",status->ok);
             return 0;
@@ -509,7 +512,6 @@ uint get_powercap_status(domain_status_t *status)
             if (values_gpu_diff[i].power_w > gpu_pc_curr_power[i]) // if we are at req_f but we are using more power than we should
             {
                 status->ok = PC_STATUS_GREEDY;
-                gpu_dvfs_status = PC_STATUS_OK;
                 status->exceed = 0;
                 debug("GPU_DVFS status greedy because we need more power to maintain current speed");
                 return 0;
@@ -525,7 +527,7 @@ uint get_powercap_status(domain_status_t *status)
         status->ok = PC_STATUS_OK;
         debug("GPU_DVFS status %u",status->ok);
         return 0;
-    }else gpu_dvfs_status = status->ok;
-		debug("GPU_DVFS status %u",status->ok);
+    }
+
     return 1;
 }
