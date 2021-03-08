@@ -45,16 +45,15 @@ typedef int state_t;
 char *state_msg;
 
 #define state_ok(state) \
-	state == EAR_SUCCESS
+	(state == EAR_SUCCESS)
 
 #define state_fail(state) \
-	state != EAR_SUCCESS
+	(state != EAR_SUCCESS)
 
 #define state_is(state1, state2) \
-	state1 == state2
+	(state1 == state2)
 	
 #define return_msg(no, msg) { \
-        error("returned %d, %s (%s:%d)", no, msg, __FILE__, __LINE__); \
 	state_msg = msg; \
 	return no; \
 	}
@@ -114,19 +113,19 @@ struct generr_s {
  */
 
 /* legacy errors */
-#define EAR_IGNORE              -16		//*
-#define EAR_ALLOC_ERROR         -3		//*
+#define EAR_IGNORE              -16 //*
+#define EAR_ALLOC_ERROR         -3  //*
 #define EAR_READ_ERROR          -4
-#define EAR_OPEN_ERROR			-5
-#define EAR_NOT_READY		    -9
-#define EAR_BUSY				-10
+#define EAR_OPEN_ERROR          -5
+#define EAR_NOT_READY           -9
+#define EAR_BUSY                -10
 #define EAR_MYSQL_ERROR         -14
 #define EAR_MYSQL_STMT_ERROR    -15
-#define EAR_ADDR_NOT_FOUND		-17		//*
-#define EAR_SOCK_OP_ERROR		-18
-#define EAR_SOCK_DISCONNECTED	-20
-#define EAR_NO_RESOURCES		-22		//*
-#define EAR_NOT_FOUND			-23		//*
+#define EAR_ADDR_NOT_FOUND      -17 //*
+#define EAR_SOCK_OP_ERROR       -18
+#define EAR_SOCK_DISCONNECTED   -20
+#define EAR_NO_RESOURCES        -22 //*
+#define EAR_NOT_FOUND           -23 //*
 
 // TODO: this is a config not a state
 #define DYNAIS_ENABLED      1

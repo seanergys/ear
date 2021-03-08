@@ -64,6 +64,7 @@ typedef struct socket {
 	char            *host;
 	uint             protocol;
 	uint             port;
+	uint             fd_closable;
 	int              fd;
 } socket_t;
 

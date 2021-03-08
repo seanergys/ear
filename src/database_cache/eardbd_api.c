@@ -207,8 +207,7 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 	// Using previous state error to reconnect server
 	if (server_enabled && state_fail(server_s)) {
 		// Cleaning connection
-		//sockets_dispose(&server_sock);
-		sockets_close(&server_sock);
+		sockets_dispose(&server_sock);
 		// Connecting again
 		if (state_fail(server_s = static_connect(&server_sock, server_host, server_port, TCP))) {
 			debug("static_connect returned %d: %s", server_s, state_msg);
@@ -219,8 +218,7 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 	// Using previous state error to reconnect mirror
 	if (mirror_enabled && state_fail(mirror_s)) {
 		// Cleaning connection
-		//sockets_dispose(&mirror_sock);
-		sockets_close(&mirror_sock);
+		sockets_dispose(&mirror_sock);
 		// Connecting again
 		if (state_fail(mirror_s = static_connect(&mirror_sock, mirror_host, mirror_port, TCP))) {
 			debug("static_connect returned %d: %s", mirror_s, state_msg);

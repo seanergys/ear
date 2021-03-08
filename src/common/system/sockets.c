@@ -61,8 +61,10 @@ state_t sockets_clean(socket_t *socket)
 
 state_t sockets_dispose(socket_t *socket)
 {
-	if (socket->fd >= 0) {
-		close(socket->fd);
+	if (socket->fd_closable) {
+		if (socket->fd >= 0) {
+			close(socket->fd);
+		}
 	}
 	if (socket->info != NULL) {
 		freeaddrinfo(socket->info);
@@ -99,10 +101,11 @@ state_t sockets_socket(socket_t *sock)
 	}
 	// With address struct complete, we can initialize the socket and get the fd.
 	sock->fd = socket(sock->info->ai_family, sock->info->ai_socktype, sock->info->ai_protocol);
-	debug("socket %s:%s returned fd %d", sock->host, string_port, sock->fd);
 	if (sock->fd < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
+	// It can be closed now.
+	sock->fd_closable = 1;
 	return EAR_SUCCESS;
 }
 
@@ -188,14 +191,18 @@ state_t sockets_connect(socket_t *socket)
 
 state_t sockets_close(socket_t *socket)
 {
-	state_t s = sockets_close_fd(socket->fd);
+	state_t s;
+	if (socket->fd_closable) {
+		s = sockets_close_fd(socket->fd);
+	}
+	socket->fd_closable = 0;
 	socket->fd = -1;
 	return s;
 }
 
 state_t sockets_close_fd(int fd)
 {
-	if (fd >= 0) {
+	if (fd > 0) {
 		close(fd);
 	}
 	return EAR_SUCCESS;

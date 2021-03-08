@@ -254,7 +254,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 
 	if (state_fail(process_pid_file_save(&proc_data_srv))) {
 		_error("while testing the temporal directory '%s' (%s)",
-			   conf_clus->install.dir_temp, intern_error_str);
+			   conf_clus->install.dir_temp, state_msg);
 	}
 
 	process_pid_file_clean(&proc_data_srv);
@@ -317,13 +317,13 @@ static int init_sockets_single(socket_t *socket, char *host, int port, int bind)
 		return 0;
 	}
 	if (state_fail(sockets_socket(socket))) {
-		return intern_error_num;
+		return -1;
 	}
 	if (state_fail(sockets_bind(socket, 60))) {
-		return intern_error_num;
+		return -1;
 	}
 	if (state_fail(sockets_listen(socket))) {
-		return intern_error_num;
+		return -1;
 	}
 
 	sockets_nonblock_set(socket->fd);
