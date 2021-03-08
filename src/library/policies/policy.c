@@ -199,7 +199,6 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   if (*freq_set != *(c->ear_frequency))
   {
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
-  	verbose(2,"MR[%d]: Setting frequency_list to %lu (ret=%lu)",masters_info.my_master_rank,*freq_set,*(c->ear_frequency));
   }
 }
 
@@ -208,6 +207,7 @@ state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,ulong *gpu_f, 
   int i;
   if (*ready == EAR_POLICY_READY ){
     /* Powercap limits are checked here but this code could be moved to a function */
+		#if USE_GPUS
     #if POWERCAP
     for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
       debug("GPU[%d] freq requested %lu",i,gpu_f[i]);
@@ -223,6 +223,7 @@ state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,ulong *gpu_f, 
     #endif
     /* Pending: We must filter the GPUs I'm using */
     eards_gpu_set_freq(my_pol_ctx.num_gpus,gpu_f);
+		#endif
   }
   return EAR_SUCCESS;
 

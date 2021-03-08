@@ -304,7 +304,7 @@ state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
 		if (c!=NULL){
 			*freq_set=c->app->max_freq;
-		}else EAR_ERROR;
+		}else return EAR_ERROR;
 		return EAR_SUCCESS;
 }
 

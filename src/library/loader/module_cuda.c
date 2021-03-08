@@ -23,6 +23,7 @@
 #include <library/loader/loader.h>
 #include <library/loader/module_cuda.h>
 #include <library/loader/module_common.h>
+#include <library/api/cupti.h>
 
 static void (*func_con) (void);
 static void (*func_des) (void);
@@ -81,6 +82,8 @@ static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_s
 
 	func_con = dlsym(libear, "ear_constructor");
 	func_des = dlsym(libear, "ear_destructor");
+
+	ear_cuda_enabled();
 
 	verbose(4, "LOADER: function constructor %p", func_con);
 	verbose(4, "LOADER: function destructor %p", func_des);

@@ -479,6 +479,10 @@ static state_t db_query(int argc, char *argv[], cluster_conf_t *conf, char *host
 	job_list = strinargs(argc, argv, "job-list:", p_list);
     //
     for (t = 0, a = 0; t < *apps_count; t++){
+		if ((apps_temp[t].signature.time == 0) || (apps_temp[t].signature.DC_power == 0)){ 
+			apps_temp[t].job.id = (ulong) -1L;
+			continue;
+		}
 		if (job_list) {
 			sprintf(buffer2, "%lu", apps_temp[t].job.id);
 			if (!strinlist(p_list, ",", p_elem)) {

@@ -14,7 +14,8 @@
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
-
+#define SHOW_DEBUGS 1
+//#define SOCKETS_DEBUG 1
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
 #include <database_cache/eardbd_sync.h>
@@ -214,6 +215,7 @@ void reset_all()
 
 static void insert_apps_mpi()
 {
+	int r;
 	if (typ_prcnt[i_appsm] == 0 || sam_index[i_appsm] <= 0) {
 		return;
 	}
@@ -222,7 +224,7 @@ static void insert_apps_mpi()
 
 	debug("trying to insert '%d' applications (simple: '%d')",
 		  i_appsm, !conf_clus.database.report_sig_detail);
-	db_batch_insert_applications((application_t *) typ_alloc[i_appsm], sam_index[i_appsm]);
+	r = db_batch_insert_applications((application_t *) typ_alloc[i_appsm], sam_index[i_appsm]);
 	debug("called db_batch_insert_applications() with result '%d'", r);
 
 	metrics_insert_stop(i_appsm, sam_index[i_appsm]);
@@ -255,7 +257,6 @@ static void insert_loops()
 	if (typ_prcnt[i_loops] == 0 || sam_index[i_loops] <= 0) {
 		return;
 	}
-
 	metrics_insert_start(i_loops);
 	db_batch_insert_loops((loop_t *) typ_alloc[i_loops], sam_index[i_loops]);
 	metrics_insert_stop(i_loops, sam_index[i_loops]);
@@ -266,7 +267,6 @@ static void insert_energy()
 	if (typ_prcnt[i_enrgy] == 0 || sam_index[i_enrgy] <= 0) {
 		return;
 	}
-
 	metrics_insert_start(i_enrgy);
 	db_batch_insert_periodic_metrics((periodic_metric_t *) typ_alloc[i_enrgy], sam_index[i_enrgy]);
 	metrics_insert_stop(i_enrgy, sam_index[i_enrgy]);
@@ -402,6 +402,8 @@ static int storage_type_extract(packet_header_t *header, char *content)
 
 	//
 	app = (application_t *) content;
+
+	verbose(1,"New application");
 
 	if (app->is_learning) {
 		return CONTENT_TYPE_APL;

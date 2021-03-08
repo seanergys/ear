@@ -21,9 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
@@ -108,8 +108,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 #if POWERCAP
   	if (is_powercap_set(&c->app->pc_opt)){ 
 			verbose(1,"Powercap is set to %uWatts",get_powercapopt_value(&c->app->pc_opt));
-		}else{ 
-			verbose(1,"Powercap is not set");
 		}
 #endif
 
@@ -180,7 +178,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 				freq_ref=frequency_pstate_to_freq(i);
 				freq_gain=min_eff_gain*(double)(freq_ref-best_freq)/(double)best_freq;
 				perf_gain=(time_current-time_proj)/time_current;
-
+				debug("%lu to %d time %lf proj time %lf freq gain %lf perf_gain %lf",curr_pstate,i,my_app->time,time_proj,freq_gain,perf_gain);
 				// OK
 				if (perf_gain>=freq_gain)
 				{

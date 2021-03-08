@@ -16,6 +16,7 @@
 */
 
 #include <sys/stat.h>
+//#define SHOW_DEBUGS 1
 #include <sys/types.h>
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
@@ -193,7 +194,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verbose_maxxx("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-
+	verbose_maxxx("initializing DB API");
 	// Database
 	init_db_helper(&conf_clus->database);
 
@@ -228,6 +229,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	synchr_port = conf_clus->db_manager.sync_tcp_port;
 
 	// Allocation
+	verbose_maxxx("Using %d MB",conf_clus->db_manager.mem_size);
 	alloc = (float) conf_clus->db_manager.mem_size;
 
 	// PID protection
@@ -526,11 +528,18 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	if (server_iam) sprintf(master_name, "%s-s", master_alia);
 	else            sprintf(master_name, "%s-m", master_alia);
 
-	#if 0
 	// Types allocation counting
 	for (i = 0; i < EARDBD_TYPES; ++i) {
 		per_total += conf_clus->db_manager.mem_size_types[i];
 	}
+
+	typ_prcnt[i_appsm] = ALLOC_PERCENT_APPS_MPI;
+	typ_prcnt[i_appsn] = ALLOC_PERCENT_APPS_SEQUENTIAL;
+	typ_prcnt[i_appsl] = ALLOC_PERCENT_APPS_LEARNING;
+	typ_prcnt[i_loops] = ALLOC_PERCENT_LOOPS;
+	typ_prcnt[i_enrgy] = ALLOC_PERCENT_EVENTS;
+	typ_prcnt[i_aggrs] = ALLOC_PERCENT_ENERGY_REPS;
+	typ_prcnt[i_evnts] = ALLOC_PERCENT_ENERGY_AGGRS;
 
 	if (per_total > 90 && per_total < 110) {
 		typ_prcnt[i_appsm] = conf_clus->db_manager.mem_size_types[0];
@@ -541,7 +550,6 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 		typ_prcnt[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
 		typ_prcnt[i_evnts] = conf_clus->db_manager.mem_size_types[6];
 	}
-	#endif
 
 	// Verbose
 	tprintf_init(fderr, STR_MODE_DEF, "15 15 11 9 8");

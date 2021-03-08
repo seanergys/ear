@@ -44,9 +44,9 @@ extern float ratio_PPN;
 
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
-	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER;
-  float AVGF,AVGGPUF,PFREQ = 0,NFREQ = 0,VI;
-	ulong GPU_UTIL,GPU_FREQ;
+	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0;
+  float AVGF,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI;
+	ulong GPU_UTIL = 0,GPU_FREQ = 0;
 	int gpui;
 	char gpu_buff[256];
 	if (master_rank >= 0 || show){
@@ -61,8 +61,8 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     ENERGY = TIME * POWER; 
     EDP = ENERGY * TIME;
 	  GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0; 
-		if (prevf > 0 ) PFREQ = (float)prevf/ 1000000.0;
-		if (new_freq > 0 ) NFREQ = (float)new_freq/ 1000000.0;
+		if (prevf > 0 ){ PFREQ = (float)prevf/1000000.0;}
+		if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
 		strcpy(gpu_buff,"");
 	  #if USE_GPU_LIB
 	  if (sig->signature.gpu_sig.num_gpus>0){ 

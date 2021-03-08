@@ -58,6 +58,10 @@
 #include <daemon/app_mgt.h>
 #include <daemon/shared_configuration.h>
 
+#ifdef USE_GPUS
+#include <library/api/cupti.h>
+#endif
+
 #if MPI
 #include <mpi.h>
 #include <library/api/mpi.h>
@@ -984,6 +988,11 @@ void ear_init()
 	if (pthread_create(&earl_periodic_th,NULL,earl_periodic_actions,NULL)){
 		error("error creating server thread for non-earl api\n");
 	}
+	#endif
+	#if USE_GPUS
+  if (is_cuda_enabled()){
+    ear_cuda_init();
+  }
 	#endif
 }
 

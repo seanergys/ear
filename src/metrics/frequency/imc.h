@@ -28,8 +28,10 @@ typedef struct freq_imc_s {
 } freq_imc_t;
 
 state_t freq_imc_init(topology_t *tp);
+state_t freq_imc_init_lib(topology_t *tp);
 
 state_t freq_imc_dispose();
+state_t freq_imc_dispose_lib();
 
 state_t freq_imc_read(freq_imc_t *ef);
 

@@ -778,13 +778,13 @@ state_t eards_freq_imc_read(freq_imc_t *ef,size_t size)
   req.req_service = UNC_READ;
   req.sec=create_sec_tag();
   /* Specific info */
-  memset(ef,0,size);
+  memset(ef->data,0,size);
   if (ear_fd_req[freq_req] >= 0)
   {
     if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
        "while asking for uncore freq metric")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq metric");}
 
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)ef, size), size,
+    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)ef->data, size), size,
       "receiving uncore freq metric ")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq metric");}
   }
   return EAR_SUCCESS;

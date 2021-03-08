@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 
+//#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +35,6 @@
 #include <common/config.h>
 #include <common/system/sockets.h>
 
-//#define SHOW_DEBUGS 1
 
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
@@ -1326,6 +1326,7 @@ void powermon_get_status(status_t *my_status) {
 	for (i=0;i<max_p;i++){
 		my_status->policy_conf[i].freq=frequency_pstate_to_freq(my_node_conf->policies[i].p_state);
 		my_status->policy_conf[i].th=(uint)(my_node_conf->policies[i].settings[0]*100.0);
+		my_status->policy_conf[i].id=(uint)my_node_conf->policies[i].policy;
 	}
 	/* Current app info */
 	if (ccontext >= 0) {
