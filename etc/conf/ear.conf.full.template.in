@@ -199,13 +199,13 @@ EnergyTag=memory-intensive pstate=4 users=usr1,usr2 groups=grp1,grp2 accounts=ac
 # two types of EARDBDs configurations. 
 #
 
-Island=0 DBIP=node1081 DBSECIP=node1082 Nodes=node10[01-80]
+Island=0 Nodes=node10[01-80] DBIP=node1081 DBSECIP=node1082
 
 # These nodes are in island0 using different DB connections and with a different architecture
-Island=0 DBIP=node1084 DBSECIP=node1085 Nodes=node11[01-80] DBSECIP=node1085 tag=6126
+Island=0 Nodes=node11[01-80] DBIP=node1084 DBSECIP=node1085 tag=6126
 # These nodes are is island0 and will use default values for DB connection (line 0 for island0) and default tag
 Island=0 Nodes=node12[01-80]
 
 
 # Will use default tag 
-Island=1 DBIP=node1181 DBSECIP=node1182 Nodes=node11[01-80]
+Island=1 Nodes=node11[01-80] DBIP=node1181 DBSECIP=node1182 

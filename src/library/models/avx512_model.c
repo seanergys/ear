@@ -173,7 +173,7 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 				if ((to<=avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
           if (from > to) pdest = avx512_pstate;
-          else pdest = 1;
+          else pdest = avx512_pstate;
 					avx512_coeffs=&coefficients[from][pdest];
 					power_avx512=proj_power(avx512_coeffs,sign);
 				}

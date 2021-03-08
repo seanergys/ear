@@ -30,12 +30,6 @@
 #define UBOX_CMD_STA	0x400000
 #define UBOX_CMD_STO	0x000000
 
-typedef struct imc_intel63_s
-{
-	timestamp_t time;
-	ulong freq;
-	uint error;
-} imc_intel63_t;
 
 // In this capacity, the UBox acts as the central unit for a variety of functions.
 // Means just one register per socket?
@@ -158,6 +152,7 @@ state_t ifreq_intel63_read(freq_imc_t *ef)
 		}
 		debug(0, "msr_read returned %lu\n", a[cpu].freq);
 		a[cpu].error = state_fail(s);
+		debug("IMC[%d] freq=%lu error %u",cpu,a[cpu].freq,a[cpu].error);
 	}
 
 	return EAR_SUCCESS;
@@ -269,7 +264,7 @@ state_t ifreq_intel63_data_diff(freq_imc_t *ef2, freq_imc_t *ef1, ulong *freqs, 
 	imc_intel63_t *d2 = ef2->data;
 	imc_intel63_t *d1 = ef1->data;
 	ulong valid_count = 0;
-	ulong time;
+	ulong imc_time;
 	ulong freq;
 	int cpu;
 
@@ -286,15 +281,14 @@ state_t ifreq_intel63_data_diff(freq_imc_t *ef2, freq_imc_t *ef1, ulong *freqs, 
 	}
 
 	//
-	time = (ulong) timestamp_diff(&d2[0].time, &d1[0].time, TIME_MSECS);
+	imc_time = (ulong) timestamp_diff(&d2[0].time, &d1[0].time, TIME_MSECS);
 
-	if (time < 1LU) {
-		
-	}
 
 	//
+	debug("Processing IMC for %d cpus and time %lu",cpu_count,imc_time);
 	for (cpu = 0; cpu < cpu_count; ++cpu)
 	{
+		debug("IMC[%d] freq=%lu error %u/freq=%lu error %u",cpu,d2[cpu].freq,d2[cpu].error,d1[cpu].freq,d1[cpu].error);
 		if (freqs != NULL) {
 			freqs[cpu] = 0LU;
 		}
@@ -304,7 +298,7 @@ state_t ifreq_intel63_data_diff(freq_imc_t *ef2, freq_imc_t *ef1, ulong *freqs, 
 		//
 		valid_count += 1;
 		//
-		freq = (d2[cpu].freq - d1[cpu].freq) / time;
+		freq = (d2[cpu].freq - d1[cpu].freq) / imc_time;
 		//
 		if (freqs != NULL) {
 			freqs[cpu] = freq;
@@ -313,7 +307,8 @@ state_t ifreq_intel63_data_diff(freq_imc_t *ef2, freq_imc_t *ef1, ulong *freqs, 
 			*average += freq;
 		}
 	}
-	printf("\n");
+	debug("num counts %lu",valid_count);
+	if (valid_count == 0 ) return EAR_SUCCESS;
 
 	if (average != NULL) {
 		*average = *average / valid_count;

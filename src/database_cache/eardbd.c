@@ -16,6 +16,7 @@
 */
 
 #include <sys/stat.h>
+//#define SHOW_DEBUGS 1
 #include <sys/types.h>
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
@@ -196,7 +197,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verbose_maxxx("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-
+	verbose_maxxx("initializing DB API");
 	// Database
 	init_db_helper(&conf_clus->database);
 
@@ -527,11 +528,18 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	if (server_iam) sprintf(master_name, "%s-s", master_alia);
 	else            sprintf(master_name, "%s-m", master_alia);
 
-	#if 0
 	// Types allocation counting
 	for (i = 0; i < EARDBD_TYPES; ++i) {
 		per_total += conf_clus->db_manager.mem_size_types[i];
 	}
+
+	type_alloc_100[i_appsm] = ALLOC_PERCENT_APPS_MPI;
+	type_alloc_100[i_appsn] = ALLOC_PERCENT_APPS_SEQUENTIAL;
+	type_alloc_100[i_appsl] = ALLOC_PERCENT_APPS_LEARNING;
+	type_alloc_100[i_loops] = ALLOC_PERCENT_LOOPS;
+	type_alloc_100[i_enrgy] = ALLOC_PERCENT_EVENTS;
+	type_alloc_100[i_aggrs] = ALLOC_PERCENT_ENERGY_REPS;
+	type_alloc_100[i_evnts] = ALLOC_PERCENT_ENERGY_AGGRS;
 
 	if (per_total > 90 && per_total < 110) {
 		type_alloc_100[i_appsm] = conf_clus->db_manager.mem_size_types[0];
@@ -542,7 +550,6 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 		type_alloc_100[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
 		type_alloc_100[i_evnts] = conf_clus->db_manager.mem_size_types[6];
 	}
-	#endif
 
 	// Verbose
 	tprintf_init(fderr, STR_MODE_DEF, "15 15 11 9 8");
@@ -555,18 +562,18 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	tprintf("type||memory||sample||elems||%%");
 	tprintf("----||------||------||-----||----");
 
-	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          ALLOC_PERCENT_APPS_MPI);
-	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          ALLOC_PERCENT_APPS_SEQUENTIAL);
-	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          ALLOC_PERCENT_APPS_LEARNING);
-	init_types_single(i_loops, "loops",        sizeof(loop_t),                 ALLOC_PERCENT_LOOPS);
-	init_types_single(i_evnts, "events",       sizeof(ear_event_t),            ALLOC_PERCENT_EVENTS);
-	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      ALLOC_PERCENT_ENERGY_REPS);
-	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), ALLOC_PERCENT_ENERGY_AGGRS);
+	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          type_alloc_100[i_appsm]);
+	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          type_alloc_100[i_appsn]);
+	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          type_alloc_100[i_appsl]);
+	init_types_single(i_loops, "loops",        sizeof(loop_t),                 type_alloc_100[i_loops]);
+	init_types_single(i_evnts, "events",       sizeof(ear_event_t),            type_alloc_100[i_evnts]);
+	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      type_alloc_100[i_enrgy]);
+	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), type_alloc_100[i_aggrs]);
 
 	float mb_total = type_alloc_mbs[i_appsm] + type_alloc_mbs[i_appsn] +
-					 type_alloc_mbs[i_appsl] + type_alloc_mbs[i_loops] +
-					 type_alloc_mbs[i_evnts] + type_alloc_mbs[i_enrgy] +
-					 type_alloc_mbs[i_aggrs];
+				type_alloc_mbs[i_appsl] + type_alloc_mbs[i_loops] +
+				type_alloc_mbs[i_evnts] + type_alloc_mbs[i_enrgy] +
+				type_alloc_mbs[i_aggrs];
 	tprintf("TOTAL||%0.2f MBs", mb_total);
 	verbose_maxxx("TIP! this allocated space is per process server/mirror");
 	// Synchronization headers

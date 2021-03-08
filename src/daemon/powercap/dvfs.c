@@ -257,6 +257,7 @@ state_t increase_powercap_allocation(uint increase)
 {
     debug("Increasing powercap allocation by %u", increase);
     current_dvfs_pc += increase;
+    if (current_dvfs_pc >= default_dvfs_pc) dvfs_status = PC_STATUS_OK;
     return EAR_SUCCESS;
 }
 

@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,20 +76,21 @@ static state_t static_send(uint type, char *content, ssize_t size)
 	// Set the content
 	header.content_type = type;
 	header.content_size = size;
+	// Debugging 
+	debug("server %s:%d, enabled %d, fd %d", server_sock.host, server_sock.port, server_enabled, server_sock.fd);
+	debug("mirror %s:%d, enabled %d, fd %d", mirror_sock.host, mirror_sock.port, mirror_enabled, mirror_sock.fd);
 	// Sending the data through sockets
 	if (server_enabled) {
 		if (state_fail (server_s = __sockets_send(&server_sock, &header, content))) {
 			server_err = state_msg;
 		}
-		debug("server '%s:%d', enabled %d, state %d, fd %d", server_sock.host,
-			server_sock.port, server_enabled, state.server, server_sock.fd);
+		debug("server send returned '%d'", server_s);
 	}
 	if (mirror_enabled) {
 		if (state_fail(mirror_s = __sockets_send(&mirror_sock, &header, content))) {
 			mirror_err = state_msg;
 		}
-		debug("mirror '%s:%d', enabled %d, state %d, fd %d", mirror_sock.host,
-			mirror_sock.port, mirror_enabled, state.mirror, mirror_sock.fd);
+		debug("mirror send returned '%d'", mirror_s);
 	}
 	return state_global();
 }
@@ -148,8 +151,7 @@ state_t eardbd_connect(cluster_conf_t *conf, my_node_conf_t *node)
 	char *mirror_host = NULL;
 	uint server_port = 0;
 	uint mirror_port = 0;
-
-	//
+	
 	if (eardbd_is_initialized()) {
 		return_msg(EAR_ERROR, "It's already initialized");
 	}
@@ -167,9 +169,12 @@ state_t eardbd_connect(cluster_conf_t *conf, my_node_conf_t *node)
 #endif
 	server_enabled = (server_host != NULL) && (strlen(server_host) > 0) && (server_port > 0);
 	mirror_enabled = (mirror_host != NULL) && (strlen(mirror_host) > 0) && (mirror_port > 0);
+	// Preparing the states (because we are connecting by reconnect)
+	server_s = EAR_ERROR;
+	mirror_s = EAR_ERROR;
 	//
-	debug("server '%s:%d', enabled %d", server_host, server_port, server_enabled);
-	debug("mirror '%s:%d', enabled %d", mirror_host, mirror_port, mirror_enabled);
+	debug("server %s:%d, enabled %d", server_host, server_port, server_enabled);
+	debug("mirror %s:%d, enabled %d", mirror_host, mirror_port, mirror_enabled);
 	// Reconnect is connect in reality
 	return eardbd_reconnect(conf, node);
 }
@@ -191,38 +196,41 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 	if((time_now - time_rec) < EARDBD_API_RETRY_SECS) {
 		return_msg(EAR_NOT_READY, "To many reconnections, wait a little longer");
 	}
-	// Preparing the states
-	server_s = EAR_SUCCESS;
-	mirror_s = EAR_SUCCESS;
 	// Configuring again the hosts and ports
 	server_host = node->db_ip;
 	mirror_host = node->db_sec_ip;
 	server_port = conf->db_manager.tcp_port;
 	mirror_port = conf->db_manager.sec_tcp_port;
+	// Debugging 
+	debug("server %s:%d, enabled %d", server_host, server_port, server_enabled);
+	debug("mirror %s:%d, enabled %d", mirror_host, mirror_port, mirror_enabled);
 	// Using previous state error to reconnect server
 	if (server_enabled && state_fail(server_s)) {
 		// Cleaning connection
+		//sockets_dispose(&server_sock);
 		sockets_close(&server_sock);
 		// Connecting again
 		if (state_fail(server_s = static_connect(&server_sock, server_host, server_port, TCP))) {
+			debug("static_connect returned %d: %s", server_s, state_msg);
 			server_err = state_msg;
-			debug("server %s:%d, fd %d, enabled %d, state %d", server_sock.host, server_sock.port,
-				  server_sock.fd, server_enabled, server_s);
-			static_disconnect(&server_sock, server_s);
+			sockets_dispose(&server_sock);
 		}
 	}
 	// Using previous state error to reconnect mirror
 	if (mirror_enabled && state_fail(mirror_s)) {
 		// Cleaning connection
+		//sockets_dispose(&mirror_sock);
 		sockets_close(&mirror_sock);
 		// Connecting again
 		if (state_fail(mirror_s = static_connect(&mirror_sock, mirror_host, mirror_port, TCP))) {
+			debug("static_connect returned %d: %s", mirror_s, state_msg);
 			mirror_err = state_msg;
-			debug("mirror %s:%d, fd: %d, enabled %d, state %d", mirror_sock.host, mirror_sock.port,
-				  mirror_sock.fd, mirror_enabled, mirror_s);
-			static_disconnect(&mirror_sock, mirror_s);
+			sockets_dispose(&mirror_sock);
 		}
 	}
+	// Debugging 
+	debug("server %s:%d, enabled %d, fd %d", server_sock.host, server_sock.port, server_enabled, server_sock.fd);
+	debug("mirror %s:%d, enabled %d, fd %d", mirror_sock.host, mirror_sock.port, mirror_enabled, mirror_sock.fd);
 	// Saving the last time it tried to reconnect
 	time_rec = timestamp_getconvert(TIME_SECS);
 
@@ -231,8 +239,8 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 
 state_t eardbd_disconnect()
 {
-	static_disconnect(&server_sock, EAR_SUCCESS);
-	static_disconnect(&mirror_sock, EAR_SUCCESS);
+	sockets_dispose(&server_sock);
+	sockets_dispose(&mirror_sock);
 	server_enabled = 0;
 	mirror_enabled = 0;
 	return EAR_SUCCESS;

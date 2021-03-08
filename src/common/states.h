@@ -54,6 +54,7 @@ char *state_msg;
 	state1 == state2
 	
 #define return_msg(no, msg) { \
+        error("returned %d, %s (%s:%d)", no, msg, __FILE__, __LINE__); \
 	state_msg = msg; \
 	return no; \
 	}

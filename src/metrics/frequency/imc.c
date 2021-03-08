@@ -76,10 +76,51 @@ state_t freq_imc_init(topology_t *tp)
 	return ops.init(tp);
 }
 
+state_t freq_imc_init_lib(topology_t *tp)
+{
+	state_t s;
+  if (state_ok(ifreq_intel63_status(tp)))
+  {
+    ops.init    = ifreq_intel63_init;
+    ops.dispose   = ifreq_intel63_dispose;
+    ops.read    = ifreq_dummy_read;
+    ops.read_diff = ifreq_dummy_read_diff;
+    ops.read_copy = ifreq_dummy_read_copy;
+    ops.data_alloc  = ifreq_intel63_data_alloc;
+    ops.data_count  = ifreq_intel63_data_count;
+    ops.data_copy = ifreq_intel63_data_copy;
+    ops.data_free   = ifreq_intel63_data_free;
+    ops.data_diff   = ifreq_intel63_data_diff;
+    ops.data_print  = ifreq_intel63_data_print;
+  } else {
+    ops.init    = ifreq_dummy_init;
+    ops.dispose   = ifreq_dummy_dispose;
+    ops.read    = ifreq_dummy_read;
+    ops.read_diff = ifreq_dummy_read_diff;
+    ops.read_copy = ifreq_dummy_read_copy;
+    ops.data_alloc  = ifreq_dummy_data_alloc;
+    ops.data_count  = ifreq_dummy_data_count;
+    ops.data_copy = ifreq_dummy_data_copy;
+    ops.data_free   = ifreq_dummy_data_free;
+    ops.data_diff   = ifreq_dummy_data_diff;
+    ops.data_print  = ifreq_dummy_data_print;
+  }
+	s = ops.init(tp);
+	if (s != EAR_NO_PERMISSIONS) return s;
+  return EAR_SUCCESS; 
+}
+
+
 state_t freq_imc_dispose()
 {
 	opreturn(ops.dispose,);
 }
+
+state_t freq_imc_dispose_lib()
+{
+	return EAR_SUCCESS;
+}
+
 
 state_t freq_imc_read(freq_imc_t *ef)
 {

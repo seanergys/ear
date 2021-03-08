@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SOCKETS_DEBUG 1
+
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
 #include <database_cache/eardbd_sync.h>
@@ -126,7 +128,7 @@ void metrics_print()
 	if (n > 0) {
 	//
 	tprintf_init(verb_channel, STR_MODE_DEF, "15 13 9 10 10");
-	//
+	// Printing if there are more than 1 sample to insert per type.
 	tprintf("sample (%d)||recv/alloc||%%||t. insr||t. recv", mirror_iam);
 	tprintf("-----------||----------||--||-------||-------");
 
@@ -230,7 +232,7 @@ static void insert_stop(uint i, state_t s)
 static void insert_apps_mpi(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
@@ -241,7 +243,7 @@ static void insert_apps_mpi(int i)
 static void insert_apps_non_mpi(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
@@ -252,7 +254,7 @@ static void insert_apps_non_mpi(int i)
 static void insert_apps_learning(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
@@ -263,7 +265,7 @@ static void insert_apps_learning(int i)
 static void insert_loops(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
@@ -274,7 +276,7 @@ static void insert_loops(int i)
 static void insert_energy(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
@@ -285,7 +287,7 @@ static void insert_energy(int i)
 static void insert_aggregations(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
@@ -297,7 +299,7 @@ static void insert_aggregations(int i)
 static void insert_events(int i)
 {
 	state_t s;
-	if (type_alloc_100[i] == 0 || sample_index[i] <= 0) {
+	if (sample_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);

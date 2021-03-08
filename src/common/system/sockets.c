@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
@@ -59,7 +61,9 @@ state_t sockets_clean(socket_t *socket)
 
 state_t sockets_dispose(socket_t *socket)
 {
-	sockets_close_fd(socket->fd);
+	if (socket->fd >= 0) {
+		close(socket->fd);
+	}
 	if (socket->info != NULL) {
 		freeaddrinfo(socket->info);
 		socket->info = NULL;
@@ -95,6 +99,7 @@ state_t sockets_socket(socket_t *sock)
 	}
 	// With address struct complete, we can initialize the socket and get the fd.
 	sock->fd = socket(sock->info->ai_family, sock->info->ai_socktype, sock->info->ai_protocol);
+	debug("socket %s:%s returned fd %d", sock->host, string_port, sock->fd);
 	if (sock->fd < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
@@ -171,6 +176,7 @@ state_t sockets_connect(socket_t *socket)
 	if (connect(socket->fd, socket->info->ai_addr, socket->info->ai_addrlen) < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
+	debug("sockets_connected for %s:%d returned ret %d (fd %d)", socket->host, socket->port, 0, socket->fd);
 	return EAR_SUCCESS;
 }
 
@@ -189,7 +195,7 @@ state_t sockets_close(socket_t *socket)
 
 state_t sockets_close_fd(int fd)
 {
-	if (fd > 0) {
+	if (fd >= 0) {
 		close(fd);
 	}
 	return EAR_SUCCESS;
@@ -540,24 +546,20 @@ state_t __sockets_send(socket_t *socket, socket_header_t *header, char *content)
 	if (socket->fd < 0) {
 		state_return_msg(EAR_SOCK_DISCONNECTED, 0, "invalid file descriptor");
 	}
-
 	if (header == NULL || content == NULL) {
 		state_return_msg(EAR_BAD_ARGUMENT, 0, "passing parameter can't be NULL");
 	}
-
 	// Output
-	output_header = PACKET_HEADER(output_buffer);
+	output_header  = PACKET_HEADER(output_buffer);
 	output_content = PACKET_CONTENT(output_buffer);
-
 	// Copy process
 	memcpy(output_header, header, sizeof(socket_header_t));
 	memcpy(output_content, content, header->content_size);
-
+	// Locking and sending
 	pthread_mutex_lock(&lock_send);
 	{
 		// Sending
 		state = __static_send(socket, sizeof(socket_header_t) + header->content_size, output_buffer);
-
 		pthread_mutex_unlock(&lock_send);
 	}
 
