@@ -90,4 +90,11 @@ typedef struct sync_ans {
 	int answer;
 } sync_ans_t;
 
+typedef struct eardbd_status_s {
+    state_t insert_states[EDB_NTYPES];
+	uint samples_received[EDB_NTYPES];
+    uint sockets_active;
+	uint is_master;
+} eardbd_status_t;
+
 #endif //EAR_EARDBD_H

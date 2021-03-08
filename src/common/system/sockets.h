@@ -82,7 +82,7 @@ state_t sockets_bind(socket_t *socket, time_t timeout_secs);
 
 state_t sockets_listen(socket_t *socket);
 
-state_t sockets_accept(int fd_incoming, int *fd_client, struct sockaddr_storage *fd_client);
+state_t sockets_accept(int fd_incoming, int *fd_client, struct sockaddr_storage *addr_client);
 
 /* Client side */
 state_t sockets_connect(socket_t *socket);

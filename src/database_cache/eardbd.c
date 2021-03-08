@@ -77,12 +77,15 @@ int server_iam;
 int mirror_iam;
 
 // PID
-char *path_pid,path_tmp_pid[128];;
+char *path_pid, path_tmp_pid[128];;
 process_data_t proc_data_srv;
 process_data_t proc_data_mir;
 pid_t server_pid;
 pid_t mirror_pid;
 pid_t others_pid;
+
+// Status
+eardbd_status_t status;
 
 // Synchronization
 packet_header_t sync_ans_header;
@@ -105,6 +108,8 @@ char  *sam_iname[EDB_NTYPES];
 ulong  sam_inmax[EDB_NTYPES];
 ulong  sam_index[EDB_NTYPES];
 uint   sam_recvd[EDB_NTYPES];
+
+// Sockets info
 uint   soc_accpt;
 uint   soc_activ;
 uint   soc_discn;

@@ -18,8 +18,9 @@
 #ifndef EAR_EARDBD_API_H
 #define EAR_EARDBD_API_H
 
-#include <common/system/sockets.h>
 #include <common/types/types.h>
+#include <common/system/sockets.h>
+#include <database_cache/eardbd.h>
 
 #define edb_state_fail(state) \
         state_fail(state.server) || state_fail(state.mirror)

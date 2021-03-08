@@ -56,6 +56,8 @@ extern char  *sam_iname[EDB_NTYPES];
 extern ulong  sam_inmax[EDB_NTYPES];
 extern ulong  sam_index[EDB_NTYPES];
 extern uint   sam_recvd[EDB_NTYPES];
+
+// Sockets info
 extern uint   soc_accpt;
 extern uint   soc_activ;
 extern uint   soc_discn;
@@ -71,7 +73,6 @@ extern int updating;
 extern int dreaming;
 extern int veteran;
 extern int forked;
-
 
 // Verbosity
 extern char *str_who[2];
@@ -446,7 +447,7 @@ static int storage_index_extract(int type, char **name)
 			*name = "sync_answer";
 			return -1;
 		case EDB_TYPE_STATUS:
-			*name = "ping";
+			*name = "status";
 			return -1;
 		default:
 			*name = "unknown";
@@ -457,11 +458,12 @@ static int storage_index_extract(int type, char **name)
 void storage_sample_receive(int fd, packet_header_t *header, char *content)
 {
 	char *name;
+	state_t s;
 	int index;
 	int type;
 
 	// Data extraction
-	type = storage_type_extract(header, content);
+	type  = storage_type_extract(header, content);
 	index = storage_index_extract(type, &name);
 
 	if (verbosity) {
@@ -546,23 +548,20 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	}
 	else if (type == EDB_TYPE_STATUS)
 	{
-		sockets_header_update(header);
-
-		s = sockets_send_fd(fd, &sync_ans_header, (char *) &sync_ans_content);
+		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, , sizeof(eardbd_status_t), 0))) {
+			error("Error when sending status: %s", state_msg);
+		}
 	}
-	
 	// Metrics
 	if (index == -1) {
 		return;
 	}
-	
-	if (sam_recvd[index] == 0)
-	{
+	//	
+	if (sam_recvd[index] == 0) {
 		time(&glb_time1[index]);
 	}
-
+	//
 	time(&glb_time2[index]);
-
 	//
 	sam_recvd[index] += 1;
 }

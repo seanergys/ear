@@ -76,14 +76,14 @@ static state_t static_send(uint type, char *content, ssize_t size)
 	header.content_size = size;
 	// Sending the data through sockets
 	if (server_enabled) {
-		sfail (server_s = __sockets_send(&server_sock, &header, content)) {
+		if (state_fail (server_s = __sockets_send(&server_sock, &header, content))) {
 			server_err = state_msg;
 		}
 		debug("server '%s:%d', enabled %d, state %d, fd %d", server_sock.host,
 			server_sock.port, server_enabled, state.server, server_sock.fd);
 	}
 	if (mirror_enabled) {
-		sfail (mirror_s = __sockets_send(&mirror_sock, &header, content)) {
+		if (state_fail(mirror_s = __sockets_send(&mirror_sock, &header, content))) {
 			mirror_err = state_msg;
 		}
 		debug("mirror '%s:%d', enabled %d, state %d, fd %d", mirror_sock.host,
@@ -204,7 +204,7 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 		// Cleaning connection
 		sockets_close(&server_sock);
 		// Connecting again
-		sfail(server_s = static_connect(&server_sock, server_host, server_port, TCP)) {
+		if (state_fail(server_s = static_connect(&server_sock, server_host, server_port, TCP))) {
 			server_err = state_msg;
 			debug("server %s:%d, fd %d, enabled %d, state %d", server_sock.host, server_sock.port,
 				  server_sock.fd, server_enabled, server_s);
@@ -216,7 +216,7 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 		// Cleaning connection
 		sockets_close(&mirror_sock);
 		// Connecting again
-		sfail(mirror_s = static_connect(&mirror_sock, mirror_host, mirror_port, TCP)) {
+		if (state_fail(mirror_s = static_connect(&mirror_sock, mirror_host, mirror_port, TCP))) {
 			mirror_err = state_msg;
 			debug("mirror %s:%d, fd: %d, enabled %d, state %d", mirror_sock.host, mirror_sock.port,
 				  mirror_sock.fd, mirror_enabled, mirror_s);
@@ -241,25 +241,25 @@ state_t eardbd_disconnect()
 state_t eardbd_status(char *host, uint port, eardbd_status_t *status)
 {
 	socket_t socket;
+	size_t size;
 	uint type;
-	uint size;
 	state_t s;
 
 	// Connect
-	sfail(s = static_connect(&socket, host, port, TCP)) {
+	if (state_fail(s = static_connect(&socket, host, port, TCP))) {
 		return static_disconnect(&socket, s);
 	}
-	sfail(s = sockets_send(socket->fd, EDB_TYPE_STATUS, NULL, 0, 0)) {
+	if (state_fail(s = sockets_send(socket.fd, EDB_TYPE_STATUS, NULL, 0, 0))) {
 		return static_disconnect(&socket, s);
 	}
 	// Receiving (in blocking mode, but with 5 seconds of timeout)
-	sfail(s = sockets_timeout_set(socket->fd, 5)) {
+	if (state_fail(s = sockets_timeout_set(socket.fd, 5))) {
 		return static_disconnect(&socket, s);
 	}
-	sfail(s = sockets_recv_header(socket->fd, &type, &size, NULL, 1)) {
+	if (state_fail(s = sockets_recv_header(socket.fd, &type, &size, NULL, 1))) {
 		return static_disconnect(&socket, s);
 	}
-	sfail(s = sockets_recv(socket->fd, (char *) status, size, 1)) {
+	if (state_fail(s = sockets_recv(socket.fd, (char *) status, size, 1))) {
 		return static_disconnect(&socket, s);
 	}
 	return static_disconnect(&socket, EAR_SUCCESS);

@@ -24,8 +24,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
-#include <common/system/sockets.h>
 #include <common/output/debug.h>
+#include <common/system/sockets.h>
 
 static pthread_mutex_t lock_send = PTHREAD_MUTEX_INITIALIZER;
 
@@ -37,7 +37,7 @@ static pthread_mutex_t lock_send = PTHREAD_MUTEX_INITIALIZER;
 state_t sockets_init(socket_t *socket, char *host, uint port, uint protocol)
 {
 	if (protocol != TCP && protocol != UDP) {
-		state_msg(EAR_ERROR, "Protocol does not exist");
+		return_msg(EAR_ERROR, "Protocol does not exist");
 	}
 	// Cleaning and settings
 	sockets_clean(socket);
@@ -91,7 +91,7 @@ state_t sockets_socket(socket_t *sock)
 	}
 	// Fills the struct. If different than 0, it returns error.
 	if ((ret = getaddrinfo(sock->host, string_port, &hints, &sock->info)) != 0) {
-		return_msg(EAR_ERROR, (char *) gai_strerror(r));
+		return_msg(EAR_ERROR, (char *) gai_strerror(ret));
 	}
 	// With address struct complete, we can initialize the socket and get the fd.
 	sock->fd = socket(sock->info->ai_family, sock->info->ai_socktype, sock->info->ai_protocol);
@@ -212,7 +212,7 @@ static state_t static_send(int fd, char *data, size_t size)
 	// implementation with a controlled retry system.
 	while(bytes_left > 0) {
 		// TCP protocol
-		if ((bytes_sent = send(fd, buffer + bytes_sent, bytes_left, flags)) < 0) {
+		if ((bytes_sent = send(fd, data + bytes_sent, bytes_left, flags)) < 0) {
 			debug("fd '%d', %ld to add to %ld/%ld (errno: %d, strerrno: %s)",
 				  fd, bytes_sent, size - bytes_left, size, errno, strerror(errno));
 			switch (bytes_sent) {
@@ -247,16 +247,16 @@ state_t sockets_send(int fd, uint type, char *data, size_t size, ullong extra)
 		size_t size;
 		ullong extra;
 		uint type;
-	} header = { .size = size, .extra = extra, .type = type};
+	} header = { .size = size, .extra = extra, .type = type };
 	// Locking (I don't know why).
 	pthread_mutex_lock(&lock_send);
 	// Sending header
-	sfail(s = static_send(fd, &header, sizeof(header))) {
+	if(state_fail(s = static_send(fd, (char *) &header, sizeof(header)))) {
 		return static_unlock(s);
 	}
 	// Sending content
 	if (data != NULL && size > 0) {
-		sfail(s = static_send(fd, data, size)) {
+		if (state_fail(s = static_send(fd, data, size))) {
 			return static_unlock(s);
 		}
 	}
@@ -322,7 +322,7 @@ state_t sockets_recv_header(int fd, uint *type, size_t *size, ullong *extra, uin
 	header.size  = 0;
 	header.extra = 0;
 	// Receiving header
-	s = static_recv(fd, &header, sizeof(header), block);
+	s = static_recv(fd, (char *) &header, sizeof(header), block);
 	*type = header.type;
 	*size = header.size;
 	if (extra != NULL) {
