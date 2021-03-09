@@ -26,6 +26,8 @@
 #include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>
+#include <library/loader/module_cuda.h>
+#include <library/api/cupti.h>
 
 static mpic_t next_mpic;
 static mpif_t next_mpif;
@@ -108,16 +110,6 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	return;
 }
 
-#if 0
-static void module_mpi_dlsym_next()
-{
-	verbose(2, "LOADER: module_mpi_dlsym_next loading library");
-	symplug_join(RTLD_NEXT, (void **) &ear_mpic, mpic_names, MPIC_N);
-	symplug_join(RTLD_NEXT, (void **) &ear_mpif, mpif_names, MPIF_N);
-	verbose(3, "LOADER: dlsym for C init returned %p", ear_mpic.Init);
-	verbose(3, "LOADER: dlsym for F init returned %p", ear_mpif.init);
-}
-#endif
 
 static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 {
@@ -224,6 +216,8 @@ int module_mpi(char *path_lib_so,char *libhack)
 	if (!module_mpi_dlsym(path_so, lang_c, lang_f)){
 		return 0;
 	}
+	/* Once EARl is loaded we can  check if the application uses CUDA and then mark as a CUDA app */
+	if (module_cuda_is()) ear_cuda_enabled();
 	if (atexit(module_mpi_destructor) != 0) {
     verbose(1, "LOADER: cannot set exit function");
   }

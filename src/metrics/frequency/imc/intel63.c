@@ -222,7 +222,7 @@ state_t ifreq_intel63_data_alloc(freq_imc_t *ef, ulong *freqs[], ulong *freqs_co
 
 state_t ifreq_intel63_data_count(uint *count)
 {
-	*count = cpu_count;
+	*count = cpu_count * sizeof(imc_intel63_t);
 	return EAR_SUCCESS;
 }
 

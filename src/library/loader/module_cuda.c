@@ -31,7 +31,7 @@ static void (*func_des) (void);
 extern char *program_invocation_name;
 
 
-static int module_cuda_is()
+int module_cuda_is()
 {
     void *hdl;
 

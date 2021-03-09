@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdlib.h>
 #include <metrics/frequency/imc/dummy.h>
 
 state_t ifreq_dummy_init(topology_t *tp)
@@ -29,6 +30,7 @@ state_t ifreq_dummy_dispose()
 
 state_t ifreq_dummy_read(freq_imc_t *ef)
 {
+	if ((ef != NULL)  && (ef->data != NULL)) ef->data = 0;
 	return EAR_SUCCESS;
 }
 
@@ -46,12 +48,13 @@ state_t ifreq_dummy_read_copy(freq_imc_t *ef2, freq_imc_t *ef1, ulong *freqs, ul
 
 state_t ifreq_dummy_data_alloc(freq_imc_t *ef, ulong *freqs[], ulong *freqs_count)
 {
+	if (ef != NULL) ef->data = calloc(1,sizeof(ulong));
 	return EAR_SUCCESS;
 }
 
 state_t ifreq_dummy_data_count(uint *count)
 {
-	if (count != NULL) *count = 1;
+	if (count != NULL) *count = sizeof(ulong);
 	return EAR_SUCCESS;
 }
 
