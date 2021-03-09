@@ -1,4 +1,4 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) $(DB_FLAGS) -lm
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) $(DB_FLAGS) -lm -g
 LDFLAGS = -lm
 
 ######## FILES

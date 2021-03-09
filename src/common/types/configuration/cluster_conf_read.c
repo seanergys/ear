@@ -300,15 +300,14 @@ void parse_island(cluster_conf_t *conf, char *line)
             int id_f = idx < 0 ? conf->num_islands: idx;
             if (conf->islands[id_f].num_ips < 1)
                 conf->islands[id_f].db_ips = NULL;
-            for (i = 0; i < conf->islands[id_f].num_ips; i++)
+            for (i = 0; i < conf->islands[id_f].num_ips; i++) //search if the ip already exists
                 if (!strcmp(conf->islands[id_f].db_ips[i], token)) ip_id = i;
             if (ip_id < 0)
             {
-                conf->islands[id_f].db_ips = realloc(conf->islands[id_f].db_ips,
-                                                                    (conf->islands[id_f].num_ips+1)*sizeof(char *));
-                                                if (conf->islands[id_f].db_ips==NULL){
-                                                    error("NULL pointer in DB IPS definition");
-                                                    return;
+                conf->islands[id_f].db_ips = realloc(conf->islands[id_f].db_ips, (conf->islands[id_f].num_ips+1)*sizeof(char *));
+                if (conf->islands[id_f].db_ips==NULL){
+                    error("NULL pointer in DB IPS definition");
+                return;
                                                 }
                 conf->islands[id_f].db_ips[conf->islands[id_f].num_ips] = malloc(strlen(token)+1);
                 remove_chars(token, ' ');
@@ -362,6 +361,7 @@ void parse_island(cluster_conf_t *conf, char *line)
         }
         else if (!strcmp(token, "NODES"))
         {
+            contains_ip = contains_sec_ip = 0;
             token = strtok(NULL, " ");
             int id_f = idx < 0 ? conf->num_islands: idx;
             current_ranges = conf->islands[id_f].num_ranges;
