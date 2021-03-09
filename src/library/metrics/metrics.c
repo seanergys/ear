@@ -163,7 +163,7 @@ static ulong cpufreq_data_avg[2];
 static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
 static uint mycpufreq_data_size,mycpufreq_data_count;
 static ulong def_imc_max_khz,def_imc_min_khz;
-static ulong imc_max_khz,imc_min_khz;
+ulong imc_max_khz,imc_min_khz;
 static uint imcfreq_data_size;
 static freq_imc_t imc_init[2],imc_end[2];
 static ulong imc_avg[2];

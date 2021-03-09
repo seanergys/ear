@@ -82,8 +82,9 @@ static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_s
 
 	func_con = dlsym(libear, "ear_constructor");
 	func_des = dlsym(libear, "ear_destructor");
-
+	#if USE_GPUS
 	ear_cuda_enabled();
+	#endif
 
 	verbose(4, "LOADER: function constructor %p", func_con);
 	verbose(4, "LOADER: function destructor %p", func_des);
