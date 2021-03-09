@@ -461,7 +461,7 @@ static void init_types_single(int i, char *name, size_t size, uint percent)
 	single_mb      = ((float) type_sizeof[i]) / 1000000.0;
 	type_alloc_len[i] = (ulong) (batch_mb / single_mb);
 	// If there are less than 100, allocate at least 100 positions
-	if (type_alloc_len[i] < 100 && type_alloc_len[i] > 0) {
+	if (type_alloc_len[i] < 100) {
 		type_alloc_len[i] = 100;
 	}
 	// Allocation and set
@@ -478,7 +478,9 @@ static void init_types_single(int i, char *name, size_t size, uint percent)
 
 static void init_process_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
 {
-	uint per_total = 0;
+	uint percent = 0;
+	uint invalid = 0;
+	uint count = 0;
 	int i;
 
 	// Single process configuration
@@ -530,7 +532,9 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 
 	// Types allocation counting
 	for (i = 0; i < EARDBD_TYPES; ++i) {
-		per_total += conf_clus->db_manager.mem_size_types[i];
+		count = conf_clus->db_manager.mem_size_types[i];
+		invalid = invalid & (count > 100 || count == 0);
+		percent += count;
 	}
 
 	type_alloc_100[i_appsm] = ALLOC_PERCENT_APPS_MPI;
@@ -541,7 +545,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	type_alloc_100[i_aggrs] = ALLOC_PERCENT_ENERGY_REPS;
 	type_alloc_100[i_evnts] = ALLOC_PERCENT_ENERGY_AGGRS;
 
-	if (per_total > 90 && per_total < 110) {
+	if (!invalid && percent > 90 && percent < 110) {
 		type_alloc_100[i_appsm] = conf_clus->db_manager.mem_size_types[0];
 		type_alloc_100[i_appsn] = conf_clus->db_manager.mem_size_types[1];
 		type_alloc_100[i_appsl] = conf_clus->db_manager.mem_size_types[2];
