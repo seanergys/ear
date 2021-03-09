@@ -42,6 +42,8 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 	int found_eargmd_host = 0;
 	int found_path_inst = 0;
 	int found_path_temp = 0;
+	int found_exclusion = 0;
+	int found_inclusion = 0;
 	int i;
 
 	// Initialization values
@@ -100,10 +102,12 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 		if ((strlen(av[i]) > 14) && (strncmp ("nodes_allowed=", av[i], 14) == 0)) {
 			strncpy(sd->pack.nodes_allowed, &av[i][14], SZ_PATH);
 			plug_verbose(sp, 2, "plugstack found allowed nodes: '%s'", sd->pack.nodes_allowed);
+			found_inclusion = 1;
 		}
 		if ((strlen(av[i]) > 15) && (strncmp ("nodes_excluded=", av[i], 15) == 0)) {
 			strncpy(sd->pack.nodes_excluded, &av[i][15], SZ_PATH);
 			plug_verbose(sp, 2, "plugstack found excluded nodes: '%s'", sd->pack.nodes_excluded);
+			found_exclusion = 1;
 		}
 	}
 	// EARGMD enabled?
@@ -121,14 +125,20 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 	// Allowance (from plugstack)
 	gethostname(sd->subject.host, SZ_NAME_MEDIUM);
 	// If is excluded, then it can't continue
-	if (strinlist(sd->pack.nodes_excluded, ",", sd->subject.host)) {
-		plug_verbose(sp, 2, "found node '%s' in the exclusion list", sd->subject.host);
-		return ESPANK_ERROR;
+	if (found_exclusion) {
+		plug_verbose(sp, 2, "testing exclusion of '%s' in '%s'", sd->subject.host, sd->pack.nodes_excluded);
+		if (strinlist(sd->pack.nodes_excluded, ",", sd->subject.host)) {
+			plug_verbose(sp, 2, "found node '%s' in the exclusion list", sd->subject.host);
+			return ESPANK_ERROR;
+		}
 	}
-	// If is not included, then it can't continue
-	if (!strinlist(sd->pack.nodes_allowed, ",", sd->subject.host)) {
-		plug_verbose(sp, 2, "not found node '%s' in the allowance list", sd->subject.host);
-		return ESPANK_ERROR;
+	// If is not included/allowed, then it can't continue
+	if (found_inclusion) {
+		plug_verbose(sp, 2, "testing inclusion of %s in %s", sd->subject.host, sd->pack.nodes_allowed);
+		if (!strinlist(sd->pack.nodes_allowed, ",", sd->subject.host)) {
+			plug_verbose(sp, 2, "not found node '%s' in the allowance list", sd->subject.host);
+			return ESPANK_ERROR;
+		}
 	}
 
 	return ESPANK_SUCCESS;

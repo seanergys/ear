@@ -27,7 +27,7 @@ SPANK_PLUGIN(EAR_PLUGIN, 1);
 //
 plug_serialization_t sd;
 
-#if !ESPANK_STACKABLE && !ERUN
+#if !ESPANK_STACKABLE || ERUN
 // Function order:
 // 	- Local 1
 // 	- Remote 1

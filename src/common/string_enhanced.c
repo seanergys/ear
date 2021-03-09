@@ -221,7 +221,8 @@ int strinlist(const char *list, const char *separator, const char *element)
 	strcpy(buffer, list);	
 	e = strtok(buffer, separator);
 	while (e != NULL) {
-		if (strcmp(element, e) == 0) {
+		// An extra parameter would be needed to switch between strcmp and strncmp.
+		if (strncmp(element, e, strlen(e)) == 0) {
 			return 1;
 		}
 		e = strtok(NULL, separator);
