@@ -47,9 +47,16 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0;
   float AVGF,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI;
 	ulong GPU_UTIL = 0,GPU_FREQ = 0;
+	#if NEW_IMCFREQ
+	float imcf;
+	#endif
 	int gpui;
 	char gpu_buff[256];
 	if (master_rank >= 0 || show){
+		#if NEW_IMCFREQ
+		if (sig->signature.sig_ext != NULL) imcf = (float)sig->signature.sig_ext->imc_freq/1000000.0;
+		else imcf = 0.0;
+		#endif
     CPI = sig->signature.CPI; 
     GBS = sig->signature.GBS; 
     POWER = sig->signature.DC_power; 
@@ -80,7 +87,14 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     verbosen(1,"%s",COL_GRE);
     if (GPU_UTIL) sprintf(gpu_buff,"(GPU_power %.2lfW GPU_freq %.1fGHz GPU_util %lu)",GPU_POWER,AVGGPUF,GPU_UTIL);
     verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.2lfW Time=%.3lfsec.  AVGF=%.2fGHz)\n\t %s", CPI, GBS, POWER, TIME,  AVGF,gpu_buff);
-	  if (new_freq > 0) verbosen(1," New Frequency %.2f",NFREQ);
+	  if (new_freq > 0){ verbosen(1," New Frequency %.2f",NFREQ);}
+		#if NEW_IMCFREQ
+		verbosen(2," IMC avg freq %.2f",imcf);
+		#endif
+		verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
+		#if CACHE_METRICS
+		verbosen(2," L1 %llu L2 %llu L3 %llu",sig->signature.L1_misses,sig->signature.L2_misses,sig->signature.L3_misses);
+		#endif
     verbose(1,"%s",COL_CLR);
   }
 } 

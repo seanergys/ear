@@ -137,9 +137,9 @@ static void print_freq_per_core()
 	int i;
 	for (i=0;i<arch_desc.top.cpu_count;i++)
   {
-		if (freq_per_core[i]>0) verbosen(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+		if (freq_per_core[i]>0) verbosen(3,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
 	}
-	verbose(2," ");
+	verbose(3," ");
 }
 static void from_proc_to_core()
 {

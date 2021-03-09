@@ -18,8 +18,8 @@
 #ifndef LIBRARY_LOADER_CUDA_H
 #define LIBRARY_LOADER_CUDA_H
 
+int module_cuda_is();
 int module_constructor_cuda(char *path_lib_so,char *libhack);
-
 void module_destructor_cuda();
 
 #endif 

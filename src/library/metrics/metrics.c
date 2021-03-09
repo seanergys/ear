@@ -15,7 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define CACHE_METRICS 1
+//#define CACHE_METRICS 1
+//#define NEW_CPUFREQ 1
+//#define NEW_IMCFREQ 1
 //#define SHOW_DEBUGS 1
 //#define SHOW_ENERGY 1
 
@@ -155,8 +157,6 @@ static long long metrics_l3[2];
 #endif
 static timestamp init_mpi_time;
 static int first_timestamp=1;
-#define NEW_CPUFREQ 1
-#define NEW_IMCFREQ 1
 #if NEW_CPUFREQ
 static state_t s;
 static ulong cpufreq_data_avg[2];
@@ -208,7 +208,7 @@ static void metrics_global_start()
 		eards_begin_app_compute_turbo_freq();
 		#endif
 		#if NEW_IMCFREQ
-		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size*sizeof(imc_intel63_t)))){
+		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size))){
 			error("IMCFreq data read in global_start");
 		}
 		d = (imc_intel63_t*)imc_init[APP].data;
@@ -255,6 +255,8 @@ static void metrics_global_stop()
 	timestamp end_mpi_time;
 	imc_intel63_t *d;
 	//
+	imc_avg[APP] = 0;
+	metrics_avg_frequency[APP]=0;
 	if (masters_info.my_master_rank>=0){ 
     #if NEW_CPUFREQ
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[APP],mycpufreq_data_size))){
@@ -263,19 +265,18 @@ static void metrics_global_stop()
 		if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[APP],&cpufreq_data_init[APP],NULL,&cpufreq_data_avg[APP]))){
 			error("CPUFreq data diff");
 		}else{
-			verbose(2,"CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[APP]/1000000.0);
+			debug("CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[APP]/1000000.0);
 		}
-  	if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
-    	error("IMC set current failed (%d,%s)",s,state_msg);
-  	} 
-  	verbose(2,"IMC freq restored to %.2f-%.2f",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0); 
-
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
 		#else
 		metrics_avg_frequency[APP] = eards_end_app_compute_turbo_freq();
 		#endif
     #if NEW_IMCFREQ
-    if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size*sizeof(imc_intel63_t)))){
+  	if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
+    	error("IMC set current failed (%d,%s)",s,state_msg);
+  	} 
+  	verbose(2,"IMC freq restored to %.2f-%.2f",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0); 
+    if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
 	  d = (imc_intel63_t*)imc_end[APP].data;
@@ -284,11 +285,9 @@ static void metrics_global_stop()
 		if (xtate_fail(s, freq_imc_data_diff(&imc_end[APP],&imc_init[APP],NULL,&imc_avg[APP]))){
 			error("IMC data diff fails");
 		}	
-		verbose(2,"AVG IMC frequency %.lu",imc_avg[APP]);
+		verbose(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
     #endif
 
-	}else{
-		metrics_avg_frequency[APP]=0;
 	}
 
 	// Accum calls
@@ -354,7 +353,7 @@ static void metrics_partial_start()
 		eards_begin_compute_turbo_freq();
 		#endif
 		#if NEW_IMCFREQ
-    if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size*sizeof(imc_intel63_t)))){
+    if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
 		#endif
@@ -495,20 +494,20 @@ static int metrics_partial_stop(uint where)
     if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],NULL,&cpufreq_data_avg[LOO]))){
       error("CPUFreq data diff");
     }else{
-      verbose(2,"CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
+      debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
     #else
 		metrics_avg_frequency[LOO] = eards_end_compute_turbo_freq();
 		#endif
     #if NEW_IMCFREQ
-    if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size*sizeof(imc_intel63_t)))){
+    if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
     if (xtate_fail(s, freq_imc_data_diff(&imc_end[LOO],&imc_init[LOO],NULL,&imc_avg[LOO]))){
       error("IMC data diff fails");
     }
-    verbose(2,"AVG IMC frequency %.lu",imc_avg[LOO]);
+   	debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
 
 
     #endif
@@ -614,6 +613,10 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->L1_misses = metrics_l1[s];
 	metrics->L2_misses = 0;
 	metrics->L3_misses = metrics_l3[s];
+	#endif
+	#if NEW_IMCFREQ
+	if (metrics->sig_ext == 0) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
+	metrics->sig_ext->imc_freq = imc_avg[LOO];
 	#endif
 
 	// FLOPS
@@ -853,6 +856,7 @@ int metrics_init(topology_t *topo)
 	if (xtate_fail(s, eards_freq_imc_data_count(&imcfreq_data_size))){
 		error("IMC data count failed");
 	}
+	imcfreq_data_size = imcfreq_data_size * sizeof(imc_intel63_t);
 	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
 	#endif
 
