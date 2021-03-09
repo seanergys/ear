@@ -104,6 +104,8 @@ state_t sockets_socket(socket_t *sock)
 	if (sock->fd < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
+	debug("granted file descriptor for socket %s:%d (fd %d)",
+		sock->host, sock->port, sock->fd);
 	// It can be closed now.
 	sock->fd_closable = 1;
 	return EAR_SUCCESS;
@@ -129,6 +131,8 @@ state_t sockets_bind(socket_t *socket, time_t timeout)
 	if (ret < 0) {
 		return_msg(EAR_ERROR, (char *) strerror(errno));
 	}
+	debug("binded socket %s:%d (fd %d)",
+		socket->host, socket->port, socket->fd);
 	return EAR_SUCCESS;
 }
 
@@ -152,6 +156,13 @@ state_t sockets_accept(int fd_incoming, int *fd_client, struct sockaddr_storage 
 			return_msg(EAR_ERROR, strerror(errno));
 		}
 	}
+	#if SHOW_DEBUGS
+	char address[512];
+	sockets_get_hostname_fd(*fd_client, address, 512);
+	debug("listening descriptor %d accepted socket from address %s (fd %d)",
+		fd_incoming, address, *fd_client);
+	#endif
+
 	return EAR_SUCCESS;
 }
 
@@ -164,6 +175,8 @@ state_t sockets_listen(socket_t *socket)
 	if (listen(socket->fd, BACKLOG) < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
+	debug("listening socket %s:%d returned (fd %d)",
+		socket->host, socket->port, socket->fd);
 	return EAR_SUCCESS;
 }
 
@@ -179,7 +192,8 @@ state_t sockets_connect(socket_t *socket)
 	if (connect(socket->fd, socket->info->ai_addr, socket->info->ai_addrlen) < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
-	debug("sockets_connected for %s:%d returned ret %d (fd %d)", socket->host, socket->port, 0, socket->fd);
+	debug("granted connection for socket %s:%d returned (fd %d)",
+		socket->host, socket->port, socket->fd);
 	return EAR_SUCCESS;
 }
 
