@@ -668,7 +668,6 @@ state_t process_remote_requests(int clientfd) {
 		case EAR_RC_SET_RISK:
 			verbose(1,"set risk command received");
 			dyncon_set_risk(clientfd, &command);
-			return EAR_SUCCESS;
 			break;
 	 #if POWERCAP
    case EAR_RC_GET_POWERCAP_STATUS:
