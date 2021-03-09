@@ -106,8 +106,8 @@ struct variables_s {
 	varnames_t tag;
 	varnames_t path_usdb;
 	varnames_t path_trac;
-	varnames_t gm_host;
-	varnames_t gm_port;
+//	varnames_t gm_host;
+//	varnames_t gm_port;
 	varnames_t gm_secure;
 	varnames_t perf_pen;
 	varnames_t eff_gain;
@@ -129,8 +129,8 @@ struct variables_s {
 	varnames_t ld_libr;
 	varnames_t node_num;
 	varnames_t version;
-	varnames_t nodes_allowed;
-	varnames_t nodes_excluded;
+//	varnames_t nodes_allowed;
+//	varnames_t nodes_excluded;
 }
 	Var __attribute__((weak)) =
 {
@@ -147,8 +147,8 @@ struct variables_s {
 .tag       = { .loc = "SLURM_LOC_ETAG",      .ear = VAR_OPT_ETAG      },
 .path_usdb = { .loc = "SLURM_LOC_USDB",      .ear = VAR_OPT_USDB      },
 .path_trac = { .loc = "SLURM_LOC_TRAC",      .ear = VAR_OPT_TRAC      },
-.gm_host   = { .loc = "SLURM_LOC_GMHS",      .ear = ""                },
-.gm_port   = { .loc = "SLURM_LOC_GMPR",      .ear = ""                },
+//.gm_host   = { .loc = "SLURM_LOC_GMHS",      .ear = ""                },
+//.gm_port   = { .loc = "SLURM_LOC_GMPR",      .ear = ""                },
 .gm_secure = { .loc = "SLURM_LOC_GMSC",      .ear = ""                },
 .perf_pen  = { .loc = "",                    .ear = VAR_OPT_THRB      },
 .eff_gain  = { .loc = "",                    .ear = VAR_OPT_THRC      },
@@ -156,8 +156,8 @@ struct variables_s {
 .user      = { .rem = "SLURM_ERUSER",        .ear = "" },
 .group     = { .rem = "SLURM_ERGRUP",        .ear = "" },
 .account   = { .rem = "SLURM_JOB_ACCOUNT",   .ear = "" },
-.path_temp = { .rem = "SLURM_ERTEMP",        .ear = VAR_TMP_PATH      },
-.path_inst = { .rem = "SLURM_ERINST",        .ear = VAR_INS_PATH      },
+.path_temp = { .rem = "",                    .ear = VAR_TMP_PATH      },
+.path_inst = { .rem = "",                    .ear = VAR_INS_PATH      },
 .job_nodl  = { .rem = "SLURM_JOB_NODELIST",  .ear = "" },
 .job_nodn  = { .rem = "SLURM_JOB_NUM_NODES", .ear = "" },
 .step_nodl = { .rem = "SLURM_STEP_NODELIST", .ear = "" },
@@ -170,8 +170,8 @@ struct variables_s {
 .ld_libr   = { .rem = "",                    .ear = "LD_LIBRARY_PATH" },
 .node_num  = { .loc = "SLURM_NNODES",        .ear = "" },
 .version   = { .loc = "SLURM_EAR_MPI_VERSION",     .ear = ""          },
-.nodes_allowed  = { .rem = "SLURM_NODES_ALLOWED",  .ear = ""          },
-.nodes_excluded = { .rem = "SLURM_NODES_EXCLUDED", .ear = ""          },
+//.nodes_allowed  = { .rem = "SLURM_NODES_ALLOWED",  .ear = ""          },
+//.nodes_excluded = { .rem = "SLURM_NODES_EXCLUDED", .ear = ""          },
 };
 
 /*

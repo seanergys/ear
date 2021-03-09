@@ -33,7 +33,9 @@
 #else
 #define NULL_C 0
 #endif
-#define ESPANK_STOP	-1
+
+#define ESPANK_STOP	     -1
+#define ESPANK_STACKABLE  0
 
 /*
  * Job data
