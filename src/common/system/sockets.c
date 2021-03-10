@@ -624,6 +624,8 @@ static state_t __static_recv(int fd, ssize_t bytes_expc, char *buffer, int block
 	while (bytes_left > 0)
 	{
 		bytes_recv = recv(fd, (void *) &buffer[bytes_acum], bytes_left, flags);
+		debug("fd '%d' received %ld of %ld/%ld (intent: %d)",
+			  fd, bytes_recv, bytes_expc - bytes_left, bytes_expc, intents);
 
 		if (bytes_recv == 0) {
 			state_return_msg(EAR_SOCK_DISCONNECTED, 0, "disconnected from socket");

@@ -541,9 +541,9 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	type_alloc_100[i_appsn] = ALLOC_PERCENT_APPS_SEQUENTIAL;
 	type_alloc_100[i_appsl] = ALLOC_PERCENT_APPS_LEARNING;
 	type_alloc_100[i_loops] = ALLOC_PERCENT_LOOPS;
-	type_alloc_100[i_enrgy] = ALLOC_PERCENT_EVENTS;
-	type_alloc_100[i_aggrs] = ALLOC_PERCENT_ENERGY_REPS;
-	type_alloc_100[i_evnts] = ALLOC_PERCENT_ENERGY_AGGRS;
+	type_alloc_100[i_enrgy] = ALLOC_PERCENT_ENERGY_REPS;
+	type_alloc_100[i_aggrs] = ALLOC_PERCENT_ENERGY_AGGRS;
+	type_alloc_100[i_evnts] = ALLOC_PERCENT_EVENTS;
 
 	if (!invalid && percent > 90 && percent < 110) {
 		type_alloc_100[i_appsm] = conf_clus->db_manager.mem_size_types[0];

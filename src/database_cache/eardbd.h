@@ -56,13 +56,13 @@
 #define EDB_INSERT_BY_TIME            1 // Insert by time completed
 #define EDB_INSERT_BY_FULL            2 // Insert by allocation arrays full
 // These are the allocation percentages per type.
-#define ALLOC_PERCENT_APPS_MPI        20 // 20
-#define ALLOC_PERCENT_APPS_SEQUENTIAL 20 // 40
-#define ALLOC_PERCENT_APPS_LEARNING   5  // 45
-#define ALLOC_PERCENT_LOOPS           20 // 65
-#define ALLOC_PERCENT_EVENTS          2  // 67
-#define ALLOC_PERCENT_ENERGY_REPS     20 // 87
-#define ALLOC_PERCENT_ENERGY_AGGRS    13 // 100
+#define ALLOC_PERCENT_APPS_MPI        30 // 30
+#define ALLOC_PERCENT_APPS_SEQUENTIAL 30 // 60
+#define ALLOC_PERCENT_APPS_LEARNING   5  // 65
+#define ALLOC_PERCENT_LOOPS           21 // 86
+#define ALLOC_PERCENT_EVENTS          3  // 89
+#define ALLOC_PERCENT_ENERGY_REPS     7  // 96
+#define ALLOC_PERCENT_ENERGY_AGGRS    4  // 100
 // Type indexes
 #define i_appsm                       0
 #define i_appsn                       1
@@ -84,7 +84,7 @@ typedef struct sync_ans {
 
 typedef struct eardbd_status_s {
     state_t insert_states[EDB_NTYPES];
-	uint    sample_recv[EDB_NTYPES];
+    uint    samples_recv[EDB_NTYPES];
     uint    sockets_online;
 } eardbd_status_t;
 

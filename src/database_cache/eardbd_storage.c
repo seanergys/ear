@@ -178,6 +178,8 @@ static void reset_aggregations()
 	} else {
 		init_periodic_aggregation(p, master_name);
 	}
+	// In case of aggregations, this value has to be hacked
+	status.samples_recv[i_aggrs] = sample_index[i_aggrs];
 	sample_index[i_aggrs] = 0;
 }
 
@@ -223,8 +225,11 @@ static void insert_stop(uint i, state_t s)
 	time(&time_insert2[i]);
 	// Status update (before reset)
 	status.insert_states[i] = s;
-	status.sample_recv[i]   = sample_index[i];
 	status.sockets_online   = sockets_online;
+	// Aggregations is a special case
+	if (i != i_aggrs) {
+		status.samples_recv[i]  = sample_index[i];
+	}
 	// Reset samples
 	reset_index(i);
 }
@@ -530,6 +535,7 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		}
 	}
 	else if (type == EDB_TYPE_STATUS) {
+		error("PEDROSAAAAAA STATUS RECIBIDO");
 		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, (char *) &status, sizeof(eardbd_status_t), 0))) {
 			error("Error when sending status: %s", state_msg);
 		}
