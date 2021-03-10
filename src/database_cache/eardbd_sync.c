@@ -72,6 +72,8 @@ extern uint   sample_index[EDB_NTYPES];
 extern char  *type_name[EDB_NTYPES];
 extern ulong  type_alloc_len[EDB_NTYPES];
 extern uint   sample_recv[EDB_NTYPES];
+
+//
 extern uint   sockets_accepted;
 extern uint   sockets_online;
 extern uint   sockets_disconnected;

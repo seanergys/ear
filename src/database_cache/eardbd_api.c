@@ -15,8 +15,6 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,7 +191,7 @@ state_t eardbd_reconnect(cluster_conf_t *conf, my_node_conf_t *node)
 	}
 	// Getting the current time to test if enough time has passed
 	time_now = timestamp_getconvert(TIME_SECS);
-	if((time_now - time_rec) < EARDBD_API_RETRY_SECS) {
+	if((time_now - time_rec) < 5) {
 		return_msg(EAR_NOT_READY, "To many reconnections, wait a little longer");
 	}
 	// Configuring again the hosts and ports
@@ -241,6 +239,16 @@ state_t eardbd_disconnect()
 	sockets_dispose(&mirror_sock);
 	server_enabled = 0;
 	mirror_enabled = 0;
+	return EAR_SUCCESS;
+}
+
+state_t eardbd_fakefail(int who)
+{
+	if (who == 1) {
+		server_s = EAR_ERROR;		
+	} else {
+		mirror_s = EAR_ERROR;
+	}
 	return EAR_SUCCESS;
 }
 

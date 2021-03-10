@@ -197,7 +197,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verbose_maxxx("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-	verbose_maxxx("initializing DB API");
 	// Database
 	init_db_helper(&conf_clus->database);
 
@@ -241,7 +240,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (mkdir(path_tmp_pid,S_IRUSR|S_IWUSR)<0){
 		verbose_maxxx("Error creating pid path");
 	}
-	verbose_maxxx("Creating pid path in %s",path_tmp_pid);
 	path_pid = path_tmp_pid;
 
 	// Neither server nor mirror

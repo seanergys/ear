@@ -9,15 +9,16 @@ DEPS = \
 
 ######## RULES
 
-all: $(DEPS)
-	$(CC) $(CC_FLAGS) -o test test.c $(DEPS)
+all:
+	$(CC) $(CC_FLAGS) -o test_status test_status.c $(DEPS)
+	$(CC) $(CC_FLAGS) -o test_types test_types.c $(DEPS)
 
 ######## OPTIONS
 
 install: ;
 
 clean: rclean;
-	rm test
+	rm test_status test_types
 
 ######## DEPENDENCIES
 

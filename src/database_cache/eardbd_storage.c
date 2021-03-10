@@ -535,7 +535,7 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		}
 	}
 	else if (type == EDB_TYPE_STATUS) {
-		error("PEDROSAAAAAA STATUS RECIBIDO");
+		error("PEDROSAAAAAA STATUS RECIBIDO %u", sockets_online);
 		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, (char *) &status, sizeof(eardbd_status_t), 0))) {
 			error("Error when sending status: %s", state_msg);
 		}
