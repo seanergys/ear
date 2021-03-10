@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <sched.h>
+#include <math.h>
 #if MPI
 #include <mpi.h>
 #endif
@@ -42,8 +43,10 @@
 extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
+extern ulong imc_max_khz,imc_min_khz;
 
 signature_t policy_last_local_signature,policy_last_global_signature;
+static uint dyn_unc = 0;
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -161,11 +164,24 @@ static void from_proc_to_core()
 	}
 	return;
 }
+
+
+static ulong avg_to_khz(ulong freq_khz)
+{
+	ulong newf;
+	float ff;
+
+	ff = roundf((float) freq_khz / 100000.0);
+	newf = (ulong) ((ff / 10.0) * 1000000);
+	return newf;
+}
 static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
 {
+	ulong imc_up,imc_low;
 	polctx_t *c=&my_pol_ctx;
 	int i;
 	char pol_grain_str[128];
+	state_t s;
 	debug("policy_cpu_freq_selection");
 #if POWERCAP
   if (pc_app_info_data->mode==PC_DVFS){
@@ -200,7 +216,16 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   {
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
   }
+	#if NEW_UMCFREQ
+	if (dyn_unc){
+		imc_up = ear_min(avg_to_khz(my_sig->sig_ext->imc_freq,imc_max_khz);
+		imc_low = imc_up + 100000;
+		imc_low = ear_max(imc_low,imc_min_khz);
+  	eards_mgt_imcfreq_set_current(imc_up,imc_low);
+	}
+	#endif
 }
+
 
 state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,ulong *gpu_f, int *ready)
 {
@@ -237,10 +262,17 @@ state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,ulong *gpu_f, 
 state_t policy_init()
 {
   polctx_t *c=&my_pol_ctx;
+	char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
   state_t ret,retg=EAR_SUCCESS;
   if (polsyms_fun.init != NULL){
     ret=polsyms_fun.init(c);
   }
+	#if NEW_IMCFREQ
+	if (cdyn_unc != NULL){ 
+		dyn_unc = 1;
+		verbose(2,"Dynamic IMC management set to 1");
+	}
+	#endif
   /* Even though the policy could be at the Node granularity, we will use a list */
   policy_freq_list = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
   freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));

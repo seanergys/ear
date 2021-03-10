@@ -774,11 +774,11 @@ int eard_freq(int must_read)
 			write(ear_fd_ack[freq_req],&unc_c,sizeof(uint));
 			break;
 		case UNC_READ:
-			memset(imc_data_app.data,0,unc_c*sizeof(imc_intel63_t));
+			memset(imc_data_app.data,0,unc_c);
 			if (xtate_fail(s,freq_imc_read(&imc_data_app))){
 					error("WHen reading unc frequency requested by app (%d, %s)", s, state_msg);
 			}
-			write(ear_fd_ack[freq_req],imc_data_app.data,unc_c*sizeof(imc_intel63_t));
+			write(ear_fd_ack[freq_req],imc_data_app.data,unc_c);
 			break;
 		case UNC_GET_LIMITS:
 			memset(imc_limits,0,sizeof(imc_limits));

@@ -217,7 +217,9 @@ int module_mpi(char *path_lib_so,char *libhack)
 		return 0;
 	}
 	/* Once EARl is loaded we can  check if the application uses CUDA and then mark as a CUDA app */
+	#if USE_GPUS
 	if (module_cuda_is()) ear_cuda_enabled();
+	#endif
 	if (atexit(module_mpi_destructor) != 0) {
     verbose(1, "LOADER: cannot set exit function");
   }
