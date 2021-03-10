@@ -83,9 +83,10 @@ typedef struct sync_ans {
 } sync_ans_t;
 
 typedef struct eardbd_status_s {
-    state_t insert_states[EDB_NTYPES];
-    uint    samples_recv[EDB_NTYPES];
-    uint    sockets_online;
+	timestamp_t time_last_insert;
+    state_t     insert_states[EDB_NTYPES];
+    uint        samples_recv[EDB_NTYPES];
+    uint        sockets_online;
 } eardbd_status_t;
 
 #endif //EAR_EARDBD_H

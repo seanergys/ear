@@ -123,7 +123,7 @@ static void body_alarm(struct timeval *timeout_slct)
 				peraggr_t *q = (peraggr_t *) &p[sample_index[i_aggrs]];
 
 				if (q->n_samples > 0) {
-					verbose_xaxxw("completed the aggregation number '%lu' with energy '%lu'",
+					verb_who("completed the aggregation number '%lu' with energy '%lu'",
 						 sample_index[i_aggrs], q->DC_energy);
 					// Aggregation time done, so new aggregation incoming
 					storage_sample_add(NULL, type_alloc_len[i_aggrs], &sample_index[i_aggrs], NULL, 0, EDB_SYNC_TYPE_AGGRS);
@@ -206,7 +206,7 @@ static void body_connections()
 						if (sync_fd_exists(ip, &fd_old)) {
 							//log("multiple connections from host '%s', disconnecting previous", extra_buffer);
 							if (verbosity) {
-								verbose_xaxxw("disconnecting from host '%s' (host was previously connected)",
+								verb_who("disconnecting from host '%s' (host was previously connected)",
 									extra_buffer);
 							}
 							sync_fd_disconnect(fd_old);
@@ -217,14 +217,14 @@ static void body_connections()
 					// condition disconnect inmediately.
 					if (!sync_fd_is_mirror(i) && sockets_online >= EDB_MAX_CONNECTIONS) {
 						if (verbosity) {
-							verbose_xaxxw("disconnecting from host '%s' (maximum connections reached)",
+							verb_who("disconnecting from host '%s' (maximum connections reached)",
 								extra_buffer);
 						}
 						sync_fd_disconnect(fd_old);
 					} else {
 						sync_fd_add(fd_cli, ip);
 						if (verbosity) {
-							verbose_xaxxw("accepted fd '%d' from host '%s'", fd_cli, extra_buffer);
+							verb_who("accepted fd '%d' from host '%s'", fd_cli, extra_buffer);
 						}
 					}
 				} while(state_ok(s));
@@ -243,7 +243,7 @@ static void body_connections()
 					}
 					if (verbosity) {
 						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFF_BIG);
-						verbose_xaxxw("disconnecting from host %s (errno: '%d', strerrno: '%s')",
+						verb_who("disconnecting from host %s (errno: '%d', strerrno: '%s')",
 								extra_buffer, intern_error_num, intern_error_str);
 					}
 					sync_fd_disconnect(i);

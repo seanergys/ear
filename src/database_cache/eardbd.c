@@ -180,7 +180,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		_error("while getting ear.conf path");
 	}
 
-	verbose_maxxx("reading '%s' configuration file", extra_buffer);
+	verb_master("reading '%s' configuration file", extra_buffer);
 	read_cluster_conf(extra_buffer, conf_clus);
 
 	#ifdef USE_EARDBD_CONF
@@ -189,13 +189,13 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		_error("while getting eardbd.conf path");
 	}
 
-	verbose_maxxx("reading '%s' database configuration file", extra_buffer);
+	verb_master("reading '%s' database configuration file", extra_buffer);
 	read_eardbd_conf(extra_buffer, conf_clus->database.user, conf_clus->database.pass);
 	#endif
 
 	// Output redirection
 	if (conf_clus->db_manager.use_log) {
-		verbose_maxxx("redirecting output to '%s'", conf_clus->install.dir_temp);
+		verb_master("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
 	// Database
 	init_db_helper(&conf_clus->database);
@@ -238,7 +238,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	pid_t other_mirror_pid;
 	sprintf(path_tmp_pid,"%s/%d",conf_clus->install.dir_temp,getpid());
 	if (mkdir(path_tmp_pid,S_IRUSR|S_IWUSR)<0){
-		verbose_maxxx("Error creating pid path");
+		verb_master("Error creating pid path");
 	}
 	path_pid = path_tmp_pid;
 
@@ -275,8 +275,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Server & mirro verbosity
-	verbose_maxxx("enabled cache server: %s",                  server_too ? "OK": "NO");
-	verbose_maxxx("enabled cache mirror: %s (of server '%s')", mirror_too ? "OK" : "NO", server_host);
+	verb_master("enabled cache server: %s",                  server_too ? "OK": "NO");
+	verb_master("enabled cache mirror: %s (of server '%s')", mirror_too ? "OK" : "NO", server_host);
 }
 
 static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -286,11 +286,11 @@ static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_
 	time_aggr = (time_t) conf_clus->db_manager.aggr_time;
 
 	if (time_insr == 0) {
-		verbose_maxxx("insert time can't be 0, using 300 seconds (default)");
+		verb_master("insert time can't be 0, using 300 seconds (default)");
 		time_insr = 300;
 	}
 	if (time_aggr == 0) {
-		verbose_maxxx("aggregation time can't be 0, using 60 seconds (default)");
+		verb_master("aggregation time can't be 0, using 60 seconds (default)");
 		time_aggr = 60;
 	}
 
@@ -300,8 +300,8 @@ static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_
 	time_reset_timeout_slct();
 
 	// Times verbosity
-	verbose_maxxx("insertion time:   %lu seconds", time_insr);
-	verbose_maxxx("aggregation time: %lu seconds", time_aggr);
+	verb_master("insertion time:   %lu seconds", time_insr);
+	verb_master("aggregation time: %lu seconds", time_aggr);
 }
 
 static int init_sockets_single(socket_t *socket, char *host, int port, int bind)
@@ -362,8 +362,8 @@ static void init_sockets(int argc, char **argv, cluster_conf_t *conf_clus)
 	tprintf("mirror metrics||%d||TCP||%s||%d||%d", smets_mir->port, str_sta[st2], fd2, errno2);
 	tprintf("server sync||%d||TCP||%s||%d||%d",    ssync_srv->port, str_sta[st3], fd3, errno3);
 	tprintf("mirror sync||%d||TCP||%s||%d||%d",    ssync_mir->port, str_sta[st4], fd4, errno4);
-	verbose_maxxx("TIP! mirror sync socket opens and closes intermittently");
-	verbose_maxxx("maximum #connections per process: %u", EDB_MAX_CONNECTIONS);
+	verb_master("TIP! mirror sync socket opens and closes intermittently");
+	verb_master("maximum #connections per process: %u", EDB_MAX_CONNECTIONS);
 }
 
 static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -396,8 +396,8 @@ static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
 	// Verbosity
 	char *str_sta[2] = { "(just sleeps)", "" };
 
-	verbose_maxxx("cache server pid: %d %s", server_pid, str_sta[server_too]);
-	verbose_maxxx("cache mirror pid: %d", mirror_pid);
+	verb_master("cache server pid: %d %s", server_pid, str_sta[server_too]);
+	verb_master("cache mirror pid: %d", mirror_pid);
 }
 
 static void init_signals()
@@ -425,22 +425,22 @@ static void init_signals()
 	action.sa_flags = SA_SIGINFO;
 
 	if (sigaction(SIGUSR1, &action, NULL) < 0) { 
-        	verbose_xaxxw("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+        	verb_who("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGUSR2, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGCHLD, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGTERM, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGTERM, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGTERM, strerror(errno));
 	}
 	if (sigaction(SIGINT, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGINT, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGINT, strerror(errno));
 	}
 	if (sigaction(SIGHUP, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGHUP, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGHUP, strerror(errno));
 	}
 }
 
@@ -577,7 +577,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 				type_alloc_mbs[i_evnts] + type_alloc_mbs[i_enrgy] +
 				type_alloc_mbs[i_aggrs];
 	tprintf("TOTAL||%0.2f MBs", mb_total);
-	verbose_maxxx("TIP! this allocated space is per process server/mirror");
+	verb_master("TIP! this allocated space is per process server/mirror");
 	// Synchronization headers
 	sockets_header_clean(&header_answer);
 	sockets_header_clean(&header_question);
@@ -616,7 +616,7 @@ static void init_output_redirection(int argc, char **argv, cluster_conf_t *conf_
 	int fd_output = -1;
 
 	if (listening) {
-		verbose_maslx("phase 7: listening (processing every %lu s)", time_insr);
+		verb_master_line("phase 7: listening (processing every %lu s)", time_insr);
 	}
 
 	if (conf_clus->db_manager.use_log) {
@@ -650,19 +650,19 @@ int main(int argc, char **argv)
 	while(!exitting)
 	{
 		//
-		verbose_maslx("phase 1: general configuration");
+		verb_master_line("phase 1: general configuration");
 		init_general_configuration(argc, argv, &conf_clus);
 
 		//
-		verbose_maslx("phase 2: time configuration");
+		verb_master_line("phase 2: time configuration");
 		init_time_configuration(argc, argv, &conf_clus);
 
 		//
-		verbose_maslx("phase 3: sockets initialization");
+		verb_master_line("phase 3: sockets initialization");
 		init_sockets(argc, argv, &conf_clus);
 
 		//
-		verbose_maslx("phase 4: processes fork");
+		verb_master_line("phase 4: processes fork");
 		init_fork(argc, argv, &conf_clus);
 
 		/*
@@ -673,7 +673,7 @@ int main(int argc, char **argv)
 		init_signals();
 
 		//
-		verbose_maslx("phase 6: process configuration & allocation");
+		verb_master_line("phase 6: process configuration & allocation");
 		init_process_configuration(argc, argv, &conf_clus);
 
 		// Creating PID files
@@ -696,7 +696,7 @@ int main(int argc, char **argv)
 		dream();
 	}
 
-	verbose_maslx("Bye");
+	verb_master_line("Bye");
 
 	return 0;
 }

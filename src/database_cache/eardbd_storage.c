@@ -82,11 +82,11 @@ extern ulong  sample_index[EDB_NTYPES];
 extern uint   sample_recv[EDB_NTYPES];
 
 // Sockets info
-extern uint   sockets_accepted;
-extern uint   sockets_online;
-extern uint   sockets_disconnected;
-extern uint   sockets_unrecognized;
-extern uint   sockets_timeout;
+extern uint sockets_accepted;
+extern uint sockets_online;
+extern uint sockets_disconnected;
+extern uint sockets_unrecognized;
+extern uint sockets_timeout;
 
 // State machine
 extern int reconfiguring;
@@ -119,7 +119,7 @@ void metrics_print()
 	int n = 0;
 	int i = 0;
 
-	verbose_line();
+	print_line();
 	// Counting samples
 	for (; i < EDB_NTYPES && n == 0; ++i) {
 		n += (sample_index[i] > 0);
@@ -148,13 +148,13 @@ void metrics_print()
 				type_name[i], sample_index[i], type_alloc_len[i], percent, time_insert, time_recv);
 	}
 
-	verbose_xaxxx("--");
+	verbose(0, "--");
 	}
 	//
-	verbose_xaxxx("actv./accp. sockets: %u/%u", sockets_online, sockets_accepted);
-	verbose_xaxxx("disc./tout. sockets: %u/%u", sockets_disconnected, sockets_timeout);
-	verbose_xaxxx("recv. unknown samples: %u", sockets_timeout);
-	verbose_line();
+	verbose(0, "actv./accp. sockets: %u/%u", sockets_online, sockets_accepted);
+	verbose(0, "disc./tout. sockets: %u/%u", sockets_disconnected, sockets_timeout);
+	verbose(0, "recv. unknown samples: %u", sockets_timeout);
+	print_line();
 
 	sockets_accepted     = 0;
 	sockets_disconnected = 0;
@@ -228,8 +228,10 @@ static void insert_stop(uint i, state_t s)
 	status.sockets_online   = sockets_online;
 	// Aggregations is a special case
 	if (i != i_aggrs) {
-		status.samples_recv[i]  = sample_index[i];
+		status.samples_recv[i] = sample_index[i];
 	}
+	// Saving last insert time
+	timestamp_get(&status.time_last_insert);
 	// Reset samples
 	reset_index(i);
 }
@@ -314,7 +316,7 @@ static void insert_events(int i)
 
 void insert_hub(uint option, uint reason)
 {
-	verbose_xaxxw("looking for possible DB insertion (type 0x%x, reason 0x%x)",
+	verb_who("looking for possible DB insertion (type 0x%x, reason 0x%x)",
 				  option, reason);
 	// Why print is set before inserts?
 	metrics_print();
@@ -456,10 +458,10 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 
 	if (verbosity) {
 		#if SOCKETS_DEBUG
-		verbose_xaxxw("received from host '%s' an object of type: '%s' (t: '%d', i: '%d')",
+		verb_who("received from host '%s' an object of type: '%s' (t: '%d', i: '%d')",
 			header->host_src, name, type, index);
 		#else
-		verbose_xaxxw("received object of type: '%s' (t: '%d', i: '%d')",
+		verb_who("received object of type: '%s' (t: '%d', i: '%d')",
 			name, type, index);
 		#endif
 	}
