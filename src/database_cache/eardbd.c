@@ -23,7 +23,7 @@
 #include <database_cache/eardbd_sync.h>
 #include <database_cache/eardbd_signals.h>
 #include <database_cache/eardbd_storage.h>
-#if !OFFLINE
+#if !EDB_OFFLINE
 #include <common/config.h>
 #include <common/database/db_helper.h>
 #endif
@@ -78,7 +78,7 @@ int server_iam;
 int mirror_iam;
 
 // PID
-char *path_pid,path_tmp_pid[128];;
+char *path_pid, path_tmp_pid[128];
 process_data_t proc_data_srv;
 process_data_t proc_data_mir;
 pid_t server_pid;
@@ -86,31 +86,34 @@ pid_t mirror_pid;
 pid_t others_pid;
 
 // Synchronization
-packet_header_t sync_ans_header;
-packet_header_t sync_qst_header;
-sync_qst_t sync_qst_content;
-sync_ans_t sync_ans_content;
+packet_header_t header_question;
+packet_header_t header_answer;
+sync_qst_t data_question;
+sync_ans_t data_answer;
 
 // Data
-time_t glb_time1[MAX_TYPES];
-time_t glb_time2[MAX_TYPES];
-time_t ins_time1[MAX_TYPES];
-time_t ins_time2[MAX_TYPES];
-size_t typ_sizof[MAX_TYPES];
-float  typ_vecmb[MAX_TYPES];
-uint   typ_prcnt[MAX_TYPES];
-float  typ_prcnl[MAX_TYPES];
-uint   typ_index[MAX_TYPES];
-char  *typ_alloc[MAX_TYPES];
-char  *sam_iname[MAX_TYPES];
-ulong  sam_inmax[MAX_TYPES];
-ulong  sam_index[MAX_TYPES];
-uint   sam_recvd[MAX_TYPES];
-uint   soc_accpt;
-uint   soc_activ;
-uint   soc_discn;
-uint   soc_unkwn;
-uint   soc_tmout;
+time_t time_recv1[EDB_NTYPES];   // Time between first and last sample start
+time_t time_recv2[EDB_NTYPES];   // Time between first and last sample stop
+time_t time_insert1[EDB_NTYPES]; // Insert time start
+time_t time_insert2[EDB_NTYPES]; // Insert time stop
+size_t type_sizeof[EDB_NTYPES];  // Type sizeof
+char  *type_name[EDB_NTYPES];    // Sample name
+char  *type_alloc[EDB_NTYPES];   // Type batch allocation
+float  type_alloc_mbs[EDB_NTYPES]; // Type allocation in megabytes
+uint   type_alloc_100[EDB_NTYPES]; // Type allocation in percentage
+ulong  type_alloc_len[EDB_NTYPES]; // Type allocation in vector length
+ulong  sample_index[EDB_NTYPES]; // Pointer to the next empty space
+uint   sample_recv[EDB_NTYPES];  // Samples received counter
+
+// Sockets info
+uint sockets_accepted;
+uint sockets_online;
+uint sockets_disconnected;
+uint sockets_unrecognized;
+uint sockets_timeout;
+
+// Status
+eardbd_status_t status;
 
 // Times (alarms)
 struct timeval timeout_insr;
@@ -120,7 +123,7 @@ time_t time_insr;
 time_t time_aggr;
 time_t time_slct;
 
-// State machine
+// State machine from the main loop
 int reconfiguring;
 int listening;
 int releasing;
@@ -172,12 +175,12 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Configuration
-	#if !OFFLINE
+	#if !EDB_OFFLINE
 	if (get_ear_conf_path(extra_buffer) == EAR_ERROR) {
 		_error("while getting ear.conf path");
 	}
 
-	verbose_maxxx("reading '%s' configuration file", extra_buffer);
+	verb_master("reading '%s' configuration file", extra_buffer);
 	read_cluster_conf(extra_buffer, conf_clus);
 
 	#ifdef USE_EARDBD_CONF
@@ -186,15 +189,14 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		_error("while getting eardbd.conf path");
 	}
 
-	verbose_maxxx("reading '%s' database configuration file", extra_buffer);
+	verb_master("reading '%s' database configuration file", extra_buffer);
 	read_eardbd_conf(extra_buffer, conf_clus->database.user, conf_clus->database.pass);
 	#endif
 
 	// Output redirection
 	if (conf_clus->db_manager.use_log) {
-		verbose_maxxx("redirecting output to '%s'", conf_clus->install.dir_temp);
+		verb_master("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-	verbose_maxxx("initializing DB API");
 	// Database
 	init_db_helper(&conf_clus->database);
 
@@ -229,7 +231,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	synchr_port = conf_clus->db_manager.sync_tcp_port;
 
 	// Allocation
-	verbose_maxxx("Using %d MB",conf_clus->db_manager.mem_size);
 	alloc = (float) conf_clus->db_manager.mem_size;
 
 	// PID protection
@@ -237,9 +238,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	pid_t other_mirror_pid;
 	sprintf(path_tmp_pid,"%s/%d",conf_clus->install.dir_temp,getpid());
 	if (mkdir(path_tmp_pid,S_IRUSR|S_IWUSR)<0){
-		verbose_maxxx("Error creating pid path");
+		verb_master("Error creating pid path");
 	}
-	verbose_maxxx("Creating pid path in %s",path_tmp_pid);
 	path_pid = path_tmp_pid;
 
 	// Neither server nor mirror
@@ -252,7 +252,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 
 	if (state_fail(process_pid_file_save(&proc_data_srv))) {
 		_error("while testing the temporal directory '%s' (%s)",
-			   conf_clus->install.dir_temp, intern_error_str);
+			   conf_clus->install.dir_temp, state_msg);
 	}
 
 	process_pid_file_clean(&proc_data_srv);
@@ -275,8 +275,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Server & mirro verbosity
-	verbose_maxxx("enabled cache server: %s",                  server_too ? "OK": "NO");
-	verbose_maxxx("enabled cache mirror: %s (of server '%s')", mirror_too ? "OK" : "NO", server_host);
+	verb_master("enabled cache server: %s",                  server_too ? "OK": "NO");
+	verb_master("enabled cache mirror: %s (of server '%s')", mirror_too ? "OK" : "NO", server_host);
 }
 
 static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -286,11 +286,11 @@ static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_
 	time_aggr = (time_t) conf_clus->db_manager.aggr_time;
 
 	if (time_insr == 0) {
-		verbose_maxxx("insert time can't be 0, using 300 seconds (default)");
+		verb_master("insert time can't be 0, using 300 seconds (default)");
 		time_insr = 300;
 	}
 	if (time_aggr == 0) {
-		verbose_maxxx("aggregation time can't be 0, using 60 seconds (default)");
+		verb_master("aggregation time can't be 0, using 60 seconds (default)");
 		time_aggr = 60;
 	}
 
@@ -300,8 +300,8 @@ static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_
 	time_reset_timeout_slct();
 
 	// Times verbosity
-	verbose_maxxx("insertion time:   %lu seconds", time_insr);
-	verbose_maxxx("aggregation time: %lu seconds", time_aggr);
+	verb_master("insertion time:   %lu seconds", time_insr);
+	verb_master("aggregation time: %lu seconds", time_aggr);
 }
 
 static int init_sockets_single(socket_t *socket, char *host, int port, int bind)
@@ -315,13 +315,13 @@ static int init_sockets_single(socket_t *socket, char *host, int port, int bind)
 		return 0;
 	}
 	if (state_fail(sockets_socket(socket))) {
-		return intern_error_num;
+		return -1;
 	}
 	if (state_fail(sockets_bind(socket, 60))) {
-		return intern_error_num;
+		return -1;
 	}
 	if (state_fail(sockets_listen(socket))) {
-		return intern_error_num;
+		return -1;
 	}
 
 	sockets_nonblock_set(socket->fd);
@@ -362,8 +362,8 @@ static void init_sockets(int argc, char **argv, cluster_conf_t *conf_clus)
 	tprintf("mirror metrics||%d||TCP||%s||%d||%d", smets_mir->port, str_sta[st2], fd2, errno2);
 	tprintf("server sync||%d||TCP||%s||%d||%d",    ssync_srv->port, str_sta[st3], fd3, errno3);
 	tprintf("mirror sync||%d||TCP||%s||%d||%d",    ssync_mir->port, str_sta[st4], fd4, errno4);
-	verbose_maxxx("TIP! mirror sync socket opens and closes intermittently");
-	verbose_maxxx("maximum #connections per process: %u", MAX_CONNECTIONS);
+	verb_master("TIP! mirror sync socket opens and closes intermittently");
+	verb_master("maximum #connections per process: %u", EDB_MAX_CONNECTIONS);
 }
 
 static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -396,8 +396,8 @@ static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
 	// Verbosity
 	char *str_sta[2] = { "(just sleeps)", "" };
 
-	verbose_maxxx("cache server pid: %d %s", server_pid, str_sta[server_too]);
-	verbose_maxxx("cache mirror pid: %d", mirror_pid);
+	verb_master("cache server pid: %d %s", server_pid, str_sta[server_too]);
+	verb_master("cache mirror pid: %d", mirror_pid);
 }
 
 static void init_signals()
@@ -425,60 +425,60 @@ static void init_signals()
 	action.sa_flags = SA_SIGINFO;
 
 	if (sigaction(SIGUSR1, &action, NULL) < 0) { 
-        	verbose_xaxxw("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+        	verb_who("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGUSR2, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGCHLD, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGTERM, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGTERM, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGTERM, strerror(errno));
 	}
 	if (sigaction(SIGINT, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGINT, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGINT, strerror(errno));
 	}
 	if (sigaction(SIGHUP, &action, NULL) < 0) {
-		verbose_xaxxw("sigaction error on signal %d (%s)", SIGHUP, strerror(errno));
+		verb_who("sigaction error on signal %d (%s)", SIGHUP, strerror(errno));
 	}
 }
 
 static void init_types_single(int i, char *name, size_t size, uint percent)
 {
-	float mb_single;
-	float mb_batch;
-	ulong b_batch;
+	float batch_100;
+	float single_mb;
+	float batch_mb;
+	ulong batch_b;
 
-	//
-	sam_iname[i] = name;
-	typ_sizof[i] = size;
-	typ_prcnl[i] = ((float) percent) / 100.0;
-
-	//
-	mb_batch     = ceilf(alloc * typ_prcnl[i]);
-	mb_single    = ((float) typ_sizof[i]) / 1000000.0;
-	sam_inmax[i] = (ulong) (mb_batch / mb_single);
-
-	if (sam_inmax[i] < 100 && sam_inmax[i] > 0) {
-		sam_inmax[i] = 100;
+	// Obtaining the percentage in floats
+	type_name[i]   = name;
+	type_sizeof[i] = size;
+	batch_100      = ((float) percent) / 100.0;
+	batch_mb       = ceilf(alloc * batch_100);
+	single_mb      = ((float) type_sizeof[i]) / 1000000.0;
+	type_alloc_len[i] = (ulong) (batch_mb / single_mb);
+	// If there are less than 100, allocate at least 100 positions
+	if (type_alloc_len[i] < 100) {
+		type_alloc_len[i] = 100;
 	}
-
 	// Allocation and set
-	b_batch = typ_sizof[i] * sam_inmax[i];
-	typ_vecmb[i] = (double) (b_batch) / 1000000.0;
-
-	typ_alloc[i] = malloc(b_batch);
-	memset(typ_alloc[i], 0, b_batch);
+	batch_b = type_sizeof[i] * type_alloc_len[i];
+	type_alloc_mbs[i] = (double) (batch_b) / 1000000.0;
+	//
+	type_alloc[i] = malloc(batch_b);
+	memset(type_alloc[i], 0, batch_b);
 
 	// Verbosity
 	tprintf("%s||%0.2f MBs||%lu Bs||%lu||%0.2f",
-			sam_iname[i], typ_vecmb[i], typ_sizof[i], sam_inmax[i], typ_prcnl[i]);
+			type_name[i], type_alloc_mbs[i], type_sizeof[i], type_alloc_len[i], batch_100);
 }
 
 static void init_process_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
 {
-	uint per_total = 0;
+	uint percent = 0;
+	uint invalid = 0;
+	uint count = 0;
 	int i;
 
 	// Single process configuration
@@ -530,25 +530,27 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 
 	// Types allocation counting
 	for (i = 0; i < EARDBD_TYPES; ++i) {
-		per_total += conf_clus->db_manager.mem_size_types[i];
+		count = conf_clus->db_manager.mem_size_types[i];
+		invalid = invalid & (count > 100 || count == 0);
+		percent += count;
 	}
 
-	typ_prcnt[i_appsm] = ALLOC_PERCENT_APPS_MPI;
-	typ_prcnt[i_appsn] = ALLOC_PERCENT_APPS_SEQUENTIAL;
-	typ_prcnt[i_appsl] = ALLOC_PERCENT_APPS_LEARNING;
-	typ_prcnt[i_loops] = ALLOC_PERCENT_LOOPS;
-	typ_prcnt[i_enrgy] = ALLOC_PERCENT_EVENTS;
-	typ_prcnt[i_aggrs] = ALLOC_PERCENT_ENERGY_REPS;
-	typ_prcnt[i_evnts] = ALLOC_PERCENT_ENERGY_AGGRS;
+	type_alloc_100[i_appsm] = ALLOC_PERCENT_APPS_MPI;
+	type_alloc_100[i_appsn] = ALLOC_PERCENT_APPS_SEQUENTIAL;
+	type_alloc_100[i_appsl] = ALLOC_PERCENT_APPS_LEARNING;
+	type_alloc_100[i_loops] = ALLOC_PERCENT_LOOPS;
+	type_alloc_100[i_enrgy] = ALLOC_PERCENT_ENERGY_REPS;
+	type_alloc_100[i_aggrs] = ALLOC_PERCENT_ENERGY_AGGRS;
+	type_alloc_100[i_evnts] = ALLOC_PERCENT_EVENTS;
 
-	if (per_total > 90 && per_total < 110) {
-		typ_prcnt[i_appsm] = conf_clus->db_manager.mem_size_types[0];
-		typ_prcnt[i_appsn] = conf_clus->db_manager.mem_size_types[1];
-		typ_prcnt[i_appsl] = conf_clus->db_manager.mem_size_types[2];
-		typ_prcnt[i_loops] = conf_clus->db_manager.mem_size_types[3];
-		typ_prcnt[i_enrgy] = conf_clus->db_manager.mem_size_types[4];
-		typ_prcnt[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
-		typ_prcnt[i_evnts] = conf_clus->db_manager.mem_size_types[6];
+	if (!invalid && percent > 90 && percent < 110) {
+		type_alloc_100[i_appsm] = conf_clus->db_manager.mem_size_types[0];
+		type_alloc_100[i_appsn] = conf_clus->db_manager.mem_size_types[1];
+		type_alloc_100[i_appsl] = conf_clus->db_manager.mem_size_types[2];
+		type_alloc_100[i_loops] = conf_clus->db_manager.mem_size_types[3];
+		type_alloc_100[i_enrgy] = conf_clus->db_manager.mem_size_types[4];
+		type_alloc_100[i_aggrs] = conf_clus->db_manager.mem_size_types[5];
+		type_alloc_100[i_evnts] = conf_clus->db_manager.mem_size_types[6];
 	}
 
 	// Verbose
@@ -562,29 +564,28 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	tprintf("type||memory||sample||elems||%%");
 	tprintf("----||------||------||-----||----");
 
+	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          type_alloc_100[i_appsm]);
+	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          type_alloc_100[i_appsn]);
+	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          type_alloc_100[i_appsl]);
+	init_types_single(i_loops, "loops",        sizeof(loop_t),                 type_alloc_100[i_loops]);
+	init_types_single(i_evnts, "events",       sizeof(ear_event_t),            type_alloc_100[i_evnts]);
+	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      type_alloc_100[i_enrgy]);
+	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), type_alloc_100[i_aggrs]);
 
-	init_types_single(i_appsm, "apps mpi",     sizeof(application_t),          ALLOC_PERCENT_APPS_MPI);
-	init_types_single(i_appsn, "apps non-mpi", sizeof(application_t),          ALLOC_PERCENT_APPS_SEQUENTIAL);
-	init_types_single(i_appsl, "apps learn.",  sizeof(application_t),          ALLOC_PERCENT_APPS_LEARNING);
-	init_types_single(i_loops, "loops",        sizeof(loop_t),                 ALLOC_PERCENT_LOOPS);
-	init_types_single(i_evnts, "events",       sizeof(ear_event_t),            ALLOC_PERCENT_EVENTS);
-	init_types_single(i_enrgy, "energy reps",  sizeof(periodic_metric_t),      ALLOC_PERCENT_ENERGY_REPS);
-	init_types_single(i_aggrs, "energy aggrs", sizeof(periodic_aggregation_t), ALLOC_PERCENT_ENERGY_AGGRS);
-
-	float mb_total = typ_vecmb[i_appsm] + typ_vecmb[i_appsn] + typ_vecmb[i_appsl] +
-		 typ_vecmb[i_loops] + typ_vecmb[i_evnts] + typ_vecmb[i_enrgy] + typ_vecmb[i_aggrs];
-
+	float mb_total = type_alloc_mbs[i_appsm] + type_alloc_mbs[i_appsn] +
+				type_alloc_mbs[i_appsl] + type_alloc_mbs[i_loops] +
+				type_alloc_mbs[i_evnts] + type_alloc_mbs[i_enrgy] +
+				type_alloc_mbs[i_aggrs];
 	tprintf("TOTAL||%0.2f MBs", mb_total);
-	verbose_maxxx("TIP! this allocated space is per process server/mirror");
-
+	verb_master("TIP! this allocated space is per process server/mirror");
 	// Synchronization headers
-	sockets_header_clean(&sync_ans_header);
-	sockets_header_clean(&sync_qst_header);
+	sockets_header_clean(&header_answer);
+	sockets_header_clean(&header_question);
 
-	sync_ans_header.content_type = CONTENT_TYPE_ANS;
-	sync_ans_header.content_size = sizeof(sync_ans_t);
-	sync_qst_header.content_type = CONTENT_TYPE_QST;
-	sync_qst_header.content_size = sizeof(sync_qst_t);
+	header_answer.content_type = EDB_TYPE_SYNC_ANSWER;
+	header_answer.content_size = sizeof(sync_ans_t);
+	header_question.content_type = EDB_TYPE_SYNC_QUESTION;
+	header_question.content_size = sizeof(sync_qst_t);
 }
 
 static void init_pid_files(int argc, char **argv)
@@ -615,7 +616,7 @@ static void init_output_redirection(int argc, char **argv, cluster_conf_t *conf_
 	int fd_output = -1;
 
 	if (listening) {
-		verbose_maslx("phase 7: listening (processing every %lu s)", time_insr);
+		verb_master_line("phase 7: listening (processing every %lu s)", time_insr);
 	}
 
 	if (conf_clus->db_manager.use_log) {
@@ -649,19 +650,19 @@ int main(int argc, char **argv)
 	while(!exitting)
 	{
 		//
-		verbose_maslx("phase 1: general configuration");
+		verb_master_line("phase 1: general configuration");
 		init_general_configuration(argc, argv, &conf_clus);
 
 		//
-		verbose_maslx("phase 2: time configuration");
+		verb_master_line("phase 2: time configuration");
 		init_time_configuration(argc, argv, &conf_clus);
 
 		//
-		verbose_maslx("phase 3: sockets initialization");
+		verb_master_line("phase 3: sockets initialization");
 		init_sockets(argc, argv, &conf_clus);
 
 		//
-		verbose_maslx("phase 4: processes fork");
+		verb_master_line("phase 4: processes fork");
 		init_fork(argc, argv, &conf_clus);
 
 		/*
@@ -672,7 +673,7 @@ int main(int argc, char **argv)
 		init_signals();
 
 		//
-		verbose_maslx("phase 6: process configuration & allocation");
+		verb_master_line("phase 6: process configuration & allocation");
 		init_process_configuration(argc, argv, &conf_clus);
 
 		// Creating PID files
@@ -695,7 +696,7 @@ int main(int argc, char **argv)
 		dream();
 	}
 
-	verbose_maslx("Bye");
+	verb_master_line("Bye");
 
 	return 0;
 }

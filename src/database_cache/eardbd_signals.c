@@ -61,7 +61,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 		verbosity = !verbosity;
 		updating  = 1;
 
-		verbose_xaxxw("signal SIGUSR1 received, switching verbosity to '%d'", verbosity);
+		verb_who("signal SIGUSR1 received, switching verbosity to '%d'", verbosity);
 	}
 
 	if (signal == SIGUSR2)
@@ -69,13 +69,13 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 		verbosity = (verbosity != 2) * 2;
 		updating  = 1;
 
-		verbose_xaxxw("signal SIGUSR2 received, switching verbosity to '%d'", verbosity);
+		verb_who("signal SIGUSR2 received, switching verbosity to '%d'", verbosity);
 	}
 
 	// Case exit
 	if ((signal == SIGTERM || signal == SIGINT) && !exitting)
 	{
-		verbose_xxxxw("signal SIGTERM/SIGINT received, exitting");
+		verb_who_noarg("signal SIGTERM/SIGINT received, exitting");
 
 		propagating   = others_pid > 0 && info->si_pid != others_pid;
 		//waiting     = others_pid > 0 && server_iam;
@@ -88,7 +88,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 	// Case reconfigure
 	if (signal == SIGHUP && !reconfiguring)
 	{
-		verbose_xxxxw("signal SIGHUP received, reconfiguring");
+		verb_who_noarg("signal SIGHUP received, reconfiguring");
 
 		propagating   = others_pid > 0 && info->si_pid != others_pid;
 		//waiting       = others_pid > 0 && server_iam;
@@ -101,7 +101,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 
 	if (signal == SIGCHLD)
 	{
-		verbose_xxxxw("signal SIGCHLD received");
+		verb_who_noarg("signal SIGCHLD received");
 
 		updating   = 1;
 		waiting    = server_iam & (others_pid > 0);
@@ -116,9 +116,9 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 	// Wait for the children (mirror)
 	if (waiting)
 	{
-		verbose_xxxxw("waiting 1");
+		verb_who_noarg("waiting 1");
 		waitpid(mirror_pid, NULL, 0);
-		verbose_xxxxw("waiting 2");
+		verb_who_noarg("waiting 2");
 
 		others_pid = 0;
 		mirror_pid = 0;

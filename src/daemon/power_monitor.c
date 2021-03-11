@@ -472,11 +472,10 @@ void report_powermon_app(powermon_app_t *app) {
 			}
 		}
 		else {
-			edb_state_t state = eardbd_send_application(&app->app);
-
-			if (edb_state_fail(state)) {
+			state_t state = eardbd_send_application(&app->app);
+			if (state_fail(state)) {
 				error("Error when sending application to eardb");
-				eardbd_reconnect(&my_cluster_conf, my_node_conf, state);
+				eardbd_reconnect(&my_cluster_conf, my_node_conf);
 			}
 		}
 	}
@@ -1083,19 +1082,12 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 			if (!db_insert_periodic_metric(&current_sample))
 				debug( "Periodic power monitoring sample correctly written");
 		} else {
-			edb_state_t state = eardbd_send_periodic_metric(&current_sample);
-
-			if (edb_state_fail(state)) {
-				if (state_fail(state.server)){
-					error("Error when sending periodic power metric to eardb main server");
-				}else{
-					error("Error when sending periodic power metric to eardb mirror server");
-				}
-				state = eardbd_reconnect(&my_cluster_conf, my_node_conf, state);
-
-				if (edb_state_fail(state)) {
-					error("Error re-connecting with EARDB errnum:%d errmsg:%s",
-						intern_error_num, intern_error_str);
+			state_t state = eardbd_send_periodic_metric(&current_sample);
+			if (state_fail(state)) {
+				error("Error when sending periodic power metric to EARDBD: %s", state_msg);
+				state = eardbd_reconnect(&my_cluster_conf, my_node_conf);
+				if (state_fail(state)) {
+					error("Error re-connecting with EARDBD: %s", state_msg );
 				}
 			}
 		}

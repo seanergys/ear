@@ -21,7 +21,7 @@
 #include <signal.h>
 
 #define _error(...) \
-	verbose_line(); \
+	print_line(); \
 	verbose(0, "ERROR, " __VA_ARGS__); \
 	error_handler();
 
