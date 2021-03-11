@@ -327,6 +327,23 @@ void clean_ips(ip_table_t *ips, int num_ips)
         ips[i].counter=0;
 }
 
+void process_powercap_status(powercap_status_t *powerstatus,int num_status)
+{
+	char state_name[128];
+	if (num_status > 0)
+	{
+		int i;
+		for (i = 0; i < num_status; i++)
+		{
+			if (powerstatus[i].total_powercap) sprintf(state_name,"Enabled. Limit = %u",powerstatus[i].total_powercap);
+			else sprintf(state_name,"disabled");
+			printf("Powercap information[%d]:\nStatus: %s\nTotal idle_nodes: %d\nPotential power to be released: %d\nTotal number of greedy nodes : %d \nTotal extra power requested: %d\nTotal power used %u W\n", i, state_name,powerstatus[i].idle_nodes,
+			powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, powerstatus[i].current_power);
+		}
+		free(powerstatus);
+	}
+}
+
 void process_status(int num_status, status_t *status, char error_only)
 {
     if (num_status > 0)
@@ -734,16 +751,7 @@ int main(int argc, char *argv[])
                 case EAR_TYPE_POWER_STATUS:
                     printf("Reading power_status from node %s\n", node_name);
                     num_status = eards_get_powercap_status(&my_cluster_conf, &powerstatus);
-                    if (num_status > 0)
-                    {
-                        int i;
-                        for (i = 0; i < num_status; i++)
-                        {
-                            printf("powercap_status %d: idle_nodes: %d\t released_pow: %d\t int num_greedy: %d \trequested: %d\t current_pow: %u total_powcap: %u\n", i, powerstatus[i].idle_nodes,
-                                        powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, powerstatus[i].current_power, powerstatus[i].total_powercap);
-                        }
-                        free(powerstatus);
-                    }
+										process_powercap_status(powerstatus,num_status);
                     break;
                 case EAR_TYPE_APP_STATUS_MASTER:
                     num_status = eards_get_app_master_status(&my_cluster_conf, &appstatus);
@@ -778,18 +786,7 @@ int main(int argc, char *argv[])
                 break;
             case EAR_TYPE_POWER_STATUS:
                 num_status = cluster_get_powercap_status(&my_cluster_conf, &powerstatus);
-                if (num_status > 0)
-                {
-                    int i;
-                    for (i = 0; i < num_status; i++)
-                    {
-                        printf("powercap_status %d: idle_nodes: %d\t released_pow: %d\t int num_greedy: %d \trequested: %d\t current_pow: %u total_powcap: %u\t total_nodes: %d\n", 
-                                        i, powerstatus[i].idle_nodes, powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, 
-                                        powerstatus[i].current_power, powerstatus[i].total_powercap, powerstatus[i].total_nodes);
-                    }
-                    free(powerstatus);
-                }
-                else printf("powercap_status returned with invalid (%d) num_powerstatus\n", num_status);
+								process_powercap_status(powerstatus,num_status);
                 break;
             case EAR_TYPE_APP_STATUS_MASTER:
                 num_status = get_app_master_status_all_nodes(&my_cluster_conf, &appstatus);
