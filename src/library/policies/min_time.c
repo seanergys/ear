@@ -46,6 +46,7 @@ typedef unsigned long ulong;
 extern ulong policy_max_imcfreq,policy_min_imcfreq;
 extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
+ulong avg_to_khz(ulong freq_khz);
 #endif
 
 #ifdef EARL_RESEARCH
@@ -138,8 +139,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
 		#if NEW_IMCFREQ
 		if (dyn_unc){
-			policy_max_imcfreq = 1500000;
-			policy_min_imcfreq = 1400000;
+			policy_max_imcfreq = avg_to_khz(my_app->sig_ext->imc_freq);
+			policy_min_imcfreq = policy_max_imcfreq - 100000;
 		}
 		#endif
 		

@@ -168,7 +168,7 @@ static void from_proc_to_core()
 }
 
 
-static ulong avg_to_khz(ulong freq_khz)
+ulong avg_to_khz(ulong freq_khz)
 {
 	ulong newf;
 	float ff;
@@ -220,9 +220,9 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   }
 	#if NEW_IMCFREQ
 	if (dyn_unc){
-		imc_up = policy_max_imcfreq;
-		imc_low = policy_min_imcfreq;
-		verbose(2,"Stting IMC freq to %lu and %lu",imc_up,imc_low);
+		imc_up = ear_min(policy_max_imcfreq,imc_max_khz);
+		imc_low = ear_max(policy_min_imcfreq,imc_min_khz);
+		verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
   	eards_mgt_imcfreq_set_current(imc_up,imc_low);
 	}
 	#endif

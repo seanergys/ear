@@ -41,6 +41,15 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
+#if NEW_IMCFREQ
+extern ulong policy_max_imcfreq,policy_min_imcfreq;
+extern uint dyn_unc;
+extern ulong imc_max_khz,imc_min_khz;
+ulong avg_to_khz(ulong freq_khz);
+static uint imc_freq_selected = 0;
+#endif
+
+
 static ulong req_f;
 
 state_t policy_init(polctx_t *c)
@@ -92,6 +101,15 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
     else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
 		nominal=frequency_pstate_to_freq(min_pstate);
+
+    #if NEW_IMCFREQ
+    if ((dyn_unc) && (min_pstate > 1)){
+      policy_max_imcfreq = avg_to_khz(my_app->sig_ext->imc_freq);
+      policy_min_imcfreq = policy_max_imcfreq - 100000;
+			imc_freq_selected = 1;
+    }
+    #endif
+
 
 
 	// Default values
@@ -218,10 +236,9 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 
 	if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
 
+	/* This part is generic */
 
 	if (curr_sig->def_f==last_sig->def_f) *ok=1;
-
-
 	energy_last = last_sig->time*last_sig->DC_power;
 	energy_curr = curr_sig->time * curr_sig->DC_power;
 
@@ -240,7 +257,7 @@ state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
 
 state_t policy_max_tries(polctx_t *c,int *intents)
 {
-  *intents=1;
+  *intents = 1;
   return EAR_SUCCESS;
 }
 
