@@ -202,6 +202,10 @@ static int static_load()
 state_t mgt_nvml_status()
 {
 	state_t s;
+
+	#ifndef CUDA_BASE
+	return EAR_ERROR;
+	#endif
 	while (pthread_mutex_trylock(&lock));
 	if (ok_status) {
 		pthread_mutex_unlock(&lock);

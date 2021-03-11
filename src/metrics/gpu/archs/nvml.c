@@ -128,7 +128,6 @@ static state_t static_status()
 	nvmlReturn_t r;
 	int d;
 
-	// CUDA_BASE is required to include nvml.h
 	#ifndef CUDA_BASE
 	return EAR_ERROR;
 	#endif
