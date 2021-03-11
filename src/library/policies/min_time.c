@@ -42,8 +42,15 @@ static ulong req_f;
 
 typedef unsigned long ulong;
 
+#if NEW_IMCFREQ
+extern ulong policy_max_imcfreq,policy_min_imcfreq;
+extern uint dyn_unc;
+extern ulong imc_max_khz,imc_min_khz;
+#endif
+
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
+
 #define FREQ_DEF(f) (!ext_def_freq?f:ext_def_freq)
 #else
 #define FREQ_DEF(f) f
@@ -128,6 +135,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
     curr_freq=*(c->ear_frequency);
 		#endif
     curr_pstate = frequency_closest_pstate(curr_freq);
+
+		#if NEW_IMCFREQ
+		if (dyn_unc){
+			policy_max_imcfreq = 1500000;
+			policy_min_imcfreq = 1400000;
+		}
+		#endif
 		
 
 

@@ -44,9 +44,11 @@ extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
 extern ulong imc_max_khz,imc_min_khz;
+ulong policy_max_imcfreq,policy_min_imcfreq;
 
 signature_t policy_last_local_signature,policy_last_global_signature;
-static uint dyn_unc = 0;
+uint dyn_unc = 0;
+
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -216,11 +218,11 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   {
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
   }
-	#if NEW_UMCFREQ
+	#if NEW_IMCFREQ
 	if (dyn_unc){
-		imc_up = ear_min(avg_to_khz(my_sig->sig_ext->imc_freq,imc_max_khz);
-		imc_low = imc_up + 100000;
-		imc_low = ear_max(imc_low,imc_min_khz);
+		imc_up = policy_max_imcfreq;
+		imc_low = policy_min_imcfreq;
+		verbose(2,"Stting IMC freq to %lu and %lu",imc_up,imc_low);
   	eards_mgt_imcfreq_set_current(imc_up,imc_low);
 	}
 	#endif
@@ -268,6 +270,8 @@ state_t policy_init()
     ret=polsyms_fun.init(c);
   }
 	#if NEW_IMCFREQ
+	policy_max_imcfreq = imc_max_khz;
+	policy_min_imcfreq = imc_min_khz;
 	if (cdyn_unc != NULL){ 
 		dyn_unc = 1;
 		verbose(2,"Dynamic IMC management set to 1");
@@ -311,6 +315,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 	conf_install_t *data=&app_settings->installation;
 	state_t ret;
 
+	/* This part of code is to decide which policy to load based on default and hacks */
   char *obj_path = getenv(SCHED_EAR_POWER_POLICY);
 	char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
 	char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
@@ -353,7 +358,9 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 			obj_path=basic_path;
 		}
 	}
+	/* End policy file selection */
   if (masters_info.my_master_rank>=0) verbose(2,"loading policy %s",obj_path);
+	/* loads the policy plugin */
 	if (policy_load(obj_path,&polsyms_fun)!=EAR_SUCCESS){
 		error("Error loading policy %s",obj_path);
 	}

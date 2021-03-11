@@ -34,7 +34,6 @@
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/frequency/cpu.h>
 #include <metrics/frequency/imc.h>
-#include <metrics/frequency/imc/intel63.h>
 #include <daemon/local_api/eard_conf_api.h>
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/power_monitor.h>
