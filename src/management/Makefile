@@ -10,12 +10,9 @@ root_OBJS = \
     $(SRCDIR)/management/cpufreq/archs/default.o \
     $(SRCDIR)/management/cpufreq/drivers/linux_cpufreq.o \
     $(SRCDIR)/management/gpu/gpu.o \
+    $(SRCDIR)/management/gpu/archs/nvml.o \
     $(SRCDIR)/management/gpu/archs/dummy.o
     
-ifdef CUDA_BASE
-root_OBJS += \
-    $(SRCDIR)/management/gpu/archs/nvml.o
-endif
 
 ######## RULES
 

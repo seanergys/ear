@@ -34,9 +34,7 @@ __attribute__((used)) state_t mgt_gpu_load(mgt_gpu_ops_t **_ops)
 		return EAR_SUCCESS;
 	}
 
-	#ifdef CUDA_BASE
-	if (state_ok(mgt_nvml_status()))
-	{
+	if (state_ok(mgt_nvml_status())) {
 		debug("loaded NVML");
 		ops.init                   = mgt_nvml_init;
 		ops.init_unprivileged      = mgt_nvml_init_unprivileged;
@@ -56,9 +54,7 @@ __attribute__((used)) state_t mgt_gpu_load(mgt_gpu_ops_t **_ops)
 		ops.power_cap_get_rank     = nvml_power_cap_get_rank;
 		ops.power_cap_reset        = nvml_power_cap_reset;
 		ops.power_cap_set          = nvml_power_cap_set;
-	} else
-	#endif
-	{
+	} else {
 		debug("loaded DUMMY");
 		ops.init                   = mgt_dummy_init;
 		ops.init_unprivileged      = mgt_dummy_init;
