@@ -208,6 +208,7 @@ static void metrics_global_start()
 		eards_begin_app_compute_turbo_freq();
 		#endif
 		#if NEW_IMCFREQ
+		/* Reads IMC data */
 		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size))){
 			error("IMCFreq data read in global_start");
 		}
@@ -353,6 +354,7 @@ static void metrics_partial_start()
 		eards_begin_compute_turbo_freq();
 		#endif
 		#if NEW_IMCFREQ
+		/* Reads the IMC */
     if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
@@ -615,8 +617,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->L3_misses = metrics_l3[s];
 	#endif
 	#if NEW_IMCFREQ
-	if (metrics->sig_ext == 0) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
-	metrics->sig_ext->imc_freq = imc_avg[LOO];
+	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
+	metrics->sig_ext->imc_freq = imc_avg[s];
 	#endif
 
 	// FLOPS
@@ -853,10 +855,11 @@ int metrics_init(topology_t *topo)
   if (xtate_fail(s, freq_imc_data_alloc(&imc_end[LOO], NULL,NULL) )){
     error("IMC data alloc failed");
   }
+	/* Gets the IMC data size */
 	if (xtate_fail(s, eards_freq_imc_data_count(&imcfreq_data_size))){
 		error("IMC data count failed");
 	}
-	//imcfreq_data_size = imcfreq_data_size * sizeof(imc_intel63_t);
+	imcfreq_data_size = imcfreq_data_size * sizeof(imc_intel63_t);
 	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
 	#endif
 
@@ -867,6 +870,7 @@ int metrics_init(topology_t *topo)
 	if (xtate_fail(s,mgt_imcfreq_init(&imc_lib_ctx))){
 		error("IMC management init failed");
 	}
+	/* Gets current IMC limits */
 	if (xtate_fail(s,eards_mgt_imcfreq_get_current(&def_imc_max_khz,&def_imc_min_khz))){
 		error("Getting IMC limits (%d,%s)",s,state_msg);
 	}	else{
@@ -880,7 +884,7 @@ int metrics_init(topology_t *topo)
 	else {											
 			imc_min_khz = atoi(cimc_min_khz);
 	}
-	
+	/* Set IMC limits */	
 	if (xtate_fail(s,eards_mgt_imcfreq_set_current(imc_max_khz,imc_min_khz))){
 		error("IMC set current failed (%d,%s)",s,state_msg);
 	}	
