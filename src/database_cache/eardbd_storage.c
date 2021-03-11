@@ -225,13 +225,10 @@ static void insert_stop(uint i, state_t s)
 	time(&time_insert2[i]);
 	// Status update (before reset)
 	status.insert_states[i] = s;
-	status.sockets_online   = sockets_online;
 	// Aggregations is a special case
 	if (i != i_aggrs) {
 		status.samples_recv[i] = sample_index[i];
 	}
-	// Saving last insert time
-	timestamp_get(&status.time_last_insert);
 	// Reset samples
 	reset_index(i);
 }
@@ -537,7 +534,8 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		}
 	}
 	else if (type == EDB_TYPE_STATUS) {
-		error("PEDROSAAAAAA STATUS RECIBIDO %u", sockets_online);
+		// Returning the data
+		status.sockets_online = sockets_online;
 		if (state_fail(s = sockets_send(fd, EDB_TYPE_STATUS, (char *) &status, sizeof(eardbd_status_t), 0))) {
 			error("Error when sending status: %s", state_msg);
 		}

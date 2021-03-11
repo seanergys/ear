@@ -30,9 +30,11 @@
 #include <sys/types.h>
 #include <common/config.h>
 #include <common/types/types.h>
+#include <common/system/time.h>
 #include <common/system/process.h>
 #include <common/system/sockets.h>
 #include <common/string_enhanced.h>
+
 
 #define EDB_NTYPES                    7
 #define EDB_MAX_CONNECTIONS           FD_SETSIZE - 48
@@ -83,10 +85,9 @@ typedef struct sync_ans {
 } sync_ans_t;
 
 typedef struct eardbd_status_s {
-	timestamp_t time_last_insert;
-    state_t     insert_states[EDB_NTYPES];
-    uint        samples_recv[EDB_NTYPES];
-    uint        sockets_online;
+	state_t  insert_states[EDB_NTYPES];
+	uint     samples_recv[EDB_NTYPES];
+	uint     sockets_online;
 } eardbd_status_t;
 
 #endif //EAR_EARDBD_H

@@ -270,10 +270,10 @@ state_t eardbd_status(char *host, uint port, eardbd_status_t *status)
 	if (state_fail(s = sockets_timeout_set(socket.fd, 5))) {
 		return static_disconnect(&socket, s);
 	}
-	if (state_fail(s = sockets_recv_header(socket.fd, &type, &size, NULL, 1))) {
+	if (state_fail(s = sockets_recv_header(socket.fd, &type, &size, NULL, 0))) {
 		return static_disconnect(&socket, s);
 	}
-	if (state_fail(s = sockets_recv(socket.fd, (char *) status, size, 1))) {
+	if (state_fail(s = sockets_recv(socket.fd, (char *) status, size, 0))) {
 		return static_disconnect(&socket, s);
 	}
 	return static_disconnect(&socket, EAR_SUCCESS);

@@ -48,6 +48,13 @@ ullong timestamp_convert(timestamp *ts, ullong time_unit)
 	return stamp;
 }
 
+ullong timestamp_getconvert(ullong time_unit)
+{
+	timestamp_t ts;
+	timestamp_getfast(&ts);
+	return timestamp_convert(&ts, time_unit);
+}
+
 ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
 {
 	ullong stamp;
@@ -64,11 +71,11 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
 	return stamp;
 }
 
-ullong timestamp_getconvert(ullong time_unit)
+ullong timestamp_diffnow(timestamp *ts1, ullong time_unit)
 {
-	timestamp_t ts;
-	timestamp_getfast(&ts);
-	return timestamp_convert(&ts, time_unit);
+	timestamp_t time_now;
+	timestamp_get(&time_now);
+	return timestamp_diff(&time_now, ts1, time_unit);
 }
 
 void timestamp_revert(timestamp *ts, ullong *tr, ullong time_unit)
