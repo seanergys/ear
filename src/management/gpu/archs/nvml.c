@@ -17,7 +17,10 @@
 
 //#define SHOW_DEBUGS 1
 
+#ifdef CUDA_BASE
 #include <nvml.h>
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -27,6 +30,21 @@
 #include <management/gpu/archs/nvml.h>
 
 #define NVML_N 16
+
+#ifndef CUDA_BASE
+typedef int nvmlDevice_t;
+typedef int nvmlEnableState_t;
+typedef int nvmlClockType_t;
+typedef int nvmlClockId_t;
+typedef int nvmlReturn_t;
+
+#define NVML_PATH            ""
+#define NVML_SUCCESS         0
+#define NVML_CLOCK_GRAPHICS  0
+#define NVML_CLOCK_ID_APP_CLOCK_TARGET 0
+#else
+#define NVML_PATH            CUDA_BASE
+#endif
 
 static const char *nvml_names[] =
 {
@@ -173,9 +191,9 @@ static int load_test(char *path)
 static int static_load()
 {
 	if (load_test(getenv(HACK_FILE_NVML))) return 1;
-	if (load_test(CUDA_BASE "/targets/x86_64-linux/lib/libnvidia-ml.so")) return 1;
-	if (load_test(CUDA_BASE "/lib64/libnvidia-ml.so")) return 1;
-	if (load_test(CUDA_BASE "/lib/libnvidia-ml.so")) return 1;
+	if (load_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so")) return 1;
+	if (load_test(NVML_PATH "/lib64/libnvidia-ml.so")) return 1;
+	if (load_test(NVML_PATH "/lib/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib64/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib/libnvidia-ml.so")) return 1;
 	return 0;

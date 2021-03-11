@@ -4,10 +4,6 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
 gpu_BINS = gpu.o
 
-ifdef CUDA_BASE
-gpu_DEFS = -DCUDA_BASE=\"$(CUDA_BASE)\"
-endif
-
 ######## RULES
 
 all: $(gpu_BINS) all.components
