@@ -274,7 +274,6 @@ state_t policy_init()
 	policy_min_imcfreq = imc_min_khz;
 	if (cdyn_unc != NULL){ 
 		dyn_unc = 1;
-		verbose(2,"Dynamic IMC management set to 1");
 	}
 	#endif
   /* Even though the policy could be at the Node granularity, we will use a list */

@@ -47,15 +47,34 @@ extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
 ulong avg_to_khz(ulong freq_khz);
 static uint imc_freq_selected = 0;
+static uint last_cpu_pstate,last_imc_pstate;
+
+struct imc_data_t{
+	double time;
+	double GBS;
+	double power;
+};
+#define NUM_UNC_FREQ 20
+static struct imc_data_t *imc_data;
+#define SELECT_CPUFREQ 100
+#define SELECT_IMCFREQ 101
+static uint min_energy_state = SELECT_CPUFREQ;
+static uint imc_dynamic = 0;
 #endif
+
+
 
 
 static ulong req_f;
 
 state_t policy_init(polctx_t *c)
 {
-	if (c!=NULL) return EAR_SUCCESS;
-	else return EAR_ERROR;
+	if (c!=NULL){ 
+		#if NEW_IMCFREQ
+		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(struct imc_data_t));
+		#endif
+		return EAR_SUCCESS;
+	} else return EAR_ERROR;
 }
 
 state_t policy_loop_init(polctx_t *c,loop_id_t *l)
@@ -85,6 +104,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	unsigned int ref;
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
 	double power_ref,time_ref,max_penalty,time_max;
+	ulong imc_pstate;
 
   ulong best_freq,best_pstate,freq_ref,eff_f;
 	ulong curr_freq,nominal;
@@ -93,48 +113,59 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	uint power_status;
 
 
-	if ((c!=NULL) && (c->app!=NULL)){
+	if ((c == NULL) || (c->app == NULL)){
+    *ready=EAR_POLICY_CONTINUE;
+    return EAR_ERROR;
+	}
 
+  if (c->use_turbo) min_pstate=0;
+  else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
-
-    if (c->use_turbo) min_pstate=0;
-    else min_pstate=frequency_closest_pstate(c->app->max_freq);
-
-		nominal=frequency_pstate_to_freq(min_pstate);
-
-    #if NEW_IMCFREQ
-    if ((dyn_unc) && (min_pstate > 1)){
-      policy_max_imcfreq = avg_to_khz(my_app->sig_ext->imc_freq);
-      policy_min_imcfreq = policy_max_imcfreq - 100000;
-			imc_freq_selected = 1;
-    }
-    #endif
+	nominal=frequency_pstate_to_freq(min_pstate);
 
 
 
 	// Default values
 
-		max_penalty=c->app->settings[0];
-		def_freq=FREQ_DEF(c->app->def_freq);
-		def_pstate=frequency_closest_pstate(def_freq);
+	max_penalty=c->app->settings[0];
+	def_freq=FREQ_DEF(c->app->def_freq);
+	def_pstate=frequency_closest_pstate(def_freq);
 
 		// This is the frequency at which we were running
-    #ifdef POWERCAP
-    if (c->pc_limit > 0){
+  #ifdef POWERCAP
+  if (c->pc_limit > 0){
 			curr_freq=frequency_closest_high_freq(my_app->avg_f,1);
-		}else{
+	}else{
 			curr_freq=*(c->ear_frequency);
-		}
-    #else
-    curr_freq=*(c->ear_frequency);
-    #endif
+	}
+  #else
+  curr_freq=*(c->ear_frequency);
+  #endif
 
-		curr_pstate = frequency_closest_pstate(curr_freq);
+	curr_pstate = frequency_closest_pstate(curr_freq);
+	eff_f=frequency_closest_high_freq(my_app->avg_f,1);
 
-		eff_f=frequency_closest_high_freq(my_app->avg_f,1);
-
-
+  #if NEW_IMCFREQ
+  if (dyn_unc){
+			imc_pstate = (2400000 - avg_to_khz(my_app->sig_ext->imc_freq))/100000;
+			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
+      imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time = my_app->time;
+      imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power = my_app->DC_power;
+      imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].GBS = my_app->GBS;
+			verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf",imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].GBS);
+  }
+	if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
+		if (dyn_unc){
+			min_energy_state = SELECT_IMCFREQ;
+			*ready = EAR_POLICY_TRY_AGAIN;
+		}else *ready=EAR_POLICY_READY;
+		verbose(2,"SELECT_CPUFREQ state");
+	#else
 		*ready=EAR_POLICY_READY;
+	#endif
+		last_cpu_pstate = curr_pstate;
+		last_imc_pstate = imc_pstate;
+
 
 		// If is not the default P_STATE selected in the environment, a projection
 		// is made for the reference P_STATE in case the coefficents were available.
@@ -217,13 +248,31 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 			}
 		}
 	}
-	/* Corregir frecuencia por powercap y activar greedy si es necesario */
-	} else { 
-		*ready=EAR_POLICY_CONTINUE;
-		return EAR_ERROR;
-	}
-
 	*new_freq=best_freq;
+	#if NEW_IMCFREQ
+	}else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
+		verbose(2,"SELECT_IMCFREQ state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,imc_pstate);
+		*new_freq = frequency_pstate_to_freq(curr_pstate);
+		time_max = imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time + (max_penalty* imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time);
+		/* If we are over the limit, we increase the IMC */
+		if (my_app->time > time_max){
+			verbose(2,"%sWarning, passing the limit: limit %.2lf current %.2lf",COL_RED,time_max,my_app->time);
+			policy_max_imcfreq = ear_min(avg_to_khz(my_app->sig_ext->imc_freq) + 100000,2400000);	
+      policy_min_imcfreq = policy_max_imcfreq - 100000;
+			verbose(2,"Selecting %lu - %lu and policy ready%s",policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
+			*ready = EAR_POLICY_READY;
+			min_energy_state = SELECT_CPUFREQ;
+		}else{
+			policy_max_imcfreq = ear_min(avg_to_khz(my_app->sig_ext->imc_freq),2400000);
+			policy_max_imcfreq = policy_max_imcfreq - 100000;
+			policy_min_imcfreq = policy_max_imcfreq - 100000;
+			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
+			*ready = EAR_POLICY_TRY_AGAIN;
+		}
+		
+	}
+	#endif
+	verbose(2,"Next min_energy state %u next policy state %u",min_energy_state,*ready);
 	return EAR_SUCCESS;
 }
 
