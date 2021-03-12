@@ -72,14 +72,14 @@ static uint min_imc_pstate = 0;
 
 static ulong req_f;
 
-#define USE_TIME 1
-#define USE_GBS	0
+#define USE_TIME 0
+#define USE_GBS	1
 
 
 static uint must_increase_imc(signature_t *sig,double penalty)
 {
 	double metric,metric_ref;
-	double max_metric;
+	double metric_max;
 	#if USE_TIME	
 	metric_max = imc_data[min_pstate*NUM_UNC_FREQ+min_imc_pstate].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+min_imc_pstate].time);
 	metric = sig->time;
