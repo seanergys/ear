@@ -21,6 +21,7 @@
 //#define SHOW_DEBUGS 1
 //#define SHOW_ENERGY 1
 
+#define SET_DYN_UNC_BY_DEFAULT 1
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -876,6 +877,11 @@ int metrics_init(topology_t *topo)
 	}	else{
 		verbose(2,"IMC limits: Max %.2fGHz and Min %.2fGHz",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0);
 	}
+	#if SET_DYN_UNC_BY_DEFAULT
+	def_imc_max_khz = 2400000;
+	def_imc_min_khz = 2300000;
+	verbose(2,"Setting default limits to %lu and %lu",def_imc_max_khz,def_imc_min_khz);
+	#endif
 	cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
 	cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
 	if (cimc_max_khz == (char*)NULL) imc_max_khz = def_imc_max_khz;

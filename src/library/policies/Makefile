@@ -27,7 +27,7 @@ all: $(poli_OBJS) $(poli_BINS) $(eard_BINS)
 %.o: %.c 
 	$(CC) $(PCFLAGS) -c $<
 
-min_time_eard_eard.o: min_time_eard.c
+min_time_eard.o: min_time_eard.c
 	$(CC) $(PCFLAGS) -c $<
 
 min_energy_eard.o: min_energy_eard.c

@@ -247,6 +247,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 				best_pstate=i;
 			}
 		}
+		
+    policy_max_imcfreq = 2400000;
+		policy_min_imcfreq = 2300000;
 	}
 	*new_freq=best_freq;
 	#if NEW_IMCFREQ
