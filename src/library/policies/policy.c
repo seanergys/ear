@@ -221,6 +221,7 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
 	#if NEW_IMCFREQ
 	if (dyn_unc){
 		imc_up = ear_min(policy_max_imcfreq,imc_max_khz);
+		imc_up = ear_max(imc_up,imc_min_khz);
 		imc_low = ear_max(policy_min_imcfreq,imc_min_khz);
 		verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
   	eards_mgt_imcfreq_set_current(imc_up,imc_low);
