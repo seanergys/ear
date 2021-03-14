@@ -47,6 +47,7 @@ extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
 extern ulong def_imc_max_khz,def_imc_min_khz;
 extern uint dynais_enabled;
+extern uint ear_periodic_mode;
 ulong avg_to_khz(ulong freq_khz);
 static uint imc_freq_selected = 0;
 static uint last_cpu_pstate,last_imc_pstate;
@@ -81,7 +82,7 @@ static uint must_increase_imc(signature_t *sig,double penalty)
 {
 	double metric,metric_ref;
 	double metric_max;
-	if (dynais_enabled){
+	if (ear_periodic_mode == PERIODIC_MODE_OFF){
 		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].time);
 		metric = sig->time;
 		verbose(2,"Using time as reference : Current %.3lf Max %.3lf",metric,metric_max);

@@ -104,6 +104,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		#if CACHE_METRICS
 		verbosen(2," L1 %llu L2 %llu L3 %llu",sig->signature.L1_misses,sig->signature.L2_misses,sig->signature.L3_misses);
 		#endif
+		verbosen(2," VPI %.2f",VPI);
     verbose(1,"%s",COL_CLR);
   }
 } 
