@@ -813,18 +813,20 @@ void ear_init()
     /* create verbose file for each job */
     #if PER_TASK_VERBOSE
 		if (masters_info.my_master_rank >= 0){
-      if (( mkdir ("VERBOSE_FILES", 0700) < 0) && (errno != EEXIST)) {	
-				error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
-			}else{
+		#if 0
+    struct stat st =  {0};
+    if (stat("VERBOSE_FILES", &st) == -1) {
+        mkdir ("VERBOSE_FILES", 0700);
+    }
+		#endif
 
-    		char file_name[128];
-    		sprintf(file_name, "VERBOSE_FILES/verbose.%d.%d.%d.%d", masters_info.my_master_rank, my_step_id, my_job_id,getpid());
-    		verbose(2,"Using %s as verbose file",file_name);
-    		int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
-    		if (fd != -1){
-    	    	verb_channel = fd;
-    		}
-			}
+    	char file_name[128];
+    	sprintf(file_name, "verbose.%d.%d.%d.%d", masters_info.my_master_rank, my_step_id, my_job_id,getpid());
+    	verbose(2,"Using %s as verbose file",file_name);
+    	int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+    	if (fd != -1){
+    	    verb_channel = fd;
+    	}
 		}
     #endif
 
