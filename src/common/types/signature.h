@@ -57,7 +57,6 @@ typedef struct mini_sig
     float time;
     ull FLOPS[FLOPS_EVENTS];
     ull instructions;
-    ull cycles;
     ulong avg_f;
     ulong def_f;
 #if USE_GPUS
