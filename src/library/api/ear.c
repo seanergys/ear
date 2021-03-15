@@ -670,15 +670,14 @@ void ear_init()
 #else
     verb_level=1;
 #endif
-    get_job_identification();
-    char filename[128];
+    char* filename[128];
     sprintf(filename, "verbose.%d.%d.%d", my_job_id, my_step_id, getpid());
     int fd = open(filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
     if (fd != -1) {
         verb_channel=fd;
     }
     else {
-        fprintf(stderr, "Failed to create file %s: %d", filename, errno);    
+    fprintf(stderr, "Failed to create file %s: %d", filename, errno);    
         verb_channel=2;
     }
     if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
@@ -697,6 +696,8 @@ void ear_init()
     num_nodes=1;
     ppnode=1;
 #endif
+
+    get_job_identification();
 
     if (is_already_connected(my_job_id,my_step_id,getpid())){
         fprintf(stderr,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
@@ -1100,6 +1101,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 #if ONLY_MASTER
     if (my_id) return;
 #endif
+<<<<<<< HEAD
     /* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
     if (!ear_whole_app)
     {
@@ -1169,75 +1171,77 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                 break;
         }
     }
-    /* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
-    if (!ear_whole_app)
-    {
-        unsigned long  ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
-        //unsigned short ear_event_s = dynais_sample_convert(ear_event_l);
-        if (masters_info.my_master_rank>=0){
-            traces_mpi_call(ear_my_rank, my_id,
-                    (ulong) ear_event_l,
-                    (ulong) buf,
-                    (ulong) dest,
-                    (ulong) call_type);
-        }
+=======
+	/* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
+	if (!ear_whole_app)
+	{
+		unsigned long  ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
+		//unsigned short ear_event_s = dynais_sample_convert(ear_event_l);
+	if (masters_info.my_master_rank>=0){
+	    traces_mpi_call(ear_my_rank, my_id,
+                        (ulong) ear_event_l,
+                        (ulong) buf,
+                        (ulong) dest,
+                        (ulong) call_type);
+		}
 
-        total_mpi_calls++;
-        /* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
-         * ear_periodic_mode can be ON or OFF 
-         */
-        switch(ear_periodic_mode){
-            case PERIODIC_MODE_OFF:
-                switch(dynais_enabled){
-                    case DYNAIS_ENABLED:
-                        {
-                            /* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
-                            if (check_periodic_mode==0){  // check_periodic_mode=0 the first time a signature is computed
-                                ear_mpi_call_dynais_on(call_type,buf,dest);
-                            }else{ // Check every N=check_every mpi calls
-                                /* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
-                                if ((total_mpi_calls%check_every)==0){
-                                    time(&curr_time);
-                                    time_from_mpi_init=difftime(curr_time,application.job.start_time);
+		total_mpi_calls++;
+		/* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
+		 * ear_periodic_mode can be ON or OFF 
+		 */
+	switch(ear_periodic_mode){
+		case PERIODIC_MODE_OFF:
+			switch(dynais_enabled){
+				case DYNAIS_ENABLED:
+					{
+					/* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
+					if (check_periodic_mode==0){  // check_periodic_mode=0 the first time a signature is computed
+						ear_mpi_call_dynais_on(call_type,buf,dest);
+					}else{ // Check every N=check_every mpi calls
+						/* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
+						if ((total_mpi_calls%check_every)==0){
+							time(&curr_time);
+							time_from_mpi_init=difftime(curr_time,application.job.start_time);
+						
+							/* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
+							if (time_from_mpi_init >=dynais_timeout){
+								// we must compute N here
+								ear_periodic_mode=PERIODIC_MODE_ON;
+								mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
+								if (masters_info.my_master_rank>=0) traces_start();
+								verbose(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
+									time_from_mpi_init,mpi_calls_in_period,ear_status);
+								states_periodic_begin_period(my_id, NULL, 1, 1);
+								ear_iterations=0;
+								states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period);
+							}else{
 
-                                    /* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
-                                    if (time_from_mpi_init >=dynais_timeout){
-                                        // we must compute N here
-                                        ear_periodic_mode=PERIODIC_MODE_ON;
-                                        mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
-                                        if (masters_info.my_master_rank>=0) traces_start();
-                                        verbose(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
-                                                time_from_mpi_init,mpi_calls_in_period,ear_status);
-                                        states_periodic_begin_period(my_id, NULL, 1, 1);
-                                        ear_iterations=0;
-                                        states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period);
-                                    }else{
-
-                                        /* We continue using dynais */
-                                        ear_mpi_call_dynais_on(call_type,buf,dest);	
-                                    }
-                                }else{	// We check the periodic mode every check_every mpi calls
-                                    ear_mpi_call_dynais_on(call_type,buf,dest);
-                                }
-                            }
-                        }
-                        break;
-                    case DYNAIS_DISABLED:
-                        /** That case means we have computed some signature and we have decided to set dynais disabled */
-                        ear_mpi_call_dynais_off(call_type,buf,dest);
-                        break;
-
-                }
-                break;
-            case PERIODIC_MODE_ON:
-                /* EAR energy policy is called periodically */
-                if ((total_mpi_calls%mpi_calls_per_second) == 0){
-                    ear_iterations++;
-                    states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period);
-                }
-                break;
-        }
-    }
+								/* We continue using dynais */
+								ear_mpi_call_dynais_on(call_type,buf,dest);	
+							}
+						}else{	// We check the periodic mode every check_every mpi calls
+							ear_mpi_call_dynais_on(call_type,buf,dest);
+						}
+					}
+					}
+					break;
+				case DYNAIS_DISABLED:
+					/** That case means we have computed some signature and we have decided to set dynais disabled */
+					ear_mpi_call_dynais_off(call_type,buf,dest);
+					break;
+		
+			}
+			break;
+		case PERIODIC_MODE_ON:
+				/* EAR energy policy is called periodically */
+				if ((total_mpi_calls%mpi_calls_per_second) == 0){
+					ear_iterations++;
+					states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period);
+				}
+				break;
+	}
+	}
+>>>>>>> 7dd8f794f017a86d778f47880bc59d5d95f21550
 #else
     if (dynais_enabled==DYNAIS_ENABLED) ear_mpi_call_dynais_on(call_type,buf,dest);
     else ear_mpi_call_dynais_off(call_type,buf,dest);
@@ -1248,8 +1252,10 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 
 void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 {
-
+<<<<<<< HEAD
     short ear_status;
+=======
+>>>>>>> 7dd8f794f017a86d778f47880bc59d5d95f21550
 #if ONLY_MASTER
     if (my_id) {
         return;
@@ -1341,13 +1347,17 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 
 void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 {
+<<<<<<< HEAD
     short ear_status;
+=======
+>>>>>>> 7dd8f794f017a86d778f47880bc59d5d95f21550
 #if ONLY_MASTER
     if (my_id) {
         return;
     }
 #endif
 
+<<<<<<< HEAD
     // If ear_whole_app we are in the learning phase, DyNAIS is disabled then
     if (!ear_whole_app)
     {
@@ -1398,211 +1408,215 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
             default:
                 break;
         }
-        // If ear_whole_app we are in the learning phase, DyNAIS is disabled then
-        if (!ear_whole_app)
-        {
-            // Create the event for DynAIS: we will report anyway
-            unsigned long  ear_event_l;
-            unsigned short ear_size;
-            unsigned short ear_level;
-            ear_level=0;
+=======
+	// If ear_whole_app we are in the learning phase, DyNAIS is disabled then
+	if (!ear_whole_app)
+	{
+		// Create the event for DynAIS: we will report anyway
+		unsigned long  ear_event_l;
+		unsigned short ear_size;
+		unsigned short ear_level;
+		ear_level=0;
 
-            ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
-            //ear_event_s = dynais_sample_convert(ear_event_l);
+		ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
+		//ear_event_s = dynais_sample_convert(ear_event_l);
 
-            //debug("EAR(%s) EAR executing before an MPI Call: DYNAIS ON\n", __FILE__);
+		//debug("EAR(%s) EAR executing before an MPI Call: DYNAIS ON\n", __FILE__);
 
-            if (masters_info.my_master_rank>=0) traces_mpi_call(ear_my_rank, my_id,
-                    (unsigned long) buf,
-                    (unsigned long) dest,
-                    (unsigned long) call_type,
-                    (unsigned long) ear_event_l);
+		if (masters_info.my_master_rank>=0) traces_mpi_call(ear_my_rank, my_id,
+						(unsigned long) buf,
+						(unsigned long) dest,
+						(unsigned long) call_type,
+						(unsigned long) ear_event_l);
 
-            mpi_calls_per_loop++;
+		mpi_calls_per_loop++;
 
-            if (last_calls_in_loop == mpi_calls_per_loop){
-                ear_status = NEW_ITERATION;
-            }else{
-                ear_status = IN_LOOP;
-            }
+		if (last_calls_in_loop == mpi_calls_per_loop){
+				ear_status = NEW_ITERATION;
+		}else{
+				ear_status = IN_LOOP;
+		}
 
 
-            switch (ear_status)
-            {
-                case NO_LOOP:
-                case IN_LOOP:
-                    break;
-                case NEW_ITERATION:
-                    ear_iterations++;
+		switch (ear_status)
+		{
+			case NO_LOOP:
+			case IN_LOOP:
+				break;
+			case NEW_ITERATION:
+				ear_iterations++;
 
-                    if (loop_with_signature)
-                    {
-                        //debug("new iteration detected for level %hu, event %lu, size %u and iterations %u",
-                        //ear_level, ear_event_l, ear_loop_size, ear_iterations);
-                    }
+				if (loop_with_signature)
+				{
+					//debug("new iteration detected for level %hu, event %lu, size %u and iterations %u",
+							  //ear_level, ear_event_l, ear_loop_size, ear_iterations);
+				}
 
-                    if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, ear_event_l, ear_loop_size, ear_iterations);
-                    states_new_iteration(my_id, ear_loop_size, ear_iterations, (uint)ear_level, ear_event_l, mpi_calls_per_loop);
-                    mpi_calls_per_loop=1;
-                    break;
-                default:
-                    break;
-            }
-        } //ear_whole_app
-    }
+				if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, ear_event_l, ear_loop_size, ear_iterations);
+				states_new_iteration(my_id, ear_loop_size, ear_iterations, (uint)ear_level, ear_event_l, mpi_calls_per_loop);
+				mpi_calls_per_loop=1;
+				break;
+      default:
+       break;
+      }
+>>>>>>> 7dd8f794f017a86d778f47880bc59d5d95f21550
+    } //ear_whole_app
 }
 
 #endif
 
-    /************************** MANUAL API *******************/
+/************************** MANUAL API *******************/
 
-    static unsigned long manual_loopid=0;
-    unsigned long ear_new_loop()
+static unsigned long manual_loopid=0;
+unsigned long ear_new_loop()
+{
+    if (my_id)  return 0;
+    manual_loopid++;
+    if (!ear_whole_app)
     {
-        if (my_id)  return 0;
-        manual_loopid++;
-        if (!ear_whole_app)
-        {
-            debug("New loop reported");
-            switch (ear_status){
-                case NO_LOOP:
-                    ear_status=IN_LOOP;
-                    ear_iterations=0;
-                    states_begin_period(my_id, manual_loopid,1,1);
-                    ear_loop_size=1;
-                    ear_loop_level=1;
-                    in_loop=1;
-                    mpi_calls_per_loop=1;
-                    break;
-                case IN_LOOP:
-                    debug("END_NEW Loop");
+        debug("New loop reported");
+        switch (ear_status){
+            case NO_LOOP:
+                ear_status=IN_LOOP;
+                ear_iterations=0;
+                states_begin_period(my_id, manual_loopid,1,1);
+                ear_loop_size=1;
+                ear_loop_level=1;
+                in_loop=1;
+                mpi_calls_per_loop=1;
+                break;
+            case IN_LOOP:
+                debug("END_NEW Loop");
+                if (loop_with_signature) {
+                    debug("loop ends with %d iterations detected", ear_iterations);
+                }
+                loop_with_signature=0;
+                if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
+                states_end_period(ear_iterations);
+                ear_iterations=0;
+                mpi_calls_per_loop=1;
+                ear_loop_size=1;
+                ear_loop_level=1;
+                states_begin_period(my_id, manual_loopid, 1,1);
+                break;
+        }
+    }
+    return manual_loopid;
+}
+
+void ear_end_loop(unsigned long loop_id)
+{
+    if (my_id) return;
+    if (!ear_whole_app)
+    {
+        switch(ear_status){
+            case IN_LOOP:
+                if (loop_id==manual_loopid){
+                    //debug("END_LOOP event %u\n",ear_event_l);
                     if (loop_with_signature) {
                         debug("loop ends with %d iterations detected", ear_iterations);
                     }
                     loop_with_signature=0;
-                    if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
                     states_end_period(ear_iterations);
+                    if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
                     ear_iterations=0;
-                    mpi_calls_per_loop=1;
-                    ear_loop_size=1;
-                    ear_loop_level=1;
-                    states_begin_period(my_id, manual_loopid, 1,1);
-                    break;
-            }
-        }
-        return manual_loopid;
-    }
-
-    void ear_end_loop(unsigned long loop_id)
-    {
-        if (my_id) return;
-        if (!ear_whole_app)
-        {
-            switch(ear_status){
-                case IN_LOOP:
-                    if (loop_id==manual_loopid){
-                        //debug("END_LOOP event %u\n",ear_event_l);
-                        if (loop_with_signature) {
-                            debug("loop ends with %d iterations detected", ear_iterations);
-                        }
-                        loop_with_signature=0;
-                        states_end_period(ear_iterations);
-                        if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
-                        ear_iterations=0;
-                        in_loop=0;
-                        mpi_calls_per_loop=0;
-                        ear_status=NO_LOOP;
-                    }else{ // Loop id is different from current one
-                        debug("Error END_LOOP and current loop id %lu different from active one %lu",manual_loopid,loop_id);
-                        ear_status=NO_LOOP;
-                    }
-                    break;
-                case NO_LOOP:debug("Error, application was not in a loop");
-                             break;
-            }
+                    in_loop=0;
+                    mpi_calls_per_loop=0;
+                    ear_status=NO_LOOP;
+                }else{ // Loop id is different from current one
+                    debug("Error END_LOOP and current loop id %lu different from active one %lu",manual_loopid,loop_id);
+                    ear_status=NO_LOOP;
+                }
+                break;
+            case NO_LOOP:debug("Error, application was not in a loop");
+                         break;
         }
     }
+}
 
-    void ear_new_iteration(unsigned long loop_id)
+void ear_new_iteration(unsigned long loop_id)
+{
+    if (my_id) return;
+    if (!ear_whole_app)
     {
-        if (my_id) return;
-        if (!ear_whole_app)
-        {
 
-            switch (ear_status){
-                case IN_LOOP:
-                    ear_iterations++;
-                    if (loop_with_signature)
-                    {
-                        //debug("new iteration detected for level %u, event %lu, size %u and iterations %u",
-                        //1, loop_id,1, ear_iterations);
-                    }
-                    if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, loop_id, 1, ear_iterations);
-                    states_new_iteration(my_id, 1, ear_iterations, 1, loop_id, mpi_calls_per_loop);
-                    mpi_calls_per_loop=1;
-                    break;
-                case NO_LOOP:
-                    debug("Error, application is not in a loop");
-                    break;
-            }
+        switch (ear_status){
+            case IN_LOOP:
+                ear_iterations++;
+                if (loop_with_signature)
+                {
+                    //debug("new iteration detected for level %u, event %lu, size %u and iterations %u",
+                    //1, loop_id,1, ear_iterations);
+                }
+                if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, loop_id, 1, ear_iterations);
+                states_new_iteration(my_id, 1, ear_iterations, 1, loop_id, mpi_calls_per_loop);
+                mpi_calls_per_loop=1;
+                break;
+            case NO_LOOP:
+                debug("Error, application is not in a loop");
+                break;
         }
     }
+}
 
 
-    /**************** New for iterative code ********************/
-    void *earl_periodic_actions(void *no_arg)
-    {
-        verbose(1,"EARL periodic thread ON");
-        // if (pthread_setname_np(pthread_self(), "EARL_periodic_th")) error("Setting name for EARL_periodic_th thread %s" , strerror(errno));
-        if (masters_info.my_master_rank>=0) traces_start();
-        states_periodic_begin_period(my_id, NULL, 1, 1);
-        ear_iterations=0;
-        mpi_calls_in_period=1;
+/**************** New for iterative code ********************/
+void *earl_periodic_actions(void *no_arg)
+{
+    verbose(1,"EARL periodic thread ON");
+    // if (pthread_setname_np(pthread_self(), "EARL_periodic_th")) error("Setting name for EARL_periodic_th thread %s" , strerror(errno));
+    if (masters_info.my_master_rank>=0) traces_start();
+    states_periodic_begin_period(my_id, NULL, 1, 1);
+<<<<<<< HEAD
+    ear_iterations=0;
+    mpi_calls_in_period=1;
+    states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+    do{
+        sleep(lib_period);
+        ear_iterations++;
         states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
-        do{
-            sleep(lib_period);
-            ear_iterations++;
-            states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
-        }while(end_periodic_th == 0);
-        return NULL;
-        ear_iterations = 0;
-        mpi_calls_in_period = lib_period;
-        states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
-        do{
-            sleep(1);
-            ear_iterations++;
-            states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
-        }while(end_periodic_th == 0);
-        return NULL;
-    }
+    }while(end_periodic_th == 0);
+    return NULL;
+=======
+    ear_iterations = 0;
+		mpi_calls_in_period = lib_period;
+    states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+		do{
+			sleep(1);
+      ear_iterations++;
+      states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+		}while(end_periodic_th == 0);
+		return NULL;
+>>>>>>> 7dd8f794f017a86d778f47880bc59d5d95f21550
+}
 
 
-    /************** Constructor & Destructor for NOt MPI versions **************/
+/************** Constructor & Destructor for NOt MPI versions **************/
 #if !MPI 
-    void ear_constructor()
-    {
-        debug("Calling ear_init in ear_constructor %d",getpid());
-        ear_init();
-    }
-    void ear_destructor()
-    {
-        debug("Calling ear_finalize in ear_destructor %d",getpid());
+void ear_constructor()
+{
+    debug("Calling ear_init in ear_constructor %d",getpid());
+    ear_init();
+}
+void ear_destructor()
+{
+    debug("Calling ear_finalize in ear_destructor %d",getpid());
 #if ONLY_MASTER
-        if (my_id) {
-            return;
-        }
+    if (my_id) {
+        return;
+    }
 #endif
-        end_periodic_th = 1;
-        pthread_join(earl_periodic_th,NULL);
-        ear_finalize();
-    }
+    end_periodic_th = 1;
+    pthread_join(earl_periodic_th,NULL);
+    ear_finalize();
+}
 #else
-    void ear_constructor()
-    {
-    }
-    void ear_destructor()
-    {
-    }
+void ear_constructor()
+{
+}
+void ear_destructor()
+{
+}
 #endif
 
 
