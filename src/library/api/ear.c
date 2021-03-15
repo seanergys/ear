@@ -687,6 +687,13 @@ void ear_init()
 
 	get_job_identification();
 
+    // create verbose file for each job
+    char file_name[128];
+    sprintf(file_name, "verbose.%d.%d.%d", getpid(), my_step_id, my_job_id);
+    int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+    if (fd != -1){
+        verb_channel = fd;
+    }
 
 	if (is_already_connected(my_job_id,my_step_id,getpid())){
 		fprintf(stderr,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
@@ -809,20 +816,6 @@ void ear_init()
 	}
 	debug("END Shared region creation section");
 	/* Processes in same node connectes each other*/
-
-    /* create verbose file for each job */
-    #if PER_TASK_VERBOSE
-		if (masters_info.my_master_rank >= 0){
-    	char file_name[128];
-    	sprintf(file_name, "verbose.%d.%d.%d.%d", masters_info.my_master_rank, my_step_id, my_job_id,getpid());
-    	verbose(2,"Using %s as verbose file",file_name);
-    	int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
-    	if (fd != -1){
-    	    verb_channel = fd;
-    	}
-		}
-    #endif
-
 
 	// Initializing architecture and topology
 	if ((st=get_arch_desc(&arch_desc))!=EAR_SUCCESS){
@@ -1083,6 +1076,10 @@ void ear_finalize()
 	dettach_settings_conf_shared_area();
 	dettach_resched_shared_area();
 
+    // close verbose channel if it's a file instead of stderr
+    if (verb_channel != 2){
+        close(verb_channel);
+    }
 
 	// C'est fini
 	if (!my_id){ 
