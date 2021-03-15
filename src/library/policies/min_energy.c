@@ -32,6 +32,8 @@
 #include <daemon/local_api/eard_api.h>
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
+#include <library/common/externs.h>
+
 
 typedef unsigned long ulong;
 #ifdef EARL_RESEARCH
@@ -57,6 +59,8 @@ struct imc_data_t{
 	double time;
 	double GBS;
 	double power;
+	ull  	 instructions;
+	ull 	 FLOPS[FLOPS_EVENTS];
 };
 #define NUM_UNC_FREQ 20
 static struct imc_data_t *imc_data;
@@ -73,26 +77,47 @@ static uint min_imc_pstate = 0;
 
 
 static ulong req_f;
-
-#define USE_TIME 0
-#define USE_GBS	1
-
-
+#define USE_FLOPS 1
 static uint must_increase_imc(signature_t *sig,double penalty)
 {
 	double metric,metric_ref;
-	double metric_max;
+	double metric_max,metric_min;
+	int i;
+	ull tflops = 0;
+	ull cflops = 0;
+	double tflopss,cflopss;
 	if (ear_periodic_mode == PERIODIC_MODE_OFF){
 		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].time);
 		metric = sig->time;
 		verbose(2,"Using time as reference : Current %.3lf Max %.3lf",metric,metric_max);
 		return (metric > metric_max);
 	}else{
-		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].GBS - (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].GBS);
+		#if USE_GBS
+		metric_min = imc_data[min_pstate*NUM_UNC_FREQ+0].GBS - (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].GBS);
 		metric = sig->GBS;
-		verbose(2,"Using GBS as reference : Current %.3lf Max %.3lf",metric,metric_max);
-		return (metric < metric_max);
+		verbose(2,"Using GBS as reference : Current %.3lf Max %.3lf",metric,metric_min);
+		return (metric < metric_min);
+		#endif
+		#if USE_FLOPS
+		for (i=0;i<FLOPS_EVENTS;i++) tflops += imc_data[min_pstate*NUM_UNC_FREQ+0].FLOPS[i];	
+		for (i=0;i<FLOPS_EVENTS;i++) cflops += sig->FLOPS[i];	
+		tflopss = (double)tflops / (imc_data[min_pstate*NUM_UNC_FREQ+0].time*1000000.0);
+		cflopss = (double)cflops / (sig->time*1000000.0);
+		metric_min =  tflopss - (penalty* tflopss);
+		metric = cflopss;
+		verbose(2,"Using FLOPS as reference : Current %.3lf Max %.3lf",metric,metric_min);
+		return (metric < metric_min);
+		#endif
 	}
+}
+
+static void copy_imc_data_from_signature(uint cpu_pstate,uint imc_pstate,signature_t *s)
+{
+  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time = s->time;
+  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power = s->DC_power;
+  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS = s->GBS;
+  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].instructions = s->instructions;
+  memcpy(imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
 }
 
 state_t policy_init(polctx_t *c)
@@ -127,7 +152,7 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 
 state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 {
-	signature_t *my_app = sig;
+	signature_t *my_app;
 	int i;
 	unsigned int ref;
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
@@ -139,12 +164,29 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	ulong curr_pstate,def_pstate,def_freq;
 	state_t st;
 	uint power_status;
+	double sig_vpi,node_sig_vpi;
+	
 
 
 	if ((c == NULL) || (c->app == NULL)){
     *ready=EAR_POLICY_CONTINUE;
     return EAR_ERROR;
 	}
+
+	if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
+		*new_freq = *(c->ear_frequency);
+		*ready = EAR_POLICY_TRY_AGAIN;
+		return EAR_SUCCESS;
+	}
+	verbose(2, "MR[%d] Node signatures ready",masters_info.my_master_rank);
+	my_app = calloc(1,sizeof(signature_t));
+	signature_copy(my_app,sig);
+	compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions);	
+	compute_total_node_flops(lib_shared_region,sig_shared_region,my_app->FLOPS);
+	compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
+	compute_vpi(&sig_vpi,sig);
+	compute_vpi(&node_sig_vpi,my_app);
+	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf",masters_info.my_master_rank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi);
 
   if (c->use_turbo) min_pstate=0;
   else min_pstate=frequency_closest_pstate(c->app->max_freq);
@@ -177,9 +219,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
   if (dyn_unc){
 			imc_pstate = (def_imc_max_khz - avg_to_khz(my_app->sig_ext->imc_freq))/IMC_STEP;
 			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
-      imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time = my_app->time;
-      imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power = my_app->DC_power;
-      imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].GBS = my_app->GBS;
+			copy_imc_data_from_signature(curr_pstate,imc_pstate,my_app);
 			verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf",imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].GBS);
   }
 	if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){

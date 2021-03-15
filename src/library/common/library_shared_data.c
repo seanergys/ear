@@ -345,6 +345,34 @@ void compute_per_node_avg_mpi_info(lib_shared_data_t *data,shsignature_t *sig,mp
 	my_mpi_info->perc_mpi = avg_mpi.perc_mpi/data->num_processes;
 }
 
+void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst)
+{
+	int i;
+	*t_inst = 0;
+	for (i=1;i<data->num_processes;i++){
+		*t_inst += sig[i].sig.instructions;
+	}
+}
+
+void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops)
+{
+	int i,f;
+	memset(flops,0,FLOPS_EVENTS*sizeof(ull));
+	for (i=1;i<data->num_processes;i++){
+		for (f=0;f<FLOPS_EVENTS;f++) flops[f] += sig[i].sig.FLOPS[f];
+	}
+}
+
+void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles)
+{
+  int i;
+  *t_cycles = 0;
+  for (i=1;i<data->num_processes;i++){
+    *t_cycles += sig[i].sig.cycles;
+  }
+}
+
+
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i,mostload=0;

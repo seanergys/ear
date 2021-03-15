@@ -252,6 +252,7 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
 	s->time=(double)minis->time;
 	memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
 	s->instructions = minis->instructions;
+	s->cycles = minis->cycles;
 	s->avg_f=minis->avg_f;
 	s->def_f=minis->def_f;
 	#if USE_GPUS
@@ -271,6 +272,7 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
 	minis->time=(float)s->time;
 	memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
 	minis->instructions = s->instructions;
+	minis->cycles = s->cycles;
 	minis->avg_f=s->avg_f;
 	minis->def_f=s->def_f;
 	#if USE_GPUS
