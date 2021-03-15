@@ -47,6 +47,7 @@
 extern uint mpi_calls_in_period;
 extern masters_info_t masters_info;
 extern float ratio_PPN;
+extern uint lib_period;
 
 static projection_t *PP;
 static ulong policy_freq;
@@ -176,6 +177,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 				break;
 		case EVALUATING_LOCAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_LOCAL_SIGNATURE");
+				if ((iterations % mpi_calls_iter) != 0 ) return;
 				N_iter=1;
 				result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
 				if (result != EAR_NOT_READY)
@@ -210,12 +212,13 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 					/* End verbose region */
 				} else{ /* Time was not enough */
 					if (loop_signature.signature.time==0){
-						mpi_calls_in_period=mpi_calls_in_period*2;
+						lib_period++;
 					}
 				}
 			break;
 		case EVALUATING_GLOBAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
+				if ((iterations % mpi_calls_iter) != 0 ) return;
       	st = policy_app_apply(&policy_freq,&ready);
       	EAR_POLICY_STATE = ready;
       	if (EAR_POLICY_STATE == EAR_POLICY_READY){
