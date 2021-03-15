@@ -1076,11 +1076,6 @@ void ear_finalize()
 	dettach_settings_conf_shared_area();
 	dettach_resched_shared_area();
 
-    // close verbose channel if it's a file instead of stderr
-    if (verb_channel != 2){
-        close(verb_channel);
-    }
-
 	// C'est fini
 	if (!my_id){ 
 		debug("Disconnecting");
