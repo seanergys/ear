@@ -813,6 +813,13 @@ void ear_init()
     /* create verbose file for each job */
     #if PER_TASK_VERBOSE
 		if (masters_info.my_master_rank >= 0){
+		#if 0
+    struct stat st =  {0};
+    if (stat("VERBOSE_FILES", &st) == -1) {
+        mkdir ("VERBOSE_FILES", 0700);
+    }
+		#endif
+
     	char file_name[128];
     	sprintf(file_name, "verbose.%d.%d.%d.%d", masters_info.my_master_rank, my_step_id, my_job_id,getpid());
     	verbose(2,"Using %s as verbose file",file_name);
@@ -1082,7 +1089,6 @@ void ear_finalize()
 
 	dettach_settings_conf_shared_area();
 	dettach_resched_shared_area();
-
 
 	// C'est fini
 	if (!my_id){ 
