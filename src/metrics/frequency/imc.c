@@ -252,3 +252,10 @@ state_t mgt_imcfreq_get_current(ctx_t *c, ulong *max_khz, ulong *min_khz)
 
 	return EAR_SUCCESS;
 }
+
+state_t mgt_imcfreq_get_limits(ctx_t *c, ulong *max_khz, ulong *min_khz)
+{
+	*max_khz = 2400000;
+	*min_khz = 1200000;
+	return EAR_SUCCESS;
+}

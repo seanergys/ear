@@ -36,7 +36,6 @@ state_t gpu_load(gpu_ops_t **_ops, uint model_force, uint *model_used)
 			model_force = MODEL_DUMMY;
 		}
 	}
-	#ifdef CUDA_BASE
 	if (model_force == MODEL_NVML) {
 		ops.init		= nvml_init;
 		ops.init_unprivileged = nvml_init_unprivileged;
@@ -57,9 +56,7 @@ state_t gpu_load(gpu_ops_t **_ops, uint model_force, uint *model_used)
 		model           = MODEL_NVML;
 		loaded			= 1;
 		debug("loaded NVML");
-	} else
-	#endif
-	{
+	} else {
 		ops.init		= gpu_dummy_init;
 		ops.init_unprivileged = gpu_dummy_init;
 		ops.dispose		= gpu_dummy_dispose;

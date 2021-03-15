@@ -15,7 +15,10 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#ifdef CUDA_BASE
 #include <nvml.h>
+#endif
+
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -26,6 +29,30 @@
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
 #include <metrics/gpu/archs/nvml.h>
+
+#ifndef CUDA_BASE
+typedef int nvmlDevice_t;
+typedef int nvmlEnableState_t;
+typedef int nvmlClockType_t;
+typedef int nvmlTemperatureSensors_t;
+typedef int nvmlProcessInfo_t;
+typedef int nvmlClockId_t;
+typedef int nvmlReturn_t;
+typedef struct nvmlUtilization_s {
+	int memory;
+	int gpu;
+} nvmlUtilization_t;
+
+#define NVML_PATH            ""
+#define NVML_SUCCESS         0
+#define NVML_FEATURE_ENABLED 0
+#define NVML_CLOCK_MEM       0
+#define NVML_CLOCK_SM        0
+#define NVML_TEMPERATURE_GPU 0
+#else
+#define NVML_PATH            CUDA_BASE
+#endif
+
 
 static const char *nvml_names[] =
 {
@@ -60,12 +87,12 @@ static struct nvml_s
 //static nvml_t nvml;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static suscription_t *sus;
-static uint			  dev_count;
-static gpu_t		 *pool;
+static uint           dev_count;
+static gpu_t         *pool;
 static nvmlDevice_t  *devices;
-static uint 		  ok_status;
-static uint			  ok_unprivileged;
-static uint			  ok_init;
+static uint           ok_status;
+static uint           ok_unprivileged;
+static uint           ok_init;
 
 static struct error_s {
 	char *init;
@@ -82,7 +109,7 @@ static struct error_s {
 	.gpus_not     = "no GPUs detected",
 	.dlopen       = "error during dlopen",
 };
-
+	
 #define myErrorString(r) \
 	((char *) nvml.ErrorString(r))
 
@@ -100,6 +127,10 @@ static state_t static_status()
 {
 	nvmlReturn_t r;
 	int d;
+
+	#ifndef CUDA_BASE
+	return EAR_ERROR;
+	#endif
 	if ((r = nvml.Init()) != NVML_SUCCESS) {
 		return_msg(EAR_ERROR, (char *) nvml.ErrorString(r));
 	}
@@ -160,9 +191,9 @@ static int static_load()
 {
 	// Looking for nvidia library in tipical paths.
 	if (load_test(getenv(HACK_FILE_NVML))) return 1;
-	if (load_test(CUDA_BASE "/targets/x86_64-linux/lib/libnvidia-ml.so")) return 1;
-	if (load_test(CUDA_BASE "/lib64/libnvidia-ml.so")) return 1;
-	if (load_test(CUDA_BASE "/lib/libnvidia-ml.so")) return 1;
+	if (load_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so")) return 1;
+	if (load_test(NVML_PATH "/lib64/libnvidia-ml.so")) return 1;
+	if (load_test(NVML_PATH "/lib/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib64/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib/x86_64-linux-gnu/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib32/libnvidia-ml.so")) return 1;

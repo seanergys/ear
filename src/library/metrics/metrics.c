@@ -163,7 +163,7 @@ static state_t s;
 static ulong cpufreq_data_avg[2];
 static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
 static uint mycpufreq_data_size,mycpufreq_data_count;
-static ulong def_imc_max_khz,def_imc_min_khz;
+ulong def_imc_max_khz,def_imc_min_khz;
 ulong imc_max_khz,imc_min_khz;
 static uint imcfreq_data_size;
 static freq_imc_t imc_init[2],imc_end[2];
@@ -872,16 +872,11 @@ int metrics_init(topology_t *topo)
 		error("IMC management init failed");
 	}
 	/* Gets current IMC limits */
-	if (xtate_fail(s,eards_mgt_imcfreq_get_current(&def_imc_max_khz,&def_imc_min_khz))){
+	if (xtate_fail(s,mgt_imcfreq_get_limits(&imc_lib_ctx,&def_imc_max_khz,&def_imc_min_khz))){
 		error("Getting IMC limits (%d,%s)",s,state_msg);
 	}	else{
 		verbose(2,"IMC limits: Max %.2fGHz and Min %.2fGHz",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0);
 	}
-	#if SET_DYN_UNC_BY_DEFAULT
-	def_imc_max_khz = 2400000;
-	def_imc_min_khz = 2300000;
-	verbose(2,"Setting default limits to %lu and %lu",def_imc_max_khz,def_imc_min_khz);
-	#endif
 	cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
 	cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
 	if (cimc_max_khz == (char*)NULL) imc_max_khz = def_imc_max_khz;

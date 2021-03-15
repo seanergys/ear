@@ -45,9 +45,13 @@ extern unsigned long ext_def_freq;
 extern ulong policy_max_imcfreq,policy_min_imcfreq;
 extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
+extern ulong def_imc_max_khz,def_imc_min_khz;
+extern uint dynais_enabled;
+extern uint ear_periodic_mode;
 ulong avg_to_khz(ulong freq_khz);
 static uint imc_freq_selected = 0;
 static uint last_cpu_pstate,last_imc_pstate;
+static int min_pstate;
 
 struct imc_data_t{
 	double time;
@@ -56,16 +60,40 @@ struct imc_data_t{
 };
 #define NUM_UNC_FREQ 20
 static struct imc_data_t *imc_data;
+#define IMC_STEP 100000
+#define IMC_RANGE 100000
 #define SELECT_CPUFREQ 100
 #define SELECT_IMCFREQ 101
 static uint min_energy_state = SELECT_CPUFREQ;
 static uint imc_dynamic = 0;
+static uint min_imc_pstate = 0;
 #endif
 
 
 
 
 static ulong req_f;
+
+#define USE_TIME 0
+#define USE_GBS	1
+
+
+static uint must_increase_imc(signature_t *sig,double penalty)
+{
+	double metric,metric_ref;
+	double metric_max;
+	if (ear_periodic_mode == PERIODIC_MODE_OFF){
+		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].time);
+		metric = sig->time;
+		verbose(2,"Using time as reference : Current %.3lf Max %.3lf",metric,metric_max);
+		return (metric > metric_max);
+	}else{
+		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].GBS - (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].GBS);
+		metric = sig->GBS;
+		verbose(2,"Using GBS as reference : Current %.3lf Max %.3lf",metric,metric_max);
+		return (metric < metric_max);
+	}
+}
 
 state_t policy_init(polctx_t *c)
 {
@@ -100,7 +128,7 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 {
 	signature_t *my_app = sig;
-	int i,min_pstate;
+	int i;
 	unsigned int ref;
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
 	double power_ref,time_ref,max_penalty,time_max;
@@ -147,7 +175,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
   #if NEW_IMCFREQ
   if (dyn_unc){
-			imc_pstate = (2400000 - avg_to_khz(my_app->sig_ext->imc_freq))/100000;
+			imc_pstate = (def_imc_max_khz - avg_to_khz(my_app->sig_ext->imc_freq))/IMC_STEP;
 			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
       imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time = my_app->time;
       imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power = my_app->DC_power;
@@ -248,27 +276,29 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 			}
 		}
 		
-    policy_max_imcfreq = 2400000;
-		policy_min_imcfreq = 2300000;
+    policy_max_imcfreq = imc_max_khz;
+		policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+		min_imc_pstate = imc_pstate;
 	}
 	*new_freq=best_freq;
 	#if NEW_IMCFREQ
 	}else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
 		verbose(2,"SELECT_IMCFREQ state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,imc_pstate);
 		*new_freq = frequency_pstate_to_freq(curr_pstate);
-		time_max = imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time + (max_penalty* imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time);
+		uint increase_imc = must_increase_imc(my_app,max_penalty);
+		//time_max = imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time + (max_penalty* imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time);
 		/* If we are over the limit, we increase the IMC */
-		if (my_app->time > time_max){
-			verbose(2,"%sWarning, passing the limit: limit %.2lf current %.2lf",COL_RED,time_max,my_app->time);
-			policy_max_imcfreq = ear_min(avg_to_khz(my_app->sig_ext->imc_freq) + 100000,2400000);	
-      policy_min_imcfreq = policy_max_imcfreq - 100000;
+		if (increase_imc){
+			verbose(2,"%sWarning, passing the limit",COL_RED);
+			policy_max_imcfreq = ear_min(avg_to_khz(my_app->sig_ext->imc_freq) + IMC_STEP,imc_max_khz);	
+      policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 			verbose(2,"Selecting %lu - %lu and policy ready%s",policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
 			*ready = EAR_POLICY_READY;
 			min_energy_state = SELECT_CPUFREQ;
 		}else{
-			policy_max_imcfreq = ear_min(avg_to_khz(my_app->sig_ext->imc_freq),2400000);
-			policy_max_imcfreq = policy_max_imcfreq - 100000;
-			policy_min_imcfreq = policy_max_imcfreq - 100000;
+			policy_max_imcfreq = avg_to_khz(my_app->sig_ext->imc_freq),imc_max_khz;
+			policy_max_imcfreq = ear_max(policy_max_imcfreq - IMC_STEP,imc_min_khz-IMC_RANGE);
+			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
 			*ready = EAR_POLICY_TRY_AGAIN;
 		}
