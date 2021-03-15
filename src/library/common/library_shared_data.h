@@ -145,6 +145,11 @@ void copy_my_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *
 void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
+void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst);
+void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
+void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
+
+
 
 
 void load_app_mgr_env();
