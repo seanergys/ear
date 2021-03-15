@@ -42,12 +42,16 @@ extern unsigned long ext_def_freq;
 #endif
 
 #if NEW_IMCFREQ
-extern ulong policy_max_imcfreq,policy_min_imcfreq;
+extern ulong policy_max_imcfreq, policy_min_imcfreq;
 extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
+extern ulong def_imc_max_khz, def_imc_min_khz;
+extern uint dynais_enabled;
+extern uint ear_periodic_mode;
 ulong avg_to_khz(ulong freq_khz);
 static uint imc_freq_selected = 0;
 static uint last_cpu_pstate,last_imc_pstate;
+static int min_pstate
 
 struct imc_data_t{
     double time;
@@ -55,19 +59,38 @@ struct imc_data_t{
     double power;
     double l3_mpkc; // l3 misses per 1K cycles
     double l3_rate;
+    double Gflops;
 };
+
 #define NUM_UNC_FREQ 20
 static struct imc_data_t *imc_data;
+#define IMC_STEP 100000
+#define IMC_RANGE 100000
 #define SELECT_CPUFREQ 100
 #define SELECT_IMCFREQ 101
 static uint min_energy_state = SELECT_CPUFREQ;
 static uint imc_dynamic = 0;
+static uint min_imc_pstate = 0;
 #endif
 
-
-
-
 static ulong req_f;
+
+static uint must_increase_imc(signature_t *sig,double penalty)
+{
+    double metric,metric_ref;
+    double metric_max;
+    if (ear_periodic_mode == PERIODIC_MODE_OFF){
+        metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].time);
+        metric = sig->time;
+        verbose(2,"Using time as reference : Current %.3lf Max %.3lf",metric,metric_max);
+        return (metric > metric_max);
+    }else{
+        metric_max = imc_data[min_pstate*NUM_UNC_FREQ+0].GBS - (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].GBS);
+        metric = sig->GBS;
+        verbose(2,"Using GBS as reference : Current %.3lf Max %.3lf",metric,metric_max);
+        return (metric < metric_max);
+    }
+}
 
 state_t policy_init(polctx_t *c)
 {
@@ -102,7 +125,7 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 {
     signature_t *my_app = sig;
-    int i,min_pstate;
+    int i;
     unsigned int ref;
     double power_proj,time_proj,energy_proj,best_solution,energy_ref;
     double power_ref,time_ref,max_penalty,time_max;
@@ -114,7 +137,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
     state_t st;
     uint power_status;
 
-
     if ((c == NULL) || (c->app == NULL)){
         *ready=EAR_POLICY_CONTINUE;
         return EAR_ERROR;
@@ -124,8 +146,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
     else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
     nominal=frequency_pstate_to_freq(min_pstate);
-
-
 
     // Default values
 
@@ -149,13 +169,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
 #if NEW_IMCFREQ
     if (dyn_unc){
-        imc_pstate = (2400000 - avg_to_khz(my_app->sig_ext->imc_freq))/100000;
+        imc_pstate = (def_imc_max_khz - avg_to_khz(my_app->sig_ext->imc_freq))/IMC_STEP;
         verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
         imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time = my_app->time;
         imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power = my_app->DC_power;
         imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].GBS = my_app->GBS;
         imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].l3_mpkc = ((double) my_app->L3_misses * 1000.0) / (double) my_app->cycles;
         imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].l3_rate = ((double) my_app->L3_misses) / my_app->time;
+        imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].Gflops = my_app->Gflops;
         verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf MPKC %.2lf L3_MISS_RATE %.2lf",
                 imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time,
                 imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power,
