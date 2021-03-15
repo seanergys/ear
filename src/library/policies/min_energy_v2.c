@@ -51,7 +51,7 @@ extern uint ear_periodic_mode;
 ulong avg_to_khz(ulong freq_khz);
 static uint imc_freq_selected = 0;
 static uint last_cpu_pstate,last_imc_pstate;
-static int min_pstate
+static int min_pstate;
 
 struct imc_data_t{
     double time;
