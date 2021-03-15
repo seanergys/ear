@@ -197,6 +197,35 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
         //      pcapp_info_set_req_f(pc_app_info_data,*freq_set);
     }
 #endif
+    memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    if (my_policy_grain == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
+    else sprintf(pol_grain_str,"POL_GRAIN_NODE");
+    verbose(2,"my_policy_grain %s and affinity %d",pol_grain_str,ear_affinity_is_set);
+    /* Assumption: If affinity is set for master, it is set for all, we could check individually */
+    if ((my_policy_grain == POL_GRAIN_CORE) && (ear_affinity_is_set)){
+        from_proc_to_core();		
+    }else{
+        debug("Setting same freq in all node %lu",policy_freq_list[0]);
+        for (i=1;i<MAX_CPUS_SUPPORTED;i++) policy_freq_list[i]=policy_freq_list[0];
+        if (ear_affinity_is_set){ 
+            from_proc_to_core();
+        }else{
+            for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i]=policy_freq_list[0];
+        }
+    }
+    print_freq_per_core();
+    if (*freq_set != *(c->ear_frequency))
+    {
+        *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
+    }
+#if NEW_IMCFREQ
+    if (dyn_unc){
+        imc_up = ear_min(policy_max_imcfreq, imc_max_khz);
+        imc_low = ear_max(policy_min_imcfreq, imc_min_khz);
+        verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
+        eards_mgt_imcfreq_set_current(imc_up,imc_low);
+    }
+#endif
   memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
   if (my_policy_grain == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
   else sprintf(pol_grain_str,"POL_GRAIN_NODE");

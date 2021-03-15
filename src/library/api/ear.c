@@ -98,15 +98,17 @@ static uint ear_iterations=0;
 static uint ear_loop_size;
 static uint ear_loop_level;
 static int in_loop;
+static short ear_status = NO_LOOP;
 
 #if EAR_OVERHEAD_CONTROL
 /* in us */
 // These variables are shared
 uint ear_periodic_mode=PERIODIC_MODE_OFF;
 uint mpi_calls_in_period=10000;
+uint mpi_calls_per_second;
 uint total_mpi_calls=0;
 static uint dynais_timeout=MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
-static uint lib_period=PERIOD;
+uint lib_period=PERIOD;
 static uint check_every=MPI_CALLS_TO_CHECK_PERIODIC;
 #endif
 #define MASTERS_SYNC_VERBOSE 1
@@ -615,6 +617,7 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 /****************************************************************************************************************************************************************/
 /****************************************************************************************************************************************************************/
 
+
 void ear_init()
 {
 	char *summary_pathname;
@@ -686,19 +689,6 @@ void ear_init()
 	#endif
 
 	get_job_identification();
-
-    struct stat st =  {0};
-    if (stat("VERBOSE_FILES", &st) == -1) {
-        mkdir ("VERBOSE_FILES", 0700);
-    }
-
-    // create verbose file for each job
-    char file_name[128];
-    sprintf(file_name, "verbose.%d.%d.%d", getpid(), my_step_id, my_job_id);
-    int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
-    if (fd != -1){
-        verb_channel = fd;
-    }
 
 	if (is_already_connected(my_job_id,my_step_id,getpid())){
 		fprintf(stderr,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
@@ -821,6 +811,25 @@ void ear_init()
 	}
 	debug("END Shared region creation section");
 	/* Processes in same node connectes each other*/
+
+    /* create verbose file for each job */
+    #if PER_TASK_VERBOSE
+    if (masters_info.my_master_rank >= 0){
+      if (( mkdir ("VERBOSE_FILES", 0700) < 0) && (errno != EEXIST)) {
+        error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
+      }else{
+
+        char file_name[128];
+        sprintf(file_name, "VERBOSE_FILES/verbose.%d.%d.%d.%d", masters_info.my_master_rank, my_step_id, my_job_id,getpid());
+        verbose(2,"Using %s as verbose file",file_name);
+        int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+        if (fd != -1){
+            verb_channel = fd;
+        }
+      }
+    }
+    #endif
+
 
 	// Initializing architecture and topology
 	if ((st=get_arch_desc(&arch_desc))!=EAR_SUCCESS){
@@ -1086,7 +1095,6 @@ void ear_finalize()
 		debug("Disconnecting");
 		eards_disconnect();
 	}
-
 }
 
 #if MPI
@@ -1138,13 +1146,13 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 							if (time_from_mpi_init >=dynais_timeout){
 								// we must compute N here
 								ear_periodic_mode=PERIODIC_MODE_ON;
-								mpi_calls_in_period=(uint)(total_mpi_calls/dynais_timeout)*lib_period;
+								mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
 								if (masters_info.my_master_rank>=0) traces_start();
-								debug("Going to periodic mode after %lf secs: mpi calls in period %u\n",
-									time_from_mpi_init,mpi_calls_in_period);
+								verbose(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
+									time_from_mpi_init,mpi_calls_in_period,ear_status);
 								states_periodic_begin_period(my_id, NULL, 1, 1);
 								ear_iterations=0;
-								states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+								states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period);
 							}else{
 
 								/* We continue using dynais */
@@ -1165,9 +1173,9 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 			break;
 		case PERIODIC_MODE_ON:
 				/* EAR energy policy is called periodically */
-				if ((total_mpi_calls%mpi_calls_in_period)==0){
+				if ((total_mpi_calls%mpi_calls_per_second) == 0){
 					ear_iterations++;
-					states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+					states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period);
 				}
 				break;
 	}
@@ -1182,7 +1190,6 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 
 void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 {
-	short ear_status;
 #if ONLY_MASTER
 	if (my_id) {
 		return;
@@ -1274,7 +1281,6 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 
 void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 {
-	short ear_status;
 #if ONLY_MASTER
 	if (my_id) {
 		return;
@@ -1303,10 +1309,10 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 
 		mpi_calls_per_loop++;
 
-		if (last_calls_in_loop==mpi_calls_per_loop){
-				ear_status=NEW_ITERATION;
+		if (last_calls_in_loop == mpi_calls_per_loop){
+				ear_status = NEW_ITERATION;
 		}else{
-				ear_status=IN_LOOP;
+				ear_status = IN_LOOP;
 		}
 
 
@@ -1338,7 +1344,6 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 
 /************************** MANUAL API *******************/
 
-static short ear_status=NO_LOOP;
 static unsigned long manual_loopid=0;
 unsigned long ear_new_loop()
 {
@@ -1439,11 +1444,11 @@ void *earl_periodic_actions(void *no_arg)
 		// if (pthread_setname_np(pthread_self(), "EARL_periodic_th")) error("Setting name for EARL_periodic_th thread %s" , strerror(errno));
 		if (masters_info.my_master_rank>=0) traces_start();
     states_periodic_begin_period(my_id, NULL, 1, 1);
-    ear_iterations=0;
-		mpi_calls_in_period=1;
+    ear_iterations = 0;
+		mpi_calls_in_period = lib_period;
     states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
 		do{
-			sleep(lib_period);
+			sleep(1);
       ear_iterations++;
       states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
 		}while(end_periodic_th == 0);
