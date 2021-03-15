@@ -226,8 +226,6 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
         eards_mgt_imcfreq_set_current(imc_up,imc_low);
     }
 #endif
-<<<<<<< HEAD
-=======
   memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
   if (my_policy_grain == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
   else sprintf(pol_grain_str,"POL_GRAIN_NODE");
@@ -258,7 +256,6 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   	eards_mgt_imcfreq_set_current(imc_up,imc_low);
 	}
 	#endif
->>>>>>> 6013d906f339fcb5dbd101d2fbfbdee7420a98af
 }
 
 
