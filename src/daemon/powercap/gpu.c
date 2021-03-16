@@ -40,7 +40,8 @@
 
 
 
-static uint current_gpu_pc=0;
+static ulong current_gpu_pc=0;
+static ulong default_gpu_pc=0;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -54,6 +55,8 @@ static ulong *gpu_pc_max_power;
 static ulong *gpu_pc_curr_power;
 static ulong *gpu_pc_util;
 static ulong *gpu_pc_freqs;
+static const ulong **gpu_freq_list = NULL;
+static const uint *gpu_num_freqs = NULL;
 static ulong *t_freq;
 static float *pdist;
 static gpu_t *gpu_pc_power_data;
@@ -69,6 +72,7 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t gpu_pc_thread_init(void *p)
 {
+    mgt_gpu_freq_list(&gpu_pc_ctx, &gpu_freq_list, &gpu_num_freqs);    
 	if (gpu_read(&gpu_pc_ctx_data,values_gpu_init)!= EAR_SUCCESS){
 		debug("Error in gpu_read in gpu_dvfs_pc");
 		return EAR_ERROR;
@@ -190,9 +194,35 @@ state_t enable(suscription_t *sus)
 
 state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 {
-	debug("powermgr gpu power allocated %lu",limit);
+	debug("GPU: powermgr gpu power allocated %lu",limit);
+    default_gpu_pc = limit;
+    c_status = PC_STATUS_OK;
 	return int_set_powercap_value(limit,gpu_util);
 }
+
+state_t reset_powercap_value()
+{
+    debug("GPU: Resetting powercap value to %lu", default_gpu_pc);
+    c_status = PC_STATUS_OK;
+    return int_set_powercap_value(default_gpu_pc, gpu_pc_util);
+}
+
+state_t release_powercap_allocation(uint decrease)
+{
+    debug("GPU: releasing %u from powercap allocation", decrease);
+    current_gpu_pc -= decrease;
+    c_status = PC_STATUS_RELEASE;
+    return int_set_powercap_value(current_gpu_pc, gpu_pc_util);
+}
+
+state_t increase_powercap_allocation(uint increase)
+{
+    debug("GPU: increasing %u from powercap allocation", increase);
+    current_gpu_pc += increase;
+    if (current_gpu_pc >= default_gpu_pc) c_status = PC_STATUS_OK;
+    return int_set_powercap_value(current_gpu_pc, gpu_pc_util);
+}
+
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
 {
 	state_t ret;
@@ -251,11 +281,11 @@ uint is_powercap_policy_enabled(uint pid)
 
 void print_powercap_value(int fd)
 {
-	dprintf(fd,"gpu_powercap_value %u\n",current_gpu_pc);
+	dprintf(fd,"gpu_powercap_value %lu\n",current_gpu_pc);
 }
 void powercap_to_str(char *b)
 {
-	sprintf(b,"%u",current_gpu_pc);
+	sprintf(b,"%lu",current_gpu_pc);
 }
 
 void set_status(uint status)
@@ -309,13 +339,17 @@ void set_app_req_freq(ulong *f)
 /* X_status is the plugin status */
 /* X_ask_def means we must ask for our power */
 
-uint get_powercap_status(uint *status,uint *tbr)
+uint get_powercap_status(domain_status_t *status)
 {
 	int i;
 	uint used=0;
 	uint g_tbr = 0;
-	*status = PC_STATUS_OK;
-	*tbr = 0;
+    uint tmp_strain = 0;
+	status->ok = PC_STATUS_OK;
+	status->exceed = 0;
+    status->strain = 0;
+    status->current_pc = current_gpu_pc;
+
 	if (current_gpu_pc == PC_UNLIMITED){
 		return 0;
 	}
@@ -325,33 +359,44 @@ uint get_powercap_status(uint *status,uint *tbr)
 		if (t_freq[i] == 0) return 0;
 	}
 	if (!used){
-		*status = PC_STATUS_RELEASE;
-		if (gpu_pc_num_gpus == 0) *tbr = current_gpu_pc;
-		else *tbr=(current_gpu_pc - (MIN_GPU_IDLE_POWER*gpu_pc_num_gpus));
-		//debug("%sReleasing %u Watts from the GPU%s",COL_GRE,*tbr,COL_CLR);
+		status->ok = PC_STATUS_RELEASE;
+		if (gpu_pc_num_gpus == 0) status->exceed = current_gpu_pc;
+		else status->exceed=(current_gpu_pc - (MIN_GPU_IDLE_POWER*gpu_pc_num_gpus));
+		//debug("%sReleasing %u Watts from the GPU%s",COL_GRE,status->exceed,COL_CLR);
 		return 1;
 	}
 	mgt_gpu_freq_limit_get_current(&gpu_pc_ctx,gpu_pc_freqs);
 
+    for (i = 0; i < gpu_pc_num_gpus; i++) {
+        tmp_strain += powercap_get_strain(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], gpu_pc_freqs[i]);
+    }
+    tmp_strain /= gpu_pc_num_gpus;
+    status->strain = tmp_strain;
+
 	/* If we know, we must check */
-	*status = PC_STATUS_RELEASE;*tbr = 0;
+	status->ok = PC_STATUS_RELEASE;
+    status->exceed = 0;
 	for (i=0;i<gpu_pc_num_gpus;i++){
 		/* gpu_pc_util is an average during a period , is more confident than an instantaneous measure*/
 		if ((t_freq[i] != gpu_pc_freqs[i]) && (gpu_pc_util[i]>0)){ 
 			//debug("We cannot release power from GPU %d",i);
-			*status = PC_STATUS_GREEDY;
-			*tbr = 0;
+            if (c_status == PC_STATUS_RELEASE) {
+			    status->ok = PC_STATUS_ASK_DEF;
+            } else {
+			    status->ok = PC_STATUS_GREEDY;
+            }
+			status->exceed = 0;
 			return 0;
 		}else{
 			/* However we use instanteneous power to compute potential power releases */
 			g_tbr = (uint)((gpu_pc_curr_power[i] - gpu_cons_power[i]) *0.5);
-			*tbr = *tbr +  g_tbr;
+			status->exceed = status->exceed + g_tbr;
 			//debug("%sWe can release %u W from GPU %d since target = %lu current %lu%s",COL_GRE,g_tbr,i,t_freq[i] ,gpu_pc_freqs[i],COL_CLR);
 		}
 	}
-	if (*tbr < MIN_GPU_POWER_MARGIN){ 
-		*tbr = 0;
-		*status = PC_STATUS_OK;
+	if (status->exceed < MIN_GPU_POWER_MARGIN){ 
+		status->exceed = 0;
+		status->ok = PC_STATUS_OK;
 		return 0;
 	}
 	return 1;
