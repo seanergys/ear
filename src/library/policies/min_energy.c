@@ -60,6 +60,7 @@ struct imc_data_t{
 	double GBS;
 	double power;
 	ull  	 instructions;
+	ull		 cycles;
 	ull 	 FLOPS[FLOPS_EVENTS];
 };
 #define NUM_UNC_FREQ 20
@@ -77,7 +78,9 @@ static uint min_imc_pstate = 0;
 
 
 static ulong req_f;
-#define USE_FLOPS 1
+#define USE_FLOPS 0
+#define USE_GBS 1
+#define USE_CPI	0
 static uint must_increase_imc(signature_t *sig,double penalty)
 {
 	double metric,metric_ref;
@@ -92,10 +95,18 @@ static uint must_increase_imc(signature_t *sig,double penalty)
 		verbose(2,"Using time as reference : Current %.3lf Max %.3lf",metric,metric_max);
 		return (metric > metric_max);
 	}else{
+		#if USE_CPI
+		double CPI;
+		CPI = (double)imc_data[min_pstate*NUM_UNC_FREQ+0].cycles/(double)imc_data[min_pstate*NUM_UNC_FREQ+0].instructions;
+		metric_max = CPI + CPI*penalty;
+		metric = sig->CPI;
+		verbose(2,"Using CPI as reference : Current %.3lf Max %.3lf",metric,metric_max);
+		return (metric > metric_max);	
+		#endif
 		#if USE_GBS
 		metric_min = imc_data[min_pstate*NUM_UNC_FREQ+0].GBS - (penalty* imc_data[min_pstate*NUM_UNC_FREQ+0].GBS);
 		metric = sig->GBS;
-		verbose(2,"Using GBS as reference : Current %.3lf Max %.3lf",metric,metric_min);
+		verbose(2,"Using GBS as reference : Current %.3lf Min %.3lf",metric,metric_min);
 		return (metric < metric_min);
 		#endif
 		#if USE_FLOPS
@@ -105,7 +116,7 @@ static uint must_increase_imc(signature_t *sig,double penalty)
 		cflopss = (double)cflops / (sig->time*1000000.0);
 		metric_min =  tflopss - (penalty* tflopss);
 		metric = cflopss;
-		verbose(2,"Using FLOPS as reference : Current %.3lf Max %.3lf",metric,metric_min);
+		verbose(2,"Using FLOPS as reference : Current %.3lf Min %.3lf",metric,metric_min);
 		return (metric < metric_min);
 		#endif
 	}
@@ -117,7 +128,9 @@ static void copy_imc_data_from_signature(uint cpu_pstate,uint imc_pstate,signatu
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power = s->DC_power;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS = s->GBS;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].instructions = s->instructions;
+  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].cycles = s->cycles;
   memcpy(imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
+	verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f",imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS,s->instructions/s->time);
 }
 
 state_t policy_init(polctx_t *c)
@@ -161,7 +174,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
   ulong best_freq,best_pstate,freq_ref,eff_f;
 	ulong curr_freq,nominal;
-	ulong curr_pstate,def_pstate,def_freq;
+	ulong curr_pstate,def_pstate,def_freq,from;
 	state_t st;
 	uint power_status;
 	double sig_vpi,node_sig_vpi;
@@ -176,6 +189,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
 		*new_freq = *(c->ear_frequency);
 		*ready = EAR_POLICY_TRY_AGAIN;
+		verbose(2,"Node signature not ready, selecting %lu CPU f",*new_freq);
 		return EAR_SUCCESS;
 	}
 	verbose(2, "MR[%d] Node signatures ready",masters_info.my_master_rank);
@@ -187,7 +201,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	compute_vpi(&sig_vpi,sig);
 	compute_vpi(&node_sig_vpi,my_app);
 	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf",masters_info.my_master_rank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi);
-
+	my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
   if (c->use_turbo) min_pstate=0;
   else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
@@ -220,7 +234,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 			imc_pstate = (def_imc_max_khz - avg_to_khz(my_app->sig_ext->imc_freq))/IMC_STEP;
 			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
 			copy_imc_data_from_signature(curr_pstate,imc_pstate,my_app);
-			verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf",imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[curr_pstate*NUM_UNC_FREQ+imc_pstate].GBS);
   }
 	if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
 		if (dyn_unc){
@@ -245,13 +258,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 				st=project_power(my_app,curr_pstate,def_pstate,&power_ref);
 				st=project_time(my_app,curr_pstate,def_pstate,&time_ref);
 				best_freq=def_freq;
-        debug("projecting from %lu to %lu\t time: %.2lf\t power: %.2lf", curr_pstate, def_pstate, time_ref, power_ref);
+        verbose(2,"Comp.Ref:projecting from %lu to %lu\t time: %.2lf\t power: %.2lf", curr_pstate, def_pstate, time_ref, power_ref);
 		}
 		else
 		{
 				time_ref=my_app->time;
 				power_ref=my_app->DC_power;
 				best_freq=curr_freq;
+				verbose(2,"Comp.Ref: Using time %lf power %lf freq %lu",time_ref,power_ref,best_freq);
 		}
 		}
 		// If it is the default P_STATE selected in the environment, then a projection
@@ -263,6 +277,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 				time_ref=my_app->time;
 				power_ref=my_app->DC_power;
 				best_freq=curr_freq;
+				verbose(2,"Comp.Ref: Using time %lf power %lf freq %lu",time_ref,power_ref,best_freq);
 			}else{
 				/* Nominal is the reference , if projections are ready, we project time and power */
 				debug("current_freq is not the nominal");
@@ -271,11 +286,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 					project_power(my_app,curr_pstate,min_pstate,&power_ref);
 					project_time(my_app,curr_pstate,min_pstate,&time_ref);
 					best_freq=nominal;
-					debug("projecting to nominal\t time: %.2lf\t power: %.2lf", time_ref, power_ref);
+					verbose(2,"Comp.Ref:projecting to nominal\t time: %.2lf\t power: %.2lf", time_ref, power_ref);
 				}else{
         	time_ref=my_app->time;
         	power_ref=my_app->DC_power;
         	best_freq=curr_freq;
+					verbose(2,"Comp.Ref: Using time %lf power %lf freq %lu",time_ref,power_ref,best_freq);
 				}
 			}
 
@@ -286,39 +302,43 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	// We compute the maximum performance loss
 	time_max = time_ref + (time_ref * max_penalty);
 
-   debug("Max_freq set to %lu min_pstate = %d nominal %lu curr_frequency %lu curr_pstate %lu time_max: %.2lf",
+  verbose(2,"Max_freq set to %lu min_pstate = %d nominal %lu curr_frequency %lu curr_pstate %lu time_max: %.2lf",
 		c->app->max_freq,min_pstate,nominal,curr_freq,curr_pstate,time_max);
 
-	debug("Policy Signature (CPI=%lf GBS=%lf Power=%lf Time=%lf TPI=%lf)",
+	verbose(2,"Policy Signature (CPI=%lf GBS=%lf Power=%lf Time=%lf TPI=%lf)",
 		my_app->CPI,my_app->GBS,my_app->DC_power,my_app->time,my_app->TPI);
 
 	// MIN_ENERGY_TO_SOLUTION ALGORITHM
 	// Calcular el min_pstate que este dentro del limite
+	from = curr_pstate;
 	for (i = min_pstate; i < c->num_pstates;i++)
 	{
 		debug("testing projection between P%d and P%d", curr_pstate, i);
-		if (projection_available(curr_pstate,i)==EAR_SUCCESS)
+		if (projection_available(from,i)==EAR_SUCCESS)
 		{
 			debug("ok");
-			st=project_power(my_app,curr_pstate,i,&power_proj);
-			st=project_time(my_app,curr_pstate,i,&time_proj);
+			st=project_power(my_app,from,i,&power_proj);
+			st=project_time(my_app,from,i,&time_proj);
 			projection_set(i,time_proj,power_proj);
 			energy_proj=power_proj*time_proj;
 
-        	debug("projected from %lu to %d\t time: %.2lf\t power: %.2lf energy: %.2lf",
-				curr_pstate, i, time_proj, power_proj, energy_proj);
+      verbose(2,"projected from %lu to %d\t time: %.2lf\t power: %.2lf energy: %.2lf",
+				from, i, time_proj, power_proj, energy_proj);
 			
 			if ((energy_proj < best_solution) && (time_proj < time_max)) {
-        		debug("new best solution found");
 				best_freq = frequency_pstate_to_freq(i);
+        verbose(2,"new best solution found %lu",best_freq);
 				best_solution = energy_proj;
 				best_pstate=i;
 			}
 		}
-		
-    policy_max_imcfreq = imc_max_khz;
-		policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
-		min_imc_pstate = imc_pstate;
+		#if NEW_IMCFREQ	
+		if (dyn_unc){
+    	policy_max_imcfreq = imc_max_khz;
+			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+			min_imc_pstate = imc_pstate;
+		}
+		#endif
 	}
 	*new_freq=best_freq;
 	#if NEW_IMCFREQ
@@ -340,7 +360,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 			policy_max_imcfreq = ear_max(policy_max_imcfreq - IMC_STEP,imc_min_khz-IMC_RANGE);
 			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
-			*ready = EAR_POLICY_TRY_AGAIN;
+			if (policy_min_imcfreq > imc_min_khz) *ready = EAR_POLICY_TRY_AGAIN;
+			else *ready = EAR_POLICY_READY;
 		}
 		
 	}

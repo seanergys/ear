@@ -490,7 +490,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
 			/* VERBOSE */
       state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,prev_f,EAR_STATE);
-      state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,0,"D");
+      state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,0,"D-Stable");
 			/* END VERBOSE */
 			
 			begin_iter = iterations;
@@ -568,7 +568,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
           /* VERBOSE */
 					signature_copy(&loop.signature, &loop_signature.signature);
           state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,prev_f,EAR_STATE);
-          state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,0,"D");
+          state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,0,"D-PE");
 			}
 			/* We run here at default freq */
 			break;
