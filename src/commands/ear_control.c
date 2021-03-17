@@ -39,6 +39,7 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <common/messaging/msg_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
+#include <database_cache/eardbd_api.h>
                    
 #define NUM_LEVELS  4
 #define MAX_PSTATE  16
@@ -49,6 +50,7 @@
 #define EAR_TYPE_APP_STATUS_MASTER  27 //EAR_TYPES refer to data specifically, but since both APP_STATUS rc codes use the type
                                        //APP_STATUS, we need subspecific types for this case
 #define EAR_TYPE_APP_STATUS_NODE    28 //same as above
+#define EAR_TYPE_EARDBD_STATUS      29 //additional type for EARDBD statuses
 
 /* Status modes */
 #define ERR_ONLY    1
@@ -361,6 +363,24 @@ void process_status(int num_status, status_t *status, char error_only)
     else printf("No status were retrieved (nodes may be inactive).\n");
 }
 
+void process_eardbd_status(int num_status, eardbd_status_t *status)
+{
+    int i;
+
+    printf("\nNumber of sockets currently connected: %u\n", status->sockets_online);
+    printf("\t\t\tMPI-A\tNMPI-A\tLEARN-A\tLOOPS\tEVENTS\tPERMET\tPERAGG\n");
+    printf("Insert states: \t");
+    for (i = 0; i < EDB_NTYPES; i++)
+        printf("\t%u", status->insert_states[i]);
+
+    printf("\nSamples inserted: ");
+    for (i = 0; i < EDB_NTYPES; i++)
+        printf("\t%u", status->samples_recv[i]);
+
+    printf("\n");
+
+}
+
 void process_app_status(int num_status, app_status_t *status, char is_master)
 {
     if (num_status > 0)
@@ -416,6 +436,7 @@ void process_single_status(int num_status, status_t *status, char *node_name, ch
     }
     else printf("An error retrieving status has occurred.\n");
 }
+
 
 
 int main(int argc, char *argv[])
@@ -628,6 +649,8 @@ int main(int argc, char *argv[])
                     status_type = EAR_TYPE_FULL_STATUS;
                 else if (!strcasecmp(optarg, "POLICY"))
                     status_type = EAR_TYPE_POLICY;
+                else if (!strcasecmp(optarg, "EARDBD"))
+                    status_type = EAR_TYPE_EARDBD_STATUS;
                 else
                     printf("Warning: specified type is invalid (%s)\n", optarg);
                 break;
@@ -724,10 +747,15 @@ int main(int argc, char *argv[])
     if (strlen(node_name) > 0 && status_type > 0)
     {
         int num_status = 0;
-        int rc=eards_remote_connect(node_name, my_cluster_conf.eard.port);
+        int rc = -1;
+
+        if (status_type != EAR_TYPE_EARDBD_STATUS) {
+            rc = eards_remote_connect(node_name, my_cluster_conf.eard.port);
+        }
         powercap_status_t *powerstatus;
         app_status_t *appstatus;
-        if (rc<0)
+        eardbd_status_t edbstatus;
+        if (rc<0 && status_type != EAR_TYPE_EARDBD_STATUS)
             printf("Error connecting with node %s\n", node_name);
         else
         {
@@ -760,6 +788,13 @@ int main(int argc, char *argv[])
                 case EAR_TYPE_APP_STATUS_NODE:
                     num_status = eards_get_app_node_status(&my_cluster_conf, &appstatus);
                     process_app_status(num_status, appstatus, 0);
+                    break;
+                case EAR_TYPE_EARDBD_STATUS:
+                    num_status = eardbd_status(node_name, my_cluster_conf.db_manager.tcp_port, &edbstatus);
+                    if (state_ok(num_status))
+                        process_eardbd_status(num_status, &edbstatus);
+                    else
+                        printf("Error reading EARDBD status from node %s\n", node_name);
                     break;
             }
 
@@ -795,6 +830,9 @@ int main(int argc, char *argv[])
             case EAR_TYPE_APP_STATUS_NODE:
                 num_status = get_app_node_status_all_nodes(&my_cluster_conf, &appstatus);
                 process_app_status(num_status, appstatus, 0);
+                break;
+            case EAR_TYPE_EARDBD_STATUS:
+                printf("EARDBD status  not implemented for cluster_wide status\n");
                 break;
         }
     }
