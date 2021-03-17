@@ -70,6 +70,8 @@ static int current_loop_id;
 static int MAX_POLICY_TRIES;
 static state_t pst;
 static uint total_th;
+static uint signatures_stables = 0;
+
 
 #define DYNAIS_CUTOFF	1
 
@@ -444,6 +446,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 			/* When the policy is ready to be evaluated, we go to the next state */
 			if (EAR_POLICY_STATE == EAR_POLICY_READY){
 			  /*if (policy_freq != policy_def_freq)*/
+				signatures_stables = 0;
 			  if (policy_freq != prev_f) {
 					  tries_current_loop++;
 					  comp_N_begin = metrics_time();
@@ -520,7 +523,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 				tries_current_loop=0;
 			}
 			if (pok) return;
-
+			verbose(2,"Policy is not ok current (%.2lf/%.2lf/.%2lf) reference (%.2lf/%.2lf/.%2lf)",
+			loop_signature.signature.time,loop_signature.signature.GBS,loop_signature.signature.DC_power,l_sig->time,l_sig->GBS,l_sig->DC_power);
 			// We can give the library a second change in case we are at def freq
 			if ((tries_current_loop<MAX_POLICY_TRIES) && (curr_pstate==def_pstate))
 			{

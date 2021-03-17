@@ -386,7 +386,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
 			if (policy_min_imcfreq > imc_min_khz) *ready = EAR_POLICY_TRY_AGAIN;
-			else *ready = EAR_POLICY_READY;
+			else{ 
+				*ready = EAR_POLICY_READY;
+				min_energy_state = SELECT_CPUFREQ;
+			}
 			
 		}
 		

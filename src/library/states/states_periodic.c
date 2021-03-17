@@ -203,6 +203,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 							if (masters_info.my_master_rank>=0) log_report_new_freq(application.job.id,application.job.step_id,policy_freq);
 						}
 						if (EAR_POLICY_STATE == EAR_POLICY_READY){ 
+							signatures_stables = 0;
 							EAR_STATE = SIGNATURE_STABLE;
 						}
 					}
@@ -246,6 +247,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
           state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
           state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,"P-stable");
           report_loop_signature(iterations,&loop);
+					/* End verbose and reporting */
 					signatures_stables++;
 					if (signatures_stables == 1){
 							signature_copy(&cpu_sel_signature,&loop.signature);
