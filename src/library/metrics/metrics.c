@@ -833,7 +833,7 @@ int metrics_init(topology_t *topo)
 	if (xtate_fail(s,cpufreq_data_count(&mycpufreq_data_size,&mycpufreq_data_count))){
 		error("Cpufrequency data size failed");
 	}else{
-		verbose(2,"Cpufrequency data size %u", mycpufreq_data_size);
+		verbose(2,"Cpufrequency data size %u count %u", mycpufreq_data_size,mycpufreq_data_count);
 	}
   if (xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[LOO],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[LOO],NULL))){
 			error("Cpufreq allocation failed");
