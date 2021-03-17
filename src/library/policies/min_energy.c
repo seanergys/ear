@@ -95,12 +95,13 @@ static uint must_increase_imc(uint cpu_pstate,signature_t *sig,double penalty)
 	uint ref_pstate;
 	if (ear_periodic_mode == PERIODIC_MODE_OFF) ref_pstate = min_pstate;
 	else ref_pstate = cpu_pstate;
+	verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
 	power_var = (imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power - sig->DC_power)/imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power; 
 	if (ear_periodic_mode == PERIODIC_MODE_OFF){
 		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time);
 		metric = sig->time;
 		metric_var = (sig->time-imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time)/imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
-		verbose(2,"Using time as reference : Current %.3lf Max %.3lf energy_saving %.2lf",metric,metric_max,(power_var-metric_var)*100);
+		verbose(2,"Using time as reference : Current %.3lf Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_max,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric > metric_max);
 	}else{
 		/* We were using ref_pstate = min_pstate */
@@ -110,14 +111,14 @@ static uint must_increase_imc(uint cpu_pstate,signature_t *sig,double penalty)
 		metric_max = CPI + CPI*penalty;
 		metric = sig->CPI;
 		metric_var = (CPI-metric)/CPI;
-		verbose(2,"Using CPI as reference : Current %.3lf Max %.3lf energy_saving %.2lf",metric,metric_max,(power_var-metric_var)*100);
+		verbose(2,"Using CPI as reference : Current %.3lf Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_max,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric > metric_max);	
 		#endif
 		#if USE_GBS
 		metric_min = imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS - (penalty* imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS);
 		metric = sig->GBS;
 		metric_var = (imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS-sig->GBS)/imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
-		verbose(2,"Using GBS as reference : Current %.3lf Min %.3lf energy_saving %.2lf",metric,metric_min,(power_var-metric_var)*100);
+		verbose(2,"Using GBS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric < metric_min);
 		#endif
 		#if USE_FLOPS
@@ -128,7 +129,7 @@ static uint must_increase_imc(uint cpu_pstate,signature_t *sig,double penalty)
 		metric_min =  tflopss - (penalty* tflopss);
 		metric = cflopss;
 		metric_var = (tflopss-cflopss)/tflopss;
-		verbose(2,"Using FLOPS as reference : Current %.3lf Min %.3lf energy_saving %.2lf",metric,metric_min,(power_var-metric_var)*100);
+		verbose(2,"Using FLOPS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric < metric_min);
 		#endif
 	}
@@ -243,7 +244,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
   #if NEW_IMCFREQ
   if (dyn_unc){
-			imc_pstate = (def_imc_max_khz - avg_to_khz(my_app->sig_ext->imc_freq))/IMC_STEP;
+			imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
 			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
 			copy_imc_data_from_signature(curr_pstate,imc_pstate,my_app);
   }
@@ -261,7 +262,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
 		// If is not the default P_STATE selected in the environment, a projection
 		// is made for the reference P_STATE in case the coefficents were available.
-		// 
+		// NEW: This code is new because projections from lower pstates are reporting bad cpu freqs 
+		if (curr_freq != def_freq){
+			*ready = EAR_POLICY_TRY_AGAIN;
+			*new_freq = def_freq;
+			if (dyn_unc){
+				policy_max_imcfreq = imc_max_khz;
+      	policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+			}
+			return EAR_SUCCESS;
+		}
 		if (curr_freq != def_freq) // Use configuration when available
 		{
 		if (projection_available(curr_pstate,def_pstate)==EAR_SUCCESS)
@@ -366,13 +376,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 		/* If we are over the limit, we increase the IMC */
 		if (increase_imc){
 			verbose(2,"%sWarning, passing the limit",COL_RED);
-			policy_max_imcfreq = ear_min(avg_to_khz(my_app->sig_ext->imc_freq) + IMC_STEP,imc_max_khz);	
+			policy_max_imcfreq = ear_min(policy_max_imcfreq + IMC_STEP,imc_max_khz);	
       policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 			verbose(2,"Selecting %lu - %lu and policy ready%s",policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
 			*ready = EAR_POLICY_READY;
 			min_energy_state = SELECT_CPUFREQ;
 		}else{
-			policy_max_imcfreq = avg_to_khz(my_app->sig_ext->imc_freq),imc_max_khz;
 			policy_max_imcfreq = ear_max(policy_max_imcfreq - IMC_STEP,imc_min_khz-IMC_RANGE);
 			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
