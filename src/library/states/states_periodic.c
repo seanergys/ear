@@ -250,7 +250,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 					if (signatures_stables == 1){
 							signature_copy(&cpu_sel_signature,&loop.signature);
 					}else{
-					if (!equal_with_th(cpu_sel_signature.CPI,loop_signature.signature.CPI,0.05) || !equal_with_th(cpu_sel_signature.GBS,loop_signature.signature.GBS,0.05)){
+					if (!equal_with_th(cpu_sel_signature.CPI,loop_signature.signature.CPI,0.15) || !equal_with_th(cpu_sel_signature.GBS,loop_signature.signature.GBS,0.15)){
 						verbose(2,"Signature has changed, Going to CPU frequency selection state (%.3lf/%.3lf) (%.3lf/%.3lf)",cpu_sel_signature.CPI,cpu_sel_signature.GBS,loop_signature.signature.CPI,loop_signature.signature.GBS);
 						EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 					}
