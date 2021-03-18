@@ -137,13 +137,18 @@ static uint must_increase_imc(uint cpu_pstate,signature_t *sig,double penalty)
 
 static void copy_imc_data_from_signature(uint cpu_pstate,uint imc_pstate,signature_t *s)
 {
+	int i;
+	ullong tfops = 0;
+	float flops = 0;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time = s->time;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power = s->DC_power;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS = s->GBS;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].instructions = s->instructions;
   imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].cycles = s->cycles;
   memcpy(imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
-	verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f",imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS,s->instructions/(s->time*1000000.0));
+	for (i=0;i<FLOPS_EVENTS;i++) tfops += s->FLOPS[i];
+	flops = (float)tfops/(s->time*1000000000.0);
+	verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS,s->instructions/(s->time*1000000000.0),flops);
 }
 
 state_t policy_init(polctx_t *c)
