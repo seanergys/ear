@@ -363,21 +363,46 @@ void process_status(int num_status, status_t *status, char error_only)
     else printf("No status were retrieved (nodes may be inactive).\n");
 }
 
+char *get_eardbd_type(int i)
+{
+    switch(i)
+    {
+        case 0:
+            return "EARL-Applications";
+            break;
+        case 1:
+            return "NON-EARL-Applications";
+            break;
+        case 2:
+            return "Learning applications";
+            break;
+        case 3:
+            return "Loops";
+            break;
+        case 4:
+            return "EARD events";
+            break;
+        case 5:
+            return "Periodic metrics";
+            break;
+        case 6:
+            return "Periodic aggregations";
+            break;
+    }
+    return "Unknown table";
+}
+
 void process_eardbd_status(int num_status, eardbd_status_t *status)
 {
     int i;
 
-    printf("\nNumber of sockets currently connected: %u\n", status->sockets_online);
-    printf("\t\t\tMPI-A\tNMPI-A\tLEARN-A\tLOOPS\tEVENTS\tPERMET\tPERAGG\n");
-    printf("Insert states: \t");
-    for (i = 0; i < EDB_NTYPES; i++)
-        printf("\t%u", status->insert_states[i]);
+    printf("Number of EARDs connected: %u\n", status->sockets_online);
+    printf("Samples inserted last iteration: applications->%u    loops->%u    EARD events->%u    node metrics->%u\n",
+            status->samples_recv[0] + status->samples_recv[1], status->samples_recv[3], status->samples_recv[4], status->samples_recv[5]);
 
-    printf("\nSamples inserted: ");
     for (i = 0; i < EDB_NTYPES; i++)
-        printf("\t%u", status->samples_recv[i]);
-
-    printf("\n");
+        if (status->insert_states[i] != 0)
+            printf("Error registered when inserting %s\n", get_eardbd_type(i));
 
 }
 
