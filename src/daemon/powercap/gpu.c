@@ -197,7 +197,7 @@ state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 	debug("GPU: powermgr gpu power allocated %lu",limit);
     default_gpu_pc = limit;
     c_status = PC_STATUS_OK;
-	return int_set_powercap_value(limit,gpu_util);
+	return int_set_powercap_value(limit, gpu_util);
 }
 
 state_t reset_powercap_value()
@@ -388,6 +388,13 @@ uint get_powercap_status(domain_status_t *status)
 			status->exceed = 0;
 			return 0;
 		}else{
+            if (gpu_cons_power[i] > gpu_pc_curr_power[i])  //if we are at req_f but using more power than we should
+            {
+                status->ok = PC_STATUS_GREEDY;
+                status->exceed = 0;
+                debug("GPU status is greedy because more power is needed to mantain current speed");
+                return 0;
+            }
 			/* However we use instanteneous power to compute potential power releases */
 			g_tbr = (uint)((gpu_pc_curr_power[i] - gpu_cons_power[i]) *0.5);
 			status->exceed = status->exceed + g_tbr;
