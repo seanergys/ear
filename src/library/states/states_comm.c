@@ -46,6 +46,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 {
 	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0;
   float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI;
+	float l1_sec=0,l2_sec=0,l3_sec=0;
 	ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
 	#if NEW_IMCFREQ
 	float imcf;
@@ -102,7 +103,10 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		#endif
 		verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
 		#if CACHE_METRICS
-		verbosen(2," L1 %llu L2 %llu L3 %llu",sig->signature.L1_misses,sig->signature.L2_misses,sig->signature.L3_misses);
+		l1_sec = sig->signature.L1_misses/sig->signature.time;
+		l2_sec = sig->signature.L2_misses/sig->signature.time;
+		l3_sec = sig->signature.L3_misses/sig->signature.time;
+		verbosen(2," L1 %.2f L2 %.2f L3 %.2f",l1_sec,l2_sec,l3_sec);
 		#endif
 		verbosen(2," VPI %.2f",VPI);
     verbose(1,"%s",COL_CLR);
