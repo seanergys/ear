@@ -44,6 +44,7 @@ extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
 extern ulong imc_max_khz,imc_min_khz;
+extern uint imc_mgt_compatible;
 ulong policy_max_imcfreq,policy_min_imcfreq;
 
 signature_t policy_last_local_signature,policy_last_global_signature;
@@ -248,7 +249,7 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
   }
 	#if NEW_IMCFREQ
-	if (dyn_unc){
+	if (dyn_unc && imc_mgt_compatible){
 		imc_up = ear_min(policy_max_imcfreq,imc_max_khz);
 		imc_up = ear_max(imc_up,imc_min_khz);
 		imc_low = ear_max(policy_min_imcfreq,imc_min_khz);
