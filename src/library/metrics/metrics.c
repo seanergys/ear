@@ -51,6 +51,7 @@ char gpu_str[256];
 uint ear_num_gpus_in_node=0;
 #endif
 extern int dispose;
+uint imc_mgt_compatible = 1;
 //#define TEST_MB 0
 
 /*
@@ -209,11 +210,13 @@ static void metrics_global_start()
 		#endif
 		#if NEW_IMCFREQ
 		/* Reads IMC data */
+		if (imc_mgt_compatible){
 		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size))){
 			error("IMCFreq data read in global_start");
 		}
 		d = (imc_intel63_t*)imc_init[APP].data;
 		debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
+		}
 		#endif
 		// New
 		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
@@ -273,6 +276,7 @@ static void metrics_global_stop()
 		metrics_avg_frequency[APP] = eards_end_app_compute_turbo_freq();
 		#endif
     #if NEW_IMCFREQ
+		if (imc_mgt_compatible){
   	if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
     	error("IMC set current failed (%d,%s)",s,state_msg);
   	} 
@@ -287,6 +291,7 @@ static void metrics_global_stop()
 			error("IMC data diff fails");
 		}	
 		verbose(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
+		}
     #endif
 
 	}
@@ -354,10 +359,12 @@ static void metrics_partial_start()
 		eards_begin_compute_turbo_freq();
 		#endif
 		#if NEW_IMCFREQ
+		if (imc_mgt_compatible){
 		/* Reads the IMC */
     if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
+		}
 		#endif
 
 
@@ -503,6 +510,7 @@ static int metrics_partial_stop(uint where)
 		metrics_avg_frequency[LOO] = eards_end_compute_turbo_freq();
 		#endif
     #if NEW_IMCFREQ
+		if (imc_mgt_compatible){
     if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
@@ -510,7 +518,7 @@ static int metrics_partial_stop(uint where)
       error("IMC data diff fails");
     }
    	debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
-
+		}
 
     #endif
 
@@ -617,8 +625,10 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->L3_misses = metrics_l3[s];
 	#endif
 	#if NEW_IMCFREQ
+	if (imc_mgt_compatible){
 	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
 	metrics->sig_ext->imc_freq = imc_avg[s];
+	}
 	#endif
 
 	// FLOPS
@@ -838,6 +848,11 @@ int metrics_init(topology_t *topo)
 			error("Cpufreq allocation failed");
 	}
 	verbose(2,"CPUFreq data allocated");
+	if (topo->vendor == VENDOR_AMD){ 
+		imc_mgt_compatible = 0;
+		verbose(2,"IMC management API not compatible");
+	}
+	if (imc_mgt_compatible){
 	#if NEW_IMCFREQ
 	/* To compute IMC average */
 	if (xtate_fail(s, freq_imc_init_lib(topo))){
@@ -888,6 +903,7 @@ int metrics_init(topology_t *topo)
 		error("IMC set current failed (%d,%s)",s,state_msg);
 	}	
 	verbose(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_max_khz/1000000.0,(float)imc_min_khz/1000000.0);	
+	}
 	}
   #endif
 
