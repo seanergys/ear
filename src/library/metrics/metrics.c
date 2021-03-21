@@ -859,7 +859,6 @@ int metrics_init(topology_t *topo)
 	if (xtate_fail(s, eards_freq_imc_data_count(&imcfreq_data_size))){
 		error("IMC data count failed");
 	}
-	imcfreq_data_size = imcfreq_data_size * sizeof(imc_intel63_t);
 	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
 	#endif
 

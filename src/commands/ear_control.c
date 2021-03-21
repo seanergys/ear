@@ -250,7 +250,7 @@ void usage(char *app)
             "\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
             "\n\t\t\t\t\t\t\t--status=node_name retrieves the status of that node individually."\
             "\n\t--type \t\t[status_type]\t\t->Specifies what type of status will be requested: hardware,"\
-            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master or power. [default:hardware]"\
+            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master,eardbd or power. [default:hardware]"\
             "\n\t--active-only \t\t\t\t->Supresses inactive nodes from the output in hardware status."\
             "\n\t--ping	\t\t\t\t->pings all nodes to check wether the nodes are up or not. Additionally,"\
             "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
