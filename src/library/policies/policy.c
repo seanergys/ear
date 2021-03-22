@@ -63,8 +63,8 @@ extern pc_app_info_t *pc_app_info_data;
 
 typedef struct policy_symbols {
     state_t (*init)        (polctx_t *c);
-    state_t (*node_policy_apply)       (polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready);
-    state_t (*app_policy_apply)       (polctx_t *c, signature_t *my_sig, ulong *new_freq,int *ready);
+    state_t (*node_policy_apply)       (polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready);
+    state_t (*app_policy_apply)       (polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,int *ready);
     state_t (*get_default_freq)   (polctx_t *c, ulong *freq_set);
     state_t (*ok)          (polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *ok);
     state_t (*max_tries)   (polctx_t *c,int *intents);
@@ -522,9 +522,10 @@ state_t policy_app_apply(ulong *freq_set, int *ready)
 /* This is the main function for frequency selection at node level */
 /* my_sig is an input and freq_set and ready are output values */
 /* The CPU freq and GPu freq are set in this function, so freq_set is just a reference for the CPU freq selected */
-state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
+state_t policy_node_apply(signature_t *my_sig,node_freqs_t *freqs, int *ready)
 {
     polctx_t *c=&my_pol_ctx;
+    ulong *freq_set = freqs->cpu_freq;
     signature_t node_sig;
     int i;
     state_t st=EAR_ERROR,stg=EAR_SUCCESS;
@@ -541,7 +542,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         node_sig.DC_power=sig_node_power(my_sig);
         signature_copy(&policy_last_local_signature,&node_sig);
         if (my_policy_grain == POL_GRAIN_CORE) memset(policy_freq_list,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
-
+	
         /* CPU specific function is applied here */
         st=polsyms_fun.node_policy_apply(c, &node_sig,policy_freq_list,ready);
 

@@ -38,4 +38,5 @@ void ear_cuda_enabled()
 state_t ear_cuda_init()
 {
 	verbose(2,"CUPTI initialized");
+	return 0;
 }
