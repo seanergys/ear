@@ -52,6 +52,14 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
 	    	dprintf(fd, ";%llu", sig->FLOPS[i]);
     	}
     }
+
+    #if USE_GPUS
+    int num_gpu = sig->gpu_sig.num_gpus;
+    for (int j = 0; j < num_gpu; ++j) {
+		dprintf(fd, ";%lf;%lu;%lu;%lu;%lu", sig->gpu_sig.gpu_data[j].GPU_power, sig->gpu_sig.gpu_data[j].GPU_freq, \
+		sig->gpu_sig.gpu_data[j].GPU_mem_freq, sig->gpu_sig.gpu_data[j].GPU_util, sig->gpu_sig.gpu_data[j].GPU_mem_util);
+    }
+    #endif
 }
 
 void signature_print_simple_fd(int fd, signature_t *sig)

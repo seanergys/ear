@@ -22,9 +22,9 @@
 /* LOADER definitions */
 #define INTEL_EXT 	"so"
 #define OPENMPI_EXT "ompi.so"
-#define CUDA_EXT		"seq.so"
-#define OPENMP_EXT	"seq.so"
-#define DEF_EXT			"seq.so"
+#define CUDA_EXT		"gen.so"
+#define OPENMP_EXT	"gen.so"
+#define DEF_EXT			"gen.so"
 
 // Maximum number of tries when doing non-blocking communications
 #define MAX_SOCKET_COMM_TRIES   10000000

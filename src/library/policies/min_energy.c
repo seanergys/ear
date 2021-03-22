@@ -49,7 +49,7 @@ extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
 extern ulong def_imc_max_khz,def_imc_min_khz;
 extern uint dynais_enabled;
-extern uint ear_periodic_mode;
+extern volatile uint ear_periodic_mode;
 ulong avg_to_khz(ulong freq_khz);
 static uint imc_freq_selected = 0;
 static uint last_cpu_pstate,last_imc_pstate;

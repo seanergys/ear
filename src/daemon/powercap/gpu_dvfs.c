@@ -496,7 +496,7 @@ uint get_powercap_status(domain_status_t *status)
 
     /* Compute the current strain before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
-        tmp_strain += powercap_get_strain(gpu_freq_list[0][0], gpu_freq_list[0][gpu_num_freqs[0]-1], t_freq[i], c_freq[i]);
+        tmp_strain += powercap_get_strain(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], c_freq[i]);
     }
     tmp_strain /= gpu_pc_num_gpus;
     status->strain = tmp_strain;
