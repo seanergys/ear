@@ -115,22 +115,23 @@ static int pm_node_dc_energy(ehandler_t *my_eh, node_data_t *dc)
 static int pm_connect(ehandler_t *my_eh)
 {
 	int status_enode,i;
-	if ((pm_already_connected) && (pm_connected_status==EAR_SUCCESS)){
-		status_enode=energy_init(NULL, my_eh);
-		if (status_enode!=EAR_SUCCESS){ 
+	
+	if ((pm_already_connected) && (pm_connected_status==EAR_SUCCESS))
+	{
+		if (state_fail(status_enode = energy_init(NULL, my_eh))) {
 			pm_connected_status=status_enode;
 			return status_enode;
 		}
 		/* We reuse RAPL fdds */
-		for (i=0;i<num_packs;i++) my_eh->fds_rapl[i]=pm_fds_rapl[i];
+		for (i=0;i<num_packs;i++) {
+			my_eh->fds_rapl[i]=pm_fds_rapl[i];
+		}
 		/* Nothing for GPUS */
 		return EAR_SUCCESS;
 	}
 
-	rootp = (getuid() == 0);
-
-	if (!rootp) {
-		return EAR_ERROR;
+	if ((rootp = getuid()) != 0) {
+		return_msg(EAR_ERROR, Generr.no_permissions);
 	}
 
 	// Initializing node energy
@@ -147,9 +148,7 @@ static int pm_connect(ehandler_t *my_eh)
 	energy_units(my_eh, &node_units);
 	energy_datasize(my_eh, &node_size);
 
-
 	num_packs = detect_packages(NULL);
-
 	if (num_packs == 0) {
 		error("Packages cannot be detected");
 		pm_connected_status = EAR_ERROR;
@@ -224,12 +223,10 @@ static int pm_connect(ehandler_t *my_eh)
 
 int init_power_ponitoring(ehandler_t *my_eh)
 {
-	int ret;
+	state_t s;
 	debug("init_power_ponitoring");
-	ret = pm_connect(my_eh);
-	if (ret != EAR_SUCCESS) {
-		error("Error in init_power_ponitoring");
-		return EAR_ERROR;
+	if (state_fail(s = pm_connect(my_eh))) {
+		return s;
 	}
 	power_mon_connected = 1;
 	return EAR_SUCCESS;
