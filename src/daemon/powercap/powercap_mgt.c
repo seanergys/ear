@@ -42,6 +42,7 @@
 #include <common/hardware/topology.h>
 #ifndef SYN_TEST
 extern settings_conf_t *dyn_conf;
+extern pc_app_info_t *pc_app_info_data;
 extern cluster_conf_t my_cluster_conf;
 #else
 cluster_conf_t my_cluster_conf;
@@ -623,6 +624,7 @@ void pmgt_set_app_req_freq(pwr_mgt_t *phandler,pc_app_info_t *pc_app)
     }
     #endif
 }
+
 
 void pmgt_set_default_powercap()
 {

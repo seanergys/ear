@@ -302,7 +302,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	}else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
 		verbose(2,"SELECT_IMCFREQ state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,imc_pstate);
 		*new_freq = frequency_pstate_to_freq(curr_pstate);
-		uint increase_imc = must_increase_imc(imc_data,curr_pstate,imc_pstate,min_pstate,ref_imc_pstate,my_app,imc_extra_th);
+		uint increase_imc = must_increase_imc(imc_data,curr_pstate,imc_pstate,curr_pstate,ref_imc_pstate,my_app,imc_extra_th);
 		/* If we are over the limit, we increase the IMC */
 		if (increase_imc){
 			verbose(2,"%sWarning, passing the limit",COL_RED);
