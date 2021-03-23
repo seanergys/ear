@@ -9,8 +9,10 @@ PCFLAGS = $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(GPU_OPT_FLAG)
 include ./Makefile.files
 
 poli_DEPS = \
+	  $(SRCDIR)/library/policies/imc_policy_support.o \
     $(SRCDIR)/common/libcommon.a \
-    $(SRCDIR)/daemon/powercap/powercap_status.o
+    $(SRCDIR)/daemon/powercap/powercap_status.o 
+
 poli_PATH = $(DESTDIR)/lib/plugins/policies
 poli_PERM = 0775
 

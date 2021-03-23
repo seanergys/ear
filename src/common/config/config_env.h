@@ -87,6 +87,7 @@
 #define SCHED_MIN_IMC_FREQ						"SLURM_MIN_IMC_FREQ"
 /* This variable specifies the IMC freq must be selected by the EAR policy */
 #define SCHED_SET_IMC_FREQ "SLURM_SET_IMC_FREQ"
+#define SCHED_IMC_EXTRA_TH "SLURM_IMC_EXTRA_TH"
 
 /* Modifies the verbosity of the loader */
 #define SCHED_LOADER_VERBOSE "SLURM_LOADER_VERBOSE"

@@ -49,6 +49,7 @@ ulong policy_max_imcfreq,policy_min_imcfreq;
 int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
 uint dyn_unc = 0;
+double imc_extra_th = 0.0;
 
 
 #ifdef EARL_RESEARCH
@@ -269,6 +270,7 @@ state_t policy_init()
 {
     polctx_t *c=&my_pol_ctx;
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
+		char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
     state_t ret,retg=EAR_SUCCESS;
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
@@ -279,6 +281,10 @@ state_t policy_init()
     if (cdyn_unc != NULL){ 
         dyn_unc = 1;
     }
+		if (cimc_extra_th != NULL){
+			imc_extra_th = atof(cimc_extra_th);
+		}
+		verbose(2,"Using an extra IMC extra penalty of %.2lf",imc_extra_th);
 #endif
     /* Even though the policy could be at the Node granularity, we will use a list */
     policy_freq_list = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
