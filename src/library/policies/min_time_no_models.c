@@ -112,8 +112,9 @@ return EAR_SUCCESS;
 
 
 // This is the main function in this file, it implements power policy
-state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
+    ulong *new_freq = freqs->cpu_freq;
     signature_t *my_app;
     int i,min_pstate;
     unsigned int ref,try_next;
@@ -202,8 +203,9 @@ else *ok=0;
 return st;
 
 }
-state_t  policy_get_default_freq(polctx_t *c,ulong *f)
+state_t  policy_get_default_freq(polctx_t *c,node_freqs_t *freqs)
 {
+ulong *f = freqs->cpu_freq;
 if ((c!=NULL) && (c->app!=NULL)){
     // Just in case the bestPstate was the frequency at which the application was running
         *f=DEF_FREQ(c->app->def_freq);

@@ -142,7 +142,9 @@ static void report_loop_signature(uint iterations,loop_t *loop)
 /*
 *	MAIN FUNCTION: When EAR is executed in periodic mode, only first itereation and evaluating signature states are applied
 *
+*
 */
+
 void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter)
 {
 	unsigned long long VI;
@@ -153,6 +155,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 	state_t st;
 	float AVGFF,prev_ff,policy_freqf;
 	char gpu_buff[512];
+	node_freqs_t *freqs = NULL;
 
 	prev_f = ear_frequency;
 	st=policy_new_iteration(&periodic_loop);
@@ -192,7 +195,8 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
       		adapt_signature_to_node(&app_signature,&loop_signature.signature,ratio_PPN);
 
 					/* This function executes the CPU and GPU freq selection */
-					st=policy_node_apply(&app_signature,&policy_freq,&ready);
+					freqs->cpu_freq = &policy_freq;
+					st=policy_node_apply(&app_signature,freqs,&ready);
 					EAR_POLICY_STATE = ready;
 					signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
 
@@ -225,7 +229,8 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 		case EVALUATING_GLOBAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
 				if ((iterations % mpi_calls_iter) != 0 ) return;
-      	st = policy_app_apply(&policy_freq,&ready);
+	freqs->cpu_freq = &policy_freq;
+      	st = policy_app_apply(freqs,&ready);
       	EAR_POLICY_STATE = ready;
       	if (EAR_POLICY_STATE == EAR_POLICY_READY){
 					EAR_STATE = EVALUATING_LOCAL_SIGNATURE;

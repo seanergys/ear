@@ -47,8 +47,9 @@ state_t policy_init(polctx_t *c)
 {
 	return EAR_SUCCESS;
 }
-state_t policy_apply(polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
+	ulong *new_freq=freqs->cpu_freq;
 	ulong eff_f,f;
 	
 	*ready=EAR_POLICY_READY;
@@ -67,8 +68,9 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freqs)
 {
+	ulong *freq_set=freqs->cpu_freq;
 	*freq_set=DEF_FREQ(c->app->def_freq);
 	return EAR_SUCCESS;
 }
