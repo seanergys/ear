@@ -15,8 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#include <common/config.h>
 //#define SHOW_DEBUGS 1
+
+#include <common/config.h>
 #include <common/includes.h>
 #include <common/output/verbose.h>
 #include <common/system/symplug.h>
@@ -60,22 +61,19 @@ const char *energy_names[] = {
 state_t energy_load(char *energy_obj)
 {
 	state_t ret;
+	
 	if (energy_obj == NULL) {
-		state_return_msg(EAR_BAD_ARGUMENT, 0,
-		 "the energy_obj value cannot be NULL if the plugin is not loaded");
+		return_msg(EAR_ERROR, "Trying to load NULL energy plugin");
 	}
-  debug("loading shared object '%s'", energy_obj);
-
-  ret = symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops);
-  if (ret!=EAR_SUCCESS) debug("symplug_open() returned %d (%s)", ret, intern_error_str);
-    
-  if (state_fail(ret)) {
-    	return ret;
-  }
-  energy_loaded = 1;
-  return EAR_SUCCESS; 
-
+	debug("loading shared object '%s'", energy_obj);
+	if (state_fail(ret = symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops))) {
+		debug("symplug_open() returned %d (%s)", ret, state_msg);
+		return ret;
+	}
+	energy_loaded = 1;
+	return EAR_SUCCESS; 
 }
+
 state_t energy_initialization(ehandler_t *eh)
 {
 	state_t ret;
@@ -92,44 +90,37 @@ state_t energy_init(cluster_conf_t *conf, ehandler_t *eh)
 	state_t ret;
 	int cpu_model;
 
-	if (energy_loaded)
-	{
-		
+	if (energy_loaded) {
 		debug("Energy plugin already loaded, executing basic init");	
-		ret = energy_ops.init(&eh->context);
-		if (ret!=EAR_SUCCESS) debug("energy_ops.init() returned %d", ret);
-
+		if (state_fail(ret = energy_ops.init(&eh->context))) {
+			debug("energy_ops.init() returned %d", ret);
+		}
 		return ret;
 	}
-
 	if (conf == NULL) {
-		state_return_msg(EAR_BAD_ARGUMENT, 0,
-		 "the conf value cannot be NULL if the plugin is not loaded");
+		return_msg(EAR_ERROR, "The conf value cannot be NULL if the plugin is not loaded");
 	}
 
 	debug("Using ear.conf energy plugin %s",conf->install.obj_ener);
-	sprintf(energy_objc, "%s/energy/%s",
-	conf->install.dir_plug, conf->install.obj_ener);
+	sprintf(energy_objc, "%s/energy/%s", conf->install.dir_plug, conf->install.obj_ener);
+sprintf(energy_objc, "/home/xjaneas/ngit/ear_private/src/metrics/energy/node/energy_dcmi.so");
 	debug("loading shared object '%s'", energy_objc);
 
-		//
-		ret = symplug_open(energy_objc, (void **) &energy_ops, energy_names, energy_nops);
-		if (ret!=EAR_SUCCESS) debug("symplug_open() returned %d (%s)", ret, intern_error_str);		
-
-		if (state_fail(ret)) {
-			return ret;
-		}
-		//
-		energy_loaded = 1;
-		if (energy_ops.init!=NULL){ 
-			ret = energy_ops.init(&eh->context);
-			return ret;
-		}else return EAR_ERROR;
-
+	//
+	if (state_fail(ret = symplug_open(energy_objc, (void **) &energy_ops, energy_names, energy_nops))) {
+		debug("symplug_open() returned %d (%s)", ret, state_msg);
+		return ret;
+	}
+	//
+	energy_loaded = 1;
+	
+	if (energy_ops.init != NULL){ 
+		return energy_ops.init(&eh->context);
+	} else {
+		return_xmsg(EAR_ERROR, "The symbol energy_init was not found in %s", energy_objc);
+	}
 	return ret;
 }
-
-
 
 state_t energy_dispose(ehandler_t *eh)
 {
