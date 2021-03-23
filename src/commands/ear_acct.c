@@ -57,15 +57,13 @@ void usage(char *app)
 "\t\t-u\tspecifies the user whose applications will be retrieved. Only available to privileged users. [default: all users]\n" \
 "\t\t-j\tspecifies the job id and step id to retrieve with the format [jobid.stepid] or the format [jobid1,jobid2,...,jobid_n].\n" \
 "\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n"\
+"\t\t-a\tspecifies the application names that will be retrieved. [default: all app_ids]\n" \
 "\t\t-c\tspecifies the file where the output will be stored in CSV format. [default: no file]\n" \
 "\t\t-t\tspecifies the energy_tag of the jobs that will be retrieved. [default: all tags].\n" \
 "\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n" \
 "\t\t-x\tshows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
 "\t\t-m\tprints power signatures regardless of wether mpi signatures are available or not.\n" \
 "\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n", app);
-#if USE_GPUS
-   //printf("\t\t-g\tdisplays GPU information on jobs that used them.\n" );
-#endif
     printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
     printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
     #endif
@@ -1043,6 +1041,7 @@ void print_loops(loop_t *loops, int num_loops)
 }
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
+#define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
 
 void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids) 
 {
@@ -1060,7 +1059,12 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
     }
     init_db_helper(&my_conf.database);
 
-    strcpy(query, LOOPS_QUERY);
+    if (user != NULL) {
+        strcpy(query, LOOPS_FILTER_QUERY);
+        add_string_filter(query, "user_id", user);
+    } else {
+        strcpy(query, LOOPS_QUERY);
+    }
 
     if (job_id >= 0)
         add_int_filter(query, "job_id", job_id);
@@ -1068,8 +1072,6 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
         add_int_list_filter(query, "job_id", job_ids);
     if (step_id >= 0)
         add_int_filter(query, "step_id", step_id);
-    if (user != NULL)
-        add_string_filter(query, "user", user);
 
     if (limit > 0 && job_id < 0)
     {
@@ -1100,7 +1102,7 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
 //select Applications.* from Applications join Jobs on job_id = id where Jobs.end_time in (select end_time from (select end_time from Jobs where user_id = "xjcorbalan" and id = 284360 order by end_time desc limit 25) as t1) order by Jobs.end_time desc;
 //select Applications.* from Applications join Jobs on job_id=id where Jobs.user_id = "xjcorbalan" group by job_id order by Jobs.end_time desc limit 5;
 #if USE_DB
-void read_from_database(char *user, int job_id, int limit, int step_id, char *e_tag, char *job_ids) 
+void read_from_database(char *user, int job_id, int limit, int step_id, char *e_tag, char *job_ids, char *app_id) 
 {
     int num_apps = 0;
     if (strlen(my_conf.database.user_commands) < 1) 
@@ -1135,6 +1137,8 @@ void read_from_database(char *user, int job_id, int limit, int step_id, char *e_
         add_string_filter(query, "user_id", user);
     if (strlen(e_tag) > 0)
         add_string_filter(query, "e_tag", e_tag);
+    if (strlen(app_id) > 0)
+        add_string_filter(query, "app_id", app_id);
 
     if (limit > 0)
     {
@@ -1230,6 +1234,7 @@ int main(int argc, char *argv[])
     char is_events = 0;
 
     char e_tag[64] = "";
+    char app_id[64] = "";
     char job_ids[256] = "";
 
     char path_name[256];
@@ -1261,7 +1266,7 @@ int main(int argc, char *argv[])
     }
 
     char *token;
-    while ((opt = getopt(argc, argv, "n:u:j:f:t:vmabglrc:hx::")) != -1) 
+    while ((opt = getopt(argc, argv, "n:u:j:f:t:vma:pbglrc:hx::")) != -1) 
     {
         switch (opt)
         {
@@ -1332,8 +1337,11 @@ int main(int argc, char *argv[])
             case 't':
                 strcpy(e_tag, optarg);
                 break;
-            case 'a':
+            case 'p':
                 avx = 1;
+                break;
+            case 'a':
+                strcpy(app_id, optarg);
                 break;
             case 'h':
                 free_cluster_conf(&my_conf);
@@ -1347,7 +1355,7 @@ int main(int argc, char *argv[])
     if (file_name != NULL) read_from_files(file_name, user, job_id, limit, step_id);
     else if (is_events) read_events(user, job_id, limit, step_id, job_ids);
     else if (is_loops) read_loops(user, job_id, limit, step_id, job_ids);
-    else read_from_database(user, job_id, limit, step_id, e_tag, job_ids); 
+    else read_from_database(user, job_id, limit, step_id, e_tag, job_ids, app_id); 
 
     free_cluster_conf(&my_conf);
     exit(0);
