@@ -624,6 +624,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                 gpu_util = 0;
                 gpu_power = 0;
                 gpu_total_power = 0;
+                gpu_mem_util = 0;
 #endif
                 i--; //go back to current app
                 is_sbatch = (current_step_id == 4294967294) ? 1 : 0;
