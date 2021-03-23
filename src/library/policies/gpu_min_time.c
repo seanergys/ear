@@ -25,6 +25,8 @@
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <library/policies/policy_api.h>
+#include <library/policies/policy_state.h>
+
 
 static uint last_pc=0;
 
@@ -98,7 +100,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready
 			debug("Setting gpu_freq[%d]=%lu",i,new_freq[i]);
 	}		
 	
-	*ready=1;
+	*ready = EAR_POLICY_READY;
 	
 	return EAR_SUCCESS;
 }

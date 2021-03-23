@@ -26,6 +26,8 @@
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <library/policies/policy_api.h>
+#include <library/policies/policy_state.h>
+
 
 static uint last_pc=0;
 
@@ -72,7 +74,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready
 		my_sig->gpu_sig.gpu_data[i].GPU_util,my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
 	}
 	
-	*ready=1;
+	*ready = EAR_POLICY_READY;
 	memcpy(new_freq,ext_gpu_def_freq,sizeof(ulong)*c->num_gpus);
 	
 	return EAR_SUCCESS;

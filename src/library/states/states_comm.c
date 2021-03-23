@@ -106,7 +106,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		l1_sec = sig->signature.L1_misses/sig->signature.time;
 		l2_sec = sig->signature.L2_misses/sig->signature.time;
 		l3_sec = sig->signature.L3_misses/sig->signature.time;
-		verbosen(2," L1 %.2f L2 %.2f L3 %.2f",l1_sec,l2_sec,l3_sec);
+		verbosen(2," L1/sec %.2f L2/sec %.2f L3/sec %.2f",l1_sec,l2_sec,l3_sec);
 		#endif
 		verbosen(2," VPI %.2f",VPI);
     verbose(1,"%s",COL_CLR);

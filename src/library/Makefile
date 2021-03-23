@@ -49,7 +49,6 @@ core_OBJS = \
     policies/pc_suport.o \
     states/states_comm.o \
     states/states.o \
-    states/states_periodic.o \
     tracer/tracer.o \
     dynais/dynais.a
 
