@@ -278,7 +278,7 @@ state_t policy_init()
 #if NEW_IMCFREQ
     policy_max_imcfreq = imc_max_khz;
     policy_min_imcfreq = imc_min_khz;
-    if (cdyn_unc != NULL){ 
+    if (cdyn_unc != NULL && imc_mgt_compatible){ 
         dyn_unc = 1;
     }
 		if (cimc_extra_th != NULL){

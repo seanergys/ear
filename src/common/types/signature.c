@@ -72,6 +72,20 @@ void signature_to_str(signature_t *sig,char *msg,size_t limit)
 	snprintf(msg,limit, "[AVGF=%lu DEFF=%lu TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",sig->avg_f, sig->def_f,sig->time, sig->CPI,sig->GBS,sig->DC_power);
 }
 
+void compute_ssig_vpi(double *vpi,ssig_t *sig)
+{
+    ull vins;
+    vins=0;
+    if (sig->FLOPS[3]>0){
+        vins=sig->FLOPS[3]/16;
+    }
+
+    if (sig->FLOPS[7]>0){
+        vins=vins+sig->FLOPS[7]/8;
+    }
+    if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
+    else *vpi=0;
+}
 
 void compute_vpi(double *vpi,signature_t *sig)
 {
