@@ -372,6 +372,12 @@ void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t
   }
 }
 
+void compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi)
+{
+	int i;
+	:wq
+}
+
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig)
 {
