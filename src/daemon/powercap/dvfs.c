@@ -134,6 +134,7 @@ state_t dvfs_pc_thread_main(void *p)
     uint extra;
 
 
+    /* Update target frequency */
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
@@ -167,10 +168,11 @@ state_t dvfs_pc_thread_main(void *p)
         if (c_pstate[0] < (num_pstates-1)){ /*Pending vector extension*/
             /* If the current power is above by a lot, we reduce 2 pstates instead of 1 */
             if ((power_rapl - my_limit) > 30) {
-                c_pstate[0]=ear_min(c_pstate[0]+2,num_pstates-1); 
+                c_pstate[0] = ear_min(c_pstate[0]+2, num_pstates-1); 
             } else {
-                c_pstate[0]=ear_min(c_pstate[0]+1,num_pstates-1); 
+                c_pstate[0] = ear_min(c_pstate[0]+1, num_pstates-1); 
             }
+            c_pstate[0] = ear_max(c_pstate[0], t_pstate[0]); //if the updated target frequency is lower than the selected one, we use that one instead
             extend_from_cpu_to_list(0,c_pstate,node_size);
             frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
             frequency_set_with_list(node_size,c_freq);
