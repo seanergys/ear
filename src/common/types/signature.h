@@ -23,6 +23,7 @@
 #if USE_GPU_LIB
 #include <metrics/gpu/gpu.h>
 #endif
+#include <metrics/io/io.h>
 
 // 0: float
 // 1: 128 float
@@ -60,6 +61,8 @@ typedef struct mini_sig
     ull cycles;
     ulong avg_f;
     ulong def_f;
+		io_data_t iod;
+		ulong accum_rd_wr_bytes;
 #if USE_GPUS
     gpu_signature_t gpu_sig;
 #endif
@@ -67,6 +70,8 @@ typedef struct mini_sig
 
 typedef struct sig_ext{
 	ulong imc_freq;
+	io_data_t iod;
+	ulong accum_rd_wr_bytes;
 }sig_ext_t;
 
 typedef struct signature

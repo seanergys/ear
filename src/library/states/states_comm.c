@@ -44,10 +44,16 @@ extern float ratio_PPN;
 
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
+	char io_info[256];
 	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0;
   float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI;
 	float l1_sec=0,l2_sec=0,l3_sec=0;
 	ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
+	ulong elapsed;
+	timestamp end;
+	timestamp_getfast(&end);
+  elapsed=timestamp_diff(&end,&ear_application_time_init,TIME_SECS);
+
 	#if NEW_IMCFREQ
 	float imcf;
 	#endif
@@ -71,6 +77,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 	  GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0; 
 		if (prevf > 0 ){ PFREQ = (float)prevf/1000000.0;}
 		if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
+		io_tostr(&sig->signature.sig_ext->iod,io_info,sizeof(io_info));
 		strcpy(gpu_buff,"");
 	  #if USE_GPU_LIB
 	  if (sig->signature.gpu_sig.num_gpus>0){ 
@@ -93,7 +100,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 	  } 
 	#endif
     verbose(2,"EAR+%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu,iterations=%d",mode,aname, PFREQ,nname,sig->id.event,sig->id.size,sig->id.level,iterations); 
-    verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d]: ",mode,aname, PFREQ,nname,master_rank); 
+    verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",mode,aname, PFREQ,nname,master_rank,elapsed); 
     verbosen(1,"%s",COL_GRE);
     if (GPU_UTIL) sprintf(gpu_buff,"(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
     verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.2lfW Time=%.3lfsec.  AVGF=%.2fGHz)\n\t %s", CPI, GBS, POWER, TIME,  AVGF,gpu_buff);
@@ -109,6 +116,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		verbosen(2," L1/sec %.2f L2/sec %.2f L3/sec %.2f",l1_sec,l2_sec,l3_sec);
 		#endif
 		verbosen(2," VPI %.2f",VPI);
+		verbosen(2,"\n\t IO DATA: %s Accumulated IO %lu MB",io_info,sig->signature.sig_ext->accum_rd_wr_bytes/(1024*124));
     verbose(1,"%s",COL_CLR);
   }
 } 

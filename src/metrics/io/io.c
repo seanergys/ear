@@ -24,12 +24,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// #define SHOW_DEBUGS 1
 #include <metrics/io/io.h>
 #include <common/states.h>
 #include <common/types/generic.h>
 #include <common/string_enhanced.h>
 #include <common/plugins.h>
-// #define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 
 
@@ -95,29 +95,39 @@ state_t io_read(ctx_t *c, io_data_t *iodata)
 state_t io_alloc(io_data_t **iodata)
 {
 	io_data_t *t;
+	
+	if (iodata == NULL) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	t=calloc(1,sizeof(io_data_t));
 	*iodata=t;
+	state_return(EAR_SUCCESS);
 }
 
 state_t io_free(io_data_t *iodata)
 {
+	if (iodata == NULL) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	free(iodata);
+	state_return(EAR_SUCCESS);
 }
 
 state_t io_print(io_data_t *iodata)
 { 
 	char msg[512];
+	if (iodata == NULL) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	io_tostr(iodata,msg,sizeof(msg));
 	printf(msg);
+	state_return(EAR_SUCCESS);
 }
 
 state_t io_tostr(io_data_t *iodata,char *msg,size_t len)
 {
+	if ((msg == NULL) || (iodata == NULL)) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	snprintf(msg,len,"rchar %u wchar %u syscr %u syscw %u read_bytes %u write_bytes %u",iodata->rchar,iodata->wchar,iodata->syscr,iodata->syscw,iodata->read_bytes,iodata->write_bytes);
+	state_return(EAR_SUCCESS);
 }
 
 state_t io_diff(io_data_t *diff,io_data_t *iodata_init,io_data_t *iodata_end)
 {
+	if ((diff == NULL) || ( iodata_init == NULL) || (iodata_end == NULL)) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	diff->rchar = iodata_end->rchar -  iodata_init->rchar;
 	diff->wchar = iodata_end->wchar -  iodata_init->wchar;
 	diff->syscr = iodata_end->syscr - iodata_init->syscr;
@@ -125,10 +135,21 @@ state_t io_diff(io_data_t *diff,io_data_t *iodata_init,io_data_t *iodata_end)
 	diff->read_bytes = iodata_end->read_bytes - iodata_init->read_bytes;
 	diff->write_bytes = iodata_end->write_bytes - iodata_init->write_bytes;
 	diff->cancelled = iodata_end->cancelled - iodata_init->cancelled;
+	state_return(EAR_SUCCESS);
 }
+/** Copies from src to dst */
+state_t io_copy(io_data_t *dst,io_data_t *src)
+{
+	if ((dst == NULL) || (src == NULL)) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
+	memcpy(dst,src,sizeof(io_data_t));
+	state_return(EAR_SUCCESS);
+}
+
 
 state_t io_dispose(ctx_t *c)
 {
+	if (c == NULL) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	fclose((FILE *)c->context);
+	state_return(EAR_SUCCESS);
 }
 

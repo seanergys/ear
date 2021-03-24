@@ -41,6 +41,7 @@
 #include <metrics/frequency/cpu.h>
 #include <metrics/frequency/imc.h>
 #include <metrics/frequency/imc/intel63.h>
+#include <metrics/io/io.h>
 #ifdef CACHE_METRICS
 #include <metrics/cache/cache.h>
 #endif
@@ -145,6 +146,8 @@ static ulong metrics_avg_frequency[2]; // MHz
 static long long metrics_instructions[2];
 static long long metrics_cycles[2];
 static long long metrics_usecs[2]; // uS
+static io_data_t metrics_io_init[2],metrics_io_end[2];
+static ctx_t ctx_io;
 #if USE_GPU_LIB
 static gpu_t *gpu_metrics_init[2],*gpu_metrics_end[2],*gpu_metrics_diff[2];
 static ctx_t gpu_lib_ctx;
@@ -246,7 +249,10 @@ static void metrics_global_start()
 	}
 	copy_uncores(metrics_bandwith_end[LOO],metrics_bandwith_init[APP],bandwith_elements);
 	//eards_start_uncore();
-	
+
+	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
+		verbose(0,"Warning: IO data not available");
+	}
   /* We start computing mpi statistics at this point */
 	timestamp_getfast(&init_mpi_time);
 	sig_shared_region[my_node_id].mpi_info.mpi_time=0;
@@ -259,6 +265,8 @@ static void metrics_global_stop()
 {
 	timestamp end_mpi_time;
 	imc_intel63_t *d;
+	io_data_t iod;
+	char io_info[256];
 	//
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
@@ -322,6 +330,12 @@ static void metrics_global_stop()
 	}
 	//eards_start_uncore();
 
+	if (io_read(&ctx_io,&metrics_io_end[APP]) != EAR_SUCCESS){
+		verbose(0,"Warning: IO data not available");
+	}
+	io_diff(&iod,&metrics_io_init[APP],&metrics_io_end[APP]);
+	io_tostr(&iod,io_info,sizeof(io_info));
+	verbose(2,"APP IO DATA: %s",io_info);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
 	timestamp_getfast(&end_mpi_time);
 
@@ -350,6 +364,9 @@ static void metrics_partial_start()
 	/* This must be replaced by a copy of energy */
 	memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
 	metrics_usecs[LOO]=aux_time;
+	if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
+		verbose(0,"Warning:IO data not available");
+	}
 	
 	if (masters_info.my_master_rank>=0){ 
     #if NEW_CPUFREQ
@@ -491,6 +508,10 @@ static int metrics_partial_stop(uint where)
 		}
 		acum_ipmi[APP] += acum_ipmi[LOO];
 	}
+  if (io_read(&ctx_io,&metrics_io_end[LOO]) != EAR_SUCCESS){
+    verbose(0,"Warning:IO data not available");
+  }
+
 	//  Manual time accumulation
 	metrics_usecs[LOO] = c_time;
 	metrics_usecs[APP] += metrics_usecs[LOO];
@@ -625,10 +646,10 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->L2_misses = 0;
 	metrics->L3_misses = metrics_l3[s];
 	#endif
+	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
 	#if NEW_IMCFREQ
 	if (imc_mgt_compatible){
-	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
-	metrics->sig_ext->imc_freq = imc_avg[s];
+		metrics->sig_ext->imc_freq = imc_avg[s];
 	}
 	#endif
 
@@ -665,6 +686,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
 	metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
 
+	io_diff(&(metrics->sig_ext->iod),&metrics_io_init[s],&metrics_io_end[s]);
+	metrics->sig_ext->accum_rd_wr_bytes = (ulong)(metrics_io_end[s].rchar + metrics_io_end[s].wchar);
 	if (masters_info.my_master_rank>=0){
 	// Energy node
 		metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
@@ -753,7 +776,11 @@ int metrics_init(topology_t *topo)
 		cache_init();
 	}
 	#endif
-
+	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
+		verbose(0,"Warning: IO data not accesible");
+	}else{
+		verbose(2,"IO data initialized");
+	}	
 	papi_flops_supported = init_flops_metrics();
 
 	if (papi_flops_supported==1)

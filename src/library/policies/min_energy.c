@@ -111,7 +111,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	unsigned int ref;
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
 	double power_ref,time_ref,max_penalty,time_max;
-	ulong imc_pstate;
+	ulong imc_pstate,total_io;
 
   ulong best_freq,best_pstate,freq_ref,eff_f;
 	ulong curr_freq,nominal;
@@ -140,10 +140,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions);	
 	compute_total_node_flops(lib_shared_region,sig_shared_region,my_app->FLOPS);
 	compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
+	compute_total_io(lib_shared_region,sig_shared_region,&total_io);
 	compute_vpi(&sig_vpi,sig);
 	compute_vpi(&node_sig_vpi,my_app);
 	local_process_with_high_vpi = compute_max_vpi(lib_shared_region,sig_shared_region,&max_vpi);
-	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi);
+	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf Acumm IO %lu MB",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi,total_io/(1024*1024));
 	my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
 	/* With these two lines, we force the VPI of the signatura to the most loaded in the node */
 	my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;

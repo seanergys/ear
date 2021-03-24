@@ -626,11 +626,13 @@ void ear_init()
 	char *ext_def_freq_str=getenv(SCHED_EAR_DEF_FREQ);
 
 
+
 	if (ear_lib_initialized){
 		verbose(1,"EAR library already initialized");
 		return;
 	}
 
+  timestamp_getfast(&ear_application_time_init);
 
 	// MPI
 	#if MPI
