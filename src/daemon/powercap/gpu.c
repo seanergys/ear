@@ -34,6 +34,7 @@
 #include <metrics/gpu/gpu.h>
 #include <daemon/powercap/powercap_status_conf.h>
 #include <daemon/powercap/powercap_status.h>
+#include <daemon/powercap/powercap_mgt.h>
 #include <management/gpu/gpu.h>
 #include <common/system/monitor.h>
 
@@ -90,6 +91,9 @@ state_t gpu_pc_thread_main(void *p)
 		debug("Error in gpu_read gpu_dvfs_pc");
 		return EAR_ERROR;
 	}
+    /* Update target frequency from EARL */
+    pmgt_get_app_req_freq(DOMAIN_GPU, t_freq, gpu_pc_num_gpus);
+
 	/* Metrics computation */
 	gpu_data_diff(values_gpu_end,values_gpu_init,values_gpu_diff);
 	for (i=0;i<gpu_pc_num_gpus;i++){

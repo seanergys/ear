@@ -28,11 +28,14 @@
 #include <common/colors.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <common/system/monitor.h>
+
 #include <daemon/powercap/powercap_status_conf.h>
 #include <daemon/powercap/powercap_status.h>
+#include <daemon/powercap/powercap_mgt.h>
+
 #include <metrics/gpu/gpu.h>
 #include <management/gpu/gpu.h>
-#include <common/system/monitor.h>
 
 
 #define DEBUG_PERIOD 15
@@ -169,9 +172,11 @@ state_t gpu_dvfs_pc_thread_main(void *p)
         debug("Error in gpu_read gpu_dvfs_pc");
         return EAR_ERROR;
     }
+
+    pmgt_get_app_req_freq(DOMAIN_GPU, t_freq, gpu_pc_num_gpus);
     /* Calcular power */
     gpu_data_diff(values_gpu_end,values_gpu_init,values_gpu_diff);
-		if (values_gpu_diff[0].power_w == 0 ) return EAR_SUCCESS;
+    if (values_gpu_diff[0].power_w == 0 ) return EAR_SUCCESS;
     mgt_gpu_freq_limit_get_current(&gpu_pc_ctx,c_freq);
     /* Copiar init=end */
     gpu_data_copy(values_gpu_init,values_gpu_end);

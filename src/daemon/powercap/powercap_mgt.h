@@ -56,6 +56,8 @@ uint pmgt_get_powercap_strategy(pwr_mgt_t *phandler);
 void pmgt_set_pc_mode(pwr_mgt_t *phandler,uint mode);
 /* Based on the current power consumption per domain and the status (idle/run) distributes the power accross domains */
 void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st);
+/* Gets the requested frequency */
+void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size);
 /* Sets the requested frequency */
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler,pc_app_info_t *pc_app);
 /* Notifies the pwr_mgt a new job/end job event */
