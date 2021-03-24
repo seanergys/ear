@@ -36,6 +36,7 @@
 #include <common/hardware/hardware_info.h>
 #include <daemon/powercap/powercap_status_conf.h>
 #include <daemon/powercap/powercap_status.h>
+#include <daemon/powercap/powercap_mgt.h>
 #include <common/system/monitor.h>
 
 
@@ -131,6 +132,9 @@ state_t dvfs_pc_thread_main(void *p)
 {
     unsigned long long acum_energy;
     uint extra;
+
+
+    pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
     read_rapl_msr(fd_rapl,values_rapl_end);

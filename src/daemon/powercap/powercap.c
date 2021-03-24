@@ -550,55 +550,55 @@ void print_powercap_opt(powercap_opt_t *opt)
 
 void set_powercap_opt(powercap_opt_t *opt)
 {
-	int i;
-	print_powercap_opt(opt);
-	if (!is_powercap_on(&my_pc_opt)) return;	
-	debug("set_powercap_opt command received");
-	while(pthread_mutex_trylock(&my_pc_opt.lock)); 
-	my_pc_opt.max_inc_new_jobs=opt->max_inc_new_jobs;
-	/* Here we must check, based on our status, if actions must be taken */
-  switch(my_pc_opt.powercap_status){
-		case PC_STATUS_IDLE:
-    case PC_STATUS_OK:
-			if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
-				// debug("set_powercap_opt status ok, looking for potential power reduction");	
-      	for (i=0;i<opt->num_greedy;i++){
-        if (opt->greedy_nodes[i]==my_ip){
-        	debug("%snew_pc_opt:status OK but in the greedy node list %d ip=%d with ip=%di extra %d%s",COL_RED,i,opt->greedy_nodes[i],my_ip,opt->extra_power[i],COL_CLR);
-          my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[i];
-          set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
-          break;
-        }
-			}
-			}
-			break;
-    case PC_STATUS_RELEASE:
-			//debug("My powercap status is %u, doing nothing ",my_pc_opt.powercap_status);
-			break;
-    case PC_STATUS_GREEDY:
-			// debug("My status is GREEDY and new powercap opt received ip=%d",my_ip);
-			for (i=0;i<opt->num_greedy;i++){
-				if (opt->greedy_nodes[i]==my_ip){
-					debug("%s new_pc_opt: greedy node %d ip=%d with ip=%d extra %d%s",COL_GRE,i,opt->greedy_nodes[i],my_ip,opt->extra_power[i],COL_CLR);
-					my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[i];
-					set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
-					my_pc_opt.powercap_status=PC_STATUS_OK;
-					my_pc_opt.requested=0;
-					break;
-				}
-			}
-			break;
-    case PC_STATUS_ASK_DEF:
-			/* In that case, we assume we cat use the default power cap */
-			// debug("My status is ASK_DEF and new settings received");
-			my_pc_opt.powercap_status=PC_STATUS_OK;
-			/* We assume we will receive the requested power */
-			my_pc_opt.last_t1_allocated=my_pc_opt.def_powercap;
-			my_pc_opt.requested=0;
-			set_powercap_value(DOMAIN_NODE,my_pc_opt.def_powercap);			
-			break;
-  }
-	pthread_mutex_unlock(&my_pc_opt.lock);
+    int i;
+    print_powercap_opt(opt);
+    if (!is_powercap_on(&my_pc_opt)) return;    
+    debug("set_powercap_opt command received");
+    while(pthread_mutex_trylock(&my_pc_opt.lock)); 
+    my_pc_opt.max_inc_new_jobs=opt->max_inc_new_jobs;
+    /* Here we must check, based on our status, if actions must be taken */
+    switch(my_pc_opt.powercap_status){
+        case PC_STATUS_IDLE:
+        case PC_STATUS_OK:
+            if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
+                // debug("set_powercap_opt status ok, looking for potential power reduction");    
+                for (i=0;i<opt->num_greedy;i++){
+                    if (opt->greedy_nodes[i]==my_ip){
+                        debug("%snew_pc_opt:status OK but in the greedy node list %d ip=%d with ip=%di extra %d%s",COL_RED,i,opt->greedy_nodes[i],my_ip,opt->extra_power[i],COL_CLR);
+                          my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[i];
+                          set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
+                          break;
+                    }
+                }
+            }
+            break;
+        case PC_STATUS_RELEASE:
+            //debug("My powercap status is %u, doing nothing ",my_pc_opt.powercap_status);
+            break;
+        case PC_STATUS_GREEDY:
+            // debug("My status is GREEDY and new powercap opt received ip=%d",my_ip);
+            for (i=0;i<opt->num_greedy;i++){
+                if (opt->greedy_nodes[i]==my_ip){
+                    debug("%s new_pc_opt: greedy node %d ip=%d with ip=%d extra %d%s",COL_GRE,i,opt->greedy_nodes[i],my_ip,opt->extra_power[i],COL_CLR);
+                    my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[i];
+                    set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
+                    my_pc_opt.powercap_status=PC_STATUS_OK;
+                    my_pc_opt.requested=0;
+                    break;
+                }
+            }
+            break;
+       case PC_STATUS_ASK_DEF:
+            /* In that case, we assume we cat use the default power cap */
+            // debug("My status is ASK_DEF and new settings received");
+            my_pc_opt.powercap_status=PC_STATUS_OK;
+            /* We assume we will receive the requested power */
+            my_pc_opt.last_t1_allocated=my_pc_opt.def_powercap;
+            my_pc_opt.requested=0;
+            set_powercap_value(DOMAIN_NODE,my_pc_opt.def_powercap);            
+            break;
+    }
+    pthread_mutex_unlock(&my_pc_opt.lock);
 
 }
 

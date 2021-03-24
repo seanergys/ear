@@ -30,17 +30,21 @@
 #include <common/output/verbose.h>
 #include <common/system/loadavg.h>
 #include <common/system/symplug.h>
-#include <common/types/configuration/cluster_conf.h>
-#include <daemon/shared_configuration.h>
-#include <daemon/powercap/powercap_status.h>
-#include <daemon/powercap/powercap_mgt.h>
 #include <common/system/monitor.h>
+#include <common/hardware/topology.h>
+#include <common/types/configuration/cluster_conf.h>
+
+#include <daemon/shared_configuration.h>
+#include <daemon/powercap/powercap_mgt.h>
+#include <daemon/powercap/powercap_status.h>
 #if USE_GPUS
 #include <metrics/gpu/gpu.h>
 #include <management/gpu/gpu.h>
 #endif
-#include <common/hardware/topology.h>
+
+
 #ifndef SYN_TEST
+extern pc_app_info_t *pc_app_info_data;
 extern settings_conf_t *dyn_conf;
 extern cluster_conf_t my_cluster_conf;
 #else
@@ -296,7 +300,7 @@ state_t pmgt_init()
 {
     state_t ret;
     int i;
-    char basic_path[SZ_PATH_INCOMPLETE];
+    char basic_path[SZ_PATH];
     topology_init(&pc_topology_info);
     #if USE_GPUS
     if (gpu_load(NULL,0,NULL)!= EAR_SUCCESS){
@@ -609,7 +613,16 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
     }
 }
 
-void pmgt_set_app_req_freq(pwr_mgt_t *phandler,pc_app_info_t *pc_app)
+void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
+{
+#ifndef SYN_TEST
+    int i;
+    if (domain == DOMAIN_CPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_f;
+    if (domain == DOMAIN_GPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_gpu_f[i];
+#endif
+}
+
+void pmgt_set_app_req_freq(pwr_mgt_t *phandler, pc_app_info_t *pc_app)
 {
     if (pcsyms_fun[DOMAIN_NODE].set_app_req_freq != NULL){
       freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,&pc_app->req_f);
