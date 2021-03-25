@@ -30,6 +30,7 @@
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
 #include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
 #include <common/environment.h>
 #include <daemon/local_api/eard_api.h>
@@ -50,6 +51,7 @@ int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
 uint dyn_unc = 0;
 double imc_extra_th = 0.0;
+uint total_mpi = 0;
 
 
 #ifdef EARL_RESEARCH
@@ -144,9 +146,9 @@ static void print_freq_per_core()
     int i;
     for (i=0;i<arch_desc.top.cpu_count;i++)
     {
-        if (freq_per_core[i]>0) verbosen(3,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+        if (freq_per_core[i]>0) verbosen_master(3,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
     }
-    verbose(3," ");
+    verbose_master(3," ");
 }
 static void from_proc_to_core()
 {
@@ -668,6 +670,7 @@ state_t policy_new_iteration(loop_id_t *loop_id)
 state_t policy_mpi_init()
 {
     polctx_t *c=&my_pol_ctx;
+		total_mpi ++;
     preturn_opt(polsyms_fun.mpi_init,c);
 }
 

@@ -34,7 +34,7 @@
 #include <common/config/config_env.h>
 #include <common/colors.h>
 #include <common/environment.h>
-#include <common/output/verbose.h>
+#include <library/common/verbose_lib.h>
 #include <common/types/application.h>
 #include <common/types/version.h>
 #include <common/types/application.h>

@@ -41,6 +41,7 @@
 
 extern masters_info_t masters_info;
 extern float ratio_PPN;
+extern uint total_mpi;
 
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
@@ -115,7 +116,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		l3_sec = sig->signature.L3_misses/sig->signature.time;
 		verbosen(2," L1/sec %.2f L2/sec %.2f L3/sec %.2f",l1_sec,l2_sec,l3_sec);
 		#endif
-		verbosen(2," VPI %.2f",VPI);
+		verbosen(2," VPI %.2f Total MPI calls %u",VPI,total_mpi);
 		verbosen(2,"\n\t IO DATA: %s Accumulated IO %lu MB",io_info,sig->signature.sig_ext->accum_rd_wr_bytes/(1024*124));
     verbose(1,"%s",COL_CLR);
   }

@@ -447,7 +447,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 			/* This function executes the energy policy */
 			adapt_signature_to_node(&app_signature,&loop_signature.signature,ratio_PPN);
 			pst=policy_node_apply(&app_signature,&policy_freq,&ready);
-			verbose(2,"Policy status %u",ready);
 
 			/* For no masters, ready will be 0, pending */
 			EAR_POLICY_STATE = ready;
