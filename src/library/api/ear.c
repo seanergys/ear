@@ -41,6 +41,7 @@
 #include <common/types/pc_app_info.h>
 #include <management/cpufreq/frequency.h>
 #include <common/hardware/hardware_info.h>
+#include <common/system/monitor.h>
 
 #include <library/common/externs_alloc.h>
 #include <library/common/global_comm.h>
@@ -134,7 +135,10 @@ char pc_app_info_path[GENERIC_NAME];
 // Dynais
 static dynais_call_t dynais;
 
-void *earl_periodic_actions(void *no_arg);
+suscription_t *earl_monitor;
+state_t earl_periodic_actions(void *no_arg);
+state_t earl_periodic_actions_init(void *no_arg);
+static uint seconds = 0;
 static int end_periodic_th=0;
 //
 
@@ -304,7 +308,7 @@ void create_shared_regions()
 		if (masters_info.ppn[i]>masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
 		if (masters_info.my_master_rank==0) verbose(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
 	}
-	verbose(2,"max number of ppn is %d",masters_info.max_ppn);
+	verbose_master(2,"max number of ppn is %d",masters_info.max_ppn);
 	/* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
 	if (sh_sig_per_node && sh_sig_per_proces){
 		error("Signatures can only be shared with node OR process granularity,not both, default node");
@@ -658,7 +662,7 @@ void ear_init()
 
 	if (ext_def_freq_str!=NULL){
 		ext_def_freq=(unsigned long)atol(ext_def_freq_str);
-		verbose(1,"Using externally defined default freq %lu",ext_def_freq);
+		verbose_master(1,"Using externally defined default freq %lu",ext_def_freq);
 	}
 
 	// Fundamental data
@@ -770,7 +774,7 @@ void ear_init()
 	get_app_name(ear_app_name);
 	debug("App name is %s",ear_app_name);
 	if (application.is_learning){
-		verbose(1,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
+		verbose_master(1,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 	}
 	if (getenv("LOGNAME")!=NULL) strcpy(application.job.user_id, getenv("LOGNAME"));
 	else strcpy(application.job.user_id,"No userid");
@@ -904,22 +908,6 @@ void ear_init()
 			error("pc_application_info area not found");
 		}
   	#endif
-		#if 0
-		if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
-			error("Checking the affinity mask");
-		}else{
-			/* Copy mask in shared memory */	
-			if (ear_affinity_is_set){	
-				sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
-				sig_shared_region[my_node_id].affinity = 1;
-				verbose(1,"Affinity mask defined for rank %d",masters_info.my_master_rank);
-				if (masters_info.my_master_rank>=0) print_affinity_mask(&arch_desc.top);
-			}else{ 
-				sig_shared_region[my_node_id].affinity = 0;
-				verbose(1,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
-			}
-		}
-		#endif
 	}
 	  if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
       error("Checking the affinity mask");
@@ -931,7 +919,7 @@ void ear_init()
         //if (masters_info.my_master_rank>=0) print_affinity_mask(&arch_desc.top);
       }else{ 
         sig_shared_region[my_node_id].affinity = 0;
-        verbose(1,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
+        verbose_master(1,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
       } 
     } 
 
@@ -945,7 +933,7 @@ void ear_init()
 	init_power_policy(system_conf,resched_conf);
 	debug("init_power_models");
 	init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
-	if (masters_info.my_master_rank>=0) verbose(2,"Policies and models initialized");	
+	verbose_master(2,"Policies and models initialized");	
 
 	if (ext_def_freq==0){
 		EAR_default_frequency=system_conf->def_freq;
@@ -1008,10 +996,21 @@ void ear_init()
 	if (masters_info.my_master_rank==0) {
 		verbose(1, "EAR initialized successfully ");
 	}
+	if (masters_info.my_master_rank >= 0){
+		earl_monitor = suscription();
+		earl_monitor->call_init = earl_periodic_actions_init;
+		earl_monitor->call_main = earl_periodic_actions;
+		earl_monitor->time_relax = 1000;
+		earl_monitor->time_burst = 1000;
+		monitor_init();
+		monitor_register(earl_monitor);
+	}
+	# if 0
 	#if !MPI
 	if (pthread_create(&earl_periodic_th,NULL,earl_periodic_actions,NULL)){
 		error("error creating server thread for non-earl api\n");
 	}
+	#endif
 	#endif
 	#if USE_GPUS
   if (is_cuda_enabled()){
@@ -1051,7 +1050,7 @@ void ear_finalize()
 	// Closing and obtaining global metrics
 	debug("metrics dispose");
 	dispose=1;
-	if (masters_info.my_master_rank>=0) verbose(2,"Total resources computed %d",get_total_resources());
+	verbose_master(2,"Total resources computed %d",get_total_resources());
 	metrics_dispose(&application.signature, get_total_resources());
 	dynais_dispose();
 	if (!my_id) frequency_dispose();
@@ -1158,7 +1157,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 								ear_periodic_mode=PERIODIC_MODE_ON;
 								mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
 								if (masters_info.my_master_rank>=0) traces_start();
-								verbose(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
+								verbose_master(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
 									time_from_mpi_init,mpi_calls_in_period,ear_status);
 								//states_periodic_begin_period(my_id, NULL, 1, 1);
 								ear_iterations=0;
@@ -1451,25 +1450,36 @@ void ear_new_iteration(unsigned long loop_id)
 
 
 /**************** New for iterative code ********************/
-void *earl_periodic_actions(void *no_arg)
+//void *earl_periodic_actions(void *no_arg)
+state_t earl_periodic_actions_init(void *no_arg)
 {
-		verbose(1,"EARL periodic thread ON");
-		// if (pthread_setname_np(pthread_self(), "EARL_periodic_th")) error("Setting name for EARL_periodic_th thread %s" , strerror(errno));
-		if (masters_info.my_master_rank>=0) traces_start();
+		verbose_master(1,"EARL periodic thread ON");
+		seconds = 0;
+		#if !MPI
+    if (masters_info.my_master_rank>=0) traces_start();
     //states_periodic_begin_period(my_id, NULL, 1, 1);
     ear_iterations = 0;
     states_begin_period(my_id, 1, (ulong) lib_period,1);
-
-		mpi_calls_in_period = lib_period;
+    mpi_calls_in_period = lib_period;
     //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
     states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
-		do{
-			sleep(1);
-      ear_iterations++;
-      //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
-      states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
-		}while(end_periodic_th == 0);
-		return NULL;
+		#endif
+		return EAR_SUCCESS;
+}
+state_t earl_periodic_actions(void *no_arg)
+{
+	io_data_t iod;
+	seconds ++;
+   ear_iterations++;
+	#if !MPI
+   //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+   states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
+	 if (end_periodic_th) monitor_unregister(earl_monitor);
+	#endif
+	if ((seconds % 5 )== 0){ 
+		verbose_master(2,"Periodic_action %dsec",seconds);
+	}
+	 return EAR_SUCCESS;
 }
 
 
