@@ -126,9 +126,8 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freqs)
+state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
-	ulong *freq_set = freqs->cpu_freq;
 	*freq_set=DEF_FREQ(c->app->def_freq);
 	return EAR_SUCCESS;
 }

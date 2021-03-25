@@ -29,7 +29,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -49,7 +49,7 @@
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
-#include <library/states/states_periodic.h>
+//#include <library/states/states_periodic.h>
 #include <library/models/models.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
@@ -970,11 +970,12 @@ void ear_init()
 
 	// States
 	states_begin_job(my_id,  ear_app_name);
+	#if 0
 	states_periodic_begin_job(my_id, NULL, ear_app_name);
-
 	if (ear_periodic_mode==PERIODIC_MODE_ON){
 		states_periodic_begin_period(my_id, NULL, 1, 1);
 	}
+	#endif
 	// Summary files
 	summary_pathname = get_ear_user_db_pathname();
 
@@ -1066,6 +1067,7 @@ void ear_finalize()
 	if (loop_with_signature) {
 		debug("loop ends with %d iterations detected", ear_iterations);
 	}
+#if 0
 #if EAR_OVERHEAD_CONTROL
 	switch(ear_periodic_mode){
 		case PERIODIC_MODE_OFF:
@@ -1085,6 +1087,12 @@ void ear_finalize()
 	}
 	states_end_job(my_id, NULL, ear_app_name);
 #endif
+#endif
+	if (in_loop) {
+  	states_end_period(ear_iterations);
+  }
+  states_end_job(my_id,  ear_app_name);
+
 	policy_end();
 
 	dettach_settings_conf_shared_area();
@@ -1150,9 +1158,11 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 								if (masters_info.my_master_rank>=0) traces_start();
 								verbose(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
 									time_from_mpi_init,mpi_calls_in_period,ear_status);
-								states_periodic_begin_period(my_id, NULL, 1, 1);
+								//states_periodic_begin_period(my_id, NULL, 1, 1);
 								ear_iterations=0;
-								states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period);
+				        states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
+								//states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period);
+								states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
 							}else{
 
 								/* We continue using dynais */
@@ -1175,7 +1185,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 				/* EAR energy policy is called periodically */
 				if ((total_mpi_calls%mpi_calls_per_second) == 0){
 					ear_iterations++;
-					states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period);
+					//states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period);
+					states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
 				}
 				break;
 	}
@@ -1258,7 +1269,7 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 				}
 
 				if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, ear_event_l, ear_loop_size, ear_iterations);
-				states_new_iteration(my_id, ear_loop_size, ear_iterations, ear_loop_level, ear_event_l, mpi_calls_per_loop);
+				states_new_iteration(my_id, ear_loop_size, ear_iterations, ear_loop_level, ear_event_l, mpi_calls_per_loop,1);
 				mpi_calls_per_loop=1;
 				break;
 			case END_LOOP:
@@ -1331,7 +1342,7 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 				}
 
 				if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, ear_event_l, ear_loop_size, ear_iterations);
-				states_new_iteration(my_id, ear_loop_size, ear_iterations, (uint)ear_level, ear_event_l, mpi_calls_per_loop);
+				states_new_iteration(my_id, ear_loop_size, ear_iterations, (uint)ear_level, ear_event_l, mpi_calls_per_loop,1);
 				mpi_calls_per_loop=1;
 				break;
       default:
@@ -1426,7 +1437,7 @@ void ear_new_iteration(unsigned long loop_id)
   				//1, loop_id,1, ear_iterations);
 				}
 				if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, loop_id, 1, ear_iterations);
-				states_new_iteration(my_id, 1, ear_iterations, 1, loop_id, mpi_calls_per_loop);
+				states_new_iteration(my_id, 1, ear_iterations, 1, loop_id, mpi_calls_per_loop,1);
 				mpi_calls_per_loop=1;
 				break;
 			case NO_LOOP:
@@ -1443,14 +1454,18 @@ void *earl_periodic_actions(void *no_arg)
 		verbose(1,"EARL periodic thread ON");
 		// if (pthread_setname_np(pthread_self(), "EARL_periodic_th")) error("Setting name for EARL_periodic_th thread %s" , strerror(errno));
 		if (masters_info.my_master_rank>=0) traces_start();
-    states_periodic_begin_period(my_id, NULL, 1, 1);
+    //states_periodic_begin_period(my_id, NULL, 1, 1);
     ear_iterations = 0;
+    states_begin_period(my_id, 1, (ulong) lib_period,1);
+
 		mpi_calls_in_period = lib_period;
-    states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+    //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+    states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 		do{
 			sleep(1);
       ear_iterations++;
-      states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+      //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
+      states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 		}while(end_periodic_th == 0);
 		return NULL;
 }

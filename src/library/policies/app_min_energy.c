@@ -146,7 +146,7 @@ state_t policy_app_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *r
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
 	double power_ref,time_ref,max_penalty,time_max;
 	char buff[512];
-	ulong *new_freq = freqs->cpu.freq;
+	ulong *new_freq = freqs->cpu_freq;
 
   ulong best_freq,best_pstate,freq_ref,eff_f;
 	ulong curr_freq,nominal;
@@ -302,9 +302,8 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return EAR_SUCCESS;
 }
 
-state_t  policy_get_default_freq(polctx_t *c, node_freqs_t *freqs)
+state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
-		ulong *freq_set=freqs->cpu.freq;
 		if (c!=NULL){
 			*freq_set=c->app->max_freq;
 		}else return EAR_ERROR;

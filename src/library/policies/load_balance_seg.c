@@ -345,7 +345,7 @@ state_t policy_app_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *r
 		def_freq=FREQ_DEF(c->app->def_freq);
 		def_pstate=frequency_closest_pstate(def_freq);
 
-		/* This is the frequency at which we were running*/
+		/* This is the frequency at which we were running */
     #ifdef POWERCAP
     curr_freq=frequency_closest_high_freq(my_app->avg_f,1);
     #else
@@ -478,9 +478,8 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return EAR_SUCCESS;
 }
 
-state_t  policy_get_default_freq(polctx_t *c, node_freqs_t *freqs)
+state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
-		ulong *freq_set=freqs->cpu_freq;
 		if (c!=NULL){
 			*freq_set=c->app->max_freq;
 		}else EAR_ERROR;

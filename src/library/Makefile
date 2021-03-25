@@ -49,7 +49,6 @@ core_OBJS = \
     policies/pc_suport.o \
     states/states_comm.o \
     states/states.o \
-    states/states_periodic.o \
     tracer/tracer.o \
     dynais/dynais.a
 
@@ -64,8 +63,8 @@ endif
 ifdef CUDA_BASE
 core_OBJS += \
     metrics/gpu.o \
-		api/cupti.o
-		
+    api/cupti.o
+	
 endif
 
 ######## RULES

@@ -246,9 +246,9 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return st;
 
 }
-state_t  policy_get_default_freq(polctx_t *c,node_freqs_t *freqs)
+
+state_t policy_get_default_freq(polctx_t *c, ulong *f)
 {
-	ulong *f=freqs->cpu_freq;
 		if ((c!=NULL) && (c->app!=NULL)){
     // Just in case the bestPstate was the frequency at which the application was running
         *f=FREQ_DEF(c->app->def_freq);

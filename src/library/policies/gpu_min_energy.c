@@ -25,6 +25,8 @@
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <library/policies/policy_api.h>
+#include <library/policies/policy_state.h>
+
 
 static uint last_pc=0;
 
@@ -57,7 +59,7 @@ state_t policy_init(polctx_t *c)
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
-	ulong *new_freq=freqs->cpu_freq;
+	ulong *new_freq=freqs->gpu_freq;
 	ulong eff_f,f;
 	uint i;
 	ulong util,freq;
@@ -87,7 +89,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 			debug("Setting gpu_freq[%d]=%lu",i,new_freq[i]);
 	}		
 	
-	*ready=1;
+	*ready = EAR_POLICY_READY;
 	
 	return EAR_SUCCESS;
 }
@@ -107,9 +109,8 @@ state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freqs)
+state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
-	ulong *freq_set=freqs->cpu_freq;
 	return EAR_SUCCESS;
 }
 

@@ -55,6 +55,7 @@ static uint imc_freq_selected = 0;
 static uint last_cpu_pstate,last_imc_pstate;
 static int min_pstate;
 static uint ref_imc_pstate;
+extern int my_globalrank;
 
 struct imc_data_t{
 	double time;
@@ -211,7 +212,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		verbose(2,"Node signature not ready, selecting %lu CPU f",*new_freq);
 		return EAR_SUCCESS;
 	}
-	verbose(2, "MR[%d] Node signatures ready",masters_info.my_master_rank);
+	verbose(2, "MR[%d] Node signatures ready",my_globalrank);
 	my_app = calloc(1,sizeof(signature_t));
 	signature_copy(my_app,sig);
 	compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions);	
@@ -219,7 +220,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
 	compute_vpi(&sig_vpi,sig);
 	compute_vpi(&node_sig_vpi,my_app);
-	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf",masters_info.my_master_rank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi);
+	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi);
 	my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
   if (c->use_turbo) min_pstate=0;
   else min_pstate=frequency_closest_pstate(c->app->max_freq);
@@ -257,8 +258,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
 		if (dyn_unc){
 			*ready = EAR_POLICY_TRY_AGAIN;
-		}else *ready=EAR_POLICY_READY;
-		verbose(2,"SELECT_CPUFREQ state");
+		}else{ 
+			*ready = EAR_POLICY_READY;
+		}
+		verbose(2,"SELECT_CPUFREQ state dyn_unc %u",dyn_unc);
 	#else
 		*ready=EAR_POLICY_READY;
 	#endif
@@ -349,7 +352,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 			projection_set(i,time_proj,power_proj);
 			energy_proj=power_proj*time_proj;
 
-      verbose(2,"projected from %lu to %d\t time: %.2lf\t power: %.2lf energy: %.2lf",
+      verbose(3,"projected from %lu to %d\t time: %.2lf\t power: %.2lf energy: %.2lf",
 				from, i, time_proj, power_proj, energy_proj);
 			
 			if ((energy_proj < best_solution) && (time_proj < time_max)) {
@@ -359,19 +362,20 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 				best_pstate=i;
 			}
 		}
-		*new_freq=best_freq;
-		#if NEW_IMCFREQ	
-		if (dyn_unc){
-    	policy_max_imcfreq = imc_max_khz;
-			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
-			min_imc_pstate = imc_pstate;
-			if (*new_freq != curr_freq) min_energy_state = COMP_IMCREF;
-			else min_energy_state = SELECT_IMCFREQ;
-		}else{
-			min_energy_state = SELECT_CPUFREQ;
-		}
-		#endif
 	}
+	*new_freq = best_freq;
+	#if NEW_IMCFREQ	
+	if (dyn_unc){
+   	policy_max_imcfreq = imc_max_khz;
+		policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+		min_imc_pstate = imc_pstate;
+		if (*new_freq != curr_freq) min_energy_state = COMP_IMCREF;
+		else min_energy_state = SELECT_IMCFREQ;
+	}else{
+		min_energy_state = SELECT_CPUFREQ;
+		*ready = EAR_POLICY_READY;
+	}
+	#endif
 	
 	#if NEW_IMCFREQ
 	}else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
@@ -400,7 +404,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		}
 		
 	}else if (min_energy_state == COMP_IMCREF){
-		*new_freq = curr_freq;
+		*new_freq = frequency_pstate_to_freq(curr_pstate);
 		ref_imc_pstate = imc_pstate;
 		verbose(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu",*new_freq,policy_max_imcfreq,policy_min_imcfreq);
 		min_energy_state = SELECT_IMCFREQ;
@@ -434,9 +438,8 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return EAR_SUCCESS;
 }
 
-state_t  policy_get_default_freq(polctx_t *c, node_freqs_t *freqs)
+state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
-		ulong *freq_set=freqs->cpu_freq;
 		if (c!=NULL){
 			*freq_set=c->app->max_freq;
 		}else EAR_ERROR;
