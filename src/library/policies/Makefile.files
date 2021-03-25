@@ -1,6 +1,7 @@
 poli_OBJS = \
     policy.o \
-    pc_suport.o
+    pc_suport.o \
+		imc_policy_support.o
 
 poli_BINS = \
     min_time.so  \

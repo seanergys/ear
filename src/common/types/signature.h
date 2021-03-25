@@ -109,6 +109,8 @@ void clean_db_signature(signature_t *sig);
 /** Outputs the signature contents to the file pointed by the fd. */
 void signature_print_fd(int fd, signature_t *sig, char is_extended);
 void compute_vpi(double *vpi,signature_t *sig);
+void compute_ssig_vpi(double *vpi,ssig_t *sig);
+
 
 void print_signature_fd_binary(int fd, signature_t *sig);
 void read_signature_fd_binary(int fd, signature_t *sig);

@@ -32,6 +32,7 @@
 #include <daemon/local_api/eard_api.h>
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/imc_policy_support.h>
 #include <library/common/externs.h>
 
 
@@ -46,6 +47,7 @@ extern unsigned long ext_def_freq;
 #if NEW_IMCFREQ
 extern ulong policy_max_imcfreq,policy_min_imcfreq;
 extern uint dyn_unc;
+extern double imc_extra_th;
 extern ulong imc_max_khz,imc_min_khz;
 extern ulong def_imc_max_khz,def_imc_min_khz;
 extern uint dynais_enabled;
@@ -57,16 +59,7 @@ static int min_pstate;
 static uint ref_imc_pstate;
 extern int my_globalrank;
 
-struct imc_data_t{
-	double time;
-	double GBS;
-	double power;
-	ull  	 instructions;
-	ull		 cycles;
-	ull 	 FLOPS[FLOPS_EVENTS];
-};
-#define NUM_UNC_FREQ 20
-static struct imc_data_t *imc_data;
+static imc_data_t *imc_data;
 #define IMC_STEP 100000
 #define IMC_RANGE 100000
 #define SELECT_CPUFREQ 100
@@ -75,88 +68,17 @@ static struct imc_data_t *imc_data;
 static uint min_energy_state = SELECT_CPUFREQ;
 static uint imc_dynamic = 0;
 static uint min_imc_pstate = 0;
+static uint use_imc_ref = 0;
 #endif
 
-
-
-
 static ulong req_f;
-#define USE_FLOPS 0
-#define USE_GBS 1
-#define USE_CPI	0
-static uint must_increase_imc(uint cpu_pstate,signature_t *sig,double penalty)
-{
-	double metric,metric_ref;
-	double metric_max,metric_min;
-	double metric_var,power_var;
-	int i;
-	ull tflops = 0;
-	ull cflops = 0;
-	double tflopss,cflopss;
-	uint ref_pstate;
-	if (ear_periodic_mode == PERIODIC_MODE_OFF) ref_pstate = min_pstate;
-	else ref_pstate = cpu_pstate;
-	verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
-	power_var = (imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power - sig->DC_power)/imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power; 
-	if (ear_periodic_mode == PERIODIC_MODE_OFF){
-		metric_max = imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time + (penalty* imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time);
-		metric = sig->time;
-		metric_var = (sig->time-imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time)/imc_data[min_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
-		verbose(2,"Using time as reference : Current %.3lf Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_max,(power_var-metric_var)*100,power_var,metric_var);
-		return (metric > metric_max);
-	}else{
-		/* We were using ref_pstate = min_pstate */
-		#if USE_CPI
-		double CPI;
-		CPI = (double)imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles/(double)imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
-		metric_max = CPI + CPI*penalty;
-		metric = sig->CPI;
-		metric_var = (CPI-metric)/CPI;
-		verbose(2,"Using CPI as reference : Current %.3lf Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_max,(power_var-metric_var)*100,power_var,metric_var);
-		return (metric > metric_max);	
-		#endif
-		#if USE_GBS
-		metric_min = imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS - (penalty* imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS);
-		metric = sig->GBS;
-		metric_var = (imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS-sig->GBS)/imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
-		verbose(2,"Using GBS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
-		return (metric < metric_min);
-		#endif
-		#if USE_FLOPS
-		for (i=0;i<FLOPS_EVENTS;i++) tflops += imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].FLOPS[i];	
-		for (i=0;i<FLOPS_EVENTS;i++) cflops += sig->FLOPS[i];	
-		tflopss = (double)tflops / (imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time*1000000.0);
-		cflopss = (double)cflops / (sig->time*1000000.0);
-		metric_min =  tflopss - (penalty* tflopss);
-		metric = cflopss;
-		metric_var = (tflopss-cflopss)/tflopss;
-		verbose(2,"Using FLOPS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
-		return (metric < metric_min);
-		#endif
-	}
-}
-
-static void copy_imc_data_from_signature(uint cpu_pstate,uint imc_pstate,signature_t *s)
-{
-	int i;
-	ullong tfops = 0;
-	float flops = 0;
-  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time = s->time;
-  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power = s->DC_power;
-  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS = s->GBS;
-  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].instructions = s->instructions;
-  imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].cycles = s->cycles;
-  memcpy(imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
-	for (i=0;i<FLOPS_EVENTS;i++) tfops += s->FLOPS[i];
-	flops = (float)tfops/(s->time*1000000000.0);
-	verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power,imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS,s->instructions/(s->time*1000000000.0),flops);
-}
 
 state_t policy_init(polctx_t *c)
 {
+	char *cuse_imc_ref;
 	if (c!=NULL){ 
 		#if NEW_IMCFREQ
-		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(struct imc_data_t));
+		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
 		#endif
 		return EAR_SUCCESS;
 	} else return EAR_ERROR;
@@ -197,7 +119,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	ulong curr_pstate,def_pstate,def_freq,from;
 	state_t st;
 	uint power_status;
-	double sig_vpi,node_sig_vpi;
+	double sig_vpi,node_sig_vpi,max_vpi;
+	uint local_process_with_high_vpi;
 	
 
 
@@ -220,8 +143,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
 	compute_vpi(&sig_vpi,sig);
 	compute_vpi(&node_sig_vpi,my_app);
-	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi);
+	local_process_with_high_vpi = compute_max_vpi(lib_shared_region,sig_shared_region,&max_vpi);
+	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi);
 	my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
+	/* With these two lines, we force the VPI of the signatura to the most loaded in the node */
+	my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
+	memcpy(my_app->FLOPS,sig_shared_region[local_process_with_high_vpi].sig.FLOPS,sizeof(ull)*FLOPS_EVENTS);
   if (c->use_turbo) min_pstate=0;
   else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
@@ -235,7 +162,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	def_freq=FREQ_DEF(c->app->def_freq);
 	def_pstate=frequency_closest_pstate(def_freq);
 
-		// This is the frequency at which we were running
+	// This is the frequency at which we were running
   #ifdef POWERCAP
   if (c->pc_limit > 0){
 			curr_freq=frequency_closest_high_freq(my_app->avg_f,1);
@@ -253,7 +180,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
   if (dyn_unc){
 			imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
 			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
-			copy_imc_data_from_signature(curr_pstate,imc_pstate,my_app);
+			copy_imc_data_from_signature(imc_data,curr_pstate,imc_pstate,my_app);
   }
 	if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
 		if (dyn_unc){
@@ -381,8 +308,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	}else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
 		verbose(2,"SELECT_IMCFREQ state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,imc_pstate);
 		*new_freq = frequency_pstate_to_freq(curr_pstate);
-		uint increase_imc = must_increase_imc(curr_pstate,my_app,max_penalty);
-		//time_max = imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time + (max_penalty* imc_data[min_pstate*NUM_UNC_FREQ+last_imc_pstate].time);
+		uint increase_imc = must_increase_imc(imc_data,curr_pstate,imc_pstate,curr_pstate,ref_imc_pstate,my_app,imc_extra_th);
 		/* If we are over the limit, we increase the IMC */
 		if (increase_imc){
 			verbose(2,"%sWarning, passing the limit",COL_RED);

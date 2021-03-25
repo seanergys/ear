@@ -1608,14 +1608,16 @@ int main(int argc, char *argv[]) {
 	verbose(0,"Initialzing energy plugin");
 	// We initilize energy_node
 	debug("Initializing energy in main EARD thread");
+
 	if (state_fail(energy_init(&my_cluster_conf, &eard_handler_energy))) {
-		error("energy_init cannot be initialized,DC node emergy metrics will not be provided\n");
+		error("While initializing energy plugin: %s\n", state_msg);
 		error_energy=1;
 	}
-  if (init_power_ponitoring(&handler_energy) != EAR_SUCCESS) {
-    error("Error initializing pm_energy in %s thread", "EARD main");
+	if (state_fail(s = init_power_ponitoring(&handler_energy))) {
+		error("While initializing power monitor: %s\n", state_msg);
 		_exit(0);	
-  }
+	}
+
 	energy_datasize(&handler_energy,&node_energy_datasize);
 	debug("EARD main thread: node_energy_datasize %lu",node_energy_datasize);
 	node_energy_data=(edata_t)malloc(node_energy_datasize);

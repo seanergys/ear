@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -29,16 +31,13 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
-
 #include <common/states.h> 
 #include <common/types/generic.h> 
 #include <common/math_operations.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <metrics/energy/node/energy_dcmi.h>
 #include <metrics/energy/node/energy_node.h>
 #include <common/system/monitor.h>
-
 
 static pthread_mutex_t ompi_lock = PTHREAD_MUTEX_INITIALIZER;
 static ulong dcmi_timeframe;
@@ -425,10 +424,11 @@ state_t dcmi_thread_main(void *p)
   memcpy(&dcmi_last_power_reading,&dcmi_current_power_reading,sizeof(dcmi_power_data_t));
 	return EAR_SUCCESS;
 }
+
 state_t dcmi_thread_init(void *p)
 {
 	int ret;
-  ret	= opendev(&dcmi_context_for_pool);
+	ret	= opendev(&dcmi_context_for_pool);
  	if (ret < 0){
 		debug("opendev fails in dcmi energy plugin when initializing pool");
 		return EAR_ERROR;
@@ -436,8 +436,6 @@ state_t dcmi_thread_init(void *p)
 	debug("thread_init for dcmi_power OK");
 	return EAR_SUCCESS;
 }
-
-
 
 /*
  * MAIN FUNCTIONS
@@ -451,21 +449,19 @@ state_t energy_init(void **c)
 	int ret;
 
 	if (c == NULL) {
-		return EAR_ERROR;
+		return_msg(EAR_ERROR, Generr.input_null);
 	}
-
 	*c = (struct ipmi_intf *) malloc(sizeof(struct ipmi_intf));
 	if (*c == NULL) {
 		return EAR_ERROR;
 	}
-
+	//
 	pthread_mutex_lock(&ompi_lock);
 	debug("trying opendev\n");
-	ret= opendev((struct ipmi_intf *)*c);
+	ret = opendev((struct ipmi_intf *)*c);
 	if (ret<0){ 
-		debug("opendev fails\n");
 		pthread_mutex_unlock(&ompi_lock);
-		return EAR_ERROR;
+		return_xmsg(EAR_ERROR, "error opening IPMI device (%s)", strerror(errno));
 	}
 
 	if (dcmi_already_loaded == 0){

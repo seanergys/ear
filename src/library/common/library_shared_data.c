@@ -372,6 +372,22 @@ void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t
   }
 }
 
+uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi)
+{
+	int i;
+	double local_max = 0.0;
+	uint max_ssig = 0;
+	*max_vpi = 0.0;
+	for (i=0;i<data->num_processes;i++){
+		compute_ssig_vpi(&local_max,&sig[i].sig);
+		if (local_max > *max_vpi ){ 
+			*max_vpi = local_max;
+			max_ssig = i;
+		}
+	}
+	return max_ssig;
+}
+
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig)
 {
