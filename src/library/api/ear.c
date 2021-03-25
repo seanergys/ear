@@ -281,8 +281,9 @@ void create_shared_regions()
 			error("NULL pointer returned in create_shared_signatures_area");
 		}
 	}
-	sig_shared_region[my_node_id].master=1;
-	sig_shared_region[my_node_id].mpi_info.rank=ear_my_rank;
+	sig_shared_region[my_node_id].master = 1;
+	sig_shared_region[my_node_id].pid = getpid();
+	sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
 	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 #if ONLY_MASTER == 0
 	#if MPI
@@ -293,14 +294,14 @@ void create_shared_regions()
 	#endif
 #endif
 	/* This part allocates memory for sharing data between nodes */
-	masters_info.ppn=malloc(masters_info.my_master_size*sizeof(int));
+	masters_info.ppn = malloc(masters_info.my_master_size*sizeof(int));
 	/* The node master, shares with other masters the number of processes in the node */
 	#if MPI
 	if (share_global_info(masters_info.masters_comm,(char *)&lib_shared_region->num_processes,sizeof(int),(char*)masters_info.ppn,sizeof(int))!=EAR_SUCCESS){
 		error("Sharing the number of processes per node");
 	}
 	#else
-	masters_info.ppn[0]=1;
+	masters_info.ppn[0] = 1;
 	#endif
 	int i;
 	masters_info.max_ppn=masters_info.ppn[0];
@@ -392,8 +393,9 @@ void attach_shared_regions()
 				error("NULL pointer returned in attach_shared_signatures_area");
 			}
 	}
-	sig_shared_region[my_node_id].master=0;
-	sig_shared_region[my_node_id].mpi_info.rank=ear_my_rank;
+	sig_shared_region[my_node_id].master = 0;
+	sig_shared_region[my_node_id].pid = getpid();
+	sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
 	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 	/* No masters processes don't allocate memory for data sharing between nodes */	
 }
@@ -1468,16 +1470,17 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 state_t earl_periodic_actions(void *no_arg)
 {
-	io_data_t iod;
+	ulong cio;
 	seconds ++;
-   ear_iterations++;
+  ear_iterations++;
 	#if !MPI
    //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
    states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 	 if (end_periodic_th) monitor_unregister(earl_monitor);
 	#endif
 	if ((seconds % 5 )== 0){ 
-		verbose_master(2,"Periodic_action %dsec",seconds);
+		metrics_get_total_io(&cio);
+		verbose_master(2,"Periodic_action %dsec %lu MB",seconds,cio/(1024*1024));
 	}
 	 return EAR_SUCCESS;
 }

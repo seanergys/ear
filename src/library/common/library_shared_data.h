@@ -51,15 +51,16 @@ typedef struct mpi_information{
 }mpi_information_t;
 
 typedef struct shsignature{
-	uint master;
-	uint ready;
+	uint 							master;
+	pid_t 						pid;
+	uint 							ready;
 	mpi_information_t mpi_info;
 	/* sig was originally a signature_t */
-	ssig_t sig;
-	int 				  app_state;
-	unsigned long new_freq;
-	cpu_set_t cpu_mask;
-	int affinity;
+	ssig_t 					sig;
+	int 				  	app_state;
+	unsigned long 	new_freq;
+	cpu_set_t 			cpu_mask;
+	int 						affinity;
 }shsignature_t;
 
 

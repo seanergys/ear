@@ -991,6 +991,24 @@ void metrics_compute_signature_begin()
 	metrics_partial_start();
 }
 
+void metrics_get_total_io(ulong *rdwr)
+{
+	int i;
+	io_data_t io;
+	ctx_t lio;
+	if (rdwr == NULL) return;
+	*rdwr = 0;
+	for (i=0; i<lib_shared_region->num_processes;i++){
+		  if (io_init(&lio,sig_shared_region[i].pid) != EAR_SUCCESS){
+				verbose(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
+			}else{
+				io_read(&lio,&io);
+				*rdwr += (ulong)( io.rchar + io.wchar);
+			}
+			io_dispose(&lio);
+	}
+}
+
 int time_ready_signature(ulong min_time_us)
 {
 	long long aux_time;
