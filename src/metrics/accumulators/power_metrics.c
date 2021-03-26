@@ -130,10 +130,10 @@ static int pm_connect(ehandler_t *my_eh)
 		return EAR_SUCCESS;
 	}
 
-	if ((rootp = getuid()) != 0) {
+	rootp = (getuid() == 0);
+	if (!rootp) {
 		return_msg(EAR_ERROR, Generr.no_permissions);
 	}
-
 	// Initializing node energy
 	debug("Initializing energy in main power_monitor thread");
 	pm_connected_status  = energy_init(NULL, my_eh);
