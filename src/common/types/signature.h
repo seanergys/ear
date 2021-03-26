@@ -62,7 +62,7 @@ typedef struct mini_sig
     ulong avg_f;
     ulong def_f;
 		io_data_t iod;
-		ulong accum_rd_wr_bytes;
+		ullong accum_rd_wr_bytes;
 #if USE_GPUS
     gpu_signature_t gpu_sig;
 #endif
@@ -71,7 +71,7 @@ typedef struct mini_sig
 typedef struct sig_ext{
 	ulong imc_freq;
 	io_data_t iod;
-	ulong accum_rd_wr_bytes;
+	ullong accum_rd_wr_bytes;
 }sig_ext_t;
 
 typedef struct signature

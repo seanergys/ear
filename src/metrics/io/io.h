@@ -24,13 +24,13 @@
 #define IO_PATH "/proc/%d/io"
 
 typedef struct io_data{
-	uint rchar;
-	uint wchar;
-	uint syscr;
-	uint syscw;
-	uint read_bytes;
-	uint write_bytes;
-	uint cancelled;
+	ullong rchar;
+	ullong wchar;
+	ullong syscr;
+	ullong syscw;
+	ullong read_bytes;
+	ullong write_bytes;
+	ullong cancelled;
 }io_data_t;
 
 /** Initializes io info for a given pid */

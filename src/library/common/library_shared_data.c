@@ -372,7 +372,7 @@ void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t
   }
 }
 
-void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ulong *total_io)
+void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io)
 {
 	*total_io = 0;
 	int i;

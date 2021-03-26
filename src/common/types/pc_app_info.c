@@ -21,7 +21,7 @@
 
 #include <common/config.h>
 #include <common/config/config_install.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #if POWERCAP

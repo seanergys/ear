@@ -1470,7 +1470,7 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 state_t earl_periodic_actions(void *no_arg)
 {
-	ulong cio;
+	ullong cio;
 	seconds ++;
   ear_iterations++;
 	#if !MPI
@@ -1480,7 +1480,7 @@ state_t earl_periodic_actions(void *no_arg)
 	#endif
 	if ((seconds % 5 )== 0){ 
 		metrics_get_total_io(&cio);
-		verbose_master(2,"Periodic_action %dsec %lu MB",seconds,cio/(1024*1024));
+		verbose_master(2,"Periodic_action %dsec %llu MB",seconds,cio/(1024*1024));
 	}
 	 return EAR_SUCCESS;
 }

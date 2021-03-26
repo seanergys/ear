@@ -47,6 +47,7 @@ extern unsigned long ext_def_freq;
 #if NEW_IMCFREQ
 extern ulong policy_max_imcfreq,policy_min_imcfreq;
 extern uint dyn_unc;
+extern uint imc_set_by_hw;
 extern double imc_extra_th;
 extern ulong imc_max_khz,imc_min_khz;
 extern ulong def_imc_max_khz,def_imc_min_khz;
@@ -111,7 +112,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	unsigned int ref;
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
 	double power_ref,time_ref,max_penalty,time_max;
-	ulong imc_pstate,total_io;
+	ulong imc_pstate;
+	ullong total_io;
 
   ulong best_freq,best_pstate,freq_ref,eff_f;
 	ulong curr_freq,nominal;
@@ -178,7 +180,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 
   #if NEW_IMCFREQ
   if (dyn_unc){
-			imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
+			// imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
+			ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
+    	imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
 			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
 			copy_imc_data_from_signature(imc_data,curr_pstate,imc_pstate,my_app);
   }
@@ -294,7 +298,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	#if NEW_IMCFREQ	
 	if (dyn_unc){
    	policy_max_imcfreq = imc_max_khz;
-		policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+		if (imc_set_by_hw) 		policy_min_imcfreq = imc_min_khz;
+		else 									policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 		min_imc_pstate = imc_pstate;
 		if (*new_freq != curr_freq) min_energy_state = COMP_IMCREF;
 		else min_energy_state = SELECT_IMCFREQ;
@@ -330,8 +335,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 		}
 		
 	}else if (min_energy_state == COMP_IMCREF){
+		ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
+		ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
 		*new_freq = frequency_pstate_to_freq(curr_pstate);
-		ref_imc_pstate = imc_pstate;
+		ref_imc_pstate = curr_imc_pstate;
+   	policy_max_imcfreq = curr_imc_freq;
+		policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
 		verbose(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu",*new_freq,policy_max_imcfreq,policy_min_imcfreq);
 		min_energy_state = SELECT_IMCFREQ;
 		*ready = EAR_POLICY_TRY_AGAIN;

@@ -121,7 +121,7 @@ state_t io_print(io_data_t *iodata)
 state_t io_tostr(io_data_t *iodata,char *msg,size_t len)
 {
 	if ((msg == NULL) || (iodata == NULL)) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
-	snprintf(msg,len,"rchar %u wchar %u syscr %u syscw %u read_bytes %u write_bytes %u",iodata->rchar,iodata->wchar,iodata->syscr,iodata->syscw,iodata->read_bytes,iodata->write_bytes);
+	snprintf(msg,len,"rchar %llu wchar %llu syscr %llu syscw %llu read_bytes %llu write_bytes %llu",iodata->rchar,iodata->wchar,iodata->syscr,iodata->syscw,iodata->read_bytes,iodata->write_bytes);
 	state_return(EAR_SUCCESS);
 }
 

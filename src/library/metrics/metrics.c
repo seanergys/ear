@@ -991,7 +991,7 @@ void metrics_compute_signature_begin()
 	metrics_partial_start();
 }
 
-void metrics_get_total_io(ulong *rdwr)
+void metrics_get_total_io(ullong *rdwr)
 {
 	int i;
 	io_data_t io;
@@ -1003,7 +1003,7 @@ void metrics_get_total_io(ulong *rdwr)
 				verbose(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
 			}else{
 				io_read(&lio,&io);
-				*rdwr += (ulong)( io.rchar + io.wchar);
+				*rdwr += io.rchar + io.wchar;
 			}
 			io_dispose(&lio);
 	}
