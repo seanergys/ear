@@ -391,7 +391,7 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
   domain->cpu = POL_GRAIN_NODE;
-  domain->mem = POL_NODE;
+  domain->mem = POL_GRAIN_NODE;
   domain->gpu = POL_NOT_SUPPORTED;
   domain->gpumem = POL_NOT_SUPPORTED;
   return EAR_SUCCESS;

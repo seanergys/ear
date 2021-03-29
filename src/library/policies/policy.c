@@ -85,7 +85,7 @@ typedef struct policy_symbols {
 } polsym_t;
 
 // Static data
-static polsym_t polsyms_fun,gpu_polsyms_fun;
+static polsym_t polsyms_fun;
 static void    *polsyms_obj = NULL;
 const int       polsyms_n = 14;
 const char     *polsyms_nam[] = {
@@ -105,11 +105,10 @@ const char     *polsyms_nam[] = {
     "policy_domain",
 };
 polctx_t my_pol_ctx;
-node_freqs_t nf;
+node_freqs_t nf,avg_nf;
 
 static uint policy_gpu_model;
-static int my_policy_grain = POL_GRAIN_NODE;
-static ulong *policy_freq_list,*freq_per_core;
+static ulong *freq_per_core;
 static node_freq_domain_t freqs_domain;
 
 /**** Auxiliary functions ***/
@@ -135,15 +134,15 @@ void print_policy_ctx(polctx_t *p)
 }
 
 
-static ulong compute_avg_freq(ulong *my_policy_list)
+static ulong compute_avg_freq(ulong *my_policy_list,int n)
 {
     int i;
     ulong total=0;
-    for (i=0; i<lib_shared_region->num_processes;i++)
+    for (i=0; i<n;i++)
     {
         total+=my_policy_list[i];
     }
-    return total/lib_shared_region->num_processes;
+    return total/n;
 }
 static void print_freq_per_core()
 {
@@ -154,7 +153,7 @@ static void print_freq_per_core()
     }
     verbose_master(2," ");
 }
-static void from_proc_to_core()
+static void from_proc_to_core(ulong *cpuf)
 {
     int p,c;
     ulong f;
@@ -166,7 +165,7 @@ static void from_proc_to_core()
 				f = frequency_get_nominal_freq();
 				verbose_master(2,"Setting core from process %d to nominal %lu because IO",sig_shared_region[p].pid,f);
 			}else{
-        f = policy_freq_list[p];
+        f = cpuf[p];
 			}
       ccount = arch_desc.top.cpu_count;
       m = sig_shared_region[p].cpu_mask;
@@ -190,11 +189,11 @@ ulong avg_to_khz(ulong freq_khz)
     newf = (ulong) ((ff / 10.0) * 1000000);
     return newf;
 }
-static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
+//static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
+static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     ulong *freq_set = freqs->cpu_freq;
     ulong imc_up,imc_low;
-    polctx_t *c=&my_pol_ctx;
     int i;
     char pol_grain_str[128];
     state_t s;
@@ -202,6 +201,7 @@ static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
 #if POWERCAP
     if (pc_app_info_data->mode == PC_DVFS){
         ulong f;
+				/* Warning: POL_GRAIN_CORE not supported */
         pcapp_info_set_req_f(pc_app_info_data,*freq_set);
         f = pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,*freq_set,my_sig);
         debug("Adapting frequency because pc: selected %lu new %lu",*freq_set,f);
@@ -212,24 +212,24 @@ static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
     }
 #endif
   memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
-  if (my_policy_grain == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
+  if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
   else sprintf(pol_grain_str,"POL_GRAIN_NODE");
   verbose(2,"my_policy_grain %s and affinity %d",pol_grain_str,ear_affinity_is_set);
   /* Assumption: If affinity is set for master, it is set for all, we could check individually */
-  if ((my_policy_grain == POL_GRAIN_CORE) && (ear_affinity_is_set)){
-  	from_proc_to_core();		
+  if ((dom->cpu == POL_GRAIN_CORE) && (ear_affinity_is_set)){
+  	from_proc_to_core(freq_set);		
   }else{
-  	debug("Setting same freq in all node %lu",policy_freq_list[0]);
-  	for (i=1;i<MAX_CPUS_SUPPORTED;i++) policy_freq_list[i]=policy_freq_list[0];
+  	debug("Setting same freq in all node %lu",freq_set[0]);
+  	for (i=1;i<MAX_CPUS_SUPPORTED;i++) freq_set[i] = freq_set[0];
   	if (ear_affinity_is_set){ 
-  		from_proc_to_core();
+  		from_proc_to_core(freq_set);
   	}else{
 			if ((rank0_do_io) && (masters_info.my_master_rank == 0)){
 				/* Is we run the rank 0, but affinity is not set, we will run at nominal to avoid loosing performance */
   			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = frequency_get_nominal_freq();
 				verbose_master(2,"Setting CPUfreq of MR %d to %lu becuase rank 0 is doing IO",masters_info.my_master_rank,freq_per_core[0]);
 			}else{
-  			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = policy_freq_list[0];
+  			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = freq_set[0];
 			}
   	}
   }
@@ -237,8 +237,9 @@ static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
   if (*freq_set != *(c->ear_frequency))
   {
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
-		if (*(c->ear_frequency) == 0) *(c->ear_frequency) = policy_freq_list[0];
+		if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
   }
+	avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);;
 	verbose(2,"Setting CPU freq to %lu",*(c->ear_frequency));
 	#if NEW_IMCFREQ
 	if (dyn_unc && imc_mgt_compatible){
@@ -249,35 +250,62 @@ static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
   	eards_mgt_imcfreq_set_current(imc_up,imc_low);
 	}
 	#endif
+	return EAR_SUCCESS;
+}
+static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+	return EAR_SUCCESS;
+}
+static state_t policy_gpu_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+	return EAR_SUCCESS;
 }
 
 
-state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs, int *ready)
+//state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs, int *ready)
+static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     ulong *gpu_f = freqs->gpu_freq;
+		ulong avg;
     int i;
-    if (*ready == EAR_POLICY_READY ){
         /* Powercap limits are checked here but this code could be moved to a function */
 #if USE_GPUS
 #if POWERCAP
-        for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
-            debug("GPU[%d] freq requested %lu",i,gpu_f[i]);
-        }
-        pc_app_info_data->num_gpus_used=my_sig->gpu_sig.num_gpus;
-        memcpy(pc_app_info_data->req_gpu_f,gpu_f,my_pol_ctx.num_gpus*sizeof(ulong));
-        if (pc_app_info_data->mode==PC_DVFS){
-            pc_support_adapt_gpu_freq(c,&my_pol_ctx.app->pc_opt,gpu_f,my_sig);
-        }
-        for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
+     for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
+        debug("GPU[%d] freq requested %lu",i,gpu_f[i]);
+     }
+     pc_app_info_data->num_gpus_used=my_sig->gpu_sig.num_gpus;
+     memcpy(pc_app_info_data->req_gpu_f,gpu_f,c->num_gpus*sizeof(ulong));
+     if (pc_app_info_data->mode==PC_DVFS){
+            pc_support_adapt_gpu_freq(c,&c->app->pc_opt,gpu_f,my_sig);
+     }
+     for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
             debug("GPU[%d] freq selected after powercap filter %lu",i,gpu_f[i]);
-        }
+     }
 #endif
         /* Pending: We must filter the GPUs I'm using */
-        eards_gpu_set_freq(my_pol_ctx.num_gpus,gpu_f);
+     eards_gpu_set_freq(c->num_gpus,gpu_f);
 #endif
-    }
+		avg_freq->gpu_freq[0] = compute_avg_freq(gpu_f,my_sig->gpu_sig.num_gpus);
     return EAR_SUCCESS;
 
+}
+
+state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+	if (dom->cpu != POL_NOT_SUPPORTED){
+		avg_freq->cpu_freq[0] = policy_cpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}
+	if (dom->mem != POL_NOT_SUPPORTED){
+		avg_freq->imc_freq[0] = policy_mem_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}
+	if (dom->gpu != POL_NOT_SUPPORTED){
+		avg_freq->gpu_freq[0] = policy_gpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}
+	if (dom->gpumem != POL_NOT_SUPPORTED){
+		avg_freq->gpu_mem_freq[0] = policy_gpu_mem_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}
+	return EAR_SUCCESS;
 }
 
 
@@ -318,21 +346,17 @@ state_t policy_init()
 #endif
 		if (crank0_do_io != NULL) rank0_do_io = 1;
     /* Even though the policy could be at the Node granularity, we will use a list */
-    policy_freq_list = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+    nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+		nf.imc_freq = calloc(arch_desc.top.socket_count*2,sizeof(ulong));
+		nf.gpu_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
+		nf.gpu_mem_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
+    avg_nf.cpu_freq =  calloc(1,sizeof(ulong));
+		avg_nf.imc_freq = calloc(2,sizeof(ulong));
+		avg_nf.gpu_freq = calloc(1,sizeof(ulong));
+		avg_nf.gpu_mem_freq = calloc(1,sizeof(ulong));
     freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
-
-#if USE_GPUS
-    if (masters_info.my_master_rank>=0){
-        if (gpu_polsyms_fun.init != NULL){
-            debug("Loading gpu init");
-            retg=gpu_polsyms_fun.init(c);
-        }else{
-            debug("gpu init policy null");
-        }
-    }
-#endif
 #if POWERCAP
     if (masters_info.my_master_rank>=0){
         pc_support_init(c);
@@ -430,58 +454,6 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
         }
     }
 #endif
-#if 0
-    /********* GPU PART **********/
-    if (masters_info.my_master_rank>=0){
-#if USE_GPUS
-        obj_path = getenv(SCHED_EAR_GPU_POWER_POLICY);
-#if SHOW_DEBUGS
-        if (obj_path!=NULL){ 
-            debug("%s = %s",SCHED_EAR_GPU_POWER_POLICY,obj_path);
-        }else{
-            debug("%s undefined",SCHED_EAR_GPU_POWER_POLICY);
-        }
-#endif
-#if GPU_OPT
-        sprintf(pgpu_name,"gpu_%s.so",app_settings->policy_name);
-#else
-        sprintf(pgpu_name,"gpu_monitoring.so");
-#endif
-        if (((obj_path==NULL) && (ins_path == NULL)) || (app_settings->user_type!=AUTHORIZED)){
-            sprintf(basic_path,"%s/policies/%s",data->dir_plug,pgpu_name);
-            obj_path=basic_path;
-        }else{
-            if (obj_path == NULL){
-                sprintf(basic_path,"%s/plugins/policies/%s",ins_path,pgpu_name);
-                obj_path=basic_path;
-            }
-        }
-        debug("loading policy %s",obj_path);
-        if (policy_load(obj_path,&gpu_polsyms_fun)!=EAR_SUCCESS){
-            error("Error loading policy %s",obj_path);
-        }
-        my_pol_ctx.gpu_mgt_ctx_on=0;	
-        if (gpu_lib_load(app_settings) != EAR_SUCCESS){
-            error("gpu_lib_load in init_power_policy");
-        }else{
-            if (gpu_lib_init(&my_pol_ctx.gpu_mgt_ctx) == EAR_SUCCESS){
-                my_pol_ctx.gpu_mgt_ctx_on=1;
-                debug("gpu_lib_init success");
-                gpu_lib_model(&my_pol_ctx.gpu_mgt_ctx,&policy_gpu_model);
-                if (policy_gpu_model == MODEL_DUMMY){ 
-                    debug("Setting policy num gpus to 0 because DUMMY");
-                    my_pol_ctx.num_gpus = 0;
-                }else{
-                    gpu_lib_count(&my_pol_ctx.num_gpus);
-                }
-                debug("Num gpus detected in policy_load %u",my_pol_ctx.num_gpus);	
-            }else{
-                error("gpu_lib_init");
-            }
-        }
-#endif
-#endif
-    }
 
     return policy_init();
 }
@@ -518,19 +490,13 @@ state_t policy_app_apply(ulong *freq_set, int *ready)
         *ready = EAR_POLICY_CONTINUE;
         return st;
     }
-    if (my_policy_grain == POL_GRAIN_CORE) memset(policy_freq_list,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
-    freqs->cpu_freq=policy_freq_list;
+    if (freqs_domain.cpu == POL_GRAIN_CORE) memset(freqs->cpu_freq,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     st=polsyms_fun.app_policy_apply(c, &policy_last_global_signature, freqs,ready);
     if (*ready == EAR_POLICY_READY){
-        if (my_policy_grain == POL_GRAIN_CORE && ear_affinity_is_set){
-            *freq_set = compute_avg_freq(policy_freq_list);
-        }else{
-            *freq_set = policy_freq_list[0];
-        }
         debug("Average frequency after app_policy is %lu",*freq_set );
-        policy_cpu_freq_selection(&policy_last_global_signature,freqs);
+        //policy_cpu_freq_selection(&policy_last_global_signature,freqs);
+				st = policy_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf);
     }
-    /* GPU part doesn't exist yet */
     return st;
 }
 
@@ -557,24 +523,18 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         signature_copy(&node_sig,my_sig);
         node_sig.DC_power=sig_node_power(my_sig);
         signature_copy(&policy_last_local_signature,&node_sig);
-        if (my_policy_grain == POL_GRAIN_CORE) memset(policy_freq_list,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+        if (freqs_domain.cpu == POL_GRAIN_CORE) memset(freqs->cpu_freq,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 	
         /* CPU specific function is applied here */
-	freqs->cpu_freq = policy_freq_list;
         st=polsyms_fun.node_policy_apply(c, &node_sig,freqs,&cpu_ready);
 				*ready = cpu_ready;
 
 
         /* Depending on the policy status and granularity we adapt the CPU freq selection */
         if ((*ready == EAR_POLICY_READY) || (*ready == EAR_POLICY_TRY_AGAIN)){
-            if (my_policy_grain == POL_GRAIN_CORE){
-                *freq_set = compute_avg_freq(policy_freq_list);
-            }else{
-                *freq_set = policy_freq_list[0];
-            }
-
             /* This functions  checks the powercap and the processor affinity, finally sets the CPU freq asking the eard to do it */
-	    policy_cpu_freq_selection(my_sig,freqs);
+	    // policy_cpu_freq_selection(my_sig,freqs);
+						st = policy_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf);
             if (*ready == EAR_POLICY_TRY_AGAIN){ 
 							*ready = EAR_POLICY_CONTINUE;
 						}
@@ -586,18 +546,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
             if (c!=NULL) *freq_set=DEF_FREQ(c->app->def_freq);
         }
     }
-#if USE_GPUS
-    /* At this point we are the master */
-    /* GPU frequency must be integrated in arguments, hardcoded for now */
-    if ((gpu_polsyms_fun.node_policy_apply!=NULL) && (my_pol_ctx.num_gpus)) {
-        ulong *gpu_f=calloc(my_pol_ctx.num_gpus,sizeof(ulong));
-	freqs->gpu_freq=gpu_f;
-        stg=gpu_polsyms_fun.node_policy_apply(c, my_sig,freqs,&gpu_ready);
-        /* We must apply a gpu_freq change */
-        policy_gpu_freq_selection(c,my_sig,freqs,ready);
-        free(gpu_f);
-    }
-#endif
+		gpu_ready = EAR_POLICY_READY;
 		if ((cpu_ready == EAR_POLICY_READY) && (gpu_ready == EAR_POLICY_READY)) *ready = EAR_POLICY_READY;
 		if ((cpu_ready == EAR_POLICY_TRY_AGAIN) || (gpu_ready == EAR_POLICY_TRY_AGAIN)) *ready = EAR_POLICY_CONTINUE;
 		if ((cpu_ready != EAR_POLICY_READY) && (cpu_ready != EAR_POLICY_TRY_AGAIN)) *ready = cpu_ready;
@@ -645,13 +594,6 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
         pc_support_compute_next_state(c,&my_pol_ctx.app->pc_opt,curr);
 #endif
         ret = polsyms_fun.ok(c, curr,prev,ok);
-#if USE_GPUS
-        if (masters_info.my_master_rank>=0){
-            if ((gpu_polsyms_fun.ok!=NULL) && (my_pol_ctx.num_gpus)){
-                retg = gpu_polsyms_fun.ok(c, curr,prev,ok);
-            }
-        }
-#endif
         if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
         else return EAR_ERROR;
 
