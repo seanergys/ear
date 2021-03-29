@@ -63,8 +63,8 @@ endif
 ifdef CUDA_BASE
 core_OBJS += \
     metrics/gpu.o \
-		api/cupti.o
-		
+    api/cupti.o
+	
 endif
 
 ######## RULES

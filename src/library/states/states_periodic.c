@@ -142,7 +142,9 @@ static void report_loop_signature(uint iterations,loop_t *loop)
 /*
 *	MAIN FUNCTION: When EAR is executed in periodic mode, only first itereation and evaluating signature states are applied
 *
+*
 */
+
 void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter)
 {
 	unsigned long long VI;
@@ -225,6 +227,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 		case EVALUATING_GLOBAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
 				if ((iterations % mpi_calls_iter) != 0 ) return;
+	
       	st = policy_app_apply(&policy_freq,&ready);
       	EAR_POLICY_STATE = ready;
       	if (EAR_POLICY_STATE == EAR_POLICY_READY){

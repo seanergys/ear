@@ -43,6 +43,14 @@ typedef struct mpi_ctx{
 }mpi_ctx_t;
 #endif
 
+typedef struct node_freqs {
+	ulong *cpu_freq;
+	ulong *imc_freq;
+	ulong *gpu_freq;
+	ulong *gpu_mem_freq;
+}node_freqs_t;
+
+
 typedef struct policy_context {
 	settings_conf_t *app;
 	resched_t *reconfigure;

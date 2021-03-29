@@ -63,8 +63,9 @@ state_t policy_init(polctx_t *c)
 	ret = gpu_lib_freq_limit_set(ext_gpu_def_freq);
 	return EAR_SUCCESS;
 }
-state_t policy_apply(polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
+	ulong *new_freq=freqs->gpu_freq;
 	ulong eff_f,f;
 	uint i;
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
