@@ -29,6 +29,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <library/common/verbose_lib.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>

@@ -29,6 +29,7 @@
 #include <management/cpufreq/frequency.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
+#include <library/policies/imc_policy_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
@@ -46,7 +47,6 @@ extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
 extern ulong imc_max_khz,imc_min_khz;
 extern uint imc_mgt_compatible;
-ulong policy_max_imcfreq,policy_min_imcfreq;
 int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
 uint dyn_unc = 0;
@@ -245,11 +245,12 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
    ulong imc_up,imc_low;
+	 uint sock_id = 0;
   #if NEW_IMCFREQ
   if (dyn_unc && imc_mgt_compatible){
-    imc_up = ear_min(policy_max_imcfreq,imc_max_khz);
+    imc_up = ear_min(freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX],imc_max_khz);
     imc_up = ear_max(imc_up,imc_min_khz);
-    imc_low = ear_max(policy_min_imcfreq,imc_min_khz);
+    imc_low = ear_max(freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN],imc_min_khz);
     verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
     eards_mgt_imcfreq_set_current(imc_up,imc_low);
   }
@@ -337,22 +338,10 @@ state_t policy_init()
 			freqs_domain.gpu = POL_NOT_SUPPORTED;
 			freqs_domain.gpumem = POL_NOT_SUPPORTED;
 		}
-#if NEW_IMCFREQ
-    policy_max_imcfreq = imc_max_khz;
-    policy_min_imcfreq = imc_min_khz;
-    if (cdyn_unc != NULL && imc_mgt_compatible){ 
-        dyn_unc = 1;
-				if (cimc_set_by_hw != NULL) imc_set_by_hw = 1;
-    }
-		if (cimc_extra_th != NULL){
-			imc_extra_th = atof(cimc_extra_th);
-		}
-		verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
-#endif
 		if (crank0_do_io != NULL) rank0_do_io = 1;
     /* Even though the policy could be at the Node granularity, we will use a list */
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
-		nf.imc_freq = calloc(arch_desc.top.socket_count*2,sizeof(ulong));
+		nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
 		nf.gpu_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
 		nf.gpu_mem_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
     avg_nf.cpu_freq =  calloc(1,sizeof(ulong));
@@ -362,6 +351,21 @@ state_t policy_init()
     freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
+#if NEW_IMCFREQ
+		for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+    	nf.imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_khz;
+    	nf.imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
+		}
+    if (cdyn_unc != NULL && imc_mgt_compatible){
+        dyn_unc = 1;
+        if (cimc_set_by_hw != NULL) imc_set_by_hw = 1;
+    }
+    if (cimc_extra_th != NULL){
+      imc_extra_th = atof(cimc_extra_th);
+    }
+    verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
+#endif
+
 #if POWERCAP
     if (masters_info.my_master_rank>=0){
         pc_support_init(c);

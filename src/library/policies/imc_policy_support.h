@@ -35,5 +35,8 @@ typedef struct imc_data{
 void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,signature_t *s);
 uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig,double penalty);
 
+#define IMC_MAX 0
+#define IMC_MIN 1
+#define IMC_VAL 2
 
 #endif

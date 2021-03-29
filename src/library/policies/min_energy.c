@@ -45,7 +45,6 @@ extern unsigned long ext_def_freq;
 #endif
 
 #if NEW_IMCFREQ
-extern ulong policy_max_imcfreq,policy_min_imcfreq;
 extern uint dyn_unc;
 extern uint imc_set_by_hw;
 extern double imc_extra_th;
@@ -122,6 +121,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	uint power_status;
 	double sig_vpi,node_sig_vpi,max_vpi;
 	uint local_process_with_high_vpi;
+	uint sid = 0;
 	
 
 
@@ -206,8 +206,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 			*ready = EAR_POLICY_TRY_AGAIN;
 			*new_freq = def_freq;
 			if (dyn_unc){
-				policy_max_imcfreq = imc_max_khz;
-      	policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+				freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
+      	freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
 			}
 			return EAR_SUCCESS;
 		}
@@ -296,9 +296,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	*new_freq = best_freq;
 	#if NEW_IMCFREQ	
 	if (dyn_unc){
-   	policy_max_imcfreq = imc_max_khz;
-		if (imc_set_by_hw) 		policy_min_imcfreq = imc_min_khz;
-		else 									policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+   	freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
+		if (imc_set_by_hw) 		freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+		else 									freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
 		if (*new_freq != curr_freq) min_energy_state = COMP_IMCREF;
 		else min_energy_state = SELECT_IMCFREQ;
 	}else{
@@ -315,18 +315,18 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		/* If we are over the limit, we increase the IMC */
 		if (increase_imc){
 			verbose(2,"%sWarning, passing the limit",COL_RED);
-			policy_max_imcfreq = ear_min(policy_max_imcfreq + IMC_STEP,imc_max_khz);	
+			freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP,imc_max_khz);	
       //policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
-			policy_min_imcfreq = imc_min_khz;
-			verbose(2,"Selecting %lu - %lu and policy ready%s",policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
+			freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+			verbose(2,"Selecting %lu - %lu and policy ready%s",freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN],COL_CLR);
 			*ready = EAR_POLICY_READY;
 			min_energy_state = SELECT_CPUFREQ;
 		}else{
-			policy_max_imcfreq = ear_max(policy_max_imcfreq - IMC_STEP,imc_min_khz-IMC_RANGE);
+			freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,imc_min_khz-IMC_RANGE);
 			//policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
-			policy_min_imcfreq = imc_min_khz;
-			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
-			if (policy_max_imcfreq > (imc_min_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
+			freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN],COL_CLR);
+			if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] > (imc_min_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
 			else{ 
 				*ready = EAR_POLICY_READY;
 				min_energy_state = SELECT_CPUFREQ;
@@ -339,10 +339,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
 		*new_freq = frequency_pstate_to_freq(curr_pstate);
 		ref_imc_pstate = curr_imc_pstate;
-   	policy_max_imcfreq = curr_imc_freq;
+   	freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_freq;
 		//policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
-		policy_min_imcfreq = imc_min_khz;
-		verbose(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu",*new_freq,policy_max_imcfreq,policy_min_imcfreq);
+		freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+		verbose(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu",*new_freq,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
 		min_energy_state = SELECT_IMCFREQ;
 		*ready = EAR_POLICY_TRY_AGAIN;
 	}
