@@ -83,13 +83,15 @@ state_t policy_init(polctx_t *c)
 		#if NEW_IMCFREQ
 		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
 		#endif
-  	if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
-  	  verbose_master(2,"Error loading GPU policy");
-  	}
   	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
   	  verbose_master(2,"Error loading GPU context");
   	}
-  	if (gpus.init != NULL) gpus.init(c);
+		if (c->num_gpus){
+  		if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
+  		  verbose_master(2,"Error loading GPU policy");
+  		}
+  		if (gpus.init != NULL) gpus.init(c);
+		}
 
 		return EAR_SUCCESS;
 	} else return EAR_ERROR;
@@ -143,6 +145,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	}
 
   if (gpus.node_policy_apply != NULL){
+		/* Basic support for GPUS */
     gpus.node_policy_apply(c,sig,freqs,&gready);
   }
 
@@ -316,9 +319,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
    	freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
 		if (imc_set_by_hw) 		freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
 		else 									freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
-		if (*new_freq != curr_freq) min_energy_state = COMP_IMCREF;
-		else min_energy_state = SELECT_IMCFREQ;
+		if (*new_freq != curr_freq){ 
+			min_energy_state = COMP_IMCREF;
+		}else{ 
+			min_energy_state = SELECT_IMCFREQ;
+		}
 	}else{
+		ref_imc_pstate = imc_pstate;
 		min_energy_state = SELECT_CPUFREQ;
 		*ready = EAR_POLICY_READY;
 	}
@@ -408,7 +415,8 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
   domain->cpu = POL_GRAIN_NODE;
-  domain->mem = POL_GRAIN_NODE;
+  if (dyn_unc) 	domain->mem = POL_GRAIN_NODE;
+	else 					domain->mem = POL_NOT_SUPPORTED;
 	#if USE_GPUS
   if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
 	else domain->gpu = POL_NOT_SUPPORTED;

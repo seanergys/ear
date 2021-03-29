@@ -34,6 +34,9 @@
 #include <common/system/time.h>
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/gpu_support.h>
+#include <library/common/verbose_lib.h>
+
 
 
 
@@ -57,9 +60,21 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
+static polsym_t gpus;
+
 state_t policy_init(polctx_t *c)
 {
 	if (c!=NULL){ 
+    if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
+      verbose_master(2,"Error loading GPU context");
+    }
+    if (c->num_gpus){
+      if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
+        verbose_master(2,"Error loading GPU policy");
+      }
+      if (gpus.init != NULL) gpus.init(c);
+    }
+
 	  sig_shared_region[my_node_id].mpi_info.mpi_time=0;
   	sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
 		sig_shared_region[my_node_id].mpi_info.exec_time=0;
@@ -107,6 +122,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		state_t st;
     my_app=sig;
     ulong *new_freq = freqs->cpu_freq;
+		int gready;
 		*ready=EAR_POLICY_READY;
 
 
@@ -118,6 +134,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 			verbose(1,"Powercap is set to %uWatts",get_powercapopt_value(&c->app->pc_opt));
 		}
 #endif
+
+		if (gpus.node_policy_apply != NULL){
+			/* Basic support for GPUS */
+    	gpus.node_policy_apply(c,sig,freqs,&gready);
+  	}
 
 
     if (c->use_turbo) min_pstate=0;
@@ -262,4 +283,17 @@ state_t policy_max_tries(polctx_t *c,int *intents)
   return EAR_SUCCESS;
 }
 
+state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
+{
+  domain->cpu = POL_GRAIN_NODE;
+  domain->mem = POL_GRAIN_NODE;
+  #if USE_GPUS
+  if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
+  else domain->gpu = POL_NOT_SUPPORTED;
+  #else
+  domain->gpu = POL_NOT_SUPPORTED;
+  #endif
+  domain->gpumem = POL_NOT_SUPPORTED;
+  return EAR_SUCCESS;
+}
 

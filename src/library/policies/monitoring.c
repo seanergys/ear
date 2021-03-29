@@ -48,13 +48,15 @@ extern unsigned long ext_def_freq;
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
-	if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
-		verbose_master(2,"Error loading GPU policy");
-	}
 	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
     verbose_master(2,"Error loading GPU context");
   }
-	if (gpus.init != NULL) gpus.init(c);
+	if (c->num_gpus){
+		if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
+			verbose_master(2,"Error loading GPU policy");
+		}
+		if (gpus.init != NULL) gpus.init(c);
+	}
 	return EAR_SUCCESS;
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
@@ -66,6 +68,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 	f=DEF_FREQ(c->app->def_freq);
 	*new_freq=f;
 	if (gpus.node_policy_apply != NULL){
+		/* Basic support for GPUS */
 		gpus.node_policy_apply(c,my_sig,freqs,ready);
 	}
 	
