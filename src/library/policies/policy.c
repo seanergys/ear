@@ -193,7 +193,6 @@ ulong avg_to_khz(ulong freq_khz)
 static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     ulong *freq_set = freqs->cpu_freq;
-    ulong imc_up,imc_low;
     int i;
     char pol_grain_str[128];
     state_t s;
@@ -202,10 +201,10 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if (pc_app_info_data->mode == PC_DVFS){
         ulong f;
 				/* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data,*freq_set);
-        f = pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,*freq_set,my_sig);
-        debug("Adapting frequency because pc: selected %lu new %lu",*freq_set,f);
-        *freq_set = f;
+        pcapp_info_set_req_f(pc_app_info_data,freq_set[0]);
+        f = pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
+        debug("Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
+        freq_set[0] = f;
     }else{
         //debug("PC mode %u (should be PC_POWER)",pc_app_info_data->mode);
         //      pcapp_info_set_req_f(pc_app_info_data,*freq_set);
@@ -239,21 +238,23 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
 		if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
   }
-	avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);;
+	avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);
 	verbose(2,"Setting CPU freq to %lu",*(c->ear_frequency));
-	#if NEW_IMCFREQ
-	if (dyn_unc && imc_mgt_compatible){
-		imc_up = ear_min(policy_max_imcfreq,imc_max_khz);
-		imc_up = ear_max(imc_up,imc_min_khz);
-		imc_low = ear_max(policy_min_imcfreq,imc_min_khz);
-		verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
-  	eards_mgt_imcfreq_set_current(imc_up,imc_low);
-	}
-	#endif
 	return EAR_SUCCESS;
 }
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
+   ulong imc_up,imc_low;
+  #if NEW_IMCFREQ
+  if (dyn_unc && imc_mgt_compatible){
+    imc_up = ear_min(policy_max_imcfreq,imc_max_khz);
+    imc_up = ear_max(imc_up,imc_min_khz);
+    imc_low = ear_max(policy_min_imcfreq,imc_min_khz);
+    verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
+    eards_mgt_imcfreq_set_current(imc_up,imc_low);
+  }
+  #endif
+
 	return EAR_SUCCESS;
 }
 static state_t policy_gpu_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
@@ -294,16 +295,20 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
 	if (dom->cpu != POL_NOT_SUPPORTED){
-		avg_freq->cpu_freq[0] = policy_cpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
+		verbose_master(2,"CPUfreq selection");
+		policy_cpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
 	}
 	if (dom->mem != POL_NOT_SUPPORTED){
-		avg_freq->imc_freq[0] = policy_mem_freq_selection(c,my_sig,freqs,dom,avg_freq);
+		verbose_master(2,"MEMfreq selection");
+		policy_mem_freq_selection(c,my_sig,freqs,dom,avg_freq);
 	}
 	if (dom->gpu != POL_NOT_SUPPORTED){
-		avg_freq->gpu_freq[0] = policy_gpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
+		verbose_master(2,"GPUfreq selection");
+		policy_gpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
 	}
 	if (dom->gpumem != POL_NOT_SUPPORTED){
-		avg_freq->gpu_mem_freq[0] = policy_gpu_mem_freq_selection(c,my_sig,freqs,dom,avg_freq);
+		verbose_master(2,"GPUMEMfreq selection");
+		policy_gpu_mem_freq_selection(c,my_sig,freqs,dom,avg_freq);
 	}
 	return EAR_SUCCESS;
 }
@@ -342,7 +347,7 @@ state_t policy_init()
 		if (cimc_extra_th != NULL){
 			imc_extra_th = atof(cimc_extra_th);
 		}
-		verbose(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
+		verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
 #endif
 		if (crank0_do_io != NULL) rank0_do_io = 1;
     /* Even though the policy could be at the Node granularity, we will use a list */
@@ -443,7 +448,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 #else
     my_pol_ctx.pc_limit           = 0;
 #endif
-		verbose(2,"Default frequency set to %lu",*(my_pol_ctx.ear_frequency));
+		verbose_master(2,"Default frequency set to %lu",*(my_pol_ctx.ear_frequency));
 #if MPI
     if (PMPI_Comm_dup(masters_info.new_world_comm,&my_pol_ctx.mpi.comm)!=MPI_SUCCESS){
         error("Duplicating COMM_WORLD in policy");
@@ -496,6 +501,7 @@ state_t policy_app_apply(ulong *freq_set, int *ready)
         debug("Average frequency after app_policy is %lu",*freq_set );
         //policy_cpu_freq_selection(&policy_last_global_signature,freqs);
 				st = policy_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf);
+				*freq_set = avg_nf.cpu_freq[0];
     }
     return st;
 }
@@ -534,10 +540,11 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         if ((*ready == EAR_POLICY_READY) || (*ready == EAR_POLICY_TRY_AGAIN)){
             /* This functions  checks the powercap and the processor affinity, finally sets the CPU freq asking the eard to do it */
 	    // policy_cpu_freq_selection(my_sig,freqs);
-						st = policy_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf);
-            if (*ready == EAR_POLICY_TRY_AGAIN){ 
+					st = policy_freq_selection(c,&node_sig,freqs,&freqs_domain,&avg_nf);
+					*freq_set = avg_nf.cpu_freq[0];
+          if (*ready == EAR_POLICY_TRY_AGAIN){ 
 							*ready = EAR_POLICY_CONTINUE;
-						}
+					}
         } /* Stop*/
     } else{
         if (polsyms_fun.app_policy_apply != NULL ){

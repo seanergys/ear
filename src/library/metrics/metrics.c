@@ -778,7 +778,7 @@ int metrics_init(topology_t *topo)
 	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
 		verbose(0,"Warning: IO data not accesible");
 	}else{
-		verbose(2,"IO data initialized");
+		verbose_master(2,"IO data initialized");
 	}	
 	papi_flops_supported = init_flops_metrics();
 

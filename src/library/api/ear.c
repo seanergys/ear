@@ -1484,7 +1484,6 @@ state_t earl_periodic_actions(void *no_arg)
 	#if !MPI
    //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
    states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
-	 if (end_periodic_th) monitor_unregister(earl_monitor);
 	#endif
 	if ((seconds % 5 )== 0){ 
 		/* Computing mpi calls per second in last 5 seconds */
@@ -1520,8 +1519,8 @@ void ear_destructor()
     return;
   }
 #endif
-	end_periodic_th = 1;
-	pthread_join(earl_periodic_th,NULL);
+	monitor_unregister(earl_monitor);
+	monitor_dispose();
 	ear_finalize();
 }
 #else

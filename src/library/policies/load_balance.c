@@ -520,7 +520,7 @@ state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
 
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
-	domain->cpu = POL_GRAIN_CORE;
+	domain->cpu = my_policy_granularity;
 	domain->mem = POL_NOT_SUPPORTED;
 	domain->gpu = POL_NOT_SUPPORTED;
 	domain->gpumem = POL_NOT_SUPPORTED;
