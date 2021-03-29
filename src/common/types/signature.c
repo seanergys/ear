@@ -278,7 +278,6 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
 	s->avg_f=minis->avg_f;
 	s->def_f=minis->def_f;
 	memcpy(&(s->sig_ext->iod),&minis->iod,sizeof(io_data_t));
-	s->sig_ext->accum_rd_wr_bytes = minis->accum_rd_wr_bytes;
 	#if USE_GPUS
 	memcpy(&s->gpu_sig,&minis->gpu_sig,sizeof(gpu_signature_t));
 	#endif
@@ -300,7 +299,6 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
 	minis->avg_f=s->avg_f;
 	minis->def_f=s->def_f;
 	memcpy(&minis->iod,&(s->sig_ext->iod),sizeof(io_data_t));
-	minis->accum_rd_wr_bytes = s->sig_ext->accum_rd_wr_bytes;
 	#if USE_GPUS
 	memcpy(&minis->gpu_sig,&s->gpu_sig,sizeof(gpu_signature_t));
 	#endif

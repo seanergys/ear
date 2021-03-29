@@ -88,8 +88,9 @@
 /* This variable specifies the IMC freq must be selected by the EAR policy */
 #define SCHED_SET_IMC_FREQ						"SLURM_SET_IMC_FREQ"
 /* This variable specifies the IMC freq must be selected by the EAR policy */
-#define SCHED_IMC_EXTRA_TH "SLURM_IMC_EXTRA_TH"
-#define SCHED_LET_HW_CTRL_IMC "SLURM_LET_HW_CTRL_IMC"
+#define SCHED_IMC_EXTRA_TH 			"SLURM_IMC_EXTRA_TH"
+#define SCHED_LET_HW_CTRL_IMC 	"SLURM_LET_HW_CTRL_IMC"
+#define SCHED_RANK0_DO_IO				"SLURM_RANK0_DO_IO"
 
 
 /* Modifies the verbosity of the loader */

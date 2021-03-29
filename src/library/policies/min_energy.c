@@ -113,7 +113,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 	double power_proj,time_proj,energy_proj,best_solution,energy_ref;
 	double power_ref,time_ref,max_penalty,time_max;
 	ulong imc_pstate;
-	ullong total_io;
 
   ulong best_freq,best_pstate,freq_ref,eff_f;
 	ulong curr_freq,nominal;
@@ -136,17 +135,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 		verbose(2,"Node signature not ready, selecting %lu CPU f",*new_freq);
 		return EAR_SUCCESS;
 	}
-	verbose(2, "MR[%d] Node signatures ready",my_globalrank);
+	verbose(2, "%s------MR[%d] Node signatures ready-----%s",COL_GRE,my_globalrank,COL_CLR);
 	my_app = calloc(1,sizeof(signature_t));
 	signature_copy(my_app,sig);
 	compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions);	
 	compute_total_node_flops(lib_shared_region,sig_shared_region,my_app->FLOPS);
 	compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
-	compute_total_io(lib_shared_region,sig_shared_region,&total_io);
 	compute_vpi(&sig_vpi,sig);
 	compute_vpi(&node_sig_vpi,my_app);
 	local_process_with_high_vpi = compute_max_vpi(lib_shared_region,sig_shared_region,&max_vpi);
-	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf Acumm IO %lu MB",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi,total_io/(1024*1024));
+	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf ",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi);
 	my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
 	/* With these two lines, we force the VPI of the signatura to the most loaded in the node */
 	my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
@@ -300,7 +298,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
    	policy_max_imcfreq = imc_max_khz;
 		if (imc_set_by_hw) 		policy_min_imcfreq = imc_min_khz;
 		else 									policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
-		min_imc_pstate = imc_pstate;
 		if (*new_freq != curr_freq) min_energy_state = COMP_IMCREF;
 		else min_energy_state = SELECT_IMCFREQ;
 	}else{
@@ -318,15 +315,17 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 		if (increase_imc){
 			verbose(2,"%sWarning, passing the limit",COL_RED);
 			policy_max_imcfreq = ear_min(policy_max_imcfreq + IMC_STEP,imc_max_khz);	
-      policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+      //policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+			policy_min_imcfreq = imc_min_khz;
 			verbose(2,"Selecting %lu - %lu and policy ready%s",policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
 			*ready = EAR_POLICY_READY;
 			min_energy_state = SELECT_CPUFREQ;
 		}else{
 			policy_max_imcfreq = ear_max(policy_max_imcfreq - IMC_STEP,imc_min_khz-IMC_RANGE);
-			policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+			//policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+			policy_min_imcfreq = imc_min_khz;
 			verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,policy_max_imcfreq,policy_min_imcfreq,COL_CLR);
-			if (policy_min_imcfreq > imc_min_khz) *ready = EAR_POLICY_TRY_AGAIN;
+			if (policy_max_imcfreq > (imc_min_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
 			else{ 
 				*ready = EAR_POLICY_READY;
 				min_energy_state = SELECT_CPUFREQ;
@@ -340,7 +339,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 		*new_freq = frequency_pstate_to_freq(curr_pstate);
 		ref_imc_pstate = curr_imc_pstate;
    	policy_max_imcfreq = curr_imc_freq;
-		policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+		//policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+		policy_min_imcfreq = imc_min_khz;
 		verbose(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu",*new_freq,policy_max_imcfreq,policy_min_imcfreq);
 		min_energy_state = SELECT_IMCFREQ;
 		*ready = EAR_POLICY_TRY_AGAIN;
@@ -386,4 +386,14 @@ state_t policy_max_tries(polctx_t *c,int *intents)
   *intents = 1;
   return EAR_SUCCESS;
 }
+
+state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
+{
+  domain->cpu = POL_GRAIN_NODE;
+  domain->mem = POL_NODE;
+  domain->gpu = POL_NOT_SUPPORTED;
+  domain->gpumem = POL_NOT_SUPPORTED;
+  return EAR_SUCCESS;
+}
+
 

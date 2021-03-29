@@ -64,7 +64,15 @@ typedef struct policy_context {
 
 void print_policy_ctx(polctx_t *p);
 
+typedef struct node_freq_domain{
+	uint cpu;
+	uint mem;
+	uint gpu;
+	uint gpumem;
+}node_freq_domain_t;
+
 #define POL_GRAIN_NODE 0
 #define POL_GRAIN_CORE 1
+#define POL_NOT_SUPPORTED 100
 
 #endif //EAR_POLICIES_H

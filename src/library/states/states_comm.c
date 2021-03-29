@@ -117,7 +117,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		verbosen(2," L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f",l1_sec,l2_sec,l3_sec);
 		#endif
 		verbosen(2," VPI %.2f Total MPI calls %u",VPI,total_mpi);
-		verbosen(2,"\n\t IO DATA: %s Accumulated IO %llu MB",io_info,sig->signature.sig_ext->accum_rd_wr_bytes/(1024*124));
+		verbosen(2,"\n\t IO DATA: %s ",io_info);
     verbose(1,"%s",COL_CLR);
   }
 } 

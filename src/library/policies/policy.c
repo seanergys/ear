@@ -53,6 +53,7 @@ uint dyn_unc = 0;
 uint imc_set_by_hw = 0;
 double imc_extra_th = 0.0;
 uint total_mpi = 0;
+uint rank0_do_io = 0;
 
 
 #ifdef EARL_RESEARCH
@@ -80,7 +81,7 @@ typedef struct policy_symbols {
     state_t (*mpi_init)    (polctx_t *c);
     state_t (*mpi_end)     (polctx_t *c);
     state_t (*configure) (polctx_t *c);
-    state_t (*ganularity) (polctx_t *c,int *grain);
+    state_t (*domain) (polctx_t *c, node_freq_domain_t *domain);
 } polsym_t;
 
 // Static data
@@ -101,13 +102,14 @@ const char     *polsyms_nam[] = {
     "policy_mpi_init",
     "policy_mpi_end",
     "policy_configure",
-    "policy_granularity",
+    "policy_domain",
 };
 polctx_t my_pol_ctx;
 
 static uint policy_gpu_model;
 static int my_policy_grain = POL_GRAIN_NODE;
 static ulong *policy_freq_list,*freq_per_core;
+static node_freq_domain_t freqs_domain;
 
 /**** Auxiliary functions ***/
 state_t policy_load(char *obj_path,polsym_t *psyms)
@@ -147,9 +149,9 @@ static void print_freq_per_core()
     int i;
     for (i=0;i<arch_desc.top.cpu_count;i++)
     {
-        if (freq_per_core[i]>0) verbosen_master(3,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+        if (freq_per_core[i]>0) verbosen_master(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
     }
-    verbose_master(3," ");
+    verbose_master(2," ");
 }
 static void from_proc_to_core()
 {
@@ -159,15 +161,20 @@ static void from_proc_to_core()
     cpu_set_t m;
     for (p=0;p<lib_shared_region->num_processes;p++)
     {
+			if ((sig_shared_region[p].mpi_info.rank == 0) && rank0_do_io){
+				f = frequency_get_nominal_freq();
+				verbose_master(2,"Setting core from process %d to nominal %lu because IO",sig_shared_region[p].pid,f);
+			}else{
         f = policy_freq_list[p];
-        ccount = arch_desc.top.cpu_count;
-        m = sig_shared_region[p].cpu_mask;
-        /*debug("Freq selected for rank %d is %lu cpus %d",p,f,ccount);*/
-        for (c=0;c<ccount;c++){
-            if (CPU_ISSET(c,&m)){ 
+			}
+      ccount = arch_desc.top.cpu_count;
+      m = sig_shared_region[p].cpu_mask;
+      /*debug("Freq selected for rank %d is %lu cpus %d",p,f,ccount);*/
+      for (c=0;c<ccount;c++){
+      	if (CPU_ISSET(c,&m)){ 
                 freq_per_core[c] = f;
-            }
-        }
+      	}
+      }
     }
     return;
 }
@@ -215,7 +222,13 @@ static void policy_cpu_freq_selection(signature_t *my_sig,ulong *freq_set)
   	if (ear_affinity_is_set){ 
   		from_proc_to_core();
   	}else{
-  		for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i]=policy_freq_list[0];
+			if ((rank0_do_io) && (masters_info.my_master_rank == 0)){
+				/* Is we run the rank 0, but affinity is not set, we will run at nominal to avoid loosing performance */
+  			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = frequency_get_nominal_freq();
+				verbose_master(2,"Setting CPUfreq of MR %d to %lu becuase rank 0 is doing IO",masters_info.my_master_rank,freq_per_core[0]);
+			}else{
+  			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = policy_freq_list[0];
+			}
   	}
   }
   print_freq_per_core();
@@ -275,10 +288,19 @@ state_t policy_init()
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
 		char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
 		char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
+		char *crank0_do_io = getenv(SCHED_RANK0_DO_IO);
     state_t ret,retg=EAR_SUCCESS;
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
     }
+		if (polsyms_fun.domain != NULL){
+			ret = polsyms_fun.domain(c,&freqs_domain);
+		}else{
+			freqs_domain.cpu = POL_GRAIN_NODE;
+			freqs_domain.mem = POL_NOT_SUPPORTED;
+			freqs_domain.gpu = POL_NOT_SUPPORTED;
+			freqs_domain.gpumem = POL_NOT_SUPPORTED;
+		}
 #if NEW_IMCFREQ
     policy_max_imcfreq = imc_max_khz;
     policy_min_imcfreq = imc_min_khz;
@@ -291,6 +313,7 @@ state_t policy_init()
 		}
 		verbose(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
 #endif
+		if (crank0_do_io != NULL) rank0_do_io = 1;
     /* Even though the policy could be at the Node granularity, we will use a list */
     policy_freq_list = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
@@ -404,7 +427,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
         }
     }
 #endif
-
+#if 0
     /********* GPU PART **********/
     if (masters_info.my_master_rank>=0){
 #if USE_GPUS
@@ -453,6 +476,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
                 error("gpu_lib_init");
             }
         }
+#endif
 #endif
     }
 

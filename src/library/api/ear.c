@@ -1453,10 +1453,14 @@ void ear_new_iteration(unsigned long loop_id)
 
 /**************** New for iterative code ********************/
 //void *earl_periodic_actions(void *no_arg)
+static uint last_mpis;
+static io_data_t last_io;
 state_t earl_periodic_actions_init(void *no_arg)
 {
 		verbose_master(1,"EARL periodic thread ON");
 		seconds = 0;
+		memset((char *)&last_io,0,sizeof(io_data_t));
+		last_mpis = 0;
 		#if !MPI
     if (masters_info.my_master_rank>=0) traces_start();
     //states_periodic_begin_period(my_id, NULL, 1, 1);
@@ -1470,7 +1474,11 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 state_t earl_periodic_actions(void *no_arg)
 {
-	ullong cio;
+	io_data_t cio;
+	io_data_t io_period;
+	ull MB;
+	uint mpi_period;
+	float io_in_period,mpi_in_period;
 	seconds ++;
   ear_iterations++;
 	#if !MPI
@@ -1479,8 +1487,19 @@ state_t earl_periodic_actions(void *no_arg)
 	 if (end_periodic_th) monitor_unregister(earl_monitor);
 	#endif
 	if ((seconds % 5 )== 0){ 
+		/* Computing mpi calls per second in last 5 seconds */
 		metrics_get_total_io(&cio);
-		verbose_master(2,"Periodic_action %dsec %llu MB",seconds,cio/(1024*1024));
+		mpi_period = total_mpi_calls - last_mpis;
+		last_mpis = total_mpi_calls;	
+		mpi_in_period = (float)mpi_period/(float)5;
+		/* Computing IO RD+WR per second in last 5 seconds */
+		io_period.rchar = cio.rchar - last_io.rchar;
+		io_period.wchar = cio.wchar - last_io.wchar;
+		last_io.rchar = cio.rchar;
+		last_io.wchar = cio.wchar;
+		MB = cio.rchar/(1024*1024)+cio.wchar/(1024*1024);
+		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/5.0;
+		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
 	}
 	 return EAR_SUCCESS;
 }

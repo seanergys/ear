@@ -20,6 +20,7 @@
 
 #include <common/hardware/topology.h>
 #include <common/types/application.h>
+#include <metrics/io/io.h>
 
 /** Returns the current time in usecs */
 long long metrics_time();
@@ -43,7 +44,7 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 int time_ready_signature(ulong min_time_us);
 
 /* Returns the totall IO for this process till now */
-void metrics_get_total_io(ullong *rdwr);
+void metrics_get_total_io(io_data_t *rdwr);
 
 /** Copute the number of vector instructions since signature reports FP ops, metrics is valid signature*/
 unsigned long long metrics_vec_inst(signature_t *metrics);

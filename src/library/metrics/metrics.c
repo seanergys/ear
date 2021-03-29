@@ -687,7 +687,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
 
 	io_diff(&(metrics->sig_ext->iod),&metrics_io_init[s],&metrics_io_end[s]);
-	metrics->sig_ext->accum_rd_wr_bytes = (ulong)(metrics_io_end[s].rchar + metrics_io_end[s].wchar);
 	if (masters_info.my_master_rank>=0){
 	// Energy node
 		metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
@@ -991,19 +990,25 @@ void metrics_compute_signature_begin()
 	metrics_partial_start();
 }
 
-void metrics_get_total_io(ullong *rdwr)
+void metrics_get_total_io(io_data_t *total)
 {
 	int i;
 	io_data_t io;
 	ctx_t lio;
-	if (rdwr == NULL) return;
-	*rdwr = 0;
+	if (total == NULL) return;
+	memset((char *)total,0,sizeof(io_data_t));
 	for (i=0; i<lib_shared_region->num_processes;i++){
 		  if (io_init(&lio,sig_shared_region[i].pid) != EAR_SUCCESS){
 				verbose(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
 			}else{
 				io_read(&lio,&io);
-				*rdwr += io.rchar + io.wchar;
+				total->rchar += io.rchar;
+				total->wchar += io.wchar;
+				total->syscr += io.syscr;
+				total->syscw += io.syscw;
+				total->read_bytes += io.read_bytes;
+				total->write_bytes += io.write_bytes;
+				total->cancelled += io.cancelled;
 			}
 			io_dispose(&lio);
 	}
