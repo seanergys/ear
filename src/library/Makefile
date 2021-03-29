@@ -47,6 +47,7 @@ core_OBJS = \
     models/models.o \
     policies/policy.o \
     policies/pc_suport.o \
+    policies/gpu_support.o \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \

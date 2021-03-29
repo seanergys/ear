@@ -30,6 +30,9 @@
 #include <library/policies/policy_api.h>
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/gpu_support.h>
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 
 
 static uint last_pc=0;
@@ -42,9 +45,16 @@ extern unsigned long ext_def_freq;
 #endif
 
 
-
+static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
+	if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
+		verbose_master(2,"Error loading GPU policy");
+	}
+	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
+    verbose_master(2,"Error loading GPU context");
+  }
+	if (gpus.init != NULL) gpus.init(c);
 	return EAR_SUCCESS;
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
@@ -55,6 +65,9 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 	*ready=EAR_POLICY_READY;
 	f=DEF_FREQ(c->app->def_freq);
 	*new_freq=f;
+	if (gpus.node_policy_apply != NULL){
+		gpus.node_policy_apply(c,my_sig,freqs,ready);
+	}
 	
 	return EAR_SUCCESS;
 }
@@ -85,7 +98,12 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
   domain->cpu = POL_GRAIN_NODE;
   domain->mem = POL_NOT_SUPPORTED;
+	#if USE_GPUS		
+  if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
+  else domain->gpu = POL_NOT_SUPPORTED;
+	#else
   domain->gpu = POL_NOT_SUPPORTED;
+	#endif
   domain->gpumem = POL_NOT_SUPPORTED;
   return EAR_SUCCESS;
 }

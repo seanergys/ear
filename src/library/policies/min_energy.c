@@ -33,7 +33,9 @@
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/imc_policy_support.h>
+#include <library/policies/gpu_support.h>
 #include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 
 
 typedef unsigned long ulong;
@@ -72,6 +74,7 @@ static uint use_imc_ref = 0;
 #endif
 
 static ulong req_f;
+static polsym_t gpus;
 
 state_t policy_init(polctx_t *c)
 {
@@ -80,6 +83,14 @@ state_t policy_init(polctx_t *c)
 		#if NEW_IMCFREQ
 		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
 		#endif
+  	if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
+  	  verbose_master(2,"Error loading GPU policy");
+  	}
+  	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
+  	  verbose_master(2,"Error loading GPU context");
+  	}
+  	if (gpus.init != NULL) gpus.init(c);
+
 		return EAR_SUCCESS;
 	} else return EAR_ERROR;
 }
@@ -122,6 +133,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	double sig_vpi,node_sig_vpi,max_vpi;
 	uint local_process_with_high_vpi;
 	uint sid = 0;
+	int gready;
 	
 
 
@@ -129,6 +141,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     *ready=EAR_POLICY_CONTINUE;
     return EAR_ERROR;
 	}
+
+  if (gpus.node_policy_apply != NULL){
+    gpus.node_policy_apply(c,sig,freqs,&gready);
+  }
+
 
 	if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
 		*new_freq = *(c->ear_frequency);
@@ -392,7 +409,12 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
   domain->cpu = POL_GRAIN_NODE;
   domain->mem = POL_GRAIN_NODE;
+	#if USE_GPUS
+  if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
+	else domain->gpu = POL_NOT_SUPPORTED;
+	#else
   domain->gpu = POL_NOT_SUPPORTED;
+	#endif
   domain->gpumem = POL_NOT_SUPPORTED;
   return EAR_SUCCESS;
 }

@@ -27,6 +27,10 @@
 #include <common/output/verbose.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
+#if USE_GPUS
+#include <library/metrics/gpu.h>
+#endif
+
 
 
 static uint last_pc=0;

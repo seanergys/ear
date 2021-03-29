@@ -55,39 +55,6 @@ double imc_extra_th = 0.0;
 uint total_mpi = 0;
 uint rank0_do_io = 0;
 
-
-#ifdef EARL_RESEARCH
-extern unsigned long ext_def_freq;
-#define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
-#else
-#define DEF_FREQ(f) f
-#endif
-
-#if POWERCAP
-extern pc_app_info_t *pc_app_info_data;
-#endif
-
-typedef struct policy_symbols {
-    state_t (*init)        (polctx_t *c);
-    state_t (*node_policy_apply)       (polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready);
-    state_t (*app_policy_apply)       (polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,int *ready);
-    state_t (*get_default_freq)   (polctx_t *c, ulong *freq_set);
-    state_t (*ok)          (polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *ok);
-    state_t (*max_tries)   (polctx_t *c,int *intents);
-    state_t (*end)         (polctx_t *c);
-    state_t (*loop_init)   (polctx_t *c,loop_id_t *loop_id);
-    state_t (*loop_end)    (polctx_t *c,loop_id_t *loop_id);
-    state_t (*new_iter)    (polctx_t *c,loop_id_t *loop_id);
-    state_t (*mpi_init)    (polctx_t *c);
-    state_t (*mpi_end)     (polctx_t *c);
-    state_t (*configure) (polctx_t *c);
-    state_t (*domain) (polctx_t *c, node_freq_domain_t *domain);
-} polsym_t;
-
-// Static data
-static polsym_t polsyms_fun;
-static void    *polsyms_obj = NULL;
-const int       polsyms_n = 14;
 const char     *polsyms_nam[] = {
     "policy_init",
     "policy_apply",
@@ -104,6 +71,23 @@ const char     *polsyms_nam[] = {
     "policy_configure",
     "policy_domain",
 };
+
+
+#ifdef EARL_RESEARCH
+extern unsigned long ext_def_freq;
+#define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
+#else
+#define DEF_FREQ(f) f
+#endif
+
+#if POWERCAP
+extern pc_app_info_t *pc_app_info_data;
+#endif
+
+
+static polsym_t polsyms_fun;
+static void    *polsyms_obj = NULL;
+const int       polsyms_n = 14;
 polctx_t my_pol_ctx;
 node_freqs_t nf,avg_nf;
 
@@ -149,9 +133,9 @@ static void print_freq_per_core()
     int i;
     for (i=0;i<arch_desc.top.cpu_count;i++)
     {
-        if (freq_per_core[i]>0) verbosen_master(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+        if (freq_per_core[i]>0) verbosen_master(3,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
     }
-    verbose_master(2," ");
+    verbose_master(3," ");
 }
 static void from_proc_to_core(ulong *cpuf)
 {
@@ -286,6 +270,8 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
      }
 #endif
         /* Pending: We must filter the GPUs I'm using */
+		 for (i=0;i<c->num_gpus;i++) verbosen_master(2," GPU freq[%d] = %.2f ",i,(float)gpu_f[i]/1000000.0);
+		 verbose_master(2,"");
      eards_gpu_set_freq(c->num_gpus,gpu_f);
 #endif
 		avg_freq->gpu_freq[0] = compute_avg_freq(gpu_f,my_sig->gpu_sig.num_gpus);
