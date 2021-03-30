@@ -30,42 +30,39 @@
 #if USE_GPUS
 #include <library/metrics/gpu.h>
 #endif
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 
 
 
-static uint last_pc=0;
-
-#ifdef EARL_RESEARCH
-extern unsigned long ext_def_freq;
-#define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
-#else
-#define DEF_FREQ(f) f
-#endif
-static ulong *ext_gpu_def_freq;
-static ulong g_freq=0;
-
-
-
+static const ulong **gpuf_list;
+static const uint *gpuf_list_items;
+static  ulong *gfreqs;
 state_t policy_init(polctx_t *c)
 {
-	char *gpu_freq=getenv(SCHED_EAR_GPU_DEF_FREQ);
-	int i;
-	state_t ret;
-	gpu_lib_alloc_array(&ext_gpu_def_freq);
-	if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){ 
-		g_freq=atol(gpu_freq);
-		for (i=0;i<c->num_gpus;i++) ext_gpu_def_freq[i]=g_freq;
-	}else{ 
-		/* We can uncomment this line in case we want to guarantee GPU is set at the max frequency */
-		/* We assume the scheduler will offer some flag to set, so we just the already existing one */
-		/* gpu_lib_freq_limit_get_max(&c->gpu_mgt_ctx, ext_gpu_def_freq); */
-		gpu_lib_freq_limit_get_current(&c->gpu_mgt_ctx, ext_gpu_def_freq);
-	}
-	for (i=0;i<c->num_gpus;i++){
-		verbose(1,"GPU_monitoring: GPU %d initialized with %lu",i,ext_gpu_def_freq[i]);
-	}
-	ret = gpu_lib_freq_limit_set(ext_gpu_def_freq);
-	return EAR_SUCCESS;
+  int i,j;
+  ulong g_freq = 0;
+  char *gpu_freq=getenv(SCHED_EAR_GPU_DEF_FREQ);
+  state_t ret;
+  if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
+    g_freq=atol(gpu_freq);
+  }
+  gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
+  for (i=0;i<c->num_gpus;i++){
+    verbose_master(3,"Freqs in GPU[%d]=%u",i,gpuf_list_items[i]);
+    for (j=0;j<gpuf_list_items[i];j++){
+      verbose_master(3,"GPU[%d][%d]=%.2f",i,j,(float)gpuf_list[i][j]/1000000.0);
+    }
+  }
+  gpu_lib_alloc_array(&gfreqs);
+  for (i=0;i<c->num_gpus;i++){
+    if (g_freq) gfreqs[i] = g_freq;
+    else        gfreqs[i] = gpuf_list[i][0];
+    verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
+  }
+  gpu_lib_freq_limit_set(gfreqs);
+
+  return EAR_SUCCESS;
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
@@ -80,7 +77,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 	}
 	
 	*ready = EAR_POLICY_READY;
-	memcpy(new_freq,ext_gpu_def_freq,sizeof(ulong)*c->num_gpus);
+	memcpy(new_freq,gfreqs,sizeof(ulong)*c->num_gpus);
 	
 	return EAR_SUCCESS;
 }

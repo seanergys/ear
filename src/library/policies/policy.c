@@ -27,6 +27,7 @@
 #include <common/config/config_env.h>
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
+#include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
 #include <library/policies/imc_policy_support.h>
@@ -272,7 +273,10 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         /* Pending: We must filter the GPUs I'm using */
 		 for (i=0;i<c->num_gpus;i++) verbosen_master(2," GPU freq[%d] = %.2f ",i,(float)gpu_f[i]/1000000.0);
 		 verbose_master(2,"");
-     eards_gpu_set_freq(c->num_gpus,gpu_f);
+		 if (gpu_lib_freq_limit_set(gpu_f) != EAR_SUCCESS){
+			verbose_master(2,"GPU freq set error ");
+		 }
+     // eards_gpu_set_freq(c->num_gpus,gpu_f);
 #endif
 		avg_freq->gpu_freq[0] = compute_avg_freq(gpu_f,my_sig->gpu_sig.num_gpus);
     return EAR_SUCCESS;
