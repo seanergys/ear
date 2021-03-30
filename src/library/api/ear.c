@@ -44,8 +44,10 @@
 #include <common/system/monitor.h>
 
 #include <library/common/externs_alloc.h>
+#include <library/common/externs.h>
 #include <library/common/global_comm.h>
 #include <library/common/library_shared_data.h>
+#include <library/api/clasify.h>
 
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
@@ -1462,6 +1464,7 @@ state_t earl_periodic_actions_init(void *no_arg)
 		memset((char *)&last_io,0,sizeof(io_data_t));
 		last_mpis = 0;
 		#if !MPI
+		ear_periodic_mode = PERIODIC_MODE_ON;
     if (masters_info.my_master_rank>=0) traces_start();
     //states_periodic_begin_period(my_id, NULL, 1, 1);
     ear_iterations = 0;
@@ -1478,6 +1481,7 @@ state_t earl_periodic_actions(void *no_arg)
 	io_data_t io_period;
 	ull MB;
 	uint mpi_period;
+	uint earl_phase_classification;
 	float io_in_period,mpi_in_period;
 	seconds ++;
   ear_iterations++;
@@ -1499,6 +1503,19 @@ state_t earl_periodic_actions(void *no_arg)
 		MB = cio.rchar/(1024*1024)+cio.wchar/(1024*1024);
 		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/5.0;
 		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
+
+	if (classify(MB,total_mpi_calls,io_in_period,mpi_in_period,dynais_enabled,ear_status,ear_periodic_mode,EAR_STATE,&earl_phase_classification) != EAR_SUCCESS){
+		verbose_master(2,"Error in app classification");
+	}
+	if (earl_phase_classification == APP_COMP_BOUND){
+		verbose_master(2,"Phase COMP bound");
+	}
+	if (earl_phase_classification == APP_IO_BOUND){
+		verbose_master(2,"Phase IO bound");
+	}
+	if (earl_phase_classification == APP_MPI_BOUND){
+		verbose_master(2,"Phase MPI bound");
+	}
 	}
 	 return EAR_SUCCESS;
 }

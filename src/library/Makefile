@@ -42,6 +42,7 @@ comm_OBJS = \
 
 core_OBJS = \
     api/ear.o \
+    api/clasify.o \
     common/library_shared_data.o \
     metrics/metrics.o \
     models/models.o \

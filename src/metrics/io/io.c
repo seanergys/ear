@@ -49,25 +49,25 @@ static void assign_token_value(io_data_t *iodata,char *token,char *value)
 {
 
 	if (!strcmp(token,"rchar")){
-		iodata->rchar=atoi(value);
+		iodata->rchar=atoll(value);
 	}
 	if (!strcmp(token,"wchar")){
-		iodata->wchar=atoi(value);
+		iodata->wchar=atoll(value);
 	}
 	if (!strcmp(token,"syscr")){
-		iodata->syscr=atoi(value);
+		iodata->syscr=atoll(value);
 	}
 	if (!strcmp(token,"syscw")){
-		iodata->syscw=atoi(value);
+		iodata->syscw=atoll(value);
 	}
 	if (!strcmp(token,"read_bytes")){
-		iodata->read_bytes=atoi(value);
+		iodata->read_bytes=atoll(value);
 	}
 	if (!strcmp(token,"write_bytes")){
-		iodata->write_bytes=atoi(value);
+		iodata->write_bytes=atoll(value);
 	}
 	if (!strcmp(token,"cancelled_write_bytes")){
-		iodata->cancelled=atoi(value);
+		iodata->cancelled=atoll(value);
 	}
 }
 state_t io_read(ctx_t *c, io_data_t *iodata)
