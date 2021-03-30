@@ -54,9 +54,13 @@ extern unsigned long ext_def_freq;
 #define MED_GPU_FREQ_RED 0.25
 #define HIGH_GPU_FREQ_RED 0.1
 
-
+static ulong **gpuf_list;
+static ulong *gpuf_list_items;
 state_t policy_init(polctx_t *c)
 {
+	int i;
+	gpu_lib_freq_list(&gpuf_list, &gpuf_list_items)
+	verbose_master(2,"
 	return EAR_SUCCESS;
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
