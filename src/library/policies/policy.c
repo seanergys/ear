@@ -55,7 +55,9 @@ uint imc_set_by_hw = 0;
 double imc_extra_th = 0.0;
 uint total_mpi = 0;
 uint rank0_do_io = 0;
-
+#if NEW_IMCFREQ
+#define IMC_STEP 100000
+#endif
 const char     *polsyms_nam[] = {
     "policy_init",
     "policy_apply",
@@ -235,6 +237,11 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
   if (dyn_unc && imc_mgt_compatible){
     imc_up = ear_min(freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX],imc_max_khz);
     imc_up = ear_max(imc_up,imc_min_khz);
+    /*  If maximum imcfreq set by the policy is the minimum value let by hardware,
+     *  increase it one step to give hardware a bit of freedom */
+    if (imc_up == imc_min_khz){
+        imc_up += IMC_STEP;
+    }
     imc_low = ear_max(freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN],imc_min_khz);
     verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
     eards_mgt_imcfreq_set_current(imc_up,imc_low);
