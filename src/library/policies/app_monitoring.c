@@ -76,7 +76,7 @@ state_t policy_end(polctx_t *c)
 	int fd;
 	char buff[256],buff2[300];
 	char file_name[256];
-	char *stats=getenv(EAR_STATS);
+	char *stats=getenv(SCHED_GET_EAR_STATS);
 	/* Global statistics */
   timestamp_getfast(&end);
   elap=timestamp_diff(&end,&app_init,TIME_USECS);

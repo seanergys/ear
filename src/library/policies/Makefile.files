@@ -2,6 +2,7 @@ poli_OBJS = \
     policy.o \
     pc_suport.o \
     gpu_support.o \
+		mpi_stats_support.o \
 		imc_policy_support.o
 
 poli_BINS = \

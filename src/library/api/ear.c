@@ -631,6 +631,7 @@ void ear_init()
 	char *summary_pathname;
 	char *tmp;
 	state_t st;
+	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	char *ext_def_freq_str=getenv(SCHED_EAR_DEF_FREQ);
 
 
@@ -823,22 +824,22 @@ void ear_init()
 	/* Processes in same node connectes each other*/
 
     /* create verbose file for each job */
-    #if PER_TASK_VERBOSE
+	if (verb_path != NULL){
     if (masters_info.my_master_rank >= 0){
-      if (( mkdir ("VERBOSE_FILES", 0700) < 0) && (errno != EEXIST)) {
+      if (( mkdir (verb_path, 0700) < 0) && (errno != EEXIST)) {
         error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
       }else{
 
         char file_name[128];
-        sprintf(file_name, "VERBOSE_FILES/verbose.%d.%d.%d.%d", masters_info.my_master_rank, my_step_id, my_job_id,getpid());
-        verbose(2,"Using %s as verbose file",file_name);
+        sprintf(file_name, "%s/earl_log.%d.%d.%d.%d", verb_path,masters_info.my_master_rank, my_step_id, my_job_id,getpid());
+        verbose(2,"Using %s as earl log file",file_name);
         int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
         if (fd != -1){
             verb_channel = fd;
         }
       }
     }
-    #endif
+	}
 
 
 	// Initializing architecture and topology
