@@ -35,6 +35,7 @@
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/gpu_support.h>
+#include <library/policies/imc_policy_support.h>
 #include <library/common/verbose_lib.h>
 
 
@@ -49,9 +50,20 @@ typedef unsigned long ulong;
 extern ulong policy_max_imcfreq,policy_min_imcfreq;
 extern uint dyn_unc;
 extern ulong imc_max_khz,imc_min_khz;
-static imc_data_t *imc_data;
-ulong avg_to_khz(ulong freq_khz);
+extern ulong def_imc_max_khz,def_imc_min_khz;
 extern int my_globalrank;
+extern uint imc_set_by_hw;
+extern double imc_extra_th;
+ulong avg_to_khz(ulong freq_khz);
+#define IMC_STEP 100000
+#define IMC_RANGE 100000
+#define SELECT_CPUFREQ 100
+#define SELECT_IMCFREQ 101
+#define COMP_IMCREF		 102
+static imc_data_t *imc_data;
+static uint min_time_state = SELECT_CPUFREQ;
+static uint last_cpu_pstate,last_imc_pstate, ref_imc_pstate;
+static uint max_imc_pstate;
 #endif
 
 #ifdef EARL_RESEARCH
@@ -124,11 +136,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     double power_ref,time_ref,time_current;
     ulong best_freq,best_pstate,freq_ref;
     ulong curr_freq;
-    ulong curr_pstate,def_pstate,def_freq;
+    ulong curr_pstate,def_pstate,def_freq, imc_pstate;
     state_t st;
     double sig_vpi, node_sig_vpi;
     // my_app=sig;
     int gready;
+    uint sid = 0;
 
     *ready=EAR_POLICY_READY;
 
@@ -293,7 +306,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
 #endif
 #if NEW_IMCFREQ
-    }else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
+    }else if ((min_time_state == SELECT_IMCFREQ) && (dyn_unc)){
         verbose(2,"SELECT_IMCFREQ state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",
                 min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,imc_pstate);
         *new_freq = frequency_pstate_to_freq(curr_pstate);
@@ -306,7 +319,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             verbose(2,"Selecting %lu - %lu and policy ready%s",freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN],COL_CLR);
             *ready = EAR_POLICY_READY;
-            min_energy_state = SELECT_CPUFREQ;
+            min_time_state = SELECT_CPUFREQ;
         }else{
             freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,imc_min_khz-IMC_RANGE);
             //policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
@@ -315,10 +328,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] > (imc_min_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
             else{ 
                 *ready = EAR_POLICY_READY;
-                min_energy_state = SELECT_CPUFREQ;
+                min_time_state = SELECT_CPUFREQ;
             }
         }
-    }else if (min_energy_state == COMP_IMCREF){
+    }else if (min_time_state == COMP_IMCREF){
         ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
         ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
         *new_freq = frequency_pstate_to_freq(curr_pstate);
@@ -327,11 +340,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         //policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
         verbose(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu",*new_freq,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
-        min_energy_state = SELECT_IMCFREQ;
+        min_time_state = SELECT_IMCFREQ;
         *ready = EAR_POLICY_TRY_AGAIN;
     }
 #endif
-    verbose(2,"Next min_energy state %u next policy state %u",min_energy_state,*ready);
+    verbose(2,"Next min_time state %u next policy state %u",min_time_state,*ready);
     return EAR_SUCCESS;
 }
 
