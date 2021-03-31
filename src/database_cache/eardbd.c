@@ -33,8 +33,8 @@ cluster_conf_t conf_clus;
 
 // Input buffers
 packet_header_t input_header;
-char input_buffer[SZ_BUFF_BIG];
-char extra_buffer[SZ_BUFF_BIG];
+char input_buffer[SZ_BUFFER];
+char extra_buffer[SZ_BUFFER];
 
 // Sockets
 static socket_t sockets[4];

@@ -30,7 +30,7 @@ state_t pci_find(uint id, pci_t *pci)
 
 state_t pci_open(pci_t *pci, uint bus, uint device, uint function)
 {
-	char path[SZ_BUFF_BIG];
+	char path[SZ_BUFFER];
 
 	//
 	if (pci->init == 1) {

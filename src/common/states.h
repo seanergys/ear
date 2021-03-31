@@ -36,7 +36,7 @@
 #define EAR_UNDEFINED			-24
 
 /* error buffer */
-char state_buffer[SZ_BUFF_BIG];
+char state_buffer[SZ_BUFFER];
 
 /* type & functions */
 typedef int state_t;
