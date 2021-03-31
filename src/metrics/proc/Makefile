@@ -1,4 +1,3 @@
-SRCDIR = ../../
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 ######## FILES
@@ -11,7 +10,6 @@ all: $(proc_OBJS)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
-#	$(CC) $(CFLAGS) -o stat $@
 
 ######## OPTIONS
 

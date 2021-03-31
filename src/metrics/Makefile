@@ -80,6 +80,7 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'accumulators' $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
+	@ $(MAKE) -C 'proc'           $* || exit
 
 ######## DEPENDENCIES
 

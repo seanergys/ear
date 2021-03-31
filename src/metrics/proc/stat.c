@@ -276,7 +276,7 @@ state_t proc_stat_data_copy(proc_stat_t *dest, proc_stat_t *src)
 
 state_t proc_stat_data_print(proc_stat_t *ps)
 {
-	printf("pid:    %lu\n", ps->pid);
+	printf("pid:    %d\n", ps->pid);
 	printf("file:   %s\n", ps->file);
 	printf("utime:  %lu\n", ps->utime);
 	printf("stime:  %lu\n", ps->stime);
