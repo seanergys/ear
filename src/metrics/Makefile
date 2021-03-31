@@ -75,6 +75,7 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'frequency'    $* || exit
+	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'accumulators' $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit

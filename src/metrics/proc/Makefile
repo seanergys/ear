@@ -1,4 +1,4 @@
-SRCDIR = ../../
+#SRCDIR = ../../
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 ######## FILES
