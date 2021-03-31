@@ -41,7 +41,7 @@ typedef struct suscription_s
 // Example (test will receive NULL):
 //	state_t test(void *arg);
 //
-// 	suscription_t sus;
+// 	suscription_t *sus;
 // 	state_t s;
 //
 // 	sus = suscription();

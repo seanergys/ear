@@ -26,8 +26,8 @@ extern cluster_conf_t conf_clus;
 
 // Buffers
 extern packet_header_t input_header;
-extern char input_buffer[SZ_BUFF_BIG];
-extern char extra_buffer[SZ_BUFF_BIG];
+extern char input_buffer[SZ_BUFFER];
+extern char extra_buffer[SZ_BUFFER];
 
 // Sockets
 extern socket_t *smets_srv;
@@ -197,7 +197,7 @@ static void body_connections()
 						break;
 					}
 					if (verbosity) {
-						sockets_get_hostname(&addr_cli, extra_buffer, SZ_BUFF_BIG);
+						sockets_get_hostname(&addr_cli, extra_buffer, SZ_BUFFER);
 					}
 					if (!sync_fd_is_mirror(i)) {
 						// Disconnect if previously connected
@@ -242,7 +242,7 @@ static void body_connections()
 						sockets_unrecognized += 1;
 					}
 					if (verbosity) {
-						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFF_BIG);
+						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFFER);
 						verb_who("disconnecting from host %s (errno: '%d', strerrno: '%s')",
 								extra_buffer, intern_error_num, intern_error_str);
 					}
