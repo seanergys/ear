@@ -64,7 +64,8 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-	return	mpi_app_end(c);	
+	if (c != NULL) return	mpi_app_end(c);	
+	else return EAR_ERROR;
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
@@ -119,9 +120,11 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 }
 state_t policy_mpi_init(polctx_t *c)
 {
-	return mpi_call_init(c);
+	if (c != NULL) return mpi_call_init(c);
+	else return EAR_ERROR;
 }
 state_t policy_mpi_end(polctx_t *c)
 {
-	return mpi_call_end(c);
+	if (c != NULL) return mpi_call_end(c);
+	else return EAR_ERROR;
 }
