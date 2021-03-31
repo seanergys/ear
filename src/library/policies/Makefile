@@ -10,6 +10,7 @@ include ./Makefile.files
 
 poli_DEPS = \
 	  $(SRCDIR)/library/policies/imc_policy_support.o \
+	  $(SRCDIR)/library/policies/mpi_stats_support.o \
 	  $(SRCDIR)/library/policies/gpu_support.o \
 	  $(SRCDIR)/library/policies/pc_suport.o \
     $(SRCDIR)/common/libcommon.a \
