@@ -54,7 +54,6 @@ uint dyn_unc = 0;
 uint imc_set_by_hw = 0;
 double imc_extra_th = 0.0;
 uint total_mpi = 0;
-uint rank0_do_io = 0;
 #if NEW_IMCFREQ
 #define IMC_STEP 100000
 #endif
@@ -148,12 +147,7 @@ static void from_proc_to_core(ulong *cpuf)
     cpu_set_t m;
     for (p=0;p<lib_shared_region->num_processes;p++)
     {
-			if ((sig_shared_region[p].mpi_info.rank == 0) && rank0_do_io){
-				f = frequency_get_nominal_freq();
-				verbose_master(2,"Setting core from process %d to nominal %lu because IO",sig_shared_region[p].pid,f);
-			}else{
-        f = cpuf[p];
-			}
+      f = cpuf[p];
       ccount = arch_desc.top.cpu_count;
       m = sig_shared_region[p].cpu_mask;
       /*debug("Freq selected for rank %d is %lu cpus %d",p,f,ccount);*/
@@ -210,13 +204,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
   	if (ear_affinity_is_set){ 
   		from_proc_to_core(freq_set);
   	}else{
-			if ((rank0_do_io) && (masters_info.my_master_rank == 0)){
-				/* Is we run the rank 0, but affinity is not set, we will run at nominal to avoid loosing performance */
-  			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = frequency_get_nominal_freq();
-				verbose_master(2,"Setting CPUfreq of MR %d to %lu becuase rank 0 is doing IO",masters_info.my_master_rank,freq_per_core[0]);
-			}else{
-  			for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = freq_set[0];
-			}
+  		for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = freq_set[0];
   	}
   }
   print_freq_per_core();
@@ -322,7 +310,6 @@ state_t policy_init()
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
 		char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
 		char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
-		char *crank0_do_io = getenv(SCHED_RANK0_DO_IO);
     state_t ret,retg=EAR_SUCCESS;
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
@@ -335,7 +322,6 @@ state_t policy_init()
 			freqs_domain.gpu = POL_NOT_SUPPORTED;
 			freqs_domain.gpumem = POL_NOT_SUPPORTED;
 		}
-		if (crank0_do_io != NULL) rank0_do_io = 1;
     /* Even though the policy could be at the Node granularity, we will use a list */
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
 		nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));

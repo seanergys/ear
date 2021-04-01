@@ -61,6 +61,9 @@
 #include <daemon/app_mgt.h>
 #include <daemon/shared_configuration.h>
 
+#include <metrics/io/io.h>
+#include <metrics/proc/stat.h>
+
 #ifdef USE_GPUS
 #include <library/api/cupti.h>
 #endif
@@ -1458,11 +1461,17 @@ void ear_new_iteration(unsigned long loop_id)
 //void *earl_periodic_actions(void *no_arg)
 static uint last_mpis;
 static io_data_t last_io;
+static ctx_t stat_ctx;
+static proc_stat_t c_stat;
+static long tics_per_second;
 state_t earl_periodic_actions_init(void *no_arg)
 {
 		verbose_master(1,"EARL periodic thread ON");
 		seconds = 0;
 		memset((char *)&last_io,0,sizeof(io_data_t));
+		tics_per_second = sysconf(_SC_CLK_TCK);
+		proc_stat_load();
+		proc_stat_init(&stat_ctx,sig_shared_region[my_node_id].pid);
 		last_mpis = 0;
 		#if !MPI
 		ear_periodic_mode = PERIODIC_MODE_ON;
@@ -1484,7 +1493,10 @@ state_t earl_periodic_actions(void *no_arg)
 	uint mpi_period;
 	uint earl_phase_classification;
 	float io_in_period,mpi_in_period;
+	char stat_buff[128];
 	seconds ++;
+	ulong total_time;
+	float cpu_util;
   ear_iterations++;
 	#if !MPI
    //states_periodic_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period);
@@ -1504,6 +1516,11 @@ state_t earl_periodic_actions(void *no_arg)
 		MB = cio.rchar/(1024*1024)+cio.wchar/(1024*1024);
 		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/5.0;
 		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
+		proc_stat_read(&stat_ctx,&c_stat);
+		proc_stat_data_to_str(&c_stat,stat_buff,sizeof(stat_buff));
+		total_time = c_stat.utime + c_stat.stime + c_stat.cutime + c_stat.cstime;
+		cpu_util = 100 * (((float)total_time / (float)tics_per_second) / (float)seconds);
+		verbose_master(2,"EARL: %s CPU util %.2f",stat_buff,cpu_util);
 
 	if (classify(MB,total_mpi_calls,io_in_period,mpi_in_period,dynais_enabled,ear_status,ear_periodic_mode,EAR_STATE,&earl_phase_classification) != EAR_SUCCESS){
 		verbose_master(2,"Error in app classification");

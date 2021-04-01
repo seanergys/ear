@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <ctype.h>
@@ -150,8 +150,10 @@ state_t proc_stat_dispose(ctx_t *c)
 
 static state_t scan_buffer(char *tok, proc_stat_t *ps)
 {
+	int ret;
+	debug("processing %lu bytes %s",strlen(tok),tok);
 	if (mode == 1) {
-	sscanf(tok, "%c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
+	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
 		"%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu" \
 		"%d %d %u %u %llu %lu %ld",
 		&ps->state, &ps->ppid, &ps->pgrp, &ps->session, &ps->tty_nr, &ps->tpgid,
@@ -164,11 +166,11 @@ static state_t scan_buffer(char *tok, proc_stat_t *ps)
 		&ps->policy, &ps->delayacct_blkio_ticks, &ps->guest_time, &ps->cguest_time);
 	}
 	if (mode == 2) {
-	sscanf(tok, "%c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
+	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
 		"%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu" \
 		"%d %d %u %u %llu %lu %ld %lu %lu %lu",
 		&ps->state, &ps->ppid, &ps->pgrp, &ps->session, &ps->tty_nr, &ps->tpgid,
-		&ps->flags, &ps->minflt, &ps->cminflt, &ps->cmajflt, &ps->utime, &ps->stime,
+		&ps->flags, &ps->minflt, &ps->cminflt, &ps->majflt, &ps->cmajflt, &ps->utime, &ps->stime,
 		&ps->cutime, &ps->cstime, &ps->priority, &ps->nice, &ps->num_threads,
 		&ps->itrealvalue, &ps->starttime, &ps->vsize, &ps->rss, &ps->rsslim,
 		&ps->startcode, &ps->endcode, &ps->startstack, &ps->kstkesp, &ps->kstkeip,
@@ -178,7 +180,7 @@ static state_t scan_buffer(char *tok, proc_stat_t *ps)
 		&ps->start_data, &ps->end_data, &ps->start_brk);
 	}
 	if (mode == 3) {
-	sscanf(tok, "%c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
+	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
 		"%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu" \
 		"%d %d %u %u %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %d",
 		&ps->state, &ps->ppid, &ps->pgrp, &ps->session, &ps->tty_nr, &ps->tpgid,
@@ -192,6 +194,7 @@ static state_t scan_buffer(char *tok, proc_stat_t *ps)
 		&ps->start_data, &ps->end_data, &ps->start_brk, &ps->arg_start, &ps->arg_end,
 		&ps->env_start, &ps->env_end, &ps->exit_code);
 	}
+	debug("mode %d ret %d",mode,ret);
 	return EAR_SUCCESS;
 }
 
@@ -219,8 +222,10 @@ state_t proc_stat_read(ctx_t *c, proc_stat_t *ps)
 	debug("Read a total of %ld bytes", soff);
 	//
 	if (buffer[soff-1] != '\n') {
+		debug("Buffer to short to read");
 		return_msg(EAR_ERROR, "Buffer to short to read /proc/<pid>/stat");
 	}
+	buffer[soff-1] = '\0';
 	// Destroying (name proc)
 	char *tok = strtok(buffer, ")");
 	sscanf(tok, "%d (%s", &ps->pid, ps->file);
@@ -228,7 +233,7 @@ state_t proc_stat_read(ctx_t *c, proc_stat_t *ps)
 	if (state_fail(s = scan_buffer(strtok(NULL, ")"), ps))) {
 		return s;
 	}
-	proc_stat_data_print(ps);
+	// proc_stat_data_print(ps);
 	return EAR_SUCCESS;
 }
 
@@ -282,6 +287,12 @@ state_t proc_stat_data_print(proc_stat_t *ps)
 	printf("stime:  %lu\n", ps->stime);
 	printf("cutime: %ld\n", ps->cutime);
 	printf("cstime: %ld\n", ps->cstime);
+	return EAR_SUCCESS;
+}
+
+state_t proc_stat_data_to_str(proc_stat_t *ps,char *buffer,size_t len)
+{
+	snprintf(buffer,len,"(pid %d state %c utime %lu stime %lu cutime %ld cstime %ld)",ps->pid,ps->state,ps->utime,ps->stime,ps->cutime,ps->cstime);
 	return EAR_SUCCESS;
 }
 

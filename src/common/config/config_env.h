@@ -90,7 +90,6 @@
 /* This variable specifies the IMC freq must be selected by the EAR policy */
 #define SCHED_IMC_EXTRA_TH 			"SLURM_IMC_EXTRA_TH"
 #define SCHED_LET_HW_CTRL_IMC 	"SLURM_LET_HW_CTRL_IMC"
-#define SCHED_RANK0_DO_IO				"SLURM_RANK0_DO_IO"
 
 /* Asks EARL to write verbose messages in separate per_task files */
 #define SCHED_EARL_VERBOSE_PATH "SLURM_EARL_VERBOSE_PATH"
