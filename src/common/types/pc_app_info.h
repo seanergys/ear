@@ -22,15 +22,16 @@
 #include <common/config/config_dev.h>
 #include <common/types/types.h>
 typedef struct pc_app_info{
-	uint 	mode;
+	uint  cpu_mode;
 	ulong req_f;
 	ulong req_power;
 	uint  pc_status;
 	#if USE_GPUS
+    uint  gpu_mode;
 	ulong num_gpus_used;
 	ulong req_gpu_f[MAX_GPUS_SUPPORTED];
 	ulong req_gpu_power;
-	uint pc_gpu_status;
+	uint  pc_gpu_status;
 	#endif
 }pc_app_info_t;
 
@@ -39,6 +40,8 @@ void pcapp_info_end_job(pc_app_info_t *t);
 
 /** Sets the req_f and the status to OK */
 void pcapp_info_set_req_f(pc_app_info_t *t,ulong f);
+/** Sets the gpu_req_f and the status to OK */
+void pcapp_info_set_gpu_req_f(pc_app_info_t *t, ulong *f, uint num_gpus);
 void debug_pc_app_info(pc_app_info_t *t);
 
 

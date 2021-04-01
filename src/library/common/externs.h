@@ -20,6 +20,7 @@
 
 #include <linux/limits.h>
 #include <common/types/loop.h>
+#include <common/system/time.h>
 #include <common/hardware/architecture.h>
 #include <common/types/application.h>
 #include <library/common/global_comm.h>
@@ -44,7 +45,7 @@ extern char ear_app_name[PATH_MAX];
 extern unsigned long ear_frequency;
 extern unsigned long EAR_default_frequency;
 extern unsigned int EAR_default_pstate;
-extern timestamp ear_application_time_init;
+extern timestamp_t ear_application_time_init;
 
 extern int ear_use_turbo;
 extern int ear_whole_app;

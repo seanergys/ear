@@ -53,12 +53,15 @@ state_t policy_init(polctx_t *c)
 	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
     verbose_master(2,"Error loading GPU context");
   }
+
+#if USE_GPUS
 	if (c->num_gpus){
 		if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
 			verbose_master(2,"Error loading GPU policy");
 		}
 		if (gpus.init != NULL) gpus.init(c);
 	}
+#endif
 	return EAR_SUCCESS;
 }
 

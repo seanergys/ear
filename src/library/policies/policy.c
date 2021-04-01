@@ -185,17 +185,17 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     state_t s;
     debug("policy_cpu_freq_selection");
 #if POWERCAP
-    if (pc_app_info_data->mode == PC_DVFS){
-        ulong f;
-				/* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data,freq_set[0]);
-        f = pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
-        debug("Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
-        freq_set[0] = f;
-    }else{
-        //debug("PC mode %u (should be PC_POWER)",pc_app_info_data->mode);
-        //      pcapp_info_set_req_f(pc_app_info_data,*freq_set);
-    }
+  if (pc_app_info_data->cpu_mode==PC_DVFS){
+      ulong f;
+      /* Warning: POL_GRAIN_CORE not supported */
+      pcapp_info_set_req_f(pc_app_info_data,*freq_set);
+      f=pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
+      debug("Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
+      freq_set[0] = f;
+  }else{
+      //debug("PC mode %u (should be PC_POWER)",pc_app_info_data->cpu_mode);
+      //      pcapp_info_set_req_f(pc_app_info_data,*freq_set);
+  }
 #endif
   memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
   if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
@@ -231,7 +231,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 }
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-   ulong imc_up,imc_low;
+ulong imc_up,imc_low;
 	 uint sock_id = 0;
   #if NEW_IMCFREQ
   if (dyn_unc && imc_mgt_compatible){
@@ -270,7 +270,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
      }
      pc_app_info_data->num_gpus_used=my_sig->gpu_sig.num_gpus;
      memcpy(pc_app_info_data->req_gpu_f,gpu_f,c->num_gpus*sizeof(ulong));
-     if (pc_app_info_data->mode==PC_DVFS){
+     if (pc_app_info_data->gpu_mode==PC_DVFS){
             pc_support_adapt_gpu_freq(c,&c->app->pc_opt,gpu_f,my_sig);
      }
      for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
@@ -284,8 +284,8 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 			verbose_master(2,"GPU freq set error ");
 		 }
      // eards_gpu_set_freq(c->num_gpus,gpu_f);
-#endif
 		avg_freq->gpu_freq[0] = compute_avg_freq(gpu_f,my_sig->gpu_sig.num_gpus);
+#endif
     return EAR_SUCCESS;
 
 }
@@ -339,8 +339,10 @@ state_t policy_init()
     /* Even though the policy could be at the Node granularity, we will use a list */
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
 		nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
+#if USE_GPUS
 		nf.gpu_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
 		nf.gpu_mem_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
+#endif
     avg_nf.cpu_freq =  calloc(1,sizeof(ulong));
 		avg_nf.imc_freq = calloc(2,sizeof(ulong));
 		avg_nf.gpu_freq = calloc(1,sizeof(ulong));
