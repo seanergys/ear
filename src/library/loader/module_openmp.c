@@ -46,7 +46,7 @@ static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_s
 
 
   if ((path_lib_so == NULL) && (libhack == NULL)){
-    verbose(0,"LOADER EAR path and EAR debug HACKS are NULL in CUDA module");
+    verbose(0,"EARL cannot be loaded because paths are not defined ");
     return 0;
   }
 
@@ -60,7 +60,7 @@ static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_s
 	verbose(2, "LOADER: loading library %s", path_so);
 
 	if (!module_file_exists(path_so)) {
-		verbose(0, "LOADER: impossible to find library '%s'", path_so);
+		verbose(0, "EARL cannot be loaded '%s'", path_so);
 		return 0;
 	}
 	
@@ -69,7 +69,7 @@ static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_s
 	verbose(3, "LOADER: dlopen returned %p", libear);
 
 	if (libear == NULL) {
-		verbose(0, "LOADER: dlopen failed %s", dlerror());
+		verbose(0, "EARL at %s cannot be loaded error: %s", path_so,dlerror());
 		return 0;
 	}
 
@@ -101,7 +101,7 @@ int module_constructor_openmp(char *path_lib_so,char *libhack)
 		return 0;
 	}
 	if (atexit(module_destructor_openmp) != 0) {
-		verbose(1, "LOADER: cannot set exit function");
+		verbose(2, "LOADER: cannot set exit function");
 	}
 	if (func_con != NULL) {
 		func_con();

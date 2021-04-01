@@ -252,7 +252,7 @@ static void metrics_global_start()
 	//eards_start_uncore();
 
 	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
-		verbose(0,"Warning: IO data not available");
+		verbose_master(2,"Warning: IO data not available");
 	}
   /* We start computing mpi statistics at this point */
 	timestamp_getfast(&init_mpi_time);
@@ -332,7 +332,7 @@ static void metrics_global_stop()
 	//eards_start_uncore();
 
 	if (io_read(&ctx_io,&metrics_io_end[APP]) != EAR_SUCCESS){
-		verbose(0,"Warning: IO data not available");
+		verbose_master(2,"Warning: IO data not available");
 	}
 	io_diff(&iod,&metrics_io_init[APP],&metrics_io_end[APP]);
 	io_tostr(&iod,io_info,sizeof(io_info));
@@ -777,7 +777,7 @@ int metrics_init(topology_t *topo)
 	}
 	#endif
 	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
-		verbose(0,"Warning: IO data not accesible");
+		verbose_master(2,"Warning: IO data not available");
 	}else{
 		verbose_master(2,"IO data initialized");
 	}	

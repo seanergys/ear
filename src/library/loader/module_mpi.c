@@ -100,7 +100,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	
 	//if (!file_is_regular(path_so)) {
 	if (!module_file_exists(path_so)) {
-		verbose(0, "LOADER: impossible to find library '%s'", path_so);
+		verbose(0,"EARL cannot be found at '%s'", path_so);
 		return;
 	}
 
@@ -132,7 +132,7 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 	//
 	libear = dlopen(path_so, RTLD_NOW | RTLD_GLOBAL);
 	if (libear == NULL){
-		error("LOADER: dlopen error %s", dlerror());
+		verbose(0,"EARL at %s canot be loaded %s",path_so, dlerror());
 	}else{
 		verbose(3, "LOADER: dlopen returned %p", libear);
 	}
@@ -152,7 +152,7 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 			lang_f = 0;
 		}
 		if (!lang_c && !lang_f) {
-			verbose(1, "LOADER: the loaded library does not have MPI symbols");
+			verbose(2, "LOADER: the loaded library does not have MPI symbols");
 			dlclose(libear);
 			libear = NULL;
 		}
@@ -223,7 +223,7 @@ int module_mpi(char *path_lib_so,char *libhack)
 	if (module_cuda_is()) ear_cuda_enabled();
 	#endif
 	if (atexit(module_mpi_destructor) != 0) {
-    verbose(1, "LOADER: cannot set exit function");
+    verbose(2, "LOADER: cannot set exit function");
   }
   if (func_con != NULL) {
     func_con();

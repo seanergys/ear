@@ -210,7 +210,7 @@ void notify_eard_connection(int status)
   if (masters_connected!=masters_info.my_master_size){
   /* Some of the nodes is not ok , setting off EARL */
     if (masters_info.my_master_rank==0) {
-      verbose(1,"Number of nodes expected %d , number of nodes connected %d, setting EAR to off \n",masters_info.my_master_size,masters_connected);
+      verbose_master(1,"Number of nodes expected %d , number of nodes connected %d, setting EARL to off \n",masters_info.my_master_size,masters_connected);
     }
     my_id=1;
     return;
@@ -637,7 +637,7 @@ void ear_init()
 
 
 	if (ear_lib_initialized){
-		verbose(1,"EAR library already initialized");
+		verbose_master(1,"EAR library already initialized");
 		return;
 	}
 
@@ -667,7 +667,7 @@ void ear_init()
 
 	if (ext_def_freq_str!=NULL){
 		ext_def_freq=(unsigned long)atol(ext_def_freq_str);
-		verbose_master(1,"Using externally defined default freq %lu",ext_def_freq);
+		verbose_master(2,"Using externally defined default freq %lu",ext_def_freq);
 	}
 
 	// Fundamental data
@@ -779,7 +779,7 @@ void ear_init()
 	get_app_name(ear_app_name);
 	debug("App name is %s",ear_app_name);
 	if (application.is_learning){
-		verbose_master(1,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
+		verbose_master(2,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 	}
 	if (getenv("LOGNAME")!=NULL) strcpy(application.job.user_id, getenv("LOGNAME"));
 	else strcpy(application.job.user_id,"No userid");
@@ -924,7 +924,7 @@ void ear_init()
         //if (masters_info.my_master_rank>=0) print_affinity_mask(&arch_desc.top);
       }else{ 
         sig_shared_region[my_node_id].affinity = 0;
-        verbose_master(1,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
+        verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
       } 
     } 
 
