@@ -84,7 +84,7 @@ state_t mpi_app_end(polctx_t *c)
 			mpi_info_to_str(&mpi_stats,buff,sizeof(buff));
 			verbose(0,"MR[%d] %s",lib_shared_region->master_rank,buff);
 		}else{
-			if (masters_info.my_master_rank>=0){
+			if (masters_info.my_master_rank == 0){
 				mpi_info_head_to_str_csv(buff,sizeof(buff));
 				sprintf(buff2,"mrank;%s\n",buff);
 				write(fd,buff2,strlen(buff2));
