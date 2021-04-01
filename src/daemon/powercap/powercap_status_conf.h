@@ -133,6 +133,12 @@ typedef struct domain_status{
     uint current_pc;
 }domain_status_t;
 
+typedef struct pmgt_status {
+    uint status;
+    uint requested;
+    uint extra;
+    uint tbr;
+} pmgt_status_t;
 
 
 #endif

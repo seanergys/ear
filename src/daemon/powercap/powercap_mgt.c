@@ -565,19 +565,29 @@ void pmgt_set_status(pwr_mgt_t *phandler,uint status)
         if (domains_loaded[i]) freturn(pcsyms_fun[i].set_status,status);
     }
 }
-uint pmgt_get_powercap_strategy(pwr_mgt_t *phandler)
+
+uint pmgt_get_powercap_cpu_strategy(pwr_mgt_t *phandler)
 {
     uint ret,gret=PC_POWER;
-    int i;
-    debug("pmgt_strategy");
-    for (i=0;i<NUM_DOMAINS;i++){
-        if (domains_loaded[i]){
-            ret=freturn(pcsyms_fun[i].get_powercap_strategy);
-            if (ret==PC_DVFS) gret=ret;    
-        }
+    debug("pmgt_cpu_strategy");
+    if (domains_loaded[DOMAIN_CPU]){
+        ret=freturn(pcsyms_fun[DOMAIN_CPU].get_powercap_strategy);
+        if (ret==PC_DVFS) gret=ret;    
     }
     return gret;
 }
+
+uint pmgt_get_powercap_gpu_strategy(pwr_mgt_t *phandler)
+{
+    uint ret,gret=PC_POWER;
+    debug("pmgt_gpu_strategy");
+    if (domains_loaded[DOMAIN_GPU]){
+        ret=freturn(pcsyms_fun[DOMAIN_GPU].get_powercap_strategy);
+        if (ret==PC_DVFS) gret=ret;    
+    }
+    return gret;
+}
+
 void pmgt_set_pc_mode(pwr_mgt_t *phandler,uint mode)
 {
     int i;
@@ -693,6 +703,36 @@ void pmgt_run_to_idle(pwr_mgt_t *phandler)
     memcpy(pdomains,pdomains_idle,sizeof(float)*NUM_DOMAINS);
     reallocate_power_between_domains();
     pmgt_set_status(phandler,PC_STATUS_IDLE);
+}
+
+void pmgt_get_status(pmgt_status_t *status)
+{
+    int i;
+    uint ret;
+
+    memset(cdomain_status,0,sizeof(domain_status_t)*NUM_DOMAINS);
+    /* We ask each domain its curent status to compute the node's status */
+    for (i=0; i< NUM_DOMAINS;i++) {
+        if (pcsyms_fun[i].get_powercap_status != NULL){
+            ret=pcsyms_fun[i].get_powercap_status(&cdomain_status[i]);
+            if (ret == EAR_ERROR) debug("error getting domain powercap");
+        }
+    }
+    if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK && cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) {
+        status->status = PC_STATUS_OK;
+    } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY || cdomain_status[DOMAIN_GPU].ok != PC_STATUS_GREEDY) {
+        if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok != PC_STATUS_RELEASE) { //if we are greedy + release, we can still rebalance so we are ok
+            status->status = PC_STATUS_OK;
+        } else {
+            status->status = PC_STATUS_GREEDY;
+            // status->requested =  -> this will be computed in powercap.c as it was before, for now
+        }
+    } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok != PC_STATUS_RELEASE) { // no need to check for greedy since we did that before
+        status->status = PC_STATUS_RELEASE;
+        for (i = 0; i < NUM_DOMAINS; i++)
+            status->tbr = cdomain_status[i].exceed;
+    }
+
 }
 
 uint pmgt_powercap_status_per_domain(uint action)

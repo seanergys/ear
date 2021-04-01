@@ -1041,7 +1041,7 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	pdomain.cpu=accum_cpu_power(my_current_power);
 	pdomain.dram=accum_dram_power(my_current_power);
 	pdomain.gpu=accum_gpu_power(my_current_power);
-	periodic_metric_info(&pdomain,mpi,current_sample.avg_f);
+	powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
 #endif
 
 #if SYSLOG_MSG
@@ -1230,7 +1230,10 @@ void *eard_power_monitoring(void *noinfo)
 #if POWERCAP
 	powercap_init();
 	set_powercapstatus_mode(AUTO_CONFIG);
-	pc_app_info_data->mode=powercap_get_strategy();
+	pc_app_info_data->cpu_mode=powercap_get_cpu_strategy();
+#if USE_GPUS
+	pc_app_info_data->gpu_mode=powercap_get_gpu_strategy();
+#endif
 #endif
 	create_powermon_out();
 
@@ -1302,7 +1305,7 @@ void *eard_power_monitoring(void *noinfo)
 		error("dispose_node_metrics ");
 	}
 #if POWERCAP
-  powercap_end();
+    powercap_end();
 #endif
 	pthread_exit(0);
 	//exit(0);

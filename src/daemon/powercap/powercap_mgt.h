@@ -52,7 +52,8 @@ uint pmgt_is_powercap_enabled(pwr_mgt_t *phandler,uint pid);
 void pmgt_print_powercap_value(pwr_mgt_t *phandler,int fd);
 void pmgt_powercap_to_str(pwr_mgt_t *phandler,char *b);
 void pmgt_set_status(pwr_mgt_t *phandler,uint status);
-uint pmgt_get_powercap_strategy(pwr_mgt_t *phandler);
+uint pmgt_get_powercap_cpu_strategy(pwr_mgt_t *phandler);
+uint pmgt_get_powercap_gpu_strategy(pwr_mgt_t *phandler);
 void pmgt_set_pc_mode(pwr_mgt_t *phandler,uint mode);
 /* Based on the current power consumption per domain and the status (idle/run) distributes the power accross domains */
 void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st);
@@ -72,6 +73,8 @@ void pmgt_powercap_node_reallocation();
 /* Estimates the powercap status per domain (To be completed )*/
 uint pmgt_powercap_status_per_domain();
 
+/* Returns the current node status using its domains status */
+void pmgt_get_status(pmgt_status_t *status);
 
 
 #endif

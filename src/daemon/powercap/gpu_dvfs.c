@@ -415,7 +415,7 @@ void set_status(uint status)
 uint get_powercap_strategy()
 {
     debug("GPU. get_powercap_strategy");
-    return PC_POWER;
+    return PC_DVFS;
 }
 
 void set_pc_mode(uint mode)

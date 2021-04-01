@@ -49,6 +49,7 @@
 #include <daemon/remote_api/dyn_conf_theading.h>
 #endif
 #include <daemon/power_monitor.h>
+#include <daemon/powercap/powercap_status_conf.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/shared_configuration.h>
 
@@ -61,6 +62,10 @@ extern my_node_conf_t *my_node_conf;
 extern my_node_conf_t my_original_node_conf;
 extern settings_conf_t *dyn_conf;
 extern resched_t *resched_conf;
+static int my_ip;
+extern int *ips;
+extern int self_id;
+extern volatile int init_ips_ready;
 
 int eards_remote_socket, eards_client;
 struct sockaddr_in eards_remote_client;
@@ -402,11 +407,21 @@ void dyncon_get_status(int fd, request_t *command) {
 	debug("status released");
 }
 #if POWERCAP
+int dyncon_filter_opt(powercap_opt_t *opt)
+{
+    int i;
+    for (i = 0; i < opt->num_greedy; i++)
+    {
+        if (opt->greedy_nodes[i] == my_ip) return i;
+    }
+    return -1;
+}
 void dyncon_power_management(int fd, request_t *command)
 {
 	unsigned long limit;
 	status_t status;
 	unsigned long cpower;
+    int id;
 	switch (command->req){
     case EAR_RC_RED_POWER:
 			if (command->my_req.pc.type==ABSOLUTE){
@@ -440,7 +455,8 @@ void dyncon_power_management(int fd, request_t *command)
 			break;	
     case EAR_RC_SET_POWERCAP_OPT:
 			verbose(1,"Set powercap options received");
-			set_powercap_opt(&command->my_req.pc_opt);
+            id = dyncon_filter_opt(&command->my_req.pc_opt);
+			powercap_set_opt(&command->my_req.pc_opt, id);
             free(command->my_req.pc_opt.greedy_nodes);
             free(command->my_req.pc_opt.extra_power);
 			return;
@@ -489,16 +505,45 @@ void dyncon_set_default_powercap(int fd, request_t *command)
 {
     debug("setting default powercap");
 
-    powercap_set_default();
+    powercap_set_default_power();
 
     debug("returning from set_default_powercap");
 
 }
 
+void process_pmgt_status(powercap_status_t *my_status, pmgt_status_t *p_status)
+{
+    switch(p_status->status)
+    {
+        case PC_STATUS_OK:
+            if (p_status->extra <= 0) break;
+            p_status->requested = 0;
+        case PC_STATUS_GREEDY:
+            /* Memory management */
+            if (my_status->num_greedy < 1) {
+                my_status->greedy_nodes=NULL;
+                my_status->greedy_req=NULL;
+                my_status->extra_power=NULL;
+            }
+            my_status->num_greedy++; 
+            if (my_status->num_greedy < 1) break;
+            my_status->greedy_nodes=realloc(my_status->greedy_nodes, sizeof(int)*my_status->num_greedy);
+            my_status->greedy_req=realloc(my_status->greedy_req, sizeof(uint)*my_status->num_greedy);
+            my_status->extra_power=realloc(my_status->extra_power, sizeof(uint)*my_status->num_greedy);
+            /* Data management */
+            my_status->greedy_nodes[my_status->num_greedy - 1] = my_ip; 
+            my_status->greedy_req[my_status->num_greedy - 1] = p_status->requested;
+            my_status->extra_power[my_status->num_greedy - 1] = p_status->extra;
+            break;
+        default:
+            break;
+    }
+}
 
 void dyncon_get_powerstatus(int fd, request_t *command)
 {
 	powercap_status_t *status;
+    pmgt_status_t p_status;
     int return_status;
     long int ack;
 	send_answer(fd, &ack);
@@ -514,7 +559,9 @@ void dyncon_get_powerstatus(int fd, request_t *command)
     }
 	debug("return_status %d status=%p", return_status, status);
 
-	get_powercap_status(&status[return_status - 1]);
+	powercap_get_status(&status[return_status - 1], &p_status);
+	process_pmgt_status(&status[return_status - 1], &p_status);
+
     status_data = mem_alloc_char_powercap_status(status);
     send_data(fd, sizeof(powercap_status_t) * return_status + ((sizeof(uint)*2 + sizeof(int)) * (status->num_greedy)), status_data, EAR_TYPE_POWER_STATUS);
 
@@ -758,6 +805,10 @@ void *eard_dynamic_configuration(void *tmp)
 	}
 
 	policy_load();
+
+    /** IP init for powercap_status */
+    if (init_ips_ready > 0) my_ip = ips[self_id];
+    else my_ip = 0;
 
 	/*
 	*	MAIN LOOP
