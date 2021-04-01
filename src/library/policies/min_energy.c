@@ -34,6 +34,7 @@
 #include <library/policies/policy_state.h>
 #include <library/policies/imc_policy_support.h>
 #include <library/policies/gpu_support.h>
+#include <library/policies/mpi_stats_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 
@@ -83,6 +84,7 @@ state_t policy_init(polctx_t *c)
 		#if NEW_IMCFREQ
 		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
 		#endif
+		mpi_app_init(c);
   	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
   	  verbose_master(2,"Error loading GPU context");
   	}
@@ -95,6 +97,13 @@ state_t policy_init(polctx_t *c)
 
 		return EAR_SUCCESS;
 	} else return EAR_ERROR;
+}
+
+
+state_t policy_end(polctx_t *c)
+{
+  if (c != NULL) return  mpi_app_end(c);
+	else return EAR_ERROR;
 }
 
 state_t policy_loop_init(polctx_t *c,loop_id_t *l)
@@ -427,4 +436,14 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
   return EAR_SUCCESS;
 }
 
+state_t policy_mpi_init(polctx_t *c)
+{
+  if (c != NULL) return mpi_call_init(c);
+	else return EAR_ERROR;
+}
+state_t policy_mpi_end(polctx_t *c)
+{
+  if (c != NULL) return mpi_call_end(c);
+	else return EAR_ERROR;
+}
 

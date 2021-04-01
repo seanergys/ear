@@ -55,8 +55,8 @@
 #define TRA_VPI		60017
 #define TRA_REC		60018
 
-static char buffer1[SZ_BUFF_BIG];
-static char buffer2[SZ_BUFF_BIG];
+static char buffer1[SZ_BUFFER];
+static char buffer2[SZ_BUFFER];
 
 static long long time_sta;
 static long long time_end;
@@ -294,7 +294,7 @@ static void trace_file_write_in_file()
     for (i=0;i<events;i++){
       sprintf(buffer1,"2:%d:1:%d:1:%llu:%d:%llu\n", my_trace_rank, my_trace_rank,
       events_list[ready+i].t,events_list[ready+i].event,events_list[ready+i].value);
-			if ((strlen(buffer1)+strlen(buffer2))>SZ_BUFF_BIG){
+			if ((strlen(buffer1)+strlen(buffer2))>SZ_BUFFER){
 				write(file_prv, buffer2, strlen(buffer2));
 				buffer2[0]='\0';
 			}	
@@ -377,7 +377,7 @@ void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis,
 	time_sta = (long long) timestamp_getconvert(TIME_USECS);
 
 	//
-	gethostname(hostname, SZ_BUFF_BIG);
+	gethostname(hostname, SZ_BUFFER);
 	strtok(hostname,".");
 
 	//

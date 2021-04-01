@@ -36,6 +36,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/frequency/imc.o \
     $(SRCDIR)/metrics/frequency/imc/dummy.o \
     $(SRCDIR)/metrics/frequency/imc/intel63.o \
+    $(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
@@ -79,6 +80,7 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'accumulators' $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
+	@ $(MAKE) -C 'proc'           $* || exit
 
 ######## DEPENDENCIES
 

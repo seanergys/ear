@@ -103,7 +103,6 @@ state_t energy_init(cluster_conf_t *conf, ehandler_t *eh)
 
 	debug("Using ear.conf energy plugin %s",conf->install.obj_ener);
 	sprintf(energy_objc, "%s/energy/%s", conf->install.dir_plug, conf->install.obj_ener);
-sprintf(energy_objc, "/home/xjaneas/ngit/ear_private/src/metrics/energy/node/energy_dcmi.so");
 	debug("loading shared object '%s'", energy_objc);
 
 	//

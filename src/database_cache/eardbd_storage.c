@@ -53,8 +53,8 @@
 extern cluster_conf_t conf_clus;
 
 // Buffers
-extern char input_buffer[SZ_BUFF_BIG];
-extern char extra_buffer[SZ_BUFF_BIG];
+extern char input_buffer[SZ_BUFFER];
+extern char extra_buffer[SZ_BUFFER];
 
 // Mirroring
 extern char master_host[SZ_NAME_MEDIUM]; 

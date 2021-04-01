@@ -23,8 +23,8 @@
 
 // Buffers
 extern packet_header_t input_header;
-extern char input_buffer[SZ_BUFF_BIG];
-extern char extra_buffer[SZ_BUFF_BIG];
+extern char input_buffer[SZ_BUFFER];
+extern char extra_buffer[SZ_BUFFER];
 
 //
 extern int master_iam; // Master is who speaks
