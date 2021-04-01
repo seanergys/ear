@@ -27,6 +27,7 @@
 #include <common/types/pc_app_info.h>
 #include <management/cpufreq/frequency.h>
 #include <common/hardware/hardware_info.h>
+#include <common/system/monitor.h>
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -1542,6 +1543,7 @@ int main(int argc, char *argv[]) {
 	// We catch signals
 	signal_catcher();
 
+  state_assert(s, monitor_init(), _exit(0));
 
 	if (eard_max_pstate < 0) Usage(argv[0]);
 	if (eard_max_pstate >= frequency_get_num_pstates()) Usage(argv[0]);
