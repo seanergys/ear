@@ -105,7 +105,8 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-	return	mpi_app_end(c);	
+  if (c != NULL) return  mpi_app_end(c);
+	else return EAR_ERROR;
 }
 
 state_t policy_loop_init(polctx_t *c,loop_id_t *loop_id)
@@ -401,11 +402,13 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 
 state_t policy_mpi_init(polctx_t *c)
 {
-	return mpi_call_init(c);
+  if (c != NULL) return mpi_call_init(c);
+	else return EAR_ERROR;
 }
 state_t policy_mpi_end(polctx_t *c)
 {
-	return mpi_call_end(c);
+  if (c != NULL) return mpi_call_end(c);
+	else return EAR_ERROR;
 }
 
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
