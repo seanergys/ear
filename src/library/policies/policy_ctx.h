@@ -24,9 +24,6 @@
 #include <common/types/signature.h>
 #include <common/types/projection.h>
 #include <daemon/shared_configuration.h>
-#if USE_GPUS
-#include <library/metrics/gpu.h>
-#endif
 #if MPI
 #include <mpi.h>
 #endif
@@ -42,6 +39,14 @@ typedef struct mpi_ctx{
   int  comm;
 }mpi_ctx_t;
 #endif
+
+typedef struct node_freqs {
+	ulong *cpu_freq;
+	ulong *imc_freq;
+	ulong *gpu_freq;
+	ulong *gpu_mem_freq;
+}node_freqs_t;
+
 
 typedef struct policy_context {
 	settings_conf_t *app;
@@ -64,7 +69,34 @@ typedef struct policy_context {
 
 void print_policy_ctx(polctx_t *p);
 
+typedef struct node_freq_domain{
+	uint cpu;
+	uint mem;
+	uint gpu;
+	uint gpumem;
+}node_freq_domain_t;
+
 #define POL_GRAIN_NODE 0
 #define POL_GRAIN_CORE 1
+#define POL_NOT_SUPPORTED 100
+
+typedef struct policy_symbols {
+    state_t (*init)        (polctx_t *c);
+    state_t (*node_policy_apply)       (polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready);
+    state_t (*app_policy_apply)       (polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,int *ready);
+    state_t (*get_default_freq)   (polctx_t *c, ulong *freq_set);
+    state_t (*ok)          (polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *ok);
+    state_t (*max_tries)   (polctx_t *c,int *intents);
+    state_t (*end)         (polctx_t *c);
+    state_t (*loop_init)   (polctx_t *c,loop_id_t *loop_id);
+    state_t (*loop_end)    (polctx_t *c,loop_id_t *loop_id);
+    state_t (*new_iter)    (polctx_t *c,loop_id_t *loop_id);
+    state_t (*mpi_init)    (polctx_t *c);
+    state_t (*mpi_end)     (polctx_t *c);
+    state_t (*configure) (polctx_t *c);
+    state_t (*domain) (polctx_t *c, node_freq_domain_t *domain);
+} polsym_t;
+
+
 
 #endif //EAR_POLICIES_H

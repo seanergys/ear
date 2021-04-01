@@ -93,8 +93,8 @@ void read_basic_metrics(llong *cycles, llong *insts)
 	if (ops.read != NULL) {
 		ops.read(c, cycles, insts);
 	}
-	accum_cycles += *cycles;
-	accum_insts  += *insts;
+	// accum_cycles += *cycles;
+	// accum_insts  += *insts;
 }
 
 void get_basic_metrics(llong *cycles, llong *insts)

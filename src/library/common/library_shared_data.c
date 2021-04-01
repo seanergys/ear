@@ -120,15 +120,15 @@ void signature_ready(shsignature_t *sig,int cur_state)
 int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i,total=0;
-  for (i=0;i<data->num_processes;i++) total=total+sig[i].ready;
-	data->num_signatures=total;
+  for (i=0;i<data->num_processes;i++) total = total+sig[i].ready;
+	data->num_signatures = total;
 	return total;
 }
 int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i;
 	compute_total_signatures_ready(data,sig);
-	return(data->num_signatures==data->num_processes);
+	return(data->num_signatures == data->num_processes);
 }
 
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
@@ -344,6 +344,51 @@ void compute_per_node_avg_mpi_info(lib_shared_data_t *data,shsignature_t *sig,mp
 	/* Should we use the minimum? */
 	my_mpi_info->perc_mpi = avg_mpi.perc_mpi/data->num_processes;
 }
+
+void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst)
+{
+	int i;
+	*t_inst = 0;
+	for (i=0;i<data->num_processes;i++){
+		*t_inst += sig[i].sig.instructions;
+	}
+}
+
+void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops)
+{
+	int i,f;
+	memset(flops,0,FLOPS_EVENTS*sizeof(ull));
+	for (i=0;i<data->num_processes;i++){
+		for (f=0;f<FLOPS_EVENTS;f++) flops[f] += sig[i].sig.FLOPS[f];
+	}
+}
+
+void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles)
+{
+  int i;
+  *t_cycles = 0;
+  for (i=0;i<data->num_processes;i++){
+    *t_cycles += sig[i].sig.cycles;
+  }
+}
+
+
+uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi)
+{
+	int i;
+	double local_max = 0.0;
+	uint max_ssig = 0;
+	*max_vpi = 0.0;
+	for (i=0;i<data->num_processes;i++){
+		compute_ssig_vpi(&local_max,&sig[i].sig);
+		if (local_max > *max_vpi ){ 
+			*max_vpi = local_max;
+			max_ssig = i;
+		}
+	}
+	return max_ssig;
+}
+
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig)
 {

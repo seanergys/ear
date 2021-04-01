@@ -1,13 +1,17 @@
 poli_OBJS = \
     policy.o \
-    pc_suport.o
+    pc_suport.o \
+    gpu_support.o \
+		mpi_stats_support.o \
+		imc_policy_support.o
 
 poli_BINS = \
     min_time.so  \
     min_energy.so \
     min_time_no_models.so \
     min_energy_no_models.so \
-    monitoring.so 
+    monitoring.so \
+		min_energy_v2.so
 
 ifeq ($(FEAT_MPI_API), 1)
 ifeq ($(FEAT_RESEARCH),1)

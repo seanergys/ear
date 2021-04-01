@@ -151,8 +151,9 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 	return EAR_SUCCESS;
 }
 
-state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
+  ulong *new_freq=freqs->cpu_freq;
   *ready = EAR_POLICY_GLOBAL_EV;
   if (c==NULL) return EAR_ERROR;
   if (c->app==NULL) return EAR_ERROR;
@@ -307,8 +308,9 @@ ulong load_balance_for_process(polctx_t *c,float max_node_penalty,uint local_id)
 }
 
 
-state_t policy_app_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
+state_t policy_app_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
+	ulong *new_freq=freqs->cpu_freq;
 	signature_t *my_app;
 	int i,min_pstate;
 	unsigned int ref;
@@ -425,7 +427,7 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return EAR_SUCCESS;
 }
 
-state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
 		if (c!=NULL){
 			*freq_set=c->app->max_freq;
@@ -516,9 +518,12 @@ state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
 }
 
 
-state_t policy_granularity(polctx_t *c,int *grain)
+state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
-	*grain = POL_GRAIN_CORE;
+	domain->cpu = my_policy_granularity;
+	domain->mem = POL_NOT_SUPPORTED;
+	domain->gpu = POL_NOT_SUPPORTED;
+	domain->gpumem = POL_NOT_SUPPORTED;
 	return EAR_SUCCESS;
 }
 

@@ -24,7 +24,12 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/debug.h>
+#include <library/common/externs.h>
 #include <library/policies/policy_api.h>
+#include <library/policies/policy_state.h>
+#include <library/common/verbose_lib.h>
+#include <library/metrics/gpu.h>
+
 
 static uint last_pc=0;
 
@@ -46,20 +51,46 @@ extern unsigned long ext_def_freq;
 #define LOW_UTIL_GPU_TH 25
 #define MED_UTIL_GPU_TH 50
 #define HIGH_UTIL_GPU_TH 75
-#define LOW_GPU_FREQ_RED (100 - (LOW_UTIL_GPU_TH + 10 ))
-#define MED_GPU_FREQ_RED (100 - (MED_UTIL_GPU_TH + 10))
-#define HIGH_GPU_FREQ_RED (100 - (HIGH_UTIL_GPU_TH + 10))
+#define LOW_GPU_FREQ_RED 0.5
+#define MED_GPU_FREQ_RED 0.25
+#define HIGH_GPU_FREQ_RED 0.1
 
-
+static const ulong **gpuf_list;
+static const uint *gpuf_list_items;
+static	ulong *gfreqs;
 state_t policy_init(polctx_t *c)
 {
+	int i,j;
+	ulong g_freq = 0;
+  char *gpu_freq=getenv(SCHED_EAR_GPU_DEF_FREQ);
+  state_t ret;
+  if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
+    g_freq=atol(gpu_freq);
+  }
+	gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
+	for (i=0;i<c->num_gpus;i++){
+		verbose_master(3,"Freqs in GPU[%d]=%u",i,gpuf_list_items[i]);
+		for (j=0;j<gpuf_list_items[i];j++){
+			verbose_master(3,"GPU[%d][%d]=%.2f",i,j,(float)gpuf_list[i][j]/1000000.0);
+		}
+	}
+	gpu_lib_alloc_array(&gfreqs);
+	for (i=0;i<c->num_gpus;i++){
+		if (g_freq) gfreqs[i] = g_freq;
+		else 				gfreqs[i] = gpuf_list[i][0];
+		verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
+	}
+	gpu_lib_freq_limit_set(gfreqs);
+	
 	return EAR_SUCCESS;
 }
-state_t policy_apply(polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
+	ulong *new_freq=freqs->gpu_freq;
 	ulong eff_f,f;
 	uint i;
 	ulong util,freq;
+	int new_gfreq_pos;
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
 	for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
 		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]",i,
@@ -72,21 +103,28 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, ulong *new_freq,int *ready
 		freq = my_sig->gpu_sig.gpu_data[i].GPU_freq;
 		if (util > 0){		
 			if (util < LOW_UTIL_GPU_TH){
-				new_freq[i] = freq - (freq * LOW_GPU_FREQ_RED);
+				new_gfreq_pos = gpuf_list_items[i] * LOW_GPU_FREQ_RED;
+				new_freq[i] = gpuf_list[i][new_gfreq_pos];
+				verbose_master(2,"GPU[%d] Low GPU util: Util %lu Curr GPUf %lu New GPUF %lu",i,util,freq,new_freq[i]);
 			}else if (util < MED_UTIL_GPU_TH){
-				new_freq[i] = freq - (freq * MED_GPU_FREQ_RED);
+				new_gfreq_pos = gpuf_list_items[i] * MED_GPU_FREQ_RED;
+				new_freq[i] = gpuf_list[i][new_gfreq_pos];
+				verbose_master(2,"GPU[%d] Med GPU util: Util %lu Curr GPUf %lu New GPUF %lu",i,util,freq,new_freq[i]);
 			}else if (util < HIGH_UTIL_GPU_TH ){
-				new_freq[i] = freq - (freq * HIGH_GPU_FREQ_RED);
+				new_gfreq_pos = gpuf_list_items[i] * HIGH_GPU_FREQ_RED;
+				new_freq[i] = gpuf_list[i][new_gfreq_pos];
+				verbose_master(2,"GPU[%d] High GPU util: Util %lu Curr GPUf %lu New GPUF %lu",i,util,freq,new_freq[i]);
 			}else{		
-				new_freq[i] = freq ;
+				new_freq[i] = gfreqs[i];
+				verbose_master(2,"GPU[%d] Very High GPU util: Util %lu Curr GPUf %lu New GPUF %lu",i,util,freq,new_freq[i]);
 			}
 		}else{
 			new_freq[i]=freq;
+			verbose_master(2,"GPU[%d] No GPU util: Util %lu Curr GPUf %lu New GPUF %lu",i,util,freq,new_freq[i]);
 		}
-			debug("Setting gpu_freq[%d]=%lu",i,new_freq[i]);
 	}		
 	
-	*ready=1;
+	*ready = EAR_POLICY_READY;
 	
 	return EAR_SUCCESS;
 }
@@ -106,7 +144,7 @@ state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
 	return EAR_SUCCESS;
 }

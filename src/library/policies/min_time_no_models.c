@@ -46,19 +46,20 @@ typedef unsigned long ulong;
 static signature_t *sig_list;
 static unsigned int *sig_ready;
 
-static void go_next_mt(int curr_pstate,int *ready,ulong *best_freq,int min_pstate)
+static void go_next_mt(int curr_pstate,int *ready,node_freqs_t *freqs,int min_pstate)
 {
+  ulong *best_freq = freqs->cpu_freq; 
   int next_pstate;
-fprintf(stderr,"go_next_mt: curr_pstate %d min_pstate %d\n",curr_pstate,min_pstate);
+  fprintf(stderr,"go_next_mt: curr_pstate %d min_pstate %d\n",curr_pstate,min_pstate);
   if (curr_pstate==min_pstate){
-fprintf(stderr,"ready\n");
-    *ready=EAR_POLICY_READY;
-    *best_freq=frequency_pstate_to_freq(curr_pstate);
+  fprintf(stderr,"ready\n");
+  *ready=EAR_POLICY_READY;
+  *best_freq=frequency_pstate_to_freq(curr_pstate);
   }else{
     next_pstate=curr_pstate-1;
     *ready=EAR_POLICY_TRY_AGAIN;
     *best_freq=frequency_pstate_to_freq(next_pstate);
-fprintf(stderr,"Not ready: next %d freq %lu\n",next_pstate,*best_freq);
+    fprintf(stderr,"Not ready: next %d freq %lu\n",next_pstate,*best_freq);
   }
 }
 
@@ -112,8 +113,9 @@ return EAR_SUCCESS;
 
 
 // This is the main function in this file, it implements power policy
-state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
+    ulong *new_freq = freqs->cpu_freq;
     signature_t *my_app;
     int i,min_pstate;
     unsigned int ref,try_next;
@@ -166,13 +168,13 @@ def_pstate=frequency_closest_pstate(def_freq);
       prev_pstate=curr_pstate+1;
        prev_sig=&sig_list[prev_pstate];
        if (is_better_min_time(sig,prev_sig,min_eff_gain)){
-       go_next_mt(curr_pstate,ready,new_freq,min_pstate);
+       go_next_mt(curr_pstate,ready,freqs,min_pstate);
         }else{
         *ready=EAR_POLICY_READY;
          *new_freq=frequency_pstate_to_freq(prev_pstate);
         }
 }else{
-      go_next_mt(curr_pstate,ready,new_freq,min_pstate);
+      go_next_mt(curr_pstate,ready,freqs,min_pstate);
       }
     }
 return EAR_SUCCESS;
@@ -202,7 +204,8 @@ else *ok=0;
 return st;
 
 }
-state_t  policy_get_default_freq(polctx_t *c,ulong *f)
+
+state_t policy_get_default_freq(polctx_t *c, ulong *f)
 {
 if ((c!=NULL) && (c->app!=NULL)){
     // Just in case the bestPstate was the frequency at which the application was running

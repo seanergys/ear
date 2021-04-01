@@ -72,6 +72,20 @@ void signature_to_str(signature_t *sig,char *msg,size_t limit)
 	snprintf(msg,limit, "[AVGF=%lu DEFF=%lu TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",sig->avg_f, sig->def_f,sig->time, sig->CPI,sig->GBS,sig->DC_power);
 }
 
+void compute_ssig_vpi(double *vpi,ssig_t *sig)
+{
+    ull vins;
+    vins=0;
+    if (sig->FLOPS[3]>0){
+        vins=sig->FLOPS[3]/16;
+    }
+
+    if (sig->FLOPS[7]>0){
+        vins=vins+sig->FLOPS[7]/8;
+    }
+    if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
+    else *vpi=0;
+}
 
 void compute_vpi(double *vpi,signature_t *sig)
 {
@@ -260,8 +274,10 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
 	s->time=(double)minis->time;
 	memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
 	s->instructions = minis->instructions;
+	s->cycles = minis->cycles;
 	s->avg_f=minis->avg_f;
 	s->def_f=minis->def_f;
+	memcpy(&(s->sig_ext->iod),&minis->iod,sizeof(io_data_t));
 	#if USE_GPUS
 	memcpy(&s->gpu_sig,&minis->gpu_sig,sizeof(gpu_signature_t));
 	#endif
@@ -279,8 +295,10 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
 	minis->time=(float)s->time;
 	memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
 	minis->instructions = s->instructions;
+	minis->cycles = s->cycles;
 	minis->avg_f=s->avg_f;
 	minis->def_f=s->def_f;
+	memcpy(&minis->iod,&(s->sig_ext->iod),sizeof(io_data_t));
 	#if USE_GPUS
 	memcpy(&minis->gpu_sig,&s->gpu_sig,sizeof(gpu_signature_t));
 	#endif

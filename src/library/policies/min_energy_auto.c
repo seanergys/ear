@@ -108,8 +108,9 @@ void compute_projection_error(unsigned long src,unsigned long dst)
 	debug("Error power computed NEXT:(real %lf, proj %lf) %lf ",power_next,proj_next,error_next_power);
 }
 
-state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
+	ulong *new_freq=freqs->cpu_freq;
 	signature_t *my_app = sig;
 	int i,min_pstate;
 	unsigned int ref;
@@ -277,7 +278,7 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return EAR_SUCCESS;
 }
 
-state_t  policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
 		if (c!=NULL){
 			*freq_set=c->app->max_freq;

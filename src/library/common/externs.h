@@ -44,6 +44,7 @@ extern char ear_app_name[PATH_MAX];
 extern unsigned long ear_frequency;
 extern unsigned long EAR_default_frequency;
 extern unsigned int EAR_default_pstate;
+extern timestamp ear_application_time_init;
 
 extern int ear_use_turbo;
 extern int ear_whole_app;
@@ -62,6 +63,7 @@ extern ulong last_loop_size;
 extern ulong last_loop_level;
 extern uint dynais_enabled;
 extern uint check_periodic_mode;
+extern uint EAR_STATE;
 
 // Shared regions for processes in same node
 extern lib_shared_data_t *lib_shared_region;

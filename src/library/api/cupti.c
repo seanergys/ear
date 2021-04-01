@@ -38,4 +38,6 @@ void ear_cuda_enabled()
 state_t ear_cuda_init()
 {
 	verbose(2,"CUPTI initialized");
+	printf ("Hola Daniel \n");
+	return 0;
 }

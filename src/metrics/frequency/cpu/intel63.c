@@ -23,6 +23,9 @@
 #include <unistd.h>
 #include <metrics/common/msr.h>
 #include <metrics/frequency/cpu/intel63.h>
+#include <common/output/verbose.h>
+#include <common/output/debug.h>
+#include <common/math_operations.h>
 
 #define MSR_IA32_APERF 0x000000E8
 #define MSR_IA32_MPERF 0x000000E7
@@ -166,6 +169,7 @@ state_t cpufreq_intel63_data_alloc(cpufreq_t *f, ulong *freqs[])
 		return_msg(EAR_ERROR, Generr.alloc_error);
 	}
 	f->size = cpufreq_size;
+	debug("CPUfreq alloc for freqs_count %u and cpufreq_size %u",freqs_count,cpufreq_size);
 	// Allocating space for freqs[]
 	if (freqs != NULL) {
 		if (posix_memalign((void **) freqs, 64, sizeof(ulong) * freqs_count) != 0) {
@@ -265,8 +269,18 @@ state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ul
 		// Counting valid samples to perform good average.
 		valid_count += 1LU;
 		// Differences between APERF/MPERF counters between both samples.
-		mperf_diff = d2[cpu].freq_mperf - d1[cpu].freq_mperf;
-		aperf_diff = d2[cpu].freq_aperf - d1[cpu].freq_aperf;
+		if (d2[cpu].freq_mperf < d1[cpu].freq_mperf){
+			debug("Warning, potential overflow in CPUfreq computation");
+			mperf_diff = ULONG_MAX - d1[cpu].freq_mperf + d2[cpu].freq_mperf;
+		}else{
+			mperf_diff = d2[cpu].freq_mperf - d1[cpu].freq_mperf;
+		}
+		if (d2[cpu].freq_aperf < d1[cpu].freq_aperf){
+			debug("Warning, potential overflow in CPUfreq computation");
+			aperf_diff = ULONG_MAX - d1[cpu].freq_aperf + d2[cpu].freq_aperf;
+		}else{
+			aperf_diff = d2[cpu].freq_aperf - d1[cpu].freq_aperf;
+		}
 		// The aperf percentage function includes a multiplication per 100. The
 		// only way to overflow that counter is measuring if the aperf
 		// difference is smaller than the maximum ulong value ((ulong) -1LU)
@@ -287,6 +301,7 @@ state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ul
 			freqs[cpu] = freq_aux;
 		}
 		if (average != NULL) {
+			debug(" CPU[%d]=%lu base %lu perc %lu",cpu,freq_aux,tp.cpus[cpu].freq_base,aperf_pcnt);
 			*average += freq_aux;
 		}
 	}

@@ -46,8 +46,9 @@ extern unsigned long ext_def_freq;
 #endif
 
 
-static void go_next_me(int curr_pstate,int *ready,ulong *best_freq,unsigned long num_pstates)
+static void go_next_me(int curr_pstate,int *ready,node_freqs_t *freqs,unsigned long num_pstates)
 {
+	ulong *best_freq = freqs->cpu_freq;
 	int next_pstate;
 	if ((curr_pstate<(num_pstates-1))){
 		*ready=EAR_POLICY_TRY_AGAIN;
@@ -109,8 +110,9 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *loop_id)
 
 
 // This is the main function in this file, it implements power policy
-state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
+state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
+    ulong *new_freq=freqs->cpu_freq;
     signature_t *my_app;
     int i,min_pstate;
     unsigned int ref,try_next;
@@ -163,13 +165,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,ulong *new_freq,int *ready)
 			prev_pstate=curr_pstate-1;
 			prev_sig=&sig_list[prev_pstate];
 			if (is_better_min_energy(my_app,prev_sig,time_max)){
-				go_next_me(curr_pstate,ready,new_freq,c->num_pstates);
+				go_next_me(curr_pstate,ready,freqs,c->num_pstates);
 			}else{
 				*ready=EAR_POLICY_READY;
 				*new_freq=frequency_pstate_to_freq(prev_pstate);
 			}
 		}else{
-			go_next_me(curr_pstate,ready,new_freq,c->num_pstates);
+			go_next_me(curr_pstate,ready,freqs,c->num_pstates);
 		}
 	}
 
@@ -200,7 +202,8 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 	return st;
 
 }
-state_t  policy_get_default_freq(polctx_t *c,ulong *f)
+
+state_t policy_get_default_freq(polctx_t *c, ulong *f)
 {
 		if ((c!=NULL) && (c->app!=NULL)){
     // Just in case the bestPstate was the frequency at which the application was running

@@ -51,15 +51,16 @@ typedef struct mpi_information{
 }mpi_information_t;
 
 typedef struct shsignature{
-	uint master;
-	uint ready;
+	uint 							master;
+	pid_t 						pid;
+	uint 							ready;
 	mpi_information_t mpi_info;
 	/* sig was originally a signature_t */
-	ssig_t sig;
-	int 				  app_state;
-	unsigned long new_freq;
-	cpu_set_t cpu_mask;
-	int affinity;
+	ssig_t 					sig;
+	int 				  	app_state;
+	unsigned long 	new_freq;
+	cpu_set_t 			cpu_mask;
+	int 						affinity;
 }shsignature_t;
 
 
@@ -145,6 +146,15 @@ void copy_my_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *
 void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
+void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst);
+void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
+void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
+void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
+
+uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
+
+
+
 
 
 void load_app_mgr_env();

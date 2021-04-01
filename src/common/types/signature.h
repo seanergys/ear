@@ -23,6 +23,7 @@
 #if USE_GPU_LIB
 #include <metrics/gpu/gpu.h>
 #endif
+#include <metrics/io/io.h>
 
 // 0: float
 // 1: 128 float
@@ -57,8 +58,10 @@ typedef struct mini_sig
     float time;
     ull FLOPS[FLOPS_EVENTS];
     ull instructions;
+    ull cycles;
     ulong avg_f;
     ulong def_f;
+		io_data_t iod;
 #if USE_GPUS
     gpu_signature_t gpu_sig;
 #endif
@@ -66,6 +69,7 @@ typedef struct mini_sig
 
 typedef struct sig_ext{
 	ulong imc_freq;
+	io_data_t iod;
 }sig_ext_t;
 
 typedef struct signature
@@ -108,6 +112,8 @@ void clean_db_signature(signature_t *sig);
 /** Outputs the signature contents to the file pointed by the fd. */
 void signature_print_fd(int fd, signature_t *sig, char is_extended);
 void compute_vpi(double *vpi,signature_t *sig);
+void compute_ssig_vpi(double *vpi,ssig_t *sig);
+
 
 void print_signature_fd_binary(int fd, signature_t *sig);
 void read_signature_fd_binary(int fd, signature_t *sig);

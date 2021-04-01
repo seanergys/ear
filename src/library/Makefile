@@ -1,5 +1,5 @@
 CFLAGS  = -fPIC -O2 -I$(SRCDIR)
-LDFLAGS = -shared -ldl -lm -lpthread 
+LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
 LIBCC       = $(CC)
@@ -9,7 +9,7 @@ MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNEW_CPUFREQ=1 -DNEW_IMCFREQ=1 -DCACHE_METRICS=1
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNEW_CPUFREQ=1 -DNEW_IMCFREQ=1 -DCACHE_METRICS=1 
 endif
 
 export LIBCC
@@ -42,14 +42,17 @@ comm_OBJS = \
 
 core_OBJS = \
     api/ear.o \
+    api/clasify.o \
+		api/mpi_support.o \
     common/library_shared_data.o \
     metrics/metrics.o \
     models/models.o \
     policies/policy.o \
     policies/pc_suport.o \
+    policies/mpi_stats_support.o \
+    policies/gpu_support.o \
     states/states_comm.o \
     states/states.o \
-    states/states_periodic.o \
     tracer/tracer.o \
     dynais/dynais.a
 
@@ -64,8 +67,8 @@ endif
 ifdef CUDA_BASE
 core_OBJS += \
     metrics/gpu.o \
-		api/cupti.o
-		
+    api/cupti.o
+	
 endif
 
 ######## RULES

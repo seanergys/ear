@@ -70,4 +70,6 @@ state_t mgt_imcfreq_set_current(ctx_t *c, ulong max_khz, ulong min_khz);
 
 state_t mgt_imcfreq_get_current(ctx_t *c, ulong *max_khz, ulong *min_khz);
 
+state_t mgt_imcfreq_get_limits(ctx_t *c, ulong *max_khz, ulong *min_khz);
+
 #endif //METRICS_FREQUENCY_IMC_H

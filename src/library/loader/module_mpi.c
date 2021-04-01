@@ -28,6 +28,7 @@
 #include <library/loader/module_common.h>
 #include <library/loader/module_cuda.h>
 #include <library/api/cupti.h>
+#include <library/api/mpi_support.h>
 
 static mpic_t next_mpic;
 static mpif_t next_mpif;
@@ -216,6 +217,7 @@ int module_mpi(char *path_lib_so,char *libhack)
 	if (!module_mpi_dlsym(path_so, lang_c, lang_f)){
 		return 0;
 	}
+	ear_mpi_enabled();
 	/* Once EARl is loaded we can  check if the application uses CUDA and then mark as a CUDA app */
 	#if USE_GPUS
 	if (module_cuda_is()) ear_cuda_enabled();

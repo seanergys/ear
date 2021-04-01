@@ -47,6 +47,7 @@
 extern uint mpi_calls_in_period;
 extern masters_info_t masters_info;
 extern float ratio_PPN;
+extern uint lib_period;
 
 static projection_t *PP;
 static ulong policy_freq;
@@ -57,6 +58,8 @@ static uint EAR_POLICY_STATE = EAR_POLICY_NO_STATE;
 static ulong global_f;
 static loop_id_t periodic_loop;
 static uint total_th;
+static signature_t cpu_sel_signature;
+static uint signatures_stables = 0;
 
 
 void states_periodic_end_job(int my_id, FILE *ear_fd, char *app_name)
@@ -139,7 +142,9 @@ static void report_loop_signature(uint iterations,loop_t *loop)
 /*
 *	MAIN FUNCTION: When EAR is executed in periodic mode, only first itereation and evaluating signature states are applied
 *
+*
 */
+
 void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter)
 {
 	unsigned long long VI;
@@ -176,6 +181,7 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 				break;
 		case EVALUATING_LOCAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_LOCAL_SIGNATURE");
+				if ((iterations % mpi_calls_iter) != 0 ) return;
 				N_iter=1;
 				result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
 				if (result != EAR_NOT_READY)
@@ -198,6 +204,10 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 						if (policy_freq != prev_f){
 							if (masters_info.my_master_rank>=0) log_report_new_freq(application.job.id,application.job.step_id,policy_freq);
 						}
+						if (EAR_POLICY_STATE == EAR_POLICY_READY){ 
+							signatures_stables = 0;
+							EAR_STATE = SIGNATURE_STABLE;
+						}
 					}
 					if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){
 						EAR_STATE = EVALUATING_GLOBAL_SIGNATURE;
@@ -210,12 +220,14 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
 					/* End verbose region */
 				} else{ /* Time was not enough */
 					if (loop_signature.signature.time==0){
-						mpi_calls_in_period=mpi_calls_in_period*2;
+						lib_period++;
 					}
 				}
 			break;
 		case EVALUATING_GLOBAL_SIGNATURE:
 			//if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
+				if ((iterations % mpi_calls_iter) != 0 ) return;
+	
       	st = policy_app_apply(&policy_freq,&ready);
       	EAR_POLICY_STATE = ready;
       	if (EAR_POLICY_STATE == EAR_POLICY_READY){
@@ -225,8 +237,32 @@ void states_periodic_new_iteration(int my_id, uint period, uint iterations, uint
       		}
       }
       break;
+		case SIGNATURE_STABLE:
+			  if ((iterations % mpi_calls_iter) != 0 ) return;
+        N_iter=1;
+        result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
+        if (result != EAR_NOT_READY)
+        {
+          loop_with_signature = 1;
+          current_loop_id = event;
+          signature_copy(&loop.signature, &loop_signature.signature);
+          /* Verbose  */
+          state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
+          state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,"P-stable");
+          report_loop_signature(iterations,&loop);
+					/* End verbose and reporting */
+					signatures_stables++;
+					if (signatures_stables == 1){
+							signature_copy(&cpu_sel_signature,&loop.signature);
+					}else{
+					if (!equal_with_th(cpu_sel_signature.CPI,loop_signature.signature.CPI,0.15) || !equal_with_th(cpu_sel_signature.GBS,loop_signature.signature.GBS,0.15)){
+						verbose(2,"Signature has changed, Going to CPU frequency selection state (%.3lf/%.3lf) (%.3lf/%.3lf)",cpu_sel_signature.CPI,cpu_sel_signature.GBS,loop_signature.signature.CPI,loop_signature.signature.GBS);
+						EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+					}
+					}
+				}
 
-
+			break;
 		default: break;
 	}
 	state_report_traces_state(masters_info.my_master_rank,ear_my_rank, my_id,EAR_STATE);

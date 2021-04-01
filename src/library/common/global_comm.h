@@ -25,8 +25,6 @@
 #include <mpi.h>
 
 typedef struct masters_info{
-	MPI_Comm masters_comm;
-	MPI_Comm new_world_comm;
 	int my_master_rank;
 	int my_master_size;
 	int *ppn;
@@ -35,6 +33,8 @@ typedef struct masters_info{
 	shsignature_t *nodes_info;
 	int node_info_pending;
 	MPI_Request req;
+	MPI_Comm masters_comm;
+	MPI_Comm new_world_comm;
 }masters_info_t;
 
 state_t ishare_global_info(MPI_Comm comm,char * data_send, int size_send,char * data_recv, int size_recv,MPI_Request *req);

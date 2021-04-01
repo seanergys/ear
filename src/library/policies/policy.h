@@ -22,6 +22,7 @@
 #include <common/types/loop.h>
 #include <common/types/projection.h>
 #include <daemon/shared_configuration.h>
+#include <library/policies/policy_ctx.h>
 
 state_t init_power_policy(settings_conf_t *app_settings,resched_t *res);
 state_t policy_init();

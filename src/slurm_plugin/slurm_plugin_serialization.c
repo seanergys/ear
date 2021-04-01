@@ -23,8 +23,8 @@
 #include <slurm_plugin/slurm_plugin_serialization.h>
 
 // Buffers
-static char buffer1[SZ_BUFF_EXTRA];
-static char buffer2[SZ_BUFF_EXTRA];
+static char buffer1[SZ_BUFFER_EXTRA];
+static char buffer2[SZ_BUFFER_EXTRA];
 
 /*
  *
@@ -452,11 +452,11 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	s2 = 0;
 
 	if (plug_context_was(sd, Context.sbatch)) {
-		s1 = getenv_agnostic(sp, Var.job_nodl.rem , buffer1, SZ_BUFF_EXTRA);
-		s2 = getenv_agnostic(sp, Var.job_nodn.rem , buffer2, SZ_BUFF_EXTRA);
+		s1 = getenv_agnostic(sp, Var.job_nodl.rem , buffer1, SZ_BUFFER_EXTRA);
+		s2 = getenv_agnostic(sp, Var.job_nodn.rem , buffer2, SZ_BUFFER_EXTRA);
 	} else if (plug_context_was(sd, Context.srun)) {
-		s1 = getenv_agnostic(sp, Var.step_nodl.rem, buffer1, SZ_BUFF_EXTRA);
-		s2 = getenv_agnostic(sp, Var.step_nodn.rem, buffer2, SZ_BUFF_EXTRA);
+		s1 = getenv_agnostic(sp, Var.step_nodl.rem, buffer1, SZ_BUFFER_EXTRA);
+		s2 = getenv_agnostic(sp, Var.step_nodn.rem, buffer2, SZ_BUFFER_EXTRA);
 	}
 	if (s1 && s2) {
 		sd->job.node_n = atoi(buffer2);
@@ -579,7 +579,7 @@ int plug_serialize_task(spank_t sp, plug_serialization_t *sd)
 		((val + 1) > max) ? max : val + 1
 
 	//
-	const int m = SZ_BUFF_EXTRA;
+	const int m = SZ_BUFFER_EXTRA;
 	int n;
 
 	if (getenv_agnostic(sp, Var.hack_load.hck, buffer2, m)) {

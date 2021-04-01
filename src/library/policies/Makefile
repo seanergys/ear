@@ -9,8 +9,13 @@ PCFLAGS = $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(GPU_OPT_FLAG)
 include ./Makefile.files
 
 poli_DEPS = \
+	  $(SRCDIR)/library/policies/imc_policy_support.o \
+	  $(SRCDIR)/library/policies/mpi_stats_support.o \
+	  $(SRCDIR)/library/policies/gpu_support.o \
+	  $(SRCDIR)/library/policies/pc_suport.o \
     $(SRCDIR)/common/libcommon.a \
-    $(SRCDIR)/daemon/powercap/powercap_status.o
+    $(SRCDIR)/daemon/powercap/powercap_status.o 
+
 poli_PATH = $(DESTDIR)/lib/plugins/policies
 poli_PERM = 0775
 
@@ -27,7 +32,7 @@ all: $(poli_OBJS) $(poli_BINS) $(eard_BINS)
 %.o: %.c 
 	$(CC) $(PCFLAGS) -c $<
 
-min_time_eard_eard.o: min_time_eard.c
+min_time_eard.o: min_time_eard.c
 	$(CC) $(PCFLAGS) -c $<
 
 min_energy_eard.o: min_energy_eard.c
