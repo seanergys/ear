@@ -59,7 +59,9 @@ void pcapp_info_set_req_f(pc_app_info_t *t,ulong f)
 
 void pcapp_info_set_gpu_req_f(pc_app_info_t *t, ulong *f, uint num_gpus)
 {
+#if USE_GPUS
     memcpy(t->req_gpu_f, f, num_gpus*sizeof(ulong));
+#endif
     t->pc_status = PC_STATUS_OK;
 }
 

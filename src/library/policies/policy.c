@@ -284,8 +284,8 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 			verbose_master(2,"GPU freq set error ");
 		 }
      // eards_gpu_set_freq(c->num_gpus,gpu_f);
-#endif
 		avg_freq->gpu_freq[0] = compute_avg_freq(gpu_f,my_sig->gpu_sig.num_gpus);
+#endif
     return EAR_SUCCESS;
 
 }
@@ -339,8 +339,10 @@ state_t policy_init()
     /* Even though the policy could be at the Node granularity, we will use a list */
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
 		nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
+#if USE_GPUS
 		nf.gpu_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
 		nf.gpu_mem_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
+#endif
     avg_nf.cpu_freq =  calloc(1,sizeof(ulong));
 		avg_nf.imc_freq = calloc(2,sizeof(ulong));
 		avg_nf.gpu_freq = calloc(1,sizeof(ulong));

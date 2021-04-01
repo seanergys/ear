@@ -629,7 +629,9 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 #ifndef SYN_TEST
     int i;
     if (domain == DOMAIN_CPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_f;
+#if USE_GPUS
     if (domain == DOMAIN_GPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_gpu_f[i];
+#endif
 #endif
 }
 
