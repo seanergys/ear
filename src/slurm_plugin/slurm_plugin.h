@@ -28,12 +28,14 @@
 #include <global_manager/eargm_rapi.h>
 #include <slurm_plugin/spank_interposer.h>
 
+#define ESPANK_STACKABLE  0 // Allows the same plugin stacking N times.
+#define ESPANK_STOP      -1
+
 #ifndef ERUN
 #define NULL_C NULL
 #else
 #define NULL_C 0
 #endif
-#define ESPANK_STOP	-1
 
 /*
  * Job data

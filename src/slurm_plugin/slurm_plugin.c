@@ -27,6 +27,7 @@ SPANK_PLUGIN(EAR_PLUGIN, 1);
 //
 plug_serialization_t sd;
 
+#if !ESPANK_STACKABLE || ERUN
 // Function order:
 // 	- Local 1
 // 	- Remote 1
@@ -64,18 +65,11 @@ int slurm_spank_init_post_opt(spank_t sp, int ac, char **av)
 		return ESPANK_SUCCESS;
 	}
 	// Deserialize local cleans the environment and gets user information.
-	if (plug_deserialize_local(sp, &sd) != ESPANK_SUCCESS) {
-		plug_component_setenabled(sp, Component.plugin, 0);
-	}
-	// Reading plugstack.conf file.
-	if (plug_read_plugstack(sp, ac, av, &sd) != ESPANK_SUCCESS) {
-		plug_component_setenabled(sp, Component.plugin, 0);
-	}
 	// If failed during the deserialization or plugstack reading, then the
 	// plugin is disabled. The later serialization is also cancelled,
 	// preventing the plugin to work in remote environment.
-	if (!plug_component_isenabled(sp, Component.plugin)) {
-		return ESPANK_SUCCESS;
+	if (plug_deserialize_local(sp, &sd) != ESPANK_SUCCESS) {
+		return plug_component_setenabled(sp, Component.plugin, 0);
 	}
 	// Serialize remote converts variables in environment variables to be
 	// received by the remote environment. 
@@ -85,6 +79,7 @@ int slurm_spank_init_post_opt(spank_t sp, int ac, char **av)
 
 	return ESPANK_SUCCESS;
 }
+#endif
 
 // Helper function (second part of slurm_spank_user_init).
 int slurm_spank_user_init_eard(spank_t sp)
@@ -141,6 +136,10 @@ int slurm_spank_user_init(spank_t sp, int ac, char **av)
 	// sd context, also returns ESPANK_ERROR if plugin is disabled.
 	if (plug_deserialize_components(sp) != ESPANK_SUCCESS) {
 		return ESPANK_SUCCESS;
+	}
+	// Reading plugstack.conf file.
+	if (plug_read_plugstack(sp, ac, av, &sd) != ESPANK_SUCCESS) {
+		return plug_component_setenabled(sp, Component.plugin, 0);
 	}
 	// Environment variables are converted to variables. Also there is an
 	// allowance test in that call that can return ESPANK_ERROR
