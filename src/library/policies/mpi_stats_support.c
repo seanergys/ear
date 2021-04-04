@@ -34,6 +34,10 @@
 
 static timestamp pol_time_init,app_init;
 static mpi_information_t mpi_stats;
+static ulong total_mpi_sync = 0;
+static ulong total_blocking_calls = 0;
+static ulong total_collectives = 0;
+static ulong total_synchronizations = 0;
 
 state_t mpi_app_init(polctx_t *c)
 {
@@ -76,42 +80,54 @@ state_t mpi_app_end(polctx_t *c)
   elap=timestamp_diff(&end,&app_init,TIME_USECS);
 	mpi_stats.exec_time = elap;
 	mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
-	if (stats != NULL){
-		sprintf(file_name,"%s",stats);
-		verbose(2,"Using %s STATS output file",stats);
-		fd=open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
-		if (fd < 0){
-			mpi_info_to_str(&mpi_stats,buff,sizeof(buff));
-			verbose(0,"MR[%d] %s",lib_shared_region->master_rank,buff);
-		}else{
-			if (masters_info.my_master_rank == 0){
-				mpi_info_head_to_str_csv(buff,sizeof(buff));
-				sprintf(buff2,"mrank;%s\n",buff);
+	if (sig_shared_region[my_node_id].mpi_info.total_mpi_calls){
+
+		verbose(2,"EARL: Total time synchronizing %lu. Total MPI sync calls %lu. Total blocking calls %lu. Total collective calls %lu ",total_mpi_sync,total_synchronizations,total_blocking_calls,total_collectives);
+		if (stats != NULL){
+			sprintf(file_name,"%s",stats);
+			verbose(2,"Using %s STATS output file",stats);
+			fd=open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
+			if (fd < 0){
+				mpi_info_to_str(&mpi_stats,buff,sizeof(buff));
+				verbose(0,"MR[%d] %s",lib_shared_region->master_rank,buff);
+			}else{
+				if (masters_info.my_master_rank == 0){
+					mpi_info_head_to_str_csv(buff,sizeof(buff));
+					sprintf(buff2,"mrank;%s\n",buff);
+					write(fd,buff2,strlen(buff2));
+				}
+				mpi_info_to_str_csv(&mpi_stats,buff,sizeof(buff));
+				sprintf(buff2,"%d;%s\n",lib_shared_region->master_rank,buff);
 				write(fd,buff2,strlen(buff2));
+				close(fd);
 			}
-			mpi_info_to_str_csv(&mpi_stats,buff,sizeof(buff));
-			sprintf(buff2,"%d;%s\n",lib_shared_region->master_rank,buff);
-			write(fd,buff2,strlen(buff2));
-			close(fd);
 		}
 	}
 	return EAR_SUCCESS;
 }
 
-state_t mpi_call_init(polctx_t *c)
+state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 {
 	if (is_mpi_enabled()){
   timestamp_getfast(&pol_time_init);
 	}
   return EAR_SUCCESS;
 }
-state_t mpi_call_end(polctx_t *c)
+
+
+state_t mpi_call_end(polctx_t *c,mpi_call call_type)
 {
   timestamp end;
   ullong elap;
 	if (is_mpi_enabled()){
   timestamp_getfast(&end);
   elap=timestamp_diff(&end,&pol_time_init,TIME_USECS);
+	if	(is_mpi_blocking(call_type)) 												total_blocking_calls++;
+	if (is_collective(remove_blocking(call_type)))					total_collectives++;
+	if (is_synchronization(remove_blocking(call_type))){ 	
+		total_synchronizations++;
+		total_mpi_sync += elap;
+	}
   sig_shared_region[my_node_id].mpi_info.mpi_time=sig_shared_region[my_node_id].mpi_info.mpi_time+elap;
   sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
 

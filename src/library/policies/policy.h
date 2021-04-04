@@ -23,6 +23,7 @@
 #include <common/types/projection.h>
 #include <daemon/shared_configuration.h>
 #include <library/policies/policy_ctx.h>
+#include <library/api/mpi_support.h>
 
 state_t init_power_policy(settings_conf_t *app_settings,resched_t *res);
 state_t policy_init();
@@ -36,8 +37,8 @@ state_t policy_end();
 state_t policy_loop_init(loop_id_t *loop_id);
 state_t policy_loop_end(loop_id_t *loop_id);
 state_t policy_new_iteration(loop_id_t *loop_id);
-state_t policy_mpi_init();
-state_t policy_mpi_end();
+state_t policy_mpi_init(mpi_call call_type);
+state_t policy_mpi_end(mpi_call call_type);
 
 state_t policy_force_global_frequency(ulong new_f);
 

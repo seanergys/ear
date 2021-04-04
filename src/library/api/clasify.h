@@ -24,6 +24,7 @@
 #define APP_COMP_BOUND 	1
 #define APP_MPI_BOUND 	2
 #define APP_IO_BOUND		3
+#define APP_GO_PERIODIC	4
 
 state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state);
 

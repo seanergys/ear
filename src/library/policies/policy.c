@@ -27,6 +27,7 @@
 #include <common/config/config_env.h>
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
+#include <library/api/mpi_support.h>
 #include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
@@ -641,18 +642,18 @@ state_t policy_new_iteration(loop_id_t *loop_id)
 /** MPI CALLS */
 
 /* This function is executed at the beginning of each mpi call: Warning! it could introduce a lot of overhead*/
-state_t policy_mpi_init()
+state_t policy_mpi_init(mpi_call call_type)
 {
     polctx_t *c=&my_pol_ctx;
 		total_mpi ++;
-    preturn_opt(polsyms_fun.mpi_init,c);
+    preturn_opt(polsyms_fun.mpi_init,c,call_type);
 }
 
 /* This function is executed after each mpi call: Warning! it could introduce a lot of overhead*/
-state_t policy_mpi_end()
+state_t policy_mpi_end(mpi_call call_type)
 {
     polctx_t *c=&my_pol_ctx;
-    preturn_opt(polsyms_fun.mpi_end,c);
+    preturn_opt(polsyms_fun.mpi_end,c,call_type);
 }
 
 /** GLOBAL EVENTS */

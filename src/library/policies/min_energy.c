@@ -438,14 +438,14 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
   return EAR_SUCCESS;
 }
 
-state_t policy_mpi_init(polctx_t *c)
+state_t policy_mpi_init(polctx_t *c,mpi_call call_type)
 {
-  if (c != NULL) return mpi_call_init(c);
+  if (c != NULL) return mpi_call_init(c,call_type);
 	else return EAR_ERROR;
 }
-state_t policy_mpi_end(polctx_t *c)
+state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 {
-  if (c != NULL) return mpi_call_end(c);
+  if (c != NULL) return mpi_call_end(c,call_type);
 	else return EAR_ERROR;
 }
 

@@ -24,6 +24,7 @@
 #include <common/types/signature.h>
 #include <common/types/projection.h>
 #include <daemon/shared_configuration.h>
+#include <library/api/mpi_support.h>
 #if MPI
 #include <mpi.h>
 #endif
@@ -91,8 +92,8 @@ typedef struct policy_symbols {
     state_t (*loop_init)   (polctx_t *c,loop_id_t *loop_id);
     state_t (*loop_end)    (polctx_t *c,loop_id_t *loop_id);
     state_t (*new_iter)    (polctx_t *c,loop_id_t *loop_id);
-    state_t (*mpi_init)    (polctx_t *c);
-    state_t (*mpi_end)     (polctx_t *c);
+    state_t (*mpi_init)    (polctx_t *c,mpi_call call_type);
+    state_t (*mpi_end)     (polctx_t *c,mpi_call call_type);
     state_t (*configure) (polctx_t *c);
     state_t (*domain) (polctx_t *c, node_freq_domain_t *domain);
 } polsym_t;

@@ -27,6 +27,7 @@
 
 #define IO_TH 	10.0
 #define MPI_TH 10000
+#define MIN_MPI_TH 200
 
 state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state)
 {
@@ -42,6 +43,9 @@ state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint d
 	if (mpisec > MPI_TH){
 		*app_state = APP_MPI_BOUND;
 		return EAR_SUCCESS;
+	}
+	if (mpisec < MIN_MPI_TH){
+		*app_state =  APP_GO_PERIODIC;
 	}
 	return EAR_SUCCESS;
 }

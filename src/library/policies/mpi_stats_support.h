@@ -15,8 +15,9 @@
 
 #ifndef MPI_SUPPORT_H
 #define MPI_SUPPORT_H
+#include <library/api/mpi_support.h>
 state_t mpi_app_init(polctx_t *c);
 state_t mpi_app_end(polctx_t *c);
-state_t mpi_call_init(polctx_t *c);
-state_t mpi_call_end(polctx_t *c);
+state_t mpi_call_init(polctx_t *c,mpi_call call_type);
+state_t mpi_call_end(polctx_t *c,mpi_call call_type);
 #endif
