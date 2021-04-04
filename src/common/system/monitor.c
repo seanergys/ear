@@ -209,7 +209,7 @@ state_t monitor_init()
 	while (pthread_mutex_trylock(&lock_gen));
 	if (enabled != 0) {
 		pthread_mutex_unlock(&lock_gen);
-		return_msg(EAR_ERROR, "monitor already enabled");
+		return EAR_SUCCESS;
 	}
 	if (!locked) {
 		if (xtate_fail(s, monitor_lock_alloc())) {
