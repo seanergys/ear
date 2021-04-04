@@ -189,10 +189,6 @@ static int pm_connect(ehandler_t *my_eh)
 	int gpu_error = 0;
 	state_t s;
 
-	if (xtate_fail(s, monitor_init())) {
-		error("monitor_init returned %d (%s)", s, state_msg);
-		gpu_error = 1;
-	}
 	if (xtate_fail(s, gpu_load(empty, none, &gpu_sel_model))) {
 		error("gpu_load returned %d (%s)", s, state_msg);
 		gpu_error = 1;

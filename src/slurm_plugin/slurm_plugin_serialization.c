@@ -42,18 +42,17 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 	int found_eargmd_host = 0;
 	int found_path_inst = 0;
 	int found_path_temp = 0;
+	int found_exclusion = 0;
+	int found_inclusion = 0;
 	int i;
 
 	// Initialization values
 	sd->pack.eargmd.min = 1;
-
 	// Search
-	for (i = 0; i < ac; ++i)
-	{
+	for (i = 0; i < ac; ++i) {
 		if ((strlen(av[i]) > 8) && (strncmp ("default=", av[i], 8) == 0))
 		{
 			plug_verbose(sp, 2, "plugstack found library by default '%s'", &av[i][8]);
-
 			// If enabled by default
 			if (strncmp ("default=on", av[i], 10) == 0) {
 				// Library == 1: enable
@@ -103,26 +102,43 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 		if ((strlen(av[i]) > 14) && (strncmp ("nodes_allowed=", av[i], 14) == 0)) {
 			strncpy(sd->pack.nodes_allowed, &av[i][14], SZ_PATH);
 			plug_verbose(sp, 2, "plugstack found allowed nodes: '%s'", sd->pack.nodes_allowed);
+			found_inclusion = 1;
 		}
 		if ((strlen(av[i]) > 15) && (strncmp ("nodes_excluded=", av[i], 15) == 0)) {
 			strncpy(sd->pack.nodes_excluded, &av[i][15], SZ_PATH);
 			plug_verbose(sp, 2, "plugstack found excluded nodes: '%s'", sd->pack.nodes_excluded);
+			found_exclusion = 1;
 		}
 	}
-
 	// EARGMD enabled?
 	sd->pack.eargmd.enabled = found_eargmd_host && found_earmgd_port;
-
 	// TMP folder missing?
 	if (!found_path_temp) {
 		plug_verbose(sp, 2, "missing plugstack localstatedir directory");
-		return (ESPANK_STOP);
+		return ESPANK_STOP;
 	}
-
 	// Prefix folder missing?
 	if (!found_path_inst) {
 		plug_verbose(sp, 2, "missing plugstack prefix directory");
-		return (ESPANK_ERROR);
+		return ESPANK_ERROR;
+	}
+	// Allowance (from plugstack)
+	gethostname(sd->subject.host, SZ_NAME_MEDIUM);
+	// If is excluded, then it can't continue
+	if (found_exclusion) {
+		plug_verbose(sp, 2, "testing exclusion of '%s' in '%s'", sd->subject.host, sd->pack.nodes_excluded);
+		if (strinlist(sd->pack.nodes_excluded, ",", sd->subject.host)) {
+			plug_verbose(sp, 2, "found node '%s' in the exclusion list", sd->subject.host);
+			return ESPANK_ERROR;
+		}
+	}
+	// If is not included/allowed, then it can't continue
+	if (found_inclusion) {
+		plug_verbose(sp, 2, "testing inclusion of %s in %s", sd->subject.host, sd->pack.nodes_allowed);
+		if (!strinlist(sd->pack.nodes_allowed, ",", sd->subject.host)) {
+			plug_verbose(sp, 2, "not found node '%s' in the allowance list", sd->subject.host);
+			return ESPANK_ERROR;
+		}
 	}
 
 	return ESPANK_SUCCESS;
@@ -248,15 +264,15 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.path_usdb.loc);
 	//printenv_agnostic(sp, Var.path_trac.loc);
 	printenv_agnostic(sp, Var.version.loc);
-	printenv_agnostic(sp, Var.gm_host.loc);
-	printenv_agnostic(sp, Var.gm_port.loc);
+	//printenv_agnostic(sp, Var.gm_host.loc);
+	//printenv_agnostic(sp, Var.gm_port.loc);
 	printenv_agnostic(sp, Var.gm_secure.loc);
 	printenv_agnostic(sp, Var.user.rem);
 	printenv_agnostic(sp, Var.group.rem);
-	printenv_agnostic(sp, Var.path_temp.rem);
-	printenv_agnostic(sp, Var.path_inst.rem);
-	printenv_agnostic(sp, Var.nodes_allowed.rem);
-	printenv_agnostic(sp, Var.nodes_excluded.rem);
+	//printenv_agnostic(sp, Var.path_temp.rem);
+	//printenv_agnostic(sp, Var.path_inst.rem);
+	//printenv_agnostic(sp, Var.nodes_allowed.rem);
+	//printenv_agnostic(sp, Var.nodes_excluded.rem);
 	printenv_agnostic(sp, Var.ctx_last.rem);
 	printenv_agnostic(sp, Var.was_sbac.rem);
 	printenv_agnostic(sp, Var.was_srun.rem);
@@ -301,7 +317,7 @@ int plug_deserialize_components(spank_t sp)
 	// Return
 	if (!plug_component_isenabled(sp, Component.plugin)) {
 		return ESPANK_ERROR;
-        }
+	}
 
 	return ESPANK_SUCCESS;
 }
@@ -336,7 +352,7 @@ int plug_deserialize_local(spank_t sp, plug_serialization_t *sd)
 
 	if (upw == NULL || gpw == NULL) {
 		plug_verbose(sp, 2, "converting UID/GID in username");
-		return (ESPANK_ERROR);
+		return ESPANK_ERROR;
 	}
 
 	strncpy(sd->job.user.user,  upw->pw_name, SZ_NAME_MEDIUM);
@@ -358,14 +374,6 @@ int plug_serialize_remote(spank_t sp, plug_serialization_t *sd)
 	setenv_agnostic(sp, Var.user.rem,  sd->job.user.user,  1);
 	setenv_agnostic(sp, Var.group.rem, sd->job.user.group, 1);
 	
-	// Installation
-	setenv_agnostic(sp, Var.path_temp.rem, sd->pack.path_temp, 1);
-	setenv_agnostic(sp, Var.path_inst.rem, sd->pack.path_inst, 1);
-	
-	// Node allowance
-	setenv_agnostic(sp, Var.nodes_allowed.rem,  sd->pack.nodes_allowed,  1);
-	setenv_agnostic(sp, Var.nodes_excluded.rem, sd->pack.nodes_excluded, 1);
-
 	// Subject
 	if (plug_context_is(sp, Context.srun)) {
 		setenv_agnostic(sp, Var.ctx_last.rem, Constring.srun, 1);
@@ -374,16 +382,6 @@ int plug_serialize_remote(spank_t sp, plug_serialization_t *sd)
 	if (plug_context_is(sp, Context.sbatch)) {
 		setenv_agnostic(sp, Var.ctx_last.rem, Constring.sbatch, 1);
 		setenv_agnostic(sp, Var.was_sbac.rem, "1", 1);
-	}
-
-	// EARGMD
-	if (sd->pack.eargmd.enabled == 1)
-	{
-		sprintf(buffer1, "%d", sd->pack.eargmd.port);
-		sprintf(buffer2, "%d", sd->pack.eargmd.min );
-		
-		setenv_agnostic(sp, Var.gm_host.loc, sd->pack.eargmd.host, 1);
-		setenv_agnostic(sp, Var.gm_port.loc, buffer1             , 1);
 	}
 
 	return ESPANK_SUCCESS;
@@ -397,8 +395,8 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	// Silence (not for the plugin, for other EAR APIs)
 	VERB_SET_EN(0);
 	ERROR_SET_EN(0);
-	
-	// Converting optiion variables to task directly
+
+	// Converting option variables to task directly
 	repenv_agnostic(sp, Var.verbose.loc,   Var.verbose.ear);
 	repenv_agnostic(sp, Var.policy.loc,    Var.policy.ear);
 	repenv_agnostic(sp, Var.policy_th.loc, Var.policy_th.ear);
@@ -412,14 +410,8 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	getenv_agnostic(sp, Var.user.rem,      sd->job.user.user,    SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.group.rem,     sd->job.user.group,   SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.account.rem,   sd->job.user.account, SZ_NAME_MEDIUM);
-	
-	// Installation
-	getenv_agnostic(sp, Var.path_temp.rem, sd->pack.path_temp,   SZ_PATH);
-	getenv_agnostic(sp, Var.path_inst.rem, sd->pack.path_inst,   SZ_PATH);
-	
-	// Subject
-	gethostname(sd->subject.host, SZ_NAME_MEDIUM);
 
+	// Subject
 	if (isenv_agnostic(sp, Var.ctx_last.rem, Constring.srun)) {
 		sd->subject.context_local = Context.srun;
 	} else if (isenv_agnostic(sp, Var.ctx_last.rem, Constring.sbatch)) {
@@ -430,23 +422,6 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	if (sd->subject.context_local == Context.error) {
 		return ESPANK_ERROR;
 	}
-
-	// Allowance
-	if (getenv_agnostic(sp, Var.nodes_excluded.rem, sd->pack.nodes_excluded, SZ_PATH)) {
-		// If is excluded, then it can't continue
-		if (strinlist(sd->pack.nodes_excluded, ",", sd->subject.host)) {
-			plug_verbose(sp, 2, "found node '%s' in the exclusion list", sd->subject.host);
-			return ESPANK_ERROR;
-		}
-	}
-	if (getenv_agnostic(sp, Var.nodes_allowed.rem, sd->pack.nodes_allowed, SZ_PATH)) {
-		// If is not included, then it can't continue
-		if (!strinlist(sd->pack.nodes_allowed, ",", sd->subject.host)) {
-			plug_verbose(sp, 2, "not found node '%s' in the allowance list", sd->subject.host);
-			return ESPANK_ERROR;
-		}
-	}
-
 	// Job/step
 	s1 = 0;
 	s2 = 0;
@@ -491,35 +466,19 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	plug_verbose(sp, 2, "subject '%s' is master? '%d'",
 		sd->subject.host, sd->subject.is_master);
 
-	// EARGMD
-	sd->pack.eargmd.min = 1;	
-
-	s1 = getenv_agnostic(sp, Var.gm_host.loc, sd->pack.eargmd.host, SZ_NAME_MEDIUM);
-	s2 = getenv_agnostic(sp, Var.gm_port.loc, buffer1             , SZ_NAME_MEDIUM);
-
-	if (s1 && s2) {
-		sd->pack.eargmd.port = atoi(buffer1);
-		sd->pack.eargmd.min  = atoi(buffer2);
-		sd->pack.eargmd.enabled = 1;
-	}
-
 	/*
 	 * The .ear variables are set during the APP serialization. But APP
 	 * serialization happens if the library is ON. But now we have ERUN.
 	 * With ERUN in mind we need a small set of variables definitions
 	 * out of APP serialization.
-	 */ 	
-	repenv_agnostic(sp, Var.path_temp.rem, Var.path_temp.ear);
-	repenv_agnostic(sp, Var.path_inst.rem, Var.path_inst.ear);
+	 */
+	setenv_agnostic(sp, Var.path_temp.ear, sd->pack.path_temp, 1);
+	setenv_agnostic(sp, Var.path_inst.ear, sd->pack.path_inst, 1);
 
 	// Cleaning
 	unsetenv_agnostic(sp, Var.user.rem);
 	unsetenv_agnostic(sp, Var.group.rem);
-	unsetenv_agnostic(sp, Var.path_temp.rem);
-	unsetenv_agnostic(sp, Var.path_inst.rem);
-	unsetenv_agnostic(sp, Var.nodes_allowed.rem);
-	unsetenv_agnostic(sp, Var.nodes_excluded.rem);
-	
+
 	return ESPANK_SUCCESS;
 }
 
