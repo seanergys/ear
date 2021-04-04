@@ -58,11 +58,9 @@ typedef struct policy_context {
 	unsigned int use_turbo;
 	mpi_ctx_t mpi;
 	//job_t 		*my_job
-	#if USE_GPUS
 	ctx_t     gpu_mgt_ctx;
 	uint			gpu_mgt_ctx_on;
 	uint      num_gpus;
-	#endif
 	int affinity;
 	int pc_limit;	
 } polctx_t;

@@ -93,9 +93,6 @@ typedef struct powercap_status{
 	int *greedy_nodes;        /* List of greedy nodes */
 	uint *greedy_req; 				/* extra_power requested */
   uint *extra_power;				/* extra power already allocated */
-	#if POWERCAP_EXT
-	performance_t	*perf_info;	/* Performance metrics used by powercap scheduler */
-	#endif
 }powercap_status_t;
 
 #define TEMP_NUM_NODES 10

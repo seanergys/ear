@@ -91,6 +91,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 	uint i;
 	ulong util,freq;
 	int new_gfreq_pos;
+	#if USE_GPUS
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
 	for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
 		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]",i,
@@ -124,6 +125,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 		}
 	}		
 	
+	#endif
 	*ready = EAR_POLICY_READY;
 	
 	return EAR_SUCCESS;
@@ -132,12 +134,14 @@ state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok
 {
 	ulong eff_f;
 	uint i;
+	#if USE_GPUS
 	debug("num_gpus %d",my_sig->gpu_sig.num_gpus);
 	for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
 		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]",i,
 		my_sig->gpu_sig.gpu_data[i].GPU_power,(float)my_sig->gpu_sig.gpu_data[i].GPU_freq/1000.0,(float)my_sig->gpu_sig.gpu_data[i].GPU_mem_freq/1000.0,
 		my_sig->gpu_sig.gpu_data[i].GPU_util,my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
 	}
+	#endif
 	*ok=1;
 
 	return EAR_SUCCESS;

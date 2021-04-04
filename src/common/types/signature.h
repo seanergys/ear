@@ -20,7 +20,7 @@
 
 #include <common/config.h>
 #include <common/types/generic.h>
-#if USE_GPU_LIB
+#if USE_GPUS
 #include <metrics/gpu/gpu.h>
 #endif
 #include <metrics/io/io.h>

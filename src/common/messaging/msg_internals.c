@@ -150,9 +150,7 @@ int read_command(int s, request_t *command)
         debug("read_command:NO_COMMAND");
         command->req = NO_COMMAND;
         if (head.size > 0) free(tmp_command);
-#if DYN_PAR
         return EAR_SOCK_DISCONNECTED;
-#endif
         return command->req;
     }
     memcpy(command, tmp_command, sizeof(internal_request_t));
@@ -215,9 +213,7 @@ int read_command(int s, request_t *command)
         debug("read_command:NO_COMMAND");
         command->req = NO_COMMAND;
         if (head.size > 0) free(tmp_command);
-#if DYN_PAR
         return EAR_SOCK_DISCONNECTED;
-#endif
         return command->req;
     }
     memcpy(command, tmp_command, sizeof(request_t));

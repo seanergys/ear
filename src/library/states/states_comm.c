@@ -80,7 +80,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
 		io_tostr(&sig->signature.sig_ext->iod,io_info,sizeof(io_info));
 		strcpy(gpu_buff,"");
-	  #if USE_GPU_LIB
+	  #if USE_GPUS
 	  if (sig->signature.gpu_sig.num_gpus>0){ 
 			verbose(3,"");
 		  for(gpui=0;gpui<sig->signature.gpu_sig.num_gpus;gpui++){ 
@@ -110,12 +110,10 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 		verbosen(2,"\n\t IMC avg freq %.2f",imcf);
 		#endif
 		verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
-		#if CACHE_METRICS
 		l1_sec = sig->signature.L1_misses/(sig->signature.time*1024*1024*1024);
 		l2_sec = sig->signature.L2_misses/(sig->signature.time*1024*1024*1024);
 		l3_sec = sig->signature.L3_misses/(sig->signature.time*1024*1024*1024);
 		verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f",l1_sec,l2_sec,l3_sec);
-		#endif
 		verbosen(2," VPI %.2f Total MPI calls %u",VPI,total_mpi);
 		verbosen(2,"\n\t IO DATA: %s ",io_info);
     verbose(1,"%s",COL_CLR);
