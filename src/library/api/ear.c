@@ -1474,8 +1474,10 @@ state_t earl_periodic_actions_init(void *no_arg)
 		seconds = 0;
 		memset((char *)&last_io,0,sizeof(io_data_t));
 		tics_per_second = sysconf(_SC_CLK_TCK);
+#if 0
 		proc_stat_load();
 		proc_stat_init(&stat_ctx,sig_shared_region[my_node_id].pid);
+#endif
 		last_mpis = 0;
 		if (!is_mpi_enabled()){
 		// #if !MPI
@@ -1522,12 +1524,13 @@ state_t earl_periodic_actions(void *no_arg)
 		MB = cio.rchar/(1024*1024)+cio.wchar/(1024*1024);
 		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/5.0;
 		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
+#if 0
 		proc_stat_read(&stat_ctx,&c_stat);
 		proc_stat_data_to_str(&c_stat,stat_buff,sizeof(stat_buff));
 		total_time = c_stat.utime + c_stat.stime + c_stat.cutime + c_stat.cstime;
 		cpu_util = 100 * (((float)total_time / (float)tics_per_second) / (float)seconds);
 		verbose_master(2,"EARL: %s CPU util %.2f",stat_buff,cpu_util);
-
+#endif
 		if (classify(MB,total_mpi_calls,io_in_period,mpi_in_period,dynais_enabled,ear_status,ear_periodic_mode,EAR_STATE,&earl_phase_classification) != EAR_SUCCESS){
 			verbose_master(2,"Error in app classification");
 		}
