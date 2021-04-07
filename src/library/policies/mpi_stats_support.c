@@ -54,14 +54,11 @@ state_t mpi_app_init(polctx_t *c)
 		mpi_stats.exec_time = 0;
 		mpi_stats.perc_mpi = 0;
 		if (is_mpi_enabled()){
-		mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
+			mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
 		}else{
-		mpi_stats.rank = 0;
+			mpi_stats.rank = 0;
 		}
 		timestamp_getfast(&app_init);
-
-
-    
     return EAR_SUCCESS;
   }else return EAR_ERROR;
 
@@ -79,10 +76,14 @@ state_t mpi_app_end(polctx_t *c)
   timestamp_getfast(&end);
   elap=timestamp_diff(&end,&app_init,TIME_USECS);
 	mpi_stats.exec_time = elap;
-	mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
-	if (sig_shared_region[my_node_id].mpi_info.total_mpi_calls){
+	if (mpi_stats.total_mpi_calls){
 
-		verbose(2,"EARL: Total time synchronizing %lu. Total MPI sync calls %lu. Total blocking calls %lu. Total collective calls %lu ",total_mpi_sync,total_synchronizations,total_blocking_calls,total_collectives);
+		mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
+		verbose(2,"EARL[%d]:RANK %d Total MPI calls %u MPI time %.1f Time synchronizing %.1f. Total MPI sync calls %.1f. Total blocking calls %.1f. Total collective calls %.1f ",
+			lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_sync/(float)mpi_stats.exec_time)*100.0,
+			((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0,
+			((float)total_blocking_calls/(float)mpi_stats.total_mpi_calls)*100.0,
+			((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0);
 		if (stats != NULL){
 			sprintf(file_name,"%s",stats);
 			verbose(2,"Using %s STATS output file",stats);
@@ -109,7 +110,7 @@ state_t mpi_app_end(polctx_t *c)
 state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 {
 	if (is_mpi_enabled()){
-  timestamp_getfast(&pol_time_init);
+  	timestamp_getfast(&pol_time_init);
 	}
   return EAR_SUCCESS;
 }
@@ -120,20 +121,20 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
   timestamp end;
   ullong elap;
 	if (is_mpi_enabled()){
-  timestamp_getfast(&end);
-  elap=timestamp_diff(&end,&pol_time_init,TIME_USECS);
-	if	(is_mpi_blocking(call_type)) 												total_blocking_calls++;
-	if (is_collective(remove_blocking(call_type)))					total_collectives++;
-	if (is_synchronization(remove_blocking(call_type))){ 	
-		total_synchronizations++;
-		total_mpi_sync += elap;
-	}
-  sig_shared_region[my_node_id].mpi_info.mpi_time=sig_shared_region[my_node_id].mpi_info.mpi_time+elap;
-  sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
+  	timestamp_getfast(&end);
+  	elap=timestamp_diff(&end,&pol_time_init,TIME_USECS);
+		if	(is_mpi_blocking(call_type)){ 												total_blocking_calls++;}
+		if (is_collective(remove_blocking(call_type))){					total_collectives++;}
+		if (is_synchronization(remove_blocking(call_type))){ 	
+			total_synchronizations++;
+			total_mpi_sync += elap;
+		}
+  	sig_shared_region[my_node_id].mpi_info.mpi_time=sig_shared_region[my_node_id].mpi_info.mpi_time+elap;
+  	sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
 
-	/* Global statistics */
-	mpi_stats.mpi_time+=elap;
-	mpi_stats.total_mpi_calls++;
+		/* Global statistics */
+		mpi_stats.mpi_time+=elap;
+		mpi_stats.total_mpi_calls++;
 	}
   return EAR_SUCCESS;
 }

@@ -153,11 +153,11 @@ static state_t scan_buffer(char *tok, proc_stat_t *ps)
 	int ret;
 	debug("processing %lu bytes %s",strlen(tok),tok);
 	if (mode == 1) {
-	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
+	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
 		"%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu" \
 		"%d %d %u %u %llu %lu %ld",
 		&ps->state, &ps->ppid, &ps->pgrp, &ps->session, &ps->tty_nr, &ps->tpgid,
-		&ps->flags, &ps->minflt, &ps->cminflt, &ps->cmajflt, &ps->utime, &ps->stime,
+		&ps->flags, &ps->minflt, &ps->cminflt, &ps->majflt, &ps->cmajflt, &ps->utime, &ps->stime,
 		&ps->cutime, &ps->cstime, &ps->priority, &ps->nice, &ps->num_threads,
 		&ps->itrealvalue, &ps->starttime, &ps->vsize, &ps->rss, &ps->rsslim,
 		&ps->startcode, &ps->endcode, &ps->startstack, &ps->kstkesp, &ps->kstkeip,
@@ -180,11 +180,11 @@ static state_t scan_buffer(char *tok, proc_stat_t *ps)
 		&ps->start_data, &ps->end_data, &ps->start_brk);
 	}
 	if (mode == 3) {
-	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
+	ret = sscanf(tok, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld" \
 		"%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu" \
 		"%d %d %u %u %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %d",
 		&ps->state, &ps->ppid, &ps->pgrp, &ps->session, &ps->tty_nr, &ps->tpgid,
-		&ps->flags, &ps->minflt, &ps->cminflt, &ps->cmajflt, &ps->utime, &ps->stime,
+		&ps->flags, &ps->minflt, &ps->cminflt, &ps->majflt, &ps->cmajflt, &ps->utime, &ps->stime,
 		&ps->cutime, &ps->cstime, &ps->priority, &ps->nice, &ps->num_threads,
 		&ps->itrealvalue, &ps->starttime, &ps->vsize, &ps->rss, &ps->rsslim,
 		&ps->startcode, &ps->endcode, &ps->startstack, &ps->kstkesp, &ps->kstkeip,
