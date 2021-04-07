@@ -300,6 +300,48 @@ state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freq
     return EAR_SUCCESS;
 }
 
+state_t policy_domain_detail(int status, char* buff){
+    switch (status){
+        case POL_NOT_SUPPORTED:
+            sprintf(buff, "%sNOT SUPPORTED%s", COL_RED, COL_CLR);
+            return EAR_SUCCESS;
+        case POL_GRAIN_CORE:
+            sprintf(buff, "%sGRAIN CORE%s", COL_GRE, COL_CLR);
+            return EAR_SUCCESS;
+        case POL_GRAIN_NODE:
+            sprintf(buff, "%sGRAIN NODE%s", COL_GRE, COL_CLR);
+            return EAR_SUCCESS;
+        default:
+            break;
+    }
+    return EAR_ERROR;
+}
+
+state_t policy_show_domain(node_freq_domain_t *dom){
+    verbose(2, "Reading policy domain...");
+    char detail[64];
+    if (policy_domain_detail(dom->cpu, detail) == EAR_SUCCESS) {
+       verbose(2, "CPU: %s", detail);
+    }
+    else return EAR_ERROR;
+
+    if (policy_domain_detail(dom->mem, detail) == EAR_SUCCESS) {
+        verbose(2, "MEM: %s", detail);
+    }
+    else return EAR_ERROR;
+
+    if (policy_domain_detail(dom->gpu, detail) == EAR_SUCCESS) {
+        verbose(2, "GPU: %s", detail);
+    }
+    else return EAR_ERROR;
+
+    if (policy_domain_detail(dom->gpumem, detail) == EAR_SUCCESS) {
+        verbose(2, "GPU_MEM: %s", detail);
+    }
+    else return EAR_ERROR;
+
+    return EAR_SUCCESS;
+}
 
 
 /**** End auxiliary functions ***/
@@ -351,6 +393,10 @@ state_t policy_init()
         freqs_domain.mem = POL_NOT_SUPPORTED;
         freqs_domain.gpu = POL_NOT_SUPPORTED;
         freqs_domain.gpumem = POL_NOT_SUPPORTED;
+    }
+    /*  Verboses policy's domain*/
+    if (policy_show_domain(&freqs_domain) == EAR_ERROR){
+        verbose(2, "%sERROR on getting domains.%s",COL_RED, COL_CLR);
     }
 #if POWERCAP
     if (masters_info.my_master_rank>=0){

@@ -40,6 +40,9 @@ state_t policy_new_iteration(loop_id_t *loop_id);
 state_t policy_mpi_init(mpi_call call_type);
 state_t policy_mpi_end(mpi_call call_type);
 
+state_t policy_domain_detail(int status, char *buff);
+state_t policy_show_domain(node_freq_domain_t *dom);
+
 state_t policy_force_global_frequency(ulong new_f);
 
 /* These two functions needs to be reconsidered*/
