@@ -47,10 +47,12 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
 	verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
 	power_var = (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power - sig->DC_power)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power; 
 	if (ear_periodic_mode == PERIODIC_MODE_OFF){
-		metric_max = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time + (penalty* my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time);
+        metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
+		metric_max = metric_ref * (1 + penalty); // my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time + (penalty* my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time);
 		metric = sig->time;
-		metric_var = (sig->time-my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
-		verbose(2,"Using time as reference : Current %.3lf Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_max,(power_var-metric_var)*100,power_var,metric_var);
+		// metric_var = (sig->time-my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
+		metric_var = (sig->time-metric_ref)/metric_ref;
+		verbose(2,"Using time as reference : Current %.3lf Ref %3.lf  Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_ref,metric_max,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric > metric_max);
 	}else{
 		/* We were using ref_pstate = min_pstate */
@@ -64,10 +66,11 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
 		return (metric > metric_max);	
 		#endif
 		#if USE_GBS
-		metric_min = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS - (penalty* my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS);
+        metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+		metric_min = metric_ref * (1 - penalty);// my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS - (penalty* my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS);
 		metric = sig->GBS;
-		metric_var = (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS-sig->GBS)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
-		verbose(2,"Using GBS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
+		metric_var = (metric_ref - sig->GBS / metric_ref);// (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS-sig->GBS)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+		verbose(2,"Using GBS as reference : Current %.3lf Ref %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_ref,metric_min,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric < metric_min);
 		#endif
 		#if USE_FLOPS

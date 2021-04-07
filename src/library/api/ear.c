@@ -1442,10 +1442,10 @@ state_t earl_periodic_actions_init(void *no_arg)
 		seconds = 0;
 		memset((char *)&last_io,0,sizeof(io_data_t));
 		tics_per_second = sysconf(_SC_CLK_TCK);
-		#if 0
+#if 0
 		proc_stat_load();
 		proc_stat_init(&stat_ctx,sig_shared_region[my_node_id].pid);
-		#endif
+#endif
 		last_mpis = 0;
 		if (!is_mpi_enabled()){
 		ear_periodic_mode = PERIODIC_MODE_ON;
