@@ -472,6 +472,7 @@ void powercap_release_power()
     my_pc_opt.powercap_status = PC_STATUS_OK;
     my_pc_opt.released = 0;
     my_pc_opt.last_t1_allocated = my_pc_opt.current_pc;
+	pmgt_set_powercap_value(pcmgr, pc_pid, DOMAIN_NODE, (ulong)my_pc_opt.current_pc);
 }
 
 void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
@@ -484,35 +485,40 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
         status->status = PC_STATUS_IDLE;
         my_status->released = my_pc_opt.released;
         my_status->total_idle_power = my_pc_opt.last_t1_allocated;
+        my_status->idle_nodes++;
     }
     else {
         pmgt_get_status(status);
         switch(status->status) 
         {
             case PC_STATUS_GREEDY:
-                status->requested = my_pc_opt.requested;
+                //status->requested = my_pc_opt.requested;
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap) status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 else status->extra = 0;
+                debug("PC_STATUS greedy, requesting %u", status->requested);
                 break;
             case PC_STATUS_RELEASE:
+                my_pc_opt.released = status->tbr;
+                my_pc_opt.current_pc -= status->tbr;
                 debug("%sReleasing%s %u W allocated %u W",COL_BLU,COL_CLR,my_pc_opt.released,my_pc_opt.current_pc);
                 powercap_release_power();
                 break;
             case PC_STATUS_ASK_DEF: 
                 /* Data management */
-                debug("%sAsking for defaul power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
-                //status->requested = my_pc_opt.requested;
+                debug("%sAsking for default power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
                 my_status->requested += my_pc_opt.requested;
                 break;
-            case PC_STATUS_ERROR: 
-                break;
             case PC_STATUS_OK:
+                debug("PC_STATUS OK");
                 status->requested = 0;
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
                     status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 } else {
                     status->extra = 0;
                 }
+                break;
+            case PC_STATUS_ERROR: 
+            default:
                 break;
 
         }
