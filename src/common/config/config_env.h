@@ -86,14 +86,15 @@
 #define SCHED_MAX_IMC_FREQ						"SLURM_MAX_IMC_FREQ"
 #define SCHED_MIN_IMC_FREQ						"SLURM_MIN_IMC_FREQ"
 /* This variable specifies the IMC freq must be selected by the EAR policy */
-#define SCHED_SET_IMC_FREQ						"SLURM_SET_IMC_FREQ"
-/* This variable specifies the IMC freq must be selected by the EAR policy */
-#define SCHED_IMC_EXTRA_TH 			"SLURM_IMC_EXTRA_TH"
-#define SCHED_LET_HW_CTRL_IMC 	"SLURM_LET_HW_CTRL_IMC"
-#define SCHED_RANK0_DO_IO				"SLURM_RANK0_DO_IO"
+#define SCHED_SET_IMC_FREQ "SLURM_SET_IMC_FREQ"
+#define SCHED_IMC_EXTRA_TH "SLURM_IMC_EXTRA_TH"
+#define SCHED_LET_HW_CTRL_IMC "SLURM_LET_HW_CTRL_IMC"
+#define SCHED_RANK0_DO_IO       "SLURM_RANK0_DO_IO"
 
 /* Asks EARL to write verbose messages in separate per_task files */
 #define SCHED_EARL_VERBOSE_PATH "SLURM_EARL_VERBOSE_PATH"
+
+
 
 /* Modifies the verbosity of the loader */
 #define SCHED_LOADER_VERBOSE "SLURM_LOADER_VERBOSE"
@@ -132,7 +133,7 @@
 #define SHARE_INFO_PER_NODE 	"SLURM_SHARE_INFO_PER_NODE"
 #define USE_APP_MGR_POLICIES	"SLURM_APP_MGR_POLICIES"
 #define EAR_STATS 						"SLURM_GET_EAR_STATS"
-#define SCHED_GET_EAR_STATS		"SLURM_GET_EAR_STATS"
+#define SCHED_GET_EAR_STATS   "SLURM_GET_EAR_STATS"
 #define EAR_POLICY_GRAIN			"SLURM_EAR_POLICY_GRAIN"
 
 #endif //SCHED_SLURM
