@@ -76,13 +76,12 @@ state_t policy_gpu_init_ctx(polctx_t *c)
 {
 	uint policy_gpu_model;
 	#if USE_GPUS
-	c->gpu_mgt_ctx_on=0;
+	c->num_gpus = 0;
 	if (gpu_lib_load(c->app) != EAR_SUCCESS){
     error("gpu_lib_load in init_power_policy");
 		return EAR_ERROR;
   }else{
   	if (gpu_lib_init(&c->gpu_mgt_ctx) == EAR_SUCCESS){
-    	c->gpu_mgt_ctx_on=1;
       verbose_master(2,"gpu_lib_init success");
       gpu_lib_model(&c->gpu_mgt_ctx,&policy_gpu_model);
       if (policy_gpu_model == MODEL_DUMMY){ 
@@ -92,6 +91,7 @@ state_t policy_gpu_init_ctx(polctx_t *c)
       	gpu_lib_count(&c->num_gpus);
       }
       verbose_master(2,"Num gpus detected in policy_load %u",c->num_gpus);	
+
     }else{
       error("gpu_lib_init");
 			return EAR_ERROR;

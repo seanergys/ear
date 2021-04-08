@@ -10,7 +10,6 @@ endif
 	COMPONENTS += \
                   daemon \
                   commands \
-                  tests \
                   library
 ifdef GSL_BASE
 	COMPONENTS += tools

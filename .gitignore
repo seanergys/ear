@@ -6,6 +6,7 @@
 */bin/
 */lib/
 etc/rpms/rpmbuild.sh
+src/tests
 
 # Autotools
 *aclocal.m4

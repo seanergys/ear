@@ -28,10 +28,12 @@
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
 #include <library/api/mpi_support.h>
+#include <library/api/clasify.h>
 #include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
 #include <library/policies/imc_policy_support.h>
+#include <library/policies/gpu_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
@@ -97,6 +99,10 @@ node_freqs_t nf,avg_nf;
 static uint policy_gpu_model;
 static ulong *freq_per_core;
 static node_freq_domain_t freqs_domain;
+static uint last_earl_phase_classification = APP_COMP_BOUND;
+static const ulong **gpuf_pol_list;
+static const uint *gpuf_pol_list_items;
+
 
 /**** Auxiliary functions ***/
 state_t policy_load(char *obj_path,polsym_t *psyms)
@@ -300,6 +306,70 @@ state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freq
     return EAR_SUCCESS;
 }
 
+/* This function confgures freqs based on IO criteria */
+state_t policy_io_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+	int i;
+	node_freq_domain_t io_freqs_domain;
+	io_freqs_domain.cpu = POL_GRAIN_NODE;
+	io_freqs_domain.mem = POL_GRAIN_NODE;
+	io_freqs_domain.gpu = dom->gpu;
+	io_freqs_domain.gpumem = dom->gpumem;
+	freqs->cpu_freq[0] = frequency_pstate_to_freq(c->num_pstates - 1);
+	for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+		freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_khz;
+		freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
+	}
+	for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
+		freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
+	}
+	/* GPU mem is pending */
+	return policy_freq_selection(c,my_sig,freqs,&io_freqs_domain,avg_freq);
+}
+
+/* This function sets again default frequencies after a setting modification */
+state_t policy_restore_comp_configuration(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+	int i;
+  node_freq_domain_t rest_freqs_domain;
+  rest_freqs_domain.cpu = POL_GRAIN_NODE;
+  rest_freqs_domain.mem = POL_GRAIN_NODE;
+  rest_freqs_domain.gpu = dom->gpu;
+  rest_freqs_domain.gpumem = dom->gpumem;
+  policy_get_default_freq(&freqs->cpu_freq[0]);
+  for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+    freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_khz;
+    freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
+  }
+  for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
+    freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][0];
+  }
+  /* GPU mem is pending */
+  return policy_freq_selection(c,my_sig,freqs,&rest_freqs_domain,avg_freq);
+}
+
+state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+  int i;
+  node_freq_domain_t rest_freqs_domain;
+  rest_freqs_domain.cpu = POL_GRAIN_NODE;
+  rest_freqs_domain.mem = POL_GRAIN_NODE;
+  rest_freqs_domain.gpu = dom->gpu;
+  rest_freqs_domain.gpumem = dom->gpumem;
+	freqs->cpu_freq[0] = frequency_pstate_to_freq(c->num_pstates - 1);
+  for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+    freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_khz;
+    freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
+  }
+	if (rest_freqs_domain.gpu != POL_NOT_SUPPORTED){
+  	for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
+  	  freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][0];
+  	}
+	}
+  /* GPU mem is pending */
+  return policy_freq_selection(c,my_sig,freqs,&rest_freqs_domain,avg_freq);
+}
+
 
 
 /**** End auxiliary functions ***/
@@ -312,6 +382,7 @@ state_t policy_init()
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
     char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
     state_t ret,retg=EAR_SUCCESS;
+		policy_gpu_init_ctx(c);
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
     }
@@ -319,6 +390,7 @@ state_t policy_init()
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
 #if USE_GPUS
+		gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items);
     nf.gpu_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
     nf.gpu_mem_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
 #endif
@@ -508,7 +580,40 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     int i;
     state_t st=EAR_ERROR,stg=EAR_SUCCESS;
     int cpu_ready,gpu_ready = EAR_POLICY_READY;
-    /* We first apply the CPU part */
+		/* IO Use case */
+		if (earl_phase_classification == APP_IO_BOUND){
+			verbose_master(2,"IO configuration");
+			st = policy_io_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
+			*freq_set = avg_nf.cpu_freq[0];
+			*ready = EAR_POLICY_CONTINUE;
+			last_earl_phase_classification = earl_phase_classification;
+			return EAR_SUCCESS;
+		}
+		/* Restore configuration to COMP or MPI if needed*/
+		if ((earl_phase_classification == APP_COMP_BOUND) || (earl_phase_classification == APP_MPI_BOUND)){
+			/* Are we in a busy waiting phase ? */
+			uint busy;
+      st = is_cpu_busy_waiting(my_sig,&busy);
+      if (busy == BUSY_WAITING){
+        verbose_master(2,"Busy waiting configuration");
+        st = policy_busy_waiting_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
+        *freq_set = avg_nf.cpu_freq[0];
+        *ready = EAR_POLICY_CONTINUE;
+				last_earl_phase_classification = APP_BUSY_WAITING;
+        return st;
+      }
+			/* If not, we should restore to default settings */
+			if ((last_earl_phase_classification == APP_BUSY_WAITING) || (last_earl_phase_classification == APP_IO_BOUND)){
+				verbose_master(2,"COMP-MPI configuration");
+				st = policy_restore_comp_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
+				*freq_set = avg_nf.cpu_freq[0];
+      	*ready = EAR_POLICY_CONTINUE;
+				last_earl_phase_classification = earl_phase_classification;
+      	return st;		
+			}
+		}
+		last_earl_phase_classification = earl_phase_classification;
+		/* Here we are COMP or MPI bound AND not busy waiting*/
     if (polsyms_fun.node_policy_apply!=NULL){
 
         if (!eards_connected() || (masters_info.my_master_rank<0)){

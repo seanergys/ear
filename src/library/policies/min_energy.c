@@ -85,9 +85,6 @@ state_t policy_init(polctx_t *c)
 		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
 		#endif
 		mpi_app_init(c);
-  	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
-  	  verbose_master(2,"Error loading GPU context");
-  	}
 #if USE_GPUS
 		if (c->num_gpus){
   		if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
