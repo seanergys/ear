@@ -299,7 +299,7 @@ state_t proc_stat_data_print(proc_stat_t *ps)
 	return EAR_SUCCESS;
 }
 
-#if 1
+#if 0
 void fakefor()
 {
 	double a = 2.0;
