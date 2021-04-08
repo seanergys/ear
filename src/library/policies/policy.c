@@ -332,6 +332,7 @@ state_t policy_init()
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
 		nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
 #if USE_GPUS
+        gpu_lib_count(&my_pol_ctx.num_gpus);
 		nf.gpu_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
 		nf.gpu_mem_freq = calloc(my_pol_ctx.num_gpus,sizeof(ulong));
 #endif
