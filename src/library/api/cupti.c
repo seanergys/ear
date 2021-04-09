@@ -22,7 +22,8 @@
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
-#include <common/output/verbose.h>
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 
 static uint cuda_on = 0;
 int is_cuda_enabled()
