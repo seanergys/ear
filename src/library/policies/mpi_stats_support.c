@@ -72,6 +72,7 @@ state_t mpi_app_end(polctx_t *c)
 	char buff[256],buff2[300];
 	char file_name[256];
 	char *stats=getenv(SCHED_GET_EAR_STATS);
+	char stats_per_call[256];
 	/* Global statistics */
   timestamp_getfast(&end);
   elap=timestamp_diff(&end,&app_init,TIME_USECS);
@@ -79,14 +80,17 @@ state_t mpi_app_end(polctx_t *c)
 	if (mpi_stats.total_mpi_calls){
 
 		mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
+		#if 0
 		verbose(2,"EARL[%d]:RANK %d Total MPI calls %u MPI time %.1f Time synchronizing %.1f. Total MPI sync calls %.1f. Total blocking calls %.1f. Total collective calls %.1f ",
 			lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_sync/(float)mpi_stats.exec_time)*100.0,
 			((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0,
 			((float)total_blocking_calls/(float)mpi_stats.total_mpi_calls)*100.0,
 			((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0);
+		#endif
 		if (stats != NULL){
 			sprintf(file_name,"%s",stats);
-			verbose(2,"Using %s STATS output file",stats);
+			sprintf(stats_per_call,"%s.mpi_call_dist.csv",stats);
+			verbose(2,"Using %s STATS output file and mpi calls dist file %s",stats,stats_per_call);
 			fd=open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
 			if (fd < 0){
 				mpi_info_to_str(&mpi_stats,buff,sizeof(buff));
@@ -101,6 +105,18 @@ state_t mpi_app_end(polctx_t *c)
 				sprintf(buff2,"%d;%s\n",lib_shared_region->master_rank,buff);
 				write(fd,buff2,strlen(buff2));
 				close(fd);
+			}
+			fd = open(stats_per_call,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
+      if (fd >= 0){
+				if (mpi_stats.rank == 0){
+					sprintf(buff,"MASTER;RANK;Total MPI calls;MPI time;Time synchronizing;Total MPI sync calls;Total blocking calls;Total collective calls\n");
+					write(fd,buff,strlen(buff));
+				}
+				sprintf(buff,"%d;%d;%u;%.1f;%.1f;%.1f;%.1f;%.1f\n",lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_sync/(float)mpi_stats.exec_time)*100.0,
+      ((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0,
+      ((float)total_blocking_calls/(float)mpi_stats.total_mpi_calls)*100.0,
+      ((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0);	
+			write(fd,buff,strlen(buff));
 			}
 		}
 	}

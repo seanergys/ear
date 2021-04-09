@@ -580,20 +580,32 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     int i;
     state_t st=EAR_ERROR,stg=EAR_SUCCESS;
     int cpu_ready,gpu_ready = EAR_POLICY_READY;
+		uint busy;
+		is_cpu_busy_waiting(my_sig,&busy);
 		/* IO Use case */
 		if (earl_phase_classification == APP_IO_BOUND){
-			verbose_master(2,"IO configuration");
-			st = policy_io_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
-			*freq_set = avg_nf.cpu_freq[0];
-			*ready = EAR_POLICY_CONTINUE;
-			last_earl_phase_classification = earl_phase_classification;
-			return EAR_SUCCESS;
+			if (busy == BUSY_WAITING){
+				verbose_master(2,"IO configuration");
+				st = policy_io_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
+				last_earl_phase_classification = earl_phase_classification;
+				*ready = EAR_POLICY_CONTINUE;
+      	*freq_set = avg_nf.cpu_freq[0];
+				return EAR_SUCCESS;
+			}else if (last_earl_phase_classification == APP_IO_BOUND){
+				verbose_master(2,"IO and Not busy waiting: COMP-MPI configuration");
+        st = policy_restore_comp_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
+				last_earl_phase_classification = APP_COMP_BOUND;
+				*ready = EAR_POLICY_CONTINUE;
+      	*freq_set = avg_nf.cpu_freq[0];
+				return EAR_SUCCESS;
+			}else{
+				verbose_master(2,"IO -> COMP");
+				earl_phase_classification = APP_COMP_BOUND;
+			}
 		}
 		/* Restore configuration to COMP or MPI if needed*/
 		if ((earl_phase_classification == APP_COMP_BOUND) || (earl_phase_classification == APP_MPI_BOUND)){
 			/* Are we in a busy waiting phase ? */
-			uint busy;
-      st = is_cpu_busy_waiting(my_sig,&busy);
       if (busy == BUSY_WAITING){
         verbose_master(2,"Busy waiting configuration");
         st = policy_busy_waiting_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
@@ -612,6 +624,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
       	return st;		
 			}
 		}
+		verbose_master(2,"COMP or MPI bound and not busy waiting--> Node policy");
 		last_earl_phase_classification = earl_phase_classification;
 		/* Here we are COMP or MPI bound AND not busy waiting*/
     if (polsyms_fun.node_policy_apply!=NULL){

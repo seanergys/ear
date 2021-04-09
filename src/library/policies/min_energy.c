@@ -394,15 +394,20 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 
 	/* This part is generic */
 
-	if (curr_sig->def_f==last_sig->def_f){ 
+	if (curr_sig->def_f == last_sig->def_f){ 
 		*ok=1;
 		return EAR_SUCCESS;
 	}
 	energy_last = last_sig->time*last_sig->DC_power;
 	energy_curr = curr_sig->time * curr_sig->DC_power;
 
-	if ((energy_curr<energy_last)&&(curr_sig->time<(last_sig->time*c->app->settings[0]))) *ok=1;
-	else *ok=0;
+	if (ear_periodic_mode == PERIODIC_MODE_OFF){
+		if ((energy_curr<energy_last) && (curr_sig->time <= (last_sig->time + (last_sig->time*c->app->settings[0])))) *ok=1;
+		else *ok=0;
+	}else{
+		if ((energy_curr<energy_last) && (curr_sig->GBS >= (last_sig->GBS - (last_sig->GBS*c->app->settings[0])))) *ok = 1;
+		else *ok = 0;
+	}
 	return EAR_SUCCESS;
 }
 
