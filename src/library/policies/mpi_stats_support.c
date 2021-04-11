@@ -243,3 +243,26 @@ state_t clean_my_mpi_type_info(mpi_calls_types_t *t)
 	memset(t,0,sizeof(mpi_calls_types_t));
 	return EAR_SUCCESS;
 }
+
+state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls)
+{
+	int i;
+	if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL)) return EAR_ERROR;
+	for (i=0;i<data->num_processes;i++){
+		memcpy(&node_mpi_calls[i],&sig[i].mpi_info,sizeof(mpi_information_t));
+		node_mpi_calls[i].perc_mpi = (double)node_mpi_calls[i].mpi_time*100.0/(double)node_mpi_calls[i].exec_time;
+	}	
+	return EAR_SUCCESS;
+}
+
+state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min)
+{
+	int i = 0;
+	*max = 0;
+	*min = 0;		
+	for (i=1;i<nump;i++){
+		if (node_mpi_calls[i].perc_mpi > node_mpi_calls[*max].perc_mpi)	*max = i;
+		if (node_mpi_calls[i].perc_mpi < node_mpi_calls[*min].perc_mpi)	*min = i;
+	}	
+	return EAR_SUCCESS;
+}

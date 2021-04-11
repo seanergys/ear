@@ -51,6 +51,7 @@ core_OBJS = \
     policies/pc_suport.o \
     policies/mpi_stats_support.o \
     policies/gpu_support.o \
+    policies/cpu_support.o \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \

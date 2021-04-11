@@ -1527,10 +1527,12 @@ state_t earl_periodic_actions(void *no_arg)
 		}
 		if (earl_phase_classification == APP_MPI_BOUND){
 			verbose_master(2,"Phase MPI bound");
+			#if 0
 			verbose_mpi_types(2,&mpi_type_diff);
 			verbose_mpi_data(2,&mpi_call_diff);
 			verbose_master(2,"EARL: MPI time %.2lf Blocking time %.2lf Sync time %.2lf TimexBlock %lf TimexColl %lf TimexSync %lf",
 			mpi_call_diff.perc_mpi,(double)mpi_type_diff.time_blocking*100.0/(double)mpi_call_diff.exec_time,(double)mpi_type_diff.time_sync*100.0/(double)mpi_call_diff.exec_time,(double)mpi_type_diff.blocking/(double)mpi_type_diff.time_blocking,(double)mpi_type_diff.collec/(double)mpi_type_diff.time_collec,(double)mpi_type_diff.sync/(double)mpi_type_diff.time_sync);
+			#endif
 		}
 		if (new_ear_guided != DYNAIS_GUIDED){
 			debug("Phase TIME_GUIDED period %u",lib_period);

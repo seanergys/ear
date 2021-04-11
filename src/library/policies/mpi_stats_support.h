@@ -45,5 +45,8 @@ state_t clean_my_mpi_type_info(mpi_calls_types_t *t);
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t);
 void verbose_mpi_data(int vl,mpi_information_t *mc);
+state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls);
+state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min);
+
 
 #endif
