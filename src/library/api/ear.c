@@ -72,6 +72,8 @@
 #include <library/api/mpi.h>
 #endif
 #include <library/api/mpi_support.h>
+#include <library/policies/mpi_stats_support.h>
+
 extern const char *__progname;
 static uint ear_lib_initialized=0;
 
@@ -1438,6 +1440,8 @@ static io_data_t last_io;
 static ctx_t stat_ctx;
 static proc_stat_t c_stat;
 static long tics_per_second;
+static mpi_information_t last_mpi_data;
+static mpi_calls_types_t last_mpi_types;
 state_t earl_periodic_actions_init(void *no_arg)
 {
 		verbose_master(1,"EARL periodic thread ON");
@@ -1457,6 +1461,8 @@ state_t earl_periodic_actions_init(void *no_arg)
     	mpi_calls_in_period = lib_period;
     	states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 		}
+		mpi_call_copy_stats(&last_mpi_data,NULL);
+		clean_my_mpi_type_info(&last_mpi_types);
 		return EAR_SUCCESS;
 }
 state_t earl_periodic_actions(void *no_arg)
@@ -1471,6 +1477,8 @@ state_t earl_periodic_actions(void *no_arg)
 	ulong total_time;
 	float cpu_util;
 	uint new_ear_guided = ear_guided;
+	mpi_information_t mpi_call_diff;
+	mpi_calls_types_t mpi_type_diff;
   ear_iterations++;
 	if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
 		//if (ear_guided == TIME_GUIDED) verbose_master(2,"Time guided iteration iters %d period %u",ear_iterations,lib_period);
@@ -1490,6 +1498,17 @@ state_t earl_periodic_actions(void *no_arg)
 		MB = cio.rchar/(1024*1024)+cio.wchar/(1024*1024);
 		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/5.0;
 		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
+		/* Computing MPI statistics */
+		if (is_mpi_enabled()){
+			mpi_call_types_read_diff(&mpi_type_diff,&last_mpi_types);
+			mpi_call_read_diff(&mpi_call_diff,&last_mpi_data);
+			#if 0
+			verbose_mpi_types(2,&last_mpi_types);
+			verbose_mpi_types(2,&mpi_type_diff);
+			verbose_mpi_data(2,&last_mpi_data);
+			verbose_mpi_data(2,&mpi_call_diff);
+			#endif
+		}
 		#if 0
 		proc_stat_read(&stat_ctx,&c_stat);
 		proc_stat_data_to_str(&c_stat,stat_buff,sizeof(stat_buff));
@@ -1508,13 +1527,18 @@ state_t earl_periodic_actions(void *no_arg)
 		}
 		if (earl_phase_classification == APP_MPI_BOUND){
 			verbose_master(2,"Phase MPI bound");
+			verbose_mpi_types(2,&mpi_type_diff);
+			verbose_mpi_data(2,&mpi_call_diff);
+			verbose_master(2,"EARL: MPI time %.2lf Blocking time %.2lf Sync time %.2lf TimexBlock %lf TimexColl %lf TimexSync %lf",
+			mpi_call_diff.perc_mpi,(double)mpi_type_diff.time_blocking*100.0/(double)mpi_call_diff.exec_time,(double)mpi_type_diff.time_sync*100.0/(double)mpi_call_diff.exec_time,(double)mpi_type_diff.blocking/(double)mpi_type_diff.time_blocking,(double)mpi_type_diff.collec/(double)mpi_type_diff.time_collec,(double)mpi_type_diff.sync/(double)mpi_type_diff.time_sync);
 		}
-		if (new_ear_guided == DYNAIS_GUIDED){
-			verbose_master(2,"Phase DYNAIS_GUIDED");
-		}else{
+		if (new_ear_guided != DYNAIS_GUIDED){
 			debug("Phase TIME_GUIDED period %u",lib_period);
 			ear_periodic_mode = PERIODIC_MODE_ON;
-			if (ear_guided != new_ear_guided) states_begin_period(my_id, 1, (ulong) lib_period,1);
+			if (ear_guided != new_ear_guided){ 
+				verbose_master(2,"DYNAIS guided --> TIME guided");
+				states_begin_period(my_id, 1, (ulong) lib_period,1);
+			}
 		}
 		ear_guided = new_ear_guided;
 	}

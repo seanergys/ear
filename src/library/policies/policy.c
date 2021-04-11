@@ -493,7 +493,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     if (masters_info.my_master_rank>=0) verbose(2,"loading policy %s",obj_path);
     /* loads the policy plugin */
     if (policy_load(obj_path,&polsyms_fun)!=EAR_SUCCESS){
-        error("Error loading policy %s",obj_path);
+        error("Error loading policy %s:%s",obj_path,state_msg);
     }
     ear_frequency									= DEF_FREQ(app_settings->def_freq);
     my_pol_ctx.app								= app_settings;

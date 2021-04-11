@@ -144,8 +144,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	uint local_process_with_high_vpi;
 	uint sid = 0;
 	int gready;
+	mpi_information_t sig_mpi_data;	
 	
-
 
 	if ((c == NULL) || (c->app == NULL)){
     *ready=EAR_POLICY_CONTINUE;

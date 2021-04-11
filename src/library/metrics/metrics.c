@@ -254,11 +254,16 @@ static void metrics_global_start()
 	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}
+
+ 
+  /* This functionallity has been moved to library/policy/mpi_stats_support.c */
+	#if 0
   /* We start computing mpi statistics at this point */
 	timestamp_getfast(&init_mpi_time);
 	sig_shared_region[my_node_id].mpi_info.mpi_time=0;
   sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
   sig_shared_region[my_node_id].mpi_info.exec_time=0;
+	#endif
 
 }
 
@@ -338,13 +343,16 @@ static void metrics_global_stop()
 	io_tostr(&iod,io_info,sizeof(io_info));
 	verbose(2,"APP IO DATA: %s",io_info);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
-	timestamp_getfast(&end_mpi_time);
 
+	/* This functionallity has been moved to library/policy/mpi_stats_support.c */
+	#if 0
+	timestamp_getfast(&end_mpi_time);
 	unsigned long long extime;
 	extime=timestamp_diff(&end_mpi_time,&init_mpi_time,TIME_USECS);
 
 	sig_shared_region[my_node_id].mpi_info.exec_time=extime;
 	sig_shared_region[my_node_id].mpi_info.perc_mpi=(double)sig_shared_region[my_node_id].mpi_info.mpi_time/(double)sig_shared_region[my_node_id].mpi_info.exec_time;
+	#endif
 }
 
 /*           | Glob | Part || Start | Stop | Read | Get accum | Reset | Size
@@ -719,16 +727,18 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		copy_node_data(metrics,&lib_shared_region->master_signature);
 	}
 	metrics->EDP = time_s * time_s * metrics->DC_power;
-	
+
+	/* This functionallity has been moved to library/policy/mpi_stats_support.c */
+	#if 0	
 	/* This part is new to share with other processes */
 	timestamp_getfast(&end_mpi_time);
 	unsigned long long extime;
 	extime=timestamp_diff(&end_mpi_time,&init_mpi_time,TIME_USECS);	
-	
 	sig_shared_region[my_node_id].mpi_info.exec_time=extime;
 	sig_shared_region[my_node_id].mpi_info.perc_mpi=(double)sig_shared_region[my_node_id].mpi_info.mpi_time/(double)sig_shared_region[my_node_id].mpi_info.exec_time;
 	#if RESET_STATISTICS_AT_SIGNATURE
 	init_mpi_time = end_mpi_time;
+	#endif
 	#endif
 	/* Copying my info in the shared signature */
 	from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);

@@ -29,12 +29,16 @@
 #include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
+#include <library/policies/mpi_stats_support.h>
 #include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 
 
 static timestamp pol_time_init,app_init;
 static mpi_information_t mpi_stats;
-static ulong total_mpi_sync = 0;
+static ulong total_mpi_time_sync = 0;
+static ulong total_mpi_time_collectives = 0;
+static ulong total_mpi_time_blocking = 0;
 static ulong total_blocking_calls = 0;
 static ulong total_collectives = 0;
 static ulong total_synchronizations = 0;
@@ -80,13 +84,6 @@ state_t mpi_app_end(polctx_t *c)
 	if (mpi_stats.total_mpi_calls){
 
 		mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
-		#if 0
-		verbose(2,"EARL[%d]:RANK %d Total MPI calls %u MPI time %.1f Time synchronizing %.1f. Total MPI sync calls %.1f. Total blocking calls %.1f. Total collective calls %.1f ",
-			lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_sync/(float)mpi_stats.exec_time)*100.0,
-			((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0,
-			((float)total_blocking_calls/(float)mpi_stats.total_mpi_calls)*100.0,
-			((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0);
-		#endif
 		if (stats != NULL){
 			sprintf(file_name,"%s",stats);
 			sprintf(stats_per_call,"%s.mpi_call_dist.csv",stats);
@@ -109,10 +106,10 @@ state_t mpi_app_end(polctx_t *c)
 			fd = open(stats_per_call,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
       if (fd >= 0){
 				if (mpi_stats.rank == 0){
-					sprintf(buff,"MASTER;RANK;Total MPI calls;MPI time;Time synchronizing;Total MPI sync calls;Total blocking calls;Total collective calls\n");
+					sprintf(buff,"MASTER;RANK;Total MPI calls;MPI time;Time synchronizing;Time Blocking;Time Collectives;Total MPI sync calls;Total blocking calls;Total collective calls\n");
 					write(fd,buff,strlen(buff));
 				}
-				sprintf(buff,"%d;%d;%u;%.1f;%.1f;%.1f;%.1f;%.1f\n",lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_sync/(float)mpi_stats.exec_time)*100.0,
+				sprintf(buff,"%d;%d;%u;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f\n",lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_time_sync/(float)mpi_stats.exec_time)*100.0,((float)total_mpi_time_blocking/(float)mpi_stats.exec_time)*100.0,((float)total_mpi_time_collectives/(float)mpi_stats.exec_time)*100.0,
       ((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0,
       ((float)total_blocking_calls/(float)mpi_stats.total_mpi_calls)*100.0,
       ((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0);	
@@ -135,23 +132,114 @@ state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 state_t mpi_call_end(polctx_t *c,mpi_call call_type)
 {
   timestamp end;
-  ullong elap;
+  ullong elap,elap_app;
 	if (is_mpi_enabled()){
   	timestamp_getfast(&end);
-  	elap=timestamp_diff(&end,&pol_time_init,TIME_USECS);
-		if	(is_mpi_blocking(call_type)){ 												total_blocking_calls++;}
-		if (is_collective(remove_blocking(call_type))){					total_collectives++;}
+  	elap = timestamp_diff(&end,&pol_time_init,TIME_USECS);
+  	elap_app = timestamp_diff(&end,&app_init,TIME_USECS);
+
+		if	(is_mpi_blocking(call_type)){ 											
+			total_blocking_calls++;
+			total_mpi_time_blocking += (ulong)elap;
+		}
+		if (is_collective(remove_blocking(call_type))){					
+			total_collectives++;
+			total_mpi_time_collectives += (ulong)elap;
+		}
 		if (is_synchronization(remove_blocking(call_type))){ 	
 			total_synchronizations++;
-			total_mpi_sync += elap;
+			total_mpi_time_sync += (ulong)elap;
 		}
-  	sig_shared_region[my_node_id].mpi_info.mpi_time=sig_shared_region[my_node_id].mpi_info.mpi_time+elap;
+  	sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
   	sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
+  	sig_shared_region[my_node_id].mpi_info.exec_time = elap_app;
 
 		/* Global statistics */
-		mpi_stats.mpi_time+=elap;
+		mpi_stats.mpi_time += elap;
 		mpi_stats.total_mpi_calls++;
+  	mpi_stats.exec_time = elap_app;
 	}
   return EAR_SUCCESS;
 }
+/* If src is null, dst = local data, else dst = src */
+state_t mpi_call_copy_stats(mpi_information_t *dst,mpi_information_t * src)
+{
+	
+	if (dst == NULL) return EAR_ERROR;
+	if (src == NULL){
+		src = &sig_shared_region[my_node_id].mpi_info;
+	}
+	memcpy(dst,src,sizeof(mpi_information_t));
+	return EAR_SUCCESS;
+}
 
+static state_t mpi_call_diff(mpi_information_t *diff,mpi_information_t *end,mpi_information_t *init)
+{
+	diff->total_mpi_calls = end->total_mpi_calls - init->total_mpi_calls;
+	diff->exec_time       = end->exec_time - init->exec_time;
+	diff->mpi_time        = end->mpi_time - init->mpi_time; 	
+	return EAR_SUCCESS;
+}
+void verbose_mpi_data(int vl,mpi_information_t *mc)
+{
+	verbose_master(vl,"Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",mc->total_mpi_calls,mc->mpi_time,mc->exec_time,mc->perc_mpi);
+}
+
+state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last)
+{
+	mpi_information_t current;
+	mpi_call_copy_stats(&current,NULL);
+	mpi_call_diff(diff,&current,last);
+	diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
+	mpi_call_copy_stats(last,&current);	
+	last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
+	return EAR_SUCCESS;	
+}
+
+
+state_t mpi_call_new_phase(polctx_t *c)
+{
+#if RESET_STATISTICS_AT_SIGNATURE
+	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);	
+#endif
+	return EAR_SUCCESS;
+}
+
+
+state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last)
+{
+	mpi_calls_types_t a;
+	mpi_call_get_types(&a);
+	diff->sync = a.sync - last->sync;
+	diff->collec =	a.collec - last->collec;
+	diff->blocking = a.blocking - last->blocking;
+	diff->time_sync = a.time_sync - last->time_sync;
+	diff->time_collec = a.time_collec - last->time_collec;
+	diff->time_blocking =	a.time_blocking - last->time_blocking;
+	memcpy(last,&a,sizeof(mpi_calls_types_t));
+	return EAR_SUCCESS;
+}
+
+state_t mpi_call_get_types(mpi_calls_types_t *t)
+{
+  t->sync = total_synchronizations;
+  t->collec = total_collectives;
+  t->blocking = total_blocking_calls;
+  t->time_sync = total_mpi_time_sync ;
+  t->time_collec = total_mpi_time_collectives;
+  t->time_blocking = total_mpi_time_blocking;
+
+	return EAR_SUCCESS;
+}
+
+void verbose_mpi_types(int vl,mpi_calls_types_t *t)
+{
+	verbose_master(vl,"MPI sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu",t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking);
+}
+
+
+state_t clean_my_mpi_type_info(mpi_calls_types_t *t)
+{
+	memset(t,0,sizeof(mpi_calls_types_t));
+	return EAR_SUCCESS;
+}

@@ -91,12 +91,6 @@ state_t policy_init(polctx_t *c)
         }
 #endif
 
-        sig_shared_region[my_node_id].mpi_info.mpi_time=0;
-        sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
-        sig_shared_region[my_node_id].mpi_info.exec_time=0;
-        sig_shared_region[my_node_id].mpi_info.perc_mpi=0;
-
-
         return EAR_SUCCESS;
     }else return EAR_ERROR;
 }
