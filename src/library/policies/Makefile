@@ -9,6 +9,7 @@ PCFLAGS = $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(GPU_OPT_FLAG)
 include ./Makefile.files
 
 poli_DEPS = \
+	  $(SRCDIR)/library/policies/compute_cpu_freq.o \
 	  $(SRCDIR)/library/policies/imc_policy_support.o \
 	  $(SRCDIR)/library/policies/mpi_stats_support.o \
 	  $(SRCDIR)/library/policies/gpu_support.o \

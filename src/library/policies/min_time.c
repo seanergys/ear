@@ -37,6 +37,7 @@
 #include <library/policies/gpu_support.h>
 #include <library/policies/imc_policy_support.h>
 #include <library/policies/mpi_stats_support.h>
+#include <library/policies/compute_cpu_freq.h>
 #include <library/common/verbose_lib.h>
 
 static timestamp pol_time_init;
@@ -107,8 +108,8 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-  if (c != NULL) return  mpi_app_end(c);
-	else return EAR_ERROR;
+    if (c != NULL) return  mpi_app_end(c);
+    else return EAR_ERROR;
 }
 
 state_t policy_loop_init(polctx_t *c,loop_id_t *loop_id)
@@ -139,7 +140,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     ulong *new_freq=freqs->cpu_freq;
     signature_t *my_app;
     int i, min_pstate;
-    unsigned int ref,try_next;
+    uint ref,try_next;
     double freq_gain,perf_gain,min_eff_gain;
     double power_proj,time_proj;
     double power_ref,time_ref,time_current;
@@ -251,8 +252,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
 
 
-        // ref=1 is nominal 0=turbo, we are not using it
-
+        /* ref=1 is nominal 0=turbo, we are not using it
         try_next=1;
         i=best_pstate-1;
         time_current=time_ref;
@@ -288,9 +288,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 try_next=0;
             }
         }	
-        /* Controlar la freq por power cap , si capado poner GREEDY, gestionar req-f */	
         if (best_freq<def_freq) best_freq=def_freq;
         *new_freq=best_freq;
+*/
+     compute_cpu_freq_min_time(my_app, min_pstate, time_ref, min_eff_gain, curr_pstate, best_pstate, best_freq, def_freq, new_freq);
 #if NEW_IMCFREQ
         if (dyn_unc){
             if (!imc_set_by_hw){
@@ -360,7 +361,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     return EAR_SUCCESS;
 }
 
-
 state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
 {
     state_t st=EAR_SUCCESS;
@@ -407,20 +407,20 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 
 state_t policy_mpi_init(polctx_t *c,mpi_call call_type)
 {
-  if (c != NULL) return mpi_call_init(c,call_type);
-	else return EAR_ERROR;
+    if (c != NULL) return mpi_call_init(c,call_type);
+    else return EAR_ERROR;
 }
 state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 {
-  if (c != NULL) return mpi_call_end(c,call_type);
-	else return EAR_ERROR;
+    if (c != NULL) return mpi_call_end(c,call_type);
+    else return EAR_ERROR;
 }
 
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
     domain->cpu = POL_GRAIN_NODE;
     if (dyn_unc) 	domain->mem = POL_GRAIN_NODE;
-    else 					domain->mem = POL_NOT_SUPPORTED;
+    else 			domain->mem = POL_NOT_SUPPORTED;
 #if USE_GPUS
     if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
     else domain->gpu = POL_NOT_SUPPORTED;
