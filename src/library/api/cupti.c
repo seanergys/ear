@@ -22,7 +22,8 @@
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
-#include <common/output/verbose.h>
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 
 static uint cuda_on = 0;
 int is_cuda_enabled()
@@ -38,6 +39,5 @@ void ear_cuda_enabled()
 state_t ear_cuda_init()
 {
 	verbose(2,"CUPTI initialized");
-	printf ("Hola Daniel \n");
 	return 0;
 }

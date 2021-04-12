@@ -44,6 +44,7 @@ core_OBJS = \
     api/ear.o \
     api/clasify.o \
 		api/mpi_support.o \
+    api/cupti.o \
     common/library_shared_data.o \
     metrics/metrics.o \
     models/models.o \
@@ -66,8 +67,7 @@ endif
 
 ifdef CUDA_BASE
 core_OBJS += \
-    metrics/gpu.o \
-    api/cupti.o
+    metrics/gpu.o 
 	
 endif
 
