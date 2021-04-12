@@ -271,7 +271,7 @@ state_t release_powercap_allocation(uint decrease)
 {
     debug("Decreasing powercap allocation by %u", decrease);
     current_dvfs_pc -= decrease;
-    dvfs_status = PC_STATUS_RELEASE;
+    if (current_dvfs_pc < default_dvfs_pc) dvfs_status = PC_STATUS_RELEASE;
     return EAR_SUCCESS;
 }
 

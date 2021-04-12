@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +41,6 @@
 #include <management/cpufreq/frequency.h>
 #include <common/messaging/msg_conf.h>
 
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 
 #include <daemon/remote_api/eard_rapi.h>
@@ -408,7 +408,9 @@ int dyncon_filter_opt(powercap_opt_t *opt)
     int i;
     for (i = 0; i < opt->num_greedy; i++)
     {
+        debug("checking our ip (%d) vs list (%d)", my_ip, opt->greedy_nodes[i]);
         if (opt->greedy_nodes[i] == my_ip) return i;
+        debug("dyn_conf: greedy node found in position %d", i);
     }
     return -1;
 }
@@ -452,6 +454,7 @@ void dyncon_power_management(int fd, request_t *command)
     case EAR_RC_SET_POWERCAP_OPT:
 			verbose(1,"Set powercap options received");
             id = dyncon_filter_opt(&command->my_req.pc_opt);
+            debug("returned filter with id %d", id);
 			powercap_set_opt(&command->my_req.pc_opt, id);
             free(command->my_req.pc_opt.greedy_nodes);
             free(command->my_req.pc_opt.extra_power);

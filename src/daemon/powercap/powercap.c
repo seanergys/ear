@@ -489,6 +489,7 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
     }
     else {
         pmgt_get_status(status);
+        my_pc_opt.powercap_status = status->status;
         switch(status->status) 
         {
             case PC_STATUS_GREEDY:
@@ -639,7 +640,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
             case PC_STATUS_IDLE:
             case PC_STATUS_OK:
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
-                    // debug("set_powercap_opt status ok, looking for potential power reduction");    
+                    // debug("set_powercap_opt status ok, looking for potential power reduction");  
                     debug("%snew_pc_opt:status OK but in the greedy node list %d ip=%d with ip=%di extra %d%s",COL_RED,id,opt->greedy_nodes[id],my_ip,opt->extra_power[id],COL_CLR);
                     my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[id];
                     set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);

@@ -721,7 +721,7 @@ int main(int argc, char *argv[])
                     msg.num_greedy = 1;
                     msg.greedy_nodes = calloc(1, sizeof(int));
                     msg.extra_power = calloc(1, sizeof(int));
-                    msg.greedy_nodes[0] = 772087468;
+                    msg.greedy_nodes[0] = get_ip(optarg, &my_cluster_conf);
                     msg.extra_power[0] = 25;
                     request_t command;
                     command.req = EAR_RC_SET_POWERCAP_OPT;
