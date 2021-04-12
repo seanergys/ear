@@ -19,6 +19,7 @@
 #define _EAR_CUDA_
 
 #include <common/states.h>
+#include <library/loader/module_cuda.h>
 
 state_t ear_cuda_init();
 
