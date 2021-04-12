@@ -489,6 +489,7 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
     }
     else {
         pmgt_get_status(status);
+        if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) status->status = PC_STATUS_ASK_DEF; 
         my_pc_opt.powercap_status = status->status;
         switch(status->status) 
         {
@@ -507,7 +508,7 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
             case PC_STATUS_ASK_DEF: 
                 /* Data management */
                 debug("%sAsking for default power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
-                my_status->requested += my_pc_opt.requested;
+                my_status->requested = my_pc_opt.def_powercap - my_pc_opt.last_t1_allocated;
                 break;
             case PC_STATUS_OK:
                 debug("PC_STATUS OK");
