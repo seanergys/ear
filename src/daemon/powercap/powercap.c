@@ -658,7 +658,10 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 my_pc_opt.powercap_status=PC_STATUS_OK;
                 my_pc_opt.requested=0;
                 break;
-           case PC_STATUS_ASK_DEF:
+        }
+    }
+    else {
+        if (my_pc_opt.powercap_status == PC_STATUS_ASK_DEF) {
                 /* In that case, we assume we cat use the default power cap */
                 // debug("My status is ASK_DEF and new settings received");
                 my_pc_opt.powercap_status=PC_STATUS_OK;
@@ -666,7 +669,6 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 my_pc_opt.last_t1_allocated=my_pc_opt.def_powercap;
                 my_pc_opt.requested=0;
                 set_powercap_value(DOMAIN_NODE,my_pc_opt.def_powercap);            
-                break;
         }
     }
     pthread_mutex_unlock(&my_pc_opt.lock);
