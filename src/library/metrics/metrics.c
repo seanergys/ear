@@ -403,7 +403,7 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256],gpu_buff[1024];
 
 	/* If the signature of the master is not ready, we cannot compute our signature */
-	debug("My rank is %d",masters_info.my_master_rank);
+	//debug("My rank is %d",masters_info.my_master_rank);
   if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
 			//debug("Master signature not ready at time %lld",metrics_time());
       return EAR_NOT_READY;
