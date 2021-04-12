@@ -50,9 +50,6 @@ static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
 	mpi_app_init(c);	
-	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
-    verbose_master(2,"Error loading GPU context");
-  }
 
 #if USE_GPUS
 	if (c->num_gpus){

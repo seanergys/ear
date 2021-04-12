@@ -35,7 +35,8 @@ extern volatile uint ear_periodic_mode;
 
 uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig,double penalty)
 {
-	double metric,metric_ref;
+	double metric,metric_ref,metric2,metric2_min,metric2_ref;
+	double CPI;
 	double metric_max,metric_min;
 	double metric_var,power_var;
 	int i;
@@ -57,7 +58,6 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
 	}else{
 		/* We were using ref_pstate = min_pstate */
 		#if USE_CPI
-		double CPI;
 		CPI = (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles/(double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
 		metric_max = CPI + CPI*penalty;
 		metric = sig->CPI;
@@ -66,7 +66,7 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
 		return (metric > metric_max);	
 		#endif
 		#if USE_GBS
-        metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+    metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
 		metric_min = metric_ref * (1 - penalty);// my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS - (penalty* my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS);
 		metric = sig->GBS;
 		metric_var = (metric_ref - sig->GBS / metric_ref);// (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS-sig->GBS)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
@@ -84,6 +84,17 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
 		verbose(2,"Using FLOPS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
 		return (metric < metric_min);
 		#endif
+    #if USE_GBS_CPI
+    metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+    metric_min = metric_ref * (1 - penalty);
+    metric     = sig->GBS;
+		CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
+		metric2     = sig->CPI;
+		metric_max  = CPI + CPI*penalty;	
+    verbose(2,"Using GBS&CPI as reference : Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Limits (%.2lf,%.2lf)",metric,metric2,metric_ref,CPI,metric_min,metric_max);
+    return ((metric < metric_min) || (metric2>metric_max));
+    #endif
+
 	}
 }
 
@@ -95,6 +106,7 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint i
   my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].time = s->time;
   my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power = s->DC_power;
   my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS = s->GBS;
+  my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].CPI = s->CPI;
   my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].instructions = s->instructions;
   my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].cycles = s->cycles;
   memcpy(my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);

@@ -5,17 +5,11 @@ CCC     = $(CC) $(CFLAGS)
 ######## INSTALLATION
 
 tool_BINS = \
-    coeffs_quality \
     coeffs_compute \
-    coeffs_compare \
-    coeffs_jobproj \
     coeffs_show \
     coeffs_default \
     coeffs_null \
-    ear_events \
-    get_active_nodes \
     learning_show \
-    learning_validate \
     learning_delete
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770

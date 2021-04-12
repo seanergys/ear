@@ -29,23 +29,30 @@
 #define MPI_TH 10000
 #define MIN_MPI_TH 200
 
-state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state)
+state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided)
 {
 	*app_state = APP_COMP_BOUND;
 	if ((dyn_on == DYNAIS_ENABLED) && (dynais_state == NO_LOOP) && (earl_state == NO_PERIOD)){
 		if (rwsec > IO_TH) *app_state = APP_IO_BOUND;
-		return EAR_SUCCESS;
-	}
-	if ((rwsec > IO_TH) && (mpisec < MPI_TH)){
+	}else if ((rwsec > IO_TH) && (mpisec < MPI_TH)){
 		*app_state = APP_IO_BOUND;
-		return EAR_SUCCESS;
-	}
-	if (mpisec > MPI_TH){
+	}else if (mpisec > MPI_TH){
 		*app_state = APP_MPI_BOUND;
-		return EAR_SUCCESS;
 	}
 	if (mpisec < MIN_MPI_TH){
-		*app_state =  APP_GO_PERIODIC;
+		*ear_guided = TIME_GUIDED;
 	}
+	return EAR_SUCCESS;
+}
+
+state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
+{
+	ull flop = 0;
+	double flops;
+	uint i;
+	*busy = USEFUL_COMP;
+	for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
+	flops = (double)flop/sig->time;
+	if ((sig->CPI<CPI_CPU_BOUND) && (sig->GBS<GBS_CPU_BOUND) && (flop < FLOPS_CPU_BOUND)) *busy = BUSY_WAITING;
 	return EAR_SUCCESS;
 }

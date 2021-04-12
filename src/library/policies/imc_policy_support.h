@@ -24,14 +24,16 @@ typedef struct imc_data{
 	double time;
 	double GBS;
 	double power;
+	double CPI;
 	ull  	 instructions;
 	ull		 cycles;
 	ull 	 FLOPS[FLOPS_EVENTS];
 }imc_data_t;
 #define NUM_UNC_FREQ 20
 #define USE_FLOPS 0
-#define USE_GBS 1
+#define USE_GBS 0
 #define USE_CPI	0
+#define USE_GBS_CPI 1
 void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,signature_t *s);
 uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,uint ref_cpu_pstate,uint ref_imc_pstate,
         signature_t *sig,double penalty);

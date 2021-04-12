@@ -81,6 +81,7 @@ extern uint sh_sig_per_proces;
 extern uint show_signatures;
 extern uint report_node_sig;
 extern uint report_all_sig;
+extern uint earl_phase_classification;
 
 
 #endif
