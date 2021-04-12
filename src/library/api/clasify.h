@@ -35,7 +35,7 @@
 #define USEFUL_COMP 0
 #define BUSY_WAITING 1
 #define CPI_CPU_BOUND 0.4
-#define GBS_CPU_BOUND 1.0
+#define GBS_CPU_BOUND 2.0
 #define FLOPS_CPU_BOUND 100.0
 
 state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided);

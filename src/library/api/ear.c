@@ -1462,7 +1462,7 @@ state_t earl_periodic_actions_init(void *no_arg)
     	mpi_calls_in_period = lib_period;
     	states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 		}
-		mpi_call_copy_stats(&last_mpi_data,NULL);
+		mpi_call_get_stats(&last_mpi_data,NULL,-1);
 		clean_my_mpi_type_info(&last_mpi_types);
 		return EAR_SUCCESS;
 }
@@ -1503,7 +1503,7 @@ state_t earl_periodic_actions(void *no_arg)
 		if (is_mpi_enabled()){
 			#if 0
 			mpi_call_types_read_diff(&mpi_type_diff,&last_mpi_types);
-			mpi_call_read_diff(&mpi_call_diff,&last_mpi_data);
+			mpi_call_read_diff(&mpi_call_diff,&last_mpi_data,-1);
 			verbose_mpi_types(2,&last_mpi_types);
 			verbose_mpi_types(2,&mpi_type_diff);
 			verbose_mpi_data(2,&last_mpi_data);

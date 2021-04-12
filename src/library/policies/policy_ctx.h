@@ -95,6 +95,9 @@ typedef struct policy_symbols {
     state_t (*mpi_end)     (polctx_t *c,mpi_call call_type);
     state_t (*configure) (polctx_t *c);
     state_t (*domain) (polctx_t *c, node_freq_domain_t *domain);
+		state_t (*io_settings) (polctx_t *c,signature_t *my_sig,node_freqs_t *freqs);
+		state_t (*busy_wait_settings) (polctx_t *c,signature_t *my_sig,node_freqs_t *freqs);
+		state_t (*restore_settings) (polctx_t *c,signature_t *my_sig,node_freqs_t *freqs);
 } polsym_t;
 
 

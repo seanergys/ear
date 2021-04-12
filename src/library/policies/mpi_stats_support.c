@@ -162,15 +162,22 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
   return EAR_SUCCESS;
 }
 /* If src is null, dst = local data, else dst = src */
-state_t mpi_call_copy_stats(mpi_information_t *dst,mpi_information_t * src)
+state_t mpi_call_get_stats(mpi_information_t *dst,mpi_information_t * src,int i)
 {
 	
 	if (dst == NULL) return EAR_ERROR;
 	if (src == NULL){
-		src = &sig_shared_region[my_node_id].mpi_info;
+		if (i < 0) src = &sig_shared_region[my_node_id].mpi_info;
+		else src = &sig_shared_region[i].mpi_info;
 	}
 	memcpy(dst,src,sizeof(mpi_information_t));
 	return EAR_SUCCESS;
+}
+
+static void mpi_call_copy(mpi_information_t *dst,mpi_information_t * src)
+{
+	if ((dst == NULL) || (src == NULL)) return;
+	memcpy(dst,src,sizeof(mpi_information_t));
 }
 
 static state_t mpi_call_diff(mpi_information_t *diff,mpi_information_t *end,mpi_information_t *init)
@@ -185,13 +192,13 @@ void verbose_mpi_data(int vl,mpi_information_t *mc)
 	verbose_master(vl,"Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",mc->total_mpi_calls,mc->mpi_time,mc->exec_time,mc->perc_mpi);
 }
 
-state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last)
+state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i)
 {
 	mpi_information_t current;
-	mpi_call_copy_stats(&current,NULL);
+	mpi_call_get_stats(&current,NULL,i);
 	mpi_call_diff(diff,&current,last);
 	diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
-	mpi_call_copy_stats(last,&current);	
+	mpi_call_copy(last,&current);	
 	last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
 	return EAR_SUCCESS;	
 }
@@ -252,6 +259,16 @@ state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_inform
 		memcpy(&node_mpi_calls[i],&sig[i].mpi_info,sizeof(mpi_information_t));
 		node_mpi_calls[i].perc_mpi = (double)node_mpi_calls[i].mpi_time*100.0/(double)node_mpi_calls[i].exec_time;
 	}	
+	return EAR_SUCCESS;
+}
+
+state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls,mpi_information_t *last_node)
+{
+	int i;
+	if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
+	for (i=0;i<data->num_processes;i++){
+		mpi_call_read_diff(&node_mpi_calls[i],&last_node[i],i);
+	}
 	return EAR_SUCCESS;
 }
 

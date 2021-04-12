@@ -75,6 +75,9 @@ const char     *polsyms_nam[] = {
     "policy_mpi_end",
     "policy_configure",
     "policy_domain",
+		"policy_io_settings",
+		"policy_busy_wait_settings",
+		"policy_restore_settings",
 };
 
 
@@ -92,7 +95,7 @@ extern pc_app_info_t *pc_app_info_data;
 
 static polsym_t polsyms_fun;
 static void    *polsyms_obj = NULL;
-const int       polsyms_n = 14;
+const int       polsyms_n = 17;
 polctx_t my_pol_ctx;
 node_freqs_t nf,avg_nf;
 
@@ -309,65 +312,26 @@ state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freq
 /* This function confgures freqs based on IO criteria */
 state_t policy_io_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-	int i;
-	node_freq_domain_t io_freqs_domain;
-	io_freqs_domain.cpu = POL_GRAIN_NODE;
-	io_freqs_domain.mem = POL_GRAIN_NODE;
-	io_freqs_domain.gpu = dom->gpu;
-	io_freqs_domain.gpumem = dom->gpumem;
-	freqs->cpu_freq[0] = frequency_pstate_to_freq(c->num_pstates - 1);
-	for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
-		freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_khz;
-		freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
-	}
-	for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-		freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
-	}
-	/* GPU mem is pending */
-	return policy_freq_selection(c,my_sig,freqs,&io_freqs_domain,avg_freq);
+	if (polsyms_fun.io_settings != NULL){
+		polsyms_fun.io_settings(c,my_sig,freqs);
+  	return policy_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}else return EAR_SUCCESS;
 }
 
 /* This function sets again default frequencies after a setting modification */
 state_t policy_restore_comp_configuration(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-	int i;
-  node_freq_domain_t rest_freqs_domain;
-  rest_freqs_domain.cpu = POL_GRAIN_NODE;
-  rest_freqs_domain.mem = POL_GRAIN_NODE;
-  rest_freqs_domain.gpu = dom->gpu;
-  rest_freqs_domain.gpumem = dom->gpumem;
-  policy_get_default_freq(&freqs->cpu_freq[0]);
-  for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
-    freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_khz;
-    freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
-  }
-  for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-    freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][0];
-  }
-  /* GPU mem is pending */
-  return policy_freq_selection(c,my_sig,freqs,&rest_freqs_domain,avg_freq);
+	if (polsyms_fun.restore_settings != NULL){
+		polsyms_fun.restore_settings(c,my_sig,freqs);
+  	return policy_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}else return EAR_SUCCESS;
 }
-
 state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-  int i;
-  node_freq_domain_t rest_freqs_domain;
-  rest_freqs_domain.cpu = POL_GRAIN_NODE;
-  rest_freqs_domain.mem = POL_GRAIN_NODE;
-  rest_freqs_domain.gpu = dom->gpu;
-  rest_freqs_domain.gpumem = dom->gpumem;
-	freqs->cpu_freq[0] = frequency_pstate_to_freq(c->num_pstates - 1);
-  for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
-    freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_khz;
-    freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
-  }
-	if (rest_freqs_domain.gpu != POL_NOT_SUPPORTED){
-  	for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-  	  freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][0];
-  	}
-	}
-  /* GPU mem is pending */
-  return policy_freq_selection(c,my_sig,freqs,&rest_freqs_domain,avg_freq);
+	if (polsyms_fun.busy_wait_settings != NULL){
+		polsyms_fun.busy_wait_settings(c,my_sig,freqs);
+  	return policy_freq_selection(c,my_sig,freqs,dom,avg_freq);
+	}else return EAR_SUCCESS;
 }
 
 
