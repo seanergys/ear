@@ -142,9 +142,9 @@ static void print_freq_per_core()
     int i;
     for (i=0;i<arch_desc.top.cpu_count;i++)
     {
-        if (freq_per_core[i]>0) verbosen_master(3,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+        if (freq_per_core[i]>0) verbosen_master(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
     }
-    verbose_master(3," ");
+    verbose_master(2," ");
 }
 static void from_proc_to_core(ulong *cpuf)
 {

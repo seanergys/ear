@@ -62,6 +62,7 @@ static uint last_cpu_pstate,last_imc_pstate;
 static int min_pstate;
 static uint ref_imc_pstate;
 extern int my_globalrank;
+static int nump;
 
 static imc_data_t *imc_data;
 #define IMC_STEP 100000
@@ -70,6 +71,7 @@ static imc_data_t *imc_data;
 #define SELECT_IMCFREQ 101
 #define COMP_IMCREF		 102
 #define LB_TH 10.0
+#define EXTRA_TH  0.05
 static uint min_energy_state = SELECT_CPUFREQ;
 static uint imc_dynamic = 0;
 static uint min_imc_pstate = 0;
@@ -82,10 +84,12 @@ static ulong req_f;
 static signature_t *my_app;
 static mpi_information_t *my_node_mpi_calls;
 static polsym_t gpus;
+static ulong *last_cpufreq_sel;
 
 state_t policy_init(polctx_t *c)
 {
 	char *cuse_imc_ref;
+	int i;
 	if (c!=NULL){ 
 		#if NEW_IMCFREQ
 		imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
@@ -94,7 +98,10 @@ state_t policy_init(polctx_t *c)
 			mpi_app_init(c);
 		}
 		my_app = calloc(1,sizeof(signature_t));
+		my_app->sig_ext =  calloc(1,sizeof(io_data_t));
 		my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+		last_cpufreq_sel = calloc(MAX_CPUS_SUPPORTED,sizeof(unsigned long));
+		for (i=0;i<MAX_CPUS_SUPPORTED; i++) last_cpufreq_sel[i] = *(c->ear_frequency);
 
 #if USE_GPUS
 		if (c->num_gpus){
@@ -150,7 +157,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	ulong curr_pstate,def_pstate,def_freq,from;
 	state_t st;
 	uint power_status;
-	double sig_vpi,node_sig_vpi,max_vpi;
+	double sig_vpi,node_sig_vpi,max_vpi,local_penalty;
 	uint local_process_with_high_vpi;
 	uint sid = 0;
 	int gready;
@@ -164,6 +171,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     return EAR_ERROR;
 	}
 
+	verbose_master(2,"%s MIN_energy ----------------%s",COL_GRE,COL_CLR);
+
   if (gpus.node_policy_apply != NULL){
 		/* Basic support for GPUS */
     gpus.node_policy_apply(c,sig,freqs,&gready);
@@ -171,65 +180,52 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
 
 	if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
-		*new_freq = *(c->ear_frequency);
+		memcpy(new_freq,last_cpufreq_sel,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 		*ready = EAR_POLICY_TRY_AGAIN;
-		verbose(2,"Node signature not ready, selecting %lu CPU f",*new_freq);
+		verbose_master(2,"Node signature not ready, selecting %lu CPU f",*new_freq);
 		return EAR_SUCCESS;
 	}
-	verbose(2, "%s------MR[%d] Node signatures ready-----%s",COL_GRE,my_globalrank,COL_CLR);
+	verbose_master(2, "%s------MR[%d] Node signatures ready-----%s",COL_GRE,my_globalrank,COL_CLR);
 	if (is_mpi_enabled()){
 		copy_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls);
 		evaluate_cp(lib_shared_region->num_processes,my_node_mpi_calls,&max_mpi,&min_mpi);
 		verbose_master(2,"Node load unbalance, max perc mpi %lf min perc mpi %lf",my_node_mpi_calls[max_mpi].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi);
 		if ((my_node_mpi_calls[max_mpi].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) > LB_TH){
 			freq_per_core = 1;
-		}
+			nump = lib_shared_region->num_processes;
+		}else nump = 1;
 	}
-	signature_copy(my_app,sig);
-	compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions);	
-	compute_total_node_flops(lib_shared_region,sig_shared_region,my_app->FLOPS);
-	compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
-	compute_vpi(&sig_vpi,sig);
-	compute_vpi(&node_sig_vpi,my_app);
-	local_process_with_high_vpi = compute_max_vpi(lib_shared_region,sig_shared_region,&max_vpi);
-	verbose(2,"MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf ",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi);
-	my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
-	/* With these two lines, we force the VPI of the signatura to the most loaded in the node */
-	my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
-	memcpy(my_app->FLOPS,sig_shared_region[local_process_with_high_vpi].sig.FLOPS,sizeof(ull)*FLOPS_EVENTS);
-  if (c->use_turbo) min_pstate=0;
-  else min_pstate=frequency_closest_pstate(c->app->max_freq);
+  if (c->use_turbo) min_pstate = 0;
+  else min_pstate = frequency_closest_pstate(c->app->max_freq);
 
-	nominal=frequency_pstate_to_freq(min_pstate);
-
-
-
+	nominal = frequency_pstate_to_freq(min_pstate);
 	// Default values
 
-	max_penalty=c->app->settings[0];
-	def_freq=FREQ_DEF(c->app->def_freq);
-	def_pstate=frequency_closest_pstate(def_freq);
+	max_penalty = c->app->settings[0];
+	def_freq = FREQ_DEF(c->app->def_freq);
+	def_pstate = frequency_closest_pstate(def_freq);
 
 	// This is the frequency at which we were running
   #ifdef POWERCAP
   if (c->pc_limit > 0){
-			curr_freq=frequency_closest_high_freq(my_app->avg_f,1);
+			curr_freq = frequency_closest_high_freq(my_app->avg_f,1);
 	}else{
-			curr_freq=*(c->ear_frequency);
+			curr_freq = *(c->ear_frequency);
 	}
   #else
-  curr_freq=*(c->ear_frequency);
+  curr_freq = *(c->ear_frequency);
   #endif
 
 	curr_pstate = frequency_closest_pstate(curr_freq);
-	eff_f=frequency_closest_high_freq(my_app->avg_f,1);
+	eff_f = frequency_closest_high_freq(my_app->avg_f,1);
 
   #if NEW_IMCFREQ
   if (dyn_unc){
 			// imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
 			ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
     	imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
-			verbose(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
+			verbose_master(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
+  		signature_copy(my_app,sig);
 			copy_imc_data_from_signature(imc_data,curr_pstate,imc_pstate,my_app);
   }
 	if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
@@ -238,7 +234,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		}else{ 
 			*ready = EAR_POLICY_READY;
 		}
-		verbose(2,"SELECT_CPUFREQ state dyn_unc %u",dyn_unc);
+		verbose_master(2,"SELECT_CPUFREQ state dyn_unc %u",dyn_unc);
 	#else
 		*ready=EAR_POLICY_READY;
 	#endif
@@ -251,16 +247,44 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		// NEW: This code is new because projections from lower pstates are reporting bad cpu freqs 
 		if (curr_freq != def_freq){
 			*ready = EAR_POLICY_TRY_AGAIN;
-			*new_freq = def_freq;
+			new_freq[0] = def_freq;
+			for (i=1;i<MAX_CPUS_SUPPORTED;i++) new_freq[i] = new_freq[0];
 			if (dyn_unc){
 				freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
       	freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
 			}
 			return EAR_SUCCESS;
 		}
-		compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
-		verbose_master(3,"Time ref %lf Power ref %lf Freq reqf %lu",time_ref,power_ref,best_freq);
-		compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,max_penalty,curr_pstate,min_pstate,c->num_pstates,new_freq);
+		for (i=0;i<nump;i++){
+			verbose_master(2,"Processing proc %d freq per core = %d",i,freq_per_core);
+			if (!freq_per_core){
+  			compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions); 
+  			compute_total_node_flops(lib_shared_region,sig_shared_region,my_app->FLOPS);
+  			compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
+  			compute_vpi(&sig_vpi,sig);
+  			compute_vpi(&node_sig_vpi,my_app);
+  			local_process_with_high_vpi = compute_max_vpi(lib_shared_region,sig_shared_region,&max_vpi);
+  			verbose(2,"AVGNodeSig MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %.3lf/MAX VPI %.3lf ",my_globalrank,sig->CPI,sig_vpi,(double)my_app->cycles/(double)my_app->instructions,node_sig_vpi,max_vpi);
+  			my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
+  			/* With these two lines, we force the VPI of the signatura to the most loaded in the node */
+  			my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
+  			memcpy(my_app->FLOPS,sig_shared_region[local_process_with_high_vpi].sig.FLOPS,sizeof(ull)*FLOPS_EVENTS);
+				local_penalty = max_penalty;
+			}else{
+				from_minis_to_sig(my_app,&sig_shared_region[i].sig);
+				if (i == min_mpi) local_penalty = 0.0;
+				else local_penalty = max_penalty + EXTRA_TH*(my_node_mpi_calls[i].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi)/10.0;
+				verbose_master(2,"Per-processSig MR[%d][%d] SIGNATURE CPI %.3lf penalty %lf (%lf,%lf)",my_globalrank,i,my_app->CPI,local_penalty,my_node_mpi_calls[i].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi);
+			}
+			compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
+			verbose_master(3,"Time ref %lf Power ref %lf Freq reqf %lu",time_ref,power_ref,best_freq);
+			compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
+			verbose_master(2,"CPU freq for process %d is %lu",i,new_freq[i]);
+		}
+		if (!freq_per_core){
+			for (i=1;i<MAX_CPUS_SUPPORTED;i++) new_freq[i] = new_freq[0];
+		}
+		memcpy(last_cpufreq_sel,new_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 
 	#if NEW_IMCFREQ	
 		if (dyn_unc){
@@ -282,7 +306,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	#if NEW_IMCFREQ
 	}else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
 		verbose(2,"SELECT_IMCFREQ state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,imc_pstate);
-		*new_freq = frequency_pstate_to_freq(curr_pstate);
+		memcpy(new_freq,last_cpufreq_sel,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 		uint increase_imc = must_increase_imc(imc_data,curr_pstate,imc_pstate,curr_pstate,ref_imc_pstate,my_app,imc_extra_th);
 		/* If we are over the limit, we increase the IMC */
 		if (increase_imc){
@@ -309,7 +333,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	}else if (min_energy_state == COMP_IMCREF){
 		ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
 		ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
-		*new_freq = frequency_pstate_to_freq(curr_pstate);
+		memcpy(new_freq,last_cpufreq_sel,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 		ref_imc_pstate = curr_imc_pstate;
    	freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_freq;
 		//policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;

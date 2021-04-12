@@ -66,6 +66,7 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
 state_t compute_cpu_freq_min_energy(polctx_t *c,signature_t *my_app,ulong freq_ref,double time_ref,double power_ref,double penalty,ulong curr_pstate,ulong  minp,ulong maxp,ulong *newf)
 {
 	state_t st;
+	double vpi;
 	double energy_ref,best_solution,time_max;
 	double power_proj,time_proj,energy_proj;
 	ulong i,from,best_pstate;
@@ -74,6 +75,8 @@ state_t compute_cpu_freq_min_energy(polctx_t *c,signature_t *my_app,ulong freq_r
   best_solution=energy_ref;
 	time_max = time_ref + (time_ref * penalty);	
 	from = curr_pstate;	
+	compute_vpi(&vpi,my_app);
+	verbose_master(3,"CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf",time_ref,power_ref,energy_ref,best_freq,vpi);
 	for (i = minp; i < maxp;i++)
 	{
 		if (projection_available(from,i) == EAR_SUCCESS)
@@ -88,7 +91,7 @@ state_t compute_cpu_freq_min_energy(polctx_t *c,signature_t *my_app,ulong freq_r
 
       if ((energy_proj < best_solution) && (time_proj < time_max)) {
         best_freq = frequency_pstate_to_freq(i);
-        verbose(2,"new best solution found %lu",best_freq);
+        verbose(3,"new best solution found %lu",best_freq);
         best_solution = energy_proj;
         best_pstate = i;
       }

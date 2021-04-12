@@ -843,7 +843,8 @@ void ear_init()
         verbose(2,"Using %s as earl log file",file_name);
         int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
         if (fd != -1){
-            verb_channel = fd;
+						VERB_SET_FD(fd);
+						DEBUG_SET_FD(fd);
         }
       }
     }
@@ -1500,9 +1501,9 @@ state_t earl_periodic_actions(void *no_arg)
 		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
 		/* Computing MPI statistics */
 		if (is_mpi_enabled()){
+			#if 0
 			mpi_call_types_read_diff(&mpi_type_diff,&last_mpi_types);
 			mpi_call_read_diff(&mpi_call_diff,&last_mpi_data);
-			#if 0
 			verbose_mpi_types(2,&last_mpi_types);
 			verbose_mpi_types(2,&mpi_type_diff);
 			verbose_mpi_data(2,&last_mpi_data);
