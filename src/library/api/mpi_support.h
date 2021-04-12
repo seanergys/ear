@@ -18,7 +18,6 @@
 #ifndef _MPI_SUPPORT_
 #define _MPI_SUPPORT_
 
-
 int is_mpi_enabled();
-void ear_mpi_enabled();
+
 #endif
