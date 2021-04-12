@@ -135,7 +135,9 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 					unsigned long nominal=frequency_pstate_to_freq(pdest);
 					avx512_coeffs=&coefficients[from][pdest];
           time_avx512=proj_time(avx512_coeffs,sign,coeff->pstate_ref,nominal);
-      }
+      }else{
+				perc_avx512 = 0;
+			}
 			ctime=time_nosimd*(1-perc_avx512)+time_avx512*perc_avx512;
 			*ptime=ctime;
 		}else{
@@ -176,6 +178,8 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
           else pdest = avx512_pstate;
 					avx512_coeffs=&coefficients[from][pdest];
 					power_avx512=proj_power(avx512_coeffs,sign);
+				}else{
+					perc_avx512 = 0;
 				}
 				cpower=power_nosimd*(1-perc_avx512)+power_avx512*perc_avx512;
 				*ppower=cpower;

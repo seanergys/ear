@@ -20,8 +20,6 @@
 
 #include <common/states.h>
 
-int is_cuda_enabled();
-
 state_t ear_cuda_init();
 
 #endif

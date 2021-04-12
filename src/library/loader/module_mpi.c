@@ -27,7 +27,6 @@
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>
 #include <library/loader/module_cuda.h>
-#include <library/api/cupti.h>
 #include <library/api/mpi_support.h>
 
 static mpic_t next_mpic;

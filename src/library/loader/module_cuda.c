@@ -23,7 +23,6 @@
 #include <library/loader/loader.h>
 #include <library/loader/module_cuda.h>
 #include <library/loader/module_common.h>
-#include <library/api/cupti.h>
 
 static void (*func_con) (void);
 static void (*func_des) (void);
