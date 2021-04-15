@@ -177,7 +177,8 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
-	int item;
+	int item = 0;
+	uint32_t uitem;
 
 	memset(app,0,sizeof(new_job_req_t));
 
@@ -188,13 +189,13 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.group_id, sd->job.user.group);
 	strcpy(app->job.user_acc, sd->job.user.account);
 	
-	if (spank_get_item (sp, S_JOB_ID, &item) == ESPANK_SUCCESS) {
-		app->job.id = (ulong) item;
+	if (spank_get_item (sp, S_JOB_ID, (int *)&uitem) == ESPANK_SUCCESS) {
+		app->job.id = (ulong) uitem;
 	} else {
 		app->job.id = NO_VAL;
 	}
-	if (spank_get_item (sp, S_JOB_STEPID, &item) == ESPANK_SUCCESS) {
-		app->job.step_id = (ulong) item;
+	if (spank_get_item (sp, S_JOB_STEPID, (int *)&uitem) == ESPANK_SUCCESS) {
+		app->job.step_id = (ulong) uitem;
 	} else {
 		app->job.step_id = NO_VAL;
 	}
