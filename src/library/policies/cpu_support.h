@@ -16,8 +16,15 @@
  */
 #ifndef _CPU_SUPPORT_H
 #define _CPU_SUPPORT_H
-state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong *def_freq,ulong *freq_ref,double *time_ref,double *power_ref);
+
+state_t compute_reference(polctx_t *c, signature_t *my_app, ulong *curr_freq, ulong *def_freq, ulong *freq_ref, double *time_ref, double *power_ref);
 state_t compute_cpu_freq_min_energy(polctx_t *c,signature_t *my_app,ulong freq_ref,double time_ref,double power_ref,double penalty,ulong curr_pstate,ulong  minp,ulong maxp,ulong *newf);
+
+/**
+ * This function selects a new cpu freq based on min_time_to_solution policy.
+ * Read wiki for more info about policies.  */
+state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double time_ref,
+        double min_eff_gain, ulong curr_pstate, ulong best_pstate, ulong best_freq, ulong def_freq, ulong *newf);
 
 #endif
 
