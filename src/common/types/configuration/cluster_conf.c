@@ -58,9 +58,11 @@ int get_ip(char *nodename, cluster_conf_t *conf)
     strcat(buff, NW_EXT);
     #endif*/
 
-	if (strlen(conf->net_ext) > 0) {
+    if (conf != NULL) {
+    	if (strlen(conf->net_ext) > 0) {
         	strcat(buff, conf->net_ext);
-	}
+	    }
+    }
 
    	s = getaddrinfo(buff, NULL, &hints, &result);
 
@@ -79,6 +81,18 @@ int get_ip(char *nodename, cluster_conf_t *conf)
     }
     freeaddrinfo(result);
     return ip1;
+}
+
+void get_ip_nodelist(cluster_conf_t *conf, char **nodes, int num_nodes, int **ips)
+{
+    int i;
+    int *aux_ips = calloc(num_nodes, sizeof(int));
+    for (i = 0; i < num_nodes; i++)
+    {
+        aux_ips[i] = get_ip(nodes[i], conf);
+    }
+
+    *ips = aux_ips;
 }
 
 int get_num_nodes(cluster_conf_t *my_conf)
