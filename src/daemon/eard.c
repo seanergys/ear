@@ -1162,6 +1162,7 @@ void configure_new_values(settings_conf_t *dyn, resched_t *resched, cluster_conf
 	copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
 	copy_eardb_conf(&my_services_conf->db,&my_cluster_conf.database);
 	copy_eardbd_conf(&my_services_conf->eardbd,&my_cluster_conf.db_manager);
+	strcpy(my_services_conf->net_ext,my_cluster_conf.net_ext);
 	save_eard_conf(&eard_dyn_conf);
 }
 
@@ -1209,6 +1210,7 @@ void configure_default_values(settings_conf_t *dyn, resched_t *resched, cluster_
     copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
     copy_eardb_conf(&my_services_conf->db,&my_cluster_conf.database);
 	copy_eardbd_conf(&my_services_conf->eardbd,&my_cluster_conf.db_manager);
+	strcpy(my_services_conf->net_ext,my_cluster_conf.net_ext);
 	save_eard_conf(&eard_dyn_conf);
 }
 
