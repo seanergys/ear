@@ -148,8 +148,19 @@ void set_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf);
 
 int cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released);
 
-#if NODE_PROP
-void increase_th_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
-#endif
+/* Nodelist functions */
+void eards_new_job_nodelist(new_job_req_t *new_job, cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
+
+void eards_end_job_nodelist(job_id jid, job_id sid, cluster_conf_t *my_clister_conf, int *ips, int num_ips);
+
+void increase_th_nodelist(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
+
+void restore_conf_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
+
+void set_risk_nodelist(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
+
+void set_default_powercap_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
+
+int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips);
 
 #endif

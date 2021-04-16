@@ -729,7 +729,7 @@ state_t process_remote_requests(int clientfd) {
 			req = NO_COMMAND;
 	}
 	send_answer(clientfd, &ack);
-	if (req != EAR_RC_PING && req != NO_COMMAND && req != EAR_RC_NEW_JOB && req != EAR_RC_END_JOB && node_found != EAR_ERROR)
+	if (req != EAR_RC_PING && req != NO_COMMAND && node_found != EAR_ERROR)
 	{
 		verbose(VRAPI + 1, "command=%d propagated distance=%d", req, command.node_dist);
 		propagate_req(&command, my_cluster_conf.eard.port);

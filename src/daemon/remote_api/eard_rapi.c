@@ -411,7 +411,36 @@ void increase_th_all_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf
 }
 
 #if NODE_PROP
-void increase_th_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+void eards_new_job_nodelist(new_job_req_t *new_job, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+
+    debug("eards_new_job");
+    command.nodes = ips;
+    command.num_nodes = num_ips;
+	command.req=EAR_RC_NEW_JOB;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
+    send_command_nodelist(&command, my_cluster_conf);
+}
+
+void eards_end_job_nodelist(job_id jid, job_id sid, cluster_conf_t *my_clister_conf, int *ips, int num_ips)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+
+    debug("eards_end_job");
+    command.nodes = ips;
+    command.num_nodes = num_ips;
+    command.req=EAR_RC_END_JOB;
+    command.time_code = time(NULL);
+	command.my_req.end_job.jid=jid;
+	command.my_req.end_job.sid=sid;
+    send_command_nodelist(&command, my_cluster_conf);
+}
+
+void increase_th_nodelist(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
@@ -420,8 +449,77 @@ void increase_th_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, in
     command.req=EAR_RC_INC_TH;
     command.my_req.ear_conf.th=th;
     command.my_req.ear_conf.p_id=p_id;
-    send_command_nodes(command, my_cluster_conf);
+    send_command_nodelist(&command, my_cluster_conf);
 }
+
+void restore_conf_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+{
+    request_t command;
+    command.nodes = ips;
+    command.num_nodes = num_ips;
+    command.req=EAR_RC_REST_CONF;
+    send_command_nodelist(&command, my_cluster_conf);
+}
+
+void set_risk_nodelist(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+{
+    request_t command;
+    command.nodes = ips;
+    command.num_nodes = num_ips;
+    command.req=EAR_RC_SET_RISK;
+    command.my_req.risk.level=risk;
+    command.my_req.risk.target=target;
+    send_command_nodelist(&command, my_cluster_conf);
+}
+
+void set_default_powercap_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+{
+    request_t command;
+    command.nodes = ips;
+    command.num_nodes = num_ips;
+    command.req=EAR_RC_DEF_POWERCAP;
+    send_command_nodelist(&command, my_cluster_conf);
+}
+
+int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips)
+{
+    request_header_t head;
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    status_t *temp_status;
+    time_t ctime = time(NULL);
+    int num_status = 0;
+
+    command.time_code = ctime;
+    command.req = EAR_RC_STATUS;
+    command.nodes = ips;
+    command.num_nodes = num_ips;
+
+    head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
+    num_status = head.size / sizeof(status_t);
+
+    if (head.type != EAR_TYPE_STATUS || head.size < sizeof(status_t))
+    {
+        if (head.size > 0) free (temp_status);
+        *status = temp_status;
+        return 0;
+    }
+
+    *status = temp_status;
+
+    return num_status;
+}
+#else
+
+void increase_th_nodelist(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
+
+void restore_conf_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
+
+void set_risk_nodelist(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
+
+void set_default_powercap_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
+
+int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips) {return 0;}
 #endif
 
 void set_th_all_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf)
