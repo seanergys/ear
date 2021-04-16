@@ -5,6 +5,7 @@
 *.so
 */bin/
 */lib/
+src/tests
 etc/rpms/rpmbuild.sh
 
 # Autotools
@@ -135,3 +136,10 @@ src/tools/learning_validate
 src/tools/ear_events
 src/tools/show_coefficients
 src/tools/translate_coefficients
+src/tools/coeffs_quality*
+src/tools/coeffs_compare*
+src/tools/get_active_nodes*
+src/tools/learning_validate*
+src/tools/ear_events*
+
+
