@@ -411,11 +411,19 @@ void increase_th_all_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf
 }
 
 #if NODE_PROP
-void eards_new_job_nodelist(new_job_req_t *new_job, cluster_conf_t *my_cluster_conf, char **nodes, int num_nodes)
+void eards_new_job_nodelist(new_job_req_t *new_job, uint port, char *net_ext, char **nodes, int num_nodes)
 {
 	request_t command;
     int *ips;
-    get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+    cluster_conf_t conf;
+    memset(&conf, 0, sizeof(cluster_conf_t));
+    conf.eard.port = port;
+    if (net_ext != NULL)
+        strcpy(conf.net_ext, net_ext);
+    else
+        strcpy(conf.net_ext, "");
+
+    get_ip_nodelist(&conf, nodes, num_nodes, &ips);
 
     memset(&command, 0, sizeof(request_t));
 
@@ -425,7 +433,7 @@ void eards_new_job_nodelist(new_job_req_t *new_job, cluster_conf_t *my_cluster_c
 	command.req=EAR_RC_NEW_JOB;
     command.time_code = time(NULL);
 	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
-    send_command_nodelist(&command, my_cluster_conf);
+    send_command_nodelist(&command, &conf);
     free(ips);
 }
 
@@ -443,11 +451,20 @@ void eards_new_job_iplist(new_job_req_t *new_job, cluster_conf_t *my_cluster_con
     send_command_nodelist(&command, my_cluster_conf);
 }
 
-void eards_end_job_nodelist(job_id jid, job_id sid, cluster_conf_t *my_cluster_conf, char **nodes, int num_nodes)
+void eards_end_job_nodelist(job_id jid, job_id sid, uint port, char *net_ext, char **nodes, int num_nodes)
 {
     request_t command;
     int *ips;
-    get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+    cluster_conf_t conf;
+    memset(&conf, 0, sizeof(cluster_conf_t));
+    conf.eard.port = port;
+    if (net_ext != NULL)
+        strcpy(conf.net_ext, net_ext);
+    else
+        strcpy(conf.net_ext, "");
+
+    get_ip_nodelist(&conf, nodes, num_nodes, &ips);
+
     memset(&command, 0, sizeof(request_t));
 
     debug("eards_end_job");
@@ -457,7 +474,7 @@ void eards_end_job_nodelist(job_id jid, job_id sid, cluster_conf_t *my_cluster_c
     command.time_code = time(NULL);
 	command.my_req.end_job.jid=jid;
 	command.my_req.end_job.sid=sid;
-    send_command_nodelist(&command, my_cluster_conf);
+    send_command_nodelist(&command, &conf);
     free(ips);
 }
 
