@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -39,6 +38,8 @@
 #include <library/policies/mpi_stats_support.h>
 #include <library/policies/compute_cpu_freq.h>
 #include <library/common/verbose_lib.h>
+#include <library/policies/cpu_support.h>
+#include <library/metrics/gpu.h>
 
 
 typedef unsigned long ulong;
@@ -85,7 +86,7 @@ static mpi_information_t *my_node_mpi_calls, *last_node_mpi_calls;
 static polsym_t gpus;
 static ulong *last_cpufreq_sel;
 static const ulong **gpuf_pol_list;
-static const uint **gpuf_pol_list_items;
+static const uint *gpuf_pol_list_items;
 static int min_pstate;
 
 state_t policy_init(polctx_t *c)
@@ -160,13 +161,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     ulong curr_freq;
     ulong curr_pstate, def_pstate, def_freq, imc_pstate;
     state_t st;
-    double sig_vpi, node_sig_vpi;
-    // my_app=sig;
+    double sig_vpi, node_sig_vpi, max_vpi;
     int gready;
     uint sid = 0;
     int max_mpi, min_mpi;
     uint local_process_with_high_vpi;
     double local_eff_gain;
+    int freq_per_core = 0;
 
     if (c == NULL || c->app==NULL) {
         *ready = EAR_POLICY_CONTINUE;
@@ -296,6 +297,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             }
             compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
             verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
+            best_pstate = frequency_closest_pstate(best_freq);
             compute_cpu_freq_min_time(my_app, min_pstate, time_ref, min_eff_gain, curr_pstate,
                     best_pstate, best_freq, def_freq, new_freq);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
