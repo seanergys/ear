@@ -37,6 +37,13 @@
 cluster_conf_t my_conf;
 #endif
 
+#if SCHED_SLURM
+#include <slurm/slurm.h>
+#define BATCH_STEP SLURM_BATCH_SCRIPT
+#else
+#define BATCH_STEP -2
+#endif
+
 
 int full_length = 0;
 int verbose = 0;

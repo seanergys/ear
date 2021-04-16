@@ -22,7 +22,7 @@
 #include <string.h>
 #include <errno.h>
 #define _GNU_SOURCE
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
