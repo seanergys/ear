@@ -1111,7 +1111,7 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
         memcpy(tmp_command.nodes, &command->nodes[base_distance*i], max_ips*sizeof(int));
 
         //connect and send data
-        rc = remote_connect(next_ip, port);
+        rc = eards_remote_connect(next_ip, port);
         if (rc < 0)
         {
             error("correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
@@ -1124,10 +1124,10 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
             if ((head.size) < 1 || head.type == EAR_ERROR)
             {
                 error("correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
-                remote_disconnect();
+                eards_remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
             }
-            else remote_disconnect();
+            else eards_remote_disconnect();
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -1160,24 +1160,27 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
 
 }
 
-request_header_t data_nodes(request_t *command, cluster_conf_t *my_cluster_conf, void **data)
+request_header_t data_nodelist(request_t *command, cluster_conf_t *my_cluster_conf, void **data)
 {
     int base_distance, num_sends;
+    request_header_t head;
+
 
     time_t ctime = time(NULL);
-    command.time_code = ctime;
+    command->time_code = ctime;
 
     /* We get which nodes this function will comunicate with by sending a message
      * every _base_distance_ nodes, and sending to that node the list of nodes between 
      * themselves and the next node. IE: if we have nodes A B C D E F G and we get a 
      * base_distance of 3, we will send the message to A, D and G. To A we will send A B C,
      * D will receive D E F, and G will only receive themselves. */
-    base_distance = get_max_prop_group(NUM_PROPS, MAX_PROP_DEPTH, command.num_nodes);
-    num_sends = command.num_nodes / base_distance; //number of nodes this function will comunicate with
-    debug("sending command with %d nodes, %d base_distance and %d num_sends", command.num_nodes, base_distance, num_sends);
+    base_distance = get_max_prop_group(NUM_PROPS, MAX_PROP_DEPTH, command->num_nodes);
+    num_sends = command->num_nodes / base_distance; //number of nodes this function will comunicate with
+    debug("sending command with %d nodes, %d base_distance and %d num_sends", command->num_nodes, base_distance, num_sends);
 
     /* Inner functionality for initial communication has been moved to its own function to avoid code replication */
-    internal_send_command_nodes(&command, my_cluster_conf->eard.port, base_distance, num_sends);
+    head = internal_data_nodes(command, my_cluster_conf->eard.port, base_distance, num_sends, data);
+    return head;
 }
 #endif
 

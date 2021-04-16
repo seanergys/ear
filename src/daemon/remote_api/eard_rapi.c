@@ -425,7 +425,7 @@ void eards_new_job_nodelist(new_job_req_t *new_job, cluster_conf_t *my_cluster_c
     send_command_nodelist(&command, my_cluster_conf);
 }
 
-void eards_end_job_nodelist(job_id jid, job_id sid, cluster_conf_t *my_clister_conf, int *ips, int num_ips)
+void eards_end_job_nodelist(job_id jid, job_id sid, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
