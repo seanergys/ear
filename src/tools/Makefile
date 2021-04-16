@@ -30,12 +30,6 @@ all: $(tool_BINS)
 coeffs_compute: coeffs_compute.c $(mang_OBJS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(LDFLAGS) $(mang_OBJS) $(comm_OBJS) $(DB_LDFLAGS) -lpthread -ldl
 
-coeffs_jobproj: coeffs_jobproj.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -ldl -lm
-
-coeffs_quality: coeffs_quality.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -ldl -lm
-
 coeffs_show: coeffs_show.c $(comm_OBJS)
 	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
 
@@ -45,23 +39,11 @@ coeffs_null: coeffs_null.c $(comm_OBJS)
 coeffs_default: coeffs_default.c $(comm_OBJS)
 	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
 
-coeffs_compare: coeffs_compare.c $(comm_OBJS)
-	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
-
-ear_events: ear_events.c $(comm_OBJS)
-	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
-
-get_active_nodes: get_active_nodes.c $(comm_OBJS)
-	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
-
 learning_show: learning_show.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 learning_delete: learning_delete.c $(comm_OBJS)
 	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
-
-learning_validate: learning_validate.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(LDFLAGS) $(comm_OBJS) $(DB_LDFLAGS)
 
 ######## OPTIONS
 

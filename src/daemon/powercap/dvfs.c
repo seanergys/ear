@@ -148,8 +148,8 @@ state_t dvfs_pc_thread_main(void *p)
     power_rapl=(float)acum_energy/(DVFS_PERIOD*RAPL_MSR_UNITS);
     my_limit=(float)current_dvfs_pc;
     //debug("DVFS monitoring exectuted power_computed=%f limit %u",power_rapl,current_dvfs_pc);
-    debug("%sTotal power in dvfs_pc %f Watts limit %u DRAM+PCK low-limit %f up-limit %f%s",
-            COL_BLU,power_rapl,current_dvfs_pc,(float)current_dvfs_pc*RAPL_VS_NODE_POWER,current_dvfs_pc*RAPL_VS_NODE_POWER_limit,COL_CLR);
+    //debug("%sTotal power in dvfs_pc %f Watts limit %u DRAM+PCK low-limit %f up-limit %f%s",
+    //        COL_BLU,power_rapl,current_dvfs_pc,(float)current_dvfs_pc*RAPL_VS_NODE_POWER,current_dvfs_pc*RAPL_VS_NODE_POWER_limit,COL_CLR);
 
     /* Copiar init=end */
     memcpy(values_rapl_init,  values_rapl_end,num_packs * RAPL_POWER_EVS* sizeof(unsigned long long));
@@ -271,7 +271,7 @@ state_t release_powercap_allocation(uint decrease)
 {
     debug("Decreasing powercap allocation by %u", decrease);
     current_dvfs_pc -= decrease;
-    dvfs_status = PC_STATUS_RELEASE;
+    if (current_dvfs_pc < default_dvfs_pc) dvfs_status = PC_STATUS_RELEASE;
     return EAR_SUCCESS;
 }
 
@@ -352,7 +352,7 @@ uint get_powercap_status(domain_status_t *status)
     status->strain = 0;
     status->current_pc = current_dvfs_pc;
 
-    //debug("DVFS: get_powercap_status");
+    debug("DVFS: get_powercap_status");
     if (!dvfs_monitor_initialized) return 0;
     /* Return 0 means we cannot release power */
     if (current_dvfs_pc == PC_UNLIMITED) return 0;
@@ -362,6 +362,7 @@ uint get_powercap_status(domain_status_t *status)
 
     frequency_get_cpufreq_list(node_size,c_freq);
     status->strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
+    debug("DVFS: current strain %d", status->strain);
     if (c_freq[0] < c_req_f[0]){
         if (dvfs_ask_def) status->ok = PC_STATUS_ASK_DEF;
         else status->ok = PC_STATUS_GREEDY;

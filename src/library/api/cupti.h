@@ -19,8 +19,8 @@
 #define _EAR_CUDA_
 
 #include <common/states.h>
-int is_cuda_enabled();
-void ear_cuda_enabled();
+#include <library/loader/module_cuda.h>
+
 state_t ear_cuda_init();
 
 #endif

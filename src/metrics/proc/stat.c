@@ -210,6 +210,9 @@ state_t proc_stat_read(ctx_t *c, proc_stat_t *ps)
 	if (state_fail(s = get_context(c, &p))) {
 		return s;
 	}
+	// Cleaning buffer
+	memset(buffer, 0, SZ_BUFFER);
+	// Reading
 	sbuff = SZ_BUFFER;
 	sread = 0;
 	soff  = 0;
@@ -230,7 +233,9 @@ state_t proc_stat_read(ctx_t *c, proc_stat_t *ps)
 	char *tok = strtok(buffer, ")");
 	sscanf(tok, "%d (%s", &ps->pid, ps->file);
 	// Getting the rest of the file
-	if (state_fail(s = scan_buffer(strtok(NULL, ")"), ps))) {
+	tok = strtok(NULL, ")");
+	debug("READED %s", &tok[1]);
+	if (state_fail(s = scan_buffer(&tok[1], ps))) {
 		return s;
 	}
 	// proc_stat_data_print(ps);
@@ -281,12 +286,21 @@ state_t proc_stat_data_copy(proc_stat_t *dest, proc_stat_t *src)
 
 state_t proc_stat_data_print(proc_stat_t *ps)
 {
-	printf("pid:    %d\n", ps->pid);
-	printf("file:   %s\n", ps->file);
-	printf("utime:  %lu\n", ps->utime);
-	printf("stime:  %lu\n", ps->stime);
-	printf("cutime: %ld\n", ps->cutime);
-	printf("cstime: %ld\n", ps->cstime);
+	printf("[ 1] pid:    %d\n", ps->pid);
+	printf("[ 2] file:   %s\n", ps->file);
+	printf("[ 3] state:  %c\n", ps->state);
+	printf("[ 9] flags:  %u\n", ps->flags);
+	printf("[14] utime:  %lu\n", ps->utime);
+	printf("[15] stime:  %lu\n", ps->stime);
+	printf("[16] cutime: %ld\n", ps->cutime);
+	printf("[17] cstime: %ld\n", ps->cstime);
+	printf("[19] nice:  %ld\n", ps->nice);
+	printf("[24] rss:  %ld\n", ps->rss);
+	printf("[28] startstack:  %lu\n", ps->startstack);
+	printf("[31] signal:  %lu\n", ps->signal);
+	printf("[39] processor:  %d\n", ps->processor);
+	printf("[43] guest_time:  %lu\n", ps->guest_time);
+	printf("[44] cguest_time: %ld\n", ps->cguest_time);
 	return EAR_SUCCESS;
 }
 

@@ -15,23 +15,3 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-
-
-//#define SHOW_DEBUGS 1
-#include <common/config.h>
-#include <common/states.h>
-#include <common/output/verbose.h>
-
-static uint mpi_on = 0;
-int is_mpi_enabled()
-{
-	return mpi_on;
-}
-
-void ear_mpi_enabled()
-{
-	mpi_on = 1;
-}
-

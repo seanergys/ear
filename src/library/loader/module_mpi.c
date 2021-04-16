@@ -27,7 +27,6 @@
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>
 #include <library/loader/module_cuda.h>
-#include <library/api/cupti.h>
 #include <library/api/mpi_support.h>
 
 static mpic_t next_mpic;
@@ -38,7 +37,17 @@ mpif_t ear_mpif;
 void (*func_con) (void);
 void (*func_des) (void);
 
+static uint mpi_on = 0;
 
+int is_mpi_enabled()
+{
+        return mpi_on;
+}
+
+void ear_mpi_enabled()
+{
+        mpi_on = 1;
+}
 
 static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so, int *lang_c, int *lang_f)
 {
@@ -182,13 +191,10 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 	
 	if (ear_mpic_setnext != NULL) ear_mpic_setnext(&next_mpic);
 	if (ear_mpif_setnext != NULL) ear_mpif_setnext(&next_mpif);
-
-  func_con = dlsym(libear, "ear_constructor");
-  func_des = dlsym(libear, "ear_destructor");
-
-  verbose(3, "LOADER: function constructor %p", func_con);
-  verbose(3, "LOADER: function destructor %p", func_des);
-
+	func_con = dlsym(libear, "ear_constructor");
+	func_des = dlsym(libear, "ear_destructor");
+	verbose(3, "LOADER: function constructor %p", func_con);
+	verbose(3, "LOADER: function destructor %p", func_des);
 	
 	return 1;
 }

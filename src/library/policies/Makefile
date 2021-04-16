@@ -60,18 +60,12 @@ min_time_eard.so: min_time_eard.o $(eard_DEPS)
 monitoring_eard.so: monitoring_eard.o $(eard_DEPS)
 	$(CC) $(CC_FLAGS) -shared -o $@ $^
 
-min_time_mpi_info.so: min_time_mpi_info.o $(pmpi_DEPS)
-	$(LIBCC) $(LIBCC_FLAGS) -shared -o $@ $^
 
 ######## OPTIONS 
 
 install: poli.ginstall eard.ginstall
 	ln -sf ./min_energy_eard.so $(eard_PATH)/min_energy_no_models_eard.so 
 	ln -sf ./min_time_eard.so $(eard_PATH)/min_time_no_models_eard.so 
-ifeq ($(FEAT_RESEARCH),1)
-	ln -sf ./min_energy_eard.so $(eard_PATH)/app_min_energy_eard.so 
-	ln -sf ./min_time_eard.so $(eard_PATH)/app_min_time_eard.so 
-endif
 
 clean: rclean;
 

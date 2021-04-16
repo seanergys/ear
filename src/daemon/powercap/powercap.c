@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <common/colors.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/states.h>
 #include <common/system/execute.h>
@@ -472,6 +472,7 @@ void powercap_release_power()
     my_pc_opt.powercap_status = PC_STATUS_OK;
     my_pc_opt.released = 0;
     my_pc_opt.last_t1_allocated = my_pc_opt.current_pc;
+	pmgt_set_powercap_value(pcmgr, pc_pid, DOMAIN_NODE, (ulong)my_pc_opt.current_pc);
 }
 
 void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
@@ -484,35 +485,42 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
         status->status = PC_STATUS_IDLE;
         my_status->released = my_pc_opt.released;
         my_status->total_idle_power = my_pc_opt.last_t1_allocated;
+        my_status->idle_nodes++;
     }
     else {
         pmgt_get_status(status);
+        if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) status->status = PC_STATUS_ASK_DEF; 
+        my_pc_opt.powercap_status = status->status;
         switch(status->status) 
         {
             case PC_STATUS_GREEDY:
-                status->requested = my_pc_opt.requested;
+                //status->requested = my_pc_opt.requested;
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap) status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 else status->extra = 0;
+                debug("PC_STATUS greedy, requesting %u", status->requested);
                 break;
             case PC_STATUS_RELEASE:
+                my_pc_opt.released = status->tbr;
+                my_pc_opt.current_pc -= status->tbr;
                 debug("%sReleasing%s %u W allocated %u W",COL_BLU,COL_CLR,my_pc_opt.released,my_pc_opt.current_pc);
                 powercap_release_power();
                 break;
             case PC_STATUS_ASK_DEF: 
                 /* Data management */
-                debug("%sAsking for defaul power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
-                //status->requested = my_pc_opt.requested;
-                my_status->requested += my_pc_opt.requested;
-                break;
-            case PC_STATUS_ERROR: 
+                debug("%sAsking for default power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
+                my_status->requested = my_pc_opt.def_powercap - my_pc_opt.last_t1_allocated;
                 break;
             case PC_STATUS_OK:
+                debug("PC_STATUS OK");
                 status->requested = 0;
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
                     status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 } else {
                     status->extra = 0;
                 }
+                break;
+            case PC_STATUS_ERROR: 
+            default:
                 break;
 
         }
@@ -633,7 +641,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
             case PC_STATUS_IDLE:
             case PC_STATUS_OK:
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
-                    // debug("set_powercap_opt status ok, looking for potential power reduction");    
+                    // debug("set_powercap_opt status ok, looking for potential power reduction");  
                     debug("%snew_pc_opt:status OK but in the greedy node list %d ip=%d with ip=%di extra %d%s",COL_RED,id,opt->greedy_nodes[id],my_ip,opt->extra_power[id],COL_CLR);
                     my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[id];
                     set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
@@ -650,7 +658,10 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 my_pc_opt.powercap_status=PC_STATUS_OK;
                 my_pc_opt.requested=0;
                 break;
-           case PC_STATUS_ASK_DEF:
+        }
+    }
+    else {
+        if (my_pc_opt.powercap_status == PC_STATUS_ASK_DEF) {
                 /* In that case, we assume we cat use the default power cap */
                 // debug("My status is ASK_DEF and new settings received");
                 my_pc_opt.powercap_status=PC_STATUS_OK;
@@ -658,7 +669,6 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 my_pc_opt.last_t1_allocated=my_pc_opt.def_powercap;
                 my_pc_opt.requested=0;
                 set_powercap_value(DOMAIN_NODE,my_pc_opt.def_powercap);            
-                break;
         }
     }
     pthread_mutex_unlock(&my_pc_opt.lock);
