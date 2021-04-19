@@ -241,9 +241,6 @@ void usage(char *app)
             "\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\
             "\n\t--set-def-freq \t[newfreq]  [pol_name]\t->sets the default frequency for the selected policy "\
             "\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
-            "\n\t--inc-th \t[new_th]   [pol_name]\t->increases the threshold for all nodes"\
-            "\n\t--set-th \t[new_th]   [pol_name]\t->sets the threshold for all nodes"\
-            "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates"\
             "\n\t--restore-conf \t\t\t\t->restores the configuration to all node"\
             "\n\t--status \t\t\t\t->requests the current status for all nodes. The ones responding show the current "\
             "\n\t\t\t\t\t\t\tpower, IP address and policy configuration. A list with the ones not"\
@@ -256,6 +253,12 @@ void usage(char *app)
             "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
             "\n\t--version \t\t\t\t->displays current EAR version."\
             "\n\t--help \t\t\t\t\t->displays this message.", app);
+						#if EXT_OPT
+						printf(""\
+            "\n\t--inc-th \t[new_th]   [pol_name]\t->increases the threshold for all nodes"\
+            "\n\t--set-th \t[new_th]   [pol_name]\t->sets the threshold for all nodes"\
+            "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates");
+						#endif
     printf("\n\nThis app requires privileged access privileged accesss to execute.\n");
 	exit(0);
 }
