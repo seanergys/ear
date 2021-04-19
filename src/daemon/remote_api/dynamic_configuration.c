@@ -422,49 +422,44 @@ void dyncon_power_management(int fd, request_t *command)
     int id;
 	switch (command->req){
     case EAR_RC_RED_POWER:
+			/* command->my_req.pc.type==RELATIVE not implemented */
 			if (command->my_req.pc.type==ABSOLUTE){
-				verbose(1,"We must reduce the power in %lu watts",command->my_req.pc.limit);
-				limit=my_node_conf->powercap-command->my_req.pc.limit;
+				verbose(1,"Reduce powercap default in %lu watts",command->my_req.pc.limit);
+				powercap_reduce_def_power(command->my_req.pc.limit);
 			}
 			if (command->my_req.pc.type==RELATIVE){
-				verbose(1,"We must reduce the power by %lu watts",command->my_req.pc.limit);
-				limit=my_node_conf->powercap-(my_node_conf->powercap*command->my_req.pc.limit);
+				verbose(0,"Error, reduce relative powercap not implemented");
 			}
 			break;	
-    case EAR_RC_GET_POWER:
-			verbose(1,"get power command");
-			powermon_get_status(&status);
-			cpower=(unsigned long)status.node.power;
-			write(fd,&cpower,sizeof(unsigned long));
-			break;
     case EAR_RC_SET_POWER:
 			verbose(1,"We must set the power to %lu watts",command->my_req.pc.limit);
-			limit=command->my_req.pc.limit;
+			powercap_set_powercap(command->my_req.pc.limit);
+			return;
 			break;
     case EAR_RC_INC_POWER:
 			if (command->my_req.pc.type==ABSOLUTE){
-				verbose(1,"We can increase the power in %lu watts",command->my_req.pc.limit);
-				limit=my_node_conf->powercap+command->my_req.pc.limit;
+				verbose(1,"Increase powercap default in %lu watts",command->my_req.pc.limit);
+				powercap_increase_def_power(command->my_req.pc.limit);
 			}
 			if (command->my_req.pc.type==RELATIVE){
-				verbose(1,"We can increase the power by %lu watts",command->my_req.pc.limit);
-				limit=my_node_conf->powercap+(my_node_conf->powercap*command->my_req.pc.limit);
+				verbose(0,"Error, increase relative powercap not implemented");
 			}
 			break;	
+		case EAR_RC_DEF_POWERCAP:
+			powercap_reset_default_power();
+			break;
     case EAR_RC_SET_POWERCAP_OPT:
 			verbose(1,"Set powercap options received");
-            id = dyncon_filter_opt(&command->my_req.pc_opt);
-            debug("returned filter with id %d", id);
+      id = dyncon_filter_opt(&command->my_req.pc_opt);
+      debug("returned filter with id %d", id);
 			powercap_set_opt(&command->my_req.pc_opt, id);
-            free(command->my_req.pc_opt.greedy_nodes);
-            free(command->my_req.pc_opt.extra_power);
+      free(command->my_req.pc_opt.greedy_nodes);
+      free(command->my_req.pc_opt.extra_power);
 			return;
 			break;
     default:
 			verbose(1,"power command received not supported");
 	}
-	verbose(1,"New power limit %lu",limit);
-	energy_set_power_limit(&my_eh_rapi,limit,command->my_req.pc.type);
 }
 #endif
 
@@ -500,15 +495,6 @@ void dyncon_release_idle_power(int fd, request_t *command)
 
 }
 
-void dyncon_set_default_powercap(int fd, request_t *command)
-{
-    debug("setting default powercap");
-
-    powercap_set_default_power();
-
-    debug("returning from set_default_powercap");
-
-}
 
 void process_pmgt_status(powercap_status_t *my_status, pmgt_status_t *p_status)
 {
@@ -702,10 +688,10 @@ state_t process_remote_requests(int clientfd) {
             break;
 		#if POWERCAP
 		case EAR_RC_RED_POWER:
-		case EAR_RC_GET_POWER:
 		case EAR_RC_SET_POWER:
 		case EAR_RC_INC_POWER:
 		case EAR_RC_SET_POWERCAP_OPT:
+		case EAR_RC_DEF_POWERCAP:
 			dyncon_power_management(clientfd, &command);
 			break;
 		#endif
@@ -720,9 +706,6 @@ state_t process_remote_requests(int clientfd) {
 		case EAR_RC_RELEASE_IDLE:
             dyncon_release_idle_power(clientfd, &command);
             return EAR_SUCCESS;
-		case EAR_RC_DEF_POWERCAP:
-						dyncon_set_default_powercap(clientfd, &command);
-						break;
 	  #endif
 		default:
 			error("Invalid remote command\n");

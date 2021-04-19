@@ -1,6 +1,10 @@
 CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) -Wall 
 LDFLAGS = -lm
+ifeq ($(FEAT_RESEARCH), 1)
+CFLAGS += -DEXT_OPT=1
+endif
 CCC     = $(CC) $(CFLAGS)
+
 
 ######## INSTALLATION
 
