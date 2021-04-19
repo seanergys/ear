@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 0
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -111,25 +111,33 @@ static state_t write_multi(int *fds, char *word, int line_break)
 	return EAR_SUCCESS;
 }
 
-state_t cpufreq_linux_status(topology_t *_tp)
+state_t cpufreq_linux_status(topology_t *tp_in)
 {
 	char data[SZ_NAME_SHORT];
+	int found_userspace = 0;
 	state_t s;
+
 	debug("testing ACPI-CPUFreq driver status");
-	int fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver", O_RDONLY);
+	int fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors", O_RDONLY);
 	if (fd < 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
-	s = read_word(fd, data, 0);
-	close(fd);
-	if (state_fail(s)) {
-		return_msg(EAR_ERROR, strerror(errno));
-	}
+	#if 0
 	if (strncmp(data, "acpi-cpufreq", 12) != 0) {
 		return_msg(EAR_ERROR, "driver not found");
 	}
+	#else
+	while (!found_userspace && !state_fail(s = read_word(fd, data, 0))) {
+		found_userspace = (strncmp(data, "userspace", 9) == 0);
+		debug("read word %s (found %d)", data, found_userspace);
+	}
+	close(fd);
+	if (!found_userspace) {
+		return_msg(EAR_ERROR, "Current driver does not have userspace governor.");
+	}
+	#endif
 	if (tp.cpu_count == 0) {
-		if(xtate_fail(s, topology_copy(&tp, _tp))) {
+		if(xtate_fail(s, topology_copy(&tp, tp_in))) {
 			return EAR_ERROR;
 		}
 	}
