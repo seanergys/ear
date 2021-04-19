@@ -21,5 +21,7 @@
 int module_cuda_is();
 int module_constructor_cuda(char *path_lib_so,char *libhack);
 void module_destructor_cuda();
+int is_cuda_enabled();
+void ear_cuda_enabled();
 
 #endif 

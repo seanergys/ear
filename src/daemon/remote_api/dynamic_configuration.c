@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,14 +41,11 @@
 #include <management/cpufreq/frequency.h>
 #include <common/messaging/msg_conf.h>
 
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 
 #include <daemon/remote_api/eard_rapi.h>
 #include <daemon/remote_api/eard_server_api.h>
-#if DYN_PAR
 #include <daemon/remote_api/dyn_conf_theading.h>
-#endif
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap_status_conf.h>
 #include <daemon/powercap/powercap.h>
@@ -79,9 +77,7 @@ int node_found = EAR_ERROR;
 #if POWERCAP
 extern app_mgt_t *app_mgt_info;
 #endif
-#if DYN_PAR
 pthread_t act_conn_th;
-#endif
 
 
 /* New to manage risk */
@@ -412,7 +408,9 @@ int dyncon_filter_opt(powercap_opt_t *opt)
     int i;
     for (i = 0; i < opt->num_greedy; i++)
     {
+        debug("checking our ip (%d) vs list (%d)", my_ip, opt->greedy_nodes[i]);
         if (opt->greedy_nodes[i] == my_ip) return i;
+        debug("dyn_conf: greedy node found in position %d", i);
     }
     return -1;
 }
@@ -456,6 +454,7 @@ void dyncon_power_management(int fd, request_t *command)
     case EAR_RC_SET_POWERCAP_OPT:
 			verbose(1,"Set powercap options received");
             id = dyncon_filter_opt(&command->my_req.pc_opt);
+            debug("returned filter with id %d", id);
 			powercap_set_opt(&command->my_req.pc_opt, id);
             free(command->my_req.pc_opt.greedy_nodes);
             free(command->my_req.pc_opt.extra_power);
@@ -614,9 +613,7 @@ state_t process_remote_requests(int clientfd) {
 	memset(&command,0,sizeof(request_t));
 	command.req=NO_COMMAND;
 	req = (int) read_command(clientfd, &command);
-	#if DYN_PAR
 	if (req == EAR_SOCK_DISCONNECTED) return req;
-	#endif
 	/* New job and end job are different */
 	/* Is it necesary */
 	if (req != EAR_RC_NEW_JOB && req != EAR_RC_END_JOB) {
@@ -732,7 +729,7 @@ state_t process_remote_requests(int clientfd) {
 			req = NO_COMMAND;
 	}
 	send_answer(clientfd, &ack);
-	if (req != EAR_RC_PING && req != NO_COMMAND && req != EAR_RC_NEW_JOB && req != EAR_RC_END_JOB && node_found != EAR_ERROR)
+	if (req != EAR_RC_PING && req != NO_COMMAND && node_found != EAR_ERROR)
 	{
 		verbose(VRAPI + 1, "command=%d propagated distance=%d", req, command.node_dist);
 		propagate_req(&command, my_cluster_conf.eard.port);
@@ -777,14 +774,12 @@ void *eard_dynamic_configuration(void *tmp)
     error("Error initializing energy in %s thread", TH_NAME);
   }
 
-	#if DYN_PAR
 	if (init_active_connections_list()!=EAR_SUCCESS){
 		error("Error initializing remote connections data, remore requests, remote connections won't be accepted");
 	}	
   if ((ret=pthread_create(&act_conn_th, NULL, process_remote_req_th, NULL))){
     error("error creating thread to process remore requests, remote connections won't be accepted");
   }
-	#endif
 
 	num_f = frequency_get_num_pstates();
 	f_list = frequency_get_freq_rank_list();
@@ -825,14 +820,9 @@ void *eard_dynamic_configuration(void *tmp)
 				error("Panic, we cannot create socket for connection again,exiting");
 			}
 		} else {
-			#if !DYN_PAR
-			process_remote_requests(eards_client);
-			close(eards_client);
-			#else
 			if (notify_new_connection(eards_client)!=EAR_SUCCESS){
 				error("Notifying new remote connection for processing");
 			}
-			#endif
 		}
 	} while (eard_must_exit == 0);
 	warning("eard_dynamic_configuration exiting\n");

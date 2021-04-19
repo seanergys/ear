@@ -143,5 +143,5 @@ typedef enum
 #define remove_blocking(call)		(call&~_Blocking)
 
 int is_mpi_enabled();
-void ear_mpi_enabled();
+
 #endif

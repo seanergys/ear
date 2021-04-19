@@ -5,6 +5,7 @@
 *.so
 */bin/
 */lib/
+src/tests
 etc/rpms/rpmbuild.sh
 src/tests
 
@@ -55,7 +56,6 @@ src/common/config/config_install.h
 src/common/config/config_dev.h
 src/common/config/config_def.h
 src/common/config/config_env.h
-tests/check/check.sh
 
 # Build Libraries
 *libear.so
@@ -115,14 +115,6 @@ tests/check/check.sh
 
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
-src/tests/app_api/app_api_test
-src/tests/functionals/ping
-src/tests/functionals/read_from_file
-src/tests/functionals/signaures_avg
-src/tests/functionals/ips_check
-src/tests/functionals/temperature_check
-src/tests/functionals/postgres_test
-src/tests/functionals/propagation_test
 src/tools/coefficients_comparison
 src/tools/coeffs_compare
 src/tools/coeffs_comparison
@@ -145,3 +137,10 @@ src/tools/learning_validate
 src/tools/ear_events
 src/tools/show_coefficients
 src/tools/translate_coefficients
+src/tools/coeffs_quality*
+src/tools/coeffs_compare*
+src/tools/get_active_nodes*
+src/tools/learning_validate*
+src/tools/ear_events*
+
+

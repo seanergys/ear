@@ -307,7 +307,7 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
                         ips[i].name, status.job_id, step_id, status.master_rank,
                         status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
                         status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
-#if USE_GPU_LIB
+#if USE_GPUS
             GPU_power=0;GPU_freq=0;
             if (status.signature.gpu_sig.num_gpus>0){
                 for (gpusi=0;gpusi<status.signature.gpu_sig.num_gpus;gpusi++){
@@ -418,7 +418,7 @@ void process_app_status(int num_status, app_status_t *status, char is_master)
         else
             printf("%15s %7s-%-6s %6s %10s %8s %8s %8s %8s %8s", 
                     "Node id", "Job", "Step", "M-Rank", "DC power", "CPI", "GBS", "Gflops", "Time", "Avg Freq");
-#if USE_GPU_LIB
+#if USE_GPUS
         printf(" %9s %9s", "GPU power", "GPU freq");
 #endif
         printf("\n");
@@ -721,7 +721,7 @@ int main(int argc, char *argv[])
                     msg.num_greedy = 1;
                     msg.greedy_nodes = calloc(1, sizeof(int));
                     msg.extra_power = calloc(1, sizeof(int));
-                    msg.greedy_nodes[0] = 772087468;
+                    msg.greedy_nodes[0] = get_ip(optarg, &my_cluster_conf);
                     msg.extra_power[0] = 25;
                     request_t command;
                     command.req = EAR_RC_SET_POWERCAP_OPT;

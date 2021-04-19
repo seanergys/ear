@@ -15,11 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define CACHE_METRICS 1
-//#define NEW_CPUFREQ 1
 //#define NEW_IMCFREQ 1
 //#define SHOW_DEBUGS 1
-//#define SHOW_ENERGY 1
 
 #define SET_DYN_UNC_BY_DEFAULT 1
 #include <errno.h>
@@ -43,12 +40,10 @@
 #include <metrics/frequency/imc.h>
 #include <metrics/frequency/imc/intel63.h>
 #include <metrics/io/io.h>
-#ifdef CACHE_METRICS
 #include <metrics/cache/cache.h>
-#endif
 #include <daemon/local_api/eard_api.h>
 #include <common/system/time.h>
-#if USE_GPU_LIB
+#if USE_GPUS
 #include <library/metrics/gpu.h>
 char gpu_str[256];
 uint ear_num_gpus_in_node=0;
@@ -149,21 +144,18 @@ static long long metrics_cycles[2];
 static long long metrics_usecs[2]; // uS
 static io_data_t metrics_io_init[2],metrics_io_end[2];
 static ctx_t ctx_io;
-#if USE_GPU_LIB
+#if USE_GPUS
 static gpu_t *gpu_metrics_init[2],*gpu_metrics_end[2],*gpu_metrics_diff[2];
 static ctx_t gpu_lib_ctx;
 static uint gpu_initialized;
 static uint gpu_loop_stopped=0;
 static uint earl_gpu_model=MODEL_UNDEFINED;
 #endif
-#if CACHE_METRICS
 static long long metrics_l1[2];
 static long long metrics_l2[2];
 static long long metrics_l3[2];
-#endif
 static timestamp init_mpi_time;
 static int first_timestamp=1;
-#if NEW_CPUFREQ
 static state_t s;
 static ulong cpufreq_data_avg[2];
 static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
@@ -177,7 +169,6 @@ static ulong imc_avg[2];
 static ctx_t imc_lib_ctx;
 static uint imc_count;
 static ulong cpufreq_avg;
-#endif
 static int NI=0;
 
 
@@ -206,13 +197,9 @@ static void metrics_global_start()
 
 	if (masters_info.my_master_rank>=0)
 	{
-		#if NEW_CPUFREQ
 		if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[APP],mycpufreq_data_size))){
 			error("CPUFreq data read in global_start");
 		}
-		#else
-		eards_begin_app_compute_turbo_freq();
-		#endif
 		#if NEW_IMCFREQ
 		/* Reads IMC data */
 		if (imc_mgt_compatible){
@@ -232,7 +219,7 @@ static void metrics_global_start()
 		eards_start_uncore();
 		eards_read_uncore(metrics_bandwith_init[APP]);
 
-		#if USE_GPU_LIB
+		#if USE_GPUS
 		if (gpu_initialized){
 			gpu_lib_data_null(gpu_metrics_init[APP]);
 			if (gpu_lib_read(&gpu_lib_ctx,gpu_metrics_init[APP]) != EAR_SUCCESS){
@@ -277,7 +264,6 @@ static void metrics_global_stop()
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
 	if (masters_info.my_master_rank>=0){ 
-    #if NEW_CPUFREQ
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[APP],mycpufreq_data_size))){
       error("CPUFreq data read in global_stop");
     }
@@ -287,9 +273,6 @@ static void metrics_global_stop()
 			debug("CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[APP]/1000000.0);
 		}
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
-		#else
-		metrics_avg_frequency[APP] = eards_end_app_compute_turbo_freq();
-		#endif
     #if NEW_IMCFREQ
 		if (imc_mgt_compatible){
   	if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
@@ -312,15 +295,13 @@ static void metrics_global_stop()
 	}
 
 	// Accum calls
-	#if CACHE_METRICS
 	get_cache_metrics(&metrics_l1[APP], &metrics_l3[APP]);
-	#endif
 	get_basic_metrics(&metrics_cycles[APP], &metrics_instructions[APP]);
 
 	get_total_fops(metrics_flops[APP]);
 	if (masters_info.my_master_rank>=0){
 		eards_read_uncore(metrics_bandwith_end[APP]);
-		#if USE_GPU_LIB
+		#if USE_GPUS
 		if (gpu_initialized){
 		if (gpu_lib_read(&gpu_lib_ctx,gpu_metrics_end[APP])!= EAR_SUCCESS){
 			debug("gpu_lib_read error");
@@ -378,13 +359,9 @@ static void metrics_partial_start()
 	}
 	
 	if (masters_info.my_master_rank>=0){ 
-    #if NEW_CPUFREQ
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial start");
     }
-    #else
-		eards_begin_compute_turbo_freq();
-		#endif
 		#if NEW_IMCFREQ
 		if (imc_mgt_compatible){
 		/* Reads the IMC */
@@ -395,7 +372,7 @@ static void metrics_partial_start()
 		#endif
 
 
-		#if USE_GPU_LIB
+		#if USE_GPUS
 		if (gpu_initialized){
 		if (gpu_loop_stopped) {
 			gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_end[LOO]);
@@ -413,9 +390,7 @@ static void metrics_partial_start()
 	}
 
 	start_basic_metrics();
-	#if CACHE_METRICS
 	cache_start();
-	#endif
 	start_flops_metrics();
 
 	
@@ -436,7 +411,7 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256],gpu_buff[1024];
 
 	/* If the signature of the master is not ready, we cannot compute our signature */
-	debug("My rank is %d",masters_info.my_master_rank);
+	//debug("My rank is %d",masters_info.my_master_rank);
   if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
 			//debug("Master signature not ready at time %lld",metrics_time());
       return EAR_NOT_READY;
@@ -488,7 +463,7 @@ static int metrics_partial_stop(uint where)
 		}else{
 			copy_uncores(metrics_bandwith[LOO],diff_uncore_value,bandwith_elements);	
 		}
-		#if USE_GPU_LIB
+		#if USE_GPUS
     if (gpu_initialized){
     if (gpu_lib_read(&gpu_lib_ctx,gpu_metrics_end[LOO])!= EAR_SUCCESS){
       debug("gpu_lib_read error");
@@ -527,7 +502,6 @@ static int metrics_partial_stop(uint where)
 	
 	// Daemon metrics
 	if (masters_info.my_master_rank>=0){ 
-    #if NEW_CPUFREQ
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial stop");
     }
@@ -537,9 +511,6 @@ static int metrics_partial_stop(uint where)
       debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
-    #else
-		metrics_avg_frequency[LOO] = eards_end_compute_turbo_freq();
-		#endif
     #if NEW_IMCFREQ
 		if (imc_mgt_compatible){
     if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size))){
@@ -588,9 +559,7 @@ static int metrics_partial_stop(uint where)
 	stop_basic_metrics(&metrics_cycles[LOO], &metrics_instructions[LOO]);
 	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
 
-	#if CACHE_METRICS
 	cache_stop(&metrics_l1[LOO], &metrics_l3[LOO]);
-	#endif
 
 	return EAR_SUCCESS;
 }
@@ -603,9 +572,7 @@ static void metrics_reset()
 	reset_basic_metrics();
 	reset_flops_metrics();
 	
-	#if CACHE_METRICS
 	cache_reset();
-	#endif
 }
 
 ull metrics_vec_inst(signature_t *metrics)
@@ -624,7 +591,7 @@ void copy_node_data(signature_t *dest,signature_t *src)
 	dest->DRAM_power=src->DRAM_power;
 	dest->PCK_power=src->PCK_power;
 	dest->avg_f=src->avg_f;
-	#if USE_GPU_LIB
+	#if USE_GPUS
 	memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
 	#endif
 }
@@ -650,11 +617,9 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	// Basics
 	metrics->time = time_s / (double) iterations;
 
-	#if CACHE_METRICS
 	metrics->L1_misses = metrics_l1[s];
 	metrics->L2_misses = 0;
 	metrics->L3_misses = metrics_l3[s];
-	#endif
 	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
 	#if NEW_IMCFREQ
 	if (imc_mgt_compatible){
@@ -707,7 +672,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[s][num_packs+p];
 		metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
 		metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
-		#if USE_GPU_LIB
+		#if USE_GPUS
 		if (gpu_initialized){
 			metrics->gpu_sig.num_gpus=ear_num_gpus_in_node;
 			if ((s == APP) && (earl_gpu_model == MODEL_DUMMY)){ 
@@ -781,11 +746,9 @@ int metrics_init(topology_t *topo)
 	// Local metrics initialization
 	if (init_basic_metrics()!=EAR_SUCCESS) return EAR_ERROR;
 	
-	#if CACHE_METRICS
 	if (state_ok(cache_load(topo))) {
 		cache_init();
 	}
-	#endif
 	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}else{
@@ -869,7 +832,6 @@ int metrics_init(topology_t *topo)
 	memset(metrics_rapl[APP], 0, rapl_size);
 	memset(aux_rapl, 0, rapl_size);
 	memset(last_rapl, 0, rapl_size);
-  #if NEW_CPUFREQ
 	if (masters_info.my_master_rank>=0){
   if (xtate_fail(s,cpufreq_load(topo))){
     error("Cpufrequency load failed");
@@ -943,10 +905,9 @@ int metrics_init(topology_t *topo)
 	verbose(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_max_khz/1000000.0,(float)imc_min_khz/1000000.0);	
 	}
 	}
-  #endif
 
 
-	#if USE_GPU_LIB
+	#if USE_GPUS
 	if (masters_info.my_master_rank>=0){
 	if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
       gpu_initialized=0;

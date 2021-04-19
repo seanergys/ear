@@ -23,13 +23,23 @@
 #include <library/loader/loader.h>
 #include <library/loader/module_cuda.h>
 #include <library/loader/module_common.h>
-#include <library/api/cupti.h>
 
 static void (*func_con) (void);
 static void (*func_des) (void);
 
 extern char *program_invocation_name;
 
+static uint cuda_on = 0;
+
+int is_cuda_enabled()
+{
+        return cuda_on;
+}
+
+void ear_cuda_enabled()
+{
+        cuda_on = 1;
+}
 
 int module_cuda_is()
 {

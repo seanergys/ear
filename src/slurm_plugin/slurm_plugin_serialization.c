@@ -128,7 +128,7 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 	if (found_exclusion) {
 		plug_verbose(sp, 2, "testing exclusion of '%s' in '%s'", sd->subject.host, sd->pack.nodes_excluded);
 		if (strinlist(sd->pack.nodes_excluded, ",", sd->subject.host)) {
-			plug_verbose(sp, 2, "found node '%s' in the exclusion list", sd->subject.host);
+			plug_error(sp, "found node '%s' in the exclusion list", sd->subject.host);
 			return ESPANK_ERROR;
 		}
 	}
@@ -136,7 +136,7 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 	if (found_inclusion) {
 		plug_verbose(sp, 2, "testing inclusion of %s in %s", sd->subject.host, sd->pack.nodes_allowed);
 		if (!strinlist(sd->pack.nodes_allowed, ",", sd->subject.host)) {
-			plug_verbose(sp, 2, "not found node '%s' in the allowance list", sd->subject.host);
+			plug_error(sp, "not found node '%s' in the allowance list", sd->subject.host);
 			return ESPANK_ERROR;
 		}
 	}
@@ -177,7 +177,8 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
-	int item;
+	int item = 0;
+	uint32_t uitem;
 
 	memset(app,0,sizeof(new_job_req_t));
 
@@ -188,20 +189,20 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.group_id, sd->job.user.group);
 	strcpy(app->job.user_acc, sd->job.user.account);
 	
-	if (spank_get_item (sp, S_JOB_ID, &item) == ESPANK_SUCCESS) {
-		app->job.id = (ulong) item;
+	if (spank_get_item (sp, S_JOB_ID, (int *)&uitem) == ESPANK_SUCCESS) {
+		app->job.id = (ulong) uitem;
 	} else {
 		app->job.id = NO_VAL;
 	}
-	if (spank_get_item (sp, S_JOB_STEPID, &item) == ESPANK_SUCCESS) {
-		app->job.step_id = (ulong) item;
+	if (spank_get_item (sp, S_JOB_STEPID, (int *)&uitem) == ESPANK_SUCCESS) {
+		app->job.step_id = (ulong) uitem;
 	} else {
 		app->job.step_id = NO_VAL;
 	}
-	if (!getenv_agnostic(sp, Var.name_app.rem, app->job.app_id, SZ_NAME_MEDIUM)) {
+	if (!getenv_agnostic(sp, Var.name_app.rem, app->job.app_id, GENERIC_NAME)) {
 		strcpy(app->job.app_id, "");
 	}
-	if (!getenv_agnostic(sp, Var.policy.ear, app->job.policy, SZ_NAME_MEDIUM)) {
+	if (!getenv_agnostic(sp, Var.policy.ear, app->job.policy, POLICY_NAME)) {
 		strcpy(app->job.policy, "");
 	}
 	if (!getenv_agnostic(sp, Var.policy_th.ear, buffer1, SZ_NAME_SHORT)) {
@@ -225,7 +226,7 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 			app->is_learning = 1;
 		}
 	}
-	if (!getenv_agnostic(sp, Var.tag.ear, app->job.energy_tag, 32)) {
+	if (!getenv_agnostic(sp, Var.tag.ear, app->job.energy_tag, ENERGY_TAG_SIZE)) {
 		strcpy(app->job.energy_tag, "");
 	}
 
@@ -434,38 +435,54 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 		s2 = getenv_agnostic(sp, Var.step_nodn.rem, buffer2, SZ_BUFFER_EXTRA);
 	}
 	if (s1 && s2) {
-		sd->job.node_n = atoi(buffer2);
+		sd->job.nodes_count = atoi(buffer2);
 	}
 
 	// Master
-	hostlist_t p1;
-	char *p2;
+	hostlist_t hostlist;
+	int from_sbatch;
+	int from_srun;
+	char *node;
+	int i = 0;
 
-	if (plug_context_was(sd, Context.sbatch)) {
-		sd->subject.is_master = 1;
-		s1 = s2 = 0;
-	}
-
+	// "Context was" means if local was.
+	from_sbatch = plug_context_was(sd, Context.sbatch);
+	from_srun   = plug_context_was(sd, Context.srun);
+	sd->subject.is_master = from_sbatch;
+	// If the node list and node count were present
 	if (s1 && s2) {
-		p1 = slurm_hostlist_create(buffer1);
-		p2 = slurm_hostlist_shift(p1);
-
-		if (p2 != NULL) {
+		hostlist = slurm_hostlist_create(buffer1);
+		node = slurm_hostlist_shift(hostlist);
+		
+		// If SRUN, just master is required
+		if (from_srun && node != NULL) {
 			s1 = strlen(sd->subject.host);
-			s2 = strlen(p2);
-
-			if (s1 < s2) {
-				s2 = s1;
+                        s2 = strlen(node);
+			// Taking the smallest
+                        if (s1 < s2) {
+                                s2 = s1;
+                        }
+			// If this node is the master
+                        sd->subject.is_master = (strncmp(sd->subject.host, node, s2) == 0);
+                        plug_verbose(sp, 2, "first node from list of nodes '%s'", node);
+		}
+		// If SBATCH/SALLOC then build a node list
+		if (from_sbatch && node != NULL) {
+			sd->job.nodes_list = calloc(sd->job.nodes_count, sizeof(char *));
+			while(node != NULL) {
+				sd->job.nodes_list[i] = calloc(1, (size_t) (strlen(node) + 1));
+				strcpy(sd->job.nodes_list[i], node);
+				node = slurm_hostlist_shift(hostlist);
+				++i;
 			}
-
-			sd->subject.is_master = (strncmp(sd->subject.host, p2, s2) == 0);
-			plug_verbose(sp, 2, "first node from list of nodes '%s'", p2);
+			if (i != sd->job.nodes_count) {
+				sd->job.nodes_count = i;
+			}
 		}
 	}
 
 	plug_verbose(sp, 2, "subject '%s' is master? '%d'",
 		sd->subject.host, sd->subject.is_master);
-
 	/*
 	 * The .ear variables are set during the APP serialization. But APP
 	 * serialization happens if the library is ON. But now we have ERUN.

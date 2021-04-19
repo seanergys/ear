@@ -421,6 +421,14 @@ state_t policy_init()
     }
     verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
 #endif
+    if (polsyms_fun.domain != NULL){
+      ret = polsyms_fun.domain(c,&freqs_domain);
+    }else{
+      freqs_domain.cpu = POL_GRAIN_NODE;
+      freqs_domain.mem = POL_NOT_SUPPORTED;
+      freqs_domain.gpu = POL_NOT_SUPPORTED;
+      freqs_domain.gpumem = POL_NOT_SUPPORTED;
+    }
 
     if (polsyms_fun.domain != NULL){
         ret = polsyms_fun.domain(c,&freqs_domain);

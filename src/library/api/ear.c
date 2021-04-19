@@ -1021,9 +1021,9 @@ void ear_init()
 	#endif
 	#endif
 	#if USE_GPUS
-  if (is_cuda_enabled()){
-    ear_cuda_init();
-  }
+	if (is_cuda_enabled()){
+		ear_cuda_init();
+	}
 	#endif
 }
 

@@ -37,6 +37,13 @@
 cluster_conf_t my_conf;
 #endif
 
+#if SCHED_SLURM
+#include <slurm/slurm.h>
+#define BATCH_STEP SLURM_BATCH_SCRIPT
+#else
+#define BATCH_STEP -2
+#endif
+
 
 int full_length = 0;
 int verbose = 0;
@@ -244,7 +251,7 @@ void print_full_apps(application_t *apps, int num_apps)
         {
             avg_f = (double) apps[i].signature.avg_f/1000000;
             compute_vpi(&vpi, &apps[i].signature);
-            if (apps[i].job.step_id != 4294967294)
+            if (apps[i].job.step_id != BATCH_STEP)
             {
                 printf("%8lu-%-3lu\t %-10s %-15s %-20s %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-7.3lf",
                     apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
@@ -294,7 +301,7 @@ void print_full_apps(application_t *apps, int num_apps)
         else
         {
             avg_f = (double) apps[i].power_sig.avg_f/1000000;
-            if (apps[i].job.step_id != 4294967294)
+            if (apps[i].job.step_id != BATCH_STEP)
             {
                 printf("%8lu-%-3lu\t %-10s %-15s %-20s %-10.2lf %-10.2lf %-10.2lf %-10s %-10s %-10.2lf %-7s",
                     apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
@@ -627,7 +634,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                 gpu_mem_util = 0;
 #endif
                 i--; //go back to current app
-                is_sbatch = (current_step_id == 4294967294) ? 1 : 0;
+                is_sbatch = (current_step_id == BATCH_STEP) ? 1 : 0;
             }
         }
     }
