@@ -204,6 +204,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     // Default values
     // TODO: set the nominal frequency
+    // in min_energy is assigned but never used
 
     min_eff_gain=c->app->settings[0];
     def_freq=FREQ_DEF(c->app->def_freq);
@@ -224,6 +225,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 #endif
     curr_pstate = frequency_closest_pstate(curr_freq);
     // TODO: deal with eff_f?
+    // assigned but never used in min_energy
 
 #if NEW_IMCFREQ
     if (dyn_unc){
@@ -259,7 +261,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 new_freq[i] = new_freq[0];
             }
             if (dyn_unc) {
-                // TODO: This condition may be called without NEW_IMCFREQ
+                // TODO: This condition may be called without NEW_IMCFREQ defined
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             }
@@ -281,15 +283,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                         my_globalrank, sig->CPI, sig_vpi, my_app->CPI, node_sig_vpi, max_vpi);
                 /*  With this two lines, we force the VPI of the signature to the most loaded in the node */
                 my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
+                // TODO: Must we recalculate my_app->CPI?
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
                 local_eff_gain = min_eff_gain;
             } else {
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
-                if (i == min_mpi) local_eff_gain = 0.0; // TODO: should be 1.0 ? we are in min_time
+                if (i == min_mpi) local_eff_gain = 0.95; // TODO: min_energy assignees a 0. we are in min_time
                 else {
                     local_eff_gain = 
-                        min_eff_gain + EXTRA_TH * (my_node_mpi_calls[i].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi / 10.0);
-                    // TODO: should be a diff instead of a sum ? we are in min_time
+                        min_eff_gain - EXTRA_TH * (my_node_mpi_calls[i].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) / 10.0;
+                    // TODO: min_energy operate a sum instead of diff. we are in min_time
                 }
                 verbose_master(2, "Per-processSig MR[%d][%d] SIGNATURE CPI %.3lf penalty %lf (%lf, %lf)",
                         my_globalrank, i, my_app->CPI, local_eff_gain,
@@ -298,12 +301,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
             verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
             best_pstate = frequency_closest_pstate(best_freq);
-            compute_cpu_freq_min_time(my_app, min_pstate, time_ref, min_eff_gain, curr_pstate,
-                    best_pstate, best_freq, def_freq, new_freq);
+            compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate,
+                    best_pstate, best_freq, def_freq, &new_freq[i]);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
         }
         if (!freq_per_core) {
-            for (i = 0; i < MAX_CPUS_SUPPORTED; i++) {
+            for (i = 1; i < MAX_CPUS_SUPPORTED; i++) {
                 new_freq[i] = new_freq[0];
             }
         }
