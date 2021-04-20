@@ -38,7 +38,6 @@ typedef struct dummy_ctx_s {
 state_t cpufreq_default_status(topology_t *_tp)
 {
 	state_t s;
-	debug("testing Dummy P_STATE control status");
 	// Thread control required
 	if (tp.cpu_count == 0) {
 		if(xtate_fail(s, topology_copy(&tp, _tp))) {
@@ -101,16 +100,16 @@ state_t cpufreq_default_init(ctx_t *c, mgt_ps_driver_ops_t *ops_driver)
 	dummy_ctx_t *f;
 	state_t s;
 
-	debug("initializing Dummy P_STATE control");
+	debug("Initializing DEFAULT P_STATE control");
 	//
 	if (state_ok(static_init_test(c, &f))) {
 		return_msg(EAR_ERROR, Generr.api_initialized);
 	}
 	// Context
-    if ((c->context = calloc(1, sizeof(dummy_ctx_t))) == NULL) {
-        return_msg(EAR_ERROR, strerror(errno));
-    }
-    f = (dummy_ctx_t *) c->context;
+	if ((c->context = calloc(1, sizeof(dummy_ctx_t))) == NULL) {
+		return_msg(EAR_ERROR, strerror(errno));
+	}
+	f = (dummy_ctx_t *) c->context;
 	//
 	f->driver = ops_driver;
 	if (xtate_fail(s, f->driver->init(&f->driver_c))) {
@@ -125,7 +124,7 @@ state_t cpufreq_default_init(ctx_t *c, mgt_ps_driver_ops_t *ops_driver)
 		return static_dispose(f, s, state_msg);
 	}
 	//
-	debug("initialized correctly with %d P_STATEs", f->freqs_count);
+	debug("DEFAULT initialized correctly with %d P_STATEs", f->freqs_count);
 	f->init = 1;
 
 	return EAR_SUCCESS;

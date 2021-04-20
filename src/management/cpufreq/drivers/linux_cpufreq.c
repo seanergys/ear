@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 0
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -212,7 +212,7 @@ state_t cpufreq_linux_init(ctx_t *c)
 	state_t s;
 
 	//
-	debug("initializing ACPI-CPUFreq driver");
+	debug("Initializing driver ACPI_CPUFREQ");
 	//
 	if (state_ok(static_init_test(c, &f))) {
 		return_msg(EAR_ERROR, Generr.api_initialized);
