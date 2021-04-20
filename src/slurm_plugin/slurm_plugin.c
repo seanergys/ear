@@ -195,8 +195,8 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
 		plug_verbose(sp, 2, "affinity of local task %d: ERROR", task);
 	} else {
 		sprintf(buffer1, "TASK[%d]: ", task);
-		cpu_set = CPU_ISSET(i, &mask);
 		for (i = 0; i < cpus_count; ++i) {
+			cpu_set = CPU_ISSET(i, &mask);
 			strcpy(buffer2, buffer1);
 			sprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
 		}
