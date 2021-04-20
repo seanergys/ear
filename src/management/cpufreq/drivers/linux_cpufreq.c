@@ -28,8 +28,6 @@
 #define N_FREQS 128
 #define N_CPUS  4096
 
-static topology_t tp;
-
 typedef struct cpufreq_ctx_s
 {
 	ullong      freqs_current[N_CPUS];
@@ -45,7 +43,9 @@ typedef struct cpufreq_ctx_s
 	uint        init;
 } cpufreq_ctx_t;
 
-// TODO:
+static cpufreq_ctx_t *f;
+static topology_t tp;
+
 // Reads a string from a fd with or without an lseek 0.
 static state_t read_word(int fd, char *word, int reset_position)
 {
@@ -117,6 +117,10 @@ state_t cpufreq_linux_status(topology_t *tp_in)
 	int found_userspace = 0;
 	state_t s;
 
+	if (f != NULL) {
+		return EAR_SUCCESS;
+	}	
+	//
 	debug("testing ACPI-CPUFreq driver status");
 	int fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors", O_RDONLY);
 	if (fd < 0) {
@@ -129,7 +133,7 @@ state_t cpufreq_linux_status(topology_t *tp_in)
 	#else
 	while (!found_userspace && !state_fail(s = read_word(fd, data, 0))) {
 		found_userspace = (strncmp(data, "userspace", 9) == 0);
-		debug("read word %s (found %d)", data, found_userspace);
+		debug("read the word '%s' (found %d)", data, found_userspace);
 	}
 	close(fd);
 	if (!found_userspace) {
@@ -144,25 +148,10 @@ state_t cpufreq_linux_status(topology_t *tp_in)
 	return EAR_SUCCESS;
 }
 
-static state_t static_init_test(ctx_t *c, cpufreq_ctx_t **f)
-{
-    if (c == NULL) {
-        return_msg(EAR_ERROR, Generr.input_null);
-    }
-    if (((*f = (cpufreq_ctx_t *) c->context) == NULL) || !(*f)->init) {
-        return_msg(EAR_ERROR, Generr.api_uninitialized);
-    }
-	return EAR_SUCCESS;
-}
-
 static state_t static_dispose(ctx_t *c, state_t s, char *msg)
 {
-	cpufreq_ctx_t *f;
 	int cpu;	
 	
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (f->fds_freq != NULL && f->fds_freq[cpu] >= 0) {
 			//debug("closing fds_freq[%d]: %d", cpu, f->fds_freq[cpu]);
@@ -179,14 +168,16 @@ static state_t static_dispose(ctx_t *c, state_t s, char *msg)
 		free(f->fds_govr);
 	free(f);
 	c->context = NULL;
+	f = NULL;
 	
 	return_msg(s, msg);
 }
 
-static void cpufreq_linux_init_nominal(cpufreq_ctx_t *f)
+static state_t cpufreq_linux_init_frequencies()
 {	
 	char data[SZ_NAME_SHORT];
-	int fd;
+	ullong aux, khz;
+	int fd, i;
 
 	if ((fd = open("/sys/devices/system/cpu/cpufreq/boost", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
@@ -202,26 +193,67 @@ static void cpufreq_linux_init_nominal(cpufreq_ctx_t *f)
 			close(fd);
 		}
 	}
+	// Loading available frequencies
+	if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies", O_RDONLY)) >= 0) {
+		for(i = 0; i < N_FREQS; ++i, f->freqs_count = i) {
+			if (state_fail(read_word(fd, data, 0))) {
+				break;
+			}
+			f->freqs_avail[i] = (ullong) atoll(data);
+		}
+		close(fd);
+	} else if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
+		if (state_ok(read_word(fd, data, 0))) {
+			f->freqs_avail[0] = (ullong) atoll(data);
+		}
+		close(fd);
+		// If boost enabled
+		if (((f->freqs_avail[0] / 1000) & 0x1)) {
+			f->boost_enabled = 1;
+		}
+		// Getting minimum freq (1GHz default)
+		aux = 1000000;
+		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", O_RDONLY)) >= 0) {
+			if (state_ok(read_word(fd, data, 0))) {
+				aux = (ullong) atoll(data);
+			}
+			close(fd);
+		}
+		// Getting maximum non-boost freq (-1000 if there is boost)
+		khz = f->freqs_avail[0];
+		if (f->boost_enabled) {
+			khz = khz - 1000; 
+		} else {
+			khz = khz - 100000;
+		}
+		debug("inventing frequency 0: %llu", f->freqs_avail[0]);
+		// Filling frequencies
+		for (i = f->freqs_count = 1; khz >= aux && i < N_FREQS; khz -= 100000, ++i, f->freqs_count = i) {
+			debug("inventing frequency %d: %llu", i, khz);
+			f->freqs_avail[i] = khz;
+		}
+	}
+	if (f->freqs_count == 0) {
+		return_msg(EAR_ERROR, "no frequencies available");
+	}
+	return EAR_SUCCESS;
 }
 
 state_t cpufreq_linux_init(ctx_t *c)
 {
 	char path[SZ_PATH];
-	cpufreq_ctx_t *f;
-	int cpu, aux, i;
+	int cpu, aux;
 	state_t s;
 
 	//
+	if (f != NULL) {
+		return EAR_SUCCESS;
+	}	
 	debug("Initializing driver ACPI_CPUFREQ");
-	//
-	if (state_ok(static_init_test(c, &f))) {
-		return_msg(EAR_ERROR, Generr.api_initialized);
-    }
 	// Context
-	if ((c->context = calloc(1, sizeof(cpufreq_ctx_t))) == NULL) {
+	if ((f = calloc(1, sizeof(cpufreq_ctx_t))) == NULL) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
-	f = (cpufreq_ctx_t *) c->context;
 	// File descriptors allocation
 	if ((f->fds_freq = (int *) malloc(tp.cpu_count * sizeof(int))) == NULL) {
 		return static_dispose(c, EAR_ERROR, strerror(errno));
@@ -235,6 +267,7 @@ state_t cpufreq_linux_init(ctx_t *c)
 	for (cpu = 0, aux = O_RDWR; cpu < tp.cpu_count; ++cpu) {
 		sprintf(path, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", cpu);
 		if ((f->fds_govr[cpu] = open(path, aux)) == -1) {
+			debug("failed to open '%s', passing to read only", path);
 			if (aux == O_RDONLY) {
 				return static_dispose(c, EAR_ERROR, strerror(errno));
 			}
@@ -246,27 +279,13 @@ state_t cpufreq_linux_init(ctx_t *c)
 	for (cpu = 0, aux = O_RDWR; cpu < tp.cpu_count; ++cpu) {
 		sprintf(path, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_setspeed", cpu);
 		if ((f->fds_freq[cpu] = open(path, aux)) == -1) {
+			debug("failed to open '%s', passing to read only", path);
 			if (aux == O_RDONLY) {
 				return static_dispose(c, EAR_ERROR, strerror(errno));
 			}
 			aux = O_RDONLY;
 			cpu = -1;
 		}
-	}
-	// Loading available frequencies
-	sprintf(path, "/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies");
-	if ((aux = open(path, O_RDONLY)) == -1) {
-		return static_dispose(c, EAR_ERROR, strerror(errno));
-	}
-	for(i = 0; i < N_FREQS; ++i, f->freqs_count = i) {
-		if (state_fail(read_word(aux, path, 0))) {
-			break;
-		}
-		f->freqs_avail[i] = (ullong) atoll(path);
-	}
-	close(aux);
-	if (f->freqs_count == 0) {
-		return static_dispose(c, EAR_ERROR, "no frequencies available");
 	}
 	// Saving init governor and frequency
 	if (xtate_fail(s, read_word(f->fds_govr[0], f->govr_init, 1))) {
@@ -277,8 +296,10 @@ state_t cpufreq_linux_init(ctx_t *c)
 	}
 	strncpy(f->govr_last, f->govr_init, SZ_NAME_SHORT);
 	strncpy(f->freq_last, f->freq_init, SZ_NAME_SHORT);
-	// Detecting nominal
-	cpufreq_linux_init_nominal(f);
+	// Detecting available frequencies
+	if (state_fail(s = cpufreq_linux_init_frequencies())) {
+		return static_dispose(c, s, state_msg);
+	}
 	// Finishing 
 	debug ("init sum: %u available frequencies", f->freqs_count);
 	debug ("init sum: first frequency '%s'", f->freq_init);
@@ -297,11 +318,6 @@ state_t cpufreq_linux_dispose(ctx_t *c)
 /* Getters */
 state_t cpufreq_linux_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count)
 {
-	cpufreq_ctx_t *f;
-	state_t s;
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	if (freq_list  != NULL) *freq_list  = f->freqs_avail;
 	if (freq_count != NULL) *freq_count = f->freqs_count;
 	return EAR_SUCCESS;
@@ -312,32 +328,23 @@ state_t cpufreq_linux_get_current_list(ctx_t *c, const ullong **freq_list)
 	char data[SZ_NAME_SHORT];
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
-	cpufreq_ctx_t *f;
-	state_t s;
 	int cpu;
 
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	*freq_list = f->freqs_current;
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (xtate_fail(s1, read_word(f->fds_freq[cpu], data, 1))) {
+		if (state_fail(s1 = read_word(f->fds_freq[cpu], data, 1))) {
 			f->freqs_current[cpu] = 0LLU;
 			s2 = s1;
 		} else {
 			f->freqs_current[cpu] = (ullong) atoll(data);
 		}
+		//debug("reading 'scaling_setspeed' in CPU%d: %llu", cpu, f->freqs_current[cpu]);
 	}
 	return s2;
 }
 
 state_t cpufreq_linux_get_boost(ctx_t *c, uint *boost_enabled)
 {
-	cpufreq_ctx_t *f;
-	state_t s;
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	if (boost_enabled != NULL) {
 		*boost_enabled = f->boost_enabled;
 	}
@@ -348,11 +355,7 @@ state_t cpufreq_linux_get_governor(ctx_t *c, uint *governor)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s = EAR_SUCCESS;
-	cpufreq_ctx_t *f;
 
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	if (xtate_fail(s, read_word(f->fds_govr[0], data, 1))) {
 		*governor = Governor.other;
 	} else if (xtate_fail(s, mgt_governor_toint(data, governor))) {
@@ -366,15 +369,10 @@ state_t cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
 	char data[SZ_NAME_SHORT];
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
-	cpufreq_ctx_t *f;
-	state_t s;
 	int cpu;
 
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	// Adding a line break
-	for (cpu = 0; cpu < tp.cpu_count && state_ok(s); ++cpu)
+	for (cpu = 0; cpu < tp.cpu_count; ++cpu)
 	{
 		if (freqs_index[cpu] > f->freqs_count) {
 			freqs_index[cpu] = f->freqs_count-1;
@@ -393,12 +391,7 @@ state_t cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
 state_t cpufreq_linux_set_current(ctx_t *c, uint freq_index, int cpu)
 {
 	char data[SZ_NAME_SHORT];
-	cpufreq_ctx_t *f;
-	state_t s;
 	
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	//
 	debug("setting frequency %u -> %llu", freq_index, f->freqs_avail[freq_index]);
 	// Correcting invalid values 
@@ -422,16 +415,12 @@ state_t cpufreq_linux_set_current(ctx_t *c, uint freq_index, int cpu)
 
 state_t cpufreq_linux_set_governor(ctx_t *c, uint governor)
 {
-	cpufreq_ctx_t *f;
 	char govr_aux[SZ_NAME_SHORT];
 	char freq_aux[SZ_NAME_SHORT];
 	uint set_freq = 0;
 	uint current;
 	state_t s;
 
-	if (xtate_fail(s, static_init_test(c, &f))) {
-		return s;
-	}
 	if (xtate_fail(s, cpufreq_linux_get_governor(c, &current))) {
 		return s;
 	}

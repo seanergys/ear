@@ -101,10 +101,6 @@ state_t cpufreq_default_init(ctx_t *c, mgt_ps_driver_ops_t *ops_driver)
 	state_t s;
 
 	debug("Initializing DEFAULT P_STATE control");
-	//
-	if (state_ok(static_init_test(c, &f))) {
-		return_msg(EAR_ERROR, Generr.api_initialized);
-	}
 	// Context
 	if ((c->context = calloc(1, sizeof(dummy_ctx_t))) == NULL) {
 		return_msg(EAR_ERROR, strerror(errno));
@@ -113,14 +109,17 @@ state_t cpufreq_default_init(ctx_t *c, mgt_ps_driver_ops_t *ops_driver)
 	//
 	f->driver = ops_driver;
 	if (xtate_fail(s, f->driver->init(&f->driver_c))) {
+		debug("1");
 		return static_dispose(f, s, state_msg);
 	}
 	//
 	if (xtate_fail(s, f->driver->get_available_list(&f->driver_c, &f->freqs_available, &f->freqs_count))) {
+		debug("2");
 		return static_dispose(f, s, state_msg);
 	}
 	//
 	if (xtate_fail(s, static_init(f))) {
+		debug("3");
 		return static_dispose(f, s, state_msg);
 	}
 	//
@@ -146,6 +145,10 @@ state_t cpufreq_default_count_available(ctx_t *c, uint *pstate_count)
 static state_t static_get_index(dummy_ctx_t *f, ullong freq_khz, uint *pstate_index, uint closest)
 {
 	int pst;
+
+	if (freq_khz == 0LLU) {
+		return_msg(EAR_ERROR, "P_STATE not found for 0 KHz");
+	}
 	// Boost test
 	if (f->boost_enabled && f->freqs_available[0] == freq_khz) {
 		*pstate_index = 0;
