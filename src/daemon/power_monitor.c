@@ -700,6 +700,7 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	verbose(VJOBPMON + 1, "New job USER type is %u", user_type);
 	if (my_tag != NULL) print_energy_tag(my_tag);
 	/* Given a user type, application, and energy_tag, my_policy is the cofiguration for this user and application */
+	/* This function sets CPU frequency and GPu frequency */
 	my_policy=configure_context(user_type, my_tag, appID);
 	debug("Node configuration for policy %u p_state %d th %lf",my_policy->policy,my_policy->p_state,my_policy->settings[0]);
 	/* Updating info in shared memory region */
@@ -708,6 +709,9 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	#if POWERCAP
 	app_mgt_new_job(app_mgt_info);
 	pcapp_info_new_job(pc_app_info_data);
+	pc_app_info_data->req_f = f;
+	#if USEG_GPUS
+	for (gpuid=0; gpuid < gpu_mgr_num_gpus();gpuid++) pc_app_info_data->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	powercap_set_app_req_freq(pc_app_info_data);
 	#endif
 	dyn_conf->id=new_app_id;
