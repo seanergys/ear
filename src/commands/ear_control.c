@@ -252,13 +252,21 @@ void usage(char *app)
             "\n\t--ping	\t\t\t\t->pings all nodes to check wether the nodes are up or not. Additionally,"\
             "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
             "\n\t--version \t\t\t\t->displays current EAR version."\
+            "\n\t--set-powercap\t[new_cap]\t\t->Sets the powercap of all nodes to the given value. A node can be specified"\    
+            "\n\t\t\t\t\t\t\t after the value to only target said node."\
             "\n\t--help \t\t\t\t\t->displays this message.", app);
-						#if EXT_OPT
-						printf(""\
+#if EXT_OPT
+    printf(""\
+            "\n\t--reset-powercap\t\t\t->Resets the powercap value of all nodes to their default one."\
+            "\n\t\t\t\t\t\t\t reset-powercap=node_name the value to only target said node."\
+            "\n\t--inc-powercap\t[increase]\t\t->Increases the powercap of all nodes. A node can be specified"\
+            "\n\t\t\t\t\t\t\t after the increase value to only target said node."\
+            "\n\t--red-powercap\t[reduction]\t\t->Reduces the powercap of all nodes. A node can be specified"\
+            "\n\t\t\t\t\t\t\t after the reduction value to only target said node."\
             "\n\t--inc-th \t[new_th]   [pol_name]\t->increases the threshold for all nodes"\
             "\n\t--set-th \t[new_th]   [pol_name]\t->sets the threshold for all nodes"\
             "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates");
-						#endif
+#endif
     printf("\n\nThis app requires privileged access privileged accesss to execute.\n");
 	exit(0);
 }
@@ -518,7 +526,7 @@ int main(int argc, char *argv[])
             {"type",            required_argument, 0, 't'},
             {"verbose",         optional_argument, 0, 'b'},
             {"error",           no_argument, 0, 'e'},
-            {"active-only",     no_argument, 0, 'i'},
+            {"active-only",     no_argument, 0, 'y'},
             {"help",         	no_argument, 0, 'h'},
             {"version",         no_argument, 0, 'v'},
             {0, 0, 0, 0}
@@ -624,7 +632,7 @@ int main(int argc, char *argv[])
                     restore_conf_all_nodes(&my_cluster_conf);
                 }
                 break;
-            case 'i':
+            case 'y':
                 no_error = 1;
                 break;
             case 'p':
@@ -755,6 +763,66 @@ int main(int argc, char *argv[])
             case 'e':
                 num_status = status_all_nodes(&my_cluster_conf, &status);
                 process_status(num_status, status, 1);
+                break;
+            case 'c': //set_powercap
+                arg = atoi(optarg);
+				if (optind+1 > argc) {
+                    cluster_set_powerlimit_all_nodes(arg, &my_cluster_conf);
+                }
+                else {
+                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    if (rc < 0) {
+                        printf("Error connecting with node %s\n", argv[optind]);
+                    }else{
+                        eards_set_powerlimit(arg);
+                        eards_remote_disconnect();
+                    }
+                }
+
+                break;
+            case 'x': //reset_powercap
+				if (!optarg) {
+                    cluster_reset_default_powercap_all_nodes(&my_cluster_conf);
+                }
+                else {
+                    int rc = eards_remote_connect(optarg, my_cluster_conf.eard.port);
+                    if (rc < 0) {
+                        printf("Error connecting with node %s\n", optarg);
+                    }else{
+                        eards_reset_default_powercap();
+                        eards_remote_disconnect();
+                    }
+                }
+                break;
+            case 'i': //increase_powercap
+                arg = atoi(optarg);
+				if (optind+1 > argc) {
+                    cluster_inc_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
+                }
+                else {
+                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    if (rc < 0) {
+                        printf("Error connecting with node %s\n", optarg);
+                    }else{
+                        eards_inc_powerlimit(ABSOLUTE, arg);
+                        eards_remote_disconnect();
+                    }
+                }
+                break;
+            case 'd': //reduce_powercap
+                arg = atoi(optarg);
+				if (optind+1 > argc) {
+                    cluster_red_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
+                }
+                else {
+                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    if (rc < 0) {
+                        printf("Error connecting with node %s\n", optarg);
+                    }else{
+                        eards_red_powerlimit(ABSOLUTE, arg);
+                        eards_remote_disconnect();
+                    }
+                }
                 break;
             case 'h':
                 usage(argv[0]);

@@ -253,8 +253,17 @@ int eards_set_powerlimit(unsigned long limit)
   	command.node_dist = INT_MAX;
     command.req=EAR_RC_SET_POWER;
     command.time_code = time(NULL);
-		command.my_req.pc.limit=limit;
+    command.my_req.pc.limit=limit;
     return send_command(&command);
+}
+
+void cluster_set_powerlimit_all_nodes(unsigned long limit, cluster_conf_t *my_cluster_conf)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    command.req=EAR_RC_SET_POWER;
+    command.my_req.pc.limit=limit;
+    send_command_all(command, my_cluster_conf);
 }
 
 int eards_red_powerlimit(unsigned int type, unsigned long limit)
@@ -269,6 +278,16 @@ int eards_red_powerlimit(unsigned int type, unsigned long limit)
     return send_command(&command);
 }
 
+void cluster_red_powerlimit_all_nodes(unsigned int type, unsigned long limit, cluster_conf_t *my_cluster_conf)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    command.req=EAR_RC_RED_POWER;
+    command.my_req.pc.limit=limit;
+    command.my_req.pc.type=type;
+    send_command_all(command, my_cluster_conf);
+}
+
 int eards_inc_powerlimit(unsigned int type, unsigned long limit)
 {
     request_t command;
@@ -280,6 +299,17 @@ int eards_inc_powerlimit(unsigned int type, unsigned long limit)
     command.my_req.pc.type=type;
     return send_command(&command);
 }   
+
+void cluster_inc_powerlimit_all_nodes(unsigned int type, unsigned long limit, cluster_conf_t *my_cluster_conf)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    command.req=EAR_RC_INC_POWER;
+    command.my_req.pc.limit=limit;
+    command.my_req.pc.type=type;
+    send_command_all(command, my_cluster_conf);
+}
+
 #endif
 
 int eards_set_risk(risk_t risk,unsigned long target)
@@ -307,7 +337,7 @@ int eards_set_policy_info(new_policy_cont_t *p)
     return send_command(&command);
 }
 
-int eards_set_default_powercap()
+int eards_reset_default_powercap()
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
@@ -670,7 +700,7 @@ void set_def_freq_all_nodes(ulong freq, ulong policy, cluster_conf_t *my_cluster
     send_command_all(command, my_cluster_conf);
 }
 
-void set_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf)
+void cluster_reset_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));

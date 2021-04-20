@@ -711,7 +711,8 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	pcapp_info_new_job(pc_app_info_data);
 	pc_app_info_data->req_f = f;
 	#if USEG_GPUS
-	for (gpuid=0; gpuid < gpu_mgr_num_gpus();gpuid++) pc_app_info_data->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
+    pc_app_info_data->num_gpus = gpu_mgt_num_gpus();
+	for (gpuid=0; gpuid < pc_app_inf-data->num_gpus;gpuid++) pc_app_info_data->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	#endif
 	powercap_set_app_req_freq(pc_app_info_data);
 	#endif
