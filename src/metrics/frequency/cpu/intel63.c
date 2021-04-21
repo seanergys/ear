@@ -60,7 +60,6 @@ state_t cpufreq_intel63_status(topology_t *t)
 	// Thread control required in this small section
 	if (tp.cpus == NULL) {
 		topology_copy(&tp,t);
-		debug("cpufreq_intel63_init %d cpus freq_base %lu",tp.cpu_count,tp.cpus[0].freq_base);
 	}
 	return EAR_SUCCESS;
 }
@@ -106,7 +105,6 @@ state_t cpufreq_intel63_init()
 	cpufreq_get_base(&tp, &freq_base);
 	// Computing base frequency
 	init = 1;
-	debug("cpufreq_intel63_init %d cpus freq_base %lu",tp.cpu_count,tp.cpus[0].freq_base);
 	return EAR_SUCCESS;
 }
 
