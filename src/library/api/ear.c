@@ -1047,8 +1047,14 @@ void ear_finalize()
 	}
 #endif
 
-	// Tracing
 	if (masters_info.my_master_rank>=0){
+	// Periodic earl thread
+	verbose_master(1,"Stopping periodic earl thread");
+  monitor_unregister(earl_monitor);
+  monitor_dispose();
+
+	verbose_master(1,"Stopping tracing");
+	// Tracing
 	traces_stop();
 	traces_end(ear_my_rank, my_id, 0);
 
@@ -1564,8 +1570,6 @@ void ear_destructor()
     return;
   }
 #endif
-	monitor_unregister(earl_monitor);
-	monitor_dispose();
 	ear_finalize();
 }
 #else
