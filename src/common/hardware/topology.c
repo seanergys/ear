@@ -27,7 +27,6 @@
 #include <common/hardware/topology.h>
 #include <common/hardware/topology_frequency.h>
 
-// TODO: clean, just for fix spaguettis
 static topology_t topo_static;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val)
@@ -300,7 +299,6 @@ state_t topology_init(topology_t *topo)
 	char path[SZ_NAME_LARGE];
 	int i, j;
 
-	// TODO: spaguettis
 	if (topo_static.cpu_count != 0) {
 		topology_copy(topo, &topo_static);
 	}
@@ -355,7 +353,6 @@ state_t topology_init(topology_t *topo)
 
 	topology_extras(topo);
 
-	// TODO: spaguettis
 	topology_copy(&topo_static, topo);
 
 	return EAR_SUCCESS;
@@ -363,7 +360,6 @@ state_t topology_init(topology_t *topo)
 
 state_t topology_close(topology_t *topo)
 {
-	// TODO: spaguettis
 	return EAR_SUCCESS;
 
 	if (topo == NULL) {

@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+//#define SHOW_DEBUGS 1
 #include <metrics/common/msr.h>
 #include <metrics/frequency/cpu/intel63.h>
 #include <common/output/verbose.h>
@@ -32,7 +33,7 @@
 
 static topology_t tp;
 static uint user_mode;
-static uint init;
+static uint init = 0;
 
 typedef struct aperf_intel63_s
 {
@@ -55,9 +56,8 @@ state_t cpufreq_intel63_status(topology_t *t)
 	}
 	// Thread control required in this small section
 	if (tp.cpus == NULL) {
-		if(xtate_fail(s, topology_select(t, &tp, TPSelect.core, TPGroup.merge, 0))) {
-			return s;
-		}
+		topology_copy(&tp,t);
+		debug("cpufreq_intel63_init %d cpus freq_base %lu",tp.cpu_count,tp.cpus[0].freq_base);
 	}
 	return EAR_SUCCESS;
 }
@@ -100,6 +100,7 @@ state_t cpufreq_intel63_init()
 		}
 	}
 	init = 1;
+	debug("cpufreq_intel63_init %d cpus freq_base %lu",tp.cpu_count,tp.cpus[0].freq_base);
 	return EAR_SUCCESS;
 }
 
