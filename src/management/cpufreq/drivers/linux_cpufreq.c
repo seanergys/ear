@@ -211,6 +211,9 @@ static state_t cpufreq_linux_init_frequencies()
 	} else {
 		// Detecting base frequency by low level
 		cpufreq_get_base(&tp, (ulong *) &f->freqs_avail[0]);
+		if (f->boost_enabled) {
+			f->freqs_avail[0] += 1000;
+		}
 		#if 0
 		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
