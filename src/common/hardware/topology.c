@@ -25,7 +25,6 @@
 #include <common/output/debug.h>
 #include <common/hardware/cpuid.h>
 #include <common/hardware/topology.h>
-#include <common/hardware/topology_frequency.h>
 
 // TODO: clean, just for fix spaguettis
 static topology_t topo_static;
@@ -75,8 +74,6 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 			memcpy(&s->cpus[c], &t->cpus[i], sizeof(core_t));
 			c++;
 		}
-
-		s->cpus[i].freq_base = t->cpus[i].freq_base;
 	}
 
 	s->socket_count = t->socket_count;
@@ -348,9 +345,6 @@ state_t topology_init(topology_t *topo)
 		//if (topo->cpus[i].l3_id > (topo->l3_count-1)) {
 		//	topo->l3_count = topo->cpus[i].l3_id + 1;
 		//}
-	
-		// Base frequency	
-		topology_freq_getbase(i, &topo->cpus[i].freq_base);
 	}
 
 	topology_extras(topo);

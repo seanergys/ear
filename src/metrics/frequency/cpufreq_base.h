@@ -15,9 +15,14 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef COMMON_HARDWARE_TOPOLOGY_FREQUENCY_H_
-#define COMMON_HARDWARE_TOPOLOGY_FREQUENCY_H_
+#ifndef METRICS_CPUFREQ_BASE_H
+#define METRICS_CPUFREQ_BASE_H
 
-state_t topology_freq_getbase(uint cpu, ulong *freq_base);
+#include <common/types/types.h>
+#include <common/hardware/topology.h>
+
+void cpufreq_get_base(topology_t *tp, ulong *freq_base);
+
+void cpufreq_get_boost_enabled(topology_t *tp, uint *boost_enabled);
 
 #endif

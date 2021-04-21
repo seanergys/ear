@@ -23,6 +23,7 @@
 #include <string.h>
 #include <common/sizes.h>
 #include <common/output/debug.h>
+#include <metrics/frequency/cpufreq_base.h>
 #include <management/cpufreq/drivers/linux_cpufreq.h>
 
 #define N_FREQS 128
@@ -179,13 +180,13 @@ static state_t cpufreq_linux_init_frequencies()
 	ullong aux, khz;
 	int fd, i;
 
+	// Getting boost by files
 	if ((fd = open("/sys/devices/system/cpu/cpufreq/boost", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
 			f->boost_enabled = atoi(data);
 		}
 		close(fd);
-	}
-	if (tp.vendor == VENDOR_AMD) {
+	} else if (tp.vendor == VENDOR_AMD) {
 		if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/cpb", O_RDONLY)) >= 0) {
 			if (state_ok(read_word(fd, data, 0))) {
 				f->boost_enabled = atoi(data);
@@ -193,7 +194,12 @@ static state_t cpufreq_linux_init_frequencies()
 			close(fd);
 		}
 	}
-	// Loading available frequencies
+	// Getting boost by low level (only if boost is disabled)
+	if (!f->boost_enabled) {
+		cpufreq_get_boost_enabled(&tp, (uint *) &f->boost_enabled);
+	}
+
+	// Loading available frequencies by acpi_cpufreq files
 	if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies", O_RDONLY)) >= 0) {
 		for(i = 0; i < N_FREQS; ++i, f->freqs_count = i) {
 			if (state_fail(read_word(fd, data, 0))) {
@@ -202,7 +208,11 @@ static state_t cpufreq_linux_init_frequencies()
 			f->freqs_avail[i] = (ullong) atoll(data);
 		}
 		close(fd);
-	} else if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
+	} else {
+		// Detecting base frequency by low level
+		cpufreq_get_base(&tp, (ulong *) &f->freqs_avail[0]);
+		#if 0
+		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
 			f->freqs_avail[0] = (ullong) atoll(data);
 		}
@@ -211,6 +221,7 @@ static state_t cpufreq_linux_init_frequencies()
 		if (((f->freqs_avail[0] / 1000) & 0x1)) {
 			f->boost_enabled = 1;
 		}
+		#endif
 		// Getting minimum freq (1GHz default)
 		aux = 1000000;
 		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", O_RDONLY)) >= 0) {

@@ -8,7 +8,6 @@ libc_OBJS = \
 	cpuid.o \
 	hardware_info.o \
 	topology.o \
-	topology_frequency.o \
 
 ######## RULES
 
