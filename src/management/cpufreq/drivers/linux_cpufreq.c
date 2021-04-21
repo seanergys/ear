@@ -215,6 +215,7 @@ static state_t cpufreq_linux_init_frequencies()
 		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
 			f->freqs_avail[0] = (ullong) atoll(data);
+			debug("Max CPU frequency detected as %lu",f->freqs_avail[0]);
 		}
 		close(fd);
 		// If boost enabled
@@ -227,6 +228,7 @@ static state_t cpufreq_linux_init_frequencies()
 		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", O_RDONLY)) >= 0) {
 			if (state_ok(read_word(fd, data, 0))) {
 				aux = (ullong) atoll(data);
+				debug("Min CPU frequency detected as %lu",aux);
 			}
 			close(fd);
 		}
@@ -329,6 +331,7 @@ state_t cpufreq_linux_dispose(ctx_t *c)
 /* Getters */
 state_t cpufreq_linux_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count)
 {
+	debug("cpufreq_linux_get_available_list");
 	if (freq_list  != NULL) *freq_list  = f->freqs_avail;
 	if (freq_count != NULL) *freq_count = f->freqs_count;
 	return EAR_SUCCESS;
@@ -340,7 +343,7 @@ state_t cpufreq_linux_get_current_list(ctx_t *c, const ullong **freq_list)
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
 	int cpu;
-
+	debug("cpufreq_linux_get_current_list");
 	*freq_list = f->freqs_current;
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (state_fail(s1 = read_word(f->fds_freq[cpu], data, 1))) {
@@ -366,7 +369,7 @@ state_t cpufreq_linux_get_governor(ctx_t *c, uint *governor)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s = EAR_SUCCESS;
-
+	debug("cpufreq_linux_get_governor");
 	if (xtate_fail(s, read_word(f->fds_govr[0], data, 1))) {
 		*governor = Governor.other;
 	} else if (xtate_fail(s, mgt_governor_toint(data, governor))) {
@@ -381,7 +384,7 @@ state_t cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
 	int cpu;
-
+	debug("cpufreq_linux_set_current_list");
 	// Adding a line break
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu)
 	{
@@ -432,6 +435,7 @@ state_t cpufreq_linux_set_governor(ctx_t *c, uint governor)
 	uint current;
 	state_t s;
 
+	debug("cpufreq_linux_set_governor ");
 	if (xtate_fail(s, cpufreq_linux_get_governor(c, &current))) {
 		return s;
 	}

@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -34,7 +36,7 @@
 static topology_t tp;
 static ulong freq_base;
 static uint user_mode;
-static uint init;
+static uint init = 0;
 
 typedef struct aperf_intel63_s
 {
@@ -57,9 +59,8 @@ state_t cpufreq_intel63_status(topology_t *t)
 	}
 	// Thread control required in this small section
 	if (tp.cpus == NULL) {
-		if(xtate_fail(s, topology_select(t, &tp, TPSelect.core, TPGroup.merge, 0))) {
-			return s;
-		}
+		topology_copy(&tp,t);
+		debug("cpufreq_intel63_init %d cpus freq_base %lu",tp.cpu_count,tp.cpus[0].freq_base);
 	}
 	return EAR_SUCCESS;
 }
@@ -105,6 +106,7 @@ state_t cpufreq_intel63_init()
 	cpufreq_get_base(&tp, &freq_base);
 	// Computing base frequency
 	init = 1;
+	debug("cpufreq_intel63_init %d cpus freq_base %lu",tp.cpu_count,tp.cpus[0].freq_base);
 	return EAR_SUCCESS;
 }
 
