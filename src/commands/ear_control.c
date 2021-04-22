@@ -40,6 +40,14 @@
 #include <common/messaging/msg_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
 #include <database_cache/eardbd_api.h>
+
+#if SCHED_SLURM
+#include <slurm/slurm.h>
+#define BATCH_STEP SLURM_BATCH_SCRIPT
+#else
+#define BATCH_STEP -2
+#endif
+
                    
 #define NUM_LEVELS  4
 #define MAX_PSTATE  16
@@ -179,7 +187,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
             if (mode != ERR_ONLY) 
             {
                 printf("%10s\t", ips[i].name);
-                if (ips[i].step_id < 0)
+                if (ips[i].step_id == BATCH_STEP)
                     sprintf(step_id, "%-6s", "sbatch");
                 else
                     sprintf(step_id, "%-6d", ips[i].step_id);
@@ -304,7 +312,7 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
     for (i = 0; i < num_ips; i++)
         if (htonl(status.ip) == htonl(ips[i].ip_int))
         {
-            if (status.step_id < 0)
+            if (status.step_id == BATCH_STEP)
                 sprintf(step_id, "%-6s", "sbatch");
             else
                 sprintf(step_id, "%-6ld", status.step_id);
