@@ -31,7 +31,7 @@ eacct: ear_acct.c $(comm_OBJS)
 	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
 econtrol: ear_control.c $(rapi_OBJS) $(comm_OBJS)
-	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS)
+	$(CCC) $(SLURM_CFLAGS)  -o $@ $< $(rapi_OBJS) $(comm_OBJS)
 
 ereport: ear_report.c $(comm_OBJS)
 	$(CCC) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
