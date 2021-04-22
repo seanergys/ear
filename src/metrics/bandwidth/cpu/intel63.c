@@ -220,28 +220,28 @@ static int get_cpu_n_functions()
 // This function writes commands (bytes) into files
 static int write_command(uchar *ctl, int *cmd, int n_ctl, int n_cmd)
 {
-    int i, j, k;
-    int res;
+        int i, j;
+        int res;
 
-    // writes the command array cmd[] in the file pointed
-    // by fd_functions[] descriptors with ctl[] offsets
-    IJKFOR(n_functions, n_ctl, n_cmd)
-    {
-        if (fd_functions[i] != -1)
-        {
-            res = pwrite(fd_functions[i], (void*) &cmd[k], sizeof(int), (int) ctl[j]);
-            if (res == -1 || res != sizeof(int))
-            {
-                error( "pci_uncores.c: writing file error (fd %i) (%s)\n",
-                            fd_functions[i], strerror(errno));
-
-                close(fd_functions[i]);
-                fd_functions[i] = -1;
-            }
+        // writes the command array cmd[] in the file pointed
+        // by fd_functions[] descriptors with ctl[] offsets
+        for (i = 0; i < n_functions; ++i) {
+                if (fd_functions[i] == -1) {
+                        continue;
+                }
+                for (j = 0; j < n_ctl; ++j) {
+                        res = pwrite(fd_functions[i], (void*) &cmd[j], sizeof(int), (int) ctl[j]);
+                        debug("Writing command '%x' in controller '%x'", cmd[j], ctl[j]);
+                        if (res == -1 || res != sizeof(int)) {
+                                error( "Error while writing in PCI uncore %d: %s\n",
+                                        fd_functions[i], strerror(errno));
+                                close(fd_functions[i]);
+                                fd_functions[i] = -1;
+                         
+                        }
+                }
         }
-    }
-
-    return EAR_SUCCESS;
+        return EAR_SUCCESS;
 }
 
 static void pci_scan_uncores()
