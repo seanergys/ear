@@ -133,6 +133,9 @@ state_t gpu_mgr_set_freq_all_gpus(ulong gfreq)
 	return ret;
 }
 
-
+uint    gpu_mgr_num_gpus()
+{
+	return num_dev;
+}
 
 

@@ -209,11 +209,7 @@ state_t ifreq_intel63_data_alloc(freq_imc_t *ef, ulong *freqs[], ulong *freqs_co
 	// Initialization
 	a = (imc_intel63_t *) ef->data;
 
-	for (cpu = 0; cpu < cpu_count; ++cpu)
-	{
-		if (tp.cpus[cpu].freq_base == 0) {
-			tp.cpus[cpu].freq_base = 100LU;
-		}
+	for (cpu = 0; cpu < cpu_count; ++cpu) {
 		a[cpu].error = 1;		
 	}
 

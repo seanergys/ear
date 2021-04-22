@@ -15,24 +15,28 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <metrics/common/msr.h>
-#include <metrics/frequency/cpu/intel63.h>
-#include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
+#include <common/hardware/cpuid.h>
+#include <metrics/common/msr.h>
+#include <metrics/frequency/cpu/intel63.h>
+#include <metrics/frequency/cpufreq_base.h>
 
 #define MSR_IA32_APERF 0x000000E8
 #define MSR_IA32_MPERF 0x000000E7
 
 static topology_t tp;
+static ulong freq_base;
 static uint user_mode;
-static uint init;
+static uint init = 0;
 
 typedef struct aperf_intel63_s
 {
@@ -55,9 +59,7 @@ state_t cpufreq_intel63_status(topology_t *t)
 	}
 	// Thread control required in this small section
 	if (tp.cpus == NULL) {
-		if(xtate_fail(s, topology_select(t, &tp, TPSelect.core, TPGroup.merge, 0))) {
-			return s;
-		}
+		topology_copy(&tp,t);
 	}
 	return EAR_SUCCESS;
 }
@@ -99,6 +101,9 @@ state_t cpufreq_intel63_init()
 			}
 		}
 	}
+	// Getting base frequency
+	cpufreq_get_base(&tp, &freq_base);
+	// Computing base frequency
 	init = 1;
 	return EAR_SUCCESS;
 }
@@ -124,8 +129,7 @@ state_t cpufreq_intel63_read(cpufreq_t *f)
 	if (user_mode) {
 		return_msg(EAR_NO_PERMISSIONS, Generr.no_permissions);
 	}
-	for (cpu = 0; cpu < tp.cpu_count; ++cpu)
-	{
+	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		s1 = msr_read(tp.cpus[cpu].id, &a[cpu].freq_mperf, sizeof(ulong), MSR_IA32_MPERF);
 		s2 = msr_read(tp.cpus[cpu].id, &a[cpu].freq_aperf, sizeof(ulong), MSR_IA32_APERF);
 		a[cpu].snapped = !(state_fail(s1) || state_fail(s2));
@@ -169,7 +173,7 @@ state_t cpufreq_intel63_data_alloc(cpufreq_t *f, ulong *freqs[])
 		return_msg(EAR_ERROR, Generr.alloc_error);
 	}
 	f->size = cpufreq_size;
-	debug("CPUfreq alloc for freqs_count %u and cpufreq_size %u",freqs_count,cpufreq_size);
+	debug("Allocating %u frequencies of size %u", freqs_count, cpufreq_size);
 	// Allocating space for freqs[]
 	if (freqs != NULL) {
 		if (posix_memalign((void **) freqs, 64, sizeof(ulong) * freqs_count) != 0) {
@@ -295,13 +299,13 @@ state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ul
 		// With the percentage applied to the base frequency, finally can be
 		// computed the average frequency of a specific CPU.
 		aperf_pcnt = (aperf_diff * 100LU) / mperf_diff;
-		freq_aux   = (tp.cpus[cpu].freq_base * aperf_pcnt) / 100LU;
+		freq_aux   = (freq_base * aperf_pcnt) / 100LU;
 		//
 		if (freqs != NULL) {
 			freqs[cpu] = freq_aux;
 		}
 		if (average != NULL) {
-			debug(" CPU[%d]=%lu base %lu perc %lu",cpu,freq_aux,tp.cpus[cpu].freq_base,aperf_pcnt);
+			debug("CPU%d: %lu = %lu * %lu", cpu, freq_aux, freq_base, aperf_pcnt);
 			*average += freq_aux;
 		}
 	}

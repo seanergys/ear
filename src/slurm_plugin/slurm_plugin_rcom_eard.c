@@ -30,8 +30,8 @@ static int plug_rcom_eard_sbatch(spank_t sp, plug_serialization_t *sd, int new_j
 		return ESPANK_ERROR;
 	}
 	while (i < sd->job.nodes_count) {
-		plug_verbose(sp, 2, "connecting to EARD %d/%d: '%s' (by SBATCH/SALLOC)",
-			i, sd->job.nodes_count-1, sd->job.nodes_list[i]);
+		plug_verbose(sp, 2, "connecting to EARD %d/%d: '%s:%d' (by SBATCH/SALLOC)",
+			i, sd->job.nodes_count-1, sd->job.nodes_list[i], port);
 		++i;
 	}
 	if (new_job) {

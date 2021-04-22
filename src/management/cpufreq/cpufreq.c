@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 0
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -37,9 +37,10 @@ static state_t load_driver_cpufreq(topology_t *tp)
    state_t s;
 
     if (xtate_fail(s, cpufreq_linux_status(tp))) {
-    	debug("cpufreq_linux_status returned (%d, '%s')", s, state_msg);
+		debug("Not loaded driver LINUX_CPUFREQ: %s (%d)", state_msg, s);
 		return s;
 	}
+	debug("Loaded driver LINUX_CPUFREQ");
 
 	ops_driver.init               = cpufreq_linux_init;
 	ops_driver.dispose            = cpufreq_linux_dispose;
@@ -59,9 +60,10 @@ static state_t load_amd17(topology_t *tp)
 	state_t s;
 
 	if (xtate_fail(s, cpufreq_amd17_status(tp))) {
-		debug("cpufreq_amd17_status returned (%d, '%s')", s, state_msg);
+		debug("Not loaded AMD17: %s (%d)", state_msg, s);
 		return s;
 	}
+	debug("Loaded AMD17");
 
 	ops.init               = cpufreq_amd17_init;
 	ops.init_user          = cpufreq_amd17_init_user;
@@ -78,14 +80,15 @@ static state_t load_amd17(topology_t *tp)
 	return EAR_SUCCESS;
 }
 
-static state_t load_dummy(topology_t *tp)
+static state_t load_default(topology_t *tp)
 {
 	state_t s;
 
 	if (xtate_fail(s, cpufreq_default_status(tp))) {
-		debug("cpufreq_default_status returned (%d, '%s')", s, state_msg);
+		debug("Not loaded DEFAULT: %s (%d)", state_msg, s);
 		return s;
 	}
+	debug("Loaded DEFAULT");
 
 	ops.init               = cpufreq_default_init;
 	ops.init_user          = cpufreq_default_init_user;
@@ -116,7 +119,7 @@ state_t mgt_cpufreq_load(topology_t *tp)
 	}
 	// Los multi pstates funcionan siempre que el thread y el core compartan frecuencia
 	if (state_fail(load_amd17(tp))) {
-		if (state_fail(load_dummy(tp))) {
+		if (state_fail(load_default(tp))) {
 			// Look for another architecture
 		}
 	}

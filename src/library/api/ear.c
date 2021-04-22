@@ -1048,21 +1048,19 @@ void ear_finalize()
 #endif
 
 	if (masters_info.my_master_rank>=0){
-	// Periodic earl thread
-	verbose_master(1,"Stopping periodic earl thread");
-  monitor_unregister(earl_monitor);
-  monitor_dispose();
+		verbose_master(2,"Stopping periodic earl thread");	
+  	monitor_unregister(earl_monitor);
+  	monitor_dispose();
 
-	verbose_master(1,"Stopping tracing");
-	// Tracing
-	traces_stop();
-	traces_end(ear_my_rank, my_id, 0);
+		verbose_master(2,"Stopping tracing");	
+		traces_stop();
+		traces_end(ear_my_rank, my_id, 0);
 
-	traces_mpi_end();
+		traces_mpi_end();
 	}
 
 	// Closing and obtaining global metrics
-	debug("metrics dispose");
+	verbose_master(2,"metrics dispose");
 	dispose=1;
 	verbose_master(2,"Total resources computed %d",get_total_resources());
 	metrics_dispose(&application.signature, get_total_resources());

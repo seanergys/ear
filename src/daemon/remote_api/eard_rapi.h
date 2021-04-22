@@ -140,11 +140,16 @@ int eards_set_powerlimit(unsigned long limit);
 int eards_red_powerlimit(unsigned int type, unsigned long limit);
 int eards_inc_powerlimit(unsigned int type, unsigned long limit);
 
+void cluster_set_powerlimit_all_nodes(unsigned long limit, cluster_conf_t *my_cluster_conf);
+void cluster_red_powerlimit_all_nodes(unsigned int type, unsigned long limit, cluster_conf_t *my_cluster_conf);
+void cluster_inc_powerlimit_all_nodes(unsigned int type, unsigned long limit, cluster_conf_t *my_cluster_conf);
+
+
 int eards_set_risk(risk_t risk,unsigned long target);
 void set_risk_all_nodes(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf);
 
-int eards_set_default_powercap();
-void set_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf);
+int eards_reset_default_powercap();
+void cluster_reset_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf);
 
 int cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released);
 

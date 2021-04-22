@@ -1349,6 +1349,12 @@ int main(int argc, char *argv[]) {
 	if (argc > 2) {
 		Usage(argv[0]);
 	}
+	fd_my_log = create_log("/tmp", "eard_journal");
+	VERB_SET_FD(fd_my_log);
+  ERROR_SET_FD(fd_my_log);
+  WARN_SET_FD(fd_my_log);
+  DEBUG_SET_FD(fd_my_log);
+
 	// We get nodename to create per_node files
 	if (gethostname(nodename, sizeof(nodename)) < 0) {
 		error("Error getting node name (%s)", strerror(errno));

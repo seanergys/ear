@@ -38,7 +38,6 @@ typedef struct dummy_ctx_s {
 state_t cpufreq_default_status(topology_t *_tp)
 {
 	state_t s;
-	debug("testing Dummy P_STATE control status");
 	// Thread control required
 	if (tp.cpu_count == 0) {
 		if(xtate_fail(s, topology_copy(&tp, _tp))) {
@@ -101,31 +100,30 @@ state_t cpufreq_default_init(ctx_t *c, mgt_ps_driver_ops_t *ops_driver)
 	dummy_ctx_t *f;
 	state_t s;
 
-	debug("initializing Dummy P_STATE control");
-	//
-	if (state_ok(static_init_test(c, &f))) {
-		return_msg(EAR_ERROR, Generr.api_initialized);
-	}
+	debug("Initializing DEFAULT P_STATE control");
 	// Context
-    if ((c->context = calloc(1, sizeof(dummy_ctx_t))) == NULL) {
-        return_msg(EAR_ERROR, strerror(errno));
-    }
-    f = (dummy_ctx_t *) c->context;
+	if ((c->context = calloc(1, sizeof(dummy_ctx_t))) == NULL) {
+		return_msg(EAR_ERROR, strerror(errno));
+	}
+	f = (dummy_ctx_t *) c->context;
 	//
 	f->driver = ops_driver;
 	if (xtate_fail(s, f->driver->init(&f->driver_c))) {
+		debug("1");
 		return static_dispose(f, s, state_msg);
 	}
 	//
 	if (xtate_fail(s, f->driver->get_available_list(&f->driver_c, &f->freqs_available, &f->freqs_count))) {
+		debug("2");
 		return static_dispose(f, s, state_msg);
 	}
 	//
 	if (xtate_fail(s, static_init(f))) {
+		debug("3");
 		return static_dispose(f, s, state_msg);
 	}
 	//
-	debug("initialized correctly with %d P_STATEs", f->freqs_count);
+	debug("DEFAULT initialized correctly with %d P_STATEs", f->freqs_count);
 	f->init = 1;
 
 	return EAR_SUCCESS;
@@ -147,6 +145,10 @@ state_t cpufreq_default_count_available(ctx_t *c, uint *pstate_count)
 static state_t static_get_index(dummy_ctx_t *f, ullong freq_khz, uint *pstate_index, uint closest)
 {
 	int pst;
+
+	if (freq_khz == 0LLU) {
+		return_msg(EAR_ERROR, "P_STATE not found for 0 KHz");
+	}
 	// Boost test
 	if (f->boost_enabled && f->freqs_available[0] == freq_khz) {
 		*pstate_index = 0;

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 
 #include <math.h>
@@ -1019,12 +1019,19 @@ void internal_send_command_nodes(request_t *command, int port, int base_distance
     request_t tmp_command;
 
     memcpy(&tmp_command, command, sizeof(request_t));
+		#if SHOW_DEBUGS
+		for (i = 0; i < command->num_nodes;i++){
+			temp.sin_addr.s_addr = command->nodes[i];
+			debug("Node %i : %s",i,inet_ntoa(temp.sin_addr));
+		}
+		#endif
+
     for (i = 0; i < num_sends; i++)
     {
 
         // if no more nodes to propagate to
         debug("internal_send_command_nodes: base distance %d i %d num_nodes %d", base_distance, i, command->num_nodes);
-        if (base_distance * i > command->num_nodes) break;
+        if (base_distance * i >= command->num_nodes) break;
 
         temp.sin_addr.s_addr = command->nodes[i*base_distance];
         strcpy(next_ip, inet_ntoa(temp.sin_addr));
@@ -1071,6 +1078,7 @@ void send_command_nodelist(request_t *command, cluster_conf_t *my_cluster_conf)
      * D will receive D E F, and G will only receive themselves. */
     base_distance = get_max_prop_group(NUM_PROPS, MAX_PROP_DEPTH, command->num_nodes);
     num_sends = command->num_nodes / base_distance; //number of nodes this function will comunicate with
+		if (command->num_nodes % base_distance) num_sends++;
     debug("sending command with %d nodes, %d base_distance and %d num_sends", command->num_nodes, base_distance, num_sends);
 
     /* Inner functionality for initial communication has been moved to its own function to avoid code replication */

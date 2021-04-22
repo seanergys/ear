@@ -176,7 +176,6 @@ typedef struct performance{
 #define EAR_RC_RED_POWER            700
 #define EAR_RC_SET_POWER            701 
 #define EAR_RC_INC_POWER            702
-#define EAR_RC_GET_POWER            703
 #define EAR_RC_GET_POWERCAP_STATUS  704
 #define EAR_RC_SET_POWERCAP_OPT     705
 #define EAR_RC_SET_RISK             706

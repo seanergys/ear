@@ -57,7 +57,7 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
  *  It's decision is based on whether performance gain of some metric is lower than
  *  the increase of current IMC frequency with respect to reference IMC frequency. */
 uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
-        uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain)
+        uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain);
 
 #define IMC_MAX 0
 #define IMC_MIN 1

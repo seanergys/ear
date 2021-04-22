@@ -4,7 +4,8 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
 freq_OBJS = \
 	cpu.o \
-	imc.o
+	imc.o \
+	cpufreq_base.o
 
 ######## RULES
 

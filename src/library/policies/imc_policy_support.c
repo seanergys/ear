@@ -142,7 +142,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
     power_var = metric_diff(power_ref, sig->DC_power, 0);
 
     ulong curr_imc_freq = sig->sig_ext->imc_freq;
-    ulong ref_imc_freq = def_max_imc_freq - ref_imc_pstate * IMC_STEP;
+    ulong ref_imc_freq = def_imc_max_khz - ref_imc_pstate * IMC_STEP;
     imc_gain = (curr_imc_freq - ref_imc_freq) / ref_imc_freq;
     double perf_min_benefit = imc_gain * min_eff_gain;
 
@@ -194,7 +194,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
         metric_gain_2 = metric_diff(CPI, metric, 0);
-        verbose(2,"Using GBS&CPI as reference: Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Gain (%.3lf, %.3ls) IMC gain: %.3lf",
+        verbose(2,"Using GBS&CPI as reference: Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Gain (%.3lf, %.3lf) IMC gain: %.3lf",
                 metric, metric2,metric_ref,CPI,metric_gain, metric_gain_2, imc_gain);
         return ((metric_gain < perf_min_benefit) || (metric_gain_2 < perf_min_benefit));
 #endif

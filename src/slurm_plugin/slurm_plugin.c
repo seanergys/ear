@@ -15,6 +15,10 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define _GNU_SOURCE
+#include <sched.h>
+#include <sys/sysinfo.h>
+
 #include <slurm_plugin/slurm_plugin.h>
 #include <slurm_plugin/slurm_plugin_rcom.h>
 #include <slurm_plugin/slurm_plugin_options.h>
@@ -157,6 +161,51 @@ int slurm_spank_user_init(spank_t sp, int ac, char **av)
 	return ESPANK_SUCCESS;
 }
 
+int slurm_spank_task_init(spank_t sp, int ac, char **av)
+{
+	plug_verbose(sp, 2, "function slurm_spank_task_init");
+
+	char buffer1[2048];
+	char buffer2[2048];
+	cpu_set_t mask;
+	int cpus_count;
+	int cpu_set;
+	int task;
+	int i;
+
+	// By default is error
+	cpu_set = -1;
+	task = -1;
+	// Local task
+	if (!getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
+		return ESPANK_SUCCESS;
+	}
+	task = atoi(buffer2);
+	if (!plug_verbosity_test(sp, 2)) {
+		return ESPANK_SUCCESS;
+	}
+	if (task > 0 && !plug_verbosity_test(sp, 3)) {
+		return ESPANK_SUCCESS;
+	} 
+	// Getting mask and number of processors
+	CPU_ZERO(&mask);
+	cpus_count = get_nprocs();
+	// 
+	if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
+		plug_verbose(sp, 2, "affinity of local task %d: ERROR", task);
+	} else {
+		sprintf(buffer1, "TASK[%d]: ", task);
+		for (i = 0; i < cpus_count; ++i) {
+			cpu_set = CPU_ISSET(i, &mask);
+			strcpy(buffer2, buffer1);
+			sprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
+		}
+		plug_verbose(sp, 2, "%s", buffer1);
+	}
+	
+	return (ESPANK_SUCCESS);
+}
+
 // Function order:
 // 	- Local 0
 // 	- Remote 3e
@@ -175,7 +224,7 @@ int slurm_spank_task_exit (spank_t sp, int ac, char **av)
 	if (sd.subject.exit_status == 0)
 	{
 		err = spank_get_item (sp, S_TASK_EXIT_STATUS, &status);
-
+		// If get item goes OK
 		if (err == ESPANK_SUCCESS) {
 			sd.subject.exit_status = WEXITSTATUS(status);
 		}
