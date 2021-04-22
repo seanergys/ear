@@ -252,7 +252,7 @@ void usage(char *app)
             "\n\t--ping	\t\t\t\t->pings all nodes to check wether the nodes are up or not. Additionally,"\
             "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
             "\n\t--version \t\t\t\t->displays current EAR version."\
-            "\n\t--set-powercap\t[new_cap]\t\t->Sets the powercap of all nodes to the given value. A node can be specified"\    
+            "\n\t--set-powercap\t[new_cap]\t\t->Sets the powercap of all nodes to the given value. A node can be specified"\
             "\n\t\t\t\t\t\t\t after the value to only target said node."\
             "\n\t--help \t\t\t\t\t->displays this message.", app);
 #if EXT_OPT

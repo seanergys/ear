@@ -83,7 +83,6 @@ int detect_packages(int **mypackage_map)
 	int *package_map;
 	int i;
 
-	// TODO: spaguettis
 	if (!init)
 	{
 		topology_init(&topo1);

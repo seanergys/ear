@@ -492,7 +492,7 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
 		my_policy = &default_policy_context;
 		return my_policy;
 	}
-	debug("configuring policy for user %u policy %s freq %lu th %lf is_learning %u is_mpi %d force_freq %d",user_type,appID->job.policy,appID->job.def_f,appID->job.th,appID->is_learning,appID->is_mpi,my_cluster_conf.eard.force_frequencies);
+	verbose(VJOBPMON,"configuring policy for user %u policy %s freq %lu th %lf is_learning %u is_mpi %d force_freq %d",user_type,appID->job.policy,appID->job.def_f,appID->job.th,appID->is_learning,appID->is_mpi,my_cluster_conf.eard.force_frequencies);
 	switch (user_type){
 	case NORMAL:
 		appID->is_learning=0;
@@ -679,6 +679,7 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	policy_conf_t *my_policy;
 	ulong f;
 	uint user_type;
+	verbose(VJOBPMON , "*******************");
 	verbose(VJOBPMON, "%spowermon_new_job (%lu,%lu)%s", COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
 #if POWERCAP
 	if (powermon_is_idle()) powercap_idle_to_run();
@@ -758,6 +759,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 	pcontext = ccontext;
 	/*check_context("powermon_end_job: and not current context");*/
 	/* jid,sid can finish in a different order than expected */
+	verbose(VJOBPMON , "*******************");
 	debug("powermon_end_job %lu %lu", jid, sid);
 	cc = find_context_for_job(jid, sid);
 	if (cc < 0) {
@@ -826,6 +828,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
   }
   #endif
 
+	verbose(VJOBPMON , "*******************");
 
 }
 

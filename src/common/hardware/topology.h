@@ -77,7 +77,6 @@ typedef struct core_s
 	int l3_id;
 	int sibling_id;     // The thread sibling within a core.
 	int socket_id;
-	ulong freq_base;
 } core_t;
 
 typedef struct topology_s

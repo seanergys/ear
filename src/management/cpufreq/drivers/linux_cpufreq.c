@@ -23,6 +23,7 @@
 #include <string.h>
 #include <common/sizes.h>
 #include <common/output/debug.h>
+#include <metrics/frequency/cpufreq_base.h>
 #include <management/cpufreq/drivers/linux_cpufreq.h>
 
 #define N_FREQS 128
@@ -179,13 +180,13 @@ static state_t cpufreq_linux_init_frequencies()
 	ullong aux, khz;
 	int fd, i;
 
+	// Getting boost by files
 	if ((fd = open("/sys/devices/system/cpu/cpufreq/boost", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
 			f->boost_enabled = atoi(data);
 		}
 		close(fd);
-	}
-	if (tp.vendor == VENDOR_AMD) {
+	} else if (tp.vendor == VENDOR_AMD) {
 		if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/cpb", O_RDONLY)) >= 0) {
 			if (state_ok(read_word(fd, data, 0))) {
 				f->boost_enabled = atoi(data);
@@ -193,7 +194,12 @@ static state_t cpufreq_linux_init_frequencies()
 			close(fd);
 		}
 	}
-	// Loading available frequencies
+	// Getting boost by low level (only if boost is disabled)
+	if (!f->boost_enabled) {
+		cpufreq_get_boost_enabled(&tp, (uint *) &f->boost_enabled);
+	}
+
+	// Loading available frequencies by acpi_cpufreq files
 	if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies", O_RDONLY)) >= 0) {
 		for(i = 0; i < N_FREQS; ++i, f->freqs_count = i) {
 			if (state_fail(read_word(fd, data, 0))) {
@@ -202,20 +208,30 @@ static state_t cpufreq_linux_init_frequencies()
 			f->freqs_avail[i] = (ullong) atoll(data);
 		}
 		close(fd);
-	} else if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
+	} else {
+		// Detecting base frequency by low level
+		cpufreq_get_base(&tp, (ulong *) &f->freqs_avail[0]);
+		if (f->boost_enabled) {
+			f->freqs_avail[0] += 1000;
+		}
+		#if 0
+		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) >= 0) {
 		if (state_ok(read_word(fd, data, 0))) {
 			f->freqs_avail[0] = (ullong) atoll(data);
+			debug("Max CPU frequency detected as %lu",f->freqs_avail[0]);
 		}
 		close(fd);
 		// If boost enabled
 		if (((f->freqs_avail[0] / 1000) & 0x1)) {
 			f->boost_enabled = 1;
 		}
+		#endif
 		// Getting minimum freq (1GHz default)
 		aux = 1000000;
 		if((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", O_RDONLY)) >= 0) {
 			if (state_ok(read_word(fd, data, 0))) {
 				aux = (ullong) atoll(data);
+				debug("Min CPU frequency detected as %lu",aux);
 			}
 			close(fd);
 		}
@@ -318,6 +334,7 @@ state_t cpufreq_linux_dispose(ctx_t *c)
 /* Getters */
 state_t cpufreq_linux_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count)
 {
+	debug("cpufreq_linux_get_available_list");
 	if (freq_list  != NULL) *freq_list  = f->freqs_avail;
 	if (freq_count != NULL) *freq_count = f->freqs_count;
 	return EAR_SUCCESS;
@@ -329,7 +346,7 @@ state_t cpufreq_linux_get_current_list(ctx_t *c, const ullong **freq_list)
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
 	int cpu;
-
+	debug("cpufreq_linux_get_current_list");
 	*freq_list = f->freqs_current;
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (state_fail(s1 = read_word(f->fds_freq[cpu], data, 1))) {
@@ -355,7 +372,7 @@ state_t cpufreq_linux_get_governor(ctx_t *c, uint *governor)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s = EAR_SUCCESS;
-
+	debug("cpufreq_linux_get_governor");
 	if (xtate_fail(s, read_word(f->fds_govr[0], data, 1))) {
 		*governor = Governor.other;
 	} else if (xtate_fail(s, mgt_governor_toint(data, governor))) {
@@ -370,7 +387,7 @@ state_t cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
 	int cpu;
-
+	debug("cpufreq_linux_set_current_list");
 	// Adding a line break
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu)
 	{
@@ -421,6 +438,7 @@ state_t cpufreq_linux_set_governor(ctx_t *c, uint governor)
 	uint current;
 	state_t s;
 
+	debug("cpufreq_linux_set_governor ");
 	if (xtate_fail(s, cpufreq_linux_get_governor(c, &current))) {
 		return s;
 	}
