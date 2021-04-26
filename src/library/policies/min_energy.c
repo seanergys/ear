@@ -89,7 +89,7 @@ static polsym_t gpus;
 static ulong *last_cpufreq_sel;
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
-
+static uint num_processes;
 
 state_t policy_init(polctx_t *c)
 {
@@ -110,8 +110,8 @@ state_t policy_init(polctx_t *c)
         my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
         last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
         last_cpufreq_sel = calloc(MAX_CPUS_SUPPORTED,sizeof(unsigned long));
-        for (i=0;i<MAX_CPUS_SUPPORTED; i++) last_cpufreq_sel[i] = *(c->ear_frequency);
-
+				num_processes = lib_shared_region->num_processes;
+        for (i=0;i<num_processes; i++) last_cpufreq_sel[i] = *(c->ear_frequency);
 #if USE_GPUS
         if (c->num_gpus){
             if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
@@ -174,6 +174,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     int freq_per_core = 0;
     mpi_information_t sig_mpi_data;	
     int max_mpi,min_mpi;
+		uint signature_is_unbalance = 0;
 
 
     if ((c == NULL) || (c->app == NULL)){
@@ -198,11 +199,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     verbose_master(2, "%s------MR[%d] Node signatures ready-----%s",COL_GRE,my_globalrank,COL_CLR);
     if (is_mpi_enabled()){
         read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
-        evaluate_cp(lib_shared_region->num_processes,my_node_mpi_calls,&max_mpi,&min_mpi);
-        verbose_master(2,"Node load unbalance, max perc mpi %lf min perc mpi %lf",my_node_mpi_calls[max_mpi].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi);
-        if (enable_load_balance && ((my_node_mpi_calls[max_mpi].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) > LB_TH)){
+        evaluate_cp(num_processes,my_node_mpi_calls,&max_mpi,&min_mpi);
+				signature_is_unbalance = ((my_node_mpi_calls[max_mpi].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) > LB_TH);
+        verbose_master(2,"Node load unbalance, max perc mpi %lf min perc mpi %lf unbalance = %u",my_node_mpi_calls[max_mpi].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi, signature_is_unbalance && enable_load_balance);
+        if (enable_load_balance && signature_is_unbalance){
             freq_per_core = 1;
-            nump = lib_shared_region->num_processes;
+            nump = num_processes;
         }else nump = 1;
     }else nump = 1;
     if (c->use_turbo) min_pstate = 0;
@@ -256,11 +258,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         // is made for the reference P_STATE in case the coefficents were available.
         // NEW: This code is new because projections from lower pstates are reporting bad cpu freqs 
         i = 0;
-        while((i<MAX_CPUS_SUPPORTED) && (last_cpufreq_sel[i] == def_freq)) i++;
-        if (i<MAX_CPUS_SUPPORTED){
+        while((i < num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
+        if (i < num_processes){
             *ready = EAR_POLICY_TRY_AGAIN;
             new_freq[0] = def_freq;
-            for (i=1;i<MAX_CPUS_SUPPORTED;i++) new_freq[i] = new_freq[0];
+            for (i=1;i<num_processes;i++) new_freq[i] = new_freq[0];
             if (dyn_unc){
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
@@ -298,9 +300,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             verbose_master(2,"CPU freq for process %d is %lu",i,new_freq[i]);
         }
         if (!freq_per_core){
-            for (i=1;i<nump;i++) new_freq[i] = new_freq[0];
+            for (i=1;i<num_processes;i++) new_freq[i] = new_freq[0];
         }
-        memcpy(last_cpufreq_sel,new_freq,sizeof(ulong)*nump);
+        memcpy(last_cpufreq_sel,new_freq,sizeof(ulong)*num_processes);
 
 #if NEW_IMCFREQ	
         if (dyn_unc){
@@ -308,8 +310,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             if (imc_set_by_hw) 		freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             else 									freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
             i = 0;
-            while((i<nump) && (last_cpufreq_sel[i] == def_freq)) i++;
-            if (i < nump){ 
+            while((i<num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
+            if (i < num_processes){ 
               min_energy_state = COMP_IMCREF;
             }else{ 
         			ref_imc_pstate = imc_pstate;
@@ -436,7 +438,7 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
     int i;
     uint sock_id;
     if (c == NULL) return EAR_ERROR;
-    for (i=0;i<MAX_CPUS_SUPPORTED;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+    for (i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
     memcpy(last_cpufreq_sel,freqs->cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
@@ -458,7 +460,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
     int i;
     uint sock_id;
     if (c == NULL) return EAR_ERROR;
-    for (i=0;i<MAX_CPUS_SUPPORTED;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+    for (i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
     if (dyn_unc){
         memcpy(last_cpufreq_sel,freqs->cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
@@ -480,7 +482,7 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
     int i;
     uint sock_id;
     if (c == NULL) return EAR_ERROR;
-    for (i=0;i<MAX_CPUS_SUPPORTED;i++) freqs->cpu_freq[i] = c->app->max_freq;
+    for (i=0;i<num_processes;i++) freqs->cpu_freq[i] = c->app->max_freq;
     memcpy(last_cpufreq_sel,freqs->cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){

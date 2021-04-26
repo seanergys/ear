@@ -378,22 +378,22 @@ state_t policy_show_domain(node_freq_domain_t *dom){
     verbose(2, "Reading policy domain...");
     char detail[64];
     if (policy_domain_detail(dom->cpu, detail) == EAR_SUCCESS) {
-       verbose(2, "CPU: %s", detail);
+       verbose_master(2, "CPU: %s", detail);
     }
     else return EAR_ERROR;
 
     if (policy_domain_detail(dom->mem, detail) == EAR_SUCCESS) {
-        verbose(2, "MEM: %s", detail);
+        verbose_master(2, "MEM: %s", detail);
     }
     else return EAR_ERROR;
 
     if (policy_domain_detail(dom->gpu, detail) == EAR_SUCCESS) {
-        verbose(2, "GPU: %s", detail);
+        verbose_master(2, "GPU: %s", detail);
     }
     else return EAR_ERROR;
 
     if (policy_domain_detail(dom->gpumem, detail) == EAR_SUCCESS) {
-        verbose(2, "GPU_MEM: %s", detail);
+        verbose_master(2, "GPU_MEM: %s", detail);
     }
     else return EAR_ERROR;
 
@@ -536,7 +536,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
         }
     }
     /* End policy file selection */
-    if (masters_info.my_master_rank>=0) verbose(2,"loading policy %s",obj_path);
+    if (masters_info.my_master_rank>=0) verbose_master(2,"loading policy %s",obj_path);
     /* loads the policy plugin */
     if (policy_load(obj_path,&polsyms_fun)!=EAR_SUCCESS){
         error("Error loading policy %s:%s",obj_path,state_msg);
@@ -714,7 +714,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     if ((cpu_ready == EAR_POLICY_READY) && (gpu_ready == EAR_POLICY_READY)) *ready = EAR_POLICY_READY;
     if ((cpu_ready == EAR_POLICY_TRY_AGAIN) || (gpu_ready == EAR_POLICY_TRY_AGAIN)) *ready = EAR_POLICY_CONTINUE;
     if ((cpu_ready != EAR_POLICY_READY) && (cpu_ready != EAR_POLICY_TRY_AGAIN)) *ready = cpu_ready;
-    verbose(2,"Policy cpufreq selection returns %d,gpu policy returns %d, Global node readiness %d",cpu_ready,gpu_ready,*ready);
+    verbose_master(2,"Policy cpufreq selection returns %d,gpu policy returns %d, Global node readiness %d",cpu_ready,gpu_ready,*ready);
     if ((st == EAR_SUCCESS) && (stg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
 }
