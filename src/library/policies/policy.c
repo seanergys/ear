@@ -105,7 +105,8 @@ static node_freq_domain_t freqs_domain;
 static uint last_earl_phase_classification = APP_COMP_BOUND;
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
-static uint exclusive_mode = 1;
+static uint exclusive_mode = 0;
+static uint use_earl_phases = 1;
 
 
 /**** Auxiliary functions ***/
@@ -402,6 +403,7 @@ state_t policy_show_domain(node_freq_domain_t *dom){
 
 /**** End auxiliary functions ***/
 #define SCHED_EXCLUSIVE_MODE "SLURM_EXCLUSIVE_MODE"
+#define SCHED_USE_EARL_PHASES "SLURM_USE_EARL_PHASES"
 /* This function is called automatically  by the init_power_policy that loads policy symbols */
 state_t policy_init()
 {
@@ -410,6 +412,7 @@ state_t policy_init()
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
     char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
 		char *cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
+		char *cuse_earl_phases = getenv(SCHED_USE_EARL_PHASES);
     state_t ret,retg=EAR_SUCCESS;
 		policy_gpu_init_ctx(c);
     if (polsyms_fun.init != NULL){
@@ -417,6 +420,8 @@ state_t policy_init()
     }
 		if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
 		verbose_master(2,"Running in exclusive mode set to %u", exclusive_mode);
+		if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
+		verbose_master(2,"Phases detection set to %u",use_earl_phases);
     /* Even though the policy could be at the Node granularity, we will use a list */
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
@@ -625,6 +630,8 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     int cpu_ready,gpu_ready = EAR_POLICY_READY;
 		uint busy;
 		is_cpu_busy_waiting(my_sig,&busy);
+		verbose_master(2,"EARL_phase %u busy waiting %u using phases %u",earl_phase_classification,busy,use_earl_phases);
+		if (use_earl_phases){
 		/* IO Use case */
 		if (earl_phase_classification == APP_IO_BOUND){
 			if (busy == BUSY_WAITING){
@@ -666,6 +673,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 				last_earl_phase_classification = earl_phase_classification;
       	return st;		
 			}
+		}
 		}
 		verbose_master(2,"COMP or MPI bound and not busy waiting--> Node policy");
 		last_earl_phase_classification = earl_phase_classification;
