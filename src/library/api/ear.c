@@ -930,7 +930,9 @@ void ear_init()
       if (ear_affinity_is_set){ 
         sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
         sig_shared_region[my_node_id].affinity = 1;
-        //if (masters_info.my_master_rank>=0) print_affinity_mask(&arch_desc.top);
+        if (masters_info.my_master_rank>=0){ 
+					print_affinity_mask(&arch_desc.top);
+				}
       }else{ 
         sig_shared_region[my_node_id].affinity = 0;
         verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
