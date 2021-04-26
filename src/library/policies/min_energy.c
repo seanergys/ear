@@ -64,6 +64,7 @@ static int min_pstate;
 static uint ref_imc_pstate;
 extern int my_globalrank;
 static int nump;
+static uint enable_load_balance = 1;
 
 static imc_data_t *imc_data;
 #define IMC_STEP 100000
@@ -93,6 +94,7 @@ static const uint *gpuf_pol_list_items;
 state_t policy_init(polctx_t *c)
 {
     char *cuse_imc_ref;
+		char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
     int i;
     if (c!=NULL){ 
 #if NEW_IMCFREQ
@@ -101,6 +103,8 @@ state_t policy_init(polctx_t *c)
         if (is_mpi_enabled()){
             mpi_app_init(c);
         }
+				if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
+				verbose_master(2,"Load balance enabled = %u", enable_load_balance);
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext =  calloc(1,sizeof(io_data_t));
         my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
@@ -196,7 +200,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
         evaluate_cp(lib_shared_region->num_processes,my_node_mpi_calls,&max_mpi,&min_mpi);
         verbose_master(2,"Node load unbalance, max perc mpi %lf min perc mpi %lf",my_node_mpi_calls[max_mpi].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi);
-        if ((my_node_mpi_calls[max_mpi].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) > LB_TH){
+        if (enable_load_balance && ((my_node_mpi_calls[max_mpi].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) > LB_TH)){
             freq_per_core = 1;
             nump = lib_shared_region->num_processes;
         }else nump = 1;

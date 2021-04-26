@@ -86,9 +86,13 @@
 #define SCHED_MAX_IMC_FREQ						"SLURM_MAX_IMC_FREQ"
 #define SCHED_MIN_IMC_FREQ						"SLURM_MIN_IMC_FREQ"
 /* This variable specifies the IMC freq must be selected by the EAR policy */
-#define SCHED_SET_IMC_FREQ "SLURM_SET_IMC_FREQ"
-#define SCHED_IMC_EXTRA_TH "SLURM_IMC_EXTRA_TH"
-#define SCHED_LET_HW_CTRL_IMC "SLURM_LET_HW_CTRL_IMC"
+#define SCHED_SET_IMC_FREQ          "SLURM_SET_IMC_FREQ"
+#define SCHED_IMC_EXTRA_TH          "SLURM_IMC_EXTRA_TH"
+#define SCHED_LET_HW_CTRL_IMC       "SLURM_LET_HW_CTRL_IMC"
+#define SCHED_EXCLUSIVE_MODE        "SLURM_EXCLUSIVE_MODE"
+#define SCHED_USE_EARL_PHASES       "SLURM_USE_EARL_PHASES"
+#define SCHED_ENABLE_LOAD_BALANCE  	"SLURM_ENABLE_LOAD_BALANCE"
+
 
 /* Asks EARL to write verbose messages in separate per_task files */
 #define SCHED_EARL_VERBOSE_PATH "SLURM_EARL_VERBOSE_PATH"

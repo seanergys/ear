@@ -402,8 +402,6 @@ state_t policy_show_domain(node_freq_domain_t *dom){
 
 
 /**** End auxiliary functions ***/
-#define SCHED_EXCLUSIVE_MODE "SLURM_EXCLUSIVE_MODE"
-#define SCHED_USE_EARL_PHASES "SLURM_USE_EARL_PHASES"
 /* This function is called automatically  by the init_power_policy that loads policy symbols */
 state_t policy_init()
 {
