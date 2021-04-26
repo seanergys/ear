@@ -277,7 +277,9 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 	int i = 0;
 	*max = 0;
 	*min = 0;		
-	for (i=1;i<nump;i++){
+	for (i=0; i< nump;i++) verbosen_master(2,"MR[%d]= %.2lf ",i,node_mpi_calls[i].perc_mpi);
+	verbose_master(2,"");
+	for (i=1 ; i < nump ; i++){
 		if (node_mpi_calls[i].perc_mpi > node_mpi_calls[*max].perc_mpi)	*max = i;
 		if (node_mpi_calls[i].perc_mpi < node_mpi_calls[*min].perc_mpi)	*min = i;
 	}	

@@ -105,6 +105,7 @@ static node_freq_domain_t freqs_domain;
 static uint last_earl_phase_classification = APP_COMP_BOUND;
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
+static uint exclusive_mode = 1;
 
 
 /**** Auxiliary functions ***/
@@ -136,7 +137,7 @@ static ulong compute_avg_freq(ulong *my_policy_list,int n)
     ulong total=0;
     for (i=0; i<n;i++)
     {
-        total+=my_policy_list[i];
+        total +=my_policy_list[i];
     }
     return total/n;
 }
@@ -145,7 +146,11 @@ static void print_freq_per_core()
     int i;
     for (i=0;i<arch_desc.top.cpu_count;i++)
     {
-        if (freq_per_core[i]>0) verbosen_master(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+        if (freq_per_core[i]>0){ 
+					verbosen_master(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+				}else{	  							 
+					verbosen_master(2,"CPU[%d]= --",i);
+				}
     }
     verbose_master(2," ");
 }
@@ -155,19 +160,33 @@ static void from_proc_to_core(ulong *cpuf)
     ulong f;
     int ccount;
     cpu_set_t m;
-    for (p=0;p<lib_shared_region->num_processes;p++)
+		verbose_master(2,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
+    ccount = arch_desc.top.cpu_count;
+    for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
         f = cpuf[p];
-        ccount = arch_desc.top.cpu_count;
         m = sig_shared_region[p].cpu_mask;
-        /*debug("Freq selected for rank %d is %lu cpus %d",p,f,ccount);*/
-        for (c=0;c<ccount;c++){
+				verbose_master(2,"Frequency for process %d is %lu",p,f);
+        for (c = 0 ; c < ccount; c++){
             if (CPU_ISSET(c,&m)){ 
                 freq_per_core[c] = f;
             }
         }
     }
     return;
+}
+
+void fill_cpus_out_of_cgroup(uint exc)
+{
+	int ccount, c;
+	if (exc == 0) return;
+	ccount = arch_desc.top.cpu_count;
+	for (c = 0; c < ccount; c++){
+		if (freq_per_core[c] == 0){
+			freq_per_core[c] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
+		}
+	}	
+	
 }
 
 
@@ -218,6 +237,9 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         }
     }
     print_freq_per_core();
+		if (dom->cpu == POL_GRAIN_CORE){
+			fill_cpus_out_of_cgroup(exclusive_mode);
+		}	
     if (*freq_set != *(c->ear_frequency))
     {
         *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
@@ -379,7 +401,7 @@ state_t policy_show_domain(node_freq_domain_t *dom){
 
 
 /**** End auxiliary functions ***/
-
+#define SCHED_EXCLUSIVE_MODE "SLURM_EXCLUSIVE_MODE"
 /* This function is called automatically  by the init_power_policy that loads policy symbols */
 state_t policy_init()
 {
@@ -387,11 +409,14 @@ state_t policy_init()
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
     char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
+		char *cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
     state_t ret,retg=EAR_SUCCESS;
 		policy_gpu_init_ctx(c);
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
     }
+		if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
+		verbose_master(2,"Running in exclusive mode set to %u", exclusive_mode);
     /* Even though the policy could be at the Node granularity, we will use a list */
     nf.cpu_freq =  calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     nf.imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));

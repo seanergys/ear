@@ -36,7 +36,7 @@ void print_affinity_mask(topology_t *topo)
     if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) return;
     fprintf(stderr,"sched_getaffinity = ");
     for (i = 0; i < topo->cpu_count; i++) {
-        fprintf(stderr,"%d=%d ", i,CPU_ISSET(i, &mask));
+        fprintf(stderr,"CPU[%d]=%d ", i,CPU_ISSET(i, &mask));
     }
     fprintf(stderr,"\n");
 }
