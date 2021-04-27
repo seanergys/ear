@@ -170,9 +170,11 @@ static void from_proc_to_core(ulong *cpuf)
 				verbose_master(2,"Frequency for process %d is %lu",p,f);
         for (c = 0 ; c < ccount; c++){
             if (CPU_ISSET(c,&m)){ 
+								verbosen_master(2,"CPU %d ",c);
                 freq_per_core[c] = f;
             }
         }
+				verbose_master(2,"");
     }
     return;
 }
@@ -375,7 +377,7 @@ state_t policy_domain_detail(int status, char* buff){
 }
 
 state_t policy_show_domain(node_freq_domain_t *dom){
-    verbose(2, "Reading policy domain...");
+    verbose_master(2, "Reading policy domain...");
     char detail[64];
     if (policy_domain_detail(dom->cpu, detail) == EAR_SUCCESS) {
        verbose_master(2, "CPU: %s", detail);
