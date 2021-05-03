@@ -15,6 +15,8 @@ all: $(proc_OBJS)
 
 install: ;
 
+%.install: ;
+
 clean: rclean;
 
 depend: depend.components
