@@ -52,8 +52,6 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-#define LET_TURBO 1
-
 #if NEW_IMCFREQ
 extern ulong policy_max_imcfreq, policy_min_imcfreq;
 extern uint dyn_unc;
@@ -315,10 +313,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     best_pstate, best_freq, def_freq, &new_freq[i]);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
 #if LET_TURBO
-            if (freq_per_core && i == min_mpi && frequency_freq_to_pstate(new_freq[i]) == min_pstate && !c->use_turbo){
-                new_freq[i] = frequency_pstate_to_freq(0);
-                verbose_master(2, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
-            }
+            try_boost_cpu_freq(freq_per_core, i, min_mpi, new_freq, min_pstate, c->use_turbo);
 #endif
         }
         if (!freq_per_core) {
