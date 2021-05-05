@@ -437,32 +437,19 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
 
     }
 
-    if (mysql_stmt_bind_param(statement, bind))
-    {
-        free(bind);
-        free(query);
-        free(pow_sigs_ids);
-        free(sigs_ids);
-        return mysql_statement_error(statement);
-    }
+    int ret = EAR_SUCCESS;
+    if (mysql_stmt_bind_param(statement, bind)) ret = mysql_statement_error(statement);
 
-    if (mysql_stmt_execute(statement))
-    {
-        free(bind);
-        free(query);
-        free(pow_sigs_ids);
-        free(sigs_ids);
-        return mysql_statement_error(statement);
-    }
+    if (mysql_stmt_execute(statement)) ret = mysql_statement_error(statement);
+
+    if (mysql_stmt_close(statement)) ret = EAR_MYSQL_ERROR;
 
     free(bind);
     free(query);
     free(pow_sigs_ids);
     free(sigs_ids);
 
-    if (mysql_stmt_close(statement)) return EAR_MYSQL_ERROR;
-
-    return EAR_SUCCESS;
+    return ret;
 }
 
 int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
@@ -884,13 +871,18 @@ int mysql_batch_insert_loops(MYSQL *connection, loop_t *loop, int num_loops)
 
     }
 
-    if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
+    int ret = EAR_SUCCESS;
+    if (mysql_stmt_bind_param(statement, bind)) ret = mysql_statement_error(statement);
 
-    if (mysql_stmt_execute(statement)) return mysql_statement_error(statement);
+    if (mysql_stmt_execute(statement)) ret = mysql_statement_error(statement);
 
-    if (mysql_stmt_close(statement)) return EAR_MYSQL_ERROR;
+    if (mysql_stmt_close(statement)) ret = EAR_MYSQL_ERROR;
 
-    return EAR_SUCCESS;
+    free(sigs_ids);
+    free(bind);
+    free(query);
+
+    return ret;
 }
 
 int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
