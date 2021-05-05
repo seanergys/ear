@@ -148,12 +148,12 @@ static void print_freq_per_core()
     for (i=0;i<arch_desc.top.cpu_count;i++)
     {
         if (freq_per_core[i]>0){ 
-					verbosen_master(2,"CPU[%d]=%.2f ",i,(float)freq_per_core[i]/1000000.0);
+					verbosen_master(3,"CPU[%d]=%.3f ",i,(float)freq_per_core[i]/1000000.0);
 				}else{	  							 
-					verbosen_master(2,"CPU[%d]= --",i);
+					verbosen_master(3,"CPU[%d]= --",i);
 				}
     }
-    verbose_master(2," ");
+    verbose_master(3," ");
 }
 static void from_proc_to_core(ulong *cpuf)
 {
@@ -161,20 +161,20 @@ static void from_proc_to_core(ulong *cpuf)
     ulong f;
     int ccount;
     cpu_set_t m;
-		verbose_master(2,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
+		verbose_master(3,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
     ccount = arch_desc.top.cpu_count;
     for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
         f = cpuf[p];
         m = sig_shared_region[p].cpu_mask;
-				verbose_master(2,"Frequency for process %d is %lu",p,f);
+				verbose_master(3,"Frequency for process %d is %lu",p,f);
         for (c = 0 ; c < ccount; c++){
             if (CPU_ISSET(c,&m)){ 
-								verbosen_master(2,"CPU %d ",c);
+								verbosen_master(3,"CPU %d ",c);
                 freq_per_core[c] = f;
             }
         }
-				verbose_master(2,"");
+				verbose_master(3,"");
     }
     return;
 }

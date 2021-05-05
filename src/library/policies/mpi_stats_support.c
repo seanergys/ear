@@ -213,7 +213,7 @@ state_t mpi_call_new_phase(polctx_t *c)
 }
 
 
-state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last)
+state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i)
 {
 	mpi_calls_types_t a;
 	mpi_call_get_types(&a);
@@ -272,11 +272,24 @@ state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_i
 	return EAR_SUCCESS;
 }
 
+state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,mpi_calls_types_t *node_mpi_calls,mpi_calls_types_t *last_node)
+{
+  int i = 0;
+  if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
+	/* This data is not yet in the shared memory , not available for other processes */
+  //for (i=0;i<data->num_processes;i++){
+    mpi_call_types_read_diff(&node_mpi_calls[i],&last_node[i],i);
+  //}
+  return EAR_SUCCESS;
+}
+
+
 state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min)
 {
 	int i = 0;
 	*max = 0;
 	*min = 0;		
+	verbosen_master(2,"LB_DATA ");
 	for (i=0; i< nump;i++) verbosen_master(2,"MR[%d]= %.2lf ",i,node_mpi_calls[i].perc_mpi);
 	verbose_master(2,"");
 	for (i=1 ; i < nump ; i++){

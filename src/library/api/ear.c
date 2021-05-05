@@ -1508,7 +1508,7 @@ state_t earl_periodic_actions(void *no_arg)
 		/* Computing MPI statistics */
 		if (is_mpi_enabled()){
 			#if 0
-			mpi_call_types_read_diff(&mpi_type_diff,&last_mpi_types);
+			mpi_call_types_read_diff(&mpi_type_diff,&last_mpi_types,0);
 			mpi_call_read_diff(&mpi_call_diff,&last_mpi_data,-1);
 			verbose_mpi_types(2,&last_mpi_types);
 			verbose_mpi_types(2,&mpi_type_diff);

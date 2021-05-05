@@ -93,6 +93,7 @@
 #define SCHED_EXCLUSIVE_MODE 				"SLURM_EXCLUSIVE_MODE"
 #define SCHED_USE_EARL_PHASES 			"SLURM_USE_EARL_PHASES"
 #define SCHED_ENABLE_LOAD_BALANCE 	"SLURM_ENABLE_LOAD_BALANCE"
+#define SCHED_USE_TURBO_FOR_CP      "SLURM_USE_TURBO_FOR_CP"
 
 
 /* Asks EARL to write verbose messages in separate per_task files */
