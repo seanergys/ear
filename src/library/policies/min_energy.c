@@ -244,6 +244,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     def_pstate = frequency_closest_pstate(def_freq);
 
     // This is the frequency at which we were running
+    signature_copy(my_app,sig);
 #ifdef POWERCAP
     if (c->pc_limit > 0){
         curr_freq = frequency_closest_high_freq(my_app->avg_f,1);
@@ -254,7 +255,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     curr_freq = *(c->ear_frequency);
 #endif
 
-    signature_copy(my_app,sig);
     curr_pstate = frequency_closest_pstate(curr_freq);
     eff_f = frequency_closest_high_freq(my_app->avg_f,1);
 
