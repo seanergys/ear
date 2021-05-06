@@ -240,6 +240,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 				freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
       	freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
 			}
+			free(my_app);
 			return EAR_SUCCESS;
 		}
 		if (curr_freq != def_freq) // Use configuration when available
@@ -383,6 +384,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 	}
 	#endif
 	verbose(2,"Next min_energy state %u next policy state %u",min_energy_state,*ready);
+	free(my_app);
 	return EAR_SUCCESS;
 }
 

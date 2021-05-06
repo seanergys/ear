@@ -219,9 +219,9 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 			}
   	}
   }
-  print_freq_per_core();
-  if (*freq_set != *(c->ear_frequency))
+  if (*freq_set != *(c->ear_frequency) || (dom->cpu == POL_GRAIN_CORE))
   {
+  	print_freq_per_core();
   	*(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
 		if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
   }

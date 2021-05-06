@@ -666,8 +666,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
 		#if USE_GPUS
 		if (gpu_initialized){
-			metrics->gpu_sig.num_gpus=ear_num_gpus_in_node;
-			if ((s == APP) && (earl_gpu_model == MODEL_DUMMY)){ 
+			metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
+			if (earl_gpu_model == MODEL_DUMMY){ 
 				debug("Setting num_gpu to 0 because model is DUMMY");
 				metrics->gpu_sig.num_gpus = 0;
 			}
