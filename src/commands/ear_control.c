@@ -100,7 +100,7 @@ void fill_ip(char *buff, ip_table_t *table)
 
    	s = getaddrinfo(buff, NULL, &hints, &result);
     if (s != 0) {
-		printf("getaddrinfo fails for port %s (%s)", buff, strerror(errno));
+		debug("getaddrinfo fails for node %s (%s)\n", buff, strerror(errno));
 		return;
     }
 

@@ -67,7 +67,7 @@ int create_server_socket(uint port)
 
    	s = getaddrinfo(NULL, buff, &hints, &result);
     if (s != 0) {
-        error("getaddrinfo fails for port %s (%s)",buff,strerror(errno));
+        debug("getaddrinfo fails for port %s (%s)",buff,strerror(errno));
         return EAR_ERROR;
     }
 

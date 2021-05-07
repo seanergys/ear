@@ -37,10 +37,12 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
 state_t mpi_call_new_phase(polctx_t *c);
 
 
-state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last);
 state_t mpi_call_get_stats(mpi_information_t *dst,mpi_information_t * src,int i);
 state_t mpi_call_get_types(mpi_calls_types_t *t);
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t);
+state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i);
+state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,mpi_calls_types_t *node_mpi_calls,mpi_calls_types_t *last_node);
+
 
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t);

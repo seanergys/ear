@@ -67,7 +67,7 @@ int get_ip(char *nodename, cluster_conf_t *conf)
    	s = getaddrinfo(buff, NULL, &hints, &result);
 
 	if (s != 0) {
-		verbose(0, "getaddrinfo fails for port %s (%s)", buff, strerror(errno));
+		debug("getaddrinfo fails for node %s (%s)", buff, strerror(errno));
 		return EAR_ERROR;
 	}
 

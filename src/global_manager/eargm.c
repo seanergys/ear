@@ -158,7 +158,7 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 	/** Global variables */
 	verb_level=cc->verbose;
 	period_t1=cc->t1;
-	period_t2=cc->t1;	
+	period_t2=cc->t2;	
 	energy_budget=cc->energy;
 	#if POWERCAP
   max_cluster_power=cc->power;

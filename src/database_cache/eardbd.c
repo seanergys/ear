@@ -237,7 +237,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	pid_t other_server_pid;
 	pid_t other_mirror_pid;
 	sprintf(path_tmp_pid,"%s/%d",conf_clus->install.dir_temp,getpid());
-	if (mkdir(path_tmp_pid,S_IRUSR|S_IWUSR)<0){
+	umask(0);
+	if (mkdir(path_tmp_pid,S_IRUSR | S_IWUSR |S_IXUSR| S_IRGRP | S_IROTH)<0){
 		verb_master("Error creating pid path");
 	}
 	path_pid = path_tmp_pid;
