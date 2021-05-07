@@ -197,6 +197,10 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     if ((current_gpu_pc <= 0) || (c_status != PC_STATUS_RUN)){
         return EAR_SUCCESS;
     }
+    for (i = 0; i < gpu_pc_num_gpus; i++)
+        debug("gpu_dvfs_powercap_main: req_f: %lu curr_f: %lu current_power: %.2lf current_pc: %lu gpu_dvfs_status: %u", t_freq[i], c_freq[i], 
+                values_gpu_diff[i].power_w, gpu_pc_curr_power[i], gpu_dvfs_status);
+    
     for (i=0;i<gpu_pc_num_gpus;i++){
         n_freq[i] = c_freq[i];
         /* Aplicar limites */
