@@ -16,6 +16,8 @@
 */
 
 #include <limits.h>
+#include <math.h>
+#include <common/math_operations.h>
 
 unsigned int equal_with_th(double a, double b, double th)
 {
@@ -105,3 +107,56 @@ long long llong_diff_overflow(long long begin, long long end)
 	return ret;
 }
 
+void** ear_math_apply(void **arr, size_t len, void* (*fn_ptr)(void*)){
+    void** res = malloc(sizeof(void*)*len);
+    for (size_t i = 0; i < len; i++) {
+        res[i] = (*fn_ptr)(arr[i]);
+    }
+    return res;
+}
+
+void ear_math_free_gen_array(void **arr) {
+    free(arr);
+}
+
+ulong ear_math_cosine_similarity(double *a, double *b, size_t n) {
+    double dot_product = 0, magnitude_a = 0, magnitude_b = 0;
+    for (int i = 0; i < n; i++) {
+        dot_product += a[i] * b[i];
+        magnitude_a += pow(a[i], 2);
+        magnitude_b += pow(b[i], 2);
+    }
+    return (ulong)(dot_product / (sqrt(magnitude_a) * sqrt(magnitude_b)));
+}
+
+mean_sd_t ear_math_mean_sd(const double data[], size_t n){
+    mean_sd_t result;
+    result.mean = result.sd = 0.0;
+    if (n == 0)
+        return result;
+    double sum, sq_sum;
+    sum = sq_sum = 0;
+    for (int i = 0; i < n; i++){
+        sum += data[i];
+        sq_sum = pow(data[i], 2);
+    }
+    result.mean = sum / n;
+    result.sd = sqrt(sq_sum / n - pow(result.mean, 2));
+    return result;
+}
+
+double ear_math_mean(const double data[], size_t n) {
+    double m = 0;
+    for (size_t i = 0; i < n; i++) {
+        m += data[i];
+    }
+    return m / n;
+}
+
+double ear_math_standard_deviation(const double data[], size_t n, double mean){
+    double sum = 0;
+    for (size_t i = 0; i < n; i++) {
+        sum += (pow(data[i] - mean, 2));
+    }
+    return sqrt(sum / (n - 1));
+}
