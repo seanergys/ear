@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <math.h>
 #include <common/config.h>
 #include <common/states.h>
 //#define SHOW_DEBUGS 1
@@ -32,6 +33,8 @@
 #include <library/policies/mpi_stats_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
+#include <library/common/library_shared_data.h>
+#include <common/math_operations.h>
 
 
 static timestamp pol_time_init,app_init;
@@ -198,9 +201,9 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
 	mpi_call_get_stats(&current,NULL,i);
 	mpi_call_diff(diff,&current,last);
 	diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
-	mpi_call_copy(last,&current);	
+	mpi_call_copy(last,&current);
 	last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
-	return EAR_SUCCESS;	
+	return EAR_SUCCESS;
 }
 
 
@@ -244,7 +247,6 @@ void verbose_mpi_types(int vl,mpi_calls_types_t *t)
 	verbose_master(vl,"MPI sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu",t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking);
 }
 
-
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t)
 {
 	memset(t,0,sizeof(mpi_calls_types_t));
@@ -284,4 +286,50 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 		if (node_mpi_calls[i].perc_mpi < node_mpi_calls[*min].perc_mpi)	*min = i;
 	}	
 	return EAR_SUCCESS;
+}
+
+state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi){
+    mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
+    for (int i = 0; i < nump; i++) {
+        mpi_calls[i] = &node_mpi_calls[i];
+    }
+    void** percs_mpi_v = ear_math_apply((void**) mpi_calls, nump, mpi_info_get_perc_mpi);
+    free(mpi_calls);
+
+    for (int i = 0; i < nump; i++) {
+        percs_mpi[i] = *(double*)percs_mpi_v[i];
+    }
+    ear_math_free_gen_array(percs_mpi_v);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_sd(int nump, double *percs_mpi, double mean, double *sd){
+    *sd = ear_math_standard_deviation(percs_mpi, nump, mean);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn){
+    *mn = ear_math_mean(percs_mpi, nump);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, ulong *similarity) {
+    *similarity = ear_math_cosine_similarity(current_perc_mpi, last_perc_mpi, size);
+    return EAR_SUCCESS;
+}
+
+int compare_perc_mpi(const void *p1, const void *p2) {
+    return (*(double * const *) p1 < *(double * const *) p2) ? -1 : (*(double * const *) p1 > *(double * const *) p2) ? 1 : 0;
+}
+
+state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump) {
+    qsort(perc_mpi_arr, nump, sizeof(double), compare_perc_mpi);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd){
+    mean_sd_t mean_sd = ear_math_mean_sd(percs_mpi, nump);
+    *mean = mean_sd.mean;
+    *sd = mean_sd.sd;
+    return EAR_SUCCESS;
 }
