@@ -298,7 +298,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
             verbose_master(2,"CPU freq for process %d is %lu",i,new_freq[i]);
 #if LET_TURBO
-            try_boost_cpu_freq(freq_per_core, i, min_mpi, new_freq, min_pstate, c->use_turbo);
+            //try_boost_cpu_freq(freq_per_core, i, min_mpi, new_freq, min_pstate, c->use_turbo);
 #endif
         }
         if (!freq_per_core){
