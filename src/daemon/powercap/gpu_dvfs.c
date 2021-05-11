@@ -98,7 +98,7 @@ ulong select_lower_gpu_freq(uint i, ulong f, uint pstate_steps)
     return f;
 }
 
-ulong select_higher_gpu_freq(uint i,ulong f)
+ulong select_higher_gpu_freq(uint i, ulong f, ulong extra_steps)
 {
   int j=0,found=0;
     // debug("Looking for higher freq for %lu",f);
@@ -115,7 +115,7 @@ ulong select_higher_gpu_freq(uint i,ulong f)
   }else{
     // debug("Frequency %lu found in position %d",f,j);
   }
-  return gpu_freq_list[i][j-1];
+  return gpu_freq_list[i][ear_max(j-extra_steps, 0)];
 }
 
 /*
@@ -197,10 +197,6 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     if ((current_gpu_pc <= 0) || (c_status != PC_STATUS_RUN)){
         return EAR_SUCCESS;
     }
-    for (i = 0; i < gpu_pc_num_gpus; i++)
-        debug("gpu_dvfs_powercap_main: req_f: %lu curr_f: %lu current_power: %.2lf current_pc: %lu gpu_dvfs_status: %u", t_freq[i], c_freq[i], 
-                values_gpu_diff[i].power_w, gpu_pc_curr_power[i], gpu_dvfs_status);
-    
     for (i=0;i<gpu_pc_num_gpus;i++){
         n_freq[i] = c_freq[i];
         /* Aplicar limites */
@@ -211,22 +207,27 @@ state_t gpu_dvfs_pc_thread_main(void *p)
             }
             /* Number of steps is estimated by watching how far are we from the cap.
              * The further from the cap, the more pstates we reduce. Minimum 1 pstate */
-            uint pstate_steps = ear_max((uint)(values_gpu_diff[i].power_w - gpu_pc_curr_power[i])/10, 1);
+            uint pstate_steps = ear_max((uint)(values_gpu_diff[i].power_w - gpu_pc_curr_power[i])/5, 1);
             /* Use the list of frequencies */
             n_freq[i] = select_lower_gpu_freq(i, c_freq[i], pstate_steps);
             debug("%sReducing the GPU-freq[%d] from %lu to %lu (cpower %lf limit %lu) %s",
                     COL_RED,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w,gpu_pc_curr_power[i],COL_CLR);
         }else{ /* We are below the PC */
             if ((c_freq[i] < t_freq[i]) && (t_freq[i] > 0)){
-                extra=compute_extra_gpu_power(values_gpu_diff[i].power_w,c_freq[i],t_freq[i]);
-                if (((values_gpu_diff[i].power_w+extra)< gpu_pc_curr_power[i]) && (c_mode==PC_MODE_TARGET)){
-                    n_freq[i] = select_higher_gpu_freq(i,c_freq[i]);
-                    debug("%sIncreasing the GPU-freq[%d] from %lu to %lu, estimated %lf=(%lf+%lu), limit %lu %s",
-                            COL_GRE,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w+extra,values_gpu_diff[i].power_w,extra,gpu_pc_curr_power[i],COL_CLR);
-                } else {
-                    if (gpu_dvfs_status == PC_STATUS_RELEASE && (t_freq[i] > 0)){
-                        gpu_dvfs_ask_def = 1;
-                    }
+
+                //extra = compute_extra_gpu_power(c_freq[i], values_gpu_diff[i].power_w, t_freq[i]);
+
+                extra = (gpu_pc_curr_power[i] - values_gpu_diff[i].power_w);
+                extra = extra > 5 ? extra / 2.5 : 1;
+                n_freq[i] = select_higher_gpu_freq(i, c_freq[i], extra);
+
+                //n_freq[i] = ear_min(c_freq[ear_max(i-extra, 0)], t_freq[i]);
+                debug("%sIncreasing the GPU-freq[%d] from %lu to %lu, estimated %lf=(%lf+%lu), limit %lu %s", 
+                        COL_GRE,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w+extra,values_gpu_diff[i].power_w,extra,gpu_pc_curr_power[i],COL_CLR);
+
+                //we can't reach target frequency, check if ask_default
+                if (gpu_dvfs_status == PC_STATUS_RELEASE && (t_freq[i] > 0) && (n_freq[i] < t_freq[i])){
+                    gpu_dvfs_ask_def = 1;
                 }
             }
         }
