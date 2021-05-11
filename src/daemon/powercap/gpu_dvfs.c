@@ -486,9 +486,10 @@ uint get_powercap_status(domain_status_t *status)
         status->ok = PC_STATUS_ASK_DEF;
         return 0;
     }
-    for (i=0;i<gpu_pc_num_gpus;i++){
+
+    /*for (i=0;i<gpu_pc_num_gpus;i++){
         debug("total util is 0, GPU %d util %lu", i, gpu_pc_util[i]);
-    }
+    }*/
     /* If we are not using th GPU we can release all the power */
     for (i=0;i<gpu_pc_num_gpus;i++){
         used += (gpu_pc_util[i]>0);
@@ -516,7 +517,7 @@ uint get_powercap_status(domain_status_t *status)
             debug("We cannot release power from GPU %d",i);
             status->ok = PC_STATUS_GREEDY;
             status->exceed = 0;
-            debug("GPU_DVFS status %u",status->ok);
+            debug("GPU_DVFS status GREEDY");
             return 0;
         }else if ((c_freq[i] >= t_freq[i]) && (gpu_pc_util[i]>0)){
             if (values_gpu_diff[i].power_w > gpu_pc_curr_power[i]) // if we are at req_f but we are using more power than we should
@@ -535,7 +536,7 @@ uint get_powercap_status(domain_status_t *status)
     if (status->exceed < MIN_GPU_POWER_MARGIN){ 
         status->exceed = 0;
         status->ok = PC_STATUS_OK;
-        debug("GPU_DVFS status %u",status->ok);
+        debug("GPU_DVFS status OK");
         return 0;
     }
 
