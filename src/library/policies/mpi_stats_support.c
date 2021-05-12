@@ -190,6 +190,7 @@ static state_t mpi_call_diff(mpi_information_t *diff,mpi_information_t *end,mpi_
 	diff->mpi_time        = end->mpi_time - init->mpi_time; 	
 	return EAR_SUCCESS;
 }
+
 void verbose_mpi_data(int vl,mpi_information_t *mc)
 {
 	verbose_master(vl,"Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",mc->total_mpi_calls,mc->mpi_time,mc->exec_time,mc->perc_mpi);
@@ -203,9 +204,15 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
 	diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
 	mpi_call_copy(last,&current);
 	last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
+
+    /*  Check wether values are correctly bounded */
+    if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100){
+        verbose_master(2, "%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf", COL_RED, COL_CLR, (double)diff->mpi_time*100.0, (double)diff->exec_time,
+                diff->perc_mpi, (double)last->mpi_time*100.0, (double)last->exec_time, last->perc_mpi);
+	    return EAR_WARNING;
+    }
 	return EAR_SUCCESS;
 }
-
 
 state_t mpi_call_new_phase(polctx_t *c)
 {
@@ -267,10 +274,16 @@ state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_inform
 state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls,mpi_information_t *last_node)
 {
 	int i;
+    int bad_read_diff = 0;
 	if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
 	for (i=0;i<data->num_processes;i++){
-		mpi_call_read_diff(&node_mpi_calls[i],&last_node[i],i);
+		if (mpi_call_read_diff(&node_mpi_calls[i],&last_node[i],i) != EAR_SUCCESS){
+            bad_read_diff = 1;
+        }
 	}
+    if (bad_read_diff){
+	    return EAR_WARNING;
+    }
 	return EAR_SUCCESS;
 }
 
@@ -290,7 +303,7 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 {
 	int i = 0;
 	*max = 0;
-	*min = 0;		
+	*min = 0;
 	verbosen_master(2,"LB_DATA ");
 	for (i=0; i< nump;i++) verbosen_master(2,"MR[%d]= %.2lf ",i,node_mpi_calls[i].perc_mpi);
 	verbose_master(2,"");

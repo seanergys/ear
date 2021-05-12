@@ -188,7 +188,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     uint local_process_with_high_vpi;
     double local_eff_gain;
     int freq_per_core = 0;
-    double standard_deviation, mpi_stats_perc_mpi_mean;
+    double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean;
 
     if (c == NULL || c->app==NULL) {
         *ready = EAR_POLICY_CONTINUE;
@@ -213,30 +213,20 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
         evaluate_cp(num_processes, my_node_mpi_calls, &max_mpi, &min_mpi);
         mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
-        // mean = calloc(1, sizeof(double));
-        mpi_stats_evaluate_mean(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean);
-        // standard_deviation = calloc(1, sizeof(double));
-        mpi_stats_evaluate_sd(num_processes, percs_mpi, mpi_stats_perc_mpi_mean, &standard_deviation);
-        // free(mean);
-        signature_is_unbalance = (standard_deviation > LB_TH);
+        mpi_stats_evaluate_mean_sd(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd);
+        signature_is_unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
         uint unbalance = enable_load_balance && signature_is_unbalance;
-        verbose_master(2,"Node load unbalance, LH_TH %lf max perc mpi %lf min perc mpi %lf standard deviation %f  unbalance ? %u",
-                LB_TH, percs_mpi[max_mpi], percs_mpi[min_mpi], standard_deviation, unbalance);
-        // free(standard_deviation);
-        // double *last_percs_mpi = calloc(num_processes, sizeof(double));
+        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %f unbalance ? %u",
+                COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi], percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, unbalance);
         mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
-        ulong similarity; //  = calloc(1, sizeof(ulong));
+        ulong similarity;
         mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
         verbose(2, "Similarity between last and current: %lu", similarity);
-        // free(last_percs_mpi);
-        // free(similarity);
         if (signature_is_unbalance && enable_load_balance) {
             freq_per_core = 1;
             nump = num_processes;
         }else nump = 1;
         memcpy(last_my_node_mpi_calls, my_node_mpi_calls, num_processes);
-        // memcpy(sorted_percs_mpi, percs_mpi, num_processes);
-        // mpi_stats_sort_perc_mpi(sorted_percs_mpi, num_processes);
     }
     else nump = 1;
 
