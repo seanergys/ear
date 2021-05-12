@@ -138,7 +138,7 @@ mean_sd_t ear_math_mean_sd(const double data[], size_t n){
     sum = sq_sum = 0;
     for (int i = 0; i < n; i++){
         sum += data[i];
-        sq_sum = pow(data[i], 2);
+        sq_sum += pow(data[i], 2);
     }
     result.mean = sum / n;
     result.sd = sqrt(sq_sum / n - pow(result.mean, 2));
