@@ -52,7 +52,7 @@ void ear_math_free_gen_array(void **arr);
  *  cos(phi) =  ------------
  *              ||A||*||B||
  * */
-ulong ear_math_cosine_similarity(double *a, double *b, size_t n);
+double ear_math_cosine_similarity(double *a, double *b, size_t n);
 
 typedef struct mean_sd {
     double mean;

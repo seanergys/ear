@@ -119,7 +119,7 @@ void ear_math_free_gen_array(void **arr) {
     free(arr);
 }
 
-ulong ear_math_cosine_similarity(double *a, double *b, size_t n) {
+double ear_math_cosine_similarity(double *a, double *b, size_t n) {
     double dot_product = 0, magnitude_a = 0, magnitude_b = 0;
     for (int i = 0; i < n; i++) {
         dot_product += a[i] * b[i];

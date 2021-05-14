@@ -56,7 +56,7 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 state_t mpi_stats_evaluate_sd(int nump, double* percs_mpi, double mean, double *sd);
 state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn);
 state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi);
-state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, ulong *similarity);
+state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity);
 state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump);
 state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd);
 

@@ -90,6 +90,7 @@ static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 static int min_pstate;
 static double *percs_mpi, *last_percs_mpi;
+static uint first_time = 1;
 // static double *sorted_percs_mpi;
 
 /*  wrap function which calculates intructions, flops and cycles. */
@@ -218,10 +219,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         uint unbalance = enable_load_balance && signature_is_unbalance;
         verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %f unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi], percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, unbalance);
-        mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
-        ulong similarity;
-        mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-        verbose(2, "Similarity between last and current: %lu", similarity);
+        if (!first_time){
+            mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
+            double similarity;
+            mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+            verbose(2, "Similarity between last and current: %lf", similarity);
+        }
+        else{
+            verbose_master(2, "First time!");
+            first_time = 0;
+        }
         if (signature_is_unbalance && enable_load_balance) {
             freq_per_core = 1;
             nump = num_processes;
@@ -362,7 +369,18 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
 #endif
 #if NEW_IMCFREQ
-    }else if ((min_time_state == SELECT_IMCFREQ) && (dyn_unc)){
+    }else if (min_time_state == COMP_IMCREF){
+        ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
+        ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
+        copy_cpufreq_sel(new_freq, last_cpufreq_sel, sizeof(ulong) * MAX_CPUS_SUPPORTED);
+        ref_imc_pstate = curr_imc_pstate;
+        // freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_freq;
+        verbose_master(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu ref imc_pstate set to %u",
+                *new_freq,freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], ref_imc_pstate);
+        min_time_state = SELECT_IMCFREQ;
+        *ready = EAR_POLICY_TRY_AGAIN;
+    }
+    else if ((min_time_state == SELECT_IMCFREQ) && (dyn_unc)){
         verbose_master(2,"%sSELECT_IMCFREQ%s state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",
                 COL_YLW, COL_CLR, min_pstate, last_cpu_pstate, last_imc_pstate, curr_pstate, imc_pstate);
         copy_cpufreq_sel(new_freq, last_cpufreq_sel, sizeof(ulong) * MAX_CPUS_SUPPORTED);
@@ -413,16 +431,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 min_time_state = SELECT_CPUFREQ;
             }
         }
-    }else if (min_time_state == COMP_IMCREF){
-        ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
-        ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP;
-        copy_cpufreq_sel(new_freq, last_cpufreq_sel, sizeof(ulong) * MAX_CPUS_SUPPORTED);
-        ref_imc_pstate = curr_imc_pstate;
-        // freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_freq;
-        verbose_master(2,"COMP_IMCREF cpufreq %lu imc %lu-%lu ref imc_pstate set to %u",
-                *new_freq,freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], ref_imc_pstate);
-        min_time_state = SELECT_IMCFREQ;
-        *ready = EAR_POLICY_TRY_AGAIN;
     }
 #endif
     verbose_master(2,"Next min_time state %u next policy state %u",min_time_state,*ready);

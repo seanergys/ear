@@ -339,7 +339,7 @@ state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn){
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, ulong *similarity) {
+state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity) {
     *similarity = ear_math_cosine_similarity(current_perc_mpi, last_perc_mpi, size);
     return EAR_SUCCESS;
 }
