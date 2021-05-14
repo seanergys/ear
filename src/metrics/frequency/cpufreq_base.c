@@ -17,6 +17,7 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <common/hardware/topology.h>
 #include <metrics/common/msr.h>
 #include <metrics/frequency/cpufreq_base.h>
 #include <common/hardware/cpuid.h>
@@ -47,7 +48,9 @@ static ulong find_base_frequency(topology_t *tp)
                 aux = ((fid * 200LLU) / did) * 1000;
                 freq_base = (ulong) aux;
             }
-        }
+        }else{
+					if (topology_freq_getbase(0,&freq_base) != EAR_SUCCESS) freq_base = 0;
+				}
     }
     debug("Detected base frequency %u KHz", freq_base);
 	return freq_base;
