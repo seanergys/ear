@@ -39,7 +39,7 @@
 
 
 #define DEBUG_PERIOD 15
-#define MIN_GPU_IDLE_POWER 30
+#define MIN_GPU_IDLE_POWER 40
 
 static uint gpu_dvfs_pc_enabled=0;
 //static ulong c_req_f;
@@ -98,7 +98,7 @@ ulong select_lower_gpu_freq(uint i, ulong f, uint pstate_steps)
     return f;
 }
 
-ulong select_higher_gpu_freq(uint i, ulong f, ulong extra_steps)
+ulong select_higher_gpu_freq(uint i, ulong f, int extra_steps)
 {
   int j=0,found=0;
     // debug("Looking for higher freq for %lu",f);
@@ -110,10 +110,10 @@ ulong select_higher_gpu_freq(uint i, ulong f, ulong extra_steps)
     else j++;
   }while((found==0) && (j!=gpu_num_freqs[i]));
   if (!found){
-    // debug("Frequency %lu not found in GPU %u",f,i);
+     debug("Frequency %lu not found in GPU %u",f,i);
     return gpu_freq_list[i][0];
   }else{
-    // debug("Frequency %lu found in position %d",f,j);
+     debug("Frequency %lu found in position %d returning %d",f,j, ear_max(j-extra_steps, 0));
   }
   return gpu_freq_list[i][ear_max(j-extra_steps, 0)];
 }
@@ -163,7 +163,7 @@ state_t gpu_dvfs_pc_thread_init(void *p)
 /************************ This function is called by the monitor in iterative part ************************/
 state_t gpu_dvfs_pc_thread_main(void *p)
 {
-    ulong extra;
+    int extra;
     uint i;
     uint gpu_dvfs_local_util = 0;
 
@@ -219,11 +219,11 @@ state_t gpu_dvfs_pc_thread_main(void *p)
 
                 extra = (gpu_pc_curr_power[i] - values_gpu_diff[i].power_w);
                 extra = extra > 5 ? extra / 2.5 : 1;
-                n_freq[i] = select_higher_gpu_freq(i, c_freq[i], extra);
+                n_freq[i] = ear_min(select_higher_gpu_freq(i, c_freq[i], extra), t_freq[i]);
 
                 //n_freq[i] = ear_min(c_freq[ear_max(i-extra, 0)], t_freq[i]);
-                debug("%sIncreasing the GPU-freq[%d] from %lu to %lu, estimated %lf=(%lf+%lu), limit %lu %s", 
-                        COL_GRE,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w+extra,values_gpu_diff[i].power_w,extra,gpu_pc_curr_power[i],COL_CLR);
+                debug("%sIncreasing the GPU-freq[%d] from %lu to %lu, estimated %lf=(%lf+%d), limit %lu %s", 
+                        COL_GRE,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w+(ulong)extra,values_gpu_diff[i].power_w,extra,gpu_pc_curr_power[i],COL_CLR);
 
                 //we can't reach target frequency, check if ask_default
                 if (gpu_dvfs_status == PC_STATUS_RELEASE && (t_freq[i] > 0) && (n_freq[i] < t_freq[i])){

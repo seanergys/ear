@@ -116,7 +116,7 @@ const char     *pcsyms_names[] ={
     "increase_powercap_allocation"
 };
 
-#define UTIL_BURST_PERIOD 10000
+#define UTIL_BURST_PERIOD 1000
 #define UTIL_RELAX_PERIOD 60000
 #define CHECK_STATUS_PERIOD 500
 
@@ -158,7 +158,7 @@ static topology_t pc_topology_info;
 #define TDP_GPU 250
 void compute_power_distribution()
 {
-    float node_ratio = 0.1;
+    float node_ratio = 0.05;
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
     bpd_cpu = TDP_CPU;
