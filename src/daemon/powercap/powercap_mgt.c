@@ -116,7 +116,15 @@ const char     *pcsyms_names[] ={
     "increase_powercap_allocation"
 };
 
+#ifndef SYN_TEST
 #define UTIL_BURST_PERIOD 1000
+#else
+int UTIL_BURST_PERIOD = 1000;
+void pmgt_set_burst(int b)
+{
+    UTIL_BURST_PERIOD = b;
+}
+#endif
 #define UTIL_RELAX_PERIOD 60000
 #define CHECK_STATUS_PERIOD 500
 
