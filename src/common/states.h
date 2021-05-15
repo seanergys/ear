@@ -19,8 +19,10 @@
 #define STATES_H
 
 #include <errno.h>
+#include <stdio.h>
 #include <common/sizes.h>
 #include <common/output/error.h>
+#include <common/output/verbose.h>
 #include <common/output/debug.h>
 
 /* error definitions */

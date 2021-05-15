@@ -28,10 +28,12 @@ typedef struct ctx_gpu_s {
 	ctx_t ctx_man;
 } ctx_gpu_t;
 
-static uint			  dev_count;
+static uint			  dev_count, node_dev_count;
 static gpu_ops_t     *ops_met;
 static mgt_gpu_ops_t *ops_man;
 static uint the_gpu_model = MODEL_UNDEFINED;
+static gpu_t *node_gpu_data;
+static ulong *node_gpu_freqs = NULL;
 
 state_t gpu_lib_load(settings_conf_t *settings)
 {
@@ -48,6 +50,10 @@ state_t gpu_lib_load(settings_conf_t *settings)
 		error("mgt_gpu_load returned %d (%s)", s, state_msg);
 		return s;
 	}
+	if (the_gpu_model != gpu_model()){
+		debug("GPU EARD model %u != EARL GPU model %u",the_gpu_model,gpu_model());
+		the_gpu_model = gpu_model();
+	}
 
 	return EAR_SUCCESS;
 }
@@ -57,22 +63,33 @@ state_t gpu_lib_init(ctx_t *_c)
 	ctx_gpu_t *c = (ctx_gpu_t *) _c->context;
 	state_t s;
 	state_t ret;
-	if ((ret=eards_gpu_dev_count(&dev_count))!=EAR_SUCCESS) return ret;
-	debug("eards_gpu_dev_count %u",dev_count);
+	if ((ret=eards_gpu_dev_count(&node_dev_count))!=EAR_SUCCESS) return ret;
+	debug("eards_gpu_dev_count %u",node_dev_count);
 	if (c == NULL) {
 		c = calloc(1, sizeof(ctx_gpu_t));
 		_c->context = (ctx_t *) c;
 	}
 	//
+	debug("testing metrics unprivileged");
 	if (xtate_fail(s, ops_met->init_unprivileged(&c->ctx_met))) {
 		error("ops_met->init_unprivileged returned %d (%s)", s, state_msg);
 		return s;
 	}
+	debug("testing mgt unprivileged");
 	if (xtate_fail(s, ops_man->init_unprivileged(&c->ctx_man))) {
 		error("ops_man->init_unprivileged returned %d (%s)", s, state_msg);
 		return s;
 	}
-
+	if ((gpu_model() == MODEL_DUMMY) && (node_dev_count > 1)) dev_count = 1;
+	else if (node_dev_count != dev_count)                     ops_man->count(&c->ctx_man,&dev_count);
+	else                                                      dev_count = node_dev_count;
+	debug("Using %d gpus from %d in node ", dev_count,node_dev_count);
+	node_gpu_data = calloc(node_dev_count,sizeof(gpu_t));
+	node_gpu_freqs = calloc(node_dev_count,sizeof(ulong));
+	if ((node_gpu_data == NULL) || (node_gpu_freqs == NULL)){
+		error("Not enough memory");
+		return EAR_ERROR;
+	}
 	return EAR_SUCCESS;
 }
 
@@ -112,10 +129,19 @@ state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 {
 	state_t ret;
 	char gpu_ste[256];
-	debug("reading %u gpus",dev_count);
-	if ((ret=eards_gpu_data_read(data,dev_count))!=EAR_SUCCESS) return ret;	
+	memset(node_gpu_data, 0 , node_dev_count*sizeof(gpu_t));
+	if (the_gpu_model == MODEL_DUMMY){
+		memset(data,0,dev_count*sizeof(gpu_t));
+		return EAR_SUCCESS;
+	}
+	debug("reading %u gpus",node_dev_count);
+	if ((ret=eards_gpu_data_read(node_gpu_data,node_dev_count))!=EAR_SUCCESS) return ret;	
+	debug("Moving %d gpu data to user data",dev_count);
+	memcpy(data,node_gpu_data,dev_count*sizeof(gpu_t));
+#if SHOW_DEBUGS
 	gpu_lib_data_tostr(data,gpu_ste,sizeof(gpu_ste));
 	debug("gpu data %s",gpu_ste);
+#endif
 	return EAR_SUCCESS;
 }
 
@@ -212,14 +238,18 @@ state_t gpu_lib_freq_limit_reset()
 state_t gpu_lib_freq_limit_set(ulong *khz)
 {
 	int ret,i;
+	if (the_gpu_model == MODEL_DUMMY){
+		return EAR_SUCCESS;
+	}
 	if (khz == NULL){  
 		state_return_msg(EAR_ERROR,EAR_BAD_ARGUMENT,"Invalid NULL argument");
 	}
 	for (i=0;i<dev_count;i++){
 		verbose_master(2,"GPU_LIB_FREQ[%d]=%lu",i,khz[i]);
 	}
-	
-	ret = eards_gpu_set_freq(dev_count,khz);
+	memset(node_gpu_freqs,0,sizeof(ulong)*node_dev_count);
+	memcpy(node_gpu_freqs,khz,sizeof(ulong)*dev_count);	
+	ret = eards_gpu_set_freq(node_dev_count,node_gpu_freqs);
 	if (ret != EAR_SUCCESS){
 		state_return_msg(EAR_ERROR,EAR_SYSCALL_ERROR,"EARD local API error in GPU_Set_freq");
 	}
