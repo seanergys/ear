@@ -17,6 +17,7 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <common/hardware/topology.h>
 #include <metrics/common/msr.h>
 #include <metrics/frequency/cpufreq_base.h>
 #include <common/hardware/cpuid.h>

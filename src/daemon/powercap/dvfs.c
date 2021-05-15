@@ -157,8 +157,10 @@ state_t dvfs_pc_thread_main(void *p)
     if ((current_dvfs_pc <= 0) || (c_status != PC_STATUS_RUN)){
         return EAR_SUCCESS;
     }
+
     /* Aplicar limites */
     frequency_get_cpufreq_list(node_size,c_freq);
+    debug("dvfs_powercap_main: req_f: %lu curr_f: %lu current_power: %.2lf current_pc: %u dvfs_status: %u", c_req_f[0], c_freq[0], power_rapl, current_dvfs_pc, dvfs_status);
     if (power_rapl > my_limit){ /* We are above the PC , reduce freq*/
         if (dvfs_status == PC_STATUS_RELEASE){
             dvfs_ask_def = 1;
@@ -352,13 +354,16 @@ uint get_powercap_status(domain_status_t *status)
     status->strain = 0;
     status->current_pc = current_dvfs_pc;
 
-    debug("DVFS: get_powercap_status");
+    //debug("DVFS: get_powercap_status");
     if (!dvfs_monitor_initialized) return 0;
     /* Return 0 means we cannot release power */
     if (current_dvfs_pc == PC_UNLIMITED) return 0;
     /* If we don't know the req_f we cannot release power */
 
-    if (c_req_f[0] == 0) { debug("unknown req_f"); return 0; }
+    if (c_req_f[0] == 0) { 
+        if (c_status != PC_STATUS_IDLE) debug("unknown req_f"); 
+        return 0; 
+    }
 
     frequency_get_cpufreq_list(node_size,c_freq);
     status->strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 

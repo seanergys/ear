@@ -116,7 +116,15 @@ const char     *pcsyms_names[] ={
     "increase_powercap_allocation"
 };
 
-#define UTIL_BURST_PERIOD 10000
+#ifndef SYN_TEST
+#define UTIL_BURST_PERIOD 1000
+#else
+int UTIL_BURST_PERIOD = 1000;
+void pmgt_set_burst(int b)
+{
+    UTIL_BURST_PERIOD = b;
+}
+#endif
 #define UTIL_RELAX_PERIOD 60000
 #define CHECK_STATUS_PERIOD 500
 
@@ -158,7 +166,7 @@ static topology_t pc_topology_info;
 #define TDP_GPU 250
 void compute_power_distribution()
 {
-    float node_ratio = 0.1;
+    float node_ratio = 0.05;
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
     bpd_cpu = TDP_CPU;
@@ -725,21 +733,21 @@ void pmgt_get_status(pmgt_status_t *status)
         }
     }
 
-    debug("pmgt: DOMAIN_CPU: %d DOMAIN_GPU: %d", cdomain_status[DOMAIN_CPU].ok, cdomain_status[DOMAIN_GPU].ok);
-    debug("pmgt: DOMAIN_CPU strain: %d", cdomain_status[DOMAIN_CPU].strain);
+    debug("pmgt_get_status: DOMAIN_CPU: %d DOMAIN_GPU: %d", cdomain_status[DOMAIN_CPU].ok, cdomain_status[DOMAIN_GPU].ok);
+    debug("pmgt_get_status: DOMAIN_CPU strain: %d", cdomain_status[DOMAIN_CPU].strain);
     if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK && cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) { //OK + OK
         status->status = PC_STATUS_OK;
-        debug("pmgt: OK + OK");
+        debug("pmgt_get_status: OK + OK");
     } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY || cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) {
         if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { //if we are GREDDY + RELEASE, we can still rebalance so we are ok
             status->status = PC_STATUS_OK;
-            debug("pmgt: GREEDY + RELEASE");
+            debug("pmgt_get_status: GREEDY + RELEASE");
         } else { // GREEDY + GREEDY or GREEDY + OK
             status->status = PC_STATUS_GREEDY;
             status->requested += cdomain_status[DOMAIN_CPU].strain / 2; //MAX of 50W per domain
             status->requested += cdomain_status[DOMAIN_GPU].strain / 2;
             status->requested = ear_min(status->requested, 50); // a total maximum step of 50
-            debug("pmgt: GREEDY + OK/GREEDY");
+            debug("pmgt_get_status: GREEDY + OK/GREEDY");
             // status->requested =  -> this will be computed in powercap.c as it was before, for now
         }
     } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { // no need to check for greedy since we did that before, this includes OK+RELEASE
@@ -747,7 +755,7 @@ void pmgt_get_status(pmgt_status_t *status)
         for (i = 0; i < NUM_DOMAINS; i++)
             status->tbr += cdomain_status[i].exceed;
     }
-    debug("pmgt: Final pmgt_status: %d", status->status);
+    debug("pmgt_get_status: Final pmgt_status: %d", status->status);
 
 }
 
