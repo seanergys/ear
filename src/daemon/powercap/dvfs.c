@@ -186,7 +186,7 @@ state_t dvfs_pc_thread_main(void *p)
         frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
         frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
         if (c_pstate[0]>t_pstate[0]){ /* PENDING */
-            extra=compute_extra_power(power_rapl,1,t_pstate[0]);
+            extra=compute_extra_power(power_rapl,1,c_pstate[0]-1);
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ /* PENDING */
                 c_pstate[0]=c_pstate[0]-1; /* PENDING */
                 extend_from_cpu_to_list(0,c_pstate,node_size);
