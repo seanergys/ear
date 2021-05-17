@@ -427,15 +427,14 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 	int fd;
 
 	sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
-	
 	if ((fd = open(path, O_RDONLY)) < 0)
 	{
 		*freq_base = 1000000LU;
     	return EAR_ERROR;
 	}
-	
-	ulong f0 = read_freq(fd);	
-	ulong f1 = read_freq(fd);	
+
+	ulong f0 = read_freq(fd);
+	ulong f1 = read_freq(fd);
 	ulong fx = f0 - f1;
 
 	if (fx == 1000) {

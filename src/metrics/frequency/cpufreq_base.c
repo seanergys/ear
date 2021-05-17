@@ -49,38 +49,40 @@ static ulong find_base_frequency(topology_t *tp)
                 freq_base = (ulong) aux;
             }
         }else{
-					if (topology_freq_getbase(0,&freq_base) != EAR_SUCCESS) freq_base = 0;
+					if (state_fail(topology_freq_getbase(0,&freq_base))) freq_base = 0LU;
 				}
     }
-    debug("Detected base frequency %u KHz", freq_base);
-	return freq_base;
+    debug("Detected base frequency %lu KHz", freq_base);
+    return freq_base;
+} 
+
+void cpufreq_get_base(topology_t *tp, ulong *freq_base)
+{
+  *freq_base = find_base_frequency(tp);
+  debug("freq_base: %lu KHz", *freq_base);
 }
 
 static uint find_boost_enabled(topology_t *tp)
 {
-	uint boost_enabled = 0;
+  uint boost_enabled = 0;
 
-	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-		cpuid_regs_t regs;
-		//
-		CPUID(regs, 0x06, 0);
-		// 
-		boost_enabled = (ulong) cpuid_getbits(regs.eax, 1, 1); 
-	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-		ullong aux;
-		if (state_ok(msr_read(0, &aux, sizeof(ullong), ZEN_REG_HWCONF))) {
-			boost_enabled = (uint) !getbits64(aux, 25, 25);
-		}
-	}
+  if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+    cpuid_regs_t regs;
+    //
+    CPUID(regs, 0x06, 0);
+    //
+    boost_enabled = (ulong) cpuid_getbits(regs.eax, 1, 1);
+  } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+    ullong aux;
+    if (state_ok(msr_read(0, &aux, sizeof(ullong), ZEN_REG_HWCONF))) {
+      boost_enabled = (uint) !getbits64(aux, 25, 25);
+    }
+  }
 
-	return boost_enabled;
+  return boost_enabled;
 }
 
-void cpufreq_get_base(topology_t *tp, ulong *freq_base)
-{
-	*freq_base = find_base_frequency(tp); 
-	debug("freq_base: %lu KHz", *freq_base);
-} 
+
 
 void cpufreq_get_boost_enabled(topology_t *tp, uint *boost_enabled)
 {

@@ -111,5 +111,4 @@ state_t topology_tostr(topology_t *topo, char *buffer, size_t n);
 
 state_t topology_freq_getbase(uint cpu, ulong *freq_base);
 
-
 #endif
