@@ -795,7 +795,7 @@ uint pmgt_powercap_status_per_domain(uint action)
     }
     debug("GPU has strain %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", 
            cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain,cdomain_status[DOMAIN_CPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
-    if ((action == CHECK_ASK_DEFAULT) || (totalask > 0)){
+    if ((action == CHECK_ASK_DEFAULT) && (totalask > 0)){
         debug("action is CHECK_ASK_DEFAULT, not power redistribution");
         /* Some module needs an urgent power reallocation */
 		if (totalask > 0){ 
