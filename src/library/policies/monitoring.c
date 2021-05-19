@@ -37,6 +37,7 @@
 
 
 static uint last_pc=0;
+extern uint gpu_initialized;
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -58,13 +59,20 @@ state_t policy_init(polctx_t *c)
   	last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
   	last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 	}
-
 #if USE_GPUS
+	if (masters_info.my_master_rank>=0 && gpu_initialized){
+	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
+    verbose_master(2,"Error loading GPU context");
+  }
+	verbose(2,"RANK %d GPU init",masters_info.my_master_rank);
+
 	if (c->num_gpus){
+		verbose(2,"RANK %d GPUs %d",masters_info.my_master_rank,c->num_gpus);
 		if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
 			verbose_master(2,"Error loading GPU policy");
 		}
 		if (gpus.init != NULL) gpus.init(c);
+	}
 	}
 #endif
 	return EAR_SUCCESS;

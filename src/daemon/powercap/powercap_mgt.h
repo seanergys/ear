@@ -76,5 +76,8 @@ uint pmgt_powercap_status_per_domain();
 /* Returns the current node status using its domains status */
 void pmgt_get_status(pmgt_status_t *status);
 
+#if SYN_TEST
+void pmgt_set_burst(int b);
+#endif
 
 #endif

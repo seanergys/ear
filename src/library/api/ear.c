@@ -905,23 +905,30 @@ void ear_init()
 
 	// This is not frequency any more
 	if (masters_info.my_master_rank>=0){
-	  #if POWERCAP
+  #if POWERCAP
   	get_app_mgt_path(get_ear_tmp(),app_mgt_path);
-  	debug("app_mgt_path %s",app_mgt_path);
-  	app_mgt_info = attach_app_mgt_shared_area(app_mgt_path);
-  	if (app_mgt_info == NULL){
-    	error("Application shared area not found");
+  	verbose_master(2,"app_mgt_path %s",app_mgt_path);
+  	app_mgt_info=attach_app_mgt_shared_area(app_mgt_path);
+  	if (app_mgt_info==NULL){
+    		error("Application shared area not found");
+		eard_ok = 0;
+		my_id = 1;
+		return;
   	}
-		fill_application_mgt_data(app_mgt_info);
-		/* At this point we have notified the EARD the number of nodes in the application */
-		check_large_job_use_case();
-		/* This area is RW */
-		get_pc_app_info_path(get_ear_tmp(),pc_app_info_path);
-		debug("pc_app_info path %s",pc_app_info_path);
-		pc_app_info_data = attach_pc_app_info_shared_area(pc_app_info_path);
-		if (pc_app_info_data == NULL){
-			error("pc_application_info area not found");
-		}
+	fill_application_mgt_data(app_mgt_info);
+	/* At this point we have notified the EARD the number of nodes in the application */
+	check_large_job_use_case();
+	/* This area is RW */
+	get_pc_app_info_path(get_ear_tmp(),pc_app_info_path);
+	verbose_master(2,"pc_app_info path %s",pc_app_info_path);
+	pc_app_info_data=attach_pc_app_info_shared_area(pc_app_info_path);
+	if (pc_app_info_data==NULL){
+		error("pc_application_info area not found");
+		eard_ok = 0;
+                my_id = 1;
+                return;
+
+	}
   	#endif
 	}
 	  if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
