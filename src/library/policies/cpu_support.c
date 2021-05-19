@@ -16,6 +16,8 @@
  */
 
 //#define SHOW_DEBUGS 1
+#define _GNU_SOURCE
+#include <sched.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -25,13 +27,32 @@
 #include <unistd.h>
 #include <common/config.h>
 #include <common/states.h>
+#include <common/math_operations.h>
+
 #include <common/output/verbose.h>
+#include <common/hardware/topology.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/policies/policy_ctx.h>
+#include <library/api/clasify.h>
 #include <library/policies/cpu_support.h>
+
+void process_avg_cpu_freq(cpu_set_t *aff,ulong *cpuflist,ulong *avgcpu)
+{
+	int i = 0;
+	ulong cpuftotal = 0;
+	int total = 0;
+	for (i=0; i<mtopo.cpu_count;i++){
+		if (CPU_ISSET(i,aff)){ 
+			total ++;
+			cpuftotal += cpuflist[i];
+		}
+	}
+	*avgcpu = cpuftotal / total; 
+	
+}
 
 state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong *def_freq,ulong *freq_ref,double *time_ref,
         double *power_ref)
@@ -167,3 +188,11 @@ state_t try_boost_cpu_freq(int freq_per_core, int nproc, int min_mpi, ulong *fre
     return EAR_SUCCESS;
 }
 #endif
+
+int signatures_different(signature_t *s1, signature_t *s2,float p)
+{
+	if (!equal_with_th(s1->CPI,s2->CPI,p) || !equal_with_th(s1->GBS, s2->GBS,p)){ 
+		if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)) return 1;
+	}
+	return 0;	
+}

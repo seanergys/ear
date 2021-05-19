@@ -19,6 +19,9 @@
 #include <library/api/mpi_support.h>
 
 typedef struct mpi_calls_types{
+	ulong time_mpi;
+	ulong time_period;
+	ulong mpi;
 	ulong sync;
 	ulong collec;
 	ulong blocking;

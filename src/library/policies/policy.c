@@ -22,7 +22,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config/config_env.h>
 #include <common/system/symplug.h>
@@ -161,13 +161,13 @@ static void from_proc_to_core(ulong *cpuf)
     ulong f;
     int ccount;
     cpu_set_t m;
-		verbose_master(3,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
+		verbose_master(2,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
     ccount = arch_desc.top.cpu_count;
     for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
         f = cpuf[p];
         m = sig_shared_region[p].cpu_mask;
-				verbose_master(3,"Frequency for process %d is %lu",p,f);
+				verbose_master(2,"Frequency for process %d is %lu",p,f);
         for (c = 0 ; c < ccount; c++){
             if (CPU_ISSET(c,&m)){ 
 								verbosen_master(3,"CPU %d ",c);
@@ -211,10 +211,10 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     state_t s;
     debug("policy_cpu_freq_selection");
 #if POWERCAP
-    if (pc_app_info_data->cpu_mode==PC_DVFS){
+    if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
         ulong f;
         /* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data,*freq_set);
+        pcapp_info_set_req_f(pc_app_info_data,freq_set[0]);
         f=pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
         debug("Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
         freq_set[0] = f;
@@ -755,7 +755,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 {
     polctx_t *c=&my_pol_ctx;
     state_t ret,retg=EAR_SUCCESS;
-    if (polsyms_fun.ok!=NULL){
+		if (curr == NULL || prev == NULL){
+			*ok = 1;
+			return EAR_SUCCESS;
+		}
+    if (polsyms_fun.ok != NULL){
 #if POWERCAP
         pc_support_compute_next_state(c,&my_pol_ctx.app->pc_opt,curr);
 #endif

@@ -505,11 +505,13 @@ static int metrics_partial_stop(uint where)
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial stop");
     }
-    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],NULL,&cpufreq_data_avg[LOO]))){
+    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],cpufreq_data_per_core,&cpufreq_data_avg[LOO]))){
       error("CPUFreq data diff");
     }else{
       debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
+		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++) verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
+		verbosen_master(3,"\n");
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
     #if NEW_IMCFREQ
 		if (imc_mgt_compatible){
@@ -674,8 +676,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
 		#if USE_GPUS
 		if (gpu_initialized){
-			metrics->gpu_sig.num_gpus=ear_num_gpus_in_node;
-			if ((s == APP) && (earl_gpu_model == MODEL_DUMMY)){ 
+			metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
+			if (earl_gpu_model == MODEL_DUMMY){ 
 				debug("Setting num_gpu to 0 because model is DUMMY");
 				metrics->gpu_sig.num_gpus = 0;
 			}
@@ -727,6 +729,7 @@ int metrics_init(topology_t *topo)
 
 	hw_cache_line_size = topo->cache_line_size;
 	num_packs = topo->socket_count;
+	topology_copy(&mtopo,topo);
 
 	debug("detected cache line size: %0.2lf bytes", hw_cache_line_size);
 	debug("detected sockets: %d", num_packs);
@@ -852,6 +855,7 @@ int metrics_init(topology_t *topo)
 		imc_mgt_compatible = 0;
 		verbose(2,"IMC management API not compatible");
 	}
+	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
 	if (imc_mgt_compatible){
 	#if NEW_IMCFREQ
 	/* To compute IMC average */

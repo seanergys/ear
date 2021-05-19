@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <assert.h>
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/config/config_env.h>
@@ -136,9 +137,9 @@ char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
 float ratio_PPN;
 #if POWERCAP
-app_mgt_t *app_mgt_info;
+app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
-pc_app_info_t *pc_app_info_data;
+pc_app_info_t *pc_app_info_data = NULL;
 char pc_app_info_path[GENERIC_NAME];
 #endif
 // Dynais
@@ -147,7 +148,7 @@ static dynais_call_t dynais;
 suscription_t *earl_monitor;
 state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
-static uint seconds = 0;
+static ulong seconds = 0;
 static uint ear_guided = DYNAIS_GUIDED; 
 static int end_periodic_th=0;
 //
@@ -155,7 +156,7 @@ static int end_periodic_th=0;
 static void print_local_data()
 {
 	char ver[64];
-	if (masters_info.my_master_rank==0) {
+	if (masters_info.my_master_rank>=0) {
 	version_to_str(ver);
 	#if MPI
 	verbose(1, "------------EAR%s MPI enabled --------------------",ver);
@@ -907,8 +908,8 @@ void ear_init()
 	  #if POWERCAP
   	get_app_mgt_path(get_ear_tmp(),app_mgt_path);
   	debug("app_mgt_path %s",app_mgt_path);
-  	app_mgt_info=attach_app_mgt_shared_area(app_mgt_path);
-  	if (app_mgt_info==NULL){
+  	app_mgt_info = attach_app_mgt_shared_area(app_mgt_path);
+  	if (app_mgt_info == NULL){
     	error("Application shared area not found");
   	}
 		fill_application_mgt_data(app_mgt_info);
@@ -917,8 +918,8 @@ void ear_init()
 		/* This area is RW */
 		get_pc_app_info_path(get_ear_tmp(),pc_app_info_path);
 		debug("pc_app_info path %s",pc_app_info_path);
-		pc_app_info_data=attach_pc_app_info_shared_area(pc_app_info_path);
-		if (pc_app_info_data==NULL){
+		pc_app_info_data = attach_pc_app_info_shared_area(pc_app_info_path);
+		if (pc_app_info_data == NULL){
 			error("pc_application_info area not found");
 		}
   	#endif
@@ -930,9 +931,11 @@ void ear_init()
       if (ear_affinity_is_set){ 
         sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
         sig_shared_region[my_node_id].affinity = 1;
+				#if 0
         if (masters_info.my_master_rank>=0){ 
 					print_affinity_mask(&arch_desc.top);
 				}
+				#endif
       }else{ 
         sig_shared_region[my_node_id].affinity = 0;
         verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
@@ -1006,15 +1009,16 @@ void ear_init()
 	if (masters_info.my_master_rank==0) {
 		verbose(1, "EAR initialized successfully ");
 	}
-	if (masters_info.my_master_rank >= 0){
+	//if (masters_info.my_master_rank >= 0){
 		earl_monitor = suscription();
 		earl_monitor->call_init = earl_periodic_actions_init;
 		earl_monitor->call_main = earl_periodic_actions;
-		earl_monitor->time_relax = 1000;
+		earl_monitor->time_relax = 10000;
 		earl_monitor->time_burst = 1000;
 		monitor_init();
 		monitor_register(earl_monitor);
-	}
+		if (is_mpi_enabled()) monitor_relax(earl_monitor);
+	//}
 	# if 0
 	#if !MPI
 	if (pthread_create(&earl_periodic_th,NULL,earl_periodic_actions,NULL)){
@@ -1137,23 +1141,24 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 				case DYNAIS_ENABLED:
 					{
 					/* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
-					if (check_periodic_mode==0){  // check_periodic_mode=0 the first time a signature is computed
+					if (check_periodic_mode == 0){  // check_periodic_mode=0 the first time a signature is computed
 						ear_mpi_call_dynais_on(call_type,buf,dest);
 					}else{ // Check every N=check_every mpi calls
 						/* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
-						if ((total_mpi_calls%check_every)==0){
+						if ((total_mpi_calls%check_every) == 0){
 							time(&curr_time);
-							time_from_mpi_init=difftime(curr_time,application.job.start_time);
+							time_from_mpi_init = difftime(curr_time,application.job.start_time);
 						
 							/* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
-							if (time_from_mpi_init >=dynais_timeout){
+							if (time_from_mpi_init >= dynais_timeout){
 								// we must compute N here
-								ear_periodic_mode=PERIODIC_MODE_ON;
+								ear_periodic_mode = PERIODIC_MODE_ON;
+								assert(dynais_timeout > 0);
 								mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
-								if (masters_info.my_master_rank>=0) traces_start();
+								if (masters_info.my_master_rank >= 0) traces_start();
 								verbose_master(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
 									time_from_mpi_init,mpi_calls_in_period,ear_status);
-								ear_iterations=0;
+								ear_iterations = 0;
 				        states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
 								states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
 							}else{
@@ -1176,7 +1181,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 			break;
 		case PERIODIC_MODE_ON:
 				/* EAR energy policy is called periodically */
-				if ((total_mpi_calls%mpi_calls_per_second) == 0){
+				if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
 					ear_iterations++;
 					states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
 				}
@@ -1184,7 +1189,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 	}
 	}
 #else
-    if (dynais_enabled==DYNAIS_ENABLED) ear_mpi_call_dynais_on(call_type,buf,dest);
+    if (dynais_enabled == DYNAIS_ENABLED) ear_mpi_call_dynais_on(call_type,buf,dest);
     else ear_mpi_call_dynais_off(call_type,buf,dest);
 #endif
 }
@@ -1447,14 +1452,18 @@ static io_data_t last_io;
 static ctx_t stat_ctx;
 static proc_stat_t c_stat;
 static long tics_per_second;
-static mpi_information_t last_mpi_data;
-static mpi_calls_types_t last_mpi_types;
+static mpi_information_t *my_node_mpi_calls,*last_node_mpi_calls;
+static mpi_calls_types_t *my_node_mpi_types_calls,*last_node_mpi_types_calls;
+static timestamp_t periodic_time;
+static ulong last_check = 0;
+
 state_t earl_periodic_actions_init(void *no_arg)
 {
-		verbose_master(1,"EARL periodic thread ON");
-		seconds = 0;
+		verbose_master(1,"RANK %d EARL periodic thread ON",ear_my_rank);
 		memset((char *)&last_io,0,sizeof(io_data_t));
 		tics_per_second = sysconf(_SC_CLK_TCK);
+		timestamp_getfast(&periodic_time);
+		seconds = 0;
 #if 0
 		proc_stat_load();
 		proc_stat_init(&stat_ctx,sig_shared_region[my_node_id].pid);
@@ -1468,8 +1477,13 @@ state_t earl_periodic_actions_init(void *no_arg)
     	mpi_calls_in_period = lib_period;
     	states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 		}
-		mpi_call_get_stats(&last_mpi_data,NULL,-1);
-		clean_my_mpi_type_info(&last_mpi_types);
+		if (is_mpi_enabled()){
+    	my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+    	my_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+    	last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+    	last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+		}
+	
 		return EAR_SUCCESS;
 }
 state_t earl_periodic_actions(void *no_arg)
@@ -1480,41 +1494,43 @@ state_t earl_periodic_actions(void *no_arg)
 	uint mpi_period;
 	float io_in_period,mpi_in_period;
 	char stat_buff[128];
-	seconds ++;
 	ulong total_time;
 	float cpu_util;
+	int i;
+	ulong period_elapsed;
+	timestamp_t curr_periodic_time;
 	uint new_ear_guided = ear_guided;
-	mpi_information_t mpi_call_diff;
-	mpi_calls_types_t mpi_type_diff;
   ear_iterations++;
+	timestamp_getfast(&curr_periodic_time);
+	period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
 	if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
 		//if (ear_guided == TIME_GUIDED) verbose_master(2,"Time guided iteration iters %d period %u",ear_iterations,lib_period);
   	states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
 	}
-	if ((seconds % 5 )== 0){ 
-		/* Computing mpi calls per second in last 5 seconds */
+	if ((period_elapsed % 5 )== 0){ 
+		seconds = period_elapsed - last_check;
+		last_check = period_elapsed;
+		/* Computing mpi calls per second in last N seconds */
 		metrics_get_total_io(&cio);
 		mpi_period = total_mpi_calls - last_mpis;
 		last_mpis = total_mpi_calls;	
-		mpi_in_period = (float)mpi_period/(float)5;
+		mpi_in_period = (float)mpi_period/(float)seconds;
 		/* Computing IO RD+WR per second in last 5 seconds */
 		io_period.rchar = cio.rchar - last_io.rchar;
 		io_period.wchar = cio.wchar - last_io.wchar;
 		last_io.rchar = cio.rchar;
 		last_io.wchar = cio.wchar;
 		MB = cio.rchar/(1024*1024)+cio.wchar/(1024*1024);
-		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/5.0;
-		verbose_master(2,"EARL: %dsec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
+		io_in_period = (float)(io_period.rchar/(1024*1024) + io_period.wchar/(1024*1024))/(float)seconds;
 		/* Computing MPI statistics */
-		if (is_mpi_enabled()){
-			#if 0
-			mpi_call_types_read_diff(&mpi_type_diff,&last_mpi_types,0);
-			mpi_call_read_diff(&mpi_call_diff,&last_mpi_data,-1);
-			verbose_mpi_types(2,&last_mpi_types);
-			verbose_mpi_types(2,&mpi_type_diff);
-			verbose_mpi_data(2,&last_mpi_data);
-			verbose_mpi_data(2,&mpi_call_diff);
-			#endif
+		if (is_mpi_enabled() && ((period_elapsed % 10 )== 0)){
+	    read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
+    	verbose_mpi_types(2,my_node_mpi_types_calls);
+    	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
+    	for (i=0;i<lib_shared_region->num_processes;i++){
+      	verbosen_master(3,"Process %d ",i);
+      	verbose_mpi_data(3,&my_node_mpi_calls[i]);
+    	}
 		}
 		#if 0
 		proc_stat_read(&stat_ctx,&c_stat);
@@ -1527,24 +1543,21 @@ state_t earl_periodic_actions(void *no_arg)
 			verbose_master(2,"Error in app classification");
 		}
 		if (earl_phase_classification == APP_COMP_BOUND){
-			verbose_master(2,"Phase COMP bound");
+			verbose_master(3,"Phase COMP bound");
 		}
 		if (earl_phase_classification == APP_IO_BOUND){
 			verbose_master(2,"Phase IO bound");
+			verbose_master(2,"EARL: %lusec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
 		}
 		if (earl_phase_classification == APP_MPI_BOUND){
-			verbose_master(2,"Phase MPI bound");
-			#if 0
-			verbose_mpi_types(2,&mpi_type_diff);
-			verbose_mpi_data(2,&mpi_call_diff);
-			verbose_master(2,"EARL: MPI time %.2lf Blocking time %.2lf Sync time %.2lf TimexBlock %lf TimexColl %lf TimexSync %lf",
-			mpi_call_diff.perc_mpi,(double)mpi_type_diff.time_blocking*100.0/(double)mpi_call_diff.exec_time,(double)mpi_type_diff.time_sync*100.0/(double)mpi_call_diff.exec_time,(double)mpi_type_diff.blocking/(double)mpi_type_diff.time_blocking,(double)mpi_type_diff.collec/(double)mpi_type_diff.time_collec,(double)mpi_type_diff.sync/(double)mpi_type_diff.time_sync);
-			#endif
+			verbose_master(3,"Phase MPI bound");
 		}
+		verbose_master(2,"RANK %d Time %lu/%lu Phase COMP %u MPI %u IO %u DYNAIS_GUIDE %d TIME GUIDE %d",ear_my_rank,seconds,period_elapsed,earl_phase_classification == APP_COMP_BOUND,earl_phase_classification == APP_MPI_BOUND,earl_phase_classification == APP_IO_BOUND,new_ear_guided == DYNAIS_GUIDED, ear_guided == TIME_GUIDED);
 		if (new_ear_guided != DYNAIS_GUIDED){
 			debug("Phase TIME_GUIDED period %u",lib_period);
 			ear_periodic_mode = PERIODIC_MODE_ON;
 			if (ear_guided != new_ear_guided){ 
+				monitor_burst(earl_monitor);
 				verbose_master(2,"DYNAIS guided --> TIME guided");
 				states_begin_period(my_id, 1, (ulong) lib_period,1);
 			}

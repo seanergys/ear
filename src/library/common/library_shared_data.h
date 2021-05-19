@@ -130,6 +130,8 @@ void print_local_mpi_info(mpi_information_t *info);
 void mpi_info_to_str(mpi_information_t *info,char *msg,size_t max);
 void mpi_info_to_str_csv(mpi_information_t *info,char *msg,size_t max);
 void mpi_info_head_to_str_csv(char *msg,size_t max);
+void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig);
+
 
 
 

@@ -59,6 +59,15 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,u
 uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
         uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain);
 
+/* This function evaluates if the current signature is too much different from our reference and we should start again 
+ */
+uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
+        uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig);
+
+ulong select_imc_freq(ulong max,ulong min,float p);
+
+
+
 #define IMC_MAX 0
 #define IMC_MIN 1
 #define IMC_VAL 2
