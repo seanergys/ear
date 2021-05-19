@@ -835,7 +835,7 @@ void ear_init()
     /* create verbose file for each job */
 	if (verb_path != NULL){
     if (masters_info.my_master_rank >= 0){
-      if (( mkdir (verb_path, 0700) < 0) && (errno != EEXIST)) {
+      if (( mkdir (verb_path, 0640) < 0) && (errno != EEXIST)) {
         error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
       }else{
 

@@ -241,7 +241,8 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     }
     if (dom->cpu == POL_GRAIN_CORE){
         fill_cpus_out_of_cgroup(exclusive_mode);
-    }	
+    }
+
     if (*freq_set != *(c->ear_frequency) || dom->cpu == POL_GRAIN_CORE)
     {
     		print_freq_per_core();

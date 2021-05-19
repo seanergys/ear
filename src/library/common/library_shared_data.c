@@ -454,3 +454,9 @@ void load_app_mgr_env()
 	show_signatures,sh_sig_per_proces,sh_sig_per_node,report_node_sig,report_all_sig);
 }
 
+void* mpi_info_get_perc_mpi(void* mpi_inf){
+    mpi_information_t mpi_info = *((mpi_information_t*) mpi_inf);
+    double* res = malloc(sizeof(double));
+    *res = mpi_info.perc_mpi;
+    return res;
+}

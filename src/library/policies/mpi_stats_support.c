@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
+#include <math.h>
 #include <common/config.h>
 #include <common/states.h>
 #define SHOW_DEBUGS 1
@@ -33,6 +34,8 @@
 #include <library/policies/mpi_stats_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
+#include <library/common/library_shared_data.h>
+#include <common/math_operations.h>
 
 
 static timestamp pol_time_init,app_init;
@@ -193,6 +196,7 @@ static state_t mpi_call_diff(mpi_information_t *diff,mpi_information_t *end,mpi_
 	diff->mpi_time        = end->mpi_time - init->mpi_time; 	
 	return EAR_SUCCESS;
 }
+
 void verbose_mpi_data(int vl,mpi_information_t *mc)
 {
 	verbose_master(vl,"Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",mc->total_mpi_calls,mc->mpi_time,mc->exec_time,mc->perc_mpi);
@@ -204,11 +208,17 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
 	mpi_call_get_stats(&current,NULL,i);
 	mpi_call_diff(diff,&current,last);
 	diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
-	mpi_call_copy(last,&current);	
+	mpi_call_copy(last,&current);
 	last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
-	return EAR_SUCCESS;	
-}
 
+    /*  Check wether values are correctly bounded */
+    if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100){
+        verbose_master(2, "%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf", COL_RED, COL_CLR, (double)diff->mpi_time*100.0, (double)diff->exec_time,
+                diff->perc_mpi, (double)last->mpi_time*100.0, (double)last->exec_time, last->perc_mpi);
+	    return EAR_WARNING;
+    }
+	return EAR_SUCCESS;
+}
 
 state_t mpi_call_new_phase(polctx_t *c)
 {
@@ -257,9 +267,6 @@ void verbose_mpi_types(int vl,mpi_calls_types_t *t)
 	verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu syncp=%.2f/collecp=%.2f",t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,(float)t->time_sync/(float)t->time_period,(float)t->time_collec/(float)t->time_mpi);
 }
 
-
-
-
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t)
 {
 	memset(t,0,sizeof(mpi_calls_types_t));
@@ -280,10 +287,16 @@ state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_inform
 state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls,mpi_information_t *last_node)
 {
 	int i;
+    int bad_read_diff = 0;
 	if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
 	for (i=0;i<data->num_processes;i++){
-		mpi_call_read_diff(&node_mpi_calls[i],&last_node[i],i);
+		if (mpi_call_read_diff(&node_mpi_calls[i],&last_node[i],i) != EAR_SUCCESS){
+            bad_read_diff = 1;
+        }
 	}
+    if (bad_read_diff){
+	    return EAR_WARNING;
+    }
 	return EAR_SUCCESS;
 }
 
@@ -303,7 +316,7 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 {
 	int i = 0;
 	*max = 0;
-	*min = 0;		
+	*min = 0;
 	verbosen_master(2,"LB_DATA ");
 	for (i=0; i< nump;i++) verbosen_master(2,"MR[%d]= %.2lf (%lu/%lu) ",i,node_mpi_calls[i].perc_mpi,node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
 	verbose_master(2,"");
@@ -312,4 +325,50 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 		if (node_mpi_calls[i].perc_mpi < node_mpi_calls[*min].perc_mpi)	*min = i;
 	}	
 	return EAR_SUCCESS;
+}
+
+state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi){
+    mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
+    for (int i = 0; i < nump; i++) {
+        mpi_calls[i] = &node_mpi_calls[i];
+    }
+    void** percs_mpi_v = ear_math_apply((void**) mpi_calls, nump, mpi_info_get_perc_mpi);
+    free(mpi_calls);
+
+    for (int i = 0; i < nump; i++) {
+        percs_mpi[i] = *(double*)percs_mpi_v[i];
+    }
+    ear_math_free_gen_array(percs_mpi_v);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_sd(int nump, double *percs_mpi, double mean, double *sd){
+    *sd = ear_math_standard_deviation(percs_mpi, nump, mean);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn){
+    *mn = ear_math_mean(percs_mpi, nump);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity) {
+    *similarity = ear_math_cosine_similarity(current_perc_mpi, last_perc_mpi, size);
+    return EAR_SUCCESS;
+}
+
+int compare_perc_mpi(const void *p1, const void *p2) {
+    return (*(double * const *) p1 < *(double * const *) p2) ? -1 : (*(double * const *) p1 > *(double * const *) p2) ? 1 : 0;
+}
+
+state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump) {
+    qsort(perc_mpi_arr, nump, sizeof(double), compare_perc_mpi);
+    return EAR_SUCCESS;
+}
+
+state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd){
+    mean_sd_t mean_sd = ear_math_mean_sd(percs_mpi, nump);
+    *mean = mean_sd.mean;
+    *sd = mean_sd.sd;
+    return EAR_SUCCESS;
 }
