@@ -435,7 +435,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     }
 #endif
     verbose_master(2,"Next min_time state %u next policy state %u",min_time_state,*ready);
-		free(my_app);
     return EAR_SUCCESS;
 }
 
