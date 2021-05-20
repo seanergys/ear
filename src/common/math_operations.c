@@ -160,3 +160,7 @@ double ear_math_standard_deviation(const double data[], size_t n, double mean){
     }
     return sqrt(sum / (n - 1));
 }
+
+double ear_math_exp(double x){
+    return exp(x);
+}

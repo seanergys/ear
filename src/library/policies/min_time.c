@@ -68,8 +68,8 @@ ulong avg_to_khz(ulong freq_khz);
 #define SELECT_IMCFREQ  101
 #define COMP_IMCREF     102
 
-#define LB_TH       10.0
-#define EXTRA_TH    0.05
+#define LB_TH       15.0
+#define EXTRA_TH    0.10
 
 static imc_data_t *imc_data;
 static uint min_time_state = SELECT_CPUFREQ;
@@ -289,10 +289,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         if (i < num_processes) {
             verbose_master(2, "Not the default P_STATE selected in the environemnt!\nsetting default cpu freq for %d processes..", num_processes);
             *ready = EAR_POLICY_TRY_AGAIN;
+            /*  TODO: Here is an opportunity to check similarity (?) */
             set_all_cores(new_freq, num_processes, def_freq);
 #if NEW_IMCFREQ
             if (dyn_unc) {
-                verbose_master(2, "setting default imc range freq..");
+                verbose_master(2, "setting default imc range freq...");
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             }
@@ -317,11 +318,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             } else {
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
                 if (i == min_mpi) {
-                    local_eff_gain = 0.00; // TODO: this value may be 0
+                    local_eff_gain = 0.00;
                 }
                 else {
                     local_eff_gain = 
-                        min_eff_gain - EXTRA_TH * (percs_mpi[i] - percs_mpi[min_mpi]) / 10.0;
+                        min_eff_gain - EXTRA_TH * ear_math_exp(5 * ((percs_mpi[i] - percs_mpi[min_mpi]) / 100.0));
                 }
                 verbose_master(2, "Per-processSig MR[%d][%d] SIGNATURE CPI %.3lf penalty %lf (%lf, %lf)",
                         my_globalrank, i, my_app->CPI, local_eff_gain,
@@ -579,6 +580,7 @@ state_t compute_total_node_metrics(){
 }
 
 state_t set_all_cores(ulong *freqs, int len, ulong freq_val) {
+    verbose_master(3, "Setting %lu freq. value to %d cores...", freq_val, len);
     for (int i = 0; i < len; i++) {
         freqs[i] = freq_val;
     }

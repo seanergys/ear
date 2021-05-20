@@ -67,3 +67,5 @@ double ear_math_mean(const double data[], size_t n);
 /** Given a vector 'data' with 'n' values and its mean 'mean', returns the
  * standard deviation of the data. */
 double ear_math_standard_deviation(const double data[], size_t n, double mean);
+
+double ear_math_exp(double x);
