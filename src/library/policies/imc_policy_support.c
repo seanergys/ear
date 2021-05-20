@@ -42,6 +42,25 @@ double metric_diff(double metric_ref, double metric_curr, uint type) {
         return (metric_ref - metric_curr) / metric_ref;
     }
 }
+#define DIFF_SIG 0.15
+uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
+        uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig)
+{
+	uint ref_pstate;
+	double CPI,GBS,CPI_ref,GBS_ref, rCPI, rGBS;
+	ref_pstate = ref_cpu_pstate;
+	CPI_ref = (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles
+            / (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
+	GBS_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+	CPI     = sig->CPI;
+	GBS	    = sig->GBS;
+	if (CPI > CPI_ref) rCPI = (CPI - CPI_ref)/CPI;
+	else               rCPI = (CPI_ref - CPI)/CPI_ref;
+	if (GBS > GBS_ref) rGBS = (GBS - GBS_ref)/GBS;
+	else               rGBS = (GBS_ref - GBS)/GBS_ref;
+	if ((rCPI > DIFF_SIG) || (rGBS > DIFF_SIG)) return 1;
+	else return 0;
+}
 
 uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig, double penalty)
@@ -220,4 +239,11 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint i
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].power,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+imc_pstate].GBS,s->instructions/(s->time*1000000000.0),
             flops);
+}
+
+ulong select_imc_freq(ulong max,ulong min,float p)
+{
+	ulong new;
+	new = max-(float)(max-min)*p;
+	return new;
 }

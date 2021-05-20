@@ -132,18 +132,24 @@ static state_t static_status()
 {
 	nvmlReturn_t r;
 	int d;
+	int driverversion, runtimeversion;
+	nvmlDriverModel_t current,  pending;
+
 	if ((r = nvml.Init()) != NVML_SUCCESS) {
+		debug("nvml.Init");
 		return_msg(EAR_ERROR, (char *) nvml.ErrorString(r));
 	}
 	if ((r = nvml.Count(&dev_count)) != NVML_SUCCESS) {
+		debug("nvml.Count %u",dev_count);
 		return_msg(EAR_ERROR, (char *) nvml.ErrorString(r));
 	}
 	if (((int) dev_count) <= 0) {
 		return_msg(EAR_ERROR, Error.gpus_not);
 	}
 	if ((devices = calloc(dev_count, sizeof(nvmlDevice_t))) == NULL) {
-		return_msg(EAR_SYSCALL_ERROR, strerror(errno));
-	}
+	    return_msg(EAR_SYSCALL_ERROR, strerror(errno));
+  	}
+
 	for (d = 0; d < dev_count; ++d) {
 		if ((r = nvml.Handle(d, &devices[d])) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetHandleByIndex returned %d (%s)",
@@ -167,7 +173,7 @@ static int load_test(char *path)
 		return 0;
 	}
 	if ((libnvml = dlopen(path, RTLD_NOW | RTLD_LOCAL)) == NULL) {
-		debug("dlopen fail");
+		debug("dlopen fail %s",dlerror());
 		return 0;
 	}
 	debug("dlopen ok");
@@ -194,8 +200,8 @@ static int static_load()
 	if (load_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so")) return 1;
 	if (load_test(NVML_PATH "/lib64/libnvidia-ml.so")) return 1;
 	if (load_test(NVML_PATH "/lib/libnvidia-ml.so")) return 1;
+	if (load_test("/lib64/libnvidia-ml.so")) return 1;
 	if (load_test("/usr/lib64/libnvidia-ml.so")) return 1;
-	if (load_test("/usr/lib/libnvidia-ml.so")) return 1;
 	return 0;
 }
 
@@ -206,6 +212,7 @@ state_t mgt_nvml_status()
 	#ifndef CUDA_BASE
 	return EAR_ERROR;
 	#endif
+	debug("mgt_nvml_status");
 	while (pthread_mutex_trylock(&lock));
 	if (ok_status) {
 		pthread_mutex_unlock(&lock);
@@ -254,6 +261,8 @@ static state_t static_init_unprivileged()
 	// Allocation
 	#define static_alloc(v, l, s) \
 		if ((v = calloc(l, s)) == NULL) { return static_init_unprivileged_undo(strerror(errno)); }
+	
+	debug("static_init_unprivileged");
 
 	static_alloc(clock_max_default, dev_count, sizeof(ulong));
 	static_alloc(clock_max,         dev_count, sizeof(ulong));
@@ -375,7 +384,7 @@ static state_t static_init()
 	nvmlReturn_t r;
 	uint aux;
 	int d;
-
+	debug("static_init");
 	// Full clocks reset (application + locked)
 	for (d = 0; d < dev_count; ++d) {
 		if ((r = nvml.ResetAppsClocks(devices[d])) != NVML_SUCCESS) {
@@ -405,6 +414,7 @@ static state_t static_init()
 state_t mgt_nvml_init(ctx_t *c)
 {
 	state_t s;
+	debug("mgt_nvml_init");
 	if (xtate_fail(s, mgt_nvml_init_unprivileged(c))) {
 		return s;
 	}
@@ -428,6 +438,7 @@ state_t mgt_nvml_init(ctx_t *c)
 state_t mgt_nvml_init_unprivileged(ctx_t *c)
 {
 	state_t s;
+	debug("mgt_nvml_init_unprivileged");
 	while (pthread_mutex_trylock(&lock));
 	if (ok_unprivileged) {
 		pthread_mutex_unlock(&lock);
@@ -665,6 +676,7 @@ state_t nvml_freq_limit_set(ctx_t *c, ulong *khz)
 
 state_t nvml_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
+	debug("nvml_freq_list");
 	if (!ok_unprivileged) {
 		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
 	}

@@ -21,10 +21,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <assert.h>
 #include <math.h>
 #include <common/config.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <library/common/library_shared_data.h>
@@ -73,7 +74,7 @@ state_t mpi_app_init(polctx_t *c)
 
 state_t mpi_app_end(polctx_t *c)
 {
-  timestamp end;
+  timestamp_t end;
   ullong elap;
 	int fd;
 	char buff[256],buff2[300];
@@ -122,10 +123,12 @@ state_t mpi_app_end(polctx_t *c)
 	}
 	return EAR_SUCCESS;
 }
-
+static uint in_mpi = 0;
 state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 {
 	if (is_mpi_enabled()){
+		assert(in_mpi == 0);
+		in_mpi = 1;
   	timestamp_getfast(&pol_time_init);
 	}
   return EAR_SUCCESS;
@@ -134,9 +137,11 @@ state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 
 state_t mpi_call_end(polctx_t *c,mpi_call call_type)
 {
-  timestamp end;
+  timestamp_t end;
   ullong elap,elap_app;
 	if (is_mpi_enabled()){
+		assert(in_mpi == 1);
+	
   	timestamp_getfast(&end);
   	elap = timestamp_diff(&end,&pol_time_init,TIME_USECS);
   	elap_app = timestamp_diff(&end,&app_init,TIME_USECS);
@@ -161,6 +166,7 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
 		mpi_stats.mpi_time += elap;
 		mpi_stats.total_mpi_calls++;
   	mpi_stats.exec_time = elap_app;
+		in_mpi = 0;
 	}
   return EAR_SUCCESS;
 }
@@ -227,6 +233,9 @@ state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last
 {
 	mpi_calls_types_t a;
 	mpi_call_get_types(&a);
+	diff->mpi = a.mpi - last->mpi;
+	diff->time_mpi = a.time_mpi - last->time_mpi;
+	diff->time_period = a.time_period - last->time_period;
 	diff->sync = a.sync - last->sync;
 	diff->collec =	a.collec - last->collec;
 	diff->blocking = a.blocking - last->blocking;
@@ -239,6 +248,9 @@ state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last
 
 state_t mpi_call_get_types(mpi_calls_types_t *t)
 {
+	t->time_mpi = mpi_stats.mpi_time;
+	t->time_period = mpi_stats.exec_time; 
+	t->mpi = mpi_stats.total_mpi_calls;
   t->sync = total_synchronizations;
   t->collec = total_collectives;
   t->blocking = total_blocking_calls;
@@ -251,7 +263,8 @@ state_t mpi_call_get_types(mpi_calls_types_t *t)
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t)
 {
-	verbose_master(vl,"MPI sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu",t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking);
+
+	verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu syncp=%.2f/collecp=%.2f",t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,(float)t->time_sync/(float)t->time_period,(float)t->time_collec/(float)t->time_mpi);
 }
 
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t)
@@ -305,7 +318,7 @@ state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min
 	*max = 0;
 	*min = 0;
 	verbosen_master(2,"LB_DATA ");
-	for (i=0; i< nump;i++) verbosen_master(2,"MR[%d]= %.2lf ",i,node_mpi_calls[i].perc_mpi);
+	for (i=0; i< nump;i++) verbosen_master(2,"MR[%d]= %.2lf (%lu/%lu) ",i,node_mpi_calls[i].perc_mpi,node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
 	verbose_master(2,"");
 	for (i=1 ; i < nump ; i++){
 		if (node_mpi_calls[i].perc_mpi > node_mpi_calls[*max].perc_mpi)	*max = i;

@@ -147,9 +147,9 @@ static ctx_t ctx_io;
 #if USE_GPUS
 static gpu_t *gpu_metrics_init[2],*gpu_metrics_end[2],*gpu_metrics_diff[2];
 static ctx_t gpu_lib_ctx;
-static uint gpu_initialized;
-static uint gpu_loop_stopped=0;
-static uint earl_gpu_model=MODEL_UNDEFINED;
+uint gpu_initialized = 0;
+static uint gpu_loop_stopped = 0;
+static uint earl_gpu_model = MODEL_UNDEFINED;
 #endif
 static long long metrics_l1[2];
 static long long metrics_l2[2];
@@ -505,16 +505,18 @@ static int metrics_partial_stop(uint where)
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial stop");
     }
-    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],NULL,&cpufreq_data_avg[LOO]))){
+    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],cpufreq_data_per_core,&cpufreq_data_avg[LOO]))){
       error("CPUFreq data diff");
     }else{
-      debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
+      verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
+		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++) verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
+		verbosen_master(3,"\n");
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
     #if NEW_IMCFREQ
 		if (imc_mgt_compatible){
     if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size))){
-      error("IMCFreq data read in global_start");
+      error("IMCFreq data read in partial_stop");
     }
     if (xtate_fail(s, freq_imc_data_diff(&imc_end[LOO],&imc_init[LOO],NULL,&imc_avg[LOO]))){
       error("IMC data diff fails");
@@ -674,8 +676,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
 		#if USE_GPUS
 		if (gpu_initialized){
-			metrics->gpu_sig.num_gpus=ear_num_gpus_in_node;
-			if ((s == APP) && (earl_gpu_model == MODEL_DUMMY)){ 
+			metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
+			if (earl_gpu_model == MODEL_DUMMY){ 
 				debug("Setting num_gpu to 0 because model is DUMMY");
 				metrics->gpu_sig.num_gpus = 0;
 			}
@@ -722,14 +724,15 @@ int metrics_init(topology_t *topo)
 	state_t st;
 	char *cimc_max_khz,*cimc_min_khz;
 
-	debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
-	debug("My master rank %d",masters_info.my_master_rank);
+	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
+	//debug("My master rank %d",masters_info.my_master_rank);
 
 	hw_cache_line_size = topo->cache_line_size;
 	num_packs = topo->socket_count;
+	topology_copy(&mtopo,topo);
 
-	debug("detected cache line size: %0.2lf bytes", hw_cache_line_size);
-	debug("detected sockets: %d", num_packs);
+	//debug("detected cache line size: %0.2lf bytes", hw_cache_line_size);
+	//debug("detected sockets: %d", num_packs);
 
 	if (hw_cache_line_size == 0) {
 		return_msg(EAR_ERROR, "error detecting the cache line size");
@@ -852,6 +855,7 @@ int metrics_init(topology_t *topo)
 		imc_mgt_compatible = 0;
 		verbose(2,"IMC management API not compatible");
 	}
+	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
 	if (imc_mgt_compatible){
 	#if NEW_IMCFREQ
 	/* To compute IMC average */

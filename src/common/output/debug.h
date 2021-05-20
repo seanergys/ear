@@ -24,7 +24,7 @@
 int debug_channel	__attribute__((weak)) = 2;
 
 #if SHOW_DEBUGS
-#if 0
+#if 1
 #define debug(...) \
 { \
         dprintf(debug_channel, "%s:%s:%d: ", __FILE__, __FUNCTION__, __LINE__); \

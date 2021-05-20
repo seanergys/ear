@@ -36,11 +36,13 @@
 #include <common/types/application.h>
 #include <library/common/externs.h>
 #include <library/common/global_comm.h>
+#include <library/common/verbose_lib.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
 #include <library/metrics/metrics.h>
 #include <library/policies/policy.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/cpu_support.h>
 #include <library/states/states_comm.h>
 
 #include <management/cpufreq/frequency.h>
@@ -71,7 +73,7 @@ static int MAX_POLICY_TRIES;
 static state_t pst;
 static uint total_th;
 static uint signatures_stables = 0;
-static signature_t cpu_sel_signature;
+static signature_t cpu_sel_signature, policy_sel_signature ;
 
 
 
@@ -107,26 +109,28 @@ static void check_dynais_on(signature_t *A, signature_t *B)
 static void check_dynais_off(ulong mpi_calls_iter,uint period, uint level, ulong event)
 {
 #if EAR_OVERHEAD_CONTROL
-    ulong dynais_overhead_usec=0;
+    ulong dynais_overhead_usec = 0;
     float dynais_overhead_perc;
 
-    dynais_overhead_usec=mpi_calls_iter;
-    dynais_overhead_perc=((float)dynais_overhead_usec/(float)1000000)*(float)100/loop_signature.signature.time;
-    if (dynais_overhead_perc>MAX_DYNAIS_OVERHEAD){
-    // Disable dynais : API is still pending
-    	#if DYNAIS_CUTOFF
-    	dynais_enabled=DYNAIS_DISABLED;
-    	#endif
-    	if (masters_info.my_master_rank>=0) log_report_dynais_off(application.job.id,application.job.step_id);
-    }
-    if (dynais_enabled==DYNAIS_DISABLED){
-    	debug("DYNAIS_DISABLED: Total time %lf (s) dynais overhead %lu usec in %lu mpi calls(%lf percent), event=%lu min_time=%lu",
-    	loop_signature.signature.time,dynais_overhead_usec,mpi_calls_iter,dynais_overhead_perc,event,perf_accuracy_min_time);
-    }
-    last_first_event=event;
-    last_calls_in_loop=mpi_calls_iter;
-    last_loop_size=period;
-    last_loop_level=level;
+    dynais_overhead_usec = mpi_calls_iter;
+		if (loop_signature.signature.time > 0){
+    	dynais_overhead_perc = ((float)dynais_overhead_usec/(float)1000000)*(float)100/loop_signature.signature.time;
+    	if (dynais_overhead_perc>MAX_DYNAIS_OVERHEAD){
+    	// Disable dynais : API is still pending
+    		#if DYNAIS_CUTOFF
+    		dynais_enabled = DYNAIS_DISABLED;
+    		#endif
+    		if (masters_info.my_master_rank>=0) log_report_dynais_off(application.job.id,application.job.step_id);
+    	}
+    	if (dynais_enabled == DYNAIS_DISABLED){
+    		debug("DYNAIS_DISABLED: Total time %lf (s) dynais overhead %lu usec in %lu mpi calls(%lf percent), event=%lu min_time=%lu",
+    		loop_signature.signature.time,dynais_overhead_usec,mpi_calls_iter,dynais_overhead_perc,event,perf_accuracy_min_time);
+    	}
+		}
+    last_first_event    = event;
+    last_calls_in_loop  = mpi_calls_iter;
+    last_loop_size      = period;
+    last_loop_level     = level;
 #endif
     
 }
@@ -280,6 +284,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 	uint new_signature;
 	state_t st;
 	char use_case[16];
+	char *ok_clr;
 
 	/***************************************************************************************************/
 	/**** This function can potentially include data sharing between masters, depends on the policy ****/
@@ -296,13 +301,13 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 	if ((masters_info.my_master_rank>=0) && (resched_conf->force_rescheduling)){
 		traces_reconfiguration(ear_my_rank, my_id);
 		resched_conf->force_rescheduling=0;
-		verbose(1,"EAR: rescheduling forced by eard: current_state %u max freq %lu def_freq %lu def_th %lf",EAR_STATE,system_conf->max_freq,system_conf->def_freq,system_conf->settings[0]);
+		verbose_master(1,"EAR: rescheduling forced by eard: current_state %u max freq %lu def_freq %lu def_th %lf",EAR_STATE,system_conf->max_freq,system_conf->def_freq,system_conf->settings[0]);
 		EAR_STATE = SIGNATURE_HAS_CHANGED;
 		comp_N_begin = metrics_time();
 		state_report_traces_state(masters_info.my_master_rank,ear_my_rank, my_id,SIGNATURE_HAS_CHANGED);
 		tries_current_loop_same_freq=0;
     tries_current_loop=0;
-		verbose(1,"New state by reschedduling %u",EAR_STATE);
+		verbose_master(1,"New state by reschedduling %u",EAR_STATE);
 		return;
 	}
 	}
@@ -439,7 +444,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 			current_loop_id = event;
 			begin_iter = iterations;
 			memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
-			sig_ready[curr_pstate]=1;
+			sig_ready[curr_pstate] = 1;
 
 			/****** We mark our local signature as ready ************/
 			signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
@@ -454,14 +459,16 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 			/* State check */
 			/* When the policy is ready to be evaluated, we go to the next state */
 			if (EAR_POLICY_STATE == EAR_POLICY_READY){
-				verbose(2,"Policy ready after evaluating local signature");
+				verbose_master(2,"Policy ready after evaluating local signature");
 			  /*if (policy_freq != policy_def_freq)*/
 				signatures_stables = 0;
 			  if ((policy_freq != prev_f) && (dynais_used)){
 					  tries_current_loop++;
 					  comp_N_begin = metrics_time();
 					  EAR_STATE = RECOMPUTING_N;
-			  } else { EAR_STATE = SIGNATURE_STABLE; }
+			  } else { 
+					signature_copy(&policy_sel_signature, &loop_signature.signature);
+					EAR_STATE = SIGNATURE_STABLE; }
 			}
 			if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){ EAR_STATE = EVALUATING_GLOBAL_SIGNATURE; }
 			signature_copy(&loop.signature, &loop_signature.signature);
@@ -512,7 +519,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 			/* END VERBOSE */
 			
 			begin_iter = iterations;
-			if (sig_ready[curr_pstate]==0){
+			if (sig_ready[curr_pstate] == 0){
           memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
           sig_ready[curr_pstate]=1;
 			}
@@ -522,31 +529,38 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 			if (!dynais_used){
       	if (signatures_stables == 1){
         	signature_copy(&cpu_sel_signature,&loop.signature);
-				}else{
-					l_sig = &cpu_sel_signature;
 				}
+				l_sig = &cpu_sel_signature;
 			}else{
-					l_sig=&signatures[def_pstate].signature;
+					l_sig = &signatures[def_pstate].signature;
 			}
-			if (sig_ready[def_pstate]==0){
-				debug("Signature at default freq not available, assuming policy ok");
+			if (sig_ready[def_pstate] == 0){
+				verbose_master(2,"Signature at default freq not available, assuming policy ok");
 				/* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
-				if (sig_ready[curr_pstate]==0){
+				if (sig_ready[curr_pstate] == 0){
            memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
-           sig_ready[curr_pstate]=1;
+           sig_ready[curr_pstate] = 1;
 				}
 				return;
 			}
 			if (dynais_used){
-				// We compare the projection with the signature and the old signature
-				pst=policy_ok(&loop_signature.signature, l_sig,&pok);
+				pst = policy_ok(&loop_signature.signature, l_sig,&pok);
 			}else{
 				pok = 1;
 				/* If dynais is not used we just compare the signature */
-				if (!equal_with_th(l_sig->CPI,loop_signature.signature.CPI,0.15) || !equal_with_th(l_sig->GBS,loop_signature.signature.GBS,0.15)){
+				#if 0
+				if (!equal_with_th(l_sig->CPI,loop_signature.signature.CPI,0.20) || 
+						!equal_with_th(l_sig->GBS,loop_signature.signature.GBS,0.20) || 
+						!equal_with_th(policy_sel_signature.CPI, loop_signature.signature.CPI,0.20) || 
+						!equal_with_th(policy_sel_signature.GBS,loop_signature.signature.GBS,0.20)){
 						pok = 0;
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
          }
+					#endif
+				if (signatures_different(l_sig,&loop_signature.signature,0.2) || signatures_different(&policy_sel_signature,&loop_signature.signature,0.2)){
+						pok = 0;
+            EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+				}
 			}
 			if (pok) {
 				/* When collecting traces, we maintain the period */
@@ -555,9 +569,12 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 				}
 				tries_current_loop=0;
 			}
+			ok_clr = COL_GRE;
+			if (!pok) ok_clr = COL_RED; 
+			verbose_master(2,"%sPolicy ok=%u%s current (%.2lf/%.2lf/%.2lf) reference (%.2lf/%.2lf/%.2lf)/(%.2lf/%.2lf/%.2lf)",ok_clr,pok,COL_CLR,
+			loop_signature.signature.CPI,loop_signature.signature.GBS,loop_signature.signature.DC_power,l_sig->CPI,l_sig->GBS,l_sig->DC_power,
+			policy_sel_signature.CPI,policy_sel_signature.GBS,policy_sel_signature.DC_power);
 			if (pok) return;
-			verbose(2,"Policy is not ok current (%.2lf/%.2lf/%.2lf) reference (%.2lf/%.2lf/%.2lf)",
-			loop_signature.signature.time,loop_signature.signature.GBS,loop_signature.signature.DC_power,l_sig->time,l_sig->GBS,l_sig->DC_power);
 			// We can give the library a second change in case we are at def freq
 			if (((tries_current_loop<MAX_POLICY_TRIES) && (curr_pstate==def_pstate)) || (!dynais_used))
 			{

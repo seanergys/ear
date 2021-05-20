@@ -37,6 +37,7 @@
 
 
 static uint last_pc=0;
+extern uint gpu_initialized;
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -45,18 +46,33 @@ extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) f
 #endif
 
+static mpi_information_t *my_node_mpi_calls,*last_node_mpi_calls;
+static mpi_calls_types_t *my_node_mpi_types_calls,*last_node_mpi_types_calls;
 
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
 	mpi_app_init(c);	
-
+	if(is_mpi_enabled() && (masters_info.my_master_rank >= 0)){
+  	my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+  	my_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+  	last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+  	last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+	}
 #if USE_GPUS
+	if (masters_info.my_master_rank>=0 && gpu_initialized){
+	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
+    verbose_master(2,"Error loading GPU context");
+  }
+	verbose(2,"RANK %d GPU init",masters_info.my_master_rank);
+
 	if (c->num_gpus){
+		verbose(2,"RANK %d GPUs %d",masters_info.my_master_rank,c->num_gpus);
 		if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
 			verbose_master(2,"Error loading GPU policy");
 		}
 		if (gpus.init != NULL) gpus.init(c);
+	}
 	}
 #endif
 	return EAR_SUCCESS;
@@ -71,6 +87,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 {
 	ulong *new_freq=freqs->cpu_freq;
 	ulong eff_f,f;
+	int i;
 	
 	*ready=EAR_POLICY_READY;
 	f=DEF_FREQ(c->app->def_freq);
@@ -79,6 +96,13 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 		/* Basic support for GPUS */
 		gpus.node_policy_apply(c,my_sig,freqs,ready);
 	}
+  if (is_mpi_enabled()){
+   	read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
+   	verbose_mpi_types(2,my_node_mpi_types_calls);
+   	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
+   	for (i=0;i<lib_shared_region->num_processes;i++) verbose_mpi_data(3,&my_node_mpi_calls[i]);
+  }
+
 	
 	return EAR_SUCCESS;
 }
@@ -86,7 +110,9 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *
 {
 	ulong eff_f;
 	uint power_status,next_status;
-	*ok=1;
+	int i;
+	*ok = 1;
+  if ((c==NULL) || (curr_sig==NULL) || (prev_sig==NULL)) return EAR_ERROR;
 
 	return EAR_SUCCESS;
 }
@@ -127,4 +153,21 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 {
 	if (c != NULL) return mpi_call_end(c,call_type);
 	else return EAR_ERROR;
+}
+
+state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
+{
+	int i;
+	#if 0
+  if (is_mpi_enabled() && (masters_info.my_master_rank >= 0)){
+    read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
+    verbose_mpi_types(2,my_node_mpi_types_calls);
+    read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
+    for (i=0;i<lib_shared_region->num_processes;i++){
+      verbosen_master(2,"Process %d",i);
+      verbose_mpi_data(2,&my_node_mpi_calls[i]);
+    }
+  }
+	#endif
+	return EAR_SUCCESS;
 }

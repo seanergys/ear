@@ -94,6 +94,8 @@
 #define SCHED_USE_EARL_PHASES 			"SLURM_USE_EARL_PHASES"
 #define SCHED_ENABLE_LOAD_BALANCE 	"SLURM_ENABLE_LOAD_BALANCE"
 #define SCHED_USE_TURBO_FOR_CP      "SLURM_USE_TURBO_FOR_CP"
+#define SCHED_MIN_CPUFREQ						"SLURM_MIN_CPUFREQ"
+#define SCHED_NETWORK_USE_IMC				"SLURM_NETWORK_USE_IMC"
 
 
 /* Asks EARL to write verbose messages in separate per_task files */

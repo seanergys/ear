@@ -129,7 +129,17 @@ int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i;
 	compute_total_signatures_ready(data,sig);
+	verbose_master(2,"There are %d signatures ready from %d",data->num_signatures,data->num_processes);
 	return(data->num_signatures == data->num_processes);
+}
+
+void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
+{
+	int i;
+	for (i=0;i<data->num_processes;i++){
+		verbosen_master(2,"P[%d] ready %u ",i,sig[i].ready);
+	}
+	verbose_master(2,"");
 }
 
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)

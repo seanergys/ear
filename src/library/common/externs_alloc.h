@@ -71,4 +71,6 @@ uint report_node_sig=0;
 uint report_all_sig=0;
 
 uint earl_phase_classification = APP_COMP_BOUND;
+topology_t mtopo;
+ulong *cpufreq_data_per_core;
 

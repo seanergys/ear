@@ -61,6 +61,7 @@ state_t cpufreq_intel63_status(topology_t *t)
 	if (tp.cpus == NULL) {
 		topology_copy(&tp,t);
 	}
+	debug("CPUfreq intel status compatible");
 	return EAR_SUCCESS;
 }
 
@@ -103,6 +104,7 @@ state_t cpufreq_intel63_init()
 	}
 	// Getting base frequency
 	cpufreq_get_base(&tp, &freq_base);
+	debug("Freq base %lu",freq_base);
 	// Computing base frequency
 	init = 1;
 	return EAR_SUCCESS;
