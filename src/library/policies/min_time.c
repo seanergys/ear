@@ -414,12 +414,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     best_pstate, best_freq, def_freq, &new_freq[i]);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
             /* 
-#if LET_TURBO
-            if (cpu_supp_try_boost_cpu_freq(freq_per_core, i, min_mpi, percs_mpi, mpi_stats_perc_mpi_mean, new_freq, c->use_turbo)){
-                verbose_master(2, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
-            }
-#endif
-*/
+             * #if LET_TURBO
+             *  if (cpu_supp_try_boost_cpu_freq(freq_per_core, i, min_mpi, percs_mpi, mpi_stats_perc_mpi_mean, new_freq, c->use_turbo)){
+             *      verbose_master(2, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
+             *  }
+             * #endif
+             */
         }
         if (!freq_per_core) {
             set_all_cores(new_freq, num_processes, new_freq[0]);
@@ -518,7 +518,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     }
 #endif
     verbose_master(2,"Next min_time state %u next policy state %u",min_time_state,*ready);
-		free(my_app);
+    free(my_app);
     return EAR_SUCCESS;
 }
 
