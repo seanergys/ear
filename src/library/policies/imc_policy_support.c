@@ -155,7 +155,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
     uint ref_pstate;
 
     ref_pstate = ref_cpu_pstate;
-    verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %lu %lu", cpu_pstate, imc_pstate, ref_pstate, ref_imc_pstate);
+    verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u", cpu_pstate, imc_pstate, ref_pstate, ref_imc_pstate);
 
     double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
     power_var = metric_diff(power_ref, sig->DC_power, 0);

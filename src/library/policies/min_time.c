@@ -500,7 +500,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
          */
         uint decrease_imc = 0;
         if (frequency_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz){
-            verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.")
+            verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
             decrease_imc = must_decrease_imc(imc_data, curr_pstate, imc_pstate, curr_pstate, ref_imc_pstate, my_app, imc_extra_th);
         }
         
