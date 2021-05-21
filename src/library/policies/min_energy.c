@@ -49,7 +49,6 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-#if NEW_IMCFREQ
 extern uint dyn_unc;
 extern uint imc_set_by_hw;
 extern double imc_extra_th;
@@ -68,13 +67,15 @@ static uint enable_load_balance = 1;
 static uint use_turbo_for_cp = 0;
 static ulong min_cpufreq = 0;
 static uint network_use_imc = 0;
+static uint try_turbo_enabled = 1;
 
 static imc_data_t *imc_data;
 #define IMC_STEP 100000
 #define IMC_RANGE 100000
-#define SELECT_CPUFREQ 100
-#define SELECT_IMCFREQ 101
-#define COMP_IMCREF		 102
+#define SELECT_CPUFREQ 		100
+#define SELECT_IMCFREQ 		101
+#define COMP_IMCREF		 		102
+#define TRY_TURBO_CPUFREQ 103
 #define LB_TH 10.0
 #define CP_TH 5.0
 #define EXTRA_TH  0.05
@@ -82,7 +83,6 @@ static uint min_energy_state = SELECT_CPUFREQ;
 static uint imc_dynamic = 0;
 static uint min_imc_pstate = 0;
 static uint use_imc_ref = 0;
-#endif
 
 
 static int master_sig_without_sig = 0;
@@ -108,9 +108,7 @@ state_t policy_init(polctx_t *c)
 		char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
     int i;
     if (c!=NULL){ 
-#if NEW_IMCFREQ
         imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
-#endif
 				nominal_node = frequency_get_nominal_freq();
 				verbose_master(2,"Nominal is %lu",nominal_node);
         if (is_mpi_enabled()){
@@ -201,8 +199,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     mpi_information_t sig_mpi_data;	
     int max_mpi,min_mpi;
 		uint signature_is_unbalance = 0;
-		uint cbound, mbound;
-		ulong max_cpufreq = 0;
+		uint cbound, mbound, turbo_set = 0;
+		ulong max_cpufreq = 0, min_cpufreq_sel = 10000000 ;
 
 
     if ((c == NULL) || (c->app == NULL)){
@@ -280,7 +278,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     curr_pstate = frequency_closest_pstate(curr_freq);
     eff_f = frequency_closest_high_freq(my_app->avg_f,1);
 
-#if NEW_IMCFREQ
     if (dyn_unc){
         // imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
         ulong curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
@@ -296,9 +293,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             *ready = EAR_POLICY_READY;
         }
         verbose_master(2,"%sSELECT_CPUFREQ%s state dyn_unc %u",COL_BLU,COL_CLR,dyn_unc);
-#else
-        *ready=EAR_POLICY_READY;
-#endif
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = imc_pstate;
 				is_cpu_bound(my_app, &cbound);
@@ -366,48 +360,56 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 						if (min_cpufreq) new_freq[i] = ear_max(min_cpufreq, new_freq[i]);
             verbose_master(2,"CPU freq for process %d is %lu",i,new_freq[i]);
 						max_cpufreq = ear_max(max_cpufreq, new_freq[i]);
+						min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
         if (!freq_per_core){
             for (i=1;i<num_processes;i++) new_freq[i] = new_freq[0];
         }
+				/* We check if turbo is an option */
+        if ((min_cpufreq_sel == nominal_node) && cbound && try_turbo_enabled){
+						turbo_set = 1;
+            for (i=0;i<num_processes;i++) new_freq[i] = frequency_pstate_to_freq(0);
+				}
         memcpy(last_cpufreq_sel,new_freq,sizeof(ulong)*num_processes);
 				/* We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
 				signature_copy(&cpufreq_signature, sig);
-
-#if NEW_IMCFREQ	
+				/* IMC freq selection */
         if (dyn_unc && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
-            if ((max_cpufreq == nominal_node) && (cbound)){ 
+            if ((min_cpufreq == nominal_node) && (cbound)){ 
+							/* If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq */
 							if (sig->GBS <= GBS_BUSY_WAITING) freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_khz + IMC_RANGE;
 							else 															freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_freq(imc_max_khz,imc_min_khz,0.25);
 						}else 																					 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
-						#if 0
-						if ((max_cpufreq == nominal_node) && (cbound) && (sig->GBS <= GBS_BUSY_WAITING)) freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_khz + IMC_RANGE;
-						else 																																							freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
-						#endif
             if (imc_set_by_hw) 		freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             else 									freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
-            i = 0;
-            while((i<num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
-            if ((i < num_processes) || (cbound)){ 
-              min_energy_state = COMP_IMCREF;
-            }else{ 
-        			ref_imc_pstate = imc_pstate;
-              min_energy_state = SELECT_IMCFREQ;
-            }
 					verbose_master(2,"%sIMC freq selection%s %lu-%lu",COL_GRE,COL_CLR,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
         }else{
 						verbose_master(2,"%sNot IMC freq selection%s : dyn_unc %u MPI_BOUND = %u Network_IMC %u",COL_RED,COL_CLR,dyn_unc,earl_phase_classification == APP_MPI_BOUND,network_use_imc);
-            min_energy_state = SELECT_CPUFREQ;
-            *ready = EAR_POLICY_READY;
 						if (dyn_unc && (earl_phase_classification == APP_MPI_BOUND) && network_use_imc){
 							freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
 							freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_khz - IMC_RANGE;
 						}
         }
-#endif
-
-#if NEW_IMCFREQ
-    }else if (min_energy_state == COMP_IMCREF){
+				/* Next state selection */
+				if (turbo_set){
+          min_energy_state = TRY_TURBO_CPUFREQ;
+          *ready = EAR_POLICY_TRY_AGAIN;
+        }else{
+					if (!dyn_unc){
+						*ready = EAR_POLICY_READY;
+						min_energy_state = SELECT_CPUFREQ;
+					}else{
+						i = 0;
+						while((i<num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
+            if ((i < num_processes) || (cbound)){
+                min_energy_state = COMP_IMCREF;
+            }else{
+              ref_imc_pstate = imc_pstate;
+              min_energy_state = SELECT_IMCFREQ;
+            }
+					}
+				}
+    }else if ((min_energy_state == COMP_IMCREF) || (min_energy_state == TRY_TURBO_CPUFREQ)){
 				/**** COMP_IMCREF ***/
 				if (signatures_different(&cpufreq_signature, sig, 0.2)){
 					int  i;
@@ -427,7 +429,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_freq;
         //policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-        verbose(2,"%sCOMP_IMCREF%s cpufreq %lu imc %lu-%lu",COL_BLU,COL_CLR,*new_freq,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+        verbose(2,"%sCOMP_IMCREF OR TRY_TURBO_CPUFREQ%s cpufreq %lu imc %lu-%lu",COL_BLU,COL_CLR,*new_freq,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
         min_energy_state = SELECT_IMCFREQ;
         *ready = EAR_POLICY_TRY_AGAIN;
     }else if ((min_energy_state == SELECT_IMCFREQ) && (dyn_unc)){
@@ -469,7 +471,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             }
         }
     }
-#endif
     verbose(2,"Next min_energy state %u next policy state %u",min_energy_state,*ready);
     return EAR_SUCCESS;
 }
