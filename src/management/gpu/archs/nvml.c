@@ -37,6 +37,7 @@ typedef int nvmlEnableState_t;
 typedef int nvmlClockType_t;
 typedef int nvmlClockId_t;
 typedef int nvmlReturn_t;
+typedef int nvmlDriverModel_t;
 
 #define NVML_PATH            ""
 #define NVML_SUCCESS         0
