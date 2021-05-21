@@ -155,13 +155,13 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
     uint ref_pstate;
 
     ref_pstate = ref_cpu_pstate;
-    verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u", ref_pstate, ref_imc_pstate);
+    verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %lu %lu", cpu_pstate, imc_pstate, ref_pstate, ref_imc_pstate);
 
     double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
     power_var = metric_diff(power_ref, sig->DC_power, 0);
 
     ulong curr_imc_freq = sig->sig_ext->imc_freq;
-    ulong ref_imc_freq = def_imc_max_khz - ref_imc_pstate * IMC_STEP;
+    ulong ref_imc_freq = frequency_pstate_to_freq(ref_imc_pstate);
     imc_gain = (curr_imc_freq - ref_imc_freq) / ref_imc_freq;
     double perf_min_benefit = imc_gain * min_eff_gain;
 
