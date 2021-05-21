@@ -320,7 +320,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     // TODO below code does not exist in min_energy
 #if POWERCAP
     if (is_powercap_set(&c->app->pc_opt)){ 
-        verbose(3,"Powercap is set to %uWatts",get_powercapopt_value(&c->app->pc_opt));
+        verbose(2,"Powercap is set to %uWatts",get_powercapopt_value(&c->app->pc_opt));
     }
 #endif
     curr_pstate = frequency_closest_pstate(curr_freq);
@@ -346,9 +346,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         // last_cpu_pstate = curr_pstate;
         // last_imc_pstate = imc_pstate;
-        is_cpu_bound(my_app, &cbound);
-        is_mem_bound(my_app, &mbound);
-        verbose_master(2, "App CPU bound %u MEM bound %u", cbound, mbound);
+        // is_cpu_bound(my_app, &cbound);
+        // is_mem_bound(my_app, &mbound);
+        // verbose_master(2, "App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
@@ -373,6 +373,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
         for (i = 0; i < nump; i++) {
             verbose_master(2, "Processing proc %d freq per core %d", i, freq_per_core);
+            local_eff_gain = base_eff_gain;
             if (!freq_per_core) {
                 compute_total_node_metrics();
                 compute_vpi(&sig_vpi, sig);
@@ -384,47 +385,30 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 /*  With this two lines, we force the VPI of the signature to the most loaded in the node */
                 my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
-                local_eff_gain = base_eff_gain;
             }else{
                 ulong eff_p_cpuf, process_avgcpuf;
                 process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_data_per_core, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
                 verbose_master(2, "Per-processing MR[%d][%d] SIGNATURE CPI %.3lf AVGCPUF %f (%lf, %lf)", my_globalrank, i, 
                         my_app->CPI, (float)process_avgcpuf/1000000.0, percs_mpi[i], percs_mpi[min_mpi]);
-                if (critical_path[i]){
-                    if (!mbound){
-                        eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf, 0);
-                        // Always will be >= def_freq
-                        if (use_turbo_for_cp && process_avgcpuf >= def_freq){
-                            new_freq[i] = frequency_pstate_to_freq(0);
-                        }else{
-                            new_freq[i] = ear_min(eff_p_cpuf, frequency_pstate_to_freq(1));
-                        }
-                        verbose_master(2, "CPU freq to CP process %d is %lu (CPU_BOUND)", i, new_freq[i]);
-                        continue;
-                    }else{
-                        local_eff_gain = base_eff_gain + (1 - base_eff_gain)/2;
-                    }
-                }
-                else {
-                    local_eff_gain = 
-                        min_eff_gain - EXTRA_TH * ear_math_exp(5 * ((percs_mpi[i] - percs_mpi[min_mpi]) / 100.0));
-                }
-                verbose_master(2, "Efficiency %f", local_eff_gain);
+                local_eff_gain = 
+                    base_eff_gain - (base_eff_gain * ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i])));
             }
+            verbose_master(2, "Local efficiency gain for process %d: %lf freq per core ? %d", i, local_eff_gain, freq_per_core);
             compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
-            verbose_master(2, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
+            verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
             best_pstate = frequency_closest_pstate(best_freq);
             compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate, 
                     best_pstate, best_freq, def_freq, &new_freq[i]);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
-            /* 
-             * #if LET_TURBO
-             *  if (cpu_supp_try_boost_cpu_freq(freq_per_core, i, min_mpi, percs_mpi, mpi_stats_perc_mpi_mean, new_freq, c->use_turbo)){
-             *      verbose_master(2, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
-             *  }
-             * #endif
-             */
+            if (use_turbo_for_cp){
+                verbose_master(2, "checking to try to boost. freq per core ? %u already using turbo ? %u", freq_per_core, c->use_turbo);
+                if (freq_per_core && !c->use_turbo){
+                    if (cpu_supp_try_boost_cpu_freq(i, critical_path, new_freq, min_pstate)){
+                        verbose_master(2, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
+                    }
+                }
+            }
         }
         if (!freq_per_core) {
             set_all_cores(new_freq, num_processes, new_freq[0]);
@@ -450,15 +434,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             } else {
                 min_time_state = SELECT_IMCFREQ;
                 ref_imc_pstate = imc_pstate;
-                verbose_master(2, "new_freq == curr_freq. ref_imc_pstate set to %u", ref_imc_pstate);
+                verbose_master(3, "frequency not changed. ref_imc_pstate set to %u", ref_imc_pstate);
             }
         } else {
             min_time_state = SELECT_CPUFREQ;
             *ready = EAR_POLICY_READY;
         }
+    }
 #endif
 #if NEW_IMCFREQ
-    }else if (min_time_state == COMP_IMCREF){
+    else if (min_time_state == COMP_IMCREF){
         // curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq); This variable is already initialized
         // ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP; this variable is already initialized
         copy_cpufreq_sel(new_freq, last_cpufreq_sel, sizeof(ulong) * MAX_CPUS_SUPPORTED);
@@ -474,8 +459,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 COL_YLW, COL_CLR, min_pstate, curr_pstate, imc_pstate, ref_imc_pstate);
         copy_cpufreq_sel(new_freq, last_cpufreq_sel, sizeof(ulong) * MAX_CPUS_SUPPORTED);
         /* 
-            uint increase_imc = must_increase_imc(imc_data, curr_pstate, imc_pstate, curr_pstate,
-            ref_imc_pstate, my_app, imc_extra_th);
+           uint increase_imc = must_increase_imc(imc_data, curr_pstate, imc_pstate, curr_pstate,
+           ref_imc_pstate, my_app, imc_extra_th);
         // If we are over the limit, we increase the IMC 
         if (increase_imc){
         verbose(2,"%sWarning, passing the limit", COL_RED);
@@ -503,7 +488,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
             decrease_imc = must_decrease_imc(imc_data, curr_pstate, imc_pstate, curr_pstate, ref_imc_pstate, my_app, imc_extra_th);
         }
-        
+
         /*  If we are over the limit, we increase the IMC */
         if (decrease_imc) {
             verbose_master(2,"%sWarning, passing the limit", COL_RED);

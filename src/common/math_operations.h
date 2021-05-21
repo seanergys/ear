@@ -69,3 +69,5 @@ double ear_math_mean(const double data[], size_t n);
 double ear_math_standard_deviation(const double data[], size_t n, double mean);
 
 double ear_math_exp(double x);
+
+double ear_math_scale(double src_range_min, double src_range_max, double n);
