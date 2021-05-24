@@ -260,6 +260,8 @@ static void metrics_global_stop()
 	imc_intel63_t *d;
 	io_data_t iod;
 	char io_info[256];
+	char file_name[256];
+	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	//
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
@@ -322,7 +324,16 @@ static void metrics_global_stop()
 	}
 	io_diff(&iod,&metrics_io_init[APP],&metrics_io_end[APP]);
 	io_tostr(&iod,io_info,sizeof(io_info));
-	verbose(2,"APP IO DATA: %s",io_info);
+	int fd;
+	char *io_buffer;
+	if (verb_path != NULL){ 
+		sprintf(file_name, "%s/earl_io_info.%d.%d", verb_path,my_step_id, my_job_id);
+		fd = open(file_name,O_WRONLY|O_CREAT|O_APPEND);
+	}else fd = 2;
+	io_buffer = malloc(strlen(io_info) + 200);
+	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
+	write(fd,io_buffer,strlen(io_buffer));
+	close(fd);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
 
 	/* This functionallity has been moved to library/policy/mpi_stats_support.c */

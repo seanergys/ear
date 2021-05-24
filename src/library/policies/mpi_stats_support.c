@@ -263,8 +263,16 @@ state_t mpi_call_get_types(mpi_calls_types_t *t)
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t)
 {
-
-	verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu syncp=%.2f/collecp=%.2f",t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,(float)t->time_sync/(float)t->time_period,(float)t->time_collec/(float)t->time_mpi);
+	char psync[64], pcollec[64];
+	if (t->time_period == 0){
+		sprintf(psync,"NAV");
+		sprintf(pcollect," NAV");
+	}else{
+		sprintf(psync,"%.2lf",(float)t->time_sync/(float)t->time_period);
+		sprintf(pcollect," %.2lf",(float)t->time_collec/(float)t->time_mpi);
+	}
+		
+	verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu syncp=%s/collecp=%s",t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,psync,pcollect);
 }
 
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t)

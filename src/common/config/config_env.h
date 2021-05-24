@@ -96,6 +96,7 @@
 #define SCHED_USE_TURBO_FOR_CP      "SLURM_USE_TURBO_FOR_CP"
 #define SCHED_MIN_CPUFREQ						"SLURM_MIN_CPUFREQ"
 #define SCHED_NETWORK_USE_IMC				"SLURM_NETWORK_USE_IMC"
+#define SCHED_TRY_TURBO							"SLURM_TRY_TURBO"
 
 
 /* Asks EARL to write verbose messages in separate per_task files */

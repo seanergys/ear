@@ -630,6 +630,10 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     state_t st=EAR_ERROR,stg=EAR_SUCCESS;
     int cpu_ready,gpu_ready = EAR_POLICY_READY;
     uint busy;
+    if (!eards_connected() || (masters_info.my_master_rank<0)){
+        *ready = EAR_POLICY_CONTINUE;
+        return EAR_SUCCESS;
+    }
     is_cpu_busy_waiting(my_sig,&busy);
     verbose_master(2,"EARL_phase %u busy waiting %u using phases %u",earl_phase_classification,busy,use_earl_phases);
     if (use_earl_phases){
@@ -681,10 +685,6 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     /* Here we are COMP or MPI bound AND not busy waiting*/
     if (polsyms_fun.node_policy_apply!=NULL){
 
-        if (!eards_connected() || (masters_info.my_master_rank<0)){
-            *ready = EAR_POLICY_CONTINUE;
-            return EAR_SUCCESS;
-        }
         /* Initializations */
         signature_copy(&node_sig,my_sig);
         node_sig.DC_power=sig_node_power(my_sig);

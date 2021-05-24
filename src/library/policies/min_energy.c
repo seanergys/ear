@@ -67,7 +67,7 @@ static uint enable_load_balance = 1;
 static uint use_turbo_for_cp = 0;
 static ulong min_cpufreq = 0;
 static uint network_use_imc = 0;
-static uint try_turbo_enabled = 1;
+static uint try_turbo_enabled = 0;
 
 static imc_data_t *imc_data;
 #define IMC_STEP 100000
@@ -106,6 +106,7 @@ state_t policy_init(polctx_t *c)
 		char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
 		char *cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);
 		char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
+		char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
     int i;
     if (c!=NULL){ 
         imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
@@ -124,6 +125,8 @@ state_t policy_init(polctx_t *c)
 				if (min_cpufreq) verbose_master(2,"Min CPUfreq is limited = %lu",min_cpufreq);
 				if (cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
 				verbose_master(2,"Network uses IMC set to %u",network_use_imc);
+				if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
+				verbose_master(2,"Using turbo for cbound app set to %u",try_turbo_enabled);
 
 				
         my_app = calloc(1,sizeof(signature_t));
@@ -304,7 +307,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         // NEW: This code is new because projections from lower pstates are reporting bad cpu freqs 
         i = 0;
         while((i < num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
-        if ((i < num_processes) || ((i == num_processes) && dyn_unc && (imc_pstate != 0))){
+        //if ((i < num_processes) || ((i == num_processes) && dyn_unc && (imc_pstate != 0))){
+        if ((i < num_processes) || ((i == num_processes) && dyn_unc && (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] != imc_max_khz))){
             *ready = EAR_POLICY_TRY_AGAIN;
             new_freq[0] = def_freq;
             for (i=1;i<num_processes;i++) new_freq[i] = new_freq[0];
