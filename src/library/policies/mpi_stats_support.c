@@ -263,7 +263,7 @@ state_t mpi_call_get_types(mpi_calls_types_t *t)
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t)
 {
-	char psync[64], pcollec[64];
+	char psync[64], pcollect[64];
 	if (t->time_period == 0){
 		sprintf(psync,"NAV");
 		sprintf(pcollect," NAV");
