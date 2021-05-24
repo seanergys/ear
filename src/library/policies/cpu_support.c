@@ -181,15 +181,19 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     return EAR_SUCCESS;
 }
 
-#if LET_TURBO
-uint cpu_supp_try_boost_cpu_freq(int freq_per_core, int nproc, int min_mpi, double *percs_mpi, double mean, ulong *freqs, int use_turbo){
-    if (freq_per_core && (abs(percs_mpi[nproc] - percs_mpi[min_mpi]) < abs(percs_mpi[nproc] - mean)) && !use_turbo) {
+uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, int min_pstate){
+    uint belongs_to_cp = critical_path[nproc];
+    int pstate = frequency_closest_pstate(freqs[nproc]);
+    verbosen_master(2, "Checking for boost process %d: Critical path ? %u | pstate ? %d | min_pstate ? %d",
+            nproc, belongs_to_cp, pstate, min_pstate);
+    if (belongs_to_cp && pstate == min_pstate) {
         freqs[nproc] = frequency_pstate_to_freq(0);
+        verbose_master(2, "%sOK%s", COL_GRE, COL_CLR);
         return 1;
     }
+    verbose_master(2, "%sFALSE%s", COL_RED, COL_CLR);
     return 0;
 }
-#endif
 
 int signatures_different(signature_t *s1, signature_t *s2,float p)
 {

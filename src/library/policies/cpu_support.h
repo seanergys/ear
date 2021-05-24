@@ -17,8 +17,6 @@
 #ifndef _CPU_SUPPORT_H
 #define _CPU_SUPPORT_H
 
-#define LET_TURBO 0
-
 state_t compute_reference(polctx_t *c, signature_t *my_app, ulong *curr_freq, ulong *def_freq, ulong *freq_ref, double *time_ref, double *power_ref);
 state_t compute_cpu_freq_min_energy(polctx_t *c,signature_t *my_app,ulong freq_ref,double time_ref,double power_ref,double penalty,ulong curr_pstate,ulong  minp,ulong maxp,ulong *newf);
 
@@ -35,14 +33,10 @@ void process_avg_cpu_freq(cpu_set_t *aff,ulong *cpuflist,ulong *avgcpu);
  * */
 int signatures_different(signature_t *s1, signature_t *s2,float p);
 
-
-
-#if LET_TURBO
-/*  This functions checks whether policy is selecting cpu freq. per core, if the current process 'nproc' is who has the min_mpi througput and
- *  has set the max cpu freq 'min_pstate' which is not turbo, set it turbo freq and returns 1.
+/*  This functions checks whether the current process 'nproc' belongs to critical path, and if it has set the max cpu 
+ *  freq 'min_pstate', set it turbo freq and returns 1.
  *  Returns 0 otherwise.*/
-uint cpu_supp_try_boost_cpu_freq(int freq_per_core, int nproc, int min_mpi, double *percs_mpi, double mean, ulong *freqs, int use_turbo);
-#endif
+uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, int min_pstate);
 
 #endif
 
