@@ -898,25 +898,39 @@ int eard_rapl(int must_read) {
 /***************** GPU SERVICES ****************/
 int eard_gpu(int must_read) 
 {
-  unsigned long comm_req = gpu_req;
-  unsigned long ack = 0;
+	unsigned long comm_req = gpu_req;
+	unsigned long ack = 0;
 	unsigned int model=0;
 	unsigned int dev_count=0;
 	#if USE_GPUS
+	gpu_info_t *info;
+	gpu_info_t fake;
 	gpu_t *my_gpu;
 	state_t ret;
-  if (must_read) {
-    if (read(ear_fd_req[comm_req], &req, sizeof(req)) != sizeof(req))
-      error("error when reading info at eard_gpu\n");
-  }
-  switch (req.req_service) {
-    case GPU_MODEL:
+
+	if (must_read) {
+		if (read(ear_fd_req[comm_req], &req, sizeof(req)) != sizeof(req))
+			error("error when reading info at eard_gpu\n");
+	}
+
+	switch (req.req_service) {
+		case GPU_MODEL:
 			debug("GPU_MODEL %d",eard_gpu_model);
 			write(ear_fd_ack[comm_req],&eard_gpu_model,sizeof(eard_gpu_model));	
-      break;
-    case GPU_DEV_COUNT:
+		break;
+		case GPU_DEV_COUNT:
 			debug("GPU_DEV_COUNT %d",eard_num_gpus);
 			write(ear_fd_ack[comm_req],&eard_num_gpus,sizeof(eard_num_gpus));	
+			break;
+		case GPU_GET_INFO:
+			debug("GPU_GET_INFO %d", eard_num_gpus);
+			if (eard_gpu_initialized) {
+				gpu_get_info(&eard_main_gpu_ctx, (const gpu_t **) &info, NULL);
+			} else {
+				memset(&fake, 0, sizeof(gpu_info_t));
+				*info = fake;
+			}
+			write(ear_fd_ack[comm_req], info, sizeof(gpu_info_t)*eard_num_gpus);	
 			break;
 		case GPU_DATA_READ:
 			if (eard_gpu_initialized){
