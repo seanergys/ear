@@ -90,6 +90,16 @@ state_t gpu_lib_init(ctx_t *_c)
 		error("Not enough memory");
 		return EAR_ERROR;
 	}
+
+	#if 0
+	gpu_info_t *info = malloc(sizeof(gpu_info_t)*node_dev_count);
+	eards_gpu_get_info((gpu_info_t *) info, node_dev_count);
+	int i;
+	for (i = 0; i < node_dev_count; ++i) {
+		fprintf(stderr, "GPU%d serial: %llu\n", i, info[i].serial);
+	}
+	#endif
+
 	return EAR_SUCCESS;
 }
 

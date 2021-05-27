@@ -41,6 +41,7 @@ state_t gpu_load(gpu_ops_t **_ops, uint model_force, uint *model_used)
 		ops.init_unprivileged = nvml_init_unprivileged;
 		ops.dispose		= nvml_dispose;
 		ops.count		= nvml_count;
+		ops.get_info    = nvml_get_info;
 		ops.read		= nvml_read;
 		ops.read_copy	= nvml_read_copy;
 		ops.read_raw	= nvml_read_raw;
@@ -61,6 +62,7 @@ state_t gpu_load(gpu_ops_t **_ops, uint model_force, uint *model_used)
 		ops.init_unprivileged = gpu_dummy_init;
 		ops.dispose		= gpu_dummy_dispose;
 		ops.count		= gpu_dummy_count;
+		ops.get_info    = gpu_dummy_get_info;
 		ops.read		= gpu_dummy_read;
 		ops.read_copy	= gpu_dummy_read_copy;
 		ops.read_raw	= gpu_dummy_read_raw;
@@ -104,6 +106,11 @@ state_t gpu_dispose(ctx_t *c)
 state_t gpu_count(ctx_t *c, uint *dev_count)
 {
 	preturn (ops.count, c, dev_count);
+}
+
+state_t gpu_get_info(ctx_t *c, const gpu_info_t **info, uint *dev_count)
+{
+	preturn (ops.get_info, c, info, dev_count);
 }
 
 state_t gpu_read(ctx_t *c, gpu_t *data)

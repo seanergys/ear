@@ -1185,8 +1185,8 @@ int eards_gpu_model(uint *gpu_model)
     ack=EAR_ERROR;
   }   
   return ack;
-
 }
+
 int eards_gpu_dev_count(uint *gpu_dev_count)
 {
   int com_fd = gpu_req;
@@ -1214,6 +1214,7 @@ int eards_gpu_dev_count(uint *gpu_dev_count)
   }   
   return ack;
 }
+
 int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev)
 {
   int com_fd = gpu_req;
@@ -1233,6 +1234,35 @@ int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev)
       "ERROR writing request for gpu data read ")) return EAR_ERROR;
 			debug("gpu_data_read, reading %lu bytes",sizeof(gpu_t)*num_dev);
       if (warning_api(my_read(ear_fd_ack[com_fd],(char *)gpu_info,sizeof(gpu_t)*num_dev) , sizeof(gpu_t)*num_dev,
+      "ERROR reading data for gpu data read ")) return EAR_ERROR;
+			ack = EAR_SUCCESS;
+  } else
+  { 
+    debug( "gpu_data_read service not provided");
+    ack=EAR_ERROR;
+  }   
+	return ack;
+}
+
+int eards_gpu_get_info(gpu_info_t *info, uint num_dev)
+{
+  int com_fd = gpu_req;
+  ulong ack=EAR_SUCCESS;
+  struct daemon_req req;
+  
+	memset(info,0,sizeof(gpu_info_t)*num_dev);
+  if (!app_connected){
+    return EAR_SUCCESS;
+  }
+  debug("asking for gpu_data ");
+  req.req_service = GPU_GET_INFO;
+  req.sec=create_sec_tag();
+  if (ear_fd_req[com_fd]>=0)
+  {     
+      if (warning_api(my_write(ear_fd_req[com_fd],(char *)&req,sizeof(req)) , sizeof(req),
+      "ERROR writing request for gpu data read ")) return EAR_ERROR;
+			debug("gpu_data_read, reading %lu bytes",sizeof(gpu_info_t)*num_dev);
+      if (warning_api(my_read(ear_fd_ack[com_fd],(char *)info,sizeof(gpu_info_t)*num_dev) , sizeof(gpu_info_t)*num_dev,
       "ERROR reading data for gpu data read ")) return EAR_ERROR;
 			ack = EAR_SUCCESS;
   } else
