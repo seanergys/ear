@@ -202,6 +202,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     }
     for (i=0;i<gpu_pc_num_gpus;i++){
         if (gpu_pc_util[i] < 1) continue;
+        if (t_freq[i] > 0) c_freq[i] = ear_min(c_freq[i], t_freq[i]);
         n_freq[i] = c_freq[i];
         /* Aplicar limites */
         //debug("GPU[%d] power %lf limit %lu",i,values_gpu_diff[i].power_w,gpu_pc_curr_power[i]);
