@@ -100,6 +100,7 @@ static uint use_turbo_for_cp = 0;
 static uint *critical_path;
 static int master_sig_without_sig = 0;
 static signature_t cpufreq_signature;
+extern volatile uint ear_periodic_mode;
 
 /*  wrap function which calculates intructions, flops and cycles. */
 state_t compute_total_node_metrics();
@@ -328,7 +329,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 #if NEW_IMCFREQ
     if (dyn_unc){
         curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
-        imc_pstate = (def_imc_max_khz - curr_imc_freq) / IMC_STEP;
+        imc_pstate = imc_support_freq_to_pstate(curr_imc_freq);
         verbose_master(2, "CPU pstate %lu CPU freq %lu IMC freq %lu IMC pstate %lu", curr_pstate, curr_freq, my_app->sig_ext->imc_freq, imc_pstate);
         copy_imc_data_from_signature(imc_data, curr_pstate, imc_pstate, my_app);
     }
@@ -394,7 +395,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 local_eff_gain = 
                     base_eff_gain - (base_eff_gain * ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i])));
             }
-            verbose_master(2, "Local efficiency gain for process %d: %lf freq per core ? %d", i, local_eff_gain, freq_per_core);
+            verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
             compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
             verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
             best_pstate = frequency_closest_pstate(best_freq);
@@ -421,12 +422,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             if (!imc_set_by_hw){
                 /*  Fix the imc to the first selected by hardware */
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = avg_to_khz(my_app->sig_ext->imc_freq);
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
+                // freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
             }
             else {
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             }
+            freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             i = 0;
             while ((i < num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
             if (i < num_processes) {
@@ -484,7 +485,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
          }
          */
         uint decrease_imc = 0;
-        if (frequency_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz){
+        if (imc_support_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz){
             verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
             decrease_imc = must_decrease_imc(imc_data, curr_pstate, imc_pstate, curr_pstate, ref_imc_pstate, my_app, imc_extra_th);
         }
@@ -493,7 +494,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         if (decrease_imc) {
             verbose_master(2,"%sWarning, passing the limit", COL_RED);
             freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
-                    imc_min_khz - IMC_RANGE  );
+                    imc_min_khz - IMC_RANGE);
             freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             verbose_master(2,"Selecting %lu - %lu and policy ready%s",
                     freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
@@ -525,21 +526,56 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 
     if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
 
-    if (curr_sig->def_f==last_sig->def_f) *ok=1;
+    /* This part is generic
+    if (curr_sig->def_f == last_sig->def_f){ 
+        *ok=1;
+        verbose_master(2, "Current def freq (%lu) equals to last def freq. POLICY %sok%s", curr_sig->def_f, COL_GRE, COL_CLR);
+    }
+    */
 
-    // Check that efficiency is enough
-    if (curr_sig->time < last_sig->time) *ok=1;
-
-    // If time is similar and it was same freq it is ok	
-    if (equal_with_th(curr_sig->time , last_sig->time, 0.1) && (curr_sig->def_f == last_sig->def_f)) *ok=1;
-
-    // If we run at a higher freq but we are slower, we are not ok	
-    if ((curr_sig->time > last_sig->time) && (curr_sig->def_f > last_sig->def_f)) *ok=0;
-
-    // else *ok=0;
-
-    return st;
-
+    /*  When DynAIS enabled */
+    if (ear_periodic_mode == PERIODIC_MODE_OFF){
+        // Check that efficiency is enough
+        if (curr_sig->time < last_sig->time){
+            *ok=1;
+            verbosen_master(2, "current time (%lf) less than last time (%lf). ", curr_sig->time, last_sig->time);
+        }
+        else{
+            // If time is similar and it was same freq it is ok	
+            if (equal_with_th(curr_sig->time, last_sig->time, 0.1) && (curr_sig->def_f == last_sig->def_f)){
+                *ok=1;
+            }
+            // If we run at a higher freq but we are slower, we are not ok	
+            else if ((curr_sig->time > last_sig->time) && (curr_sig->def_f > last_sig->def_f)) {
+                *ok=0;
+            }
+            else {
+                // provisional end criteria
+                *ok=1;
+            }
+            verbosen_master(2, "current time (%lf) | last time (%lf) | current def. freq (%lu) | last def. freq (%lu). ", curr_sig->time, last_sig->time, curr_sig->def_f, last_sig->def_f);
+        }
+    }
+    else {
+        double perf_gain = (last_sig->time - curr_sig->time) / curr_sig->time;
+        double min_eff_gain = c->app->settings[0];
+        double freq_gain = min_eff_gain * (double)(curr_sig->avg_f - last_sig->avg_f) / (double)last_sig->avg_f;
+        if (perf_gain >= freq_gain){
+            *ok=1;
+            }
+        else{
+            *ok=0;
+        }
+        verbosen_master(2, "Perf gain (%lf) | Freq gain (%lf) | Min eff gain (%lf) ", perf_gain, freq_gain, min_eff_gain);
+    }
+    verbosen_master(2, "POLICY ");
+    if (*ok){
+        verbose_master(2, "%sok%s", COL_GRE, COL_CLR);
+    }
+    else{
+        verbose_master(2, "%snot ok%s", COL_RED, COL_CLR);
+    }
+    return EAR_SUCCESS;
 }
 
 state_t policy_get_default_freq(polctx_t *c, ulong *f)
