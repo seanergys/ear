@@ -65,7 +65,7 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
     curr_pstate = frequency_closest_pstate(curr_freq[0]);
     if (curr_freq[0] != def_freq[0]) // Use configuration when available
     {
-        verbose_master(2, "curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
+        verbose_master(3, "curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
         if (projection_available(curr_pstate,def_pstate)==EAR_SUCCESS)
         {
             st = project_power(my_app,curr_pstate,def_pstate,power_ref);
@@ -81,7 +81,7 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
         *time_ref = my_app->time;
         *power_ref = my_app->DC_power;
         freq_ref[0] = curr_freq[0];
-    }		
+    }
     return EAR_SUCCESS;
 }
 
@@ -135,7 +135,7 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
 
     compute_vpi(&vpi,my_app);
     // error al compilar con verbose_master :( error: identifier "masters_info" is undefined
-    verbose_master(2, "CPUfreq algorithm for min_time. timeref %lf; pstate %lu; F %lu; deffreq %lu; VPI %lf",
+    verbose_master(3, "CPUfreq algorithm for min_time. timeref %lf; pstate %lu; F %lu; deffreq %lu; VPI %lf",
             time_ref, curr_pstate, best_freq, def_freq, vpi);
 
     try_next = 1;
@@ -145,19 +145,19 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     {
         if (projection_available(curr_pstate,i)==EAR_SUCCESS)
         {
-            verbose_master(2, "Looking for pstate %d",i);
+            verbose_master(3, "Looking for pstate %d",i);
             st = project_power(my_app, curr_pstate, i, &power_proj);
             st = project_time(my_app, curr_pstate, i, &time_proj);
             projection_set(i, time_proj, power_proj);
             freq_ref = frequency_pstate_to_freq(i);
             freq_gain = min_eff_gain * (double)(freq_ref - best_freq) / (double)best_freq;
             perf_gain = (time_current - time_proj) / time_current;
-            verbose_master(2, "%lu to %d time %lf proj time %lf freq gain %lf perf_gain %lf", curr_pstate, i, my_app->time, time_proj,
+            verbose_master(3, "%lu to %d time %lf proj time %lf freq gain %lf perf_gain %lf", curr_pstate, i, my_app->time, time_proj,
                     freq_gain,perf_gain);
             // OK
             if (perf_gain>=freq_gain)
             {
-                verbose(2, "New best solution found: Best freq: %lu; Best pstate: %d; Current time ref: %lf",
+                verbose(3, "New best solution found: Best freq: %lu; Best pstate: %d; Current time ref: %lf",
                         freq_ref, i, time_proj);
                 best_freq=freq_ref;
                 best_pstate=i;
@@ -176,7 +176,7 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     /* Controlar la freq por power cap, si capado poner GREEDY, gestionar req-f */
     if (best_freq<def_freq) best_freq=def_freq;
     *newf=best_freq;
-    verbose_master(2, "*new_freq=%lu", *newf);
+    verbose_master(3, "*new_freq=%lu", *newf);
 
     return EAR_SUCCESS;
 }
@@ -184,7 +184,7 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
 uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, int min_pstate){
     uint belongs_to_cp = critical_path[nproc];
     int pstate = frequency_closest_pstate(freqs[nproc]);
-    verbosen_master(2, "Checking for boost process %d: Critical path ? %u | pstate ? %d | min_pstate ? %d",
+    verbosen_master(2, "Checking for boost process %d: Critical path ? %u | pstate ? %d | min_pstate ? %d ",
             nproc, belongs_to_cp, pstate, min_pstate);
     if (belongs_to_cp && pstate == min_pstate) {
         freqs[nproc] = frequency_pstate_to_freq(0);
