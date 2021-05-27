@@ -543,6 +543,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 				}
 				return;
 			}
+
+#if 0
 			if (dynais_used){
 				pst = policy_ok(&loop_signature.signature, l_sig,&pok);
 			}else{
@@ -562,15 +564,19 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 				}
 			}
+#endif
+            pst = policy_ok(&loop_signature.signature, l_sig,&pok);
+			ok_clr = COL_GRE;
 			if (pok) {
 				/* When collecting traces, we maintain the period */
 				if ((masters_info.my_master_rank>=0) && (traces_are_on()==0)){
 					perf_count_period = perf_count_period * 2;
 				}
 				tries_current_loop=0;
-			}
-			ok_clr = COL_GRE;
-			if (!pok) ok_clr = COL_RED; 
+			}else{
+                EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+                ok_clr = COL_RED;
+            } 
 			verbose_master(2,"%sPolicy ok=%u%s current (%.2lf/%.2lf/%.2lf) reference (%.2lf/%.2lf/%.2lf)/(%.2lf/%.2lf/%.2lf)",ok_clr,pok,COL_CLR,
 			loop_signature.signature.CPI,loop_signature.signature.GBS,loop_signature.signature.DC_power,l_sig->CPI,l_sig->GBS,l_sig->DC_power,
 			policy_sel_signature.CPI,policy_sel_signature.GBS,policy_sel_signature.DC_power);
