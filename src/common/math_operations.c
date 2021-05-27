@@ -168,3 +168,7 @@ double ear_math_exp(double x){
 double ear_math_scale(double src_range_min, double src_range_max, double n){
     return ((n - src_range_min)/(src_range_max - src_range_min)); // *(target_range_max - target_range_min) + target_range_min;
 }
+
+float ear_math_roundf(float n){
+    return roundf(n);
+}
