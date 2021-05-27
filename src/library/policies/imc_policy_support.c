@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <common/config.h>
 #include <common/states.h>
+#include <common/math_operations.h>
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <library/common/externs.h>
@@ -46,20 +47,20 @@ double metric_diff(double metric_ref, double metric_curr, uint type) {
 uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig)
 {
-	uint ref_pstate;
-	double CPI,GBS,CPI_ref,GBS_ref, rCPI, rGBS;
-	ref_pstate = ref_cpu_pstate;
-	CPI_ref = (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles
-            / (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
-	GBS_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
-	CPI     = sig->CPI;
-	GBS	    = sig->GBS;
-	if (CPI > CPI_ref) rCPI = (CPI - CPI_ref)/CPI;
-	else               rCPI = (CPI_ref - CPI)/CPI_ref;
-	if (GBS > GBS_ref) rGBS = (GBS - GBS_ref)/GBS;
-	else               rGBS = (GBS_ref - GBS)/GBS_ref;
-	if ((rCPI > DIFF_SIG) || (rGBS > DIFF_SIG)) return 1;
-	else return 0;
+    uint ref_pstate;
+    double CPI,GBS,CPI_ref,GBS_ref, rCPI, rGBS;
+    ref_pstate = ref_cpu_pstate;
+    CPI_ref = (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles
+        / (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
+    GBS_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+    CPI     = sig->CPI;
+    GBS	    = sig->GBS;
+    if (CPI > CPI_ref) rCPI = (CPI - CPI_ref)/CPI;
+    else               rCPI = (CPI_ref - CPI)/CPI_ref;
+    if (GBS > GBS_ref) rGBS = (GBS - GBS_ref)/GBS;
+    else               rGBS = (GBS_ref - GBS)/GBS_ref;
+    if ((rCPI > DIFF_SIG) || (rGBS > DIFF_SIG)) return 1;
+    else return 0;
 }
 
 uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
@@ -80,7 +81,7 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
 
     double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
     power_var = metric_diff(power_ref, sig->DC_power, 0); // (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power
-            // - sig->DC_power)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
+    // - sig->DC_power)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
 
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
         metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
@@ -160,10 +161,20 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
     double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
     power_var = metric_diff(power_ref, sig->DC_power, 0);
 
-    ulong curr_imc_freq = sig->sig_ext->imc_freq;
-    ulong ref_imc_freq = frequency_pstate_to_freq(ref_imc_pstate);
-    imc_gain = (curr_imc_freq - ref_imc_freq) / ref_imc_freq;
-    double perf_min_benefit = imc_gain * min_eff_gain;
+    // TODO: if it works, please beautify
+    ulong curr_imc_freq = (ulong) (((ear_math_roundf((float) sig->sig_ext->imc_freq / 100000.0)) / 10.0) * 1000000);
+    /*
+       ulong newf;
+       float ff;
+
+       ff = roundf((float) freq_khz / 100000.0);
+       newf = (ulong) ((ff / 10.0) * 1000000);
+       */
+
+    ulong ref_imc_freq = imc_support_pstate_to_freq(ref_imc_pstate);
+    verbose(2, "Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);
+    imc_gain = metric_diff((double)ref_imc_freq, (double)curr_imc_freq, 1);
+    double perf_min_benefit = imc_gain * 0.7;
 
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
         metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
@@ -212,9 +223,9 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
         metric_gain = metric_diff(metric_ref, metric, 1);
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
-        metric_gain_2 = metric_diff(CPI, metric, 0);
-        verbose(2,"Using GBS&CPI as reference: Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Gain (%.3lf, %.3lf) IMC gain: %.3lf",
-                metric, metric2,metric_ref,CPI,metric_gain, metric_gain_2, imc_gain);
+        metric_gain_2 = metric_diff(CPI, metric2, 0);
+        verbose(2,"Using GBS&CPI as reference: Current (%.4lf,%.4lf) Ref (%.4lf,%.4lf) Gain (%.4lf, %.4lf) IMC gain: %.3lf",
+                metric, metric2, metric_ref,CPI, metric_gain, metric_gain_2, imc_gain);
         return ((metric_gain < perf_min_benefit) || (metric_gain_2 < perf_min_benefit));
 #endif
     }
@@ -243,7 +254,15 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint i
 
 ulong select_imc_freq(ulong max,ulong min,float p)
 {
-	ulong new;
-	new = max-(float)(max-min)*p;
-	return new;
+    ulong new;
+    new = max-(float)(max-min)*p;
+    return new;
+}
+
+uint imc_support_freq_to_pstate(ulong freq){
+    return (def_imc_max_khz - freq)/IMC_STEP;
+}
+
+ulong imc_support_pstate_to_freq(uint pstate){
+    return def_imc_max_khz - pstate * IMC_STEP;
 }

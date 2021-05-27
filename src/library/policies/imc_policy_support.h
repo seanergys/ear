@@ -66,6 +66,9 @@ uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
 
 ulong select_imc_freq(ulong max,ulong min,float p);
 
+uint imc_support_freq_to_pstate(ulong freq);
+ulong imc_support_pstate_to_freq(uint pstate);
+
 
 
 #define IMC_MAX 0
