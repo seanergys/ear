@@ -74,8 +74,8 @@ ulong avg_to_khz(ulong freq_khz);
 
 static imc_data_t *imc_data;
 static uint min_time_state = SELECT_CPUFREQ;
-// static uint last_cpu_pstate,last_imc_pstate, ref_imc_pstate;
-static uint ref_imc_pstate;
+static uint last_cpu_pstate; // ,last_imc_pstate, ref_imc_pstate;
+static uint ref_imc_pstate = -1;
 
 static int nump;
 static uint enable_load_balance = 1;
@@ -213,12 +213,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     uint local_process_with_high_vpi;
     double local_eff_gain, base_eff_gain;
     int freq_per_core = 0;
-    double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean;
+    double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_mag;
     uint cbound, mbound;
 
 #if NEW_IMCFREQ
     ulong curr_imc_freq;
 #endif
+
+    if (min_time_state == SELECT_CPUFREQ){
+        ref_imc_pstate = -1;
+    }
 
     if (c == NULL || c->app==NULL) {
         *ready = EAR_POLICY_CONTINUE;
@@ -255,23 +259,27 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     min_eff_gain=c->app->settings[0];
     base_eff_gain = min_eff_gain;
 
-    if (is_mpi_enabled() && min_time_state == SELECT_CPUFREQ && enable_load_balance) {
+    if (is_mpi_enabled() && enable_load_balance) {
         /*  Even though it's compute bound, we check if we must redistribute power */
         evaluate_cp(num_processes, my_node_mpi_calls, &max_mpi, &min_mpi);
         // opportunity to check similarity to avoid this code
         memset(critical_path, 0, sizeof(uint)*num_processes);
 
         mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
-        mpi_stats_evaluate_mean_sd(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd);
+        mpi_stats_evaluate_mean_sd_mag(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd, &mpi_stats_perc_mpi_mag);
         signature_is_unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
         uint unbalance = enable_load_balance && signature_is_unbalance;
-        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %f unbalance ? %u",
+        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi],
-                percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, unbalance);
+                percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mag, unbalance);
 
         if (!first_time){
             mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
             double similarity;
+            verbose_master(2, "PREVIOUS percs_mpi:");
+            for (int i = 0; i < num_processes; i++){
+                verbosen_master(2, "MR[%d]=%lf", i, last_percs_mpi[i]);
+            }
             mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
             verbose(2, "Similarity between last and current: %lf", similarity);
         }
@@ -331,7 +339,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
         imc_pstate = imc_support_freq_to_pstate(curr_imc_freq);
         verbose_master(2, "CPU pstate %lu CPU freq %lu IMC freq %lu IMC pstate %lu", curr_pstate, curr_freq, my_app->sig_ext->imc_freq, imc_pstate);
-        copy_imc_data_from_signature(imc_data, curr_pstate, imc_pstate, my_app);
+        if (ref_imc_pstate == -1 || imc_pstate != ref_imc_pstate){
+            copy_imc_data_from_signature(imc_data, curr_pstate, imc_pstate, my_app);
+        }
     }
     if ((min_time_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
         /*  SELECT CPUFREQ */
@@ -345,7 +355,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         *ready = EAR_POLICY_READY;
 #endif
 
-        // last_cpu_pstate = curr_pstate;
+        last_cpu_pstate = curr_pstate;
         // last_imc_pstate = imc_pstate;
         // is_cpu_bound(my_app, &cbound);
         // is_mem_bound(my_app, &mbound);
@@ -392,8 +402,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
                 verbose_master(2, "Per-processing MR[%d][%d] SIGNATURE CPI %.3lf AVGCPUF %f (%lf, %lf)", my_globalrank, i, 
                         my_app->CPI, (float)process_avgcpuf/1000000.0, percs_mpi[i], percs_mpi[min_mpi]);
-                local_eff_gain = 
-                    base_eff_gain - (base_eff_gain * ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i])));
+                double factor = ear_math_exp(-15 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]));
+                if (factor < 0.01){
+                    factor = 0.0;
+                }
+                local_eff_gain = base_eff_gain * (1 - factor);
+                // base_eff_gain - (base_eff_gain * factor);
             }
             verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
             compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
@@ -411,7 +425,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 }
             }
         }
-        if (!freq_per_core) {
+        if (!freq_per_core){
             set_all_cores(new_freq, num_processes, new_freq[0]);
         }
         copy_cpufreq_sel(last_cpufreq_sel, new_freq, sizeof(ulong) * num_processes);
@@ -445,11 +459,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 #endif
 #if NEW_IMCFREQ
     else if (min_time_state == COMP_IMCREF){
-        // curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq); This variable is already initialized
-        // ulong curr_imc_pstate = (def_imc_max_khz - curr_imc_freq)/IMC_STEP; this variable is already initialized
         copy_cpufreq_sel(new_freq, last_cpufreq_sel, sizeof(ulong) * MAX_CPUS_SUPPORTED);
         ref_imc_pstate = imc_pstate;
-        // freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_freq;
         verbose_master(2,"%sCOMP_IMCREF%s | cpufreq %lu | imc %lu-%lu | imcfreq %lu | ref imc_pstate %u",
                 COL_YLW, COL_CLR, *new_freq, freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], curr_imc_freq, ref_imc_pstate);
         min_time_state = SELECT_IMCFREQ;
@@ -527,11 +538,11 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
 
     /* This part is generic
-    if (curr_sig->def_f == last_sig->def_f){ 
-        *ok=1;
-        verbose_master(2, "Current def freq (%lu) equals to last def freq. POLICY %sok%s", curr_sig->def_f, COL_GRE, COL_CLR);
-    }
-    */
+       if (curr_sig->def_f == last_sig->def_f){ 
+     *ok=1;
+     verbose_master(2, "Current def freq (%lu) equals to last def freq. POLICY %sok%s", curr_sig->def_f, COL_GRE, COL_CLR);
+     }
+     */
 
     /*  When DynAIS enabled */
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
@@ -557,14 +568,25 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
         }
     }
     else {
-        double perf_gain = (last_sig->time - curr_sig->time) / curr_sig->time;
+        double perf_gain = (last_sig->CPI - curr_sig->CPI) / curr_sig->CPI;
         double min_eff_gain = c->app->settings[0];
-        double freq_gain = min_eff_gain * (double)(curr_sig->avg_f - last_sig->avg_f) / (double)last_sig->avg_f;
+
+        ulong curr_freq = frequency_closest_high_freq(curr_sig->avg_f,1);
+        ulong ref_freq = frequency_pstate_to_freq(last_cpu_pstate);
+
+        double freq_gain = min_eff_gain * (double)(curr_freq - ref_freq) / (double)ref_freq;
+#if 0
         if (perf_gain >= freq_gain){
             *ok=1;
-            }
+        }
         else{
             *ok=0;
+        }
+#endif
+        if (perf_gain < 0){
+            *ok=0;
+        }else{
+            *ok=1;
         }
         verbosen_master(2, "Perf gain (%lf) | Freq gain (%lf) | Min eff gain (%lf) ", perf_gain, freq_gain, min_eff_gain);
     }

@@ -57,6 +57,7 @@ double ear_math_cosine_similarity(double *a, double *b, size_t n);
 typedef struct mean_sd {
     double mean;
     double sd;
+    double mag;
 } mean_sd_t;
 
 mean_sd_t ear_math_mean_sd(const double data[], size_t n);

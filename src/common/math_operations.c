@@ -142,6 +142,7 @@ mean_sd_t ear_math_mean_sd(const double data[], size_t n){
     }
     result.mean = sum / n;
     result.sd = sqrt(sq_sum / n - pow(result.mean, 2));
+    result.mag = sqrt(sq_sum);
     return result;
 }
 

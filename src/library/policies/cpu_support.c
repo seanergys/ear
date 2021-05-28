@@ -42,17 +42,17 @@
 
 void process_avg_cpu_freq(cpu_set_t *aff,ulong *cpuflist,ulong *avgcpu)
 {
-	int i = 0;
-	ulong cpuftotal = 0;
-	int total = 0;
-	for (i=0; i<mtopo.cpu_count;i++){
-		if (CPU_ISSET(i,aff)){ 
-			total ++;
-			cpuftotal += cpuflist[i];
-		}
-	}
-	*avgcpu = cpuftotal / total; 
-	
+    int i = 0;
+    ulong cpuftotal = 0;
+    int total = 0;
+    for (i=0; i<mtopo.cpu_count;i++){
+        if (CPU_ISSET(i,aff)){ 
+            total ++;
+            cpuftotal += cpuflist[i];
+        }
+    }
+    *avgcpu = cpuftotal / total; 
+
 }
 
 state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong *def_freq,ulong *freq_ref,double *time_ref,
@@ -197,8 +197,8 @@ uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, i
 
 int signatures_different(signature_t *s1, signature_t *s2,float p)
 {
-	if (!equal_with_th(s1->CPI,s2->CPI,p) || !equal_with_th(s1->GBS, s2->GBS,p)){ 
-		if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)) return 1;
-	}
-	return 0;	
+    if (!equal_with_th(s1->CPI,s2->CPI,p) || !equal_with_th(s1->GBS, s2->GBS,p)){ 
+        if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)) return 1;
+    }
+    return 0;
 }

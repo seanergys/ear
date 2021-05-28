@@ -372,3 +372,11 @@ state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, do
     *sd = mean_sd.sd;
     return EAR_SUCCESS;
 }
+
+state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag){
+    mean_sd_t mean_sd_mag = ear_math_mean_sd(percs_mpi, nump);
+    *mean = mean_sd_mag.mean;
+    *sd = mean_sd_mag.sd;
+    *mag = mean_sd_mag.mag;
+    return EAR_SUCCESS;
+}
