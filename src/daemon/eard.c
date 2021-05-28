@@ -925,7 +925,7 @@ int eard_gpu(int must_read)
 		case GPU_GET_INFO:
 			debug("GPU_GET_INFO %d", eard_num_gpus);
 			if (eard_gpu_initialized) {
-				gpu_get_info(&eard_main_gpu_ctx, (const gpu_t **) &info, NULL);
+				gpu_get_info(&eard_main_gpu_ctx, (const gpu_info_t **) &info, NULL);
 			} else {
 				memset(&fake, 0, sizeof(gpu_info_t));
 				*info = fake;
