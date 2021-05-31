@@ -34,13 +34,6 @@
 #include <common/types/signature.h>
 #include <common/system/shared_areas.h>
 
-typedef struct lib_shared_data{
-    int             num_processes;
-    unsigned int    num_signatures;
-    double 			cas_counters;
-    signature_t 	master_signature;
-    int				master_rank;
-}lib_shared_data_t;
 
 typedef struct mpi_information{
     unsigned int        total_mpi_calls;
@@ -50,11 +43,35 @@ typedef struct mpi_information{
     double              perc_mpi;
 }mpi_information_t;
 
+
+typedef struct mpi_calls_types{
+  ulong time_mpi;
+  ulong time_period;
+  ulong mpi;
+  ulong sync;
+  ulong collec;
+  ulong blocking;
+  ulong time_sync;
+  ulong time_collec;
+  ulong time_blocking;
+}mpi_calls_types_t;
+
+
+typedef struct lib_shared_data{
+    int             num_processes;
+    unsigned int    num_signatures;
+    double 			cas_counters;
+    signature_t 	master_signature;
+    int				master_rank;
+}lib_shared_data_t;
+
+
 typedef struct shsignature{
     uint 							master;
     pid_t 						pid;
     uint 							ready;
     mpi_information_t mpi_info;
+		mpi_calls_types_t mpi_types_info;		
     /* sig was originally a signature_t */
     ssig_t 					sig;
     int 				  	app_state;

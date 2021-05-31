@@ -37,7 +37,7 @@
 #define USEFUL_COMP 0
 #define BUSY_WAITING 1
 // #define CPI_CPU_BOUND 0.4
-#define CPI_CPU_BOUND 			0.5
+#define CPI_CPU_BOUND 			0.6
 #define GBS_CPU_BOUND 			30.0
 #define CPI_BUSY_WAITING		0.6
 #define GBS_BUSY_WAITING 		3.0

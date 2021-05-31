@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <common/config.h>
+#include <metrics/flops/flops.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 
@@ -78,15 +79,30 @@ void compute_ssig_vpi(double *vpi,ssig_t *sig)
     ull vins;
     vins=0;
     if (sig->FLOPS[3]>0){
-        vins=sig->FLOPS[3]/16;
+        vins=sig->FLOPS[3]/WEIGHT_512F;
     }
 
     if (sig->FLOPS[7]>0){
-        vins=vins+sig->FLOPS[7]/8;
+        vins=vins+sig->FLOPS[7]/WEIGHT_512D;
     }
     if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
     else *vpi=0;
 }
+void compute_ssig_vpi2(double *vpi,ssig_t *sig)
+{
+    ull vins;
+    vins=0;
+    if (sig->FLOPS[2]>0){
+        vins=sig->FLOPS[2]/WEIGHT_256F;
+    }
+
+    if (sig->FLOPS[6]>0){
+        vins=vins+sig->FLOPS[6]/WEIGHT_256D;
+    }
+    if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
+    else *vpi=0;
+}
+
 
 void compute_vpi(double *vpi,signature_t *sig)
 {
