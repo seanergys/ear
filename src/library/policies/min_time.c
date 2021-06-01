@@ -214,7 +214,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     double local_eff_gain, base_eff_gain;
     int freq_per_core = 0;
     double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_mag;
+    double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_mag;
+    double lvpi, lvpi2;
     uint cbound, mbound;
+    ulong process_avgcpuf;
 
 #if NEW_IMCFREQ
     ulong curr_imc_freq;
@@ -237,7 +240,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     if (is_mpi_enabled()){
         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
-        verbose_mpi_types(2, my_node_mpi_types_calls);
+        // verbose_mpi_types(2, my_node_mpi_types_calls);
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
     }
 
@@ -252,10 +255,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     master_sig_without_sig = 0;
     verbose_master(2, "%s-----MR[%d] Node signatures ready-----%s", COL_GRE, my_globalrank, COL_CLR);
     for (int p = 0; p < num_processes; p++){
-        verbosen_master(3, "Process[%d] = (CPI %lf FLOPS %lf) ",
-                p, sig_shared_region[p].sig.CPI, sig_shared_region[p].sig.Gflops);
+        compute_ssig_vpi(&lvpi, &sig_shared_region[p].sig);
+        compute_ssig_vpi2(&lvpi2, &sig_shared_region[p].sig);
+        process_avg_cpu_freq(&sig_shared_region[p].cpu_mask, cpufreq_data_per_core, &process_avgcpuf);
+        verbosen_master(2, "Proc[%d]=(LVPI=%.2lf/%.2lf avg.CPUf=%.2lf CPI %lf FLOPS %lf) ",
+                p, lvpi, lvpi2, (float)process_avgcpuf/1000000.0, sig_shared_region[p].sig.CPI,
+                sig_shared_region[p].sig.Gflops);
     }
-    verbose_master(3, "");
+    verbose_master(2, "");
     min_eff_gain=c->app->settings[0];
     base_eff_gain = min_eff_gain;
 
@@ -268,25 +275,40 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
         mpi_stats_evaluate_mean_sd_mag(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd, &mpi_stats_perc_mpi_mag);
         signature_is_unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
-        uint unbalance = enable_load_balance && signature_is_unbalance;
+        uint unbalance = enable_load_balance; // && signature_is_unbalance; redundant
+
         verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi],
                 percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mag, unbalance);
 
+        memcpy(last_percs_mpi, percs_mpi, sizeof(double)*num_processes);
+        last_mpi_stats_perc_mpi_sd = mpi_stats_perc_mpi_sd;
+        last_mpi_stats_perc_mpi_mean = mpi_stats_perc_mpi_mean;
+        last_mpi_stats_perc_mpi_mag = mpi_stats_perc_mpi_mag;
+        // memcpy(last_my_node_mpi_calls, my_node_mpi_calls, sizeof(mpi_information_t) * num_processes);
+
         if (!first_time){
-            mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
+            // mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
             double similarity;
             verbose_master(2, "PREVIOUS percs_mpi:");
             for (int i = 0; i < num_processes; i++){
                 verbosen_master(2, "MR[%d]=%lf", i, last_percs_mpi[i]);
             }
+            verbose_master(2, "");
+            // mpi_stats_evaluate_mean_sd_mag(num_processes, last_percs_mpi, &last_mpi_stats_perc_mpi_mean,
+                    // &last_mpi_stats_perc_mpi_sd, &last_mpi_stats_perc_mpi_mag);
+            verbose_master(2, "PREVIOUS mean %lf standard deviation %lf magnitude %lf", last_mpi_stats_perc_mpi_mean,
+                    last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
             mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-            verbose(2, "Similarity between last and current: %lf", similarity);
-        }
-        else{
+            verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+            if (last_mpi_stats_perc_mpi_mag > mpi_stats_perc_mpi_mag){
+                verbose_master(2, "%sWARNING%s, more MPI than before (%.2lf/%.2lf)", COL_MGT, COL_CLR,
+                        last_mpi_stats_perc_mpi_mag, mpi_stats_perc_mpi_mag);
+            }
+        }else{
             first_time = 0;
         }
-        memcpy(last_my_node_mpi_calls, my_node_mpi_calls, num_processes);
+
 
         if (unbalance){
             verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
@@ -298,7 +320,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_mean)){
                     verbose_master(2, "Process %d selected as part of the critical path", i);
                     critical_path[i] = 1;
-                }
+                }else critical_path[i] = 0;
             }
         }else nump = 1;
     }
@@ -357,38 +379,38 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         last_cpu_pstate = curr_pstate;
         // last_imc_pstate = imc_pstate;
-        // is_cpu_bound(my_app, &cbound);
-        // is_mem_bound(my_app, &mbound);
-        // verbose_master(2, "App CPU bound %u MEM bound %u", cbound, mbound);
+        is_cpu_bound(my_app, &cbound);
+        is_mem_bound(my_app, &mbound);
+        verbose_master(2, "App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
         i = 0;
         while ((i < num_processes) && (last_cpufreq_sel[i] == def_freq)) i++;
-        // TODO: min energy contains a condition and code wich has no sense
-        if (i < num_processes) {
-            verbose_master(3, "Not the default P_STATE selected in the environemnt!\nsetting default cpu freq for %d processes..", num_processes);
+        if ((i < num_processes) || (dyn_unc && (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] != imc_max_khz))) {
+            verbose_master(3, "Not the default P_STATE selected in the environemnt setting default cpu freq for %d processes",
+                    num_processes);
             *ready = EAR_POLICY_TRY_AGAIN;
             /*  TODO: Here is an opportunity to check similarity (?) */
             set_all_cores(new_freq, num_processes, def_freq);
 #if NEW_IMCFREQ
             if (dyn_unc) {
-                verbose_master(3, "setting default imc range freq...");
+                verbose_master(3, "setting default imc range freq");
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             }
 #endif
             copy_cpufreq_sel(last_cpufreq_sel, new_freq, sizeof(ulong) * MAX_CPUS_SUPPORTED);
-            verbose_master(3, "Setting default conf for MT");
+            verbose_master(2, "Setting default conf for MT");
             return EAR_SUCCESS;
         }
-        for (i = 0; i < nump; i++) {
+        for (i = 0; i < nump; i++){
             verbose_master(2, "Processing proc %d freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (!freq_per_core) {
                 compute_total_node_metrics();
                 compute_vpi(&sig_vpi, sig);
-                compute_vpi(&node_sig_vpi,my_app);
+                compute_vpi(&node_sig_vpi, my_app);
                 local_process_with_high_vpi = compute_max_vpi(lib_shared_region, sig_shared_region, &max_vpi);
                 my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
                 verbose_master(2, "AVGNodeSig MR[%d] SIGNATURE CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %3lf/MAX VPI %.3lf", 
@@ -397,12 +419,15 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
             }else{
+                compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
                 ulong eff_p_cpuf, process_avgcpuf;
                 process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_data_per_core, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
-                verbose_master(2, "Per-processing MR[%d][%d] SIGNATURE CPI %.3lf AVGCPUF %f (%lf, %lf)", my_globalrank, i, 
-                        my_app->CPI, (float)process_avgcpuf/1000000.0, percs_mpi[i], percs_mpi[min_mpi]);
-                double factor = ear_math_exp(-15 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]));
+                verbose_master(2, "Per-processing MR[%d][%d] SIGNATURE CPI %.3lf avgCPUf %f (%lf, %lf) LVPI=%.3lf CP=%u",
+                        my_globalrank, i, my_app->CPI, (float)process_avgcpuf/1000000.0, percs_mpi[i], percs_mpi[min_mpi],
+                        lvpi, critical_path[i]);
+                double factor = ear_math_exp(-30 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
+                    * cbound;
                 if (factor < 0.01){
                     factor = 0.0;
                 }
