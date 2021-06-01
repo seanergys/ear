@@ -54,6 +54,9 @@ typedef struct mpi_calls_types{
   ulong time_sync;
   ulong time_collec;
   ulong time_blocking;
+	ulong sync_block;
+	ulong time_sync_block;
+	ulong max_sync_block;
 }mpi_calls_types_t;
 
 
@@ -78,6 +81,8 @@ typedef struct shsignature{
     unsigned long 	new_freq;
     cpu_set_t 			cpu_mask;
     int 						affinity;
+		uint 						unbalanced;
+		ulong 					policy_freq;
 }shsignature_t;
 
 

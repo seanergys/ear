@@ -184,7 +184,11 @@ void notify_eard_connection(int status)
 {
 	char *buffer_send;
 	char *buffer_recv;
-	int i;
+	int i, flag = 0;
+#if MPI
+	MPI_Request master_syn_req;
+#endif
+	int tries = 0;
 	if (masters_comm_created){
 	buffer_send = calloc(    1, sizeof(char));
 	buffer_recv = calloc(masters_info.my_master_size, sizeof(char));
@@ -203,19 +207,28 @@ void notify_eard_connection(int status)
 	#if MPI
 	debug("Connecting with other masters. Status=%d",status);
 	masters_connected=0;
-	PMPI_Iallgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm,master_syn_req);
-	for (i = 0; i < masters_info.my_master_size; ++i)
-	{       
-		masters_connected+=(int)buffer_recv[i];
+	PMPI_Iallgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm,&master_syn_req);
+	do{   
+		PMPI_Test(&master_syn_req, &flag, MPI_STATUS_IGNORE);
+		tries++;
+	}while (!flag && (tries < 1000000));
+	if (!flag){ 
+		masters_connected = 1;
+		verbose_master(1,"Some nodes are not connecting, energy optimization set to off");
+	}else{
+		for (i = 0; i < masters_info.my_master_size; ++i)
+		{       
+			masters_connected+=(int)buffer_recv[i];
+		}
+		if (masters_info.my_master_rank==0) {
+			debug("Total number of masters connected %d",masters_connected);
+		}
 	}
 	#else
 	masters_connected=1;
 	#endif	
 
 
-	if (masters_info.my_master_rank==0) {
-		debug("Total number of masters connected %d",masters_connected);
-	}
   if (masters_connected!=masters_info.my_master_size){
   /* Some of the nodes is not ok , setting off EARL */
     if (masters_info.my_master_rank==0) {
@@ -1084,7 +1097,7 @@ void ear_finalize()
 	if (!my_id) 
 	{
 		debug("Reporting application data");
-		clean_db_signature(&application.signature);
+		clean_db_signature(&application.signature, system_conf->max_sig_power);
 		eards_write_app_signature(&application);
 		append_application_text_file(app_summary_path, &application, 1);
 		report_mpi_application_data(&application);
@@ -1532,7 +1545,7 @@ state_t earl_periodic_actions(void *no_arg)
 		/* Computing MPI statistics */
 		if (is_mpi_enabled() && ((period_elapsed % 10 )== 0)){
 	    read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
-    	verbose_node_mpi_types(2,lib_shared_region->num_processes,my_node_mpi_types_calls);
+    	verbose_node_mpi_types(3,lib_shared_region->num_processes,my_node_mpi_types_calls);
     	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
     	for (i=0;i<lib_shared_region->num_processes;i++){
       	verbosen_master(3,"Process %d ",i);

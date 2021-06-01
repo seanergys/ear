@@ -170,7 +170,7 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
 	
 }
 /** Checks all the values are valid to be reported to DB and fixes potential problems*/
-void clean_db_signature(signature_t *sig)
+void clean_db_signature(signature_t *sig, double limit)
 {
 	if (!isnormal(sig->time))				sig->time = 0;
 	if (!isnormal(sig->EDP))				sig->EDP = 0;
@@ -181,6 +181,9 @@ void clean_db_signature(signature_t *sig)
 	if (!isnormal(sig->TPI))				sig->TPI = 0;
 	if (!isnormal(sig->GBS))				sig->GBS = 0;
 	if (!isnormal(sig->Gflops))			sig->Gflops = 0;
+	if (sig->DC_power > limit)		  sig->DC_power = limit;
+	if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
+	if (sig->PCK_power > limit)			sig->PCK_power = 0;
 	
 #if USE_GPUS
 	if (sig->gpu_sig.num_gpus){

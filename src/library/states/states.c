@@ -162,7 +162,7 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 #endif
 #if USE_DB
     if (masters_info.my_master_rank>=0){
-        clean_db_loop(my_loop);
+        clean_db_loop(my_loop, system_conf->max_sig_power);
         eards_write_loop_signature(my_loop);
     }
 #endif
@@ -256,7 +256,7 @@ void states_end_period(uint iterations)
         if (system_conf->report_loops){
 #if USE_DB
             if (masters_info.my_master_rank>=0){ 
-                clean_db_loop(&loop);
+                clean_db_loop(&loop, system_conf->max_sig_power);
                 eards_write_loop_signature(&loop);
             }
 #endif

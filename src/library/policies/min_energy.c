@@ -101,6 +101,7 @@ static uint *critical_path;
 static ulong nominal_node;
 static signature_t cpufreq_signature;
 static double *percs_mpi;
+static uint block_type;
 
 state_t policy_init(polctx_t *c)
 {
@@ -117,6 +118,8 @@ state_t policy_init(polctx_t *c)
 				verbose_master(2,"Nominal is %lu",nominal_node);
         if (is_mpi_enabled()){
             mpi_app_init(c);
+						is_blocking_busy_waiting(&block_type);
+						verbose_master(1,"Busy_waiting MPI set to %u",block_type == BUSY_WAITING_BLOCK);
         }
 				if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
 				verbose_master(2,"Load balance enabled = %u", enable_load_balance);
@@ -273,8 +276,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
           if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_mean)){
               verbose_master(2, "Process %d selected as part of the critical path", i);
               critical_path[i] = 1;
-          }else critical_path[i] = 0;
-
+          }else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75))){ 
+						critical_path[i] = 2;
+					}
 				}	
       }else{ nump = 1;}
     }else nump = 1;
@@ -365,7 +369,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 								process_avg_cpu_freq(&sig_shared_region[i].cpu_mask,cpufreq_data_per_core,&process_avgcpuf);
                 from_minis_to_sig(my_app,&sig_shared_region[i].sig);
                 verbose_master(2,"Per-processSig MR[%d][%d] CPI %.3lf AvgCPUF %.2f (%lf,%lf) LVPI=%.3lf CP=%u",my_globalrank,i,my_app->CPI,(float)process_avgcpuf/1000000.0,my_node_mpi_calls[i].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi, lvpi, critical_path[i]);
-                if (critical_path[i]){
+                if (critical_path[i] == 1){
+									/* Critical path */
 									if (!mbound){
 										eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf,0);
 										if (eff_p_cpuf < process_avgcpuf){
@@ -381,11 +386,18 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 									}else{
 										local_penalty = base_penalty / 2;
 									}
+								}else if (critical_path[i] == 2){
+									/* Lot of MPI */
+									local_penalty = 0.5;
+									sig_shared_region[i].unbalanced = 1;	
 								}else{ 
+									/* Mix process */
                     local_penalty = base_penalty + EXTRA_TH*(my_node_mpi_calls[i].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi)/10.0;
                 }
 								verbose_master(2,"Penalty %f", local_penalty);
             }
+						curr_freq = def_freq;
+						curr_pstate = def_pstate;
             compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
             verbose_master(3,"Time ref %lf Power ref %lf Freq reqf %lu",time_ref,power_ref,best_freq);
             compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
