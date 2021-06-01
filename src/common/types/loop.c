@@ -70,12 +70,12 @@ int loop_init(loop_t *loop, job_t *job,ulong event, ulong size, ulong level)
 	return EAR_SUCCESS;
 }
 
-void clean_db_loop(loop_t *loop)
+void clean_db_loop(loop_t *loop, double limit)
 {
 	if (loop->id.event > INT_MAX) loop->id.event = INT_MAX;
 	if (loop->id.size > INT_MAX) loop->id.size = INT_MAX; 
 	if (loop->id.level > INT_MAX) loop->id.level = INT_MAX;
-	clean_db_signature(&loop->signature);
+	clean_db_signature(&loop->signature, limit);
 }
 
 int set_null_loop(loop_t *loop)

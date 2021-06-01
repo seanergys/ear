@@ -465,7 +465,7 @@ void report_powermon_app(powermon_app_t *app) {
 #if USE_DB
 	if (my_cluster_conf.eard.use_mysql)
 	{
-		clean_db_power_signature(&app->app.power_sig);
+		clean_db_power_signature(&app->app.power_sig, my_node_conf->max_sig_power);
 		if (!my_cluster_conf.eard.use_eardbd) {
 			if (!db_insert_application(&app->app)){
 				debug( "Application signature correctly written");
@@ -1082,6 +1082,9 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	}
 
 #if USE_DB
+	if ((my_current_power->avg_dc < my_node_conf->max_error_power) || (my_current_power->avg_dc < 0)){
+		my_current_power->avg_dc = my_node_conf->max_sig_power;
+	}
 	if ((my_current_power->avg_dc>=0) && (my_current_power->avg_dc<my_node_conf->max_error_power)){
 	if (my_cluster_conf.eard.use_mysql)
 	{

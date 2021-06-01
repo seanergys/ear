@@ -138,10 +138,13 @@ typedef enum
 #define p2i unsigned long
 
 #define is_mpi_blocking(call) 	(call&_Blocking)
-#define is_collective(call) 		((call == _Reduce) || (call == _Scatter) || (call == _Gather) || (call == _All2All) || (call == _Barrier) || (call == _Bcast))
-#define is_synchronization(call) ((call == _Wait) || (call == _Barrier))
+#define is_collective(call) 		((call == _Reduce) || (call == _Scatter) || (call == _Gather) || (call == _All2All) || (call == _Bcast))
+#define is_synchronization(call) ((call == _Wait) || (call == _Barrier) || (call == _Test))
 #define remove_blocking(call)		(call&~_Blocking)
+#define is_recv(call)						((call == _Receive) || (call == _SendRecv))
 
 int is_mpi_enabled();
 
+#define BUSY_WAITING_BLOCK  0
+#define YIELD_BLOCK					1
 #endif

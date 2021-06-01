@@ -22,7 +22,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config/config_env.h>
 #include <common/system/symplug.h>
@@ -409,6 +409,7 @@ state_t policy_show_domain(node_freq_domain_t *dom){
 state_t policy_init()
 {
     polctx_t *c=&my_pol_ctx;
+		int i;
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
     char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
@@ -469,6 +470,11 @@ state_t policy_init()
         freqs_domain.gpu = POL_NOT_SUPPORTED;
         freqs_domain.gpumem = POL_NOT_SUPPORTED;
     }
+		if (masters_info.my_master_rank >= 0){
+			for (i=0; i< lib_shared_region->num_processes;i++){
+				sig_shared_region[i].unbalanced = 0;
+			}
+		}
     /*  Verboses policy's domain*/
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
         verbose(2, "%sERROR on getting domains.%s",COL_RED, COL_CLR);
