@@ -373,13 +373,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             set_all_cores(new_freq, num_processes, def_freq);
 #if NEW_IMCFREQ
             if (dyn_unc) {
-                verbose_master(2, "setting default imc range freq...");
+                verbose_master(3, "setting default imc range freq...");
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
             }
 #endif
             copy_cpufreq_sel(last_cpufreq_sel, new_freq, sizeof(ulong) * MAX_CPUS_SUPPORTED);
-            verbose_master(2, "Setting default conf for MT");
+            verbose_master(3, "Setting default conf for MT");
             return EAR_SUCCESS;
         }
         for (i = 0; i < nump; i++) {
@@ -417,10 +417,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     best_pstate, best_freq, def_freq, &new_freq[i]);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
             if (use_turbo_for_cp){
-                verbose_master(2, "checking to try to boost. freq per core ? %u already using turbo ? %u", freq_per_core, c->use_turbo);
+                verbose_master(3, "checking to try to boost. freq per core ? %u already using turbo ? %u", freq_per_core, c->use_turbo);
                 if (freq_per_core && !c->use_turbo){
                     if (cpu_supp_try_boost_cpu_freq(i, critical_path, new_freq, min_pstate)){
-                        verbose_master(2, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
+                        verbose_master(3, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
                     }
                 }
             }
@@ -497,7 +497,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
          */
         uint decrease_imc = 0;
         if (imc_support_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz){
-            verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
+            verbose(3, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
             decrease_imc = must_decrease_imc(imc_data, curr_pstate, imc_pstate, curr_pstate, ref_imc_pstate, my_app, imc_extra_th);
         }
 
