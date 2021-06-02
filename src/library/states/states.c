@@ -162,6 +162,7 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 #endif
 #if USE_DB
     if (masters_info.my_master_rank>=0){
+				verbose_master(2,"Filtering loops node power with limit %.2lf",system_conf->max_sig_power);
         clean_db_loop(my_loop, system_conf->max_sig_power);
         eards_write_loop_signature(my_loop);
     }
@@ -256,6 +257,7 @@ void states_end_period(uint iterations)
         if (system_conf->report_loops){
 #if USE_DB
             if (masters_info.my_master_rank>=0){ 
+								verbose_master(2,"Filtering loops node power with limit %.2lf",system_conf->max_sig_power);
                 clean_db_loop(&loop, system_conf->max_sig_power);
                 eards_write_loop_signature(&loop);
             }

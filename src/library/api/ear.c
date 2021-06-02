@@ -1097,6 +1097,7 @@ void ear_finalize()
 	if (!my_id) 
 	{
 		debug("Reporting application data");
+		verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
 		clean_db_signature(&application.signature, system_conf->max_sig_power);
 		eards_write_app_signature(&application);
 		append_application_text_file(app_summary_path, &application, 1);

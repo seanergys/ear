@@ -90,6 +90,7 @@ extern  loop_t current_loop_data;
 extern uint f_monitoring;
 extern ulong current_node_freq;
 int idleNode = 1;
+static state_t eardbd_connection_status = EAR_SUCCESS;
 
 
 extern char nodename[MAX_PATH_SIZE];
@@ -473,6 +474,7 @@ void report_powermon_app(powermon_app_t *app) {
 		}
 		else {
 			state_t state = eardbd_send_application(&app->app);
+			eardbd_connection_status = state;
 			if (state_fail(state)) {
 				error("Error when sending application to eardb");
 				eardbd_reconnect(&my_cluster_conf, my_node_conf);
@@ -1095,6 +1097,7 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 				debug( "Periodic power monitoring sample correctly written");
 		} else {
 			state_t state = eardbd_send_periodic_metric(&current_sample);
+			eardbd_connection_status = state;
 			if (state_fail(state)) {
 				error("Error when sending periodic power metric to EARDBD: %s", state_msg);
 				state = eardbd_reconnect(&my_cluster_conf, my_node_conf);
@@ -1348,6 +1351,7 @@ void powermon_get_status(status_t *my_status) {
 	my_status->node.temp = (ulong) get_nm_temp(&my_nm_id, &last_nm);
 	my_status->node.power = (ulong) last_power_reported;
 	my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
+	my_status->eardbd_connected = (eardbd_connection_status == EAR_SUCCESS);
 }
 
 void powermon_get_app_status(app_status_t *my_status)
