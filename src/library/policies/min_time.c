@@ -527,20 +527,24 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
 
         /*  If we are over the limit, we increase the IMC */
-        if (decrease_imc) {
-            verbose_master(2,"%sWarning, passing the limit", COL_RED);
-            freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
-                    imc_min_khz - IMC_RANGE);
-            freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-            verbose_master(2,"Selecting %lu - %lu and policy ready%s",
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
+        if (decrease_imc && !first_imc_try) {
+                verbose_master(2,"%sWarning, passing the limit", COL_RED);
+                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
+                        imc_min_khz - IMC_RANGE);
+                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+                verbose_master(2,"Selecting %lu - %lu and policy ready%s",
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
             *ready = EAR_POLICY_READY;
             min_time_state = SELECT_CPUFREQ;
         }else {
-            freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP, imc_max_khz);	
-            freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-            verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
+            if (first_imc_try){
+                first_imc_try = 0;
+            }else{
+                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP, imc_max_khz);	
+                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+                verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
+            }
             if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < (imc_max_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
             else{ 
                 *ready = EAR_POLICY_READY;
@@ -621,6 +625,11 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     }
     else{
         verbose_master(2, "%snot ok%s", COL_RED, COL_CLR);
+    }
+
+    if (*ok == 0){
+        first_time = 1;
+        first_imc_try = 1;
     }
     return EAR_SUCCESS;
 }
