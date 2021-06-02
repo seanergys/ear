@@ -94,6 +94,7 @@ static const uint *gpuf_pol_list_items;
 static int min_pstate;
 static double *percs_mpi, *last_percs_mpi;
 static uint first_time = 1;
+static uint first_imc_try = 1;
 static ulong nominal_node;
 // static double *sorted_percs_mpi;
 static uint use_turbo_for_cp = 0;
@@ -520,35 +521,36 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
          }
          }
          */
-        uint decrease_imc = 0;
+        uint decrease_imc;
         if (imc_support_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz){
             verbose(3, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
             decrease_imc = must_decrease_imc(imc_data, curr_pstate, imc_pstate, curr_pstate, ref_imc_pstate, my_app, imc_extra_th);
-        }
 
-        /*  If we are over the limit, we increase the IMC */
-        if (decrease_imc && !first_imc_try) {
+            /*  If we are over the limit after previous IMC update, we increase the IMC */
+            if (decrease_imc && !first_imc_try) {
                 verbose_master(2,"%sWarning, passing the limit", COL_RED);
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
                         imc_min_khz - IMC_RANGE);
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
                 verbose_master(2,"Selecting %lu - %lu and policy ready%s",
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
-            *ready = EAR_POLICY_READY;
-            min_time_state = SELECT_CPUFREQ;
-        }else {
-            if (first_imc_try){
-                first_imc_try = 0;
-            }else{
-                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP, imc_max_khz);	
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-                verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
-                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
-            }
-            if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < (imc_max_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
-            else{ 
                 *ready = EAR_POLICY_READY;
                 min_time_state = SELECT_CPUFREQ;
+            }else {
+                if (first_imc_try){
+                    first_imc_try = 0;
+                }
+                if (!decrease_imc){
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP, imc_max_khz);	
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+                    verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
+                            freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
+                }
+                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < (imc_max_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
+                else{ 
+                    *ready = EAR_POLICY_READY;
+                    min_time_state = SELECT_CPUFREQ;
+                }
             }
         }
     }
