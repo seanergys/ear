@@ -21,8 +21,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 #define _GNU_SOURCE
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
@@ -183,6 +184,7 @@ void compute_power_distribution()
     pdomains_def[DOMAIN_CPU] = (float) pd_pckg / (float)pd_total;
     pdomains_def[DOMAIN_DRAM] = (float) pd_dram / (float)pd_total;
     pdomains_def[DOMAIN_GPUS] = 0;
+    debug("pd_cpu: %u with %u sockets", pd_cpu, pc_topology_info.socket_count);
     #if USE_GPUS
     pdomains_def[DOMAIN_GPUS] = (float) pd_gpu / (float)pd_total;
     #endif
@@ -620,10 +622,13 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
     verbose(1,"[NODE-GPU %f CPU %f DRAM %f GPU %f]",pnode,pcpu,pdram,pgpu);
     if (pdomain->platform > pmgt_limit){
         verbose(1,"%s Warning! we are over the limit: Limit %u Power %u%s",COL_RED,pmgt_limit,pdomain->platform,COL_CLR);
+        float excess = ((float)(pdomain->platform - pmgt_limit))/(float)pmgt_limit;
         for (i=0;i< NUM_DOMAINS; i++){
-            pdomains[i] = pdomains[i] - 0.05;
+            if (pdomains[i] > 0)
+                pdomains[i] = pdomains[i] - excess*pdomains[i];
         }
         pmgt_reset_pdomain();
+        debug("reduced power domains by %.2f, new CPU %.2f new GPU %.2f", excess, pdomains[DOMAIN_CPU], pdomains[DOMAIN_GPU]);
         default_pdomains = 0;
     }else if ((pdomain->platform < pmgt_limit) && (!default_pdomains)){    
         for (i=0;i< NUM_DOMAINS; i++){
@@ -838,7 +843,7 @@ uint pmgt_powercap_status_per_domain(uint action)
         cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
     }else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
         from = DOMAIN_GPU;
-        to = DOMAIN_GPU;
+        to = DOMAIN_CPU;
         debug("moving from ok GPU to greedy CPU");
         cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
     }else return 1;
@@ -860,6 +865,13 @@ uint pmgt_powercap_status_per_domain(uint action)
         ret=freturn(pcsyms_fun[to].set_powercap_value, 0, to, new_power_recv, current_util[to]); /* Receives more power that before */
         if (ret == EAR_ERROR) debug("error setting powercap value");
     }
+    ulong total_power = 0;
+    for (i = 0; i < NUM_DOMAINS; i++)
+    {
+        total_power += cdomain_status[i].current_pc;
+    }
+    debug("current node power %lu, current_limit %u", total_power, pmgt_limit);
+    assert(total_power <= pmgt_limit);
     #endif
     return 0;
 }
