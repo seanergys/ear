@@ -10,7 +10,8 @@ tool_BINS = \
     coeffs_default \
     coeffs_null \
     learning_show \
-    learning_delete
+    learning_delete \
+		ear_conf
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770
 
@@ -43,6 +44,9 @@ learning_show: learning_show.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 learning_delete: learning_delete.c $(comm_OBJS)
+	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+
+ear_conf: ear_conf.c $(comm_OBJS)
 	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
 ######## OPTIONS

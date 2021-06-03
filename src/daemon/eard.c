@@ -1445,7 +1445,7 @@ int main(int argc, char *argv[]) {
 		verbose(0,"Creating log file");
 		fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
 		if (fd_my_log < 0) fd_my_log = 2;
-	}
+	}else fd_my_log = 2;
 	set_verbose_variables();
 
 	verbose(0,"Creating frequency list in shared memory");
