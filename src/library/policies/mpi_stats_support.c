@@ -469,6 +469,11 @@ state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean
     return EAR_SUCCESS;
 }
 
+state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median){
+    *median = ear_math_median(percs_mpi, nump);
+    return EAR_SUCCESS;
+}
+
 
 state_t is_blocking_busy_waiting(uint *block_type)
 {

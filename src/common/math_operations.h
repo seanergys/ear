@@ -74,3 +74,5 @@ double ear_math_exp(double x);
 double ear_math_scale(double src_range_min, double src_range_max, double n);
 
 float ear_math_roundf(float n);
+
+double ear_math_median(const double data[], size_t n);

@@ -17,6 +17,7 @@
 
 #include <limits.h>
 #include <math.h>
+#include <string.h>
 #include <common/math_operations.h>
 
 unsigned int equal_with_th(double a, double b, double th)
@@ -172,4 +173,26 @@ double ear_math_scale(double src_range_min, double src_range_max, double n){
 
 float ear_math_roundf(float n){
     return roundf(n);
+}
+
+int cmp_fnc(const void *p1, const void *p2){
+    return (int)(*(double*)p1 - *(double*)p2);
+}
+
+double ear_math_median(const double data[], size_t n){
+    double *copied = calloc(n, sizeof(double));
+    memcpy(copied, data, n * sizeof(double));
+    
+    qsort(copied, n, sizeof(double), cmp_fnc);
+
+    double median;
+    if (n % 2 != 0){
+        median = copied[(n-1)/2];
+    }else{
+        median = (copied[(n-2)/2] + copied[n/2]) / 2;
+    }
+
+    free(copied);
+
+    return median;
 }
