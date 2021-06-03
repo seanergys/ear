@@ -710,9 +710,6 @@ void ear_init()
 
 	set_ear_total_processes(my_size);
 	ear_whole_app = get_ear_learning_phase();
- if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
-        VERB_SET_LV(atoi(tmp));
-  }
 	#if MPI
 	num_nodes = get_ear_num_nodes();
 	ppnode = my_size / num_nodes;
@@ -848,7 +845,7 @@ void ear_init()
     /* create verbose file for each job */
 	if (verb_path != NULL){
     if (masters_info.my_master_rank >= 0){
-      if (( mkdir (verb_path, 0640) < 0) && (errno != EEXIST)) {
+      if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
         error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
       }else{
 
@@ -859,7 +856,9 @@ void ear_init()
         if (fd != -1){
 						VERB_SET_FD(fd);
 						DEBUG_SET_FD(fd);
-        }
+        }else{
+					verbose(2,"Log file cannot be created (%s)",strerror(errno));
+				}
       }
     }
 	}
@@ -1097,6 +1096,7 @@ void ear_finalize()
 	if (!my_id) 
 	{
 		debug("Reporting application data");
+		verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
 		clean_db_signature(&application.signature, system_conf->max_sig_power);
 		eards_write_app_signature(&application);
 		append_application_text_file(app_summary_path, &application, 1);
