@@ -49,13 +49,13 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	uint i;
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;
-	for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
-	flops = (double)flop/sig->time;
+	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
+	flops = sig->Gflops;
 	c1 = (sig->CPI < CPI_BUSY_WAITING);
 	c2 = (sig->GBS < GBS_BUSY_WAITING);
-	c3 = (flops < FLOPS_BUSY_WAITING);
+	c3 = (flops < GFLOPS_BUSY_WAITING);
 	if (c1 || c2 || c3){
-		verbose_master(3,"CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,FLOPS_BUSY_WAITING);
+		verbose_master(2,"CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
 	}
 	if (c1 && c2 && c3) *busy = BUSY_WAITING;
 	return EAR_SUCCESS;
@@ -73,4 +73,18 @@ state_t is_mem_bound(signature_t *sig,uint *mbound)
 	*mbound = 0;
 	if ((sig->CPI > CPI_MEM_BOUND) && (sig->GBS > GBS_MEM_BOUND)) *mbound = 1;
 	return EAR_SUCCESS;
+}
+state_t  is_gpu_idle(signature_t *sig,uint *gidle)
+{
+#if USE_GPUS
+	int total = 0;
+	int i;
+	for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
+	if (total == 0) *gidle = 1;
+	else *gidle = 0;
+	return EAR_SUCCESS;
+#else
+	*gidle = 1;
+	return EAR_SUCCESS;
+#endif
 }

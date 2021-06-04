@@ -328,7 +328,7 @@ static void metrics_global_stop()
 	char *io_buffer;
 	if (verb_path != NULL){ 
 		sprintf(file_name, "%s/earl_io_info.%d.%d", verb_path,my_step_id, my_job_id);
-		fd = open(file_name,O_WRONLY|O_CREAT|O_APPEND);
+		fd = open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP);
 	}else fd = 2;
 	io_buffer = malloc(strlen(io_info) + 200);
 	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);

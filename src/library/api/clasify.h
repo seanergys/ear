@@ -41,7 +41,7 @@
 #define GBS_CPU_BOUND 			30.0
 #define CPI_BUSY_WAITING		0.6
 #define GBS_BUSY_WAITING 		3.0
-#define FLOPS_BUSY_WAITING 	5000.0
+#define GFLOPS_BUSY_WAITING 1.0
 #define IO_TH   						10.0
 #define MPI_TH 							10000
 #define MIN_MPI_TH 					200
@@ -54,7 +54,7 @@ state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint d
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy);
 state_t is_cpu_bound(signature_t *sig,uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint *mbound);
-
+state_t is_gpu_idle(signature_t *sig,uint *gidle);
 
 
 #endif

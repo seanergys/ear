@@ -636,11 +636,11 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     return EAR_SUCCESS;
 }
 
-state_t policy_get_default_freq(polctx_t *c, ulong *f)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f)
 {
     if ((c!=NULL) && (c->app!=NULL)){
         // Just in case the bestPstate was the frequency at which the application was running
-        *f=FREQ_DEF(c->app->def_freq);
+        f->cpu_freq[0] = FREQ_DEF(c->app->def_freq);
     }
     return EAR_SUCCESS;
 }
