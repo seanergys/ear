@@ -102,6 +102,8 @@ static uint *critical_path;
 static int master_sig_without_sig = 0;
 static signature_t cpufreq_signature;
 extern volatile uint ear_periodic_mode;
+static double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_mag, mpi_stats_perc_mpi_median;
+static double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_mag, last_mpi_stats_perc_mpi_median;
 
 /*  wrap function which calculates intructions, flops and cycles. */
 state_t compute_total_node_metrics();
@@ -150,6 +152,8 @@ state_t policy_init(polctx_t *c)
         last_cpufreq_sel = calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
 
         critical_path = calloc(num_processes, sizeof(uint));
+        
+        last_mpi_stats_perc_mpi_sd = last_mpi_stats_perc_mpi_mean = last_mpi_stats_perc_mpi_mag = last_mpi_stats_perc_mpi_median = 0;
 
         for (i = 0; i < num_processes; i++) {
             last_cpufreq_sel[i] = *(c->ear_frequency);
@@ -214,8 +218,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     uint local_process_with_high_vpi;
     double local_eff_gain, base_eff_gain;
     int freq_per_core = 0;
-    double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_mag;
-    double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_mag;
     double lvpi, lvpi2;
     uint cbound, mbound;
     ulong process_avgcpuf;
@@ -275,18 +277,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
         mpi_stats_evaluate_mean_sd_mag(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd, &mpi_stats_perc_mpi_mag);
+        mpi_stats_evaluate_median(num_processes, percs_mpi, &mpi_stats_perc_mpi_median);
         signature_is_unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
-        uint unbalance = enable_load_balance; // && signature_is_unbalance; redundant
+        uint unbalance = signature_is_unbalance; // && enable_load_balance;
 
-        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
+        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf median %lf standard deviation %lf magnitude %lf unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi],
-                percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mag, unbalance);
+                percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_median, mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mag, unbalance);
 
-        memcpy(last_percs_mpi, percs_mpi, sizeof(double)*num_processes);
-        last_mpi_stats_perc_mpi_sd = mpi_stats_perc_mpi_sd;
-        last_mpi_stats_perc_mpi_mean = mpi_stats_perc_mpi_mean;
-        last_mpi_stats_perc_mpi_mag = mpi_stats_perc_mpi_mag;
-        // memcpy(last_my_node_mpi_calls, my_node_mpi_calls, sizeof(mpi_information_t) * num_processes);
 
         if (!first_time){
             // mpi_stats_get_only_percs_mpi(last_my_node_mpi_calls, num_processes, last_percs_mpi);
@@ -298,11 +296,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             verbose_master(2, "");
             // mpi_stats_evaluate_mean_sd_mag(num_processes, last_percs_mpi, &last_mpi_stats_perc_mpi_mean,
                     // &last_mpi_stats_perc_mpi_sd, &last_mpi_stats_perc_mpi_mag);
-            verbose_master(2, "PREVIOUS mean %lf standard deviation %lf magnitude %lf", last_mpi_stats_perc_mpi_mean,
-                    last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
+            verbose_master(2, "PREVIOUS mean %lf median %lf standard deviation %lf magnitude %lf", last_mpi_stats_perc_mpi_mean,
+                    last_mpi_stats_perc_mpi_median, last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
             mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
             verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
-            if (last_mpi_stats_perc_mpi_mag > mpi_stats_perc_mpi_mag){
+            if (last_mpi_stats_perc_mpi_mag < mpi_stats_perc_mpi_mag){
                 verbose_master(2, "%sWARNING%s, more MPI than before (%.2lf/%.2lf)", COL_MGT, COL_CLR,
                         last_mpi_stats_perc_mpi_mag, mpi_stats_perc_mpi_mag);
             }
@@ -310,6 +308,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             first_time = 0;
         }
 
+        memcpy(last_percs_mpi, percs_mpi, sizeof(double)*num_processes);
+        last_mpi_stats_perc_mpi_sd = mpi_stats_perc_mpi_sd;
+        last_mpi_stats_perc_mpi_mean = mpi_stats_perc_mpi_mean;
+        last_mpi_stats_perc_mpi_mag = mpi_stats_perc_mpi_mag;
+        last_mpi_stats_perc_mpi_median = mpi_stats_perc_mpi_median;
+        // memcpy(last_my_node_mpi_calls, my_node_mpi_calls, sizeof(mpi_information_t) * num_processes);
 
         if (unbalance){
             verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
@@ -318,10 +322,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             // opportunity to check similarity to avoid below code
             for (i=0; i < nump; i++){
                 /*  Decides whether process i is part of the critical path */
-                if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_mean)){
+                if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_median)){
                     verbose_master(2, "Process %d selected as part of the critical path", i);
                     critical_path[i] = 1;
-                }else critical_path[i] = 0;
+                }
             }
         }else nump = 1;
     }

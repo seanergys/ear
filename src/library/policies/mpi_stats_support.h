@@ -56,6 +56,7 @@ state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_per
 state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump);
 state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd);
 state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag);
+state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
 
 state_t is_blocking_busy_waiting(uint *block_type);
 
