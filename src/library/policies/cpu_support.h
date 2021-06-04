@@ -38,5 +38,15 @@ int signatures_different(signature_t *s1, signature_t *s2,float p);
  *  Returns 0 otherwise.*/
 uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, int min_pstate);
 
+/* This function compared current freqs with default freqs 
+ * */
+int are_default_settings(node_freqs_t *freqs,node_freqs_t *def);
+
+/* Copy default settings in freqs */
+void set_default_settings(node_freqs_t *freqs, node_freqs_t * def);
+
+void verbose_node_freqs(int vl, node_freqs_t *freqs);
+void node_freqs_alloc(node_freqs_t *node_freq);
+void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src);
 #endif
 

@@ -852,7 +852,7 @@ void ear_init()
         char file_name[128];
         sprintf(file_name, "%s/earl_log.%d.%d.%d.%d", verb_path,masters_info.my_master_rank, my_step_id, my_job_id,getpid());
         verbose(2,"Using %s as earl log file",file_name);
-        int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+        int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
         if (fd != -1){
 						VERB_SET_FD(fd);
 						DEBUG_SET_FD(fd);

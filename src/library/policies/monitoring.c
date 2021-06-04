@@ -118,9 +118,9 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set)
 {
-	*freq_set=DEF_FREQ(c->app->def_freq);
+	freq_set->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
 	return EAR_SUCCESS;
 }
 
@@ -158,16 +158,5 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
 {
 	int i;
-	#if 0
-  if (is_mpi_enabled() && (masters_info.my_master_rank >= 0)){
-    read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
-    verbose_mpi_types(2,my_node_mpi_types_calls);
-    read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
-    for (i=0;i<lib_shared_region->num_processes;i++){
-      verbosen_master(2,"Process %d",i);
-      verbose_mpi_data(2,&my_node_mpi_calls[i]);
-    }
-  }
-	#endif
 	return EAR_SUCCESS;
 }
