@@ -209,8 +209,11 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
     }
 #if USE_GPUS
 		for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
-			if (!equal_with_th(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)) return 1;
-			if (!equal_with_th(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)) return 1;
+			verbose_master(2,"s1(%lu/%lu) s2(%lu/%lu)",s1->gpu_sig.gpu_data[i].GPU_util,s1->gpu_sig.gpu_data[i].GPU_mem_util,s2->gpu_sig.gpu_data[i].GPU_util,s2->gpu_sig.gpu_data[i].GPU_mem_util);
+		}
+		for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
+			if (!equal_with_th((double)s1->gpu_sig.gpu_data[i].GPU_util, (double)s2->gpu_sig.gpu_data[i].GPU_util,p)) return 1;
+			if (!equal_with_th((double)s1->gpu_sig.gpu_data[i].GPU_mem_util, (double)s2->gpu_sig.gpu_data[i].GPU_mem_util,p)) return 1;
 		}
 		
 #endif

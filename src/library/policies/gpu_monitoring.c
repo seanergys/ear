@@ -31,6 +31,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 
+extern uint cpu_ready, gpu_ready, gidle;
 
 
 static const ulong **gpuf_list;

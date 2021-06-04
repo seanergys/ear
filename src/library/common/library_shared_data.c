@@ -460,3 +460,13 @@ void* mpi_info_get_perc_mpi(void* mpi_inf){
     *res = mpi_info.perc_mpi;
     return res;
 }
+
+
+double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
+{
+	double total = 0;
+	int i;
+	for (i=0;i<data->num_processes;i++) total += sig[i].sig.Gflops;
+	return total;
+}
+

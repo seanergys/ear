@@ -341,6 +341,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if ((min_energy_state != SELECT_CPUFREQ) && signatures_different(&cpufreq_signature, sig, 0.2)){
           verbose_master(2,"%sSignature is too different from the one used for CPU freq, starting again%s",COL_RED,COL_CLR);
           min_energy_state = SELECT_CPUFREQ;
+					signature_copy(&cpufreq_signature, sig);
     }
 
     if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){

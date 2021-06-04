@@ -50,7 +50,7 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;
 	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
-	flops = sig->Gflops;
+	flops = compute_node_flops(lib_shared_region,sig_shared_region);
 	c1 = (sig->CPI < CPI_BUSY_WAITING);
 	c2 = (sig->GBS < GBS_BUSY_WAITING);
 	c3 = (flops < GFLOPS_BUSY_WAITING);
