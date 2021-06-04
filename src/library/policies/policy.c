@@ -654,6 +654,10 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
     }
+		if (!are_signatures_ready(lib_shared_region,sig_shared_region)){ 
+			*ready = EAR_POLICY_CONTINUE;
+			return EAR_SUCCESS;
+		}
     is_cpu_busy_waiting(my_sig,&busy);
 		is_gpu_idle(my_sig,&gidle);
     verbose_master(2,"EARL_phase %u busy waiting %u using phases %u",earl_phase_classification,busy,use_earl_phases);

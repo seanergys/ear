@@ -178,7 +178,7 @@ void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_i
 uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
 
 
-
+double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig);
 
 
 void load_app_mgr_env();

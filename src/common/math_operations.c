@@ -21,7 +21,8 @@
 
 unsigned int equal_with_th(double a, double b, double th)
 {
-	int eq;
+	int eq = 1;
+	if (a == b) return 1;
 	if (a > b) {
 		if (a < (b * (1 + th))) eq = 1;
 		else eq = 0;

@@ -1545,7 +1545,7 @@ state_t earl_periodic_actions(void *no_arg)
 		/* Computing MPI statistics */
 		if (is_mpi_enabled() && ((period_elapsed % 10 )== 0)){
 	    read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
-    	verbose_node_mpi_types(3,lib_shared_region->num_processes,my_node_mpi_types_calls);
+    	verbose_node_mpi_types(2,lib_shared_region->num_processes,my_node_mpi_types_calls);
     	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
     	for (i=0;i<lib_shared_region->num_processes;i++){
       	verbosen_master(3,"Process %d ",i);

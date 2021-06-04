@@ -38,6 +38,8 @@
 
 static uint last_pc=0;
 extern uint gpu_initialized;
+extern uint cpu_ready, gpu_ready, gidle;
+
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -92,9 +94,11 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 	*ready=EAR_POLICY_READY;
 	f=DEF_FREQ(c->app->def_freq);
 	*new_freq=f;
+  cpu_ready = EAR_POLICY_READY;
 	if (gpus.node_policy_apply != NULL){
 		/* Basic support for GPUS */
-		gpus.node_policy_apply(c,my_sig,freqs,ready);
+		gpus.node_policy_apply(c,my_sig,freqs, (int *)&gpu_ready);
+		
 	}
   if (is_mpi_enabled()){
    	read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
