@@ -189,7 +189,7 @@ uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, i
     int pstate = frequency_closest_pstate(freqs[nproc]);
     verbosen_master(2, "Checking for boost process %d: Critical path ? %u | pstate ? %d | min_pstate ? %d ",
             nproc, belongs_to_cp, pstate, min_pstate);
-    if (belongs_to_cp && pstate == min_pstate) {
+    if (belongs_to_cp /* && pstate == min_pstate  */) {
         freqs[nproc] = frequency_pstate_to_freq(0);
         verbose_master(2, "%sOK%s", COL_GRE, COL_CLR);
         return 1;
