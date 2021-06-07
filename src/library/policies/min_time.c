@@ -96,7 +96,7 @@ static uint first_imc_try = 1;
 static ulong nominal_node;
 // static double *sorted_percs_mpi;
 static uint use_turbo_for_cp = 0;
-static uint *critical_path;
+static uint *critical_path, *last_critical_path;
 static int master_sig_without_sig = 0;
 static signature_t cpufreq_signature;
 extern volatile uint ear_periodic_mode;
@@ -106,6 +106,9 @@ static double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean, last_mpi
 static node_freqs_t min_time_def_freqs;
 static node_freqs_t last_nodefreq_sel;
 static uint network_use_imc = 0;
+static uint signature_is_unbalance = 0;
+static int max_mpi, min_mpi;
+static int freq_per_core = 0;
 
 extern uint cpu_ready, gpu_ready;
 
@@ -243,11 +246,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     double local_eff_gain, base_eff_gain;
 
     double sig_vpi, node_sig_vpi, max_vpi;
-    int max_mpi, min_mpi;
-    uint signature_is_unbalance = 0;
     uint local_process_with_high_vpi;
 
-    int freq_per_core = 0;
     double lvpi, lvpi2;
     uint cbound, mbound;
     ulong process_avgcpuf;
@@ -275,11 +275,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if (cpu_ready == EAR_POLICY_READY){
         return EAR_SUCCESS;
     }
-
+    /*
     if (is_mpi_enabled()){
         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
     }
+     */
 
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
         copy_cpufreq_sel(freqs->cpu_freq, last_nodefreq_sel.cpu_freq, sizeof(ulong) * MAX_CPUS_SUPPORTED);
@@ -287,7 +288,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         *ready = EAR_POLICY_TRY_AGAIN;
 
-        // TODO: new_freq may be changed to freqs->cpu_freq as we update this new variable
         verbose_master(2, "%sNode signature not ready%s, selecting %lu CPU f", COL_RED, COL_CLR, *new_freq);
 
         master_sig_without_sig++;
@@ -309,10 +309,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     min_eff_gain=c->app->settings[0];
     base_eff_gain = min_eff_gain;
-
-    // TODO: min energy still enters this block if state is SELECT_CPUFREQ
+    
+    /*
     if (is_mpi_enabled() && enable_load_balance) {
-        /*  Even though it's compute bound, we check if we must redistribute power */
+        *  Even though it's compute bound, we check if we must redistribute power *
         evaluate_cp(num_processes, my_node_mpi_calls, &max_mpi, &min_mpi);
         // opportunity to check similarity to avoid this code
         memset(critical_path, 0, sizeof(uint)*num_processes);
@@ -361,18 +361,18 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             nump = num_processes;
             // opportunity to check similarity to avoid below code
             for (i=0; i < nump; i++){
-                /*  Decides whether process i is part of the critical path */
+                *  Decides whether process i is part of the critical path *
                 if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_median)){
                     verbose_master(2, "Process %d selected as part of the critical path", i);
                     critical_path[i] = 1;
                 }
-                // TODO: min energy implements another critical path state (2) when percs_mpi[i] > mean and its value is farther above 75% of the difference between the mean and the most far perc_mpi
                 // else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= 
                 //  ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75)))
             }
         }else nump = 1;
     }
     else nump = 1;
+     */
 
     if (c->use_turbo) min_pstate = 0;
     else min_pstate = frequency_closest_pstate(c->app->max_freq);
@@ -416,12 +416,20 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             copy_imc_data_from_signature(imc_data, curr_pstate, imc_pstate, my_app);
         }
     }
+    
+    int policy_stable;
+    policy_ok(c, sig, &cpufreq_signature, &policy_stable);
+    if (!policy_stable){
+        verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
+    }
 
-    /*  If signature has changed, we must start again */
+    /*
+    *  If signature has changed, we must start again *
     if ((min_time_state != SELECT_CPUFREQ) && signatures_different(&cpufreq_signature, sig, 0.2)){
         verbose_master(2, "%sSignature is too different from the one used for CPU freq. starting again%s", COL_RED, COL_CLR);
         min_time_state = SELECT_CPUFREQ;
     }
+     */
 
     if ((min_time_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
         /*  SELECT CPUFREQ */
@@ -587,31 +595,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     else if ((min_time_state == SELECT_IMCFREQ) && (dyn_unc)){
         verbose_master(2,"%sSELECT_IMCFREQ%s state: nominal %d -- current CPU %lu, IMC %lu -- ref IMC pstate %d",
                 COL_YLW, COL_CLR, min_pstate, curr_pstate, imc_pstate, ref_imc_pstate);
-        /* 
-           uint increase_imc = must_increase_imc(imc_data, curr_pstate, imc_pstate, curr_pstate,
-           ref_imc_pstate, my_app, imc_extra_th);
-        // If we are over the limit, we increase the IMC 
-        if (increase_imc){
-        verbose(2,"%sWarning, passing the limit", COL_RED);
-        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP, imc_max_khz);	
-        freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-        verbose(2,"Selecting %lu - %lu and policy ready%s",
-        freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
-         *ready = EAR_POLICY_READY;
-         min_time_state = SELECT_CPUFREQ;
-         }else{
-         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
-         imc_min_khz-IMC_RANGE);
-         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-         verbose(2, "%sTrying a lower IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
-         freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
-         if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] > (imc_min_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
-         else{ 
-         *ready = EAR_POLICY_READY;
-         min_time_state = SELECT_CPUFREQ;
-         }
-         }
-         */
         uint decrease_imc;
         if (imc_support_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz){
             verbose(3, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
@@ -657,17 +640,115 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     ulong eff_f;
     uint power_status;
     uint next_status;
+    int i;
 
-    if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
+    if ((c==NULL) || (curr_sig==NULL)) return EAR_ERROR; // || (last_sig==NULL)) return EAR_ERROR;
 
-    /* This part is generic */
-    if (curr_sig->def_f == last_sig->def_f){ 
-        *ok=1;
-        verbose_master(2, "Current def freq (%lu) equals to last def freq. POLICY %sok%s", curr_sig->def_f, COL_GRE, COL_CLR);
+    verbose_master(2, "%sPOLICY OK EVALUATION%s", COL_YLW, COL_CLR);
+    *ok=1;
+
+    /*  Check for load balance data */
+    if (is_mpi_enabled() && enable_load_balance){
+
+        /*  Read mpi data and compute stats */
+        read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
+        read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
+
+        mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
+        mpi_stats_evaluate_mean_sd_mag(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean,
+                &mpi_stats_perc_mpi_sd, &mpi_stats_perc_mpi_mag);
+        mpi_stats_evaluate_median(num_processes, percs_mpi, &mpi_stats_perc_mpi_median);
+        uint unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
+
+        // TODO: we may change the name of this function if it stills only compute max and min perc mpi
+        /*  Even though it's compute bound, we check if we must redistribute power */
+        evaluate_cp(num_processes, my_node_mpi_calls, &max_mpi, &min_mpi);
+
+        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf median %lf standard deviation %lf magnitude %lf unbalance ? %u",
+                COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi], percs_mpi[min_mpi],
+                mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_median, mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mag, unbalance);
+
+        /*  Check whether application has changed from unbalanced to balanced and viceversa */
+        if (unbalance != signature_is_unbalance){
+            if (!unbalance){
+                verbose_master(2, "%sApplication becomes balanced!%s", COL_GRE, COL_CLR);
+            }else{
+                verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
+                *ok=0;
+            }
+        }
+
+        if (unbalance){
+            /*  Select critical path */
+            memset(critical_path, 0, sizeof(uint)*num_processes);
+            verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
+            freq_per_core = 1;
+            nump = num_processes;
+            for (i=0; i < nump; i++){
+                /*  Decides whether process i is part of the critical path */
+                if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_median)){
+                    verbose_master(2, "Process %d selected as part of the critical path", i);
+                    critical_path[i] = 1;
+                }else if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_mean)){
+                    verbose_master(2, "%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
+                }
+                // TODO: min energy implements another critical path state (2) when percs_mpi[i] > mean and its value is farther above 75% of the difference between the mean and the most far perc_mpi
+                // else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= 
+                //  ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75)))
+            }
+            if (!first_time){
+                /*  Compare current stats with previous ones */
+                verbose_master(2, "PREVIOUS percs_mpi:");
+                for (i = 0; i < num_processes; i++){
+                    verbosen_master(2, "MR[%d]=%lf", i, last_percs_mpi[i]);
+                }
+                verbose_master(2, "");
+                verbose_master(2, "PREVIOUS mean %lf median %lf standard deviation %lf magnitude %lf",
+                        last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
+                        last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
+
+                double similarity;
+                mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+
+                /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
+                if (last_mpi_stats_perc_mpi_mag < mpi_stats_perc_mpi_mag){
+                    verbose_master(2, "%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
+                            last_mpi_stats_perc_mpi_mag, mpi_stats_perc_mpi_mag);
+                    *ok=0;
+                }else{
+                    mpi_stats_evaluate_sim_uint(critical_path, last_critical_path, num_processes, &similarity);
+                    verbose_master(2, "Similarity between last and current critical path selection %lf", similarity);
+                    if (similarity < 0.5){
+                        *ok=0;
+                    }
+                }
+            }else{
+                first_time = 0;
+            }
+
+            /*  Save current stats and critical path to be used later */
+            memcpy(last_percs_mpi, percs_mpi, sizeof(double)*num_processes);
+            memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
+            last_mpi_stats_perc_mpi_sd = mpi_stats_perc_mpi_sd;
+            last_mpi_stats_perc_mpi_mean = mpi_stats_perc_mpi_mean;
+            last_mpi_stats_perc_mpi_mag = mpi_stats_perc_mpi_mag;
+            last_mpi_stats_perc_mpi_median = mpi_stats_perc_mpi_median;
+        }else nump = 1;
+    }else{
+        nump = 1;
     }
 
-
-    /*  When DynAIS enabled */
+    if (*ok == 1){
+        /*  If signature has changed, we must start again */
+        if (signatures_different(last_sig, curr_sig, 0.2)){
+            verbose_master(2, "%sSignature is too different from the one used for CPU freq. starting again%s", COL_RED, COL_CLR);
+            *ok=0;
+        }
+    }
+    /*
+     * Old policy ok *
+    *  When DynAIS enabled *
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
         // Check that efficiency is enough
         if (curr_sig->time <= last_sig->time){
@@ -712,7 +793,9 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     else{
         verbose_master(2, "%snot ok%s", COL_RED, COL_CLR);
     }
+     * */
 
+    /*  Reset comparisions */
     if (*ok == 0){
         first_time = 1;
         first_imc_try = 1;

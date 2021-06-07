@@ -128,7 +128,17 @@ double ear_math_cosine_similarity(double *a, double *b, size_t n) {
         magnitude_a += pow(a[i], 2);
         magnitude_b += pow(b[i], 2);
     }
-    return (ulong)(dot_product / (sqrt(magnitude_a) * sqrt(magnitude_b)));
+    return dot_product / (sqrt(magnitude_a) * sqrt(magnitude_b));
+}
+
+double ear_math_cosine_sim_uint(uint *a, uint *b, size_t n){
+    uint dot_product = 0, magnitude_a = 0, magnitude_b = 0;
+    for (int i = 0; i < n; i++) {
+        dot_product += a[i] * b[i];
+        magnitude_a += pow(a[i], 2);
+        magnitude_b += pow(b[i], 2);
+    }
+    return (double)dot_product / (double)(sqrt(magnitude_a) * sqrt(magnitude_b));
 }
 
 mean_sd_t ear_math_mean_sd(const double data[], size_t n){
