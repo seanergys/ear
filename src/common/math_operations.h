@@ -56,6 +56,8 @@ void ear_math_free_gen_array(void **arr);
  * */
 double ear_math_cosine_similarity(double *a, double *b, size_t n);
 
+double ear_math_cosine_sim_uint(uint *a, uint *b, size_t n);
+
 typedef struct mean_sd {
     double mean;
     double sd;

@@ -33,8 +33,7 @@ void process_avg_cpu_freq(cpu_set_t *aff,ulong *cpuflist,ulong *avgcpu);
  * */
 int signatures_different(signature_t *s1, signature_t *s2,float p);
 
-/*  This functions checks whether the current process 'nproc' belongs to critical path, and if it has set the max cpu 
- *  freq 'min_pstate', set it turbo freq and returns 1.
+/*  This functions checks whether the current process 'nproc' belongs to critical path and  set it turbo freq and returns 1.
  *  Returns 0 otherwise.*/
 uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, int min_pstate);
 
