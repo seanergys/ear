@@ -421,6 +421,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     policy_ok(c, sig, &cpufreq_signature, &policy_stable);
     if (!policy_stable){
         verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
+        min_time_state = SELECT_CPUFREQ;
     }
 
     /*
