@@ -20,6 +20,20 @@
 #include <string.h>
 #include <common/math_operations.h>
 
+uint equal_with_th_ul(ulong a,ulong b,double th)
+{
+	int eq = 1;
+	if (a == b) return 1;
+  if (a > b) {
+    if (a < (b * (1 + th))) eq = 1;
+    else eq = 0;
+  } else {
+    if ((a * (1 + th)) > b) eq = 1;
+    else eq = 0;
+  }
+  return eq;
+
+}
 unsigned int equal_with_th(double a, double b, double th)
 {
 	int eq = 1;

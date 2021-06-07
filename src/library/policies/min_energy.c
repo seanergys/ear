@@ -160,9 +160,12 @@ state_t policy_init(polctx_t *c)
             if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
                 verbose_master(2,"Error loading GPU policy");
             }
+						verbose_master(2,"Initialzing GPU policy part");
             if (gpus.init != NULL) gpus.init(c);
-            gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items);
-						for (i=0;i<MAX_GPUS_SUPPORTED;i++){
+            if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
+							verbose_master(2,"Error asking for gpu freq list");
+						}
+						for (i=0;i<c->num_gpus;i++){
 							min_energy_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
 						}
         }

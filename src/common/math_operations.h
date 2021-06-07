@@ -18,6 +18,8 @@
 
 /** Given two doubles a and b, checks if they are equal within a margin of th.*/
 unsigned int equal_with_th(double a, double b, double th);
+uint equal_with_th_ul(ulong a,ulong b,double th);
+
 
 /** Given two unsigned long's, one before and one after overflow, returns the
 *   value added to the first to obtain the second. This corrects end-begin when there 

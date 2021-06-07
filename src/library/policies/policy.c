@@ -24,7 +24,7 @@
 #include <dlfcn.h>
 //#define SHOW_DEBUGS 1
 #include <common/includes.h>
-#include <common/config/config_env.h>
+#include <common/config.h>
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
 #include <library/api/mpi_support.h>
@@ -125,17 +125,18 @@ state_t policy_load(char *obj_path,polsym_t *psyms)
 
 void print_policy_ctx(polctx_t *p)
 {
-    fprintf(stderr,"user_type %u\n",p->app->user_type);
-    fprintf(stderr,"policy_name %s\n",p->app->policy_name);
-    fprintf(stderr,"setting 0 %lf\n",p->app->settings[0]);
-    fprintf(stderr,"def_freq %lu\n",DEF_FREQ(p->app->def_freq));
-    fprintf(stderr,"def_pstate %u\n",p->app->def_p_state);
-    fprintf(stderr,"reconfigure %d\n",p->reconfigure->force_rescheduling);
-    fprintf(stderr,"user_selected_freq %lu\n",p->user_selected_freq);
-    fprintf(stderr,"reset_freq_opt %lu\n",p->reset_freq_opt);
-    fprintf(stderr,"ear_frequency %lu\n",*(p->ear_frequency));
-    fprintf(stderr,"num_pstates %u\n",p->num_pstates);
-    fprintf(stderr,"use_turbo %u\n",p->use_turbo);
+    verbose_master(2,"user_type %u",p->app->user_type);
+    verbose_master(2,"policy_name %s",p->app->policy_name);
+    verbose_master(2,"setting 0 %lf",p->app->settings[0]);
+    verbose_master(2,"def_freq %lu",DEF_FREQ(p->app->def_freq));
+    verbose_master(2,"def_pstate %u",p->app->def_p_state);
+    verbose_master(2,"reconfigure %d",p->reconfigure->force_rescheduling);
+    verbose_master(2,"user_selected_freq %lu",p->user_selected_freq);
+    verbose_master(2,"reset_freq_opt %lu",p->reset_freq_opt);
+    verbose_master(2,"ear_frequency %lu",*(p->ear_frequency));
+    verbose_master(2,"num_pstates %u",p->num_pstates);
+    verbose_master(2,"use_turbo %u",p->use_turbo);
+    verbose_master(2,"num_gpus %u",p->num_gpus);
 }
 
 
@@ -416,7 +417,7 @@ state_t policy_show_domain(node_freq_domain_t *dom){
 /* This function is called automatically  by the init_power_policy that loads policy symbols */
 state_t policy_init()
 {
-    polctx_t *c=&my_pol_ctx;
+    polctx_t *c = &my_pol_ctx;
 		int i;
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
@@ -425,6 +426,7 @@ state_t policy_init()
     char *cuse_earl_phases = getenv(SCHED_USE_EARL_PHASES);
     state_t ret,retg=EAR_SUCCESS;
     policy_gpu_init_ctx(c);
+		// print_policy_ctx(c);
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
     }
