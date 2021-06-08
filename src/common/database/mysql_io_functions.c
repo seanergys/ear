@@ -1055,7 +1055,6 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     *loops = loops_aux;
 
     free(loop_aux);
-    free(query);
     if (mysql_stmt_close(statement)) {
         free(loops_aux);
         return EAR_MYSQL_ERROR;

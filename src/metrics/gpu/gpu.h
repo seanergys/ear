@@ -64,12 +64,18 @@ typedef struct gpu_s
 	uint correct;
 } gpu_t;
 
+typedef struct gpu_info_s {
+	ullong serial;
+	uint index;
+} gpu_info_t;
+
 typedef struct gpu_ops_s
 {
 	state_t (*init)			(ctx_t *c);
 	state_t (*init_unprivileged) (ctx_t *c);
 	state_t (*dispose)		(ctx_t *c);
-	state_t (*count)		(ctx_t *c, uint *gpu_count);
+	state_t (*count)		(ctx_t *c, uint *devs_count);
+	state_t (*get_info)     (ctx_t *c, const gpu_info_t **info, uint *devs_count);
 	state_t (*read)			(ctx_t *c, gpu_t *data);
 	state_t (*read_copy)	(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 	state_t (*read_raw)		(ctx_t *c, gpu_t *data);
@@ -95,7 +101,10 @@ state_t gpu_init_unprivileged(ctx_t *c);
 state_t gpu_dispose(ctx_t *c);
 
 // Counts the number of GPUs (devices) in the node.
-state_t gpu_count(ctx_t *c, uint *dev_count);
+state_t gpu_count(ctx_t *c, uint *devs_count);
+
+// Gets information about each GPU in the system.
+state_t gpu_get_info(ctx_t *c, const gpu_info_t **info, uint *devs_count);
 
 // Reads the GPU device data and stores it in the gpu_t array data (1 per device).
 state_t gpu_read(ctx_t *c, gpu_t *data);

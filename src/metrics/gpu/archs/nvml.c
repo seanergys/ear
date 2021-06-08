@@ -65,6 +65,7 @@ static const char *nvml_names[] =
 	"nvmlDeviceGetTemperature",
 	"nvmlDeviceGetUtilizationRates",
 	"nvmlDeviceGetComputeRunningProcesses",
+	"nvmlDeviceGetSerial",
 	"nvmlErrorString",
 };
 
@@ -79,6 +80,7 @@ static struct nvml_s
 	nvmlReturn_t (*Temp)	(nvmlDevice_t dev, nvmlTemperatureSensors_t type, uint *temp);
 	nvmlReturn_t (*Util)	(nvmlDevice_t dev, nvmlUtilization_t *utilization);
 	nvmlReturn_t (*Procs)	(nvmlDevice_t dev, uint *infoCount, nvmlProcessInfo_t *infos);
+	nvmlReturn_t (*Serials) (nvmlDevice_t dev, char *serial, uint length);
 	char* (*ErrorString)	(nvmlReturn_t result);
 } nvml;
 
@@ -281,14 +283,38 @@ state_t nvml_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t nvml_count(ctx_t *c, uint *_dev_count)
+state_t nvml_count(ctx_t *c, uint *dev_count_in)
 {
 	if (!ok_unprivileged) {
 		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
 	}
-	if (_dev_count != NULL) {
-		*_dev_count = dev_count;
+	if (dev_count_in != NULL) {
+		*dev_count_in = dev_count;
 	}
+	return EAR_SUCCESS;
+}
+
+state_t nvml_get_info(ctx_t *c, const gpu_info_t **info_in, uint *dev_count_in)
+{
+	// 128 GPUs is enough for today and probably forever
+	static gpu_info_t info[128];
+	char serial[32];
+	nvmlReturn_t r;
+	int i;
+
+	for (i = 0; i < dev_count; ++i) { 
+		if ((r = nvml.Serials(devices[i], serial, 32)) != NVML_SUCCESS) {
+			return_msg(EAR_ERROR, myErrorString(r));
+		}
+		info[i].serial = (ullong) atoll(serial);
+		info[i].index  = i;
+	}
+	*info_in = info;
+
+	if (dev_count_in != NULL) {
+		*dev_count_in = dev_count;
+	}
+
 	return EAR_SUCCESS;
 }
 
