@@ -1016,17 +1016,19 @@ void print_loops(loop_t *loops, int num_loops)
         {                
             for (s=0; s<sig.gpu_sig.num_gpus; s++){
                 gpup += sig.gpu_sig.gpu_data[s].GPU_power;
+                gpuf += sig.gpu_sig.gpu_data[s].GPU_freq;
                 if (sig.gpu_sig.gpu_data[s].GPU_util){
                     gpupu += sig.gpu_sig.gpu_data[s].GPU_power;
-                    gpuf += sig.gpu_sig.gpu_data[s].GPU_freq;
                     gpuu += sig.gpu_sig.gpu_data[s].GPU_util;
                     gpu_mem_util += sig.gpu_sig.gpu_data[s].GPU_mem_util;
                     gpuused++;
                 }
             }
+            if (sig.gpu_sig.num_gpus)
+                gpuf /= sig.gpu_sig.num_gpus;
+
             if (gpuused > 0)
             {
-                gpuf /= gpuused;
                 gpuu /= gpuused;
                 gpu_mem_util /= gpuused;
             }
