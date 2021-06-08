@@ -18,6 +18,7 @@
 #ifndef EAR_POLICIES_CTX_H
 #define EAR_POLICIES_CTX_H
 
+#include <common/config.h>
 #include <common/states.h>
 #include <common/types/loop.h>
 #include <common/types/application.h>
@@ -57,12 +58,12 @@ typedef struct policy_context {
 	unsigned long *ear_frequency;
 	unsigned int  num_pstates;
 	unsigned int use_turbo;
-	mpi_ctx_t mpi;
 	//job_t 		*my_job
 	ctx_t     gpu_mgt_ctx;
 	uint      num_gpus;
 	int affinity;
 	int pc_limit;	
+	mpi_ctx_t mpi;
 } polctx_t;
 
 void print_policy_ctx(polctx_t *p);

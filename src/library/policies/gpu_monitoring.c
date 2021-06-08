@@ -44,7 +44,7 @@ state_t policy_init(polctx_t *c)
   char *gpu_freq=getenv(SCHED_EAR_GPU_DEF_FREQ);
   state_t ret;
   if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
-    g_freq=atol(gpu_freq);
+    g_freq = atol(gpu_freq);
   }
   debug("Asking for frequencies");
   gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
