@@ -457,18 +457,21 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                         for (j = 0; j < apps[i].signature.gpu_sig.num_gpus; j++)
                         {
                             gpu_total_power += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
+                            gpu_freq_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
                             if (apps[i].signature.gpu_sig.gpu_data[j].GPU_util)
                             {
                                 gpu_power        += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
-                                gpu_freq_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
                                 gpu_util_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_util;
                                 gpu_mem_util_aux += apps[i].signature.gpu_sig.gpu_data[j].GPU_mem_util;
                                 num_gpus++;
                             }
                         }
+
+                        if (apps[i].signature.gpu_sig.num_gpus)
+                            gpu_freq_aux /= apps[i].signature.gpu_sig.num_gpus;
+
                         if (num_gpus > 0)
                         {
-                            gpu_freq_aux     /= num_gpus;
                             gpu_util_aux     /= num_gpus;
                             gpu_mem_util_aux /= num_gpus;
                         }
