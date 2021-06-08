@@ -396,22 +396,105 @@ state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,
     return EAR_SUCCESS;
 }
 
-
-state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min)
+state_t mpi_support_perc_mpi_max_min(int nump,double *percs_mpi,int *max,int *min)
 {
     int i = 0;
     *max = 0;
     *min = 0;
     verbosen_master(2,"LB_DATA ");
     for (i=0; i< nump;i++){
-        verbosen_master(2,"MR[%d]= %.2lf ",i,node_mpi_calls[i].perc_mpi);
-        verbosen_master(3," (%lu/%lu) ",node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
+        verbosen_master(2,"MR[%d]= %.2lf ",i,percs_mpi[i]);
+        // verbosen_master(3," (%lu/%lu) ",node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
     }
     verbose_master(2,"");
     for (i=1 ; i < nump ; i++){
-        if (node_mpi_calls[i].perc_mpi > node_mpi_calls[*max].perc_mpi)	*max = i;
-        if (node_mpi_calls[i].perc_mpi < node_mpi_calls[*min].perc_mpi)	*min = i;
+        if (percs_mpi[i] > percs_mpi[*max])	*max = i;
+        if (percs_mpi[i] < percs_mpi[*min])	*min = i;
     }
+    return EAR_SUCCESS;
+}
+
+state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, double *mean, double *sd, double *mag){
+
+    /*  Compute mean, standard deviation and magnitude of percs_mpi vector */
+    mpi_stats_evaluate_mean_sd_mag(num_procs, percs_mpi, mean,
+            sd, mag);
+
+    return EAR_SUCCESS;
+}
+
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean, double *sd, double *mag, uint *lb){
+
+    /*  Get only perc_mpi info */
+    mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi);
+
+    /*  Compute statistics for determinate whether application is load balanced */
+    mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
+
+    *lb = (*sd > LB_TH);
+
+    return EAR_SUCCESS;
+}
+
+state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi){
+    /*  Computes max and min perc_mpi processes */
+    mpi_support_perc_mpi_max_min(num_procs, percs_mpi, max_mpi, min_mpi);
+
+    /*  Computes median */
+    mpi_stats_evaluate_median(num_procs, percs_mpi, median);
+
+    memset(critical_path, 0, sizeof(uint)*num_procs);
+    verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
+
+    for (int i=0; i < num_procs; i++){
+        /*  Decides whether process i is part of the critical path */
+        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)){
+            verbose_master(2, "Process %d selected as part of the critical path", i);
+            critical_path[i] = 1;
+        }else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)){
+            verbose_master(2, "%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
+        }
+        // TODO: min energy implements another critical path state (2) when percs_mpi[i] > mean and its value is farther above 75% of the difference between the mean and the most far perc_mpi
+        // else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= 
+        //  ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75)))
+    }
+
+    return EAR_SUCCESS;
+}
+
+state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag){
+    if (verb_lvl == 3){
+        verbose_master(3, "PREVIOUS percs_mpi:");
+        for (int i = 0; i < num_procs; i++){
+            verbosen_master(3, "MR[%d]=%lf", i, percs_mpi[i]);
+        }
+        verbose_master(3, "");
+    }
+    else if(verb_lvl <= 3){
+        verbose_master(2, "PREVIOUS mean %lf median %lf standard deviation %lf magnitude %lf",
+                mean, median, sd, mag);
+    }
+
+    return EAR_SUCCESS;
+}
+
+state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp, int num_procs, double *similarity, uint *mpi_changed){
+    *mpi_changed = 0;
+
+    /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
+    if (prev_mag < current_mag){
+        verbose_master(2, "%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
+                prev_mag, current_mag);
+        *mpi_changed = 1;
+    }else{
+        /*  Check similarity between critical paths */
+        mpi_stats_evaluate_sim_uint(cp, prev_cp, num_procs, similarity);
+        verbose_master(2, "Similarity between last and current critical path selection %lf", *similarity);
+        if (*similarity < 0.5){
+            *mpi_changed = 1;
+        }
+    }
+
     return EAR_SUCCESS;
 }
 

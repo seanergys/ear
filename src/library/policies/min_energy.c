@@ -80,7 +80,6 @@ static imc_data_t *imc_data;
 #define SELECT_IMCFREQ 		101
 #define COMP_IMCREF		 		102
 #define TRY_TURBO_CPUFREQ 103
-#define LB_TH 10.0
 #define CP_TH 5.0
 #define EXTRA_TH  0.05
 static uint min_energy_state = SELECT_CPUFREQ;
@@ -273,10 +272,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     max_penalty = c->app->settings[0];
 		base_penalty = max_penalty;				
     if (is_mpi_enabled() && (min_energy_state == SELECT_CPUFREQ) && enable_load_balance){
-			/* Even though it's compute bound, we check if we must re distribute power */
-      evaluate_cp(num_processes,my_node_mpi_calls,&max_mpi,&min_mpi);
-			memset(critical_path,0,sizeof(uint)*num_processes);
       mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
+			/* Even though it's compute bound, we check if we must re distribute power */
+      mpi_support_perc_mpi_max_min(num_processes,percs_mpi,&max_mpi,&min_mpi);
+			memset(critical_path,0,sizeof(uint)*num_processes);
       mpi_stats_evaluate_mean_sd(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd);
       signature_is_unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
 			uint unbalance = enable_load_balance && signature_is_unbalance;

@@ -19,6 +19,7 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
 
+#define LB_TH       15.0
 
 state_t mpi_app_init(polctx_t *c);
 state_t mpi_app_end(polctx_t *c);
@@ -33,12 +34,9 @@ state_t mpi_call_new_phase(polctx_t *c);
 state_t mpi_call_get_stats(mpi_information_t *dst,mpi_information_t * src,int i);
 state_t mpi_call_get_types(mpi_calls_types_t *dst,shsignature_t * src,int i);
 
-
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t);
 state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i);
 state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,mpi_calls_types_t *node_mpi_calls,mpi_calls_types_t *last_node);
-
-
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t);
 void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t);
@@ -46,7 +44,24 @@ void verbose_mpi_data(int vl,mpi_information_t *mc);
 
 state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls);
 state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls,mpi_information_t *last_node);
-state_t evaluate_cp(int nump,mpi_information_t *node_mpi_calls,int *max,int *min);
+
+/*  Computes the the max and min process with perc mpi calls from percs_mpi */
+state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls,int *max,int *min);
+
+/*  Computes basic statistics of percs_mpi */
+state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, double *mean, double *sd, double *mag);
+
+/*  Based on perc. of mpi calls for each of 'num_procs' passed,
+ *  compute basic statistics (therefore stores their results) and determines whether the application is load balanced. */
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean, double *sd, double *mag, uint *lb);
+
+/*  This function sets the critical path and also stores max and min perc_mpi processes */
+state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi);
+
+state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag);
+
+/*  This function checks whether current mpi data has changed from previous iteration */
+state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp, int num_procs, double *similarity, uint *mpi_changed);
 
 /*  Statistics */
 state_t mpi_stats_evaluate_sd(int nump, double* percs_mpi, double mean, double *sd);
