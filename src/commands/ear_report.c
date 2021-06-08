@@ -243,9 +243,25 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
 
     uint max_power = MAX_ERROR_POWER;
     int def_id = get_default_tag_id(&my_conf);
-    if (def_id > -1)
+    char is_node = 0;
+    if (node_name != NULL) 
     {
-        max_power = my_conf.tags[def_id].error_power;
+        my_node_conf_t *n_c = get_my_node_conf(&my_conf, node_name);
+        if (n_c != NULL) {
+            max_power = n_c->max_error_power;
+            is_node = 1;
+        }
+        
+    } 
+    if (!is_node)
+    {
+        if (def_id > -1)
+        {
+            max_power = my_conf.tags[def_id].error_power;
+        }   
+        int i;
+        for (i = 0; i < my_conf.num_tags; i++)
+            max_power = ear_max(my_conf.tags[i].error_power, max_power);
     }
     
     char query[512];
@@ -335,9 +351,25 @@ long long get_sum(PGconn *connection, int start_time, int end_time, unsigned lon
 
     uint max_power = MAX_ERROR_POWER;
     int def_id = get_default_tag_id(&my_conf);
-    if (def_id > -1)
+    char is_node = 0;
+    if (node_name != NULL) 
     {
-        max_power = my_conf.tags[def_id].error_power;
+        my_node_conf_t *n_c = get_my_node_conf(&my_conf, node_name);
+        if (n_c != NULL) {
+            max_power = n_c->max_error_power;
+            is_node = 1;
+        }
+        
+    } 
+    if (!is_node)
+    {
+        if (def_id > -1)
+        {
+            max_power = my_conf.tags[def_id].error_power;
+        }   
+        int i;
+        for (i = 0; i < my_conf.num_tags; i++)
+            max_power = ear_max(my_conf.tags[i].error_power, max_power);
     }
     
     if (node_name != NULL)
@@ -776,7 +808,10 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
     if (def_id > -1)
     {
         max_power = my_conf.tags[def_id].error_power;
-    }
+    }   
+    for (i = 0; i < my_conf.num_tags; i++)
+        max_power = ear_max(my_conf.tags[i].error_power, max_power);
+    
     
     if (type == GLOBAL_ENERGY_TYPE)
         sprintf(query, inc_query, end_time-start_time);
@@ -904,7 +939,10 @@ void print_all(PGconn *connection, int start_time, int end_time, char *inc_query
     if (def_id > -1)
     {
         max_power = my_conf.tags[def_id].error_power;
-    }
+    }   
+    int i;
+    for (i = 0; i < my_conf.num_tags; i++)
+        max_power = ear_max(my_conf.tags[i].error_power, max_power);
     
     if (type == GLOBAL_ENERGY_TYPE)
         sprintf(query, inc_query, end_time-start_time);
