@@ -34,6 +34,7 @@ static mgt_gpu_ops_t *ops_man;
 static uint the_gpu_model = MODEL_UNDEFINED;
 static gpu_t *node_gpu_data;
 static ulong *node_gpu_freqs = NULL;
+static uint *my_gpu_list;
 
 state_t gpu_lib_load(settings_conf_t *settings)
 {
@@ -84,21 +85,37 @@ state_t gpu_lib_init(ctx_t *_c)
 	else if (node_dev_count != dev_count)                     ops_man->count(&c->ctx_man,&dev_count);
 	else                                                      dev_count = node_dev_count;
 	debug("Using %d gpus from %d in node ", dev_count,node_dev_count);
-	node_gpu_data = calloc(node_dev_count,sizeof(gpu_t));
+	node_gpu_data  = calloc(node_dev_count,sizeof(gpu_t));
 	node_gpu_freqs = calloc(node_dev_count,sizeof(ulong));
+	my_gpu_list    = calloc(node_dev_count,sizeof(uint));
 	if ((node_gpu_data == NULL) || (node_gpu_freqs == NULL)){
 		error("Not enough memory");
 		return EAR_ERROR;
 	}
 
-	#if 0
-	gpu_info_t *info = malloc(sizeof(gpu_info_t)*node_dev_count);
-	eards_gpu_get_info((gpu_info_t *) info, node_dev_count);
-	int i;
-	for (i = 0; i < node_dev_count; ++i) {
-		fprintf(stderr, "GPU%d serial: %llu\n", i, info[i].serial);
+	if (the_gpu_model != MODEL_DUMMY){
+		gpu_info_t *info = malloc(sizeof(gpu_info_t)*node_dev_count);
+		const gpu_info_t *local_info;
+		if (gpu_get_info(&c->ctx_met,&local_info,NULL) != EAR_SUCCESS){
+			verbose_master(2,"Error requesting local GPU info");
+		}else{
+			int i;
+			for (i=0;i<dev_count; i++){
+				verbose_master(2,"Local GPU[%d] serial: %llu", i, local_info[i].serial);
+			}
+		}
+		eards_gpu_get_info((gpu_info_t *) info, node_dev_count);
+		int i, li;
+		for (i = 0; i < node_dev_count; ++i) {
+			li = 0;
+			while ((li < dev_count) && (info[i].serial != local_info[li].serial)) li++;
+			if (li < dev_count){ 
+				verbose_master(2,"Node GPU[%d] serial: %llu - Local GPU[%d]: %llu", i, info[i].serial,li,local_info[li].serial);
+				my_gpu_list[i] = 1;
+			}
+
+		}
 	}
-	#endif
 
 	return EAR_SUCCESS;
 }
@@ -139,6 +156,7 @@ state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 {
 	state_t ret;
 	char gpu_ste[256];
+	int i, li = 0;
 	memset(node_gpu_data, 0 , node_dev_count*sizeof(gpu_t));
 	if (the_gpu_model == MODEL_DUMMY){
 		memset(data,0,dev_count*sizeof(gpu_t));
@@ -147,7 +165,12 @@ state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 	debug("reading %u gpus",node_dev_count);
 	if ((ret=eards_gpu_data_read(node_gpu_data,node_dev_count))!=EAR_SUCCESS) return ret;	
 	debug("Moving %d gpu data to user data",dev_count);
-	memcpy(data,node_gpu_data,dev_count*sizeof(gpu_t));
+	for (i=0;i<node_dev_count;i++){
+		if(my_gpu_list[i]){ 
+			memcpy(&data[li],&node_gpu_data[i],sizeof(gpu_t));
+			li++;
+		}
+	}
 #if SHOW_DEBUGS
 	gpu_lib_data_tostr(data,gpu_ste,sizeof(gpu_ste));
 	debug("gpu data %s",gpu_ste);
@@ -247,7 +270,7 @@ state_t gpu_lib_freq_limit_reset()
 
 state_t gpu_lib_freq_limit_set(ulong *khz)
 {
-	int ret,i;
+	int ret,i,li;
 	if (the_gpu_model == MODEL_DUMMY){
 		return EAR_SUCCESS;
 	}
@@ -258,7 +281,13 @@ state_t gpu_lib_freq_limit_set(ulong *khz)
 		verbose_master(2,"GPU_LIB_FREQ[%d]=%lu",i,khz[i]);
 	}
 	memset(node_gpu_freqs,0,sizeof(ulong)*node_dev_count);
-	memcpy(node_gpu_freqs,khz,sizeof(ulong)*dev_count);	
+	li = 0;
+	for (i=0;i<node_dev_count;i++){
+		if (my_gpu_list[i]){
+			node_gpu_freqs[i] = khz[li];
+			li++;
+		}
+	}
 	ret = eards_gpu_set_freq(node_dev_count,node_gpu_freqs);
 	if (ret != EAR_SUCCESS){
 		state_return_msg(EAR_ERROR,EAR_SYSCALL_ERROR,"EARD local API error in GPU_Set_freq");
