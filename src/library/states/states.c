@@ -528,6 +528,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* We must evaluate policy decissions */
             signatures_stables++;
+						l_sig = &policy_sel_signature;
+						#if 0
             if (!dynais_used){
                 if (signatures_stables == 1){
                     signature_copy(&cpu_sel_signature,&loop.signature);
@@ -536,6 +538,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             }else{
                 l_sig = &signatures[def_pstate].signature;
             }
+						#endif
             if (sig_ready[def_pstate] == 0){
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
@@ -545,11 +548,13 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 }
                 return;
             }
+						#if 0
 						if (signatures_different(&loop_signature.signature, l_sig,0.2)){
 							EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 							verbose_master(2,"Signature is different, aplying the policy again");	
 							return;
 						}
+						#endif
             pst = policy_ok(&loop_signature.signature, l_sig,&pok);
             ok_clr = COL_GRE;
             if (pok) {
