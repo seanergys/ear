@@ -266,18 +266,18 @@ state_t mpi_call_new_phase(polctx_t *c)
 
 static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current, mpi_calls_types_t *last)
 {
-    diff->mpi 						= current->mpi - last->mpi;
-    diff->time_mpi 				= current->time_mpi - last->time_mpi;
-    diff->time_period 		= current->time_period - last->time_period;
-    diff->sync 						= current->sync - last->sync;
-    diff->collec 					=  current->collec - last->collec;
-    diff->blocking 				= current->blocking - last->blocking;
-    diff->time_sync 			= current->time_sync - last->time_sync;
-    diff->time_collec 		= current->time_collec - last->time_collec;
-    diff->time_blocking 	= current->time_blocking - last->time_blocking;
-    diff->sync_block  		= current->sync_block - last->sync_block;
-    diff->time_sync_block = current->time_sync_block - last->time_sync_block;
-    diff->max_sync_block  = ear_max(current->max_sync_block , last->max_sync_block);
+    diff->mpi               = current->mpi - last->mpi;
+    diff->time_mpi          = current->time_mpi - last->time_mpi;
+    diff->time_period       = current->time_period - last->time_period;
+    diff->sync              = current->sync - last->sync;
+    diff->collec            = current->collec - last->collec;
+    diff->blocking          = current->blocking - last->blocking;
+    diff->time_sync	        = current->time_sync - last->time_sync;
+    diff->time_collec       = current->time_collec - last->time_collec;
+    diff->time_blocking     = current->time_blocking - last->time_blocking;
+    diff->sync_block        = current->sync_block - last->sync_block;
+    diff->time_sync_block   = current->time_sync_block - last->time_sync_block;
+    diff->max_sync_block    = ear_max(current->max_sync_block , last->max_sync_block);
     return EAR_SUCCESS;
 }
 
@@ -289,7 +289,6 @@ state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last
     memcpy(last,&current,sizeof(mpi_calls_types_t));
     return EAR_SUCCESS;
 }
-
 
 state_t mpi_call_get_types(mpi_calls_types_t *dst,shsignature_t * src,int i)
 {
@@ -324,7 +323,10 @@ void verbose_mpi_types(int vl,mpi_calls_types_t *t)
         sprintf(psync,"%.2lf",(float)t->time_sync/(float)t->time_period);
         sprintf(pcollect," %.2lf",(float)t->time_collec/(float)t->time_mpi);
     }
-    verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,(float)t->mpi*1000000.0/(float)t->time_period,(float)t->time_mpi/(float)t->time_period,psync,pcollect,t->sync_block, t->time_sync_block,t->max_sync_block);
+    verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",
+            t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,
+            (float)t->mpi*1000000.0/(float)t->time_period,(float)t->time_mpi/(float)t->time_period,psync,pcollect,
+            t->sync_block, t->time_sync_block,t->max_sync_block);
 }
 
 void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t)
@@ -446,7 +448,7 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
     memset(critical_path, 0, sizeof(uint)*num_procs);
     verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
 
-    for (int i=0; i < num_procs; i++){
+    for (uint i=0; i < num_procs; i++){
         /*  Decides whether process i is part of the critical path */
         if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)){
             verbose_master(2, "Process %d selected as part of the critical path", i);
