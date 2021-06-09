@@ -9,10 +9,15 @@ modl_PERM = 0775
 
 ########
 
+.PRECIOUS: %.o
+
 all: $(modl_OBJS) $(modl_BINS)
 
 %.o: %.c %.h
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -c $<
+
+%.o: %.c
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -c $<
 
 %.so: %.o
 	$(CC) $(CC_FLAGS) -shared -o $@ $^ 
