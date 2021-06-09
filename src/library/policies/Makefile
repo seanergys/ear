@@ -1,69 +1,39 @@
-
 ifeq ($(FEAT_GPU_OPT), 1)
 GPU_OPT_FLAG = -DGPU_OPT=1
 endif
-PCFLAGS = $(CC_FLAGS) $(GPU_OPT_FLAG) $(LIB_CFLAGS) $(CFLAGS) 
 
 ######## FILES
 
 include ./Makefile.files
 
-poli_DEPS = \
-	  $(SRCDIR)/library/policies/imc_policy_support.o \
-	  $(SRCDIR)/library/policies/mpi_stats_support.o \
-	  $(SRCDIR)/library/policies/gpu_support.o \
-	  $(SRCDIR)/library/policies/cpu_support.o \
-	  $(SRCDIR)/library/policies/pc_suport.o \
-    $(SRCDIR)/common/libcommon.a \
-    $(SRCDIR)/daemon/powercap/powercap_status.o 
+stan_PERM = 0775
+stan_PATH = $(DESTDIR)/lib/plugins/policies
+stan_DEPS = \
+    $(SRCDIR)/daemon/powercap/powercap_status.o \
+    $(SRCDIR)/common/libcommon.a
 
-poli_PATH = $(DESTDIR)/lib/plugins/policies
-poli_PERM = 0775
-
-pmpi_DEPS = $(SRCDIR)/common/system/time.o
-
-eard_DEPS = $(SRCDIR)/common/libcommon.a
+eard_PERM = $(stan_PERM)
 eard_PATH = $(DESTDIR)/lib/plugins/eard_policies
-eard_PERM = $(poli_PERM)
+eard_DEPS = $(SRCDIR)/common/libcommon.a
 
 ########
 
-all: $(poli_OBJS) $(poli_BINS) $(eard_BINS)
+.PRECIOUS: %.o
+
+all: $(poli_OBJS) $(stan_OBJS) $(stan_BINS) $(eard_BINS)
  
 %.o: %.c 
-	$(CC) $(PCFLAGS) -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) -c $<
 
-min_time_eard.o: min_time_eard.c
-	$(CC) $(PCFLAGS) -c $<
+%.so: %.o $(stan_OBJS) $(stan_DEPS) 
+	$(CC) $(CC_FLAGS) -shared -o $@ $^ 
 
-min_energy_eard.o: min_energy_eard.c
-	$(CC) $(PCFLAGS) -c $<
-
-load_balance_eard.o: load_balance_eard.c
-	$(CC) $(PCFLAGS) -c $<
-
-monitoring_eard.o: monitoring_eard.c
-	$(CC) $(PCFLAGS) -c $<
-
-%.so: %.o $(poli_DEPS)
-	$(CC) $(CC_FLAGS) $(GPU_OPT_FLAG) -shared -o $@ $^ 
-
-min_energy_eard.so: min_energy_eard.o $(eard_DEPS)
+%_eard.so: %_eard.o $(eard_DEPS)
 	$(CC) $(CC_FLAGS) -shared -o $@ $^
-
-load_balance_eard.so: load_balance_eard.o $(eard_DEPS)
-	$(CC) $(CC_FLAGS) -shared -o $@ $^
-
-min_time_eard.so: min_time_eard.o $(eard_DEPS)
-	$(CC) $(CC_FLAGS) -shared -o $@ $^
-
-monitoring_eard.so: monitoring_eard.o $(eard_DEPS)
-	$(CC) $(CC_FLAGS) -shared -o $@ $^
-
 
 ######## OPTIONS 
 
-install: poli.ginstall eard.ginstall
+install: stan.ginstall eard.ginstall
 	ln -sf ./min_energy_eard.so $(eard_PATH)/min_energy_no_models_eard.so 
 	ln -sf ./min_time_eard.so $(eard_PATH)/min_time_no_models_eard.so 
 
