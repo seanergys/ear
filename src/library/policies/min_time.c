@@ -68,7 +68,6 @@ ulong avg_to_khz(ulong freq_khz);
 #define SELECT_IMCFREQ  101
 #define COMP_IMCREF     102
 
-#define LB_TH       15.0
 #define EXTRA_TH    0.10
 
 static imc_data_t *imc_data;
@@ -651,23 +650,15 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance){
 
-        /*  Read mpi data and compute stats */
         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
 
-        mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
-        mpi_stats_evaluate_mean_sd_mag(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean,
-                &mpi_stats_perc_mpi_sd, &mpi_stats_perc_mpi_mag);
-        mpi_stats_evaluate_median(num_processes, percs_mpi, &mpi_stats_perc_mpi_median);
-        uint unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
+        uint unbalance;
+        double mean, sd, mag;
+        mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
 
-        // TODO: we may change the name of this function if it stills only compute max and min perc mpi
-        /*  Even though it's compute bound, we check if we must redistribute power */
-        evaluate_cp(num_processes, my_node_mpi_calls, &max_mpi, &min_mpi);
-
-        verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf median %lf standard deviation %lf magnitude %lf unbalance ? %u",
-                COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi], percs_mpi[min_mpi],
-                mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_median, mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mag, unbalance);
+        verbose_master(2,"%sNode load unbalance%s: LB_TH %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
+                COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 
         /*  Check whether application has changed from unbalanced to balanced and viceversa */
         if (unbalance != signature_is_unbalance){
@@ -676,65 +667,50 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
             }else{
                 verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
                 *ok=0;
+                first_time=1;
             }
         }
 
+
         if (unbalance){
-            /*  Select critical path */
-            memset(critical_path, 0, sizeof(uint)*num_processes);
-            verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
             freq_per_core = 1;
             nump = num_processes;
-            for (i=0; i < nump; i++){
-                /*  Decides whether process i is part of the critical path */
-                if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_median)){
-                    verbose_master(2, "Process %d selected as part of the critical path", i);
-                    critical_path[i] = 1;
-                }else if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_mean)){
-                    verbose_master(2, "%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
-                }
-                // TODO: min energy implements another critical path state (2) when percs_mpi[i] > mean and its value is farther above 75% of the difference between the mean and the most far perc_mpi
-                // else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= 
-                //  ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75)))
-            }
-            if (!first_time){
-                /*  Compare current stats with previous ones */
-                verbose_master(2, "PREVIOUS percs_mpi:");
-                for (i = 0; i < num_processes; i++){
-                    verbosen_master(2, "MR[%d]=%lf", i, last_percs_mpi[i]);
-                }
-                verbose_master(2, "");
-                verbose_master(2, "PREVIOUS mean %lf median %lf standard deviation %lf magnitude %lf",
-                        last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
+
+            double median;
+            /*  Select critical path */
+            mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean, &median, &max_mpi, &min_mpi);
+            
+            /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
+             * state and we don't need to check variation between policy iterations  */
+            if (!first_time && *ok==1){
+
+                mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
                         last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
+                /*  This code has not been encapsulated because is by (now) only for verbose purposes */
                 double similarity;
                 mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
                 verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+                /* *************************************************************************** */
 
-                /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
-                if (last_mpi_stats_perc_mpi_mag < mpi_stats_perc_mpi_mag){
-                    verbose_master(2, "%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
-                            last_mpi_stats_perc_mpi_mag, mpi_stats_perc_mpi_mag);
-                    *ok=0;
-                }else{
-                    mpi_stats_evaluate_sim_uint(critical_path, last_critical_path, num_processes, &similarity);
-                    verbose_master(2, "Similarity between last and current critical path selection %lf", similarity);
-                    if (similarity < 0.5){
-                        *ok=0;
-                    }
+                uint mpi_changed;
+                mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path, num_processes, &similarity, &mpi_changed);
+
+                if (mpi_changed){
+                    *ok = 0;
                 }
-            }else{
+
+            }else if (*ok){
                 first_time = 0;
             }
 
             /*  Save current stats and critical path to be used later */
             memcpy(last_percs_mpi, percs_mpi, sizeof(double)*num_processes);
             memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
-            last_mpi_stats_perc_mpi_sd = mpi_stats_perc_mpi_sd;
-            last_mpi_stats_perc_mpi_mean = mpi_stats_perc_mpi_mean;
-            last_mpi_stats_perc_mpi_mag = mpi_stats_perc_mpi_mag;
-            last_mpi_stats_perc_mpi_median = mpi_stats_perc_mpi_median;
+            last_mpi_stats_perc_mpi_sd = sd;
+            last_mpi_stats_perc_mpi_mean = mean;
+            last_mpi_stats_perc_mpi_mag = mag;
+            last_mpi_stats_perc_mpi_median = median;
         }else nump = 1;
     }else{
         nump = 1;
