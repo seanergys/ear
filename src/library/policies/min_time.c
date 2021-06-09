@@ -167,6 +167,7 @@ state_t policy_init(polctx_t *c)
 
         // last_cpufreq_sel = calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
         critical_path = calloc(num_processes, sizeof(uint));
+        last_critical_path = calloc(num_processes, sizeof(uint));
 
         node_freqs_alloc(&min_time_def_freqs);
         node_freqs_alloc(&last_nodefreq_sel);
@@ -512,8 +513,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                         lvpi, critical_path[i]);
 
                 // TODO: Manage an option to boost directly cp processes
-                double factor = ear_math_exp(-30 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
-                    * cbound * (1 - mbound);
+                double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
+                    * cbound * (1 - mbound) * critical_path[i];
                 if (factor < 0.01){
                     factor = 0.0;
                 }
@@ -652,6 +653,7 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 
         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
+        verbose_mpi_types(2,my_node_mpi_types_calls);
 
         uint unbalance;
         double mean, sd, mag;
@@ -664,8 +666,10 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
         if (unbalance != signature_is_unbalance){
             if (!unbalance){
                 verbose_master(2, "%sApplication becomes balanced!%s", COL_GRE, COL_CLR);
+                signature_is_unbalance = 0;
             }else{
                 verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
+                signature_is_unbalance = 1;
                 *ok=0;
                 first_time=1;
             }
@@ -703,9 +707,10 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
             }else if (*ok){
                 first_time = 0;
             }
+            verbose_master(2, "Copying data...");
 
             /*  Save current stats and critical path to be used later */
-            memcpy(last_percs_mpi, percs_mpi, sizeof(double)*num_processes);
+            memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
             memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
             last_mpi_stats_perc_mpi_sd = sd;
             last_mpi_stats_perc_mpi_mean = mean;
@@ -845,6 +850,7 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 
     return EAR_SUCCESS;
 }
+
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     int i;
@@ -871,6 +877,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 
     return EAR_SUCCESS;
 }
+
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     int i;
