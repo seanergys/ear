@@ -47,6 +47,10 @@
 #define DVFS_PERIOD 0.5
 #define DVFS_BURST_DURATION 1000
 #define DVFS_RELAX_DURATION 1000
+
+#define PSTATE_STEP 6
+#define PSTATE0_STEP 25
+
 static uint current_dvfs_pc=0;
 static uint default_dvfs_pc=0;
 static uint dvfs_pc_enabled=0;
@@ -88,6 +92,32 @@ void extend_from_cpu_to_list(int cpu, uint *list,uint num_cpus)
     uint i;
     for (i=0;i<num_cpus;i++) list[i] = value;
 }
+
+//moved here from powercap_status.c as it is only used in dvfs cases
+uint compute_extra_power(uint current, uint diff, uint target)
+{
+	uint i = 0;
+	uint total = 0;
+    //no pstate_change
+	if (diff == 0) return 0;
+
+    /* A logical pstate is a diff of 100000 MHz and is an average increase of 6 Watts
+     * (except the first pstate). In some cases there is a jump in available frequencies
+     * for a CPU of 2 logical p_states (and only 1 "real") so we use the logical steps
+     * to compute the necessary power. */
+    ulong target_f = frequency_pstate_to_freq(target);
+    ulong current_f = frequency_pstate_to_freq(target+diff);
+    uint logical_pstates = (target_f - current_f)/100000; 
+    //if the target is the first pstate we request additional power
+	if (target == 1) total = PSTATE0_STEP;
+	else total = PSTATE_STEP;
+    //all the other steps take the same amout of power
+	for (i = 1; i < logical_pstates; i++){
+		total = total + PSTATE_STEP;
+	}
+	return total;
+}
+
 
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t dvfs_pc_thread_init(void *p)

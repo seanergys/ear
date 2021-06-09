@@ -28,7 +28,9 @@ state_t nvml_init_unprivileged(ctx_t *c);
 
 state_t nvml_dispose(ctx_t *c);
 
-state_t nvml_count(ctx_t *c, uint *gpu_count);
+state_t nvml_count(ctx_t *c, uint *devs_count);
+
+state_t nvml_get_info(ctx_t *c, const gpu_info_t **info, uint *devs_count);
 
 state_t nvml_pool(void *c);
 

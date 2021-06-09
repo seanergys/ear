@@ -457,18 +457,21 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                         for (j = 0; j < apps[i].signature.gpu_sig.num_gpus; j++)
                         {
                             gpu_total_power += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
+                            gpu_freq_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
                             if (apps[i].signature.gpu_sig.gpu_data[j].GPU_util)
                             {
                                 gpu_power        += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
-                                gpu_freq_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
                                 gpu_util_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_util;
                                 gpu_mem_util_aux += apps[i].signature.gpu_sig.gpu_data[j].GPU_mem_util;
                                 num_gpus++;
                             }
                         }
+
+                        if (apps[i].signature.gpu_sig.num_gpus)
+                            gpu_freq_aux /= apps[i].signature.gpu_sig.num_gpus;
+
                         if (num_gpus > 0)
                         {
-                            gpu_freq_aux     /= num_gpus;
                             gpu_util_aux     /= num_gpus;
                             gpu_mem_util_aux /= num_gpus;
                         }
@@ -1016,17 +1019,19 @@ void print_loops(loop_t *loops, int num_loops)
         {                
             for (s=0; s<sig.gpu_sig.num_gpus; s++){
                 gpup += sig.gpu_sig.gpu_data[s].GPU_power;
+                gpuf += sig.gpu_sig.gpu_data[s].GPU_freq;
                 if (sig.gpu_sig.gpu_data[s].GPU_util){
                     gpupu += sig.gpu_sig.gpu_data[s].GPU_power;
-                    gpuf += sig.gpu_sig.gpu_data[s].GPU_freq;
                     gpuu += sig.gpu_sig.gpu_data[s].GPU_util;
                     gpu_mem_util += sig.gpu_sig.gpu_data[s].GPU_mem_util;
                     gpuused++;
                 }
             }
+            if (sig.gpu_sig.num_gpus)
+                gpuf /= sig.gpu_sig.num_gpus;
+
             if (gpuused > 0)
             {
-                gpuf /= gpuused;
                 gpuu /= gpuused;
                 gpu_mem_util /= gpuused;
             }

@@ -131,10 +131,11 @@ struct daemon_req {
 #define ENERGY_FREQ				403
 
 
-#define GPU_MODEL			500
-#define GPU_DEV_COUNT	501
-#define GPU_DATA_READ	502
-#define GPU_SET_FREQ  503
+#define GPU_MODEL               500
+#define GPU_DEV_COUNT           501
+#define GPU_DATA_READ           502
+#define GPU_SET_FREQ            503
+#define GPU_GET_INFO            504
 
 #else
 #endif

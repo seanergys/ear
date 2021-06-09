@@ -65,7 +65,7 @@ cp	-rp ${EAR_INSTALL_PATH}/lib/libearld.* %{buildroot}/usr/lib/
 cp    -rp ${EAR_INSTALL_PATH}/lib/libear_api.a %{buildroot}/usr/lib/libear_api.a
 cp    -rp ${EAR_INSTALL_PATH}/lib/plugins/* %{buildroot}/usr/lib/plugins/
 cp	-rp ${EAR_INSTALL_PATH}/lib/earplug.so %{buildroot}/usr/lib/
-cp	-rp ${EAR_INSTALL_PATH}/lib/erun %{buildroot}/usr/bin/
+cp	-rp ${EAR_INSTALL_PATH}/bin/erun %{buildroot}/usr/bin/
 cp  -p  ${EAR_SOURCE_PATH}/etc/systemd/eargmd.service.in %{buildroot}/etc/systemd/system
 cp  -p  ${EAR_SOURCE_PATH}/etc/systemd/eardbd.service.in %{buildroot}/etc/systemd/system
 cp  -p  ${EAR_SOURCE_PATH}/etc/systemd/eard.service.in %{buildroot}/etc/systemd/system

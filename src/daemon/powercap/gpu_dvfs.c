@@ -62,6 +62,7 @@ static ulong *gpu_pc_max_power;
 /* These two variables controls the power ditribution between GPUS */
 static ulong *gpu_pc_curr_power;
 static ulong *gpu_pc_util;
+static long  *gpu_pc_excess;
 static float *pdist;
 static ulong *c_freq,*t_freq,*n_freq;
 static const ulong **gpu_freq_list=NULL;
@@ -73,6 +74,8 @@ static uint gpu_dvfs_monitor_initialized = 0;
 static uint gpu_dvfs_util = 0;
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
+
+static char gpu_dvfs_greedy = 0;
 
 ulong select_lower_gpu_freq(uint i, ulong f, uint pstate_steps)
 {
@@ -166,7 +169,7 @@ state_t gpu_dvfs_pc_thread_init(void *p)
 state_t gpu_dvfs_pc_thread_main(void *p)
 {
     int extra;
-    uint i;
+    uint i, j;
     uint gpu_dvfs_local_util = 0;
 
     if (!gpu_dvfs_pc_enabled) return EAR_SUCCESS;
@@ -186,6 +189,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     for (i=0;i<gpu_pc_num_gpus;i++){
         gpu_dvfs_local_util += values_gpu_diff[i].util_gpu;
         gpu_pc_util[i] = values_gpu_diff[i].util_gpu;
+        gpu_pc_excess[i] = (long)gpu_pc_curr_power[i] - (long)values_gpu_diff[i].power_w;
     }
     if (util_changed(gpu_dvfs_local_util,gpu_dvfs_util)){
         int_set_powercap_value(current_gpu_pc,gpu_pc_util);
@@ -197,11 +201,33 @@ state_t gpu_dvfs_pc_thread_main(void *p)
         }
     #endif
 
+    gpu_dvfs_greedy = 0;
     if ((current_gpu_pc <= 0) || (c_status != PC_STATUS_RUN)){
         return EAR_SUCCESS;
     }
+
+    //redistribute power between gpus
+    for (i = 0; i < gpu_pc_num_gpus; i++)
+    {
+        if (gpu_pc_util[i] == 0) continue; //idle nodes need no reallocation
+        if (gpu_pc_excess[i] > 0) continue; //nodes with extra power need no reallocation
+        for (j = 0; j < gpu_pc_num_gpus; j++) {
+            if (gpu_pc_util[j] == 0) continue; //we don't want to remove power from idle nodes
+            if (gpu_pc_excess[j] > 5) {
+                debug("moving %ld watts from %d to %d (current pc from %lu to %lu)", gpu_pc_excess[j]-5, j, i, gpu_pc_curr_power[j], gpu_pc_curr_power[i]);
+                gpu_pc_curr_power[i] += gpu_pc_excess[j] - 5; //we leave a bit of excess power to prevent fluctuation errors
+                gpu_pc_curr_power[j] -= gpu_pc_excess[j] - 5; //remove the power from the original gpu
+                gpu_pc_excess[i] += gpu_pc_excess[j] - 5;
+                gpu_pc_excess[j] = 5;
+
+                if (gpu_pc_excess[i] >= 0) break; //if we have enough power in the gpu we can stop redistributing towards it
+            }
+        }
+    }
+
     for (i=0;i<gpu_pc_num_gpus;i++){
         if (gpu_pc_util[i] < 1) continue;
+        if (t_freq[i] > 0) c_freq[i] = ear_min(c_freq[i], t_freq[i]);
         n_freq[i] = c_freq[i];
         /* Aplicar limites */
         //debug("GPU[%d] power %lf limit %lu",i,values_gpu_diff[i].power_w,gpu_pc_curr_power[i]);
@@ -212,9 +238,10 @@ state_t gpu_dvfs_pc_thread_main(void *p)
             }
             /* Number of steps is estimated by watching how far are we from the cap.
              * The further from the cap, the more pstates we reduce. Minimum 1 pstate */
-            uint pstate_steps = ear_max((uint)(values_gpu_diff[i].power_w - gpu_pc_curr_power[i])/5, 1);
+            uint pstate_steps = ear_max((uint)(values_gpu_diff[i].power_w - gpu_pc_curr_power[i]) - 2, 1);
             /* Use the list of frequencies */
             n_freq[i] = select_lower_gpu_freq(i, c_freq[i], pstate_steps);
+            gpu_dvfs_greedy |= 1;
             debug("%sReducing the GPU-freq[%d] from %lu to %lu (cpower %lf limit %lu) %s",
                     COL_RED,i,c_freq[i],n_freq[i],values_gpu_diff[i].power_w,gpu_pc_curr_power[i],COL_CLR);
         }else{ /* We are below the PC */
@@ -223,7 +250,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
                 //extra = compute_extra_gpu_power(c_freq[i], values_gpu_diff[i].power_w, t_freq[i]);
 
                 extra = (gpu_pc_curr_power[i] - values_gpu_diff[i].power_w);
-                extra = extra > 5 ? extra / 2.5 : 1;
+                extra = extra > 5 ? extra - 2 : 1;
                 n_freq[i] = ear_min(select_higher_gpu_freq(i, c_freq[i], extra), t_freq[i]);
 
                 //n_freq[i] = ear_min(c_freq[ear_max(i-extra, 0)], t_freq[i]);
@@ -288,6 +315,12 @@ state_t enable(suscription_t *sus)
         }
         gpu_pc_curr_power = calloc(gpu_pc_num_gpus,sizeof(ulong));
         if (gpu_pc_curr_power == NULL){
+            gpu_pc_enabled = 0;
+            ret = EAR_ERROR;
+            debug("Error allocating memory in GPU enable");
+        }
+        gpu_pc_excess = calloc(gpu_pc_num_gpus,sizeof(long));
+        if (gpu_pc_excess == NULL){
             gpu_pc_enabled = 0;
             ret = EAR_ERROR;
             debug("Error allocating memory in GPU enable");
@@ -494,6 +527,7 @@ uint get_powercap_status(domain_status_t *status)
     }
     /* We need the released power */
     if (gpu_dvfs_ask_def){
+        debug("GPU status ASK_DEF, current_pc %lu and def_pc %lu", current_gpu_pc, default_gpu_pc);
         status->ok = PC_STATUS_ASK_DEF;
         return 0;
     }
@@ -510,6 +544,7 @@ uint get_powercap_status(domain_status_t *status)
         status->ok = PC_STATUS_RELEASE;
         if (gpu_pc_num_gpus == 0) status->exceed = current_gpu_pc;
         else status->exceed=(current_gpu_pc - (gpu_idle_power*gpu_pc_num_gpus));
+        if (status->exceed >= current_gpu_pc) status->exceed = 0;
         debug("%sCould release %u Watts from the GPU%s",COL_GRE,status->exceed,COL_CLR);
         return 1;
     }
@@ -518,13 +553,14 @@ uint get_powercap_status(domain_status_t *status)
 
     /* Compute the current strain before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
-        tmp_strain += powercap_get_strain(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], c_freq[i]);
+        if (gpu_pc_util[i] > 0)
+            tmp_strain += powercap_get_strain(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], c_freq[i]);
     }
-    tmp_strain /= gpu_pc_num_gpus;
+    tmp_strain /= used;
     status->strain = tmp_strain;
 
     for (i=0;i<gpu_pc_num_gpus;i++){
-        if ((c_freq[i] < t_freq[i]) && (gpu_pc_util[i]>0)){ 
+        if ((c_freq[i] < t_freq[i]) && (gpu_pc_util[i]>0) && gpu_dvfs_greedy){ 
             debug("We cannot release power from GPU %d",i);
             status->ok = PC_STATUS_GREEDY;
             status->exceed = 0;

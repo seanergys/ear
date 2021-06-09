@@ -50,6 +50,20 @@ state_t gpu_dummy_count(ctx_t *c, uint *_dev_count)
 	return EAR_SUCCESS;
 }
 
+state_t gpu_dummy_get_info(ctx_t *c, const gpu_info_t **info_in, uint *dev_count_in)
+{
+    static gpu_info_t info;
+
+	memset(&info, 0, sizeof(gpu_info_t)); 
+	*info_in = &info;
+
+    if (dev_count_in != NULL) {
+		*dev_count_in = 1;
+	}
+
+    return EAR_SUCCESS;
+}
+
 state_t gpu_dummy_read(ctx_t *c, gpu_t *data)
 {
 	debug("read is null");

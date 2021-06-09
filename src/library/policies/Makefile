@@ -2,7 +2,7 @@
 ifeq ($(FEAT_GPU_OPT), 1)
 GPU_OPT_FLAG = -DGPU_OPT=1
 endif
-PCFLAGS = $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(GPU_OPT_FLAG)
+PCFLAGS = $(CC_FLAGS) $(GPU_OPT_FLAG) $(LIB_CFLAGS) $(CFLAGS) 
 
 ######## FILES
 
@@ -46,7 +46,7 @@ monitoring_eard.o: monitoring_eard.c
 	$(CC) $(PCFLAGS) -c $<
 
 %.so: %.o $(poli_DEPS)
-	$(CC) $(CC_FLAGS) -shared -o $@ $^ 
+	$(CC) $(CC_FLAGS) $(GPU_OPT_FLAG) -shared -o $@ $^ 
 
 min_energy_eard.so: min_energy_eard.o $(eard_DEPS)
 	$(CC) $(CC_FLAGS) -shared -o $@ $^
