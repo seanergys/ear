@@ -221,6 +221,8 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *loop_id)
     return EAR_SUCCESS;
 }
 
+static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok);
+
 // This is the main function in this file, it implements power policy
 state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
@@ -417,14 +419,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
     }
     
-    if (min_time_state != SELECT_CPUFREQ){
-        int policy_stable;
-        policy_ok(c, sig, &cpufreq_signature, &policy_stable);
-        if (!policy_stable){
+    int policy_stable;
+    int_policy_ok(sig, &cpufreq_signature, &policy_stable);
+    if (min_time_state != SELECT_CPUFREQ && !policy_stable){
             verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
             min_time_state = SELECT_CPUFREQ;
-			signature_copy(&cpufreq_signature, sig);
-        }
     }
 
     /*
@@ -544,6 +543,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, new_freq, sizeof(ulong) * num_processes);
         /*  We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
+		verbose_master(2,"Updating cpufreq_signature");
         signature_copy(&cpufreq_signature, sig);
 
         /*  IMC freq selection */
@@ -638,15 +638,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     return EAR_SUCCESS;
 }
 
-state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
+static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok)
 {
     state_t st=EAR_SUCCESS;
     ulong eff_f;
     uint power_status;
     uint next_status;
     int i;
-
-    if ((c==NULL) || (curr_sig==NULL)) return EAR_ERROR; // || (last_sig==NULL)) return EAR_ERROR;
 
     verbose_master(2, "%sPOLICY OK EVALUATION%s", COL_YLW, COL_CLR);
     *ok=1;
@@ -786,6 +784,13 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
         first_imc_try = 1;
     }
     return EAR_SUCCESS;
+}
+
+state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
+{
+	*ok = 0;
+  if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
+	return int_policy_ok(curr_sig,last_sig,ok);
 }
 
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f)
