@@ -109,7 +109,7 @@ static uint signature_is_unbalance = 0;
 static int max_mpi, min_mpi;
 static int freq_per_core = 0;
 
-extern uint cpu_ready, gpu_ready;
+extern uint cpu_ready, gpu_ready, gidle;
 
 // TODO: these function may be to used by other policies. Put it to another file
 /*  wrap function which calculates intructions, flops and cycles. */
@@ -417,11 +417,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
     }
     
-    int policy_stable;
-    policy_ok(c, sig, &cpufreq_signature, &policy_stable);
-    if (!policy_stable){
-        verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
-        min_time_state = SELECT_CPUFREQ;
+    if (min_time_state != SELECT_CPUFREQ){
+        int policy_stable;
+        policy_ok(c, sig, &cpufreq_signature, &policy_stable);
+        if (!policy_stable){
+            verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
+            min_time_state = SELECT_CPUFREQ;
+			signature_copy(&cpufreq_signature, sig);
+        }
     }
 
     /*
@@ -832,19 +835,28 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
     int i;
     uint sock_id;
     if (c == NULL) return EAR_ERROR;
+    cpu_ready = EAR_POLICY_READY;
     for (i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-    copy_cpufreq_sel(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    memcpy(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,MAX_CPUS_SUPPORTED*sizeof(ulong));
     if (dyn_unc){
         for (sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_khz;
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
         }
-        memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, arch_desc.top.socket_count * IMC_VAL * sizeof(ulong));
+        memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,arch_desc.top.socket_count*IMC_VAL*sizeof(ulong));
     }
 #if USE_GPUS
-    for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-        freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
+    gpu_ready = EAR_POLICY_READY;
+    return EAR_SUCCESS;
+    if (gidle){
+        gpu_ready = EAR_POLICY_READY;
+        for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
+            freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
+        }
+        memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
     }
+#else
+    gpu_ready = EAR_POLICY_READY;
 #endif
     /* GPU mem is pending */
 
