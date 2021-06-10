@@ -484,10 +484,12 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
     *mpi_changed = 0;
 
     /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
-    if (prev_mag < current_mag){
-        verbose_master(2, "%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
-                prev_mag, current_mag);
-        *mpi_changed = 1;
+    if (!equal_with_th(prev_mag, current_mag, 0.1)){
+        if (prev_mag < current_mag){
+            verbose_master(2, "%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
+                    prev_mag, current_mag);
+            *mpi_changed = 1;
+        }
     }else{
         /*  Check similarity between critical paths */
         mpi_stats_evaluate_sim_uint(cp, prev_cp, num_procs, similarity);
@@ -496,7 +498,6 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
             *mpi_changed = 1;
         }
     }
-
     return EAR_SUCCESS;
 }
 
