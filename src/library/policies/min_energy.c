@@ -97,13 +97,23 @@ static polsym_t gpus;
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 static uint num_processes;
-static uint *critical_path;
 static ulong nominal_node;
+static uint signature_is_unbalance = 0;
+static int max_mpi, min_mpi;
+static int freq_per_core = 0;
 static signature_t cpufreq_signature;
-static double *percs_mpi;
+static double *percs_mpi, *last_percs_mpi;
+static uint *critical_path, *last_critical_path;
+
+static double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_mag, mpi_stats_perc_mpi_median;
+static double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_mag, last_mpi_stats_perc_mpi_median;
+
 static uint block_type;
+static uint first_time = 1;
 
 extern uint cpu_ready, gpu_ready, gidle;
+
+
 
 state_t policy_init(polctx_t *c)
 {
@@ -145,8 +155,10 @@ state_t policy_init(polctx_t *c)
         last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
         last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 				percs_mpi = calloc(num_processes, sizeof(double));
+				last_percs_mpi = calloc(num_processes, sizeof(double));
 				last_pmpi = 100.0 * num_processes;
 				critical_path = calloc(lib_shared_region->num_processes,sizeof(uint));
+				last_critical_path = calloc(lib_shared_region->num_processes,sizeof(uint));
 				node_freqs_alloc(&min_energy_def_freqs);
 				node_freqs_alloc(&last_nodefreq_sel);
 				/* Configuring default freqs */
@@ -203,6 +215,7 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 
 
 
+static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok);
 
 state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
@@ -222,10 +235,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     uint local_process_with_high_vpi;
     uint sid = 0;
     int gready;
-    int freq_per_core = 0;
     mpi_information_t sig_mpi_data;	
-    int max_mpi,min_mpi;
-		uint signature_is_unbalance = 0;
 		uint cbound, mbound, turbo_set = 0;
 		ulong max_cpufreq = 0, min_cpufreq_sel = 10000000 ;
 		double mpi_stats_perc_mpi_sd, mpi_stats_perc_mpi_mean, lvpi,lvpi2;
@@ -249,68 +259,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		if (cpu_ready == EAR_POLICY_READY){
 			return EAR_SUCCESS;	
 		}
-		if (is_mpi_enabled()){
-        read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
-      	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
-		}
-
-    if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
-        memcpy(freqs->cpu_freq,last_nodefreq_sel.cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
-        memcpy(freqs->imc_freq,last_nodefreq_sel.imc_freq,arch_desc.top.socket_count*IMC_VAL*sizeof(ulong));
-        *ready = EAR_POLICY_TRY_AGAIN;
-        verbose_master(2,"Node signature not ready, selecting %lu CPU f",*new_freq);
-				master_sig_without_sig++;
-				if (master_sig_without_sig > 3) print_sig_readiness(lib_shared_region,sig_shared_region);	
-        return EAR_SUCCESS;
-    }
-		master_sig_without_sig = 0;
-    verbose_master(2, "%s------MR[%d] Node signatures ready-----%s",COL_GRE,my_globalrank,COL_CLR);
-		for (int i=0;i < num_processes;i++){
-			compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
-			compute_ssig_vpi2(&lvpi2, &sig_shared_region[i].sig);
-			process_avg_cpu_freq(&sig_shared_region[i].cpu_mask,cpufreq_data_per_core,&process_avgcpuf);
-			verbosen_master(2,"[%d]=(LVPI=%.2lf/%.2lf AvgCPU=%.2f CPI=%.2lf)",i,lvpi2,lvpi,(float)process_avgcpuf/1000000.0,sig_shared_region[i].sig.CPI);
-		}
-		verbose_master(2,"");
     max_penalty = c->app->settings[0];
 		base_penalty = max_penalty;				
-    if (is_mpi_enabled() && (min_energy_state == SELECT_CPUFREQ) && enable_load_balance){
-      mpi_stats_get_only_percs_mpi(my_node_mpi_calls, num_processes, percs_mpi);
-			/* Even though it's compute bound, we check if we must re distribute power */
-      mpi_support_perc_mpi_max_min(num_processes,percs_mpi,&max_mpi,&min_mpi);
-			memset(critical_path,0,sizeof(uint)*num_processes);
-      mpi_stats_evaluate_mean_sd(num_processes, percs_mpi, &mpi_stats_perc_mpi_mean, &mpi_stats_perc_mpi_sd);
-      signature_is_unbalance = (mpi_stats_perc_mpi_sd > LB_TH);
-			uint unbalance = enable_load_balance && signature_is_unbalance;
-
-			// signature_is_unbalance = ((my_node_mpi_calls[max_mpi].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) > LB_TH);
-       verbose_master(2,"%sNode load unbalance%s: LH_TH %lf max perc mpi %lf min perc mpi %lf mean %lf standard deviation %f unbalance ? %u",
-                COL_MGT, COL_CLR, LB_TH, percs_mpi[max_mpi],
-                percs_mpi[min_mpi], mpi_stats_perc_mpi_mean, mpi_stats_perc_mpi_sd, unbalance);
-
-      if (unbalance){
-				 verbose_master(2,"%sPer-core CPUfreq because app is unbalanced%s",COL_RED,COL_CLR);
-         freq_per_core = 1;
-         nump = num_processes;
-				pmpi = 0;
-				for (i=0; i < num_processes; i++){
-					pmpi += my_node_mpi_calls[i].perc_mpi;
-          /*  Decides whether process i is part of the critical path */
-          if (abs(percs_mpi[i] - percs_mpi[min_mpi]) < abs(percs_mpi[i] - mpi_stats_perc_mpi_mean)){
-              verbose_master(2, "Process %d selected as part of the critical path", i);
-              critical_path[i] = 1;
-          }else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75))){ 
-						critical_path[i] = 2;
-					}
-				}	
-      }else{ nump = 1;}
-    }else nump = 1;
     if (c->use_turbo) min_pstate = 0;
     else min_pstate = frequency_closest_pstate(c->app->max_freq);
-
     nominal = frequency_pstate_to_freq(min_pstate);
-    // Default values
 
+    // Default values
     def_freq = FREQ_DEF(c->app->def_freq);
     def_pstate = frequency_closest_pstate(def_freq);
 
@@ -339,12 +294,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         verbose_master(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,imc_pstate);
         copy_imc_data_from_signature(imc_data,curr_pstate,imc_pstate,my_app);
     }
-		/* If signature has changed, we must start again */
-    if ((min_energy_state != SELECT_CPUFREQ) && signatures_different(&cpufreq_signature, sig, 0.2)){
-          verbose_master(2,"%sSignature is too different from the one used for CPU freq, starting again%s",COL_RED,COL_CLR);
-          min_energy_state = SELECT_CPUFREQ;
-					signature_copy(&cpufreq_signature, sig);
+    int policy_stable;
+    int_policy_ok(sig, &cpufreq_signature, &policy_stable);
+		verbose_master(2,"Policy ok returns %d",policy_stable);
+    if ((min_energy_state != SELECT_CPUFREQ) && !policy_stable){
+        verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
+        min_energy_state = SELECT_CPUFREQ;
     }
+
 
     if ((min_energy_state == SELECT_CPUFREQ) || (dyn_unc == 0)){
 				/**** SELECT_CPUFREQ ****/
@@ -393,7 +350,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 								ulong eff_p_cpuf, process_avgcpuf;
 								process_avg_cpu_freq(&sig_shared_region[i].cpu_mask,cpufreq_data_per_core,&process_avgcpuf);
                 from_minis_to_sig(my_app,&sig_shared_region[i].sig);
-                verbose_master(2,"Per-processSig MR[%d][%d] CPI %.3lf AvgCPUF %.2f (%lf,%lf) LVPI=%.3lf CP=%u",my_globalrank,i,my_app->CPI,(float)process_avgcpuf/1000000.0,my_node_mpi_calls[i].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi, lvpi, critical_path[i]);
+                //verbose_master(2,"Per-processSig MR[%d][%d] CPI %.3lf AvgCPUF %.2f (%lf,%lf) LVPI=%.3lf CP=%u",my_globalrank,i,my_app->CPI,(float)process_avgcpuf/1000000.0,my_node_mpi_calls[i].perc_mpi,my_node_mpi_calls[min_mpi].perc_mpi, lvpi, critical_path[i]);
                 if (critical_path[i] == 1){
 									/* Critical path */
 									if (!mbound){
@@ -442,6 +399,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 				}
         memcpy(last_nodefreq_sel.cpu_freq,new_freq,sizeof(ulong)*num_processes);
 				/* We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
+				verbose_master(2,"Updating cpufreq_signature");
 				signature_copy(&cpufreq_signature, sig);
 				/* IMC freq selection */
         if (dyn_unc && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
@@ -528,21 +486,107 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 }
 
 
-state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
+
+static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok)
 {
     double energy_last, energy_curr;
     uint power_status,next_status;
     ulong eff_f;
 		int i;
 
-    if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
-		*ok = 1;
-    if (signatures_different(curr_sig, last_sig,0.2)){
-    	verbose_master(2,"Signature is different, aplying the policy again"); 
-			*ok = 0;
+    verbose_master(2, "%sPOLICY OK EVALUATION%s", COL_YLW, COL_CLR);
+    *ok = 1;
+
+    /*  Check for load balance data */
+    if (is_mpi_enabled() && enable_load_balance){
+
+        read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
+        read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
+        verbose_mpi_types(2,my_node_mpi_types_calls);
+
+        uint unbalance;
+        double mean, sd, mag;
+        mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
+
+        verbose_master(2,"%sNode load unbalance%s: LB_TH %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
+                COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
+
+        /*  Check whether application has changed from unbalanced to balanced and viceversa */
+        if (unbalance != signature_is_unbalance){
+            if (!unbalance){
+                verbose_master(2, "%sApplication becomes balanced!%s", COL_GRE, COL_CLR);
+                signature_is_unbalance = 0;
+            }else{
+                verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
+                signature_is_unbalance = 1;
+                *ok=0;
+            }
+        }
+
+
+        if (unbalance){
+            freq_per_core = 1;
+            nump = num_processes;
+
+            double median;
+            /*  Select critical path */
+            mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean, &median, &max_mpi, &min_mpi);
+            
+            /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
+             * state and we don't need to check variation between policy iterations  */
+            if (!first_time && *ok==1){
+
+                mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
+                        last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
+
+                /*  This code has not been encapsulated because is by (now) only for verbose purposes */
+                double similarity;
+                mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+                /* *************************************************************************** */
+
+                uint mpi_changed;
+                mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path, num_processes, &similarity, &mpi_changed);
+
+                if (mpi_changed){
+                    *ok = 0;
+                }
+
+            }else if (*ok){
+                first_time = 0;
+            }
+            verbose_master(2, "Copying data...");
+
+            /*  Save current stats and critical path to be used later */
+            memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
+            memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
+            last_mpi_stats_perc_mpi_sd = sd;
+            last_mpi_stats_perc_mpi_mean = mean;
+            last_mpi_stats_perc_mpi_mag = mag;
+            last_mpi_stats_perc_mpi_median = median;
+        }else nump = 1;
+    }else{
+        nump = 1;
+    }
+
+    if (*ok == 1){
+        /*  If signature has changed, we must start again */
+        if (signatures_different(last_sig, curr_sig, 0.2)){
+            verbose_master(2, "%sSignature is too different from the one used for CPU freq. starting again%s", COL_RED, COL_CLR);
+            *ok = 0;
+        }
+    }
+    if (*ok == 0){
+        first_time = 1;
     }
 
     return EAR_SUCCESS;
+}
+state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
+{
+	*ok = 0;
+  if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
+	return int_policy_ok(curr_sig,last_sig,ok);
 }
 
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set)

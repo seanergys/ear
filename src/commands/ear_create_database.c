@@ -203,7 +203,7 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications (\
 job_id INT unsigned NOT NULL, \
 step_id INT unsigned NOT NULL, \
-node_id VARCHAR(128), \
+node_id VARCHAR(64), \
 signature_id INT unsigned, \
 power_signature_id INT unsigned, \
 PRIMARY KEY(job_id, step_id, node_id))");
@@ -215,7 +215,7 @@ size INT unsigned NOT NULL, \
 level INT unsigned NOT NULL, \
 job_id INT unsigned NOT NULL, \
 step_id INT unsigned NOT NULL, \
-node_id VARCHAR(8), \
+node_id VARCHAR(64), \
 total_iterations INT unsigned, \
 signature_id INT unsigned)");
     run_query(connection, query);
@@ -308,7 +308,7 @@ id INT unsigned NOT NULL AUTO_INCREMENT, \
 start_time INT NOT NULL, \
 end_time INT NOT NULL, \
 DC_energy INT unsigned NOT NULL, \
-node_id VARCHAR(256) NOT NULL, \
+node_id VARCHAR(64) NOT NULL, \
 job_id INT unsigned NOT NULL, \
 step_id INT unsigned NOT NULL, \
 avg_f INT, \
@@ -325,7 +325,7 @@ id INT unsigned NOT NULL AUTO_INCREMENT, \
 start_time INT NOT NULL, \
 end_time INT NOT NULL, \
 DC_energy INT unsigned NOT NULL, \
-node_id VARCHAR(256) NOT NULL, \
+node_id VARCHAR(64) NOT NULL, \
 job_id INT unsigned NOT NULL, \
 step_id INT unsigned NOT NULL, "
 "PRIMARY KEY (id))");
@@ -353,7 +353,7 @@ event_type INT NOT NULL, \
 job_id INT unsigned NOT NULL, \
 step_id INT unsigned NOT NULL, \
 freq INT unsigned NOT NULL, \
-node_id VARCHAR(256), \
+node_id VARCHAR(64), \
 PRIMARY KEY (id))");
     run_query(connection, query);
 
@@ -376,7 +376,7 @@ PRIMARY KEY (time))");
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_applications (\
 job_id INT unsigned NOT NULL, \
 step_id INT unsigned NOT NULL, \
-node_id VARCHAR(128), \
+node_id VARCHAR(64), \
 signature_id INT unsigned,\
 power_signature_id INT unsigned, \
 PRIMARY KEY(job_id, step_id, node_id))");
@@ -472,7 +472,7 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications (\
 job_id INT  NOT NULL, \
 step_id INT  NOT NULL, \
-node_id VARCHAR(128), \
+node_id VARCHAR(64), \
 signature_id INT , \
 power_signature_id INT , \
 PRIMARY KEY(job_id, step_id, node_id))");
@@ -484,7 +484,7 @@ size INT  NOT NULL, \
 level INT  NOT NULL, \
 job_id INT  NOT NULL, \
 step_id INT  NOT NULL, \
-node_id VARCHAR(8), \
+node_id VARCHAR(64), \
 total_iterations INT , \
 signature_id INT )");
     run_query(connection, query);
@@ -576,7 +576,7 @@ id SERIAL NOT NULL, \
 start_time INT NOT NULL, \
 end_time INT NOT NULL, \
 DC_energy INT  NOT NULL, \
-node_id VARCHAR(256) NOT NULL, \
+node_id VARCHAR(64) NOT NULL, \
 job_id INT  NOT NULL, \
 step_id INT  NOT NULL, \
 avg_f INT, \
@@ -593,7 +593,7 @@ id SERIAL NOT NULL, \
 start_time INT NOT NULL, \
 end_time INT NOT NULL, \
 DC_energy INT  NOT NULL, \
-node_id VARCHAR(256) NOT NULL, \
+node_id VARCHAR(64) NOT NULL, \
 job_id INT  NOT NULL, \
 step_id INT  NOT NULL, "
 "PRIMARY KEY (id))");
@@ -621,7 +621,7 @@ event_type INT NOT NULL, \
 job_id INT  NOT NULL, \
 step_id INT  NOT NULL, \
 freq INT  NOT NULL, \
-node_id VARCHAR(256), \
+node_id VARCHAR(64), \
 PRIMARY KEY (id))");
     run_query(connection, query);
 
@@ -644,7 +644,7 @@ PRIMARY KEY (time))");
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_applications (\
 job_id INT  NOT NULL, \
 step_id INT  NOT NULL, \
-node_id VARCHAR(128), \
+node_id VARCHAR(64), \
 signature_id INT ,\
 power_signature_id INT , \
 PRIMARY KEY(job_id, step_id, node_id))");

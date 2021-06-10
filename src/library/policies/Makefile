@@ -26,10 +26,10 @@ all: $(poli_OBJS) $(stan_OBJS) $(stan_BINS) $(eard_BINS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) -c $<
 
 %.so: %.o $(stan_OBJS) $(stan_DEPS) 
-	$(CC) $(CC_FLAGS) -shared -o $@ $^ 
+	$(CC) $(CC_FLAGS) -shared -fPIC -o $@ $^ 
 
 %_eard.so: %_eard.o $(eard_DEPS)
-	$(CC) $(CC_FLAGS) -shared -o $@ $^
+	$(CC) $(CC_FLAGS) -shared -fPIC  -o $@ $^
 
 ######## OPTIONS 
 
