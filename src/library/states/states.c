@@ -564,6 +564,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 }
                 tries_current_loop=0;
             }else{
+								/* Reset */
+								policy_set_default_freq();
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
                 ok_clr = COL_RED;
             } 

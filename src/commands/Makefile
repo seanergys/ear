@@ -9,7 +9,7 @@ CCC     = $(CC) $(CFLAGS)
 ######## INSTALLATION
 
 ifdef DB_BASE
-com1_BINS = eacct econtrol ereport
+com1_BINS = eacct econtrol ereport ear-info
 com1_PATH = $(DESTDIR)/bin
 com1_PERM = 2771
 com2_BINS = edb_create edb_clean_pm
@@ -32,6 +32,9 @@ eacct: ear_acct.c $(comm_OBJS)
 
 econtrol: ear_control.c $(rapi_OBJS) $(comm_OBJS)
 	$(CCC) $(SLURM_CFLAGS)  -o $@ $< $(rapi_OBJS) $(comm_OBJS)
+
+ear-info: ear-info.c $(comm_OBJS)
+	$(CCC) ${CFLAGS} -o $@ $< $(comm_OBJS)
 
 ereport: ear_report.c $(comm_OBJS)
 	$(CCC) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
