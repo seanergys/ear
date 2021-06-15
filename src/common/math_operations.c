@@ -22,30 +22,34 @@
 
 uint equal_with_th_ul(ulong a,ulong b,double th)
 {
-	int eq = 1;
-	if (a == b) return 1;
-  if (a > b) {
-    if (a < (b * (1 + th))) eq = 1;
-    else eq = 0;
-  } else {
-    if ((a * (1 + th)) > b) eq = 1;
-    else eq = 0;
-  }
-  return eq;
+    int eq = 1;
+    if (a == b) return eq;
+    if (a > b) {
+        // if (a < (b * (1 + th))) eq = 1;
+        // else eq = 0;
+        if (a * (1 - th) > b) eq = 0;
+    } else {
+        // if ((a * (1 + th)) > b) eq = 1;
+        // else eq = 0;
+        if (b * (1 - th) > a) eq = 0;
+    }
+    return eq;
 
 }
 unsigned int equal_with_th(double a, double b, double th)
 {
-	int eq = 1;
-	if (a == b) return 1;
-	if (a > b) {
-		if (a < (b * (1 + th))) eq = 1;
-		else eq = 0;
-	} else {
-		if ((a * (1 + th)) > b) eq = 1;
-		else eq = 0;
-	}
-	return eq;
+    int eq = 1;
+    if (a == b) return eq;
+    if (a > b) {
+        // if (a < (b * (1 + th))) eq = 1;
+        // else eq = 0;
+        if (a * (1 - th) > b) eq = 0;
+    } else {
+        // if ((a * (1 + th)) > b) eq = 1;
+        // else eq = 0;
+        if (b * (1 - th) > a) eq = 0;
+    }
+    return eq;
 }
 
 //Unsigned long can be 16, 32 or 64 bits
@@ -117,10 +121,10 @@ unsigned long long ullong_diff_overflow(unsigned long long begin, unsigned long 
 
 long long llong_diff_overflow(long long begin, long long end)
 {
-	long long max_64=LLONG_MAX;
-	long long ret;
-	ret=max_64 - begin + end;
-	return ret;
+    long long max_64=LLONG_MAX;
+    long long ret;
+    ret=max_64 - begin + end;
+    return ret;
 }
 
 void** ear_math_apply(void **arr, size_t len, void* (*fn_ptr)(void*)){
@@ -207,7 +211,7 @@ int cmp_fnc(const void *p1, const void *p2){
 double ear_math_median(const double data[], size_t n){
     double *copied = calloc(n, sizeof(double));
     memcpy(copied, data, n * sizeof(double));
-    
+
     qsort(copied, n, sizeof(double), cmp_fnc);
 
     double median;
