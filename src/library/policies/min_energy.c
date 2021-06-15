@@ -707,6 +707,7 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
 {
 	int i;
+	/* Check cpu idle or gpu idle */
 	return EAR_SUCCESS;
 }
 

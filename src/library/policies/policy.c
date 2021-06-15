@@ -775,13 +775,13 @@ state_t policy_set_default_freq()
     polctx_t *c=&my_pol_ctx;
     state_t st;
     signature_t s;
-    node_freqs_t def,avg;
+		ulong avg;
 #if USE_GPUS
     s.gpu_sig.num_gpus = c->num_gpus;
 #endif
-    if (polsyms_fun.get_default_freq!=NULL){
-        st=polsyms_fun.get_default_freq(c,&def);
-        if (masters_info.my_master_rank>=0) policy_freq_selection(c,&s,&def,&freqs_domain , &avg);
+    if (polsyms_fun.get_default_freq != NULL){
+        st=polsyms_fun.get_default_freq(c,&nf);
+        if (masters_info.my_master_rank>=0) policy_freq_selection(c,&s,&nf,&freqs_domain , &avg_nf);
         return st;
     }else{ 
         return EAR_ERROR;
