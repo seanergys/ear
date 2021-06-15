@@ -517,10 +517,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 // TODO: Manage an option to boost directly cp processes
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
                     * cbound * (1 - mbound) * critical_path[i];
+                // double factor = 0.2 * ear_math_exp(-6 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
+                  //   * cbound * (1 - mbound) * critical_path[i];
                 if (factor < 0.01){
                     factor = 0.0;
                 }
                 local_eff_gain = base_eff_gain * (1 - factor);
+                // local_eff_gain = base_eff_gain  - factor;
             }
             verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
             compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
@@ -530,8 +533,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     best_pstate, best_freq, def_freq, &new_freq[i]);
             verbose_master(2, "CPU freq for process %d is %lu", i, new_freq[i]);
             if (use_turbo_for_cp){
-                verbose_master(3, "checking to try to boost. freq per core ? %u already using turbo ? %u", freq_per_core, c->use_turbo);
-                if (freq_per_core && !c->use_turbo){
+                verbose_master(3, "checking to try to boost. freq per core ? %u already using turbo ? %u min_mpi ? %u", freq_per_core, c->use_turbo, min_mpi);
+                if (freq_per_core && !c->use_turbo && i == min_mpi){
                     if (cpu_supp_try_boost_cpu_freq(i, critical_path, new_freq, min_pstate)){
                         verbose_master(3, "Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
                     }
@@ -614,8 +617,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX], freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
                 *ready = EAR_POLICY_READY;
                 min_time_state = SELECT_CPUFREQ;
-            }else {
-                if (!decrease_imc){
+            }else { // equals to !decrease_imc || first_imc_try
+                // if (!decrease_imc){
                     if (first_imc_try){
                         first_imc_try = 0;
                     }
@@ -623,7 +626,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
                     verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
                             freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
-                }
+                // }
                 if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < (imc_max_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
                 else{ 
                     *ready = EAR_POLICY_READY;
@@ -692,7 +695,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
                 mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
                         last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
-                /*  This code has not been encapsulated because is by (now) only for verbose purposes */
+                /*  This code has not been encapsulated because is (by now) only for verbose purposes */
                 double similarity;
                 mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
                 verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
