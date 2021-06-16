@@ -58,9 +58,8 @@ uint dyn_unc = 0;
 uint imc_set_by_hw = 0;
 double imc_extra_th = 0.0;
 uint total_mpi = 0;
-#if NEW_IMCFREQ
+static uint first_print = 1;
 #define IMC_STEP 100000
-#endif
 const char     *polsyms_nam[] = {
     "policy_init",
     "policy_apply",
@@ -168,21 +167,23 @@ static void from_proc_to_core(ulong *cpuf)
     int p,c;
     ulong f;
     int ccount;
+		int lv = 2;
     cpu_set_t m;
-    verbose_master(2,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
+		if (first_print){ lv = 1;first_print = 0;}
+    verbose_master(lv,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
     ccount = arch_desc.top.cpu_count;
     for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
         f = cpuf[p];
         m = sig_shared_region[p].cpu_mask;
-        verbose_master(2,"Frequency for process %d is %lu",p,f);
+        verbose_master(lv,"Frequency for process %d is %lu",p,f);
         for (c = 0 ; c < ccount; c++){
             if (CPU_ISSET(c,&m)){ 
-                verbosen_master(3,"CPU %d ",c);
+                verbosen_master(lv+1,"CPU %d ",c);
                 freq_per_core[c] = f;
             }
         }
-        verbose_master(3,"");
+        verbose_master(lv+1,"");
     }
     return;
 }
@@ -265,7 +266,6 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 {
     ulong imc_up,imc_low;
     uint sock_id = 0;
-#if NEW_IMCFREQ
     if (dyn_unc && imc_mgt_compatible){
         imc_up = ear_min(freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX],imc_max_khz);
         imc_up = ear_max(imc_up,imc_min_khz);
@@ -278,7 +278,6 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
         eards_mgt_imcfreq_set_current(imc_up,imc_low);
     }
-#endif
 
     return EAR_SUCCESS;
 }
@@ -443,7 +442,6 @@ state_t policy_init()
     freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
-#if NEW_IMCFREQ
     for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
         nf.imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_khz;
         nf.imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
@@ -456,7 +454,6 @@ state_t policy_init()
         imc_extra_th = atof(cimc_extra_th);
     }
     verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
-#endif
     if (polsyms_fun.domain != NULL){
         ret = polsyms_fun.domain(c,&freqs_domain);
     }else{
