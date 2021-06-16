@@ -47,5 +47,11 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def);
 void verbose_node_freqs(int vl, node_freqs_t *freqs);
 void node_freqs_alloc(node_freqs_t *node_freq);
 void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src);
+
+/*  Copy current information to use it in the next iteration as last information. */
+state_t copy_cpufreq_sel(ulong *to, ulong *from, size_t size);
+
+/*  Assigns 'freq_val' to 'len' positions of array 'freqs'. */
+state_t set_all_cores(ulong *freqs, int len, ulong freq_val);
 #endif
 
