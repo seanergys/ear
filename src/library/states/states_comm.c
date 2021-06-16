@@ -55,16 +55,12 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 	timestamp_getfast(&end);
   elapsed=timestamp_diff(&end,&ear_application_time_init,TIME_SECS);
 
-	#if NEW_IMCFREQ
 	float imcf;
-	#endif
 	int gpui;
 	char gpu_buff[256];
 	if (master_rank >= 0 || show){
-		#if NEW_IMCFREQ
 		if (sig->signature.sig_ext != NULL) imcf = (float)sig->signature.sig_ext->imc_freq/1000000.0;
 		else imcf = 0.0;
-		#endif
     CPI = sig->signature.CPI; 
     GBS = sig->signature.GBS; 
     POWER = sig->signature.DC_power; 
@@ -107,9 +103,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     if (GPU_UTIL) sprintf(gpu_buff,"(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
     verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.2lfW Time=%.3lfsec.  AVGF=%.2fGHz GFlops=%.2lf)\n\t %s", CPI, GBS, POWER, TIME,  AVGF, FLOPS, gpu_buff);
 	  if (new_freq > 0){ verbosen(1," Next Frequency %.2f",NFREQ);}
-		#if NEW_IMCFREQ
 		verbosen(2,"\n\t IMC avg freq %.2f",imcf);
-		#endif
 		verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
 		l1_sec = sig->signature.L1_misses/(sig->signature.time*1024*1024*1024);
 		l2_sec = sig->signature.L2_misses/(sig->signature.time*1024*1024*1024);
