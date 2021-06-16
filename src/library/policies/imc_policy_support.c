@@ -163,18 +163,11 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
 
     // TODO: if it works, please beautify
     ulong curr_imc_freq = (ulong) (((ear_math_roundf((float) sig->sig_ext->imc_freq / 100000.0)) / 10.0) * 1000000);
-    /*
-       ulong newf;
-       float ff;
-
-       ff = roundf((float) freq_khz / 100000.0);
-       newf = (ulong) ((ff / 10.0) * 1000000);
-       */
 
     ulong ref_imc_freq = imc_support_pstate_to_freq(ref_imc_pstate);
     verbose(2, "Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);
     imc_gain = metric_diff((double)ref_imc_freq, (double)curr_imc_freq, 1);
-    double perf_min_benefit = imc_gain * 0.7;
+    double perf_min_benefit = imc_gain * 0.4;
 
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
         metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
