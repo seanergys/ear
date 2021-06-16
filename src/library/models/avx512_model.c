@@ -131,7 +131,7 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 		if (coeff->available){
 			time_nosimd=proj_time(coeff,sign,coeff->pstate_ref,coeff->pstate);
       perc_avx512=avx512_vpi(sign);
-			debug("Ptime from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
+			//debug("Ptime from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
       if ((to < avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
 					if (from > to) pdest = avx512_pstate;
@@ -181,7 +181,7 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 				power_nosimd = proj_power(coeff,sign);
 				// Is this <= or >= ?? :(
 				perc_avx512 = avx512_vpi(sign);	
-				debug("PPower from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
+				//debug("PPower from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
 				if ((to < avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
           if (from > to) pdest = avx512_pstate;

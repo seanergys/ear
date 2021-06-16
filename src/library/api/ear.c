@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <assert.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -483,7 +483,9 @@ static int get_local_id(char *node_name)
 
 #if USE_LOCK_FILES
   sprintf(fd_lock_filename, "%s/.ear_app_lock.%d", get_ear_tmp(), create_ID(my_job_id,my_step_id));
+	debug("Using lock file %s",fd_lock_filename);
   if ((fd_master_lock = file_lock_master(fd_lock_filename)) < 0) {
+		if (errno != EBUSY) debug("Error creating lock file %s",strerror(errno));
     master = 1;
   } else {
     master = 0;
@@ -1072,11 +1074,10 @@ void ear_finalize()
 	}
 #endif
 
+  monitor_unregister(earl_monitor);
+  monitor_dispose();
 	if (masters_info.my_master_rank>=0){
 		verbose_master(2,"Stopping periodic earl thread");	
-  	monitor_unregister(earl_monitor);
-  	monitor_dispose();
-
 		verbose_master(2,"Stopping tracing");	
 		traces_stop();
 		traces_end(ear_my_rank, my_id, 0);

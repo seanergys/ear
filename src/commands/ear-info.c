@@ -22,7 +22,7 @@
 #include <common/types/version.h>
 #include <common/types/configuration/cluster_conf.h>
 
-#define DEFAULT_EARL 1
+#define DEFAULT_EARL 0
 
 int main(int argc,char *argv[])
 {
