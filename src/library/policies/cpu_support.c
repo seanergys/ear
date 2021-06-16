@@ -200,10 +200,15 @@ uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, i
 
 int signatures_different(signature_t *s1, signature_t *s2,float p)
 {
-    uint diff = 0, i;
+    uint i;
+    if (s1->CPI == 0 || s2->CPI == 0 || s1->GBS == 0 || s2->GBS == 0){
+        verbose_master(2, "%sWARNING%s some signature have a 0 value CPI (%.2lfvs%.2lf) GBS (%.2lfvs%.2lf)",
+                COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
+        return 0;
+    }
     if (!equal_with_th(s1->CPI,s2->CPI,p) || !equal_with_th(s1->GBS, s2->GBS,p)){ 
         if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){ 
-            verbose_master(2,"(%.2lf/%.2lf) vs (%.2lf/%.2lf)",s1->CPI,s2->CPI,s1->GBS,s2->GBS);
+            verbose_master(2,"CPI (%.2lfvs%.2lf) GBS (%.2lfvs%.2lf)",s1->CPI,s2->CPI,s1->GBS,s2->GBS);
             return 1;
         }
     }
