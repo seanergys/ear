@@ -365,6 +365,12 @@ void create_shared_regions()
   }else{
     debug("%lu Bytes allocated for masters_info my_mpi_info",per_node_elements*sizeof(shsignature_t));
   }
+	#if NODE_LB
+	masters_info.nodes_mpi_summary = (mpi_summary_t *)calloc(masters_info.my_master_size,sizeof(mpi_summary_t));
+	if (masters_info.nodes_mpi_summary == NULL){
+		error("Allocating memory for MPI summary shared info");
+	}
+	#endif
 
 }
 

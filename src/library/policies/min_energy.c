@@ -68,7 +68,6 @@ static uint use_turbo_for_cp = 0;
 static ulong min_cpufreq = 0;
 static uint network_use_imc = 0;
 static uint try_turbo_enabled = 0;
-static float last_pmpi, pmpi;
 static node_freqs_t min_energy_def_freqs;
 static node_freqs_t last_nodefreq_sel;
 
@@ -156,7 +155,6 @@ state_t policy_init(polctx_t *c)
         last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 				percs_mpi = calloc(num_processes, sizeof(double));
 				last_percs_mpi = calloc(num_processes, sizeof(double));
-				last_pmpi = 100.0 * num_processes;
 				critical_path = calloc(lib_shared_region->num_processes,sizeof(uint));
 				last_critical_path = calloc(lib_shared_region->num_processes,sizeof(uint));
 				node_freqs_alloc(&min_energy_def_freqs);
@@ -284,8 +282,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     curr_pstate = frequency_closest_pstate(curr_freq);
     eff_f = frequency_closest_high_freq(my_app->avg_f,1);
 
-		if (pmpi > last_pmpi) verbose_master(2,"%s Warning, more MPI than before (%.2f/%.2f)%s",COL_MGT,last_pmpi,pmpi,COL_CLR);
-		last_pmpi = pmpi;
 
     if (dyn_unc){
         // imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
@@ -297,6 +293,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     int policy_stable;
     int_policy_ok(sig, &cpufreq_signature, &policy_stable);
 		verbose_master(2,"Policy ok returns %d",policy_stable);
+
+
     if ((min_energy_state != SELECT_CPUFREQ) && !policy_stable){
         verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
         min_energy_state = SELECT_CPUFREQ;
@@ -502,15 +500,18 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
-        verbose_mpi_types(2,my_node_mpi_types_calls);
+        verbose_mpi_types(3,my_node_mpi_types_calls);
 
         uint unbalance;
         double mean, sd, mag;
         mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
 
-        verbose_master(2,"%sNode load unbalance%s: LB_TH %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
+
+        verbose_master(2,"%sNode load unbalance%s: LB_TH %.2lf mean %.2lf standard deviation %.2lf magnitude %.2lf unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 
+				/* This function sends mpi_summary to other nodes */
+				chech_node_mpi_summary();
         /*  Check whether application has changed from unbalanced to balanced and viceversa */
         if (unbalance != signature_is_unbalance){
             if (!unbalance){

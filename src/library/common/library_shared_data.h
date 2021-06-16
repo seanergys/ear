@@ -34,6 +34,13 @@
 #include <common/types/signature.h>
 #include <common/system/shared_areas.h>
 
+typedef struct mpi_summary{
+	float max;
+	float min;
+	float sd;
+	float mean;
+	float mag;
+}mpi_summary_t;
 
 typedef struct mpi_information{
     unsigned int        total_mpi_calls;

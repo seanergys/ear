@@ -51,10 +51,19 @@ static ulong time_sync_block = 0;
 static ulong max_sync_block = 0;
 static useconds_t wait_time = 1000;
 static uint mpi_cases[3];
+
+float LB_TH = 15.0;
+
 state_t mpi_app_init(polctx_t *c)
 {
+	char * clb_th;
 
     if (c!=NULL){
+				if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL){
+					LB_TH = (float)atoi(clb_th);
+				}
+				verbose_master(2,"Using a LB th %.1f",LB_TH);
+
         sig_shared_region[my_node_id].mpi_info.mpi_time=0;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
         sig_shared_region[my_node_id].mpi_info.exec_time=0;
@@ -425,6 +434,54 @@ state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, doubl
     return EAR_SUCCESS;
 }
 
+/* This function sets the values to be shared with other nodes */
+static mpi_summary_t my_mpi_summary;
+
+state_t     mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
+{
+	int i;
+	double max = 0.0, min = 100.0;
+	for (i=0;i<num_procs;i++){
+		min = ear_min(min,percs_mpi[i]);
+		max = ear_max(max,percs_mpi[i]);
+	}
+	mpisumm->max = (float)max;
+	mpisumm->min = (float)min;
+	mpisumm->sd  = (float)sd;
+	mpisumm->mean = (float)sd;
+	mpisumm->mag  = (float)mag;
+  return EAR_SUCCESS;
+}
+
+void get_last_mpi_summary(mpi_summary_t *l)
+{
+	memcpy(l,&my_mpi_summary,sizeof(mpi_summary_t));
+}
+
+void verbose_mpi_summary(int vl,mpi_summary_t *l)
+{
+	verbose_master(vl,"maxp %.2f minp %.2f sd %.2f mean %.2f mag %.2f",l->max,l->min,l->sd,l->mean,l->mag);
+}
+
+void chech_node_mpi_summary()
+{
+    #if NODE_LB
+    if (is_mpi_enabled()){
+      verbose_mpi_summary(2,&my_mpi_summary);
+      if (is_mpi_summary_pending() == 0){
+        share_my_mpi_summary(&masters_info,&my_mpi_summary);
+      }else{
+        if (is_mpi_summary_ready()){
+          verbose_node_mpi_summary(2,&masters_info);
+          share_my_mpi_summary(&masters_info,&my_mpi_summary);
+        }
+    }
+    }
+    #endif
+}
+
+
+
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean, double *sd, double *mag, uint *lb){
 
     /*  Get only perc_mpi info */
@@ -432,6 +489,8 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
 
     /*  Compute statistics for determinate whether application is load balanced */
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
+
+		mpi_support_set_mpi_summary(&my_mpi_summary,percs_mpi, num_procs, *mean, *sd, *mag);
 
     *lb = (*sd > LB_TH);
 

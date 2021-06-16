@@ -19,7 +19,7 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
 
-#define LB_TH       15.0
+extern float LB_TH;
 
 state_t mpi_app_init(polctx_t *c);
 state_t mpi_app_end(polctx_t *c);
@@ -75,5 +75,12 @@ state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean
 state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
 
 state_t is_blocking_busy_waiting(uint *block_type);
+
+void get_last_mpi_summary(mpi_summary_t *l);
+void verbose_mpi_summary(int vl,mpi_summary_t *l);
+void chech_node_mpi_summary();
+
+
+
 
 #endif
