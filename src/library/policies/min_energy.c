@@ -15,8 +15,6 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -72,16 +70,15 @@ static float last_pmpi, pmpi;
 static node_freqs_t min_energy_def_freqs;
 static node_freqs_t last_nodefreq_sel;
 
-
 static imc_data_t *imc_data;
-#define IMC_STEP 100000
-#define IMC_RANGE 100000
+
 #define SELECT_CPUFREQ 		100
 #define SELECT_IMCFREQ 		101
 #define COMP_IMCREF		 		102
+
 #define TRY_TURBO_CPUFREQ 103
-#define CP_TH 5.0
 #define EXTRA_TH  0.05
+
 static uint min_energy_state = SELECT_CPUFREQ;
 static uint imc_dynamic = 0;
 static uint min_imc_pstate = 0;
@@ -462,7 +459,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP,imc_max_khz);	
             //policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
             freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-            verbose(2,"Selecting %lu - %lu and policy ready%s",freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN],COL_CLR);
+            verbose(2,"Selecting %lu - %lu%s",freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN],COL_CLR);
             if (!must_start_again)  *ready = EAR_POLICY_READY;
 						else 										*ready = EAR_POLICY_TRY_AGAIN;
             min_energy_state = SELECT_CPUFREQ;
@@ -668,7 +665,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
     if (c == NULL) return EAR_ERROR;
 		cpu_ready = EAR_POLICY_READY;
     for (i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-		memcpy(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,MAX_CPUS_SUPPORTED*sizeof(ulong));
+    copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_khz;

@@ -312,3 +312,15 @@ void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src)
 #endif
 }
 
+state_t set_all_cores(ulong *freqs, int len, ulong freq_val) {
+    verbose_master(3, "Setting %lu freq. value to %d cores...", freq_val, len);
+    for (int i = 0; i < len; i++) {
+        freqs[i] = freq_val;
+    }
+    return EAR_SUCCESS;
+}
+
+state_t copy_cpufreq_sel(ulong *to, ulong *from, size_t size) {
+    memcpy(to, from, size);
+    return EAR_SUCCESS;
+}

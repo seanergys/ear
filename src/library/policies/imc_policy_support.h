@@ -32,6 +32,13 @@ typedef struct imc_data{
 
 #define NUM_UNC_FREQ 20
 
+#define IMC_STEP        100000
+#define IMC_RANGE       100000
+
+#define IMC_MAX 0
+#define IMC_MIN 1
+#define IMC_VAL 2
+
 /*  These values selects which metric the policy will use to take control of IMC.
  *  Only one of the four must be assigned a 1, the others must be assigned a 0. */
 #define USE_FLOPS 0
@@ -70,9 +77,5 @@ uint imc_support_freq_to_pstate(ulong freq);
 ulong imc_support_pstate_to_freq(uint pstate);
 
 
-
-#define IMC_MAX 0
-#define IMC_MIN 1
-#define IMC_VAL 2
 
 #endif
