@@ -448,7 +448,7 @@ state_t     mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi
 	mpisumm->max = (float)max;
 	mpisumm->min = (float)min;
 	mpisumm->sd  = (float)sd;
-	mpisumm->mean = (float)sd;
+	mpisumm->mean = (float)mean;
 	mpisumm->mag  = (float)mag;
   return EAR_SUCCESS;
 }
@@ -513,7 +513,7 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
             verbose_master(2, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
         }else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)){
-            verbose_master(2, "%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
+            verbose_master(3, "%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
         }
         // TODO: min energy implements another critical path state (2) when percs_mpi[i] > mean and its value is farther above 75% of the difference between the mean and the most far perc_mpi
         // else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= 

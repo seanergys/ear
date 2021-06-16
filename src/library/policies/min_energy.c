@@ -321,7 +321,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
         /* here we are running at the default freqs */
         for (i=0;i<nump;i++){
-            verbose_master(2,"Processing proc %d freq per core = %d",i,freq_per_core);
+            verbose_master(3,"Processing proc %d freq per core = %d",i,freq_per_core);
             if (!freq_per_core){
                 compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions); 
                 compute_total_node_flops(lib_shared_region,sig_shared_region,my_app->FLOPS);
