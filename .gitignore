@@ -101,6 +101,7 @@ src/common/config/config_env.h
 *eargmd
 *econtrol
 *edb_clean_pm
+*edb_clean_apps
 *edb_create
 *ereport
 *get_active_nodes

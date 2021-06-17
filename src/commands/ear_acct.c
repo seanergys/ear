@@ -1107,7 +1107,15 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
     }
 
     if (verbose) printf("retrieved %d loops\n", num_loops);
-    print_loops(loops, num_loops);
+    if (strlen(csv_path) > 0)
+    {
+        int i;
+        int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+        for (i = 0; i < num_loops; i++)
+            print_loop_fd(fd, &loops[i]);
+    } else {
+        print_loops(loops, num_loops);
+    }
 
 }
 
