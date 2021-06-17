@@ -95,7 +95,7 @@ state_t policy_gpu_init_ctx(polctx_t *c)
       	gpu_lib_count(&gpun);
 				c->num_gpus= gpun;
       }
-      verbose_master(2,"Num gpus detected in policy_load %u %p/%p",c->num_gpus,c,&(c->num_gpus));	
+      verbose_master(2,"Num gpus detected in policy_load %u ",c->num_gpus);	
 
     }else{
       error("gpu_lib_init");
