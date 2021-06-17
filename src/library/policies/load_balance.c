@@ -32,6 +32,8 @@
 #include <library/common/externs.h>
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/mpi_stats_support.h>
+
 
 
 typedef unsigned long ulong;
@@ -66,21 +68,10 @@ state_t policy_init(polctx_t *c)
 	char *polg;
 	//debug("LOAD BALANCE");
 	if (c!=NULL){ 
-	  sig_shared_region[my_node_id].mpi_info.mpi_time=0;
-    sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
-    sig_shared_region[my_node_id].mpi_info.exec_time=0;
-    sig_shared_region[my_node_id].mpi_info.perc_mpi=0;
-
-    /* Gobal mpi statistics */
-    mpi_stats.mpi_time = 0;
-    mpi_stats.total_mpi_calls = 0;
-    mpi_stats.exec_time = 0;
-    mpi_stats.perc_mpi = 0;
-    mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
-    timestamp_getfast(&app_init);
+		polg = getenv(EAR_POLICY_GRAIN);
+		mpi_app_init(c);
 		lb_local_signatures = calloc(lib_shared_region->num_processes,sizeof(shsignature_t));
 
-		polg = getenv(EAR_POLICY_GRAIN);
 		if (polg != NULL){
 			force_granularity = 1;
 			if (!strcmp(polg,"CORE")){
@@ -96,38 +87,8 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-  timestamp end;
-  ullong elap;
-	int fd;
-  char buff[256],buff2[300];
-	char file_name[256];
-  char *stats=getenv(EAR_STATS);
-  /* Global statistics */
-  timestamp_getfast(&end);
-  elap=timestamp_diff(&end,&app_init,TIME_USECS);
-  mpi_stats.exec_time = elap;
-  mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
-  if (stats != NULL){
-    sprintf(file_name,"%s",stats);
-    verbose(1,"Using %s STATS output file",stats);
-    fd=open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
-    if (fd < 0){
-      mpi_info_to_str(&mpi_stats,buff,sizeof(buff));
-      verbose(0,"MR[%d] %s",lib_shared_region->master_rank,buff);
-    }else{
-      if (masters_info.my_master_rank>=0){
-        mpi_info_head_to_str_csv(buff,sizeof(buff));
-        sprintf(buff2,"mrank;%s\n",buff);
-        write(fd,buff2,strlen(buff2));
-      }
-      mpi_info_to_str_csv(&mpi_stats,buff,sizeof(buff));
-      sprintf(buff2,"%d;%s\n",lib_shared_region->master_rank,buff);
-      write(fd,buff2,strlen(buff2));
-      close(fd);
-    }
-  }
-
-  return EAR_SUCCESS;
+  if (c != NULL) return  mpi_app_end(c);
+	else return EAR_ERROR;
 }
 
 
@@ -442,25 +403,16 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 }
 
 
-state_t policy_mpi_init(polctx_t *c)
+state_t policy_mpi_init(polctx_t *c,mpi_call call_type)
 {
-  timestamp_getfast(&pol_time_init);
-  return EAR_SUCCESS;
+  if (c != NULL) return mpi_call_init(c,call_type);
+	else return EAR_ERROR;
+
 }
-state_t policy_mpi_end(polctx_t *c)
+state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 {
-  timestamp end;
-  ullong elap;
-  timestamp_getfast(&end);
-  elap=timestamp_diff(&end,&pol_time_init,TIME_USECS);
-  sig_shared_region[my_node_id].mpi_info.mpi_time=sig_shared_region[my_node_id].mpi_info.mpi_time+elap;
-  sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
-
-  /* Global statistics */
-  mpi_stats.mpi_time+=elap;
-  mpi_stats.total_mpi_calls++;
-
-  return EAR_SUCCESS;
+  if (c != NULL) return mpi_call_end(c,call_type);
+	else return EAR_ERROR;
 }
 state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
 {

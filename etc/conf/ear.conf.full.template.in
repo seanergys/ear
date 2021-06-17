@@ -49,6 +49,9 @@ DBDaemonAggregationTime=60
 DBDaemonInsertionTime=30
 # Memory size expressed in MB per process (server and/or mirror) to cache the values.
 DBDaemonMemorySize=120
+# The percentage of the memory buffer used by the previous field, by each type. These types are: mpi, non-mpi and learning applications, loops, energy metrics and aggregations and events, in that order. If a type gets 0% of space, this metric is discarded and not saved into the database.
+#DBDaemonMemorySizePerType=40,20,5,24,5,1,5
+
 # When set to 1, the output is saved in 'TmpDir'/eardbd.log (common configuration) as a log file.
 DBDaemonUseLog=1
 #---------------------------------------------------------------------------------------------------

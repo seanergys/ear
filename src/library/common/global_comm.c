@@ -18,10 +18,11 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+//#define SHOW_DEBUGS 1
 #include <common/states.h> 
 #include <common/config.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
+#include <library/common/verbose_lib.h>
 #include <library/common/externs.h>
 #include <library/common/global_comm.h>
 
@@ -200,4 +201,54 @@ state_t compute_avg_app_signature(masters_info_t *mi,signature_t *gsig)
 int load_unbalance(masters_info_t *mi)
 {
 	return 0;
+}
+
+/*********************************************/
+/******* mpi statistics : 1 x node ***********/
+/*********************************************/
+static uint        mpi_summary_pending = 0;
+static MPI_Request mpi_summary_req;
+
+
+state_t share_my_mpi_summary(masters_info_t *mi,mpi_summary_t *my_data)
+{
+#if NODE_LB
+	if (ishare_global_info(mi->masters_comm,(char *)my_data, sizeof(mpi_summary_t),(char *)mi->nodes_mpi_summary,sizeof(mpi_summary_t),&mpi_summary_req)!=EAR_SUCCESS){
+		verbose_master(2,"MR[%d]:Sending node sh_signature to other masters master_rank",mi->my_master_rank);
+	}else{
+		verbose_master(2,"Successfully sent mpi_stats");
+		mpi_summary_pending = 1;
+	}
+#endif
+	return EAR_SUCCESS;	
+}
+
+uint is_mpi_summary_pending()
+{
+	return mpi_summary_pending;
+}
+
+uint is_mpi_summary_ready()
+{
+#if NODE_LB
+	if (is_info_ready(&mpi_summary_req) == EAR_SUCCESS){ 
+		mpi_summary_pending = 0;
+		return 1;
+	}
+	return 0;
+#else
+	return 1;
+#endif
+}
+
+void verbose_node_mpi_summary(int vl, masters_info_t *mi)
+{
+	int i;
+	mpi_summary_t *l;
+	#if NODE_LB
+	for (i=0;i<mi->my_master_size;i++){
+		l = &mi->nodes_mpi_summary[i];
+		verbose_master(vl,"MR[%d] maxp %.2f minp %.2f sd %.2f mean %.2f mag %.2f",i,l->max,l->min,l->sd,l->mean,l->mag);
+	}
+	#endif
 }

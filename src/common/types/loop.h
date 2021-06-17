@@ -55,7 +55,7 @@ int is_null(loop_t *loop);
 int loop_init(loop_t *loop, job_t *job,ulong event, ulong size, ulong level);
 
 /* Cleans information that could generate DB failures */
-void clean_db_loop(loop_t *loop);
+void clean_db_loop(loop_t *loop,double limit);
 
 /** Given a new loop detected by dynais returns either a new loop_id (if it is 
 *   really a new loop never detected) or the pointer to the already existing 

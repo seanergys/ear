@@ -19,7 +19,7 @@
 #include <sched.h>
 //#define SHOW_DEBUGS 1
 #include <common/includes.h>
-#include <common/config/config_env.h>
+#include <common/config.h>
 #include <common/system/symplug.h>
 #include <library/policies/policy_ctx.h>
 #include <library/common/externs.h>
@@ -27,7 +27,6 @@
 #if USE_GPUS
 #include <library/metrics/gpu.h>
 #endif
-
 
 extern const char     *polsyms_nam[];
 state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
@@ -45,10 +44,13 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 
 
 	if (masters_info.my_master_rank >= 0){
-#if USE_GPUS
+#if USE_GPUS 
+#ifdef GPU_OPT 
+		verbose_master(2,"GPU optimization ON. Using policy base on %s", app_settings->policy_name);
+#endif
   	obj_path = getenv(SCHED_EAR_GPU_POWER_POLICY);
 		if (obj_path != NULL) verbose_master(2,"%s defined %s",SCHED_EAR_GPU_POWER_POLICY,obj_path);
-#if GPU_OPT
+#ifdef GPU_OPT
     sprintf(pgpu_name,"gpu_%s.so",app_settings->policy_name);
 #else
     sprintf(pgpu_name,"gpu_monitoring.so");
@@ -75,23 +77,26 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 state_t policy_gpu_init_ctx(polctx_t *c)
 {
 	uint policy_gpu_model;
+	uint gpun;
+	c->num_gpus = 0;
 	#if USE_GPUS
-	c->gpu_mgt_ctx_on=0;
 	if (gpu_lib_load(c->app) != EAR_SUCCESS){
     error("gpu_lib_load in init_power_policy");
 		return EAR_ERROR;
   }else{
+		c->gpu_mgt_ctx.context = NULL;
   	if (gpu_lib_init(&c->gpu_mgt_ctx) == EAR_SUCCESS){
-    	c->gpu_mgt_ctx_on=1;
       verbose_master(2,"gpu_lib_init success");
       gpu_lib_model(&c->gpu_mgt_ctx,&policy_gpu_model);
       if (policy_gpu_model == MODEL_DUMMY){ 
       	debug("Setting policy num gpus to 0 because DUMMY");
       	c->num_gpus = 0;
       }else{
-      	gpu_lib_count(&c->num_gpus);
+      	gpu_lib_count(&gpun);
+				c->num_gpus= gpun;
       }
-      verbose_master(2,"Num gpus detected in policy_load %u",c->num_gpus);	
+      verbose_master(2,"Num gpus detected in policy_load %u ",c->num_gpus);	
+
     }else{
       error("gpu_lib_init");
 			return EAR_ERROR;

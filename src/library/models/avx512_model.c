@@ -122,12 +122,16 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 	coefficient_t *coeff,*avx512_coeffs;
 	unsigned long nominal;
 	ulong pdest;
+	if (from == to ){
+		*ptime = sign->time;
+		return EAR_SUCCESS;
+	}
 	if ((basic_model_init) && (valid_range(from,to))){
 		coeff=&coefficients[from][to];
 		if (coeff->available){
 			time_nosimd=proj_time(coeff,sign,coeff->pstate_ref,coeff->pstate);
       perc_avx512=avx512_vpi(sign);
-			debug("Ptime from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
+			//debug("Ptime from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
       if ((to < avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
 					if (from > to) pdest = avx512_pstate;
@@ -140,6 +144,8 @@ state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 			}
 			ctime=time_nosimd*(1-perc_avx512)+time_avx512*perc_avx512;
 			*ptime=ctime;
+			debug("time projection from %lu to %lu time_nosimd %lf time avx512 %lf perc_avx512 %lf TIME %lf",from,to,
+				time_nosimd,time_avx512,perc_avx512,ctime);
 		}else{
 			*ptime=0;
 			st=EAR_ERROR;
@@ -165,30 +171,34 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 	double perc_avx512=0,perc_avx2=0;
 	ulong pdest;
   debug("projct power init %d valid %d",basic_model_init,valid_range(from,to));
+	if (from == to){
+		*ppower = sign->DC_power;
+		return EAR_SUCCESS;
+	}
 	if ((basic_model_init) && (valid_range(from,to))){
-		coeff=&coefficients[from][to];
+		coeff = &coefficients[from][to];
 		if (coeff->available){
-				power_nosimd=proj_power(coeff,sign);
+				power_nosimd = proj_power(coeff,sign);
 				// Is this <= or >= ?? :(
-				perc_avx512=avx512_vpi(sign);	
-				debug("PPower from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
+				perc_avx512 = avx512_vpi(sign);	
+				//debug("PPower from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
 				if ((to < avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
           if (from > to) pdest = avx512_pstate;
           else pdest = avx512_pstate;
-					avx512_coeffs=&coefficients[from][pdest];
-					power_avx512=proj_power(avx512_coeffs,sign);
+					avx512_coeffs = &coefficients[from][pdest];
+					power_avx512 = proj_power(avx512_coeffs,sign);
 				}else{
 					perc_avx512 = 0;
 				}
-				cpower=power_nosimd*(1-perc_avx512)+power_avx512*perc_avx512;
-				*ppower=cpower;
-				debug("power projection from %lu to %lu power_nosimd %lf power avx512 %lf perc_avx512 %lf",from,to,
-				power_nosimd,power_avx512,perc_avx512);
+				cpower = power_nosimd*(1-perc_avx512) + power_avx512*perc_avx512;
+				*ppower = cpower;
+				debug("power projection from %lu to %lu power_nosimd %lf power avx512 %lf perc_avx512 %lf POWER %lf",from,to,
+				power_nosimd,power_avx512,perc_avx512,cpower);
 		}else{
 			debug("Coeffs from %lu to %lu not available",from,to);
-			*ppower=0;
-			st=EAR_ERROR;
+			*ppower = 0;
+			st = EAR_ERROR;
 		}
 	}else st=EAR_ERROR;
 	return st;

@@ -145,7 +145,6 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 
 state_t model_projection_available(ulong from,ulong to)
 {
-    debug("checking if coefficient from %lu to %lu is available: %lu\n", from, to, coefficients[from][to].available);
 	if (valid_range(from, to) && coefficients[from][to].available) return EAR_SUCCESS;
 	else return EAR_ERROR;
 }

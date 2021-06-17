@@ -21,9 +21,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
@@ -38,6 +38,8 @@
 
 static uint last_pc=0;
 extern uint gpu_initialized;
+extern uint cpu_ready, gpu_ready, gidle;
+
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -46,11 +48,19 @@ extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) f
 #endif
 
+static mpi_information_t *my_node_mpi_calls,*last_node_mpi_calls;
+static mpi_calls_types_t *my_node_mpi_types_calls,*last_node_mpi_types_calls;
 
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
 	mpi_app_init(c);	
+	if(is_mpi_enabled() && (masters_info.my_master_rank >= 0)){
+  	my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+  	my_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+  	last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+  	last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+	}
 #if USE_GPUS
 	if (masters_info.my_master_rank>=0 && gpu_initialized){
 	if (policy_gpu_init_ctx(c) != EAR_SUCCESS){
@@ -79,14 +89,24 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 {
 	ulong *new_freq=freqs->cpu_freq;
 	ulong eff_f,f;
+	int i;
 	
 	*ready=EAR_POLICY_READY;
 	f=DEF_FREQ(c->app->def_freq);
 	*new_freq=f;
+  cpu_ready = EAR_POLICY_READY;
 	if (gpus.node_policy_apply != NULL){
 		/* Basic support for GPUS */
-		gpus.node_policy_apply(c,my_sig,freqs,ready);
+		gpus.node_policy_apply(c,my_sig,freqs, (int *)&gpu_ready);
+		
 	}
+  if (is_mpi_enabled()){
+   	read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
+   	verbose_mpi_types(2,my_node_mpi_types_calls);
+   	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
+   	for (i=0;i<lib_shared_region->num_processes;i++) verbose_mpi_data(3,&my_node_mpi_calls[i]);
+  }
+
 	
 	return EAR_SUCCESS;
 }
@@ -94,15 +114,17 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *
 {
 	ulong eff_f;
 	uint power_status,next_status;
-	*ok=1;
+	int i;
+	*ok = 1;
+  if ((c==NULL) || (curr_sig==NULL) || (prev_sig==NULL)) return EAR_ERROR;
 
 	return EAR_SUCCESS;
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set)
 {
-	*freq_set=DEF_FREQ(c->app->def_freq);
+	freq_set->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
 	return EAR_SUCCESS;
 }
 
@@ -126,13 +148,19 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
   domain->gpumem = POL_NOT_SUPPORTED;
   return EAR_SUCCESS;
 }
-state_t policy_mpi_init(polctx_t *c)
+state_t policy_mpi_init(polctx_t *c,mpi_call call_type)
 {
-	if (c != NULL) return mpi_call_init(c);
+	if (c != NULL) return mpi_call_init(c,call_type);
 	else return EAR_ERROR;
 }
-state_t policy_mpi_end(polctx_t *c)
+state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 {
-	if (c != NULL) return mpi_call_end(c);
+	if (c != NULL) return mpi_call_end(c,call_type);
 	else return EAR_ERROR;
+}
+
+state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
+{
+	int i;
+	return EAR_SUCCESS;
 }
