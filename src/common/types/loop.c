@@ -169,3 +169,48 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
 	return EAR_SUCCESS;
 }
 
+int append_loop_text_file_no_job(char *path, loop_t *loop)
+{
+    if (path == NULL) {
+        return EAR_ERROR;
+    }
+
+    char *HEADER = "NODENAME;AVG.FREQ;DEF.FREQ;" \
+        "TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;L1_MISSES;" \
+        "L2_MISSES;L3_MISSES;GFLOPS;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
+        "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
+	
+    int fd, ret;
+
+    fd = open(path, O_WRONLY | O_APPEND);
+
+    if (fd < 0) 
+    {
+		if (errno == ENOENT)
+		{
+			fd = open(path, OPTIONS, PERMISSION);
+
+			// Write header
+			if (fd >= 0) {
+				ret = dprintf(fd, "%s\n", HEADER);
+			}
+		}
+	}
+
+	if (fd < 0) {
+        error("Couldn't open loop file\n");
+		return EAR_ERROR;
+	}
+	assert(loop!=NULL);
+	assert(loop->node_id!=NULL);
+    dprintf(fd, "%s;", loop->node_id);
+    signature_print_fd(fd, &loop->signature,1);
+    print_loop_id_fd(fd, &loop->id);
+    dprintf(fd, "%lu\n", loop->total_iterations);
+
+	close(fd);
+
+	if (ret < 0) return EAR_ERROR;
+	
+	return EAR_SUCCESS;
+}

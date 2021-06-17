@@ -22,11 +22,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <common/system/user.h>
 #include <common/config.h>
+#include <common/system/user.h>
 #include <common/output/verbose.h>
-#include <common/types/application.h>
+
+#include <common/types/loop.h>
 #include <common/types/version.h>
+#include <common/types/application.h>
 
 #if USE_DB
 #include <common/states.h>
@@ -1110,9 +1112,9 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
     if (strlen(csv_path) > 0)
     {
         int i;
-        int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
         for (i = 0; i < num_loops; i++)
-            print_loop_fd(fd, &loops[i]);
+            append_loop_text_file_no_job(csv_path, &loops[i]);
+        printf("appended %d loops to %s\n", num_loops, csv_path);
     } else {
         print_loops(loops, num_loops);
     }
