@@ -219,6 +219,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
         if (gpu_pc_excess[i] > 0) continue; //nodes with extra power need no reallocation
         for (j = 0; j < gpu_pc_num_gpus; j++) {
             if (gpu_pc_util[j] == 0) continue; //we don't want to remove power from idle nodes
+            /* We leave a minimum of 5 Watts of excess power in case of power fluctuations. */
             if (gpu_pc_excess[j] > 5) {
                 debug("moving %ld watts from %d to %d (current pc from %lu to %lu)", gpu_pc_excess[j]-5, j, i, gpu_pc_curr_power[j], gpu_pc_curr_power[i]);
                 gpu_pc_curr_power[i] += gpu_pc_excess[j] - 5; //we leave a bit of excess power to prevent fluctuation errors
