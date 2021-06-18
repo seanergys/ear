@@ -31,6 +31,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 
+extern uint cpu_ready, gpu_ready, gidle;
 
 
 static const ulong **gpuf_list;
@@ -43,7 +44,7 @@ state_t policy_init(polctx_t *c)
   char *gpu_freq=getenv(SCHED_EAR_GPU_DEF_FREQ);
   state_t ret;
   if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
-    g_freq=atol(gpu_freq);
+    g_freq = atol(gpu_freq);
   }
   debug("Asking for frequencies");
   gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
@@ -60,7 +61,7 @@ state_t policy_init(polctx_t *c)
     verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
   }
   gpu_lib_freq_limit_set(gfreqs);
-
+	verbose_master(2,"GPU monitoring loaded");
   return EAR_SUCCESS;
 }
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
@@ -100,7 +101,7 @@ state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set)
 {
 	return EAR_SUCCESS;
 }

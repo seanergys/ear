@@ -39,7 +39,9 @@
 
 
 #define DEBUG_PERIOD 15
-#define MIN_GPU_IDLE_POWER 40
+#define MIN_GPU_IDLE_POWER 30
+#define UTIL_INC    10
+#define UTIL_WAIT   50
 
 static uint gpu_idle_power = MIN_GPU_IDLE_POWER;
 
@@ -62,6 +64,10 @@ static ulong *gpu_pc_max_power;
 /* These two variables controls the power ditribution between GPUS */
 static ulong *gpu_pc_curr_power;
 static ulong *gpu_pc_util;
+/* util wait to control when a GPU has been idle and a previous freq to restore it when it starts again */
+static ulong *gpu_pc_util_wait;
+static ulong *gpu_pc_prev_freq;
+
 static long  *gpu_pc_excess;
 static float *pdist;
 static ulong *c_freq,*t_freq,*n_freq;
@@ -209,10 +215,11 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     //redistribute power between gpus
     for (i = 0; i < gpu_pc_num_gpus; i++)
     {
-        if (gpu_pc_util[i] == 0) continue; //idle nodes need no reallocation
+        //if (gpu_pc_util[i] == 0) continue; //idle nodes need no reallocation
         if (gpu_pc_excess[i] > 0) continue; //nodes with extra power need no reallocation
         for (j = 0; j < gpu_pc_num_gpus; j++) {
             if (gpu_pc_util[j] == 0) continue; //we don't want to remove power from idle nodes
+            /* We leave a minimum of 5 Watts of excess power in case of power fluctuations. */
             if (gpu_pc_excess[j] > 5) {
                 debug("moving %ld watts from %d to %d (current pc from %lu to %lu)", gpu_pc_excess[j]-5, j, i, gpu_pc_curr_power[j], gpu_pc_curr_power[i]);
                 gpu_pc_curr_power[i] += gpu_pc_excess[j] - 5; //we leave a bit of excess power to prevent fluctuation errors
@@ -226,7 +233,24 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     }
 
     for (i=0;i<gpu_pc_num_gpus;i++){
-        if (gpu_pc_util[i] < 1) continue;
+        if (gpu_pc_util[i] == 0) 
+        {
+            gpu_pc_util_wait[i] += UTIL_INC; 
+            /* if the GPU has been unused  for UTIL_WAIT we set its freq to the minimum */
+            if (gpu_pc_util_wait[i] % UTIL_WAIT == 0)
+            {
+                gpu_pc_prev_freq[i] = ear_max(c_freq[i], gpu_pc_prev_freq[i]);
+                n_freq[i] = gpu_freq_list[i][gpu_num_freqs[i]-1];
+                debug("util at 0, setting gpu-freq to minimum");
+            }
+            debug("util at 0, increasing util_wait (current %lu, needed %u)", gpu_pc_util_wait[i], UTIL_WAIT);
+            continue;
+        }
+        /* if the frequency had been set to the minimum (due to util), reset it to the previous one */
+        if (gpu_pc_prev_freq[i] > 0) {
+            c_freq[i] = gpu_pc_prev_freq[i];
+            gpu_pc_prev_freq[i] = 0;
+        }
         if (t_freq[i] > 0) c_freq[i] = ear_min(c_freq[i], t_freq[i]);
         n_freq[i] = c_freq[i];
         /* Aplicar limites */
@@ -327,6 +351,18 @@ state_t enable(suscription_t *sus)
         }
         gpu_pc_util = calloc(gpu_pc_num_gpus,sizeof(ulong));
         if (gpu_pc_util == NULL){
+            gpu_pc_enabled = 0;
+            ret = EAR_ERROR;
+            debug("Error allocating memory in GPU enable");
+        }
+        gpu_pc_util_wait = calloc(gpu_pc_num_gpus,sizeof(ulong));
+        if (gpu_pc_util_wait == NULL){
+            gpu_pc_enabled = 0;
+            ret = EAR_ERROR;
+            debug("Error allocating memory in GPU enable");
+        }
+        gpu_pc_prev_freq = calloc(gpu_pc_num_gpus,sizeof(ulong));
+        if (gpu_pc_prev_freq == NULL){
             gpu_pc_enabled = 0;
             ret = EAR_ERROR;
             debug("Error allocating memory in GPU enable");

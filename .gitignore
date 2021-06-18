@@ -7,6 +7,7 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
+src/tests
 
 # Autotools
 *aclocal.m4
@@ -100,6 +101,7 @@ src/common/config/config_env.h
 *eargmd
 *econtrol
 *edb_clean_pm
+*edb_clean_apps
 *edb_create
 *ereport
 *get_active_nodes
@@ -141,5 +143,7 @@ src/tools/coeffs_compare*
 src/tools/get_active_nodes*
 src/tools/learning_validate*
 src/tools/ear_events*
+src/tools/ear_conf
+src/commands/ear-info
 
 

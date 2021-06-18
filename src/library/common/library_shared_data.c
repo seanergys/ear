@@ -129,7 +129,17 @@ int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i;
 	compute_total_signatures_ready(data,sig);
+	verbose_master(2,"There are %d signatures ready from %d",data->num_signatures,data->num_processes);
 	return(data->num_signatures == data->num_processes);
+}
+
+void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
+{
+	int i;
+	for (i=0;i<data->num_processes;i++){
+		verbosen_master(2,"P[%d] ready %u ",i,sig[i].ready);
+	}
+	verbose_master(2,"");
 }
 
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
@@ -442,5 +452,21 @@ void load_app_mgr_env()
 
 	verbose_master(2,"Show_signatures %u share_sig_per_process %u share_sig_per_node %u report_node_sig %u report_all_sig %u",
 	show_signatures,sh_sig_per_proces,sh_sig_per_node,report_node_sig,report_all_sig);
+}
+
+void* mpi_info_get_perc_mpi(void* mpi_inf){
+    mpi_information_t mpi_info = *((mpi_information_t*) mpi_inf);
+    double* res = malloc(sizeof(double));
+    *res = mpi_info.perc_mpi;
+    return res;
+}
+
+
+double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
+{
+	double total = 0;
+	int i;
+	for (i=0;i<data->num_processes;i++) total += sig[i].sig.Gflops;
+	return total;
 }
 

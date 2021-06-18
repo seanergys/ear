@@ -46,7 +46,7 @@ extern uint total_mpi;
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
 	char io_info[256];
-	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0;
+	double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0, FLOPS;
   float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI;
 	float l1_sec=0,l2_sec=0,l3_sec=0;
 	ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
@@ -55,21 +55,18 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 	timestamp_getfast(&end);
   elapsed=timestamp_diff(&end,&ear_application_time_init,TIME_SECS);
 
-	#if NEW_IMCFREQ
 	float imcf;
-	#endif
 	int gpui;
 	char gpu_buff[256];
 	if (master_rank >= 0 || show){
-		#if NEW_IMCFREQ
 		if (sig->signature.sig_ext != NULL) imcf = (float)sig->signature.sig_ext->imc_freq/1000000.0;
 		else imcf = 0.0;
-		#endif
     CPI = sig->signature.CPI; 
     GBS = sig->signature.GBS; 
     POWER = sig->signature.DC_power; 
     TPI = sig->signature.TPI; 
     TIME = sig->signature.time; 
+		FLOPS = sig->signature.Gflops;
     AVGF = (float)sig->signature.avg_f/1000000.0; 
     VI=metrics_vec_inst(&sig->signature); 
     VPI=(double)VI/(double)sig->signature.instructions; 
@@ -104,11 +101,9 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",mode,aname, PFREQ,nname,master_rank,elapsed); 
     verbosen(1,"%s",COL_GRE);
     if (GPU_UTIL) sprintf(gpu_buff,"(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
-    verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.2lfW Time=%.3lfsec.  AVGF=%.2fGHz)\n\t %s", CPI, GBS, POWER, TIME,  AVGF,gpu_buff);
+    verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.2lfW Time=%.3lfsec.  AVGF=%.2fGHz GFlops=%.2lf)\n\t %s", CPI, GBS, POWER, TIME,  AVGF, FLOPS, gpu_buff);
 	  if (new_freq > 0){ verbosen(1," Next Frequency %.2f",NFREQ);}
-		#if NEW_IMCFREQ
 		verbosen(2,"\n\t IMC avg freq %.2f",imcf);
-		#endif
 		verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
 		l1_sec = sig->signature.L1_misses/(sig->signature.time*1024*1024*1024);
 		l2_sec = sig->signature.L2_misses/(sig->signature.time*1024*1024*1024);

@@ -17,9 +17,11 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
 #include <common/config.h>
+#include <metrics/flops/flops.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 
@@ -77,15 +79,30 @@ void compute_ssig_vpi(double *vpi,ssig_t *sig)
     ull vins;
     vins=0;
     if (sig->FLOPS[3]>0){
-        vins=sig->FLOPS[3]/16;
+        vins=sig->FLOPS[3]/WEIGHT_512F;
     }
 
     if (sig->FLOPS[7]>0){
-        vins=vins+sig->FLOPS[7]/8;
+        vins=vins+sig->FLOPS[7]/WEIGHT_512D;
     }
     if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
     else *vpi=0;
 }
+void compute_ssig_vpi2(double *vpi,ssig_t *sig)
+{
+    ull vins;
+    vins=0;
+    if (sig->FLOPS[2]>0){
+        vins=sig->FLOPS[2]/WEIGHT_256F;
+    }
+
+    if (sig->FLOPS[6]>0){
+        vins=vins+sig->FLOPS[6]/WEIGHT_256D;
+    }
+    if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
+    else *vpi=0;
+}
+
 
 void compute_vpi(double *vpi,signature_t *sig)
 {
@@ -153,7 +170,7 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
 	
 }
 /** Checks all the values are valid to be reported to DB and fixes potential problems*/
-void clean_db_signature(signature_t *sig)
+void clean_db_signature(signature_t *sig, double limit)
 {
 	if (!isnormal(sig->time))				sig->time = 0;
 	if (!isnormal(sig->EDP))				sig->EDP = 0;
@@ -164,6 +181,9 @@ void clean_db_signature(signature_t *sig)
 	if (!isnormal(sig->TPI))				sig->TPI = 0;
 	if (!isnormal(sig->GBS))				sig->GBS = 0;
 	if (!isnormal(sig->Gflops))			sig->Gflops = 0;
+	if (sig->DC_power > limit)		  sig->DC_power = limit;
+	if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
+	if (sig->PCK_power > limit)			sig->PCK_power = 0;
 	
 #if USE_GPUS
 	if (sig->gpu_sig.num_gpus){
@@ -265,7 +285,7 @@ void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
 
 void from_minis_to_sig(signature_t *s,ssig_t *minis)
 {
-	signature_init(s);
+	//signature_init(s);
 	s->DC_power=(double)minis->DC_power;
 	s->GBS=(double)minis->GBS;
 	s->TPI=(double)minis->TPI;
@@ -277,6 +297,7 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
 	s->cycles = minis->cycles;
 	s->avg_f=minis->avg_f;
 	s->def_f=minis->def_f;
+	if (s->sig_ext == NULL) s->sig_ext = calloc(1,sizeof(io_data_t));
 	memcpy(&(s->sig_ext->iod),&minis->iod,sizeof(io_data_t));
 	#if USE_GPUS
 	memcpy(&s->gpu_sig,&minis->gpu_sig,sizeof(gpu_signature_t));

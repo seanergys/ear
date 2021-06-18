@@ -4,8 +4,9 @@ poli_OBJS = \
 stan_OBJS = \
     pc_suport.o \
     gpu_support.o \
-    mpi_stats_support.o \
-    imc_policy_support.o
+    cpu_support.o \
+		mpi_stats_support.o \
+		imc_policy_support.o
 
 stan_BINS = \
     min_time.so  \
@@ -20,6 +21,9 @@ stan_BINS += \
     load_balance.so
 endif
 endif
+#app_min_time.so \
+#app_monitoring.so \
+#app_min_energy.so \
 
 ifdef CUDA_BASE
 stan_BINS += \

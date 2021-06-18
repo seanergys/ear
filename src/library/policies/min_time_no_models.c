@@ -205,11 +205,11 @@ return st;
 
 }
 
-state_t policy_get_default_freq(polctx_t *c, ulong *f)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f)
 {
 if ((c!=NULL) && (c->app!=NULL)){
     // Just in case the bestPstate was the frequency at which the application was running
-        *f=DEF_FREQ(c->app->def_freq);
+        f->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
     }
 return EAR_SUCCESS;
 }

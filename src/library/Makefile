@@ -1,15 +1,15 @@
-CFLAGS  = -fPIC -O2 -I$(SRCDIR)
+CFLAGS  = -fPIC -O2 -I$(SRCDIR) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
 LIBCC       = $(CC)
 LIBCC_FLAGS = $(CC_FLAGS)
-LIB_CFLAGS  = -DMPI=0 -DNEW_IMCFREQ=1 
+LIB_CFLAGS  = -DMPI=0
 MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNEW_IMCFREQ=1 
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1
 endif
 
 export LIBCC
@@ -52,6 +52,7 @@ core_OBJS = \
     policies/pc_suport.o \
     policies/mpi_stats_support.o \
     policies/gpu_support.o \
+    policies/cpu_support.o \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \

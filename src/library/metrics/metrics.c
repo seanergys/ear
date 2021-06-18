@@ -15,7 +15,6 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define NEW_IMCFREQ 1
 //#define SHOW_DEBUGS 1
 
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -200,7 +199,6 @@ static void metrics_global_start()
 		if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[APP],mycpufreq_data_size))){
 			error("CPUFreq data read in global_start");
 		}
-		#if NEW_IMCFREQ
 		/* Reads IMC data */
 		if (imc_mgt_compatible){
 		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size))){
@@ -209,7 +207,6 @@ static void metrics_global_start()
 		d = (imc_intel63_t*)imc_init[APP].data;
 		debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
 		}
-		#endif
 		// New
 		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
 		if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
@@ -241,11 +238,16 @@ static void metrics_global_start()
 	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}
+
+ 
+  /* This functionallity has been moved to library/policy/mpi_stats_support.c */
+	#if 0
   /* We start computing mpi statistics at this point */
 	timestamp_getfast(&init_mpi_time);
 	sig_shared_region[my_node_id].mpi_info.mpi_time=0;
   sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
   sig_shared_region[my_node_id].mpi_info.exec_time=0;
+	#endif
 
 }
 
@@ -255,6 +257,8 @@ static void metrics_global_stop()
 	imc_intel63_t *d;
 	io_data_t iod;
 	char io_info[256];
+	char file_name[256];
+	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	//
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
@@ -268,24 +272,22 @@ static void metrics_global_stop()
 			debug("CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[APP]/1000000.0);
 		}
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
-    #if NEW_IMCFREQ
 		if (imc_mgt_compatible){
-  	if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
-    	error("IMC set current failed (%d,%s)",s,state_msg);
-  	} 
-  	verbose(2,"IMC freq restored to %.2f-%.2f",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0); 
-    if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size))){
-      error("IMCFreq data read in global_start");
-    }
-	  d = (imc_intel63_t*)imc_end[APP].data;
-    debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
-
-		if (xtate_fail(s, freq_imc_data_diff(&imc_end[APP],&imc_init[APP],NULL,&imc_avg[APP]))){
-			error("IMC data diff fails");
-		}	
-		verbose(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
+  		if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
+    		error("IMC set current failed (%d,%s)",s,state_msg);
+  		} 
+  		verbose(2,"IMC freq restored to %.2f-%.2f",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0); 
+    	if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size))){
+      	error("IMCFreq data read in global_start");
+    	}
+	  	d = (imc_intel63_t*)imc_end[APP].data;
+    	debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
+	
+			if (xtate_fail(s, freq_imc_data_diff(&imc_end[APP],&imc_init[APP],NULL,&imc_avg[APP]))){
+				error("IMC data diff fails");
+			}	
+			verbose(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
 		}
-    #endif
 
 	}
 
@@ -317,15 +319,27 @@ static void metrics_global_stop()
 	}
 	io_diff(&iod,&metrics_io_init[APP],&metrics_io_end[APP]);
 	io_tostr(&iod,io_info,sizeof(io_info));
-	verbose(2,"APP IO DATA: %s",io_info);
+	int fd;
+	char *io_buffer;
+	if (verb_path != NULL){ 
+		sprintf(file_name, "%s/earl_io_info.%d.%d", verb_path,my_step_id, my_job_id);
+		fd = open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP);
+	}else fd = 2;
+	io_buffer = malloc(strlen(io_info) + 200);
+	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
+	write(fd,io_buffer,strlen(io_buffer));
+	if (verb_path != NULL) close(fd);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
-	timestamp_getfast(&end_mpi_time);
 
+	/* This functionallity has been moved to library/policy/mpi_stats_support.c */
+	#if 0
+	timestamp_getfast(&end_mpi_time);
 	unsigned long long extime;
 	extime=timestamp_diff(&end_mpi_time,&init_mpi_time,TIME_USECS);
 
 	sig_shared_region[my_node_id].mpi_info.exec_time=extime;
 	sig_shared_region[my_node_id].mpi_info.perc_mpi=(double)sig_shared_region[my_node_id].mpi_info.mpi_time/(double)sig_shared_region[my_node_id].mpi_info.exec_time;
+	#endif
 }
 
 /*           | Glob | Part || Start | Stop | Read | Get accum | Reset | Size
@@ -354,14 +368,12 @@ static void metrics_partial_start()
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial start");
     }
-		#if NEW_IMCFREQ
 		if (imc_mgt_compatible){
 		/* Reads the IMC */
     if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size))){
       error("IMCFreq data read in global_start");
     }
 		}
-		#endif
 
 
 		#if USE_GPUS
@@ -497,13 +509,14 @@ static int metrics_partial_stop(uint where)
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial stop");
     }
-    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],NULL,&cpufreq_data_avg[LOO]))){
+    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],cpufreq_data_per_core,&cpufreq_data_avg[LOO]))){
       error("CPUFreq data diff");
     }else{
       verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
+		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++) verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
+		verbosen_master(3,"\n");
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
-    #if NEW_IMCFREQ
 		if (imc_mgt_compatible){
     if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size))){
       error("IMCFreq data read in partial_stop");
@@ -514,7 +527,6 @@ static int metrics_partial_stop(uint where)
    	debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
 		}
 
-    #endif
 
 
 	/* This code needs to be adapted to read , compute the difference, and copy begin=end 
@@ -613,11 +625,9 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->L2_misses = 0;
 	metrics->L3_misses = metrics_l3[s];
 	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
-	#if NEW_IMCFREQ
 	if (imc_mgt_compatible){
 		metrics->sig_ext->imc_freq = imc_avg[s];
 	}
-	#endif
 
 	// FLOPS
 	metrics->Gflops = 0.0;
@@ -684,16 +694,18 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		copy_node_data(metrics,&lib_shared_region->master_signature);
 	}
 	metrics->EDP = time_s * time_s * metrics->DC_power;
-	
+
+	/* This functionallity has been moved to library/policy/mpi_stats_support.c */
+	#if 0	
 	/* This part is new to share with other processes */
 	timestamp_getfast(&end_mpi_time);
 	unsigned long long extime;
 	extime=timestamp_diff(&end_mpi_time,&init_mpi_time,TIME_USECS);	
-	
 	sig_shared_region[my_node_id].mpi_info.exec_time=extime;
 	sig_shared_region[my_node_id].mpi_info.perc_mpi=(double)sig_shared_region[my_node_id].mpi_info.mpi_time/(double)sig_shared_region[my_node_id].mpi_info.exec_time;
 	#if RESET_STATISTICS_AT_SIGNATURE
 	init_mpi_time = end_mpi_time;
+	#endif
 	#endif
 	/* Copying my info in the shared signature */
 	from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
@@ -717,6 +729,7 @@ int metrics_init(topology_t *topo)
 
 	hw_cache_line_size = topo->cache_line_size;
 	num_packs = topo->socket_count;
+	topology_copy(&mtopo,topo);
 
 	//debug("detected cache line size: %0.2lf bytes", hw_cache_line_size);
 	//debug("detected sockets: %d", num_packs);
@@ -842,8 +855,8 @@ int metrics_init(topology_t *topo)
 		imc_mgt_compatible = 0;
 		verbose(2,"IMC management API not compatible");
 	}
+	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
 	if (imc_mgt_compatible){
-	#if NEW_IMCFREQ
 	/* To compute IMC average */
 	if (xtate_fail(s, freq_imc_init_lib(topo))){
 		error("IMC metrics init failed");
@@ -865,7 +878,6 @@ int metrics_init(topology_t *topo)
 		error("IMC data count failed");
 	}
 	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
-	#endif
 
 	/* IMC management */
 	if (xtate_fail(s,mgt_imcfreq_load(topo))){

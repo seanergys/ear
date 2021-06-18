@@ -34,6 +34,7 @@ typedef struct proc_stat_s {
 	uint flags;
 	ulong minflt;
 	ulong cminflt;
+	ulong majflt;
 	ulong cmajflt;
 	ulong utime;
 	ulong stime;
@@ -95,5 +96,8 @@ state_t proc_stat_data_diff(proc_stat_t *ps2, proc_stat_t *ps1, proc_stat_t *psD
 state_t proc_stat_data_copy(proc_stat_t *dest, proc_stat_t *src);
 
 state_t proc_stat_data_print(proc_stat_t *ps);
+
+state_t proc_stat_data_to_str(proc_stat_t *ps,char *buffer,size_t len);
+
 
 #endif //METRICS_PROC_STAT_H

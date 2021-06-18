@@ -55,7 +55,7 @@ int is_null(loop_t *loop);
 int loop_init(loop_t *loop, job_t *job,ulong event, ulong size, ulong level);
 
 /* Cleans information that could generate DB failures */
-void clean_db_loop(loop_t *loop);
+void clean_db_loop(loop_t *loop,double limit);
 
 /** Given a new loop detected by dynais returns either a new loop_id (if it is 
 *   really a new loop never detected) or the pointer to the already existing 
@@ -76,6 +76,8 @@ void copy_loop(loop_t *destiny, loop_t *source);
 /** Appends in a file a loop in CSV format. The returned integer is one
 *   of the following states: EAR_SUCCESS or EAR_ERROR. */
 int append_loop_text_file(char *path, loop_t *loop,job_t *job);
+/* Same as previous one but without job information */
+int append_loop_text_file_no_job(char *path, loop_t *loop);
 
 /** Given a loop_t and a file descriptor, outputs the contents of said loop to the fd.*/
 void print_loop_fd(int fd, loop_t *loop);

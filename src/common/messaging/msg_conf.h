@@ -135,6 +135,7 @@ typedef struct status{
     char                ok;
     status_node_info_t  node;
     app_info_t          app;
+		uint							eardbd_connected;
 	unsigned int        num_policies;
     eard_policy_info_t  policy_conf[TOTAL_POLICIES];
 } status_t;
