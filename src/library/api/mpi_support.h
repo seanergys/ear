@@ -19,5 +19,9 @@
 #define _MPI_SUPPORT_
 
 int is_mpi_enabled();
+int is_intelmpi();
+int is_openmpi();
+int openmpi_num_nodes();
+
 
 #endif

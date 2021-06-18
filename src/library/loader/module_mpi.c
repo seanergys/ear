@@ -38,6 +38,8 @@ void (*func_con) (void);
 void (*func_des) (void);
 
 static uint mpi_on = 0;
+static uint intelmpi = 0;
+static uint openmpi = 0;
 
 int is_mpi_enabled()
 {
@@ -47,6 +49,16 @@ int is_mpi_enabled()
 void ear_mpi_enabled()
 {
         mpi_on = 1;
+}
+
+int is_intelmpi()
+{
+	return intelmpi;
+}
+
+int is_openmpi()
+{
+	return openmpi;
 }
 
 static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so, int *lang_c, int *lang_f)
@@ -71,8 +83,10 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 
 	if (strstr(buffer, "intel") != NULL) {
 		fndi = 1;
+		intelmpi = 1;
 	} else if (strstr(buffer, "open mpi") != NULL) {
 		fndo = 1;
+		openmpi = 1;
 	} else if (strstr(buffer, "mvapich") != NULL) {
 		fndm = 1;
 	} else {

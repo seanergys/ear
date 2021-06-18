@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
 #include <library/api/ear.h>
 #include <library/api/ear_mpi.h>
 #include <library/policies/policy.h>

@@ -48,6 +48,7 @@
 #include <library/common/global_comm.h>
 #include <library/common/library_shared_data.h>
 #include <library/api/clasify.h>
+#include <library/api/mpi_support.h>
 
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
@@ -142,6 +143,7 @@ state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
 static uint seconds = 0;
 static int end_periodic_th=0;
+static uint synchronize_masters = 1;
 //
 
 static void print_local_data()
@@ -176,6 +178,7 @@ void notify_eard_connection(int status)
 	char *buffer_send;
 	char *buffer_recv;
 	int i;
+
 	if (masters_comm_created){
 	buffer_send = calloc(    1, sizeof(char));
 	buffer_recv = calloc(masters_info.my_master_size, sizeof(char));
@@ -194,10 +197,14 @@ void notify_eard_connection(int status)
 	#if MPI
 	debug("Connecting with other masters. Status=%d",status);
 	masters_connected=0;
-	PMPI_Allgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm);
-	for (i = 0; i < masters_info.my_master_size; ++i)
-	{       
-		masters_connected+=(int)buffer_recv[i];
+	if (synchronize_masters){
+		PMPI_Allgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm);
+		for (i = 0; i < masters_info.my_master_size; ++i)
+		{       
+			masters_connected+=(int)buffer_recv[i];
+		}
+	}else{
+		masters_connected = 0;
 	}
 	#else
 	masters_connected=1;
@@ -421,9 +428,19 @@ void fill_application_mgt_data(app_mgt_t *a)
 /****************************************************************************************************************************************************************/
 /* Connects the mpi process to a new communicator composed by masters, only processes with master=1 belongs to the new communicator */
 /****************************************************************************************************************************************************************/
+
+int sched_num_nodes()
+{
+	char *cn;
+	cn = getenv(SCHED_STEP_NUM_NODES);
+	if (cn != NULL) return atoi(cn);
+	else return 1;
+}
 void attach_to_master_set(int master)
 {
 	int color;
+	int all_connected = 1;
+	int flag = 1;
 	//my_master_rank=0;
 	color=0;
 	#if MPI
@@ -433,14 +450,38 @@ void attach_to_master_set(int master)
 	if (master) masters_info.my_master_rank=0;
 	else masters_info.my_master_rank=-1;
 	#if MPI
-	if (PMPI_Comm_dup(MPI_COMM_WORLD,&masters_info.new_world_comm)!=MPI_SUCCESS){
-		error("Duplicating MPI_COMM_WORLD");
+	/* If OpenMPI, we will not synchronize if not all the processes answer the gather */
+	if (is_mpi_enabled() && is_openmpi()){
+		int n = openmpi_num_nodes();
+		if ((n > 0) && (n != sched_num_nodes())) flag = 0;
+		debug("OpenMPI num nodes detected %d - Sched num nodes detected %d",n, sched_num_nodes());
+		if (flag == 0){ 
+			synchronize_masters = 0;
+		}
 	}
-	if (PMPI_Comm_split(masters_info.new_world_comm, color, masters_info.my_master_rank, &masters_info.masters_comm)!=MPI_SUCCESS){
+	/* We must check all nodes have EAR loaded */
+	if (synchronize_masters){
+		debug("Creating a new communicator");
+		if (PMPI_Comm_dup(MPI_COMM_WORLD,&masters_info.new_world_comm)!=MPI_SUCCESS){
+		error("Duplicating MPI_COMM_WORLD");
+		}
+		if (PMPI_Comm_split(masters_info.new_world_comm, color, masters_info.my_master_rank, &masters_info.masters_comm)!=MPI_SUCCESS){
     error("Splitting MPI_COMM_WORLD");
-  }
+    		
+  		}
+		debug("New communicators created");
+	}else{
+		debug("Some processes are not connecting, synchronization off");
+	}
 	#endif
-	masters_comm_created=1;
+	// OpenMPI support
+	if (synchronize_masters) masters_comm_created=1;
+	else{ 
+		if  (master){
+			masters_info.my_master_size = 1;
+		}
+	}
+	// New for OpenMPI support
 	if ((masters_comm_created) && (!color)){
 		#if MPI
 		PMPI_Comm_rank(masters_info.masters_comm,&masters_info.my_master_rank);
@@ -451,6 +492,7 @@ void attach_to_master_set(int master)
 		#endif
 		debug("New master communicator created with %d masters. My master rank %d\n",masters_info.my_master_size,masters_info.my_master_rank);
 	}
+	debug("Attach to master set end");
 }
 /****************************************************************************************************************************************************************/
 /* returns the local id in the node, local id is 0 for the  master processes and 1 for the others  */
@@ -713,6 +755,12 @@ void ear_init()
 
 	/* All masters connect in a new MPI communicator */
 	attach_to_master_set(my_id==0);
+
+	/* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
+	if (synchronize_masters == 0){
+		debug("EARL initialization aborted");
+		return;
+	}
 
 	// if we are not the master, we return
 #if ONLY_MASTER
@@ -1037,6 +1085,7 @@ void ear_init()
 void ear_finalize()
 {
 	// if we are not the master, we return
+	if (synchronize_masters == 0 ) return;
 #if ONLY_MASTER
 	if (my_id) {
 		return;
@@ -1134,6 +1183,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 	time_t curr_time;
 	double time_from_mpi_init;
 	if (!eard_ok) return;
+	if (synchronize_masters == 0 ) return;
 #if ONLY_MASTER
 	if (my_id) return;
 #endif
