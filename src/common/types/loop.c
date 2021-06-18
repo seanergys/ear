@@ -109,7 +109,7 @@ void copy_loop(loop_t *destiny, loop_t *source)
 
 void print_loop_id_fd(int fd, loop_id_t *loop_id)
 {
-    dprintf(fd, "%lu;%lu;%lu;", loop_id->event, loop_id->level, loop_id->size);
+    dprintf(fd, ";%lu;%lu;%lu;", loop_id->event, loop_id->level, loop_id->size);
 }
 
 void print_loop_fd(int fd, loop_t *loop)
@@ -130,7 +130,7 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
 
     char *HEADER = "NODENAME;USERNAME;JOB_ID;APPNAME;POLICY;POLICY_TH;AVG.FREQ;DEF.FREQ;" \
         "TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
-        "L2_MISSES;L3_MISSES;GFLOPS;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
+        "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
         "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
 	
     int fd, ret;
@@ -177,7 +177,7 @@ int append_loop_text_file_no_job(char *path, loop_t *loop)
 
     char *HEADER = "NODENAME;AVG.FREQ;DEF.FREQ;" \
         "TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
-        "L2_MISSES;L3_MISSES;GFLOPS;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
+        "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
         "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
 	
     int fd, ret;
