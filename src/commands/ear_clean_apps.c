@@ -30,7 +30,9 @@ int query_filters = 0;
 
 //#warning "check this query"
 
-#define NUM_QUERIES 5
+#define NUM_APP_Q   5
+#define NUM_LOOP_Q  2
+#define NUM_QUERIES NUM_APP_Q+NUM_LOOP_Q
 
 #define CLEAN_GPU_APPS "DELETE Applications,Jobs,Signatures,Power_signatures,GPU_signatures FROM Applications inner join Jobs on id = job_id AND "\
                         "Applications.step_id = Jobs.step_id inner join Signatures on Signatures.id = signature_id inner join Power_signatures on "\
@@ -42,6 +44,14 @@ int query_filters = 0;
 
 #define CLEAN_NMPI_APPS "DELETE Applications,Jobs,Power_signatures from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "\
                         "inner join Power_signatures on Power_signatures.id = power_signature_id "
+
+#define CLEAN_LOOPS_JOBS "DELETE Signatures,Loops FROM Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id INNER JOIN Signatures ON Loops.signature_id = Signatures.id "
+
+#define CLEANUP_LOOPS_JOBS "DELETE Loops FROM Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id"
+
+#define CLEAN_LOOPS "DELETE Signatures,Loops FROM Loops INNER JOIN Signatures ON Loops.signature_id = Signatures.id "
+
+#define CLEANUP_LOOPS "DELETE Loops FROM Loops "
 
 #define CLEANUP_APPS "DELETE Applications,Jobs from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "
 
@@ -69,6 +79,8 @@ void usage(char *app)
     printf("\t-d ndays\tDays to preserve. It will delete any jobs older than ndays.\n");
     printf("\t-o\t\tPrints out the queries that would be executed. Exclusive with -r. [default:on]\n");
     printf("\t-r\t\tRuns the queries that would be executed. Exclusive with -o. [default:off]\n");
+    printf("\t-l\t\tDeletes Loops and its Signatures. [default:off]\n");
+    printf("\t-a\t\tDeletes Applications and related tables. [default:off]\n");
     printf("\t-h\t\tDisplays this message\n");
     printf("\n");
 
@@ -122,9 +134,10 @@ void send_query(char *query, char out_type, cluster_conf_t *my_cluster, char *us
   
 int main(int argc,char *argv[])
 {
-    char user[256], passw[256], query[5][512];
+    char user[256], passw[256], query[NUM_QUERIES][512];
     int num_days = 0;
     int job_id = -1, step_id = -1;
+    char rm_loops = 0, rm_apps = 0;
     int i;
     char opt, *token;
     struct termios t;
@@ -139,7 +152,7 @@ int main(int argc,char *argv[])
     strcpy(user, "root");
 #endif
 
-    while ((opt = getopt(argc, argv, "u:pd:j:orh")) != -1) {
+    while ((opt = getopt(argc, argv, "u:pd:j:oalrh")) != -1) {
         switch(opt)
         {
             case 'd':
@@ -165,6 +178,12 @@ int main(int argc,char *argv[])
                 break;
             case 'u':
                 strcpy(user, optarg);
+                break;
+            case 'l':
+                rm_loops = 1;
+                break;
+            case 'a':
+                rm_apps = 1;
                 break;
             case 'o':
                 out_type = OUT_QUERY;
@@ -192,15 +211,45 @@ int main(int argc,char *argv[])
         free_cluster_conf(&my_cluster);
         exit(0);
     }
+    if (!rm_apps && !rm_loops) {
+        printf("Either loops or applications need to be asked for removal, stopping.\n");
+        free_cluster_conf(&my_cluster);
+        exit(0);
+    }
 
-    strcpy(query[0], CLEAN_GPU_APPS);
-    strcpy(query[1], CLEAN_MPI_APPS);
-    strcpy(query[2], CLEAN_NMPI_APPS);
-    strcpy(query[3], CLEANUP_APPS);
-    strcpy(query[4], CLEANUP_JOBS);
+    int queries_id = 0;
+    //loops come first or we won't be able to find them
+    if (rm_loops) {
+        if (num_days > 0) {
+            strcpy(query[queries_id  ], CLEAN_LOOPS_JOBS);
+            strcpy(query[queries_id+1], CLEANUP_LOOPS_JOBS);
+        }
+        else {
+            strcpy(query[queries_id  ], CLEAN_LOOPS);
+            strcpy(query[queries_id+1], CLEANUP_LOOPS);
+        }
+        queries_id += NUM_LOOP_Q;
+    }
+    if (rm_apps) {
+        strcpy(query[queries_id  ], CLEAN_GPU_APPS);
+        strcpy(query[queries_id+1], CLEAN_MPI_APPS);
+        strcpy(query[queries_id+2], CLEAN_NMPI_APPS);
+        strcpy(query[queries_id+3], CLEANUP_APPS);
+        strcpy(query[queries_id+4], CLEANUP_JOBS);
+        queries_id += NUM_APP_Q;
+    }
 
-    for (i = 0; i < NUM_QUERIES; i++) {
+    for (i = 0; i < queries_id; i++) {
         query_filters = 0;
+        if (rm_loops && num_days < 1 && i < NUM_LOOP_Q) { //this is more precise as it doesn't need Jobs to exist to delete them
+            if (job_id > -1) {
+                add_int_filter(query[i], "job_id", job_id);
+            }
+            if (step_id > -1) {
+                add_int_filter(query[i], "step_id", step_id);
+            }
+            continue;
+        }
         if (job_id > -1) {
             add_int_filter(query[i], "Jobs.id", job_id);
         }
@@ -213,7 +262,7 @@ int main(int argc,char *argv[])
     }
 
 
-    for (i = 0; i < NUM_QUERIES; i++)
+    for (i = 0; i < queries_id; i++)
         send_query(query[i], out_type, &my_cluster, user, passw);
 
 
