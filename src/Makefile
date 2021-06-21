@@ -9,8 +9,8 @@ ifdef DB_BASE
 endif
 	COMPONENTS += \
                   daemon \
-                  commands \
-                  library
+                  commands #\
+#                  library
 ifdef GSL_BASE
 	COMPONENTS += tools
 endif
