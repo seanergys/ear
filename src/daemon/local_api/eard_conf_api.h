@@ -26,17 +26,17 @@
 #include <common/types/application.h>
 #include <common/types/job.h>
 #include <common/types/loop.h>
-
+#include <common/types/event_type.h>
 
 typedef struct gpu_freq_req{
 	uint  num_dev;
 	ulong gpu_freqs[MAX_GPUS_SUPPORTED];
 }gpu_freq_req_t;
+
 typedef struct cpu_freq_req{
   uint  num_cpus;
   ulong cpu_freqs[MAX_CPUS_SUPPORTED];
 }cpu_freq_req_t;
-
 
 typedef struct new_freq_type{
 	unsigned long f;
@@ -44,8 +44,8 @@ typedef struct new_freq_type{
 }new_freq_type_t;
 
 typedef struct unc_freq_req{
-	ulong max_unc;
-	ulong min_unc;
+	// Up to 4 sockets
+	uint index_list[8];	
 }unc_freq_req_t;
 
 // Data type to send the requests
@@ -93,13 +93,15 @@ struct daemon_req {
 #define READ_CPUFREQ			12
 
 /* UNC frequency management */
-#define UNC_SIZE					20
-#define UNC_READ					21
-#define UNC_GET_LIMITS		22
-#define UNC_SET_LIMITS		23
+#define UNC_SIZE                20
+#define UNC_READ                21
+#define UNC_GET_LIMITS          22
+#define UNC_SET_LIMITS          23
+#define UNC_INIT_DATA           24
+#define UNC_GET_LIMITS_MIN      25
+#define UNC_SET_LIMITS_MIN      26
 
 #define END_COMM 				1000
-
 #define EAR_COM_OK     	 		0
 #define EAR_COM_ERROR 			-1
 
@@ -130,12 +132,10 @@ struct daemon_req {
 #define CONNECT_ENERGY 			402
 #define ENERGY_FREQ				403
 
-
 #define GPU_MODEL               500
 #define GPU_DEV_COUNT           501
 #define GPU_DATA_READ           502
 #define GPU_SET_FREQ            503
 #define GPU_GET_INFO            504
 
-#else
 #endif

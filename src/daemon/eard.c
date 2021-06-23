@@ -26,6 +26,7 @@
 #include <common/types/log_eard.h>
 #include <common/types/pc_app_info.h>
 #include <management/cpufreq/frequency.h>
+#include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
 #include <metrics/common/msr.h>
@@ -689,10 +690,11 @@ void eard_set_freq(unsigned long new_freq, unsigned long max_freq) {
 
 int eard_freq(int must_read)
 {
+	char buffer[4096];
+	size_t size;
 	ulong ack;
 	state_t s;
 	ulong *f;
-	ulong imc_limits[2];
 
 	if (must_read) {
 		if (read(ear_fd_req[freq_req], &req, sizeof(req)) != sizeof(req))
@@ -780,27 +782,50 @@ int eard_freq(int must_read)
 			}
 			write(ear_fd_ack[freq_req],imc_data_app.data,unc_c);
 			break;
+		case UNC_INIT_DATA:
+			memset(&buffer[0], 0, 4096);
+			char *p;
+			mgt_imcfreq_get_api((uint *) &buffer[0]);
+			mgt_imcfreq_get_available_list(&imc_eard_ctx, (const pstate_t **) &p, (uint *) &buffer[4]);
+			memcpy(&buffer[8], p, ((uint) buffer[4])*sizeof(pstate_t));
+			write(ear_fd_ack[freq_req], buffer, 4096);
+		break;
 		case UNC_GET_LIMITS:
-			memset(imc_limits,0,sizeof(imc_limits));
-			if (xtate_fail(s,mgt_imcfreq_get_current(&imc_eard_ctx,&imc_limits[0],&imc_limits[1]))){
-				error("When reading imc limits req by app (%d, %s)", s, state_msg);
+			memset(&buffer[0], 0, 4096);
+			if (state_fail(s = mgt_imcfreq_get_current_list(&imc_eard_ctx, (pstate_t *) &buffer[0]))){
+				error("When reading IMC current frequency (%d, %s)", s, state_msg);
 			}
-			debug("IMC limits max %lu min %lu",imc_limits[0],imc_limits[1]);
-			write(ear_fd_ack[freq_req],imc_limits,sizeof(ulong)*2);
-			break;
+			write(ear_fd_ack[freq_req], buffer, node_desc.socket_count*sizeof(pstate_t));
+		break;
 		case UNC_SET_LIMITS:
-			debug("UNC_SET_LIMITS request received %lu %lu",req.req_data.unc_freq.max_unc,req.req_data.unc_freq.min_unc);
 			ack = EAR_SUCCESS;
-			if (xtate_fail(s,mgt_imcfreq_set_current(&imc_eard_ctx,req.req_data.unc_freq.max_unc,req.req_data.unc_freq.min_unc))){
+			if (state_fail(s = mgt_imcfreq_set_current_list(&imc_eard_ctx, req.req_data.unc_freq.index_list))){
 				error("When setting imc limits req by app (%d, %s)", s, state_msg);
 				ack = (ulong) s;
 			}
-			write(ear_fd_ack[freq_req],&ack,sizeof(ulong));
-			break;
+			write(ear_fd_ack[freq_req], &ack, sizeof(ulong));
+		break;
+		case UNC_GET_LIMITS_MIN:
+			size = node_desc.socket_count * sizeof(pstate_t);
+			memset(&buffer[0], 0, size*2);
+			if (state_fail(s = mgt_imcfreq_get_current_min_list(&imc_eard_ctx, (pstate_t *) &buffer[0], (pstate_t *) &buffer[size]))){
+				error("When reading IMC current frequency (%d, %s)", s, state_msg);
+			}
+			write(ear_fd_ack[freq_req], buffer, size*2);
+		break;
+		case UNC_SET_LIMITS_MIN:
+			ack = EAR_SUCCESS;
+			uint *max = &req.req_data.unc_freq.index_list[0];
+			uint *min = &req.req_data.unc_freq.index_list[node_desc.socket_count];
+			if (state_fail(s = mgt_imcfreq_set_current_min_list(&imc_eard_ctx, max, min))){
+				error("When setting imc limits req by app (%d, %s)", s, state_msg);
+				ack = (ulong) s;
+			}
+			write(ear_fd_ack[freq_req], &ack, sizeof(ulong));
+		break;
 
 		default:
 			return 0;
-
 	}
 	return 1;
 }
@@ -1590,7 +1615,7 @@ int main(int argc, char *argv[]) {
   state_assert(s, freq_imc_data_count(&unc_c), _exit(0));
   state_assert(s, freq_imc_data_alloc(&imc_data_app, NULL,NULL), _exit(0));
 	// IMC Management
-	state_assert(s, mgt_imcfreq_load(&node_desc), _exit(0));
+	state_assert(s, mgt_imcfreq_load(&node_desc, NO_EARD), _exit(0));
 	state_assert(s, mgt_imcfreq_init(&imc_eard_ctx), _exit(0));
 	verbose(VCONF, "IMC metrics and management initialized ");
 		

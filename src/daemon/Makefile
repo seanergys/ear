@@ -38,8 +38,9 @@ eard_OBJS += \
     $(powercap_OBJS) \
     $(gpu_mgt_OBJS) \
     $(SRCDIR)/database_cache/eardbd_api.o \
-    $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/management/libmgt.a \
+    $(SRCDIR)/metrics/libmetrics.a \
+	$(local_api_OBJS) \
     $(SRCDIR)/common/libcommon.a
 
 ######## RULES

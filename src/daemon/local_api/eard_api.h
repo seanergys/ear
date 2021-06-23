@@ -78,11 +78,9 @@ state_t eards_cpufreq_read(cpufreq_t *ef,size_t size);
 // Uncore frequency management
 state_t eards_freq_imc_data_count(uint *count);
 state_t eards_freq_imc_read(freq_imc_t *ef,size_t size);
-state_t eards_mgt_imcfreq_get_current( ulong *max_khz, ulong *min_khz);
-state_t eards_mgt_imcfreq_set_current( ulong max_khz, ulong min_khz);
 
-
-
+state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size);
+state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count);
 
 
 /************************************/

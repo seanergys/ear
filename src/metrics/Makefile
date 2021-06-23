@@ -8,6 +8,7 @@ dyna_BINS = libmetrics.so
 ######## FILES
 
 mets_OBJS = \
+    $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/pci.o \
     $(SRCDIR)/metrics/common/msr.o \
