@@ -42,8 +42,9 @@ void print_version()
 
 void usage(char *app)
 {
-	verbose(0, "Usage:%s num_days [options]", app);
-    verbose(0, "\t-p\t\tSpecify the password for MySQL's root user.");
+	printf("Usage:%s num_days [options]\n", app);
+    printf("\t-p\t\tSpecify the password for MySQL's root user.\n");
+    printf("The application will remove any Periodic metrics older than num_days\n");
 	exit(0);
 }
   
