@@ -34,6 +34,7 @@ state_t mgt_imcfreq_dummy_load(topology_t *tp, imcfreq_ops_t *ops)
 	replace_ops(ops->set_current_min_list, mgt_imcfreq_dummy_set_current_min_list);
 	replace_ops(ops->data_alloc,           mgt_imcfreq_dummy_data_alloc);
 	replace_ops(ops->data_print,           mgt_imcfreq_dummy_data_print);
+	replace_ops(ops->data_tostr,           mgt_imcfreq_dummy_data_tostr);
 	sockets_count = tp->socket_count;
 	return EAR_SUCCESS;
 }
@@ -117,9 +118,22 @@ state_t mgt_imcfreq_dummy_data_alloc(pstate_t **pstate_list, uint **index_list)
 
 state_t mgt_imcfreq_dummy_data_print(pstate_t *pstate_list, uint pstate_count, int fd)
 {
+	char buffer[4096];
+	mgt_imcfreq_dummy_data_tostr(pstate_list, pstate_count, buffer, 4096);
+	dprintf(fd, "%s", buffer);
+	return EAR_SUCCESS;
+}
+
+state_t mgt_imcfreq_dummy_data_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, uint length)
+{
+	size_t printed;
+	int already = 0;
 	int i;
-	for (i = 0; i < pstate_count; ++i) {
-		dprintf(fd, "IMC PS%d: id%d, %llu KHz\n", i, pstate_list[i].idx, pstate_list[i].khz);
+
+	for (i = 0; i < pstate_count && length > 0; ++i) {
+		printed = snprintf(&buffer[already], length, "IMC PS%d: id%d, %llu KHz\n", i, pstate_list[i].idx, pstate_list[i].khz);
+		length  = length  - printed;
+		already = already + printed;
 	}
 	return EAR_SUCCESS;
 }

@@ -808,7 +808,7 @@ int eard_freq(int must_read)
 		case UNC_GET_LIMITS_MIN:
 			size = node_desc.socket_count * sizeof(pstate_t);
 			memset(&buffer[0], 0, size*2);
-			if (state_fail(s = mgt_imcfreq_get_current_min_list(&imc_eard_ctx, (pstate_t *) &buffer[0], (pstate_t *) &buffer[size]))){
+			if (state_fail(s = mgt_imcfreq_get_current_ranged_list(&imc_eard_ctx, (pstate_t *) &buffer[0], (pstate_t *) &buffer[size]))){
 				error("When reading IMC current frequency (%d, %s)", s, state_msg);
 			}
 			write(ear_fd_ack[freq_req], buffer, size*2);
@@ -817,7 +817,7 @@ int eard_freq(int must_read)
 			ack = EAR_SUCCESS;
 			uint *max = &req.req_data.unc_freq.index_list[0];
 			uint *min = &req.req_data.unc_freq.index_list[node_desc.socket_count];
-			if (state_fail(s = mgt_imcfreq_set_current_min_list(&imc_eard_ctx, max, min))){
+			if (state_fail(s = mgt_imcfreq_set_current_ranged_list(&imc_eard_ctx, max, min))){
 				error("When setting imc limits req by app (%d, %s)", s, state_msg);
 				ack = (ulong) s;
 			}

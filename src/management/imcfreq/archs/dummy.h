@@ -49,4 +49,6 @@ state_t mgt_imcfreq_dummy_data_alloc(pstate_t **pstate_list, uint **index_list);
 
 state_t mgt_imcfreq_dummy_data_print(pstate_t *pstate_list, uint pstate_count, int fd);
 
+state_t mgt_imcfreq_dummy_data_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, uint length);
+
 #endif //MANAGEMENT_IMCFREQ_DUMMY_H
