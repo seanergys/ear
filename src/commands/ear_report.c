@@ -912,7 +912,8 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
             }
 #else
             for(i = 0; i < num_fields; i++) {
-                printf("%15s ", row[i] ? row[i] : "NULL");
+                if (!all_nodes || (i!= 2 && i != 1))
+                    printf("%15s ", row[i] ? row[i] : "NULL");
             }
 #endif
           
