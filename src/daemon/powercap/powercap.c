@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <common/colors.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/states.h>
 #include <common/system/execute.h>
@@ -43,7 +43,7 @@
 
 
 
-static node_powercap_opt_t my_pc_opt;
+node_powercap_opt_t my_pc_opt;
 static int my_ip;
 extern int *ips;
 extern int self_id;
@@ -154,7 +154,7 @@ static int set_powercap_value(uint domain,uint limit)
 {
   char c_date[128];
   if (limit==my_pc_opt.current_pc) return EAR_SUCCESS;
-  debug("%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
+  verbose(0,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);
@@ -370,7 +370,7 @@ void powercap_release_power()
 
 void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
 {
-    debug("powercap_get_status: get_powercap_status");
+    debug("powercap_get_status: get_powercap_status_last_t1 %u def_pc %u",my_pc_opt.last_t1_allocated,my_pc_opt.def_powercap);
     while(pthread_mutex_trylock(&my_pc_opt.lock)); 
     my_status->total_nodes++;
     if (my_pc_opt.powercap_status == PC_STATUS_IDLE)

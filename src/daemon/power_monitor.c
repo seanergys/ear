@@ -1174,6 +1174,7 @@ void powermon_mpi_signature(application_t *app) {
 	}
 	check_rt_error_for_signature(app);
 	signature_copy(&current_ear_app[ccontext]->app.signature, &app->signature);
+	verbose(0,"App signature receved with f %lu",app->signature.avg_f);
 	current_ear_app[ccontext]->app.job.def_f = app->job.def_f;
 	current_ear_app[ccontext]->app.job.th = app->job.th;
 	current_ear_app[ccontext]->app.job.procs = app->job.procs;

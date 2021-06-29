@@ -49,6 +49,7 @@ extern pc_app_info_t *pc_app_info_data;
 extern settings_conf_t *dyn_conf;
 extern pc_app_info_t *pc_app_info_data;
 extern cluster_conf_t my_cluster_conf;
+extern node_powercap_opt_t my_pc_opt;
 #else
 cluster_conf_t my_cluster_conf;
 #endif
@@ -167,7 +168,11 @@ static topology_t pc_topology_info;
 #define TDP_GPU 250
 void compute_power_distribution()
 {
+		#if USE_GPUS
     float node_ratio = 0.05;
+		#else
+		float node_ratio = 0.1;
+		#endif
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
     bpd_cpu = TDP_CPU;
@@ -619,7 +624,8 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
     #if USE_GPUS
     pgpu=(float)(pdomain->gpu)/(float)pdomain->platform;
     #endif
-    verbose(1,"[NODE-GPU %f CPU %f DRAM %f GPU %f]",pnode,pcpu,pdram,pgpu);
+    verbose(1,"[NODE-GPU %f CPU %f DRAM %f GPU %f][NODE-GPU %f CPU %f DRAM %f GPU %f]",pnode,pcpu,pdram,pgpu,pdomains[DOMAIN_NODE],pdomains[DOMAIN_CPU],pdomains[DOMAIN_DRAM],pdomains[DOMAIN_GPU]);
+    if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) return;
     if (pdomain->platform > pmgt_limit){
         verbose(1,"%s Warning! we are over the limit: Limit %u Power %u%s",COL_RED,pmgt_limit,pdomain->platform,COL_CLR);
         float excess = ((float)(pdomain->platform - pmgt_limit))/(float)pmgt_limit;
@@ -749,11 +755,10 @@ void pmgt_get_status(pmgt_status_t *status)
             debug("pmgt_get_status: GREEDY + RELEASE");
         } else { // GREEDY + GREEDY or GREEDY + OK
             status->status = PC_STATUS_GREEDY;
-            status->requested += cdomain_status[DOMAIN_CPU].strain / 2; //MAX of 50W per domain
-            status->requested += cdomain_status[DOMAIN_GPU].strain / 2;
+            status->requested += cdomain_status[DOMAIN_CPU].requested; 
+            status->requested += cdomain_status[DOMAIN_GPU].requested;
             status->requested = ear_min(status->requested, 50); // a total maximum step of 50
-            debug("pmgt_get_status: GREEDY + OK/GREEDY");
-            // status->requested =  -> this will be computed in powercap.c as it was before, for now
+            debug("pmgt_get_status: GREEDY + OK/GREEDY Node requested power %u",status->requested);
         }
     } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { // no need to check for greedy since we did that before, this includes OK+RELEASE
         status->status = PC_STATUS_RELEASE;

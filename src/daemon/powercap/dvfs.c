@@ -191,7 +191,7 @@ state_t dvfs_pc_thread_main(void *p)
 
     /* Aplicar limites */
     frequency_get_cpufreq_list(node_size,c_freq);
-    debug("dvfs_powercap_main: req_f: %lu curr_f: %lu current_power: %.2lf current_pc: %u dvfs_status: %u", c_req_f[0], c_freq[0], power_rapl, current_dvfs_pc, dvfs_status);
+    //debug("dvfs_powercap_main: req_f: %lu curr_f: %lu current_power: %.2lf current_pc: %u dvfs_status: %u", c_req_f[0], c_freq[0], power_rapl, current_dvfs_pc, dvfs_status);
     if (power_rapl > my_limit){ /* We are above the PC , reduce freq*/
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
@@ -386,6 +386,7 @@ uint get_powercap_status(domain_status_t *status)
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
     status->strain = 0;
+    status->requested = 0;
     status->current_pc = current_dvfs_pc;
 
     //debug("DVFS: get_powercap_status");
@@ -404,7 +405,14 @@ uint get_powercap_status(domain_status_t *status)
     debug("DVFS: current strain %d", status->strain);
     if (c_freq[0] < c_req_f[0]){
         if (dvfs_ask_def && current_dvfs_pc < default_dvfs_pc) status->ok = PC_STATUS_ASK_DEF;
-        else status->ok = PC_STATUS_GREEDY;
+        else{ 
+					uint c_pstate,t_pstate;
+					t_pstate = frequency_freq_to_pstate(c_req_f[0]);
+					c_pstate = frequency_freq_to_pstate(c_freq[0]);
+					status->requested = compute_extra_power(power_rapl,c_pstate-t_pstate,t_pstate);
+					debug("DVFS: Requested power %u",status->requested);
+					status->ok = PC_STATUS_GREEDY;
+				}
         debug("DVFS status %u", status->ok);
         return 0; /* Pending for NJObs */
     }

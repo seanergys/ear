@@ -128,6 +128,7 @@ typedef struct domain_status{
     uint exceed;
     uint strain;
     uint current_pc;
+		uint requested;
 }domain_status_t;
 
 typedef struct pmgt_status {
