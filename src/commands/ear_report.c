@@ -902,7 +902,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 #if USE_GPUS
             for(i = 0; i < num_fields; i++) {
                 if (has_gpus) {
-                    if (i != 1 && i != 2 && i != 3)
+                    if (!all_nodes || (i != 1 && i != 2 && i != 3))
                         printf("%15s ", row[i] ? row[i] : "NULL");
                 } else {
                     for(i = 0; i < num_fields; i++) {
