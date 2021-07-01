@@ -31,6 +31,7 @@
 #include <common/system/execute.h>
 #include <common/system/monitor.h>
 #include <common/messaging/msg_conf.h>
+#include <common/types/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #include <daemon/power_monitor.h>
@@ -393,6 +394,8 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
                 debug("powercap_get_status: PC_STATUS greedy, requesting %u", status->requested);
                 break;
             case PC_STATUS_RELEASE:
+                if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap) status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
+                else status->extra = 0;
                 my_pc_opt.released = status->tbr;
                 my_pc_opt.current_pc -= status->tbr;
                 debug("powercap_get_status: %sReleasing%s %u W allocated %u W",COL_BLU,COL_CLR,my_pc_opt.released,my_pc_opt.current_pc);
@@ -418,9 +421,11 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
 
         }
     }
+    ulong limit = my_pc_opt.current_pc;
     my_status->current_power = powermon_current_power();
     my_status->total_powercap = get_powercap_allocated(&my_pc_opt);
     pthread_mutex_unlock(&my_pc_opt.lock);
+    powermon_report_event(POWERCAP_VALUE, limit);
 
 }
 
@@ -448,6 +453,8 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
 {
     print_powercap_opt(opt);
     if (!is_powercap_on(&my_pc_opt)) return;    
+    uint event;
+    ulong value;
     debug("powercap_set_opt command received");
     while(pthread_mutex_trylock(&my_pc_opt.lock)); 
     my_pc_opt.max_inc_new_jobs=opt->max_inc_new_jobs;
@@ -460,6 +467,14 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap){
                     debug("%spowercap_set_opt new_pc_opt:status OK but in the greedy node list %d ip=%d with ip=%di extra %d%s",COL_RED,id,opt->greedy_nodes[id],my_ip,opt->extra_power[id],COL_CLR);
                     my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[id];
+                    if (opt->extra_power[id] > 0) {
+                        event = INC_POWERCAP;
+                        value = opt->extra_power[id];
+                    } else {
+                        event = RED_POWERCAP;
+                        value = -opt->extra_power[id];
+                    }
+                    
                     set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
                 }
                 break;
@@ -468,6 +483,13 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 break;
             case PC_STATUS_GREEDY:
                 debug("%spowercap_set_opt  new_pc_opt: greedy node %d ip=%d with ip=%d extra %d%s",COL_GRE,id,opt->greedy_nodes[id],my_ip,opt->extra_power[id],COL_CLR);
+                if (opt->extra_power[id] > 0) {
+                    event = INC_POWERCAP;
+                    value = opt->extra_power[id];
+                } else {
+                    event = RED_POWERCAP;
+                    value = -opt->extra_power[id];
+                }
                 my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[id];
                 set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
                 my_pc_opt.powercap_status=PC_STATUS_OK;
@@ -484,9 +506,12 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 my_pc_opt.last_t1_allocated=my_pc_opt.def_powercap;
                 my_pc_opt.requested=0;
                 set_powercap_value(DOMAIN_NODE,my_pc_opt.def_powercap);            
+                event = SET_ASK_DEF;
+                value = 0;
         }
     }
     pthread_mutex_unlock(&my_pc_opt.lock);
+    powermon_report_event(event, value);
 
 }
 
@@ -513,11 +538,13 @@ void powercap_set_app_req_freq(pc_app_info_t *pc_app)
 
 void powercap_release_idle_power(pc_release_data_t *release)
 {
+    uint value = 0;
     while(pthread_mutex_trylock(&my_pc_opt.lock));
     switch(my_pc_opt.powercap_status){
         case PC_STATUS_IDLE:
   	        debug("%sReleasing %u allocated IDLE power %s",COL_BLU,my_pc_opt.released,COL_CLR);
           	release->released+=my_pc_opt.released;
+            value = my_pc_opt.released;
   	        my_pc_opt.released=0;
       	    my_pc_opt.last_t1_allocated=my_pc_opt.current_pc;
       	    break;
@@ -525,6 +552,7 @@ void powercap_release_idle_power(pc_release_data_t *release)
             break;
     }
 	pthread_mutex_unlock(&my_pc_opt.lock);
+    powermon_report_event(RELEASE_POWER, value);
 }
 
 void powercap_reset_default_power()
@@ -538,7 +566,6 @@ void powercap_reset_default_power()
 	pthread_mutex_unlock(&my_pc_opt.lock);
 }
 
-
 void powercap_reduce_def_power(uint power)
 {
 	while(pthread_mutex_trylock(&my_pc_opt.lock));
@@ -549,6 +576,7 @@ void powercap_reduce_def_power(uint power)
 	my_pc_opt.def_powercap -= power;
 	pthread_mutex_unlock(&my_pc_opt.lock);
 }
+
 void powercap_increase_def_power(uint power)
 {
   while(pthread_mutex_trylock(&my_pc_opt.lock));
@@ -556,6 +584,7 @@ void powercap_increase_def_power(uint power)
   pthread_mutex_unlock(&my_pc_opt.lock);
 
 }
+
 void powercap_set_powercap(uint power)
 {
 	while(pthread_mutex_trylock(&my_pc_opt.lock));

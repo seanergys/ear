@@ -22,6 +22,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <limits.h>
 #define _GNU_SOURCE
 #define SHOW_DEBUGS 1
 #include <pthread.h>
@@ -63,10 +64,11 @@ static ulong num_pstates;
 static suscription_t *sus_dvfs;
 
 /* This  subscription will take care automatically of the power monitoring */
-static uint dvfs_pc_secs=0,num_packs;
+static uint dvfs_pc_secs=0, num_packs;
 static  unsigned long long *values_rapl_init,*values_rapl_end,*values_diff;
 static int *fd_rapl;
 static float power_rapl,my_limit;
+static uint *prev_pstate;
 static ulong *c_freq;
 static uint  *c_pstate,*t_pstate;
 static uint node_size;
@@ -161,7 +163,7 @@ state_t dvfs_pc_thread_init(void *p)
 state_t dvfs_pc_thread_main(void *p)
 {
     unsigned long long acum_energy;
-    uint extra;
+    uint extra, tmp_pstate;
 
 
     /* Update target frequency */
@@ -191,21 +193,25 @@ state_t dvfs_pc_thread_main(void *p)
 
     /* Aplicar limites */
     frequency_get_cpufreq_list(node_size,c_freq);
+    frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
+    //debug("previous p_state %u, current pstate :%u", prev_pstate[0], c_pstate[0]);
     //debug("dvfs_powercap_main: req_f: %lu curr_f: %lu current_power: %.2lf current_pc: %u dvfs_status: %u", c_req_f[0], c_freq[0], power_rapl, current_dvfs_pc, dvfs_status);
     if (power_rapl > my_limit){ /* We are above the PC , reduce freq*/
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
         }
-        frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
         /* If we are running at the lowest frequency there is nothing else to do */
         if (c_pstate[0] < (num_pstates-1)){ /*Pending vector extension*/
             /* If the current power is above by a lot, we reduce 2 pstates instead of 1 */
             if ((power_rapl - my_limit) > 30) {
-                c_pstate[0] = ear_min(c_pstate[0]+2, num_pstates-1); 
+                tmp_pstate = ear_min(c_pstate[0]+2, num_pstates-1); 
             } else {
-                c_pstate[0] = ear_min(c_pstate[0]+1, num_pstates-1); 
+                tmp_pstate = ear_min(c_pstate[0]+1, num_pstates-1); 
             }
-            c_pstate[0] = ear_max(c_pstate[0], t_pstate[0]); //if the updated target frequency is lower than the selected one, we use that one instead
+            tmp_pstate = ear_max(tmp_pstate, t_pstate[0]); //if the updated target frequency is lower than the selected one, we use that one instead
+            if (c_pstate[0] < tmp_pstate)
+                prev_pstate[0] = c_pstate[0]; //we only set a previous freq when reducing it
+            c_pstate[0] = tmp_pstate;
             extend_from_cpu_to_list(0,c_pstate,node_size);
             frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
             frequency_set_with_list(node_size,c_freq);
@@ -215,11 +221,14 @@ state_t dvfs_pc_thread_main(void *p)
         if (c_req_f[0] == 0) return EAR_SUCCESS;
 
         frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
-        frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
         if (c_pstate[0]>t_pstate[0]){ /* PENDING */
             extra=compute_extra_power(power_rapl,1,c_pstate[0]-1);
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ /* PENDING */
-                c_pstate[0]=c_pstate[0]-1; /* PENDING */
+                if (((c_pstate[0]-1) == prev_pstate[0]) && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
+                    //debug("Can't raise frequency without a powercap increase (would exceed power usage)");
+                    return EAR_SUCCESS;
+                }
+                c_pstate[0] = c_pstate[0]-1; /* PENDING */
                 extend_from_cpu_to_list(0,c_pstate,node_size);
                 frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
                 frequency_set_with_list(node_size,c_freq);
@@ -267,6 +276,10 @@ state_t enable(suscription_t *sus)
     c_req_f = calloc(node_size,sizeof(ulong));
     c_pstate = calloc(node_size,sizeof(uint));
     t_pstate = calloc(node_size,sizeof(uint));
+    prev_pstate = calloc(node_size,sizeof(uint));
+    int i;
+    for (i = 0; i < node_size; i++)
+        prev_pstate[i] = UINT_MAX;
 
     sus->suscribe(sus);
     return EAR_SUCCESS;
@@ -280,6 +293,7 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
     current_dvfs_pc = default_dvfs_pc;
     dvfs_status = PC_STATUS_OK;
     dvfs_ask_def = 0;
+    prev_pstate[0] = UINT_MAX; //reset flipflop measures
     return EAR_SUCCESS;
 }
 
@@ -289,6 +303,7 @@ state_t reset_powercap_value()
     current_dvfs_pc = default_dvfs_pc;
     dvfs_status = PC_STATUS_OK;
     dvfs_ask_def = 0;
+    prev_pstate[0] = UINT_MAX; //reset flipflop measures
     return EAR_SUCCESS;
 }
 
@@ -300,6 +315,7 @@ state_t increase_powercap_allocation(uint increase)
     if (current_dvfs_pc >= default_dvfs_pc) {
         dvfs_status = PC_STATUS_OK;
     }
+    prev_pstate[0] = UINT_MAX; //reset flipflop measures
     return EAR_SUCCESS;
 }
 
@@ -308,6 +324,7 @@ state_t release_powercap_allocation(uint decrease)
     debug("Decreasing powercap allocation by %u", decrease);
     current_dvfs_pc -= decrease;
     if (current_dvfs_pc < default_dvfs_pc) dvfs_status = PC_STATUS_RELEASE;
+    prev_pstate[0] = UINT_MAX; //reset flipflop measures
     return EAR_SUCCESS;
 }
 
@@ -350,7 +367,6 @@ void set_pc_mode(uint mode)
     debug("DVFS:set_pc_mode");
     c_mode=mode;
 }
-
 
 
 void set_app_req_freq(ulong *f)
