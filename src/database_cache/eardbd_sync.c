@@ -32,22 +32,22 @@ extern int server_iam;
 extern int mirror_iam;
 
 // Sockets
-extern socket_t *smets_srv;
-extern socket_t *smets_mir;
-extern socket_t *ssync_srv;
-extern socket_t *ssync_mir;
+extern socket_t *socket_server;
+extern socket_t *socket_mirror;
+extern socket_t *socket_sync01;
+extern socket_t *socket_sync02;
 
 // Synchronization
 extern packet_header_t header_answer;
 extern packet_header_t header_question;
-extern sync_qst_t data_question;
-extern sync_ans_t data_answer;
+extern sync_question_t data_question;
+extern sync_answer_t data_answer;
 
 // Descriptors
-extern struct sockaddr_storage addr_cli;
+extern struct sockaddr_storage addr_new;
 extern fd_set fds_incoming;
 extern fd_set fds_active;
-extern int fd_cli;
+extern int fd_new;
 extern int fd_min;
 extern int fd_max;
 // Descriptors storage
@@ -65,10 +65,10 @@ extern time_t time_recv2[EDB_NTYPES];
 extern time_t time_insert1[EDB_NTYPES];
 extern time_t time_insert2[EDB_NTYPES];
 extern size_t type_sizeof[EDB_NTYPES];
-extern uint   sample_index[EDB_NTYPES];
+extern uint   samples_index[EDB_NTYPES];
 extern char  *type_name[EDB_NTYPES];
 extern ulong  type_alloc_len[EDB_NTYPES];
-extern uint   sample_recv[EDB_NTYPES];
+extern uint   samples_count[EDB_NTYPES];
 //
 extern uint   sockets_accepted;
 extern uint   sockets_online;
@@ -127,16 +127,14 @@ void time_reset_timeout_slct()
 int sync_fd_is_new(int fd)
 {
 	int nc;
-
-	nc  = !mirror_iam && (fd == smets_srv->fd || fd == ssync_srv->fd);
-	nc |=  mirror_iam && (fd == smets_mir->fd);
-
+	nc  = !mirror_iam && (fd == socket_server->fd || fd == socket_sync01->fd);
+	nc |=  mirror_iam && (fd == socket_mirror->fd);
 	return nc;
 }
 
 int sync_fd_is_mirror(int fd_lst)
 {
-	return !mirror_iam && (fd_lst == ssync_srv->fd);
+	return !mirror_iam && (fd_lst == socket_sync01->fd);
 }
 
 int sync_fd_exists(long ip, int *fd_old)
@@ -193,13 +191,13 @@ void sync_fd_disconnect(int fd)
  *
  */
 
-int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
+int sync_question(uint sync_option, int veteran, sync_answer_t *answer)
 {
 	time_t timeout_old;
 	state_t s;
 
 	verb_who("synchronization started: asking the question to %s (%d)",
-			ssync_mir->host_dst, sync_option);
+			socket_sync02->host_dst, sync_option);
 
 	data_question.sync_option = sync_option;
 	data_question.veteran = veteran;
@@ -208,51 +206,51 @@ int sync_question(uint sync_option, int veteran, sync_ans_t *answer)
 	sockets_header_update(&header_question);
 
 	// Synchronization pipeline
-	s = sockets_socket(ssync_mir);
+	s = sockets_socket(socket_sync02);
 
 	if (state_fail(s)) {
-		verb_who("failed to create client socket (%d, %s)", s, intern_error_str);
+		verb_who("failed to create client socket (%d, %s)", s, internedb_error_str);
 		return EAR_ERROR;
 	}
 
-	s = sockets_connect(ssync_mir);
+	s = sockets_connect(socket_sync02);
 
 	if (state_fail(s)) {
-		verb_who("failed to connect (%d, %s)", s, intern_error_str);
+		verb_who("failed to connect (%d, %s)", s, internedb_error_str);
 		return EAR_ERROR;
 	}
 
-	s = __sockets_send(ssync_mir, &header_question, (char *) &data_question);
+	s = __sockets_send(socket_sync02, &header_question, (char *) &data_question);
 
 	if (state_fail(s)) {
-		verb_who("failed to send (%d, %s)", s, intern_error_str);
+		verb_who("failed to send (%d, %s)", s, internedb_error_str);
 		return EAR_ERROR;
 	}
 
 	// Setting new timeout
-	sockets_timeout_get(ssync_mir->fd, &timeout_old);
-	s = sockets_timeout_set(ssync_mir->fd, 10);
+	sockets_timeout_get(socket_sync02->fd, &timeout_old);
+	s = sockets_timeout_set(socket_sync02->fd, 10);
 
 	// Waiting
-	s = __sockets_recv(ssync_mir->fd, &header_answer,
-		(char *) &data_answer, sizeof(sync_ans_t), 1);
+	s = __sockets_recv(socket_sync02->fd, &header_answer,
+		(char *) &data_answer, sizeof(sync_answer_t), 1);
 
 	// Recovering old timeout
-	sockets_timeout_set(ssync_mir->fd, timeout_old);
+	sockets_timeout_set(socket_sync02->fd, timeout_old);
 
 	if (state_fail(s)) {
-		verb_who("failed to receive (%d, %s)", s, intern_error_str);
+		verb_who("failed to receive (%d, %s)", s, internedb_error_str);
 		return EAR_ERROR;
 	}
 
-	s = sockets_close(ssync_mir);
+	s = sockets_close(socket_sync02);
 
 	if (verbosity) {
 		verb_who_noarg("synchronization completed correctly");
 	}
 
 	if (answer != NULL) {
-		memcpy (answer, &data_answer, sizeof(sync_ans_t));
+		memcpy (answer, &data_answer, sizeof(sync_answer_t));
 	}
 
 	return EAR_SUCCESS;
@@ -279,7 +277,7 @@ int sync_answer(int fd, int veteran)
 	s = __sockets_send(&sync_ans_socket, &header_answer, (char *) &data_answer);
 
 	if (state_fail(s)) {
-		verb_who("Failed to send to MIRROR (%d, %s)", s, intern_error_str);
+		verb_who("Failed to send to MIRROR (%d, %s)", s, internedb_error_str);
 		return EAR_IGNORE;
 	}
 

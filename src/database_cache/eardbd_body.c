@@ -30,35 +30,35 @@ extern char input_buffer[SZ_BUFFER];
 extern char extra_buffer[SZ_BUFFER];
 
 // Sockets
-extern socket_t *smets_srv;
-extern socket_t *smets_mir;
-extern socket_t *ssync_srv;
-extern socket_t *ssync_mir;
+extern socket_t *socket_server;
+extern socket_t *socket_mirror;
+extern socket_t *socket_sync01;
+extern socket_t *socket_sync02;
 
 // Descriptors
-extern struct sockaddr_storage addr_cli;
+extern struct sockaddr_storage addr_new;
 extern fd_set fds_incoming;
 extern fd_set fds_active;
-extern int fd_cli;
+extern int fd_new;
 extern int fd_min;
 extern int fd_max;
 
 // PID
-extern process_data_t proc_data_srv;
-extern process_data_t proc_data_mir;
+extern process_data_t proc_server;
+extern process_data_t proc_mirror;
 extern pid_t server_pid;
 extern pid_t mirror_pid;
 extern pid_t others_pid;
 
 // Mirroring
 extern char master_host[SZ_NAME_MEDIUM];
-extern char master_alia[SZ_NAME_MEDIUM];
+extern char master_nick[SZ_NAME_MEDIUM];
 extern char master_name[SZ_NAME_MEDIUM];
 extern int master_iam;
 extern int server_iam;
 extern int mirror_iam;
-extern int server_too;
-extern int mirror_too;
+extern int server_enabled;
+extern int mirror_enabled;
 
 // Data
 extern time_t time_recv1[EDB_NTYPES];
@@ -67,11 +67,11 @@ extern time_t time_insert1[EDB_NTYPES];
 extern time_t time_insert2[EDB_NTYPES];
 extern size_t type_sizeof[EDB_NTYPES];
 extern uint   type_alloc_100[EDB_NTYPES];
-extern char  *type_alloc[EDB_NTYPES];
+extern char  *type_chunk[EDB_NTYPES];
 extern char  *type_name[EDB_NTYPES];
 extern ulong  type_alloc_len[EDB_NTYPES];
-extern ulong  sample_index[EDB_NTYPES];
-extern uint   sample_recv[EDB_NTYPES];
+extern ulong  samples_index[EDB_NTYPES];
+extern uint   samples_count[EDB_NTYPES];
 
 // Sockets info
 extern uint   sockets_accepted;
@@ -118,17 +118,17 @@ static void body_alarm(struct timeval *timeout_slct)
 		time_substract_timeouts();
 
 		if (timeout_aggr.tv_sec == 0) {
-			if (type_alloc_len[i_aggrs] > 0) {
-				peraggr_t *p = (peraggr_t *) type_alloc[i_aggrs];
-				peraggr_t *q = (peraggr_t *) &p[sample_index[i_aggrs]];
+			if (type_alloc_len[index_aggrs] > 0) {
+				peraggr_t *p = (peraggr_t *) type_chunk[index_aggrs];
+				peraggr_t *q = (peraggr_t *) &p[samples_index[index_aggrs]];
 
 				if (q->n_samples > 0) {
 					verb_who("completed the aggregation number '%lu' with energy '%lu'",
-						 sample_index[i_aggrs], q->DC_energy);
+						 samples_index[index_aggrs], q->DC_energy);
 					// Aggregation time done, so new aggregation incoming
-					storage_sample_add(NULL, type_alloc_len[i_aggrs], &sample_index[i_aggrs], NULL, 0, EDB_SYNC_TYPE_AGGRS);
+					storage_sample_add(NULL, type_alloc_len[index_aggrs], &samples_index[index_aggrs], NULL, 0, EDB_SYNC_TYPE_AGGRS);
 					// Initializing the new element
-					q = (peraggr_t *) &p[sample_index[i_aggrs]];
+					q = (peraggr_t *) &p[samples_index[index_aggrs]];
 					init_periodic_aggregation(q, master_name);
 				}
 			}
@@ -139,7 +139,7 @@ static void body_alarm(struct timeval *timeout_slct)
 		if (timeout_insr.tv_sec == 0) {
 			// Synchronizing with the MAIN
 			if (mirror_iam) {
-				sync_ans_t answer;
+				sync_answer_t answer;
 				// Asking the question
 				// In case of fail the mirror have to insert the data
 				if(state_fail(sync_question(EDB_SYNC_ALL, veteran, &answer))) {
@@ -169,8 +169,8 @@ static void body_alarm(struct timeval *timeout_slct)
 static int body_new_connection(int fd)
 {
 	int nc;
-	nc  = !mirror_iam && (fd == smets_srv->fd || fd == ssync_srv->fd);
-	nc |=  mirror_iam && (fd == smets_mir->fd);
+	nc  = !mirror_iam && (fd == socket_server->fd || fd == socket_sync01->fd);
+	nc |=  mirror_iam && (fd == socket_mirror->fd);
 	return nc;
 }
 #endif
@@ -191,17 +191,17 @@ static void body_connections()
 			{
 				do {
 					// i      -> listening descriptor
-					// fd_cli -> current communications descriptor
+					// fd_new -> current communications descriptor
 					// fd_old -> previous communications descriptor
-					if (state_fail(s = sockets_accept(i, &fd_cli, &addr_cli))) {
+					if (state_fail(s = sockets_accept(i, &fd_new, &addr_new))) {
 						break;
 					}
 					if (verbosity) {
-						sockets_get_hostname(&addr_cli, extra_buffer, SZ_BUFFER);
+						sockets_get_hostname(&addr_new, extra_buffer, SZ_BUFFER);
 					}
 					if (!sync_fd_is_mirror(i)) {
 						// Disconnect if previously connected
-						sockets_get_ip(&addr_cli, &ip);
+						sockets_get_ip(&addr_new, &ip);
 
 						if (sync_fd_exists(ip, &fd_old)) {
 							//log("multiple connections from host '%s', disconnecting previous", extra_buffer);
@@ -222,9 +222,9 @@ static void body_connections()
 						}
 						sync_fd_disconnect(fd_old);
 					} else {
-						sync_fd_add(fd_cli, ip);
+						sync_fd_add(fd_new, ip);
 						if (verbosity) {
-							verb_who("accepted fd '%d' from host '%s'", fd_cli, extra_buffer);
+							verb_who("accepted fd '%d' from host '%s'", fd_new, extra_buffer);
 						}
 					}
 				} while(state_ok(s));
@@ -244,7 +244,7 @@ static void body_connections()
 					if (verbosity) {
 						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFFER);
 						verb_who("disconnecting from host %s (errno: '%d', strerrno: '%s')",
-								extra_buffer, intern_error_num, intern_error_str);
+								extra_buffer, internedb_error_num, internedb_error_str);
 					}
 					sync_fd_disconnect(i);
 				}
@@ -267,7 +267,7 @@ void body()
 
 		if ((s = select(fd_max + 1, &fds_incoming, NULL, NULL, &timeout_slct)) == -1) {
 			if (listening && !updating) {
-				_error("during select (%s)", strerror(errno));
+				edb_error("during select (%s)", strerror(errno));
 			}
 		}
 		//
@@ -297,10 +297,10 @@ void release()
 		close(i);
 	}
 	// Cleaning sockets
-	sockets_dispose(smets_srv);
-	sockets_dispose(smets_mir);
-	sockets_dispose(ssync_srv);
-	sockets_dispose(ssync_mir);
+	sockets_dispose(socket_server);
+	sockets_dispose(socket_mirror);
+	sockets_dispose(socket_sync01);
+	sockets_dispose(socket_sync02);
 	//
 	FD_ZERO(&fds_incoming);
 	FD_ZERO(&fds_active);
@@ -309,10 +309,10 @@ void release()
 
 	for (i = 0; i < EDB_NTYPES; ++i)
 	{
-		if (type_alloc[i] != NULL)
+		if (type_chunk[i] != NULL)
 		{
-			free(type_alloc[i]);
-			type_alloc[i] = NULL;
+			free(type_chunk[i]);
+			type_chunk[i] = NULL;
 		}
 	}
 	// Reconfiguring
@@ -322,11 +322,11 @@ void release()
 		reconfiguring = 0;
 	}
 	// Process PID cleaning
-	if (server_iam && server_too) {
-		process_pid_file_clean(&proc_data_srv);
+	if (server_iam && server_enabled) {
+		process_pid_file_clean(&proc_server);
 	}
-	if (mirror_iam && mirror_too) {
-		process_pid_file_clean(&proc_data_mir);
+	if (mirror_iam && mirror_enabled) {
+		process_pid_file_clean(&proc_mirror);
 	}
 	//
 	log_close();
