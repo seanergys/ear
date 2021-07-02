@@ -137,9 +137,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 
 	// Cleaning 0 (who am I? Ok I'm the server, which is also the master for now)
 	mirror_iam = 0;
-	mirror_enabled = 0;
 	server_iam = 1;
-	server_enabled = 0;
 	master_iam = 1;
 	forked     = 0;
 	server_pid = getpid();
@@ -218,11 +216,11 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	pid_t other_server_pid;
 	pid_t other_mirror_pid;
 
-	sprintf(path_tmp_pid, "%s/%d", conf_clus->install.dir_temp, getpid());
 	umask(0);
-
-	if (mkdir(path_tmp_pid, S_IRUSR | S_IWUSR |S_IXUSR| S_IRGRP | S_IROTH)<0){
-		verb_master("Error creating pid path");
+	sprintf(path_tmp_pid, "%s/%d", conf_clus->install.dir_temp, getpid());
+	// Creating the PID path folder
+	if (mkdir(path_tmp_pid, S_IRUSR | S_IWUSR | S_IXUSR| S_IRGRP | S_IROTH) < 0){
+		verb_master("ERROR, when creating pid path %s: %s", path_tmp_pid, strerror(errno));
 	}
 	path_pid = path_tmp_pid;
 
@@ -623,22 +621,23 @@ static state_t usage(int argc, char *argv[])
 	int help = 0;
 	// More than one means something to process
 	if (argc > 1) {
-		help           = strinargs(argc, argv, "h",      NULL);
-		help          |= strinargs(argc, argv, "help",   NULL);
+		help           = strinargs(argc, argv, "help",   NULL);
 		server_enabled = strinargs(argc, argv, "server", NULL);
 		mirror_enabled = strinargs(argc, argv, "mirror:", server_host);
 	} else {
 		// Usage by environment
-		server_enabled = getenv("EARDBD_SERVER");
-		mirror_enabled = getenv("EARDBD_MIRROR");
-		strcpy(server_host, getenv("EARDBD_MIRROR"));
+		server_enabled = (getenv("EARDBD_SERVER") != NULL);
+		mirror_enabled = (getenv("EARDBD_MIRROR") != NULL);
+		if (mirror_enabled) {
+			strcpy(server_host, getenv("EARDBD_MIRROR"));
+		}
 	}
 	// Mirror/server processing
 	if (server_enabled || mirror_enabled) {
 		forced = 1;
 	}
-	if (help) {
-    	return 1;
+	if (!help) {
+    	return 0;
 	}
 	// Showing usage
 	verbose(0, "Usage: %s [OPTIONS]", argv[0]);
@@ -650,8 +649,7 @@ static state_t usage(int argc, char *argv[])
 	verbose(0, "\t        \tThe host parameter is required to synchronize");
 	verbose(0, "\t        \twith the main server. Also works by defining");
 	verbose(0, "\t        \tEARDBD_MIRROR=<host> environment variable.");
-
-	return 0;
+	return 1;
 }
 
 int main(int argc, char **argv)

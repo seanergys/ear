@@ -243,8 +243,8 @@ static void body_connections()
 					}
 					if (verbosity) {
 						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFFER);
-						verb_who("disconnecting from host %s (errno: '%d', strerrno: '%s')",
-								extra_buffer, internedb_error_num, internedb_error_str);
+						verb_who("disconnecting from host %s: %s)",
+								extra_buffer, state_msg);
 					}
 					sync_fd_disconnect(i);
 				}

@@ -198,57 +198,46 @@ int sync_question(uint sync_option, int veteran, sync_answer_t *answer)
 
 	verb_who("synchronization started: asking the question to %s (%d)",
 			socket_sync02->host_dst, sync_option);
-
+	//
 	data_question.sync_option = sync_option;
-	data_question.veteran = veteran;
+	data_question.veteran     = veteran;
 
 	// Preparing packet
 	sockets_header_update(&header_question);
-
+	
 	// Synchronization pipeline
-	s = sockets_socket(socket_sync02);
-
-	if (state_fail(s)) {
-		verb_who("failed to create client socket (%d, %s)", s, internedb_error_str);
+	if (state_fail(s = sockets_socket(socket_sync02))) {
+		verb_who("failed to create client socket (%d, %s)", s, state_msg);
 		return EAR_ERROR;
 	}
-
-	s = sockets_connect(socket_sync02);
-
-	if (state_fail(s)) {
-		verb_who("failed to connect (%d, %s)", s, internedb_error_str);
+	if (state_fail(s = sockets_connect(socket_sync02))) {
+		verb_who("failed to connect (%d, %s)", s, state_msg);
 		return EAR_ERROR;
 	}
-
-	s = __sockets_send(socket_sync02, &header_question, (char *) &data_question);
-
-	if (state_fail(s)) {
-		verb_who("failed to send (%d, %s)", s, internedb_error_str);
+	if (state_fail(s = __sockets_send(socket_sync02, &header_question, (char *) &data_question))) {
+		verb_who("failed to send (%d, %s)", s, state_msg);
 		return EAR_ERROR;
 	}
 
 	// Setting new timeout
 	sockets_timeout_get(socket_sync02->fd, &timeout_old);
 	s = sockets_timeout_set(socket_sync02->fd, 10);
-
 	// Waiting
 	s = __sockets_recv(socket_sync02->fd, &header_answer,
 		(char *) &data_answer, sizeof(sync_answer_t), 1);
-
 	// Recovering old timeout
 	sockets_timeout_set(socket_sync02->fd, timeout_old);
 
 	if (state_fail(s)) {
-		verb_who("failed to receive (%d, %s)", s, internedb_error_str);
+		verb_who("failed to receive (%d, %s)", s, state_msg);
 		return EAR_ERROR;
 	}
-
+	//
 	s = sockets_close(socket_sync02);
 
 	if (verbosity) {
 		verb_who_noarg("synchronization completed correctly");
 	}
-
 	if (answer != NULL) {
 		memcpy (answer, &data_answer, sizeof(sync_answer_t));
 	}
@@ -264,23 +253,19 @@ int sync_answer(int fd, int veteran)
 	if (verbosity) {
 		verb_who_noarg("synchronization started: answering the question");
 	}
-
 	// Socket
 	sockets_clean(&sync_ans_socket);
 	sync_ans_socket.protocol = TCP;
-	sync_ans_socket.fd = fd;
+	sync_ans_socket.fd       = fd;
 
 	// Header
 	sockets_header_update(&header_answer);
 	data_answer.veteran = veteran;
 
-	s = __sockets_send(&sync_ans_socket, &header_answer, (char *) &data_answer);
-
-	if (state_fail(s)) {
-		verb_who("Failed to send to MIRROR (%d, %s)", s, internedb_error_str);
+	if (state_fail(s = __sockets_send(&sync_ans_socket, &header_answer, (char *) &data_answer))) {
+		verb_who("Failed to send to MIRROR (%d, %s)", s, state_msg);
 		return EAR_IGNORE;
 	}
-
 	if (verbosity) {
 		verb_who_noarg("synchronization completed correctly");
 	}
