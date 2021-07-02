@@ -31,6 +31,7 @@
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
 #include <common/types/version.h>
+#include <common/types/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #if DB_MYSQL
@@ -603,50 +604,60 @@ void compute_pow(PGconn *connection, int start_time, int end_time, unsigned long
 }
 #endif
 
-#define PM_CREATION_ERROR			100
-#define APP_API_CREATION_ERROR	101
-#define DYN_CREATION_ERROR			102
-#define UNCORE_INIT_ERROR		103
-#define RAPL_INIT_ERROR 104
-#define ENERGY_INIT_ERROR 105
-#define CONNECTOR_INIT_ERROR 106
-#define RCONNECTOR_INIT_ERROR 107
-
-
-
-/* EARD runtime events */
-#define DC_POWER_ERROR		300
-#define TEMP_ERROR				301
-#define FREQ_ERROR				302
-#define RAPL_ERROR				303
-#define GBS_ERROR					304
-#define CPI_ERROR					305
-void print_event_type(int type)
+void event_type_to_str(int type, char *buff, size_t size)
 {
     switch(type)
     {
-        case 300:
-            printf("%15s ", "DC_POW_ERROR");
+        case DC_POWER_ERROR:
+            strncpy(buff, "DC_POW_ERROR", size);
             break;
-        case 301:
-            printf("%15s ", "TEMP_ERROR");
+        case TEMP_ERROR:
+            strncpy(buff, "TEMP_ERROR", size);
             break;
-        case 302:
-            printf("%15s ", "FREQ_ERROR");
+        case FREQ_ERROR:
+            strncpy(buff, "FREQ_ERROR", size);
             break;
-        case 303:
-            printf("%15s ", "RAPL_ERROR");
+        case RAPL_ERROR:
+            strncpy(buff, "RAPL_ERROR", size);
             break;
-        case 304:
-            printf("%15s ", "GBS_ERROR");
+        case GBS_ERROR:
+            strncpy(buff, "GBS_ERROR", size);
             break;
-        case 305:
-            printf("%15s ", "CPI_ERROR");
+        case CPI_ERROR:
+            strncpy(buff, "CPI_ERROR", size);
+            break;
+        case RESET_POWERCAP:
+            strncpy(buff, "RESET_POWERCAP", size);
+            break;
+        case INC_POWERCAP:
+            strncpy(buff, "INC_POWERCAP", size);
+            break;
+        case RED_POWERCAP:
+            strncpy(buff, "RED_POWERCAP", size);
+            break;
+        case SET_POWERCAP:
+            strncpy(buff, "SET_POWERCAP", size);
+            break;
+        case SET_ASK_DEF:
+            strncpy(buff, "SET_ASK_DEF", size);
+            break;
+        case RELEASE_POWER:
+            strncpy(buff, "RELEASE_POWER", size);
+            break;
+        case POWERCAP_VALUE:
+            strncpy(buff, "POWERCAP_VALUE", size);
             break;
         default:
-            printf("%11s(%d) ", "UNKNOWN", type);
+            snprintf(buff, size, "UNKNOWN(%d) ", type);
             break;
     }
+}
+/* EARD runtime events */
+void print_event_type(int type)
+{
+    char buff[15];
+    event_type_to_str(type, buff, 15);
+    printf("%15s ", buff);
 }
 
 #if DB_MYSQL
@@ -902,7 +913,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 #if USE_GPUS
             for(i = 0; i < num_fields; i++) {
                 if (has_gpus) {
-                    if (i != 1 && i != 2 && i != 3)
+                    if (!all_nodes || (i != 1 && i != 2 && i != 3))
                         printf("%15s ", row[i] ? row[i] : "NULL");
                 } else {
                     for(i = 0; i < num_fields; i++) {
@@ -912,7 +923,8 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
             }
 #else
             for(i = 0; i < num_fields; i++) {
-                printf("%15s ", row[i] ? row[i] : "NULL");
+                if (!all_nodes || (i!= 2 && i != 1))
+                    printf("%15s ", row[i] ? row[i] : "NULL");
             }
 #endif
           

@@ -1174,6 +1174,7 @@ void powermon_mpi_signature(application_t *app) {
 	}
 	check_rt_error_for_signature(app);
 	signature_copy(&current_ear_app[ccontext]->app.signature, &app->signature);
+	verbose(0,"App signature receved with f %lu",app->signature.avg_f);
 	current_ear_app[ccontext]->app.job.def_f = app->job.def_f;
 	current_ear_app[ccontext]->app.job.th = app->job.th;
 	current_ear_app[ccontext]->app.job.procs = app->job.procs;
@@ -1380,11 +1381,24 @@ void powermon_get_app_status(app_status_t *my_status)
     my_status->master_rank = app_mgt_info->master_rank;
 }
 
-
-
-void print_powermon_app(powermon_app_t *app) {
+void print_powermon_app(powermon_app_t *app) 
+{
 	print_application(&app->app);
 	print_energy_data(&app->energy_init);
+}
+
+void powermon_report_event(uint event_type, ulong value) 
+{
+    int jid, sid;
+	if (ccontext >= 0) {
+		jid = current_ear_app[ccontext]->app.job.id;
+		sid = current_ear_app[ccontext]->app.job.step_id; 
+    } else {
+        jid = 0;
+        sid = 0;
+    }
+    debug("powermon_report_event: sending event %u with value %lu", event_type, value);
+    log_report_eard_powercap_event(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,jid,sid,event_type, value);
 }
 
 uint powermon_is_idle()
@@ -1400,6 +1414,7 @@ uint powermon_get_powercap_def()
 {
 	return (uint) my_node_conf->powercap;
 }
+
 uint powermon_get_max_powercap_def()
 {
   return (uint) my_node_conf->max_powercap;

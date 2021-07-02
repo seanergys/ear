@@ -129,7 +129,18 @@ state_t EARGM_parse_token(eargm_conf_t *conf,char *token)
 		{
 			token = strtok(NULL, "=");
 			strclean(token, '\n');
-			strcpy(conf->powercap_action,token);
+			strcpy(conf->powercap_limit_action,token);
+			found=EAR_SUCCESS;
+		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPACTIONLOWER") || !strcmp(token, "EARGMPOWERCAPACTIONLOWER"))
+		{
+			token = strtok(NULL, "=");
+			conf->defcon_power_lower = atoi(token);
+			found=EAR_SUCCESS;
+		}else if (!strcmp(token, "GLOBALMANAGERPOWERLOWERCAPACTION") || !strcmp(token,"EARGMPOWERCAPLOWERACTION"))
+		{
+			token = strtok(NULL, "=");
+			strclean(token, '\n');
+			strcpy(conf->powercap_lower_action,token);
 			found=EAR_SUCCESS;
 		}else if (!strcmp(token, "GLOBALMANAGERENERGYACTION") || !strcmp(token, "EARGMENERGYACTION"))
 		{
@@ -224,9 +235,11 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
   eargmc->power=EARGM_DEF_POWERCAP_LIMIT;
   eargmc->t1_power=EARGM_DEF_T1_POWER;
   eargmc->powercap_mode=EARGM_POWERCAP_DEF_MODE;  /* 1=auto by default, 0=monitoring_only */
-  sprintf(eargmc->powercap_action,EARGM_POWERCAP_DEF_ACTION);
+  sprintf(eargmc->powercap_limit_action,EARGM_POWERCAP_DEF_ACTION);
+  sprintf(eargmc->powercap_lower_action,EARGM_POWERCAP_DEF_ACTION);
   sprintf(eargmc->energycap_action,EARGM_ENERGYCAP_DEF_ACTION);
   eargmc->defcon_power_limit=EARGM_POWERCAP_DEF_ACTION_LIMIT;
+  eargmc->defcon_power_lower=EARGM_POWERCAP_DEF_ACTION_LOWER;
   #endif
 
 }
@@ -242,8 +255,8 @@ void print_eargm_conf(eargm_conf_t *conf)
   #if POWERCAP
   verbosen(VCCONF,"\t cluster_power_limit %lu powercap_check_period %lu\n",conf->power,conf->t1_power);
   verbosen(VCCONF,"\t powercap_mode %lu (0=monitoring, 1=auto [def])\n",conf->powercap_mode);
-  verbosen(VCCONF,"\t power limit for action %lu\n",conf->defcon_power_limit);
-  verbosen(VCCONF,"\t powercap_action %s\n",conf->powercap_action);
+  verbosen(VCCONF,"\t power limit for action %lu and for lower %lu\n",conf->defcon_power_limit, conf->defcon_power_lower);
+  verbosen(VCCONF,"\t powercap_limit_action %s and powercap_lower_action %s\n",conf->powercap_limit_action, conf->powercap_lower_action);
   verbosen(VCCONF,"\t energycap_action %s\n",conf->energycap_action);
   #endif
 }

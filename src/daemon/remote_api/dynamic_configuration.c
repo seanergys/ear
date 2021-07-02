@@ -416,13 +416,16 @@ int dyncon_filter_opt(powercap_opt_t *opt)
 }
 void dyncon_power_management(int fd, request_t *command)
 {
-	unsigned long limit;
+    int event;
+	unsigned long limit, value;
 	status_t status;
 	unsigned long cpower;
     int id;
 	switch (command->req){
     case EAR_RC_RED_POWER:
 			/* command->my_req.pc.type==RELATIVE not implemented */
+            event = RED_POWERCAP;
+            value = command->my_req.pc.limit;
 			if (command->my_req.pc.type==ABSOLUTE){
 				verbose(1,"Reduce powercap default in %lu watts",command->my_req.pc.limit);
 				powercap_reduce_def_power(command->my_req.pc.limit);
@@ -432,11 +435,14 @@ void dyncon_power_management(int fd, request_t *command)
 			}
 			break;	
     case EAR_RC_SET_POWER:
+            event = SET_POWERCAP;
+            value = command->my_req.pc.limit;
 			verbose(1,"We must set the power to %lu watts",command->my_req.pc.limit);
 			powercap_set_powercap(command->my_req.pc.limit);
-			return;
 			break;
     case EAR_RC_INC_POWER:
+            event = INC_POWERCAP;
+            value = command->my_req.pc.limit;
 			if (command->my_req.pc.type==ABSOLUTE){
 				verbose(1,"Increase powercap default in %lu watts",command->my_req.pc.limit);
 				powercap_increase_def_power(command->my_req.pc.limit);
@@ -446,7 +452,9 @@ void dyncon_power_management(int fd, request_t *command)
 			}
 			break;	
 		case EAR_RC_DEF_POWERCAP:
+            event = RESET_POWERCAP;
 			powercap_reset_default_power();
+            value = 0;
 			break;
     case EAR_RC_SET_POWERCAP_OPT:
 			verbose(1,"Set powercap options received");
@@ -455,11 +463,15 @@ void dyncon_power_management(int fd, request_t *command)
 			powercap_set_opt(&command->my_req.pc_opt, id);
       free(command->my_req.pc_opt.greedy_nodes);
       free(command->my_req.pc_opt.extra_power);
-			return;
+            event = -1;
 			break;
     default:
 			verbose(1,"power command received not supported");
+            event = -1;
+            break;
 	}
+    if (event > 0) //POWERCAP_OPT has its own event
+        powermon_report_event((uint)event, value);
 }
 #endif
 
@@ -694,19 +706,17 @@ state_t process_remote_requests(int clientfd) {
 		case EAR_RC_DEF_POWERCAP:
 			dyncon_power_management(clientfd, &command);
 			break;
-		#endif
-		case EAR_RC_SET_RISK:
-			verbose(1,"set risk command received");
-			dyncon_set_risk(clientfd, &command);
-			break;
-	 #if POWERCAP
-   case EAR_RC_GET_POWERCAP_STATUS:
+        case EAR_RC_GET_POWERCAP_STATUS:
             dyncon_get_powerstatus(clientfd, &command);
             return EAR_SUCCESS;
 		case EAR_RC_RELEASE_IDLE:
             dyncon_release_idle_power(clientfd, &command);
             return EAR_SUCCESS;
-	  #endif
+		#endif
+		case EAR_RC_SET_RISK:
+			verbose(1,"set risk command received");
+			dyncon_set_risk(clientfd, &command);
+			break;
 		default:
 			error("Invalid remote command\n");
 			req = NO_COMMAND;

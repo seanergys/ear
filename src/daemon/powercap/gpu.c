@@ -74,10 +74,22 @@ static uint debug_count = 0;
 #define DEBUG_FREQ 5
 #endif
 
+static int gpu_freq_to_pstate(int gpuid,ulong f)
+{
+  int i = 0;
+  while(i < gpu_num_freqs[gpuid]-1){
+    if (gpu_freq_list[gpuid][i] == f) return i;
+    if (gpu_freq_list[gpuid][i] < f) return i-1;
+    i++;
+  }
+	return gpu_num_freqs[gpuid]-1;
+}
+
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t gpu_pc_thread_init(void *p)
 {
+
     mgt_gpu_freq_list(&gpu_pc_ctx, &gpu_freq_list, &gpu_num_freqs);    
     if (gpu_read(&gpu_pc_ctx_data,values_gpu_init)!= EAR_SUCCESS){
         debug("Error in gpu_read in gpu_dvfs_pc");
@@ -399,6 +411,7 @@ uint get_powercap_status(domain_status_t *status)
     uint tmp_strain = 0;
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
+		status->requested = 0;
     status->strain = 0;
     status->current_pc = current_gpu_pc;
 
@@ -438,6 +451,7 @@ uint get_powercap_status(domain_status_t *status)
                 debug("GPU status ASK_DEF, current_pc %lu and def_pc %lu", current_gpu_pc, default_gpu_pc);
                 status->ok = PC_STATUS_ASK_DEF;
             } else {
+                status->requested += ear_max(gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,gpu_freq[i]),0);
                 status->ok = PC_STATUS_GREEDY;
             }
             status->exceed = 0;
@@ -446,6 +460,7 @@ uint get_powercap_status(domain_status_t *status)
             if (gpu_cons_power[i] > gpu_pc_curr_power[i])  //if we are at req_f but using more power than we should
             {
                 status->ok = PC_STATUS_GREEDY;
+                status->requested += ear_max(gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,gpu_freq[i]),0);
                 status->exceed = 0;
                 debug("GPU status is greedy because more power is needed to mantain current speed");
                 return 0;
