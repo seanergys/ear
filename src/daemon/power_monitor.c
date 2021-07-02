@@ -718,6 +718,7 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	for (gpuid=0; gpuid < pc_app_inf-data->num_gpus;gpuid++) pc_app_info_data->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	#endif
 	powercap_set_app_req_freq(pc_app_info_data);
+	dyn_conf->pc_opt.current_pc = powercat_get_value();
 	#endif
 	dyn_conf->id=new_app_id;
 	dyn_conf->user_type=user_type;
