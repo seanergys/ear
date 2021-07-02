@@ -695,6 +695,7 @@ int eard_freq(int must_read)
 	ulong ack;
 	state_t s;
 	ulong *f;
+	uint *min,*max;
 
 	if (must_read) {
 		if (read(ear_fd_req[freq_req], &req, sizeof(req)) != sizeof(req))
@@ -785,9 +786,11 @@ int eard_freq(int must_read)
 		case UNC_INIT_DATA:
 			memset(&buffer[0], 0, 4096);
 			char *p;
+			/* This code sends in a single request the API, the num of pstates and the list of pstates */
+			/* It's a kind of serialization */
 			mgt_imcfreq_get_api((uint *) &buffer[0]);
-			mgt_imcfreq_get_available_list(&imc_eard_ctx, (const pstate_t **) &p, (uint *) &buffer[4]);
-			memcpy(&buffer[8], p, ((uint) buffer[4])*sizeof(pstate_t));
+			mgt_imcfreq_get_available_list(&imc_eard_ctx, (const pstate_t **) &p, (uint *) &buffer[sizeof(uint)]);
+			memcpy(&buffer[sizeof(uint)*2], p, ((uint) buffer[sizeof(uint)])*sizeof(pstate_t));
 			write(ear_fd_ack[freq_req], buffer, 4096);
 		break;
 		case UNC_GET_LIMITS:
@@ -815,8 +818,8 @@ int eard_freq(int must_read)
 		break;
 		case UNC_SET_LIMITS_MIN:
 			ack = EAR_SUCCESS;
-			uint *max = &req.req_data.unc_freq.index_list[0];
-			uint *min = &req.req_data.unc_freq.index_list[node_desc.socket_count];
+			max = &req.req_data.unc_freq.index_list[0];
+			min = &req.req_data.unc_freq.index_list[node_desc.socket_count];
 			if (state_fail(s = mgt_imcfreq_set_current_ranged_list(&imc_eard_ctx, max, min))){
 				error("When setting imc limits req by app (%d, %s)", s, state_msg);
 				ack = (ulong) s;

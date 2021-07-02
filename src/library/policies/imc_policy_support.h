@@ -37,7 +37,7 @@ typedef struct imc_data{
 
 #define IMC_MAX 0
 #define IMC_MIN 1
-#define IMC_VAL 2
+#define IMC_VAL imc_devices
 
 /*  These values selects which metric the policy will use to take control of IMC.
  *  Only one of the four must be assigned a 1, the others must be assigned a 0. */

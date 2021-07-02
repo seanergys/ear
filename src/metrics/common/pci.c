@@ -143,7 +143,7 @@ state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *ad
 	for (p = 0; p < pcis_count; ++p) {
 		for (a = 0; a < addrs_count; ++a) {
 			written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
-			debug("In PCI%d@%X written 0x%X (%llu bytes)", p, addrs[a], buffer[a], written);
+			debug("In PCI%d@%lX written 0x%X (%llu bytes)", p, addrs[a], buffer[a], written);
 		}
 	}
 	return EAR_SUCCESS;

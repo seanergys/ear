@@ -253,9 +253,14 @@ ulong select_imc_freq(ulong max,ulong min,float p)
 }
 
 uint imc_support_freq_to_pstate(ulong freq){
-    return (def_imc_max_khz - freq)/IMC_STEP;
+		int i;
+		for (i=0; i< imc_num_pstates;i++){
+			if (imc_pstates[i].khz == freq) return i;
+		}
+    // return (def_imc_max_khz - freq)/IMC_STEP;
 }
 
 ulong imc_support_pstate_to_freq(uint pstate){
-    return def_imc_max_khz - pstate * IMC_STEP;
+		return imc_pstates[i].khz;
+    //return def_imc_max_khz - pstate * IMC_STEP;
 }

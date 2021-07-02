@@ -44,8 +44,8 @@ typedef struct new_freq_type{
 }new_freq_type_t;
 
 typedef struct unc_freq_req{
-	// Up to 4 sockets
-	uint index_list[8];	
+	// Max and min for each socket 
+	uint index_list[MAX_SOCKETS_SUPPORTED*2];	
 }unc_freq_req_t;
 
 // Data type to send the requests

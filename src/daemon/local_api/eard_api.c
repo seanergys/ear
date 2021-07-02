@@ -796,6 +796,7 @@ state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size)
 	struct daemon_req req;
 	req.req_service = service;
 	req.sec         = create_sec_tag();
+  memset(data,0,size);
 	if (ear_fd_req[freq_req] >= 0) {
 		if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req), "while asking for uncore freq limits")) {
 			return_msg(EAR_ERROR, "Asking for uncore freq limits");
