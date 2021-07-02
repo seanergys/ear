@@ -121,5 +121,6 @@ uint powermon_current_power();
 uint powermon_get_powercap_def();
 uint powermon_get_max_powercap_def();
 
+void powermon_report_event(uint event_type, ulong value);
 
 #endif

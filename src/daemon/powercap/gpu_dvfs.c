@@ -83,6 +83,15 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
 
 static char gpu_dvfs_greedy = 0;
 
+static int gpu_freq_to_pstate(int gpuid,ulong f)
+{
+	int i = 0;
+	while(i < gpu_num_freqs[gpuid]-1){
+		if (gpu_freq_list[gpuid][i] == f) return i;
+		i++;
+	}	
+	return gpu_num_freqs[gpuid]-1;
+}
 ulong select_lower_gpu_freq(uint i, ulong f, uint pstate_steps)
 {
     int j=0,found=0;
@@ -553,6 +562,7 @@ uint get_powercap_status(domain_status_t *status)
 
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
+		status->requested = 0;
     status->strain = 0;
     status->current_pc = current_gpu_pc;
 
@@ -600,12 +610,16 @@ uint get_powercap_status(domain_status_t *status)
             debug("We cannot release power from GPU %d",i);
             status->ok = PC_STATUS_GREEDY;
             status->exceed = 0;
+						/* For NVIDIA GPUS we have estimated one extra Watt per gpu p_state */
+						status->requested += gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,c_freq[i]);
             debug("GPU_DVFS status GREEDY");
             return 0;
         }else if ((c_freq[i] >= t_freq[i]) && (gpu_pc_util[i]>0)){
             if (values_gpu_diff[i].power_w > gpu_pc_curr_power[i]) // if we are at req_f but we are using more power than we should
             {
                 status->ok = PC_STATUS_GREEDY;
+								/* FOr NVIDIA GPUS we have estimated one extra Watt per gpu p_state */
+								status->requested += gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,c_freq[i]);
                 status->exceed = 0;
                 debug("GPU_DVFS status greedy because we need more power to maintain current speed");
                 return 0;

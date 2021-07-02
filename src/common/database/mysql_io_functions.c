@@ -1043,8 +1043,11 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     {
         sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lu", sig_id);
         mysql_retrieve_signatures(connection, sig_query, &sig_aux);
-        signature_copy(&loop_aux->signature, sig_aux);
-        free(sig_aux);
+
+        if (sig_aux != NULL) { //to prevent it from crashing
+            signature_copy(&loop_aux->signature, sig_aux);
+            free(sig_aux);
+        }
 
         copy_loop(&loops_aux[i], loop_aux);
 

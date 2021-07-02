@@ -265,6 +265,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     signature_copy(my_app,sig);
 #ifdef POWERCAP
     if (c->pc_limit > 0){
+				verbose_master(2,"PC set to %u",c->pc_limit);
         curr_freq = frequency_closest_high_freq(my_app->avg_f,1);
     }else{
         curr_freq = *(c->ear_frequency);

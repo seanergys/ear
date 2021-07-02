@@ -12,7 +12,7 @@ ifdef DB_BASE
 com1_BINS = eacct econtrol ereport ear-info
 com1_PATH = $(DESTDIR)/bin
 com1_PERM = 2771
-com2_BINS = edb_create edb_clean_pm
+com2_BINS = edb_create edb_clean_apps edb_clean_pm
 com2_PATH = $(DESTDIR)/sbin
 com2_PERM = 0770
 endif
@@ -39,7 +39,10 @@ ear-info: ear-info.c $(comm_OBJS)
 ereport: ear_report.c $(comm_OBJS)
 	$(CCC) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
-edb_clean_pm: ear_cleandb.c $(comm_OBJS)
+edb_clean_pm: ear_clean_pm.c $(comm_OBJS)
+	$(CCC) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+
+edb_clean_apps: ear_clean_apps.c $(comm_OBJS)
 	$(CCC) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
 edb_create: ear_create_database.c $(comm_OBJS)
