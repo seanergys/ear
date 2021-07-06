@@ -648,9 +648,9 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 {
 #ifndef SYN_TEST
     int i;
-    if (domain == DOMAIN_CPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_f;
+    if (domain == DOMAIN_CPU) memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 #if USE_GPUS
-    if (domain == DOMAIN_GPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_gpu_f[i];
+    if (domain == DOMAIN_GPU) memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
 #endif
 #endif
 }
@@ -658,10 +658,10 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler, pc_app_info_t *pc_app)
 {
     if (pcsyms_fun[DOMAIN_NODE].set_app_req_freq != NULL){
-      freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,&pc_app->req_f);
+      freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,pc_app->req_f);
     }
     if (pcsyms_fun[DOMAIN_CPU].set_app_req_freq != NULL){
-      freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,&pc_app->req_f);
+      freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,pc_app->req_f);
     }
     #if USE_GPUS
     if (pcsyms_fun[DOMAIN_GPU].set_app_req_freq != NULL) {
