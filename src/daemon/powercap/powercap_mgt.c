@@ -375,6 +375,7 @@ state_t pmgt_init()
         ret=symplug_open(obj_path, (void **)&pcsyms_fun[DOMAIN_CPU], pcsyms_names, pcsyms_n);
         if (ret==EAR_SUCCESS){ 
             domains_loaded[DOMAIN_CPU]=1;
+            debug("CPU plugin correctly loaded");
         }else{
             error("Domain CPU not loaded");
         }
@@ -745,7 +746,8 @@ void pmgt_get_status(pmgt_status_t *status)
     }
 
     debug("pmgt_get_status: DOMAIN_CPU: %d DOMAIN_GPU: %d", cdomain_status[DOMAIN_CPU].ok, cdomain_status[DOMAIN_GPU].ok);
-    debug("pmgt_get_status: DOMAIN_CPU strain: %d", cdomain_status[DOMAIN_CPU].strain);
+    debug("pmgt_get_status: DOMAIN_CPU stress: %d", cdomain_status[DOMAIN_CPU].stress);
+    debug("pmgt_get_status: DOMAIN_GPU stress: %d", cdomain_status[DOMAIN_GPU].stress);
     if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK && cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) { //OK + OK
         status->status = PC_STATUS_OK;
         debug("pmgt_get_status: OK + OK");
@@ -757,7 +759,8 @@ void pmgt_get_status(pmgt_status_t *status)
             status->status = PC_STATUS_GREEDY;
             status->requested += cdomain_status[DOMAIN_CPU].requested; 
             status->requested += cdomain_status[DOMAIN_GPU].requested;
-            status->requested = ear_min(status->requested, 50); // a total maximum step of 50
+            status->requested = ear_min(status->requested, 256); // a total maximum step of 256 since it is the max value we can pass up
+            status->stress = ear_max(cdomain_status[DOMAIN_CPU].stress, cdomain_status[DOMAIN_GPU].stress);
             debug("pmgt_get_status: GREEDY + OK/GREEDY Node requested power %u",status->requested);
         }
     } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { // no need to check for greedy since we did that before, this includes OK+RELEASE
@@ -803,8 +806,8 @@ uint pmgt_powercap_status_per_domain(uint action)
             totalask += (cdomain_status[i].ok == PC_STATUS_ASK_DEF);
         }
     }
-    debug("GPU has strain %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", 
-           cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain, cdomain_status[DOMAIN_GPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
+    debug("GPU has stress %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", 
+           cdomain_status[DOMAIN_GPU].stress, cdomain_status[DOMAIN_CPU].stress, cdomain_status[DOMAIN_GPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
     if ((action == CHECK_ASK_DEFAULT) && (totalask > 0)){
         debug("action is CHECK_ASK_DEFAULT, not power redistribution");
         /* Some module needs an urgent power reallocation */
@@ -827,8 +830,8 @@ uint pmgt_powercap_status_per_domain(uint action)
         to = DOMAIN_GPU;
         is_release = 1;
     }else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
-        if (abs((int)cdomain_status[DOMAIN_GPU].strain - (int)cdomain_status[DOMAIN_CPU].strain) > 20){
-            if (cdomain_status[DOMAIN_GPU].strain < cdomain_status[DOMAIN_CPU].strain){
+        if (abs((int)cdomain_status[DOMAIN_GPU].stress - (int)cdomain_status[DOMAIN_CPU].stress) > 20){
+            if (cdomain_status[DOMAIN_GPU].stress < cdomain_status[DOMAIN_CPU].stress){
                 from = DOMAIN_GPU;
                 to = DOMAIN_CPU;
             } else {
@@ -841,7 +844,7 @@ uint pmgt_powercap_status_per_domain(uint action)
             cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
         } else {
             is_release = 0;
-            debug("could not redistribute power, GPU has strain %u and CPU has %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain);
+            debug("could not redistribute power, GPU has stress %u and CPU has %u", cdomain_status[DOMAIN_GPU].stress, cdomain_status[DOMAIN_CPU].stress);
         }
     }else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK)){
         from = DOMAIN_CPU;

@@ -354,7 +354,8 @@ void print_power_status(powercap_status_t *my_status)
 	my_status->idle_nodes,my_status->released,my_status->requested,my_status->num_greedy,my_status->current_power,
 	my_status->total_powercap,my_status->total_idle_power);
 	for (i=0;i<my_status->num_greedy;i++){
-		if (my_status->num_greedy) debug("greedy=(ip=%u,req=%u,extra=%u) ",my_status->greedy_nodes[i],my_status->greedy_req[i],my_status->extra_power[i]);
+		if (my_status->num_greedy) debug("greedy=(ip=%u,req=%u,extra=%u) ", my_status->greedy_nodes[i], 
+                                                my_status->greedy_data[i].requested, my_status->greedy_data[i].extra_power);
 	}
 }
 /***************************************************************************************/

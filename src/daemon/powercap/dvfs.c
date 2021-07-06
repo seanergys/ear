@@ -401,7 +401,7 @@ uint get_powercap_status(domain_status_t *status)
     uint ctbr;
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
-    status->strain = 0;
+    status->stress = 0;
     status->requested = 0;
     status->current_pc = current_dvfs_pc;
 
@@ -417,8 +417,8 @@ uint get_powercap_status(domain_status_t *status)
     }
 
     frequency_get_cpufreq_list(node_size,c_freq);
-    status->strain = powercap_get_strain(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
-    debug("DVFS: current strain %d", status->strain);
+    status->stress = powercap_get_stress(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
+    debug("DVFS: current stress %d", status->stress);
     if (c_freq[0] < c_req_f[0]){
         if (dvfs_ask_def && current_dvfs_pc < default_dvfs_pc) status->ok = PC_STATUS_ASK_DEF;
         else{ 

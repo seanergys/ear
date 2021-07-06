@@ -58,8 +58,8 @@ void powercap_status_to_str(uint s,char *b);
 uint compute_next_status(node_powercap_opt_t *pc,uint current_power,ulong eff_f, ulong req_f);
 
 
-/** Given a max, min, current and target frequencies it returns the strain level of the subsystem. */
-uint powercap_get_strain(uint max_freq, uint min_freq, uint t_freq, uint c_freq);
+/** Given a max, min, current and target frequencies it returns the stress level of the subsystem. */
+uint powercap_get_stress(uint max_freq, uint min_freq, uint t_freq, uint c_freq);
 
 #endif
 
