@@ -312,7 +312,7 @@ int powercap_run_to_idle()
         case PC_STATUS_GREEDY:
         case PC_STATUS_ASK_DEF:
         case PC_STATUS_RELEASE:
-            debug("%sGoin from run to idle%s",COL_GRE,COL_CLR);
+            debug("%sGoing from run to idle%s",COL_GRE,COL_CLR);
             my_pc_opt.released=my_pc_opt.last_t1_allocated-my_pc_opt.powercap_idle;
             my_pc_opt.requested=0;
             my_pc_opt.powercap_status=PC_STATUS_IDLE;

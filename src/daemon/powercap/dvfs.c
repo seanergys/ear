@@ -143,13 +143,32 @@ static void limit_pstate(uint *p1,uint *p2)
     }
 }
 
+void vector_print_pstates(uint *pstates, uint num_cpus) {
+    char *tmp_buff = calloc(num_cpus*32, sizeof(char));
+    char sml_buff[32];
+    int i;
+    for (i = 0; i < num_cpus; i++) {
+        sprintf(sml_buff, "p%d: %u, ", i, pstates[i]);
+        strcat(tmp_buff, sml_buff);
+    }
+    debug(tmp_buff);
+    free(tmp_buff);
+}
+
 /* Computes how many cpus can reduce one pstate with the given limit */
-void  num_cpus_to_reduce_pstates(uint *tmp,uint *target, uint *changes, uint *changes_max)
+void num_cpus_to_reduce_pstates(uint *tmp,uint *target, uint *changes, uint *changes_max)
 {
     int i;
     *changes = 0;
     *changes_max = 0;
-    for (i=0;i<MAX_CPUS_SUPPORTED;i++){
+
+#if 0
+    debug("current pstates");
+    vector_print_pstates(tmp, MAX_CPUS_SUPPORTED);
+    debug("target pstates");
+    vector_print_pstates(target, MAX_CPUS_SUPPORTED);
+#endif
+    for (i = 0; i < node_size; i++){
         if (tmp[i] > target[i]){
             /* changes is from pstate 3 --> 2 or lower , changes_max is from 2 --> 1 or 1 --> 0 */
             if (tmp[i] > 2) *changes = *changes + 1;
@@ -159,24 +178,26 @@ void  num_cpus_to_reduce_pstates(uint *tmp,uint *target, uint *changes, uint *ch
 }
 
 //moved here from powercap_status.c as it is only used in dvfs cases
-uint compute_extra_power(uint current_power, uint *current, uint *target)
+uint compute_extra_power(uint current_power, uint max_steps, uint *current, uint *target)
 {
     uint total = 0, changes,changes_max;
     uint tmp[MAX_CPUS_SUPPORTED];
         //no pstate_change
     if (pstate_are_equal(current,target)) return 0;
-    memcpy(tmp,current,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    memcpy(tmp, current, sizeof(uint)*MAX_CPUS_SUPPORTED);
     /* A logical pstate is a diff of 100000 MHz and is an average increase of 6 Watts
      * (except the first pstate). In some cases there is a jump in available frequencies
      * for a CPU of 2 logical p_states (and only 1 "real") so we use the logical steps
      * to compute the necessary power. */
     do{
-        num_cpus_to_reduce_pstates(tmp,target, &changes, &changes_max);
+        num_cpus_to_reduce_pstates(tmp, target, &changes, &changes_max);
+        //debug("possible changes %u and max_changes %u", changes, changes_max);
         if (changes || changes_max){
-            total += (PSTATE_STEP * (float)changes/(float)MAX_CPUS_SUPPORTED) + (PSTATE0_STEP * (float)changes_max/(float)MAX_CPUS_SUPPORTED);
-            reduce_one_pstate(tmp,target);
+            total += (PSTATE_STEP * (float)changes/(float)node_size) + (PSTATE0_STEP * (float)changes_max/(float)node_size);
+            reduce_one_pstate(tmp, target);
         }
-    }while(changes || changes_max);
+        max_steps --;
+    }while((changes || changes_max) && (max_steps > 0));
 #if 0
     uint i = 0;
     ulong target_f = frequency_pstate_to_freq(target);
@@ -248,7 +269,6 @@ state_t dvfs_pc_thread_main(void *p)
     unsigned long long acum_energy;
     uint extra, tmp_pstate[MAX_CPUS_SUPPORTED];
 
-
     /* Update target frequency */
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
@@ -267,7 +287,7 @@ state_t dvfs_pc_thread_main(void *p)
     //        COL_BLU,power_rapl,current_dvfs_pc,(float)current_dvfs_pc*RAPL_VS_NODE_POWER,current_dvfs_pc*RAPL_VS_NODE_POWER_limit,COL_CLR);
 
     /* Copiar init=end */
-    memcpy(values_rapl_init,  values_rapl_end,num_packs * RAPL_POWER_EVS* sizeof(unsigned long long));
+    memcpy(values_rapl_init, values_rapl_end, num_packs * RAPL_POWER_EVS * sizeof(unsigned long long));
 
     if ((current_dvfs_pc <= 0) || (c_status != PC_STATUS_RUN)){
         return EAR_SUCCESS;
@@ -319,21 +339,26 @@ state_t dvfs_pc_thread_main(void *p)
         memcpy(c_pstate,tmp_pstate,sizeof(uint)*MAX_CPUS_SUPPORTED);
         frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
         frequency_set_with_list(node_size,c_freq);
-        debug("%spower above limit, setting freq %lu%s", COL_RED, c_freq[0], COL_CLR);
+        debug("%spower above limit, setting freq0 %lu freqm %lu%s", COL_RED, c_freq[0], c_freq[node_size-1], COL_CLR);
 
     }else{ /* We are below the PC */
         //if (c_req_f[0] == 0) return EAR_SUCCESS;
-        if (is_null_f(c_req_f)) return EAR_SUCCESS;
+        if (is_null_f(c_req_f)) {
+            debug("current requested frequency is not set");
+            return EAR_SUCCESS;
+        }
 
         frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
         if (higher_pstate(c_pstate,t_pstate)){
+            //debug("current p_state is higher that target, we can raise the frequency");
             //if (c_pstate[0]>t_pstate[0]){ /* PENDING */
             //extra=compute_extra_power(power_rapl,1,c_pstate[0]-1);
-            extra = compute_extra_power(power_rapl,c_pstate,t_pstate);
+            
+            extra = compute_extra_power(power_rapl, 1, c_pstate, t_pstate);
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ /* PENDING */
                 //if (((c_pstate[0]-1) == prev_pstate[0]) && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
-                if (higher_pstate(prev_pstate,c_pstate) && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
-                    debug("Can't raise frequency without a powercap increase (would exceed power usage)");
+                if (higher_pstate(c_pstate, prev_pstate) && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
+                    //debug("Can't raise frequency without a powercap increase (would exceed power usage)");
                     return EAR_SUCCESS;
                 }
                 reduce_one_pstate(c_pstate,t_pstate);
@@ -341,7 +366,7 @@ state_t dvfs_pc_thread_main(void *p)
                 //extend_from_cpu_to_list(0,c_pstate,node_size);
                 frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
                 frequency_set_with_list(node_size,c_freq);
-                debug("%spower below limit, setting freq %lu%s", COL_GRE, c_freq[0], COL_CLR);
+                debug("%spower below limit, setting freq0 %lu freqm %lu %s", COL_GRE, c_freq[0], c_freq[node_size-1], COL_CLR);
             }
             //}else if (c_pstate[0] < t_pstate[0]){
         }else if (higher_pstate(t_pstate,c_pstate)){
@@ -513,7 +538,9 @@ void set_verb_channel(int fd)
 uint get_powercap_status(domain_status_t *status)
 {
     uint ctbr;
-    uint t_pstate[MAX_CPUS_SUPPORTED], c_pstate[MAX_CPUS_SUPPORTED];
+    uint t_pstate_pc[MAX_CPUS_SUPPORTED], c_pstate_pc[MAX_CPUS_SUPPORTED];
+    memset(c_pstate_pc, 0, MAX_CPUS_SUPPORTED*sizeof(uint));
+    memset(t_pstate_pc, 0, MAX_CPUS_SUPPORTED*sizeof(uint));
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
     status->stress = 0;
@@ -533,11 +560,11 @@ uint get_powercap_status(domain_status_t *status)
 
     frequency_get_cpufreq_list(node_size,c_freq);
     status->stress = powercap_get_stress(frequency_pstate_to_freq(0), frequency_pstate_to_freq(num_pstates-1), c_req_f[0], c_freq[0]); 
-    frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
-    frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
+    frequency_nfreq_to_npstate(c_freq, c_pstate_pc, node_size);
+    frequency_nfreq_to_npstate(c_req_f, t_pstate_pc, node_size);
     debug("DVFS: current stress%d", status->stress);
     //if (c_freq[0] < c_req_f[0]){
-    if (higher_pstate(c_pstate,t_pstate)){
+    if (higher_pstate(c_pstate_pc, t_pstate_pc)){
         if (dvfs_ask_def && current_dvfs_pc < default_dvfs_pc) status->ok = PC_STATUS_ASK_DEF;
         else{ 
             /*
@@ -545,7 +572,7 @@ uint get_powercap_status(domain_status_t *status)
                t_pstate = frequency_freq_to_pstate(c_req_f[0]);
                c_pstate = frequency_freq_to_pstate(c_freq[0]);
                */
-            status->requested = compute_extra_power(power_rapl,c_pstate,t_pstate);
+            status->requested = compute_extra_power(power_rapl, num_pstates, c_pstate_pc, t_pstate_pc);
             debug("DVFS: Requested power %u",status->requested);
             status->ok = PC_STATUS_GREEDY;
         }

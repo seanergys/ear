@@ -1819,7 +1819,7 @@ int main(int argc, char *argv[]) {
 			debug("signal received");
 		}
 		rfds = rfds_basic;
-		verbose(0,"eard waiting.....\n");
+		debug("eard waiting.....\n");
 	}//while
 	//eard is closed by SIGTERM signal, we should not reach this point
 	verbose(VCONF, "END EARD\n");
