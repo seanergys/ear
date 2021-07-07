@@ -33,9 +33,9 @@ int create_log(char *path,char *service_name)
         my_mask=umask(0);
 
         sprintf(logfile,"%s/%s.log",path,service_name);
-        //unlink(logfile);
-        //fd=open(logfile,O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-        fd=open(logfile,O_CREAT|O_WRONLY|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+        unlink(logfile);
+        fd=open(logfile,O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+        //fd=open(logfile,O_CREAT|O_WRONLY|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
         chmod(logfile,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
         
         umask(my_mask);
