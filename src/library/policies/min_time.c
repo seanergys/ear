@@ -267,7 +267,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         return EAR_SUCCESS;
     }
 
-    // TODO: this condition doesn't exists in min_energy
+    /* TODO: this condition doesn't exists in min_energy
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
         copy_cpufreq_sel(freqs->cpu_freq, last_nodefreq_sel.cpu_freq, sizeof(ulong) * MAX_CPUS_SUPPORTED);
         memcpy(freqs->imc_freq, last_nodefreq_sel.imc_freq, arch_desc.top.socket_count * IMC_VAL * sizeof(ulong));
@@ -282,16 +282,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     }
     master_sig_without_sig = 0;
     verbose_master(2, "%s-----MR[%d] Node signatures ready-----%s", COL_GRE, my_globalrank, COL_CLR);
-
-    for (int p = 0; p < num_processes; p++){
-        compute_ssig_vpi(&lvpi, &sig_shared_region[p].sig);
-        compute_ssig_vpi2(&lvpi2, &sig_shared_region[p].sig);
-        process_avg_cpu_freq(&sig_shared_region[p].cpu_mask, cpufreq_data_per_core, &process_avgcpuf);
-        verbosen_master(2, "Proc[%d]=(LVPI=%.2lf/%.2lf avg.CPUf=%.2lf CPI %lf FLOPS %lf) ",
-                p, lvpi, lvpi2, (float)process_avgcpuf/1000000.0, sig_shared_region[p].sig.CPI,
-                sig_shared_region[p].sig.Gflops);
-    }
-    verbose_master(2, "");
+    */
 
     min_eff_gain=c->app->settings[0];
     base_eff_gain = min_eff_gain;
@@ -403,7 +394,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                  * lvpi, critical_path[i]);
                  */
 
-                // TODO: Manage an option to boost directly cp processes
+                // TODO: Manage an option to boost directly cp processes ?
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], 
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];
                 if (factor < 0.01){
@@ -510,19 +501,26 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 }
                 freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ps_nothing;
                 verbose_master(2,"Selecting %lu - %lu%s",
-                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX].khz, freqs->imc_freq[sid*IMC_VAL+IMC_MIN].khz, COL_CLR);
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX].khz, freqs->imc_freq[sid*IMC_VAL+IMC_MIN].khz,
+                        COL_CLR);
+
                 if (!must_start_again)  *ready = EAR_POLICY_READY;
                 else *ready = EAR_POLICY_TRY_AGAIN;
+
                 min_time_state = SELECT_CPUFREQ;
+
             }else {
                 if (first_imc_try){
                     first_imc_try = 0;
                 }
-                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP, imc_max_khz);	
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-                verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
-                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN], COL_CLR);
-                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < (imc_max_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
+
+                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - 1, imc_min_pstate);	
+                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ps_nothing;
+                verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE,
+                        imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                        imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
+
+                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate) *ready = EAR_POLICY_TRY_AGAIN;
                 else{ 
                     *ready = EAR_POLICY_READY;
                     min_time_state = SELECT_CPUFREQ;

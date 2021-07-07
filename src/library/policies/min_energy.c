@@ -295,7 +295,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     curr_pstate = frequency_closest_pstate(curr_freq);
     eff_f = frequency_closest_high_freq(my_app->avg_f,1);
 
-    /* We save data in imc_data structure for policy comparison. We are computing the imc_pstate based on the avg_imc_freq, no looking at selection */
+    /* We save data in imc_data structure for policy comparison. We are computing the imc_pstate based on the avg_imc_freq,
+     * no looking at selection */
     if (eUFS){
         // imc_pstate = (def_imc_max_khz - policy_max_imcfreq)/IMC_STEP;
         curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
@@ -407,7 +408,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             curr_pstate = def_pstate;
             compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
             verbose_master(3,"Time ref %lf Power ref %lf Freq reqf %lu",time_ref,power_ref,best_freq);
-            compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
+            compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
+                    local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
             if (min_cpufreq) new_freq[i] = ear_max(min_cpufreq, new_freq[i]);
             verbose_master(2,"CPU freq for process %d is %lu",i,new_freq[i]);
             max_cpufreq = ear_max(max_cpufreq, new_freq[i]);
@@ -428,42 +430,55 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         signature_copy(&cpufreq_signature, sig);
         /* IMC freq selection */
         if (eUFS && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
-#if 0
+            /*
+             * if ((min_cpufreq == nominal_node) && (cbound)){ 
+             * If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq
+             *  if (sig->GBS <= GBS_BUSY_WAITING)
+             *      freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_khz + IMC_RANGE;;
+             *  else
+             *      freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_freq(imc_max_khz,imc_min_khz,0.25);
+             * }else
+             *  freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
+             *  if (imc_set_by_hw)
+             *      freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+             *  else
+             *      freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
+             *  verbose_master(2,"%sIMC freq selection%s %lu-%lu",COL_GRE,COL_CLR,
+             *  freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+             *  }else{
+             *      verbose_master(2,"%sNot IMC freq selection%s : eUFS %u MPI_BOUND = %u Network_IMC %u",COL_RED,COL_CLR,eUFS,
+             *      earl_phase_classification == APP_MPI_BOUND,network_use_imc);
+             *      if (eUFS && (earl_phase_classification == APP_MPI_BOUND) && network_use_imc){
+             *          eUFS = 0;
+             *          freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
+             *          freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_khz - IMC_RANGE;
+             *      }
+             *  }
+             */
+
+            /* If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq */
+            /* IMC_MAX means the maximum frequency, lower pstate , IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq == nominal_node) && (cbound)){ 
-                /* If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq */
-                if (sig->GBS <= GBS_BUSY_WAITING) freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_khz + IMC_RANGE;;
-                else 															freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_freq(imc_max_khz,imc_min_khz,0.25);
-            }else 																					 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
-            if (imc_set_by_hw) 		freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
-            else 									freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_RANGE;
-            verbose_master(2,"%sIMC freq selection%s %lu-%lu",COL_GRE,COL_CLR,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
-        }else{
-            verbose_master(2,"%sNot IMC freq selection%s : eUFS %u MPI_BOUND = %u Network_IMC %u",COL_RED,COL_CLR,eUFS,earl_phase_classification == APP_MPI_BOUND,network_use_imc);
-
-            if (eUFS && (earl_phase_classification == APP_MPI_BOUND) && network_use_imc){
-                eUFS = 0;
-                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_khz;
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_khz - IMC_RANGE;
-            }
-        }
-#endif
-        /* If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq */
-        /* IMC_MAX means the maximum frequency, lower pstate , IMC_MIN means minimum frequency and maximum pstate */
-        if ((min_cpufreq == nominal_node) && (cbound)){ 
-            if (sig->GBS <= GBS_BUSY_WAITING)
+                if (sig->GBS <= GBS_BUSY_WAITING){
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate;
+                }
+                else{
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_pstate(0.25);
+                }
+            }else{
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate;
-            else
-                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_pstate(0.25);
-        }else
-            freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate;
+            }
         /* ps_nothing means we will not change it. We could use the imc_min_pstate */
-        if (imc_set_by_hw)
+        if (imc_set_by_hw){
             freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ps_nothing ;
-        else
+        }
+        else{
+            // TODO: should we check if we don't assign an imc_pstate greather than the maximum let by hw?
             freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1;
+        }
 
-        verbose_master(2,"%sIMC freq selection%s %lu-%lu",COL_GRE,COL_CLR,
-                imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz, imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz);
+
+        verbose_master(2,"%sIMC freq selection%s %lu-%lu",COL_GRE,COL_CLR, imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz, imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz);
     }else{
         verbose_master(2,"%sNot IMC freq selection%s : eUFS %u MPI_BOUND = %u Network_IMC %u",
                 COL_RED,COL_CLR,eUFS,earl_phase_classification == APP_MPI_BOUND,network_use_imc);
@@ -516,11 +531,14 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     /**** IMC_FREQ ***/
     verbose(2,"%sSELECT_IMCFREQ%s state: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %lu",COL_BLU,COL_CLR,min_pstate,
             last_cpu_pstate,last_imc_pstate,curr_pstate,curr_imc_pstate);
+
     uint increase_imc = must_increase_imc(imc_data,curr_pstate,curr_imc_pstate,curr_pstate,ref_imc_pstate,my_app,imc_extra_th);
+
     /* If we are over the limit, we increase the IMC */
     if (increase_imc){
         uint must_start_again = must_start(imc_data,curr_pstate,curr_imc_pstate,curr_pstate,ref_imc_pstate,my_app);
         verbose(2,"%sWarning, passing the limit: start_again %u",COL_RED,must_start_again);
+
         // freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + IMC_STEP,imc_max_khz);	
         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX]>0)?(freqs->imc_freq[sid*IMC_VAL+IMC_MAX]-1):0);	
         // policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
@@ -528,16 +546,23 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         verbose(2,"Selecting %lu - %lu%s",
                 imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                 imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
+
         if (!must_start_again)  *ready = EAR_POLICY_READY;
         else 					*ready = EAR_POLICY_TRY_AGAIN;
+
         min_energy_state = SELECT_CPUFREQ;
+
     }else{
-        //freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,imc_min_khz-IMC_RANGE);
-        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate)? freqs->imc_freq[sid*IMC_VAL+IMC_MAX]+1:imc_max_pstate);
-        ////policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
+        // freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,imc_min_khz-IMC_RANGE);
+        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate)?
+                freqs->imc_freq[sid*IMC_VAL+IMC_MAX]+1:imc_max_pstate);
+        // policy_min_imcfreq = policy_max_imcfreq - IMC_RANGE;
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate;
-        verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
+        verbose(2,"%sTrying a lower IMC freq %lu-%lu%s",COL_GRE,
+                imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
         //if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] > (imc_min_khz + IMC_RANGE)) *ready = EAR_POLICY_TRY_AGAIN;
+
         if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate) *ready = EAR_POLICY_TRY_AGAIN;
         else{ 
             *ready = EAR_POLICY_READY;
@@ -546,8 +571,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     }
     memcpy(freqs->cpu_freq,last_nodefreq_sel.cpu_freq,sizeof(ulong)*num_processes);
     memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,arch_desc.top.socket_count*IMC_VAL*sizeof(ulong));
-
 }
+
 verbose(2,"Next min_energy state %u next policy state %u",min_energy_state,*ready);
 return EAR_SUCCESS;
 }
