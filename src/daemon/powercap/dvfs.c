@@ -383,11 +383,11 @@ state_t enable(suscription_t *sus)
     frequency_init(node_size);
     num_pstates = frequency_get_num_pstates();
     /* node_size or MAX_CPUS_SUPPORTED */
-    c_freq = calloc(node_size,sizeof(ulong));
-    c_req_f = calloc(node_size,sizeof(ulong));
-    c_pstate = calloc(node_size,sizeof(uint));
-    t_pstate = calloc(node_size,sizeof(uint));
-    prev_pstate = calloc(node_size,sizeof(uint));
+    c_freq = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+    c_req_f = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+    c_pstate = calloc(MAX_CPUS_SUPPORTED,sizeof(uint));
+    t_pstate = calloc(MAX_CPUS_SUPPORTED,sizeof(uint));
+    prev_pstate = calloc(MAX_CPUS_SUPPORTED,sizeof(uint));
     int i;
     for (i = 0; i < MAX_CPUS_SUPPORTED; i++) prev_pstate[i] = UINT_MAX;
 
