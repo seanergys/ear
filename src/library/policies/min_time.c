@@ -24,38 +24,37 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
+#include <library/api/clasify.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
 #include <daemon/local_api/eard_api.h>
-#include <library/policies/policy_api.h>
-#include <common/math_operations.h>
-#include <library/common/externs.h>
-#include <common/system/time.h>
 #include <daemon/powercap/powercap_status.h>
+#include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
-#include <library/policies/gpu_support.h>
 #include <library/policies/imc_policy_support.h>
-#include <library/policies/mpi_stats_support.h>
-#include <library/policies/compute_cpu_freq.h>
-#include <library/common/verbose_lib.h>
+#include <library/policies/gpu_support.h>
 #include <library/policies/cpu_support.h>
+#include <library/policies/mpi_stats_support.h>
 #include <library/metrics/gpu.h>
-#include <library/api/clasify.h>
+// #include <common/math_operations.h>
+// #include <common/system/time.h>
+// #include <library/policies/compute_cpu_freq.h>
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
-
 #define FREQ_DEF(f) (!ext_def_freq?f:ext_def_freq)
 #else
 #define FREQ_DEF(f) f
 #endif
 
 extern uint dyn_unc;
+extern uint imc_set_by_hw;
+extern double imc_extra_th;
 extern ulong imc_max_khz, imc_min_khz;
 extern ulong def_imc_max_khz; // , def_imc_min_khz;
 extern int my_globalrank;
-extern uint imc_set_by_hw;
-extern double imc_extra_th;
 extern uint cpu_ready, gpu_ready, gidle;
 
 #define SELECT_CPUFREQ  100
@@ -169,9 +168,16 @@ state_t policy_init(polctx_t *c)
             if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
                 verbose_master(2,"Error loading GPU policy");
             }
+            verbose_master(2, "Initializing GPU policy part");
             if (gpus.init != NULL) gpus.init(c);
-            gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items);
+            if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
+                verbose_master(2, "Error asking for gpu freq list");
+            }
+            for (i = 0; i<c->num_gpus; i++){
+                min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
+            }
         }
+        verbose_node_freqs(2, &min_time_def_freqs);
 #endif
         node_freqs_copy(&last_nodefreq_sel, &min_time_def_freqs);
         return EAR_SUCCESS;
@@ -198,7 +204,6 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *loop_id)
 {
     if ((c!=NULL) && (c->reset_freq_opt))
     {
-        // Use configuration when available
         *(c->ear_frequency) = eards_change_freq(FREQ_DEF(c->app->def_freq));
     }
     return EAR_SUCCESS;
@@ -262,6 +267,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         return EAR_SUCCESS;
     }
 
+    // TODO: this condition doesn't exists in min_energy
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
         copy_cpufreq_sel(freqs->cpu_freq, last_nodefreq_sel.cpu_freq, sizeof(ulong) * MAX_CPUS_SUPPORTED);
         memcpy(freqs->imc_freq, last_nodefreq_sel.imc_freq, arch_desc.top.socket_count * IMC_VAL * sizeof(ulong));
@@ -296,7 +302,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     nominal = frequency_pstate_to_freq(min_pstate);
 
     // Default values
-
     def_freq=FREQ_DEF(c->app->def_freq);
     def_pstate=frequency_closest_pstate(def_freq);
 
@@ -320,12 +325,13 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 #endif
     curr_pstate = frequency_closest_pstate(curr_freq);
 
+    /*  We save data in imc data structure for policy comparision. We are computing the imc_pstate based on the avg_imc_freq, no looking at selection */
     if (eUFS){
         curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
         curr_imc_pstate = mgt_imcfreq_avgfreq_to_pstate(curr_imc_freq);
         verbose_master(2,"CPU pstate %lu IMC freq %lu IMC pstate %lu",curr_pstate,my_app->sig_ext->imc_freq,curr_imc_pstate);
 
-        /*  Min time has more stable IMC freq. Below code avoids the overriding the first IMC ref data*/
+        /*  Min time has more stable IMC freq. Below code avoids overriding the first IMC ref data*/
         if (ref_imc_pstate == -1 || imc_pstate != ref_imc_pstate){
             copy_imc_data_from_signature(imc_data, curr_pstate, curr_imc_pstate, my_app);
         }
@@ -333,6 +339,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     int policy_stable;
     int_policy_ok(sig, &cpufreq_signature, &policy_stable);
+    verbose_master(2, "Policy ok returns %d", policy_stable);
+
+    /*  If we are not stable, we start again */
     if (min_time_state != SELECT_CPUFREQ && !policy_stable){
         verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
         min_time_state = SELECT_CPUFREQ;
@@ -387,9 +396,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 ulong eff_p_cpuf, process_avgcpuf;
                 process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_data_per_core, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
-                verbose_master(2, "Per-processing MR[%d][%d] SIGNATURE CPI %.3lf avgCPUf %f (%lf, %lf) LVPI=%.3lf CP=%u",
-                        my_globalrank, i, my_app->CPI, (float)process_avgcpuf/1000000.0, percs_mpi[i], percs_mpi[min_mpi],
-                        lvpi, critical_path[i]);
+
+                /* 
+                 * verbose_master(2, "Per-processing MR[%d][%d] SIGNATURE CPI %.3lf avgCPUf %f (%lf, %lf) LVPI=%.3lf CP=%u",
+                 * my_globalrank, i, my_app->CPI, (float)process_avgcpuf/1000000.0, percs_mpi[i], percs_mpi[min_mpi],
+                 * lvpi, critical_path[i]);
+                 */
 
                 // TODO: Manage an option to boost directly cp processes
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
