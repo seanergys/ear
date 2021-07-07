@@ -19,6 +19,7 @@
 #define _IMC_SUPPORT_H
 
 #include <common/types/signature.h>
+#include <management/imcfreq/imcfreq.h>
 
 typedef struct imc_data{
     double time;
@@ -29,6 +30,10 @@ typedef struct imc_data{
     ull cycles;
     ull FLOPS[FLOPS_EVENTS];
 }imc_data_t;
+
+extern uint imc_devices;
+extern uint imc_num_pstates;
+extern const pstate_t *imc_pstates;
 
 #define NUM_UNC_FREQ 20
 
@@ -71,10 +76,8 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,
 uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig);
 
-ulong select_imc_freq(ulong max,ulong min,float p);
 
-uint imc_support_freq_to_pstate(ulong freq);
-ulong imc_support_pstate_to_freq(uint pstate);
+uint select_imc_pstate(int num_pstates,float p);
 
 
 

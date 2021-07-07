@@ -133,6 +133,45 @@ state_t mgt_imcfreq_data_tostr(pstate_t *pstate_list, uint pstate_count, char *b
 	preturn (ops.data_tostr, pstate_list, pstate_count, buffer, length);
 }
 
+state_t mgt_imcfreq_from_freq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p)
+{
+	int i;
+	state_t s = EAR_ERROR;
+	for (i = 0; i < pstate_count; i ++){
+		if (pstate_list[i].khz == khz){
+			memcpy(p,&pstate_list[i],sizeof(pstate_t));
+			s = EAR_SUCCESS;
+		}
+	}
+	return s;
+}
+
+state_t mgt_imcfreq_avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p)
+{
+  int i;
+  state_t s = EAR_ERROR;
+  for (i = 0; i < pstate_count; i ++){
+    if (pstate_list[i].khz < khz){
+      memcpy(p,&pstate_list[i-1],sizeof(pstate_t));
+      s = EAR_SUCCESS;
+    }
+  }
+	if (s == EAR_ERROR){
+		memcpy(p,&pstate_list[pstate_count-1],sizeof(pstate_t));
+		s = EAR_SUCCESS;
+	}
+  return s;
+}
+
+
+state_t mgt_imcfreq_pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong *khz)
+{
+	state_t s;
+	if (pstate_idx >= pstate_count) return EAR_ERROR;
+	*khz = pstate_list[pstate_idx].khz;
+	return EAR_SUCCESS;
+}
+
 #if TEST
 #include <daemon/local_api/eard_api.h>
 
