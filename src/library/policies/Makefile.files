@@ -9,8 +9,8 @@ stan_OBJS = \
 		imc_policy_support.o
 
 stan_BINS = \
-    min_time.so  \
     min_energy.so \
+    min_time.so  \
     min_time_no_models.so \
     min_energy_no_models.so \
     monitoring.so 

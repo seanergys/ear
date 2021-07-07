@@ -27,6 +27,7 @@
 #include <common/config.h>
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
+#include <management/imcfreq/imcfreq.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
 #include <library/metrics/gpu.h>
@@ -52,6 +53,8 @@ extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
 extern ulong imc_max_khz,imc_min_khz;
 extern uint imc_mgt_compatible;
+extern uint imc_devices;
+extern const pstate_t *imc_pstates;
 int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
 uint dyn_unc = 0;
@@ -284,10 +287,10 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 			imc_up = calloc(imc_devices,sizeof(uint));
 			imc_low = calloc(imc_devices,sizeof(uint));
 			/* We are using the same imc pstates for all the devices for now */
-			for (sid = 0;sid <imc_devices ;sid++)	imc_up = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
-			for (sid = 0;sid <imc_devices ;sid++)	imc_low = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
-			if (mgt_imcfreq_get_current_ranged_list(NULL, current_max, current_min) != EAR_SUCCESS){
-				verbose_master(1,"Error setting IMC freq to %lu and %lu",imc_psates[imc_up[0]].khz,imc_pstates[imc_low[0]].khz);
+			for (int sid = 0;sid <imc_devices ;sid++)	imc_low[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
+			for (int sid = 0;sid <imc_devices ;sid++)	imc_up[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
+			if (mgt_imcfreq_set_current_ranged_list(NULL, imc_up, imc_low) != EAR_SUCCESS){
+				verbose_master(1,"Error setting IMC freq to %lu and %lu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
 			}			
 			free(imc_up);
 			free(imc_low);

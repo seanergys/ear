@@ -111,4 +111,12 @@ state_t mgt_imcfreq_data_print(pstate_t *pstate_list, uint pstate_count, int fd)
 /** Outputs a PSTATE list in a buffer. */
 state_t mgt_imcfreq_data_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, uint length);
 
+/* Returns EAR_SUCCESS and sets p with the pstate corresponding with khz */
+state_t mgt_imcfreq_from_freq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
+
+state_t mgt_imcfreq_pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong * khz);
+state_t mgt_imcfreq_avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
+
+
+
 #endif //MANAGEMENT_IMCFREQ_H

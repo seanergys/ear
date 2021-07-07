@@ -40,6 +40,7 @@
 #include <metrics/frequency/imc/intel63.h>
 #include <metrics/io/io.h>
 #include <metrics/cache/cache.h>
+#include <management/imcfreq/imcfreq.h>
 #include <daemon/local_api/eard_api.h>
 #include <common/system/time.h>
 #if USE_GPUS
@@ -48,7 +49,6 @@ char gpu_str[256];
 uint ear_num_gpus_in_node=0;
 #endif
 extern int dispose;
-uint imc_mgt_compatible = 1;
 //#define TEST_MB 0
 
 /*
@@ -161,8 +161,11 @@ static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
 static uint mycpufreq_data_size,mycpufreq_data_count;
 
 /* New MEM FREQ mgt API */
+uint imc_mgt_compatible = 1;
+uint imc_api;
 pstate_t *imc_pstates;
 uint imc_num_pstates;
+uint imc_devices;
 ulong def_imc_max_khz,def_imc_min_khz;
 uint *imc_max_pstate,*imc_min_pstate;
 ulong imc_max_khz,imc_min_khz;
@@ -266,6 +269,7 @@ static void metrics_global_stop()
 	char io_info[256];
 	char file_name[256];
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
+	int i;
 	//
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
@@ -280,10 +284,18 @@ static void metrics_global_stop()
 		}
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
 		if (imc_mgt_compatible){
+  		for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
+  		for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
+			#if 0
   		if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
     		error("IMC set current failed (%d,%s)",s,state_msg);
   		} 
-  		verbose(2,"IMC freq restored to %.2f-%.2f",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0); 
+			#endif
+  		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_max_pstate,imc_min_pstate))){
+    		error("Setting the IMC freq in global stop");
+  		}
+
+  		verbose(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
     	if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size))){
       	error("IMCFreq data read in global_start");
     	}
@@ -730,6 +742,9 @@ int metrics_init(topology_t *topo)
 	ulong rapl_size;
 	state_t st;
 	char *cimc_max_khz,*cimc_min_khz;
+	char imc_buffer[1024];
+	pstate_t tmp_def_imc_pstate;
+	int i;
 
 	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
 	//debug("My master rank %d",masters_info.my_master_rank);
@@ -931,20 +946,19 @@ int metrics_init(topology_t *topo)
 	imc_min_pstate = calloc(imc_devices,sizeof(uint));
 	if ((imc_max_pstate == NULL) || (imc_min_pstate == NULL)){
 		error("Asking for memory");
-		my_id = 1;
-		return;
+		return EAR_ERROR;
 	}
 	verbose_master(2," IMC num devices %u",imc_devices);
-	if (state_fail(s = mgt_imcfreq_get_available_list(NULL,&imc_pstates, &imc_num_pstates))){
+	if (state_fail(s = mgt_imcfreq_get_available_list(NULL,(const pstate_t **)&imc_pstates, &imc_num_pstates))){
 		error("Asking for IMC frequency list");
 	}
 	mgt_imcfreq_data_tostr(imc_pstates,imc_num_pstates,imc_buffer,sizeof(imc_buffer));
-	verbose_imc_list(2,"IMC pstates lust:%s",imc_buffer);
+	verbose_master(2,"IMC pstates lust:%s",imc_buffer);
 	/* Default values */
 	def_imc_max_khz = imc_pstates[0].khz;
 	def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;
 	for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
-	for (i=0; i< imc_devices;i++) imc_max_pstate [i]= imc_num_pstates-1;
+	for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
 	/* This section checks for HACKS */
   cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
   cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
@@ -952,18 +966,16 @@ int metrics_init(topology_t *topo)
 	imc_min_khz = def_imc_min_khz;
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
-		uint tmp_def_imc_pstate;
-		if (state_ok(mgt_imcfreq_from_freq_to_state(NULL,tmp_def_imc,&tmp_def_imc_pstate))){ 
-			for (i=0; i< imc_devices;i++) imc_max_pstate[i] = tmp_def_imc_pstate;
-			imc_max_khz = imc_max_pstate[0].khz;
+		if (state_ok(mgt_imcfreq_from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
+			for (i=0; i< imc_devices;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
+			imc_max_khz = imc_pstates[imc_max_pstate[0]].khz;
 		}
 	}
   if (cimc_min_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_min_khz);
-		uint tmp_def_imc_pstate;
-		if (state_ok(mgt_imcfreq_from_freq_to_state(NULL,tmp_def_imc,&tmp_def_imc_pstate))){ 
-			for (i=0; i< imc_devices;i++) imc_min_pstate[i] = tmp_def_imc_pstate;
-			imc_min_khz = imc_min_pstate[0].khz;
+		if (state_ok(mgt_imcfreq_from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
+			for (i=0; i< imc_devices;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
+			imc_min_khz = imc_pstates[imc_min_pstate[0]].khz;
 		}
   }
 	/* End HACKS */
@@ -973,7 +985,7 @@ int metrics_init(topology_t *topo)
 	/* We assume all the sockets have the same configuration */
 	imc_curr_max_pstate = imc_max_pstate[0];
 	imc_curr_min_pstate = imc_min_pstate[0];	
-	verbose_master(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_min_pstate[0].khz/1000000.0,(float)imc_max_pstate[0].khz/1000000.0);
+	verbose_master(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
 		
 	/* End of IMC */	
 	}

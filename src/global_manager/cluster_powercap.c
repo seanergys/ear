@@ -177,7 +177,7 @@ void reduce_allocation(cluster_powercap_status_t *cs,powercap_opt_t *cluster_opt
 /* This function is executed when there is enough power for new running nodes but not for all the greedy nodes */
 uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_opt_t *cluster_options,uint released)
 {
-    int total_free;
+    uint total_free;
     uint num_nodes=cluster_status->total_nodes;
     uint min_reduction;
     verbose(0,"There are %u nodes  %u idle nodes %u greedy nodes ", cluster_status->total_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
