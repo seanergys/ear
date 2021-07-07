@@ -58,7 +58,7 @@ extern char extra_buffer[SZ_BUFFER];
 
 // Mirroring
 extern char master_host[SZ_NAME_MEDIUM]; 
-extern char master_alia[SZ_NAME_MEDIUM]; 
+extern char master_nick[SZ_NAME_MEDIUM];
 extern char master_name[SZ_NAME_MEDIUM];
 extern int master_iam;
 extern int server_iam;
@@ -75,11 +75,11 @@ extern time_t time_insert1[EDB_NTYPES];
 extern time_t time_insert2[EDB_NTYPES];
 extern size_t type_sizeof[EDB_NTYPES];
 extern uint   type_alloc_100[EDB_NTYPES];
-extern char  *type_alloc[EDB_NTYPES];
+extern char  *type_chunk[EDB_NTYPES];
 extern char  *type_name[EDB_NTYPES];
 extern ulong  type_alloc_len[EDB_NTYPES];
-extern ulong  sample_index[EDB_NTYPES];
-extern uint   sample_recv[EDB_NTYPES];
+extern ulong  samples_index[EDB_NTYPES];
+extern uint   samples_count[EDB_NTYPES];
 
 // Sockets info
 extern uint sockets_accepted;
@@ -122,7 +122,7 @@ void metrics_print()
 	print_line();
 	// Counting samples
 	for (; i < EDB_NTYPES && n == 0; ++i) {
-		n += (sample_index[i] > 0);
+		n += (samples_index[i] > 0);
 	}
 	// If there are samples then we can print
 	if (n > 0) {
@@ -134,7 +134,7 @@ void metrics_print()
 
 	for (i = 0; i < EDB_NTYPES; ++i)
 	{
-		if (sample_index[i] == 0) {
+		if (samples_index[i] == 0) {
 			continue;
 		}
 		time_insert = ((float) difftime(time_insert2[i], time_insert1[i]));
@@ -142,10 +142,10 @@ void metrics_print()
 		percent = 0.0f;
 
 		if (type_alloc_len[i] > 0.0f) {
-			percent = ((float) (sample_recv[i]) / (float) (type_alloc_len[i])) * 100.0f;
+			percent = ((float) (samples_count[i]) / (float) (type_alloc_len[i])) * 100.0f;
 		}
 		tprintf("%s||%lu/%lu||%2.2f||%0.2fs||%0.2fs",
-				type_name[i], sample_index[i], type_alloc_len[i], percent, time_insert, time_recv);
+				type_name[i], samples_index[i], type_alloc_len[i], percent, time_insert, time_recv);
 	}
 
 	verbose(0, "--");
@@ -170,17 +170,17 @@ void metrics_print()
 
 static void reset_aggregations()
 {
-	peraggr_t *p = (peraggr_t *) type_alloc[i_aggrs];
-	peraggr_t  q = (peraggr_t  ) p[sample_index[i_aggrs]];
+	peraggr_t *p = (peraggr_t *) type_chunk[index_aggrs];
+	peraggr_t  q = (peraggr_t  ) p[samples_index[index_aggrs]];
 
-	if (sample_index[i_aggrs] < type_alloc_len[i_aggrs] && q.n_samples > 0) {
+	if (samples_index[index_aggrs] < type_alloc_len[index_aggrs] && q.n_samples > 0) {
 		memcpy (p, &q, sizeof(periodic_aggregation_t));
 	} else {
 		init_periodic_aggregation(p, master_name);
 	}
 	// In case of aggregations, this value has to be hacked
-	status.samples_recv[i_aggrs] = sample_index[i_aggrs];
-	sample_index[i_aggrs] = 0;
+	status.samples_recv[index_aggrs] = samples_index[index_aggrs];
+	samples_index[index_aggrs] = 0;
 }
 
 static void reset_index(int index)
@@ -189,8 +189,8 @@ static void reset_index(int index)
 	time_recv2[index]   = 0;
 	time_insert1[index] = 0;
 	time_insert2[index] = 0;
-	sample_index[index] = 0;
-	sample_recv[index]  = 0;
+	samples_index[index] = 0;
+	samples_count[index]  = 0;
 }
 
 void reset_all()
@@ -226,8 +226,8 @@ static void insert_stop(uint i, state_t s)
 	// Status update (before reset)
 	status.insert_states[i] = s;
 	// Aggregations is a special case
-	if (i != i_aggrs) {
-		status.samples_recv[i] = sample_index[i];
+	if (i != index_aggrs) {
+		status.samples_recv[i] = samples_index[i];
 	}
 	// Reset samples
 	reset_index(i);
@@ -236,66 +236,66 @@ static void insert_stop(uint i, state_t s)
 static void insert_apps_mpi(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_applications((application_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_applications((application_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
 static void insert_apps_non_mpi(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_applications_no_mpi((application_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_applications_no_mpi((application_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
 static void insert_apps_learning(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_applications_learning((application_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_applications_learning((application_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
 static void insert_loops(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_loops((loop_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_loops((loop_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
 static void insert_energy(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_periodic_metrics((periodic_metric_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_periodic_metrics((periodic_metric_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
 static void insert_aggregations(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_periodic_aggregations((periodic_aggregation_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_periodic_aggregations((periodic_aggregation_t *) type_chunk[i], samples_index[i]);
 	reset_aggregations();
 	insert_stop(i, s);
 }
@@ -303,11 +303,11 @@ static void insert_aggregations(int i)
 static void insert_events(int i)
 {
 	state_t s;
-	if (sample_index[i] <= 0) {
+	if (samples_index[i] <= 0) {
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_ear_event((ear_event_t *) type_alloc[i], sample_index[i]);
+	s = db_batch_insert_ear_event((ear_event_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
@@ -319,25 +319,25 @@ void insert_hub(uint option, uint reason)
 	metrics_print();
 	// Insert one by one samples
 	if (sync_option_m(option, EDB_SYNC_TYPE_APPS_MPI, EDB_SYNC_ALL)) {
-		insert_apps_mpi(i_appsm);
+		insert_apps_mpi(index_appsm);
 	}
 	if (sync_option_m(option, EDB_SYNC_TYPE_APPS_SEQ, EDB_SYNC_ALL)) {
-		insert_apps_non_mpi(i_appsn);
+		insert_apps_non_mpi(index_appsn);
 	}
 	if (sync_option_m(option, EDB_SYNC_TYPE_APPS_LEARN, EDB_SYNC_ALL)) {
-		insert_apps_learning(i_appsl);
+		insert_apps_learning(index_appsl);
 	}
 	if (sync_option_m(option, EDB_SYNC_TYPE_ENERGY, EDB_SYNC_ALL)) {
-		insert_energy(i_enrgy);
+		insert_energy(index_enrgy);
 	}
 	if (sync_option_m(option, EDB_SYNC_TYPE_AGGRS, EDB_SYNC_ALL)) {
-		insert_aggregations(i_aggrs);
+		insert_aggregations(index_aggrs);
 	}
 	if (sync_option_m(option, EDB_SYNC_TYPE_EVENTS, EDB_SYNC_ALL)) {
-		insert_events(i_evnts);
+		insert_events(index_evens);
 	}
 	if (sync_option_m(option, EDB_SYNC_TYPE_LOOPS, EDB_SYNC_ALL)) {
-		insert_loops(i_loops);
+		insert_loops(index_loops);
 	}
 }
 
@@ -407,26 +407,26 @@ static int storage_index_extract(int type, char **name)
 	switch (type)
 	{
 		case EDB_TYPE_APP_MPI:
-			*name = type_name[i_appsm];
-			return i_appsm;
+			*name = type_name[index_appsm];
+			return index_appsm;
 		case EDB_TYPE_APP_SEQ:
-			*name = type_name[i_appsn];
-			return i_appsn;
+			*name = type_name[index_appsn];
+			return index_appsn;
 		case EDB_TYPE_APP_LEARN:
-			*name = type_name[i_appsl];
-			return i_appsl;
+			*name = type_name[index_appsl];
+			return index_appsl;
 		case EDB_TYPE_ENERGY_REP:
-			*name = type_name[i_enrgy];
-			return i_enrgy;
+			*name = type_name[index_enrgy];
+			return index_enrgy;
 		case EDB_TYPE_EVENT:
-			*name = type_name[i_evnts];
-			return i_evnts;
+			*name = type_name[index_evens];
+			return index_evens;
 		case EDB_TYPE_LOOP:
-			*name = type_name[i_loops];
-			return i_loops;
+			*name = type_name[index_loops];
+			return index_loops;
 		case EDB_TYPE_ENERGY_AGGR:
-			*name = type_name[i_aggrs];
-			return i_aggrs;
+			*name = type_name[index_aggrs];
+			return index_aggrs;
 		case EDB_TYPE_SYNC_QUESTION:
 			*name = "sync_question";
 			return -1;
@@ -464,7 +464,7 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	}
 
 	//TODO:
-	// Currently, sample_index and sam_recv are the same. In the near future
+	// Currently, samples_index and sam_recv are the same. In the near future
 	// a struct for every type has to be made. This type have to include
 	// these things:
 	//		- an index to the position of the empty value in the allocation
@@ -480,39 +480,39 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	// Storage
 	if (type == EDB_TYPE_APP_MPI) {
 		//print_application_fd_binary(0, (application_t *) content);
-		storage_sample_add(type_alloc[index], type_alloc_len[index],
-		   &sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_MPI);
+		storage_sample_add(type_chunk[index], type_alloc_len[index],
+		   &samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_MPI);
 	}
 	else if (type == EDB_TYPE_APP_SEQ) {
 		//print_application_fd_binary(0, (application_t *) content);
-		storage_sample_add(type_alloc[index], type_alloc_len[index],
-		   &sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_SEQ);
+		storage_sample_add(type_chunk[index], type_alloc_len[index],
+		   &samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_SEQ);
 	}
 	else if (type == EDB_TYPE_APP_LEARN) {
 		//print_application_fd_binary(0, (application_t *) content);
-		storage_sample_add(type_alloc[index], type_alloc_len[index],
-			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_LEARN);
+		storage_sample_add(type_chunk[index], type_alloc_len[index],
+			&samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_APPS_LEARN);
 	}
 	else if (type == EDB_TYPE_EVENT) {
-		storage_sample_add(type_alloc[index], type_alloc_len[index],
-			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_EVENTS);
+		storage_sample_add(type_chunk[index], type_alloc_len[index],
+			&samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_EVENTS);
 	}
 	else if (type == EDB_TYPE_LOOP) {
-		storage_sample_add(type_alloc[index], type_alloc_len[index],
-			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_LOOPS);
+		storage_sample_add(type_chunk[index], type_alloc_len[index],
+			&samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_LOOPS);
 	}
 	else if (type == EDB_TYPE_ENERGY_REP) {
-		peraggr_t *p = (peraggr_t *) type_alloc[i_aggrs];
-		peraggr_t *q = (peraggr_t *) &p[sample_index[i_aggrs]];
+		peraggr_t *p = (peraggr_t *) type_chunk[index_aggrs];
+		peraggr_t *q = (peraggr_t *) &p[samples_index[index_aggrs]];
 		periodic_metric_t *met = (periodic_metric_t *) content;
 		// Add sample to the aggregation
 		add_periodic_aggregation(q, met->DC_energy, met->start_time, met->end_time);
 		// Add sample to the energy array
-		storage_sample_add(type_alloc[index], type_alloc_len[index],
-			&sample_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_ENERGY);
+		storage_sample_add(type_chunk[index], type_alloc_len[index],
+			&samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_ENERGY);
 	}
 	else if (type == EDB_TYPE_SYNC_QUESTION) {
-		sync_qst_t *question = (sync_qst_t *) content;
+		sync_question_t *question = (sync_question_t *) content;
 		if (veteran || !question->veteran) {
 			// Passing the question option
 			insert_hub(question->sync_option, EDB_INSERT_BY_SYNC);
@@ -545,11 +545,11 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		return;
 	}
 	//	
-	if (sample_recv[index] == 0) {
+	if (samples_count[index] == 0) {
 		time(&time_recv1[index]);
 	}
 	//
 	time(&time_recv2[index]);
 	//
-	sample_recv[index] += 1;
+	samples_count[index] += 1;
 }
