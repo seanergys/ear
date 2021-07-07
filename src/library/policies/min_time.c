@@ -411,8 +411,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                  */
 
                 // TODO: Manage an option to boost directly cp processes
-                double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], percs_mpi[max_mpi], percs_mpi[i]))
-                    * cbound * (1 - mbound) * critical_path[i];
+                double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi], 
+                            percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];
                 if (factor < 0.01){
                     factor = 0.0;
                 }
@@ -457,8 +457,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz);
         }
         else{
-            verbose_master(2, "%sNot IMC freq selection%s dyn_unc ? %u MPI_BOUND ? %u Network_IMC ? %u", COL_RED, COL_CLR,
-                    eUFS, app_mpi_bound, network_use_imc);
+            verbose_master(2, "%sNot IMC freq selection%s dyn_unc ? %u MPI_BOUND ? %u Network_IMC ? %u",
+                    COL_RED, COL_CLR, eUFS, app_mpi_bound, network_use_imc);
             /* If application is network bound, we don't reduce the uncore frequency */ 
             if (eUFS && app_mpi_bound && network_use_imc){
                 eUFS = 0;
@@ -487,8 +487,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     else if (min_time_state == COMP_IMCREF){
         ref_imc_pstate = curr_imc_pstate;
         verbose_master(2,"%sCOMP_IMCREF%s | cpufreq %lu | imc %lu-%lu | imcfreq %lu | ref imc_pstate %u",
-                COL_YLW, COL_CLR, *new_freq, freqs->imc_freq[sid*IMC_VAL+IMC_MAX],
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN], curr_imc_freq, ref_imc_pstate);
+                COL_YLW, COL_CLR, *new_freq, imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, curr_imc_freq, ref_imc_pstate);
         min_time_state = SELECT_IMCFREQ;
         *ready = EAR_POLICY_TRY_AGAIN;
         memcpy(freqs->cpu_freq, last_nodefreq_sel.cpu_freq, sizeof(ulong) * num_processes);
@@ -497,18 +497,23 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     else if ((min_time_state == SELECT_IMCFREQ) && eUFS){
         verbose_master(2,"%sSELECT_IMCFREQ%s state: nominal %d -- current CPU %lu, IMC %u -- ref IMC pstate %u",
                 COL_YLW, COL_CLR, min_pstate, curr_pstate, curr_imc_pstate, ref_imc_pstate);
+        /*  SELECT IMCFREQ */
         uint decrease_imc;
         if (ref_imc_pstate != imc_max_pstate[0] /* imc_support_pstate_to_freq(ref_imc_pstate) != def_imc_max_khz  */){
             verbose(3, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
             decrease_imc = must_decrease_imc(imc_data, curr_pstate, curr_imc_pstate, curr_pstate, ref_imc_pstate, my_app, imc_extra_th);
 
-            /*  If we are over the limit after previous IMC update, we increase the IMC */
+            /*  If we are over the limit after previous IMC update, we decrease the IMC */
             if (decrease_imc && !first_imc_try) {
-                uint must_start_again = must_start(imc_data, curr_pstate, curr_imc_pstate, curr_pstate, ref_imc_pstate, my_app);
-                verbose(2,"%sWarning, passing the limit start_again %u",COL_RED,must_start_again);
-                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
-                        imc_min_khz - IMC_RANGE);
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_khz;
+                uint must_start_again = must_start(imc_data, curr_pstate, curr_imc_pstate,
+                        curr_pstate, ref_imc_pstate, my_app);
+                verbose(2,"%sWarning, passing the limit: start_again %u",COL_RED,must_start_again);
+                // freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - IMC_STEP,
+                        // imc_min_khz - IMC_RANGE);
+                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[0]){
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1;
+                }
+                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ps_nothing;
                 verbose_master(2,"Selecting %lu - %lu%s",
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz, imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
                 if (!must_start_again)  *ready = EAR_POLICY_READY;
