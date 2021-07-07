@@ -264,9 +264,12 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 }
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-    ulong imc_up,imc_low;
+    //ulong imc_up,imc_low;
+    uint *imc_up,*imc_low;
+
     uint sock_id = 0;
     if (dyn_unc && imc_mgt_compatible){
+		#if 0
         imc_up = ear_min(freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX],imc_max_khz);
         imc_up = ear_max(imc_up,imc_min_khz);
         /*  If maximum imcfreq set by the policy is the minimum value let by hardware,
@@ -277,6 +280,17 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         imc_low = ear_max(freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN],imc_min_khz);
         verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
         eards_mgt_imcfreq_set_current(imc_up,imc_low);
+		#endif
+			imc_up = calloc(imc_devices,sizeof(uint));
+			imc_low = calloc(imc_devices,sizeof(uint));
+			/* We are using the same imc pstates for all the devices for now */
+			for (sid = 0;sid <imc_devices ;sid++)	imc_up = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
+			for (sid = 0;sid <imc_devices ;sid++)	imc_low = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
+			if (mgt_imcfreq_get_current_ranged_list(NULL, current_max, current_min) != EAR_SUCCESS){
+				verbose_master(1,"Error setting IMC freq to %lu and %lu",imc_psates[imc_up[0]].khz,imc_pstates[imc_low[0]].khz);
+			}			
+			free(imc_up);
+			free(imc_low);
     }
 
     return EAR_SUCCESS;

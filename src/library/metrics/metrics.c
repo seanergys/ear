@@ -943,8 +943,8 @@ int metrics_init(topology_t *topo)
 	/* Default values */
 	def_imc_max_khz = imc_pstates[0].khz;
 	def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;
-	for (i=0; i< imc_devices;i++) imc_max_pstate[i] = 0;
-	for (i=0; i< imc_devices;i++) imc_min_pstate [i]= imc_num_pstates-1;
+	for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
+	for (i=0; i< imc_devices;i++) imc_max_pstate [i]= imc_num_pstates-1;
 	/* This section checks for HACKS */
   cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
   cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
@@ -970,9 +970,10 @@ int metrics_init(topology_t *topo)
 	if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_max_pstate,imc_min_pstate))){
 		error("Initialzing the IMC freq");
 	}
+	/* We assume all the sockets have the same configuration */
 	imc_curr_max_pstate = imc_max_pstate[0];
 	imc_curr_min_pstate = imc_min_pstate[0];	
-	verbose_master(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_max_pstate[0].khz/1000000.0,(float)imc_min_pstate[0].khz/1000000.0);
+	verbose_master(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_min_pstate[0].khz/1000000.0,(float)imc_max_pstate[0].khz/1000000.0);
 		
 	/* End of IMC */	
 	}
