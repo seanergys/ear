@@ -151,6 +151,11 @@ void print_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 	my_powercap_opt->requested,my_powercap_opt->released);
 }
 
+uint powercat_get_value()
+{
+	return my_pc_opt.current_pc;
+}
+
 static int set_powercap_value(uint domain,uint limit)
 {
   char c_date[128];
@@ -160,9 +165,11 @@ static int set_powercap_value(uint domain,uint limit)
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);
   }
-  my_pc_opt.current_pc=limit;
+  my_pc_opt.current_pc = limit;
   update_node_powercap_opt_shared_info();
   pmgt_set_app_req_freq(pcmgr,pc_app_info_data);
+	dyn_conf->pc_opt.current_pc = powercat_get_value();
+
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 

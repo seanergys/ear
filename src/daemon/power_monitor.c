@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -671,6 +671,7 @@ void powermon_mpi_finalize(ehandler_t *eh) {
 /* This functiono is called by dynamic_configuration thread when a new_job command arrives */
 
 void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
+    int i;
 	// New application connected
 	if (appID == NULL) {
 		error("powermon_new_job: NULL appID");
@@ -712,12 +713,14 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	#if POWERCAP
 	app_mgt_new_job(app_mgt_info);
 	pcapp_info_new_job(pc_app_info_data);
-	pc_app_info_data->req_f = f;
+    for (i = 0; i < MAX_CPUS_SUPPORTED; i++) 
+	    pc_app_info_data->req_f[i] = f;
 	#if USEG_GPUS
     pc_app_info_data->num_gpus = gpu_mgt_num_gpus();
 	for (gpuid=0; gpuid < pc_app_inf-data->num_gpus;gpuid++) pc_app_info_data->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	#endif
 	powercap_set_app_req_freq(pc_app_info_data);
+	dyn_conf->pc_opt.current_pc = powercat_get_value();
 	#endif
 	dyn_conf->id=new_app_id;
 	dyn_conf->user_type=user_type;
@@ -815,12 +818,14 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 	app_mgt_end_job(app_mgt_info);
 	pcapp_info_end_job(pc_app_info_data);
 	powercap_end_job();
-  if (powermon_is_idle()){ 
-		pc_app_info_data->req_f = powermon_freq_list[powermon_num_pstates-1];
+    int i;
+    if (powermon_is_idle()){ 
+        memset(pc_app_info_data->req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
 		powercap_set_app_req_freq(pc_app_info_data);
 		powercap_run_to_idle();
 	}else{ 
-		pc_app_info_data->req_f = current_ear_app[ccontext]->current_freq;
+        for (i = 0; i < MAX_CPUS_SUPPORTED; i++)
+		    pc_app_info_data->req_f[i] = current_ear_app[ccontext]->current_freq;
 		powercap_set_app_req_freq(pc_app_info_data);
 	}
 #endif

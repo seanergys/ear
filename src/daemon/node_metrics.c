@@ -67,7 +67,7 @@ int init_node_metrics(nm_t *id, topology_t *topo, ulong def_freq)
 	id->def_f=def_freq;
 
 	// CPU Temperature
-	state_assert(s, temp_load(topo),);
+	state_assert(s, temp_load(topo), exit(0));
 	state_assert(s, temp_init(&temp_ctx),);
 
 	// CPU/IMC Frequency	
@@ -105,7 +105,6 @@ int init_node_metrics_data(nm_t *id,nm_data_t *nm)
 int start_compute_node_metrics(nm_t *id,nm_data_t *nm)
 {
 	state_t s;
-
 	if ((nm==NULL) || (id==NULL) || (id->con!=NM_CONNECTED)){
 		debug("start_compute_node_metrics invalid argument");
 		return EAR_ERROR;

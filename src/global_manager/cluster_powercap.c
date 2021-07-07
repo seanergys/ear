@@ -214,7 +214,7 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
             if (cluster_status->released==0 ){
                 verbose(0,"Anyway there is not enough power ");
                 cluster_options->num_greedy=cluster_status->num_greedy;
-                allocate_free_power_to_greedy_nodes(cluster_status,cluster_options,&total_free);
+                allocate_free_power_to_greedy_nodes(cluster_status,cluster_options,(uint *)&total_free);
             }else if (cluster_status->released) return 0;
         }
     }else{

@@ -69,16 +69,6 @@ uint limit_max_power(node_powercap_opt_t *pc_opt,uint extra)
 	return extra;
 }
 
-uint compute_power_to_release_with_earl(node_powercap_opt_t *pc_opt,uint current,pc_app_info_t *app,ulong avg_f)
-{
-	/* Is signature is still not computed, we will not release the power */
-	if (app->req_f==0) return 0;
-	if (avg_f<app->req_f) return 0;
-	/* we release the power progresivelly, we can be more aggresive */
-	if ((app->req_power>0)  && (app->req_power<current)) return (current-app->req_power)/2;
-	else return pc_opt->th_release;
-}
-
 uint compute_extra_gpu_power(uint current,uint diff,uint target)
 {
 	/* This function mut be improved */

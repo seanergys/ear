@@ -93,6 +93,7 @@ void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id 
         debug("jid %lu sid %lu event type %u value %lu",job,sid,eventid,value);
     }
 }
+
 void log_report_eard_rt_error(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value)
 {
     ear_event_t event;
