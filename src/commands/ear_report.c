@@ -812,7 +812,9 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
     char query[512];
     int i;
     char all_nodes = 0;
+#if USE_GPUS
     char has_gpus = 0;
+#endif
 
     uint max_power = MAX_ERROR_POWER;
     int def_id = get_default_tag_id(&my_conf);
@@ -888,20 +890,24 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
     {
         if (!strcmp(inc_query, ALL_USERS)) {
             printf( "%15s %15s\n", "Energy (J)", "User");
+#if USE_GPUS
             has_gpus = 1;
+#endif
         } else if (!strcmp(inc_query, ALL_TAGS)) {
             printf( "%15s %15s\n", "Energy (J)", "Energy tag");
+#if USE_GPUS
             has_gpus = 1;
+#endif
         } else if (!strcmp(inc_query, ALL_ISLANDS)) {
             printf( "%15s %15s\n", "Energy (J)", "EARDBD");
         } else if (global_end_time > 0) {
 #if USE_GPUS
             printf( "%15s %15s %15s %15s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power");
+            has_gpus = 1;
 #else
             printf( "%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
 #endif
             all_nodes = 1;
-            has_gpus = 1;
         }
         else {
             printf( "%15s %15s\n", "Energy (J)", "Node");

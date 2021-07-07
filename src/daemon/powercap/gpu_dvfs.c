@@ -209,12 +209,6 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     if (util_changed(gpu_dvfs_local_util,gpu_dvfs_util)){
         int_set_powercap_value(current_gpu_pc,gpu_pc_util);
     }
-    #if 0
-            debug("gpu_pc_curr_power %lu and current_power %lf, exceed: %u", gpu_pc_curr_power[i], values_gpu_diff[i].power_w, status->exceed);
-        for (i=0;i<gpu_pc_num_gpus;i++){
-                debug("GPU_DVFS[%u] current_f=%lu powercap %lu consumption %.1lf",i,c_freq[i],gpu_pc_curr_power[i], values_gpu_diff[i].power_w);
-        }
-    #endif
 
     gpu_dvfs_greedy = 0;
     if ((current_gpu_pc <= 0) || (c_status != PC_STATUS_RUN)){
