@@ -210,8 +210,8 @@ uint pmgt_utilization_changed()
             }
         }
         #if USE_GPUS
-        uint g;
         else if ((i == DOMAIN_GPU ) && (gpu_pc_model != MODEL_DUMMY)){
+            uint g;
             for (g=0;g<gpu_pc_num_gpus;g++){
                 //debug("Comparing utilization for GPU %d : %lu vs %lu",g,current_util[DOMAIN_GPU][g],prev_util[DOMAIN_GPU][g]);
                 if (util_changed(current_util[DOMAIN_GPU][g],prev_util[DOMAIN_GPU][g])){ 
@@ -775,7 +775,8 @@ uint pmgt_powercap_status_per_domain(uint action)
     #if USE_GPUS
     int i;
     char is_release = 0;
-    int totalok = totalrel = totalask = 0;
+    int totalok, totalrel, totalask;
+    totalok = totalrel = totalask = 0;
     uint ret,from = 0,to = 0;
     memset(cdomain_status,0,sizeof(domain_status_t)*NUM_DOMAINS);
     /* We ask each domain its curent status to distribute power accross domains */
