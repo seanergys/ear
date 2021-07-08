@@ -61,17 +61,18 @@ void aggregate_data(powercap_status_t *cs)
     req_no_extra=0;
     num_no_extra=0;
     num_greedy=0;
-    num_extra=0;extra_power_alloc=0;
+    num_extra=0;
+    extra_power_alloc=0;
     for (i=0;i<cs->num_greedy;i++){
-        total_req_greedy+=cs->greedy_req[i];
-        total_extra_power+=cs->extra_power[i];
-        if (cs->extra_power[i]){ 
+        total_req_greedy+=cs->greedy_data[i].requested;
+        total_extra_power+=cs->greedy_data[i].extra_power;
+        if (cs->greedy_data[i].extra_power){ 
             num_extra++;
-            extra_power_alloc+=cs->extra_power[i];
+            extra_power_alloc+=cs->greedy_data[i].extra_power;
         }
-        if (cs->greedy_req[i]) num_greedy++;
-        if ((cs->greedy_req[i]) && (!cs->extra_power[i])){
-            req_no_extra+=cs->greedy_req[i];
+        if (cs->greedy_data[i].requested) num_greedy++;
+        if ((cs->greedy_data[i].requested) && (!cs->greedy_data[i].extra_power)){
+            req_no_extra+=cs->greedy_data[i].requested;
             num_no_extra++;
         }
     }
@@ -111,9 +112,9 @@ void allocate_free_power_to_greedy_nodes(cluster_powercap_status_t *cluster_stat
         else more_power=pending/num_no_extra;
         verbose(0,"STAGE_1-Allocating %d watts to new greedy nodes first (-1 => alloc=req)",more_power);
         for (i=0;i<cluster_status->num_greedy;i++){
-            if ((cluster_status->greedy_req[i]) && (!cluster_status->extra_power[i])){
-                if (more_power<0) cluster_options->extra_power[i]=cluster_status->greedy_req[i];
-                else cluster_options->extra_power[i]=min(more_power,cluster_status->greedy_req[i]);
+            if ((cluster_status->greedy_data[i].requested) && (!cluster_status->greedy_data[i].extra_power)){
+                if (more_power<0) cluster_options->extra_power[i]=cluster_status->greedy_data[i].requested;
+                else cluster_options->extra_power[i]=min(more_power,cluster_status->greedy_data[i].requested);
                 pending-=cluster_options->extra_power[i];
             }
         }
@@ -124,8 +125,8 @@ void allocate_free_power_to_greedy_nodes(cluster_powercap_status_t *cluster_stat
         verbose(0,"Allocating %u watts to greedy nodes ",pending);
         more_power=pending/num_greedy;
         for (i=0;i<cluster_status->num_greedy;i++){
-            if ((cluster_status->greedy_req[i]) && (!cluster_options->extra_power[i])){
-                cluster_options->extra_power[i]=min(cluster_status->greedy_req[i],more_power);
+            if ((cluster_status->greedy_data[i].requested) && (!cluster_options->extra_power[i])){
+                cluster_options->extra_power[i]=min(cluster_status->greedy_data[i].requested,more_power);
                 pending-=cluster_options->extra_power[i];
             }
         }
@@ -147,8 +148,8 @@ void reduce_allocation(cluster_powercap_status_t *cs,powercap_opt_t *cluster_opt
     verbose(0,"SEQ reduce_allocation implementation avg red=%uW",red_node);
     debug("ROUND 1- reducing avg power ");
     while((min_reduction>0) && (i<cs->num_greedy)){
-        if (cs->extra_power[i]){
-            red1=min(red_node,cs->extra_power[i]);
+        if (cs->greedy_data[i].extra_power){
+            red1=min(red_node,cs->greedy_data[i].extra_power);
             red=min(red1,min_reduction);
             new_extra=-red;
             verbose(0,"%sreducing %d W to node %d %s",COL_RED,new_extra,i,COL_CLR);
@@ -161,8 +162,8 @@ void reduce_allocation(cluster_powercap_status_t *cs,powercap_opt_t *cluster_opt
     i=0;
     while((min_reduction>0) && (i<cs->num_greedy)){
         /* cluster_options->extra_power[i] is a negative value */
-        if ((cs->extra_power[i]+cluster_options->extra_power[i])>0){
-            red1=cs->extra_power[i]+cluster_options->extra_power[i];
+        if ((cs->greedy_data[i].extra_power+cluster_options->extra_power[i])>0){
+            red1=cs->greedy_data[i].extra_power+cluster_options->extra_power[i];
             red=min(red1,min_reduction);
             new_extra=-red;
             verbose(0,"%sreducing %d W to node %d %s",COL_RED,new_extra,i,COL_CLR);
@@ -177,7 +178,7 @@ void reduce_allocation(cluster_powercap_status_t *cs,powercap_opt_t *cluster_opt
 /* This function is executed when there is enough power for new running nodes but not for all the greedy nodes */
 uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_opt_t *cluster_options,uint released)
 {
-    int total_free;
+    int total_free, i;
     uint num_nodes=cluster_status->total_nodes;
     uint min_reduction;
     verbose(0,"There are %u nodes  %u idle nodes %u greedy nodes ", cluster_status->total_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
@@ -205,14 +206,15 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
         if (total_req_greedy<=total_free) {
             verbose(0,"There is more free power than requested by greedy nodes=> allocating all the req power");
             total_free-=total_req_greedy;
-            memcpy(cluster_options->extra_power,cluster_status->greedy_req,cluster_status->num_greedy*sizeof(uint));
+            for (i = 0; i < cluster_status->num_greedy; i++)
+                cluster_options->extra_power[i] = cluster_status->greedy_data[i].requested;
             must_send_pc_options=1;
         }else{
             verbose(0,"There is not enough power for all the greedy nodes (free %d req %u)(used %u allocated %u)",total_free,total_req_greedy,cluster_status->current_power,cluster_status->total_powercap);
             if (cluster_status->released==0 ){
                 verbose(0,"Anyway there is not enough power ");
                 cluster_options->num_greedy=cluster_status->num_greedy;
-                allocate_free_power_to_greedy_nodes(cluster_status,cluster_options,&(uint)total_free);
+                allocate_free_power_to_greedy_nodes(cluster_status,cluster_options,(uint *)&total_free);
             }else if (cluster_status->released) return 0;
         }
     }else{
@@ -251,7 +253,7 @@ void print_cluster_power_status(powercap_status_t *my_cluster_power_status)
     debug("Total %u Idle  %u power (released %u requested %u consumed %u allocated %u allocated_to_idle %u) total_greedy_nodes %u",cs->total_nodes,cs->idle_nodes, cs->released,cs->requested,cs->current_power,cs->total_powercap,cs->num_greedy,cs->total_idle_power);
     debug("%d power_status received",num_power_status);
     for (i=0;i<cs->num_greedy;i++){
-        debug("\t[%d] ip %d greedy_req %u extra_power %u",i,cs->greedy_nodes[i],cs->greedy_req[i],cs->extra_power[i]);
+        debug("\t[%d] ip %d greedy_req %u extra_power %u", i, cs->greedy_nodes[i], cs->greedy_data[i].requested, cs->greedy_data[i].extra_power);
     }
 }
 

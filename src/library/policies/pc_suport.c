@@ -175,6 +175,7 @@ ulong pc_support_adapt_freq(polctx_t *c,node_powercap_opt_t *pc,ulong f,signatur
 
 void pc_support_compute_next_state(polctx_t *c,node_powercap_opt_t *pc,signature_t *s)
 {
+#if 0
 		uint power_status;
 		ulong eff_f;
     if (is_powercap_set(pc)){
@@ -191,5 +192,6 @@ void pc_support_compute_next_state(polctx_t *c,node_powercap_opt_t *pc,signature
     }else{
       power_status=PC_STATUS_ERROR;
     }
+#endif
 }
 #endif

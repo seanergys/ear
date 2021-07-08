@@ -16,7 +16,7 @@
 */
 
 #include <stdio.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <metrics/common/msr.h>
 #include <metrics/frequency/imc.h>
@@ -71,6 +71,7 @@ state_t freq_imc_init(topology_t *tp)
 		ops.data_free   = ifreq_dummy_data_free;
 		ops.data_diff   = ifreq_dummy_data_diff;
 		ops.data_print  = ifreq_dummy_data_print;
+		debug("IMC metrics dummy loaded");
 	}
 
 	return ops.init(tp);
@@ -178,19 +179,27 @@ state_t freq_imc_data_print(ulong *freqs, ulong *average)
 #define U_MSR_UNCORE_RL_MASK_MIN	0x007F00
 
 static topology_t tp_static;
+static uint imc_mgt_load = 0;
 
 state_t mgt_imcfreq_load(topology_t *tp)
 {
 	state_t s;
-	s = topology_select(tp, &tp_static, TPSelect.socket, TPGroup.merge, 0);
-	debug("imc load cpu count %d",tp_static.cpu_count);
-	return s;
+	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+		s = topology_select(tp, &tp_static, TPSelect.socket, TPGroup.merge, 0);
+		debug("imc load cpu count %d",tp_static.cpu_count);
+		imc_mgt_load = 1;
+		return s;
+	}
+	if (imc_mgt_load){ debug("mgt_imcfreq_load API loaded");}
+	else{ debug("mgt_imcfreq_load API not loaded");}
+	return EAR_SUCCESS;
+
 }
 
 state_t mgt_imcfreq_init(ctx_t *c)
 {
 	int i;
-
+	if (!imc_mgt_load) return EAR_SUCCESS;
 	for (i = 0; i < tp_static.cpu_count; ++i) {
 		msr_open(tp_static.cpus[i].id);
 	}
@@ -206,6 +215,7 @@ state_t mgt_imcfreq_set_current(ctx_t *c, ulong max_khz, ulong min_khz)
 	state_t r;
 	int i;
 
+	if (!imc_mgt_load) return EAR_SUCCESS;
 	max_khz = max_khz / 100000LU;
 	min_khz = min_khz / 100000LU;
 
@@ -233,6 +243,11 @@ state_t mgt_imcfreq_get_current(ctx_t *c, ulong *max_khz, ulong *min_khz)
 
 	*max_khz = 0;
 	*min_khz = 0;
+	if (!imc_mgt_load){ 
+		*max_khz = 2400000;
+		*min_khz = 1200000;
+		return EAR_SUCCESS;
+	}
 
 	debug("imc cpu count %d",tp_static.cpu_count);	
 	for (i = 0; i < tp_static.cpu_count; ++i)

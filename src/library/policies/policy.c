@@ -223,10 +223,12 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
         ulong f;
         /* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data,freq_set[0]);
+        pcapp_info_set_req_f(pc_app_info_data, freq_set, MAX_CPUS_SUPPORTED);
+				#if 0
         f = pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
         verbose_master(2,"Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
         freq_set[0] = f;
+				#endif
     }else{
         //debug("PC mode %u (should be PC_POWER)",pc_app_info_data->cpu_mode);
         //      pcapp_info_set_req_f(pc_app_info_data,*freq_set);

@@ -132,7 +132,6 @@ void pmgt_set_burst(int b)
 
 #define DOMAINS_REDIST 0.1
 #define DOMAINS_REDIST_MAX 20
-static uint util_period = 0;
 
 
 #define freturn(call, ...) ((call==NULL)?EAR_UNDEFINED:call(__VA_ARGS__));
@@ -157,6 +156,7 @@ static gpu_t *gpu_detection_raw_data;
 static ctx_t gpu_pc;
 static uint gpu_pc_num_gpus=0;
 static uint gpu_pc_model = 0;
+static uint util_period = 0;
 #else
 static uint gpu_pc_num_gpus=1;
 #endif
@@ -200,7 +200,7 @@ void compute_power_distribution()
 
 uint pmgt_utilization_changed()
 {
-    uint ret=0,i,g;
+    uint ret=0,i;
     for (i=0;i<NUM_DOMAINS;i++){
         dom_changed[i]=0;
         if (i == DOMAIN_CPU || i == DOMAIN_NODE){
@@ -210,6 +210,7 @@ uint pmgt_utilization_changed()
             }
         }
         #if USE_GPUS
+        uint g;
         else if ((i == DOMAIN_GPU ) && (gpu_pc_model != MODEL_DUMMY)){
             for (g=0;g<gpu_pc_num_gpus;g++){
                 //debug("Comparing utilization for GPU %d : %lu vs %lu",g,current_util[DOMAIN_GPU][g],prev_util[DOMAIN_GPU][g]);
@@ -225,6 +226,7 @@ uint pmgt_utilization_changed()
 }
 
 /* These two functions monitors the system utilization : CPU and GPU */
+#if USE_GPUS
 static state_t util_detect_main(void *p)
 {
     int i;
@@ -249,7 +251,6 @@ static state_t util_detect_main(void *p)
     
         dom_util[DOMAIN_DRAM] = pc_topology_info.socket_count;
         dom_util[DOMAIN_GPU]=0;
-        #if USE_GPUS
         if (gpu_read_raw(&gpu_pc,gpu_detection_raw_data) != EAR_SUCCESS){
             error("Error reading GPU data in powercap");
         }
@@ -261,7 +262,6 @@ static state_t util_detect_main(void *p)
             current_util[DOMAIN_GPU][i]=gpu_detection_raw_data[i].util_gpu;
             
         }
-        #endif
         for (i=0;i<NUM_DOMAINS;i++){
             ratio = (float)dom_util[i]/(float)dom_util_limit[i];
             debug("%sDomain %d perc_use %.2f (%.2f/%.1f)%s",COL_RED,i,ratio,(float)dom_util[i],(float)dom_util_limit[i],COL_CLR);
@@ -289,14 +289,13 @@ static state_t util_detect_init(void *p)
     last_dom_util[DOMAIN_NODE] = min;
     last_dom_util[DOMAIN_CPU] = min;
     last_dom_util[DOMAIN_DRAM] = pc_topology_info.socket_count;
-    #if USE_GPUS
     last_dom_util[DOMAIN_GPU]=0;
     if (gpu_data_alloc(&gpu_detection_raw_data)!=EAR_SUCCESS){
       error("Initializing GPU data in powercap");
     }
-    #endif
     return EAR_SUCCESS;
 }
+#endif
 
 /* This function initilices the utilization monitoring */
 void util_monitoring_init()
@@ -375,6 +374,7 @@ state_t pmgt_init()
         ret=symplug_open(obj_path, (void **)&pcsyms_fun[DOMAIN_CPU], pcsyms_names, pcsyms_n);
         if (ret==EAR_SUCCESS){ 
             domains_loaded[DOMAIN_CPU]=1;
+            debug("CPU plugin correctly loaded");
         }else{
             error("Domain CPU not loaded");
         }
@@ -647,10 +647,9 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 {
 #ifndef SYN_TEST
-    int i;
-    if (domain == DOMAIN_CPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_f;
+    if (domain == DOMAIN_CPU) memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 #if USE_GPUS
-    if (domain == DOMAIN_GPU) for (i=0;i<dom_size;i++) f[i] = pc_app_info_data->req_gpu_f[i];
+    if (domain == DOMAIN_GPU) memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
 #endif
 #endif
 }
@@ -658,10 +657,10 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler, pc_app_info_t *pc_app)
 {
     if (pcsyms_fun[DOMAIN_NODE].set_app_req_freq != NULL){
-      freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,&pc_app->req_f);
+      freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,pc_app->req_f);
     }
     if (pcsyms_fun[DOMAIN_CPU].set_app_req_freq != NULL){
-      freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,&pc_app->req_f);
+      freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,pc_app->req_f);
     }
     #if USE_GPUS
     if (pcsyms_fun[DOMAIN_GPU].set_app_req_freq != NULL) {
@@ -745,7 +744,8 @@ void pmgt_get_status(pmgt_status_t *status)
     }
 
     debug("pmgt_get_status: DOMAIN_CPU: %d DOMAIN_GPU: %d", cdomain_status[DOMAIN_CPU].ok, cdomain_status[DOMAIN_GPU].ok);
-    debug("pmgt_get_status: DOMAIN_CPU strain: %d", cdomain_status[DOMAIN_CPU].strain);
+    debug("pmgt_get_status: DOMAIN_CPU stress: %d", cdomain_status[DOMAIN_CPU].stress);
+    debug("pmgt_get_status: DOMAIN_GPU stress: %d", cdomain_status[DOMAIN_GPU].stress);
     if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK && cdomain_status[DOMAIN_GPU].ok == PC_STATUS_OK) { //OK + OK
         status->status = PC_STATUS_OK;
         debug("pmgt_get_status: OK + OK");
@@ -757,7 +757,8 @@ void pmgt_get_status(pmgt_status_t *status)
             status->status = PC_STATUS_GREEDY;
             status->requested += cdomain_status[DOMAIN_CPU].requested; 
             status->requested += cdomain_status[DOMAIN_GPU].requested;
-            status->requested = ear_min(status->requested, 50); // a total maximum step of 50
+            status->requested = ear_min(status->requested, 256); // a total maximum step of 256 since it is the max value we can pass up
+            status->stress = ear_max(cdomain_status[DOMAIN_CPU].stress, cdomain_status[DOMAIN_GPU].stress);
             debug("pmgt_get_status: GREEDY + OK/GREEDY Node requested power %u",status->requested);
         }
     } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE || cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { // no need to check for greedy since we did that before, this includes OK+RELEASE
@@ -771,40 +772,24 @@ void pmgt_get_status(pmgt_status_t *status)
 
 uint pmgt_powercap_status_per_domain(uint action)
 {
+    #if USE_GPUS
     int i;
     char is_release = 0;
-    uint totalok = 0;
-    uint totalrel = 0;
-    uint totalask = 0;
+    int totalok = totalrel = totalask = 0;
     uint ret,from = 0,to = 0;
-    #if USE_GPUS
-    #if 0
-    if (action == CHECK_ASK_DEFAULT){
-        debug("CHECK_ASK_DEFAULT");
-    }else{
-        debug("CHECK_ASK_POWER_RED");
-    }
-    #endif
     memset(cdomain_status,0,sizeof(domain_status_t)*NUM_DOMAINS);
     /* We ask each domain its curent status to distribute power accross domains */
     for (i=0; i< NUM_DOMAINS;i++){
         if (pcsyms_fun[i].get_powercap_status != NULL){
             ret=pcsyms_fun[i].get_powercap_status(&cdomain_status[i]);
-            #if 0
-            if (ret ){
-                debug("%sDomain %d can share power: status %u, power TBR %u%s",COL_GRE,i,status,tbr,COL_CLR);
-            } else{
-                debug("Domain %d cannot share power status %u, power TBR %u",i,status,tbr);
-            }
-            #endif
             /* status = 0 when it's ok and 1 when it can release power */
             totalok += (cdomain_status[i].ok == PC_STATUS_OK);
             totalrel += (cdomain_status[i].ok == PC_STATUS_RELEASE);
             totalask += (cdomain_status[i].ok == PC_STATUS_ASK_DEF);
         }
     }
-    debug("GPU has strain %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", 
-           cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain, cdomain_status[DOMAIN_GPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
+    debug("GPU has stress %u and CPU has %u. Status GPU %u CPU %u. ask %u ok %u rel %u", 
+           cdomain_status[DOMAIN_GPU].stress, cdomain_status[DOMAIN_CPU].stress, cdomain_status[DOMAIN_GPU].ok,cdomain_status[DOMAIN_CPU].ok,totalask,totalok,totalrel);
     if ((action == CHECK_ASK_DEFAULT) && (totalask > 0)){
         debug("action is CHECK_ASK_DEFAULT, not power redistribution");
         /* Some module needs an urgent power reallocation */
@@ -827,8 +812,8 @@ uint pmgt_powercap_status_per_domain(uint action)
         to = DOMAIN_GPU;
         is_release = 1;
     }else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_GREEDY)){
-        if (abs((int)cdomain_status[DOMAIN_GPU].strain - (int)cdomain_status[DOMAIN_CPU].strain) > 20){
-            if (cdomain_status[DOMAIN_GPU].strain < cdomain_status[DOMAIN_CPU].strain){
+        if (abs((int)cdomain_status[DOMAIN_GPU].stress - (int)cdomain_status[DOMAIN_CPU].stress) > 20){
+            if (cdomain_status[DOMAIN_GPU].stress < cdomain_status[DOMAIN_CPU].stress){
                 from = DOMAIN_GPU;
                 to = DOMAIN_CPU;
             } else {
@@ -841,7 +826,7 @@ uint pmgt_powercap_status_per_domain(uint action)
             cdomain_status[from].exceed = ear_min(cdomain_status[from].current_pc*DOMAINS_REDIST, DOMAINS_REDIST_MAX);
         } else {
             is_release = 0;
-            debug("could not redistribute power, GPU has strain %u and CPU has %u", cdomain_status[DOMAIN_GPU].strain, cdomain_status[DOMAIN_CPU].strain);
+            debug("could not redistribute power, GPU has stress %u and CPU has %u", cdomain_status[DOMAIN_GPU].stress, cdomain_status[DOMAIN_CPU].stress);
         }
     }else if ((cdomain_status[DOMAIN_GPU].ok == PC_STATUS_GREEDY) && (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_OK)){
         from = DOMAIN_CPU;

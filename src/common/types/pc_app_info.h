@@ -23,7 +23,8 @@
 #include <common/types/types.h>
 typedef struct pc_app_info{
 	uint  cpu_mode;
-	ulong req_f;
+	ulong req_f[MAX_CPUS_SUPPORTED];
+	ulong imc_f[MAX_CPUS_SUPPORTED];
 	ulong req_power;
 	uint  pc_status;
 	#if USE_GPUS
@@ -39,7 +40,7 @@ void pcapp_info_new_job(pc_app_info_t *t);
 void pcapp_info_end_job(pc_app_info_t *t);
 
 /** Sets the req_f and the status to OK */
-void pcapp_info_set_req_f(pc_app_info_t *t,ulong f);
+void pcapp_info_set_req_f(pc_app_info_t *t, ulong *f, uint num_cpus);
 /** Sets the gpu_req_f and the status to OK */
 void pcapp_info_set_gpu_req_f(pc_app_info_t *t, ulong *f, uint num_gpus);
 void debug_pc_app_info(pc_app_info_t *t);

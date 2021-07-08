@@ -209,12 +209,6 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     if (util_changed(gpu_dvfs_local_util,gpu_dvfs_util)){
         int_set_powercap_value(current_gpu_pc,gpu_pc_util);
     }
-    #if 0
-            debug("gpu_pc_curr_power %lu and current_power %lf, exceed: %u", gpu_pc_curr_power[i], values_gpu_diff[i].power_w, status->exceed);
-        for (i=0;i<gpu_pc_num_gpus;i++){
-                debug("GPU_DVFS[%u] current_f=%lu powercap %lu consumption %.1lf",i,c_freq[i],gpu_pc_curr_power[i], values_gpu_diff[i].power_w);
-        }
-    #endif
 
     gpu_dvfs_greedy = 0;
     if ((current_gpu_pc <= 0) || (c_status != PC_STATUS_RUN)){
@@ -558,12 +552,12 @@ uint get_powercap_status(domain_status_t *status)
     int i;
     uint used=0;
     uint g_tbr = 0;
-    uint tmp_strain = 0;
+    uint tmp_stress = 0;
 
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
 		status->requested = 0;
-    status->strain = 0;
+    status->stress = 0;
     status->current_pc = current_gpu_pc;
 
     // debug("GPU_DVFS: get_powercap_status");
@@ -597,13 +591,13 @@ uint get_powercap_status(domain_status_t *status)
     /* If we know, we must check */
     status->ok = PC_STATUS_RELEASE;
 
-    /* Compute the current strain before checking the status */
+    /* Compute the current stress before checking the status */
     for (i=0;i<gpu_pc_num_gpus;i++){
         if (gpu_pc_util[i] > 0)
-            tmp_strain += powercap_get_strain(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], c_freq[i]);
+            tmp_stress += powercap_get_stress(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], c_freq[i]);
     }
-    tmp_strain /= used;
-    status->strain = tmp_strain;
+    tmp_stress /= used;
+    status->stress = tmp_stress;
 
     for (i=0;i<gpu_pc_num_gpus;i++){
         if ((c_freq[i] < t_freq[i]) && (gpu_pc_util[i]>0) && gpu_dvfs_greedy){ 

@@ -28,7 +28,6 @@ uint limit_max_power(node_powercap_opt_t *pc_opt,uint extra);
 
 /** Given a powercap settings and a given power consumption computes the power to be released */
 uint compute_power_to_release(node_powercap_opt_t *pc_opt,uint current);
-uint compute_power_to_release_with_earl(node_powercap_opt_t *pc_opt,uint current,pc_app_info_t *app,ulong avg_f);
 
 /** Given a powercap settings and a given power consumption estimates if the application needs more power: GREEDY state */
 uint more_power(node_powercap_opt_t *pc_opt,uint current);
@@ -58,8 +57,8 @@ void powercap_status_to_str(uint s,char *b);
 uint compute_next_status(node_powercap_opt_t *pc,uint current_power,ulong eff_f, ulong req_f);
 
 
-/** Given a max, min, current and target frequencies it returns the strain level of the subsystem. */
-uint powercap_get_strain(uint max_freq, uint min_freq, uint t_freq, uint c_freq);
+/** Given a max, min, current and target frequencies it returns the stress level of the subsystem. */
+uint powercap_get_stress(uint max_freq, uint min_freq, uint t_freq, uint c_freq);
 
 #endif
 

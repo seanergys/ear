@@ -209,17 +209,6 @@ uint get_powercap_status(uint *in_target,uint *tbr)
 	c_freq=frequency_get_cpu_freq(0);
 	if (c_freq != c_req_f) return 0;
 	/* Power reading is pending */
-	#if 0
-	ctbr = (my_limit -  power_rapl) * 0.5;
-	*in_target = 1;
-	if (ctbr >= MIN_CPU_POWER_MARGIN){
-		//debug("We can reuse %u W of power from the CPU since target %lu and current %lu",ctbr,c_req_f,c_freq);
-		*tbr = ctbr; 
-	}else{
-		*tbr = 0;
-	}
-	return 1;
-	#endif
 	*in_target = 1;
 	*tbr = 0;
 	return 1;

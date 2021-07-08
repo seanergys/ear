@@ -519,18 +519,17 @@ void process_pmgt_status(powercap_status_t *my_status, pmgt_status_t *p_status)
             /* Memory management */
             if (my_status->num_greedy < 1) {
                 my_status->greedy_nodes=NULL;
-                my_status->greedy_req=NULL;
-                my_status->extra_power=NULL;
+                my_status->greedy_data=NULL;
             }
             my_status->num_greedy++; 
             if (my_status->num_greedy < 1) break;
-            my_status->greedy_nodes=realloc(my_status->greedy_nodes, sizeof(int)*my_status->num_greedy);
-            my_status->greedy_req=realloc(my_status->greedy_req, sizeof(uint)*my_status->num_greedy);
-            my_status->extra_power=realloc(my_status->extra_power, sizeof(uint)*my_status->num_greedy);
+            my_status->greedy_nodes = realloc(my_status->greedy_nodes, sizeof(int)*my_status->num_greedy);
+            my_status->greedy_data  = realloc(my_status->greedy_data, sizeof(greedy_bytes_t)*my_status->num_greedy);
             /* Data management */
             my_status->greedy_nodes[my_status->num_greedy - 1] = my_ip; 
-            my_status->greedy_req[my_status->num_greedy - 1] = p_status->requested;
-            my_status->extra_power[my_status->num_greedy - 1] = p_status->extra;
+            my_status->greedy_data[my_status->num_greedy - 1].requested = p_status->requested;
+            my_status->greedy_data[my_status->num_greedy - 1].extra_power = p_status->extra;
+            my_status->greedy_data[my_status->num_greedy - 1].stress = p_status->stress;
             break;
         default:
             break;

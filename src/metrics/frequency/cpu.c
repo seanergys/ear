@@ -15,9 +15,12 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdlib.h>
+#define SHOW_DEBUGS 1
+#include <common/output/debug.h>
 #include <metrics/frequency/cpu.h>
 #include <metrics/frequency/cpu/intel63.h>
-
+#include <metrics/frequency/cpu/intel_dummy.h>
 static struct cpu_freq_ops
 {
 	state_t (*init)       ();
@@ -35,6 +38,7 @@ static struct cpu_freq_ops
 
 state_t cpufreq_load(topology_t *tp)
 {
+	debug("Testing CPU freq API");
 	if (state_ok(cpufreq_intel63_status(tp)))
 	{
 		ops.init		= cpufreq_intel63_init;
@@ -49,7 +53,19 @@ state_t cpufreq_load(topology_t *tp)
 		ops.data_diff   = cpufreq_intel63_data_diff;
 		ops.data_print  = cpufreq_intel63_data_print;
 	} else {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
+		debug("CPUfreq dummy loaded ");
+		ops.init                = cpufreq_intel_dummy_init;
+                ops.dispose             = cpufreq_intel_dummy_dispose;
+                ops.read                = cpufreq_intel_dummy_read;
+                ops.read_diff   = cpufreq_intel_dummy_read_diff;
+                ops.read_copy   = cpufreq_intel_dummy_read_copy;
+                ops.data_alloc  = cpufreq_intel_dummy_data_alloc;
+                ops.data_count  = cpufreq_intel_dummy_data_count;
+                ops.data_copy   = cpufreq_intel_dummy_data_copy;
+                ops.data_free   = cpufreq_intel_dummy_data_free;
+                ops.data_diff   = cpufreq_intel_dummy_data_diff;
+                ops.data_print  = cpufreq_intel_dummy_data_print;
+
 	}
 	return EAR_SUCCESS;
 }
