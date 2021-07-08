@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <metrics/common/hsmp.h>
 #include <management/imcfreq/archs/amd17.h>
@@ -25,7 +25,7 @@ static uint sockets_count;
 static ullong freqs_khz[4];
 static ullong freqs_mhz[4];
 
-state_t mgt_imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops)
+state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 {
 	state_t s;
 	int i, j;
@@ -69,6 +69,8 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops)
 	replace_ops(ops->set_current_list, mgt_imcfreq_amd17_set_current_list);
 	replace_ops(ops->set_current,      mgt_imcfreq_amd17_set_current);
 	replace_ops(ops->set_auto,         mgt_imcfreq_amd17_set_auto);
+	replace_ops(ops->get_current_ranged_list, mgt_imcfreq_amd17_get_current_ranged_list);
+    replace_ops(ops->set_current_ranged_list, mgt_imcfreq_amd17_set_current_ranged_list);
 	// Saving sockets
 	sockets_count = tp->socket_count;
 
@@ -147,16 +149,17 @@ static state_t set(uint pstate_index, int socket)
 	state_t s;
 
 	if (pstate_index != ps_auto) {
-		// Function APBEnable (0x0f)
-		function = 0x0f;
+		// Function APBDisable (0x0d)
+		function = 0x0d;
 		i = 0;
 	} else {
-		// Function APBDisable (0x0d)
+		// Function APBEnable (0x0e)
 		function = 0x0e;
 		i = 1;
 	}
+	//args[0] = pstate_index;
 	args[0] = pstate_index;
-	debug("Setting P%d to socket %d", pstate_index, socket);
+	debug("Setting P%u (%u) to socket %d", pstate_index, args[0], socket);
 	if (state_fail(s = hsmp_send(socket, function, &args[i], &args[1]))) {
 		debug("Failed while setting IMC frequency set: %s (%d)", state_msg, s);
 		return s;
@@ -200,3 +203,14 @@ state_t mgt_imcfreq_amd17_set_auto(ctx_t *c)
 {
 	return mgt_imcfreq_amd17_set_current(c, ps_auto, all_sockets);
 }
+
+state_t mgt_imcfreq_amd17_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
+{
+    return mgt_imcfreq_amd17_get_current_list(c, ps_min_list);
+}
+
+state_t mgt_imcfreq_amd17_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
+{
+    return mgt_imcfreq_amd17_set_current_list(c, id_min_list);
+}
+
