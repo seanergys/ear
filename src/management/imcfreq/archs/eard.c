@@ -131,7 +131,7 @@ state_t mgt_imcfreq_eard_set_auto(ctx_t *c)
 	return mgt_imcfreq_eard_set_current(c, ps_auto, all_sockets);
 }
 
-state_t mgt_imcfreq_eard_get_current_min_list(ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list)
+state_t mgt_imcfreq_eard_get_current_min_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
 {
 	size_t size = sizeof(pstate_t) * sockets_count;
 	char buffer[1024];
@@ -140,16 +140,16 @@ state_t mgt_imcfreq_eard_get_current_min_list(ctx_t *c, pstate_t *ps_max_list, p
 	if (state_fail(s = eards_mgt_imcfreq_get(UNC_GET_LIMITS_MIN, buffer, size*2))) {
 		return s;
 	}
-	memcpy((char *) ps_max_list, &buffer[0]   , size);
-	memcpy((char *) ps_min_list, &buffer[size], size);
+	memcpy((char *) ps_min_list, &buffer[0]   , size);
+	memcpy((char *) ps_max_list, &buffer[size], size);
 	return EAR_SUCCESS;
 }
 
-state_t mgt_imcfreq_eard_set_current_min_list(ctx_t *c, uint *id_max_list, uint *id_min_list)
+state_t mgt_imcfreq_eard_set_current_min_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
 	size_t size = sizeof(uint) * sockets_count;
 	char buffer[1024];
-	memcpy(&buffer[0]   , (char *) id_max_list, size);
-	memcpy(&buffer[size], (char *) id_min_list, size);
+	memcpy(&buffer[0]   , (char *) id_min_list, size);
+	memcpy(&buffer[size], (char *) id_max_list, size);
 	return eards_mgt_imcfreq_set(UNC_SET_LIMITS_MIN, (uint *) buffer, sockets_count*2);
 }

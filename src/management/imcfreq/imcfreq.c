@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <pthread.h>
@@ -28,7 +28,7 @@
 #include <management/imcfreq/archs/intel63.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static imcfreq_ops_t ops;
+static mgt_imcfreq_ops_t ops;
 static uint sockets_count;
 static uint api;
 
@@ -48,8 +48,8 @@ state_t mgt_imcfreq_load(topology_t *tp, int eard)
 		debug("Loaded AMD17");
 	}
 	if (state_ok(s = mgt_imcfreq_intel63_load(tp, &ops))) {
-		api = API_DEFAULT;
-		debug("Loaded DEFAULT");
+		api = API_INTEL63;
+		debug("Loaded INTEL63");
 	}
 	if (state_ok(s = mgt_imcfreq_eard_load(tp, &ops, eard))) {
 		api = API_EARD;
@@ -107,14 +107,14 @@ state_t mgt_imcfreq_set_auto(ctx_t *c)
 }
 
 /** */
-state_t mgt_imcfreq_get_current_ranged_list(ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list)
+state_t mgt_imcfreq_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
 {
-	preturn (ops.get_current_min_list, c, ps_max_list, ps_min_list);
+	preturn (ops.get_current_ranged_list, c, ps_min_list, ps_max_list);
 }
 
-state_t mgt_imcfreq_set_current_ranged_list(ctx_t *c, uint *id_max_list, uint *id_min_list)
+state_t mgt_imcfreq_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
-	preturn (ops.set_current_min_list, c, id_max_list, id_min_list);
+	preturn (ops.set_current_ranged_list, c, id_min_list, id_max_list);
 }
 
 /** */
@@ -123,126 +123,12 @@ state_t mgt_imcfreq_data_alloc(pstate_t **pstate_list, uint **index_list)
 	preturn (ops.data_alloc, pstate_list, index_list);
 }
 
-state_t mgt_imcfreq_data_print(pstate_t *pstate_list, uint pstate_count, int fd)
+void mgt_imcfreq_data_print(pstate_t *ps_list, uint ps_count, int fd)
 {
-	preturn (ops.data_print, pstate_list, pstate_count, fd);
+	pstate_print(ps_list, ps_count, fd);
 }
 
-state_t mgt_imcfreq_data_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, uint length)
+char *mgt_imcfreq_data_tostr(pstate_t *ps_list, uint ps_count, char *buffer, int length)
 {
-	preturn (ops.data_tostr, pstate_list, pstate_count, buffer, length);
+	return pstate_tostr(ps_list, ps_count, buffer, length);
 }
-
-state_t mgt_imcfreq_from_freq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p)
-{
-	int i;
-	state_t s = EAR_ERROR;
-	for (i = 0; i < pstate_count; i ++){
-		if (pstate_list[i].khz == khz){
-			memcpy(p,&pstate_list[i],sizeof(pstate_t));
-			s = EAR_SUCCESS;
-		}
-	}
-	return s;
-}
-
-state_t mgt_imcfreq_avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p)
-{
-  int i;
-  state_t s = EAR_ERROR;
-  for (i = 0; i < pstate_count; i ++){
-    if (pstate_list[i].khz < khz){
-      memcpy(p,&pstate_list[i-1],sizeof(pstate_t));
-      s = EAR_SUCCESS;
-			return s;
-    }
-  }
-	if (s == EAR_ERROR){
-		memcpy(p,&pstate_list[pstate_count-1],sizeof(pstate_t));
-		s = EAR_SUCCESS;
-	}
-  return s;
-}
-
-
-state_t mgt_imcfreq_pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong *khz)
-{
-	state_t s;
-	if (pstate_idx >= pstate_count) return EAR_ERROR;
-	*khz = pstate_list[pstate_idx].khz;
-	return EAR_SUCCESS;
-}
-
-#if TEST
-#include <daemon/local_api/eard_api.h>
-
-state_t eards_connection()
-{
-	application_t my_dummy_app;
-	my_dummy_app.job.id = 0;
-	my_dummy_app.job.step_id = 0;
-	return eards_connect(&my_dummy_app);
-}
-
-int main(int argc, char *arg[])
-{
-	pstate_t current_max[1024];
-	pstate_t current_min[1024];
-	uint setnew_max[1024];
-	uint setnew_min[1024];
-	uint devices;
-	topology_t tp;
-	state_t s;
-
-	topology_init(&tp);
-
-	eards_connection();
-
-	if(state_fail(s = mgt_imcfreq_load(&tp, EARD))) {
-		debug("Error during mgt_imcfreq_load: %s", state_msg);
-	}
-
-	uint api;
-	mgt_imcfreq_get_api(&api);
-	debug("API %d", api); 
-
-	mgt_imcfreq_init(NULL);	
-	
-	mgt_imcfreq_count_devices(NULL, &devices);
-
-	mgt_imcfreq_get_current_ranged_list(NULL, current_max, current_min);
-	mgt_imcfreq_data_print(current_max, devices, fderr);
-	mgt_imcfreq_data_print(current_min, devices, fderr);
-	dprintf(fderr, "\n");
-
-	setnew_max[0] = 2;
-	setnew_max[1] = 2;
-	setnew_min[0] = 10;
-	setnew_min[1] = 10;
-
-	mgt_imcfreq_set_current_ranged_list(NULL, setnew_max, setnew_min);
-
-	sleep(1);
-	
-	mgt_imcfreq_get_current_ranged_list(NULL, current_max, current_min);
-	mgt_imcfreq_data_print(current_max, devices, fderr);
-	mgt_imcfreq_data_print(current_min, devices, fderr);
-	dprintf(fderr, "\n");
-	
-	setnew_max[0] = 0;
-	setnew_max[1] = 0;
-	setnew_min[0] = 12;
-	setnew_min[1] = 12;
-	
-	mgt_imcfreq_set_current_ranged_list(NULL, setnew_max, setnew_min);
-	
-	sleep(1);
-	
-	mgt_imcfreq_get_current_ranged_list(NULL, current_max, current_min);
-	mgt_imcfreq_data_print(current_max, devices, fderr);
-	mgt_imcfreq_data_print(current_min, devices, fderr);
-	dprintf(fderr, "\n");
-
-	return 0;
-}
-#endif

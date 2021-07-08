@@ -20,7 +20,7 @@
 
 #include <management/imcfreq/imcfreq.h>
 
-state_t mgt_imcfreq_dummy_load(topology_t *tp, imcfreq_ops_t *ops);
+state_t mgt_imcfreq_dummy_load(topology_t *tp, mgt_imcfreq_ops_t *ops);
 
 state_t mgt_imcfreq_dummy_init(ctx_t *c);
 
@@ -40,15 +40,11 @@ state_t mgt_imcfreq_dummy_set_current(ctx_t *c, uint pstate_index, int socket);
 state_t mgt_imcfreq_dummy_set_auto(ctx_t *c);
 
 /** */
-state_t mgt_imcfreq_dummy_get_current_min_list(ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list);
+state_t mgt_imcfreq_dummy_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list);
 
-state_t mgt_imcfreq_dummy_set_current_min_list(ctx_t *c, uint *id_max_list, uint *id_min_list);
+state_t mgt_imcfreq_dummy_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list);
 
 /** */
 state_t mgt_imcfreq_dummy_data_alloc(pstate_t **pstate_list, uint **index_list);
-
-state_t mgt_imcfreq_dummy_data_print(pstate_t *pstate_list, uint pstate_count, int fd);
-
-state_t mgt_imcfreq_dummy_data_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, uint length);
 
 #endif //MANAGEMENT_IMCFREQ_DUMMY_H

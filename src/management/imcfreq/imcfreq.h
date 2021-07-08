@@ -22,34 +22,11 @@
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
-#include <management/cpufreq/cpufreq.h>
+#include <metrics/common/pstate.h>
 
-// Delete when merge
-#if 1
-#define ps_nothing (uint) -1
-#define ps_auto    (uint) -2
+#define all_sockets all_devs
 
-#define replace_ops(p1, p2) \
-	if (p1 == NULL) { \
-		p1 = p2; \
-	}
-
-// APIs IDs
-#define API_NONE    0
-#define API_DUMMY   1
-#define API_EARD    2
-#define API_DEFAULT 3
-#define API_AMD17   4
-#define API_NVML    5
-// EARD API load or not
-#define NO_EARD     0
-#define EARD        1
-#endif
-
-#define all_sockets all_cpus
-#define all_devices all_sockets
-
-typedef struct imcfreq_ops_s
+typedef struct mgt_imcfreq_ops_s
 {
 	state_t (*init)               (ctx_t *c);
 	state_t (*dispose)            (ctx_t *c);
@@ -59,64 +36,40 @@ typedef struct imcfreq_ops_s
 	state_t (*set_current_list)   (ctx_t *c, uint *index_list);
 	state_t (*set_current)        (ctx_t *c, uint pstate_index, int socket);
 	state_t (*set_auto)           (ctx_t *c);
-	state_t (*get_current_min_list) (ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list);
-	state_t (*set_current_min_list) (ctx_t *c, uint *id_max_list, uint *id_min_list);
+	state_t (*get_current_ranged_list) (ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list);
+	state_t (*set_current_ranged_list) (ctx_t *c, uint *id_max_list, uint *id_min_list);
 	state_t (*data_alloc)         (pstate_t **pstate_list, uint **index_list);
-	state_t (*data_print)         (pstate_t *pstate_list, uint pstate_count, int fd);
-	state_t (*data_tostr)         (pstate_t *pstate_list, uint pstate_count, char *buffer, uint length);
-} imcfreq_ops_t;
+} mgt_imcfreq_ops_t;
 
 /** */
 state_t mgt_imcfreq_load(topology_t *c, int eard);
-
 /** Returns the loaded API. */
 state_t mgt_imcfreq_get_api(uint *api);
-
 /** */
 state_t mgt_imcfreq_init(ctx_t *c);
-
 /** */
 state_t mgt_imcfreq_dispose(ctx_t *c);
-
-/** Returns the number of devices (normally the number of sockets). */
+/** This API is per socket. */
 state_t mgt_imcfreq_count_devices(ctx_t *c, uint *devs_count);
-
-/** Returns de list of available frequencies. */
+/** */
 state_t mgt_imcfreq_get_available_list(ctx_t *c, const pstate_t **pstate_list, uint *pstate_count);
-
-/** Returns the current frequencies. */
+/** */
 state_t mgt_imcfreq_get_current_list(ctx_t *c, pstate_t *pstate_list);
-
-/** Sets a PSTATE by a list per device. */
+/** */
 state_t mgt_imcfreq_set_current_list(ctx_t *c, uint *index_list);
-
-/** Sets a PSTATE per device (you can use all_devices). */
-state_t mgt_imcfreq_set_current(ctx_t *c, uint pstate_index, int device);
-
-/** Sets all devices in AUTO mode if available. */
+/** */
+state_t mgt_imcfreq_set_current(ctx_t *c, uint pstate_index, int socket);
+/** */
 state_t mgt_imcfreq_set_auto(ctx_t *c);
-
-/** Gets the current PSTATE including a minimum frequency if its available. */
-state_t mgt_imcfreq_get_current_ranged_list(ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list);
-
-/** Sets the current PSTATE including a minimum frequency if its available. */
-state_t mgt_imcfreq_set_current_ranged_list(ctx_t *c, uint *id_max_list, uint *id_min_list);
-
-/** Allocates a list of PSTATEs and indexes of a length of the number of sockets. */
+/** Min is top limit, it meas higher frequencies and lower PSATEs. Max the opposite. */
+state_t mgt_imcfreq_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list);
+/** Min is top limit, it meas higher frequencies and lower PSATEs. Max the opposite. */
+state_t mgt_imcfreq_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list);
+/** */
 state_t mgt_imcfreq_data_alloc(pstate_t **pstate_list, uint **index_list);
-
-/** Outputs a PSTATE list in a file descriptor. */
-state_t mgt_imcfreq_data_print(pstate_t *pstate_list, uint pstate_count, int fd);
-
-/** Outputs a PSTATE list in a buffer. */
-state_t mgt_imcfreq_data_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, uint length);
-
-/* Returns EAR_SUCCESS and sets p with the pstate corresponding with khz */
-state_t mgt_imcfreq_from_freq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
-
-state_t mgt_imcfreq_pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong * khz);
-state_t mgt_imcfreq_avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
-
-
+/** */
+void mgt_imcfreq_data_print(pstate_t *ps_list, uint ps_count, int fd);
+/** */
+char *mgt_imcfreq_data_tostr(pstate_t *ps_list, uint ps_count, char *buffer, int length);
 
 #endif //MANAGEMENT_IMCFREQ_H

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <metrics/common/msr.h>
@@ -41,14 +41,15 @@ static state_t intel63_read(uint cpu, ullong *max, ullong *min)
 
 	*max = 0;
 	*min = 0;
+	debug("Reading MSR for CPU %d", cpu);
 	if ((s = msr_read(cpu, &aux, sizeof(uint64_t), address)) != EAR_SUCCESS) {
 		return s;
 	}
 	*max = (aux & U_MSR_UNCORE_RL_MASK_MAX) >> 0;
 	*min = (aux & U_MSR_UNCORE_RL_MASK_MIN) >> 8;
-	debug("CPU%d: %llu - %llu (read)", cpu, *max, *min);
 	*max = *max * HUNDRED_MHZ;
 	*min = *min * HUNDRED_MHZ;
+	debug("Read values: %llu, min_khz: %llu", *max, *min);
 
 	return EAR_SUCCESS;
 }
@@ -99,7 +100,7 @@ static state_t mgt_imcfreq_intel63_build_list()
 	return EAR_SUCCESS;
 }
 
-state_t mgt_imcfreq_intel63_load(topology_t *tp, imcfreq_ops_t *ops)
+state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 {
 	state_t s;
 	if (max_khz != 0) {
@@ -124,8 +125,8 @@ state_t mgt_imcfreq_intel63_load(topology_t *tp, imcfreq_ops_t *ops)
 	replace_ops(ops->set_current_list,   mgt_imcfreq_intel63_set_current_list);
 	replace_ops(ops->set_current,        mgt_imcfreq_intel63_set_current);
 	replace_ops(ops->set_auto,           mgt_imcfreq_intel63_set_auto);
-	replace_ops(ops->get_current_min_list, mgt_imcfreq_intel63_get_current_min_list);
-	replace_ops(ops->set_current_min_list, mgt_imcfreq_intel63_set_current_min_list);
+	replace_ops(ops->get_current_ranged_list, mgt_imcfreq_intel63_get_current_ranged_list);
+	replace_ops(ops->set_current_ranged_list, mgt_imcfreq_intel63_set_current_ranged_list);
 	return s;
 }
 
@@ -157,7 +158,7 @@ state_t mgt_imcfreq_intel63_get_available_list(ctx_t *c, const pstate_t **list, 
 static uint khz_to_idx(ullong khz)
 {
 	int i;
-	for (i = 0; i < available_count; ++i) {
+	for (i = 0; i < tp_static.cpu_count; ++i) {
 		if (available_list[i].khz <= khz) {
 			return i;
 		}
@@ -183,7 +184,7 @@ state_t get_current(ctx_t *c, pstate_t *max_list, pstate_t *min_list)
 		if (min_list != NULL) {
 			min_list[i].idx = khz_to_idx(min_khz_aux);
 			min_list[i].khz = available_list[min_list[i].idx].khz;
-		}
+		}	
 	}
 	return EAR_SUCCESS;
 }
@@ -193,6 +194,7 @@ state_t mgt_imcfreq_intel63_get_current_list(ctx_t *c, pstate_t *pstate_list)
 	return get_current(c, pstate_list, NULL);
 }
 
+// Internaly, max is top frequency and min is bottom frequency.
 static state_t set_current(ctx_t *c, uint *max_list, uint *min_list)
 {
 	off_t address = U_MSR_UNCORE_RATIO_LIMIT;
@@ -204,7 +206,6 @@ static state_t set_current(ctx_t *c, uint *max_list, uint *min_list)
 	int i;
 
 	for (i = 0; i < tp_static.cpu_count; ++i) {
-		debug("CPU%d: %d - %d (write)", tp_static.cpus[i].id, max_list[i], min_list[i]);
 		aux_max = max_khz / HUNDRED_MHZ;
 		aux_min = min_khz / HUNDRED_MHZ;
 		// If NULL we are writting the max default value
@@ -214,7 +215,8 @@ static state_t set_current(ctx_t *c, uint *max_list, uint *min_list)
 		if (min_list != NULL) {
 			aux_min = available_list[min_list[i]].khz / HUNDRED_MHZ;
 		}
-		debug("CPU%d: %llu - %llu (write)", tp_static.cpus[i].id, aux_max, aux_min);
+		debug("writing %llu and %llu in CPU%d",
+			  aux_max, aux_min, tp_static.cpus[i].id);
 		set0 = (aux_min << 8) & U_MSR_UNCORE_RL_MASK_MIN;
 		set1 = (aux_max << 0) & U_MSR_UNCORE_RL_MASK_MAX;
 		set0 = set0 | set1;
@@ -251,12 +253,12 @@ state_t mgt_imcfreq_intel63_set_auto(ctx_t *c)
 	return mgt_imcfreq_intel63_set_current(c, ps_auto, all_sockets);
 }
 
-state_t mgt_imcfreq_intel63_get_current_min_list(ctx_t *c, pstate_t *ps_max_list, pstate_t *ps_min_list)
+state_t mgt_imcfreq_intel63_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
 {
-	return get_current(c, ps_max_list, ps_min_list);
+	return get_current(c, ps_min_list, ps_max_list);
 }
 
-state_t mgt_imcfreq_intel63_set_current_min_list(ctx_t *c, uint *id_max_list, uint *id_min_list)
+state_t mgt_imcfreq_intel63_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
-	return set_current(c, id_max_list, id_min_list);
+	return set_current(c, id_min_list, id_max_list);
 }
