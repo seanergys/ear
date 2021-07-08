@@ -69,16 +69,6 @@ uint limit_max_power(node_powercap_opt_t *pc_opt,uint extra)
 	return extra;
 }
 
-uint compute_power_to_release_with_earl(node_powercap_opt_t *pc_opt,uint current,pc_app_info_t *app,ulong avg_f)
-{
-	/* Is signature is still not computed, we will not release the power */
-	if (app->req_f==0) return 0;
-	if (avg_f<app->req_f) return 0;
-	/* we release the power progresivelly, we can be more aggresive */
-	if ((app->req_power>0)  && (app->req_power<current)) return (current-app->req_power)/2;
-	else return pc_opt->th_release;
-}
-
 uint compute_extra_gpu_power(uint current,uint diff,uint target)
 {
 	/* This function mut be improved */
@@ -137,7 +127,7 @@ uint get_powercap_allocated(node_powercap_opt_t *pc_opt)
   return pc_opt->last_t1_allocated;
 }
 
-/* Returns the strain in the subsystem. The strain level represents the
+/* Returns the stress in the subsystem. The stress level represents the
  * percentual distance between the current freq and the target freq,
  * with 0 being functioning as expected and 100 being the worst case. 
  * The calculation is:
@@ -145,9 +135,9 @@ uint get_powercap_allocated(node_powercap_opt_t *pc_opt)
  * 
  * If the max_freq and min_freq are the same (error), 0 is returned 
  * as the distance cannot be computed. */
-uint powercap_get_strain(uint max_freq, uint min_freq, uint t_freq, uint c_freq) 
+uint powercap_get_stress(uint max_freq, uint min_freq, uint t_freq, uint c_freq) 
 {
-    debug("getting strain with %u(max_freq) %u(min_freq) %u(t_freq) and %u(c_freq)", max_freq, min_freq, t_freq, c_freq);
+    debug("getting stress with %u(max_freq) %u(min_freq) %u(t_freq) and %u(c_freq)", max_freq, min_freq, t_freq, c_freq);
     uint div = max_freq - min_freq;
     if (div > 0)
         return (100*(t_freq - c_freq))/div;

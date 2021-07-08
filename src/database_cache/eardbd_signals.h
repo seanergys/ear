@@ -20,7 +20,7 @@
 
 #include <signal.h>
 
-#define _error(...) \
+#define edb_error(...) \
 	print_line(); \
 	verbose(0, "ERROR, " __VA_ARGS__); \
 	error_handler();

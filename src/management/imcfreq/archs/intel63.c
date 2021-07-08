@@ -204,7 +204,7 @@ static state_t set_current(ctx_t *c, uint *max_list, uint *min_list)
 	int i;
 
 	for (i = 0; i < tp_static.cpu_count; ++i) {
-		debug("INVALID CPU%d: %d - %d (write)", tp_static.cpus[i].id, max_list[i], min_list[i]);
+		debug("CPU%d: %d - %d (write)", tp_static.cpus[i].id, max_list[i], min_list[i]);
 		aux_max = max_khz / HUNDRED_MHZ;
 		aux_min = min_khz / HUNDRED_MHZ;
 		// If NULL we are writting the max default value

@@ -20,8 +20,10 @@
 #include <string.h>
 
 #include <common/config.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/includes.h>
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
 #include <daemon/powercap/powercap_status.h>
 #include <common/types/signature.h>
 #include <management/cpufreq/frequency.h>
@@ -133,17 +135,17 @@ ulong pc_support_adapt_freq(polctx_t *c,node_powercap_opt_t *pc,ulong f,signatur
 		double ppower;
 	  signature_t new_s;
 		signature_copy(&new_s,s);
-		new_s.DC_power=sig_node_power(s);
-    req_f=f;
-    plimit=pc->pper_domain[DOMAIN_NODE]; 				/* limit */
+		new_s.DC_power = sig_node_power(s);
+    req_f  = f;
+    plimit = pc->pper_domain[DOMAIN_NODE]; 				/* limit */
 		cfreq=frequency_closest_high_freq(new_s.avg_f,1); 	/* current freq */
 		cpstate=frequency_closest_pstate(cfreq);			 	/* current pstate */
 		ppstate=frequency_closest_pstate(req_f);				/* pstate for freq selected */
 		if (projection_available(cpstate,ppstate)==EAR_SUCCESS){
 			project_power(&new_s,cpstate,ppstate,&ppower);				/* Power at freq selected */
-			adapted=1;
+			adapted = 1;
 		}else{
-			ppower=plimit;
+			ppower = plimit;
 		}
 		debug("checking frequency: cfreq %lu cpstate %u ppstate %u cpower %lf ppower %lf limit %u",cfreq,cpstate,ppstate,new_s.DC_power,ppower,plimit);		
 		if (((uint)ppower<=plimit) && (adapted)){
@@ -173,21 +175,23 @@ ulong pc_support_adapt_freq(polctx_t *c,node_powercap_opt_t *pc,ulong f,signatur
 
 void pc_support_compute_next_state(polctx_t *c,node_powercap_opt_t *pc,signature_t *s)
 {
+#if 0
 		uint power_status;
 		ulong eff_f;
     if (is_powercap_set(pc)){
       power_status=compute_power_status(pc,(uint)(s->DC_power));
       eff_f=frequency_closest_high_freq(s->avg_f,1);
 			if (eff_f < pc_app_info_data->req_f){
-				verbose(1,"Running at reduced freq with powercap, status %u and effective freq %lu vs selected %lu",power_status,eff_f,pc_app_info_data->req_f);
+				verbose_master(2,"Running at reduced freq with powercap, status %u and effective freq %lu vs selected %lu",power_status,eff_f,pc_app_info_data->req_f);
     		//pc_app_info_data->pc_status=compute_next_status(pc,(uint)(s->DC_power),eff_f,pc_app_info_data->req_f);
 				pc_app_info_data->pc_status=PC_STATUS_GREEDY;
 			}else{
-				verbose(1,"Running at requested freq with powercap eff_f %lu req_f %lu , going to status %u",eff_f,pc_app_info_data->req_f,power_status);
+				verbose_master(2,"Running at requested freq with powercap eff_f %lu req_f %lu , going to status %u",eff_f,pc_app_info_data->req_f,power_status);
 				if (power_status == PC_STATUS_RELEASE) pc_app_info_data->pc_status=power_status;
 			}
     }else{
       power_status=PC_STATUS_ERROR;
     }
+#endif
 }
 #endif

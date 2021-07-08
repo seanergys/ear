@@ -52,7 +52,7 @@ static ulong max_sync_block = 0;
 static useconds_t wait_time = 1000;
 static uint mpi_cases[3];
 
-float LB_TH = 15.0;
+float LB_TH = EAR_LB_TH;
 
 state_t mpi_app_init(polctx_t *c)
 {

@@ -28,8 +28,8 @@ extern pid_t others_pid;
 extern int master_iam; // Master is who speaks
 extern int server_iam;
 extern int mirror_iam;
-extern int server_too;
-extern int mirror_too;
+extern int server_enabled;
+extern int mirror_enabled;
 
 // State machine
 extern int reconfiguring;
@@ -122,7 +122,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 
 		others_pid = 0;
 		mirror_pid = 0;
-		mirror_too = 0;
+		mirror_enabled = 0;
 	}
 }
 

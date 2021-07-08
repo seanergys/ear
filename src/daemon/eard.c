@@ -20,6 +20,9 @@
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <linux/limits.h>
+#include <strings.h>
+#include <string.h>
+
 //#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/environment.h>
@@ -176,7 +179,8 @@ void check_policy(policy_conf_t *p)
     else
     {
         /* We are using frequencies */
-        f=(unsigned long)(p->def_freq*1000000);
+        f=(unsigned long)p->def_freq;
+	f = f*1000000;
         if (!frequency_is_valid_frequency(f))
         {
             error("Default frequency %lu for policy %s is not valid",f,p->name);
@@ -197,7 +201,11 @@ void check_policy_values(policy_conf_t *p,int nump)
 void compute_policy_def_freq(policy_conf_t *p)
 {
 	if (p->def_freq==(float)0){
-		p->def_freq=(float)frequency_pstate_to_freq(p->p_state)/1000000.0;
+		float tmp;
+		tmp = truncf((float)frequency_pstate_to_freq(p->p_state)/1000.0);
+		tmp = tmp/1000.0;
+		error("Def freq is %f",tmp);
+		p->def_freq= tmp;
 	}else{
 		p->p_state=frequency_closest_pstate((unsigned long)(p->def_freq*1000000));
 	}
@@ -1357,7 +1365,22 @@ void     update_global_configuration_with_local_ssettings(cluster_conf_t *my_clu
 	strcpy(my_cluster_conf->install.obj_ener,my_node_conf->energy_plugin);
 	strcpy(my_cluster_conf->install.obj_power_model,my_node_conf->energy_model);
 }
-
+int get_exec_name(char *name,int name_size)
+{
+	char path[1024]={0};
+	int ret = readlink("/proc/self/exe",path,sizeof(path)-1);
+	if(ret == -1)
+	{
+		printf("---- get exec name fail!!\n");
+		return -1;
+	}
+	path[ret]= '\0';
+ 
+	char *ptr = strrchr(path,'/');
+	memset(name,0, name_size); //Clear the buffer area
+	strncpy(name,ptr+1,name_size-1);
+	return 0;
+}
 
 
 /*
@@ -1371,6 +1394,7 @@ void     update_global_configuration_with_local_ssettings(cluster_conf_t *my_clu
 int main(int argc, char *argv[]) {
 	struct timeval *my_to;
 	struct timeval tv;
+	char my_name[1024];
 
 	char ear_commreq[MAX_PATH_SIZE * 2];
 
@@ -1403,7 +1427,9 @@ int main(int argc, char *argv[]) {
 		_exit(1);
 	}
 	strtok(nodename, ".");
-	verbose(0,"Executed in node name %s", nodename);
+	verbose(0,"Executed %s in node name %s", argv[0],nodename);
+	get_exec_name(my_name,sizeof(my_name));
+	verbose(0,"My name is %s",my_name);
 
 	/** CONFIGURATION **/
 	int node_size;
@@ -1593,7 +1619,7 @@ int main(int argc, char *argv[]) {
 	// We catch signals
 	signal_catcher();
 
-  state_assert(s, monitor_init(), _exit(0));
+  	state_assert(s, monitor_init(), _exit(0));
 
 	if (eard_max_pstate < 0) Usage(argv[0]);
 	if (eard_max_pstate >= frequency_get_num_pstates()) Usage(argv[0]);
@@ -1601,8 +1627,8 @@ int main(int argc, char *argv[]) {
 	ear_node_freq = frequency_pstate_to_freq(eard_max_pstate);
 	eard_max_freq = ear_node_freq;
 	verbose(VCONF, "Default max frequency defined to %lu", eard_max_freq);
-
 	// CPU Frequency
+	verbose(VCONF, "Initializing CPUfreq API ");
 	state_assert(s, cpufreq_load(&node_desc), _exit(0));
 	state_assert(s, cpufreq_init(),           _exit(0));
 	state_assert(s, cpufreq_data_alloc(&freq_global2, NULL), _exit(0));
@@ -1614,14 +1640,16 @@ int main(int argc, char *argv[]) {
 	state_assert(s, cpufreq_data_alloc(&freq_app_req,    NULL), _exit(0));
 	state_assert(s, cpufreq_data_count(&size_cpufreqs,&count_cpufreqs), _exit(0));
 	// IMC frequency
+	verbose(VCONF, "Initializing IMCfreq metrics API ");
 	state_assert(s, freq_imc_init(&node_desc), _exit(0));
-  state_assert(s, freq_imc_data_count(&unc_c), _exit(0));
-  state_assert(s, freq_imc_data_alloc(&imc_data_app, NULL,NULL), _exit(0));
+  	state_assert(s, freq_imc_data_count(&unc_c), _exit(0));
+  	state_assert(s, freq_imc_data_alloc(&imc_data_app, NULL,NULL), _exit(0));
 	// IMC Management
+	verbose(VCONF, "Initializing IMCfreq mgt API:Load ");
 	state_assert(s, mgt_imcfreq_load(&node_desc, NO_EARD), _exit(0));
+	verbose(VCONF, "Initializing IMCfreq mgt API:Init ");
 	state_assert(s, mgt_imcfreq_init(&imc_eard_ctx), _exit(0));
 	verbose(VCONF, "IMC metrics and management initialized ");
-		
 
 
 #if EARD_LOCK
@@ -1675,7 +1703,7 @@ int main(int argc, char *argv[]) {
 	node_energy_data=(edata_t)malloc(node_energy_datasize);
 
 	// Energy accuracy
-  energy_frequency(&handler_energy, &energy_freq);
+  	energy_frequency(&handler_energy, &energy_freq);
 
 	verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
@@ -1772,7 +1800,7 @@ int main(int argc, char *argv[]) {
 	debug("gpu_model %u",eard_gpu_model);
 	#endif
 
-	verbose(VCONF + 1, "Communicator for %s ON", nodename);
+	verbose(VCONF, "Communicator for %s ON", nodename);
 	// we wait until EAR daemon receives a request
 	// We support requests realted to frequency and to uncore counters
 	// rapl support is pending to be supported

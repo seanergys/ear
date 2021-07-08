@@ -348,7 +348,7 @@ void clean_ips(ip_table_t *ips, int num_ips)
         ips[i].counter=0;
 }
 
-void process_powercap_status(powercap_status_t *powerstatus,int num_status)
+void process_powercap_status(powercap_status_t *powerstatus, int num_status)
 {
 	char state_name[128];
 	if (num_status > 0)
@@ -360,6 +360,11 @@ void process_powercap_status(powercap_status_t *powerstatus,int num_status)
 			else sprintf(state_name,"disabled");
 			printf("Powercap information[%d]:\nStatus: %s\nTotal idle_nodes: %d\nPotential power to be released: %d\nTotal number of greedy nodes : %d \nTotal extra power requested: %d\nTotal power used %u W\n", i, state_name,powerstatus[i].idle_nodes,
 			powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, powerstatus[i].current_power);
+
+            int j;
+            for (j = 0; j < powerstatus->num_greedy; j++)
+                printf("greedy node %d extra_power: %u requested: %u stress: %u\n", powerstatus->greedy_nodes[j], powerstatus->greedy_data[j].extra_power, 
+                                                    powerstatus->greedy_data[j].requested, powerstatus->greedy_data[j].stress);
 		}
 		free(powerstatus);
 	}

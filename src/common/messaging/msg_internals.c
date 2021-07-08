@@ -1350,17 +1350,13 @@ powercap_status_t *mem_alloc_powercap_status(char *final_data)
     memcpy(status, final_data, final_size);
 
     status->greedy_nodes = calloc(status->num_greedy, sizeof(int));
-    status->greedy_req = calloc(status->num_greedy, sizeof(uint));
-    status->extra_power = calloc(status->num_greedy, sizeof(uint));
+    status->greedy_data  = calloc(status->num_greedy, sizeof(greedy_bytes_t));
 
     memcpy(status->greedy_nodes, &final_data[final_size], sizeof(int)*status->num_greedy);
     final_size += status->num_greedy*sizeof(int);
 
-    memcpy(status->greedy_req, &final_data[final_size], sizeof(uint)*status->num_greedy);
-    final_size += status->num_greedy*sizeof(uint);
-
-    memcpy(status->extra_power, &final_data[final_size], sizeof(uint)*status->num_greedy);
-    final_size += status->num_greedy*sizeof(uint);
+    memcpy(status->greedy_data, &final_data[final_size], sizeof(greedy_bytes_t)*status->num_greedy);
+    final_size += status->num_greedy*sizeof(greedy_bytes_t);
 
     return status;
 }
@@ -1376,12 +1372,8 @@ char *mem_alloc_char_powercap_status(powercap_status_t *status)
     memcpy(&data[size], status->greedy_nodes, sizeof(int) * status->num_greedy);
     size += sizeof(int) * status->num_greedy;
     
-    memcpy(&data[size], status->greedy_req, sizeof(uint) * status->num_greedy);
-    size += sizeof(uint) * status->num_greedy;
-
-    memcpy(&data[size], status->extra_power, sizeof(uint) * status->num_greedy);
-    size += sizeof(uint) * status->num_greedy;
-
+    memcpy(&data[size], status->greedy_data, sizeof(greedy_bytes_t) * status->num_greedy);
+    size += sizeof(greedy_bytes_t) * status->num_greedy;
 
     return data;
 }
@@ -1395,11 +1387,8 @@ powercap_status_t *memmap_powercap_status(char *final_data, int *size)
     status->greedy_nodes = (int *)&final_data[final_size];
     final_size += status->num_greedy*sizeof(int);
                
-    status->greedy_req = (uint *)&final_data[final_size];
-    final_size += status->num_greedy*sizeof(uint);
-
-    status->extra_power = (uint *)&final_data[final_size];
-    final_size += status->num_greedy*sizeof(uint);
+    status->greedy_data = (greedy_bytes_t *)&final_data[final_size];
+    final_size += status->num_greedy*sizeof(greedy_bytes_t);
 
     *size = final_size;
     return status;
@@ -1455,15 +1444,10 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
                 memcpy(&final_status[final_size], new_status->greedy_nodes, sizeof(int)*new_status->num_greedy);
                 final_size += sizeof(int)*new_status->num_greedy;
 
-                memcpy(&final_status[final_size], original_status->greedy_req, sizeof(uint)*original_status->num_greedy);
-                final_size += sizeof(uint)*original_status->num_greedy;
-                memcpy(&final_status[final_size], new_status->greedy_req, sizeof(uint)*new_status->num_greedy);
-                final_size += sizeof(uint)*new_status->num_greedy;
-
-                memcpy(&final_status[final_size], original_status->extra_power, sizeof(uint)*original_status->num_greedy);
-                final_size += sizeof(uint)*original_status->num_greedy;
-                memcpy(&final_status[final_size], new_status->extra_power, sizeof(uint)*new_status->num_greedy);
-                final_size += sizeof(uint)*new_status->num_greedy;
+                memcpy(&final_status[final_size], original_status->greedy_data, sizeof(greedy_bytes_t)*original_status->num_greedy);
+                final_size += sizeof(greedy_bytes_t)*original_status->num_greedy;
+                memcpy(&final_status[final_size], new_status->greedy_data, sizeof(greedy_bytes_t)*new_status->num_greedy);
+                final_size += sizeof(greedy_bytes_t)*new_status->num_greedy;
 
                 final_data = realloc(final_data, final_size);
                 memcpy(final_data, final_status, final_size);

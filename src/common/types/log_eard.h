@@ -78,6 +78,8 @@ void log_report_eard_min_interval(uint secs);
 void log_report_eard_rt_error(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value);
 /* Reports and error when initializing EARD */
 void log_report_eard_init_error(uint usedb,uint useeardbd,uint eventid,ulong value);
+/* Reports powercap events from EARD */
+void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value);
 
 void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value);
 

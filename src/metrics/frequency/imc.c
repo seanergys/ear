@@ -16,7 +16,7 @@
 */
 
 #include <stdio.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <metrics/common/msr.h>
 #include <metrics/frequency/imc.h>
@@ -71,6 +71,7 @@ state_t freq_imc_init(topology_t *tp)
 		ops.data_free   = ifreq_dummy_data_free;
 		ops.data_diff   = ifreq_dummy_data_diff;
 		ops.data_print  = ifreq_dummy_data_print;
+		debug("IMC metrics dummy loaded");
 	}
 
 	return ops.init(tp);

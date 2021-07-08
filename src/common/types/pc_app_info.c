@@ -30,7 +30,7 @@
 
 void pcapp_info_new_job(pc_app_info_t *t)
 {
-	t->req_f=0;
+	memset(t->req_f,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 	t->req_power=0;
 	t->pc_status=PC_STATUS_IDLE;
 	#if USE_GPUS
@@ -41,7 +41,7 @@ void pcapp_info_new_job(pc_app_info_t *t)
 }
 void pcapp_info_end_job(pc_app_info_t *t)
 {
-	t->req_f=0;
+	memset(t->req_f,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 	t->req_power=0;
 	t->pc_status=PC_STATUS_IDLE;
 	#if USE_GPUS
@@ -51,9 +51,10 @@ void pcapp_info_end_job(pc_app_info_t *t)
 	#endif
 }
 
-void pcapp_info_set_req_f(pc_app_info_t *t,ulong f)
+void pcapp_info_set_req_f(pc_app_info_t *t, ulong *f, uint num_cpus)
 {
-	t->req_f=f;
+    int i;
+	memcpy(t->req_f,f,sizeof(ulong)*num_cpus);;
 	t->pc_status=PC_STATUS_OK;
 }
 
@@ -69,8 +70,8 @@ void debug_pc_app_info(pc_app_info_t *t)
 {
 	float f;
 	int i;
-	f=(float)t->req_f/1000000.0;
-	debug("PC_APP_INFO: mode %u CPU (req_f %.2f power %lu status %u)",t->cpu_mode, f,t->req_power,t->pc_status);
+	f=(float)t->req_f[0]/1000000.0;
+	debug("PC_APP_INFO: mode %u CPU (req_f[0] %.2f power %lu status %u)",t->cpu_mode, f,t->req_power,t->pc_status);
 	#if USE_GPUS
     debug("GPU mode %u", t->gpu_mode);
 	for (i=0;i<t->num_gpus_used;i++){

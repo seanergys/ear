@@ -408,11 +408,11 @@ uint get_powercap_status(domain_status_t *status)
     int i;
     uint used=0;
     uint g_tbr = 0;
-    uint tmp_strain = 0;
+    uint tmp_stress = 0;
     status->ok = PC_STATUS_OK;
     status->exceed = 0;
 		status->requested = 0;
-    status->strain = 0;
+    status->stress = 0;
     status->current_pc = current_gpu_pc;
 
     if (current_gpu_pc == PC_UNLIMITED){
@@ -433,12 +433,12 @@ uint get_powercap_status(domain_status_t *status)
 
     for (i = 0; i < gpu_pc_num_gpus; i++) {
         if (t_freq[i] > 0 && gpu_pc_util[i]) {
-            tmp_strain += powercap_get_strain(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], gpu_freq[i]);
-            debug("gpu %d tmp_strain: %u (current freq %lu target_freq %lu)", i, tmp_strain, gpu_freq[i], t_freq[i]);
+            tmp_stress += powercap_get_stress(gpu_freq_list[i][0], gpu_freq_list[i][gpu_num_freqs[i]-1], t_freq[i], gpu_freq[i]);
+            debug("gpu %d tmp_stress: %u (current freq %lu target_freq %lu)", i, tmp_stress, gpu_freq[i], t_freq[i]);
         }
     }
-    tmp_strain /= used;
-    status->strain = tmp_strain;
+    tmp_stress /= used;
+    status->stress = tmp_stress;
 
     /* If we know, we must check */
     status->ok = PC_STATUS_RELEASE;

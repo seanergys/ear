@@ -53,7 +53,7 @@ extern double imc_extra_th;
 extern ulong imc_max_khz,imc_min_khz;
 extern ulong def_imc_max_khz; // ,def_imc_min_khz;
 extern uint *imc_max_pstate,*imc_min_pstate;
-extern uint imc_num_pstates; // TODO
+extern uint imc_num_pstates; 
 // extern uint dynais_enabled;
 // extern volatile uint ear_periodic_mode;
 ulong avg_to_khz(ulong freq_khz);
@@ -63,8 +63,8 @@ static int min_pstate;
 static uint ref_imc_pstate;
 extern int my_globalrank;
 static int nump;
-static uint enable_load_balance = 1;
-static uint use_turbo_for_cp = 0;
+static uint enable_load_balance = EAR_USE_LB;
+static uint use_turbo_for_cp = EAR_USE_TURBO_CP;
 static ulong min_cpufreq = 0;
 static uint network_use_imc = 0;
 static uint try_turbo_enabled = 0;
@@ -139,6 +139,7 @@ state_t policy_init(polctx_t *c)
         if (min_cpufreq) verbose_master(2,"Min CPUfreq is limited = %lu",min_cpufreq);
         if (cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
         verbose_master(2,"Network uses IMC set to %u",network_use_imc);
+				try_turbo_enabled = c->use_turbo;
         if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
         verbose_master(2,"Using turbo for cbound app set to %u",try_turbo_enabled);
 
@@ -287,6 +288,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     signature_copy(my_app,sig);
 #ifdef POWERCAP
     if (c->pc_limit > 0){
+				verbose_master(2,"PC set to %u",c->pc_limit);
         curr_freq = frequency_closest_high_freq(my_app->avg_f,1);
     }else{
         curr_freq = *(c->ear_frequency);

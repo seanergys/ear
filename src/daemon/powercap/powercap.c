@@ -62,10 +62,11 @@ extern int eard_must_exit;
 extern settings_conf_t *dyn_conf;
 extern resched_t *resched_conf;
 static uint pc_cpu_strategy;
-static uint pc_gpu_strategy;
 extern pc_app_info_t *pc_app_info_data;
 
-#define min(a,b) ((a<b)?a:b)
+#if USE_GPUS
+static uint pc_gpu_strategy;
+#endif
 
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
@@ -80,38 +81,6 @@ void get_date_str(char *msg,int size)
 	current_t = localtime(&rawtime);
   strftime(msg, size, "%c", current_t);
 }
-
-#if 0
-void * powercapmon_f(void * arg)
-{
-	unsigned long f=5;
-	int fd;
-	ehandler_t pc_eh;
-  energy_data_t e_begin;
-  energy_data_t e_end;
-  power_data_t pc_power;
-
-	//pthread_setname_np(pthread_self(),"powercap_monitor");
-	
-	fd=open("/var/run/ear/powercap_mon.txt",O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
-	if (init_power_ponitoring(&pc_eh)!=EAR_SUCCESS){
-		error("PC init_power_ponitoring");
-		pthread_exit(0);
-	}
-	alloc_energy_data(&e_begin);
-  alloc_energy_data(&e_end);
-  alloc_power_data(&pc_power);
-	read_enegy_data(&pc_eh, &e_begin);
-	while (!eard_must_exit) {
-		sleep(f);
-		read_enegy_data(&pc_eh, &e_end);
-		compute_power(&e_begin, &e_end, &pc_power);
-		print_power(&pc_power,1,fd);
-		copy_energy_data(&e_begin, &e_end);
-	}
-	pthread_exit(0);
-}
-#endif
 
 /***** These two functions monitors node power for status update *****/
 state_t pc_monitor_thread_init(void *p)
@@ -151,6 +120,11 @@ void print_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 	my_powercap_opt->requested,my_powercap_opt->released);
 }
 
+uint powercat_get_value()
+{
+	return my_pc_opt.current_pc;
+}
+
 static int set_powercap_value(uint domain,uint limit)
 {
   char c_date[128];
@@ -160,9 +134,11 @@ static int set_powercap_value(uint domain,uint limit)
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);
   }
-  my_pc_opt.current_pc=limit;
+  my_pc_opt.current_pc = limit;
   update_node_powercap_opt_shared_info();
   pmgt_set_app_req_freq(pcmgr,pc_app_info_data);
+	dyn_conf->pc_opt.current_pc = powercat_get_value();
+
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 
@@ -227,11 +203,6 @@ int powercap_init()
 	my_pc_opt.powercap_status=PC_STATUS_IDLE;
 	last_status=PC_STATUS_IDLE;
 	pc_cpu_strategy=pmgt_get_powercap_cpu_strategy(pcmgr);
-	pc_gpu_strategy=pmgt_get_powercap_gpu_strategy(pcmgr);
-	#if 0
-	if (pc_strategy==PC_DVFS) pmgt_set_pc_mode(pcmgr,PC_MODE_LIMIT);
-	else pmgt_set_pc_mode(pcmgr,PC_MODE_TARGET);
-	#endif
 	pmgt_set_pc_mode(pcmgr,PC_MODE_TARGET);
 	set_powercap_value(DOMAIN_NODE,my_pc_opt.powercap_idle);
 	debug("powercap initialization finished");
@@ -266,7 +237,7 @@ int powercap_idle_to_run()
 				set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);	
 			}else{
 				/* We must use extra power */
-				my_pc_opt.last_t1_allocated=min(my_pc_opt.def_powercap,my_pc_opt.last_t1_allocated+extra);
+				my_pc_opt.last_t1_allocated=ear_min(my_pc_opt.def_powercap,my_pc_opt.last_t1_allocated+extra);
 				my_pc_opt.powercap_status=PC_STATUS_OK;
 				my_pc_opt.released=0;
 				set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);	
@@ -305,7 +276,7 @@ int powercap_run_to_idle()
         case PC_STATUS_GREEDY:
         case PC_STATUS_ASK_DEF:
         case PC_STATUS_RELEASE:
-            debug("%sGoin from run to idle%s",COL_GRE,COL_CLR);
+            debug("%sGoing from run to idle%s",COL_GRE,COL_CLR);
             my_pc_opt.released=my_pc_opt.last_t1_allocated-my_pc_opt.powercap_idle;
             my_pc_opt.requested=0;
             my_pc_opt.powercap_status=PC_STATUS_IDLE;
@@ -354,7 +325,8 @@ void print_power_status(powercap_status_t *my_status)
 	my_status->idle_nodes,my_status->released,my_status->requested,my_status->num_greedy,my_status->current_power,
 	my_status->total_powercap,my_status->total_idle_power);
 	for (i=0;i<my_status->num_greedy;i++){
-		if (my_status->num_greedy) debug("greedy=(ip=%u,req=%u,extra=%u) ",my_status->greedy_nodes[i],my_status->greedy_req[i],my_status->extra_power[i]);
+		if (my_status->num_greedy) debug("greedy=(ip=%u,req=%u,extra=%u) ", my_status->greedy_nodes[i], 
+                                                my_status->greedy_data[i].requested, my_status->greedy_data[i].extra_power);
 	}
 }
 /***************************************************************************************/

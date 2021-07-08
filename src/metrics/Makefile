@@ -34,6 +34,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/flops/cpu/dummy.o \
     $(SRCDIR)/metrics/frequency/cpu.o \
     $(SRCDIR)/metrics/frequency/cpu/intel63.o \
+    $(SRCDIR)/metrics/frequency/cpu/intel_dummy.o \
     $(SRCDIR)/metrics/frequency/imc.o \
     $(SRCDIR)/metrics/frequency/imc/dummy.o \
     $(SRCDIR)/metrics/frequency/imc/intel63.o \

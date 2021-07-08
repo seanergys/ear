@@ -35,7 +35,6 @@
 #include <common/system/sockets.h>
 #include <common/string_enhanced.h>
 
-
 #define EDB_NTYPES                    7
 #define EDB_MAX_CONNECTIONS           FD_SETSIZE - 48
 #define EDB_OFFLINE                   0 // To test EARDBD offline
@@ -66,23 +65,23 @@
 #define ALLOC_PERCENT_ENERGY_REPS     7  // 96
 #define ALLOC_PERCENT_ENERGY_AGGRS    4  // 100
 // Type indexes
-#define i_appsm                       0
-#define i_appsn                       1
-#define i_appsl                       2
-#define i_loops                       3
-#define i_evnts                       4
-#define i_enrgy                       5
-#define i_aggrs                       6
+#define index_appsm                   0
+#define index_appsn                   1
+#define index_appsl                   2
+#define index_loops                   3
+#define index_evens                   4
+#define index_enrgy                   5
+#define index_aggrs                   6
 
-typedef struct sync_qst {
+typedef struct sync_question_s {
 	uint sync_option;
 	uint veteran;
-} sync_qst_t;
+} sync_question_t;
 
-typedef struct sync_ans {
+typedef struct sync_answer_s {
 	uint veteran;
 	int answer;
-} sync_ans_t;
+} sync_answer_t;
 
 typedef struct eardbd_status_s {
 	state_t  insert_states[EDB_NTYPES];

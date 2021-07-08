@@ -57,9 +57,9 @@ extern uint imc_devices;
 extern const pstate_t *imc_pstates;
 int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
-uint dyn_unc = 0;
+uint dyn_unc = EAR_eUFS;
 uint imc_set_by_hw = 0;
-double imc_extra_th = 0.0;
+double imc_extra_th = EAR_IMC_TH;
 uint total_mpi = 0;
 static uint first_print = 1;
 #define IMC_STEP 100000
@@ -110,7 +110,7 @@ static uint last_earl_gpu_phase_classification = 1; /* IDLE */
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 static uint exclusive_mode = 0;
-static uint use_earl_phases = 1;
+static uint use_earl_phases = EAR_USE_PHASES;
 
 int cpu_ready = EAR_POLICY_NO_STATE ,gpu_ready = EAR_POLICY_NO_STATE ;
 uint gidle;
@@ -226,10 +226,12 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
         ulong f;
         /* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data,freq_set[0]);
-        f=pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
-        debug("Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
+        pcapp_info_set_req_f(pc_app_info_data, freq_set, MAX_CPUS_SUPPORTED);
+				#if 0
+        f = pc_support_adapt_freq(c,&my_pol_ctx.app->pc_opt,freq_set[0],my_sig);
+        verbose_master(2,"Adapting frequency because pc: selected %lu new %lu",freq_set[0],f);
         freq_set[0] = f;
+				#endif
     }else{
         //debug("PC mode %u (should be PC_POWER)",pc_app_info_data->cpu_mode);
         //      pcapp_info_set_req_f(pc_app_info_data,*freq_set);
@@ -314,7 +316,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 #if USE_GPUS
 #if POWERCAP
     for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
-        debug("GPU[%d] freq requested %lu",i,gpu_f[i]);
+        verbose_master(2,"GPU[%d] freq requested %lu",i,gpu_f[i]);
     }
     pc_app_info_data->num_gpus_used=my_sig->gpu_sig.num_gpus;
     memcpy(pc_app_info_data->req_gpu_f,gpu_f,c->num_gpus*sizeof(ulong));
@@ -322,7 +324,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         pc_support_adapt_gpu_freq(c,&c->app->pc_opt,gpu_f,my_sig);
     }
     for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
-        debug("GPU[%d] freq selected after powercap filter %lu",i,gpu_f[i]);
+        verbose_master(2,"GPU[%d] freq selected after powercap filter %lu",i,gpu_f[i]);
     }
 #endif
     /* Pending: We must filter the GPUs I'm using */
