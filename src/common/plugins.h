@@ -19,6 +19,7 @@
 #define COMMON_PLUGINS_H
 
 #include <common/states.h>
+#include <metrics/common/apis.h>
 
 // Attributes
 #define attr2(a1, a2)    __attribute__ ((a1, a2))

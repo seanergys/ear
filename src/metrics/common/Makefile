@@ -3,6 +3,8 @@ CFLAGS = $(CC_FLAGS) -fPIC -I$(SRCDIR) $(CONSTANTS)
 ######## FILES
 
 comm_OBJS = \
+	apis.o \
+  pstate.o \
 	hsmp.o \
 	hwmon.o \
     msr.o \

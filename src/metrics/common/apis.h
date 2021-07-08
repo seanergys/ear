@@ -33,6 +33,11 @@
 #define EARD             1
 #define NO_EARD          0
 
+#define replace_ops(p1, p2) \
+	if (p1 == NULL) { \
+		p1 = p2; \
+	}
+
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
     if (op == NULL) { \
