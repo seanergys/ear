@@ -20,7 +20,7 @@
 
 #include <management/imcfreq/imcfreq.h>
 
-state_t mgt_imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops);
+state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops);
 
 state_t mgt_imcfreq_amd17_init(ctx_t *c);
 
@@ -35,5 +35,9 @@ state_t mgt_imcfreq_amd17_set_current_list(ctx_t *c, uint *index_list);
 state_t mgt_imcfreq_amd17_set_current(ctx_t *c, uint pstate_index, int socket);
 
 state_t mgt_imcfreq_amd17_set_auto(ctx_t *c);
+
+state_t mgt_imcfreq_amd17_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list);
+
+state_t mgt_imcfreq_amd17_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list);
 
 #endif //MANAGEMENT_IMCFREQ_AMD17
