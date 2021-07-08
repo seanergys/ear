@@ -52,6 +52,7 @@
 #define NUM_LEVELS  4
 #define MAX_PSTATE  16
 #define IP_LENGTH   24
+#define EARDBD_LEN  64
 
 #define EAR_TYPE_POLICY             25 //it should be 2005, but we don't want to interfere with the messaging api
 #define EAR_TYPE_FULL_STATUS        26 //it should be 2006, but we don't want to interfere with the messaging api
@@ -59,6 +60,7 @@
                                        //APP_STATUS, we need subspecific types for this case
 #define EAR_TYPE_APP_STATUS_NODE    28 //same as above
 #define EAR_TYPE_EARDBD_STATUS      29 //additional type for EARDBD statuses
+#define EAR_TYPE_HEALTH_CHECK       30 //additional type for both EARDBD and NODE statuses in ERROR_ONLY mode 
 
 /* Status modes */
 #define ERR_ONLY    1
@@ -80,6 +82,13 @@ typedef struct ip_table
     uint temp;
     eard_policy_info_t policies[TOTAL_POLICIES];
 } ip_table_t;
+
+typedef struct eardbd_table 
+{
+    eardbd_status_t status;
+    char name[EARDBD_LEN];
+    char active;
+} eardbd_table_t;
 
 cluster_conf_t my_cluster_conf;
 int no_error = 0;
@@ -367,7 +376,7 @@ void process_powercap_status(powercap_status_t *powerstatus,int num_status)
 
 void process_status(int num_status, status_t *status, char error_only)
 {
-    if (num_status > 0)
+    if (num_status > 0 || error_only == ERR_ONLY)
     {
         int i, num_ips;
         ip_table_t *ips = NULL;
@@ -411,18 +420,79 @@ char *get_eardbd_type(int i)
     return "Unknown table";
 }
 
-void process_eardbd_status(int num_status, eardbd_status_t *status)
+int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus) 
 {
-    int i;
+    int i, j, k, count = 0;
+    char found = 0;
 
-    printf("Number of EARDs connected: %u\n", status->sockets_online);
-    printf("Samples inserted last iteration: applications->%u    loops->%u    EARD events->%u    node metrics->%u\n",
-            status->samples_recv[0] + status->samples_recv[1], status->samples_recv[3], status->samples_recv[4], status->samples_recv[5]);
+    for (i = 0; i < conf->num_islands; i++) {
+        count += conf->islands[i].num_ips;
+        count += conf->islands[i].num_backups;
+    }
+    eardbd_table_t *aux_t = calloc(count, sizeof(eardbd_table_t));
+    count = 0;
+    for (i = 0; i < conf->num_islands; i++) {
+        for (j = 0; j < conf->islands[i].num_ips; j++) {
+            found = 0;
+            for (k = 0; k < count; k++) {
+                if (!strcmp(aux_t[k].name, conf->islands[i].db_ips[j])) found = 1;
+                break;
+            }
+            if (!found) {
+                strncpy(aux_t[count].name, conf->islands[i].db_ips[j], EARDBD_LEN);
+                count++;
+            }
+        }
+    }
+    aux_t = realloc(aux_t, count*sizeof(eardbd_table_t));
+    int ret;
+    for (i = 0; i < count; i++) 
+    {
+        if (strlen(aux_t[i].name)) {
+            ret = eardbd_status(aux_t[i].name, my_cluster_conf.db_manager.tcp_port, &aux_t[i].status);
+            if (state_ok(ret)) {
+                aux_t[i].active = 1;
+            }
+        }
+    }
 
-    for (i = 0; i < EDB_NTYPES; i++)
-        if (status->insert_states[i] != 0)
-            printf("Error registered when inserting %s\n", get_eardbd_type(i));
+    return count;
+}
 
+void process_eardbd_status(int num_status, eardbd_table_t *status, char error_only)
+{
+    int i, j;
+
+    if (!error_only) {
+        for (i = 0; i < num_status; i++) {
+            if (status[i].active) {
+                printf("EARDBD: %s\n", status[i].name);
+                printf("Number of EARDs connected: %u\n", status[i].status.sockets_online);
+                printf("Samples inserted last iteration: applications->%u    loops->%u    EARD events->%u    node metrics->%u\n",
+                        status[i].status.samples_recv[0] + status[i].status.samples_recv[1], status[i].status.samples_recv[3],
+                        status[i].status.samples_recv[4], status[i].status.samples_recv[5]);
+
+                for (j = 0; j < EDB_NTYPES; j++)
+                    if (status[i].status.insert_states[j] != 0)
+                        printf("Error registered when inserting %s\n", get_eardbd_type(j));
+            } else {
+                printf("EARDBD %s is inactive\n", status[i].name);
+            }
+        }
+    } else {
+        for (i = 0; i < num_status; i++) {
+            if (!status[i].active) {
+                printf("EARDBD: %s inactive \n", status[i].name);
+            } else if (!status[i].status.sockets_online) {
+                printf("EARDBD: %s has 0 nodes connected \n", status[i].name);
+            } else {
+                for (j = 0; j < EDB_NTYPES; j++)
+                    if (status[i].status.insert_states[j] != 0) {
+                        printf("EARDBD: %s has registered errors inserting %s\n", status[i].name, get_eardbd_type(j));
+                    }
+            }
+        }
+    }
 }
 
 void process_app_status(int num_status, app_status_t *status, char is_master)
@@ -491,6 +561,7 @@ int main(int argc, char *argv[])
 
     char path_name[128];
     char node_name[256];
+    char *mail = NULL;
 
     strcpy(node_name,"");
 
@@ -536,8 +607,10 @@ int main(int argc, char *argv[])
             {"reset-powercap",  required_argument, 0, 'x'},
             {"inc-powercap",    required_argument, 0, 'i'},
             {"red-powercap",    required_argument, 0, 'd'},
+            {"mail",            required_argument, 0, 'm'},
             {"verbose",         optional_argument, 0, 'b'},
             {"error",           no_argument, 0, 'e'},
+            {"health-check",    no_argument, 0, 'k'},
             {"active-only",     no_argument, 0, 'y'},
             {"help",         	no_argument, 0, 'h'},
             {"version",         no_argument, 0, 'v'},
@@ -776,6 +849,9 @@ int main(int argc, char *argv[])
                 num_status = status_all_nodes(&my_cluster_conf, &status);
                 process_status(num_status, status, 1);
                 break;
+            case 'k':
+                status_type = EAR_TYPE_HEALTH_CHECK;
+                break;
             case 'c': //set_powercap
                 arg = atoi(optarg);
 				if (optind+1 > argc) {
@@ -836,6 +912,9 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
+            case 'm':
+                mail = optarg;
+                break;
             case 'h':
                 usage(argv[0]);
                 break;
@@ -848,9 +927,9 @@ int main(int argc, char *argv[])
                 else verb_level = 1;
                 break;
 
-
         }
     }
+
 
     if (strlen(node_name) > 0 && status_type > 0)
     {
@@ -862,7 +941,7 @@ int main(int argc, char *argv[])
         }
         powercap_status_t *powerstatus;
         app_status_t *appstatus;
-        eardbd_status_t edbstatus;
+        eardbd_table_t edbstatus;
         if (rc<0 && status_type != EAR_TYPE_EARDBD_STATUS)
             printf("Error connecting with node %s\n", node_name);
         else
@@ -898,19 +977,22 @@ int main(int argc, char *argv[])
                     process_app_status(num_status, appstatus, 0);
                     break;
                 case EAR_TYPE_EARDBD_STATUS:
-                    num_status = eardbd_status(node_name, my_cluster_conf.db_manager.tcp_port, &edbstatus);
-                    if (state_ok(num_status))
-                        process_eardbd_status(num_status, &edbstatus);
-                    else
+                    num_status = eardbd_status(node_name, my_cluster_conf.db_manager.tcp_port, &edbstatus.status);
+                    strcpy(edbstatus.name, node_name);
+                    if (state_ok(num_status)) {
+                        num_status = 1;
+                        process_eardbd_status(num_status, &edbstatus, 0);
+                    } else {
                         printf("Error reading EARDBD status from node %s\n", node_name);
+                    }
                     break;
             }
-
             eards_remote_disconnect();
         }
     }
     else if (status_type > 0)
     {
+        eardbd_table_t *edbstatus;
         switch(status_type)
         {
             powercap_status_t *powerstatus;
@@ -929,7 +1011,7 @@ int main(int argc, char *argv[])
                 break;
             case EAR_TYPE_POWER_STATUS:
                 num_status = cluster_get_powercap_status(&my_cluster_conf, &powerstatus);
-								process_powercap_status(powerstatus,num_status);
+                process_powercap_status(powerstatus,num_status);
                 break;
             case EAR_TYPE_APP_STATUS_MASTER:
                 num_status = get_app_master_status_all_nodes(&my_cluster_conf, &appstatus);
@@ -940,8 +1022,18 @@ int main(int argc, char *argv[])
                 process_app_status(num_status, appstatus, 0);
                 break;
             case EAR_TYPE_EARDBD_STATUS:
-                printf("EARDBD status  not implemented for cluster_wide status\n");
+                num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
+                process_eardbd_status(num_status, edbstatus, 0);
                 break;
+            case EAR_TYPE_HEALTH_CHECK:
+                printf("---------------------\nINACTIVE NODES\n---------------------\n");
+                num_status = status_all_nodes(&my_cluster_conf, &status);
+                process_status(num_status, status, ERR_ONLY);
+                printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
+                num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
+                process_eardbd_status(num_status, edbstatus, 1);
+                break;
+                
         }
     }
     free_cluster_conf(&my_cluster_conf);
