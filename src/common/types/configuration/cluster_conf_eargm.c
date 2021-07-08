@@ -120,27 +120,27 @@ state_t EARGM_parse_token(eargm_conf_t *conf,char *token)
 			token = strtok(NULL, "=");
 			conf->powercap_mode = atoi(token);
 			found=EAR_SUCCESS;
-		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPACTIONLIMIT") || !strcmp(token, "EARGMPOWERCAPACTIONLIMIT"))
+		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPSUSPENDLIMIT") || !strcmp(token, "EARGMPOWERCAPSUSPENDLIMIT"))
 		{
 			token = strtok(NULL, "=");
 			conf->defcon_power_limit = atoi(token);
 			found=EAR_SUCCESS;
-		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPACTION") || !strcmp(token,"EARGMPOWERCAPACTION"))
+		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPSUSPENDACTION") || !strcmp(token,"EARGMPOWERCAPSUSPENDACTION"))
 		{
 			token = strtok(NULL, "=");
 			strclean(token, '\n');
 			strcpy(conf->powercap_limit_action,token);
 			found=EAR_SUCCESS;
-		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPACTIONLOWER") || !strcmp(token, "EARGMPOWERCAPACTIONLOWER"))
-		{
-			token = strtok(NULL, "=");
-			conf->defcon_power_lower = atoi(token);
-			found=EAR_SUCCESS;
-		}else if (!strcmp(token, "GLOBALMANAGERPOWERLOWERCAPACTION") || !strcmp(token,"EARGMPOWERCAPLOWERACTION"))
+		}else if (!strcmp(token, "GLOBALMANAGERPOWERCAPRESUMEACTION") || !strcmp(token, "EARGMPOWERCAPRESUMEACTION"))
 		{
 			token = strtok(NULL, "=");
 			strclean(token, '\n');
 			strcpy(conf->powercap_lower_action,token);
+			found=EAR_SUCCESS;
+		}else if (!strcmp(token, "GLOBALMANAGERPOWERCPRESUMELIMIT") || !strcmp(token,"EARGMPOWERCAPRESUMELIMIT"))
+		{
+			token = strtok(NULL, "=");
+			conf->defcon_power_lower = atoi(token);
 			found=EAR_SUCCESS;
 		}else if (!strcmp(token, "GLOBALMANAGERENERGYACTION") || !strcmp(token, "EARGMENERGYACTION"))
 		{
