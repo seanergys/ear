@@ -966,14 +966,14 @@ int metrics_init(topology_t *topo)
 	imc_min_khz = def_imc_min_khz;
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
-		if (state_ok(mgt_imcfreq_from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
+		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
 			for (i=0; i< imc_devices;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
 			imc_max_khz = imc_pstates[imc_max_pstate[0]].khz;
 		}
 	}
   if (cimc_min_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_min_khz);
-		if (state_ok(mgt_imcfreq_from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
+		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
 			for (i=0; i< imc_devices;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
 			imc_min_khz = imc_pstates[imc_min_pstate[0]].khz;
 		}

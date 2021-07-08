@@ -320,7 +320,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if (eUFS){
         pstate_t tmp_state;
         curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
-        if (mgt_imcfreq_avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_state) == EAR_ERROR){
+        if (avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_state) == EAR_ERROR){
             verbose_master(2,"Current AVG IMC freq cannot be translated to IMC pstate %lu",curr_imc_freq);
         }
         curr_imc_pstate = tmp_state.idx;

@@ -43,4 +43,11 @@ void pstate_print(pstate_t *pstate_list, uint pstate_count, int fd);
 
 char *pstate_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, int length);
 
+// Provisional
+state_t avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
+
+state_t pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong *khz);
+
+state_t from_freq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
+
 #endif //METRICS_COMMON_PSTATE_H

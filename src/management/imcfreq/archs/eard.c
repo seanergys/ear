@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -29,7 +29,7 @@ static pstate_t  *available_copy;
 static pstate_t  *available_list;
 static uint       available_count;
 
-state_t mgt_imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
+state_t mgt_imcfreq_eard_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int eard)
 {
 	char buffer[4096];
 	int eard_api;
@@ -70,8 +70,8 @@ state_t mgt_imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
 	replace_ops(ops->set_current_list,   mgt_imcfreq_eard_set_current_list);
 	replace_ops(ops->set_current,        mgt_imcfreq_eard_set_current);
 	replace_ops(ops->set_auto,           mgt_imcfreq_eard_set_auto);
-	replace_ops(ops->get_current_min_list, mgt_imcfreq_eard_get_current_min_list);
-	replace_ops(ops->set_current_min_list, mgt_imcfreq_eard_set_current_min_list);
+	replace_ops(ops->get_current_ranged_list, mgt_imcfreq_eard_get_current_ranged_list);
+	replace_ops(ops->set_current_ranged_list, mgt_imcfreq_eard_set_current_ranged_list);
 	//
     sockets_count  = tp->socket_count;
 	return EAR_SUCCESS;
@@ -131,7 +131,7 @@ state_t mgt_imcfreq_eard_set_auto(ctx_t *c)
 	return mgt_imcfreq_eard_set_current(c, ps_auto, all_sockets);
 }
 
-state_t mgt_imcfreq_eard_get_current_min_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
+state_t mgt_imcfreq_eard_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
 {
 	size_t size = sizeof(pstate_t) * sockets_count;
 	char buffer[1024];
@@ -145,7 +145,7 @@ state_t mgt_imcfreq_eard_get_current_min_list(ctx_t *c, pstate_t *ps_min_list, p
 	return EAR_SUCCESS;
 }
 
-state_t mgt_imcfreq_eard_set_current_min_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
+state_t mgt_imcfreq_eard_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
 	size_t size = sizeof(uint) * sockets_count;
 	char buffer[1024];

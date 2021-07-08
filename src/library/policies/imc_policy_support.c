@@ -167,7 +167,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     // TODO: if it works, please beautify
     ulong curr_imc_freq = (ulong) (((ear_math_roundf((float) sig->sig_ext->imc_freq / 100000.0)) / 10.0) * 1000000);
 
-    if ( mgt_imcfreq_pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
+    if (pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
 			verbose_master(2,"IMC pstates invalid %d",ref_imc_pstate);
 		}
     verbose_master(2, "Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);

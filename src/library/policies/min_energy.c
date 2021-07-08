@@ -325,7 +325,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if (eUFS){
         pstate_t tmp_pstate;
         curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
-        if (mgt_imcfreq_avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_pstate) != EAR_SUCCESS){
+        if (avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_pstate) != EAR_SUCCESS){
             verbose_master(2,"Current Avg IMC freq %lu cannot be converted to psate",curr_imc_freq);
         }
         curr_imc_pstate = tmp_pstate.idx;
@@ -608,8 +608,8 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
         mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
 
 
-        verbose_master(2,"%sNode load unbalance%s: LB_TH %.2lf mean %.2lf standard deviation 
-                %.2lf magnitude %.2lf unbalance ? %u", COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
+        verbose_master(2,"%sNode load unbalance%s: LB_TH %.2lf mean %.2lf standard deviation "
+               	"%.2lf magnitude %.2lf unbalance ? %u", COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 
         /* This function sends mpi_summary to other nodes */
         chech_node_mpi_summary();
