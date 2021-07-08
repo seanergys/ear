@@ -38,7 +38,7 @@
 #include <metrics/energy/energy_node.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/frequency/cpu.h>
-#include <metrics/frequency/imc.h>
+#include <metrics/imcfreq/imcfreq.h>
 #include <daemon/local_api/eard_conf_api.h>
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/power_monitor.h>
@@ -157,9 +157,9 @@ static cpufreq_t freq_local1;
 cpufreq_t freq_job2;
 cpufreq_t freq_job1;
 static uint size_cpufreqs,count_cpufreqs;
-static uint unc_c;
 topology_t node_desc;
-static freq_imc_t imc_data_app;
+static imcfreq_t *unc_data;
+static uint unc_count;
 static ctx_t imc_eard_ctx;
 
 /* EARD init errors control */
@@ -702,8 +702,10 @@ int eard_freq(int must_read)
 	size_t size;
 	ulong ack;
 	state_t s;
+	uint *min;
+	uint *max;
+	uint *aux;
 	ulong *f;
-	uint *min,*max;
 
 	if (must_read) {
 		if (read(ear_fd_req[freq_req], &req, sizeof(req)) != sizeof(req))
@@ -782,14 +784,17 @@ int eard_freq(int must_read)
 			break;
     /* These functions are new for UNC freq management */
 		case UNC_SIZE:
-			write(ear_fd_ack[freq_req],&unc_c,sizeof(uint));
+			aux = (uint *) buffer;
+			aux[1] = unc_count;
+			imcfreq_get_api(aux);
+			write(ear_fd_ack[freq_req], aux, sizeof(uint)*2);
 			break;
 		case UNC_READ:
-			memset(imc_data_app.data,0,unc_c);
-			if (xtate_fail(s,freq_imc_read(&imc_data_app))){
+			memset(unc_data, 0, unc_count);
+			if (state_fail(s = imcfreq_read(no_ctx, unc_data))){
 					error("WHen reading unc frequency requested by app (%d, %s)", s, state_msg);
 			}
-			write(ear_fd_ack[freq_req],imc_data_app.data,unc_c);
+			write(ear_fd_ack[freq_req], unc_data, unc_count * sizeof(imcfreq_t));
 			break;
 		case UNC_INIT_DATA:
 			memset(&buffer[0], 0, 4096);
@@ -1641,16 +1646,16 @@ int main(int argc, char *argv[]) {
 	state_assert(s, cpufreq_data_count(&size_cpufreqs,&count_cpufreqs), _exit(0));
 	// IMC frequency
 	verbose(VCONF, "Initializing IMCfreq metrics API ");
-	state_assert(s, freq_imc_init(&node_desc), _exit(0));
-  	state_assert(s, freq_imc_data_count(&unc_c), _exit(0));
-  	state_assert(s, freq_imc_data_alloc(&imc_data_app, NULL,NULL), _exit(0));
+	imcfreq_load(&node_desc, NO_EARD);
+	state_assert(s, imcfreq_init(no_ctx), _exit(0));
+  	state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
+  	state_assert(s, imcfreq_data_alloc(&unc_data, NULL),       _exit(0));
 	// IMC Management
 	verbose(VCONF, "Initializing IMCfreq mgt API:Load ");
 	state_assert(s, mgt_imcfreq_load(&node_desc, NO_EARD), _exit(0));
 	verbose(VCONF, "Initializing IMCfreq mgt API:Init ");
 	state_assert(s, mgt_imcfreq_init(&imc_eard_ctx), _exit(0));
 	verbose(VCONF, "IMC metrics and management initialized ");
-
 
 #if EARD_LOCK
 	eard_lock(ear_tmp);

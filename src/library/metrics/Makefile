@@ -15,10 +15,6 @@ install: ;
 
 clean: rclean;
 
-depend: ;
-
-depend-clean: ;
-
 ######## DEPENDENCIES
 
 include $(SRCDIR)/Makefile.depend

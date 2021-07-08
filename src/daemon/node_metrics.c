@@ -70,12 +70,6 @@ int init_node_metrics(nm_t *id, topology_t *topo, ulong def_freq)
 	state_assert(s, temp_load(topo), exit(0));
 	state_assert(s, temp_init(&temp_ctx),);
 
-	// CPU/IMC Frequency	
-	state_assert(s, cpufreq_load(topo),);
-	state_assert(s, cpufreq_init()    ,);
-
-	state_assert(s, freq_imc_init(topo),);
-
 	//
 	id->con=NM_CONNECTED;
 
@@ -95,7 +89,7 @@ int init_node_metrics_data(nm_t *id,nm_data_t *nm)
 	
 	// CPU/IMC Frequency
 	state_assert(s, cpufreq_data_alloc(&nm->freq_cpu, NULL),);
-	state_assert(s, freq_imc_data_alloc(&nm->freq_imc, NULL, NULL),);
+	state_assert(s, imcfreq_data_alloc(&nm->freq_imc, NULL),);
 	nm->avg_cpu_freq=0;
 	nm->avg_imc_freq=0;
 
@@ -112,7 +106,7 @@ int start_compute_node_metrics(nm_t *id,nm_data_t *nm)
 
 	// CPU/IMC Frequency
 	state_assert(s, cpufreq_read(&nm->freq_cpu),);
-	state_assert(s, freq_imc_read(&nm->freq_imc),);
+	state_assert(s, imcfreq_read(no_ctx, nm->freq_imc),);
 
 	return EAR_SUCCESS;
 }
@@ -132,7 +126,7 @@ int end_compute_node_metrics(nm_t *id,nm_data_t *nm)
 
 	// CPU/IMC Frequency
 	state_assert(s, cpufreq_read(&nm->freq_cpu),);
-	state_assert(s, freq_imc_read(&nm->freq_imc),);
+	state_assert(s, imcfreq_read(no_ctx, nm->freq_imc),);
 
 	return EAR_SUCCESS;
 }
@@ -153,7 +147,7 @@ int diff_node_metrics(nm_t *id,nm_data_t *init,nm_data_t *end,nm_data_t *diff_nm
 
 	// CPU & IMC Frequency
 	state_assert(s, cpufreq_data_diff(&end->freq_cpu, &init->freq_cpu, NULL, &diff_nm->avg_cpu_freq),);
-	state_assert(s, freq_imc_data_diff(&end->freq_imc, &init->freq_imc, NULL, &diff_nm->avg_imc_freq),);
+	state_assert(s, imcfreq_data_diff( end->freq_imc,  init->freq_imc, NULL, &diff_nm->avg_imc_freq),);
 
 	return EAR_SUCCESS;
 }
@@ -172,7 +166,7 @@ int dispose_node_metrics(nm_t *id)
 
 	// Alomejor podemos implementar un sistema de contadores aquí para poder
 	// cerrar también el de la CPU?
-	state_assert(s, freq_imc_dispose(),);
+	state_assert(s, imcfreq_dispose(no_ctx),);
 
 	return EAR_SUCCESS;
 }
@@ -193,7 +187,7 @@ int copy_node_metrics(nm_t *id, nm_data_t *dest, nm_data_t *src)
 
 	// Frequencies
 	state_assert(s, cpufreq_data_copy(&dest->freq_cpu, &src->freq_cpu),);
-	state_assert(s, freq_imc_data_copy(&dest->freq_imc, &src->freq_imc),);
+	state_assert(s, imcfreq_data_copy( dest->freq_imc,  src->freq_imc),);
 	dest->avg_cpu_freq = src->avg_cpu_freq;
 	dest->avg_imc_freq = src->avg_imc_freq;
 

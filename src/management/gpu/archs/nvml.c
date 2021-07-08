@@ -133,8 +133,6 @@ static state_t static_status()
 {
 	nvmlReturn_t r;
 	int d;
-	int driverversion, runtimeversion;
-	nvmlDriverModel_t current,  pending;
 
 	if ((r = nvml.Init()) != NVML_SUCCESS) {
 		debug("nvml.Init");

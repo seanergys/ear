@@ -47,10 +47,10 @@ typedef int state_t;
 char *state_msg;
 
 #define state_ok(state) \
-	(state == EAR_SUCCESS)
+	((state) == EAR_SUCCESS)
 
 #define state_fail(state) \
-	(state != EAR_SUCCESS)
+	((state) != EAR_SUCCESS)
 
 #define state_is(state1, state2) \
 	(state1 == state2)

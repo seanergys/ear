@@ -19,10 +19,9 @@ install: ;
 
 clean: rclean;
 
-depend: depend.components
+depend: ;
 
-depend-clean: depend-clean.components
-
+depend-clean: ;
 
 ######## DEPENDENCIES
 

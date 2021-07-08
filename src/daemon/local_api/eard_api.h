@@ -23,7 +23,7 @@
 #include <daemon/local_api/eard_conf_api.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/frequency/cpu.h>
-#include <metrics/frequency/imc.h>
+#include <metrics/imcfreq/imcfreq.h>
 
 /************************************/
 /** Tries to connect with the daemon. Returns 0 on success and -1 otherwise. */
@@ -76,12 +76,11 @@ state_t eards_cpufreq_read(cpufreq_t *ef,size_t size);
 
 /************************************/
 // Uncore frequency management
-state_t eards_freq_imc_data_count(uint *count);
-state_t eards_freq_imc_read(freq_imc_t *ef,size_t size);
+state_t eards_imcfreq_data_count(uint *count);
+state_t eards_imcfreq_read(imcfreq_t *ef,size_t size);
 
 state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size);
 state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count);
-
 
 /************************************/
 // Uncore services

@@ -194,7 +194,9 @@ static state_t scan_buffer(char *tok, proc_stat_t *ps)
 		&ps->start_data, &ps->end_data, &ps->start_brk, &ps->arg_start, &ps->arg_end,
 		&ps->env_start, &ps->env_end, &ps->exit_code);
 	}
-	debug("mode %d ret %d",mode,ret);
+	debug("mode %d ret %d", mode, ret);
+	(void) ret;
+	
 	return EAR_SUCCESS;
 }
 

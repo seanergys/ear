@@ -35,13 +35,15 @@ mets_OBJS = \
     $(SRCDIR)/metrics/flops/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/cpu/dummy.o \
     $(SRCDIR)/metrics/frequency/cpu.o \
+    $(SRCDIR)/metrics/frequency/cpufreq_base.o \
     $(SRCDIR)/metrics/frequency/cpu/intel63.o \
     $(SRCDIR)/metrics/frequency/cpu/intel_dummy.o \
-    $(SRCDIR)/metrics/frequency/imc.o \
-    $(SRCDIR)/metrics/frequency/imc/dummy.o \
-    $(SRCDIR)/metrics/frequency/imc/intel63.o \
-    $(SRCDIR)/metrics/frequency/cpufreq_base.o \
-    $(SRCDIR)/metrics/proc/stat.o \
+    $(SRCDIR)/metrics/imcfreq/imcfreq.o \
+    $(SRCDIR)/metrics/imcfreq/archs/amd17.o \
+    $(SRCDIR)/metrics/imcfreq/archs/eard.o \
+    $(SRCDIR)/metrics/imcfreq/archs/dummy.o \
+    $(SRCDIR)/metrics/imcfreq/archs/intel63.o \
+	$(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
@@ -81,12 +83,13 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'frequency'    $* || exit
+	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'accumulators' $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
-	@ $(MAKE) -C 'proc'           $* || exit
+	@ $(MAKE) -C 'proc'         $* || exit
 
 ######## DEPENDENCIES
 
