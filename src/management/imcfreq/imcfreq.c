@@ -154,6 +154,7 @@ state_t mgt_imcfreq_avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,u
     if (pstate_list[i].khz < khz){
       memcpy(p,&pstate_list[i-1],sizeof(pstate_t));
       s = EAR_SUCCESS;
+			return s;
     }
   }
 	if (s == EAR_ERROR){

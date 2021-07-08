@@ -291,7 +291,7 @@ static void metrics_global_stop()
     		error("IMC set current failed (%d,%s)",s,state_msg);
   		} 
 			#endif
-  		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_max_pstate,imc_min_pstate))){
+  		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
     		error("Setting the IMC freq in global stop");
   		}
 
@@ -346,7 +346,7 @@ static void metrics_global_stop()
 	}else fd = 2;
 	io_buffer = malloc(strlen(io_info) + 200);
 	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
-	write(fd,io_buffer,strlen(io_buffer));
+	if (verb_level >= 2) write(fd,io_buffer,strlen(io_buffer));
 	if (verb_path != NULL) close(fd);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
 
@@ -979,7 +979,7 @@ int metrics_init(topology_t *topo)
 		}
   }
 	/* End HACKS */
-	if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_max_pstate,imc_min_pstate))){
+	if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
 		error("Initialzing the IMC freq");
 	}
 	/* We assume all the sockets have the same configuration */
