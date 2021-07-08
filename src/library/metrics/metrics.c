@@ -902,33 +902,6 @@ int metrics_init(topology_t *topo)
 	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
 
 	/* IMC management */
-	#if 0
-	if (xtate_fail(s,mgt_imcfreq_load(topo))){
-		error("IMC management load failed");
-	}
-	if (xtate_fail(s,mgt_imcfreq_init(&imc_lib_ctx))){
-		error("IMC management init failed");
-	}
-	/* Gets current IMC limits */
-	if (xtate_fail(s,mgt_imcfreq_get_limits(&imc_lib_ctx,&def_imc_max_khz,&def_imc_min_khz))){
-		error("Getting IMC limits (%d,%s)",s,state_msg);
-	}	else{
-		verbose(2,"IMC limits: Max %.2fGHz and Min %.2fGHz",(float)def_imc_max_khz/1000000.0,(float)def_imc_min_khz/1000000.0);
-	}
-	cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
-	cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
-	if (cimc_max_khz == (char*)NULL) imc_max_khz = def_imc_max_khz;
-	else											imc_max_khz = atoi(cimc_max_khz);
-	if (cimc_min_khz == (char*)NULL) imc_min_khz = def_imc_min_khz;
-	else {											
-			imc_min_khz = atoi(cimc_min_khz);
-	}
-	/* Set IMC limits */	
-	if (xtate_fail(s,eards_mgt_imcfreq_set_current(imc_max_khz,imc_min_khz))){
-		error("IMC set current failed (%d,%s)",s,state_msg);
-	}	
-	verbose(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_max_khz/1000000.0,(float)imc_min_khz/1000000.0);	
-	#endif
 	if(state_fail(s = mgt_imcfreq_load(topo, EARD))) {
 		error("Error during mgt_imcfreq_load: %s", state_msg);
 	}
