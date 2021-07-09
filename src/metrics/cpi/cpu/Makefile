@@ -24,9 +24,9 @@ install: ;
 
 clean: rclean;
 
-depend: ;
+#depend: ;
 
-depend-clean: ;
+#depend-clean: ;
 
 ######## DEPENDENCIES
 
