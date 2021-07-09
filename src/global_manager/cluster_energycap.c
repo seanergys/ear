@@ -21,7 +21,7 @@
 #include <math.h>
 #include <common/config.h>
 #include <common/states.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <daemon/remote_api/eard_rapi.h>
 #include <global_manager/cluster_energycap.h>

@@ -49,10 +49,10 @@ extern unsigned long ext_def_freq;
 
 /*  IMC management */
 extern uint dyn_unc;
-extern uint imc_set_by_hw;
 extern double imc_extra_th;
 extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
+static uint imc_set_by_hw = 1;
 
 static int min_pstate;
 static uint ref_imc_pstate;
@@ -91,11 +91,13 @@ static double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean,
               last_mpi_stats_perc_mpi_mag, last_mpi_stats_perc_mpi_median;
 
 /*  Config */
-static uint enable_load_balance = EAR_USE_LB;
-static uint use_turbo_for_cp = EAR_USE_TURBO_CP;
+extern uint enable_load_balance;
+extern uint use_turbo_for_cp;
+extern uint try_turbo_enabled;
+
 static ulong min_cpufreq = 0;
 static uint network_use_imc = 0;
-static uint try_turbo_enabled = 0;
+
 
 #define SELECT_CPUFREQ 		100
 #define SELECT_IMCFREQ 		101
@@ -123,11 +125,10 @@ extern uint cpu_ready, gpu_ready, gidle;
 state_t policy_init(polctx_t *c)
 {
     // char *cuse_imc_ref;
-    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
-    char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
     char *cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
-    char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
+		char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
+
 
     int i, sid = 0;
 
@@ -141,19 +142,15 @@ state_t policy_init(polctx_t *c)
             verbose_master(1,"Busy_waiting MPI set to %u",block_type == BUSY_WAITING_BLOCK);
         }
         /*  Config env variables */
-        if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
-        verbose_master(2,"Load balance enabled ? %u", enable_load_balance);
-        if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
-        verbose_master(2,"Using turbo for CP when load unbalance set to %u",use_turbo_for_cp);
         if (cmin_cpufreq != NULL){
             min_cpufreq = atoi(cmin_cpufreq);
         }
+				if (cimc_set_by_hw != NULL) imc_set_by_hw = atoi(cimc_set_by_hw);
+				verbose_master(2,"IMC set by HW set to %u",imc_set_by_hw);
+
         if (min_cpufreq) verbose_master(2,"Min CPUfreq is limited = %lu",min_cpufreq);
         if (cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
         verbose_master(2,"Network uses IMC set to %u",network_use_imc);
-        try_turbo_enabled = c->use_turbo;
-        if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
-        verbose_master(2,"Using turbo for cbound app set to %u",try_turbo_enabled);
 
         num_processes = lib_shared_region->num_processes;
 
