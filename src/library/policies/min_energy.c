@@ -127,7 +127,7 @@ state_t policy_init(polctx_t *c)
     // char *cuse_imc_ref;
     char *cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
-		char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
+	char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
 
 
     int i, sid = 0;

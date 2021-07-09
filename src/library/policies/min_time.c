@@ -120,8 +120,7 @@ state_t compute_total_node_metrics();
 state_t policy_init(polctx_t *c)
 {
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
-    // TODO: set imc_set_by_hw config var
-    // char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
+    char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
     // TODO: min energy uses more environment variables:
     //  - cuse_imc_ref: -
     //  - cmin_cpufreq: Avoid lowering cpu freq below some value
@@ -140,6 +139,9 @@ state_t policy_init(polctx_t *c)
         /*  Config from env variables */
         if(cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
         verbose_master(2, "Network uses IMC set to %u", network_use_imc);
+
+        if (cimc_set_by_hw != NULL) imc_set_by_hw = atoi(cimc_set_by_hw);
+        verbose_master(2,"IMC set by HW set to %u",imc_set_by_hw);
 
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext = calloc(1, sizeof(io_data_t));
