@@ -58,8 +58,11 @@ extern const pstate_t *imc_pstates;
 int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
 uint dyn_unc = EAR_eUFS;
-uint imc_set_by_hw = 0;
+uint enable_load_balance = EAR_USE_LB;
+uint use_turbo_for_cp = EAR_USE_TURBO_CP;
+uint try_turbo_enabled = 0;
 double imc_extra_th = EAR_IMC_TH;
+
 uint total_mpi = 0;
 static uint first_print = 1;
 #define IMC_STEP 100000
@@ -274,18 +277,6 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 
     uint sock_id = 0;
     if (dyn_unc && imc_mgt_compatible){
-		#if 0
-        imc_up = ear_min(freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX],imc_max_khz);
-        imc_up = ear_max(imc_up,imc_min_khz);
-        /*  If maximum imcfreq set by the policy is the minimum value let by hardware,
-         *  increase it one step to give hardware a bit of freedom */
-        if (imc_up == imc_min_khz){
-            imc_up += IMC_STEP;
-        }
-        imc_low = ear_max(freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN],imc_min_khz);
-        verbose(2,"Setting IMC freq to %lu and %lu",imc_up,imc_low);
-        eards_mgt_imcfreq_set_current(imc_up,imc_low);
-		#endif
 			imc_up = calloc(imc_devices,sizeof(uint));
 			imc_low = calloc(imc_devices,sizeof(uint));
 			/* We are using the same imc pstates for all the devices for now */
@@ -336,7 +327,6 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if (gpu_lib_freq_limit_set(gpu_f) != EAR_SUCCESS){
         verbose_master(2,"GPU freq set error ");
     }
-    // eards_gpu_set_freq(c->num_gpus,gpu_f);
     avg_freq->gpu_freq[0] = compute_avg_freq(gpu_f,my_sig->gpu_sig.num_gpus);
 #endif
     return EAR_SUCCESS;
@@ -442,9 +432,14 @@ state_t policy_init()
 		int i;
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
-    char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
     char *cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
     char *cuse_earl_phases = getenv(SCHED_USE_EARL_PHASES);
+    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
+    char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
+    char *cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);
+    char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
+    char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
+
     state_t ret,retg=EAR_SUCCESS;
     policy_gpu_init_ctx(c);
 		// print_policy_ctx(c);
@@ -468,13 +463,21 @@ state_t policy_init()
         nf.imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_khz;
         nf.imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
     }
+    if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
+    verbose_master(2,"Load balance enabled ? %u", enable_load_balance);
+    if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
+    verbose_master(2,"Using turbo for CP when load unbalance set to %u",use_turbo_for_cp);
+
     if (cdyn_unc != NULL && imc_mgt_compatible){
-        dyn_unc = 1;
-        if (cimc_set_by_hw != NULL) imc_set_by_hw = 1;
+        dyn_unc = atoi(cdyn_unc);
     }
     if (cimc_extra_th != NULL){
         imc_extra_th = atof(cimc_extra_th);
     }
+    try_turbo_enabled = c->use_turbo;
+    if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
+    verbose_master(2,"Using turbo for cbound app set to %u",try_turbo_enabled);
+
     verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
     if (polsyms_fun.domain != NULL){
         ret = polsyms_fun.domain(c,&freqs_domain);

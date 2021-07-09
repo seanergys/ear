@@ -23,7 +23,7 @@
 
 #include <common/config.h>
 #include <common/system/execute.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/colors.h>
 #include <common/types/generic.h>

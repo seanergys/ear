@@ -25,7 +25,7 @@
 #include <math.h>
 #include <common/config.h>
 #include <common/states.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <library/common/library_shared_data.h>
