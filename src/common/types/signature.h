@@ -79,6 +79,7 @@ typedef struct signature
     double PCK_power;
     double EDP;
     double GBS;
+    double IO_GBS;
     double TPI;
     double CPI;
     double Gflops;
@@ -90,7 +91,9 @@ typedef struct signature
     ull instructions;
     ull cycles;
     ulong avg_f;
+		ulong avg_imc_f;
     ulong def_f;
+		double Perc_MPI;
     #if USE_GPUS
     gpu_signature_t gpu_sig;
     #endif
