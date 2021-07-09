@@ -21,5 +21,5 @@ do
 		echo "Node ${i} set to DRAIN " >> $EAR_TMP/ear_power_save.log
     scontrol update NodeName=${i} state=drain reason="EAR powercap"
 done
-#rm -f $EAR_TMP/idle.txt
-#rm -f $EAR_TMP/nodelist.txt
+rm -f $EAR_TMP/idle.txt
+rm -f $EAR_TMP/nodelist.txt

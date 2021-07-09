@@ -50,56 +50,6 @@ uint ear_num_gpus_in_node=0;
 extern int dispose;
 //#define TEST_MB 0
 
-/*
- * Low level reading
- ********************
- *            | P?   | D | Type              | Size F.| Accum/Int. | Unit | Notes
- * ---------- | ---- | - | ----------------- | ------ | ---------- | ---- | ----------------------------
- * Instructs  | PAPI | x | * long long (x2)  | No     | Yes/Yes    | num  | No read (just accum)
- * Cache      | PAPI | x | * long long (x3)  | No     | Yes/Yes    | num  | No read (just accum)
- * Stalls     | PAPI | x | * long long       | No     | Yes/Yes    | num  | No read (just accum)
- * Flops      | PAPI | x | * long long (vec) | Yes    | Yes/Yes    | ops  | No read (just accum)
- * RAPL       | PAPI | v | * ull (vec)       | Yes*   | Yes/Yes**  | nJ   | *Macro, **no daemon service
- * IPMI       | IPMI | v | * ulong           | No     | Yes/No     | mJ   | Water reads J, IBMAEM reads uJ
- * Bandwith   | Cstm | v | * ull (vec)       | Yes    | No/No      | ops  | Vector (r,w,r,w.. so on)
- * Avg. Freq. | Cstm | v | * ulong           | No     | No/Yes*    | MHz? | No start/stop architecture
- *
- * Daemon services
- ******************
- * Client                                         | Req                 | Daemon
- * ---------------------------------------------- | ------------------- | -----------
- * eards_get_data_size_rapl           | DATA_SIZE_RAPL      | eard_rapl
- * eards_start_rapl                   | START_RAPL          |
- * eards_read_rapl                    | READ_RAPL           |
- * eards_reset_rapl                   | RESET_RAPL          |
- * ---------------------------------------------- | ------------------- | ----------------
- * eards_get_data_size_uncore         | DATA_SIZE_UNCORE    | eard_uncore
- * eards_start_uncore                 | START_UNCORE        |
- * eards_read_uncore                  | READ_UNCORE         |
- * eards_reset_uncore                 | RESET_UNCORE        |
- * ---------------------------------------------- | ------------------- | ----------------
- * eards_begin_compute_turbo_freq     | START_GET_FREQ      | eard_freq
- * eards_end_compute_turbo_freq       | END_GET_FREQ        |
- * eards_begin_app_compute_turbo_freq | START_APP_COMP_FREQ |
- * eards_end_app_compute_turbo_freq   | END_APP_COMP_FREQ   |
- * ---------------------------------------------- | ------------------- | ----------------
- * eards_node_dc_energy               | READ_DC_ENERGY      | eard_node_energy
- *
- *
- * Files
- ********
- *            | File                          | Notes
- * ---------- | ----------------------------- | ----------------------------------------------------
- * Basics     | instructions.c                |
- * Cache      | cache.c                       |
- * Cache      | stalls.c                      |
- * Flops      | flops.c                       | Los weights se pueden descuadrar si falla un evento.
- * RAPL       | ear_rapl_metrics.c            | Las posiciones se pueden descuadrar si falla un evento.
- * IPMI       | ear_node_energy_metrics.c     | Tiene una función que devuelve el size, para que?
- * Bandwith   | ear_uncores.c                 | Per Integrated Memory Controller, PCI bus.
- * Avg. Freq. | ear_turbo.c (ear_frequency.c) | Per core, MSR registers. Hay que ver si acumula bien.
- *
- */
 
 // Hardware
 static double hw_cache_line_size;
@@ -121,6 +71,7 @@ static uint node_energy_units;
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
+/* These vectors have position APP for application granularity and LOO for loop granularity */
 static int num_packs=0;
 static long long *metrics_flops[2]; // (vec)
 static int *metrics_flops_weights; // (vec)
@@ -143,12 +94,14 @@ static long long metrics_usecs[2]; // uS
 static io_data_t metrics_io_init[2],metrics_io_end[2];
 static ctx_t ctx_io;
 #if USE_GPUS
+/* These vectors have position APP for application granularity and LOO for loop granularity */
 static gpu_t *gpu_metrics_init[2],*gpu_metrics_end[2],*gpu_metrics_diff[2];
 static ctx_t gpu_lib_ctx;
 uint gpu_initialized = 0;
 static uint gpu_loop_stopped = 0;
 static uint earl_gpu_model = MODEL_UNDEFINED;
 #endif
+/* These vectors have position APP for application granularity and LOO for loop granularity */
 static long long metrics_l1[2];
 static long long metrics_l2[2];
 static long long metrics_l3[2];
@@ -171,10 +124,12 @@ ulong imc_max_khz,imc_min_khz;
 uint imc_curr_max_pstate,imc_curr_min_pstate;
 /**/
 static uint imcfreq_data_size;
-static freq_imc_t imc_init[2],imc_end[2];
+/* These vectors have position APP for application granularity and LOO for loop granularity */
+static imcfreq_t *imc_init[2],*imc_end[2];
+static ulong *imc_freq_init[2],*imc_freq_end[2];
 static ulong imc_avg[2];
 
-static ctx_t imc_lib_ctx;
+static ctx_t imc_ctx;
 static uint imc_count;
 static ulong cpufreq_avg;
 static int NI=0;
@@ -201,7 +156,6 @@ static void metrics_global_start()
 {
 	int ret;
 	aux_time = metrics_time();
-	imc_intel63_t *d;
 
 	if (masters_info.my_master_rank>=0)
 	{
@@ -210,11 +164,9 @@ static void metrics_global_start()
 		}
 		/* Reads IMC data */
 		if (imc_mgt_compatible){
-		if (xtate_fail(s, eards_freq_imc_read(&imc_init[APP], imcfreq_data_size))){
+		if (xtate_fail(s, imcfreq_read(&imc_ctx, imc_init[APP]))){
 			error("IMCFreq data read in global_start");
 		}
-		d = (imc_intel63_t*)imc_init[APP].data;
-		debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
 		}
 		// New
 		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
@@ -249,21 +201,12 @@ static void metrics_global_start()
 	}
 
  
-  /* This functionallity has been moved to library/policy/mpi_stats_support.c */
-	#if 0
-  /* We start computing mpi statistics at this point */
-	timestamp_getfast(&init_mpi_time);
-	sig_shared_region[my_node_id].mpi_info.mpi_time=0;
-  sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
-  sig_shared_region[my_node_id].mpi_info.exec_time=0;
-	#endif
 
 }
 
 static void metrics_global_stop()
 {
 	timestamp end_mpi_time;
-	imc_intel63_t *d;
 	io_data_t iod;
 	char io_info[256];
 	char file_name[256];
@@ -285,23 +228,15 @@ static void metrics_global_stop()
 		if (imc_mgt_compatible){
   		for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
   		for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
-			#if 0
-  		if (xtate_fail(s,eards_mgt_imcfreq_set_current(def_imc_max_khz,def_imc_min_khz))){
-    		error("IMC set current failed (%d,%s)",s,state_msg);
-  		} 
-			#endif
   		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
     		error("Setting the IMC freq in global stop");
   		}
 
   		verbose(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
-    	if (xtate_fail(s, eards_freq_imc_read(&imc_end[APP], imcfreq_data_size))){
+    	if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[APP]))){
       	error("IMCFreq data read in global_start");
     	}
-	  	d = (imc_intel63_t*)imc_end[APP].data;
-    	debug("IMC0 freq %lu error %u IMC1 freq %lu error %u",d[0].freq,d[0].error,d[1].freq,d[1].error);
-	
-			if (xtate_fail(s, freq_imc_data_diff(&imc_end[APP],&imc_init[APP],NULL,&imc_avg[APP]))){
+			if (xtate_fail(s, imcfreq_data_diff(imc_end[APP],imc_init[APP],imc_freq_end[APP],&imc_avg[APP]))){
 				error("IMC data diff fails");
 			}	
 			verbose(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
@@ -349,27 +284,8 @@ static void metrics_global_stop()
 	if (verb_path != NULL) close(fd);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
 
-	/* This functionallity has been moved to library/policy/mpi_stats_support.c */
-	#if 0
-	timestamp_getfast(&end_mpi_time);
-	unsigned long long extime;
-	extime=timestamp_diff(&end_mpi_time,&init_mpi_time,TIME_USECS);
-
-	sig_shared_region[my_node_id].mpi_info.exec_time=extime;
-	sig_shared_region[my_node_id].mpi_info.perc_mpi=(double)sig_shared_region[my_node_id].mpi_info.mpi_time/(double)sig_shared_region[my_node_id].mpi_info.exec_time;
-	#endif
 }
 
-/*           | Glob | Part || Start | Stop | Read | Get accum | Reset | Size
-* ---------- | ---- | ---- || ----- | ---- | ---- | --------- | ----- | ----
-* Instructs. | v    | v    || v     | v    | x    | v         | v     | x
-* Cache      | v    | v    || v     | v    | x    | v         | v     | x
-* Flops      | v    | v    || v     | v    | x    | v         | v     | x
-* RAPL       | v    | v    || v     | v    | x    | x         | x     | v* (daemon)
-* IPMI       | v    | v    || x     | x    | v    | x         | x     | v
-* Bandwith   | v    | v    || v     | v    | v    | x         | v     | v
-* Avg. Freq. | v    | v    || v     | v    | x    | x         | x     | x
-*/
 
 
 static void metrics_partial_start()
@@ -388,7 +304,7 @@ static void metrics_partial_start()
     }
 		if (imc_mgt_compatible){
 		/* Reads the IMC */
-    if (xtate_fail(s, eards_freq_imc_read(&imc_init[LOO], imcfreq_data_size))){
+    if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_init[LOO]))){
       error("IMCFreq data read in global_start");
     }
 		}
@@ -500,9 +416,6 @@ static int metrics_partial_stop(uint where)
 	}
 	/* End new section to check frozen uncore counters */
 	energy_lib_data_copy(aux_energy,aux_energy_stop);
-	#if 0
-	memcpy(aux_energy,aux_energy_stop,node_energy_datasize);
-	#endif
 	aux_time=aux_time_stop;
 
 	if (masters_info.my_master_rank>=0){
@@ -536,10 +449,10 @@ static int metrics_partial_stop(uint where)
 		verbosen_master(3,"\n");
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
 		if (imc_mgt_compatible){
-    if (xtate_fail(s, eards_freq_imc_read(&imc_end[LOO], imcfreq_data_size))){
+    if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[LOO]))){
       error("IMCFreq data read in partial_stop");
     }
-    if (xtate_fail(s, freq_imc_data_diff(&imc_end[LOO],&imc_init[LOO],NULL,&imc_avg[LOO]))){
+    if (xtate_fail(s, imcfreq_data_diff(imc_end[LOO],imc_init[LOO],imc_freq_end[LOO],&imc_avg[LOO]))){
       error("IMC data diff fails");
     }
    	debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
@@ -713,18 +626,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	}
 	metrics->EDP = time_s * time_s * metrics->DC_power;
 
-	/* This functionallity has been moved to library/policy/mpi_stats_support.c */
-	#if 0	
-	/* This part is new to share with other processes */
-	timestamp_getfast(&end_mpi_time);
-	unsigned long long extime;
-	extime=timestamp_diff(&end_mpi_time,&init_mpi_time,TIME_USECS);	
-	sig_shared_region[my_node_id].mpi_info.exec_time=extime;
-	sig_shared_region[my_node_id].mpi_info.perc_mpi=(double)sig_shared_region[my_node_id].mpi_info.mpi_time/(double)sig_shared_region[my_node_id].mpi_info.exec_time;
-	#if RESET_STATISTICS_AT_SIGNATURE
-	init_mpi_time = end_mpi_time;
-	#endif
-	#endif
 	/* Copying my info in the shared signature */
 	from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
 	/* If I'm the master, I have to copy in the special section */
@@ -857,6 +758,7 @@ int metrics_init(topology_t *topo)
 	memset(aux_rapl, 0, rapl_size);
 	memset(last_rapl, 0, rapl_size);
 	if (masters_info.my_master_rank>=0){
+	/* CPU average frequency metrics */
   if (xtate_fail(s,cpufreq_load(topo))){
     error("Cpufrequency load failed");
   }
@@ -872,33 +774,32 @@ int metrics_init(topology_t *topo)
 			error("Cpufreq allocation failed");
 	}
 	verbose(2,"CPUFreq data allocated");
-	if (topo->vendor == VENDOR_AMD){ 
-		imc_mgt_compatible = 0;
-		verbose(2,"IMC management API not compatible");
-	}
 	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
+	/* IMC average frequency initialization */
 	if (imc_mgt_compatible){
 	/* To compute IMC average */
-	if (xtate_fail(s, freq_imc_init_lib(topo))){
+	imcfreq_load(topo, EARD);
+	if (xtate_fail(s, imcfreq_init(&imc_ctx))){
 		error("IMC metrics init failed");
 	}
-  if (xtate_fail(s, freq_imc_data_alloc(&imc_init[APP], NULL,NULL))){
+	uint imc_api;
+	char imc_api_txt[32];
+	imcfreq_get_api(&imc_api);
+	apis_tostr(imc_api,imc_api_txt,sizeof(imc_api_txt));
+	verbose_master(2,"IMC metrics API %s",imc_api_txt);
+  if (xtate_fail(s, imcfreq_data_alloc(&imc_init[APP], &imc_freq_init[APP]))){
 		error("IMC data alloc failed");
 	}
-  if (xtate_fail(s, freq_imc_data_alloc(&imc_end[APP], NULL,NULL))){
+  if (xtate_fail(s, imcfreq_data_alloc(&imc_end[APP], &imc_freq_end[APP]))){
 		error("IMC data alloc failed");
 	}
-  if (xtate_fail(s, freq_imc_data_alloc(&imc_init[LOO], NULL,NULL) )){
+  if (xtate_fail(s, imcfreq_data_alloc(&imc_init[LOO], &imc_freq_init[LOO]) )){
     error("IMC data alloc failed");
   }
-  if (xtate_fail(s, freq_imc_data_alloc(&imc_end[LOO], NULL,NULL) )){
+  if (xtate_fail(s, imcfreq_data_alloc(&imc_end[LOO], &imc_freq_end[LOO]) )){
     error("IMC data alloc failed");
   }
-	/* Gets the IMC data size */
-	if (xtate_fail(s, eards_freq_imc_data_count(&imcfreq_data_size))){
-		error("IMC data count failed");
-	}
-	verbose(2,"IMC metric initialized, data %u",imcfreq_data_size);
+	verbose_master(2,"IMC metrics initialized");
 
 	/* IMC management */
 	if(state_fail(s = mgt_imcfreq_load(topo, EARD))) {
@@ -907,9 +808,12 @@ int metrics_init(topology_t *topo)
 	if (state_fail(s = mgt_imcfreq_get_api(&imc_api))){
 		error("Error in asking dor IMC API");
 	}
-	verbose_master(2,"IMC API selected %u",imc_api);
+	char imc_mgt_txt[32];
+	apis_tostr(imc_api,imc_mgt_txt,sizeof(imc_mgt_txt));
+	verbose_master(2,"IMC API selected %s",imc_mgt_txt);
 	if (state_fail(s = mgt_imcfreq_init(NULL))){
 		error("Error in IMC init");
+		imc_mgt_compatible = 0;
 	}	
 	if (state_fail(s = mgt_imcfreq_count_devices(NULL, &imc_devices))){
 		error("Error requesting IMC devices ");
