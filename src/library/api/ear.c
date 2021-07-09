@@ -157,7 +157,7 @@ static uint synchronize_masters = 1;
 /*  Sets verbose level for ear init messages */
 #define VEAR_INIT 3
 
-static uint using_verb_files = 0;
+uint using_verb_files = 0;
 
 static void print_local_data()
 {
@@ -1585,7 +1585,7 @@ state_t earl_periodic_actions(void *no_arg)
         /* Computing MPI statistics */
         if (is_mpi_enabled() && ((period_elapsed % 10 )== 0)){
             read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
-            verbose_node_mpi_types(2,lib_shared_region->num_processes,my_node_mpi_types_calls);
+            verbose_node_mpi_types(3,lib_shared_region->num_processes,my_node_mpi_types_calls);
             read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
             for (i=0;i<lib_shared_region->num_processes;i++){
                 verbosen_master(3,"Process %d ",i);
@@ -1603,22 +1603,22 @@ state_t earl_periodic_actions(void *no_arg)
             verbose_master(2,"Error in app classification");
         }
         if (earl_phase_classification == APP_COMP_BOUND){
-            verbose_master(3,"Phase COMP bound");
+            debug("Phase COMP bound");
         }
         if (earl_phase_classification == APP_IO_BOUND){
-            verbose_master(2,"Phase IO bound");
-            verbose_master(2,"EARL: %lusec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
+            debug("Phase IO bound");
+            debug("EARL: %lusec Total MPIS %u, rswr total = %llu MB, MPI/sec %.0f, IO rdwrMB/sec %.3f",seconds,total_mpi_calls,MB,mpi_in_period,io_in_period);
         }
         if (earl_phase_classification == APP_MPI_BOUND){
-            verbose_master(3,"Phase MPI bound");
+            debug("Phase MPI bound");
         }
-        verbose_master(2,"RANK %d Time %lu/%lu Phase COMP %u MPI %u IO %u DYNAIS_GUIDE %d TIME GUIDE %d",ear_my_rank,seconds,period_elapsed,earl_phase_classification == APP_COMP_BOUND,earl_phase_classification == APP_MPI_BOUND,earl_phase_classification == APP_IO_BOUND,new_ear_guided == DYNAIS_GUIDED, ear_guided == TIME_GUIDED);
+        debug("RANK %d Time %lu/%lu Phase COMP %u MPI %u IO %u dynais %d time %d",ear_my_rank,seconds,period_elapsed,earl_phase_classification == APP_COMP_BOUND,earl_phase_classification == APP_MPI_BOUND,earl_phase_classification == APP_IO_BOUND,new_ear_guided == DYNAIS_GUIDED, ear_guided == TIME_GUIDED);
         if (new_ear_guided != DYNAIS_GUIDED){
             debug("Phase TIME_GUIDED period %u",lib_period);
             ear_periodic_mode = PERIODIC_MODE_ON;
             if (ear_guided != new_ear_guided){ 
                 monitor_burst(earl_monitor);
-                verbose_master(2,"DYNAIS guided --> TIME guided");
+                debug("Dynais guided --> time guided");
                 states_begin_period(my_id, 1, (ulong) lib_period,1);
             }
         }

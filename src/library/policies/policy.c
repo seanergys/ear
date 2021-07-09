@@ -265,10 +265,8 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 }
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-    //ulong imc_up,imc_low;
     uint *imc_up,*imc_low;
-
-    uint sock_id = 0;
+		debug("Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
     if (dyn_unc && imc_mgt_compatible){
 			imc_up = calloc(imc_devices,sizeof(uint));
 			imc_low = calloc(imc_devices,sizeof(uint));
@@ -276,10 +274,19 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 			for (int sid = 0;sid <imc_devices ;sid++) {
 				imc_low[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
 				imc_up[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
-      	verbose_master(2,"Setting IMC freq:SID=%d to %lu and %lu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
+				if (imc_up[sid] != ps_nothing){
+      		verbose_master(2,"Setting IMC freq:SID=%d to %lu and %lu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
+				}else{
+      		verbose_master(2,"Setting IMC freq:SID=%d to %lu and min",sid,imc_pstates[imc_low[sid]].khz);
+				}
 			}
 			if (mgt_imcfreq_set_current_ranged_list(NULL, imc_low, imc_up) != EAR_SUCCESS){
-				verbose_master(2,"Error setting IMC freq to %lu and %lu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
+				uint sid = 0;
+				if (imc_up[sid] != ps_nothing){
+					verbose_master(2,"Error setting IMC freq to %lu and %lu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
+				}else{
+					verbose_master(2,"Error setting IMC freq to %lu and min",imc_pstates[imc_low[0]].khz);
+				}
 			}			
 			free(imc_up);
 			free(imc_low);

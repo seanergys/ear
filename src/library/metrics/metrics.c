@@ -281,7 +281,7 @@ static void metrics_global_stop()
 	}else fd = 2;
 	io_buffer = malloc(strlen(io_info) + 200);
 	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
-	if (verb_level >= 2) write(fd,io_buffer,strlen(io_buffer));
+	if (verb_level >= 3) write(fd,io_buffer,strlen(io_buffer));
 	if (verb_path != NULL) close(fd);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
 
