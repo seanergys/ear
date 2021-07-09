@@ -74,11 +74,11 @@ clean: clean.components clean.others eard.gclean rclean;
 ######## SUBFOLDERS
 
 %.components:
-	$(MAKE) -C 'app_api' $*
-	$(MAKE) -C 'remote_api' $*
-	$(MAKE) -C 'local_api' $*
-	$(MAKE) -C 'powercap' $*
-	$(MAKE) -C 'gpu' $*
+	@ $(MAKE) -C 'app_api' $*
+	@ $(MAKE) -C 'remote_api' $*
+	@ $(MAKE) -C 'local_api' $*
+	@ $(MAKE) -C 'powercap' $*
+	@ $(MAKE) -C 'gpu' $*
 
 %.others: ;
 
