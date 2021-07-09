@@ -51,7 +51,7 @@ extern unsigned long ext_def_freq;
 
 /*  IMC management */
 extern uint dyn_unc;
-extern uint imc_set_by_hw;
+static uint imc_set_by_hw = 0;
 extern double imc_extra_th;
 extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
@@ -89,10 +89,10 @@ static double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean,
 static uint *critical_path, *last_critical_path;
 
 /*  Config */
-static uint enable_load_balance = EAR_USE_LB;
-static uint use_turbo_for_cp = EAR_USE_TURBO_CP;
+extern uint enable_load_balance;
+extern uint use_turbo_for_cp;
 static uint network_use_imc = 0;
-static uint try_turbo_enabled = 0;
+extern uint try_turbo_enabled;
 
 #define SELECT_CPUFREQ      100
 #define SELECT_IMCFREQ      101
@@ -119,10 +119,9 @@ state_t compute_total_node_metrics();
 
 state_t policy_init(polctx_t *c)
 {
-    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
-    char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
-    char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
+    // TODO: set imc_set_by_hw config var
+    // char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
     // TODO: min energy uses more environment variables:
     //  - cuse_imc_ref: -
     //  - cmin_cpufreq: Avoid lowering cpu freq below some value
@@ -139,15 +138,8 @@ state_t policy_init(polctx_t *c)
             verbose_master(1,"Busy_waiting MPI set to %u",block_type == BUSY_WAITING_BLOCK);
         }
         /*  Config from env variables */
-        if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
-        verbose_master(2,"Load balance enabled ? %u", enable_load_balance);
-        if(cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
-        verbose_master(2, "Using turbo for CP when load balance enabled ? %u", use_turbo_for_cp);
         if(cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
         verbose_master(2, "Network uses IMC set to %u", network_use_imc);
-        try_turbo_enabled = c->use_turbo;
-        if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
-        verbose_master(2, "Use turbo for cbound app ? %u", try_turbo_enabled);
 
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext = calloc(1, sizeof(io_data_t));
