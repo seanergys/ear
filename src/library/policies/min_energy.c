@@ -146,7 +146,10 @@ state_t policy_init(polctx_t *c)
             min_cpufreq = atoi(cmin_cpufreq);
         }
 				if (cimc_set_by_hw != NULL) imc_set_by_hw = atoi(cimc_set_by_hw);
-				verbose_master(2,"IMC set by HW set to %u",imc_set_by_hw);
+
+    		verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. \
+					Using an extra IMC extra penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
+
 
         if (min_cpufreq) verbose_master(2,"Min CPUfreq is limited = %lu",min_cpufreq);
         if (cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);

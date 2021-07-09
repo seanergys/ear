@@ -79,7 +79,7 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
     uint ref_pstate;
 
     ref_pstate = ref_cpu_pstate;
-    verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
+    debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
 
     double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
     power_var = metric_diff(power_ref, sig->DC_power, 0); // (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power
@@ -91,56 +91,20 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         metric = sig->time;
         // metric_var = (metric-metric_ref)/metric_ref;
         metric_var = metric_diff(metric_ref, metric, 1);
-        verbose(2,"Using time as reference : Current %.3lf Ref %3.lf  Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
+        debug("Using time as reference : Current %.3lf Ref %3.lf  Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
                 metric,metric_ref,metric_max,(power_var-metric_var)*100,power_var,metric_var);
         return (metric > metric_max);
     }else{
         /* We were using ref_pstate = min_pstate */
-#if USE_CPI
-        CPI = (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles
-            / (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
-        metric_max = CPI * (1 + penalty); // CPI + CPI*penalty;
-        metric = sig->CPI;
-        // metric_var = (CPI-metric)/CPI;
-        metric_var = metric_diff(CPI, metric, 0);
-        verbose(2,"Using CPI as reference : Current %.3lf Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
-                metric,metric_max,(power_var-metric_var)*100,power_var,metric_var);
-        return (metric > metric_max);
-#endif
-#if USE_GBS
-        metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
-        metric_min = metric_ref * (1 - penalty);
-        metric = sig->GBS;
-        // metric_var = (metric_ref - sig->GBS) / metric_ref;
-        metric_var = metric_diff(metric_ref, metric, 0);
-        verbose(2,"Using GBS as reference : Current %.3lf Ref %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
-                metric,metric_ref,metric_min,(power_var-metric_var)*100,power_var,metric_var);
-        return (metric < metric_min);
-#endif
-#if USE_FLOPS
-        for (i=0;i<FLOPS_EVENTS;i++) tflops += my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].FLOPS[i];
-        for (i=0;i<FLOPS_EVENTS;i++) cflops += sig->FLOPS[i];
-        tflopss = (double)tflops / (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time*1000000.0);
-        cflopss = (double)cflops / (sig->time*1000000.0);
-        metric_min =  tflopss - (penalty* tflopss);
-        metric = cflopss;
-        // metric_var = (tflopss-cflopss)/tflopss;
-        metric_var = metric_diff(tflopss, cflopss, 0);
-        verbose(2,"Using FLOPS as reference : Current %.3lf Min %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
-                metric,metric_min,(power_var-metric_var)*100,power_var,metric_var);
-        return (metric < metric_min);
-#endif
-#if USE_GBS_CPI
         metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
         metric_min = metric_ref * (1 - penalty);
         metric     = sig->GBS;
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
         metric_max  = CPI + CPI*penalty;
-        verbose(2,"Using GBS&CPI as reference : Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Limits (%.2lf,%.2lf)",
+        debug("Using GBS&CPI as reference : Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Limits (%.2lf,%.2lf)",
                 metric,metric2,metric_ref,CPI,metric_min,metric_max);
         return ((metric < metric_min) || (metric2>metric_max));
-#endif
     }
 }
 
@@ -157,20 +121,22 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     double tflopss, cflopss;
     uint ref_pstate;
 		ulong ref_imc_freq;
+		pstate_t ps;
 
     ref_pstate = ref_cpu_pstate;
-    verbose(2,"Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u", cpu_pstate, my_imc_pstate, ref_pstate, ref_imc_pstate);
+    debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u", cpu_pstate, my_imc_pstate, ref_pstate, ref_imc_pstate);
 
     double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
     power_var = metric_diff(power_ref, sig->DC_power, 0);
 
-    // TODO: if it works, please beautify
-    ulong curr_imc_freq = (ulong) (((ear_math_roundf((float) sig->sig_ext->imc_freq / 100000.0)) / 10.0) * 1000000);
+		// We get the normalized imc frequency that corresponds with the avg imc freq
+		avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->sig_ext->imc_freq, &ps);
+		ulong curr_imc_freq = imc_pstates[ps.idx].khz;
 
     if (pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
 			verbose_master(2,"IMC pstates invalid %d",ref_imc_pstate);
 		}
-    verbose_master(2, "Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);
+    debug("Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);
     imc_gain = metric_diff((double)ref_imc_freq, (double)curr_imc_freq, 1);
     double perf_min_benefit = imc_gain * 0.4;
 
@@ -179,53 +145,20 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
         metric      = sig->time;
         // metric_gain = (metric_ref - metric) / metric_ref;
         metric_gain = metric_diff(metric_ref, metric, 0);
-        verbose(2,"Using time as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
+        debug("Using time as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
                 metric, metric_ref, metric_gain, imc_gain);
         return (metric_gain < perf_min_benefit);
     }else{
         /* We were using ref_pstate = min_pstate */
-#if USE_CPI
-        CPI = (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].cycles
-            / (double)my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].instructions;
-        metric      = sig->CPI;
-        // metric_gain = (CPI - metric) / CPI;
-        metric_gain = metric_diff(CPI, metric, 0);
-        verbose(2,"Using CPI as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
-                metric, CPI, metric_gain, imc_gain);
-        return (metric_gain < perf_min_benefit);
-#endif
-#if USE_GBS
-        metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
-        metric      = sig->GBS;
-        // metric_gain = (metric - metric_ref) / metric_ref;
-        metric_gain = metric_diff(metric_ref, metric, 1);
-        verbose(2,"Using GBS as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
-                metric, metric_ref, metric_gain, imc_gain);
-        return (metric_gain < perf_min_benefit);
-#endif
-#if USE_FLOPS
-        for (i=0;i<FLOPS_EVENTS;i++) tflops += my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].FLOPS[i];
-        for (i=0;i<FLOPS_EVENTS;i++) cflops += sig->FLOPS[i];
-        tflopss     = (double)tflops / (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time*1000000.0);
-        cflopss     = (double)cflops / (sig->time*1000000.0);
-        metric      = cflopss;
-        // metric_gain = (metric - tflopss) / tflopss;
-        metric_gain = metric_diff(tflopss, metric, 1);
-        verbose(2,"Using FLOPS as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
-                metric, tflopss, metric_gain, imc_gain);
-        return (metric_gain < perf_min_benefit);
-#endif
-#if USE_GBS_CPI
         metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
         metric      = sig->GBS;
         metric_gain = metric_diff(metric_ref, metric, 1);
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
         metric_gain_2 = metric_diff(CPI, metric2, 0);
-        verbose(2,"Using GBS&CPI as reference: Current (%.4lf,%.4lf) Ref (%.4lf,%.4lf) Gain (%.4lf, %.4lf) IMC gain: %.3lf",
+        debug("Using GBS&CPI as reference: Current (%.4lf,%.4lf) Ref (%.4lf,%.4lf) Gain (%.4lf, %.4lf) IMC gain: %.3lf",
                 metric, metric2, metric_ref,CPI, metric_gain, metric_gain_2, imc_gain);
         return ((metric_gain < perf_min_benefit) || (metric_gain_2 < perf_min_benefit));
-#endif
     }
 }
 
@@ -243,7 +176,7 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint m
     memcpy(my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     for (i=0;i<FLOPS_EVENTS;i++) tfops += s->FLOPS[i];
     flops = (float)tfops/(s->time*1000000000.0);
-    verbose(2,"IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",
+    debug("IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].time,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].power,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].GBS,s->instructions/(s->time*1000000000.0),
