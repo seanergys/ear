@@ -24,6 +24,7 @@
 #include <common/system/time.h>
 #include <common/hardware/topology.h>
 #include <metrics/common/apis.h>
+#include <metrics/common/pstate.h>
 
 typedef struct imcfreq_s {
 	timestamp_t time;

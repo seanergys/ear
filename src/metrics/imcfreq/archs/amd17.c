@@ -17,9 +17,26 @@
 
 //#define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE
 #include <common/output/debug.h>
-#include <management/imcfreq/imcfreq.h>
+#include <common/system/symplug.h>
 #include <metrics/imcfreq/archs/amd17.h>
+	
+static const char *mgt_names[] = { "mgt_imcfreq_load",
+	                               "mgt_imcfreq_get_api",
+		                           "mgt_imcfreq_init",
+	                               "mgt_imcfreq_dispose",
+	                               "mgt_imcfreq_count_devices", 
+	                               "mgt_imcfreq_get_current_list" };
+
+static struct mgt_ops_s {
+	state_t (*load)             (topology_t *c, int eard);
+	state_t (*get_api)          (uint *api);
+	state_t (*init)             (ctx_t *c);
+	state_t (*dispose)          (ctx_t *c);
+	state_t (*count_devices)    (ctx_t *c, uint *devs_count);
+	state_t (*get_current_list) (ctx_t *c, pstate_t *pstate_list);
+} mgt_ops;
 
 static imcfreq_ops_t *ops;
 static uint devs_count;
@@ -43,11 +60,16 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 		}
 		return;
 	}
-	
 	if (apis_not(ops)) {
+		// Loading symbols in runtime to avoid dependancies
+		symplug_join(RTLD_DEFAULT, (void **) &mgt_ops, mgt_names, 6);
+		// Testing all symbols are available
+		if (state_fail(symplug_test((void **) &mgt_ops, 6))) {
+			return;
+		}
 		// Loading management imcfreq API
-		mgt_imcfreq_load(tp, eard);
-		mgt_imcfreq_get_api(&api);
+		mgt_ops.load(tp, eard);
+		mgt_ops.get_api(&api);
 		// If management API is not cool, bye
 		if (api <= API_DUMMY) {
 			return;
@@ -75,10 +97,10 @@ state_t imcfreq_amd17_init(ctx_t *c)
 {
 	state_t s;
 
-	if (state_fail(s = mgt_imcfreq_init(c))) {
+	if (state_fail(s = mgt_ops.init(c))) {
 		return s;
 	}
-	return mgt_imcfreq_count_devices(c, &devs_count);
+	return mgt_ops.count_devices(c, &devs_count);
 }
 
 state_t imcfreq_amd17_init_static(ctx_t *c)
@@ -88,12 +110,13 @@ state_t imcfreq_amd17_init_static(ctx_t *c)
 
 state_t imcfreq_amd17_dispose(ctx_t *c)
 {
-	return mgt_imcfreq_dispose(c);
+	return mgt_ops.dispose(c);
 }
 
-state_t imcfreq_amd17_count_devices(ctx_t *c, uint *dev_count)
+state_t imcfreq_amd17_count_devices(ctx_t *c, uint *devs_count_in)
 {
-	return mgt_imcfreq_count_devices(c, dev_count);
+	*devs_count_in = devs_count;
+	return EAR_SUCCESS;
 }
 
 state_t imcfreq_amd17_read(ctx_t *c, imcfreq_t *imc)
@@ -102,7 +125,7 @@ state_t imcfreq_amd17_read(ctx_t *c, imcfreq_t *imc)
 	state_t s;
 	int cpu;
 
-	if (state_fail(s = mgt_imcfreq_get_current_list(c, list))) {
+	if (state_fail(s = mgt_ops.get_current_list(c, list))) {
 		return s;
 	}
     timestamp_getfast(&imc[0].time);
@@ -122,7 +145,8 @@ state_t imcfreq_amd17_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, 
 	ulong aux2 = 0;
     uint cpu;
 	for (cpu = 0; cpu < devs_count; ++cpu) {
-		aux1 = (i2[cpu].freq + i1[cpu].freq) / 2LU;
+		//aux1 = (i2[cpu].freq + i1[cpu].freq) / 2LU;
+		aux1 = i2[cpu].freq;
 		if (freq_list != NULL) {
 			freq_list[cpu] = aux1;
 		}
