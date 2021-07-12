@@ -1036,6 +1036,18 @@ void select_service(int fd) {
 	eard_close_comm();
 }
 
+void reopen_log()
+{
+  close(fd_my_log);
+  fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eard");
+  if (fd_my_log<0) fd_my_log=2;
+  VERB_SET_FD(fd_my_log);
+  ERROR_SET_FD(fd_my_log);
+  WARN_SET_FD(fd_my_log);
+  DEBUG_SET_FD(fd_my_log);
+
+}
+
 //
 // MAIN eard: eard default_freq [path for communication files]
 //
@@ -1055,6 +1067,10 @@ void signal_handler(int sig) {
 	if (sig == SIGHUP) {
 		verbose(VCONF, "signal SIGHUP received. Reloading EAR conf");
 		signal_sighup = 1;
+	}
+	if (sig == SIGUSR2){
+		reopen_log();
+		return;
 	}
 
 	// The PIPE was closed, so the daemon connection ends
@@ -1150,6 +1166,7 @@ void signal_catcher() {
 	sigdelset(&eard_mask, SIGTERM);
 	sigdelset(&eard_mask, SIGINT);
 	sigdelset(&eard_mask, SIGHUP);
+	sigdelset(&eard_mask, SIGUSR2);
 	//sigprocmask(SIG_SETMASK,&eard_mask,NULL);
 	pthread_sigmask(SIG_SETMASK, &eard_mask, NULL);
 
@@ -1174,6 +1191,10 @@ void signal_catcher() {
 	}
 
 	signal = SIGHUP;
+	if (sigaction(signal, &action, NULL) < 0) {
+		error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
+	}
+	signal = SIGUSR2;
 	if (sigaction(signal, &action, NULL) < 0) {
 		error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
 	}
