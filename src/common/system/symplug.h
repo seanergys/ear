@@ -27,7 +27,7 @@ state_t symplug_join(void *handle, void *calls[], const char *names[], uint n);
 
 state_t symplug_open(char *path, void *calls[], const char *names[], uint n);
 
-state_t symplug_open_lazy(char *path, void *calls[], const char *names[], uint n);
+state_t symplug_open_flags(char *path, void *calls[], const char *names[], uint n, int flags);
 
 state_t symplug_test(void *calls[], uint n);
 

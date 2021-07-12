@@ -2,20 +2,21 @@
 
 COMPONENTS = \
     common \
+    report \
     metrics \
     management
 ifdef DB_BASE
-	COMPONENTS += database_cache
+COMPONENTS += database_cache
 endif
-	COMPONENTS += \
-                  daemon \
-                  commands \
-                  library
+COMPONENTS += \
+    daemon \
+    commands \
+    library
 ifdef GSL_BASE
-	COMPONENTS += tools
+COMPONENTS += tools
 endif
 ifdef DB_BASE
-	COMPONENTS += global_manager
+COMPONENTS += global_manager
 endif
 COMPONENTS += slurm_plugin
 
