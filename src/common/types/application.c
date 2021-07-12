@@ -375,7 +375,7 @@ void report_mpi_application_data(application_t *app)
 		verbose(VTYPE,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
 		verbose(VTYPE,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.Perc_MPI);
 		verbose(VTYPE,"   tasks: %lu \n", app->job.procs);
-		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (GB/s) ", app->signature.CPI, app->signature.TPI,
+		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s) ", app->signature.CPI, app->signature.TPI,
 				app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS);
 		verbose(VTYPE,"  DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n", app->signature.DC_power, app->signature.DRAM_power,
 				app->signature.PCK_power,app->signature.Gflops/app->signature.DC_power);
