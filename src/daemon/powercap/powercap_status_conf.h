@@ -76,7 +76,7 @@ typedef struct node_powercap_opt {
     uint th_red;                    /* Percentage to mark powercap_status as released */
     uint th_release;                /* Percentage of power to be released */
     uint powercap_status;           /* Current status */
-    uint max_inc_new_jobs;          /* Max extra power for new jobs */
+    uint cluster_perc_power;        /* Max extra power for new jobs */
     uint requested;                 /* Extra power requested, used when node is greedy or powercap < def_powercap */
     uint pper_domain[NUM_DOMAINS];  /* Power allocated to each domain */
 } node_powercap_opt_t;
@@ -109,7 +109,7 @@ typedef struct powercap_opt{
     uint num_greedy;      /* Number of greedy nodes */
     int *greedy_nodes;     /* List of greedy nodes */
     int *extra_power;/* Extra power received by each greedy node */
-    uint max_inc_new_jobs; /* Max power allowed to be received by new jobs since last powercap reported */
+    uint8_t cluster_perc_power; /* Percentage of total cluster power allocated */
 } powercap_opt_t;
 
 typedef struct dom_power{
