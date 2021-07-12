@@ -65,6 +65,8 @@
 #include <metrics/io/io.h>
 #include <metrics/proc/stat.h>
 
+#include <report/report.h>
+
 #ifdef USE_GPUS
 #include <library/api/cupti.h>
 #endif
@@ -1035,10 +1037,23 @@ void ear_init()
     // Copying static application info into the loop info
     memcpy(&loop_signature, &application, sizeof(application_t));
 
+    summary_pathname = get_ear_user_db_pathname();
+		if (masters_info.my_master_rank >= 0){
+		// Report API
+			if (report_load(system_conf->installation.dir_plug,"eard.so") != EAR_SUCCESS){
+				verbose_master(0,"Error in reports API load ");
+			}
+			if (summary_pathname != NULL){
+				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
+			}
+			if (report_init() != EAR_SUCCESS){
+        verbose_master(0,"Error in reports API initialization ");
+      }
+		}
+
     // States
     states_begin_job(my_id,  ear_app_name);
     // Summary files
-    summary_pathname = get_ear_user_db_pathname();
 
     if (summary_pathname != NULL) {
         sprintf(app_summary_path, "%s%s.csv", summary_pathname, node_name);
@@ -1137,7 +1152,12 @@ void ear_finalize()
         debug("Reporting application data");
         verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
         clean_db_signature(&application.signature, system_conf->max_sig_power);
+				#if 0
         eards_write_app_signature(&application);
+				#endif
+				if (report_applications(&application,1) != EAR_SUCCESS){
+					verbose_master(0,"Error reporting application");
+				}
         append_application_text_file(app_summary_path, &application, 1);
         report_mpi_application_data(&application);
     }

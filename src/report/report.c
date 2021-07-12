@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -91,7 +91,7 @@ static void static_load(const char *install_path, const char *_libs)
 			error("Unable to load report plugin %s: reached maximum of loaded plugins", lib);
 		}
 		// Loading /install/lib/plugins/report/lib.so
-		sprintf(path, "%s/lib/plugins/report/%s", install_path, lib);
+		sprintf(path, "%s/reports/%s", install_path, lib);
 		debug("Loading '%s' plugin", path);
 		if (state_fail(s = symplug_open_flags(path, (void **) &ops_aux, (cchar **) names, S_NUM, S_FLAGS))) {
 			// Loading ./lib.so
