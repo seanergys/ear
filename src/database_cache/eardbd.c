@@ -163,8 +163,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	verb_master("reading '%s' configuration file", extra_buffer);
 	read_cluster_conf(extra_buffer, conf_clus);
 
-	#ifdef USE_EARDBD_CONF
-	// Database configuration
+	#if 0
+	// Database configuration (activated in the past through USE_EARDBD_CONF)
 	if (get_eardbd_conf_path(extra_buffer) == EAR_ERROR){
 		edb_error("while getting eardbd.conf path");
 	}
@@ -218,7 +218,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// By now disabled
-	#if 0
+	#if PID_FILES
 	// PID protection
 	pid_t other_server_pid;
 	pid_t other_mirror_pid;
@@ -566,6 +566,10 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 
 static void init_pid_files(int argc, char **argv)
 {
+	#if !PID_FILES
+	return;
+	#endif
+
 	// Process PID save file
 	if (server_iam && server_enabled) {
 		process_update_pid(&proc_mirror);

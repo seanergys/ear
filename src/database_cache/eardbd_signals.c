@@ -62,7 +62,7 @@ void log_handler(cluster_conf_t *conf_clus, uint close_previous)
 		}
 	}
 	if (fd_output < 0) {
-		fd_output = verb_channel;
+		return;
 	}
 	// Setting file descriptors
 	VERB_SET_FD (fd_output);
@@ -86,7 +86,8 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 	// Log rotation signal
 	if (signal == SIGUSR2) {
 		verb_who("signal SIGUSR2 received, re-opening log file'", verbosity);
-		log_handler(conf_clus, 1);
+		log_handler(&conf_clus, 1);
+		propagating = others_pid > 0 && info->si_pid != others_pid;
 		updating    = 1;
 	}
 	// Case exit
@@ -104,6 +105,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 		updating    = 1;
 		waiting     = server_iam & (others_pid > 0);
 		dreaming    = 0;
+		exitting    = 1;
 	}
 	// Propagate signals
 	if (propagating) {
@@ -111,13 +113,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 	}
 	// Wait for the children (mirror)
 	if (waiting) {
-		verb_who_noarg("waiting 1");
 		waitpid(mirror_pid, NULL, 0);
-		verb_who_noarg("waiting 2");
-
-		others_pid = 0;
-		mirror_pid = 0;
-		mirror_enabled = 0;
 	}
 }
 
@@ -130,8 +126,8 @@ void error_handler()
 	}
 	// If I'am the server, inform and dream before exit
 	// If I'am the mirror, just exit
-	listening   = 0;
-	releasing   = 1;
-	dreaming    = server_iam & (others_pid > 0);
-	exitting    = 1;
+	listening = 0;
+	releasing = 1;
+	dreaming  = server_iam & (others_pid > 0);
+	exitting  = 1;
 }
