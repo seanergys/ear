@@ -5,13 +5,16 @@ CCC     = $(CC) $(CFLAGS)
 ######## INSTALLATION
 
 tool_BINS = \
-    coeffs_compute \
     coeffs_show \
     coeffs_default \
     coeffs_null \
     learning_show \
     learning_delete \
 		ear_conf
+ifdef GSL_BASE
+tool_BINS += \
+	coeffs_compute
+endif
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770
 

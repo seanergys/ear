@@ -89,7 +89,6 @@ extern time_t time_aggr;
 extern time_t time_slct;
 
 // State machine
-extern int reconfiguring;
 extern int listening;
 extern int releasing;
 extern int exitting;
@@ -111,7 +110,7 @@ extern int verbosity;
  *
  */
 
-static void body_alarm(struct timeval *timeout_slct)
+static void manage_alarms(struct timeval *timeout_slct)
 {
 	if (timeout_slct->tv_sec == 0 && timeout_slct->tv_usec == 0)
 	{
@@ -175,14 +174,19 @@ static int body_new_connection(int fd)
 }
 #endif
 
-static void body_connections()
+static void manage_sockets()
 {
 	long ip;
 	state_t s;
 	int fd_old;
 	int i;
 
-	for(i = fd_min; i <= fd_max && listening && !updating; i++)
+	// Nothing to be done here
+	if (updating) {
+		return;
+	}
+
+	for(i = fd_min; i <= fd_max && listening; i++)
 	{
 		if (listening && FD_ISSET(i, &fds_incoming)) // we got one!!
 		{
@@ -253,10 +257,6 @@ static void body_connections()
 	}
 }
 
-static void body_insert()
-{
-}
-
 void body()
 {
 	int s;
@@ -270,13 +270,11 @@ void body()
 				edb_error("during select (%s)", strerror(errno));
 			}
 		}
-		//
-		body_alarm(&timeout_slct);
-		//
-		body_connections();
-		//
-		body_insert();
-		//
+		// Checks alarms states
+		manage_alarms(&timeout_slct);
+		// Checks new incoming connections or data
+		manage_sockets();
+		// Update finished
 		updating = 0;
 	}
 }
@@ -314,12 +312,6 @@ void release()
 			free(type_chunk[i]);
 			type_chunk[i] = NULL;
 		}
-	}
-	// Reconfiguring
-	if (reconfiguring)
-	{
-		sleep(20);
-		reconfiguring = 0;
 	}
 	// Process PID cleaning
 	if (server_iam && server_enabled) {
