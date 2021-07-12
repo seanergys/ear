@@ -36,6 +36,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
+#include <library/common/global_comm.h>
 #include <common/math_operations.h>
 
 

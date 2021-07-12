@@ -47,6 +47,7 @@ extern uint using_verb_files;
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
     char io_info[256];
+		char pmpi_txt[64];
     double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0, FLOPS;
     float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI, AVGIMCF = 0 ;
     float l1_sec=0,l2_sec=0,l3_sec=0;
@@ -61,6 +62,11 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     int gpui;
     char gpu_buff[256];
     if (master_rank == 0 || show || using_verb_files){
+				if (sig->signature.Perc_MPI > 0.0){
+					sprintf(pmpi_txt,"Avg. MPI_time/exec_Time: %.1lf %%",sig->signature.Perc_MPI);
+				}else{
+					sprintf(pmpi_txt,"No MPI");
+				}
         imcf = (float)sig->signature.avg_imc_f/1000000.0;
         CPI = sig->signature.CPI; 
         GBS = sig->signature.GBS; 
@@ -105,7 +111,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
         verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",mode,aname, PFREQ,nname,master_rank,elapsed); 
         verbosen(1,"%s",COL_GRE);
         if (GPU_UTIL) sprintf(gpu_buff,"(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
-        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec.  AvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlops=%.2lf IO=%.2fMB/s)\n\t %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, gpu_buff);
+        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec.  AvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlops=%.2lf IO=%.2fMB/s %s)\n\t %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
         if (new_freq > 0){ verbosen(1," Next Frequency %.2f",NFREQ);}
         verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
         l1_sec = sig->signature.L1_misses/(sig->signature.time*1024*1024*1024);

@@ -32,6 +32,7 @@
 #include <common/hardware/hardware_info.h>
 #include <library/common/externs.h>
 #include <library/metrics/metrics.h>
+#include <library/policies/mpi_stats_support.h> /* Should we move this file out out policies? */
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/flops/flops.h>
@@ -97,6 +98,10 @@ static long long metrics_usecs[2]; // uS
 /* In the case of IO we will collect per process, per loop and per node */
 static io_data_t metrics_io_init[4],metrics_io_end[4],metrics_io_diff[4];
 static ctx_t ctx_io;
+/* MPI statistics */
+mpi_information_t *metrics_mpi_calls[2],*metrics_last_mpi_calls[2];
+
+
 #if USE_GPUS
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static gpu_t *gpu_metrics_init[2],*gpu_metrics_end[2],*gpu_metrics_diff[2];
@@ -228,6 +233,12 @@ static void metrics_global_stop()
 	metrics_avg_frequency[APP]=0;
 	/* Onle the master will collect these metrics */
 	if (masters_info.my_master_rank>=0){ 
+		/* MPI statistics */
+    if (is_mpi_enabled()){
+      read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
+    }
+
+
 		/* Avg CPU frequency */
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[APP],mycpufreq_data_size))){
       error("CPUFreq data read in global_stop");
@@ -482,6 +493,13 @@ static int metrics_partial_stop(uint where)
 	
 	// Daemon metrics
 	if (masters_info.my_master_rank>=0){ 
+		/* MPI statistics */
+		if (is_mpi_enabled()){
+    	read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
+		}
+
+
+
 		/* Avg CPU freq */
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
       error("CPUFreq data read in partial stop");
@@ -663,6 +681,20 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 	if (masters_info.my_master_rank>=0){
 
+		/* MPI statistics */
+		if (is_mpi_enabled()){
+			double pmpi = 0.0, lpmpi;
+			for (int i=0;i<lib_shared_region->num_processes;i++){	
+				lpmpi = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time*100.0 / ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+				pmpi += lpmpi;
+				verbose_master(3,"PerMPI Proc %d %.2lf",i,lpmpi);
+			}
+			metrics->Perc_MPI = pmpi/lib_shared_region->num_processes;		
+		}else{
+			metrics->Perc_MPI = 0.0;
+		}
+
+
 		/* Power: Node, DRAM, PCK */
 		metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
 		metrics->PCK_power=0;
@@ -827,6 +859,12 @@ int metrics_init(topology_t *topo)
 	memset(aux_rapl, 0, rapl_size);
 	memset(last_rapl, 0, rapl_size);
 	if (masters_info.my_master_rank>=0){
+	/* We will collect MPI statistics */
+	metrics_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+  metrics_last_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+	metrics_mpi_calls[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+  metrics_last_mpi_calls[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+
 	/* CPU average frequency metrics */
   if (xtate_fail(s,cpufreq_load(topo))){
     error("Cpufrequency load failed");

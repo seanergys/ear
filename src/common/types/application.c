@@ -344,6 +344,7 @@ void verbose_application_data(uint vl,application_t *app)
 	if (app->is_mpi){
 
 		verbose(vl,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
+		verbose(vl,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.Perc_MPI);
 		verbose(vl,"   procs: %lu (s)\n", app->job.procs);
 		verbose(vl,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)", app->signature.CPI, app->signature.TPI,
 				app->signature.GBS, app->signature.Gflops,app->signature.IO_MBS);
@@ -372,6 +373,7 @@ void report_mpi_application_data(application_t *app)
 	if (app->is_mpi){
 
 		verbose(VTYPE,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
+		verbose(VTYPE,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.Perc_MPI);
 		verbose(VTYPE,"   tasks: %lu \n", app->job.procs);
 		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (GB/s) ", app->signature.CPI, app->signature.TPI,
 				app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS);
