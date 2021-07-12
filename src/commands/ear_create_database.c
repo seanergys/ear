@@ -262,7 +262,7 @@ FLOPS7 BIGINT unsigned,\
 FLOPS8 BIGINT unsigned,\
 instructions BIGINT unsigned, \
 cycles BIGINT unsigned,\
-avg_f BIGINT unsigned,\
+avg_f INT unsigned,\
 def_f INT unsigned, "
 #if USE_GPUS
 "min_GPU_sig_id INT unsigned, \

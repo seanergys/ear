@@ -41,6 +41,7 @@
 #include <daemon/shared_configuration.h>
 
 #define POWERCAP_MON 1
+#define MAX_PERC_POWER 90
 
 
 
@@ -62,6 +63,7 @@ extern int eard_must_exit;
 extern settings_conf_t *dyn_conf;
 extern resched_t *resched_conf;
 static uint pc_cpu_strategy;
+static uint8_t last_cluster_perc = 0;
 extern pc_app_info_t *pc_app_info_data;
 
 #if USE_GPUS
@@ -115,9 +117,9 @@ void update_node_powercap_opt_shared_info()
 
 void print_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 {
-	fprintf(stderr,"cuurent %u pc_def %u pc_idle %u th_inc %u th_red %u th_release %u max_new_jobs %u requested %u released %u\n",
-	my_powercap_opt->current_pc,my_powercap_opt->def_powercap,my_powercap_opt->powercap_idle,my_powercap_opt->th_inc,my_powercap_opt->th_red, my_powercap_opt->th_release,my_powercap_opt->max_inc_new_jobs,
-	my_powercap_opt->requested,my_powercap_opt->released);
+	fprintf(stderr,"cuurent %u pc_def %u pc_idle %u th_inc %u th_red %u th_release %u cluster_perc_power %u requested %u released %u\n",
+	my_powercap_opt->current_pc, my_powercap_opt->def_powercap, my_powercap_opt->powercap_idle, my_powercap_opt->th_inc, my_powercap_opt->th_red,
+            my_powercap_opt->th_release,my_powercap_opt->cluster_perc_power, my_powercap_opt->requested,my_powercap_opt->released);
 }
 
 uint powercat_get_value()
@@ -155,7 +157,7 @@ void set_default_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 	my_powercap_opt->th_red = 50;
 	my_powercap_opt->th_release = 25;
 	my_powercap_opt->powercap_status = PC_STATUS_ERROR;
-	my_powercap_opt->max_inc_new_jobs = 0;
+	my_powercap_opt->cluster_perc_power = 0;
 	my_powercap_opt->requested = 0;
 	pthread_mutex_init(&my_powercap_opt->lock,NULL);
 }
@@ -222,12 +224,10 @@ int powercap_idle_to_run()
 	pmgt_set_status(pcmgr,PC_STATUS_RUN);
 	//debug("pc status modified");
 	last_status=PC_STATUS_IDLE;
-	if (my_pc_opt.last_t1_allocated==my_pc_opt.powercap_idle){
-		extra=my_pc_opt.max_inc_new_jobs;
-	}else extra=0;
+	extra=0;
 	switch(my_pc_opt.powercap_status){
 		case PC_STATUS_IDLE:
-		debug("%sGoin from idle to run:allocated %u automatic_extra=%u %s ",COL_GRE,my_pc_opt.last_t1_allocated,my_pc_opt.max_inc_new_jobs,COL_CLR);
+		debug("%sGoin from idle to run:allocated %u %s ",COL_GRE,my_pc_opt.last_t1_allocated,COL_CLR);
 		/* There is enough power for me */
 		if ((my_pc_opt.last_t1_allocated+extra)>=my_pc_opt.def_powercap){	
 			/* if we already had de power, we just set the status as OK */
@@ -286,6 +286,10 @@ int powercap_run_to_idle()
     pmgt_set_status(pcmgr,PC_STATUS_IDLE);
     pmgt_run_to_idle(pcmgr);
     pthread_mutex_unlock(&my_pc_opt.lock);
+    if (last_cluster_perc > MAX_PERC_POWER) {
+        debug("resetting powercap due to power usage (%u)", last_cluster_perc);
+        powercap_reset_default_power();
+    }
     return EAR_SUCCESS;
 }
 
@@ -413,7 +417,7 @@ void print_powercap_opt(powercap_opt_t *opt)
 	for (i=0;i<opt->num_greedy;i++){
 		debug("greedy_node %d extra power %d",opt->greedy_nodes[i],opt->extra_power[i]);
 	}
-	debug("Max extra power for new jobs %u",opt->max_inc_new_jobs);
+	debug("Current cluster power percentage %u",opt->cluster_perc_power);
 }
 
 /***************************************************************************************/
@@ -429,7 +433,8 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
     ulong value;
     debug("powercap_set_opt command received");
     while(pthread_mutex_trylock(&my_pc_opt.lock)); 
-    my_pc_opt.max_inc_new_jobs=opt->max_inc_new_jobs;
+    last_cluster_perc = opt->cluster_perc_power;
+    my_pc_opt.cluster_perc_power = opt->cluster_perc_power;
     /* Here we must check, based on our status, if actions must be taken */
     if (id >= 0) 
     {
