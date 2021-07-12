@@ -25,7 +25,8 @@
 #include <math.h>
 #include <common/config.h>
 #include <common/states.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
+#define LB_VERB			3
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <library/common/library_shared_data.h>
@@ -49,7 +50,6 @@ static ulong total_synchronizations = 0;
 static ulong total_sync_block = 0;
 static ulong time_sync_block = 0;
 static ulong max_sync_block = 0;
-static useconds_t wait_time = 1000;
 static uint mpi_cases[3];
 
 float LB_TH = EAR_LB_TH;
@@ -83,14 +83,7 @@ state_t mpi_app_init(polctx_t *c)
         mpi_stats.exec_time = 0;
         mpi_stats.perc_mpi = 0;
         if (is_mpi_enabled()){
-            char *cwait_time;
             mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
-            cwait_time = getenv("I_MPI_WAIT_TIMEOUT");
-            if (cwait_time != NULL){
-                wait_time = (useconds_t)atoi(cwait_time);
-                wait_time = wait_time*1000;
-            }
-            verbose_master(2,"Using wait time (usecs) %u ",(uint)wait_time);
         }else{
             mpi_stats.rank = 0;
         }
@@ -258,7 +251,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
 
     /*  Check wether values are correctly bounded */
     if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100){
-        verbose_master(2, "%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf", COL_RED, COL_CLR, (double)diff->mpi_time*100.0, (double)diff->exec_time,
+        debug("%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf", COL_RED, COL_CLR, (double)diff->mpi_time*100.0, (double)diff->exec_time,
                 diff->perc_mpi, (double)last->mpi_time*100.0, (double)last->exec_time, last->perc_mpi);
         return EAR_WARNING;
     }
@@ -332,7 +325,7 @@ void verbose_mpi_types(int vl,mpi_calls_types_t *t)
         sprintf(psync,"%.2lf",(float)t->time_sync/(float)t->time_period);
         sprintf(pcollect," %.2lf",(float)t->time_collec/(float)t->time_mpi);
     }
-    verbose_master(vl,"MPI_TYPES: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",
+    verbose_master(vl,"MPI types: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",
             t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,
             (float)t->mpi*1000000.0/(float)t->time_period,(float)t->time_mpi/(float)t->time_period,psync,pcollect,
             t->sync_block, t->time_sync_block,t->max_sync_block);
@@ -354,7 +347,7 @@ void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t)
             max_mpi = ear_max(pmpi,max_mpi);
             min_mpi = ear_min(pmpi,min_mpi);
         }
-        verbose_master(vl,"MPI_TYPES_SUMMARY: avg mpi %.2f max mpi %.2f min mpi %.2f ",(float)tmpi/(float)texec, max_mpi, min_mpi);
+        verbose_master(vl,"MPI types summary: avg mpi %.2f max mpi %.2f min mpi %.2f ",(float)tmpi/(float)texec, max_mpi, min_mpi);
     }
     if (vl >= 3){
         for (i=0;i<nump;i++){
@@ -412,12 +405,12 @@ state_t mpi_support_perc_mpi_max_min(int nump,double *percs_mpi,int *max,int *mi
     int i = 0;
     *max = 0;
     *min = 0;
-    verbosen_master(2,"LB_DATA ");
+    verbosen_master(LB_VERB,"Load balance data ");
     for (i=0; i< nump;i++){
-        verbosen_master(2,"MR[%d]= %.2lf ",i,percs_mpi[i]);
+        verbosen_master(LB_VERB,"MR[%d]= %.2lf ",i,percs_mpi[i]);
         // verbosen_master(3," (%lu/%lu) ",node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
     }
-    verbose_master(2,"");
+    verbose_master(LB_VERB,"");
     for (i=1 ; i < nump ; i++){
         if (percs_mpi[i] > percs_mpi[*max])	*max = i;
         if (percs_mpi[i] < percs_mpi[*min])	*min = i;
@@ -467,12 +460,12 @@ void chech_node_mpi_summary()
 {
     #if NODE_LB
     if (is_mpi_enabled()){
-      verbose_mpi_summary(2,&my_mpi_summary);
+      verbose_mpi_summary(LB_VERB,&my_mpi_summary);
       if (is_mpi_summary_pending() == 0){
         share_my_mpi_summary(&masters_info,&my_mpi_summary);
       }else{
         if (is_mpi_summary_ready()){
-          verbose_node_mpi_summary(2,&masters_info);
+          verbose_node_mpi_summary(LB_VERB,&masters_info);
           share_my_mpi_summary(&masters_info,&my_mpi_summary);
         }
     }
@@ -491,8 +484,11 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
 
 		mpi_support_set_mpi_summary(&my_mpi_summary,percs_mpi, num_procs, *mean, *sd, *mag);
-
+		#if NODE_LB
     *lb = (*sd > LB_TH);
+		#else
+		*lb = 0;
+		#endif
 
     return EAR_SUCCESS;
 }
@@ -505,19 +501,16 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
     mpi_stats_evaluate_median(num_procs, percs_mpi, median);
 
     memset(critical_path, 0, sizeof(uint)*num_procs);
-    verbose_master(2, "%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
+    verbose_master(LB_VERB+1,"%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
 
     for (uint i=0; i < num_procs; i++){
         /*  Decides whether process i is part of the critical path */
         if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)){
-            verbose_master(2, "Process %d selected as part of the critical path", i);
+            verbose_master(LB_VERB, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
         }else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)){
-            verbose_master(3, "%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
+            debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
         }
-        // TODO: min energy implements another critical path state (2) when percs_mpi[i] > mean and its value is farther above 75% of the difference between the mean and the most far perc_mpi
-        // else if ((percs_mpi[i] > mpi_stats_perc_mpi_mean) && ((percs_mpi[i]- mpi_stats_perc_mpi_mean) >= 
-        //  ((percs_mpi[max_mpi] - mpi_stats_perc_mpi_mean)*0.75)))
     }
 
     return EAR_SUCCESS;
@@ -525,14 +518,13 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
 
 state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag){
     if (verb_lvl == 3){
-        verbose_master(3, "PREVIOUS percs_mpi:");
+        debug("Previous percs_mpi:");
         for (int i = 0; i < num_procs; i++){
-            verbosen_master(3, "MR[%d]=%lf", i, percs_mpi[i]);
+            debug("MR[%d]=%lf", i, percs_mpi[i]);
         }
-        verbose_master(3, "");
     }
     else if(verb_lvl <= 3){
-        verbose_master(2, "PREVIOUS mean %lf median %lf standard deviation %lf magnitude %lf",
+        debug("PREVIOUS mean %lf median %lf standard deviation %lf magnitude %lf",
                 mean, median, sd, mag);
     }
 
@@ -545,14 +537,14 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
     /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
     if (!equal_with_th(prev_mag, current_mag, 0.05)){
         if (prev_mag < current_mag){
-            verbose_master(2, "%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
+            debug("%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
                     prev_mag, current_mag);
             *mpi_changed = 1;
         }
     }else{
         /*  Check similarity between critical paths */
         mpi_stats_evaluate_sim_uint(cp, prev_cp, num_procs, similarity);
-        verbose_master(2, "Similarity between last and current critical path selection %lf", *similarity);
+        verbose_master(LB_VERB, "Similarity between last and current critical path selection %lf", *similarity);
         if (*similarity < 0.5){
             *mpi_changed = 1;
         }

@@ -16,7 +16,7 @@
 */
 
 #include <stdlib.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <metrics/frequency/cpu.h>
 #include <metrics/frequency/cpu/intel63.h>

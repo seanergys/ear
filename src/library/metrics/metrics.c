@@ -16,6 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
+#define INFO_METRICS 2
 
 #define SET_DYN_UNC_BY_DEFAULT 1
 #include <errno.h>
@@ -280,7 +281,7 @@ static void metrics_global_stop()
 	}else fd = 2;
 	io_buffer = malloc(strlen(io_info) + 200);
 	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
-	if (verb_level >= 2) write(fd,io_buffer,strlen(io_buffer));
+	if (verb_level >= 3) write(fd,io_buffer,strlen(io_buffer));
 	if (verb_path != NULL) close(fd);
 	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
 
@@ -443,7 +444,7 @@ static int metrics_partial_stop(uint where)
     if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],cpufreq_data_per_core,&cpufreq_data_avg[LOO]))){
       error("CPUFreq data diff");
     }else{
-      verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
+      debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
 		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++) verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
 		verbosen_master(3,"\n");
@@ -677,7 +678,7 @@ int metrics_init(topology_t *topo)
 	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}else{
-		verbose_master(2,"IO data initialized");
+		verbose_master(INFO_METRICS,"IO data initialized");
 	}	
 	papi_flops_supported = init_flops_metrics();
 
@@ -786,7 +787,7 @@ int metrics_init(topology_t *topo)
 	char imc_api_txt[32];
 	imcfreq_get_api(&imc_api);
 	apis_tostr(imc_api,imc_api_txt,sizeof(imc_api_txt));
-	verbose_master(2,"IMC metrics API %s",imc_api_txt);
+	verbose_master(INFO_METRICS,"IMC metrics API %s",imc_api_txt);
   if (xtate_fail(s, imcfreq_data_alloc(&imc_init[APP], &imc_freq_init[APP]))){
 		error("IMC data alloc failed");
 	}
@@ -799,7 +800,7 @@ int metrics_init(topology_t *topo)
   if (xtate_fail(s, imcfreq_data_alloc(&imc_end[LOO], &imc_freq_end[LOO]) )){
     error("IMC data alloc failed");
   }
-	verbose_master(2,"IMC metrics initialized");
+	verbose_master(INFO_METRICS,"IMC metrics initialized");
 
 	/* IMC management */
 	if(state_fail(s = mgt_imcfreq_load(topo, EARD))) {
@@ -810,7 +811,7 @@ int metrics_init(topology_t *topo)
 	}
 	char imc_mgt_txt[32];
 	apis_tostr(imc_api,imc_mgt_txt,sizeof(imc_mgt_txt));
-	verbose_master(2,"IMC API selected %s",imc_mgt_txt);
+	verbose_master(INFO_METRICS,"IMC API selected %s",imc_mgt_txt);
 	if (state_fail(s = mgt_imcfreq_init(NULL))){
 		error("Error in IMC init");
 		imc_mgt_compatible = 0;
@@ -824,12 +825,12 @@ int metrics_init(topology_t *topo)
 		error("Asking for memory");
 		return EAR_ERROR;
 	}
-	verbose_master(2," IMC num devices %u",imc_devices);
+	verbose_master(INFO_METRICS," IMC num devices %u",imc_devices);
 	if (state_fail(s = mgt_imcfreq_get_available_list(NULL,(const pstate_t **)&imc_pstates, &imc_num_pstates))){
 		error("Asking for IMC frequency list");
 	}
 	mgt_imcfreq_data_tostr(imc_pstates,imc_num_pstates,imc_buffer,sizeof(imc_buffer));
-	verbose_master(2,"IMC pstates lust:%s",imc_buffer);
+	verbose_master(INFO_METRICS+1,"IMC pstates lust:%s",imc_buffer);
 	/* Default values */
 	def_imc_max_khz = imc_pstates[0].khz;
 	def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;
@@ -861,7 +862,7 @@ int metrics_init(topology_t *topo)
 	/* We assume all the sockets have the same configuration */
 	imc_curr_max_pstate = imc_max_pstate[0];
 	imc_curr_min_pstate = imc_min_pstate[0];	
-	verbose_master(2,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
+	verbose_master(INFO_METRICS,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
 		
 	/* End of IMC */	
 	}
