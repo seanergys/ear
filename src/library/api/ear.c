@@ -1524,10 +1524,6 @@ state_t earl_periodic_actions_init(void *no_arg)
     tics_per_second = sysconf(_SC_CLK_TCK);
     timestamp_getfast(&periodic_time);
     seconds = 0;
-#if 0
-    proc_stat_load();
-    proc_stat_init(&stat_ctx,sig_shared_region[my_node_id].pid);
-#endif
     last_mpis = 0;
     if (!is_mpi_enabled()){
         ear_periodic_mode = PERIODIC_MODE_ON;
@@ -1592,13 +1588,6 @@ state_t earl_periodic_actions(void *no_arg)
                 verbose_mpi_data(3,&my_node_mpi_calls[i]);
             }
         }
-#if 0
-        proc_stat_read(&stat_ctx,&c_stat);
-        proc_stat_data_to_str(&c_stat,stat_buff,sizeof(stat_buff));
-        total_time = c_stat.utime + c_stat.stime + c_stat.cutime + c_stat.cstime;
-        cpu_util = 100 * (((float)total_time / (float)tics_per_second) / (float)seconds);
-        verbose_master(2,"EARL: %s CPU util %.2f",stat_buff,cpu_util);
-#endif
         if (classify(MB,total_mpi_calls,io_in_period,mpi_in_period,dynais_enabled,ear_status,ear_periodic_mode,EAR_STATE,&earl_phase_classification,&new_ear_guided) != EAR_SUCCESS){
             verbose_master(2,"Error in app classification");
         }

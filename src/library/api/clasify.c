@@ -43,6 +43,14 @@ state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint d
 	return EAR_SUCCESS;
 }
 
+state_t is_io_bound(float rwsec,uint *iobound)
+{
+	*iobound = 0;
+	if (rwsec > IO_TH) *iobound = 1;
+	return EAR_SUCCESS;
+	
+}
+
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
 	ull flop = 0;
