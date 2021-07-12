@@ -89,7 +89,6 @@ extern uint sockets_unrecognized;
 extern uint sockets_timeout;
 
 // State machine
-extern int reconfiguring;
 extern int listening;
 extern int releasing;
 extern int exitting;
