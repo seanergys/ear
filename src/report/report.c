@@ -15,10 +15,11 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
+#include <common/config.h>
 #include <report/report.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
@@ -120,7 +121,7 @@ state_t report_load(const char *install_path, const char *libs)
 		goto leave;
 	}
 	static_load(install_path, libs);
-	static_load(install_path, getenv("SLURM_EAR_REPORT_ADD"));
+	static_load(install_path, getenv(SCHED_EAR_REPORT_ADD));
 	init = 1;
 leave:
 	pthread_mutex_unlock(&lock);

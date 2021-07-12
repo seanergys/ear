@@ -110,10 +110,10 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
         verbose(2,"EAR+%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu,iterations=%d",mode,aname, PFREQ,nname,sig->id.event,sig->id.size,sig->id.level,iterations); 
         verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",mode,aname, PFREQ,nname,master_rank,elapsed); 
         verbosen(1,"%s",COL_GRE);
-        if (GPU_UTIL) sprintf(gpu_buff,"(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
-        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec.  AvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlops=%.2lf IO=%.2fMB/s %s)\n\t %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
-        if (new_freq > 0){ verbosen(1," Next Frequency %.2f",NFREQ);}
-        verbosen(2," DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
+        if (GPU_UTIL) sprintf(gpu_buff,"\n\t(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
+        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec.\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlops=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
+        if (new_freq > 0){ verbosen(1,"\n\t Next Frequency %.2f",NFREQ);}
+        verbosen(2,"\n\t DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
         l1_sec = sig->signature.L1_misses/(sig->signature.time*1024*1024*1024);
         l2_sec = sig->signature.L2_misses/(sig->signature.time*1024*1024*1024);
         l3_sec = sig->signature.L3_misses/(sig->signature.time*1024*1024*1024);
