@@ -390,10 +390,12 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 
 state_t policy_get_default_freq(polctx_t *c, ulong *freq_set)
 {
-		if (c!=NULL){
-			*freq_set=c->app->max_freq;
-		}else EAR_ERROR;
-		return EAR_SUCCESS;
+	if (c!=NULL){
+		*freq_set = c->app->max_freq;
+	} else {
+		EAR_ERROR;
+	}
+	return EAR_SUCCESS;
 }
 
 state_t policy_max_tries(polctx_t *c,int *intents)

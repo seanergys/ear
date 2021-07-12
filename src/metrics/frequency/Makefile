@@ -4,7 +4,6 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
 freq_OBJS = \
 	cpu.o \
-	imc.o \
 	cpufreq_base.o
 
 ######## RULES
@@ -18,7 +17,6 @@ all: all.components $(freq_OBJS)
 
 %.components:
 	@ $(MAKE) -C 'cpu' $* || exit
-	@ $(MAKE) -C 'imc' $* || exit
 
 ######## OPTIONS
 

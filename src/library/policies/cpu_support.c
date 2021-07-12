@@ -279,7 +279,7 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
     for (i=0;i<num_processes;i++){
         verbosen_master(2,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
     }
-    verbose_master(2,"\n IMC 0 (%.2f-%.2f)",(float)freqs->imc_freq[sid*IMC_VAL+IMC_MAX]/1000000.0,(float)freqs->imc_freq[sid*IMC_VAL+IMC_MIN]/1000000.0);
+    verbose_master(2,"\n IMC 0 (%lu-%lu)",freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
 #if USE_GPUS
     for (i=0; i< my_pol_ctx.num_gpus;i++){
         verbosen_master(2,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);

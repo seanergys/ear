@@ -9,6 +9,11 @@ root_OBJS = \
     $(SRCDIR)/management/cpufreq/archs/amd17.o \
     $(SRCDIR)/management/cpufreq/archs/default.o \
     $(SRCDIR)/management/cpufreq/drivers/linux_cpufreq.o \
+    $(SRCDIR)/management/imcfreq/imcfreq.o \
+    $(SRCDIR)/management/imcfreq/archs/amd17.o \
+    $(SRCDIR)/management/imcfreq/archs/dummy.o \
+    $(SRCDIR)/management/imcfreq/archs/eard.o \
+    $(SRCDIR)/management/imcfreq/archs/intel63.o \
     $(SRCDIR)/management/gpu/gpu.o \
     $(SRCDIR)/management/gpu/archs/nvml.o \
     $(SRCDIR)/management/gpu/archs/dummy.o
@@ -38,8 +43,9 @@ depend-clean: depend-clean.components
 ######## SUBFOLDERS
 
 %.components:
-	@ $(MAKE) -C 'gpu'     $* || exit
 	@ $(MAKE) -C 'cpufreq' $* || exit
+	@ $(MAKE) -C 'imcfreq' $* || exit
+	@ $(MAKE) -C 'gpu'     $* || exit
 
 ######## EXPORTS
 

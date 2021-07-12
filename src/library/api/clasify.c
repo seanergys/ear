@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <common/config.h>
 #include <common/states.h>
+#include <common/output/debug.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/externs.h>
 #include <library/dynais/dynais.h>
@@ -55,7 +56,7 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	c2 = (sig->GBS < GBS_BUSY_WAITING);
 	c3 = (flops < GFLOPS_BUSY_WAITING);
 	if (c1 || c2 || c3){
-		verbose_master(2,"CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
+		debug("CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
 	}
 	if (c1 && c2 && c3) *busy = BUSY_WAITING;
 	return EAR_SUCCESS;

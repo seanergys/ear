@@ -26,7 +26,7 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <signal.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/colors.h>
 #include <common/states.h>
 #include <common/output/verbose.h>

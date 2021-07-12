@@ -206,7 +206,17 @@ void update_eargm_configuration(cluster_conf_t *conf)
     }
 		max_cluster_power=max_cluster_power*divisor;
 }
+void reopen_log()
+{
+  close(fd_my_log);
+  fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
+  if (fd_my_log<0) fd_my_log=2;
+  VERB_SET_FD(fd_my_log);
+  ERROR_SET_FD(fd_my_log);
+  WARN_SET_FD(fd_my_log);
+  DEBUG_SET_FD(fd_my_log);
 
+}
 
 static void my_signals_function(int s)
 {
@@ -215,6 +225,10 @@ static void my_signals_function(int s)
 	if (s==SIGALRM){
 		alarm(period_t1);
 		t1_expired=1;	
+		return;
+	}
+	if (s == SIGUSR2){
+		reopen_log();
 		return;
 	}
 	if (s==SIGHUP){
@@ -249,6 +263,7 @@ static void catch_signals()
     sigaddset(&set,SIGTERM);
     sigaddset(&set,SIGINT);
     sigaddset(&set,SIGALRM);
+    sigaddset(&set,SIGUSR2);
     if (sigprocmask(SIG_SETMASK,&set,NULL)<0){
         error("Setting signal mask (%s)",strerror(errno));
         exit(1);
@@ -271,6 +286,10 @@ static void catch_signals()
     }
     if (sigaction(SIGALRM,&my_action,NULL)<0){
         error(" sigaction for SIGALRM (%s)",strerror(errno));
+        exit(1);
+    }
+    if (sigaction(SIGUSR2,&my_action,NULL)<0){
+        error(" sigaction for SIGUSR2 (%s)",strerror(errno));
         exit(1);
     }
 

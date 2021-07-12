@@ -22,6 +22,7 @@
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
 #include <management/cpufreq/governor.h>
+#include <metrics/common/pstate.h>
 
 #define all_cpus -1
 
@@ -58,11 +59,6 @@
 //
 // Use example:
 //	- You can find an example in cpufreq/tests folder.
-
-typedef struct pstate_s {
-	uint   idx; // P_STATE index
-	ullong khz; // P_STATE frequency (in KHz)
-} pstate_t;
 
 typedef struct mgt_ps_driver_ops_s
 {

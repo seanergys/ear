@@ -35,9 +35,6 @@
 #include <common/types/generic.h>
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
-#include <metrics/frequency/cpu.h>
-#include <metrics/frequency/imc.h>
-
 
 #define MAX_TRIES 1
 
@@ -131,13 +128,14 @@ int my_write(int fd,char *buff,int size)
 }
 
 
-void signal_handler(int s)
+void eards_signal_handler(int s)
 {
 	debug("EARD has been disconnected");
 	mark_as_eard_disconnected(my_job_id,my_step_id,getpid());
 	app_connected=0;
 }
-void signal_catcher()
+
+void eards_signal_catcher()
 {
     struct sigaction action;
     sigset_t earl_mask;
@@ -146,7 +144,7 @@ void signal_catcher()
     sigdelset(&earl_mask,SIGPIPE);
     sigprocmask(SIG_UNBLOCK,&earl_mask,NULL);
     sigemptyset(&action.sa_mask);
-    action.sa_handler = signal_handler;
+    action.sa_handler = eards_signal_handler;
     action.sa_flags = 0;
     
     if (sigaction(SIGPIPE, &action, NULL) < 0) {
@@ -327,7 +325,7 @@ int eards_connect(application_t *my_app)
 		}
 	}
 	app_connected=1;
-	signal_catcher();
+	eards_signal_catcher();
 	debug("Connected");
 	return EAR_SUCCESS;
 
@@ -749,28 +747,32 @@ state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
 
 /************************************/
 // Uncore frequency management
-state_t eards_freq_imc_data_count(uint *count)
+state_t eards_imcfreq_data_count(uint *pack)
 {
-  int i;
+	struct daemon_req req;
 	size_t size;
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = UNC_SIZE;
-  req.sec=create_sec_tag();
+	int i;
+	
+	if (!app_connected) {
+		return_msg(EAR_ERROR, Generr.api_uninitialized);
+	}
 	/* Specific info */
-	*count = 0;
-	size = sizeof(uint);
-	if (ear_fd_req[freq_req] >= 0)
-  { 
-    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for uncore freq size")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq size");}
-    
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)count, size), size,
-      "receiving uncore freq size")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq size");}
-  } 
-  return EAR_SUCCESS;
+	req.req_service = UNC_SIZE;
+	req.sec=create_sec_tag();
+	size = sizeof(uint) * 2;
+	pack[0] = 0;
+	pack[1] = 0;
+	
+	if (ear_fd_req >= 0) { 
+	    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
+    	   "while asking for uncore freq size")) { return_msg(EAR_ERROR, "Asking for uncore freq size"); }
+		if (warning_api(my_read(ear_fd_ack[freq_req], (char *)pack, size), size,
+			"receiving uncore freq size")){ return_msg(EAR_ERROR, "Receiving uncore freq size");}
+	}
+	return EAR_SUCCESS;
 }
-state_t eards_freq_imc_read(freq_imc_t *ef,size_t size)
+
+state_t eards_imcfreq_read(imcfreq_t *ef,size_t size)
 {
   int i;
   struct daemon_req req;
@@ -778,72 +780,60 @@ state_t eards_freq_imc_read(freq_imc_t *ef,size_t size)
   req.req_service = UNC_READ;
   req.sec=create_sec_tag();
   /* Specific info */
-  memset(ef->data,0,size);
-  if (ear_fd_req[freq_req] >= 0)
+	debug("eards_imcfreq_read %lu",size);
+  memset(ef,0,size);
+  if (ear_fd_req >= 0)
   {
     if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
        "while asking for uncore freq metric")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq metric");}
 
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)ef->data, size), size,
+    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)ef, size), size,
       "receiving uncore freq metric ")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq metric");}
   }
   return EAR_SUCCESS;
 }
-state_t eards_mgt_imcfreq_get_current( ulong *max_khz, ulong *min_khz)
+
+state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size)
 {
-  int i;
-	ulong data[2];
-	size_t size;
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = UNC_GET_LIMITS;
-  req.sec=create_sec_tag();
-	  /* Specific info */
-	*max_khz = 0;
-	*min_khz = 0;
-	size = sizeof(ulong) * 2;
-  if (ear_fd_req[freq_req] >= 0)
-  { 
-    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for uncore freq limits")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq limits");}
-    
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)data, size), size,
-      "receiving uncore freq limits ")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq limits");}
-		debug("IMC limits %lu %lu",data[0],data[1]);
-		*max_khz = data[0];
-		*min_khz = data[1];
-  }
-  return EAR_SUCCESS;
+	struct daemon_req req;
+	req.req_service = service;
+	req.sec         = create_sec_tag();
+  memset(data,0,size);
+	if (ear_fd_req[freq_req] >= 0) {
+		if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req), "while asking for uncore freq limits")) {
+			return_msg(EAR_ERROR, "Asking for uncore freq limits");
+		}
+		if (warning_api(my_read(ear_fd_ack[freq_req], (char *) data, size), size, "receiving uncore freq limits ")) {
+			return_msg(EAR_ERROR, "Receiving uncore freq limits");
+		}
+	}
+	return EAR_SUCCESS;
 }
-state_t eards_mgt_imcfreq_set_current( ulong max_khz, ulong min_khz)
+
+state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count)
 {
-  int i;
+	struct daemon_req req;
+	size_t size;
 	ulong ack;
-	size_t size;
-  struct daemon_req req;
-  if (!app_connected){  state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = UNC_SET_LIMITS;
-  req.sec=create_sec_tag();
-    /* Specific info */
-  size = sizeof(ulong);
-	req.req_data.unc_freq.max_unc = max_khz;
-	req.req_data.unc_freq.min_unc = min_khz;
-  if (ear_fd_req[freq_req] >= 0)
-  {
-    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(struct daemon_req)), sizeof(struct daemon_req),
-       "while asking for setting uncore freq limits")){ 
-			state_return_msg(EAR_ERROR,errno,"Asking for setting uncore freq limits");
+	int i;
+  
+	req.req_service = service;
+	req.sec         = create_sec_tag();
+	size            = sizeof(ulong);
+	//
+	for (i = 0; i < index_count; ++i) {
+		req.req_data.unc_freq.index_list[i] = index_list[i];
+	}
+	if (ear_fd_req[freq_req] >= 0) {
+    	if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(struct daemon_req)), sizeof(struct daemon_req), "")) { 
+			return_msg(EAR_ERROR, "Asking for setting uncore freq limits");
 		}
-
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)&ack, size), size,
-      "receiving ack while setting uncore freq ")){ 
-			state_return_msg(EAR_ERROR,errno,"Receiving ack while setting uncore freq");
+		if (warning_api(my_read(ear_fd_ack[freq_req], (char *)&ack, size), size, "")) {
+			return_msg(EAR_ERROR, "Receiving ack while setting uncore freq");
 		}
-  }
-  return EAR_SUCCESS;
-
+	}
+	return EAR_SUCCESS;
 }
-
 
 // END FREQUENCY SERVICES
 //////////////// UNCORE REQUESTS

@@ -32,6 +32,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/user.h>
+#include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/types/version.h>
 #include <common/types/application.h>
@@ -460,6 +461,7 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
             }
         }
     }
+    *edbstatus = aux_t;
 
     return count;
 }
@@ -563,9 +565,12 @@ int main(int argc, char *argv[])
     int c = 0;
     int num_status = 0;
     int status_type = 0;
+    int mail_fd = -1;
 
+    char command[512];
     char path_name[128];
     char node_name[256];
+    char mail_filename[256];
     char *mail = NULL;
 
     strcpy(node_name,"");
@@ -580,6 +585,7 @@ int main(int argc, char *argv[])
         printf("Error getting ear.conf path\n"); //error
         exit(1);
     }
+
 
     if (read_cluster_conf(path_name, &my_cluster_conf) != EAR_SUCCESS) printf("ERROR reading cluster configuration\n");
     
@@ -935,6 +941,18 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (mail != NULL) 
+    {
+		sprintf(mail_filename, "%s/health_check.txt", my_cluster_conf.install.dir_temp);
+        mail_fd = open(mail_filename, O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+        if (mail_fd < 1) {
+            printf("Error creating mail file (%s), exiting\n", mail_filename);
+            exit(0);
+        }
+        if (dup2(mail_fd, STDOUT_FILENO) < 0) {
+            printf("Error duplicating output: %s\n", strerror(errno)); 
+        }
+    }
 
     if (strlen(node_name) > 0 && status_type > 0)
     {
@@ -1029,6 +1047,8 @@ int main(int argc, char *argv[])
             case EAR_TYPE_EARDBD_STATUS:
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
                 process_eardbd_status(num_status, edbstatus, 0);
+                if (num_status > 0)
+                    free(edbstatus);
                 break;
             case EAR_TYPE_HEALTH_CHECK:
                 printf("---------------------\nINACTIVE NODES\n---------------------\n");
@@ -1037,9 +1057,17 @@ int main(int argc, char *argv[])
                 printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
                 process_eardbd_status(num_status, edbstatus, 1);
+                if (num_status > 0)
+                    free(edbstatus);
                 break;
                 
         }
     }
+    if (mail != NULL)
+    {
+  	    sprintf(command, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
+        execute(command); 
+    }
+    
     free_cluster_conf(&my_cluster_conf);
 }

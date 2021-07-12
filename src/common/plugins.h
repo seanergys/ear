@@ -19,6 +19,7 @@
 #define COMMON_PLUGINS_H
 
 #include <common/states.h>
+#include <metrics/common/apis.h>
 
 // Attributes
 #define attr2(a1, a2)    __attribute__ ((a1, a2))
@@ -28,8 +29,9 @@
 #define attr_internal    visibility("internal")
 #define attr_weak        weak
 // Verbosity parameters
-#define empty	NULL
 #define none	0
+#define empty	NULL
+#define no_ctx  NULL
 
 typedef struct ctx_s {
 	void *context;

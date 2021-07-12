@@ -303,13 +303,13 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         if ((masters_info.my_master_rank>=0) && (resched_conf->force_rescheduling)){
             traces_reconfiguration(ear_my_rank, my_id);
             resched_conf->force_rescheduling=0;
-            verbose_master(1,"EAR: rescheduling forced by eard: current_state %u max freq %lu def_freq %lu def_th %lf",EAR_STATE,system_conf->max_freq,system_conf->def_freq,system_conf->settings[0]);
+            verbose_master(2,"EAR: rescheduling forced by eard: current_state %u max freq %lu def_freq %lu def_th %lf",EAR_STATE,system_conf->max_freq,system_conf->def_freq,system_conf->settings[0]);
             EAR_STATE = SIGNATURE_HAS_CHANGED;
             comp_N_begin = metrics_time();
             state_report_traces_state(masters_info.my_master_rank,ear_my_rank, my_id,SIGNATURE_HAS_CHANGED);
             tries_current_loop_same_freq=0;
             tries_current_loop=0;
-            verbose_master(1,"New state by reschedduling %u",EAR_STATE);
+            verbose_master(2,"New state by reschedduling %u",EAR_STATE);
             return;
         }
     }

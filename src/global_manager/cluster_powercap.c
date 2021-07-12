@@ -23,7 +23,7 @@
 
 #include <common/config.h>
 #include <common/system/execute.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/colors.h>
 #include <common/types/generic.h>
@@ -178,7 +178,8 @@ void reduce_allocation(cluster_powercap_status_t *cs,powercap_opt_t *cluster_opt
 /* This function is executed when there is enough power for new running nodes but not for all the greedy nodes */
 uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_opt_t *cluster_options,uint released)
 {
-    int total_free, i;
+    uint total_free;
+		int i;
     uint num_nodes=cluster_status->total_nodes;
     uint min_reduction;
     verbose(0,"There are %u nodes  %u idle nodes %u greedy nodes ", cluster_status->total_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
@@ -307,7 +308,7 @@ void execute_powercap_lower_action()
     if (strcmp(my_cluster_conf.eargm.powercap_lower_action,"no_action")){ 
         /* Format is: command current_power current_limit total_idle_nodes allocated_idle_power*/
         sprintf(cmd,"%s %u %u %u %u", my_cluster_conf.eargm.powercap_lower_action,my_cluster_power_status->current_power,max_cluster_power,my_cluster_power_status->idle_nodes,my_cluster_power_status->total_idle_power);
-        verbose(0,"Executing powercap_lower_action: %s",cmd);
+        verbose(0,"%sExecuting powercap resume action: %s %s",COL_GRE,cmd,COL_CLR);
         execute_with_fork(cmd);
         pthread_mutex_lock(&plocks);
         process_created++;
@@ -326,7 +327,7 @@ void execute_powercap_limit_action()
     if (strcmp(my_cluster_conf.eargm.powercap_limit_action,"no_action")){ 
         /* Format is: command current_power current_limit total_idle_nodes allocated_idle_power*/
         sprintf(cmd,"%s %u %u %u %u", my_cluster_conf.eargm.powercap_limit_action,my_cluster_power_status->current_power,max_cluster_power,my_cluster_power_status->idle_nodes,my_cluster_power_status->total_idle_power);
-        verbose(0,"Executing powercap_limit_action: %s",cmd);
+        verbose(0,"%sExecuting powercap suspend action: %s%s",COL_RED,cmd,COL_CLR);
         execute_with_fork(cmd);
         pthread_mutex_lock(&plocks);
         process_created++;
@@ -346,7 +347,7 @@ void cluster_power_monitor()
         verbose(1,"num_power_status in cluster_check_powercap is 0");
         return;
     }
-    if (my_cluster_power_status->current_power >= ((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_limit)/100.0)){
+    if (my_cluster_power_status->current_power >= ((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_limit)/100.0) && !actions_executed){
         execute_powercap_limit_action();
     } else if (my_cluster_power_status->current_power <= ((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_lower)/100.0) && actions_executed) {
         execute_powercap_lower_action();
@@ -388,7 +389,7 @@ void cluster_check_powercap()
         verbose(1,"There is no need to send the pc_options");
     }
 
-    if (my_cluster_power_status->total_powercap>=((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_limit)/100.0))
+    if (my_cluster_power_status->total_powercap>=((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_limit)/100.0) && !actions_executed)
     {
         execute_powercap_limit_action();
     }

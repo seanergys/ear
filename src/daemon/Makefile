@@ -38,8 +38,9 @@ eard_OBJS += \
     $(powercap_OBJS) \
     $(gpu_mgt_OBJS) \
     $(SRCDIR)/database_cache/eardbd_api.o \
-    $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/management/libmgt.a \
+    $(SRCDIR)/metrics/libmetrics.a \
+	$(local_api_OBJS) \
     $(SRCDIR)/common/libcommon.a
 
 ######## RULES
@@ -73,11 +74,11 @@ clean: clean.components clean.others eard.gclean rclean;
 ######## SUBFOLDERS
 
 %.components:
-	$(MAKE) -C 'app_api' $*
-	$(MAKE) -C 'remote_api' $*
-	$(MAKE) -C 'local_api' $*
-	$(MAKE) -C 'powercap' $*
-	$(MAKE) -C 'gpu' $*
+	@ $(MAKE) -C 'app_api' $*
+	@ $(MAKE) -C 'remote_api' $*
+	@ $(MAKE) -C 'local_api' $*
+	@ $(MAKE) -C 'powercap' $*
+	@ $(MAKE) -C 'gpu' $*
 
 %.others: ;
 

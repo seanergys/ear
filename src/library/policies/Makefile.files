@@ -5,12 +5,12 @@ stan_OBJS = \
     pc_suport.o \
     gpu_support.o \
     cpu_support.o \
-		mpi_stats_support.o \
-		imc_policy_support.o
+    mpi_stats_support.o \
+    imc_policy_support.o
 
 stan_BINS = \
-    min_time.so  \
     min_energy.so \
+    min_time.so  \
     min_time_no_models.so \
     min_energy_no_models.so \
     monitoring.so 

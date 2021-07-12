@@ -50,10 +50,7 @@ install: ;
 clean: rclean
 	rm -f ./avx2/*.o ./avx512/*.o
 
-depend: ;
-
-depend-clean: ;
-
 ######## EXPORTS
 
+include $(SRCDIR)/Makefile.depend
 include $(SRCDIR)/Makefile.extra
