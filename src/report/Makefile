@@ -5,7 +5,12 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g
 repo_OBJS = \
 	report.o
 repo_BINS = \
+	eard.so \
+	csv.so \
 	plug_dummy.so
+repo_PERM = 0775
+repo_PATH = $(DESTDIR)/lib/plugins/reports
+
 
 ######## RULES
 
@@ -23,7 +28,7 @@ all: $(repo_OBJS) $(repo_BINS)
 
 ######## OPTIONS
 
-install: ;
+install: repo.ginstall
 
 %.install: ;
 

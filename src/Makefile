@@ -11,10 +11,8 @@ endif
 COMPONENTS += \
     daemon \
     commands \
-    library
-ifdef GSL_BASE
-COMPONENTS += tools
-endif
+    library \
+		tools
 ifdef DB_BASE
 COMPONENTS += global_manager
 endif

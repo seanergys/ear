@@ -85,7 +85,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 	}
 	// Log rotation signal
 	if (signal == SIGUSR2) {
-		verb_who("signal SIGUSR2 received, re-opening log file'", verbosity);
+		verb_who_noarg("signal SIGUSR2 received, re-opening log file");
 		log_handler(&conf_clus, 1);
 		propagating = others_pid > 0 && info->si_pid != others_pid;
 		updating    = 1;
