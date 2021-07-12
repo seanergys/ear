@@ -159,10 +159,11 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 {
     my_loop->total_iterations = iterations;
-#if DB_FILES
+		my_loop->jid 							= job->id;
+		my_loop->step_id 					= job->step_id;
+#if 0
     append_loop_text_file(loop_summary_path, my_loop,job);
 #endif
-#if USE_DB
     if (masters_info.my_master_rank>=0){
         clean_db_loop(my_loop, system_conf->max_sig_power);
 				#if 0
@@ -173,7 +174,6 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
         }
 
     }
-#endif
 }
 
 
@@ -260,9 +260,8 @@ void states_end_period(uint iterations)
     if (loop_with_signature)
     {
         loop.total_iterations = iterations;
-        append_loop_text_file(loop_summary_path, &loop,&loop_signature.job);
+        //append_loop_text_file(loop_summary_path, &loop,&loop_signature.job);
         if (system_conf->report_loops){
-#if USE_DB
             if (masters_info.my_master_rank>=0){ 
                 clean_db_loop(&loop, system_conf->max_sig_power);
 								#if 0
@@ -272,7 +271,6 @@ void states_end_period(uint iterations)
 									verbose_master(0,"Error reporting loop");
 								}
             }
-#endif
         }
     }
 

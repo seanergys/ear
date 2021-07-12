@@ -173,7 +173,7 @@ static void print_local_data()
 	#endif
 	verbose(1, "App/user id: '%s'/'%s'", application.job.app_id, application.job.user_id);
 	verbose(1, "Node/job id/step_id: '%s'/'%lu'/'%lu'", application.node_id, application.job.id,application.job.step_id);
-	verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
+	//verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
 	verbose(1, "P_STATE/frequency (turbo): %u/%lu (%d)", EAR_default_pstate, application.job.def_f, ear_use_turbo);
 	verbose(1, "Tasks/nodes/ppn: %u/%d/%d", my_size, num_nodes, ppnode);
 	verbose(1, "Policy (learning): %s (%d)", application.job.policy, ear_whole_app);
@@ -1040,11 +1040,15 @@ void ear_init()
     summary_pathname = get_ear_user_db_pathname();
 		if (masters_info.my_master_rank >= 0){
 		// Report API
-			if (report_load(system_conf->installation.dir_plug,"eard.so") != EAR_SUCCESS){
-				verbose_master(0,"Error in reports API load ");
-			}
-			if (summary_pathname != NULL){
+			if (summary_pathname == NULL){
+				if (report_load(system_conf->installation.dir_plug,"eard.so") != EAR_SUCCESS){
+					verbose_master(0,"Error in reports API load ");
+				}
+			}else{
 				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
+				if (report_load(system_conf->installation.dir_plug,"eard.so:csv.so") != EAR_SUCCESS){
+					verbose_master(0,"Error in reports API load ");
+				}
 			}
 			if (report_init() != EAR_SUCCESS){
         verbose_master(0,"Error in reports API initialization ");
@@ -1053,14 +1057,16 @@ void ear_init()
 
     // States
     states_begin_job(my_id,  ear_app_name);
+		#if 0
     // Summary files
 
     if (summary_pathname != NULL) {
         sprintf(app_summary_path, "%s%s.csv", summary_pathname, node_name);
         sprintf(loop_summary_path, "%s%s.loop_info.csv", summary_pathname, node_name);
     }
+		#endif
 
-    // Print things
+    // Print summary of initialization
     print_local_data();
     // ear_print_lib_environment();
     fflush(stderr);
@@ -1158,7 +1164,9 @@ void ear_finalize()
 				if (report_applications(&application,1) != EAR_SUCCESS){
 					verbose_master(0,"Error reporting application");
 				}
+				#if 0
         append_application_text_file(app_summary_path, &application, 1);
+				#endif
         report_mpi_application_data(&application);
     }
     // Closing any remaining loop

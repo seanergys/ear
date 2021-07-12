@@ -175,7 +175,7 @@ int append_loop_text_file_no_job(char *path, loop_t *loop)
         return EAR_ERROR;
     }
 
-    char *HEADER = "NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
+    char *HEADER = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
         "TIME;CPI;TPI;GBS;IO_MBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
         "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
         "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
@@ -203,6 +203,7 @@ int append_loop_text_file_no_job(char *path, loop_t *loop)
 	}
 	assert(loop!=NULL);
 	assert(loop->node_id!=NULL);
+		dprintf(fd,"%lu;%lu;",loop->jid,loop->step_id);
     dprintf(fd, "%s;", loop->node_id);
     signature_print_fd(fd, &loop->signature,1);
     print_loop_id_fd(fd, &loop->id);
