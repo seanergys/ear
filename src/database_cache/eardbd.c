@@ -109,7 +109,6 @@ time_t                  time_insr;
 time_t                  time_aggr;
 time_t                  time_slct;
 // State machine from the main loop
-int                     reconfiguring;
 int                     listening;
 int                     releasing;
 int                     exitting;
@@ -209,43 +208,43 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	server_port = conf_clus->db_manager.tcp_port;
 	mirror_port = conf_clus->db_manager.sec_tcp_port;
 	sync_port   = conf_clus->db_manager.sync_tcp_port;
+
 	// Allocation
 	total_alloc = (float) conf_clus->db_manager.mem_size;
-	// PID protection
-	char path_tmp_pid[128];
-	pid_t other_server_pid;
-	pid_t other_mirror_pid;
-
-	umask(0);
-	sprintf(path_tmp_pid, "%s/%d", conf_clus->install.dir_temp, getpid());
-	// Creating the PID path folder
-	if (mkdir(path_tmp_pid, S_IRUSR | S_IWUSR | S_IXUSR| S_IRGRP | S_IROTH) < 0){
-		verb_master("ERROR, when creating pid path %s: %s", path_tmp_pid, strerror(errno));
-	}
-	path_pid = path_tmp_pid;
 
 	// Neither server nor mirror
 	if (!server_enabled && !mirror_enabled) {
 		edb_error("this node is not configured as a server nor mirror");
 	}
 
-	// PID test
+	// By now disabled
+	#if 0
+	// PID protection
+	pid_t other_server_pid;
+	pid_t other_mirror_pid;
+	path_pid = conf_clus->install.dir_temp;
+
+	// PID test (test the location)
 	process_data_initialize(&proc_server, "eardbd_test", path_pid);
 
 	if (state_fail(process_pid_file_save(&proc_server))) {
 		edb_error("while testing the temporal directory '%s' (%s)",
 			   conf_clus->install.dir_temp, state_msg);
 	}
+
 	// Looking for PID files
 	process_pid_file_clean(&proc_server);
 	process_data_initialize(&proc_server, "eardbd_server", path_pid);
 	process_data_initialize(&proc_mirror, "eardbd_mirror", path_pid);
+
 	// Looking for running processes
 	int server_exists = process_exists(&proc_server, "eardbd", &other_server_pid);
 	int mirror_exists = process_exists(&proc_mirror, "eardbd", &other_mirror_pid);
+
 	// Too variables are 1 if is detected by configuration or forced
 	server_enabled = server_enabled && !server_exists;
 	mirror_enabled = mirror_enabled && !mirror_exists;
+
 	// Cleaning files
 	if (!server_exists) process_pid_file_clean(&proc_server);
 	if (!mirror_exists) process_pid_file_clean(&proc_mirror);
@@ -255,10 +254,11 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (!server_enabled && !mirror_enabled) {
 		edb_error("another EARDBD process is currently running");
 	}
+	#endif
 
 	// Server & mirro verbosity
 	verb_master("enabled cache server: %s",                  server_enabled ? "OK": "NO");
-	verb_master("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK" : "NO", server_host);
+	verb_master("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK": "NO", server_host);
 }
 
 static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -305,6 +305,7 @@ static int init_sockets_single(socket_t *socket, char *host, int port, int bind)
 		return -1;
 	}
 	sockets_nonblock_set(socket->fd);
+
 	return 0;
 }
 
@@ -352,7 +353,6 @@ static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
 		mirror_pid = fork();
 
 		if (mirror_pid == 0) {
-			// Reconfiguring
 			mirror_iam = 1;
 			server_iam = 0;
 			mirror_pid = getpid();
@@ -586,28 +586,10 @@ static void init_pid_files(int argc, char **argv)
 
 static void init_output_redirection(int argc, char **argv, cluster_conf_t *conf_clus)
 {
-	int fd_output = -1;
-
 	if (listening) {
 		verb_master_line("phase 7: listening (processing every %lu s)", time_insr);
 	}
-	// If the USE_LOG option is set
-	if (conf_clus->db_manager.use_log) {
-		if (server_iam) {
-			fd_output = create_log(conf_clus->install.dir_temp, "eardbd.server");
-		} else {
-			fd_output = create_log(conf_clus->install.dir_temp, "eardbd.mirror");
-		}
-	}
-	if (fd_output < 0) {
-		fd_output = verb_channel;
-	}
-	// Setting file descriptors
-	VERB_SET_FD (fd_output);
-	WARN_SET_FD (fd_output);
-	ERROR_SET_FD(fd_output);
-	DEBUG_SET_FD(fd_output);
-	TIMESTAMP_SET_EN(conf_clus->db_manager.use_log);
+	log_handler(conf_clus, 0);
 }
 
 /*
