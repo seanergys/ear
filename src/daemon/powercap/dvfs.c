@@ -149,15 +149,25 @@ void vector_print_pstates(uint *pstates, uint num_cpus) {
 /* Computes how many cpus can reduce one pstate with the given limit */
 void num_cpus_to_reduce_pstates(uint *tmp,uint *target, uint *changes, uint *changes_max)
 {
-    int i;
+    int i, logical_pstates;
     *changes = 0;
     *changes_max = 0;
+    ulong tmp_freq, next_freq;
 
+    /* A logical pstate is a diff of 100000 MHz and is an average increase of 6 Watts
+     * (except the first pstate). In some cases there is a jump in available frequencies
+     * for a CPU of 2 logical p_states (and only 1 "real") so we use the logical steps
+     * to compute the necessary power. */ 
     for (i = 0; i < node_size; i++){
+        if (tmp[i] == 0) continue; //cannot reduce further
+        tmp_freq = frequency_pstate_to_freq(tmp[i]);
+        next_freq = frequency_pstate_to_freq(tmp[i] - 1);
+        logical_pstates = (next_freq - tmp_freq) / 100000; 
+
         if (tmp[i] > target[i]){
-            /* changes is from pstate 3 --> 2 or lower , changes_max is from 2 --> 1 or 1 --> 0 */
-            if (tmp[i] > 2) *changes = *changes + 1;
-            else            *changes_max = *changes_max + 1;
+            /* *changes is from pstate 3 --> 2 or lower, *changes_max is from 2 --> 1 or 1 --> 0 */
+            if (tmp[i] < 2) *changes_max += 1;
+            else *changes += logical_pstates;
         }
     }
 }
@@ -171,10 +181,6 @@ uint compute_extra_power(uint current_power, uint max_steps, uint *current, uint
     if (pstate_are_equal(current,target)) return 0;
 
     memcpy(tmp, current, sizeof(uint)*MAX_CPUS_SUPPORTED);
-    /* A logical pstate is a diff of 100000 MHz and is an average increase of 6 Watts
-     * (except the first pstate). In some cases there is a jump in available frequencies
-     * for a CPU of 2 logical p_states (and only 1 "real") so we use the logical steps
-     * to compute the necessary power. */ //TODO: implement this in num_cpus_to_reduce_pstates
     do{
         num_cpus_to_reduce_pstates(tmp, target, &changes, &changes_max);
         if (changes || changes_max){
@@ -182,7 +188,8 @@ uint compute_extra_power(uint current_power, uint max_steps, uint *current, uint
             reduce_one_pstate(tmp, target);
         }
         max_steps --;
-    }while((changes || changes_max) && (max_steps > 0));
+        
+    } while((changes || changes_max) && (max_steps > 0)); //if no more changes can be done or we pass the max number of steps
     return total;
 }
 

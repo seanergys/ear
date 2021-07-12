@@ -86,7 +86,7 @@ void print_powercap_opt(powercap_opt_t *opt)
     for (i=0;i<opt->num_greedy;i++){
         debug("greedy_node %d extra power %d",opt->greedy_nodes[i],opt->extra_power[i]);
     }
-    debug("Max extra power for new jobs %u",opt->max_inc_new_jobs);
+    debug("Cluster power allocation percentage %u",opt->cluster_perc_power);
     debug("%s",COL_CLR);
 }
 
@@ -186,6 +186,7 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
     cluster_options->greedy_nodes=calloc(cluster_status->num_greedy,sizeof(int));
     cluster_options->extra_power=calloc(cluster_status->num_greedy,sizeof(uint));
     cluster_options->num_greedy=cluster_status->num_greedy;
+    cluster_options->cluster_perc_power = (cluster_status->total_powercap * 100)/max_cluster_power;
     memcpy(cluster_options->greedy_nodes,cluster_status->greedy_nodes,cluster_status->num_greedy*sizeof(int));
     total_free=max_cluster_power-cluster_status->total_powercap;
     verbose(0,"Total power %u , requested for new %u (potential) released %u extra_req %u extra_used %u",max_cluster_power,cluster_status->requested,cluster_status->released,total_req_greedy,total_extra_power);
@@ -197,9 +198,6 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
         total_free=max_cluster_power-(cluster_status->total_powercap+cluster_status->requested);
         verbose(0,"Free power after allocating power to new jobs %d",total_free);
         if (total_req_greedy==0){
-#if  0
-            if ((total_free) && (cluster_status->idle_nodes>0))  cluster_options->max_inc_new_jobs=total_free/cluster_status->idle_nodes;
-#endif
             return 1;
         }
         /* At this point we know there is greedy power requested */
@@ -227,12 +225,6 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
             must_send_pc_options=1;
         }else if (cluster_status->released) return 0;
     }
-#if 0
-    if ((total_free) && (cluster_status->idle_nodes>0)){  
-        cluster_options->max_inc_new_jobs=total_free/cluster_status->idle_nodes;
-        must_send_pc_options=1;
-    }
-#endif
     return 1;
 }
 
