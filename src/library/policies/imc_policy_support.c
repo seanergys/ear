@@ -130,7 +130,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     power_var = metric_diff(power_ref, sig->DC_power, 0);
 
 		// We get the normalized imc frequency that corresponds with the avg imc freq
-		avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->sig_ext->imc_freq, &ps);
+		avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
 		ulong curr_imc_freq = imc_pstates[ps.idx].khz;
 
     if (pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){

@@ -41,8 +41,8 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
 {
     int i;
     
-	dprintf(fd, "%lu;%lu;", sig->avg_f, sig->def_f);
-	dprintf(fd, "%lf;%lf;%lf;%lf;", sig->time, sig->CPI, sig->TPI, sig->GBS);
+	dprintf(fd, "%lu;%lu;%lu;", sig->avg_f, sig->avg_imc_f,sig->def_f);
+	dprintf(fd, "%lf;%lf;%lf;%lf;%lf;", sig->time, sig->CPI, sig->TPI, sig->GBS,sig->IO_MBS);
 	dprintf(fd, "%lf;%lf;%lf;", sig->DC_power, sig->DRAM_power, sig->PCK_power);
 	dprintf(fd, "%llu;%llu;%lf", sig->cycles, sig->instructions, sig->Gflops);
 
@@ -66,12 +66,14 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
 
 void signature_print_simple_fd(int fd, signature_t *sig)
 {
-	dprintf(fd, "[AVGF=%lu DEFF=%lu TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",sig->avg_f, sig->def_f,sig->time, sig->CPI,sig->GBS,sig->DC_power);
+	dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
+	(float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
 }
 
 void signature_to_str(signature_t *sig,char *msg,size_t limit)
 {
-	snprintf(msg,limit, "[AVGF=%lu DEFF=%lu TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",sig->avg_f, sig->def_f,sig->time, sig->CPI,sig->GBS,sig->DC_power);
+	snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
+	(float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
 }
 
 void compute_ssig_vpi(double *vpi,ssig_t *sig)
@@ -145,6 +147,7 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
     dst->PCK_power += src->PCK_power;
     dst->EDP += src->EDP;
     dst->GBS += src->GBS;
+    dst->IO_MBS += src->IO_MBS;
     dst->TPI += src->TPI;
     dst->CPI += src->CPI;
     dst->Gflops += src->Gflops;
@@ -156,6 +159,7 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
     dst->instructions += src->instructions;
     dst->cycles += src->cycles;
     dst->avg_f += src->avg_f;
+    dst->avg_imc_f += src->avg_imc_f;
     dst->def_f += src->def_f;
     #if USE_GPUS
 		dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;
@@ -180,6 +184,7 @@ void clean_db_signature(signature_t *sig, double limit)
 	if (!isnormal(sig->CPI))				sig->CPI = 0;
 	if (!isnormal(sig->TPI))				sig->TPI = 0;
 	if (!isnormal(sig->GBS))				sig->GBS = 0;
+	if (!isnormal(sig->IO_MBS))			sig->IO_MBS = 0;
 	if (!isnormal(sig->Gflops))			sig->Gflops = 0;
 	if (sig->DC_power > limit)		  sig->DC_power = limit;
 	if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
@@ -199,11 +204,11 @@ void clean_db_signature(signature_t *sig, double limit)
 void acum_ssig_metrics(ssig_t *avg_sig,ssig_t *s)
 {
   int i;
-  avg_sig->time+=s->time;
-  avg_sig->CPI+=s->CPI;
-  avg_sig->avg_f+=s->avg_f;
-  avg_sig->def_f+=s->def_f;
-  avg_sig->Gflops+=s->Gflops;
+  avg_sig->time				+= s->time;
+  avg_sig->CPI				+= s->CPI;
+  avg_sig->avg_f			+= s->avg_f;
+  avg_sig->def_f			+= s->def_f;
+  avg_sig->Gflops			+= s->Gflops;
   for (i=0;i<FLOPS_EVENTS;i++) avg_sig->FLOPS[i] += s->FLOPS[i];
     #if USE_GPUS
     avg_sig->gpu_sig.num_gpus = s->gpu_sig.num_gpus;
@@ -232,17 +237,17 @@ void set_global_metrics(ssig_t *avg_sig,ssig_t *s)
 void compute_avg_node_sig(ssig_t *avg_sig,int n)
 { 
   double t,cpi,gflops;
-  unsigned long avg_f,def_f;
+  unsigned long avg_f,def_f,avg_imc_f;
   int i;
   ull my_flops[FLOPS_EVENTS];
-  t=avg_sig->time/n;
-  cpi=avg_sig->CPI/n;
-  avg_f=avg_sig->avg_f/n;
-  def_f=avg_sig->def_f/n;
-  avg_sig->time=t;
-  avg_sig->CPI=cpi;
-  avg_sig->avg_f=avg_f;
-  avg_sig->def_f=def_f;
+  t					=avg_sig->time/n;
+  cpi				=avg_sig->CPI/n;
+  avg_f			=avg_sig->avg_f/n;
+  def_f			=avg_sig->def_f/n;
+  avg_sig->time = t;
+  avg_sig->CPI	= cpi;
+  avg_sig->avg_f 			= avg_f;
+  avg_sig->def_f			= def_f;
   for (i=0;i<FLOPS_EVENTS;i++){   
     my_flops[i] = avg_sig->FLOPS[i]/n;
     avg_sig->FLOPS[i] = my_flops[i];
@@ -270,6 +275,7 @@ void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
     dst->instructions = src->instructions/nums;
     dst->cycles = src->cycles/nums;
     dst->avg_f = src->avg_f/nums;
+    dst->avg_imc_f = src->avg_imc_f/nums;
     dst->def_f = src->def_f/nums;
     #if USE_GPUS
     dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;

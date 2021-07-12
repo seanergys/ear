@@ -68,7 +68,6 @@ typedef struct mini_sig
 }ssig_t;
 
 typedef struct sig_ext{
-	ulong imc_freq;
 	io_data_t iod;
 }sig_ext_t;
 
@@ -79,7 +78,7 @@ typedef struct signature
     double PCK_power;
     double EDP;
     double GBS;
-    double IO_GBS;
+    double IO_MBS;
     double TPI;
     double CPI;
     double Gflops;

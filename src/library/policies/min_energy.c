@@ -158,7 +158,7 @@ state_t policy_init(polctx_t *c)
         num_processes = lib_shared_region->num_processes;
 
         my_app = calloc(1,sizeof(signature_t));
-        my_app->sig_ext =  calloc(1,sizeof(io_data_t));
+        my_app->sig_ext =  calloc(1,sizeof(sig_ext_t));
 
         my_node_mpi_calls = calloc(num_processes,sizeof(mpi_information_t));
         my_node_mpi_types_calls = calloc(num_processes,sizeof(mpi_calls_types_t));
@@ -327,12 +327,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
      * no looking at selection */
     if (eUFS){
         pstate_t tmp_pstate;
-        curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
+        curr_imc_freq = avg_to_khz(my_app->avg_imc_f);
         if (avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_pstate) != EAR_SUCCESS){
             verbose_master(2,"Current Avg IMC freq %lu cannot be converted to psate",curr_imc_freq);
         }
         curr_imc_pstate = tmp_pstate.idx;
-        debug("CPU pstate %lu IMC freq %lu IMC pstate %u",curr_pstate,my_app->sig_ext->imc_freq,curr_imc_pstate);
+        debug("CPU pstate %lu IMC freq %lu IMC pstate %u",curr_pstate,my_app->avg_imc_f,curr_imc_pstate);
         copy_imc_data_from_signature(imc_data,curr_pstate,curr_imc_pstate,my_app);
     }
 

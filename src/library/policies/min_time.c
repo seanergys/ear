@@ -144,7 +144,7 @@ state_t policy_init(polctx_t *c)
         verbose_master(2,"IMC set by HW set to %u",imc_set_by_hw);
 
         my_app = calloc(1,sizeof(signature_t));
-        my_app->sig_ext = calloc(1, sizeof(io_data_t));
+        my_app->sig_ext = calloc(1, sizeof(sig_ext_t));
 
         num_processes = lib_shared_region->num_processes;
 
@@ -320,12 +320,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
      *  no looking at selection */
     if (eUFS){
         pstate_t tmp_state;
-        curr_imc_freq = avg_to_khz(my_app->sig_ext->imc_freq);
+        curr_imc_freq = avg_to_khz(my_app->avg_imc_f);
         if (avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_state) == EAR_ERROR){
             verbose_master(2,"Current AVG IMC freq cannot be translated to IMC pstate %lu",curr_imc_freq);
         }
         curr_imc_pstate = tmp_state.idx;
-        verbose_master(2,"CPU pstate %lu IMC freq %lu IMC pstate %u",curr_pstate,my_app->sig_ext->imc_freq,curr_imc_pstate);
+        verbose_master(2,"CPU pstate %lu IMC freq %lu IMC pstate %u",curr_pstate,my_app->avg_imc_f,curr_imc_pstate);
 
         /*  Min time has more stable IMC freq. Below code avoids overriding the first IMC ref data*/
         if (ref_imc_pstate == -1 || curr_imc_pstate != ref_imc_pstate){
@@ -447,7 +447,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             if (!imc_set_by_hw){
                 /*  Fix the imc to the first selected by hardware */
                 for (sid=0; sid < imc_devices; sid++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ps_nothing; // avg_to_khz(my_app->sig_ext->imc_freq);
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ps_nothing; 
                 }
             }
             else {
