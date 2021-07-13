@@ -79,8 +79,8 @@ static int nump;
 static int freq_per_core = 0;
 static uint signature_is_unbalance = 0;
 
-static mpi_information_t *my_node_mpi_calls, *last_my_node_mpi_calls, *last_node_mpi_calls;
-static mpi_calls_types_t *my_node_mpi_types_calls, *last_node_mpi_types_calls;
+static mpi_information_t *my_node_mpi_calls;
+static mpi_calls_types_t *my_node_mpi_types_call;
 static double *percs_mpi, *last_percs_mpi;
 static int max_mpi, min_mpi;
 static double last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mean,
@@ -144,18 +144,18 @@ state_t policy_init(polctx_t *c)
         verbose_master(2,"IMC set by HW set to %u",imc_set_by_hw);
 
         my_app = calloc(1,sizeof(signature_t));
-        my_app->sig_ext = calloc(1, sizeof(sig_ext_t));
+        my_app->sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
 
         num_processes = lib_shared_region->num_processes;
 
-        my_node_mpi_calls = calloc(num_processes, sizeof(mpi_information_t));
-        last_node_mpi_calls = calloc(num_processes, sizeof(mpi_information_t));
-        last_my_node_mpi_calls = calloc(num_processes, sizeof(mpi_information_t));
+        //my_node_mpi_calls = calloc(num_processes, sizeof(mpi_information_t));
+        //last_node_mpi_calls = calloc(num_processes, sizeof(mpi_information_t));
+        // last_my_node_mpi_calls = calloc(num_processes, sizeof(mpi_information_t));
         percs_mpi = calloc(num_processes, sizeof(double));
         last_percs_mpi = calloc(num_processes, sizeof(double));
 
-        my_node_mpi_types_calls = calloc(num_processes, sizeof(mpi_calls_types_t));
-        last_node_mpi_types_calls = calloc(num_processes, sizeof(mpi_calls_types_t));
+        //my_node_mpi_types_calls = calloc(num_processes, sizeof(mpi_calls_types_t));
+        //last_node_mpi_types_calls = calloc(num_processes, sizeof(mpi_calls_types_t));
 
         critical_path = calloc(num_processes, sizeof(uint));
         last_critical_path = calloc(num_processes, sizeof(uint));
@@ -249,6 +249,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     double sig_vpi, node_sig_vpi, max_vpi;
     uint local_process_with_high_vpi;
+		sig_ext_t *se;
 
     double lvpi, lvpi2;
     uint cbound, mbound, turbo_set = 0;
@@ -260,6 +261,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     // TODO: Can we assign this values calling some function who return values based on current architecture?
     ulong max_cpufreq_sel = 0, min_cpufreq_sel = 10000000;
+
+		my_node_mpi_calls = curr_sig->sig_ext.mpi_stats;
 
     if (min_time_state == SELECT_CPUFREQ){
         ref_imc_pstate = -1;
@@ -296,7 +299,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     def_pstate=frequency_closest_pstate(def_freq);
 
     // This is the frequency at which we were running
+		se = (sig_ext_t *)sig->sig_ext;
     signature_copy(my_app, sig);
+		memcpy(my_app->sig_ext,se,sizeof(sig_ext_t));
 #ifdef POWERCAP
     if (c->pc_limit > 0){
         verbose_master(2, "PC set to %u", c->pc_limit);
@@ -439,7 +444,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, new_freq, sizeof(ulong) * num_processes);
         /*  We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
         verbose_master(3,"Updating cpufreq_signature");
+				se = (sig_ext_t *)sig->sig_ext;
         signature_copy(&cpufreq_signature, sig);
+				memcpy(cpufreq_signature.sig_ext,se,sizeof(sig_ext_t));;
+
 
         /*  IMC freq selection */
         uint app_mpi_bound = earl_phase_classification == APP_MPI_BOUND;
@@ -583,11 +591,14 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     verbose_master(2, "%sPOLICY OK EVALUATION%s", COL_YLW, COL_CLR);
     *ok=1;
 
+		my_node_mpi_calls = curr_sig->sig_ext.mpi_stats;
+		my_node_mpi_types_calls   = curr_sig->sig_ext.mpi_types
+
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance){
 
-        read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
-        read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
+        //read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
+        //read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
         verbose_mpi_types(2,my_node_mpi_types_calls);
 
         uint unbalance;

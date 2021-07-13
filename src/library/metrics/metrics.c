@@ -32,6 +32,7 @@
 #include <common/hardware/hardware_info.h>
 #include <library/common/externs.h>
 #include <library/metrics/metrics.h>
+#include <library/metrics/signature_ext.h>
 #include <library/policies/mpi_stats_support.h> /* Should we move this file out out policies? */
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/cpi/cpi.h>
@@ -100,7 +101,7 @@ static io_data_t metrics_io_init[4],metrics_io_end[4],metrics_io_diff[4];
 static ctx_t ctx_io;
 /* MPI statistics */
 mpi_information_t *metrics_mpi_calls[2],*metrics_last_mpi_calls[2];
-
+mpi_calls_types_t *metrics_mpi_calls_types[2],*metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
 /* These vectors have position APP for application granularity and LOO for loop granularity */
@@ -236,6 +237,7 @@ static void metrics_global_stop()
 		/* MPI statistics */
     if (is_mpi_enabled()){
       read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
+      read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
     }
 
 
@@ -496,6 +498,7 @@ static int metrics_partial_stop(uint where)
 		/* MPI statistics */
 		if (is_mpi_enabled()){
     	read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
+    	read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
 		}
 
 
@@ -611,6 +614,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 {
 	double time_s, cas_counter, aux;
 	timestamp end_mpi_time;
+	sig_ext_t *sig_ext;
 	int i, s;
 
 	// If global is 1, it means that the global application metrics are required
@@ -632,7 +636,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->L1_misses = metrics_l1[s];
 	metrics->L2_misses = 0;
 	metrics->L3_misses = metrics_l3[s];
-	if (metrics->sig_ext == NULL) metrics->sig_ext = calloc(1,sizeof(sig_ext_t));
+	if (metrics->sig_ext == NULL) metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
+	sig_ext = metrics->sig_ext;
 
 	/* FLOPS */
 	metrics->Gflops = 0.0;
@@ -668,7 +673,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	metrics->instructions = metrics_instructions[s];
 
 
-	io_copy(&(metrics->sig_ext->iod),&metrics_io_diff[s]);
+	io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
 	/* Per process IO data */
   double iogb;
 	int ios;
@@ -693,6 +698,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		}else{
 			metrics->Perc_MPI = 0.0;
 		}
+		sig_ext->mpi_stats = metrics_mpi_calls[s];
+		sig_ext->mpi_types = metrics_mpi_calls_types[s];
 
 
 		/* Power: Node, DRAM, PCK */
@@ -864,6 +871,10 @@ int metrics_init(topology_t *topo)
   metrics_last_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 	metrics_mpi_calls[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
   metrics_last_mpi_calls[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+	metrics_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+  metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+	metrics_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+  metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
 	/* CPU average frequency metrics */
   if (xtate_fail(s,cpufreq_load(topo))){
