@@ -14,21 +14,9 @@
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
-//#define SHOW_DEBUGS 1
+
 #include <common/includes.h>
 #include <common/system/symplug.h>
-
-state_t symplug_test(void *calls[], uint n)
-{
-	uint i;
-	for (i = 0; i < n; ++i)
-	{
-		if (calls[i] == NULL) {
-			return EAR_ERROR;
-		}
-	}
-	return EAR_SUCCESS;
-}
 
 state_t symplug_join(void *handle, void *calls[], const char *names[], uint n)
 {
@@ -39,7 +27,6 @@ state_t symplug_join(void *handle, void *calls[], const char *names[], uint n)
 	{
 		calls[i] = dlsym(handle, names[i]);
 		error    = dlerror();
-	
 		if ((calls[i] != NULL) && (error == NULL)) {
 			debug("symbol %s found (%p)", names[i], calls[i]);
 		} else {
@@ -51,7 +38,7 @@ state_t symplug_join(void *handle, void *calls[], const char *names[], uint n)
 	return EAR_SUCCESS;
 }
 
-static state_t _symplug_open(char *path, void *calls[], const char *names[], uint n, int flags)
+static state_t load(char *path, void *calls[], const char *names[], uint n, int flags)
 {
 	void *handle = dlopen(path, flags);
 	if (handle == NULL) {
@@ -62,10 +49,22 @@ static state_t _symplug_open(char *path, void *calls[], const char *names[], uin
 
 state_t symplug_open(char *path, void *calls[], const char *names[], uint n)
 {
-	return _symplug_open(path, calls, names, n, RTLD_GLOBAL | RTLD_NOW);
+	return load(path, calls, names, n, RTLD_GLOBAL | RTLD_NOW);
 }
 
-state_t symplug_open_lazy(char *path, void *calls[], const char *names[], uint n)
+state_t symplug_open_flags(char *path, void *calls[], const char *names[], uint n, int flags)
 {
-	return _symplug_open(path, calls, names, n, RTLD_LOCAL | RTLD_LAZY);
+	return load(path, calls, names, n, flags);
+}
+
+state_t symplug_test(void *calls[], uint n)
+{
+	uint i;
+	for (i = 0; i < n; ++i)
+	{
+		if (calls[i] == NULL) {
+			return EAR_ERROR;
+		}
+	}
+	return EAR_SUCCESS;
 }

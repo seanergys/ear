@@ -65,6 +65,8 @@
 #include <metrics/io/io.h>
 #include <metrics/proc/stat.h>
 
+#include <report/report.h>
+
 #ifdef USE_GPUS
 #include <library/api/cupti.h>
 #endif
@@ -171,7 +173,7 @@ static void print_local_data()
 	#endif
 	verbose(1, "App/user id: '%s'/'%s'", application.job.app_id, application.job.user_id);
 	verbose(1, "Node/job id/step_id: '%s'/'%lu'/'%lu'", application.node_id, application.job.id,application.job.step_id);
-	verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
+	//verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
 	verbose(1, "P_STATE/frequency (turbo): %u/%lu (%d)", EAR_default_pstate, application.job.def_f, ear_use_turbo);
 	verbose(1, "Tasks/nodes/ppn: %u/%d/%d", my_size, num_nodes, ppnode);
 	verbose(1, "Policy (learning): %s (%d)", application.job.policy, ear_whole_app);
@@ -1035,17 +1037,36 @@ void ear_init()
     // Copying static application info into the loop info
     memcpy(&loop_signature, &application, sizeof(application_t));
 
+    summary_pathname = get_ear_user_db_pathname();
+		if (masters_info.my_master_rank >= 0){
+		// Report API
+			if (summary_pathname == NULL){
+				if (report_load(system_conf->installation.dir_plug,"eard.so") != EAR_SUCCESS){
+					verbose_master(0,"Error in reports API load ");
+				}
+			}else{
+				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
+				if (report_load(system_conf->installation.dir_plug,"eard.so:csv.so") != EAR_SUCCESS){
+					verbose_master(0,"Error in reports API load ");
+				}
+			}
+			if (report_init() != EAR_SUCCESS){
+        verbose_master(0,"Error in reports API initialization ");
+      }
+		}
+
     // States
     states_begin_job(my_id,  ear_app_name);
+		#if 0
     // Summary files
-    summary_pathname = get_ear_user_db_pathname();
 
     if (summary_pathname != NULL) {
         sprintf(app_summary_path, "%s%s.csv", summary_pathname, node_name);
         sprintf(loop_summary_path, "%s%s.loop_info.csv", summary_pathname, node_name);
     }
+		#endif
 
-    // Print things
+    // Print summary of initialization
     print_local_data();
     // ear_print_lib_environment();
     fflush(stderr);
@@ -1137,8 +1158,15 @@ void ear_finalize()
         debug("Reporting application data");
         verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
         clean_db_signature(&application.signature, system_conf->max_sig_power);
+				#if 0
         eards_write_app_signature(&application);
+				#endif
+				if (report_applications(&application,1) != EAR_SUCCESS){
+					verbose_master(0,"Error reporting application");
+				}
+				#if 0
         append_application_text_file(app_summary_path, &application, 1);
+				#endif
         report_mpi_application_data(&application);
     }
     // Closing any remaining loop
@@ -1524,10 +1552,6 @@ state_t earl_periodic_actions_init(void *no_arg)
     tics_per_second = sysconf(_SC_CLK_TCK);
     timestamp_getfast(&periodic_time);
     seconds = 0;
-#if 0
-    proc_stat_load();
-    proc_stat_init(&stat_ctx,sig_shared_region[my_node_id].pid);
-#endif
     last_mpis = 0;
     if (!is_mpi_enabled()){
         ear_periodic_mode = PERIODIC_MODE_ON;
@@ -1592,13 +1616,6 @@ state_t earl_periodic_actions(void *no_arg)
                 verbose_mpi_data(3,&my_node_mpi_calls[i]);
             }
         }
-#if 0
-        proc_stat_read(&stat_ctx,&c_stat);
-        proc_stat_data_to_str(&c_stat,stat_buff,sizeof(stat_buff));
-        total_time = c_stat.utime + c_stat.stime + c_stat.cutime + c_stat.cstime;
-        cpu_util = 100 * (((float)total_time / (float)tics_per_second) / (float)seconds);
-        verbose_master(2,"EARL: %s CPU util %.2f",stat_buff,cpu_util);
-#endif
         if (classify(MB,total_mpi_calls,io_in_period,mpi_in_period,dynais_enabled,ear_status,ear_periodic_mode,EAR_STATE,&earl_phase_classification,&new_ear_guided) != EAR_SUCCESS){
             verbose_master(2,"Error in app classification");
         }

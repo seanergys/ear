@@ -36,6 +36,7 @@ comm_OBJS = \
     $(SRCDIR)/daemon/local_api/eard_api.o \
     $(SRCDIR)/daemon/shared_configuration.o \
     $(SRCDIR)/daemon/powercap/powercap_status.o \
+		$(SRCDIR)/report/report.o \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/common/libcommon.a

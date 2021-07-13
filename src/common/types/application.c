@@ -139,13 +139,13 @@ int append_application_text_file(char *path, application_t *app, char is_extende
 	if (is_extended) {
 		#if USE_GPUS
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.FREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;IO_MBS;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS;L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
         "DP_128;DP_256;DP_512;GPU1_POWER;GPU1_FREQ;GPU1_MEM_FREQ;GPU1_UTIL;GPU1_MEM_UTIL;GPU2_POWER;"\
         "GPU2_FREQ;GPU2_MEM_FREQ;GPU2_UTIL;GPU2_MEM_UTIL";
 		#else
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.FREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS;L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
         "DP_128;DP_256;DP_512";
 		#endif
@@ -153,12 +153,12 @@ int append_application_text_file(char *path, application_t *app, char is_extende
 	else {
 		#if USE_GPUS
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.FREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS;GPU1_POWER;GPU1_FREQ;GPU1_MEM_FREQ;GPU1_UTIL;GPU1_MEM_UTIL;GPU2_POWER;"\
         "GPU2_FREQ;GPU2_MEM_FREQ;GPU2_UTIL;GPU2_MEM_UTIL";
 		#else
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.FREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS";
 		#endif
 	}
@@ -375,7 +375,7 @@ void report_mpi_application_data(application_t *app)
 		verbose(VTYPE,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
 		verbose(VTYPE,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.perc_MPI);
 		verbose(VTYPE,"   tasks: %lu \n", app->job.procs);
-		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (GB/s) ", app->signature.CPI, app->signature.TPI,
+		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s) ", app->signature.CPI, app->signature.TPI,
 				app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS);
 		verbose(VTYPE,"  DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n", app->signature.DC_power, app->signature.DRAM_power,
 				app->signature.PCK_power,app->signature.Gflops/app->signature.DC_power);
