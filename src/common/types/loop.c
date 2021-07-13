@@ -227,12 +227,12 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts)
     signature_print_fd(fd, &loop->signature,1);
     print_loop_id_fd(fd, &loop->id);
 		if (ts){
-			timestamp_t currt;
-			timestamp_getfast(&currt);
-    	dprintf(fd, "%lu;%ld", loop->total_iterations,currt.tv_sec + currt.tv_nsec*1000000000);
+			ullong sec = timestamp_getconvert(TIME_SECS);
+    	dprintf(fd, "%lu;%llu", loop->total_iterations, sec);
 		}else{
-    	dprintf(fd, "%lu\n", loop->total_iterations);
+    	dprintf(fd, "%lu", loop->total_iterations);
 		}
+	dprintf(fd,"\n");
 
 	close(fd);
 

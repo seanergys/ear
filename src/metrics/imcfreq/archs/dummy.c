@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+//#define SHOW_DEBUGS 1
+#include <common/output/debug.h>
 #include <metrics/imcfreq/archs/dummy.h>
 
 static imcfreq_ops_t *ops_static;
@@ -131,6 +133,8 @@ state_t imcfreq_dummy_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, 
     ulong aux1; // Adds frequencies
     ulong aux2; // Counts valid devices
     int cpu;
+
+		debug("imcfreq_dummy_data_diff");
 
     if (i2 == NULL || i1 == NULL) {
         return_msg(EAR_BAD_ARGUMENT, Generr.input_null);

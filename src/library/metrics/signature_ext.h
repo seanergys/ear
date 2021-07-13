@@ -19,6 +19,7 @@
 #define EAR_EAR_SIG_EXT_H
 
 #include <metrics/io/io.h>
+#include <library/common/library_shared_data.h>
 typedef struct sig_ext{
 	io_data_t iod;
 	mpi_information_t *mpi_stats;		

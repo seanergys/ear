@@ -41,7 +41,7 @@ typedef struct mpi_summary{
 	float mean;
 	float mag;
 }mpi_summary_t;
-
+/* Time is stored in USECS */
 typedef struct mpi_information{
     unsigned int        total_mpi_calls;
     unsigned long long  exec_time;

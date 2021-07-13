@@ -1,6 +1,6 @@
 /*
  *
- * This program is part of the EAR software.
+ * This program is par of the EAR software.
  *
  * EAR provides a dynamic, transparent and ligth-weigth solution for
  * Energy management. It has been developed in the context of the
@@ -29,12 +29,14 @@
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
+#include <library/metrics/signature_ext.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
 #include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
 #include <library/policies/imc_policy_support.h>
+#include <library/policies/mpi_stats_support.h>
 #include <library/policies/gpu_support.h>
 #include <library/policies/cpu_support.h>
 #include <library/common/externs.h>
@@ -656,7 +658,11 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     node_freqs_t *freqs = &nf;
     int i;
     state_t st=EAR_ERROR,stg=EAR_SUCCESS;
-    uint busy;
+    uint busy, iobound, mpibound,earl_phase_classification;
+		sig_ext_t *se;
+		float mpi_in_period;
+
+		se = (sig_ext_t *)my_sig->sig_ext;
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
     if (!eards_connected() || (masters_info.my_master_rank<0)){
@@ -667,9 +673,15 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
     }
+
+		mpi_in_period = compute_mpi_in_period(se->mpi_stats);
+
+		is_io_bound(my_sig->IO_MBS,&iobound);
+		is_network_bound(mpi_in_period,&mpibound);
+		classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
-    debug("EARL_phase %u busy waiting %u using phases %u",earl_phase_classification,busy,use_earl_phases);
+    debug("EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
     if (use_earl_phases){
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND){
