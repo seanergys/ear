@@ -570,7 +570,8 @@ int main(int argc, char *argv[])
     char command[512];
     char path_name[128];
     char node_name[256];
-    char mail_filename[256];
+    char mail_filename[2176]; //to match the stored mail size
+
     char *mail = NULL;
 
     strcpy(node_name,"");
