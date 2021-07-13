@@ -55,6 +55,9 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy);
 state_t is_cpu_bound(signature_t *sig,uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint *mbound);
 state_t is_gpu_idle(signature_t *sig,uint *gidle);
+state_t is_io_bound(float rwsec,uint *iobound);
+state_t must_switch_to_time_guide(float mpisec, uint *ear_guided);
+
 
 
 #endif
