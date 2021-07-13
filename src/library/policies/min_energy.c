@@ -29,6 +29,7 @@
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
+#include <library/metrics/signature_ext.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
 #include <daemon/local_api/eard_api.h>
@@ -76,8 +77,9 @@ static ulong nominal_node;
 extern int my_globalrank;
 static int nump;
 
-static mpi_information_t *my_node_mpi_calls,*last_node_mpi_calls;
-static mpi_calls_types_t *my_node_mpi_types_calls,*last_node_mpi_types_calls;
+/* These pointers are computed in metrics.c */
+static mpi_information_t *my_node_mpi_calls;
+static mpi_calls_types_t *my_node_mpi_types_calls;
 
 static int max_mpi, min_mpi;
 static int freq_per_core = 0;
@@ -158,13 +160,15 @@ state_t policy_init(polctx_t *c)
         num_processes = lib_shared_region->num_processes;
 
         my_app = calloc(1,sizeof(signature_t));
-        my_app->sig_ext =  calloc(1,sizeof(sig_ext_t));
+        my_app->sig_ext =  (void *)calloc(1,sizeof(sig_ext_t));
 
+				#if 0
         my_node_mpi_calls = calloc(num_processes,sizeof(mpi_information_t));
         my_node_mpi_types_calls = calloc(num_processes,sizeof(mpi_calls_types_t));
 
         last_node_mpi_calls = calloc(num_processes,sizeof(mpi_information_t));
         last_node_mpi_types_calls = calloc(num_processes,sizeof(mpi_calls_types_t));
+				#endif
 
         percs_mpi = calloc(num_processes, sizeof(double));
         last_percs_mpi = calloc(num_processes, sizeof(double));
@@ -258,6 +262,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     ulong best_freq,best_pstate,freq_ref,eff_f;
     ulong curr_freq, nominal, curr_imc_freq;
     ulong curr_pstate,def_pstate,def_freq,from;
+		sig_ext_t *se;
 
     uint curr_imc_pstate;
     uint eUFS = dyn_unc;
@@ -268,6 +273,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     // uint power_status;
     mpi_information_t sig_mpi_data;
     uint cbound, mbound, turbo_set = 0;
+
+		se = (sig_ext_t *)sig->sig_ext;
+		my_node_mpi_calls = se->mpi_stats;
 
     // TODO: Can we assign this values calling some function who return values based on current architecture?
     ulong max_cpufreq_sel = 0, min_cpufreq_sel = 10000000 ;
@@ -309,6 +317,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
     // This is the frequency at which we were running
     signature_copy(my_app,sig);
+		memcpy(my_app->sig_ext,se,sizeof(sig_ext_t));
 #ifdef POWERCAP
     if (c->pc_limit > 0){
         verbose_master(2,"Powercap node limit set to %u",c->pc_limit);
@@ -462,7 +471,9 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq,new_freq,sizeof(ulong)*num_processes);
         /* We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
         verbose_master(3,"Updating cpufreq_signature");
+				se = (sig_ext_t *)sig->sig_ext;
         signature_copy(&cpufreq_signature, sig);
+				memcpy(cpufreq_signature.sig_ext, se, sizeof(sig_ext_t));
 
         /* IMC freq selection */
         if (eUFS && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
@@ -601,12 +612,18 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
     *ok = 1;
+		
+		sig_ext_t *se = (sig_ext_t *)curr_sig->sig_ext;
+		my_node_mpi_calls 				= se->mpi_stats;
+		my_node_mpi_types_calls   = se->mpi_types;
 
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance){
 
+				#if 0
         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
+				#endif
         verbose_mpi_types(3,my_node_mpi_types_calls);
 
         uint unbalance;

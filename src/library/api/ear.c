@@ -120,7 +120,7 @@ static int max_time_without_signature = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE *3;
 uint ear_periodic_mode=PERIODIC_MODE_OFF;
 uint mpi_calls_in_period=10000;
 uint mpi_calls_per_second;
-uint total_mpi_calls=0;
+static uint total_mpi_calls=0;
 static uint dynais_timeout=MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
 uint lib_period=PERIOD;
 static uint check_every=MPI_CALLS_TO_CHECK_PERIODIC;
@@ -1088,7 +1088,6 @@ void ear_init()
     if (masters_info.my_master_rank==0) {
         verbose(1, "EAR initialized successfully ");
     }
-    //if (masters_info.my_master_rank >= 0){
     earl_monitor = suscription();
     earl_monitor->call_init = earl_periodic_actions_init;
     earl_monitor->call_main = earl_periodic_actions;
@@ -1097,14 +1096,6 @@ void ear_init()
     monitor_init();
     monitor_register(earl_monitor);
     if (is_mpi_enabled()) monitor_relax(earl_monitor);
-    //}
-# if 0
-#if !MPI
-    if (pthread_create(&earl_periodic_th,NULL,earl_periodic_actions,NULL)){
-        error("error creating server thread for non-earl api\n");
-    }
-#endif
-#endif
 #if USE_GPUS
     if (is_cuda_enabled()){
         ear_cuda_init();
@@ -1576,7 +1567,7 @@ state_t earl_periodic_actions(void *no_arg)
     io_data_t io_period;
     ull MB;
     uint mpi_period;
-    float io_in_period,mpi_in_period;
+    float io_in_period = 0.0,mpi_in_period = 0.0;
     char stat_buff[128];
     ulong total_time;
     float cpu_util;
@@ -1594,11 +1585,14 @@ state_t earl_periodic_actions(void *no_arg)
     if ((period_elapsed % 5 )== 0){ 
         seconds = period_elapsed - last_check;
         last_check = period_elapsed;
-        /* Computing mpi calls per second in last N seconds */
-        metrics_get_total_io(&cio);
+				/* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
         mpi_period = total_mpi_calls - last_mpis;
         last_mpis = total_mpi_calls;	
         mpi_in_period = (float)mpi_period/(float)seconds;
+				/* IO metrics are now computed in metrics.c as part of the signature */
+				#if 0
+        /* Computing mpi calls per second in last N seconds */
+        metrics_get_total_io(&cio);
         /* Computing IO RD+WR per second in last 5 seconds */
         io_period.rchar = cio.rchar - last_io.rchar;
         io_period.wchar = cio.wchar - last_io.wchar;
@@ -1619,6 +1613,11 @@ state_t earl_periodic_actions(void *no_arg)
         if (classify(MB,total_mpi_calls,io_in_period,mpi_in_period,dynais_enabled,ear_status,ear_periodic_mode,EAR_STATE,&earl_phase_classification,&new_ear_guided) != EAR_SUCCESS){
             verbose_master(2,"Error in app classification");
         }
+				#endif
+				if (must_switch_to_time_guide(mpi_in_period, &new_ear_guided) != EAR_SUCCESS){
+					verbose_master(2,"Error estimating dynais/time guided");
+				}
+				#if 0
         if (earl_phase_classification == APP_COMP_BOUND){
             debug("Phase COMP bound");
         }
@@ -1630,8 +1629,9 @@ state_t earl_periodic_actions(void *no_arg)
             debug("Phase MPI bound");
         }
         debug("RANK %d Time %lu/%lu Phase COMP %u MPI %u IO %u dynais %d time %d",ear_my_rank,seconds,period_elapsed,earl_phase_classification == APP_COMP_BOUND,earl_phase_classification == APP_MPI_BOUND,earl_phase_classification == APP_IO_BOUND,new_ear_guided == DYNAIS_GUIDED, ear_guided == TIME_GUIDED);
+				#endif
         if (new_ear_guided != DYNAIS_GUIDED){
-            debug("Phase TIME_GUIDED period %u",lib_period);
+            debug("Phase time_guided period %u",lib_period);
             ear_periodic_mode = PERIODIC_MODE_ON;
             if (ear_guided != new_ear_guided){ 
                 monitor_burst(earl_monitor);

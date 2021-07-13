@@ -42,7 +42,7 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
     int i;
     
 	dprintf(fd, "%lu;%lu;%lu;", sig->avg_f, sig->avg_imc_f,sig->def_f);
-	dprintf(fd, "%lf;%lf;%lf;%lf;%lf;", sig->time, sig->CPI, sig->TPI, sig->GBS,sig->IO_MBS);
+	dprintf(fd, "%lf;%lf;%lf;%lf;%lf;%lf;", sig->time, sig->CPI, sig->TPI, sig->GBS,sig->IO_MBS,sig->Perc_MPI);
 	dprintf(fd, "%lf;%lf;%lf;", sig->DC_power, sig->DRAM_power, sig->PCK_power);
 	dprintf(fd, "%llu;%llu;%lf", sig->cycles, sig->instructions, sig->Gflops);
 
@@ -303,8 +303,6 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
 	s->cycles = minis->cycles;
 	s->avg_f=minis->avg_f;
 	s->def_f=minis->def_f;
-	if (s->sig_ext == NULL) s->sig_ext = calloc(1,sizeof(io_data_t));
-	memcpy(&(s->sig_ext->iod),&minis->iod,sizeof(io_data_t));
 	#if USE_GPUS
 	memcpy(&s->gpu_sig,&minis->gpu_sig,sizeof(gpu_signature_t));
 	#endif
@@ -325,7 +323,6 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
 	minis->cycles = s->cycles;
 	minis->avg_f=s->avg_f;
 	minis->def_f=s->def_f;
-	memcpy(&minis->iod,&(s->sig_ext->iod),sizeof(io_data_t));
 	#if USE_GPUS
 	memcpy(&minis->gpu_sig,&s->gpu_sig,sizeof(gpu_signature_t));
 	#endif

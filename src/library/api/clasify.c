@@ -51,6 +51,22 @@ state_t is_io_bound(float rwsec,uint *iobound)
 	
 }
 
+state_t is_network_bound(float mpisec,uint *mpibound)
+{
+	if (mpisec > MPI_TH){
+		*mpibound = 1;
+	}
+	return EAR_SUCCESS;
+}
+
+state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
+{
+	if (mpisec < MIN_MPI_TH){
+		*ear_guided = TIME_GUIDED;
+	}
+	return EAR_SUCCESS;
+}
+
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
 	ull flop = 0;
