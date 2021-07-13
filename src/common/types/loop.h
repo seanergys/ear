@@ -78,6 +78,8 @@ void copy_loop(loop_t *destiny, loop_t *source);
 int append_loop_text_file(char *path, loop_t *loop,job_t *job);
 /* Same as previous one but without job information */
 int append_loop_text_file_no_job(char *path, loop_t *loop);
+/* Adds the ts to the output */
+int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop);
 
 /** Given a loop_t and a file descriptor, outputs the contents of said loop to the fd.*/
 void print_loop_fd(int fd, loop_t *loop);
