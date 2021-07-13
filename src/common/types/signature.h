@@ -90,9 +90,9 @@ typedef struct signature
     ull instructions;
     ull cycles;
     ulong avg_f;
-		ulong avg_imc_f;
+    ulong avg_imc_f;
     ulong def_f;
-		double Perc_MPI;
+    double perc_MPI;
     #if USE_GPUS
     gpu_signature_t gpu_sig;
     #endif

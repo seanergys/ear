@@ -689,9 +689,9 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				pmpi += lpmpi;
 				verbose_master(3,"PerMPI Proc %d %.2lf",i,lpmpi);
 			}
-			metrics->Perc_MPI = pmpi/lib_shared_region->num_processes;		
+			metrics->perc_MPI = pmpi/lib_shared_region->num_processes;		
 		}else{
-			metrics->Perc_MPI = 0.0;
+			metrics->perc_MPI = 0.0;
 		}
 
 

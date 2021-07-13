@@ -248,10 +248,12 @@ DRAM_power FLOAT,\
 PCK_power FLOAT,\
 EDP FLOAT,\
 GBS FLOAT,\
+IO_MBS FLOAT,\
 TPI FLOAT,\
 CPI FLOAT,\
 Gflops FLOAT,\
 time FLOAT,\
+perc_MPI FLOAT,\
 FLOPS1 BIGINT unsigned,\
 FLOPS2 BIGINT unsigned,\
 FLOPS3 BIGINT unsigned,\
@@ -263,6 +265,7 @@ FLOPS8 BIGINT unsigned,\
 instructions BIGINT unsigned, \
 cycles BIGINT unsigned,\
 avg_f INT unsigned,\
+avg_imc_f INT unsigned,\
 def_f INT unsigned, "
 #if USE_GPUS
 "min_GPU_sig_id INT unsigned, \
@@ -277,11 +280,14 @@ DRAM_power FLOAT,\
 PCK_power FLOAT,\
 EDP FLOAT,\
 GBS FLOAT,\
+IO_MBS FLOAT,\
 TPI FLOAT,\
 CPI FLOAT,\
 Gflops FLOAT,\
 time FLOAT,\
+perc_MPI FLOAT,\
 avg_f INT unsigned,\
+avg_imc_f INT unsigned,\
 def_f INT unsigned, "
 #if USE_GPUS
 "min_GPU_sig_id INT unsigned, \
@@ -419,10 +425,12 @@ DRAM_power FLOAT,\
 PCK_power FLOAT,\
 EDP FLOAT,\
 GBS FLOAT,\
+IO_MBS FLOAT,\
 TPI FLOAT,\
 CPI FLOAT,\
 Gflops FLOAT,\
 time FLOAT,\
+perc_MPI FLOAT,\
 FLOPS1 BIGINT unsigned,\
 FLOPS2 BIGINT unsigned,\
 FLOPS3 BIGINT unsigned,\
@@ -434,6 +442,7 @@ FLOPS8 BIGINT unsigned,\
 instructions BIGINT unsigned, \
 cycles BIGINT unsigned,\
 avg_f INT unsigned,\
+avg_imc_f INT unsigned,\
 def_f INT unsigned, "
 #if USE_GPUS
 "min_GPU_sig_id INT unsigned, \
@@ -448,11 +457,14 @@ DRAM_power FLOAT,\
 PCK_power FLOAT,\
 EDP FLOAT,\
 GBS FLOAT,\
+IO_MBS FLOAT,\
 TPI FLOAT,\
 CPI FLOAT,\
 Gflops FLOAT,\
 time FLOAT,\
+perc_MPI FLOAT,\
 avg_f INT unsigned,\
+avg_imc_f INT unsigned,\
 def_f INT unsigned, "
 #if USE_GPUS
 "min_GPU_sig_id INT unsigned, \
@@ -517,10 +529,12 @@ DRAM_power FLOAT,\
 PCK_power FLOAT,\
 EDP FLOAT,\
 GBS FLOAT,\
+IO_MBS FLOAT,\
 TPI FLOAT,\
 CPI FLOAT,\
 Gflops FLOAT,\
 time FLOAT,\
+perc_MPI FLOAT,\
 FLOPS1 BIGINT ,\
 FLOPS2 BIGINT ,\
 FLOPS3 BIGINT ,\
@@ -532,6 +546,7 @@ FLOPS8 BIGINT ,\
 instructions BIGINT , \
 cycles BIGINT ,\
 avg_f INT ,\
+avg_imc_f INT ,\
 def_f INT , "
 #if USE_GPUS
 "min_GPU_sig_id INT, \
@@ -546,11 +561,14 @@ DRAM_power FLOAT,\
 PCK_power FLOAT,\
 EDP FLOAT,\
 GBS FLOAT,\
+IO_MBS FLOAT,\
 TPI FLOAT,\
 CPI FLOAT,\
 Gflops FLOAT,\
 time FLOAT,\
+perc_MPI FLOAT,\
 avg_f INT ,\
+avg_imc_f INT ,\
 def_f INT , "
 #if USE_GPUS
 "min_GPU_sig_id INT, \
