@@ -18,31 +18,41 @@
 #ifndef COMMON_UTILS_SERIAL_BUFFER_H
 #define COMMON_UTILS_SERIAL_BUFFER_H
 
-#if 1
+// This is a buffer to hold data in packages or elements. It has intern metadata
+// to control the allocated data, the current used data and also a pointer to the
+// current element. The current data element is the one to be returned when using
+// functions like serial_copy_elem(). 
+
 typedef struct wide_buffer_s {
 	char *data;
 } wide_buffer_t;
-#else
-typedef struct wide_buffer_s {
-	size_t size_alloc;
-	size_t size;
-	size_t elem;
-	char *data;
-} wide_buffer_t;
-#endif
 
 void serial_alloc(wide_buffer_t *b, size_t size);
 
-void serial_resize(wide_buffer_t *b, size_t size);
-
-void serial_reset(wide_buffer_t *b);
-
 void serial_free(wide_buffer_t *b);
 
+/* Allocates more space if needed. */
+void serial_resize(wide_buffer_t *b, size_t size);
+
+/* Rewinds the element pointer and marks the data buffer as 0 bytes taken. */
+void serial_clean(wide_buffer_t *b);
+
+/* Rewinds the data pointer and assigns space for an incoming data. */
+void serial_assign(wide_buffer_t *b, size_t size);
+
+/* Resets the current data element pointer. */
+void serial_rewind(wide_buffer_t *b);
+
+/* Adds a new element to the buffer. */
 void serial_add_elem(wide_buffer_t *b, char *data, size_t size);
 
+/* Copies the next element inside the buffer. */
 char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size);
 
-size_t serial_size(wide_buffer_t *b);
+/* Returns the pointer to the data (avoid the metadata). */
+char *serial_data(wide_buffer_t *b);
+
+/* Returns the size of the whole buffer or just the data (if 1). */
+size_t serial_size(wide_buffer_t *b, uint data);
 
 #endif

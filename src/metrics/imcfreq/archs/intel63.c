@@ -69,7 +69,7 @@ void imcfreq_intel63_get_api(uint *api, uint *api_intern)
 
 static state_t imcfreq_intel63_enable()
 {
-	ulong com;
+	ulong com, com1;
 	state_t s;
 	int cpu;
 
@@ -77,8 +77,9 @@ static state_t imcfreq_intel63_enable()
 		if (state_fail(s = msr_read(tp.cpus[cpu].id, &com, sizeof(ulong), UBOX_CTL_OFS))) {
 			return s;
 		}
-		com = ((com & UBOX_CMD_STA) >> SHIFT);
-		if (!com) {
+		com1 = ((com & UBOX_CMD_STA) >> SHIFT);
+		if (!com1) {
+			com = com | UBOX_CMD_STA;
 			if (state_fail(s = msr_write(tp.cpus[cpu].id, &com, sizeof(ulong), UBOX_CTL_OFS))) {
 				return s;
 			}
@@ -158,10 +159,12 @@ state_t imcfreq_intel63_read(ctx_t *c, imcfreq_t *i)
 	timestamp_getfast(&i[0].time);
 	// Iterating per socket.
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+		debug("Reading IMC MSR for device %d",tp.cpus[cpu].id);
 		i[cpu].time = i[0].time;
 		if ((s = msr_read(tp.cpus[cpu].id, &i[cpu].freq, sizeof(ulong), UBOX_CTR_OFS)) != EAR_SUCCESS) {
 			return s;
 		}
+		debug("Freq for cpu %d is %lu",tp.cpus[cpu].id,i[cpu].freq);
 		i[cpu].error = state_fail(s);
 	}
 
