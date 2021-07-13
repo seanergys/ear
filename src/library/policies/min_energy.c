@@ -29,6 +29,7 @@
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
+#include <library/metrics/signature_ext.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
 #include <daemon/local_api/eard_api.h>
@@ -273,8 +274,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     mpi_information_t sig_mpi_data;
     uint cbound, mbound, turbo_set = 0;
 
-
-		my_node_mpi_calls = curr_sig->sig_ext.mpi_stats;
+		se = (sig_ext_t *)sig->sig_ext;
+		my_node_mpi_calls = se->mpi_stats;
 
     // TODO: Can we assign this values calling some function who return values based on current architecture?
     ulong max_cpufreq_sel = 0, min_cpufreq_sel = 10000000 ;
@@ -315,7 +316,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     def_pstate = frequency_closest_pstate(def_freq);
 
     // This is the frequency at which we were running
-		se = sig->sig_ext;
     signature_copy(my_app,sig);
 		memcpy(my_app->sig_ext,se,sizeof(sig_ext_t));
 #ifdef POWERCAP
@@ -612,9 +612,10 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
     *ok = 1;
-
-		my_node_mpi_calls 				= curr_sig->sig_ext.mpi_stats;
-		my_node_mpi_types_calls   = curr_sig->sig_ext.mpi_types;
+		
+		sig_ext_t *se = (sig_ext_t *)curr_sig->sig_ext;
+		my_node_mpi_calls 				= se->mpi_stats;
+		my_node_mpi_types_calls   = se->mpi_types;
 
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance){

@@ -37,6 +37,7 @@
 #include <library/common/externs.h>
 #include <library/common/global_comm.h>
 #include <library/metrics/metrics.h>
+#include <library/metrics/signature_ext.h>
 #include <library/tracer/tracer.h>
 
 extern masters_info_t masters_info;
@@ -55,6 +56,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
     ulong elapsed;
     timestamp end;
+		sig_ext_t *se = (sig_ext_t *)sig->signature.sig_ext;
     timestamp_getfast(&end);
     elapsed=timestamp_diff(&end,&ear_application_time_init,TIME_SECS);
 
@@ -83,7 +85,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
         GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0; 
         if (prevf > 0 ){ PFREQ = (float)prevf/1000000.0;}
         if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
-        if (sig->signature.sig_ext != NULL ) io_tostr(&sig->signature.sig_ext->iod,io_info,sizeof(io_info));
+        if (se != NULL ) io_tostr(&se->iod,io_info,sizeof(io_info));
 				else sprintf(io_info,"No IO data");
         strcpy(gpu_buff,"");
 #if USE_GPUS

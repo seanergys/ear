@@ -1615,7 +1615,7 @@ state_t earl_periodic_actions(void *no_arg)
         }
 				#endif
 				if (must_switch_to_time_guide(mpi_in_period, &new_ear_guided) != EAR_SUCCESS){
-					verbose_master(2,Â"Error estimating dynais/time guided");
+					verbose_master(2,"Error estimating dynais/time guided");
 				}
 				#if 0
         if (earl_phase_classification == APP_COMP_BOUND){

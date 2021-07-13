@@ -237,7 +237,7 @@ static void metrics_global_stop()
 		/* MPI statistics */
     if (is_mpi_enabled()){
       read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
-      read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
+      read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
     }
 
 
@@ -498,7 +498,7 @@ static int metrics_partial_stop(uint where)
 		/* MPI statistics */
 		if (is_mpi_enabled()){
     	read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
-    	read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
+    	read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
 		}
 
 

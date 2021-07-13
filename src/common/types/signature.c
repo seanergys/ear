@@ -42,7 +42,7 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
     int i;
     
 	dprintf(fd, "%lu;%lu;%lu;", sig->avg_f, sig->avg_imc_f,sig->def_f);
-	dprintf(fd, "%lf;%lf;%lf;%lf;%lf;", sig->time, sig->CPI, sig->TPI, sig->GBS,sig->IO_MBS);
+	dprintf(fd, "%lf;%lf;%lf;%lf;%lf;%lf;", sig->time, sig->CPI, sig->TPI, sig->GBS,sig->IO_MBS,sig->Perc_MPI);
 	dprintf(fd, "%lf;%lf;%lf;", sig->DC_power, sig->DRAM_power, sig->PCK_power);
 	dprintf(fd, "%llu;%llu;%lf", sig->cycles, sig->instructions, sig->Gflops);
 
