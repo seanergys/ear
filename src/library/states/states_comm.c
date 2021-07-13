@@ -64,8 +64,8 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
     int gpui;
     char gpu_buff[256];
     if (master_rank == 0 || show || using_verb_files){
-				if (sig->signature.Perc_MPI > 0.0){
-					sprintf(pmpi_txt,"Avg. MPI_time/exec_Time: %.1lf %%",sig->signature.Perc_MPI);
+				if (sig->signature.perc_MPI > 0.0){
+					sprintf(pmpi_txt,"Avg. MPI_time/exec_Time: %.1lf %%",sig->signature.perc_MPI);
 				}else{
 					sprintf(pmpi_txt,"No MPI");
 				}

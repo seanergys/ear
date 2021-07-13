@@ -42,24 +42,24 @@
 
 #if USE_GPUS
 #define SIGNATURE_QUERY_FULL    "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
-                                "GBS, TPI, CPI, Gflops, time, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
+                                "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
                                 "FLOPS5, FLOPS6, FLOPS7, FLOPS8,"\
-                                "instructions, cycles, avg_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "\
-                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                "instructions, cycles, avg_f, avg_imc_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "\
+                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 #define SIGNATURE_QUERY_SIMPLE  "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
-                                "GBS, TPI, CPI, Gflops, time, avg_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "\
-                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "\
+                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 #else
 #define SIGNATURE_QUERY_FULL    "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
-                                "GBS, TPI, CPI, Gflops, time, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
+                                "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
                                 "FLOPS5, FLOPS6, FLOPS7, FLOPS8,"\
-                                "instructions, cycles, avg_f, def_f) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,"\
-                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                "instructions, cycles, avg_f, avg_imc_f, def_f) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,"\
+                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 #define SIGNATURE_QUERY_SIMPLE  "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
-                                "GBS, TPI, CPI, Gflops, time, avg_f, def_f) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "\
-                                "?, ?)"
+                                "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "\
+                                "?, ?, ?, ?, ?)"
 #endif
 
 #define AVG_SIGNATURE_QUERY_FULL        "INSERT INTO Signatures_avg (DC_power, DRAM_power, PCK_power, EDP,"\
@@ -1245,15 +1245,15 @@ int mysql_insert_signature(MYSQL *connection, signature_t *sig, char is_learning
 
     int sig_size;
     if (full_signature)
-        sig_size = 21;
+        sig_size = 24;
     else
-        sig_size = 11;
+        sig_size = 14;
 
     MYSQL_BIND *bind = xcalloc(sig_size, sizeof(MYSQL_BIND));
     int i = 0;
 
     //double storage
-    for (i = 0; i < 9; i++)
+    for (i = 0; i < 11; i++)
     {
         bind[i].buffer_type = MYSQL_TYPE_DOUBLE;
         bind[i].length = 0;
@@ -1261,7 +1261,7 @@ int mysql_insert_signature(MYSQL *connection, signature_t *sig, char is_learning
     }
 
     //unsigned long long storage
-    for (i = 9; i < sig_size; i++)
+    for (i = 11; i < sig_size; i++)
     {
         bind[i].buffer_type = MYSQL_TYPE_LONGLONG;
         bind[i].length = 0;
@@ -1283,29 +1283,33 @@ int mysql_insert_signature(MYSQL *connection, signature_t *sig, char is_learning
 #endif
     bind[3].buffer = (char *)&sig->EDP;
     bind[4].buffer = (char *)&sig->GBS;
-    bind[5].buffer = (char *)&sig->TPI;
-    bind[6].buffer = (char *)&sig->CPI;
-    bind[7].buffer = (char *)&sig->Gflops;
-    bind[8].buffer = (char *)&sig->time;
+    bind[5].buffer = (char *)&sig->IO_MBS;
+    bind[6].buffer = (char *)&sig->TPI;
+    bind[7].buffer = (char *)&sig->CPI;
+    bind[8].buffer = (char *)&sig->Gflops;
+    bind[9].buffer = (char *)&sig->time;
+    bind[10].buffer = (char *)&sig->perc_MPI;
     if (full_signature)
     {
-        bind[9].buffer = (char *)&sig->FLOPS[0];
-        bind[10].buffer = (char *)&sig->FLOPS[1];
-        bind[11].buffer = (char *)&sig->FLOPS[2];
-        bind[12].buffer = (char *)&sig->FLOPS[3];
-        bind[13].buffer = (char *)&sig->FLOPS[4];
-        bind[14].buffer = (char *)&sig->FLOPS[5];
-        bind[15].buffer = (char *)&sig->FLOPS[6];
-        bind[16].buffer = (char *)&sig->FLOPS[7];
-        bind[17].buffer = (char *)&sig->instructions;
-        bind[18].buffer = (char *)&sig->cycles;
-        bind[19].buffer = (char *)&sig->avg_f;
-        bind[20].buffer = (char *)&sig->def_f;
+        bind[11].buffer = (char *)&sig->FLOPS[0];
+        bind[12].buffer = (char *)&sig->FLOPS[1];
+        bind[13].buffer = (char *)&sig->FLOPS[2];
+        bind[14].buffer = (char *)&sig->FLOPS[3];
+        bind[15].buffer = (char *)&sig->FLOPS[4];
+        bind[16].buffer = (char *)&sig->FLOPS[5];
+        bind[17].buffer = (char *)&sig->FLOPS[6];
+        bind[18].buffer = (char *)&sig->FLOPS[7];
+        bind[19].buffer = (char *)&sig->instructions;
+        bind[20].buffer = (char *)&sig->cycles;
+        bind[21].buffer = (char *)&sig->avg_f;
+        bind[22].buffer = (char *)&sig->avg_imc_f;
+        bind[23].buffer = (char *)&sig->def_f;
     }
     else
     {
-        bind[9].buffer = (char *)&sig->avg_f;
-        bind[10].buffer = (char *)&sig->def_f;
+        bind[11].buffer = (char *)&sig->avg_f;
+        bind[12].buffer = (char *)&sig->avg_imc_f;
+        bind[13].buffer = (char *)&sig->def_f;
     }
     
     if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
@@ -1446,24 +1450,24 @@ int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont,
 #if USE_GPUS
     if (full_signature)
     {
-        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 23;
+        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        num_params = 26;
     }
     else
     {
-        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 13;
+        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        num_params = 16;
     }
 #else
     if (full_signature)
     {
-        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 21;
+        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        num_params = 24;
     }
     else
     {
-        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 11;
+        params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        num_params = 14;
     }
 #endif
 
@@ -1533,14 +1537,14 @@ int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont,
     {
         int offset = i*num_params;
         //double storage
-        for (j = 0; j < 9; j++)
+        for (j = 0; j < 11; j++)
         {
             bind[offset+j].buffer_type = MYSQL_TYPE_DOUBLE;
             bind[offset+j].length = 0;
         }
 
         //unsigned long long storage
-        for (j = 9; j < num_params; j++)
+        for (j = 11; j < num_params; j++)
         {
             bind[offset+j].buffer_type = MYSQL_TYPE_LONGLONG;
             bind[offset+j].length = 0;
@@ -1564,62 +1568,66 @@ int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont,
         bind[2+offset].buffer = (char *)&signature->PCK_power;
         bind[3+offset].buffer = (char *)&signature->EDP;
         bind[4+offset].buffer = (char *)&signature->GBS;
-        bind[5+offset].buffer = (char *)&signature->TPI;
-        bind[6+offset].buffer = (char *)&signature->CPI;
-        bind[7+offset].buffer = (char *)&signature->Gflops;
-        bind[8+offset].buffer = (char *)&signature->time;
+        bind[5+offset].buffer = (char *)&signature->IO_MBS;
+        bind[6+offset].buffer = (char *)&signature->TPI;
+        bind[7+offset].buffer = (char *)&signature->CPI;
+        bind[8+offset].buffer = (char *)&signature->Gflops;
+        bind[9+offset].buffer = (char *)&signature->time;
+        bind[10+offset].buffer = (char *)&signature->perc_MPI;
         if (full_signature)
         {
-            bind[9 +offset].buffer = (char *)&signature->FLOPS[0];
-            bind[10+offset].buffer = (char *)&signature->FLOPS[1];
-            bind[11+offset].buffer = (char *)&signature->FLOPS[2];
-            bind[12+offset].buffer = (char *)&signature->FLOPS[3];
-            bind[13+offset].buffer = (char *)&signature->FLOPS[4];
-            bind[14+offset].buffer = (char *)&signature->FLOPS[5];
-            bind[15+offset].buffer = (char *)&signature->FLOPS[6];
-            bind[16+offset].buffer = (char *)&signature->FLOPS[7];
-            bind[17+offset].buffer = (char *)&signature->instructions;
-            bind[18+offset].buffer = (char *)&signature->cycles;
-            bind[19+offset].buffer = (char *)&signature->avg_f;
-            bind[20+offset].buffer = (char *)&signature->def_f;
+            bind[11+offset].buffer = (char *)&signature->FLOPS[0];
+            bind[12+offset].buffer = (char *)&signature->FLOPS[1];
+            bind[13+offset].buffer = (char *)&signature->FLOPS[2];
+            bind[14+offset].buffer = (char *)&signature->FLOPS[3];
+            bind[15+offset].buffer = (char *)&signature->FLOPS[4];
+            bind[16+offset].buffer = (char *)&signature->FLOPS[5];
+            bind[17+offset].buffer = (char *)&signature->FLOPS[6];
+            bind[18+offset].buffer = (char *)&signature->FLOPS[7];
+            bind[19+offset].buffer = (char *)&signature->instructions;
+            bind[20+offset].buffer = (char *)&signature->cycles;
+            bind[21+offset].buffer = (char *)&signature->avg_f;
+            bind[22+offset].buffer = (char *)&signature->avg_imc_f;
+            bind[23+offset].buffer = (char *)&signature->def_f;
 #if USE_GPUS
             if (signature->gpu_sig.num_gpus > 0 && starter_gpu_sig_id >= 0) //if there are gpu signatures and no error occured
             {
-                bind[21+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
+                bind[24+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
 
                 current_gpu_sig_id += signature->gpu_sig.num_gpus - 1; //we get max_sig_id
-                bind[22+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
+                bind[25+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
 
                 current_gpu_sig_id++; //we prepare for the next signature_id
             }
             else // if no gpu_signatures we set the values to null
             {
-                bind[21+offset].buffer_type = bind[22+offset].buffer_type = MYSQL_TYPE_NULL;
-                bind[21+offset].is_null = bind[22+offset].is_null = (my_bool *) 1;
-                bind[21+offset].buffer  = bind[22+offset].buffer  = NULL;
+                bind[24+offset].buffer_type = bind[25+offset].buffer_type = MYSQL_TYPE_NULL;
+                bind[24+offset].is_null = bind[25+offset].is_null = (my_bool *) 1;
+                bind[24+offset].buffer  = bind[25+offset].buffer  = NULL;
             }
 #endif
         }
         else
         {
-            bind[9 +offset].buffer = (char *)&signature->avg_f;
-            bind[10+offset].buffer = (char *)&signature->def_f;
+            bind[11+offset].buffer = (char *)&signature->avg_f;
+            bind[12+offset].buffer = (char *)&signature->avg_imc_f;
+            bind[13+offset].buffer = (char *)&signature->def_f;
 
 #if USE_GPUS
             if (signature->gpu_sig.num_gpus > 0 && starter_gpu_sig_id >= 0)
             {
-                bind[11+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
+                bind[14+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
 
                 current_gpu_sig_id += signature->gpu_sig.num_gpus - 1; //we get max_sig_id
-                bind[12+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
+                bind[15+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
 
                 current_gpu_sig_id++; //we prepare for the next signature_id
             }
             else // if no gpu_signatures we set the values to null
             {
-                bind[11+offset].buffer_type = bind[12+offset].buffer_type = MYSQL_TYPE_NULL;
-                bind[11+offset].is_null = bind[12+offset].is_null = (my_bool *) 1;
-                bind[11+offset].buffer  = bind[12+offset].buffer  = NULL;
+                bind[14+offset].buffer_type = bind[15+offset].buffer_type = MYSQL_TYPE_NULL;
+                bind[14+offset].is_null = bind[15+offset].is_null = (my_bool *) 1;
+                bind[14+offset].buffer  = bind[15+offset].buffer  = NULL;
             }
 #endif
         }
@@ -1676,14 +1684,14 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
 #if USE_GPUS
     long int min_gpu_sig_id = -1, max_gpu_sig_id = -1;
     if (full_signature)
-        num_params = 24;
+        num_params = 27;
     else 
-        num_params = 14;
+        num_params = 17;
 #else
     if (full_signature)
-        num_params = 22;
+        num_params = 25;
     else 
-        num_params = 12;
+        num_params = 15;
 #endif
 
     MYSQL_BIND *bind = xcalloc(num_params, sizeof(MYSQL_BIND));
@@ -1707,14 +1715,14 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     bind[0].is_unsigned = 1;
 
     //double recievers
-    for (i = 1; i < 10; i++)
+    for (i = 1; i < 12; i++)
     {
         bind[i].buffer_type = MYSQL_TYPE_DOUBLE;
         bind[i].buffer_length = 8;
     }
 
     //unsigned long long recievers
-    for (i = 10; i < num_params; i++)
+    for (i = 12; i < num_params; i++)
     {
         bind[i].buffer_type = MYSQL_TYPE_LONGLONG;
         bind[i].buffer_length = 8;
@@ -1728,36 +1736,40 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     bind[3].buffer = &sig_aux->PCK_power;
     bind[4].buffer = &sig_aux->EDP;
     bind[5].buffer = &sig_aux->GBS;
-    bind[6].buffer = &sig_aux->TPI;
-    bind[7].buffer = &sig_aux->CPI;
-    bind[8].buffer = &sig_aux->Gflops;
-    bind[9].buffer = &sig_aux->time;
+    bind[6].buffer = &sig_aux->IO_MBS;
+    bind[7].buffer = &sig_aux->TPI;
+    bind[8].buffer = &sig_aux->CPI;
+    bind[9].buffer = &sig_aux->Gflops;
+    bind[10].buffer = &sig_aux->time;
+    bind[11].buffer = &sig_aux->perc_MPI;
     if (full_signature)
     {
-        bind[10].buffer = &sig_aux->FLOPS[0];
-        bind[11].buffer = &sig_aux->FLOPS[1];
-        bind[12].buffer = &sig_aux->FLOPS[2];
-        bind[13].buffer = &sig_aux->FLOPS[3];
-        bind[14].buffer = &sig_aux->FLOPS[4];
-        bind[15].buffer = &sig_aux->FLOPS[5];
-        bind[16].buffer = &sig_aux->FLOPS[6];
-        bind[17].buffer = &sig_aux->FLOPS[7];
-        bind[18].buffer = &sig_aux->instructions;
-        bind[19].buffer = &sig_aux->cycles;
-        bind[20].buffer = &sig_aux->avg_f;
-        bind[21].buffer = &sig_aux->def_f;
+        bind[12].buffer = &sig_aux->FLOPS[0];
+        bind[13].buffer = &sig_aux->FLOPS[1];
+        bind[14].buffer = &sig_aux->FLOPS[2];
+        bind[15].buffer = &sig_aux->FLOPS[3];
+        bind[16].buffer = &sig_aux->FLOPS[4];
+        bind[17].buffer = &sig_aux->FLOPS[5];
+        bind[18].buffer = &sig_aux->FLOPS[6];
+        bind[19].buffer = &sig_aux->FLOPS[7];
+        bind[20].buffer = &sig_aux->instructions;
+        bind[21].buffer = &sig_aux->cycles;
+        bind[22].buffer = &sig_aux->avg_f;
+        bind[23].buffer = &sig_aux->avg_imc_f;
+        bind[24].buffer = &sig_aux->def_f;
 #if USE_GPUS
-        bind[22].buffer = &min_gpu_sig_id;
-        bind[23].buffer = &max_gpu_sig_id;
+        bind[25].buffer = &min_gpu_sig_id;
+        bind[26].buffer = &max_gpu_sig_id;
 #endif
     }
     else
     {
-        bind[10].buffer = &sig_aux->avg_f;
-        bind[11].buffer = &sig_aux->def_f;
+        bind[12].buffer = &sig_aux->avg_f;
+        bind[13].buffer = &sig_aux->avg_imc_f;
+        bind[14].buffer = &sig_aux->def_f;
 #if USE_GPUS
-        bind[12].buffer = &min_gpu_sig_id;
-        bind[13].buffer = &max_gpu_sig_id;
+        bind[15].buffer = &min_gpu_sig_id;
+        bind[16].buffer = &max_gpu_sig_id;
 #endif
     }
 
@@ -1801,7 +1813,7 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
         if (min_gpu_sig_id > 0 && max_gpu_sig_id > 0)
         {
             char gpu_sig_query[256];
-            sprintf(gpu_sig_query, "SELECT * FROM GPU_signatures WHERE id<= %ld AND id >= %ld", max_gpu_sig_id, min_gpu_sig_id);
+            sprintf(gpu_sig_query, "SELECT * FROM GPU_signatures WHERE id <= %ld AND id >= %ld", max_gpu_sig_id, min_gpu_sig_id);
             int num_gpu_sigs = mysql_retrieve_gpu_signatures(connection, gpu_sig_query, &sigs_aux[i].gpu_sig);
             if (num_gpu_sigs < 1)
                 sigs_aux[i].gpu_sig.num_gpus = 0;
