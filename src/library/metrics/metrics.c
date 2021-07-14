@@ -17,6 +17,7 @@
 
 //#define SHOW_DEBUGS 1
 #define INFO_METRICS 2
+#define IO_VERB 3
 
 #define SET_DYN_UNC_BY_DEFAULT 1
 #include <errno.h>
@@ -306,17 +307,19 @@ static void metrics_global_stop()
 		verbose_master(2,"Warning: IO data not available");
 	}
 	io_diff(&metrics_io_diff[APP],&metrics_io_init[APP],&metrics_io_end[APP]);
-	io_tostr(&metrics_io_diff[APP],io_info,sizeof(io_info));
-	int fd;
-	char *io_buffer;
-	if (verb_path != NULL){ 
-		sprintf(file_name, "%s/earl_io_info.%d.%d", verb_path,my_step_id, my_job_id);
-		fd = open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP);
-	}else fd = 2;
-	io_buffer = malloc(strlen(io_info) + 200);
-	sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
-	if (verb_level >= 3) write(fd,io_buffer,strlen(io_buffer));
-	if (verb_path != NULL) close(fd);
+	if (verb_level >= IO_VERB){
+		int fd;
+		char *io_buffer;
+		io_tostr(&metrics_io_diff[APP],io_info,sizeof(io_info));
+		if (verb_path != NULL){ 
+			sprintf(file_name, "%s/earl_io_info.%d.%d", verb_path,my_step_id, my_job_id);
+			fd = open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP);
+		}else fd = 2;
+		io_buffer = malloc(strlen(io_info) + 200);
+		sprintf(io_buffer,"[%d] APP IO DATA: %s\n",ear_my_rank,io_info);
+		write(fd,io_buffer,strlen(io_buffer));
+		if (verb_path != NULL) close(fd);
+	}
 	
 
 	/* Uncore Memory counters */

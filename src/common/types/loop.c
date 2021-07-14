@@ -170,17 +170,17 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
 	return EAR_SUCCESS;
 }
 
-static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts);
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts,ullong currtime);
 int append_loop_text_file_no_job(char *path, loop_t *loop)
 {
-	return append_loop_text_file_no_job_int(path,loop,0);
+	return append_loop_text_file_no_job_int(path,loop,0,0);
 }
 
-int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop)
+int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime)
 {
-	return append_loop_text_file_no_job_int(path,loop,1);
+	return append_loop_text_file_no_job_int(path,loop,1, currtime);
 }
-static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts)
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime)
 {
     if (path == NULL) {
         return EAR_ERROR;
@@ -227,8 +227,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts)
     signature_print_fd(fd, &loop->signature,1);
     print_loop_id_fd(fd, &loop->id);
 		if (ts){
-			ullong sec = timestamp_getconvert(TIME_SECS);
-    	dprintf(fd, "%lu;%llu", loop->total_iterations, sec);
+    	dprintf(fd, "%lu;%llu", loop->total_iterations, currtime);
 		}else{
     	dprintf(fd, "%lu", loop->total_iterations);
 		}

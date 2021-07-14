@@ -362,7 +362,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }else{
             *ready = EAR_POLICY_READY;
         }
-        verbose_master(2,"%sSelecting CPU frequency %s. eUFS %u",COL_YLW,COL_CLR,eUFS);
+        verbose_master(2,"%sSelecting CPU frequency %s. eUFS %u",COL_BLU,COL_CLR,eUFS);
 
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
@@ -384,7 +384,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             *ready = EAR_POLICY_TRY_AGAIN;
             return EAR_SUCCESS;
         }
-
+				verbose_master(2,"Min_energy per process set to %u",freq_per_core);
         /* here we are running at the default freqs */
         for (i=0;i<nump;i++){
             verbose_master(3,"Processing proc %d freq per core = %d",i,freq_per_core);
@@ -491,11 +491,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             }else{
                 for (sid=0; sid < imc_devices; sid ++) freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
             }
-            /* ps_nothing means we will not change it. We could use the imc_min_pstate */
+            /* ps_nothing means we will not change it. We could use the imc_max_pstate */
             if (imc_set_by_hw){
-                for (sid=0; sid < imc_devices; sid ++) freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_pstate[sid];
-            }
-            else{
+                for (sid=0; sid < imc_devices; sid ++) freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
+            } else{
                 for (sid=0; sid < imc_devices; sid ++)
                     freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1, imc_num_pstates -1);
             }
@@ -649,6 +648,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
         }
 
         if (unbalance){
+						/* These variables are global to the policy */
             freq_per_core = 1;
             nump = num_processes;
 
