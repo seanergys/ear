@@ -240,8 +240,8 @@ static state_t set_current_list(uint *max_list, uint *min_list)
 	{
 		debug("PS_MAX %u - PS_MIN %u", max_list[i], min_list[i]);
 		// Valid ranks
-		if (max_list != NULL) max_valid = (max_list[i] >= 0 && max_list[i] < available_count);  
-		if (min_list != NULL) min_valid = (min_list[i] >= 0 && min_list[i] < available_count);  
+		if (max_list != NULL) max_valid = (max_list[i] < available_count);  
+		if (min_list != NULL) min_valid = (min_list[i] < available_count);  
 		// By default, if ps_auto or not valid 
 		aux_max = max_khz;
 		aux_min = min_khz;
