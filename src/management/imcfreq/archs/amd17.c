@@ -148,16 +148,17 @@ static state_t set(uint pstate_index, int socket)
 	uint function, i;
 	state_t s;
 
-	if (pstate_index != ps_auto) {
-		// Function APBDisable (0x0d)
-		function = 0x0d;
-		i = 0;
-	} else {
+	if (pstate_index == ps_auto) {
 		// Function APBEnable (0x0e)
 		function = 0x0e;
 		i = 1;
+	} else if (pstate_index >= 4) {
+		return_msg(EAR_ERROR, Generr.arg_outbounds);
+	} else {
+		// Function APBDisable (0x0d)
+		function = 0x0d;
+		i = 0;
 	}
-	//args[0] = pstate_index;
 	args[0] = pstate_index;
 	debug("Setting P%u (%u) to socket %d", pstate_index, args[0], socket);
 	if (state_fail(s = hsmp_send(socket, function, &args[i], &args[1]))) {
@@ -188,6 +189,9 @@ state_t mgt_imcfreq_amd17_set_current(ctx_t *c, uint pstate_index, int socket)
 	state_t s;
 	uint i;
 	
+	if (pstate_index == ps_nothing) {
+		return EAR_SUCCESS;
+	}
 	for (i = 0; i < sockets_count; ++i) {
 		if (i != socket && socket != all_sockets) {
 			continue;

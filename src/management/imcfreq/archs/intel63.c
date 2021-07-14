@@ -94,7 +94,6 @@ static state_t mgt_imcfreq_intel63_build_list()
 	for (i = 0, aux = 0LLU; i < available_count; ++i, aux += HUNDRED_MHZ) {
 		available_list[i].idx = i;
 		available_list[i].khz = max_khz - aux;
-		debug("IMCFREQ %d: %llu", i, available_list[i].khz);
 	}
 
 	return EAR_SUCCESS;
@@ -158,7 +157,7 @@ state_t mgt_imcfreq_intel63_get_available_list(ctx_t *c, const pstate_t **list, 
 static uint khz_to_idx(ullong khz)
 {
 	int i;
-	for (i = 0; i < tp_static.cpu_count; ++i) {
+	for (i = 0; i < available_count; ++i) {
 		if (available_list[i].khz <= khz) {
 			return i;
 		}
@@ -166,55 +165,97 @@ static uint khz_to_idx(ullong khz)
 	return 0;
 }
 
-state_t get_current(ctx_t *c, pstate_t *max_list, pstate_t *min_list)
+state_t get_current_list(pstate_t *max_list, pstate_t *min_list)
 {
 	ullong max_khz_aux = 0;
 	ullong min_khz_aux = 0;
 	state_t s;
 	int i;
 
-	for (i = 0; i < tp_static.cpu_count; ++i) {
+	for (i = 0; i < tp_static.cpu_count; ++i)
+	{
+		max_khz_aux = 0;
+		min_khz_aux = 0;
+
 		if (state_fail(s = intel63_read(tp_static.cpus[i].id, &max_khz_aux, &min_khz_aux))) {
 			return s;
 		}
 		if (max_list != NULL) {	
 			max_list[i].idx = khz_to_idx(max_khz_aux);
 			max_list[i].khz = available_list[max_list[i].idx].khz;
+			debug("Read MAX IMCFREQ in SOCK%d of PS%u and %llu", i, max_list[i].idx, max_list[i].khz);
 		}
 		if (min_list != NULL) {
 			min_list[i].idx = khz_to_idx(min_khz_aux);
 			min_list[i].khz = available_list[min_list[i].idx].khz;
-		}	
+			debug("Read MIN IMCFREQ in SOCK%d of PS%u and %llu", i, min_list[i].idx, min_list[i].khz);
+		}
 	}
 	return EAR_SUCCESS;
 }
 
 state_t mgt_imcfreq_intel63_get_current_list(ctx_t *c, pstate_t *pstate_list)
 {
-	return get_current(c, pstate_list, NULL);
+	return get_current_list(pstate_list, NULL);
+}
+
+static int read_required(uint *max_list, uint *min_list)
+{
+	int i;
+
+	if (max_list == NULL || min_list == NULL) {
+		return 1;
+	}
+	for (i = 0; i < tp_static.cpu_count; ++i) {
+		if (max_list[i] == ps_nothing || max_list[i] == ps_nothing) {
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 // Internaly, max is top frequency and min is bottom frequency.
-static state_t set_current(ctx_t *c, uint *max_list, uint *min_list)
+static state_t set_current_list(uint *max_list, uint *min_list)
 {
 	off_t address = U_MSR_UNCORE_RATIO_LIMIT;
+	pstate_t buffer_max[128];
+	pstate_t buffer_min[128];
 	ullong set0 = 0;
 	ullong set1 = 0;
 	ullong aux_max;
 	ullong aux_min;
+	int max_valid;
+	int min_valid;
 	state_t r;
 	int i;
 
-	for (i = 0; i < tp_static.cpu_count; ++i) {
-		aux_max = max_khz / HUNDRED_MHZ;
-		aux_min = min_khz / HUNDRED_MHZ;
-		// If NULL we are writting the max default value
-		if (max_list != NULL) {
-			aux_max = available_list[max_list[i]].khz / HUNDRED_MHZ;
+	// if read is required
+	if (read_required(max_list, min_list)) {
+		if (state_fail(r = get_current_list(buffer_max, buffer_min))) {
+			return r;
 		}
-		if (min_list != NULL) {
-			aux_min = available_list[min_list[i]].khz / HUNDRED_MHZ;
-		}
+	}
+	for (i = 0; i < tp_static.cpu_count; ++i)
+	{
+		debug("PS_MAX %u - PS_MIN %u", max_list[i], min_list[i]);
+		// Valid ranks
+		if (max_list != NULL) max_valid = (max_list[i] >= 0 && max_list[i] < available_count);  
+		if (min_list != NULL) min_valid = (min_list[i] >= 0 && min_list[i] < available_count);  
+		// By default, if ps_auto or not valid 
+		aux_max = max_khz;
+		aux_min = min_khz;
+		// Else
+		if      (max_list    == NULL)       aux_max = buffer_max[i].khz;
+		else if (max_list[i] == ps_nothing) aux_max = buffer_max[i].khz;
+		else if (max_valid)                 aux_max = available_list[max_list[i]].khz;
+		if      (min_list    == NULL)       aux_min = buffer_min[i].khz;
+		else if (min_list[i] == ps_nothing) aux_min = buffer_min[i].khz;
+		else if (min_valid)                 aux_min = available_list[min_list[i]].khz;
+		// Converting to MHZ
+		aux_max = aux_max / HUNDRED_MHZ;
+		aux_min = aux_min / HUNDRED_MHZ;
+		// Combining both values in the register
 		debug("writing %llu and %llu in CPU%d",
 			  aux_max, aux_min, tp_static.cpus[i].id);
 		set0 = (aux_min << 8) & U_MSR_UNCORE_RL_MASK_MIN;
@@ -231,7 +272,7 @@ static state_t set_current(ctx_t *c, uint *max_list, uint *min_list)
 
 state_t mgt_imcfreq_intel63_set_current_list(ctx_t *c, uint *index_list)
 {
-	return set_current(c, index_list, NULL);
+	return set_current_list(index_list, NULL);
 }
 
 state_t mgt_imcfreq_intel63_set_current(ctx_t *c, uint pstate_index, int socket)
@@ -245,7 +286,7 @@ state_t mgt_imcfreq_intel63_set_current(ctx_t *c, uint pstate_index, int socket)
 		}
 		buffer[i] = pstate_index;
 	}
-	return set_current(c, buffer, NULL);
+	return set_current_list(buffer, NULL);
 }
 
 state_t mgt_imcfreq_intel63_set_auto(ctx_t *c)
@@ -255,10 +296,10 @@ state_t mgt_imcfreq_intel63_set_auto(ctx_t *c)
 
 state_t mgt_imcfreq_intel63_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list, pstate_t *ps_max_list)
 {
-	return get_current(c, ps_min_list, ps_max_list);
+	return get_current_list(ps_min_list, ps_max_list);
 }
 
 state_t mgt_imcfreq_intel63_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
-	return set_current(c, id_min_list, id_max_list);
+	return set_current_list(id_min_list, id_max_list);
 }
