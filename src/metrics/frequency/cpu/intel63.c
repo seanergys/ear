@@ -50,7 +50,6 @@ state_t cpufreq_intel63_status(topology_t *t)
 {
 	int compat1;
 	int compat2;
-	state_t s;
 
 	compat1 = (t->vendor == VENDOR_AMD   && t->family >= FAMILY_ZEN);
 	compat2 = (t->vendor == VENDOR_INTEL && t->model  >= MODEL_HASWELL_X);

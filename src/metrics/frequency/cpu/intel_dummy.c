@@ -31,9 +31,6 @@
 
 
 static topology_t tp;
-static ulong freq_base;
-static uint user_mode;
-static uint init = 0;
 
 typedef struct aperf_intel_dummy_s
 {
@@ -60,10 +57,6 @@ static state_t static_init_test()
 	return EAR_SUCCESS;
 }
 
-static state_t static_dispose(uint close_msr_up_to, state_t s, char *msg)
-{
-	return EAR_SUCCESS;
-}
 
 state_t cpufreq_intel_dummy_init()
 {
@@ -119,7 +112,6 @@ state_t cpufreq_intel_dummy_data_alloc(cpufreq_t *f, ulong *freqs[])
 
 state_t cpufreq_intel_dummy_data_count(uint *cpufreq_size, uint *freqs_count)
 {
-	state_t s;
 	if (cpufreq_size != NULL) {
 		*cpufreq_size = sizeof(aperf_intel_dummy_t) * tp.cpu_count;
 	}
@@ -131,7 +123,6 @@ state_t cpufreq_intel_dummy_data_count(uint *cpufreq_size, uint *freqs_count)
 
 state_t cpufreq_intel_dummy_data_copy(cpufreq_t *f_dst, cpufreq_t *f_src)
 {
-	state_t s;
 	if (f_dst == NULL || f_src == NULL) {
 		return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
 	}
@@ -161,11 +152,8 @@ state_t cpufreq_intel_dummy_data_free(cpufreq_t *f, ulong *freqs[])
 
 state_t cpufreq_intel_dummy_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
-	ulong mperf_diff, aperf_diff, aperf_pcnt;
-	aperf_intel_dummy_t *d2;
-	aperf_intel_dummy_t *d1;
-	ulong valid_count = 0;
-	ulong freq_aux;
+	//aperf_intel_dummy_t *d2;
+	//aperf_intel_dummy_t *d1;
 	state_t s;
 	int cpu;
 
@@ -180,8 +168,8 @@ state_t cpufreq_intel_dummy_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs
 	if (f2->context == NULL || f1->context == NULL) {
 		return_msg(EAR_NOT_INITIALIZED, Generr.input_uninitialized);
 	}
-	d2 = f2->context;
-	d1 = f1->context;
+	//d2 = f2->context;
+	//d1 = f1->context;
 	// If average not null, then clean.
 	if (average != NULL) {
 		*average = 0LU;
