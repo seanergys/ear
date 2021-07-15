@@ -45,14 +45,16 @@ extern float ratio_PPN;
 extern uint total_mpi;
 extern uint using_verb_files;
 
+#ifdef SHOW_DEBUGS
 static void debug_loop_signature(char *title, signature_t *loop);
+#endif
 
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
     char io_info[256];
 		char pmpi_txt[64];
-    double CPI, TPI, GBS, POWER, TIME, ENERGY, EDP, VPI, IN_MPI_PERC,IN_MPI_SEC,GPU_POWER = 0, FLOPS;
-    float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI, AVGIMCF = 0 ;
+    double CPI, GBS, POWER, TIME, VPI, GPU_POWER = 0, FLOPS;
+    float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI ;
     float l1_sec=0,l2_sec=0,l3_sec=0;
 		float IO_MBS;
     ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
@@ -76,14 +78,11 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
         GBS = sig->signature.GBS; 
         IO_MBS = (float)sig->signature.IO_MBS; 
         POWER = sig->signature.DC_power; 
-        TPI = sig->signature.TPI; 
         TIME = sig->signature.time; 
         FLOPS = sig->signature.Gflops;
         AVGF = (float)sig->signature.avg_f/1000000.0; 
         VI=metrics_vec_inst(&sig->signature); 
         VPI=(double)VI/(double)sig->signature.instructions; 
-        ENERGY = TIME * POWER; 
-        EDP = ENERGY * TIME;
         GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0; 
         if (prevf > 0 ){ PFREQ = (float)prevf/1000000.0;}
         if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
@@ -92,7 +91,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
         strcpy(gpu_buff,"");
 #if USE_GPUS
         if (sig->signature.gpu_sig.num_gpus>0){ 
-            verbose(3,"");
+            verbose(3," ");
             for(gpui=0;gpui<sig->signature.gpu_sig.num_gpus;gpui++){ 
                 verbosen(3,"(GPU[%d] Power %.2f Util %lu Freq %lu)",gpui,sig->signature.gpu_sig.gpu_data[gpui].GPU_power,sig->signature.gpu_sig.gpu_data[gpui].GPU_util,
                         sig->signature.gpu_sig.gpu_data[gpui].GPU_freq);
@@ -103,7 +102,7 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
                     GPU_UTIL += sig->signature.gpu_sig.gpu_data[gpui].GPU_util; 
                 }
             } 
-            verbose(3,"");
+            verbose(3," ");
             if (gpuused){
                 GPU_POWER = GPU_POWER/(float)gpuused;
                 AVGGPUF = (float)GPU_FREQ/(float)(gpuused*1000000.0); 
@@ -159,6 +158,7 @@ void state_print_policy_state(int master_rank,int st)
 }
 
 
+#ifdef SHOW_DEBUGS
 static void debug_loop_signature(char *title, signature_t *loop)
 {
     float avg_f = (float) loop->avg_f / 1000000.0;
@@ -166,4 +166,5 @@ static void debug_loop_signature(char *title, signature_t *loop)
     debug("(%s) Avg. freq: %.2lf (GHz), CPI/TPI: %0.3lf/%0.3lf, GBs: %0.3lf, DC power: %0.3lf, time: %0.3lf, GFLOPS: %0.3lf",
             title, avg_f, loop->CPI, loop->TPI, loop->GBS, loop->DC_power, loop->time, loop->Gflops);
 }
+#endif
 

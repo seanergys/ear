@@ -56,7 +56,6 @@ extern float ratio_PPN;
 application_t *signatures;
 uint *sig_ready;
 // static application_t last_signature;
-static projection_t *PP;
 
 static long long comp_N_begin, comp_N_end, comp_N_time;
 static uint begin_iter, N_iter;
@@ -74,7 +73,7 @@ static int MAX_POLICY_TRIES;
 static state_t pst;
 static uint total_th;
 static uint signatures_stables = 0;
-static signature_t cpu_sel_signature, policy_sel_signature ;
+static signature_t /* cpu_sel_signature, */ policy_sel_signature;
 static node_freqs_t nf;
 
 
@@ -147,6 +146,7 @@ static int policy_had_effect(signature_t *A, signature_t *B)
     return 0;
 }
 
+#ifdef SHOW_DEBUGS
 static void print_loop_signature(char *title, signature_t *loop)
 {
     float avg_f = (float) loop->avg_f / 1000000.0;
@@ -154,6 +154,7 @@ static void print_loop_signature(char *title, signature_t *loop)
     debug("(%s) Avg. freq: %.2lf (GHz), CPI/TPI: %0.3lf/%0.3lf, GBs: %0.3lf, DC power: %0.3lf, time: %0.3lf, GFLOPS: %0.3lf",
             title, avg_f, loop->CPI, loop->TPI, loop->GBS, loop->DC_power, loop->time, loop->Gflops);
 }
+#endif
 
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter,uint dynais_used);
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
@@ -284,16 +285,12 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 {
     unsigned long prev_f;
     int ready;
-    ull VI;
     int result;
-    ulong global_f=0;
     int pok;
     int curr_pstate,def_pstate;
     signature_t *l_sig;
     ulong policy_def_freq;
     signature_t app_signature;	
-    uint new_signature;
-    state_t st;
     char use_case[16];
     char *ok_clr;
 
@@ -435,6 +432,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             }
 
             /* Included for dynais test */
+#ifdef SHOW_DEBUGS
             if (loop_with_signature==0){
                 time_t curr_time;
                 double time_from_mpi_init;
@@ -442,6 +440,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 time_from_mpi_init=difftime(curr_time,application.job.start_time);
                 debug("Number of seconds since the application start_time at which signature is computed %lf",time_from_mpi_init);
             }
+#endif
 
             loop_with_signature = 1;
 #if EAR_OVERHEAD_CONTROL
@@ -496,7 +495,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             break;
         case EVALUATING_GLOBAL_SIGNATURE:
             //if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
-            st = policy_app_apply(&policy_freq,&ready);
+            /* st =  */policy_app_apply(&policy_freq,&ready);
             /* State validation */
             if (ready == EAR_POLICY_READY){
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
