@@ -66,10 +66,6 @@ static uint pc_cpu_strategy;
 static uint8_t last_cluster_perc = 0;
 extern pc_app_info_t *pc_app_info_data;
 
-#if USE_GPUS
-static uint pc_gpu_strategy;
-#endif
-
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
 #endif
