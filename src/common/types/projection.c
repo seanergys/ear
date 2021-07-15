@@ -48,7 +48,6 @@ typedef struct model_symbols {
 
 // Static data
 static models_sym_t models_syms_fun;
-static void    *models_syms_obj = NULL;
 const int       models_funcs_n = 4;
 const char     *models_syms_nam[] = {
   "model_init",
@@ -75,15 +74,15 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	if (((obj_path == NULL) && (ins_path == NULL)) || (user_type != AUTHORIZED))
 	{
 		if ((strcmp(data->obj_power_model,"default")==0) || (data->obj_power_model==NULL)){
-			sprintf(basic_path, "%s/models/basic_model.so", data->dir_plug);
+			snprintf(basic_path,sizeof(basic_path), "%s/models/basic_model.so", data->dir_plug);
 		}else if (data->obj_power_model!=NULL){
-			sprintf(basic_path, "%s/models/%s", data->dir_plug,data->obj_power_model);
+			snprintf(basic_path, sizeof(basic_path),"%s/models/%s", data->dir_plug,data->obj_power_model);
 		}
 		obj_path = basic_path;
 		
 	}else{
     if (obj_path == NULL){
-      sprintf(basic_path,"%s/plugins/models/%s",ins_path,data->obj_power_model);
+      snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/%s",ins_path,data->obj_power_model);
       obj_path=basic_path;
     }
 	}

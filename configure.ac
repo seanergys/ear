@@ -9,7 +9,7 @@ m4_include([m4/x_ac_gsl.m4])
 
 # INIT
 AC_PREREQ([2.69])
-AC_INIT([EAR], [3.4])
+AC_INIT([EAR], [4.0])
 AC_LANG(C)
 
 # PROGRAMS TEST
@@ -134,7 +134,6 @@ AC_DEFUN([AC_FEATURE_CHECK],
 ])
 
 echo "---------------------------------------Checking summary --"
-AC_DEPENDANCY_CHECK($PAPI_DIR, PAPI dependancy found, 1)
 AC_DEPENDANCY_CHECK($GSL_DIR, GSL dependancy found, 1)
 AC_DEPENDANCY_CHECK($SLURM_DIR, SLURM dependancy found, 0)
 AC_DEPENDANCY_CHECK($DB_DIR, Database dependancy found ($DB_NAME), 1)

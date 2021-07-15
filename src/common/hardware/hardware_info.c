@@ -67,11 +67,12 @@ state_t set_affinity(int pid,cpu_set_t *mask)
 	else return EAR_SUCCESS;
 }
 
-
+#if 0
 static int file_is_accessible(const char *path)
 {
 	return (access(path, F_OK) == 0);
 }
+#endif
 
 static topology_t topo1;
 static topology_t topo2;

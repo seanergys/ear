@@ -82,7 +82,6 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
 	ull flop = 0;
 	double flops;
-	uint i;
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;
 	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];

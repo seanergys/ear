@@ -28,6 +28,7 @@
 #include <common/types/configuration/cluster_conf_db.h>
 #include <common/types/configuration/cluster_conf_etag.h>
 
+#if 0
 static void insert_th_policy(cluster_conf_t *conf, char *token, int policy, int main)
 {
 	int i;
@@ -42,6 +43,7 @@ static void insert_th_policy(cluster_conf_t *conf, char *token, int policy, int 
 	}
 
 }
+#endif
 
 static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
 {
@@ -122,7 +124,7 @@ static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
 	}
 	return 1;
 }
-
+#if 0
 static int get_default_pstate(policy_conf_t *pow_pol, int num_pol, int policy)
 {
 	int i;
@@ -133,6 +135,7 @@ static int get_default_pstate(policy_conf_t *pow_pol, int num_pol, int policy)
 	}
 	return 0;
 }
+#endif
 
 static void fill_policies(cluster_conf_t *conf)
 {

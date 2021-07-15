@@ -9,8 +9,8 @@
 %define __requires_exclude libmpi*.*$|libpapi.so.*|libgsl*
 
 %define name    ear
-%define release   3
-%define version   3.4
+%define release   4
+%define version   4.0
 
 # Information
 # Prefix  Just for when missing any prefix
