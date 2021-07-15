@@ -35,13 +35,8 @@ int module_file_exists(char *path)
 
 void module_get_path_libear(char **path_lib,char **hack_lib )
 {
-	static char buffer[4096];
 	static char path_lib_so[4096];
-	char *extension = NULL;
 	char *path = NULL;
-	char *hack = NULL;
-	char *vers = NULL;
-	int len = 4096;
 	char *libhack = NULL;
 
 	*path_lib = NULL;
@@ -59,7 +54,7 @@ void module_get_path_libear(char **path_lib,char **hack_lib )
 				return;
 			}
 		}else{
-			sprintf(path_lib_so,"%s/%s",path,REL_PATH_LIBR);		
+			snprintf(path_lib_so,sizeof(path_lib_so),"%s/%s",path,REL_PATH_LIBR);		
 			*path_lib = malloc(strlen(path_lib_so)+1);
 			strcpy(*path_lib,path_lib_so);
 		}

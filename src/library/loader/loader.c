@@ -32,8 +32,7 @@
 #include <library/loader/module_default.h>
 #include <common/config/config_env.h>
 
-static int _loaded_con;
-static int _loaded_mpi,_loaded;
+static int _loaded;
 
 static int init()
 {

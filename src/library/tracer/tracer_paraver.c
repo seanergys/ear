@@ -289,7 +289,7 @@ static void trace_file_write_in_file()
   while(pendings>0){
     if (pendings<EVENTS_IN_BUFFER) events=pendings;
     else events=EVENTS_IN_BUFFER;
-    sprintf(buffer2,"");
+		buffer2[0] = '\0';
 		if (trace_fin) debug("End trace events %d max %d limit %d",events,ready+events-1,PARAVER_EVENTS);
     for (i=0;i<events;i++){
       sprintf(buffer1,"2:%d:1:%d:1:%llu:%d:%llu\n", my_trace_rank, my_trace_rank,
@@ -500,7 +500,6 @@ void traces_new_signature(int global_rank, int local_rank, signature_t *sig)
 void traces_PP(int global_rank, int local_rank, double seconds, double power)
 {
 	ullong lpsec;
-    ullong lpcpi;
     ullong lppow;
 
 	if (!enabled || !working) {
