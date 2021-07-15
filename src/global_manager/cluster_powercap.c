@@ -182,7 +182,7 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
 		int i;
     uint num_nodes=cluster_status->total_nodes;
     uint min_reduction;
-    verbose(0,"There are %u nodes  %u idle nodes %u greedy nodes ", cluster_status->total_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
+    verbose(0,"There are %u nodes  %u idle nodes %u greedy nodes ", num_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
     memset(cluster_options,0,sizeof(powercap_opt_t));
     cluster_options->greedy_nodes=calloc(cluster_status->num_greedy,sizeof(int));
     cluster_options->extra_power=calloc(cluster_status->num_greedy,sizeof(uint));
@@ -303,7 +303,7 @@ int cluster_power_limited()
 /* This function is executed when we are in a good position after executing the higher limit action*/
 void execute_powercap_lower_action()
 {
-    char cmd[256];
+    char cmd[300];
     /* If action is different than no_action we run the command */
     if (strcmp(my_cluster_conf.eargm.powercap_lower_action,"no_action")){ 
         /* Format is: command current_power current_limit total_idle_nodes allocated_idle_power*/
@@ -322,7 +322,7 @@ void execute_powercap_lower_action()
 /* This function is executed when we are close to the limit , consumed or allocated, depending of powercap_mode*/
 void execute_powercap_limit_action()
 {
-    char cmd[256];
+    char cmd[300];
     /* If action is different than no_action we run the command */
     if (strcmp(my_cluster_conf.eargm.powercap_limit_action,"no_action")){ 
         /* Format is: command current_power current_limit total_idle_nodes allocated_idle_power*/

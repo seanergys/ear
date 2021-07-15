@@ -220,7 +220,7 @@ void reopen_log()
 
 static void my_signals_function(int s)
 {
-	uint ppolicy;
+	// uint ppolicy; // unused
 	cluster_conf_t new_conf;	
 	if (s==SIGALRM){
 		alarm(period_t1);
@@ -233,7 +233,7 @@ static void my_signals_function(int s)
 	}
 	if (s==SIGHUP){
 		verbose(VCONF,"Reloading EAR configuration");
-		ppolicy=my_cluster_conf.eargm.policy;
+		// ppolicy=my_cluster_conf.eargm.policy; // unused
 		// Reading the configuration
 			
     	if (read_cluster_conf(my_ear_conf_path,&new_conf)!=EAR_SUCCESS){
@@ -378,7 +378,6 @@ void process_status(pid_t pid_process_created,int process_created_status)
 
 int execute_action(ulong e_t1,ulong e_t2,ulong e_limit,uint t2,uint t1,char *units)
 {
-  int ret;
 	char command_to_execute[512];
   char *my_command=my_cluster_conf.eargm.energycap_action;
 	/* If action text is different from no_action, we must execute it */
@@ -397,11 +396,10 @@ int execute_action(ulong e_t1,ulong e_t2,ulong e_limit,uint t2,uint t1,char *uni
 
 int send_mail(uint level, double energy)
 {
-	
-	char buff[128];
-  char command[1024];
+    char buff[400];
+  char command[4400];
   char mail_filename[SZ_PATH];
-  int fd,ret;
+  int fd;
   if (strcmp(my_cluster_conf.eargm.mail,"nomail")){ 
 		sprintf(buff,"Detected WARNING level %u, %lfi %% of energy from the total energy limit\n",level,energy);
 		sprintf(mail_filename,"%s/warning_mail.txt",my_cluster_conf.install.dir_temp);
