@@ -236,8 +236,8 @@ void set_global_metrics(ssig_t *avg_sig,ssig_t *s)
 
 void compute_avg_node_sig(ssig_t *avg_sig,int n)
 { 
-  double t,cpi,gflops;
-  unsigned long avg_f,def_f,avg_imc_f;
+  double t,cpi;
+  unsigned long avg_f,def_f;
   int i;
   ull my_flops[FLOPS_EVENTS];
   t					=avg_sig->time/n;

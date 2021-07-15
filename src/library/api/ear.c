@@ -111,8 +111,6 @@ static uint ear_loop_size;
 static uint ear_loop_level;
 static int in_loop;
 static short ear_status = NO_LOOP;
-static int force_time_guided = 0;
-static int max_time_without_signature = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE *3;
 
 #if EAR_OVERHEAD_CONTROL
 /* in us */
@@ -153,7 +151,7 @@ state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
 static ulong seconds = 0;
 static uint ear_guided = DYNAIS_GUIDED; 
-static int end_periodic_th=0;
+//static int end_periodic_th=0;
 static uint synchronize_masters = 1;
 
 /*  Sets verbose level for ear init messages */
@@ -250,14 +248,16 @@ void create_shared_regions()
 {
 	char *tmp=get_ear_tmp();
 	int bfd=-1;
-  int total_size;
-  int total_elements;
-  int per_node_elements;
+  int total_elements = 1;
+  int per_node_elements = 1;
+	#if SHOW_DEBUGS
+	int total_size;
+	#endif
 
 
 	/* This section allocates shared memory for processes in same node */
 	debug("Master creating shared regions for node synchro");
-  sprintf(block_file,"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
+  snprintf(block_file,block_file,"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory %s",block_file);
   }
@@ -323,10 +323,10 @@ void create_shared_regions()
 	masters_info.ppn[0] = 1;
 	#endif
 	int i;
-	masters_info.max_ppn=masters_info.ppn[0];
+	masters_info.max_ppn = masters_info.ppn[0];
 	for (i=1;i<masters_info.my_master_size;i++){ 
-		if (masters_info.ppn[i]>masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
-		if (masters_info.my_master_rank==0) verbose(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
+		if (masters_info.ppn[i] > masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
+		if (masters_info.my_master_rank == 0) verbose(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
 	}
 	verbose_master(2,"max number of ppn is %d",masters_info.max_ppn);
 	/* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
@@ -336,26 +336,30 @@ void create_shared_regions()
 		sh_sig_per_proces = 0;
 	}
 	if (sh_sig_per_proces){
+		#if SHOW_DEBUGS
 		debug("Sharing info at process level, reporting N per node");
-		total_size=masters_info.max_ppn*masters_info.my_master_size*sizeof(shsignature_t);
-		total_elements=masters_info.max_ppn*masters_info.my_master_size;
-		per_node_elements=masters_info.max_ppn;
+		total_size = masters_info.max_ppn*masters_info.my_master_size*sizeof(shsignature_t);
+		#endif
+		total_elements = masters_info.max_ppn*masters_info.my_master_size;
+		per_node_elements = masters_info.max_ppn;
 	}
 	if (sh_sig_per_node){
+		#if SHOW_DEBUGS
 		debug("Sharing info at node level, reporting 1 per node");
-		total_size=masters_info.my_master_size*sizeof(shsignature_t);
-		total_elements=masters_info.my_master_size;
-		per_node_elements=1;
+		total_size = masters_info.my_master_size*sizeof(shsignature_t);
+		#endif
+		total_elements = masters_info.my_master_size;
+		per_node_elements = 1;
 	}
-	ratio_PPN=(float)lib_shared_region->num_processes/(float)masters_info.max_ppn;
-	masters_info.nodes_info=(shsignature_t *)calloc(total_elements,sizeof(shsignature_t));
-	if (masters_info.nodes_info==NULL){ 
+	ratio_PPN = (float)lib_shared_region->num_processes/(float)masters_info.max_ppn;
+	masters_info.nodes_info = (shsignature_t *)calloc(total_elements,sizeof(shsignature_t));
+	if (masters_info.nodes_info == NULL){ 
 		error("Allocating memory for node_info");
 	}else{ 
 		debug("%d Bytes (%d x %lu)  allocated for masters_info node_info",total_size,total_elements,sizeof(shsignature_t));
 	}
-	masters_info.my_mpi_info=(shsignature_t *)calloc(per_node_elements,sizeof(shsignature_t));
-  if (masters_info.my_mpi_info==NULL){
+	masters_info.my_mpi_info = (shsignature_t *)calloc(per_node_elements,sizeof(shsignature_t));
+  if (masters_info.my_mpi_info == NULL){
     error("Allocating memory for my_mpi_info");
   }else{
     debug("%lu Bytes allocated for masters_info my_mpi_info",per_node_elements*sizeof(shsignature_t));
@@ -377,12 +381,12 @@ void create_shared_regions()
 
 void attach_shared_regions()
 {
-	int bfd=-1,i;
-	char *tmp=get_ear_tmp();
+	int bfd = -1;
+	char *tmp = get_ear_tmp();
 	/* This function is executed by processes different than masters */
 	/* they first join the Node shared memory */
-	sprintf(block_file,"%s/.my_local_lock.%s",tmp,application.job.user_id);
-	if ((bfd=file_lock_create(block_file))<0){
+	snprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
+	if ((bfd = file_lock_create(block_file))<0){
 		error("Creating lock file for shared memory");
 	}
 	if (get_lib_shared_data_path(tmp,lib_shared_region_path)!=EAR_SUCCESS){
@@ -395,26 +399,26 @@ void attach_shared_regions()
 		}
 		#endif
 		do{
-			lib_shared_region=attach_lib_shared_data_area(lib_shared_region_path);
-		}while(lib_shared_region==NULL);
-		while(file_lock(bfd)<0);
-		my_node_id=lib_shared_region->num_processes;
-    lib_shared_region->num_processes=lib_shared_region->num_processes+1;
+			lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path);
+		}while(lib_shared_region == NULL);
+		while(file_lock(bfd) < 0);
+		my_node_id = lib_shared_region->num_processes;
+    lib_shared_region->num_processes = lib_shared_region->num_processes+1;
 		file_unlock(bfd);
   }
 	#if MPI
-  if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){	
+  if (PMPI_Barrier(MPI_COMM_WORLD)!= MPI_SUCCESS){	
 		error("In MPI_BARRIER");
 	}
-  if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){	
+  if (PMPI_Barrier(MPI_COMM_WORLD)!= MPI_SUCCESS){	
 		error("In MPI_BARRIER");
 	}
 	#endif
-	if (get_shared_signatures_path(tmp,shsignature_region_path)!=EAR_SUCCESS){
+	if (get_shared_signatures_path(tmp,shsignature_region_path) != EAR_SUCCESS){
     error("Getting the shsignature_region_path  ");
   }else{
-			sig_shared_region=attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
-			if (sig_shared_region==NULL){
+			sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
+			if (sig_shared_region == NULL){
 				error("NULL pointer returned in attach_shared_signatures_area");
 			}
 	}
@@ -455,7 +459,6 @@ int sched_num_nodes()
 void attach_to_master_set(int master)
 {
 	int color;
-	int all_connected = 1;
 	int flag = 1;
 	//my_master_rank=0;
 	color=0;
@@ -1379,7 +1382,6 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
     {
         // Create the event for DynAIS: we will report anyway
         unsigned long  ear_event_l;
-        unsigned short ear_size;
         unsigned short ear_level;
         ear_level=0;
 
@@ -1527,20 +1529,22 @@ void ear_new_iteration(unsigned long loop_id)
 /**************** New for iterative code ********************/
 //void *earl_periodic_actions(void *no_arg)
 static uint last_mpis;
+#if 0
 static io_data_t last_io;
 static ctx_t stat_ctx;
 static proc_stat_t c_stat;
 static long tics_per_second;
 static mpi_information_t *my_node_mpi_calls,*last_node_mpi_calls;
 static mpi_calls_types_t *my_node_mpi_types_calls,*last_node_mpi_types_calls;
+#endif
 static timestamp_t periodic_time;
 static ulong last_check = 0;
 
 state_t earl_periodic_actions_init(void *no_arg)
 {
     verbose_master(1,"RANK %d EARL periodic thread ON",ear_my_rank);
-    memset((char *)&last_io,0,sizeof(io_data_t));
-    tics_per_second = sysconf(_SC_CLK_TCK);
+    //memset((char *)&last_io,0,sizeof(io_data_t));
+    //tics_per_second = sysconf(_SC_CLK_TCK);
     timestamp_getfast(&periodic_time);
     seconds = 0;
     last_mpis = 0;
@@ -1552,29 +1556,33 @@ state_t earl_periodic_actions_init(void *no_arg)
         mpi_calls_in_period = lib_period;
         states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
     }
+		#if 0
     if (is_mpi_enabled()){
         my_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
         my_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
         last_node_mpi_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
         last_node_mpi_types_calls = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
     }
+		#endif
 
     return EAR_SUCCESS;
 }
 state_t earl_periodic_actions(void *no_arg)
 {
+		#if 0
     io_data_t cio;
     io_data_t io_period;
     ull MB;
-    uint mpi_period;
     float io_in_period = 0.0,mpi_in_period = 0.0;
-    char stat_buff[128];
     ulong total_time;
-    float cpu_util;
-    int i;
+    char stat_buff[128];
+		#endif
+    uint mpi_period;
+		float mpi_in_period;
     ulong period_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
+
     ear_iterations++;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);

@@ -123,13 +123,16 @@
 #define LIMIT_LARGE_JOBS				2
 #define RED_PSTATES_LARGE_JOBS 	1
 
+
+
 /* IMC Management and Phases management default options */
-#define  EAR_eUFS             1
-#define  EAR_IMC_TH           0.02
-#define  EAR_USE_PHASES       1
+#define  EAR_eUFS   					1
+#define  EAR_IMC_TH 					0.02
+#define  EAR_USE_PHASES 			1
 #define  EAR_USE_LB           1
 #define  EAR_USE_TURBO_CP     1
-#define  EAR_LB_TH            15.0
+#define  EAR_LB_TH						15.0
+
 
 
 /* These two options go together. USE_EXT defines if a automatic network

@@ -205,7 +205,7 @@ state_t sockets_connect(socket_t *socket)
 
 state_t sockets_close(socket_t *socket)
 {
-	state_t s;
+	state_t s = EAR_SUCCESS;
 	if (socket->fd_closable) {
 		s = sockets_close_fd(socket->fd);
 	}
@@ -356,7 +356,7 @@ state_t sockets_recv_header(int fd, uint *type, size_t *size, ullong *extra, uin
 		*extra = header.extra;
 	}
 
-	return EAR_SUCCESS;
+	return s;
 }
 
 state_t sockets_recv(int fd, char *data, size_t size, uint block)

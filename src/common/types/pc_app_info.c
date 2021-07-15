@@ -53,7 +53,6 @@ void pcapp_info_end_job(pc_app_info_t *t)
 
 void pcapp_info_set_req_f(pc_app_info_t *t, ulong *f, uint num_cpus)
 {
-    int i;
 	memcpy(t->req_f,f,sizeof(ulong)*num_cpus);;
 	t->pc_status=PC_STATUS_OK;
 }
@@ -68,16 +67,18 @@ void pcapp_info_set_gpu_req_f(pc_app_info_t *t, ulong *f, uint num_gpus)
 
 void debug_pc_app_info(pc_app_info_t *t)
 {
-	float f;
+	#if SHOW_DEBUGS
 	int i;
+	float f;
 	f=(float)t->req_f[0]/1000000.0;
 	debug("PC_APP_INFO: mode %u CPU (req_f[0] %.2f power %lu status %u)",t->cpu_mode, f,t->req_power,t->pc_status);
 	#if USE_GPUS
-    debug("GPU mode %u", t->gpu_mode);
+  debug("GPU mode %u", t->gpu_mode);
 	for (i=0;i<t->num_gpus_used;i++){
 		f=(float)t->req_gpu_f[i]/1000000.0;
 		debug("\t(GPU[%d] req_f %.2f power %lu status %u)",i,f,t->req_gpu_power,t->pc_gpu_status);
 	}
+	#endif
 	#endif
 }
 

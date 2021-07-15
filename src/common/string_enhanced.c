@@ -31,9 +31,6 @@ static unsigned int columns;
 static unsigned int mode;
 static int fd;
 
-// Utils
-static char buffer1[SZ_BUFFER];
-static char buffer2[SZ_BUFFER];
 
 /*
  *

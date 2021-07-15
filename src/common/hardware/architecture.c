@@ -26,11 +26,11 @@
 /** Fills the current architecture in arch*/
 state_t get_arch_desc(architecture_t *arch)
 {
-	state_t ret;
+	state_t ret = EAR_SUCCESS;
 	if (arch==NULL) return EAR_ERROR;
 	arch->pstates = 0;
 	topology_init(&arch->top);
-	return EAR_SUCCESS;	
+	return ret;	
 }
 
 /** Copy src in dest */

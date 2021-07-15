@@ -127,7 +127,6 @@ static void monitor_time_calc(register_t *reg, int *wait_units, int pass_units, 
 
 static void _monitor_init()
 {
-        struct sigaction sa;
         sigset_t set;
         sigfillset(&set);
         sigdelset(&set, SIGALRM);
