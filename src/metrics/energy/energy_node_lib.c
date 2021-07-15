@@ -51,7 +51,6 @@ static const char *energy_names[] = {
 state_t energy_lib_init(settings_conf_t *conf)
 {
 	state_t ret=EAR_SUCCESS;
-	int cpu_model;
 	int found=0;
 	char *my_energy_plugin;
 

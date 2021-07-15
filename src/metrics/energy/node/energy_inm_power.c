@@ -82,7 +82,6 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	};
 	static struct ipmi_rs rsp;
 	uint8_t *data = NULL;
-	int data_len = 0;
 	static int curr_seq = 0;
 	fd_set rset;
 
@@ -179,7 +178,6 @@ state_t inm_power_reading(struct ipmi_intf *intf, struct ipmi_data *out,inm_powe
 	uint32_t timeframe,timestamp;
 	uint32_t *timeframep,*timestampp;
 	int i;
-	int s;
 /*
  * ipmitool -b 0 -t 0x2C raw 0x2E 0xC8 0x57 0x01 0x00 0x01 0x00 0x00
 
@@ -287,10 +285,9 @@ Byte 17:20 – Statistics Reporting Period (the timeframe in seconds, over which
 /**** These functions are used to accumulate the eneergy */
 state_t inm_power_thread_main(void *p)
 {
-	state_t st;
 	struct ipmi_data out;
 	ulong current_elapsed,current_energy;
-	st = inm_power_reading(&inm_context_for_pool, &out,&inm_current_power_reading);
+	inm_power_reading(&inm_context_for_pool, &out,&inm_current_power_reading);
 	if (inm_current_power_reading.current_power > 0){
 		current_elapsed = inm_current_power_reading.timestamp - inm_last_power_reading.timestamp;	
 		current_energy = current_elapsed * inm_current_power_reading.avg_power;
@@ -408,7 +405,6 @@ state_t energy_units(uint *units) {
 }
 
 state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
-  int i;
   ulong *pinit = (ulong *) init, *pend = (ulong *) end;
 
   unsigned long total = diff_node_energy(*pinit, *pend);

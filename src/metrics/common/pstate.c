@@ -91,7 +91,6 @@ state_t avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, ps
 
 state_t pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong *khz)
 {
-	state_t s;
 	if (pstate_idx >= pstate_count) return EAR_ERROR;
 	*khz = pstate_list[pstate_idx].khz;
 	return EAR_SUCCESS;

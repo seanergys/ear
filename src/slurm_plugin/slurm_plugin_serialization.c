@@ -177,7 +177,6 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
-	int item = 0;
 	uint32_t uitem;
 
 	memset(app,0,sizeof(new_job_req_t));

@@ -285,7 +285,7 @@ static state_t compute_coefficients(matrix_t *matrix, uint matrix_count)
 
 static state_t matrix_fill(application_t *apps, uint apps_count, matrix_t *matrix, uint matrix_count)
 {
-	int m, a, f;
+	int m, a;
 	// Matrix
 	// 	Matrix is a collection of applications and coefficients. It is
 	// 	identified by its P_STATE, and it is sorted the same way is sorted the
@@ -644,8 +644,6 @@ int main(int argc, char *argv[])
 	int              fd; 
 	my_node_conf_t  *node;
 	cluster_conf_t   conf;
-	topology_t       topo;
-	ctx_t            c;
 	pstate_t        *pstate_list;
 	uint             pstate_count;
 	application_t   *app_list;

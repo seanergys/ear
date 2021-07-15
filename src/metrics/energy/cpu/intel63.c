@@ -57,8 +57,6 @@ static int rapl_msr_instances = 0;
 
 static double cpu_energy_units;
 static double dram_energy_units;
-static double power_units;
-static double time_units;
 static int vendor;
 
 int init_rapl_msr(int *fd_map)

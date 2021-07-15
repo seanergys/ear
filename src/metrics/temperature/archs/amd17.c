@@ -102,7 +102,7 @@ static state_t get_context(ctx_t *c, hwfds_t **h)
 
 state_t temp_amd17_dispose(ctx_t *c)
 {
-	int i, j, r;
+	int i;
 	hwfds_t *h;
 	state_t s;
 

@@ -88,7 +88,6 @@ state_t energy_initialization(ehandler_t *eh)
 state_t energy_init(cluster_conf_t *conf, ehandler_t *eh)
 {
 	state_t ret;
-	int cpu_model;
 
 	if (energy_loaded) {
 		debug("Energy plugin already loaded, executing basic init");	
