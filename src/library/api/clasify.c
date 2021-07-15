@@ -80,7 +80,6 @@ state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
 
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
-	ull flop = 0;
 	double flops;
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;

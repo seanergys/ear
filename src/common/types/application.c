@@ -302,8 +302,8 @@ int print_application(application_t *app)
 
 void verbose_gpu_app(uint vl,application_t *myapp)
 {
-	signature_t *app=&myapp->signature;
 #if USE_GPUS
+	signature_t *app=&myapp->signature;
 	gpu_app_t  *mys;
 	uint gpui;
 	for (gpui=0;gpui<app->gpu_sig.num_gpus;gpui++){

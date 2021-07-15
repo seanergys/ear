@@ -89,36 +89,36 @@ static ulong avg_gpu_freq(signature_t *s)
 
 static void estimate_gpu_freq(ulong *oldf,signature_t *s,double glimit)
 {
-	int used=sig_gpus_used(s);
-	float red;
+	#if SHOW_DEBUGS
+	int used = sig_gpus_used(s);
 	double gpower=sig_total_gpu_power(s);
 	double gpower_per_gpu,glimit_per_gpu;
-	gpower_per_gpu=gpower/used;
-	glimit_per_gpu=glimit=used;
-	red=(gpower_per_gpu - glimit_per_gpu)/glimit_per_gpu;
+	gpower_per_gpu = gpower/used;
+	glimit_per_gpu = glimit = used;
+	red = (gpower_per_gpu - glimit_per_gpu)/glimit_per_gpu;
 	debug("We should reduce a %f of gpu power",red);
+	#endif
 	return;
 }
 
 void pc_support_adapt_gpu_freq(polctx_t *c,node_powercap_opt_t *pc,ulong *f,signature_t *s)
 {
-    ulong req_f,cfreq;
-    uint plimit,cpstate,ppstate,power_status;
-    uint numpstates,adapted=0;
-    double ppower,gpower;
+    uint plimit;
+    double gpower;
 	  signature_t new_s;
+
 		signature_copy(&new_s,s);
-		new_s.DC_power=sig_total_gpu_power(s);
-    plimit=pc->pper_domain[DOMAIN_GPU];        /* limit */
-		gpower=new_s.DC_power;
+		new_s.DC_power = sig_total_gpu_power(s);
+    plimit = pc->pper_domain[DOMAIN_GPU];        /* limit */
+		gpower = new_s.DC_power;
     debug("checking gpu frequency: gpu_power %lf gpu_powercap %u",gpower,plimit);
 		gpu_lib_freq_limit_get_current(&c->gpu_mgt_ctx,f);
-    if ((uint)gpower<=plimit){
-      pc_app_info_data->pc_gpu_status=PC_STATUS_OK;
+    if ((uint)gpower <= plimit){
+      pc_app_info_data->pc_gpu_status = PC_STATUS_OK;
 			debug("GPU power is enough");
       return ;
     }else{
-      pc_app_info_data->pc_status=PC_STATUS_GREEDY;
+      pc_app_info_data->pc_status = PC_STATUS_GREEDY;
 			debug("GPU power is NOT enough,reducing GPU freq");
 			estimate_gpu_freq(f,&new_s,plimit);
 		}

@@ -114,10 +114,8 @@ static uint earl_gpu_model = MODEL_UNDEFINED;
 #endif
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static long long metrics_l1[2];
-static long long metrics_l2[2];
+//static long long metrics_l2[2];
 static long long metrics_l3[2];
-static timestamp init_mpi_time;
-static int first_timestamp=1;
 static state_t s;
 static ulong cpufreq_data_avg[2];
 static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
@@ -134,15 +132,12 @@ uint *imc_max_pstate,*imc_min_pstate;
 ulong imc_max_khz,imc_min_khz;
 uint imc_curr_max_pstate,imc_curr_min_pstate;
 /**/
-static uint imcfreq_data_size;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static imcfreq_t *imc_init[2],*imc_end[2];
 static ulong *imc_freq_init[2],*imc_freq_end[2];
 static ulong imc_avg[2];
 
 static ctx_t imc_ctx;
-static uint imc_count;
-static ulong cpufreq_avg;
 static int NI=0;
 
 
@@ -224,8 +219,6 @@ static void metrics_global_start()
 
 static void metrics_global_stop()
 {
-	timestamp end_mpi_time;
-	io_data_t iod;
 	char io_info[256];
 	char file_name[256];
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
@@ -400,7 +393,7 @@ static int metrics_partial_stop(uint where)
 	long long c_time;
 	float c_power;
 	long long aux_time_stop;
-	char stop_energy_str[256],start_energy_str[256],gpu_buff[1024];
+	char stop_energy_str[256],start_energy_str[256];
 
 	/* If the signature of the master is not ready, we cannot compute our signature */
 	//debug("My rank is %d",masters_info.my_master_rank);
@@ -616,7 +609,6 @@ void copy_node_data(signature_t *dest,signature_t *src)
 static void metrics_compute_signature_data(uint global, signature_t *metrics, uint iterations, ulong procs)
 {
 	double time_s, cas_counter, aux;
-	timestamp end_mpi_time;
 	sig_ext_t *sig_ext;
 	int i, s;
 
@@ -681,6 +673,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
   double iogb;
 	int ios;
   /* Per Node IO data */
+	ios = s;
   if ((masters_info.my_master_rank>=0) && (s == APP)) 								ios = APP_NODE;
   else if ((masters_info.my_master_rank>=0)  && (s == LOO))          	ios = LOO_NODE;
   iogb = (double)metrics_io_diff[ios].rchar/(double)(1024*1024) + (double)metrics_io_diff[ios].wchar/(double)(1024*1024);

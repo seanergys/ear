@@ -126,9 +126,6 @@ state_t gpu_lib_init(ctx_t *_c)
 
 state_t gpu_lib_model(ctx_t *_c,uint *model)
 {
-  ctx_gpu_t *c = (ctx_gpu_t *) _c->context;
-  state_t s;
-  state_t ret;
 
 	*model = the_gpu_model;
 	
@@ -159,7 +156,6 @@ state_t gpu_lib_count(uint *_dev_count)
 state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 {
 	state_t ret;
-	char gpu_ste[256];
 	int i, li = 0;
 	memset(node_gpu_data, 0 , node_dev_count*sizeof(gpu_t));
 	if (the_gpu_model == MODEL_DUMMY){
@@ -176,6 +172,7 @@ state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 		}
 	}
 #if SHOW_DEBUGS
+	char gpu_ste[256];
 	gpu_lib_data_tostr(data,gpu_ste,sizeof(gpu_ste));
 	debug("gpu data %s",gpu_ste);
 #endif

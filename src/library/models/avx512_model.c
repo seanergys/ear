@@ -43,10 +43,6 @@ static int valid_range(ulong from,ulong to)
 /* This function loads any information needed by the energy model */
 state_t model_init(char *etc,char *tmp,architecture_t *myarch)
 {
-  char coeff_file[128];
-  char coeff_default_file[128];
-  char coeff_file_fn[128];
-  int begin_pstate, end_pstate;
   int i, ref;
 
 	debug("Using avx512_model\n");
@@ -109,7 +105,7 @@ double proj_cpi(coefficient_t *coeff,signature_t *sign)
 double proj_time(coefficient_t *coeff,signature_t *sign,unsigned long freq_src,unsigned long freq_dst)
 {
 	debug("From %lu to %lu",freq_src,freq_dst);
-	double pcpi=proj_cpi(coeff,sign);
+	double pcpi = proj_cpi(coeff,sign);
 	debug("((time %lf new_cpi %lf) / orig_cpi %lf) * (freq src %lu / freq_dst %lu)",sign->time,pcpi,sign->CPI,freq_src,freq_dst);
 	return ((sign->time * pcpi) / sign->CPI) * ((double)freq_src / (double)freq_dst);
 	
@@ -117,40 +113,39 @@ double proj_time(coefficient_t *coeff,signature_t *sign,unsigned long freq_src,u
 
 state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
 {
-	state_t st=EAR_SUCCESS;
-	double ctime,time_nosimd,time_avx2=0,time_avx512=0,perc_avx512=0,perc_avx2=0;
+	state_t st = EAR_SUCCESS;
+	double ctime,time_nosimd,time_avx512 = 0,perc_avx512 = 0;
 	coefficient_t *coeff,*avx512_coeffs;
-	unsigned long nominal;
 	ulong pdest;
 	if (from == to ){
 		*ptime = sign->time;
 		return EAR_SUCCESS;
 	}
 	if ((basic_model_init) && (valid_range(from,to))){
-		coeff=&coefficients[from][to];
+		coeff = &coefficients[from][to];
 		if (coeff->available){
-			time_nosimd=proj_time(coeff,sign,coeff->pstate_ref,coeff->pstate);
-      perc_avx512=avx512_vpi(sign);
+			time_nosimd = proj_time(coeff,sign,coeff->pstate_ref,coeff->pstate);
+      perc_avx512 = avx512_vpi(sign);
 			//debug("Ptime from %lu to %lu : AVX 512: from pstate %lu perc = %.2f",from,to,(from > to)?avx512_pstate:1,perc_avx512);
       if ((to < avx512_pstate) && (perc_avx512 > 0.0)){
 					/* from > to means from lower cpufreq to high cpufreq */
 					if (from > to) pdest = avx512_pstate;
 					else pdest = 1;
-					unsigned long nominal=frequency_pstate_to_freq(pdest);
-					avx512_coeffs=&coefficients[from][pdest];
-          time_avx512=proj_time(avx512_coeffs,sign,coeff->pstate_ref,nominal);
+					unsigned long nominal = frequency_pstate_to_freq(pdest);
+					avx512_coeffs = &coefficients[from][pdest];
+          time_avx512 = proj_time(avx512_coeffs,sign,coeff->pstate_ref,nominal);
       }else{
 				perc_avx512 = 0;
 			}
-			ctime=time_nosimd*(1-perc_avx512)+time_avx512*perc_avx512;
-			*ptime=ctime;
+			ctime = time_nosimd*(1-perc_avx512)+time_avx512*perc_avx512;
+			*ptime = ctime;
 			debug("time projection from %lu to %lu time_nosimd %lf time avx512 %lf perc_avx512 %lf TIME %lf",from,to,
 				time_nosimd,time_avx512,perc_avx512,ctime);
 		}else{
-			*ptime=0;
-			st=EAR_ERROR;
+			*ptime = 0;
+			st = EAR_ERROR;
 		}
-	}else st=EAR_ERROR;
+	}else st = EAR_ERROR;
 	return st;
 }
 
@@ -167,8 +162,8 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 {
 	state_t st=EAR_SUCCESS;
 	coefficient_t *coeff,*avx512_coeffs;
-	double power_nosimd,power_avx2=0,power_avx512=0,cpower;
-	double perc_avx512=0,perc_avx2=0;
+	double power_nosimd,power_avx512=0,cpower;
+	double perc_avx512=0;
 	ulong pdest;
   debug("projct power init %d valid %d",basic_model_init,valid_range(from,to));
 	if (from == to){

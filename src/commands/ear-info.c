@@ -27,8 +27,7 @@
 int main(int argc,char *argv[])
 {
 	cluster_conf_t my_cluster;
-	my_node_conf_t *my_node_conf;
-	char nodename[256], ver[128];
+	char ver[128];
 	char ear_path[256];
 	if (get_ear_conf_path(ear_path)==EAR_ERROR){
 			printf("Error getting ear.conf path, load the ear module\n");

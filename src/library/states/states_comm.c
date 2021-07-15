@@ -45,6 +45,8 @@ extern float ratio_PPN;
 extern uint total_mpi;
 extern uint using_verb_files;
 
+static void debug_loop_signature(char *title, signature_t *loop);
+
 void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,char *nname,int iterations,ulong prevf,ulong new_freq,char *mode)
 {
     char io_info[256];
