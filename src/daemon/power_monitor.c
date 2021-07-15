@@ -977,7 +977,7 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	ulong jid, mpi,sid;
 	ulong time_consumed;
 	uint usedb,useeardbd;
-	double maxpower, minpower, RAPL, corrected_power,pckp,dramp,gpup;;
+	double maxpower, minpower, RAPL, corrected_power,pckp,dramp;
 	usedb=my_cluster_conf.eard.use_mysql;
 	useeardbd=my_cluster_conf.eard.use_eardbd;
 	if (ccontext >= 0) {
@@ -999,6 +999,7 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
   dramp=accum_dram_power(my_current_power);
   pckp=accum_cpu_power(my_current_power);
   #if USE_GPUS
+  double gpup;
   gpup=accum_gpu_power(my_current_power);
   verbose(VNODEPMON, "ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
       jid, mpi, my_current_power->avg_dc,pckp,dramp,gpup, maxpower, minpower);

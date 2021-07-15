@@ -615,16 +615,18 @@ void pmgt_set_pc_mode(pwr_mgt_t *phandler,uint mode)
 
 void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 {
-    float pnode,pcpu,pdram,pgpu = 0.0;
     int i;
+#if SHOW_DEBUGS
+    float pnode,pcpu,pdram,pgpu = 0.0;
     memcpy(&pdist_per_domain,pdomain,sizeof(dom_power_t));
     pnode=(float)(pdomain->platform-pdomain->gpu)/(float)pdomain->platform;
     pcpu=(float)(pdomain->cpu+pdomain->dram)/(float)pdomain->platform;
     pdram=(float)(pdomain->dram)/(float)pdomain->platform;
     #if USE_GPUS
     pgpu=(float)(pdomain->gpu)/(float)pdomain->platform;
-    #endif
     debug("[NODE-GPU %f CPU %f DRAM %f GPU %f][NODE-GPU %f CPU %f DRAM %f GPU %f]",pnode,pcpu,pdram,pgpu,pdomains[DOMAIN_NODE],pdomains[DOMAIN_CPU],pdomains[DOMAIN_DRAM],pdomains[DOMAIN_GPU]);
+    #endif
+#endif
     if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) return;
     if (pdomain->platform > pmgt_limit){
         verbose(1,"%s Warning! we are over the limit: Limit %u Power %u%s",COL_RED,pmgt_limit,pdomain->platform,COL_CLR);

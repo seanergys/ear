@@ -64,8 +64,10 @@ pthread_t app_eard_api_th;
 #endif
 
 static ehandler_t eard_handler_energy,handler_energy;
+#if USE_GPUS
 static ctx_t eard_main_gpu_ctx;
 static uint eard_gpu_initialized=0;
+#endif
 static ulong node_energy_datasize;
 static edata_t node_energy_data;
 unsigned int power_mon_freq = POWERMON_FREQ;
