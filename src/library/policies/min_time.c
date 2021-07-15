@@ -456,16 +456,16 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             if (!imc_set_by_hw){
                 /*  Fix the imc to the first selected by hardware */
                 for (sid=0; sid < imc_devices; sid++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ps_nothing; 
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_pstate; 
                 }
             }
             else {
                 for (sid=0; sid < imc_devices; sid++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid];
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
                 }
             }
             for (sid=0; sid < imc_devices; sid++){
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_min_pstate[sid];
+                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
             }
             sid = 0;
             verbose_master(2, "%sIMC freq selection%s %lu-%lu", COL_GRE, COL_CLR,
