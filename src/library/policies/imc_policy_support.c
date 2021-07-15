@@ -71,18 +71,14 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
     double metric,metric_ref,metric2; // ,metric2_min,metric2_ref;
     double CPI;
     double metric_max,metric_min;
-    double metric_var,power_var;
-    int i;
-    ull tflops = 0;
-    ull cflops = 0;
-    double tflopss,cflopss;
+		#if SHOW_DEBUGS
+    double metric_var, power_var;
+		#endif
     uint ref_pstate;
 
     ref_pstate = ref_cpu_pstate;
     debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
 
-    double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
-    power_var = metric_diff(power_ref, sig->DC_power, 0); // (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power
     // - sig->DC_power)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
 
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
@@ -90,9 +86,13 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         metric_max = metric_ref * (1 + penalty);
         metric = sig->time;
         // metric_var = (metric-metric_ref)/metric_ref;
+				#if SHOW_DEBUGS
+    		double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
+    		power_var = metric_diff(power_ref, sig->DC_power, 0); // (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power
         metric_var = metric_diff(metric_ref, metric, 1);
         debug("Using time as reference : Current %.3lf Ref %3.lf  Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
                 metric,metric_ref,metric_max,(power_var-metric_var)*100,power_var,metric_var);
+				#endif
         return (metric > metric_max);
     }else{
         /* We were using ref_pstate = min_pstate */
@@ -102,8 +102,10 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
         metric_max  = CPI + CPI*penalty;
+				#if SHOW_DEBUGS
         debug("Using GBS&CPI as reference : Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Limits (%.2lf,%.2lf)",
                 metric,metric2,metric_ref,CPI,metric_min,metric_max);
+				#endif
         return ((metric < metric_min) || (metric2>metric_max));
     }
 }
@@ -112,13 +114,8 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
         uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain) {
     double metric,metric_ref,metric2;
     double CPI;
-    double metric_max, metric_min, metric_gain, metric_gain_2;
+    double metric_gain, metric_gain_2;
     double imc_gain;
-    double metric_var,power_var;
-    int i;
-    ull tflops = 0;
-    ull cflops = 0;
-    double tflopss, cflopss;
     uint ref_pstate;
 		ulong ref_imc_freq;
 		pstate_t ps;
@@ -126,8 +123,6 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     ref_pstate = ref_cpu_pstate;
     debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u", cpu_pstate, my_imc_pstate, ref_pstate, ref_imc_pstate);
 
-    double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
-    power_var = metric_diff(power_ref, sig->DC_power, 0);
 
 		// We get the normalized imc frequency that corresponds with the avg imc freq
 		avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
@@ -166,7 +161,6 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint m
 {
     int i;
     ullong tfops = 0;
-    float flops = 0;
     my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].time = s->time;
     my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].power = s->DC_power;
     my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].GBS = s->GBS;
@@ -175,12 +169,15 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint m
     my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].cycles = s->cycles;
     memcpy(my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     for (i=0;i<FLOPS_EVENTS;i++) tfops += s->FLOPS[i];
+		#if SHOW_DEBUGS
+    float flops = 0;
     flops = (float)tfops/(s->time*1000000000.0);
     debug("IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].time,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].power,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].GBS,s->instructions/(s->time*1000000000.0),
             flops);
+		#endif
 }
 
 ulong select_imc_freq(ulong max,ulong min,float p)
