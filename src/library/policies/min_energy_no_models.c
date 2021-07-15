@@ -114,15 +114,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 {
     ulong *new_freq=freqs->cpu_freq;
     signature_t *my_app;
-    int i,min_pstate;
-    unsigned int ref,try_next;
-    double power_proj,time_proj;
 		double max_penalty,time_max;
-    double power_ref,time_ref,time_current;
-    ulong best_freq,best_pstate,freq_ref;
 		ulong curr_freq;
 		ulong curr_pstate,def_pstate,def_freq,prev_pstate;
-		state_t st;
+		double time_ref;
     my_app=sig;
 
 		*ready=EAR_POLICY_TRY_AGAIN;
@@ -130,8 +125,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 		if (c==NULL) return EAR_ERROR;
 		if (c->app==NULL) return EAR_ERROR;
 
-    if (c->use_turbo) min_pstate=0;
-    else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
     // This is the frequency at which we were running
 	curr_freq=*(c->ear_frequency);

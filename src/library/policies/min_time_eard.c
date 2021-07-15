@@ -45,7 +45,7 @@ state_t policy_set_risk(policy_conf_t *ref,policy_conf_t *current,risk_t risk_le
   debug("min_time , risk set to %lu",(unsigned long)risk_level);
 	debug("current conf %lf def_pstate %u max_freq %lu",ref->settings[0],ref->p_state,mfreq);
   int risk1,risk2,panic;
-	unsigned long max_pstate,def_pstate,f;
+	unsigned long max_pstate,f;
   risk1=is_risk_set(risk_level,WARNING1);
   risk2=is_risk_set(risk_level,WARNING2);
   panic=is_risk_set(risk_level,PANIC);

@@ -36,7 +36,6 @@
 #include <library/common/verbose_lib.h>
 
 
-static uint last_pc=0;
 extern uint gpu_initialized;
 extern uint cpu_ready, gpu_ready, gidle;
 
@@ -88,8 +87,7 @@ state_t policy_end(polctx_t *c)
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
 	ulong *new_freq=freqs->cpu_freq;
-	ulong eff_f,f;
-	int i;
+	ulong f;
 	
 	*ready=EAR_POLICY_READY;
 	f=DEF_FREQ(c->app->def_freq);
@@ -104,7 +102,7 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
    	read_diff_node_mpi_type_info(lib_shared_region,sig_shared_region,my_node_mpi_types_calls,last_node_mpi_types_calls);
    	verbose_mpi_types(2,my_node_mpi_types_calls);
    	read_diff_node_mpi_data(lib_shared_region,sig_shared_region,my_node_mpi_calls,last_node_mpi_calls);
-   	for (i=0;i<lib_shared_region->num_processes;i++) verbose_mpi_data(3,&my_node_mpi_calls[i]);
+   	for (uint i=0;i<lib_shared_region->num_processes;i++) verbose_mpi_data(3,&my_node_mpi_calls[i]);
   }
 
 	
@@ -112,9 +110,6 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 }
 state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *ok)
 {
-	ulong eff_f;
-	uint power_status,next_status;
-	int i;
 	*ok = 1;
   if ((c==NULL) || (curr_sig==NULL) || (prev_sig==NULL)) return EAR_ERROR;
 
@@ -161,6 +156,5 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 
 state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
 {
-	int i;
 	return EAR_SUCCESS;
 }

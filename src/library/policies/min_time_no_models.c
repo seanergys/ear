@@ -116,107 +116,100 @@ return EAR_SUCCESS;
 state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
     ulong *new_freq = freqs->cpu_freq;
-    signature_t *my_app;
-    int i,min_pstate;
-    unsigned int ref,try_next;
-    double freq_gain,perf_gain,min_eff_gain;
-    double power_proj,time_proj;
-    double power_ref,time_ref,time_current;
-    ulong best_freq,best_pstate,freq_ref;
-ulong curr_freq;
-ulong curr_pstate,def_pstate,def_freq;
-state_t st;
-    my_app=sig;
+    int min_pstate;
+    double min_eff_gain;
+		ulong curr_freq;
+		ulong curr_pstate,def_pstate,def_freq;
 
-*ready=EAR_POLICY_TRY_AGAIN;
+		*ready=EAR_POLICY_TRY_AGAIN;
 
-if (c==NULL) return EAR_ERROR;
-if (c->app==NULL) return EAR_ERROR;
+		if (c==NULL) return EAR_ERROR;
+		if (c->app==NULL) return EAR_ERROR;
 
-    if (c->use_turbo) min_pstate=0;
-    else min_pstate=frequency_closest_pstate(c->app->max_freq);
+		if (c->use_turbo) min_pstate=0;
+		else min_pstate=frequency_closest_pstate(c->app->max_freq);
 
-    // This is the frequency at which we were running
-curr_freq=*(c->ear_frequency);
-    curr_pstate = frequency_closest_pstate(curr_freq);
+		// This is the frequency at which we were running
+		curr_freq=*(c->ear_frequency);
+		curr_pstate = frequency_closest_pstate(curr_freq);
 
-// New signature ready
-sig_ready[curr_pstate]=1;
-signature_copy(&sig_list[curr_pstate], sig);
+		// New signature ready
+		sig_ready[curr_pstate]=1;
+		signature_copy(&sig_list[curr_pstate], sig);
 
 
-// Default values
+		// Default values
 
-min_eff_gain=c->app->settings[0];
-def_freq=DEF_FREQ(c->app->def_freq);
-def_pstate=frequency_closest_pstate(def_freq);
-
-
-// ref=1 is nominal 0=turbo, we are not using it
+		min_eff_gain=c->app->settings[0];
+		def_freq=DEF_FREQ(c->app->def_freq);
+		def_pstate=frequency_closest_pstate(def_freq);
 
 
-    ulong prev_pstate,next_pstate;
-    signature_t *prev_sig;
-    /* We must not use models , we will check one by one*/
-    /* If we are not running at default freq, we must check if we must follow */
-    if (sig_ready[def_pstate]==0){
-    *ready=EAR_POLICY_TRY_AGAIN;
-    *new_freq=def_freq;
-    } else{
-    /* This is the normal case */
-      if (curr_freq != def_freq){
-      prev_pstate=curr_pstate+1;
-       prev_sig=&sig_list[prev_pstate];
-       if (is_better_min_time(sig,prev_sig,min_eff_gain)){
-       go_next_mt(curr_pstate,ready,freqs,min_pstate);
-        }else{
-        *ready=EAR_POLICY_READY;
-         *new_freq=frequency_pstate_to_freq(prev_pstate);
-        }
-}else{
-      go_next_mt(curr_pstate,ready,freqs,min_pstate);
-      }
-    }
-return EAR_SUCCESS;
+		// ref=1 is nominal 0=turbo, we are not using it
+
+
+		ulong prev_pstate;
+		signature_t *prev_sig;
+		/* We must not use models , we will check one by one*/
+		/* If we are not running at default freq, we must check if we must follow */
+		if (sig_ready[def_pstate]==0){
+						*ready=EAR_POLICY_TRY_AGAIN;
+						*new_freq=def_freq;
+		} else{
+						/* This is the normal case */
+						if (curr_freq != def_freq){
+										prev_pstate=curr_pstate+1;
+										prev_sig=&sig_list[prev_pstate];
+										if (is_better_min_time(sig,prev_sig,min_eff_gain)){
+														go_next_mt(curr_pstate,ready,freqs,min_pstate);
+										}else{
+														*ready=EAR_POLICY_READY;
+														*new_freq=frequency_pstate_to_freq(prev_pstate);
+										}
+						}else{
+										go_next_mt(curr_pstate,ready,freqs,min_pstate);
+						}
+		}
+		return EAR_SUCCESS;
 }
 
 
 state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
 {
 
-state_t st=EAR_SUCCESS;
+				state_t st=EAR_SUCCESS;
 
-if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
+				if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
 
-if (curr_sig->def_f==last_sig->def_f) *ok=1;
+				if (curr_sig->def_f==last_sig->def_f) *ok=1;
 
-// Check that efficiency is enough
-if (curr_sig->time < last_sig->time) *ok=1;
+				// Check that efficiency is enough
+				if (curr_sig->time < last_sig->time) *ok=1;
 
-// If time is similar and it was same freq it is ok
-if (equal_with_th(curr_sig->time , last_sig->time,0.1) && (curr_sig->def_f == last_sig->def_f)) *ok=1;
+				// If time is similar and it was same freq it is ok
+				if (equal_with_th(curr_sig->time , last_sig->time,0.1) && (curr_sig->def_f == last_sig->def_f)) *ok=1;
 
-// If we run at a higher freq but we are slower, we are not ok
-if ((curr_sig->time > last_sig->time) && (curr_sig->def_f > last_sig->def_f)) *ok=0;
+				// If we run at a higher freq but we are slower, we are not ok
+				if ((curr_sig->time > last_sig->time) && (curr_sig->def_f > last_sig->def_f)) *ok=0;
 
-else *ok=0;
+				else *ok=0;
 
-return st;
+				return st;
 
 }
 
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f)
 {
-if ((c!=NULL) && (c->app!=NULL)){
-    // Just in case the bestPstate was the frequency at which the application was running
-        f->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
-    }
-return EAR_SUCCESS;
+				if ((c!=NULL) && (c->app!=NULL)){
+								// Just in case the bestPstate was the frequency at which the application was running
+								f->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
+				}
+				return EAR_SUCCESS;
 }
 
 state_t policy_max_tries(polctx_t *c,int *intents)
 {
-  *intents=2;
-  return EAR_SUCCESS;
+				*intents=2;
+				return EAR_SUCCESS;
 }
 

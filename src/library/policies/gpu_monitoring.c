@@ -42,7 +42,6 @@ state_t policy_init(polctx_t *c)
   int i,j;
   ulong g_freq = 0;
   char *gpu_freq=getenv(SCHED_EAR_GPU_DEF_FREQ);
-  state_t ret;
   if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
     g_freq = atol(gpu_freq);
   }
@@ -67,7 +66,6 @@ state_t policy_init(polctx_t *c)
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
 {
 	ulong *new_freq=freqs->gpu_freq;
-	ulong eff_f,f;
 	uint i;
 	#if USE_GPUS
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
@@ -85,7 +83,6 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 }
 state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok)
 {
-	ulong eff_f;
 	uint i;
 	#if USE_GPUS
 	debug("num_gpus %d",my_sig->gpu_sig.num_gpus);
