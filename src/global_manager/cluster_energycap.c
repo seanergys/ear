@@ -40,7 +40,8 @@ int compare_node_info_lower_first(const void *a, const void *b)
 	if (nb->idle) return -1;
 	/* Distance is based on the pstate distance with the max_freq*/	
 	if (na->dist_pstate== nb->dist_pstate) return 0;
-	if (na->dist_pstate<nb->dist_pstate) 1;
+	// if (na->dist_pstate<nb->dist_pstate) 1;
+	if (na->dist_pstate<nb->dist_pstate) return 1;
 	return -1;
 }
 
