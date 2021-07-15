@@ -1,14 +1,9 @@
 # Features
-# This feature activates the MPI EARL version or non-MPI
-FEAT_MPI_API = 1
-# This feature is automatically generated based on the CPU version detected
-FEAT_AVX512  = @FEAT_AVX512@
-# This feature extend the set of files installed
-FEAT_RESEARCH = 0
-# This feature enables or not the installation of GPU optimization policies. If 0, only monitoring is supported
-FEAT_GPU_OPT  = 1
-# This feature disables the utilization of virtual PSTATES in AMD and selects OS cpufreq
-FEAT_AMD_OSCPUFREQ = 0
+FEAT_MPI_API  = 1      # Compiles the MPI EAR library version or non-MPI.
+FEAT_AVX512   = @FEAT_AVX512@      # This is automatically generated based on the CPU version detected.
+FEAT_RESEARCH = 0      # Extend the set of files installed.
+FEAT_GPU_OPT  = 1      # Enables the installation of GPU optimization policies. If 0, only monitoring is supported.
+FEAT_AMD_OSCPUFREQ = 0 # Disables the utilization of virtual PSTATES in AMD and selects OS CPUFreq.
 
 # Compilers
 CC           = @CC@
@@ -29,10 +24,6 @@ DB_BASE      = @DB_DIR@
 DB_CFLAGS    = @DB_CPPFLAGS@
 DB_LDFLAGS   = @DB_LDFLAGS@ @DB_LIBS@
 CUDA_BASE    = @CUDA_DIR@
-# Papi is disabled by default.
-#PAPI_BASE    = @PAPI_DIR@
-#PAPI_CFLAGS  = @PAPI_CPPFLAGS@
-#PAPI_LDFLAGS = @PAPI_LDFLAGS@ @PAPI_LIBS@
 
 # Directories
 ROOTDIR      = $(shell pwd)
@@ -45,8 +36,7 @@ DOCDIR       = @docdir@
 # Installation
 CHOWN_USR    = @USER@
 CHOWN_GRP    = @GROUP@
-## Define SYN_TEST for external synthetic tests compilation
-#CONSTANTS    = -DSEC_KEY=10001 -DSYN_TEST
+#CONSTANTS   = -DSEC_KEY=10001 -DSYN_TEST # Define SYN_TEST for external synthetic tests compilation
 CONSTANTS    = -DSEC_KEY=10001
 REPLACE      =
 
