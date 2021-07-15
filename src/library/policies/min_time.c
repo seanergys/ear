@@ -540,7 +540,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1;
                     }
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ps_nothing;
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                 }
                 sid = 0;
                 verbose_master(2,"Selecting %lu - %lu%s",
@@ -559,7 +559,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 for (sid = 0; i < imc_devices; i++){
                     freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - 1,
                             imc_min_pstate[sid]);
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ps_nothing;
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                 }
                 sid = 0;
                 verbose_master(2, "%sTrying an upper IMC freq %lu-%lu%s", COL_GRE,
