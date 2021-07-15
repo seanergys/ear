@@ -36,6 +36,7 @@ state_t mpi_call_get_types(mpi_calls_types_t *dst,shsignature_t * src,int i);
 
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t);
 state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i);
+/* Per-Node Executes the read-diff for mpi statistics on mpi calls types */
 state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,mpi_calls_types_t *node_mpi_calls,mpi_calls_types_t *last_node);
 
 void verbose_mpi_types(int vl,mpi_calls_types_t *t);
@@ -43,6 +44,8 @@ void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t);
 void verbose_mpi_data(int vl,mpi_information_t *mc);
 
 state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls);
+
+/* Per-Node Executes the read-diff for mpi statistics */
 state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls,mpi_information_t *last_node);
 
 /*  Computes the the max and min process with perc mpi calls from percs_mpi */
@@ -73,6 +76,8 @@ state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump);
 state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd);
 state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag);
 state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
+float compute_mpi_in_period(mpi_information_t *dst);
+
 
 state_t is_blocking_busy_waiting(uint *block_type);
 

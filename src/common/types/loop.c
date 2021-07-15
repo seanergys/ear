@@ -28,6 +28,7 @@
 #include <fcntl.h>
 
 #include <common/config.h>
+#include <common/system/time.h>
 #include <common/types/loop.h>
 #include <common/states.h>
 
@@ -128,8 +129,8 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
         return EAR_ERROR;
     }
 
-    char *HEADER = "NODENAME;USERNAME;JOB_ID;APPNAME;POLICY;POLICY_TH;AVG.FREQ;DEF.FREQ;" \
-        "TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
+    char *HEADER = "NODENAME;USERNAME;JOB_ID;APPNAME;POLICY;POLICY_TH;AVG.CPUFREQ;AVG.IMC.FREQ;DEF.FREQ;" \
+        "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
         "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
         "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
 	
@@ -169,16 +170,34 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
 	return EAR_SUCCESS;
 }
 
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts,ullong currtime);
 int append_loop_text_file_no_job(char *path, loop_t *loop)
+{
+	return append_loop_text_file_no_job_int(path,loop,0,0);
+}
+
+int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime)
+{
+	return append_loop_text_file_no_job_int(path,loop,1, currtime);
+}
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime)
 {
     if (path == NULL) {
         return EAR_ERROR;
     }
 
-    char *HEADER = "NODENAME;AVG.FREQ;DEF.FREQ;" \
-        "TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
+    char *HEADER_NOTS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
+        "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
         "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
         "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
+    char *HEADER_TS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
+        "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
+        "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
+        "DP_512;FIRST_EVENT;LEVEL;SIZE;ITERATIONS;TIME";
+		char *HEADER;
+
+		if (ts) HEADER = HEADER_TS;
+		else    HEADER = HEADER_NOTS;
 	
     int fd, ret;
 
@@ -203,10 +222,16 @@ int append_loop_text_file_no_job(char *path, loop_t *loop)
 	}
 	assert(loop!=NULL);
 	assert(loop->node_id!=NULL);
+		dprintf(fd,"%lu;%lu;",loop->jid,loop->step_id);
     dprintf(fd, "%s;", loop->node_id);
     signature_print_fd(fd, &loop->signature,1);
     print_loop_id_fd(fd, &loop->id);
-    dprintf(fd, "%lu\n", loop->total_iterations);
+		if (ts){
+    	dprintf(fd, "%lu;%llu", loop->total_iterations, currtime);
+		}else{
+    	dprintf(fd, "%lu", loop->total_iterations);
+		}
+	dprintf(fd,"\n");
 
 	close(fd);
 

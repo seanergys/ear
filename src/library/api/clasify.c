@@ -26,7 +26,7 @@
 #include <library/states/states_comm.h>
 
 
-
+#if 0
 state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided)
 {
 	*app_state = APP_COMP_BOUND;
@@ -37,6 +37,41 @@ state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint d
 	}else if (mpisec > MPI_TH){
 		*app_state = APP_MPI_BOUND;
 	}
+	if (mpisec < MIN_MPI_TH){
+		*ear_guided = TIME_GUIDED;
+	}
+	return EAR_SUCCESS;
+}
+#endif
+
+state_t classify(uint iobound,uint mpibound, uint *app_state)
+{
+	if (iobound && !mpibound){
+		*app_state = APP_IO_BOUND;
+	}else if (mpibound){
+		*app_state = APP_MPI_BOUND;
+	}
+	return EAR_SUCCESS;
+}
+
+state_t is_io_bound(float rwsec,uint *iobound)
+{
+	*iobound = 0;
+	if (rwsec > IO_TH) *iobound = 1;
+	return EAR_SUCCESS;
+	
+}
+
+state_t is_network_bound(float mpisec,uint *mpibound)
+{
+	if (mpisec > MPI_TH){
+		*mpibound = 1;
+	}
+	return EAR_SUCCESS;
+}
+
+state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
+{
 	if (mpisec < MIN_MPI_TH){
 		*ear_guided = TIME_GUIDED;
 	}

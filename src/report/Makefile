@@ -7,6 +7,7 @@ repo_OBJS = \
 repo_BINS = \
 	eard.so \
 	csv.so \
+	csv_ts.so \
 	plug_dummy.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports

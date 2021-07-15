@@ -50,11 +50,17 @@
 
 //#define FLOPS_CPU_BOUND 100.0
 
-state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided);
+//state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided);
+state_t classify(uint iobound,uint mibound, uint *app_state);
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy);
 state_t is_cpu_bound(signature_t *sig,uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint *mbound);
 state_t is_gpu_idle(signature_t *sig,uint *gidle);
+state_t is_io_bound(float rwsec,uint *iobound);
+state_t is_network_bound(float mpisec,uint *mpibound);
+
+state_t must_switch_to_time_guide(float mpisec, uint *ear_guided);
+
 
 
 #endif

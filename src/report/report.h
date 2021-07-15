@@ -50,6 +50,8 @@ typedef struct report_ops_s
 
 state_t report_load(const char *install_path, const char *libs);
 
+state_t report_init();
+state_t report_dispose();
 state_t report_applications(application_t *apps, uint count);
 
 state_t report_loops(loop_t *loops, uint count);

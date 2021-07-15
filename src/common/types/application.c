@@ -139,13 +139,13 @@ int append_application_text_file(char *path, application_t *app, char is_extende
 	if (is_extended) {
 		#if USE_GPUS
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;IO_MBS;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;IO_MBS;P.MPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS;L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
         "DP_128;DP_256;DP_512;GPU1_POWER;GPU1_FREQ;GPU1_MEM_FREQ;GPU1_UTIL;GPU1_MEM_UTIL;GPU2_POWER;"\
         "GPU2_FREQ;GPU2_MEM_FREQ;GPU2_UTIL;GPU2_MEM_UTIL";
 		#else
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS;L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
         "DP_128;DP_256;DP_512";
 		#endif
@@ -153,12 +153,12 @@ int append_application_text_file(char *path, application_t *app, char is_extende
 	else {
 		#if USE_GPUS
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS;GPU1_POWER;GPU1_FREQ;GPU1_MEM_FREQ;GPU1_UTIL;GPU1_MEM_UTIL;GPU2_POWER;"\
         "GPU2_FREQ;GPU2_MEM_FREQ;GPU2_UTIL;GPU2_MEM_UTIL";
 		#else
 			HEADER = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;"\
-        "POLICY_TH;AVG.CPUFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
+        "POLICY_TH;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;"\
         "INSTRUCTIONS;GFLOPS";
 		#endif
 	}
@@ -316,6 +316,7 @@ void verbose_gpu_app(uint vl,application_t *myapp)
 void verbose_application_data(uint vl,application_t *app)
 {
 	float avg_f = ((double) app->signature.avg_f) / 1000000.0;
+	float avg_imc_f = ((double) app->signature.avg_imc_f) / 1000000.0;
 	float def_f = ((double) app->job.def_f) / 1000000.0;
 	float pavg_f = ((double) app->power_sig.avg_f) / 1000000.0;
 	float pdef_f = ((double) app->power_sig.def_f) / 1000000.0;
@@ -336,16 +337,17 @@ void verbose_application_data(uint vl,application_t *app)
 	verbose(vl,"-- App id: %s, user id: %s, job id: %lu.%lu", app->job.app_id, app->job.user_id, app->job.id,app->job.step_id);
 	verbose(vl,"   procs: %lu  acc %s\n", app->job.procs,app->job.user_acc);
 	verbose(vl,"   start time %s end time %s start mpi %s end mpi %s\n",st,et,stmpi,etmpi);
-	verbose(vl,"-- power_sig: E. time: %0.3lf (s), nom freq: %0.3f (MHz), avg freq: %0.3f (MHz), ", app->power_sig.time, pdef_f, pavg_f);
+	verbose(vl,"-- power_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz) ", app->power_sig.time, pdef_f, pavg_f);
 	verbose(vl,"DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n", app->power_sig.DC_power, app->power_sig.DRAM_power,
 			app->power_sig.PCK_power);
 	verbose(vl,"\tmax_DC_power/min_DC_power: %0.3lf/%0.3lf (W)\n",app->power_sig.max_DC_power,app->power_sig.min_DC_power);
 	if (app->is_mpi){
 
-		verbose(vl,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.3f (MHz), avg freq: %0.3f (MHz), ", app->signature.time, def_f, avg_f);
+		verbose(vl,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
+		verbose(vl,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.perc_MPI);
 		verbose(vl,"   procs: %lu (s)\n", app->job.procs);
-		verbose(vl,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, ", app->signature.CPI, app->signature.TPI,
-				app->signature.GBS, app->signature.Gflops);
+		verbose(vl,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)", app->signature.CPI, app->signature.TPI,
+				app->signature.GBS, app->signature.Gflops,app->signature.IO_MBS);
 		verbose(vl,"  DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n", app->signature.DC_power, app->signature.DRAM_power,
 				app->signature.PCK_power);
 	}
@@ -360,6 +362,7 @@ void report_application_data(application_t *app)
 void report_mpi_application_data(application_t *app)
 {
 	float avg_f = ((double) app->signature.avg_f) / 1000000.0;
+	float avg_imc_f = ((double) app->signature.avg_imc_f) / 1000000.0;
 	float def_f = ((double) app->job.def_f) / 1000000.0;
 	//float pavg_f = ((double) app->power_sig.avg_f) / 1000000.0;
 	//float pdef_f = ((double) app->power_sig.def_f) / 1000000.0;
@@ -369,10 +372,11 @@ void report_mpi_application_data(application_t *app)
 	verbose(VTYPE,"   acc %s\n", app->job.user_acc);
 	if (app->is_mpi){
 
-		verbose(VTYPE,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.3f (MHz), avg freq: %0.3f (MHz), ", app->signature.time, def_f, avg_f);
+		verbose(VTYPE,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
+		verbose(VTYPE,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.perc_MPI);
 		verbose(VTYPE,"   tasks: %lu \n", app->job.procs);
-		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, ", app->signature.CPI, app->signature.TPI,
-				app->signature.GBS, app->signature.Gflops);
+		verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s) ", app->signature.CPI, app->signature.TPI,
+				app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS);
 		verbose(VTYPE,"  DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n", app->signature.DC_power, app->signature.DRAM_power,
 				app->signature.PCK_power,app->signature.Gflops/app->signature.DC_power);
 	}

@@ -36,6 +36,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
+#include <library/common/global_comm.h>
 #include <common/math_operations.h>
 
 
@@ -264,6 +265,13 @@ state_t mpi_call_new_phase(polctx_t *c)
     clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 #endif
     return EAR_SUCCESS;
+}
+
+float compute_mpi_in_period(mpi_information_t *dst)
+{
+	float mpis = dst[my_node_id].total_mpi_calls;
+	ullong tsec = dst[my_node_id].exec_time/1000000;
+	return mpis/(float)tsec;
 }
 
 static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current, mpi_calls_types_t *last)

@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,8 +96,8 @@ state_t msr_open(uint cpu)
 	if (counters[cpu] == 0) {
 		sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
 		fds[cpu] = open(msr_file_name, O_RDWR);
-		debug("msr open %d", fds[cpu]);
 	}
+	debug("msr open cpu[%d] = %d", cpu,fds[cpu]);
 	if (fds[cpu] < 0) {
 		if (errno == EACCES) {
 			return_unlock_msg(EAR_NO_PERMISSIONS, strerror(errno), &lock_cpu[cpu]);

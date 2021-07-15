@@ -67,10 +67,6 @@ typedef struct mini_sig
 #endif
 }ssig_t;
 
-typedef struct sig_ext{
-	ulong imc_freq;
-	io_data_t iod;
-}sig_ext_t;
 
 typedef struct signature
 {
@@ -79,6 +75,7 @@ typedef struct signature
     double PCK_power;
     double EDP;
     double GBS;
+    double IO_MBS;
     double TPI;
     double CPI;
     double Gflops;
@@ -90,11 +87,13 @@ typedef struct signature
     ull instructions;
     ull cycles;
     ulong avg_f;
+    ulong avg_imc_f;
     ulong def_f;
+    double perc_MPI;
     #if USE_GPUS
     gpu_signature_t gpu_sig;
     #endif
-		sig_ext_t *sig_ext;
+		void *sig_ext;
 } signature_t;
 
 

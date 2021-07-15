@@ -216,7 +216,7 @@ state_t share_my_mpi_summary(masters_info_t *mi,mpi_summary_t *my_data)
 	if (ishare_global_info(mi->masters_comm,(char *)my_data, sizeof(mpi_summary_t),(char *)mi->nodes_mpi_summary,sizeof(mpi_summary_t),&mpi_summary_req)!=EAR_SUCCESS){
 		verbose_master(2,"MR[%d]:Sending node sh_signature to other masters master_rank",mi->my_master_rank);
 	}else{
-		verbose_master(2,"Successfully sent mpi_stats");
+		verbose_master(3,"Successfully sent mpi_stats");
 		mpi_summary_pending = 1;
 	}
 #endif
