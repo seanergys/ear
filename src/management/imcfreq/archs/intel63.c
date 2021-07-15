@@ -207,7 +207,7 @@ static int read_required(uint *max_list, uint *min_list)
 		return 1;
 	}
 	for (i = 0; i < tp_static.cpu_count; ++i) {
-		if (max_list[i] == ps_nothing || max_list[i] == ps_nothing) {
+		if (max_list[i] == ps_nothing || min_list[i] == ps_nothing) {
 			return 1;
 		}
 	}
