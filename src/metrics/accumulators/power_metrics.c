@@ -61,6 +61,8 @@ static uint		 gpu_num;
 /*
  *
  */
+/** Computes the difference betwen two RAPL energy measurements */
+static rapl_data_t diff_RAPL_energy(rapl_data_t end,rapl_data_t init);
 
 static int pm_get_data_size_rapl()
 {
