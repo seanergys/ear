@@ -87,8 +87,6 @@ void report_periodic_power(int fd,power_data_t *my_power);
  *
  */
 
-/** Computes the difference betwen two RAPL energy measurements */
-static rapl_data_t diff_RAPL_energy(rapl_data_t end,rapl_data_t init);
 
 /*
  * Energy data

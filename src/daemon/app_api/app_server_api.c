@@ -419,9 +419,7 @@ static void ear_set_gpufreqlist(int fd_out,ulong *gpu_freq_list)
   app_recv_t data;
   state_t ret;
   ctx_t c;
-  uint gnum;
   
-  ulong * array;
 	debug("ear_set_gpufreqlist %lu",gpu_freq_list[0]);
   if ((ret = mgt_gpu_init(&c)) != EAR_SUCCESS){
     data.ret = ret;

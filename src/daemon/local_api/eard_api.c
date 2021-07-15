@@ -97,10 +97,10 @@ int my_write(int fd,char *buff,int size)
 #if USE_NON_BLOCKING_IO
   int ret;
   int tries=0;
-	struct daemon_req *req;
-	req=(struct daemon_req*)buff;
   uint to_send,sended=0;
   uint must_abort=0;
+
+
   to_send=size;
   do
   {
@@ -182,12 +182,13 @@ int eards_connected()
 int eards_connect(application_t *my_app)
 {
 	char nodename[256];
-	ulong ret,ack;
+	ulong ack;
 	struct daemon_req req;
 	int tries=0,connected=0;
-	int i;
 	int my_id;
 	int ret1;
+	uint i;
+
 	if (app_connected) return EAR_SUCCESS;
 
 	// These files connect EAR with EAR_COMM
@@ -727,7 +728,6 @@ unsigned long eards_get_freq_list(unsigned int num_cpus,unsigned long *freqlist)
 /* These are privileged functions */
 state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
 {
-  int i; 
   struct daemon_req req;
   if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
   req.req_service = READ_CPUFREQ;
@@ -751,7 +751,6 @@ state_t eards_imcfreq_data_count(uint *pack)
 {
 	struct daemon_req req;
 	size_t size;
-	int i;
 	
 	if (!app_connected) {
 		return_msg(EAR_ERROR, Generr.api_uninitialized);
@@ -774,7 +773,6 @@ state_t eards_imcfreq_data_count(uint *pack)
 
 state_t eards_imcfreq_read(imcfreq_t *ef,size_t size)
 {
-  int i;
   struct daemon_req req;
   if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
   req.req_service = UNC_READ;
