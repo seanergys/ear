@@ -15,15 +15,15 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 0
 
 #include <stdlib.h>
 #include <metrics/common/msr.h>
 #include <management/imcfreq/archs/intel63.h>
 
-#define U_MSR_UNCORE_RATIO_LIMIT	0x000620
-#define U_MSR_UNCORE_RL_MASK_MAX	0x00007F
-#define U_MSR_UNCORE_RL_MASK_MIN	0x007F00
+#define U_MSR_UNCORE_RATIO_LIMIT    0x000620
+#define U_MSR_UNCORE_RL_MASK_MAX    0x00007F
+#define U_MSR_UNCORE_RL_MASK_MIN    0x007F00
 #define HUNDRED_MHZ                 100000LLU
 
 static topology_t tp_static;
@@ -183,12 +183,12 @@ state_t get_current_list(pstate_t *max_list, pstate_t *min_list)
 		if (max_list != NULL) {	
 			max_list[i].idx = khz_to_idx(max_khz_aux);
 			max_list[i].khz = available_list[max_list[i].idx].khz;
-			debug("Read MAX IMCFREQ in SOCK%d of PS%u and %llu", i, max_list[i].idx, max_list[i].khz);
+			debug("DEV%d read MAX PS%u (%llu KHz)", i, max_list[i].idx, max_list[i].khz);
 		}
 		if (min_list != NULL) {
 			min_list[i].idx = khz_to_idx(min_khz_aux);
 			min_list[i].khz = available_list[min_list[i].idx].khz;
-			debug("Read MIN IMCFREQ in SOCK%d of PS%u and %llu", i, min_list[i].idx, min_list[i].khz);
+			debug("DEV%d read MIN PS%u (%llu KHz)", i, min_list[i].idx, min_list[i].khz);
 		}
 	}
 	return EAR_SUCCESS;
@@ -238,7 +238,9 @@ static state_t set_current_list(uint *max_list, uint *min_list)
 	}
 	for (i = 0; i < tp_static.cpu_count; ++i)
 	{
-		debug("PS_MAX %u - PS_MIN %u", max_list[i], min_list[i]);
+		debug("-- Device %d -------------------------------", i);
+		debug("Max/min target : %u/%u", max_list[i], min_list[i]);
+		debug("Max/min current: %u/%u", buffer_max[i].khz, buffer_min[i].khz);
 		// Valid ranks
 		if (max_list != NULL) max_valid = (max_list[i] < available_count);  
 		if (min_list != NULL) min_valid = (min_list[i] < available_count);  
@@ -256,8 +258,8 @@ static state_t set_current_list(uint *max_list, uint *min_list)
 		aux_max = aux_max / HUNDRED_MHZ;
 		aux_min = aux_min / HUNDRED_MHZ;
 		// Combining both values in the register
-		debug("writing %llu and %llu in CPU%d",
-			  aux_max, aux_min, tp_static.cpus[i].id);
+		debug("DEV%d write MAX %llu KHz", i, aux_max);
+		debug("DEV%d write MIN %llu KHz", i, aux_min);
 		set0 = (aux_min << 8) & U_MSR_UNCORE_RL_MASK_MIN;
 		set1 = (aux_max << 0) & U_MSR_UNCORE_RL_MASK_MAX;
 		set0 = set0 | set1;

@@ -943,13 +943,9 @@ int eard_gpu(int must_read)
 {
 	unsigned long comm_req = gpu_req;
 	unsigned long ack = 0;
-	unsigned int model=0;
-	unsigned int dev_count=0;
 	#if USE_GPUS
 	gpu_info_t *info;
 	gpu_info_t fake;
-	gpu_t *my_gpu;
-	state_t ret;
 
 	if (must_read) {
 		if (read(ear_fd_req[comm_req], &req, sizeof(req)) != sizeof(req))
