@@ -455,8 +455,7 @@ void set_pc_mode(uint mode)
 
 void set_app_req_freq(ulong *f)
 {
-    int i = 0;
-    debug("DVFS:Requested application freq[0] set to %lu",f[i]);
+    debug("DVFS:Requested application freq[0] set to %lu",f[0]);
     memcpy(c_req_f, f, sizeof(ulong)*MAX_CPUS_SUPPORTED);    
 }
 

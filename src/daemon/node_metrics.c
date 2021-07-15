@@ -114,7 +114,6 @@ int start_compute_node_metrics(nm_t *id,nm_data_t *nm)
 int end_compute_node_metrics(nm_t *id,nm_data_t *nm)
 {
 	state_t s;
-	int i;
 
 	if ((nm==NULL)|| (id==NULL) || (id->con!=NM_CONNECTED)){
 		debug("end_compute_node_metrics invalid argument");
@@ -134,7 +133,6 @@ int end_compute_node_metrics(nm_t *id,nm_data_t *nm)
 int diff_node_metrics(nm_t *id,nm_data_t *init,nm_data_t *end,nm_data_t *diff_nm)
 {
 	state_t s;
-	int i;
 
 	if ((init==NULL) || (end==NULL) || (diff_nm==NULL)){
 		debug("diff_node_metrics invalid argument");
@@ -174,7 +172,6 @@ int dispose_node_metrics(nm_t *id)
 int copy_node_metrics(nm_t *id, nm_data_t *dest, nm_data_t *src)
 {
 	state_t s;
-	int i;
 
 	if ((dest==NULL) || (src==NULL)){
 		debug("copy_node_metrics invalid argument");
@@ -211,9 +208,7 @@ int print_node_metrics(nm_t *id,nm_data_t *nm)
 
 int verbose_node_metrics(nm_t *id,nm_data_t *nm)
 {
-	ullong temp_total=0;
 	char msg[1024];
-	int i;
 
 	if ((nm==NULL) || (id==NULL) || (id->con!=NM_CONNECTED)){
 		debug("verbose_node_metrics invalid argument");

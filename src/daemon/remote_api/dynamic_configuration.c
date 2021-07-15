@@ -86,7 +86,7 @@ typedef struct eard_policy_symbols {
 } eard_polsym_t;
 
 static eard_polsym_t *polsyms_fun;
-static void    *polsyms_obj = NULL;
+//static void    *polsyms_obj = NULL;
 const int       polsyms_n = 1;
 const char     *polsyms_nam[] = {"policy_set_risk"};
 /* End new section */
@@ -417,9 +417,7 @@ int dyncon_filter_opt(powercap_opt_t *opt)
 void dyncon_power_management(int fd, request_t *command)
 {
     int event;
-	unsigned long limit, value;
-	status_t status;
-	unsigned long cpower;
+	unsigned long value;
     int id;
 	switch (command->req){
     case EAR_RC_RED_POWER:
