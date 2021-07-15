@@ -51,7 +51,6 @@ static ulong total_synchronizations = 0;
 static ulong total_sync_block = 0;
 static ulong time_sync_block = 0;
 static ulong max_sync_block = 0;
-static uint mpi_cases[3];
 
 float LB_TH = EAR_LB_TH;
 
@@ -148,7 +147,6 @@ state_t mpi_app_end(polctx_t *c)
 static uint in_mpi = 0;
 state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 {
-    mpi_call nbcall_type;
     if (is_mpi_enabled()){
         assert(in_mpi == 0);
         in_mpi = 1;
@@ -313,7 +311,10 @@ state_t mpi_call_get_types(mpi_calls_types_t *dst,shsignature_t * src,int i)
             src_types = &sig_shared_region[i].mpi_types_info;
             src_stat  = &sig_shared_region[i].mpi_info;
         }
-    }
+    }else{
+			src_types = &src->mpi_types_info;
+			src_stat = &src->mpi_info;
+		}
     memcpy(dst,src_types,sizeof(mpi_calls_types_t));
     dst->time_mpi 		= src_stat->mpi_time;
     dst->time_period 	= src_stat->exec_time;
@@ -418,7 +419,7 @@ state_t mpi_support_perc_mpi_max_min(int nump,double *percs_mpi,int *max,int *mi
         verbosen_master(LB_VERB,"MR[%d]= %.2lf ",i,percs_mpi[i]);
         // verbosen_master(3," (%lu/%lu) ",node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
     }
-    verbose_master(LB_VERB,"");
+    verbose_master(LB_VERB," ");
     for (i=1 ; i < nump ; i++){
         if (percs_mpi[i] > percs_mpi[*max])	*max = i;
         if (percs_mpi[i] < percs_mpi[*min])	*min = i;

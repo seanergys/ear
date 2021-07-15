@@ -103,12 +103,10 @@ extern pc_app_info_t *pc_app_info_data;
 
 
 static polsym_t polsyms_fun;
-static void    *polsyms_obj = NULL;
 const int       polsyms_n = 17;
 polctx_t my_pol_ctx;
 node_freqs_t nf,avg_nf;
 
-static uint policy_gpu_model;
 static ulong *freq_per_core;
 static node_freq_domain_t freqs_domain;
 static uint last_earl_phase_classification = APP_COMP_BOUND;
@@ -192,7 +190,7 @@ static void from_proc_to_core(ulong *cpuf)
                 freq_per_core[c] = f;
             }
         }
-        verbose_master(lv+1,"");
+        verbose_master(lv+1," ");
     }
     return;
 }
@@ -226,11 +224,9 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     ulong *freq_set = freqs->cpu_freq;
     int i;
     char pol_grain_str[128];
-    state_t s;
     debug("policy_cpu_freq_selection");
 #if POWERCAP
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
-        ulong f;
         /* Warning: POL_GRAIN_CORE not supported */
         pcapp_info_set_req_f(pc_app_info_data, freq_set, MAX_CPUS_SUPPORTED);
     }
@@ -277,17 +273,17 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 				imc_low[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
 				imc_up[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
 				if (imc_up[sid] != ps_nothing){
-      		verbose_master(2,"Setting IMC freq:SID=%d to %lu and %lu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
+      		verbose_master(2,"Setting IMC freq:SID=%d to %llu and %llu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
 				}else{
-      		verbose_master(2,"Setting IMC freq:SID=%d to %lu and min",sid,imc_pstates[imc_low[sid]].khz);
+      		verbose_master(2,"Setting IMC freq:SID=%d to %llu and min",sid,imc_pstates[imc_low[sid]].khz);
 				}
 			}
 			if (mgt_imcfreq_set_current_ranged_list(NULL, imc_low, imc_up) != EAR_SUCCESS){
 				uint sid = 0;
 				if (imc_up[sid] != ps_nothing){
-					verbose_master(2,"Error setting IMC freq to %lu and %lu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
+					verbose_master(2,"Error setting IMC freq to %llu and %llu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
 				}else{
-					verbose_master(2,"Error setting IMC freq to %lu and min",imc_pstates[imc_low[0]].khz);
+					verbose_master(2,"Error setting IMC freq to %llu and min",imc_pstates[imc_low[0]].khz);
 				}
 			}			
 			free(imc_up);
@@ -306,13 +302,12 @@ static state_t policy_gpu_mem_freq_selection(polctx_t *c,signature_t *my_sig,nod
 static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     ulong *gpu_f = freqs->gpu_freq;
-    ulong avg;
     int i;
     /* Powercap limits are checked here but this code could be moved to a function */
 #if USE_GPUS
 #if POWERCAP
     for (i=0;i<c->num_gpus;i++) verbosen_master(2," GPU freq[%d] = %.2f ",i,(float)gpu_f[i]/1000000.0);
-    verbose_master(2,"");
+    verbose_master(2," ");
     pc_app_info_data->num_gpus_used = my_sig->gpu_sig.num_gpus;
     memcpy(pc_app_info_data->req_gpu_f,gpu_f,c->num_gpus*sizeof(ulong));
 #endif
@@ -346,7 +341,6 @@ state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freq
 /* This function confgures freqs based on IO criteria */
 state_t policy_io_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
-    uint ready;
     if (polsyms_fun.io_settings != NULL){
         polsyms_fun.io_settings(c,my_sig,freqs);
     }
@@ -424,11 +418,9 @@ state_t policy_init()
     char *cuse_earl_phases = getenv(SCHED_USE_EARL_PHASES);
     char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
     char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
-    char *cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);
-    char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
     char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
 
-    state_t ret,retg=EAR_SUCCESS;
+    state_t retg=EAR_SUCCESS, ret = EAR_SUCCESS;
     policy_gpu_init_ctx(c);
 		// print_policy_ctx(c);
     if (polsyms_fun.init != NULL){
@@ -509,10 +501,7 @@ state_t policy_init()
 state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 {
     char basic_path[SZ_PATH_INCOMPLETE];
-    char basic_gpu_path[SZ_PATH_INCOMPLETE];
-    char pgpu_name[64];
     conf_install_t *data=&app_settings->installation;
-    state_t ret;
 
     /* This part of code is to decide which policy to load based on default and hacks */
     char *obj_path = getenv(SCHED_EAR_POWER_POLICY);
@@ -537,22 +526,22 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 #endif
     if (((obj_path==NULL) && (ins_path == NULL)) || (app_settings->user_type!=AUTHORIZED)){
         if (!app_mgr){
-            sprintf(basic_path,"%s/policies/%s.so",data->dir_plug,app_settings->policy_name);
+            snprintf(basic_path,sizeof(basic_path),"%s/policies/%s.so",data->dir_plug,app_settings->policy_name);
         }else{
-            sprintf(basic_path,"%s/policies/app_%s.so",data->dir_plug,app_settings->policy_name);
+            snprintf(basic_path,sizeof(basic_path),"%s/policies/app_%s.so",data->dir_plug,app_settings->policy_name);
         }
         obj_path=basic_path;
     }else{
         if (obj_path == NULL){
             if (ins_path != NULL){
-                sprintf(use_path,"%s/plugins/policies", ins_path);	
+                snprintf(use_path,sizeof(use_path),"%s/plugins/policies", ins_path);	
             }else{
-                sprintf(use_path,"%s/policies", data->dir_plug);
+                snprintf(use_path,sizeof(use_path),"%s/policies", data->dir_plug);
             }
             if (!app_mgr){
-                sprintf(basic_path,"%s/%s.so",use_path,app_settings->policy_name);		
+                snprintf(basic_path,sizeof(basic_path),"%s/%s.so",use_path,app_settings->policy_name);		
             }else{
-                sprintf(basic_path,"%s/app_%s.so",use_path,app_settings->policy_name);		
+                snprintf(basic_path,sizeof(basic_path),"%s/app_%s.so",use_path,app_settings->policy_name);		
             }
             obj_path=basic_path;
         }
@@ -656,8 +645,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     polctx_t *c=&my_pol_ctx;
     signature_t node_sig;
     node_freqs_t *freqs = &nf;
-    int i;
-    state_t st=EAR_ERROR,stg=EAR_SUCCESS;
+    state_t st=EAR_ERROR;
     uint busy, iobound, mpibound,earl_phase_classification;
 		sig_ext_t *se;
 		float mpi_in_period;
@@ -777,7 +765,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 state_t policy_get_default_freq(node_freqs_t *freq_set)
 { 
     polctx_t *c=&my_pol_ctx;
-    state_t ret,retg=EAR_SUCCESS;
+    state_t ret;
     if (polsyms_fun.get_default_freq != NULL){
         ret = polsyms_fun.get_default_freq( c, freq_set);
         return ret;
@@ -794,12 +782,11 @@ state_t policy_set_default_freq()
     polctx_t *c=&my_pol_ctx;
     state_t st;
     signature_t s;
-		ulong avg;
 #if USE_GPUS
     s.gpu_sig.num_gpus = c->num_gpus;
 #endif
     if (polsyms_fun.get_default_freq != NULL){
-        st=polsyms_fun.get_default_freq(c,&nf);
+        st = polsyms_fun.get_default_freq(c,&nf);
         if (masters_info.my_master_rank>=0) policy_freq_selection(c,&s,&nf,&freqs_domain , &avg_nf);
         return st;
     }else{ 

@@ -62,7 +62,6 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
         double *power_ref)
 {
     ulong def_pstate, curr_pstate;
-    state_t st;
 
     def_pstate = frequency_closest_pstate(def_freq[0]);
     curr_pstate = frequency_closest_pstate(curr_freq[0]);
@@ -71,8 +70,8 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
         verbose_master(3, "curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
         if (projection_available(curr_pstate,def_pstate)==EAR_SUCCESS)
         {
-            st = project_power(my_app,curr_pstate,def_pstate,power_ref);
-            st = project_time(my_app,curr_pstate,def_pstate,time_ref);
+            project_power(my_app,curr_pstate,def_pstate,power_ref);
+             project_time(my_app,curr_pstate,def_pstate,time_ref);
             freq_ref[0] = def_freq[0];
         } else {
             *time_ref = my_app->time;
@@ -91,16 +90,17 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
 state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq_ref, double time_ref, double power_ref,
         double penalty, ulong curr_pstate, ulong minp, ulong maxp, ulong *newf)
 {
-    state_t st;
     double vpi;
     double energy_ref,best_solution,time_max;
     double power_proj,time_proj,energy_proj;
-    ulong i,from,best_pstate;
+    ulong i,from;
+
     ulong best_freq = freq_ref;
-    energy_ref=power_ref*time_ref;
-    best_solution=energy_ref;
-    time_max = time_ref + (time_ref * penalty);	
-    from = curr_pstate;	
+
+    energy_ref		= power_ref*time_ref;
+    best_solution	= energy_ref;
+    time_max 			= time_ref + (time_ref * penalty);	
+    from 					= curr_pstate;	
     compute_vpi(&vpi,my_app);
     verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf",time_ref,power_ref,
             energy_ref,best_freq,vpi);
@@ -108,8 +108,8 @@ state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq
     {
         if (projection_available(from,i) == EAR_SUCCESS)
         {
-            st = project_power(my_app,from,i,&power_proj);
-            st = project_time(my_app,from,i,&time_proj);
+            project_power(my_app,from,i,&power_proj);
+            project_time(my_app,from,i,&time_proj);
             projection_set(i,time_proj,power_proj);
             energy_proj = power_proj*time_proj;
 
@@ -120,7 +120,6 @@ state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq
                 best_freq = frequency_pstate_to_freq(i);
                 verbose(3,"new best solution found %lu",best_freq);
                 best_solution = energy_proj;
-                best_pstate = i;
             }
         }
     }
@@ -133,7 +132,6 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     int i;
     uint try_next;
     double time_current, power_proj, time_proj, freq_gain, perf_gain, vpi;
-    state_t st;
     ulong freq_ref;
 
     compute_vpi(&vpi,my_app);
@@ -149,8 +147,8 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
         if (projection_available(curr_pstate,i)==EAR_SUCCESS)
         {
             verbose_master(3, "Looking for pstate %d",i);
-            st = project_power(my_app, curr_pstate, i, &power_proj);
-            st = project_time(my_app, curr_pstate, i, &time_proj);
+            project_power(my_app, curr_pstate, i, &power_proj);
+            project_time(my_app, curr_pstate, i, &time_proj);
             projection_set(i, time_proj, power_proj);
             freq_ref = frequency_pstate_to_freq(i);
             freq_gain = min_eff_gain * (double)(freq_ref - best_freq) / (double)best_freq;
@@ -178,7 +176,7 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     }
     /* Controlar la freq por power cap, si capado poner GREEDY, gestionar req-f */
     if (best_freq<def_freq) best_freq=def_freq;
-    *newf=best_freq;
+    *newf = best_freq;
     verbose_master(3, "*new_freq=%lu", *newf);
 
     return EAR_SUCCESS;
@@ -284,7 +282,7 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
     for (i=0; i< my_pol_ctx.num_gpus;i++){
         verbosen_master(2,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
     }
-    verbose_master(2,"");
+    verbose_master(2," ");
 #endif
 
 }

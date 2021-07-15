@@ -133,15 +133,27 @@ typedef enum
 	Win_post = _Unknown,
 	Win_start = _Unknown,
 	Win_wait = _Unknown,
+	/* Added for comparison */
+	Only_Blocking = _Blocking,
+	Only_Scatter = _Scatter,
+	Only_Gather = _Gather, 
+	Only_All2All = _All2All,
+	Only_Reduce = _Reduce,
+	Only_Barrier = _Barrier,	
+	Only_Receive = _Receive,
+	Only_SendRecv = _SendRecv,
+	Only_Bcast = _Bcast,	
+	Only_Wait = _Wait,
+	Only_Test = _Test,
 	Not_implemented
 } mpi_call;
 #define p2i unsigned long
 
-#define is_mpi_blocking(call) 	(call&_Blocking)
-#define is_collective(call) 		((call == _Reduce) || (call == _Scatter) || (call == _Gather) || (call == _All2All) || (call == _Bcast))
-#define is_synchronization(call) ((call == _Wait) || (call == _Barrier) || (call == _Test))
-#define remove_blocking(call)		(call&~_Blocking)
-#define is_recv(call)						((call == _Receive) || (call == _SendRecv))
+#define is_mpi_blocking(call) 	(call&Only_Blocking)
+#define is_collective(call) 		((call == Only_Reduce) || (call == Only_Scatter) || (call == Only_Gather) || (call == Only_All2All) || (call == Only_Bcast))
+#define is_synchronization(call) ((call == Only_Wait) || (call == Only_Barrier) || (call == Only_Test))
+#define remove_blocking(call)		(call&~Only_Blocking)
+#define is_recv(call)						((call == Only_Receive) || (call == Only_SendRecv))
 
 int is_mpi_enabled();
 int is_intelmpi();

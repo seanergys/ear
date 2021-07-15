@@ -127,7 +127,6 @@ int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 }
 int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
-	int i;
 	compute_total_signatures_ready(data,sig);
 	debug("There are %d signatures ready from %d",data->num_signatures,data->num_processes);
 	return(data->num_signatures == data->num_processes);
@@ -143,37 +142,37 @@ void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
 
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
 {
-	int i,total=0;
-  for (i=0;i<data->num_processes;i++) sig[i].ready=0;
+	int i;
+  for (i=0;i<data->num_processes;i++) sig[i].ready = 0;
 }
 
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig)
 {
-  int i,total=0;
+  int i;
   for (i=0;i<data->num_processes;i++){ 
-		sig[i].mpi_info.mpi_time=0;
-		sig[i].mpi_info.total_mpi_calls=0;
-		sig[i].mpi_info.perc_mpi=0;
-		sig[i].mpi_info.exec_time=0;
+		sig[i].mpi_info.mpi_time				=	0;
+		sig[i].mpi_info.total_mpi_calls	=	0;
+		sig[i].mpi_info.perc_mpi				=	0;
+		sig[i].mpi_info.exec_time				=	0;
 	}
 }
 
 void clean_my_mpi_info(mpi_information_t *info)
 {
-	info->mpi_time=0;
-	info->total_mpi_calls=0;
-	info->perc_mpi=0;
-	info->exec_time=0;
+	info->mpi_time 				= 0;
+	info->total_mpi_calls = 0;
+	info->perc_mpi				= 0;
+	info->exec_time				= 0;
 }
 
 int select_cp(lib_shared_data_t *data,shsignature_t *sig)
 {
-  int i,rank=sig[0].mpi_info.rank;
-	double minp=sig[0].mpi_info.perc_mpi;
+  int i,rank = sig[0].mpi_info.rank;
+	double minp = sig[0].mpi_info.perc_mpi;
   for (i=1;i<data->num_processes;i++){
     if (sig[i].mpi_info.perc_mpi<minp){ 
-			rank=sig[i].mpi_info.rank;
-			minp=sig[i].mpi_info.perc_mpi;
+			rank = sig[i].mpi_info.rank;
+			minp = sig[i].mpi_info.perc_mpi;
 		}
   }
 	return rank;
@@ -182,10 +181,10 @@ int select_cp(lib_shared_data_t *data,shsignature_t *sig)
 double min_perc_mpi_in_node(lib_shared_data_t *data,shsignature_t *sig)
 {
   int i;
-  double minp=sig[0].mpi_info.perc_mpi;
+  double minp =sig[0].mpi_info.perc_mpi;
   for (i=1;i<data->num_processes;i++){
     if (sig[i].mpi_info.perc_mpi<minp){
-      minp=sig[i].mpi_info.perc_mpi;
+      minp = sig[i].mpi_info.perc_mpi;
     }
   }
   return minp;
@@ -194,18 +193,14 @@ double min_perc_mpi_in_node(lib_shared_data_t *data,shsignature_t *sig)
 void compute_avg_sh_signatures(int size,int max,int *ppn,shsignature_t *my_sh_sig,signature_t *sig)
 {
 	signature_t avgs,totals;
-	char csig[256];
 	int i,j;
-	int nums=0;
+	int nums = 0;
 	signature_init(sig);
 	signature_init(&avgs);
 	signature_init(&totals);
   for (i=0;i<size;i++){
     for (j=0;j<ear_min(max,ppn[i]);j++){
 			from_minis_to_sig(&avgs,&my_sh_sig[i*max+j].sig);
-			/*
-      signature_to_str(&avgs,csig,sizeof(csig));
-			debug("Current[%d,%d]=%s",i,j,csig);*/
 			acum_sig_metrics(&totals,&avgs);
 			nums++;
    	}
@@ -216,7 +211,7 @@ void compute_avg_sh_signatures(int size,int max,int *ppn,shsignature_t *my_sh_si
 }
 int shsig_id(int node,int rank)
 {
-	int i,j;
+	int i;
 	if (sh_sig_per_proces){
 		for (i=node*masters_info.max_ppn;i<(node*masters_info.max_ppn+masters_info.ppn[node]);i++){
 			if (masters_info.nodes_info[i].mpi_info.rank == rank) return i;
@@ -239,32 +234,30 @@ int my_shsig_id()
 
 }
 
-
+/* This function must not be used and must be replaced by the one at mpi_support in policies folder */
 int select_global_cp(int size,int max,int *ppn,shsignature_t *my_sh_sig,int *node_cp,int *rank_cp)
 {
 	int i,j;
-	int rank;
-	double minp=100.0,maxp=0.0;
-	unsigned int total_mpi=0;
-	unsigned long long total_mpi_time=0, total_exec_time=0;
+	int rank = 0;
+	double minp = 100.0,maxp = 0.0;
+	unsigned int total_mpi = 0;
+	unsigned long long total_mpi_time = 0, total_exec_time = 0;
 	/* Node loop */
 	for (i=0;i<size;i++){
-	  //debug("Node %d ppn %d",i,ppn[i]);
 		/* Inside node */
 		for (j=0;j<ear_min(max,ppn[i]);j++){
-	//		debug("local process %d: mpi_time %llu exec_time %llu perc_mpi %f",j,my_sh_sig[i*max+j].mpi_info.mpi_time,my_sh_sig[i*max+j].mpi_info.exec_time,my_sh_sig[i*max+j].mpi_info.perc_mpi);
-			total_mpi+=my_sh_sig[i*max+j].mpi_info.total_mpi_calls;
-			total_mpi_time+=my_sh_sig[i*max+j].mpi_info.mpi_time;
-			total_exec_time+=my_sh_sig[i*max+j].mpi_info.exec_time;
-			if (minp>my_sh_sig[i*max+j].mpi_info.perc_mpi){
-				rank=my_sh_sig[i*max+j].mpi_info.rank;
-				minp=my_sh_sig[i*max+j].mpi_info.perc_mpi;
-				*node_cp=i;
+			total_mpi 			+= my_sh_sig[i*max+j].mpi_info.total_mpi_calls;
+			total_mpi_time	+= my_sh_sig[i*max+j].mpi_info.mpi_time;
+			total_exec_time	+= my_sh_sig[i*max+j].mpi_info.exec_time;
+			if (minp > my_sh_sig[i*max+j].mpi_info.perc_mpi){
+				rank 			= my_sh_sig[i*max+j].mpi_info.rank;
+				minp 			= my_sh_sig[i*max+j].mpi_info.perc_mpi;
+				*node_cp 	= i;
 			}
-			if (maxp<my_sh_sig[i*max+j].mpi_info.perc_mpi) maxp=my_sh_sig[i*max+j].mpi_info.perc_mpi;
+			if (maxp < my_sh_sig[i*max+j].mpi_info.perc_mpi) maxp = my_sh_sig[i*max+j].mpi_info.perc_mpi;
 		}
 	}
-	*rank_cp=rank;
+	*rank_cp = rank;
 	debug("(MIN PERC MPI %.1lf, MAX PERC MPI %.1lf) (MPI_CALLS %u MPI_TIME %.3fsec USER_TIME=%.3fsec)\n",minp*100.0,maxp*100.0,total_mpi,(float)total_mpi_time/1000000.0,(float)total_exec_time/1000000.0);
 	return rank;
 }
@@ -312,7 +305,6 @@ void print_shared_signatures(lib_shared_data_t *data,shsignature_t *sig)
 }
 void print_ready_shared_signatures(int master_rank,lib_shared_data_t *data,shsignature_t *sig)
 {
-	uint numr=0,i;
 	if (master_rank < 0) return;
 	if (are_signatures_ready(data,sig)){
 		print_shared_signatures(data,sig);
@@ -339,7 +331,7 @@ void compute_per_node_avg_mpi_info(lib_shared_data_t *data,shsignature_t *sig,mp
 	avg_mpi.mpi_time = sig[0].mpi_info.mpi_time;
 	avg_mpi.rank = sig[0].mpi_info.rank;
 	avg_mpi.perc_mpi = sig[0].mpi_info.perc_mpi;
-  int i,min_i=0;
+  int i;
 	//debug("compute_per_node_mpi_info, num_procs %d",data->num_processes);
   for (i=1;i<data->num_processes;i++){
 		avg_mpi.total_mpi_calls += sig[i].mpi_info.total_mpi_calls;

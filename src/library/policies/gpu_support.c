@@ -33,14 +33,11 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 {
 	char *obj_path;
 	int polsyms_n = 14;
-	void    *polsyms_obj = NULL;
   char basic_gpu_path[SZ_PATH_INCOMPLETE];
   char pgpu_name[64];
   conf_install_t *data=&app_settings->installation;
-  state_t ret;
 
   char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
-  char use_path[SZ_PATH_INCOMPLETE];
 
 
 	if (masters_info.my_master_rank >= 0){
@@ -51,16 +48,16 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
   	obj_path = getenv(SCHED_EAR_GPU_POWER_POLICY);
 		if (obj_path != NULL) verbose_master(2,"%s defined %s",SCHED_EAR_GPU_POWER_POLICY,obj_path);
 #ifdef GPU_OPT
-    sprintf(pgpu_name,"gpu_%s.so",app_settings->policy_name);
+    snprintf(pgpu_name,sizeof(pgpu_name),"gpu_%s.so",app_settings->policy_name);
 #else
-    sprintf(pgpu_name,"gpu_monitoring.so");
+    snprintf(pgpu_name,sizeof(pgpu_name),"gpu_monitoring.so");
 #endif
     if (((obj_path==NULL) && (ins_path == NULL)) || (app_settings->user_type != AUTHORIZED)){
-    	sprintf(basic_gpu_path,"%s/policies/%s",data->dir_plug,pgpu_name);
+    	snprintf(basic_gpu_path,sizeof(basic_gpu_path),"%s/policies/%s",data->dir_plug,pgpu_name);
       obj_path=basic_gpu_path;
     }else{
       if (obj_path == NULL){
-      	sprintf(basic_gpu_path,"%s/plugins/policies/%s",ins_path,pgpu_name);
+      	snprintf(basic_gpu_path,sizeof(basic_gpu_path),"%s/plugins/policies/%s",ins_path,pgpu_name);
       	obj_path=basic_gpu_path;
       }
     }

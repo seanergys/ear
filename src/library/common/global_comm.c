@@ -77,15 +77,11 @@ state_t wait_for_data(MPI_Request *req)
 /**************************************************************************************************/
 state_t check_node_signatures(masters_info_t *mi,lib_shared_data_t *data,shsignature_t *sig)
 {
-    int max_ppn;
 		state_t ret=EAR_NOT_READY;
 
-		//debug("check_node_signatures");
-		if (sh_sig_per_node) max_ppn = 1;
-		else 								 max_ppn=mi->max_ppn;
 
     /* If the master signature is ready we check the others */
-  if ((mi->my_master_rank>=0) && sig[0].ready){
+  if ((mi->my_master_rank >= 0) && sig[0].ready){
     if (are_signatures_ready(data,sig)){
 			return EAR_SUCCESS;
 		}

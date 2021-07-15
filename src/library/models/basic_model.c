@@ -41,14 +41,10 @@ static int valid_range(ulong from,ulong to)
 /* This function loads any information needed by the energy model */
 state_t model_init(char *etc,char *tmp,architecture_t *myarch)
 {
-  char coeff_file[128];
-  char coeff_default_file[128];
-  char coeff_file_fn[128];
-  int begin_pstate, end_pstate;
   int i, ref;
 
 	debug("Using basic_model\n");
-	num_pstates=(uint)myarch->pstates;
+	num_pstates = (uint)myarch->pstates;
 	debug("Using %u pstates",num_pstates);
 
   coefficients = (coefficient_t **) malloc(sizeof(coefficient_t *) * num_pstates);
@@ -79,12 +75,12 @@ state_t model_init(char *etc,char *tmp,architecture_t *myarch)
   if (num_coeffs>0){
     num_coeffs=num_coeffs/sizeof(coefficient_t);
     int ccoeff;
-    for (ccoeff=0;ccoeff<num_coeffs;ccoeff++){
-      ref=frequency_closest_pstate(coefficients_sm[ccoeff].pstate_ref);
-      i=frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
+    for (ccoeff = 0 ; ccoeff < num_coeffs;ccoeff++){
+      ref = frequency_closest_pstate(coefficients_sm[ccoeff].pstate_ref);
+      i = frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
       if (frequency_is_valid_pstate(ref) && frequency_is_valid_pstate(i)){
 				memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_t));
-                debug("initializing coeffs for ref: %d i: %d\n", ref, i);
+        debug("initializing coeffs for ref: %d i: %d\n", ref, i);
       }
     }
   }
