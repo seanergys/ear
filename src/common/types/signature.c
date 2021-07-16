@@ -189,6 +189,7 @@ void clean_db_signature(signature_t *sig, double limit)
     if (sig->DC_power > limit)		  sig->DC_power = limit;
     if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
     if (sig->PCK_power > limit)			sig->PCK_power = 0;
+		if (!isnormal(sig->perc_MPI))		sig->perc_MPI = 0;
 
 #if USE_GPUS
     if (sig->gpu_sig.num_gpus){
