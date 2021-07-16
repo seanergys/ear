@@ -265,8 +265,10 @@ void usage(char *app)
             "\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
             "\n\t\t\t\t\t\t\t--status=node_name retrieves the status of that node individually."\
             "\n\t--type \t\t[status_type]\t\t->Specifies what type of status will be requested: hardware,"\
-            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master,eardbd or power. [default:hardware]"\
-            "\n\t--active-only \t\t\t\t->Supresses inactive nodes from the output in hardware status."\
+            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd or power. [default:hardware]"\
+            "\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
+            "\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
+            "\n\t--mail [address] \t\t\t\t->sends the output of the program to address."\
             "\n\t--ping	\t\t\t\t->pings all nodes to check wether the nodes are up or not. Additionally,"\
             "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
             "\n\t--version \t\t\t\t->displays current EAR version."\
