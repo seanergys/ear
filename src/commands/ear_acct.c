@@ -872,7 +872,7 @@ void mysql_print_events(MYSQL_RES *result)
         if (!has_records)
         {
             printf("%12s %20s %15s %8s %8s %20s %12s\n",
-               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Freq.", "node_id");
+               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Value", "node_id");
             has_records = 1;
         }
         for(i = 0; i < num_fields; i++) {
@@ -906,7 +906,7 @@ void postgresql_print_events(PGresult *res)
         if (!has_records)
         {
             printf("%12s %22s %15s %8s %8s %20s %12s\n",
-               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Freq.", "node_id");
+               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Value", "node_id");
             has_records = 1;
         }
         for (j = 0; j < num_fields; j++) {
