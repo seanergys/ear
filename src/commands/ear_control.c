@@ -1005,6 +1005,7 @@ int main(int argc, char *argv[])
                     strcpy(edbstatus.name, node_name);
                     if (state_ok(num_status)) {
                         num_status = 1;
+                        edbstatus.active = 1;
                         process_eardbd_status(num_status, &edbstatus, 0);
                     } else {
                         printf("Error reading EARDBD status from node %s\n", node_name);
