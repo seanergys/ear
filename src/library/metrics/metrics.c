@@ -686,7 +686,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		if (is_mpi_enabled()){
 			double pmpi = 0.0, lpmpi;
 			for (int i=0;i<lib_shared_region->num_processes;i++){	
-				lpmpi = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time*100.0 / ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+				if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time*100.0 / ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+				else lpmpi = 0;
 				pmpi += lpmpi;
 				verbose_master(3,"PerMPI Proc %d %.2lf",i,lpmpi);
 			}

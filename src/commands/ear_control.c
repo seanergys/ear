@@ -256,22 +256,24 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 void usage(char *app)
 {
 	printf("Usage: %s [options]"\
-            "\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\
-            "\n\t--set-def-freq \t[newfreq]  [pol_name]\t->sets the default frequency for the selected policy "\
-            "\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
-            "\n\t--restore-conf \t\t\t\t->restores the configuration to all node"\
             "\n\t--status \t\t\t\t->requests the current status for all nodes. The ones responding show the current "\
             "\n\t\t\t\t\t\t\tpower, IP address and policy configuration. A list with the ones not"\
             "\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
             "\n\t\t\t\t\t\t\t--status=node_name retrieves the status of that node individually."\
-            "\n\t--type \t\t[status_type]\t\t->Specifies what type of status will be requested: hardware,"\
-            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master,eardbd or power. [default:hardware]"\
-            "\n\t--active-only \t\t\t\t->Supresses inactive nodes from the output in hardware status."\
-            "\n\t--ping	\t\t\t\t->pings all nodes to check wether the nodes are up or not. Additionally,"\
+            "\n\t--type \t\t[status_type]\t\t->specifies what type of status will be requested: hardware,"\
+            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd or power. [default:hardware]"\
+            "\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\
+            "\n\t--set-def-freq \t[newfreq]  [pol_name]\t->sets the default frequency for the selected policy "\
+            "\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
+            "\n\t--set-powercap \t[new_cap]\t\t->sets the powercap of all nodes to the given value. A node can be specified"\
+            "\n\t\t\t\t\t\t\t after the value to only target said node."\
+            "\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
+            "\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
+            "\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
+            "\n\t--mail [address] \t\t\t->sends the output of the program to address."\
+            "\n\t--ping	\t\t\t\t->pings all nodes to check whether the nodes are up or not. Additionally,"\
             "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
             "\n\t--version \t\t\t\t->displays current EAR version."\
-            "\n\t--set-powercap\t[new_cap]\t\t->Sets the powercap of all nodes to the given value. A node can be specified"\
-            "\n\t\t\t\t\t\t\t after the value to only target said node."\
             "\n\t--help \t\t\t\t\t->displays this message.", app);
 #if EXT_OPT
     printf(""\
@@ -285,7 +287,7 @@ void usage(char *app)
             "\n\t--set-th \t[new_th]   [pol_name]\t->sets the threshold for all nodes"\
             "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates");
 #endif
-    printf("\n\nThis app requires privileged access privileged accesss to execute.\n");
+    printf("\n\nThis app requires privileged access to execute.\n");
 	exit(0);
 }
 

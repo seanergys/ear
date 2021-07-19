@@ -71,7 +71,7 @@ void usage(char *app)
 "\t\t-t\tspecifies the energy_tag of the jobs that will be retrieved. [default: all tags].\n" \
 "\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n" \
 "\t\t-x\tshows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
-"\t\t-m\tprints power signatures regardless of wether mpi signatures are available or not.\n" \
+"\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n" \
 "\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n", app);
     printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
     printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
@@ -872,7 +872,7 @@ void mysql_print_events(MYSQL_RES *result)
         if (!has_records)
         {
             printf("%12s %20s %15s %8s %8s %20s %12s\n",
-               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Freq.", "node_id");
+               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Value", "node_id");
             has_records = 1;
         }
         for(i = 0; i < num_fields; i++) {
@@ -906,7 +906,7 @@ void postgresql_print_events(PGresult *res)
         if (!has_records)
         {
             printf("%12s %22s %15s %8s %8s %20s %12s\n",
-               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Freq.", "node_id");
+               "Event ID", "Timestamp", "Event type", "Job id", "Step id", "Value", "node_id");
             has_records = 1;
         }
         for (j = 0; j < num_fields; j++) {
