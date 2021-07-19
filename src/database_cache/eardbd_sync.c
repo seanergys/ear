@@ -156,10 +156,16 @@ int sync_fd_exists(long ip, int *fd_old)
 
 void sync_fd_add(int fd, long ip)
 {
+	if (ip == 0) {
+		verb_who("Warning, the IP of the new connection is %ld", ip);
+		// Fake IP (255.0.0.0)
+		ip =  4278190080;
+	}
+	// Saving IP
 	fd_hosts[fd] = ip;
-
+	// Enabling FD in select
 	FD_SET(fd, &fds_active);
-
+	
 	if (fd > fd_max) {
 		fd_max = fd;
 	}
@@ -168,7 +174,7 @@ void sync_fd_add(int fd, long ip)
 	}
 	// Metrics
 	sockets_accepted += 1;
-	sockets_online += 1;
+	sockets_online   += 1;
 }
 
 void sync_fd_get_ip(int fd, long *ip)
@@ -178,11 +184,14 @@ void sync_fd_get_ip(int fd, long *ip)
 
 void sync_fd_disconnect(int fd)
 {
-	fd_hosts[fd] = 0;
 	sockets_close_fd(fd);
+	// Disabling FD in select
 	FD_CLR(fd, &fds_active);
-	// Metrics
-	sockets_online -= 1;
+	// If is 0 maybe was cleaned already
+	if (fd_hosts[fd] > 0) {
+		sockets_online -= 1;
+		fd_hosts[fd] = 0;
+	}
 }
 
 /*
