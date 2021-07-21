@@ -690,10 +690,14 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     return int_policy_ok(curr_sig,last_sig,ok);
 }
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f,signature_t *s)
 {
     if ((c!=NULL) && (c->app!=NULL)){
         node_freqs_copy(f, &min_time_def_freqs);
+        if ((gpus.restore_settings != NULL) && (s != NULL)){
+          gpus.restore_settings(c,s,f);
+        }
+
     }else return EAR_ERROR;
     return EAR_SUCCESS;
 }
@@ -815,16 +819,9 @@ state_t compute_total_node_metrics(){
 
 state_t policy_new_iteration(polctx_t *c,signature_t *sig)
 {
-    /* Check cpu idle or gpu idle */
-    if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-      verbose_master(3,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
-      if (sig->Gflops > GFLOPS_BUSY_WAITING) return EAR_ERROR;
-    }
     if (gpus.new_iter != NULL){
         /* Basic support for GPUS */
         return gpus.new_iter(c,sig);
-    }else{
-      return EAR_SUCCESS;
     }
     return EAR_SUCCESS;
 }

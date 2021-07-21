@@ -756,9 +756,10 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	/* Copying my info in the shared signature */
 	from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
 	/* If I'm the master, I have to copy in the special section */
-	if (masters_info.my_master_rank>=0){
+	if (masters_info.my_master_rank >= 0){
 		signature_copy(&lib_shared_region->master_signature,metrics);
 	}
+	signature_ready(&sig_shared_region[my_node_id],0);
 }
 
 /**************************** Init function used in ear_init ******************/
@@ -1103,9 +1104,9 @@ void metrics_get_total_io(io_data_t *total)
 
 int time_ready_signature(ulong min_time_us)
 {
-	long long aux_time;
-	aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-	if (aux_time<min_time_us) return 0;
+	long long f_time;
+	f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+	if (f_time<min_time_us) return 0;
 	else return 1;
 }
 
@@ -1167,6 +1168,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	ullong cycles;
 	ullong FLOPS[FLOPS_EVENTS];
 	sig_ext_t *se;
+	double CPI;
 
 	se = (sig_ext_t *)master->sig_ext;	
 	signature_copy(ns,master);
@@ -1175,8 +1177,10 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
+	compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
 
 	ns->CPI = (double)cycles/(double)inst;
+	verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);
 	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
 
 }
@@ -1187,7 +1191,7 @@ extern uint last_earl_gpu_phase_classification;
 void metrics_new_iteration(signature_t *sig)
 {
 	llong sflops;
-	llong aux_time, elap_sec;
+	llong f_time, elap_sec;
 	llong FLOPS[FLOPS_EVENTS];
 	int i;
 #if USE_GPUS
@@ -1197,24 +1201,28 @@ void metrics_new_iteration(signature_t *sig)
 	if (masters_info.my_master_rank < 0 ) return;
 	/* FLOPS are used to determine the CPU BUSY waiting */
 	if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-		verbose_master(3,"Computing flops because of application phase is IO =%d or Busy waiting=%d", last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
 		read_flops_metrics(&sflops, FLOPS);
-		aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-		elap_sec = aux_time % 1000000;
+		f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+		elap_sec = f_time / 1000000;
+		verbose_master(2,"elap %lld last %lld: Computing flops because of application phase is IO =%d or Busy waiting=%d",elap_sec,last_elap_sec, last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
+		
 		if (elap_sec <= last_elap_sec) return;
 		last_elap_sec = elap_sec;
 		sig->Gflops = 0;
 		for (i= 0; i< FLOPS_EVENTS; i++){
       sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
       sig->Gflops += (double) sig->FLOPS[i];
+			verbosen_master(2,"Flops %d=%llu ",i,sig->FLOPS[i]);
 		}
-		sig->Gflops = sig->Gflops /(aux_time *1000000000.0);
-		sig->time = aux_time;
+		verbosen_master(2," total Gflops %lf",sig->Gflops);
+		sig->Gflops = sig->Gflops /(elap_sec *1000000000.0);
+		sig->time = elap_sec;
+		verbose_master(2," Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
 	}
 
 #if USE_GPUS
 	if (last_earl_gpu_phase_classification == GPU_IDLE){
-		verbose_master(3,"Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
+		debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
     /* GPUs */
     if (gpu_initialized){
 			gpu_lib_data_alloc(&gpud);

@@ -23,7 +23,7 @@
 #include <common/types/configuration/policy_conf.h>
 state_t policy_init(polctx_t *c);
 state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready);
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set);
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set,signature_t *sig);
 state_t policy_ok(polctx_t *c, signature_t *curr_sig,signature_t *prev_sig,int *ok);
 state_t policy_max_tries(polctx_t *c,int *intents);
 state_t policy_end(polctx_t *c);

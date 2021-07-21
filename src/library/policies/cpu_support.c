@@ -258,14 +258,6 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def)
         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = def->imc_freq[sid*IMC_VAL+IMC_MAX];
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = def->imc_freq[sid*IMC_VAL+IMC_MIN];
     }
-#if USE_GPUS
-    if (my_pol_ctx.num_gpus){
-        for (i=0; i< my_pol_ctx.num_gpus;i++){
-            freqs->gpu_freq[i] = def->gpu_freq[i];
-            /* GPU mem pending */
-        }
-    }
-#endif
 
 }
 

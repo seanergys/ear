@@ -373,6 +373,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             verbose_node_freqs(2,&min_energy_def_freqs);
 
             set_default_settings(freqs,&min_energy_def_freqs);
+		        if (gpus.restore_settings != NULL) {
+    		      gpus.restore_settings(c,sig,freqs);
+        		}
+
             node_freqs_copy(&last_nodefreq_sel,freqs);
 
             verbose_master(2,"Setting default conf for ME");
@@ -713,10 +717,14 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
 		return st;
 }
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set,signature_t * s)
 {
     if (c!=NULL){
         node_freqs_copy(freq_set,&min_energy_def_freqs);
+    		if ((gpus.restore_settings != NULL) && (s != NULL)) {
+      		gpus.restore_settings(c,s,freq_set);
+    		}
+				
     }else return EAR_ERROR;
     return EAR_SUCCESS;
 }
@@ -770,15 +778,6 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 #if USE_GPUS
     gpu_ready = EAR_POLICY_READY;
     return EAR_SUCCESS;
-#if 0
-    if (gidle){
-        gpu_ready = EAR_POLICY_READY;
-        for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-            freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
-        }
-        memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
-    }
-#endif
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -803,15 +802,6 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 #if USE_GPUS
     gpu_ready = EAR_POLICY_READY;
     return EAR_SUCCESS;
-#if 0
-    if (gidle){
-        gpu_ready = EAR_POLICY_READY;
-        for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-            freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][0];
-        }
-        memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
-    }
-#endif
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -823,10 +813,10 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 {
     if (c == NULL) return EAR_ERROR;
     node_freqs_copy(freqs, &min_energy_def_freqs);
-    node_freqs_copy(&last_nodefreq_sel,freqs);
 		if (gpus.restore_settings != NULL){
 			gpus.restore_settings(c,my_sig,freqs);
 		}
+    node_freqs_copy(&last_nodefreq_sel,freqs);
 
     return EAR_SUCCESS;
 }
@@ -834,16 +824,9 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
 state_t policy_new_iteration(polctx_t *c,signature_t *sig)
 {
-    /* Check cpu idle or gpu idle */
-		if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-			verbose_master(2,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
-			if (sig->Gflops > GFLOPS_BUSY_WAITING) return EAR_ERROR;
-		}
     if (gpus.new_iter != NULL){
         /* Basic support for GPUS */
         return gpus.new_iter(c,sig);
-    }else{
-			return EAR_SUCCESS;
     }
     return EAR_SUCCESS;
 }

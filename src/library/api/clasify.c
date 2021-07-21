@@ -115,6 +115,10 @@ state_t  is_gpu_idle(signature_t *sig,uint *gidle)
 #if USE_GPUS
 	int total = 0;
 	int i;
+	if (sig->gpu_sig.num_gpus == 0){
+		*gidle = 0;
+		return EAR_SUCCESS;
+	}
 	for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
 	if (total == 0) *gidle = 1;
 	else *gidle = 0;

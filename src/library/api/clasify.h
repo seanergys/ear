@@ -44,7 +44,7 @@
 #define GBS_CPU_BOUND 			30.0
 #define CPI_BUSY_WAITING		0.6
 #define GBS_BUSY_WAITING 		3.0
-#define GFLOPS_BUSY_WAITING 1.0
+#define GFLOPS_BUSY_WAITING 0.1
 #define IO_TH   						10.0
 #define MPI_TH 							10000
 #define MIN_MPI_TH 					200

@@ -119,18 +119,26 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 
 
 
-state_t policy_new_iteration(polctx_t *c,signature_t *sig)
+state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-    /* Check cpu idle or gpu idle */
+	  ulong util, tutil = 0;;
+
+    if (c == NULL) return EAR_ERROR;
+		int i;
 #if USE_GPUS
-    if (last_earl_gpu_phase_classification == GPU_IDLE){
-      verbose_master(3,"Validating GPU phase");
-      int i;
-      for (i = 0; i< sig->gpu_sig.num_gpus; i++){
-        if (sig->gpu_sig.gpu_data[i].GPU_util > 0) return EAR_ERROR;
-      }
+	verbose_master(2,"Restaurando GPU freqs: restore settings");
+  for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
+    util = my_sig->gpu_sig.gpu_data[i].GPU_util;
+    tutil += util;
+    if (util == 0){
+      freqs->gpu_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
+    }else{
+      freqs->gpu_freq[i] = gfreqs[i];
     }
+  }
+  if ((tutil > 0 ) && (last_earl_gpu_phase_classification == GPU_IDLE)) last_earl_gpu_phase_classification = GPU_COMP;
+
 #endif
-		return EAR_SUCCESS;	
+    return EAR_SUCCESS;
 }
 

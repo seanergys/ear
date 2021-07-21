@@ -75,6 +75,7 @@ static uint total_th;
 static uint signatures_stables = 0;
 static signature_t /* cpu_sel_signature, */ policy_sel_signature;
 static node_freqs_t nf;
+uint waiting_for_node_signatures = 0;
 
 
 
@@ -301,7 +302,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     pst = policy_new_iteration(&check_signature);
 		if (pst != EAR_SUCCESS){
 			verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
-			policy_set_default_freq();
+			policy_set_default_freq(NULL);
 			comp_N_begin = metrics_time();
     	EAR_STATE = FIRST_ITERATION;
 			return;
@@ -418,7 +419,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if if the signature is ready */
             /* Included to accelerate the signature computation */
-            if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) return;
+            if (!dynais_used && ((((iterations % mpi_calls_iter) != 0) &&  !waiting_for_node_signatures))) return;
             /* Only when using dynais we consider the 'N' */
             if (dynais_used){
                 if ((iterations%perf_count_period_10p)==0){
@@ -432,12 +433,18 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             N_iter = iterations - begin_iter;
 
             /* Signature computation */
-            result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
+            if (!waiting_for_node_signatures) result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
+						else result = EAR_SUCCESS;
             if (result == EAR_NOT_READY)
             {
-                perf_count_period++;
-                return;
+							/* waiting_for_node_signatures is used by the master to indicate it's waiting for not master processes, and for not master to indicate we are waiting for the master */
+							if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 1;
+              else perf_count_period++;
+							/* We only increase the period for not the master */
+              return;
             }
+						/* At this point, if we are not the master, we don't need to enter at each iteration */
+						if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 0;
 
             /* Included for dynais test */
 #ifdef SHOW_DEBUGS
@@ -461,12 +468,12 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 check_dynais_off(mpi_calls_iter,period,level,event);
             }
             current_loop_id = event;
-            begin_iter = iterations;
+            //begin_iter = iterations;
             memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
             sig_ready[curr_pstate] = 1;
 
-            /****** We mark our local signature as ready ************/
-            signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
+            /****** We mark our local signature as ready ************ Moved to metrics*/
+            //signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
 
             /* This function executes the energy policy */
             adapt_signature_to_node(&app_signature,&loop_signature.signature,ratio_PPN);
@@ -490,18 +497,21 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                     EAR_STATE = SIGNATURE_STABLE; }
             }
             if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){ EAR_STATE = EVALUATING_GLOBAL_SIGNATURE; }
-            //signature_copy(&loop.signature, &loop_signature.signature);
-            metrics_node_signature(&loop_signature.signature,&loop.signature);
-            report_loop_signature(iterations,&loop,&loop_signature.job);
-						policy_get_current_freq(&nf);
-						lavg = node_freqs_avgcpufreq(nf.cpu_freq);	
-						if (lavg > 0 ) loop_signature.signature.def_f = lavg;
-
-            /* VERBOSE */
-            state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
-            if (dynais_used) sprintf(use_case,"D");
-            else sprintf(use_case,"P");
-            state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,use_case);
+            if (!waiting_for_node_signatures){
+							begin_iter = iterations;
+						  //signature_copy(&loop.signature, &loop_signature.signature);
+              metrics_node_signature(&loop_signature.signature,&loop.signature);
+              report_loop_signature(iterations,&loop,&loop_signature.job);
+						  policy_get_current_freq(&nf);
+						  lavg = node_freqs_avgcpufreq(nf.cpu_freq);	
+						  if (lavg > 0 ) loop_signature.signature.def_f = lavg;
+  
+              /* VERBOSE */
+						  state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
+              if (dynais_used) sprintf(use_case,"D");
+              else sprintf(use_case,"P");
+              state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,use_case);
+						}
 
             /* END VERBOSE */
             break;
@@ -587,7 +597,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 tries_current_loop=0;
             }else{
 								/* Reset */
-								policy_set_default_freq();
+								policy_set_default_freq(&loop_signature.signature);
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
                 ok_clr = COL_RED;
             } 
