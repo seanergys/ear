@@ -448,22 +448,22 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	from_sbatch = plug_context_was(sd, Context.sbatch);
 	from_srun   = plug_context_was(sd, Context.srun);
 	sd->subject.is_master = from_sbatch;
+
 	// If the node list and node count were present
 	if (s1 && s2) {
 		hostlist = slurm_hostlist_create(buffer1);
 		node = slurm_hostlist_shift(hostlist);
-		
 		// If SRUN, just master is required
 		if (from_srun && node != NULL) {
 			s1 = strlen(sd->subject.host);
-                        s2 = strlen(node);
+			s2 = strlen(node);
 			// Taking the smallest
-                        if (s1 < s2) {
-                                s2 = s1;
-                        }
+			if (s1 < s2) {
+				s2 = s1;
+			}
 			// If this node is the master
-                        sd->subject.is_master = (strncmp(sd->subject.host, node, s2) == 0);
-                        plug_verbose(sp, 2, "first node from list of nodes '%s'", node);
+			sd->subject.is_master = (strncmp(sd->subject.host, node, s2) == 0);
+			plug_verbose(sp, 2, "first node from list of nodes '%s'", node);
 		}
 		// If SBATCH/SALLOC then build a node list
 		if (from_sbatch && node != NULL) {
@@ -498,99 +498,97 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	return ESPANK_SUCCESS;
 }
 
-int plug_serialize_task(spank_t sp, plug_serialization_t *sd)
+int plug_serialize_task_settings(spank_t sp, plug_serialization_t *sd)
 {
-	plug_verbose(sp, 2, "function plug_serialize_task");
-
-	// EAR variables
+	plug_verbose(sp, 2, "function plug_serialize_task_settings");
 	settings_conf_t *setts = &sd->pack.eard.setts;
 
 	// Variable EAR_ENERGY_TAG, unset
 	if (setts->user_type != ENERGY_TAG) {
 		unsetenv_agnostic(sp, Var.tag.ear);
 	}
-	
+
+	// If no EARD connectiond or not library...
 	if (sd->pack.eard.connected && !setts->lib_enabled) {
 		return ESPANK_SUCCESS;
 	}
 
+	// Default P_STATE, frequency (KHz) and threshold (%).
 	snprintf(buffer1, 16, "%u", setts->def_p_state);
 	setenv_agnostic(sp, Var.p_state.ear, buffer1, 1);
-
 	snprintf(buffer1, 16, "%lu", setts->def_freq);
 	setenv_agnostic(sp, Var.frequency.ear, buffer1, 1);
-
-	/*if(policy_id_to_name(setts->policy, buffer1) != EAR_ERROR) {
-		setenv_agnostic(sp, Var.policy.ear, buffer1, 1);
-	}*/
-	if (strlen(setts->policy_name) > 0) {
-        	setenv_agnostic(sp, Var.policy.ear, setts->policy_name, 1);
-	}
-
 	snprintf(buffer1, 16, "%0.2f", setts->settings[0]);
 	setenv_agnostic(sp, Var.eff_gain.ear, buffer1, 1);
 	setenv_agnostic(sp, Var.perf_pen.ear, buffer1, 1);
-
+	
+	/*if(policy_id_to_name(setts->policy, buffer1) != EAR_ERROR) {
+		setenv_agnostic(sp, Var.policy.ear, buffer1, 1);
+	}*/
+	// Policy 
+	if (strlen(setts->policy_name) > 0) {
+		setenv_agnostic(sp, Var.policy.ear, setts->policy_name, 1);
+	}
+	// If is not learning, P_STATE is canceled.
 	if(!setts->learning) {
 		unsetenv_agnostic(sp, Var.p_state.ear);
 		unsetenv_agnostic(sp, Var.learning.ear);
 	}
+		
+	return ESPANK_SUCCESS;
+}
 
-	if (getenv_agnostic(sp, Var.name_app.rem, buffer1, sizeof(buffer1)) == 1) {
-		setenv_agnostic(sp, Var.name_app.ear, buffer1, 1);
-	}
-
-	/*
-	 * LD_PRELOAD
-	 */
-	#if !EAR_CORE
+int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
+{
+	plug_verbose(sp, 2, "function plug_serialize_task_preload");
+	
 	char *lib_path = REL_PATH_LOAD;
-
+	const int m = SZ_BUFFER_EXTRA;
+	int n;
+	
 	buffer1[0] = '\0';
 	buffer2[0] = '\0';
-	
 
 	#define t(max, val) \
 		((val + 1) > max) ? max : val + 1
-
-	//
-	const int m = SZ_BUFFER_EXTRA;
-	int n;
 
 	if (getenv_agnostic(sp, Var.hack_load.hck, buffer2, m)) {
 		n = snprintf(      0,       0, "%s", buffer2);
 		n = snprintf(buffer1, t(m, n), "%s", buffer2);
 	} else {	
-		// Appending libraries to LD_PRELOAD
+		// Copying INSTALL_PATH into buffer and adding library and the folder.
 		apenv_agnostic(buffer2, sd->pack.path_inst, 64);
-
 		n = snprintf(      0,       0, "%s/%s", buffer2, lib_path);
 		n = snprintf(buffer1, t(m, n), "%s/%s", buffer2, lib_path);
 	}
-
 	plug_verbose(sp, 2, "trying to load file '%s'", buffer1);
 
-	// If we can load
+	// Testing the access to the library folder.
 	if (access(buffer1, X_OK) == 0)
 	{
 		char *ld_buf = sd->job.user.env.ld_preload;
 
+		// If LD_PRELOAD already exists.
 		if (getenv_agnostic(sp, Var.ld_prel.ear, ld_buf, m))
 		{
 			if (n > 0) {
 				n = sprintf(buffer2,    "%s:", buffer1);
 			}
-
+			// Append the current LD_PRELOAD content to our library.
 			n = snprintf(      0,       0, "%s%s", buffer2, ld_buf);
 			n = snprintf(buffer1, t(m, n), "%s%s", buffer2, ld_buf);
 		}
-
+		// Setting LD_PRELOAD environment variable.
 		setenv_agnostic(sp, Var.ld_prel.ear, buffer1, 1);
 	} else {
 		plug_verbose(sp, 2, "this file can't be loaded '%s' (%d, %s)",
 			buffer1, errno, strerror(errno));
 	}
-	#endif	
+
+	// These environment variables are required if loader is loaded.	
+	if (getenv_agnostic(sp, Var.name_app.rem, buffer1, sizeof(buffer1)) == 1) {
+		setenv_agnostic(sp, Var.name_app.ear, buffer1, 1);
+	}
 
 	return ESPANK_SUCCESS;
 }

@@ -115,7 +115,8 @@ int slurm_spank_user_init_eard(spank_t sp)
 			if (fail(plug_shared_readsetts(sp, &sd))) {
 				return ESPANK_ERROR;
 			}
-			plug_serialize_task(sp, &sd);
+			plug_serialize_task_settings(sp, &sd);
+			plug_serialize_task_preload(sp, &sd);
 		} else {
 			plug_verbose(sp, 2, "library is not enabled");
 		}
@@ -135,8 +136,8 @@ int slurm_spank_user_init(spank_t sp, int ac, char **av)
 	if (!plug_context_is(sp, Context.remote)) {
 		return ESPANK_SUCCESS;
 	}
-	// Deserialize components converts environment variables in variables of
-	// sd context, also returns ESPANK_ERROR if plugin is disabled.
+	// Components are special environment variables to control the plugin
+	// behaviour and are treated differently. 
 	if (plug_deserialize_components(sp) != ESPANK_SUCCESS) {
 		return ESPANK_SUCCESS;
 	}
@@ -144,17 +145,22 @@ int slurm_spank_user_init(spank_t sp, int ac, char **av)
 	if (plug_read_plugstack(sp, ac, av, &sd) != ESPANK_SUCCESS) {
 		return plug_component_setenabled(sp, Component.plugin, 0);
 	}
-	// Environment variables are converted to variables. Also there is an
-	// allowance test in that call that can return ESPANK_ERROR
+	// Deserialization saves current environment variables in variables. It can
+	// also undefine the environment partially. It can return ESPANK_ERROR if
+	// detects a problem.
 	if (plug_deserialize_remote(sp, &sd) != ESPANK_SUCCESS) {
 		return plug_component_setenabled(sp, Component.plugin, 0);
 	}
-	// Just the master (one node) have to contact with EARGMD.
+	// Just the master (one node) have to contact EARGMD.
 	if (sd.subject.is_master && !sd.erun.is_erun) {
 		plug_rcom_eargmd_job_start(sp, &sd);
 	}
 	// The second part of this function (^).
-	slurm_spank_user_init_eard(sp);
+	if (fail(slurm_spank_user_init_eard(sp))) {
+		// Loading library anyway, because if a single node in a job runs
+		// without the library, it can freeze during EAR synchronization.
+		plug_serialize_task_preload(sp, &sd);
+	}
 	//
 	plug_print_variables(sp);
 
