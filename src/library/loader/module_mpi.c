@@ -223,6 +223,7 @@ int module_mpi(char *path_lib_so,char *libhack)
 	static char path_so[4096];
 	int lang_c;
 	int lang_f;
+	int is_mpi = 1;
 
 	verbose(3, "LOADER: loading module MPI");
 
@@ -235,7 +236,7 @@ int module_mpi(char *path_lib_so,char *libhack)
 	module_mpi_get_libear(path_lib_so,libhack,path_so, &lang_c, &lang_f);
 	//
 	if (!module_mpi_dlsym(path_so, lang_c, lang_f)){
-		return 0;
+		return is_mpi;
 	}
 	ear_mpi_enabled();
 	/* Once EARl is loaded we can  check if the application uses CUDA and then mark as a CUDA app */
@@ -249,7 +250,7 @@ int module_mpi(char *path_lib_so,char *libhack)
     func_con();
   }
 
-	return 1;
+	return is_mpi;
 	
 }
 

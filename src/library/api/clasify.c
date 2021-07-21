@@ -46,6 +46,7 @@ state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint d
 
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
+	*app_state = APP_COMP_BOUND;
 	if (iobound && !mpibound){
 		*app_state = APP_IO_BOUND;
 	}else if (mpibound){
@@ -64,6 +65,7 @@ state_t is_io_bound(float rwsec,uint *iobound)
 
 state_t is_network_bound(float mpisec,uint *mpibound)
 {
+	*mpibound = 0;
 	if (mpisec > MPI_TH){
 		*mpibound = 1;
 	}
@@ -89,7 +91,7 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	c2 = (sig->GBS < GBS_BUSY_WAITING);
 	c3 = (flops < GFLOPS_BUSY_WAITING);
 	if (c1 || c2 || c3){
-		debug("CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
+		verbose_master(2,"CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
 	}
 	if (c1 && c2 && c3) *busy = BUSY_WAITING;
 	return EAR_SUCCESS;

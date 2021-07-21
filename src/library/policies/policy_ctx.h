@@ -89,7 +89,7 @@ typedef struct policy_symbols {
     state_t (*end)         (polctx_t *c);
     state_t (*loop_init)   (polctx_t *c,loop_id_t *loop_id);
     state_t (*loop_end)    (polctx_t *c,loop_id_t *loop_id);
-    state_t (*new_iter)    (polctx_t *c,loop_id_t *loop_id);
+    state_t (*new_iter)    (polctx_t *c,signature_t *sig);
     state_t (*mpi_init)    (polctx_t *c,mpi_call call_type);
     state_t (*mpi_end)     (polctx_t *c,mpi_call call_type);
     state_t (*configure) (polctx_t *c);

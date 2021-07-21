@@ -28,6 +28,9 @@
 #define APP_IO_BOUND		3
 #define APP_BUSY_WAITING	4
 
+#define GPU_IDLE 1
+#define GPU_COMP 0
+
 #define APP_CPU_BOUND APP_COMP_BOUND
 
 

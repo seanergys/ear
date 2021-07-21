@@ -283,21 +283,29 @@ void states_end_period(uint iterations)
 /* This is the main function when used DynAIS. It applies the EAR state diagram that drives the internal behaviour */
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter,uint dynais_used)
 {
-    unsigned long prev_f;
+    unsigned long prev_f, lavg;
     int ready;
     int result;
     int pok;
     int curr_pstate,def_pstate;
     signature_t *l_sig;
     ulong policy_def_freq;
-    signature_t app_signature;	
+    signature_t app_signature, check_signature;	
     char use_case[16];
     char *ok_clr;
 
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
-    pst=policy_new_iteration(&loop.id);
+		metrics_new_iteration(&check_signature);
+    pst = policy_new_iteration(&check_signature);
+		if (pst != EAR_SUCCESS){
+			verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
+			policy_set_default_freq();
+			comp_N_begin = metrics_time();
+    	EAR_STATE = FIRST_ITERATION;
+			return;
+		}
 
     prev_f = ear_frequency;
     curr_pstate=frequency_closest_pstate(ear_frequency);
@@ -482,8 +490,12 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                     EAR_STATE = SIGNATURE_STABLE; }
             }
             if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){ EAR_STATE = EVALUATING_GLOBAL_SIGNATURE; }
-            signature_copy(&loop.signature, &loop_signature.signature);
+            //signature_copy(&loop.signature, &loop_signature.signature);
+            metrics_node_signature(&loop_signature.signature,&loop.signature);
             report_loop_signature(iterations,&loop,&loop_signature.job);
+						policy_get_current_freq(&nf);
+						lavg = node_freqs_avgcpufreq(nf.cpu_freq);	
+						if (lavg > 0 ) loop_signature.signature.def_f = lavg;
 
             /* VERBOSE */
             state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
@@ -519,7 +531,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /*print_loop_signature("signature refreshed", &loop_signature.signature);*/
 
-            signature_copy(&loop.signature, &loop_signature.signature);
+            //signature_copy(&loop.signature, &loop_signature.signature);
+            metrics_node_signature(&loop_signature.signature,&loop.signature);
             report_loop_signature(iterations,&loop,&loop_signature.job);
 
             /* VERBOSE */

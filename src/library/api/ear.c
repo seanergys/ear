@@ -57,6 +57,7 @@
 #include <library/models/models.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
+#include <library/metrics/signature_ext.h>
 
 #include <daemon/local_api/eard_api.h>
 #include <daemon/app_mgt.h>
@@ -736,11 +737,7 @@ void ear_init()
 
 	debug("Running in %s process=%d",node_name,getpid());
 
-	#if MPI
 	verb_level = get_ear_verbose();
-	#else
-	verb_level=1;
-	#endif
 	verb_channel=2;
 	if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
 		VERB_SET_LV(atoi(tmp));
@@ -1049,7 +1046,7 @@ void ear_init()
 				}
 			}else{
 				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
-				if (report_load(system_conf->installation.dir_plug,"eard.so:csv.so") != EAR_SUCCESS){
+				if (report_load(system_conf->installation.dir_plug,"eard.so:csv_ts.so") != EAR_SUCCESS){
 					verbose_master(0,"Error in reports API load ");
 				}
 			}

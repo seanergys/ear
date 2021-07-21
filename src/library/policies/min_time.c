@@ -117,6 +117,8 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
 /*  wrap function which calculates intructions, flops and cycles. */
 state_t compute_total_node_metrics();
+extern uint last_earl_phase_classification;
+
 
 state_t policy_init(polctx_t *c)
 {
@@ -187,6 +189,7 @@ state_t policy_init(polctx_t *c)
             if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
                 verbose_master(2, "Error asking for gpu freq list");
             }
+						/* Replace by default_setting in gpu policy */
             for (i = 0; i<c->num_gpus; i++){
                 min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
             }
@@ -340,6 +343,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if (min_time_state != SELECT_CPUFREQ && !policy_stable){
         verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
         min_time_state = SELECT_CPUFREQ;
+				last_earl_phase_classification = APP_COMP_BOUND;
     }
 
     if ((min_time_state == SELECT_CPUFREQ) || (eUFS == 0)){
@@ -653,8 +657,12 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
             last_mpi_stats_perc_mpi_mean = mean;
             last_mpi_stats_perc_mpi_mag = mag;
             last_mpi_stats_perc_mpi_median = median;
-        }else nump = 1;
+        }else{ 
+					freq_per_core = 0;
+					nump = 1;
+				}
     }else{
+				freq_per_core = 0;
         nump = 1;
     }
 
@@ -790,6 +798,10 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
     node_freqs_copy(freqs, &min_time_def_freqs);
     node_freqs_copy(&last_nodefreq_sel,freqs);
+    if (gpus.restore_settings != NULL){
+      gpus.restore_settings(c,my_sig,freqs);
+    }
+
 
     return EAR_SUCCESS;
 }
@@ -800,3 +812,20 @@ state_t compute_total_node_metrics(){
     compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
     return EAR_SUCCESS;
 }
+
+state_t policy_new_iteration(polctx_t *c,signature_t *sig)
+{
+    /* Check cpu idle or gpu idle */
+    if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
+      verbose_master(3,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
+      if (sig->Gflops > GFLOPS_BUSY_WAITING) return EAR_ERROR;
+    }
+    if (gpus.new_iter != NULL){
+        /* Basic support for GPUS */
+        return gpus.new_iter(c,sig);
+    }else{
+      return EAR_SUCCESS;
+    }
+    return EAR_SUCCESS;
+}
+

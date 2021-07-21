@@ -28,10 +28,12 @@
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <library/common/verbose_lib.h>
+#include <library/common/library_shared_data.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
 #include <library/common/externs.h>
+#include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
 #include <library/metrics/signature_ext.h>
 #include <library/policies/mpi_stats_support.h> /* Should we move this file out out policies? */
@@ -140,6 +142,9 @@ static ulong imc_avg[2];
 static ctx_t imc_ctx;
 static int NI=0;
 
+static llong last_elap_sec = 0;
+
+static void metrics_accum_flops(llong *loop_flops);
 
 void set_null_dc_energy(edata_t e)
 {
@@ -222,6 +227,7 @@ static void metrics_global_stop()
 	char io_info[256];
 	char file_name[256];
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
+	long long aux_flops;
 	int i;
 	//
 	imc_avg[APP] = 0;
@@ -270,7 +276,9 @@ static void metrics_global_stop()
 	/* CPI */
 	get_basic_metrics(&metrics_cycles[APP], &metrics_instructions[APP]);
 	/* FLOPS */
-	get_total_fops(metrics_flops[APP]);
+	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
+	metrics_accum_flops(metrics_flops[LOO]);	
+	//get_total_fops(metrics_flops[APP]);
 	/* Only the master will collect these metrics */
 	if (masters_info.my_master_rank>=0){
 		/* Uncore counters to compute memory bandwith */
@@ -330,6 +338,7 @@ static void metrics_partial_start()
 	memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
 	/* Time */
 	metrics_usecs[LOO]=aux_time;
+	last_elap_sec = 0;
 	/* Per process IO data */
 	if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
 		verbose(0,"Warning:IO data not available");
@@ -385,6 +394,13 @@ static void metrics_partial_start()
 /*************************** This function is executed every N seconds to check if signature can be compute *****************************************************/
 /****************************************************************************************************************************************************************/
 
+
+void metrics_accum_flops(llong *loop_flops)
+{
+	uint i;
+	llong *app_flops = metrics_flops[APP];
+	for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
+}
 static int metrics_partial_stop(uint where)
 {
 	long long aux_flops;
@@ -566,6 +582,7 @@ static int metrics_partial_stop(uint where)
 	stop_basic_metrics(&metrics_cycles[LOO], &metrics_instructions[LOO]);
 	/* FLOPS */
 	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
+	metrics_accum_flops(metrics_flops[LOO]);
 	/* Cache misses */
 	cache_stop(&metrics_l1[LOO], &metrics_l3[LOO]);
 
@@ -644,9 +661,11 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 			metrics->Gflops += (double) metrics->FLOPS[i];
 		}
 
+		if (s == APP) verbose_master(3,"Flops %lf time %lf",metrics->Gflops,time_s);
+
 		metrics->Gflops = metrics->Gflops / time_s; // Floating ops to FLOPS
 		metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
-		metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
+		//metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
 	}
 	/* TPI and Memory bandwith */
 	aux = time_s * (double) (1024 * 1024 * 1024);
@@ -672,6 +691,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	/* Per process IO data */
   double iogb;
 	int ios;
+	ullong mpit, exect;
   /* Per Node IO data */
 	ios = s;
   if ((masters_info.my_master_rank>=0) && (s == APP)) 								ios = APP_NODE;
@@ -686,10 +706,12 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 		if (is_mpi_enabled()){
 			double pmpi = 0.0, lpmpi;
 			for (int i=0;i<lib_shared_region->num_processes;i++){	
-				if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time*100.0 / ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+				mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
+				exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+				if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = (double)(mpit*100.0 / exect);
 				else lpmpi = 0;
 				pmpi += lpmpi;
-				verbose_master(3,"PerMPI Proc %d %.2lf",i,lpmpi);
+				verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
 			}
 			metrics->perc_MPI = pmpi/lib_shared_region->num_processes;		
 		}else{
@@ -793,8 +815,8 @@ int metrics_init(topology_t *topo)
 		flops_size = sizeof(long long) * flops_elements;
 
 		// Fops metrics allocation
-		metrics_flops[APP] = (long long *) malloc(flops_size);
-		metrics_flops[LOO] = (long long *) malloc(flops_size);
+		metrics_flops[APP] = (long long *) calloc(1,flops_size);
+		metrics_flops[LOO] = (long long *) calloc(1,flops_size);
 		metrics_flops_weights = (int *) malloc(flops_size);
 
 		if (metrics_flops[LOO] == NULL || metrics_flops[APP] == NULL) {
@@ -1021,10 +1043,28 @@ int metrics_init(topology_t *topo)
 
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
+	sig_ext_t *se;
+	signature_t nodeapp;
+
+	verbose(2,"Metrics_dispose_init %d",my_node_id);
 	metrics_partial_stop(SIG_BEGIN);
 	metrics_global_stop();
+	signature_ready(&sig_shared_region[my_node_id],0);
+	/* Waiting for node signatures */
+	verbose_master(2,"Waiting for node signatures");
+	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
 
 	metrics_compute_signature_data(APP, metrics, 1, procs);
+	if (masters_info.my_master_rank >= 0){
+		/* Computing flops */
+  	verbose_master(2,"Computing application node signature");
+  	se = (sig_ext_t *)metrics->sig_ext;
+  	metrics_node_signature(metrics, &nodeapp);
+  	signature_copy(metrics, &nodeapp);
+  	metrics->sig_ext = se;
+	}
+	verbose(2,"Metrics_dispose_end %d",my_node_id);
+
 }
 
 void metrics_compute_signature_begin()
@@ -1119,4 +1159,86 @@ long long metrics_usecs_diff(long long end, long long init)
 	}
 
 	return (end - init);
+}
+
+void metrics_node_signature(signature_t *master,signature_t *ns)
+{
+	ullong inst;
+	ullong cycles;
+	ullong FLOPS[FLOPS_EVENTS];
+	sig_ext_t *se;
+
+	se = (sig_ext_t *)master->sig_ext;	
+	signature_copy(ns,master);
+	if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+	
+	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
+	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
+	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
+
+	ns->CPI = (double)cycles/(double)inst;
+	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+
+}
+
+extern uint last_earl_phase_classification;
+extern uint last_earl_gpu_phase_classification;
+
+void metrics_new_iteration(signature_t *sig)
+{
+	llong sflops;
+	llong aux_time, elap_sec;
+	llong FLOPS[FLOPS_EVENTS];
+	int i;
+#if USE_GPUS
+	gpu_t *gpud, *gpuddiff;
+	int p;
+#endif
+	if (masters_info.my_master_rank < 0 ) return;
+	/* FLOPS are used to determine the CPU BUSY waiting */
+	if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
+		verbose_master(3,"Computing flops because of application phase is IO =%d or Busy waiting=%d", last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
+		read_flops_metrics(&sflops, FLOPS);
+		aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+		elap_sec = aux_time % 1000000;
+		if (elap_sec <= last_elap_sec) return;
+		last_elap_sec = elap_sec;
+		sig->Gflops = 0;
+		for (i= 0; i< FLOPS_EVENTS; i++){
+      sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
+      sig->Gflops += (double) sig->FLOPS[i];
+		}
+		sig->Gflops = sig->Gflops /(aux_time *1000000000.0);
+		sig->time = aux_time;
+	}
+
+#if USE_GPUS
+	if (last_earl_gpu_phase_classification == GPU_IDLE){
+		verbose_master(3,"Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
+    /* GPUs */
+    if (gpu_initialized){
+			gpu_lib_data_alloc(&gpud);
+			gpu_lib_data_alloc(&gpuddiff);
+    	if (gpu_lib_read(&gpu_lib_ctx,gpud) != EAR_SUCCESS){
+      	debug("gpu_lib_read error");
+    	}
+    	gpu_lib_data_diff(gpud, gpu_metrics_init[LOO], gpuddiff);
+			sig->gpu_sig.num_gpus = ear_num_gpus_in_node;
+      if (earl_gpu_model == MODEL_DUMMY){
+        debug("Setting num_gpu to 0 because model is DUMMY");
+        sig->gpu_sig.num_gpus = 0;
+      }
+      for (p=0; p < sig->gpu_sig.num_gpus;p++){
+        sig->gpu_sig.gpu_data[p].GPU_power    = gpuddiff[p].power_w;
+        sig->gpu_sig.gpu_data[p].GPU_freq     = gpuddiff[p].freq_gpu;
+        sig->gpu_sig.gpu_data[p].GPU_mem_freq = gpuddiff[p].freq_mem;
+        sig->gpu_sig.gpu_data[p].GPU_util     = gpuddiff[p].util_gpu;
+        sig->gpu_sig.gpu_data[p].GPU_mem_util = gpuddiff[p].util_mem;
+      }
+			gpu_lib_data_free(&gpud);
+			gpu_lib_data_free(&gpuddiff);
+
+		}
+	}
+#endif	
 }

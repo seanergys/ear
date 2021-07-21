@@ -30,6 +30,7 @@
 #include <common/math_operations.h>
 
 #include <common/output/verbose.h>
+
 #include <common/hardware/topology.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
@@ -321,4 +322,25 @@ state_t set_all_cores(ulong *freqs, int len, ulong freq_val) {
 state_t copy_cpufreq_sel(ulong *to, ulong *from, size_t size) {
     memcpy(to, from, size);
     return EAR_SUCCESS;
+}
+
+ulong node_freqs_avgcpufreq(ulong *f)
+{
+	ulong ftotal = 0;
+	ulong ctotal = 0;
+	ulong flocal;
+	ulong ccount = ccount = arch_desc.top.cpu_count;
+	for (uint p = 0 ;p<lib_shared_region->num_processes; p++){
+		flocal = f[p];
+		cpu_set_t m = sig_shared_region[p].cpu_mask;
+		for (uint i=0;i<ccount; i++){
+			if (CPU_ISSET(i,&m)){
+				//verbosen_master(2,"cpu[%d]=%lu ",i,flocal);
+				ctotal++;
+				ftotal += flocal;
+			}
+		}
+	}
+	//verbose_master(2,"Computing a total of %lu cpus and f = %lu, avg %lu",ctotal,ftotal, ftotal/ctotal);
+	return ftotal / ctotal;
 }

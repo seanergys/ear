@@ -154,7 +154,7 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 	else return EAR_ERROR;
 }
 
-state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id)
+state_t policy_new_iteration(polctx_t *c,signature_t *sig)
 {
 	return EAR_SUCCESS;
 }

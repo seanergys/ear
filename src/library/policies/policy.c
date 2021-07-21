@@ -16,7 +16,7 @@
  */
 
 #define _GNU_SOURCE
-#define POLICY_PHASES 3
+#define POLICY_PHASES 2
 #include <sched.h>
 #include <math.h>
 #if MPI
@@ -109,8 +109,8 @@ node_freqs_t nf,avg_nf;
 
 static ulong *freq_per_core;
 static node_freq_domain_t freqs_domain;
-static uint last_earl_phase_classification = APP_COMP_BOUND;
-static uint last_earl_gpu_phase_classification = 1; /* IDLE */
+uint last_earl_phase_classification = APP_COMP_BOUND;
+uint last_earl_gpu_phase_classification = GPU_COMP; 
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 static uint exclusive_mode = 0;
@@ -669,12 +669,13 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
-    debug("EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
+		if (gidle == GPU_IDLE) verbose_master(2,"%sGPU idle phase%s",COL_BLU,COL_CLR);
+    verbose_master(POLICY_PHASES,"EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
     if (use_earl_phases){
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND){
             if (busy == BUSY_WAITING){
-                verbose_master(2,"%sIO configuration%s",COL_BLU,COL_CLR);
+                verbose_master(POLICY_PHASES,"%sIO configuration%s",COL_BLU,COL_CLR);
                 st = policy_io_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
                 /* GPU ? */
                 *freq_set = avg_nf.cpu_freq[0];
@@ -702,7 +703,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         if ((earl_phase_classification == APP_COMP_BOUND) || (earl_phase_classification == APP_MPI_BOUND)){
             /* Are we in a busy waiting phase ? */
             if (busy == BUSY_WAITING){
-                verbose_master(2,"%sBusy waiting configuration%s",COL_BLU,COL_CLR);
+                verbose_master(POLICY_PHASES,"%sCPU Busy waiting configuration%s",COL_BLU,COL_CLR);
                 st = policy_busy_waiting_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
                 *freq_set = avg_nf.cpu_freq[0];
                 if (is_all_ready()){
@@ -809,6 +810,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
         pc_support_compute_next_state(c,&my_pol_ctx.app->pc_opt,curr);
 #endif
         ret = polsyms_fun.ok(c, curr,prev,ok);
+		    if (*ok == 0){
+    		  last_earl_phase_classification = APP_COMP_BOUND;
+      		last_earl_gpu_phase_classification = GPU_COMP;
+    		}
+
         if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
         else return EAR_ERROR;
 
@@ -851,10 +857,17 @@ state_t policy_loop_end(loop_id_t *loop_id)
     preturn(polsyms_fun.loop_end,c, loop_id);
 }
 /* This function is executed at each loop iteration or beginning of a period */
-state_t policy_new_iteration(loop_id_t *loop_id)
+state_t policy_new_iteration(signature_t *sig)
 {
+		state_t st = EAR_SUCCESS;
     polctx_t *c=&my_pol_ctx;
-    preturn(polsyms_fun.new_iter,c,loop_id);
+		if (polsyms_fun.new_iter != NULL) st = polsyms_fun.new_iter(c,sig);
+		if (st == EAR_ERROR){
+			/* We must reset the configuration */
+			last_earl_phase_classification = APP_COMP_BOUND;
+			last_earl_gpu_phase_classification = GPU_COMP;
+		}
+		return st;
 }
 
 /** MPI CALLS */
@@ -889,5 +902,11 @@ state_t policy_force_global_frequency(ulong new_f)
     ear_frequency=new_f;
     if (masters_info.my_master_rank>=0) eards_change_freq(ear_frequency);
     return EAR_SUCCESS;
+}
+
+state_t policy_get_current_freq(node_freqs_t *freq_set)
+{
+	if (freq_set != NULL) node_freqs_copy(freq_set,&nf);
+	return EAR_SUCCESS;
 }
 

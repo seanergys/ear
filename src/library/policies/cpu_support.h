@@ -58,5 +58,8 @@ state_t copy_cpufreq_sel(ulong *to, ulong *from, size_t size);
 
 /*  Assigns 'freq_val' to 'len' positions of array 'freqs'. */
 state_t set_all_cores(ulong *freqs, int len, ulong freq_val);
+
+ulong node_freqs_avgcpufreq(ulong *f);
+
 #endif
 

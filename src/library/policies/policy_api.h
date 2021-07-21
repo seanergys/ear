@@ -29,7 +29,7 @@ state_t policy_max_tries(polctx_t *c,int *intents);
 state_t policy_end(polctx_t *c);
 state_t policy_loop_init(polctx_t *c,loop_id_t *loop_id);
 state_t policy_loop_end(polctx_t *c,loop_id_t *loop_id);
-state_t policy_new_iteration(polctx_t *c,loop_id_t *loop_id);
+state_t policy_new_iteration(polctx_t *c,signature_t *sig);
 state_t policy_mpi_init(polctx_t *c,mpi_call call_type);
 state_t policy_mpi_end(polctx_t *c,mpi_call call_type);
 state_t policy_configure(polctx_t *c);
