@@ -761,7 +761,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	if (masters_info.my_master_rank >= 0){
 		signature_copy(&lib_shared_region->master_signature,metrics);
 	}
-	verbose(2,"Signature ready node %d",my_node_id);
+	verbose(2,"Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
 	signature_ready(&sig_shared_region[my_node_id],0);
 }
 
@@ -1228,7 +1228,7 @@ void metrics_new_iteration(signature_t *sig)
 		}
 		sig->Gflops = sig->Gflops /(elap_sec *1000000000.0);
 		sig->time = elap_sec;
-		verbose_master(2," Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
+		debug(" Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
 	}
 
 #if USE_GPUS

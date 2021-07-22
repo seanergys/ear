@@ -28,8 +28,8 @@
 static pthread_t        thread;
 static pthread_mutex_t  lock_gen = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t  lock[N_QUEUE];
-static uint             enabled;
-static uint             locked;
+static uint             enabled = 0;
+static uint             locked = 0;
 
 typedef struct wait_s {
 	int relax;
@@ -143,11 +143,13 @@ static void *monitor(void *p)
 
 	// Initializing
 	_monitor_init();
+	debug("Monitor init");
 
 	while (enabled)
 	{
 		for (i = 0, wait_units = 10; i < queue_last && enabled; ++i)
 		{
+			debug("Monitor wakeup");
 			while (pthread_mutex_trylock(&lock[i]));
 
 			reg = &queue[i];

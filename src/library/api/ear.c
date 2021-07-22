@@ -1088,13 +1088,13 @@ void ear_init()
     if (masters_info.my_master_rank==0) {
         verbose(1, "EAR initialized successfully ");
     }
-    monitor_init();
+    if (monitor_init() != EAR_SUCCESS) verbose(2,"Monitor init fails! %s",state_msg);
     earl_monitor = suscription();
     earl_monitor->call_init = earl_periodic_actions_init;
     earl_monitor->call_main = earl_periodic_actions;
     earl_monitor->time_relax = 10000;
     earl_monitor->time_burst = 1000;
-    monitor_register(earl_monitor);
+    if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose(2,"Monitor register fails! %s",state_msg);
     if (is_mpi_enabled()) monitor_relax(earl_monitor);
 #if USE_GPUS
     if (is_cuda_enabled()){
@@ -1554,20 +1554,23 @@ state_t earl_periodic_actions(void *no_arg)
     ulong period_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
-		if (first_exec_monitor){
-			first_exec_monitor = 0;
-			return EAR_SUCCESS;
-		}
+
+
 
     ear_iterations++;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
+		verbose(2,"elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided);
+		if (first_exec_monitor){
+			first_exec_monitor = 0;
+			return EAR_SUCCESS;
+		}
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
         if (ear_guided == TIME_GUIDED) verbose(2,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
         states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
     }
-    if ((period_elapsed % 5 )== 0){ 
-        seconds = period_elapsed - last_check;
+    seconds = period_elapsed - last_check;
+    if (seconds >= 5){ 
         last_check = period_elapsed;
 				/* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
         mpi_period = total_mpi_calls - last_mpis;
