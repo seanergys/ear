@@ -438,8 +438,13 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             N_iter = iterations - begin_iter;
 
             /* Signature computation */
-            if (!waiting_for_node_signatures) result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
-						else result = EAR_SUCCESS;
+						if (masters_info.my_master_rank >= 0){
+            	if (!waiting_for_node_signatures) result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
+							else result = EAR_SUCCESS;
+						}else{
+							/* Do we have to compute independently of waiting_for_node_signatures?? */
+							result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
+						}
             if (result == EAR_NOT_READY)
             {
 							/* waiting_for_node_signatures is used by the master to indicate it's waiting for not master processes, and for not master to indicate we are waiting for the master */
@@ -551,10 +556,13 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 return;
             }
             /* At this point, if we are not the master, we don't need to enter at each iteration */
-            if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 0;
-
-						/* If signature is not yet ready we continue */
+            if (masters_info.my_master_rank < 0){ 
+							waiting_for_node_signatures = 0;
+						}else{
+							if (are_signatures_ready(lib_shared_region,sig_shared_region)) waiting_for_node_signatures = 0;
+						}
 						if (waiting_for_node_signatures) return;
+
 						/* Marked in metrics */
             //signature_ready(&sig_shared_region[my_node_id],SIGNATURE_STABLE);
 
