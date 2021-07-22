@@ -420,11 +420,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if if the signature is ready */
             /* Included to accelerate the signature computation */
-            if (!dynais_used && ((((iterations % mpi_calls_iter) != 0) &&  !waiting_for_node_signatures))) return;
-						if (waiting_for_node_signatures){
-							if (masters_info.my_master_rank >= 0){ verbose(2,"evaluating and master waiting for signatures");}
-							else{ verbose(2,"evaluating and not master waiting for signatures");}
-						}
+						if (!lib_shared_region.master_ready){
+            if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
             /* Only when using dynais we consider the 'N' */
             if (dynais_used){
                 if ((iterations%perf_count_period_10p)==0){
@@ -435,26 +432,16 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 }
                 if (((iterations - 1) % perf_count_period) || (iterations == 1)) return;
             }
+						}
             N_iter = iterations - begin_iter;
 
             /* Signature computation */
-						if (masters_info.my_master_rank >= 0){
-            	if (!waiting_for_node_signatures) result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
-							else result = EAR_SUCCESS;
-						}else{
-							/* Do we have to compute independently of waiting_for_node_signatures?? */
-							result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
-						}
+            result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
             if (result == EAR_NOT_READY)
             {
-							/* waiting_for_node_signatures is used by the master to indicate it's waiting for not master processes, and for not master to indicate we are waiting for the master */
-							if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 1;
-              else perf_count_period++;
-							/* We only increase the period for not the master */
+              if (!lib_shared_region.master_ready) perf_count_period++;
               return;
-            }
-						/* At this point, if we are not the master, we don't need to enter at each iteration */
-						if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 0;
+            } 
 
             /* Included for dynais test */
 #ifdef SHOW_DEBUGS
@@ -507,7 +494,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                     EAR_STATE = SIGNATURE_STABLE; }
             }
             if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){ EAR_STATE = EVALUATING_GLOBAL_SIGNATURE; }
-            if (!waiting_for_node_signatures){
 							begin_iter = iterations;
 						  //signature_copy(&loop.signature, &loop_signature.signature);
               metrics_node_signature(&loop_signature.signature,&loop.signature);
@@ -521,7 +507,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
               if (dynais_used) sprintf(use_case,"D");
               else sprintf(use_case,"P");
               state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,use_case);
-						}
 
             /* END VERBOSE */
             break;
@@ -536,32 +521,20 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* If the policy is ok, we are in stable state and we increase the numbers of iterations to compute the signature */
         case SIGNATURE_STABLE:
-            if (!dynais_used && (((iterations % mpi_calls_iter) != 0) && !waiting_for_node_signatures)) return;
+					if (!lib_shared_region.master_ready){
+
+            if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) return;
             // I have executed N iterations more with a new frequency, we must check the signature
             if (dynais_used &&  ((iterations - 1) % perf_count_period) ) return;
-						if (waiting_for_node_signatures){
-							if (masters_info.my_master_rank >= 0){ verbose(2,"STABLE and master waiting for signatures");}
-							else{ verbose(2,"STABLE and not master waiting for signatures");}
 						}
             /* We can compute the signature */
             N_iter = iterations - begin_iter;
-            if (!waiting_for_node_signatures) result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
-						else result = EAR_SUCCESS;
+            result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
             if (result == EAR_NOT_READY)
             {
-              if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 1;
-              else perf_count_period++;
-
-                perf_count_period++;
+                (!lib_shared_region.master_ready) perf_count_period++;
                 return;
             }
-            /* At this point, if we are not the master, we don't need to enter at each iteration */
-            if (masters_info.my_master_rank < 0){ 
-							waiting_for_node_signatures = 0;
-						}else{
-							if (are_signatures_ready(lib_shared_region,sig_shared_region)) waiting_for_node_signatures = 0;
-						}
-						if (waiting_for_node_signatures) return;
 
 						/* Marked in metrics */
             //signature_ready(&sig_shared_region[my_node_id],SIGNATURE_STABLE);
