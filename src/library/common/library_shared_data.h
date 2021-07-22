@@ -73,6 +73,7 @@ typedef struct lib_shared_data{
     double 			cas_counters;
     signature_t 	master_signature;
     int				master_rank;
+		uint			master_ready;
 }lib_shared_data_t;
 
 

@@ -640,7 +640,6 @@ static int is_try_again()
 /* This is the main function for frequency selection at node level */
 /* my_sig is an input and freq_set and ready are output values */
 /* The CPU freq and GPu freq are set in this function, so freq_set is just a reference for the CPU freq selected */
-extern uint waiting_for_node_signatures;
 state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 {
     polctx_t *c=&my_pol_ctx;
@@ -660,7 +659,6 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     }
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){ 
         *ready = EAR_POLICY_CONTINUE;
-				waiting_for_node_signatures = 1;
 				uint pending_sig = lib_shared_region->num_processes-compute_total_signatures_ready(lib_shared_region,sig_shared_region);
 				uint i;
 				if (pending_sig > (lib_shared_region->num_processes/2)){
@@ -674,7 +672,6 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 				}
         return EAR_SUCCESS;
     }
-		waiting_for_node_signatures = 0;
 
 		mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
@@ -827,7 +824,6 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     if (polsyms_fun.ok != NULL){
 		/* We wait for node signature computation */
 		if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
-			waiting_for_node_signatures = 1;
 			*ok = 1;
 			return EAR_SUCCESS;
 		}

@@ -1124,6 +1124,7 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 
 	NI=iterations;
 
+	if (!sig_shared_region[my_node_id].ready){ 
 
 	// Time requirements
 	aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
@@ -1138,16 +1139,26 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 		return EAR_NOT_READY;
 	}
 
-	//
+	//Master: Returns not ready when power is not ready
+	//Not master: when master signature not ready
 	if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
+ 
 	metrics_reset();
 
-	//
+	//Marks the signature as ready
 	metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
 	//
 	metrics_partial_start();
-
+	}
+	if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
+		if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
+			lib_shared_region.master_ready = 1;
+		}
+		return EAR_NOT_READY;
+	}else if (masters_info.my_master_rank >= 0){
+		lib_shared_region.master_ready = 0;
+	}
 	return EAR_SUCCESS;
 }
 
