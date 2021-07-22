@@ -174,9 +174,9 @@ static void from_proc_to_core(ulong *cpuf)
     int p,c;
     ulong f;
     int ccount;
-		int lv = 2;
+    int lv = 2;
     cpu_set_t m;
-		if (first_print){ lv = 1;first_print = 0;}
+    if (first_print){ lv = 1;first_print = 0;}
     verbose_master(lv,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
     ccount = arch_desc.top.cpu_count;
     for (p = 0; p < lib_shared_region->num_processes ; p++)
@@ -264,30 +264,30 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     uint *imc_up,*imc_low;
-		debug("Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
+    debug("Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
     if (dyn_unc && imc_mgt_compatible){
-			imc_up = calloc(imc_devices,sizeof(uint));
-			imc_low = calloc(imc_devices,sizeof(uint));
-			/* We are using the same imc pstates for all the devices for now */
-			for (int sid = 0;sid <imc_devices ;sid++) {
-				imc_low[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
-				imc_up[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
-				if (imc_up[sid] != ps_nothing){
-      		verbose_master(2,"Setting IMC freq:SID=%d to %llu and %llu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
-				}else{
-      		verbose_master(2,"Setting IMC freq:SID=%d to %llu and min",sid,imc_pstates[imc_low[sid]].khz);
-				}
-			}
-			if (mgt_imcfreq_set_current_ranged_list(NULL, imc_low, imc_up) != EAR_SUCCESS){
-				uint sid = 0;
-				if (imc_up[sid] != ps_nothing){
-					verbose_master(2,"Error setting IMC freq to %llu and %llu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
-				}else{
-					verbose_master(2,"Error setting IMC freq to %llu and min",imc_pstates[imc_low[0]].khz);
-				}
-			}			
-			free(imc_up);
-			free(imc_low);
+        imc_up = calloc(imc_devices,sizeof(uint));
+        imc_low = calloc(imc_devices,sizeof(uint));
+        /* We are using the same imc pstates for all the devices for now */
+        for (int sid = 0;sid <imc_devices ;sid++) {
+            imc_low[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
+            imc_up[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
+            if (imc_up[sid] != ps_nothing){
+                verbose_master(2,"Setting IMC freq:SID=%d to %llu and %llu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
+            }else{
+                verbose_master(2,"Setting IMC freq:SID=%d to %llu and min",sid,imc_pstates[imc_low[sid]].khz);
+            }
+        }
+        if (mgt_imcfreq_set_current_ranged_list(NULL, imc_low, imc_up) != EAR_SUCCESS){
+            uint sid = 0;
+            if (imc_up[sid] != ps_nothing){
+                verbose_master(2,"Error setting IMC freq to %llu and %llu",imc_pstates[imc_low[0]].khz,imc_pstates[imc_up[0]].khz);
+            }else{
+                verbose_master(2,"Error setting IMC freq to %llu and min",imc_pstates[imc_low[0]].khz);
+            }
+        }			
+        free(imc_up);
+        free(imc_low);
     }
 
     return EAR_SUCCESS;
@@ -411,7 +411,7 @@ state_t policy_show_domain(node_freq_domain_t *dom){
 state_t policy_init()
 {
     polctx_t *c = &my_pol_ctx;
-		int i;
+    int i;
     char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
     char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
     char *cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
@@ -422,7 +422,7 @@ state_t policy_init()
 
     state_t retg=EAR_SUCCESS, ret = EAR_SUCCESS;
     policy_gpu_init_ctx(c);
-		// print_policy_ctx(c);
+    // print_policy_ctx(c);
     if (polsyms_fun.init != NULL){
         ret=polsyms_fun.init(c);
     }
@@ -647,10 +647,10 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     node_freqs_t *freqs = &nf;
     state_t st=EAR_ERROR;
     uint busy, iobound, mpibound,earl_phase_classification;
-		sig_ext_t *se;
-		float mpi_in_period;
+    sig_ext_t *se;
+    float mpi_in_period;
 
-		se = (sig_ext_t *)my_sig->sig_ext;
+    se = (sig_ext_t *)my_sig->sig_ext;
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
     if (!eards_connected() || (masters_info.my_master_rank<0)){
@@ -662,11 +662,11 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         return EAR_SUCCESS;
     }
 
-		mpi_in_period = compute_mpi_in_period(se->mpi_stats);
+    mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
-		is_io_bound(my_sig->IO_MBS,&iobound);
-		is_network_bound(mpi_in_period,&mpibound);
-		classify(iobound, mpibound, &earl_phase_classification);
+    is_io_bound(my_sig->IO_MBS,&iobound);
+    is_network_bound(mpi_in_period,&mpibound);
+    classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
     debug("EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);

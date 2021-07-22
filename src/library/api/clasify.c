@@ -1,19 +1,19 @@
 /*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* Copyright © 2017-present BSC-Lenovo
-* BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
-*
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
-*/
+ *
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * This file is licensed under both the BSD-3 license for individual/non-commercial
+ * use and EPL-1.0 license for commercial use. Full text of both licenses can be
+ * found in COPYING.BSD and COPYING.EPL files.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <common/config.h>
@@ -29,96 +29,97 @@
 #if 0
 state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided)
 {
-	*app_state = APP_COMP_BOUND;
-	if ((dyn_on == DYNAIS_ENABLED) && (dynais_state == NO_LOOP) && (earl_state == NO_PERIOD)){
-		if (rwsec > IO_TH) *app_state = APP_IO_BOUND;
-	}else if ((rwsec > IO_TH) && (mpisec < MPI_TH)){
-		*app_state = APP_IO_BOUND;
-	}else if (mpisec > MPI_TH){
-		*app_state = APP_MPI_BOUND;
-	}
-	if (mpisec < MIN_MPI_TH){
-		*ear_guided = TIME_GUIDED;
-	}
-	return EAR_SUCCESS;
+    *app_state = APP_COMP_BOUND;
+    if ((dyn_on == DYNAIS_ENABLED) && (dynais_state == NO_LOOP) && (earl_state == NO_PERIOD)){
+        if (rwsec > IO_TH) *app_state = APP_IO_BOUND;
+    }else if ((rwsec > IO_TH) && (mpisec < MPI_TH)){
+        *app_state = APP_IO_BOUND;
+    }else if (mpisec > MPI_TH){
+        *app_state = APP_MPI_BOUND;
+    }
+    if (mpisec < MIN_MPI_TH){
+        *ear_guided = TIME_GUIDED;
+    }
+    return EAR_SUCCESS;
 }
 #endif
 
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
-	if (iobound && !mpibound){
-		*app_state = APP_IO_BOUND;
-	}else if (mpibound){
-		*app_state = APP_MPI_BOUND;
-	}
-	return EAR_SUCCESS;
+    if (iobound && !mpibound){
+        *app_state = APP_IO_BOUND;
+    }else if (mpibound){
+        *app_state = APP_MPI_BOUND;
+    }
+    return EAR_SUCCESS;
 }
 
 state_t is_io_bound(float rwsec,uint *iobound)
 {
-	*iobound = 0;
-	if (rwsec > IO_TH) *iobound = 1;
-	return EAR_SUCCESS;
-	
+    *iobound = 0;
+    if (rwsec > IO_TH) *iobound = 1;
+    return EAR_SUCCESS;
+
 }
 
 state_t is_network_bound(float mpisec,uint *mpibound)
 {
-	if (mpisec > MPI_TH){
-		*mpibound = 1;
-	}
-	return EAR_SUCCESS;
+    if (mpisec > MPI_TH){
+        *mpibound = 1;
+    }
+    return EAR_SUCCESS;
 }
 
 state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
 {
-	if (mpisec < MIN_MPI_TH){
-		*ear_guided = TIME_GUIDED;
-	}
-	return EAR_SUCCESS;
+    if (mpisec < MIN_MPI_TH){
+        *ear_guided = TIME_GUIDED;
+    }
+    return EAR_SUCCESS;
 }
 
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
-	double flops;
-	uint c1, c2, c3;
-	*busy = USEFUL_COMP;
-	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
-	flops = compute_node_flops(lib_shared_region,sig_shared_region);
-	c1 = (sig->CPI < CPI_BUSY_WAITING);
-	c2 = (sig->GBS < GBS_BUSY_WAITING);
-	c3 = (flops < GFLOPS_BUSY_WAITING);
-	if (c1 || c2 || c3){
-		debug("CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
-	}
-	if (c1 && c2 && c3) *busy = BUSY_WAITING;
-	return EAR_SUCCESS;
+    double flops;
+    uint c1, c2, c3;
+    *busy = USEFUL_COMP;
+    //for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
+    flops = compute_node_flops(lib_shared_region,sig_shared_region);
+    c1 = (sig->CPI < CPI_BUSY_WAITING);
+    c2 = (sig->GBS < GBS_BUSY_WAITING);
+    c3 = (flops < GFLOPS_BUSY_WAITING);
+    if (c1 || c2 || c3){
+        debug("CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
+    }
+    if (c1 && c2 && c3) *busy = BUSY_WAITING;
+    return EAR_SUCCESS;
 }
 
 state_t is_cpu_bound(signature_t *sig,uint *cbound)
 {
-	*cbound = 0;
-	if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;
-	return EAR_SUCCESS;
+    *cbound = 0;
+    if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;
+    return EAR_SUCCESS;
 }
 
 state_t is_mem_bound(signature_t *sig,uint *mbound)
 {
-	*mbound = 0;
-	if ((sig->CPI > CPI_MEM_BOUND) && (sig->GBS > GBS_MEM_BOUND)) *mbound = 1;
-	return EAR_SUCCESS;
+    *mbound = 0;
+    if ((sig->CPI > CPI_MEM_BOUND) && (sig->GBS > GBS_MEM_BOUND)) *mbound = 1;
+    return EAR_SUCCESS;
 }
+
 state_t  is_gpu_idle(signature_t *sig,uint *gidle)
 {
 #if USE_GPUS
-	int total = 0;
-	int i;
-	for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
-	if (total == 0) *gidle = 1;
-	else *gidle = 0;
-	return EAR_SUCCESS;
+    int total = 0;
+    int i;
+    for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
+    if (total == 0) *gidle = 1;
+    else *gidle = 0;
+    return EAR_SUCCESS;
 #else
-	*gidle = 1;
-	return EAR_SUCCESS;
+    *gidle = 1;
+    return EAR_SUCCESS;
 #endif
 }
