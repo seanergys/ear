@@ -420,7 +420,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if if the signature is ready */
             /* Included to accelerate the signature computation */
-						if (!lib_shared_region.master_ready){
+						if (!lib_shared_region->master_ready){
             if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
             /* Only when using dynais we consider the 'N' */
             if (dynais_used){
@@ -439,7 +439,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);	
             if (result == EAR_NOT_READY)
             {
-              if (!lib_shared_region.master_ready) perf_count_period++;
+              if (!lib_shared_region->master_ready) perf_count_period++;
               return;
             } 
 
@@ -521,7 +521,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* If the policy is ok, we are in stable state and we increase the numbers of iterations to compute the signature */
         case SIGNATURE_STABLE:
-					if (!lib_shared_region.master_ready){
+					if (!lib_shared_region->master_ready){
 
             if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) return;
             // I have executed N iterations more with a new frequency, we must check the signature
@@ -532,7 +532,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
             if (result == EAR_NOT_READY)
             {
-                (!lib_shared_region.master_ready) perf_count_period++;
+                if (!lib_shared_region->master_ready) perf_count_period++;
                 return;
             }
 
