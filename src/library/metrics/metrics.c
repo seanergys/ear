@@ -1183,9 +1183,8 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
 
 	ns->CPI = (double)cycles/(double)inst;
-	verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);
+	// verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);
 	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
-
 }
 
 extern uint last_earl_phase_classification;
