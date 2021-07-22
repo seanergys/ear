@@ -65,7 +65,7 @@ static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
 	timestamp_t t2;
 	timestamp_t t1;
 
-	debug("waiting %lld units", units);
+	debug("waiting %llu units", units);
 
 	timestamp_getfast(&t1);
 	nanosleep(&time, NULL);
@@ -79,8 +79,7 @@ static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
 	*alignment += *pass_units;
 	*alignment %= 10;
 
-	debug("waited %d units (alignment %d)",
-		*pass_units, *alignment);
+	debug("waited %d units (alignment %d)", *pass_units, *alignment);
 }
 
 static void monitor_time_calc(register_t *reg, int *wait_units, int pass_units, int alignment)

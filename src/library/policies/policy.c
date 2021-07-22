@@ -661,7 +661,17 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){ 
         *ready = EAR_POLICY_CONTINUE;
 				waiting_for_node_signatures = 1;
-				debug("Num sig pending %d",lib_shared_region->num_processes-compute_total_signatures_ready(lib_shared_region,sig_shared_region));	
+				uint pending_sig = lib_shared_region->num_processes-compute_total_signatures_ready(lib_shared_region,sig_shared_region);
+				uint i;
+				if (pending_sig > (lib_shared_region->num_processes/2)){
+					verbose_master(2,"Num sig pending %d:",pending_sig);	
+					#if 0
+					for (i = 0;i< lib_shared_region->num_processes;i++){
+						if (sig_shared_region[i].ready == 0)	verbosen_master(2," P[%d]=%u",i,sig_shared_region[i].iterations);
+					}
+					verbose_master(2," ");
+					#endif
+				}
         return EAR_SUCCESS;
     }
 		waiting_for_node_signatures = 0;
@@ -815,6 +825,12 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
         return EAR_SUCCESS;
     }
     if (polsyms_fun.ok != NULL){
+		/* We wait for node signature computation */
+		if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
+			waiting_for_node_signatures = 1;
+			*ok = 1;
+			return EAR_SUCCESS;
+		}
 #if POWERCAP
         pc_support_compute_next_state(c,&my_pol_ctx.app->pc_opt,curr);
 #endif
@@ -823,7 +839,8 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     		  last_earl_phase_classification = APP_COMP_BOUND;
       		last_earl_gpu_phase_classification = GPU_COMP;
     		}
-
+				/* And then we mark as not ready */
+				clean_signatures(lib_shared_region,sig_shared_region);
         if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
         else return EAR_ERROR;
 

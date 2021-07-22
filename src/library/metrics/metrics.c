@@ -143,6 +143,7 @@ static ctx_t imc_ctx;
 static int NI=0;
 
 static llong last_elap_sec = 0;
+static llong app_start;
 
 static void metrics_accum_flops(llong *loop_flops);
 
@@ -167,6 +168,7 @@ static void metrics_global_start()
 {
 	int ret;
 	aux_time = metrics_time();
+	app_start = aux_time;
 
 	if (masters_info.my_master_rank>=0)
 	{
@@ -414,7 +416,7 @@ static int metrics_partial_stop(uint where)
 	/* If the signature of the master is not ready, we cannot compute our signature */
 	//debug("My rank is %d",masters_info.my_master_rank);
   if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-			//debug("Master signature not ready at time %lld",metrics_time());
+			verbose(2,"Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
       return EAR_NOT_READY;
   }
 
@@ -759,6 +761,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	if (masters_info.my_master_rank >= 0){
 		signature_copy(&lib_shared_region->master_signature,metrics);
 	}
+	verbose(2,"Signature ready node %d",my_node_id);
 	signature_ready(&sig_shared_region[my_node_id],0);
 }
 
@@ -1204,7 +1207,7 @@ void metrics_new_iteration(signature_t *sig)
 		read_flops_metrics(&sflops, FLOPS);
 		f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 		elap_sec = f_time / 1000000;
-		verbose_master(2,"elap %lld last %lld: Computing flops because of application phase is IO =%d or Busy waiting=%d",elap_sec,last_elap_sec, last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
+		debug("elap %lld last %lld: Computing flops because of application phase is IO =%d or Busy waiting=%d",elap_sec,last_elap_sec, last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
 		
 		if (elap_sec <= last_elap_sec) return;
 		last_elap_sec = elap_sec;
@@ -1212,9 +1215,7 @@ void metrics_new_iteration(signature_t *sig)
 		for (i= 0; i< FLOPS_EVENTS; i++){
       sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
       sig->Gflops += (double) sig->FLOPS[i];
-			verbosen_master(2,"Flops %d=%llu ",i,sig->FLOPS[i]);
 		}
-		verbosen_master(2," total Gflops %lf",sig->Gflops);
 		sig->Gflops = sig->Gflops /(elap_sec *1000000000.0);
 		sig->time = elap_sec;
 		verbose_master(2," Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);

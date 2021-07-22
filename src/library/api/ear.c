@@ -885,13 +885,13 @@ void ear_init()
 
     /* create verbose file for each job */
     if (verb_path != NULL){
-        if (masters_info.my_master_rank >= 0){
+        //if (masters_info.my_master_rank >= 0){
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
                 error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
             }else{
                 using_verb_files = 1;
                 char file_name[128];
-                sprintf(file_name, "%s/earl_log.%d.%d.%d.%d", verb_path,masters_info.my_master_rank, my_step_id, my_job_id,getpid());
+                sprintf(file_name, "%s/earl_log.%d.%d.%d.%d", verb_path,lib_shared_region->master_rank,my_node_id, my_step_id, my_job_id);
                 verbose(VEAR_INIT,"Using %s as earl log file",file_name);
                 int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
                 if (fd != -1){
@@ -901,7 +901,7 @@ void ear_init()
                     verbose(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
                 }
             }
-        }
+        //}
     }
 
 
@@ -1528,6 +1528,7 @@ void ear_new_iteration(unsigned long loop_id)
 static uint last_mpis;
 static timestamp_t periodic_time;
 static ulong last_check = 0;
+static uint first_exec_monitor = 1;
 
 state_t earl_periodic_actions_init(void *no_arg)
 {
@@ -1553,12 +1554,16 @@ state_t earl_periodic_actions(void *no_arg)
     ulong period_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
+		if (first_exec_monitor){
+			first_exec_monitor = 0;
+			return EAR_SUCCESS;
+		}
 
     ear_iterations++;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
-        //if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+        if (ear_guided == TIME_GUIDED) verbose(2,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
         states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
     }
     if ((period_elapsed % 5 )== 0){ 

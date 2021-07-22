@@ -80,6 +80,7 @@ typedef struct shsignature{
     uint 							master;
     pid_t 						pid;
     uint 							ready;
+		uint 							iterations;
     mpi_information_t mpi_info;
 		mpi_calls_types_t mpi_types_info;		
     /* sig was originally a signature_t */

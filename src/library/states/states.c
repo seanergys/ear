@@ -298,6 +298,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
+		sig_shared_region[my_node_id].iterations++;
 		metrics_new_iteration(&check_signature);
     pst = policy_new_iteration(&check_signature);
 		if (pst != EAR_SUCCESS){
@@ -420,6 +421,10 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /* We check from time to time if if the signature is ready */
             /* Included to accelerate the signature computation */
             if (!dynais_used && ((((iterations % mpi_calls_iter) != 0) &&  !waiting_for_node_signatures))) return;
+						if (waiting_for_node_signatures){
+							if (masters_info.my_master_rank >= 0){ verbose(2,"evaluating and master waiting for signatures");}
+							else{ verbose(2,"evaluating and not master waiting for signatures");}
+						}
             /* Only when using dynais we consider the 'N' */
             if (dynais_used){
                 if ((iterations%perf_count_period_10p)==0){
@@ -526,18 +531,32 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* If the policy is ok, we are in stable state and we increase the numbers of iterations to compute the signature */
         case SIGNATURE_STABLE:
-            if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) return;
+            if (!dynais_used && (((iterations % mpi_calls_iter) != 0) && !waiting_for_node_signatures)) return;
             // I have executed N iterations more with a new frequency, we must check the signature
             if (dynais_used &&  ((iterations - 1) % perf_count_period) ) return;
+						if (waiting_for_node_signatures){
+							if (masters_info.my_master_rank >= 0){ verbose(2,"STABLE and master waiting for signatures");}
+							else{ verbose(2,"STABLE and not master waiting for signatures");}
+						}
             /* We can compute the signature */
             N_iter = iterations - begin_iter;
-            result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
+            if (!waiting_for_node_signatures) result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
+						else result = EAR_SUCCESS;
             if (result == EAR_NOT_READY)
             {
+              if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 1;
+              else perf_count_period++;
+
                 perf_count_period++;
                 return;
             }
-            signature_ready(&sig_shared_region[my_node_id],SIGNATURE_STABLE);
+            /* At this point, if we are not the master, we don't need to enter at each iteration */
+            if (masters_info.my_master_rank < 0) waiting_for_node_signatures = 0;
+
+						/* If signature is not yet ready we continue */
+						if (waiting_for_node_signatures) return;
+						/* Marked in metrics */
+            //signature_ready(&sig_shared_region[my_node_id],SIGNATURE_STABLE);
 
             /*print_loop_signature("signature refreshed", &loop_signature.signature);*/
 
@@ -561,16 +580,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /* We must evaluate policy decissions */
             signatures_stables++;
 						l_sig = &policy_sel_signature;
-						#if 0
-            if (!dynais_used){
-                if (signatures_stables == 1){
-                    signature_copy(&cpu_sel_signature,&loop.signature);
-                }
-                l_sig = &cpu_sel_signature;
-            }else{
-                l_sig = &signatures[def_pstate].signature;
-            }
-						#endif
             if (sig_ready[def_pstate] == 0){
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
@@ -580,13 +589,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 }
                 return;
             }
-						#if 0
-						if (signatures_different(&loop_signature.signature, l_sig,0.2)){
-							EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-							verbose_master(2,"Signature is different, aplying the policy again");	
-							return;
-						}
-						#endif
             pst = policy_ok(&loop_signature.signature, l_sig,&pok);
             ok_clr = COL_GRE;
             if (pok) {
