@@ -210,7 +210,7 @@ int wait_for_client(int s,struct sockaddr_in *client)
 	}
 
     char conection_ok = 1;
-    write(new_sock, &conection_ok, sizeof(char));
+    _write(new_sock, &conection_ok, sizeof(char));
 
     verbose(VCONNECT, "Sending handshake byte to client.");
 	verbose(VCONNECT, "new connection ");
@@ -329,8 +329,8 @@ int read_command(int s, request_t *command)
 void send_answer(int s,long *ack)
 {
     int ret;
-    if ((ret=write(s,ack,sizeof(ulong)))!=sizeof(ulong)) error("Error sending the answer");
-    if (ret<0) error("(%s)",strerror(errno));
+    if ((ret = _write(s, ack, sizeof(ulong))) != sizeof(ulong)) error("Error sending the answer");
+    if (ret < 0) error("(%s)", strerror(errno));
 }
 
 #if DYNAMIC_COMMANDS
@@ -551,7 +551,7 @@ char is_valid_type(int type)
 
 request_header_t receive_data(int fd, void **data)
 {
-    int ret, total, pending;
+    int ret;
     request_header_t head;
     char *read_data;
     head.type = 0;
@@ -583,11 +583,9 @@ request_header_t receive_data(int fd, void **data)
     }
     //write ack should go here if we implement it
     read_data = calloc(head.size, sizeof(char));
-    total = 0;
-    pending = head.size;
 
     /* Read the data indicated by the header */
-    ret = _read(fd, read_data+total, head.size);
+    ret = _read(fd, read_data, head.size);
 	if (ret < head.size) 
     {
 		error("Error by receive data (%s)",strerror(errno));

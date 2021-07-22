@@ -40,6 +40,9 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <common/messaging/msg_conf.h>
 
+/** Non-blocking version of write*/
+int _write(int fd, void *data, size_t ssize);
+
 /** Connects with the EARD running in the given nodename. The current implementation supports a single command per connection
 *	The sequence must be : connect +  command + disconnect
 * 	@param the nodename to connect with
