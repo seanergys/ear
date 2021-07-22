@@ -224,9 +224,10 @@ void notify_eard_connection(int status)
 
   if (masters_connected != masters_info.my_master_size){
   /* Some of the nodes is not ok , setting off EARL */
-    if (masters_info.my_master_rank==0) {
+    if (masters_info.my_master_rank>=0) {
       verbose_master(1,"Number of nodes expected %d , number of nodes connected %d, setting EARL to off \n",masters_info.my_master_size,masters_connected);
     }
+    eard_ok = 0;
     my_id=1;
     return;
   }else{
@@ -797,7 +798,7 @@ void ear_init()
 
 	debug("system_conf  = %p", system_conf);
 	debug("resched_conf = %p", resched_conf);
-	debug("system_conf->id = %u", system_conf->id);
+	if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
 	debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
 
 	/* Updating configuration */
