@@ -261,14 +261,14 @@ static void metrics_global_stop()
     		error("Setting the IMC freq in global stop");
   		}
 
-  		verbose(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
+  		verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
     	if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[APP]))){
       	error("IMCFreq data read in global_start");
     	}
 			if (xtate_fail(s, imcfreq_data_diff(imc_end[APP],imc_init[APP],imc_freq_end[APP],&imc_avg[APP]))){
 				error("IMC data diff fails");
 			}	
-			verbose(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
+			verbose_master(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
 		}
 
 	}
@@ -403,6 +403,9 @@ void metrics_accum_flops(llong *loop_flops)
 	llong *app_flops = metrics_flops[APP];
 	for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
 }
+
+extern uint ear_iterations;
+extern int ear_guided;
 static int metrics_partial_stop(uint where)
 {
 	long long aux_flops;
@@ -416,7 +419,8 @@ static int metrics_partial_stop(uint where)
 	/* If the signature of the master is not ready, we cannot compute our signature */
 	//debug("My rank is %d",masters_info.my_master_rank);
   if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-			verbose(2,"Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
+			debug("Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
+			debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
       return EAR_NOT_READY;
   }
 
@@ -463,7 +467,7 @@ static int metrics_partial_stop(uint where)
 		eards_read_uncore(metrics_bandwith_end[LOO]);
 		diff_uncores(diff_uncore_value,metrics_bandwith_end[LOO],metrics_bandwith_init[LOO],bandwith_elements);
 		if ((where==SIG_END) && uncore_are_frozen(diff_uncore_value,bandwith_elements)){
-			verbose(1,"Doing reset of uncore counters becuase they were frozen");
+			debug("Doing reset of uncore counters becuase they were frozen");
 			eards_reset_uncore();
 			return EAR_NOT_READY;
 		}else{
@@ -761,7 +765,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 	if (masters_info.my_master_rank >= 0){
 		signature_copy(&lib_shared_region->master_signature,metrics);
 	}
-	verbose(2,"Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
+	debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
 	signature_ready(&sig_shared_region[my_node_id],0);
 }
 
@@ -909,12 +913,12 @@ int metrics_init(topology_t *topo)
 	if (xtate_fail(s,cpufreq_data_count(&mycpufreq_data_size,&mycpufreq_data_count))){
 		error("Cpufrequency data size failed");
 	}else{
-		verbose(2,"Cpufrequency data size %u count %u", mycpufreq_data_size,mycpufreq_data_count);
+		verbose_master(2,"Cpufrequency data size %u count %u", mycpufreq_data_size,mycpufreq_data_count);
 	}
   if (xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[LOO],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[LOO],NULL))){
 			error("Cpufreq allocation failed");
 	}
-	verbose(2,"CPUFreq data allocated");
+	verbose_master(2,"CPUFreq data allocated");
 	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
 	/* IMC average frequency initialization */
 	if (imc_mgt_compatible){
@@ -1050,7 +1054,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
-	verbose(2,"Metrics_dispose_init %d",my_node_id);
+	debug("Metrics_dispose_init %d",my_node_id);
 	metrics_partial_stop(SIG_BEGIN);
 	metrics_global_stop();
 	signature_ready(&sig_shared_region[my_node_id],0);
@@ -1067,7 +1071,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
   	signature_copy(metrics, &nodeapp);
   	metrics->sig_ext = se;
 	}
-	verbose(2,"Metrics_dispose_end %d",my_node_id);
+	debug("Metrics_dispose_end %d",my_node_id);
 
 }
 
@@ -1183,6 +1187,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	ullong FLOPS[FLOPS_EVENTS];
 	sig_ext_t *se;
 	double CPI;
+	int i;
 
 	se = (sig_ext_t *)master->sig_ext;	
 	signature_copy(ns,master);
@@ -1195,6 +1200,12 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 
 	ns->CPI = (double)cycles/(double)inst;
 	// verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);
+	if (ns->CPI > 2.0){
+		for (i=0; i< lib_shared_region->num_processes;i ++){
+			verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
+		}	
+		verbose_master(2," ");
+	}
 	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
 }
 

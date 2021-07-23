@@ -433,13 +433,15 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 if (((iterations - 1) % perf_count_period) || (iterations == 1)) return;
             }
 						}
+						#if SHOW_DEBUGS
             if (lib_shared_region->master_ready){
               if (masters_info.my_master_rank >= 0){
-                verbose_master(2," Master: master ready waiting for slaves evaluating");
+                debug(" Master: master ready waiting for slaves evaluating");
               }else{
-                verbose(2,"Slave: going to compute signature because master is ready evaluating");
+                debug("Slave: going to compute signature because master is ready evaluating");
               }
             }
+						#endif
 
             N_iter = iterations - begin_iter;
 
@@ -535,13 +537,15 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             // I have executed N iterations more with a new frequency, we must check the signature
             if (dynais_used &&  ((iterations - 1) % perf_count_period) ) return;
 						}
+						#if SHOW_DEBUGS
 						if (lib_shared_region->master_ready){
 							if (masters_info.my_master_rank >= 0){
-								verbose_master(2," Master: master ready waiting for slaves stable");
+								debug(" Master: master ready waiting for slaves stable");
 							}else{
-								verbose(2,"Slave: going to compute signature because master is ready stable");
+								debug("Slave: going to compute signature because master is ready stable");
 							}
 						}
+						#endif
             /* We can compute the signature */
             N_iter = iterations - begin_iter;
             result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);

@@ -482,7 +482,7 @@ state_t policy_init()
     }
     /*  Verboses policy's domain*/
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
-        verbose(2, "%sERROR on getting domains.%s",COL_RED, COL_CLR);
+        verbose_master(2, "%sERROR on getting domains.%s",COL_RED, COL_CLR);
     }
 #if POWERCAP
     if (masters_info.my_master_rank>=0){
