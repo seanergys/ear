@@ -36,9 +36,9 @@ state_t EARGM_token(char *token)
 
 void parse_EARGM_specific(eargm_conf_t *conf, char *line)
 {
-    int idx = -1, i = 0;
+    int idx = -1, i = 0, current_id;
     int local_idx = 0;
-    char *token, *main_ptr, *scd_ptr;
+    char *token, *main_ptr, *scd_ptr, tmp_found;
 
     //setting the initial pointer to null is necessary for realloc
     if (conf->num_eargms < 1)
@@ -93,11 +93,20 @@ void parse_EARGM_specific(eargm_conf_t *conf, char *line)
             token = strtok_r(token, ",", &scd_ptr);
             while (token != NULL)
             {
-                //a search should be conducted here to prevent duplicates
-                conf->eargms[local_idx].eargms = realloc(conf->eargms[local_idx].eargms,
-                            sizeof(int)*(conf->eargms[local_idx].num_eargms + 1));
-                conf->eargms[local_idx].eargms[conf->eargms[local_idx].num_eargms] = atoi(token);
-                conf->eargms[local_idx].num_eargms++;
+                current_id = atoi(token);
+                tmp_found = 0;
+                for (i = 0; i < conf->eargms[local_idx].num_subs; i++) //search to avoid duplicates
+                {
+                    if (conf->eargms[local_idx].subs[i] == current_id) {
+                        tmp_found = 1;
+                        break;
+                    }
+                }
+                if (tmp_found) continue; 
+                conf->eargms[local_idx].subs = realloc(conf->eargms[local_idx].subs, 
+                        sizeof(int)*(conf->eargms[local_idx].num_subs + 1));
+                conf->eargms[local_idx].subs[conf->eargms[local_idx].num_subs] = current_id;
+                conf->eargms[local_idx].num_subs++;
                 token = strtok_r(NULL, ",", &scd_ptr);
             }
         }

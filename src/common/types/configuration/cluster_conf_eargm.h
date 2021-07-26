@@ -38,8 +38,8 @@ typedef struct eargm_def
     ulong energy;
     ulong power;
     char node[GENERIC_NAME];
-    int num_eargms;
-    int *eargms;
+    int num_subs;
+    int *subs; //eargms under that meta_eargm
 } eargm_def_t;
 
 typedef struct eargm_conf
