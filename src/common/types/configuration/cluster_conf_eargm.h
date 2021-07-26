@@ -31,6 +31,17 @@
 
 #define DECON_LIMITS  3
 
+typedef struct eargm_def
+{
+    int id;
+    uint port;
+    ulong energy;
+    ulong power;
+    char node[GENERIC_NAME];
+    int num_eargms;
+    int *eargms;
+} eargm_def_t;
+
 typedef struct eargm_conf
 {
   uint  verbose;    /* default 1 */
@@ -59,6 +70,10 @@ typedef struct eargm_conf
   char  host[GENERIC_NAME];
   char  energycap_action[GENERIC_NAME]; /* This action is execute in any WARNING level */
   uint  use_log;
+
+  /* Specific EARGM definitions */
+  int num_eargms;
+  eargm_def_t *eargms;
 } eargm_conf_t;
 
 
