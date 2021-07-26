@@ -4,18 +4,16 @@ COMPONENTS = \
     common \
     report \
     metrics \
-    management
-COMPONENTS += \
-    library \
-
-EXTRA=  daemon \
+    management\
+    daemon \
     commands \
+    library \
 		tools\
+		global_manager\
 		slurm_plugin
 
 ifdef DB_BASE
-EXTRA += database_cache \
-		global_manager
+COMPONENTS += database_cache 
 endif
 
 ######## RULES
