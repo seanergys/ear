@@ -303,6 +303,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 {
     ulong *gpu_f = freqs->gpu_freq;
     int i;
+		if (c->num_gpus == 0) return EAR_SUCCESS;
     /* Powercap limits are checked here but this code could be moved to a function */
 #if USE_GPUS
 #if POWERCAP
@@ -895,7 +896,7 @@ state_t policy_new_iteration(signature_t *sig)
 			}
     }
 #if USE_GPUS
-    if (last_earl_gpu_phase_classification == GPU_IDLE){
+    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (sig->gpu_sig.num_gpus)){
       verbose_master(3,"Validating GPU phase");
       int i;
       for (i = 0; i< sig->gpu_sig.num_gpus; i++){
