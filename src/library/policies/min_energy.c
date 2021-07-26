@@ -710,7 +710,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 }
 state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
 {
-		state_t st;
+	state_t st;
     *ok = 0;
     if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
     st = int_policy_ok(curr_sig,last_sig,ok);
@@ -755,6 +755,7 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type)
     if (c != NULL) return mpi_call_init(c,call_type);
     else return EAR_ERROR;
 }
+
 state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 {
     if (c != NULL) return mpi_call_end(c,call_type);
@@ -785,6 +786,7 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 
     return EAR_SUCCESS;
 }
+
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) return EAR_ERROR;
@@ -809,6 +811,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 
     return EAR_SUCCESS;
 }
+
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) return EAR_ERROR;
@@ -820,7 +823,6 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
     return EAR_SUCCESS;
 }
-
 
 state_t policy_new_iteration(polctx_t *c,signature_t *sig)
 {
