@@ -72,7 +72,7 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
         if (projection_available(curr_pstate,def_pstate)==EAR_SUCCESS)
         {
             project_power(my_app,curr_pstate,def_pstate,power_ref);
-             project_time(my_app,curr_pstate,def_pstate,time_ref);
+            project_time(my_app,curr_pstate,def_pstate,time_ref);
             freq_ref[0] = def_freq[0];
         } else {
             *time_ref = my_app->time;
@@ -205,23 +205,44 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
                 COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
         return 0;
     }
-    if (!equal_with_th(s1->CPI,s2->CPI,p) || !equal_with_th(s1->GBS, s2->GBS,p)){ 
-        if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){ 
-            verbose_master(2,"CPI (%.2lfvs%.2lf) GBS (%.2lfvs%.2lf)",s1->CPI,s2->CPI,s1->GBS,s2->GBS);
-            return 1;
+    if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+        if (!equal_with_th(s1->CPI,s2->CPI,p)){
+            uint s1_cbound, s2_cbound;
+            is_cpu_bound(s1, &s1_cbound);
+            is_cpu_bound(s2, &s2_cbound);
+            if (s1_cbound != s2_cbound){
+                verbose_master(2, "CPI (%.2lfvs%.2lf) and cpu bound phase changed from %u to %u",
+                        s1->CPI,s2->CPI, s1_cbound, s2_cbound);
+                return 1;
+            }
+            verbose_master(2, "CPIs different (%.2lfvs%.2lf) but same cpu behaviour (%uvs%u)",
+                    s1->CPI,s2->CPI, s1_cbound, s2_cbound);
+        }
+        if (!equal_with_th(s1->GBS, s2->GBS,p)){
+            uint s1_mbound, s2_mbound;
+            is_mem_bound(s1, &s1_mbound);
+            is_mem_bound(s2, &s2_mbound);
+            if (s1_mbound != s2_mbound){
+                verbose_master(2, "GBS (%.2lfvs%.2lf) and mem bound phase changed from %u to %u",
+                        s1->GBS,s2->GBS, s1_mbound, s2_mbound);
+                return 1;
+            }
+            verbose_master(2, "GBS different (%.2lfvs%.2lf) but same mem behaviour (%uvs%u)",
+                    s1->GBS,s2->GBS, s1_mbound, s2_mbound);
         }
     }
+
 #if USE_GPUS
-		#if 0
-		for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
-			verbose_master(2,"s1(%lu/%lu) s2(%lu/%lu)",s1->gpu_sig.gpu_data[i].GPU_util,s1->gpu_sig.gpu_data[i].GPU_mem_util,s2->gpu_sig.gpu_data[i].GPU_util,s2->gpu_sig.gpu_data[i].GPU_mem_util);
-		}
-		#endif
-		for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
-			if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)) return 1;
-			if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)) return 1;
-		}
-		
+#if 0
+    for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
+        verbose_master(2,"s1(%lu/%lu) s2(%lu/%lu)",s1->gpu_sig.gpu_data[i].GPU_util,s1->gpu_sig.gpu_data[i].GPU_mem_util,s2->gpu_sig.gpu_data[i].GPU_util,s2->gpu_sig.gpu_data[i].GPU_mem_util);
+    }
+#endif
+    for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
+        if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)) return 1;
+        if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)) return 1;
+    }
+
 #endif
     return 0;
 }

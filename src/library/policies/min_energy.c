@@ -162,13 +162,6 @@ state_t policy_init(polctx_t *c)
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext =  (void *)calloc(1,sizeof(sig_ext_t));
 
-				#if 0
-        my_node_mpi_calls = calloc(num_processes,sizeof(mpi_information_t));
-        my_node_mpi_types_calls = calloc(num_processes,sizeof(mpi_calls_types_t));
-
-        last_node_mpi_calls = calloc(num_processes,sizeof(mpi_information_t));
-        last_node_mpi_types_calls = calloc(num_processes,sizeof(mpi_calls_types_t));
-				#endif
 
         percs_mpi = calloc(num_processes, sizeof(double));
         last_percs_mpi = calloc(num_processes, sizeof(double));
@@ -193,6 +186,7 @@ state_t policy_init(polctx_t *c)
         }
 
 #if USE_GPUS
+				memset(&gpus,0,sizeof(gpus));
         if (c->num_gpus){
             if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
                 verbose_master(2,"Error loading GPU policy");
@@ -614,10 +608,6 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance){
 
-				#if 0
-        read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, my_node_mpi_types_calls, last_node_mpi_types_calls);
-        read_diff_node_mpi_data(lib_shared_region, sig_shared_region, my_node_mpi_calls, last_node_mpi_calls);
-				#endif
         verbose_mpi_types(3,my_node_mpi_types_calls);
 
         uint unbalance;

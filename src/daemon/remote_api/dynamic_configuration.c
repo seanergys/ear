@@ -364,7 +364,7 @@ void dyncon_get_app_status(int fd, request_t *command)
     if (num_status < 1) {
         error("Panic propagate_app_status returns less than 1 status");
         return_status = 0;
-        write(fd, &return_status, sizeof(return_status));
+        _write(fd, &return_status, sizeof(return_status));
         return;
     }
     powermon_get_app_status(&status[num_status - 1]);
@@ -393,7 +393,7 @@ void dyncon_get_status(int fd, request_t *command) {
     if (num_status < 1) {
         error("Panic propagate_status returns less than 1 status");
         return_status = 0;
-        write(fd, &return_status, sizeof(return_status));
+        _write(fd, &return_status, sizeof(return_status));
         return;
     }
     powermon_get_status(&status[num_status - 1]);

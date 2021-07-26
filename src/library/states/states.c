@@ -147,6 +147,7 @@ static int policy_had_effect(signature_t *A, signature_t *B)
     return 0;
 }
 
+
 #ifdef SHOW_DEBUGS
 static void print_loop_signature(char *title, signature_t *loop)
 {
@@ -157,28 +158,27 @@ static void print_loop_signature(char *title, signature_t *loop)
 }
 #endif
 
+
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter,uint dynais_used);
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 {
     my_loop->total_iterations = iterations;
-		my_loop->jid 							= job->id;
-		my_loop->step_id 					= job->step_id;
+    my_loop->jid 							= job->id;
+    my_loop->step_id 					= job->step_id;
 #if 0
     append_loop_text_file(loop_summary_path, my_loop,job);
 #endif
     if (masters_info.my_master_rank>=0){
         clean_db_loop(my_loop, system_conf->max_sig_power);
-				#if 0
+#if 0
         eards_write_loop_signature(my_loop);
-				#endif
+#endif
         if (report_loops(my_loop,1) != EAR_SUCCESS){
-          verbose_master(0,"Error reporting Loop");
+            verbose_master(0,"Error reporting Loop");
         }
 
     }
 }
-
-
 
 
 /* End auxiliary functions */
@@ -190,13 +190,14 @@ void states_end_job(int my_id,  char *app_name)
     end_log();
 }
 
+
 /* This function is executed at application init */
 void states_begin_job(int my_id,  char *app_name)
 {
     ulong	architecture_min_perf_accuracy_time;
     int i;
 
-		node_freqs_alloc(&nf);
+    node_freqs_alloc(&nf);
     signatures=(application_t *) calloc(frequency_get_num_pstates(),sizeof(application_t));
     sig_ready=(uint *)calloc(frequency_get_num_pstates(),sizeof(uint));
     for (i=0;i<frequency_get_num_pstates();i++){ 
@@ -224,14 +225,14 @@ void states_begin_job(int my_id,  char *app_name)
     pst=policy_max_tries(&MAX_POLICY_TRIES);
     total_th =  get_total_resources();
     debug("Using %u total_threads",total_th);
-
-
 }
+
 
 int states_my_state()
 {
     return EAR_STATE;
 }
+
 
 /* This function is executed at each loop init */
 void states_begin_period(int my_id, ulong event, ulong size,ulong level)
@@ -256,6 +257,7 @@ void states_begin_period(int my_id, ulong event, ulong size,ulong level)
     }
 }
 
+
 /* This function is executed at each loop end */
 void states_end_period(uint iterations)
 {
@@ -264,14 +266,14 @@ void states_end_period(uint iterations)
         loop.total_iterations = iterations;
         //append_loop_text_file(loop_summary_path, &loop,&loop_signature.job);
         if (system_conf->report_loops){
-            if (masters_info.my_master_rank>=0){ 
+            if (masters_info.my_master_rank>=0){
                 clean_db_loop(&loop, system_conf->max_sig_power);
-								#if 0
+#if 0
                 eards_write_loop_signature(&loop);
-								#endif
-								if (report_loops(&loop,1) != EAR_SUCCESS){
-									verbose_master(0,"Error reporting loop");
-								}
+#endif
+                if (report_loops(&loop,1) != EAR_SUCCESS){
+                    verbose_master(0,"Error reporting loop");
+                }
             }
         }
     }
@@ -299,15 +301,16 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
     sig_shared_region[my_node_id].iterations++;
-    metrics_new_iteration(&check_signature);
-    pst = policy_new_iteration(&check_signature);
-    if (pst != EAR_SUCCESS){
-        verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
-        policy_set_default_freq(NULL);
-        comp_N_begin = metrics_time();
-        EAR_STATE = FIRST_ITERATION;
-        return;
-    }
+    if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
+    	pst = policy_new_iteration(&check_signature);
+    	if (pst != EAR_SUCCESS){
+        	verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
+        	policy_set_default_freq(NULL);
+        	comp_N_begin = metrics_time();
+        	EAR_STATE = FIRST_ITERATION;
+        	return;
+    	}
+		}
 
     prev_f = ear_frequency;
     curr_pstate=frequency_closest_pstate(ear_frequency);
@@ -335,7 +338,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /* Based on the EAR internal state... */
     switch (EAR_STATE)
     {
-        /* This is a new state to minimize overhead, we just check the loop has , at least, some granularity */
+        /* This is a new state to minimize overhead, we just check the loop has, at least, some granularity */
         case TEST_LOOP:
             comp_N_end = metrics_time();
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
@@ -394,7 +397,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             break;
 
-            /* Again, we recompute the number of iterations to be considered but in this case because we habe changed the frequency */
+            /* Again, we recompute the number of iterations to be considered but in this case because we have changed the frequency */
             /* This state could be removed */
         case RECOMPUTING_N:/************ RECOMPUTING_N *************/
 
@@ -419,7 +422,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /* After N iterations of being in this state the signature will be computed and the policy will be applied, next state will 
              * 		depend on the policy itself. See the REAMDE file to see the different alternatives */
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
-            /* We check from time to time if if the signature is ready */
+            /* We check from time to time if the signature is ready */
             /* Included to accelerate the signature computation */
             if (!lib_shared_region->master_ready){
                 if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
@@ -500,7 +503,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                     tries_current_loop++;
                     comp_N_begin = metrics_time();
                     EAR_STATE = RECOMPUTING_N;
-                } else { 
+                } else {
                     signature_copy(&policy_sel_signature, &loop_signature.signature);
                     EAR_STATE = SIGNATURE_STABLE; }
             }
@@ -593,7 +596,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             }
             pst = policy_ok(&loop_signature.signature, l_sig,&pok);
             ok_clr = COL_GRE;
-            if (pok) {
+            if (pok){
                 /* When collecting traces, we maintain the period */
                 if ((masters_info.my_master_rank>=0) && (traces_are_on()==0)){
                     perf_count_period = perf_count_period * 2;
@@ -604,8 +607,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 policy_set_default_freq(&loop_signature.signature);
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
                 ok_clr = COL_RED;
-            } 
-            verbose_master(2,"%sPolicy ok=%u%s current (%.2lf/%.2lf/%.2lf) reference (%.2lf/%.2lf/%.2lf)/(%.2lf/%.2lf/%.2lf)",ok_clr,pok,COL_CLR,
+            }
+            verbose_master(2,"%sPolicy ok=%u%s current (%.2lf/%.2lf/%.2lf) last/pol_sel (%.2lf/%.2lf/%.2lf)/(%.2lf/%.2lf/%.2lf)",ok_clr,pok,COL_CLR,
                     loop_signature.signature.CPI,loop_signature.signature.GBS,loop_signature.signature.DC_power,l_sig->CPI,l_sig->GBS,l_sig->DC_power,
                     policy_sel_signature.CPI,policy_sel_signature.GBS,policy_sel_signature.DC_power);
             if (pok) return;

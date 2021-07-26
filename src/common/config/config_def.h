@@ -26,8 +26,6 @@
 #define OPENMP_EXT	"gen.so"
 #define DEF_EXT			"gen.so"
 
-// Maximum number of tries when doing non-blocking communications
-#define MAX_SOCKET_COMM_TRIES   10000000
 //
 #define EARDBD_TYPES            7
 /* These flags configures EARL */
@@ -103,8 +101,9 @@
 
 #define MAX_NODE_ENERGY_LOCK_TRIES      10000
 
-/* Number of max tries  */
-#define MAX_SOCKET_COMM_TRIES           10000000
+// Maximum number of tries when doing non-blocking communications
+#define MAX_SOCKET_COMM_TRIES   1000000
+
 /* Seconds between each EARDBD API connection retrys. */
 #define EARDBD_API_RETRY_SECS		60
 

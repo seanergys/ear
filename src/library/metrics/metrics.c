@@ -1212,7 +1212,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 extern uint last_earl_phase_classification;
 extern uint last_earl_gpu_phase_classification;
 
-void metrics_new_iteration(signature_t *sig)
+state_t metrics_new_iteration(signature_t *sig)
 {
 	llong sflops;
 	llong f_time, elap_sec;
@@ -1222,16 +1222,16 @@ void metrics_new_iteration(signature_t *sig)
 	gpu_t *gpud, *gpuddiff;
 	int p;
 #endif
-	if (masters_info.my_master_rank < 0 ) return;
+	if (masters_info.my_master_rank < 0 ) return EAR_ERROR;
 	/* FLOPS are used to determine the CPU BUSY waiting */
 	if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-		read_flops_metrics(&sflops, FLOPS);
 		f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 		elap_sec = f_time / 1000000;
 		debug("elap %lld last %lld: Computing flops because of application phase is IO =%d or Busy waiting=%d",elap_sec,last_elap_sec, last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
 		
-		if (elap_sec <= last_elap_sec) return;
+		if (elap_sec <= last_elap_sec) return EAR_ERROR;
 		last_elap_sec = elap_sec;
+		read_flops_metrics(&sflops, FLOPS);
 		sig->Gflops = 0;
 		for (i= 0; i< FLOPS_EVENTS; i++){
       sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
@@ -1243,7 +1243,7 @@ void metrics_new_iteration(signature_t *sig)
 	}
 
 #if USE_GPUS
-	if (last_earl_gpu_phase_classification == GPU_IDLE){
+	if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0)){
 		debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
     /* GPUs */
     if (gpu_initialized){
@@ -1271,4 +1271,5 @@ void metrics_new_iteration(signature_t *sig)
 		}
 	}
 #endif	
+	return EAR_SUCCESS;
 }

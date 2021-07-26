@@ -46,6 +46,95 @@ int eards_sfd=-1;
 // 2000 and 65535
 #define DAEMON_EXTERNAL_CONNEXIONS 1
 
+
+int _read(int fd, void *data, size_t ssize)
+{
+
+    int ret;
+    int tries = 0;
+    uint to_read, read = 0;
+    uint must_abort = 0;
+
+	to_read = ssize;
+	do
+	{
+        ret = recv(fd, (char *)data+read, to_read, MSG_DONTWAIT);
+        if (ret > 0) 
+        {
+            read += ret;
+            to_read -= ret;
+        }
+        else if (ret < 0)
+        {
+            if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
+            else {	
+                must_abort = 1;
+                error("_read: Error sending command to eard %s,%d", strerror(errno), errno);
+            }
+        }else if (ret == 0) {
+            debug("_read: read returns 0 bytes");
+            must_abort = 1;
+        }
+	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_read > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
+
+	if (tries >= MAX_SOCKET_COMM_TRIES) { 
+        debug("_read: tries reached in send %d", tries); 
+    }
+
+	/* If there are bytes left to send, we return a 0 */
+	if (to_read) { 
+		debug("_read: return non blocking command with 0");
+		return read;
+	}
+    debug("_read: exiting send successfully");
+    return read;
+
+}
+
+int _write(int fd, void *data, size_t ssize) 
+{
+    int ret;
+    int tries = 0;
+    uint to_send, sent = 0;
+    uint must_abort = 0;
+
+	to_send = ssize;
+	do
+	{
+        ret = send(fd, (char *)data+sent, to_send, MSG_DONTWAIT);
+        if (ret > 0) 
+        {
+            sent += ret;
+            to_send -= ret;
+        }
+        else if (ret < 0)
+        {
+            if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
+            else {	
+                must_abort = 1;
+                error("_write: Error sending command to eard %s,%d", strerror(errno), errno);
+            }
+        }else if (ret == 0) {
+            debug("_write: send returns 0 bytes");
+            must_abort = 1;
+        }
+	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_send > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
+
+	if (tries >= MAX_SOCKET_COMM_TRIES) { 
+        debug("_write: tries reached in send %d", tries); 
+    }
+
+	/* If there are bytes left to send, we return a 0 */
+	if (to_send) { 
+		debug("_write: return non blocking command with 0");
+		return sent;
+	}
+    debug("_write: exiting send successfully");
+    return sent;
+
+}
+
+
 // based on getaddrinfo man pages
 int create_server_socket(uint port)
 {
@@ -121,7 +210,7 @@ int wait_for_client(int s,struct sockaddr_in *client)
 	}
 
     char conection_ok = 1;
-    write(new_sock, &conection_ok, sizeof(char));
+    _write(new_sock, &conection_ok, sizeof(char));
 
     verbose(VCONNECT, "Sending handshake byte to client.");
 	verbose(VCONNECT, "new connection ");
@@ -240,8 +329,8 @@ int read_command(int s, request_t *command)
 void send_answer(int s,long *ack)
 {
     int ret;
-    if ((ret=write(s,ack,sizeof(ulong)))!=sizeof(ulong)) error("Error sending the answer");
-    if (ret<0) error("(%s)",strerror(errno));
+    if ((ret = _write(s, ack, sizeof(ulong))) != sizeof(ulong)) error("Error sending the answer");
+    if (ret < 0) error("(%s)", strerror(errno));
 }
 
 #if DYNAMIC_COMMANDS
@@ -383,11 +472,16 @@ int send_command(request_t *command)
     debug("send_command: command size: %lu\t request_t size: %lu", command_size, sizeof(request_t));
     
     if (send_non_block_data(eards_sfd, command_size, command_b, EAR_TYPE_COMMAND) != EAR_SUCCESS)
+    {
         error("send_command: Error sending command");
+        free(command_b);
+        return 0;
+    }
 
     free(command_b);
+    debug("reading ack");
 
-	ret=read(eards_sfd,&ack,sizeof(ulong)); //read ack
+	ret = _read(eards_sfd, &ack, sizeof(ulong)); //read ack
 	if (ret<0){
 		error("send_command: Error receiving ack %s",strerror(errno));
 	}
@@ -400,9 +494,9 @@ int send_command(request_t *command)
 int send_non_block_data(int fd, size_t size, char *data, int type)
 {
     int ret; 
-	int tries=0;
-	uint to_send,sent=0;
-	uint must_abort=0;
+	//int tries=0;
+	//uint to_send,sent=0;
+	//uint must_abort=0;
 
     /* Prepare header */
     request_header_t head;
@@ -410,48 +504,18 @@ int send_non_block_data(int fd, size_t size, char *data, int type)
     head.size = size;
 
     /* Send header, blocking */
-    ret = write(eards_sfd, &head, sizeof(request_header_t));
+    ret = _write(eards_sfd, &head, sizeof(request_header_t));
 
     if (ret < sizeof(request_header_t)) {
         error("send_non_block_data:error sending request_header in non_block command");
         return 0;
     }
 
-    debug("send_non_block_data: Sending data of size %u and type %d", head.size, head.type);
-	to_send=size;
-	do
-	{
-        ret = send(eards_sfd, (char *)data+sent, to_send, MSG_DONTWAIT);
-        if (ret > 0) 
-        {
-            sent += ret;
-            to_send -= ret;
-        }
-        else if (ret < 0)
-        {
-            if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
-            else {	
-                must_abort = 1;
-                error("send_non_block_data: Error sending command to eard %s,%d", strerror(errno), errno);
-            }
-        }else if (ret == 0) {
-            warning("send_non_block_data: send returns 0 bytes");
-            must_abort = 1;
-        }
-	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_send > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
-
-	if (tries >= MAX_SOCKET_COMM_TRIES) { 
-        debug("send_non_block_data: tries reached in recv %d", tries); 
-    }
-
-	/* If there are bytes left to send, we return a 0 */
-	if (to_send) { 
-		debug("send_non_block_data: return non blocking command with 0");
+    ret = _write(eards_sfd, data, size);
+    if (ret < size) {
+		debug("send_non_block_data: return non blocking command with EAR_ERROR");
 		return EAR_ERROR;
-	}
-    debug("send_non_block_data: exiting send successfully");
-    /* We do not receive an ack since that is exclusive to commands, not general data */
-
+    }
     return EAR_SUCCESS;
 }
 
@@ -484,16 +548,17 @@ char is_valid_type(int type)
     return 0;
 }
 
+
 request_header_t receive_data(int fd, void **data)
 {
-    int ret, total, pending;
+    int ret;
     request_header_t head;
     char *read_data;
     head.type = 0;
     head.size = 0;
 
     /* Read header */
-    ret = read(fd, &head, sizeof(request_header_t));
+    ret = _read(fd, &head, sizeof(request_header_t));
     debug("receive_data: values read: type %d size %u", head.type, head.size);
     if (ret < 0) {
         error("receive_data: Error recieving response data header (%s) ", strerror(errno));
@@ -518,37 +583,17 @@ request_header_t receive_data(int fd, void **data)
     }
     //write ack should go here if we implement it
     read_data = calloc(head.size, sizeof(char));
-    total = 0;
-    pending = head.size;
 
     /* Read the data indicated by the header */
-    ret = read(fd, read_data+total, pending);
-	if (ret < 0) 
+    ret = _read(fd, read_data, head.size);
+	if (ret < head.size) 
     {
 		error("Error by receive data (%s)",strerror(errno));
-        free(read_data);
+        if (ret > 0)
+            free(read_data);
         head.type = EAR_ERROR;
         head.size = 0;
 		return head;
-	}
-	total += ret;
-	pending -= ret;
-
-    /* Read any data pending */
-	while ((ret > 0) && (pending > 0))
-    {
-    	ret = read(fd, read_data+total, pending);
-    	//ret = recv(eards_sfd, (char *)return_status+total, pending, MSG_DONTWAIT);
-		if (ret < 0)
-        {
-		    error("Error by receive data (%s)",strerror(errno));
-            free(read_data);
-            head.type = EAR_ERROR;
-            head.size = 0;
-			return head;
-		}
-		total += ret;
-		pending -= ret;
 	}
     *data = read_data;
 
