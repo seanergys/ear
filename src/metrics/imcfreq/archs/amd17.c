@@ -45,12 +45,15 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 {
 	uint api_intern, api;
 
+	debug("loading");
+
 	ops = ops_in;	
 	// Set BYPASS if:
 	// 	- If !EARD and no other API is set yet.
 	// Set BYPASS limited if:
 	//  - If DAEMON and EARD API has been set as AMD17.
 	if (apis_loaded(ops)) {
+		debug("the API was already loaded");
 		ops->get_api(&api, &api_intern);
 		//
 		if (api == API_EARD && api_intern == API_AMD17) {
@@ -60,16 +63,21 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 		}
 		return;
 	}
+	debug("the API was not loaded yet");
 	if (apis_not(ops)) {
+		debug("1");
 		// Loading symbols in runtime to avoid dependancies
 		symplug_join(RTLD_DEFAULT, (void **) &mgt_ops, mgt_names, 6);
+		debug("2");
 		// Testing all symbols are available
 		if (state_fail(symplug_test((void **) &mgt_ops, 6))) {
 			return;
 		}
+		debug("3");
 		// Loading management imcfreq API
 		mgt_ops.load(tp, eard);
 		mgt_ops.get_api(&api);
+		debug("4");
 		// If management API is not cool, bye
 		if (api <= API_DUMMY) {
 			return;
@@ -82,7 +90,7 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 	apis_set(ops->count_devices, imcfreq_amd17_count_devices);
 	apis_set(ops->read,          imcfreq_amd17_read);
 	apis_set(ops->data_diff,     imcfreq_amd17_data_diff);
-	debug("AMD17 loaded full");
+	debug("AMD17 loaded full API");
 }
 
 void imcfreq_amd17_get_api(uint *api, uint *api_intern)
