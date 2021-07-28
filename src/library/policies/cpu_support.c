@@ -255,8 +255,10 @@ int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
     while ((i<num_processes) && (freqs->cpu_freq[i] == def->cpu_freq[i])) i++;
     if (i< num_processes) return 0;
     if (dyn_unc){
+		for (sid = 0;sid < arch_desc.top.socket_count; sid++){
         if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] != def->imc_freq[sid*IMC_VAL+IMC_MAX]) return 0;
         if (freqs->imc_freq[sid*IMC_VAL+IMC_MIN] != def->imc_freq[sid*IMC_VAL+IMC_MIN]) return 0;
+		}
     }
 #if USE_GPUS
     if (my_pol_ctx.num_gpus){
@@ -276,8 +278,10 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def)
     freqs->cpu_freq[0] = def->cpu_freq[0];
     for (i=1;i<num_processes;i++) freqs->cpu_freq[i] = freqs->cpu_freq[0];
     if (dyn_unc){
+		for (sid = 0;sid < arch_desc.top.socket_count; sid++){
         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = def->imc_freq[sid*IMC_VAL+IMC_MAX];
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = def->imc_freq[sid*IMC_VAL+IMC_MIN];
+		}
     }
 
 }
@@ -291,7 +295,9 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
     for (i=0;i<num_processes;i++){
         verbosen_master(2,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
     }
-    verbose_master(2,"\n IMC 0 (%lu-%lu)",freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+		for (sid = 0;sid < arch_desc.top.socket_count; sid++){
+    	verbose_master(2,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+		}
 #if USE_GPUS
     for (i=0; i< my_pol_ctx.num_gpus;i++){
         verbosen_master(2,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
@@ -304,7 +310,7 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
 void node_freqs_alloc(node_freqs_t *node_freq)
 {
     node_freq->cpu_freq = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
-    node_freq->imc_freq = calloc(arch_desc.top.socket_count*IMC_VAL,sizeof(ulong));
+    node_freq->imc_freq = calloc(MAX_SOCKETS_SUPPORTED*IMC_VAL,sizeof(ulong));
 #if USE_GPUS
     node_freq->gpu_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
     node_freq->gpu_mem_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
@@ -317,7 +323,7 @@ void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src)
     if ((dst->cpu_freq == NULL) || (src->cpu_freq == NULL)) return;
     memcpy(dst->cpu_freq,src->cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if ((dst->imc_freq == NULL) || (src->imc_freq == NULL)) return;
-    memcpy(dst->imc_freq,src->imc_freq,arch_desc.top.socket_count*IMC_VAL*sizeof(ulong));
+    memcpy(dst->imc_freq,src->imc_freq,MAX_SOCKETS_SUPPORTED*IMC_VAL*sizeof(ulong));
 #if USE_GPUS
     memcpy(dst->gpu_freq,src->gpu_freq,MAX_GPUS_SUPPORTED*sizeof(ulong));
     memcpy(dst->gpu_mem_freq,src->gpu_mem_freq,MAX_GPUS_SUPPORTED*sizeof(ulong));

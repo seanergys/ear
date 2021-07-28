@@ -54,7 +54,7 @@
 extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
-extern ulong imc_max_khz,imc_min_khz;
+extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_mgt_compatible;
 extern uint imc_devices;
 extern const pstate_t *imc_pstates;
@@ -224,7 +224,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     ulong *freq_set = freqs->cpu_freq;
     int i;
     char pol_grain_str[128];
-    debug("policy_cpu_freq_selection");
+    verbose_master(2,"policy_cpu_freq_selection");
 #if POWERCAP
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
         /* Warning: POL_GRAIN_CORE not supported */
@@ -264,7 +264,11 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     uint *imc_up,*imc_low;
-    debug("Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
+		if ((freqs == NULL) || (freqs->imc_freq == NULL)){
+			verbose_master(2,"ERror policy_mem_freq_selection NULL ");
+			return EAR_SUCCESS;
+		}
+    verbose_master(2,"Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
     if (dyn_unc && imc_mgt_compatible){
         imc_up = calloc(imc_devices,sizeof(uint));
         imc_low = calloc(imc_devices,sizeof(uint));
@@ -272,6 +276,14 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         for (int sid = 0;sid <imc_devices ;sid++) {
             imc_low[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX];	
             imc_up[sid] = freqs->imc_freq[sid*IMC_VAL+IMC_MIN];	
+						if (imc_up[sid] > imc_max_pstate[sid]){ 
+							verbose_master(2,"ERROR imc_up greather than max %u",imc_up[sid] );
+							return EAR_SUCCESS;
+						}
+						if (imc_low[sid] > imc_max_pstate[sid]){ 
+							verbose_master(2,"ERROR imc_low greather than max %u",imc_low[sid] );
+							return EAR_SUCCESS;
+						}
             if (imc_up[sid] != ps_nothing){
                 verbose_master(2,"Setting IMC freq:SID=%d to %llu and %llu",sid,imc_pstates[imc_low[sid]].khz,imc_pstates[imc_up[sid]].khz);
             }else{
@@ -288,7 +300,9 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         }			
         free(imc_up);
         free(imc_low);
-    }
+    }else{
+			verbose_master(2,"IMC not compatible");
+		}
 
     return EAR_SUCCESS;
 }
@@ -324,6 +338,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 
 state_t policy_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
+		if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
     if (dom->cpu != POL_NOT_SUPPORTED){
         policy_cpu_freq_selection(c,my_sig,freqs,dom,avg_freq);
     }
@@ -440,10 +455,6 @@ state_t policy_init()
     freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
-    for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
-        nf.imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_khz;
-        nf.imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_khz;
-    }
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
     verbose_master(2,"Load balance enabled ? %u", enable_load_balance);
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
@@ -579,7 +590,6 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
         }
     }
 #endif
-
     return policy_init();
 }
 
@@ -784,6 +794,7 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
 { 
     polctx_t *c=&my_pol_ctx;
     state_t ret;
+		if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
     if (polsyms_fun.get_default_freq != NULL){
         ret = polsyms_fun.get_default_freq( c, freq_set, NULL);
         return ret;
@@ -800,6 +811,7 @@ state_t policy_set_default_freq(signature_t *sig)
     polctx_t *c=&my_pol_ctx;
     state_t st;
     signature_t s;
+		if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
 #if USE_GPUS
     s.gpu_sig.num_gpus = c->num_gpus;
 #endif
@@ -822,6 +834,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
         *ok = 1;
         return EAR_SUCCESS;
     }
+		if (masters_info.my_master_rank < 0 ){*ok = 1; return EAR_SUCCESS;}
     if (polsyms_fun.ok != NULL){
 		/* We wait for node signature computation */
 		if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
@@ -851,6 +864,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 state_t policy_max_tries(int *intents)
 { 
     polctx_t *c=&my_pol_ctx;
+		if (masters_info.my_master_rank < 0 ){*intents = 100000; return EAR_SUCCESS;}
     if (polsyms_fun.max_tries!=NULL){
         return	polsyms_fun.max_tries( c,intents);
     }else{

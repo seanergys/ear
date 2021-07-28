@@ -363,11 +363,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
         if (!are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
-            verbose_node_freqs(2, &last_nodefreq_sel);
-            verbose_node_freqs(2, &min_time_def_freqs);
 
             set_default_settings(freqs, &min_time_def_freqs);
             node_freqs_copy(&last_nodefreq_sel, freqs);
+            verbose_node_freqs(2, &last_nodefreq_sel);
+            verbose_node_freqs(2, &min_time_def_freqs);
+						verbose_node_freqs(2, freqs);
 
             verbose_master(2, "Setting default conf for MT");
             *ready = EAR_POLICY_TRY_AGAIN;
