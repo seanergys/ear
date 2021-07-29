@@ -1,25 +1,25 @@
 /*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* Copyright © 2017-present BSC-Lenovo
-* BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
-*
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
-*/
+ *
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * This file is licensed under both the BSD-3 license for individual/non-commercial
+ * use and EPL-1.0 license for commercial use. Full text of both licenses can be
+ * found in COPYING.BSD and COPYING.EPL files.
+ */
 
 /**
-*    \file remote_conf.h
-*    \brief This file defines data types and constants shared by the client and server in the remote EAR API
-*
-*/
+ *    \file remote_conf.h
+ *    \brief This file defines data types and constants shared by the client and server in the remote EAR API
+ *
+ */
 
 
 
@@ -32,23 +32,23 @@
 #include <daemon/powercap/powercap_status_conf.h>
 
 typedef struct new_job_req{
-  job_t job;
-  uint8_t is_mpi;
-  uint8_t is_learning;
+    job_t job;
+    uint8_t is_mpi;
+    uint8_t is_learning;
 }new_job_req_t;
 
 typedef struct end_job_req{
-	job_id jid;
-	job_id sid;
-	//int status;
+    job_id jid;
+    job_id sid;
+    //int status;
 }end_job_req_t;
 
 typedef struct new_conf{
-	ulong   max_freq;
-	ulong   min_freq;
-	ulong   th;
-	uint    p_states;
-	uint    p_id;
+    ulong   max_freq;
+    ulong   min_freq;
+    ulong   th;
+    uint    p_states;
+    uint    p_id;
 }new_conf_t;
 
 typedef struct eargm_req{
@@ -56,19 +56,19 @@ typedef struct eargm_req{
 }eargm_req_t;
 
 typedef struct new_policy_cont{
-	char    name[POLICY_NAME_SIZE];
-	ulong   def_freq;
-	double  settings[MAX_POLICY_SETTINGS];
+    char    name[POLICY_NAME_SIZE];
+    ulong   def_freq;
+    double  settings[MAX_POLICY_SETTINGS];
 }new_policy_cont_t;
 
 typedef struct power_limit{
-	unsigned long   limit;
-	unsigned int    type;
+    unsigned long   limit;
+    unsigned int    type;
 }power_limit_t;
 
 typedef struct risk_dec{
-	unsigned long   target;
-	risk_t          level;
+    unsigned long   target;
+    risk_t          level;
 }risk_dec_t;
 
 typedef union req_data{
@@ -108,15 +108,15 @@ typedef struct internal_request {
 #endif
 
 typedef struct status_node_info{
-	ulong avg_freq; // In KH
-	ulong temp; // In degres, No creo que haya falta enviar un unsigned long long
-	ulong power; // In Watts 
-	ulong max_freq;// in KH
+    ulong avg_freq; // In KH
+    ulong temp; // In degres, No creo que haya falta enviar un unsigned long long
+    ulong power; // In Watts 
+    ulong max_freq;// in KH
 } status_node_info_t;
 
 typedef struct app_info{
-	uint job_id;
-	uint step_id;
+    uint job_id;
+    uint step_id;
 }app_info_t;
 
 typedef struct request_header {
@@ -135,24 +135,33 @@ typedef struct status{
     char                ok;
     status_node_info_t  node;
     app_info_t          app;
-		uint							eardbd_connected;
-	unsigned int        num_policies;
+    uint							eardbd_connected;
+    unsigned int        num_policies;
     eard_policy_info_t  policy_conf[TOTAL_POLICIES];
 } status_t;
 
 typedef struct app_status{
-	unsigned int ip;
-	long job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
+    unsigned int ip;
+    long job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
     unsigned int nodes, master_rank;
-	signature_t signature;
+    signature_t signature;
 }app_status_t;
 
 typedef struct performance{
-	float cpi;
-	float gbs;
-	float gflops_watt;
-}performance_t;
+    float cpi;
+    float gbs;
+    float gflops_watt;
+} performance_t;
 
+typedef struct eargm_status {
+    int id;
+    ulong def_power;
+    ulong current_power;
+    ulong requested;
+    ulong freeable_power;
+    ulong extra_power;
+    ulong energy;
+} eargm_status_t;
 
 
 
@@ -187,6 +196,7 @@ typedef struct performance{
 /* EARGM commands*/
 #define EARGM_NEW_JOB   801
 #define EARGM_END_JOB   802
+#define EARGM_STATUS    803
 
 
 /******************* IMPORTANT ***********************/
@@ -196,12 +206,13 @@ typedef struct performance{
 #define EAR_TYPE_POWER_STATUS   2002
 #define EAR_TYPE_RELEASED       2003
 #define EAR_TYPE_APP_STATUS     2004
+#define EAR_TYPE_EARGM_STATUS   2005
 ///  |||||
 ///  vvvvv
 /******************* IMPORTANT ***********************/
 // UPDATE MAX_TYPE_VALUE FOR EACH NEW TYPE OR THE NEW TYPE WON'T BE ACCEPTED
 #define MIN_TYPE_VALUE  EAR_TYPE_COMMAND
-#define MAX_TYPE_VALUE  EAR_TYPE_APP_STATUS
+#define MAX_TYPE_VALUE  EAR_TYPE_EARGM_STATUS
 /*****************************************************/
 
 #define NO_COMMAND 100000

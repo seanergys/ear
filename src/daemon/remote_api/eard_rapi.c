@@ -869,13 +869,13 @@ void ping_all_nodes(cluster_conf_t *my_cluster_conf)
                     else 
                         sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k); 
                 }   
-                rc=eards_remote_connect(node_name,my_cluster_conf->eard.port);
+                rc=remote_connect(node_name,my_cluster_conf->eard.port);
                 if (rc<0){
                     error("Error connecting with node %s", node_name);
                 }else{
                     debug("Node %s ping!", node_name);
                     if (!eards_ping()) error("Error doing ping for node %s", node_name);
-                    eards_remote_disconnect();
+                    remote_disconnect();
                 }
             }
         }

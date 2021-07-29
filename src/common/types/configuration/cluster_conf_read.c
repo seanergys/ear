@@ -370,6 +370,14 @@ void parse_island(cluster_conf_t *conf, char *line)
             current_ranges = conf->islands[id_f].num_ranges;
             generate_node_ranges(&conf->islands[id_f], token);
         }
+        else if (!strcmp(token, "EARGMID"))
+        {
+            int id_f = idx < 0 ? conf->num_islands: idx;
+            token = strtok(NULL, " ");
+            int egm_id = atoi(token);
+            for (i = current_ranges; i < conf->islands[id_f].num_ranges; i++)
+                conf->islands[id_f].ranges[i].eargm_id = egm_id;
+        }
         else if (!strcmp(token, "ISLAND_TAGS"))
         {
             tag_parsing = 1;

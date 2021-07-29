@@ -20,6 +20,15 @@
 #include <daemon/remote_api/eard_rapi.h>
 
 
+typedef struct shared_powercap_data {
+    ulong def_power;        // default power for this eargm
+    ulong current_power;    // current power usage
+    ulong extra_power;      // extra power already allocated to this eargm
+    ulong requested;        // extra power requested (>0 means that the eargm is in greedy mode)
+    ulong available_power;  // power that can be freed
+} shared_powercap_data_t;
+
+
 #define cluster_powercap_status_t powercap_status_t
 
 //void aggregate_powercap_status(powercap_status_t *my_cluster_power_status,int num_st,cluster_powercap_status_t *cluster_status);

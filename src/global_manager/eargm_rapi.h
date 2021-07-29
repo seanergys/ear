@@ -25,12 +25,6 @@
 #ifndef _EARGM_API_H
 #define _EARGM_API_H
 
-/** Connects with the EARGM.
-*	The sequence must be : connect +  command + disconnect
-* 	@param the nodename to connect with
-*/
-int eargm_connect(char *nodename,uint use_port);
-
 /** Notifies the EARGM a new job using N nodes will start. It is supposed to be used by the EAR slurm plugin
 */
 int eargm_new_job(uint num_nodes);
@@ -43,4 +37,8 @@ int eargm_end_job(uint num_nodes);
 */
 int eargm_disconnect();
 
+/** Given a fd, sends a request for an eargm_status and reads it. Returns the number of eargm_status retrieved */
+int eargm_get_status(int fd, eargm_status_t **status);
+
+int eargm_get_all_status(cluster_conf_t *conf, eargm_status_t **status, int eargm_idx);
 #endif

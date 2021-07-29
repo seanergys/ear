@@ -40,7 +40,7 @@
 #include <common/messaging/msg_internals.h>
 
 
-int eards_remote_connected=0;
+int remote_connected=0;
 int eards_sfd=-1;
 
 // 2000 and 65535
@@ -615,7 +615,7 @@ int set_socket_block(int sfd, char blocking)
 }
 
 // based on getaddrinfo  man page
-int eards_remote_connect(char *nodename,uint port)
+int remote_connect(char *nodename,uint port)
 {
     struct addrinfo hints;
     struct addrinfo *result, *rp;
@@ -623,7 +623,7 @@ int eards_remote_connect(char *nodename,uint port)
     int sfd, s;
     fd_set r_set, w_set;
 
-    /*if (eards_remote_connected){ 
+    /*if (remote_connected){ 
         debug("Connection already done!");
         return eards_sfd;
     }*/
@@ -736,15 +736,15 @@ int eards_remote_connect(char *nodename,uint port)
     memset(&timeout, 0, sizeof(struct timeval));
     setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (void *)(&timeout), sizeof(timeout));
 
-	eards_remote_connected=1;
+	remote_connected=1;
 	eards_sfd=sfd;
 	return sfd;
 
 }
 
-int eards_remote_disconnect()
+int remote_disconnect()
 {
-	eards_remote_connected=0;
+	remote_connected=0;
     debug("normal disconnect, closing fd %d\n", eards_sfd);
 	close(eards_sfd);
 	return EAR_SUCCESS;
@@ -789,7 +789,7 @@ request_header_t correct_data_prop(int target_idx, int total_ips, int *ips, requ
         command->node_dist = current_idx - off_ip;
 
         //connect and send data
-        rc = eards_remote_connect(next_ip, port);
+        rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
             debug("correct_data_prop:Error connecting to node: %s", next_ip);
@@ -810,10 +810,10 @@ request_header_t correct_data_prop(int target_idx, int total_ips, int *ips, requ
             if (head.type == EAR_ERROR)
             {
                 debug("propagate_req: Error propagating command to node %s", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -866,7 +866,7 @@ void correct_error(int target_idx, int total_ips, int *ips, request_t *command, 
         command->node_dist = current_idx - off_ip;
 
         //connect and send data
-        rc = eards_remote_connect(next_ip, port);
+        rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
             debug("correct_error:Error connecting to node: %s", next_ip);
@@ -877,10 +877,10 @@ void correct_error(int target_idx, int total_ips, int *ips, request_t *command, 
             if (!send_command(command)) 
             {
                 debug("correct_error: Error propagating command to node %s", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 correct_error(current_idx, total_ips, ips, command, port);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
     }
 }
@@ -968,7 +968,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
         memcpy(tmp_command.nodes, &command->nodes[base_distance*i], max_ips*sizeof(int));
 
         //connect and send data
-        rc = eards_remote_connect(next_ip, port);
+        rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
             error("correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
@@ -981,10 +981,10 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
             if ((head.size) < 1 || head.type == EAR_ERROR)
             {
                 error("correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, self_ip, port, (void **)&temp_data);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -1090,7 +1090,7 @@ void internal_send_command_nodes(request_t *command, int port, int base_distance
 
         memcpy(tmp_command.nodes, &command->nodes[base_distance*i], max_ips*sizeof(int));
 
-        rc=eards_remote_connect(next_ip, port);
+        rc=remote_connect(next_ip, port);
         if (rc<0){
             debug("internal_send_command_nodes: Error connecting with node %s, trying to correct it", next_ip);
             correct_error_nodes(&tmp_command, command->nodes[base_distance*i], port);
@@ -1099,10 +1099,10 @@ void internal_send_command_nodes(request_t *command, int port, int base_distance
             debug("internal_send_command_nodes: Node %s with %d num_nodes contacted!", next_ip, tmp_command.num_nodes);
             if (!send_command(&tmp_command)) {
                 debug("internal_send_command_nodes: Error sending command to node %s, trying to correct it", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 correct_error_nodes(&tmp_command, command->nodes[i*base_distance], port);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
         free(tmp_command.nodes);
         tmp_command.num_nodes = 0;
@@ -1164,7 +1164,7 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
         memcpy(tmp_command.nodes, &command->nodes[base_distance*i], max_ips*sizeof(int));
 
         //connect and send data
-        rc = eards_remote_connect(next_ip, port);
+        rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
             error("correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
@@ -1177,10 +1177,10 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
             if ((head.size) < 1 || head.type == EAR_ERROR)
             {
                 error("correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -1256,7 +1256,7 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
             temp.sin_addr.s_addr = ips[i][j];
             strcpy(next_ip, inet_ntoa(temp.sin_addr));
             
-            rc=eards_remote_connect(next_ip, my_cluster_conf->eard.port);
+            rc=remote_connect(next_ip, my_cluster_conf->eard.port);
             if (rc<0){
                 debug("Error connecting with node %s, trying to correct it", next_ip);
                 correct_error(j, ip_counts[i], ips[i], &command, my_cluster_conf->eard.port);
@@ -1265,10 +1265,10 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
                 debug("Node %s with distance %d contacted!", next_ip, command.node_dist);
                 if (!send_command(&command)) {
                     debug("Error sending command to node %s, trying to correct it", next_ip);
-                    eards_remote_disconnect();
+                    remote_disconnect();
                     correct_error(j, ip_counts[i], ips[i], &command, my_cluster_conf->eard.port);
                 }
-                else eards_remote_disconnect();
+                else remote_disconnect();
             }
             
         }
@@ -1303,7 +1303,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
             temp.sin_addr.s_addr = ips[i][j];
             strcpy(next_ip, inet_ntoa(temp.sin_addr));
             
-            rc=eards_remote_connect(next_ip, my_cluster_conf->eard.port);
+            rc=remote_connect(next_ip, my_cluster_conf->eard.port);
             if (rc<0){
 //               debug("data_all_nodes: Error connecting with node %s, trying to correct it", next_ip);
 //               debug("data_all_nodes: (node %s was %d in the current list of ips", next_ip, j);

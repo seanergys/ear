@@ -232,4 +232,9 @@ int policy_id_to_name(int policy_id,char *my_policy, cluster_conf_t *conf);
  *  The function implementation can be found in policy_conf.c*/
 int get_default_policies(cluster_conf_t *conf, policy_conf_t **policies, int tag_id);
 
+/** Given a hostname, returns the eargm definition of that nodename. If no configuration is found, returns NULL */
+eargm_def_t *get_eargm_conf(cluster_conf_t *conf, char *host);
+
+/** Given a EARGM definition, removes all islands that do not have said EARGM id */
+void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def);
 #endif

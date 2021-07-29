@@ -42,6 +42,9 @@ extern uint process_created;
 extern pthread_mutex_t plocks;
 void check_pending_processes();
 
+/* Shared data with eargm_ext thread to sent to meta_eargms */
+shared_powercap_data_t ext_powercap_data;
+pthread_mutex_t ext_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 uint num_nodes;
 uint actions_executed = 0;
@@ -338,6 +341,21 @@ void execute_powercap_limit_action()
     }
 }
 
+void write_shared_data(ulong current_extra_power, ulong freeable_power)
+{
+    pthread_mutex_lock(&ext_mutex);
+    memset(&ext_powercap_data, 0, sizeof(shared_powercap_data_t));
+    if (my_cluster_power_status != NULL) //this should never happen, but it never hurts to check
+    {
+        ext_powercap_data.requested = my_cluster_power_status->requested;   // this might not be correct, maybe what cannot be allocated?
+        ext_powercap_data.current_power = my_cluster_power_status->current_power;
+        //extra allocated power and free power will be calculated before and passed as parameter
+        ext_powercap_data.extra_power = current_extra_power;
+        ext_powercap_data.available_power = freeable_power;
+    }
+    pthread_mutex_unlock(&ext_mutex);
+}
+
 void cluster_power_monitor()
 {
     debug("%sGlobal POWER monitoring INIT----%s",COL_BLU,COL_CLR);
@@ -368,6 +386,7 @@ void cluster_check_powercap()
         verbose(1,"num_power_status in cluster_check_powercap is 0");
         return;
     }
+    write_shared_data(0, 0); //TODO: fill the extra power and freeable_power
     must_send_pc_options=0;
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);

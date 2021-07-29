@@ -15,6 +15,7 @@ comm_BINS = $(SRCDIR)/daemon/remote_api/eard_rapi.o \
 eargmd_OBJS = eargm_rapi.o \
 		cluster_powercap.o \
 		cluster_energycap.o \
+		meta_eargm.o \
 		eargm_ext_rm.o 
 
 ######## RULES

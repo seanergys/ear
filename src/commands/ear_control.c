@@ -718,12 +718,12 @@ int main(int argc, char *argv[])
                         strcat(node_name, my_cluster_conf.net_ext);
                     }
                     else strcpy(node_name, optarg);
-                    int rc=eards_remote_connect(node_name, my_cluster_conf.eard.port);
+                    int rc=remote_connect(node_name, my_cluster_conf.eard.port);
                     if (rc<0){
                         printf("Error connecting with node %s\n", node_name);
                     }else{
                         if (!eards_restore_conf()) printf("Error restoring configuration for node: %s\n", node_name);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
                 else
@@ -745,13 +745,13 @@ int main(int argc, char *argv[])
                         strcat(node_name, my_cluster_conf.net_ext);
                     }
                     else strcpy(node_name, optarg);
-                    int rc=eards_remote_connect(node_name, my_cluster_conf.eard.port);
+                    int rc=remote_connect(node_name, my_cluster_conf.eard.port);
                     if (rc<0){
                         printf("Error connecting with node %s\n", node_name);
                     }else{
                         printf("Node %s ping!\n", node_name);
                         if (!eards_ping()) printf("Error doing ping for node %s\n", node_name);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
                 else
@@ -799,13 +799,13 @@ int main(int argc, char *argv[])
                         set_risk_all_nodes(arg, arg2, &my_cluster_conf);
                         break;
                     }
-                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
                     if (rc < 0){
                         printf("Error connecting with node %s\n", argv[optind]);
                     }else{
                         printf("Sending risk level %d to %s\n", arg, argv[optind]);
                         eards_set_risk(arg, 0);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
                 break;
@@ -838,13 +838,13 @@ int main(int argc, char *argv[])
                     command.time_code = time(NULL);
                     command.my_req.pc_opt = msg;
                     command.node_dist = INT_MAX;
-                    int rc = eards_remote_connect(optarg, my_cluster_conf.eard.port);
+                    int rc = remote_connect(optarg, my_cluster_conf.eard.port);
                     if (rc < 0) {
                         printf("Error connecting with node %s\n", optarg);
                     }else{
                         printf("Reading power_status from node %s\n", optarg);
                         send_command(&command);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                     free(msg.greedy_nodes);
                     free(msg.extra_power);
@@ -872,12 +872,12 @@ int main(int argc, char *argv[])
                     cluster_set_powerlimit_all_nodes(arg, &my_cluster_conf);
                 }
                 else {
-                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
                     if (rc < 0) {
                         printf("Error connecting with node %s\n", argv[optind]);
                     }else{
                         eards_set_powerlimit(arg);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
 
@@ -887,12 +887,12 @@ int main(int argc, char *argv[])
                     cluster_reset_default_powercap_all_nodes(&my_cluster_conf);
                 }
                 else {
-                    int rc = eards_remote_connect(optarg, my_cluster_conf.eard.port);
+                    int rc = remote_connect(optarg, my_cluster_conf.eard.port);
                     if (rc < 0) {
                         printf("Error connecting with node %s\n", optarg);
                     }else{
                         eards_reset_default_powercap();
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
                 break;
@@ -902,12 +902,12 @@ int main(int argc, char *argv[])
                     cluster_inc_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
                 }
                 else {
-                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
                     if (rc < 0) {
                         printf("Error connecting with node %s\n", optarg);
                     }else{
                         eards_inc_powerlimit(ABSOLUTE, arg);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
                 break;
@@ -917,12 +917,12 @@ int main(int argc, char *argv[])
                     cluster_red_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
                 }
                 else {
-                    int rc = eards_remote_connect(argv[optind], my_cluster_conf.eard.port);
+                    int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
                     if (rc < 0) {
                         printf("Error connecting with node %s\n", optarg);
                     }else{
                         eards_red_powerlimit(ABSOLUTE, arg);
-                        eards_remote_disconnect();
+                        remote_disconnect();
                     }
                 }
                 break;
@@ -963,7 +963,7 @@ int main(int argc, char *argv[])
         int rc = -1;
 
         if (status_type != EAR_TYPE_EARDBD_STATUS) {
-            rc = eards_remote_connect(node_name, my_cluster_conf.eard.port);
+            rc = remote_connect(node_name, my_cluster_conf.eard.port);
         }
         powercap_status_t *powerstatus;
         app_status_t *appstatus;
@@ -1014,7 +1014,7 @@ int main(int argc, char *argv[])
                     }
                     break;
             }
-            eards_remote_disconnect();
+            remote_disconnect();
         }
     }
     else if (status_type > 0)

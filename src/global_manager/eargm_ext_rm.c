@@ -40,18 +40,43 @@
 #include <common/types/generic.h>
 #include <common/messaging/msg_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
+#include <global_manager/cluster_powercap.h>
 
 
 extern uint total_nodes;
 extern uint my_port;
+extern uint eargm_id;
 
+extern shared_powercap_data_t ext_powercap_data;
+extern pthread_mutex_t ext_mutex;
 
+void eargm_return_status(int clientfd, long ack)
+{
+    eargm_status_t status;
+    send_answer(clientfd, &ack);
+
+    memset(&status, 0, sizeof(eargm_status_t));
+    status.id = eargm_id;
+
+    /* Critical section */
+    pthread_mutex_lock(&ext_mutex);
+    status.current_power = ext_powercap_data.current_power;
+    status.def_power = ext_powercap_data.def_power;
+    status.extra_power = ext_powercap_data.extra_power;
+    status.requested = ext_powercap_data.requested;
+    status.freeable_power = ext_powercap_data.available_power;
+    pthread_mutex_unlock(&ext_mutex);
+    /* End of critical section */
+
+    debug("sending eargm_status with power %lu and energy %lu\n", status.current_power, status.energy);
+    send_data(clientfd, sizeof(eargm_status_t), (char *)&status, EAR_TYPE_EARGM_STATUS);
+}
 
 /*
-*
-*	THREAD attending external commands. 
-*
-*/
+ *
+ *	THREAD attending external commands. 
+ *
+ */
 void process_remote_requests(int clientfd)
 {
     request_t command;
@@ -62,15 +87,20 @@ void process_remote_requests(int clientfd)
     req=read_command(clientfd,&command);
     switch (req){
         case EARGM_NEW_JOB:
-			// Computes the total number of nodes in use
+            // Computes the total number of nodes in use
             debug("new_job command received %d num_nodes %u",command.req,command.num_nodes);
-			total_nodes+=command.my_req.eargm_data.num_nodes;
+            total_nodes+=command.my_req.eargm_data.num_nodes;
             break;
         case EARGM_END_JOB:
-			// Computes the total number of nodes in use
+            // Computes the total number of nodes in use
             debug("end_job command received %d num_nodes %u",command.req,command.num_nodes);
-			total_nodes-=command.my_req.eargm_data.num_nodes;
+            total_nodes-=command.my_req.eargm_data.num_nodes;
             break;
+        case EARGM_STATUS:
+            // Responds with the current EARGM stats
+            debug("received eargm status request");
+            eargm_return_status(clientfd, ack);
+            return;
         default:
             error("Invalid remote command");
     }  
@@ -80,10 +110,10 @@ void process_remote_requests(int clientfd)
 
 void *eargm_server_api(void *p)
 {
-	int eargm_fd,eargm_client;
-	struct sockaddr_in eargm_con_client;
+    int eargm_fd,eargm_client;
+    struct sockaddr_in eargm_con_client;
 
-	  if (pthread_setname_np(pthread_self(), "eargm_server")) error("Setting name for eargm_server thread %s", strerror(errno));
+    if (pthread_setname_np(pthread_self(), "eargm_server")) error("Setting name for eargm_server thread %s", strerror(errno));
 
     debug("Creating scoket for remote commands,using port %u",my_port);
     eargm_fd=create_server_socket(my_port);
@@ -103,7 +133,7 @@ void *eargm_server_api(void *p)
     }while(1);
     verbose(VGM,"exiting");
     close_server_socket(eargm_fd);
-		pthread_exit(0);
+    pthread_exit(0);
 }
 
 

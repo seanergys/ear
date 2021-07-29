@@ -192,7 +192,7 @@ void propagate_req(request_t *command, uint port)
             command->node_dist = current_idx - off_ip;
 
             //connect and send data
-            rc = eards_remote_connect(next_ip, port);
+            rc = remote_connect(next_ip, port);
             if (rc < 0)
             {
                 error("propagate_req:Error connecting to node: %s\n", next_ip);
@@ -203,10 +203,10 @@ void propagate_req(request_t *command, uint port)
                 if (!send_command(command)) 
                 {
                     error("propagate_req: Error propagating command to node %s\n", next_ip);
-                    eards_remote_disconnect();
+                    remote_disconnect();
                     correct_error(current_idx, total_ips, ips, command, port);
                 }
-                else eards_remote_disconnect();
+                else remote_disconnect();
             }
         }
     }
@@ -253,7 +253,7 @@ void propagate_req(request_t *command, uint port)
         command->node_dist = current_idx - off_ip;
 
         //connect and send data
-        rc = eards_remote_connect(next_ip, port);
+        rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
             error("propagate_req:Error connecting to node: %s\n", next_ip);
@@ -264,10 +264,10 @@ void propagate_req(request_t *command, uint port)
             if (!send_command(command)) 
             {
                 error("propagate_req: Error propagating command to node %s\n", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 correct_error(current_idx, total_ips, ips, command, port);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
     }
 }
@@ -341,7 +341,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
             debug("Propagating to %s with distance %d\n", next_ip, command->node_dist);
 
             //connect and send data
-            rc = eards_remote_connect(next_ip, port);
+            rc = remote_connect(next_ip, port);
             if (rc < 0)
             {
                 error("propagate_data: Error connecting to node: %s\n", next_ip);
@@ -354,10 +354,10 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
                 if ((head.size < 1 && head.type != EAR_TYPE_APP_STATUS) || head.type == EAR_ERROR) 
                 {
                     error("propagate_data: Error propagating command to node %s\n", next_ip);
-                    eards_remote_disconnect();
+                    remote_disconnect();
                     head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
                 }
-                else eards_remote_disconnect();
+                else remote_disconnect();
             }
 
             if (head.size > 0 && head.type != EAR_ERROR)
@@ -394,7 +394,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
             memcpy(tmp_command.nodes, &command->nodes[base_distance*i], max_ips*sizeof(int));
 
             //connect and send data
-            rc = eards_remote_connect(next_ip, port);
+            rc = remote_connect(next_ip, port);
             if (rc < 0)
             {
                 error("propagate_data: Error connecting to node: %s\n", next_ip);
@@ -407,10 +407,10 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
                 if ((head.size < 1 && head.type != EAR_TYPE_APP_STATUS) || head.type == EAR_ERROR) 
                 {
                     error("propagate_data: Error propagating command to node %s\n", next_ip);
-                    eards_remote_disconnect();
+                    remote_disconnect();
                     head = correct_data_prop_nodes(&tmp_command, self_ip, port, (void **)&temp_data);
                 }
-                else eards_remote_disconnect();
+                else remote_disconnect();
             }
 
             if (head.type == EAR_TYPE_APP_STATUS)
@@ -472,7 +472,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
         verbose(VCONNECT+2, "Propagating to %s with distance %d\n", next_ip, command->node_dist);
 
         //connect and send data
-        rc = eards_remote_connect(next_ip, port);
+        rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
             error("propagate_req: Error connecting to node: %s\n", next_ip);
@@ -485,10 +485,10 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
             if ((head.size < 1 && head.type != EAR_TYPE_APP_STATUS) || head.type == EAR_ERROR) 
             {
                 error("propagate_req: Error propagating command to node %s\n", next_ip);
-                eards_remote_disconnect();
+                remote_disconnect();
                 head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
             }
-            else eards_remote_disconnect();
+            else remote_disconnect();
         }
 
         if (head.type == EAR_TYPE_APP_STATUS)

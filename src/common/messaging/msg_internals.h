@@ -47,11 +47,11 @@ int _write(int fd, void *data, size_t ssize);
 *	The sequence must be : connect +  command + disconnect
 * 	@param the nodename to connect with
 */
-int eards_remote_connect(char *nodename,uint port);
+int remote_connect(char *nodename,uint port);
 
-/** Disconnect from the previously connected EARD
+/** Disconnect from the previously connected socket 
 */
-int eards_remote_disconnect();
+int remote_disconnect();
 
 /** Sends the command to the currently connected fd */
 int send_command(request_t *command);
