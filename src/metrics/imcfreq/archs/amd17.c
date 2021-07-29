@@ -162,6 +162,9 @@ state_t imcfreq_amd17_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, 
 	}
 	if (average != NULL) {
 		*average = aux2;
+		if (devs_count > 0) {
+			*average = *average / (ulong) devs_count;
+		}
 	}
 	return EAR_SUCCESS;
 }
