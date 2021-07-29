@@ -35,15 +35,17 @@ static imcfreq_ops_t ops;
 void imcfreq_load(topology_t *tp, int eard)
 {
 	while (pthread_mutex_trylock(&lock));
-	if (ops.init) {
+	if (ops.init != NULL) {
 		goto done;
     }
+	debug("loading imcfreq metrics");
 	imcfreq_eard_load(tp, &ops, eard);
 	imcfreq_intel63_load(tp, &ops);
 	imcfreq_amd17_load(tp, &ops, eard);
 	imcfreq_dummy_load(tp, &ops);
 done:
 	pthread_mutex_unlock(&lock);
+	debug("loading imcfreq metrics finalized");
 }
 
 void imcfreq_get_api(uint *api)

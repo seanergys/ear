@@ -28,13 +28,16 @@ void imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
 {
 	uint imc_pack[2];
 
+	debug("loading (eard: %d)", eard);
 	if (!eard) {
 		return;
 	}
+	debug("connecting with daemon");
 	if (!eards_connected()) {
 		debug("EARD is not running or EAR_TMP is not set correctly");
 		return;
 	}
+	debug("asking data to daemon");
 	// Contacting daemon
 	if (state_fail(eards_imcfreq_data_count(imc_pack))) {
 		return;
@@ -54,6 +57,7 @@ void imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
     apis_set(ops->dispose,       imcfreq_eard_dispose);
     apis_set(ops->count_devices, imcfreq_eard_count_devices);
     apis_set(ops->read,          imcfreq_eard_read);
+	debug("EARD loaded full API");
 }
 
 void imcfreq_eard_get_api(uint *api, uint *api_intern)
