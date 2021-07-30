@@ -60,6 +60,7 @@
 void apis_append(void **op, void *func);
 
 void apis_print(uint api, char *prefix);
+
 void apis_tostr(uint api, char *buff,size_t size);
 
 #endif
