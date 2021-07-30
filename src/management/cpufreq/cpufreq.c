@@ -26,7 +26,7 @@
 #include <management/cpufreq/archs/amd17.h>
 #include <management/cpufreq/archs/default.h>
 #include <management/cpufreq/drivers/linux_cpufreq.h>
-#include <metrics/common/api.h>
+#include <metrics/common/apis.h>
 #include <metrics/frequency/cpu.h>
 
 static mgt_ps_driver_ops_t ops_driver;
