@@ -26,10 +26,12 @@
 #include <management/cpufreq/archs/amd17.h>
 #include <management/cpufreq/archs/default.h>
 #include <management/cpufreq/drivers/linux_cpufreq.h>
+#include <metrics/common/api.h>
 #include <metrics/frequency/cpu.h>
 
 static mgt_ps_driver_ops_t ops_driver;
 static mgt_ps_ops_t        ops;
+static uint                api;
 uint                       mgt_cpu_count;
 
 static state_t load_driver_cpufreq(topology_t *tp)
@@ -77,6 +79,9 @@ static state_t load_amd17(topology_t *tp)
 	ops.set_current_list   = cpufreq_amd17_set_current_list;
 	ops.set_current        = cpufreq_amd17_set_current;
 	ops.set_governor       = cpufreq_amd17_set_governor;
+
+	api = API_AMD17;
+
 	return EAR_SUCCESS;
 }
 
@@ -102,6 +107,9 @@ static state_t load_default(topology_t *tp)
 	ops.set_current_list   = cpufreq_default_set_current_list;
 	ops.set_current        = cpufreq_default_set_current;
 	ops.set_governor       = cpufreq_default_set_governor;
+
+	api = API_DEFAULT;
+
 	return EAR_SUCCESS;
 }
 
@@ -127,6 +135,12 @@ state_t mgt_cpufreq_load(topology_t *tp)
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 
+	return EAR_SUCCESS;
+}
+
+state_t mgt_cpufreq_get_api(uint *api_in)
+{
+	*api_in = api;
 	return EAR_SUCCESS;
 }
 
