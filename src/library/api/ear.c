@@ -1146,8 +1146,10 @@ void ear_finalize()
     if (!my_id) frequency_dispose();
 
     // Writing application data
+    
     if (!my_id) 
     {
+				if (application.is_learning) verbose_master(1,"Application in learning phase mode");
         debug("Reporting application data");
         verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
         clean_db_signature(&application.signature, system_conf->max_sig_power);
@@ -1544,7 +1546,7 @@ state_t earl_periodic_actions_init(void *no_arg)
         ear_iterations = 0;
         states_begin_period(my_id, 1, (ulong) lib_period,1);
         mpi_calls_in_period = lib_period;
-        states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
+        if (!ear_whole_app) states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
     }
 
     return EAR_SUCCESS;
@@ -1557,6 +1559,7 @@ state_t earl_periodic_actions(void *no_arg)
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
 
+		if (ear_whole_app) return EAR_SUCCESS;
 
 
     ear_iterations++;
