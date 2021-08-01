@@ -126,21 +126,21 @@
                                 "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
                                 "FLOPS5, FLOPS6, FLOPS7, FLOPS8,"\
                                 "instructions, cycles, avg_f, avg_imc_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "\
-                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?)"
 
 #define LEARNING_SIGNATURE_QUERY_SIMPLE  "INSERT INTO Learning_signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
                                 "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "\
-                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 #else
 #define LEARNING_SIGNATURE_QUERY_FULL   "INSERT INTO Learning_signatures (DC_power, DRAM_power,"\
                                         "PCK_power, EDP, GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
                                         "FLOPS5, FLOPS6, FLOPS7, FLOPS8, instructions, cycles, avg_f, avg_imc_f, def_f) "\
-                                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 #define LEARNING_SIGNATURE_QUERY_SIMPLE    "INSERT INTO Learning_signatures (DC_power, DRAM_power, PCK_power, EDP,"\
                                            "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f) "\
-                                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 #endif
 
 #define LEARNING_JOB_MYSQL_QUERY          "INSERT IGNORE INTO Learning_jobs (id, step_id, user_id, app_id, start_time, end_time, "\
