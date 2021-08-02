@@ -117,6 +117,8 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
 /*  wrap function which calculates intructions, flops and cycles. */
 state_t compute_total_node_metrics();
+extern uint last_earl_phase_classification;
+
 
 state_t policy_init(polctx_t *c)
 {
@@ -187,6 +189,7 @@ state_t policy_init(polctx_t *c)
             if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
                 verbose_master(2, "Error asking for gpu freq list");
             }
+						/* Replace by default_setting in gpu policy */
             for (i = 0; i<c->num_gpus; i++){
                 min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
             }
@@ -340,6 +343,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if (min_time_state != SELECT_CPUFREQ && !policy_stable){
         verbose_master(2, "%spolicy not stable%s", COL_RED, COL_CLR);
         min_time_state = SELECT_CPUFREQ;
+				last_earl_phase_classification = APP_COMP_BOUND;
     }
 
     if ((min_time_state == SELECT_CPUFREQ) || (eUFS == 0)){
@@ -359,11 +363,12 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
         if (!are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
-            verbose_node_freqs(2, &last_nodefreq_sel);
-            verbose_node_freqs(2, &min_time_def_freqs);
 
             set_default_settings(freqs, &min_time_def_freqs);
             node_freqs_copy(&last_nodefreq_sel, freqs);
+            verbose_node_freqs(2, &last_nodefreq_sel);
+            verbose_node_freqs(2, &min_time_def_freqs);
+						verbose_node_freqs(2, freqs);
 
             verbose_master(2, "Setting default conf for MT");
             *ready = EAR_POLICY_TRY_AGAIN;
@@ -653,8 +658,12 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
             last_mpi_stats_perc_mpi_mean = mean;
             last_mpi_stats_perc_mpi_mag = mag;
             last_mpi_stats_perc_mpi_median = median;
-        }else nump = 1;
+        }else{ 
+					freq_per_core = 0;
+					nump = 1;
+				}
     }else{
+				freq_per_core = 0;
         nump = 1;
     }
 
@@ -682,10 +691,14 @@ state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *o
     return int_policy_ok(curr_sig,last_sig,ok);
 }
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *f,signature_t *s)
 {
     if ((c!=NULL) && (c->app!=NULL)){
         node_freqs_copy(f, &min_time_def_freqs);
+        if ((gpus.restore_settings != NULL) && (s != NULL)){
+          gpus.restore_settings(c,s,f);
+        }
+
     }else return EAR_ERROR;
     return EAR_SUCCESS;
 }
@@ -790,6 +803,10 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
     node_freqs_copy(freqs, &min_time_def_freqs);
     node_freqs_copy(&last_nodefreq_sel,freqs);
+    if (gpus.restore_settings != NULL){
+      gpus.restore_settings(c,my_sig,freqs);
+    }
+
 
     return EAR_SUCCESS;
 }
@@ -800,3 +817,13 @@ state_t compute_total_node_metrics(){
     compute_total_node_cycles(lib_shared_region,sig_shared_region,&my_app->cycles);
     return EAR_SUCCESS;
 }
+
+state_t policy_new_iteration(polctx_t *c,signature_t *sig)
+{
+    if (gpus.new_iter != NULL){
+        /* Basic support for GPUS */
+        return gpus.new_iter(c,sig);
+    }
+    return EAR_SUCCESS;
+}
+

@@ -48,4 +48,12 @@ void metrics_get_total_io(io_data_t *rdwr);
 
 /** Copute the number of vector instructions since signature reports FP ops, metrics is valid signature*/
 unsigned long long metrics_vec_inst(signature_t *metrics);
+
+/* Computes the node signature including data from other processes */
+void metrics_node_signature(signature_t *master,signature_t *ns);
+
+/* Computes metrics per-iteration, very lightweight */
+state_t metrics_new_iteration(signature_t *sig);
+
+
 #endif //EAR_EAR_METRICS_H

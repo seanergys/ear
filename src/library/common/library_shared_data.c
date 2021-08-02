@@ -114,14 +114,18 @@ void shared_signatures_area_dispose(char * path)
 /************** Marks the signature is computed *****************/
 void signature_ready(shsignature_t *sig,int cur_state)
 {
-	sig->ready=1;
-	sig->app_state=cur_state;
+	debug("Process %d rank %d signature_ready",my_node_id,sig->mpi_info.rank);
+	sig->ready = 1;
+	sig->app_state = cur_state;
 }
 
 int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i,total=0;
-  for (i=0;i<data->num_processes;i++) total = total+sig[i].ready;
+  for (i=0;i<data->num_processes;i++){ 
+		total = total+sig[i].ready;
+		if (!sig[i].ready) debug(" Process %d not ready",i);
+	}
 	data->num_signatures = total;
 	return total;
 }
@@ -373,6 +377,17 @@ void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t
     *t_cycles += sig[i].sig.cycles;
   }
 }
+
+void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI)
+{
+  int i;
+  *CPI = 0;
+  for (i=0;i<data->num_processes;i++){
+    *CPI += (double)sig[i].sig.CPI;
+  }
+}
+
+
 
 
 uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi)

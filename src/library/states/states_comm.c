@@ -53,8 +53,8 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
 {
     char io_info[256];
 		char pmpi_txt[64];
-    double CPI, GBS, POWER, TIME, VPI, GPU_POWER = 0, FLOPS;
-    float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI ;
+    double CPI, GBS, POWER, TIME, VPI, GPU_POWER = 0, FLOPS, gpu_tpower =0;
+    float AVGF = 0,AVGGPUF = 0,PFREQ = 0,NFREQ = 0,VI, gpuf =0 ;
     float l1_sec=0,l2_sec=0,l3_sec=0;
 		float IO_MBS;
     ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
@@ -88,13 +88,14 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
         if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
         if (se != NULL ) io_tostr(&se->iod,io_info,sizeof(io_info));
 				else sprintf(io_info,"No IO data");
-        strcpy(gpu_buff,"");
 #if USE_GPUS
         if (sig->signature.gpu_sig.num_gpus>0){ 
             verbose(3," ");
             for(gpui=0;gpui<sig->signature.gpu_sig.num_gpus;gpui++){ 
                 verbosen(3,"(GPU[%d] Power %.2f Util %lu Freq %lu)",gpui,sig->signature.gpu_sig.gpu_data[gpui].GPU_power,sig->signature.gpu_sig.gpu_data[gpui].GPU_util,
                         sig->signature.gpu_sig.gpu_data[gpui].GPU_freq);
+								gpu_tpower += sig->signature.gpu_sig.gpu_data[gpui].GPU_power;
+								gpuf += (float)sig->signature.gpu_sig.gpu_data[gpui].GPU_freq;
                 if (sig->signature.gpu_sig.gpu_data[gpui].GPU_util){
                     gpuused++;
                     GPU_POWER += sig->signature.gpu_sig.gpu_data[gpui].GPU_power; 
@@ -108,12 +109,19 @@ void state_verbose_signature(loop_t *sig,int master_rank,int show,char *aname,ch
                 AVGGPUF = (float)GPU_FREQ/(float)(gpuused*1000000.0); 
                 GPU_UTIL = GPU_UTIL/gpuused; 
             }
+						gpuf = gpuf / sig->signature.gpu_sig.num_gpus;
+						snprintf(gpu_buff,sizeof(gpu_buff),"\n\t(total gpupower %.0lf avg_gfreq %.2fGHz)",gpu_tpower,gpuf/1000000.0);
         } 
 #endif
         verbose(2,"EAR+%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu,iterations=%d",mode,aname, PFREQ,nname,sig->id.event,sig->id.size,sig->id.level,iterations); 
         verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",mode,aname, PFREQ,nname,master_rank,elapsed); 
         verbosen(1,"%s",COL_GRE);
-        if (GPU_UTIL) sprintf(gpu_buff,"\n\t(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
+#if USE_GPUS
+				if (sig->signature.gpu_sig.num_gpus > 0 ) verbosen(2,"%s",gpu_buff);
+#endif
+        strcpy(gpu_buff," ");
+        if (GPU_UTIL) snprintf(gpu_buff,sizeof(gpu_buff),"\n\t(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
+				
         verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec.\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlops=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
         if (new_freq > 0){ verbosen(1,"\n\t Next Frequency %.2f",NFREQ);}
         verbosen(2,"\n\t DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);

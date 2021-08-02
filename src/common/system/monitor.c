@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <string.h>
 #include <pthread.h>
+#include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 
@@ -28,8 +29,8 @@
 static pthread_t        thread;
 static pthread_mutex_t  lock_gen = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t  lock[N_QUEUE];
-static uint             enabled;
-static uint             locked;
+static uint             enabled = 0;
+static uint             locked = 0;
 
 typedef struct wait_s {
 	int relax;
@@ -65,7 +66,7 @@ static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
 	timestamp_t t2;
 	timestamp_t t1;
 
-	debug("waiting %lld units", units);
+	debug("waiting %llu units", units);
 
 	timestamp_getfast(&t1);
 	nanosleep(&time, NULL);
@@ -79,8 +80,7 @@ static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
 	*alignment += *pass_units;
 	*alignment %= 10;
 
-	debug("waited %d units (alignment %d)",
-		*pass_units, *alignment);
+	debug("waited %d units (alignment %d)", *pass_units, *alignment);
 }
 
 static void monitor_time_calc(register_t *reg, int *wait_units, int pass_units, int alignment)
@@ -133,7 +133,7 @@ static void _monitor_init()
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
 }
 
-static void *monitor(void *p)
+static void *ear_internal_monitor(void *p)
 {
 	register_t *reg;
 	suscription_t *sus;
@@ -141,6 +141,7 @@ static void *monitor(void *p)
 	int pass_units = 0;
 	int alignment = 0;
 	int i;
+	//verbose(2,"Monitor init queue_last %d enabled %d",queue_last,enabled);
 
 	// Initializing
 	_monitor_init();
@@ -177,7 +178,7 @@ static void *monitor(void *p)
 
 		monitor_sleep(wait_units, &pass_units, &alignment);
 	}
-	return EAR_SUCCESS;
+	return NULL;
 }
 
 static state_t monitor_lock_alloc()
@@ -202,7 +203,7 @@ static state_t monitor_lock_alloc()
 
 state_t monitor_init()
 {
-	int _errno;
+	int m_errno;
 	state_t s;
 
 	while (pthread_mutex_trylock(&lock_gen));
@@ -216,11 +217,15 @@ state_t monitor_init()
 			return s;
 		}
 	}
-	_errno = pthread_create(&thread, NULL, monitor, NULL);
-	enabled = (_errno == 0);
+	enabled = 1;
+	m_errno = pthread_create(&thread, NULL, ear_internal_monitor, NULL);
+	if (m_errno != 0){
+		return_msg(EAR_ERROR, strerror(m_errno));
+	}
+	enabled = (m_errno == 0);
 	if (!enabled) {
 		pthread_mutex_unlock(&lock_gen);
-		return_msg(EAR_ERROR, strerror(_errno));
+		return_msg(EAR_ERROR, strerror(m_errno));
 	}
 	pthread_mutex_unlock(&lock_gen);
 
@@ -263,6 +268,7 @@ state_t monitor_register(suscription_t *s)
 	queue[s->id].wait_saves.burst = (s->time_burst / 100);
 
 	debug("registered suscription %d", s->id);
+  debug("aligned %d",  queue[s->id].aligned);
 	debug("times relax/burst: %d/%d", queue[s->id].wait_saves.relax, queue[s->id].wait_saves.burst);
 	debug("calls init/main: %p/%p (%d)", s->call_init, s->call_main, queue[s->id].ok_init);
 

@@ -98,7 +98,7 @@ state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok
 }
 
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set,signature_t *s)
 {
 	return EAR_SUCCESS;
 }

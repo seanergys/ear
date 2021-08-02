@@ -11,9 +11,10 @@ stan_OBJS = \
 stan_BINS = \
     min_energy.so \
     min_time.so  \
-    min_time_no_models.so \
-    min_energy_no_models.so \
     monitoring.so 
+
+#    min_time_no_models.so \
+#		 min_energy_no_models.so \
 
 ifeq ($(FEAT_MPI_API), 1)
 ifeq ($(FEAT_RESEARCH),1)
