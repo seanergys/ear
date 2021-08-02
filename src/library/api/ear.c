@@ -947,6 +947,9 @@ void ear_init()
     freq_count = freq_count / sizeof(ulong);
     // Initializing API in user mode	: We should move this to library/management
     if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
+			for (uint i=0;i<freq_count;i++){
+					verbose_master(2,"Freq[%d] = %lu",i,freq_list[i]);
+			}
 			if ((st = mgt_cpufreq_get_api(&mgt_cpufreq_api)) == EAR_SUCCESS){
 				char mgt_cpufreq_api_text[64];
 				apis_tostr(mgt_cpufreq_api, mgt_cpufreq_api_text, sizeof(mgt_cpufreq_api_text));
