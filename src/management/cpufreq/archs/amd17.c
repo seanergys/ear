@@ -31,15 +31,15 @@ typedef struct pss_s {
 	ullong cof;
 } pss_t;
 
-#define CPU				0
-#define MAX_PSTATES		128
-#define MAX_REGISTERS	8
-#define REG_HWCONF		0xc0010015
-#define REG_LIMITS		0xc0010061
-#define REG_CONTROL		0xc0010062
-#define REG_STATUS		0xc0010063
-#define REG_P0			0xc0010064
-#define REG_P1			0xc0010065
+#define CPU             0
+#define MAX_PSTATES     128
+#define MAX_REGISTERS   8
+#define REG_HWCONF      0xc0010015 //HWCR
+#define REG_LIMITS      0xc0010061
+#define REG_CONTROL     0xc0010062
+#define REG_STATUS      0xc0010063
+#define REG_P0          0xc0010064
+#define REG_P1          0xc0010065
 
 #define p0_khz(cof) ((cof * 1000LLU) + 1000LLU)
 #define p1_khz(cof) ((cof * 1000LLU))
@@ -127,7 +127,7 @@ state_t cpufreq_amd17_dispose(ctx_t *c)
 }
 
 #if SHOW_DEBUGS
-static void pstate_print(amd17_ctx_t *f)
+static void amd17_pstate_print(amd17_ctx_t *f)
 {
 	// Look into 'PPR 17h, Models 31h.pdf' the MSRC001_006[4...B] register information.
 	debug ("-----------------------------------------------------------------------------------");
@@ -218,7 +218,7 @@ static int pstate_clean_psss(amd17_ctx_t *f, uint i)
 		return how_many+1;
 	}
 	// We are not OK
-	debug("frequency %llu can't be written", f->psss[i].cof);
+	debug("frequency %llu can't be written (%s)", f->psss[i].cof, state_msg);
 	// If we are not OK and the next is OK
 	int h;
 	for (h = 0; h < how_many; ++h) {
@@ -228,7 +228,7 @@ static int pstate_clean_psss(amd17_ctx_t *f, uint i)
 	return how_many;
 }
 
-static void pstate_print_psss(amd17_ctx_t *f)
+static void amd17_pstate_print_psss(amd17_ctx_t *f)
 {
 	int i;
 	debug("PSS object list: ");
@@ -294,22 +294,22 @@ static state_t pstate_build_psss_user(amd17_ctx_t *f)
 	state_t s;
 
 	// In user mode the driver is the main actor
-	if (xtate_fail(s, f->driver->get_available_list(&f->driver_c, &freqs_available, &f->pss_count))) {
+	if (state_fail(s = f->driver->get_available_list(&f->driver_c, &freqs_available, &f->pss_count))) {
 		return static_dispose(f, 0, s, state_msg);
 	}
 	// Initializing a virtual (because MSR can't be read) register PSS0 to initialize the list.
 	cof = freqs_available[0] / 1000LLU;
-	if (xtate_fail(s, pstate_build_psss_single(cof, &cof, &fid, &did))) {
+	if (state_fail(s = pstate_build_psss_single(cof, &cof, &fid, &did))) {
 		return s;
 	}
 	f->regs[0] = setbits64(      0LLU,  fid,  7,  0);
 	f->regs[0] = setbits64(f->regs[0],  did, 13,  8);
 	f->regs[0] = setbits64(f->regs[0], 1LLU, 63, 63);
 	#if SHOW_DEBUGS
-	pstate_print(f);
+	amd17_pstate_print(f);
 	#endif
 	// Building PSS object list
-	if (xtate_fail(s, pstate_build_psss(f))) {
+	if (state_fail(s = pstate_build_psss(f))) {
 		return static_dispose(f, 0, s, state_msg);
 	}
 	
@@ -352,10 +352,16 @@ state_t cpufreq_amd17_init_user(ctx_t *c, mgt_ps_driver_ops_t *ops_driver, const
 		f->pss_count = freq_count;
 		for (i = 0; i < f->pss_count; ++i) {
 			f->psss[i].cof = freq_list[i] / 1000LLU;
+			// If someone sends the list, the additional 1000 KHz is substracted.
+			if (f->boost_enabled && (i == 0)) {
+				if ((freq_list[0] % 10000LLU) == 1000LLU) {
+					f->psss[0].cof = (freq_list[0] - 1000LLU) / 1000LLU;
+				}
+			}
 		}
 	} 
 	// Initializing in user mode
-	pstate_print_psss(f);
+	amd17_pstate_print_psss(f);
 	debug("num P_STATEs: %d", f->pss_count);
 	debug("nominal P_STATE: P%d", f->pss_nominal);
 	debug("boost enabled: %d", f->boost_enabled);
@@ -418,22 +424,23 @@ state_t cpufreq_amd17_init(ctx_t *c, mgt_ps_driver_ops_t *ops_driver)
 		}
 	}
 	#if SHOW_DEBUGS
-	pstate_print(f);
+	amd17_pstate_print(f);
 	#endif
 	// Boost enabled checked by MSR. 
-	if (xtate_fail(s, msr_read(0, &data, sizeof(ullong), REG_HWCONF))) {
+	if (state_fail(s = msr_read(0, &data, sizeof(ullong), REG_HWCONF))) {
 		return static_dispose(f, tp.cpu_count, s, state_msg);
 	}
+	debug("AMD HWCONF %llu (bit 25: %llu)", data, getbits64(data, 25, 25));
 	f->boost_enabled = (uint) !getbits64(data, 25, 25);
 	f->pss_nominal   = f->boost_enabled;
 	// Building PSS object list.
-	if (xtate_fail(s, pstate_build_psss(f))) {
+	if (state_fail(s = pstate_build_psss(f))) {
 		return static_dispose(f, tp.cpu_count, s, state_msg);
 	}
-	// Cleaning
+	// Clean sets individual P_STATEs, and if any doen't work is removed.
 	f->pss_count = pstate_clean_psss(f, 1) + 1;
 	//
-	pstate_print_psss(f);
+	amd17_pstate_print_psss(f);
 	debug("num P_STATEs: %d", f->pss_count);
 	debug("nominal P_STATE: P%d", f->pss_nominal);
 	debug("boost enabled: %d", f->boost_enabled);
@@ -650,6 +657,7 @@ static state_t set_frequency_p1(amd17_ctx_t *f, uint cpu, uint pst, uint test)
 			return s;
 		}
 		if (aux != reg) {
+			debug("REG_P1 %llu is different from the written %llu", aux, reg);
 			return_msg(EAR_ERROR, "frequency not written");
 		}
 	}
