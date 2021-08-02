@@ -145,6 +145,8 @@ char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
 char pc_app_info_path[GENERIC_NAME];
 #endif
+
+uint mgt_cpufreq_api;
 // Dynais
 static dynais_call_t dynais;
 
@@ -943,8 +945,15 @@ void ear_init()
     debug("looking for frequencies in '%s'", app_mgt_path);
     freq_list = attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
     freq_count = freq_count / sizeof(ulong);
-    // Initializing API in user mode	
-    frequency_init_user(freq_list, freq_count);
+    // Initializing API in user mode	: We should move this to library/management
+    if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
+			if ((st = mgt_cpufreq_get_api(&mgt_cpufreq_api)) == EAR_SUCCESS){
+				char mgt_cpufreq_api_text[64];
+				apis_tostr(mgt_cpufreq_api, mgt_cpufreq_api_text, sizeof(mgt_cpufreq_api_text));
+				verbose_master(2,"mgt_cpufreq API %s",mgt_cpufreq_api_text);
+			}
+		
+		}
     dettach_frequencies_shared_area();
     // You can utilize now the frequency API
     arch_desc.pstates = frequency_get_num_pstates();

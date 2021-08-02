@@ -456,9 +456,11 @@ state_t policy_init()
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
+		if (arch_desc.top.vendor == VENDOR_AMD) enable_load_balance = 0;
     verbose_master(2,"Load balance enabled ? %u", enable_load_balance);
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
     verbose_master(2,"Using turbo for CP when load unbalance set to %u",use_turbo_for_cp);
+
 
     if (cdyn_unc != NULL && imc_mgt_compatible){
         dyn_unc = atoi(cdyn_unc);
