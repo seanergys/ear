@@ -492,6 +492,7 @@ void verbose_mpi_summary(int vl,mpi_summary_t *l)
 
 void chech_node_mpi_summary()
 {
+	#if 0
     #if NODE_LB
     if (is_mpi_enabled()){
       verbose_mpi_summary(LB_VERB,&my_mpi_summary);
@@ -505,6 +506,7 @@ void chech_node_mpi_summary()
     }
     }
     #endif
+	#endif
 }
 
 

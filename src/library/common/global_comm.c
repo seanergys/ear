@@ -54,9 +54,10 @@ state_t share_global_info(MPI_Comm comm,char * data_send, int size_send,char * d
 
 state_t is_info_ready(MPI_Request *req)
 {
-	int flag;
-	PMPI_Test(req, &flag, MPI_STATUS_IGNORE);
-	if (flag) return EAR_SUCCESS;
+	int flag = 0;
+	int ret;
+	ret = PMPI_Test(req, &flag, MPI_STATUS_IGNORE);
+	if ((ret == MPI_SUCCESS) && flag) return EAR_SUCCESS;
 	else return EAR_NOT_READY;
 }
 /**************************************************************************************************/

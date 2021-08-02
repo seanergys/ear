@@ -256,10 +256,11 @@ int module_mpi(char *path_lib_so,char *libhack)
 
 void module_mpi_destructor()
 {
-  verbose(3, "LOADER: loading module default (destructor)");
-
-  if (func_des != NULL) {
-    func_des();
-  }
+  verbose(2, "LOADER: loading module default (destructor)");
+	if (is_mpi_enabled()){
+  	if (func_des != NULL) {
+  	  func_des();
+  	}
+	}
 }
 

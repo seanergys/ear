@@ -92,7 +92,7 @@ typedef struct masters_info{
 
 #define share_my_mpi_summary(a,b) EAR_SUCCESS
 #define is_mpi_summary_pending() 0
-#define is_mpi_summary_ready()	 1
+#define is_mpi_summary_ready()	 0
 #define verbose_node_mpi_summary(a,b)
 
 #endif

@@ -619,7 +619,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 					 standard deviation %.2lf magnitude %.2lf unbalance ? %u", COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 
         /* This function sends mpi_summary to other nodes */
-        chech_node_mpi_summary();
+        //chech_node_mpi_summary();
         /*  Check whether application has changed from unbalanced to balanced and viceversa */
         if (unbalance != signature_is_unbalance){
             if (!unbalance){
