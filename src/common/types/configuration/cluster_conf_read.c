@@ -728,7 +728,7 @@ void free_cluster_conf(cluster_conf_t *conf)
 
         for (j = 0; j < conf->islands[i].num_specific_tags; j++)
             free(conf->islands[i].specific_tags[j]);
-        free(conf->islands[i].specific_tags);
+        if (conf->islands[i].num_specific_tags > 0) free(conf->islands[i].specific_tags);
         conf->islands[i].num_specific_tags = 0;
 
 
