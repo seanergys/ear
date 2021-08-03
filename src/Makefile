@@ -8,9 +8,9 @@ COMPONENTS = \
     daemon \
     commands \
     library \
-		tools\
-		global_manager\
-		slurm_plugin
+    tools \
+    global_manager \
+    slurm_plugin
 
 ifdef DB_BASE
 COMPONENTS += database_cache 

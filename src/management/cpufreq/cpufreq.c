@@ -108,7 +108,7 @@ static state_t load_default(topology_t *tp)
 	ops.set_current        = cpufreq_default_set_current;
 	ops.set_governor       = cpufreq_default_set_governor;
 
-	api = API_DEFAULT;
+	api = API_OS_CPUFREQ;
 
 	return EAR_SUCCESS;
 }
