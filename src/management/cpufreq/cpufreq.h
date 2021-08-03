@@ -92,7 +92,7 @@ typedef struct mgt_ps_ops_s
 /** The first function to call, because discovers the system and sets the internal API. */
 state_t mgt_cpufreq_load(topology_t *tp);
 
-state_t mgt_cpufreq_get_api(uint *api, uint *intern_api);
+state_t mgt_cpufreq_get_api(uint *api);
 
 /** The second function to call, initializes all the data. */
 state_t mgt_cpufreq_init(ctx_t *c);
