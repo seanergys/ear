@@ -673,10 +673,10 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){ 
         *ready = EAR_POLICY_CONTINUE;
 				uint pending_sig = lib_shared_region->num_processes-compute_total_signatures_ready(lib_shared_region,sig_shared_region);
-				uint i;
 				if (pending_sig > (lib_shared_region->num_processes/2)){
 					verbose_master(2,"Num sig pending %d:",pending_sig);	
 					#if 0
+					uint i;
 					for (i = 0;i< lib_shared_region->num_processes;i++){
 						if (sig_shared_region[i].ready == 0)	verbosen_master(2," P[%d]=%u",i,sig_shared_region[i].iterations);
 					}
