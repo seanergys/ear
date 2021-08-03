@@ -49,7 +49,7 @@ cluster_conf_t *conf = NULL;
 
 void *meta_eargm(void *config)
 {
-    int num_status, i;
+    int num_status, i, eargm_idx = -1;
     eargm_def_t *e_def;
     eargm_status_t *status;
     char host[GENERIC_NAME];
@@ -64,15 +64,23 @@ void *meta_eargm(void *config)
         pthread_exit(0);
     }
 
-    if (pthread_setname_np(pthread_self(), "meta_eargm")) error("Setting name for meta_eargm thread %s", strerror(errno));
+    if (pthread_setname_np(pthread_self(), "meta_eargm")) verbose(0, "Setting name for meta_eargm thread %s", strerror(errno));
     debug("created meta_eargm thread");
+
+    for (i = 0; i < conf->eargm.num_eargms; i++) {
+        if (conf->eargm.eargms[i].id == e_def->id) eargm_idx = i;
+    }
+    if (eargm_idx < 0) {
+        error("EARGM is not defined in the configuration file (ear.conf), closing meta_eargm");
+        pthread_exit(0);
+    }
 
     while(1)
     {
         debug("waiting period of time before asking nodes");
-        sleep(30);
+        sleep(10);
 
-        num_status = eargm_get_all_status(conf, &status, e_def->id);
+        num_status = eargm_get_all_status(conf, &status, eargm_idx);
         debug("Received %d status in meta thread", num_status);
         if (num_status > 0) 
         {

@@ -100,6 +100,7 @@ uint powercap_th_start=0;
 pthread_t eargm_server_api_th;
 pthread_t meta_eargm_th;
 cluster_conf_t my_cluster_conf;
+eargm_def_t *e_def;
 char my_ear_conf_path[GENERIC_NAME];	
 uint total_nodes=0;
 char  unit_name[128],unit_energy[128],unit_power[128];
@@ -125,7 +126,6 @@ static int fd_my_log=2;
 uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 {
     eargm_conf_t *cc,*newc;
-    eargm_def_t *e_def;
     uint must_refil=0;
     char host[GENERIC_NAME];
 
@@ -191,7 +191,6 @@ void update_eargm_configuration(cluster_conf_t *conf)
 {
     verb_level=conf->eargm.verbose;
     char host[GENERIC_NAME];
-    eargm_def_t *e_def;
 
     /* EARGM specific conf */
     gethostname(host, sizeof(host));
@@ -634,6 +633,13 @@ int main(int argc,char *argv[])
     if ((ret=pthread_create(&eargm_server_api_th, NULL, eargm_server_api, NULL))){
         errno=ret;
         error("error creating eargm_server for external api %s",strerror(errno));
+    }
+    
+    if (e_def->num_subs > 0) { //if it has subnodes, we need a META-EARGM
+        if ((ret = pthread_create(&meta_eargm_th, NULL, meta_eargm, (void *)&my_cluster_conf))) {
+            errno=ret;
+            error("error creating eargm_server for external api %s",strerror(errno));
+        }
     }
 
 

@@ -19,6 +19,7 @@
 #define _GNU_SOURCE 
 
 
+#define SHOW_DEBUGS 1
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
@@ -35,7 +36,6 @@
 #include <sys/wait.h>
 #include <common/states.h>
 #include <common/config.h>
-//#define SHOW_DEBUGS 0
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
 #include <common/messaging/msg_internals.h>

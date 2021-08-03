@@ -15,6 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+#define SHOW_DEBUGS 1
 #include <netdb.h>
 #include <errno.h>
 #include <stdio.h>
@@ -41,16 +42,27 @@ int eargm_get_all_status(cluster_conf_t *conf, eargm_status_t **status, int earg
     int i, j, rc, ret, port, num_status = 0;
     eargm_status_t *aux_status, *final_status = NULL;
     char *tmp_eargm = NULL;
+    debug("entering eargm_get_all_status");
 
     for (i = 0; i < conf->eargm.eargms[eargm_idx].num_subs; i++)
     {
+        //debug("contacting node %d", i);
         for (j = 0; j < conf->eargm.num_eargms; j++) {
             if (conf->eargm.eargms[j].id == conf->eargm.eargms[eargm_idx].subs[i]) {
                 tmp_eargm = conf->eargm.eargms[j].node;
                 port = conf->eargm.eargms[j].port;
+                //debug("Found node on %s on port %u", tmp_eargm, port);
             }
         }
+        if (tmp_eargm == NULL) {
+            debug("node not found, skipping");
+            continue;
+        }
         rc = remote_connect(tmp_eargm, port);
+        if (rc < 0) {
+            error("Error connecting to %s:%u", tmp_eargm, port);
+            continue;
+        }
 
         ret = eargm_get_status(rc, &aux_status);
         debug("Received %d eargm status", ret);
@@ -62,6 +74,7 @@ int eargm_get_all_status(cluster_conf_t *conf, eargm_status_t **status, int earg
             free(aux_status);
         }
         tmp_eargm = NULL; //reset the var
+        remote_disconnect();
     }
 
     *status = final_status;
