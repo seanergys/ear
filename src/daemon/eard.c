@@ -181,8 +181,8 @@ void check_policy(policy_conf_t *p)
     else
     {
         /* We are using frequencies */
-        f=(unsigned long)p->def_freq;
-	f = f*1000000;
+        f = (unsigned long) (p->def_freq * 100.0f);
+		f = f*10000;
         if (!frequency_is_valid_frequency(f))
         {
             error("Default frequency %lu for policy %s is not valid",f,p->name);
@@ -206,7 +206,7 @@ void compute_policy_def_freq(policy_conf_t *p)
 		float tmp;
 		tmp = truncf((float)frequency_pstate_to_freq(p->p_state)/1000.0);
 		tmp = tmp/1000.0;
-		error("Def freq is %f",tmp);
+		verbose(1, "Def freq is %f",tmp);
 		p->def_freq= tmp;
 	}else{
 		p->p_state=frequency_closest_pstate((unsigned long)(p->def_freq*1000000));
