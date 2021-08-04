@@ -78,7 +78,7 @@ void *meta_eargm(void *config)
     while(1)
     {
         debug("waiting period of time before asking nodes");
-        sleep(10);
+        sleep(conf->eargm.t1_power*2);
 
         num_status = eargm_get_all_status(conf, &status, eargm_idx);
         debug("Received %d status in meta thread", num_status);
