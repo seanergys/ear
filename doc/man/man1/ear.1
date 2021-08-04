@@ -1,5 +1,5 @@
-.\" Manpage for eacct.
-.TH man 1 "June 2021" "3.4" "ear man page"
+.\" Manpage for EAR: The Energy Management System for Data Centers.
+.TH man 1 "June 2021" "4.0" "ear man page"
 .SH NAME
 ear overview
 
@@ -18,6 +18,29 @@ Accounting: A complete energy and performance accounting and monitoring system b
 Control: A global energy management to monitor and control the energy consumed in the system through the EAR global manager daemon (EARGMD) and the EARD. This control is configurable, it can dynamically adapt  policy settings based on global energy limits or just offer global cluster monitoring.
 
 Three commands are offered to ask for job accounting (eacct), energy reports (ereport) and control (econtrol)
+
+EAR monitors and optimizes jobs automatically. If EAR optimization is enabled by default, there is no need to add any flag or option at submission time. If EAR optimization is not enabled by default, using any EAR flag at submisstion time will activate it. To check EAR optimization configuration you can execute ear-info command. 
+
+Performance and power metrics are available once jobs/steps are finished. Use "eacct -j JOBID" and see eacct man pages for more information. 
+
+.SH EXAMPLES
+
+In case EAR optimization is not enabled by default, you can activate by using EAR options.
+
+sbatch --ear=on job.sh
+sbatch --ear-verbose=1 job.sh --> will activate ear verbosity
+
+When having multiple sruns, you can activate independently for each step
+
+srun --ear-verbose=1  application arguments
+srun --ear-policy=min_energy application arguments --> selects a specific optimization policy
+
+When using mpirun, be sure the execution uses the scheduler, for example, with Intel MPI
+
+export I_MPI_HYDRA_BOOTSTRAP=slurm
+export I_MPI_HYDRA_BOOTSTRAP_EXEC_EXTRA_ARGS="--ear=on"
+miexec.hydra -n procs application arguments
+
 .SH SEE ALSO
 ear-info, eacct, ereport, econtrol
 .SH AUTHOR
