@@ -515,6 +515,9 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                     strcpy(apps[idx].job.app_id, token);
                 }
             }
+            if (strlen(apps[idx].job.app_id) > 16) {
+                apps[idx].job.app_id[16] = '\0';
+            }
 
 
             if (current_is_mpi && !all_mpi)
@@ -660,6 +663,10 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
         if (strlen(apps[i-1].job.app_id) > 30)
             if (strchr(apps[i-1].job.app_id, '/') != NULL)
                 strcpy(apps[i-1].job.app_id, strrchr(apps[i-1].job.app_id, '/')+1);
+
+        if (strlen(apps[i-1].job.app_id) > 16) {
+            apps[i-1].job.app_id[16] = '\0';
+        }
 
         if (apps[i-1].is_mpi)
         {
