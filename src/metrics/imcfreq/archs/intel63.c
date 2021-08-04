@@ -40,12 +40,15 @@ static topology_t tp;
 
 void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 {
+	debug("loading");
 	if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_HASWELL_X) {
 		return;
 	}
+	debug("testing MSR");
 	if (state_fail(msr_test(tp_in))) {
 		return;
 	}
+	debug("testing MSR finalized");
 	if(state_fail(topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
 		return;
 	}
@@ -56,7 +59,7 @@ void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 	apis_set(ops->count_devices, imcfreq_intel63_count_devices);
 	apis_set(ops->read,          imcfreq_intel63_read);
 
-	debug("INTEL63 fully loaded");
+	debug("INTEL63 loaded full API");
 }
 
 void imcfreq_intel63_get_api(uint *api, uint *api_intern)

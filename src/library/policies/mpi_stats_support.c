@@ -151,6 +151,7 @@ state_t mpi_call_init(polctx_t *c,mpi_call call_type)
         assert(in_mpi == 0);
         in_mpi = 1;
         timestamp_getfast(&pol_time_init);
+				debug("MPI INIT %d: sec %ld nsec %ld",my_node_id,pol_time_init.tv_sec,pol_time_init.tv_nsec);
     }
     return EAR_SUCCESS;
 }
@@ -165,7 +166,29 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
         assert(in_mpi == 1);
 
         timestamp_getfast(&end);
+				debug("MPI END %d: sec %ld nsec %ld",my_node_id,end.tv_sec,end.tv_nsec);
         elap = timestamp_diff(&end,&pol_time_init,TIME_USECS);
+				#if 0
+				if (elap > 1000000){
+					time_t   tv_sec;        /* seconds */
+          long     tv_nsec;       /* nanoseconds */
+
+					timestamp_t cend,cinit;
+					memcpy(&cend ,&end,sizeof(end));;
+					memcpy(&cinit,&pol_time_init,sizeof(pol_time_init));
+  				if (cend.tv_nsec < cinit.tv_nsec) {
+    				cend.tv_sec   = cend.tv_sec - 1;
+    				cend.tv_nsec += 1000000000;
+  				}
+  				cend.tv_nsec /= 1000;
+  				cinit.tv_nsec /= 1000;
+  				tv_sec  = ((cend.tv_sec - cinit.tv_sec) * (1000000000/1000));
+					verbose(2,"%d: stamp1 %ld %ld",my_node_id,tv_sec,cend.tv_sec - cinit.tv_sec);
+  				tv_nsec = (ullong) ((cend.tv_nsec - cinit.tv_nsec));
+					verbose(2,"%d:stamp2 %ld %ld",my_node_id,tv_nsec,cend.tv_nsec - cinit.tv_nsec);
+					
+				}
+				#endif
         elap_app = timestamp_diff(&end,&app_init,TIME_USECS);
 
         if	(is_mpi_blocking(call_type)){
@@ -187,6 +210,7 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
         sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
         sig_shared_region[my_node_id].mpi_info.exec_time = elap_app;
+				debug("P[%d] MPI %llu",my_node_id,sig_shared_region[my_node_id].mpi_info.mpi_time);
 
 
         sig_shared_region[my_node_id].mpi_types_info.sync = total_synchronizations;
@@ -244,6 +268,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
     mpi_information_t current;
     mpi_call_get_stats(&current,NULL,i);
     mpi_call_diff(diff,&current,last);
+		verbose_master(3, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",i,diff->mpi_time,current.mpi_time,last->mpi_time,diff->exec_time,current.exec_time,last->exec_time);
     diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
     mpi_call_copy(last,&current);
     last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
@@ -467,6 +492,7 @@ void verbose_mpi_summary(int vl,mpi_summary_t *l)
 
 void chech_node_mpi_summary()
 {
+	#if 0
     #if NODE_LB
     if (is_mpi_enabled()){
       verbose_mpi_summary(LB_VERB,&my_mpi_summary);
@@ -480,6 +506,7 @@ void chech_node_mpi_summary()
     }
     }
     #endif
+	#endif
 }
 
 

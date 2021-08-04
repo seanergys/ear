@@ -43,7 +43,7 @@
 // working scheme (F M M F M).
 
 const ulong	cmd_avx_insts = 0x00000000000004cb; // AVX instructions event
-const ulong cmd_avx_flops = 0x0000000000000f03; // Flops event
+const ulong cmd_avx_flops = 0x000000000000ff03; // Flops event
 const ulong cmd_avx_merge = 0x0000000f000000ff; // Merge event
 
 static perf_t perf_evn0;
@@ -124,13 +124,13 @@ state_t flops_amd49_read(ctx_t *c, llong *flops, llong *ops)
 	// Remove warning
 	(void) (s);
 
-	accums[0] += values[0];
+	accums[0] += (values[0] / WEIGHT_128D);
 	// We are counting instructions, and we are doing it in 128D index.
 	if (ops != NULL) {
 		ops[INDEX_064F] = 0;
 		ops[INDEX_064D] = 0;
 		ops[INDEX_128F] = 0;
-		ops[INDEX_128D] = values[0];
+		ops[INDEX_128D] = values[0] / WEIGHT_128D;
 		ops[INDEX_256F] = 0;
 		ops[INDEX_256D] = 0;
 		ops[INDEX_512F] = 0;
@@ -138,7 +138,7 @@ state_t flops_amd49_read(ctx_t *c, llong *flops, llong *ops)
 	}
 	// Multiplying by the 128D weight, the minimum SSE/AVX FLOPs
 	if (flops != NULL) {
-		*flops = ops[INDEX_128D] * WEIGHT_128D;
+		*flops = values[0];
 	}
 	debug("total flops %lld", *flops);
 

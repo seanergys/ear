@@ -73,6 +73,7 @@ typedef struct lib_shared_data{
     double 			cas_counters;
     signature_t 	master_signature;
     int				master_rank;
+		uint			master_ready;
 }lib_shared_data_t;
 
 
@@ -80,6 +81,7 @@ typedef struct shsignature{
     uint 							master;
     pid_t 						pid;
     uint 							ready;
+		uint 							iterations;
     mpi_information_t mpi_info;
 		mpi_calls_types_t mpi_types_info;		
     /* sig was originally a signature_t */
@@ -181,6 +183,8 @@ void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,
 void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
+void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
+
 
 uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
 

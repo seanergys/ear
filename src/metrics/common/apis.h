@@ -25,7 +25,7 @@
 #define API_DUMMY        1
 #define API_EARD         2
 #define API_BYPASS       3
-#define API_DEFAULT      4
+#define API_OS_CPUFREQ   4
 #define API_INTEL63      5
 #define API_AMD17        6
 #define API_NVML         7
@@ -60,6 +60,7 @@
 void apis_append(void **op, void *func);
 
 void apis_print(uint api, char *prefix);
+
 void apis_tostr(uint api, char *buff,size_t size);
 
 #endif

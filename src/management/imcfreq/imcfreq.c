@@ -36,7 +36,9 @@ state_t mgt_imcfreq_load(topology_t *tp, int eard)
 {
 	state_t s;
 	while (pthread_mutex_trylock(&lock));
+	debug("loading");
 	if (api != API_NONE) {
+		debug("API already loaded");
 		pthread_mutex_unlock(&lock);
 		return EAR_SUCCESS;
 	}

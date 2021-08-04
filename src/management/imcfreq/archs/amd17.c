@@ -21,9 +21,10 @@
 #include <management/imcfreq/archs/amd17.h>
 
 static char *err1 = "Incorrect result when asking for frequency by HSMP";
-static uint sockets_count;
 static ullong freqs_khz[4];
 static ullong freqs_mhz[4];
+static uint sockets_count;
+static uint pstate_count;
 
 state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 {
@@ -46,7 +47,10 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 		hsmp_send(0, 0x0d, &args[0], &reps[2]);
 		hsmp_send(0, 0x0f, &args[1], &reps[0]);
 		// Try again until the answer is different
-		if (i > 0 && reps[0] == (uint) freqs_mhz[i-1]) {
+		if (j >= 10000) {
+			// Out of intents
+			break;
+		} else if (i > 0 && reps[0] == (uint) freqs_mhz[i-1]) {
 			--i;
 		} else {
 			debug("PS%d: answered %u/%u (%u intents)", i, reps[0], reps[1], j);
@@ -59,6 +63,7 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 			j = 0;
 		}
 	}
+	pstate_count = i;
 	// Setting auto
 	hsmp_send(0, 0x0e, &args[1], &reps[2]);
 	//
@@ -89,16 +94,16 @@ state_t mgt_imcfreq_amd17_dispose(ctx_t *c)
 
 state_t mgt_imcfreq_amd17_get_available_list(ctx_t *c, const pstate_t **list, uint *count)
 {
-	static pstate_t ps[4];
+	static pstate_t ps[32];
 	uint i;
 
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < pstate_count; ++i) {
 		ps[i].khz = freqs_khz[i];
 		ps[i].idx = i;
 	}
 	*list = ps;
 	if (count != NULL) {
-		*count = 4;
+		*count = pstate_count;
 	}
 	return EAR_SUCCESS;
 }
@@ -152,7 +157,7 @@ static state_t set(uint pstate_index, int socket)
 		// Function APBEnable (0x0e)
 		function = 0x0e;
 		i = 1;
-	} else if (pstate_index >= 4) {
+	} else if (pstate_index >= pstate_count) {
 		return_msg(EAR_ERROR, Generr.arg_outbounds);
 	} else {
 		// Function APBDisable (0x0d)

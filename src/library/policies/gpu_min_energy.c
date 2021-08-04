@@ -29,6 +29,7 @@
 #include <library/policies/policy_state.h>
 #include <library/common/verbose_lib.h>
 #include <library/metrics/gpu.h>
+#include <library/api/clasify.h>
 
 
 
@@ -57,6 +58,8 @@ extern unsigned long ext_def_freq;
 static const ulong **gpuf_list;
 static const uint *gpuf_list_items;
 static	ulong *gfreqs;
+extern uint last_earl_gpu_phase_classification;
+
 state_t policy_init(polctx_t *c)
 {
 	int i,j;
@@ -86,28 +89,56 @@ state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *r
 {
 	ulong *new_freq=freqs->gpu_freq;
 	uint i;
-	ulong util;
+	ulong util, tutil = 0;;
 	*ready = EAR_POLICY_READY;
 	#if USE_GPUS
+	#if SHOW_DEBUGS
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
 	for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
 		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]",i,
 		my_sig->gpu_sig.gpu_data[i].GPU_power,(float)my_sig->gpu_sig.gpu_data[i].GPU_freq/1000.0,(float)my_sig->gpu_sig.gpu_data[i].GPU_mem_freq/1000.0,
 		my_sig->gpu_sig.gpu_data[i].GPU_util,my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
 	}
+	#endif
 
 	for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
 		util = my_sig->gpu_sig.gpu_data[i].GPU_util;
+		tutil += util;
 		if (util == 0){		
 			new_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
 		}else{
 			new_freq[i] = gfreqs[i];
 		}
 	}		
+	if ((tutil > 0 ) && (last_earl_gpu_phase_classification == GPU_IDLE)) last_earl_gpu_phase_classification = GPU_COMP;
 	
 	#endif
 	
 	return EAR_SUCCESS;
 }
 
+
+
+state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+	  ulong util, tutil = 0;;
+
+    if (c == NULL) return EAR_ERROR;
+		int i;
+#if USE_GPUS
+	verbose_master(2,"Restaurando GPU freqs: restore settings");
+  for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
+    util = my_sig->gpu_sig.gpu_data[i].GPU_util;
+    tutil += util;
+    if (util == 0){
+      freqs->gpu_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
+    }else{
+      freqs->gpu_freq[i] = gfreqs[i];
+    }
+  }
+  if ((tutil > 0 ) && (last_earl_gpu_phase_classification == GPU_IDLE)) last_earl_gpu_phase_classification = GPU_COMP;
+
+#endif
+    return EAR_SUCCESS;
+}
 

@@ -26,32 +26,16 @@
 #include <library/states/states_comm.h>
 
 
-#if 0
-state_t classify(ullong total_rw,uint total_mpi, float rwsec,float mpisec,uint dyn_on,uint dynais_state,uint periodic_mode,uint earl_state,uint *app_state,uint *ear_guided)
-{
-    *app_state = APP_COMP_BOUND;
-    if ((dyn_on == DYNAIS_ENABLED) && (dynais_state == NO_LOOP) && (earl_state == NO_PERIOD)){
-        if (rwsec > IO_TH) *app_state = APP_IO_BOUND;
-    }else if ((rwsec > IO_TH) && (mpisec < MPI_TH)){
-        *app_state = APP_IO_BOUND;
-    }else if (mpisec > MPI_TH){
-        *app_state = APP_MPI_BOUND;
-    }
-    if (mpisec < MIN_MPI_TH){
-        *ear_guided = TIME_GUIDED;
-    }
-    return EAR_SUCCESS;
-}
-#endif
 
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
-    if (iobound && !mpibound){
-        *app_state = APP_IO_BOUND;
-    }else if (mpibound){
-        *app_state = APP_MPI_BOUND;
-    }
-    return EAR_SUCCESS;
+	*app_state = APP_COMP_BOUND;
+	if (iobound && !mpibound){
+		*app_state = APP_IO_BOUND;
+	}else if (mpibound){
+		*app_state = APP_MPI_BOUND;
+	}
+	return EAR_SUCCESS;
 }
 
 state_t is_io_bound(float rwsec,uint *iobound)
@@ -64,10 +48,11 @@ state_t is_io_bound(float rwsec,uint *iobound)
 
 state_t is_network_bound(float mpisec,uint *mpibound)
 {
-    if (mpisec > MPI_TH){
-        *mpibound = 1;
-    }
-    return EAR_SUCCESS;
+	*mpibound = 0;
+	if (mpisec > MPI_TH){
+		*mpibound = 1;
+	}
+	return EAR_SUCCESS;
 }
 
 state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
@@ -80,19 +65,19 @@ state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
 
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
-    double flops;
-    uint c1, c2, c3;
-    *busy = USEFUL_COMP;
-    //for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
-    flops = compute_node_flops(lib_shared_region,sig_shared_region);
-    c1 = (sig->CPI < CPI_BUSY_WAITING);
-    c2 = (sig->GBS < GBS_BUSY_WAITING);
-    c3 = (flops < GFLOPS_BUSY_WAITING);
-    if (c1 || c2 || c3){
-        debug("CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
-    }
-    if (c1 && c2 && c3) *busy = BUSY_WAITING;
-    return EAR_SUCCESS;
+	double flops;
+	uint c1, c2, c3;
+	*busy = USEFUL_COMP;
+	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
+	flops = compute_node_flops(lib_shared_region,sig_shared_region);
+	c1 = (sig->CPI < CPI_BUSY_WAITING);
+	c2 = (sig->GBS < GBS_BUSY_WAITING);
+	c3 = (flops < GFLOPS_BUSY_WAITING);
+	if (c1 || c2 || c3){
+		verbose_master(2,"CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
+	}
+	if (c1 && c2 && c3) *busy = BUSY_WAITING;
+	return EAR_SUCCESS;
 }
 
 state_t is_cpu_bound(signature_t *sig,uint *cbound)
@@ -112,14 +97,18 @@ state_t is_mem_bound(signature_t *sig,uint *mbound)
 state_t  is_gpu_idle(signature_t *sig,uint *gidle)
 {
 #if USE_GPUS
-    int total = 0;
-    int i;
-    for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
-    if (total == 0) *gidle = 1;
-    else *gidle = 0;
-    return EAR_SUCCESS;
+	int total = 0;
+	int i;
+	if (sig->gpu_sig.num_gpus == 0){
+		*gidle = GPU_IDLE;
+		return EAR_SUCCESS;
+	}
+	for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
+	if (total == 0) *gidle = GPU_IDLE;
+	else *gidle = GPU_COMP;
+	return EAR_SUCCESS;
 #else
-    *gidle = 1;
-    return EAR_SUCCESS;
+	*gidle = GPU_IDLE;
+	return EAR_SUCCESS;
 #endif
 }

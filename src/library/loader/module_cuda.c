@@ -133,9 +133,11 @@ int module_constructor_cuda(char *path_lib_so,char *libhack)
 
 void module_destructor_cuda()
 {
-	verbose(3, "LOADER: loading module cuda (destructor)");
+	verbose(2, "LOADER: loading module cuda (destructor)");
 
-	if (func_des != NULL) {
-		func_des();
+	if (is_cuda_enabled()){
+		if (func_des != NULL) {
+			func_des();
+		}	
 	}
 }
