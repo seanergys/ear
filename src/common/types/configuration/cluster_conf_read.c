@@ -232,6 +232,7 @@ void parse_island(cluster_conf_t *conf, char *line)
     int idx = -1, i = 0;
     int contains_ip = 0;
     int contains_sec_ip = 0;
+    int contains_eargm = 0;
     char tag_parsing = 0;
     char *token;
 
@@ -364,7 +365,7 @@ void parse_island(cluster_conf_t *conf, char *line)
         }
         else if (!strcmp(token, "NODES"))
         {
-            contains_ip = contains_sec_ip = 0;
+            contains_ip = contains_sec_ip = contains_eargm = 0;
             token = strtok(NULL, " ");
             int id_f = idx < 0 ? conf->num_islands: idx;
             current_ranges = conf->islands[id_f].num_ranges;
@@ -372,6 +373,7 @@ void parse_island(cluster_conf_t *conf, char *line)
         }
         else if (!strcmp(token, "EARGMID"))
         {
+            contains_eargm = 1;
             int id_f = idx < 0 ? conf->num_islands: idx;
             token = strtok(NULL, " ");
             int egm_id = atoi(token);
@@ -484,6 +486,12 @@ void parse_island(cluster_conf_t *conf, char *line)
         int id_sec_db = conf->islands[id_f].num_backups > 0 ? 0 : -1;
         for (i = current_ranges; i < conf->islands[id_f].num_ranges; i++)
             conf->islands[id_f].ranges[i].sec_ip = id_sec_db;
+    }
+    if (!contains_eargm)
+    {
+        int last_eargm = current_ranges > 0 ? conf->islands[id_f].ranges[current_ranges-1].eargm_id : 1;
+        for (i = current_ranges; i < conf->islands[id_f].num_ranges; i++)
+            conf->islands[id_f].ranges[i].eargm_id = last_eargm;
     }
     if (idx < 0)
         conf->num_islands++;

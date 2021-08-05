@@ -333,8 +333,24 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
 #endif
 
 }
+
+void print_eargm_def(eargm_def_t *conf)
+{
+    int i;
+    verbosen(VCCONF,"\t\t->EARGM %d node %s (port %u) ", conf->id, conf->node, conf->port);
+    verbosen(VCCONF,"energy limit %u power limit %u ", conf->energy, conf->power);
+    if (conf->num_subs > 0) {
+        verbosen(VCCONF, "meta-controlled eargms: ");
+    }
+    for (i = 0; i<conf->num_subs; i++) {
+        verbosen(VCCONF, "%d, ", conf->subs[i]);
+    }
+    verbosen(VCCONF, "\n");
+}
+
 void print_eargm_conf(eargm_conf_t *conf)
 {
+    int i;
     verbosen(VCCONF,"--> EARGM configuration\n");
     verbosen(VCCONF,"\t eargm: verbosen %u \tuse_aggregation %u \tt1 %lu \tt2 %lu \tenergy limit: %lu \tport: %u \tmode: %u\tmail: %s\thost: %s\n",
             conf->verbose,conf->use_aggregation,conf->t1,conf->t2,conf->energy,conf->port, conf->mode, conf->mail, conf->host);
@@ -348,6 +364,9 @@ void print_eargm_conf(eargm_conf_t *conf)
     verbosen(VCCONF,"\t power limit for action %lu and for lower %lu\n",conf->defcon_power_limit, conf->defcon_power_lower);
     verbosen(VCCONF,"\t powercap_limit_action %s and powercap_lower_action %s\n",conf->powercap_limit_action, conf->powercap_lower_action);
     verbosen(VCCONF,"\t energycap_action %s\n",conf->energycap_action);
-#endif
+#endif 
+    verbosen(VCCONF,"\t EARGM definitions\n");
+    for (i = 0; i < conf->num_eargms; i++)
+        print_eargm_def(&conf->eargms[i]);
 }
 

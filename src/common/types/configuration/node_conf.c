@@ -142,22 +142,19 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
     if (my_node_conf!=NULL){
         verbose(VCCONF,"My node: cpus %u max_pstate %lu island %u ip %s ",
             my_node_conf->cpus,my_node_conf->max_pstate,my_node_conf->island,my_node_conf->db_ip);
-        if (my_node_conf->db_sec_ip!=NULL){
+        if (my_node_conf->db_sec_ip!=NULL) {
             verbose(VCCONF,"sec_ip %s ",my_node_conf->db_sec_ip);
         }
-        if (my_node_conf->coef_file!=NULL){
+        if (my_node_conf->coef_file!=NULL) {
             verbose(VCCONF,"coeffs %s ",my_node_conf->coef_file);
         }
-        if (my_node_conf->energy_plugin != NULL && strlen(my_node_conf->energy_plugin) > 1)
-        {
+        if (my_node_conf->energy_plugin != NULL && strlen(my_node_conf->energy_plugin) > 1) {
             verbose(VCCONF,"energy_plugin %s ",my_node_conf->energy_plugin);
         }
-        if (my_node_conf->energy_model != NULL && strlen(my_node_conf->energy_model) > 1)
-        {
+        if (my_node_conf->energy_model != NULL && strlen(my_node_conf->energy_model) > 1) {
             verbose(VCCONF,"energy_model %s ",my_node_conf->energy_model);
         }
-        if (my_node_conf->powercap_plugin != NULL && strlen(my_node_conf->powercap_plugin) > 1)
-        {
+        if (my_node_conf->powercap_plugin != NULL && strlen(my_node_conf->powercap_plugin) > 1) {
             verbose(VCCONF,"powercap_plugin %s ",my_node_conf->powercap_plugin);
         }
         verbose(VCCONF,"\n");
