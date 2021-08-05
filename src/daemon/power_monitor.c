@@ -1062,7 +1062,9 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 #endif
 
 #if SYSLOG_MSG
-	if ((my_current_power->avg_dc==0) || (my_current_power->avg_dc< my_node_conf->min_sig_power) || (my_current_power->avg_dc>my_node_conf->max_sig_power)){
+	if ((my_current_power->avg_dc==0) || (my_current_power->avg_dc< my_node_conf->min_sig_power) 
+                || (my_current_power->avg_dc>my_node_conf->max_sig_power) || (my_current_power->avg_dc > my_node_conf->max_error_power))
+    {
 		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,my_current_power->avg_dc);
 		log_report_eard_rt_error(usedb,useeardbd,jid,sid,DC_POWER_ERROR,my_current_power->avg_dc);
 	}
