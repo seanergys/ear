@@ -84,7 +84,7 @@ int my_read(int fd,char *buff,int size)
       //must_abort=1;
     }
   }while((tries<MAX_SOCKET_COMM_TRIES) && (to_recv>0) && (must_abort==0));
-	if (tries >= tries<MAX_SOCKET_COMM_TRIES) {
+	if (tries >= MAX_SOCKET_COMM_TRIES) {
 		error("Error reading data, max number of tries reached. tries %d received %u (last ret %d errno %d)",tries, received, ret,errno);
 	}
 	if (ret<0) return ret;
