@@ -68,6 +68,7 @@ typedef struct mpi_calls_types{
 
 
 typedef struct lib_shared_data{
+		uint 						earl_on;
     int             num_processes;
     unsigned int    num_signatures;
     double 			cas_counters;

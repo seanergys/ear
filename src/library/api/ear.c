@@ -230,10 +230,9 @@ void notify_eard_connection(int status)
   if (masters_connected != masters_info.my_master_size){
   /* Some of the nodes is not ok , setting off EARL */
     if (masters_info.my_master_rank>=0) {
-      verbose_master(1,"Number of nodes expected %d , number of nodes connected %d, setting EARL to off \n",masters_info.my_master_size,masters_connected);
+      verbose_master(1,"%s:Number of nodes expected %d , number of nodes connected %d, setting EARL to off \n",node_name,masters_info.my_master_size,masters_connected);
     }
     eard_ok = 0;
-    my_id=1;
     return;
   }else{
     if (masters_connected!=num_nodes){
@@ -262,7 +261,7 @@ void create_shared_regions()
 
 
 	/* This section allocates shared memory for processes in same node */
-	debug("Master creating shared regions for node synchro");
+	debug("%s:Master creating shared regions for node synchro",node_name);
   snprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory %s",block_file);
@@ -278,17 +277,21 @@ void create_shared_regions()
 			error("Creating the lib_shared_data region");
 		}
 		my_node_id=0;
+		lib_shared_region->earl_on = eard_ok;
 		lib_shared_region->num_processes=1;
 		lib_shared_region->num_signatures=0;
 		lib_shared_region->master_rank = masters_info.my_master_rank;
 	}
+	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
 #if ONLY_MASTER == 0
 	#if MPI
+	/* This barrier notifies the others the shared memory region is ready */
 	if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
 		error("MPI_Barrier");
 		return;
 	}
+	if (!eard_ok) return;
 	if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
 		error("MPI_Barrier");
 		return;
@@ -408,6 +411,12 @@ void attach_shared_regions()
 			lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path);
 		}while(lib_shared_region == NULL);
 		while(file_lock(bfd) < 0);
+		if (!lib_shared_region->earl_on){
+			debug("%s:Setting earl off because of eard",node_name);
+			eard_ok = 0;
+			file_unlock(bfd);
+			return;
+		}
 		my_node_id = lib_shared_region->num_processes;
     lib_shared_region->num_processes = lib_shared_region->num_processes+1;
 		file_unlock(bfd);
@@ -806,8 +815,8 @@ void ear_init()
 		debug("Updating the configuration sent by the EARD");
 		update_configuration();	
 	}else{
-		eard_ok=0;
-		debug("Shared memory with EARD not present");
+		eard_ok = 0;
+		verbose_master(2,"Shared memory with EARD not present");
 #if USE_LOCK_FILES
     if (!my_id){ 
     	debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
@@ -816,10 +825,9 @@ void ear_init()
 #endif
 		/* Only the node master will notify the problem to the other masters */
 		if (!my_id) notify_eard_connection(0);
-		my_id=1;
 	}	
-
-	if (!eard_ok) return;
+	/* my_id is 0 for the master (for each node) and 1 for the others */
+	/* eard_ok reflects the eard connection status, if eard_ok is 0, earl is disabled */
 
 #if ONLY_MASTER
 	if (my_id != 0) {
@@ -858,10 +866,9 @@ void ear_init()
 	start_job(&application.job);
 	debug("Job time initialized");
 
-	
-	debug("EARD connection section");
-	if (!my_id){ //only the master will connect with eard
-		verbose_master(VEAR_INIT, "%sConnecting with EAR Daemon (EARD) %d%s", COL_BLU,ear_my_rank,COL_CLR);
+	verbose_master(2,"EARD connection section EARD=%d",eard_ok);
+	if (!my_id && eard_ok){ //only the master will connect with eard
+		verbose_master(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
 		if (eards_connect(&application) == EAR_SUCCESS) {
 			debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
 			notify_eard_connection(1);
@@ -871,10 +878,10 @@ void ear_init()
 			notify_eard_connection(0);
 		}
 	}
+	/* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 	debug("End EARD connection section");
 
-	if (!eard_ok) return;
 
 	debug("Shared region creation section");
 
@@ -883,6 +890,10 @@ void ear_init()
 		create_shared_regions();
 	}else{
 		attach_shared_regions();
+	}
+	if (!eard_ok){ 
+		debug("%s: EARL off because of EARD",node_name);
+		return;
 	}
 	debug("END Shared region creation section");
 	/* Processes in same node connectes each other*/
@@ -947,6 +958,9 @@ void ear_init()
     freq_count = freq_count / sizeof(ulong);
     // Initializing API in user mode	: We should move this to library/management
     if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
+			for (uint i=0;i<freq_count;i++){
+					verbose_master(2,"Freq[%d] = %lu",i,freq_list[i]);
+			}
 			if ((st = mgt_cpufreq_get_api(&mgt_cpufreq_api)) == EAR_SUCCESS){
 				char mgt_cpufreq_api_text[64];
 				apis_tostr(mgt_cpufreq_api, mgt_cpufreq_api_text, sizeof(mgt_cpufreq_api_text));

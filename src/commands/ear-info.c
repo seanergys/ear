@@ -45,7 +45,7 @@ int main(int argc,char *argv[])
 		printf("EAR controls node CPU frequencies");	
 	}
 	printf("Default cluster policy is %s\n",my_cluster.power_policies[my_cluster.default_policy].name);
-	printf("EARL loaded by default set to %d\n",DEFAULT_EARL);		
+	printf("EAR optimization  by default set to %d\n",DEFAULT_EARL);		
 
 	return 0;
 }

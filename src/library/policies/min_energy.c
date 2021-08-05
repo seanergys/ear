@@ -98,7 +98,7 @@ extern uint use_turbo_for_cp;
 extern uint try_turbo_enabled;
 
 static ulong min_cpufreq = 0;
-static uint network_use_imc = 0;
+static uint network_use_imc = 1; /* This variable controls the UFS when the application is communication intensive , set to 1 means UFS will not be applied*/
 
 
 #define SELECT_CPUFREQ 		100
