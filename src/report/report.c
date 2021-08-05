@@ -107,7 +107,7 @@ static void static_load(const char *install_path, const char *_libs)
 				}
 			}
 		}
-		verbose(0, "Loaded report plugin: %s", lib);
+		debug("Loaded report plugin: %s", lib);
 		append(&ops_aux);
 	next:
 		lib = strtok(NULL, ":");

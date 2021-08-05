@@ -753,7 +753,8 @@ void ear_init()
 	verb_level = get_ear_verbose();
 	verb_channel=2;
 	if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
-		VERB_SET_LV(atoi(tmp));
+		verb_level = atoi(tmp);
+		VERB_SET_LV(verb_level);
 	}
 
 	set_ear_total_processes(my_size);
@@ -840,11 +841,11 @@ void ear_init()
 	init_application(&application);
 	debug("init loop_signature");
 	init_application(&loop_signature);
-	application.is_mpi=1;
-	loop_signature.is_mpi=1;
-	application.is_learning=ear_whole_app;
-	application.job.def_f=getenv_ear_p_state();
-	loop_signature.is_learning=ear_whole_app;
+	application.is_mpi   	= 1;
+	loop_signature.is_mpi	= 1;
+	application.is_learning	= ear_whole_app;
+	application.job.def_f		= getenv_ear_p_state();
+	loop_signature.is_learning	= ear_whole_app;
 	debug("application data initialized");
 
 	// Getting environment data
@@ -893,12 +894,13 @@ void ear_init()
 	}
 	if (!eard_ok){ 
 		debug("%s: EARL off because of EARD",node_name);
+		strcpy(application.job.policy," "); /* Cleaning policy */
 		return;
 	}
 	debug("END Shared region creation section");
 	/* Processes in same node connectes each other*/
-
-    /* create verbose file for each job */
+	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
+ /* create verbose file for each job */
     if (verb_path != NULL){
         if (masters_info.my_master_rank >= 0){
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
@@ -927,6 +929,7 @@ void ear_init()
         error("Retrieving architecture description");
         /* How to proceeed here ? */
 				lib_shared_region->earl_on = 0;
+				strcpy(application.job.policy," "); /* Cleaning policy */
         return;
     }
 
@@ -936,11 +939,13 @@ void ear_init()
     if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
         error("in EAR metrics initialization (%s), setting EARL off", state_msg);
 				eard_ok = 0;
+				strcpy(application.job.policy," "); /* Cleaning policy */
         return;
     }
 
 		if (!eard_ok){ 
 			lib_shared_region->earl_on = 0;
+			strcpy(application.job.policy," "); /* Cleaning policy */
 			return;
 		}
 
@@ -999,6 +1004,7 @@ void ear_init()
             error("Application shared area not found");
             eard_ok = 0;
 						lib_shared_region->earl_on = 0;
+						strcpy(application.job.policy," "); /* Cleaning policy */
             return;
         }
         fill_application_mgt_data(app_mgt_info);
@@ -1012,6 +1018,7 @@ void ear_init()
             error("pc_application_info area not found");
             eard_ok = 0;
 						lib_shared_region->earl_on = 0;
+						strcpy(application.job.policy," "); /* Cleaning policy */
             return;
 
         }
