@@ -37,6 +37,7 @@
 #include <daemon/local_api/eard_api.h>
 
 #define MAX_TRIES 1
+#define MAX_PIPE_TRIES (MAX_SOCKET_COMM_TRIES*100)
 
 // Pipes
 static int ear_fd_req[ear_daemon_client_requests];
@@ -83,8 +84,8 @@ int my_read(int fd,char *buff,int size)
 			tries++;
       //must_abort=1;
     }
-  }while((tries<MAX_SOCKET_COMM_TRIES) && (to_recv>0) && (must_abort==0));
-	if (tries >= MAX_SOCKET_COMM_TRIES) {
+  }while((tries<MAX_PIPE_TRIES) && (to_recv>0) && (must_abort==0));
+	if (tries >= MAX_PIPE_TRIES) {
 		error("Error reading data, max number of tries reached. tries %d received %u (last ret %d errno %d)",tries, received, ret,errno);
 	}
 	if (ret<0) return ret;
@@ -120,7 +121,7 @@ int my_write(int fd,char *buff,int size)
     }else if (ret==0){
       must_abort=1;
     }
-  }while((tries<MAX_SOCKET_COMM_TRIES) && (to_send>0) && (must_abort==0));
+  }while((tries<MAX_PIPE_TRIES) && (to_send>0) && (must_abort==0));
   /* If there are bytes left to send, we return a 0 */
 	if (ret<0) return ret;
 	return sended;

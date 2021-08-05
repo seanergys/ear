@@ -564,7 +564,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     if (masters_info.my_master_rank>=0) verbose_master(2,"loading policy %s",obj_path);
     /* loads the policy plugin */
     if (policy_load(obj_path,&polsyms_fun)!=EAR_SUCCESS){
-        error("Error loading policy %s:%s",obj_path,state_msg);
+        verbose_master(2,"Error loading policy %s:%s",obj_path,state_msg);
     }
     ear_frequency									= DEF_FREQ(app_settings->def_freq);
     my_pol_ctx.app								= app_settings;
@@ -584,11 +584,11 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     verbose_master(2,"Default frequency set to %lu",*(my_pol_ctx.ear_frequency));
 #if MPI
     if (PMPI_Comm_dup(masters_info.new_world_comm,&my_pol_ctx.mpi.comm)!=MPI_SUCCESS){
-        error("Duplicating COMM_WORLD in policy");
+        verbose_master(2,"Duplicating COMM_WORLD in policy");
     }
     if (masters_info.my_master_rank>=0){
         if (PMPI_Comm_dup(masters_info.masters_comm, &my_pol_ctx.mpi.master_comm)!=MPI_SUCCESS){
-            error("Duplicating master_comm in policy");
+            verbose_master(2,"Duplicating master_comm in policy");
         }
     }
 #endif
