@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
-#define INFO_METRICS 2
+#define SHOW_DEBUGS 1
+#define INFO_METRICS 1
 #define IO_VERB 3
 
 #define SET_DYN_UNC_BY_DEFAULT 1
