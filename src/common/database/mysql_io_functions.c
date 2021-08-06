@@ -2539,9 +2539,13 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
     strcpy(query, EAR_EVENT_MYSQL_QUERY);
 
     int i, j, offset;
-    for (i = 1; i < num_evs; i++)
-    {
+    for (i = 1; i < num_evs; i++) {
         strcat(query, params);
+    }
+
+    //Prevent freq from going over max value
+    for (i = 0; i < num_evs; i++) {
+        ear_ev[i].freq = ear_ev[i].freq > INT_MAX ? INT_MAX : ear_ev[i].freq;
     }
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) {
