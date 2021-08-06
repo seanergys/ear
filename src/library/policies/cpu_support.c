@@ -103,8 +103,8 @@ state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq
     time_max 			= time_ref + (time_ref * penalty);	
     from 					= curr_pstate;	
     compute_vpi(&vpi,my_app);
-    verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf",time_ref,power_ref,
-            energy_ref,best_freq,vpi);
+    verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf. Pstates %lu...%lu",time_ref,power_ref,
+            energy_ref,best_freq,vpi,minp,maxp);
     for (i = minp; i < maxp;i++)
     {
         if (projection_available(from,i) == EAR_SUCCESS)

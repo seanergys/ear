@@ -1631,7 +1631,7 @@ state_t earl_periodic_actions(void *no_arg)
             ear_periodic_mode = PERIODIC_MODE_ON;
             if (ear_guided != new_ear_guided){ 
                 monitor_burst(earl_monitor);
-                verbose_master(3,"%d:Dynais guided --> time guided",my_node_id);
+                verbose_master(2,"%d:Dynais guided --> time guided at time %lu",my_node_id,period_elapsed);
 								mpi_calls_in_period = lib_period;
                 states_begin_period(my_id, 1, (ulong) lib_period,1);
             }

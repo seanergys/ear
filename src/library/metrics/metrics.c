@@ -1196,7 +1196,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
-	compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
+	//compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
 
 	ns->CPI = (double)cycles/(double)inst;
 	// verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);
