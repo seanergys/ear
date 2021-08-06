@@ -88,7 +88,8 @@ state_t mpi_app_init(polctx_t *c)
             mpi_stats.rank = 0;
         }
         timestamp_getfast(&app_init);
-				memcpy(&start_no_mpi,&app_init,sizeof(timestamp));
+				timestamp_getfast(&start_no_mpi);
+				//memcpy(&start_no_mpi,&app_init,sizeof(timestamp));
         return EAR_SUCCESS;
     }else return EAR_ERROR;
 
@@ -154,6 +155,13 @@ state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 				time_no_mpi = timestamp_diff(&pol_time_init,&start_no_mpi,TIME_USECS);
 				sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;	
 				mpi_stats.exec_time += time_no_mpi;
+				#if SHOW_DEBUGS
+        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls%100) == 0){ 
+          debug("P[%d]  (sec %ld nsec %ld) -(sec %ld nsec %ld) %llu not_mpi_elap",my_node_id, pol_time_init.tv_sec,pol_time_init.tv_nsec,start_no_mpi.tv_sec,start_no_mpi.tv_nsec, time_no_mpi);
+        }
+				#endif
+
+
     }
     return EAR_SUCCESS;
 }
@@ -190,8 +198,7 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
         }
         sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
-        sig_shared_region[my_node_id].mpi_info.exec_time +=elap;
-				debug("P[%d] MPI %llu",my_node_id,sig_shared_region[my_node_id].mpi_info.mpi_time);
+        sig_shared_region[my_node_id].mpi_info.exec_time += elap;
 
 
         sig_shared_region[my_node_id].mpi_types_info.sync = total_synchronizations;
@@ -208,7 +215,13 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
         mpi_stats.mpi_time += elap;
         mpi_stats.total_mpi_calls++;
         mpi_stats.exec_time += elap;
-				memcpy(&start_no_mpi,&end,sizeof(timestamp));
+				timestamp_getfast(&start_no_mpi);
+				// memcpy(&start_no_mpi,&end,sizeof(timestamp));
+				#if SHOW_DEBUGS
+				if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls%100) == 0){ 
+					debug("P[%d] MPI %llu exec %llu %llu elap (sec %ld nsec %ld)",my_node_id,sig_shared_region[my_node_id].mpi_info.mpi_time, sig_shared_region[my_node_id].mpi_info.exec_time, elap,start_no_mpi.tv_sec,start_no_mpi.tv_nsec);
+				}
+				#endif
     }
     return EAR_SUCCESS;
 }
