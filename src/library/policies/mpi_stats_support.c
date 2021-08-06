@@ -40,7 +40,7 @@
 #include <common/math_operations.h>
 
 
-static timestamp pol_time_init,app_init;
+static timestamp pol_time_init,app_init, start_no_mpi;
 static mpi_information_t mpi_stats;
 static ulong total_mpi_time_sync = 0;
 static ulong total_mpi_time_collectives = 0;
@@ -88,6 +88,7 @@ state_t mpi_app_init(polctx_t *c)
             mpi_stats.rank = 0;
         }
         timestamp_getfast(&app_init);
+				memcpy(&start_no_mpi,&app_init,sizeof(timestamp));
         return EAR_SUCCESS;
     }else return EAR_ERROR;
 
@@ -95,7 +96,7 @@ state_t mpi_app_init(polctx_t *c)
 
 state_t mpi_app_end(polctx_t *c)
 {
-    timestamp_t end;
+    timestamp end;
     ullong elap;
     int fd;
     char buff[256],buff2[300];
@@ -104,8 +105,8 @@ state_t mpi_app_end(polctx_t *c)
     char stats_per_call[256];
     /* Global statistics */
     timestamp_getfast(&end);
-    elap=timestamp_diff(&end,&app_init,TIME_USECS);
-    mpi_stats.exec_time = elap;
+    elap = timestamp_diff(&end,&start_no_mpi,TIME_USECS);
+    mpi_stats.exec_time += elap;
     if (mpi_stats.total_mpi_calls){
 
         mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
@@ -148,10 +149,11 @@ static uint in_mpi = 0;
 state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 {
     if (is_mpi_enabled()){
-        assert(in_mpi == 0);
-        in_mpi = 1;
+				ullong time_no_mpi;	
         timestamp_getfast(&pol_time_init);
-				debug("MPI INIT %d: sec %ld nsec %ld",my_node_id,pol_time_init.tv_sec,pol_time_init.tv_nsec);
+				time_no_mpi = timestamp_diff(&pol_time_init,&start_no_mpi,TIME_USECS);
+				sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;	
+				mpi_stats.exec_time += time_no_mpi;
     }
     return EAR_SUCCESS;
 }
@@ -161,35 +163,14 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
 {
     timestamp_t end;
     mpi_call nbcall_type;
-    ullong elap,elap_app;
+    ullong elap;
+		// ,elap_app;
     if (is_mpi_enabled()){
-        assert(in_mpi == 1);
 
         timestamp_getfast(&end);
 				debug("MPI END %d: sec %ld nsec %ld",my_node_id,end.tv_sec,end.tv_nsec);
         elap = timestamp_diff(&end,&pol_time_init,TIME_USECS);
-				#if 0
-				if (elap > 1000000){
-					time_t   tv_sec;        /* seconds */
-          long     tv_nsec;       /* nanoseconds */
-
-					timestamp_t cend,cinit;
-					memcpy(&cend ,&end,sizeof(end));;
-					memcpy(&cinit,&pol_time_init,sizeof(pol_time_init));
-  				if (cend.tv_nsec < cinit.tv_nsec) {
-    				cend.tv_sec   = cend.tv_sec - 1;
-    				cend.tv_nsec += 1000000000;
-  				}
-  				cend.tv_nsec /= 1000;
-  				cinit.tv_nsec /= 1000;
-  				tv_sec  = ((cend.tv_sec - cinit.tv_sec) * (1000000000/1000));
-					verbose(2,"%d: stamp1 %ld %ld",my_node_id,tv_sec,cend.tv_sec - cinit.tv_sec);
-  				tv_nsec = (ullong) ((cend.tv_nsec - cinit.tv_nsec));
-					verbose(2,"%d:stamp2 %ld %ld",my_node_id,tv_nsec,cend.tv_nsec - cinit.tv_nsec);
-					
-				}
-				#endif
-        elap_app = timestamp_diff(&end,&app_init,TIME_USECS);
+        //elap_app = timestamp_diff(&end,&app_init,TIME_USECS);
 
         if	(is_mpi_blocking(call_type)){
             max_sync_block = ear_max(max_sync_block, (ulong)elap);
@@ -209,7 +190,7 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
         }
         sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
-        sig_shared_region[my_node_id].mpi_info.exec_time = elap_app;
+        sig_shared_region[my_node_id].mpi_info.exec_time +=elap;
 				debug("P[%d] MPI %llu",my_node_id,sig_shared_region[my_node_id].mpi_info.mpi_time);
 
 
@@ -226,8 +207,8 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
         /* Global statistics */
         mpi_stats.mpi_time += elap;
         mpi_stats.total_mpi_calls++;
-        mpi_stats.exec_time = elap_app;
-        in_mpi = 0;
+        mpi_stats.exec_time += elap;
+				memcpy(&start_no_mpi,&end,sizeof(timestamp));
     }
     return EAR_SUCCESS;
 }
