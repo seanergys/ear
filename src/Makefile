@@ -6,8 +6,8 @@ COMPONENTS = \
     metrics \
     management\
     daemon \
-    commands \
     library \
+    commands \
     tools \
     global_manager \
     slurm_plugin
