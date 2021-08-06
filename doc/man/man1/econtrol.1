@@ -48,9 +48,9 @@ INACTIVE NODES
 node1   192.0.0.1
 
 
-To check currently running applications, the application status type are helpful. app_master gives a view of all 
-the currently running applications while app_node gives detailed information of every node currently running an
-application.
+The application status type can be used to retrieve all currently running jobs in the cluster. app_master gives 
+a summary of all the running applications while app_node gives detailed information of each node currently 
+running a job.
 
 [user@login]$ econtrol --status --type=app_master
 Job-Step    Nodes   DC power      CPI      GBS   Gflops     Time Avg Freq
