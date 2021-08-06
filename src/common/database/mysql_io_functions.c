@@ -2539,9 +2539,13 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
     strcpy(query, EAR_EVENT_MYSQL_QUERY);
 
     int i, j, offset;
-    for (i = 1; i < num_evs; i++)
-    {
+    for (i = 1; i < num_evs; i++) {
         strcat(query, params);
+    }
+
+    //Prevent freq from going over max value
+    for (i = 0; i < num_evs; i++) {
+        ear_ev[i].freq = ear_ev[i].freq > INT_MAX ? INT_MAX : ear_ev[i].freq;
     }
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) {
@@ -2559,7 +2563,7 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
         {
             bind[offset+j].buffer_type = MYSQL_TYPE_LONGLONG;
         }
-	bind[offset+1].buffer_type = MYSQL_TYPE_LONG;
+        bind[offset+1].buffer_type = MYSQL_TYPE_LONG;
         bind[offset+5].buffer_type = MYSQL_TYPE_STRING;
         bind[offset+5].buffer_length = strlen(ear_ev[i].node_id);
 
@@ -2573,13 +2577,18 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
     }
 
     int ret = EAR_SUCCESS;
-    if (mysql_stmt_bind_param(statement, bind)) ret = mysql_statement_error(statement);
 
-    if (ret == EAR_SUCCESS ) {
+    if (mysql_stmt_bind_param(statement, bind)) {
+        ret = mysql_statement_error(statement);
+    }
+
+    if (ret == EAR_SUCCESS) {
         if (mysql_stmt_execute(statement)) ret = mysql_statement_error(statement);
     }
 
-    mysql_stmt_close(statement);
+    if (ret == EAR_SUCCESS) {
+        mysql_stmt_close(statement);
+    }
     free(bind);
     free(query);
 
