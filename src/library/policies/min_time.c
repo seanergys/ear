@@ -124,9 +124,6 @@ state_t policy_init(polctx_t *c)
 {
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
     char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
-    // TODO: min energy uses more environment variables:
-    //  - cuse_imc_ref: -
-    //  - cmin_cpufreq: Avoid lowering cpu freq below some value
 
     int i, sid = 0;
 
