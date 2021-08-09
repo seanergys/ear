@@ -466,7 +466,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                         for (j = 0; j < apps[i].signature.gpu_sig.num_gpus; j++)
                         {
                             gpu_total_power += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
-                            gpu_freq_aux     += apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
+                            gpu_freq_aux    += apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
                             if (apps[i].signature.gpu_sig.gpu_data[j].GPU_util)
                             {
                                 gpu_power        += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
@@ -581,8 +581,10 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
                                 sprintf(tmp, "%ld%%/%ld%%", gpu_util, gpu_mem_util);
                                 dprintf(fd, gpu_format, gpu_total_power, gpu_power, (double)gpu_freq/1000000, tmp);
                             }
-                            else
-                                dprintf(fd, gpu_header, "---", "---", "---");
+                            else {
+                                sprintf(tmp, "%.2lf/---", gpu_total_power);
+                                dprintf(fd, gpu_header, tmp, "---", "---");
+                            }
                         }
 #endif
                         dprintf(fd, "\n");
@@ -719,13 +721,14 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 #if USE_GPUS
                     if (print_gpus)
                     {
-                        if (num_gpus > 0)
-                        {
+                        if (num_gpus > 0) {
                             sprintf(tmp, "%ld%%/%ld%%", gpu_util, gpu_mem_util);
                             dprintf(fd, gpu_format, gpu_total_power, gpu_power, (double)gpu_freq/1000000, tmp);
                         }
-                        else
-                            dprintf(fd, gpu_header, "---", "---", "---");
+                        else {
+                            sprintf(tmp, "%.2lf/---", gpu_total_power);
+                            dprintf(fd, gpu_header, tmp, "---", "---");
+                        }
                     }
 #endif
                     dprintf(fd, "\n");

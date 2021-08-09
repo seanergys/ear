@@ -3,6 +3,7 @@
 *.o
 *.a
 *.so
+*.swp
 */bin/
 */lib/
 src/tests
