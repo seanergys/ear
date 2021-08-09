@@ -492,7 +492,7 @@ static int metrics_partial_stop(uint where)
 	aux_time=aux_time_stop;
 
 	if (masters_info.my_master_rank>=0){
-		if (c_power<(system_conf->max_sig_power*1.5)){
+		if (c_power < system_conf->max_sig_power){
 			acum_ipmi[LOO] = c_energy;
 		}else{
 			error("Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);

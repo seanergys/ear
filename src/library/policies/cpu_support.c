@@ -260,6 +260,8 @@ int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
         if (freqs->imc_freq[sid*IMC_VAL+IMC_MIN] != def->imc_freq[sid*IMC_VAL+IMC_MIN]) return 0;
 		}
     }
+/* GPU freqs are ignored for now since they are set explicitly at each policy execution based on utilization */
+#if 0
 #if USE_GPUS
     if (my_pol_ctx.num_gpus){
         for (i=0; i< my_pol_ctx.num_gpus;i++){
@@ -267,6 +269,7 @@ int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
             /* GPU mem pending */
         }
     }
+#endif
 #endif
     return 1;  
 }
@@ -283,6 +286,7 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def)
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = def->imc_freq[sid*IMC_VAL+IMC_MIN];
 		}
     }
+/* GPU freqs are ignored for now since they are set explicitly at each policy execution based on utilization */
 
 }
 

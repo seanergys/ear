@@ -473,7 +473,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
             /* If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq */
             /* IMC_MAX means the maximum frequency, lower pstate , IMC_MIN means minimum frequency and maximum pstate */
-            if ((min_cpufreq == nominal_node) && (cbound)){
+            if ((min_cpufreq_sel == nominal_node) && (cbound)){
                 if (sig->GBS <= GBS_BUSY_WAITING){
                     for (sid=0; sid < imc_devices; sid ++) freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
                 }
