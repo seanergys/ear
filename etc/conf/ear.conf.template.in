@@ -38,6 +38,9 @@ CoefficientsDir=@sysconfdir@/ear/coeffs
 # EAR Global Manager (EARGMD) : Update that section to use EARGM 
 #---------------------------------------------------------------------------------------------------
 EARGMHost=node1001
+# Use aggregated periodic metrics or periodic power metrics. Aggregated metrics are only available
+# when EARDBD is running
+EARGMUseAggregated=1
 # Period T1 and T2 are specified in seconds T1 (ex. must be less than T2, ex. 10min and 1 month)
 EARGMPeriodT1=90
 EARGMPeriodT2=259200
@@ -49,16 +52,26 @@ EARGMPort=50000
 EARGMMode=0
 # T1 "grace" periods between DEFCON before re-evaluate.
 EARGMGracePeriods=3
-# Defines
+# Format for action is: command_name energy_T1 energy_T2  energy_limit T2 T1  units "
+# This action is automatically executed at each warning level (only once per grace periods)
 EARGMEnergyAction=no_action
 
-#### POWERCAP definition for EARGM : Powercap is still under development. Do not activate
+#### POWERCAP definition for EARGM: Powercap is still under development. Do not activate
 # 0 means no powercap
 EARGMPowerLimit=0
-# Period  at which the powercap thread is activated
-EARGMPowerPeriod=60
+# Period at which the powercap thread is activated
+EARGMPowerPeriod=120
 # 1 means automatic, 0 is only monitoring
 EARGMPowerCapMode=1
+# Admins can specify to automatically execute a command in EARGMPowerCapSuspendAction when total_power >= EARGMPowerLimit*EARGMPowerCapResumeLimit/100
+EARGMPowerCapSuspendLimit=90
+# Format for action is: command_name current_power current_limit total_idle_nodes total_idle_power 
+EARGMPowerCapSuspendAction=no_action
+# Admins can specify to automatically execute a command in EARGMPowerCapResumeAction to undo EARGMPowerCapSuspendAction
+# when total_power >= EARGMPowerLimit*EARGMPowerCapResumeLimit/100. Note that this will only be executed if a suspend action was executed previously.
+EARGMPowerCapResumeLimit=40
+# Format for action is: command_name current_power current_limit total_idle_nodes total_idle_power 
+EARGMPowerCapResumeAction=no_action
 
 #---------------------------------------------------------------------------------------------------
 # Common configuration
