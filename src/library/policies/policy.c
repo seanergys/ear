@@ -899,7 +899,7 @@ state_t policy_new_iteration(signature_t *sig)
 		/* This validation is common to all policies */
     /* Check cpu idle or gpu idle */
     if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-      verbose_master(2,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
+      verbose_master(3,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
       if (sig->Gflops > GFLOPS_BUSY_WAITING){ 
 				/* We must reset the configuration */
 				last_earl_phase_classification = APP_COMP_BOUND;
