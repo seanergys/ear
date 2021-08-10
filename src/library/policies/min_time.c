@@ -185,7 +185,7 @@ state_t policy_init(polctx_t *c)
             if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
                 verbose_master(2, "Error asking for gpu freq list");
             }
-			/* Replace by default_setting in gpu policy */
+            /* Replace by default_setting in gpu policy */
             for (i = 0; i<c->num_gpus; i++){
                 min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
             }
@@ -457,42 +457,49 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         /*  IMC freq selection */
         uint app_mpi_bound = earl_phase_classification == APP_MPI_BOUND;
         if (eUFS && !(app_mpi_bound && network_use_imc)){
+
             /*  If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound){
                 if (sig->GBS <= GBS_BUSY_WAITING){
-                    verbose_master(2, "GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
+                    debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
-                        verbose_master(2, "SID %u = %lu", sid, freqs->imc_freq[sid*IMC_VAL+IMC_MAX]);
                     }
                 }else{
-                    verbose_master(2, "GBS GT GBS_BUSY_WAITING selecting the 0.25 pstate...");
+                    debug("GBS GT GBS_BUSY_WAITING selecting the 0.25 pstate...");
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_pstate(imc_num_pstates, 0.25);
-                        verbose_master(2, "SID %u = %lu", sid, freqs->imc_freq[sid*IMC_VAL+IMC_MAX]);
                     }
                 }
             }else{
-                verbose_master(2, "(min_cpufreq_sel, nominal_node) (%lu, %lu) cbound %u", min_cpufreq_sel, nominal_node, cbound);
-                /*
-                for (sid=0; sid < imc_devices; sid ++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
-                    verbose_master(2, "SID %u = %u", sid, freqs->imc_freq[sid*IMC_VAL+IMC_MAX]);
+                debug("min CPU freq selected %lu - nominal CPU freq %lu - cbound %u",
+                        min_cpufreq_sel, nominal_node, cbound);
+                if (!imc_set_by_hw){
+                    /*  Fix the imc to the first selected by hardware */
+                    for (sid=0; sid < imc_devices; sid++){
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_pstate;
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ear_min(curr_imc_pstate + 1, imc_num_pstates - 1);
+                    }
                 }
-                */
+                else{
+                    /*  Let hw control imc (full range) */
+                    for (sid=0; sid < imc_devices; sid++){
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
+                    }
+                }
             }
             if (!imc_set_by_hw){
                 /*  Fix the imc to the first selected by hardware */
                 for (sid=0; sid < imc_devices; sid++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = curr_imc_pstate;
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ear_min(curr_imc_pstate + 1, imc_num_pstates - 1);
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] =
+                        ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1, imc_num_pstates - 1);
                 }
             }
             else{
                 /*  Let hw control imc (full range) */
                 for (sid=0; sid < imc_devices; sid++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
                     freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                 }
             }
@@ -557,57 +564,104 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     else if ((min_time_state == SELECT_IMCFREQ) && eUFS){
         /*  SELECT IMCFREQ */
         verbose_master(2,"%sSelecting IMC freq%s: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %u",
-                COL_YLW, COL_CLR, min_pstate, last_cpu_pstate, last_imc_pstate, curr_pstate, curr_imc_pstate);
-        uint decrease_imc;
-        if (ref_imc_pstate != imc_min_pstate[sid]){
-            verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
-            decrease_imc = must_decrease_imc(imc_data, curr_pstate, curr_imc_pstate, curr_pstate,
-                    ref_imc_pstate, my_app, imc_extra_th);
+                COL_BLU, COL_CLR, min_pstate, last_cpu_pstate, last_imc_pstate, curr_pstate, curr_imc_pstate);
+        if (!imc_set_by_hw){
+            uint decrease_imc;
+            if (ref_imc_pstate != imc_min_pstate[sid]){
+                verbose(2, "ref IMC pstate (%d) not at maximum. Checking for increase opportunity.", ref_imc_pstate);
+                decrease_imc = must_decrease_imc(imc_data, curr_pstate, curr_imc_pstate, curr_pstate,
+                        ref_imc_pstate, my_app, imc_extra_th);
 
-            /*  If we are over the limit after previous IMC update, we decrease the IMC */
-            if (decrease_imc && !first_imc_try) {
-                uint must_start_again = must_start(imc_data, curr_pstate, curr_imc_pstate,
-                        curr_pstate, ref_imc_pstate, my_app);
-                verbose(2,"%sWarning, passing the imc_th limit: start_again %u",COL_RED,must_start_again);
-                for (sid = 0; sid < imc_devices; sid++){
-                    if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]){
-                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1;
+                /*  If we are over the limit after previous IMC update, we decrease the IMC */
+                if (decrease_imc && !first_imc_try) {
+                    uint must_start_again = must_start(imc_data, curr_pstate, curr_imc_pstate,
+                            curr_pstate, ref_imc_pstate, my_app);
+                    debug("%sWarning, passing the imc_th limit: start_again %u",COL_RED,must_start_again);
+                    for (sid = 0; sid < imc_devices; sid++){
+                        if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]){
+                            freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1;
+                        }
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                     }
+                    sid = 0;
+                    debug("Selecting IMC range %llu - %llu%s",
+                            imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                            imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
+                    if (!must_start_again)  *ready = EAR_POLICY_READY;
+                    else *ready = EAR_POLICY_TRY_AGAIN;
+
+                    min_time_state = SELECT_CPUFREQ;
+
+                }else {
+                    if (first_imc_try){
+                        debug("first IMC up try");
+                        first_imc_try = 0;
+                    }
+
+                    for (sid = 0; sid < imc_devices; sid++){
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - 1,
+                                imc_min_pstate[sid]);
+                        freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
+                    }
+                    sid = 0;
+                    debug("%sTrying an upper IMC freq %llu-%llu%s", COL_GRE,
+                            imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                            imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
+
+                    /*  We are assuming all sockets use the same frequency range */
+                    if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] > imc_min_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
+                    else{
+                        *ready = EAR_POLICY_READY;
+                        min_time_state = SELECT_CPUFREQ;
+                    }
+                }
+            }else{
+                *ready = EAR_POLICY_READY;
+                min_time_state = SELECT_CPUFREQ;
+            }
+        }else{
+            uint increase_imc = must_increase_imc(imc_data,curr_pstate,curr_imc_pstate,curr_pstate,
+                    ref_imc_pstate,my_app,imc_extra_th);
+
+            /* If we are over the limit, we increase the IMC */
+            if (increase_imc){
+                uint must_start_again = must_start(imc_data,curr_pstate,curr_imc_pstate,
+                        curr_pstate,ref_imc_pstate,my_app);
+                debug("%sWarning, passing the imc_th limit: start_again %u",COL_RED,must_start_again);
+                for (sid=0; sid < imc_devices; sid ++) {
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX]>0)?
+                            (freqs->imc_freq[sid*IMC_VAL+IMC_MAX]-1):0);
                     freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                 }
                 sid = 0;
-                verbose_master(2,"Selecting IMC range %llu - %llu%s",
+                debug("Selecting IMC range %llu - %llu%s",
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
-                        imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
+                        imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
+
                 if (!must_start_again)  *ready = EAR_POLICY_READY;
-                else *ready = EAR_POLICY_TRY_AGAIN;
+                else 					*ready = EAR_POLICY_TRY_AGAIN;
 
                 min_time_state = SELECT_CPUFREQ;
 
-            }else {
-                if (first_imc_try){
-                    verbose_master(2, "First imc try");
-                    first_imc_try = 0;
-                }
-
-                for (sid = 0; sid < imc_devices; sid++){
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ear_max(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] - 1,
-                            imc_min_pstate[sid]);
+            }else{
+                for (sid=0; sid < imc_devices; sid ++) {
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid])?
+                            freqs->imc_freq[sid*IMC_VAL+IMC_MAX]+1:imc_max_pstate[sid]);
                     freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                 }
                 sid = 0;
-                verbose_master(2, "%sTrying an upper IMC freq %llu-%llu%s", COL_GRE,
+                debug("%sTrying a lower IMC freq %llu-%llu%s",COL_GRE,
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
-                        imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
-
-                /*  We are assuming all sockets use the same frequency range */
-                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] > imc_min_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
+                        imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
+                /* We are assuming all sockets uses the same frequency range */
+                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
                 else{
                     *ready = EAR_POLICY_READY;
                     min_time_state = SELECT_CPUFREQ;
                 }
             }
         }
+
         memcpy(freqs->cpu_freq, last_nodefreq_sel.cpu_freq, sizeof(ulong) * num_processes);
         memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, imc_devices * IMC_VAL * sizeof(ulong));
     }

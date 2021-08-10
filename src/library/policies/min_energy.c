@@ -130,7 +130,7 @@ state_t policy_init(polctx_t *c)
     // char *cuse_imc_ref;
     char *cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
-	char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
+    char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
 
 
     int i, sid = 0;
@@ -150,8 +150,8 @@ state_t policy_init(polctx_t *c)
         }
         if (cimc_set_by_hw != NULL) imc_set_by_hw = atoi(cimc_set_by_hw);
 
-        verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC penalty of %.2lf",dyn_unc,imc_set_by_hw,imc_extra_th);
-
+        verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC penalty of %.2lf"
+                ,dyn_unc,imc_set_by_hw,imc_extra_th);
 
         if (min_cpufreq) verbose_master(2,"Min CPUfreq is limited = %lu",min_cpufreq);
         if (cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
@@ -474,33 +474,32 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             /* IMC_MAX means the maximum frequency, lower pstate , IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound){
                 if (sig->GBS <= GBS_BUSY_WAITING){
-                    verbose_master(2, "GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
+                    debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++) {
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
-                        verbose_master(2, "SID %u = %lu", sid, freqs->imc_freq[sid*IMC_VAL+IMC_MAX]);
                     }
                 }
                 else{
-                    verbose_master(2, "GBS GT GBS_BUSY_WAITING selecting the 0.25 pstate...");
+                    debug("GBS GT GBS_BUSY_WAITING selecting the 0.25 pstate...");
                     for (sid=0; sid < imc_devices; sid ++){
 
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_pstate(imc_num_pstates, 0.25);
-                        verbose_master(2, "SID %u = %lu", sid, freqs->imc_freq[sid*IMC_VAL+IMC_MAX]);
                     }
                 }
             }else{
-                verbose_master(2, "(min_cpufreq_sel, nominal_node) (%lu, %lu) cbound %u", min_cpufreq, nominal_node, cbound);
+                debug("min selected CPU freq %lu - nominal CPU freq %lu - cbound %u",
+                        min_cpufreq_sel, nominal_node, cbound);
                 for (sid=0; sid < imc_devices; sid ++){
                     freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
-                    verbose_master(2, "SID %u = %lu", sid, freqs->imc_freq[sid*IMC_VAL+IMC_MAX]);
                 }
             }
             /* ps_nothing means we will not change it. We could use the imc_max_pstate */
             if (imc_set_by_hw){
                 for (sid=0; sid < imc_devices; sid ++) freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
-            } else{
+            }else{
                 for (sid=0; sid < imc_devices; sid ++)
-                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1, imc_num_pstates -1);
+                    freqs->imc_freq[sid*IMC_VAL+IMC_MIN] =
+                        ear_min(freqs->imc_freq[sid*IMC_VAL+IMC_MAX] + 1, imc_num_pstates -1);
             }
             sid = 0;
             debug("%sIMC freq selection%s %lu-%lu",COL_GRE,COL_CLR,
@@ -677,7 +676,6 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
             }else if (*ok){
                 first_time = 0;
             }
-            verbose_master(3, "Copying data...");
 
             /*  Save current stats and critical path to be used later */
             memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
@@ -686,7 +684,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
             last_mpi_stats_perc_mpi_mean = mean;
             last_mpi_stats_perc_mpi_mag = mag;
             last_mpi_stats_perc_mpi_median = median;
-        }else{ 
+        }else{
             nump = 1;
             freq_per_core = 0;
         }
