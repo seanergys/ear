@@ -1186,7 +1186,6 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	ullong cycles;
 	ullong FLOPS[FLOPS_EVENTS];
 	sig_ext_t *se;
-	double CPI;
 	int i;
 
 	se = (sig_ext_t *)master->sig_ext;	

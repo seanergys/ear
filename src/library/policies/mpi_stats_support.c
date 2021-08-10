@@ -146,7 +146,6 @@ state_t mpi_app_end(polctx_t *c)
     }
     return EAR_SUCCESS;
 }
-static uint in_mpi = 0;
 state_t mpi_call_init(polctx_t *c,mpi_call call_type)
 {
     if (is_mpi_enabled()){
