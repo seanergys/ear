@@ -64,6 +64,7 @@ uint dyn_unc = EAR_eUFS;
 uint enable_load_balance = EAR_USE_LB;
 uint use_turbo_for_cp = EAR_USE_TURBO_CP;
 uint try_turbo_enabled = 0;
+uint use_energy_models = 1;
 double imc_extra_th = EAR_IMC_TH;
 
 uint total_mpi = 0;
@@ -435,6 +436,7 @@ state_t policy_init()
     char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
     char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
     char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
+		char *cuse_energy_models = getenv(SCHED_USE_ENERGY_MODELS);
 
     state_t retg=EAR_SUCCESS, ret = EAR_SUCCESS;
     policy_gpu_init_ctx(c);
@@ -446,6 +448,8 @@ state_t policy_init()
     verbose_master(2,"Running in exclusive mode set to %u", exclusive_mode);
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(2,"Phases detection set to %u",use_earl_phases);
+		if (cuse_energy_models != NULL) use_energy_models = atoi(cuse_energy_models);
+		verbose_master(2,"Using energy models set to %u",use_energy_models);
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
     gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items);
