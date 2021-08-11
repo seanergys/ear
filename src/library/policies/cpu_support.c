@@ -68,7 +68,7 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
     curr_pstate = frequency_closest_pstate(curr_freq[0]);
     if (curr_freq[0] != def_freq[0]) // Use configuration when available
     {
-        verbose_master(3, "curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
+        debug("curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
         if (projection_available(curr_pstate,def_pstate)==EAR_SUCCESS)
         {
             project_power(my_app,curr_pstate,def_pstate,power_ref);

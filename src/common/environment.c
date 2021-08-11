@@ -532,3 +532,15 @@ int get_total_resources()
 	return procs_per_node*get_num_threads();
 }
 
+state_t read_config_env(char *var, const char* sched_env_var){
+    var = getenv(sched_env_var);
+    if (var != NULL){
+        return EAR_SUCCESS;
+    }
+    return EAR_UNDEFINED;
+}
+
+state_t read_config(uint *var, const char *config_var){
+    *var = (uint)atoi(config_var);
+    return EAR_SUCCESS;
+}

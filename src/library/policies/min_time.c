@@ -25,6 +25,7 @@
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <common/math_operations.h>
+#include <common/environment.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
@@ -95,6 +96,7 @@ extern uint enable_load_balance;
 extern uint use_turbo_for_cp;
 static uint network_use_imc = 0;
 extern uint try_turbo_enabled;
+extern uint use_energy_models;
 
 #define SELECT_CPUFREQ      100
 #define SELECT_IMCFREQ      101
@@ -106,6 +108,10 @@ static uint min_time_state = SELECT_CPUFREQ;
 static signature_t *my_app, cpufreq_signature;
 extern uint cpu_ready, gpu_ready, gidle;
 
+/* No models extra */
+signature_t *sig_list;
+uint *sig_ready;
+
 static uint first_time = 1;
 
 static uint block_type;
@@ -115,6 +121,8 @@ static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 
 static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok);
+static state_t policy_no_models_go_next_mt(int curr_pstate,int *ready,node_freqs_t *freqs,int min_pstate);
+static int policy_no_models_is_better_min_time(signature_t * curr_sig,signature_t *prev_sig,double min_eff_gain);
 
 /*  wrap function which calculates intructions, flops and cycles. */
 state_t compute_total_node_metrics();
@@ -123,6 +131,7 @@ extern uint last_earl_phase_classification;
 
 state_t policy_init(polctx_t *c)
 {
+    // TODO: use new envornment.h functionality
     char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
     char *cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
 
@@ -140,13 +149,22 @@ state_t policy_init(polctx_t *c)
 
         /*  Config from env variables */
         if (cimc_set_by_hw != NULL) imc_set_by_hw = atoi(cimc_set_by_hw);
-        verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC penalty of %.2lf", dyn_unc, imc_set_by_hw, imc_extra_th);
+        verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC penalty of %.2lf",
+                dyn_unc, imc_set_by_hw, imc_extra_th);
 
         if(cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
         verbose_master(2, "Network uses IMC set to %u", network_use_imc);
 
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
+
+        if (!use_energy_models){
+            sig_list=(signature_t *)malloc(sizeof(signature_t)*c->num_pstates);
+            sig_ready=(uint*)malloc(sizeof(uint)*c->num_pstates);
+            if ((sig_list==NULL) || (sig_ready==NULL)) return EAR_ERROR;
+            memset(sig_list,0,sizeof(signature_t)*c->num_pstates);
+            memset(sig_ready,0,sizeof(uint)*c->num_pstates);
+        }
 
         num_processes = lib_shared_region->num_processes;
 
@@ -207,6 +225,9 @@ state_t policy_loop_init(polctx_t *c,loop_id_t *loop_id)
 {
     if (c != NULL){
         projection_reset(c->num_pstates);
+        if (!use_energy_models){
+            memset(sig_ready,0,sizeof(uint)*c->num_pstates);
+        }
         return EAR_SUCCESS;
     }else{
         return EAR_ERROR;
@@ -307,6 +328,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     }
 #else
     curr_freq=*(c->ear_frequency);
+
 #endif
 
 #if 0
@@ -318,6 +340,10 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 #endif
 #endif
     curr_pstate = frequency_closest_pstate(curr_freq);
+    if (!use_energy_models){
+        sig_ready[curr_pstate] = 1;
+        signature_copy(&sig_list[curr_pstate], my_app);
+    }
 
     /*  We save data in imc data structure for policy comparision. We are computing the imc_pstate based on the avg_imc_freq,
      *  no looking at selection */
@@ -346,16 +372,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     if (min_time_state != SELECT_CPUFREQ && !policy_stable){
         debug("%spolicy not stable%s", COL_RED, COL_CLR);
         min_time_state = SELECT_CPUFREQ;
+        // TODO: we could select another phase here if we have the information
         last_earl_phase_classification = APP_COMP_BOUND;
     }
 
     if ((min_time_state == SELECT_CPUFREQ) || (eUFS == 0)){
-        /*  SELECT CPUFREQ */
-        if (eUFS){
-            *ready = EAR_POLICY_TRY_AGAIN;
-        }else{
-            *ready = EAR_POLICY_READY;
-        }
         verbose_master(2, "%sSelecting CPU frequency%s. eUFS %u", COL_BLU, COL_CLR, eUFS);
 
         last_cpu_pstate = curr_pstate;
@@ -366,7 +387,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
-        if (!are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
+        if (use_energy_models && !are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
             verbose_node_freqs(2, &last_nodefreq_sel);
             verbose_node_freqs(2, &min_time_def_freqs);
 
@@ -417,22 +438,48 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 }
                 local_eff_gain = base_eff_gain * (1 - factor);
             }
-            verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
-            compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
-            best_pstate = frequency_closest_pstate(best_freq);
-            verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
-            compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate,
-                    best_pstate, best_freq, def_freq, &new_freq[i]);
-            debug("CPU freq for process %d is %lu", i, new_freq[i]);
-            if (use_turbo_for_cp){
-                debug("Try to boost: freq per core ? %u already using turbo ? %u min_mpi ? %u",
-                        freq_per_core, c->use_turbo, min_mpi);
-                if (freq_per_core && !c->use_turbo && i == min_mpi){
-                    if (cpu_supp_try_boost_cpu_freq(i, critical_path, new_freq, min_pstate)){
-                        debug("Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
+            if (use_energy_models){
+                verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
+                compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
+                best_pstate = frequency_closest_pstate(best_freq);
+                verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
+                compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate,
+                        best_pstate, best_freq, def_freq, &new_freq[i]);
+                if (use_turbo_for_cp){
+                    debug("Try to boost: freq per core ? %u already using turbo ? %u min_mpi ? %u",
+                            freq_per_core, c->use_turbo, min_mpi);
+                    if (freq_per_core && !c->use_turbo && i == min_mpi){
+                        if (cpu_supp_try_boost_cpu_freq(i, critical_path, new_freq, min_pstate)){
+                            debug("Nominal freq. boosted for process %d: %lu", i, new_freq[i]);
+                        }
                     }
                 }
             }
+            else{
+                ulong prev_pstate;
+                signature_t *prev_sig;
+                /* We must not use models , we will check one by one*/
+                /* If we are not running at default freq, we must check if we must follow */
+                if (sig_ready[def_pstate] == 0){
+                    *ready=EAR_POLICY_TRY_AGAIN;
+                    *new_freq = def_freq;
+                }else{
+                    /* This is the normal case */
+                    if (curr_freq != def_freq){
+                        prev_pstate = curr_pstate+1;
+                        prev_sig = &sig_list[prev_pstate];
+                        if (policy_no_models_is_better_min_time(sig, prev_sig, min_eff_gain)){
+                            policy_no_models_go_next_mt(curr_pstate, ready, freqs, min_pstate);
+                        }else{
+                            *ready=EAR_POLICY_READY;
+                            *new_freq=frequency_pstate_to_freq(prev_pstate);
+                        }
+                    }else{
+                        policy_no_models_go_next_mt(curr_pstate, ready, freqs, min_pstate);
+                    }
+                }
+            }
+            debug("CPU freq for process %d is %lu", i, new_freq[i]);
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
@@ -448,6 +495,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
 
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, new_freq, sizeof(ulong) * num_processes);
+
         /*  We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
         verbose_master(3,"Updating cpufreq_signature");
         se = (sig_ext_t *)sig->sig_ext;
@@ -523,21 +571,28 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         /*  Next state selection */
         if (turbo_set){
+            // TODO: what happen then if user does not activate IMC controller? The policy will also go to SELECT_IMCFREQ state
             min_time_state = TRY_TURBO_CPUFREQ;
             *ready = EAR_POLICY_TRY_AGAIN;
         }
         else {
             if (!eUFS){
-                *ready = EAR_POLICY_READY;
+                if (use_energy_models){
+                    *ready = EAR_POLICY_READY;
+                }
                 min_time_state = SELECT_CPUFREQ;
             }else{
-                uint i = 0;
-                while ((i < num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
-                if (i < num_processes || cbound){
-                    min_time_state = COMP_IMCREF;
+                if (use_energy_models || *ready == EAR_POLICY_READY){
+                    uint i = 0;
+                    while ((i < num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
+                    if (i < num_processes || cbound){
+                        min_time_state = COMP_IMCREF;
+                    }else{
+                        ref_imc_pstate = curr_imc_pstate;
+                        min_time_state = SELECT_IMCFREQ;
+                    }
                 }else{
-                    ref_imc_pstate = curr_imc_pstate;
-                    min_time_state = SELECT_IMCFREQ;
+                    min_time_state = SELECT_CPUFREQ;
                 }
             }
         }
@@ -680,7 +735,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     my_node_mpi_types_calls   = se->mpi_types;
 
     /*  Check for load balance data */
-    if (is_mpi_enabled() && enable_load_balance){
+    if (is_mpi_enabled() && enable_load_balance && use_energy_models){
 
         verbose_mpi_types(3,my_node_mpi_types_calls);
 
@@ -916,3 +971,33 @@ state_t policy_new_iteration(polctx_t *c,signature_t *sig)
     return EAR_SUCCESS;
 }
 
+static state_t policy_no_models_go_next_mt(int curr_pstate,int *ready,node_freqs_t *freqs,int min_pstate)
+{
+    ulong *best_freq = freqs->cpu_freq; 
+    int next_pstate;
+    debug("go_next_mt: curr_pstate %d min_pstate %d\n",curr_pstate,min_pstate);
+    if (curr_pstate==min_pstate){
+        debug("ready\n");
+        *ready=EAR_POLICY_READY;
+        *best_freq=frequency_pstate_to_freq(curr_pstate);
+    }else{
+        next_pstate=curr_pstate-1;
+        *ready=EAR_POLICY_TRY_AGAIN;
+        *best_freq=frequency_pstate_to_freq(next_pstate);
+        debug("Not ready: next %d freq %lu\n",next_pstate,*best_freq);
+    }
+    return EAR_SUCCESS;
+}
+
+static int policy_no_models_is_better_min_time(signature_t * curr_sig,signature_t *prev_sig,double min_eff_gain)
+{
+    double freq_gain,perf_gain;
+    int curr_freq,prev_freq;
+
+    curr_freq=curr_sig->def_f;
+    prev_freq=prev_sig->def_f;
+    freq_gain=min_eff_gain*(double)((curr_freq-prev_freq)/(double)prev_freq);
+    perf_gain=(prev_sig->time-curr_sig->time)/prev_sig->time;
+    if (perf_gain>=freq_gain) return 1;
+    return 0;
+}
