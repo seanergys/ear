@@ -564,7 +564,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     if (masters_info.my_master_rank>=0) verbose_master(2,"loading policy %s",obj_path);
     /* loads the policy plugin */
     if (policy_load(obj_path,&polsyms_fun)!=EAR_SUCCESS){
-        error("Error loading policy %s:%s",obj_path,state_msg);
+        verbose_master(2,"Error loading policy %s:%s",obj_path,state_msg);
     }
     ear_frequency									= DEF_FREQ(app_settings->def_freq);
     my_pol_ctx.app								= app_settings;
@@ -584,11 +584,11 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     verbose_master(2,"Default frequency set to %lu",*(my_pol_ctx.ear_frequency));
 #if MPI
     if (PMPI_Comm_dup(masters_info.new_world_comm,&my_pol_ctx.mpi.comm)!=MPI_SUCCESS){
-        error("Duplicating COMM_WORLD in policy");
+        verbose_master(2,"Duplicating COMM_WORLD in policy");
     }
     if (masters_info.my_master_rank>=0){
         if (PMPI_Comm_dup(masters_info.masters_comm, &my_pol_ctx.mpi.master_comm)!=MPI_SUCCESS){
-            error("Duplicating master_comm in policy");
+            verbose_master(2,"Duplicating master_comm in policy");
         }
     }
 #endif
@@ -640,6 +640,7 @@ state_t policy_app_apply(ulong *freq_set, int *ready)
 
 static int is_all_ready()
 {
+		if (my_pol_ctx.num_gpus == 0) gpu_ready = EAR_POLICY_READY;
     if ((cpu_ready == EAR_POLICY_READY) && (gpu_ready == EAR_POLICY_READY)) return 1;
     return 0;
 }
@@ -670,22 +671,16 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
     }
+		#if 0
     if (!are_signatures_ready(lib_shared_region,sig_shared_region)){ 
         *ready = EAR_POLICY_CONTINUE;
 				uint pending_sig = lib_shared_region->num_processes-compute_total_signatures_ready(lib_shared_region,sig_shared_region);
 				if (pending_sig > (lib_shared_region->num_processes/2)){
 					verbose_master(2,"Num sig pending %d:",pending_sig);	
-					#if 0
-					uint i;
-					for (i = 0;i< lib_shared_region->num_processes;i++){
-						if (sig_shared_region[i].ready == 0)	verbosen_master(2," P[%d]=%u",i,sig_shared_region[i].iterations);
-					}
-					verbose_master(2," ");
-					#endif
 				}
         return EAR_SUCCESS;
     }
-
+		#endif
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
     is_io_bound(my_sig->IO_MBS,&iobound);
@@ -693,7 +688,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
-		if (gidle == GPU_IDLE) verbose_master(2,"%sGPU idle phase%s",COL_BLU,COL_CLR);
+		if (c->num_gpus && (gidle == GPU_IDLE)) verbose_master(2,"%sGPU idle phase%s",COL_BLU,COL_CLR);
     verbose_master(POLICY_PHASES,"EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
     if (use_earl_phases){
         /* IO Use case */
@@ -786,7 +781,8 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     }
     if (is_all_ready()) *ready = EAR_POLICY_READY;
     else *ready = EAR_POLICY_CONTINUE;
-    debug("Policy cpufreq selection returns %d,gpu policy returns %d, Global node readiness %d",cpu_ready,gpu_ready,*ready);
+		if (*ready == EAR_POLICY_READY) verbose_master(2,"%s Node policy ready%s",COL_GRE,COL_CLR);
+    verbose_master(3,"Policy cpufreq selection returns %d,gpu policy returns %d, Global node readiness %d",cpu_ready,gpu_ready,*ready);
 		clean_signatures(lib_shared_region,sig_shared_region);
     return EAR_SUCCESS;
 }
@@ -903,7 +899,7 @@ state_t policy_new_iteration(signature_t *sig)
 		/* This validation is common to all policies */
     /* Check cpu idle or gpu idle */
     if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-      verbose_master(2,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
+      verbose_master(3,"Validating CPU phase %lf ref %lf", sig->Gflops,GFLOPS_BUSY_WAITING);
       if (sig->Gflops > GFLOPS_BUSY_WAITING){ 
 				/* We must reset the configuration */
 				last_earl_phase_classification = APP_COMP_BOUND;

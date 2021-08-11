@@ -385,6 +385,7 @@ void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *C
   for (i=0;i<data->num_processes;i++){
     *CPI += (double)sig[i].sig.CPI;
   }
+	*CPI = *CPI/data->num_processes;
 }
 
 

@@ -32,7 +32,8 @@ stan_BINS += \
 
 ifeq ($(FEAT_GPU_OPT),1)
 stan_BINS += \
-    gpu_min_energy.so
+    gpu_min_energy.so \
+	gpu_min_time.so
 endif
 endif
 

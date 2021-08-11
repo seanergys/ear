@@ -753,7 +753,8 @@ void ear_init()
 	verb_level = get_ear_verbose();
 	verb_channel=2;
 	if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
-		VERB_SET_LV(atoi(tmp));
+		verb_level = atoi(tmp);
+		VERB_SET_LV(verb_level);
 	}
 
 	set_ear_total_processes(my_size);
@@ -840,11 +841,11 @@ void ear_init()
 	init_application(&application);
 	debug("init loop_signature");
 	init_application(&loop_signature);
-	application.is_mpi=1;
-	loop_signature.is_mpi=1;
-	application.is_learning=ear_whole_app;
-	application.job.def_f=getenv_ear_p_state();
-	loop_signature.is_learning=ear_whole_app;
+	application.is_mpi   	= 1;
+	loop_signature.is_mpi	= 1;
+	application.is_learning	= ear_whole_app;
+	application.job.def_f		= getenv_ear_p_state();
+	loop_signature.is_learning	= ear_whole_app;
 	debug("application data initialized");
 
 	// Getting environment data
@@ -893,12 +894,13 @@ void ear_init()
 	}
 	if (!eard_ok){ 
 		debug("%s: EARL off because of EARD",node_name);
+		strcpy(application.job.policy," "); /* Cleaning policy */
 		return;
 	}
 	debug("END Shared region creation section");
 	/* Processes in same node connectes each other*/
-
-    /* create verbose file for each job */
+	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
+ /* create verbose file for each job */
     if (verb_path != NULL){
         if (masters_info.my_master_rank >= 0){
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
@@ -912,6 +914,8 @@ void ear_init()
                 if (fd != -1){
                     VERB_SET_FD(fd);
                     DEBUG_SET_FD(fd);
+										ERROR_SET_FD(fd);
+										WARN_SET_FD(fd);
                 }else{
                     verbose_master(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
                 }
@@ -924,7 +928,8 @@ void ear_init()
     if ((st=get_arch_desc(&arch_desc))!=EAR_SUCCESS){
         error("Retrieving architecture description");
         /* How to proceeed here ? */
-        my_id=1;
+				lib_shared_region->earl_on = 0;
+				strcpy(application.job.policy," "); /* Cleaning policy */
         return;
     }
 
@@ -933,9 +938,17 @@ void ear_init()
 
     if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
         error("in EAR metrics initialization (%s), setting EARL off", state_msg);
-        my_id=1;
+				eard_ok = 0;
+				strcpy(application.job.policy," "); /* Cleaning policy */
         return;
     }
+
+		if (!eard_ok){ 
+			lib_shared_region->earl_on = 0;
+			strcpy(application.job.policy," "); /* Cleaning policy */
+			return;
+		}
+
     debug("End metrics init");
 
     // Initializing DynAIS
@@ -990,7 +1003,8 @@ void ear_init()
         if (app_mgt_info==NULL){
             error("Application shared area not found");
             eard_ok = 0;
-            my_id = 1;
+						lib_shared_region->earl_on = 0;
+						strcpy(application.job.policy," "); /* Cleaning policy */
             return;
         }
         fill_application_mgt_data(app_mgt_info);
@@ -1003,7 +1017,8 @@ void ear_init()
         if (pc_app_info_data==NULL){
             error("pc_application_info area not found");
             eard_ok = 0;
-            my_id = 1;
+						lib_shared_region->earl_on = 0;
+						strcpy(application.job.policy," "); /* Cleaning policy */
             return;
 
         }
@@ -1141,6 +1156,7 @@ void ear_finalize()
     }	
 #endif
     if (!eard_ok) return;
+		if (!lib_shared_region->earl_on) return;
 #if USE_LOCK_FILES
     if (!my_id){
         debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
@@ -1220,6 +1236,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
     double time_from_mpi_init;
     if (!eard_ok) return;
     if (synchronize_masters == 0 ) return;
+		if (!lib_shared_region->earl_on) return;
 #if ONLY_MASTER
     if (my_id) return;
 #endif
@@ -1614,7 +1631,7 @@ state_t earl_periodic_actions(void *no_arg)
             ear_periodic_mode = PERIODIC_MODE_ON;
             if (ear_guided != new_ear_guided){ 
                 monitor_burst(earl_monitor);
-                verbose_master(3,"%d:Dynais guided --> time guided",my_node_id);
+                verbose_master(2,"%d:Dynais guided --> time guided at time %lu",my_node_id,period_elapsed);
 								mpi_calls_in_period = lib_period;
                 states_begin_period(my_id, 1, (ulong) lib_period,1);
             }

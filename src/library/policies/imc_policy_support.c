@@ -117,28 +117,27 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     double metric_gain, metric_gain_2;
     double imc_gain;
     uint ref_pstate;
-		ulong ref_imc_freq;
-		pstate_t ps;
+    ulong ref_imc_freq;
+    pstate_t ps;
 
     ref_pstate = ref_cpu_pstate;
     debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u", cpu_pstate, my_imc_pstate, ref_pstate, ref_imc_pstate);
 
 
-		// We get the normalized imc frequency that corresponds with the avg imc freq
-		avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
-		ulong curr_imc_freq = imc_pstates[ps.idx].khz;
+    // We get the normalized imc frequency that corresponds with the avg imc freq
+    avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
+    ulong curr_imc_freq = imc_pstates[ps.idx].khz;
 
     if (pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
-			verbose_master(2,"IMC pstates invalid %d",ref_imc_pstate);
-		}
+        verbose_master(2,"IMC pstates invalid %d",ref_imc_pstate);
+    }
     debug("Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);
     imc_gain = metric_diff((double)ref_imc_freq, (double)curr_imc_freq, 1);
-    double perf_min_benefit = imc_gain * 0.4;
+    double perf_min_benefit = imc_gain * min_eff_gain;
 
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
         metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
         metric      = sig->time;
-        // metric_gain = (metric_ref - metric) / metric_ref;
         metric_gain = metric_diff(metric_ref, metric, 0);
         debug("Using time as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
                 metric, metric_ref, metric_gain, imc_gain);
@@ -169,7 +168,7 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint m
     my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].cycles = s->cycles;
     memcpy(my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].FLOPS , s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     for (i=0;i<FLOPS_EVENTS;i++) tfops += s->FLOPS[i];
-		#if SHOW_DEBUGS
+#if SHOW_DEBUGS
     float flops = 0;
     flops = (float)tfops/(s->time*1000000000.0);
     debug("IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",
@@ -177,7 +176,7 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint m
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].power,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].GBS,s->instructions/(s->time*1000000000.0),
             flops);
-		#endif
+#endif
 }
 
 ulong select_imc_freq(ulong max,ulong min,float p)
@@ -189,6 +188,6 @@ ulong select_imc_freq(ulong max,ulong min,float p)
 
 uint select_imc_pstate(int num_pstates,float p)
 {
-	return (uint)truncf(num_pstates * p);
+    return (uint)truncf(num_pstates * p);
 }
 

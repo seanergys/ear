@@ -492,7 +492,7 @@ static int metrics_partial_stop(uint where)
 	aux_time=aux_time_stop;
 
 	if (masters_info.my_master_rank>=0){
-		if (c_power<(system_conf->max_sig_power*1.5)){
+		if (c_power < system_conf->max_sig_power){
 			acum_ipmi[LOO] = c_energy;
 		}else{
 			error("Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);
@@ -1186,7 +1186,6 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	ullong cycles;
 	ullong FLOPS[FLOPS_EVENTS];
 	sig_ext_t *se;
-	double CPI;
 	int i;
 
 	se = (sig_ext_t *)master->sig_ext;	
@@ -1196,7 +1195,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
-	compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
+	//compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
 
 	ns->CPI = (double)cycles/(double)inst;
 	// verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);

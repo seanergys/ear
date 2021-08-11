@@ -58,16 +58,24 @@ ullong timestamp_getconvert(ullong time_unit)
 ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
 {
 	ullong stamp;
+	ullong initsec, initnsec;
+	ullong endsec, endnsec;
 
-	if (ts2->tv_nsec < ts1->tv_nsec) {
-		ts2->tv_sec   = ts2->tv_sec - 1;
-		ts2->tv_nsec += 1000000000;
+	initsec = ts1->tv_sec;
+	initnsec = ts1->tv_nsec;
+	endsec = ts2->tv_sec;
+	endnsec = ts2->tv_nsec;
+	
+	if (endnsec < initnsec){
+		endsec--;
+		endnsec += 1000000000;
 	}
-	ts2->tv_nsec /= time_unit;
-	ts1->tv_nsec /= time_unit;
-	if ((ts2->tv_nsec < ts1->tv_nsec) || (ts2->tv_sec < ts1->tv_sec)) return (ullong)0;
-	stamp  = (ullong) ((ts2->tv_sec - ts1->tv_sec) * (1000000000/time_unit));
-	stamp += (ullong) ((ts2->tv_nsec - ts1->tv_nsec));
+	endnsec /= time_unit;
+	initnsec /= time_unit;
+
+	stamp = ((endsec - initsec) * (1000000000/time_unit));
+	if (endnsec < initnsec) return stamp;
+	stamp += endnsec - initnsec;
 
 	return stamp;
 }

@@ -93,7 +93,7 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	if (st == EAR_SUCCESS) {
 		freturn(models_syms_fun.init,data->dir_conf, data->dir_temp, arch_desc);
 	}else{
-		error("Error when loading shared object %s",obj_path);
+		verbose(2,"Error when loading shared object %s",obj_path);
 	}
 	
 	return st;

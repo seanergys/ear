@@ -65,16 +65,21 @@ state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
 
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 {
-	double flops;
+	double flops, cpi;
+	ullong inst, cycles;
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;
 	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
 	flops = compute_node_flops(lib_shared_region,sig_shared_region);
-	c1 = (sig->CPI < CPI_BUSY_WAITING);
+	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
+	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
+	//compute_total_node_CPI(lib_shared_region,sig_shared_region,&cpi); 
+	cpi = (double)cycles/(double)inst;
+	c1 = (cpi      < CPI_BUSY_WAITING);
 	c2 = (sig->GBS < GBS_BUSY_WAITING);
-	c3 = (flops < GFLOPS_BUSY_WAITING);
+	c3 = (flops    < GFLOPS_BUSY_WAITING);
 	if (c1 || c2 || c3){
-		verbose_master(2,"CPI (%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
+		verbose_master(2,"CPI (%.3lf/%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)", sig->CPI,cpi,CPI_BUSY_WAITING,sig->GBS,GBS_BUSY_WAITING,flops,GFLOPS_BUSY_WAITING);
 	}
 	if (c1 && c2 && c3) *busy = BUSY_WAITING;
 	return EAR_SUCCESS;

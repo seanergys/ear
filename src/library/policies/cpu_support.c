@@ -103,8 +103,8 @@ state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq
     time_max 			= time_ref + (time_ref * penalty);	
     from 					= curr_pstate;	
     compute_vpi(&vpi,my_app);
-    verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf",time_ref,power_ref,
-            energy_ref,best_freq,vpi);
+    verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf. Pstates %lu...%lu",time_ref,power_ref,
+            energy_ref,best_freq,vpi,minp,maxp);
     for (i = minp; i < maxp;i++)
     {
         if (projection_available(from,i) == EAR_SUCCESS)
@@ -260,6 +260,8 @@ int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
         if (freqs->imc_freq[sid*IMC_VAL+IMC_MIN] != def->imc_freq[sid*IMC_VAL+IMC_MIN]) return 0;
 		}
     }
+/* GPU freqs are ignored for now since they are set explicitly at each policy execution based on utilization */
+#if 0
 #if USE_GPUS
     if (my_pol_ctx.num_gpus){
         for (i=0; i< my_pol_ctx.num_gpus;i++){
@@ -267,6 +269,7 @@ int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
             /* GPU mem pending */
         }
     }
+#endif
 #endif
     return 1;  
 }
@@ -283,6 +286,7 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def)
         freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = def->imc_freq[sid*IMC_VAL+IMC_MIN];
 		}
     }
+/* GPU freqs are ignored for now since they are set explicitly at each policy execution based on utilization */
 
 }
 
