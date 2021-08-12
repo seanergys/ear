@@ -203,7 +203,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 		strncpy(HEADER,HEADER_NOTS,sizeof(HEADER));
 #if USE_GPUS
     for (uint j = 0; j < loop->signature.gpu_sig.num_gpus; ++j) {
-			sprintf(gpu_header,HEADER_GPU_SIG,i,i,i,i,i);
+			sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j);
 			strncat(HEADER,gpu_header,strlen(gpu_header));
 		}
 #endif
