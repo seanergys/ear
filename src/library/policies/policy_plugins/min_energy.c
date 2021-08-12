@@ -37,10 +37,10 @@
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
-#include <library/policies/imc_policy_support.h>
-#include <library/policies/gpu_support.h>
-#include <library/policies/cpu_support.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/imc_policy_support.h>
+#include <library/policies/common/gpu_support.h>
+#include <library/policies/common/cpu_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 #include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH
@@ -168,14 +168,13 @@ state_t policy_init(polctx_t *c)
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext =  (void *)calloc(1,sizeof(sig_ext_t));
 
+				/* We store the signatures for the case where models are not used */
         if (!use_energy_models){
-            sig_list=(signature_t *)malloc(sizeof(signature_t)*c->num_pstates);
-            sig_ready=(uint *)malloc(sizeof(uint)*c->num_pstates);
+            sig_list  = (signature_t *)calloc(c->num_pstates,sizeof(signature_t));
+            sig_ready = (uint *)calloc(c->num_pstates,sizeof(uint));
 
             if ((sig_list==NULL) || (sig_ready==NULL)) return EAR_ERROR;
 
-            memset(sig_list,0,sizeof(signature_t)*c->num_pstates);
-            memset(sig_ready,0,sizeof(uint)*c->num_pstates);
         }
 
         percs_mpi = calloc(num_processes, sizeof(double));
@@ -236,7 +235,7 @@ state_t policy_loop_init(polctx_t *c,loop_id_t *l)
     if (c!=NULL){
         projection_reset(c->num_pstates);
         if (!use_energy_models){
-			memset(sig_ready,0,sizeof(uint)*c->num_pstates);
+					memset(sig_ready,0,sizeof(uint)*c->num_pstates);
         }
         return EAR_SUCCESS;
     }else{
@@ -338,7 +337,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 #endif
 
     curr_pstate = frequency_closest_pstate(curr_freq);
-    // Added
+    // Added for the use case where energy models are not used
     if (!use_energy_models){
         sig_ready[curr_pstate]=1;
         signature_copy(&sig_list[curr_pstate], sig);
@@ -460,6 +459,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 verbose_master(2,"Penalty %f", local_penalty);
             }
             if (use_energy_models){
+								/* If energy models are availables, we use them for CPU frequency selection */
                 curr_freq = def_freq;
                 curr_pstate = def_pstate;
                 compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
@@ -467,6 +467,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
                         local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
             }else{
+								/* If energy models are not available, we just execute a linear search */
                 if (sig_ready[def_pstate] == 0){
                     *ready = EAR_POLICY_TRY_AGAIN;
                     *new_freq = def_freq;
@@ -590,7 +591,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     }
                     *ready = EAR_POLICY_TRY_AGAIN;
                 }else{
-                    /* `no_models` policy has not end */
                     min_energy_state = SELECT_CPUFREQ;
                 }
             }

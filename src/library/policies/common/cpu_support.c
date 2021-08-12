@@ -38,9 +38,9 @@
 #include <library/common/verbose_lib.h>
 #include <library/policies/policy_ctx.h>
 #include <library/api/clasify.h>
-#include <library/policies/cpu_support.h>
-#include <library/policies/mpi_stats_support.h>
-#include <library/policies/imc_policy_support.h>
+#include <library/policies/common/cpu_support.h>
+#include <library/policies/common/mpi_stats_support.h>
+#include <library/policies/common/imc_policy_support.h>
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
 

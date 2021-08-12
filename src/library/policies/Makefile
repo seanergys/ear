@@ -34,8 +34,6 @@ all: $(poli_OBJS) $(stan_OBJS) $(stan_BINS) $(eard_BINS)
 ######## OPTIONS 
 
 install: stan.ginstall eard.ginstall
-	ln -sf ./min_energy_eard.so $(eard_PATH)/min_energy_no_models_eard.so 
-	ln -sf ./min_time_eard.so $(eard_PATH)/min_time_no_models_eard.so 
 
 clean: rclean;
 

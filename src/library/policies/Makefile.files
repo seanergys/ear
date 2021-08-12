@@ -14,13 +14,6 @@ stan_BINS = \
     monitoring.so 
 
 
-ifeq ($(FEAT_MPI_API), 1)
-ifeq ($(FEAT_RESEARCH),1)
-stan_BINS += \
-#	load_balance.so
-endif
-endif
-
 ifdef CUDA_BASE
 stan_BINS += \
     gpu_monitoring.so 
@@ -36,10 +29,3 @@ eard_BINS = \
     min_time_eard.so \
     min_energy_eard.so \
     monitoring_eard.so 
-
-ifeq ($(FEAT_MPI_API), 1)
-ifeq ($(FEAT_RESEARCH),1)
-eard_BINS += \
-#		load_balance_eard.so
-endif
-endif

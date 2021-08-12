@@ -31,7 +31,7 @@
 #include <management/cpufreq/frequency.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/policies/imc_policy_support.h>
+#include <library/policies/common/imc_policy_support.h>
 
 extern volatile uint ear_periodic_mode;
 extern ulong def_imc_max_khz;

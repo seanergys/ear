@@ -39,9 +39,9 @@
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/imc_policy_support.h>
-#include <library/policies/gpu_support.h>
-#include <library/policies/cpu_support.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/gpu_support.h>
+#include <library/policies/common/cpu_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 #include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH
@@ -159,11 +159,9 @@ state_t policy_init(polctx_t *c)
         my_app->sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
 
         if (!use_energy_models){
-            sig_list=(signature_t *)malloc(sizeof(signature_t)*c->num_pstates);
-            sig_ready=(uint*)malloc(sizeof(uint)*c->num_pstates);
+            sig_list  = (signature_t *)calloc(c->num_pstates,sizeof(signature_t));
+            sig_ready = (uint*)calloc(c->num_pstates,sizeof(uint));
             if ((sig_list==NULL) || (sig_ready==NULL)) return EAR_ERROR;
-            memset(sig_list,0,sizeof(signature_t)*c->num_pstates);
-            memset(sig_ready,0,sizeof(uint)*c->num_pstates);
         }
 
         num_processes = lib_shared_region->num_processes;
@@ -583,6 +581,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 min_time_state = SELECT_CPUFREQ;
             }else{
                 if (use_energy_models || *ready == EAR_POLICY_READY){
+										/* If we are ready, we switch to IMC selection */
                     uint i = 0;
                     while ((i < num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
                     if (i < num_processes || cbound){

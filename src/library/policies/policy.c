@@ -36,10 +36,10 @@
 #include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
-#include <library/policies/imc_policy_support.h>
-#include <library/policies/mpi_stats_support.h>
-#include <library/policies/gpu_support.h>
-#include <library/policies/cpu_support.h>
+#include <library/policies/common/imc_policy_support.h>
+#include <library/policies/common/mpi_stats_support.h>
+#include <library/policies/common/gpu_support.h>
+#include <library/policies/common/cpu_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
@@ -48,7 +48,7 @@
 #if POWERCAP
 #include <daemon/powercap/powercap_status_conf.h>
 #include <common/types/pc_app_info.h>
-#include <library/policies/pc_suport.h>
+#include <library/policies/common/pc_support.h>
 #include <library/policies/policy_state.h>
 #endif
 

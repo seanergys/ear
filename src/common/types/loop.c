@@ -182,9 +182,11 @@ int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currti
 }
 static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime)
 {
+		char gpu_header[128];
     if (path == NULL) {
         return EAR_ERROR;
     }
+
 
     char *HEADER_NOTS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
         "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
@@ -192,7 +194,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
         "DP_512";
 
 #if USE_GPUS
-		char *HEADER_GPU_SIG = ";GPOWER;GFREQ;GMEMFREQ;GUTIL;GMEMUTIL";
+		char *HEADER_GPU_SIG = ";GPOWER%d;GFREQ%d;GMEMFREQ%d;GUTIL%d;GMEMUTIL%d";
 #endif
 		
 		char *HEADER_LOOP = ";FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
@@ -201,7 +203,8 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 		strncpy(HEADER,HEADER_NOTS,sizeof(HEADER));
 #if USE_GPUS
     for (uint j = 0; j < loop->signature.gpu_sig.num_gpus; ++j) {
-			strncat(HEADER,HEADER_GPU_SIG,sizeof(HEADER));
+			sprintf(gpu_header,HEADER_GPU_SIG,i,i,i,i,i);
+			strncat(HEADER,gpu_header,strlen(gpu_header));
 		}
 #endif
 		strncat(HEADER,HEADER_LOOP,sizeof(HEADER));
