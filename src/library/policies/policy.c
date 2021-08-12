@@ -432,13 +432,13 @@ state_t policy_init()
 
     int i;
 
-    char *cdyn_unc = NULL; //  = getenv(SCHED_SET_IMC_FREQ);
-    char *cimc_extra_th = NULL; //  = getenv(SCHED_IMC_EXTRA_TH);
-    char *cexclusive_mode = NULL; //  = getenv(SCHED_EXCLUSIVE_MODE);
-    char *cuse_earl_phases = NULL; //  = getenv(SCHED_USE_EARL_PHASES);
-    char *cenable_load_balance = NULL; //  = getenv(SCHED_ENABLE_LOAD_BALANCE);
-    char *cuse_turbo_for_cp = NULL; //  = getenv(SCHED_USE_TURBO_FOR_CP);
-    char *ctry_turbo_enabled = NULL; //  = getenv(SCHED_TRY_TURBO);
+    char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
+    char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
+    char *cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
+    char *cuse_earl_phases = getenv(SCHED_USE_EARL_PHASES);
+    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
+    char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
+    char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
     char *cuse_energy_models = getenv(SCHED_USE_ENERGY_MODELS);
 
     state_t retg=EAR_SUCCESS, ret = EAR_SUCCESS;
@@ -448,7 +448,7 @@ state_t policy_init()
     /* We read SCHED_USE_ENERGY_MODELS before calling to polsyms_fun.init() because this function
      * may needs `use_energy_models` to configure itself. */
     if (cuse_energy_models != NULL){
-        read_config(&use_energy_models, cuse_energy_models);
+        use_energy_models = atoi(cuse_energy_models);
     }
     verbose_master(2,"Using energy models set to %u",use_energy_models);
 
@@ -456,16 +456,10 @@ state_t policy_init()
         ret=polsyms_fun.init(c);
     }
     /*  Read policy configuration */
-    // if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
-    if (state_ok(read_config_env(cexclusive_mode, SCHED_EXCLUSIVE_MODE))){
-        read_config(&exclusive_mode, cexclusive_mode);
-    }
+    if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
     verbose_master(2,"Running in exclusive mode set to %u", exclusive_mode);
 
-    // if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
-    if (state_ok(read_config_env(cuse_earl_phases, SCHED_USE_EARL_PHASES))){
-        read_config(&use_earl_phases, cuse_earl_phases);
-    }
+    if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(2,"Phases detection set to %u",use_earl_phases);
 
     /* Even though the policy could be at the Node granularity, we will use a list */
@@ -478,40 +472,26 @@ state_t policy_init()
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
 
-    // if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
+    if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
     if (arch_desc.top.vendor == VENDOR_AMD) {
         enable_load_balance = 0;
     }
-    else if (state_ok(read_config_env(cenable_load_balance, SCHED_ENABLE_LOAD_BALANCE))){
-        read_config(&enable_load_balance, cenable_load_balance);
-    }
     verbose_master(2,"Load balance enabled ? %u", enable_load_balance);
 
-    // if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
-    if (state_ok(read_config_env(cuse_turbo_for_cp, SCHED_USE_TURBO_FOR_CP))){
-        read_config(&use_turbo_for_cp, cuse_turbo_for_cp);
-    }
+    if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
     verbose_master(2,"Using turbo for CP when load unbalance set to %u", use_turbo_for_cp);
 
-
-    /* 
+   
        if (cdyn_unc != NULL && imc_mgt_compatible){
        dyn_unc = atoi(cdyn_unc);
        }
-       */
-    if (state_ok(read_config_env(cdyn_unc, SCHED_SET_IMC_FREQ)) && imc_mgt_compatible){
-        read_config(&dyn_unc, cdyn_unc);
-    }
 
-    if (state_ok(read_config_env(cimc_extra_th, SCHED_IMC_EXTRA_TH))){
+    if (cimc_extra_th != NULL){
         imc_extra_th = atof(cimc_extra_th);
     }
 
     try_turbo_enabled = c->use_turbo;
-    // if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
-    if (state_ok(read_config_env(ctry_turbo_enabled, SCHED_TRY_TURBO))){
-        read_config(&try_turbo_enabled, ctry_turbo_enabled);
-    }
+    if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
     verbose_master(2,"Using turbo for cbound app set to %u",try_turbo_enabled);
 
     if (polsyms_fun.domain != NULL){
@@ -562,11 +542,11 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     /* This part of code is to decide which policy to load based on default and hacks */
     char *obj_path = getenv(SCHED_EAR_POWER_POLICY);
     char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
-    char *app_mgr_policy = NULL; //  = getenv(USE_APP_MGR_POLICIES);
+    char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
     char use_path[SZ_PATH_INCOMPLETE];
 
     int app_mgr=0;
-    if (state_ok(read_config_env(app_mgr_policy, USE_APP_MGR_POLICIES))){
+    if (app_mgr_policy != NULL){
         app_mgr = atoi(app_mgr_policy);
     }
 #if SHOW_DEBUGS
