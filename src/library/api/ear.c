@@ -195,8 +195,9 @@ void notify_eard_connection(int status)
 {
 	char *buffer_send;
 	char *buffer_recv;
+	#if MPI
 	int i;
-
+	#endif
 	if (masters_comm_created){
 	buffer_send = calloc(    1, sizeof(char));
 	buffer_recv = calloc(masters_info.my_master_size, sizeof(char));
@@ -474,7 +475,9 @@ int sched_num_nodes()
 void attach_to_master_set(int master)
 {
 	int color;
+	#if MPI
 	int flag = 1;
+	#endif
 	//my_master_rank=0;
 	color=0;
 	#if MPI
