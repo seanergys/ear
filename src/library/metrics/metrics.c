@@ -974,7 +974,7 @@ int metrics_init(topology_t *topo)
 		error("Asking for IMC frequency list");
 	}
 	mgt_imcfreq_data_tostr(imc_pstates,imc_num_pstates,imc_buffer,sizeof(imc_buffer));
-	verbose_master(INFO_METRICS+1,"IMC pstates lust:%s",imc_buffer);
+	verbose_master(2,"IMC pstates lust:%s",imc_buffer);
 	/* Default values */
 	def_imc_max_khz = imc_pstates[0].khz;
 	def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;

@@ -569,7 +569,7 @@ int main(int argc, char *argv[])
     int status_type = 0;
     int mail_fd = -1;
 
-    char command[512];
+    char mail_command[1024];
     char path_name[128];
     char node_name[256];
     char mail_filename[2176]; //to match the stored mail size
@@ -1069,8 +1069,8 @@ int main(int argc, char *argv[])
     }
     if (mail != NULL)
     {
-  	    sprintf(command, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
-        execute(command); 
+  	    snprintf(mail_command, strlen(mail_command)-1, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
+        execute(mail_command); 
     }
     
     free_cluster_conf(&my_cluster_conf);

@@ -582,6 +582,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             min_energy_state = SELECT_CPUFREQ;
 
         }else{
+						/* IMC_MAX is max frequency, min_pstate */
+						/* IMC_MIN is min frequency, max_pstate */
             for (sid=0; sid < imc_devices; sid ++) {
                 freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid])?
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX]+1:imc_max_pstate[sid]);
