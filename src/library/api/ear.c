@@ -77,7 +77,7 @@
 #include <library/api/mpi.h>
 #endif
 #include <library/api/mpi_support.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 
 extern const char *__progname;
 static uint ear_lib_initialized=0;

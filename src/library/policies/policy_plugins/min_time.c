@@ -38,10 +38,10 @@
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
-#include <library/policies/imc_policy_support.h>
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
+#include <library/policies/common/imc_policy_support.h>
 #include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH

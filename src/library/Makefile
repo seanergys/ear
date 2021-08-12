@@ -36,7 +36,7 @@ comm_OBJS = \
     $(SRCDIR)/daemon/local_api/eard_api.o \
     $(SRCDIR)/daemon/shared_configuration.o \
     $(SRCDIR)/daemon/powercap/powercap_status.o \
-		$(SRCDIR)/report/report.o \
+    $(SRCDIR)/report/report.o \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/common/libcommon.a
@@ -50,10 +50,11 @@ core_OBJS = \
     metrics/metrics.o \
     models/models.o \
     policies/policy.o \
-    policies/pc_suport.o \
-    policies/mpi_stats_support.o \
-    policies/gpu_support.o \
-    policies/cpu_support.o \
+    policies/common/pc_support.o \
+    policies/common/gpu_support.o \
+    policies/common/cpu_support.o \
+    policies/common/mpi_stats_support.o \
+    policies/common/imc_policy_support.o \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \
