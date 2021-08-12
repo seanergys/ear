@@ -236,6 +236,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     }
 
     for (i=0;i<gpu_pc_num_gpus;i++){
+        if (t_freq[i] == 0) t_freq[i] = gpu_freq_list[i][0]; //set the nominal if no GPU freq was specified
         if (gpu_pc_util[i] == 0) 
         {
             gpu_pc_util_wait[i] += UTIL_INC; 
