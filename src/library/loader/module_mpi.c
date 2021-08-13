@@ -61,7 +61,7 @@ int is_openmpi()
 	return openmpi;
 }
 
-static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so, int *lang_c, int *lang_f)
+static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so, size_t path_so_size, int *lang_c, int *lang_f)
 {
 	static char buffer[4096];
 	char *extension = NULL;
@@ -106,7 +106,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 
 	if ((vers = getenv(FLAG_NAME_LIBR)) != NULL) {
 		if (strlen(vers) > 0) {
-			sprintf(buffer, "%s.so", vers);		
+			xsnprintf(buffer,sizeof(buffer), "%s.so", vers);		
 			extension = buffer;
 		}
 	}
@@ -114,9 +114,9 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 
 	//
 	if (libhack == NULL){	
-		xsprintf(path_so, "%s/%s.%s", path_lib_so, REL_NAME_LIBR, extension);
+		xsnprintf(path_so,path_so_size, "%s/%s.%s", path_lib_so, REL_NAME_LIBR, extension);
 	}else{
-		xsprintf(path_so, "%s", libhack);
+		xsnprintf(path_so, path_so_size,"%s", libhack);
 	}
 
 	verbose(2,"LOADER: lib path %s",path_so);
@@ -233,7 +233,7 @@ int module_mpi(char *path_lib_so,char *libhack)
 	}
 
 	//
-	module_mpi_get_libear(path_lib_so,libhack,path_so, &lang_c, &lang_f);
+	module_mpi_get_libear(path_lib_so,libhack,path_so, sizeof(path_so), &lang_c, &lang_f);
 	//
 	if (!module_mpi_dlsym(path_so, lang_c, lang_f)){
 		return is_mpi;

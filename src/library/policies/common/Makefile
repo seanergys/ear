@@ -14,6 +14,8 @@ supp_OBJS = \
 
 ########
 
+.PRECIOUS: %.o
+
 all: $(supp_OBJS)
  
 %.o: %.c 

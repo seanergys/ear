@@ -27,6 +27,8 @@ poli_DEPS = \
 
 ########
 
+.PRECIOUS: %.o
+
 all: $(poli_BINS)
  
 %.o: %.c 

@@ -61,7 +61,7 @@ char *state_msg;
 
 #define return_print(no, ...) { \
 	state_msg = state_buffer; \
-	xsprintf(state_buffer, __VA_ARGS__); \
+	xsnprintf(state_buffer, sizeof(state_buffer), __VA_ARGS__); \
 	return no; \
 	}
 
