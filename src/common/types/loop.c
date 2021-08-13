@@ -209,7 +209,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 #endif
 		strncat(HEADER,HEADER_LOOP,sizeof(HEADER));
 		if (ts){ 
-			strncat(HEADER,";TIMESTAMP",sizeof(HEADER));
+			xstrncat(HEADER,";TIMESTAMP",sizeof(HEADER));
 		}
 
 	

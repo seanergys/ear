@@ -565,22 +565,22 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 #endif
     if (((obj_path==NULL) && (ins_path == NULL)) || (app_settings->user_type!=AUTHORIZED)){
         if (!app_mgr){
-            snprintf(basic_path,sizeof(basic_path),"%s/policies/%s.so",data->dir_plug,app_settings->policy_name);
+            xsnprintf(basic_path,sizeof(basic_path),"%s/policies/%s.so",data->dir_plug,app_settings->policy_name);
         }else{
-            snprintf(basic_path,sizeof(basic_path),"%s/policies/app_%s.so",data->dir_plug,app_settings->policy_name);
+            xsnprintf(basic_path,sizeof(basic_path),"%s/policies/app_%s.so",data->dir_plug,app_settings->policy_name);
         }
         obj_path=basic_path;
     }else{
         if (obj_path == NULL){
             if (ins_path != NULL){
-                snprintf(use_path,sizeof(use_path),"%s/plugins/policies", ins_path);	
+                xsnprintf(use_path,sizeof(use_path),"%s/plugins/policies", ins_path);	
             }else{
-                snprintf(use_path,sizeof(use_path),"%s/policies", data->dir_plug);
+                xsnprintf(use_path,sizeof(use_path),"%s/policies", data->dir_plug);
             }
             if (!app_mgr){
-                snprintf(basic_path,sizeof(basic_path),"%s/%s.so",use_path,app_settings->policy_name);		
+                xsnprintf(basic_path,sizeof(basic_path),"%s/%s.so",use_path,app_settings->policy_name);		
             }else{
-                snprintf(basic_path,sizeof(basic_path),"%s/app_%s.so",use_path,app_settings->policy_name);		
+                xsnprintf(basic_path,sizeof(basic_path),"%s/app_%s.so",use_path,app_settings->policy_name);		
             }
             obj_path=basic_path;
         }

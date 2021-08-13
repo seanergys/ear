@@ -263,7 +263,7 @@ void create_shared_regions()
 
 	/* This section allocates shared memory for processes in same node */
 	debug("%s:Master creating shared regions for node synchro",node_name);
-  snprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
+  xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory %s",block_file);
   }
@@ -395,7 +395,7 @@ void attach_shared_regions()
 	char *tmp = get_ear_tmp();
 	/* This function is executed by processes different than masters */
 	/* they first join the Node shared memory */
-	snprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
+	xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
 	if ((bfd = file_lock_create(block_file))<0){
 		error("Creating lock file for shared memory");
 	}
