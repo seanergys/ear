@@ -146,6 +146,8 @@ state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *ad
 			debug("In PCI%d@%lX written 0x%X (%llu bytes)", p, addrs[a], buffer[a], written);
 		}
 	}
+	// Remove unused
+	(void) written;
 	return EAR_SUCCESS;
 }
 

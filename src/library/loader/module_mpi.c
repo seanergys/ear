@@ -114,9 +114,9 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 
 	//
 	if (libhack == NULL){	
-		sprintf(path_so, "%s/%s.%s", path_lib_so, REL_NAME_LIBR, extension);
+		xsprintf(path_so, "%s/%s.%s", path_lib_so, REL_NAME_LIBR, extension);
 	}else{
-		sprintf(path_so, "%s", libhack);
+		xsprintf(path_so, "%s", libhack);
 	}
 
 	verbose(2,"LOADER: lib path %s",path_so);

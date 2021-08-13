@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <linux/limits.h>
+#include <common/utils/string.h>
 
 #define STR_MAX_COLUMNS		20
 #define STR_SIZE_BUFFER		PIPE_BUF

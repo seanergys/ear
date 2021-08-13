@@ -21,9 +21,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <common/sizes.h>
-#include <common/output/error.h>
+#include <common/utils/string.h>
 #include <common/output/verbose.h>
-#include <common/output/debug.h>
 
 /* error definitions */
 #define EAR_SUCCESS              0
@@ -60,17 +59,11 @@ char *state_msg;
 	return no; \
 	}
 
-#define return_xmsg(no, ...) { \
+#define return_print(no, ...) { \
 	state_msg = state_buffer; \
-	sprintf(state_buffer, __VA_ARGS__); \
+	xsprintf(state_buffer, __VA_ARGS__); \
 	return no; \
 	}
-
-#define xtate_fail(s, function) \
-	((s = function) != EAR_SUCCESS)
-
-#define xtate_ok(s, function) \
-	((s = function) == EAR_SUCCESS)
 
 // error(#func " returned %d (%s)", s, state_msg);
 
@@ -149,5 +142,11 @@ int intern_error_num;
 	intern_error_str = error_str; \
 	return state;\
 }
+
+#define xtate_fail(s, function) \
+	((s = function) != EAR_SUCCESS)
+
+#define xtate_ok(s, function) \
+	((s = function) == EAR_SUCCESS)
 
 #endif //STATES_H

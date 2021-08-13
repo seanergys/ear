@@ -115,7 +115,7 @@ state_t energy_init(cluster_conf_t *conf, ehandler_t *eh)
 	if (energy_ops.init != NULL){ 
 		return energy_ops.init(&eh->context);
 	} else {
-		return_xmsg(EAR_ERROR, "The symbol energy_init was not found in %s", energy_objc);
+		return_print(EAR_ERROR, "The symbol energy_init was not found in %s", energy_objc);
 	}
 	return ret;
 }

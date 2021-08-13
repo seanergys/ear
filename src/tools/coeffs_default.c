@@ -182,7 +182,7 @@ static void write_coefficients()
 	verbose(0, "-----------------------------------------------------------------------------------------------------");
 
 	if (!opt_o) {
-		sprintf(path_output, "%s/coeffs.default", path_root);
+		xsprintf(path_output, "%s/coeffs.default", path_root);
 	}
 
 	fd = -1;
@@ -256,7 +256,7 @@ static void read_coefficients(int argc, char *argv[], int n_nodes)
 		node_name = argv[i];
 
 		/* The program reports coefficients in stdout and csv file */
-		sprintf(buffer, "%s/coeffs.%s", path_root, node_name);
+		xsprintf(buffer, "%s/coeffs.%s", path_root, node_name);
 
 		if (file_is_regular(buffer))
 		{
