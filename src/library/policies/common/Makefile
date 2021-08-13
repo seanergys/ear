@@ -9,7 +9,8 @@ supp_OBJS = \
     gpu_support.o \
     imc_policy_support.o \
     mpi_stats_support.o \
-    pc_support.o
+    pc_support.o \
+	generic.o
 
 ########
 

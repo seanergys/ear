@@ -41,6 +41,7 @@
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
+#include <library/policies/common/generic.h>
 #include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH
@@ -168,7 +169,7 @@ state_t policy_init(polctx_t *c)
         my_app = calloc(1,sizeof(signature_t));
         my_app->sig_ext =  (void *)calloc(1,sizeof(sig_ext_t));
 
-				/* We store the signatures for the case where models are not used */
+        /* We store the signatures for the case where models are not used */
         if (!use_energy_models){
             sig_list  = (signature_t *)calloc(c->num_pstates,sizeof(signature_t));
             sig_ready = (uint *)calloc(c->num_pstates,sizeof(uint));
@@ -235,7 +236,7 @@ state_t policy_loop_init(polctx_t *c,loop_id_t *l)
     if (c!=NULL){
         projection_reset(c->num_pstates);
         if (!use_energy_models){
-					memset(sig_ready,0,sizeof(uint)*c->num_pstates);
+            memset(sig_ready,0,sizeof(uint)*c->num_pstates);
         }
         return EAR_SUCCESS;
     }else{
@@ -254,7 +255,8 @@ state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 
 static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok);
 static state_t policy_no_models_go_next_me(int curr_pstate,int *ready,node_freqs_t *freqs,unsigned long num_pstates);
-static uint policy_no_models_is_better_min_energy(signature_t * curr_sig,signature_t *prev_sig,double time_max);
+static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signature_t *prev_sig, double time_ref,
+        double cpi_ref, double gbs_ref, double penalty_th);
 
 state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready)
 {
@@ -266,7 +268,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     uint sid = 0;
 
     /*  Used by policy */
-    double power_ref,time_ref,time_max,max_penalty;
+    double power_ref,time_ref,max_penalty, cpi_ref, gbs_ref;
 
     ulong best_freq;
     ulong curr_freq, curr_imc_freq;
@@ -279,7 +281,6 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     double sig_vpi, node_sig_vpi, max_vpi, local_penalty, base_penalty;
     uint local_process_with_high_vpi;
 
-    // uint power_status;
     uint cbound, mbound, turbo_set = 0;
 
     se = (sig_ext_t *)sig->sig_ext;
@@ -459,7 +460,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 verbose_master(2,"Penalty %f", local_penalty);
             }
             if (use_energy_models){
-								/* If energy models are availables, we use them for CPU frequency selection */
+                /* If energy models are availables, we use them for CPU frequency selection */
                 curr_freq = def_freq;
                 curr_pstate = def_pstate;
                 compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
@@ -467,19 +468,21 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
                         local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
             }else{
-								/* If energy models are not available, we just execute a linear search */
+                /* If energy models are not available, we just execute a linear search */
                 if (sig_ready[def_pstate] == 0){
                     *ready = EAR_POLICY_TRY_AGAIN;
                     *new_freq = def_freq;
                 }else{
                     signature_t *prev_sig;
                     time_ref = sig_list[def_pstate].time;
-                    time_max = time_ref * (1 + base_penalty);
+                    cpi_ref = sig_list[def_pstate].CPI;
+                    gbs_ref = sig_list[def_pstate].GBS;
+                    // time_max = time_ref * (1 + base_penalty);
                     /* This is the normal case */
                     if (curr_pstate != def_pstate){
                         prev_pstate = curr_pstate - 1;
                         prev_sig = &sig_list[prev_pstate];
-                        if (policy_no_models_is_better_min_energy(my_app, prev_sig, time_max)){
+                        if (policy_no_models_is_better_min_energy(my_app, prev_sig, time_ref, cpi_ref, gbs_ref, base_penalty)){
                             policy_no_models_go_next_me(curr_pstate, ready, freqs, c->num_pstates);
                         }else{
                             *ready = EAR_POLICY_READY;
@@ -868,7 +871,6 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
     gpu_ready = EAR_POLICY_READY;
 #endif
     /* GPU mem is pending */
-
     return EAR_SUCCESS;
 }
 
@@ -895,27 +897,38 @@ state_t policy_new_iteration(polctx_t *c,signature_t *sig)
 
 static state_t policy_no_models_go_next_me(int curr_pstate,int *ready,node_freqs_t *freqs,unsigned long num_pstates)
 {
-	ulong *best_freq = freqs->cpu_freq;
-	int next_pstate;
-	if ((curr_pstate<(num_pstates-1))){
-		*ready=EAR_POLICY_TRY_AGAIN;
-		next_pstate=curr_pstate+1;
-		*best_freq=frequency_pstate_to_freq(next_pstate);
-	}else{
-		*ready=EAR_POLICY_READY;
-		*best_freq=frequency_pstate_to_freq(curr_pstate);
-	}
+    ulong *best_freq = freqs->cpu_freq;
+    int next_pstate;
+    if ((curr_pstate<(num_pstates-1))){
+        *ready=EAR_POLICY_TRY_AGAIN;
+        next_pstate=curr_pstate+1;
+    }else{
+        *ready=EAR_POLICY_READY;
+        next_pstate=curr_pstate;
+    }
+    *best_freq=frequency_pstate_to_freq(next_pstate);
     return EAR_SUCCESS;
 }
 
-static uint policy_no_models_is_better_min_energy(signature_t * curr_sig,signature_t *prev_sig,double time_max)
+static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signature_t *prev_sig, double time_ref,
+        double cpi_ref, double gbs_ref, double penalty_th)
 {
-	double curr_energy,pre_energy;
-	curr_energy=curr_sig->time*curr_sig->DC_power;
-	pre_energy=prev_sig->time*prev_sig->DC_power;
-	if (curr_energy>pre_energy){ 
-			return 0;
-	}
-	if (curr_sig->time<time_max) return 1;
-	return 0;
+    double curr_energy, pre_energy;
+
+    curr_energy=curr_sig->time*curr_sig->DC_power;
+    pre_energy=prev_sig->time*prev_sig->DC_power;
+
+    if (curr_energy>pre_energy){
+        return 0;
+    }
+
+#if 0
+    if (curr_sig->time<=time_max) return 1;
+    return 0;
+#endif
+
+    double time_curr = curr_sig->time;
+    double cpi_curr = curr_sig->CPI;
+    double gbs_curr = curr_sig->GBS;
+    return (1 - above_max_penalty(time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, penalty_th));
 }
