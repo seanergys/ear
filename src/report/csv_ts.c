@@ -38,12 +38,12 @@ state_t report_init()
 	csv_log_file_env = getenv(VAR_OPT_USDB);
 	/* Loop filename is automatically generated */
 	if (csv_log_file_env != NULL){
-		snprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.time",csv_log_file_env,nodename);
+		xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.time",csv_log_file_env,nodename);
 	}else{
-		snprintf(csv_log_file,sizeof(csv_log_file),"ear_app_log.%s.time",nodename);
+		xsnprintf(csv_log_file,sizeof(csv_log_file),"ear_app_log.%s.time",nodename);
 	}
-	snprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
-	strncat(csv_log_file,".csv",sizeof(csv_log_file));
+	xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
+	xstrncat(csv_log_file,".csv",sizeof(csv_log_file));
 	my_time = timestamp_getconvert(TIME_SECS);
 	return EAR_SUCCESS;
 }

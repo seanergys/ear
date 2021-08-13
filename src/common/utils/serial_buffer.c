@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <common/output/debug.h>
+#include <common/utils/string.h>
 #include <common/utils/serial_buffer.h>
 
 #define psize_alloc(b) ((size_t *) &b->data[0]);
@@ -63,6 +64,10 @@ static void serial_debug(wide_buffer_t *b, char *from)
 			b->data[j+7], b->data[j+6], b->data[j+5], b->data[j+4],
 			b->data[j+3], b->data[j+2], b->data[j+1], b->data[j+0]);
 	}
+
+	unused(size_alloc);
+	unused(size_data);
+	unused(elem_next);
 }
 
 static void serial_init(wide_buffer_t *b, size_t size)
@@ -182,6 +187,8 @@ void serial_add_elem(wide_buffer_t *b, char *data, size_t size)
 	*size_taken += size;
 	
 	serial_debug(b, "serial_add_elem");
+	// Removing unused
+	unused(size_alloc);
 }
 
 char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size)
@@ -216,6 +223,8 @@ char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size)
 	*elem_next += *size_elem;
 	
 	serial_debug(b, "serial_copy_elem");
+	// Removing unused
+	unused(size_alloc);
 
 	return p;
 }

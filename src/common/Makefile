@@ -34,12 +34,13 @@ clean: clean.components comm.gclean rclean;
 ######## SUBFOLDERS
 
 %.components:
-	@ $(MAKE) -C 'types'    	$* || exit
-	@ $(MAKE) -C 'system'   	$* || exit
-	@ $(MAKE) -C 'hardware' 	$* || exit
-	@ $(MAKE) -C 'database' 	$* || exit
-	@ $(MAKE) -C 'messaging' 	$* || exit
 	@ $(MAKE) -C 'config'		$* || exit
+	@ $(MAKE) -C 'database' 	$* || exit
+	@ $(MAKE) -C 'hardware' 	$* || exit
+	@ $(MAKE) -C 'messaging' 	$* || exit
+	@ $(MAKE) -C 'system'   	$* || exit
+	@ $(MAKE) -C 'types'    	$* || exit
+	@ $(MAKE) -C 'utils'		$* || exit
 
 ######## DEPENDENCIES
 

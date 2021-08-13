@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <common/config.h>
+#include <common/utils/string.h>
 #include <library/loader/loader.h>
 #include <library/loader/module_openmp.h>
 #include <library/loader/module_common.h>
@@ -40,7 +41,7 @@ static int module_openmp_is()
 }
 
 
-static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_so)
+static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_so, size_t path_so_size)
 {
 	void *libear;
 
@@ -51,9 +52,9 @@ static int module_constructor_dlsym(char *path_lib_so,char *libhack,char *path_s
   }
 
   if (libhack == NULL){
-    sprintf(path_so, "%s/%s.%s", path_lib_so, REL_NAME_LIBR, OPENMP_EXT);
+    xsnprintf(path_so, path_so_size, "%s/%s.%s", path_lib_so, REL_NAME_LIBR, OPENMP_EXT);
   }else{
-    sprintf(path_so, "%s", libhack);
+    xsnprintf(path_so, path_so_size, "%s", libhack);
   }
   
 
@@ -97,7 +98,7 @@ int module_constructor_openmp(char *path_lib_so,char *libhack)
     return 0;
   }
 
-	if (!module_constructor_dlsym(path_lib_so,libhack,path_so)) {
+	if (!module_constructor_dlsym(path_lib_so,libhack,path_so, sizeof(path_so))) {
 		return 0;
 	}
 	if (atexit(module_destructor_openmp) != 0) {

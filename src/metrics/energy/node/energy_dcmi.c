@@ -457,7 +457,7 @@ state_t energy_init(void **c)
 	ret = opendev((struct ipmi_intf *)*c);
 	if (ret<0){ 
 		pthread_mutex_unlock(&ompi_lock);
-		return_xmsg(EAR_ERROR, "error opening IPMI device (%s)", strerror(errno));
+		return_print(EAR_ERROR, "error opening IPMI device (%s)", strerror(errno));
 	}
 
 	if (dcmi_already_loaded == 0){
