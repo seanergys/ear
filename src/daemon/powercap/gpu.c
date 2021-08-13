@@ -126,6 +126,7 @@ state_t gpu_pc_thread_main(void *p)
     //redistribute power between gpus
     for (i = 0; i < gpu_pc_num_gpus; i++)
     {
+        if (t_freq[i] == 0) t_freq[i] = gpu_freq_list[i][0]; //set the nominal if no GPU freq was specified
         if (gpu_pc_util[i] == 0) continue; //idle nodes need no reallocation
         if (gpu_pc_excess[i] > 0) continue; //nodes with extra power need no reallocation
         for (j = 0; j < gpu_pc_num_gpus; j++) {
