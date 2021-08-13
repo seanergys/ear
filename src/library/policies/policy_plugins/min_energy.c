@@ -16,6 +16,7 @@
  */
 
 // #define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -102,7 +103,6 @@ extern uint use_energy_models;
 
 static ulong min_cpufreq = 0;
 static uint network_use_imc = 1; /* This variable controls the UFS when the application is communication intensive , set to 1 means UFS will not be applied*/
-
 
 #define SELECT_CPUFREQ 		100
 #define SELECT_IMCFREQ 		101
@@ -468,28 +468,37 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
                         local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
             }else{
-                /* If energy models are not available, we just execute a linear search */
-                if (sig_ready[def_pstate] == 0){
-                    *ready = EAR_POLICY_TRY_AGAIN;
-                    *new_freq = def_freq;
+                // If application is compute bound, we don't reduce CPU freq
+                if (cbound){
+                    *new_freq = frequency_pstate_to_freq(def_pstate);
+                    *ready = EAR_POLICY_READY;
+                    debug("Application cbound. Next freq %lu Next state ready %d", *new_freq, *ready);
                 }else{
-                    signature_t *prev_sig;
-                    time_ref = sig_list[def_pstate].time;
-                    cpi_ref = sig_list[def_pstate].CPI;
-                    gbs_ref = sig_list[def_pstate].GBS;
-                    // time_max = time_ref * (1 + base_penalty);
-                    /* This is the normal case */
-                    if (curr_pstate != def_pstate){
-                        prev_pstate = curr_pstate - 1;
-                        prev_sig = &sig_list[prev_pstate];
-                        if (policy_no_models_is_better_min_energy(my_app, prev_sig, time_ref, cpi_ref, gbs_ref, base_penalty)){
-                            policy_no_models_go_next_me(curr_pstate, ready, freqs, c->num_pstates);
-                        }else{
-                            *ready = EAR_POLICY_READY;
-                            *new_freq = frequency_pstate_to_freq(prev_pstate);
-                        }
+                    /* If energy models are not available, we just execute a linear search */
+                    if (sig_ready[def_pstate] == 0){
+                        debug("signature for default pstate %u is not ready", def_pstate);
+                        *new_freq = def_freq;
+                        *ready = EAR_POLICY_TRY_AGAIN;
                     }else{
-                        policy_no_models_go_next_me(curr_pstate, ready, freqs, c->num_pstates);
+                        signature_t *prev_sig;
+                        time_ref = sig_list[def_pstate].time;
+                        cpi_ref = sig_list[def_pstate].CPI;
+                        gbs_ref = sig_list[def_pstate].GBS;
+                        // time_max = time_ref * (1 + base_penalty);
+                        /* This is the normal case */
+                        if (curr_pstate != def_pstate){
+                            prev_pstate = curr_pstate - 1;
+                            prev_sig = &sig_list[prev_pstate];
+                            if (policy_no_models_is_better_min_energy(my_app, prev_sig, time_ref,
+                                        cpi_ref, gbs_ref, base_penalty)){
+                                policy_no_models_go_next_me(curr_pstate, ready, freqs, c->num_pstates);
+                            }else{
+                                *new_freq = frequency_pstate_to_freq(prev_pstate);
+                                *ready = EAR_POLICY_READY;
+                            }
+                        }else{
+                            policy_no_models_go_next_me(curr_pstate, ready, freqs, c->num_pstates);
+                        }
                     }
                 }
             }
@@ -518,7 +527,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         memcpy(cpufreq_signature.sig_ext, se, sizeof(sig_ext_t));
 
         /* IMC freq selection */
-        if (eUFS && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
+        if ((use_energy_models || *ready==EAR_POLICY_READY) &&
+                eUFS && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
 
             /* If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq */
             /* IMC_MAX means the maximum frequency, lower pstate , IMC_MIN means minimum frequency and maximum pstate */
@@ -556,10 +566,11 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz);
         }else{
-            verbose_master(2,"%sNot IMC freq selection%s : eUFS %u MPI bound = %u Network_IMC %u",
-                    COL_RED,COL_CLR,eUFS,earl_phase_classification == APP_MPI_BOUND,network_use_imc);
+            verbose_master(3,"%sNot IMC freq selection%s : using energy models %u eUFS %u MPI bound = %u Network_IMC %u",
+                    COL_RED,COL_CLR, use_energy_models, eUFS,earl_phase_classification == APP_MPI_BOUND,network_use_imc);
             /* If application is network bound, we don't reduce the uncore frequency */
-            if (eUFS && (earl_phase_classification == APP_MPI_BOUND) && network_use_imc){
+            if ((use_energy_models || *ready==EAR_POLICY_READY) &&
+                    eUFS && (earl_phase_classification == APP_MPI_BOUND) && network_use_imc){
                 eUFS = 0;
                 for (sid=0; sid < imc_devices; sid ++) {
                     freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];

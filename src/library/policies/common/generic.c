@@ -47,6 +47,17 @@ uint above_max_penalty(double time_ref, double time_curr, double cpi_ref, double
 }
 
 uint below_perf_min_benefit(double time_ref, double time_curr, double cpi_ref, double cpi_curr,
-        double gbs_ref, double gbs_curr, double penalty_th){
-    return 1;
+        double gbs_ref, double gbs_curr, double freq_ref, double freq_curr, double penalty_th){
+    double freq_gain = metric_ratio(freq_ref, freq_curr, RATIO_INCR);
+    double perf_min_benefit = freq_gain * penalty_th;
+
+    double metric_gain, metric_decr;
+    if (ear_periodic_mode == PERIODIC_MODE_OFF){
+         metric_decr =  metric_ratio(time_ref, time_curr, RATIO_DECR);
+         return (metric_decr < perf_min_benefit);
+    }else{
+        metric_decr = metric_ratio(cpi_ref, cpi_curr, RATIO_DECR);
+        metric_gain = metric_ratio(gbs_ref, gbs_curr, RATIO_INCR);
+        return (metric_gain < perf_min_benefit || metric_decr < perf_min_benefit);
+    }
 }

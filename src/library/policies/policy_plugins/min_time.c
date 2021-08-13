@@ -15,6 +15,8 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+#define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -42,6 +44,7 @@
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
+#include <library/policies/common/generic.h>
 #include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH
@@ -122,7 +125,8 @@ static const uint *gpuf_pol_list_items;
 
 static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok);
 static state_t policy_no_models_go_next_mt(int curr_pstate,int *ready,node_freqs_t *freqs,int min_pstate);
-static int policy_no_models_is_better_min_time(signature_t * curr_sig,signature_t *prev_sig,double min_eff_gain);
+static int policy_no_models_is_better_min_time(signature_t * curr_sig, signature_t *prev_sig, double time_ref,
+        double cpi_ref, double gbs_ref, double freq_ref, double min_eff_gain);
 
 /*  wrap function which calculates intructions, flops and cycles. */
 state_t compute_total_node_metrics();
@@ -452,28 +456,39 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                         }
                     }
                 }
-            }
-            else{
-                ulong prev_pstate;
-                signature_t *prev_sig;
-                /* We must not use models , we will check one by one*/
-                /* If we are not running at default freq, we must check if we must follow */
-                if (sig_ready[def_pstate] == 0){
-                    *ready=EAR_POLICY_TRY_AGAIN;
-                    *new_freq = def_freq;
+            }else{
+                if (cbound){
+                    *new_freq = frequency_pstate_to_freq(min_pstate); 
+                    *ready=EAR_POLICY_READY;
+                    debug("Application cbound. Next freq %lu Next state ready %d", *new_freq, *ready);
                 }else{
-                    /* This is the normal case */
-                    if (curr_freq != def_freq){
-                        prev_pstate = curr_pstate+1;
-                        prev_sig = &sig_list[prev_pstate];
-                        if (policy_no_models_is_better_min_time(sig, prev_sig, min_eff_gain)){
-                            policy_no_models_go_next_mt(curr_pstate, ready, freqs, min_pstate);
-                        }else{
-                            *ready=EAR_POLICY_READY;
-                            *new_freq=frequency_pstate_to_freq(prev_pstate);
-                        }
+                    ulong prev_pstate;
+                    signature_t *prev_sig;
+                    /* We must not use models , we will check one by one*/
+                    /* If we are not running at default freq, we must check if we must follow */
+                    if (sig_ready[def_pstate] == 0){
+                        debug("signature for default pstate %lu is not ready", def_pstate);
+                        *new_freq = def_freq;
+                        *ready=EAR_POLICY_TRY_AGAIN;
                     }else{
-                        policy_no_models_go_next_mt(curr_pstate, ready, freqs, min_pstate);
+                        /* This is the normal case */
+                        if (curr_freq != def_freq){
+                            double time_ref = sig_list[def_pstate].time;
+                            double cpi_ref = sig_list[def_pstate].CPI;
+                            double gbs_ref = sig_list[def_pstate].GBS;
+                            double freq_ref = sig_list[def_pstate].def_f;
+                            prev_pstate = curr_pstate+1;
+                            prev_sig = &sig_list[prev_pstate];
+                            if (policy_no_models_is_better_min_time(sig, prev_sig, time_ref, cpi_ref,
+                                        gbs_ref, freq_ref, min_eff_gain)){
+                                policy_no_models_go_next_mt(curr_pstate, ready, freqs, min_pstate);
+                            }else{
+                                *new_freq=frequency_pstate_to_freq(prev_pstate);
+                                *ready=EAR_POLICY_READY;
+                            }
+                        }else{
+                            policy_no_models_go_next_mt(curr_pstate, ready, freqs, min_pstate);
+                        }
                     }
                 }
             }
@@ -502,7 +517,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
 
         /*  IMC freq selection */
         uint app_mpi_bound = earl_phase_classification == APP_MPI_BOUND;
-        if (eUFS && !(app_mpi_bound && network_use_imc)){
+        if ((use_energy_models || *ready==EAR_POLICY_READY) && eUFS && !(app_mpi_bound && network_use_imc)){
 
             /*  If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
@@ -550,15 +565,15 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 }
             }
             sid = 0;
-            verbose_master(2, "%sIMC freq selection%s %llu-%llu", COL_GRE, COL_CLR,
+            debug("%sIMC freq selection%s %llu-%llu", COL_GRE, COL_CLR,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz);
         }
         else{
-            verbose_master(2, "%sNot IMC freq selection%s : eUFS %u MPI_BOUND = %u Network_IMC %u",
-                    COL_RED, COL_CLR, eUFS, app_mpi_bound, network_use_imc);
+            verbose_master(3, "%sNot IMC freq selection%s : using energy models %u eUFS %u MPI_BOUND = %u Network_IMC %u",
+                    COL_RED, COL_CLR, use_energy_models, eUFS, app_mpi_bound, network_use_imc);
             /* If application is network bound, we don't reduce the uncore frequency */
-            if (eUFS && app_mpi_bound && network_use_imc){
+            if ((use_energy_models || *ready==EAR_POLICY_READY) && eUFS && app_mpi_bound && network_use_imc){
                 eUFS = 0;
                 for (sid=0; sid < imc_devices; sid++){
                     freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
@@ -581,7 +596,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 min_time_state = SELECT_CPUFREQ;
             }else{
                 if (use_energy_models || *ready == EAR_POLICY_READY){
-										/* If we are ready, we switch to IMC selection */
+                    /* If we are ready, we switch to IMC selection */
                     uint i = 0;
                     while ((i < num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
                     if (i < num_processes || cbound){
@@ -590,6 +605,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                         ref_imc_pstate = curr_imc_pstate;
                         min_time_state = SELECT_IMCFREQ;
                     }
+                    *ready = EAR_POLICY_TRY_AGAIN;
                 }else{
                     min_time_state = SELECT_CPUFREQ;
                 }
@@ -742,7 +758,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
         double mean, sd, mag;
         mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
 
-        debug(2,"%sNode load unbalance%s: LB_TH %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
+        debug("%sNode load unbalance%s: LB_TH %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 
         /*  Check whether application has changed from unbalanced to balanced and viceversa */
@@ -988,8 +1004,18 @@ static state_t policy_no_models_go_next_mt(int curr_pstate,int *ready,node_freqs
     return EAR_SUCCESS;
 }
 
-static int policy_no_models_is_better_min_time(signature_t * curr_sig,signature_t *prev_sig,double min_eff_gain)
+static int policy_no_models_is_better_min_time(signature_t * curr_sig, signature_t *prev_sig, double time_ref,
+        double cpi_ref, double gbs_ref, double freq_ref, double min_eff_gain)
 {
+    double time_curr = curr_sig->time;
+    double cpi_curr = curr_sig->CPI;
+    double gbs_curr = curr_sig->GBS;
+    double freq_curr = (double)curr_sig->def_f;
+    debug("MIN TIME no models freq_curr %lf", freq_curr);
+
+    return (1 - below_perf_min_benefit(time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref,
+                gbs_curr, freq_ref, freq_curr, min_eff_gain));
+#if 0
     double freq_gain,perf_gain;
     int curr_freq,prev_freq;
 
@@ -999,4 +1025,5 @@ static int policy_no_models_is_better_min_time(signature_t * curr_sig,signature_
     perf_gain=(prev_sig->time-curr_sig->time)/prev_sig->time;
     if (perf_gain>=freq_gain) return 1;
     return 0;
+#endif
 }

@@ -19,5 +19,5 @@ uint above_max_penalty(double time_ref, double time_curr, double cpi_ref, double
 /* This functions returns whether either time (when using DynAIS) or CPI or GBS (Periodic Mode) improve below
  * some threshold than the frecuency gain. */
 uint below_perf_min_benefit(double time_ref, double time_curr, double cpi_ref, double cpi_curr,
-        double gbs_ref, double gbs_curr, double penalty_th);
+        double gbs_ref, double gbs_curr, double freq_ref, double freq_curr, double penalty_th);
 #endif

@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -71,6 +71,8 @@ uint must_increase_imc(imc_data_t *my_imc_data, uint cpu_pstate, uint imc_pstate
     double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
     double gbs_curr = sig->GBS;
 
+    debug("TIME ref %lf curr %lf CPI ref %lf curr %lf GBS ref %lf curr %lf PENALTY_TH %lf",
+            time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, penalty);
     return above_max_penalty(time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, penalty);
 #if 0
     double metric,metric_ref,metric2;
@@ -116,7 +118,32 @@ uint must_increase_imc(imc_data_t *my_imc_data, uint cpu_pstate, uint imc_pstate
 }
 
 uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstate,
-        uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain) {
+        uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain)
+{
+    double time_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
+    double time_curr = sig->time;
+
+    double cpi_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
+    double cpi_curr = sig->CPI;
+
+    double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+    double gbs_curr = sig->GBS;
+
+    ulong ref_imc_freq;
+    if (state_fail(pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq))){
+        verbose_master(2, "%sIMC pstates invalid %d%s", COL_RED, ref_imc_pstate, COL_CLR);
+        return 1;
+    }
+    double freq_ref = (double)ref_imc_freq;
+    pstate_t ps;
+    avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
+    double freq_curr = (double)imc_pstates[ps.idx].khz;
+
+    debug("TIME ref %lf curr %lf CPI ref %lf curr %lf GBS ref %lf curr %lf IMC FREQ ref %lf curr %lf EFF_GAIN_TH %lf", 
+            time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, freq_ref, freq_curr, min_eff_gain);
+    return below_perf_min_benefit(time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref,
+            gbs_curr, freq_ref, freq_curr, min_eff_gain);
+#if 0
     double metric,metric_ref,metric2;
     double CPI;
     double metric_gain, metric_gain_2;
@@ -159,7 +186,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
                 metric, metric2, metric_ref,CPI, metric_gain, metric_gain_2, imc_gain);
         return ((metric_gain < perf_min_benefit) || (metric_gain_2 < perf_min_benefit));
     }
-    return 1;
+#endif
 }
 
 void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstate,signature_t *s)
