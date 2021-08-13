@@ -1,3 +1,11 @@
+### EAR4.0
+- AMD virtual p-states support and DF frequency management included
+- AMD optimization based on min_energy and min_time
+- GPU optimization in low GPU utilization phases
+- Application phases IO/MPI/Computation detection included
+- Node powercap and cluster powercap implemented: Intel CPU and NVIDIA GPUS tested. Meta EAR-GM not released
+- IO, Percentage of MPI and Uncore frequency reported to DB and included in eacct
+- econtrol extensions for EAR health-check
 ### EAR3.4
 - AMD monitoring support
 - TAGS support included in policies
