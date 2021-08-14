@@ -36,7 +36,7 @@
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
 #include <library/metrics/signature_ext.h>
-#include <library/policies/mpi_stats_support.h> /* Should we move this file out out policies? */
+#include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/flops/flops.h>

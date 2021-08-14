@@ -45,16 +45,12 @@ extern const pstate_t *imc_pstates;
 #define IMC_VAL imc_devices
 
 /*  These values selects which metric the policy will use to take control of IMC.
- *  Only one of the four must be assigned a 1, the others must be assigned a 0. */
+ *  Only one of the four must be assigned a 1, the others must be assigned a 0.
+ *  -- NOT USED -- */
 #define USE_FLOPS 0
 #define USE_GBS 0
 #define USE_CPI	0
 #define USE_GBS_CPI 1
-
-/*  Returns the gain of metric_curr with respect to metric_ref.
- *  'type' parameter determines whether the gain must be treated as
- *  an increment (1) or decrement (0) of the metric. */
-double metric_diff(double metric_ref, double metric_curr, uint type);
 
 /*  Stores relevant data from signature to take care of IMC control. */
 void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint imc_pstate,signature_t *s);
@@ -78,7 +74,5 @@ uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
 
 
 uint select_imc_pstate(int num_pstates,float p);
-
-
 
 #endif

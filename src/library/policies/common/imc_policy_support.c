@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -31,20 +31,14 @@
 #include <management/cpufreq/frequency.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/policies/imc_policy_support.h>
+#include <library/policies/common/imc_policy_support.h>
+#include <library/policies/common/generic.h>
 
 extern volatile uint ear_periodic_mode;
 extern ulong def_imc_max_khz;
+
 #define IMC_STEP 100000
 
-double metric_diff(double metric_ref, double metric_curr, uint type) {
-    if (type) {
-        return (metric_curr - metric_ref) / metric_ref;
-    }
-    else {
-        return (metric_ref - metric_curr) / metric_ref;
-    }
-}
 #define DIFF_SIG 0.15
 uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig)
@@ -65,34 +59,46 @@ uint must_start(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
     else return 0;
 }
 
-uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
+uint must_increase_imc(imc_data_t *my_imc_data, uint cpu_pstate, uint imc_pstate,
         uint ref_cpu_pstate, uint ref_imc_pstate, signature_t *sig, double penalty)
 {
-    double metric,metric_ref,metric2; // ,metric2_min,metric2_ref;
+    double time_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
+    double time_curr = sig->time;
+
+    double cpi_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
+    double cpi_curr = sig->CPI;
+
+    double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+    double gbs_curr = sig->GBS;
+
+    debug("TIME ref %lf curr %lf CPI ref %lf curr %lf GBS ref %lf curr %lf PENALTY_TH %lf",
+            time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, penalty);
+    return above_max_penalty(time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, penalty);
+#if 0
+    double metric,metric_ref,metric2;
     double CPI;
     double metric_max,metric_min;
-		#if SHOW_DEBUGS
+#if SHOW_DEBUGS
     double metric_var, power_var;
-		#endif
+#endif
     uint ref_pstate;
 
     ref_pstate = ref_cpu_pstate;
     debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u",ref_pstate,ref_imc_pstate);
 
-    // - sig->DC_power)/my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
-
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
+        // TODO: Should we check for an energy consumption increase before time check as
+        // we do in policy_no_models_is_better_min_energy ?
         metric_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
         metric_max = metric_ref * (1 + penalty);
         metric = sig->time;
-        // metric_var = (metric-metric_ref)/metric_ref;
-				#if SHOW_DEBUGS
-    		double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
-    		power_var = metric_diff(power_ref, sig->DC_power, 0); // (my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power
-        metric_var = metric_diff(metric_ref, metric, 1);
+#if SHOW_DEBUGS
+        double power_ref = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].power;
+        power_var = metric_ratio(power_ref, sig->DC_power, RATIO_DECR);
+        metric_var = metric_ratio(metric_ref, metric, RATIO_INCR);
         debug("Using time as reference : Current %.3lf Ref %3.lf  Max %.3lf energy_saving %.2lf (%.2lf - %.2lf)",
                 metric,metric_ref,metric_max,(power_var-metric_var)*100,power_var,metric_var);
-				#endif
+#endif
         return (metric > metric_max);
     }else{
         /* We were using ref_pstate = min_pstate */
@@ -102,16 +108,42 @@ uint must_increase_imc(imc_data_t *my_imc_data,uint cpu_pstate, uint imc_pstate,
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
         metric_max  = CPI + CPI*penalty;
-				#if SHOW_DEBUGS
+#if SHOW_DEBUGS
         debug("Using GBS&CPI as reference : Current (%.2lf,%.2lf) Ref (%.2lf,%.2lf) Limits (%.2lf,%.2lf)",
                 metric,metric2,metric_ref,CPI,metric_min,metric_max);
-				#endif
+#endif
         return ((metric < metric_min) || (metric2>metric_max));
     }
+#endif
 }
 
 uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstate,
-        uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain) {
+        uint ref_cpu_pstate,uint ref_imc_pstate,signature_t *sig, double min_eff_gain)
+{
+    double time_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
+    double time_curr = sig->time;
+
+    double cpi_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
+    double cpi_curr = sig->CPI;
+
+    double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
+    double gbs_curr = sig->GBS;
+
+    ulong ref_imc_freq;
+    if (state_fail(pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq))){
+        verbose_master(2, "%sIMC pstates invalid %d%s", COL_RED, ref_imc_pstate, COL_CLR);
+        return 1;
+    }
+    double freq_ref = (double)ref_imc_freq;
+    pstate_t ps;
+    avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
+    double freq_curr = (double)imc_pstates[ps.idx].khz;
+
+    debug("TIME ref %lf curr %lf CPI ref %lf curr %lf GBS ref %lf curr %lf IMC FREQ ref %lf curr %lf EFF_GAIN_TH %lf", 
+            time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref, gbs_curr, freq_ref, freq_curr, min_eff_gain);
+    return below_perf_min_benefit(time_ref, time_curr, cpi_ref, cpi_curr, gbs_ref,
+            gbs_curr, freq_ref, freq_curr, min_eff_gain);
+#if 0
     double metric,metric_ref,metric2;
     double CPI;
     double metric_gain, metric_gain_2;
@@ -121,24 +153,24 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     pstate_t ps;
 
     ref_pstate = ref_cpu_pstate;
-    debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u", cpu_pstate, my_imc_pstate, ref_pstate, ref_imc_pstate);
+    debug("Validating IMC freq selection: cpu_pstate %u imc_pstate %u refs %u %u",
+            cpu_pstate, my_imc_pstate, ref_pstate, ref_imc_pstate);
 
 
     // We get the normalized imc frequency that corresponds with the avg imc freq
     avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
     ulong curr_imc_freq = imc_pstates[ps.idx].khz;
-
     if (pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
-        verbose_master(2,"IMC pstates invalid %d",ref_imc_pstate);
+        debug("IMC pstates invalid %d",ref_imc_pstate);
     }
     debug("Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);
-    imc_gain = metric_diff((double)ref_imc_freq, (double)curr_imc_freq, 1);
+    imc_gain = metric_ratio((double)ref_imc_freq, (double)curr_imc_freq, RATIO_INCR);
     double perf_min_benefit = imc_gain * min_eff_gain;
 
     if (ear_periodic_mode == PERIODIC_MODE_OFF){
         metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].time;
         metric      = sig->time;
-        metric_gain = metric_diff(metric_ref, metric, 0);
+        metric_gain = metric_ratio(metric_ref, metric, RATIO_DECR);
         debug("Using time as reference: Current %.3lf Ref %3.lf Gain %.3lf IMC gain: %.3lf",
                 metric, metric_ref, metric_gain, imc_gain);
         return (metric_gain < perf_min_benefit);
@@ -146,14 +178,15 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
         /* We were using ref_pstate = min_pstate */
         metric_ref  = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
         metric      = sig->GBS;
-        metric_gain = metric_diff(metric_ref, metric, 1);
+        metric_gain = metric_ratio(metric_ref, metric, RATIO_INCR);
         CPI         = my_imc_data[ref_pstate*NUM_UNC_FREQ+ref_imc_pstate].CPI;
         metric2     = sig->CPI;
-        metric_gain_2 = metric_diff(CPI, metric2, 0);
+        metric_gain_2 = metric_ratio(CPI, metric2, RATIO_DECR);
         debug("Using GBS&CPI as reference: Current (%.4lf,%.4lf) Ref (%.4lf,%.4lf) Gain (%.4lf, %.4lf) IMC gain: %.3lf",
                 metric, metric2, metric_ref,CPI, metric_gain, metric_gain_2, imc_gain);
         return ((metric_gain < perf_min_benefit) || (metric_gain_2 < perf_min_benefit));
     }
+#endif
 }
 
 void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstate,signature_t *s)

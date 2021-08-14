@@ -497,8 +497,8 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Setting master name
-	if (server_iam) sprintf(master_name, "%s-s", master_nick);
-	else            sprintf(master_name, "%s-m", master_nick);
+	if (server_iam) { xsprintf(master_name, "%s-s", master_nick); }
+	else            { xsprintf(master_name, "%s-m", master_nick); }
 
 	// Types allocation counting
 	for (i = 0; i < EARDBD_TYPES; ++i) {

@@ -32,7 +32,7 @@
 #include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>

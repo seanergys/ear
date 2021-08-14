@@ -504,8 +504,11 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 		peraggr_t *p = (peraggr_t *) type_chunk[index_aggrs];
 		peraggr_t *q = (peraggr_t *) &p[samples_index[index_aggrs]];
 		periodic_metric_t *met = (periodic_metric_t *) content;
+		// Getting current time
+		//ullong current_time = timestamp_getconvert(TIME_SECS);
+		ullong current_time = (ullong) time(NULL);
 		// Add sample to the aggregation
-		add_periodic_aggregation(q, met->DC_energy, met->start_time, met->end_time);
+		add_periodic_aggregation(q, met->DC_energy, current_time, current_time);
 		// Add sample to the energy array
 		storage_sample_add(type_chunk[index], type_alloc_len[index],
 			&samples_index[index], content, type_sizeof[index], EDB_SYNC_TYPE_ENERGY);

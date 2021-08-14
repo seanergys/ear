@@ -43,7 +43,7 @@
 #include <library/metrics/metrics.h>
 #include <library/policies/policy.h>
 #include <library/policies/policy_state.h>
-#include <library/policies/cpu_support.h>
+#include <library/policies/common/cpu_support.h>
 #include <library/states/states_comm.h>
 
 #include <management/cpufreq/frequency.h>

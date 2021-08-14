@@ -77,7 +77,7 @@
 #include <library/api/mpi.h>
 #endif
 #include <library/api/mpi_support.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 
 extern const char *__progname;
 static uint ear_lib_initialized=0;
@@ -195,8 +195,9 @@ void notify_eard_connection(int status)
 {
 	char *buffer_send;
 	char *buffer_recv;
+	#if MPI
 	int i;
-
+	#endif
 	if (masters_comm_created){
 	buffer_send = calloc(    1, sizeof(char));
 	buffer_recv = calloc(masters_info.my_master_size, sizeof(char));
@@ -262,7 +263,7 @@ void create_shared_regions()
 
 	/* This section allocates shared memory for processes in same node */
 	debug("%s:Master creating shared regions for node synchro",node_name);
-  snprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
+  xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory %s",block_file);
   }
@@ -394,7 +395,7 @@ void attach_shared_regions()
 	char *tmp = get_ear_tmp();
 	/* This function is executed by processes different than masters */
 	/* they first join the Node shared memory */
-	snprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
+	xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
 	if ((bfd = file_lock_create(block_file))<0){
 		error("Creating lock file for shared memory");
 	}
@@ -474,7 +475,9 @@ int sched_num_nodes()
 void attach_to_master_set(int master)
 {
 	int color;
+	#if MPI
 	int flag = 1;
+	#endif
 	//my_master_rank=0;
 	color=0;
 	#if MPI

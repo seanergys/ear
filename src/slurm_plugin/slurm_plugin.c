@@ -204,7 +204,7 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
 		for (i = 0; i < cpus_count; ++i) {
 			cpu_set = CPU_ISSET(i, &mask);
 			strcpy(buffer2, buffer1);
-			sprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
+			xsprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
 		}
 		plug_verbose(sp, 2, "%s", buffer1);
 	}
