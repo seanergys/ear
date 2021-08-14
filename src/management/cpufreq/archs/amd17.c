@@ -202,7 +202,7 @@ static state_t pstate_build_psss_single(ullong freq_mhz, ullong *cof, ullong *fi
 	return EAR_SUCCESS;
 }
 
-static state_t set_frequency_p1(amd17_ctx_t *f, uint cpu, uint pst, uint test);
+static state_t set_frequency_p1(amd17_ctx_t *f, uint cpu, uint pst, uint test, uint set_driver);
 
 static int pstate_clean_psss(amd17_ctx_t *f, uint i)
 {
@@ -214,7 +214,7 @@ static int pstate_clean_psss(amd17_ctx_t *f, uint i)
 	//
 	how_many = pstate_clean_psss(f, i+1);
 	// If we are OK then return
-	if (state_ok(set_frequency_p1(f, 0, i, 1))) {
+	if (state_ok(set_frequency_p1(f, 0, i, 1, 0))) {
 		return how_many+1;
 	}
 	// We are not OK
@@ -629,7 +629,7 @@ state_t cpufreq_amd17_get_index(ctx_t *c, ullong freq_khz, uint *pstate_index, u
 
 /** Setters */
 // Sets the current P_STATE to MSR P1 adding new frequency.
-static state_t set_frequency_p1(amd17_ctx_t *f, uint cpu, uint pst, uint test)
+static state_t set_frequency_p1(amd17_ctx_t *f, uint cpu, uint pst, uint test, uint set_driver)
 {
 	ullong aux;
 	ullong reg;
@@ -646,6 +646,12 @@ static state_t set_frequency_p1(amd17_ctx_t *f, uint cpu, uint pst, uint test)
 	// Writing its value in MSR
 	if (xtate_fail(s, msr_write(cpu, &reg, sizeof(ullong), REG_P1))) {
 		return s;
+	}
+	// Calling the driver to set P1 in all CPUs
+	if (set_driver) {
+		if (xtate_fail(s, f->driver->set_current(&f->driver_c, 1, all_cpus))) {
+			return s;
+		}
 	}
 
 	debug("edited CPU%d P1 MSR to (%llum * 200 / %llud) = %llu MHz",
@@ -707,7 +713,7 @@ state_t cpufreq_amd17_set_current_list(ctx_t *c, uint *pstate_index)
 				s2 = s1;
 			}
 		// Else
-		} else if (xtate_fail(s1, set_frequency_p1(f, cpu, pstate_index[cpu], 0))) {
+		} else if (xtate_fail(s1, set_frequency_p1(f, cpu, pstate_index[cpu], 0, 1))) {
 			s2 = s1;
 		}
 	}
@@ -741,20 +747,22 @@ state_t cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int _cpu)
 			return set_frequency_p0(f, (uint) tp.cpus[_cpu].sibling_id);
 		// Else
 		} else {
-			if (xtate_fail(s1, set_frequency_p1(f, (uint) _cpu, pstate_index, 0))) {
+			if (xtate_fail(s1, set_frequency_p1(f, (uint) _cpu, pstate_index, 0, 1))) {
 				return s1;
 			}
-			return set_frequency_p1(f, (uint) tp.cpus[_cpu].sibling_id, pstate_index, 0);
+			return set_frequency_p1(f, (uint) tp.cpus[_cpu].sibling_id, pstate_index, 0, 1);
 		}
 	}
 	// Step 2 (all CPUs to P0)
 	if (pstate_index == 0 && f->pss_nominal) {
+		#if 0
 		// Recovering all P1s to its original state
 		for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 			if (xtate_fail(s1, msr_write(cpu, &f->regs[1], sizeof(ullong), REG_P1))) {
 				s2 = s1;
 			}
 		}
+		#endif
 		// Calling the driver to set P0 in all CPUs
 		if (xtate_fail(s1, f->driver->set_current(&f->driver_c, 0, all_cpus))) {
 			return s1;
@@ -763,13 +771,9 @@ state_t cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int _cpu)
 	}
 	// Step 2 (all CPUs to P1)
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (xtate_fail(s1, set_frequency_p1(f, cpu, pstate_index, 0))) {
+		if (xtate_fail(s1, set_frequency_p1(f, cpu, pstate_index, 0, 1))) {
 			s2 = s1;
 		}
-	}
-	// Calling the driver to set P1 in all CPUs
-	if (xtate_fail(s1, f->driver->set_current(&f->driver_c, 1, all_cpus))) {
-		return s1;
 	}
 	return s2;
 }
