@@ -69,6 +69,7 @@ static pci_t     *pcis;
 static state_t unlock_msg(state_t s, char *msg)
 {
 	pthread_mutex_unlock(&lock);
+	debug("unloking with message %s", msg);
 	return_msg(s, msg);
 }
 
@@ -131,13 +132,13 @@ static state_t smn_read(pci_t *pci, mailopt_t *opt, uint *data)
 		debug("pci_write returned: %s (%d)", state_msg, s);
 		return s;
 	}
-	debug("PCI%d: Readed %u (%lu) from %s (%x)", pci->fd, *data, opt->size, opt->name, opt->address);
+	debug("PCI%d: readed %u (%lu) from %s (%x)", pci->fd, *data, opt->size, opt->name, opt->address);
 	return EAR_SUCCESS;
 }
 
 state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
 {
-	struct timespec one_ms = { 0, 1000 * 1000 };
+	struct timespec one_ms = { 0, 1000 * 1000};
 	mailopt_t arg;
 	uint response;
 	uint timeout;

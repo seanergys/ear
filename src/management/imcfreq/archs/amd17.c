@@ -28,6 +28,7 @@ static uint pstate_count;
 
 state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 {
+	struct timespec ten_ms = { 0, 1000 * 1000 * 10};
 	state_t s;
 	int i, j;
 
@@ -44,8 +45,15 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 		args[0] = i;
 		// Function APBDisable (0x0d).
 		// Function ReadCurrentFclkMemclk (0x0f).
-		hsmp_send(0, 0x0d, &args[0], &reps[2]);
-		hsmp_send(0, 0x0f, &args[1], &reps[0]);
+		if (state_fail(s = hsmp_send(0, 0x0d, &args[0], &reps[2]))) {
+			debug("error while sending HSMP: %s", state_msg);
+		}
+		// Waiting 10 miliseconds to change the frequency
+		nanosleep(&ten_ms, NULL);
+		//
+		if (state_fail(s = hsmp_send(0, 0x0f, &args[1], &reps[0]))) {
+			debug("error while sending HSMP: %s", state_msg);
+		}
 		// Try again until the answer is different
 		if (j >= 10000) {
 			// Out of intents
