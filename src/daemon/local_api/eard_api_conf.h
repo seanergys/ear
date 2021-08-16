@@ -115,6 +115,16 @@ int eards_write(int fd,char *buff,int size);
 #define UNC_INIT_DATA           24
 #define UNC_GET_LIMITS_MIN      25
 #define UNC_SET_LIMITS_MIN      26
+
+
+// Services related with uncore counters for memory bandwith computation
+#define START_UNCORE      100
+#define RESET_UNCORE      101
+#define READ_UNCORE       102
+#define DATA_SIZE_UNCORE    103
+#define CONNECT_UNCORE      104
+#define STOP_UNCORE       105
+//
 //
 #define END_COMM                1000
 //

@@ -16,7 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
-#define INFO_METRICS 2
+#define INFO_METRICS 0
 #define IO_VERB 3
 
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -173,16 +173,19 @@ static void metrics_global_start()
 	if (masters_info.my_master_rank>=0)
 	{
 		/* Avg CPU freq */
+		debug("eards_cpufreq_read");
 		if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[APP],mycpufreq_data_size))){
 			error("CPUFreq data read in global_start");
 		}
 		/* Reads IMC data */
 		if (imc_mgt_compatible){
+		debug("imcfreq_read");
 		if (xtate_fail(s, imcfreq_read(&imc_ctx, imc_init[APP]))){
 			error("IMCFreq data read in global_start");
 		}
 		}
 		/* Energy */
+		debug("eards_node_dc_energy");
 		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
 		if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
 			error("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
@@ -843,6 +846,8 @@ int metrics_init(topology_t *topo)
 		rapl_size=sizeof(unsigned long long);
 		bandwith_size=sizeof(long long);
 	}
+
+	verbose_master(1,"RAPL size %lu Uncore size %lu",rapl_size,bandwith_size);
 	rapl_elements = rapl_size / sizeof(unsigned long long);
 	bandwith_elements = bandwith_size / sizeof(long long);
 
@@ -944,7 +949,7 @@ int metrics_init(topology_t *topo)
   if (xtate_fail(s, imcfreq_data_alloc(&imc_end[LOO], &imc_freq_end[LOO]) )){
     error("IMC data alloc failed");
   }
-	verbose_master(INFO_METRICS,"IMC metrics initialized");
+	verbose_master(INFO_METRICS,"IMC metrics initialized ");
 
 	/* IMC management */
 	if(state_fail(s = mgt_imcfreq_load(topo, EARD))) {

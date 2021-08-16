@@ -779,7 +779,7 @@ state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
     if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
        "while asking for average cpufreq metrics")){ state_return_msg(EAR_ERROR,errno,"Asking for cpufreq metrics");}
 
-    if (warning_api(my_read(ear_fd_ack, (char *)(ef), size), size,
+    if (warning_api(my_read(ear_fd_ack, (char *)(ef->context), size), size,
       "receiving cpufreq metrics from EARD")){ state_return_msg(EAR_ERROR,errno,"Receiving cpufreq");}
   }
   return EAR_SUCCESS;
@@ -1074,8 +1074,6 @@ ulong eards_node_energy_frequency()
     return ack;
 
 }
-
-
 
 
 #if 0
@@ -1558,22 +1556,22 @@ state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count)
 }
 
 // END FREQUENCY SERVICES
+#endif
 //////////////// UNCORE REQUESTS
 ulong eards_get_data_size_uncore()
 {
-    int com_fd = uncore_req;
 	struct daemon_req req;
 	ulong ack = EAR_SUCCESS;
 	if (!app_connected) return sizeof(ulong);
 
 	debug( "asking for uncore data size ");
-    req.req_service=DATA_SIZE_UNCORE;
+  req.req_service=DATA_SIZE_UNCORE;
 	req.sec=create_sec_tag();
 
-	if (ear_fd_req[com_fd] >= 0) {
-		if (warning_api(my_write(ear_fd_req[com_fd],(char *)&req, sizeof(req)) , sizeof(req),
+	if (ear_fd_req >= 0) {
+		if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)) , sizeof(req),
 			 "ERROR writing request for uncore data size ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[com_fd],(char *)&ack, sizeof(ulong)) , sizeof(ulong),
+		if (warning_api(my_read(ear_fd_ack,(char *)&ack, sizeof(ulong)) , sizeof(ulong),
 			 "ERROR reading ack for uncore data size ")) return EAR_ERROR;
 	} else {
 		debug( "ear_daemon_client_get_data_size_uncore service not provided");
@@ -1586,19 +1584,19 @@ ulong eards_get_data_size_uncore()
 
 int eards_reset_uncore()
 {
-   	struct daemon_req req;
 	ulong ack = EAR_SUCCESS;
+  struct daemon_req req;
 	if (!app_connected) return EAR_SUCCESS;
 
 	req.req_service = RESET_UNCORE;
 	req.sec=create_sec_tag();
 	debug( "reset uncore");
 
-	if (ear_fd_req[uncore_req] >= 0)
+	if (ear_fd_req >= 0)
 	{
-		if (warning_api(my_write(ear_fd_req[uncore_req],(char *)&req,sizeof(req)), sizeof(req),
+		if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)), sizeof(req),
 			 "ERROR writing request for resetting uncores ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[uncore_req],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
+		if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
 			 "ERROR reading ack for resetting uncores ")) return EAR_ERROR;
 		debug( "RESET ACK Uncore counters received from daemon ");
 	    return EAR_SUCCESS;
@@ -1609,18 +1607,18 @@ int eards_reset_uncore()
 
 int eards_start_uncore()
 {
-	struct daemon_req req;
 	ulong ack;
+  struct daemon_req req;
 	if (!app_connected) return EAR_SUCCESS;
   req.req_service=START_UNCORE;
 	req.sec=create_sec_tag();
 	debug( "start uncore");
 
-	if (ear_fd_req[uncore_req]>=0)
+	if (ear_fd_req >= 0)
 	{
-		if (warning_api(my_write(ear_fd_req[uncore_req],(char *)&req, sizeof(req)) , sizeof(req),
+		if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)) , sizeof(req),
 			 "ERROR writing request for starting uncores ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[uncore_req],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
+		if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
 			 "ERROR reading ack for starting uncores ")) return EAR_ERROR;
 		debug( "START ACK Uncore counters received from daemon ");
 		return EAR_SUCCESS;
@@ -1630,8 +1628,8 @@ int eards_start_uncore()
 }
 int eards_stop_uncore(unsigned long long *values)
 {
-    struct daemon_req req;
-    ulong ack;
+  ulong ack;
+  struct daemon_req req;
 
     if (!app_connected){ values[0]=0;return EAR_SUCCESS;}
 
@@ -1639,12 +1637,12 @@ int eards_stop_uncore(unsigned long long *values)
     req.sec=create_sec_tag();
     debug( "stopping uncore counters");
 
-    if (ear_fd_req[uncore_req]>=0)
+    if (ear_fd_req >= 0)
     {
         /* There is not request for uncore...only answer */
-        if (warning_api(my_write(ear_fd_req[uncore_req], (char *)&req, sizeof(req)) , sizeof(req),
+        if (warning_api(my_write(ear_fd_req, (char *)&req, sizeof(req)) , sizeof(req),
             "ERROR writing request for reading uncores ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack[uncore_req],(char *)values,uncore_size) , uncore_size, 
+        if (warning_api(my_read(ear_fd_ack,(char *)values,uncore_size) , uncore_size, 
              "ERROR reading ack for reading uncores ")){ 
             return EAR_ERROR;
         } else {
@@ -1660,8 +1658,8 @@ int eards_stop_uncore(unsigned long long *values)
 
 int eards_read_uncore(unsigned long long *values)
 {
-	struct daemon_req req;
 	ulong ack;
+  struct daemon_req req;
 
 	if (!app_connected){ values[0]=0;return EAR_SUCCESS;}
 
@@ -1669,12 +1667,12 @@ int eards_read_uncore(unsigned long long *values)
 	req.sec=create_sec_tag();
 	debug( "reading uncore counters");
 
-	if (ear_fd_req[uncore_req]>=0)
+	if (ear_fd_req>=0)
 	{
 		/* There is not request for uncore...only answer */
-		if (warning_api(my_write(ear_fd_req[uncore_req], (char *)&req, sizeof(req)) , sizeof(req),
+		if (warning_api(my_write(ear_fd_req, (char *)&req, sizeof(req)) , sizeof(req),
 			"ERROR writing request for reading uncores ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[uncore_req],(char *)values,uncore_size) , uncore_size, 
+		if (warning_api(my_read(ear_fd_ack,(char *)values,uncore_size) , uncore_size, 
 			 "ERROR reading ack for reading uncores ")){ 
 			return EAR_ERROR;
 		} else {
@@ -1687,7 +1685,7 @@ int eards_read_uncore(unsigned long long *values)
 	}
 	return ack;
 }
-
+#if 0
 //////////////// RAPL REQUESTS
 ulong eards_get_data_size_rapl() // size in bytes
 {

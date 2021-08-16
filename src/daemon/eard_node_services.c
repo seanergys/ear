@@ -93,12 +93,13 @@ extern ctx_t imc_eard_ctx;
 extern topology_t node_desc;
 extern   ehandler_t eard_handler_energy,handler_energy;
 extern int fd_rapl[MAX_PACKAGES];
-extern char *ear_tmp;
-extern char *nodename;
+extern char ear_tmp[MAX_PATH_SIZE];
+extern char nodename[MAX_PATH_SIZE];
 extern int eard_must_exit;
 extern cluster_conf_t my_cluster_conf;
 extern my_node_conf_t *my_node_conf;
 extern ulong eard_max_freq;
+extern int num_uncore_counters;
 
 
 #define NUM_PRIVILEGED_SERVICES 11
@@ -583,6 +584,7 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 			write(ear_fd_ack[freq_req], &ack, sizeof(unsigned long));
 			break;
 		case READ_CPUFREQ:
+			debug("READ_CPUFREQ");
 			if (xtate_fail(s, cpufreq_read(&freq_app_req))) {
 				error("when reading CPU global frequency requeste by app (%d, %s)", s, state_msg);
 			}
@@ -596,6 +598,7 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 			write(ear_fd_ack[freq_req], aux, sizeof(uint)*2);
 			break;
 		case UNC_READ:
+			debug("UNC_READ");
 			memset(unc_data, 0, unc_count);
 			if (state_fail(s = imcfreq_read(no_ctx, unc_data))){
 					error("WHen reading unc frequency requested by app (%d, %s)", s, state_msg);
@@ -651,35 +654,28 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 	}
 	return 1;
 }
+#endif
 
 int eard_uncore(eard_head_t *head, int req_fd, int ack_fd) {
 
 	unsigned long ack = EAR_SUCCESS;
 	unsigned long long values[num_uncore_counters];
 
-	if (must_read) {
-		if (read(ear_fd_req[uncore_req], &req, sizeof(req)) != sizeof(req))
-			error("eard error when reading info at eard_uncore \n");
-	}
 
-	switch (req.req_service) {
-		case CONNECT_UNCORE:
-			connect_service(uncore_req, &req.req_data.app);
-			break;
+	switch (head->req_service) {
 		case START_UNCORE:
 			start_uncores();
-			write(ear_fd_ack[uncore_req], &ack, sizeof(ack));
+			write(ack_fd, &ack, sizeof(ack));
 			break;
 		case RESET_UNCORE:
-			printf("RESET_UNCORE in eard\n");
 			reset_uncores();
-			write(ear_fd_ack[uncore_req], &ack, sizeof(ack));
+			write(ack_fd, &ack, sizeof(ack));
 			break;
 		case READ_UNCORE: {
 			unsigned long demon_cas = 0;
 			int i;
 			read_uncores(values);
-			write(ear_fd_ack[uncore_req], values, sizeof(unsigned long long) * num_uncore_counters);
+			write(ack_fd, values, sizeof(unsigned long long) * num_uncore_counters);
 			for (i = 0; i < num_uncore_counters; i++) demon_cas += values[i];
 			break;
 		}
@@ -687,14 +683,15 @@ int eard_uncore(eard_head_t *head, int req_fd, int ack_fd) {
 			unsigned long demon_cas = 0;
 			int i;
 			stop_uncores(values);
-			write(ear_fd_ack[uncore_req], values, sizeof(unsigned long long) * num_uncore_counters);
+			write(ack_fd, values, sizeof(unsigned long long) * num_uncore_counters);
 			for (i = 0; i < num_uncore_counters; i++) demon_cas += values[i];
 			break;
 		}
 
 		case DATA_SIZE_UNCORE:
 			ack = sizeof(unsigned long long) * num_uncore_counters;
-			write(ear_fd_ack[uncore_req], &ack, sizeof(unsigned long));
+			verbose(1,"Uncore size %lu",ack);
+			write(ack_fd, &ack, sizeof(unsigned long));
 			break;
 		default:
 			return 0;
@@ -702,7 +699,7 @@ int eard_uncore(eard_head_t *head, int req_fd, int ack_fd) {
 	}
 	return 1;
 }
-
+#if 0
 
 /*******************+ RAPL SERVICES *******************/
 int eard_rapl(eard_head_t *head, int req_fd, int ack_fd) {
@@ -797,9 +794,18 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
       return 0;
   }
 	#else
-	ack=EAR_ERROR;
-	write(ack_fd,&ack,sizeof(ack));
-	error("GPUS not supported");
+	switch (head->req_service) {
+    case GPU_MODEL:
+		case GPU_DEV_COUNT:
+		case GPU_DATA_READ:
+		case GPU_SET_FREQ:
+		case GPU_GET_INFO:
+			ack=EAR_ERROR;
+			write(ack_fd,&ack,sizeof(ack));
+			error("GPUS not supported");
+			break;
+		default: break;
+		}
 	return 0;
 	#endif
   return 1;
@@ -813,6 +819,7 @@ void clean_global_connector()
 // Creates a pipe to receive requests for applications. eard creates 1 pipe (per node) and service to receive requests
 void create_global_connector(char *ear_tmp, char *nodename) {
   sprintf(ear_commreq_global, "%s/.ear_comm.globalreq", ear_tmp);
+	verbose(1,"Global connector placed at %s",ear_commreq_global);
   // ear_comreq files will be used to send requests from the library to the eard
   if (mknod(ear_commreq_global, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
     if (errno != EEXIST) {
@@ -1710,6 +1717,9 @@ void service_select(int req_fd, int ack_fd)
   if (eard_node_energy(local_req,req_fd,ack_fd)) {
     return;
   }
+	if (eard_uncore(local_req,req_fd,ack_fd)) {
+    return;
+  }
   if (eard_gpu(local_req,req_fd,ack_fd)){
     return;
   }
@@ -1736,9 +1746,11 @@ state_t eard_local_api()
   state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
   state_assert(s, imcfreq_data_alloc(&unc_data, NULL),       _exit(0));
 
+	verbose(1,"CPUfreq and IMC freq data ok for node_services devices %u", unc_count);
+
 	// Energy node metrics
 	energy_datasize(&handler_energy,&node_energy_datasize);
-	debug("EARD main thread: node_energy_datasize %lu",node_energy_datasize);
+	verbose(1,"EARD main thread: node_energy_datasize %lu",node_energy_datasize);
 	node_energy_data=(edata_t)malloc(node_energy_datasize);
   energy_frequency(&handler_energy, &energy_freq);
 	verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
@@ -1747,8 +1759,10 @@ state_t eard_local_api()
   values_rapl=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
   if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
 
+	verbose(1,"RAPL data allocated in node_serices");
+
 	// HW initialized HERE...creating communication channels
-	verbose(VCONF + 1, "Creating comm in %s for node %s", ear_tmp, nodename);
+	verbose(1, "Creating comm in %s for node %s", ear_tmp, nodename);
 
 	#if USE_GPUS
 	/* GPU Initialization for app requests */
@@ -1773,10 +1787,11 @@ state_t eard_local_api()
     error("Error initializing local connections");
     _exit(0);
   }
+	verbose(1,"Creating global connector");
   create_global_connector(ear_tmp, nodename);
   rfds = rfds_basic;
 
-	verbose(VCONF, "Communicator for %s ON", nodename);
+	verbose(1, "Communicator for %s ON", nodename);
 	// we wait until EAR daemon receives a request
 	// We support requests realted to frequency and to uncore counters
 	// rapl support is pending to be supported

@@ -23,7 +23,7 @@
 #include <strings.h>
 #include <string.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/environment.h>
 #include <common/types/log_eard.h>
@@ -1054,7 +1054,6 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	verbose(VCONF, "Communicator for %s ON", nodename);
 
 	verbose(0,"EARD initialized succesfully");
 	/* This function never ends, EARD exits with SIGTERM o SIGINT */

@@ -27,8 +27,8 @@
 #define VCONNECT 2
 #define VMSG    3
 /* Used in eard.c */
-#define VCONF   1
-#define VEARD   2
+#define VCONF   0
+#define VEARD   0
 /* Used in power monitoring */
 #define VNODEPMON   1
 #define VJOBPMON    1
