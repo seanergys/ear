@@ -67,13 +67,15 @@ static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
 static int num_packs;
+state_t s;
+/* Used to compute avg freq for jobs. Must be moved to powermon_app */
+static cpufreq_t freq_job2;
+static cpufreq_t freq_job1;
 
 nm_t my_nm_id;
 nm_data_t nm_init, nm_end, nm_diff, last_nm;
 
 extern topology_t node_desc;
-extern cpufreq_t freq_job2;
-extern cpufreq_t freq_job1;
 
 extern int eard_must_exit;
 extern char ear_tmp[MAX_PATH_SIZE];
@@ -81,7 +83,6 @@ extern my_node_conf_t *my_node_conf;
 extern cluster_conf_t my_cluster_conf;
 extern eard_dyn_conf_t eard_dyn_conf;
 extern policy_conf_t default_policy_context, energy_tag_context, authorized_context;
-extern int ear_ping_fd;
 extern int ear_fd_ack[1];
 extern int application_id;
 extern  loop_t current_loop_data;
@@ -298,28 +299,14 @@ void reset_shared_memory()
 }
 
 void clean_job_environment(int id, int step_id) {
-	char ear_ping[MAX_PATH_SIZE * 2], fd_lock_filename[MAX_PATH_SIZE * 2], ear_commack[MAX_PATH_SIZE * 2];
-	uint pid = create_ID(id, step_id);
+  char fd_lock_filename[MAX_PATH_SIZE * 2];
+  uint pid = create_ID(id, step_id);
 
-	if (ear_ping_fd >= 0) {
-		close(ear_ping_fd);
-		ear_ping_fd = -1;
-	}
-	if (ear_fd_ack[0] >= 0) {
-		close(ear_fd_ack[0]);
-		ear_fd_ack[0] = -1;
-	}
-	application_id = -1;
-	sprintf(ear_ping, "%s/.ear_comm.ping.%u", ear_tmp, pid);
-	sprintf(fd_lock_filename, "%s/.ear_app_lock.%u", ear_tmp, pid);
-	sprintf(ear_commack, "%s/.ear_comm.ack_0.%u", ear_tmp, pid);
-	verbose(VJOBPMON + 1, "Cleanning the environment");
-	verbose(VJOBPMON + 1, "Releasing %s - %s - %s ", ear_ping, fd_lock_filename, ear_commack);
-	unlink(ear_ping);
-	unlink(fd_lock_filename);
-	unlink(ear_commack);
+  sprintf(fd_lock_filename, "%s/.ear_app_lock.%u", ear_tmp, pid);
+  verbose(VJOBPMON + 1, "Cleanning the environment");
+  unlink(fd_lock_filename);
 #if SYSLOG_MSG
-	closelog();
+  closelog();
 #endif
 
 
@@ -1227,10 +1214,13 @@ void *eard_power_monitoring(void *noinfo)
 
 	init_contexts();
 
-	num_packs=detect_packages(NULL);
+	num_packs = node_desc.socket_count;
 	if (num_packs==0){
 		error("Packages cannot be detected");
 	}
+
+	state_assert(s, cpufreq_data_alloc(&freq_job2,    NULL), _exit(0));
+	state_assert(s, cpufreq_data_alloc(&freq_job1,    NULL), _exit(0));
 
 	memset((void *) &default_app, 0, sizeof(powermon_app_t));
 

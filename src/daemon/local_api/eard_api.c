@@ -784,38 +784,65 @@ state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
   }
   return EAR_SUCCESS;
 }
+
+state_t eards_set_turbo()
+{
+		struct daemon_req req;
+	ulong ack;
+
+	if (!app_connected) return EAR_SUCCESS;
+	req.req_service=SET_TURBO;
+	req.sec=create_sec_tag();
+	debug( "Set turbo");
+
+	if (ear_fd_req >= 0)
+	{
+		if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)),sizeof(req),
+			 "ERROR writing request for setting turbo")) return EAR_ERROR;
+		if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)),sizeof(ulong),
+			 "ERROR reading ack for setting turbo ")) return EAR_ERROR;
+		debug("turbo activated");
+		return EAR_SUCCESS;
+	}   
+	debug( "turbo not provided");
+    return EAR_SUCCESS;
+
+}
 /************************************/
 // Uncore frequency management
-state_t eards_imcfreq_data_count(uint *count)
+// Uncore frequency management
+state_t eards_imcfreq_data_count(uint *pack)
 {
-  int i;
-  size_t size;
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = UNC_SIZE;
-  req.sec=create_sec_tag();
-  /* Specific info */
-  *count = 0;
-  size = sizeof(uint);
-  if (ear_fd_req >= 0)
-  {
-    if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for uncore freq size")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq size");}
-
-    if (warning_api(my_read(ear_fd_ack, (char *)count, size), size,
-      "receiving uncore freq size")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq size");}
-  }
-  return EAR_SUCCESS;
+	struct daemon_req req;
+	size_t size;
+	
+	if (!app_connected) {
+		return_msg(EAR_ERROR, Generr.api_uninitialized);
+	}
+	/* Specific info */
+	req.req_service = UNC_SIZE;
+	req.sec=create_sec_tag();
+	size = sizeof(uint) * 2;
+	pack[0] = 0;
+	pack[1] = 0;
+	
+	if (ear_fd_req >= 0) { 
+	    if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
+    	   "while asking for uncore freq size")) { return_msg(EAR_ERROR, "Asking for uncore freq size"); }
+		if (warning_api(my_read(ear_fd_ack, (char *)pack, size), size,
+			"receiving uncore freq size")){ return_msg(EAR_ERROR, "Receiving uncore freq size");}
+	}
+	return EAR_SUCCESS;
 }
+
 state_t eards_imcfreq_read(imcfreq_t *ef,size_t size)
 {
-  int i;
   struct daemon_req req;
   if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
   req.req_service = UNC_READ;
   req.sec=create_sec_tag();
   /* Specific info */
-  debug("eards_imcfreq_read %lu",size);
+	debug("eards_imcfreq_read %lu",size);
   memset(ef,0,size);
   if (ear_fd_req >= 0)
   {
@@ -827,6 +854,49 @@ state_t eards_imcfreq_read(imcfreq_t *ef,size_t size)
   }
   return EAR_SUCCESS;
 }
+
+state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size)
+{
+	struct daemon_req req;
+	req.req_service = service;
+	req.sec         = create_sec_tag();
+  memset(data,0,size);
+	if (ear_fd_req >= 0) {
+		if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req), "while asking for uncore freq limits")) {
+			return_msg(EAR_ERROR, "Asking for uncore freq limits");
+		}
+		if (warning_api(my_read(ear_fd_ack, (char *) data, size), size, "receiving uncore freq limits ")) {
+			return_msg(EAR_ERROR, "Receiving uncore freq limits");
+		}
+	}
+	return EAR_SUCCESS;
+}
+
+state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count)
+{
+	struct daemon_req req;
+	size_t size;
+	ulong ack;
+	int i;
+  
+	req.req_service = service;
+	req.sec         = create_sec_tag();
+	size            = sizeof(ulong);
+	//
+	for (i = 0; i < index_count; ++i) {
+		req.req_data.unc_freq.index_list[i] = index_list[i];
+	}
+	if (ear_fd_req >= 0) {
+    	if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(struct daemon_req)), sizeof(struct daemon_req), "")) { 
+			return_msg(EAR_ERROR, "Asking for setting uncore freq limits");
+		}
+		if (warning_api(my_read(ear_fd_ack, (char *)&ack, size), size, "")) {
+			return_msg(EAR_ERROR, "Receiving ack while setting uncore freq");
+		}
+	}
+	return EAR_SUCCESS;
+}
+
 
 //////////////// RAPL REQUESTS
 ulong eards_get_data_size_rapl() // size in bytes

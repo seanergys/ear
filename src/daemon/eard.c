@@ -41,12 +41,13 @@
 #include <metrics/frequency/cpu.h>
 #include <metrics/imcfreq/imcfreq.h>
 
+#include <daemon/eard.h>
+#include <daemon/eard_node_services.h>
 #include <daemon/local_api/eard_api_conf.h>
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/eard_checkpoint.h>
-#include <daemon/shared_configuration.h>
 #if USE_DB
 #include <database_cache/eardbd_api.h>
 #include <common/database/db_helper.h>
@@ -135,12 +136,12 @@ int eard_lockf;
 char eard_lock_file[MAX_PATH_SIZE * 2];
 int application_id = -1;
 
-ulong energy_freq;
 ehandler_t eard_handler_energy,handler_energy;
 ulong current_node_freq;
-int RAPL_counting = 0;
 int eard_must_exit = 0;
 topology_t node_desc;
+ctx_t imc_eard_ctx;
+int fd_rapl[MAX_PACKAGES];
 
 /* EARD init errors control */
 static uint error_uncore=0;
@@ -366,7 +367,8 @@ void Usage(char *app) {
 }
 
 //region SIGNALS
-void signal_handler(int sig) {
+void signal_handler(int sig) 
+{
 	if (sig == SIGPIPE) { verbose(VCONF, "signal SIGPIPE received. Application terminated abnormally"); }
 	if (sig == SIGTERM) { verbose(VCONF, "signal SIGTERM received. Finishing"); }
 	if (sig == SIGINT) { verbose(VCONF, "signal SIGINT received. Finishing"); }
@@ -381,18 +383,13 @@ void signal_handler(int sig) {
 
 	// The PIPE was closed, so the daemon connection ends
 	if (sig == SIGPIPE) {
-		eard_close_comm();
+		eard_close_comm(CLOSE_PIPE,CLOSE_PIPE);
 	}
 
 
 	// Someone wants EARD to get closed or restarted
 	if ((sig == SIGTERM) || (sig == SIGINT)) {
 		eard_must_exit = 1;
-
-		if (ear_ping_fd > 0) {
-			verbose(VCONF, "application status = connected");
-			eard_close_comm();
-		}
 	}
 	if ((sig == SIGTERM) || (sig == SIGINT)) {
 		eard_exit(0);
@@ -462,7 +459,8 @@ void signal_handler(int sig) {
 
 }
 
-void signal_catcher() {
+void signal_catcher() 
+{
 	struct sigaction action;
 	int signal;
 	sigset_t eard_mask;
@@ -725,7 +723,8 @@ int get_exec_name(char *name,int name_size)
 *
 */
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
 	char my_name[1024];
 	unsigned long ear_node_freq;
 	int cpu_model;
@@ -764,9 +763,8 @@ int main(int argc, char *argv[]) {
 	/* We initialize topology */
 	s = topology_init(&node_desc);
 	node_size = node_desc.cpu_count;
-	num_packs = node_desc.socket_count;
 
-	if (state_fail(s) || node_size <= 0 || num_packs <= 0) {
+	if (state_fail(s) || node_size <= 0 || node_desc.socket_count <= 0) {
 		error("topology information can't be initialized (%d)", s);
 		_exit(1);
 	}
@@ -951,7 +949,6 @@ int main(int argc, char *argv[]) {
 	verbose(VCONF, "Initializing IMCfreq metrics API ");
 	imcfreq_load(&node_desc, NO_EARD);
 	state_assert(s, imcfreq_init(no_ctx), _exit(0));
-  state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
 	// IMC Management
 	verbose(VCONF, "Initializing IMCfreq mgt API:Load ");
 	state_assert(s, mgt_imcfreq_load(&node_desc, NO_EARD), _exit(0));
@@ -1064,7 +1061,7 @@ int main(int argc, char *argv[]) {
 	eard_local_api();
 	//eard is closed by SIGTERM signal, we should not reach this point
 	verbose(VCONF, "END EARD\n");
-	eard_close_comm();
+	eard_close_comm(CLOSE_EARD,CLOSE_EARD);
 	eard_exit(0);
 	return 0;
 }

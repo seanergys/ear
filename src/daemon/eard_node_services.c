@@ -25,13 +25,17 @@
 
 #define SHOW_DEBUGS 1
 #include <common/includes.h>
+#include <common/types/generic.h>
 #include <common/environment.h>
 #include <common/types/log_eard.h>
+#include <common/system/fd_sets.h>
 #include <common/types/pc_app_info.h>
-#include <management/cpufreq/frequency.h>
-#include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
+
+#include <management/cpufreq/frequency.h>
+#include <management/imcfreq/imcfreq.h>
+
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -39,18 +43,19 @@
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/frequency/cpu.h>
 #include <metrics/imcfreq/imcfreq.h>
+
+#include <daemon/eard_node_services.h>
 #include <daemon/local_api/eard_api_conf.h>
-#include <daemon/remote_api/dynamic_configuration.h>
+#include <daemon/local_api/eard_api_rpc.h>
 #include <daemon/power_monitor.h>
-#include <daemon/powercap/powercap.h>
-#include <daemon/eard_checkpoint.h>
 #include <daemon/shared_configuration.h>
+#include <daemon/remote_api/dynamic_configuration.h>
+
 #if USE_DB
 #include <database_cache/eardbd_api.h>
 #include <common/database/db_helper.h>
 #endif
 #include <daemon/eard.h>
-#include <daemon/app_api/app_server_api.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
@@ -69,21 +74,32 @@ static uint eard_gpu_initialized=0;
 #endif
 static ulong node_energy_datasize;
 static edata_t node_energy_data;
-static int fd_rapl[MAX_PACKAGES];
 static int num_packs = 0;
 static unsigned long long *values_rapl;
-static int ear_fd_req[ear_daemon_client_requests];
-static int ear_fd_ack[ear_daemon_client_requests];
 static cpufreq_t freq_app_req;
 static uint size_cpufreqs,count_cpufreqs;
 static imcfreq_t *unc_data;
 static uint unc_count;
 static int global_req_fd;
 static char ear_commreq_global[MAX_PATH_SIZE * 2];
+static state_t s;
+static ulong      energy_freq;
+static int RAPL_counting = 0;
+/* This var is used in all the eard services, no thread-safe */
+static struct daemon_req req;
 
+/* Defined in eard.c */
 extern ctx_t imc_eard_ctx;
 extern topology_t node_desc;
 extern   ehandler_t eard_handler_energy,handler_energy;
+extern int fd_rapl[MAX_PACKAGES];
+extern char *ear_tmp;
+extern char *nodename;
+extern int eard_must_exit;
+extern cluster_conf_t my_cluster_conf;
+extern my_node_conf_t *my_node_conf;
+extern ulong eard_max_freq;
+
 
 #define NUM_PRIVILEGED_SERVICES 11
 uint privileged_services[NUM_PRIVILEGED_SERVICES]={SET_FREQ,SET_TURBO,SET_FREQ_WITH_MASK,SET_NODE_FREQ_WITH_LIST,UNC_SET_LIMITS,START_RAPL,RESET_RAPL,WRITE_APP_SIGNATURE,WRITE_EVENT,WRITE_LOOP_SIGNATURE,GPU_SET_FREQ};
@@ -94,8 +110,6 @@ static fd_set rfds;
 static fd_set rfds_basic;
 int max_fd = -1;
 int total_local_fd=0;
-int global_req_fd;
-char ear_commreq_global[MAX_PATH_SIZE * 2];
 
 #define NUM_LOCAL_FDS 2
 typedef struct local_connection{
@@ -207,6 +221,19 @@ void clean_local_connection(local_connection_t *my_con)
 }
 
 /**********************/
+
+uint is_privileged_service(uint service)
+{
+  int i = 0;
+  while((i < NUM_PRIVILEGED_SERVICES) && (privileged_services[i] != service)) i++;
+  if (i<NUM_PRIVILEGED_SERVICES){
+    return 1;
+  }else{
+    return 0;
+  }
+
+}
+
 
 uint is_anonymous(ulong jid,ulong sid)
 {
@@ -720,25 +747,19 @@ int eard_rapl(eard_head_t *head, int req_fd, int ack_fd) {
 /***************** GPU SERVICES ****************/
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd) 
 {
-	unsigned long comm_req = gpu_req;
 	unsigned long ack = 0;
 	#if USE_GPUS
 	gpu_info_t *info;
 	gpu_info_t fake;
 
-	if (must_read) {
-		if (read(ear_fd_req[comm_req], &req, sizeof(req)) != sizeof(req))
-			error("error when reading info at eard_gpu\n");
-	}
-
-	switch (req.req_service) {
+	switch (head->req_service) {
 		case GPU_MODEL:
 			debug("GPU_MODEL %d",eard_gpu_model);
-			write(ear_fd_ack[comm_req],&eard_gpu_model,sizeof(eard_gpu_model));	
+			write(ack_fd,&eard_gpu_model,sizeof(eard_gpu_model));	
 		break;
 		case GPU_DEV_COUNT:
 			debug("GPU_DEV_COUNT %d",eard_num_gpus);
-			write(ear_fd_ack[comm_req],&eard_num_gpus,sizeof(eard_num_gpus));	
+			write(ack_fd,&eard_num_gpus,sizeof(eard_num_gpus));	
 			break;
 		case GPU_GET_INFO:
 			debug("GPU_GET_INFO %d", eard_num_gpus);
@@ -748,7 +769,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 				memset(&fake, 0, sizeof(gpu_info_t));
 				*info = fake;
 			}
-			write(ear_fd_ack[comm_req], info, sizeof(gpu_info_t)*eard_num_gpus);	
+			write(ack_fd, info, sizeof(gpu_info_t)*eard_num_gpus);	
 			break;
 		case GPU_DATA_READ:
 			if (eard_gpu_initialized){
@@ -759,7 +780,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			debug("Sending %lu bytes en gpu_data_read",sizeof(gpu_t)*eard_num_gpus);
 			gpu_data_tostr(eard_read_gpu,gpu_str,sizeof(gpu_str));
 			debug("gpu_data_read info: %s",gpu_str);
-			write(ear_fd_ack[comm_req],eard_read_gpu,sizeof(gpu_t)*eard_num_gpus);
+			write(ack_fd,eard_read_gpu,sizeof(gpu_t)*eard_num_gpus);
 			break;
 		case GPU_SET_FREQ:
 			if (eard_gpu_initialized){
@@ -769,7 +790,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 				error("GPU not initialized and GPU_SET_FREQ requested");
 			}
 			ack=EAR_SUCCESS;
-			write(ear_fd_ack[comm_req],&ack,sizeof(ack));
+			write(ack_fd,&ack,sizeof(ack));
 			break;
 	  default:
 			error("Invalid GPU command");
@@ -777,7 +798,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
   }
 	#else
 	ack=EAR_ERROR;
-	write(ear_fd_ack[comm_req],&ack,sizeof(ack));
+	write(ack_fd,&ack,sizeof(ack));
 	error("GPUS not supported");
 	return 0;
 	#endif
@@ -796,12 +817,10 @@ void create_global_connector(char *ear_tmp, char *nodename) {
   if (mknod(ear_commreq_global, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
     if (errno != EEXIST) {
       error("Error creating ear global communicator for requests %s\n", strerror(errno));
-      error_connector=1;
     }
   }
   if (chmod(ear_commreq_global, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)<0){
     error("Error setting privileges for eard-earl connection");
-    error_connector=1;
   }
   global_req_fd = open(ear_commreq_global,O_RDWR);
   if (global_req_fd < 0){
@@ -873,10 +892,11 @@ void eard_close_comm(int req_fd,int ack_fd)
   int i;
   int id;
   ulong jid,sid;
-  ulong was_anonymous;
+  ulong was_anonymous = 1;
   /* This is a special case where one of the fds has been closed */
   if ((req_fd == -1) && (ack_fd == -1)){
     for (i=0;i<numfds_req;i++){
+			/* What about was_anonymous ? */
       if (check_fd(&rfds_basic,i) == EAR_ERROR){
         id = get_local_connection_by_req(eard_local_conn,i);
         close(i);
@@ -886,7 +906,13 @@ void eard_close_comm(int req_fd,int ack_fd)
         clean_local_connection(&eard_local_conn[id]);
       }
     }
-  }else{
+  }else if (req_fd == CLOSE_PIPE){
+		/* SIGPIPE received  in eard */
+		verbose(1,"SIGPIPE received in EARD: PENDING");
+	}else if (req_fd == CLOSE_EARD){
+		/* End eard */
+		verbose(1,"Releasing all the files: PENDING");
+	}else{ /* this is the normal use case */
     id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
     if (id < 0){
       error("We cannot find (%d,%d) in the list of local connections",req_fd,ack_fd);
@@ -909,16 +935,14 @@ void eard_close_comm(int req_fd,int ack_fd)
     // This debug was set outside, but it requires a valid id to prevent segmentation faults.
   }
   if (!was_anonymous) {
-    powermon_mpi_finalize(&handler_energy,jid,sid);
+    //powermon_mpi_finalize(&handler_energy,jid,sid);
+    powermon_mpi_finalize(&handler_energy);
   }
 }
 /************************* Node_energy services ******************/
 int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd) {
   unsigned long ack;
-  switch (req.req_service) {
-    case CONNECT_ENERGY:
-      error("CONNECT_ENERGY");
-      break;
+  switch (head->req_service) {
     case READ_DC_ENERGY:
       energy_dc_read(&handler_energy, node_energy_data);
       write(ack_fd, node_energy_data, node_energy_datasize);
@@ -946,10 +970,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
   int con_id;
   con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 
-  switch (req.req_service) {
-    case CONNECT_SYSTEM:
-      error("CONNECT_SYSTEM");
-      break;
+  switch (head->req_service) {
     case WRITE_APP_SIGNATURE:
       if (!eard_local_conn[con_id].anonymous) powermon_mpi_signature(&req.req_data.app);
       ack = EAR_COM_OK;
@@ -985,7 +1006,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
     case WRITE_LOOP_SIGNATURE:
       ack = EAR_COM_OK;
       ret1 = EAR_SUCCESS;
-      powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
+      //powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
       // print_loop_fd(1,&req.req_data.loop);
       if (my_cluster_conf.database.report_loops) {
 #if USE_DB
@@ -1039,13 +1060,17 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
   ulong *f;
 
   switch (head->req_service) {
-		case CONNECT_FREQ:
+		//case CONNECT_FREQ:
     case CONNECT_EARD_NODE_SERVICES:
       connect_service(&req);
     break;
     case SET_FREQ:
-      eard_set_freq(ack_fd,req.req_data.req_value, min(eard_max_freq, max_dyn_freq()));
+      eard_set_freq(ack_fd,req.req_data.req_value, ear_min(eard_max_freq, max_dyn_freq()));
       break;
+		case SET_TURBO:
+			frequency_set_performance_governor_all_cpus();
+			write(ack_fd, &ack, sizeof(unsigned long));
+			break;
     case SET_FREQ_WITH_MASK:
       ack=frequency_set_with_mask(&req.req_data.f_mask.mask,req.req_data.f_mask.f);
       write(ack_fd, &ack, sizeof(unsigned long));
@@ -1064,7 +1089,7 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
       write(ack_fd, f,sizeof(ulong)*req.req_data.req_value);
       free(f);
       break;
-		case END_COMM:
+		//case END_COMM:
     case DISCONNECT_EARD_NODE_SERVICES:
       // HIGHLIGHT: LIBRARY DISPOSE (1/2)
       eard_close_comm(req_fd,ack_fd);
@@ -1074,10 +1099,11 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
       write(ack_fd, &ack, sizeof(unsigned long));
       break;
     case READ_CPUFREQ:
-      if (xtate_fail(s, cpufreq_read(&cpu_c, freq_app_req))) {
+      //if (xtate_fail(s, cpufreq_read(&cpu_c, freq_app_req))) {
+      if (xtate_fail(s, cpufreq_read(&freq_app_req))) {
         error("when reading CPU global frequency requeste by app (%d, %s)", s, state_msg);
       }
-      write(ack_fd, freq_app_req, cpu_dev_count * sizeof(cpufreq_t));
+      write(ack_fd, freq_app_req.context, size_cpufreqs);
       break;
     default:
       return 0;
@@ -1088,7 +1114,14 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 int eard_imc(eard_head_t *head,int req_fd,int ack_fd) {
   unsigned long ack = 0;
   int ret;
-  switch (req.req_service) {
+  uint *min;
+  uint *max;
+  char buffer[4096];
+  size_t size;
+  uint *aux;
+
+
+  switch (head->req_service) {
 			case UNC_SIZE:
 			aux = (uint *) buffer;
 			aux[1] = unc_count;
@@ -1154,10 +1187,7 @@ int eard_imc(eard_head_t *head,int req_fd,int ack_fd) {
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd) {
   unsigned long ack = 0;
   int ret;
-  switch (req.req_service) {
-    case CONNECT_RAPL:
-      error("CONNECT_RAPL");
-      break;
+  switch (head->req_service) {
     case START_RAPL:
       error("starting rapl msr not supported");
       RAPL_counting = 1;
@@ -1571,7 +1601,8 @@ state_t service_close(int req_fd, int ack_fd)
 	close(ack_fd);
 	// End job
 	if (!was_anonymous) {
-		powermon_mpi_finalize(&handler_energy, job_id, step_id);
+		//powermon_mpi_finalize(&handler_energy, job_id, step_id);
+		powermon_mpi_finalize(&handler_energy);
 	}
 
 	return EAR_SUCCESS;
@@ -1691,7 +1722,11 @@ void service_select(int req_fd, int ack_fd)
 
 state_t eard_local_api()
 {
+	int ack_fd;
+	int numfds_ready;
 	num_packs = node_desc.socket_count;
+	struct timeval *my_to;
+
 
 	// CPU Frequency metrics
 	state_assert(s, cpufreq_data_alloc(&freq_app_req,    NULL), _exit(0));
@@ -1761,7 +1796,7 @@ state_t eard_local_api()
     }
     if (numfds_ready >= 0) {
       if (numfds_ready > 0) {
-        for (i = 0; i < numfds_req; i++) {
+        for (uint i = 0; i < numfds_req; i++) {
           if (FD_ISSET(i, &rfds)) {
             if (i == global_req_fd){
               /* New connection */

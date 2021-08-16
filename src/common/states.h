@@ -44,6 +44,8 @@ typedef int state_t;
 
 /* global data */
 char *state_msg;
+int state_no;
+
 
 #define state_ok(state) \
 	((state) == EAR_SUCCESS)
@@ -51,8 +53,16 @@ char *state_msg;
 #define state_fail(state) \
 	((state) != EAR_SUCCESS)
 
+#define sfail(function) \
+	if (state_fail(function))
+
+
 #define state_is(state1, state2) \
 	(state1 == state2)
+
+#define serror(str) \
+  error("%s: %s (%d)", str, state_msg, state_no);
+
 	
 #define return_msg(no, msg) { \
 	state_msg = msg; \
@@ -72,6 +82,16 @@ char *state_msg;
         error("returned %d, %s (%s:%d)", s, state_msg, __FILE__, __LINE__); \
         cons; \
     }
+
+#define sserror(format, ...) \
+	error(format ": %s (%d)", __VA_ARGS__, state_msg, state_no);
+
+#define sassert(function, consecuence) \
+	sfail((function)) { \
+		error(#function " failed in %s:%d: %s (%d)", __FILE__, __LINE__, state_msg, state_no); \
+		consecuence; \
+	}
+
 
 struct generr_s {
 	char *api_undefined;

@@ -61,6 +61,8 @@ unsigned long eards_get_data_size_frequency();
 state_t eards_cpufreq_read(cpufreq_t *ef,size_t size);
 
 
+state_t eards_set_turbo();
+
 /************************************/
 // Uncore frequency management
 state_t eards_imcfreq_data_count(uint *count);

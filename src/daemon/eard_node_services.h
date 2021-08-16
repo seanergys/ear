@@ -18,7 +18,14 @@
 #ifndef _EARD_NODE_SERVICES_H_
 #define _EARD_NODE_SERVICES_H_
 
+#include <common/states.h>
+#define CLOSE_EARD -100
+#define CLOSE_PIPE -101
+
 void clean_global_connector();
+void eard_close_comm(int req_fd,int ack_fd);
+state_t eard_local_api();
+
 
 #else
 #endif

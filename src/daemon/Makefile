@@ -40,14 +40,17 @@ eard_OBJS += \
     $(powercap_OBJS) \
     $(gpu_mgt_OBJS) \
     $(SRCDIR)/database_cache/eardbd_api.o \
+		$(local_api_OBJS) \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
-	$(local_api_OBJS) \
     $(SRCDIR)/common/libcommon.a
 
 ######## RULES
 
 all: all.components $(eard_BINS) $(oths_BINS) all.others
+
+eard: eard.c $(eard_OBJS)
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -o $@ $< $(eard_OBJS) $(LDFLAGS) -lpthread
 
 
 power_monitor.o: power_monitor.c power_monitor.h 
