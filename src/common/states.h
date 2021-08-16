@@ -136,6 +136,9 @@ int intern_error_num;
 #define state_return(state) \
 	return state;
 
+#define return_xmsg return_print
+
+
 #define state_return_msg(state, error_num, error_str) \
 { \
 	intern_error_num = error_num; \

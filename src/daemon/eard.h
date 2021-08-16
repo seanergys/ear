@@ -19,6 +19,8 @@
 #define _EARD_H_
 
 static void eard_exit(uint restart);
+
+#if 0
 static void eard_close_comm();
 static int is_new_application();
 static int is_new_service(int req,int pid);
@@ -40,6 +42,9 @@ static void  create_tmp(char *tmp_dir);
 static void create_connector(char *ear_tmp,char *nodename,int i);
 static void connect_service(int req,application_t *new_app);
 static void eard_set_freq(unsigned long new_freq,unsigned long max_freq);
+#endif
+
+
 
 #else
 #endif

@@ -20,14 +20,19 @@
 
 #include <common/types/generic.h>
 #include <common/types/log.h>
-#include <daemon/local_api/eard_conf_api.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/frequency/cpu.h>
 #include <metrics/imcfreq/imcfreq.h>
 
+#include <daemon/local_api/eard_api_rpc.h>
+#include <daemon/local_api/eard_api_conf.h>
+
+
 /************************************/
-/** Tries to connect with the daemon. Returns 0 on success and -1 otherwise. */
-int eards_connect(application_t *my_app);
+/** This function is to be used for external commands or applications not using the EARL */
+int eards_connection();
+/** EARL connection: Tries to connect with the daemon. Returns 0 on success and -1 otherwise. */
+int eards_connect(application_t *my_app, ulong lid);
 int eards_connected();
 /** Closes the connection with the daemon. */
 void eards_disconnect();
@@ -47,27 +52,9 @@ unsigned long eards_change_freq_with_list(unsigned int num_cpus,unsigned long *n
 unsigned long eards_get_freq(unsigned int num_cpu);
 /* Sets the list of CPU freqs in freqlist and returns the avg*/
 unsigned long eards_get_freq_list(unsigned int num_cpus,unsigned long *freqlist); 
-/** Tries to set the frequency to the turbo value */
-void eards_set_turbo();
-
-
-/**** This API is going to be deprecated ****/
 /** Requests the frequency data size. Returns -1 if there's an error, and the
 *   actual value otherwise. */
 unsigned long eards_get_data_size_frequency();
-
-/** Sends a request to read the CPU frequency. */
-void eards_begin_compute_turbo_freq();
-/** Requests to stop reading the CPU frequency. Returns the average frequency
-*   between the begin call and the end call on success, -1 otherwise. */
-unsigned long eards_end_compute_turbo_freq();
-
-/** Sends a request to read the global CPU frequency. */
-void eards_begin_app_compute_turbo_freq();
-/** Requests to stop reading the CPU global frequency. Returns the average 
-*   frequency between the begin call and the end call on success, -1 otherwise. */
-unsigned long eards_end_app_compute_turbo_freq();
-
 /**** New API for cpufreq management */
 /* Load, init etc can be used directly from metrics */
 /* These are privileged functions */

@@ -873,7 +873,7 @@ void ear_init()
 	verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 	if (!my_id && eard_ok){ //only the master will connect with eard
 		verbose_master(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
-		if (eards_connect(&application) == EAR_SUCCESS) {
+		if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
 			debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
 			notify_eard_connection(1);
 			mark_as_eard_connected(my_job_id,my_step_id,getpid());
