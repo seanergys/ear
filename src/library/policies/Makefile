@@ -4,6 +4,7 @@ all: all.components policy.o
 	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -c $<
 
 ######## OPTIONS 
+.PRECIOUS: %.o
 
 install: install.components;
 
