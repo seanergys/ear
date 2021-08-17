@@ -34,6 +34,7 @@
 
 #include <common/config.h>
 #include <common/system/sockets.h>
+#include <common/system/folder.h>
 
 
 #include <common/output/verbose.h>
@@ -250,6 +251,48 @@ int new_context(job_id id, job_id sid) {
 	}
 	num_contexts++;
 	return EAR_SUCCESS;
+}
+
+void create_job_area(uint ID)
+{
+	int ret;
+	char job_path[MAX_PATH_SIZE];
+	snprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+	verbose(1,"Creating job_path: %s", job_path);
+	mode_t old_mask = umask((mode_t) 0);
+	ret = mkdir(job_path,0777);
+	if (ret < 0 ){
+		verbose(1,"Cannot create jobpath (%s)",strerror(errno));
+	}
+	umask(old_mask);	
+	return;
+}
+
+void clean_job_area(uint ID)
+{
+	char job_path[MAX_PATH_SIZE];
+	char file_path[MAX_PATH_SIZE];
+	state_t s;
+	folder_t job_folder;
+	char *file;
+	int ret;
+
+  snprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+  s = folder_open(&job_folder, job_path);
+  if (state_fail(s)) {
+		verbose(1,"Error opening job path %s",job_path);
+    return;
+  }
+  verbose(1,"Cleaning job_path: %s", job_path);
+
+  while ((file = folder_getnext(&job_folder, NULL, NULL)))
+  {
+		snprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
+		verbose(1,"Deleting: %s",file_path);
+		ret = unlink(file_path);	
+  }
+	folder_close(&job_folder);
+	rmdir(job_path);
 }
 
 
@@ -682,6 +725,9 @@ void powermon_new_job(ehandler_t *eh, application_t *appID, uint from_mpi) {
 	}
 	/* Saving the context */
 	check_context("powermon_new_job: after new_context!");
+	
+	/* Creating ID folder */
+	create_job_area(new_app_id);
 	current_ear_app[ccontext]->current_freq = frequency_get_cpu_freq(0);
 	get_governor(&current_ear_app[ccontext]->governor);
 	debug("Saving governor %s", current_ear_app[ccontext]->governor.name);
@@ -766,6 +812,8 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 	verbose(VJOBPMON, "%spowermon_end_job (%lu,%lu)%s",COL_BLU, current_ear_app[ccontext]->app.job.id,
 			current_ear_app[ccontext]->app.job.step_id,COL_CLR);
 	while (pthread_mutex_trylock(&app_lock));
+	uint ID = create_ID(jid, sid);
+	clean_job_area(ID);
 	idleNode = 1;
 	job_end_powermon_app(eh);
 	// After that function, the avg power is computed

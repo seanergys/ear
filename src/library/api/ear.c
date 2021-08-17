@@ -259,18 +259,19 @@ void create_shared_regions()
 	#if SHOW_DEBUGS
 	int total_size;
 	#endif
+	uint ID = create_ID(application.job.id, application.job.step_id);
 
 
 	/* This section allocates shared memory for processes in same node */
 	debug("%s:Master creating shared regions for node synchro",node_name);
-  xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
+  xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory %s",block_file);
   }
 
 	/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
 	/******************************* Depending on how EAR is compiled, only one signature per node is sent *************************/
-	if (get_lib_shared_data_path(tmp,lib_shared_region_path)!=EAR_SUCCESS){
+	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path)!=EAR_SUCCESS){
 		error("Getting the lib_shared_region_path");
 	}else{
 		lib_shared_region=create_lib_shared_data_area(lib_shared_region_path);
@@ -301,7 +302,7 @@ void create_shared_regions()
 #endif
 	//print_lib_shared_data(lib_shared_region);
 	/* This region is for processes in the same node */
-	if (get_shared_signatures_path(tmp,shsignature_region_path)!=EAR_SUCCESS){
+	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS){
     error("Getting the shsignature_region_path	");
 	}else{
 		debug("Master node creating the signatures with %d processes",lib_shared_region->num_processes);
@@ -393,13 +394,15 @@ void attach_shared_regions()
 {
 	int bfd = -1;
 	char *tmp = get_ear_tmp();
+	uint ID = create_ID(application.job.id, application.job.step_id);
+
 	/* This function is executed by processes different than masters */
 	/* they first join the Node shared memory */
-	xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
+	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
 	if ((bfd = file_lock_create(block_file))<0){
 		error("Creating lock file for shared memory");
 	}
-	if (get_lib_shared_data_path(tmp,lib_shared_region_path)!=EAR_SUCCESS){
+	if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
     error("Getting the lib_shared_region_path");
   }else{
 		#if MPI
@@ -430,7 +433,7 @@ void attach_shared_regions()
 		error("In MPI_BARRIER");
 	}
 	#endif
-	if (get_shared_signatures_path(tmp,shsignature_region_path) != EAR_SUCCESS){
+	if (get_shared_signatures_path(tmp,ID, shsignature_region_path) != EAR_SUCCESS){
     error("Getting the shsignature_region_path  ");
   }else{
 			sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
@@ -537,9 +540,10 @@ void attach_to_master_set(int master)
 static int get_local_id(char *node_name)
 {
 	int master = 1;
+	uint ID = create_ID(my_job_id,my_step_id);
 
 #if USE_LOCK_FILES
-  sprintf(fd_lock_filename, "%s/.ear_app_lock.%d", get_ear_tmp(), create_ID(my_job_id,my_step_id));
+  sprintf(fd_lock_filename, "%s/%u/.ear_app_lock.%u", get_ear_tmp(), ID, ID);
 	debug("Using lock file %s",fd_lock_filename);
   if ((fd_master_lock = file_lock_master(fd_lock_filename)) < 0) {
 		if (errno != EBUSY) debug("Error creating lock file %s",strerror(errno));
@@ -738,9 +742,6 @@ void ear_init()
 	ear_lib_environment();
 
 	tmp=get_ear_tmp();
-	if (get_lib_shared_data_path(tmp,lib_shared_region_path)==EAR_SUCCESS){
-		unlink(lib_shared_region_path);
-	}
 
 	if (ext_def_freq_str!=NULL){
 		ext_def_freq=(unsigned long)atol(ext_def_freq_str);
@@ -771,7 +772,10 @@ void ear_init()
 	#endif
 
 	get_job_identification();
-
+	uint ID = create_ID(my_job_id,my_step_id);
+	if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
+		unlink(lib_shared_region_path);
+	}
 	if (is_already_connected(my_job_id,my_step_id,getpid())){
 		verbose_master(VEAR_INIT,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
 		return;

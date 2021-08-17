@@ -848,6 +848,7 @@ void connect_service(struct daemon_req *new_req)
   int newc,is_new;
   ulong lid = new_req->con_id.lid;
   int pid = create_ID(new_job->id, new_job->step_id);
+	uint ID = (uint)pid;
   // Let's check if there is another application
   verbose(1, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
 
@@ -855,14 +856,15 @@ void connect_service(struct daemon_req *new_req)
   /* Creates 1 pipe (per node),  jobid and step id to send acks. pid is a combination of jobid and stepid */
   verbose(VEARD + 1, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
   /* This pipe is to send data, 1 per connection */
-  sprintf(ear_commack, "%s/.ear_comm.ack_0.%d.%lu", ear_tmp, pid,lid);
-  sprintf(ear_commreq, "%s/.ear_comm.req_0.%d.%lu", ear_tmp, pid,lid);
+  sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, pid,lid);
+  sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, pid,lid);
   debug("Comm channels %s and %s",ear_commack,ear_commreq);
   /* We must create a new local connection, for now, 1 connection per job is allowed  */
   if ((newc = add_new_local_connection(eard_local_conn,new_job->id,new_job->step_id,new_req->con_id.lid)) <0){
       error("Error opening slot for new local connection");
   }
   debug("application %d.%lu asks for new connection ", pid,lid);
+	verbose(1,"Opening %s",ear_commack);
   ear_ack_fd = open(ear_commack, O_WRONLY);
   if (ear_ack_fd < 0) {
         error("ERROR while opening ack_private pipe %s (%s)", ear_commack, strerror(errno));
@@ -878,6 +880,7 @@ void connect_service(struct daemon_req *new_req)
     eard_close_comm(-1,ear_ack_fd);
   }
   /* we open the local req pipe */
+	verbose(1,"Opening %s", ear_commreq);
   ear_req_fd = open(ear_commreq, O_RDONLY);
   if (ear_req_fd < 0){
         error("ERROR while opening req_private pipe %s (%s)", ear_commreq, strerror(errno));
@@ -896,10 +899,13 @@ void connect_service(struct daemon_req *new_req)
 // HIGHLIGHT: LIBRARY DISPOSE (2/2)
 void eard_close_comm(int req_fd,int ack_fd)
 {
-  int i;
+  int i, ret;
   int id;
   ulong jid,sid;
   ulong was_anonymous = 1;
+  char ear_commack[MAX_PATH_SIZE * 2];
+  char ear_commreq[MAX_PATH_SIZE * 2];
+
   /* This is a special case where one of the fds has been closed */
   if ((req_fd == -1) && (ack_fd == -1)){
     for (i=0;i<numfds_req;i++){
@@ -928,6 +934,17 @@ void eard_close_comm(int req_fd,int ack_fd)
     debug("Closing communication for (%lu,%lu)",eard_local_conn[id].jid,eard_local_conn[id].sid);
     jid = eard_local_conn[id].jid;
     sid = eard_local_conn[id].sid;
+		ulong lid = eard_local_conn[id].lid;
+		uint ID = create_ID(jid, sid);
+  	sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%u.%lu", ear_tmp, ID, ID,lid);
+  	sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%u.%lu", ear_tmp, ID, ID,lid);
+		verbose(1,"Cleaning files for job %lu/%lu/%lu",jid,sid,lid);
+		verbose(1,"Deleting %s",ear_commack);
+		ret = unlink(ear_commack);
+		if (ret != ENOENT) verbose(1,"Error deleting file %s",strerror(errno));
+		verbose(1,"Deleting %s",ear_commreq);
+		ret = unlink(ear_commreq);
+		if (ret != ENOENT) verbose(1,"Error deleting file %s",strerror(errno));
     was_anonymous = eard_local_conn[id].anonymous;
     if (req_fd != -1){
       close(req_fd);

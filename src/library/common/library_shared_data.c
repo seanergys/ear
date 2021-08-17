@@ -37,16 +37,16 @@
 
 static int fd_conf,fd_signatures;
 
-int  get_lib_shared_data_path(char *tmp,char *path)
+int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/.ear_lib_shared_data",tmp);
+	sprintf(path,"%s/%u/.ear_lib_shared_data",tmp, ID);
 	return EAR_SUCCESS;	
 }
-int  get_shared_signatures_path(char *tmp,char *path)
+int  get_shared_signatures_path(char *tmp, uint ID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/.ear_shared_signatures",tmp);
+	sprintf(path,"%s/%u/.ear_shared_signatures",tmp, ID);
 	return EAR_SUCCESS;	
 }
 

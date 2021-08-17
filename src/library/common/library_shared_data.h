@@ -101,7 +101,7 @@ typedef struct shsignature{
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param path (output)
  */
-int get_lib_shared_data_path(char *tmp,char *path);
+int get_lib_shared_data_path(char *tmp, uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by node master process
 */
@@ -130,7 +130,7 @@ void print_lib_shared_data(lib_shared_data_t *setting);
 /** Sets in path the filename for the shared memory area between MPI processes
  *  * @param path (output)
  *   */
-int get_shared_signatures_path(char *tmp,char *path);
+int get_shared_signatures_path(char *tmp,uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by node master process
  * */
