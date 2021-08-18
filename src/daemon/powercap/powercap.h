@@ -43,7 +43,7 @@ void set_powercapstatus_mode(uint mode);
 void copy_node_powercap_opt(node_powercap_opt_t *dst);
 uint powercap_get_cpu_strategy();
 uint powercap_get_gpu_strategy();
-void powercap_set_app_req_freq(pc_app_info_t *pc_app);
+void powercap_set_app_req_freq();
 void powercap_release_idle_power(pc_release_data_t *release);
 void powercap_reset_default_power();
 void powercap_reduce_def_power(uint power);

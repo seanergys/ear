@@ -92,7 +92,6 @@ static state_t eardbd_connection_status = EAR_SUCCESS;
 static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
-static int sig_reported = 0;
 static energy_data_t c_energy;
 static ulong * powermon_freq_list;
 static int powermon_num_pstates;
@@ -105,7 +104,7 @@ dom_power_t pdomain;
 #define NULL_SID 4294967294
 powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 int max_context_created = 0;
-static int num_contexts = 0;
+int num_contexts = 0;
 
 void init_contexts() {
   int i;
@@ -375,9 +374,12 @@ static void PM_set_sigusr1() {
 
 void reset_shared_memory(powermon_app_t *pmapp)
 {
-  debug("reset_shared_memory");
+  verbose(1,"reset_shared_memory");
   policy_conf_t *my_policy;
   my_policy = get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
+	if (my_policy == NULL){
+		verbose(1,"Error, my_policy is null in reset_shared_memory when looking for default policy %d",my_cluster_conf.default_policy);
+	}
   pmapp->resched->force_rescheduling= 0;
   pmapp->settings->user_type        = NORMAL;
   pmapp->settings->learning         = 0;
@@ -386,7 +388,7 @@ void reset_shared_memory(powermon_app_t *pmapp)
   pmapp->settings->def_freq         = frequency_pstate_to_freq(my_policy->p_state);
   pmapp->settings->def_p_state      = my_policy->p_state;
   pmapp->settings->max_freq         = frequency_pstate_to_freq(my_node_conf->max_pstate);
-  strcpy(pmapp->settings->policy_name, my_policy->name); 
+  strncpy(pmapp->settings->policy_name, my_policy->name, 64); 
   memcpy(pmapp->settings->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
   pmapp->settings->min_sig_power    = my_node_conf->min_sig_power;
   pmapp->settings->max_sig_power    = my_node_conf->max_sig_power;
@@ -396,7 +398,7 @@ void reset_shared_memory(powermon_app_t *pmapp)
   pmapp->settings->max_avx2_freq    = my_node_conf->max_avx2_freq;
   memcpy(&pmapp->settings->installation,&my_cluster_conf.install,sizeof(conf_install_t));
   copy_ear_lib_conf(&pmapp->settings->lib_info,&my_cluster_conf.earlib);
-  debug("Shared memory regions for job set with default values");
+  verbose(1,"Shared memory regions for job set with default values");
 
 }
 
@@ -422,9 +424,13 @@ state_t powermon_create_idle_context()
   int cc = 0;
   powermon_app_t *pmapp;
   char shmem_path[GENERIC_NAME];
-  debug("Creating idle context");
+
+  verbose(1,"Creating idle context");
   current_ear_app[cc] = calloc(1,sizeof(powermon_app_t));
   if (current_ear_app[cc] == NULL) return EAR_ERROR;
+
+	create_job_area(0);
+
   pmapp = current_ear_app[cc];
   max_context_created = 0;
   num_contexts = 1;
@@ -435,23 +441,38 @@ state_t powermon_create_idle_context()
   ID = create_ID(jid,sid);
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
-  debug("Settings for new context placed at %s",shmem_path);
+  verbose(1,"Settings for new context placed at %s",shmem_path);
   pmapp->settings = create_settings_conf_shared_area(shmem_path);
+	if (pmapp->settings == NULL){
+		verbose(1,"Error creating shared memory region for earl shared data");
+	}
   get_resched_path(ear_tmp, ID,shmem_path);
+  verbose(1,"Resched area for new context placed at %s",shmem_path);
   pmapp->resched = create_resched_shared_area(shmem_path);
+	if (pmapp->resched == NULL){
+		verbose(1,"Error creating shared memory region for re-scheduling data");
+	}
   reset_shared_memory(pmapp);
   get_app_mgt_path(ear_tmp, ID, shmem_path);
+  verbose(1,"App- Mgr area for new context placed at %s",shmem_path);
   pmapp->app_info = create_app_mgt_shared_area(shmem_path);
+	if (pmapp->app_info == NULL){
+		verbose(1,"Error creating app mgr shared region ");
+	}
   app_mgt_new_job(pmapp->app_info);
 
   get_pc_app_info_path(ear_tmp, ID, shmem_path);
+  verbose(1,"App PC area for new context placed at %s",shmem_path);
   pmapp->pc_app_info = create_pc_app_info_shared_area(shmem_path);
+	if (pmapp->pc_app_info == NULL){
+		verbose(1,"Error creating app pc shared region");
+	}
   pmapp->pc_app_info->cpu_mode = powercap_get_cpu_strategy();
 #if USE_GPUS
   pmapp->pc_app_info->gpu_mode = powercap_get_gpu_strategy();
 #endif
   set_null_loop(&pmapp->last_loop);
-  debug("Idle context created");
+  verbose(1,"Idle context created");
   return EAR_SUCCESS;
 }
 
@@ -605,7 +626,7 @@ void report_powermon_app(powermon_app_t *app) {
 		error("report_powermon_app: NULL app");
 		return;
 	}
-	if (sig_reported == 0) {
+	if (app->sig_reported == 0) {
 		verbose(VJOBPMON + 1, "Reporting not mpi application");
 		app->app.is_mpi = 0;
 	}
@@ -1520,15 +1541,16 @@ int powermon_get_num_applications(int only_master)
 {
   int i;
   int total = 0,total_master = 0;
-  for (i=0;i<= max_context_created;i ++){
+  for (i=0;i <= max_context_created;i ++){
     if (current_ear_app[i] != NULL){
       total ++;
       if (is_app_master(current_ear_app[i]->app_info)) total_master++;
+			verbose(1,"App %d is master=%d",i,is_app_master(current_ear_app[i]->app_info));
     }
   }
   total         = ear_max(1, total - 1);
   total_master  = ear_max(1, total_master -1);
-  debug ("We have %d apps created and %d masters",total, total_master);
+  verbose(1,"We have %d apps created and %d masters",total, total_master);
   if (only_master) return total_master;
   return total;
 }
@@ -1538,7 +1560,8 @@ void powermon_get_app_status(app_status_t *my_status,  int num_apps, int only_ma
 {
 	time_t consumed_time;
 	int i,cs = 0;
-  if (max_context_created == 0 || (only_master && (num_apps == 1))){
+  /*if (max_context_created == 0 || (only_master && (num_apps == 1))){*/
+  if (max_context_created == 0 || (only_master && (num_apps == 0))){
     my_status[cs].job_id = 0;
     signature_init(&my_status[cs].signature);
     my_status[cs].signature.DC_power = (ulong) last_power_reported;

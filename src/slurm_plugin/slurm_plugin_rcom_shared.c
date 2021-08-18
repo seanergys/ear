@@ -84,7 +84,8 @@ int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
 	settings_conf_t *setts = NULL;
 
 	// Opening settings
-	uint ID = create_ID(sd->job.app->job.id, sd->job.app->job.step_id);
+	/* This must be done after EARD contact */
+	uint ID = create_ID(sd->job.app.job.id, sd->job.app.job.step_id);
 	get_settings_conf_path(sd->pack.path_temp, ID, buffer);
 	setts = attach_settings_conf_shared_area(buffer);
 	plug_verbose(sp, 3, "looking for services in '%s'", buffer);

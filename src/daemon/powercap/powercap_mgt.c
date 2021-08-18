@@ -26,7 +26,7 @@
 
 #include <sched.h>
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
@@ -694,17 +694,21 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 		}
 }
 
-void pmgt_set_app_req_freq(pwr_mgt_t *phandler, pc_app_info_t *pc_app)
+void pmgt_set_app_req_freq(pwr_mgt_t *phandler)
 {
+	ulong cpuf[MAX_CPUS_SUPPORTED], gpuf[MAX_GPUS_SUPPORTED];
     if (pcsyms_fun[DOMAIN_NODE].set_app_req_freq != NULL){
-        freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,pc_app->req_f);
+				pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
+        freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,cpuf);
     }
     if (pcsyms_fun[DOMAIN_CPU].set_app_req_freq != NULL){
-        freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,pc_app->req_f);
+				pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
+        freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,cpuf);
     }
 #if USE_GPUS
     if (pcsyms_fun[DOMAIN_GPU].set_app_req_freq != NULL) {
-        freturn(pcsyms_fun[DOMAIN_GPU].set_app_req_freq,pc_app->req_gpu_f);
+				pmgt_get_app_req_freq(DOMAIN_NODE, gpuf, MAX_GPUS_SUPPORTED);
+        freturn(pcsyms_fun[DOMAIN_GPU].set_app_req_freq,gpuf);
     }
 #endif
 }

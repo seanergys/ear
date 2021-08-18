@@ -23,7 +23,7 @@
 #include <strings.h>
 #include <string.h>
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/types/generic.h>
 #include <common/environment.h>
@@ -774,6 +774,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
 
   switch (head->req_service) {
     case WRITE_APP_SIGNATURE:
+			verbose(1,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
       if (!eard_local_conn[con_id].anonymous) powermon_mpi_signature(&req.req_data.app);
       ack = EAR_COM_OK;
       if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {

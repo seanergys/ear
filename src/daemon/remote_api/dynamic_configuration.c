@@ -437,11 +437,11 @@ void dyncon_get_app_status(int fd, request_t *command)
     send_answer(fd, &ack); //send ack before propagating
     int local_status;
     local_status = powermon_get_num_applications(command->req == EAR_RC_APP_MASTER_STATUS);
-    debug("We have %d local apps in app_status",local_status);
+    verbose(1,"We have %d local apps in app_status",local_status);
 
     int num_status = propagate_app_status(command, my_cluster_conf.eard.port, &status, local_status);
     unsigned long return_status = num_status;
-    debug("return_app_tatus %lu status=%p",return_status,status);
+    verbose(1,"return_app_tatus %lu status=%p",return_status,status);
     if (num_status < 1) {
         error("Panic propagate_app_status returns less than 1 status");
         return_status = 0;
@@ -466,7 +466,8 @@ void dyncon_get_app_status(int fd, request_t *command)
 		#endif
 
     send_data(fd, sizeof(app_status_t) * num_status, (char *)status, EAR_TYPE_APP_STATUS);
-    debug("Returning from dyncon_get_app_status");
+    verbose(1,"Returning from dyncon_get_app_status %d app_status sent",num_status);
+
     free(status);
     debug("app_status released");
 }

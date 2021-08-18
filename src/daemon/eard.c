@@ -23,7 +23,7 @@
 #include <strings.h>
 #include <string.h>
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/environment.h>
 #include <common/types/log_eard.h>
