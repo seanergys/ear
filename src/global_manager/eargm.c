@@ -46,9 +46,7 @@
 #include <global_manager/eargm_ext_rm.h>
 #include <daemon/remote_api/eard_rapi.h>
 #include <global_manager/cluster_energycap.h>
-#if POWERCAP
 #include <global_manager/cluster_powercap.h>
-#endif
 
 #if SYSLOG_MSG
 #include <syslog.h>
@@ -160,11 +158,9 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 	period_t1=cc->t1;
 	period_t2=cc->t2;	
 	energy_budget=cc->energy;
-	#if POWERCAP
   max_cluster_power=cc->power;
 	max_cluster_power=max_cluster_power*divisor;
   cluster_powercap_period=cc->t1_power;
-  #endif
 	use_aggregation=cc->use_aggregation;
 	return must_refil;
 }
@@ -177,10 +173,8 @@ void update_eargm_configuration(cluster_conf_t *conf)
 	period_t1=conf->eargm.t1;
 	period_t2=conf->eargm.t2;
 	energy_budget=conf->eargm.energy;
-	#if POWERCAP
 	max_cluster_power=conf->eargm.power;
   cluster_powercap_period=conf->eargm.t1_power;
-	#endif
 	my_port=conf->eargm.port;
 	use_aggregation=conf->eargm.use_aggregation;
 	units=conf->eargm.units;
@@ -581,9 +575,7 @@ int main(int argc,char *argv[])
 		
 
 	if ((period_t1<=0) || (period_t2<=0) || (energy_budget<=0)) usage(argv[0]);
-	#if POWERCAP
 	cluster_powercap_init(&my_cluster_conf);
-	#endif
 
 	aggregate_samples=period_t2/period_t1;
 	if ((period_t2%period_t1)!=0){

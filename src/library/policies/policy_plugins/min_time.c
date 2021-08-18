@@ -321,25 +321,18 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
     // This is the frequency at which we were running
     signature_copy(my_app, sig);
     memcpy(my_app->sig_ext,se,sizeof(sig_ext_t));
-#ifdef POWERCAP
     if (c->pc_limit > 0){
         verbose_master(2, "PC set to %u", c->pc_limit);
         curr_freq=frequency_closest_high_freq(my_app->avg_f,1);
     }else{
         curr_freq=*(c->ear_frequency);
     }
-#else
-    curr_freq=*(c->ear_frequency);
-
-#endif
 
 #if 0
     // TODO below code does not exist in min_energy
-#if POWERCAP
     if (is_powercap_set(&c->app->pc_opt)){
         verbose(2,"Powercap is set to %uWatts",get_powercapopt_value(&c->app->pc_opt));
     }
-#endif
 #endif
     curr_pstate = frequency_closest_pstate(curr_freq);
     if (!use_energy_models){

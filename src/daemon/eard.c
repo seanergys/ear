@@ -77,15 +77,9 @@ my_node_conf_t my_original_node_conf;
 eard_dyn_conf_t eard_dyn_conf; // This variable is for eard checkpoint
 policy_conf_t default_policy_context, energy_tag_context, authorized_context;
 /* Shared memory regions */
-settings_conf_t *dyn_conf;
-resched_t *resched_conf;
 services_conf_t *my_services_conf;
 ulong *shared_frequencies;
 ulong *frequencies;
-#ifdef POWERCAP
-app_mgt_t *app_mgt_info;
-pc_app_info_t *pc_app_info_data;
-#endif
 /* END Shared memory regions */
 
 #if USE_GPUS
@@ -105,10 +99,6 @@ char my_ear_conf_path[GENERIC_NAME];
 char my_eardbd_conf_path[GENERIC_NAME];
 char eardbd_user[GENERIC_NAME];
 char eardbd_pass[GENERIC_NAME];
-char dyn_conf_path[GENERIC_NAME];
-char resched_path[GENERIC_NAME];
-char app_mgt_path[GENERIC_NAME];
-char pc_app_info_path[GENERIC_NAME];
 char coeffs_path[GENERIC_NAME];
 char coeffs_default_path[GENERIC_NAME];
 char services_conf_path[GENERIC_NAME];
@@ -290,9 +280,7 @@ void eard_exit(uint restart)
 	verbose(VCONF, "frequency_dispose");
 	frequency_dispose();
 
-#if POWERCAP
   powercap_end();
-#endif
 
 
 	verbose(VCONF, "Releasing node resources");
@@ -319,12 +307,9 @@ void eard_exit(uint restart)
 	dispose_uncores();
 
 	/* Releasing shared memory */
-	settings_conf_shared_area_dispose(dyn_conf_path);
-	resched_shared_area_dispose(resched_path);
 	coeffs_shared_area_dispose(coeffs_path);
 	coeffs_default_shared_area_dispose(coeffs_default_path);
 	services_conf_shared_area_dispose(services_conf_path);
-	app_mgt_shared_area_dispose(app_mgt_path);
 	/* end releasing shared memory */
 	if (restart) {
 		verbose(VCONF, "Restarting EARD\n");
@@ -415,9 +400,8 @@ void signal_handler(int sig)
 				print_my_node_conf(my_node_conf);
 				copy_my_node_conf(&my_original_node_conf, my_node_conf);
 				set_global_eard_variables();
-    			configure_new_values(dyn_conf,resched_conf,&my_cluster_conf,my_node_conf);
-    			verbose(VCONF,"shared memory updated max_freq %lu th %lf resched %d\n", dyn_conf->max_freq,
-                    dyn_conf->settings[0], resched_conf->force_rescheduling);
+    		configure_new_values(&my_cluster_conf,my_node_conf);
+				powermon_new_configuration();
 				save_eard_conf(&eard_dyn_conf);
 			}
 
@@ -508,38 +492,26 @@ void signal_catcher()
 
 /* Shared memory regions are privatized, this is default context */
 
-void configure_new_values(settings_conf_t *dyn, resched_t *resched, cluster_conf_t *cluster, my_node_conf_t *node) {
+void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 	policy_conf_t *my_policy;
 	ulong deff;
 	eard_max_pstate = node->max_pstate;
 	// Default policy is just in case
-    default_policy_context.policy=MONITORING_ONLY;
-    default_policy_context.p_state=EAR_MIN_P_STATE;
-    default_policy_context.settings[0]=0;
-    my_policy=get_my_policy_conf(node,cluster->default_policy);
+    default_policy_context.policy  = MONITORING_ONLY;
+    default_policy_context.p_state = EAR_MIN_P_STATE;
+    default_policy_context.settings[0] = 0;
+    my_policy = get_my_policy_conf(node,cluster->default_policy);
     if (my_policy==NULL){
         // This should not happen
         error("Default policy  not found in ear.conf");
-        my_policy=&default_policy_context;
+        my_policy = &default_policy_context;
     }else{
-		default_policy_context.policy=my_policy->policy;
-		default_policy_context.p_state=my_policy->p_state;
-		default_policy_context.settings[0]=my_policy->settings[0];
+		default_policy_context.policy = my_policy->policy;
+		default_policy_context.p_state = my_policy->p_state;
+		default_policy_context.settings[0] = my_policy->settings[0];
 	}
-    deff=frequency_pstate_to_freq(my_policy->p_state);
-	/* PENDING: we have to check we are not executing an application */
-	dyn->policy=cluster->default_policy;
-    dyn->max_freq=frequency_pstate_to_freq(node->max_pstate);
-    dyn->def_freq=deff;
-    memcpy(dyn->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
-	dyn->min_sig_power=node->min_sig_power;
-	dyn->max_sig_power=node->max_sig_power;
-	dyn->max_power_cap=node->powercap;
-	dyn->report_loops=cluster->database.report_loops;
-	memcpy(&dyn->installation,&cluster->install,sizeof(conf_install_t));
-	resched->force_rescheduling=1;
-	copy_ear_lib_conf(&dyn->lib_info,&cluster->earlib);
-	f_monitoring=my_cluster_conf.eard.period_powermon;
+    deff = frequency_pstate_to_freq(my_policy->p_state);
+	f_monitoring = my_cluster_conf.eard.period_powermon;
 	copy_eard_conf(&my_services_conf->eard,&my_cluster_conf.eard);
 	copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
 	copy_eardb_conf(&my_services_conf->db,&my_cluster_conf.database);
@@ -548,49 +520,31 @@ void configure_new_values(settings_conf_t *dyn, resched_t *resched, cluster_conf
 	save_eard_conf(&eard_dyn_conf);
 }
 
-void configure_default_values(settings_conf_t *dyn, resched_t *resched, cluster_conf_t *cluster, my_node_conf_t *node) {
+void configure_default_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 	policy_conf_t *my_policy;
 	ulong deff;
 	eard_max_pstate = node->max_pstate;
 	verbose(1,"Max pstate for this node is %d",eard_max_pstate);
 	// Default policy is just in case
-	default_policy_context.policy=MONITORING_ONLY;
-	default_policy_context.p_state=EAR_MIN_P_STATE;
-	default_policy_context.settings[0]=0;
-	my_policy=get_my_policy_conf(node,cluster->default_policy);
-	if (my_policy==NULL){
+	default_policy_context.policy  = MONITORING_ONLY;
+	default_policy_context.p_state = EAR_MIN_P_STATE;
+	default_policy_context.settings[0] = 0;
+	my_policy = get_my_policy_conf(node,cluster->default_policy);
+	if (my_policy == NULL){
 		// This should not happen
 		error("Default policy  not found in ear.conf");
-		my_policy=&default_policy_context;
+		my_policy = &default_policy_context;
 	}else{
-		default_policy_context.policy=my_policy->policy;
-		default_policy_context.p_state=my_policy->p_state;
-		default_policy_context.settings[0]=my_policy->settings[0];
+		default_policy_context.policy = my_policy->policy;
+		default_policy_context.p_state = my_policy->p_state;
+		default_policy_context.settings[0] = my_policy->settings[0];
 	}
-		verbose(1,"configure_default_values. Looking for pstate %d\n",my_policy->p_state);
-    deff=frequency_pstate_to_freq(my_policy->p_state);
-    dyn->user_type=NORMAL;
-	dyn->learning=0;
-    dyn->lib_enabled=1;
-	dyn->policy=cluster->default_policy;
-	dyn->max_freq=frequency_pstate_to_freq(node->max_pstate);
-    dyn->def_freq=deff;
-    memcpy(dyn->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
-	dyn->min_sig_power=node->min_sig_power;
-	dyn->max_sig_power=node->max_sig_power;
-	dyn->max_power_cap=node->powercap;
-	dyn->report_loops=cluster->database.report_loops;
-	dyn->max_avx512_freq=my_node_conf->max_avx512_freq;
-	dyn->max_avx2_freq=my_node_conf->max_avx2_freq;
-	memcpy(&dyn->installation,&cluster->install,sizeof(conf_install_t));
-
-
-	copy_ear_lib_conf(&dyn->lib_info,&cluster->earlib);
-	f_monitoring=my_cluster_conf.eard.period_powermon;
-	resched_conf->force_rescheduling=0;
-    copy_eard_conf(&my_services_conf->eard,&my_cluster_conf.eard);
-    copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
-    copy_eardb_conf(&my_services_conf->db,&my_cluster_conf.database);
+	verbose(1,"configure_default_values. Looking for pstate %d\n",my_policy->p_state);
+  //deff = frequency_pstate_to_freq(my_policy->p_state);
+	f_monitoring = my_cluster_conf.eard.period_powermon;
+  copy_eard_conf(&my_services_conf->eard,&my_cluster_conf.eard);
+  copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
+  copy_eardb_conf(&my_services_conf->db,&my_cluster_conf.database);
 	copy_eardbd_conf(&my_services_conf->eardbd,&my_cluster_conf.db_manager);
 	strcpy(my_services_conf->net_ext,my_cluster_conf.net_ext);
 	save_eard_conf(&eard_dyn_conf);
@@ -837,39 +791,6 @@ int main(int argc, char *argv[])
 	/**** SHARED MEMORY REGIONS ****/
 	/* This area is for shared info */
 	verbose(0, "creating shared memory regions");
-	get_settings_conf_path(my_cluster_conf.install.dir_temp, dyn_conf_path);
-	verbose(VCONF + 1, "Using %s as settings path (shared memory region)", dyn_conf_path);
-	dyn_conf = create_settings_conf_shared_area(dyn_conf_path);
-	if (dyn_conf == NULL) {
-		error("Error creating shared memory between EARD & EARL\n");
-		_exit(0);
-	}
-	/* This area indicates EARL must resched */
-	get_resched_path(my_cluster_conf.install.dir_temp, resched_path);
-	verbose(VCONF + 1, "Using %s as resched path (shared memory region)", resched_path);
-	resched_conf = create_resched_shared_area(resched_path);
-	if (resched_conf == NULL) {
-		error("Error creating shared memory between EARD & EARL");
-		_exit(0);
-	}
-	/* This area is for application data */
-	#if POWERCAP
-	get_app_mgt_path(my_cluster_conf.install.dir_temp,app_mgt_path);
-	verbose(VCONF + 1, "Using %s as app_mgt data path (shared memory region)", app_mgt_path);
-	app_mgt_info=create_app_mgt_shared_area(app_mgt_path);
-	if (app_mgt_info==NULL){
-		error("Error creating shared memory between EARD & EARL for app_mgt");
-		_exit(0);
-	}
-	get_pc_app_info_path(my_cluster_conf.install.dir_temp,pc_app_info_path);
-	verbose(VCONF + 1, "Using %s as pc_app_info dat apath (shared memory region)",pc_app_info_path);
-	pc_app_info_data=create_pc_app_info_shared_area(pc_app_info_path);
-	if (pc_app_info_data==NULL){
-		error("Error creating shared memory between EARD & EARL for pc_app_info");
-		_exit(0);
-	}
-	#endif
-	verbose(0, "Basic shared memory regions created");
 	/* Coefficients */
 	verbose(0,"Loading coefficients");
 	coeffs_size = read_coefficients();
@@ -913,8 +834,7 @@ int main(int argc, char *argv[])
 		restore_eard_conf(&eard_dyn_conf);
 	}
 	/* After potential recoveries, we set the info in the shared memory */
-    configure_default_values(dyn_conf,resched_conf,&my_cluster_conf,my_node_conf);
-    verbose(VCONF,"shared memory created max_freq %lu th %lf resched %d",dyn_conf->max_freq,dyn_conf->settings[0],resched_conf->force_rescheduling);
+    configure_default_values(&my_cluster_conf,my_node_conf);
 
 	// Check
 	if (argc == 2) {

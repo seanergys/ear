@@ -15,6 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+#define _GNU_SOURCE
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +23,9 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#define _GNU_SOURCE
+
+#include <sched.h>
+
 #define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
@@ -36,6 +39,7 @@
 #include <common/types/configuration/cluster_conf.h>
 
 #include <daemon/shared_configuration.h>
+#include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap_mgt.h>
 #include <daemon/powercap/powercap_status.h>
 #if USE_GPUS
@@ -45,14 +49,16 @@
 
 
 #ifndef SYN_TEST
-extern pc_app_info_t *pc_app_info_data;
-extern settings_conf_t *dyn_conf;
-extern pc_app_info_t *pc_app_info_data;
 extern cluster_conf_t my_cluster_conf;
 extern node_powercap_opt_t my_pc_opt;
 #else
 cluster_conf_t my_cluster_conf;
 #endif
+
+extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
+extern int max_context_created;
+extern int num_contexts;
+
 
 
 
@@ -498,12 +504,18 @@ state_t pmgt_handler_alloc(pwr_mgt_t **phandler)
 state_t pmgt_set_powercap_value(pwr_mgt_t *phandler,uint pid,uint domain,ulong limit)
 {
     state_t ret,gret=EAR_SUCCESS;
+		int cc;
     int i;
     for (i=0;i<NUM_DOMAINS;i++){
         //debug("Using %f weigth for domain %d: Total %lu allocated %f",pdomains[i],i,limit,limit*pdomains[i]);
         ret=freturn(pcsyms_fun[i].set_powercap_value,pid,domain,limit*pdomains[i],current_util[i]);
 #ifndef SYN_TEST
-        dyn_conf->pc_opt.pper_domain[i]=limit*pdomains[i];
+				for (cc = 0;cc <= max_context_created; cc++){
+    			if (current_ear_app[cc] != NULL){
+						/* PENDING to distribute power among running jobs proportionally to the number of resources*/
+      			current_ear_app[cc]->settings->pc_opt.pper_domain[i] = limit*pdomains[i]/num_contexts;
+					}
+				}
 #endif
         if ((ret!=EAR_SUCCESS) && (domains_loaded[i])) gret=ret;
     }
@@ -651,12 +663,35 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 
 void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 {
+		int cc;
+		powermon_app_t *pmapp;	
+		for (cc = 1; cc  <= max_context_created; cc ++){
+			if (current_ear_app[cc] != NULL){
+			pmapp = current_ear_app[cc];
+			/* For each app, we must merge CPUfreq and GPUfreq requested */
 #ifndef SYN_TEST
-    if (domain == DOMAIN_CPU) memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    	if (domain == DOMAIN_CPU){ 
+			//memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+				cpu_set_t m;
+				m = pmapp->app_info->node_mask;
+				int i;
+				for (i=0; i < MAX_CPUS_SUPPORTED; i++){
+					if (CPU_ISSET(i,&m)) f[i] = pmapp->pc_app_info->req_f[i];
+				}
+			}
 #if USE_GPUS
-    if (domain == DOMAIN_GPU) memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
+    	if (domain == DOMAIN_GPU){ 
+			//memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
+				int i;
+        for (i=0; i < MAX_GPUS_SUPPORTED; i++){
+					if (pmapp->pc_app_info->req_gpu_f[i] != 0) f[i] = pmapp->pc_app_info->req_gpu_f[i];
+				}
+			}
 #endif
 #endif
+			}
+
+		}
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler, pc_app_info_t *pc_app)

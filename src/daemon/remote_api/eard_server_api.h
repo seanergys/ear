@@ -28,9 +28,9 @@
 
 
 void propagate_req(request_t *command, uint port);
-int propagate_and_cat_data(request_t *command, uint port, void **status, size_t size,uint type);
+int propagate_and_cat_data(request_t *command, uint port, void **status, size_t size,uint type, int num_items);
 int propagate_status(request_t *command, uint port, status_t **status);
-int propagate_app_status(request_t *command, uint port, app_status_t **status);
+int propagate_app_status(request_t *command, uint port, app_status_t **status, int num_apps);
 int propagate_release_idle(request_t *command, uint port, pc_release_data_t *release);
 int propagate_powercap_status(request_t *command, uint port, powercap_status_t **status);
 

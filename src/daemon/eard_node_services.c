@@ -250,186 +250,6 @@ int is_valid_sec_tag(ulong tag) {
 }
 
 #if 0
-// Creates a pipe to receive requests for applications. eard creates 1 pipe (per node) and service to receive requests
-void create_connector(char *ear_tmp, char *nodename, int i) {
-	char ear_commreq[MAX_PATH_SIZE * 2];
-	sprintf(ear_commreq, "%s/.ear_comm.req_%d", ear_tmp, i);
-	// ear_comreq files will be used to send requests from the library to the eard
-	if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
-		if (errno != EEXIST) {
-			error("Error creating ear communicator for requests %s\n", strerror(errno));
-			error_connector=1;
-		}
-	}
-	if (chmod(ear_commreq, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)<0){
-		error("Error setting privileges for eard-earl connection");
-		error_connector=1;
-	}
-}
-
-
-void connect_service(int req, application_t *new_app) {
-	char ear_commack[MAX_PATH_SIZE * 2];
-	unsigned long ack;
-	int connect = 1;
-	int alive;
-	job_t *new_job = &new_app->job;
-	int pid = create_ID(new_job->id, new_job->step_id);
-	// Let's check if there is another application
-	verbose(1, "request for connection at service %d (%lu,%lu)", req,new_job->id,new_job->step_id);
-	
-	if (is_new_application() || is_new_service(req, pid)) {
-		connect = 1;
-	} else {
-		connect = 0;
-
-		//FIXME: implicit
-		if (check_ping()) alive = application_timeout();
-		if (alive == 0) connect = 1;
-	}
-
-
-	// Creates 1 pipe (per node) to send acks.
-	if (connect) {
-		verbose(VEARD + 1, "Connected new job job_id=%lu step_id=%lu\n", new_job->id, new_job->step_id);
-		sprintf(ear_commack, "%s/.ear_comm.ack_%d.%d", ear_tmp, req, pid);
-		application_id = pid;
-
-		// ear_commack will be used to send ack's or values (depending on the
-		// requests) from eard to the library
-		verbose(VEARD + 1, "Creating ack comm %s pid=%d", ear_commack, pid);
-
-		if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
-			if (errno != EEXIST) {
-				error("Error when creating ear communicator for ack %s", strerror(errno));
-				eard_close_comm();
-			}
-		}
-
-		chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-		// At first service connection, we use the ping conn file
-		if (req == 0) {
-			// We open ping connection  for writting
-			sprintf(ear_ping, "%s/.ear_comm.ping.%d", ear_tmp, pid);
-
-			debug("application %d connected", pid);
-			debug("opening ping conn for %d", pid);
-			ear_ping_fd = open(ear_ping, O_WRONLY);
-
-			if (ear_ping_fd < 0) {
-				error("ERROR while opening ping pipe %s (%s)", ear_ping, strerror(errno));
-				eard_close_comm();
-			}
-
-			// We must modify the client api to send more information
-			powermon_mpi_init(&handler_energy, new_app);
-
-			debug("sending ack for service %d", req);
-			if (write(ear_ping_fd, &ack, sizeof(ack)) != sizeof(ack)) {
-				warning("WARNING while writting for ping conn for %d", pid);
-			}
-
-			debug("connecting service %s", ear_commack);
-			if ((ear_fd_ack[req] = open(ear_commack, O_WRONLY)) < 0) {
-				error("ERROR when opening ear communicator for ack (%s)", strerror(errno));
-				eard_close_comm();
-			}
-		} else {
-			// eard only suppports one application connected, the second one will block
-			verbose(VEARD + 1, "Process pid %d rejected as master", pid);
-		}
-		verbose(VEARD + 1, "Process pid %d selected as master", pid);
-		verbose(VEARD + 1, "service %d connected", req);
-	}
-	verbose(1,"Application connected with local API");
-}
-
-// Checks application connections
-int is_new_application() {
-	if (application_id == -1) return 1;
-	else return 0;
-}
-
-// Application is already connected but it is a new service
-int is_new_service(int req, int pid) {
-	if ((application_id == pid) && (ear_fd_ack[req] == -1)) return 1;
-	else return 0;
-}
-
-
-// HIGHLIGHT: LIBRARY DISPOSE (2/2)
-void eard_close_comm() {
-	char ear_commack[MAX_PATH_SIZE * 2];
-	int dis_pid = application_id;
-	int i;
-
-	// closes communication with an application
-	verbose(VEARD + 1, "closing comm in %s for %d", nodename, application_id);
-
-	// Stop counting
-	if (RAPL_counting) {
-		//reset_rapl_metrics();
-		RAPL_counting = 0;
-	}
-
-	for (i = 0; i < ear_daemon_client_requests; i++) {
-		close(ear_fd_ack[i]);
-		ear_fd_ack[i] = -1;
-
-		sprintf(ear_commack, "%s/.ear_comm.ack_%d.%d", ear_tmp, i, application_id);
-		verbose(VEARD + 1, "removing file %s", ear_commack);
-
-		if (unlink(ear_commack) < 0) {
-			error("ERROR when removing ack file %s (%s)", ear_commack, strerror(errno));
-		}
-	}
-
-	close(ear_ping_fd);
-
-	// We must send the app signature to the powermonitoring thread
-	powermon_mpi_finalize(&handler_energy);
-
-	application_id = -1;
-	ear_ping_fd = -1;
-
-	verbose(VEARD + 1, "removing file %s", ear_ping);
-
-	if (unlink(ear_ping) < 0) {
-		error("ERROR when removing ping file %s (%s)", ear_ping, strerror(errno));
-	}
-	verbose(VEARD + 1, "application %d disconnected", dis_pid);
-}
-
-/************************* Node_energy services ******************/
-int eard_node_energy(eard_head_t *head, int req_fd, int ack_fd) {
-	unsigned long ack;
-	if (must_read) {
-		if (read(ear_fd_req[node_energy_req], &req, sizeof(req)) != sizeof(req))
-			error("error reading info at eard_node_energy (%s)\n", strerror(errno));
-	}
-	switch (req.req_service) {
-		case CONNECT_ENERGY:
-			connect_service(node_energy_req, &req.req_data.app);
-			break;
-		case READ_DC_ENERGY:
-			energy_dc_read(&handler_energy, node_energy_data);
-			write(ear_fd_ack[node_energy_req], node_energy_data, node_energy_datasize);
-			break;
-		case DATA_SIZE_ENERGY_NODE:
-			energy_datasize(&handler_energy, &ack);
-			write(ear_fd_ack[node_energy_req], &ack, sizeof(unsigned long));
-			break;
-		case ENERGY_FREQ:
-			ack = (ulong) energy_freq;
-			write(ear_fd_ack[node_energy_req], &ack, sizeof(unsigned long));
-			break;
-		default:
-			return 0;
-	}
-	return 1;
-
-}
 
 /* To report data */
 
@@ -699,47 +519,6 @@ int eard_uncore(eard_head_t *head, int req_fd, int ack_fd) {
 	}
 	return 1;
 }
-#if 0
-
-/*******************+ RAPL SERVICES *******************/
-int eard_rapl(eard_head_t *head, int req_fd, int ack_fd) {
-	unsigned long comm_req = rapl_req;
-	unsigned long ack = 0;
-	if (must_read) {
-		if (read(ear_fd_req[comm_req], &req, sizeof(req)) != sizeof(req))
-			error("error when reading info at eard_rapl\n");
-	}
-	switch (req.req_service) {
-		case CONNECT_RAPL:
-			connect_service(rapl_req, &req.req_data.app);
-			break;
-		case START_RAPL:
-			error("starting rapl msr not supported");
-			RAPL_counting = 1;
-			write(ear_fd_ack[comm_req], &ack, sizeof(ack));
-			break;
-		case RESET_RAPL:
-			error("Reset RAPL counters not provided");
-			write(ear_fd_ack[comm_req], &ack, sizeof(ack));
-			break;
-		case READ_RAPL:
-			if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
-			RAPL_counting = 0;
-			write(ear_fd_ack[comm_req], values_rapl, sizeof(unsigned long long) * RAPL_POWER_EVS*num_packs);
-			break;
-		case DATA_SIZE_RAPL:
-			ack = sizeof(unsigned long long) * RAPL_POWER_EVS*num_packs;
-			write(ear_fd_ack[comm_req], &ack, sizeof(unsigned long));
-			break;
-		default:
-			return 0;
-
-	}
-	return 1;
-}
-
-/***************** END RAPL SERVICES ***********/
-#endif
 
 /***************** GPU SERVICES ****************/
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd) 
@@ -959,8 +738,7 @@ void eard_close_comm(int req_fd,int ack_fd)
     // This debug was set outside, but it requires a valid id to prevent segmentation faults.
   }
   if (!was_anonymous) {
-    //powermon_mpi_finalize(&handler_energy,jid,sid);
-    powermon_mpi_finalize(&handler_energy);
+    powermon_mpi_finalize(&handler_energy,jid,sid);
   }
 }
 /************************* Node_energy services ******************/
@@ -1030,7 +808,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
     case WRITE_LOOP_SIGNATURE:
       ack = EAR_COM_OK;
       ret1 = EAR_SUCCESS;
-      //powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
+      powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
       // print_loop_fd(1,&req.req_data.loop);
       if (my_cluster_conf.database.report_loops) {
 #if USE_DB
@@ -1625,8 +1403,7 @@ state_t service_close(int req_fd, int ack_fd)
 	close(ack_fd);
 	// End job
 	if (!was_anonymous) {
-		//powermon_mpi_finalize(&handler_energy, job_id, step_id);
-		powermon_mpi_finalize(&handler_energy);
+		powermon_mpi_finalize(&handler_energy, job_id, step_id);
 	}
 
 	return EAR_SUCCESS;

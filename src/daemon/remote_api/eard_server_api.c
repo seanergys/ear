@@ -574,17 +574,19 @@ int propagate_release_idle(request_t *command, uint port, pc_release_data_t *rel
 
 }
 
-int propagate_and_cat_data(request_t *command, uint port, void **status, size_t size,uint type)
+int propagate_and_cat_data(request_t *command, uint port, void **status, size_t size,uint type, int num_items)
 {
     char *temp_status, *final_status;
     int *ip;
     int num_status = 0;
+		int i;
 
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we set the status for this node and return
     if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
     {
-        final_status = (char *)calloc(1, size);
+        final_status = (char *)calloc(num_items, size);
+#if 0
         ip=(int *)final_status;
         if (self_id < 0 || ips == NULL)
             *ip = get_self_ip();
@@ -593,6 +595,18 @@ int propagate_and_cat_data(request_t *command, uint port, void **status, size_t 
 	    	debug("generic_status has 1 status\n");
         *status = final_status;
         return 1;
+#endif
+        for (i=0;i<num_items;i++){
+          ip = (int *)((char *)final_status + i*size);
+          if (self_id < 0 || ips == NULL)
+            *ip = get_self_ip();
+          else
+            *ip = ips[self_id];
+        }
+        debug("generic_status has %d status\n", num_items);
+        *status = final_status;
+        return num_items;
+
     }
 
     // propagate request and receive the data
@@ -601,24 +615,40 @@ int propagate_and_cat_data(request_t *command, uint port, void **status, size_t 
     
     if (head.type != type || head.size < size)
     {
-        final_status = (char *)calloc(1, size);
+        final_status = (char *)calloc(num_items, size);
+#if 0
         ip=(int *)final_status;
         *ip = ips[self_id];
         if (head.size > 0) free(temp_status);
         *status = final_status;
         return 1;
+#endif
+        for (i=0;i<num_items;i++){
+          ip = (int *)((char *)final_status + i*size);
+          *ip = ips[self_id];
+        }
+				if (head.size > 0) free(temp_status);
+        *status = final_status;
+        return num_items;
     }
 
     //memory allocation with the current node
-    final_status = (char *)calloc(num_status + 1, size);
+    final_status = (char *)calloc(num_status + num_items, size);
     memcpy(final_status, temp_status, head.size);
-
+#if 0
     //current node info
     ip = (int *)&final_status[num_status*size];
     *ip = ips[self_id];
     *status = final_status;
     num_status++;   //we add the original status
-
+#endif
+		//current node info
+    for (i=0;i<num_items;i++){
+      ip = (int *)((char *)&final_status[num_status*size] + i*size);
+      *ip = ips[self_id];
+    }
+    *status = final_status;
+		num_status += num_items;   //we add the original status
     free(temp_status);
 
     return num_status;
@@ -629,18 +659,18 @@ int propagate_status(request_t *command, uint port, status_t **status)
 {
     int num_status;
     status_t *temp_status;
-    num_status = propagate_and_cat_data(command, port, (void **)&temp_status, sizeof(status_t), EAR_TYPE_STATUS);
+    num_status = propagate_and_cat_data(command, port, (void **)&temp_status, sizeof(status_t), EAR_TYPE_STATUS, 1);
     temp_status[num_status-1].ok = STATUS_OK;
     *status=temp_status;
     return num_status;
 }
 
-int propagate_app_status(request_t *command, uint port, app_status_t **status)
+int propagate_app_status(request_t *command, uint port, app_status_t **status, int num_apps)
 {
     int num_status;
     app_status_t *temp_status;
-    num_status = propagate_and_cat_data(command, port, (void **)&temp_status, sizeof(app_status_t), EAR_TYPE_APP_STATUS);
-    *status=temp_status;
+    num_status = propagate_and_cat_data(command, port, (void **)&temp_status, sizeof(app_status_t), EAR_TYPE_APP_STATUS, num_apps);
+    *status = temp_status;
     return num_status;
 }
 

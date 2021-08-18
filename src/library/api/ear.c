@@ -139,12 +139,10 @@ char lib_shared_region_path[GENERIC_NAME];
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
 float ratio_PPN;
-#if POWERCAP
 app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
 char pc_app_info_path[GENERIC_NAME];
-#endif
 
 uint mgt_cpufreq_api;
 // Dynais
@@ -637,7 +635,6 @@ static void get_app_name(char *my_name)
 		strcpy(my_name, app_name);
 	}
 }
-#if POWERCAP
 /************** This function  checks if application is a "large" job *******************/
 void check_large_job_use_case()
 {
@@ -650,7 +647,6 @@ void check_large_job_use_case()
 		debug("We ar a large job and we will start at a lower freq: Size %u limit %u",app_mgt_info->nodes,LIMIT_LARGE_JOBS);
 	}
 }
-#endif
 
 /****************************************************************************************************************************************************************/
 /*** We update EARL configuration based on shared memory information, ignoring potential malicious definition **/
@@ -804,8 +800,8 @@ void ear_init()
 	
 	debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
 
-	get_settings_conf_path(get_ear_tmp(),system_conf_path);
-	get_resched_path(get_ear_tmp(),resched_conf_path);
+	get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
+	get_resched_path(get_ear_tmp(),ID, resched_conf_path);
 
 	debug("system_conf_path  = %s",system_conf_path);
 	debug("resched_conf_path = %s",resched_conf_path);
@@ -1003,8 +999,7 @@ void ear_init()
 
     // This is not frequency any more
     if (masters_info.my_master_rank>=0){
-#if POWERCAP
-        get_app_mgt_path(get_ear_tmp(),app_mgt_path);
+        get_app_mgt_path(get_ear_tmp(),ID, app_mgt_path);
         verbose_master(VEAR_INIT,"app_mgt_path %s",app_mgt_path);
         app_mgt_info=attach_app_mgt_shared_area(app_mgt_path);
         if (app_mgt_info==NULL){
@@ -1018,7 +1013,7 @@ void ear_init()
         /* At this point we have notified the EARD the number of nodes in the application */
         check_large_job_use_case();
         /* This area is RW */
-        get_pc_app_info_path(get_ear_tmp(),pc_app_info_path);
+        get_pc_app_info_path(get_ear_tmp(),ID, pc_app_info_path);
         verbose_master(VEAR_INIT,"pc_app_info path %s",pc_app_info_path);
         pc_app_info_data=attach_pc_app_info_shared_area(pc_app_info_path);
         if (pc_app_info_data==NULL){
@@ -1029,7 +1024,6 @@ void ear_init()
             return;
 
         }
-#endif
     }
     if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
         error("Checking the affinity mask");

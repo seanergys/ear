@@ -21,7 +21,7 @@
 #include <daemon/shared_configuration.h>
 
 void eard_exit(uint restart);
-static void configure_new_values(settings_conf_t *dyn,resched_t *resched,cluster_conf_t *cluster,my_node_conf_t *node);
+static void configure_new_values(cluster_conf_t *cluster,my_node_conf_t *node);
 static void init_frequency_list();
 static void set_global_eard_variables();
 static int read_coefficients();

@@ -45,12 +45,10 @@
 #include <library/common/global_comm.h>
 #include <common/environment.h>
 #include <daemon/local_api/eard_api.h>
-#if POWERCAP
 #include <daemon/powercap/powercap_status_conf.h>
 #include <common/types/pc_app_info.h>
 #include <library/policies/common/pc_support.h>
 #include <library/policies/policy_state.h>
-#endif
 
 extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
@@ -99,9 +97,7 @@ extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) f
 #endif
 
-#if POWERCAP
 extern pc_app_info_t *pc_app_info_data;
-#endif
 
 
 static polsym_t polsyms_fun;
@@ -227,12 +223,10 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     int i;
     char pol_grain_str[128];
     verbose_master(2,"policy_cpu_freq_selection");
-#if POWERCAP
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
         /* Warning: POL_GRAIN_CORE not supported */
         pcapp_info_set_req_f(pc_app_info_data, freq_set, MAX_CPUS_SUPPORTED);
     }
-#endif
     memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
     else sprintf(pol_grain_str,"POL_GRAIN_NODE");
@@ -322,12 +316,10 @@ static state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if (c->num_gpus == 0) return EAR_SUCCESS;
     /* Powercap limits are checked here but this code could be moved to a function */
 #if USE_GPUS
-#if POWERCAP
     for (i=0;i<c->num_gpus;i++) verbosen_master(2," GPU freq[%d] = %.2f ",i,(float)gpu_f[i]/1000000.0);
     verbose_master(2," ");
     pc_app_info_data->num_gpus_used = my_sig->gpu_sig.num_gpus;
     memcpy(pc_app_info_data->req_gpu_f,gpu_f,c->num_gpus*sizeof(ulong));
-#endif
     /* Pending: We must filter the GPUs I'm using */
     if (gpu_lib_freq_limit_set(gpu_f) != EAR_SUCCESS){
         verbose_master(2,"GPU freq set error ");
@@ -520,11 +512,9 @@ state_t policy_init()
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
         verbose_master(2, "%sERROR on getting domains.%s",COL_RED, COL_CLR);
     }
-#if POWERCAP
     if (masters_info.my_master_rank>=0){
         pc_support_init(c);
     }
-#endif
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
 }
@@ -601,11 +591,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     my_pol_ctx.use_turbo 					= ear_use_turbo;
     my_pol_ctx.affinity  					= ear_affinity_is_set;
     my_globalrank = masters_info.my_master_rank;
-#if POWERCAP
     my_pol_ctx.pc_limit						= app_settings->pc_opt.current_pc;
-#else
-    my_pol_ctx.pc_limit           = 0;
-#endif
     verbose_master(2,"Default frequency set to %lu",*(my_pol_ctx.ear_frequency));
 #if MPI
     if (PMPI_Comm_dup(masters_info.new_world_comm,&my_pol_ctx.mpi.comm)!=MPI_SUCCESS){
@@ -864,9 +850,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
             *ok = 1;
             return EAR_SUCCESS;
         }
-#if POWERCAP
         pc_support_compute_next_state(c,&my_pol_ctx.app->pc_opt,curr);
-#endif
         ret = polsyms_fun.ok(c, curr,prev,ok);
         if (*ok == 0){
             last_earl_phase_classification = APP_COMP_BOUND;

@@ -32,7 +32,6 @@
 #include <global_manager/cluster_powercap.h>
 
 
-#if POWERCAP
 
 extern cluster_conf_t my_cluster_conf;
 extern uint  max_cluster_power;
@@ -256,7 +255,6 @@ void * eargm_powercap_th(void *noarg)
 {
     if (pthread_setname_np(pthread_self(), "cluster_powercap")!=0) error("Setting name forcluster_powercap thread %s", strerror(errno));
 
-#if POWERCAP
     while(1)
     {
         sleep(cluster_powercap_period);
@@ -273,7 +271,6 @@ void * eargm_powercap_th(void *noarg)
         }
 
     }
-#endif
 
 }
 
@@ -403,4 +400,3 @@ void cluster_check_powercap()
     free(cluster_options.extra_power);
     debug("%sEND cluster_check_powercap----------%s",COL_BLU,COL_CLR);
 }
-#endif
