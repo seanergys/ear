@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
 #define INFO_METRICS 0
 #define IO_VERB 3
@@ -24,6 +25,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sched.h>
+
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -145,6 +148,26 @@ static int NI=0;
 static llong last_elap_sec = 0;
 static llong app_start;
 
+
+static cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
+{
+	cpu_set_t m;
+	ulong total = 0, total_cpus = 0;
+	int p, i, c;
+	int ccount = arch_desc.top.cpu_count;
+  for (p = 0; p < lib_shared_region->num_processes ; p++)
+  {
+  	m = sig_shared_region[p].cpu_mask;
+  	for (c = 0 ; c < ccount; c++){
+  		if (CPU_ISSET(c,&m)){
+				total += nodecpuf[c];
+				total_cpus++;
+			}
+		}
+	}
+	*avgf = total/total_cpus;
+}
+
 static void metrics_accum_flops(llong *loop_flops);
 
 void set_null_dc_energy(edata_t e)
@@ -250,11 +273,12 @@ static void metrics_global_stop()
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[APP],mycpufreq_data_size))){
       error("CPUFreq data read in global_stop");
     }
-		if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[APP],&cpufreq_data_init[APP],NULL,&cpufreq_data_avg[APP]))){
+		if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[APP],&cpufreq_data_init[APP],cpufreq_data_per_core,&cpufreq_data_avg[APP]))){
 			error("CPUFreq data diff");
 		}else{
 			debug("CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[APP]/1000000.0);
 		}
+		cpufreq_my_avgcpufreq(cpufreq_data_per_core, &cpufreq_data_avg[APP]);
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
 		/* AVG IMC frequency */
 		if (imc_mgt_compatible){
@@ -533,8 +557,11 @@ static int metrics_partial_stop(uint where)
     }else{
       debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
-		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++) verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
+		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++){ 
+			verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
+		}
 		verbosen_master(3,"\n");
+		cpufreq_my_avgcpufreq(cpufreq_data_per_core, &cpufreq_data_avg[LOO]);
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
 
 		/* Avg IMC frequency */
