@@ -332,12 +332,12 @@ void clean_job_area(uint ID)
 		verbose(1,"Error opening job path %s",job_path);
     return;
   }
-  verbose(1,"Cleaning job_path: %s", job_path);
+  verbose(2,"Cleaning job_path: %s", job_path);
 
   while ((file = folder_getnext(&job_folder, NULL, NULL)))
   {
 		snprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-		verbose(1,"Deleting: %s",file_path);
+		verbose(2,"Deleting: %s",file_path);
 		ret = unlink(file_path);	
   }
 	folder_close(&job_folder);
@@ -1206,9 +1206,15 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	verbose_node_metrics(&my_nm_id, nm);
 	verbose(VNODEPMON,"%s",COL_CLR);
 
-  if (!(is_null(&pmapp->last_loop)==1)){
-    signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
-  }
+	/* We use last context as reference but we print all of them */
+	for (uint cc = 0;cc < MAX_CPUS_SUPPORTED; cc ++){ 
+		pmapp = current_ear_app[cc];
+  	if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
+    	signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
+			verbose(1," ");
+  	}
+	}
+	pmapp     = current_ear_app[max_context_created];
 
 	while (pthread_mutex_trylock(&app_lock));
 

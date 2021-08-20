@@ -21,7 +21,6 @@
 #include <common/states.h>
 
 #include <common/types/generic.h>
-#include <library/common/library_shared_data.h>
 
 #define LOCK_NODE_MGR_LCK	  ".node_mgr_lck"
 #define LOCK_NODE_MGR_INFO	".node_mgr_data"
@@ -29,8 +28,7 @@
 typedef struct ear_njob{
 	job_id jid;
 	job_id sid;
-	lib_shared_data_t *job_data;
-	shsignature_t		*job_signatures;		
+	time_t creation_time;
 }ear_njob_t;
 
 /** Initialices the lock file and attaches the shared memory region. nodelist is internally allocated. Must be used by earl */
@@ -53,6 +51,9 @@ state_t nodemgr_clean_job(job_id jid,job_id sid);
 
 /* Removes the shared region. To be used by eard at eard exit */
 state_t nodemgr_server_end();
+
+state_t node_mgr_info_lock();
+void node_mgr_info_unlock();
 
 
 

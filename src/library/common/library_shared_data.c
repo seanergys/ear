@@ -31,9 +31,12 @@
 #include <common/output/verbose.h>
 #include <library/common/externs.h>
 #include <common/types/configuration/cluster_conf.h>
+
+#include <daemon/local_api/node_mgr.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
+#include <common/environment.h>
 
 static int fd_conf,fd_signatures;
 
@@ -64,13 +67,13 @@ lib_shared_data_t * create_lib_shared_data_area(char * path)
 	return my_area;
 }
 
-lib_shared_data_t * attach_lib_shared_data_area(char * path)
+lib_shared_data_t * attach_lib_shared_data_area(char * path, int *fd)
 {
-    return (lib_shared_data_t *)attach_shared_area(path,sizeof(lib_shared_data_t),O_RDWR,&fd_conf,NULL);
+    return (lib_shared_data_t *)attach_shared_area(path,sizeof(lib_shared_data_t),O_RDWR,fd,NULL);
 }                                
-void dettach_lib_shared_data_area()
+void dettach_lib_shared_data_area(int fd)
 {
-	dettach_shared_area(fd_conf);
+	dettach_shared_area(fd);
 }
 
 void lib_shared_data_area_dispose(char * path)
@@ -475,5 +478,77 @@ double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
 	int i;
 	for (i=0;i<data->num_processes;i++) total += sig[i].sig.Gflops;
 	return total;
+}
+
+
+
+/* Node mgr support functions */
+
+/* Node mgr variables */
+extern ear_njob_t *node_mgr_data;
+extern uint node_mgr_index;
+extern node_mgr_sh_data_t *node_mgr_job_info;
+extern char lib_shared_region_path_jobs[GENERIC_NAME];
+
+void  init_earl_node_mgr_info()
+{
+  for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+    uint ID;
+    job_id id,sid;
+
+		char *tmp = get_ear_tmp();
+    id = node_mgr_data[j].jid;
+    sid = node_mgr_data[j].sid;
+    if ((id != -1) && (sid != -1)){
+      /* Double validation */
+      if (node_mgr_info_lock() == EAR_SUCCESS){
+        id = node_mgr_data[j].jid;
+        sid = node_mgr_data[j].sid;
+        node_mgr_job_info[j].creation_time = node_mgr_data[j].creation_time;
+        node_mgr_info_unlock();
+      }
+      if ((id != -1) && (sid != -1) && (j != node_mgr_index) ){
+        verbose_master(2,"Job %lu.%lu is sharing the node", id,sid);
+        ID = create_ID(id, sid);
+        if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path_jobs) == EAR_SUCCESS){
+          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd);
+        }else{
+          node_mgr_job_info[j].creation_time = 0;
+        }
+      }else if (j == node_mgr_index){
+        node_mgr_job_info[j].libsh =  lib_shared_region;
+      }
+    }
+  }
+}
+void    update_earl_node_mgr_info()
+{
+		char *tmp = get_ear_tmp();
+    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+      job_id jid,sid;
+      time_t ct;
+      jid = node_mgr_data[j].jid;
+      sid = node_mgr_data[j].sid;
+      ct = node_mgr_data[j].creation_time;
+      if (ct != node_mgr_job_info[j].creation_time){
+        while (node_mgr_info_lock() != EAR_SUCCESS);
+        jid = node_mgr_data[j].jid;
+        sid = node_mgr_data[j].sid;
+        ct = node_mgr_data[j].creation_time;
+        node_mgr_info_unlock();
+        /* Double validation after getting the lock */
+        if (ct != node_mgr_job_info[j].creation_time){
+          if (ct == 0){
+            dettach_lib_shared_data_area(node_mgr_job_info[j].fd);
+            node_mgr_job_info[j].creation_time = 0;
+          }else{
+            uint ID = create_ID(jid,sid);
+            get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs );
+            attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd);
+            node_mgr_job_info[j].creation_time = ct;
+          }
+        }
+      }
+    }
 }
 

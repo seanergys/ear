@@ -45,10 +45,12 @@
 #include <library/common/global_comm.h>
 #include <common/environment.h>
 #include <daemon/local_api/eard_api.h>
+#include <daemon/local_api/node_mgr.h>
 #include <daemon/powercap/powercap_status_conf.h>
 #include <common/types/pc_app_info.h>
 #include <library/policies/common/pc_support.h>
 #include <library/policies/policy_state.h>
+
 
 extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
@@ -116,6 +118,9 @@ static uint use_earl_phases = EAR_USE_PHASES;
 
 int cpu_ready = EAR_POLICY_NO_STATE ,gpu_ready = EAR_POLICY_NO_STATE ;
 uint gidle;
+
+
+
 /**** Auxiliary functions ***/
 state_t policy_load(char *obj_path,polsym_t *psyms)
 {
@@ -681,6 +686,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     uint busy, iobound, mpibound,earl_phase_classification;
     sig_ext_t *se;
     float mpi_in_period;
+		uint jobs_in_node;
 
     se = (sig_ext_t *)my_sig->sig_ext;
     cpu_ready = EAR_POLICY_NO_STATE;
@@ -689,16 +695,13 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
     }
-#if 0
-    if (!are_signatures_ready(lib_shared_region,sig_shared_region)){ 
-        *ready = EAR_POLICY_CONTINUE;
-        uint pending_sig = lib_shared_region->num_processes-compute_total_signatures_ready(lib_shared_region,sig_shared_region);
-        if (pending_sig > (lib_shared_region->num_processes/2)){
-            verbose_master(2,"Num sig pending %d:",pending_sig);	
-        }
-        return EAR_SUCCESS;
-    }
-#endif
+
+		/* Update node info */
+		update_earl_node_mgr_info();
+		nodemgr_get_num_jobs_attached(&jobs_in_node);
+		verbose_master(2,"There are %u jobs in the node", jobs_in_node);
+		/* End update */
+
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
     is_io_bound(my_sig->IO_MBS,&iobound);
@@ -846,11 +849,18 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 {
     polctx_t *c=&my_pol_ctx;
     state_t ret,retg=EAR_SUCCESS;
+		uint jobs_in_node;
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;
     }
     if (masters_info.my_master_rank < 0 ){*ok = 1; return EAR_SUCCESS;}
+    /* Update node info */
+    update_earl_node_mgr_info();
+    nodemgr_get_num_jobs_attached(&jobs_in_node);
+    verbose_master(2,"There are %u jobs in the node", jobs_in_node);
+    /* End update */
+
     if (polsyms_fun.ok != NULL){
         /* We wait for node signature computation */
         if (!are_signatures_ready(lib_shared_region,sig_shared_region)){

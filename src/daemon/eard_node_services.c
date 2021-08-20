@@ -718,11 +718,11 @@ void eard_close_comm(int req_fd,int ack_fd)
 		uint ID = create_ID(jid, sid);
   	sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%u.%lu", ear_tmp, ID, ID,lid);
   	sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%u.%lu", ear_tmp, ID, ID,lid);
-		verbose(1,"Cleaning files for job %lu/%lu/%lu",jid,sid,lid);
-		verbose(1,"Deleting %s",ear_commack);
+		verbose(2,"Cleaning files for job %lu/%lu/%lu",jid,sid,lid);
+		verbose(2,"Deleting %s",ear_commack);
 		ret = unlink(ear_commack);
 		if (ret != ENOENT) verbose(1,"Error deleting file %s",strerror(errno));
-		verbose(1,"Deleting %s",ear_commreq);
+		verbose(2,"Deleting %s",ear_commreq);
 		ret = unlink(ear_commreq);
 		if (ret != ENOENT) verbose(1,"Error deleting file %s",strerror(errno));
     was_anonymous = eard_local_conn[id].anonymous;

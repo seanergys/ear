@@ -137,6 +137,8 @@ int masters_connected=0;
 unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
+char lib_shared_region_path_jobs[GENERIC_NAME];
+int fd_libsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
 float ratio_PPN;
@@ -148,6 +150,7 @@ char pc_app_info_path[GENERIC_NAME];
 /* Info with jobs sharing the node */
 ear_njob_t *node_mgr_data;
 uint node_mgr_index;
+node_mgr_sh_data_t *node_mgr_job_info;
 
 uint mgt_cpufreq_api;
 // Dynais
@@ -385,8 +388,9 @@ void create_shared_regions()
 		error("Allocating memory for MPI summary shared info");
 	}
 	#endif
-
+	/********************************/
 	/* Attaching to node_mgr region */
+	/********************************/
 	verbose_master(2,"Creating node_mgr region");
 	if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
 		verbose_master(2,"Error creating node_mgr region");
@@ -394,11 +398,15 @@ void create_shared_regions()
 	ear_njob_t me;
 	me.jid = application.job.id;
 	me.sid = application.job.step_id;
+	me.creation_time = time(NULL);
 	verbose_master(2,"Attaching to node_mgr region");
 	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 		verbose_master(2,"Error attaching to node_mgr region");
 	}
 	verbose_master(2,"Attached! at pos %u", node_mgr_index);
+	/* node_mgr_job_info maps other jobs data sharing the node */
+	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+	init_earl_node_mgr_info();
 	if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
 		verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
 	}
@@ -434,7 +442,7 @@ void attach_shared_regions()
 		}
 		#endif
 		do{
-			lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path);
+			lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path, &fd_libsh);
 		}while(lib_shared_region == NULL);
 		while(file_lock(bfd) < 0);
 		if (!lib_shared_region->earl_on){

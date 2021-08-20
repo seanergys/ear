@@ -95,6 +95,13 @@ typedef struct shsignature{
 		ulong 					policy_freq;
 }shsignature_t;
 
+typedef struct node_mgr_sh_data{
+	time_t						creation_time;
+	int 							fd;
+	lib_shared_data_t *libsh;
+	shsignature_t 		*shsig;
+}node_mgr_sh_data_t;
+
 
 /*********** SETTINGS configuration *******************/
 
@@ -110,11 +117,11 @@ lib_shared_data_t * create_lib_shared_data_area(char * path);
 
 /** Connects with a previously created shared memory region. It is used by no node master processes
 */
-lib_shared_data_t * attach_lib_shared_data_area(char * path);
+lib_shared_data_t * attach_lib_shared_data_area(char * path, int *fd);
 
 /** Disconnect from a previously connected shared memory region. It is used by no node master processes
 */
-void dettach_lib_shared_data_area();
+void dettach_lib_shared_data_area(int fd);
 
 /** Releases a shared memory area previously created. It is used by node master process
 */
@@ -198,4 +205,10 @@ int my_shsig_id();
 int shsig_id(int node,int rank);
 
 void* mpi_info_get_perc_mpi(void* mpi_inf);
+
+
+/* Node mgr earl support functions */
+void  init_earl_node_mgr_info();
+void  update_earl_node_mgr_info();
+
 #endif

@@ -22,6 +22,7 @@
 #include <common/system/file.h>
 #include <common/output/verbose.h>
 #include <daemon/local_api/node_mgr.h>
+#include <common/system/shared_areas.h>
 
 static char node_mgr_tmp[PATH_MAX];
 static char node_mgr_info[PATH_MAX];
@@ -85,8 +86,6 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 	for (uint i = 0 ; i < MAX_CPUS_SUPPORTED ; i++){
 		node_jobs_list[i].jid = -1;
 		node_jobs_list[i].sid = -1;
-		node_jobs_list[i].job_data = NULL;
-		node_jobs_list[i].job_signatures = NULL;
 	}
 
   snprintf(node_mgr_info,sizeof(node_mgr_info),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_INFO);
@@ -160,6 +159,7 @@ state_t nodemgr_job_end(uint index)
 
 	node_jobs_list[index].jid = -1;
 	node_jobs_list[index].sid = -1;
+	node_jobs_list[index].creation_time = 0;
 
   file_unlock(fd_node_mgr_lck);
   return s;
@@ -178,6 +178,7 @@ state_t nodemgr_clean_job(job_id jid,job_id sid)
 				if ((node_jobs_list[i].jid == jid) && (node_jobs_list[i].sid == sid)){
 					node_jobs_list[i].jid = -1;
 					node_jobs_list[i].sid = -1;
+					node_jobs_list[i].creation_time = 0;
 				}
 
   		file_unlock(fd_node_mgr_lck);
@@ -201,4 +202,15 @@ state_t nodemgr_server_end()
 	file_lock_clean(fd_node_mgr_lck,node_mgr_lock);
   return EAR_SUCCESS;
 
+}
+
+state_t node_mgr_info_lock()
+{
+	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
+	return EAR_SUCCESS;
+}
+
+void node_mgr_info_unlock()
+{
+	file_unlock(fd_node_mgr_lck);
 }
