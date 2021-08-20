@@ -6,7 +6,8 @@ CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) -g
 
 lapi_OBJS = \
     eard_api.o \
-    eard_api_rpc.o
+    eard_api_rpc.o \
+		node_mgr.o
 
 ######## RULES
 

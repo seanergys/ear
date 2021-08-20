@@ -60,6 +60,7 @@
 #include <library/metrics/signature_ext.h>
 
 #include <daemon/local_api/eard_api.h>
+#include <daemon/local_api/node_mgr.h>
 #include <daemon/app_mgt.h>
 #include <daemon/shared_configuration.h>
 
@@ -143,6 +144,10 @@ app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
 char pc_app_info_path[GENERIC_NAME];
+
+/* Info with jobs sharing the node */
+ear_njob_t *node_mgr_data;
+uint node_mgr_index;
 
 uint mgt_cpufreq_api;
 // Dynais
@@ -254,6 +259,7 @@ void create_shared_regions()
 	int bfd=-1;
   int total_elements = 1;
   int per_node_elements = 1;
+	uint current_jobs_in_node;
 	#if SHOW_DEBUGS
 	int total_size;
 	#endif
@@ -379,6 +385,24 @@ void create_shared_regions()
 		error("Allocating memory for MPI summary shared info");
 	}
 	#endif
+
+	/* Attaching to node_mgr region */
+	verbose_master(2,"Creating node_mgr region");
+	if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
+		verbose_master(2,"Error creating node_mgr region");
+	}
+	ear_njob_t me;
+	me.jid = application.job.id;
+	me.sid = application.job.step_id;
+	verbose_master(2,"Attaching to node_mgr region");
+	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
+		verbose_master(2,"Error attaching to node_mgr region");
+	}
+	verbose_master(2,"Attached! at pos %u", node_mgr_index);
+	if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
+		verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
+	}
+	
 
 }
 
@@ -1217,6 +1241,10 @@ void ear_finalize()
 
     dettach_settings_conf_shared_area();
     dettach_resched_shared_area();
+
+		if (masters_info.my_master_rank >= 0) nodemgr_job_end(node_mgr_index);
+		verbose_master(2,"Dettached from node_mgr region id %u",node_mgr_index);
+		
 
     // C'est fini
     if (!my_id){ 

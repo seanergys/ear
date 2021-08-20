@@ -47,6 +47,7 @@
 #include <daemon/eard_node_services.h>
 #include <daemon/local_api/eard_api_conf.h>
 #include <daemon/local_api/eard_api_rpc.h>
+#include <daemon/local_api/node_mgr.h>
 #include <daemon/power_monitor.h>
 #include <daemon/shared_configuration.h>
 #include <daemon/remote_api/dynamic_configuration.h>
@@ -1531,6 +1532,13 @@ state_t eard_local_api()
 	int numfds_ready;
 	num_packs = node_desc.socket_count;
 	struct timeval *my_to;
+	ear_njob_t *eard_jobs_list;
+
+	verbose(1,"Creating node_mgr data");
+	if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS){
+		verbose(1,"Error creating shared memory region for node_mgr");
+		exit(1);
+	}
 
 
 	// CPU Frequency metrics
@@ -1627,6 +1635,8 @@ state_t eard_local_api()
     rfds = rfds_basic;
     //debug("eard waiting.....\n");
   }//while
+	verbose(1,"Releasing node_mgr data ");
+	nodemgr_server_end();
 
 	return EAR_SUCCESS;
 }

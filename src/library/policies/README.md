@@ -8,12 +8,6 @@ The list of official supported policies are:
 - min_time: This policy starts at a default frequency lower than nominal and increases the frequency up to the nominal in case the application presents a good performance scalability. It uses the CPU energy models
 - min_energy: This policy starts at nominal frequency and reduces the frequency to minimize the energy with a limit in the performance degradation. It uses the CPU energy models
 
-## Under development policies
-	- min_energy_no_models and min_time_no_models: These two policies uses the same criteria than the corresponding official ones but they select the CPU frequency by doing a linear search rather than using the CPU energy models.
-	- app_monitoring: Offers additional mpi information to compute the percentage of mpi vs computation time. This feature is activated when using the SLURM_GET_EAR_STATS environment variable
-	- app_min_time and app_min_energy: These policies uses the same goal than their corresponding official ones but a global signature is used ratehr than per-node. 
-	- load_balance: This policy uses a similar algorithm than min_energy but computes the per-node load balance and potentially selects a different frequency per process. It uses the process affinity mask. 
-	- gpu_monitoring, gpu_min_time and gpu_min_energy: Offers the corresponding GPU policy version. They are automatically loaded based on the CPU policy 
 
 
 ## Additional files to support dynamic policy setting management
@@ -21,7 +15,6 @@ The list of official supported policies are:
 
 ## Policy selection
 	- the CPU policy is selected using the --ear-policy flag when submitting a job. The GPU policy is selected based on the CPU policy
-	- To use the "app" version for a policy, the SLURM_APP_MGR_POLICIES environment variable must be set to 1
 
 ## Policy API
 
@@ -58,14 +51,6 @@ Depending on the readiness of the policy, the EAR sates transitions changes.
 ## Local (per-node) signatures
 Per-node signatures are computed by src/library/metric.c file. A per-node signature computation is started automatically after the last one is computed. It should be re-started manually in case the frequency is modified after it was started to guarantee it is computed with a constant frequency.
 
-## Global (per-application) signatures
-Per-application signature or metrics are computed once they are available. src/library/common/global_comm.c file includes functions to check shared signatures readiness and are called in policy_new_iteration functions in the specific part given some policies are not using it. 
-
-## Powercap management
-
-After frequency selection, EAR checks if there is some powercap set and a DVFS approach is used for power management. In that case, EAR cooperates with the powercap module. In case it is set, EAR estimates based on the models, whether the CPU and GPU frequency selecteds are ok according to the limit. Moreover, EAR sets the requested frequency in a shared memory to inform the powercap module about the frequency selected by the policy. 
-
-In case the powercap module uses a direct approach such as the Intel Node Manager, it is not needed to adapt the frequency.
     
 
 

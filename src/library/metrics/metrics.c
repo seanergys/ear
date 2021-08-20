@@ -282,13 +282,7 @@ static void metrics_global_stop()
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
 		/* AVG IMC frequency */
 		if (imc_mgt_compatible){
-  		for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
-  		for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
-  		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
-    		error("Setting the IMC freq in global stop");
-  		}
 
-  		verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
     	if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[APP]))){
       	error("IMCFreq data read in global_start");
     	}
@@ -296,6 +290,12 @@ static void metrics_global_stop()
 				error("IMC data diff fails");
 			}	
 			verbose_master(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
+  		for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
+  		for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
+  		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
+    		error("Setting the IMC freq in global stop");
+  		}
+  		verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
 		}
 
 	}
@@ -1020,15 +1020,15 @@ int metrics_init(topology_t *topo)
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
 		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
-			for (i=0; i< imc_devices;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
-			imc_max_khz = imc_pstates[imc_max_pstate[0]].khz;
+			for (i=0; i< imc_devices;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
+			imc_max_khz = imc_pstates[imc_min_pstate[0]].khz;
 		}
 	}
   if (cimc_min_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_min_khz);
 		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
-			for (i=0; i< imc_devices;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
-			imc_min_khz = imc_pstates[imc_min_pstate[0]].khz;
+			for (i=0; i< imc_devices;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
+			imc_min_khz = imc_pstates[imc_max_pstate[0]].khz;
 		}
   }
 	/* End HACKS */

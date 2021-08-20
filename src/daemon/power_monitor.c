@@ -51,6 +51,7 @@
 #include <daemon/node_metrics.h>
 #include <daemon/eard_checkpoint.h>
 #include <daemon/shared_configuration.h>
+#include <daemon/local_api/node_mgr.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
@@ -951,8 +952,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	pcapp_info_new_job(pmapp->pc_app_info);
   for (i = 0; i < MAX_CPUS_SUPPORTED; i++) pmapp->pc_app_info->req_f[i] = f;
 	#if USE_GPUS
-  pmapp->pc_app_info->num_gpus = gpu_mgt_num_gpus();
-	for (gpuid=0; gpuid < pmapp->pc_app_info->num_gpus;gpuid++) pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
+  pmapp->pc_app_info->num_gpus_used = gpu_mgr_num_gpus();
+	for (gpuid=0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++) pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	#endif
 	powercap_set_app_req_freq(pmapp->pc_app_info);
 	while (pthread_mutex_trylock(&app_lock));
@@ -1031,6 +1032,8 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 		powercap_set_app_req_freq(pmapp->pc_app_info);
 	}
 	end_context(cc);
+	verbose(1,"Cleaning job from node_mgr");
+	nodemgr_clean_job(jid, sid);
 	clean_job_area(ID);
 	verbose(VJOBPMON , "*******************");
 
@@ -1166,6 +1169,11 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	uint usedb,useeardbd;
 	double maxpower, minpower, RAPL, corrected_power,pckp,dramp;
 	powermon_app_t *pmapp;
+	uint current_jobs_running_in_node = 0;
+
+	if (nodemgr_get_num_jobs_attached(&current_jobs_running_in_node) == EAR_ERROR){
+		verbose(1,"Error asking for the number of jobs in node");
+	}
 
 	pmapp 		= current_ear_app[max_context_created];
 	usedb 		= my_cluster_conf.eard.use_mysql;
@@ -1183,11 +1191,11 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
   #if USE_GPUS
   double gpup;
   gpup = accum_gpu_power(my_current_power);
-  verbose(VNODEPMON, "ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
-      jid, mpi, my_current_power->avg_dc,pckp,dramp,gpup, maxpower, minpower);
+  verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
+      current_jobs_running_in_node, jid, mpi, my_current_power->avg_dc,pckp,dramp,gpup, maxpower, minpower);
   #else
-  verbose(VNODEPMON, "ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
-      jid, mpi, my_current_power->avg_dc, pckp,dramp,maxpower, minpower);
+  verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
+      current_jobs_running_in_node, jid, mpi, my_current_power->avg_dc, pckp,dramp,maxpower, minpower);
   #endif
 	verbose_node_metrics(&my_nm_id, nm);
 	verbose(VNODEPMON,"%s",COL_CLR);

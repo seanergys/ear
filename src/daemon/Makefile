@@ -11,7 +11,8 @@ eard_PERM = 0770
 
 local_api_OBJS = \
 	local_api/eard_api.o\
-	local_api/eard_api_rpc.o
+	local_api/eard_api_rpc.o \
+	local_api/node_mgr.o
 
 remote_api_OBJS= \
     remote_api/eard_server_api.o \

@@ -44,6 +44,10 @@
 /** Locks the file for writting in a fixe dpart */
 int file_lock(int fd);
 
+/* Tries to acquire the lock with file_lock with a max a attemps = tiemoput, expressed as loop iterations, not time . Returns true when the lock has been acquired*/
+int file_lock_timeout(int fd, uint timeout);
+
+
 /** Creates a file to be used  as lock. It doesn't locks the file */
 int file_lock_create(char *lock_file_name);
 
