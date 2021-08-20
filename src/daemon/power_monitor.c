@@ -779,12 +779,14 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
 		frequency_set_userspace_governor_all_cpus();
 		f = frequency_pstate_to_freq(my_policy->p_state);
 		/** PENDING TO use the job cpumask */
+		#if 0
 		frequency_set_all_cpus(f);
 		#if USE_GPUS
 		if (my_node_conf->gpu_def_freq>0){
 			/** Can we know which GPUS are used by this job?? */
 			gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
 		}
+		#endif
 		#endif
 	}
 	appID->is_mpi = 0;
@@ -1006,6 +1008,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 	/* Restore Frequency and Governor: PENDING. We must restore GPU? We must do using the affinity mask*/
 	verbose(VJOBPMON, "restoring governor %s", pmapp->governor.name);
 	set_governor(&pmapp->governor);
+	#if 0
 	if (strcmp(pmapp->governor.name, "userspace") == 0) {
 		frequency_set_all_cpus(pmapp->current_freq);
 	}
@@ -1015,6 +1018,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
       gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
   }
   #endif
+	#endif
 
 	//reset_shared_memory();
 	app_mgt_end_job(pmapp->app_info);
@@ -1086,7 +1090,9 @@ void powermon_new_max_freq(ulong maxf) {
 				verbose(VJOBPMON, "MaxFreq: Application is not mpi, automatically changing freq from %lu to %lu",
 					current_node_freq, maxf);
 				/* PENDING: Use the affinity mask */
+				#if 0
 				frequency_set_all_cpus(maxf);
+				#endif
 			}
 		}
 	}

@@ -247,12 +247,10 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         fill_cpus_out_of_cgroup(exclusive_mode);
     }
 
-    if (*freq_set != *(c->ear_frequency) || dom->cpu == POL_GRAIN_CORE)
-    {
-        print_freq_per_core();
-        *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
-        if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
-    }
+    //if (*freq_set != *(c->ear_frequency) || dom->cpu == POL_GRAIN_CORE)
+    print_freq_per_core();
+    *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
+    if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
     avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);
     verbose_master(2,"Setting CPU freq to %lu",*(c->ear_frequency));
     return EAR_SUCCESS;
@@ -463,6 +461,10 @@ state_t policy_init()
     freq_per_core = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
+#if USE_GPUS
+		gpu_lib_count(&policy_last_local_signature.gpu_sig.num_gpus);
+		policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
+#endif
 
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
     if (arch_desc.top.vendor == VENDOR_AMD) {
@@ -515,6 +517,11 @@ state_t policy_init()
     if (masters_info.my_master_rank>=0){
         pc_support_init(c);
     }
+		/* We have migrated frequency set from eard to earl */
+		policy_get_default_freq(&nf);
+		/* What do we need at this point in  the signature ? */
+		policy_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain,&avg_nf);
+
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
 }
@@ -962,8 +969,23 @@ state_t policy_configure()
 /* This function is executed forces a given frequency independently of the policy */
 state_t policy_force_global_frequency(ulong new_f)
 {
-    ear_frequency=new_f;
-    if (masters_info.my_master_rank>=0) eards_change_freq(ear_frequency);
+		ulong *freq_set = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+		int i;
+		polctx_t *c=&my_pol_ctx;
+    ear_frequency = new_f;
+    if (masters_info.my_master_rank>=0){ 
+				c->app->def_freq = new_f;
+				for (i = 0 ; i < lib_shared_region->num_processes; i++) freq_set[i] = new_f;
+        if (ear_affinity_is_set){
+            from_proc_to_core(freq_set);
+        }else{
+            for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = freq_set[0];
+        }
+        *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
+        if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
+
+			// eards_change_freq(ear_frequency);
+		}
     return EAR_SUCCESS;
 }
 

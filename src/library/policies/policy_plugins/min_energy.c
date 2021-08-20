@@ -246,10 +246,12 @@ state_t policy_loop_init(polctx_t *c,loop_id_t *l)
 
 state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 {
+		#if 0
     if ((c!=NULL) && (c->reset_freq_opt))
     {
         *(c->ear_frequency) = eards_change_freq(FREQ_DEF(c->app->def_freq));
     }
+		#endif
     return EAR_SUCCESS;
 }
 

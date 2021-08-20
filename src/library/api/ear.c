@@ -983,19 +983,20 @@ void ear_init()
     dynais = dynais_init(&arch_desc.top, get_ear_dynais_window_size(), get_ear_dynais_levels());
     debug("Dynais end");
 
-    // Policies && models
     arch_desc.max_freq_avx512=system_conf->max_avx512_freq;
     arch_desc.max_freq_avx2=system_conf->max_avx2_freq;
 
     // Frequencies
     ulong *freq_list;
     uint freq_count;
+
     // Getting frequencies from EARD
     debug("initializing frequencies");
     get_frequencies_path(get_ear_tmp(), app_mgt_path);
     debug("looking for frequencies in '%s'", app_mgt_path);
     freq_list = attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
     freq_count = freq_count / sizeof(ulong);
+
     // Initializing API in user mode	: We should move this to library/management
     if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
 			for (uint i=0;i<freq_count;i++){
@@ -1085,16 +1086,18 @@ void ear_init()
     }else{
         EAR_default_frequency=ext_def_freq;
         EAR_default_pstate=frequency_closest_pstate(EAR_default_pstate);
-        if (EAR_default_frequency!=system_conf->def_freq) {
+				#if 0
+        if (EAR_default_frequency != system_conf->def_freq) {
             if (!my_id) eards_change_freq(EAR_default_frequency);
         }
+				#endif
     }
 
     strcpy(application.job.policy,system_conf->policy_name);
     strcpy(application.job.app_id, ear_app_name);
 
     // Passing the frequency in KHz to MHz
-    application.signature.def_f=application.job.def_f = EAR_default_frequency;
+    application.signature.def_f = application.job.def_f = EAR_default_frequency;
     application.job.procs = my_size;
     application.job.th =system_conf->settings[0];
 
