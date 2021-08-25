@@ -45,4 +45,8 @@ void print_affinity_mask(topology_t *topo);
 /** Checks if process with pid=pid has some cpu forbiden to run , then is_set is set to 1 */
 state_t is_affinity_set(topology_t *topo,int pid,int *is_set,cpu_set_t *my_mask);
 
+/** dest results from doing the OR between dest and src. cpu_count is used */
+state_t add_affinity(topology_t *topo, cpu_set_t *dest,cpu_set_t *src);
+
+
 #endif

@@ -148,6 +148,12 @@ static int NI=0;
 static llong last_elap_sec = 0;
 static llong app_start;
 
+/* Node mgr data */
+extern ear_njob_t *node_mgr_data;
+extern uint node_mgr_index;
+extern node_mgr_sh_data_t *node_mgr_job_info;
+
+
 
 static cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 {
@@ -1089,12 +1095,19 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	debug("Metrics_dispose_init %d",my_node_id);
 	metrics_partial_stop(SIG_BEGIN);
 	metrics_global_stop();
+
+	#if 0
 	signature_ready(&sig_shared_region[my_node_id],0);
 	/* Waiting for node signatures */
 	verbose_master(2,"Waiting for node signatures");
 	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+	#endif
 
 	metrics_compute_signature_data(APP, metrics, 1, procs);
+	/* Waiting for node signatures */
+	verbose_master(2,"Waiting for node signatures");
+	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+
 	if (masters_info.my_master_rank >= 0){
 		/* Computing flops */
   	verbose_master(2,"Computing application node signature");
@@ -1136,8 +1149,8 @@ void metrics_get_total_io(io_data_t *total)
 				total->read_bytes += io.read_bytes;
 				total->write_bytes += io.write_bytes;
 				total->cancelled += io.cancelled;
+				io_dispose(&lio);
 			}
-			io_dispose(&lio);
 	}
 }
 
@@ -1227,6 +1240,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
+	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &ns->L3_misses);
 	//compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
 
 	ns->CPI = (double)cycles/(double)inst;
@@ -1238,6 +1252,13 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 		verbose_master(2," ");
 	}
 	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+	signature_copy(&lib_shared_region->node_signature,ns);
+
+	if (masters_info.my_master_rank >= 0){
+		/* Updating shared info */
+  	update_earl_node_mgr_info();
+  	estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, &ns->GBS, &ns->DC_power);
+	}
 }
 
 extern uint last_earl_phase_classification;

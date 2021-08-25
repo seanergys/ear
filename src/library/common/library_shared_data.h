@@ -33,6 +33,7 @@
 #include <common/states.h>
 #include <common/types/signature.h>
 #include <common/system/shared_areas.h>
+#include <daemon/local_api/node_mgr.h>
 
 typedef struct mpi_summary{
 	float max;
@@ -73,6 +74,7 @@ typedef struct lib_shared_data{
     unsigned int    num_signatures;
     double 			cas_counters;
     signature_t 	master_signature;
+    signature_t 	node_signature;
     int				master_rank;
 		uint			master_ready;
 }lib_shared_data_t;
@@ -189,6 +191,7 @@ void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
 void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst);
 void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
+void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L3);
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
@@ -210,5 +213,7 @@ void* mpi_info_get_perc_mpi(void* mpi_inf);
 /* Node mgr earl support functions */
 void  init_earl_node_mgr_info();
 void  update_earl_node_mgr_info();
+void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, double *my_GBS, double *my_power);
+void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl);
 
 #endif

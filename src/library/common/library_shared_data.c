@@ -381,6 +381,15 @@ void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t
   }
 }
 
+void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L3)
+{
+  int i;
+  *t_L3 = 0;
+  for (i=0;i<data->num_processes;i++){
+    *t_L3 += sig[i].sig.L3_misses;
+  }
+}
+
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI)
 {
   int i;
@@ -544,7 +553,7 @@ void    update_earl_node_mgr_info()
           }else{
             uint ID = create_ID(jid,sid);
             get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs );
-            attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd);
+            node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd);
             node_mgr_job_info[j].creation_time = ct;
           }
         }
@@ -552,3 +561,48 @@ void    update_earl_node_mgr_info()
     }
 }
 
+void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl)
+{
+	if ((nmgr_eard == NULL) || (nmgr_earl == NULL)) return;
+	verbose_master(vl,"%sJobs in node list",COL_BLU);
+	for (uint i=0;i<MAX_CPUS_SUPPORTED; i++){
+		if (nmgr_eard[i].creation_time){
+			verbose_master(vl,"JOB[%u]=%lu.%lu", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
+			signature_print_simple_fd(vl,&nmgr_earl[i].libsh->node_signature);	
+			verbose_master(vl," ");
+		}
+	}
+	verbose_master(vl,"%s",COL_CLR);
+}
+
+
+void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, double *my_GBS, double *my_power)
+{
+	ull job_L3 = 0, node_L3 = 0;
+	double GBS = lsig->GBS;
+	double job_ratio = 0;
+
+
+	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL) || (my_GBS == NULL) || (my_power == NULL)) return;
+	*my_power = lsig->DC_power;
+	*my_GBS   = lsig->GBS;
+	
+	/* Compute job L3 */
+	compute_total_node_L3_misses(data,sig, &job_L3);
+	
+	/* Compute node L3 */
+	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL))  node_L3 += nmgr[j].libsh->node_signature.L3_misses;
+	}
+
+	/* Ratio */	
+	if ((job_L3 == 0) || (node_L3 == 0)){
+		verbose_master(2,"Invalid values job %llu Node %llu",job_L3,node_L3);
+	}else{
+	  job_ratio = (double)job_L3/(double)node_L3;
+	  verbose_master(2,"Job Ratio is %.2lf", job_ratio*100);
+		*my_GBS = lsig->GBS * job_ratio;	
+	}
+	
+	return;	
+}

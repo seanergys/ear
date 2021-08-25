@@ -209,6 +209,9 @@ void acum_ssig_metrics(ssig_t *avg_sig,ssig_t *s)
     avg_sig->CPI				+= s->CPI;
     avg_sig->avg_f			+= s->avg_f;
     avg_sig->def_f			+= s->def_f;
+    avg_sig->instructions			+= s->instructions;
+    avg_sig->cycles     += s->cycles;
+    avg_sig->L3_misses  += s->L3_misses;
     avg_sig->Gflops			+= s->Gflops;
     for (i=0;i<FLOPS_EVENTS;i++) avg_sig->FLOPS[i] += s->FLOPS[i];
 #if USE_GPUS
@@ -249,6 +252,9 @@ void compute_avg_node_sig(ssig_t *avg_sig,int n)
     avg_sig->CPI	= cpi;
     avg_sig->avg_f 			= avg_f;
     avg_sig->def_f			= def_f;
+    avg_sig->instructions = avg_sig->instructions/n;
+    avg_sig->cycles       = avg_sig->cycles/n;
+    avg_sig->L3_misses    = avg_sig->L3_misses/n;
     for (i=0;i<FLOPS_EVENTS;i++){   
         my_flops[i] = avg_sig->FLOPS[i]/n;
         avg_sig->FLOPS[i] = my_flops[i];
@@ -302,6 +308,7 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
     memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     s->instructions = minis->instructions;
     s->cycles = minis->cycles;
+    s->L3_misses = minis->L3_misses;
     s->avg_f=minis->avg_f;
     s->def_f=minis->def_f;
 #if USE_GPUS
@@ -322,6 +329,7 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
     memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     minis->instructions = s->instructions;
     minis->cycles = s->cycles;
+    minis->L3_misses = s->L3_misses;
     minis->avg_f=s->avg_f;
     minis->def_f=s->def_f;
 #if USE_GPUS

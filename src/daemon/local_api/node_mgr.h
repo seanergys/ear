@@ -17,6 +17,8 @@
 
 #ifndef _LIB_NODE_MGR_H
 #define _LIB_NODE_MGR_H
+#define _GNU_SOURCE
+#include <sched.h>
 
 #include <common/states.h>
 
@@ -26,9 +28,10 @@
 #define LOCK_NODE_MGR_INFO	".node_mgr_data"
 
 typedef struct ear_njob{
-	job_id jid;
-	job_id sid;
-	time_t creation_time;
+	job_id     jid;
+	job_id     sid;
+	cpu_set_t  cpu_mask;
+	time_t     creation_time;
 }ear_njob_t;
 
 /** Initialices the lock file and attaches the shared memory region. nodelist is internally allocated. Must be used by earl */

@@ -399,6 +399,12 @@ void create_shared_regions()
 	me.jid = application.job.id;
 	me.sid = application.job.step_id;
 	me.creation_time = time(NULL);
+	CPU_ZERO(&me.cpu_mask);
+	/* This loop creates the job node affinity mask, it's an OR of all the processes for this job in this node */
+	for (uint i = 0; i< lib_shared_region->num_processes; i++){
+		verbose_master(2,"joining mask for process %u",i);
+		add_affinity(&arch_desc.top, &me.cpu_mask, &sig_shared_region[i].cpu_mask);
+	}
 	verbose_master(2,"Attaching to node_mgr region");
 	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 		verbose_master(2,"Error attaching to node_mgr region");
@@ -410,8 +416,7 @@ void create_shared_regions()
 	if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
 		verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
 	}
-	
-
+	verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 }
 
 /****************************************************************************************************************************************************************/

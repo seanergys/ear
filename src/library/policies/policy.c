@@ -61,7 +61,7 @@ extern uint imc_devices;
 extern const pstate_t *imc_pstates;
 int my_globalrank;
 signature_t policy_last_local_signature,policy_last_global_signature;
-uint dyn_unc = EAR_eUFS;
+uint conf_dyn_unc = EAR_eUFS, dyn_unc = EAR_eUFS;
 uint enable_load_balance = EAR_USE_LB;
 uint use_turbo_for_cp = EAR_USE_TURBO_CP;
 uint try_turbo_enabled = 0;
@@ -118,6 +118,11 @@ static uint use_earl_phases = EAR_USE_PHASES;
 
 int cpu_ready = EAR_POLICY_NO_STATE ,gpu_ready = EAR_POLICY_NO_STATE ;
 uint gidle;
+
+/* Node mgr data */
+extern ear_njob_t *node_mgr_data;
+extern uint node_mgr_index;
+extern node_mgr_sh_data_t *node_mgr_job_info;
 
 
 
@@ -480,10 +485,11 @@ state_t policy_init()
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
     verbose_master(2,"Using turbo for CP when load unbalance set to %u", use_turbo_for_cp);
 
-   
-       if (cdyn_unc != NULL && imc_mgt_compatible){
-       dyn_unc = atoi(cdyn_unc);
-       }
+		/* conf_dyn_unc is based on the configuration. dyn_unc is modified at runtime depending of number of jobs running */   
+    if (cdyn_unc != NULL && imc_mgt_compatible){
+       conf_dyn_unc = atoi(cdyn_unc);
+    }
+		dyn_unc = conf_dyn_unc;
 
     if (cimc_extra_th != NULL){
         imc_extra_th = atof(cimc_extra_th);
@@ -687,6 +693,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     sig_ext_t *se;
     float mpi_in_period;
 		uint jobs_in_node;
+		double job_GBS, job_power;
 
     se = (sig_ext_t *)my_sig->sig_ext;
     cpu_ready = EAR_POLICY_NO_STATE;
@@ -699,7 +706,13 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		/* Update node info */
 		update_earl_node_mgr_info();
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
-		verbose_master(2,"There are %u jobs in the node", jobs_in_node);
+		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power);
+		my_sig->GBS = job_GBS;
+		my_sig->DC_power = job_power;		
+
+		if (jobs_in_node > 1) dyn_unc = 0;
+		else 									dyn_unc = conf_dyn_unc;
 		/* End update */
 
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
@@ -850,6 +863,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     polctx_t *c=&my_pol_ctx;
     state_t ret,retg=EAR_SUCCESS;
 		uint jobs_in_node;
+		double job_GBS, job_power;
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;
@@ -859,7 +873,12 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     update_earl_node_mgr_info();
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_master(2,"There are %u jobs in the node", jobs_in_node);
+		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
     /* End update */
+
+    estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power);
+    verbose_master(2,"job GBS is %.2lf and job power %.2lf",job_GBS, job_power);
+
 
     if (polsyms_fun.ok != NULL){
         /* We wait for node signature computation */
