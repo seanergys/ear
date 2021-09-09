@@ -1,19 +1,19 @@
 /*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* Copyright © 2017-present BSC-Lenovo
-* BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
-*
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
-*/
+ *
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * This file is licensed under both the BSD-3 license for individual/non-commercial
+ * use and EPL-1.0 license for commercial use. Full text of both licenses can be
+ * found in COPYING.BSD and COPYING.EPL files.
+ */
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
@@ -178,19 +178,19 @@ static void metrics_accum_flops(llong *loop_flops);
 
 void set_null_dc_energy(edata_t e)
 {
-	memset((void *)e,0,node_energy_datasize);
+				memset((void *)e,0,node_energy_datasize);
 }
 void set_null_rapl(ull *erapl)
 {
-	memset((void*)erapl,0,rapl_elements*sizeof(ull));
+				memset((void*)erapl,0,rapl_elements*sizeof(ull));
 }
 void set_null_uncores(ull *band)
 {
-	memset(band,0,bandwith_elements*sizeof(ull));
+				memset(band,0,bandwith_elements*sizeof(ull));
 }
 long long metrics_time()
 {
-	return (llong) timestamp_getconvert(TIME_USECS);
+				return (llong) timestamp_getconvert(TIME_USECS);
 }
 
 static void metrics_global_start()
@@ -251,11 +251,8 @@ static void metrics_global_start()
 	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}
-
- 
-
 }
-
+ 
 static void metrics_global_stop()
 {
 	char io_info[256];
@@ -367,62 +364,62 @@ static void metrics_global_stop()
 
 static void metrics_partial_start()
 {
-	int i;
-	/* This must be replaced by a copy of energy */
-	/* Energy node */
-	memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
-	/* Time */
-	metrics_usecs[LOO]=aux_time;
-	last_elap_sec = 0;
-	/* Per process IO data */
-	if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
-		verbose(0,"Warning:IO data not available");
-	}
-	/* These data is measured only by the master */	
-	if (masters_info.my_master_rank>=0){ 
-		/* Avg CPU freq */
-    if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
-      error("CPUFreq data read in partial start");
-    }
-		/* Avg IMC freq */
-		if (imc_mgt_compatible){
-		/* Reads the IMC */
-    if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_init[LOO]))){
-      error("IMCFreq data read in global_start");
-    }
-		}
+				int i;
+				/* This must be replaced by a copy of energy */
+				/* Energy node */
+				memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
+				/* Time */
+				metrics_usecs[LOO]=aux_time;
+				last_elap_sec = 0;
+				/* Per process IO data */
+				if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
+								verbose(0,"Warning:IO data not available");
+				}
+				/* These data is measured only by the master */	
+				if (masters_info.my_master_rank>=0){ 
+								/* Avg CPU freq */
+								if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
+												error("CPUFreq data read in partial start");
+								}
+								/* Avg IMC freq */
+								if (imc_mgt_compatible){
+												/* Reads the IMC */
+												if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_init[LOO]))){
+																error("IMCFreq data read in global_start");
+												}
+								}
 
-		/* Per NODE IO data */
-		metrics_get_total_io(&metrics_io_init[LOO_NODE]);
+								/* Per NODE IO data */
+								metrics_get_total_io(&metrics_io_init[LOO_NODE]);
 
-		#if USE_GPUS
-		/* GPUS */
-		if (gpu_initialized){
-		if (gpu_loop_stopped) {
-			gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_end[LOO]);
-		} else{
-			gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_init[APP]);
-		}
-		debug("gpu_copy in partial start");
-		}
-		#endif
-	}
-	//There is always a partial_stop before a partial_start, we can guarantee a previous uncore_read
-	/* Uncore counters to compute memory bancdwith */
-	copy_uncores(metrics_bandwith_init[LOO],metrics_bandwith_end[LOO],bandwith_elements);
-	/* Energy RAPL */
-	for (i = 0; i < rapl_elements; i++) {
-		last_rapl[i]=aux_rapl[i];
-	}
+#if USE_GPUS
+								/* GPUS */
+								if (gpu_initialized){
+												if (gpu_loop_stopped) {
+																gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_end[LOO]);
+												} else{
+																gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_init[APP]);
+												}
+												debug("gpu_copy in partial start");
+								}
+#endif
+				}
+				//There is always a partial_stop before a partial_start, we can guarantee a previous uncore_read
+				/* Uncore counters to compute memory bancdwith */
+				copy_uncores(metrics_bandwith_init[LOO],metrics_bandwith_end[LOO],bandwith_elements);
+				/* Energy RAPL */
+				for (i = 0; i < rapl_elements; i++) {
+								last_rapl[i]=aux_rapl[i];
+				}
 
-	/* CPI */
-	start_basic_metrics();
-	/* Cache misses */
-	cache_start();
-	/* FLOPS */
-	start_flops_metrics();
+				/* CPI */
+				start_basic_metrics();
+				/* Cache misses */
+				cache_start();
+				/* FLOPS */
+				start_flops_metrics();
 
-	
+
 }
 
 /****************************************************************************************************************************************************************/
@@ -432,9 +429,9 @@ static void metrics_partial_start()
 
 void metrics_accum_flops(llong *loop_flops)
 {
-	uint i;
-	llong *app_flops = metrics_flops[APP];
-	for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
+				uint i;
+				llong *app_flops = metrics_flops[APP];
+				for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
 }
 
 extern uint ear_iterations;
@@ -633,176 +630,176 @@ static int metrics_partial_stop(uint where)
 
 static void metrics_reset()
 {
-	// eards_reset_uncore();
-	//eards_reset_rapl();
+				// eards_reset_uncore();
+				//eards_reset_rapl();
 
-	reset_basic_metrics();
-	reset_flops_metrics();
-	
-	cache_reset();
+				reset_basic_metrics();
+				reset_flops_metrics();
+
+				cache_reset();
 }
 
 ull metrics_vec_inst(signature_t *metrics)
 {
-	ull VI=0;
-	if (flops_supported){
-    if (metrics->FLOPS[3]>0) VI = metrics->FLOPS[3] / metrics_flops_weights[3];
-    if (metrics->FLOPS[7]>0) VI = VI + (metrics->FLOPS[7] / metrics_flops_weights[7]);
-	}
-	return VI;
+				ull VI=0;
+				if (flops_supported){
+								if (metrics->FLOPS[3]>0) VI = metrics->FLOPS[3] / metrics_flops_weights[3];
+								if (metrics->FLOPS[7]>0) VI = VI + (metrics->FLOPS[7] / metrics_flops_weights[7]);
+				}
+				return VI;
 }
 
 void copy_node_data(signature_t *dest,signature_t *src)
 {
-	dest->DC_power=src->DC_power;
-	dest->DRAM_power=src->DRAM_power;
-	dest->PCK_power=src->PCK_power;
-	dest->avg_f=src->avg_f;
-	#if USE_GPUS
-	memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
-	#endif
+				dest->DC_power=src->DC_power;
+				dest->DRAM_power=src->DRAM_power;
+				dest->PCK_power=src->PCK_power;
+				dest->avg_f=src->avg_f;
+#if USE_GPUS
+				memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
+#endif
 }
 
 /******************* This function computes the signature : per loop (global = LOO) or application ( global = APP)  **************/
 /******************* The node master has computed the per-node metrics and the rest of processes uses this information ***********/
 static void metrics_compute_signature_data(uint global, signature_t *metrics, uint iterations, ulong procs)
 {
-	double time_s, cas_counter, aux;
-	sig_ext_t *sig_ext;
-	int i, s;
+				double time_s, cas_counter, aux;
+				sig_ext_t *sig_ext;
+				int i, s;
 
-	// If global is 1, it means that the global application metrics are required
-	// instead the small time metrics for loops. 's' is just a signature index.
-	s = global;
+				// If global is 1, it means that the global application metrics are required
+				// instead the small time metrics for loops. 's' is just a signature index.
+				s = global;
 
-	/* Avg CPU frequency */
-	metrics->avg_f = metrics_avg_frequency[s];
-	/* Avg IMC frequency */
-	metrics->avg_imc_f = imc_avg[s];
+				/* Avg CPU frequency */
+				metrics->avg_f = metrics_avg_frequency[s];
+				/* Avg IMC frequency */
+				metrics->avg_imc_f = imc_avg[s];
 
-	/* Total time */
-	time_s = (double) metrics_usecs[s] / 1000000.0;
+				/* Total time */
+				time_s = (double) metrics_usecs[s] / 1000000.0;
 
-	/* Time per iteration */
-	metrics->time = time_s / (double) iterations;
+				/* Time per iteration */
+				metrics->time = time_s / (double) iterations;
 
-	/* Cache misses */
-	metrics->L1_misses = metrics_l1[s];
-	metrics->L2_misses = 0;
-	metrics->L3_misses = metrics_l3[s];
-	if (metrics->sig_ext == NULL) metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
-	sig_ext = metrics->sig_ext;
+				/* Cache misses */
+				metrics->L1_misses = metrics_l1[s];
+				metrics->L2_misses = 0;
+				metrics->L3_misses = metrics_l3[s];
+				if (metrics->sig_ext == NULL) metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
+				sig_ext = metrics->sig_ext;
 
-	/* FLOPS */
-	metrics->Gflops = 0.0;
-	if (flops_supported)
-	{
+				/* FLOPS */
+				metrics->Gflops = 0.0;
+				if (flops_supported)
+				{
 
-		for (i = 0; i < flops_elements; i++) {
-			metrics->FLOPS[i] = metrics_flops[s][i] * metrics_flops_weights[i];
-			metrics->Gflops += (double) metrics->FLOPS[i];
-		}
+								for (i = 0; i < flops_elements; i++) {
+												metrics->FLOPS[i] = metrics_flops[s][i] * metrics_flops_weights[i];
+												metrics->Gflops += (double) metrics->FLOPS[i];
+								}
 
-		if (s == APP) verbose_master(3,"Flops %lf time %lf",metrics->Gflops,time_s);
+								if (s == APP) verbose_master(3,"Flops %lf time %lf",metrics->Gflops,time_s);
 
-		metrics->Gflops = metrics->Gflops / time_s; // Floating ops to FLOPS
-		metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
-		//metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
-	}
-	/* TPI and Memory bandwith */
-	aux = time_s * (double) (1024 * 1024 * 1024);
+								metrics->Gflops = metrics->Gflops / time_s; // Floating ops to FLOPS
+								metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
+								//metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
+				}
+				/* TPI and Memory bandwith */
+				aux = time_s * (double) (1024 * 1024 * 1024);
 
-	cas_counter = 0.0;
-	for (i = 0; i < bandwith_elements; ++i) {
-		cas_counter += (double) metrics_bandwith[s][i];
-	}
+				cas_counter = 0.0;
+				for (i = 0; i < bandwith_elements; ++i) {
+								cas_counter += (double) metrics_bandwith[s][i];
+				}
 
-	if(masters_info.my_master_rank>=0) lib_shared_region->cas_counters=cas_counter;
-	else cas_counter=lib_shared_region->cas_counters;
+				if(masters_info.my_master_rank>=0) lib_shared_region->cas_counters=cas_counter;
+				else cas_counter=lib_shared_region->cas_counters;
 
-	metrics->GBS = cas_counter * hw_cache_line_size / aux;
-	metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
+				metrics->GBS = cas_counter * hw_cache_line_size / aux;
+				metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
 
-	/* CPI */
-	metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
-	metrics->cycles = metrics_cycles[s];
-	metrics->instructions = metrics_instructions[s];
-
-
-	io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
-	/* Per process IO data */
-  double iogb;
-	int ios;
-	ullong mpit, exect;
-  /* Per Node IO data */
-	ios = s;
-  if ((masters_info.my_master_rank>=0) && (s == APP)) 								ios = APP_NODE;
-  else if ((masters_info.my_master_rank>=0)  && (s == LOO))          	ios = LOO_NODE;
-  iogb = (double)metrics_io_diff[ios].rchar/(double)(1024*1024) + (double)metrics_io_diff[ios].wchar/(double)(1024*1024);
-	/* Each process will compute its own IO_MBS, except the master, that computes per node IO_MBS */
-  metrics->IO_MBS = iogb/time_s;
-
-	if (masters_info.my_master_rank>=0){
-
-		/* MPI statistics */
-		if (is_mpi_enabled()){
-			double pmpi = 0.0, lpmpi;
-			for (int i=0;i<lib_shared_region->num_processes;i++){	
-				mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
-				exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
-				if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = (double)(mpit*100.0 / exect);
-				else lpmpi = 0;
-				pmpi += lpmpi;
-				verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
-			}
-			metrics->perc_MPI = pmpi/lib_shared_region->num_processes;		
-		}else{
-			metrics->perc_MPI = 0.0;
-		}
-		sig_ext->mpi_stats = metrics_mpi_calls[s];
-		sig_ext->mpi_types = metrics_mpi_calls_types[s];
+				/* CPI */
+				metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
+				metrics->cycles = metrics_cycles[s];
+				metrics->instructions = metrics_instructions[s];
 
 
-		/* Power: Node, DRAM, PCK */
-		metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
-		metrics->PCK_power=0;
-		metrics->DRAM_power=0;
-		int p;
-		for (p=0;p<num_packs;p++) metrics->DRAM_power=metrics->DRAM_power+(double) metrics_rapl[s][p];
-		for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[s][num_packs+p];
-		metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
-		metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
-		metrics->EDP = time_s * time_s * metrics->DC_power;
-	
-		/* GPUS */
-		#if USE_GPUS
-		if (gpu_initialized){
-			metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
-			if (earl_gpu_model == MODEL_DUMMY){ 
-				debug("Setting num_gpu to 0 because model is DUMMY");
-				metrics->gpu_sig.num_gpus = 0;
-			}
-			for (p=0;p<metrics->gpu_sig.num_gpus;p++){
-				metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
-				metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;
-				metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[s][p].freq_mem;
-				metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[s][p].util_gpu;
-				metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[s][p].util_mem;
-			}	
-		}
-		#endif
-	}else{
-		copy_node_data(metrics,&lib_shared_region->master_signature);
-	}
+				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
+				/* Per process IO data */
+				double iogb;
+				int ios;
+				ullong mpit, exect;
+				/* Per Node IO data */
+				ios = s;
+				if ((masters_info.my_master_rank>=0) && (s == APP)) 								ios = APP_NODE;
+				else if ((masters_info.my_master_rank>=0)  && (s == LOO))          	ios = LOO_NODE;
+				iogb = (double)metrics_io_diff[ios].rchar/(double)(1024*1024) + (double)metrics_io_diff[ios].wchar/(double)(1024*1024);
+				/* Each process will compute its own IO_MBS, except the master, that computes per node IO_MBS */
+				metrics->IO_MBS = iogb/time_s;
 
-	/* Copying my info in the shared signature */
-	from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
-	/* If I'm the master, I have to copy in the special section */
-	if (masters_info.my_master_rank >= 0){
-		signature_copy(&lib_shared_region->master_signature,metrics);
-	}
-	debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
-	signature_ready(&sig_shared_region[my_node_id],0);
+				if (masters_info.my_master_rank>=0){
+
+								/* MPI statistics */
+								if (is_mpi_enabled()){
+												double pmpi = 0.0, lpmpi;
+												for (int i=0;i<lib_shared_region->num_processes;i++){	
+																mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
+																exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+																if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = (double)(mpit*100.0 / exect);
+																else lpmpi = 0;
+																pmpi += lpmpi;
+																verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
+												}
+												metrics->perc_MPI = pmpi/lib_shared_region->num_processes;		
+								}else{
+												metrics->perc_MPI = 0.0;
+								}
+								sig_ext->mpi_stats = metrics_mpi_calls[s];
+								sig_ext->mpi_types = metrics_mpi_calls_types[s];
+
+
+								/* Power: Node, DRAM, PCK */
+								metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
+								metrics->PCK_power=0;
+								metrics->DRAM_power=0;
+								int p;
+								for (p=0;p<num_packs;p++) metrics->DRAM_power=metrics->DRAM_power+(double) metrics_rapl[s][p];
+								for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[s][num_packs+p];
+								metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
+								metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
+								metrics->EDP = time_s * time_s * metrics->DC_power;
+
+								/* GPUS */
+#if USE_GPUS
+								if (gpu_initialized){
+												metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
+												if (earl_gpu_model == MODEL_DUMMY){ 
+																debug("Setting num_gpu to 0 because model is DUMMY");
+																metrics->gpu_sig.num_gpus = 0;
+												}
+												for (p=0;p<metrics->gpu_sig.num_gpus;p++){
+																metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
+																metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;
+																metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[s][p].freq_mem;
+																metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[s][p].util_gpu;
+																metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[s][p].util_mem;
+												}	
+								}
+#endif
+				}else{
+								copy_node_data(metrics,&lib_shared_region->master_signature);
+				}
+
+				/* Copying my info in the shared signature */
+				from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
+				/* If I'm the master, I have to copy in the special section */
+				if (masters_info.my_master_rank >= 0){
+								signature_copy(&lib_shared_region->master_signature,metrics);
+				}
+				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
+				signature_ready(&sig_shared_region[my_node_id],0);
 }
 
 /**************************** Init function used in ear_init ******************/
@@ -1096,13 +1093,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_partial_stop(SIG_BEGIN);
 	metrics_global_stop();
 
-	#if 0
-	signature_ready(&sig_shared_region[my_node_id],0);
-	/* Waiting for node signatures */
-	verbose_master(2,"Waiting for node signatures");
-	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
-	#endif
-
 	metrics_compute_signature_data(APP, metrics, 1, procs);
 	/* Waiting for node signatures */
 	verbose_master(2,"Waiting for node signatures");
@@ -1122,12 +1112,12 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 void metrics_compute_signature_begin()
 {
-	//
-	metrics_partial_stop(SIG_BEGIN);
-	metrics_reset();
+				//
+				metrics_partial_stop(SIG_BEGIN);
+				metrics_reset();
 
-	//
-	metrics_partial_start();
+				//
+				metrics_partial_start();
 }
 
 void metrics_get_total_io(io_data_t *total)
@@ -1156,10 +1146,10 @@ void metrics_get_total_io(io_data_t *total)
 
 int time_ready_signature(ulong min_time_us)
 {
-	long long f_time;
-	f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-	if (f_time<min_time_us) return 0;
-	else return 1;
+				long long f_time;
+				f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+				if (f_time<min_time_us) return 0;
+				else return 1;
 }
 
 /****************************************************************************************************************************************************************/
@@ -1169,60 +1159,60 @@ int time_ready_signature(ulong min_time_us)
 
 int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs)
 {
-    long long aux_time;
+				long long aux_time;
 
-	NI=iterations;
+				NI=iterations;
 
-	if (!sig_shared_region[my_node_id].ready){ 
+				if (!sig_shared_region[my_node_id].ready){ 
 
-	// Time requirements
-	aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+								// Time requirements
+								aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
-	//
-	if ((aux_time<min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
-        #if 0
-                verbose(1,"EAR_NOT_READY because of time %llu\n",aux_time);
-        #endif
-		metrics->time=0;
+								//
+								if ((aux_time<min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
+#if 0
+												verbose(1,"EAR_NOT_READY because of time %llu\n",aux_time);
+#endif
+												metrics->time=0;
 
-		return EAR_NOT_READY;
-	}
+												return EAR_NOT_READY;
+								}
 
-	//Master: Returns not ready when power is not ready
-	//Not master: when master signature not ready
-	if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
- 
-	metrics_reset();
+								//Master: Returns not ready when power is not ready
+								//Not master: when master signature not ready
+								if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
 
-	//Marks the signature as ready
-	metrics_compute_signature_data(LOO, metrics, iterations, procs);
+								metrics_reset();
 
-	//
-	metrics_partial_start();
-	}
-	if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
-		if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
-			lib_shared_region->master_ready = 1;
-		}
-		return EAR_NOT_READY;
-	}else if (masters_info.my_master_rank >= 0){
-		lib_shared_region->master_ready = 0;
-	}
-	return EAR_SUCCESS;
+								//Marks the signature as ready
+								metrics_compute_signature_data(LOO, metrics, iterations, procs);
+
+								//
+								metrics_partial_start();
+				}
+				if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
+								if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
+												lib_shared_region->master_ready = 1;
+								}
+								return EAR_NOT_READY;
+				}else if (masters_info.my_master_rank >= 0){
+								lib_shared_region->master_ready = 0;
+				}
+				return EAR_SUCCESS;
 }
 
 long long metrics_usecs_diff(long long end, long long init)
 {
-	long long to_max;
+				long long to_max;
 
-	if (end < init)
-	{
-		debug( "Timer overflow (end: %lld - init: %lld)\n", end, init);
-		to_max = LLONG_MAX - init;
-		return (to_max + end);
-	}
+				if (end < init)
+				{
+								debug( "Timer overflow (end: %lld - init: %lld)\n", end, init);
+								to_max = LLONG_MAX - init;
+								return (to_max + end);
+				}
 
-	return (end - init);
+				return (end - init);
 }
 
 void metrics_node_signature(signature_t *master,signature_t *ns)
@@ -1266,62 +1256,62 @@ extern uint last_earl_gpu_phase_classification;
 
 state_t metrics_new_iteration(signature_t *sig)
 {
-	llong sflops;
-	llong f_time, elap_sec;
-	llong FLOPS[FLOPS_EVENTS];
-	int i;
+				llong sflops;
+				llong f_time, elap_sec;
+				llong FLOPS[FLOPS_EVENTS];
+				int i;
 #if USE_GPUS
-	gpu_t *gpud, *gpuddiff;
-	int p;
+				gpu_t *gpud, *gpuddiff;
+				int p;
 #endif
-	if (masters_info.my_master_rank < 0 ) return EAR_ERROR;
-	/* FLOPS are used to determine the CPU BUSY waiting */
-	if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
-		f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-		elap_sec = f_time / 1000000;
-		debug("elap %lld last %lld: Computing flops because of application phase is IO =%d or Busy waiting=%d",elap_sec,last_elap_sec, last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
-		
-		if (elap_sec <= last_elap_sec) return EAR_ERROR;
-		last_elap_sec = elap_sec;
-		read_flops_metrics(&sflops, FLOPS);
-		sig->Gflops = 0;
-		for (i= 0; i< FLOPS_EVENTS; i++){
-      sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
-      sig->Gflops += (double) sig->FLOPS[i];
-		}
-		sig->Gflops = sig->Gflops /(elap_sec *1000000000.0);
-		sig->time = elap_sec;
-		debug(" Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
-	}
+				if (masters_info.my_master_rank < 0 ) return EAR_ERROR;
+				/* FLOPS are used to determine the CPU BUSY waiting */
+				if ((last_earl_phase_classification == APP_IO_BOUND) || (last_earl_phase_classification == APP_BUSY_WAITING)){
+								f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+								elap_sec = f_time / 1000000;
+								debug("elap %lld last %lld: Computing flops because of application phase is IO =%d or Busy waiting=%d",elap_sec,last_elap_sec, last_earl_phase_classification == APP_IO_BOUND, last_earl_phase_classification == APP_BUSY_WAITING);
+
+								if (elap_sec <= last_elap_sec) return EAR_ERROR;
+								last_elap_sec = elap_sec;
+								read_flops_metrics(&sflops, FLOPS);
+								sig->Gflops = 0;
+								for (i= 0; i< FLOPS_EVENTS; i++){
+												sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
+												sig->Gflops += (double) sig->FLOPS[i];
+								}
+								sig->Gflops = sig->Gflops /(elap_sec *1000000000.0);
+								sig->time = elap_sec;
+								debug(" Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
+				}
 
 #if USE_GPUS
-	if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0)){
-		debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
-    /* GPUs */
-    if (gpu_initialized){
-			gpu_lib_data_alloc(&gpud);
-			gpu_lib_data_alloc(&gpuddiff);
-    	if (gpu_lib_read(&gpu_lib_ctx,gpud) != EAR_SUCCESS){
-      	debug("gpu_lib_read error");
-    	}
-    	gpu_lib_data_diff(gpud, gpu_metrics_init[LOO], gpuddiff);
-			sig->gpu_sig.num_gpus = ear_num_gpus_in_node;
-      if (earl_gpu_model == MODEL_DUMMY){
-        debug("Setting num_gpu to 0 because model is DUMMY");
-        sig->gpu_sig.num_gpus = 0;
-      }
-      for (p=0; p < sig->gpu_sig.num_gpus;p++){
-        sig->gpu_sig.gpu_data[p].GPU_power    = gpuddiff[p].power_w;
-        sig->gpu_sig.gpu_data[p].GPU_freq     = gpuddiff[p].freq_gpu;
-        sig->gpu_sig.gpu_data[p].GPU_mem_freq = gpuddiff[p].freq_mem;
-        sig->gpu_sig.gpu_data[p].GPU_util     = gpuddiff[p].util_gpu;
-        sig->gpu_sig.gpu_data[p].GPU_mem_util = gpuddiff[p].util_mem;
-      }
-			gpu_lib_data_free(&gpud);
-			gpu_lib_data_free(&gpuddiff);
+				if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0)){
+								debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
+								/* GPUs */
+								if (gpu_initialized){
+												gpu_lib_data_alloc(&gpud);
+												gpu_lib_data_alloc(&gpuddiff);
+												if (gpu_lib_read(&gpu_lib_ctx,gpud) != EAR_SUCCESS){
+																debug("gpu_lib_read error");
+												}
+												gpu_lib_data_diff(gpud, gpu_metrics_init[LOO], gpuddiff);
+												sig->gpu_sig.num_gpus = ear_num_gpus_in_node;
+												if (earl_gpu_model == MODEL_DUMMY){
+																debug("Setting num_gpu to 0 because model is DUMMY");
+																sig->gpu_sig.num_gpus = 0;
+												}
+												for (p=0; p < sig->gpu_sig.num_gpus;p++){
+																sig->gpu_sig.gpu_data[p].GPU_power    = gpuddiff[p].power_w;
+																sig->gpu_sig.gpu_data[p].GPU_freq     = gpuddiff[p].freq_gpu;
+																sig->gpu_sig.gpu_data[p].GPU_mem_freq = gpuddiff[p].freq_mem;
+																sig->gpu_sig.gpu_data[p].GPU_util     = gpuddiff[p].util_gpu;
+																sig->gpu_sig.gpu_data[p].GPU_mem_util = gpuddiff[p].util_mem;
+												}
+												gpu_lib_data_free(&gpud);
+												gpu_lib_data_free(&gpuddiff);
 
-		}
-	}
+								}
+				}
 #endif	
-	return EAR_SUCCESS;
+				return EAR_SUCCESS;
 }
