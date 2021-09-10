@@ -176,7 +176,7 @@ void *xmalloc(size_t size)
     void *ptr = malloc(size);
     if (ptr == NULL)
     {
-        error("Error allocationg memory (malloc fails), exiting");
+        error("Error allocationg memory (malloc fails when trying to alloc %lu), exiting", size);
         exit(1);
     }
     return ptr;
