@@ -147,8 +147,6 @@ leave:
         for (p = 0; p < plugins_count; ++p) { \
             if (ops[p]. op != NULL) { \
                 call_ ## NARGS(op, __VA_ARGS__); \
-            } else { \
-                break; \
             } \
         } \
         return EAR_SUCCESS; \
