@@ -111,6 +111,8 @@ void fill_ip(char *buff, ip_table_t *table)
    	s = getaddrinfo(buff, NULL, &hints, &result);
     if (s != 0) {
 		debug("getaddrinfo fails for node %s (%s)\n", buff, strerror(errno));
+        table->ip_int = 0;
+        strcpy(table->ip, "invalid node");
 		return;
     }
 
