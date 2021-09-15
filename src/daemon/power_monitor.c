@@ -52,6 +52,7 @@
 #include <daemon/eard_checkpoint.h>
 #include <daemon/shared_configuration.h>
 #include <daemon/local_api/node_mgr.h>
+#include <daemon/eard_node_services.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
@@ -1040,6 +1041,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 	nodemgr_clean_job(jid, sid);
 	clean_job_area(ID);
 	verbose(VJOBPMON , "*******************");
+	service_close_by_id(jid,sid);
 
 }
 

@@ -71,12 +71,13 @@ typedef struct mpi_calls_types{
 typedef struct lib_shared_data{
     uint 						earl_on;
     int             num_processes;
-    unsigned int    num_signatures;
-    double 			cas_counters;
-    signature_t 	master_signature;
-    signature_t 	node_signature;
-    int				master_rank;
-    uint			master_ready;
+    uint    				num_signatures;
+	  uint 						num_cpus;
+    double 					cas_counters;
+    signature_t 		master_signature;
+    signature_t 		node_signature;
+    int							master_rank;
+    uint						master_ready;
 }lib_shared_data_t;
 
 
@@ -99,7 +100,8 @@ typedef struct shsignature{
 
 typedef struct node_mgr_sh_data{
 	time_t						creation_time;
-	int 							fd;
+	int 							fd_lib;
+	int 							fd_sig;
 	lib_shared_data_t *libsh;
 	shsignature_t 		*shsig;
 }node_mgr_sh_data_t;
@@ -148,11 +150,11 @@ shsignature_t * create_shared_signatures_area(char * path,int num_processes);
 
 /** Connects with a previously created shared memory region. It is used by no node master processes
  * */
-shsignature_t * attach_shared_signatures_area(char * path,int num_processes);
+shsignature_t * attach_shared_signatures_area(char * path,int num_processes, int *fd);
 
 /** Disconnect from a previously connected shared memory region. It is used by no node master processes
  * */
-void dettach_shared_signatures_area();
+void dettach_shared_signatures_area(int fd);
 
 /** Releases a shared memory area previously created. It is used by node master process
  * */
@@ -195,6 +197,8 @@ void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
+void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
+
 
 
 uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);

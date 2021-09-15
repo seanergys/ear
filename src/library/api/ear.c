@@ -139,7 +139,8 @@ unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
-int fd_libsh;
+char sig_shared_region_path_jobs[GENERIC_NAME];
+int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
 float ratio_PPN;
@@ -472,7 +473,7 @@ void attach_shared_regions()
 	if (get_shared_signatures_path(tmp,ID, shsignature_region_path) != EAR_SUCCESS){
     error("Getting the shsignature_region_path  ");
   }else{
-			sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
+			sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes, &fd_sigsh);
 			if (sig_shared_region == NULL){
 				error("NULL pointer returned in attach_shared_signatures_area");
 			}
@@ -1173,6 +1174,11 @@ void ear_init()
     if (masters_info.my_master_rank==0) {
         verbose_master(1, "EAR initialized successfully ");
     }
+		/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
+		/* Computes the total number of cpus for this job */
+		compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+
+		/* Monitor is used for applications with no mpi of few mpi calss per second */
     if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
     earl_monitor = suscription();
     earl_monitor->call_init = earl_periodic_actions_init;

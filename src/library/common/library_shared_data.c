@@ -15,6 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+#define _GNU_SOURCE
+#include <sched.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
@@ -25,19 +28,26 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
 #include <common/config.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
-#include <library/common/externs.h>
+#include <common/types/projection.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #include <daemon/local_api/node_mgr.h>
+#include <library/common/externs.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
 #include <common/environment.h>
 
+/* Node mgr variables */
+extern ear_njob_t *node_mgr_data;
+extern uint node_mgr_index;
+extern node_mgr_sh_data_t *node_mgr_job_info;
+extern char lib_shared_region_path_jobs[GENERIC_NAME];
+extern char sig_shared_region_path_jobs[GENERIC_NAME];
 static int fd_conf,fd_signatures;
 
 int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
@@ -101,13 +111,13 @@ shsignature_t * create_shared_signatures_area(char * path, int np)
 	return p2;
 }
 
-shsignature_t * attach_shared_signatures_area(char * path,int np)
+shsignature_t * attach_shared_signatures_area(char * path,int np, int *fd)
 {
-    return (shsignature_t *)attach_shared_area(path,sizeof(shsignature_t)*np,O_RDWR,&fd_signatures,NULL);
+    return (shsignature_t *)attach_shared_area(path,sizeof(shsignature_t)*np,O_RDWR,fd,NULL);
 }                                
-void dettach_shared_signatures_area()
+void dettach_shared_signatures_area(int fd)
 {
-	dettach_shared_area(fd_signatures);
+	dettach_shared_area(fd);
 }
 void shared_signatures_area_dispose(char * path)
 {
@@ -400,6 +410,21 @@ void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *C
 	*CPI = *CPI/data->num_processes;
 }
 
+void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
+{
+  int i, c;
+	*cpus = 0;
+  for (i=0;i<data->num_processes;i++){
+		uint lcpus = 0;
+		for (c = 0; c < MAX_CPUS_SUPPORTED; c++){
+			if (CPU_ISSET(c, &sig[i].cpu_mask)) lcpus++;
+		}
+		*cpus += lcpus;
+  }
+	verbose_master(2,"Job %u has %u cpus ",node_mgr_index,*cpus);
+}
+
+
 
 
 
@@ -491,13 +516,10 @@ double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
 
 
 
+
+
 /* Node mgr support functions */
 
-/* Node mgr variables */
-extern ear_njob_t *node_mgr_data;
-extern uint node_mgr_index;
-extern node_mgr_sh_data_t *node_mgr_job_info;
-extern char lib_shared_region_path_jobs[GENERIC_NAME];
 
 void  init_earl_node_mgr_info()
 {
@@ -520,12 +542,16 @@ void  init_earl_node_mgr_info()
         verbose_master(2,"Job %lu.%lu is sharing the node", id,sid);
         ID = create_ID(id, sid);
         if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path_jobs) == EAR_SUCCESS){
-          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd);
+          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd_lib);
         }else{
           node_mgr_job_info[j].creation_time = 0;
         }
+				if (get_shared_signatures_path(tmp,ID,sig_shared_region_path_jobs) == EAR_SUCCESS){
+					node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
+				}
       }else if (j == node_mgr_index){
         node_mgr_job_info[j].libsh =  lib_shared_region;
+				node_mgr_job_info[j].shsig =  sig_shared_region;
       }
     }
   }
@@ -548,12 +574,15 @@ void    update_earl_node_mgr_info()
         /* Double validation after getting the lock */
         if (ct != node_mgr_job_info[j].creation_time){
           if (ct == 0){
-            dettach_lib_shared_data_area(node_mgr_job_info[j].fd);
+            dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
+						dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
             node_mgr_job_info[j].creation_time = 0;
           }else{
             uint ID = create_ID(jid,sid);
             get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs );
-            node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd);
+            node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd_lib);
+						get_shared_signatures_path(tmp, ID, sig_shared_region_path_jobs);
+						node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
             node_mgr_job_info[j].creation_time = ct;
           }
         }
@@ -581,6 +610,8 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	ull job_L3 = 0, node_L3 = 0;
 	double GBS = lsig->GBS;
 	double job_ratio = 0;
+	double job_CPI;
+	double hw_cache_line_size = arch_desc.top.cache_line_size;
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL) || (my_GBS == NULL) || (my_power == NULL)) return;
@@ -603,6 +634,33 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	  verbose_master(2,"Job Ratio is %.2lf", job_ratio*100);
 		*my_GBS = lsig->GBS * job_ratio;	
 	}
-	
+
+	/* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
+
+	/* Compute job CPI */
+	compute_total_node_CPI(data,sig, &job_CPI);
+	verbose_master(2,"Job %u: CPI %.3lf with %u cpus",node_mgr_index, job_CPI, data->num_cpus); 
+
+	/* Compute Node CPI */
+	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){
+			compute_total_node_CPI(nmgr[j].libsh,nmgr[j].shsig, &job_CPI);
+			verbose_master(2,"Job %u: CPI %.3lf with %u cpus",j, job_CPI, nmgr[j].libsh->num_cpus);
+		}		
+  }
+
+	/* Compute job TPI */
+	ull job_inst;
+	compute_total_node_instructions(data,sig, &job_inst);	
+	verbose_master(2,"Job %u: TPI %.3lf", node_mgr_index,(double)job_L3*(double)hw_cache_line_size/(double)job_inst);
+
+	/* Compute node TPI */
+  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){  
+			job_L3 = nmgr[j].libsh->node_signature.L3_misses;
+			compute_total_node_instructions(nmgr[j].libsh,nmgr[j].shsig, &job_inst);	
+			verbose_master(2,"Job %u: TPI %.3lf", j,(double)job_L3*(double)hw_cache_line_size/(double)job_inst);
+		}
+  }
 	return;	
 }

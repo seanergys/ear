@@ -117,6 +117,7 @@ int total_local_fd=0;
 typedef struct local_connection{
   ulong jid,sid,lid,anonymous;
   int fds[NUM_LOCAL_FDS];
+	int cancelled;
 }local_connection_t;
 static local_connection_t *eard_local_conn;
 static uint num_local_con=0;
@@ -164,6 +165,7 @@ int add_new_local_connection(local_connection_t *my_con,ulong jid,ulong sid,ulon
   my_con[i].sid = sid;
   my_con[i].lid = lid;
   my_con[i].anonymous = is_anonymous(jid,sid);
+	my_con[i].cancelled = 0;
   return i;
 }
 
@@ -190,7 +192,9 @@ state_t del_local_connection(local_connection_t *my_con,job_id jid,job_id sid)
   my_con[i].jid = ULONG_MAX;
   my_con[i].sid = 0;
   my_con[i].lid = 0;
-  my_con->anonymous = 0;
+  my_con[i].anonymous = 0;
+  my_con[i].cancelled = 0;
+	
   return EAR_SUCCESS;
 }
 int get_local_connection_by_fd(local_connection_t *my_con,int reqfd,int ackfd)
@@ -201,6 +205,14 @@ int get_local_connection_by_fd(local_connection_t *my_con,int reqfd,int ackfd)
     state_return_msg(EAR_ERROR,EAR_NOT_FOUND,"Local connection not found");
   }
   return i;
+}
+
+int get_local_connection_by_id(local_connection_t *my_con, ulong jid, ulong sid)
+{
+  int i=0;
+  while (!((my_con[i].jid == jid) && (my_con[i].sid == sid) && !my_con[i].cancelled) &&  (i<num_local_con)) i++;
+	if (i == num_local_con) return -1;
+	return i;
 }
 int get_local_connection_by_req(local_connection_t *my_con,int reqfd)
 {
@@ -218,6 +230,7 @@ void clean_local_connection(local_connection_t *my_con)
   my_con->sid = 0;
   my_con->lid = 0;
   my_con->anonymous = 0;
+  my_con->cancelled = 0;
   my_con->fds[REQ_LOCAL_FD] = -1;
   my_con->fds[ACK_LOCAL_FD] = -1;
 }
@@ -1411,12 +1424,35 @@ state_t service_close(int req_fd, int ack_fd)
 	return EAR_SUCCESS;
 }
 
+state_t service_close_by_id(ulong jid,ulong sid)
+{
+	int i;
+	do{
+		i = get_local_connection_by_id(eard_local_conn, jid, sid);
+		if (i >= 0){
+			verbose(1,"Cancelling local connection %d",i);
+			eard_local_conn[i].cancelled = 1;
+		}
+	}while (i>=0);
+	return EAR_SUCCESS;
+}
+
 
 state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 { 
   size_t size;
   uint rpc;
-  
+	int i;
+
+	if (req_fd != global_req_fd){
+		i = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
+		if ((i >= 0) && (i < num_local_con) && eard_local_conn[i].cancelled){ 
+			verbose(1,"Local connection %d was cancelled",i);
+			return EAR_ERROR;
+		}
+	}
+	
+ 
   // Reading the header.
   if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t))) != sizeof(eard_head_t)) {
     error("Error when reading header during service respond: expected %lu bytes and received %lu",
@@ -1479,6 +1515,7 @@ void service_select(int req_fd, int ack_fd)
   
   // Hanging up
   if (state_fail (service_listen(req_fd, ack_fd, &req))) {
+		verbose(1,"Closing local service");
     service_close(req_fd, ack_fd);
   }
 	/* Add one by one */
