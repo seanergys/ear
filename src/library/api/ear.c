@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <signal.h>
 #include <assert.h>
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
@@ -80,6 +81,11 @@
 #endif
 #include <library/api/mpi_support.h>
 #include <library/policies/common/mpi_stats_support.h>
+
+
+void ear_finalize(int exit_status);
+static uint cancelled = 0;
+
 
 extern const char *__progname;
 static uint ear_lib_initialized=0;
@@ -734,6 +740,14 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 		sched_setaffinity(getpid(),sizeof(cpu_set_t),mask);
 	}
 }
+
+
+void ear_lib_sig_handler(int s)
+{
+	ear_finalize(EAR_CANCELLED);
+	cancelled = 1;
+	exit(0);
+}
 /****************************************************************************************************************************************************************/
 /****************************************************************************************************************************************************************/
 /****************************************************************************************************************************************************************/
@@ -1178,6 +1192,14 @@ void ear_init()
 		/* Computes the total number of cpus for this job */
 		compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
 
+		/* SIGTERM action for job cancellation */
+		struct sigaction term_action;
+		sigemptyset(&term_action.sa_mask);
+  	term_action.sa_handler = ear_lib_sig_handler;
+  	term_action.sa_flags = 0;
+		sigaction(SIGTERM, &term_action, NULL);
+
+
 		/* Monitor is used for applications with no mpi of few mpi calss per second */
     if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
     earl_monitor = suscription();
@@ -1197,9 +1219,11 @@ void ear_init()
 
 /**************************************** ear_finalize ************************/
 
-void ear_finalize()
+
+void ear_finalize(int exit_status)
 {
     // if we are not the master, we return
+    if (cancelled) return;
     if (synchronize_masters == 0 ) return;
 #if ONLY_MASTER
     if (my_id) {
@@ -1712,7 +1736,7 @@ void ear_destructor()
         return;
     }
 #endif
-    ear_finalize();
+    ear_finalize(EAR_SUCCESS);
 }
 #else
 void ear_constructor()

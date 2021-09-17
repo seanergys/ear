@@ -35,6 +35,7 @@
 #define EAR_SYSCALL_ERROR		-18
 #define EAR_TIMEOUT				-21
 #define EAR_UNDEFINED			-24
+#define EAR_CANCELLED     -25
 
 /* error buffer */
 char state_buffer[SZ_BUFFER];

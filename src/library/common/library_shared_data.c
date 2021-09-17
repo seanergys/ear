@@ -35,6 +35,8 @@
 #include <common/types/projection.h>
 #include <common/types/configuration/cluster_conf.h>
 
+#include <metrics/flops/flops.h>
+
 #include <daemon/local_api/node_mgr.h>
 #include <library/common/externs.h>
 #include <library/common/library_shared_data.h>
@@ -514,6 +516,18 @@ double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
 	return total;
 }
 
+void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx)
+{
+	ull total = 0;
+	for (uint i=0;i<data->num_processes;i++){	
+		total += sig[i].sig.FLOPS[INDEX_256F];
+		total += sig[i].sig.FLOPS[INDEX_256D];
+		total += sig[i].sig.FLOPS[INDEX_512F];
+		total += sig[i].sig.FLOPS[INDEX_512D];
+	}
+	*avx = total;
+}
+
 
 
 
@@ -612,21 +626,56 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	double job_ratio = 0;
 	double job_CPI;
 	double hw_cache_line_size = arch_desc.top.cache_line_size;
+  int cpus_in_node = arch_desc.top.cpu_count;	
+	double power_estimations[MAX_CPUS_SUPPORTED];
+	double ipc[MAX_CPUS_SUPPORTED];
+	double tpi[MAX_CPUS_SUPPORTED];
+	double gbs[MAX_CPUS_SUPPORTED];
+	double vpi[MAX_CPUS_SUPPORTED];
+	ulong  f[MAX_CPUS_SUPPORTED];
+	ull    L3[MAX_CPUS_SUPPORTED];
+	double power_ratio;
+
+	memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+	memset(tpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+	memset(vpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+	memset(gbs,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+	memset(f,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+	memset(L3,0,sizeof(ull)*MAX_CPUS_SUPPORTED);
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL) || (my_GBS == NULL) || (my_power == NULL)) return;
 	*my_power = lsig->DC_power;
 	*my_GBS   = lsig->GBS;
+
 	
-	/* Compute job L3 */
-	compute_total_node_L3_misses(data,sig, &job_L3);
+	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
 	
-	/* Compute node L3 */
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL))  node_L3 += nmgr[j].libsh->node_signature.L3_misses;
+		/* Power condition is to do only in case the signature is ready */
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
+			ull avx = 0;
+			ull LL3 = 0;
+			ull inst = 0;
+			double LCPI = 0.0;
+			compute_total_node_L3_misses(nmgr[j].libsh,nmgr[j].shsig,&LL3);
+			compute_total_node_instructions(nmgr[j].libsh,nmgr[j].shsig, &inst);
+			compute_total_node_CPI(nmgr[j].libsh,nmgr[j].shsig, &LCPI);
+			node_L3 += LL3;
+			/* We use cache misses for TPI estimation also */
+			L3[j] = LL3;
+			tpi[j] = (double)LL3/(double)inst;
+			ipc[j] = 1/LCPI;
+			compute_total_node_avx_and_avx_fops(nmgr[j].libsh,nmgr[j].shsig, &avx);
+			vpi[j] = (double)avx/(double)inst;		
+			f[j] = nmgr[j].libsh->node_signature.avg_f;
+
+			/* This is for validation */
+		}
 	}
 
 	/* Ratio */	
+	#if 0
 	if ((job_L3 == 0) || (node_L3 == 0)){
 		verbose_master(2,"Invalid values job %llu Node %llu",job_L3,node_L3);
 	}else{
@@ -634,33 +683,64 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	  verbose_master(2,"Job Ratio is %.2lf", job_ratio*100);
 		*my_GBS = lsig->GBS * job_ratio;	
 	}
+	#endif
+	
+  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && L3[j]){
+				gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
+		}else gbs[j] = 0;
+	}
+
+  *my_GBS = gbs[node_mgr_index];
+	verbose_master(2,"My GB/s is %.2lf", *my_GBS);
+
 
 	/* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 
-	/* Compute job CPI */
-	compute_total_node_CPI(data,sig, &job_CPI);
-	verbose_master(2,"Job %u: CPI %.3lf with %u cpus",node_mgr_index, job_CPI, data->num_cpus); 
 
-	/* Compute Node CPI */
+	/* Model 1
+	*	Intercepción	-28,53203477 --> Constant
+	*	IPC	12,90765889 --> 1/CPI
+	*	TPI2	0,475457643 --> TPI
+	*	VPI	5,45086405 --> (avx2+avx512)/instrunctions
+	*	F	9,83884E-05  --> AVG CPU 
+
+	#define IPC_COEFF (double)12.90765889
+	#define TPI_COEFF (double)0.475457643
+	#define VPI_COEFF (double)5.45086405
+	#define F_COEFF   (double)9.83884E-05
+	#define INTERCEPT (double)-28,53203477 */
+
+	/* Model 2, GB/s rather than TPI, easy to compute 
+ * Intercepción	-28,85109789
+ * VPI	28,21247619
+ * F	9,26892E-05
+ * GBS2	0,601652592
+ * IPC2	11,40897054 */
+	#define IPC_COEFF (double)11.40897054
+  #define GBS_COEFF (double)0.601652592
+  #define VPI_COEFF (double)28.21247619
+  #define F_COEFF   (double)9.26892E-05
+  #define INTERCEPT (double)-28.85109789
+
+
+
+	/* Per job in node loop */
+	double total_power_estimated = 0;
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){
-			compute_total_node_CPI(nmgr[j].libsh,nmgr[j].shsig, &job_CPI);
-			verbose_master(2,"Job %u: CPI %.3lf with %u cpus",j, job_CPI, nmgr[j].libsh->num_cpus);
-		}		
-  }
-
-	/* Compute job TPI */
-	ull job_inst;
-	compute_total_node_instructions(data,sig, &job_inst);	
-	verbose_master(2,"Job %u: TPI %.3lf", node_mgr_index,(double)job_L3*(double)hw_cache_line_size/(double)job_inst);
-
-	/* Compute node TPI */
-  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){  
-			job_L3 = nmgr[j].libsh->node_signature.L3_misses;
-			compute_total_node_instructions(nmgr[j].libsh,nmgr[j].shsig, &job_inst);	
-			verbose_master(2,"Job %u: TPI %.3lf", j,(double)job_L3*(double)hw_cache_line_size/(double)job_inst);
+		/* If job is active we compute its power estimated */
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[j]){
+			double P;
+			P = (ipc[j] * IPC_COEFF) + (gbs[j] * GBS_COEFF) + (vpi[j] * VPI_COEFF) + (f[j] * F_COEFF ) + INTERCEPT;
+			power_estimations[j] = P*nmgr[j].libsh->num_cpus/cpus_in_node;
+			verbose_master(2,"Power estimated for job %u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j, P,nmgr[j].libsh->num_cpus, power_estimations[j],ipc[j],vpi[j],gbs[j],(double)f[j]/1000000.0);
+			total_power_estimated += power_estimations[j];
 		}
-  }
+	}
+	power_ratio = power_estimations[node_mgr_index]/total_power_estimated;
+	verbose_master(2,"My ratio is %lf", power_ratio);
+	*my_power = lsig->DC_power * power_ratio;
+	verbose_master(2,"My power is %lf", *my_power);
+
 	return;	
 }

@@ -197,6 +197,7 @@ void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
+void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
 
 
