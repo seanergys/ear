@@ -155,6 +155,7 @@ static void generate_node_ranges(node_island_t *island, char *nodelist)
 	char *start;
 	char *next_token;
 
+    strclean(nodelist, '\n');
 	start = strtok_r(nodelist, "[", &buffer_ptr);
 	token = strtok_r(NULL, ",", &buffer_ptr);
 	//in this case, no node ranges are specified in the line
