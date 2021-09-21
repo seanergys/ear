@@ -383,7 +383,7 @@ int plug_serialize_remote(spank_t sp, plug_serialization_t *sd)
 		setenv_agnostic(sp, Var.ctx_last.rem, Constring.sbatch, 1);
 		setenv_agnostic(sp, Var.was_sbac.rem, "1", 1);
 	}
-
+	
 	return ESPANK_SUCCESS;
 }
 
@@ -494,6 +494,11 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	// Cleaning
 	unsetenv_agnostic(sp, Var.user.rem);
 	unsetenv_agnostic(sp, Var.group.rem);
+	
+	// Last minute hack, if energy tag is present, disable library
+	if (exenv_agnostic(sp, Var.tag.loc)) {
+		plug_component_setenabled(sp, Component.library, 0);
+	}
 
 	return ESPANK_SUCCESS;
 }
@@ -508,27 +513,25 @@ int plug_serialize_task_settings(spank_t sp, plug_serialization_t *sd)
 		unsetenv_agnostic(sp, Var.tag.ear);
 	}
 
-	// If no EARD connectiond or not library...
-	if (sd->pack.eard.connected && !setts->lib_enabled) {
-		return ESPANK_SUCCESS;
-	}
-
 	// Default P_STATE, frequency (KHz) and threshold (%).
 	snprintf(buffer1, 16, "%u", setts->def_p_state);
 	setenv_agnostic(sp, Var.p_state.ear, buffer1, 1);
+	
 	snprintf(buffer1, 16, "%lu", setts->def_freq);
 	setenv_agnostic(sp, Var.frequency.ear, buffer1, 1);
+	
 	snprintf(buffer1, 16, "%0.2f", setts->settings[0]);
 	setenv_agnostic(sp, Var.eff_gain.ear, buffer1, 1);
 	setenv_agnostic(sp, Var.perf_pen.ear, buffer1, 1);
-	
+
+	// Policy 
 	/*if(policy_id_to_name(setts->policy, buffer1) != EAR_ERROR) {
 		setenv_agnostic(sp, Var.policy.ear, buffer1, 1);
 	}*/
-	// Policy 
 	if (strlen(setts->policy_name) > 0) {
 		setenv_agnostic(sp, Var.policy.ear, setts->policy_name, 1);
 	}
+
 	// If is not learning, P_STATE is canceled.
 	if(!setts->learning) {
 		unsetenv_agnostic(sp, Var.p_state.ear);

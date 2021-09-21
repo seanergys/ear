@@ -108,19 +108,26 @@ int slurm_spank_user_init_eard(spank_t sp)
 			return ESPANK_ERROR;
 		}
 	}
+
+        // LD_PRELOAD can be DISABLED by plugstack.conf or flag is OFF
+        // LD_PRELOAD can be DISABLED by EARD when reading settings
+        // LD_PRELOAD can be DISABLED if energy tag flag is present (during remote deserialization)
+        //
 	// If is an SBATCH remote environment, then there is no serialization
-	// to task, so then is no libearld.so.
-	if (plug_context_was(&sd, Context.srun)) {
-		if (plug_component_isenabled(sp, Component.library)) {
-			if (fail(plug_shared_readsetts(sp, &sd))) {
-				return ESPANK_ERROR;
-			}
-			plug_serialize_task_settings(sp, &sd);
-			plug_serialize_task_preload(sp, &sd);
-		} else {
-			plug_verbose(sp, 2, "library is not enabled");
-		}
-	}
+        // to task, so then is no libearld.so.
+        if (plug_context_was(&sd, Context.srun)) {
+                if (plug_component_isenabled(sp, Component.library)) {
+                        if (fail(plug_shared_readsetts(sp, &sd))) {
+                                return ESPANK_ERROR;
+                        }
+                } else {
+                        plug_verbose(sp, 2, "library is not enabled");
+                }
+                if (plug_component_isenabled(sp, Component.library)) {
+                        plug_serialize_task_settings(sp, &sd);
+                        plug_serialize_task_preload(sp, &sd);
+                }
+        }
 
 	return ESPANK_SUCCESS;
 }
