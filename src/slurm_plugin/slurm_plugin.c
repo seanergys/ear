@@ -166,7 +166,7 @@ int slurm_spank_user_init(spank_t sp, int ac, char **av)
 	if (fail(slurm_spank_user_init_eard(sp))) {
 		// Loading library anyway, because if a single node in a job runs
 		// without the library, it can freeze during EAR synchronization.
-                if (plug_component_isenabled(sp, Component.library)) {
+      if (plug_component_isenabled(sp, Component.library)) {
 			plug_serialize_task_preload(sp, &sd);
 		}
 	}
