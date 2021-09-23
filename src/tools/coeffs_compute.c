@@ -530,7 +530,7 @@ static state_t create_folder(char *path)
 {
 	if (mkdir(path, F_UR|F_UW|F_UX|F_GR|F_OR) < 0) {
 		if (errno != EEXIST) {
-			return_xmsg(EAR_ERROR, "failed making path %s (%s)", path, strerror(errno));
+			return_print(EAR_ERROR, "failed making path %s (%s)", path, strerror(errno));
 		}
 	}
 	return EAR_SUCCESS;
@@ -565,7 +565,7 @@ static state_t configuration(int argc, char *argv[], cluster_conf_t *conf, my_no
     if ((*node = get_my_node_conf(conf, aux_name)) == NULL) {
         // Testing alias
         if ((*node = get_my_node_conf(conf, aux_alias)) == NULL) {
-       		return_xmsg(EAR_ERROR, "host name '%s' and alias '%s' not found", aux_name, aux_alias);
+       		return_print(EAR_ERROR, "host name '%s' and alias '%s' not found", aux_name, aux_alias);
 		}
 		p = aux_alias;
 	}
@@ -573,22 +573,22 @@ static state_t configuration(int argc, char *argv[], cluster_conf_t *conf, my_no
 	strcpy(host_name, p);
 	// Opening root path, the flag or the home.
 	if (strinargs(argc, argv, "root-path:", buffer1)) {
-		if (xtate_fail(s, create_folder(buffer1))) {
+		if (state_fail(s = create_folder(buffer1))) {
 			return s;
 		}
 	} else {
 		sprintf(buffer1, "%s", getenv("HOME"));
 	}
 	// Adding island folder.
-	sprintf(buffer2, "%s/island%d", buffer1, (*node)->island);
+	xsprintf(buffer2, "%s/island%d", buffer1, (*node)->island);
 	// Creating island folder.
-	if (xtate_fail(s, create_folder(buffer2))) {
+	if (state_fail(s = create_folder(buffer2))) {
 		return s;
 	}
 	// Setting the complete coefficient file (i was using (*node)->coef_file).
-	sprintf(buffer1, "%s/coeffs.%s", buffer2, host_name);
+	xsprintf(buffer1, "%s/coeffs.%s", buffer2, host_name);
 	if ((*fd = open(buffer1, F_WR|F_CR|F_TR, F_UR|F_UW|F_GR|F_GW|F_OR|F_OW)) < 0) {
-		return_xmsg(EAR_ERROR, "failed opening file '%s' (%s)", buffer1, strerror(errno));
+		return_print(EAR_ERROR, "failed opening file '%s' (%s)", buffer1, strerror(errno));
 	}
 	verbose(0, "-----------------------------------------------------------------------------------------------------------");
 	verbose(0, "host name:     %s", aux_name); 

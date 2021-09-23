@@ -43,7 +43,7 @@
 #include <library/metrics/metrics.h>
 #include <library/policies/policy.h>
 #include <library/policies/policy_state.h>
-#include <library/policies/cpu_support.h>
+#include <library/policies/common/cpu_support.h>
 #include <library/states/states_comm.h>
 
 #include <management/cpufreq/frequency.h>
@@ -486,8 +486,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /****** We mark our local signature as ready ************ Moved to metrics*/
             //signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
 
-            /* This function executes the energy policy */
             adapt_signature_to_node(&app_signature,&loop_signature.signature,ratio_PPN);
+            /* This function executes the energy policy */
             pst=policy_node_apply(&app_signature,&policy_freq,&ready);
 
             /* For no masters, ready will be 0, pending */

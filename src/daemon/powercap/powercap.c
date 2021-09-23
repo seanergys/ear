@@ -60,11 +60,13 @@ static uint current_power=0;
 pthread_t powercapmon_th;
 unsigned long powercapmon_freq=1;
 extern int eard_must_exit;
-extern settings_conf_t *dyn_conf;
-extern resched_t *resched_conf;
 static uint pc_cpu_strategy;
 static uint8_t last_cluster_perc = 0;
-extern pc_app_info_t *pc_app_info_data;
+
+extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
+extern int max_context_created;
+extern int num_contexts;
+
 
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
@@ -106,8 +108,15 @@ void  powercap_monitor_init()
 
 void update_node_powercap_opt_shared_info()
 {
-	memcpy(&dyn_conf->pc_opt,&my_pc_opt,sizeof(node_powercap_opt_t));
-	resched_conf->force_rescheduling=1;
+	int cc;
+	for (cc = 0; cc <= max_context_created;cc ++){
+    if (current_ear_app[cc] != NULL){
+			/* Do we have to copy, "as is" ? PENDING */
+			memcpy(&current_ear_app[cc]->settings->pc_opt,&my_pc_opt,sizeof(node_powercap_opt_t));
+			current_ear_app[cc]->resched->force_rescheduling=1;
+			
+		}
+	}
 }
 
 
@@ -126,7 +135,8 @@ uint powercat_get_value()
 static int set_powercap_value(uint domain,uint limit)
 {
   char c_date[128];
-  if (limit==my_pc_opt.current_pc) return EAR_SUCCESS;
+	int i;
+  if (limit == my_pc_opt.current_pc) return EAR_SUCCESS;
   verbose(0,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
@@ -134,9 +144,13 @@ static int set_powercap_value(uint domain,uint limit)
   }
   my_pc_opt.current_pc = limit;
   update_node_powercap_opt_shared_info();
-  pmgt_set_app_req_freq(pcmgr,pc_app_info_data);
-	dyn_conf->pc_opt.current_pc = powercat_get_value();
-
+  pmgt_set_app_req_freq(pcmgr);
+	/* PENDING POWER allocation for jobs sharing the node */
+	for (i=1; i<= max_context_created; i++){
+    if (current_ear_app[i] != NULL){
+			current_ear_app[i]->settings->pc_opt.current_pc = powercat_get_value();
+		}
+	}
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 
@@ -303,13 +317,12 @@ int powercap_set_power_per_domain(dom_power_t *cp,uint use_earl,ulong avg_f)
 	while(pthread_mutex_trylock(&my_pc_opt.lock));
 	if (my_pc_opt.powercap_status == PC_STATUS_IDLE) pmgt_set_power_per_domain(pcmgr,cp,PC_STATUS_IDLE);
 	else pmgt_set_power_per_domain(pcmgr,cp,PC_STATUS_RUN);
-	powercap_set_app_req_freq(pc_app_info_data);
+	powercap_set_app_req_freq();
 	if (current_power > my_pc_opt.current_pc){
 		debug("%s",COL_RED);
 	}else{
 		debug("%s",COL_GRE);
 	}
-	debug_pc_app_info(pc_app_info_data);
 	debug("PM event, current power %u powercap %u allocated %u status %u released %u requested %u",\
 		current_power,my_pc_opt.current_pc,my_pc_opt.last_t1_allocated,my_pc_opt.powercap_status,my_pc_opt.released,\
 		my_pc_opt.requested);
@@ -504,9 +517,9 @@ uint powercap_get_gpu_strategy()
 	return pmgt_get_powercap_gpu_strategy(pcmgr);
 }
 
-void powercap_set_app_req_freq(pc_app_info_t *pc_app)
+void powercap_set_app_req_freq()
 {
-	pmgt_set_app_req_freq(pcmgr,pc_app);
+	pmgt_set_app_req_freq(pcmgr);
 }
 
 void powercap_release_idle_power(pc_release_data_t *release)

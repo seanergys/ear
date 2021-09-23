@@ -92,6 +92,7 @@ state_t imcfreq_eard_read(ctx_t *c, imcfreq_t *i)
 	if (i == NULL) {
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
+	debug("IMC size  %lu",dev_count * sizeof(imcfreq_t));
 	memset((void *) i, 0, dev_count * sizeof(imcfreq_t));
 	return eards_imcfreq_read(i, dev_count * sizeof(imcfreq_t));
 }

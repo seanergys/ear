@@ -68,7 +68,7 @@ int clean(int argc, char *argv[])
 {
 	plug_verbose(_sp, 0, "cleaning temporal folder");
 	//
-	sprintf(path_sys, "rm %s/erun.*.lock &> /dev/null", path_tmp);
+	xsprintf(path_sys, "rm %s/erun.*.lock &> /dev/null", path_tmp);
 	//
 	system(path_sys);
 	

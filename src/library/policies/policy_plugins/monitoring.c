@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -30,8 +30,8 @@
 #include <library/policies/policy_api.h>
 #include <daemon/powercap/powercap_status.h>
 #include <library/policies/policy_state.h>
-#include <library/policies/gpu_support.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/gpu_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 

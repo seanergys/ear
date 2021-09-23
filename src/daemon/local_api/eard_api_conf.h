@@ -60,12 +60,110 @@ union daemon_req_opt {
 	unc_freq_req_t	unc_freq;
 };
 
+typedef struct app_id{
+  ulong jid;
+  ulong sid;
+  ulong lid;
+}app_id_t;
+
+
+/* new_services : This section is eard request messages headers */
+typedef struct eard_head_s {
+  ulong    req_service;
+  ulong    sec;
+  size_t   size;
+  state_t  state;
+  app_id_t con_id;
+} eard_head_t;
+
 struct daemon_req {
-    ulong req_service;
-	ulong  sec;
-    union daemon_req_opt req_data;
+/* For new_services : This section must include same size than eard_head_t */
+  ulong    req_service;
+  ulong    sec;
+  size_t   size;
+  state_t  state;
+  app_id_t con_id;
+  union daemon_req_opt req_data;
 };
 
+int eards_read(int fd,char *buff,int size);
+int eards_write(int fd,char *buff,int size);
+
+
+/** Frequency readings and management */
+#define SET_FREQ                0
+#define START_GET_FREQ          1
+#define END_GET_FREQ            2
+#define SET_TURBO               3
+#define DATA_SIZE_FREQ          4
+#define CONNECT_FREQ            5
+#define START_APP_COMP_FREQ     6
+#define END_APP_COMP_FREQ       7
+#define SET_FREQ_WITH_MASK      8
+#define SET_NODE_FREQ_WITH_LIST 9
+#define GET_CPUFREQ             10
+#define GET_CPUFREQ_LIST        11
+// NEW FREQ functions
+#define READ_CPUFREQ            12
+
+/* Uncore frequency counters to compute GB/s */
+/* UNC frequency management */
+#define UNC_SIZE                20
+#define UNC_READ                21
+#define UNC_GET_LIMITS          22
+#define UNC_SET_LIMITS          23
+#define UNC_INIT_DATA           24
+#define UNC_GET_LIMITS_MIN      25
+#define UNC_SET_LIMITS_MIN      26
+
+
+// Services related with uncore counters for memory bandwith computation
+#define START_UNCORE      100
+#define RESET_UNCORE      101
+#define READ_UNCORE       102
+#define DATA_SIZE_UNCORE    103
+#define CONNECT_UNCORE      104
+#define STOP_UNCORE       105
+//
+//
+#define END_COMM                1000
+//
+#define EAR_COM_OK              0
+#define EAR_COM_ERROR          -1
+
+/* RAPL requests */
+#define START_RAPL        200
+#define RESET_RAPL        201
+#define READ_RAPL         202
+#define DATA_SIZE_RAPL      203
+
+/* Report data */
+#define WRITE_APP_SIGNATURE   300
+#define WRITE_EVENT       302
+#define WRITE_LOOP_SIGNATURE  303
+
+/** Energy readings */
+#define READ_DC_ENERGY      400
+#define DATA_SIZE_ENERGY_NODE   401
+#define ENERGY_FREQ       403
+
+
+/** GPU management */
+#define GPU_MODEL               500
+#define GPU_DEV_COUNT           501
+#define GPU_DATA_READ           502
+#define GPU_SET_FREQ            503
+#define GPU_GET_INFO            504
+
+
+#define CONNECT_EARD_NODE_SERVICES 		CONNECT_FREQ
+#define DISCONNECT_EARD_NODE_SERVICES END_COMM
+
+/* Commands using new API will use service req > 1000 */
+#define NEW_API_SERVICES        1000
+
+
+#if 0
 // Number of services supported
 #define ear_daemon_client_requests 	1
 #define freq_req 					0
@@ -132,10 +230,11 @@ struct daemon_req {
 #define CONNECT_ENERGY 			402
 #define ENERGY_FREQ				403
 
+
 #define GPU_MODEL               500
 #define GPU_DEV_COUNT           501
 #define GPU_DATA_READ           502
 #define GPU_SET_FREQ            503
 #define GPU_GET_INFO            504
-
+#endif
 #endif

@@ -74,9 +74,9 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	if (((obj_path == NULL) && (ins_path == NULL)) || (user_type != AUTHORIZED))
 	{
 		if ((strcmp(data->obj_power_model,"default")==0) || (data->obj_power_model==NULL)){
-			snprintf(basic_path,sizeof(basic_path), "%s/models/basic_model.so", data->dir_plug);
+			xsnprintf(basic_path,sizeof(basic_path), "%s/models/basic_model.so", data->dir_plug);
 		}else if (data->obj_power_model!=NULL){
-			snprintf(basic_path, sizeof(basic_path),"%s/models/%s", data->dir_plug,data->obj_power_model);
+			xsnprintf(basic_path, sizeof(basic_path),"%s/models/%s", data->dir_plug,data->obj_power_model);
 		}
 		obj_path = basic_path;
 		

@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <signal.h>
 #include <assert.h>
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
@@ -48,6 +49,7 @@
 #include <library/common/externs.h>
 #include <library/common/global_comm.h>
 #include <library/common/library_shared_data.h>
+#include <library/common/utils.h>
 #include <library/api/clasify.h>
 #include <library/api/mpi_support.h>
 
@@ -60,6 +62,7 @@
 #include <library/metrics/signature_ext.h>
 
 #include <daemon/local_api/eard_api.h>
+#include <daemon/local_api/node_mgr.h>
 #include <daemon/app_mgt.h>
 #include <daemon/shared_configuration.h>
 
@@ -77,7 +80,12 @@
 #include <library/api/mpi.h>
 #endif
 #include <library/api/mpi_support.h>
-#include <library/policies/mpi_stats_support.h>
+#include <library/policies/common/mpi_stats_support.h>
+
+
+void ear_finalize(int exit_status);
+static uint cancelled = 0;
+
 
 extern const char *__progname;
 static uint ear_lib_initialized=0;
@@ -136,15 +144,21 @@ int masters_connected=0;
 unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
+char lib_shared_region_path_jobs[GENERIC_NAME];
+char sig_shared_region_path_jobs[GENERIC_NAME];
+int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
 float ratio_PPN;
-#if POWERCAP
 app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
 char pc_app_info_path[GENERIC_NAME];
-#endif
+
+/* Info with jobs sharing the node */
+ear_njob_t *node_mgr_data;
+uint node_mgr_index;
+node_mgr_sh_data_t *node_mgr_job_info;
 
 uint mgt_cpufreq_api;
 // Dynais
@@ -195,8 +209,9 @@ void notify_eard_connection(int status)
 {
 	char *buffer_send;
 	char *buffer_recv;
+	#if MPI
 	int i;
-
+	#endif
 	if (masters_comm_created){
 	buffer_send = calloc(    1, sizeof(char));
 	buffer_recv = calloc(masters_info.my_master_size, sizeof(char));
@@ -255,21 +270,23 @@ void create_shared_regions()
 	int bfd=-1;
   int total_elements = 1;
   int per_node_elements = 1;
+	uint current_jobs_in_node;
 	#if SHOW_DEBUGS
 	int total_size;
 	#endif
+	uint ID = create_ID(application.job.id, application.job.step_id);
 
 
 	/* This section allocates shared memory for processes in same node */
 	debug("%s:Master creating shared regions for node synchro",node_name);
-  snprintf(block_file,sizeof(block_file),"%s/.my_local_lock_2.%s",tmp,application.job.user_id);
+  xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory %s",block_file);
   }
 
 	/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
 	/******************************* Depending on how EAR is compiled, only one signature per node is sent *************************/
-	if (get_lib_shared_data_path(tmp,lib_shared_region_path)!=EAR_SUCCESS){
+	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path)!=EAR_SUCCESS){
 		error("Getting the lib_shared_region_path");
 	}else{
 		lib_shared_region=create_lib_shared_data_area(lib_shared_region_path);
@@ -300,7 +317,7 @@ void create_shared_regions()
 #endif
 	//print_lib_shared_data(lib_shared_region);
 	/* This region is for processes in the same node */
-	if (get_shared_signatures_path(tmp,shsignature_region_path)!=EAR_SUCCESS){
+	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS){
     error("Getting the shsignature_region_path	");
 	}else{
 		debug("Master node creating the signatures with %d processes",lib_shared_region->num_processes);
@@ -379,7 +396,35 @@ void create_shared_regions()
 		error("Allocating memory for MPI summary shared info");
 	}
 	#endif
-
+	/********************************/
+	/* Attaching to node_mgr region */
+	/********************************/
+	verbose_master(2,"Creating node_mgr region");
+	if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
+		verbose_master(2,"Error creating node_mgr region");
+	}
+	ear_njob_t me;
+	me.jid = application.job.id;
+	me.sid = application.job.step_id;
+	me.creation_time = time(NULL);
+	CPU_ZERO(&me.cpu_mask);
+	/* This loop creates the job node affinity mask, it's an OR of all the processes for this job in this node */
+	for (uint i = 0; i< lib_shared_region->num_processes; i++){
+		verbose_master(2,"joining mask for process %u",i);
+		add_affinity(&arch_desc.top, &me.cpu_mask, &sig_shared_region[i].cpu_mask);
+	}
+	verbose_master(2,"Attaching to node_mgr region");
+	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
+		verbose_master(2,"Error attaching to node_mgr region");
+	}
+	verbose_master(2,"Attached! at pos %u", node_mgr_index);
+	/* node_mgr_job_info maps other jobs data sharing the node */
+	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+	init_earl_node_mgr_info();
+	if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
+		verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
+	}
+	verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 }
 
 /****************************************************************************************************************************************************************/
@@ -392,13 +437,15 @@ void attach_shared_regions()
 {
 	int bfd = -1;
 	char *tmp = get_ear_tmp();
+	uint ID = create_ID(application.job.id, application.job.step_id);
+
 	/* This function is executed by processes different than masters */
 	/* they first join the Node shared memory */
-	snprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",tmp,application.job.user_id);
+	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
 	if ((bfd = file_lock_create(block_file))<0){
 		error("Creating lock file for shared memory");
 	}
-	if (get_lib_shared_data_path(tmp,lib_shared_region_path)!=EAR_SUCCESS){
+	if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
     error("Getting the lib_shared_region_path");
   }else{
 		#if MPI
@@ -408,7 +455,7 @@ void attach_shared_regions()
 		}
 		#endif
 		do{
-			lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path);
+			lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path, &fd_libsh);
 		}while(lib_shared_region == NULL);
 		while(file_lock(bfd) < 0);
 		if (!lib_shared_region->earl_on){
@@ -429,10 +476,10 @@ void attach_shared_regions()
 		error("In MPI_BARRIER");
 	}
 	#endif
-	if (get_shared_signatures_path(tmp,shsignature_region_path) != EAR_SUCCESS){
+	if (get_shared_signatures_path(tmp,ID, shsignature_region_path) != EAR_SUCCESS){
     error("Getting the shsignature_region_path  ");
   }else{
-			sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
+			sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes, &fd_sigsh);
 			if (sig_shared_region == NULL){
 				error("NULL pointer returned in attach_shared_signatures_area");
 			}
@@ -474,7 +521,9 @@ int sched_num_nodes()
 void attach_to_master_set(int master)
 {
 	int color;
+	#if MPI
 	int flag = 1;
+	#endif
 	//my_master_rank=0;
 	color=0;
 	#if MPI
@@ -534,9 +583,10 @@ void attach_to_master_set(int master)
 static int get_local_id(char *node_name)
 {
 	int master = 1;
+	uint ID = create_ID(my_job_id,my_step_id);
 
 #if USE_LOCK_FILES
-  sprintf(fd_lock_filename, "%s/.ear_app_lock.%d", get_ear_tmp(), create_ID(my_job_id,my_step_id));
+  sprintf(fd_lock_filename, "%s/%u/.ear_app_lock.%u", get_ear_tmp(), ID, ID);
 	debug("Using lock file %s",fd_lock_filename);
   if ((fd_master_lock = file_lock_master(fd_lock_filename)) < 0) {
 		if (errno != EBUSY) debug("Error creating lock file %s",strerror(errno));
@@ -630,7 +680,6 @@ static void get_app_name(char *my_name)
 		strcpy(my_name, app_name);
 	}
 }
-#if POWERCAP
 /************** This function  checks if application is a "large" job *******************/
 void check_large_job_use_case()
 {
@@ -643,7 +692,6 @@ void check_large_job_use_case()
 		debug("We ar a large job and we will start at a lower freq: Size %u limit %u",app_mgt_info->nodes,LIMIT_LARGE_JOBS);
 	}
 }
-#endif
 
 /****************************************************************************************************************************************************************/
 /*** We update EARL configuration based on shared memory information, ignoring potential malicious definition **/
@@ -692,6 +740,14 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 		sched_setaffinity(getpid(),sizeof(cpu_set_t),mask);
 	}
 }
+
+
+void ear_lib_sig_handler(int s)
+{
+	ear_finalize(EAR_CANCELLED);
+	cancelled = 1;
+	exit(0);
+}
 /****************************************************************************************************************************************************************/
 /****************************************************************************************************************************************************************/
 /****************************************************************************************************************************************************************/
@@ -735,9 +791,6 @@ void ear_init()
 	ear_lib_environment();
 
 	tmp=get_ear_tmp();
-	if (get_lib_shared_data_path(tmp,lib_shared_region_path)==EAR_SUCCESS){
-		unlink(lib_shared_region_path);
-	}
 
 	if (ext_def_freq_str!=NULL){
 		ext_def_freq=(unsigned long)atol(ext_def_freq_str);
@@ -768,7 +821,10 @@ void ear_init()
 	#endif
 
 	get_job_identification();
-
+	uint ID = create_ID(my_job_id,my_step_id);
+	if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
+		unlink(lib_shared_region_path);
+	}
 	if (is_already_connected(my_job_id,my_step_id,getpid())){
 		verbose_master(VEAR_INIT,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
 		return;
@@ -797,8 +853,8 @@ void ear_init()
 	
 	debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
 
-	get_settings_conf_path(get_ear_tmp(),system_conf_path);
-	get_resched_path(get_ear_tmp(),resched_conf_path);
+	get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
+	get_resched_path(get_ear_tmp(),ID, resched_conf_path);
 
 	debug("system_conf_path  = %s",system_conf_path);
 	debug("resched_conf_path = %s",resched_conf_path);
@@ -870,7 +926,7 @@ void ear_init()
 	verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 	if (!my_id && eard_ok){ //only the master will connect with eard
 		verbose_master(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
-		if (eards_connect(&application) == EAR_SUCCESS) {
+		if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
 			debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
 			notify_eard_connection(1);
 			mark_as_eard_connected(my_job_id,my_step_id,getpid());
@@ -956,19 +1012,20 @@ void ear_init()
     dynais = dynais_init(&arch_desc.top, get_ear_dynais_window_size(), get_ear_dynais_levels());
     debug("Dynais end");
 
-    // Policies && models
     arch_desc.max_freq_avx512=system_conf->max_avx512_freq;
     arch_desc.max_freq_avx2=system_conf->max_avx2_freq;
 
     // Frequencies
     ulong *freq_list;
     uint freq_count;
+
     // Getting frequencies from EARD
     debug("initializing frequencies");
     get_frequencies_path(get_ear_tmp(), app_mgt_path);
     debug("looking for frequencies in '%s'", app_mgt_path);
     freq_list = attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
     freq_count = freq_count / sizeof(ulong);
+
     // Initializing API in user mode	: We should move this to library/management
     if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
 			for (uint i=0;i<freq_count;i++){
@@ -996,8 +1053,7 @@ void ear_init()
 
     // This is not frequency any more
     if (masters_info.my_master_rank>=0){
-#if POWERCAP
-        get_app_mgt_path(get_ear_tmp(),app_mgt_path);
+        get_app_mgt_path(get_ear_tmp(),ID, app_mgt_path);
         verbose_master(VEAR_INIT,"app_mgt_path %s",app_mgt_path);
         app_mgt_info=attach_app_mgt_shared_area(app_mgt_path);
         if (app_mgt_info==NULL){
@@ -1011,7 +1067,7 @@ void ear_init()
         /* At this point we have notified the EARD the number of nodes in the application */
         check_large_job_use_case();
         /* This area is RW */
-        get_pc_app_info_path(get_ear_tmp(),pc_app_info_path);
+        get_pc_app_info_path(get_ear_tmp(),ID, pc_app_info_path);
         verbose_master(VEAR_INIT,"pc_app_info path %s",pc_app_info_path);
         pc_app_info_data=attach_pc_app_info_shared_area(pc_app_info_path);
         if (pc_app_info_data==NULL){
@@ -1022,7 +1078,6 @@ void ear_init()
             return;
 
         }
-#endif
     }
     if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
         error("Checking the affinity mask");
@@ -1060,16 +1115,18 @@ void ear_init()
     }else{
         EAR_default_frequency=ext_def_freq;
         EAR_default_pstate=frequency_closest_pstate(EAR_default_pstate);
-        if (EAR_default_frequency!=system_conf->def_freq) {
+				#if 0
+        if (EAR_default_frequency != system_conf->def_freq) {
             if (!my_id) eards_change_freq(EAR_default_frequency);
         }
+				#endif
     }
 
     strcpy(application.job.policy,system_conf->policy_name);
     strcpy(application.job.app_id, ear_app_name);
 
     // Passing the frequency in KHz to MHz
-    application.signature.def_f=application.job.def_f = EAR_default_frequency;
+    application.signature.def_f = application.job.def_f = EAR_default_frequency;
     application.job.procs = my_size;
     application.job.th =system_conf->settings[0];
 
@@ -1080,13 +1137,16 @@ void ear_init()
     summary_pathname = get_ear_user_db_pathname();
 		if (masters_info.my_master_rank >= 0){
 		// Report API
+    char my_plug_path[512];
+    utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(SCHED_EARL_INSTALL_PATH), system_conf->user_type);
+
 			if (summary_pathname == NULL){
-				if (report_load(system_conf->installation.dir_plug,"eard.so") != EAR_SUCCESS){
+				if (report_load(my_plug_path,"eard.so") != EAR_SUCCESS){
 					verbose_master(0,"Error in reports API load ");
 				}
 			}else{
 				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
-				if (report_load(system_conf->installation.dir_plug,"eard.so:csv_ts.so") != EAR_SUCCESS){
+				if (report_load(my_plug_path,"eard.so:csv_ts.so") != EAR_SUCCESS){
 					verbose_master(0,"Error in reports API load ");
 				}
 			}
@@ -1128,6 +1188,19 @@ void ear_init()
     if (masters_info.my_master_rank==0) {
         verbose_master(1, "EAR initialized successfully ");
     }
+		/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
+		/* Computes the total number of cpus for this job */
+		compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+
+		/* SIGTERM action for job cancellation */
+		struct sigaction term_action;
+		sigemptyset(&term_action.sa_mask);
+  	term_action.sa_handler = ear_lib_sig_handler;
+  	term_action.sa_flags = 0;
+		sigaction(SIGTERM, &term_action, NULL);
+
+
+		/* Monitor is used for applications with no mpi of few mpi calss per second */
     if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
     earl_monitor = suscription();
     earl_monitor->call_init = earl_periodic_actions_init;
@@ -1146,9 +1219,11 @@ void ear_init()
 
 /**************************************** ear_finalize ************************/
 
-void ear_finalize()
+
+void ear_finalize(int exit_status)
 {
     // if we are not the master, we return
+    if (cancelled) return;
     if (synchronize_masters == 0 ) return;
 #if ONLY_MASTER
     if (my_id) {
@@ -1216,6 +1291,10 @@ void ear_finalize()
 
     dettach_settings_conf_shared_area();
     dettach_resched_shared_area();
+
+		if (masters_info.my_master_rank >= 0) nodemgr_job_end(node_mgr_index);
+		verbose_master(2,"Dettached from node_mgr region id %u",node_mgr_index);
+		
 
     // C'est fini
     if (!my_id){ 
@@ -1657,7 +1736,7 @@ void ear_destructor()
         return;
     }
 #endif
-    ear_finalize();
+    ear_finalize(EAR_SUCCESS);
 }
 #else
 void ear_constructor()

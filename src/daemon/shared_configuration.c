@@ -39,18 +39,18 @@ static int fd_app_mgt,fd_pc_app_info;
 /** These functions created path names, just to avoid problems if changing the path name in the future */
 /** This functions creates the name of the file mapping the shared memory for the dynamic power settings, it is placed at TMP 
  */
-int  get_settings_conf_path(char *tmp,char *path)
+int  get_settings_conf_path(char *tmp, uint ID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/.ear_settings_conf",tmp);
+	sprintf(path,"%s/%u/.ear_settings_conf",tmp, ID);
 	return EAR_SUCCESS;	
 }
 /** This functions creates the name of the file mapping the shared memory for the resched flag, it is placed at TMP 
  */
-int  get_resched_path(char *tmp,char *path)
+int  get_resched_path(char *tmp, uint ID,char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/.ear_resched",tmp);
+	sprintf(path,"%s/%u/.ear_resched",tmp, ID);
 	return EAR_SUCCESS;	
 }
 
@@ -132,16 +132,15 @@ void resched_shared_area_dispose(char * path)
 }
 
 
-#if POWERCAP
 /************* APP_MGT
  *
  * Sets in path the filename for the shared memory area app_area between EARD and EARL
  * * @param path (output)
  * */
-int get_app_mgt_path(char *tmp,char *path)
+int get_app_mgt_path(char *tmp, uint ID,char *path)
 {
   if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-  sprintf(path,"%s/.ear_app_mgt",tmp);
+  sprintf(path,"%s/%u/.ear_app_mgt",tmp,ID);
   return EAR_SUCCESS;
 }
 
@@ -181,10 +180,10 @@ void app_mgt_shared_area_dispose(char * path)
 }
 
 /****************************** PC_APP_INFO REGION *******************/
-int get_pc_app_info_path(char *tmp,char *path)
+int get_pc_app_info_path(char *tmp,uint ID,char *path)
 {
   if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-  sprintf(path,"%s/.ear_pc_app_info",tmp);
+  sprintf(path,"%s/%u/.ear_pc_app_info",tmp, ID);
   return EAR_SUCCESS;
 }
 pc_app_info_t  * create_pc_app_info_shared_area(char *path)
@@ -206,7 +205,6 @@ void pc_app_info_shared_area_dispose(char * path)
 	dispose_shared_area(path,fd_pc_app_info);
 }
 
-#endif
 
 
 /* COEFFS */

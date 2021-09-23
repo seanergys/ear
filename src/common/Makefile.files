@@ -1,5 +1,8 @@
 libc_OBJS = \
     $(SRCDIR)/common/environment.o \
+    $(SRCDIR)/common/environment_common.o \
+    $(SRCDIR)/common/math_operations.o \
+    $(SRCDIR)/common/string_enhanced.o \
     $(SRCDIR)/common/system/folder.o \
     $(SRCDIR)/common/system/symplug.o \
     $(SRCDIR)/common/system/user.o \
@@ -12,7 +15,7 @@ libc_OBJS = \
     $(SRCDIR)/common/system/file.o \
     $(SRCDIR)/common/system/time.o \
     $(SRCDIR)/common/system/loadavg.o \
-    $(SRCDIR)/common/environment_common.o \
+    $(SRCDIR)/common/system/fd_sets.o \
     $(SRCDIR)/common/database/mysql_io_functions.o \
     $(SRCDIR)/common/database/postgresql_io_functions.o \
     $(SRCDIR)/common/database/db_helper.o \
@@ -46,13 +49,10 @@ libc_OBJS = \
     $(SRCDIR)/common/types/periodic_aggregation.o \
     $(SRCDIR)/common/types/services.o \
     $(SRCDIR)/common/types/pc_app_info.o \
-    $(SRCDIR)/common/string_enhanced.o \
     $(SRCDIR)/common/hardware/bithack.o \
     $(SRCDIR)/common/hardware/hardware_info.o \
     $(SRCDIR)/common/hardware/cpuid.o \
     $(SRCDIR)/common/hardware/topology.o \
     $(SRCDIR)/common/hardware/architecture.o \
-    $(SRCDIR)/common/math_operations.o \
-	$(SRCDIR)/common/messaging/msg_internals.o
-
-
+	$(SRCDIR)/common/messaging/msg_internals.o \
+	$(SRCDIR)/common/utils/string.o

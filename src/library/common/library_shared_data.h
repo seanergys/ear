@@ -33,13 +33,14 @@
 #include <common/states.h>
 #include <common/types/signature.h>
 #include <common/system/shared_areas.h>
+#include <daemon/local_api/node_mgr.h>
 
 typedef struct mpi_summary{
-	float max;
-	float min;
-	float sd;
-	float mean;
-	float mag;
+    float max;
+    float min;
+    float sd;
+    float mean;
+    float mag;
 }mpi_summary_t;
 /* Time is stored in USECS */
 typedef struct mpi_information{
@@ -52,29 +53,31 @@ typedef struct mpi_information{
 
 
 typedef struct mpi_calls_types{
-  ulong time_mpi;
-  ulong time_period;
-  ulong mpi;
-  ulong sync;
-  ulong collec;
-  ulong blocking;
-  ulong time_sync;
-  ulong time_collec;
-  ulong time_blocking;
-	ulong sync_block;
-	ulong time_sync_block;
-	ulong max_sync_block;
+    ulong time_mpi;
+    ulong time_period;
+    ulong mpi;
+    ulong sync;
+    ulong collec;
+    ulong blocking;
+    ulong time_sync;
+    ulong time_collec;
+    ulong time_blocking;
+    ulong sync_block;
+    ulong time_sync_block;
+    ulong max_sync_block;
 }mpi_calls_types_t;
 
 
 typedef struct lib_shared_data{
-		uint 						earl_on;
+    uint 						earl_on;
     int             num_processes;
-    unsigned int    num_signatures;
-    double 			cas_counters;
-    signature_t 	master_signature;
-    int				master_rank;
-		uint			master_ready;
+    uint    				num_signatures;
+	  uint 						num_cpus;
+    double 					cas_counters;
+    signature_t 		master_signature;
+    signature_t 		node_signature;
+    int							master_rank;
+    uint						master_ready;
 }lib_shared_data_t;
 
 
@@ -82,18 +85,26 @@ typedef struct shsignature{
     uint 							master;
     pid_t 						pid;
     uint 							ready;
-		uint 							iterations;
+    uint 							iterations;
     mpi_information_t mpi_info;
-		mpi_calls_types_t mpi_types_info;		
+    mpi_calls_types_t mpi_types_info;		
     /* sig was originally a signature_t */
     ssig_t 					sig;
     int 				  	app_state;
     unsigned long 	new_freq;
     cpu_set_t 			cpu_mask;
     int 						affinity;
-		uint 						unbalanced;
-		ulong 					policy_freq;
+    uint 						unbalanced;
+    ulong 					policy_freq;
 }shsignature_t;
+
+typedef struct node_mgr_sh_data{
+	time_t						creation_time;
+	int 							fd_lib;
+	int 							fd_sig;
+	lib_shared_data_t *libsh;
+	shsignature_t 		*shsig;
+}node_mgr_sh_data_t;
 
 
 /*********** SETTINGS configuration *******************/
@@ -101,7 +112,7 @@ typedef struct shsignature{
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param path (output)
  */
-int get_lib_shared_data_path(char *tmp,char *path);
+int get_lib_shared_data_path(char *tmp, uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by node master process
 */
@@ -110,11 +121,11 @@ lib_shared_data_t * create_lib_shared_data_area(char * path);
 
 /** Connects with a previously created shared memory region. It is used by no node master processes
 */
-lib_shared_data_t * attach_lib_shared_data_area(char * path);
+lib_shared_data_t * attach_lib_shared_data_area(char * path, int *fd);
 
 /** Disconnect from a previously connected shared memory region. It is used by no node master processes
 */
-void dettach_lib_shared_data_area();
+void dettach_lib_shared_data_area(int fd);
 
 /** Releases a shared memory area previously created. It is used by node master process
 */
@@ -130,7 +141,7 @@ void print_lib_shared_data(lib_shared_data_t *setting);
 /** Sets in path the filename for the shared memory area between MPI processes
  *  * @param path (output)
  *   */
-int get_shared_signatures_path(char *tmp,char *path);
+int get_shared_signatures_path(char *tmp,uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by node master process
  * */
@@ -139,11 +150,11 @@ shsignature_t * create_shared_signatures_area(char * path,int num_processes);
 
 /** Connects with a previously created shared memory region. It is used by no node master processes
  * */
-shsignature_t * attach_shared_signatures_area(char * path,int num_processes);
+shsignature_t * attach_shared_signatures_area(char * path,int num_processes, int *fd);
 
 /** Disconnect from a previously connected shared memory region. It is used by no node master processes
  * */
-void dettach_shared_signatures_area();
+void dettach_shared_signatures_area(int fd);
 
 /** Releases a shared memory area previously created. It is used by node master process
  * */
@@ -182,9 +193,13 @@ void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
 void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst);
 void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
+void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L3);
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
+void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
+void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
+
 
 
 uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
@@ -198,4 +213,12 @@ int my_shsig_id();
 int shsig_id(int node,int rank);
 
 void* mpi_info_get_perc_mpi(void* mpi_inf);
+
+
+/* Node mgr earl support functions */
+void  init_earl_node_mgr_info();
+void  update_earl_node_mgr_info();
+void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, double *my_GBS, double *my_power);
+void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl);
+
 #endif

@@ -30,11 +30,9 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/coefficient.h>
 
-#ifdef POWERCAP
 #include <daemon/powercap/powercap.h>
 #include <daemon/app_mgt.h>
 #include <common/types/pc_app_info.h>
-#endif
 
 typedef struct services_conf{
 		eard_conf_t     eard;
@@ -63,9 +61,7 @@ typedef struct settings_conf{
 	conf_install_t 	installation;
 	ulong   max_avx512_freq;
   ulong   max_avx2_freq;
-#if POWERCAP
 	node_powercap_opt_t pc_opt;
-#endif
 } settings_conf_t;
 
 
@@ -79,7 +75,7 @@ typedef struct resched{
 /** Sets in path the filename for the shared memory area between EARD and EARL
  * @param path (output)
  */
-int get_settings_conf_path(char *tmp,char *path);
+int get_settings_conf_path(char *tmp, uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by EARD (server)
 *	@param ear_conf_path specifies the path (folder) to create the file used by mmap
@@ -108,7 +104,7 @@ void print_settings_conf(settings_conf_t *setting);
 /** Sets in path the filename for the shared memory area between EARD and EARL
  *  * @param path (output)
  *   */
-int get_resched_path(char *tmp,char *path);
+int get_resched_path(char *tmp, uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by EARD (server)
  * *   @param ear_conf_path specifies the path (folder) to create the file used by mmap
@@ -129,13 +125,12 @@ void dettach_resched_shared_area();
  * */
 void resched_shared_area_dispose(char * path);
 
-#if POWERCAP
 /****************** APP AREA ***************/
 
 /** Sets in path the filename for the shared memory area app_area between EARD and EARL
 * @param path (output)
 */
-int get_app_mgt_path(char *tmp,char *path);
+int get_app_mgt_path(char *tmp, uint ID, char *path);
 
 /** Creates the shared mmemory. It is used by EARD and APP. App puts information here
  *  * *   @param ear_conf_path specifies the path (folder) to create the file used by mmap
@@ -155,7 +150,6 @@ void dettach_app_mgt_shared_area();
 /** Releases a shared memory area previously created. It is used by EARD (server)
  *  * */
 void app_mgt_shared_area_dispose(char * path);
-#endif
 
 
 /***************** COEFFICIENTS **********/
@@ -215,14 +209,12 @@ void frequencies_shared_area_dispose(char * path);
 /** Unmmaps the shared memory for the list of frequencies */
 void dettach_frequencies_shared_area();
 
-#if POWERCAP
 /************** PC_APP_INFO_T ****************/
-int get_pc_app_info_path(char *tmp,char *path);
+int get_pc_app_info_path(char *tmp, uint ID, char *path);
 pc_app_info_t  * create_pc_app_info_shared_area(char *path);
 pc_app_info_t * attach_pc_app_info_shared_area(char * path);
 void dettach_pc_app_info_shared_area();
 void pc_app_info_shared_area_dispose(char * path);
-#endif
 
 
 

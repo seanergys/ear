@@ -16,6 +16,7 @@
 */
 
 #include <slurm_plugin/slurm_plugin_rcom.h>
+#include <common/types/application.h>
 
 // Buffers
 static char buffer[SZ_PATH];
@@ -83,7 +84,9 @@ int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
 	settings_conf_t *setts = NULL;
 
 	// Opening settings
-	get_settings_conf_path(sd->pack.path_temp, buffer);
+	/* This must be done after EARD contact */
+	uint ID = create_ID(sd->job.app.job.id, sd->job.app.job.step_id);
+	get_settings_conf_path(sd->pack.path_temp, ID, buffer);
 	setts = attach_settings_conf_shared_area(buffer);
 	plug_verbose(sp, 3, "looking for services in '%s'", buffer);
 
@@ -91,13 +94,17 @@ int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
 		plug_error(sp, "while reading the shared configuration memory in node '%s'", "hostxxx");
 		return ESPANK_ERROR;
 	}
+       // It is OK, you can save the returned settings.
+        memcpy(&sd->pack.eard.setts, setts, sizeof(settings_conf_t));
+        // Closing shared memory
+        dettach_settings_conf_shared_area();
 
-	memcpy(&sd->pack.eard.setts, setts, sizeof(settings_conf_t));
-
-	// Closing shared memory
-	dettach_settings_conf_shared_area();
-
-	plug_print_settings(sp, sd);
+        // If returned !lib_enabled, disable library component
+        if (!setts->lib_enabled) {
+                return plug_component_setenabled(sp, Component.library, 0);
+        }
+        // Finally print
+        plug_print_settings(sp, sd);
 
 	return ESPANK_SUCCESS;
 }

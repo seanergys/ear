@@ -21,9 +21,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <common/sizes.h>
-#include <common/output/error.h>
+#include <common/utils/string.h>
 #include <common/output/verbose.h>
-#include <common/output/debug.h>
 
 /* error definitions */
 #define EAR_SUCCESS              0
@@ -36,6 +35,7 @@
 #define EAR_SYSCALL_ERROR		-18
 #define EAR_TIMEOUT				-21
 #define EAR_UNDEFINED			-24
+#define EAR_CANCELLED     -25
 
 /* error buffer */
 char state_buffer[SZ_BUFFER];
@@ -45,6 +45,8 @@ typedef int state_t;
 
 /* global data */
 char *state_msg;
+int state_no;
+
 
 #define state_ok(state) \
 	((state) == EAR_SUCCESS)
@@ -52,25 +54,27 @@ char *state_msg;
 #define state_fail(state) \
 	((state) != EAR_SUCCESS)
 
+#define sfail(function) \
+	if (state_fail(function))
+
+
 #define state_is(state1, state2) \
 	(state1 == state2)
+
+#define serror(str) \
+  error("%s: %s (%d)", str, state_msg, state_no);
+
 	
 #define return_msg(no, msg) { \
 	state_msg = msg; \
 	return no; \
 	}
 
-#define return_xmsg(no, ...) { \
+#define return_print(no, ...) { \
 	state_msg = state_buffer; \
-	sprintf(state_buffer, __VA_ARGS__); \
+	xsnprintf(state_buffer, sizeof(state_buffer), __VA_ARGS__); \
 	return no; \
 	}
-
-#define xtate_fail(s, function) \
-	((s = function) != EAR_SUCCESS)
-
-#define xtate_ok(s, function) \
-	((s = function) == EAR_SUCCESS)
 
 // error(#func " returned %d (%s)", s, state_msg);
 
@@ -79,6 +83,16 @@ char *state_msg;
         error("returned %d, %s (%s:%d)", s, state_msg, __FILE__, __LINE__); \
         cons; \
     }
+
+#define sserror(format, ...) \
+	error(format ": %s (%d)", __VA_ARGS__, state_msg, state_no);
+
+#define sassert(function, consecuence) \
+	sfail((function)) { \
+		error(#function " failed in %s:%d: %s (%d)", __FILE__, __LINE__, state_msg, state_no); \
+		consecuence; \
+	}
+
 
 struct generr_s {
 	char *api_undefined;
@@ -143,11 +157,20 @@ int intern_error_num;
 #define state_return(state) \
 	return state;
 
+#define return_xmsg return_print
+
+
 #define state_return_msg(state, error_num, error_str) \
 { \
 	intern_error_num = error_num; \
 	intern_error_str = error_str; \
 	return state;\
 }
+
+#define xtate_fail(s, function) \
+	((s = function) != EAR_SUCCESS)
+
+#define xtate_ok(s, function) \
+	((s = function) == EAR_SUCCESS)
 
 #endif //STATES_H

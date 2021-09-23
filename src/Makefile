@@ -8,8 +8,8 @@ COMPONENTS = \
     daemon \
     library \
     commands \
-    tools \
-    global_manager \
+		tools \
+   global_manager \
     slurm_plugin
 
 ifdef DB_BASE

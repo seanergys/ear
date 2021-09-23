@@ -22,7 +22,7 @@
 #include <common/utils/serial_buffer.h>
 #include <management/imcfreq/archs/eard.h>
 #include <daemon/local_api/eard_api.h>
-#include <daemon/local_api/eard_conf_api.h>
+#include <daemon/local_api/eard_api_conf.h>
 
 static uint       sockets_count;
 static pstate_t  *available_copy;

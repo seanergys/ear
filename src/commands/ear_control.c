@@ -111,6 +111,8 @@ void fill_ip(char *buff, ip_table_t *table)
    	s = getaddrinfo(buff, NULL, &hints, &result);
     if (s != 0) {
 		debug("getaddrinfo fails for node %s (%s)\n", buff, strerror(errno));
+        table->ip_int = 0;
+        strcpy(table->ip, "invalid node");
 		return;
     }
 
@@ -283,9 +285,12 @@ void usage(char *app)
             "\n\t\t\t\t\t\t\t after the increase value to only target said node."\
             "\n\t--red-powercap\t[reduction]\t\t->Reduces the powercap of all nodes. A node can be specified"\
             "\n\t\t\t\t\t\t\t after the reduction value to only target said node."\
-            "\n\t--inc-th \t[new_th]   [pol_name]\t->increases the threshold for all nodes"\
-            "\n\t--set-th \t[new_th]   [pol_name]\t->sets the threshold for all nodes"\
-            "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates");
+            "\n\t--inc-th \t[new_th] [pol_name]\t->increases the threshold for all nodes"\
+            "\n\t--set-th \t[new_th] [pol_name]\t->sets the threshold for all nodes"\
+            "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates"\
+            "\n\t--set-risk \t[level] [target] [node]\t->sends a warning to all nodes or the a specific node (optional)"\
+            "\n\t\t\t\t\t\t\t->levels: WARNING1/WARNING2/PANIC \ttarget: ENERGY/POWER");
+
 #endif
     printf("\n\nThis app requires privileged access to execute.\n");
 	exit(0);
@@ -569,7 +574,7 @@ int main(int argc, char *argv[])
     int status_type = 0;
     int mail_fd = -1;
 
-    char command[512];
+    char mail_command[1024];
     char path_name[128];
     char node_name[256];
     char mail_filename[2176]; //to match the stored mail size
@@ -790,12 +795,15 @@ int main(int argc, char *argv[])
                     printf("Warning: specified type is invalid (%s)\n", optarg);
                 break;
             case 'r':
-                if (optarg)
+                arg = get_risk(optarg);
+                if (optind + 1 > argc)
                 {
-                    arg = atoi(optarg);
-                    if (optind+1 > argc)
-                    {
-                        printf("Sending risk level %d to all nodes\n", arg);
+                    printf("Error: --set-risk requires at least two arguments (level and target)\n");
+                    break;
+                }
+                else {
+                    arg2 = get_target(argv[optind]);
+                    if (optind + 2 > argc) {
                         set_risk_all_nodes(arg, arg2, &my_cluster_conf);
                         break;
                     }
@@ -1069,8 +1077,8 @@ int main(int argc, char *argv[])
     }
     if (mail != NULL)
     {
-  	    sprintf(command, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
-        execute(command); 
+  	    snprintf(mail_command, strlen(mail_command)-1, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
+        execute(mail_command); 
     }
     
     free_cluster_conf(&my_cluster_conf);

@@ -50,9 +50,7 @@
 #include <global_manager/meta_eargm.h>
 #include <global_manager/eargm_ext_rm.h>
 #include <global_manager/cluster_energycap.h>
-#if POWERCAP
 #include <global_manager/cluster_powercap.h>
-#endif
 
 #if SYSLOG_MSG
 #include <syslog.h>

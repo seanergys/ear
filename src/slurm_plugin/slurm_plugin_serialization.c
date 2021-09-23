@@ -77,17 +77,17 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 		}
 		if ((strlen(av[i]) > 14) && (strncmp ("localstatedir=", av[i], 14) == 0)) {
 			found_path_temp = 1;
-			strncpy(sd->pack.path_temp, &av[i][14], SZ_NAME_MEDIUM);
+			xstrncpy(sd->pack.path_temp, &av[i][14], SZ_NAME_MEDIUM);
 			plug_verbose(sp, 2, "plugstack found temporal files in path '%s'", sd->pack.path_temp);
 		}
 		if ((strlen(av[i]) > 7) && (strncmp ("prefix=", av[i], 7) == 0)) {
 			found_path_inst = 1;
-			strncpy(sd->pack.path_inst, &av[i][7], SZ_NAME_MEDIUM);
+			xstrncpy(sd->pack.path_inst, &av[i][7], SZ_NAME_MEDIUM);
 			plug_verbose(sp, 2, "plugstack found prefix in path '%s'", sd->pack.path_inst);
 		}
 		if ((strlen(av[i]) > 12) && (strncmp ("eargmd_host=", av[i], 12) == 0)) {
 			found_eargmd_host = 1;
-			strncpy(sd->pack.eargmd.host, &av[i][12], SZ_NAME_MEDIUM);
+			xstrncpy(sd->pack.eargmd.host, &av[i][12], SZ_NAME_MEDIUM);
 			plug_verbose(sp, 2, "plugstack found eargm host '%s'", sd->pack.eargmd.host);
 		}
 		if ((strlen(av[i]) > 12) && (strncmp ("eargmd_port=", av[i], 12) == 0)) {
@@ -100,12 +100,12 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 			plug_verbose(sp, 2, "plugstack found eargm min '%d'", sd->pack.eargmd.min);
 		}
 		if ((strlen(av[i]) > 14) && (strncmp ("nodes_allowed=", av[i], 14) == 0)) {
-			strncpy(sd->pack.nodes_allowed, &av[i][14], SZ_PATH);
+			xstrncpy(sd->pack.nodes_allowed, &av[i][14], SZ_PATH);
 			plug_verbose(sp, 2, "plugstack found allowed nodes: '%s'", sd->pack.nodes_allowed);
 			found_inclusion = 1;
 		}
 		if ((strlen(av[i]) > 15) && (strncmp ("nodes_excluded=", av[i], 15) == 0)) {
-			strncpy(sd->pack.nodes_excluded, &av[i][15], SZ_PATH);
+			xstrncpy(sd->pack.nodes_excluded, &av[i][15], SZ_PATH);
 			plug_verbose(sp, 2, "plugstack found excluded nodes: '%s'", sd->pack.nodes_excluded);
 			found_exclusion = 1;
 		}
@@ -355,8 +355,8 @@ int plug_deserialize_local(spank_t sp, plug_serialization_t *sd)
 		return ESPANK_ERROR;
 	}
 
-	strncpy(sd->job.user.user,  upw->pw_name, SZ_NAME_MEDIUM);
-	strncpy(sd->job.user.group, gpw->gr_name, SZ_NAME_MEDIUM);
+	xstrncpy(sd->job.user.user,  upw->pw_name, SZ_NAME_MEDIUM);
+	xstrncpy(sd->job.user.group, gpw->gr_name, SZ_NAME_MEDIUM);
 	plug_verbose(sp, 2, "user '%u' ('%s')", uid, sd->job.user.user);
 	plug_verbose(sp, 2, "user group '%u' ('%s')", gid, sd->job.user.group);
 
@@ -383,7 +383,7 @@ int plug_serialize_remote(spank_t sp, plug_serialization_t *sd)
 		setenv_agnostic(sp, Var.ctx_last.rem, Constring.sbatch, 1);
 		setenv_agnostic(sp, Var.was_sbac.rem, "1", 1);
 	}
-
+	
 	return ESPANK_SUCCESS;
 }
 
@@ -494,6 +494,16 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	// Cleaning
 	unsetenv_agnostic(sp, Var.user.rem);
 	unsetenv_agnostic(sp, Var.group.rem);
+	
+	// Last minute hack, if energy tag is present, disable library
+	if (exenv_agnostic(sp, Var.tag.loc)) {
+		plug_component_setenabled(sp, Component.library, 0);
+	}
+
+	// Last minute hack, if energy tag is present, disable library
+	if (exenv_agnostic(sp, Var.tag.loc)) {
+		plug_component_setenabled(sp, Component.library, 0);
+	}
 
 	return ESPANK_SUCCESS;
 }
@@ -508,27 +518,25 @@ int plug_serialize_task_settings(spank_t sp, plug_serialization_t *sd)
 		unsetenv_agnostic(sp, Var.tag.ear);
 	}
 
-	// If no EARD connectiond or not library...
-	if (sd->pack.eard.connected && !setts->lib_enabled) {
-		return ESPANK_SUCCESS;
-	}
-
 	// Default P_STATE, frequency (KHz) and threshold (%).
 	snprintf(buffer1, 16, "%u", setts->def_p_state);
 	setenv_agnostic(sp, Var.p_state.ear, buffer1, 1);
+	
 	snprintf(buffer1, 16, "%lu", setts->def_freq);
 	setenv_agnostic(sp, Var.frequency.ear, buffer1, 1);
+	
 	snprintf(buffer1, 16, "%0.2f", setts->settings[0]);
 	setenv_agnostic(sp, Var.eff_gain.ear, buffer1, 1);
 	setenv_agnostic(sp, Var.perf_pen.ear, buffer1, 1);
-	
+
+	// Policy 
 	/*if(policy_id_to_name(setts->policy, buffer1) != EAR_ERROR) {
 		setenv_agnostic(sp, Var.policy.ear, buffer1, 1);
 	}*/
-	// Policy 
 	if (strlen(setts->policy_name) > 0) {
 		setenv_agnostic(sp, Var.policy.ear, setts->policy_name, 1);
 	}
+
 	// If is not learning, P_STATE is canceled.
 	if(!setts->learning) {
 		unsetenv_agnostic(sp, Var.p_state.ear);
@@ -572,7 +580,7 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 		if (getenv_agnostic(sp, Var.ld_prel.ear, ld_buf, m))
 		{
 			if (n > 0) {
-				n = sprintf(buffer2,    "%s:", buffer1);
+				n = xsprintf(buffer2, "%s:", buffer1);
 			}
 			// Append the current LD_PRELOAD content to our library.
 			n = snprintf(      0,       0, "%s%s", buffer2, ld_buf);

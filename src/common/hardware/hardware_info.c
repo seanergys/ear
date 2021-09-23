@@ -67,6 +67,16 @@ state_t set_affinity(int pid,cpu_set_t *mask)
 	else return EAR_SUCCESS;
 }
 
+state_t add_affinity(topology_t *topo, cpu_set_t *dest,cpu_set_t *src)
+{
+	state_t s = EAR_SUCCESS;
+	if ((dest == NULL) || (src == NULL)) return EAR_ERROR;
+	for (uint i = 0;i<topo->cpu_count; i++){
+		if (CPU_ISSET(i,src)) CPU_SET(i,dest);
+	}
+	return s;	
+}
+
 #if 0
 static int file_is_accessible(const char *path)
 {
