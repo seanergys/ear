@@ -31,10 +31,13 @@ static char csv_log_file[1024];
 
 static ullong my_time = 0;
 
+static uint must_report;
 state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
     debug("eard report_init");
     char nodename[128];
+		if (id->master_rank >= 0 ) must_report = 1;
+		if (!must_report) return EAR_SUCCESS;
     gethostname(nodename, sizeof(nodename));
     strtok(nodename, ".");
 
@@ -54,6 +57,7 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
     int i;
+		if (!must_report) return EAR_SUCCESS;
     debug("csv report_applications");
     if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
     for (i=0;i<count;i++){
@@ -66,6 +70,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 {
     int i;
     ullong currtime;
+		if (!must_report) return EAR_SUCCESS;
     debug("csv report_loops");
     // TODO: we could return EAR_ERROR
     if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;

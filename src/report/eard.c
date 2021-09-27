@@ -22,9 +22,11 @@
 #include <daemon/local_api/eard_api.h>
 #include <report/report.h>
 
+static uint must_report;
 state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
 	debug("eard report_init");
+	if (id->master_rank >= 0) must_report = 1;
 	return EAR_SUCCESS;
 }
 
@@ -32,6 +34,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
 	int i;
 	debug("eard report_applications");
+	if (!must_report) return EAR_SUCCESS;
 	if (!eards_connected()) return EAR_ERROR;
 	if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
 	for (i=0;i<count;i++){
@@ -44,6 +47,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 {
 	int i;
 	debug("eard report_loops");
+	if (!must_report) return EAR_SUCCESS;
 	if (!eards_connected()) return EAR_ERROR;
 	if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
 	for (i=0;i<count;i++){
