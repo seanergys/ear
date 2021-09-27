@@ -54,6 +54,9 @@
 //
 //	5) Example of unpacking data
 //
+//		// Rewind is necessary to set the internal pointer to the first
+//		// element again. The first time is not required.
+//		serial_rewind(&w);
 //		serial_copy_elem(&w, (char *) elem1, NULL);
 //		serial_copy_elem(&w, (char *) elem2, NULL);
 //
