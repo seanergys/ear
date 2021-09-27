@@ -32,6 +32,8 @@
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
 
+#include <report/report.h>
+
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <metrics/common/msr.h>
@@ -49,9 +51,11 @@
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/eard_checkpoint.h>
+#if 0
 #if USE_DB
 #include <database_cache/eardbd_api.h>
 #include <common/database/db_helper.h>
+#endif
 #endif
 #include <daemon/eard.h>
 #include <daemon/app_api/app_server_api.h>
@@ -119,6 +123,8 @@ loop_t current_loop_data;
 
 static int eardbd_connected = 0;
 static int db_helper_connected = 0;
+uint report_eard = 1;
+report_id_t rid;
 static int fd_my_log = 2;
 
 unsigned long eard_max_freq;
@@ -411,7 +417,7 @@ void signal_handler(int sig)
 																save_eard_conf(&eard_dyn_conf);
 												}
 
-
+#if 0
 
 #if USE_DB 
 												if (!my_cluster_conf.eard.use_eardbd && eardbd_connected){
@@ -443,6 +449,7 @@ void signal_handler(int sig)
 																				db_helper_connected=1;
 																}
 												}
+#endif
 #endif
 
 								}
@@ -936,6 +943,7 @@ int main(int argc, char *argv[])
 				}
 
 				verbose(0,"Connecting with EARDBD");
+#if 0
 				// Database cache daemon
 #if USE_DB
 				if (my_cluster_conf.eard.use_mysql)
@@ -964,6 +972,14 @@ int main(int argc, char *argv[])
 								}
 				}
 #endif
+#endif
+				/* This must be replaced by the report_eard option in eard */
+				if (state_fail(report_load(my_cluster_conf.install.dir_plug,"eardbd.so"))){
+					report_create_id(&rid, -1, -1, -1);
+				}else{
+					report_create_id(&rid, 0, 0, 0);
+				}
+				report_init(&rid, &my_cluster_conf);
 
 				report_eard_init_error();
 				verbose(0,"Creating EARD threads");

@@ -6,6 +6,7 @@ repo_OBJS = \
 	report.o
 repo_BINS = \
 	eard.so \
+	eardbd.so \
 	csv.so \
 	csv_ts.so \
 	plug_dummy.so
@@ -22,6 +23,7 @@ all: $(repo_OBJS) $(repo_BINS)
 
 %.so: %.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
 
 ######## SUBFOLDERS
 

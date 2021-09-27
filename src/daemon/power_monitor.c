@@ -61,11 +61,17 @@
 #include <syslog.h>
 #endif
 
-
+#if 0
 #if USE_DB
 #include <database_cache/eardbd_api.h>
 #include <common/database/db_helper.h>
 #endif
+#endif
+#include <report/report.h>
+
+extern uint report_eard ;
+extern report_id_t rid;
+
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
@@ -90,7 +96,7 @@ extern ulong current_node_freq;
 extern char nodename[MAX_PATH_SIZE];
 
 
-static state_t eardbd_connection_status = EAR_SUCCESS;
+state_t report_connection_status = EAR_SUCCESS;
 static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
@@ -635,7 +641,7 @@ void report_powermon_app(powermon_app_t *app) {
 
 	verbose_application_data(0, &app->app);
 	report_application_in_file(&app->app);
-
+#if 0
 #if USE_DB
 	if (my_cluster_conf.eard.use_mysql)
 	{
@@ -655,6 +661,8 @@ void report_powermon_app(powermon_app_t *app) {
 		}
 	}
 #endif
+#endif
+	report_connection_status = report_applications(&rid,&app->app,1);
 }
 
 policy_conf_t per_job_conf;
@@ -1292,11 +1300,12 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 			error("when resetting IPMI interface in 'energy_init'");
 		}
 	}
-
-#if USE_DB
+	
 	if ((my_current_power->avg_dc < my_node_conf->max_error_power) || (my_current_power->avg_dc < 0)){
 		my_current_power->avg_dc = my_node_conf->max_sig_power;
 	}
+#if 0
+#if USE_DB
 	if ((my_current_power->avg_dc >= 0) && (my_current_power->avg_dc < my_node_conf->max_error_power)){
 	if (my_cluster_conf.eard.use_mysql)
 	{
@@ -1319,6 +1328,10 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	}
 	}/*if ((my_current_power->avg_dc==0)...*/
 #endif
+#endif
+	if ((my_current_power->avg_dc >= 0) && (my_current_power->avg_dc < my_node_conf->max_error_power)){
+		report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
+	}
 
 	return;
 }
@@ -1555,7 +1568,7 @@ void powermon_get_status(status_t *my_status) {
 	my_status->node.temp = (ulong) get_nm_temp(&my_nm_id, &last_nm);
 	my_status->node.power = (ulong) last_power_reported;
 	my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
-	my_status->eardbd_connected = (eardbd_connection_status == EAR_SUCCESS);
+	my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
 }
 
 /* Returns the number of applications all or only master */
