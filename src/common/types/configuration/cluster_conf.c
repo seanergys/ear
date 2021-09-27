@@ -871,11 +871,13 @@ void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def)
     }
 }
 
-
-state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf)
+/* It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
+state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t *conf_size)
 {
 	state_t s = EAR_SUCCESS;
 	wide_buffer_t ear_conf_serial;
+
+	serial_alloc(&ear_conf_serial, 4096);
 
 	serial_add_elem(&ear_conf_serial, conf->DB_pathname, sizeof(conf->DB_pathname));
 	serial_add_elem(&ear_conf_serial, conf->net_ext, sizeof(conf->net_ext));
@@ -954,8 +956,113 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf)
 	serial_add_elem(&ear_conf_serial, (char *)&conf->install, sizeof(conf_install_t));
 
 	/* Copying the data */
-	*ear_conf_buf = calloc(serial_size(&ear_conf_serial,0),1);
-	memcpy(*ear_conf_buf, ear_conf_serial.data, serial_size(&ear_conf_serial,0));
+	*conf_size = serial_size(&ear_conf_serial,0);
+	*ear_conf_buf = calloc(*conf_size,1);
+	memcpy(*ear_conf_buf, ear_conf_serial.data, *conf_size);
+	serial_free(&ear_conf_serial);
+	return s;
+}
+
+
+/* ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size)
+{
+	state_t s = EAR_SUCCESS;
+	wide_buffer_t ear_conf_serial;
+
+	/* Copy the serialized data locally */
+	serial_alloc(&ear_conf_serial, conf_size);
+	memcpy(ear_conf_serial.data, ear_conf_buf, conf_size);
+	serial_rewind(&ear_conf_serial);
+
+	serial_copy_elem(&ear_conf_serial, conf->DB_pathname, NULL);
+	serial_copy_elem(&ear_conf_serial, conf->net_ext, NULL);
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->verbose, NULL);
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->cluster_num_nodes, NULL);
+
+	/* EARD */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->eard, NULL);
+
+	/* EARGM */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->eargm, NULL);
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->eargm.num_eargms, NULL);
+	conf->eargm.eargms = calloc(sizeof(eargm_def_t), conf->eargm.num_eargms);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->eargm.eargms, NULL);
+
+	/* POLICIES */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_policies, NULL);
+	conf->power_policies = calloc(sizeof(policy_conf_t), conf->num_policies);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->power_policies, NULL);
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->default_policy, NULL);
+
+	/* Priv users */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_priv_users, NULL);
+	conf->priv_users = calloc(sizeof(char *), conf->num_priv_users);
+	for (uint auth = 0; auth < conf->num_priv_users; auth ++){
+		uint size_auth;
+		serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+		conf->priv_users[auth] = calloc(1,size_auth+1);	
+		serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_users[auth],NULL);
+	}
+	/* Priv groups */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_priv_groups, NULL);
+	conf->priv_groups = calloc(sizeof(char *), conf->num_priv_groups);
+	for (uint auth = 0; auth < conf->num_priv_groups; auth ++){
+		uint size_auth;
+		serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+		conf->priv_groups[auth] = calloc(1,size_auth+1);
+		serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_groups[auth], NULL);
+	}
+
+	/* Priv accounts */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_acc, NULL);
+	conf->priv_acc = calloc(sizeof(char *), conf->num_acc);
+	for (uint auth = 0; auth < conf->num_acc; auth ++){
+		uint size_auth;
+		serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+		conf->priv_acc[auth] = calloc(1, size_auth+1);
+		serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_acc[auth], NULL);
+	}
+
+	/* Global data */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->min_time_perf_acc, NULL);
+	/* Nodes */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_nodes, NULL);
+	conf->nodes = calloc(sizeof(node_conf_t), conf->num_nodes);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->nodes, NULL);
+	/* For each type of node is pending, not needed for now */
+
+	/* Database */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->database, NULL);
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->db_manager, NULL);
+
+	/* Tags */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_tags, NULL);
+	conf->tags = calloc(sizeof(tag_t),conf->num_tags);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->tags, NULL);
+
+	/* Etags */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_etags, NULL);
+	conf->e_tags = calloc(sizeof(energy_tag_t), conf->num_etags);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->e_tags, NULL);
+	/* For each etag is pending, not needed for now */
+
+	/* Islands */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_islands, NULL);
+	conf->islands = calloc(sizeof(node_island_t), conf->num_islands);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->islands, NULL);
+	/* For each island is pending, not needed for now */
+
+	/* earlib */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->earlib, NULL);
+
+	/* Comm nodes */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_comm_nodes, NULL);
+	conf->comm_nodes = calloc(sizeof(communication_node_t), conf->num_comm_nodes);
+	serial_copy_elem(&ear_conf_serial, (char *)conf->comm_nodes, NULL);
+
+	/* Installation */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->install, NULL);
 
 	serial_free(&ear_conf_serial);
 	return s;

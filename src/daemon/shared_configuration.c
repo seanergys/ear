@@ -316,3 +316,31 @@ void dettach_frequencies_shared_area()
 	dettach_shared_area(fd_freq);
 }
 
+
+/******************** ear conf ****************************/
+int get_ser_cluster_conf_path(char *tmp, char *path)
+{
+  if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
+  sprintf(path,"%s/.cluster_conf",tmp);
+  return EAR_SUCCESS;
+}
+int fd_cconf;
+char  * create_ser_cluster_conf_shared_area(char *path, char *cconf, size_t size)
+{
+    return (char *)create_shared_area(path,(char *)cconf,size,&fd_cconf,0);
+}
+char * attach_ser_cluster_conf_shared_area(char * path, size_t *size)
+{
+	    return (char *)attach_shared_area(path,0,O_RDONLY,&fd_cconf,(int *)size);
+}
+void dettach_ser_cluster_conf_shared_area()
+{
+	dettach_shared_area(fd_cconf);
+}
+void cluster_ser_conf_shared_area_dispose(char * path)
+{
+	if (path==NULL) return;
+  dispose_shared_area(path,fd_cconf);
+
+}
+

@@ -159,6 +159,11 @@ char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
 char pc_app_info_path[GENERIC_NAME];
 
+char ser_cluster_conf_path[GENERIC_NAME];
+char *ser_cluster_conf;
+size_t ser_cluster_conf_size;
+cluster_conf_t cconf;
+
 /* Info with jobs sharing the node */
 ear_njob_t *node_mgr_data;
 uint node_mgr_index;
@@ -957,6 +962,12 @@ void ear_init()
 		strcpy(application.job.policy," "); /* Cleaning policy */
 		return;
 	}
+  /* Cluster conf */
+  get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);
+  ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);
+	verbose_master(1,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
+	deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size);
+
 	debug("END Shared region creation section");
 	/* Processes in same node connectes each other*/
 	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
@@ -1155,6 +1166,8 @@ void ear_init()
 					verbose_master(0,"Error in reports API load ");
 				}
 			}
+			/* local_rank, global_rank,  master_rank */
+			report_create_id(&rep_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
 			if (report_init(&rep_id,&cconf) != EAR_SUCCESS){
         verbose_master(0,"Error in reports API initialization ");
       }

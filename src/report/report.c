@@ -129,6 +129,15 @@ leave:
     return EAR_SUCCESS;
 }
 
+state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int master_rank){
+    id->local_rank = local_rank;
+    id->global_rank = global_rank;
+    id->master_rank = master_rank;
+    debug("created new id - lrank %d - grank %d - master %d", id->local_rank, id->global_rank, id->master_rank);
+    return EAR_SUCCESS;
+}
+
+
 #define call_0(op, void) \
     ops[p]. op ()
 #define call_1(op, type1, var1) \

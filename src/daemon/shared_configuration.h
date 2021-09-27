@@ -216,6 +216,13 @@ pc_app_info_t * attach_pc_app_info_shared_area(char * path);
 void dettach_pc_app_info_shared_area();
 void pc_app_info_shared_area_dispose(char * path);
 
+/******************** ear conf ****************************/
+int get_ser_cluster_conf_path(char *tmp, char *path);
+char  * create_ser_cluster_conf_shared_area(char *path, char *cconf, size_t size);
+char * attach_ser_cluster_conf_shared_area(char * path, size_t *size);
+void dettach_ser_cluster_conf_shared_area();
+void ser_cluster_conf_shared_area_dispose(char * path);
+
 
 
 #endif

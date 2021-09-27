@@ -237,4 +237,12 @@ eargm_def_t *get_eargm_conf(cluster_conf_t *conf, char *host);
 
 /** Given a EARGM definition, removes all islands that do not have said EARGM id */
 void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def);
+
+
+/* It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
+state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t *conf_size);
+
+/* ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size);
+
 #endif

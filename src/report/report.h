@@ -57,6 +57,8 @@ typedef struct report_ops_s
 	state_t (*report_misc)             (report_id_t *id,uint type, cchar *data, uint count);
 } report_ops_t;
 
+state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int master_rank);
+
 state_t report_load(const char *install_path, const char *libs);
 
 state_t report_init(report_id_t *id,cluster_conf_t *cconf);

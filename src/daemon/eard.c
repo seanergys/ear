@@ -72,6 +72,10 @@ pthread_t power_mon_th; // It is pending to see whether it works with threads
 pthread_t dyn_conf_th;
 int num_nodes_cluster=0;
 cluster_conf_t my_cluster_conf;
+char *ser_cluster_conf;
+char * my_ser_cluster_conf;
+size_t ser_cluster_conf_size;
+char ser_cluster_conf_path[GENERIC_NAME];
 my_node_conf_t *my_node_conf;
 my_node_conf_t my_original_node_conf;
 eard_dyn_conf_t eard_dyn_conf; // This variable is for eard checkpoint
@@ -404,6 +408,8 @@ void signal_handler(int sig)
 				powermon_new_configuration();
 				save_eard_conf(&eard_dyn_conf);
 			}
+
+
 
 #if USE_DB 
 			if (!my_cluster_conf.eard.use_eardbd && eardbd_connected){
@@ -769,6 +775,9 @@ int main(int argc, char *argv[])
 		copy_my_node_conf(&my_original_node_conf, my_node_conf);
 		update_global_configuration_with_local_ssettings(&my_cluster_conf,my_node_conf);
 	}
+	serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
+	verbose(1,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
+
 	verbose(0,"Initializing dynamic information and creating tmp");
 	/* This info is used for eard checkpointing */
 	eard_dyn_conf.cconf = &my_cluster_conf;
@@ -824,6 +833,9 @@ int main(int argc, char *argv[])
 		error("Error creating shared memory\n");
 		_exit(0);
 	}
+	/* Serialized cluster conf */
+	get_ser_cluster_conf_path(my_cluster_conf.install.dir_temp, ser_cluster_conf_path);
+	my_ser_cluster_conf = create_ser_cluster_conf_shared_area(ser_cluster_conf_path, ser_cluster_conf, ser_cluster_conf_size);
 	/**** END CREATION SHARED MEMORY REGIONS ****/
 	verbose(0,"Shared memory regions created");
 
