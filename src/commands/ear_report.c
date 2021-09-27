@@ -958,7 +958,6 @@ void print_all(PGconn *connection, int start_time, int end_time, char *inc_query
     {
         max_power = my_conf.tags[def_id].error_power;
     }   
-    int i;
     for (i = 0; i < my_conf.num_tags; i++)
         max_power = ear_max(my_conf.tags[i].error_power, max_power);
     
