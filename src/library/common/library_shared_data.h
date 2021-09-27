@@ -92,6 +92,7 @@ typedef struct shsignature{
     ssig_t 					sig;
     int 				  	app_state;
     unsigned long 	new_freq;
+		uint						num_cpus;
     cpu_set_t 			cpu_mask;
     int 						affinity;
     uint 						unbalanced;
