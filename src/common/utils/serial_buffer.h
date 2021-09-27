@@ -22,6 +22,41 @@
 // to control the allocated data, the current used data and also a pointer to the
 // current element. The current data element is the one to be returned when using
 // functions like serial_copy_elem(). 
+//
+//	1) Serial buffer initialization
+//
+//		wide_buffer_t w;
+//		// Initializing 16KB of memory.
+//		serial_alloc(&w, 16384);
+//
+//	2) Example of packing data
+//
+//		// Cleans the buffer and metadata
+//		serial_clean(&w);
+//		// Adding new elements
+//		serial_add_elem(&w, (char *) elem1, sizeof(elem1_t)*elem1_length);
+//		serial_add_elem(&w, (char *) elem2, sizeof(elem2_t)*elem2_length);
+//
+//	3) Example of sending data
+//
+//		char  *data = w.data;
+//		size_t size = serial_size(&w, 0);
+//		some_sending_function(fd, data, size)));
+//
+//	4) Example of receiving data
+//
+// 		wide_buffer_t w;
+//		// Initializing 16KB of memory.
+//		serial_alloc(&w, 16384);
+//		// You can use this because the first parameter in the buffer
+//		// structure is the allocated space.
+//		some_receiving_function(call, (char **) &w);
+//
+//	5) Example of unpacking data
+//
+//		serial_copy_elem(&w, (char *) elem1, NULL);
+//		serial_copy_elem(&w, (char *) elem2, NULL);
+//
 
 typedef struct wide_buffer_s {
 	char *data;
