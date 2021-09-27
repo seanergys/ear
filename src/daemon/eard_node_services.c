@@ -101,6 +101,13 @@ extern cluster_conf_t my_cluster_conf;
 extern my_node_conf_t *my_node_conf;
 extern ulong eard_max_freq;
 extern int num_uncore_counters;
+#if USE_GPUS
+extern uint eard_gpu_model;
+extern gpu_t *eard_read_gpu;
+extern uint eard_num_gpus;
+extern char gpu_str[256];
+#endif
+
 
 
 #define NUM_PRIVILEGED_SERVICES 11
@@ -1570,6 +1577,7 @@ state_t eard_local_api()
 	num_packs = node_desc.socket_count;
 	struct timeval *my_to;
 	ear_njob_t *eard_jobs_list;
+	state_t ret;
 
 	verbose(1,"Creating node_mgr data");
 	if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS){
@@ -1606,12 +1614,12 @@ state_t eard_local_api()
 
 	#if USE_GPUS
 	/* GPU Initialization for app requests */
-	ret=gpu_init(&eard_main_gpu_ctx);
-	if (ret!=EAR_SUCCESS){
+	ret = gpu_init(&eard_main_gpu_ctx);
+	if (ret != EAR_SUCCESS){
 		error("EARD error when initializing GPU context for EARD API queries");
-		eard_gpu_initialized=0;	
+		eard_gpu_initialized = 0;	
 	}else{
-		eard_gpu_initialized=1;
+		eard_gpu_initialized = 1;
 	}
 	gpu_data_alloc(&eard_read_gpu);
 	gpu_count(&eard_main_gpu_ctx,&eard_num_gpus);

@@ -417,7 +417,6 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         }
     }
     /* Automatic computation of powercap */
-#if POWERCAP
     /* If node powercap is -1, and there is a global powercap, power is equally distributed */
     if (n->powercap == DEF_POWER_CAP){
         if (my_conf->eargm.power > 0){
@@ -427,7 +426,6 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
             n->powercap = 0;
         }
     }
-#endif
 
 
     return n;

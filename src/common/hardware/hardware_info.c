@@ -23,11 +23,22 @@
 #include <string.h>
 #include <unistd.h>
 #include <sched.h>
+#include <common/config.h>
 #include <common/hardware/topology.h>
 #include <common/hardware/hardware_info.h>
 
 #define INTEL_VENDOR_NAME       "GenuineIntel"
 
+uint num_cpus_in_mask(cpu_set_t *my_mask)
+{
+	uint c, lcpus = 0;
+	
+  for (c = 0; c < MAX_CPUS_SUPPORTED; c++){
+      if (CPU_ISSET(c, my_mask)) lcpus++;
+  }
+	return lcpus;
+
+}
 void print_affinity_mask(topology_t *topo) 
 {
     cpu_set_t mask;

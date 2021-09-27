@@ -50,7 +50,6 @@ typedef struct eargm_conf
   ulong t2;       /* default 600 seconds */
   ulong   energy;     /* mandatory */
   /* PowerCap */
-  #if POWERCAP
   ulong power;
   ulong t1_power;
   ulong powercap_mode;  /* 1=auto by default, 0=monitoring_only */
@@ -58,7 +57,6 @@ typedef struct eargm_conf
   ulong defcon_power_lower;   /* Percentages from the maximum to execute the restore (0..100)*/
   char powercap_limit_action[GENERIC_NAME]; /* Script file for powercap actions */
   char powercap_lower_action[GENERIC_NAME]; /* Script file for powercap actions */
-  #endif
   /****/
   uint  units;      /* 0=J, 1=KJ=default, 2=MJ, or Watts when using Power */
   uint  policy;     /* 0=MaxEnergy (default), 1=MaxPower ( not yet implemented) */

@@ -472,7 +472,7 @@ state_t policy_init()
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
 #if USE_GPUS
-		gpu_lib_count(&policy_last_local_signature.gpu_sig.num_gpus);
+		gpu_lib_count((uint *)&policy_last_local_signature.gpu_sig.num_gpus);
 		policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
 #endif
 

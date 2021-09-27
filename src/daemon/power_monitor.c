@@ -956,7 +956,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   for (i = 0; i < MAX_CPUS_SUPPORTED; i++) pmapp->pc_app_info->req_f[i] = f;
 	#if USE_GPUS
   pmapp->pc_app_info->num_gpus_used = gpu_mgr_num_gpus();
-	for (gpuid=0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++) pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
+	for (uint gpuid = 0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++) pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	#endif
 	powercap_set_app_req_freq(pmapp->pc_app_info);
 	while (pthread_mutex_trylock(&app_lock));
