@@ -17,16 +17,18 @@
 
 #include <common/states.h>
 #include <common/types/types.h>
+#include <common/types/configuration/cluster_conf.h>
 #include <common/output/verbose.h>
 #include <daemon/local_api/eard_api.h>
+#include <report/report.h>
 
-state_t report_init()
+state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
 	debug("eard report_init");
 	return EAR_SUCCESS;
 }
 
-state_t report_applications(application_t *apps, uint count)
+state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
 	int i;
 	debug("eard report_applications");
@@ -38,7 +40,7 @@ state_t report_applications(application_t *apps, uint count)
 	return EAR_SUCCESS;
 }
 
-state_t report_loops(loop_t *loops, uint count)
+state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 {
 	int i;
 	debug("eard report_loops");

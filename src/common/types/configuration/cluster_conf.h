@@ -112,8 +112,8 @@ typedef struct cluster_conf
 	uint num_islands;
 	node_island_t *islands;
     earlib_conf_t earlib;
-    communication_node_t *comm_nodes;
     uint num_comm_nodes;
+    communication_node_t *comm_nodes;
 	conf_install_t install;
 } cluster_conf_t;
 

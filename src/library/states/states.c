@@ -77,6 +77,9 @@ static signature_t /* cpu_sel_signature, */ policy_sel_signature;
 static node_freqs_t nf;
 uint waiting_for_node_signatures = 0;
 
+/* Defined in ear.c */
+extern report_id_t rep_id;
+extern cluster_conf_t cconf;
 
 
 #define DYNAIS_CUTOFF	1
@@ -173,7 +176,7 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 #if 0
         eards_write_loop_signature(my_loop);
 #endif
-        if (report_loops(my_loop,1) != EAR_SUCCESS){
+        if (report_loops(&rep_id,my_loop,1) != EAR_SUCCESS){
             verbose_master(0,"Error reporting Loop");
         }
 
@@ -271,7 +274,7 @@ void states_end_period(uint iterations)
 #if 0
                 eards_write_loop_signature(&loop);
 #endif
-                if (report_loops(&loop,1) != EAR_SUCCESS){
+                if (report_loops(&rep_id,&loop,1) != EAR_SUCCESS){
                     verbose_master(0,"Error reporting loop");
                 }
             }

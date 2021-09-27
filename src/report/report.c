@@ -24,6 +24,7 @@
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/system/symplug.h>
+#include <common/types/configuration/cluster_conf.h>
 
 #define P_NUM   8
 #define S_NUM   7
@@ -130,16 +131,27 @@ leave:
 
 #define call_0(op, void) \
     ops[p]. op ()
+#define call_1(op, type1, var1) \
+    ops[p]. op (var1)
 #define call_2(op, type1, var1, type2, var2) \
     ops[p]. op (var1, var2)
 #define call_3(op, type1, var1, type2, var2, type3, var3) \
     ops[p]. op (var1, var2, var3)
+#define call_4(op, type1, var1, type2, var2, type3, var3, type4, var4) \
+    ops[p]. op (var1, var2, var3, var4)
+
+
 #define func_0(op, void) \
     state_t op ()
+#define func_1(op, type1, var1) \
+    state_t op (type1 var1)
 #define func_2(op, type1, var1, type2, var2) \
     state_t op (type1 var1, type2 var2)
 #define func_3(op, type1, var1, type2, var2, type3, var3) \
     state_t op (type1 var1, type2 var2, type3 var3)
+#define func_4(op, type1, var1, type2, var2, type3, var3, type4, var4) \
+    state_t op (type1 var1, type2 var2, type3 var3, type4 var4)
+
 
 #define define(NARGS, op, ...) \
     func_ ## NARGS (op, __VA_ARGS__) { \
@@ -152,25 +164,26 @@ leave:
         return EAR_SUCCESS; \
     }
 
-define(0, report_init, void);
-define(0, report_dispose, void);
-define(2, report_applications, application_t *, apps, uint, count);
-define(2, report_loops, loop_t *, loops, uint, count);
-define(2, report_events, ear_event_t *, eves, uint, count);
-define(2, report_periodic_metrics, periodic_metric_t *, mets, uint, count);
-define(3, report_misc, const char *, type, const char *, data, uint, count);
+define(2, report_init, report_id_t *, id, cluster_conf_t *, cconf);
+define(1, report_dispose, report_id_t *, id);
+define(3, report_applications, report_id_t *, id, application_t *, apps, uint, count);
+define(3, report_loops, report_id_t *, id, loop_t *, loops, uint, count);
+define(3, report_events, report_id_t *, id, ear_event_t *, eves, uint, count);
+define(3, report_periodic_metrics,report_id_t *, id, periodic_metric_t *, mets, uint, count);
+define(4, report_misc, report_id_t *, id, uint, type, const char *, data, uint, count);
 
 #if TEST
 int main(int argc, char *argv[])
 {
+		cluster_conf_t cconf;
+		report_id_t id;
     report_load(NULL, "plug_dummy.so:plug_dummy2.so");
-    report_init();
-    report_applications(NULL, 0);
-    report_loops(NULL, 0);
-    report_events(NULL, 0);
-    report_periodic_metrics(NULL, 0);
-    report_misc(NULL, NULL, 0);
-    report_dispose();
+    report_init(&id,&cconf);
+    report_applications(&id,NULL, 0);
+    report_loops(&id,NULL, 0);
+    report_events(&id,NULL, 0);
+    report_periodic_metrics(&id,NULL, 0);
+    report_dispose(&id);
     return 0;
 }
 #endif

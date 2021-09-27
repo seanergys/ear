@@ -110,6 +110,10 @@ static int my_size;
 static int num_nodes;
 static int ppnode;
 
+/* To be used by report plugins */
+report_id_t rep_id;
+cluster_conf_t cconf;
+
 cpu_set_t ear_process_mask;
 int ear_affinity_is_set=0;
 architecture_t arch_desc;
@@ -1151,7 +1155,7 @@ void ear_init()
 					verbose_master(0,"Error in reports API load ");
 				}
 			}
-			if (report_init() != EAR_SUCCESS){
+			if (report_init(&rep_id,&cconf) != EAR_SUCCESS){
         verbose_master(0,"Error in reports API initialization ");
       }
 		}
@@ -1271,7 +1275,7 @@ void ear_finalize(int exit_status)
 				#if 0
         eards_write_app_signature(&application);
 				#endif
-				if (report_applications(&application,1) != EAR_SUCCESS){
+				if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 					verbose_master(0,"Error reporting application");
 				}
 				#if 0
