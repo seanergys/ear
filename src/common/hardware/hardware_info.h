@@ -39,6 +39,10 @@ int is_cpu_boost_enabled();
 /** Returns the number of packages detected*/
 int detect_packages(int **package_map);
 
+/** Computes the number of cpus in a given mask */
+uint num_cpus_in_mask(cpu_set_t *my_mask);
+
+
 /** Prints the affinity mask of the current process */
 void print_affinity_mask(topology_t *topo);
 

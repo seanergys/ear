@@ -31,6 +31,7 @@
 
 #include <common/config.h>
 #include <common/states.h>
+#include <common/hardware/hardware_info.h>
 #include <common/output/verbose.h>
 #include <common/types/projection.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -417,10 +418,7 @@ void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
   int i, c;
 	*cpus = 0;
   for (i=0;i<data->num_processes;i++){
-		uint lcpus = 0;
-		for (c = 0; c < MAX_CPUS_SUPPORTED; c++){
-			if (CPU_ISSET(c, &sig[i].cpu_mask)) lcpus++;
-		}
+		uint lcpus = num_cpus_in_mask(&sig[i].cpu_mask);
 		*cpus += lcpus;
   }
 	verbose_master(2,"Job %u has %u cpus ",node_mgr_index,*cpus);
@@ -634,7 +632,10 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	double vpi[MAX_CPUS_SUPPORTED];
 	ulong  f[MAX_CPUS_SUPPORTED];
 	ull    L3[MAX_CPUS_SUPPORTED];
+	uint   job_in_process[MAX_CPUS_SUPPORTED];
+	uint   cpus[MAX_CPUS_SUPPORTED];
 	double power_ratio;
+	uint   node_process = 0;
 
 	memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(tpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
@@ -658,40 +659,51 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 			ull LL3 = 0;
 			ull inst = 0;
 			double LCPI = 0.0;
-			compute_total_node_L3_misses(nmgr[j].libsh,nmgr[j].shsig,&LL3);
+			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
+				job_in_process[node_process] = j;
+				L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
+				ipc[node_process] = 1/nmgr[j].shsig[lp].sig.CPI;
+				tpi[node_process] = (double)L3[node_process]/(double)nmgr[j].shsig[lp].sig.instructions;
+				avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D];
+				vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
+				f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
+				node_L3 += L3[node_process];
+				node_process++;
+			}
+			#if 0
+			/* This code is per-job */
 			compute_total_node_instructions(nmgr[j].libsh,nmgr[j].shsig, &inst);
+			compute_total_node_L3_misses(nmgr[j].libsh,nmgr[j].shsig,&LL3);
 			compute_total_node_CPI(nmgr[j].libsh,nmgr[j].shsig, &LCPI);
-			node_L3 += LL3;
-			/* We use cache misses for TPI estimation also */
 			L3[j] = LL3;
 			tpi[j] = (double)LL3/(double)inst;
 			ipc[j] = 1/LCPI;
 			compute_total_node_avx_and_avx_fops(nmgr[j].libsh,nmgr[j].shsig, &avx);
 			vpi[j] = (double)avx/(double)inst;		
 			f[j] = nmgr[j].libsh->node_signature.avg_f;
+			node_L3 += LL3;
+			#endif
+			/* We use cache misses for TPI estimation also */
 
-			/* This is for validation */
 		}
 	}
 
-	/* Ratio */	
-	#if 0
-	if ((job_L3 == 0) || (node_L3 == 0)){
-		verbose_master(2,"Invalid values job %llu Node %llu",job_L3,node_L3);
-	}else{
-	  job_ratio = (double)job_L3/(double)node_L3;
-	  verbose_master(2,"Job Ratio is %.2lf", job_ratio*100);
-		*my_GBS = lsig->GBS * job_ratio;	
-	}
-	#endif
-	
+	#if 0	
   for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
     if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && L3[j]){
 				gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
 		}else gbs[j] = 0;
 	}
+	#endif
+	for (uint j = 0; j < node_process; j ++){
+    if (L3[j] && (job_in_process[j] == node_mgr_index)){
+        gbs[j] += ((double)L3[j]/(double)node_L3)*lsig->GBS;
+				*my_GBS = gbs[j];
+    }else gbs[j] = 0;
+  }
 
-  *my_GBS = gbs[node_mgr_index];
+
+  //*my_GBS = gbs[node_mgr_index];
 	verbose_master(2,"My GB/s is %.2lf", *my_GBS);
 
 
@@ -727,17 +739,24 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 
 	/* Per job in node loop */
 	double total_power_estimated = 0;
+	uint lp = 0;
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
 		/* If job is active we compute its power estimated */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[j]){
-			double P;
-			P = (ipc[j] * IPC_COEFF) + (gbs[j] * GBS_COEFF) + (vpi[j] * VPI_COEFF) + (f[j] * F_COEFF ) + INTERCEPT;
-			power_estimations[j] = P*nmgr[j].libsh->num_cpus/cpus_in_node;
-			verbose_master(2,"Power estimated for job %u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j, P,nmgr[j].libsh->num_cpus, power_estimations[j],ipc[j],vpi[j],gbs[j],(double)f[j]/1000000.0);
-			total_power_estimated += power_estimations[j];
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && nmgr[j].libsh->node_signature.avg_f){
+			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
+				double P;
+				P = (ipc[lp] * IPC_COEFF) + (gbs[lp] * GBS_COEFF) + (vpi[lp] * VPI_COEFF) + (f[lp] * F_COEFF ) + INTERCEPT;
+				power_estimations[lp] = P*nmgr[j].shsig[proc].num_cpus/cpus_in_node;
+				verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
+				total_power_estimated += power_estimations[lp];
+				lp++;
+			}
 		}
 	}
-	power_ratio = power_estimations[node_mgr_index]/total_power_estimated;
+	power_ratio = 0.0;
+	for (uint lp =0; lp < node_process; lp++){
+		if (job_in_process[lp] == node_mgr_index) power_ratio += power_estimations[lp]/total_power_estimated;
+	}
 	verbose_master(2,"My ratio is %lf", power_ratio);
 	*my_power = lsig->DC_power * power_ratio;
 	verbose_master(2,"My power is %lf", *my_power);
