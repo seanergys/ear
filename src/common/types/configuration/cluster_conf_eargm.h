@@ -67,6 +67,7 @@ typedef struct eargm_conf
   char  mail[GENERIC_NAME];
   char  host[GENERIC_NAME];
   char  energycap_action[GENERIC_NAME]; /* This action is execute in any WARNING level */
+  char  plugins[SZ_PATH_INCOMPLETE];
   uint  use_log;
 
   /* Specific EARGM definitions */

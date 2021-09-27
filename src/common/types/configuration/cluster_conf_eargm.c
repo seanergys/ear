@@ -291,6 +291,12 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
         parse_EARGM_specific(conf, token);
         found = EAR_SUCCESS;
     }
+    else if (!strcmp(token, "GLOBALMANAGERREPORTPLUGINS") || !strcmp(token, "EARGMREPORTPLUGINS"))
+    {
+        token = strtok(NULL, "=");
+        strncpy(conf->plugins, token, sizeof(conf->plugins));
+        found = EAR_SUCCESS;
+    }
     return found;
 }
 
@@ -327,6 +333,7 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
     sprintf(eargmc->energycap_action,EARGM_ENERGYCAP_DEF_ACTION);
     eargmc->defcon_power_limit=EARGM_POWERCAP_DEF_ACTION_LIMIT;
     eargmc->defcon_power_lower=EARGM_POWERCAP_DEF_ACTION_LOWER;
+    strcpy(eargmc->plugins, "");
 
 }
 
