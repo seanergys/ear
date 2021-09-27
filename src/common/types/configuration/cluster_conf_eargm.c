@@ -185,7 +185,6 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
         conf->energy = atoi(token);
         found=EAR_SUCCESS;
     }
-#if POWERCAP
     else if (!strcmp(token, "GLOBALMANAGERPOWERLIMIT") || !strcmp(token, "EARGMPOWERLIMIT"))
     {
         token = strtok(NULL, "=");
@@ -233,7 +232,6 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
         strcpy(conf->energycap_action,token);
         found=EAR_SUCCESS;
     }
-#endif
     else if (!strcmp(token, "GLOBALMANAGERWARNINGSPERC") || !strcmp(token, "EARGMWARNINGSPERC"))
     {
         token = strtok(NULL, "=");
@@ -321,7 +319,6 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
     strcpy(eargmc->mail,"nomail");
     eargmc->use_log=EARGMD_FILE_LOG;
     /* Values for POWERCAP */
-#if POWERCAP
     eargmc->power=EARGM_DEF_POWERCAP_LIMIT;
     eargmc->t1_power=EARGM_DEF_T1_POWER;
     eargmc->powercap_mode=EARGM_POWERCAP_DEF_MODE;  /* 1=auto by default, 0=monitoring_only */
@@ -330,7 +327,6 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
     sprintf(eargmc->energycap_action,EARGM_ENERGYCAP_DEF_ACTION);
     eargmc->defcon_power_limit=EARGM_POWERCAP_DEF_ACTION_LIMIT;
     eargmc->defcon_power_lower=EARGM_POWERCAP_DEF_ACTION_LOWER;
-#endif
 
 }
 
@@ -338,7 +334,7 @@ void print_eargm_def(eargm_def_t *conf)
 {
     int i;
     verbosen(VCCONF,"\t\t->EARGM %d node %s (port %u) ", conf->id, conf->node, conf->port);
-    verbosen(VCCONF,"energy limit %u power limit %u ", conf->energy, conf->power);
+    verbosen(VCCONF,"energy limit %lu power limit %lu ", conf->energy, conf->power);
     if (conf->num_subs > 0) {
         verbosen(VCCONF, "meta-controlled eargms: ");
     }
@@ -358,13 +354,11 @@ void print_eargm_conf(eargm_conf_t *conf)
             conf->grace_periods);
     verbosen(VCCONF,"\t policy %u (0=MaxEnergy,other=error) units=%u (-,K,M)\n",conf->policy,conf->units);
     verbosen(VCCONF,"\t use_log %u\n",conf->use_log);
-#if POWERCAP
     verbosen(VCCONF,"\t cluster_power_limit %lu powercap_check_period %lu\n",conf->power,conf->t1_power);
     verbosen(VCCONF,"\t powercap_mode %lu (0=monitoring, 1=auto [def])\n",conf->powercap_mode);
     verbosen(VCCONF,"\t power limit for action %lu and for lower %lu\n",conf->defcon_power_limit, conf->defcon_power_lower);
     verbosen(VCCONF,"\t powercap_limit_action %s and powercap_lower_action %s\n",conf->powercap_limit_action, conf->powercap_lower_action);
     verbosen(VCCONF,"\t energycap_action %s\n",conf->energycap_action);
-#endif 
     verbosen(VCCONF,"\t EARGM definitions\n");
     for (i = 0; i < conf->num_eargms; i++)
         print_eargm_def(&conf->eargms[i]);

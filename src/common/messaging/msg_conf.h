@@ -77,10 +77,8 @@ typedef union req_data{
     new_conf_t          ear_conf;
     new_policy_cont_t   pol_conf;
     risk_dec_t          risk;
-#if POWERCAP
     power_limit_t       pc;
     powercap_opt_t      pc_opt;
-#endif
     eargm_req_t         eargm_data;
 }req_data_t;
 

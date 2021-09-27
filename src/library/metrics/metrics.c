@@ -155,7 +155,7 @@ extern node_mgr_sh_data_t *node_mgr_job_info;
 
 
 
-static cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
+static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 {
 	cpu_set_t m;
 	ulong total = 0, total_cpus = 0;
