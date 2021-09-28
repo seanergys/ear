@@ -18,14 +18,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
-#include <libpq-fe.h>
-#include <mysql/mysql.h>
 #include <common/system/user.h>
 #include <common/config.h>
 #include <common/types/version.h>
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
 #include <common/types/configuration/cluster_conf.h>
+
+#if DB_PSQL
+#include <libpq-fe.h>
+#endif
+#if DB_MYSQL
+#include <mysql/mysql.h>
+#endif
 
 char print_out = 1;
 cluster_conf_t my_cluster;
@@ -45,6 +50,7 @@ void usage(char *app)
 	exit(0);
 }
 
+#if USE_DB
 #if DB_MYSQL
 void execute_on_error(MYSQL *connection)
 {
@@ -763,6 +769,7 @@ $$ language 'plpgsql'");
 }
 #endif
 
+#endif
 
 int main(int argc,char *argv[])
 {
