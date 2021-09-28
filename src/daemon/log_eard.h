@@ -24,6 +24,8 @@
 #include <common/types/job.h>
 #include <common/types/event_type.h>
 
+#include <report/report.h>
+
 
 
 
@@ -75,13 +77,13 @@ void init_eard_rt_log();
 /** Sets the minimum interval between two runtime errors to avoid saturating the DB */
 void log_report_eard_min_interval(uint secs);
 /** Reports a RT error from EARD */
-void log_report_eard_rt_error(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value);
+void log_report_eard_rt_error(report_id_t *rid,job_id job,job_id sid,uint eventid,ulong value);
 /* Reports and error when initializing EARD */
-void log_report_eard_init_error(uint usedb,uint useeardbd,uint eventid,ulong value);
+void log_report_eard_init_error(report_id_t *rid,uint eventid,ulong value);
 /* Reports powercap events from EARD */
-void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value);
+void log_report_eard_powercap_event(report_id_t *rid,job_id job,job_id sid,uint eventid,ulong value);
 
-void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value);
+void log_report_eard_powercap_event(report_id_t *rid,job_id job,job_id sid,uint eventid,ulong value);
 
 
 #endif

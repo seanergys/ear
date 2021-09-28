@@ -25,20 +25,17 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <common/config.h>
-#include <common/types/log_eard.h>
+#include <daemon/log_eard.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 
-#if USE_DB
-#include <database_cache/eardbd_api.h>
-#include <common/database/db_helper.h>
-#endif
+#include <report/report.h>
 
 static char log_nodename[GENERIC_NAME];
 static double min_interval=0.0;
 static time_t last_rt_event[EARD_RT_ERRORS];
 
-void init_eard_rt_log()
+void init_eard_rt_log(report_id_t *id)
 {
     int i;
     debug("init_eard_rt_log");
@@ -48,7 +45,7 @@ void init_eard_rt_log()
         last_rt_event[i]=0;
     }
 }
-void log_report_eard_init_error(uint usedb,uint useeardbd,uint eventid,ulong value)
+void log_report_eard_init_error(report_id_t *id,uint eventid,ulong value)
 {
     ear_event_t event;
     /* we request the daemon to write the event in the DB */
@@ -59,12 +56,7 @@ void log_report_eard_init_error(uint usedb,uint useeardbd,uint eventid,ulong val
     strcpy(event.node_id,log_nodename);
     event.event=eventid;
     event.freq=value;
-    if (usedb){
-        if (useeardbd) eardbd_send_event(&event);
-        else db_insert_ear_event(&event);
-    }else{
-        debug("INIT EARD error  event type %u value %lu",eventid,value);
-    }
+		report_events(id, &event, 1);
 
 }
 
@@ -75,7 +67,7 @@ void log_report_eard_min_interval(uint secs)
 }
 
 
-void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value)
+void log_report_eard_powercap_event(report_id_t *id,job_id job,job_id sid,uint eventid,ulong value)
 {
 #if REPORT_POWERCAP
     ear_event_t event;
@@ -87,16 +79,11 @@ void log_report_eard_powercap_event(uint usedb,uint useeardbd,job_id job,job_id 
     strcpy(event.node_id,log_nodename);
     event.event=eventid;
     event.freq=value;
-    if (usedb){
-        if (useeardbd) eardbd_send_event(&event);
-        else db_insert_ear_event(&event);
-    }else{
-        debug("jid %lu sid %lu event type %u value %lu",job,sid,eventid,value);
-    }
+		report_events(id, &event, 1);
 #endif
 }
 
-void log_report_eard_rt_error(uint usedb,uint useeardbd,job_id job,job_id sid,uint eventid,ulong value)
+void log_report_eard_rt_error(report_id_t *id,job_id job,job_id sid,uint eventid,ulong value)
 {
     ear_event_t event;
 
@@ -109,12 +96,7 @@ void log_report_eard_rt_error(uint usedb,uint useeardbd,job_id job,job_id sid,ui
         strcpy(event.node_id,log_nodename);
         event.event=eventid;
         event.freq=value;
-        if (usedb){
-            if (useeardbd) eardbd_send_event(&event);
-            else db_insert_ear_event(&event);
-        }else{
-            debug("jid %lu sid %lu event type %u value %lu",job,sid,eventid,value);
-        }
+				report_events(id, &event, 1);
     }else{
         debug("RT EARD erro NOT reported %u because of min_interval definition", eventid);
     }

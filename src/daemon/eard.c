@@ -27,10 +27,11 @@
 //#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/environment.h>
-#include <common/types/log_eard.h>
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
+
+#include <report/report.h>
 
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
@@ -49,11 +50,8 @@
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/eard_checkpoint.h>
-#if USE_DB
-#include <database_cache/eardbd_api.h>
-#include <common/database/db_helper.h>
-#endif
-#include <daemon/eard.h>
+#include <daemon/log_eard.h>
+
 #include <daemon/app_api/app_server_api.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
@@ -101,9 +99,6 @@ coefficient_t *coeffs_default_conf;
 
 /** These paths are used for shared memory regions */
 char my_ear_conf_path[GENERIC_NAME];
-char my_eardbd_conf_path[GENERIC_NAME];
-char eardbd_user[GENERIC_NAME];
-char eardbd_pass[GENERIC_NAME];
 char coeffs_path[GENERIC_NAME];
 char coeffs_default_path[GENERIC_NAME];
 char services_conf_path[GENERIC_NAME];
@@ -117,8 +112,11 @@ loop_t current_loop_data;
 
 #define RAPL_METRICS    4
 
-static int eardbd_connected = 0;
-static int db_helper_connected = 0;
+/* New report data */
+uint report_eard = 1;
+report_id_t rid;
+state_t report_connection_status = EAR_SUCCESS;
+
 static int fd_my_log = 2;
 
 unsigned long eard_max_freq;
@@ -295,13 +293,7 @@ void eard_exit(uint restart)
 				if (state_fail(energy_dispose(&eard_handler_energy))) {
 								error("Error disposing energy for eard");
 				}
-
-				// Database cache daemon disconnect
-#if USE_EARDB
-				if (my_cluster_conf.eard.use_eardbd){
-								eardbd_disconnect();
-				}
-#endif
+				report_dispose(&rid);
 
 				verbose(VCONF, "Releasing files");
 
@@ -411,42 +403,10 @@ void signal_handler(int sig)
 																save_eard_conf(&eard_dyn_conf);
 												}
 
-
-
-#if USE_DB 
-												if (!my_cluster_conf.eard.use_eardbd && eardbd_connected){
-																eardbd_disconnect();
-																eardbd_connected=0;
-												}
-												if (my_cluster_conf.eard.use_mysql)
-												{
-																if (my_cluster_conf.eard.use_eardbd)
-																{
-																				eardbd_disconnect();
-																				state_t state = eardbd_connect(&my_cluster_conf, my_node_conf);
-																				if (state_fail(state)) {
-																								error("Error connecting with EARDB");
-																				} else {
-																								verbose(VCONF,"Connecting with EARDBD\n");
-																								eardbd_connected=1;
-																				}
-																}
-
-																if (!my_cluster_conf.eard.use_eardbd){
-																				verbose(VCONF,"Connecting with EAR DB directly");
-#ifdef USE_EARDBD_CONF
-																				read_eardbd_conf(my_eardbd_conf_path,eardbd_user,eardbd_pass);
-																				strcpy(my_cluster_conf.database.user,eardbd_user);
-																				strcpy(my_cluster_conf.database.pass,eardbd_pass);
-#endif
-																				init_db_helper(&my_cluster_conf.database);
-																				db_helper_connected=1;
-																}
-												}
-#endif
-
 								}
 								verbose(VCONF, "Configuration reloaded");
+								report_dispose(&rid);
+								report_connection_status = report_init(&rid, &my_cluster_conf);
 				}
 
 }
@@ -637,19 +597,19 @@ void report_eard_init_error()
 {
 				if (error_uncore)
 				{
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,UNCORE_INIT_ERROR,0);
+								log_report_eard_init_error(&rid,UNCORE_INIT_ERROR,0);
 				}
 				if (error_rapl)
 				{
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,RAPL_INIT_ERROR,0);
+								log_report_eard_init_error(&rid,RAPL_INIT_ERROR,0);
 				}
 				if (error_energy)
 				{
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,ENERGY_INIT_ERROR,0);
+								log_report_eard_init_error(&rid,ENERGY_INIT_ERROR,0);
 				}
 				if (error_connector)
 				{
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,CONNECTOR_INIT_ERROR,0);
+								log_report_eard_init_error(&rid,CONNECTOR_INIT_ERROR,0);
 
 				}
 }
@@ -752,14 +712,6 @@ int main(int argc, char *argv[])
 								error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
 								_exit(0);
 				}
-#if USE_DB
-#ifdef USE_EARDBD_CONF
-				if (get_eardbd_conf_path(my_eardbd_conf_path)==EAR_ERROR){
-								error("Error opening eardbd.conf file, not available at regular path ( $EAR_ETC/ear/eardbd.conf)");
-								_exit(0);
-				}
-#endif
-#endif
 				if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
 								error(" Error reading cluster configuration\n");
 								_exit(1);
@@ -935,35 +887,14 @@ int main(int argc, char *argv[])
 								_exit(0);	
 				}
 
-				verbose(0,"Connecting with EARDBD");
-				// Database cache daemon
-#if USE_DB
-				if (my_cluster_conf.eard.use_mysql)
-				{
-								if (my_cluster_conf.eard.use_eardbd)
-								{
-												state_t state = eardbd_connect(&my_cluster_conf, my_node_conf);
-												if (state_fail(state)) {
-																error("Error connecting with EARDB: %s", state_msg);
-												} else {
-																verbose(VCONF,"Connected with EARDBD");
-																eardbd_connected=1;
-												}
-								}
-
-								if (!my_cluster_conf.eard.use_eardbd)
-								{
-												verbose(VCONF,"Connecting with EAR DB directly");
-#ifdef USE_EARDBD_CONF
-												read_eardbd_conf(my_eardbd_conf_path,eardbd_user,eardbd_pass);
-												strcpy(my_cluster_conf.database.user,eardbd_user);
-												strcpy(my_cluster_conf.database.pass,eardbd_pass);
-#endif
-												init_db_helper(&my_cluster_conf.database);
-												db_helper_connected=1;
-								}
+				verbose(0,"Connecting with report plugin");
+				/* This must be replaced by the report_eard option in eard */
+				if (state_fail(report_load(my_cluster_conf.install.dir_plug,my_cluster_conf.eard.plugins))){
+					report_create_id(&rid, -1, -1, -1);
+				}else{
+					report_create_id(&rid, 0, 0, 0);
 				}
-#endif
+				report_init(&rid, &my_cluster_conf);
 
 				report_eard_init_error();
 				verbose(0,"Creating EARD threads");
@@ -972,21 +903,21 @@ int main(int argc, char *argv[])
 				if ((ret=pthread_create(&power_mon_th, NULL, eard_power_monitoring, NULL))){
 								errno=ret;
 								error("error creating power_monitoring thread %s\n",strerror(errno));
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,PM_CREATION_ERROR,ret);
+								log_report_eard_init_error(&rid,PM_CREATION_ERROR,ret);
 				}
 #endif
 				verbose(0,"Creating the remote connections server");
 #if EXTERNAL_COMMANDS_THREAD
 				if ((ret=pthread_create(&dyn_conf_th, NULL, eard_dynamic_configuration, (void *)ear_tmp))){
 								error("error creating dynamic_configuration thread \n");
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,DYN_CREATION_ERROR,ret);
+								log_report_eard_init_error(&rid,DYN_CREATION_ERROR,ret);
 				}
 #endif
 				verbose(0,"Creating APP-API thread");
 #if APP_API_THREAD
 				if ((ret=pthread_create(&app_eard_api_th,NULL,eard_non_earl_api_service,NULL))){
 								error("error creating server thread for non-earl api\n");
-								log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,APP_API_CREATION_ERROR,ret);
+								log_report_eard_init_error(&rid,APP_API_CREATION_ERROR,ret);
 				}
 #endif
 

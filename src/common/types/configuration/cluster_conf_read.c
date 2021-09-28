@@ -634,6 +634,20 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf)
             break;
         }
     }
+
+		/* Plugins */
+		if (strlen(conf->eard.plugins) == 0){
+			strcpy(conf->eard.plugins,"eardbd.so");	
+		}
+		if (strlen(conf->db_manager.plugins) == 0){
+			strcpy(conf->db_manager.plugins,"mysql.so");
+		}
+		if (strlen(conf->eargm.plugins) == 0){
+			strcpy(conf->eargm.plugins,"mysql.so");	
+		}
+		if (strlen(conf->earlib.plugins) == 0){
+			strcpy(conf->earlib.plugins,"eard.so");
+		}
 }
 
 

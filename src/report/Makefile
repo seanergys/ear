@@ -6,11 +6,12 @@ repo_OBJS = \
 	report.o
 repo_BINS = \
 	eard.so \
+	eardbd.so \
 	csv.so \
 	csv_ts.so \
 	mysql.so \
 	psql.so \
-	plug_dummy.so
+	dummy.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports
 
@@ -24,6 +25,7 @@ all: $(repo_OBJS) $(repo_BINS)
 
 %.so: %.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
 
 ######## SUBFOLDERS
 

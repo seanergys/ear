@@ -128,5 +128,5 @@ void print_db_manager(eardb_conf_t *conf)
     verbosen(VCCONF,"--> EARDBD configuration\n");
     verbosen(VCCONF, "---> Insertion time %u\tAggregation time: %u\tTCP port: %u\tSec. TCP port: %u\tSync Port: %u\tCacheSize: %u\n",
             conf->insr_time,conf->aggr_time, conf->tcp_port, conf->sec_tcp_port, conf->sync_tcp_port,conf->mem_size);
-    verbosen(VCCONF,"--> use_log %u\n",conf->use_log);
+    verbosen(VCCONF,"--> use_log %ui report plugins %s\n",conf->use_log, conf->plugins);
 }

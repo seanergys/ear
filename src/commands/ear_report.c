@@ -31,7 +31,7 @@
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
 #include <common/types/version.h>
-#include <common/types/log_eard.h>
+#include <daemon/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #if DB_MYSQL

@@ -129,7 +129,7 @@ void print_eard_conf(eard_conf_t *conf)
     verbosen(VCCONF,"\t eard: verbosen %u period %lu max_pstate %lu \n",conf->verbose,conf->period_powermon,conf->max_pstate);
     verbosen(VCCONF,"\t eard: turbo %u port %u use_db %u use_eardbd %u \n",conf->turbo,conf->port,conf->use_mysql,conf->use_eardbd);
     verbosen(VCCONF,"\t eard: force_frequencies %u\n",conf->force_frequencies);
-    verbosen(VCCONF,"\t eard: use_log %u\n",conf->use_log);
+    verbosen(VCCONF,"\t eard: use_log %u report plugin %s\n",conf->use_log, conf->plugins);
 
 }
 

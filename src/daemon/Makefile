@@ -19,6 +19,9 @@ remote_api_OBJS= \
     remote_api/dyn_conf_theading.o \
     remote_api/dynamic_configuration.o 
 
+report_OBJ=\
+		$(SRCDIR)/report/report.o
+
 powercap_OBJS = \
 	powercap/powercap_status.o \
 	powercap/powercap_mgt.o \
@@ -34,14 +37,16 @@ eard_OBJS = \
 	  app_mgt.o \
     shared_configuration.o \
     app_api/app_server_api.o \
-    node_metrics.o 
+    node_metrics.o \
+		log_eard.o
 
 eard_OBJS += \
     $(remote_api_OBJS) \
     $(powercap_OBJS) \
     $(gpu_mgt_OBJS) \
-    $(SRCDIR)/database_cache/eardbd_api.o \
 		$(local_api_OBJS) \
+		$(report_OBJ) \
+		$(SRCDIR)/database_cache/eardbd_api.o \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/common/libcommon.a
