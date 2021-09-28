@@ -360,7 +360,7 @@ void print_eargm_conf(eargm_conf_t *conf)
     verbosen(VCCONF,"\t eargm: defcon levels [%u,%u,%u] grace period %u\n",conf->defcon_limits[0],conf->defcon_limits[1],conf->defcon_limits[2],
             conf->grace_periods);
     verbosen(VCCONF,"\t policy %u (0=MaxEnergy,other=error) units=%u (-,K,M)\n",conf->policy,conf->units);
-    verbosen(VCCONF,"\t use_log %u\n",conf->use_log);
+    verbosen(VCCONF,"\t use_log %u report plugins %s\n",conf->use_log, conf->plugins);
     verbosen(VCCONF,"\t cluster_power_limit %lu powercap_check_period %lu\n",conf->power,conf->t1_power);
     verbosen(VCCONF,"\t powercap_mode %lu (0=monitoring, 1=auto [def])\n",conf->powercap_mode);
     verbosen(VCCONF,"\t power limit for action %lu and for lower %lu\n",conf->defcon_power_limit, conf->defcon_power_lower);

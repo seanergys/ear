@@ -41,7 +41,6 @@
 #include <common/types/generic.h>
 #include <common/types/application.h>
 #include <common/types/periodic_metric.h>
-#include <common/types/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <metrics/frequency/cpu.h>
 #include <common/hardware/hardware_info.h>
@@ -53,6 +52,7 @@
 #include <daemon/shared_configuration.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/eard_node_services.h>
+#include <daemon/log_eard.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
@@ -61,16 +61,12 @@
 #include <syslog.h>
 #endif
 
-#if 0
-#if USE_DB
-#include <database_cache/eardbd_api.h>
-#include <common/database/db_helper.h>
-#endif
-#endif
 #include <report/report.h>
 
+/* Defined in eard.c */
 extern uint report_eard ;
 extern report_id_t rid;
+extern state_t report_connection_status;
 
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
@@ -96,7 +92,7 @@ extern ulong current_node_freq;
 extern char nodename[MAX_PATH_SIZE];
 
 
-state_t report_connection_status = EAR_SUCCESS;
+extern state_t report_connection_status;
 static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
@@ -641,27 +637,6 @@ void report_powermon_app(powermon_app_t *app) {
 
 	verbose_application_data(0, &app->app);
 	report_application_in_file(&app->app);
-#if 0
-#if USE_DB
-	if (my_cluster_conf.eard.use_mysql)
-	{
-		clean_db_power_signature(&app->app.power_sig, my_node_conf->max_sig_power);
-		if (!my_cluster_conf.eard.use_eardbd) {
-			if (!db_insert_application(&app->app)){
-				debug( "Application signature correctly written");
-			}
-		}
-		else {
-			state_t state = eardbd_send_application(&app->app);
-			eardbd_connection_status = state;
-			if (state_fail(state)) {
-				error("Error when sending application to eardb");
-				eardbd_reconnect(&my_cluster_conf, my_node_conf);
-			}
-		}
-	}
-#endif
-#endif
 	report_connection_status = report_applications(&rid,&app->app,1);
 }
 
@@ -1182,7 +1157,6 @@ void powermon_reload_conf() {
 void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	ulong jid, mpi,sid;
 	ulong time_consumed;
-	uint usedb,useeardbd;
 	double maxpower, minpower, RAPL, corrected_power,pckp,dramp;
 	powermon_app_t *pmapp;
 	uint current_jobs_running_in_node = 0;
@@ -1192,8 +1166,6 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	}
 
 	pmapp 		= current_ear_app[max_context_created];
-	usedb 		= my_cluster_conf.eard.use_mysql;
-	useeardbd = my_cluster_conf.eard.use_eardbd;
   jid = pmapp->app.job.id;
   sid = pmapp->app.job.step_id;
   mpi = pmapp->app.is_mpi;
@@ -1276,17 +1248,17 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
   || (my_current_power->avg_dc > my_node_conf->max_error_power))
     {
 		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,my_current_power->avg_dc);
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,DC_POWER_ERROR,my_current_power->avg_dc);
+		log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,my_current_power->avg_dc);
 	}
 	if (current_sample.temp > my_node_conf->max_temp){
 		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %lu degress (max %lu)\n",nodename,current_sample.temp,my_node_conf->max_temp);
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,TEMP_ERROR,current_sample.temp);
+		log_report_eard_rt_error(&rid,jid,sid,TEMP_ERROR,current_sample.temp);
 	}
 	if (RAPL == 0) {
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,RAPL_ERROR,RAPL);
+		log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,RAPL);
 	}
 	if ((current_sample.avg_f == 0) || ((current_sample.avg_f > frequency_get_nominal_freq()) && (mpi))){
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,FREQ_ERROR,current_sample.avg_f);
+		log_report_eard_rt_error(&rid,jid,sid,FREQ_ERROR,current_sample.avg_f);
 	}
 #endif
 	if ((my_current_power->avg_dc == 0) || (my_current_power->avg_dc > my_node_conf->max_error_power)) {
@@ -1304,31 +1276,6 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	if ((my_current_power->avg_dc < my_node_conf->max_error_power) || (my_current_power->avg_dc < 0)){
 		my_current_power->avg_dc = my_node_conf->max_sig_power;
 	}
-#if 0
-#if USE_DB
-	if ((my_current_power->avg_dc >= 0) && (my_current_power->avg_dc < my_node_conf->max_error_power)){
-	if (my_cluster_conf.eard.use_mysql)
-	{
-		if (!my_cluster_conf.eard.use_eardbd) {
-			/* current sample reports the value of job_id and step_id active at this moment */
-			/* If we want to be strict, we must report intermediate samples at job start and job end */
-			if (!db_insert_periodic_metric(&current_sample))
-				debug( "Periodic power monitoring sample correctly written");
-		} else {
-			state_t state = eardbd_send_periodic_metric(&current_sample);
-			eardbd_connection_status = state;
-			if (state_fail(state)) {
-				error("Error when sending periodic power metric to EARDBD: %s", state_msg);
-				state = eardbd_reconnect(&my_cluster_conf, my_node_conf);
-				if (state_fail(state)) {
-					error("Error re-connecting with EARDBD: %s", state_msg );
-				}
-			}
-		}
-	}
-	}/*if ((my_current_power->avg_dc==0)...*/
-#endif
-#endif
 	if ((my_current_power->avg_dc >= 0) && (my_current_power->avg_dc < my_node_conf->max_error_power)){
 		report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
 	}
@@ -1376,16 +1323,16 @@ void check_rt_error_for_signature(application_t *app)
 	useeardbd = my_cluster_conf.eard.use_eardbd;
 	if (app->signature.GBS == 0)
 	{
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,GBS_ERROR,0);
+		log_report_eard_rt_error(&rid,jid,sid,GBS_ERROR,0);
 	}
 	if (app->signature.CPI == 0){
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,CPI_ERROR,0);
+		log_report_eard_rt_error(&rid,jid,sid,CPI_ERROR,0);
 	}
 	if (app->signature.DC_power == 0){
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,DC_POWER_ERROR,0);
+		log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,0);
 	}
 	if (app->signature.avg_f == 0){
-		log_report_eard_rt_error(usedb,useeardbd,jid,sid,FREQ_ERROR,0);
+		log_report_eard_rt_error(&rid,jid,sid,FREQ_ERROR,0);
 	}
 }
 
@@ -1643,7 +1590,7 @@ void powermon_report_event(uint event_type, ulong value)
 		jid = current_ear_app[cc]->app.job.id;
 		sid = current_ear_app[cc]->app.job.step_id; 
     debug("powermon_report_event: sending event %u with value %lu", event_type, value);
-    log_report_eard_powercap_event(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,jid,sid,event_type, value);
+    log_report_eard_powercap_event(&rid,jid,sid,event_type, value);
 }
 
 uint powermon_is_idle()

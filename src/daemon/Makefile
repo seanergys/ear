@@ -37,7 +37,8 @@ eard_OBJS = \
 	  app_mgt.o \
     shared_configuration.o \
     app_api/app_server_api.o \
-    node_metrics.o 
+    node_metrics.o \
+		log_eard.o
 
 eard_OBJS += \
     $(remote_api_OBJS) \

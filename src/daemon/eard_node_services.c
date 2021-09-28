@@ -27,7 +27,6 @@
 #include <common/includes.h>
 #include <common/types/generic.h>
 #include <common/environment.h>
-#include <common/types/log_eard.h>
 #include <common/system/fd_sets.h>
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
@@ -51,14 +50,10 @@
 #include <daemon/power_monitor.h>
 #include <daemon/shared_configuration.h>
 #include <daemon/remote_api/dynamic_configuration.h>
-#if 0
-#if USE_DB
-#include <database_cache/eardbd_api.h>
-#include <common/database/db_helper.h>
-#endif
-#endif
 #include <report/report.h>
+#include <daemon/log_eard.h>
 
+/* Defined in eard.c */
 extern uint report_eard ;
 extern report_id_t rid;
 extern state_t report_connection_status;
@@ -814,23 +809,6 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
     case WRITE_EVENT:
       ack = EAR_COM_OK;
       ret1 = EAR_SUCCESS;
-#if 0
-#if USE_DB
-    if (my_cluster_conf.eard.use_mysql)
-    {
-      if (!my_cluster_conf.eard.use_eardbd) {
-        ret1 = db_insert_ear_event(&req.req_data.event);
-      } else {
-        state_t state = eardbd_send_event(&req.req_data.event);
-        if (state_fail(state)) {
-          error("Error sending event to EARDBD: %s", state_msg);
-          eardbd_reconnect(&my_cluster_conf, my_node_conf);
-          ret1 = EAR_ERROR;
-        }
-      }
-    }
-#endif
-#endif
 			report_connection_status = report_events(&rid, &req.req_data.event, 1);
       if (report_connection_status == EAR_SUCCESS) ack = EAR_COM_OK;
       else ack = EAR_COM_ERROR;
@@ -842,25 +820,6 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
       ret1 = EAR_SUCCESS;
       powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
       // print_loop_fd(1,&req.req_data.loop);
-#if 0
-      if (my_cluster_conf.database.report_loops) {
-#if USE_DB
-        if (my_cluster_conf.eard.use_mysql)
-        {
-          if (!my_cluster_conf.eard.use_eardbd){
-            ret1 = db_insert_loop (&req.req_data.loop);
-          } else {
-            state_t state = eardbd_send_loop(&req.req_data.loop);
-            if (state_fail(state)){
-              error("Error sending loop to EARDBD: %s", state_msg);
-              eardbd_reconnect(&my_cluster_conf, my_node_conf);
-              ret1 = EAR_ERROR;
-            }
-          }
-        }
-#endif
-      }
-#endif
 			report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
 
       if (report_connection_status == EAR_SUCCESS) ack = EAR_COM_OK;

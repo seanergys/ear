@@ -31,7 +31,7 @@
 #include <common/system/execute.h>
 #include <common/system/monitor.h>
 #include <common/messaging/msg_conf.h>
-#include <common/types/log_eard.h>
+#include <daemon/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #include <daemon/power_monitor.h>

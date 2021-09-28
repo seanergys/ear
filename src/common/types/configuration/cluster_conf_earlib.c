@@ -105,6 +105,8 @@ void print_earlib_conf(earlib_conf_t *conf)
             conf->coefficients_pathname, conf->dynais_levels, conf->dynais_window);
     verbosen(VCCONF, "-->dynais timeout %u ear period %u check every %u\n",
             conf->dynais_timeout,conf->lib_period,conf->check_every);
+		verbosen(VCCONF, "-->report plugins %s", conf->plugins);
+		
 }
 void set_default_earlib_conf(earlib_conf_t *earlibc)
 {

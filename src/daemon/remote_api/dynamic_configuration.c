@@ -35,7 +35,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/job.h>
-#include <common/types/log_eard.h>
+#include <daemon/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/system/symplug.h>
 #include <management/cpufreq/frequency.h>
@@ -50,6 +50,10 @@
 #include <daemon/powercap/powercap_status_conf.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/shared_configuration.h>
+#include <report/report.h>
+
+/* Defined in eard.c */
+extern report_id_t rid;
 
 
 extern int eard_must_exit;
@@ -897,7 +901,7 @@ void *eard_dynamic_configuration(void *tmp)
     eards_remote_socket = create_server_socket(my_cluster_conf.eard.port);
     if (eards_remote_socket < 0) {
         error("Error creating socket, exiting eard_dynamic_configuration thread\n");
-        log_report_eard_init_error(my_cluster_conf.eard.use_mysql,my_cluster_conf.eard.use_eardbd,RCONNECTOR_INIT_ERROR,eards_remote_socket);
+        log_report_eard_init_error(&rid,RCONNECTOR_INIT_ERROR,eards_remote_socket);
         pthread_exit(0);
     }
 

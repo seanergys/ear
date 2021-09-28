@@ -1157,12 +1157,14 @@ void ear_init()
     utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(SCHED_EARL_INSTALL_PATH), system_conf->user_type);
 
 			if (summary_pathname == NULL){
-				if (report_load(my_plug_path,"eard.so") != EAR_SUCCESS){
+				if (report_load(my_plug_path,system_conf->lib_info.plugins) != EAR_SUCCESS){
 					verbose_master(0,"Error in reports API load ");
 				}
 			}else{
+				char plugins_ext[SZ_PATH_INCOMPLETE];
 				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
-				if (report_load(my_plug_path,"eard.so:csv_ts.so") != EAR_SUCCESS){
+				sprintf(plugins_ext,"%s:csv_ts.so",system_conf->lib_info.plugins);
+				if (report_load(my_plug_path,plugins_ext) != EAR_SUCCESS){
 					verbose_master(0,"Error in reports API load ");
 				}
 			}
