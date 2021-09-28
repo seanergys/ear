@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
+#include <libpq-fe.h>
 #include <mysql/mysql.h>
 #include <common/system/user.h>
 #include <common/config.h>

@@ -28,7 +28,8 @@
 #include <common/database/db_helper.h>
 #if DB_MYSQL
 #include <common/database/mysql_io_functions.h>
-#elif DB_PSQL
+#endif
+#if DB_PSQL
 #include <common/database/postgresql_io_functions.h>
 #endif
 
@@ -36,18 +37,6 @@ db_conf_t *db_config = NULL;
 int current_step_id = -1;
 int current_job_id = 0;
 
-#define _MAX(X,Y)			(X > Y ? X : Y)
-#define _MMAAXX(W,X,Y,Z) 	(_MAX(W,X) > _MAX(Y,Z) ? _MAX(W,X) : _MAX(Y,Z))
-#define _BULK_ELMS(V)		USHRT_MAX / V
-#define _BULK_SETS(T,V)		T / V
-#define APP_VARS	        APPLICATION_ARGS
-#define PSI_VARS	        POWER_SIGNATURE_ARGS
-#define NSI_VARS	        SIGNATURE_ARGS
-#define JOB_VARS	        JOB_ARGS
-#define PER_VARS	        PERIODIC_METRIC_ARGS
-#define LOO_VARS			LOOP_ARGS
-#define AGG_VARS			PERIODIC_AGGREGATION_ARGS
-#define EVE_VARS			EAR_EVENTS_ARGS
 #define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
 #define IS_NODE_FULL_QUERY  "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Periodic_metrics' AND TABLE_SCHEMA='%s'"
 

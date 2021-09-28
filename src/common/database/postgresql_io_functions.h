@@ -27,7 +27,7 @@
 #include <common/types/power_signature.h>
 #include <common/types/periodic_aggregation.h>
 
-#include "libpq-fe.h"
+#include <libpq-fe.h>
 
 //
 #define EAR_TYPE_APPLICATION    1

@@ -8,6 +8,8 @@ repo_BINS = \
 	eard.so \
 	csv.so \
 	csv_ts.so \
+	mysql.so \
+	psql.so \
 	plug_dummy.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports

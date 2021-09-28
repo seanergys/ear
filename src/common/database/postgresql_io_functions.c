@@ -119,8 +119,6 @@
 #endif
 
 
-#define DB_SIMPLE 1
-
 static char full_signature = !DB_SIMPLE;
 static char node_detail = 1;
 
@@ -342,6 +340,7 @@ void reverse_signature_bytes(signature_t *sigs, int num_sigs)
     }
 }
 
+#if USE_GPUS
 int reverse_gpu_signature_bytes(signature_t *sigs, int num_sigs)
 {
     int i, j, num_gpu_sigs = 0;
@@ -363,8 +362,8 @@ int reverse_gpu_signature_bytes(signature_t *sigs, int num_sigs)
     }
 
     return num_gpu_sigs;
-
 }
+#endif
 
 void reverse_job_bytes(application_t *apps, int num_jobs)
 {
@@ -593,7 +592,6 @@ int postgresql_retrieve_signatures(PGconn *connection, char *query, signature_t 
 #if USE_GPUS
         min_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 12)));
         max_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 13)));
-#endif
         if (min_gpu_sig_id >= 0 && max_gpu_sig_id >= 0)
         {
             sprintf(gpu_sig_query, "SELECT * FROM GPU_signatures WHERE id <= %ld AND id >= %ld", max_gpu_sig_id, min_gpu_sig_id);
@@ -605,6 +603,7 @@ int postgresql_retrieve_signatures(PGconn *connection, char *query, signature_t 
         min_gpu_sig_id = -1;
         max_gpu_sig_id = -1;
 
+#endif
     }
    
     *sigs = sig_aux;

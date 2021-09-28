@@ -36,6 +36,18 @@ MYSQL *mysql_create_connection();
 PGconn *postgresql_create_connection();
 #endif
 
+#define _MAX(X,Y)			(X > Y ? X : Y)
+#define _MMAAXX(W,X,Y,Z) 	(_MAX(W,X) > _MAX(Y,Z) ? _MAX(W,X) : _MAX(Y,Z))
+#define _BULK_ELMS(V)		USHRT_MAX / V
+#define _BULK_SETS(T,V)		T / V
+#define APP_VARS	        APPLICATION_ARGS
+#define PSI_VARS	        POWER_SIGNATURE_ARGS
+#define NSI_VARS	        SIGNATURE_ARGS
+#define JOB_VARS	        JOB_ARGS
+#define PER_VARS	        PERIODIC_METRIC_ARGS
+#define LOO_VARS			LOOP_ARGS
+#define AGG_VARS			PERIODIC_AGGREGATION_ARGS
+#define EVE_VARS			EAR_EVENTS_ARGS
 
 #if DB_MYSQL || DB_PSQL
 
