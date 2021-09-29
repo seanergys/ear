@@ -32,6 +32,32 @@ static db_conf_t *db_config = NULL;
 #define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
 #define IS_NODE_FULL_QUERY  "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Periodic_metrics' AND TABLE_SCHEMA='%s'"
 
+MYSQL *mysql_create_connection()
+{
+    MYSQL *connection = mysql_init(NULL);
+
+    if (connection == NULL)
+    {
+        verbose(VDBH, "ERROR creating MYSQL object.");
+        return NULL;
+    }
+
+    if (db_config == NULL)
+    {
+        verbose(VDBH, "Database configuration not initialized.");
+        return NULL;
+    }
+
+    if (!mysql_real_connect(connection, db_config->ip, db_config->user, db_config->pass, db_config->database, db_config->port, NULL, 0))
+    {
+        verbose(VDBH, "ERROR connecting to the database: %s", mysql_error(connection));
+        mysql_close(connection);
+        return NULL;
+    }
+
+    return connection;
+}
+
 state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("mysql report_init");
