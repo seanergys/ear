@@ -36,7 +36,8 @@
 //	- User mode: yes, if the plugin does user operations.
 //------------------------------------------------------------------------------
 
-#define EARGM_WARNINGS 1
+#define EARGM_WARNINGS 					1
+#define PERIODIC_AGGREGATIONS 	2
 
 typedef const char cchar;
 typedef struct report_id_s

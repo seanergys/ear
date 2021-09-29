@@ -15,8 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#ifndef DB_IO_COMMON_H
+#define DB_IO_COMMON_H
 #include <common/config.h>
-#if DB_PSQL
 
 //
 #define EAR_TYPE_APPLICATION    1
@@ -54,6 +55,5 @@
 #if USE_GPUS
 #define GPU_SIGNATURE_ARGS 5
 #endif
-
 
 #endif

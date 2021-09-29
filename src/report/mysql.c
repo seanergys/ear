@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <report/report.h>
 #include <common/config.h>
@@ -27,14 +28,42 @@
 
 #if DB_MYSQL
 
+
 static db_conf_t *db_config = NULL;
 
 #define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
 #define IS_NODE_FULL_QUERY  "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Periodic_metrics' AND TABLE_SCHEMA='%s'"
 
+static MYSQL *mysql_create_connection()
+{
+    MYSQL *connection = mysql_init(NULL);
+
+    if (connection == NULL)
+    {
+        verbose(VDBH, "ERROR creating MYSQL object.");
+        return NULL;
+    }
+
+    if (db_config == NULL)
+    {
+        verbose(VDBH, "Database configuration not initialized.");
+        return NULL;
+    }
+
+    if (!mysql_real_connect(connection, db_config->ip, db_config->user, db_config->pass, db_config->database, db_config->port, NULL, 0))
+    {
+        verbose(VDBH, "ERROR connecting to the database: %s", mysql_error(connection));
+        mysql_close(connection);
+        return NULL;
+    }
+
+    return connection;
+}
+
 state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("mysql report_init");
+	verbose(VDBH,"mysql init");
 
     db_config = &conf->database;
     char query[256];
@@ -112,6 +141,8 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
     if (connection == NULL) {
         return EAR_ERROR;
     }
+
+	verbose(VDBH,"Inserting %u loops in mysql DB", count);
 
     // Inserting full bulks one by one
 	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
@@ -222,12 +253,12 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
         return EAR_ERROR;
     }
 
+    periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
     switch (type)
     {
         case EARDB_TYPE_PERIODIC_AGGREGATIONS:
             bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
             bulk_sets = _BULK_SETS(count, bulk_elms);
-            periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
             // Inserting full bulks one by one
             for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
             {

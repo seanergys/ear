@@ -16,9 +16,9 @@ libc_OBJS = \
     $(SRCDIR)/common/system/time.o \
     $(SRCDIR)/common/system/loadavg.o \
     $(SRCDIR)/common/system/fd_sets.o \
+    $(SRCDIR)/common/database/db_helper.o \
     $(SRCDIR)/common/database/mysql_io_functions.o \
     $(SRCDIR)/common/database/postgresql_io_functions.o \
-    $(SRCDIR)/common/database/db_helper.o \
     $(SRCDIR)/common/types/loop.o \
     $(SRCDIR)/common/types/log.o \
     $(SRCDIR)/common/types/periodic_metric.o \

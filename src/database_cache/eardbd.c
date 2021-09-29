@@ -26,7 +26,7 @@
 #include <database_cache/eardbd_storage.h>
 #if !EDB_OFFLINE
 #include <common/config.h>
-#include <common/database/db_helper.h>
+#include <report/report.h>
 #endif
 
 // Configuration
@@ -123,6 +123,9 @@ int                     verbosity = 0;
 static float            total_alloc;
 sigset_t                sigset;
 
+// Reporting
+report_id_t 						rid;
+
 /*
  *
  * Init
@@ -177,10 +180,23 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verb_master("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-	// Database
-	init_db_helper(&conf_clus->database);
-	debug("dbcon info: '%s@%s' access", conf_clus->database.database, conf_clus->database.user);
-	debug("dbcon info: '%s:%d' socket", conf_clus->database.ip, conf_clus->database.port);
+
+
+	/* Reporting plugin */
+	if (state_fail(report_load(conf_clus->install.dir_plug,conf_clus->db_manager.plugins))){
+		edb_error("Report plugin load failed");
+		report_create_id(&rid, -1, -1, -1);
+	}else{
+		report_create_id(&rid, 0, 0, 0);
+	}
+	if (state_fail(report_init(&rid, conf_clus))){
+		edb_error("Report plugin initialization failed");
+	}
+	debug("dbcon info: '%s'    plugin", conf_clus->db_manager.plugins);
+	if (strcmp(conf_clus->db_manager.plugins,"mysql.so") == 0){
+		debug("dbcon info: '%s@%s' access", conf_clus->database.database, conf_clus->database.user);
+		debug("dbcon info: '%s:%d' socket", conf_clus->database.ip, conf_clus->database.port);
+	}
 
 	// Mirror finding
 	if (!forced) {
@@ -668,6 +684,8 @@ int main(int argc, char **argv)
 		init_pid_files(argc, argv);
 		// Output file
 		init_output_redirection(argc, argv, &conf_clus);
+
+
 
 		/*
  		 * Running
