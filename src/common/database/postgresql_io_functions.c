@@ -1854,6 +1854,7 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
     char is_learning = apps[0].is_learning; 
+    char is_mpi      = apps[0].is_mpi; 
     
     /* Memory allocation */
     sigs = calloc(num_apps, sizeof(signature_t));
@@ -1874,31 +1875,38 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
     for (i = 0; i < num_apps; i++)
     {
         memcpy(&pow_sigs[i], &apps[i].power_sig, sizeof(power_signature_t)); 
-        memcpy(&sigs[i], &apps[i].signature, sizeof(signature_t)); 
+        if (is_mpi)
+            memcpy(&sigs[i], &apps[i].signature, sizeof(signature_t)); 
     }
 
-    postgresql_batch_insert_signatures(connection, sigs, is_learning, num_apps);
+    if (is_mpi) {
+        postgresql_batch_insert_signatures(connection, sigs, is_learning, num_apps);
+    }
     postgresql_batch_insert_power_signatures(connection, pow_sigs, num_apps);
     postgresql_batch_insert_jobs(connection, apps, num_apps); //all job data will be reversed and remain that way
 
 
-    if (is_learning)
+    if (is_mpi) 
     {
-        if ((sig_id = postgresql_get_current_autoincrement_val(connection, "learning_signatures")) < 1)
-           verbose(VMYSQL, "Unknown error while retrieving signature id\n");
-    }
-    else
-    {
-        if ((sig_id = postgresql_get_current_autoincrement_val(connection, "signatures")) < 1)
-           verbose(VMYSQL, "Unknown error while retrieving signature id\n");
+        if (is_learning)
+        {
+            if ((sig_id = postgresql_get_current_autoincrement_val(connection, "learning_signatures")) < 1)
+                verbose(VMYSQL, "Unknown error while retrieving signature id\n");
+        }
+        else
+        {
+            if ((sig_id = postgresql_get_current_autoincrement_val(connection, "signatures")) < 1)
+                verbose(VMYSQL, "Unknown error while retrieving signature id\n");
+        }
     }
     if ((pow_sig_id = postgresql_get_current_autoincrement_val(connection, "power_signatures")) < 1)
-       verbose(VMYSQL, "Unknown error while retrieving power signature id (%d)\n", pow_sig_id);
+        verbose(VMYSQL, "Unknown error while retrieving power signature id (%d)\n", pow_sig_id);
 
     for (i = 0; i < num_apps; i++)
     {
         pow_sig_ids[num_apps - 1 - i] = htonl(pow_sig_id - i);
-        sig_ids[num_apps - 1 - i] = htonl(sig_id - i);
+        if (is_mpi)
+            sig_ids[num_apps - 1 - i] = htonl(sig_id - i);
     }
 
     offset = 0;
@@ -1924,7 +1932,11 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
         param_values[0  + offset] = (char *) &apps[i].job.id;
         param_values[1  + offset] = (char *) &apps[i].job.step_id;
         param_values[2  + offset] = (char *) &apps[i].node_id;
-        param_values[3  + offset] = (char *) &sig_ids[i];
+        if (is_mpi)
+            param_values[3  + offset] = (char *) &sig_ids[i];
+        else
+            param_values[3  + offset] = (char *) NULL;
+
         param_values[4  + offset] = (char *) &pow_sig_ids[i];
 
         /* Parameter sizes */
@@ -1958,12 +1970,12 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) //-> command sense lectura
     {
-       verbose(VMYSQL, "ERROR while inserting applications: %s\n", PQresultErrorMessage(res));
+        verbose(VMYSQL, "ERROR while inserting applications: %s\n", PQresultErrorMessage(res));
         PQclear(res);
         return EAR_ERROR;
     }
-    
-    
+
+
     PQclear(res);
     return EAR_SUCCESS;
 }
@@ -1980,7 +1992,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
     char is_learning = apps[0].is_learning; 
-    
+
     /* Memory allocation */
     pow_sigs = calloc(num_apps, sizeof(power_signature_t));
     pow_sig_ids = calloc(num_apps, sizeof(int));
@@ -1993,7 +2005,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
         strcpy(query, LEARNING_APPLICATION_PSQL_QUERY);
     else
         strcpy(query, APPLICATION_PSQL_QUERY);
-    
+
     /* Previous inserts */
     for (i = 0; i < num_apps; i++)
         memcpy(&pow_sigs[i], &apps[i].power_sig, sizeof(power_signature_t)); 
@@ -2003,7 +2015,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
 
 
     if ((pow_sig_id = postgresql_get_current_autoincrement_val(connection, "power_signatures")) < 1)
-       verbose(VMYSQL, "Unknown error while retrieving power signature id (%d)\n", pow_sig_id);
+        verbose(VMYSQL, "Unknown error while retrieving power signature id (%d)\n", pow_sig_id);
 
     for (i = 0; i < num_apps; i++)
         pow_sig_ids[num_apps - 1 - i] = htonl(pow_sig_id - i);
@@ -2031,7 +2043,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
         param_values[0  + offset] = (char *) &apps[i].job.id;
         param_values[1  + offset] = (char *) &apps[i].job.step_id;
         param_values[2  + offset] = (char *) &apps[i].node_id;
-       // param_values[3  + offset] = (char *) &sig_ids[i];
+        // param_values[3  + offset] = (char *) &sig_ids[i];
         param_values[3  + offset] = (char *) NULL;
         param_values[4  + offset] = (char *) &pow_sig_ids[i];
 
@@ -2064,12 +2076,12 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) //-> command sense lectura
     {
-       verbose(VMYSQL, "ERROR while inserting applications: %s\n", PQresultErrorMessage(res));
+        verbose(VMYSQL, "ERROR while inserting applications: %s\n", PQresultErrorMessage(res));
         PQclear(res);
         return EAR_ERROR;
     }
-    
-    
+
+
     PQclear(res);
     return EAR_SUCCESS;
 }
