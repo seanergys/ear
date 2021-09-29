@@ -26,6 +26,7 @@
 #include <common/output/verbose.h>
 #include <common/string_enhanced.h>
 #include <common/database/db_helper.h>
+#include <common/database/db_io_common.h>
 #if DB_MYSQL
 #include <common/database/mysql_io_functions.h>
 #endif
