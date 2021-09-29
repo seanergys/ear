@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#if PSQL
+#if DB_PSQL
 #include <stdio.h>
 #include <common/config.h>
 #include <common/states.h>

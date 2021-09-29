@@ -16,6 +16,7 @@
 */
 
 #include <stdio.h>
+#include <report/report.h>
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/types.h>
@@ -31,7 +32,7 @@ static db_conf_t *db_config = NULL;
 #define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
 #define IS_NODE_FULL_QUERY  "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Periodic_metrics' AND TABLE_SCHEMA='%s'"
 
-state_t report_init(cluster_conf_t *conf)
+state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("mysql report_init");
 
@@ -63,7 +64,7 @@ state_t report_init(cluster_conf_t *conf)
 	return EAR_SUCCESS;
 }
 
-state_t report_applications(application_t *apps, uint count)
+state_t report_applications(report_id_t *id, application_t *apps, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -100,7 +101,7 @@ state_t report_applications(application_t *apps, uint count)
 
 }
 
-state_t report_loops(loop_t *loops, uint count)
+state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -137,7 +138,7 @@ state_t report_loops(loop_t *loops, uint count)
 
 }
 
-state_t report_events(ear_event_t *eves, uint count)
+state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -174,7 +175,7 @@ state_t report_events(ear_event_t *eves, uint count)
 
 }
 
-state_t report_periodic_metrics(periodic_metric_t *mets, uint count)
+state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -211,76 +212,54 @@ state_t report_periodic_metrics(periodic_metric_t *mets, uint count)
 
 }
 
-state_t report_periodic_aggregations(periodic_aggregation_t *aggs, uint count)
+state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 {
-    int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
+    int bulk_elms, bulk_sets, e, s;
 
-	MYSQL *connection = mysql_create_connection();
+    MYSQL *connection = mysql_create_connection();
 
     if (connection == NULL) {
         return EAR_ERROR;
     }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+    switch (type)
     {
-    	if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
-            mysql_close(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
-            mysql_close(connection);
-            return EAR_ERROR;
-        }
-	}	 
-
-	mysql_close(connection);
-
-    return EAR_SUCCESS;
-
-}
-
-state_t report_applications_no_mpi(application_t *apps, uint count)
-{
-
-    int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
-
-	MYSQL *connection = mysql_create_connection();
-
-    if (connection == NULL) {
-        return EAR_ERROR;
+        case EARDB_TYPE_PERIODIC_AGGREGATIONS:
+            bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
+            bulk_sets = _BULK_SETS(count, bulk_elms);
+            periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
+            // Inserting full bulks one by one
+            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+            {
+                if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], bulk_elms) < 0) {
+                    verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }
+            // Inserting the lagging bulk, the incomplete last one
+            if (e < count)
+            {
+                if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], count - e) < 0) {
+                    verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }	 
+            break;
+        case EARDB_TYPE_EARGM_EVENTS:
+            if (mysql_insert_gm_warning(connection, (gm_warning_t *)data) < 0) {
+                    verbose(VDBH, "ERROR while writing gm_warning to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+            }
+            break;
+        default:
+            verbose(VDBH, "Trying to insert unknown type to database");
+            break;
     }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-    {
-    	if (mysql_batch_insert_applications_no_mpi(connection, &apps[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing non_mpi applications to database.");
-            mysql_close(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (mysql_batch_insert_applications_no_mpi(connection, &apps[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing non_mpi applications to database.");
-            mysql_close(connection);
-            return EAR_ERROR;
-        }
-	}	 
-
-	mysql_close(connection);
+    mysql_close(connection);
 
     return EAR_SUCCESS;
 
