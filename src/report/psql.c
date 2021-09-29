@@ -15,8 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#if DB_PSQL
 #include <stdio.h>
+#include <libpq-fe.h>
+#include <report/report.h>
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/types.h>
@@ -26,21 +27,55 @@
 
 static db_conf_t *db_config = NULL;
 
-#define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
-#define IS_NODE_FULL_QUERY  "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Periodic_metrics' AND TABLE_SCHEMA='%s'"
+#if DB_PSQL
 
-state_t report_init(cluster_conf_t *conf)
+PGconn *postgresql_create_connection()
+{
+    char temp[32];
+    char **keys, **values;
+    PGconn *connection;
+
+    sprintf(temp, "%d", db_config->port);
+    strtolow(db_config->database);
+
+    keys = calloc(4, sizeof(char *));
+    values = calloc(4, sizeof(char*));
+
+    keys[0] = "dbname";
+    keys[1] = "user";
+    keys[2] = "password";
+    keys[3] = "host";
+
+    values[0] = db_config->database;
+    values[1] = db_config->user;
+    values[2] = db_config->pass;
+    values[3] = db_config->ip;
+
+    connection = PQconnectdbParams((const char * const *)keys, (const char * const *)values, 0);
+
+    free(keys);
+    free(values);
+
+    if (PQstatus(connection) != CONNECTION_OK)
+    {
+        verbose(VDBH, "ERROR connecting to the database: %s", PQerrorMessage(connection));
+        PQfinish(connection);
+        return NULL;
+    }
+
+    return connection;
+
+}
+
+state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("mysql report_init");
 
     db_config = &conf->database;
     char query[256];
     int num_sig_args, num_per_args;
-#if 0
-
-    sprintf(query, IS_SIG_FULL_QUERY, db_config->database);
-    num_sig_args = run_query_int_result(query);
-
+    strcpy(query, "SELECT * FROM Signatures LIMIT 5");
+    num_sig_args = get_num_columns(query);
     if (num_sig_args == EAR_ERROR)
         set_signature_simple(db_config->report_sig_detail);
     else if (num_sig_args < 20)
@@ -48,22 +83,20 @@ state_t report_init(cluster_conf_t *conf)
     else 
         set_signature_simple(1);
 
-
-    sprintf(query, IS_NODE_FULL_QUERY, db_config->database);
-    num_per_args = run_query_int_result(query);
-    if (num_per_args == EAR_ERROR) {
+    strcpy(query, "SELECT * FROM Periodic_metrics LIMIT 5");
+    num_per_args = get_num_columns(query);
+    if (num_per_args == EAR_ERROR)
         set_node_detail(db_config->report_node_detail);
-    } else if (num_per_args < 8) {
+    else if (num_per_args < 8)
         set_node_detail(0);
-    } else {
+    else
         set_node_detail(1);
-    }
 
-	return EAR_SUCCESS;
-#endif
+    return EAR_SUCCESS;
 }
 
-state_t report_applications(application_t *apps, uint count)
+
+state_t report_applications(report_id_t *id, application_t *apps, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -100,7 +133,7 @@ state_t report_applications(application_t *apps, uint count)
 
 }
 
-state_t report_loops(loop_t *loops, uint count)
+state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -137,7 +170,7 @@ state_t report_loops(loop_t *loops, uint count)
 
 }
 
-state_t report_events(ear_event_t *eves, uint count)
+state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -174,7 +207,7 @@ state_t report_events(ear_event_t *eves, uint count)
 
 }
 
-state_t report_periodic_metrics(periodic_metric_t *mets, uint count)
+state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
@@ -211,11 +244,9 @@ state_t report_periodic_metrics(periodic_metric_t *mets, uint count)
 
 }
 
-state_t report_periodic_aggregations(periodic_aggregation_t *aggs, uint count)
+state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 {
-    int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
+    int bulk_elms, bulk_sets, e, s;
 
 	PGconn *connection = postgresql_create_connection();
 
@@ -223,67 +254,46 @@ state_t report_periodic_aggregations(periodic_aggregation_t *aggs, uint count)
         return EAR_ERROR;
     }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+    switch (type)
     {
-    	if (postgresql_batch_insert_periodic_aggregations(connection, &aggs[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
-            PQfinish(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (postgresql_batch_insert_periodic_aggregations(connection, &aggs[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
-            PQfinish(connection);
-            return EAR_ERROR;
-        }
-	}	 
+        case EARDB_TYPE_PERIODIC_AGGREGATIONS:
+            bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
+            bulk_sets = _BULK_SETS(count, bulk_elms);
+            periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
 
-	PQfinish(connection);
+            // Inserting full bulks one by one
+            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+            {
+                if (postgresql_batch_insert_periodic_aggregations(connection, &aggs[e], bulk_elms) < 0) {
+                    verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                    PQfinish(connection);
+                    return EAR_ERROR;
+                }
+            }
+            // Inserting the lagging bulk, the incomplete last one
+            if (e < count)
+            {
+                if (postgresql_batch_insert_periodic_aggregations(connection, &aggs[e], count - e) < 0) {
+                    verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                    PQfinish(connection);
+                    return EAR_ERROR;
+                }
+            }	 
+            break;
+        case EARDB_TYPE_EARGM_EVENTS:
+            if (postgresql_insert_gm_warning(connection, (gm_warning_t *)&data) < 0) {
+                verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                PQfinish(connection);
+                return EAR_ERROR;
+            }
 
-    return EAR_SUCCESS;
-
-}
-
-state_t report_applications_no_mpi(application_t *apps, uint count)
-{
-
-    int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
-
-	PGconn *connection = postgresql_create_connection();
-
-
-    if (connection == NULL) {
-        return EAR_ERROR;
+            break;
     }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-    {
-    	if (postgresql_batch_insert_applications_no_mpi(connection, &apps[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing non_mpi applications to database.");
-            PQfinish(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (postgresql_batch_insert_applications_no_mpi(connection, &apps[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing non_mpi applications to database.");
-            PQfinish(connection);
-            return EAR_ERROR;
-        }
-	}	 
-
-	PQfinish(connection);
+    PQfinish(connection);
 
     return EAR_SUCCESS;
 
 }
+
 #endif
