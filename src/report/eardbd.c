@@ -32,7 +32,8 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
 	debug("eardbd report_init");
 	state_t s;
-	copy_cconf = cconf;
+	/* This copy is only valid for static regions. Areas such as islands, ranges etc cannot be accessed */
+	memcpy(copy_cconf , cconf, sizeof(cluster_conf_t));
 
 	if (copy_cconf->eard.use_mysql && copy_cconf->eard.use_eardbd){
 		must_report = 1;

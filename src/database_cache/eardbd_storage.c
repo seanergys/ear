@@ -22,18 +22,26 @@
 #include <database_cache/eardbd_sync.h>
 #include <database_cache/eardbd_signals.h>
 #include <database_cache/eardbd_storage.h>
-#if !EDB_OFFLINE
-#include <common/database/db_helper.h>
-#endif
+#include <report/report.h>
+extern report_id_t rid;
+
 
 #if EDB_OFFLINE
-	#define db_batch_insert_applications(a, b);
-	#define db_batch_insert_applications_no_mpi(a, b);
-	#define db_batch_insert_applications_learning(a, b);
-	#define db_batch_insert_loops(a, b);
-	#define db_batch_insert_periodic_metrics(a, b);
-	#define db_batch_insert_periodic_aggregations(a, b);
-	#define db_batch_insert_ear_event(a, b);
+	#define batch_insert_applications(a, b);
+	#define batch_insert_applications_no_mpi(a, b);
+	#define batchh_insert_applications_learning(a, b);
+	#define batch_insert_loops(a, b);
+	#define batch_insert_periodic_metrics(a, b);
+	#define batch_insert_periodic_aggregations(a, b);
+	#define batch_insert_ear_event(a, b);
+#else
+	#define batch_insert_applications(a, b) 						report_applications(&rid, a, b);
+	#define batch_insert_applications_no_mpi(a, b)			report_applications(&rid, a, b);
+	#define batch_insert_applications_learning(a, b)		report_applications(&rid, a, b);
+	#define batch_insert_loops(a, b)										report_loops(&rid, a , b);
+	#define batch_insert_periodic_metrics(a, b)					report_periodic_metrics(&rid, a, b);
+	#define batch_insert_periodic_aggregations(a, b)		report_misc(&rid, PERIODIC_AGGREGATIONS, (char *)a, b);
+	#define batch_insert_ear_event(a, b)								report_events(&rid, a , b);
 #endif
 
 #define EDB_SYNC_TYPE_ENERGY          0x001
@@ -239,7 +247,7 @@ static void insert_apps_mpi(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_applications((application_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_applications((application_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
@@ -250,7 +258,7 @@ static void insert_apps_non_mpi(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_applications_no_mpi((application_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_applications_no_mpi((application_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
@@ -261,7 +269,7 @@ static void insert_apps_learning(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_applications_learning((application_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_applications_learning((application_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
@@ -272,7 +280,7 @@ static void insert_loops(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_loops((loop_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_loops((loop_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
@@ -283,7 +291,7 @@ static void insert_energy(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_periodic_metrics((periodic_metric_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_periodic_metrics((periodic_metric_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 
@@ -294,7 +302,7 @@ static void insert_aggregations(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_periodic_aggregations((periodic_aggregation_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_periodic_aggregations((periodic_aggregation_t *) type_chunk[i], samples_index[i]);
 	reset_aggregations();
 	insert_stop(i, s);
 }
@@ -306,7 +314,7 @@ static void insert_events(int i)
 		return;
 	}
 	insert_start(i);
-	s = db_batch_insert_ear_event((ear_event_t *) type_chunk[i], samples_index[i]);
+	s = batch_insert_ear_event((ear_event_t *) type_chunk[i], samples_index[i]);
 	insert_stop(i, s);
 }
 

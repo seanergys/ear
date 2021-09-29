@@ -1,4 +1,6 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g
+DB_MYSQL_LDFLAGS = $(DB_LDFLAGS)
+DB_PSQL_LDFLAGS = -lpq
 
 ######## FILES
 
@@ -25,6 +27,12 @@ all: $(repo_OBJS) $(repo_BINS)
 
 %.so: %.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+mysql.so:mysql.c
+	$(CC) $(CFLAGS) -shared -o mysql.so $(LDFLAGS) $(DB_MYSQL_LDFLAGS)
+
+psql.so:psql.c
+	$(CC) $(CFLAGS) -shared -o psql.so $(LDFLAGS) $(DB_PSQL_LDFLAGS)
 
 
 ######## SUBFOLDERS
