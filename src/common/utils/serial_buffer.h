@@ -61,9 +61,17 @@
 //		serial_copy_elem(&w, (char *) elem2, NULL);
 //
 
-typedef struct wide_buffer_s {
+typedef struct serial_buffer_t {
 	char *data;
-} wide_buffer_t;
+	size_t size;
+} serial_buffer_t;
+
+typedef serial_buffer_t wide_buffer_t;
+
+#define SIZE_1KB 1024
+#define SIZE_2KB 2048
+#define SIZE_4KB 4096
+#define SIZE_8KB 8192
 
 void serial_alloc(wide_buffer_t *b, size_t size);
 
@@ -72,13 +80,13 @@ void serial_free(wide_buffer_t *b);
 /* Allocates more space if needed. */
 void serial_resize(wide_buffer_t *b, size_t size);
 
-/* Rewinds the element pointer and marks the data buffer as 0 bytes taken. */
+/* Marks the data buffer as 0 bytes taken and rewinds the element pointer. */
 void serial_clean(wide_buffer_t *b);
 
-/* Rewinds the data pointer and assigns space for an incoming data. */
-void serial_assign(wide_buffer_t *b, size_t size);
+/* Resize + clean. */
+void serial_reset(wide_buffer_t *b, size_t size);
 
-/* Resets the current data element pointer. */
+/* Back to the first the element pointer. */
 void serial_rewind(wide_buffer_t *b);
 
 /* Adds a new element to the buffer. */
@@ -91,6 +99,6 @@ char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size);
 char *serial_data(wide_buffer_t *b);
 
 /* Returns the size of the whole buffer or just the data (if 1). */
-size_t serial_size(wide_buffer_t *b, uint data);
+size_t serial_size(wide_buffer_t *b);
 
 #endif

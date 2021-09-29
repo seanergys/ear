@@ -1154,7 +1154,7 @@ int service_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		}
 	break;
 	case RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN:
-		serial_assign(&wide, head->size);
+		serial_reset(&wide, head->size);
 		if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wide), head->size, 0))) {
 			serror(Rpcerr.pending);
 		} else {

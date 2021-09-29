@@ -964,10 +964,10 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 	debug("serial done");
 
 	/* Copying the data */
-	*conf_size = serial_size(&ear_conf_serial,0);
+	*conf_size = serial_size(&ear_conf_serial);
 	debug("Serialize size %lu", *conf_size);
 	*ear_conf_buf = calloc(*conf_size,1);
-	memcpy(*ear_conf_buf, ear_conf_serial.data, *conf_size);
+	memcpy(*ear_conf_buf, serial_data(&ear_conf_serial), *conf_size);
 	serial_free(&ear_conf_serial);
 	return s;
 }
