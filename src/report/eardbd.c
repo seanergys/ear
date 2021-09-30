@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -32,8 +33,9 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
 	debug("eardbd report_init");
 	state_t s;
-	copy_cconf = cconf;
-
+	/* This copy is only valid for static regions. Areas such as islands, ranges etc cannot be accessed */
+	copy_cconf = calloc(1, sizeof(cluster_conf_t));
+	memcpy(copy_cconf , cconf, sizeof(cluster_conf_t));
 	if (copy_cconf->eard.use_mysql && copy_cconf->eard.use_eardbd){
 		must_report = 1;
 		if (gethostname(nodename, sizeof(nodename)) < 0) {

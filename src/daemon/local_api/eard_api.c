@@ -36,7 +36,7 @@
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
 
-#define MAX_PIPE_TRIES (MAX_SOCKET_COMM_TRIES*100)
+#define MAX_PIPE_TRIES (MAX_SOCKET_COMM_TRIES*10)
 #define MAX_TRIES             1
 #define USE_NON_BLOCKING_IO 1
 
@@ -60,7 +60,8 @@ static ulong energy_size;
 static ulong rapl_size;
 static ulong freq_size;
 
-#define my_read(...)          eards_read(__VA_ARGS__)
+
+#define my_read(...)          eards_read(__VA_ARGS__, WAIT_DATA)
 #define my_write(...)         eards_write(__VA_ARGS__)
 
 #define CLOSE_LOCAL_COMM()    \
@@ -72,7 +73,7 @@ static ulong freq_size;
   unlink(ear_commreq);
 
 
-int eards_read(int fd,char *buff,int size)
+int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
 #if USE_NON_BLOCKING_IO
   int ret; 
@@ -82,19 +83,19 @@ int eards_read(int fd,char *buff,int size)
   to_recv=size;
   do
   {
-    ret=read(fd, buff+received,to_recv);
-    if (ret>0){
+    ret = read(fd, buff+received,to_recv);
+    if (ret > 0){
       received+=ret;
       to_recv-=ret;
-    }else if (ret<0){
-      if ((errno==EWOULDBLOCK) || (errno==EAGAIN)) tries++;
+    }else if (ret < 0){
+      if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
       else{
-        must_abort=1;
-        error("Error receiving data from eard %s,%d",strerror(errno),errno);
+      	debug("Error receiving data from eard %s,%d",strerror(errno),errno);
+        must_abort = 1;
       }
-    }else if (ret==0){
-			tries++;
-      //must_abort=1;
+    }else if (ret == 0){
+			if (wait_mode == WAIT_DATA) tries++;
+			else 												must_abort = 1;
     }
   }while((tries<MAX_PIPE_TRIES) && (to_recv>0) && (must_abort==0));
 	if (tries >= MAX_PIPE_TRIES) {
@@ -283,6 +284,7 @@ int eards_connect(application_t *my_app, ulong lid)
     return_xmsg(EAR_ERROR, "while opening the communicator for requests %s (%d attempts) (%s)",
       ear_commreq_global, tries, strerror(errno));
   }
+	debug("Connected with EARD");
   #if USE_NON_BLOCKING_IO
   ret1=fcntl(ear_fd_req_global, F_SETFL, O_NONBLOCK);
   if (ret1<0){

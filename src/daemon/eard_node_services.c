@@ -1154,7 +1154,7 @@ int service_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		}
 	break;
 	case RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN:
-		serial_assign(&wide, head->size);
+		serial_reset(&wide, head->size);
 		if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wide), head->size, 0))) {
 			serror(Rpcerr.pending);
 		} else {
@@ -1433,7 +1433,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 	
  
   // Reading the header.
-  if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t))) != sizeof(eard_head_t)) {
+  if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
     error("Error when reading header during service respond: expected %lu bytes and received %lu",
       sizeof(eard_head_t), size);
     return EAR_ERROR;
@@ -1442,7 +1442,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
   size = sizeof(union daemon_req_opt);
   rpc  = (req->req_service > NEW_API_SERVICES);
   // If is not RPC, complete the daemon_req.
-  if (!rpc && (eards_read(req_fd, (char *) &req->req_data, size) != size)) {
+  if (!rpc && (eards_read(req_fd, (char *) &req->req_data, size, NO_WAIT_DATA) != size)) {
     error("Error when reading union daemon_req during service respond: %s", strerror(errno));
     return EAR_ERROR;
   }
@@ -1625,6 +1625,7 @@ state_t eard_local_api()
   while (((numfds_ready = select(numfds_req, &rfds, NULL, NULL, my_to)) >= 0) ||
        ((numfds_ready < 0) && (errno == EINTR)))
   {
+		debug("select unblock with numfds_ready %d", numfds_ready);
     if (eard_must_exit) {
       verbose(0, "eard exiting");
       eard_exit(2);
@@ -1639,17 +1640,21 @@ state_t eard_local_api()
               /* We need to find the local req and ack fds */
               ack_fd = get_local_connection_ack(eard_local_conn,i);
             }
+						debug("Reading from %d ack %d",i, ack_fd);
             if (ack_fd >=0) service_select(i,ack_fd);
             else _exit(0);
           }    // IF FD_ISSET
         } //for
         // We have to check if there is something else
-      }
+      }else{
+				debug("select unblocks with numfds_ready  = 0");
+			}
     } else {// Signal received
       my_to = NULL;
       debug("signal received");
     }
     rfds = rfds_basic;
+		debug("Waiting for %d fds. global req fd %d", numfds_req, global_req_fd);
     //debug("eard waiting.....\n");
   }//while
 	verbose(1,"Releasing node_mgr data ");
