@@ -82,7 +82,7 @@ static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t exp
 	head_szof  = sizeof(eard_head_t);
 	debug("Waiting RPC %u of expected size %lu through FD %d", call, expc_size, fd);
 	// Receiving
-	if (eards_read(fd, (char *) &head, head_szof) != head_szof) {
+	if (eards_read(fd, (char *) &head, head_szof, WAIT_DATA) != head_szof) {
 		return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
 	}
 	if (head.req_service != call) {
@@ -96,7 +96,7 @@ static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t exp
 		if (state_fail(head.state)) {
 			data = state_buffer;
 		}
-		if (eards_read(fd, data, head.size) != head.size) {
+		if (eards_read(fd, data, head.size, WAIT_DATA) != head.size) {
 			return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
 		}
 		if (state_fail(head.state)) {
@@ -169,7 +169,7 @@ state_t eard_rpc_read_pending(int fd, char *recv_data, size_t read_size, size_t 
 	if (xtate_fail(s, data_check(recv_data, read_size))) {
 		return s;
 	}
-	if (eards_read(fd, recv_data, read_size) != read_size) {
+	if (eards_read(fd, recv_data, read_size, WAIT_DATA) != read_size) {
 		return_print(EAR_ERROR, "problem when reading EARD pipe (%s)", strerror(errno));
 	}
 	if (expc_size != 0 && read_size != expc_size) {
@@ -183,7 +183,7 @@ state_t eard_rpc_clean(int fd, size_t size)
 	//
 	rpc_buffer_test(size);
 	//
-	if (eards_read(fd, rpc_buffer, size) != size) {
+	if (eards_read(fd, rpc_buffer, size, WAIT_DATA) != size) {
 		return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
 	}
 	return EAR_SUCCESS;	

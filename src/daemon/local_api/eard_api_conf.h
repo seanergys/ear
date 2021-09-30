@@ -86,7 +86,10 @@ struct daemon_req {
   union daemon_req_opt req_data;
 };
 
-int eards_read(int fd,char *buff,int size);
+#define WAIT_DATA    0
+#define NO_WAIT_DATA 1
+
+int eards_read(int fd,char *buff,int size, uint type);
 int eards_write(int fd,char *buff,int size);
 
 

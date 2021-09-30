@@ -46,7 +46,6 @@ eard_OBJS += \
     $(gpu_mgt_OBJS) \
 		$(local_api_OBJS) \
 		$(report_OBJ) \
-		$(SRCDIR)/database_cache/eardbd_api.o \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/common/libcommon.a

@@ -1218,6 +1218,8 @@ void ear_init()
   	term_action.sa_handler = ear_lib_sig_handler;
   	term_action.sa_flags = 0;
 		sigaction(SIGTERM, &term_action, NULL);
+		sigaction(SIGINT, &term_action, NULL);
+		sigaction(SIGSEGV, &term_action, NULL);
 
 
 		/* Monitor is used for applications with no mpi of few mpi calss per second */

@@ -647,7 +647,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL) || (my_GBS == NULL) || (my_power == NULL)) return;
 	*my_power = lsig->DC_power;
-	*my_GBS   = lsig->GBS;
+	*my_GBS   = 0;
 
 	
 	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
@@ -670,35 +670,14 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 				node_L3 += L3[node_process];
 				node_process++;
 			}
-			#if 0
-			/* This code is per-job */
-			compute_total_node_instructions(nmgr[j].libsh,nmgr[j].shsig, &inst);
-			compute_total_node_L3_misses(nmgr[j].libsh,nmgr[j].shsig,&LL3);
-			compute_total_node_CPI(nmgr[j].libsh,nmgr[j].shsig, &LCPI);
-			L3[j] = LL3;
-			tpi[j] = (double)LL3/(double)inst;
-			ipc[j] = 1/LCPI;
-			compute_total_node_avx_and_avx_fops(nmgr[j].libsh,nmgr[j].shsig, &avx);
-			vpi[j] = (double)avx/(double)inst;		
-			f[j] = nmgr[j].libsh->node_signature.avg_f;
-			node_L3 += LL3;
-			#endif
-			/* We use cache misses for TPI estimation also */
 
 		}
 	}
 
-	#if 0	
-  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && L3[j]){
-				gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
-		}else gbs[j] = 0;
-	}
-	#endif
 	for (uint j = 0; j < node_process; j ++){
     if (L3[j] && (job_in_process[j] == node_mgr_index)){
-        gbs[j] += ((double)L3[j]/(double)node_L3)*lsig->GBS;
-				*my_GBS = gbs[j];
+        gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
+				*my_GBS += gbs[j];
     }else gbs[j] = 0;
   }
 
