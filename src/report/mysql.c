@@ -296,5 +296,9 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 
 }
 
+state_t report_dispose(report_id_t *id) 
+{
+    return EAR_SUCCESS;
+}
 #endif
 

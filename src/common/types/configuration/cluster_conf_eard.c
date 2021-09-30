@@ -95,6 +95,7 @@ state_t EARD_parse_token(eard_conf_t *conf,char *token)
     else if (!strcmp(token, "NODEREPORTPLUGINS"))
     {
         token = strtok(NULL, "=");
+        strclean(token, '\n');
         strncpy(conf->plugins, token, sizeof(conf->plugins));
         found = EAR_SUCCESS;
     }

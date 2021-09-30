@@ -294,6 +294,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
     else if (!strcmp(token, "GLOBALMANAGERREPORTPLUGINS") || !strcmp(token, "EARGMREPORTPLUGINS"))
     {
         token = strtok(NULL, "=");
+        strclean(token, '\n');
         strncpy(conf->plugins, token, sizeof(conf->plugins));
         found = EAR_SUCCESS;
     }

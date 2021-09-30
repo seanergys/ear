@@ -80,6 +80,7 @@ state_t EARLIB_parse_token(earlib_conf_t *conf,char *token)
     {
         found = EAR_SUCCESS;
         token = strtok(NULL, "=");
+        strclean(token, '\n');
         strncpy(conf->plugins, token, sizeof(conf->plugins));
     }
 
