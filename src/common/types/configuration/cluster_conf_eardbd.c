@@ -97,6 +97,7 @@ state_t EARDBD_parse_token(eardb_conf_t *conf,char *token)
     else if (!strcmp(token, "DBDAEMONREPORTPLUGINS"))
     {
         token = strtok(NULL, "=");
+        strclean(token, '\n');
         strncpy(conf->plugins, token, sizeof(conf->plugins));
         found = EAR_SUCCESS;
     }
