@@ -3,6 +3,9 @@ export FEAT_AVX512
 export FEAT_RESEARCH
 export FEAT_GPU_OPT  
 export FEAT_AMD_OSCPUFREQ
+export FEAT_DB_MARIADB 
+export FEAT_DB_PSQL    
+
 
 export CC
 export CC_FLAGS

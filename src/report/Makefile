@@ -34,11 +34,16 @@ eard.so:eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(SRCDIR)/common/libcommon.
 eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(SRCDIR)/common/libcommon.a
 	$(CC) $(CFLAGS) -shared -o eardbd.so eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(LDFLAGS) $(SRCDIR)/common/libcommon.a
 
+ifeq ($(FEAT_DB_MARIADB), 1)
 mysql.so:mysql.c
 	$(CC) $(CFLAGS) -shared -o mysql.so mysql.c $(LDFLAGS) $(DB_MYSQL_LDFLAGS)
+endif
 
+ifeq ($(FEAT_DB_PSQL), 1)
+mysql.so:mysql.c
 psql.so:psql.c
 	$(CC) $(CFLAGS) -shared -o psql.so psql.c $(LDFLAGS) $(DB_PSQL_LDFLAGS)
+endif
 
 
 ######## SUBFOLDERS
