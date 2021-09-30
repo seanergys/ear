@@ -2,6 +2,8 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g
 DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
 DB_PSQL_LDFLAGS = -lpq $(SRCDIR)/common/libcommon.a
 
+
+
 ######## FILES
 
 repo_OBJS = \
@@ -11,11 +13,19 @@ repo_BINS = \
 	eardbd.so \
 	csv.so \
 	csv_ts.so \
-	mysql.so \
-	psql.so \
 	dummy.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports
+
+ifeq ($(FEAT_DB_PSQL),1)
+repo_BINS += \
+	psql.so 
+endif
+
+ifeq ($(FEAT_DB_MARIADB),1)
+repo_BINS += \
+	mysql.so 
+endif
 
 
 ######## RULES
@@ -34,13 +44,12 @@ eard.so:eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(SRCDIR)/common/libcommon.
 eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(SRCDIR)/common/libcommon.a
 	$(CC) $(CFLAGS) -shared -o eardbd.so eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(LDFLAGS) $(SRCDIR)/common/libcommon.a
 
-ifeq ($(FEAT_DB_MARIADB), 1)
+ifdef
 mysql.so:mysql.c
 	$(CC) $(CFLAGS) -shared -o mysql.so mysql.c $(LDFLAGS) $(DB_MYSQL_LDFLAGS)
 endif
 
-ifeq ($(FEAT_DB_PSQL), 1)
-mysql.so:mysql.c
+ifeq ($(FEAT_DB_PSQL),1)
 psql.so:psql.c
 	$(CC) $(CFLAGS) -shared -o psql.so psql.c $(LDFLAGS) $(DB_PSQL_LDFLAGS)
 endif
