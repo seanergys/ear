@@ -30,10 +30,12 @@
 #include "libpq-fe.h"
 #endif
 
+#if 0
 #if DB_MYSQL
-MYSQL *mysql_create_connection();
+static MYSQL *mysql_create_connection();
 #elif DB_PSQL
-PGconn *postgresql_create_connection();
+static PGconn *postgresql_create_connection();
+#endif
 #endif
 
 #define _MAX(X,Y)			(X > Y ? X : Y)

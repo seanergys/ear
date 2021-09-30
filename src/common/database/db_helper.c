@@ -47,6 +47,73 @@ int current_job_id = 0;
 	verbose(VDBH, "Bulk elements %d", bulk_elms); \
 	verbose(VDBH, "Bulk sets %d", bulk_sets)
 
+#if DB_MYSQL
+static MYSQL *mysql_create_connection()
+{
+    MYSQL *connection = mysql_init(NULL);
+
+    if (connection == NULL)
+    {
+        verbose(VDBH, "ERROR creating MYSQL object.");
+        return NULL;
+    }
+
+    if (db_config == NULL)
+    {
+        verbose(VDBH, "Database configuration not initialized.");
+        return NULL;
+    }
+
+    if (!mysql_real_connect(connection, db_config->ip, db_config->user, db_config->pass, db_config->database, db_config->port, NULL, 0))
+    {
+        verbose(VDBH, "ERROR connecting to the database: %s", mysql_error(connection));
+        mysql_close(connection);
+        return NULL;
+    }
+
+    return connection;
+}
+#endif
+
+#if DB_PSQL
+PGconn *postgresql_create_connection()
+{
+    char temp[32];
+    char **keys, **values;
+    PGconn *connection;
+
+    sprintf(temp, "%d", db_config->port);
+    strtolow(db_config->database);
+
+    keys = calloc(4, sizeof(char *));
+    values = calloc(4, sizeof(char*));
+
+    keys[0] = "dbname";
+    keys[1] = "user";
+    keys[2] = "password";
+    keys[3] = "host";
+
+    values[0] = db_config->database;
+    values[1] = db_config->user;
+    values[2] = db_config->pass;
+    values[3] = db_config->ip;
+
+    connection = PQconnectdbParams((const char * const *)keys, (const char * const *)values, 0);
+
+    free(keys);
+    free(values);
+
+    if (PQstatus(connection) != CONNECTION_OK)
+    {
+        verbose(VDBH, "ERROR connecting to the database: %s", PQerrorMessage(connection));
+        PQfinish(connection);
+        return NULL;
+    }
+
+    return connection;
+
+}
+#endif
 void init_db_helper(db_conf_t *conf)
 {
     db_config = conf;
@@ -176,80 +243,6 @@ int get_num_rows(PGconn *connection, char *query)
 }
 #endif
 
-#if DB_MYSQL
-MYSQL *mysql_create_connection()
-{
-    MYSQL *connection = mysql_init(NULL);
-
-    if (connection == NULL)
-    {
-        verbose(VDBH, "ERROR creating MYSQL object.");
-        return NULL;
-    }
-
-    if (db_config == NULL)
-    {
-        verbose(VDBH, "Database configuration not initialized.");
-        return NULL;
-    }
-
-    if (!mysql_real_connect(connection, db_config->ip, db_config->user, db_config->pass, db_config->database, db_config->port, NULL, 0))
-    {
-        verbose(VDBH, "ERROR connecting to the database: %s", mysql_error(connection));
-        mysql_close(connection);
-        return NULL;
-    }
-
-    return connection;
-}
-#endif
-
-#if DB_PSQL
-PGconn *postgresql_create_connection()
-{
-    char temp[32];
-    char **keys, **values;
-    PGconn *connection;
-
-    sprintf(temp, "%d", db_config->port);
-    strtolow(db_config->database);
-
-    keys = calloc(4, sizeof(char *));
-    values = calloc(4, sizeof(char*));
-
-    keys[0] = "dbname";
-    keys[1] = "user";
-    keys[2] = "password";
-    keys[3] = "host";
-
-    values[0] = db_config->database;
-    values[1] = db_config->user;
-    values[2] = db_config->pass;
-    values[3] = db_config->ip;
-
-#if 0
-    if (db_config->port > 0)
-        connection = PQsetdbLogin(db_config->ip, temp, NULL,NULL, db_config->database, db_config->user, db_config->pass);
-    else
-        connection = PQsetdbLogin(db_config->ip, NULL, NULL,NULL, db_config->database, db_config->user, db_config->pass);
-#endif
-
-    connection = PQconnectdbParams((const char * const *)keys, (const char * const *)values, 0);
-
-    free(keys);
-    free(values);
-
-    if (PQstatus(connection) != CONNECTION_OK)
-    {
-        verbose(VDBH, "ERROR connecting to the database: %s", PQerrorMessage(connection));
-        PQfinish(connection);
-        return NULL;
-    }
-
-    return connection;
-
-}
-#endif
 
 int db_insert_application(application_t *application)
 {

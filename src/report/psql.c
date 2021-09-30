@@ -29,7 +29,7 @@ static db_conf_t *db_config = NULL;
 
 #if DB_PSQL
 
-PGconn *postgresql_create_connection()
+static PGconn *postgresql_create_connection()
 {
     char temp[32];
     char **keys, **values;
