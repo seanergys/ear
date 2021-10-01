@@ -65,7 +65,8 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
 	debug("mysql report_init");
 	verbose(VDBH,"mysql init");
 
-    db_config = &conf->database;
+    db_config = calloc(1, sizeof(db_conf_t));
+    memcpy(db_config, &conf->database, sizeof(db_conf_t));
     char query[256];
     int num_sig_args, num_per_args;
 
@@ -298,6 +299,7 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 
 state_t report_dispose(report_id_t *id) 
 {
+    if (db_config != NULL) free(db_config);
     return EAR_SUCCESS;
 }
 #endif

@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdio.h>
 #include <libpq-fe.h>
 #include <report/report.h>
@@ -58,7 +60,7 @@ static PGconn *postgresql_create_connection()
 
     if (PQstatus(connection) != CONNECTION_OK)
     {
-        verbose(VDBH, "ERROR connecting to the database: %s", PQerrorMessage(connection));
+        verbose(VDBH, "psql.c: ERROR connecting to the database: %s", PQerrorMessage(connection));
         PQfinish(connection);
         return NULL;
     }
@@ -69,13 +71,17 @@ static PGconn *postgresql_create_connection()
 
 state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
-	debug("mysql report_init");
+	debug("psql report_init");
 
-    db_config = &conf->database;
+    db_config = calloc(1, sizeof(db_conf_t));
+    memcpy(db_config, &conf->database, sizeof(db_conf_t));
     char query[256];
     int num_sig_args, num_per_args;
     strcpy(query, "SELECT * FROM Signatures LIMIT 5");
+#if 0
     num_sig_args = get_num_columns(query);
+#endif
+    num_sig_args = EAR_ERROR;
     if (num_sig_args == EAR_ERROR)
         set_signature_simple(db_config->report_sig_detail);
     else if (num_sig_args < 20)
@@ -84,7 +90,10 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
         set_signature_simple(1);
 
     strcpy(query, "SELECT * FROM Periodic_metrics LIMIT 5");
+#if 0
     num_per_args = get_num_columns(query);
+#endif
+    num_per_args = EAR_ERROR;
     if (num_per_args == EAR_ERROR)
         set_node_detail(db_config->report_node_detail);
     else if (num_per_args < 8)
@@ -298,6 +307,7 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 
 state_t report_dispose(report_id_t *id) 
 {
+    if (db_config != NULL) free(db_config);
     return EAR_SUCCESS;
 }
 #endif
