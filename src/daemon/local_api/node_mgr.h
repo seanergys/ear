@@ -30,7 +30,7 @@
 typedef struct ear_njob{
 	job_id     jid;
 	job_id     sid;
-	cpu_set_t  cpu_mask;
+	cpu_set_t  node_mask;
 	time_t     creation_time;
 }ear_njob_t;
 

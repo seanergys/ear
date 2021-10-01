@@ -418,12 +418,7 @@ void create_shared_regions()
 	me.jid = application.job.id;
 	me.sid = application.job.step_id;
 	me.creation_time = time(NULL);
-	CPU_ZERO(&me.cpu_mask);
-	/* This loop creates the job node affinity mask, it's an OR of all the processes for this job in this node */
-	for (uint i = 0; i< lib_shared_region->num_processes; i++){
-		verbose_master(2,"joining mask for process %u",i);
-		add_affinity(&arch_desc.top, &me.cpu_mask, &sig_shared_region[i].cpu_mask);
-	}
+	CPU_ZERO(&me.node_mask);
 	verbose_master(2,"Attaching to node_mgr region");
 	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 		verbose_master(2,"Error attaching to node_mgr region");
@@ -1069,11 +1064,11 @@ void ear_init()
     }
 
     // This is not frequency any more
-    if (masters_info.my_master_rank>=0){
+    if (masters_info.my_master_rank >= 0){
         get_app_mgt_path(get_ear_tmp(),ID, app_mgt_path);
         verbose_master(VEAR_INIT,"app_mgt_path %s",app_mgt_path);
-        app_mgt_info=attach_app_mgt_shared_area(app_mgt_path);
-        if (app_mgt_info==NULL){
+        app_mgt_info = attach_app_mgt_shared_area(app_mgt_path);
+        if (app_mgt_info == NULL){
             error("Application shared area not found");
             eard_ok = 0;
 						lib_shared_region->earl_on = 0;
@@ -1113,13 +1108,6 @@ void ear_init()
             sig_shared_region[my_node_id].affinity = 0;
             verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
         } 
-				 xsnprintf(lock_app_mgt,sizeof(lock_app_mgt),"%s/%u/.my_app_mgt_lock.%s",tmp, ID, application.job.user_id);
-  			if ((fd_lock_app_mgt = file_lock_create(lock_app_mgt)) < 0){
-					error("Creating app_mgt_lock");
-    		} 
-				while(file_lock(fd_lock_app_mgt) < 0);
-				aggregate_cpus_to_mask(&app_mgt_info->node_mask, &sig_shared_region[my_node_id].cpu_mask);
-				file_unlock(fd_lock_app_mgt);
 		}
 
 #ifdef SHOW_DEBUGS
@@ -1184,14 +1172,6 @@ void ear_init()
 
     // States
     states_begin_job(my_id,  ear_app_name);
-		#if 0
-    // Summary files
-
-    if (summary_pathname != NULL) {
-        sprintf(app_summary_path, "%s%s.csv", summary_pathname, node_name);
-        sprintf(loop_summary_path, "%s%s.loop_info.csv", summary_pathname, node_name);
-    }
-		#endif
 
     // Print summary of initialization
     print_local_data();
@@ -1217,7 +1197,22 @@ void ear_init()
     }
 		/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
 		/* Computes the total number of cpus for this job */
-		compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+		
+		if (masters_info.my_master_rank >= 0 ){
+			cpu_set_t jmask;
+			verbose_master(2,"Waiting for processes to fill shared signatures");
+			while(!all_signatures_initialized(lib_shared_region, sig_shared_region));
+			verbose_master(2,"Computing number of cpus per job and node mask ");
+			compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+			aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
+			/* lib_shared_region is shared by all the processes in the same node */
+			lib_shared_region->node_mask = jmask;
+			/* node_mgr_data is shared with the eard */
+			node_mgr_data[node_mgr_index].node_mask = jmask;	
+			/* app_mgt_info is shared with the eard through the powermon_app_t */
+			app_mgt_info->node_mask = jmask;	
+			verbose_master(2,"Node mask computed in");
+		}
 
 		/* SIGTERM action for job cancellation */
 		struct sigaction term_action;

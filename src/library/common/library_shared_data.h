@@ -78,6 +78,7 @@ typedef struct lib_shared_data{
     signature_t 		node_signature;
     int							master_rank;
     uint						master_ready;
+		cpu_set_t       node_mask;
 }lib_shared_data_t;
 
 
@@ -164,6 +165,9 @@ void shared_signatures_area_dispose(char * path);
 
 void signature_ready(shsignature_t *sig,int cur_state);
 int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
+int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
+void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
+
 int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig);
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig);
