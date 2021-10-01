@@ -51,8 +51,6 @@ static PGconn *postgresql_create_connection();
 #define AGG_VARS			PERIODIC_AGGREGATION_ARGS
 #define EVE_VARS			EAR_EVENTS_ARGS
 
-#define EARDB_TYPE_EARGM_EVENTS             100
-#define EARDB_TYPE_PERIODIC_AGGREGATIONS    101
 #if DB_MYSQL || DB_PSQL
 
 void init_db_helper(db_conf_t *conf);
