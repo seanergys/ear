@@ -265,7 +265,7 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 
     switch (type)
     {
-        case EARDB_TYPE_PERIODIC_AGGREGATIONS:
+        case PERIODIC_AGGREGATIONS:
             bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
             bulk_sets = _BULK_SETS(count, bulk_elms);
             periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
@@ -289,7 +289,7 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
                 }
             }	 
             break;
-        case EARDB_TYPE_EARGM_EVENTS:
+        case EARGM_WARNINGS:
             if (postgresql_insert_gm_warning(connection, (gm_warning_t *)&data) < 0) {
                 verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
                 PQfinish(connection);
