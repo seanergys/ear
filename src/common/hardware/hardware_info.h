@@ -42,6 +42,16 @@ int detect_packages(int **package_map);
 /** Computes the number of cpus in a given mask */
 uint num_cpus_in_mask(cpu_set_t *my_mask);
 
+/* Add cpus set in src to dst */
+void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src);
+
+/* Removes CPUs set in src from dst */
+void remove_cpus_from_mask(cpu_set_t *dst, cpu_set_t *src);
+
+
+/* Sets in dst CPUs not in src */
+void cpus_not_in_mask(cpu_set_t *dst, cpu_set_t *src);
+
 
 /** Prints the affinity mask of the current process */
 void print_affinity_mask(topology_t *topo);

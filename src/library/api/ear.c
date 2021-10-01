@@ -102,6 +102,8 @@ int dispose=0;
 #include <common/system/file.h>
 static char fd_lock_filename[BUFFSIZE];
 static int fd_master_lock;
+static char lock_app_mgt[BUFFSIZE];
+static int fd_lock_app_mgt;
 #endif
 
 // Process information
@@ -1111,9 +1113,14 @@ void ear_init()
             sig_shared_region[my_node_id].affinity = 0;
             verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
         } 
-    } 
-
-
+				 xsnprintf(lock_app_mgt,sizeof(lock_app_mgt),"%s/%u/.my_app_mgt_lock.%s",tmp, ID, application.job.user_id);
+  			if ((fd_lock_app_mgt = file_lock_create(lock_app_mgt)) < 0){
+					error("Creating app_mgt_lock");
+    		} 
+				while(file_lock(fd_lock_app_mgt) < 0);
+				aggregate_cpus_to_mask(&app_mgt_info->node_mask, &sig_shared_region[my_node_id].cpu_mask);
+				file_unlock(fd_lock_app_mgt);
+		}
 
 #ifdef SHOW_DEBUGS
     print_arch_desc(&arch_desc);
@@ -1289,15 +1296,9 @@ void ear_finalize(int exit_status)
         debug("Reporting application data");
         verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
         clean_db_signature(&application.signature, system_conf->max_sig_power);
-				#if 0
-        eards_write_app_signature(&application);
-				#endif
 				if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 					verbose_master(0,"Error reporting application");
 				}
-				#if 0
-        append_application_text_file(app_summary_path, &application, 1);
-				#endif
         report_mpi_application_data(&application);
     }
     // Closing any remaining loop
