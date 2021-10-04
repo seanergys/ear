@@ -102,6 +102,7 @@ static int powermon_num_pstates;
 static periodic_metric_t current_sample;
 static double last_power_reported = 0;
 dom_power_t pdomain;
+cpu_set_t in_jobs_mask;
 
 
 /****************** CONTEXT MANAGEMENT ********************/
@@ -403,6 +404,22 @@ void reset_shared_memory(powermon_app_t *pmapp)
   memcpy(&pmapp->settings->installation,&my_cluster_conf.install,sizeof(conf_install_t));
   copy_ear_lib_conf(&pmapp->settings->lib_info,&my_cluster_conf.earlib);
   verbose(1,"Shared memory regions for job set with default values");
+
+}
+
+void powermon_update_node_mask(cpu_set_t *nodem)
+{
+  powermon_app_t *pmapp;
+  int i;
+  debug("Updating the mask");
+	CPU_ZERO(nodem);
+  /* reconfiguring running apps */
+  for (i=0; i <=  max_context_created;i++){
+    pmapp = current_ear_app[i];
+    if (pmapp !=NULL){
+			aggregate_cpus_to_mask(nodem, &pmapp->app_info->node_mask);
+    }
+  }
 
 }
 
@@ -759,9 +776,15 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
 	}else{
 		/* We have to force the frequency */
 		ulong f;
-		verbose(VJOBPMON, "Setting userspace governor pstate=%u", my_policy->p_state);
 		frequency_set_userspace_governor_all_cpus();
 		f = frequency_pstate_to_freq(my_policy->p_state);
+		cpu_set_t not_in_jobs_mask;
+		powermon_update_node_mask(&in_jobs_mask);
+		cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
+		uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
+		uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
+		frequency_set_with_mask(&not_in_jobs_mask, f);
+		verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)", my_policy->p_state, cpus_free, cpus_used);
 		/** PENDING TO use the job cpumask */
 		#if 0
 		frequency_set_all_cpus(f);
@@ -1384,6 +1407,17 @@ void powermon_init_nm()
 	}
 }
 
+powermon_new_jobmask(cpu_set_t *newjobmask)
+{
+	aggregate_cpus_to_mask(&in_jobs_mask, newjobmask);
+}
+
+powermon_end_jobmask(cpu_set_t *endjobmask)
+{
+	remove_cpus_from_mask(&in_jobs_mask, endjobmask);
+}
+
+
 /*
 *	MAIN POWER MONITORING THREAD
 */
@@ -1395,6 +1429,8 @@ void *eard_power_monitoring(void *noinfo)
 	energy_data_t e_begin;
 	energy_data_t e_end;
 	power_data_t my_current_power;
+
+	CPU_ZERO(&in_jobs_mask);
 
 	PM_set_sigusr1();
 	form_database_paths();

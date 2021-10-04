@@ -39,6 +39,35 @@ uint num_cpus_in_mask(cpu_set_t *my_mask)
 	return lcpus;
 
 }
+
+void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src)
+{
+	for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
+      if (CPU_ISSET(c, src)) CPU_SET(c, dst);
+  }
+
+}
+
+void remove_cpus_from_mask(cpu_set_t *dst, cpu_set_t *src)
+{
+  for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
+      if (CPU_ISSET(c, src)) CPU_CLR(c, dst);
+  }
+
+}
+
+
+/* Sets in dst CPUs not in src */
+void cpus_not_in_mask(cpu_set_t *dst, cpu_set_t *src)
+{
+	CPU_ZERO(dst);
+  for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
+      if (!CPU_ISSET(c, src)) CPU_SET(c, dst);
+  }
+
+}
+
+
 void print_affinity_mask(topology_t *topo) 
 {
     cpu_set_t mask;

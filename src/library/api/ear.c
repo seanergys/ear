@@ -102,6 +102,8 @@ int dispose=0;
 #include <common/system/file.h>
 static char fd_lock_filename[BUFFSIZE];
 static int fd_master_lock;
+static char lock_app_mgt[BUFFSIZE];
+static int fd_lock_app_mgt;
 #endif
 
 // Process information
@@ -416,12 +418,7 @@ void create_shared_regions()
 	me.jid = application.job.id;
 	me.sid = application.job.step_id;
 	me.creation_time = time(NULL);
-	CPU_ZERO(&me.cpu_mask);
-	/* This loop creates the job node affinity mask, it's an OR of all the processes for this job in this node */
-	for (uint i = 0; i< lib_shared_region->num_processes; i++){
-		verbose_master(2,"joining mask for process %u",i);
-		add_affinity(&arch_desc.top, &me.cpu_mask, &sig_shared_region[i].cpu_mask);
-	}
+	CPU_ZERO(&me.node_mask);
 	verbose_master(2,"Attaching to node_mgr region");
 	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 		verbose_master(2,"Error attaching to node_mgr region");
@@ -1067,11 +1064,11 @@ void ear_init()
     }
 
     // This is not frequency any more
-    if (masters_info.my_master_rank>=0){
+    if (masters_info.my_master_rank >= 0){
         get_app_mgt_path(get_ear_tmp(),ID, app_mgt_path);
         verbose_master(VEAR_INIT,"app_mgt_path %s",app_mgt_path);
-        app_mgt_info=attach_app_mgt_shared_area(app_mgt_path);
-        if (app_mgt_info==NULL){
+        app_mgt_info = attach_app_mgt_shared_area(app_mgt_path);
+        if (app_mgt_info == NULL){
             error("Application shared area not found");
             eard_ok = 0;
 						lib_shared_region->earl_on = 0;
@@ -1111,9 +1108,7 @@ void ear_init()
             sig_shared_region[my_node_id].affinity = 0;
             verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
         } 
-    } 
-
-
+		}
 
 #ifdef SHOW_DEBUGS
     print_arch_desc(&arch_desc);
@@ -1177,14 +1172,6 @@ void ear_init()
 
     // States
     states_begin_job(my_id,  ear_app_name);
-		#if 0
-    // Summary files
-
-    if (summary_pathname != NULL) {
-        sprintf(app_summary_path, "%s%s.csv", summary_pathname, node_name);
-        sprintf(loop_summary_path, "%s%s.loop_info.csv", summary_pathname, node_name);
-    }
-		#endif
 
     // Print summary of initialization
     print_local_data();
@@ -1210,7 +1197,22 @@ void ear_init()
     }
 		/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
 		/* Computes the total number of cpus for this job */
-		compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+		
+		if (masters_info.my_master_rank >= 0 ){
+			cpu_set_t jmask;
+			verbose_master(2,"Waiting for processes to fill shared signatures");
+			while(!all_signatures_initialized(lib_shared_region, sig_shared_region));
+			verbose_master(2,"Computing number of cpus per job and node mask ");
+			compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+			aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
+			/* lib_shared_region is shared by all the processes in the same node */
+			lib_shared_region->node_mask = jmask;
+			/* node_mgr_data is shared with the eard */
+			node_mgr_data[node_mgr_index].node_mask = jmask;	
+			/* app_mgt_info is shared with the eard through the powermon_app_t */
+			app_mgt_info->node_mask = jmask;	
+			verbose_master(2,"Node mask computed in");
+		}
 
 		/* SIGTERM action for job cancellation */
 		struct sigaction term_action;
@@ -1289,15 +1291,9 @@ void ear_finalize(int exit_status)
         debug("Reporting application data");
         verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
         clean_db_signature(&application.signature, system_conf->max_sig_power);
-				#if 0
-        eards_write_app_signature(&application);
-				#endif
 				if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 					verbose_master(0,"Error reporting application");
 				}
-				#if 0
-        append_application_text_file(app_summary_path, &application, 1);
-				#endif
         report_mpi_application_data(&application);
     }
     // Closing any remaining loop
