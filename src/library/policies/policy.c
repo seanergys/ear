@@ -707,7 +707,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		update_earl_node_mgr_info();
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
 		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
-		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power);
+		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power, PER_JOB, -1);
 		my_sig->GBS = job_GBS;
 		my_sig->DC_power = job_power;		
 
@@ -876,7 +876,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
     /* End update */
 
-    estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power);
+    estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power, PER_JOB , -1);
     verbose_master(2,"job GBS is %.2lf and job power %.2lf",job_GBS, job_power);
 
 

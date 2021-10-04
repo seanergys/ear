@@ -147,6 +147,28 @@ state_t nodemgr_attach_job(ear_njob_t *my_job, uint *my_index)
 	return s;
 }
 
+/* Looks for an already existing attached job */
+state_t nodemgr_find_job(ear_njob_t *my_job, uint *my_index)
+{ 
+  state_t s = EAR_ERROR;
+  if (fd_node_mgr_lck < 0) return EAR_ERROR;
+  
+  /* Get the lock */
+  if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
+  
+  for (uint i = 0 ; i < MAX_CPUS_SUPPORTED ; i++){
+    if ((node_jobs_list[i].jid == my_job->jid) && (node_jobs_list[i].sid == my_job->sid)){
+      *my_index = i;
+      file_unlock(fd_node_mgr_lck);
+      return EAR_SUCCESS;
+    }
+  }
+  
+  file_unlock(fd_node_mgr_lck);
+  return s;
+}
+
+
 /* Marks a job entry as free. To be used by earl before job end */
 state_t nodemgr_job_end(uint index)
 {

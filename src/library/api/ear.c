@@ -305,6 +305,7 @@ void create_shared_regions()
 			error("Creating the lib_shared_data region");
 		}
 		my_node_id=0;
+		lib_shared_region->node_mgr_index = NULL_NODE_MGR_INDEX;
 		lib_shared_region->earl_on = eard_ok;
 		lib_shared_region->num_processes=1;
 		lib_shared_region->num_signatures=0;
@@ -423,6 +424,7 @@ void create_shared_regions()
 	if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 		verbose_master(2,"Error attaching to node_mgr region");
 	}
+	lib_shared_region->node_mgr_index = node_mgr_index;
 	verbose_master(2,"Attached! at pos %u", node_mgr_index);
 	/* node_mgr_job_info maps other jobs data sharing the node */
 	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
@@ -444,6 +446,7 @@ void attach_shared_regions()
 	int bfd = -1;
 	char *tmp = get_ear_tmp();
 	uint ID = create_ID(application.job.id, application.job.step_id);
+	uint current_jobs_in_node;
 
 	/* This function is executed by processes different than masters */
 	/* they first join the Node shared memory */
@@ -490,11 +493,43 @@ void attach_shared_regions()
 				error("NULL pointer returned in attach_shared_signatures_area");
 			}
 	}
+	memset(&sig_shared_region[my_node_id].sig, 0, sizeof(ssig_t));
 	sig_shared_region[my_node_id].master = 0;
 	sig_shared_region[my_node_id].pid = getpid();
 	sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
 	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 	/* No masters processes don't allocate memory for data sharing between nodes */	
+
+	/****************************************/
+	/* Node mgr info in no-master processes */
+	/****************************************/
+  verbose(2,"Creating node_mgr region");
+  if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
+    verbose_master(2,"Error creating node_mgr region");
+  }
+  ear_njob_t me;
+  me.jid = application.job.id;
+  me.sid = application.job.step_id;
+  me.creation_time = time(NULL);
+  CPU_ZERO(&me.node_mask);
+  verbose(2,"Waiting for master to be attached to node_mgr region");
+	while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
+		usleep(100);
+		verbose(2, "Waiting, current index %u", lib_shared_region->node_mgr_index);
+	}
+	verbose(2, "We are attached at position %u", lib_shared_region->node_mgr_index);
+  if (nodemgr_find_job(&me, &node_mgr_index) != EAR_SUCCESS){
+    verbose(2,"Error attaching to node_mgr region");
+		node_mgr_index = NULL_NODE_MGR_INDEX;
+  }
+  verbose(2,"Attached no-master! at pos %u", node_mgr_index);
+  /* node_mgr_job_info maps other jobs data sharing the node */
+  if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+  init_earl_node_mgr_info();
+  if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
+    verbose(2,"There are %u jobs sharing the node ",current_jobs_in_node);
+  }
+
 }
 
 /****************************************************************************************************************************************************************/

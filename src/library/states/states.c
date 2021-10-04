@@ -513,7 +513,10 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){ EAR_STATE = EVALUATING_GLOBAL_SIGNATURE; }
             begin_iter = iterations;
             //signature_copy(&loop.signature, &loop_signature.signature);
+
+						/* This function estimates power and GBs when the node is not used in exclusive mode */
             metrics_node_signature(&loop_signature.signature,&loop.signature);
+
             report_loop_signature(iterations,&loop,&loop_signature.job);
             policy_get_current_freq(&nf);
             lavg = node_freqs_avgcpufreq(nf.cpu_freq);	
