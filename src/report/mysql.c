@@ -34,6 +34,9 @@ static db_conf_t *db_config = NULL;
 #define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
 #define IS_NODE_FULL_QUERY  "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Periodic_metrics' AND TABLE_SCHEMA='%s'"
 
+/**************************************
+ *      MySQL specific functions      *
+ **************************************/
 static MYSQL *mysql_create_connection()
 {
     MYSQL *connection = mysql_init(NULL);
@@ -60,6 +63,61 @@ static MYSQL *mysql_create_connection()
     return connection;
 }
 
+MYSQL_RES *mysql_run_query_result(char *query)
+{
+	MYSQL *connection = mysql_create_connection();
+
+    if (connection == NULL) {
+        return NULL;
+    }
+
+    if (mysql_query(connection, query))
+    {
+        verbose(VDBH, "Error when executing query(%d): %s\n", mysql_errno(connection), mysql_error(connection));
+        mysql_close(connection);
+        return NULL;
+    }
+
+    MYSQL_RES *result;
+    result = mysql_store_result(connection);
+
+    mysql_close(connection);
+
+    return result;
+}
+
+int mysql_run_query_int_result(char *query)
+{
+    MYSQL_RES *result = mysql_run_query_result(query);
+    int num_indexes;
+    if (result == NULL) {
+        verbose(VDBH, "Error while retrieving result");
+        return EAR_ERROR;
+    } else {
+        MYSQL_ROW row;
+        unsigned int num_fields;
+        unsigned int i;
+
+        num_fields = mysql_num_fields(result);
+        while ((row = mysql_fetch_row(result)))
+        {
+            mysql_fetch_lengths(result);
+            for(i = 0; i < num_fields; i++)
+                num_indexes = atoi(row[i]);
+        }
+    }
+    return num_indexes;
+}
+
+
+
+
+
+
+/****************************
+ *     Report functions     *
+ ****************************/
+
 state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("mysql report_init");
@@ -71,7 +129,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
     int num_sig_args, num_per_args;
 
     sprintf(query, IS_SIG_FULL_QUERY, db_config->database);
-    num_sig_args = run_query_int_result(query);
+    num_sig_args = mysql_run_query_int_result(query);
 
     if (num_sig_args == EAR_ERROR)
         set_signature_simple(db_config->report_sig_detail);
@@ -82,7 +140,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
 
 
     sprintf(query, IS_NODE_FULL_QUERY, db_config->database);
-    num_per_args = run_query_int_result(query);
+    num_per_args = mysql_run_query_int_result(query);
     if (num_per_args == EAR_ERROR) {
         set_node_detail(db_config->report_node_detail);
     } else if (num_per_args < 8) {

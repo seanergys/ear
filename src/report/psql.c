@@ -31,6 +31,10 @@ static db_conf_t *db_config = NULL;
 
 #if DB_PSQL
 
+
+/***************************************
+ *    PostgreSQL specific functions    *
+ ***************************************/
 static PGconn *postgresql_create_connection()
 {
     char temp[32];
@@ -69,6 +73,36 @@ static PGconn *postgresql_create_connection()
 
 }
 
+int postgresql_get_num_columns(char *query)
+{
+    PGconn *connection = postgresql_create_connection();
+
+    if (connection == NULL)
+    {
+        verbose(VDBH, "ERROR connecting to database");
+        return EAR_ERROR;
+    }
+
+    PGresult *res = PQexecParams(connection, query, 0, NULL, NULL, NULL, NULL, 1); //0 indicates text mode, 1 is binary
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) //-> if it returned data
+    {
+        PQclear(res);
+        return EAR_ERROR;
+    }
+   
+    int num_columns = PQnfields(res);
+    PQclear(res);
+
+    return num_columns;
+}
+
+
+
+
+/**************************
+ *    Report functions    *
+ **************************/
 state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("psql report_init");
@@ -78,10 +112,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
     char query[256];
     int num_sig_args, num_per_args;
     strcpy(query, "SELECT * FROM Signatures LIMIT 5");
-#if 0
-    num_sig_args = get_num_columns(query);
-#endif
-    num_sig_args = EAR_ERROR;
+    num_sig_args = postgresql_get_num_columns(query);
     if (num_sig_args == EAR_ERROR)
         set_signature_simple(db_config->report_sig_detail);
     else if (num_sig_args < 20)
@@ -90,10 +121,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
         set_signature_simple(1);
 
     strcpy(query, "SELECT * FROM Periodic_metrics LIMIT 5");
-#if 0
-    num_per_args = get_num_columns(query);
-#endif
-    num_per_args = EAR_ERROR;
+    num_per_args = postgresql_get_num_columns(query);
     if (num_per_args == EAR_ERROR)
         set_node_detail(db_config->report_node_detail);
     else if (num_per_args < 8)
