@@ -686,14 +686,13 @@ static int is_try_again()
 state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 {
     polctx_t *c=&my_pol_ctx;
-    signature_t node_sig;
+    signature_t node_sig, est_sig;
     node_freqs_t *freqs = &nf;
     state_t st=EAR_ERROR;
     uint busy, iobound, mpibound,earl_phase_classification;
     sig_ext_t *se;
     float mpi_in_period;
 		uint jobs_in_node;
-		double job_GBS, job_power;
 
     se = (sig_ext_t *)my_sig->sig_ext;
     cpu_ready = EAR_POLICY_NO_STATE;
@@ -707,9 +706,9 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		update_earl_node_mgr_info();
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
 		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
-		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power, PER_JOB, -1);
-		my_sig->GBS = job_GBS;
-		my_sig->DC_power = job_power;		
+		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &est_sig, PER_JOB, -1);
+		my_sig->GBS = est_sig.GBS;
+		my_sig->DC_power = est_sig.DC_power;		
 
 		if (jobs_in_node > 1) dyn_unc = 0;
 		else 									dyn_unc = conf_dyn_unc;
@@ -863,7 +862,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     polctx_t *c=&my_pol_ctx;
     state_t ret,retg=EAR_SUCCESS;
 		uint jobs_in_node;
-		double job_GBS, job_power;
+		signature_t new_sig;
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;
@@ -876,8 +875,8 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
     /* End update */
 
-    estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &job_GBS, &job_power, PER_JOB , -1);
-    verbose_master(2,"job GBS is %.2lf and job power %.2lf",job_GBS, job_power);
+    estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1);
+    verbose_master(2,"job GBS is %.2lf and job power %.2lf",new_sig.GBS, new_sig.DC_power);
 
 
     if (polsyms_fun.ok != NULL){

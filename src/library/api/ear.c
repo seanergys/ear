@@ -188,6 +188,7 @@ static uint synchronize_masters = 1;
 #define VEAR_INIT 3
 
 uint using_verb_files = 0;
+uint exclusive = 1;
 
 static void print_local_data()
 {
@@ -432,6 +433,7 @@ void create_shared_regions()
 	if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
 		verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
 	}
+	exclusive = (current_jobs_in_node == 1);
 	verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 }
 
@@ -529,6 +531,8 @@ void attach_shared_regions()
   if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
     verbose(2,"There are %u jobs sharing the node ",current_jobs_in_node);
   }
+  exclusive = (current_jobs_in_node == 1);
+
 
 }
 

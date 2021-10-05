@@ -154,6 +154,7 @@ static llong app_start;
 extern ear_njob_t *node_mgr_data;
 extern uint node_mgr_index;
 extern node_mgr_sh_data_t *node_mgr_job_info;
+extern uint exclusive;
 
 
 
@@ -678,8 +679,19 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				time_s = (double) metrics_usecs[s] / 1000000.0;
 
 				/* Avg CPU frequency */
-				if (s == LOO) metrics->avg_f = metrics_avg_frequency[s];
-				if (s == APP) metrics->avg_f = sig_shared_region[my_node_id].sig.accum_avg_f / sig_shared_region[my_node_id].sig.valid_time;
+				if (s == LOO){ 
+					metrics->avg_f = metrics_avg_frequency[s];
+				}
+				if (s == APP){  
+					metrics->avg_f = sig_shared_region[my_node_id].sig.accum_avg_f / sig_shared_region[my_node_id].sig.valid_time;
+				}
+				#if 0
+				if ((s == APP) && exclusive){
+					metrics->avg_f = metrics_avg_frequency[s];
+					sig_shared_region[my_node_id].sig.valid_time = time_s;
+					sig_shared_region[my_node_id].sig.accum_avg_f = metrics->avg_f * time_s;
+				}
+				#endif
 
 				/* Avg IMC frequency */
 				metrics->avg_imc_f = imc_avg[s];
@@ -715,7 +727,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				aux = time_s * (double) (1024 * 1024 * 1024);
 
 				cas_counter = 0.0;
-				if (s == LOO){
 					for (i = 0; i < bandwith_elements; ++i) {
 								cas_counter += (double) metrics_bandwith[s][i];
 					}
@@ -723,13 +734,21 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 					if(masters_info.my_master_rank >= 0) lib_shared_region->cas_counters = cas_counter;
 					else cas_counter = lib_shared_region->cas_counters;
 	
+				if (s == LOO){
 					metrics->GBS = cas_counter * hw_cache_line_size / aux;
 					metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
 				}
-				if (s == APP){
+				if (s == APP) {
 					metrics->GBS = sig_shared_region[my_node_id].sig.accum_mem_access / (sig_shared_region[my_node_id].sig.valid_time * 1024 * 1024 * 1024);
 					metrics->TPI = sig_shared_region[my_node_id].sig.accum_mem_access / (double) metrics_instructions[s];
 				}
+				#if 0
+				if ((s == APP) && exclusive){
+					metrics->GBS = cas_counter * hw_cache_line_size / aux;
+					metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
+					sig_shared_region[my_node_id].sig.accum_mem_access = metrics->GBS * (sig_shared_region[my_node_id].sig.valid_time * 1024 * 1024 * 1024);	
+				}
+				#endif
 
 				/* CPI */
 				metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
@@ -774,9 +793,16 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								/* Power: Node, DRAM, PCK */
 								if (s == LOO){
 									metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
-								}else{
+								}
+								if (s == APP) {
 									metrics->DC_power = (double) sig_shared_region[my_node_id].sig.accum_energy / sig_shared_region[my_node_id].sig.valid_time;
 								}
+								#if 0
+								if ((s == APP) && exclusive){
+									metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
+									sig_shared_region[my_node_id].sig.accum_energy = metrics->DC_power * time_s;
+								}
+								#endif
 								
 								/* DRAM and PCK PENDING for Njobs */
 								metrics->PCK_power=0;
@@ -818,15 +844,15 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
 				if (s == LOO){
 					/* We have to compute my local GBS and POWER and accumulate it to compute later the app signature */
-					double my_GBS, my_power;
+					signature_t news;
 					update_earl_node_mgr_info();
-					estimate_power_and_gbs(metrics, lib_shared_region,sig_shared_region, node_mgr_job_info, &my_GBS, &my_power, PER_PROCESS, my_node_id);
-					if (my_GBS > 0){
-						sig_shared_region[my_node_id].sig.accum_energy     += my_power * time_s;
-						sig_shared_region[my_node_id].sig.accum_mem_access += my_GBS * 1024 * 1024 * 1024 * time_s;
+					estimate_power_and_gbs(metrics, lib_shared_region,sig_shared_region, node_mgr_job_info, &news, PER_PROCESS, my_node_id);
+					if (news.GBS > 0){
+						sig_shared_region[my_node_id].sig.accum_energy     += news.DC_power * time_s;
+						sig_shared_region[my_node_id].sig.accum_mem_access += news.GBS * 1024 * 1024 * 1024 * time_s;
 						sig_shared_region[my_node_id].sig.accum_avg_f      += metrics->avg_f * time_s;
 						sig_shared_region[my_node_id].sig.valid_time       += time_s;
-						verbose(2, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", my_node_id, sig_shared_region[my_node_id].sig.accum_energy, my_power, time_s, sig_shared_region[my_node_id].sig.accum_mem_access, sig_shared_region[my_node_id].sig.accum_avg_f, metrics->avg_f , time_s);
+						verbose(2, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", my_node_id, sig_shared_region[my_node_id].sig.accum_energy, news.DC_power, time_s, sig_shared_region[my_node_id].sig.accum_mem_access, sig_shared_region[my_node_id].sig.accum_avg_f, metrics->avg_f , time_s);
 					}
 				}
 
@@ -1287,7 +1313,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, valid_period);
 		}
 		ns->avg_f /= tcpus;
-		verbose_master(2,"AVG GPU %lu", ns->avg_f);
+		verbose_master(2,"AVG  %lu", ns->avg_f);
   }
   signature_copy(&lib_shared_region->node_signature,ns);
 
@@ -1324,7 +1350,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	if (masters_info.my_master_rank >= 0){
 		/* Updating shared info */
   	update_earl_node_mgr_info();
-  	estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, &ns->GBS, &ns->DC_power, PER_JOB, -1);
+  	estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, ns, PER_JOB, -1);
 	}
 }
 
