@@ -30,25 +30,32 @@ int query_filters = 0;
 
 //#warning "check this query"
 
+#if USE_GPUS
 #define NUM_APP_Q   5
 #define NUM_LOOP_Q  3
+#else
+#define NUM_APP_Q   4
+#define NUM_LOOP_Q  2
+#endif
 #define NUM_QUERIES NUM_APP_Q+NUM_LOOP_Q
 
+#if USE_GPUS
 #define CLEAN_GPU_APPS  "DELETE Applications,Jobs,Signatures,Power_signatures,GPU_signatures FROM Applications inner join Jobs on id = job_id AND "\
                         "Applications.step_id = Jobs.step_id inner join Signatures on Signatures.id = signature_id inner join Power_signatures on "\
                         "Power_signatures.id = power_signature_id INNER JOIN GPU_signatures ON GPU_signatures.id >= min_GPU_sig_id AND "\
                         "GPU_signatures.id <= max_GPU_sig_id "
+
+#define CLEAN_GPU_LOOPS "DELETE Loops,Signatures,GPU_signatures FROM Loops inner join Jobs on id = job_id AND "\
+                        "Loops.step_id = Jobs.step_id inner join Signatures on Signatures.id = signature_id "\
+                        "INNER JOIN GPU_signatures ON GPU_signatures.id >= min_GPU_sig_id AND "\
+                        "GPU_signatures.id <= max_GPU_sig_id "
+#endif
 
 #define CLEAN_MPI_APPS  "DELETE Applications,Jobs,Signatures,Power_signatures from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "\
                         "inner join Signatures on Signatures.id = signature_id inner join Power_signatures on Power_signatures.id = power_signature_id "
 
 #define CLEAN_NMPI_APPS "DELETE Applications,Jobs,Power_signatures from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "\
                         "inner join Power_signatures on Power_signatures.id = power_signature_id "
-
-#define CLEAN_GPU_LOOPS "DELETE Loops,Signatures,GPU_signatures FROM Loops inner join Jobs on id = job_id AND "\
-                        "Loops.step_id = Jobs.step_id inner join Signatures on Signatures.id = signature_id "\
-                        "INNER JOIN GPU_signatures ON GPU_signatures.id >= min_GPU_sig_id AND "\
-                        "GPU_signatures.id <= max_GPU_sig_id "
 
 #define CLEAN_LOOPS_JOBS "DELETE Signatures,Loops FROM Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id INNER JOIN Signatures ON Loops.signature_id = Signatures.id "
 
@@ -225,25 +232,31 @@ int main(int argc,char *argv[])
     int queries_id = 0;
     //loops come first or we won't be able to find them
     if (rm_loops) {
+        queries_id += NUM_LOOP_Q;
         if (num_days > 0) {
-            strcpy(query[queries_id  ], CLEAN_GPU_LOOPS);
-            strcpy(query[queries_id+1], CLEAN_LOOPS_JOBS);
-            strcpy(query[queries_id+2], CLEANUP_LOOPS_JOBS);
+            strcpy(query[queries_id-1], CLEANUP_LOOPS_JOBS);
+            strcpy(query[queries_id-2], CLEAN_LOOPS_JOBS);
+#if USE_GPUS
+            strcpy(query[queries_id-3], CLEAN_GPU_LOOPS);
+#endif
         }
         else {
-            strcpy(query[queries_id  ], CLEAN_GPU_LOOPS);
-            strcpy(query[queries_id+1], CLEAN_LOOPS);
-            strcpy(query[queries_id+2], CLEANUP_LOOPS);
+            strcpy(query[queries_id-1], CLEANUP_LOOPS);
+            strcpy(query[queries_id-2], CLEAN_LOOPS);
+#if USE_GPUS
+            strcpy(query[queries_id-3], CLEAN_GPU_LOOPS);
+#endif
         }
-        queries_id += NUM_LOOP_Q;
     }
     if (rm_apps) {
-        strcpy(query[queries_id  ], CLEAN_GPU_APPS);
-        strcpy(query[queries_id+1], CLEAN_MPI_APPS);
-        strcpy(query[queries_id+2], CLEAN_NMPI_APPS);
-        strcpy(query[queries_id+3], CLEANUP_APPS);
-        strcpy(query[queries_id+4], CLEANUP_JOBS);
         queries_id += NUM_APP_Q;
+        strcpy(query[queries_id-1], CLEANUP_JOBS);
+        strcpy(query[queries_id-2], CLEANUP_APPS);
+        strcpy(query[queries_id-3], CLEAN_NMPI_APPS);
+        strcpy(query[queries_id-4], CLEAN_MPI_APPS);
+#if USE_GPUS
+        strcpy(query[queries_id-5], CLEAN_GPU_APPS);
+#endif
     }
 
     for (i = 0; i < queries_id; i++) {
