@@ -31,19 +31,24 @@ int query_filters = 0;
 //#warning "check this query"
 
 #define NUM_APP_Q   5
-#define NUM_LOOP_Q  2
+#define NUM_LOOP_Q  3
 #define NUM_QUERIES NUM_APP_Q+NUM_LOOP_Q
 
-#define CLEAN_GPU_APPS "DELETE Applications,Jobs,Signatures,Power_signatures,GPU_signatures FROM Applications inner join Jobs on id = job_id AND "\
+#define CLEAN_GPU_APPS  "DELETE Applications,Jobs,Signatures,Power_signatures,GPU_signatures FROM Applications inner join Jobs on id = job_id AND "\
                         "Applications.step_id = Jobs.step_id inner join Signatures on Signatures.id = signature_id inner join Power_signatures on "\
                         "Power_signatures.id = power_signature_id INNER JOIN GPU_signatures ON GPU_signatures.id >= min_GPU_sig_id AND "\
                         "GPU_signatures.id <= max_GPU_sig_id "
 
-#define CLEAN_MPI_APPS "DELETE Applications,Jobs,Signatures,Power_signatures from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "\
+#define CLEAN_MPI_APPS  "DELETE Applications,Jobs,Signatures,Power_signatures from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "\
                         "inner join Signatures on Signatures.id = signature_id inner join Power_signatures on Power_signatures.id = power_signature_id "
 
 #define CLEAN_NMPI_APPS "DELETE Applications,Jobs,Power_signatures from Applications inner join Jobs on id = job_id and Applications.step_id = Jobs.step_id "\
                         "inner join Power_signatures on Power_signatures.id = power_signature_id "
+
+#define CLEAN_GPU_LOOPS "DELETE Loops,Signatures,GPU_signatures FROM Loops inner join Jobs on id = job_id AND "\
+                        "Loops.step_id = Jobs.step_id inner join Signatures on Signatures.id = signature_id "\
+                        "INNER JOIN GPU_signatures ON GPU_signatures.id >= min_GPU_sig_id AND "\
+                        "GPU_signatures.id <= max_GPU_sig_id "
 
 #define CLEAN_LOOPS_JOBS "DELETE Signatures,Loops FROM Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id INNER JOIN Signatures ON Loops.signature_id = Signatures.id "
 
@@ -221,12 +226,14 @@ int main(int argc,char *argv[])
     //loops come first or we won't be able to find them
     if (rm_loops) {
         if (num_days > 0) {
-            strcpy(query[queries_id  ], CLEAN_LOOPS_JOBS);
-            strcpy(query[queries_id+1], CLEANUP_LOOPS_JOBS);
+            strcpy(query[queries_id  ], CLEAN_GPU_LOOPS);
+            strcpy(query[queries_id+1], CLEAN_LOOPS_JOBS);
+            strcpy(query[queries_id+2], CLEANUP_LOOPS_JOBS);
         }
         else {
-            strcpy(query[queries_id  ], CLEAN_LOOPS);
-            strcpy(query[queries_id+1], CLEANUP_LOOPS);
+            strcpy(query[queries_id  ], CLEAN_GPU_LOOPS);
+            strcpy(query[queries_id+1], CLEAN_LOOPS);
+            strcpy(query[queries_id+2], CLEANUP_LOOPS);
         }
         queries_id += NUM_LOOP_Q;
     }
