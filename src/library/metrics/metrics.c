@@ -1143,7 +1143,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		/* Computing flops */
   	verbose_master(2,"Computing application node signature");
   	se = (sig_ext_t *)metrics->sig_ext;
-  	if (exclusive) metrics_app_node_signature(metrics, &nodeapp);
+  	if (!exclusive) metrics_app_node_signature(metrics, &nodeapp);
 		else           metrics_node_signature(metrics, &nodeapp);
   	signature_copy(metrics, &nodeapp);
   	metrics->sig_ext = se;
