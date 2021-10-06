@@ -45,13 +45,14 @@ int main(int argc,char *argv[])
 	//strtok(nodename,".");
     if (strlen(nodename) > 0)
     {
+#if 0
         edf = get_eargm_conf(&my_cluster, nodename);
         if (edf != NULL) {
             printf("Found EARGM conf for node %s\n", nodename);
             remove_extra_islands(&my_cluster, edf);
             print_cluster_conf(&my_cluster);
         }
-#if 0
+#endif
         my_node_conf = get_my_node_conf(&my_cluster, nodename);
         if (my_node_conf==NULL) {
           	fprintf(stderr,"get_my_node_conf for node %s returns NULL\n",nodename);
@@ -61,7 +62,6 @@ int main(int argc,char *argv[])
             free(my_node_conf->policies);
             free(my_node_conf);
         }
-#endif
     }
     printf("releasing cluster_conf\n");
     free_cluster_conf(&my_cluster);
