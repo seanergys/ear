@@ -228,35 +228,40 @@ int main(int argc,char *argv[])
         free_cluster_conf(&my_cluster);
         exit(0);
     }
+#if USE_GPUS
+    uint idx = 1;
+#else
+    uint idx = 0;
+#endif
 
     int queries_id = 0;
     //loops come first or we won't be able to find them
     if (rm_loops) {
-        queries_id += NUM_LOOP_Q;
         if (num_days > 0) {
-            strcpy(query[queries_id-1], CLEANUP_LOOPS_JOBS);
-            strcpy(query[queries_id-2], CLEAN_LOOPS_JOBS);
 #if USE_GPUS
-            strcpy(query[queries_id-3], CLEAN_GPU_LOOPS);
+            strcpy(query[queries_id      ], CLEAN_GPU_LOOPS);
 #endif
+            strcpy(query[queries_id+idx  ], CLEAN_LOOPS_JOBS);
+            strcpy(query[queries_id+idx+1], CLEANUP_LOOPS_JOBS);
         }
         else {
-            strcpy(query[queries_id-1], CLEANUP_LOOPS);
-            strcpy(query[queries_id-2], CLEAN_LOOPS);
 #if USE_GPUS
-            strcpy(query[queries_id-3], CLEAN_GPU_LOOPS);
+            strcpy(query[queries_id      ], CLEAN_GPU_LOOPS);
 #endif
+            strcpy(query[queries_id+idx  ], CLEAN_LOOPS);
+            strcpy(query[queries_id+idx+1], CLEANUP_LOOPS);
         }
+        queries_id += NUM_LOOP_Q;
     }
     if (rm_apps) {
-        queries_id += NUM_APP_Q;
-        strcpy(query[queries_id-1], CLEANUP_JOBS);
-        strcpy(query[queries_id-2], CLEANUP_APPS);
-        strcpy(query[queries_id-3], CLEAN_NMPI_APPS);
-        strcpy(query[queries_id-4], CLEAN_MPI_APPS);
 #if USE_GPUS
-        strcpy(query[queries_id-5], CLEAN_GPU_APPS);
+        strcpy(query[queries_id      ], CLEAN_GPU_APPS);
 #endif
+        strcpy(query[queries_id+idx  ], CLEAN_MPI_APPS);
+        strcpy(query[queries_id+idx+1], CLEAN_NMPI_APPS);
+        strcpy(query[queries_id+idx+2], CLEANUP_APPS);
+        strcpy(query[queries_id+idx+3], CLEANUP_JOBS);
+        queries_id += NUM_APP_Q;
     }
 
     for (i = 0; i < queries_id; i++) {
