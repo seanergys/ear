@@ -133,6 +133,7 @@ state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int m
     id->local_rank = local_rank;
     id->global_rank = global_rank;
     id->master_rank = master_rank;
+		id->pid         = getpid();
     debug("created new id - lrank %d - grank %d - master %d", id->local_rank, id->global_rank, id->master_rank);
     return EAR_SUCCESS;
 }
