@@ -232,7 +232,11 @@ int get_range_ips(cluster_conf_t *my_conf, char *nodename, int **ips)
         aux_ips = calloc(total_ips, sizeof(int));
         for (j = range.start; j <= range.end ; j++)
         {
-            if (j < 10 && range.end > 10)
+            if (j < 10 && range.end > 100)
+                sprintf(aux_name, "%s00%u", range.prefix, j);
+            else if (j < 10 && range.end > 10)
+                sprintf(aux_name, "%s0%u", range.prefix, j);
+            else if (j < 100 && range.end > 100)
                 sprintf(aux_name, "%s0%u", range.prefix, j);
             else
                 sprintf(aux_name, "%s%u", range.prefix, j);
