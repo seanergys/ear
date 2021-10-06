@@ -678,6 +678,9 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				/* Total time */
 				time_s = (double) metrics_usecs[s] / 1000000.0;
 
+				if ((s == APP) && exclusive) verbose(2," Process %d ends in exclusive mode", my_node_id);
+				if ((s == APP) && !exclusive) verbose(2," Process %d ends in NOT exclusive mode", my_node_id);
+
 				/* Avg CPU frequency */
 				if (s == LOO){ 
 					metrics->avg_f = metrics_avg_frequency[s];
@@ -685,13 +688,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				if (s == APP){  
 					metrics->avg_f = sig_shared_region[my_node_id].sig.accum_avg_f / sig_shared_region[my_node_id].sig.valid_time;
 				}
-				#if 0
-				if ((s == APP) && exclusive){
-					metrics->avg_f = metrics_avg_frequency[s];
-					sig_shared_region[my_node_id].sig.valid_time = time_s;
-					sig_shared_region[my_node_id].sig.accum_avg_f = metrics->avg_f * time_s;
-				}
-				#endif
 
 				/* Avg IMC frequency */
 				metrics->avg_imc_f = imc_avg[s];
@@ -742,13 +738,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 					metrics->GBS = sig_shared_region[my_node_id].sig.accum_mem_access / (sig_shared_region[my_node_id].sig.valid_time * 1024 * 1024 * 1024);
 					metrics->TPI = sig_shared_region[my_node_id].sig.accum_mem_access / (double) metrics_instructions[s];
 				}
-				#if 0
-				if ((s == APP) && exclusive){
-					metrics->GBS = cas_counter * hw_cache_line_size / aux;
-					metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
-					sig_shared_region[my_node_id].sig.accum_mem_access = metrics->GBS * (sig_shared_region[my_node_id].sig.valid_time * 1024 * 1024 * 1024);	
-				}
-				#endif
 
 				/* CPI */
 				metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
@@ -794,15 +783,9 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								if (s == LOO){
 									metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
 								}
-								if (s == APP) {
+								if (s == APP){
 									metrics->DC_power = (double) sig_shared_region[my_node_id].sig.accum_energy / sig_shared_region[my_node_id].sig.valid_time;
 								}
-								#if 0
-								if ((s == APP) && exclusive){
-									metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
-									sig_shared_region[my_node_id].sig.accum_energy = metrics->DC_power * time_s;
-								}
-								#endif
 								
 								/* DRAM and PCK PENDING for Njobs */
 								metrics->PCK_power=0;
@@ -841,6 +824,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				if (masters_info.my_master_rank >= 0){
 								signature_copy(&lib_shared_region->master_signature,metrics);
 				}
+
 				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
 				if (s == LOO){
 					/* We have to compute my local GBS and POWER and accumulate it to compute later the app signature */
@@ -1147,7 +1131,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	signature_t nodeapp;
 
 	debug("Metrics_dispose_init %d",my_node_id);
-	metrics_partial_stop(SIG_BEGIN);
+	while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
 	metrics_global_stop();
 
 	metrics_compute_signature_data(APP, metrics, 1, procs);
@@ -1159,7 +1143,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		/* Computing flops */
   	verbose_master(2,"Computing application node signature");
   	se = (sig_ext_t *)metrics->sig_ext;
-  	metrics_app_node_signature(metrics, &nodeapp);
+  	if (exclusive) metrics_app_node_signature(metrics, &nodeapp);
+		else           metrics_node_signature(metrics, &nodeapp);
   	signature_copy(metrics, &nodeapp);
   	metrics->sig_ext = se;
 	}
