@@ -1021,8 +1021,8 @@ void ear_init()
                 if (fd != -1){
                     VERB_SET_FD(fd);
                     DEBUG_SET_FD(fd);
-										ERROR_SET_FD(fd);
-										WARN_SET_FD(fd);
+					ERROR_SET_FD(fd);
+					WARN_SET_FD(fd);
                 }else{
                     verbose_master(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
                 }

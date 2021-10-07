@@ -38,6 +38,7 @@ clean: clean.components comm.gclean rclean;
 	@ $(MAKE) -C 'database' 	$* || exit
 	@ $(MAKE) -C 'hardware' 	$* || exit
 	@ $(MAKE) -C 'messaging' 	$* || exit
+	@ $(MAKE) -C 'output'   	$* || exit
 	@ $(MAKE) -C 'system'   	$* || exit
 	@ $(MAKE) -C 'types'    	$* || exit
 	@ $(MAKE) -C 'utils'		$* || exit

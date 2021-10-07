@@ -213,16 +213,12 @@ void init_frequency_list()
 }
 
 void set_verbose_variables() {
-				verb_level = my_cluster_conf.eard.verbose;
-				VERB_SET_FD(fd_my_log);
-				ERROR_SET_FD(fd_my_log);
-				WARN_SET_FD(fd_my_log);
-				DEBUG_SET_FD(fd_my_log);
-				TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
+	verb_level = my_cluster_conf.eard.verbose;
+	TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
 }
 
 void set_global_eard_variables() {
-				strcpy(ear_tmp, my_cluster_conf.install.dir_temp);
+	strcpy(ear_tmp, my_cluster_conf.install.dir_temp);
 }
 
 // Lock unlock functions are used to be sure a single daemon is running per node
@@ -328,14 +324,8 @@ void eard_exit(uint restart)
 
 void reopen_log()
 {
-				close(fd_my_log);
-				fd_my_log = create_log(my_cluster_conf.install.dir_temp,"eard");
-				if (fd_my_log<0) fd_my_log=2;
-				VERB_SET_FD(fd_my_log);
-				ERROR_SET_FD(fd_my_log);
-				WARN_SET_FD(fd_my_log);
-				DEBUG_SET_FD(fd_my_log);
-
+	close(fd_my_log);
+	fd_my_log = create_log(my_cluster_conf.install.dir_temp,"eard");
 }
 
 //
@@ -659,10 +649,6 @@ int main(int argc, char *argv[])
 				}
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
 				fd_my_log = create_log("/tmp", "eard_journal");
-				VERB_SET_FD(fd_my_log);
-				ERROR_SET_FD(fd_my_log);
-				WARN_SET_FD(fd_my_log);
-				DEBUG_SET_FD(fd_my_log);
 
 				// We get nodename to create per_node files
 				if (gethostname(nodename, sizeof(nodename)) < 0) {
@@ -742,10 +728,9 @@ int main(int argc, char *argv[])
 				verbose(0,"Creating tmp dir");
 				create_tmp(ear_tmp);
 				if (my_cluster_conf.eard.use_log) {
-								verbose(0,"Creating log file");
-								fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
-								if (fd_my_log < 0) fd_my_log = 2;
-				}else fd_my_log = 2;
+					verbose(0,"Creating log file");
+					fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
+				}
 				set_verbose_variables();
 
 				verbose(0,"Creating frequency list in shared memory");
