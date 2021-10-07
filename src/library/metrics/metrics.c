@@ -108,7 +108,6 @@ static ctx_t ctx_io;
 /* MPI statistics */
 mpi_information_t *metrics_mpi_calls[2],*metrics_last_mpi_calls[2];
 mpi_calls_types_t *metrics_mpi_calls_types[2],*metrics_last_mpi_calls_types[2];
-static double time_no_metrics = 0;
 
 
 #if USE_GPUS
@@ -162,7 +161,7 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 {
 	cpu_set_t m;
 	ulong total = 0, total_cpus = 0;
-	int p, i, c;
+	int p, c;
 	int ccount = arch_desc.top.cpu_count;
   for (p = 0; p < lib_shared_region->num_processes ; p++)
   {

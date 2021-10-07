@@ -206,7 +206,7 @@ static short* get_arch_ids(int *length)
         default: *length = 0; return NULL;
     }
 }
-
+#if 0
 static int get_cpu_n_functions()
 {
     switch (_cpu_model) {
@@ -216,6 +216,7 @@ static int get_cpu_n_functions()
         default: return 0;
     }
 }
+#endif
 
 // This function writes commands (bytes) into files
 static int write_command(uchar *ctl, int *cmd, int n_ctl, int n_cmd)

@@ -434,7 +434,7 @@ void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *C
 
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
 {
-  int i, c;
+  int i;
 	*cpus = 0;
   for (i=0;i<data->num_processes;i++){
 		uint lcpus = num_cpus_in_mask(&sig[i].cpu_mask);
@@ -643,11 +643,7 @@ void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_
 
 void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, signature_t *new_sig, uint type, int lid)
 {
-	ull job_L3 = 0, node_L3 = 0;
-	double GBS = lsig->GBS;
-	double job_ratio = 0;
-	double job_CPI;
-	double hw_cache_line_size = arch_desc.top.cache_line_size;
+	ull  node_L3 = 0;
   int cpus_in_node = arch_desc.top.cpu_count;	
 	double power_estimations[MAX_CPUS_SUPPORTED];
 	double ipc[MAX_CPUS_SUPPORTED];
@@ -657,7 +653,6 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	ulong  f[MAX_CPUS_SUPPORTED];
 	ull    L3[MAX_CPUS_SUPPORTED];
 	uint   job_in_process[MAX_CPUS_SUPPORTED];
-	uint   cpus[MAX_CPUS_SUPPORTED];
 	double power_ratio;
 	uint   node_process = 0;
 	int    gid = -1;
@@ -686,9 +681,6 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 		/* Power condition is to do only in case the signature is ready */
 		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
 			ull avx = 0;
-			ull LL3 = 0;
-			ull inst = 0;
-			double LCPI = 0.0;
 			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
 				job_in_process[node_process] = j;
 				L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
