@@ -660,7 +660,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	double *my_power = &new_sig->DC_power;
 	double *my_GBS   = &new_sig->GBS;
 
-	verbose(2, "Estimating GBS and power type %u lid %d", type, lid);
+	verbose_master(2, "Estimating GBS and power type %u lid %d", type, lid);
 
 	memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(tpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
@@ -696,7 +696,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 
 		}
 	}
-	verbose(2,"My gid is %d", gid);
+	debug("My gid is %d", gid);
 
 	for (uint j = 0; j < node_process; j ++){
     if (L3[j] && (job_in_process[j] == node_mgr_index)){
@@ -751,7 +751,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 				double P;
 				P = (ipc[lp] * IPC_COEFF) + (gbs[lp] * GBS_COEFF) + (vpi[lp] * VPI_COEFF) + (f[lp] * F_COEFF ) + INTERCEPT;
 				power_estimations[lp] = P*nmgr[j].shsig[proc].num_cpus/cpus_in_node;
-				verbose(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
+				verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
 				total_power_estimated += power_estimations[lp];
 			
 				lp++;
@@ -776,7 +776,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	#endif
 	CPU_power -= GPU_power;
 	*my_power = (CPU_power * power_ratio) + GPU_power;
-	verbose(2,"My power is %lf (node (CPU %lf + GPU %lf) x ratio %lf)", *my_power, CPU_power, GPU_power, power_ratio);
+	verbose_master(2,"My power is %lf (node (CPU %lf + GPU %lf) x ratio %lf)", *my_power, CPU_power, GPU_power, power_ratio);
 
 	return;	
 }

@@ -503,7 +503,7 @@ void attach_shared_regions()
 	/****************************************/
 	/* Node mgr info in no-master processes */
 	/****************************************/
-  verbose(2,"Creating node_mgr region");
+  verbose(3,"Creating node_mgr region");
   if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
     verbose_master(2,"Error creating node_mgr region");
   }
@@ -512,22 +512,22 @@ void attach_shared_regions()
   me.sid = application.job.step_id;
   me.creation_time = time(NULL);
   CPU_ZERO(&me.node_mask);
-  verbose(2,"Waiting for master to be attached to node_mgr region");
+  verbose(3,"Waiting for master to be attached to node_mgr region");
 	while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 		usleep(100);
-		verbose(2, "Waiting, current index %u", lib_shared_region->node_mgr_index);
+		verbose(3, "Waiting, current index %u", lib_shared_region->node_mgr_index);
 	}
-	verbose(2, "We are attached at position %u", lib_shared_region->node_mgr_index);
+	verbose(3, "We are attached at position %u", lib_shared_region->node_mgr_index);
   if (nodemgr_find_job(&me, &node_mgr_index) != EAR_SUCCESS){
-    verbose(2,"Error attaching to node_mgr region");
+    verbose_master(2,"Error attaching to node_mgr region");
 		node_mgr_index = NULL_NODE_MGR_INDEX;
   }
-  verbose(2,"Attached no-master! at pos %u", node_mgr_index);
+  verbose(3,"Attached no-master! at pos %u", node_mgr_index);
   /* node_mgr_job_info maps other jobs data sharing the node */
   if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
   init_earl_node_mgr_info();
   if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
-    verbose(2,"There are %u jobs sharing the node ",current_jobs_in_node);
+    verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
   }
   exclusive = (current_jobs_in_node == 1);
 
@@ -999,7 +999,7 @@ void ear_init()
   /* Cluster conf */
   get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);
   ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);
-	verbose_master(1,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
+	debug("Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
 	deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size);
 
 	debug("END Shared region creation section");

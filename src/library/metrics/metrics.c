@@ -375,7 +375,7 @@ static void metrics_partial_start()
 				last_elap_sec = 0;
 				/* Per process IO data */
 				if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
-								verbose(0,"Warning:IO data not available");
+								verbose_master(0,"Warning:IO data not available");
 				}
 				/* These data is measured only by the master */	
 				if (masters_info.my_master_rank>=0){ 
@@ -534,7 +534,7 @@ static int metrics_partial_stop(uint where)
 	}
 	/* Per process IO data */
   if (io_read(&ctx_io,&metrics_io_end[LOO]) != EAR_SUCCESS){
-    verbose(0,"Warning:IO data not available");
+    verbose_master(2,"Warning:IO data not available");
   }
 	io_diff(&metrics_io_diff[LOO],&metrics_io_init[LOO],&metrics_io_end[LOO]);
 
@@ -677,8 +677,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				/* Total time */
 				time_s = (double) metrics_usecs[s] / 1000000.0;
 
-				if ((s == APP) && exclusive) verbose(2," Process %d ends in exclusive mode", my_node_id);
-				if ((s == APP) && !exclusive) verbose(2," Process %d ends in NOT exclusive mode", my_node_id);
+				if ((s == APP) && exclusive) verbose_master(2," Process %d ends in exclusive mode", my_node_id);
+				if ((s == APP) && !exclusive) verbose_master(2," Process %d ends in NOT exclusive mode", my_node_id);
 
 				/* Avg CPU frequency */
 				if (s == LOO){ 
@@ -835,7 +835,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 						sig_shared_region[my_node_id].sig.accum_mem_access += news.GBS * 1024 * 1024 * 1024 * time_s;
 						sig_shared_region[my_node_id].sig.accum_avg_f      += metrics->avg_f * time_s;
 						sig_shared_region[my_node_id].sig.valid_time       += time_s;
-						verbose(2, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", my_node_id, sig_shared_region[my_node_id].sig.accum_energy, news.DC_power, time_s, sig_shared_region[my_node_id].sig.accum_mem_access, sig_shared_region[my_node_id].sig.accum_avg_f, metrics->avg_f , time_s);
+						debug("Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", my_node_id, sig_shared_region[my_node_id].sig.accum_energy, news.DC_power, time_s, sig_shared_region[my_node_id].sig.accum_mem_access, sig_shared_region[my_node_id].sig.accum_avg_f, metrics->avg_f , time_s);
 					}
 				}
 
@@ -917,7 +917,7 @@ int metrics_init(topology_t *topo)
 		bandwith_size=sizeof(long long);
 	}
 
-	verbose_master(1,"RAPL size %lu Uncore size %lu",rapl_size,bandwith_size);
+	verbose_master(2,"RAPL size %lu Uncore size %lu",rapl_size,bandwith_size);
 	rapl_elements = rapl_size / sizeof(unsigned long long);
 	bandwith_elements = bandwith_size / sizeof(long long);
 
@@ -1170,7 +1170,7 @@ void metrics_get_total_io(io_data_t *total)
 	memset((char *)total,0,sizeof(io_data_t));
 	for (i=0; i<lib_shared_region->num_processes;i++){
 		  if (io_init(&lio,sig_shared_region[i].pid) != EAR_SUCCESS){
-				verbose(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
+				verbose_master(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
 			}else{
 				io_read(&lio,&io);
 				total->rchar += io.rchar;
