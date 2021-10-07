@@ -20,6 +20,7 @@
 
 #include <common/config.h>
 #include <common/system/file.h>
+#include <common/utils/string.h>
 #include <common/output/verbose.h>
 #include <daemon/local_api/node_mgr.h>
 #include <common/system/shared_areas.h>
@@ -27,11 +28,9 @@
 static char node_mgr_tmp[PATH_MAX];
 static char node_mgr_info[PATH_MAX];
 static char node_mgr_lock[PATH_MAX];
-static int node_mgr_fd;
 static int fd_node_mgr_lck = -1;
 static int fd_node_mgr_info = -1;
 static ear_njob_t *node_jobs_list = NULL;
-static uint my_job_index = -1;
 
 #define MAX_LOCK_TRIES (MAX_SOCKET_COMM_TRIES*100)
 
@@ -42,7 +41,7 @@ state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
 	if (nodelist == NULL ) return EAR_ERROR;
 
 	strncpy(node_mgr_tmp,tmp, sizeof(node_mgr_tmp));	
-	snprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
+	xsnprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
 	fd_node_mgr_lck = file_lock_create(node_mgr_lock);
 	if (fd_node_mgr_lck < 0) return EAR_ERROR; /* PENDING to return the appropiate message */	
 
@@ -50,7 +49,7 @@ state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
 	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
 
 	/* The eard will create this area */
-	snprintf(node_mgr_info,sizeof(node_mgr_info),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_INFO);
+	xsnprintf(node_mgr_info,sizeof(node_mgr_info),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_INFO);
 	node_jobs_list = (ear_njob_t *)attach_shared_area(node_mgr_info,sizeof(ear_njob_t)*MAX_CPUS_SUPPORTED,O_RDWR,&fd_node_mgr_info,NULL);
 
 	file_unlock(fd_node_mgr_lck);
@@ -69,7 +68,7 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 	oldm = umask(0);
 
   strncpy(node_mgr_tmp, tmp, sizeof(node_mgr_tmp));  
-	snprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
+	xsnprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
 	fd_node_mgr_lck = file_lock_create(node_mgr_lock);
 	if (fd_node_mgr_lck >= 0) chmod(node_mgr_lock, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 	umask(oldm);
@@ -88,7 +87,7 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 		node_jobs_list[i].sid = -1;
 	}
 
-  snprintf(node_mgr_info,sizeof(node_mgr_info),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_INFO);
+  xsnprintf(node_mgr_info,sizeof(node_mgr_info),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_INFO);
   /* If we can open it, we try to access the shared data */
 	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
 

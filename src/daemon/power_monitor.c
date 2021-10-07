@@ -222,7 +222,6 @@ int select_last_context() {
 int new_context(job_id id, job_id sid,int *cc)
 {
   char shmem_path[GENERIC_NAME];
-  state_t s;
   uint ID;
   int ccontext;
 
@@ -310,7 +309,7 @@ void create_job_area(uint ID)
 {
 	int ret;
 	char job_path[MAX_PATH_SIZE];
-	snprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+	xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
 	verbose(1,"Creating job_path: %s", job_path);
 	mode_t old_mask = umask((mode_t) 0);
 	ret = mkdir(job_path,0777);
@@ -328,9 +327,8 @@ void clean_job_area(uint ID)
 	state_t s;
 	folder_t job_folder;
 	char *file;
-	int ret;
 
-  snprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+  xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
   s = folder_open(&job_folder, job_path);
   if (state_fail(s)) {
 		verbose(1,"Error opening job path %s",job_path);
@@ -340,9 +338,9 @@ void clean_job_area(uint ID)
 
   while ((file = folder_getnext(&job_folder, NULL, NULL)))
   {
-		snprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
+		xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
 		verbose(2,"Deleting: %s",file_path);
-		ret = unlink(file_path);	
+		unlink(file_path);	
   }
 	folder_close(&job_folder);
 	rmdir(job_path);
@@ -1338,12 +1336,9 @@ void create_powermon_out() {
 
 void check_rt_error_for_signature(application_t *app)
 {
-	uint usedb,useeardbd;
 	job_id jid,sid;
 	jid       = app->job.id;
 	sid       = app->job.step_id;
-	usedb     = my_cluster_conf.eard.use_mysql;
-	useeardbd = my_cluster_conf.eard.use_eardbd;
 	if (app->signature.GBS == 0)
 	{
 		log_report_eard_rt_error(&rid,jid,sid,GBS_ERROR,0);
@@ -1407,12 +1402,12 @@ void powermon_init_nm()
 	}
 }
 
-powermon_new_jobmask(cpu_set_t *newjobmask)
+void powermon_new_jobmask(cpu_set_t *newjobmask)
 {
 	aggregate_cpus_to_mask(&in_jobs_mask, newjobmask);
 }
 
-powermon_end_jobmask(cpu_set_t *endjobmask)
+void powermon_end_jobmask(cpu_set_t *endjobmask)
 {
 	remove_cpus_from_mask(&in_jobs_mask, endjobmask);
 }

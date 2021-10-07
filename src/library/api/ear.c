@@ -102,8 +102,6 @@ int dispose=0;
 #include <common/system/file.h>
 static char fd_lock_filename[BUFFSIZE];
 static int fd_master_lock;
-static char lock_app_mgt[BUFFSIZE];
-static int fd_lock_app_mgt;
 #endif
 
 // Process information
@@ -1197,7 +1195,7 @@ void ear_init()
 			}else{
 				char plugins_ext[SZ_PATH_INCOMPLETE];
 				setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
-				sprintf(plugins_ext,"%s:csv_ts.so",system_conf->lib_info.plugins);
+				xsnprintf(plugins_ext,sizeof(plugins_ext),"%s:csv_ts.so",system_conf->lib_info.plugins);
 				if (report_load(my_plug_path,plugins_ext) != EAR_SUCCESS){
 					verbose_master(0,"Error in reports API load ");
 				}

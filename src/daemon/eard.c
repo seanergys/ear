@@ -266,7 +266,6 @@ void eard_restart() {
 void eard_exit(uint restart)
 {
 				state_t s;
-				int i;
 
 				verbose(VCONF, "Exiting");
 #if EARD_LOCK
@@ -452,7 +451,6 @@ void signal_catcher()
 
 void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 				policy_conf_t *my_policy;
-				ulong deff;
 				eard_max_pstate = node->max_pstate;
 				// Default policy is just in case
 				default_policy_context.policy  = MONITORING_ONLY;
@@ -468,7 +466,11 @@ void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 								default_policy_context.p_state = my_policy->p_state;
 								default_policy_context.settings[0] = my_policy->settings[0];
 				}
+				/* deff is not used, warning */
+				#if 0
+				ulong deff;
 				deff = frequency_pstate_to_freq(my_policy->p_state);
+				#endif
 				f_monitoring = my_cluster_conf.eard.period_powermon;
 				copy_eard_conf(&my_services_conf->eard,&my_cluster_conf.eard);
 				copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
@@ -480,7 +482,6 @@ void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 
 void configure_default_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 				policy_conf_t *my_policy;
-				ulong deff;
 				eard_max_pstate = node->max_pstate;
 				verbose(1,"Max pstate for this node is %d",eard_max_pstate);
 				// Default policy is just in case
@@ -641,7 +642,6 @@ int main(int argc, char *argv[])
 				unsigned long ear_node_freq;
 				int cpu_model;
 				int ret;
-				int i;
 
 				// Usage
 				if (argc > 2) {

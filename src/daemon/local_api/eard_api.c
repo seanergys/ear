@@ -216,7 +216,7 @@ state_t eards_connection()
 int eards_connect(application_t *my_app, ulong lid)
 {
   char nodename[256];
-  ulong ret,ack;
+  ulong ack;
   struct daemon_req req;
   int tries=0,connected=0;
   int i;
@@ -356,7 +356,6 @@ int eards_connect(application_t *my_app, ulong lid)
 }
 void eards_disconnect()
 {
-	int i;
   struct daemon_req req;
   req.req_service = DISCONNECT_EARD_NODE_SERVICES;
   req.sec=create_sec_tag();
@@ -624,7 +623,6 @@ unsigned long eards_get_freq_list(unsigned int num_cpus,unsigned long *freqlist)
 /* These are privileged functions */
 state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
 {
-  int i;
   struct daemon_req req;
   if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
   req.req_service = READ_CPUFREQ;

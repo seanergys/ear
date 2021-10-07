@@ -272,7 +272,6 @@ int dynconf_set_freq(ulong freq) {
 int dyncon_restore_conf() {
   int pid;
   int i;
-  ulong new_freq;
   settings_conf_t *dyn_conf;
   resched_t *resched_conf;
   policy_conf_t *my_policy;
@@ -387,7 +386,6 @@ int dynconf_red_pstates(uint p_states) {
 
 int dynconf_set_th(ulong p_id, ulong th) {
   double dth;
-  int s;
   int i;
   settings_conf_t *dyn_conf;
   resched_t *resched_conf;

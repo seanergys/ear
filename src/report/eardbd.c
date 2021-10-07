@@ -54,7 +54,6 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 
 state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
-	int i;
 	state_t s;
 	debug("eardbd report_applications");
 	if (!must_report) return EAR_SUCCESS;
@@ -72,7 +71,6 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 
 state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 {
-	int i;
 	state_t s = EAR_SUCCESS;
 	debug("eardbd report_loops");
 	if (!must_report) return EAR_SUCCESS;
