@@ -26,7 +26,7 @@
 #include <common/output/error.h>
 #include <common/output/verbose.h>
 
-int create_log(char *path, char *service_name)
+int log_open(char *path, char *service_name)
 {
         char logfile[1024];
         mode_t my_mask;

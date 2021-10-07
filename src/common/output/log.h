@@ -29,10 +29,10 @@ int log_bypass __attribute__((weak)) = 0;
 		syslog(LOG_DAEMON|LOG_ERR, __VA_ARGS__);
 
 #if !USE_SYSLOG
-	#define log_open(path, service_name) \
-		create_log(path, service_name);
+	#define create_log(path, service_name) \
+		log_open(path, service_name);
 #else
-	#define log_open(path, service_name) \
+	#define create_log(path, service_name) \
 		openlog(service_name, LOG_PID | LOG_PERROR, LOG_DAEMON); \
 		log_bypass = 1;
 #endif
@@ -44,6 +44,6 @@ int log_bypass __attribute__((weak)) = 0;
 		closelog();
 #endif
 
-int create_log(char *path, char *service_name);
+int log_open(char *path, char *service_name);
 
 #endif //EAR_LOG_H
