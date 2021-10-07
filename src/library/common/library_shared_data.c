@@ -778,8 +778,8 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	}
 	CPU_power = lsig->DC_power;
 	#if USE_GPUS
-	for (uint gid = 0; gid < lsig->cpu_sig.num_gpus; gid++){	
-		GPU_power +=  lsig->cpu_sig.gpu_data[gid].GPU_power;
+	for (uint gid = 0; gid < lsig->gpu_sig.num_gpus; gid++){	
+		GPU_power +=  lsig->gpu_sig.gpu_data[gid].GPU_power;
 	}
 	#endif
 	CPU_power -= GPU_power;
