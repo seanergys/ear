@@ -146,9 +146,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	mirror_pid = 0;
 	others_pid = 0;
 
-	// ?
-	log_open("eardbd");
-
 	// Getting host name and host alias
 	gethostname(master_host, SZ_NAME_MEDIUM);
 	gethostname(master_nick, SZ_NAME_MEDIUM);

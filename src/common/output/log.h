@@ -15,16 +15,35 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef _EAR_DAEMON_LOG_H
-#define _EAR_DAEMON_LOG_H
+#ifndef EAR_LOG_H
+#define EAR_LOG_H
 
-#include <time.h>
-#include <common/config.h>
-#include <common/types/generic.h>
+#include <syslog.h>
+#include <common/output/timestamp.h>
 
+int log_bypass __attribute__((weak)) = 0;
 
+#define USE_SYSLOG 1
 
-/** Creates a log file targeted to be used as verbose and/or error channel, returns the fd */
-int create_log(char *path,char *service_name);
+#define vlog(...) \
+		syslog(LOG_DAEMON|LOG_ERR, __VA_ARGS__);
 
+#if !USE_SYSLOG
+	#define log_open(path, service_name) \
+		create_log(path, service_name);
+#else
+	#define log_open(path, service_name) \
+		openlog(service_name, LOG_PID | LOG_PERROR, LOG_DAEMON); \
+		log_bypass = 1;
 #endif
+
+#if !USE_SYSLOG
+	#define log_close()
+#else
+	#define log_close() \
+		closelog();
+#endif
+
+int create_log(char *path, char *service_name);
+
+#endif //EAR_LOG_H

@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,24 +23,30 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <common/config.h>
+#include <common/output/error.h>
+#include <common/output/verbose.h>
 
-
-int create_log(char *path,char *service_name)
+int create_log(char *path, char *service_name)
 {
-        int fd;
-        char logfile[256];
+        char logfile[1024];
         mode_t my_mask;
-        my_mask=umask(0);
+        int fd;
 
-        sprintf(logfile,"%s/%s.log",path,service_name);
+        sprintf(logfile, "%s/%s.log", path, service_name);
+        my_mask = umask(0);
         unlink(logfile);
-        fd=open(logfile,O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-        //fd=open(logfile,O_CREAT|O_WRONLY|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-        chmod(logfile,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-        
+        fd = open(logfile, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+        chmod(logfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
         umask(my_mask);
+
+        if (fd >= 0) {
+                VERB_SET_FD (fd);
+                WARN_SET_FD (fd);
+                ERROR_SET_FD(fd);
+                DEBUG_SET_FD(fd);
+        } else {
+                error("can't open file %s (%s)", logfile, strerror(errno));
+        }
 
         return fd;
 }
-
