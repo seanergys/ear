@@ -52,6 +52,7 @@ extern node_mgr_sh_data_t *node_mgr_job_info;
 extern char lib_shared_region_path_jobs[GENERIC_NAME];
 extern char sig_shared_region_path_jobs[GENERIC_NAME];
 static int fd_conf,fd_signatures;
+extern uint exclusive;
 
 int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
 {
@@ -588,6 +589,7 @@ void  init_earl_node_mgr_info()
 }
 void    update_earl_node_mgr_info()
 {
+		uint current_jobs_in_node = 0;
 		char *tmp = get_ear_tmp();
     for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
       job_id jid,sid;
@@ -616,8 +618,12 @@ void    update_earl_node_mgr_info()
             node_mgr_job_info[j].creation_time = ct;
           }
         }
-      }
+     
     }
+		}
+  	nodemgr_get_num_jobs_attached(&current_jobs_in_node);
+  	exclusive = exclusive && (current_jobs_in_node == 1);
+		
 }
 
 void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl)
@@ -635,7 +641,7 @@ void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_
 }
 
 
-void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, double *my_GBS, double *my_power)
+void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, signature_t *new_sig, uint type, int lid)
 {
 	ull job_L3 = 0, node_L3 = 0;
 	double GBS = lsig->GBS;
@@ -654,6 +660,12 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	uint   cpus[MAX_CPUS_SUPPORTED];
 	double power_ratio;
 	uint   node_process = 0;
+	int    gid = -1;
+
+	double *my_power = &new_sig->DC_power;
+	double *my_GBS   = &new_sig->GBS;
+
+	verbose(2, "Estimating GBS and power type %u lid %d", type, lid);
 
 	memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(tpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
@@ -686,16 +698,19 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 				vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
 				f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
 				node_L3 += L3[node_process];
+				if ((j == node_mgr_index) && (lp == lid)) gid = node_process;
 				node_process++;
 			}
 
 		}
 	}
+	verbose(2,"My gid is %d", gid);
 
 	for (uint j = 0; j < node_process; j ++){
     if (L3[j] && (job_in_process[j] == node_mgr_index)){
         gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
-				*my_GBS += gbs[j];
+				if (type == PER_JOB) *my_GBS += gbs[j];
+				else if (j == gid )  *my_GBS = gbs[j];
     }else gbs[j] = 0;
   }
 
@@ -735,7 +750,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 
 
 	/* Per job in node loop */
-	double total_power_estimated = 0;
+	double total_power_estimated = 0, CPU_power, GPU_power = 0;
 	uint lp = 0;
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
 		/* If job is active we compute its power estimated */
@@ -744,19 +759,32 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 				double P;
 				P = (ipc[lp] * IPC_COEFF) + (gbs[lp] * GBS_COEFF) + (vpi[lp] * VPI_COEFF) + (f[lp] * F_COEFF ) + INTERCEPT;
 				power_estimations[lp] = P*nmgr[j].shsig[proc].num_cpus/cpus_in_node;
-				verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
+				verbose(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
 				total_power_estimated += power_estimations[lp];
+			
 				lp++;
 			}
 		}
 	}
 	power_ratio = 0.0;
-	for (uint lp =0; lp < node_process; lp++){
-		if (job_in_process[lp] == node_mgr_index) power_ratio += power_estimations[lp]/total_power_estimated;
+	for (lp =0; lp < node_process; lp++){
+		if (type == PER_JOB){
+			if (job_in_process[lp] == node_mgr_index){ 
+				power_ratio += power_estimations[lp]/total_power_estimated;
+			}
+		}else{ 
+			if (lp == gid) power_ratio = power_estimations[lp]/total_power_estimated;
+		}
 	}
-	verbose_master(2,"My ratio is %lf", power_ratio);
-	*my_power = lsig->DC_power * power_ratio;
-	verbose_master(2,"My power is %lf", *my_power);
+	CPU_power = lsig->DC_power;
+	#if USE_GPUS
+	for (uint gid = 0; gid < lsig->cpu_sig.num_gpus; gid++){	
+		GPU_power +=  lsig->cpu_sig.gpu_data[gid].GPU_power;
+	}
+	#endif
+	CPU_power -= GPU_power;
+	*my_power = (CPU_power * power_ratio) + GPU_power;
+	verbose(2,"My power is %lf (node (CPU %lf + GPU %lf) x ratio %lf)", *my_power, CPU_power, GPU_power, power_ratio);
 
 	return;	
 }

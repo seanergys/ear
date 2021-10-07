@@ -108,6 +108,8 @@ static ctx_t ctx_io;
 /* MPI statistics */
 mpi_information_t *metrics_mpi_calls[2],*metrics_last_mpi_calls[2];
 mpi_calls_types_t *metrics_mpi_calls_types[2],*metrics_last_mpi_calls_types[2];
+static double time_no_metrics = 0;
+
 
 #if USE_GPUS
 /* These vectors have position APP for application granularity and LOO for loop granularity */
@@ -152,6 +154,7 @@ static llong app_start;
 extern ear_njob_t *node_mgr_data;
 extern uint node_mgr_index;
 extern node_mgr_sh_data_t *node_mgr_job_info;
+extern uint exclusive;
 
 
 
@@ -672,13 +675,23 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				// instead the small time metrics for loops. 's' is just a signature index.
 				s = global;
 
+				/* Total time */
+				time_s = (double) metrics_usecs[s] / 1000000.0;
+
+				if ((s == APP) && exclusive) verbose(2," Process %d ends in exclusive mode", my_node_id);
+				if ((s == APP) && !exclusive) verbose(2," Process %d ends in NOT exclusive mode", my_node_id);
+
 				/* Avg CPU frequency */
-				metrics->avg_f = metrics_avg_frequency[s];
+				if (s == LOO){ 
+					metrics->avg_f = metrics_avg_frequency[s];
+				}
+				if (s == APP){  
+					metrics->avg_f = sig_shared_region[my_node_id].sig.accum_avg_f / sig_shared_region[my_node_id].sig.valid_time;
+				}
+
 				/* Avg IMC frequency */
 				metrics->avg_imc_f = imc_avg[s];
 
-				/* Total time */
-				time_s = (double) metrics_usecs[s] / 1000000.0;
 
 				/* Time per iteration */
 				metrics->time = time_s / (double) iterations;
@@ -710,15 +723,21 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				aux = time_s * (double) (1024 * 1024 * 1024);
 
 				cas_counter = 0.0;
-				for (i = 0; i < bandwith_elements; ++i) {
+					for (i = 0; i < bandwith_elements; ++i) {
 								cas_counter += (double) metrics_bandwith[s][i];
+					}
+
+					if(masters_info.my_master_rank >= 0) lib_shared_region->cas_counters = cas_counter;
+					else cas_counter = lib_shared_region->cas_counters;
+	
+				if (s == LOO){
+					metrics->GBS = cas_counter * hw_cache_line_size / aux;
+					metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
 				}
-
-				if(masters_info.my_master_rank>=0) lib_shared_region->cas_counters=cas_counter;
-				else cas_counter=lib_shared_region->cas_counters;
-
-				metrics->GBS = cas_counter * hw_cache_line_size / aux;
-				metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
+				if (s == APP) {
+					metrics->GBS = sig_shared_region[my_node_id].sig.accum_mem_access / (sig_shared_region[my_node_id].sig.valid_time * 1024 * 1024 * 1024);
+					metrics->TPI = sig_shared_region[my_node_id].sig.accum_mem_access / (double) metrics_instructions[s];
+				}
 
 				/* CPI */
 				metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
@@ -761,7 +780,14 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 
 								/* Power: Node, DRAM, PCK */
-								metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
+								if (s == LOO){
+									metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
+								}
+								if (s == APP){
+									metrics->DC_power = (double) sig_shared_region[my_node_id].sig.accum_energy / sig_shared_region[my_node_id].sig.valid_time;
+								}
+								
+								/* DRAM and PCK PENDING for Njobs */
 								metrics->PCK_power=0;
 								metrics->DRAM_power=0;
 								int p;
@@ -798,7 +824,22 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				if (masters_info.my_master_rank >= 0){
 								signature_copy(&lib_shared_region->master_signature,metrics);
 				}
+
 				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
+				if (s == LOO){
+					/* We have to compute my local GBS and POWER and accumulate it to compute later the app signature */
+					signature_t news;
+					update_earl_node_mgr_info();
+					estimate_power_and_gbs(metrics, lib_shared_region,sig_shared_region, node_mgr_job_info, &news, PER_PROCESS, my_node_id);
+					if (news.GBS > 0){
+						sig_shared_region[my_node_id].sig.accum_energy     += news.DC_power * time_s;
+						sig_shared_region[my_node_id].sig.accum_mem_access += news.GBS * 1024 * 1024 * 1024 * time_s;
+						sig_shared_region[my_node_id].sig.accum_avg_f      += metrics->avg_f * time_s;
+						sig_shared_region[my_node_id].sig.valid_time       += time_s;
+						verbose(2, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", my_node_id, sig_shared_region[my_node_id].sig.accum_energy, news.DC_power, time_s, sig_shared_region[my_node_id].sig.accum_mem_access, sig_shared_region[my_node_id].sig.accum_avg_f, metrics->avg_f , time_s);
+					}
+				}
+
 				signature_ready(&sig_shared_region[my_node_id],0);
 }
 
@@ -1090,7 +1131,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	signature_t nodeapp;
 
 	debug("Metrics_dispose_init %d",my_node_id);
-	metrics_partial_stop(SIG_BEGIN);
+	while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
 	metrics_global_stop();
 
 	metrics_compute_signature_data(APP, metrics, 1, procs);
@@ -1102,7 +1143,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		/* Computing flops */
   	verbose_master(2,"Computing application node signature");
   	se = (sig_ext_t *)metrics->sig_ext;
-  	metrics_node_signature(metrics, &nodeapp);
+  	if (!exclusive) metrics_app_node_signature(metrics, &nodeapp);
+		else           metrics_node_signature(metrics, &nodeapp);
   	signature_copy(metrics, &nodeapp);
   	metrics->sig_ext = se;
 	}
@@ -1215,6 +1257,53 @@ long long metrics_usecs_diff(long long end, long long init)
 				return (end - init);
 }
 
+void metrics_app_node_signature(signature_t *master,signature_t *ns)
+{
+  ullong inst;
+  ullong cycles;
+  ullong FLOPS[FLOPS_EVENTS];
+  sig_ext_t *se;
+  int i;
+	double valid_period;
+
+  se = (sig_ext_t *)master->sig_ext;
+  signature_copy(ns,master);
+  if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+
+  compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
+  compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
+  compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
+  compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &ns->L3_misses);
+
+  ns->CPI = (double)cycles/(double)inst;
+  /* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
+  if (ns->CPI > 2.0){
+    for (i=0; i< lib_shared_region->num_processes;i ++){
+      verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
+    } 
+    verbose_master(2," ");
+  }
+  ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+	uint tcpus = 0;
+	ns->DC_power = 0;
+	ns->GBS 		= 0;
+	ns->avg_f 	= 0;
+  if (masters_info.my_master_rank >= 0){
+		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
+			valid_period = sig_shared_region[lp].sig.valid_time;
+			ns->DC_power += sig_shared_region[lp].sig.accum_energy / valid_period;
+			ns->GBS      += sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024);
+			ns->avg_f    += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
+			tcpus += sig_shared_region[lp].num_cpus;
+			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, valid_period);
+		}
+		ns->avg_f /= tcpus;
+		verbose_master(2,"AVG  %lu", ns->avg_f);
+  }
+  signature_copy(&lib_shared_region->node_signature,ns);
+
+}
+
 void metrics_node_signature(signature_t *master,signature_t *ns)
 {
 	ullong inst;
@@ -1231,10 +1320,9 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
 	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &ns->L3_misses);
-	//compute_total_node_CPI(lib_shared_region, sig_shared_region,&CPI);
 
 	ns->CPI = (double)cycles/(double)inst;
-	// verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes);
+	/* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
 	if (ns->CPI > 2.0){
 		for (i=0; i< lib_shared_region->num_processes;i ++){
 			verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
@@ -1247,7 +1335,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	if (masters_info.my_master_rank >= 0){
 		/* Updating shared info */
   	update_earl_node_mgr_info();
-  	estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, &ns->GBS, &ns->DC_power);
+  	estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, ns, PER_JOB, -1);
 	}
 }
 
