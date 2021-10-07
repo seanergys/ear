@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <common/output/error.h>
 #include <common/output/verbose.h>
 
 int create_log(char *path, char *service_name)

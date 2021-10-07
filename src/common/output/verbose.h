@@ -55,7 +55,7 @@ int warn_channel	__attribute__((weak)) = 2;
 			dprintf(verb_channel, __VA_ARGS__); \
 			dprintf(verb_channel, "\n"); \
 		} else { \
-			log(__VA_ARGS__); \
+			vlog(__VA_ARGS__); \
 		} \
 	}
 
@@ -67,7 +67,7 @@ int warn_channel	__attribute__((weak)) = 2;
             timestamp(verb_channel); \
             dprintf(verb_channel, __VA_ARGS__); \
         } else { \
-			log(__VA_ARGS__); \
+			vlog(__VA_ARGS__); \
 		} \
 	}
 

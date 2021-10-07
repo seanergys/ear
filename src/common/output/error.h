@@ -43,7 +43,7 @@ int error_enabled	__attribute__((weak)) = 1;
 			dprintf(error_channel, COL_RED "ERROR" COL_CLR ", " __VA_ARGS__); \
 			dprintf(error_channel, "\n"); \
 		} else { \
-			log(__VA_ARGS__); \
+			vlog(__VA_ARGS__); \
 		} \
 	}
 #else

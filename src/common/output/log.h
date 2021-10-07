@@ -25,8 +25,8 @@ int log_bypass __attribute__((weak)) = 0;
 
 #define USE_SYSLOG 0
 
-#define log(...) \
-		syslog(LOG_DAEMON, __VA_ARGS__);
+#define vlog(...) \
+		syslog(LOG_DAEMON|LOG_ERR, __VA_ARGS__);
 
 #if !USE_SYSLOG
 	#define log_open(path, service_name) \
