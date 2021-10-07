@@ -1407,12 +1407,12 @@ void powermon_init_nm()
 	}
 }
 
-powermon_new_jobmask(cpu_set_t *newjobmask)
+void powermon_new_jobmask(cpu_set_t *newjobmask)
 {
 	aggregate_cpus_to_mask(&in_jobs_mask, newjobmask);
 }
 
-powermon_end_jobmask(cpu_set_t *endjobmask)
+void powermon_end_jobmask(cpu_set_t *endjobmask)
 {
 	remove_cpus_from_mask(&in_jobs_mask, endjobmask);
 }
