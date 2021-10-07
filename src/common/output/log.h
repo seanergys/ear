@@ -23,7 +23,7 @@
 
 int log_bypass __attribute__((weak)) = 0;
 
-#define USE_SYSLOG 0
+#define USE_SYSLOG 1
 
 #define vlog(...) \
 		syslog(LOG_DAEMON|LOG_ERR, __VA_ARGS__);
