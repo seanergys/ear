@@ -168,14 +168,8 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
     my_loop->total_iterations = iterations;
     my_loop->jid 							= job->id;
     my_loop->step_id 					= job->step_id;
-#if 0
-    append_loop_text_file(loop_summary_path, my_loop,job);
-#endif
     if (masters_info.my_master_rank>=0){
         clean_db_loop(my_loop, system_conf->max_sig_power);
-#if 0
-        eards_write_loop_signature(my_loop);
-#endif
         if (report_loops(&rep_id,my_loop,1) != EAR_SUCCESS){
             verbose_master(0,"Error reporting Loop");
         }
@@ -271,9 +265,6 @@ void states_end_period(uint iterations)
         if (system_conf->report_loops){
             if (masters_info.my_master_rank>=0){
                 clean_db_loop(&loop, system_conf->max_sig_power);
-#if 0
-                eards_write_loop_signature(&loop);
-#endif
                 if (report_loops(&rep_id,&loop,1) != EAR_SUCCESS){
                     verbose_master(0,"Error reporting loop");
                 }
@@ -458,7 +449,9 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             {
                 if (!lib_shared_region->master_ready) perf_count_period++;
                 return;
-            } 
+            }
+						/* At this point, signatures are ready */ 
+						compute_per_process_and_job_metrics(&loop_signature.signature);
 
             /* Included for dynais test */
 #ifdef SHOW_DEBUGS
@@ -514,8 +507,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             begin_iter = iterations;
             //signature_copy(&loop.signature, &loop_signature.signature);
 
-						/* This function estimates power and GBs when the node is not used in exclusive mode */
-            metrics_node_signature(&loop_signature.signature,&loop.signature);
+						signature_copy(&loop.signature, &lib_shared_region->job_signature);
 
             report_loop_signature(iterations,&loop,&loop_signature.job);
             policy_get_current_freq(&nf);
@@ -572,7 +564,11 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /*print_loop_signature("signature refreshed", &loop_signature.signature);*/
 
             //signature_copy(&loop.signature, &loop_signature.signature);
-            metrics_node_signature(&loop_signature.signature,&loop.signature);
+            //metrics_node_signature(&loop_signature.signature,&loop.signature);
+						/* At this point, signatures are ready */
+            compute_per_process_and_job_metrics(&loop.signature);
+						signature_copy(&loop_signature.signature, &loop.signature);
+
             report_loop_signature(iterations,&loop,&loop_signature.job);
 
             /* VERBOSE */

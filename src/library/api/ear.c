@@ -1238,7 +1238,7 @@ void ear_init()
 		if (masters_info.my_master_rank >= 0 ){
 			cpu_set_t jmask;
 			verbose_master(2,"Waiting for processes to fill shared signatures");
-			while(!all_signatures_initialized(lib_shared_region, sig_shared_region));
+			while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
 			verbose_master(2,"Computing number of cpus per job and node mask ");
 			compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
 			aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);

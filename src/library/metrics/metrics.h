@@ -55,6 +55,9 @@ void metrics_node_signature(signature_t *master,signature_t *ns);
 /* Computes the node signature at app end */
 void metrics_app_node_signature(signature_t *master,signature_t *ns);
 
+/* CoOmputes the per-process and per-job metrics using power models for node sharing */
+void compute_per_process_and_job_metrics(signature_t *sig);
+
 
 /* Computes metrics per-iteration, very lightweight */
 state_t metrics_new_iteration(signature_t *sig);

@@ -634,10 +634,26 @@ void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_
 		if (nmgr_eard[i].creation_time){
 			verbose_master(vl,"JOB[%u]=%lu.%lu", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
 			signature_print_simple_fd(vl,&nmgr_earl[i].libsh->node_signature);	
+			signature_print_simple_fd(vl,&nmgr_earl[i].libsh->job_signature);	
 			verbose_master(vl," ");
 		}
 	}
 	verbose_master(vl,"%s",COL_CLR);
+}
+
+void accum_estimations(lib_shared_data_t *data,shsignature_t *sig)
+{
+	uint p;
+	double time_s;	
+	for (p = 0; p< data->num_processes; p++){
+		time_s = sig_shared_region[p].period;
+		sig_shared_region[p].sig.accum_energy     += sig_shared_region[p].sig.DC_power * time_s;
+		sig_shared_region[p].sig.accum_mem_access += sig_shared_region[p].sig.GBS * 1024 * 1024 * 1024 * time_s;
+		sig_shared_region[p].sig.accum_avg_f      += sig_shared_region[p].sig.avg_f * time_s;
+		sig_shared_region[p].sig.valid_time       += time_s;
+		debug("Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s);
+
+	}
 }
 
 
