@@ -65,10 +65,6 @@ void log_handler(cluster_conf_t *conf_clus, uint close_previous)
 		return;
 	}
 	// Setting file descriptors
-	VERB_SET_FD (fd_output);
-	WARN_SET_FD (fd_output);
-	ERROR_SET_FD(fd_output);
-	DEBUG_SET_FD(fd_output);
 	TIMESTAMP_SET_EN(conf_clus->db_manager.use_log);
 }
 

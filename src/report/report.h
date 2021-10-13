@@ -38,6 +38,7 @@
 
 #define EARGM_WARNINGS 					1
 #define PERIODIC_AGGREGATIONS 	2
+#include <unistd.h>
 
 typedef const char cchar;
 typedef struct report_id_s
@@ -45,6 +46,7 @@ typedef struct report_id_s
     int local_rank;
     int global_rank;
     int master_rank;
+		pid_t pid;
 } report_id_t;
 
 typedef struct report_ops_s

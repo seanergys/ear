@@ -42,7 +42,6 @@
 #include <common/database/db_helper.h>
 
 #include <common/types/generic.h>
-#include <common/types/daemon_log.h>
 #include <common/types/gm_warning.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_verbose.h>
@@ -261,12 +260,6 @@ void reopen_log()
 {
     close(fd_my_log);
     fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
-    if (fd_my_log<0) fd_my_log=2;
-    VERB_SET_FD(fd_my_log);
-    ERROR_SET_FD(fd_my_log);
-    WARN_SET_FD(fd_my_log);
-    DEBUG_SET_FD(fd_my_log);
-
 }
 
 static void my_signals_function(int s)
@@ -611,10 +604,6 @@ int main(int argc,char *argv[])
         fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
 
     }
-    VERB_SET_FD(fd_my_log);
-    ERROR_SET_FD(fd_my_log);
-    WARN_SET_FD(fd_my_log);
-    DEBUG_SET_FD(fd_my_log);
     TIMESTAMP_SET_EN(my_cluster_conf.eargm.use_log);
 
     update_eargm_configuration(&my_cluster_conf);

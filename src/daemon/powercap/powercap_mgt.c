@@ -644,12 +644,14 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 {
     int i;
 #if USE_GPUS 
-    float pnode,pcpu,pdram,pgpu = 0.0;
     memcpy(&pdist_per_domain,pdomain,sizeof(dom_power_t));
+		#if SHOW_DEBUGS
+    float pnode,pcpu,pdram,pgpu = 0.0;
     pnode=(float)(pdomain->platform-pdomain->gpu)/(float)pdomain->platform;
     pcpu=(float)(pdomain->cpu+pdomain->dram)/(float)pdomain->platform;
     pdram=(float)(pdomain->dram)/(float)pdomain->platform;
     pgpu=(float)(pdomain->gpu)/(float)pdomain->platform;
+		#endif
     debug("[NODE-GPU %f CPU %f DRAM %f GPU %f][NODE-GPU %f CPU %f DRAM %f GPU %f]",pnode,pcpu,pdram,pgpu,pdomains[DOMAIN_NODE],pdomains[DOMAIN_CPU],pdomains[DOMAIN_DRAM],pdomains[DOMAIN_GPU]);
 #endif
     if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) return;

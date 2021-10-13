@@ -26,6 +26,7 @@
 
 #define LOCK_NODE_MGR_LCK	  ".node_mgr_lck"
 #define LOCK_NODE_MGR_INFO	".node_mgr_data"
+#define NULL_NODE_MGR_INDEX 10000
 
 typedef struct ear_njob{
 	job_id     jid;
@@ -45,6 +46,10 @@ state_t nodemgr_get_num_jobs_attached(uint *num_jobs);
 
 /* Attaches a new job . To be used by earl */
 state_t nodemgr_attach_job(ear_njob_t *my_job, uint *my_index);
+
+/* Finds for an already existing attached job */
+state_t nodemgr_find_job(ear_njob_t *my_job, uint *my_index);
+
 
 /* Marks a job entry as free. To be used by earl before job end */
 state_t nodemgr_job_end(uint index);

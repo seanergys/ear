@@ -213,16 +213,12 @@ void init_frequency_list()
 }
 
 void set_verbose_variables() {
-				verb_level = my_cluster_conf.eard.verbose;
-				VERB_SET_FD(fd_my_log);
-				ERROR_SET_FD(fd_my_log);
-				WARN_SET_FD(fd_my_log);
-				DEBUG_SET_FD(fd_my_log);
-				TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
+	verb_level = my_cluster_conf.eard.verbose;
+	TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
 }
 
 void set_global_eard_variables() {
-				strcpy(ear_tmp, my_cluster_conf.install.dir_temp);
+	strcpy(ear_tmp, my_cluster_conf.install.dir_temp);
 }
 
 // Lock unlock functions are used to be sure a single daemon is running per node
@@ -270,7 +266,6 @@ void eard_restart() {
 void eard_exit(uint restart)
 {
 				state_t s;
-				int i;
 
 				verbose(VCONF, "Exiting");
 #if EARD_LOCK
@@ -328,14 +323,8 @@ void eard_exit(uint restart)
 
 void reopen_log()
 {
-				close(fd_my_log);
-				fd_my_log = create_log(my_cluster_conf.install.dir_temp,"eard");
-				if (fd_my_log<0) fd_my_log=2;
-				VERB_SET_FD(fd_my_log);
-				ERROR_SET_FD(fd_my_log);
-				WARN_SET_FD(fd_my_log);
-				DEBUG_SET_FD(fd_my_log);
-
+	close(fd_my_log);
+	fd_my_log = create_log(my_cluster_conf.install.dir_temp,"eard");
 }
 
 //
@@ -462,7 +451,6 @@ void signal_catcher()
 
 void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 				policy_conf_t *my_policy;
-				ulong deff;
 				eard_max_pstate = node->max_pstate;
 				// Default policy is just in case
 				default_policy_context.policy  = MONITORING_ONLY;
@@ -478,7 +466,11 @@ void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 								default_policy_context.p_state = my_policy->p_state;
 								default_policy_context.settings[0] = my_policy->settings[0];
 				}
+				/* deff is not used, warning */
+				#if 0
+				ulong deff;
 				deff = frequency_pstate_to_freq(my_policy->p_state);
+				#endif
 				f_monitoring = my_cluster_conf.eard.period_powermon;
 				copy_eard_conf(&my_services_conf->eard,&my_cluster_conf.eard);
 				copy_eargmd_conf(&my_services_conf->eargmd,&my_cluster_conf.eargm);
@@ -490,7 +482,6 @@ void configure_new_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 
 void configure_default_values( cluster_conf_t *cluster, my_node_conf_t *node) {
 				policy_conf_t *my_policy;
-				ulong deff;
 				eard_max_pstate = node->max_pstate;
 				verbose(1,"Max pstate for this node is %d",eard_max_pstate);
 				// Default policy is just in case
@@ -651,7 +642,6 @@ int main(int argc, char *argv[])
 				unsigned long ear_node_freq;
 				int cpu_model;
 				int ret;
-				int i;
 
 				// Usage
 				if (argc > 2) {
@@ -659,10 +649,6 @@ int main(int argc, char *argv[])
 				}
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
 				fd_my_log = create_log("/tmp", "eard_journal");
-				VERB_SET_FD(fd_my_log);
-				ERROR_SET_FD(fd_my_log);
-				WARN_SET_FD(fd_my_log);
-				DEBUG_SET_FD(fd_my_log);
 
 				// We get nodename to create per_node files
 				if (gethostname(nodename, sizeof(nodename)) < 0) {
@@ -742,10 +728,9 @@ int main(int argc, char *argv[])
 				verbose(0,"Creating tmp dir");
 				create_tmp(ear_tmp);
 				if (my_cluster_conf.eard.use_log) {
-								verbose(0,"Creating log file");
-								fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
-								if (fd_my_log < 0) fd_my_log = 2;
-				}else fd_my_log = 2;
+					verbose(0,"Creating log file");
+					fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
+				}
 				set_verbose_variables();
 
 				verbose(0,"Creating frequency list in shared memory");

@@ -52,6 +52,9 @@ unsigned long long metrics_vec_inst(signature_t *metrics);
 
 /* Computes the node signature including data from other processes */
 void metrics_node_signature(signature_t *master,signature_t *ns);
+/* Computes the node signature at app end */
+void metrics_app_node_signature(signature_t *master,signature_t *ns);
+
 
 /* Computes metrics per-iteration, very lightweight */
 state_t metrics_new_iteration(signature_t *sig);

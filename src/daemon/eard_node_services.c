@@ -58,7 +58,7 @@ extern uint report_eard ;
 extern report_id_t rid;
 extern state_t report_connection_status;
 
-#include <daemon/eard.h>
+//#include <daemon/eard.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
@@ -66,7 +66,7 @@ extern state_t report_connection_status;
 
 #define MIN_INTERVAL_RT_ERROR 3600
 
-
+void eard_exit(uint restart);
 #if APP_API_THREAD
 pthread_t app_eard_api_th;
 #endif
@@ -566,7 +566,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 				gpu_get_info(&eard_main_gpu_ctx, (const gpu_info_t **) &info, NULL);
 			} else {
 				memset(&fake, 0, sizeof(gpu_info_t));
-				*info = fake;
+				info = &fake;
 			}
 			write(ack_fd, info, sizeof(gpu_info_t)*eard_num_gpus);	
 			break;
@@ -646,8 +646,7 @@ void connect_service(struct daemon_req *new_req)
   job_t *new_job = &new_app->job;
   unsigned long ack;
   int ear_req_fd,ear_ack_fd;
-  int alive;
-  int newc,is_new;
+  int newc;
   ulong lid = new_req->con_id.lid;
   int pid = create_ID(new_job->id, new_job->step_id);
 	uint ID = (uint)pid;
@@ -791,7 +790,6 @@ int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd) {
 int eard_system(eard_head_t *head,int req_fd,int ack_fd)
 {
   unsigned long ack;
-  int ret1;
   int con_id;
   con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 
@@ -808,7 +806,6 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
       break;
     case WRITE_EVENT:
       ack = EAR_COM_OK;
-      ret1 = EAR_SUCCESS;
 			report_connection_status = report_events(&rid, &req.req_data.event, 1);
       if (report_connection_status == EAR_SUCCESS) ack = EAR_COM_OK;
       else ack = EAR_COM_ERROR;
@@ -817,7 +814,6 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
       break;
     case WRITE_LOOP_SIGNATURE:
       ack = EAR_COM_OK;
-      ret1 = EAR_SUCCESS;
       powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
       // print_loop_fd(1,&req.req_data.loop);
 			report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
@@ -849,8 +845,6 @@ void eard_set_freq(int ack_fd,unsigned long new_freq, unsigned long max_freq) {
 }
 int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 {
-  long aux_long[2];
-  size_t size;
   state_t s;
   ulong ack;
   ulong *f;
@@ -909,7 +903,6 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 
 int eard_imc(eard_head_t *head,int req_fd,int ack_fd) {
   unsigned long ack = 0;
-  int ret;
   uint *min;
   uint *max;
   char buffer[4096];
@@ -982,7 +975,6 @@ int eard_imc(eard_head_t *head,int req_fd,int ack_fd) {
 /*******************+ RAPL SERVICES *******************/
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd) {
   unsigned long ack = 0;
-  int ret;
   switch (head->req_service) {
     case START_RAPL:
       error("starting rapl msr not supported");
