@@ -33,6 +33,15 @@ int eargm_new_job(uint num_nodes);
 */
 int eargm_end_job(uint num_nodes);
 
+/* Increases the EARGM's powercap allocation by increase*/
+int eargm_inc_powercap(uint increase);
+
+/* Reduces the EARGM's powercap allocation by decrease*/
+int eargm_red_powercap(uint decrease);
+
+/* Resets the EARGM's powercap to its default value (from ear.conf) */
+int eargm_reset_powercap();
+
 /** Disconnect from the previously connected EARGM
 */
 int eargm_disconnect();

@@ -17,6 +17,8 @@
 
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 
+#define EARGM_TEST 1
+
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
@@ -191,11 +193,34 @@ void update_eargm_configuration(cluster_conf_t *conf)
     /* EARGM specific conf */
     gethostname(host, sizeof(host));
     strtok(host, ".");
+#if !EARGM_TEST
     e_def = get_eargm_conf(conf, host);
     if (e_def == NULL) {
-        error("Could find node in EARGMs list in ear.conf, exiting\n");
+        error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
         exit(1);
     }
+#else
+    int i, id;
+    char *idx = getenv("EARGMID");
+    e_def = NULL;
+    if (idx != NULL) id = atoi(idx);
+    else {
+        error("Couldn't find EARGMID environment variable, exiting\n");
+        exit(1);
+    }
+    for (i = 0; i < conf->eargm.num_eargms; i++)
+    {
+        if (conf->eargm.eargms[i].id == id)
+        {
+            e_def = &conf->eargm.eargms[i];
+            break;
+        }
+    }
+    if (e_def == NULL) {
+        error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
+        exit(1);
+    }
+#endif
     /* Remove unnecessary islands from ear_conf */
     remove_extra_islands(conf, e_def);
 
@@ -632,7 +657,7 @@ int main(int argc,char *argv[])
             errno=ret;
             error("error creating eargm_server for external api %s",strerror(errno));
         }
-    }
+    } else { error("no subs for this EARGM"); }
 
 
     time_t start_time, end_time;
@@ -678,6 +703,7 @@ int main(int argc,char *argv[])
         if (process_created){
             check_pending_processes();
         }   
+#if !EARGM_TEST
         // ALARM RECEIVED
         if (t1_expired){
             t1_expired=0;
@@ -823,7 +849,9 @@ int main(int argc,char *argv[])
                 error("Asking for total energy system. Using aggregated %d",use_aggregation);
             }
             fill_periods(result);
+
         }
+#endif
     }
 
 #if SYSLOG_MSG

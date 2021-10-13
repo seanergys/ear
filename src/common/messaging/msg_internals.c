@@ -210,7 +210,9 @@ int wait_for_client(int s,struct sockaddr_in *client)
 	}
 
     char conection_ok = 1;
+    debug("connection received");
     _write(new_sock, &conection_ok, sizeof(char));
+    debug("handshake sent");
 
     verbose(VCONNECT, "Sending handshake byte to client.");
 	verbose(VCONNECT, "new connection ");

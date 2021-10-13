@@ -23,6 +23,7 @@
 typedef struct shared_powercap_data {
     ulong def_power;        // default power for this eargm
     ulong current_power;    // current power usage
+    ulong current_powercap; // current maximum sub-cluster power 
     ulong extra_power;      // extra power already allocated to this eargm
     ulong requested;        // extra power requested (>0 means that the eargm is in greedy mode)
     ulong available_power;  // power that can be freed

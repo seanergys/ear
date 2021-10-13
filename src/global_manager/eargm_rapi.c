@@ -122,7 +122,7 @@ int eargm_new_job(uint num_nodes)
     memset(&command, 0, sizeof(request_t));
     command.req=EARGM_NEW_JOB;
     command.my_req.eargm_data.num_nodes=num_nodes;
-    verbose(2,"command %u num_nodes %u\n",command.req,command.my_req.eargm_data.num_nodes);
+    verbose(2,"command %u num_nodes %u\n", command.req, command.my_req.eargm_data.num_nodes);
     return send_command(&command);
 }
 
@@ -132,7 +132,36 @@ int eargm_end_job(uint num_nodes)
     memset(&command, 0, sizeof(request_t));
     command.req=EARGM_END_JOB;
     command.my_req.eargm_data.num_nodes=num_nodes;
-    verbose(2,"command %u num_nodes %u\n",command.req,command.my_req.eargm_data.num_nodes);
+    verbose(2,"command %u num_nodes %u\n", command.req, command.my_req.eargm_data.num_nodes);
+    return send_command(&command);
+}
+
+int eargm_inc_powercap(uint increase)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    command.req=EARGM_INC_PC;
+    command.my_req.eargm_data.pc_change=increase;
+    verbose(2,"command %u pc_change %u\n", command.req, command.my_req.eargm_data.pc_change);
+    return send_command(&command);
+}
+
+int eargm_red_powercap(uint decrease)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    command.req=EARGM_RED_PC;
+    command.my_req.eargm_data.pc_change=decrease;
+    verbose(2,"command %u pc_change %u\n", command.req, command.my_req.eargm_data.pc_change);
+    return send_command(&command);
+}
+
+int eargm_reset_powercap()
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    command.req=EARGM_RESET_PC;
+    verbose(2,"command %u\n",command.req);
     return send_command(&command);
 }
 

@@ -45,6 +45,16 @@
 extern uint total_nodes;
 extern uint my_port;
 
+typedef struct eargm_table
+{
+    uint num_eargms;
+    int  *eargm_ids;
+    int  *eargm_ips;
+    int  *eargm_ports;
+    char *action;
+    uint *action_value;
+
+} eargm_table_t;
 
 void *meta_eargm(void *config);
 
