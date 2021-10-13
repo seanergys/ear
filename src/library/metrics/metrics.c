@@ -263,6 +263,10 @@ static void metrics_global_stop()
 	long long aux_flops;
 	int i;
 	//
+	
+	if (masters_info.my_master_rank < 0){
+		while(sig_shared_region[my_node_id].ready) usleep(100);
+	}
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
 	/* Onle the master will collect these metrics */
@@ -1117,6 +1121,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
+	#if 0
 	debug("Metrics_dispose_init %d",my_node_id);
 	while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
 	metrics_global_stop();
@@ -1127,6 +1132,24 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
 	estimate_power_and_gbs(&lib_shared_region->node_signature,lib_shared_region,sig_shared_region, node_mgr_job_info, &lib_shared_region->job_signature, PER_JOB, -1);
 	accum_estimations(lib_shared_region,sig_shared_region);
+	#endif
+
+	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
+  while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
+	metrics_compute_signature_data(LOO, metrics, 1, procs);
+  /* Waiting for node signatures */
+  verbose_master(2,"Waiting for node signatures");
+  while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+
+	compute_per_process_and_job_metrics(&nodeapp);
+
+
+	if (masters_info.my_master_rank >= 0)  free_node_signatures(lib_shared_region,sig_shared_region);
+
+	metrics_global_stop();
+	verbose(2,"Global stop ID=%d",my_node_id);	
+	metrics_compute_signature_data(APP, metrics, 1, procs);
+
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
 		/* Computing flops */
@@ -1258,6 +1281,8 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
   se = (sig_ext_t *)master->sig_ext;
   signature_copy(ns,master);
   if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+
+	verbose_master(2, " metrics_app_node_signature");
 
   compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
   compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);

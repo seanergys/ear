@@ -167,6 +167,10 @@ void shared_signatures_area_dispose(char * path);
 
 void signature_ready(shsignature_t *sig,int cur_state);
 int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
+
+/* Marks all the sh signatures ready = 0 */
+void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig);
+
 int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
 

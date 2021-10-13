@@ -179,6 +179,13 @@ void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
 	}
 }
 
+void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig)
+{
+  int i;
+  for (i=0;i<data->num_processes;i++){
+		sig[i].ready = 0;
+	}
+}
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i;
@@ -651,7 +658,7 @@ void accum_estimations(lib_shared_data_t *data,shsignature_t *sig)
 		sig_shared_region[p].sig.accum_mem_access += sig_shared_region[p].sig.GBS * 1024 * 1024 * 1024 * time_s;
 		sig_shared_region[p].sig.accum_avg_f      += sig_shared_region[p].sig.avg_f * time_s;
 		sig_shared_region[p].sig.valid_time       += time_s;
-		debug("Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s);
+		verbose_master(2,"Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s);
 
 	}
 }
@@ -684,10 +691,11 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	memset(gbs,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(f,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 	memset(L3,0,sizeof(ull)*MAX_CPUS_SUPPORTED);
+	memset(power_estimations,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL) || (my_GBS == NULL) || (my_power == NULL)) return;
-	*my_power = lsig->DC_power;
+	*my_power = 0;
 	*my_GBS   = 0;
 
 	
@@ -698,14 +706,16 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
 			ull avx = 0;
 			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
-				job_in_process[node_process] = j;
-				L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
-				ipc[node_process] = 1/nmgr[j].shsig[lp].sig.CPI;
-				tpi[node_process] = (double)L3[node_process]/(double)nmgr[j].shsig[lp].sig.instructions;
-				avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D];
-				vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
-				f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
-				node_L3 += L3[node_process];
+				if (nmgr[j].shsig[lp].sig.DC_power > 0){
+				  job_in_process[node_process] = j;
+				  L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
+				  ipc[node_process] = 1/nmgr[j].shsig[lp].sig.CPI;
+				  tpi[node_process] = (double)L3[node_process]/(double)nmgr[j].shsig[lp].sig.instructions;
+				  avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D];
+				  vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
+				  f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
+				  node_L3 += L3[node_process];
+				}
 				if ((j == node_mgr_index) && (lp == lid)) gid = node_process;
 				node_process++;
 			}
@@ -762,7 +772,7 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	uint lp = 0;
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
 		/* If job is active we compute its power estimated */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && nmgr[j].libsh->node_signature.avg_f){
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp]){
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
 				double P;
 				P = (ipc[lp] * IPC_COEFF) + (gbs[lp] * GBS_COEFF) + (vpi[lp] * VPI_COEFF) + (f[lp] * F_COEFF ) + INTERCEPT;
@@ -777,11 +787,11 @@ void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignatu
 	power_ratio = 0.0;
 	for (lp =0; lp < node_process; lp++){
 		if (type == PER_JOB){
-			if (job_in_process[lp] == node_mgr_index){ 
+			if ((job_in_process[lp] == node_mgr_index) && (power_estimations[lp] > 0)){ 
 				power_ratio += power_estimations[lp]/total_power_estimated;
 			}
 		}else{ 
-			if (lp == gid) power_ratio = power_estimations[lp]/total_power_estimated;
+			if ((lp == gid) && (power_estimations[lp] > 0)) power_ratio = power_estimations[lp]/total_power_estimated;
 		}
 	}
 	CPU_power = lsig->DC_power;
