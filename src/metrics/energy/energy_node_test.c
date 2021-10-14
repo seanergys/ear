@@ -18,7 +18,8 @@
 #include <metrics/energy/energy_node.h>
 #include <common/system/monitor.h>
 
-//gcc -I ../../ -o test energy_node_test.c ../libmetrics.a ../../common/libcommon.a -ldl && sudo ./test $PWD/.. energy_nm.so
+//gcc -I ../../ -o test energy_node_test.c ../libmetrics.a ../../common/libcommon.a -ldl -lpthread -rdynamic
+//sudo ./test /ear_install_path/lib/plugins energy_inm_power.so
 
 int main(int argc, char *argv[])
 {
@@ -29,6 +30,7 @@ int main(int argc, char *argv[])
 	state_t s;
 	size_t node_size;
 	uint   node_units;
+	uint wait_period = 5;
 
 	char epath[256];
 
@@ -42,7 +44,6 @@ int main(int argc, char *argv[])
 	monitor_init();
 
 	s = energy_init(&conf, &eh);
-	printf("energy_init %d\n", s);
 
 	energy_units(&eh, &node_units);
   energy_datasize(&eh, &node_size);
@@ -55,16 +56,17 @@ int main(int argc, char *argv[])
 
 	//
 	s = energy_dc_read(&eh, energy_mj_init);
-	printf("energy_dc_read %d\n", s);
+	uint i = 0;
+	while(i<10){
+		i++;
+	  sleep(wait_period);
 
-	sleep(10);
+	  s = energy_dc_read(&eh, energy_mj_end);
+	  energy_accumulated(NULL, &energy_mj_diff, energy_mj_init, energy_mj_end);
+	  printf("Total energy %lu mj. Avg Power %lf W\n", energy_mj_diff, ((double)energy_mj_diff/(double)(node_units*wait_period)));
 
-	s = energy_dc_read(&eh, energy_mj_end);
-	printf("energy_dc_read %d\n", s);
-
-	energy_accumulated(NULL, &energy_mj_diff, energy_mj_init, energy_mj_end);
-
-	printf("Total energy %lu mj. Avg Power %lf W\n", energy_mj_diff, ((double)energy_mj_diff/(double)(node_units*5)));
+		memcpy((char *)energy_mj_init, (char *)energy_mj_end, node_size);
+	}
 
 	//
 	s = energy_dispose(&eh);

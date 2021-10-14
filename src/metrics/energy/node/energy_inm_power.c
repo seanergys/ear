@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #define FIRST_SIGNIFICANT_BYTE 3
 
@@ -263,13 +263,13 @@ Byte 11:12 – Average Value (unsigned integer) see Section 3.1.4 2b
 Byte 13:16 – Timestamp as defined by the IPMI v2.0 specification indicating when the response message was sent. If Intel® NM cannot obtain valid time, the timestamp is set to FFFFFFFFh as defined in the IPMI v2.0 specification. 4b
 Byte 17:20 – Statistics Reporting Period (the timeframe in seconds, over which the firmware collects statistics). This is unsigned integer value. For all global statistics this field contains the time after the last statistics reset. 4b
  */
-	current_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE];
+	current_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE]; // 3-4
 	current_power=*current_powerp;
-	min_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+2];
-	max_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+4];
-	avg_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+6];
-	timestampp=(uint32_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+10];
-	timeframep=(uint32_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+14];
+	min_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+2]; // 5-6
+	max_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+4]; // 7-8
+	avg_powerp=(uint16_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+6]; // 9-10
+	timestampp=(uint32_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+8]; // 11-14
+	timeframep=(uint32_t *)&rsp->data[FIRST_SIGNIFICANT_BYTE+12]; // 15-18
 	min_power=*min_powerp;
 	max_power=*max_powerp;
 	avg_power=*avg_powerp;
@@ -439,7 +439,7 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
   //debug("energy_dc_read\n");
 
   *penergy_mj = inm_power_accumulated_energy;
-	*time_ms = inm_last_power_reading.timestamp*1000;
+	*time_ms = inm_last_power_reading.timeframe;
 
   return EAR_SUCCESS;
 
