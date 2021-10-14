@@ -23,7 +23,7 @@
 #define IPMI_BUF_SIZE	1024
 #define IPMI_SYSTEM_INTERFACE_ADDR_TYPE	0x0c
 
-#define INM_POWER_NETFN	      0x2F
+#define INM_POWER_NETFN	      0x2E
 #define INM_POWER_CMD					0xC8
 
 typedef struct inm_power_data{
