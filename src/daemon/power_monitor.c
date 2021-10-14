@@ -97,6 +97,8 @@ static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
 static energy_data_t c_energy;
+
+/* Powercap */
 static energy_data_t e_pmon_begin, e_pmon_end, e_pmon;
 static power_data_t p_pmon;
 
@@ -1179,44 +1181,54 @@ void powermon_reload_conf() {
 // MAIN PERIODIC_METRIC FUNCTION
 //
 //
+//
+
+#define VERBOSE_POWERMON 1
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
 	ulong jid, mpi,sid;
 	ulong time_consumed;
-	power_data_t *my_current_power;
-	double maxpower, minpower, RAPL, corrected_power,pckp,dramp;
+	double maxpower, minpower, rapl_dram, rapl_pck, corrected_power,pckp,dramp, rapl;
 	powermon_app_t *pmapp;
 	uint current_jobs_running_in_node = 0;
 
-	/* Powercap */
-	if (report_data){
-		my_current_power = pmon_info;
-	}else{
-		my_current_power = last_pmon;
-	}
+
+	pmapp 		= current_ear_app[max_context_created];
+  jid       = pmapp->app.job.id;
+  sid       = pmapp->app.job.step_id;
+  mpi       = pmapp->app.is_mpi;
+  maxpower  = pmapp->app.power_sig.max_DC_power;
+  minpower  = pmapp->app.power_sig.min_DC_power;
+
+
+	/* If there is no powercap, last_pmon and pmon_info is the same info. Otherwise, last_pmon is a short period and pmon_info corresponds with the period set in the ear.conf */
+  /* Powercap */
+	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);;
+  pdomain.platform = last_pmon->avg_dc;
+  pdomain.cpu      = accum_cpu_power(last_pmon);
+  pdomain.dram     = accum_dram_power(last_pmon);
+  pdomain.gpu      = accum_gpu_power(last_pmon);
+  powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
+
+
 
 	if (nodemgr_get_num_jobs_attached(&current_jobs_running_in_node) == EAR_ERROR){
 		verbose(1,"Error asking for the number of jobs in node");
 	}
 
-	pmapp 		= current_ear_app[max_context_created];
-  jid = pmapp->app.job.id;
-  sid = pmapp->app.job.step_id;
-  mpi = pmapp->app.is_mpi;
-  maxpower = pmapp->app.power_sig.max_DC_power;
-  minpower = pmapp->app.power_sig.min_DC_power;
 
+	#if VERBOSE_POWERMON
   print_app_mgt_data(pmapp->app_info);
 	verbose(VNODEPMON,"%s",COL_BLU);
-  dramp = accum_dram_power(my_current_power);
-  pckp  = accum_cpu_power(my_current_power);
+  dramp = accum_dram_power(last_pmon);
+  pckp  = accum_cpu_power(last_pmon);
   #if USE_GPUS
   double gpup;
-  gpup = accum_gpu_power(my_current_power);
+  gpup = accum_gpu_power(last_pmon);
   verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
-      current_jobs_running_in_node, jid, mpi, my_current_power->avg_dc,pckp,dramp,gpup, maxpower, minpower);
+      current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc,pckp,dramp,gpup, maxpower, minpower);
   #else
   verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
-      current_jobs_running_in_node, jid, mpi, my_current_power->avg_dc, pckp,dramp,maxpower, minpower);
+      current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc, pckp,dramp,maxpower, minpower);
   #endif
 	verbose_node_metrics(&my_nm_id, nm);
 	verbose(VNODEPMON,"%s",COL_CLR);
@@ -1229,74 +1241,75 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 			verbose(1," ");
   	}
 	}
+	report_periodic_power(fd_periodic, last_pmon);
+	#endif
+
 	pmapp     = current_ear_app[max_context_created];
 
 	while (pthread_mutex_trylock(&app_lock));
 
+	/* We compute max and mins */
 	if (pmapp->app.job.id > 0) {
-		if ((my_current_power->avg_dc > maxpower) && (my_current_power->avg_dc < my_node_conf->max_error_power)){
-			pmapp->app.power_sig.max_DC_power = my_current_power->avg_dc;
+		if ((last_pmon->avg_dc > maxpower) && (last_pmon->avg_dc < my_node_conf->max_error_power)){
+			pmapp->app.power_sig.max_DC_power = last_pmon->avg_dc;
 		}
-		if ((my_current_power->avg_dc < minpower) && (minpower>0)){
-			pmapp->app.power_sig.min_DC_power = my_current_power->avg_dc;
+		if ((last_pmon->avg_dc < minpower) && (minpower>0)){
+			pmapp->app.power_sig.min_DC_power = last_pmon->avg_dc;
 		}
 	}
 
 	pthread_mutex_unlock(&app_lock);
 
-	report_periodic_power(fd_periodic, my_current_power);
-
-
-	current_sample.start_time = my_current_power->begin;
-	current_sample.end_time = my_current_power->end;
-	corrected_power = my_current_power->avg_dc;
-	RAPL = accum_dram_power(my_current_power) + accum_cpu_power(my_current_power); 
-	if (my_current_power->avg_dc < RAPL) {
-		corrected_power = RAPL;
+	/* Pending fields for periodic_metric. we compute anyway because we use for error checking */
+	current_sample.start_time = pmon_info->begin;
+	current_sample.end_time   = pmon_info->end;
+	corrected_power           = pmon_info->avg_dc;
+	rapl_dram                 = accum_dram_power(pmon_info);
+	rapl_pck                  = accum_cpu_power(pmon_info); 
+	rapl = rapl_dram + rapl_pck;
+	if (pmon_info->avg_dc < rapl ) {
+		corrected_power = rapl;
 	}
-	time_consumed = (ulong) difftime(my_current_power->end, my_current_power->begin);
-	current_sample.DRAM_energy = accum_dram_power(my_current_power) * time_consumed;
-	current_sample.PCK_energy  = accum_cpu_power(my_current_power)  * time_consumed;
+	time_consumed = (ulong) difftime(pmon_info->end, pmon_info->begin);
+	current_sample.DRAM_energy = rapl_dram * time_consumed;
+	current_sample.PCK_energy  = rapl_pck  * time_consumed;
 #if USE_GPUS
-  current_sample.GPU_energy = accum_gpu_power(my_current_power) * time_consumed;
+  current_sample.GPU_energy = accum_gpu_power(pmon_info) * time_consumed;
 #endif
-
-
 	current_sample.DC_energy = corrected_power * time_consumed;
+	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
 
 	/* To be usd by status */
-	last_power_reported = my_current_power->avg_dc;
+	last_power_reported = last_pmon->avg_dc;
 	copy_node_metrics(&my_nm_id, &last_nm, nm);
-	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);;
-	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
-	pdomain.platform = last_power_reported;
-	pdomain.cpu      = accum_cpu_power(my_current_power);
-	pdomain.dram     = accum_dram_power(my_current_power);
-	pdomain.gpu      = accum_gpu_power(my_current_power);
-	powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
 
+
+
+	/* Error control */
 #if SYSLOG_MSG
-	if ((my_current_power->avg_dc == 0) 
-	|| (my_current_power->avg_dc < my_node_conf->min_sig_power) 
-  || (my_current_power->avg_dc > my_node_conf->max_sig_power) 
-  || (my_current_power->avg_dc > my_node_conf->max_error_power))
+	if ((last_pmon->avg_dc == 0) 
+	|| (last_pmon->avg_dc < my_node_conf->min_sig_power) 
+  || (last_pmon->avg_dc > my_node_conf->max_sig_power) 
+  || (last_pmon->avg_dc > my_node_conf->max_error_power))
     {
-		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,my_current_power->avg_dc);
-		log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,my_current_power->avg_dc);
+		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,last_pmon->avg_dc);
+		log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,last_pmon->avg_dc);
 	}
 	if (current_sample.temp > my_node_conf->max_temp){
 		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %lu degress (max %lu)\n",nodename,current_sample.temp,my_node_conf->max_temp);
 		log_report_eard_rt_error(&rid,jid,sid,TEMP_ERROR,current_sample.temp);
 	}
-	if (RAPL == 0) {
-		log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,RAPL);
+	if (rapl == 0) {
+		log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,rapl);
 	}
 	if ((current_sample.avg_f == 0) || ((current_sample.avg_f > frequency_get_nominal_freq()) && (mpi))){
 		log_report_eard_rt_error(&rid,jid,sid,FREQ_ERROR,current_sample.avg_f);
 	}
 #endif
-	if ((my_current_power->avg_dc == 0) || (my_current_power->avg_dc > my_node_conf->max_error_power)) {
-		warning("Resetting IPMI interface since power is %.2lf", my_current_power->avg_dc);
+
+	/* We check if we have to reset the IPMI interface */
+	if ((last_pmon->avg_dc == 0) || (last_pmon->avg_dc > my_node_conf->max_error_power)) {
+		warning("Resetting IPMI interface since power is %.2lf", last_pmon->avg_dc);
 
 		if (energy_dispose(&my_eh_pm) != EAR_SUCCESS) {
 			error("when resetting IPMI interface 'energy_dispose'");
@@ -1306,12 +1319,15 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 			error("when resetting IPMI interface in 'energy_init'");
 		}
 	}
-	
-	if ((my_current_power->avg_dc < my_node_conf->max_error_power) || (my_current_power->avg_dc < 0)){
-		my_current_power->avg_dc = my_node_conf->max_sig_power;
-	}
-	if ((my_current_power->avg_dc >= 0) && (my_current_power->avg_dc < my_node_conf->max_error_power)){
-		report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
+
+	/* report periodic metric */
+	if (report){	
+	  if ((pmon_info->avg_dc > my_node_conf->max_error_power) || (pmon_info->avg_dc < 0)){
+		  pmon_info->avg_dc = my_node_conf->max_sig_power;
+	  }
+	  if ((pmon_info->avg_dc >= 0) && (pmon_info->avg_dc < my_node_conf->max_error_power) && report){
+		  report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
+	  }
 	}
 
 	return;
@@ -1437,8 +1453,11 @@ void *eard_power_monitoring(void *noinfo)
 	energy_data_t e_begin;
 	energy_data_t e_end;
 	power_data_t my_current_power;
+
+	/* Powercap */
 	uint report_data = 1;
 	uint report_periods = 1;
+	uint current_periods = 0;
 
 	CPU_ZERO(&in_jobs_mask);
 
@@ -1488,6 +1507,8 @@ void *eard_power_monitoring(void *noinfo)
 
 	debug("read_enegy_data");
 	read_enegy_data(&my_eh_pm, &e_begin);
+
+	/* Powercap */
 	copy_energy_data(&e_pmon_begin, &e_begin);
 	
 	/* Update with the curent node conf */
@@ -1542,7 +1563,7 @@ void *eard_power_monitoring(void *noinfo)
 
 			/* Powercap */
 			current_periods++;
-			report_data = (current_periods == reports_periods);
+			report_data = (current_periods == report_periods);
 			if (report_data){
 				current_periods = 0;
 				copy_energy_data(&e_pmon_end, &e_end);
@@ -1551,7 +1572,8 @@ void *eard_power_monitoring(void *noinfo)
 			}
 
 			// Save current power
-			update_historic_info(&my_current_power, &nm_diff, &p_mon, &report_data);
+			if (!report_data) copy_power_data(&p_pmon, &my_current_power);
+			update_historic_info(&my_current_power, &nm_diff, &p_pmon, report_data);
 
 			// Set values for next iteration
 			copy_energy_data(&e_begin, &e_end);
