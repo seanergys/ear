@@ -48,6 +48,7 @@ typedef struct gpu_signature{
     gpu_app_t gpu_data[MAX_GPUS_SUPPORTED];
 }gpu_signature_t;
 
+
 typedef struct mini_sig
 {
     float DC_power;

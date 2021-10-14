@@ -74,8 +74,8 @@ typedef struct lib_shared_data{
     uint    				num_signatures;
 	  uint 						num_cpus;
     double 					cas_counters;
-    signature_t 		master_signature;
     signature_t 		node_signature;
+    signature_t 		job_signature;
     int							master_rank;
     uint						master_ready;
 		cpu_set_t       node_mask;
@@ -99,6 +99,7 @@ typedef struct shsignature{
     int 						affinity;
     uint 						unbalanced;
     ulong 					policy_freq;
+		double					period;
 }shsignature_t;
 
 typedef struct node_mgr_sh_data{
@@ -166,6 +167,10 @@ void shared_signatures_area_dispose(char * path);
 
 void signature_ready(shsignature_t *sig,int cur_state);
 int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
+
+/* Marks all the sh signatures ready = 0 */
+void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig);
+
 int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
 
@@ -226,6 +231,7 @@ void  init_earl_node_mgr_info();
 void  update_earl_node_mgr_info();
 #define PER_PROCESS 0
 #define PER_JOB     1
+void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);
 void estimate_power_and_gbs(signature_t *lsig, lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, signature_t *new_sig, uint type, int lid);
 void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl);
 

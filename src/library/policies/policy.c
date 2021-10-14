@@ -703,13 +703,17 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     }
 
 		/* Update node info */
-		update_earl_node_mgr_info();
+		/* Not needed. update_earl_node_mgr_info();*/
+
+		verbose_master(2,"policy node apply");
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
 		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+		/*
 		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &est_sig, PER_JOB, -1);
 		my_sig->GBS = est_sig.GBS;
 		my_sig->DC_power = est_sig.DC_power;		
-
+		*/
+		verbose_master(2,"policy node apply power %lf GBS %lf TPI %lf time %lf" , my_sig->DC_power, my_sig->GBS, my_sig->TPI, my_sig->time);
 		if (jobs_in_node > 1) dyn_unc = 0;
 		else 									dyn_unc = conf_dyn_unc;
 		/* End update */
@@ -859,24 +863,26 @@ state_t policy_set_default_freq(signature_t *sig)
 /* This function checks the CPU freq selection accuracy (only CPU), ok is an output */
 state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 {
-    polctx_t *c=&my_pol_ctx;
-    state_t ret,retg=EAR_SUCCESS;
+    polctx_t *c = &my_pol_ctx;
+    state_t ret,retg = EAR_SUCCESS;
 		uint jobs_in_node;
 		signature_t new_sig;
+		verbose(2,"policy_ok ");
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;
     }
     if (masters_info.my_master_rank < 0 ){*ok = 1; return EAR_SUCCESS;}
     /* Update node info */
-    update_earl_node_mgr_info();
+    /* update_earl_node_mgr_info(); */
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_master(2,"There are %u jobs in the node", jobs_in_node);
 		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
     /* End update */
 
-    estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1);
-    verbose_master(2,"job GBS is %.2lf and job power %.2lf",new_sig.GBS, new_sig.DC_power);
+    /* estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1); */
+    verbose_master(2,"job GBS is %.2lf and job power %.2lf",curr->GBS, curr->DC_power);
+
 
 
     if (polsyms_fun.ok != NULL){

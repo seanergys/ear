@@ -23,7 +23,7 @@
 #define IPMI_BUF_SIZE	1024
 #define IPMI_SYSTEM_INTERFACE_ADDR_TYPE	0x0c
 
-#define INM_POWER_NETFN	      0x2E
+#define INM_POWER_NETFN	      0x2F
 #define INM_POWER_CMD					0xC8
 
 typedef struct inm_power_data{
@@ -139,7 +139,7 @@ struct valstr {
 
 //======for open and send=================================
 #define IPMI_MAX_ADDR_SIZE    0x20
-#define IPMI_BMC_CHANNEL    0x0f
+#define IPMI_BMC_CHANNEL    0x00
 #define IPMI_NUM_CHANNELS   0x10
 #define IPMI_IPMB_ADDR_TYPE   0x01
 #define IPMI_IPMB_BROADCAST_ADDR_TYPE 0x41
