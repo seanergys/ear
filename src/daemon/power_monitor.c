@@ -97,6 +97,10 @@ static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
 static energy_data_t c_energy;
+static energy_data_t e_pmon_begin, e_pmon_end, e_pmon;
+static power_data_t p_pmon;
+
+
 static ulong * powermon_freq_list;
 static int powermon_num_pstates;
 static periodic_metric_t current_sample;
@@ -1175,12 +1179,20 @@ void powermon_reload_conf() {
 // MAIN PERIODIC_METRIC FUNCTION
 //
 //
-void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
+void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
 	ulong jid, mpi,sid;
 	ulong time_consumed;
+	power_data_t *my_current_power;
 	double maxpower, minpower, RAPL, corrected_power,pckp,dramp;
 	powermon_app_t *pmapp;
 	uint current_jobs_running_in_node = 0;
+
+	/* Powercap */
+	if (report_data){
+		my_current_power = pmon_info;
+	}else{
+		my_current_power = last_pmon;
+	}
 
 	if (nodemgr_get_num_jobs_attached(&current_jobs_running_in_node) == EAR_ERROR){
 		verbose(1,"Error asking for the number of jobs in node");
@@ -1233,6 +1245,7 @@ void update_historic_info(power_data_t *my_current_power, nm_data_t *nm) {
 	pthread_mutex_unlock(&app_lock);
 
 	report_periodic_power(fd_periodic, my_current_power);
+
 
 	current_sample.start_time = my_current_power->begin;
 	current_sample.end_time = my_current_power->end;
@@ -1424,6 +1437,8 @@ void *eard_power_monitoring(void *noinfo)
 	energy_data_t e_begin;
 	energy_data_t e_end;
 	power_data_t my_current_power;
+	uint report_data = 1;
+	uint report_periods = 1;
 
 	CPU_ZERO(&in_jobs_mask);
 
@@ -1447,6 +1462,13 @@ void *eard_power_monitoring(void *noinfo)
 	alloc_energy_data(&e_end);
 	alloc_power_data(&my_current_power);
 
+	/* Powercap */
+	alloc_energy_data(&e_pmon_begin);
+	alloc_energy_data(&e_pmon_end);
+	alloc_energy_data(&e_pmon);
+	alloc_power_data(&p_pmon);
+
+
 
 	// current_sample is the current powermonitoring period
 	debug("init_periodic_metric");
@@ -1455,11 +1477,19 @@ void *eard_power_monitoring(void *noinfo)
 	set_powercapstatus_mode(AUTO_CONFIG);
 	create_powermon_out();
 
+	/* Powercap */
+	if (powermon_get_powercap_def() > 0){	
+		report_periods = ear_max(1, f_monitoring/10);
+		f_monitoring = 10; 
+	}
+
 	// We will collect and report avg power until eard finishes
 	// Get time and Energy
 
 	debug("read_enegy_data");
 	read_enegy_data(&my_eh_pm, &e_begin);
+	copy_energy_data(&e_pmon_begin, &e_begin);
+	
 	/* Update with the curent node conf */
 	debug("Initializing node metrics");
 	powermon_init_nm();
@@ -1510,8 +1540,18 @@ void *eard_power_monitoring(void *noinfo)
 
 			print_power(&my_current_power,1,-1);
 
+			/* Powercap */
+			current_periods++;
+			report_data = (current_periods == reports_periods);
+			if (report_data){
+				current_periods = 0;
+				copy_energy_data(&e_pmon_end, &e_end);
+				compute_power(&e_pmon_begin, &e_pmon_end, &p_pmon);	
+				copy_energy_data(&e_pmon_begin, &e_pmon_end);
+			}
+
 			// Save current power
-			update_historic_info(&my_current_power, &nm_diff);
+			update_historic_info(&my_current_power, &nm_diff, &p_mon, &report_data);
 
 			// Set values for next iteration
 			copy_energy_data(&e_begin, &e_end);
