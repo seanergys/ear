@@ -152,7 +152,6 @@ int main(int argc,char *argv[])
     char rm_loops = 0, rm_apps = 0;
     int i;
     char opt, *token;
-    struct termios t;
     char out_type = OUT_QUERY;
 
     /* No password as default */
@@ -164,7 +163,12 @@ int main(int argc,char *argv[])
     strcpy(user, "root");
 #endif
 
+#if PRIVATE_PASS
+    struct termios t;
     while ((opt = getopt(argc, argv, "u:pd:j:oalrh")) != -1) {
+#else
+    while ((opt = getopt(argc, argv, "u:p:d:j:oalrh")) != -1) {
+#endif
         switch(opt)
         {
             case 'd':
@@ -176,6 +180,7 @@ int main(int argc,char *argv[])
                 if (token != NULL) step_id = atoi(token);
                 break;
             case 'p':
+#if PRIVATE_PASS
                 tcgetattr(STDIN_FILENO, &t);
                 t.c_lflag &= ~ECHO;
                 tcsetattr(STDIN_FILENO, TCSANOW, &t);
@@ -187,6 +192,9 @@ int main(int argc,char *argv[])
                 tcsetattr(STDIN_FILENO, TCSANOW, &t);
                 strclean(passw, '\n');
                 printf(" \n");
+#else
+                strcpy(passw, optarg);
+#endif
                 break;
             case 'u':
                 strcpy(user, optarg);
