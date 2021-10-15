@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 	char epath[256];
 
 	if (argc < 3) {
+		printf("usage:%s /ear_install_path/lib/plugins energy_plugin.so\n",argv[0]);
 		return 0;
 	}
 
@@ -63,7 +64,7 @@ int main(int argc, char *argv[])
 
 	  s = energy_dc_read(&eh, energy_mj_end);
 	  energy_accumulated(NULL, &energy_mj_diff, energy_mj_init, energy_mj_end);
-	  printf("Total energy %lu mj. Avg Power %lf W\n", energy_mj_diff, ((double)energy_mj_diff/(double)(node_units*wait_period)));
+	  printf("Total energy %lu mj. Avg Power %.2lf W\n", energy_mj_diff, ((double)energy_mj_diff/(double)(node_units*wait_period)));
 
 		memcpy((char *)energy_mj_init, (char *)energy_mj_end, node_size);
 	}

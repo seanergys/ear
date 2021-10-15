@@ -293,20 +293,30 @@ Byte 17:20 – Statistics Reporting Period (the timeframe in seconds, over which
 /**** These functions are used to accumulate the eneergy */
 state_t inm_power_thread_main(void *p)
 {
+static timestamp_t ts1;
+static timestamp_t ts2;
+timestamp_getprecise(&ts2);
+printf("called %llu\n", timestamp_diff(&ts2, &ts1, TIME_MSECS));
+ts1 = ts2;
+
 	struct ipmi_data out;
 	ulong current_elapsed,current_energy;
 	inm_power_reading(&inm_context_for_pool, &out,&inm_current_power_reading);
 	if (inm_current_power_reading.current_power > 0){
-		current_elapsed = inm_current_power_reading.timeframe - inm_last_power_reading.timeframe;	
+		//current_elapsed = inm_current_power_reading.timeframe - inm_last_power_reading.timeframe;	
+		current_elapsed = 5;
 		current_energy = current_elapsed * inm_current_power_reading.avg_power;
 		/* Energy is reported in MJ */
 		inm_power_accumulated_energy += (current_energy*1000);
-		debug("AVG power in last %lu ms is %u Total energy %lu",current_elapsed,inm_current_power_reading.avg_power, inm_power_accumulated_energy);		
+		debug("AVG power in last %lu sec is %u Total energy %lu\n",current_elapsed,inm_current_power_reading.avg_power, inm_power_accumulated_energy);		
 	}else{
 		debug("Current power is 0 in inm power reading pool reading");
 		return EAR_ERROR;
 	}
   memcpy(&inm_last_power_reading,&inm_current_power_reading,sizeof(inm_power_data_t));
+timestamp_getprecise(&ts2);
+printf("between %llu\n", timestamp_diff(&ts2, &ts1, TIME_MSECS));
+ts1 = ts2;
 	return EAR_SUCCESS;
 }
 
@@ -360,8 +370,8 @@ state_t energy_init(void **c)
 			inm_power_sus = suscription();
 			inm_power_sus->call_main = inm_power_thread_main;
 			inm_power_sus->call_init = inm_power_thread_init;
-			inm_power_sus->time_relax = 1000;
-			inm_power_sus->time_burst = 1000;
+			inm_power_sus->time_relax = 5000;
+			inm_power_sus->time_burst = 5000;
 			inm_power_sus->suscribe(inm_power_sus);
 			//debug("inm energy plugin suscription initialized with timeframe %lu ms",inm_power_timeframe);
 		}

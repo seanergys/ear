@@ -16,6 +16,7 @@ all:  $(ener_BINS) all.components
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
+
 ######## SUBFOLDERS
 
 %.components:
