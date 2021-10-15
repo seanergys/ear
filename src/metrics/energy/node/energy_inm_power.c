@@ -293,12 +293,6 @@ Byte 17:20 – Statistics Reporting Period (the timeframe in seconds, over which
 /**** These functions are used to accumulate the eneergy */
 state_t inm_power_thread_main(void *p)
 {
-static timestamp_t ts1;
-static timestamp_t ts2;
-timestamp_getprecise(&ts2);
-printf("called %llu\n", timestamp_diff(&ts2, &ts1, TIME_MSECS));
-ts1 = ts2;
-
 	struct ipmi_data out;
 	ulong current_elapsed,current_energy;
 	inm_power_reading(&inm_context_for_pool, &out,&inm_current_power_reading);
@@ -314,9 +308,6 @@ ts1 = ts2;
 		return EAR_ERROR;
 	}
   memcpy(&inm_last_power_reading,&inm_current_power_reading,sizeof(inm_power_data_t));
-timestamp_getprecise(&ts2);
-printf("between %llu\n", timestamp_diff(&ts2, &ts1, TIME_MSECS));
-ts1 = ts2;
 	return EAR_SUCCESS;
 }
 

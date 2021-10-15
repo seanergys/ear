@@ -265,7 +265,10 @@ static void metrics_global_stop()
 	//
 	
 	if (masters_info.my_master_rank < 0){
-		while(sig_shared_region[my_node_id].ready) usleep(100);
+		while(sig_shared_region[my_node_id].ready){ 
+			verbose(2,"Process %d global waiting", my_node_id);
+			usleep(1000000);
+		}
 	}
 	imc_avg[APP] = 0;
 	metrics_avg_frequency[APP]=0;
@@ -696,7 +699,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				/* Time per iteration */
 				metrics->time = time_s / (double) iterations;
 
-				verbose(2,"Process %d computing cache misses", my_node_id);
 
 				/* Cache misses */
 				metrics->L1_misses = metrics_l1[s];
@@ -704,7 +706,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				metrics->L3_misses = metrics_l3[s];
 				if (metrics->sig_ext == NULL) metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
 				sig_ext = metrics->sig_ext;
-				verbose(2,"Process %d. Sig ext add %p", my_node_id, sig_ext);
 
 				/* FLOPS */
 				metrics->Gflops = 0.0;
@@ -722,7 +723,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
 								//metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
 				}
-				verbose(2,"Process %d computing GBS", my_node_id);
 				/* TPI and Memory bandwith */
 				aux = time_s * (double) (1024 * 1024 * 1024);
 
@@ -745,7 +745,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				metrics->cycles = metrics_cycles[s];
 				metrics->instructions = metrics_instructions[s];
 
-				verbose(2,"Process %d using sig-ext", my_node_id);
 				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
 				/* Per process IO data */
 				double iogb;
@@ -758,7 +757,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				iogb = (double)metrics_io_diff[ios].rchar/(double)(1024*1024) + (double)metrics_io_diff[ios].wchar/(double)(1024*1024);
 				/* Each process will compute its own IO_MBS, except the master, that computes per node IO_MBS */
 				metrics->IO_MBS = iogb/time_s;
-				verbose(2,"Computing MPI statistics");
 
 				if (masters_info.my_master_rank>=0){
 
@@ -815,7 +813,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								copy_node_data(metrics,&lib_shared_region->node_signature);
 				}
 
-				verbose(2,"Sig for process %d mostly ready. Copying to minis and node and job signature",my_node_id);
 				/* Copying my info in the shared signature */
 				from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
 				/* If I'm the master, I have to copy in the special section */
@@ -1143,12 +1140,15 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 	compute_per_process_and_job_metrics(&nodeapp);
 
-
+	/* At this point we mark signatures are not ready to be computed again */
 	if (masters_info.my_master_rank >= 0)  free_node_signatures(lib_shared_region,sig_shared_region);
 
-	metrics_global_stop();
 	verbose(2,"Global stop ID=%d",my_node_id);	
+	metrics_global_stop();
 	metrics_compute_signature_data(APP, metrics, 1, procs);
+  verbose_master(2,"Waiting for node signatures");
+  /* Waiting for node signatures */
+  while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
@@ -1426,23 +1426,10 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 	uint p;
 	signature_t aux;
 	if (masters_info.my_master_rank >= 0){
-		signature_copy(&aux, dest);
-		//verbose(2,"Computing per process signature (id=%d) ", my_node_id);
 		update_earl_node_mgr_info();
-		for (p = 0; p<lib_shared_region->num_processes; p++){
-			//verbose(2,"ext for aux %p job ext %p", aux.sig_ext, lib_shared_region->job_signature.sig_ext);
-			from_minis_to_sig(&aux, &sig_shared_region[p].sig);
-			estimate_power_and_gbs(&lib_shared_region->node_signature, lib_shared_region, sig_shared_region, node_mgr_job_info, &aux, PER_PROCESS, p)	;
-			from_sig_to_mini(&sig_shared_region[p].sig, &aux);
-			//verbose(2,"ext for aux %p job ext %p", aux.sig_ext, lib_shared_region->job_signature.sig_ext);
-		}
-		//verbose_master(2,"Computing per job signature ");
-		estimate_power_and_gbs(&lib_shared_region->node_signature, lib_shared_region, sig_shared_region, node_mgr_job_info, &lib_shared_region->job_signature, PER_JOB, p);
-		//verbose(2,"ext for aux %p job ext %p", aux.sig_ext, lib_shared_region->job_signature.sig_ext);
-		//verbose_master(2,"Accumulating local estimations ");
+		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info)	;
 		accum_estimations(lib_shared_region, sig_shared_region);
 		signature_copy(dest, &lib_shared_region->job_signature);	
-		//verbose(2,"ext for aux %p job ext %p", dest->sig_ext, lib_shared_region->job_signature.sig_ext);
 	}
 		
 }
