@@ -22,8 +22,14 @@
 * 	 Note:Specific functions could be substituted by a generic function passing a local_config_t
 */
 
+
 #ifndef _EARGM_API_H
 #define _EARGM_API_H
+
+#include <global_manager/meta_eargm.h>
+
+
+
 
 /** Notifies the EARGM a new job using N nodes will start. It is supposed to be used by the EAR slurm plugin
 */
@@ -48,6 +54,9 @@ int eargm_disconnect();
 
 /** Given a fd, sends a request for an eargm_status and reads it. Returns the number of eargm_status retrieved */
 int eargm_get_status(int fd, eargm_status_t **status);
+
+/** Sends the appropriate message to every sub-eargm on the list */
+int eargm_send_table_commands(eargm_table_t *egm_table);
 
 int eargm_get_all_status(cluster_conf_t *conf, eargm_status_t **status, int eargm_idx);
 #endif

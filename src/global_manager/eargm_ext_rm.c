@@ -62,6 +62,7 @@ void eargm_return_status(int clientfd, long ack)
 
     /* Critical section */
     pthread_mutex_lock(&ext_mutex);
+    status.status = ext_powercap_data.status;
     status.current_power = ext_powercap_data.current_power;
     status.current_powercap = ext_powercap_data.current_powercap;
     status.def_power = ext_powercap_data.def_power;
@@ -106,11 +107,14 @@ void process_remote_requests(int clientfd)
             return;
         case EARGM_INC_PC:
             debug("received eargm powercap increase");
+            cluster_powercap_inc_pc(command.my_req.eargm_data.pc_change);
             break;
         case EARGM_RED_PC:
             debug("received eargm powercap decrease");
+            cluster_powercap_red_pc(command.my_req.eargm_data.pc_change);
             break;
         case EARGM_RESET_PC:
+            cluster_powercap_reset_pc();
             debug("received eargm powercap reset");
             break;
         default:

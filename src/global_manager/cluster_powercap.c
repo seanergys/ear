@@ -33,7 +33,7 @@
 
 #include <global_manager/cluster_powercap.h>
 
-#define EARGM_TEST 1
+//#define EARGM_TEST 1
 
 
 extern cluster_conf_t my_cluster_conf;
@@ -57,6 +57,8 @@ int num_power_status;
 powercap_opt_t cluster_options;
 extern uint policy;
 static uint must_send_pc_options;
+static ulong current_extra_power; 
+static uint total_free;
 #define min(a,b) (a<b?a:b)
 
 void aggregate_data(powercap_status_t *cs)
@@ -184,8 +186,7 @@ void reduce_allocation(cluster_powercap_status_t *cs,powercap_opt_t *cluster_opt
 /* This function is executed when there is enough power for new running nodes but not for all the greedy nodes */
 uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_opt_t *cluster_options,uint released)
 {
-    uint total_free;
-		int i;
+    int i;
     uint num_nodes=cluster_status->total_nodes;
     uint min_reduction;
     verbose(0,"There are %u nodes  %u idle nodes %u greedy nodes ", num_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
@@ -301,6 +302,7 @@ void cluster_powercap_reset_pc()
 {
     debug("Resetting cluster powercap to %u", max_cluster_power);
     current_cluster_powercap = max_cluster_power;
+    current_extra_power = 0;
 }
 
 void cluster_powercap_red_pc(uint red)
@@ -311,12 +313,21 @@ void cluster_powercap_red_pc(uint red)
     } else {
         current_cluster_powercap -= red;
     }
+
+    if (max_cluster_power < current_cluster_powercap)
+        current_extra_power = current_cluster_powercap - max_cluster_power;
+    else
+        current_extra_power = 0;
 }
 
 void cluster_powercap_inc_pc(uint inc)
 {
     debug("Increasing cluster powercap by %u (from %u to %u)", inc, current_cluster_powercap, current_cluster_powercap+inc);
     current_cluster_powercap += inc;
+    if (max_cluster_power < current_cluster_powercap)
+        current_extra_power = current_cluster_powercap - max_cluster_power;
+    else
+        current_extra_power = 0;
 }
 
 void cluster_powercap_init(cluster_conf_t *cc)
@@ -382,20 +393,22 @@ void execute_powercap_limit_action()
     }
 }
 
-void write_shared_data(ulong current_extra_power, ulong freeable_power)
+void write_shared_data(ulong current_power, ulong freeable_power, ulong requested)
 {
     pthread_mutex_lock(&ext_mutex);
     memset(&ext_powercap_data, 0, sizeof(shared_powercap_data_t));
-    if (my_cluster_power_status != NULL) //this should never happen, but it never hurts to check
-    {
-        ext_powercap_data.requested = my_cluster_power_status->requested;   // this might not be correct, maybe what cannot be allocated?
-        ext_powercap_data.current_power = my_cluster_power_status->current_power;
-        //extra allocated power and free power will be calculated before and passed as parameter
-        ext_powercap_data.extra_power = current_extra_power;
-        ext_powercap_data.available_power = freeable_power;
-        ext_powercap_data.current_powercap = 400;
-        ext_powercap_data.def_power = current_cluster_powercap;
-    }
+    ext_powercap_data.status = PC_STATUS_OK;
+    if (requested > 0 && max_cluster_power > current_cluster_powercap)
+        ext_powercap_data.status = PC_STATUS_ASK_DEF;
+    else if (requested)
+        ext_powercap_data.status = PC_STATUS_GREEDY;
+
+    ext_powercap_data.requested = requested; 
+    ext_powercap_data.current_power = current_power;
+    ext_powercap_data.extra_power = current_extra_power;
+    ext_powercap_data.available_power = freeable_power;
+    ext_powercap_data.current_powercap = current_cluster_powercap;
+    ext_powercap_data.def_power = max_cluster_power;
     pthread_mutex_unlock(&ext_mutex);
 }
 
@@ -429,7 +442,6 @@ void cluster_check_powercap()
         verbose(1,"num_power_status in cluster_check_powercap is 0");
         return;
     }
-    write_shared_data(0, 0); //TODO: fill the extra power and freeable_power
     must_send_pc_options=0;
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);
@@ -444,6 +456,8 @@ void cluster_check_powercap()
         my_cluster_power_status->total_powercap = my_cluster_power_status->total_powercap - rel_power.released;
         powercap_reallocation(my_cluster_power_status,&cluster_options,1);
     }
+
+    write_shared_data(my_cluster_power_status->current_power, total_free, 0); //TODO: fill the extra power and freeable_power
     if (must_send_pc_options){
         print_powercap_opt(&cluster_options);
         send_powercap_options_to_cluster(&cluster_options);

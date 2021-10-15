@@ -21,6 +21,7 @@
 
 
 typedef struct shared_powercap_data {
+    ulong status;
     ulong def_power;        // default power for this eargm
     ulong current_power;    // current power usage
     ulong current_powercap; // current maximum sub-cluster power 

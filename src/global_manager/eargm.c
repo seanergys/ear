@@ -17,7 +17,7 @@
 
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 
-#define EARGM_TEST 1
+//#define EARGM_TEST 1
 
 #include <time.h>
 #include <errno.h>
