@@ -18,6 +18,8 @@
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 #define _GNU_SOURCE 
 
+#ifndef META_EARGM
+#define META_EARGM
 
 #include <time.h>
 #include <errno.h>
@@ -45,6 +47,17 @@
 extern uint total_nodes;
 extern uint my_port;
 
+typedef struct eargm_table
+{
+    uint num_eargms;
+    int  *ids;
+    int  *eargm_ips;
+    int  *eargm_ports;
+    int  *actions;
+    uint *action_values;
+
+} eargm_table_t;
 
 void *meta_eargm(void *config);
 
+#endif

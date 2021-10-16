@@ -53,6 +53,7 @@ typedef struct new_conf{
 
 typedef struct eargm_req{
     uint num_nodes;
+    uint pc_change;
 }eargm_req_t;
 
 typedef struct new_policy_cont{
@@ -153,8 +154,10 @@ typedef struct performance{
 
 typedef struct eargm_status {
     int id;
+    char  status;
     ulong def_power;
     ulong current_power;
+    ulong current_powercap;
     ulong requested;
     ulong freeable_power;
     ulong extra_power;
@@ -195,6 +198,9 @@ typedef struct eargm_status {
 #define EARGM_NEW_JOB   801
 #define EARGM_END_JOB   802
 #define EARGM_STATUS    803
+#define EARGM_INC_PC    804
+#define EARGM_RED_PC    805
+#define EARGM_RESET_PC  806
 
 
 /******************* IMPORTANT ***********************/

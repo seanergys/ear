@@ -39,7 +39,9 @@
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
 #include <common/messaging/msg_internals.h>
+
 #include <daemon/remote_api/eard_rapi.h>
+
 #include <global_manager/cluster_powercap.h>
 
 
@@ -60,7 +62,9 @@ void eargm_return_status(int clientfd, long ack)
 
     /* Critical section */
     pthread_mutex_lock(&ext_mutex);
+    status.status = ext_powercap_data.status;
     status.current_power = ext_powercap_data.current_power;
+    status.current_powercap = ext_powercap_data.current_powercap;
     status.def_power = ext_powercap_data.def_power;
     status.extra_power = ext_powercap_data.extra_power;
     status.requested = ext_powercap_data.requested;
@@ -84,7 +88,7 @@ void process_remote_requests(int clientfd)
     uint req;
     long ack=EAR_SUCCESS;
     debug("connection received");
-    req=read_command(clientfd,&command);
+    req = read_command(clientfd, &command);
     switch (req){
         case EARGM_NEW_JOB:
             // Computes the total number of nodes in use
@@ -101,6 +105,18 @@ void process_remote_requests(int clientfd)
             debug("received eargm status request");
             eargm_return_status(clientfd, ack);
             return;
+        case EARGM_INC_PC:
+            debug("received eargm powercap increase");
+            cluster_powercap_inc_pc(command.my_req.eargm_data.pc_change);
+            break;
+        case EARGM_RED_PC:
+            debug("received eargm powercap decrease");
+            cluster_powercap_red_pc(command.my_req.eargm_data.pc_change);
+            break;
+        case EARGM_RESET_PC:
+            cluster_powercap_reset_pc();
+            debug("received eargm powercap reset");
+            break;
         default:
             error("Invalid remote command");
     }  
@@ -123,7 +139,7 @@ void *eargm_server_api(void *p)
     }
     do{
         debug("waiting for remote commands port=%u",my_port);
-        eargm_client=wait_for_client(eargm_fd,&eargm_con_client);
+        eargm_client=wait_for_client(eargm_fd, &eargm_con_client);
         if (eargm_client<0){
             error(" wait_for_client returns error");
         }else{

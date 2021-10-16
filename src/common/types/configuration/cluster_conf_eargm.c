@@ -48,6 +48,7 @@ void parse_EARGM_specific(eargm_conf_t *conf, char *line)
     while (token != NULL)
     {
         strtoup(token);
+        debug("Checking token %s", token);
         if (!strcmp(token, "EARGMID"))
         {
             token = strtok_r(NULL, " ", &main_ptr);
@@ -95,6 +96,7 @@ void parse_EARGM_specific(eargm_conf_t *conf, char *line)
             {
                 current_id = atoi(token);
                 tmp_found = 0;
+                debug("checking if node %d is already in subs", current_id);
                 for (i = 0; i < conf->eargms[local_idx].num_subs; i++) //search to avoid duplicates
                 {
                     if (conf->eargms[local_idx].subs[i] == current_id) {
@@ -103,6 +105,7 @@ void parse_EARGM_specific(eargm_conf_t *conf, char *line)
                     }
                 }
                 if (tmp_found) continue; 
+                debug("node %d is NOT already in subs", current_id);
                 conf->eargms[local_idx].subs = realloc(conf->eargms[local_idx].subs, 
                         sizeof(int)*(conf->eargms[local_idx].num_subs + 1));
                 conf->eargms[local_idx].subs[conf->eargms[local_idx].num_subs] = current_id;
