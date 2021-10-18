@@ -120,19 +120,17 @@ uint in_action=0;
 double perc_energy,perc_time,perc_power;
 double avg_power_t2,avg_power_t1;
 static int fd_my_log=2;
+static char host[GENERIC_NAME];
 
 
 uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 {
     eargm_conf_t *cc,*newc;
     uint must_refil=0;
-    char host[GENERIC_NAME];
 
     cc=&current->eargm;
     newc=&new->eargm;
 
-    gethostname(host, sizeof(host));
-    strtok(host, ".");
     /* EARGM specific conf */
     e_def = get_eargm_conf(new, host);
     if (e_def == NULL) {
@@ -222,8 +220,10 @@ void update_eargm_configuration(cluster_conf_t *conf)
 #endif
     /* Remove unnecessary islands from ear_conf */
     remove_extra_islands(conf, e_def);
+		print_cluster_conf(conf);
 
-    if (verbose_arg>0) verb_level=verbose_arg;
+    if (verbose_arg  >= 0) verb_level=verbose_arg;
+		
 
     energy_budget = e_def->energy;
     my_port = e_def->port;
@@ -583,6 +583,10 @@ int main(int argc,char *argv[])
     risk_t current_risk;
     if (argc > 2) usage(argv[0]);
     if (argc==2) parse_args(argv);
+
+    gethostname(host, sizeof(host));
+    strtok(host, ".");
+
     // We read the cluster configuration and sets default values in the shared memory
     if (get_ear_conf_path(my_ear_conf_path)==EAR_ERROR){
         error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
@@ -644,9 +648,9 @@ int main(int argc,char *argv[])
     if (e_def->num_subs > 0) { //if it has subnodes, we need a META-EARGM
         if ((ret = pthread_create(&meta_eargm_th, NULL, meta_eargm, (void *)&my_cluster_conf))) {
             errno=ret;
-            error("error creating eargm_server for external api %s",strerror(errno));
+            verbose(VGM,"error creating eargm_server for external api %s",strerror(errno));
         }
-    } else { error("no subs for this EARGM"); }
+    } else { verbose(VGM,"EARGM node %s is not META-EARGM", host); }
 
 
     time_t start_time, end_time;

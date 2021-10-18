@@ -704,6 +704,14 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 			}
 
 		}
+      /* For each app, we must merge CPUfreq and GPUfreq requested */
+#ifndef SYN_TEST
+    if (domain == DOMAIN_CPU){
+			for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){		
+				if (f[i] == 0) f[i] = frequency_pstate_to_freq(1);
+			}
+		}
+#endif
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler)

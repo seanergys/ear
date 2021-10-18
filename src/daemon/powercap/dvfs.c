@@ -77,6 +77,25 @@ static uint dvfs_ask_def = 0;
 static uint dvfs_monitor_initialized = 0;
 
 /************************ These functions must be implemented in cpufreq *****/
+
+static void print_frequencies(int cpus, ulong *f)
+{
+    int i;
+		char buff[4096];
+		char buffshort[64];
+		sprintf(buff,"");
+    for (i=0;i<cpus;i++)
+    {
+        if (f[i]>0){
+            sprintf(buffshort,"CPU[%d]=%.2f ",i,(float)f[i]/1000000.0);
+        }else{		
+            sprintf(buffshort,"CPU[%d]=0 ",i);
+				}
+				strcat(buff, buffshort);
+    }
+    verbose(VEARD_PC,buff);
+}
+
 static void frequency_nfreq_to_npstate(ulong *f,uint *p,uint cpus)
 {
     int i;
@@ -142,7 +161,7 @@ void vector_print_pstates(uint *pstates, uint num_cpus) {
         sprintf(sml_buff, "p%d: %u, ", i, pstates[i]);
         strcat(tmp_buff, sml_buff);
     }
-    debug(tmp_buff);
+    verbose(VEARD_PC,tmp_buff);
     free(tmp_buff);
 }
 
@@ -248,6 +267,10 @@ state_t dvfs_pc_thread_main(void *p)
     unsigned long long acum_energy;
     uint extra, tmp_pstate[MAX_CPUS_SUPPORTED];
 
+		memset(c_pstate, 0, sizeof(uint)* MAX_CPUS_SUPPORTED);
+		memset(t_pstate, 0, sizeof(uint)* MAX_CPUS_SUPPORTED);
+		memset(c_req_f , 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+
     /* Update target frequency */
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
@@ -258,6 +281,7 @@ state_t dvfs_pc_thread_main(void *p)
     acum_energy=acum_rapl_energy(values_diff);
     power_rapl=(float)acum_energy/(DVFS_PERIOD*RAPL_MSR_UNITS);
     my_limit=(float)current_dvfs_pc;
+
 
     /* Copy init=end */
     memcpy(values_rapl_init, values_rapl_end, num_packs * RAPL_POWER_EVS * sizeof(unsigned long long));
@@ -272,7 +296,12 @@ state_t dvfs_pc_thread_main(void *p)
     frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
     frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
 
+			
     if (power_rapl > my_limit){ /* We are above the PC , reduce freq*/
+				//print_frequencies(node_size,c_freq);
+				//vector_print_pstates(c_pstate, node_size);
+				//print_frequencies(node_size,c_req_f);
+				//vector_print_pstates(t_pstate, node_size);
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
         }
@@ -290,9 +319,11 @@ state_t dvfs_pc_thread_main(void *p)
         }
         /* Finally we set */
         memcpy(c_pstate,tmp_pstate,sizeof(uint)*MAX_CPUS_SUPPORTED);
+				//vector_print_pstates(c_pstate, node_size);
         frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
+				//print_frequencies(node_size, c_freq);
         frequency_set_with_list(node_size,c_freq);
-        debug("%spower above limit, setting freq0 %lu freqm %lu%s", COL_RED, c_freq[0], c_freq[node_size-1], COL_CLR);
+        verbose(VEARD_PC,"%spower above limit. Curr %.2f Limit %.2f, setting freq0 %lu freqm %lu%s", COL_RED, power_rapl, my_limit, c_freq[0], c_freq[node_size-1], COL_CLR);
 
     }else{ /* We are below the PC */
         if (is_null_f(c_req_f)) {
