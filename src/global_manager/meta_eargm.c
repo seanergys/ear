@@ -94,7 +94,7 @@ void print_eargm_actions(eargm_table_t *egm_table)
 {
     int i;
     for (i = 0; i < egm_table->num_eargms; i++) {
-        verbose(VGM, "%sEARGM %d has action %u and value %lu%s", COL_GRE, egm_table->ids[i], egm_table->actions[i], 
+        verbose(VGM, "%sEARGM %d has action %u and value %u%s", COL_GRE, egm_table->ids[i], egm_table->actions[i], 
                                     egm_table->action_values[i], COL_CLR);
     }
 }
