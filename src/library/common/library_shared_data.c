@@ -636,17 +636,19 @@ void    update_earl_node_mgr_info()
 
 void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl)
 {
-	if ((nmgr_eard == NULL) || (nmgr_earl == NULL)) return;
-	verbose_master(vl,"%sJobs in node list",COL_BLU);
-	for (uint i=0;i<MAX_CPUS_SUPPORTED; i++){
-		if (nmgr_eard[i].creation_time){
-			verbose_master(vl,"JOB[%u]=%lu.%lu", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
-			signature_print_simple_fd(vl,&nmgr_earl[i].libsh->node_signature);	
-			signature_print_simple_fd(vl,&nmgr_earl[i].libsh->job_signature);	
-			verbose_master(vl," ");
-		}
-	}
+	if (verb_level >= vl){
+	  if ((nmgr_eard == NULL) || (nmgr_earl == NULL)) return;
+	  verbose_master(vl,"%sJobs in node list",COL_BLU);
+	  for (uint i=0;i<MAX_CPUS_SUPPORTED; i++){
+		  if (nmgr_eard[i].creation_time){
+			  verbose_master(vl,"JOB[%u]=%lu.%lu", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
+			  signature_print_simple_fd(verb_channel,&nmgr_earl[i].libsh->node_signature);	
+			  signature_print_simple_fd(verb_channel,&nmgr_earl[i].libsh->job_signature);	
+			  verbose_master(vl," ");
+		  }
+	  }
 	verbose_master(vl,"%s",COL_CLR);
+	}
 }
 
 void accum_estimations(lib_shared_data_t *data,shsignature_t *sig)

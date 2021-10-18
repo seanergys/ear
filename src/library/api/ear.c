@@ -814,6 +814,7 @@ void ear_init()
 		verbose_master(1,"EAR library already initialized");
 		return;
 	}
+	VERB_SET_LV(0);
 
     timestamp_getfast(&ear_application_time_init);
 

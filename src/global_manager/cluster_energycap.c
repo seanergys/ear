@@ -49,7 +49,7 @@ void print_ordered_node_info(uint numn,node_info_t * einfo)
 {
 	int i;
 	for (i=0;i<numn;i++){
-		verbose(1,"node[%d] ip=%d dist %u power_red %f victim %u idle %u",i,einfo[i].ip,einfo[i].dist_pstate,einfo[i].power_red,einfo[i].victim,einfo[i].idle);
+		verbose(VGM,"node[%d] ip=%d dist %u power_red %f victim %u idle %u",i,einfo[i].ip,einfo[i].dist_pstate,einfo[i].power_red,einfo[i].victim,einfo[i].idle);
 	}
 }
 void select_victim_nodes(uint numn,node_info_t * einfo,float target)
@@ -108,7 +108,7 @@ void create_risk(risk_t *my_risk,int wl)
     case EARGM_WARNING2:set_risk(my_risk,WARNING1);add_risk(my_risk,WARNING2);last_risk_sent=EARGM_WARNING2;break;
     case EARGM_PANIC:set_risk(my_risk,WARNING1);add_risk(my_risk,WARNING2);add_risk(my_risk,PANIC);last_risk_sent=EARGM_PANIC;break;
   }
-  verbose(1,"EARGM risk level %lu",(ulong)*my_risk);
+  verbose(VGM,"EARGM risk level %lu",(ulong)*my_risk);
   default_state=0;
 }
 
@@ -118,7 +118,7 @@ void manage_warning(risk_t * risk,uint level,cluster_conf_t my_cluster_conf,floa
 {
 	uint numn;
 	#if 0
-	verbose(1,"Our target is to reduce %.2f %% of  Watts",target);
+	verbose(VGM,"Our target is to reduce %.2f %% of  Watts",target);
 	if (get_nodes_status(my_cluster_conf,&numn,&einfo)!=EAR_SUCCESS){
 		error("Getting node status");
 	}else{

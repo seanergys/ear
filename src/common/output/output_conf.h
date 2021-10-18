@@ -25,6 +25,9 @@
 #define VCONF     0 //eard.c
 #define VEARD     0 //eard.c
 #define VEARD_PC  1
+#define VEARD_INIT 0
+#define VEARD_NMGR 1
+#define VEARD_LAPI 1
 #define VNODEPMON 1 //power monitoring
 #define VJOBPMON  1 //power monitoring
 #define VRAPI     2 //dynamic_configuration

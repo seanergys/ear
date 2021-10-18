@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
-#define INFO_METRICS 0
+#define INFO_METRICS 2
 #define IO_VERB 3
 
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sched.h>
+#include <sys/mman.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -382,7 +383,7 @@ static void metrics_partial_start()
 				last_elap_sec = 0;
 				/* Per process IO data */
 				if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
-								verbose_master(0,"Warning:IO data not available");
+								verbose_master(2,"Warning:IO data not available");
 				}
 				/* These data is measured only by the master */	
 				if (masters_info.my_master_rank>=0){ 
@@ -821,7 +822,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								signature_copy(&lib_shared_region->job_signature,metrics);
 				}
 				sig_shared_region[my_node_id].period = time_s;
-				signature_print_simple_fd(2, metrics);
+				if (verb_level >= 2) signature_print_simple_fd(2, metrics);
 				verbose(2," ");
 
 				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
@@ -829,6 +830,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				signature_ready(&sig_shared_region[my_node_id],0);
 				verbose(2,"End Compute signature process %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
+				if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+
 }
 
 /**************************** Init function used in ear_init ******************/
@@ -1118,18 +1121,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
-	#if 0
-	debug("Metrics_dispose_init %d",my_node_id);
-	while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
-	metrics_global_stop();
-
-	metrics_compute_signature_data(APP, metrics, 1, procs);
-	/* Waiting for node signatures */
-	verbose_master(2,"Waiting for node signatures");
-	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
-	estimate_power_and_gbs(&lib_shared_region->node_signature,lib_shared_region,sig_shared_region, node_mgr_job_info, &lib_shared_region->job_signature, PER_JOB, -1);
-	accum_estimations(lib_shared_region,sig_shared_region);
-	#endif
 
 	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
   while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);

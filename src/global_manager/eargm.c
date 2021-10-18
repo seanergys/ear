@@ -140,23 +140,23 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 
     /** Atttributes with conflicts */
     if ((cc->t1!=newc->t1) || (cc->t2!=newc->t2) || (cc->energy!=newc->energy) ){	
-        verbose(1,"New energy arguments: T1 %lu T2 %lu EnergyBudget %lu",newc->t1,newc->t2,newc->energy);
+        verbose(VGM,"New energy arguments: T1 %lu T2 %lu EnergyBudget %lu",newc->t1,newc->t2,newc->energy);
         must_refil=1;
     }
     if ((cc->power!=newc->power) || (cc->t1_power!=newc->t1_power)){
-        verbose(1,"New powercap arguments: Powercap %lu Power cap period %lu",newc->power,newc->t1_power);
+        verbose(VGM,"New powercap arguments: Powercap %lu Power cap period %lu",newc->power,newc->t1_power);
         if (cc->power>newc->power)    cluster_reset_default_powercap_all_nodes(&my_cluster_conf);  
         if ((cc->power==0) && (newc->power>0)) powercap_th_start=1;
 
     }
     if (cc->use_log!=newc->use_log){
-        verbose(1,"Log output cannot be dynamically changed, Stop and Start the service");
+        verbose(VGM,"Log output cannot be dynamically changed, Stop and Start the service");
     }
     if (cc->port!=newc->port){
-        verbose(1,"EARGM port cannot be dynamically changed, Stop and Start the service");
+        verbose(VGM,"EARGM port cannot be dynamically changed, Stop and Start the service");
     }
     if (cc->units!=newc->units){
-        verbose(1,"EARGM units cannot be dynamically changed, Stop and Start the service");
+        verbose(VGM,"EARGM units cannot be dynamically changed, Stop and Start the service");
     }
     /** attributes that can be adapted */
     cc->t1=newc->t1;
@@ -678,7 +678,7 @@ int main(int argc,char *argv[])
     if (db_select_acum_energy( start_time, end_time, divisor, use_aggregation,&last_id,&result)==EAR_ERROR){
         error("Asking for total energy system. Using aggregated %d",use_aggregation);
     }
-    verbose(1,"db_select_acum_energy inicial %lu%s",result,unit_energy);
+    verbose(VGM,"db_select_acum_energy inicial %lu%s",result,unit_energy);
     fill_periods(result);
     /*
      *
