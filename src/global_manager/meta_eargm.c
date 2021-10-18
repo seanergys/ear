@@ -104,7 +104,7 @@ void meta_aggregate_data(eargm_status_t *status, uint num_status)
     int i;
 
     //reset values
-    total_power = total_req = total_freeable = total_extra = total_req_no_extra = total_powercap = total_req_ask_def 0;
+    total_power = total_req = total_freeable = total_extra = total_req_no_extra = total_powercap = total_req_ask_def = 0;
     num_ask_def = num_greedy = num_greedy_no_extra = 0;
 
     //aggregate data
