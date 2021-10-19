@@ -137,7 +137,7 @@ int fd_rapl[MAX_PACKAGES];
 
 /* EARD init errors control */
 static uint error_uncore=0;
-static uint error_src/daemon/eard_node_services.crapl=0;
+static uint error_rapl=0;
 static uint error_energy=0;
 static uint error_connector=0;
 

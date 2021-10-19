@@ -39,6 +39,7 @@ static wide_buffer_t w;
 
 state_t mgt_imcfreq_eard_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int eard)
 {
+	static wide_buffer_t b;
 	int eard_api;
 	state_t s;
 
@@ -168,5 +169,5 @@ state_t mgt_imcfreq_eard_set_current_ranged_list(ctx_t *c, uint *id_min_list, ui
 	serial_clean(&w);
 	serial_add_elem(&w, (char *) id_min_list, sizeof(uint)*sockets_count);
 	serial_add_elem(&w, (char *) id_max_list, sizeof(uint)*sockets_count);
-	return eard_rpc(RPC_SET_CURR_PSM, serial_data(&w), serial_size(&w, 1), NULL, 0);
+	return eard_rpc(RPC_SET_CURR_PSM, serial_data(&w), serial_size(&w), NULL, 0);
 }

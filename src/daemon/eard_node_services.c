@@ -23,12 +23,13 @@
 #include <linux/limits.h>
 
 #include <common/includes.h>
-#include <common/types/generic.h>
 #include <common/environment.h>
 #include <common/system/fd_sets.h>
-#include <common/types/pc_app_info.h>
-#include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
+#include <common/types/generic.h>
+#include <common/types/pc_app_info.h>
+#include <common/utils/serial_buffer.h>
+#include <common/hardware/hardware_info.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <metrics/common/msr.h>
@@ -130,8 +131,15 @@ static apis_info_t   mc;
 static apis_info_t   mg;
 static apis_info_t   mi;
 
+#define sf(function) \
+	if (state_fail(s = function)) { \
+		error("when calling " #function); \
+	}
+
 void services_init(topology_t *tp)
 {
+	state_t s;
+
     //sf(mgt_cpufreq_load(tp, NO_EARD));
 	sf(mgt_imcfreq_load(tp, NO_EARD));
 
@@ -144,8 +152,8 @@ void services_init(topology_t *tp)
     //sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
     sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
 
-    //sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count);
-    sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count);
+    //sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
+    sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
 }
 
 int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
@@ -167,8 +175,8 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		serial_add_elem(&wb, (char *) &mi.avail_count, sizeof(uint));
 		serial_add_elem(&wb, (char *) mi.avail_list, sizeof(pstate_t)*mi.avail_count);
 		// Setting to send
-		size = serial_size(&wb, 0);
-		data = wb.data;
+		size = serial_size(&wb);
+		data = serial_data(&wb);
 	break;
 	case RPC_MGT_IMCFREQ_GET_CURRENT_PS:
 		if (state_fail(s = mgt_imcfreq_get_current_list(no_ctx, mi.current_list))) {
@@ -186,25 +194,25 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		}
 	break;
 	case RPC_MGT_IMCFREQ_GET_CURRENT_PS_MIN:
-		serial_clean(&wide);
+		serial_clean(&wb);
 		//
-		if (state_fail(s = mgt_imcfreq_get_current_ranged_list(no_ctx, big_chunk1, big_chunk2))) {
+		if (state_fail(s = mgt_imcfreq_get_current_ranged_list(no_ctx, (pstate_t *) big_chunk1, (pstate_t *) big_chunk2))) {
 			serror("Could not get IMC current ranged frequency");
 		} else {
 			serial_add_elem(&wb, big_chunk1, sizeof(pstate_t)*mi.devs_count);
 			serial_add_elem(&wb, big_chunk2, sizeof(pstate_t)*mi.devs_count);
-			size = serial_size(&wb, 0);
-			data = wide.data;
+			size = serial_size(&wb);
+			data = serial_data(&wb);
 		}
 	break;
 	case RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN:
-		serial_assign(&wb, head->size);
+		serial_reset(&wb, head->size);
 		if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
 			serror(Rpcerr.pending);
 		} else {
 			serial_copy_elem(&wb, (char *) big_chunk1, NULL);
 			serial_copy_elem(&wb, (char *) big_chunk2, NULL);
-			s = mgt_imcfreq_set_current_ranged_list(no_ctx, big_chunk1, big_chunk2);
+			s = mgt_imcfreq_set_current_ranged_list(no_ctx, (uint *) big_chunk1, (uint *) big_chunk2);
 		}
 	break;
 	}
@@ -357,107 +365,8 @@ int is_valid_sec_tag(ulong tag)
 	#endif
 }
 
-/************************ FREQUENCY FUNCTIONALLITY: max_freq is the limit *******************/
-void eard_set_freq(unsigned long new_freq, unsigned long max_freq) {
-	unsigned long ear_ok, freq;
-	verbose(VCONF, "setting node frequency . requested %lu, max %lu\n", new_freq, max_freq);
-	if (new_freq <= max_freq) {
-		freq = new_freq;
-	} else {
-		warning(" warning, maximum freq is limited to %lu\n", max_freq);
-		freq = max_freq;
-	}
-	ear_ok = frequency_set_all_cpus(freq);
-	current_node_freq = freq;
-	if (ear_ok != freq) warning(" warning, frequency is not correctly changed\n");
-	write(ear_fd_ack[freq_req], &ear_ok, sizeof(unsigned long));
-}
-
-int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
+int eard_uncore(eard_head_t *head, int req_fd, int ack_fd)
 {
-	char buffer[4096];
-	size_t size;
-	ulong ack;
-	state_t s;
-	uint *min;
-	uint *max;
-	uint *aux;
-	ulong *f;
-
-	if (must_read) {
-		if (read(ear_fd_req[freq_req], &req, sizeof(req)) != sizeof(req))
-			error("error when reading info at eard_freq (%s)\n", strerror(errno));
-	}
-
-	switch (req.req_service) {
-		case CONNECT_FREQ:
-			// HIGHLIGHT: LIBRARY INIT
-			connect_service(freq_req, &req.req_data.app);
-			break;
-		case SET_FREQ:
-			eard_set_freq(req.req_data.req_value, min(eard_max_freq, max_dyn_freq()));
-			break;
-		case SET_FREQ_WITH_MASK:
-			ack=frequency_set_with_mask(&req.req_data.f_mask.mask,req.req_data.f_mask.f);
-			write(ear_fd_ack[freq_req], &ack, sizeof(unsigned long));
-			break;
-		case SET_NODE_FREQ_WITH_LIST:
-			ack=frequency_set_with_list(req.req_data.cpu_freq.num_cpus,req.req_data.cpu_freq.cpu_freqs);
-			write(ear_fd_ack[freq_req], &ack, sizeof(unsigned long));
-			break;
-		case GET_CPUFREQ:
-			ack = frequency_get_cpu_freq(req.req_data.req_value);
-			write(ear_fd_ack[freq_req], &ack, sizeof(unsigned long));
-			break;
-		case GET_CPUFREQ_LIST:
-			f=calloc(sizeof(ulong),node_desc.cpu_count);
-			ack = frequency_get_cpufreq_list(req.req_data.req_value,f);
-			write(ear_fd_ack[freq_req], f,sizeof(ulong)*req.req_data.req_value);
-			free(f);
-			break;
-		case SET_TURBO:
-			frequency_set_performance_governor_all_cpus();
-			write(ear_fd_ack[freq_req], &ack, sizeof(unsigned long));
-			break;
-		case END_COMM:
-			// HIGHLIGHT: LIBRARY DISPOSE (1/2)
-			eard_close_comm();
-			break;
-		case DATA_SIZE_FREQ:
-			ack = sizeof(unsigned long);
-			write(ear_fd_ack[freq_req], &ack, sizeof(unsigned long));
-			break;
-		case READ_CPUFREQ:
-			debug("READ_CPUFREQ");
-			if (xtate_fail(s, cpufreq_read(&freq_app_req))) {
-				error("when reading CPU global frequency requeste by app (%d, %s)", s, state_msg);
-			}
-			write(ear_fd_ack[freq_req],freq_app_req.context,size_cpufreqs);
-			break;
-    /* These functions are new for UNC freq management */
-		case UNC_SIZE:
-			aux = (uint *) buffer;
-			aux[1] = unc_count;
-			imcfreq_get_api(aux);
-			write(ear_fd_ack[freq_req], aux, sizeof(uint)*2);
-			break;
-		case UNC_READ:
-			debug("UNC_READ");
-			memset(unc_data, 0, unc_count);
-			if (state_fail(s = imcfreq_read(no_ctx, unc_data))){
-					error("WHen reading unc frequency requested by app (%d, %s)", s, state_msg);
-			}
-			write(ear_fd_ack[freq_req], unc_data, unc_count * sizeof(imcfreq_t));
-			break;
-		default:
-			return 0;
-	}
-	return 1;
-}
-#endif
-
-int eard_uncore(eard_head_t *head, int req_fd, int ack_fd) {
-
 	unsigned long ack = EAR_SUCCESS;
 	unsigned long long values[num_uncore_counters];
 
@@ -858,14 +767,11 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
   return 1;
 }
 
-int eard_imc(eard_head_t *head,int req_fd,int ack_fd) {
-  unsigned long ack = 0;
-  uint *min;
-  uint *max;
+int eard_imc(eard_head_t *head,int req_fd,int ack_fd)
+{
   char buffer[4096];
-  size_t size;
   uint *aux;
-
+  state_t s;
 
   switch (head->req_service) {
 			case UNC_SIZE:
@@ -1396,34 +1302,23 @@ state_t service_answer_old(int req_fd, int ack_fd, char *data, size_t size)
 
 void service_select(int req_fd, int ack_fd)
 { 
-  eard_head_t *local_req = (eard_head_t *) &req;
+	eard_head_t *local_req = (eard_head_t *) &req;
   
-  // Hanging up
-  if (state_fail (service_listen(req_fd, ack_fd, &req))) {
-		verbose(1,"Closing local service");
-    service_close(req_fd, ack_fd);
-  }
-	/* Add one by one */
-	#if 0
-  // Services list
-  if (service_cpufreq(local_req, req_fd, ack_fd)) {
-    return;
-  }
-  if (service_imcfreq(local_req, req_fd, ack_fd)) {
-    return;
-  }
-  if (service_bwidth(local_req, req_fd, ack_fd)) {
-    return;
-  }
-  if (service_gpu(local_req, req_fd, ack_fd)) {
-    return;
-  }
-	#endif
+	// Hanging up
+	if (state_fail (service_listen(req_fd, ack_fd, &req))) {
+		verbose(1, "Closing local service");
+		service_close(req_fd, ack_fd);
+	}
+	// New services
+	if(services_mgt_imcfreq(local_req, req_fd, ack_fd)) {
+		return;
+	}
+	
   // Old services
   if (eard_freq(local_req,req_fd,ack_fd)) {
     return;
   }
-	if (eard_imc(local_req,req_fd,ack_fd)) {
+  if (eard_imc(local_req,req_fd,ack_fd)) {
     return;
   }
   if (eard_rapl(local_req,req_fd,ack_fd)) {
@@ -1435,27 +1330,30 @@ void service_select(int req_fd, int ack_fd)
   if (eard_node_energy(local_req,req_fd,ack_fd)) {
     return;
   }
-	if (eard_uncore(local_req,req_fd,ack_fd)) {
+  if (eard_uncore(local_req,req_fd,ack_fd)) {
     return;
   }
   if (eard_gpu(local_req,req_fd,ack_fd)){
     return;
   }
-  error("Request received '%lu' not supported, answering error", local_req->req_service);
-  eard_rpc_answer(ack_fd, local_req->req_service, EAR_ERROR, NULL, 0, "EARD RPC does not exist");
-  // Closing, it is not necessary to control the error.
-  service_close(req_fd,ack_fd);
+	
+	error("Request received '%lu' not supported, answering error", local_req->req_service);
+	eard_rpc_answer(ack_fd, local_req->req_service, EAR_ERROR, NULL, 0, "EARD RPC does not exist");
+	// Closing, it is not necessary to control the error.
+	service_close(req_fd,ack_fd);
 }
 
 
 state_t eard_local_api()
 {
-	int ack_fd;
-	int numfds_ready;
-	num_packs = node_desc.socket_count;
-	struct timeval *my_to;
 	ear_njob_t *eard_jobs_list;
+	struct timeval *my_to;
+	int numfds_ready;
+	int ack_fd;
 	state_t ret;
+	state_t s;
+	
+	num_packs = node_desc.socket_count;
 
 	verbose(1,"Creating node_mgr data");
 	if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS){
@@ -1463,14 +1361,13 @@ state_t eard_local_api()
 		exit(1);
 	}
 
-
 	// CPU Frequency metrics
 	state_assert(s, cpufreq_data_alloc(&freq_app_req,    NULL), _exit(0));
 	state_assert(s, cpufreq_data_count(&size_cpufreqs,&count_cpufreqs), _exit(0));
 
 	// IMC frequency metrics
-  state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
-  state_assert(s, imcfreq_data_alloc(&unc_data, NULL),       _exit(0));
+	state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
+	state_assert(s, imcfreq_data_alloc(&unc_data, NULL),       _exit(0));
 
 	verbose(1,"CPUfreq and IMC freq data ok for node_services devices %u", unc_count);
 
