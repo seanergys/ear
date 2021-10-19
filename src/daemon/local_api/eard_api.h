@@ -68,9 +68,6 @@ state_t eards_set_turbo();
 state_t eards_imcfreq_data_count(uint *count);
 state_t eards_imcfreq_read(imcfreq_t *ef,size_t size);
 
-state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size);
-state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count);
-
 /************************************/
 // Uncore services
 /** Sends a request to read the uncores. Returns -1 if there's an error, on

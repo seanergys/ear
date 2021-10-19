@@ -113,12 +113,6 @@ int eards_write(int fd,char *buff,int size);
 /* UNC frequency management */
 #define UNC_SIZE                20
 #define UNC_READ                21
-#define UNC_GET_LIMITS          22
-#define UNC_SET_LIMITS          23
-#define UNC_INIT_DATA           24
-#define UNC_GET_LIMITS_MIN      25
-#define UNC_SET_LIMITS_MIN      26
-
 
 // Services related with uncore counters for memory bandwith computation
 #define START_UNCORE      100
@@ -196,11 +190,6 @@ int eards_write(int fd,char *buff,int size);
 /* UNC frequency management */
 #define UNC_SIZE                20
 #define UNC_READ                21
-#define UNC_GET_LIMITS          22
-#define UNC_SET_LIMITS          23
-#define UNC_INIT_DATA           24
-#define UNC_GET_LIMITS_MIN      25
-#define UNC_SET_LIMITS_MIN      26
 
 #define END_COMM 				1000
 #define EAR_COM_OK     	 		0

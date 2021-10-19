@@ -15,15 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <string.h>
 #include <signal.h>
 #include <pthread.h>
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <linux/limits.h>
-#include <strings.h>
-#include <string.h>
 
-//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/types/generic.h>
 #include <common/environment.h>
@@ -31,10 +29,8 @@
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
-
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
-
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -42,7 +38,7 @@
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/frequency/cpu.h>
 #include <metrics/imcfreq/imcfreq.h>
-
+#include <report/report.h>
 #include <daemon/eard_node_services.h>
 #include <daemon/local_api/eard_api_conf.h>
 #include <daemon/local_api/eard_api_rpc.h>
@@ -50,92 +46,179 @@
 #include <daemon/power_monitor.h>
 #include <daemon/shared_configuration.h>
 #include <daemon/remote_api/dynamic_configuration.h>
-#include <report/report.h>
 #include <daemon/log_eard.h>
-
-/* Defined in eard.c */
-extern uint report_eard ;
-extern report_id_t rid;
-extern state_t report_connection_status;
-
-//#include <daemon/eard.h>
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
 
+#define MIN_INTERVAL_RT_ERROR   3600
+#define NUM_PRIVILEGED_SERVICES 11
+#define REQ_LOCAL_FD            0
+#define ACK_LOCAL_FD            1
+#define NUM_LOCAL_FDS           2
 
-#define MIN_INTERVAL_RT_ERROR 3600
+typedef struct local_connection{
+	ulong jid,sid,lid,anonymous;
+	int fds[NUM_LOCAL_FDS];
+	int cancelled;
+} local_connection_t;
+
+uint privileged_services[NUM_PRIVILEGED_SERVICES] =
+		{ SET_FREQ, SET_TURBO, SET_FREQ_WITH_MASK, SET_NODE_FREQ_WITH_LIST, 0,
+		  START_RAPL, RESET_RAPL, WRITE_APP_SIGNATURE, WRITE_EVENT, WRITE_LOOP_SIGNATURE,
+		  GPU_SET_FREQ };
 
 void eard_exit(uint restart);
-#if APP_API_THREAD
-pthread_t app_eard_api_th;
-#endif
-
-#if USE_GPUS
-static ctx_t eard_main_gpu_ctx;
-static uint eard_gpu_initialized=0;
-#endif
-static ulong node_energy_datasize;
-static edata_t node_energy_data;
-static int num_packs = 0;
-static unsigned long long *values_rapl;
-static cpufreq_t freq_app_req;
-static uint size_cpufreqs,count_cpufreqs;
-static imcfreq_t *unc_data;
-static uint unc_count;
-static int global_req_fd;
-static char ear_commreq_global[MAX_PATH_SIZE * 2];
-static state_t s;
-static ulong      energy_freq;
-static int RAPL_counting = 0;
-/* This var is used in all the eard services, no thread-safe */
-static struct daemon_req req;
 
 /* Defined in eard.c */
-extern ctx_t imc_eard_ctx;
-extern topology_t node_desc;
-extern   ehandler_t eard_handler_energy,handler_energy;
-extern int fd_rapl[MAX_PACKAGES];
-extern char ear_tmp[MAX_PATH_SIZE];
-extern char nodename[MAX_PATH_SIZE];
-extern int eard_must_exit;
-extern cluster_conf_t my_cluster_conf;
-extern my_node_conf_t *my_node_conf;
-extern ulong eard_max_freq;
-extern int num_uncore_counters;
+extern report_id_t      rid;
+extern state_t          report_connection_status;
+extern topology_t       node_desc;
+extern ehandler_t       handler_energy;
+extern int              fd_rapl[MAX_PACKAGES];
+extern char             ear_tmp[MAX_PATH_SIZE];
+extern char             nodename[MAX_PATH_SIZE];
+extern int              eard_must_exit;
+extern ulong            eard_max_freq;
 #if USE_GPUS
-extern uint eard_gpu_model;
-extern gpu_t *eard_read_gpu;
-extern uint eard_num_gpus;
-extern char gpu_str[256];
+extern uint             eard_gpu_model;
+extern gpu_t           *eard_read_gpu;
+extern uint             eard_num_gpus;
+extern char             gpu_str[256];
+static ctx_t            eard_main_gpu_ctx;
+static uint             eard_gpu_initialized=0;
 #endif
-
-
-
-#define NUM_PRIVILEGED_SERVICES 11
-uint privileged_services[NUM_PRIVILEGED_SERVICES]={SET_FREQ,SET_TURBO,SET_FREQ_WITH_MASK,SET_NODE_FREQ_WITH_LIST,UNC_SET_LIMITS,START_RAPL,RESET_RAPL,WRITE_APP_SIGNATURE,WRITE_EVENT,WRITE_LOOP_SIGNATURE,GPU_SET_FREQ};
-
+extern int              num_uncore_counters; // Me extraña que esto funcione.
+static ulong            node_energy_datasize;
+static edata_t          node_energy_data;
+static int              num_packs = 0;
+static ullong          *values_rapl;
+static cpufreq_t        freq_app_req;
+static uint             size_cpufreqs;
+static uint             count_cpufreqs;
+static imcfreq_t       *unc_data;
+static uint             unc_count;
+static int              global_req_fd;
+static char             ear_commreq_global[MAX_PATH_SIZE * 2];
+static ulong            energy_freq;
+static int              RAPL_counting = 0;
+/* This var is used in all the eard services, no thread-safe */
+static struct daemon_req req;
 /* FDs for local connections */
-int numfds_req = 0;
-static fd_set rfds;
-static fd_set rfds_basic;
-int max_fd = -1;
-int total_local_fd=0;
-
-#define NUM_LOCAL_FDS 2
-typedef struct local_connection{
-  ulong jid,sid,lid,anonymous;
-  int fds[NUM_LOCAL_FDS];
-	int cancelled;
-}local_connection_t;
+int                     numfds_req = 0;
+static fd_set           rfds;
+static fd_set           rfds_basic;
+int                     total_local_fd=0;
 static local_connection_t *eard_local_conn;
-static uint num_local_con=0;
-#define REQ_LOCAL_FD 0
-#define ACK_LOCAL_FD 1
+static uint             num_local_con=0;
 
-/* End data for local connections */
-/********************* These functions links local fds with eard job context. The jobid.stepid must be already created **/
+typedef struct apis_info_s {
+	ctx_t c;
+	uint  api;
+	uint  working;
+	uint  granularity;
+	uint  devs_count;
+	uint  avail_count;
+	void *current_list;
+	void *avail_list;
+} apis_info_t;
+
+static char          big_chunk1[16384];
+static char          big_chunk2[16384];
+static wide_buffer_t wb;
+static apis_info_t   mc;
+static apis_info_t   mg;
+static apis_info_t   mi;
+
+void services_init(topology_t *tp)
+{
+    //sf(mgt_cpufreq_load(tp, NO_EARD));
+	sf(mgt_imcfreq_load(tp, NO_EARD));
+
+    //sf(mgt_cpufreq_get_api((uint *) &mc.api));
+    sf(mgt_imcfreq_get_api((uint *) &mi.api));
+
+    //sf(mgt_cpufreq_init(no_ctx));
+    sf(mgt_imcfreq_init(no_ctx));
+
+    //sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
+    sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
+
+    //sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count);
+    sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count);
+}
+
+int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
+{
+	uint call = head->req_service;
+	state_t s = EAR_SUCCESS;
+	char *data = NULL;
+	size_t size = 0;
+
+	switch (call)
+	{
+	case RPC_MGT_IMCFREQ_GET_API:
+		data = (char *) &mi.api;
+		size = sizeof(uint);
+	break;
+	case RPC_MGT_IMCFREQ_GET_AVAILABLE_PS:
+		serial_clean(&wb);
+		//
+		serial_add_elem(&wb, (char *) &mi.avail_count, sizeof(uint));
+		serial_add_elem(&wb, (char *) mi.avail_list, sizeof(pstate_t)*mi.avail_count);
+		// Setting to send
+		size = serial_size(&wb, 0);
+		data = wb.data;
+	break;
+	case RPC_MGT_IMCFREQ_GET_CURRENT_PS:
+		if (state_fail(s = mgt_imcfreq_get_current_list(no_ctx, mi.current_list))) {
+			serror("Could not get IMC current frequency");
+		}
+		data = (char *) mi.current_list;
+		size = sizeof(pstate_t)*mi.devs_count;
+	break;
+	case RPC_MGT_IMCFREQ_SET_CURRENT_PS:
+		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mi.current_list, head->size, 0))) {
+			serror(Rpcerr.pending);
+		}
+		if (state_fail(s = mgt_imcfreq_set_current_list(no_ctx, mi.current_list))) {
+			serror("Could not set IMC current frequency");
+		}
+	break;
+	case RPC_MGT_IMCFREQ_GET_CURRENT_PS_MIN:
+		serial_clean(&wide);
+		//
+		if (state_fail(s = mgt_imcfreq_get_current_ranged_list(no_ctx, big_chunk1, big_chunk2))) {
+			serror("Could not get IMC current ranged frequency");
+		} else {
+			serial_add_elem(&wb, big_chunk1, sizeof(pstate_t)*mi.devs_count);
+			serial_add_elem(&wb, big_chunk2, sizeof(pstate_t)*mi.devs_count);
+			size = serial_size(&wb, 0);
+			data = wide.data;
+		}
+	break;
+	case RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN:
+		serial_assign(&wb, head->size);
+		if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+			serror(Rpcerr.pending);
+		} else {
+			serial_copy_elem(&wb, (char *) big_chunk1, NULL);
+			serial_copy_elem(&wb, (char *) big_chunk2, NULL);
+			s = mgt_imcfreq_set_current_ranged_list(no_ctx, big_chunk1, big_chunk2);
+		}
+	break;
+	}
+	// Always answering (if s != SUCCESS the error message is sent)
+	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
+		return 0;
+	}
+	return 1;
+}
+
+/* These functions links local fds with eard job context. The jobid.stepid must
+ * be already created */
 uint is_anonymous(ulong jid,ulong sid);
+
 state_t init_local_connections(local_connection_t **my_con,int num_con)
 {
   int i;
@@ -146,6 +229,7 @@ state_t init_local_connections(local_connection_t **my_con,int num_con)
   num_local_con = num_con;
   return EAR_SUCCESS;
 }
+
 state_t add_local_fd(local_connection_t *my_con,int fd, int pos)
 {
   if (pos >= NUM_LOCAL_FDS){
@@ -154,6 +238,7 @@ state_t add_local_fd(local_connection_t *my_con,int fd, int pos)
   my_con->fds[pos] = fd;
   return EAR_SUCCESS;
 }
+
 int is_new_job(local_connection_t *my_con,ulong jid,ulong sid)
 {
   int i;
@@ -162,6 +247,7 @@ int is_new_job(local_connection_t *my_con,ulong jid,ulong sid)
   if (i<num_local_con) return 1;
   return 0;
 }
+
 int add_new_local_connection(local_connection_t *my_con,ulong jid,ulong sid,ulong lid)
 {
   int i=0;
@@ -191,6 +277,7 @@ int get_local_connection_ack(local_connection_t *my_con,int reqfd)
   //debug("ACK for %d found at pos %d = %d",reqfd,i,my_con[i].fds[ACK_LOCAL_FD]);
   return my_con[i].fds[ACK_LOCAL_FD];
 }
+
 state_t del_local_connection(local_connection_t *my_con,job_id jid,job_id sid)
 {
   int i=0;
@@ -206,6 +293,7 @@ state_t del_local_connection(local_connection_t *my_con,job_id jid,job_id sid)
 	
   return EAR_SUCCESS;
 }
+
 int get_local_connection_by_fd(local_connection_t *my_con,int reqfd,int ackfd)
 {
   int i=0;
@@ -243,7 +331,6 @@ void clean_local_connection(local_connection_t *my_con)
   my_con->fds[REQ_LOCAL_FD] = -1;
   my_con->fds[ACK_LOCAL_FD] = -1;
 }
-
 /**********************/
 
 uint is_privileged_service(uint service)
@@ -255,105 +342,19 @@ uint is_privileged_service(uint service)
   }else{
     return 0;
   }
-
 }
-
 
 uint is_anonymous(ulong jid,ulong sid)
 {
   return ((jid == 0) && (sid == 0));
 }
 
-
-int is_valid_sec_tag(ulong tag) {
-#if 1
+int is_valid_sec_tag(ulong tag)
+{
+	#if 1
 	// You make define a constant at makefile time called SEC_KEY to use that option
 	return ((ulong) SEC_KEY == tag);
-#endif
-}
-
-#if 0
-
-/* To report data */
-
-int eard_system(eard_head_t *head, int req_fd, int ack_fd) {
-	unsigned long ack;
-	int ret1;
-
-	if (must_read) {
-		if (read(ear_fd_req[system_req], &req, sizeof(req)) != sizeof(req))
-			error("error reading info at eard_system(%s)\n", strerror(errno));
-	}
-
-	switch (req.req_service) {
-		case CONNECT_SYSTEM:
-			connect_service(system_req, &req.req_data.app);
-			break;
-		case WRITE_APP_SIGNATURE:
-			powermon_mpi_signature(&req.req_data.app);
-			ack = EAR_COM_OK;
-			if (write(ear_fd_ack[system_req], &ack, sizeof(ulong)) != sizeof(ulong)) {
-				error("ERROR while writing system service ack, closing connection...");
-				eard_close_comm();
-			}
-
-			break;
-		case WRITE_EVENT:
-			ack = EAR_COM_OK;
-			ret1 = EAR_SUCCESS;
-#if USE_DB
-		if (my_cluster_conf.eard.use_mysql)
-		{
-			if (!my_cluster_conf.eard.use_eardbd) {
-				ret1 = db_insert_ear_event(&req.req_data.event);
-			} else {
-				state_t state = eardbd_send_event(&req.req_data.event);
-				if (state_fail(state)) {
-					error("Error sending event to EARDBD: %s", state_msg);
-					eardbd_reconnect(&my_cluster_conf, my_node_conf);
-					ret1 = EAR_ERROR;
-				}
-			}
-		}
-#endif
-
-			if (ret1 == EAR_SUCCESS) ack = EAR_COM_OK;
-			else ack = EAR_COM_ERROR;
-
-			write(ear_fd_ack[system_req], &ack, sizeof(ulong));
-			break;
-		case WRITE_LOOP_SIGNATURE:
-			ack = EAR_COM_OK;
-			ret1 = EAR_SUCCESS;
-			copy_loop(&current_loop_data,&req.req_data.loop);
-			// print_loop_fd(1,&req.req_data.loop);
-			if (my_cluster_conf.database.report_loops) {
-#if USE_DB
-				if (my_cluster_conf.eard.use_mysql)
-				{
-					if (!my_cluster_conf.eard.use_eardbd){
-						ret1 = db_insert_loop (&req.req_data.loop);
-					} else {
-						state_t state = eardbd_send_loop(&req.req_data.loop);
-						if (state_fail(state)){
-							error("Error sending loop to EARDBD: %s", state_msg);
-							eardbd_reconnect(&my_cluster_conf, my_node_conf);
-							ret1 = EAR_ERROR;
-						}
-					}
-				}
-#endif
-			}
-
-			if (ret1 == EAR_SUCCESS) ack = EAR_COM_OK;
-			else ack = EAR_COM_ERROR;
-
-			write(ear_fd_ack[system_req], &ack, sizeof(ulong));
-			break;
-		default:
-			return 0;
-	}
-	return 1;
+	#endif
 }
 
 /************************ FREQUENCY FUNCTIONALLITY: max_freq is the limit *******************/
@@ -448,50 +449,6 @@ int eard_freq(eard_head_t *head, int req_fd, int ack_fd)
 			}
 			write(ear_fd_ack[freq_req], unc_data, unc_count * sizeof(imcfreq_t));
 			break;
-		case UNC_INIT_DATA:
-			memset(&buffer[0], 0, 4096);
-			char *p;
-			/* This code sends in a single request the API, the num of pstates and the list of pstates */
-			/* It's a kind of serialization */
-			mgt_imcfreq_get_api((uint *) &buffer[0]);
-			mgt_imcfreq_get_available_list(&imc_eard_ctx, (const pstate_t **) &p, (uint *) &buffer[sizeof(uint)]);
-			memcpy(&buffer[sizeof(uint)*2], p, ((uint) buffer[sizeof(uint)])*sizeof(pstate_t));
-			write(ear_fd_ack[freq_req], buffer, 4096);
-		break;
-		case UNC_GET_LIMITS:
-			memset(&buffer[0], 0, 4096);
-			if (state_fail(s = mgt_imcfreq_get_current_list(&imc_eard_ctx, (pstate_t *) &buffer[0]))){
-				error("When reading IMC current frequency (%d, %s)", s, state_msg);
-			}
-			write(ear_fd_ack[freq_req], buffer, node_desc.socket_count*sizeof(pstate_t));
-		break;
-		case UNC_SET_LIMITS:
-			ack = EAR_SUCCESS;
-			if (state_fail(s = mgt_imcfreq_set_current_list(&imc_eard_ctx, req.req_data.unc_freq.index_list))){
-				error("When setting imc limits req by app (%d, %s)", s, state_msg);
-				ack = (ulong) s;
-			}
-			write(ear_fd_ack[freq_req], &ack, sizeof(ulong));
-		break;
-		case UNC_GET_LIMITS_MIN:
-			size = node_desc.socket_count * sizeof(pstate_t);
-			memset(&buffer[0], 0, size*2);
-			if (state_fail(s = mgt_imcfreq_get_current_ranged_list(&imc_eard_ctx, (pstate_t *) &buffer[0], (pstate_t *) &buffer[size]))){
-				error("When reading IMC current frequency (%d, %s)", s, state_msg);
-			}
-			write(ear_fd_ack[freq_req], buffer, size*2);
-		break;
-		case UNC_SET_LIMITS_MIN:
-			ack = EAR_SUCCESS;
-			max = &req.req_data.unc_freq.index_list[0];
-			min = &req.req_data.unc_freq.index_list[node_desc.socket_count];
-			if (state_fail(s = mgt_imcfreq_set_current_ranged_list(&imc_eard_ctx, max, min))){
-				error("When setting imc limits req by app (%d, %s)", s, state_msg);
-				ack = (ulong) s;
-			}
-			write(ear_fd_ack[freq_req], &ack, sizeof(ulong));
-		break;
-
 		default:
 			return 0;
 	}
@@ -924,49 +881,6 @@ int eard_imc(eard_head_t *head,int req_fd,int ack_fd) {
 			}
 			write(ack_fd, unc_data, unc_count * sizeof(imcfreq_t));
 			break;
-		case UNC_INIT_DATA:
-			memset(&buffer[0], 0, 4096);
-			char *p;
-			/* This code sends in a single request the API, the num of pstates and the list of pstates */
-			/* It's a kind of serialization */
-			mgt_imcfreq_get_api((uint *) &buffer[0]);
-			mgt_imcfreq_get_available_list(&imc_eard_ctx, (const pstate_t **) &p, (uint *) &buffer[sizeof(uint)]);
-			memcpy(&buffer[sizeof(uint)*2], p, ((uint) buffer[sizeof(uint)])*sizeof(pstate_t));
-			write(ack_fd, buffer, 4096);
-		break;
-		case UNC_GET_LIMITS:
-			memset(&buffer[0], 0, 4096);
-			if (state_fail(s = mgt_imcfreq_get_current_list(&imc_eard_ctx, (pstate_t *) &buffer[0]))){
-				error("When reading IMC current frequency (%d, %s)", s, state_msg);
-			}
-			write(ack_fd, buffer, node_desc.socket_count*sizeof(pstate_t));
-		break;
-		case UNC_SET_LIMITS:
-			ack = EAR_SUCCESS;
-			if (state_fail(s = mgt_imcfreq_set_current_list(&imc_eard_ctx, req.req_data.unc_freq.index_list))){
-				error("When setting imc limits req by app (%d, %s)", s, state_msg);
-				ack = (ulong) s;
-			}
-			write(ack_fd, &ack, sizeof(ulong));
-		break;
-		case UNC_GET_LIMITS_MIN:
-			size = node_desc.socket_count * sizeof(pstate_t);
-			memset(&buffer[0], 0, size*2);
-			if (state_fail(s = mgt_imcfreq_get_current_ranged_list(&imc_eard_ctx, (pstate_t *) &buffer[0], (pstate_t *) &buffer[size]))){
-				error("When reading IMC current frequency (%d, %s)", s, state_msg);
-			}
-			write(ack_fd, buffer, size*2);
-		break;
-		case UNC_SET_LIMITS_MIN:
-			ack = EAR_SUCCESS;
-			max = &req.req_data.unc_freq.index_list[0];
-			min = &req.req_data.unc_freq.index_list[node_desc.socket_count];
-			if (state_fail(s = mgt_imcfreq_set_current_ranged_list(&imc_eard_ctx, max, min))){
-				error("When setting imc limits req by app (%d, %s)", s, state_msg);
-				ack = (ulong) s;
-			}
-			write(ack_fd, &ack, sizeof(ulong));
-		break;
 	default:
       return 0;
 	}
