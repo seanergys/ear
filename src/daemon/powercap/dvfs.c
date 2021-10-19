@@ -302,6 +302,7 @@ state_t dvfs_pc_thread_main(void *p)
 				//vector_print_pstates(c_pstate, node_size);
 				//print_frequencies(node_size,c_req_f);
 				//vector_print_pstates(t_pstate, node_size);
+				verbose(VEARD_PC,"%sCurrent freq freq0 %lu freqn %lu%s", COL_RED, c_freq[0], c_freq[node_size-1],COL_CLR);
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
         }

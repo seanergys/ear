@@ -661,6 +661,8 @@ void accum_estimations(lib_shared_data_t *data,shsignature_t *sig)
 		sig_shared_region[p].sig.accum_mem_access += sig_shared_region[p].sig.GBS * 1024 * 1024 * 1024 * time_s;
 		sig_shared_region[p].sig.accum_avg_f      += sig_shared_region[p].sig.avg_f * time_s;
 		sig_shared_region[p].sig.valid_time       += time_s;
+		sig_shared_region[p].sig.accum_dram_energy      += sig_shared_region[p].sig.DRAM_power * time_s;
+		sig_shared_region[p].sig.accum_pack_energy      += sig_shared_region[p].sig.PCK_power  * time_s;
 		verbose_master(2,"Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s);
 
 	}
@@ -674,6 +676,8 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 	ull  node_L3 = 0;
   int cpus_in_node = arch_desc.top.cpu_count;	
 	double power_estimations[MAX_CPUS_SUPPORTED];
+	double dram_power[MAX_CPUS_SUPPORTED];
+	double pck_power[MAX_CPUS_SUPPORTED];
 	double ipc[MAX_CPUS_SUPPORTED];
 	double tpi[MAX_CPUS_SUPPORTED];
 	double gbs[MAX_CPUS_SUPPORTED];
@@ -687,7 +691,7 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 	signature_t *lsig = &data->node_signature;
 	signature_t aux;
 	signature_t *new_sig;
-	double my_job_GBS;
+	double my_job_GBS, my_job_DRAM_power;
 
 
 
@@ -700,6 +704,8 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 	memset(f,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 	memset(L3,0,sizeof(ull)*MAX_CPUS_SUPPORTED);
 	memset(power_estimations,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+	memset(dram_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)) return;
@@ -730,17 +736,22 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 
 	uint lp = 0;
 	my_job_GBS = 0;
+	my_job_DRAM_power = 0;
 	for (uint j = 0; j < node_process; j ++){
 		/* GBs is per-node, we can use our own GBs */
     gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
+    dram_power[j] = ((double)L3[j]/(double)node_L3)*lsig->DRAM_power;
     if (L3[j] && (job_in_process[j] == node_mgr_index)){
-				my_job_GBS += gbs[j];
+				my_job_GBS        += gbs[j];
+				my_job_DRAM_power += dram_power[j];
 				sig_shared_region[lp].sig.GBS = gbs[j];	
+				sig_shared_region[lp].sig.DRAM_power = dram_power[j];	
 				lp++;
 				verbose_master(2,"Process %d/%d GBS %lf", job_in_process[j], lp, sig_shared_region[lp].sig.GBS);
     }
   }
 	data->job_signature.GBS = my_job_GBS;
+	data->job_signature.DRAM_power = my_job_DRAM_power;
 
 
 	verbose_master(2,"My job[%d] GB/s is %.2lf", node_mgr_index, data->job_signature.GBS);
@@ -812,11 +823,13 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 		  process_power_ratio[proc] = power_estimations[proc]/total_power_estimated;
 			if (GPU_power) GPU_process_power = GPU_power / data->num_processes;
 			sig_shared_region[lp].sig.DC_power = (CPU_power * process_power_ratio[proc]) + GPU_process_power; // what about GPU power in processes	
+			sig_shared_region[lp].sig.PCK_power = process_power_ratio[proc] * lsig->PCK_power;
 			verbose_master(2,"Power process %d/%d is %lf", job_in_process[proc], lp, sig_shared_region[lp].sig.DC_power);
 			lp++;
 		}
 	}
 	data->job_signature.DC_power = (CPU_power	* job_power_ratio) + GPU_power;
+	data->job_signature.PCK_power = job_power_ratio * lsig->PCK_power;
 	verbose_master(2,"My job[%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf)", node_mgr_index, data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio);
 
 	return;	
