@@ -20,6 +20,7 @@
 #include <common/output/verbose.h>
 
 #define sa(f) \
+	printf("calling " #f "\n"); \
         if (state_fail(f)) { \
                 serror(#f " FAILED"); \
                 exit(0); \
@@ -79,7 +80,7 @@ state_t manages_apis_print_available()
 static manages_apis_t *mans;
 static topology_t tp;
 
-// /hpc/base/ctt/packages/compiler/gnu/9.1.0/bin/gcc -I .. -DTEST=1 -o test metrics.c ../management/libmgt.a libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
+// /opt/rh/devtoolset-7/root/bin/gcc -I .. -DTEST=1 -o test management.c ./libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
 
 int main(int argc, char *argv[])
 {

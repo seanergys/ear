@@ -140,21 +140,37 @@ void services_init(topology_t *tp)
 {
 	state_t s;
 
-    //sf(mgt_cpufreq_load(tp, NO_EARD));
+	//sf(mgt_cpufreq_load(tp, NO_EARD));
 	sf(mgt_imcfreq_load(tp, NO_EARD));
 
-    //sf(mgt_cpufreq_get_api((uint *) &mc.api));
-    sf(mgt_imcfreq_get_api((uint *) &mi.api));
+	//sf(mgt_cpufreq_get_api((uint *) &mc.api));
+	sf(mgt_imcfreq_get_api((uint *) &mi.api));
 
-    //sf(mgt_cpufreq_init(no_ctx));
-    sf(mgt_imcfreq_init(no_ctx));
+	//sf(mgt_cpufreq_init(no_ctx));
+	sf(mgt_imcfreq_init(no_ctx));
 
-    //sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
-    sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
+	//sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
+	sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
 
-    //sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
-    sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
+	//sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
+	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
+
+	//
+	serial_alloc(&wb, SIZE_8KB);
 }
+
+#define dcase_init(id) \
+	switch (call) { \
+	case id: \
+	printf("Called " #id "\n");
+#define dcase(id) \
+	break; \
+	case id: \
+	printf("Called " #id "\n");
+#define dcase_fini() \
+	break; \
+	default: return 0; \
+	}
 
 int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 {
@@ -163,13 +179,10 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 	char *data = NULL;
 	size_t size = 0;
 
-	switch (call)
-	{
-	case RPC_MGT_IMCFREQ_GET_API:
+	dcase_init(RPC_MGT_IMCFREQ_GET_API)
 		data = (char *) &mi.api;
 		size = sizeof(uint);
-	break;
-	case RPC_MGT_IMCFREQ_GET_AVAILABLE_PS:
+	dcase(RPC_MGT_IMCFREQ_GET_AVAILABLE_PS)
 		serial_clean(&wb);
 		//
 		serial_add_elem(&wb, (char *) &mi.avail_count, sizeof(uint));
@@ -177,23 +190,20 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		// Setting to send
 		size = serial_size(&wb);
 		data = serial_data(&wb);
-	break;
-	case RPC_MGT_IMCFREQ_GET_CURRENT_PS:
+	dcase(RPC_MGT_IMCFREQ_GET_CURRENT_PS)
 		if (state_fail(s = mgt_imcfreq_get_current_list(no_ctx, mi.current_list))) {
 			serror("Could not get IMC current frequency");
 		}
 		data = (char *) mi.current_list;
 		size = sizeof(pstate_t)*mi.devs_count;
-	break;
-	case RPC_MGT_IMCFREQ_SET_CURRENT_PS:
+	dcase(RPC_MGT_IMCFREQ_SET_CURRENT_PS)
 		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mi.current_list, head->size, 0))) {
 			serror(Rpcerr.pending);
 		}
 		if (state_fail(s = mgt_imcfreq_set_current_list(no_ctx, mi.current_list))) {
 			serror("Could not set IMC current frequency");
 		}
-	break;
-	case RPC_MGT_IMCFREQ_GET_CURRENT_PS_MIN:
+	dcase(RPC_MGT_IMCFREQ_GET_CURRENT_PS_MIN)
 		serial_clean(&wb);
 		//
 		if (state_fail(s = mgt_imcfreq_get_current_ranged_list(no_ctx, (pstate_t *) big_chunk1, (pstate_t *) big_chunk2))) {
@@ -204,8 +214,7 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 			size = serial_size(&wb);
 			data = serial_data(&wb);
 		}
-	break;
-	case RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN:
+	dcase(RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN)
 		serial_reset(&wb, head->size);
 		if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
 			serror(Rpcerr.pending);
@@ -214,8 +223,7 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 			serial_copy_elem(&wb, (char *) big_chunk2, NULL);
 			s = mgt_imcfreq_set_current_ranged_list(no_ctx, (uint *) big_chunk1, (uint *) big_chunk2);
 		}
-	break;
-	}
+	dcase_fini();
 	// Always answering (if s != SUCCESS the error message is sent)
 	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
 		return 0;
@@ -820,368 +828,6 @@ int eard_rapl(eard_head_t *head,int req_fd,int ack_fd) {
   return 1;
 }
 
-
-
-
-/* New services, to be included one by one */
-#if 0
-int service_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
-{
-	uint call = head->req_service;
-	state_t s = EAR_SUCCESS;
-	char *data = NULL;
-	uint aux_int[2];
-	ulong aux_long;
-	size_t size = 0;
-
-	switch (call) {
-	case RPC_MGT_CPUFREQ_GET_API:
-		sfail(s = mgt_cpufreq_get_api((uint *) &aux_int[0])) {
-			serror("Could not get management cpufreq API");
-		}
-		data = (char *) &aux_int[0];
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_CPUFREQ_GET_AVAILABLE:
-		data = (char *) mcpu_ps_ava;
-		size = mcpu_ps_ava_count * sizeof(pstate_t);
-	break;
-	case RPC_MGT_CPUFREQ_GET_CURRENT:
-		sfail(s = mgt_cpufreq_get_current_list(&mcpu_c, mcpu_ps_cur)) {
-			serror("Could not get the current management frequency");
-		}
-		data = (char *) mcpu_ps_cur;
-		size = mcpu_dev_count * sizeof(pstate_t);
-	break;
-	case RPC_MGT_CPUFREQ_GET_NOMINAL:
-		sfail(s = mgt_cpufreq_get_nominal(&mcpu_c, &aux_int[0])) {
-			serror("Could not get the current nominal frequency");
-		}
-		data = (char *) &aux_int[0];
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_CPUFREQ_GET_GOVERNOR:
-		sfail(s = mgt_cpufreq_get_governor(&mcpu_c, &aux_int[0])) {
-			serror("Could not get the current governor");
-		}
-		data = (char *) &aux_int[0];
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_CPUFREQ_SET_CURRENT_LIST:
-		aux_long = mcpu_dev_count * sizeof(uint);
-		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mcpu_ps_idx, head->size, aux_long))) {
-			serror(Rpcerr.pending);
-		}
-		if (state_ok(s)) {
-			if (state_fail(s = mgt_cpufreq_set_current_list(&mcpu_c, mcpu_ps_idx))) {
-				serror("Error when setting a CPU frequency list");
-			}
-		}
-	break;
-	case RPC_MGT_CPUFREQ_SET_CURRENT:
-		aux_long = sizeof(uint) + sizeof(int);
-		sfail(s = eard_rpc_read_pending(req_fd, (char *) aux_int, head->size, aux_long)) {
-			serror(Rpcerr.pending);
-		}
-		if (state_ok(s)) {
-			sfail(s = mgt_cpufreq_set_current(&mcpu_c, aux_int[0], (int) aux_int[1])) {
-				serror("Error when setting a CPU frequency");
-			}
-		}
-	break;
-	case RPC_MGT_CPUFREQ_SET_GOVERNOR:
-		sfail(s = eard_rpc_read_pending(req_fd, (char *) &aux_int[0], head->size, sizeof(uint))) {
-			serror(Rpcerr.pending);
-		}
-		if (state_ok(s)) {
-			sfail(s = mgt_cpufreq_set_governor(&mcpu_c, aux_int[0])) {
-				serror(Rpcerr.answer);
-			}
-		}
-	break;
-	case RPC_MET_CPUFREQ_GET_API:
-		sfail(s = cpufreq_get_api((uint *) &aux_int[0])) {
-			serror("Could not get metrics cpufreq API");
-		}
-		data = (char *) &aux_int[0];
-		size = sizeof(uint);
-	break;
-	default:
-		return 0;
-	}
-	// Always answering
-	sfail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) {
-		return 0;
-	}
-	return 1;
-}
-
-int service_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
-{
-	uint call = head->req_service;
-	state_t s = EAR_SUCCESS;
-	char *data = NULL;
-	size_t size = 0;
-	uint aux_int;
-
-	switch (call) {
-	case RPC_MGT_IMCFREQ_GET_API:
-		if (state_fail(s = mgt_imcfreq_get_api((uint *) &aux_int))) {
-			serror("Could not get management imcfreq API");
-		}
-		data = (char *) &aux_int;
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_IMCFREQ_GET_AVAILABLE_PS:
-		serial_clean(&wide);
-		serial_add_elem(&wide, (char *) &mimc_ps_ava_count, sizeof(uint));
-		serial_add_elem(&wide, (char *) mimc_ps_ava, sizeof(pstate_t)*mimc_ps_ava_count);
-		size = serial_size(&wide, 0);
-		data = wide.data;
-	break;
-	case RPC_MGT_IMCFREQ_GET_CURRENT_PS:
-		if (state_fail(s = mgt_imcfreq_get_current_list(&mimc_c, mimc_ps_cur1))) {
-			serror("Could not get IMC current frequency");
-		}
-		data = (char *) mimc_ps_cur1;
-		size = sizeof(pstate_t) * mimc_dev_count;
-	break;
-	case RPC_MGT_IMCFREQ_SET_CURRENT_PS:
-		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mimc_ps_idx1, head->size, 0))) {
-			serror(Rpcerr.pending);
-		}
-		if (state_fail(s = mgt_imcfreq_set_current_list(&mimc_c, mimc_ps_idx1))) {
-			serror("Could not set IMC current frequency");
-		}
-	break;
-	case RPC_MGT_IMCFREQ_GET_CURRENT_PS_MIN:
-		serial_clean(&wide);
-		if (state_fail(s = mgt_imcfreq_get_current_ranged_list(&mimc_c, mimc_ps_cur1, mimc_ps_cur2))) {
-			serror("Could not get IMC current ranged frequency");
-		} else {
-			serial_add_elem(&wide, (char *) mimc_ps_cur1, sizeof(pstate_t)*mimc_dev_count);
-			serial_add_elem(&wide, (char *) mimc_ps_cur2, sizeof(pstate_t)*mimc_dev_count);
-			size = serial_size(&wide, 0);
-			data = wide.data;
-		}
-	break;
-	case RPC_MGT_IMCFREQ_SET_CURRENT_PS_MIN:
-		serial_reset(&wide, head->size);
-		if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wide), head->size, 0))) {
-			serror(Rpcerr.pending);
-		} else {
-			serial_copy_elem(&wide, (char *) mimc_ps_idx1, NULL);
-			serial_copy_elem(&wide, (char *) mimc_ps_idx2, NULL);
-			s = mgt_imcfreq_set_current_ranged_list(&mimc_c, mimc_ps_idx1, mimc_ps_idx2);
-		}
-	break;
-	case RPC_MET_IMCFREQ_GET_API:
-		imcfreq_get_api((uint *) &aux_int);
-		data = (char *) &aux_int;
-		size = sizeof(uint);
-	break;
-	default:
-		return 0;
-	}
-	// Always answering
-	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
-		return 0;
-	}
-	return 1;
-}
-
-int service_bwidth(eard_head_t *head,int req_fd,int ack_fd) {
-
-	uint call = head->req_service;
-	state_t s = EAR_SUCCESS;
-	char *data = NULL;
-	size_t size = 0;
-	uint aux;
-
-	switch (req.req_service) {
-		case RPC_MET_BWIDTH_GET_API:
-			if (state_fail(s = bwidth_get_api((uint *) &aux))) {
-				serror("Could not get metrics bandwidth API");
-			}
-			data = (char *) &aux;
-			size = sizeof(uint);
-		break;
-		case RPC_MET_BWIDTH_COUNT_DEVICES:
-			data = (char *) &ram_dev_count;
-			size = sizeof(uint);
-		break;
-		case RPC_MET_BWIDTH_READ:
-			if (state_fail(s = bwidth_read(&ram_c, ram_mets))) {
-				serror("Could not get metrics bandwidth API");
-			}
-			data = (char *) ram_mets;
-			size = sizeof(bwidth_t) * ram_dev_count;
-		break;
-		default:
-			return 0;
-	}
-	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
-		return 0;
-	}
-	return 1;
-}
-
-int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
-{
-	uint call = head->req_service;
-	state_t s = EAR_SUCCESS;
-	char *data = NULL;
-	size_t size = 0;
-	uint aux_int;
-	int i;
-		
-	switch (call) {
-	case RPC_MGT_GPU_GET_API:
- 		sfail(s = mgt_gpu_get_api((uint *) &aux_int)) {
-	        serror("Could not get management cpufreq API");
-        }
-		data = (char *) &aux_int;
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_GPU_COUNT_DEVICES:
-		data = (char *) &mgpu_dev_count;
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_GPU_GET_FREQ_LIMIT_DEFAULT:
-		data = (char *) mgpu_ps_def;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_FREQ_LIMIT_MAX:
-		data = (char *) mgpu_ps_max;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_FREQ_LIMIT_CURRENT:
-		sfail (s = mgt_gpu_freq_limit_get_current(&mgpu_c, mgpu_ps_cur)) {
-	        serror("Could not get current GPU frequency limit");
-		}
-		data = (char *) mgpu_ps_cur;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_FREQS_AVAILABLE:
-		serial_clean(&wide);
-		serial_add_elem(&wide, (char *) mgpu_ps_ava_count, sizeof(uint)*mgpu_dev_count);
-		for (i = 0; i < mgpu_dev_count; ++i) {
-				serial_add_elem(&wide, (char *) mgpu_ps_ava[i], sizeof(ulong)*mgpu_ps_ava_count[i]);
-		}
-		size = serial_size(&wide, 0);
-		data = wide.data;
-	break;
-	case RPC_MGT_GPU_RESET_FREQ_LIMIT:
-		s = mgt_gpu_freq_limit_reset(&mgpu_c);
-	break;
-	case RPC_MGT_GPU_SET_FREQ_LIMIT:
-		sfail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_ps_cur, head->size, 0)) {
-			serror(Rpcerr.pending);
-		}
-		if (state_ok(s)) {
-			sfail(s = mgt_gpu_freq_limit_set(&mgpu_c, mgpu_ps_cur)) {
-				serror("Error when setting a GPU frequency limit");
-			}
-		}
-	break;
-	case RPC_MGT_GPU_GET_POWER_CAP_DEFAULT:
-		data = (char *) mgpu_pow_def;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_POWER_CAP_MAX:
-		serial_clean(&wide);
-		serial_add_elem(&wide, (char *) mgpu_pow_max, sizeof(ulong)*mgpu_dev_count);
-		serial_add_elem(&wide, (char *) mgpu_pow_min, sizeof(ulong)*mgpu_dev_count);
-		size = serial_size(&wide, 0);
-		data = wide.data;
-	break;
-	case RPC_MGT_GPU_GET_POWER_CAP_CURRENT:
-		sfail (s = mgt_gpu_power_cap_get_current(&mgpu_c, mgpu_pow_cur)) {
-	        serror("Could not get current GPU power limit");
-		}
-		data = (char *) mgpu_pow_cur;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_RESET_POWER_CAP:
-		s = mgt_gpu_power_cap_reset(&mgpu_c);
-	break;
-	case RPC_MGT_GPU_SET_POWER_CAP:
-        sfail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_pow_cur, head->size, 0)) {
-            serror(Rpcerr.pending);
-        }
-        if (state_ok(s)) {
-            sfail(s = mgt_gpu_power_cap_set(&mgpu_c, mgpu_pow_cur)) {
-                serror("Error when setting a GPU power cap");
-            }
-        }
-	break;
-	case RPC_MET_GPU_GET_API:
-		sfail(s = gpu_get_api((uint *) &aux_int)) {
-		serror("Could not get management cpufreq API");
-		}
-		data = (char *) &aux_int;
-		size = sizeof(uint);
-	break;
-	case RPC_MET_GPU_COUNT_DEVICES:
-		data = (char *) &gpu_dev_count;
-		size = sizeof(uint);
-	break;
-	case RPC_MET_GPU_GET_METRICS:
-		sfail(gpu_read(&gpu_c, gpu_mets)) {
-			serror("Could not get management GPU metrics");
-		}
-		data = (char *) gpu_mets;
-		size = sizeof(gpu_t) * gpu_dev_count;
-	break;
-	case RPC_MET_GPU_GET_METRICS_RAW:
-		sfail(gpu_read_raw(&gpu_c, gpu_mets)) {
-			serror("Could not get management GPU metrics");
-		}
-		data = (char *) gpu_mets;
-		size = sizeof(gpu_t) * gpu_dev_count;
-	break;
-	default:
-		return 0;
-	}
-	// Always answering
-	sfail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) {
-		return 0;
-	}
-	return 1;
-}
-
-#endif
-#if 0
-void select_service(int fd) {
-	if (read(ear_fd_req[freq_req], &req, sizeof(req)) != sizeof(req))
-		error("error when reading info at select_service\n");
-	if (!is_valid_sec_tag(req.sec)) {
-		error("Invalid connection with eard %lu", req.sec);
-		return;
-	}
-	if (eard_freq(0)) {
-		return;
-	}
-	if (eard_uncore(0)) {
-		return;
-	}
-	if (eard_rapl(0)) {
-		return;
-	}
-	if (eard_system(0)) {
-		return;
-	}
-	if (eard_node_energy(0)) {
-		return;
-	}
-	if (eard_gpu(0)){
-		return;
-	}
-	error(" Error, request received not supported\n");
-	eard_close_comm();
-}
-#endif
-
 state_t service_close(int req_fd, int ack_fd)
 {
 	ulong job_id, step_id;
@@ -1231,51 +877,48 @@ state_t service_close_by_id(ulong jid,ulong sid)
 
 state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 { 
-  size_t size;
-  uint rpc;
+	size_t size;
+	uint rpc;
 	int i;
 
 	if (req_fd != global_req_fd){
 		i = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 		if ((i >= 0) && (i < num_local_con) && eard_local_conn[i].cancelled){ 
-			verbose(1,"Local connection %d was cancelled",i);
+			verbose(1, "Local connection %d was cancelled",i);
 			return EAR_ERROR;
 		}
 	}
-	
- 
-  // Reading the header.
-  if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
-    error("Error when reading header during service respond: expected %lu bytes and received %lu",
-      sizeof(eard_head_t), size);
-    return EAR_ERROR;
-  }
-  // Reading the union part
-  size = sizeof(union daemon_req_opt);
-  rpc  = (req->req_service > NEW_API_SERVICES);
-  // If is not RPC, complete the daemon_req.
-  if (!rpc && (eards_read(req_fd, (char *) &req->req_data, size, NO_WAIT_DATA) != size)) {
-    error("Error when reading union daemon_req during service respond: %s", strerror(errno));
-    return EAR_ERROR;
-  }
-  // Checking if its privileged service
-  if (!is_privileged_service(req->req_service)) {
-    return EAR_SUCCESS;
-  }
-  if (!is_valid_sec_tag(req->sec)) {
-    if (rpc) {
-      // If is not valid, clean the rest of the requirement.
-      sfail(eard_rpc_clean(req_fd, req->size)) {
-        serror("Error when cleaning RPC during service respond");
-      }
-      // And answer the error.
-      sfail(eard_rpc_answer(ack_fd, req->req_service, EAR_ERROR, NULL, 0, "Invalid security key")) {
-        serror("Error during RPC answer during service respond");
-      }
-    }
-    return EAR_ERROR;
-  }
-  return EAR_SUCCESS;
+	// Reading the header.
+	if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
+		error("when reading the RPC header: expected %lu bytes and received %lu", sizeof(eard_head_t), size);
+		return EAR_ERROR;
+	}
+	// Reading the union part
+	size = sizeof(union daemon_req_opt);
+	rpc  = (req->req_service > NEW_API_SERVICES);
+	// If is not RPC, complete the daemon_req.
+	if (!rpc && (eards_read(req_fd, (char *) &req->req_data, size, NO_WAIT_DATA) != size)) {
+		error("when reading union daemon_req: %s", strerror(errno));
+		return EAR_ERROR;
+	}
+	// Checking if its privileged service
+	if (!is_privileged_service(req->req_service)) {
+		return EAR_SUCCESS;
+	}
+	if (!is_valid_sec_tag(req->sec)) {
+		if (rpc) {
+			// If is not valid, clean the rest of the requirement.
+			if (state_fail(eard_rpc_clean(req_fd, req->size))) {
+				serror("when cleaning RPC during service respond");
+			}
+			// And answer the error.
+			if (state_fail(eard_rpc_answer(ack_fd, req->req_service, EAR_ERROR, NULL, 0, "Invalid security key"))) {
+				serror("RPC answer during service respond");
+			}
+		}
+		return EAR_ERROR;
+	}
+	return EAR_SUCCESS;
 }
 
 state_t service_answer(int req_fd, int ack_fd, uint call, state_t s, char *data, size_t size, char *error)
@@ -1303,11 +946,12 @@ state_t service_answer_old(int req_fd, int ack_fd, char *data, size_t size)
 void service_select(int req_fd, int ack_fd)
 { 
 	eard_head_t *local_req = (eard_head_t *) &req;
-  
+
 	// Hanging up
-	if (state_fail (service_listen(req_fd, ack_fd, &req))) {
+	if (state_fail(service_listen(req_fd, ack_fd, &req))) {
 		verbose(1, "Closing local service");
 		service_close(req_fd, ack_fd);
+		return;
 	}
 	// New services
 	if(services_mgt_imcfreq(local_req, req_fd, ack_fd)) {
