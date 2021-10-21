@@ -37,7 +37,7 @@
 
 
 extern cluster_conf_t my_cluster_conf;
-extern uint  max_cluster_power;
+extern uint  default_cluster_powercap;
 extern uint  cluster_powercap_period;
 
 extern uint process_created;
@@ -45,6 +45,8 @@ extern pthread_mutex_t plocks;
 void check_pending_processes();
 
 uint  current_cluster_powercap;
+uint  min_cluster_powercap;
+
 /* Shared data with eargm_ext thread to sent to meta_eargms */
 shared_powercap_data_t ext_powercap_data;
 pthread_mutex_t ext_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -307,8 +309,8 @@ void * eargm_powercap_th(void *noarg)
 
 void cluster_powercap_reset_pc()
 {
-    debug("Resetting cluster powercap to %u", max_cluster_power);
-    current_cluster_powercap = max_cluster_power;
+    debug("Resetting cluster powercap to %u", default_cluster_powercap);
+    current_cluster_powercap = default_cluster_powercap;
     current_extra_power = 0;
 }
 
@@ -321,8 +323,8 @@ void cluster_powercap_red_pc(uint red)
         current_cluster_powercap -= red;
     }
 
-    if (max_cluster_power < current_cluster_powercap)
-        current_extra_power = current_cluster_powercap - max_cluster_power;
+    if (default_cluster_powercap < current_cluster_powercap)
+        current_extra_power = current_cluster_powercap - default_cluster_powercap;
     else
         current_extra_power = 0;
 }
@@ -331,16 +333,47 @@ void cluster_powercap_inc_pc(uint inc)
 {
     debug("Increasing cluster powercap by %u (from %u to %u)", inc, current_cluster_powercap, current_cluster_powercap+inc);
     current_cluster_powercap += inc;
-    if (max_cluster_power < current_cluster_powercap)
-        current_extra_power = current_cluster_powercap - max_cluster_power;
+    if (default_cluster_powercap < current_cluster_powercap)
+        current_extra_power = current_cluster_powercap - default_cluster_powercap;
     else
         current_extra_power = 0;
+}
+
+uint cluster_get_min_powercap(cluster_conf_t *conf)
+{
+    uint total = 0;
+    int i, j, k;
+    int tag_id, def_tag_id;
+    def_tag_id = get_default_tag_id(conf);
+
+    for (i = 0; i < conf->num_islands; i++)
+    {
+        for (j = 0; j < conf->islands[i].num_ranges; j++)
+        {
+            node_range_t *current_range = &conf->islands[i].ranges[j];
+            tag_id = -1;
+            for (k = 0; k < current_range->num_tags; k++)
+            {
+                tag_id = tag_id_exists(conf, conf->islands[i].specific_tags[current_range->specific_tags[k]]);
+                if (tag_id >= 0) {
+                    break;
+                }
+            }
+            if (tag_id < 0) {
+                tag_id = def_tag_id;
+            }
+            total += conf->tags[tag_id].powercap * (current_range->end - current_range->start + 1);
+        }
+    }
+
+    return total;
 }
 
 void cluster_powercap_init(cluster_conf_t *cc)
 {
     int ret;
-    current_cluster_powercap = max_cluster_power;
+    current_cluster_powercap = default_cluster_powercap;
+    min_cluster_powercap = cluster_get_min_powercap(cc);
     if (current_cluster_powercap>0){
         verbose(VGM_PC,"Power cap limit set to %u",current_cluster_powercap);
     }else{
@@ -354,7 +387,7 @@ void cluster_powercap_init(cluster_conf_t *cc)
         errno=ret;
         error("error creating eargm_server for external api %s",strerror(errno));
     }
-    current_cluster_powercap = max_cluster_power;
+    current_cluster_powercap = default_cluster_powercap;
 }
 
 int cluster_power_limited()
@@ -405,7 +438,7 @@ void write_shared_data(ulong current_power, ulong freeable_power, ulong requeste
     pthread_mutex_lock(&ext_mutex);
     memset(&ext_powercap_data, 0, sizeof(shared_powercap_data_t));
     ext_powercap_data.status = PC_STATUS_OK;
-    if (requested > 0 && max_cluster_power > current_cluster_powercap)
+    if (requested > 0 && default_cluster_powercap > current_cluster_powercap)
         ext_powercap_data.status = PC_STATUS_ASK_DEF;
     else if (requested)
         ext_powercap_data.status = PC_STATUS_GREEDY;
@@ -415,7 +448,7 @@ void write_shared_data(ulong current_power, ulong freeable_power, ulong requeste
     ext_powercap_data.extra_power = current_extra_power;
     ext_powercap_data.available_power = freeable_power;
     ext_powercap_data.current_powercap = current_cluster_powercap;
-    ext_powercap_data.def_power = max_cluster_power;
+    ext_powercap_data.def_power = default_cluster_powercap;
     pthread_mutex_unlock(&ext_mutex);
 }
 
@@ -464,6 +497,7 @@ void cluster_check_powercap()
         my_cluster_power_status->total_powercap = my_cluster_power_status->total_powercap - rel_power.released;
         powercap_reallocation(my_cluster_power_status,&cluster_options);
     }
+    uint power_to_free = ear_min(current_cluster_powercap - min_cluster_powercap, total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE);
 
     //write_shared_data(my_cluster_power_status->current_power, total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE, total_req_greedy - greedy_allocated); //TODO: fill the extra power and freeable_power
     write_shared_data(my_cluster_power_status->current_power, 0 , 0); //TODO: fill the extra power and freeable_power

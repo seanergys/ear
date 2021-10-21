@@ -85,7 +85,7 @@ uint last_id=0;
 uint process_created=0;
 pthread_mutex_t plocks = PTHREAD_MUTEX_INITIALIZER;
 uint default_state=1;
-uint  max_cluster_power;
+uint  default_cluster_powercap;
 uint  cluster_powercap_period;
 
 
@@ -175,8 +175,8 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
     period_t1=cc->t1;
     period_t2=cc->t2;	
     energy_budget=cc->energy;
-    max_cluster_power=cc->power;
-    max_cluster_power=max_cluster_power*divisor;
+    default_cluster_powercap=cc->power;
+    default_cluster_powercap=default_cluster_powercap*divisor;
     cluster_powercap_period=cc->t1_power;
     use_aggregation=cc->use_aggregation;
     return must_refil;
@@ -228,7 +228,7 @@ void update_eargm_configuration(cluster_conf_t *conf)
     energy_budget = e_def->energy;
     my_port = e_def->port;
     eargm_id = e_def->id;
-    max_cluster_power = e_def->power;
+    default_cluster_powercap = e_def->power;
     cluster_powercap_period = conf->eargm.t1_power;
     period_t1 = conf->eargm.t1;
     period_t2 = conf->eargm.t2;
@@ -254,7 +254,7 @@ void update_eargm_configuration(cluster_conf_t *conf)
                   break;
         default:break;
     }
-    max_cluster_power=max_cluster_power*divisor;
+    default_cluster_powercap=default_cluster_powercap*divisor;
 }
 void reopen_log()
 {
