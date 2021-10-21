@@ -94,18 +94,12 @@ int eards_write(int fd,char *buff,int size);
 
 
 /** Frequency readings and management */
-#define SET_FREQ                0
 #define START_GET_FREQ          1
 #define END_GET_FREQ            2
 #define SET_TURBO               3
-#define DATA_SIZE_FREQ          4
 #define CONNECT_FREQ            5
 #define START_APP_COMP_FREQ     6
 #define END_APP_COMP_FREQ       7
-#define SET_FREQ_WITH_MASK      8
-#define SET_NODE_FREQ_WITH_LIST 9
-#define GET_CPUFREQ             10
-#define GET_CPUFREQ_LIST        11
 // NEW FREQ functions
 #define READ_CPUFREQ            12
 
@@ -175,14 +169,9 @@ int eards_write(int fd,char *buff,int size);
 #define START_GET_FREQ 			1
 #define END_GET_FREQ 			2
 #define SET_TURBO 				3
-#define DATA_SIZE_FREQ 			4
 #define CONNECT_FREQ 			5
 #define START_APP_COMP_FREQ 	6
 #define END_APP_COMP_FREQ 		7
-#define SET_FREQ_WITH_MASK 8
-#define SET_NODE_FREQ_WITH_LIST 9
-#define GET_CPUFREQ				10
-#define GET_CPUFREQ_LIST	11
 
 /*** NEW FREQ functions */
 #define READ_CPUFREQ			12

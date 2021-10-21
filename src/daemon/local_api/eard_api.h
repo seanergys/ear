@@ -52,9 +52,6 @@ unsigned long eards_change_freq_with_list(unsigned int num_cpus,unsigned long *n
 unsigned long eards_get_freq(unsigned int num_cpu);
 /* Sets the list of CPU freqs in freqlist and returns the avg*/
 unsigned long eards_get_freq_list(unsigned int num_cpus,unsigned long *freqlist); 
-/** Requests the frequency data size. Returns -1 if there's an error, and the
-*   actual value otherwise. */
-unsigned long eards_get_data_size_frequency();
 /**** New API for cpufreq management */
 /* Load, init etc can be used directly from metrics */
 /* These are privileged functions */
