@@ -155,19 +155,19 @@ void services_init(topology_t *tp)
 {
 	state_t s;
 
-	//sf(mgt_cpufreq_load(tp, NO_EARD));
+	sf(mgt_cpufreq_load(tp, NO_EARD));
 	sf(mgt_imcfreq_load(tp, NO_EARD));
 
-	//sf(mgt_cpufreq_get_api((uint *) &mc.api));
+	sf(mgt_cpufreq_get_api((uint *) &mc.api));
 	sf(mgt_imcfreq_get_api((uint *) &mi.api));
 
-	//sf(mgt_cpufreq_init(no_ctx));
+	sf(mgt_cpufreq_init(no_ctx));
 	sf(mgt_imcfreq_init(no_ctx));
 
-	//sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
+	sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
 	sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
 
-	//sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
+	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
 
 	//
@@ -187,7 +187,7 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
         eard_close_comm(req_fd,ack_fd);
     dcase(READ_CPUFREQ);
         //if (xtate_fail(s, cpufreq_read(&cpu_c, freq_app_req))) {
-        if (xtate_fail(s, cpufreq_read(&freq_app_req))) {
+        if (state_fail(s = cpufreq_read(&freq_app_req))) {
             error("when reading CPU global frequency requeste by app (%d, %s)", s, state_msg);
         }
         write(ack_fd, freq_app_req.context, size_cpufreqs);
@@ -202,6 +202,16 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     state_t s = EAR_SUCCESS;
     char *data = NULL;
     size_t size = 0;
+
+    //Search and destroy:
+    //eards_change_freq                SET_FREQ
+    //eards_set_turbo                  SET_TURBO
+    //eards_change_freq_with_mask      SET_FREQ_WITH_MASK
+    //eards_change_freq_with_list      SET_NODE_FREQ_WITH_LIST
+    //eards_get_freq                   GET_CPUFREQ
+    //eards_get_freq_list              GET_CPUFREQ_LIST
+    //eards_get_data_size_frequency    DATA_SIZE_FREQ
+    //mgt_cpufreq_user_get_current_list
 
     dcase_init(RPC_MGT_CPUFREQ_GET_API);
         data = (char *) &mc.api;
@@ -983,6 +993,9 @@ void service_select(int req_fd, int ack_fd)
 	}
 	// New services
     if (services_misc(local_req, req_fd, ack_fd)) {
+        return;
+    }
+    if(services_mgt_cpufreq(local_req, req_fd, ack_fd)) {
         return;
     }
 	if(services_mgt_imcfreq(local_req, req_fd, ack_fd)) {
