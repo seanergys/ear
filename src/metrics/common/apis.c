@@ -32,25 +32,13 @@ void apis_append(void *op[], void *func)
 
 void apis_print(uint api, char *prefix)
 {
-	if      (api == API_NONE      ) { verbose(0, "%sNONE"      , prefix); }
-	else if (api == API_DUMMY     ) { verbose(0, "%sDUMMY"     , prefix); }
-	else if (api == API_EARD      ) { verbose(0, "%sEARD"      , prefix); }
-	else if (api == API_BYPASS    ) { verbose(0, "%sBYPASS"    , prefix); }
-	else if (api == API_OS_CPUFREQ) { verbose(0, "%sOS_CPUFREQ", prefix); }
-	else if (api == API_INTEL63   ) { verbose(0, "%sINTEL63"   , prefix); }
-	else if (api == API_AMD17     ) { verbose(0, "%sAMD17"     , prefix); }
-	else if (api == API_NVML      ) { verbose(0, "%sNVML"      , prefix); }
+	if      (api == API_NONE   ) { verbose(0, "%sNONE"   , prefix); }
+	else if (api == API_DUMMY  ) { verbose(0, "%sDUMMY"  , prefix); }
+	else if (api == API_EARD   ) { verbose(0, "%sEARD"   , prefix); }
+	else if (api == API_BYPASS ) { verbose(0, "%sBYPASS" , prefix); }
+	else if (api == API_DEFAULT) { verbose(0, "%sDEFAULT", prefix); }
+	else if (api == API_INTEL63) { verbose(0, "%sINTEL63", prefix); }
+	else if (api == API_AMD17  ) { verbose(0, "%sAMD17"  , prefix); }
+	else if (api == API_NVML   ) { verbose(0, "%sNVML"   , prefix); }
+	else if (api == API_PERF   ) { verbose(0, "%sPERF"   , prefix); }
 }
-
-void apis_tostr(uint api, char *buff,size_t size)
-{
-  if      (api == API_NONE      ) { snprintf(buff, size, "NONE"      ); }
-  else if (api == API_DUMMY     ) { snprintf(buff, size, "DUMMY"     ); }
-  else if (api == API_EARD      ) { snprintf(buff, size, "EARD"      ); }
-  else if (api == API_BYPASS    ) { snprintf(buff, size, "BYPASS"    ); }
-  else if (api == API_OS_CPUFREQ) { snprintf(buff, size, "OS_CPUFREQ"); }
-  else if (api == API_INTEL63   ) { snprintf(buff, size, "INTEL63"   ); }
-  else if (api == API_AMD17     ) { snprintf(buff, size, "AMD17"     ); }
-  else if (api == API_NVML      ) { snprintf(buff, size, "NVML"      ); }
-}
-

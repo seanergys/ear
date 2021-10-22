@@ -25,8 +25,6 @@
 #include <management/cpufreq/frequency.h>
 
 static topology_t      topo;
-static ctx_t          *c;
-static ctx_t           c_aux;
 static const pstate_t *available_list;
 static pstate_t       *current_list;
 static uint           *index_list;
@@ -34,7 +32,7 @@ static uint            pstate_count;
 static uint            pstate_nominal;
 static uint            init;
 
-state_t frequency_init(ctx_t *c_in, uint eard)
+state_t frequency_init(uint eard)
 {
 	state_t s;
 	
@@ -44,17 +42,11 @@ state_t frequency_init(ctx_t *c_in, uint eard)
 	if (xtate_fail(s, topology_init(&topo))) {
 		return s;
 	}
-	// Using exterior context
-	if (c_in != NULL) {
-		c = c_in;
-	} else {
-		c = &c_aux;
-	}
 	// Loading API
 	if (xtate_fail(s, mgt_cpufreq_load(&topo, eard))) {
 		return s;
 	}
-	if (xtate_fail(s, mgt_cpufreq_init(c))) {
+	if (xtate_fail(s, mgt_cpufreq_init(no_ctx))) {
 		return s;
 	}
 	if ((current_list = calloc(topo.cpu_count, sizeof(pstate_t))) == NULL) {
@@ -64,10 +56,10 @@ state_t frequency_init(ctx_t *c_in, uint eard)
         return_msg(EAR_ERROR, strerror(errno));
     }
 	// Filling static data
-	if (xtate_fail(s, mgt_cpufreq_get_available_list(c, &available_list, &pstate_count))) {
+	if (xtate_fail(s, mgt_cpufreq_get_available_list(no_ctx, &available_list, &pstate_count))) {
 		return s;
 	}
-	if (xtate_fail(s, mgt_cpufreq_get_nominal(c, &pstate_nominal))) {
+	if (xtate_fail(s, mgt_cpufreq_get_nominal(no_ctx, &pstate_nominal))) {
 		return s;
 	}
 	init = 1;
@@ -82,7 +74,7 @@ state_t frequency_dispose()
 	if (!init) {
 		return_msg(EAR_NOT_INITIALIZED, Generr.api_uninitialized);
 	}
-	if (xtate_fail(s, mgt_cpufreq_dispose(c))) {
+	if (xtate_fail(s, mgt_cpufreq_dispose(no_ctx))) {
 		return s;
 	}
 	if (xtate_fail(s, topology_close(&topo))) {
@@ -112,7 +104,7 @@ ulong frequency_get_cpu_freq(uint cpu)
 	if (cpu >= topo.cpu_count) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_get_current_list(c, current_list))) {
+	if (state_fail(mgt_cpufreq_get_current_list(no_ctx, current_list))) {
 		return 0LU;
 	}
 	// Returns the current frequency given a CPU in KHz.
@@ -126,7 +118,7 @@ ulong frequency_get_cpufreq_list(uint cpu_count, ulong *freq_list)
 	if (cpu_count > topo.cpu_count) {
 		return 0;
 	}
-	if (state_fail(mgt_cpufreq_get_current_list(c, current_list))) {
+	if (state_fail(mgt_cpufreq_get_current_list(no_ctx, current_list))) {
 		return 0LU;
 	}
 	for (i = 0; i < cpu_count; ++i) {
@@ -177,10 +169,10 @@ ulong frequency_set_cpu(ulong freq_khz, uint cpu)
 	if (!init) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 0))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 0))) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_set_current(c, pstate_index, cpu))) {
+	if (state_fail(mgt_cpufreq_set_current(no_ctx, pstate_index, cpu))) {
 		return 0LU;
 	}
 	// Returns written P_STATE.
@@ -194,10 +186,10 @@ ulong frequency_set_all_cpus(ulong freq_khz)
 	if (!init) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 0))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 0))) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_set_current(c, pstate_index, all_cpus))) {
+	if (state_fail(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
 		return 0LU;
 	}
 	// Returns written P_STATE.
@@ -213,7 +205,7 @@ ulong frequency_set_with_mask(cpu_set_t *mask, ulong freq_khz)
 	if (!init) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 0))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 0))) {
 		return current_list[0].khz;
 	}
 	for (cpu = 0; cpu < topo.cpu_count; ++cpu) {
@@ -223,7 +215,7 @@ ulong frequency_set_with_mask(cpu_set_t *mask, ulong freq_khz)
 		}
 		debug("setting CPU%d to P_STATE %u", cpu, pstate_list[cpu]);
 	}
-	if (state_fail(mgt_cpufreq_set_current_list(c, pstate_list))) {
+	if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
 		serror("when setting frequency list");
 	}
   	return freq_khz;
@@ -243,11 +235,11 @@ ulong frequency_set_with_list(uint x, ulong *list)
 		if (list[cpu] == 0) {
 			continue;
 		}
-		if (state_ok(mgt_cpufreq_get_index(c, (ullong) list[cpu], &pstate_index, 0))) {
+		if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) list[cpu], &pstate_index, 0))) {
 			pstate_list[cpu] = pstate_index;
 		}
 	}
-	if (state_fail(mgt_cpufreq_set_current_list(c, pstate_list))) {
+	if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
 		serror("when setting frequency list");
 		return 0LU;
 	}
@@ -273,7 +265,7 @@ uint frequency_freq_to_pstate(ulong freq_khz)
 	if (!init) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 0))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 0))) {
 		return pstate_count;
 	}
 	// Given a frequency in KHz returns a P_STATE index.
@@ -300,12 +292,12 @@ uint frequency_freq_to_pstate_list(ulong freq_khz, ulong *list, uint pstate_coun
 
 void frequency_set_performance_governor_all_cpus()
 {
-	mgt_cpufreq_set_governor(c, Governor.performance);
+	mgt_cpufreq_set_governor(no_ctx, Governor.performance);
 }
 
 void frequency_set_userspace_governor_all_cpus()
 {
-	mgt_cpufreq_set_governor(c, Governor.userspace);
+	mgt_cpufreq_set_governor(no_ctx, Governor.userspace);
 }
 
 int frequency_is_valid_frequency(ulong freq_khz)
@@ -314,7 +306,7 @@ int frequency_is_valid_frequency(ulong freq_khz)
 	if (!init) {
 		return 0;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 0))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 0))) {
 		return 0;
 	}
 	return 1;
@@ -339,7 +331,7 @@ uint frequency_closest_pstate(ulong freq_khz)
 		//fprintf(stderr, "leaving because is less than %lu\n", available_list[pstate_count-1].khz);
 		return pstate_nominal;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 1))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 1))) {
 		//fprintf(stderr, "leaving because mgt_cpufreq_get_index failed\n");
 		return pstate_nominal;
 	}
@@ -353,7 +345,7 @@ ulong frequency_closest_frequency(ulong freq_khz)
 	if (!init) {
 		return 0LU;
 	}
-	if (state_fail(mgt_cpufreq_get_index(c, (ullong) freq_khz, &pstate_index, 1))) {
+	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 1))) {
 		return available_list[pstate_count-1].khz;
 	}
 	return available_list[pstate_index].khz;
@@ -383,7 +375,7 @@ void get_governor(governor_t *_governor)
 	if (!init) {
 		return;
 	}
-	if (state_fail(mgt_cpufreq_get_governor(c, &governor))) {
+	if (state_fail(mgt_cpufreq_get_governor(no_ctx, &governor))) {
 		return;
 	}
 	if (state_fail(mgt_governor_tostr(governor, _governor->name))) {
@@ -403,7 +395,7 @@ void set_governor(governor_t *_governor)
 	if (state_fail(mgt_governor_toint(_governor->name, &governor))) {
 		return;
 	}
-	if (state_fail(mgt_cpufreq_set_governor(c, governor))) {
+	if (state_fail(mgt_cpufreq_set_governor(no_ctx, governor))) {
 		return;
 	}
 }

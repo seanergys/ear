@@ -32,15 +32,20 @@ state_t manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
 {
 	state_t s;
 	// Load
+	sa(mgt_cpufreq_load(tp, eard));
 	sa(mgt_imcfreq_load(tp, eard));
 	// Get API
+	sa(mgt_cpufreq_get_api(&m.cpu.api));
 	sa(mgt_imcfreq_get_api(&m.imc.api));
 	//sa(    mgt_gpu_get_api(&m.gpu.api));
 	// Init
+	sa(mgt_imcfreq_init(&m.cpu.c));
 	sa(mgt_imcfreq_init(&m.imc.c));
 	// Count (cache does not need)
+	sa(mgt_cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count));
 	sa(mgt_imcfreq_count_devices(&m.imc.c, &m.imc.devs_count));
 	// Availability
+	sa(mgt_cpufreq_get_available_list(&m.cpu.c, (const pstate_t **) &m.cpu.avail_list, &m.cpu.avail_count));
 	sa(mgt_imcfreq_get_available_list(&m.imc.c, (const pstate_t **) &m.imc.avail_list, &m.imc.avail_count));
 	//
 	if (m_in != NULL) {
@@ -66,6 +71,7 @@ state_t manages_apis_print()
 
 state_t manages_apis_print_available()
 {
+	mgt_imcfreq_data_print(m.cpu.avail_list, m.cpu.avail_count, verb_channel);
 	mgt_imcfreq_data_print(m.imc.avail_list, m.imc.avail_count, verb_channel);
 	
 	return EAR_SUCCESS;
@@ -80,6 +86,7 @@ state_t manages_apis_print_available()
 static manages_apis_t *mans;
 static topology_t tp;
 
+// /hpc/base/ctt/packages/compiler/gnu/9.1.0/bin/gcc -I .. -DTEST=1 -o test management.c ./libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
 // /opt/rh/devtoolset-7/root/bin/gcc -I .. -DTEST=1 -o test management.c ./libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
 
 int main(int argc, char *argv[])

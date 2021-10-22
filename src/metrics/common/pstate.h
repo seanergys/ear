@@ -22,6 +22,8 @@
 #include <common/states.h>
 
 #define all_devs   -1
+#define all_cpus   all_devs
+#define all_cores  -2
 #define ps_nothing (uint) -1
 #define ps_auto    (uint) -2
 
@@ -42,12 +44,5 @@ void pstate_get_index_closer(pstate_t *ps_list, uint ps_count, ullong khz, uint 
 void pstate_print(pstate_t *pstate_list, uint pstate_count, int fd);
 
 char *pstate_tostr(pstate_t *pstate_list, uint pstate_count, char *buffer, int length);
-
-// Provisional
-state_t avgfreq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
-
-state_t pstate_to_freq(pstate_t *pstate_list, uint pstate_count,int pstate_idx, ulong *khz);
-
-state_t from_freq_to_pstate(pstate_t *pstate_list, uint pstate_count,ulong khz, pstate_t *p);
 
 #endif //METRICS_COMMON_PSTATE_H

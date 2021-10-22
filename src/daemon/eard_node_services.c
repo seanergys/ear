@@ -128,7 +128,7 @@ static char          big_chunk1[16384];
 static char          big_chunk2[16384];
 static wide_buffer_t wb;
 static apis_info_t   mc;
-static apis_info_t   mg;
+//static apis_info_t   mg;
 static apis_info_t   mi;
 
 #define sf(function) \
@@ -174,12 +174,12 @@ void services_init(topology_t *tp)
 	serial_alloc(&wb, SIZE_8KB);
 }
 
+void connect_service(struct daemon_req *new_req);
+
 int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
     state_t s;
-    ulong ack;
-    ulong *f;
 
     dcase_init(CONNECT_EARD_NODE_SERVICES);
         connect_service(&req);
@@ -259,8 +259,8 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
             serror(Rpcerr.pending);
         }
         if (state_ok(s)) {
-            uint idx = *((uint *) &big_chunk[0]);
-             int cpu = *((uint *) &big_chunk[sizeof(int)]);
+            uint idx = *((uint *) &big_chunk1[0]);
+             int cpu = *((uint *) &big_chunk1[sizeof(int)]);
             if (state_fail(s = mgt_cpufreq_set_current(no_ctx, idx, cpu))) {
                 serror("When setting a CPU frequency");
             }
@@ -271,7 +271,7 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
             serror(Rpcerr.pending);
         }
         if (state_ok(s)) {
-            sfail(s = mgt_cpufreq_set_governor(no_ctx, (uint *) big_chunk1)) {
+            if (state_fail(s = mgt_cpufreq_set_governor(no_ctx, (uint) big_chunk1[0]))) {
                 serror(Rpcerr.answer);
             }
         }
@@ -302,7 +302,7 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		// Setting to send
 		size = serial_size(&wb);
 		data = serial_data(&wb);
-	dcase(RPC_MGT_IMCFREQ_GET_CURRENT_PS);
+	dcase(RPC_MGT_IMCFREQ_GET_CURRENT);
 		if (state_fail(s = mgt_imcfreq_get_current_list(no_ctx, mi.current_list))) {
 			serror("Could not get IMC current frequency");
 		}
@@ -433,7 +433,7 @@ int get_local_connection_by_fd(local_connection_t *my_con,int reqfd,int ackfd)
 int get_local_connection_by_id(local_connection_t *my_con, ulong jid, ulong sid)
 {
   int i=0;
-  while (!((my_con[i].jid == jid) && (my_con[i].sid get_local_connection_by_fd== sid) && !my_con[i].cancelled) &&  (i<num_local_con)) i++;
+  while (!((my_con[i].jid == jid) && (my_con[i].sid== sid) && !my_con[i].cancelled) &&  (i<num_local_con)) i++;
 	if (i == num_local_con) return -1;
 	return i;
 }

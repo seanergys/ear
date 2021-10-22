@@ -25,14 +25,17 @@
 #define API_DUMMY        1
 #define API_EARD         2
 #define API_BYPASS       3
-#define API_OS_CPUFREQ   4
+#define API_DEFAULT      4
 #define API_INTEL63      5
 #define API_AMD17        6
 #define API_NVML         7
+#define API_PERF         8
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
+#define no_ctx           NULL
 
+/* Obsolete, remove it. */
 #define replace_ops(p1, p2) \
 	if (p1 == NULL) { \
 		p1 = p2; \
@@ -60,7 +63,5 @@
 void apis_append(void **op, void *func);
 
 void apis_print(uint api, char *prefix);
-
-void apis_tostr(uint api, char *buff,size_t size);
 
 #endif

@@ -36,7 +36,7 @@ typedef struct governor {
 } governor_t;
 
 // Initializes API with privileges (used in: eard.c/dvfs.c).
-state_t frequency_init(ctx_t *c, uint eard);
+state_t frequency_init(uint eard);
 //
 state_t frequency_dispose();
 
