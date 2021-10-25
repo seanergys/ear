@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -51,7 +51,7 @@ state_t mgt_cpufreq_eard_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_drive
 	if (!eards_connected()) {
 		return_msg(EAR_ERROR, "EARD (daemon) not connected");
 	}
-	if (xtate_fail(s, eard_rpc(RPC_GET_API, NULL, 0, (char *) &eard_api, sizeof(int)))) {
+	if (state_fail(s = eard_rpc(RPC_GET_API, NULL, 0, (char *) &eard_api, sizeof(int)))) {
 		return s;
 	}
 	if (eard_api == API_NONE || eard_api == API_DUMMY) {
@@ -110,18 +110,19 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
 	available_count = size / sizeof(pstate_t);
 	available_list = calloc(available_count, sizeof(pstate_t));
 	memcpy(available_list, buffer, size);
+        #if SHOW_DEBUGS
+        debug("Available processor frequencies:");
+        int i;
+        for (i = 0; i < available_count; ++i) {
+                debug("PS%d: %llu KHz", i, available_list[i].khz);
+        }
+        #endif
 	// Is boost enabled? We can ask the driver, but EARD may have additional tests.
 	if (state_fail(s = eard_rpc(RPC_GET_NOMINAL, NULL, 0, (char *) &idx_nominal, sizeof(uint)))) {
 		return static_dispose(c, s, state_msg);
 	}
 	debug("EARD answered with nominal index %u", idx_nominal);
 	boost_enabled = idx_nominal;
-	#if SHOW_DEBUGS
-	int i;
-	for (i = 0; i < available_count; ++i) {
-		debug("F%d: %llu KHz", i, available_list[i].khz);
-	}
-	#endif
 
 	return EAR_SUCCESS;
 }

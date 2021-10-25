@@ -39,7 +39,7 @@ state_t manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
 	sa(mgt_imcfreq_get_api(&m.imc.api));
 	//sa(    mgt_gpu_get_api(&m.gpu.api));
 	// Init
-	sa(mgt_imcfreq_init(&m.cpu.c));
+	sa(mgt_cpufreq_init(&m.cpu.c));
 	sa(mgt_imcfreq_init(&m.imc.c));
 	// Count (cache does not need)
 	sa(mgt_cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count));
@@ -64,14 +64,15 @@ state_t manages_apis_dispose()
 
 state_t manages_apis_print()
 {
-    apis_print(m.imc.api, "MGT_IMCFREQ: ");
+	apis_print(m.cpu.api, "MGT_CPUFREQ: ");
+	apis_print(m.imc.api, "MGT_IMCFREQ: ");
 	
 	return EAR_SUCCESS;
 }
 
 state_t manages_apis_print_available()
 {
-	mgt_imcfreq_data_print(m.cpu.avail_list, m.cpu.avail_count, verb_channel);
+	mgt_cpufreq_data_print(m.cpu.avail_list, m.cpu.avail_count, verb_channel);
 	mgt_imcfreq_data_print(m.imc.avail_list, m.imc.avail_count, verb_channel);
 	
 	return EAR_SUCCESS;

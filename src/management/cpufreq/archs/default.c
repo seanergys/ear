@@ -40,8 +40,8 @@ state_t mgt_cpufreq_default_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_dr
 	#if !AMD_OSCPUFREQ
 	debug("Not using CPUFREQ frequencies");
 	if (tp_in->vendor == VENDOR_AMD && tp_in->family >= FAMILY_ZEN) {
-        return_msg(EAR_ERROR, Generr.api_incompatible);
-    }
+		return_msg(EAR_ERROR, Generr.api_incompatible);
+	}
 	#else
 	debug("Using CPUFREQ frequencies");
 	#endif
@@ -95,6 +95,13 @@ state_t mgt_cpufreq_default_init(ctx_t *c)
 	if (state_fail(s = driver->get_available_list(&driver_c, &freqs_available, &freqs_count))) {
 		return static_dispose(s, state_msg);
 	}
+        #if SHOW_DEBUGS
+        debug("Available processor frequencies:");
+        int i;
+        for (i = 0; i < freqs_count; ++i) {
+                debug("PS%d: %llu KHz", i, freqs_available[i]);
+        }
+        #endif
 	cpuid_regs_t r;
 	// - Intel System Programming Guide Vol. 2A, Software Developer Manual 3-193,
 	// INSTRUCTION SET REFERENCE, A-L, Thermal and Power Management Leaf.
