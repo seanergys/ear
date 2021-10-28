@@ -59,7 +59,6 @@
 #include <library/models/models.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/signature_ext.h>
 
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>

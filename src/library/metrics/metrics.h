@@ -21,7 +21,7 @@
 #include <common/hardware/topology.h>
 #include <common/types/application.h>
 #include <metrics/io/io.h>
-
+#include <library/metrics/metrics_fresh.h>
 
 /** Returns the current time in usecs */
 long long metrics_time();

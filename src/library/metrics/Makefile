@@ -2,6 +2,7 @@
 
 OBJS = \
     metrics.o \
+    metrics_fresh.o \
     gpu.o
 
 all: $(OBJS)

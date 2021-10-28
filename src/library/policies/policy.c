@@ -30,7 +30,7 @@
 #include <common/environment.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
-#include <library/metrics/signature_ext.h>
+#include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
 #include <library/metrics/gpu.h>
@@ -50,7 +50,6 @@
 #include <common/types/pc_app_info.h>
 #include <library/policies/common/pc_support.h>
 #include <library/policies/policy_state.h>
-
 
 extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;

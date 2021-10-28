@@ -31,7 +31,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/signature_ext.h>
 #include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
 #include <daemon/local_api/eard_api.h>

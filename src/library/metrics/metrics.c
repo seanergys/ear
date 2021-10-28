@@ -38,7 +38,6 @@
 #include <library/common/externs.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/signature_ext.h>
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/cpi/cpi.h>
@@ -843,6 +842,8 @@ int metrics_init(topology_t *topo)
 	pstate_t tmp_def_imc_pstate;
 	int i;
 
+    metrics_fresh_init(topo);
+
 	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
 	//debug("My master rank %d",masters_info.my_master_rank);
 
@@ -1129,9 +1130,11 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
 	estimate_power_and_gbs(&lib_shared_region->node_signature,lib_shared_region,sig_shared_region, node_mgr_job_info, &lib_shared_region->job_signature, PER_JOB, -1);
 	accum_estimations(lib_shared_region,sig_shared_region);
-	#endif
+    #endif
 
-	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
+    metrics_fresh_dispose();
+
+    verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
   while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
   /* Waiting for node signatures */
