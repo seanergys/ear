@@ -65,7 +65,7 @@ typedef struct local_connection{
 } local_connection_t;
 
 uint privileged_services[NUM_PRIVILEGED_SERVICES] =
-		{ 0, SET_TURBO, 0, 0, 0,
+		{ 0, 0, 0, 0, 0,
 		  START_RAPL, RESET_RAPL, WRITE_APP_SIGNATURE, WRITE_EVENT, WRITE_LOOP_SIGNATURE,
 		  GPU_SET_FREQ };
 
@@ -202,16 +202,6 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     state_t s = EAR_SUCCESS;
     char *data = NULL;
     size_t size = 0;
-
-    //Search and destroy:
-    //eards_change_freq                SET_FREQ
-    //eards_set_turbo                  SET_TURBO
-    //eards_change_freq_with_mask      SET_FREQ_WITH_MASK
-    //eards_change_freq_with_list      SET_NODE_FREQ_WITH_LIST
-    //eards_get_freq                   GET_CPUFREQ
-    //eards_get_freq_list              GET_CPUFREQ_LIST
-    //eards_get_data_size_frequency    DATA_SIZE_FREQ
-    //mgt_cpufreq_user_get_current_list
 
     dcase_init(RPC_MGT_CPUFREQ_GET_API);
         data = (char *) &mc.api;
@@ -461,13 +451,10 @@ void clean_local_connection(local_connection_t *my_con)
 
 uint is_privileged_service(uint service)
 {
-  int i = 0;
-  while((i < NUM_PRIVILEGED_SERVICES) && (privileged_services[i] != service)) i++;
-  if (i<NUM_PRIVILEGED_SERVICES){
-    return 1;
-  }else{
-    return 0;
-  }
+    int i = 0;
+    while((i < NUM_PRIVILEGED_SERVICES) && (privileged_services[i] != service)) i++;
+    if (i<NUM_PRIVILEGED_SERVICES) return 1;
+    else return 0;
 }
 
 uint is_anonymous(ulong jid,ulong sid)

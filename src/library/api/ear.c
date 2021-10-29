@@ -1093,7 +1093,7 @@ void ear_init()
     if (ear_my_rank == 0) {
         if (ear_whole_app == 1 && ear_use_turbo == 1) {
             verbose_master(VEAR_INIT, "turbo learning phase, turbo selected and start computing");
-            if (!my_id) eards_set_turbo();
+            if (!my_id) { mgt_cpufreq_set_governor(no_ctx, Governor.performance); }
         } else {
             verbose_master(VEAR_INIT, "learning phase %d, turbo %d", ear_whole_app, ear_use_turbo);
         }
@@ -1162,11 +1162,16 @@ void ear_init()
     }else{
         EAR_default_frequency=ext_def_freq;
         EAR_default_pstate=frequency_closest_pstate(EAR_default_pstate);
-				#if 0
+        #if 0
         if (EAR_default_frequency != system_conf->def_freq) {
-            if (!my_id) eards_change_freq(EAR_default_frequency);
+            if (!my_id) {
+                uint pstate_index;
+                if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) EAR_default_frequency, &pstate_index, 0))) {
+                    mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus);
+                }
+            }
         }
-				#endif
+        #endif
     }
 
     strcpy(application.job.policy,system_conf->policy_name);

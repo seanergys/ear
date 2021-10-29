@@ -237,12 +237,18 @@ state_t policy_loop_init(polctx_t *c,loop_id_t *loop_id)
 
 state_t policy_loop_end(polctx_t *c,loop_id_t *loop_id)
 {
-		#if 0
+    #if 0
     if ((c!=NULL) && (c->reset_freq_opt))
     {
-        *(c->ear_frequency) = eards_change_freq(FREQ_DEF(c->app->def_freq));
+        uint pstate_index;
+        *(c->ear_frequency) = 0;
+        if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) FREQ_DEF(c->app->def_freq), &pstate_index, 0))) {
+            if(state_ok(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
+                *(c->ear_frequency) = FREQ_DEF(c->app->def_freq);
+            }
+        }
     }
-		#endif
+    #endif
     return EAR_SUCCESS;
 }
 

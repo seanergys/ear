@@ -96,7 +96,6 @@ int eards_write(int fd,char *buff,int size);
 /** Frequency readings and management */
 #define START_GET_FREQ          1
 #define END_GET_FREQ            2
-#define SET_TURBO               3
 #define CONNECT_FREQ            5
 #define START_APP_COMP_FREQ     6
 #define END_APP_COMP_FREQ       7
@@ -168,7 +167,6 @@ int eards_write(int fd,char *buff,int size);
 #define SET_FREQ 				0
 #define START_GET_FREQ 			1
 #define END_GET_FREQ 			2
-#define SET_TURBO 				3
 #define CONNECT_FREQ 			5
 #define START_APP_COMP_FREQ 	6
 #define END_APP_COMP_FREQ 		7

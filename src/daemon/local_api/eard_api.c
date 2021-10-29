@@ -477,32 +477,7 @@ state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
   return EAR_SUCCESS;
 }
 
-state_t eards_set_turbo()
-{
-		struct daemon_req req;
-	ulong ack;
-
-	if (!app_connected) return EAR_SUCCESS;
-	req.req_service=SET_TURBO;
-	req.sec=create_sec_tag();
-	debug( "Set turbo");
-
-	if (ear_fd_req >= 0)
-	{
-		if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)),sizeof(req),
-			 "ERROR writing request for setting turbo")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)),sizeof(ulong),
-			 "ERROR reading ack for setting turbo ")) return EAR_ERROR;
-		debug("turbo activated");
-		return EAR_SUCCESS;
-	}   
-	debug( "turbo not provided");
-    return EAR_SUCCESS;
-
-}
 /************************************/
-// Uncore frequency management
-// Uncore frequency management
 state_t eards_imcfreq_data_count(uint *pack)
 {
 	struct daemon_req req;
