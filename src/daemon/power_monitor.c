@@ -301,6 +301,8 @@ int new_context(job_id id, job_id sid,int *cc)
   current_ear_app[ccontext]->pc_app_info->gpu_mode = powercap_get_gpu_strategy();
 #endif
 
+	memset(&(current_ear_app[ccontext]->accum_ps), 0, sizeof(accum_power_sig_t));
+
   /* Default value for pc_app_info */
   debug("Context created for (%lu,%lu), num_contexts %d max_context_created %d",id,sid,num_contexts+1,max_context_created);
   num_contexts++;
@@ -1174,6 +1176,20 @@ void powermon_set_freq(ulong freq) {
 /** it reloads ear.conf */
 void powermon_reload_conf() {
 }
+void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
+{
+  powermon_app_t *pmapp;
+
+	/* we must detect which ones are using the node, filtering ssh etc */
+	
+
+  for (uint cc = 0;cc <= max_context_created; cc++){
+    if (current_ear_app[cc] != NULL){
+      pmapp = current_ear_app[cc];
+			/* We must update the current signature */
+    }
+  }
+}
 
 
 // Each sample is processed by this function
@@ -1199,6 +1215,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
   maxpower  = pmapp->app.power_sig.max_DC_power;
   minpower  = pmapp->app.power_sig.min_DC_power;
 
+	update_pmapps(last_pmon, nm);
 
 	/* If there is no powercap, last_pmon and pmon_info is the same info. Otherwise, last_pmon is a short period and pmon_info corresponds with the period set in the ear.conf */
   /* Powercap */

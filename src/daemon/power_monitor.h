@@ -51,6 +51,7 @@ typedef struct powermon_app {
   pc_app_info_t   *pc_app_info;
   cpufreq_t       freq_job1;
   loop_t          last_loop;
+	accum_power_sig_t accum_ps;
 } powermon_app_t;
 
 
