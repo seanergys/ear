@@ -168,6 +168,8 @@ typedef struct eargm_status {
 
 #define EAR_RC_NEW_JOB              0
 #define EAR_RC_END_JOB              1
+#define EAR_RC_NEW_JOB_LIST         2
+#define EAR_RC_END_JOB_LIST         3
 #define EAR_RC_MAX_FREQ             100
 #define EAR_RC_NEW_TH               101
 #define EAR_RC_INC_TH               102

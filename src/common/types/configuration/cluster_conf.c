@@ -639,6 +639,7 @@ void set_default_island_conf(node_island_t *isl_conf, uint id)
     isl_conf->backup_ips=NULL;
     isl_conf->num_backups=0;
     isl_conf->num_tags=0;
+    isl_conf->num_specific_tags=0;
     isl_conf->min_sig_power=MIN_SIG_POWER;
     isl_conf->max_sig_power=MAX_SIG_POWER;
     isl_conf->max_error_power=MAX_ERROR_POWER;
