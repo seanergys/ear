@@ -374,6 +374,8 @@ void cluster_powercap_init(cluster_conf_t *cc)
     int ret;
     current_cluster_powercap = default_cluster_powercap;
     min_cluster_powercap = cluster_get_min_powercap(cc);
+
+    verbose(VGM_PC,"Min powercap set to %u", min_cluster_powercap);
     if (current_cluster_powercap>0){
         verbose(VGM_PC,"Power cap limit set to %u",current_cluster_powercap);
     }else{
