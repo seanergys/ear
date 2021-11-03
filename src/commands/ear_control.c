@@ -540,16 +540,14 @@ void process_app_status(int num_status, app_status_t *status, char is_master)
 void generate_ip(ip_table_t *ips, char *node_name)
 {
     my_node_conf_t *aux_node_conf;
-    strcpy(ips[0].name, node_name);
+    strncpy(ips[0].name, node_name, strlen(node_name) - strlen(my_cluster_conf.net_ext)); //remove net_ext from the actual name
     aux_node_conf = get_my_node_conf(&my_cluster_conf, node_name);
     if (aux_node_conf == NULL) 
         fprintf(stderr, "Error reading node %s configuration\n", node_name);
     else
         ips[0].max_power = (uint) aux_node_conf->max_error_power;
-    if (strlen(my_cluster_conf.net_ext) > 0)
-        strcat(node_name, my_cluster_conf.net_ext);
 
-    fill_ip(node_name, &ips[0]);
+    fill_ip(node_name, &ips[0]); //fill the ip using the net_ext
 
 }
 
@@ -964,6 +962,8 @@ int main(int argc, char *argv[])
             printf("Error duplicating output: %s\n", strerror(errno)); 
         }
     }
+
+    if ((status_type != EAR_TYPE_EARDBD_STATUS) && (strlen(node_name) > 0)) strcat(node_name, my_cluster_conf.net_ext);
 
     if (strlen(node_name) > 0 && status_type > 0)
     {
