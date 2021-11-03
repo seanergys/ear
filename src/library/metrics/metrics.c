@@ -1291,14 +1291,18 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	ns->DC_power = 0;
 	ns->GBS 		= 0;
 	ns->avg_f 	= 0;
+	ns->DRAM_power = 0;
+	ns->PCK_power  = 0;
   if (masters_info.my_master_rank >= 0){
 		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 			valid_period = sig_shared_region[lp].sig.valid_time;
-			ns->DC_power += sig_shared_region[lp].sig.accum_energy / valid_period;
-			ns->GBS      += sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024);
-			ns->avg_f    += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
+			ns->DC_power 		+= sig_shared_region[lp].sig.accum_energy / valid_period;
+			ns->DRAM_power 	+= sig_shared_region[lp].sig.accum_dram_energy / valid_period;
+			ns->PCK_power 	+= sig_shared_region[lp].sig.accum_pack_energy / valid_period;
+			ns->GBS      		+= sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024);
+			ns->avg_f    		+= (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
 			tcpus += sig_shared_region[lp].num_cpus;
-			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, valid_period);
+			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
 		}
 		ns->avg_f /= tcpus;
 		verbose_master(2,"AVG  %lu", ns->avg_f);
