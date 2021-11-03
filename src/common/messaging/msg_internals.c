@@ -374,9 +374,11 @@ size_t get_command_size(request_t *command, char **data_to_send)
             size += sizeof(new_policy_cont_t); //new policy_conf
             break;
         case EAR_RC_NEW_JOB:
+        case EAR_RC_NEW_JOB_LIST:
             size += sizeof(new_job_req_t);
             break;
         case EAR_RC_END_JOB:
+        case EAR_RC_END_JOB_LIST:
             size += sizeof(end_job_req_t);
             break;
         case EARGM_NEW_JOB:
