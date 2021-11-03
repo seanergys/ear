@@ -39,6 +39,10 @@ typedef struct accum_power_sig{
 	ulong DRAM_energy;
 	ulong PCK_energy;
 	ulong avg_f;
+	double max, min;
+#if USE_GPUS
+	ulong GPU_energy;
+#endif
 }accum_power_sig_t;
 
 

@@ -675,6 +675,7 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 {
 	power_data_t app_power;
 	state_t s;
+	double elapsed;
 
 	if (pmapp == NULL){
     verbose(VJOBPMON,"Error, job_init_powermon_app with null pmapp");
@@ -687,6 +688,7 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 	if (pmapp->app.job.end_time == pmapp->app.job.start_time) {
 		pmapp->app.job.end_time = pmapp->app.job.start_time + 1;
 	}
+	elapsed = difftime(pmapp->app.job.end_time, pmapp->app.job.start_time);
 	read_enegy_data(ceh, &c_energy);
 	compute_power(&pmapp->energy_init, &c_energy, &app_power);
 	if (pmapp->exclusive){
@@ -700,6 +702,12 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 		}
 		pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
 		pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
+	}else{
+		pmapp->app.power_sig.DC_power 	= pmapp->accum_ps.DC_energy / elapsed;
+		pmapp->app.power_sig.DRAM_power = pmapp->accum_ps.DRAM_energy/ elapsed;
+		pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
+		pmapp->app.power_sig.max_DC_power = pmapp->accum_ps.max; 
+		pmapp->app.power_sig.min_DC_power = pmapp->accum_ps.min;
 	}
 	pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 
@@ -1248,13 +1256,44 @@ void powermon_reload_conf() {
 void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 {
   powermon_app_t *pmapp;
+	ulong lcpus;
+	float cpu_ratio;
+	ulong num_jobs;
+	ulong time_consumed;
+	double my_dc_power;
+
+	time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
 
 	/* we must detect which ones are using the node, filtering ssh etc */
 
+	num_jobs = num_jobs_in_node();
   for (uint cc = 0;cc <= max_context_created; cc++){
     if (current_ear_app[cc] != NULL){
       pmapp = current_ear_app[cc];
 			/* We must update the current signature */
+			pmapp->exclusive = (num_jobs == 1) && pmapp->exclusive;
+			lcpus = num_cpus_in_mask(&pmapp->app_info->node_mask);
+			if (lcpus){
+				cpu_ratio = (float)lcpus/(float)node_desc.cpu_count;
+				verbose(VEARD_NMGR,"Job %lu/%lu has %lu from %d. cpu_ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id , lcpus, node_desc.cpu_count, cpu_ratio);
+			}else{
+				cpu_ratio = 1.0/(float)num_jobs;
+				verbose(VEARD_NMGR,"Job %lu/%lu without node maslk, using ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id, cpu_ratio); 
+			}
+			my_dc_power = accum_node_power(last_pmon) * cpu_ratio;
+			pmapp->accum_ps.DC_energy 	= accum_node_power(last_pmon) * cpu_ratio * time_consumed;
+			pmapp->accum_ps.DRAM_energy = accum_dram_power(last_pmon) * cpu_ratio * time_consumed;
+			pmapp->accum_ps.PCK_energy 	= accum_cpu_power(last_pmon)  * cpu_ratio * time_consumed;
+			if (lcpus) pmapp->accum_ps.avg_f = get_nm_cpufreq_with_mask( &my_nm_id, nm, pmapp->app_info->node_mask);
+			else       pmapp->accum_ps.avg_f = get_nm_cpufreq(&my_nm_id, nm);
+			pmapp->accum_ps.max = ear_max(pmapp->accum_ps.max, my_dc_power);
+			if (pmapp->accum_ps.min > 0 ) pmapp->accum_ps.min = ear_min(pmapp->accum_ps.min, my_dc_power);
+			else 													pmapp->accum_ps.min = my_dc_power;			
+#if USE_GPUS
+			float gpu_ratio = 1;
+			pmapp->accum_ps.GPU_energy  = accum_gpu_power(last_pmon)  * gpu_ratio * time_consumed;
+#endif
+
     }
   }
 }
@@ -1275,6 +1314,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	powermon_app_t *pmapp;
 	uint current_jobs_running_in_node = 0;
 
+	/* last_pmon is the last short power monitor period info. pmon_info can be larger. Use last_pmon  for fine grain power metrics*/
 
 	pmapp 		= current_ear_app[max_context_created];
   jid       = pmapp->app.job.id;
@@ -1287,7 +1327,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
 	/* If there is no powercap, last_pmon and pmon_info is the same info. Otherwise, last_pmon is a short period and pmon_info corresponds with the period set in the ear.conf */
   /* Powercap */
-	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);;
+	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);
   pdomain.platform = last_pmon->avg_dc;
   pdomain.cpu      = accum_cpu_power(last_pmon);
   pdomain.dram     = accum_dram_power(last_pmon);
@@ -1325,7 +1365,6 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
   	    if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
     	    signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
 			    verbose(VEARD_NMGR," ");
-					pmapp->exclusive = (num_jobs_in_node() == 1) && pmapp->exclusive;
   	    }
 	    }
 	}

@@ -47,6 +47,13 @@ ulong get_nm_cpufreq(nm_t *id,nm_data_t *nm)
 	if ((id==NULL) || (nm==NULL) || (id->con!=NM_CONNECTED))  return 0;
 	return nm->avg_cpu_freq;
 }
+ulong get_nm_cpufreq_with_mask(nm_t *id,nm_data_t *nm, cpu_set_t m)
+{
+	ulong lavg, lcpus;
+	if ((id==NULL) || (nm==NULL) || (id->con!=NM_CONNECTED))  return 0;
+	cpufreq_avgcpufreq_mask(m, nm->avg_per_cpu, &lavg, &lcpus);
+	return lavg;
+}
 
 int init_node_metrics(nm_t *id, topology_t *topo, ulong def_freq)
 {
@@ -144,7 +151,7 @@ int diff_node_metrics(nm_t *id,nm_data_t *init,nm_data_t *end,nm_data_t *diff_nm
 	diff_nm->avg_temp = end->avg_temp;
 
 	// CPU & IMC Frequency
-	state_assert(s, cpufreq_data_diff(&end->freq_cpu, &init->freq_cpu, NULL, &diff_nm->avg_cpu_freq),);
+	state_assert(s, cpufreq_data_diff(&end->freq_cpu, &init->freq_cpu, diff_nm->avg_per_cpu, &diff_nm->avg_cpu_freq),);
 	state_assert(s, imcfreq_data_diff( end->freq_imc,  init->freq_imc, NULL, &diff_nm->avg_imc_freq),);
 
 	return EAR_SUCCESS;
