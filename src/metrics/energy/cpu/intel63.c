@@ -39,7 +39,7 @@
 //#define MSR_PKG_RAPL_POWER_LIMIT		0x610
 #define MSR_INTEL_PKG_ENERGY_STATUS		0x611
 //#define MSR_PKG_PERF_STATUS			0x613
-//#define MSR_PKG_POWER_INFO			0x614
+#define MSR_PKG_POWER_INFO			0x614
 /* DRAM RAPL Domain */
 //#define MSR_DRAM_POWER_LIMIT			0x618
 #define MSR_INTEL_DRAM_ENERGY_STATUS	0x619
@@ -56,6 +56,7 @@ static pthread_mutex_t rapl_msr_lock = PTHREAD_MUTEX_INITIALIZER;
 static int rapl_msr_instances = 0;
 
 static double cpu_energy_units;
+static double power_units;
 static double dram_energy_units;
 static int vendor;
 
@@ -97,14 +98,32 @@ int init_rapl_msr(int *fd_map)
 			return EAR_ERROR;
 		}
 
-		//power_units = pow(0.5, (double) (result & 0xf));
+		power_units = pow(0.5, (double) (result & 0xf));
 		//time_units = pow(0.5, (double) ((result >> 16) & 0xf));
 		
 		cpu_energy_units = pow(0.5, (double) ((result >> 8) & 0x1f));
 		// Take a look to Intel's RAPL test
-		dram_energy_units = pow(0.5, (double) 16);
+		//dram_energy_units = pow(0.5, (double) 16);
+		dram_energy_units = cpu_energy_units;
+	  
 	}
 	pthread_mutex_unlock(&rapl_msr_lock);
+	return EAR_SUCCESS;
+}
+
+int read_rapl_tdp(int *fd_map, double *tdps)
+{
+	llong result;
+	int nump, j;
+	off_t offset = MSR_PKG_POWER_INFO;
+  nump = get_total_packages();
+	for (j = 0; j < nump; j++)	{
+  	if (omsr_read(&fd_map[j], &result, sizeof result, offset)){
+			debug("Error in omsr_read read_rapl_tdp");
+			return EAR_ERROR;
+		}
+  	tdps[j] = power_units*(double)(result&0x7fff);
+	}
 	return EAR_SUCCESS;
 }
 

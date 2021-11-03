@@ -31,6 +31,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <linux/limits.h>
+#include <sys/stat.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -750,6 +751,7 @@ static void new_command_received(request_t *comm)
     current_pos_last_comm = (current_pos_last_comm +1) % MAX_HISTORIC_COMM;
 }
 
+#if 0
 static void log_msg_in_file(char *filename, char *txt)
 {
     mode_t oldm = umask(0);
@@ -759,6 +761,7 @@ static void log_msg_in_file(char *filename, char *txt)
     close(fd);
     umask(oldm);
 }
+#endif
 
 state_t process_remote_requests(int clientfd) {
     request_t command;
