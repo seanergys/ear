@@ -162,17 +162,15 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 {
 	cpu_set_t m;
 	ulong total = 0, total_cpus = 0;
+	ulong lavg, lcpus;
 	int p, c;
 	int ccount = arch_desc.top.cpu_count;
   for (p = 0; p < lib_shared_region->num_processes ; p++)
   {
   	m = sig_shared_region[p].cpu_mask;
-  	for (c = 0 ; c < ccount; c++){
-  		if (CPU_ISSET(c,&m)){
-				total += nodecpuf[c];
-				total_cpus++;
-			}
-		}
+		cpufreq_avgcpufreq_mask(m, nodecpuf, &lavg, &lcpus);
+		total += lavg*lcpus;
+		total_cpus += lcpus;
 	}
 	*avgf = total/total_cpus;
 }

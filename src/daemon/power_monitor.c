@@ -91,6 +91,13 @@ extern uint f_monitoring;
 extern ulong current_node_freq;
 extern char nodename[MAX_PATH_SIZE];
 
+/* This vector has 1 entry per job and numc is the number of contexts created for this job */
+typedef struct job_context{
+	job_id id;
+	uint   numc;
+}job_context_t;
+static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
+
 
 extern state_t report_connection_status;
 static char shmem_path[MAX_PATH_SIZE];
@@ -110,6 +117,54 @@ static double last_power_reported = 0;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
+/***************** JOBS in NODE ***************************/
+void init_jobs_in_node()
+{
+	memset(jobs_in_node_list, 0, sizeof(job_context_t)*MAX_CPUS_SUPPORTED);
+}
+void add_job_in_node(job_id id)
+{
+	/* Find the job */
+	uint i = 0;
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+	if (i < MAX_CPUS_SUPPORTED){ 
+		jobs_in_node_list[i].numc++;
+		return;
+	}
+	/* New job */
+  i = 0;
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id)) i++;
+	if (i == MAX_CPUS_SUPPORTED){
+		debug("Error, not job free detected, this should not happen");
+		return;
+	}
+	jobs_in_node_list[i].id = id;
+	jobs_in_node_list[i].numc = 1;	
+}
+
+void del_job_in_node(job_id id)
+{
+	/* Find the job */
+  uint i = 0;
+  while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+  if (i < MAX_CPUS_SUPPORTED){  
+		jobs_in_node_list[i].numc--;
+		if (jobs_in_node_list[i].numc == 0) jobs_in_node_list[i].id = 0;
+	}else{
+		debug("Error, job not found %lu", id);
+	}
+	return;
+	
+}
+
+uint num_jobs_in_node()
+{
+	uint total = 0;
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		if (jobs_in_node_list[i].id) total++;
+	}
+	return total;
+}
 
 /****************** CONTEXT MANAGEMENT ********************/
 #define NULL_SID 4294967294
@@ -120,6 +175,7 @@ int num_contexts = 0;
 void init_contexts() {
   int i;
   for (i = 0; i < MAX_NESTED_LEVELS; i++) current_ear_app[i] = NULL;
+	init_jobs_in_node();
 }
 
 int find_empty_context() {
@@ -160,6 +216,9 @@ void end_context(int cc)
   if (current_ear_app[cc] != NULL) {
     free_energy_data(&current_ear_app[cc]->energy_init);
     ID = create_ID(current_ear_app[cc]->app.job.id,current_ear_app[cc]->app.job.step_id);
+
+		del_job_in_node(current_ear_app[cc]->app.job.id);		
+
     get_settings_conf_path(ear_tmp,ID,  shmem_path);
     settings_conf_shared_area_dispose(shmem_path);
     get_resched_path(ear_tmp, ID, shmem_path);
@@ -172,6 +231,7 @@ void end_context(int cc)
     free(current_ear_app[cc]);
     current_ear_app[cc] = NULL;
     num_contexts--;
+
     if (cc == max_context_created){
       new_max = 0;
       for (i=0; i<= max_context_created;i++){
@@ -225,6 +285,8 @@ int select_last_context() {
   }
   return pos;
 }
+
+
 int new_context(job_id id, job_id sid,int *cc)
 {
   char shmem_path[GENERIC_NAME];
@@ -257,6 +319,9 @@ int new_context(job_id id, job_id sid,int *cc)
   current_ear_app[ccontext]->app.job.id = id;
   current_ear_app[ccontext]->app.job.step_id = sid;
   debug("New context created at pos %d", ccontext);
+
+	add_job_in_node(id);
+
   /* We must create per jobid,stepid shared memory regions */
   ID = create_ID(id,sid);
   get_settings_conf_path(ear_tmp, ID, shmem_path);
@@ -300,8 +365,9 @@ int new_context(job_id id, job_id sid,int *cc)
 #if USE_GPUS
   current_ear_app[ccontext]->pc_app_info->gpu_mode = powercap_get_gpu_strategy();
 #endif
-
+	/* accum_ps is the accumulated power signature when sharing nodes */
 	memset(&(current_ear_app[ccontext]->accum_ps), 0, sizeof(accum_power_sig_t));
+	current_ear_app[ccontext]->exclusive = (num_jobs_in_node() == 1);
 
   /* Default value for pc_app_info */
   debug("Context created for (%lu,%lu), num_contexts %d max_context_created %d",id,sid,num_contexts+1,max_context_created);
@@ -621,24 +687,27 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 	if (pmapp->app.job.end_time == pmapp->app.job.start_time) {
 		pmapp->app.job.end_time = pmapp->app.job.start_time + 1;
 	}
-	// Get the energy: This power/energy must be recomputed:PENDING
 	read_enegy_data(ceh, &c_energy);
 	compute_power(&pmapp->energy_init, &c_energy, &app_power);
+	if (pmapp->exclusive){
 
-	pmapp->app.power_sig.DC_power = accum_node_power(&app_power);
-	if ((app_power.avg_dc > pmapp->app.power_sig.max_DC_power) && (app_power.avg_dc < my_node_conf->max_error_power)){
-		pmapp->app.power_sig.max_DC_power = app_power.avg_dc;
+		pmapp->app.power_sig.DC_power = accum_node_power(&app_power);
+		if ((app_power.avg_dc > pmapp->app.power_sig.max_DC_power) && (app_power.avg_dc < my_node_conf->max_error_power)){
+			pmapp->app.power_sig.max_DC_power = app_power.avg_dc;
+		}
+		if (app_power.avg_dc < pmapp->app.power_sig.min_DC_power){
+			pmapp->app.power_sig.min_DC_power = app_power.avg_dc;
+		}
+		pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
+		pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
 	}
-	if (app_power.avg_dc < pmapp->app.power_sig.min_DC_power){
-		pmapp->app.power_sig.min_DC_power = app_power.avg_dc;
-	}
-	pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
-	pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
 	pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 
 	// CPU Frequency
-	state_assert(s, cpufreq_read_diff(&freq_job2, &pmapp->freq_job1, NULL, &pmapp->app.power_sig.avg_f), );
-
+	state_assert(s, cpufreq_read_diff(&freq_job2, &pmapp->freq_job1, pmapp->freq_diff , &pmapp->app.power_sig.avg_f), );
+	ulong lcpus;
+	if (pmapp->app.is_mpi) cpufreq_avgcpufreq_mask(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
+	debug("Computed avg cpu %lu for %lu cpus job %lu/%lu", &pmapp->app.power_sig.avg_f, &lcpus, pmapp->app.job.id,pmapp->app.job.step_id);
 	// nominal is still pending
 
 	// Metrics are not reported in this function
@@ -1181,7 +1250,6 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
   powermon_app_t *pmapp;
 
 	/* we must detect which ones are using the node, filtering ssh etc */
-	
 
   for (uint cc = 0;cc <= max_context_created; cc++){
     if (current_ear_app[cc] != NULL){
@@ -1257,6 +1325,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
   	    if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
     	    signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
 			    verbose(VEARD_NMGR," ");
+					pmapp->exclusive = (num_jobs_in_node() == 1) && pmapp->exclusive;
   	    }
 	    }
 	}
