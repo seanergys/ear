@@ -84,7 +84,7 @@ void print_eargm_status(eargm_status_t *status, uint num_status)
     int i;
     for (i = 0; i < num_status; i++) {
         verbose(VGM, "%sid %d powercap %lu power %lu requested %lu freeable %lu extra %lu status %u%s", 
-                COL_BLU,
+                COL_CLR,
                 status[i].id, status[i].current_powercap, status[i].current_power, status[i].requested, 
                 status[i].freeable_power, status[i].extra_power, status[i].status, COL_CLR);
     }

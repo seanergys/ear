@@ -53,7 +53,7 @@ pthread_mutex_t ext_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 uint num_nodes;
 uint actions_executed = 0;
-uint total_req_new,total_req_greedy,req_no_extra,num_no_extra,num_greedy,num_extra,extra_power_alloc,total_extra_power;
+uint total_req_new,total_req_greedy,req_no_extra,num_no_extra,num_greedy,num_extra,extra_power_alloc,total_extra_power,greedy_allocated;
 cluster_powercap_status_t *my_cluster_power_status;
 int num_power_status;
 powercap_opt_t cluster_options;
@@ -117,6 +117,7 @@ void allocate_free_power_to_greedy_nodes(cluster_powercap_status_t *cluster_stat
     debug("allocate_free_power_to_greedy_nodes----------------");
     verbose(VGM_PC+1,"Total extra power for nodes with NO current extra power %u W, %u nodes",req_no_extra,num_no_extra);
     verbose(VGM_PC+1,"Nodes with extra power already allocated %u",num_greedy);
+    greedy_allocated=0;
     if (num_no_extra>0){
         if (req_no_extra<pending) more_power=-1;
         else more_power=pending/num_no_extra;
@@ -126,6 +127,7 @@ void allocate_free_power_to_greedy_nodes(cluster_powercap_status_t *cluster_stat
                 if (more_power<0) cluster_options->extra_power[i]=cluster_status->greedy_data[i].requested;
                 else cluster_options->extra_power[i]=min(more_power,cluster_status->greedy_data[i].requested);
                 pending-=cluster_options->extra_power[i];
+                greedy_allocated += cluster_options->extra_power[i];
             }
         }
     }
@@ -138,6 +140,7 @@ void allocate_free_power_to_greedy_nodes(cluster_powercap_status_t *cluster_stat
             if ((cluster_status->greedy_data[i].requested) && (!cluster_options->extra_power[i])){
                 cluster_options->extra_power[i]=min(cluster_status->greedy_data[i].requested,more_power);
                 pending-=cluster_options->extra_power[i];
+                greedy_allocated += cluster_options->extra_power[i];
             }
         }
     }
@@ -192,10 +195,10 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
     uint num_nodes = cluster_status->total_nodes;
     uint min_reduction;
     verbose(VGM_PC+1,"There are %u nodes  %u idle nodes %u greedy nodes ", num_nodes,cluster_status->idle_nodes,cluster_status->num_greedy);
-		if (cluster_options->greedy_nodes == NULL){
-    	cluster_options->greedy_nodes  = calloc(cluster_status->num_greedy,sizeof(int));
-    	cluster_options->extra_power   = calloc(cluster_status->num_greedy,sizeof(uint));
-		}
+    if (cluster_options->greedy_nodes == NULL){
+        cluster_options->greedy_nodes  = calloc(cluster_status->num_greedy,sizeof(int));
+        cluster_options->extra_power   = calloc(cluster_status->num_greedy,sizeof(uint));
+    }
     cluster_options->num_greedy    = cluster_status->num_greedy;
     cluster_options->cluster_perc_power = (cluster_status->total_powercap * 100)/current_cluster_powercap;
     memcpy(cluster_options->greedy_nodes,cluster_status->greedy_nodes,cluster_status->num_greedy*sizeof(int));
@@ -207,11 +210,11 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
 
     /* Allocated power + default requested must be less that maximum: ASK_DEF */
     if ((cluster_status->total_powercap + cluster_status->requested) <= current_cluster_powercap){
-				if (cluster_status->requested){
-        	verbose(VGM_PC+1,"There is enough power for new running jobs");
-        	total_free = current_cluster_powercap - (cluster_status->total_powercap + cluster_status->requested);
-        	verbose(VGM_PC+1,"Free power after allocating power to new jobs %d",total_free);
-				}
+        if (cluster_status->requested){
+            verbose(VGM_PC+1,"There is enough power for new running jobs");
+            total_free = current_cluster_powercap - (cluster_status->total_powercap + cluster_status->requested);
+            verbose(VGM_PC+1,"Free power after allocating power to new jobs %d",total_free);
+        }
         if (total_req_greedy == 0){
             return 1;
         }
@@ -229,8 +232,8 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
                 cluster_options->num_greedy = cluster_status->num_greedy;
                 allocate_free_power_to_greedy_nodes(cluster_status,cluster_options,(uint *)&total_free);
             }else if (cluster_status->released){ 
-								return 0; // We try to release power to have power for greedy nodes
-						}
+                return 0; // We try to release power to have power for greedy nodes
+            }
         }
     }else{
         /* There is not enough power for new jobs (ASK_DEF), we must reduce the extra allocation */
@@ -259,10 +262,10 @@ void print_cluster_power_status(powercap_status_t *my_cluster_power_status)
         debug("cluster status is NULL");
         return;
     }
-    verbose(VGM_PC,"%sTotal %u Idle  %u power (released %u requested %u consumed %u allocated %u allocated_to_idle %u) total_greedy_nodes %u%s",COL_BLU,cs->total_nodes,cs->idle_nodes, cs->released,cs->requested,cs->current_power,cs->total_powercap,cs->num_greedy,cs->total_idle_power,COL_CLR);
+    verbose(VGM_PC,"%sTotal %u Idle  %u power (released %u requested %u consumed %u allocated %u allocated_to_idle %u) total_greedy_nodes %u%s",COL_CLR,cs->total_nodes,cs->idle_nodes, cs->released,cs->requested,cs->current_power,cs->total_powercap,cs->num_greedy,cs->total_idle_power,COL_CLR);
     debug("%d power_status received",num_power_status);
     for (i=0;i<cs->num_greedy;i++){
-        verbose(VGM_PC,"%s\t[%d] ip %d greedy_req %u extra_power %u%s", COL_BLU,i, cs->greedy_nodes[i], cs->greedy_data[i].requested, cs->greedy_data[i].extra_power,COL_CLR);
+        verbose(VGM_PC,"%s\t[%d] ip %d greedy_req %u extra_power %u%s", COL_CLR, i, cs->greedy_nodes[i], cs->greedy_data[i].requested, cs->greedy_data[i].extra_power,COL_CLR);
     }
 }
 
@@ -309,14 +312,14 @@ void * eargm_powercap_th(void *noarg)
 
 void cluster_powercap_reset_pc()
 {
-    debug("Resetting cluster powercap to %u", default_cluster_powercap);
+    verbose(0, "Resetting cluster powercap to %u", default_cluster_powercap);
     current_cluster_powercap = default_cluster_powercap;
     current_extra_power = 0;
 }
 
 void cluster_powercap_red_pc(uint red)
 {
-    debug("Reducing cluster powercap by %u (from %u to %u)", red, current_cluster_powercap, current_cluster_powercap-red);
+    verbose(0, "Reducing cluster powercap by %u (from %u to %u)", red, current_cluster_powercap, current_cluster_powercap-red);
     if (red > current_cluster_powercap) {
         verbose(VGM_PC, "Cannot reduce powercap by %u (would overflow)", red);
     } else {
@@ -331,7 +334,7 @@ void cluster_powercap_red_pc(uint red)
 
 void cluster_powercap_inc_pc(uint inc)
 {
-    debug("Increasing cluster powercap by %u (from %u to %u)", inc, current_cluster_powercap, current_cluster_powercap+inc);
+    verbose(0, "Increasing cluster powercap by %u (from %u to %u)", inc, current_cluster_powercap, current_cluster_powercap+inc);
     current_cluster_powercap += inc;
     if (default_cluster_powercap < current_cluster_powercap)
         current_extra_power = current_cluster_powercap - default_cluster_powercap;
@@ -484,7 +487,7 @@ void cluster_check_powercap()
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;
     }
-		memset(&cluster_options,0,sizeof(powercap_opt_t));
+    memset(&cluster_options,0,sizeof(powercap_opt_t));
     must_send_pc_options=0;
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);
@@ -500,9 +503,15 @@ void cluster_check_powercap()
         powercap_reallocation(my_cluster_power_status,&cluster_options);
     }
     uint power_to_free = ear_min(current_cluster_powercap - min_cluster_powercap, total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE);
+    uint power_to_request = 0;
+    if (total_req_greedy > greedy_allocated) //to prevent overflow
+        power_to_request = total_req_greedy - greedy_allocated;
 
-    //write_shared_data(my_cluster_power_status->current_power, total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE, total_req_greedy - greedy_allocated); //TODO: fill the extra power and freeable_power
-    write_shared_data(my_cluster_power_status->current_power, 0 , 0); //TODO: fill the extra power and freeable_power
+
+    verbose(VGM_PC,"current powercap %lu total_req_greedy %lu and greedy_allocated %lu", current_cluster_powercap,
+                                                                            total_req_greedy, greedy_allocated);
+    write_shared_data(my_cluster_power_status->current_power, power_to_free, power_to_request); //TODO: fill the extra power and freeable_power
+
     if (must_send_pc_options){
         print_powercap_opt(&cluster_options);
         send_powercap_options_to_cluster(&cluster_options);
