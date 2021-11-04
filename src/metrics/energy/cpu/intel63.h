@@ -43,6 +43,10 @@ void dispose_rapl_msr(int *fd_map);
 *	and -1 on error. */
 int read_rapl_msr(int *fd_map,ullong *_values);
 
+/** Reads the CPU TDP and copy in tdps. Returns EAR_SUCCESS or EAR_ERROR */
+int read_rapl_tdp(int *fd_map, double *tdps);
+
+
 void rapl_msr_energy_to_str(char *b,ullong *values);
 
 ullong acum_rapl_energy(ullong *values);

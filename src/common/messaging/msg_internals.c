@@ -1283,9 +1283,12 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
 
 }
 
+#define MAX_CALLER_CONNECTIONS 50
+
 request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_conf, void **data)
 {
-    int i, j, rc, total_ranges, final_size = 0, default_type = EAR_ERROR, num_sfds = 0, offset = 0;
+    int i, j, k, rc, total_ranges, final_size = 0, default_type = EAR_ERROR, num_sfds = 0, offset_send = 0, offset_read = 0;
+    int last_i_send, last_j_send, last_i_read, last_j_read;
     int **ips, *ip_counts, *sfds;
     struct sockaddr_in temp;
     request_header_t head;
@@ -1297,20 +1300,83 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
     for (i = 0; i < total_ranges; i++)
         num_sfds += (ip_counts[i] < NUM_PROPS) ? ip_counts[i] : NUM_PROPS;
 
+    /* Section to prevent max_connections to be used at the same time (otherwise data may be lost) */
+    int iters = num_sfds/MAX_CALLER_CONNECTIONS;
+    if (num_sfds%MAX_CALLER_CONNECTIONS) iters += 1; //to prevent ranges of < MAX_CALLER_CONNECTIONS to not be sent, as well as 
+                                                    //avoiding the remainder ranges to not be contacted
+    last_i_send = last_j_send = 0;
+    last_i_read = last_j_read = 0;
+
+    debug("number of outer iterations %d (each of <= %d connections)", iters, MAX_CALLER_CONNECTIONS);
+
     sfds = calloc(num_sfds, sizeof(int));
 
-    for (i = 0; i < total_ranges; i++)
+    for (k = 0; k < iters; k++) 
     {
-        for (j = 0; j < ip_counts[i] && j < NUM_PROPS; j++, offset++)
+        for (i = last_i_send; i < total_ranges; i++)
         {
-            temp.sin_addr.s_addr = ips[i][j];
-            strcpy(next_ip, inet_ntoa(temp.sin_addr));
-            
-            rc=remote_connect(next_ip, my_cluster_conf->eard.port);
-            if (rc<0){
-//               debug("data_all_nodes: Error connecting with node %s, trying to correct it", next_ip);
-//               debug("data_all_nodes: (node %s was %d in the current list of ips", next_ip, j);
-                head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+            /* for every range we connect to a maximum of NUM_PROPS connections. If we have MAX_CALLER_CONNECTIONS opened, we break out
+             * and start reading (to avoid taking too long from the first call to the first read, which could cause issues) */
+            for (j = last_j_send; j < ip_counts[i] && j < NUM_PROPS && offset_send < MAX_CALLER_CONNECTIONS*(k+1); j++, offset_send++)
+            {
+                temp.sin_addr.s_addr = ips[i][j];
+                strcpy(next_ip, inet_ntoa(temp.sin_addr));
+
+                rc=remote_connect(next_ip, my_cluster_conf->eard.port);
+                if (rc < 0){
+                    //debug("data_all_nodes: Error connecting with node %s, trying to correct it", next_ip);
+                    //debug("data_all_nodes: (node %s was %d in the current list of ips", next_ip, j);
+                    head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+
+                    if (head.size > 0 && head.type != EAR_ERROR)
+                    {
+                        head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
+                        free(temp_data);
+                        final_size = head.size;
+                        default_type = head.type;
+                    }
+                }
+                else {
+                    debug("Node %s with distance %d contacted (fd %d)!", next_ip, command->node_dist, rc);
+                    sfds[offset_send] = rc;
+                    send_command(command);
+                }
+            }
+
+            if (offset_send == MAX_CALLER_CONNECTIONS*(k+1)) {
+                break; //break early to prevent i from incrementing
+            }
+            last_j_send = 0;
+        }
+
+        //store last position to come back to it later
+        last_i_send = i;
+        last_j_send = j;
+
+        debug("Finished sending to eards, now reading data\n\n");
+
+        for (i = last_i_read; i < total_ranges; i++)
+        {
+            for (j = last_j_read; j < ip_counts[i] && j < NUM_PROPS && offset_read < MAX_CALLER_CONNECTIONS*(k+1); j++, offset_read++)
+            {
+                if (sfds[offset_read] == 0) continue; // if the connection had failed we should have already corrected that in the previous loop 
+
+                head = receive_data(sfds[offset_read], (void **)&temp_data);
+                debug("received data from fd %d contacted with type %d and size %d", sfds[offset_read], head.type, head.size);
+                if (head.size < 1) 
+                {
+                    if (head.type == EAR_TYPE_APP_STATUS)
+                        default_type = head.type;
+                    else
+                        head.type = EAR_ERROR;
+                }
+                if (head.type == EAR_ERROR)
+                {
+                    debug("data_all_nodes:Error reading data from node %d in the list, trying to correct it", j);
+                    eards_remote_disconnect_fd(sfds[offset_read]);
+                    head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+                }
+                else eards_remote_disconnect_fd(sfds[offset_read]);
 
                 if (head.size > 0 && head.type != EAR_ERROR)
                 {
@@ -1320,52 +1386,20 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                     default_type = head.type;
                 }
             }
-            else{
-                debug("Node %s with distance %d contacted (fd %d)!", next_ip, command->node_dist, rc);
-                sfds[offset] = rc;
-                send_command(command);
+            if (offset_read == MAX_CALLER_CONNECTIONS*(k+1)) {
+                break; //break early to prevent i from incrementing
             }
+            last_j_read = 0;
+        }
+        //store last read position to come back to it later
+        last_i_read = i;
+        last_j_read = j;
+
+        if (last_i_read != last_i_send) {
+            debug("warning: last_i_read %d and last_i_send %d do not match!", last_i_read, last_i_send);
         }
     }
-
-    debug("Finished sending to eards, now reading data\n\n");
-
-    // reset offset to iterate through all the fds again
-    offset = 0;
-    for (i = 0; i < total_ranges; i++)
-    {
-        for (j = 0; j < ip_counts[i] && j < NUM_PROPS; j++, offset++)
-        {
-            if (sfds[offset] == 0) continue; // if the connection had failed we should have already corrected that in the previous loop 
-
-            head = receive_data(sfds[offset], (void **)&temp_data);
-            debug("received data from fd %d contacted with type %d and size %d", sfds[offset], head.type, head.size);
-            if (head.size < 1) 
-            {
-                if (head.type == EAR_TYPE_APP_STATUS)
-                    default_type = head.type;
-                else
-                    head.type = EAR_ERROR;
-            }
-            if (head.type == EAR_ERROR)
-            {
-                debug("data_all_nodes:Error reading data from node %d in the list, trying to correct it", j);
-                eards_remote_disconnect_fd(sfds[offset]);
-                head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-            }
-            else eards_remote_disconnect_fd(sfds[offset]);
-        
-            if (head.size > 0 && head.type != EAR_ERROR)
-            {
-                head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
-                free(temp_data);
-                final_size = head.size;
-                default_type = head.type;
-            }
-            
-        }
-    }
-    debug("exiting data_all_nodes with %d num_sfds and %d offset\n", num_sfds, offset);
+    debug("exiting data_all_nodes with %d num_sfds and %d offset and %d iterations\n", num_sfds, offset_read, iters);
     head.size = final_size;
     head.type = default_type;
     *data = all_data;
@@ -1419,7 +1453,7 @@ char *mem_alloc_char_powercap_status(powercap_status_t *status)
 
     memcpy(&data[size], status->greedy_nodes, sizeof(int) * status->num_greedy);
     size += sizeof(int) * status->num_greedy;
-    
+
     memcpy(&data[size], status->greedy_data, sizeof(greedy_bytes_t) * status->num_greedy);
     size += sizeof(greedy_bytes_t) * status->num_greedy;
 
@@ -1434,7 +1468,7 @@ powercap_status_t *memmap_powercap_status(char *final_data, int *size)
     final_size = sizeof(powercap_status_t);
     status->greedy_nodes = (int *)&final_data[final_size];
     final_size += status->num_greedy*sizeof(int);
-               
+
     status->greedy_data = (greedy_bytes_t *)&final_data[final_size];
     final_size += status->num_greedy*sizeof(greedy_bytes_t);
 
@@ -1455,9 +1489,9 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
             head.size = data_head.size;
             if (final_data != NULL)
             {
-               pc_release_data_t *released = (pc_release_data_t *)final_data; 
-               pc_release_data_t *new_released = (pc_release_data_t *)temp_data; 
-               released->released += new_released->released;
+                pc_release_data_t *released = (pc_release_data_t *)final_data; 
+                pc_release_data_t *new_released = (pc_release_data_t *)temp_data; 
+                released->released += new_released->released;
             }
             else
             {
@@ -1499,7 +1533,7 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
 
                 final_data = realloc(final_data, final_size);
                 memcpy(final_data, final_status, final_size);
-                
+
                 status = memmap_powercap_status(final_data, &final_size);
                 head.size = final_size;
                 free(final_status);
@@ -1515,12 +1549,12 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
                 //check if final_size == head.size??
 
             }
-        break;
+            break;
         default:
             final_data = realloc(final_data, final_size + data_head.size);
             memcpy(&final_data[final_size], temp_data, data_head.size);
             head.size = final_size + data_head.size;
-        break;
+            break;
     }
 
     *final_data_ptr = final_data;

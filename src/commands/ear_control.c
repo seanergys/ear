@@ -253,11 +253,21 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
         }
         printf("\n");
     }
+#if DEBUG_CONNECTIONS
+    for (i = 0; i < num_ips; i++) 
+    {    
+        if (!ips[i].counter) {
+            if (eards_remote_connect(ips[i].ip, my_cluster_conf.eard.port) < 0) {
+                printf("Node %s IP %s inactive \n", ips[i].name, ips[i].ip);
+            } else eards_remote_disconnect();
+        }    
+    }    
+#endif
 }
 
 void usage(char *app)
 {
-	printf("Usage: %s [options]"\
+    printf("Usage: %s [options]"\
             "\n\t--status \t\t\t\t->requests the current status for all nodes. The ones responding show the current "\
             "\n\t\t\t\t\t\t\tpower, IP address and policy configuration. A list with the ones not"\
             "\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
@@ -293,7 +303,7 @@ void usage(char *app)
 
 #endif
     printf("\n\nThis app requires privileged access to execute.\n");
-	exit(0);
+    exit(0);
 }
 
 void check_ip(status_t status, ip_table_t *ips, int num_ips)
@@ -302,19 +312,19 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
     //printf("checking ip %d with status %d and power %lu\n", status.ip, status.ok, status.node.power);
     for (i = 0; i < num_ips; i++)
         if (htonl(status.ip) == htonl(ips[i].ip_int))
-		{
+        {
             ips[i].counter |= status.ok;
-			ips[i].power = status.node.power;
+            ips[i].power = status.node.power;
             ips[i].current_freq = status.node.avg_freq;
             ips[i].temp = status.node.temp;
             ips[i].job_id = status.app.job_id;
             ips[i].step_id = status.app.step_id;
-			//refactor
-			for (j = 0; j < TOTAL_POLICIES; j++)
-			{
+            //refactor
+            for (j = 0; j < TOTAL_POLICIES; j++)
+            {
                 memcpy(&ips[i].policies[j], &status.policy_conf[j], sizeof(eard_policy_info_t));
-			}	
-		}
+            }	
+        }
 }
 
 void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is_master)
@@ -367,24 +377,24 @@ void clean_ips(ip_table_t *ips, int num_ips)
 
 void process_powercap_status(powercap_status_t *powerstatus, int num_status)
 {
-	char state_name[128];
-	if (num_status > 0)
-	{
-		int i;
-		for (i = 0; i < num_status; i++)
-		{
-			if (powerstatus[i].total_powercap) sprintf(state_name,"Enabled. Limit = %u",powerstatus[i].total_powercap);
-			else sprintf(state_name,"disabled");
-			printf("Powercap information[%d]:\nStatus: %s\nTotal idle_nodes: %d\nPotential power to be released: %d\nTotal number of greedy nodes : %d \nTotal extra power requested: %d\nTotal power used %u W\n", i, state_name,powerstatus[i].idle_nodes,
-			powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, powerstatus[i].current_power);
+    char state_name[128];
+    if (num_status > 0)
+    {
+        int i;
+        for (i = 0; i < num_status; i++)
+        {
+            if (powerstatus[i].total_powercap) sprintf(state_name,"Enabled. Limit = %u",powerstatus[i].total_powercap);
+            else sprintf(state_name,"disabled");
+            printf("Powercap information[%d]:\nStatus: %s\nTotal idle_nodes: %d\nPotential power to be released: %d\nTotal number of greedy nodes : %d \nTotal extra power requested: %d\nTotal power used %u W\n", i, state_name,powerstatus[i].idle_nodes,
+                    powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, powerstatus[i].current_power);
 
             int j;
             for (j = 0; j < powerstatus->num_greedy; j++)
                 printf("greedy node %d extra_power: %u requested: %u stress: %u\n", powerstatus->greedy_nodes[j], powerstatus->greedy_data[j].extra_power, 
-                                                    powerstatus->greedy_data[j].requested, powerstatus->greedy_data[j].stress);
-		}
-		free(powerstatus);
-	}
+                        powerstatus->greedy_data[j].requested, powerstatus->greedy_data[j].stress);
+        }
+        free(powerstatus);
+    }
 }
 
 void process_status(int num_status, status_t *status, char error_only)
@@ -594,7 +604,7 @@ int main(int argc, char *argv[])
 
 
     if (read_cluster_conf(path_name, &my_cluster_conf) != EAR_SUCCESS) printf("ERROR reading cluster configuration\n");
-    
+
     if (getuid() != 0 && !is_privileged_command(&my_cluster_conf))
     {
         printf("This command can only be executed by privileged users. Contact your admin for more info.\n");
@@ -613,7 +623,7 @@ int main(int argc, char *argv[])
             {"set-def-freq", 	required_argument, 0, 4},
             {"set-th",          required_argument, 0, 5},
             {"restore-conf", 	optional_argument, 0, 6},
-	        {"ping", 	     	optional_argument, 0, 'p'},
+            {"ping", 	     	optional_argument, 0, 'p'},
             {"status",       	optional_argument, 0, 's'},
             {"powerstatus",     optional_argument, 0, 'w'},
             {"release",         optional_argument, 0, 'l'},
@@ -640,7 +650,7 @@ int main(int argc, char *argv[])
             break;
 
         int arg;
-		int arg2;
+        int arg2;
 
         switch(c)
         {
@@ -657,17 +667,17 @@ int main(int argc, char *argv[])
                 break;
             case 3:
                 arg = atoi(optarg);
-				if (optind+1 > argc)
-				{
-					printf("Missing policy argument for set-def-freq\n");
+                if (optind+1 > argc)
+                {
+                    printf("Missing policy argument for set-def-freq\n");
                     break;
-				}
-				arg2 = policy_name_to_id(argv[optind], &my_cluster_conf);
-				if (!is_valid_policy(arg2, &my_cluster_conf) || arg2 == EAR_ERROR)
-				{
-					printf("Invalid policy (%s).\n", argv[optind]);
+                }
+                arg2 = policy_name_to_id(argv[optind], &my_cluster_conf);
+                if (!is_valid_policy(arg2, &my_cluster_conf) || arg2 == EAR_ERROR)
+                {
+                    printf("Invalid policy (%s).\n", argv[optind]);
                     break;
-				}
+                }
                 if (arg > 100)
                 {
                     printf("Indicated threshold increase above theoretical maximum (100%%)\n");
@@ -677,17 +687,17 @@ int main(int argc, char *argv[])
                 break;
             case 4:
                 arg = atoi(optarg);
-				if (optind+1 > argc)
-				{
-					printf("Missing policy argument for set-def-freq\n");
+                if (optind+1 > argc)
+                {
+                    printf("Missing policy argument for set-def-freq\n");
                     break;
-				}
-				arg2 = policy_name_to_id(argv[optind], &my_cluster_conf);
-				if (!is_valid_policy(arg2, &my_cluster_conf) || arg2 == EAR_ERROR)
-				{
-					printf("Invalid policy (%s).\n", argv[optind]);
+                }
+                arg2 = policy_name_to_id(argv[optind], &my_cluster_conf);
+                if (!is_valid_policy(arg2, &my_cluster_conf) || arg2 == EAR_ERROR)
+                {
+                    printf("Invalid policy (%s).\n", argv[optind]);
                     break;
-				}
+                }
                 set_def_freq_all_nodes(arg, arg2, &my_cluster_conf);
                 break;
             case 5:
@@ -698,16 +708,16 @@ int main(int argc, char *argv[])
                     break;
                 }
                 if (optind+1 > argc)
-				{
-					printf("Missing policy argument for set-def-freq\n");
+                {
+                    printf("Missing policy argument for set-def-freq\n");
                     break;
-				}
-				arg2 = policy_name_to_id(argv[optind], &my_cluster_conf);
-				if (!is_valid_policy(arg2, &my_cluster_conf) || arg2 == EAR_ERROR)
-				{
-					printf("Invalid policy (%s).\n", argv[optind]);
+                }
+                arg2 = policy_name_to_id(argv[optind], &my_cluster_conf);
+                if (!is_valid_policy(arg2, &my_cluster_conf) || arg2 == EAR_ERROR)
+                {
+                    printf("Invalid policy (%s).\n", argv[optind]);
                     break;
-				}
+                }
                 set_th_all_nodes(arg, arg2, &my_cluster_conf);
                 break;
             case 6:
@@ -854,7 +864,7 @@ int main(int argc, char *argv[])
                     }
                     free(msg.greedy_nodes);
                     free(msg.extra_power);
-                   
+
                 }
                 break;
             case 'l':
@@ -874,7 +884,7 @@ int main(int argc, char *argv[])
                 break;
             case 'c': //set_powercap
                 arg = atoi(optarg);
-				if (optind+1 > argc) {
+                if (optind+1 > argc) {
                     cluster_set_powerlimit_all_nodes(arg, &my_cluster_conf);
                 }
                 else {
@@ -889,7 +899,7 @@ int main(int argc, char *argv[])
 
                 break;
             case 'x': //reset_powercap
-				if (!optarg) {
+                if (!optarg) {
                     cluster_reset_default_powercap_all_nodes(&my_cluster_conf);
                 }
                 else {
@@ -904,7 +914,7 @@ int main(int argc, char *argv[])
                 break;
             case 'i': //increase_powercap
                 arg = atoi(optarg);
-				if (optind+1 > argc) {
+                if (optind+1 > argc) {
                     cluster_inc_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
                 }
                 else {
@@ -919,7 +929,7 @@ int main(int argc, char *argv[])
                 break;
             case 'd': //reduce_powercap
                 arg = atoi(optarg);
-				if (optind+1 > argc) {
+                if (optind+1 > argc) {
                     cluster_red_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
                 }
                 else {
@@ -952,7 +962,7 @@ int main(int argc, char *argv[])
 
     if (mail != NULL) 
     {
-		sprintf(mail_filename, "%s/health_check.txt", my_cluster_conf.install.dir_temp);
+        sprintf(mail_filename, "%s/health_check.txt", my_cluster_conf.install.dir_temp);
         mail_fd = open(mail_filename, O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
         if (mail_fd < 1) {
             printf("Error creating mail file (%s), exiting\n", mail_filename);
@@ -1000,7 +1010,7 @@ int main(int argc, char *argv[])
                 case EAR_TYPE_POWER_STATUS:
                     printf("Reading power_status from node %s\n", node_name);
                     num_status = eards_get_powercap_status(&my_cluster_conf, &powerstatus);
-										process_powercap_status(powerstatus,num_status);
+                    process_powercap_status(powerstatus,num_status);
                     break;
                 case EAR_TYPE_APP_STATUS_MASTER:
                     num_status = eards_get_app_master_status(&my_cluster_conf, &appstatus);
@@ -1033,53 +1043,53 @@ int main(int argc, char *argv[])
             powercap_status_t *powerstatus;
             app_status_t *appstatus;
             case EAR_TYPE_STATUS:
-                num_status = status_all_nodes(&my_cluster_conf, &status);
-                process_status(num_status, status, NODE_ONLY);
-                break;
+            num_status = status_all_nodes(&my_cluster_conf, &status);
+            process_status(num_status, status, NODE_ONLY);
+            break;
             case EAR_TYPE_POLICY:
-                num_status = status_all_nodes(&my_cluster_conf, &status);
-                process_status(num_status, status, POLICY_ONLY);
-                break;
+            num_status = status_all_nodes(&my_cluster_conf, &status);
+            process_status(num_status, status, POLICY_ONLY);
+            break;
             case EAR_TYPE_FULL_STATUS:
-                num_status = status_all_nodes(&my_cluster_conf, &status);
-                process_status(num_status, status, FULL_STATUS);
-                break;
+            num_status = status_all_nodes(&my_cluster_conf, &status);
+            process_status(num_status, status, FULL_STATUS);
+            break;
             case EAR_TYPE_POWER_STATUS:
-                num_status = cluster_get_powercap_status(&my_cluster_conf, &powerstatus);
-                process_powercap_status(powerstatus,num_status);
-                break;
+            num_status = cluster_get_powercap_status(&my_cluster_conf, &powerstatus);
+            process_powercap_status(powerstatus,num_status);
+            break;
             case EAR_TYPE_APP_STATUS_MASTER:
-                num_status = get_app_master_status_all_nodes(&my_cluster_conf, &appstatus);
-                process_app_status(num_status, appstatus, 1);
-                break;
+            num_status = get_app_master_status_all_nodes(&my_cluster_conf, &appstatus);
+            process_app_status(num_status, appstatus, 1);
+            break;
             case EAR_TYPE_APP_STATUS_NODE:
-                num_status = get_app_node_status_all_nodes(&my_cluster_conf, &appstatus);
-                process_app_status(num_status, appstatus, 0);
-                break;
+            num_status = get_app_node_status_all_nodes(&my_cluster_conf, &appstatus);
+            process_app_status(num_status, appstatus, 0);
+            break;
             case EAR_TYPE_EARDBD_STATUS:
-                num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
-                process_eardbd_status(num_status, edbstatus, 0);
-                if (num_status > 0)
-                    free(edbstatus);
-                break;
+            num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
+            process_eardbd_status(num_status, edbstatus, 0);
+            if (num_status > 0)
+                free(edbstatus);
+            break;
             case EAR_TYPE_HEALTH_CHECK:
-                printf("---------------------\nINACTIVE NODES\n---------------------\n");
-                num_status = status_all_nodes(&my_cluster_conf, &status);
-                process_status(num_status, status, ERR_ONLY);
-                printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
-                num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
-                process_eardbd_status(num_status, edbstatus, 1);
-                if (num_status > 0)
-                    free(edbstatus);
-                break;
-                
+            printf("---------------------\nINACTIVE NODES\n---------------------\n");
+            num_status = status_all_nodes(&my_cluster_conf, &status);
+            process_status(num_status, status, ERR_ONLY);
+            printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
+            num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
+            process_eardbd_status(num_status, edbstatus, 1);
+            if (num_status > 0)
+                free(edbstatus);
+            break;
+
         }
     }
     if (mail != NULL)
     {
-  	    snprintf(mail_command, strlen(mail_command)-1, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
+        snprintf(mail_command, strlen(mail_command)-1, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
         execute(mail_command); 
     }
-    
+
     free_cluster_conf(&my_cluster_conf);
 }

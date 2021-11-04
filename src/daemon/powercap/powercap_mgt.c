@@ -171,6 +171,8 @@ static uint gpu_pc_num_gpus=1;
 static topology_t pc_topology_info;
 /* These functions identies and monitors load changes */
 
+
+extern double rapl_tdps[MAX_PACKAGES];
 #define TDP_CPU 150
 #define TDP_DRAM 30
 #define TDP_GPU 250
@@ -183,7 +185,7 @@ void compute_power_distribution()
 #endif
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
-    bpd_cpu = TDP_CPU;
+    bpd_cpu = rapl_tdps[0];
     bpd_dram = TDP_DRAM;
 #if USE_GPUS
     if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != MODEL_DUMMY)) bpd_gpu = TDP_GPU;

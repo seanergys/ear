@@ -663,7 +663,7 @@ void accum_estimations(lib_shared_data_t *data,shsignature_t *sig)
 		sig_shared_region[p].sig.valid_time       += time_s;
 		sig_shared_region[p].sig.accum_dram_energy      += sig_shared_region[p].sig.DRAM_power * time_s;
 		sig_shared_region[p].sig.accum_pack_energy      += sig_shared_region[p].sig.PCK_power  * time_s;
-		verbose_master(2,"Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf)", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s);
+		verbose_master(2,"Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s, sig_shared_region[p].sig.accum_dram_energy, sig_shared_region[p].sig.DRAM_power, sig_shared_region[p].sig.accum_pack_energy, sig_shared_region[p].sig.PCK_power);
 
 	}
 }
@@ -754,7 +754,7 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 	data->job_signature.DRAM_power = my_job_DRAM_power;
 
 
-	verbose_master(2,"My job[%d] GB/s is %.2lf", node_mgr_index, data->job_signature.GBS);
+	verbose_master(2,"My job[%d] GB/s is %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.DRAM_power);
 
 
 	/* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
@@ -824,13 +824,13 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 			if (GPU_power) GPU_process_power = GPU_power / data->num_processes;
 			sig_shared_region[lp].sig.DC_power = (CPU_power * process_power_ratio[proc]) + GPU_process_power; // what about GPU power in processes	
 			sig_shared_region[lp].sig.PCK_power = process_power_ratio[proc] * lsig->PCK_power;
-			verbose_master(2,"Power process %d/%d is %lf", job_in_process[proc], lp, sig_shared_region[lp].sig.DC_power);
+			verbose_master(2,"Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig_shared_region[lp].sig.DC_power, sig_shared_region[lp].sig.PCK_power);
 			lp++;
 		}
 	}
 	data->job_signature.DC_power = (CPU_power	* job_power_ratio) + GPU_power;
 	data->job_signature.PCK_power = job_power_ratio * lsig->PCK_power;
-	verbose_master(2,"My job[%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf)", node_mgr_index, data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio);
+	verbose_master(2,"My job[%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf) PCK %lf", node_mgr_index, data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio, data->job_signature.PCK_power);
 
 	return;	
 }

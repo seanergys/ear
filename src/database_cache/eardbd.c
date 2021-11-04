@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -116,7 +116,7 @@ int                     updating;
 int                     dreaming;
 int                     veteran;
 int                     forked;
-int                     forced;
+int                     forced = 0;
 // Extras
 char                   *str_who[2] = { "server", "mirror" };
 int                     verbosity = 0;
@@ -268,7 +268,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		edb_error("another EARDBD process is currently running");
 	}
 	#endif
-
 	// Server & mirro verbosity
 	verb_master("enabled cache server: %s",                  server_enabled ? "OK": "NO");
 	verb_master("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK": "NO", server_host);

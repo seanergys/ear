@@ -173,6 +173,10 @@ int plug_print_application(spank_t sp, new_job_req_t *app)
 int plug_read_application(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_read_application");
+	#if 0
+	int num_args;
+  char **args;
+	#endif
 	
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
@@ -198,6 +202,13 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	} else {
 		app->job.step_id = NO_VAL;
 	}
+	#if 0	
+	if (spank_get_item (sp, S_JOB_ARGV, (int *)&num_args, (char ***)&args) == ESPANK_SUCCESS) {
+		for (uint i = 0; i < num_args; i ++){
+			plug_verbose(sp, 3, "Arg[%d] = %s", i, args[i]);
+		}
+	}
+	#endif
 	if (!getenv_agnostic(sp, Var.name_app.rem, app->job.app_id, GENERIC_NAME)) {
 		strcpy(app->job.app_id, "");
 	}

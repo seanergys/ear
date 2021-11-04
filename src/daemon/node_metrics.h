@@ -22,6 +22,7 @@
 #ifndef _NODE_METRICS_H_
 #define _NODE_METRICS_H_
 
+#include <common/config.h>
 #include <common/types/generic.h>
 #include <common/hardware/topology.h>
 #include <metrics/imcfreq/imcfreq.h>
@@ -41,6 +42,7 @@ typedef struct node_metrics{
 	ulong avg_imc_freq;
 	llong avg_temp;
 	llong *temp;
+	ulong avg_per_cpu[MAX_CPUS_SUPPORTED];
 } nm_data_t;
 
 int init_node_metrics(nm_t *id, topology_t *topo, ulong def_freq);
@@ -56,6 +58,8 @@ int print_node_metrics(nm_t *id,nm_data_t *nm);
 int verbose_node_metrics(nm_t *id,nm_data_t *nm);
 unsigned long long get_nm_temp(nm_t *id,nm_data_t *nm);
 ulong get_nm_cpufreq(nm_t *id,nm_data_t *nm);
+ulong get_nm_cpufreq_with_mask(nm_t *id,nm_data_t *nm, cpu_set_t m);
+
 
 
 #endif

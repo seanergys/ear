@@ -18,6 +18,9 @@
 #ifndef METRICS_FREQUENCY_CPU_H
 #define METRICS_FREQUENCY_CPU_H
 
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include <common/types.h>
 #include <common/states.h>
 #include <common/plugins.h>
@@ -49,6 +52,10 @@ state_t cpufreq_data_copy(cpufreq_t *ef_dst, cpufreq_t *ef_src);
 state_t cpufreq_data_free(cpufreq_t *ef, ulong **freqs);
 
 state_t cpufreq_data_diff(cpufreq_t *ef2, cpufreq_t *ef1, ulong *freqs, ulong *average);
+
+/* Computes the average freq given a cpumask */
+void cpufreq_avgcpufreq_mask(cpu_set_t m, ulong *nodecpuf, ulong *avgf, ulong *cpus);
+
 
 state_t cpufreq_data_print(ulong *freqs, ulong *average);
 
