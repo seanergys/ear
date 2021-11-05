@@ -35,6 +35,7 @@
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
+#include <common/system/folder.h>
 #include <common/environment.h>
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
@@ -809,6 +810,7 @@ void ear_init()
 	state_t st;
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	char *ext_def_freq_str=getenv(SCHED_EAR_DEF_FREQ);
+	
 
 	if (ear_lib_initialized){
 		verbose_master(1,"EAR library already initialized");
@@ -834,18 +836,27 @@ void ear_init()
 	// Environment initialization
 	ear_lib_environment();
 
+  gethostname(node_name, sizeof(node_name));
+  strtok(node_name, ".");
+  // Fundamental data
+  debug("Running in %s process=%d",node_name,getpid());
+
+
 	tmp=get_ear_tmp();
+  folder_t tmp_test;
+  if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
+	/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
+ 		verbose(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
+ 		set_ear_tmp("/tmp");
+ 		tmp = get_ear_tmp();
+ }
+ 
 
 	if (ext_def_freq_str!=NULL){
 		ext_def_freq=(unsigned long)atol(ext_def_freq_str);
 		verbose_master(VEAR_INIT,"Using externally defined default freq %lu",ext_def_freq);
 	}
 
-	// Fundamental data
-	gethostname(node_name, sizeof(node_name));
-	strtok(node_name, ".");
-
-	debug("Running in %s process=%d",node_name,getpid());
 
 	verb_level = get_ear_verbose();
 	verb_channel=2;

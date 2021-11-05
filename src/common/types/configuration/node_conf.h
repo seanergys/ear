@@ -85,6 +85,7 @@ typedef struct my_node_conf
     char    powercap_type;
 		ulong   gpu_def_freq;
     uint 	use_log;
+		char  tag[GENERIC_NAME];
 }my_node_conf_t;
 
 

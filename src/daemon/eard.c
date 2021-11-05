@@ -135,7 +135,8 @@ int eard_must_exit = 0;
 topology_t node_desc;
 ctx_t imc_eard_ctx;
 int fd_rapl[MAX_PACKAGES];
-double rapl_tdps[MAX_PACKAGES];
+double rapl_pck_tdps[MAX_PACKAGES];
+double rapl_dram_tdps[MAX_PACKAGES];
 
 /* EARD init errors control */
 static uint error_uncore=0;
@@ -860,8 +861,12 @@ int main(int argc, char *argv[])
 								error("Error initializing rapl");
 								error_rapl=1;
 				}
-				if (read_rapl_tdp(fd_rapl, rapl_tdps) == EAR_ERROR){
-					error("Reading CPu TDPs");
+				if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
+					error("Reading CPU TDPs");
+					error_rapl=1;
+				}
+				if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
+					error("Reading DRAM TDPs");
 					error_rapl=1;
 				}
 				verbose(VEARD_INIT,"Initialzing energy plugin");

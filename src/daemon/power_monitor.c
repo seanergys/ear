@@ -656,6 +656,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	pmapp->app.job.start_mpi_time = 0;
 	pmapp->app.job.end_mpi_time = 0;
 	pmapp->app.job.end_time = 0;
+	pmapp->app.job.procs = new_app->job.procs;
 	// reset signature
 	signature_init(&pmapp->app.signature);
 	init_power_signature(&pmapp->app.power_sig);
@@ -667,7 +668,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	copy_energy_data(&pmapp->energy_init, &c_energy);
 	// CPU Frequency
 	state_assert(s, cpufreq_read(&pmapp->freq_job1), );
-	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu",pmapp->app.job.id,pmapp->app.job.step_id);
+	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu ",pmapp->app.job.id,pmapp->app.job.step_id);
 }
 
 
@@ -1035,6 +1036,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   strcpy(pmapp->settings->policy_name,  my_policy->name);
   pmapp->settings->def_freq       = f;
   pmapp->settings->def_p_state    = my_policy->p_state;
+	pmapp->settings->island         = my_node_conf->island;
+	strcpy(pmapp->settings->tag, my_node_conf->tag);
   pmapp->resched->force_rescheduling = 0;
   memcpy(pmapp->settings->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
   set_null_loop(&pmapp->last_loop);
@@ -1057,8 +1060,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
 	pthread_mutex_unlock(&app_lock);
 	//save_eard_conf(&eard_dyn_conf);
-	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
-			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi,COL_CLR);
+	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d procs %lu%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
+			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, COL_CLR);
 	verbose(VJOBPMON , "*******************");
 	pmapp->sig_reported = 0;
 
@@ -1418,7 +1421,6 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
 
 	/* To be usd by status */
-	last_power_reported = last_pmon->avg_dc;
 	copy_node_metrics(&my_nm_id, &last_nm, nm);
 
 
@@ -1467,6 +1469,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 		  report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
 	  }
 	}
+	last_power_reported = last_pmon->avg_dc;
 
 	return;
 }

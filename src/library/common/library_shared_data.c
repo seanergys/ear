@@ -760,19 +760,6 @@ void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr
 	/* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 
 
-	/* Model 1
-	*	Intercepción	-28,53203477 --> Constant
-	*	IPC	12,90765889 --> 1/CPI
-	*	TPI2	0,475457643 --> TPI
-	*	VPI	5,45086405 --> (avx2+avx512)/instrunctions
-	*	F	9,83884E-05  --> AVG CPU 
-
-	#define IPC_COEFF (double)12.90765889
-	#define TPI_COEFF (double)0.475457643
-	#define VPI_COEFF (double)5.45086405
-	#define F_COEFF   (double)9.83884E-05
-	#define INTERCEPT (double)-28,53203477 */
-
 	/* Model 2, GB/s rather than TPI, easy to compute 
  * Intercepción	-28,85109789
  * VPI	28,21247619
