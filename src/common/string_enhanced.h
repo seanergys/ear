@@ -22,6 +22,7 @@
 #include <getopt.h>
 #include <linux/limits.h>
 #include <common/utils/string.h>
+#include <common/output/verbose.h>
 
 #define STR_MAX_COLUMNS		20
 #define STR_SIZE_BUFFER		PIPE_BUF
@@ -47,6 +48,9 @@ char tprintf_obuf[STR_SIZE_BUFFER];
 
 /** **/
 int tprintf_init(int fd, int mode, char *format);
+
+/** Using this version the output is redirected to verbose. */
+int tprintf_init_v2(int v, int mode, char *format);
 
 /** **/
 int tprintf_format();

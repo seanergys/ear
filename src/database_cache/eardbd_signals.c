@@ -51,14 +51,14 @@ void log_handler(cluster_conf_t *conf_clus, uint close_previous)
 	int fd_output = -1;
 
 	if (close_previous) {
-		close(fd_output);
+		log_close(fd_output);
 	}
 	// create_log also cleans old files
 	if (conf_clus->db_manager.use_log) {
 		if (server_iam) {
-			fd_output = create_log(conf_clus->install.dir_temp, "eardbd.server");
+			create_log(conf_clus->install.dir_temp, "eardbd.server", fd_output);
 		} else {
-			fd_output = create_log(conf_clus->install.dir_temp, "eardbd.mirror");
+			create_log(conf_clus->install.dir_temp, "eardbd.mirror", fd_output);
 		}
 	}
 	if (fd_output < 0) {

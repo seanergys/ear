@@ -321,7 +321,7 @@ void release()
 		process_pid_file_clean(&proc_mirror);
 	}
 	//
-	log_close();
+	log_close(-1);
 	// End releasing
 	releasing = 0;
 }

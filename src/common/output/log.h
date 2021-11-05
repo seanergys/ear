@@ -29,18 +29,24 @@ int log_bypass __attribute__((weak)) = 0;
 		syslog(LOG_DAEMON|LOG_ERR, __VA_ARGS__);
 
 #if !USE_SYSLOG
-	#define create_log(path, service_name) \
-		log_open(path, service_name);
+	#define create_log(path, service_name, fd) \
+        { \
+		fd = log_open(path, service_name); \
+        }
 #else
-	#define create_log(path, service_name) \
+	#define create_log(path, service_name, fd) \
+        { \
 		openlog(service_name, LOG_PID | LOG_PERROR, LOG_DAEMON); \
-		log_bypass = 1;
+		log_bypass = 1; \
+        fd = -1; \
+        }
 #endif
 
 #if !USE_SYSLOG
-	#define log_close()
+	#define log_close(fd) \
+        close(fd);
 #else
-	#define log_close() \
+	#define log_close(fd) \
 		closelog();
 #endif
 
