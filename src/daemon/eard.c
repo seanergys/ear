@@ -324,8 +324,8 @@ void eard_exit(uint restart)
 
 void reopen_log()
 {
-	close(fd_my_log);
-	fd_my_log = create_log(my_cluster_conf.install.dir_temp,"eard");
+	log_close(fd_my_log);
+	create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
 }
 
 //
@@ -649,7 +649,7 @@ int main(int argc, char *argv[])
 								Usage(argv[0]);
 				}
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
-				fd_my_log = create_log("/tmp", "eard_journal");
+				create_log("/tmp", "eard_journal", fd_my_log);
 
 				// We get nodename to create per_node files
 				if (gethostname(nodename, sizeof(nodename)) < 0) {
@@ -730,7 +730,7 @@ int main(int argc, char *argv[])
 				create_tmp(ear_tmp);
 				if (my_cluster_conf.eard.use_log) {
 					verbose(VEARD_INIT,"Creating log file");
-					fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
+					create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
 				}
 				set_verbose_variables();
 
