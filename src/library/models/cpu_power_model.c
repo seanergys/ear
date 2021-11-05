@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -33,11 +33,12 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <daemon/shared_configuration.h>
 
+extern uint node_mgr_index;
 
 typedef struct cpu_power_model_symbols {
   state_t (*init)       (settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch );
 	state_t (*status)     ();
-  state_t (*project)    (lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr);
+  state_t (*project)    (lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, uint who);
 } cpu_power_models_sym_t;
 
 
@@ -53,8 +54,9 @@ static const char     *cpu_power_models_syms_nam[] = {
 };
 static conf_install_t copy_conf;
 static architecture_t copy_arch;
+static settings_conf_t * copy_settings;
 
-state_t cpu_power_model_load(uint user_type,conf_install_t *data,architecture_t *arch_desc)
+state_t cpu_power_model_load(settings_conf_t *libconf,conf_install_t *data,architecture_t *arch_desc)
 {
   char basic_path[SZ_PATH_INCOMPLETE];
   char *obj_path = getenv(SCHED_EAR_CPU_POWER_MODEL);
@@ -62,7 +64,7 @@ state_t cpu_power_model_load(uint user_type,conf_install_t *data,architecture_t 
 	state_t st;
 
 
-	if (((obj_path == NULL) && (ins_path == NULL)) || (user_type != AUTHORIZED))
+	if (((obj_path == NULL) && (ins_path == NULL)) || (libconf->user_type != AUTHORIZED))
   { 
     xsnprintf(basic_path,sizeof(basic_path), "%s/models/cpu_power_model_intel_skl.so", data->dir_plug);
     obj_path = basic_path;
@@ -77,13 +79,14 @@ state_t cpu_power_model_load(uint user_type,conf_install_t *data,architecture_t 
 	if (st == EAR_SUCCESS) cpu_power_model_loaded = 1;
 	memcpy(&copy_conf, data, sizeof(conf_install_t));
 	memcpy(&copy_arch, arch_desc, sizeof(architecture_t));
+	copy_settings = libconf;
 
 	return st;
 }
 
-state_t cpu_power_models_init(settings_conf_t *lib_conf)
+state_t cpu_power_model_init()
 {
-	if (cpu_power_models_syms_fun.init != NULL) cpu_power_models_syms_fun.init(lib_conf, &copy_conf, &copy_arch);
+	if (cpu_power_models_syms_fun.init != NULL) cpu_power_models_syms_fun.init(copy_settings, &copy_conf, &copy_arch);
 	return EAR_SUCCESS;
 }
 
@@ -96,7 +99,7 @@ state_t cpu_power_model_status()
 
 state_t cpu_power_model_project(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
-	if (cpu_power_models_syms_fun.project != NULL) cpu_power_models_syms_fun.project(data, sig, nmgr);
+	if (cpu_power_models_syms_fun.project != NULL) cpu_power_models_syms_fun.project(data, sig, nmgr, node_mgr_index);
 	return EAR_SUCCESS;
 }
 

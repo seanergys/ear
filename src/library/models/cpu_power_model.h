@@ -24,8 +24,8 @@
 #include <library/common/library_shared_data.h>
 
 
-state_t cpu_power_model_load(uint user_type,conf_install_t *data,architecture_t *arch_desc);
-state_t cpu_power_model_init(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch);
+state_t cpu_power_model_load(settings_conf_t *libconf,conf_install_t *data,architecture_t *arch_desc);
+state_t cpu_power_model_init();
 state_t cpu_power_model_status();
 state_t cpu_power_model_project(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr);
 

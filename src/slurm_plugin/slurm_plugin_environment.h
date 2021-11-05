@@ -121,6 +121,7 @@ struct variables_s {
 	varnames_t job_nodn;
 	varnames_t step_nodl;
 	varnames_t step_nodn;
+  varnames_t cpus_nodn;
 	varnames_t task_pid;
 	varnames_t ctx_last;
 	varnames_t was_sbac;
@@ -162,6 +163,7 @@ struct variables_s {
 .job_nodn  = { .rem = "SLURM_JOB_NUM_NODES", .ear = "" },
 .step_nodl = { .rem = "SLURM_STEP_NODELIST", .ear = "" },
 .step_nodn = { .rem = "SLURM_STEP_NUM_NODES",.ear = "" },
+.cpus_nodn = { .rem = "SLURM_CPUS_ON_NODE"  ,.ear = "" },
 .task_pid  = { .rem =  FLAG_TASK_PID,        .ear = "" },
 .ctx_last  = { .rem = "SLURM_ERLAST",        .ear = "" },
 .was_sbac  = { .rem = "SLURM_ERSBAC",        .ear = "" },

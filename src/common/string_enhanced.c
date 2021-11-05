@@ -112,7 +112,7 @@ int tprintf_init(int _fd, int _mode, char *_format)
 
 int tprintf_init_v2(int v, int mode, char *format)
 {
-    tprintf_init(-v-1, mode, format);
+    return tprintf_init(-v-1, mode, format);
 }
 
 int tprintf_format()

@@ -58,6 +58,7 @@
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
 #include <library/models/models.h>
+#include <library/models/cpu_power_model.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
 #include <library/metrics/signature_ext.h>
@@ -1168,6 +1169,14 @@ void ear_init()
     debug("init_power_models");
     init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
     verbose_master(VEAR_INIT,"Policies and models initialized");	
+
+    if (cpu_power_model_load(system_conf, &system_conf->installation, &arch_desc) == EAR_SUCCESS){
+			verbose_master(VEAR_INIT, "CPU power models loaded");
+		}
+		if (cpu_power_model_init() == EAR_SUCCESS){
+			verbose_master(VEAR_INIT, "CPU power model initialized");
+		}
+		
 
     if (ext_def_freq==0){
         EAR_default_frequency=system_conf->def_freq;

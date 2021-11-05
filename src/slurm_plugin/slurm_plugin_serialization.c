@@ -182,7 +182,7 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
 	uint32_t uitem;
-	char *cnum_cpus;
+	char cnum_cpus[SZ_NAME_SHORT];
 
 	memset(app,0,sizeof(new_job_req_t));
 
@@ -193,8 +193,11 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.group_id, sd->job.user.group);
 	strcpy(app->job.user_acc, sd->job.user.account);
 
-	cnum_cpus = getenv("SLURM_CPUS_ON_NODE");
-	if (cnum_cpus != NULL) app->job.procs = atoi(cnum_cpus);
+  if (getenv_agnostic(sp, Var.cpus_nodn.rem, cnum_cpus, SZ_NAME_SHORT)) {
+		app->job.procs = atoi(cnum_cpus);
+  }
+
+	plug_verbose(sp, 2, "%lu cpus detected on plugin", app->job.procs);
 	
 	if (spank_get_item (sp, S_JOB_ID, (int *)&uitem) == ESPANK_SUCCESS) {
 		app->job.id = (ulong) uitem;
