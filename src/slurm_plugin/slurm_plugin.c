@@ -184,6 +184,11 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
     if (!plug_context_is(sp, Context.remote)) {
         return ESPANK_SUCCESS;
     }
+	// Components are special environment variables to control the plugin
+	// behaviour and are treated differently. 
+	if (plug_deserialize_components(sp) != ESPANK_SUCCESS) {
+		return ESPANK_SUCCESS;
+	}
     if (plug_deserialize_task(sp, &sd) != ESPANK_SUCCESS) {
         return plug_component_setenabled(sp, Component.plugin, 0);
     }

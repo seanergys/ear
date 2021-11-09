@@ -177,16 +177,12 @@ int plug_print_application(spank_t sp, new_job_req_t *app)
 int plug_read_application(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_read_application");
-	#if 0
-	int num_args;
-  char **args;
-	#endif
 	
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
-	uint32_t uitem;
 	char cnum_cpus[SZ_NAME_SHORT];
+	uint32_t uitem;
 
 	memset(app,0,sizeof(new_job_req_t));
 
@@ -197,9 +193,9 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.group_id, sd->job.user.group);
 	strcpy(app->job.user_acc, sd->job.user.account);
 
-  if (getenv_agnostic(sp, Var.cpus_nodn.rem, cnum_cpus, SZ_NAME_SHORT)) {
-		app->job.procs = atoi(cnum_cpus);
-  }
+    if (getenv_agnostic(sp, Var.cpus_nodn.rem, cnum_cpus, SZ_NAME_SHORT)) {
+        app->job.procs = atoi(cnum_cpus);
+    }
 
 	plug_verbose(sp, 2, "%lu cpus detected on plugin", app->job.procs);
 	
@@ -213,13 +209,6 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	} else {
 		app->job.step_id = NO_VAL;
 	}
-	#if 0	
-	if (spank_get_item (sp, S_JOB_ARGV, (int *)&num_args, (char ***)&args) == ESPANK_SUCCESS) {
-		for (uint i = 0; i < num_args; i ++){
-			plug_verbose(sp, 3, "Arg[%d] = %s", i, args[i]);
-		}
-	}
-	#endif
 	if (!getenv_agnostic(sp, Var.name_app.rem, app->job.app_id, GENERIC_NAME)) {
 		strcpy(app->job.app_id, "");
 	}
@@ -333,7 +322,7 @@ int plug_print_items(spank_t sp)
     }
 
     #define print_item(word, cast, item, format) \
-        if (spank_get_item (sp, word, cast item) == ESPANK_SUCCESS) { \
+        if (spank_get_item (sp, word, cast &(item)) == ESPANK_SUCCESS) { \
             plug_verbose(sp, 2, #word " = '" format "'", item); \
         }
 
@@ -341,41 +330,55 @@ int plug_print_items(spank_t sp)
     ullong item64u;
     uint   item32u;
 
-    print_item(S_JOB_UID             ,    (uid_t *), &item32u, "%d");
-    print_item(S_JOB_GID             ,    (gid_t *), &item32u, "%d");
-    print_item(S_JOB_ID              , (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_STEPID          , (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_NNODES          , (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_NODEID          , (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_LOCAL_TASK_COUNT, (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_TOTAL_TASK_COUNT, (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_NCPUS           , (uint16_t *), &item32u, "%hu");
-    print_item(S_TASK_ID             ,      (int *), &item32u, "%d");
-    print_item(S_TASK_GLOBAL_ID      , (uint32_t *), &item32u, "%u");
-    print_item(S_TASK_PID            ,    (pid_t *), &item32u, "%u");
-    print_item(S_SLURM_VERSION       ,    (char **), &itemStr, "%s");
-    print_item(S_SLURM_VERSION_MAJOR ,    (char **), &itemStr, "%s");
-    print_item(S_SLURM_VERSION_MINOR ,    (char **), &itemStr, "%s");
-    print_item(S_SLURM_VERSION_MICRO ,    (char **), &itemStr, "%s");
-    print_item(S_STEP_CPUS_PER_TASK  , (uint32_t *), &item32u, "%u");
-    print_item(S_JOB_ALLOC_CORES     ,    (char **), &itemStr, "%s");
-    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), &item64u, "%s");
-    print_item(S_STEP_ALLOC_CORES    ,    (char **), &itemStr, "%s");
-    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), &item64u, "%s");
-    print_item(S_SLURM_RESTART_COUNT , (uint32_t *), &item32u, "%u");
-    #if 0
-    if (spank_get_item (sp, S_JOB_ID, (int *) &item32u) == ESPANK_SUCCESS) {
-        plug_verbose(sp, 2, "%s = '%s'", var, buffer);
-    }
-    S_JOB_ARGV
-    S_JOB_ENV
-    S_TASK_EXIT_STATUS
-    S_JOB_PID_TO_GLOBAL_ID
-    S_JOB_PID_TO_LOCAL_ID
-    S_JOB_LOCAL_TO_GLOBAL_ID
-    S_JOB_GLOBAL_TO_LOCAL_ID
-    S_JOB_SUPPLEMENTARY_GIDS
-    #endif
+    print_item(S_JOB_UID             ,    (uid_t *), item32u, "%d");
+    print_item(S_JOB_GID             ,    (gid_t *), item32u, "%d");
+    print_item(S_JOB_ID              , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_STEPID          , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_NNODES          , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_NODEID          , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_LOCAL_TASK_COUNT, (uint32_t *), item32u, "%u");
+    print_item(S_JOB_TOTAL_TASK_COUNT, (uint32_t *), item32u, "%u");
+    print_item(S_JOB_NCPUS           , (uint16_t *), item32u, "%hu");
+    print_item(S_TASK_ID             ,      (int *), item32u, "%d");
+    print_item(S_TASK_GLOBAL_ID      , (uint32_t *), item32u, "%u");
+    print_item(S_TASK_PID            ,    (pid_t *), item32u, "%u");
+    print_item(S_SLURM_VERSION       ,    (char **), itemStr, "%s");
+    print_item(S_SLURM_VERSION_MAJOR ,    (char **), itemStr, "%s");
+    print_item(S_SLURM_VERSION_MINOR ,    (char **), itemStr, "%s");
+    print_item(S_SLURM_VERSION_MICRO ,    (char **), itemStr, "%s");
+    print_item(S_STEP_CPUS_PER_TASK  , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_ALLOC_CORES     ,    (char **), itemStr, "%s");
+    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), item64u, "%s");
+    print_item(S_STEP_ALLOC_CORES    ,    (char **), itemStr, "%s");
+    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), item64u, "%s");
+    print_item(S_SLURM_RESTART_COUNT , (uint32_t *), item32u, "%u");
+    
+	#if 0
+    int num_args;
+    char **args;
+	
+    if (spank_get_item (sp, S_JOB_ARGV, (int *) &num_args, (char ***) &args) == ESPANK_SUCCESS) {
+        uint i;
+		for (i = 0; i < num_args; i++){
+			plug_verbose(sp, 2, "Arg[%d] = %s", i, args[i]);
+		}
+	}
+	#endif
+ 
+    #define print_item2(word, item1, cast2, item2, format) \
+        if (spank_get_item (sp, word, item1, cast2 &(item2)) == ESPANK_SUCCESS) { \
+            plug_verbose(sp, 2, #word " = '" format "'", item2); \
+        }
+
+    print_item2(S_JOB_PID_TO_GLOBAL_ID, getpid(), (uint32_t *), item32u, "%u");    
+    print_item2(S_JOB_PID_TO_LOCAL_ID , getpid(), (uint32_t *), item32u, "%u");    
+
+    // Unused:
+    //  - S_JOB_ARGV
+    //  - S_TASK_EXIT_STATUS
+    //  - S_JOB_LOCAL_TO_GLOBAL_ID
+    //  - S_JOB_GLOBAL_TO_LOCAL_ID
+    //  - S_JOB_SUPPLEMENTARY_GIDS
 
     return ESPANK_SUCCESS;
 }
@@ -718,4 +721,5 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
         }
         plug_verbose(sp, 2, "%s", buffer1);
     }
+	return ESPANK_SUCCESS;
 }
