@@ -187,9 +187,9 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
     if (plug_deserialize_task(sp, &sd) != ESPANK_SUCCESS) {
         return plug_component_setenabled(sp, Component.plugin, 0);
     }
-    if (sd.subject.is_master) {
+    //if (sd.subject.is_master) {
         plug_print_items(sp);
-    }
+    //}
 	
 	return (ESPANK_SUCCESS);
 }

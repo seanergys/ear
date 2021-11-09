@@ -15,8 +15,12 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define _GNU_SOURCE
+
 #include <pwd.h>
 #include <grp.h>
+#include <sched.h>
+#include <sys/sysinfo.h>
 #include <common/system/file.h>
 #include <slurm_plugin/slurm_plugin.h>
 #include <slurm_plugin/slurm_plugin_environment.h>
@@ -322,6 +326,8 @@ int plug_print_variables(spank_t sp)
 
 int plug_print_items(spank_t sp)
 {
+	plug_verbose(sp, 2, "function plug_print_items");
+    
     if (plug_verbosity_test(sp, 4) != 1) {
         return ESPANK_SUCCESS;
     }
@@ -335,29 +341,28 @@ int plug_print_items(spank_t sp)
     ullong item64u;
     uint   item32u;
 
-    print_item(S_JOB_UID             ,    (uid_t *),  item32u, "%d");
-    print_item(S_JOB_GID             ,    (gid_t *),  item32u, "%d");
-    print_item(S_JOB_ID              , (uint32_t *),  item32u, "%u");
-    print_item(S_JOB_STEPID          , (uint32_t *),  item32u, "%u");
-    print_item(S_JOB_NNODES          , (uint32_t *),  item32u, "%u");
-    print_item(S_JOB_NODEID          , (uint32_t *),  item32u, "%u");
-    print_item(S_JOB_LOCAL_TASK_COUNT, (uint32_t *),  item32u, "%u");
-    print_item(S_JOB_TOTAL_TASK_COUNT, (uint32_t *),  item32u, "%u");
-    print_item(S_JOB_NCPUS           , (uint16_t *),  item32u, "%hu");
-    print_item(S_TASK_ID             ,      (int *),  item32u, "%d");
-    print_item(S_TASK_GLOBAL_ID      , (uint32_t *),  item32u, "%u");
-    print_item(S_TASK_PID            ,    (pid_t *),  item32u, "%u");
+    print_item(S_JOB_UID             ,    (uid_t *), &item32u, "%d");
+    print_item(S_JOB_GID             ,    (gid_t *), &item32u, "%d");
+    print_item(S_JOB_ID              , (uint32_t *), &item32u, "%u");
+    print_item(S_JOB_STEPID          , (uint32_t *), &item32u, "%u");
+    print_item(S_JOB_NNODES          , (uint32_t *), &item32u, "%u");
+    print_item(S_JOB_NODEID          , (uint32_t *), &item32u, "%u");
+    print_item(S_JOB_LOCAL_TASK_COUNT, (uint32_t *), &item32u, "%u");
+    print_item(S_JOB_TOTAL_TASK_COUNT, (uint32_t *), &item32u, "%u");
+    print_item(S_JOB_NCPUS           , (uint16_t *), &item32u, "%hu");
+    print_item(S_TASK_ID             ,      (int *), &item32u, "%d");
+    print_item(S_TASK_GLOBAL_ID      , (uint32_t *), &item32u, "%u");
+    print_item(S_TASK_PID            ,    (pid_t *), &item32u, "%u");
     print_item(S_SLURM_VERSION       ,    (char **), &itemStr, "%s");
     print_item(S_SLURM_VERSION_MAJOR ,    (char **), &itemStr, "%s");
     print_item(S_SLURM_VERSION_MINOR ,    (char **), &itemStr, "%s");
     print_item(S_SLURM_VERSION_MICRO ,    (char **), &itemStr, "%s");
-    print_item(S_STEP_CPUS_PER_TASK  , (uint32_t *),  item32u, "%u");
+    print_item(S_STEP_CPUS_PER_TASK  , (uint32_t *), &item32u, "%u");
     print_item(S_JOB_ALLOC_CORES     ,    (char **), &itemStr, "%s");
     print_item(S_JOB_ALLOC_MEM       , (uint64_t *), &item64u, "%s");
     print_item(S_STEP_ALLOC_CORES    ,    (char **), &itemStr, "%s");
     print_item(S_JOB_ALLOC_MEM       , (uint64_t *), &item64u, "%s");
-    print_item(S_SLURM_RESTART_COUNT , (uint32_t *),  item32u, "%u");
-
+    print_item(S_SLURM_RESTART_COUNT , (uint32_t *), &item32u, "%u");
     #if 0
     if (spank_get_item (sp, S_JOB_ID, (int *) &item32u) == ESPANK_SUCCESS) {
         plug_verbose(sp, 2, "%s = '%s'", var, buffer);
@@ -676,6 +681,8 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 
 int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
 {
+	plug_verbose(sp, 2, "function plug_deserialize_task");
+
     cpu_set_t mask;
     int cpus_count;
     int cpu_set;
