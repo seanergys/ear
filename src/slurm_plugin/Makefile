@@ -44,7 +44,7 @@ plug_HDRS = \
 
 ######## RULES
 
-all: $(erun_BINS) $(plug_BINS)
+all: $(plug_BINS)  $(erun_BINS)
 
 earplug.so: $(plug_SRCS) $(plug_HDRS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared -o $@ $(plug_SRCS) $(plug_OBJS) $(LDFLAGS)

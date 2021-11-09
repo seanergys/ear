@@ -34,19 +34,7 @@
 
 #include <metrics/flops/flops.h>
 
-#define IPC_COEFF (double)11.40897054
-#define GBS_COEFF (double)0.601652592
-#define VPI_COEFF (double)28.21247619
-#define F_COEFF   (double)9.26892E-05
-#define INTERCEPT (double)-28.85109789
-
-typedef struct intel_skl{
-	double ipc;
-	double gbs;	
-	double vpi;
-	double f;
-	double inter;
-}intel_skl_t;
+#include <library/models/cpu_power_model_intel_skl.h>
 
 static intel_skl_t my_node_coeffs;
 static uint arch_model_loaded = 0;
@@ -134,7 +122,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 				  L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
 				  ipc[node_process] = 1/nmgr[j].shsig[lp].sig.CPI;
 				  tpi[node_process] = (double)L3[node_process]/(double)nmgr[j].shsig[lp].sig.instructions;
-				  avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F] + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D];
+				  avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F]/WEIGHT_256F + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D]/WEIGHT_256D + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F]/WEIGHT_512F + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D]/WEIGHT_512D;
 				  vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
 				  f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
 				  node_L3 += L3[node_process];

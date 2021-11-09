@@ -191,6 +191,7 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
 	// By default is error
 	cpu_set = -1;
 	task = -1;
+	printenv_agnostic(sp, Var.cpus_nodn.rem);
 	// Local task
 	if (!getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
 		return ESPANK_SUCCESS;

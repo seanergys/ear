@@ -173,16 +173,15 @@ int plug_print_application(spank_t sp, new_job_req_t *app)
 int plug_read_application(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_read_application");
-	#if 0
 	int num_args;
   char **args;
-	#endif
+  char *args_cpus;
 	
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
 	uint32_t uitem;
-	char cnum_cpus[SZ_NAME_SHORT];
+	int ncpus;
 
 	memset(app,0,sizeof(new_job_req_t));
 
@@ -193,11 +192,6 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.group_id, sd->job.user.group);
 	strcpy(app->job.user_acc, sd->job.user.account);
 
-  if (getenv_agnostic(sp, Var.cpus_nodn.rem, cnum_cpus, SZ_NAME_SHORT)) {
-		app->job.procs = atoi(cnum_cpus);
-  }
-
-	plug_verbose(sp, 2, "%lu cpus detected on plugin", app->job.procs);
 	
 	if (spank_get_item (sp, S_JOB_ID, (int *)&uitem) == ESPANK_SUCCESS) {
 		app->job.id = (ulong) uitem;
@@ -215,7 +209,14 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 			plug_verbose(sp, 3, "Arg[%d] = %s", i, args[i]);
 		}
 	}
+  if (spank_get_item (sp, S_JOB_NCPUS, (int *)&ncpus) == ESPANK_SUCCESS) {
+		plug_verbose(sp, 3, "NumCPUS %d", ncpus);
+	}
+  if (spank_get_item (sp, S_STEP_ALLOC_CORES, (char **)&args_cpus) == ESPANK_SUCCESS) {
+  	plug_verbose(sp, 3, "Arg = %s", args_cpus);
+  }
 	#endif
+	
 	if (!getenv_agnostic(sp, Var.name_app.rem, app->job.app_id, GENERIC_NAME)) {
 		strcpy(app->job.app_id, "");
 	}
@@ -280,6 +281,7 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.learning.loc);
 	printenv_agnostic(sp, Var.tag.loc);
 	printenv_agnostic(sp, Var.path_usdb.loc);
+	printenv_agnostic(sp, Var.cpus_nodn.rem);
 	//printenv_agnostic(sp, Var.path_trac.loc);
 	printenv_agnostic(sp, Var.version.loc);
 	//printenv_agnostic(sp, Var.gm_host.loc);
@@ -428,6 +430,12 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	getenv_agnostic(sp, Var.user.rem,      sd->job.user.user,    SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.group.rem,     sd->job.user.group,   SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.account.rem,   sd->job.user.account, SZ_NAME_MEDIUM);
+
+  if (getenv_agnostic(sp, Var.cpus_nodn.rem, buffer1, SZ_BUFFER_EXTRA)) {
+    sd->job.app.job.procs = atoi(buffer1);
+  }
+  plug_verbose(sp, 2, "%lu cpus detected on plugin", sd->job.app.job.procs);
+
 
 	// Subject
 	if (isenv_agnostic(sp, Var.ctx_last.rem, Constring.srun)) {
