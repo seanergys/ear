@@ -24,13 +24,15 @@
         exit(0); \
     }
 
+// general
 // mgt_cpufreq
 static pstate_t *mcpu_available_list;
 static pstate_t *mcpu_current_list;
 static uint     *mcpu_set_list;
-static uint      mcpu_available_count;
+       uint      mcpu_available_count;
 static uint      mcpu_devs_count;
 static uint      mcpu_api;
+static uint      mcpu_nominal_pstate;
 // mgt_imcfreq
 static pstate_t *mimc_available_list;
 static pstate_t *mimc_current_list;
@@ -39,6 +41,7 @@ static uint      mimc_available_count;
 static uint      mimc_devs_count;
 static uint      mimc_api;
 
+// TODO: tp may be a topology_t*, where it is declared?
 void metrics_fresh_init()
 {
     // Load
@@ -59,15 +62,13 @@ void metrics_fresh_init()
     // Current list allocation
     sa(mgt_cpufreq_data_alloc(&mcpu_current_list, &mcpu_set_list));
     sa(mgt_imcfreq_data_alloc(&mimc_current_list, &mimc_set_list));
+    // Nominal CPU P_STATE
+    sa(mgt_cpufreq_get_nominal(no_ctx, &mcpu_nominal_pstate));
 }
 
 void metrics_fresh_dispose()
 {
+    // CPU
     sa(mgt_cpufreq_dispose(no_ctx));
     sa(mgt_imcfreq_dispose(no_ctx));
-
 }
-
-#ifdef test
-main();
-#endif
