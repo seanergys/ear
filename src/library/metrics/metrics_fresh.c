@@ -15,46 +15,31 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <library/common/verbose_lib.h>
 #include <library/metrics/metrics_fresh.h>
 
 // state assert
 #define sa(function) \
-    if (state_fail(f)) { \
-        serror(#f " FAILED"); \
+    if (state_fail(function)) { \
+        serror(#function " FAILED"); \
         exit(0); \
     }
 
-// general
-// mgt_cpufreq
-static pstate_t *mcpu_available_list;
-static pstate_t *mcpu_current_list;
-static uint     *mcpu_set_list;
-       uint      mcpu_available_count;
-static uint      mcpu_devs_count;
-static uint      mcpu_api;
-static uint      mcpu_nominal_pstate;
-// mgt_imcfreq
-static pstate_t *mimc_available_list;
-static pstate_t *mimc_current_list;
-static uint     *mimc_set_list;
-static uint      mimc_available_count;
-static uint      mimc_devs_count;
-static uint      mimc_api;
-
 typedef struct metstatic_s {
-    pstate_t  cpu_avail_list;
+    pstate_t *cpu_avail_list;
     uint      cpu_avail_count;
     pstate_t *cpu_curr_list;
     uint      cpu_devs_count;
-    pstate_t  cpu_nominal_idx;
+    uint      cpu_nominal_idx;
     uint      cpu_api;
     pstate_t *imc_avail_list;
+    uint      imc_avail_count;
     pstate_t *imc_curr_list;
     uint      imc_devs_count;
     uint      imc_api;
 } metstatic_t;
 
-struct metstatic_t m;
+metstatic_t m;
 
 const metstatic_t *metstatic_get()
 {
@@ -86,10 +71,10 @@ void metrics_fresh_init(topology_t *tp)
     // Nominal CPU P_STATE
     sa(mgt_cpufreq_get_nominal(no_ctx, &m.cpu_nominal_idx));
 
-    verbose_master(2, "CPUFREQ available list of frequencies:");
     pstate_tostr(m.cpu_avail_list, m.cpu_avail_count, buffer, SZ_BUFFER_EXTRA);
-    verbose_master(2, "IMCFREQ available list of frequencies:");
+    verbose(2, "CPUFREQ available list of frequencies:\n%s", buffer);
     pstate_tostr(m.imc_avail_list, m.imc_avail_count, buffer, SZ_BUFFER_EXTRA);
+    verbose(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 }
 
 void metrics_fresh_dispose()

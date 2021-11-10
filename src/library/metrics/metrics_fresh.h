@@ -18,6 +18,9 @@
 #ifndef LIBRARY_METRICS_FRESH_H
 #define LIBRARY_METRICS_FRESH_H
 
+#include <common/hardware/topology.h>
+#include <management/cpufreq/cpufreq.h>
+#include <management/imcfreq/imcfreq.h>
 #include <metrics/io/io.h>
 #include <library/common/library_shared_data.h>
 
