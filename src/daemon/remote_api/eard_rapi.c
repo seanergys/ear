@@ -458,7 +458,7 @@ void eards_new_job_nodelist(new_job_req_t *new_job, uint port, char *net_ext, ch
     debug("eards_new_job");
     command.nodes = ips;
     command.num_nodes = num_nodes;
-	command.req=EAR_RC_NEW_JOB;
+	command.req=EAR_RC_NEW_JOB_LIST;
     command.time_code = time(NULL);
 	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
     send_command_nodelist(&command, &conf);
@@ -473,7 +473,7 @@ void eards_new_job_iplist(new_job_req_t *new_job, cluster_conf_t *my_cluster_con
     debug("eards_new_job");
     command.nodes = ips;
     command.num_nodes = num_ips;
-	command.req=EAR_RC_NEW_JOB;
+	command.req=EAR_RC_NEW_JOB_LIST;
     command.time_code = time(NULL);
 	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
     send_command_nodelist(&command, my_cluster_conf);
@@ -498,7 +498,7 @@ void eards_end_job_nodelist(job_id jid, job_id sid, uint port, char *net_ext, ch
     debug("eards_end_job");
     command.nodes = ips;
     command.num_nodes = num_nodes;
-    command.req=EAR_RC_END_JOB;
+    command.req=EAR_RC_END_JOB_LIST;
     command.time_code = time(NULL);
 	command.my_req.end_job.jid=jid;
 	command.my_req.end_job.sid=sid;
@@ -514,7 +514,7 @@ void eards_end_job_iplist(job_id jid, job_id sid, cluster_conf_t *my_cluster_con
     debug("eards_end_job");
     command.nodes = ips;
     command.num_nodes = num_ips;
-    command.req=EAR_RC_END_JOB;
+    command.req=EAR_RC_END_JOB_LIST;
     command.time_code = time(NULL);
 	command.my_req.end_job.jid=jid;
 	command.my_req.end_job.sid=sid;

@@ -137,7 +137,7 @@ static int set_powercap_value(uint domain,uint limit)
   char c_date[128];
 	int i;
   if (limit == my_pc_opt.current_pc) return EAR_SUCCESS;
-  verbose(0,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
+  verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);

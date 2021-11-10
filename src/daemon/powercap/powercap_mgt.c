@@ -661,7 +661,7 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 #endif
     if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) return;
     if (pdomain->platform > pmgt_limit){
-        verbose(1,"%s Warning! we are over the limit: Limit %u Power %u%s",COL_RED,pmgt_limit,pdomain->platform,COL_CLR);
+        verbose(VEARD_PC,"%s Warning! we are over the limit: Limit %u Power %u%s",COL_RED,pmgt_limit,pdomain->platform,COL_CLR);
         float excess = ((float)(pdomain->platform - pmgt_limit))/(float)pmgt_limit;
         for (i=0;i< NUM_DOMAINS; i++){
             if (pdomains[i] > 0)
