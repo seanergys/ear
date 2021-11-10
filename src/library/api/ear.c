@@ -1063,29 +1063,13 @@ void ear_init()
     arch_desc.max_freq_avx512=system_conf->max_avx512_freq;
     arch_desc.max_freq_avx2=system_conf->max_avx2_freq;
 
-    // Frequencies
-    ulong *freq_list;
+    // Getting frequencies from EARD
     uint freq_count;
 
-    // Getting frequencies from EARD
     debug("initializing frequencies");
     get_frequencies_path(get_ear_tmp(), app_mgt_path);
     debug("looking for frequencies in '%s'", app_mgt_path);
-    freq_list = attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
-    freq_count = freq_count / sizeof(ulong);
-
-    // Initializing API in user mode	: We should move this to library/management
-    if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
-			for (uint i=0;i<freq_count;i++){
-					verbose_master(2,"Freq[%d] = %lu",i,freq_list[i]);
-			}
-			if ((st = mgt_cpufreq_get_api(&mgt_cpufreq_api)) == EAR_SUCCESS){
-				char mgt_cpufreq_api_text[64];
-				apis_tostr(mgt_cpufreq_api, mgt_cpufreq_api_text, sizeof(mgt_cpufreq_api_text));
-				verbose_master(2,"mgt_cpufreq API %s",mgt_cpufreq_api_text);
-			}
-		
-		}
+    attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
     dettach_frequencies_shared_area();
     // You can utilize now the frequency API
     arch_desc.pstates = frequency_get_num_pstates();

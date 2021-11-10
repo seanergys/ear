@@ -41,29 +41,55 @@ static uint      mimc_available_count;
 static uint      mimc_devs_count;
 static uint      mimc_api;
 
-// TODO: tp may be a topology_t*, where it is declared?
-void metrics_fresh_init()
+typedef struct metstatic_s {
+    pstate_t  cpu_avail_list;
+    uint      cpu_avail_count;
+    pstate_t *cpu_curr_list;
+    uint      cpu_devs_count;
+    pstate_t  cpu_nominal_idx;
+    uint      cpu_api;
+    pstate_t *imc_avail_list;
+    pstate_t *imc_curr_list;
+    uint      imc_devs_count;
+    uint      imc_api;
+} metstatic_t;
+
+struct metstatic_t m;
+
+const metstatic_t *metstatic_get()
 {
+    return &m;
+}
+
+void metrics_fresh_init(topology_t *tp)
+{
+    char buffer[SZ_BUFFER_EXTRA];
+
     // Load
     sa(mgt_cpufreq_load(tp, EARD));
     sa(mgt_imcfreq_load(tp, EARD));
     // Get API
-    sa(mgt_cpufreq_get_api(&mcpu_api));
-    sa(mgt_imcfreq_get_api(&mimc_api));
+    sa(mgt_cpufreq_get_api(&m.cpu_api));
+    sa(mgt_imcfreq_get_api(&m.imc_api));
     // Init
     sa(mgt_imcfreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));
     // Count (cache does not need)
-    sa(mgt_cpufreq_count_devices(no_ctx, &mcpu_devs_count));
-    sa(mgt_imcfreq_count_devices(no_ctx, &mimc_devs_count));
+    sa(mgt_cpufreq_count_devices(no_ctx, &m.cpu_devs_count));
+    sa(mgt_imcfreq_count_devices(no_ctx, &m.imc_devs_count));
     // Availability
-    sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mcpu_available_list, &mcpu_available_count));
-    sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mimc_available_list, &mimc_available_count));
+    sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpu_avail_list, &m.cpu_avail_count));
+    sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imc_avail_list, &m.imc_avail_count));
     // Current list allocation
-    sa(mgt_cpufreq_data_alloc(&mcpu_current_list, &mcpu_set_list));
-    sa(mgt_imcfreq_data_alloc(&mimc_current_list, &mimc_set_list));
+    sa(mgt_cpufreq_data_alloc(&m.cpu_curr_list, empty));
+    sa(mgt_imcfreq_data_alloc(&m.imc_curr_list, empty));
     // Nominal CPU P_STATE
-    sa(mgt_cpufreq_get_nominal(no_ctx, &mcpu_nominal_pstate));
+    sa(mgt_cpufreq_get_nominal(no_ctx, &m.cpu_nominal_idx));
+
+    verbose_master(2, "CPUFREQ available list of frequencies:");
+    pstate_tostr(m.cpu_avail_list, m.cpu_avail_count, buffer, SZ_BUFFER_EXTRA);
+    verbose_master(2, "IMCFREQ available list of frequencies:");
+    pstate_tostr(m.imc_avail_list, m.imc_avail_count, buffer, SZ_BUFFER_EXTRA);
 }
 
 void metrics_fresh_dispose()
