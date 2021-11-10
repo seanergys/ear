@@ -376,6 +376,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 
         n->powercap_type = my_conf->tags[tag_id].powercap_type;
         n->gpu_def_freq = my_conf->tags[tag_id].gpu_def_freq;
+				strcpy(n->tag, my_conf->tags[tag_id].id);
 
         if (my_conf->tags[tag_id].energy_plugin != NULL && strlen(my_conf->tags[tag_id].energy_plugin) > 0)
             n->energy_plugin = my_conf->tags[tag_id].energy_plugin;
@@ -639,6 +640,7 @@ void set_default_island_conf(node_island_t *isl_conf, uint id)
     isl_conf->backup_ips=NULL;
     isl_conf->num_backups=0;
     isl_conf->num_tags=0;
+    isl_conf->num_specific_tags=0;
     isl_conf->min_sig_power=MIN_SIG_POWER;
     isl_conf->max_sig_power=MAX_SIG_POWER;
     isl_conf->max_error_power=MAX_ERROR_POWER;
@@ -856,6 +858,7 @@ void pointer_swap(void **a, void **b)
 void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def)
 {
     if (conf == NULL || e_def == NULL) return;
+		debug("Removing node with earmg different than %d", e_def->id);
 
     int i, j;
     for (i = 0; i < conf->num_islands; i++)
@@ -864,10 +867,12 @@ void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def)
         {
             if (conf->islands[i].ranges[j].eargm_id != e_def->id) //remove all islands that are not of that eargm
             {
+								debug("Swapping range index %d with %d. target id %d current id %d ", j, conf->islands[i].num_ranges-1, conf->islands[i].ranges[j].eargm_id, e_def->id);
                 conf->islands[i].num_ranges--;
-                pointer_swap((void **)&conf->islands[i].ranges[j], (void **)&conf->islands[i].ranges[conf->islands[i].num_ranges]);
-                if (conf->islands[i].ranges[conf->islands[i].num_ranges].num_tags > 0)
-                    free(conf->islands[i].ranges[conf->islands[i].num_ranges].specific_tags);
+                if (conf->islands[i].ranges[j].num_tags > 0)
+                    free(conf->islands[i].ranges[j].specific_tags);
+								memcpy((void *)&conf->islands[i].ranges[j], (void *)&conf->islands[i].ranges[conf->islands[i].num_ranges], sizeof(node_range_t));
+                // pointer_swap((void *)&conf->islands[i].ranges[j], (void *)&conf->islands[i].ranges[conf->islands[i].num_ranges]);
                 conf->islands[i].ranges = realloc(conf->islands[i].ranges, sizeof(node_range_t)*conf->islands[i].num_ranges);
                 j--; //we reset the counter here (since the new first island might be in the list)
             }

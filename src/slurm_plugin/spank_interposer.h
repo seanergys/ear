@@ -74,6 +74,7 @@ enum spank_item {
 	S_JOB_ID,
 	S_JOB_STEPID,
 	S_TASK_EXIT_STATUS,
+	S_STEP_ALLOC_CORES,
 };
 
 typedef enum spank_item spank_item_t;

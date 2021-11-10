@@ -319,7 +319,7 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
     eargmc->t2=DEFAULT_T2;
     eargmc->energy=DEFAULT_T2*DEFAULT_POWER;
     eargmc->units=1;
-    eargmc->policy=MAXPOWER;
+    eargmc->policy=MAXENERGY;
     eargmc->port=EARGM_PORT_NUMBER;
     eargmc->mode=0;
     eargmc->defcon_limits[0]=85;

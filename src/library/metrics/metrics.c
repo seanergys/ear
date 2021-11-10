@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
-#define INFO_METRICS 0
+#define INFO_METRICS 2
 #define IO_VERB 3
 
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sched.h>
+#include <sys/mman.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -160,17 +161,15 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 {
 	cpu_set_t m;
 	ulong total = 0, total_cpus = 0;
+	ulong lavg, lcpus;
 	int p, c;
 	int ccount = arch_desc.top.cpu_count;
   for (p = 0; p < lib_shared_region->num_processes ; p++)
   {
   	m = sig_shared_region[p].cpu_mask;
-  	for (c = 0 ; c < ccount; c++){
-  		if (CPU_ISSET(c,&m)){
-				total += nodecpuf[c];
-				total_cpus++;
-			}
-		}
+		cpufreq_avgcpufreq_mask(m, nodecpuf, &lavg, &lcpus);
+		total += lavg*lcpus;
+		total_cpus += lcpus;
 	}
 	*avgf = total/total_cpus;
 }
@@ -381,7 +380,7 @@ static void metrics_partial_start()
 				last_elap_sec = 0;
 				/* Per process IO data */
 				if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
-								verbose_master(0,"Warning:IO data not available");
+								verbose_master(2,"Warning:IO data not available");
 				}
 				/* These data is measured only by the master */	
 				if (masters_info.my_master_rank>=0){ 
@@ -820,7 +819,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								signature_copy(&lib_shared_region->job_signature,metrics);
 				}
 				sig_shared_region[my_node_id].period = time_s;
-				signature_print_simple_fd(2, metrics);
+				if (verb_level >= 2) signature_print_simple_fd(2, metrics);
 				verbose(2," ");
 
 				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
@@ -828,6 +827,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				signature_ready(&sig_shared_region[my_node_id],0);
 				verbose(2,"End Compute signature process %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
+				if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+
 }
 
 /**************************** Init function used in ear_init ******************/
@@ -1119,19 +1120,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
-	#if 0
-	debug("Metrics_dispose_init %d",my_node_id);
-	while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
-	metrics_global_stop();
-
-	metrics_compute_signature_data(APP, metrics, 1, procs);
-	/* Waiting for node signatures */
-	verbose_master(2,"Waiting for node signatures");
-	while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
-	estimate_power_and_gbs(&lib_shared_region->node_signature,lib_shared_region,sig_shared_region, node_mgr_job_info, &lib_shared_region->job_signature, PER_JOB, -1);
-	accum_estimations(lib_shared_region,sig_shared_region);
-    #endif
-
     metrics_fresh_dispose();
 
     verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
@@ -1305,14 +1293,18 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	ns->DC_power = 0;
 	ns->GBS 		= 0;
 	ns->avg_f 	= 0;
+	ns->DRAM_power = 0;
+	ns->PCK_power  = 0;
   if (masters_info.my_master_rank >= 0){
 		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 			valid_period = sig_shared_region[lp].sig.valid_time;
-			ns->DC_power += sig_shared_region[lp].sig.accum_energy / valid_period;
-			ns->GBS      += sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024);
-			ns->avg_f    += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
+			ns->DC_power 		+= sig_shared_region[lp].sig.accum_energy / valid_period;
+			ns->DRAM_power 	+= sig_shared_region[lp].sig.accum_dram_energy / valid_period;
+			ns->PCK_power 	+= sig_shared_region[lp].sig.accum_pack_energy / valid_period;
+			ns->GBS      		+= sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024);
+			ns->avg_f    		+= (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
 			tcpus += sig_shared_region[lp].num_cpus;
-			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, valid_period);
+			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
 		}
 		ns->avg_f /= tcpus;
 		verbose_master(2,"AVG  %lu", ns->avg_f);

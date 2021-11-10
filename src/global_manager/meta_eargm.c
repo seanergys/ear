@@ -94,7 +94,7 @@ void print_eargm_actions(eargm_table_t *egm_table)
 {
     int i;
     for (i = 0; i < egm_table->num_eargms; i++) {
-        verbose(VGM, "%sEARGM %d has action %u and value %lu%s", COL_GRE, egm_table->ids[i], egm_table->actions[i], 
+        verbose(VGM, "%sEARGM %d has action %u and value %u%s", COL_GRE, egm_table->ids[i], egm_table->actions[i], 
                                     egm_table->action_values[i], COL_CLR);
     }
 }
@@ -104,7 +104,7 @@ void meta_aggregate_data(eargm_status_t *status, uint num_status)
     int i;
 
     //reset values
-    total_power = total_req = total_freeable = total_extra = total_req_no_extra = total_powercap = total_req_ask_def 0;
+    total_power = total_req = total_freeable = total_extra = total_req_no_extra = total_powercap = total_req_ask_def = 0;
     num_ask_def = num_greedy = num_greedy_no_extra = 0;
 
     //aggregate data

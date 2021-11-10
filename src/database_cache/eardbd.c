@@ -116,7 +116,7 @@ int                     updating;
 int                     dreaming;
 int                     veteran;
 int                     forked;
-int                     forced;
+int                     forced = 0;
 // Extras
 char                   *str_who[2] = { "server", "mirror" };
 int                     verbosity = 0;
@@ -177,7 +177,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verb_master("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-
 
 	/* Reporting plugin */
 	if (state_fail(report_load(conf_clus->install.dir_plug,conf_clus->db_manager.plugins))){
@@ -268,7 +267,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		edb_error("another EARDBD process is currently running");
 	}
 	#endif
-
 	// Server & mirro verbosity
 	verb_master("enabled cache server: %s",                  server_enabled ? "OK": "NO");
 	verb_master("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK": "NO", server_host);
@@ -345,7 +343,7 @@ static void init_sockets(int argc, char **argv, cluster_conf_t *conf_clus)
 	int st3 = (fd3 == -1) + ((fd3 == -1) * (errno3 != 0));
 	int st4 = (fd4 == -1) + ((fd4 == -1) * (errno4 != 0));
 	// Summary header
-	tprintf_init(fderr, STR_MODE_DEF, "18 8 7 10 8 8");
+	tprintf_init_v2(VERB_LEVEL, STR_MODE_DEF, "18 8 7 10 8 8");
 	tprintf("type||port||prot||stat||fd||err");
 	tprintf("----||----||----||----||--||---");
 	// Summary
@@ -539,7 +537,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Verbose
-	tprintf_init(fderr, STR_MODE_DEF, "15 15 11 9 8");
+	tprintf_init_v2(VERB_LEVEL, STR_MODE_DEF, "15 15 11 9 8");
 
 	if(!master_iam) {
 		tprintf_close();

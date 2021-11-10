@@ -125,6 +125,7 @@ void copy_my_node_conf(my_node_conf_t *dest,my_node_conf_t *src)
 	dest->powercap=src->powercap;
   dest->powercap_type=src->powercap_type;
 	dest->gpu_def_freq=src->gpu_def_freq;
+	memcpy(dest->tag, src->tag, strlen(src->tag));
 	
 }
 
@@ -140,8 +141,8 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
 {
     int i;
     if (my_node_conf!=NULL){
-        verbose(VCCONF,"My node: cpus %u max_pstate %lu island %u ip %s ",
-            my_node_conf->cpus,my_node_conf->max_pstate,my_node_conf->island,my_node_conf->db_ip);
+        verbose(VCCONF,"My node: cpus %u max_pstate %lu island %u ip %s tag %s",
+            my_node_conf->cpus,my_node_conf->max_pstate,my_node_conf->island,my_node_conf->db_ip, my_node_conf->tag);
         if (my_node_conf->db_sec_ip!=NULL) {
             verbose(VCCONF,"sec_ip %s ",my_node_conf->db_sec_ip);
         }

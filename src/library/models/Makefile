@@ -2,8 +2,9 @@
 
 modl_BINS = \
     basic_model.so \
-    avx512_model.so 
-modl_OBJS = models.o
+    avx512_model.so \
+		cpu_power_model_intel_skl.so
+modl_OBJS = models.o cpu_power_model.o
 modl_PATH = $(DESTDIR)/lib/plugins/models
 modl_PERM = 0775
 

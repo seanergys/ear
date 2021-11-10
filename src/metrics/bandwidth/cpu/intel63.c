@@ -75,7 +75,7 @@
  *	The registers are just offsets when reading a
  *	PCI device files.
  */
-
+//#define SHOW_DEBUGS 1
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>

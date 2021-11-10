@@ -50,6 +50,7 @@ core_OBJS = \
     common/utils.o \
     metrics/metrics.o \
     models/models.o \
+    models/cpu_power_model.o \
     policies/policy.o \
     policies/common/pc_support.o \
     policies/common/gpu_support.o \

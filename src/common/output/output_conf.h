@@ -24,12 +24,17 @@
 #define VCONNECT  2 //eard_rapi.c
 #define VCONF     0 //eard.c
 #define VEARD     0 //eard.c
+#define VEARD_PC  1
+#define VEARD_INIT 0
+#define VEARD_NMGR 1
+#define VEARD_LAPI 1
 #define VNODEPMON 1 //power monitoring
 #define VJOBPMON  1 //power monitoring
 #define VRAPI     2 //dynamic_configuration
 #define VAPI      2 //eard_api.c
 #define VCHCK     2 //checkpoint
 #define VGM       0 //GM
+#define VGM_PC    0 //GM POWERCAP
 #define VCCONF    0 //cluster_conf
 #define VPRIV     0 //cluster_conf
 #define VMYSQL    0 //mysql

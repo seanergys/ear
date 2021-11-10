@@ -15,8 +15,12 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define _GNU_SOURCE
+
 #include <pwd.h>
 #include <grp.h>
+#include <sched.h>
+#include <sys/sysinfo.h>
 #include <common/system/file.h>
 #include <slurm_plugin/slurm_plugin.h>
 #include <slurm_plugin/slurm_plugin_environment.h>
@@ -177,6 +181,7 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	new_job_req_t *app = &sd->job.app;
 	ulong *freqs = sd->pack.eard.freqs.freqs;
 	int n_freqs = sd->pack.eard.freqs.n_freqs;
+	char cnum_cpus[SZ_NAME_SHORT];
 	uint32_t uitem;
 
 	memset(app,0,sizeof(new_job_req_t));
@@ -187,6 +192,12 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.user_id, sd->job.user.user);
 	strcpy(app->job.group_id, sd->job.user.group);
 	strcpy(app->job.user_acc, sd->job.user.account);
+
+    if (getenv_agnostic(sp, Var.cpus_nodn.rem, cnum_cpus, SZ_NAME_SHORT)) {
+        app->job.procs = atoi(cnum_cpus);
+    }
+
+	plug_verbose(sp, 2, "%lu cpus detected on plugin", app->job.procs);
 	
 	if (spank_get_item (sp, S_JOB_ID, (int *)&uitem) == ESPANK_SUCCESS) {
 		app->job.id = (ulong) uitem;
@@ -198,6 +209,7 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	} else {
 		app->job.step_id = NO_VAL;
 	}
+	
 	if (!getenv_agnostic(sp, Var.name_app.rem, app->job.app_id, GENERIC_NAME)) {
 		strcpy(app->job.app_id, "");
 	}
@@ -262,6 +274,7 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.learning.loc);
 	printenv_agnostic(sp, Var.tag.loc);
 	printenv_agnostic(sp, Var.path_usdb.loc);
+	printenv_agnostic(sp, Var.cpus_nodn.rem);
 	//printenv_agnostic(sp, Var.path_trac.loc);
 	printenv_agnostic(sp, Var.version.loc);
 	//printenv_agnostic(sp, Var.gm_host.loc);
@@ -300,6 +313,76 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.ld_libr.ear);
 
 	return ESPANK_SUCCESS;
+}
+
+int plug_print_items(spank_t sp)
+{
+	plug_verbose(sp, 2, "function plug_print_items");
+    
+    if (plug_verbosity_test(sp, 4) != 1) {
+        return ESPANK_SUCCESS;
+    }
+
+    #define print_item(word, cast, item, format) \
+        if (spank_get_item (sp, word, cast &(item)) == ESPANK_SUCCESS) { \
+            plug_verbose(sp, 2, #word " = '" format "'", item); \
+        }
+
+    char  *itemStr;
+    ullong item64u;
+    uint   item32u;
+
+    print_item(S_JOB_UID             ,    (uid_t *), item32u, "%d");
+    print_item(S_JOB_GID             ,    (gid_t *), item32u, "%d");
+    print_item(S_JOB_ID              , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_STEPID          , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_NNODES          , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_NODEID          , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_LOCAL_TASK_COUNT, (uint32_t *), item32u, "%u");
+    print_item(S_JOB_TOTAL_TASK_COUNT, (uint32_t *), item32u, "%u");
+    print_item(S_JOB_NCPUS           , (uint16_t *), item32u, "%hu");
+    print_item(S_TASK_ID             ,      (int *), item32u, "%d");
+    print_item(S_TASK_GLOBAL_ID      , (uint32_t *), item32u, "%u");
+    print_item(S_TASK_PID            ,    (pid_t *), item32u, "%u");
+    print_item(S_SLURM_VERSION       ,    (char **), itemStr, "%s");
+    print_item(S_SLURM_VERSION_MAJOR ,    (char **), itemStr, "%s");
+    print_item(S_SLURM_VERSION_MINOR ,    (char **), itemStr, "%s");
+    print_item(S_SLURM_VERSION_MICRO ,    (char **), itemStr, "%s");
+    print_item(S_STEP_CPUS_PER_TASK  , (uint32_t *), item32u, "%u");
+    print_item(S_JOB_ALLOC_CORES     ,    (char **), itemStr, "%s");
+    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), item64u, "%llu");
+    print_item(S_STEP_ALLOC_CORES    ,    (char **), itemStr, "%s");
+    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), item64u, "%llu");
+    print_item(S_SLURM_RESTART_COUNT , (uint32_t *), item32u, "%u");
+    
+	#if 0
+    int num_args;
+    char **args;
+	
+    if (spank_get_item (sp, S_JOB_ARGV, (int *) &num_args, (char ***) &args) == ESPANK_SUCCESS) {
+        uint i;
+		for (i = 0; i < num_args; i++){
+			plug_verbose(sp, 2, "Arg[%d] = %s", i, args[i]);
+		}
+	}
+	#endif
+ 
+    #define print_item2(word, item1, cast2, item2, format) \
+        if (spank_get_item (sp, word, item1, cast2 &(item2)) == ESPANK_SUCCESS) { \
+            plug_verbose(sp, 2, #word " = '" format "'", item2); \
+        }
+
+    print_item2(S_JOB_PID_TO_GLOBAL_ID, getpid(), (uint32_t *), item32u, "%u");    
+    print_item2(S_JOB_PID_TO_LOCAL_ID , getpid(), (uint32_t *), item32u, "%u");    
+
+    // Unused:
+    //  - S_JOB_ARGV
+    //  - S_TASK_EXIT_STATUS
+    //  - S_JOB_LOCAL_TO_GLOBAL_ID
+    //  - S_JOB_GLOBAL_TO_LOCAL_ID
+    //  - S_JOB_SUPPLEMENTARY_GIDS
+
+    return ESPANK_SUCCESS;
 }
 
 int plug_deserialize_components(spank_t sp)
@@ -410,6 +493,12 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	getenv_agnostic(sp, Var.user.rem,      sd->job.user.user,    SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.group.rem,     sd->job.user.group,   SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.account.rem,   sd->job.user.account, SZ_NAME_MEDIUM);
+
+  if (getenv_agnostic(sp, Var.cpus_nodn.rem, buffer1, SZ_BUFFER_EXTRA)) {
+    sd->job.app.job.procs = atoi(buffer1);
+  }
+  plug_verbose(sp, 2, "%lu cpus detected on plugin", sd->job.app.job.procs);
+
 
 	// Subject
 	if (isenv_agnostic(sp, Var.ctx_last.rem, Constring.srun)) {
@@ -598,5 +687,47 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 		setenv_agnostic(sp, Var.name_app.ear, buffer1, 1);
 	}
 
+	return ESPANK_SUCCESS;
+}
+
+int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
+{
+	plug_verbose(sp, 2, "function plug_deserialize_task");
+
+    cpu_set_t mask;
+    int cpus_count;
+    int cpu_set;
+    int task;
+    int i;
+
+    // By default is error
+    cpu_set = -1;
+    task    = -1;
+    // Local task
+    if (!getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
+        return ESPANK_SUCCESS;
+    }
+    task = atoi(buffer2);
+    if (!plug_verbosity_test(sp, 2)) {
+        return ESPANK_SUCCESS;
+    }
+    if (task > 0 && !plug_verbosity_test(sp, 3)) {
+        return ESPANK_SUCCESS;
+    }
+    // Getting mask and number of processors
+    CPU_ZERO(&mask);
+    cpus_count = get_nprocs();
+    //
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
+        plug_verbose(sp, 2, "affinity of local task %d: ERROR", task);
+    } else {
+        sprintf(buffer1, "TASK[%d]: ", task);
+        for (i = 0; i < cpus_count; ++i) {
+            cpu_set = CPU_ISSET(i, &mask);
+            strcpy(buffer2, buffer1);
+            xsprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
+        }
+        plug_verbose(sp, 2, "%s", buffer1);
+    }
 	return ESPANK_SUCCESS;
 }

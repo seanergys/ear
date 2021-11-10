@@ -171,6 +171,9 @@ static uint gpu_pc_num_gpus=1;
 static topology_t pc_topology_info;
 /* These functions identies and monitors load changes */
 
+
+extern double rapl_pck_tdps[MAX_PACKAGES];
+extern double rapl_dram_tdps[MAX_PACKAGES];
 #define TDP_CPU 150
 #define TDP_DRAM 30
 #define TDP_GPU 250
@@ -183,8 +186,10 @@ void compute_power_distribution()
 #endif
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
-    bpd_cpu = TDP_CPU;
-    bpd_dram = TDP_DRAM;
+
+		/* CPU and DRAM are read in eard.c during the initialization */
+    bpd_cpu = rapl_pck_tdps[0];
+    bpd_dram = rapl_dram_tdps[0];
 #if USE_GPUS
     if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != MODEL_DUMMY)) bpd_gpu = TDP_GPU;
 #endif
@@ -704,6 +709,14 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 			}
 
 		}
+      /* For each app, we must merge CPUfreq and GPUfreq requested */
+#ifndef SYN_TEST
+    if (domain == DOMAIN_CPU){
+			for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){		
+				if (f[i] == 0) f[i] = frequency_pstate_to_freq(1);
+			}
+		}
+#endif
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler)

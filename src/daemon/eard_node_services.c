@@ -502,7 +502,7 @@ int eard_uncore(eard_head_t *head, int req_fd, int ack_fd)
 		}
 		case DATA_SIZE_UNCORE:
 			ack = sizeof(unsigned long long) * num_uncore_counters;
-			verbose(1,"Uncore size %lu",ack);
+			verbose(VEARD_LAPI,"Uncore size %lu",ack);
 			write(ack_fd, &ack, sizeof(unsigned long));
 			break;
 		default:
@@ -522,7 +522,7 @@ void create_global_connector(char *ear_tmp, char *nodename)
 {
   // Creates a pipe to receive requests for applications. eard creates 1 pipe (per node) and service to receive requests
   sprintf(ear_commreq_global, "%s/.ear_comm.globalreq", ear_tmp);
-  verbose(1,"Global connector placed at %s",ear_commreq_global);
+  verbose(VEARD_LAPI,"Global connector placed at %s",ear_commreq_global);
   // ear_comreq files will be used to send requests from the library to the eard
   if (mknod(ear_commreq_global, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
     if (errno != EEXIST) {
@@ -553,7 +553,7 @@ void connect_service(struct daemon_req *new_req)
   int pid = create_ID(new_job->id, new_job->step_id);
 	uint ID = (uint)pid;
   // Let's check if there is another application
-  verbose(1, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
+  verbose(VEARD_LAPI, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
 
   /* Creates 1 pipe (per node),  jobid and step id to send acks. pid is a combination of jobid and stepid */
   verbose(VEARD + 1, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
@@ -566,7 +566,7 @@ void connect_service(struct daemon_req *new_req)
       error("Error opening slot for new local connection");
   }
   debug("application %d.%lu asks for new connection ", pid,lid);
-	verbose(1,"Opening %s",ear_commack);
+	verbose(VEARD_LAPI,"Opening %s",ear_commack);
   ear_ack_fd = open(ear_commack, O_WRONLY);
   if (ear_ack_fd < 0) {
         error("ERROR while opening ack_private pipe %s (%s)", ear_commack, strerror(errno));
@@ -582,7 +582,7 @@ void connect_service(struct daemon_req *new_req)
     eard_close_comm(-1,ear_ack_fd);
   }
   /* we open the local req pipe */
-	verbose(1,"Opening %s", ear_commreq);
+	verbose(VEARD_LAPI,"Opening %s", ear_commreq);
   ear_req_fd = open(ear_commreq, O_RDONLY);
   if (ear_req_fd < 0){
         error("ERROR while opening req_private pipe %s (%s)", ear_commreq, strerror(errno));
@@ -622,10 +622,10 @@ void eard_close_comm(int req_fd,int ack_fd)
     }
   }else if (req_fd == CLOSE_PIPE){
 		/* SIGPIPE received  in eard */
-		verbose(1,"SIGPIPE received in EARD: PENDING");
+		verbose(VEARD_LAPI,"SIGPIPE received in EARD: PENDING");
 	}else if (req_fd == CLOSE_EARD){
 		/* End eard */
-		verbose(1,"Releasing all the files: PENDING");
+		verbose(VEARD_LAPI,"Releasing all the files: PENDING");
 	}else{ /* this is the normal use case */
     id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
     if (id < 0){
@@ -642,10 +642,10 @@ void eard_close_comm(int req_fd,int ack_fd)
 		verbose(2,"Cleaning files for job %lu/%lu/%lu",jid,sid,lid);
 		verbose(2,"Deleting %s",ear_commack);
 		ret = unlink(ear_commack);
-		if (ret != ENOENT) verbose(1,"Error deleting file %s",strerror(errno));
+		if (ret != ENOENT) verbose(VEARD_LAPI,"Error deleting file %s",strerror(errno));
 		verbose(2,"Deleting %s",ear_commreq);
 		ret = unlink(ear_commreq);
-		if (ret != ENOENT) verbose(1,"Error deleting file %s",strerror(errno));
+		if (ret != ENOENT) verbose(VEARD_LAPI,"Error deleting file %s",strerror(errno));
     was_anonymous = eard_local_conn[id].anonymous;
     if (req_fd != -1){
       close(req_fd);
@@ -765,7 +765,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
 
   switch (head->req_service) {
     case WRITE_APP_SIGNATURE:
-			verbose(1,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
+			verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
       if (!eard_local_conn[con_id].anonymous) powermon_mpi_signature(&req.req_data.app);
       ack = EAR_COM_OK;
       if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
@@ -893,7 +893,7 @@ state_t service_close_by_id(ulong jid,ulong sid)
 	do{
 		i = get_local_connection_by_id(eard_local_conn, jid, sid);
 		if (i >= 0){
-			verbose(1,"Cancelling local connection %d",i);
+			verbose(VEARD_LAPI,"Cancelling local connection %d",i);
 			eard_local_conn[i].cancelled = 1;
 		}
 	}while (i>=0);
@@ -909,7 +909,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 	if (req_fd != global_req_fd){
 		i = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 		if ((i >= 0) && (i < num_local_con) && eard_local_conn[i].cancelled){ 
-			verbose(1, "Local connection %d was cancelled",i);
+			verbose(VEARD_LAPI,"Local connection %d was cancelled",i);
 			return EAR_ERROR;
 		}
 	}
@@ -974,7 +974,7 @@ void service_select(int req_fd, int ack_fd)
 
 	// Hanging up
 	if (state_fail(service_listen(req_fd, ack_fd, &req))) {
-		verbose(1, "Closing local service");
+		verbose(VEARD_LAPI,"Closing local service");
 		service_close(req_fd, ack_fd);
 		return;
 	}
@@ -988,7 +988,6 @@ void service_select(int req_fd, int ack_fd)
 	if(services_mgt_imcfreq(local_req, req_fd, ack_fd)) {
 		return;
 	}
-	
   // Old services
   if (eard_imc(local_req,req_fd,ack_fd)) {
     return;
@@ -1027,9 +1026,9 @@ state_t eard_local_api()
 	
 	num_packs = node_desc.socket_count;
 
-	verbose(1,"Creating node_mgr data");
+	verbose(VEARD_LAPI,"Creating node_mgr data");
 	if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS){
-		verbose(1,"Error creating shared memory region for node_mgr");
+		verbose(VEARD_LAPI,"Error creating shared memory region for node_mgr");
 		exit(1);
 	}
 
@@ -1041,11 +1040,11 @@ state_t eard_local_api()
 	state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
 	state_assert(s, imcfreq_data_alloc(&unc_data, NULL),       _exit(0));
 
-	verbose(1,"CPUfreq and IMC freq data ok for node_services devices %u", unc_count);
+	verbose(VEARD_LAPI,"CPUfreq and IMC freq data ok for node_services devices %u", unc_count);
 
 	// Energy node metrics
 	energy_datasize(&handler_energy,&node_energy_datasize);
-	verbose(1,"EARD main thread: node_energy_datasize %lu",node_energy_datasize);
+	verbose(VEARD_LAPI,"EARD main thread: node_energy_datasize %lu",node_energy_datasize);
 	node_energy_data=(edata_t)malloc(node_energy_datasize);
   energy_frequency(&handler_energy, &energy_freq);
 	verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
@@ -1054,10 +1053,10 @@ state_t eard_local_api()
   values_rapl=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
   if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
 
-	verbose(1,"RAPL data allocated in node_serices");
+	verbose(VEARD_LAPI,"RAPL data allocated in node_serices");
 
 	// HW initialized HERE...creating communication channels
-	verbose(1, "Creating comm in %s for node %s", ear_tmp, nodename);
+	verbose(VEARD_LAPI, "Creating comm in %s for node %s", ear_tmp, nodename);
 
 	#if USE_GPUS
 	/* GPU Initialization for app requests */
@@ -1082,11 +1081,11 @@ state_t eard_local_api()
     error("Error initializing local connections");
     _exit(0);
   }
-	verbose(1,"Creating global connector");
+	verbose(VEARD_LAPI,"Creating global connector");
   create_global_connector(ear_tmp, nodename);
   rfds = rfds_basic;
 
-	verbose(1, "Communicator for %s ON", nodename);
+	verbose(VEARD_LAPI, "Communicator for %s ON", nodename);
 	// we wait until EAR daemon receives a request
 	// We support requests realted to frequency and to uncore counters
 	// rapl support is pending to be supported
@@ -1132,7 +1131,7 @@ state_t eard_local_api()
 		debug("Waiting for %d fds. global req fd %d", numfds_req, global_req_fd);
     //debug("eard waiting.....\n");
   }//while
-	verbose(1,"Releasing node_mgr data ");
+	verbose(VEARD_LAPI,"Releasing node_mgr data ");
 	nodemgr_server_end();
 
 	return EAR_SUCCESS;

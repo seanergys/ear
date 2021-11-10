@@ -22,7 +22,6 @@
 #define sa(function) \
     if (state_fail(function)) { \
         serror(#function " FAILED"); \
-        exit(0); \
     }
 
 typedef struct metstatic_s {

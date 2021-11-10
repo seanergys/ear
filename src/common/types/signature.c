@@ -299,12 +299,14 @@ void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
 void from_minis_to_sig(signature_t *s,ssig_t *minis)
 {
     //signature_init(s);
-    s->DC_power=(double)minis->DC_power;
-    s->GBS=(double)minis->GBS;
-    s->TPI=(double)minis->TPI;
-    s->CPI=(double)minis->CPI;
-    s->Gflops=(double)minis->Gflops;
-    s->time=(double)minis->time;
+    s->DC_power   = (double)minis->DC_power;
+    s->DRAM_power = (double)minis->DRAM_power;
+    s->PCK_power  = (double)minis->PCK_power;
+    s->GBS        = (double)minis->GBS;
+    s->TPI        = (double)minis->TPI;
+    s->CPI        = (double)minis->CPI;
+    s->Gflops     = (double)minis->Gflops;
+    s->time       = (double)minis->time;
     memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     s->instructions = minis->instructions;
     s->cycles = minis->cycles;
@@ -320,18 +322,20 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
 
 void from_sig_to_mini(ssig_t *minis,signature_t *s)
 {
-    minis->DC_power=(float)s->DC_power;
-    minis->GBS=(float)s->GBS;
-    minis->TPI=(float)s->TPI;
-    minis->CPI=(float)s->CPI;
-    minis->Gflops=(float)s->Gflops;
-    minis->time=(float)s->time;
+    minis->DC_power	= (float)s->DC_power;
+    minis->DRAM_power	= (float)s->DRAM_power;
+    minis->PCK_power	= (float)s->PCK_power;
+    minis->GBS			= (float)s->GBS;
+    minis->TPI			= (float)s->TPI;
+    minis->CPI			= (float)s->CPI;
+    minis->Gflops		= (float)s->Gflops;
+    minis->time			= (float)s->time;
     memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     minis->instructions = s->instructions;
-    minis->cycles = s->cycles;
+    minis->cycles 	= s->cycles;
     minis->L3_misses = s->L3_misses;
-    minis->avg_f=s->avg_f;
-    minis->def_f=s->def_f;
+    minis->avg_f		= s->avg_f;
+    minis->def_f		= s->def_f;
 #if USE_GPUS
     memcpy(&minis->gpu_sig,&s->gpu_sig,sizeof(gpu_signature_t));
 #endif
