@@ -84,7 +84,7 @@
 #define SCHED_EAR_GPU_DEF_FREQ "SLURM_EAR_GPU_DEF_FREQ"
 /* This variable forces to load the NON MPI version of the library for a given application.
  * SLURM_LOADER_LOAD_NO_MPI_LIB=gromacs */
-#define SCHED_LOADER_LOAD_NO_MPI_LIB "SLURM_LOADER_LOAD_NO_MPI_LIB"
+#define SCHED_LOADER_LOAD_NO_MPI_LIB "SLURM_LOADER_APPLICATION"
 #define SCHED_MAX_IMC_FREQ						"SLURM_MAX_IMC_FREQ"
 #define SCHED_MIN_IMC_FREQ						"SLURM_MIN_IMC_FREQ"
 /* This variable specifies the IMC freq must be selected by the EAR policy */
