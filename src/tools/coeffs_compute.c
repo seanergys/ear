@@ -102,12 +102,14 @@ static int find_app(matrix_t *matrix, char *app_name)
 	return -1;
 }
 
-static void compute_cpu_power(intel_skl_t *cpu_power_coeffs, matrix_t *matrix_target)
+static state_t compute_cpu_power_coefficients(intel_skl_t **cpu_power_coeffs, application_t *app_list, uint apps_count)
 {
   int n, a, b;
-	intel_skl_t *coeff = cpu_power_coeffs;
+	intel_skl_t *coeff;
   //
-  n = matrix_target->app_count;
+  n = apps_count;
+	*cpu_power_coeffs = calloc(1, sizeof(intel_skl_t));
+	coeff = *cpu_power_coeffs;
 
   //
   gsl_matrix *signature_base = gsl_matrix_calloc(n, 5);
@@ -125,17 +127,17 @@ static void compute_cpu_power(intel_skl_t *cpu_power_coeffs, matrix_t *matrix_ta
 
 		b = a;
 
-    gsl_vector_set(cpu_power_target, a, matrix_target->app_list[a].signature.DC_power);
+    gsl_vector_set(cpu_power_target, a, app_list[a].signature.DC_power);
     gsl_matrix_set(signature_base, a, 0, 1.0);
-    gsl_matrix_set(signature_base, a, 1, 1/matrix_target->app_list[a].signature.CPI);
-    gsl_matrix_set(signature_base, a, 2, matrix_target->app_list[a].signature.GBS);
-		//printf("AVGF %lu\n", matrix_target->app_list[b].signature.avg_f);
-		//printf("VPI data %llu %llu %llu %llu instructions %llu\n", matrix_target->app_list[b].signature.FLOPS[INDEX_256F], matrix_target->app_list[b].signature.FLOPS[INDEX_256D], matrix_target->app_list[b].signature.FLOPS[INDEX_512F], matrix_target->app_list[b].signature.FLOPS[INDEX_512D], matrix_target->app_list[b].signature.instructions);
+    gsl_matrix_set(signature_base, a, 1, 1/app_list[a].signature.CPI);
+    gsl_matrix_set(signature_base, a, 2, app_list[a].signature.GBS);
+		//printf("AVGF %lu\n", app_list[b].signature.avg_f);
+		//printf("VPI data %llu %llu %llu %llu instructions %llu\n", app_list[b].signature.FLOPS[INDEX_256F], app_list[b].signature.FLOPS[INDEX_256D], app_list[b].signature.FLOPS[INDEX_512F], app_list[b].signature.FLOPS[INDEX_512D], app_list[b].signature.instructions);
 		double vpi; 
-		vpi = (double)((double)matrix_target->app_list[a].signature.FLOPS[INDEX_256F]/WEIGHT_256F + (double)matrix_target->app_list[a].signature.FLOPS[INDEX_256D]/WEIGHT_256D + (double)matrix_target->app_list[a].signature.FLOPS[INDEX_512F]/WEIGHT_512F + (double)matrix_target->app_list[a].signature.FLOPS[INDEX_512D]/WEIGHT_512D)/(double)matrix_target->app_list[a].signature.instructions;
+		vpi = (double)((double)app_list[a].signature.FLOPS[INDEX_256F]/WEIGHT_256F + (double)app_list[a].signature.FLOPS[INDEX_256D]/WEIGHT_256D + (double)app_list[a].signature.FLOPS[INDEX_512F]/WEIGHT_512F + (double)app_list[a].signature.FLOPS[INDEX_512D]/WEIGHT_512D)/(double)app_list[a].signature.instructions;
     gsl_matrix_set(signature_base, a, 3, vpi);
-    gsl_matrix_set(signature_base, a, 4, (double)matrix_target->app_list[a].signature.avg_f/1000000.0);
-    // printf("Adding IPC %lf GBS %lf VPI %lf F %lf\n", 1/matrix_target->app_list[a].signature.CPI, matrix_target->app_list[a].signature.GBS, vpi, (double)matrix_target->app_list[a].signature.avg_f/1000000.0);
+    gsl_matrix_set(signature_base, a, 4, (double)app_list[a].signature.avg_f/1000000.0);
+    // printf("Adding IPC %lf GBS %lf VPI %lf F %lf\n", 1/app_list[a].signature.CPI, app_list[a].signature.GBS, vpi, (double)app_list[a].signature.avg_f/1000000.0);
 			
   }
   // Linear least squares fitting (SVD algorithm)
@@ -159,7 +161,9 @@ static void compute_cpu_power(intel_skl_t *cpu_power_coeffs, matrix_t *matrix_ta
   gsl_matrix_free(signature_base);
   gsl_matrix_free(cov);
   gsl_multifit_linear_free(work);
+	return EAR_SUCCESS;
 }
+
 
 
 static void compute_cpi(matrix_t *matrix_base, matrix_t *matrix_target)
@@ -320,13 +324,11 @@ static state_t compute_coefficients(matrix_t *matrix, uint matrix_count)
 			}
 		}
 	}
-	coeffs_cpu = calloc(matrix_count, sizeof(intel_skl_t));
 	for (m = 0; m < matrix_count; ++m)
 	{
 		if (matrix[m].app_count == 0) {
 			continue;
 		}
-		compute_cpu_power(&coeffs_cpu[m], &matrix[m]);
 		// Computing coefficients.
 		for (p = 0; p < matrix_count; ++p) {
 			if (matrix[p].app_count > 0 && m != p) {
@@ -714,7 +716,7 @@ static state_t configuration(int argc, char *argv[], cluster_conf_t *conf, my_no
 	}
 	// Setting the complete coefficient file (i was using (*node)->coef_file).
 	xsprintf(buffer1, "%s/coeffs.%s", buffer2, host_name);
-	xsprintf(tag_path, "%s/coeffs.cpu_power_model.%s", buffer2, tag_name);
+	xsprintf(tag_path, "%s/coeffs.cpumodel.%s", buffer2, tag_name);
 	if ((*fd = open(buffer1, F_WR|F_CR|F_TR, F_UR|F_UW|F_GR|F_GW|F_OR|F_OW)) < 0) {
 		return_print(EAR_ERROR, "failed opening file '%s' (%s)", buffer1, strerror(errno));
 	}
@@ -806,8 +808,9 @@ int main(int argc, char *argv[])
 	state_assert(s, matrix_init(pstate_list, pstate_count, &matrix, &matrix_count), return 0);
 	state_assert(s, matrix_fill(app_list, app_count, matrix, matrix_count),         return 0);
 	state_assert(s, compute_coefficients(matrix, matrix_count),                     return 0);
+	state_assert(s, compute_cpu_power_coefficients(&coeffs_cpu, app_list, app_count),return 0);
 	state_assert(s, write_coefficients(fd, matrix, matrix_count),                   return 0);
-	state_assert(s, write_cpu_model_coefficients(tag_path, coeffs_cpu, pstate_count), return 0);
+	state_assert(s, write_cpu_model_coefficients(tag_path, coeffs_cpu, 1),          return 0);
 
 	return 0;
 }
