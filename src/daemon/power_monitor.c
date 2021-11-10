@@ -708,13 +708,21 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 		ulong lcpus;
 		if (pmapp->app.is_mpi) cpufreq_avgcpufreq_mask(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
 	}else{
-		verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode");
-		pmapp->app.power_sig.DC_power 	= pmapp->accum_ps.DC_energy / elapsed;
-		pmapp->app.power_sig.DRAM_power = pmapp->accum_ps.DRAM_energy/ elapsed;
-		pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
+		if (pmapp->app.is_mpi){
+			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode. Using EARL signature");
+			pmapp->app.power_sig.DC_power 	= pmapp->app.signature.DC_power;
+			pmapp->app.power_sig.DRAM_power = pmapp->app.signature.DRAM_power;
+			pmapp->app.power_sig.PCK_power	= pmapp->app.signature.PCK_power;
+			pmapp->app.power_sig.avg_f        = pmapp->app.signature.avg_f;
+		}else{
+			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode");
+			pmapp->app.power_sig.DC_power 	= pmapp->accum_ps.DC_energy / elapsed;
+			pmapp->app.power_sig.DRAM_power = pmapp->accum_ps.DRAM_energy/ elapsed;
+			pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
+			pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
+		}
 		pmapp->app.power_sig.max_DC_power = pmapp->accum_ps.max; 
 		pmapp->app.power_sig.min_DC_power = pmapp->accum_ps.min;
-		pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
 	}
 	pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 

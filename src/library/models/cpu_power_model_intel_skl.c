@@ -42,17 +42,31 @@ static uint cpu_count;
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
 {
+	int fd, ret;
 	debug("cpu_power_models_init_arch. Using tag %s etc %s", libconf->tag, conf->dir_conf);
 	char model_path[MAX_PATH_SIZE];
 	sprintf(model_path,"%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
 	debug("cpu_power_models_init_arch coeffs path %s", model_path);
 
+	#if 0
 	my_node_coeffs.ipc 		= IPC_COEFF;
 	my_node_coeffs.gbs 		=	GBS_COEFF;
 	my_node_coeffs.vpi 		=	VPI_COEFF;
 	my_node_coeffs.f   		=	F_COEFF;
 	my_node_coeffs.inter 	=	INTERCEPT;
-
+	#endif
+	fd = open(model_path, O_RDONLY);
+	if (fd < 0){ 
+		debug("Error opening cpu model file %s", strerror(errno));
+		return EAR_ERROR;
+	}
+	if ((ret = read(fd, &my_node_coeffs, sizeof(intel_skl_t))) != sizeof(intel_skl_t)){
+		if (ret < 0) 	debug("Error reading cpu model data %s", strerror(errno));
+		else 					debug("Error reading cpu model data %d bytes expected %d", ret, sizeof(intel_skl_t));
+		close(fd);
+		return EAR_ERROR;
+	}
+	close(fd);
 	cpu_count = arch->top.cpu_count;
 
 	arch_model_loaded = 1;	
