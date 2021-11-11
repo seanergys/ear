@@ -794,6 +794,7 @@ state_t process_remote_requests(int clientfd) {
 
     switch (req) {
         case EAR_RC_NEW_JOB:
+        case EAR_RC_NEW_JOB_LIST:
             verbose(VRAPI, "*******************************************");
             verbose(VRAPI, "new_job command received %lu", command.my_req.new_job.job.id);
             application_t req_app;
@@ -801,6 +802,7 @@ state_t process_remote_requests(int clientfd) {
             powermon_new_job(NULL, &my_eh_rapi, &req_app, 0);
             break;
         case EAR_RC_END_JOB:
+        case EAR_RC_END_JOB_LIST:
             powermon_end_job(&my_eh_rapi, command.my_req.end_job.jid, command.my_req.end_job.sid);
             verbose(VRAPI, "end_job command received %lu", command.my_req.end_job.jid);
             verbose(VRAPI, "*******************************************");

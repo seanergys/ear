@@ -721,8 +721,8 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 			pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
 			pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
 		}
-		pmapp->app.power_sig.max_DC_power = pmapp->accum_ps.max; 
-		pmapp->app.power_sig.min_DC_power = pmapp->accum_ps.min;
+		pmapp->app.power_sig.max_DC_power = ear_max(pmapp->accum_ps.max, pmapp->app.power_sig.DC_power); 
+		pmapp->app.power_sig.min_DC_power = ear_min(pmapp->accum_ps.min, pmapp->app.power_sig.DC_power);
 	}
 	pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 
