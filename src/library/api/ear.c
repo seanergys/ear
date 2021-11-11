@@ -1020,7 +1020,7 @@ void ear_init()
 	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
  /* create verbose file for each job */
     if (verb_path != NULL){
-      //  if (masters_info.my_master_rank >= 0){
+        if (masters_info.my_master_rank >= 0){
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
                 error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
             }else{
@@ -1038,7 +1038,7 @@ void ear_init()
                     verbose_master(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
                 }
             }
-        //}
+        }
     }
 
 
