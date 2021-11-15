@@ -328,6 +328,7 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 	dcase_fini();
 	// Always answering (if s != SUCCESS the error message is sent)
 	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
+        serror("RPC answer failed");
 		return 0;
 	}
 	return 1;
@@ -1008,7 +1009,7 @@ void service_select(int req_fd, int ack_fd)
     return;
   }
 	
-	error("Request received '%lu' not supported, answering error", local_req->req_service);
+	error("Problem with request '%lu', answering error", local_req->req_service);
 	eard_rpc_answer(ack_fd, local_req->req_service, EAR_ERROR, NULL, 0, "EARD RPC does not exist");
 	// Closing, it is not necessary to control the error.
 	service_close(req_fd,ack_fd);
