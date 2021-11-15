@@ -609,7 +609,7 @@ static state_t db_query(int argc, char *argv[], cluster_conf_t *conf, char *host
       #if USE_GPUS
       uint gpus = apps_temp[t].signature.gpu_sig.num_gpus;
       double gpup = 0;
-      for (uint gpuid = 0; gpuid < gpus; gpuid) gpup += apps_temp[t].signature.gpu_sig.gpu_data[i].GPU_power;
+      for (uint gpuid = 0; gpuid < gpus; gpuid) gpup += apps_temp[t].signature.gpu_sig.gpu_data[gpuid].GPU_power;
       apps_temp[t].signature.DC_power -= gpup;
       #endif
 

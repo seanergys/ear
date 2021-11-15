@@ -95,6 +95,7 @@ extern char nodename[MAX_PATH_SIZE];
 typedef struct job_context{
 	job_id id;
 	uint   numc;
+	uint   num_cpus;
 }job_context_t;
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
 
@@ -122,6 +123,15 @@ void init_jobs_in_node()
 {
 	memset(jobs_in_node_list, 0, sizeof(job_context_t)*MAX_CPUS_SUPPORTED);
 }
+
+uint is_job_in_node(job_id id, job_context_t **jc)
+{
+	uint i = 0; 
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+	if (i < MAX_CPUS_SUPPORTED) *jc = &jobs_in_node_list[i];
+	return (i < MAX_CPUS_SUPPORTED);
+}
+
 void add_job_in_node(job_id id)
 {
 	/* Find the job */
@@ -157,6 +167,14 @@ void del_job_in_node(job_id id)
 	
 }
 
+void clean_cpus_in_jobs()
+{
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		jobs_in_node_list[i].num_cpus = 0;
+	}
+}
+
+
 uint num_jobs_in_node()
 {
 	uint total = 0;
@@ -164,6 +182,15 @@ uint num_jobs_in_node()
 		if (jobs_in_node_list[i].id) total++;
 	}
 	return total;
+}
+
+void verbose_jobs_in_node(uint vl)
+{
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		if (jobs_in_node_list[i].numc){
+			verbose(vl, "JOB[%u] id=%lu contexts %u cpus %u", i, jobs_in_node_list[i].id, jobs_in_node_list[i].numc, jobs_in_node_list[i].num_cpus);
+		}
+	}
 }
 
 /****************** CONTEXT MANAGEMENT ********************/
@@ -936,7 +963,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
   cc = find_context_for_job(jid, sid);
   if (cc < 0){
     verbose(VJOBPMON,"powermon_mpi_init and context not found job_id %lu/%lu, creating automatically",appID->job.id, appID->job.step_id);
-    powermon_new_job(NULL,eh, appID, 1);
+    powermon_new_job(NULL,eh, appID, 1,  0);
     cc = find_context_for_job(jid, sid);
     if (cc < 0){
       verbose(VJOBPMON,"ERROR: Context not created!");
@@ -976,7 +1003,7 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 	end_mpi(&pmapp->app.job);
 	set_powercapstatus_mode(AUTO_CONFIG);
 	if (!pmapp->job_created) {  // If the job is not submitted through slurm, end_job would not be submitted
-		powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id);
+		powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id, 0);
 	}
   debug("powermon_mpi_finalize done for %lu,%lu",jid,sid);
 
@@ -991,9 +1018,10 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 
 /* This functiono is called by dynamic_configuration thread when a new_job command arrives */
 
-void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi) {
+void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi, uint is_job) {
   int i;
 	int ccontext;
+	job_context_t* alloc;
 	// New application connected
 	if (appID == NULL) {
 		error("powermon_new_job: NULL appID");
@@ -1021,6 +1049,13 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	/* Saving the context */
 	/* We cannot assume all the node will have the same freq: PENDING */
 	pmapp->current_freq = frequency_get_cpu_freq(0);
+	pmapp->is_job = is_job;
+	/* Returns the number of contexts for this jobid, if is 1 is an srun without sbacth/or salloc (or equivalent on other schedulers) */
+	if (is_job_in_node(appID->job.id, &alloc)){
+		/* It's an allocation by itself */
+		if (alloc->numc == 1) pmapp->is_job = 1;
+	}
+	verbose(VJOBPMON, "Is new job %d", pmapp->is_job);
 	get_governor(&pmapp->governor);
 	debug("Saving governor %s", pmapp->governor.name);
 	/* Setting userspace */
@@ -1078,7 +1113,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 
 /* This function is called by dynamic_configuration thread when a end_job command arrives */
 
-void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
+void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 	// Application disconnected
 	powermon_app_t summary, *pmapp;
 	int cc;
@@ -1274,6 +1309,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 	ulong num_jobs;
 	ulong time_consumed;
 	double my_dc_power;
+	job_context_t *alloc;
 
 	time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
 
@@ -1281,26 +1317,46 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
 	num_jobs = num_jobs_in_node();
 	if (num_jobs == 0) return;
+
+	/* Set to 0 the num_cpus per job, we will compute again */
+	clean_cpus_in_jobs();
+
   
   for (uint cc = 1;cc <= max_context_created; cc++){
     if (current_ear_app[cc] != NULL){
       pmapp = current_ear_app[cc];
 			/* We must update the current signature */
 			pmapp->exclusive = (num_jobs == 1) && pmapp->exclusive;
-			tcpus += num_cpus_in_mask(&pmapp->app_info->node_mask);
+			pmapp->num_cpus  = num_cpus_in_mask(&pmapp->app_info->node_mask);
+			
+			if (pmapp->num_cpus){ 
+				if (is_job_in_node(pmapp->app.job.id, &alloc)){
+					verbose(VEARD_NMGR, "Job %lu found, adding %u cpus ", pmapp->app.job.id, pmapp->num_cpus);
+					tcpus += pmapp->num_cpus;
+					alloc->num_cpus += pmapp->num_cpus;
+				}
+			}
 		}
 	}
+
+	verbose_jobs_in_node(VCONF);
+	
   for (uint cc = 1;cc <= max_context_created; cc++){
     if (current_ear_app[cc] != NULL){
       pmapp = current_ear_app[cc];
 			/* We must update the current signature */
-			lcpus = num_cpus_in_mask(&pmapp->app_info->node_mask);
+			lcpus = pmapp->num_cpus;
 			if (lcpus){
 				cpu_ratio = (num_jobs > 1) ? (float)lcpus/(float)tcpus : 1;
 				verbose(VEARD_NMGR,"Job %lu/%lu has %lu from %lu. cpu_ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id , lcpus, tcpus, cpu_ratio);
 			}else{
-				cpu_ratio = 1.0/(float)num_jobs;
-				verbose(VEARD_NMGR,"Job %lu/%lu without node maslk, using ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id, cpu_ratio); 
+				if (is_job_in_node(pmapp->app.job.id, &alloc)){
+					cpu_ratio = (float)alloc->num_cpus/(float)tcpus;
+					verbose(VEARD_NMGR,"Job %lu/%lu without node mask, using ratio %f = %u/%lu", pmapp->app.job.id ,pmapp->app.job.step_id, cpu_ratio, alloc->num_cpus, tcpus); 
+				}else{
+					cpu_ratio = 1.0/(float)num_jobs;
+
+				}
 			}
 			my_dc_power = accum_node_power(last_pmon) * cpu_ratio;
 			pmapp->accum_ps.DC_energy 	+= accum_node_power(last_pmon) * cpu_ratio * time_consumed;
