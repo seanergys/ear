@@ -45,7 +45,7 @@ plug_HDRS = \
 ######## RULES
 
 #all: $(erun_BINS) $(plug_BINS)
-all: $(plug_BINS)
+all: $(plug_BINS) 
 
 earplug.so: $(plug_SRCS) $(plug_HDRS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared -o $@ $(plug_SRCS) $(plug_OBJS) $(LDFLAGS)
@@ -55,7 +55,8 @@ erun: $(erun_SRCS) $(plug_SRCS) $(plug_HDRS)
 
 ######## OPTIONS
 
-install: erun.ginstall plug.ginstall;
+#install: erun.ginstall plug.ginstall;
+install:  plug.ginstall;
 
 %.install: ;
 

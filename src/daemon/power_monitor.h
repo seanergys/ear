@@ -40,6 +40,8 @@
 typedef struct powermon_app {
   application_t    app;
   uint             job_created;
+	uint  					 is_job;
+	uint						 num_cpus;
   uint             local_ids;
   energy_data_t    energy_init;
   governor_t       governor;
@@ -76,11 +78,11 @@ void powermon_mpi_finalize(ehandler_t *eh,ulong jid,ulong sid);
 /** It must be called at when job starts 
 */
 
-void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *j, uint from_mpi);
+void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *j, uint from_mpi, uint is_job);
 
 /** It must be called at when job ends
 */
-void powermon_end_job(ehandler_t *eh,job_id jid,job_id sid);
+void powermon_end_job(ehandler_t *eh,job_id jid,job_id sid, uint is_job);
 
 /** reports the application signature to the power_monitoring module 
 */
