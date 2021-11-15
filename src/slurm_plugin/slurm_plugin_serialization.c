@@ -323,10 +323,14 @@ int plug_print_items(spank_t sp)
         return ESPANK_SUCCESS;
     }
 
+    #if ERUN
+    #define print_item(word, cas, item, format)
+    #else
     #define print_item(word, cast, item, format) \
         if (spank_get_item (sp, word, cast &(item)) == ESPANK_SUCCESS) { \
             plug_verbose(sp, 2, #word " = '" format "'", item); \
         }
+    #endif
 
     char  *itemStr;
     ullong item64u;
@@ -351,9 +355,26 @@ int plug_print_items(spank_t sp)
     print_item(S_STEP_CPUS_PER_TASK  , (uint32_t *), item32u, "%u");
     print_item(S_JOB_ALLOC_CORES     ,    (char **), itemStr, "%s");
     print_item(S_JOB_ALLOC_MEM       , (uint64_t *), item64u, "%llu");
-    print_item(S_STEP_ALLOC_CORES    ,    (char **), itemStr, "%s");
-    print_item(S_JOB_ALLOC_MEM       , (uint64_t *), item64u, "%llu");
     print_item(S_SLURM_RESTART_COUNT , (uint32_t *), item32u, "%u");
+    
+    #if ERUN
+    #define print_item2(word, item1, cast2, item2, format)
+    #else
+    #define print_item2(word, item1, cast2, item2, format) \
+        if (spank_get_item (sp, word, item1, cast2 &(item2)) == ESPANK_SUCCESS) { \
+            plug_verbose(sp, 2, #word " = '" format "'", item2); \
+        }
+    #endif
+
+    print_item2(S_JOB_PID_TO_GLOBAL_ID, getpid(), (uint32_t *), item32u, "%u");    
+    print_item2(S_JOB_PID_TO_LOCAL_ID , getpid(), (uint32_t *), item32u, "%u");    
+    
+    // Unused:
+    //  - S_JOB_ARGV
+    //  - S_TASK_EXIT_STATUS
+    //  - S_JOB_LOCAL_TO_GLOBAL_ID
+    //  - S_JOB_GLOBAL_TO_LOCAL_ID
+    //  - S_JOB_SUPPLEMENTARY_GIDS
     
 	#if 0
     int num_args;
@@ -367,21 +388,6 @@ int plug_print_items(spank_t sp)
 	}
 	#endif
  
-    #define print_item2(word, item1, cast2, item2, format) \
-        if (spank_get_item (sp, word, item1, cast2 &(item2)) == ESPANK_SUCCESS) { \
-            plug_verbose(sp, 2, #word " = '" format "'", item2); \
-        }
-
-    print_item2(S_JOB_PID_TO_GLOBAL_ID, getpid(), (uint32_t *), item32u, "%u");    
-    print_item2(S_JOB_PID_TO_LOCAL_ID , getpid(), (uint32_t *), item32u, "%u");    
-
-    // Unused:
-    //  - S_JOB_ARGV
-    //  - S_TASK_EXIT_STATUS
-    //  - S_JOB_LOCAL_TO_GLOBAL_ID
-    //  - S_JOB_GLOBAL_TO_LOCAL_ID
-    //  - S_JOB_SUPPLEMENTARY_GIDS
-
     return ESPANK_SUCCESS;
 }
 
