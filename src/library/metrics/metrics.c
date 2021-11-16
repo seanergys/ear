@@ -1119,6 +1119,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
+    metrics_fresh_dispose();
 
 	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
   while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);

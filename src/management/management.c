@@ -21,10 +21,10 @@
 
 #define sa(f) \
 	printf("calling " #f "\n"); \
-        if (state_fail(f)) { \
-                serror(#f " FAILED"); \
-                exit(0); \
-        }
+    if (state_fail(f)) { \
+        serror(#f " FAILED"); \
+        exit(0); \
+    }
 
 static manages_apis_t m;
 
@@ -47,7 +47,11 @@ state_t manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
 	// Availability
 	sa(mgt_cpufreq_get_available_list(&m.cpu.c, (const pstate_t **) &m.cpu.avail_list, &m.cpu.avail_count));
 	sa(mgt_imcfreq_get_available_list(&m.imc.c, (const pstate_t **) &m.imc.avail_list, &m.imc.avail_count));
-	//
+    //
+    sa(mgt_cpufreq_data_alloc((pstate_t **) &m.cpu.current_list, empty));
+    sa(mgt_imcfreq_data_alloc((pstate_t **) &m.imc.current_list, empty));
+
+    //
 	if (m_in != NULL) {
 		*m_in = &m;
 	}
@@ -72,8 +76,20 @@ state_t manages_apis_print()
 
 state_t manages_apis_print_available()
 {
-	mgt_cpufreq_data_print(m.cpu.avail_list, m.cpu.avail_count, verb_channel);
+    char buffer[SZ_BUFFER_EXTRA];
+	
+    printf("CPUFREQ available list of frequencies:\n");
+    mgt_cpufreq_data_print(m.cpu.avail_list, m.cpu.avail_count, verb_channel);
+    printf("IMCFREQ available list of frequencies:\n");
 	mgt_imcfreq_data_print(m.imc.avail_list, m.imc.avail_count, verb_channel);
+
+    mgt_cpufreq_get_current_list(no_ctx, m.cpu.current_list);
+    mgt_imcfreq_get_current_list(no_ctx, m.imc.current_list);
+    
+    printf("CPUFREQ current list of frequencies:\n");
+    mgt_cpufreq_data_print(m.cpu.current_list, m.cpu.devs_count, verb_channel);
+    printf("IMCFREQ current list of frequencies:\n");
+	mgt_imcfreq_data_print(m.imc.current_list, m.imc.devs_count, verb_channel);
 	
 	return EAR_SUCCESS;
 }
@@ -99,8 +115,8 @@ int main(int argc, char *argv[])
 	// Management
 	sa(manages_apis_init(&tp, EARD, &mans));
 	sa(manages_apis_print());
-	
+	sa(manages_apis_print_available());
+sleep(10); 
 	return EAR_SUCCESS;
 }
-
 #endif
