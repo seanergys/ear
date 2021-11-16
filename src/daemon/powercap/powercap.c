@@ -137,7 +137,7 @@ static int set_powercap_value(uint domain,uint limit)
   char c_date[128];
 	int i;
   if (limit == my_pc_opt.current_pc) return EAR_SUCCESS;
-  verbose(0,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
+  verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);
@@ -356,7 +356,7 @@ void powercap_release_power()
 
 void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
 {
-    debug("powercap_get_status: get_powercap_status_last_t1 %u def_pc %u",my_pc_opt.last_t1_allocated,my_pc_opt.def_powercap);
+    verbose(VEARD_PC,"%spowercap_get_status: get_powercap_status_last_t1 %u def_pc %u%s",COL_GRE,my_pc_opt.last_t1_allocated,my_pc_opt.def_powercap,COL_CLR);
     while(pthread_mutex_trylock(&my_pc_opt.lock)); 
     my_status->total_nodes++;
     if (my_pc_opt.powercap_status == PC_STATUS_IDLE)
@@ -376,19 +376,19 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
                 //status->requested = my_pc_opt.requested;
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap) status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 else status->extra = 0;
-                debug("powercap_get_status: PC_STATUS greedy, requesting %u", status->requested);
+                verbose(VEARD_PC,"powercap_get_status: PC_STATUS greedy, requesting %u", status->requested);
                 break;
             case PC_STATUS_RELEASE:
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap) status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 else status->extra = 0;
                 my_pc_opt.released = status->tbr;
                 my_pc_opt.current_pc -= status->tbr;
-                debug("powercap_get_status: %sReleasing%s %u W allocated %u W",COL_BLU,COL_CLR,my_pc_opt.released,my_pc_opt.current_pc);
+                verbose(VEARD_PC,"powercap_get_status: %sReleasing%s %u W allocated %u W",COL_BLU,COL_CLR,my_pc_opt.released,my_pc_opt.current_pc);
                 powercap_release_power();
                 break;
             case PC_STATUS_ASK_DEF: 
                 /* Data management */
-                debug("powercap_get_status: %sAsking for default power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
+                verbose(VEARD_PC,"powercap_get_status: %sAsking for default power%s %uW allocated %uW",COL_BLU,COL_CLR,my_pc_opt.requested,my_pc_opt.last_t1_allocated);
                 my_status->requested = my_pc_opt.def_powercap - my_pc_opt.last_t1_allocated;
                 break;
             case PC_STATUS_OK:

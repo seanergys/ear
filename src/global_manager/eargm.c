@@ -120,19 +120,17 @@ uint in_action=0;
 double perc_energy,perc_time,perc_power;
 double avg_power_t2,avg_power_t1;
 static int fd_my_log=2;
+static char host[GENERIC_NAME];
 
 
 uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 {
     eargm_conf_t *cc,*newc;
     uint must_refil=0;
-    char host[GENERIC_NAME];
 
     cc=&current->eargm;
     newc=&new->eargm;
 
-    gethostname(host, sizeof(host));
-    strtok(host, ".");
     /* EARGM specific conf */
     e_def = get_eargm_conf(new, host);
     if (e_def == NULL) {
@@ -142,23 +140,23 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
 
     /** Atttributes with conflicts */
     if ((cc->t1!=newc->t1) || (cc->t2!=newc->t2) || (cc->energy!=newc->energy) ){	
-        verbose(1,"New energy arguments: T1 %lu T2 %lu EnergyBudget %lu",newc->t1,newc->t2,newc->energy);
+        verbose(VGM,"New energy arguments: T1 %lu T2 %lu EnergyBudget %lu",newc->t1,newc->t2,newc->energy);
         must_refil=1;
     }
     if ((cc->power!=newc->power) || (cc->t1_power!=newc->t1_power)){
-        verbose(1,"New powercap arguments: Powercap %lu Power cap period %lu",newc->power,newc->t1_power);
+        verbose(VGM,"New powercap arguments: Powercap %lu Power cap period %lu",newc->power,newc->t1_power);
         if (cc->power>newc->power)    cluster_reset_default_powercap_all_nodes(&my_cluster_conf);  
         if ((cc->power==0) && (newc->power>0)) powercap_th_start=1;
 
     }
     if (cc->use_log!=newc->use_log){
-        verbose(1,"Log output cannot be dynamically changed, Stop and Start the service");
+        verbose(VGM,"Log output cannot be dynamically changed, Stop and Start the service");
     }
     if (cc->port!=newc->port){
-        verbose(1,"EARGM port cannot be dynamically changed, Stop and Start the service");
+        verbose(VGM,"EARGM port cannot be dynamically changed, Stop and Start the service");
     }
     if (cc->units!=newc->units){
-        verbose(1,"EARGM units cannot be dynamically changed, Stop and Start the service");
+        verbose(VGM,"EARGM units cannot be dynamically changed, Stop and Start the service");
     }
     /** attributes that can be adapted */
     cc->t1=newc->t1;
@@ -222,8 +220,10 @@ void update_eargm_configuration(cluster_conf_t *conf)
 #endif
     /* Remove unnecessary islands from ear_conf */
     remove_extra_islands(conf, e_def);
+		print_cluster_conf(conf);
 
-    if (verbose_arg>0) verb_level=verbose_arg;
+    if (verbose_arg  >= 0) verb_level=verbose_arg;
+		
 
     energy_budget = e_def->energy;
     my_port = e_def->port;
@@ -258,8 +258,8 @@ void update_eargm_configuration(cluster_conf_t *conf)
 }
 void reopen_log()
 {
-    close(fd_my_log);
-    fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
+    log_close(fd_my_log);
+    create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
 }
 
 static void my_signals_function(int s)
@@ -583,6 +583,10 @@ int main(int argc,char *argv[])
     risk_t current_risk;
     if (argc > 2) usage(argv[0]);
     if (argc==2) parse_args(argv);
+
+    gethostname(host, sizeof(host));
+    strtok(host, ".");
+
     // We read the cluster configuration and sets default values in the shared memory
     if (get_ear_conf_path(my_ear_conf_path)==EAR_ERROR){
         error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
@@ -601,8 +605,7 @@ int main(int argc,char *argv[])
         print_eargm_conf(&my_cluster_conf.eargm);
     }
     if (my_cluster_conf.eargm.use_log){
-        fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
-
+        create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
     }
     TIMESTAMP_SET_EN(my_cluster_conf.eargm.use_log);
 
@@ -644,9 +647,9 @@ int main(int argc,char *argv[])
     if (e_def->num_subs > 0) { //if it has subnodes, we need a META-EARGM
         if ((ret = pthread_create(&meta_eargm_th, NULL, meta_eargm, (void *)&my_cluster_conf))) {
             errno=ret;
-            error("error creating eargm_server for external api %s",strerror(errno));
+            verbose(VGM,"error creating eargm_server for external api %s",strerror(errno));
         }
-    } else { error("no subs for this EARGM"); }
+    } else { verbose(VGM,"EARGM node %s is not META-EARGM", host); }
 
 
     time_t start_time, end_time;
@@ -674,7 +677,7 @@ int main(int argc,char *argv[])
     if (db_select_acum_energy( start_time, end_time, divisor, use_aggregation,&last_id,&result)==EAR_ERROR){
         error("Asking for total energy system. Using aggregated %d",use_aggregation);
     }
-    verbose(1,"db_select_acum_energy inicial %lu%s",result,unit_energy);
+    verbose(VGM,"db_select_acum_energy inicial %lu%s",result,unit_energy);
     fill_periods(result);
     /*
      *

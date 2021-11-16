@@ -91,6 +91,14 @@ extern uint f_monitoring;
 extern ulong current_node_freq;
 extern char nodename[MAX_PATH_SIZE];
 
+/* This vector has 1 entry per job and numc is the number of contexts created for this job */
+typedef struct job_context{
+	job_id id;
+	uint   numc;
+	uint   num_cpus;
+}job_context_t;
+static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
+
 
 extern state_t report_connection_status;
 static char shmem_path[MAX_PATH_SIZE];
@@ -110,6 +118,80 @@ static double last_power_reported = 0;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
+/***************** JOBS in NODE ***************************/
+void init_jobs_in_node()
+{
+	memset(jobs_in_node_list, 0, sizeof(job_context_t)*MAX_CPUS_SUPPORTED);
+}
+
+uint is_job_in_node(job_id id, job_context_t **jc)
+{
+	uint i = 0; 
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+	if (i < MAX_CPUS_SUPPORTED) *jc = &jobs_in_node_list[i];
+	return (i < MAX_CPUS_SUPPORTED);
+}
+
+void add_job_in_node(job_id id)
+{
+	/* Find the job */
+	uint i = 0;
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+	if (i < MAX_CPUS_SUPPORTED){ 
+		jobs_in_node_list[i].numc++;
+		return;
+	}
+	/* New job */
+  i = 0;
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id)) i++;
+	if (i == MAX_CPUS_SUPPORTED){
+		debug("Error, not job free detected, this should not happen");
+		return;
+	}
+	jobs_in_node_list[i].id = id;
+	jobs_in_node_list[i].numc = 1;	
+}
+
+void del_job_in_node(job_id id)
+{
+	/* Find the job */
+  uint i = 0;
+  while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+  if (i < MAX_CPUS_SUPPORTED){  
+		jobs_in_node_list[i].numc--;
+		if (jobs_in_node_list[i].numc == 0) jobs_in_node_list[i].id = 0;
+	}else{
+		debug("Error, job not found %lu", id);
+	}
+	return;
+	
+}
+
+void clean_cpus_in_jobs()
+{
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		jobs_in_node_list[i].num_cpus = 0;
+	}
+}
+
+
+uint num_jobs_in_node()
+{
+	uint total = 0;
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		if (jobs_in_node_list[i].id) total++;
+	}
+	return total;
+}
+
+void verbose_jobs_in_node(uint vl)
+{
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		if (jobs_in_node_list[i].numc){
+			verbose(vl, "JOB[%u] id=%lu contexts %u cpus %u", i, jobs_in_node_list[i].id, jobs_in_node_list[i].numc, jobs_in_node_list[i].num_cpus);
+		}
+	}
+}
 
 /****************** CONTEXT MANAGEMENT ********************/
 #define NULL_SID 4294967294
@@ -120,6 +202,7 @@ int num_contexts = 0;
 void init_contexts() {
   int i;
   for (i = 0; i < MAX_NESTED_LEVELS; i++) current_ear_app[i] = NULL;
+	init_jobs_in_node();
 }
 
 int find_empty_context() {
@@ -160,6 +243,9 @@ void end_context(int cc)
   if (current_ear_app[cc] != NULL) {
     free_energy_data(&current_ear_app[cc]->energy_init);
     ID = create_ID(current_ear_app[cc]->app.job.id,current_ear_app[cc]->app.job.step_id);
+
+		del_job_in_node(current_ear_app[cc]->app.job.id);		
+
     get_settings_conf_path(ear_tmp,ID,  shmem_path);
     settings_conf_shared_area_dispose(shmem_path);
     get_resched_path(ear_tmp, ID, shmem_path);
@@ -172,6 +258,7 @@ void end_context(int cc)
     free(current_ear_app[cc]);
     current_ear_app[cc] = NULL;
     num_contexts--;
+
     if (cc == max_context_created){
       new_max = 0;
       for (i=0; i<= max_context_created;i++){
@@ -225,6 +312,8 @@ int select_last_context() {
   }
   return pos;
 }
+
+
 int new_context(job_id id, job_id sid,int *cc)
 {
   char shmem_path[GENERIC_NAME];
@@ -257,6 +346,9 @@ int new_context(job_id id, job_id sid,int *cc)
   current_ear_app[ccontext]->app.job.id = id;
   current_ear_app[ccontext]->app.job.step_id = sid;
   debug("New context created at pos %d", ccontext);
+
+	add_job_in_node(id);
+
   /* We must create per jobid,stepid shared memory regions */
   ID = create_ID(id,sid);
   get_settings_conf_path(ear_tmp, ID, shmem_path);
@@ -300,6 +392,9 @@ int new_context(job_id id, job_id sid,int *cc)
 #if USE_GPUS
   current_ear_app[ccontext]->pc_app_info->gpu_mode = powercap_get_gpu_strategy();
 #endif
+	/* accum_ps is the accumulated power signature when sharing nodes */
+	memset(&(current_ear_app[ccontext]->accum_ps), 0, sizeof(accum_power_sig_t));
+	current_ear_app[ccontext]->exclusive = (num_jobs_in_node() == 1);
 
   /* Default value for pc_app_info */
   debug("Context created for (%lu,%lu), num_contexts %d max_context_created %d",id,sid,num_contexts+1,max_context_created);
@@ -316,11 +411,11 @@ void create_job_area(uint ID)
 	int ret;
 	char job_path[MAX_PATH_SIZE];
 	xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
-	verbose(1,"Creating job_path: %s", job_path);
+	verbose(VJOBPMON+1,"Creating job_path: %s", job_path);
 	mode_t old_mask = umask((mode_t) 0);
 	ret = mkdir(job_path,0777);
 	if (ret < 0 ){
-		verbose(1,"Cannot create jobpath (%s)",strerror(errno));
+		verbose(VJOBPMON+1,"Cannot create jobpath (%s)",strerror(errno));
 	}
 	umask(old_mask);	
 	return;
@@ -337,15 +432,15 @@ void clean_job_area(uint ID)
   xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
   s = folder_open(&job_folder, job_path);
   if (state_fail(s)) {
-		verbose(1,"Error opening job path %s",job_path);
+		verbose(VJOBPMON+1,"Error opening job path %s",job_path);
     return;
   }
-  verbose(2,"Cleaning job_path: %s", job_path);
+  verbose(VJOBPMON+2,"Cleaning job_path: %s", job_path);
 
   while ((file = folder_getnext(&job_folder, NULL, NULL)))
   {
 		xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-		verbose(2,"Deleting: %s",file_path);
+		verbose(VJOBPMON+2,"Deleting: %s",file_path);
 		unlink(file_path);	
   }
 	folder_close(&job_folder);
@@ -383,11 +478,11 @@ static void PM_set_sigusr1() {
 
 void reset_shared_memory(powermon_app_t *pmapp)
 {
-  verbose(1,"reset_shared_memory");
+  verbose(VJOBPMON+2,"reset_shared_memory");
   policy_conf_t *my_policy;
   my_policy = get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
 	if (my_policy == NULL){
-		verbose(1,"Error, my_policy is null in reset_shared_memory when looking for default policy %d",my_cluster_conf.default_policy);
+		verbose(VJOBPMON+1,"Error, my_policy is null in reset_shared_memory when looking for default policy %d",my_cluster_conf.default_policy);
 	}
   pmapp->resched->force_rescheduling= 0;
   pmapp->settings->user_type        = NORMAL;
@@ -407,7 +502,7 @@ void reset_shared_memory(powermon_app_t *pmapp)
   pmapp->settings->max_avx2_freq    = my_node_conf->max_avx2_freq;
   memcpy(&pmapp->settings->installation,&my_cluster_conf.install,sizeof(conf_install_t));
   copy_ear_lib_conf(&pmapp->settings->lib_info,&my_cluster_conf.earlib);
-  verbose(1,"Shared memory regions for job set with default values");
+  verbose(VJOBPMON,"Shared memory regions for job set with default values");
 
 }
 
@@ -450,7 +545,7 @@ state_t powermon_create_idle_context()
   powermon_app_t *pmapp;
   char shmem_path[GENERIC_NAME];
 
-  verbose(1,"Creating idle context");
+  verbose(VJOBPMON,"Creating idle context");
   current_ear_app[cc] = calloc(1,sizeof(powermon_app_t));
   if (current_ear_app[cc] == NULL) return EAR_ERROR;
 
@@ -466,38 +561,38 @@ state_t powermon_create_idle_context()
   ID = create_ID(jid,sid);
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
-  verbose(1,"Settings for new context placed at %s",shmem_path);
+  verbose(VJOBPMON,"Settings for new context placed at %s",shmem_path);
   pmapp->settings = create_settings_conf_shared_area(shmem_path);
 	if (pmapp->settings == NULL){
-		verbose(1,"Error creating shared memory region for earl shared data");
+		verbose(VJOBPMON,"Error creating shared memory region for earl shared data");
 	}
   get_resched_path(ear_tmp, ID,shmem_path);
-  verbose(1,"Resched area for new context placed at %s",shmem_path);
+  verbose(VJOBPMON,"Resched area for new context placed at %s",shmem_path);
   pmapp->resched = create_resched_shared_area(shmem_path);
 	if (pmapp->resched == NULL){
-		verbose(1,"Error creating shared memory region for re-scheduling data");
+		verbose(VJOBPMON,"Error creating shared memory region for re-scheduling data");
 	}
   reset_shared_memory(pmapp);
   get_app_mgt_path(ear_tmp, ID, shmem_path);
-  verbose(1,"App- Mgr area for new context placed at %s",shmem_path);
+  verbose(VJOBPMON,"App- Mgr area for new context placed at %s",shmem_path);
   pmapp->app_info = create_app_mgt_shared_area(shmem_path);
 	if (pmapp->app_info == NULL){
-		verbose(1,"Error creating app mgr shared region ");
+		verbose(VJOBPMON,"Error creating app mgr shared region ");
 	}
   app_mgt_new_job(pmapp->app_info);
 
   get_pc_app_info_path(ear_tmp, ID, shmem_path);
-  verbose(1,"App PC area for new context placed at %s",shmem_path);
+  verbose(VJOBPMON,"App PC area for new context placed at %s",shmem_path);
   pmapp->pc_app_info = create_pc_app_info_shared_area(shmem_path);
 	if (pmapp->pc_app_info == NULL){
-		verbose(1,"Error creating app pc shared region");
+		verbose(VJOBPMON,"Error creating app pc shared region");
 	}
   pmapp->pc_app_info->cpu_mode = powercap_get_cpu_strategy();
 #if USE_GPUS
   pmapp->pc_app_info->gpu_mode = powercap_get_gpu_strategy();
 #endif
   set_null_loop(&pmapp->last_loop);
-  verbose(1,"Idle context created");
+  verbose(VJOBPMON,"Idle context created");
   return EAR_SUCCESS;
 }
 
@@ -574,9 +669,9 @@ void form_database_paths()
 */
 void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t *new_app, uint from_mpi) {
 	state_t s;
-	verbose(1,"job_init_powermon_app init");
+	verbose(VJOBPMON+1,"job_init_powermon_app init");
   if (pmapp == NULL){
-    verbose(0,"Error, job_init_powermon_app with null pmapp");
+    verbose(VJOBPMON,"Error, job_init_powermon_app with null pmapp");
     return;
   }
   debug("New context for N jobs scenario selected %lu/%lu",pmapp->app.job.id,pmapp->app.job.step_id);
@@ -588,6 +683,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	pmapp->app.job.start_mpi_time = 0;
 	pmapp->app.job.end_mpi_time = 0;
 	pmapp->app.job.end_time = 0;
+	pmapp->app.job.procs = new_app->job.procs;
 	// reset signature
 	signature_init(&pmapp->app.signature);
 	init_power_signature(&pmapp->app.power_sig);
@@ -599,7 +695,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	copy_energy_data(&pmapp->energy_init, &c_energy);
 	// CPU Frequency
 	state_assert(s, cpufreq_read(&pmapp->freq_job1), );
-	verbose(1,"job_init_powermon_app end %lu/%lu",pmapp->app.job.id,pmapp->app.job.step_id);
+	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu ",pmapp->app.job.id,pmapp->app.job.step_id);
 }
 
 
@@ -607,9 +703,10 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 {
 	power_data_t app_power;
 	state_t s;
+	double elapsed;
 
 	if (pmapp == NULL){
-    verbose(0,"Error, job_init_powermon_app with null pmapp");
+    verbose(VJOBPMON,"Error, job_init_powermon_app with null pmapp");
     return;
 	}
   debug("job_end_powermon_app for %lu/%lu",pmapp->app.job.id,pmapp->app.job.step_id);
@@ -619,24 +716,44 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 	if (pmapp->app.job.end_time == pmapp->app.job.start_time) {
 		pmapp->app.job.end_time = pmapp->app.job.start_time + 1;
 	}
-	// Get the energy: This power/energy must be recomputed:PENDING
+	elapsed = difftime(pmapp->app.job.end_time, pmapp->app.job.start_time);
 	read_enegy_data(ceh, &c_energy);
 	compute_power(&pmapp->energy_init, &c_energy, &app_power);
-
-	pmapp->app.power_sig.DC_power = accum_node_power(&app_power);
-	if ((app_power.avg_dc > pmapp->app.power_sig.max_DC_power) && (app_power.avg_dc < my_node_conf->max_error_power)){
-		pmapp->app.power_sig.max_DC_power = app_power.avg_dc;
+	if (pmapp->exclusive){
+		verbose(VJOBPMON, "Computing power signature. Job executed in exclusive mode");
+		pmapp->app.power_sig.DC_power = accum_node_power(&app_power);
+		if ((app_power.avg_dc > pmapp->app.power_sig.max_DC_power) && (app_power.avg_dc < my_node_conf->max_error_power)){
+			pmapp->app.power_sig.max_DC_power = app_power.avg_dc;
+		}
+		if (app_power.avg_dc < pmapp->app.power_sig.min_DC_power){
+			pmapp->app.power_sig.min_DC_power = app_power.avg_dc;
+		}
+		pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
+		pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
+		// CPU Frequency
+		state_assert(s, cpufreq_read_diff(&freq_job2, &pmapp->freq_job1, pmapp->freq_diff , &pmapp->app.power_sig.avg_f), );
+		ulong lcpus;
+		if (pmapp->app.is_mpi) cpufreq_avgcpufreq_mask(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
+	}else{
+		if (pmapp->app.is_mpi){
+			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode. Using EARL signature");
+			pmapp->app.power_sig.DC_power 	= pmapp->app.signature.DC_power;
+			pmapp->app.power_sig.DRAM_power = pmapp->app.signature.DRAM_power;
+			pmapp->app.power_sig.PCK_power	= pmapp->app.signature.PCK_power;
+			pmapp->app.power_sig.avg_f        = pmapp->app.signature.avg_f;
+		}else{
+			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode");
+			pmapp->app.power_sig.DC_power 	= pmapp->accum_ps.DC_energy / elapsed;
+			pmapp->app.power_sig.DRAM_power = pmapp->accum_ps.DRAM_energy/ elapsed;
+			pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
+			pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
+		}
+		pmapp->app.power_sig.max_DC_power = ear_max(pmapp->accum_ps.max, pmapp->app.power_sig.DC_power); 
+		pmapp->app.power_sig.min_DC_power = ear_min(pmapp->accum_ps.min, pmapp->app.power_sig.DC_power);
 	}
-	if (app_power.avg_dc < pmapp->app.power_sig.min_DC_power){
-		pmapp->app.power_sig.min_DC_power = app_power.avg_dc;
-	}
-	pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
-	pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
 	pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 
-	// CPU Frequency
-	state_assert(s, cpufreq_read_diff(&freq_job2, &pmapp->freq_job1, NULL, &pmapp->app.power_sig.avg_f), );
-
+	debug("Computed avg cpu %lu for %lu cpus job %lu/%lu", &pmapp->app.power_sig.avg_f, &lcpus, pmapp->app.job.id,pmapp->app.job.step_id);
 	// nominal is still pending
 
 	// Metrics are not reported in this function
@@ -819,7 +936,7 @@ void powermon_loop_signature(job_id jid,job_id sid,loop_t *loops)
   powermon_app_t *pmapp;
   cc = find_context_for_job(jid, sid);
   if (cc < 0){
-    verbose(0,"powermon_loop_signature and no current context for %lu/%lu",jid,sid);
+    verbose(VJOBPMON,"powermon_loop_signature and no current context for %lu/%lu",jid,sid);
     return;
   }
   pmapp = current_ear_app[cc];
@@ -845,11 +962,11 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
 			appID->is_mpi);
   cc = find_context_for_job(jid, sid);
   if (cc < 0){
-    verbose(0,"powermon_mpi_init and context not found job_id %lu/%lu, creating automatically",appID->job.id, appID->job.step_id);
-    powermon_new_job(NULL,eh, appID, 1);
+    verbose(VJOBPMON,"powermon_mpi_init and context not found job_id %lu/%lu, creating automatically",appID->job.id, appID->job.step_id);
+    powermon_new_job(NULL,eh, appID, 1,  0);
     cc = find_context_for_job(jid, sid);
     if (cc < 0){
-      verbose(0,"ERROR: Context not created!");
+      verbose(VJOBPMON,"ERROR: Context not created!");
       return;
     }
   }
@@ -886,7 +1003,7 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 	end_mpi(&pmapp->app.job);
 	set_powercapstatus_mode(AUTO_CONFIG);
 	if (!pmapp->job_created) {  // If the job is not submitted through slurm, end_job would not be submitted
-		powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id);
+		powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id, 0);
 	}
   debug("powermon_mpi_finalize done for %lu,%lu",jid,sid);
 
@@ -901,9 +1018,10 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 
 /* This functiono is called by dynamic_configuration thread when a new_job command arrives */
 
-void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi) {
+void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi, uint is_job) {
   int i;
 	int ccontext;
+	job_context_t* alloc;
 	// New application connected
 	if (appID == NULL) {
 		error("powermon_new_job: NULL appID");
@@ -931,6 +1049,13 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	/* Saving the context */
 	/* We cannot assume all the node will have the same freq: PENDING */
 	pmapp->current_freq = frequency_get_cpu_freq(0);
+	pmapp->is_job = is_job;
+	/* Returns the number of contexts for this jobid, if is 1 is an srun without sbacth/or salloc (or equivalent on other schedulers) */
+	if (is_job_in_node(appID->job.id, &alloc)){
+		/* It's an allocation by itself */
+		if (alloc->numc == 1) pmapp->is_job = 1;
+	}
+	verbose(VJOBPMON, "Is new job %d", pmapp->is_job);
 	get_governor(&pmapp->governor);
 	debug("Saving governor %s", pmapp->governor.name);
 	/* Setting userspace */
@@ -954,6 +1079,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   strcpy(pmapp->settings->policy_name,  my_policy->name);
   pmapp->settings->def_freq       = f;
   pmapp->settings->def_p_state    = my_policy->p_state;
+	pmapp->settings->island         = my_node_conf->island;
+	strcpy(pmapp->settings->tag, my_node_conf->tag);
   pmapp->resched->force_rescheduling = 0;
   memcpy(pmapp->settings->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
   set_null_loop(&pmapp->last_loop);
@@ -976,8 +1103,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
 	pthread_mutex_unlock(&app_lock);
 	//save_eard_conf(&eard_dyn_conf);
-	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
-			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi,COL_CLR);
+	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d procs %lu%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
+			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, COL_CLR);
 	verbose(VJOBPMON , "*******************");
 	pmapp->sig_reported = 0;
 
@@ -986,12 +1113,12 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 
 /* This function is called by dynamic_configuration thread when a end_job command arrives */
 
-void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
+void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 	// Application disconnected
 	powermon_app_t summary, *pmapp;
 	int cc;
 	/* jid,sid can finish in a different order than expected */
-	verbose(VJOBPMON , "*******************");
+	verbose(VJOBPMON , "********End job %lu/%lu***********", jid, sid);
 	debug("powermon_end_job %lu %lu", jid, sid);
   cc = find_context_for_job(jid, sid);
   if (cc < 0) {
@@ -1047,10 +1174,10 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 		powercap_set_app_req_freq(pmapp->pc_app_info);
 	}
 	end_context(cc);
-	verbose(1,"Cleaning job from node_mgr");
+	verbose(VJOBPMON+1,"Cleaning job from node_mgr");
 	nodemgr_clean_job(jid, sid);
 	clean_job_area(ID);
-	verbose(VJOBPMON , "*******************");
+	verbose(VJOBPMON+1 , "*******************");
 	service_close_by_id(jid,sid);
 
 }
@@ -1119,7 +1246,7 @@ void powermon_new_def_freq(uint p_id, ulong def) {
   uint cpolicy;
   int cc;
   powermon_app_t *pmapp;
-  verbose(0,"New default freq for policy %u set to %lu",p_id,def);
+  verbose(VJOBPMON,"New default freq for policy %u set to %lu",p_id,def);
   ps = frequency_closest_pstate(def);
   /* Job running and not EAR-aware */
   for (cc = 0;cc <= max_context_created; cc++){
@@ -1174,6 +1301,80 @@ void powermon_set_freq(ulong freq) {
 /** it reloads ear.conf */
 void powermon_reload_conf() {
 }
+void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
+{
+  powermon_app_t *pmapp;
+	ulong lcpus, tcpus = 0;
+	float cpu_ratio;
+	ulong num_jobs;
+	ulong time_consumed;
+	double my_dc_power;
+	job_context_t *alloc;
+
+	time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
+
+	/* we must detect which ones are using the node, filtering ssh etc */
+
+	num_jobs = num_jobs_in_node();
+	if (num_jobs == 0) return;
+
+	/* Set to 0 the num_cpus per job, we will compute again */
+	clean_cpus_in_jobs();
+
+  
+  for (uint cc = 1;cc <= max_context_created; cc++){
+    if (current_ear_app[cc] != NULL){
+      pmapp = current_ear_app[cc];
+			/* We must update the current signature */
+			pmapp->exclusive = (num_jobs == 1) && pmapp->exclusive;
+			pmapp->num_cpus  = num_cpus_in_mask(&pmapp->app_info->node_mask);
+			
+			if (pmapp->num_cpus){ 
+				if (is_job_in_node(pmapp->app.job.id, &alloc)){
+					verbose(VEARD_NMGR, "Job %lu found, adding %u cpus ", pmapp->app.job.id, pmapp->num_cpus);
+					tcpus += pmapp->num_cpus;
+					alloc->num_cpus += pmapp->num_cpus;
+				}
+			}
+		}
+	}
+
+	verbose_jobs_in_node(VCONF);
+	
+  for (uint cc = 1;cc <= max_context_created; cc++){
+    if (current_ear_app[cc] != NULL){
+      pmapp = current_ear_app[cc];
+			/* We must update the current signature */
+			lcpus = pmapp->num_cpus;
+			if (lcpus){
+				cpu_ratio = (num_jobs > 1) ? (float)lcpus/(float)tcpus : 1;
+				verbose(VEARD_NMGR,"Job %lu/%lu has %lu from %lu. cpu_ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id , lcpus, tcpus, cpu_ratio);
+			}else{
+				if (is_job_in_node(pmapp->app.job.id, &alloc)){
+					cpu_ratio = (float)alloc->num_cpus/(float)tcpus;
+					verbose(VEARD_NMGR,"Job %lu/%lu without node mask, using ratio %f = %u/%lu", pmapp->app.job.id ,pmapp->app.job.step_id, cpu_ratio, alloc->num_cpus, tcpus); 
+				}else{
+					cpu_ratio = 1.0/(float)num_jobs;
+
+				}
+			}
+			my_dc_power = accum_node_power(last_pmon) * cpu_ratio;
+			pmapp->accum_ps.DC_energy 	+= accum_node_power(last_pmon) * cpu_ratio * time_consumed;
+			pmapp->accum_ps.DRAM_energy += accum_dram_power(last_pmon) * cpu_ratio * time_consumed;
+			pmapp->accum_ps.PCK_energy 	+= accum_cpu_power(last_pmon)  * cpu_ratio * time_consumed;
+			if (lcpus) pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask( &my_nm_id, nm, pmapp->app_info->node_mask) * time_consumed;
+			else       pmapp->accum_ps.avg_f += get_nm_cpufreq(&my_nm_id, nm) * time_consumed;
+			pmapp->accum_ps.max = ear_max(pmapp->accum_ps.max, my_dc_power);
+			if (pmapp->accum_ps.min > 0 ) pmapp->accum_ps.min = ear_min(pmapp->accum_ps.min, my_dc_power);
+			else 													pmapp->accum_ps.min = my_dc_power;			
+#if USE_GPUS
+			float gpu_ratio = 1;
+			pmapp->accum_ps.GPU_energy  = accum_gpu_power(last_pmon)  * gpu_ratio * time_consumed;
+#endif
+
+    }
+  }
+}
 
 
 // Each sample is processed by this function
@@ -1191,6 +1392,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	powermon_app_t *pmapp;
 	uint current_jobs_running_in_node = 0;
 
+	/* last_pmon is the last short power monitor period info. pmon_info can be larger. Use last_pmon  for fine grain power metrics*/
 
 	pmapp 		= current_ear_app[max_context_created];
   jid       = pmapp->app.job.id;
@@ -1199,10 +1401,11 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
   maxpower  = pmapp->app.power_sig.max_DC_power;
   minpower  = pmapp->app.power_sig.min_DC_power;
 
+	update_pmapps(last_pmon, nm);
 
 	/* If there is no powercap, last_pmon and pmon_info is the same info. Otherwise, last_pmon is a short period and pmon_info corresponds with the period set in the ear.conf */
   /* Powercap */
-	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);;
+	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);
   pdomain.platform = last_pmon->avg_dc;
   pdomain.cpu      = accum_cpu_power(last_pmon);
   pdomain.dram     = accum_dram_power(last_pmon);
@@ -1212,7 +1415,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
 
 	if (nodemgr_get_num_jobs_attached(&current_jobs_running_in_node) == EAR_ERROR){
-		verbose(1,"Error asking for the number of jobs in node");
+		verbose(VEARD_NMGR,"Error asking for the number of jobs in node");
 	}
 
 
@@ -1234,12 +1437,14 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	verbose(VNODEPMON,"%s",COL_CLR);
 
 	/* We use last context as reference but we print all of them */
-	for (uint cc = 0;cc < MAX_CPUS_SUPPORTED; cc ++){ 
-		pmapp = current_ear_app[cc];
-  	if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
-    	signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
-			verbose(1," ");
-  	}
+	if (verb_level >= VEARD_NMGR) {
+	    for (uint cc = 0;cc < MAX_CPUS_SUPPORTED; cc ++){ 
+		    pmapp = current_ear_app[cc];
+  	    if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
+    	    signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
+			    verbose(VEARD_NMGR," ");
+  	    }
+	    }
 	}
 	report_periodic_power(fd_periodic, last_pmon);
 	#endif
@@ -1280,7 +1485,6 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
 
 	/* To be usd by status */
-	last_power_reported = last_pmon->avg_dc;
 	copy_node_metrics(&my_nm_id, &last_nm, nm);
 
 
@@ -1329,6 +1533,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 		  report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
 	  }
 	}
+	last_power_reported = last_pmon->avg_dc;
 
 	return;
 }
@@ -1407,7 +1612,7 @@ void powermon_mpi_signature(application_t *app) {
 	strcpy(pmapp->app.job.policy, app->job.policy);
 	strcpy(pmapp->app.job.app_id, app->job.app_id);
 	pmapp->sig_reported = 1;
-  verbose(0,"MPI signature reported for context %d,freq = %lu",cc,pmapp->app.signature.avg_f);
+  verbose(VJOBPMON,"MPI signature reported for context %d,freq = %lu",cc,pmapp->app.signature.avg_f);
 
 	save_eard_conf(&eard_dyn_conf);
 }
@@ -1537,7 +1742,7 @@ void *eard_power_monitoring(void *noinfo)
 	debug("Starting power monitoring loop, reporting metrics every %d seconds",f_monitoring);
 
 	while (!eard_must_exit) {
-		verbose(1,"\n%s------------------- NEW PERIOD -------------------%s",COL_BLU,COL_CLR);
+		verbose(VNODEPMON,"\n%s------------------- NEW PERIOD -------------------%s",COL_BLU,COL_CLR);
 		// Wait for N usecs
 		sleep(f_monitoring);
 
@@ -1620,12 +1825,12 @@ int powermon_get_num_applications(int only_master)
     if (current_ear_app[i] != NULL){
       total ++;
       if (is_app_master(current_ear_app[i]->app_info)) total_master++;
-			verbose(1,"App %d is master=%d",i,is_app_master(current_ear_app[i]->app_info));
+			verbose(VJOBPMON,"App %d is master=%d",i,is_app_master(current_ear_app[i]->app_info));
     }
   }
   total         = ear_max(1, total - 1);
   total_master  = ear_max(1, total_master -1);
-  verbose(1,"We have %d apps created and %d masters",total, total_master);
+  verbose(VJOBPMON,"We have %d apps created and %d masters",total, total_master);
   if (only_master) return total_master;
   return total;
 }

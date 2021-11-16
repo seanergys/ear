@@ -18,6 +18,7 @@
 //#define SHOW_DEBUGS 1
 
 #define FIRST_SIGNIFICANT_BYTE 3
+#define POWER_PERIOD 5
 
 #include <math.h>
 #include <errno.h>
@@ -298,7 +299,7 @@ state_t inm_power_thread_main(void *p)
 	inm_power_reading(&inm_context_for_pool, &out,&inm_current_power_reading);
 	if (inm_current_power_reading.current_power > 0){
 		//current_elapsed = inm_current_power_reading.timeframe - inm_last_power_reading.timeframe;	
-		current_elapsed = 5;
+		current_elapsed = POWER_PERIOD;
 		current_energy = current_elapsed * inm_current_power_reading.avg_power;
 		/* Energy is reported in MJ */
 		inm_power_accumulated_energy += (current_energy*1000);
@@ -361,8 +362,8 @@ state_t energy_init(void **c)
 			inm_power_sus = suscription();
 			inm_power_sus->call_main = inm_power_thread_main;
 			inm_power_sus->call_init = inm_power_thread_init;
-			inm_power_sus->time_relax = 5000;
-			inm_power_sus->time_burst = 5000;
+			inm_power_sus->time_relax = POWER_PERIOD*1000;
+			inm_power_sus->time_burst = POWER_PERIOD*1000;
 			inm_power_sus->suscribe(inm_power_sus);
 			//debug("inm energy plugin suscription initialized with timeframe %lu ms",inm_power_timeframe);
 		}

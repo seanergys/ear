@@ -35,6 +35,7 @@
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
+#include <common/system/folder.h>
 #include <common/environment.h>
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
@@ -57,6 +58,7 @@
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
 #include <library/models/models.h>
+#include <library/models/cpu_power_model.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
 
@@ -808,11 +810,13 @@ void ear_init()
 	state_t st;
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	char *ext_def_freq_str=getenv(SCHED_EAR_DEF_FREQ);
+	
 
 	if (ear_lib_initialized){
 		verbose_master(1,"EAR library already initialized");
 		return;
 	}
+	VERB_SET_LV(0);
 
     timestamp_getfast(&ear_application_time_init);
 
@@ -832,18 +836,27 @@ void ear_init()
 	// Environment initialization
 	ear_lib_environment();
 
+  gethostname(node_name, sizeof(node_name));
+  strtok(node_name, ".");
+  // Fundamental data
+  debug("Running in %s process=%d",node_name,getpid());
+
+
 	tmp=get_ear_tmp();
+  folder_t tmp_test;
+  if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
+	/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
+ 		verbose(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
+ 		set_ear_tmp("/tmp");
+ 		tmp = get_ear_tmp();
+ }
+ 
 
 	if (ext_def_freq_str!=NULL){
 		ext_def_freq=(unsigned long)atol(ext_def_freq_str);
 		verbose_master(VEAR_INIT,"Using externally defined default freq %lu",ext_def_freq);
 	}
 
-	// Fundamental data
-	gethostname(node_name, sizeof(node_name));
-	strtok(node_name, ".");
-
-	debug("Running in %s process=%d",node_name,getpid());
 
 	verb_level = get_ear_verbose();
 	verb_channel=2;
@@ -1006,7 +1019,7 @@ void ear_init()
 	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
  /* create verbose file for each job */
     if (verb_path != NULL){
-      //  if (masters_info.my_master_rank >= 0){
+        if (masters_info.my_master_rank >= 0){
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
                 error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
             }else{
@@ -1024,7 +1037,7 @@ void ear_init()
                     verbose_master(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
                 }
             }
-        //}
+        }
     }
 
 
@@ -1139,6 +1152,14 @@ void ear_init()
     debug("init_power_models");
     init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
     verbose_master(VEAR_INIT,"Policies and models initialized");	
+
+    if (cpu_power_model_load(system_conf, &system_conf->installation, &arch_desc) == EAR_SUCCESS){
+			verbose_master(VEAR_INIT, "CPU power models loaded");
+		}
+		if (cpu_power_model_init() == EAR_SUCCESS){
+			verbose_master(VEAR_INIT, "CPU power model initialized");
+		}
+		
 
     if (ext_def_freq==0){
         EAR_default_frequency=system_conf->def_freq;

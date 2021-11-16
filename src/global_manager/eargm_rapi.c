@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <netdb.h>
 #include <errno.h>
 #include <stdio.h>
@@ -25,6 +25,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <common/states.h>
 #include <common/output/verbose.h>

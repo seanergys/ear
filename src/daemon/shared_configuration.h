@@ -62,6 +62,8 @@ typedef struct settings_conf{
 	ulong   max_avx512_freq;
   ulong   max_avx2_freq;
 	node_powercap_opt_t pc_opt;
+	uint    island;   
+	char 		tag[GENERIC_NAME];
 } settings_conf_t;
 
 
