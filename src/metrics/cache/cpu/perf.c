@@ -19,8 +19,9 @@
 #include <metrics/common/perf.h>
 #include <metrics/cache/cpu/perf.h>
 
-static llong values[2];
+static llong values[3];
 static perf_t perf_llc;
+static perf_t perf_llwc;
 static perf_t perf_l1d;
 static uint initialized;
 
@@ -41,20 +42,28 @@ state_t cache_perf_init(ctx_t *c)
 	// Event creation
 	ulong event_l1d = PERF_COUNT_HW_CACHE_L1D;
 	ulong event_llc = PERF_COUNT_HW_CACHE_LL;
+	ulong event_llwc = PERF_COUNT_HW_CACHE_LL;
 	// Operation (read)
 	event_l1d = event_l1d | (PERF_COUNT_HW_CACHE_OP_READ << 8);
 	event_llc = event_llc | (PERF_COUNT_HW_CACHE_OP_READ << 8);
+	event_llwc = event_llc | (PERF_COUNT_HW_CACHE_OP_WRITE << 8);
 	// Result (miss)
 	event_l1d = event_l1d | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
 	event_llc = event_llc | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
+	event_llwc = event_llwc | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
 
 	//
 	if (xtate_fail(s, perf_open(&perf_l1d, &perf_l1d, 0, PERF_TYPE_HW_CACHE, event_l1d))) {
-		debug("perf_open returned %d (%s)", s, state_msg);
+		debug("perf_open PERF_COUNT_HW_CACHE_L1D returned %d (%s)", s, state_msg);
 		return s;
 	}
 	if (xtate_fail(s, perf_open(&perf_llc, &perf_l1d, 0, PERF_TYPE_HW_CACHE, event_llc))) {
-		debug("perf_open returned %d (%s)", s, state_msg);
+		debug("perf_open PERF_COUNT_HW_CACHE_LL (WRITE) returned %d (%s)", s, state_msg);
+		perf_close(&perf_l1d);
+		return s;
+	}
+	if (xtate_fail(s, perf_open(&perf_llwc, &perf_l1d, 0, PERF_TYPE_HW_CACHE, event_llwc))) {
+		debug("perf_open PERF_COUNT_HW_CACHE_LL (WRITE) returned %d (%s)", s, state_msg);
 		perf_close(&perf_l1d);
 		return s;
 	}
@@ -72,6 +81,7 @@ state_t cache_perf_dispose(ctx_t *c)
 	
 	cache_perf_stop(c, NULL, NULL);
 	perf_close(&perf_llc);
+	perf_close(&perf_llwc);
 	perf_close(&perf_l1d);
 
 	return EAR_SUCCESS;
@@ -125,10 +135,10 @@ state_t cache_perf_read(ctx_t *c, llong *L1_misses, llong *LL_misses)
 	}
 
 	if (L1_misses != NULL) *L1_misses = values[0];
-	if (LL_misses != NULL) *LL_misses = values[1];
+	if (LL_misses != NULL) *LL_misses = values[1] + values[2];
 
 	debug("total L1 misses %lld", values[0]);
-	debug("total LLC misses %lld", values[1]);
+	debug("total LLC misses %lld", values[1] + values[2]);
 
 	return EAR_SUCCESS;
 }
