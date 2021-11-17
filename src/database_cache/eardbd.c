@@ -149,6 +149,15 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	// Getting host name and host alias
 	gethostname(master_host, SZ_NAME_MEDIUM);
 	gethostname(master_nick, SZ_NAME_MEDIUM);
+
+#if 1
+    // Fake
+    sprintf(master_host, "i02xcat1cl");
+    sprintf(master_nick, "i02xcat1cl");
+//    sprintf(master_host, "i02xcat2cl");
+//    sprintf(master_nick, "i02xcat2cl");
+#endif
+
 	// Finding a possible short form
 	if ((p = strchr(master_nick, '.')) != NULL) {
 		p[0] = '\0';
