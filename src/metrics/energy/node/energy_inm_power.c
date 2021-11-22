@@ -34,12 +34,14 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
-#include <states.h> 
-#include <math_operations.h>
-#include <verbose.h>
-#include <energy_node_common.h>
-#include <energy_inm_power.h>
-#include <monitor.h>
+#include <common/states.h>
+#include <common/types/generic.h>
+#include <common/math_operations.h>
+#include <common/output/verbose.h>
+#include <metrics/energy/node/energy_inm_power.h>
+#include <metrics/energy/node/energy_node.h>
+#include <common/system/monitor.h>
+
 
 static pthread_mutex_t ompi_lock = PTHREAD_MUTEX_INITIALIZER;
 static suscription_t *inm_power_sus;
