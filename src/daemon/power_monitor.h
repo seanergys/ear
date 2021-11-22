@@ -84,6 +84,9 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *j, u
 */
 void powermon_end_job(ehandler_t *eh,job_id jid,job_id sid, uint is_job);
 
+/** Called by dynamic_configuration thread when a new task is created */
+void powermon_new_task();
+
 /** reports the application signature to the power_monitoring module 
 */
 void powermon_mpi_signature(application_t *application);

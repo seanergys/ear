@@ -172,12 +172,26 @@ int eards_set_freq(unsigned long freq)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
-    command.req=EAR_RC_SET_FREQ;
+    command.req = EAR_RC_SET_FREQ;
     command.node_dist = INT_MAX;
     command.time_code = time(NULL);
     command.my_req.ear_conf.max_freq=freq;
     return send_command(&command);
 }
+
+int eards_new_task(new_task_req_t *new_task)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+
+    debug("eards_new_task");
+	command.req = EAR_RC_NEW_TASK;
+    command.node_dist = INT_MAX;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.new_task, new_task, sizeof(new_task_req_t));
+	return send_command(&command);
+}
+
 int eards_set_def_freq(unsigned long freq)
 {
     request_t command;

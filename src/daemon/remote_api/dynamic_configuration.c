@@ -807,6 +807,9 @@ state_t process_remote_requests(int clientfd) {
             verbose(VRAPI, "end_job command received %lu", command.my_req.end_job.jid);
             verbose(VRAPI, "*******************************************");
             break;
+        case EAR_RC_NEW_TASK:
+            powermon_new_task();
+            break;
         case EAR_RC_MAX_FREQ:
             verbose(VRAPI, "max_freq command received %lu", command.my_req.ear_conf.max_freq);
             ack = dynconf_max_freq(command.my_req.ear_conf.max_freq);

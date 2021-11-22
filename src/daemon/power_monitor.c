@@ -1183,6 +1183,14 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 }
 
 /*
+* This function is called by dynamic_configuration thread: Used to notify when a new task has been created
+*/
+void powermon_new_task()
+{
+}
+
+
+/*
 * These functions are called by dynamic_configuration thread: Used to notify when a configuracion setting is changed
 *
 */
