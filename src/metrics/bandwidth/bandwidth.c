@@ -32,6 +32,8 @@
  * When an error occurs, those calls returns -1.
  */
 
+#define SHOW_DEBUGS 1
+
 #include <limits.h>
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -40,6 +42,7 @@
 #include <metrics/bandwidth/cpu/dummy.h>
 #include <metrics/bandwidth/cpu/amd49.h>
 #include <metrics/bandwidth/cpu/intel63.h>
+#include <metrics/bandwidth/cpu/likwid.h>
 
 static struct uncore_op {
 	state_t (*init)		(ctx_t *c, topology_t *tp);
@@ -82,6 +85,17 @@ int init_uncores(int cpu_model)
 		ops.stop    = bwidth_amd49_stop;
 		ops.read    = bwidth_amd49_read;
 		ops.dispose = bwidth_amd49_dispose;
+	}
+	else if (state_ok(bwidth_likwid_status(&topo)))
+	{
+		debug("selected likwid");
+		ops.init    = bwidth_likwid_init;
+		ops.count   = bwidth_likwid_count_devices;
+		ops.reset   = bwidth_likwid_fake;
+		ops.start   = bwidth_likwid_fake;
+		ops.stop    = bwidth_likwid_read;
+		ops.read    = bwidth_likwid_read;
+		ops.dispose = bwidth_likwid_dispose;
 	}
 	else
 	{
