@@ -1706,7 +1706,7 @@ int mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_container_t c
         if (gpu_sig->num_gpus > MAX_GPUS_SUPPORTED)
             warning("current GPU signature has more GPUs than supported");
 
-        num_gpu_sigs += ear_min(gpu_sig->num_gpus, MAX_GPU_SUPPORTED);
+        num_gpu_sigs += ear_min(gpu_sig->num_gpus, MAX_GPUS_SUPPORTED);
     }
 
     verbose(VMYSQL + 1, "total number of gpu_sigs: %d", num_gpu_sigs);
