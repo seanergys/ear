@@ -300,11 +300,11 @@ state_t bwidth_intel63_status(topology_t *tp)
     if (tp->vendor != VENDOR_INTEL || tp->model < MODEL_HASWELL_X){
         return EAR_ERROR;
     }
+    _cpu_model = tp->model;
     pci_scan_uncores();
     if (n_functions == 0) {
         return EAR_ERROR;
     }
-    _cpu_model = tp->model;
     return EAR_SUCCESS;
 }
 
