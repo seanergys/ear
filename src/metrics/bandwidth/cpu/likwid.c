@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -23,7 +23,7 @@
 #include <metrics/common/likwid.h>
 #include <metrics/bandwidth/cpu/likwid.h>
 
-#if 0
+#if 1
 static char *evs = \
                            "CAS_COUNT_ALL:MBOX0C0," \
                            "CAS_COUNT_ALL:MBOX1C0," \
@@ -79,7 +79,7 @@ static char         *evs_names[16] = {
                            "CAS_COUNT_WR:MBOX7C2" };
 #endif
 
-#define evs_count  16
+#define evs_count  8
 static topology_t  tp;
 static likevs_t    events;
 static double     *ctrs;
