@@ -699,6 +699,7 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_deserialize_task");
+	new_task_req_t newtask;
 
     cpu_set_t mask;
     int cpus_count;
@@ -735,5 +736,10 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
         }
         plug_verbose(sp, 2, "%s", buffer1);
     }
+		/* Send a new task command here : eards_new_task(new_task_req_t *new_task) */
+	newtask.jid = 0;
+	newtask.sid = 0;
+	newtask.pid = getpid();
+	newtask.mask = mask;
 	return ESPANK_SUCCESS;
 }

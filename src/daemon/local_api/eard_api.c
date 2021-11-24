@@ -129,7 +129,7 @@ int eards_write(int fd,char *buff,int size)
       if ((errno==EWOULDBLOCK) || (errno==EAGAIN)) tries++;
       else{
         must_abort=1;
-        error("Error sending command to eard %s,%d",strerror(errno),errno);
+        debug("Error sending command to eard %s,%d",strerror(errno),errno);
       }
     }else if (ret==0){
       must_abort=1;
@@ -187,11 +187,11 @@ uint warning_api(int return_value, int expected, char *msg)
 {
 	if (return_value != expected){ 
 		app_connected=0;
-		warning("eards: %s (returned %d expected %d)", msg,return_value,expected);
+		debug("eards: %s (returned %d expected %d)", msg,return_value,expected);
 	}
 	if (return_value < 0){ 
 		app_connected=0;
-		error("eards: %s (%s)", msg,strerror(errno));
+		debug("eards: %s (%s)", msg,strerror(errno));
 	}
 	return (return_value != expected);
 }

@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+//#define SHOW_DEBUGS 1
+
 
 #include <common/config.h>
 #include <common/system/file.h>
@@ -24,6 +26,7 @@
 #include <common/output/verbose.h>
 #include <daemon/local_api/node_mgr.h>
 #include <common/system/shared_areas.h>
+#include <common/output/debug.h>
 
 static char node_mgr_tmp[PATH_MAX];
 static char node_mgr_info[PATH_MAX];
@@ -50,11 +53,16 @@ state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
 
 	/* The eard will create this area */
 	xsnprintf(node_mgr_info,sizeof(node_mgr_info),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_INFO);
+	debug("NODE MGR region %s\n", node_mgr_info);
 	node_jobs_list = (ear_njob_t *)attach_shared_area(node_mgr_info,sizeof(ear_njob_t)*MAX_CPUS_SUPPORTED,O_RDWR,&fd_node_mgr_info,NULL);
 
 	file_unlock(fd_node_mgr_lck);
 	*nodelist = node_jobs_list;
-	if (node_jobs_list == NULL) return EAR_ERROR;
+	if (node_jobs_list == NULL){ 
+		debug("Error: attach shared area for job mgr returns NULL");
+		return EAR_ERROR;
+	}
+	debug("NODE MGR Initialized ok");
 	return EAR_SUCCESS;
 }
 
@@ -92,11 +100,15 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
 
   /* The eard will create this area */
+	debug("NODE MGR INFO %s\n", node_mgr_info);
   node_jobs_list = (ear_njob_t *)create_shared_area(node_mgr_info,(char *)node_jobs_list,sizeof(ear_njob_t)*MAX_CPUS_SUPPORTED, &fd_node_mgr_info,0);
 	
   file_unlock(fd_node_mgr_lck);
 	*nodelist = node_jobs_list;
-	if (node_jobs_list == NULL) return EAR_ERROR;
+	if (node_jobs_list == NULL){ 
+		debug("Error, shared memory region for job mgr not created");
+		return EAR_ERROR;
+	}
   return EAR_SUCCESS;
 }
 
@@ -134,11 +146,14 @@ state_t nodemgr_attach_job(ear_njob_t *my_job, uint *my_index)
 
 	for (uint i = 0 ; i < MAX_CPUS_SUPPORTED ; i++){
     if (node_jobs_list[i].jid == -1){
+			debug("Found free position at %d", i);
 			memcpy(&node_jobs_list[i],my_job, sizeof(ear_njob_t));
 			*my_index = i;
 
 			file_unlock(fd_node_mgr_lck);	
 			return EAR_SUCCESS;
+		}else {
+			debug("Looking at index %d", i);
 		}
   }
 
