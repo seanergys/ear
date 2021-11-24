@@ -272,6 +272,43 @@ void notify_eard_connection(int status)
 	}
 }
 
+static uint clean_job_folder = 0;
+void check_job_folder()
+{
+	char block_file_dir[MAX_PATH_SIZE];
+	char *tmp=get_ear_tmp();
+	uint ID = create_ID(my_job_id,my_step_id);
+	int ret;
+
+
+	snprintf(block_file_dir,sizeof(block_file_dir),"%s/%u",tmp, ID);
+	// printf("check_job_folder:%s\n", block_file_dir);
+  if (access(block_file_dir, W_OK) == 0){ 
+		return;
+	}
+  if (errno == ENOENT){
+  	//error("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
+  	clean_job_folder = 1;
+  	ret = mkdir(block_file_dir, S_IRWXU);
+  	if ((ret < 0 ) && (errno != EEXIST)){
+			/* What can we do here EAR OFF */
+			// error("Create: Job folder cannot be create %s ", strerror(errno));		
+		}else if (ret == 0) printf("Folder created\n");
+	}
+}
+
+void cleanup_job_folder()
+{
+	char block_file_dir[MAX_PATH_SIZE];
+  char *tmp=get_ear_tmp();
+  uint ID = create_ID(my_job_id,my_step_id);
+	snprintf(block_file_dir,sizeof(block_file_dir),"%s/%u",tmp, ID);
+	printf("cleanup_job_folder: %s process %d\n", block_file_dir, clean_job_folder);
+	if (clean_job_folder){
+		printf("Folder needs to be removed from the library\n");
+		folder_remove(block_file_dir);
+	}else printf("Folder  doesn't need to be removed from the library\n");
+}
 /****************************************************************************************************************************************************************/
 /****************** This function creates the shared memory region to coordinate processes in same node and with other nodes  ***********************************/
 /****************** It is executed by the node master ***********************************************************************************************************/
@@ -293,7 +330,7 @@ void create_shared_regions()
 	debug("%s:Master creating shared regions for node synchro",node_name);
   xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
-    error("Creating lock file for shared memory %s",block_file);
+    error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
   }
 
 	/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
@@ -454,7 +491,7 @@ void attach_shared_regions()
 	/* they first join the Node shared memory */
 	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
 	if ((bfd = file_lock_create(block_file))<0){
-		error("Creating lock file for shared memory");
+		error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 	}
 	if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
     error("Getting the lib_shared_region_path");
@@ -877,6 +914,7 @@ void ear_init()
 	#endif
 
 	get_job_identification();
+  check_job_folder();
 	uint ID = create_ID(my_job_id,my_step_id);
 	if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
 		unlink(lib_shared_region_path);
@@ -1305,15 +1343,23 @@ void ear_init()
 void ear_finalize(int exit_status)
 {
     // if we are not the master, we return
-    if (cancelled) return;
-    if (synchronize_masters == 0 ) return;
+    if ((cancelled) || (synchronize_masters == 0 )){ 
+			cleanup_job_folder();
+			return;
+		}
 #if ONLY_MASTER
     if (my_id) {
         return;
     }	
 #endif
-    if (!eard_ok) return;
-		if (!lib_shared_region->earl_on) return;
+    if (!eard_ok){ 
+			cleanup_job_folder();
+			return;
+		}
+		if (!lib_shared_region->earl_on){
+			cleanup_job_folder();
+			 return;
+		}
 #if USE_LOCK_FILES
     if (!my_id){
         debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);

@@ -430,21 +430,7 @@ void clean_job_area(uint ID)
 	char *file;
 
   xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
-  s = folder_open(&job_folder, job_path);
-  if (state_fail(s)) {
-		verbose(VJOBPMON+1,"Error opening job path %s",job_path);
-    return;
-  }
-  verbose(VJOBPMON+2,"Cleaning job_path: %s", job_path);
-
-  while ((file = folder_getnext(&job_folder, NULL, NULL)))
-  {
-		xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-		verbose(VJOBPMON+2,"Deleting: %s",file_path);
-		unlink(file_path);	
-  }
-	folder_close(&job_folder);
-	rmdir(job_path);
+	folder_remove(job_path);
 }
 
 
