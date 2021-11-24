@@ -63,6 +63,7 @@ static const char *likwid_names[] =
 	"perfmon_readCounters",
 	"perfmon_readCountersCpu",
 	"perfmon_finalize",
+    "perfmon_setVerbosity",
 };
 
 static struct likwid_s
@@ -79,9 +80,10 @@ static struct likwid_s
 	int           (*perfmon_readCounters)    (void);
 	int           (*perfmon_readCountersCpu) (int cpu);
 	void          (*perfmon_finalize)        (void);
+	void          (*perfmon_setVerbosity)    (int verbose);
 } likwid;
 
-#define LIKWID_N 12
+#define LIKWID_N 13
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static CpuTopology_t topo;
@@ -96,7 +98,9 @@ static int load_test(char *path)
 	int error;
 	int i;
 
-	//
+	if (path == NULL) {
+		return 0;
+	}
 	debug("trying to access to '%s'", path);
 	if (access(path, X_OK) != 0) {
 		return 0;
@@ -106,8 +110,7 @@ static int load_test(char *path)
 		return 0;
 	}
 	debug("dlopen ok");
-	
-	//
+	// Finding symbols
 	symplug_join(liblikwid, (void **) &likwid, likwid_names, LIKWID_N);
 
 	for(i = 0, error = 0; i < LIKWID_N; ++i) {
@@ -126,7 +129,6 @@ static int load_test(char *path)
 static state_t static_load()
 {
 	state_t s = EAR_SUCCESS;
-	// Looking for nvidia library in tipical paths.
 	if (load_test(getenv("HACK_FILE_LIKWID"))) return s;
 	if (load_test(LIKWID_PATH "/lib64/liblikwid.so")) return s;
 	if (load_test(LIKWID_PATH "/lib/liblikwid.so")) return s;
@@ -146,18 +148,17 @@ static state_t static_init()
 
     // Forcing LIKWID to overlap other counters	
     setenv("LIKWID_FORCE", "1", 1);
-    
     // Forcing LIKWID to find its deaemon
-    char *p = getenv("PATH");
-    char buffer_invent[4096];
-    sprintf(buffer_invent, LIKWID_PATH "/sbin:%s", p);
-    setenv("PATH", buffer_invent, 1);
-    printf(LIKWID_PATH "/sbin\n");
+    appenv("PATH", LIKWID_PATH "/sbin");
+    // Summary
+    debug("LIKWID force: %s", getenv("LIKWID_FORCE"));
+    debug("LIKWID path : %s", getenv("PATH"));
+    
+    likwid.perfmon_setVerbosity(1);
 
     if (likwid.topology_init() < 0) {
         return static_dispose(EAR_ERROR, "failed to initialize LIKWID's topology");
     }
-
     info = likwid.get_cpuInfo();
     topo = likwid.get_cpuTopology();
 
@@ -171,49 +172,49 @@ static state_t static_init()
         return static_dispose(EAR_ERROR, "failed to initialize LIKWID's perfmon module");
     }
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t likwid_init()
 {
-	state_t s = EAR_SUCCESS;
-	#ifndef LIKWID_BASE
+    state_t s = EAR_SUCCESS;
+    #ifndef LIKWID_BASE
     return_msg(EAR_ERROR, "path to LIKWID not set");
     #endif
-	while (pthread_mutex_trylock(&lock));
-	if (!ok) {
-		if (state_ok(s = static_load())) {
-			if (state_ok(s = static_init())) {
-				ok = 1;
-			}
-		}
-	}
-	pthread_mutex_unlock(&lock);
-	return s;
+    while (pthread_mutex_trylock(&lock));
+    if (!ok) {
+        if (state_ok(s = static_load())) {
+            if (state_ok(s = static_init())) {
+                ok = 1;
+            }
+        }
+    }
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 state_t likwid_dispose()
 {
-	return static_dispose(EAR_SUCCESS, "");
+    return static_dispose(EAR_SUCCESS, "");
 }
 
 
 state_t likwid_events_open(likevs_t *id, double **ctrs_alloc, uint *ctrs_count, char *evs_names, uint evs_count)
 {
-	id->evs_count = evs_count;
-	if ((id->gid = likwid.perfmon_addEventSet(evs_names)) < 0) {
+    id->evs_count = evs_count;
+    if ((id->gid = likwid.perfmon_addEventSet(evs_names)) < 0) {
         return_msg(EAR_ERROR, "failed to add event string to LIKWID's perfmon");
     }
     if (likwid.perfmon_setupCounters(id->gid) < 0) {
         return_msg(EAR_ERROR, "failed to setup LIKWID's perfmon");
     }
-	if (likwid.perfmon_startCounters() < 0) {
+    if (likwid.perfmon_startCounters() < 0) {
         return_msg(EAR_ERROR, "failed to start LIKWID's counters");
     }
-	*ctrs_count = evs_count*topo->numHWThreads;
-	*ctrs_alloc = calloc(*ctrs_count, sizeof(double));
+    *ctrs_count = evs_count*topo->numHWThreads;
+    *ctrs_alloc = calloc(*ctrs_count, sizeof(double));
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t likwid_events_read(likevs_t *id, double *ctrs)

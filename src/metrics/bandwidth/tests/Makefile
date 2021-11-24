@@ -12,7 +12,7 @@ all: api.c
 install: ;
 
 clean: rclean;
-	rm -f test
+	rm -f test output
 
 ######## DEPENDENCIES
 

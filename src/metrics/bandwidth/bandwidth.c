@@ -204,7 +204,7 @@ int compute_mem_bw(ullong *cas2, ullong *cas1, double *bps, double t,int N)
 	}
 	topology_init(&topo);
 	accum = acum_diff(cas2,cas1,N);
-	debug("Total uncore events %llu cache line size %u\n",accum,topo.cache_line_size);
+	//debug("Total uncore events %llu cache line size %u\n",accum,topo.cache_line_size);
 	*bps = (double)(accum * topo.cache_line_size)/(t*BW_GB);
 	return EAR_SUCCESS;
 }
@@ -307,9 +307,9 @@ void print_uncores(unsigned long long * DEST,int N)
 {
   int i;
   for (i=0;i<N;i++){
-		fprintf(stdout,"Counter %d= %llu \t",i,DEST[i]);
+		verbosen(0, "[%d,%llu] ",i,DEST[i]);
 	}
-	fprintf(stdout,"\n");
+    verbose(0, "");
 }
 
 void uncores_to_str(unsigned long long * DEST,int N,char *txt,int len)
