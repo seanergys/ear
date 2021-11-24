@@ -1,18 +1,10 @@
-# Features
-# Compiles the MPI EAR library version or non-MPI.
-FEAT_MPI_API  = 1
-# This is automatically generated based on the CPU version detected.
-FEAT_AVX512   = @FEAT_AVX512@
-# Extend the set of files installed.
-FEAT_RESEARCH = 0
-# Enables the installation of GPU optimization policies. If 0, only monitoring is supported.
-FEAT_GPU_OPT  = 1
-# Disables the utilization of virtual PSTATES in AMD and selects OS CPUFreq.
+FEAT_MPI_API       = 1
+FEAT_AVX512        = @FEAT_AVX512@
+FEAT_RESEARCH      = 0
+FEAT_GPU_OPT       = 1
 FEAT_AMD_OSCPUFREQ = 0
-
-FEAT_DB_MARIADB = 1
-FEAT_DB_PSQL    = 0
-
+FEAT_DB_MARIADB    = 1
+FEAT_DB_PSQL       = 0
 
 # Compilers
 CC           = @CC@
@@ -33,6 +25,7 @@ DB_BASE      = @DB_DIR@
 DB_CFLAGS    = @DB_CPPFLAGS@
 DB_LDFLAGS   = @DB_LDFLAGS@ @DB_LIBS@
 CUDA_BASE    = @CUDA_DIR@
+LIKWID_BASE  =
 
 # Directories
 ROOTDIR      = $(shell pwd)
