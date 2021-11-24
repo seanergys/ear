@@ -122,14 +122,15 @@ typedef struct apis_info_s {
 	uint  avail_count;
 	void *current_list;
 	void *avail_list;
-} apis_info_t;
+    void *set_list;
+} apis_svc_t;
 
 static char          big_chunk1[16384];
 static char          big_chunk2[16384];
 static wide_buffer_t wb;
-static apis_info_t   mc;
-//static apis_info_t   mg;
-static apis_info_t   mi;
+static apis_svc_t   mc;
+//static apis_svc_t   mg;
+static apis_svc_t   mi;
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -170,11 +171,9 @@ void services_init(topology_t *tp)
 	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
 
-    //
-    sf(mgt_cpufreq_data_alloc(mc.current_list, uint **index_list));
-    sf(mgt_cpufreq_data_alloc(mi.current_list, uint **index_list));
+    sf(mgt_cpufreq_data_alloc(mc.current_list, mc.set_list));
+    sf(mgt_cpufreq_data_alloc(mi.current_list, mi.set_list));
 
-	//
 	serial_alloc(&wb, SIZE_8KB);
 }
 
@@ -238,11 +237,11 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
         size = sizeof(uint);
     dcase(RPC_MGT_CPUFREQ_SET_CURRENT_LIST);
         size =  mc.devs_count * sizeof(uint);
-        if (state_fail(s = eard_rpc_read_pending(req_fd, big_chunk1, head->size, size))) {
+        if (state_fail(s = eard_rpc_read_pending(req_fd, mc.set_list, head->size, size))) {
             serror(Rpcerr.pending);
         }
         if (state_ok(s)) {
-            if (state_fail(s = mgt_cpufreq_set_current_list(no_ctx, (uint *) big_chunk1))) {
+            if (state_fail(s = mgt_cpufreq_set_current_list(no_ctx, (uint *) mc.set_list))) {
                 serror("When setting a CPU frequency list");
             }
             size = 0;
@@ -303,12 +302,13 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 		data = (char *) mi.current_list;
 		size = sizeof(pstate_t)*mi.devs_count;
 	dcase(RPC_MGT_IMCFREQ_SET_CURRENT);
-		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mi.current_list, head->size, 0))) {
+		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mi.set_list, head->size, 0))) {
 			serror(Rpcerr.pending);
-		}
-		if (state_fail(s = mgt_imcfreq_set_current_list(no_ctx, mi.current_list))) {
-			serror("Could not set IMC current frequency");
-		}
+		} else {
+		    if (state_fail(s = mgt_imcfreq_set_current_list(no_ctx, mi.set_list))) {
+			    serror("Could not set IMC current frequency");
+            }
+        }
 	dcase(RPC_MGT_IMCFREQ_GET_CURRENT_MIN);
 		serial_clean(&wb);
 		//

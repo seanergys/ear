@@ -55,7 +55,6 @@ extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
 extern uint *imc_max_pstate,*imc_min_pstate;
-extern uint imc_mgt_compatible;
 extern uint imc_devices;
 extern const pstate_t *imc_pstates;
 int my_globalrank;
@@ -272,7 +271,7 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         return EAR_SUCCESS;
     }
     verbose_master(2,"Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
-    if (dyn_unc && imc_mgt_compatible){
+    if (dyn_unc && metrics_get(MGT_IMCFREQ)->ok){
         imc_up = calloc(imc_devices,sizeof(uint));
         imc_low = calloc(imc_devices,sizeof(uint));
         /* We are using the same imc pstates for all the devices for now */
@@ -485,7 +484,7 @@ state_t policy_init()
     verbose_master(2,"Using turbo for CP when load unbalance set to %u", use_turbo_for_cp);
 
 		/* conf_dyn_unc is based on the configuration. dyn_unc is modified at runtime depending of number of jobs running */   
-    if (cdyn_unc != NULL && imc_mgt_compatible){
+    if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok){
        conf_dyn_unc = atoi(cdyn_unc);
     }
 		dyn_unc = conf_dyn_unc;

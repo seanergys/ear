@@ -16,11 +16,12 @@
  */
 
 #define _GNU_SOURCE
-//#define SHOW_DEBUGS 1
-#define INFO_METRICS 2
-#define IO_VERB 3
 
+//#define SHOW_DEBUGS           1
+#define INFO_METRICS           2
+#define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,17 +31,22 @@
 
 #include <common/config.h>
 #include <common/states.h>
+#include <common/system/time.h>
 #include <common/output/verbose.h>
-#include <library/common/verbose_lib.h>
-#include <library/common/library_shared_data.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
-#include <library/common/externs.h>
+
 #include <library/api/clasify.h>
+#include <library/common/externs.h>
+#include <library/common/verbose_lib.h>
+#include <library/common/library_shared_data.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/signature_ext.h>
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
+#if USE_GPUS
+#include <library/metrics/gpu.h>
+#endif
+
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/flops/flops.h>
@@ -49,115 +55,178 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <metrics/io/io.h>
 #include <metrics/cache/cache.h>
+
 #include <management/imcfreq/imcfreq.h>
+
 #include <daemon/local_api/eard_api.h>
-#include <common/system/time.h>
-#if USE_GPUS
-#include <library/metrics/gpu.h>
-char gpu_str[256];
-uint ear_num_gpus_in_node=0;
-#endif
-extern int dispose;
-//#define TEST_MB 0
-
-
-// Hardware
-static double hw_cache_line_size;
-
-// Options
-static int flops_supported;
-static int bandwith_elements;
-static int flops_elements;
-static int rapl_elements;
-
-static ulong node_energy_datasize;
-static uint node_energy_units;
 
 // Registers
-#define LOO 0 // loop
-#define APP 1 // application
-#define ACUM 2
-#define LOO_NODE 2 // We will share the same pos than for accumulated values 
-#define APP_NODE 3
-
+#define LOO         0 // loop
+#define APP         1 // application
+#define ACUM        2
+#define LOO_NODE    2 // We will share the same pos than for accumulated values
+#define APP_NODE    3
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
+extern int         dispose;
+// Hardware
+static double      hw_cache_line_size;
+// Options
+static int         flops_supported;
+static int         bandwith_elements;
+static int         flops_elements;
+static int         rapl_elements;
+static ulong       node_energy_datasize;
+static uint        node_energy_units;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
-static int num_packs=0;
-static long long *metrics_flops[2]; // (vec)
-static int *metrics_flops_weights; // (vec)
-static ull *metrics_bandwith[3]; // ops (vec)
-static ull *metrics_bandwith_init[2]; // ops (vec)
-static ull *metrics_bandwith_end[2]; // ops (vec)
-static ull *diff_uncore_value;
-static ull *metrics_rapl[2]; // nJ (vec)
-static ull *aux_rapl; // nJ (vec)
-static ull *last_rapl; // nJ (vec)
-static long long aux_time;
-static edata_t aux_energy;
-static edata_t metrics_ipmi[2]; // mJ
-static ulong   acum_ipmi[2];
-static edata_t aux_energy_stop;
-static ulong metrics_avg_frequency[2]; // MHz
-static long long metrics_instructions[2];
-static long long metrics_cycles[2];
-static long long metrics_usecs[2]; // uS
+static int         num_packs=0;
+static llong      *metrics_flops[2]; // (vec)
+static int        *metrics_flops_weights; // (vec)
+static ull        *metrics_bandwith[3]; // ops (vec)
+static ull        *metrics_bandwith_init[2]; // ops (vec)
+static ull        *metrics_bandwith_end[2]; // ops (vec)
+static ull        *diff_uncore_value;
+static ull        *metrics_rapl[2]; // nJ (vec)
+static ull        *aux_rapl; // nJ (vec)
+static ull        *last_rapl; // nJ (vec)
+static llong       aux_time;
+static edata_t     aux_energy;
+static edata_t     metrics_ipmi[2]; // mJ
+static ulong       acum_ipmi[2];
+static edata_t     aux_energy_stop;
+static ulong       metrics_avg_frequency[2]; // MHz
+static llong       metrics_instructions[2];
+static llong       metrics_cycles[2];
+static llong       metrics_usecs[2]; // uS
 /* In the case of IO we will collect per process, per loop and per node */
-static io_data_t metrics_io_init[4],metrics_io_end[4],metrics_io_diff[4];
-static ctx_t ctx_io;
+static io_data_t   metrics_io_init[4];
+static io_data_t   metrics_io_end[4];
+static io_data_t   metrics_io_diff[4];
+static ctx_t       ctx_io;
 /* MPI statistics */
-mpi_information_t *metrics_mpi_calls[2],*metrics_last_mpi_calls[2];
-mpi_calls_types_t *metrics_mpi_calls_types[2],*metrics_last_mpi_calls_types[2];
-
-
+mpi_information_t *metrics_mpi_calls[2];
+mpi_information_t *metrics_last_mpi_calls[2];
+mpi_calls_types_t *metrics_mpi_calls_types[2];
+mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 #if USE_GPUS
 /* These vectors have position APP for application granularity and LOO for loop granularity */
-static gpu_t *gpu_metrics_init[2],*gpu_metrics_end[2],*gpu_metrics_diff[2];
-static ctx_t gpu_lib_ctx;
-uint gpu_initialized = 0;
-static uint gpu_loop_stopped = 0;
-static uint earl_gpu_model = MODEL_UNDEFINED;
+static gpu_t      *gpu_metrics_init[2],;
+static gpu_t      *gpu_metrics_end[2];
+static gpu_t      *gpu_metrics_diff[2];
+static ctx_t       gpu_lib_ctx;
+       uint        gpu_initialized = 0;
+static uint        gpu_loop_stopped = 0;
+static uint        earl_gpu_model = MODEL_UNDEFINED;
+char               gpu_str[256];
+uint               ear_num_gpus_in_node=0;
 #endif
 /* These vectors have position APP for application granularity and LOO for loop granularity */
-static long long metrics_l1[2];
-//static long long metrics_l2[2];
-static long long metrics_l3[2];
-static state_t s;
-static ulong cpufreq_data_avg[2];
-static cpufreq_t cpufreq_data_init[2],cpufreq_data_end[2];
-static uint mycpufreq_data_size,mycpufreq_data_count;
+static llong       metrics_l1[2];
+//static llong     metrics_l2[2];
+static llong       metrics_l3[2];
+static ulong       cpufreq_data_avg[2];
+static cpufreq_t   cpufreq_data_init[2];
+static cpufreq_t   cpufreq_data_end[2];
+static uint        mycpufreq_data_size;
+static uint        mycpufreq_data_count;
+/* These vectors have position APP for application granularity and LOO for loop granularity */
+static imcfreq_t  *imc_init[2];
+static imcfreq_t  *imc_end[2];
+static ulong      *imc_freq_init[2];
+static ulong      *imc_freq_end[2];
+static ulong       imc_avg[2];
+static ctx_t       imc_ctx;
+static llong       last_elap_sec = 0;
+static llong       app_start;
+/* Node mgr data */
+extern uint        exclusive;
+extern node_mgr_sh_data_t *node_mgr_job_info;
+
+typedef struct metrics_s {
+    ctx_t c;
+    uint  api;
+    uint  ok;
+    uint  granularity;
+    uint  devs_count;
+    void *avail_list;
+    uint  avail_count;
+} metrics_t;
+
+static thread_local metrics_t mgt_cpufreq;
+static thread_local metrics_t mgt_imcfreq;
 
 /* New MEM FREQ mgt API */
-uint imc_mgt_compatible = 1;
-uint imc_api;
-pstate_t *imc_pstates;
-uint imc_num_pstates;
-uint imc_devices;
-ulong def_imc_max_khz,def_imc_min_khz;
-uint *imc_max_pstate,*imc_min_pstate;
-ulong imc_max_khz,imc_min_khz;
-uint imc_curr_max_pstate,imc_curr_min_pstate;
-/**/
-/* These vectors have position APP for application granularity and LOO for loop granularity */
-static imcfreq_t *imc_init[2],*imc_end[2];
-static ulong *imc_freq_init[2],*imc_freq_end[2];
-static ulong imc_avg[2];
+pstate_t   *imc_pstates; //*
+uint        imc_num_pstates; //*
+ulong       def_imc_max_khz; //*
+ulong       def_imc_min_khz; //*
+uint       *imc_max_pstate; //*
+uint       *imc_min_pstate; //*
+ulong       imc_max_khz; //*
+ulong       imc_min_khz; //*
+uint        imc_curr_max_pstate; //*
+uint        imc_curr_min_pstate; //*
 
-static ctx_t imc_ctx;
-static int NI=0;
+#define MGT_CPUFREQ 1
+#define MGT_IMCFREQ 2
 
-static llong last_elap_sec = 0;
-static llong app_start;
+const metrics_t *metrics_get(uint api)
+{
+    switch(api) {
+        case MGT_CPUFREQ: return &mgt_cpufreq;
+        case MGT_IMCFREQ: return &mgt_imcfreq;
+        default: return NULL;
+    }
+}
 
-/* Node mgr data */
-extern ear_njob_t *node_mgr_data;
-extern uint node_mgr_index;
-extern node_mgr_sh_data_t *node_mgr_job_info;
-extern uint exclusive;
+static void metrics_static_init(topology_t *tp)
+{
+    char buffer[SZ_BUFFER_EXTRA];
 
+    // Load
+    sa(mgt_cpufreq_load(tp, EARD));
+    sa(mgt_imcfreq_load(tp, EARD));
+    // Get API
+    sa(mgt_cpufreq_get_api(&mgt_cpu.api));
+    sa(mgt_imcfreq_get_api(&mgt_imc.api));
+    // Working
+    mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
+    mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
+    // Granularity
+    //sa(mgt_cpufreq_get_granularity(&mgt_cpufreq.granularity));
+    //sa(mgt_imcfreq_get_granularity(&mgt_imcfreq.granularity));
+    // Init
+    sa(mgt_cpufreq_init(no_ctx));
+    sa(mgt_imcfreq_init(no_ctx));
+    // Count
+    sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
+    sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
+    // Available lists
+    sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
+    sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
 
+    pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
+    verbose(2, "CPUFREQ available list of frequencies:\n%s", buffer);
+    pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
+    verbose(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
+    // Current list allocation
+    //sa(mgt_cpufreq_data_alloc(&m.cpu_curr_list, empty));
+    //sa(mgt_imcfreq_data_alloc(&m.imc_curr_list, empty));
+    // Nominal CPU P_STATE
+    //sa(mgt_cpufreq_get_nominal(no_ctx, &m.cpu_nominal_idx));
+
+    apis_print(m.cpu.api, "MET_CPUFREQ: ");
+    apis_print(m.imc.api, "MET_IMCFREQ: ");
+
+    // mgt_imcfreq.devs_count;
+    uint        imc_devices; //*
+    // metrics_get(MGT_IMCFREQ)->devs_count
+
+}
+
+// Legacy code
 static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 {
 	cpu_set_t m;
@@ -165,9 +234,9 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	ulong lavg, lcpus;
 	int p, c;
 	int ccount = arch_desc.top.cpu_count;
-  for (p = 0; p < lib_shared_region->num_processes ; p++)
-  {
-  	m = sig_shared_region[p].cpu_mask;
+    for (p = 0; p < lib_shared_region->num_processes ; p++)
+    {
+        m = sig_shared_region[p].cpu_mask;
 		cpufreq_avgcpufreq_mask(m, nodecpuf, &lavg, &lcpus);
 		total += lavg*lcpus;
 		total_cpus += lcpus;
@@ -179,19 +248,22 @@ static void metrics_accum_flops(llong *loop_flops);
 
 void set_null_dc_energy(edata_t e)
 {
-				memset((void *)e,0,node_energy_datasize);
+    memset((void *)e,0,node_energy_datasize);
 }
+
 void set_null_rapl(ull *erapl)
 {
-				memset((void*)erapl,0,rapl_elements*sizeof(ull));
+    memset((void*)erapl,0,rapl_elements*sizeof(ull));
 }
+
 void set_null_uncores(ull *band)
 {
-				memset(band,0,bandwith_elements*sizeof(ull));
+    memset(band,0,bandwith_elements*sizeof(ull));
 }
+
 long long metrics_time()
 {
-				return (llong) timestamp_getconvert(TIME_USECS);
+    return (llong) timestamp_getconvert(TIME_USECS);
 }
 
 static void metrics_global_start()
@@ -208,11 +280,11 @@ static void metrics_global_start()
 			error("CPUFreq data read in global_start");
 		}
 		/* Reads IMC data */
-		if (imc_mgt_compatible){
-		debug("imcfreq_read");
-		if (xtate_fail(s, imcfreq_read(&imc_ctx, imc_init[APP]))){
-			error("IMCFreq data read in global_start");
-		}
+		if (mgt_imcfreq.ok){
+		    debug("imcfreq_read");
+		    if (state_fail(s = imcfreq_read(&imc_ctx, imc_init[APP]))){
+			    error("IMCFreq data read in global_start");
+		    }
 		}
 		/* Energy */
 		debug("eards_node_dc_energy");
@@ -292,23 +364,23 @@ static void metrics_global_stop()
 		cpufreq_my_avgcpufreq(cpufreq_data_per_core, &cpufreq_data_avg[APP]);
 		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
 		/* AVG IMC frequency */
-		if (imc_mgt_compatible){
-
-    	if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[APP]))){
-      	error("IMCFreq data read in global_start");
-    	}
-			if (xtate_fail(s, imcfreq_data_diff(imc_end[APP],imc_init[APP],imc_freq_end[APP],&imc_avg[APP]))){
+		if (mgt_imcfreq.ok) {
+            if (state_fail(s = imcfreq_read(&imc_ctx, imc_end[APP]))) {
+                error("IMCFreq data read in global_start");
+    	    }
+			if (state_fail(s = imcfreq_data_diff(imc_end[APP],imc_init[APP],imc_freq_end[APP],&imc_avg[APP]))){
 				error("IMC data diff fails");
-			}	
-			verbose_master(2,"AVG IMC frequency %.2f",(float)imc_avg[APP]/1000000.0);
-  		for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
-  		for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
-  		if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
-    		error("Setting the IMC freq in global stop");
-  		}
-  		verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0); 
+			}
+			verbose_master(2,"AVG IMC frequency %.2f", (float)imc_avg[APP]/1000000.0);
+  		    for (i=0; i< mgt_imcfreq.devs_count;i++) {
+                imc_max_pstate[i]= imc_num_pstates-1;
+                imc_min_pstate[i] = 0;
+            }
+  		    if (state_fail(s = mgt_imcfreq_set_current_ranged_list(no_ctx, imc_min_pstate,imc_max_pstate))){
+    		    error("Setting the IMC freq in global stop");
+  		    }
+  		    verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
 		}
-
 	}
 
 	/* Cache misses */
@@ -368,82 +440,74 @@ static void metrics_global_stop()
 
 }
 
-
-
 static void metrics_partial_start()
 {
-				int i;
-				/* This must be replaced by a copy of energy */
-				/* Energy node */
-				memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
-				/* Time */
-				metrics_usecs[LOO]=aux_time;
-				last_elap_sec = 0;
-				/* Per process IO data */
-				if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
-								verbose_master(2,"Warning:IO data not available");
-				}
-				/* These data is measured only by the master */	
-				if (masters_info.my_master_rank>=0){ 
-								/* Avg CPU freq */
-								if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
-												error("CPUFreq data read in partial start");
-								}
-								/* Avg IMC freq */
-								if (imc_mgt_compatible){
-												/* Reads the IMC */
-												if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_init[LOO]))){
-																error("IMCFreq data read in global_start");
-												}
-								}
-
-								/* Per NODE IO data */
-								metrics_get_total_io(&metrics_io_init[LOO_NODE]);
-
+    int i;
+    /* This must be replaced by a copy of energy */
+    /* Energy node */
+    memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
+    /* Time */
+    metrics_usecs[LOO]=aux_time;
+    last_elap_sec = 0;
+    /* Per process IO data */
+    if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
+        verbose_master(2,"Warning:IO data not available");
+    }
+    /* These data is measured only by the master */
+    if (masters_info.my_master_rank>=0){
+        /* Avg CPU freq */
+        if (state_fail(s = eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
+            error("CPUFreq data read in partial start");
+        }
+        /* Avg IMC freq */
+        if (mgt_imcfreq.ok){
+            /* Reads the IMC */
+            if (state_fail(s = imcfreq_read(&imc_ctx,imc_init[LOO]))){
+                error("IMCFreq data read in global_start");
+            }
+        }
+        /* Per NODE IO data */
+        metrics_get_total_io(&metrics_io_init[LOO_NODE]);
 #if USE_GPUS
-								/* GPUS */
-								if (gpu_initialized){
-												if (gpu_loop_stopped) {
-																gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_end[LOO]);
-												} else{
-																gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_init[APP]);
-												}
-												debug("gpu_copy in partial start");
-								}
+        /* GPUS */
+        if (gpu_initialized){
+            if (gpu_loop_stopped) {
+                gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_end[LOO]);
+            } else{
+                gpu_lib_data_copy(gpu_metrics_init[LOO],gpu_metrics_init[APP]);
+            }
+            debug("gpu_copy in partial start");
+        }
 #endif
-				}
-				//There is always a partial_stop before a partial_start, we can guarantee a previous uncore_read
-				/* Uncore counters to compute memory bancdwith */
-				copy_uncores(metrics_bandwith_init[LOO],metrics_bandwith_end[LOO],bandwith_elements);
-				/* Energy RAPL */
-				for (i = 0; i < rapl_elements; i++) {
-								last_rapl[i]=aux_rapl[i];
-				}
-
-				/* CPI */
-				start_basic_metrics();
-				/* Cache misses */
-				cache_start();
-				/* FLOPS */
-				start_flops_metrics();
-
-
+    }
+    //There is always a partial_stop before a partial_start, we can guarantee a previous uncore_read
+    /* Uncore counters to compute memory bancdwith */
+    copy_uncores(metrics_bandwith_init[LOO],metrics_bandwith_end[LOO],bandwith_elements);
+    /* Energy RAPL */
+    for (i = 0; i < rapl_elements; i++) {
+        last_rapl[i]=aux_rapl[i];
+    }
+    /* CPI */
+    start_basic_metrics();
+    /* Cache misses */
+    cache_start();
+    /* FLOPS */
+    start_flops_metrics();
 }
 
 /****************************************************************************************************************************************************************/
 /*************************** This function is executed every N seconds to check if signature can be compute *****************************************************/
 /****************************************************************************************************************************************************************/
-
-
 void metrics_accum_flops(llong *loop_flops)
 {
-				uint i;
-				llong *app_flops = metrics_flops[APP];
-				for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
+    uint i;
+    llong *app_flops = metrics_flops[APP];
+    for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
 }
 
 extern uint ear_iterations;
 extern int ear_guided;
+
 static int metrics_partial_stop(uint where)
 {
 	long long aux_flops;
@@ -454,13 +518,13 @@ static int metrics_partial_stop(uint where)
 	long long aux_time_stop;
 	char stop_energy_str[256],start_energy_str[256];
 
-	/* If the signature of the master is not ready, we cannot compute our signature */
-	//debug("My rank is %d",masters_info.my_master_rank);
-  if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-			debug("Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
-			debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
-      return EAR_NOT_READY;
-  }
+    /* If the signature of the master is not ready, we cannot compute our signature */
+    //debug("My rank is %d",masters_info.my_master_rank);
+    if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
+        debug("Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
+        debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
+        return EAR_NOT_READY;
+    }
 
 	// Manual IPMI accumulation
 	if (masters_info.my_master_rank>=0){
@@ -575,15 +639,15 @@ static int metrics_partial_stop(uint where)
 		cpufreq_my_avgcpufreq(cpufreq_data_per_core, &cpufreq_data_avg[LOO]);
 		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
 
-		/* Avg IMC frequency */
-		if (imc_mgt_compatible){
-    if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[LOO]))){
-      error("IMCFreq data read in partial_stop");
-    }
-    if (xtate_fail(s, imcfreq_data_diff(imc_end[LOO],imc_init[LOO],imc_freq_end[LOO],&imc_avg[LOO]))){
-      error("IMC data diff fails");
-    }
-   	debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
+        /* Avg IMC frequency */
+        if (mgt_imcfreq.ok){
+            if (state_fail(s = imcfreq_read(&imc_ctx,imc_end[LOO]))){
+                error("IMCFreq data read in partial_stop");
+            }
+            if (state_fail(s = imcfreq_data_diff(imc_end[LOO],imc_init[LOO],imc_freq_end[LOO],&imc_avg[LOO]))){
+                error("IMC data diff fails");
+            }
+            debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
 		}
 
 		/* Per node IO data */
@@ -986,55 +1050,42 @@ int metrics_init(topology_t *topo)
 	verbose_master(2,"CPUFreq data allocated");
 	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
 	/* IMC average frequency initialization */
-	if (imc_mgt_compatible){
-	/* To compute IMC average */
-	imcfreq_load(topo, EARD);
-	if (xtate_fail(s, imcfreq_init(&imc_ctx))){
-		error("IMC metrics init failed");
-	}
+    if (mgt_imcfreq.ok){
+	    /* To compute IMC average */
+	    imcfreq_load(topo, EARD);
+        if (state_fail(s = imcfreq_init(&imc_ctx))){
+		    error("IMC metrics init failed");
+	    }
 	uint imc_api;
 	char imc_api_txt[32];
 	imcfreq_get_api(&imc_api);
 	apis_tostr(imc_api,imc_api_txt,sizeof(imc_api_txt));
-	verbose_master(INFO_METRICS,"IMC metrics API %s",imc_api_txt);
-  if (xtate_fail(s, imcfreq_data_alloc(&imc_init[APP], &imc_freq_init[APP]))){
-		error("IMC data alloc failed");
-	}
-  if (xtate_fail(s, imcfreq_data_alloc(&imc_end[APP], &imc_freq_end[APP]))){
-		error("IMC data alloc failed");
-	}
-  if (xtate_fail(s, imcfreq_data_alloc(&imc_init[LOO], &imc_freq_init[LOO]) )){
-    error("IMC data alloc failed");
-  }
-  if (xtate_fail(s, imcfreq_data_alloc(&imc_end[LOO], &imc_freq_end[LOO]) )){
-    error("IMC data alloc failed");
-  }
-	verbose_master(INFO_METRICS,"IMC metrics initialized ");
+    verbose_master(INFO_METRICS,"IMC metrics API %s",imc_api_txt);
+    if (state_fail(s = imcfreq_data_alloc(&imc_init[APP], &imc_freq_init[APP]))){
+        error("IMC data alloc failed");
+    }
+    if (state_fail(s = imcfreq_data_alloc(&imc_end[APP], &imc_freq_end[APP]))){
+        error("IMC data alloc failed");
+    }
+    if (state_fail(s = imcfreq_data_alloc(&imc_init[LOO], &imc_freq_init[LOO]) )){
+        error("IMC data alloc failed");
+    }
+    if (state_fail(s = imcfreq_data_alloc(&imc_end[LOO], &imc_freq_end[LOO]) )){
+        error("IMC data alloc failed");
+    }
+    verbose_master(INFO_METRICS,"IMC metrics initialized ");
 
 	/* IMC management */
-	if(state_fail(s = mgt_imcfreq_load(topo, EARD))) {
-		error("Error during mgt_imcfreq_load: %s", state_msg);
-	}
-	if (state_fail(s = mgt_imcfreq_get_api(&imc_api))){
-		error("Error in asking dor IMC API");
-	}
 	char imc_mgt_txt[32];
-	apis_tostr(imc_api,imc_mgt_txt,sizeof(imc_mgt_txt));
+	apis_tostr(mgt_imcfreq.api,imc_mgt_txt,sizeof(imc_mgt_txt));
 	verbose_master(INFO_METRICS,"IMC API selected %s",imc_mgt_txt);
-	if (state_fail(s = mgt_imcfreq_init(NULL))){
-		error("Error in IMC init");
-		imc_mgt_compatible = 0;
-	}	
-	if (state_fail(s = mgt_imcfreq_count_devices(NULL, &imc_devices))){
-		error("Error requesting IMC devices ");
-	}	
-	imc_max_pstate = calloc(imc_devices,sizeof(uint));
-	imc_min_pstate = calloc(imc_devices,sizeof(uint));
+	imc_max_pstate = calloc(mgt_imcfreq.devs_count,sizeof(uint));
+	imc_min_pstate = calloc(mgt_imcfreq.devs_count,sizeof(uint));
 	if ((imc_max_pstate == NULL) || (imc_min_pstate == NULL)){
 		error("Asking for memory");
 		return EAR_ERROR;
 	}
-	verbose_master(INFO_METRICS," IMC num devices %u",imc_devices);
+	verbose_master(INFO_METRICS," IMC num devices %u",mgt_imcfreq.devs_count);
 	if (state_fail(s = mgt_imcfreq_get_available_list(NULL,(const pstate_t **)&imc_pstates, &imc_num_pstates))){
 		error("Asking for IMC frequency list");
 	}
@@ -1043,8 +1094,8 @@ int metrics_init(topology_t *topo)
 	/* Default values */
 	def_imc_max_khz = imc_pstates[0].khz;
 	def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;
-	for (i=0; i< imc_devices;i++) imc_min_pstate[i] = 0;
-	for (i=0; i< imc_devices;i++) imc_max_pstate[i]= imc_num_pstates-1;
+	for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = 0;
+	for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i]= imc_num_pstates-1;
 	/* This section checks for HACKS */
   cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
   cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
@@ -1053,14 +1104,14 @@ int metrics_init(topology_t *topo)
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
 		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
-			for (i=0; i< imc_devices;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
+			for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
 			imc_max_khz = imc_pstates[imc_min_pstate[0]].khz;
 		}
 	}
   if (cimc_min_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_min_khz);
 		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
-			for (i=0; i< imc_devices;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
+			for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
 			imc_min_khz = imc_pstates[imc_max_pstate[0]].khz;
 		}
   }
@@ -1205,9 +1256,7 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 {
 				long long aux_time;
 
-				NI=iterations;
-
-				if (!sig_shared_region[my_node_id].ready){ 
+                if (!sig_shared_region[my_node_id].ready){
 
 								// Time requirements
 								aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);

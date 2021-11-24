@@ -15,23 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef LIBRARY_METRICS_FRESH_H
-#define LIBRARY_METRICS_FRESH_H
+#ifndef EARD_API_FRESH_H
+#define EARD_API_FRESH_H
 
-#include <common/hardware/topology.h>
-#include <management/cpufreq/cpufreq.h>
-#include <management/imcfreq/imcfreq.h>
-#include <metrics/io/io.h>
-#include <library/common/library_shared_data.h>
 
-typedef struct sig_ext {
-    io_data_t iod;
-    mpi_information_t *mpi_stats;
-    mpi_calls_types_t *mpi_types;
-} sig_ext_t;
 
-void metrics_fresh_init();
-
-void metrics_fresh_dispose();
-
-#endif //LIBRARY_METRICS_FRESH_H
+#endif //EARD_API_FRESH_H

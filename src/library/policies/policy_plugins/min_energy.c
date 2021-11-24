@@ -55,7 +55,8 @@ extern unsigned long ext_def_freq;
 extern uint dyn_unc;
 extern double imc_extra_th;
 extern uint *imc_max_pstate,*imc_min_pstate;
-extern uint imc_num_pstates, imc_devices;
+extern uint imc_num_pstates;
+static uint imc_devices;
 static uint imc_set_by_hw = 1;
 
 static int min_pstate;
@@ -194,6 +195,7 @@ state_t policy_init(polctx_t *c)
             min_energy_def_freqs.cpu_freq[i] = *(c->ear_frequency);
         }
 
+        imc_devices = metrics_get(MGT_IMCFREQ)->devs_count;
         for (sid=0; sid < imc_devices; sid ++){
             min_energy_def_freqs.imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
             min_energy_def_freqs.imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
