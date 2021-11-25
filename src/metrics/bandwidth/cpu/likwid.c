@@ -1,0 +1,159 @@
+/*
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* This file is licensed under both the BSD-3 license for individual/non-commercial
+* use and EPL-1.0 license for commercial use. Full text of both licenses can be
+* found in COPYING.BSD and COPYING.EPL files.
+*/
+
+//#define SHOW_DEBUGS 1
+
+#include <stdlib.h>
+#include <common/output/debug.h>
+#include <common/math_operations.h>
+#include <metrics/common/likwid.h>
+#include <metrics/bandwidth/cpu/likwid.h>
+
+#if 1
+static char *evs = \
+                           "CAS_COUNT_ALL:MBOX0C0," \
+                           "CAS_COUNT_ALL:MBOX1C0," \
+                           "CAS_COUNT_ALL:MBOX2C0," \
+                           "CAS_COUNT_ALL:MBOX3C0," \
+                           "CAS_COUNT_ALL:MBOX4C0," \
+                           "CAS_COUNT_ALL:MBOX5C0," \
+                           "CAS_COUNT_ALL:MBOX6C0," \
+                           "CAS_COUNT_ALL:MBOX7C0";
+static char *evs_names[8] = {
+                           "CAS_COUNT_ALL:MBOX0C0" ,
+                           "CAS_COUNT_ALL:MBOX1C0" ,
+                           "CAS_COUNT_ALL:MBOX2C0" ,
+                           "CAS_COUNT_ALL:MBOX3C0" ,
+                           "CAS_COUNT_ALL:MBOX4C0" ,
+                           "CAS_COUNT_ALL:MBOX5C0" ,
+                           "CAS_COUNT_ALL:MBOX6C0" ,
+                           "CAS_COUNT_ALL:MBOX7C0" };
+#else
+static char         *evs = \
+                           "CAS_COUNT_RD:MBOX0C1," \
+                           "CAS_COUNT_WR:MBOX0C2," \
+                           "CAS_COUNT_RD:MBOX1C1," \
+                           "CAS_COUNT_WR:MBOX1C2," \
+                           "CAS_COUNT_RD:MBOX2C1," \
+                           "CAS_COUNT_WR:MBOX2C2," \
+                           "CAS_COUNT_RD:MBOX3C1," \
+                           "CAS_COUNT_WR:MBOX3C2," \
+                           "CAS_COUNT_RD:MBOX4C1," \
+                           "CAS_COUNT_WR:MBOX4C2," \
+                           "CAS_COUNT_RD:MBOX5C1," \
+                           "CAS_COUNT_WR:MBOX5C2," \
+                           "CAS_COUNT_RD:MBOX6C1," \
+                           "CAS_COUNT_WR:MBOX6C2," \
+                           "CAS_COUNT_RD:MBOX7C1," \
+                           "CAS_COUNT_WR:MBOX7C2,";
+static char         *evs_names[16] = {
+                           "CAS_COUNT_RD:MBOX0C1" ,
+                           "CAS_COUNT_WR:MBOX0C2" ,
+                           "CAS_COUNT_RD:MBOX1C1" ,
+                           "CAS_COUNT_WR:MBOX1C2" ,
+                           "CAS_COUNT_RD:MBOX2C1" ,
+                           "CAS_COUNT_WR:MBOX2C2" ,
+                           "CAS_COUNT_RD:MBOX3C1" ,
+                           "CAS_COUNT_WR:MBOX3C2" ,
+                           "CAS_COUNT_RD:MBOX4C1" ,
+                           "CAS_COUNT_WR:MBOX4C2" ,
+                           "CAS_COUNT_RD:MBOX5C1" ,
+                           "CAS_COUNT_WR:MBOX5C2" ,
+                           "CAS_COUNT_RD:MBOX6C1" ,
+                           "CAS_COUNT_WR:MBOX6C2" ,
+                           "CAS_COUNT_RD:MBOX7C1" ,
+                           "CAS_COUNT_WR:MBOX7C2" };
+#endif
+
+#define evs_count  8
+static topology_t  tp;
+static likevs_t    events;
+static double     *ctrs;
+static uint        ctrs_count;
+static uint        devs_count;
+static uint        cpus_count;
+static ullong     *ctrs_accum;
+
+state_t bwidth_likwid_status(topology_t *tp_in)
+{
+	state_t s;
+
+	cpus_count = tp_in->cpu_count;
+	if (state_fail(s = topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
+		return s;
+	}
+	if (state_fail(s = likwid_init())) {
+		debug("likwid_init failed: %s %d", state_msg, s);
+		return s;
+	}
+	if (state_fail(s = likwid_events_open(&events, &ctrs, &ctrs_count, evs, evs_count))) {
+		debug("likwid_init failed: %s %d", state_msg, s);
+		return s;
+	}
+	//
+	ctrs_accum = calloc(ctrs_count, sizeof(ullong));
+	devs_count = tp_in->socket_count * evs_count;
+
+	return EAR_SUCCESS;
+}
+
+state_t bwidth_likwid_init(ctx_t *c, topology_t *fake)
+{
+	// Likwid events open
+	return EAR_SUCCESS;
+}
+
+state_t bwidth_likwid_dispose(ctx_t *c)
+{
+	// Likwid events close
+	return EAR_SUCCESS;
+}
+
+state_t bwidth_likwid_count_devices(ctx_t *c, uint *devs_count_in)
+{
+	//*devs_count_in = devs_count+1;
+	*devs_count_in = devs_count;
+	return EAR_SUCCESS;
+}
+
+state_t bwidth_likwid_fake(ctx_t *c)
+{
+	return EAR_SUCCESS;
+}
+
+state_t bwidth_likwid_read(ctx_t *c, ullong *cas)
+{
+	state_t s;
+	int i, j, k;
+
+	memset(cas, 0, sizeof(ullong)*(devs_count));
+	// Retrieving time in the position N
+	// timestamp_get(&cas[devs_count].time);
+	//
+	if (state_fail(s = likwid_events_read(&events, ctrs))) {
+		return s;
+	}
+	for (i = j = 0; i < tp.cpu_count; ++i) {
+		for (k = 0; k < evs_count; ++k, ++j) {
+			ctrs_accum[j] += (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
+			cas[j] = ctrs_accum[j];
+			//cas[j] = (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
+			//printf("IMC%d: %llu\n", j, cas[j]);
+		}
+	}
+	return EAR_SUCCESS;
+}

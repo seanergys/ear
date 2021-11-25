@@ -67,6 +67,9 @@ int eards_new_job(new_job_req_t *new_job);
 /** Sends a end job request */
 int eards_end_job(job_id jid,job_id sid);
 
+/** Sends a new task request */
+int eards_new_task(new_task_req_t *new_task);
+
 /** gets the policy_configuration for a given policy 
  * */
 int eards_get_policy_info(new_policy_cont_t *p);

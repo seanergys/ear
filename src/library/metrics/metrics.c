@@ -153,18 +153,18 @@ typedef struct metrics_s {
     uint  avail_count;
 } metrics_t;
 
-static thread_local metrics_t mgt_cpufreq;
-static thread_local metrics_t mgt_imcfreq;
+static __thread metrics_t mgt_cpufreq;
+static __thread metrics_t mgt_imcfreq;
 
 /* New MEM FREQ mgt API */
 pstate_t   *imc_pstates; //*
 uint        imc_num_pstates; //*
 ulong       def_imc_max_khz; //*
 ulong       def_imc_min_khz; //*
-uint       *imc_max_pstate; //*
-uint       *imc_min_pstate; //*
 ulong       imc_max_khz; //*
 ulong       imc_min_khz; //*
+uint       *imc_max_pstate; //*
+uint       *imc_min_pstate; //*
 uint        imc_curr_max_pstate; //*
 uint        imc_curr_min_pstate; //*
 
@@ -211,19 +211,8 @@ static void metrics_static_init(topology_t *tp)
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
-    // Current list allocation
-    //sa(mgt_cpufreq_data_alloc(&m.cpu_curr_list, empty));
-    //sa(mgt_imcfreq_data_alloc(&m.imc_curr_list, empty));
-    // Nominal CPU P_STATE
-    //sa(mgt_cpufreq_get_nominal(no_ctx, &m.cpu_nominal_idx));
-
     apis_print(m.cpu.api, "MET_CPUFREQ: ");
     apis_print(m.imc.api, "MET_IMCFREQ: ");
-
-    // mgt_imcfreq.devs_count;
-    uint        imc_devices; //*
-    // metrics_get(MGT_IMCFREQ)->devs_count
-
 }
 
 // Legacy code
@@ -908,6 +897,8 @@ int metrics_init(topology_t *topo)
 	pstate_t tmp_def_imc_pstate;
 	int i;
 
+    metrics_static_init(topo);
+
 	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
 	//debug("My master rank %d",masters_info.my_master_rank);
 
@@ -1103,14 +1094,14 @@ int metrics_init(topology_t *topo)
 	imc_min_khz = def_imc_min_khz;
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
-		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
+		if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
 			for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
 			imc_max_khz = imc_pstates[imc_min_pstate[0]].khz;
 		}
 	}
   if (cimc_min_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_min_khz);
-		if (state_ok(from_freq_to_pstate(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){ 
+		if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
 			for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
 			imc_min_khz = imc_pstates[imc_max_pstate[0]].khz;
 		}
@@ -1170,7 +1161,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
-    metrics_fresh_dispose();
+    metrics_static_dispose();
 
 	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
   while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);

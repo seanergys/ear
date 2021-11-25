@@ -17,37 +17,63 @@
 
 #include <metrics/common/pstate.h>
 
-state_t pstate_get_index(pstate_t *list, uint count, ullong khz, uint *index)
+state_t pstate_pstofreq(pstate_t *ps_list, uint ps_count, uint ps_idx, ullong *khz_ret)
 {
-	int i;
-	for (i = 0; i < count; ++i) {
-		if (list[i].khz == khz) {
-			*index = i;
-			return EAR_SUCCESS;
-		}
-	}
-	return_msg(EAR_ERROR, Generr.not_found);
+    if (ps_idx >= ps_count) {
+        return_msg(EAR_ERROR, Generr.not_found);
+    }
+    *khz_ret = ps_list[ps_idx].khz;
+    return EAR_SUCCESS;
 }
 
-void pstate_get_index_closer(pstate_t *list, uint count, ullong khz, uint *index, uint mode)
+state_t pstate_freqtops(pstate_t *ps_list, uint ps_count, ullong ps_khz, pstate_t *ps_ret)
+{
+    int i;
+    for (i = 0; i < ps_count; ++i) {
+        if (ps_list[i].khz == ps_khz){
+            memcpy(ps_ret, &ps_list[i], sizeof(pstate_t));
+            return EAR_SUCCESS;
+        }
+    }
+    return_msg(EAR_ERROR, Generr.not_found);
+}
+
+state_t pstate_freqtops_upper(pstate_t *ps_list, uint ps_count, ulong ps_khz, pstate_t *ps_ret)
+{
+    int i;
+    if (ps_list[0].khz < khz) {
+        memcpy(ps_ret, &ps_list[0], sizeof(pstate_t));
+        return_msg(EAR_ERROR, Generr.not_found);
+    }
+    for (i = 1; i < ps_count; ++i) {
+        if (ps_list[i].khz < khz){
+            memcpy(ps_ret, &ps_list[i-1], sizeof(pstate_t));
+            return EAR_SUCCESS;
+        }
+    }
+    memcpy(ps_ret, &ps_list[ps_count-1], sizeof(pstate_t));
+    return_msg(EAR_ERROR, Generr.not_found);
+}
+
+void pstate_freqtoidx_nearest(pstate_t *ps_list, uint ps_count, ullong ps_khz, pstate_t *idx_ret, uint mode)
 {
 	int i;
 
-	if (mode == MODE_ABOVE && list[0].khz <= khz) {
-		*index = 0;
+	if (mode == MODE_UPPER && ps_list[0].khz <= khz) {
+		*idx_ret = 0;
 	}
-	for (i = 0; i < count; ++i) {
-		if (mode == MODE_ABOVE && list[i].khz <= khz) {
-			*index = i-1;
+	for (i = 0; i < ps_count; ++i) {
+		if (mode == MODE_UPPER && ps_list[i].khz <= khz) {
+			*idx_ret = i-1;
 		}
-		if (mode == MODE_BELOW && list[i].khz < khz) {
-			*index = i;
+		if (mode == MODE_LOWER && ps_list[i].khz < khz) {
+			*idx_ret = i;
 		}
-		if (list[i].khz == khz) {
-			*index = i;
+		if (ps_list[i].khz == khz) {
+			*idx_ret = i;
 		}
 	}
-	*index = count-1;
+	*idx_ret = ps_count-1;
 }
 
 void pstate_print(pstate_t *pstate_list, uint pstate_count, int fd)

@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_CPUFREQ
-#define MANAGEMENT_CPUFREQ
+#ifndef MANAGEMENT_CPUFREQ_H
+#define MANAGEMENT_CPUFREQ_H
 
 #include <common/states.h>
 #include <common/plugins.h>
@@ -134,4 +134,4 @@ void mgt_cpufreq_data_print(pstate_t *ps_list, uint ps_count, int fd);
 
 char *mgt_cpufreq_data_tostr(pstate_t *ps_list, uint ps_count, char *buffer, int length);
 
-#endif //MANAGEMENT_PSTATE
+#endif //MANAGEMENT_CPUFREQ_H

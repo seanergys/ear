@@ -30,16 +30,12 @@
 #define API_AMD17        6
 #define API_NVML         7
 #define API_PERF         8
+#define API_INTEL106     9
+#define API_LIKWID      10
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
 #define no_ctx           NULL
-
-/* Obsolete, remove it. */
-#define replace_ops(p1, p2) \
-	if (p1 == NULL) { \
-		p1 = p2; \
-	}
 
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
@@ -63,5 +59,11 @@
 void apis_append(void **op, void *func);
 
 void apis_print(uint api, char *prefix);
+
+/* Obsolete, remove it. */
+#define replace_ops(p1, p2) \
+	if (p1 == NULL) { \
+		p1 = p2; \
+	}
 
 #endif

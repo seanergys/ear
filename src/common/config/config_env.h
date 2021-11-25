@@ -62,9 +62,7 @@
 /* This var forces to load a specific gpu power policy. Replaces SLURM_EAR_GPU_POWER_POLICY */
 #define SCHED_EAR_GPU_POWER_POLICY "SLURM_HACK_EAR_GPU_POWER_POLICY"
 /* This var forces to load a specific power model plugin.  Replaces SLURM_EAR_POWER_MODEL */
-#define SCHED_EAR_POWER_MODEL 		"SLURM_HACK_EAR_POWER_MODEL"
-/* This var forces to load a specific cpu power model plugin. */
-#define SCHED_EAR_CPU_POWER_MODEL "SLURM_HACK_EAR_CPU_POWER_MODEL"
+#define SCHED_EAR_POWER_MODEL "SLURM_HACK_EAR_POWER_MODEL"
 /* This var forces a specific dynais windows size. Replaces SLURM_EAR_DYNAIS_WINDOW_SIZE */
 #define SCHED_EAR_DYNAIS_WINDOW_SIZE "SLURM_HACK_EAR_DYNAIS_WINDOW_SIZE"
 /* This var forces a different default frequency than the predefined for a policy. replaces SLURM_EAR_DEF_FREQ */

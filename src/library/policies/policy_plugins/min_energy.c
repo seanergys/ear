@@ -352,7 +352,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
      * no looking at selection */
     pstate_t tmp_pstate;
     curr_imc_freq = avg_to_khz(my_app->avg_imc_f);
-    if (avgfreq_to_pstate((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_pstate) != EAR_SUCCESS){
+    if (pstate_freqtops_upper((pstate_t *)imc_pstates,imc_num_pstates,curr_imc_freq,&tmp_pstate) != EAR_SUCCESS){
         verbose_master(2,"Current Avg IMC freq %lu cannot be converted to psate",curr_imc_freq);
     }
     curr_imc_pstate = tmp_pstate.idx;

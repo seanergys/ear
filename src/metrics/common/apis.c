@@ -32,13 +32,15 @@ void apis_append(void *op[], void *func)
 
 void apis_print(uint api, char *prefix)
 {
-	if      (api == API_NONE   ) { verbose(0, "%sNONE"   , prefix); }
-	else if (api == API_DUMMY  ) { verbose(0, "%sDUMMY"  , prefix); }
-	else if (api == API_EARD   ) { verbose(0, "%sEARD"   , prefix); }
-	else if (api == API_BYPASS ) { verbose(0, "%sBYPASS" , prefix); }
-	else if (api == API_DEFAULT) { verbose(0, "%sDEFAULT", prefix); }
-	else if (api == API_INTEL63) { verbose(0, "%sINTEL63", prefix); }
-	else if (api == API_AMD17  ) { verbose(0, "%sAMD17"  , prefix); }
-	else if (api == API_NVML   ) { verbose(0, "%sNVML"   , prefix); }
-	else if (api == API_PERF   ) { verbose(0, "%sPERF"   , prefix); }
+    if      (api == API_NONE    ) { verbose(0, "%sNONE"    , prefix); }
+    else if (api == API_DUMMY   ) { verbose(0, "%sDUMMY"   , prefix); }
+    else if (api == API_EARD    ) { verbose(0, "%sEARD"    , prefix); }
+    else if (api == API_BYPASS  ) { verbose(0, "%sBYPASS"  , prefix); }
+    else if (api == API_DEFAULT ) { verbose(0, "%sDEFAULT" , prefix); }
+    else if (api == API_INTEL63 ) { verbose(0, "%sINTEL63" , prefix); }
+    else if (api == API_AMD17   ) { verbose(0, "%sAMD17"   , prefix); }
+    else if (api == API_NVML    ) { verbose(0, "%sNVML"    , prefix); }
+    else if (api == API_PERF    ) { verbose(0, "%sPERF"    , prefix); }
+    else if (api == API_INTEL106) { verbose(0, "%sINTEL106", prefix); }
+    else if (api == API_LIKWID  ) { verbose(0, "%sLIKWID"  , prefix); }
 }
