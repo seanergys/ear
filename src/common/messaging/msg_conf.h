@@ -50,6 +50,7 @@ typedef struct new_task_req{
     job_id 		sid;
 		pid_t  		pid;
 	  cpu_set_t mask;	
+		uint      num_cpus;
 }new_task_req_t;
 
 typedef struct new_conf{

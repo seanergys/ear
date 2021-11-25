@@ -741,5 +741,6 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
 	newtask.sid = 0;
 	newtask.pid = getpid();
 	newtask.mask = mask;
+	newtask.num_cpus = 0;
 	return ESPANK_SUCCESS;
 }
