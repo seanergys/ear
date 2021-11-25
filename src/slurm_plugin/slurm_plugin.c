@@ -192,9 +192,11 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
     if (plug_deserialize_task(sp, &sd) != ESPANK_SUCCESS) {
         return plug_component_setenabled(sp, Component.plugin, 0);
     }
-    //if (sd.subject.is_master) {
+    if (plug_rcom_eard_task_start(sp, &sd)) {
+    }
+    if (sd.subject.is_task_master) {
         plug_print_items(sp);
-    //}
+    }
 	
 	return (ESPANK_SUCCESS);
 }
