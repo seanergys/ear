@@ -48,10 +48,19 @@ typedef struct end_job_req{
 typedef struct new_task_req{
     job_id 		jid;
     job_id 		sid;
-		pid_t  		pid;
-	  cpu_set_t mask;	
-		uint      num_cpus;
+    pid_t  		pid;
+    cpu_set_t mask;	
+    uint      num_cpus;
 }new_task_req_t;
+
+typedef struct end_task_req{
+    job_id 		jid;
+    job_id 		sid;
+    pid_t  		pid;
+    cpu_set_t mask;	
+    uint      num_cpus;
+}end_task_req_t;
+
 
 typedef struct new_conf{
     ulong   max_freq;
@@ -86,6 +95,7 @@ typedef union req_data{
     new_job_req_t       new_job;
     end_job_req_t       end_job;
     new_task_req_t      new_task;
+    end_task_req_t      end_task;
     new_conf_t          ear_conf;
     new_policy_cont_t   pol_conf;
     risk_dec_t          risk;
@@ -182,6 +192,7 @@ typedef struct eargm_status {
 #define EAR_RC_NEW_JOB_LIST         2
 #define EAR_RC_END_JOB_LIST         3
 #define EAR_RC_NEW_TASK             4
+#define EAR_RC_END_TASK             5
 #define EAR_RC_MAX_FREQ             100
 #define EAR_RC_NEW_TH               101
 #define EAR_RC_INC_TH               102

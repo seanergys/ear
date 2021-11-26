@@ -44,7 +44,7 @@ int remote_connected=0;
 int eards_sfd=-1;
 
 // 2000 and 65535
-#define DAEMON_EXTERNAL_CONNEXIONS 1
+#define DAEMON_EXTERNAL_CONNEXIONS 10
 
 
 int _read(int fd, void *data, size_t ssize)
@@ -383,6 +383,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
             break;
         case EAR_RC_NEW_TASK:
             size += sizeof(new_task_req_t);
+            break;
+        case EAR_RC_END_TASK:
+            size += sizeof(end_task_req_t);
             break;
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
