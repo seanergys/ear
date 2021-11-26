@@ -707,10 +707,11 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
     cpu_set = -1;
     task    = -1;
     // Local task
-    if (!getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
-        return ESPANK_SUCCESS;
+	if (spank_get_item(sp, S_TASK_ID, &task) == ESPANK_ERROR) {
+        if (getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
+            task = atoi(buffer2);
+        }
     }
-    task = atoi(buffer2);
    
     // Getting task mastery
     sd->subject.is_task_master = (task == 0);
