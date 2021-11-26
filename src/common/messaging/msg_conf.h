@@ -25,6 +25,8 @@
 
 #ifndef REMOTE_CONF_H
 #define REMOTE_CONF_H
+#define GNU_SOURCE
+#include <sched.h>
 
 #include <common/types/application.h>
 #include <common/types/configuration/policy_conf.h>
@@ -44,8 +46,11 @@ typedef struct end_job_req{
 }end_job_req_t;
 
 typedef struct new_task_req{
-    job_id jid;
-    job_id sid;
+    job_id 		jid;
+    job_id 		sid;
+		pid_t  		pid;
+	  cpu_set_t mask;	
+		uint      num_cpus;
 }new_task_req_t;
 
 typedef struct new_conf{

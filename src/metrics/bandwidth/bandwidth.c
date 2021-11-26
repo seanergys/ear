@@ -32,7 +32,7 @@
  * When an error occurs, those calls returns -1.
  */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <limits.h>
 #include <stdlib.h>

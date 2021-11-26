@@ -240,7 +240,7 @@ static state_t set_current_list(uint *max_list, uint *min_list)
 	{
 		debug("-- Device %d -------------------------------", i);
 		debug("Max/min target : %u/%u", max_list[i], min_list[i]);
-		debug("Max/min current: %u/%u", buffer_max[i].khz, buffer_min[i].khz);
+		debug("Max/min current: %llu/%llu", buffer_max[i].khz, buffer_min[i].khz);
 		// Valid ranks
 		if (max_list != NULL) max_valid = (max_list[i] < available_count);  
 		if (min_list != NULL) min_valid = (min_list[i] < available_count);  

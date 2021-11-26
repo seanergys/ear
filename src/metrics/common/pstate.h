@@ -42,7 +42,7 @@ state_t pstate_freqtops(pstate_t *ps_list, uint ps_count, ullong ps_khz, pstate_
 state_t pstate_freqtops_upper(pstate_t *ps_list, uint ps_count, ulong ps_khz, pstate_t *ps_ret);
 
 /* It requires descending sorted lists. Returns the closer P_STATE. */
-void pstate_freqtoidx_nearest(pstate_t *ps_list, uint ps_count, ullong ps_khz, pstate_t *idx_ret, uint mode);
+void pstate_freqtoidx_nearest(pstate_t *ps_list, uint ps_count, ullong ps_khz, uint *idx_ret, uint mode);
 
 void pstate_print(pstate_t *pstate_list, uint pstate_count, int fd);
 

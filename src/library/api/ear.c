@@ -283,16 +283,17 @@ void check_job_folder()
 	snprintf(block_file_dir,sizeof(block_file_dir),"%s/%u",tmp, ID);
 	// printf("check_job_folder:%s\n", block_file_dir);
   if (access(block_file_dir, W_OK) == 0){ 
+		debug("JOB folder exists\n");
 		return;
 	}
   if (errno == ENOENT){
-  	//error("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
+  	error("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
   	clean_job_folder = 1;
   	ret = mkdir(block_file_dir, S_IRWXU);
   	if ((ret < 0 ) && (errno != EEXIST)){
 			/* What can we do here EAR OFF */
 			// error("Create: Job folder cannot be create %s ", strerror(errno));		
-		}else if (ret == 0) printf("Folder created\n");
+		}else if (ret == 0){ debug("Folder created\n");}
 	}
 }
 
@@ -302,11 +303,11 @@ void cleanup_job_folder()
   char *tmp=get_ear_tmp();
   uint ID = create_ID(my_job_id,my_step_id);
 	snprintf(block_file_dir,sizeof(block_file_dir),"%s/%u",tmp, ID);
-	printf("cleanup_job_folder: %s process %d\n", block_file_dir, clean_job_folder);
+	debug("cleanup_job_folder: %s process %d\n", block_file_dir, clean_job_folder);
 	if (clean_job_folder){
-		printf("Folder needs to be removed from the library\n");
+		debug("Folder needs to be removed from the library\n");
 		folder_remove(block_file_dir);
-	}else printf("Folder  doesn't need to be removed from the library\n");
+	}else{ debug("Folder  doesn't need to be removed from the library\n");}
 }
 /****************************************************************************************************************************************************************/
 /****************** This function creates the shared memory region to coordinate processes in same node and with other nodes  ***********************************/
@@ -448,7 +449,7 @@ void create_shared_regions()
 	/********************************/
 	/* Attaching to node_mgr region */
 	/********************************/
-	verbose_master(2,"Creating node_mgr region");
+	verbose_master(2,"Creating node_mgr region in tmp %s", tmp);
 	if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
 		verbose_master(2,"Error creating node_mgr region");
 	}
@@ -541,7 +542,7 @@ void attach_shared_regions()
 	/****************************************/
 	/* Node mgr info in no-master processes */
 	/****************************************/
-  verbose(3,"Creating node_mgr region");
+  verbose(2,"Creating node_mgr region for no masters");
   if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
     verbose_master(2,"Error creating node_mgr region");
   }
@@ -1348,6 +1349,10 @@ void ear_finalize(int exit_status)
 			cleanup_job_folder();
 			 return;
 		}
+		if (!eards_connected()){
+			cleanup_job_folder();
+       return;
+    }
 #if USE_LOCK_FILES
     if (!my_id){
         debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);

@@ -60,6 +60,8 @@ void apis_append(void **op, void *func);
 
 void apis_print(uint api, char *prefix);
 
+void apis_tostr(uint api, char *buffer, size_t size);
+
 /* Obsolete, remove it. */
 #define replace_ops(p1, p2) \
 	if (p1 == NULL) { \
