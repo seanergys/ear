@@ -384,6 +384,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
         case EAR_RC_NEW_TASK:
             size += sizeof(new_task_req_t);
             break;
+        case EAR_RC_END_TASK:
+            size += sizeof(end_task_req_t);
+            break;
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
             size += sizeof(eargm_req_t);

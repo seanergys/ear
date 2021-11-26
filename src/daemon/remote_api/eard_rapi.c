@@ -183,12 +183,23 @@ int eards_new_task(new_task_req_t *new_task)
 {
 	request_t command;
     memset(&command, 0, sizeof(request_t));
-
     debug("eards_new_task");
 	command.req = EAR_RC_NEW_TASK;
     command.node_dist = INT_MAX;
     command.time_code = time(NULL);
 	memcpy(&command.my_req.new_task, new_task, sizeof(new_task_req_t));
+	return send_command(&command);
+}
+
+int eards_end_task(end_task_req_t *end_task)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+    debug("eards_new_task");
+	command.req = EAR_RC_END_TASK;
+    command.node_dist = INT_MAX;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.end_task, end_task, sizeof(end_task_req_t));
 	return send_command(&command);
 }
 

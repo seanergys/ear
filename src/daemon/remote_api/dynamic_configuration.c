@@ -801,8 +801,12 @@ state_t process_remote_requests(int clientfd) {
             verbose(VRAPI, "*******************************************");
             break;
         case EAR_RC_NEW_TASK:
-						verbose(VRAPI, "NEW task received");
+            verbose(VRAPI, "NEW task received");
             powermon_new_task(&command.my_req.new_task);
+            break;
+        case EAR_RC_END_TASK:
+            verbose(VRAPI, "END task received");
+            //powermon_end_task(&command.my_req.end_task); //pending to implement
             break;
         case EAR_RC_MAX_FREQ:
             verbose(VRAPI, "max_freq command received %lu", command.my_req.ear_conf.max_freq);
