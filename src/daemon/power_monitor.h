@@ -41,7 +41,9 @@ typedef struct powermon_app {
   application_t    app;
   uint             job_created;
 	uint  					 is_job;
-	uint						 num_cpus;
+	uint						 plug_num_cpus;
+	cpu_set_t        plug_mask;
+	uint						 earl_num_cpus;
   uint             local_ids;
   energy_data_t    energy_init;
   governor_t       governor;
@@ -85,7 +87,8 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *j, u
 void powermon_end_job(ehandler_t *eh,job_id jid,job_id sid, uint is_job);
 
 /** Called by dynamic_configuration thread when a new task is created */
-void powermon_new_task();
+void powermon_new_task(new_task_req_t *newtask);
+
 
 /** reports the application signature to the power_monitoring module 
 */

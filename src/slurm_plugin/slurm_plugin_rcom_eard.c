@@ -34,6 +34,7 @@ static int plug_rcom_eard_connect(spank_t sp, plug_serialization_t *sd, char *by
 static int plug_rcom_eard_disconnect(spank_t sp, plug_serialization_t *sd, char *by)
 {
 	remote_disconnect();
+	return ESPANK_SUCCESS;
 }
 
 static int plug_rcom_eard_job_sbatch(spank_t sp, plug_serialization_t *sd, int new_job)

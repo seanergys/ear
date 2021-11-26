@@ -733,6 +733,7 @@ void adap_new_job_req_to_app(application_t *req_app,new_job_req_t *new_job)
 
 static int is_new_command(request_t *comm)
 {
+		if (comm->req == EAR_RC_NEW_JOB || comm->req == EAR_RC_END_JOB || comm->req == EAR_RC_NEW_TASK || comm->req == EAR_RC_STATUS) return 1;
     // if ((comm->req == last_command) && (comm->time_code == last_command_time)) return 0;
     for (uint i=0; i < MAX_HISTORIC_COMM ; i++){
         if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time == comm->time_code)) return 0;
@@ -774,19 +775,11 @@ state_t process_remote_requests(int clientfd) {
     if (req == EAR_SOCK_DISCONNECTED) return req;
     /* New job and end job are different */
     /* Is it necesary */
-    if (req != EAR_RC_NEW_JOB && req != EAR_RC_END_JOB) {
-        if (req != EAR_RC_STATUS && !is_new_command(&command)) {
+    if (!is_new_command(&command)) {
             verbose(VRAPI, "Recieved repeating command: %u", req);
             ack = EAR_IGNORE;
             send_answer(clientfd, &ack);
-            #if 0
-            if ((command.node_dist > 0) && (command.node_dist != last_dist) && node_found != EAR_ERROR) {
-                last_dist = command.node_dist;
-                propagate_req(&command, my_cluster_conf.eard.port);
-            }
-            #endif
             return EAR_SUCCESS;
-        }
     }
 
     verbose(VRAPI,"New command accepted");
@@ -809,7 +802,7 @@ state_t process_remote_requests(int clientfd) {
             break;
         case EAR_RC_NEW_TASK:
 						verbose(VRAPI, "NEW task received");
-            powermon_new_task();
+            powermon_new_task(&command.my_req.new_task);
             break;
         case EAR_RC_MAX_FREQ:
             verbose(VRAPI, "max_freq command received %lu", command.my_req.ear_conf.max_freq);
