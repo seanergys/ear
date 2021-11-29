@@ -424,16 +424,9 @@ void create_job_area(uint ID)
 void clean_job_area(uint ID)
 {
 	char job_path[MAX_PATH_SIZE];
-	char file_path[MAX_PATH_SIZE];
-	state_t s;
-	folder_t job_folder;
-	char *file;
-
-  xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+    xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
 	folder_remove(job_path);
 }
-
-
 
 powermon_app_t *get_powermon_app() {
   return current_ear_app[max_context_created];
@@ -1324,8 +1317,6 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 	ulong time_consumed;
 	double my_dc_power;
 	job_context_t *alloc;
-	uint 			job_num_cpus;
-	cpu_set_t job_mask;
 	int pos_job_in_node;
 
 	time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);

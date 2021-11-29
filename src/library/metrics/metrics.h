@@ -20,6 +20,7 @@
 
 #include <common/hardware/topology.h>
 #include <common/types/application.h>
+#include <library/common/library_shared_data.h>
 #include <metrics/io/io.h>
 
 typedef struct sig_ext {
@@ -27,6 +28,22 @@ typedef struct sig_ext {
     mpi_information_t *mpi_stats;
     mpi_calls_types_t *mpi_types;
 } sig_ext_t;
+
+#define MGT_CPUFREQ 1
+#define MGT_IMCFREQ 2
+
+typedef struct metrics_s {
+    ctx_t c;
+    uint  api;
+    uint  ok;
+    uint  granularity;
+    uint  devs_count;
+    void *avail_list;
+    uint  avail_count;
+} metrics_t;
+
+/** New metrics **/
+const metrics_t *metrics_get(uint api);
 
 /** Returns the current time in usecs */
 long long metrics_time();

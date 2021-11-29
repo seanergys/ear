@@ -129,8 +129,8 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
     double gbs_curr = sig->GBS;
 
-    ulong ref_imc_freq;
-    if (state_fail(pstate_pstofreq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq))){
+    ullong ref_imc_freq;
+    if (state_fail(pstate_pstofreq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate, &ref_imc_freq))){
         verbose_master(2, "%sIMC pstates invalid %d%s", COL_RED, ref_imc_pstate, COL_CLR);
         return 1;
     }

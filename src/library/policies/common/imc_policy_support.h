@@ -31,7 +31,6 @@ typedef struct imc_data{
     ull FLOPS[FLOPS_EVENTS];
 }imc_data_t;
 
-extern uint imc_devices;
 extern uint imc_num_pstates;
 extern const pstate_t *imc_pstates;
 

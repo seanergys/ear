@@ -81,9 +81,9 @@ static uint dvfs_monitor_initialized = 0;
 static void print_frequencies(int cpus, ulong *f)
 {
     int i;
-		char buff[4096];
-		char buffshort[64];
-		sprintf(buff,"");
+    char buff[4096];
+    char buffshort[64];
+    buff[0] = '\0';
     for (i=0;i<cpus;i++)
     {
         if (f[i]>0){

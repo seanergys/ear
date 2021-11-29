@@ -52,7 +52,8 @@ static uint8_t app_connected = 0;
 static app_id_t local_con_info;
 static int my_step_id;
 static int my_job_id;
-char *ear_tmp;
+static char *ear_tmp;
+
 
 // Metrics: Needed for old API where data size must be requested in advance
 static ulong uncore_size;

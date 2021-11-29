@@ -34,8 +34,8 @@ static mpif_t next_mpif;
 mpic_t ear_mpic;
 mpif_t ear_mpif;
 
-void (*func_con) (void);
-void (*func_des) (void);
+static void (*func_con) (void);
+static void (*func_des) (void);
 
 static uint mpi_on = 0;
 static uint intelmpi = 0;

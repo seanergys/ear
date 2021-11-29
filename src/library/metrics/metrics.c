@@ -144,19 +144,6 @@ static llong       app_start;
 extern uint        exclusive;
 extern node_mgr_sh_data_t *node_mgr_job_info;
 
-typedef struct metrics_s {
-    ctx_t c;
-    uint  api;
-    uint  ok;
-    uint  granularity;
-    uint  devs_count;
-    void *avail_list;
-    uint  avail_count;
-} metrics_t;
-
-static __thread metrics_t mgt_cpufreq;
-static __thread metrics_t mgt_imcfreq;
-
 /* New MEM FREQ mgt API */
 pstate_t   *imc_pstates; //*
 uint        imc_num_pstates; //*
@@ -169,8 +156,9 @@ uint       *imc_min_pstate; //*
 uint        imc_curr_max_pstate; //*
 uint        imc_curr_min_pstate; //*
 
-#define MGT_CPUFREQ 1
-#define MGT_IMCFREQ 2
+/* New metrics */
+static __thread metrics_t mgt_cpufreq;
+static __thread metrics_t mgt_imcfreq;
 
 const metrics_t *metrics_get(uint api)
 {

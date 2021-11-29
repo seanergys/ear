@@ -476,8 +476,6 @@ state_t policy_init()
 #endif
 
     //
-    imc_devices
-
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
     if (arch_desc.top.vendor == VENDOR_AMD) {
         enable_load_balance = 0;
@@ -688,7 +686,7 @@ static int is_try_again()
 state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 {
     polctx_t *c=&my_pol_ctx;
-    signature_t node_sig, est_sig;
+    signature_t node_sig;
     node_freqs_t *freqs = &nf;
     state_t st=EAR_ERROR;
     uint busy, iobound, mpibound,earl_phase_classification;
@@ -867,9 +865,8 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 {
     polctx_t *c = &my_pol_ctx;
     state_t ret,retg = EAR_SUCCESS;
-		uint jobs_in_node;
-		signature_t new_sig;
-		verbose(2,"policy_ok ");
+	uint jobs_in_node;
+	verbose(2,"policy_ok ");
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;

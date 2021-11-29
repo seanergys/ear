@@ -41,6 +41,7 @@
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
+
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
 
@@ -249,6 +250,7 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
 
 int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
 {
+    uint imc_devices = metrics_get(MGT_IMCFREQ)->devs_count;
     int i, sid = 0;
     i = 0;
     int num_processes = lib_shared_region->num_processes;
@@ -276,6 +278,7 @@ int are_default_settings(node_freqs_t *freqs,node_freqs_t *def)
 
 void set_default_settings(node_freqs_t *freqs, node_freqs_t * def) 
 {
+    uint imc_devices = metrics_get(MGT_IMCFREQ)->devs_count;
     int i, sid = 0;
     int num_processes = lib_shared_region->num_processes;
     freqs->cpu_freq[0] = def->cpu_freq[0];
@@ -292,6 +295,7 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def)
 
 void verbose_node_freqs(int vl, node_freqs_t *freqs)
 {
+    uint imc_devices = metrics_get(MGT_IMCFREQ)->devs_count;
     int i;
     int sid = 0;
     if (freqs == NULL) return;
@@ -313,6 +317,7 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
 
 void node_freqs_alloc(node_freqs_t *node_freq)
 {
+    uint imc_devices = metrics_get(MGT_IMCFREQ)->devs_count;
     node_freq->cpu_freq = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     node_freq->imc_freq = calloc(MAX_SOCKETS_SUPPORTED*IMC_VAL,sizeof(ulong));
 #if USE_GPUS
@@ -323,6 +328,7 @@ void node_freqs_alloc(node_freqs_t *node_freq)
 
 void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src)
 {
+    uint imc_devices = metrics_get(MGT_IMCFREQ)->devs_count;
     if ((dst == NULL) || (src == NULL)) return;
     if ((dst->cpu_freq == NULL) || (src->cpu_freq == NULL)) return;
     memcpy(dst->cpu_freq,src->cpu_freq,sizeof(ulong)*MAX_CPUS_SUPPORTED);
