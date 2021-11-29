@@ -49,6 +49,7 @@ state_t mgt_imcfreq_eard_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int eard)
 	if (!eards_connected()) {
 		return_msg(EAR_ERROR, "EARD (daemon) not connected");
 	}
+    serial_alloc(&w, SIZE_2KB);
 	if (state_fail(s = eard_rpc(RPC_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
 		return s;
 	}

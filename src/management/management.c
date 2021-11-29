@@ -20,103 +20,130 @@
 #include <common/output/verbose.h>
 
 #define sa(f) \
-	printf("calling " #f "\n"); \
-    if (state_fail(f)) { \
-        serror(#f " FAILED"); \
-        exit(0); \
-    }
+        if (state_fail(f)) { \
+                serror(#f " FAILED"); \
+                exit(0); \
+        }
 
 static manages_apis_t m;
 
-state_t manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
+void manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
 {
 	state_t s;
 	// Load
 	sa(mgt_cpufreq_load(tp, eard));
 	sa(mgt_imcfreq_load(tp, eard));
 	// Get API
-	sa(mgt_cpufreq_get_api(&m.cpu.api));
-	sa(mgt_imcfreq_get_api(&m.imc.api));
-	//sa(    mgt_gpu_get_api(&m.gpu.api));
+	sa(mgt_cpufreq_get_api(&m.cpufreq.api));
+	sa(mgt_imcfreq_get_api(&m.imcfreq.api));
 	// Init
-	sa(mgt_cpufreq_init(&m.cpu.c));
-	sa(mgt_imcfreq_init(&m.imc.c));
+	sa(mgt_cpufreq_init(no_ctx));
+	sa(mgt_imcfreq_init(no_ctx));
 	// Count (cache does not need)
-	sa(mgt_cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count));
-	sa(mgt_imcfreq_count_devices(&m.imc.c, &m.imc.devs_count));
+	sa(mgt_cpufreq_count_devices(no_ctx, &m.cpufreq.devs_count));
+	sa(mgt_imcfreq_count_devices(no_ctx, &m.imcfreq.devs_count));
 	// Availability
-	sa(mgt_cpufreq_get_available_list(&m.cpu.c, (const pstate_t **) &m.cpu.avail_list, &m.cpu.avail_count));
-	sa(mgt_imcfreq_get_available_list(&m.imc.c, (const pstate_t **) &m.imc.avail_list, &m.imc.avail_count));
-    //
-    sa(mgt_cpufreq_data_alloc((pstate_t **) &m.cpu.current_list, empty));
-    sa(mgt_imcfreq_data_alloc((pstate_t **) &m.imc.current_list, empty));
-
-    //
+	sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpufreq.avail_list, &m.cpufreq.avail_count));
+	sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imcfreq.avail_list, &m.imcfreq.avail_count));
+	// Current allocation
+    sa(mgt_cpufreq_data_alloc((pstate_t **) &m.cpufreq.current_list, (uint **) &m.cpufreq.set_list));
+    sa(mgt_cpufreq_data_alloc((pstate_t **) &m.imcfreq.current_list, (uint **) &m.imcfreq.set_list));
+	
 	if (m_in != NULL) {
 		*m_in = &m;
 	}
-
-	return EAR_SUCCESS;
 }
 
-state_t manages_apis_dispose()
+void manages_apis_dispose()
 {
-	sa(mgt_imcfreq_dispose(&m.imc.c));
-
-	return EAR_SUCCESS;
+	sa(mgt_cpufreq_dispose(no_ctx));
+	sa(mgt_imcfreq_dispose(no_ctx));
 }
 
-state_t manages_apis_print()
+void manages_apis_print()
 {
-	apis_print(m.cpu.api, "MGT_CPUFREQ: ");
-	apis_print(m.imc.api, "MGT_IMCFREQ: ");
-	
-	return EAR_SUCCESS;
+	apis_print(m.cpufreq.api, "MGT_CPUFREQ: ");
+    apis_print(m.imcfreq.api, "MGT_IMCFREQ: ");
 }
 
-state_t manages_apis_print_available()
-{
-    char buffer[SZ_BUFFER_EXTRA];
-	
-    printf("CPUFREQ available list of frequencies:\n");
-    mgt_cpufreq_data_print(m.cpu.avail_list, m.cpu.avail_count, verb_channel);
-    printf("IMCFREQ available list of frequencies:\n");
-	mgt_imcfreq_data_print(m.imc.avail_list, m.imc.avail_count, verb_channel);
+#define printline() \
+    verbose(0, "------------------------------");
 
-    mgt_cpufreq_get_current_list(no_ctx, m.cpu.current_list);
-    mgt_imcfreq_get_current_list(no_ctx, m.imc.current_list);
-    
-    printf("CPUFREQ current list of frequencies:\n");
-    mgt_cpufreq_data_print(m.cpu.current_list, m.cpu.devs_count, verb_channel);
-    printf("IMCFREQ current list of frequencies:\n");
-	mgt_imcfreq_data_print(m.imc.current_list, m.imc.devs_count, verb_channel);
+void manages_apis_print_available()
+{
+	mgt_cpufreq_data_print(m.cpufreq.avail_list, m.cpufreq.avail_count, verb_channel);
+	mgt_imcfreq_data_print(m.imcfreq.avail_list, m.imcfreq.avail_count, verb_channel);
+}
+
+void manages_apis_print_current()
+{
+    sa(mgt_cpufreq_get_current_list(no_ctx, m.cpufreq.current_list));
+    sa(mgt_imcfreq_get_current_list(no_ctx, m.imcfreq.current_list));
 	
-	return EAR_SUCCESS;
+    mgt_cpufreq_data_print(m.cpufreq.current_list, m.cpufreq.devs_count, verb_channel);
+    mgt_imcfreq_data_print(m.imcfreq.current_list, m.imcfreq.devs_count, verb_channel);
 }
 
 #if TEST
-#include <stdio.h>
-#include <unistd.h>
-#include <management/management.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
-static manages_apis_t *mans;
 static topology_t tp;
 
-// /hpc/base/ctt/packages/compiler/gnu/9.1.0/bin/gcc -I .. -DTEST=1 -o test management.c ./libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
-// /opt/rh/devtoolset-7/root/bin/gcc -I .. -DTEST=1 -o test management.c ./libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
+int is(char *buf, char *string)
+{
+    return strcmp(buf, string) == 0;
+}
+
+void read_command()
+{
+    char cmnd[SZ_PATH];
+    char aux_string[SZ_PATH];
+    uint aux_uint;
+
+    scanf("%s", cmnd);
+ 
+    if (is(cmnd, "mgt_cpufreq_set")) {
+        scanf("%d", &aux_uint);
+        sa(mgt_cpufreq_set_current(no_ctx, aux_uint, all_devs));
+    } else if (is(cmnd, "mgt_cpufreq_get_governor")) {
+        sa(mgt_cpufreq_get_governor(no_ctx, &aux_uint));
+        sa(mgt_governor_tostr(aux_uint, aux_string));
+        verbose(0, "Governor: %s", aux_string);
+    } else if (is(cmnd, "mgt_cpufreq_set_governor")) {
+        scanf("%s", aux_string);
+        sa(mgt_governor_toint(aux_string, &aux_uint));
+        sa(mgt_cpufreq_set_governor(no_ctx, aux_uint));
+    } else if (is(cmnd, "mgt_imcfreq_set")) {
+        scanf("%d", &aux_uint);
+        sa(mgt_imcfreq_set_current(no_ctx, aux_uint, all_devs));
+    } else if (is(cmnd, "print")) {
+        manages_apis_print_current();
+    } else if (is(cmnd, "disconnect")) {
+        eards_disconnect();
+    } else {
+    }
+
+    printline();
+}
 
 int main(int argc, char *argv[])
 {
-	sa(topology_init(&tp));
+    sa(topology_init(&tp));
 
-	eards_connection();
-	
-	// Management
-	sa(manages_apis_init(&tp, EARD, &mans));
-	sa(manages_apis_print());
-	sa(manages_apis_print_available());
-sleep(10); 
-	return EAR_SUCCESS;
+    // Connecting with EARD
+    eards_connection();
+    
+    // General init
+    manages_apis_init(&tp, EARD, NULL);
+    manages_apis_print();
+    manages_apis_print_available();
+    printline();
+  
+    // Main loop 
+    while(1) {
+        read_command();
+    }
+
+    return 0;
 }
 #endif

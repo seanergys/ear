@@ -22,29 +22,30 @@
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 
-typedef struct apis_info_s {
+typedef struct manages_s {
     ctx_t c;
     uint  api;
-    uint  working;
+    uint  ok;
     uint  granularity;
     uint  devs_count;
+    void *avail_list;
     uint  avail_count;
     void *current_list;
-    void *avail_list;
-} apis_info_t;
+    void *set_list;
+} manages_t;
 
 typedef struct manages_apis_s {
-	apis_info_t cpu; // cpufreq
-	apis_info_t imc; // imcfreq
-	apis_info_t gpu; // gpu
+	manages_t cpufreq;
+	manages_t imcfreq;
+	manages_t gpu;
 } manages_apis_t;
 
-state_t manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in);
+void manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in);
 
-state_t manages_apis_dispose();
+void manages_apis_dispose();
 
-state_t manages_apis_print();
+void manages_apis_print();
 
-state_t manages_apis_print_available();
+void manages_apis_print_available();
 
 #endif //MANAGEMENT_H

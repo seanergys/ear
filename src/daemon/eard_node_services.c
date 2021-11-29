@@ -171,8 +171,8 @@ void services_init(topology_t *tp)
 	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
 
-    sf(mgt_cpufreq_data_alloc(mc.current_list, mc.set_list));
-    sf(mgt_cpufreq_data_alloc(mi.current_list, mi.set_list));
+    sf(mgt_cpufreq_data_alloc((pstate_t **) &mc.current_list, (uint **) &mc.set_list));
+    sf(mgt_cpufreq_data_alloc((pstate_t **) &mi.current_list, (uint **) &mi.set_list));
 
 	serial_alloc(&wb, SIZE_8KB);
 }

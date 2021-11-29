@@ -239,8 +239,14 @@ static state_t set_current_list(uint *max_list, uint *min_list)
 	for (i = 0; i < tp_static.cpu_count; ++i)
 	{
 		debug("-- Device %d -------------------------------", i);
-		debug("Max/min target : %u/%u", max_list[i], min_list[i]);
-		debug("Max/min current: %llu/%llu", buffer_max[i].khz, buffer_min[i].khz);
+        if (max_list != NULL) {
+		    debug("Max target : %u", max_list[i]);
+		    debug("Max current: %llu", buffer_max[i].khz);
+        }
+        if (min_list != NULL) {
+		    debug("Min target : %u", min_list[i]);
+		    debug("Min current: %llu", buffer_min[i].khz);
+        }
 		// Valid ranks
 		if (max_list != NULL) max_valid = (max_list[i] < available_count);  
 		if (min_list != NULL) min_valid = (min_list[i] < available_count);  
