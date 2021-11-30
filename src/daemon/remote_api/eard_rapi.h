@@ -158,6 +158,12 @@ void cluster_reset_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf);
 
 int cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released);
 
+/** Gets instant eards power */
+int eards_get_power(uint64_t *power);
+/** Gets instant cluster power */
+int cluster_get_power(cluster_conf_t *my_cluster_conf, uint64_t *power);
+
+
 /* Nodelist functions */
 void eards_new_job_nodelist(new_job_req_t *new_job, uint port, char *net_ext, char **nodes, int num_nodes);
 void eards_new_job_iplist(new_job_req_t *new_job, cluster_conf_t *my_cluster_conf, int *ips, int num_ips);

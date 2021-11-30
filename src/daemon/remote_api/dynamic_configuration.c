@@ -610,7 +610,7 @@ void dyncon_release_idle_power(int fd, request_t *command)
     debug("propagating release_idle_power");
     return_status = propagate_release_idle(command, my_cluster_conf.eard.port, (pc_release_data_t *)&rel_data);
 
-    if (return_status < 1) error("dyncon_get_powerstatus and return status < 1");
+    if (return_status < 1) error("dyncon_release_idle power and return status < 1");
 
     debug("releasing idle power");
     powercap_release_idle_power(&rel_data);
@@ -677,6 +677,33 @@ void dyncon_get_powerstatus(int fd, request_t *command)
     free(status_data);
     debug("Returning from dyncon_get_powerstatus");
     free(status);
+    debug("powerstatus released");
+}
+
+void dyncon_get_power(int fd, request_t *command)
+{
+    uint64_t *power;
+    uint64_t curr_power = 0;
+    int return_status;
+    long int ack;
+    send_answer(fd, &ack);
+    return_status = propagate_get_power(command, my_cluster_conf.eard.port, (uint64_t **)&power);
+
+    if (return_status < 1) 
+    {
+        //error
+        error("dyncon_get_power and return status < 1 ");
+    }
+    debug("return_status %d power=%lu", return_status, *power);
+
+    powermon_get_power(&curr_power);
+    *power += curr_power;
+    debug("return_status %d power=%lu current_power=%lu", return_status, *power, curr_power);
+
+    send_data(fd, sizeof(uint64_t), power, EAR_TYPE_POWER_CHECK);
+
+    debug("Returning from dyncon_get_powerstatus");
+    free(power);
     debug("powerstatus released");
 }
 
@@ -879,6 +906,9 @@ state_t process_remote_requests(int clientfd) {
             verbose(1,"set risk command received");
             dyncon_set_risk(clientfd, &command);
             break;
+        case EAR_RC_GET_POWER:
+            dyncon_get_power(clientfd, &command);
+            return EAR_SUCCESS;
         default:
             error("Invalid remote command %d\n",req);
             req = NO_COMMAND;
