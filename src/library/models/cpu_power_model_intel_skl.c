@@ -45,7 +45,7 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 	int fd, ret;
 	debug("cpu_power_models_init_arch. Using tag %s etc %s", libconf->tag, conf->dir_conf);
 	char model_path[MAX_PATH_SIZE];
-	sprintf(model_path,"%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
+	snprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
 	debug("cpu_power_models_init_arch coeffs path %s", model_path);
 
 	#if 0
@@ -100,10 +100,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	uint   job_in_process[MAX_CPUS_SUPPORTED];
 	double job_power_ratio, process_power_ratio[MAX_CPUS_SUPPORTED];;
 	uint   node_process = 0;
-	int    gid = -1;
 	signature_t *lsig = &data->node_signature;
-	signature_t aux;
-	signature_t *new_sig;
 	double my_job_GBS, my_job_DRAM_power;
 
 

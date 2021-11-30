@@ -700,7 +700,7 @@ void dyncon_get_power(int fd, request_t *command)
     *power += curr_power;
     debug("return_status %d power=%lu current_power=%lu", return_status, *power, curr_power);
 
-    send_data(fd, sizeof(uint64_t), power, EAR_TYPE_POWER_CHECK);
+    send_data(fd, sizeof(uint64_t), (char *)power, EAR_TYPE_POWER_CHECK);
 
     debug("Returning from dyncon_get_powerstatus");
     free(power);
