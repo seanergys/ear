@@ -592,6 +592,7 @@ int main(int argc, char *argv[])
     strcpy(node_name,"");
 
     status_t *status;
+    uint64_t power = 0;
 
     verb_level = 0;
     //verb_enabled = 0;
@@ -626,6 +627,7 @@ int main(int argc, char *argv[])
             {"ping", 	     	optional_argument, 0, 'p'},
             {"status",       	optional_argument, 0, 's'},
             {"powerstatus",     optional_argument, 0, 'w'},
+            {"power",           optional_argument, 0, 'g'},
             {"release",         optional_argument, 0, 'l'},
             {"set-risk",        required_argument, 0, 'r'},
             {"setopt",          required_argument, 0, 'o'},
@@ -908,6 +910,30 @@ int main(int argc, char *argv[])
                         printf("Error connecting with node %s\n", optarg);
                     }else{
                         eards_reset_default_powercap();
+                        remote_disconnect();
+                    }
+                }
+                break;
+            case 'g': //reset_powercap
+                if (!optarg) {
+                    if (!cluster_get_power(&my_cluster_conf, &power)) {
+                        printf("Could not retrieve cluster power\n");
+                    }
+                    else {
+                        printf("Total cluster power: %luW\n", power);
+                    }
+                }
+                else {
+                    int rc = remote_connect(optarg, my_cluster_conf.eard.port);
+                    if (rc < 0) {
+                        printf("Error connecting with node %s\n", optarg);
+                    }else{
+                        if (!eards_get_power(&power)) {
+                            printf("Could not retrieve power for node %s\n", optarg);
+                        }
+                        else {
+                            printf("Power for node %s: %luW\n", optarg, power);
+                        }
                         remote_disconnect();
                     }
                 }

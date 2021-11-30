@@ -1845,6 +1845,11 @@ void powermon_get_status(status_t *my_status) {
 	my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
 }
 
+void powermon_get_power(uint64_t *power) 
+{
+    *power = (uint64_t) last_power_reported;
+}
+
 /* Returns the number of applications all or only master */
 int powermon_get_num_applications(int only_master)
 {
