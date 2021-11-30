@@ -18,6 +18,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <limits.h>
+#include <signal.h>
 #include <common/types.h>
 #include <common/states.h>
 #include <common/utils/dtools.h>
@@ -26,41 +27,57 @@
 #if DTOOLS_MALLOC
 static void *(*next_malloc) (size_t);
 #endif
+#if DTOOLS_FREE
 static void  (*next_free)   (void *);
+#endif
 
 static long address;
 
-static void dtools_init()
+__attribute__ ((constructor)) void dtools_init()
 {
-    if ((next_free = dlsym(RTLD_NEXT, "free")) == NULL) {
-        sserror("when dlsym 'free': %s\n", dlerror());
-    }
     #if DTOOLS_MALLOC
     if ((next_malloc = dlsym(RTLD_NEXT, "malloc")) == NULL) {
         sserror("when dlsym 'malloc': %s\n", dlerror());
     }
     #endif
+    #if DTOOLS_FREE
+    if ((next_free = dlsym(RTLD_NEXT, "free")) == NULL) {
+        sserror("when dlsym 'free': %s\n", dlerror());
+    }
+    #endif
+}
+
+void dtools_break()
+{
+    //nothing
 }
 
 void dtools_set_address(void *address_in)
 {
-   address = (long) address_in; 
+    verbose(0, "DTOOLS: address set %p", address_in);
+    address = (long) address_in; 
 }
 
+#if DTOOLS_FREE
 void free(void *ptr)
 {
-    static ulong diff_min = ULONG_MAX;
+    long diff;
     if(next_free == NULL) {
-        verbose(0, "INITIALIZING DTOOLS.");
         dtools_init();
     }
-    long diff = address - (long) ptr;
-    if (diff < 0L) {
-        diff = -diff;
-    } 
-    if (diff < diff_min) {
-        diff_min = diff;
-        verbose(0, "FOUND ADDRESS %p!!!!!!!!!!!!", ptr);
+    if (ptr == NULL) {
+        return;
+    }
+    if (address != 0L) {
+        diff = address - (long) ptr;
+        if (diff < 0L) {
+            diff = -diff;
+        }
+        if (diff <= 4096) {
+            verbose(0, "DTOOLS: found address %p, %lu bytes of difference", ptr, diff);
+            dtools_break();
+        }
     }
     next_free(ptr);
 }
+#endif
