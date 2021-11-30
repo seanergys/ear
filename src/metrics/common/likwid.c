@@ -219,9 +219,7 @@ state_t likwid_events_open(likevs_t *id, double **ctrs_alloc, uint *ctrs_count, 
 
 state_t likwid_events_read(likevs_t *id, double *ctrs)
 {
-	double result = 0.0;
     int i, j, e;
-    int err;
 
     if (likwid.perfmon_readCounters() < 0) {
         return_msg(EAR_ERROR, "failed to start LIKWID's counters");

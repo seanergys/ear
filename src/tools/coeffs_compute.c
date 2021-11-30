@@ -104,7 +104,7 @@ static int find_app(matrix_t *matrix, char *app_name)
 
 static state_t compute_cpu_power_coefficients(intel_skl_t **cpu_power_coeffs, application_t *app_list, uint apps_count)
 {
-  int n, a, b;
+  int n, a;
 	intel_skl_t *coeff;
   //
   n = apps_count;
@@ -125,7 +125,6 @@ static state_t compute_cpu_power_coefficients(intel_skl_t **cpu_power_coeffs, ap
     gsl_matrix_set(signature_base, a, 3, 0.0);
     gsl_matrix_set(signature_base, a, 4, 0.0);
 
-		b = a;
 
     gsl_vector_set(cpu_power_target, a, app_list[a].signature.DC_power);
     gsl_matrix_set(signature_base, a, 0, 1.0);
@@ -431,6 +430,7 @@ static state_t matrix_init(pstate_t *pstate_list, uint pstate_count, matrix_t **
 	return EAR_SUCCESS;
 }
 
+#if ACCUM_DATA
 static void average(signature_t *sig)
 {
 	double samples_count = (double) sig->cycles;
@@ -456,13 +456,14 @@ static void accum(signature_t *d, signature_t *s)
 	d->instructions += s->instructions;
 	for (uint i = 0; i < FLOPS_EVENTS; i++) d->FLOPS[i] += s->FLOPS[i];
 }
+#endif
 
 static state_t apps_merge(application_t **apps, uint *apps_count)
 {
 	application_t *apps_o; // Original apps array
 	application_t *apps_n; // Apps by name accumulated
 	uint apps_n_count = 0;
-	int o, b, n;
+	int o, b;
 
 	// This function averages an replicated applications per frequency.
 	apps_o = *apps;
@@ -609,7 +610,7 @@ static state_t db_query(int argc, char *argv[], cluster_conf_t *conf, char *host
       #if USE_GPUS
       uint gpus = apps_temp[t].signature.gpu_sig.num_gpus;
       double gpup = 0;
-      for (uint gpuid = 0; gpuid < gpus; gpuid) gpup += apps_temp[t].signature.gpu_sig.gpu_data[gpuid].GPU_power;
+      for (uint gpuid = 0; gpuid < gpus; gpuid++) gpup += apps_temp[t].signature.gpu_sig.gpu_data[gpuid].GPU_power;
       apps_temp[t].signature.DC_power -= gpup;
       #endif
 

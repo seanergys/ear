@@ -226,7 +226,6 @@ void assign_extra_power(eargm_status_t *status, uint num_status, eargm_table_t *
 void meta_reallocate_power(eargm_status_t *status, uint num_status, eargm_table_t *egm_table)
 {
     meta_aggregate_data(status, num_status);
-    int i;
     ulong pending, pending_2;
     // first PC_STATUS_ASK_DEF
     if (num_ask_def > 0) {
