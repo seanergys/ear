@@ -258,8 +258,8 @@ void update_eargm_configuration(cluster_conf_t *conf)
 }
 void reopen_log()
 {
-    close(fd_my_log);
-    fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
+    log_close(fd_my_log);
+    create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
 }
 
 static void my_signals_function(int s)
@@ -605,8 +605,7 @@ int main(int argc,char *argv[])
         print_eargm_conf(&my_cluster_conf.eargm);
     }
     if (my_cluster_conf.eargm.use_log){
-        fd_my_log=create_log(my_cluster_conf.install.dir_temp,"eargmd");
-
+        create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
     }
     TIMESTAMP_SET_EN(my_cluster_conf.eargm.use_log);
 

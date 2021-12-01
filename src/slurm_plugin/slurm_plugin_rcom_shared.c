@@ -70,10 +70,10 @@ static int plug_print_settings(spank_t sp, plug_serialization_t *sd)
 {
         settings_conf_t *setts = &sd->pack.eard.setts;
 
-        plug_verbose(sp, 3, "------------- Settings summary ---");
-        plug_verbose(sp, 3, "library/user type '%d'/'%d'", setts->lib_enabled, setts->user_type);
-        plug_verbose(sp, 3, "freq/P_STATE '%lu'/'%u'", setts->def_freq, setts->def_p_state);
-        plug_verbose(sp, 3, "----------------------------------");
+    plug_verbose(sp, 3, "--------------------------------- Settings summary ---");
+    plug_verbose(sp, 3, "library.user type: %d.%d", setts->lib_enabled, setts->user_type);
+    plug_verbose(sp, 3, "frequency.P_STATE: %lu.%u", setts->def_freq, setts->def_p_state);
+	plug_verbose(sp, 3, "------------------------------------------------------");
 
 	return ESPANK_SUCCESS;
 }

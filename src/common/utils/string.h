@@ -38,4 +38,6 @@
 
 size_t xsnsize(size_t size);
 
+int appenv(const char *var, const char *string);
+
 #endif

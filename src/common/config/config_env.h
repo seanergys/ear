@@ -63,6 +63,8 @@
 #define SCHED_EAR_GPU_POWER_POLICY "SLURM_HACK_EAR_GPU_POWER_POLICY"
 /* This var forces to load a specific power model plugin.  Replaces SLURM_EAR_POWER_MODEL */
 #define SCHED_EAR_POWER_MODEL "SLURM_HACK_EAR_POWER_MODEL"
+/* This var forces to load a specific cpu power model plugin. */
+#define SCHED_EAR_CPU_POWER_MODEL "SLURM_HACK_EAR_CPU_POWER_MODEL"
 /* This var forces a specific dynais windows size. Replaces SLURM_EAR_DYNAIS_WINDOW_SIZE */
 #define SCHED_EAR_DYNAIS_WINDOW_SIZE "SLURM_HACK_EAR_DYNAIS_WINDOW_SIZE"
 /* This var forces a different default frequency than the predefined for a policy. replaces SLURM_EAR_DEF_FREQ */
@@ -82,7 +84,7 @@
 #define SCHED_EAR_GPU_DEF_FREQ "SLURM_EAR_GPU_DEF_FREQ"
 /* This variable forces to load the NON MPI version of the library for a given application.
  * SLURM_LOADER_LOAD_NO_MPI_LIB=gromacs */
-#define SCHED_LOADER_LOAD_NO_MPI_LIB "SLURM_LOADER_LOAD_NO_MPI_LIB"
+#define SCHED_LOADER_LOAD_NO_MPI_LIB "SLURM_LOADER_APPLICATION"
 #define SCHED_MAX_IMC_FREQ						"SLURM_MAX_IMC_FREQ"
 #define SCHED_MIN_IMC_FREQ						"SLURM_MIN_IMC_FREQ"
 /* This variable specifies the IMC freq must be selected by the EAR policy */

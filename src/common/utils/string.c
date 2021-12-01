@@ -15,8 +15,24 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <common/sizes.h>
 #include <common/utils/string.h>
 
 size_t xsnsize(size_t size) {
 	return size;
+}
+
+int appenv(const char *var, const char *string)
+{
+	char buffer[SZ_PATH];
+	char *p = getenv(var);
+
+	if (p != NULL) {
+		sprintf(buffer, "%s:%s", string, p);
+	} else {
+		sprintf(buffer, "%s", string);
+	}
+	return setenv(var, buffer, 1);
 }

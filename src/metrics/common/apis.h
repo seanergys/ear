@@ -29,6 +29,7 @@
 #define API_INTEL63      5
 #define API_AMD17        6
 #define API_NVML         7
+#define API_LIKWID      10
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0

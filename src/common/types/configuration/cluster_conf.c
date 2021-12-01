@@ -376,6 +376,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 
         n->powercap_type = my_conf->tags[tag_id].powercap_type;
         n->gpu_def_freq = my_conf->tags[tag_id].gpu_def_freq;
+				strcpy(n->tag, my_conf->tags[tag_id].id);
 
         if (my_conf->tags[tag_id].energy_plugin != NULL && strlen(my_conf->tags[tag_id].energy_plugin) > 0)
             n->energy_plugin = my_conf->tags[tag_id].energy_plugin;

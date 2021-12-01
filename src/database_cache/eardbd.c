@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -149,6 +149,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	// Getting host name and host alias
 	gethostname(master_host, SZ_NAME_MEDIUM);
 	gethostname(master_nick, SZ_NAME_MEDIUM);
+
 	// Finding a possible short form
 	if ((p = strchr(master_nick, '.')) != NULL) {
 		p[0] = '\0';
@@ -177,7 +178,6 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	if (conf_clus->db_manager.use_log) {
 		verb_master("redirecting output to '%s'", conf_clus->install.dir_temp);
 	}
-
 
 	/* Reporting plugin */
 	if (state_fail(report_load(conf_clus->install.dir_plug,conf_clus->db_manager.plugins))){
@@ -344,7 +344,7 @@ static void init_sockets(int argc, char **argv, cluster_conf_t *conf_clus)
 	int st3 = (fd3 == -1) + ((fd3 == -1) * (errno3 != 0));
 	int st4 = (fd4 == -1) + ((fd4 == -1) * (errno4 != 0));
 	// Summary header
-	tprintf_init(fderr, STR_MODE_DEF, "18 8 7 10 8 8");
+	tprintf_init_v2(VERB_LEVEL, STR_MODE_DEF, "18 8 7 10 8 8");
 	tprintf("type||port||prot||stat||fd||err");
 	tprintf("----||----||----||----||--||---");
 	// Summary
@@ -538,7 +538,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 
 	// Verbose
-	tprintf_init(fderr, STR_MODE_DEF, "15 15 11 9 8");
+	tprintf_init_v2(VERB_LEVEL, STR_MODE_DEF, "15 15 11 9 8");
 
 	if(!master_iam) {
 		tprintf_close();

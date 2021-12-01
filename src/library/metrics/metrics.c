@@ -163,8 +163,7 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	cpu_set_t m;
 	ulong total = 0, total_cpus = 0;
 	ulong lavg, lcpus;
-	int p, c;
-	int ccount = arch_desc.top.cpu_count;
+	int p;
   for (p = 0; p < lib_shared_region->num_processes ; p++)
   {
   	m = sig_shared_region[p].cpu_mask;
@@ -205,20 +204,20 @@ static void metrics_global_start()
 		/* Avg CPU freq */
 		debug("eards_cpufreq_read");
 		if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[APP],mycpufreq_data_size))){
-			error("CPUFreq data read in global_start");
+			debug("CPUFreq data read in global_start");
 		}
 		/* Reads IMC data */
 		if (imc_mgt_compatible){
 		debug("imcfreq_read");
 		if (xtate_fail(s, imcfreq_read(&imc_ctx, imc_init[APP]))){
-			error("IMCFreq data read in global_start");
+			debug("IMCFreq data read in global_start");
 		}
 		}
 		/* Energy */
 		debug("eards_node_dc_energy");
 		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
 		if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
-			error("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+			debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
 		}
 		/* RAPL energy metrics */
 		eards_read_rapl(aux_rapl);
@@ -387,13 +386,13 @@ static void metrics_partial_start()
 				if (masters_info.my_master_rank>=0){ 
 								/* Avg CPU freq */
 								if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
-												error("CPUFreq data read in partial start");
+												verbose_master(2,"CPUFreq data read in partial start");
 								}
 								/* Avg IMC freq */
 								if (imc_mgt_compatible){
 												/* Reads the IMC */
 												if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_init[LOO]))){
-																error("IMCFreq data read in global_start");
+																verbose_master(2,"IMCFreq data read in global_start");
 												}
 								}
 
@@ -467,7 +466,8 @@ static int metrics_partial_stop(uint where)
 		/* Energy node */
 		ret = eards_node_dc_energy(aux_energy_stop,node_energy_datasize);
 		if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)){ 
-			return EAR_NOT_READY;
+			if (eards_connected()) return EAR_NOT_READY;
+			else 							     return EAR_SUCCESS;
 		}
 		energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
 		energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);	
@@ -533,7 +533,7 @@ static int metrics_partial_stop(uint where)
 		if (c_power < system_conf->max_sig_power){
 			acum_ipmi[LOO] = c_energy;
 		}else{
-			error("Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);
+			verbose_master(2,"Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);
 			acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
 		}
 		acum_ipmi[APP] += acum_ipmi[LOO];
@@ -561,12 +561,12 @@ static int metrics_partial_stop(uint where)
 
 		/* Avg CPU freq */
     if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
-      error("CPUFreq data read in partial stop");
+      verbose_master(2,"CPUFreq data read in partial stop");
     }
     if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],cpufreq_data_per_core,&cpufreq_data_avg[LOO]))){
-      error("CPUFreq data diff");
+      verbose_master(2,"CPUFreq data diff");
     }else{
-      debug("CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
+      verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
     }
 		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++){ 
 			verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
@@ -578,10 +578,10 @@ static int metrics_partial_stop(uint where)
 		/* Avg IMC frequency */
 		if (imc_mgt_compatible){
     if (xtate_fail(s, imcfreq_read(&imc_ctx,imc_end[LOO]))){
-      error("IMCFreq data read in partial_stop");
+      verbose_master(2,"IMCFreq data read in partial_stop");
     }
     if (xtate_fail(s, imcfreq_data_diff(imc_end[LOO],imc_init[LOO],imc_freq_end[LOO],&imc_avg[LOO]))){
-      error("IMC data diff fails");
+      verbose_master(2,"IMC data diff fails");
     }
    	debug("AVG IMC frequency %.2f",(float)imc_avg[LOO]/1000000.0);
 		}
@@ -970,18 +970,18 @@ int metrics_init(topology_t *topo)
 
 	/* CPU average frequency metrics */
   if (xtate_fail(s,cpufreq_load(topo))){
-    error("Cpufrequency load failed");
+    verbose_master(2,"Cpufrequency load failed");
   }
   if (xtate_fail(s,cpufreq_init())){
-      error("Cpufrequency init failed");
+      verbose_master(2,"Cpufrequency init failed");
   }
 	if (xtate_fail(s,cpufreq_data_count(&mycpufreq_data_size,&mycpufreq_data_count))){
-		error("Cpufrequency data size failed");
+		verbose_master(2,"Cpufrequency data size failed");
 	}else{
 		verbose_master(2,"Cpufrequency data size %u count %u", mycpufreq_data_size,mycpufreq_data_count);
 	}
   if (xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[LOO],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[LOO],NULL))){
-			error("Cpufreq allocation failed");
+			verbose_master(2,"Cpufreq allocation failed");
 	}
 	verbose_master(2,"CPUFreq data allocated");
 	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
@@ -990,7 +990,7 @@ int metrics_init(topology_t *topo)
 	/* To compute IMC average */
 	imcfreq_load(topo, EARD);
 	if (xtate_fail(s, imcfreq_init(&imc_ctx))){
-		error("IMC metrics init failed");
+		verbose_master(2,"IMC metrics init failed");
 	}
 	uint imc_api;
 	char imc_api_txt[32];
@@ -998,31 +998,31 @@ int metrics_init(topology_t *topo)
 	apis_tostr(imc_api,imc_api_txt,sizeof(imc_api_txt));
 	verbose_master(INFO_METRICS,"IMC metrics API %s",imc_api_txt);
   if (xtate_fail(s, imcfreq_data_alloc(&imc_init[APP], &imc_freq_init[APP]))){
-		error("IMC data alloc failed");
+		verbose_master(2,"IMC data alloc failed");
 	}
   if (xtate_fail(s, imcfreq_data_alloc(&imc_end[APP], &imc_freq_end[APP]))){
-		error("IMC data alloc failed");
+		verbose_master(2,"IMC data alloc failed");
 	}
   if (xtate_fail(s, imcfreq_data_alloc(&imc_init[LOO], &imc_freq_init[LOO]) )){
-    error("IMC data alloc failed");
+    verbose_master(2,"IMC data alloc failed");
   }
   if (xtate_fail(s, imcfreq_data_alloc(&imc_end[LOO], &imc_freq_end[LOO]) )){
-    error("IMC data alloc failed");
+    verbose_master(2,"IMC data alloc failed");
   }
 	verbose_master(INFO_METRICS,"IMC metrics initialized ");
 
 	/* IMC management */
 	if(state_fail(s = mgt_imcfreq_load(topo, EARD))) {
-		error("Error during mgt_imcfreq_load: %s", state_msg);
+		verbose_master(2,"Error during mgt_imcfreq_load: %s", state_msg);
 	}
 	if (state_fail(s = mgt_imcfreq_get_api(&imc_api))){
-		error("Error in asking dor IMC API");
+		verbose_master(2,"Error in asking dor IMC API");
 	}
 	char imc_mgt_txt[32];
 	apis_tostr(imc_api,imc_mgt_txt,sizeof(imc_mgt_txt));
 	verbose_master(INFO_METRICS,"IMC API selected %s",imc_mgt_txt);
 	if (state_fail(s = mgt_imcfreq_init(NULL))){
-		error("Error in IMC init");
+		verbose_master(2,"Error in IMC init");
 		imc_mgt_compatible = 0;
 	}	
 	if (state_fail(s = mgt_imcfreq_count_devices(NULL, &imc_devices))){
@@ -1119,13 +1119,15 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
+	if (!eards_connected()) return;
 
 	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
   while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
+
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
   /* Waiting for node signatures */
   verbose_master(2,"Waiting for node signatures");
-  while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0) usleep(100);
 
 	compute_per_process_and_job_metrics(&nodeapp);
 
@@ -1137,7 +1139,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(APP, metrics, 1, procs);
   verbose_master(2,"Waiting for node signatures");
   /* Waiting for node signatures */
-  while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
@@ -1150,7 +1152,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
   	metrics->sig_ext = se;
 	}
 	debug("Metrics_dispose_end %d",my_node_id);
-
 }
 
 void metrics_compute_signature_begin()
@@ -1416,8 +1417,6 @@ state_t metrics_new_iteration(signature_t *sig)
 /* This function computes local metrics per process, computes per job and computes the accumulated */
 void compute_per_process_and_job_metrics(signature_t *dest)
 {
-	uint p;
-	signature_t aux;
 	if (masters_info.my_master_rank >= 0){
 		update_earl_node_mgr_info();
 		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info)	;

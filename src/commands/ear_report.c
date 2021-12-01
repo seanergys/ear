@@ -1196,7 +1196,7 @@ int main(int argc,char *argv[])
         }
     }
 
-    if (start_time == 0) start_time = end_time - MAX(my_conf.eard.period_powermon, my_conf.db_manager.insr_time)*4;
+    if (start_time == 0) start_time = end_time - MAX(my_conf.eard.period_powermon, my_conf.db_manager.aggr_time)*4;
     if (!all_users && !all_nodes && !all_tags && !all_eardbds && !global_energy && !report_events)
     {
         long long result = get_sum(connection, start_time, end_time, divisor);

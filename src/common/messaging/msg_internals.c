@@ -44,7 +44,7 @@ int remote_connected=0;
 int eards_sfd=-1;
 
 // 2000 and 65535
-#define DAEMON_EXTERNAL_CONNEXIONS 1
+#define DAEMON_EXTERNAL_CONNEXIONS 10
 
 
 int _read(int fd, void *data, size_t ssize)
@@ -78,7 +78,7 @@ int _read(int fd, void *data, size_t ssize)
 	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_read > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
 
 	if (tries >= MAX_SOCKET_COMM_TRIES) { 
-        debug("_read: tries reached in send %d", tries); 
+        debug("_read: tries reached in read%d", tries); 
     }
 
 	/* If there are bytes left to send, we return a 0 */
@@ -380,6 +380,12 @@ size_t get_command_size(request_t *command, char **data_to_send)
         case EAR_RC_END_JOB:
         case EAR_RC_END_JOB_LIST:
             size += sizeof(end_job_req_t);
+            break;
+        case EAR_RC_NEW_TASK:
+            size += sizeof(new_task_req_t);
+            break;
+        case EAR_RC_END_TASK:
+            size += sizeof(end_task_req_t);
             break;
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
@@ -1485,6 +1491,21 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
     head.type = data_head.type;
     switch(data_head.type)
     {
+        case EAR_TYPE_POWER_CHECK:
+            head.size = data_head.size;
+            if (final_data != NULL)
+            {
+                uint64_t *power = (uint64_t *)final_data; 
+                uint64_t *new_power = (uint64_t *)temp_data; 
+                *power += *new_power;
+            }
+            else
+            {
+                final_data = realloc(final_data, final_size + data_head.size);
+                memcpy(&final_data[final_size], temp_data, data_head.size);
+                //cannot directly assign final_data = temp_data because the caller function (data_all_nodes) frees temp_data after passing through here
+            }
+            break;
         case EAR_TYPE_RELEASED:
             head.size = data_head.size;
             if (final_data != NULL)

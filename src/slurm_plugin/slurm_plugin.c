@@ -180,43 +180,23 @@ int slurm_spank_task_init(spank_t sp, int ac, char **av)
 {
 	plug_verbose(sp, 2, "function slurm_spank_task_init");
 
-	char buffer1[2048];
-	char buffer2[2048];
-	cpu_set_t mask;
-	int cpus_count;
-	int cpu_set;
-	int task;
-	int i;
-
-	// By default is error
-	cpu_set = -1;
-	task = -1;
-	// Local task
-	if (!getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
+    // If we are not in remote environment (not sure if required).
+    if (!plug_context_is(sp, Context.remote)) {
+        return ESPANK_SUCCESS;
+    }
+	// Components are special environment variables to control the plugin
+	// behaviour and are treated differently. 
+	if (plug_deserialize_components(sp) != ESPANK_SUCCESS) {
 		return ESPANK_SUCCESS;
 	}
-	task = atoi(buffer2);
-	if (!plug_verbosity_test(sp, 2)) {
-		return ESPANK_SUCCESS;
-	}
-	if (task > 0 && !plug_verbosity_test(sp, 3)) {
-		return ESPANK_SUCCESS;
-	} 
-	// Getting mask and number of processors
-	CPU_ZERO(&mask);
-	cpus_count = get_nprocs();
-	// 
-	if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
-		plug_verbose(sp, 2, "affinity of local task %d: ERROR", task);
-	} else {
-		sprintf(buffer1, "TASK[%d]: ", task);
-		for (i = 0; i < cpus_count; ++i) {
-			cpu_set = CPU_ISSET(i, &mask);
-			strcpy(buffer2, buffer1);
-			xsprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
-		}
-		plug_verbose(sp, 2, "%s", buffer1);
-	}
+    if (plug_deserialize_task(sp, &sd) != ESPANK_SUCCESS) {
+        return plug_component_setenabled(sp, Component.plugin, 0);
+    }
+    if (plug_rcom_eard_task_start(sp, &sd)) {
+    }
+    if (sd.subject.is_task_master) {
+        plug_print_items(sp);
+    }
 	
 	return (ESPANK_SUCCESS);
 }

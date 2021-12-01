@@ -135,7 +135,8 @@ int eard_must_exit = 0;
 topology_t node_desc;
 ctx_t imc_eard_ctx;
 int fd_rapl[MAX_PACKAGES];
-double rapl_tdps[MAX_PACKAGES];
+double rapl_pck_tdps[MAX_PACKAGES];
+double rapl_dram_tdps[MAX_PACKAGES];
 
 /* EARD init errors control */
 static uint error_uncore=0;
@@ -324,8 +325,8 @@ void eard_exit(uint restart)
 
 void reopen_log()
 {
-	close(fd_my_log);
-	fd_my_log = create_log(my_cluster_conf.install.dir_temp,"eard");
+	log_close(fd_my_log);
+	create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
 }
 
 //
@@ -649,7 +650,7 @@ int main(int argc, char *argv[])
 								Usage(argv[0]);
 				}
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
-				fd_my_log = create_log("/tmp", "eard_journal");
+				create_log("/tmp", "eard_journal", fd_my_log);
 
 				// We get nodename to create per_node files
 				if (gethostname(nodename, sizeof(nodename)) < 0) {
@@ -730,7 +731,7 @@ int main(int argc, char *argv[])
 				create_tmp(ear_tmp);
 				if (my_cluster_conf.eard.use_log) {
 					verbose(VEARD_INIT,"Creating log file");
-					fd_my_log = create_log(my_cluster_conf.install.dir_temp, "eard");
+					create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
 				}
 				set_verbose_variables();
 
@@ -860,8 +861,12 @@ int main(int argc, char *argv[])
 								error("Error initializing rapl");
 								error_rapl=1;
 				}
-				if (read_rapl_tdp(fd_rapl, rapl_tdps) == EAR_ERROR){
-					error("Reading CPu TDPs");
+				if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
+					error("Reading CPU TDPs");
+					error_rapl=1;
+				}
+				if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
+					error("Reading DRAM TDPs");
 					error_rapl=1;
 				}
 				verbose(VEARD_INIT,"Initialzing energy plugin");

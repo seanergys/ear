@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 	double d;
 	int c;
 	int r;
-	int i;
+	int i = 0;
 
 	c = init_uncores(0);
 	verbose(0, "init_uncores: %d", c);
@@ -21,15 +21,27 @@ int main(int argc, char *argv[])
 	alloc_uncores(&cas3, c);
 	r = start_uncores();
 	verbose(0, "start_uncores: %d", r);
-	r = read_uncores(cas1);
-	verbose(0, "read_uncores: %d", r);
+
+    //while(i < 3) {
+    while (1) {
+	    r = read_uncores(cas1);
+	    verbose(0, "read_uncores: %d", r);
+	    sleep(3);
+	    r = read_uncores(cas2);
+	    verbose(0, "read_uncores: %d", r);
+	    diff_uncores(cas3, cas2, cas1, c);
+	    verbosen(0, "diff_uncores: ");
+	    print_uncores(cas3, c);
+	    r = compute_mem_bw(cas2, cas1, &d, 3.0, c);
+	    verbose(0, "total bandwidth: %0.2lf GB/s", d);
+        verbose(0, "-------------------------------------------------");
+        ++i;
+    }
+
+    #if 0
 	print_uncores(cas1, c);
-	sleep(3);
 	r = stop_uncores(cas2);
 	verbose(0, "stop_uncores: %d", r);
-	print_uncores(cas2, c);
-	diff_uncores(cas3, cas2, cas1, c);
-	verbosen(0, "diff_uncores: ");
 	//for (i = 0, t = 0LLU; i < c; ++i) {
 	//	t += cas[i];
 	//	verbosen(0, "%llu ", cas[i]);
@@ -40,6 +52,7 @@ int main(int argc, char *argv[])
 	//t = (t * 64LLU) / (3LLU * BW_MB);
 	//verbose(0, "total bandwidth: %llu MB/s", t);
 	verbose(0, "total bandwidth: %0.2lf GB/s", d);
+    #endif
 
 	return 0;
 }

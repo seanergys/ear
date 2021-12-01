@@ -35,7 +35,7 @@
 #include <common/config.h>
 #include <common/system/sockets.h>
 #include <common/system/folder.h>
-
+#include <common/messaging/msg_conf.h>
 
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
@@ -95,6 +95,7 @@ extern char nodename[MAX_PATH_SIZE];
 typedef struct job_context{
 	job_id id;
 	uint   numc;
+	uint   num_cpus;
 }job_context_t;
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
 
@@ -122,6 +123,15 @@ void init_jobs_in_node()
 {
 	memset(jobs_in_node_list, 0, sizeof(job_context_t)*MAX_CPUS_SUPPORTED);
 }
+
+uint is_job_in_node(job_id id, job_context_t **jc)
+{
+	uint i = 0; 
+	while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id != id)) i++;
+	if (i < MAX_CPUS_SUPPORTED) *jc = &jobs_in_node_list[i];
+	return (i < MAX_CPUS_SUPPORTED);
+}
+
 void add_job_in_node(job_id id)
 {
 	/* Find the job */
@@ -157,6 +167,14 @@ void del_job_in_node(job_id id)
 	
 }
 
+void clean_cpus_in_jobs()
+{
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		jobs_in_node_list[i].num_cpus = 0;
+	}
+}
+
+
 uint num_jobs_in_node()
 {
 	uint total = 0;
@@ -164,6 +182,15 @@ uint num_jobs_in_node()
 		if (jobs_in_node_list[i].id) total++;
 	}
 	return total;
+}
+
+void verbose_jobs_in_node(uint vl)
+{
+	for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){
+		if (jobs_in_node_list[i].numc){
+			verbose(vl, "JOB[%u] id=%lu contexts %u cpus %u", i, jobs_in_node_list[i].id, jobs_in_node_list[i].numc, jobs_in_node_list[i].num_cpus);
+		}
+	}
 }
 
 /****************** CONTEXT MANAGEMENT ********************/
@@ -397,27 +424,9 @@ void create_job_area(uint ID)
 void clean_job_area(uint ID)
 {
 	char job_path[MAX_PATH_SIZE];
-	char file_path[MAX_PATH_SIZE];
-	state_t s;
-	folder_t job_folder;
-	char *file;
 
   xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
-  s = folder_open(&job_folder, job_path);
-  if (state_fail(s)) {
-		verbose(VJOBPMON+1,"Error opening job path %s",job_path);
-    return;
-  }
-  verbose(VJOBPMON+2,"Cleaning job_path: %s", job_path);
-
-  while ((file = folder_getnext(&job_folder, NULL, NULL)))
-  {
-		xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-		verbose(VJOBPMON+2,"Deleting: %s",file_path);
-		unlink(file_path);	
-  }
-	folder_close(&job_folder);
-	rmdir(job_path);
+	folder_remove(job_path);
 }
 
 
@@ -656,6 +665,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	pmapp->app.job.start_mpi_time = 0;
 	pmapp->app.job.end_mpi_time = 0;
 	pmapp->app.job.end_time = 0;
+	pmapp->app.job.procs = new_app->job.procs;
 	// reset signature
 	signature_init(&pmapp->app.signature);
 	init_power_signature(&pmapp->app.power_sig);
@@ -667,7 +677,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	copy_energy_data(&pmapp->energy_init, &c_energy);
 	// CPU Frequency
 	state_assert(s, cpufreq_read(&pmapp->freq_job1), );
-	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu",pmapp->app.job.id,pmapp->app.job.step_id);
+	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu ",pmapp->app.job.id,pmapp->app.job.step_id);
 }
 
 
@@ -707,13 +717,21 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 		ulong lcpus;
 		if (pmapp->app.is_mpi) cpufreq_avgcpufreq_mask(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
 	}else{
-		verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode");
-		pmapp->app.power_sig.DC_power 	= pmapp->accum_ps.DC_energy / elapsed;
-		pmapp->app.power_sig.DRAM_power = pmapp->accum_ps.DRAM_energy/ elapsed;
-		pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
-		pmapp->app.power_sig.max_DC_power = pmapp->accum_ps.max; 
-		pmapp->app.power_sig.min_DC_power = pmapp->accum_ps.min;
-		pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
+		if (pmapp->app.is_mpi){
+			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode. Using EARL signature");
+			pmapp->app.power_sig.DC_power 	= pmapp->app.signature.DC_power;
+			pmapp->app.power_sig.DRAM_power = pmapp->app.signature.DRAM_power;
+			pmapp->app.power_sig.PCK_power	= pmapp->app.signature.PCK_power;
+			pmapp->app.power_sig.avg_f        = pmapp->app.signature.avg_f;
+		}else{
+			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode");
+			pmapp->app.power_sig.DC_power 	= pmapp->accum_ps.DC_energy / elapsed;
+			pmapp->app.power_sig.DRAM_power = pmapp->accum_ps.DRAM_energy/ elapsed;
+			pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
+			pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
+		}
+		pmapp->app.power_sig.max_DC_power = ear_max(pmapp->accum_ps.max, pmapp->app.power_sig.DC_power); 
+		pmapp->app.power_sig.min_DC_power = ear_min(pmapp->accum_ps.min, pmapp->app.power_sig.DC_power);
 	}
 	pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 
@@ -927,7 +945,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
   cc = find_context_for_job(jid, sid);
   if (cc < 0){
     verbose(VJOBPMON,"powermon_mpi_init and context not found job_id %lu/%lu, creating automatically",appID->job.id, appID->job.step_id);
-    powermon_new_job(NULL,eh, appID, 1);
+    powermon_new_job(NULL,eh, appID, 1,  0);
     cc = find_context_for_job(jid, sid);
     if (cc < 0){
       verbose(VJOBPMON,"ERROR: Context not created!");
@@ -967,10 +985,33 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 	end_mpi(&pmapp->app.job);
 	set_powercapstatus_mode(AUTO_CONFIG);
 	if (!pmapp->job_created) {  // If the job is not submitted through slurm, end_job would not be submitted
-		powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id);
+		powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id, 0);
 	}
   debug("powermon_mpi_finalize done for %lu,%lu",jid,sid);
 
+}
+
+/*
+ *
+ * TASK MGT
+ *
+ */
+
+void powermon_new_task(new_task_req_t *newtask)
+{
+  powermon_app_t *pmapp;
+	int cc;
+	verbose(VJOBPMON,"powermon_new_task %lu/%lu/%d/%u", newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
+	cc = find_context_for_job(newtask->jid, newtask->sid);
+  if (cc < 0){
+		verbose(0,"New task and Context for %lu/%lu not created", newtask->jid, newtask->sid);
+		return;
+  }
+	pmapp = current_ear_app[cc];
+	verbose(VJOBPMON+1, "New task for %lu/%lu PID = %d num_cpus %u", newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
+	pmapp->plug_num_cpus += newtask->num_cpus;
+	aggregate_cpus_to_mask(&pmapp->plug_mask, &newtask->mask);		
+	verbose(VJOBPMON, "Total cpus in %lu/%lu = %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
 }
 
 /*
@@ -982,9 +1023,10 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 
 /* This functiono is called by dynamic_configuration thread when a new_job command arrives */
 
-void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi) {
+void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi, uint is_job) {
   int i;
 	int ccontext;
+	job_context_t* alloc;
 	// New application connected
 	if (appID == NULL) {
 		error("powermon_new_job: NULL appID");
@@ -1012,6 +1054,13 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	/* Saving the context */
 	/* We cannot assume all the node will have the same freq: PENDING */
 	pmapp->current_freq = frequency_get_cpu_freq(0);
+	pmapp->is_job = is_job;
+	/* Returns the number of contexts for this jobid, if is 1 is an srun without sbacth/or salloc (or equivalent on other schedulers) */
+	if (is_job_in_node(appID->job.id, &alloc)){
+		/* It's an allocation by itself */
+		if (alloc->numc == 1) pmapp->is_job = 1;
+	}
+	verbose(VJOBPMON, "Is new job %d", pmapp->is_job);
 	get_governor(&pmapp->governor);
 	debug("Saving governor %s", pmapp->governor.name);
 	/* Setting userspace */
@@ -1035,6 +1084,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   strcpy(pmapp->settings->policy_name,  my_policy->name);
   pmapp->settings->def_freq       = f;
   pmapp->settings->def_p_state    = my_policy->p_state;
+	pmapp->settings->island         = my_node_conf->island;
+	strcpy(pmapp->settings->tag, my_node_conf->tag);
   pmapp->resched->force_rescheduling = 0;
   memcpy(pmapp->settings->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
   set_null_loop(&pmapp->last_loop);
@@ -1057,8 +1108,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
 	pthread_mutex_unlock(&app_lock);
 	//save_eard_conf(&eard_dyn_conf);
-	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
-			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi,COL_CLR);
+	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d procs %lu%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
+			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, COL_CLR);
 	verbose(VJOBPMON , "*******************");
 	pmapp->sig_reported = 0;
 
@@ -1067,7 +1118,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 
 /* This function is called by dynamic_configuration thread when a end_job command arrives */
 
-void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
+void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 	// Application disconnected
 	powermon_app_t summary, *pmapp;
 	int cc;
@@ -1135,6 +1186,11 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid) {
 	service_close_by_id(jid,sid);
 
 }
+
+/*
+* This function is called by dynamic_configuration thread: Used to notify when a new task has been created
+*/
+
 
 /*
 * These functions are called by dynamic_configuration thread: Used to notify when a configuracion setting is changed
@@ -1263,6 +1319,8 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 	ulong num_jobs;
 	ulong time_consumed;
 	double my_dc_power;
+	job_context_t *alloc;
+	int pos_job_in_node;
 
 	time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
 
@@ -1270,33 +1328,64 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
 	num_jobs = num_jobs_in_node();
 	if (num_jobs == 0) return;
+
+	/* Set to 0 the num_cpus per job, we will compute again */
+	clean_cpus_in_jobs();
+
   
-  for (uint cc = 1;cc <= max_context_created; cc++){
+	for (uint cc = 1;cc <= max_context_created; cc++){
     if (current_ear_app[cc] != NULL){
       pmapp = current_ear_app[cc];
 			/* We must update the current signature */
 			pmapp->exclusive = (num_jobs == 1) && pmapp->exclusive;
-			tcpus += num_cpus_in_mask(&pmapp->app_info->node_mask);
+			pos_job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);
+			/* is_mpi means is an step + EARL */
+			if (pmapp->app.is_mpi) pmapp->earl_num_cpus  = num_cpus_in_mask(&pmapp->app_info->node_mask);
+			/* Else, if !is_job means step without EARL */
+			else  if (!pmapp->is_job)             pmapp->earl_num_cpus  = ear_min(num_cpus_in_mask(&pmapp->plug_mask), pmapp->plug_num_cpus);
+			/* is job and 1 context means srun without sbatch */
+			else  if (pmapp->is_job && pos_job_in_node && alloc->numc == 1) pmapp->earl_num_cpus  = ear_min(num_cpus_in_mask(&pmapp->plug_mask), pmapp->plug_num_cpus);
+
+		
+			/* earl_num_cpus is > 0 when the app uses EARL */	
+			if (pmapp->earl_num_cpus){ 
+				if (is_job_in_node(pmapp->app.job.id, &alloc)){
+					verbose(VEARD_NMGR, "Job %lu found, adding %u cpus ", pmapp->app.job.id, pmapp->earl_num_cpus);
+					tcpus += pmapp->earl_num_cpus;
+					alloc->num_cpus += pmapp->earl_num_cpus;
+				}
+			}
 		}
 	}
+
+
+	verbose_jobs_in_node(VCONF);
+	
   for (uint cc = 1;cc <= max_context_created; cc++){
+		verbose(VEARD_NMGR, "Testing context %d", cc);
     if (current_ear_app[cc] != NULL){
       pmapp = current_ear_app[cc];
 			/* We must update the current signature */
-			lcpus = num_cpus_in_mask(&pmapp->app_info->node_mask);
+			lcpus = pmapp->earl_num_cpus;
 			if (lcpus){
 				cpu_ratio = (num_jobs > 1) ? (float)lcpus/(float)tcpus : 1;
 				verbose(VEARD_NMGR,"Job %lu/%lu has %lu from %lu. cpu_ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id , lcpus, tcpus, cpu_ratio);
 			}else{
-				cpu_ratio = 1.0/(float)num_jobs;
-				verbose(VEARD_NMGR,"Job %lu/%lu without node maslk, using ratio %f", pmapp->app.job.id ,pmapp->app.job.step_id, cpu_ratio); 
+				if (is_job_in_node(pmapp->app.job.id, &alloc)){
+					cpu_ratio = (float)alloc->num_cpus/(float)tcpus;
+					verbose(VEARD_NMGR,"Job %lu/%lu without node mask, using ratio %f = %u/%lu", pmapp->app.job.id ,pmapp->app.job.step_id, cpu_ratio, alloc->num_cpus, tcpus); 
+				}else{
+					verbose(VEARD_NMGR,"Warning, no cpus detected using num_jobs %lu", num_jobs);
+					cpu_ratio = 1.0/(float)num_jobs;
+
+				}
 			}
 			my_dc_power = accum_node_power(last_pmon) * cpu_ratio;
 			pmapp->accum_ps.DC_energy 	+= accum_node_power(last_pmon) * cpu_ratio * time_consumed;
 			pmapp->accum_ps.DRAM_energy += accum_dram_power(last_pmon) * cpu_ratio * time_consumed;
 			pmapp->accum_ps.PCK_energy 	+= accum_cpu_power(last_pmon)  * cpu_ratio * time_consumed;
-			if (lcpus) pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask( &my_nm_id, nm, pmapp->app_info->node_mask) * time_consumed;
-			else       pmapp->accum_ps.avg_f += get_nm_cpufreq(&my_nm_id, nm) * time_consumed;
+			if (pmapp->app.is_mpi) pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask( &my_nm_id, nm, pmapp->app_info->node_mask) * time_consumed;
+			else                   pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask( &my_nm_id, nm, pmapp->plug_mask) * time_consumed;
 			pmapp->accum_ps.max = ear_max(pmapp->accum_ps.max, my_dc_power);
 			if (pmapp->accum_ps.min > 0 ) pmapp->accum_ps.min = ear_min(pmapp->accum_ps.min, my_dc_power);
 			else 													pmapp->accum_ps.min = my_dc_power;			
@@ -1307,6 +1396,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
     }
   }
+	verbose(VEARD_NMGR,"Power update pmapp done");
 }
 
 
@@ -1418,7 +1508,6 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
 
 	/* To be usd by status */
-	last_power_reported = last_pmon->avg_dc;
 	copy_node_metrics(&my_nm_id, &last_nm, nm);
 
 
@@ -1467,6 +1556,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 		  report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
 	  }
 	}
+	last_power_reported = last_pmon->avg_dc;
 
 	return;
 }
@@ -1747,6 +1837,11 @@ void powermon_get_status(status_t *my_status) {
 	my_status->node.power = (ulong) last_power_reported;
 	my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
 	my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
+}
+
+void powermon_get_power(uint64_t *power) 
+{
+    *power = (uint64_t) last_power_reported;
 }
 
 /* Returns the number of applications all or only master */

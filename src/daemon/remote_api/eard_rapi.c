@@ -172,12 +172,37 @@ int eards_set_freq(unsigned long freq)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
-    command.req=EAR_RC_SET_FREQ;
+    command.req = EAR_RC_SET_FREQ;
     command.node_dist = INT_MAX;
     command.time_code = time(NULL);
     command.my_req.ear_conf.max_freq=freq;
     return send_command(&command);
 }
+
+int eards_new_task(new_task_req_t *new_task)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+    debug("eards_new_task");
+	command.req = EAR_RC_NEW_TASK;
+    command.node_dist = INT_MAX;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.new_task, new_task, sizeof(new_task_req_t));
+	return send_command(&command);
+}
+
+int eards_end_task(end_task_req_t *end_task)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+    debug("eards_new_task");
+	command.req = EAR_RC_END_TASK;
+    command.node_dist = INT_MAX;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.end_task, end_task, sizeof(end_task_req_t));
+	return send_command(&command);
+}
+
 int eards_set_def_freq(unsigned long freq)
 {
     request_t command;
@@ -458,7 +483,7 @@ void eards_new_job_nodelist(new_job_req_t *new_job, uint port, char *net_ext, ch
     debug("eards_new_job");
     command.nodes = ips;
     command.num_nodes = num_nodes;
-	command.req=EAR_RC_NEW_JOB;
+	command.req=EAR_RC_NEW_JOB_LIST;
     command.time_code = time(NULL);
 	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
     send_command_nodelist(&command, &conf);
@@ -473,7 +498,7 @@ void eards_new_job_iplist(new_job_req_t *new_job, cluster_conf_t *my_cluster_con
     debug("eards_new_job");
     command.nodes = ips;
     command.num_nodes = num_ips;
-	command.req=EAR_RC_NEW_JOB;
+	command.req=EAR_RC_NEW_JOB_LIST;
     command.time_code = time(NULL);
 	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
     send_command_nodelist(&command, my_cluster_conf);
@@ -498,7 +523,7 @@ void eards_end_job_nodelist(job_id jid, job_id sid, uint port, char *net_ext, ch
     debug("eards_end_job");
     command.nodes = ips;
     command.num_nodes = num_nodes;
-    command.req=EAR_RC_END_JOB;
+    command.req=EAR_RC_END_JOB_LIST;
     command.time_code = time(NULL);
 	command.my_req.end_job.jid=jid;
 	command.my_req.end_job.sid=sid;
@@ -514,7 +539,7 @@ void eards_end_job_iplist(job_id jid, job_id sid, cluster_conf_t *my_cluster_con
     debug("eards_end_job");
     command.nodes = ips;
     command.num_nodes = num_ips;
-    command.req=EAR_RC_END_JOB;
+    command.req=EAR_RC_END_JOB_LIST;
     command.time_code = time(NULL);
 	command.my_req.end_job.jid=jid;
 	command.my_req.end_job.sid=sid;
@@ -730,6 +755,66 @@ int status_all_nodes(cluster_conf_t *my_cluster_conf, status_t **status)
     }
 
     *status = temp_status;
+
+    return num_status;
+
+}
+
+int eards_get_power(uint64_t *power)
+{
+    request_t command;
+    uint64_t *temp_power = NULL;
+    memset(&command, 0, sizeof(request_t));
+
+    command.node_dist = INT_MAX;
+    command.req = EAR_RC_GET_POWER;
+    command.time_code = time(NULL);
+    request_header_t head;
+
+    send_command(&command);
+    head = receive_data(eards_sfd, (void**)&temp_power);
+    if (head.size < sizeof(uint64_t) || head.type != EAR_TYPE_POWER_CHECK) {
+        if (head.size > 0) {
+            free(temp_power);
+            temp_power = NULL;
+        }
+        debug("Error sending command to node");
+    }
+    if (temp_power != NULL) {
+        *power = *temp_power;
+        free(temp_power);
+    }
+
+    return head.size >= sizeof(uint64_t);
+}
+
+int cluster_get_power(cluster_conf_t *my_cluster_conf, uint64_t *power)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    uint64_t *temp_power = NULL;
+    request_header_t head;
+    int num_status = 0;
+
+    command.time_code = time(NULL);
+    command.req = EAR_RC_GET_POWER;
+    command.node_dist = 0;
+
+    head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_power);
+    num_status = head.size / sizeof(uint64_t);
+    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(uint64_t)) //in this case, size is a fixed uint64_t, cannot be higher
+    {
+        if (head.size > 0) {
+            free(temp_power);
+        }
+        temp_power = NULL;
+        num_status = 0;
+    }
+
+    if (temp_power != NULL) {
+        *power = *temp_power;
+        free(temp_power);
+    }
 
     return num_status;
 

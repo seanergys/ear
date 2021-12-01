@@ -64,7 +64,6 @@ state_t gpu_lib_init(ctx_t *_c)
 	ctx_gpu_t *c = (ctx_gpu_t *) _c->context;
 	state_t s;
 	state_t ret;
-	int i;
 	if ((ret=eards_gpu_dev_count(&node_dev_count))!=EAR_SUCCESS) return ret;
 	debug("eards_gpu_dev_count %u",node_dev_count);
 	if (c == NULL) {
@@ -94,8 +93,6 @@ state_t gpu_lib_init(ctx_t *_c)
 		return EAR_ERROR;
 	}
 	/* This line must be replaces by the commented code */
-	for (i=0;i<node_dev_count;i++) my_gpu_list[i] = 1;
-	#if 0
 	if (the_gpu_model != MODEL_DUMMY){
 		gpu_info_t *info = malloc(sizeof(gpu_info_t)*node_dev_count);
 		const gpu_info_t *local_info;
@@ -119,7 +116,6 @@ state_t gpu_lib_init(ctx_t *_c)
 
 		}
 	}
-	#endif
 
 	return EAR_SUCCESS;
 }
