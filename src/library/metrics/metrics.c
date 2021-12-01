@@ -157,8 +157,8 @@ uint        imc_curr_max_pstate; //*
 uint        imc_curr_min_pstate; //*
 
 /* New metrics */
-static __thread metrics_t mgt_cpufreq;
-static __thread metrics_t mgt_imcfreq;
+static metrics_t mgt_cpufreq;
+static metrics_t mgt_imcfreq;
 
 const metrics_t *metrics_get(uint api)
 {
@@ -179,6 +179,8 @@ static void metrics_static_init(topology_t *tp)
     // Load
     sa(mgt_cpufreq_load(tp, EARD));
     sa(mgt_imcfreq_load(tp, EARD));
+    // Frequency is extinguishable
+    frequency_init(EARD);
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
