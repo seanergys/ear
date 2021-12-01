@@ -682,12 +682,12 @@ void dyncon_get_powerstatus(int fd, request_t *command)
 
 void dyncon_get_power(int fd, request_t *command)
 {
-    uint64_t *power;
+    power_check_t *power;
     uint64_t curr_power = 0;
     int return_status;
     long int ack;
     send_answer(fd, &ack);
-    return_status = propagate_get_power(command, my_cluster_conf.eard.port, (uint64_t **)&power);
+    return_status = propagate_get_power(command, my_cluster_conf.eard.port, (power_check_t **)&power);
 
     if (return_status < 1) 
     {
@@ -697,10 +697,11 @@ void dyncon_get_power(int fd, request_t *command)
     debug("return_status %d power=%lu", return_status, *power);
 
     powermon_get_power(&curr_power);
-    *power += curr_power;
-    debug("return_status %d power=%lu current_power=%lu", return_status, *power, curr_power);
+    power->power += curr_power;
+    power->num_nodes++;
+    debug("return_status %d power=%lu current_power=%lu", return_status, power->power, curr_power);
 
-    send_data(fd, sizeof(uint64_t), (char *)power, EAR_TYPE_POWER_CHECK);
+    send_data(fd, sizeof(power_check_t), (char *)power, EAR_TYPE_POWER_CHECK);
 
     debug("Returning from dyncon_get_powerstatus");
     free(power);

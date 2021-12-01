@@ -548,24 +548,24 @@ int propagate_powercap_status(request_t *command, uint port, powercap_status_t *
     return num_status;
 }
 
-int propagate_get_power(request_t *command, uint port, uint64_t **power)
+int propagate_get_power(request_t *command, uint port, power_check_t **power)
 {
-    uint64_t *temp_power, *final_power;
+    power_check_t *temp_power, *final_power;
 
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we allocate the power_status in this node and return
     if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
     {
-        final_power = calloc(1, sizeof(uint64_t));
+        final_power = calloc(1, sizeof(power_check_t));
         *power = final_power;
         return 1;
     }
 
     request_header_t head = propagate_data(command, port, (void **)&temp_power); //we don't check for number of uints since we will have 1 at most
-    int num_status = head.size / sizeof(uint64_t); //we still need a return value
-    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(uint64_t))
+    int num_status = head.size / sizeof(power_check_t); //we still need a return value
+    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t))
     {
-        final_power = calloc(1, sizeof(uint64_t));
+        final_power = calloc(1, sizeof(power_check_t));
         if (head.size > 0) free(temp_power);
         *power = final_power;
         return 1; //maybe return EAR_ERROR?? -> for now we return 1 as we get a correct power_status (for this node)

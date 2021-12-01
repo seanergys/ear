@@ -185,6 +185,10 @@ typedef struct eargm_status {
     ulong energy;
 } eargm_status_t;
 
+typedef struct power_check {
+    uint64_t power;
+    int64_t  num_nodes;
+} power_check_t;
 
 
 #define EAR_RC_NEW_JOB              0

@@ -760,10 +760,10 @@ int status_all_nodes(cluster_conf_t *my_cluster_conf, status_t **status)
 
 }
 
-int eards_get_power(uint64_t *power)
+int eards_get_power(power_check_t *power)
 {
     request_t command;
-    uint64_t *temp_power = NULL;
+    power_check_t *temp_power = NULL;
     memset(&command, 0, sizeof(request_t));
 
     command.node_dist = INT_MAX;
@@ -773,7 +773,7 @@ int eards_get_power(uint64_t *power)
 
     send_command(&command);
     head = receive_data(eards_sfd, (void**)&temp_power);
-    if (head.size < sizeof(uint64_t) || head.type != EAR_TYPE_POWER_CHECK) {
+    if (head.size < sizeof(power_check_t) || head.type != EAR_TYPE_POWER_CHECK) {
         if (head.size > 0) {
             free(temp_power);
             temp_power = NULL;
@@ -785,14 +785,14 @@ int eards_get_power(uint64_t *power)
         free(temp_power);
     }
 
-    return head.size >= sizeof(uint64_t);
+    return head.size >= sizeof(power_check_t);
 }
 
-int cluster_get_power(cluster_conf_t *my_cluster_conf, uint64_t *power)
+int cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
-    uint64_t *temp_power = NULL;
+    power_check_t *temp_power = NULL;
     request_header_t head;
     int num_status = 0;
 
@@ -801,8 +801,8 @@ int cluster_get_power(cluster_conf_t *my_cluster_conf, uint64_t *power)
     command.node_dist = 0;
 
     head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_power);
-    num_status = head.size / sizeof(uint64_t);
-    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(uint64_t)) //in this case, size is a fixed uint64_t, cannot be higher
+    num_status = head.size / sizeof(power_check_t);
+    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t)) //in this case, size is a fixed uint64_t, cannot be higher
     {
         if (head.size > 0) {
             free(temp_power);

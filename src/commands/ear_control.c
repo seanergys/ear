@@ -592,7 +592,7 @@ int main(int argc, char *argv[])
     strcpy(node_name,"");
 
     status_t *status;
-    uint64_t power = 0;
+    power_check_t power;
 
     verb_level = 0;
     //verb_enabled = 0;
@@ -920,7 +920,7 @@ int main(int argc, char *argv[])
                         printf("Could not retrieve cluster power\n");
                     }
                     else {
-                        printf("Total cluster power: %luW\n", power);
+                        printf("Total cluster power reported by %li nodes: %luW\n", power.num_nodes, power.power);
                     }
                 }
                 else {
@@ -932,7 +932,7 @@ int main(int argc, char *argv[])
                             printf("Could not retrieve power for node %s\n", optarg);
                         }
                         else {
-                            printf("Power for node %s: %luW\n", optarg, power);
+                            printf("Power for node %s: %luW\n", optarg, power.power);
                         }
                         remote_disconnect();
                     }

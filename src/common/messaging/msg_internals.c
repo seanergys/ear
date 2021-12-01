@@ -1492,9 +1492,10 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
             head.size = data_head.size;
             if (final_data != NULL)
             {
-                uint64_t *power = (uint64_t *)final_data; 
-                uint64_t *new_power = (uint64_t *)temp_data; 
-                *power += *new_power;
+                power_check_t *power = (power_check_t *)final_data; 
+                power_check_t *new_power = (power_check_t *)temp_data; 
+                power->power += new_power->power;
+                power->num_nodes += new_power->num_nodes;
             }
             else
             {

@@ -159,9 +159,9 @@ void cluster_reset_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf);
 int cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released);
 
 /** Gets instant eards power */
-int eards_get_power(uint64_t *power);
+int eards_get_power(power_check_t *power);
 /** Gets instant cluster power */
-int cluster_get_power(cluster_conf_t *my_cluster_conf, uint64_t *power);
+int cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power);
 
 
 /* Nodelist functions */
