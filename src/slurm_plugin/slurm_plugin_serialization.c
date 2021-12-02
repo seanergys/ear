@@ -165,12 +165,12 @@ static int frequency_exists(spank_t sp, ulong *freqs, int n_freqs, ulong freq)
 
 int plug_print_application(spank_t sp, new_job_req_t *app)
 {
-	plug_verbose(sp, 3, "---------- application summary ---");
+	plug_verbose(sp, 3, "------------------------------ application summary ---");
 	plug_verbose(sp, 3, "job/step/name '%lu'/'%lu'/'%s'", app->job.id, app->job.step_id, app->job.app_id);
 	plug_verbose(sp, 3, "user/group/acc '%s'/'%s'/'%s'", app->job.user_id, app->job.group_id, app->job.user_acc);
 	plug_verbose(sp, 3, "policy/th/freq '%s'/'%f'/'%lu'", app->job.policy, app->job.th, app->job.def_f);
 	plug_verbose(sp, 3, "learning/tag '%u'/'%s'", app->is_learning, app->job.energy_tag);
-	plug_verbose(sp, 3, "----------------------------------");
+	plug_verbose(sp, 3, "------------------------------------------------------");
 	return EAR_SUCCESS;
 }
 
@@ -324,17 +324,18 @@ int plug_print_items(spank_t sp)
     }
 
     #if ERUN
-    #define print_item(word, cas, item, format)
+    #define print_item(word, cast, item, format)
     #else
     #define print_item(word, cast, item, format) \
         if (spank_get_item (sp, word, cast &(item)) == ESPANK_SUCCESS) { \
             plug_verbose(sp, 2, #word " = '" format "'", item); \
         }
     #endif
-
+		#if !ERUN
     char  *itemStr;
     ullong item64u;
     uint   item32u;
+		#endif
 
     print_item(S_JOB_UID             ,    (uid_t *), item32u, "%d");
     print_item(S_JOB_GID             ,    (gid_t *), item32u, "%d");
@@ -699,41 +700,58 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_deserialize_task");
-
-    cpu_set_t mask;
-    int cpus_count;
     int cpu_set;
     int task;
-    int i;
+    int i, j;
 
     // By default is error
     cpu_set = -1;
     task    = -1;
     // Local task
-    if (!getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
-        return ESPANK_SUCCESS;
-    }
-    task = atoi(buffer2);
-    if (!plug_verbosity_test(sp, 2)) {
-        return ESPANK_SUCCESS;
-    }
-    if (task > 0 && !plug_verbosity_test(sp, 3)) {
-        return ESPANK_SUCCESS;
-    }
-    // Getting mask and number of processors
-    CPU_ZERO(&mask);
-    cpus_count = get_nprocs();
-    //
-    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
-        plug_verbose(sp, 2, "affinity of local task %d: ERROR", task);
-    } else {
-        sprintf(buffer1, "TASK[%d]: ", task);
-        for (i = 0; i < cpus_count; ++i) {
-            cpu_set = CPU_ISSET(i, &mask);
-            strcpy(buffer2, buffer1);
-            xsprintf(buffer1, "%s CPU[%d]=%d", buffer2, i, cpu_set);
+	if (spank_get_item(sp, S_TASK_ID, &task) == ESPANK_ERROR) {
+        if (getenv_agnostic(sp, "SLURM_LOCALID", buffer2, 32)) {
+            task = atoi(buffer2);
         }
-        plug_verbose(sp, 2, "%s", buffer1);
     }
+   
+    // Getting task mastery
+    sd->subject.is_task_master = (task == 0);
+     
+    // Getting mask and number of processors
+    CPU_ZERO(&sd->job.task.mask);
+    
+    sd->job.task.jid      = sd->job.app.job.id;
+    sd->job.task.sid      = sd->job.app.job.step_id;
+    sd->job.task.pid      = getpid();
+    
+	spank_get_item(sp, S_STEP_CPUS_PER_TASK, (int *)&sd->job.task.num_cpus);
+
+    #define SPACE "                            "
+    xsprintf(buffer2, "------------------------------------- task summary ---\n");	
+	xsprintf(buffer1, "%s" SPACE "jid.sid.tid.pid: %lu.%lu.%d.%d\n", buffer2,
+        sd->job.task.jid, sd->job.task.sid, task, sd->job.task.pid);
+    xsprintf(buffer2, "%s" SPACE "affinity mask  : ", buffer1);
+
+    // Iterating over the mask
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &sd->job.task.mask) == -1) {
+        xsprintf(buffer1, "%sERROR\n", buffer2);
+    } else {
+        for (i = get_nprocs()-1, j = 1; i >= 0; --i, ++j)
+        {
+            cpu_set = CPU_ISSET(i, &sd->job.task.mask);
+            strcpy(buffer1, buffer2);
+            
+            if ((j % 8) == 0) {
+                xsprintf(buffer2, "%s%d ", buffer1, cpu_set);
+            } else {
+                xsprintf(buffer2, "%s%d", buffer1, cpu_set);
+            }
+        }
+        xsprintf(buffer1, "%s\n", buffer2);
+    }
+    xsprintf(buffer2, "%s" SPACE "cpus per task  : %d\n", buffer1, sd->job.task.num_cpus);
+	xsprintf(buffer1, "%s" SPACE "------------------------------------------------------", buffer2);
+    plug_verbose(sp, 3, "%s", buffer1);
+
 	return ESPANK_SUCCESS;
 }

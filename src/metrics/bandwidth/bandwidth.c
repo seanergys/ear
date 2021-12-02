@@ -32,6 +32,8 @@
  * When an error occurs, those calls returns -1.
  */
 
+//#define SHOW_DEBUGS 1
+
 #include <limits.h>
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -40,6 +42,7 @@
 #include <metrics/bandwidth/cpu/dummy.h>
 #include <metrics/bandwidth/cpu/amd49.h>
 #include <metrics/bandwidth/cpu/intel63.h>
+#include <metrics/bandwidth/cpu/likwid.h>
 
 static struct uncore_op {
 	state_t (*init)		(ctx_t *c, topology_t *tp);
@@ -82,6 +85,17 @@ int init_uncores(int cpu_model)
 		ops.stop    = bwidth_amd49_stop;
 		ops.read    = bwidth_amd49_read;
 		ops.dispose = bwidth_amd49_dispose;
+	}
+	else if (state_ok(bwidth_likwid_status(&topo)))
+	{
+		debug("selected likwid");
+		ops.init    = bwidth_likwid_init;
+		ops.count   = bwidth_likwid_count_devices;
+		ops.reset   = bwidth_likwid_fake;
+		ops.start   = bwidth_likwid_fake;
+		ops.stop    = bwidth_likwid_read;
+		ops.read    = bwidth_likwid_read;
+		ops.dispose = bwidth_likwid_dispose;
 	}
 	else
 	{
@@ -190,7 +204,7 @@ int compute_mem_bw(ullong *cas2, ullong *cas1, double *bps, double t,int N)
 	}
 	topology_init(&topo);
 	accum = acum_diff(cas2,cas1,N);
-	debug("Total uncore events %llu cache line size %u\n",accum,topo.cache_line_size);
+	//debug("Total uncore events %llu cache line size %u\n",accum,topo.cache_line_size);
 	*bps = (double)(accum * topo.cache_line_size)/(t*BW_GB);
 	return EAR_SUCCESS;
 }
@@ -293,9 +307,9 @@ void print_uncores(unsigned long long * DEST,int N)
 {
   int i;
   for (i=0;i<N;i++){
-		fprintf(stdout,"Counter %d= %llu \t",i,DEST[i]);
+		verbosen(0, "[%d,%llu] ",i,DEST[i]);
 	}
-	fprintf(stdout,"\n");
+    verbose(0, " ");
 }
 
 void uncores_to_str(unsigned long long * DEST,int N,char *txt,int len)

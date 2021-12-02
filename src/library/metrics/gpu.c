@@ -64,7 +64,6 @@ state_t gpu_lib_init(ctx_t *_c)
 	ctx_gpu_t *c = (ctx_gpu_t *) _c->context;
 	state_t s;
 	state_t ret;
-	int i;
 	if ((ret=eards_gpu_dev_count(&node_dev_count))!=EAR_SUCCESS) return ret;
 	debug("eards_gpu_dev_count %u",node_dev_count);
 	if (c == NULL) {

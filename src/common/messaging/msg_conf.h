@@ -25,6 +25,8 @@
 
 #ifndef REMOTE_CONF_H
 #define REMOTE_CONF_H
+#define GNU_SOURCE
+#include <sched.h>
 
 #include <common/types/application.h>
 #include <common/types/configuration/policy_conf.h>
@@ -42,6 +44,23 @@ typedef struct end_job_req{
     job_id sid;
     //int status;
 }end_job_req_t;
+
+typedef struct new_task_req{
+    job_id 		jid;
+    job_id 		sid;
+    pid_t  		pid;
+    cpu_set_t mask;	
+    uint      num_cpus;
+}new_task_req_t;
+
+typedef struct end_task_req{
+    job_id 		jid;
+    job_id 		sid;
+    pid_t  		pid;
+    cpu_set_t mask;	
+    uint      num_cpus;
+}end_task_req_t;
+
 
 typedef struct new_conf{
     ulong   max_freq;
@@ -75,6 +94,8 @@ typedef struct risk_dec{
 typedef union req_data{
     new_job_req_t       new_job;
     end_job_req_t       end_job;
+    new_task_req_t      new_task;
+    end_task_req_t      end_task;
     new_conf_t          ear_conf;
     new_policy_cont_t   pol_conf;
     risk_dec_t          risk;
@@ -164,12 +185,18 @@ typedef struct eargm_status {
     ulong energy;
 } eargm_status_t;
 
+typedef struct power_check {
+    uint64_t power;
+    int64_t  num_nodes;
+} power_check_t;
 
 
 #define EAR_RC_NEW_JOB              0
 #define EAR_RC_END_JOB              1
 #define EAR_RC_NEW_JOB_LIST         2
 #define EAR_RC_END_JOB_LIST         3
+#define EAR_RC_NEW_TASK             4
+#define EAR_RC_END_TASK             5
 #define EAR_RC_MAX_FREQ             100
 #define EAR_RC_NEW_TH               101
 #define EAR_RC_INC_TH               102
@@ -194,6 +221,7 @@ typedef struct eargm_status {
 #define EAR_RC_SET_RISK             706
 #define EAR_RC_RELEASE_IDLE	        707	
 #define EAR_RC_DEF_POWERCAP         708 
+#define EAR_RC_GET_POWER            709
 
 
 /* EARGM commands*/
@@ -210,9 +238,10 @@ typedef struct eargm_status {
 #define EAR_TYPE_COMMAND        2000
 #define EAR_TYPE_STATUS         2001
 #define EAR_TYPE_POWER_STATUS   2002
-#define EAR_TYPE_RELEASED       2003
-#define EAR_TYPE_APP_STATUS     2004
-#define EAR_TYPE_EARGM_STATUS   2005
+#define EAR_TYPE_POWER_CHECK    2003
+#define EAR_TYPE_RELEASED       2004
+#define EAR_TYPE_APP_STATUS     2005
+#define EAR_TYPE_EARGM_STATUS   2006
 ///  |||||
 ///  vvvvv
 /******************* IMPORTANT ***********************/

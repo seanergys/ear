@@ -16,10 +16,12 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/msr.o \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/perf.o \
+    $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
     $(SRCDIR)/metrics/bandwidth/cpu/amd49.o \
     $(SRCDIR)/metrics/bandwidth/cpu/intel63.o \
+    $(SRCDIR)/metrics/bandwidth/cpu/likwid.o \
     $(SRCDIR)/metrics/bandwidth/cpu/dummy.o \
     $(SRCDIR)/metrics/cache/cache.o \
     $(SRCDIR)/metrics/cache/cpu/perf.o \

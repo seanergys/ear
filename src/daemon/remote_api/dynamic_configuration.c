@@ -610,7 +610,7 @@ void dyncon_release_idle_power(int fd, request_t *command)
     debug("propagating release_idle_power");
     return_status = propagate_release_idle(command, my_cluster_conf.eard.port, (pc_release_data_t *)&rel_data);
 
-    if (return_status < 1) error("dyncon_get_powerstatus and return status < 1");
+    if (return_status < 1) error("dyncon_release_idle power and return status < 1");
 
     debug("releasing idle power");
     powercap_release_idle_power(&rel_data);
@@ -680,6 +680,34 @@ void dyncon_get_powerstatus(int fd, request_t *command)
     debug("powerstatus released");
 }
 
+void dyncon_get_power(int fd, request_t *command)
+{
+    power_check_t *power;
+    uint64_t curr_power = 0;
+    int return_status;
+    long int ack;
+    send_answer(fd, &ack);
+    return_status = propagate_get_power(command, my_cluster_conf.eard.port, (power_check_t **)&power);
+
+    if (return_status < 1) 
+    {
+        //error
+        error("dyncon_get_power and return status < 1 ");
+    }
+    debug("return_status %d power=%lu", return_status, *power);
+
+    powermon_get_power(&curr_power);
+    power->power += curr_power;
+    power->num_nodes++;
+    debug("return_status %d power=%lu current_power=%lu", return_status, power->power, curr_power);
+
+    send_data(fd, sizeof(power_check_t), (char *)power, EAR_TYPE_POWER_CHECK);
+
+    debug("Returning from dyncon_get_powerstatus");
+    free(power);
+    debug("powerstatus released");
+}
+
 void dyncon_set_risk(int fd, request_t *command)
 {
   int i;
@@ -733,6 +761,7 @@ void adap_new_job_req_to_app(application_t *req_app,new_job_req_t *new_job)
 
 static int is_new_command(request_t *comm)
 {
+		if (comm->req == EAR_RC_NEW_JOB || comm->req == EAR_RC_END_JOB || comm->req == EAR_RC_NEW_TASK || comm->req == EAR_RC_STATUS) return 1;
     // if ((comm->req == last_command) && (comm->time_code == last_command_time)) return 0;
     for (uint i=0; i < MAX_HISTORIC_COMM ; i++){
         if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time == comm->time_code)) return 0;
@@ -774,19 +803,11 @@ state_t process_remote_requests(int clientfd) {
     if (req == EAR_SOCK_DISCONNECTED) return req;
     /* New job and end job are different */
     /* Is it necesary */
-    if (req != EAR_RC_NEW_JOB && req != EAR_RC_END_JOB) {
-        if (req != EAR_RC_STATUS && !is_new_command(&command)) {
+    if (!is_new_command(&command)) {
             verbose(VRAPI, "Recieved repeating command: %u", req);
             ack = EAR_IGNORE;
             send_answer(clientfd, &ack);
-            #if 0
-            if ((command.node_dist > 0) && (command.node_dist != last_dist) && node_found != EAR_ERROR) {
-                last_dist = command.node_dist;
-                propagate_req(&command, my_cluster_conf.eard.port);
-            }
-            #endif
             return EAR_SUCCESS;
-        }
     }
 
     verbose(VRAPI,"New command accepted");
@@ -806,6 +827,14 @@ state_t process_remote_requests(int clientfd) {
             powermon_end_job(&my_eh_rapi, command.my_req.end_job.jid, command.my_req.end_job.sid, req == EAR_RC_END_JOB_LIST);
             verbose(VRAPI, "end_job command received %lu", command.my_req.end_job.jid);
             verbose(VRAPI, "*******************************************");
+            break;
+        case EAR_RC_NEW_TASK:
+            verbose(VRAPI, "NEW task received");
+            powermon_new_task(&command.my_req.new_task);
+            break;
+        case EAR_RC_END_TASK:
+            verbose(VRAPI, "END task received");
+            //powermon_end_task(&command.my_req.end_task); //pending to implement
             break;
         case EAR_RC_MAX_FREQ:
             verbose(VRAPI, "max_freq command received %lu", command.my_req.ear_conf.max_freq);
@@ -878,6 +907,9 @@ state_t process_remote_requests(int clientfd) {
             verbose(1,"set risk command received");
             dyncon_set_risk(clientfd, &command);
             break;
+        case EAR_RC_GET_POWER:
+            dyncon_get_power(clientfd, &command);
+            return EAR_SUCCESS;
         default:
             error("Invalid remote command %d\n",req);
             req = NO_COMMAND;

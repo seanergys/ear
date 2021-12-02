@@ -116,8 +116,8 @@ void create_risk(risk_t *my_risk,int wl)
 
 void manage_warning(risk_t * risk,uint level,cluster_conf_t my_cluster_conf,float target,uint mode)
 {
-	uint numn;
 	#if 0
+	uint numn;
 	verbose(VGM,"Our target is to reduce %.2f %% of  Watts",target);
 	if (get_nodes_status(my_cluster_conf,&numn,&einfo)!=EAR_SUCCESS){
 		error("Getting node status");

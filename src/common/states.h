@@ -38,14 +38,14 @@
 #define EAR_CANCELLED     -25
 
 /* error buffer */
-char state_buffer[SZ_BUFFER];
+char state_buffer[SZ_BUFFER] __attribute__((weak));
 
 /* type & functions */
 typedef int state_t;
 
 /* global data */
-char *state_msg;
-int state_no;
+char *state_msg __attribute__((weak));
+int state_no __attribute__((weak));
 
 
 #define state_ok(state) \
@@ -152,7 +152,7 @@ struct generr_s {
 #define PERIODIC_MODE_OFF   0
 
 #define intern_error_str state_msg
-int intern_error_num;
+int intern_error_num __attribute__((weak));
 
 #define state_return(state) \
 	return state;

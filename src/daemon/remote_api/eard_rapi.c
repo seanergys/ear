@@ -172,12 +172,37 @@ int eards_set_freq(unsigned long freq)
 {
     request_t command;
     memset(&command, 0, sizeof(request_t));
-    command.req=EAR_RC_SET_FREQ;
+    command.req = EAR_RC_SET_FREQ;
     command.node_dist = INT_MAX;
     command.time_code = time(NULL);
     command.my_req.ear_conf.max_freq=freq;
     return send_command(&command);
 }
+
+int eards_new_task(new_task_req_t *new_task)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+    debug("eards_new_task");
+	command.req = EAR_RC_NEW_TASK;
+    command.node_dist = INT_MAX;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.new_task, new_task, sizeof(new_task_req_t));
+	return send_command(&command);
+}
+
+int eards_end_task(end_task_req_t *end_task)
+{
+	request_t command;
+    memset(&command, 0, sizeof(request_t));
+    debug("eards_new_task");
+	command.req = EAR_RC_END_TASK;
+    command.node_dist = INT_MAX;
+    command.time_code = time(NULL);
+	memcpy(&command.my_req.end_task, end_task, sizeof(end_task_req_t));
+	return send_command(&command);
+}
+
 int eards_set_def_freq(unsigned long freq)
 {
     request_t command;
@@ -730,6 +755,66 @@ int status_all_nodes(cluster_conf_t *my_cluster_conf, status_t **status)
     }
 
     *status = temp_status;
+
+    return num_status;
+
+}
+
+int eards_get_power(power_check_t *power)
+{
+    request_t command;
+    power_check_t *temp_power = NULL;
+    memset(&command, 0, sizeof(request_t));
+
+    command.node_dist = INT_MAX;
+    command.req = EAR_RC_GET_POWER;
+    command.time_code = time(NULL);
+    request_header_t head;
+
+    send_command(&command);
+    head = receive_data(eards_sfd, (void**)&temp_power);
+    if (head.size < sizeof(power_check_t) || head.type != EAR_TYPE_POWER_CHECK) {
+        if (head.size > 0) {
+            free(temp_power);
+            temp_power = NULL;
+        }
+        debug("Error sending command to node");
+    }
+    if (temp_power != NULL) {
+        *power = *temp_power;
+        free(temp_power);
+    }
+
+    return head.size >= sizeof(power_check_t);
+}
+
+int cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power)
+{
+    request_t command;
+    memset(&command, 0, sizeof(request_t));
+    power_check_t *temp_power = NULL;
+    request_header_t head;
+    int num_status = 0;
+
+    command.time_code = time(NULL);
+    command.req = EAR_RC_GET_POWER;
+    command.node_dist = 0;
+
+    head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_power);
+    num_status = head.size / sizeof(power_check_t);
+    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t)) //in this case, size is a fixed uint64_t, cannot be higher
+    {
+        if (head.size > 0) {
+            free(temp_power);
+        }
+        temp_power = NULL;
+        num_status = 0;
+    }
+
+    if (temp_power != NULL) {
+        *power = *temp_power;
+        free(temp_power);
+    }
 
     return num_status;
 

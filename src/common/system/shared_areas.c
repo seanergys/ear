@@ -56,6 +56,7 @@ void *create_shared_area(char *path,char *data,int area_size,int *shared_fd,int 
 		umask(my_mask);
 		return NULL;
 	}
+	chmod(buff,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	debug("shared file for mmap created");
 	umask(my_mask);
 	// Default values

@@ -64,9 +64,14 @@ int eards_ping();
 /** Sends a new job request */
 int eards_new_job(new_job_req_t *new_job);
 
-/** Sends a end job request */
+/** Sends an end job request */
 int eards_end_job(job_id jid,job_id sid);
 
+/** Sends a new task request */
+int eards_new_task(new_task_req_t *new_task);
+
+/** Sends an end task request */
+int eards_end_task(end_task_req_t *end_task);
 /** gets the policy_configuration for a given policy 
  * */
 int eards_get_policy_info(new_policy_cont_t *p);
@@ -152,6 +157,12 @@ int eards_reset_default_powercap();
 void cluster_reset_default_powercap_all_nodes(cluster_conf_t *my_cluster_conf);
 
 int cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released);
+
+/** Gets instant eards power */
+int eards_get_power(power_check_t *power);
+/** Gets instant cluster power */
+int cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power);
+
 
 /* Nodelist functions */
 void eards_new_job_nodelist(new_job_req_t *new_job, uint port, char *net_ext, char **nodes, int num_nodes);

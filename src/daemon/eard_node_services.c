@@ -67,9 +67,6 @@ extern state_t report_connection_status;
 #define MIN_INTERVAL_RT_ERROR 3600
 
 void eard_exit(uint restart);
-#if APP_API_THREAD
-pthread_t app_eard_api_th;
-#endif
 
 #if USE_GPUS
 static ctx_t eard_main_gpu_ctx;

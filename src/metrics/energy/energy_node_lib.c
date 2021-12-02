@@ -22,7 +22,7 @@
 #include <common/system/symplug.h>
 #include <metrics/energy/energy_node_lib.h>
 
-struct energy_op
+static struct energy_op
 {
 	state_t (*datasize)	(size_t *size);
 	state_t (*frequency)	(ulong *freq);
