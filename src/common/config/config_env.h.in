@@ -18,6 +18,8 @@
 #ifndef CONFIG_ENVIRONMENT_H
 #define CONFIG_ENVIRONMENT_H
 
+#define SCHED_PREFIX @SCHED_NAME@
+
 /* These variables are used by the plugin to configure the EAR environment */
 #define VAR_INS_PATH "EAR_INSTALL_PATH"
 #define VAR_TMP_PATH "EAR_TMP"

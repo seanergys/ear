@@ -5,6 +5,7 @@ m4_include([m4/x_ac_pgsql.m4])
 m4_include([m4/x_ac_mysql.m4])
 m4_include([m4/x_ac_slurm.m4])
 m4_include([m4/x_ac_cuda.m4])
+m4_include([m4/x_ac_pbs.m4])
 m4_include([m4/x_ac_gsl.m4])
 
 # INIT
@@ -77,6 +78,13 @@ X_AC_GSL
 X_AC_SLURM
 
 #########
+# PBS   #
+#########
+#
+
+X_AC_PBS
+
+#########
 # PGSQL #
 #########
 #
@@ -135,7 +143,7 @@ AC_DEFUN([AC_FEATURE_CHECK],
 
 echo "---------------------------------------Checking summary --"
 AC_DEPENDANCY_CHECK($GSL_DIR, GSL dependancy found, 1)
-AC_DEPENDANCY_CHECK($SLURM_DIR, SLURM dependancy found, 0)
+AC_DEPENDANCY_CHECK($SCHED_DIR, SLURM/PBS dependancy found ($SCHED_NAME), 0)
 AC_DEPENDANCY_CHECK($DB_DIR, Database dependancy found ($DB_NAME), 1)
 echo "----------------------------------------------------------"
 
