@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -68,7 +68,7 @@ state_t mgt_imcfreq_eard_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int eard)
 	serial_copy_elem(&b, (char *) available_list, NULL);
 
 	#if SHOW_DEBUGS
-	debug("Available memory controller frequencies:");
+	debug("Available %u IMC frequencies:", available_count);
 	int i;
 	for (i = 0; i < available_count; ++i) {
 		debug("PS%d: %llu KHz", i, available_list[i].khz);
@@ -167,7 +167,15 @@ state_t mgt_imcfreq_eard_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list
 
 state_t mgt_imcfreq_eard_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
-	serial_clean(&w);
+    #if SHOW_DEBUGS
+    int i;
+    for (i = 0; i < sockets_count; ++i) {
+        debug("IMC%d: setting frequency from %u to %u",
+            i, id_min_list[i], id_max_list[i]);	
+    }
+    #endif
+
+    serial_clean(&w);
 	serial_add_elem(&w, (char *) id_min_list, sizeof(uint)*sockets_count);
 	serial_add_elem(&w, (char *) id_max_list, sizeof(uint)*sockets_count);
 	return eard_rpc(RPC_SET_CURR_PSM, serial_data(&w), serial_size(&w), NULL, 0);
