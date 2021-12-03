@@ -143,8 +143,8 @@ static llong       app_start;
 /* Node mgr data */
 extern uint        exclusive;
 extern node_mgr_sh_data_t *node_mgr_job_info;
-
 /* New MEM FREQ mgt API */
+uint        imc_devices;
 pstate_t   *imc_pstates; //*
 uint        imc_num_pstates; //*
 ulong       def_imc_max_khz; //*
@@ -179,7 +179,7 @@ static void metrics_static_init(topology_t *tp)
     // Load
     sa(mgt_cpufreq_load(tp, EARD));
     sa(mgt_imcfreq_load(tp, EARD));
-    // Frequency is extinguishable
+    // This extinguishable
     frequency_init(EARD);
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
@@ -1070,6 +1070,7 @@ int metrics_init(topology_t *topo)
 	char imc_mgt_txt[32];
 	apis_tostr(mgt_imcfreq.api,imc_mgt_txt,sizeof(imc_mgt_txt));
 	verbose_master(INFO_METRICS,"IMC API selected %s",imc_mgt_txt);
+    imc_devices = mgt_imcfreq.devs_count;
 	imc_max_pstate = calloc(mgt_imcfreq.devs_count,sizeof(uint));
 	imc_min_pstate = calloc(mgt_imcfreq.devs_count,sizeof(uint));
 	if ((imc_max_pstate == NULL) || (imc_min_pstate == NULL)){
