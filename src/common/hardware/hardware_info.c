@@ -81,6 +81,17 @@ void print_affinity_mask(topology_t *topo)
     fprintf(stderr,"\n");
 }
 
+state_t print_this_affinity_mask(cpu_set_t *mask)
+{
+    if (mask == NULL) return EAR_ERROR;
+    fprintf(stderr,"mask affinity = ");
+    for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
+        fprintf(stderr,"CPU[%d]=%d ", i,CPU_ISSET(i, mask));
+    }
+    fprintf(stderr,"\n");
+    return EAR_SUCCESS;
+}
+
 state_t is_affinity_set(topology_t *topo,int pid,int *is_set,cpu_set_t *my_mask)
 {
 	cpu_set_t mask;
@@ -115,6 +126,17 @@ state_t add_affinity(topology_t *topo, cpu_set_t *dest,cpu_set_t *src)
 		if (CPU_ISSET(i,src)) CPU_SET(i,dest);
 	}
 	return s;	
+}
+
+
+state_t set_mask_all_ones(cpu_set_t *mask)
+{
+    for (int i = 0; i < MAX_CPUS_SUPPORTED; i++)
+    {
+        CPU_SET(i, mask);
+    }
+
+    return EAR_SUCCESS;
 }
 
 #if 0
