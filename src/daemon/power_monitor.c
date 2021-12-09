@@ -424,10 +424,6 @@ void create_job_area(uint ID)
 void clean_job_area(uint ID)
 {
 	char job_path[MAX_PATH_SIZE];
-	char file_path[MAX_PATH_SIZE];
-	state_t s;
-	folder_t job_folder;
-	char *file;
 
   xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
 	folder_remove(job_path);
@@ -1324,8 +1320,6 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 	ulong time_consumed;
 	double my_dc_power;
 	job_context_t *alloc;
-	uint 			job_num_cpus;
-	cpu_set_t job_mask;
 	int pos_job_in_node;
 
 	time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
@@ -1843,6 +1837,11 @@ void powermon_get_status(status_t *my_status) {
 	my_status->node.power = (ulong) last_power_reported;
 	my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
 	my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
+}
+
+void powermon_get_power(uint64_t *power) 
+{
+    *power = (uint64_t) last_power_reported;
 }
 
 /* Returns the number of applications all or only master */

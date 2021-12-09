@@ -47,8 +47,8 @@ int args_get(int argc, char *argv[], const char *arg_in, char *buffer)
 	is_short = (strlen(aux) == 1);
 	is_long  = (strlen(aux) >= 2);
 	//
-	if (is_short) sprintf(arg,  "-%s", aux);
-	if (is_long)  sprintf(arg, "--%s", aux);
+	if (is_short) snprintf(arg, sizeof(arg),  "-%s", aux);
+	if (is_long)  snprintf(arg, sizeof(arg), "--%s", aux);
 	//
 	if (buffer != NULL) {
 		buffer[0] = '\0';

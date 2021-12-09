@@ -324,17 +324,18 @@ int plug_print_items(spank_t sp)
     }
 
     #if ERUN
-    #define print_item(word, cas, item, format)
+    #define print_item(word, cast, item, format)
     #else
     #define print_item(word, cast, item, format) \
         if (spank_get_item (sp, word, cast &(item)) == ESPANK_SUCCESS) { \
             plug_verbose(sp, 2, #word " = '" format "'", item); \
         }
     #endif
-
+		#if !ERUN
     char  *itemStr;
     ullong item64u;
     uint   item32u;
+		#endif
 
     print_item(S_JOB_UID             ,    (uid_t *), item32u, "%d");
     print_item(S_JOB_GID             ,    (gid_t *), item32u, "%d");
@@ -701,7 +702,7 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
 	plug_verbose(sp, 2, "function plug_deserialize_task");
     int cpu_set;
     int task;
-    int i, j, k;
+    int i, j;
 
     // By default is error
     cpu_set = -1;
@@ -733,7 +734,7 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
 
     // Iterating over the mask
     if (sched_getaffinity(0, sizeof(cpu_set_t), &sd->job.task.mask) == -1) {
-        sprintf(buffer1, "%sERROR\n", buffer2);
+        xsprintf(buffer1, "%sERROR\n", buffer2);
     } else {
         for (i = get_nprocs()-1, j = 1; i >= 0; --i, ++j)
         {

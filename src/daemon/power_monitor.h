@@ -133,6 +133,7 @@ void print_powermon_app(powermon_app_t *app);
 powermon_app_t *get_powermon_app();
 
 void powermon_get_status(status_t *my_status);
+void powermon_get_power(uint64_t *power);
 int powermon_get_num_applications(int only_master);
 void powermon_get_app_status(app_status_t *my_status, int num_apps, int only_master);
 void powermon_new_configuration();

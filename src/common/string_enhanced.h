@@ -39,8 +39,8 @@
 #define STR_MODE_COL		1
 #define STR_MODE_CSV		2
 
-char tprintf_ibuf[STR_SIZE_BUFFER];
-char tprintf_obuf[STR_SIZE_BUFFER];
+char tprintf_ibuf[STR_SIZE_BUFFER] __attribute__((weak));
+char tprintf_obuf[STR_SIZE_BUFFER] __attribute__((weak));
 
 #define tprintf(...) \
 	snprintf(tprintf_ibuf, STR_SIZE_BUFFER-1, __VA_ARGS__); \

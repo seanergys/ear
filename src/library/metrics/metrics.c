@@ -163,8 +163,7 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	cpu_set_t m;
 	ulong total = 0, total_cpus = 0;
 	ulong lavg, lcpus;
-	int p, c;
-	int ccount = arch_desc.top.cpu_count;
+	int p;
   for (p = 0; p < lib_shared_region->num_processes ; p++)
   {
   	m = sig_shared_region[p].cpu_mask;
@@ -1128,7 +1127,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
   /* Waiting for node signatures */
   verbose_master(2,"Waiting for node signatures");
-  while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0) usleep(100);
 
 	compute_per_process_and_job_metrics(&nodeapp);
 
@@ -1140,7 +1139,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(APP, metrics, 1, procs);
   verbose_master(2,"Waiting for node signatures");
   /* Waiting for node signatures */
-  while ( !are_signatures_ready(lib_shared_region,sig_shared_region) );
+  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
@@ -1418,8 +1417,6 @@ state_t metrics_new_iteration(signature_t *sig)
 /* This function computes local metrics per process, computes per job and computes the accumulated */
 void compute_per_process_and_job_metrics(signature_t *dest)
 {
-	uint p;
-	signature_t aux;
 	if (masters_info.my_master_rank >= 0){
 		update_earl_node_mgr_info();
 		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info)	;
