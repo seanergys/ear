@@ -548,8 +548,8 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     conf_install_t *data=&app_settings->installation;
 
     /* This part of code is to decide which policy to load based on default and hacks */
-    char *obj_path = getenv(SCHED_EAR_POWER_POLICY);
-    char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
+    char *obj_path = getenv(HACK_POWER_POLICY);
+    char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
     char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
     char use_path[SZ_PATH_INCOMPLETE];
 
@@ -560,14 +560,14 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 #if SHOW_DEBUGS
     if (masters_info.my_master_rank >=0){
         if (obj_path!=NULL){ 
-            debug("%s = %s",SCHED_EAR_POWER_POLICY,obj_path);
+            debug("%s = %s",HACK_POWER_POLICY,obj_path);
         }else{
-            debug("%s undefined",SCHED_EAR_POWER_POLICY);
+            debug("%s undefined",HACK_POWER_POLICY);
         }
         if (ins_path !=NULL){
-            debug("%s = %s",SCHED_EARL_INSTALL_PATH,ins_path);
+            debug("%s = %s",HACK_EARL_INSTALL_PATH,ins_path);
         }else{
-            debug("%s undefined",SCHED_EARL_INSTALL_PATH);
+            debug("%s undefined",HACK_EARL_INSTALL_PATH);
         }
     }
 #endif

@@ -39,8 +39,8 @@ void module_get_path_libear(char **path_lib,char **hack_lib )
 	*path_lib = NULL;
 	*hack_lib = NULL;
 
-	// SCHED_EARL_INSTALL_PATH is a hack for the whole library path, includes "lib" in the path
-	path = getenv(SCHED_EARL_INSTALL_PATH);
+	// HACK_EARL_INSTALL_PATH is a hack for the whole library path, includes "lib" in the path
+	path = getenv(HACK_EARL_INSTALL_PATH);
 	libhack = getenv(HACK_LIBRARY_FILE);
 	if (path == NULL){
 		// VAR_INS_PATH is the official installation path, doesn't include "lib"
