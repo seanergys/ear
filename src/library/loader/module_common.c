@@ -19,16 +19,11 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <unistd.h>
-#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/output/verbose.h>
 #include <common/system/file.h>
 #include <common/system/symplug.h>
 #include <common/string_enhanced.h>
-#include <common/output/debug.h>
-
-
-
 
 int module_file_exists(char *path)
 {
@@ -45,12 +40,9 @@ void module_get_path_libear(char **path_lib,char **hack_lib )
 	*hack_lib = NULL;
 
 	// SCHED_EARL_INSTALL_PATH is a hack for the whole library path, includes "lib" in the path
-    debug("Reading SCHED_EARL_INSTALL_PATH: %s", SCHED_EARL_INSTALL_PATH);
 	path = getenv(SCHED_EARL_INSTALL_PATH);
-    debug("Reading HACK_LIBRARY_FILE: %s", HACK_LIBRARY_FILE);
 	libhack = getenv(HACK_LIBRARY_FILE);
 	if (path == NULL){
-        debug("path could not be read. reading the official install path %s", VAR_INS_PATH);
 		// VAR_INS_PATH is the official installation path, doesn't include "lib"
 		if ((path = getenv(VAR_INS_PATH)) == NULL) {
 			// This last hack is to load a specific library with the whole path including library name
