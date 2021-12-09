@@ -36,6 +36,9 @@ int get_model();
 /** Returns true if turbo is enabled */
 int is_cpu_boost_enabled();
 
+/** Sets all bits of `mask` to one. */
+state_t set_mask_all_ones(cpu_set_t *mask);
+
 /** Returns the number of packages detected*/
 int detect_packages(int **package_map);
 
@@ -52,9 +55,11 @@ void remove_cpus_from_mask(cpu_set_t *dst, cpu_set_t *src);
 /* Sets in dst CPUs not in src */
 void cpus_not_in_mask(cpu_set_t *dst, cpu_set_t *src);
 
-
 /** Prints the affinity mask of the current process */
 void print_affinity_mask(topology_t *topo);
+
+/** Prints the affinity mask passed by argument. */
+state_t print_this_affinity_mask(cpu_set_t *mask);
 
 /** Checks if process with pid=pid has some cpu forbiden to run , then is_set is set to 1 */
 state_t is_affinity_set(topology_t *topo,int pid,int *is_set,cpu_set_t *my_mask);
