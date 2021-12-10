@@ -185,7 +185,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
     else if (!strcmp(token, "GLOBALMANAGERENERGYLIMIT") || !strcmp(token, "EARGMENERGYLIMIT"))
     {
         token = strtok(NULL, "=");
-        conf->energy = atoi(token);
+        conf->energy = atol(token);
         found=EAR_SUCCESS;
     }
     else if (!strcmp(token, "GLOBALMANAGERPOWERLIMIT") || !strcmp(token, "EARGMPOWERLIMIT"))

@@ -135,9 +135,9 @@ uint powercat_get_value()
 static int set_powercap_value(uint domain,uint limit)
 {
   char c_date[128];
-	int i;
+  int i;
+  verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u (current pc %u)%s",COL_BLU,domain,limit,my_pc_opt.current_pc, COL_CLR);
   if (limit == my_pc_opt.current_pc) return EAR_SUCCESS;
-  verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);
@@ -151,6 +151,7 @@ static int set_powercap_value(uint domain,uint limit)
 			current_ear_app[i]->settings->pc_opt.current_pc = powercat_get_value();
 		}
 	}
+  verbose(VCONF, "entering pmgt_set_powercap_value from powercap.c");
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 
@@ -575,7 +576,6 @@ void powercap_set_powercap(uint power)
 {
 	while(pthread_mutex_trylock(&my_pc_opt.lock));
 	my_pc_opt.def_powercap = power;
-	my_pc_opt.current_pc = power;	
 	my_pc_opt.last_t1_allocated = power;	
 	set_powercap_value(DOMAIN_NODE, my_pc_opt.last_t1_allocated);
 	pthread_mutex_unlock(&my_pc_opt.lock);

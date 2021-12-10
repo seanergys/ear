@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include <sched.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
@@ -60,8 +60,6 @@ extern int max_context_created;
 extern int num_contexts;
 
 
-
-
 typedef struct powercap_symbols {
     state_t (*enable)        (suscription_t *sus);
     state_t (*disable)       ();
@@ -80,6 +78,8 @@ typedef struct powercap_symbols {
     state_t (*reset_powercap_value)();
     state_t (*release_powercap_allocation)(uint decrease);
     state_t (*increase_powercap_allocation)(uint increase);
+    state_t (*plugin_set_burst)();
+    state_t (*plugin_set_relax)();
 } powercapsym_t;
 
 static uint pmgt_limit;
@@ -519,20 +519,28 @@ state_t pmgt_handler_alloc(pwr_mgt_t **phandler)
 state_t pmgt_set_powercap_value(pwr_mgt_t *phandler,uint pid,uint domain,ulong limit)
 {
     state_t ret,gret=EAR_SUCCESS;
-		int cc;
+    uint value;
+    int cc;
     int i;
+    debug("entering set_powercap_value with domaind %u and limit %lu", domain, limit);
     for (i=0;i<NUM_DOMAINS;i++){
-        //debug("Using %f weigth for domain %d: Total %lu allocated %f",pdomains[i],i,limit,limit*pdomains[i]);
-        ret=freturn(pcsyms_fun[i].set_powercap_value,pid,domain,limit*pdomains[i],current_util[i]);
+        value = ear_max(limit*pdomains[i], 1);
+        debug("Using %f weigth for domain %d: Total %lu allocated %u",pdomains[i],i,limit,value);
+        ret = freturn(pcsyms_fun[i].set_powercap_value, pid, domain, value, current_util[i]);
 #ifndef SYN_TEST
-				for (cc = 0;cc <= max_context_created; cc++){
-    			if (current_ear_app[cc] != NULL){
-						/* PENDING to distribute power among running jobs proportionally to the number of resources*/
-      			current_ear_app[cc]->settings->pc_opt.pper_domain[i] = limit*pdomains[i]/num_contexts;
-					}
-				}
+        for (cc = 0;cc <= max_context_created; cc++){
+            if (current_ear_app[cc] != NULL){
+                /* PENDING to distribute power among running jobs proportionally to the number of resources*/
+                current_ear_app[cc]->settings->pc_opt.pper_domain[i] = limit*pdomains[i]/num_contexts;
+            }
+        }
 #endif
         if ((ret!=EAR_SUCCESS) && (domains_loaded[i])) gret=ret;
+        if (value == 1) {
+            ret = freturn(pcsyms_fun[i].plugin_set_relax);
+        } else {
+            ret = freturn(pcsyms_fun[i].plugin_set_burst);
+        }
     }
     pmgt_limit=limit;
     return gret;
@@ -540,6 +548,8 @@ state_t pmgt_set_powercap_value(pwr_mgt_t *phandler,uint pid,uint domain,ulong l
 
 static void reallocate_power_between_domains()
 {
+
+    if (pmgt_limit == POWER_CAP_UNLIMITED) return;
     int i;
     char buffer[1024],buffer2[1024];
     uint pid=0, domain=0; // we must manage this
@@ -590,6 +600,10 @@ uint pmgt_is_powercap_enabled(pwr_mgt_t *phandler,uint pid)
 void pmgt_print_powercap_value(pwr_mgt_t *phandler,int fd)
 {
     int i;
+    if (pmgt_limit == POWER_CAP_UNLIMITED){
+        dprintf(fd, "Node powercap unlimited");
+        return;
+    }  
     for (i=0;i<NUM_DOMAINS;i++){
         if (domains_loaded[i]) freturn(pcsyms_fun[i].print_powercap_value,fd);
     }
@@ -598,6 +612,11 @@ void pmgt_powercap_to_str(pwr_mgt_t *phandler,char *b)
 {
     int i;
     char new_s[512];
+    if (pmgt_limit == POWER_CAP_UNLIMITED){
+        sprintf(b, "Node powercap unlimited");
+        return;
+    }
+
     for (i=0;i<NUM_DOMAINS;i++){
         if (domains_loaded[i]){ 
             freturn(pcsyms_fun[i].powercap_to_str,new_s);
@@ -648,15 +667,16 @@ void pmgt_set_pc_mode(pwr_mgt_t *phandler,uint mode)
 void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 {
     int i;
+    if (pmgt_limit == POWER_CAP_UNLIMITED) return;
 #if USE_GPUS 
     memcpy(&pdist_per_domain,pdomain,sizeof(dom_power_t));
-		#if SHOW_DEBUGS
+#if SHOW_DEBUGS
     float pnode,pcpu,pdram,pgpu = 0.0;
     pnode=(float)(pdomain->platform-pdomain->gpu)/(float)pdomain->platform;
     pcpu=(float)(pdomain->cpu+pdomain->dram)/(float)pdomain->platform;
     pdram=(float)(pdomain->dram)/(float)pdomain->platform;
     pgpu=(float)(pdomain->gpu)/(float)pdomain->platform;
-		#endif
+#endif
     debug("[NODE-GPU %f CPU %f DRAM %f GPU %f][NODE-GPU %f CPU %f DRAM %f GPU %f]",pnode,pcpu,pdram,pgpu,pdomains[DOMAIN_NODE],pdomains[DOMAIN_CPU],pdomains[DOMAIN_DRAM],pdomains[DOMAIN_GPU]);
 #endif
     if (my_pc_opt.last_t1_allocated < my_pc_opt.def_powercap) return;
@@ -680,59 +700,62 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 
 void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 {
-		int cc;
-		powermon_app_t *pmapp;	
-		for (cc = 1; cc  <= max_context_created; cc ++){
-			if (current_ear_app[cc] != NULL){
-			pmapp = current_ear_app[cc];
-			/* For each app, we must merge CPUfreq and GPUfreq requested */
+    int cc;
+    powermon_app_t *pmapp;	
+    for (cc = 1; cc  <= max_context_created; cc ++){
+        if (current_ear_app[cc] != NULL){
+            pmapp = current_ear_app[cc];
+            /* For each app, we must merge CPUfreq and GPUfreq requested */
 #ifndef SYN_TEST
-    	if (domain == DOMAIN_CPU){ 
-			//memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
-				cpu_set_t m;
-				m = pmapp->app_info->node_mask;
-				int i;
-				for (i=0; i < MAX_CPUS_SUPPORTED; i++){
-					if (CPU_ISSET(i,&m)) f[i] = pmapp->pc_app_info->req_f[i];
-				}
-			}
+            if (domain == DOMAIN_CPU){ 
+                //memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
+                cpu_set_t m;
+                m = pmapp->app_info->node_mask;
+                int i;
+                for (i=0; i < MAX_CPUS_SUPPORTED; i++){
+                    if (CPU_ISSET(i,&m)) f[i] = pmapp->pc_app_info->req_f[i];
+                }
+            }
 #if USE_GPUS
-    	if (domain == DOMAIN_GPU){ 
-			//memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
-				int i;
-        for (i=0; i < MAX_GPUS_SUPPORTED; i++){
-					if (pmapp->pc_app_info->req_gpu_f[i] != 0) f[i] = pmapp->pc_app_info->req_gpu_f[i];
-				}
-			}
+            if (domain == DOMAIN_GPU){ 
+                //memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
+                int i;
+                for (i=0; i < MAX_GPUS_SUPPORTED; i++){
+                    if (pmapp->pc_app_info->req_gpu_f[i] != 0) f[i] = pmapp->pc_app_info->req_gpu_f[i];
+                }
+            }
 #endif
 #endif
-			}
+        }
 
-		}
-      /* For each app, we must merge CPUfreq and GPUfreq requested */
+    }
+    /* For each app, we must merge CPUfreq and GPUfreq requested */
 #ifndef SYN_TEST
     if (domain == DOMAIN_CPU){
-			for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){		
-				if (f[i] == 0) f[i] = frequency_pstate_to_freq(1);
-			}
-		}
+        for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){		
+            if (f[i] == 0) f[i] = frequency_pstate_to_freq(1);
+        }
+    }
 #endif
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler)
 {
-	ulong cpuf[MAX_CPUS_SUPPORTED], gpuf[MAX_GPUS_SUPPORTED];
+    ulong cpuf[MAX_CPUS_SUPPORTED];
+    memset(cpuf, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (pcsyms_fun[DOMAIN_NODE].set_app_req_freq != NULL){
-				pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
+        pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
         freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,cpuf);
     }
     if (pcsyms_fun[DOMAIN_CPU].set_app_req_freq != NULL){
-				pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
+        pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
         freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,cpuf);
     }
 #if USE_GPUS
+    ulong gpuf[MAX_GPUS_SUPPORTED];
+    memset(gpuf, 0, sizeof(ulong)*MAX_GPUS_SUPPORTED);
     if (pcsyms_fun[DOMAIN_GPU].set_app_req_freq != NULL) {
-				pmgt_get_app_req_freq(DOMAIN_NODE, gpuf, MAX_GPUS_SUPPORTED);
+        pmgt_get_app_req_freq(DOMAIN_NODE, gpuf, MAX_GPUS_SUPPORTED);
         freturn(pcsyms_fun[DOMAIN_GPU].set_app_req_freq,gpuf);
     }
 #endif
@@ -754,7 +777,7 @@ void pmgt_set_default_powercap()
 void pmgt_powercap_node_reallocation()
 {
     int i;
-    
+
 #if SHOW_DEBUGS
     float ratio;
     for (i=0; i< NUM_DOMAINS;i++){
@@ -808,6 +831,10 @@ void pmgt_get_status(pmgt_status_t *status)
 
     memset(cdomain_status, 0, sizeof(domain_status_t)*NUM_DOMAINS);
     memset(status, 0, sizeof(pmgt_status_t));
+    if (pmgt_limit == POWER_CAP_UNLIMITED) {
+        status->status = PC_STATUS_OK;
+        return;
+    }
     /* We ask each domain its curent status to compute the node's status */
     for (i=0; i< NUM_DOMAINS;i++) {
         if (pcsyms_fun[i].get_powercap_status != NULL){
@@ -852,6 +879,7 @@ uint pmgt_powercap_status_per_domain(uint action)
     totalok = totalrel = totalask = 0;
     uint ret,from = 0,to = 0;
     memset(cdomain_status,0,sizeof(domain_status_t)*NUM_DOMAINS);
+    if (pmgt_limit == POWER_CAP_UNLIMITED) return 0;
     /* We ask each domain its curent status to distribute power accross domains */
     for (i=0; i< NUM_DOMAINS;i++){
         if (pcsyms_fun[i].get_powercap_status != NULL){
