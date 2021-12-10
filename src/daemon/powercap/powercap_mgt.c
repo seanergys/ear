@@ -102,7 +102,7 @@ static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 //static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
-const int   pcsyms_n = 17;
+const int   pcsyms_n = 19;
 
 static suscription_t *sus[NUM_DOMAINS];
 
@@ -123,7 +123,9 @@ const char     *pcsyms_names[] ={
     "get_powercap_status",
     "reset_powercap_value",
     "release_powercap_allocation",
-    "increase_powercap_allocation"
+    "increase_powercap_allocation",
+    "plugin_set_burst",
+    "plugin_set_relax",
 };
 
 #ifndef SYN_TEST
