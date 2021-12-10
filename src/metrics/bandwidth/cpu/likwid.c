@@ -33,6 +33,7 @@ static char *evs = \
                            "CAS_COUNT_ALL:MBOX5C0," \
                            "CAS_COUNT_ALL:MBOX6C0," \
                            "CAS_COUNT_ALL:MBOX7C0";
+#if 0
 static char *evs_names[8] = {
                            "CAS_COUNT_ALL:MBOX0C0" ,
                            "CAS_COUNT_ALL:MBOX1C0" ,
@@ -42,6 +43,7 @@ static char *evs_names[8] = {
                            "CAS_COUNT_ALL:MBOX5C0" ,
                            "CAS_COUNT_ALL:MBOX6C0" ,
                            "CAS_COUNT_ALL:MBOX7C0" };
+#endif
 #else
 static char         *evs = \
                            "CAS_COUNT_RD:MBOX0C1," \

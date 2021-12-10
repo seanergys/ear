@@ -309,7 +309,7 @@ void print_uncores(unsigned long long * DEST,int N)
   for (i=0;i<N;i++){
 		verbosen(0, "[%d,%llu] ",i,DEST[i]);
 	}
-    verbose(0, "");
+    verbose(0, " ");
 }
 
 void uncores_to_str(unsigned long long * DEST,int N,char *txt,int len)

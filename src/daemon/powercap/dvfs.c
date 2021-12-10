@@ -78,6 +78,7 @@ static uint dvfs_monitor_initialized = 0;
 
 /************************ These functions must be implemented in cpufreq *****/
 
+#if 0
 static void print_frequencies(int cpus, ulong *f)
 {
     int i;
@@ -95,6 +96,7 @@ static void print_frequencies(int cpus, ulong *f)
     }
     verbose(VEARD_PC,buff);
 }
+#endif
 
 static void frequency_nfreq_to_npstate(ulong *f,uint *p,uint cpus)
 {

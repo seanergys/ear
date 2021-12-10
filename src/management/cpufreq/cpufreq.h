@@ -22,6 +22,7 @@
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
 #include <management/cpufreq/governor.h>
+#include <management/cpufreq/frequency.h>
 #include <metrics/common/pstate.h>
 
 // The API

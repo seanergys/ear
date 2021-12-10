@@ -104,7 +104,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 		extension = OPENMPI_EXT;
 	}
 
-	if ((vers = getenv(FLAG_NAME_LIBR)) != NULL) {
+	if ((vers = getenv(HACK_MPI_VERSION)) != NULL) {
 		if (strlen(vers) > 0) {
 			xsnprintf(buffer,sizeof(buffer), "%s.so", vers);		
 			extension = buffer;

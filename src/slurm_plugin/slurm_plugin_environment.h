@@ -138,7 +138,7 @@ struct variables_s {
 .comp_libr = { .cmp = "SLURM_COMP_LIBRARY" },
 .comp_plug = { .cmp = "SLURM_COMP_PLUGIN"  },
 .comp_verb = { .cmp = "SLURM_COMP_VERBOSE" },
-.hack_load = { .hck =  HACK_FILE_LOAD      },
+.hack_load = { .hck =  HACK_LOADER_FILE    },
 .verbose   = { .loc = "SLURM_LOC_VERB",      .ear = VAR_OPT_VERB      },
 .policy    = { .loc = "SLURM_LOC_POLI",      .ear = VAR_OPT_POLI      },
 .policy_th = { .loc = "SLURM_LOC_POTH",      .ear = VAR_OPT_THRA      },

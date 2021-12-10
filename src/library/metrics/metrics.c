@@ -1172,7 +1172,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
     /* Waiting for node signatures */
     verbose_master(2,"Waiting for node signatures");
-    while ( !are_signatures_ready(lib_shared_region,sig_shared_region) ) {}
+    while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0) usleep(100);
 
 	compute_per_process_and_job_metrics(&nodeapp);
 
@@ -1182,9 +1182,10 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	verbose(2,"Global stop ID=%d",my_node_id);	
 	metrics_global_stop();
 	metrics_compute_signature_data(APP, metrics, 1, procs);
-  verbose_master(2,"Waiting for node signatures");
+    verbose_master(2,"Waiting for node signatures");
+    
     /* Waiting for node signatures */
-    while ( !are_signatures_ready(lib_shared_region,sig_shared_region) ) {}
+    while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){

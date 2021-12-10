@@ -790,7 +790,7 @@ void update_configuration()
 	set_ear_coeff_db_pathname(system_conf->lib_info.coefficients_pathname);
 	set_ear_dynais_levels(system_conf->lib_info.dynais_levels);
 	/* Included for dynais tunning */
-	cdynais_window=getenv(SCHED_EAR_DYNAIS_WINDOW_SIZE);
+	cdynais_window=getenv(HACK_DYNAIS_WINDOW_SIZE);
   if ((cdynais_window!=NULL) && (system_conf->user_type==AUTHORIZED)){
 		dynais_window=atoi(cdynais_window);
 	}
@@ -847,7 +847,7 @@ void ear_init()
 	char *tmp;
 	state_t st;
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
-	char *ext_def_freq_str=getenv(SCHED_EAR_DEF_FREQ);
+	char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 	
 
 	if (ear_lib_initialized){
@@ -898,7 +898,7 @@ void ear_init()
 
 	verb_level = get_ear_verbose();
 	verb_channel=2;
-	if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
+	if ((tmp = getenv(HACK_EARL_VERBOSE)) != NULL) {
 		verb_level = atoi(tmp);
 		VERB_SET_LV(verb_level);
 	}
@@ -1234,7 +1234,7 @@ void ear_init()
 		if (masters_info.my_master_rank >= 0){
 		// Report API
     char my_plug_path[512];
-    utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(SCHED_EARL_INSTALL_PATH), system_conf->user_type);
+    utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
 
 			if (summary_pathname == NULL){
 				if (report_load(my_plug_path,system_conf->lib_info.plugins) != EAR_SUCCESS){

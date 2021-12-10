@@ -160,16 +160,16 @@ int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 	int i,total=0;
   for (i=0;i<data->num_processes;i++){ 
 		total = total+sig[i].ready;
-		if (!sig[i].ready) debug(" Process %d not ready",i);
+		if (!sig[i].ready){ debug(" Process %d not ready",i);}
 	}
 	data->num_signatures = total;
 	return total;
 }
 int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
-	compute_total_signatures_ready(data,sig);
+	int total = compute_total_signatures_ready(data,sig);
 	debug("There are %d signatures ready from %d",data->num_signatures,data->num_processes);
-	return(data->num_signatures == data->num_processes);
+	return(total == data->num_processes);
 }
 
 void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
@@ -192,6 +192,7 @@ void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
 {
 	int i;
   for (i=0;i<data->num_processes;i++) sig[i].ready = 0;
+	if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 }
 
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig)

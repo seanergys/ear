@@ -34,14 +34,12 @@
 
 static void serial_debug(wide_buffer_t *b, char *from)
 {
+	#if SHOW_DEBUGS
 	size_t *size_alloc;
 	size_t *size_taken;
 	size_t *elem_next;
 	int i, j;
 
-	#if !SHOW_DEBUGS
-	return;
-	#endif
 
 	// Taking pointers from first bytes
 	size_alloc = psize_alloc(b);
@@ -63,6 +61,7 @@ static void serial_debug(wide_buffer_t *b, char *from)
 
 	unused(size_alloc);
 	unused(elem_next);
+	#endif
 }
 
 static size_t size_calc(size_t size_pow, size_t size)

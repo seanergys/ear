@@ -185,6 +185,10 @@ typedef struct eargm_status {
     ulong energy;
 } eargm_status_t;
 
+typedef struct power_check {
+    uint64_t power;
+    int64_t  num_nodes;
+} power_check_t;
 
 
 #define EAR_RC_NEW_JOB              0
@@ -217,6 +221,7 @@ typedef struct eargm_status {
 #define EAR_RC_SET_RISK             706
 #define EAR_RC_RELEASE_IDLE	        707	
 #define EAR_RC_DEF_POWERCAP         708 
+#define EAR_RC_GET_POWER            709
 
 
 /* EARGM commands*/
@@ -233,9 +238,10 @@ typedef struct eargm_status {
 #define EAR_TYPE_COMMAND        2000
 #define EAR_TYPE_STATUS         2001
 #define EAR_TYPE_POWER_STATUS   2002
-#define EAR_TYPE_RELEASED       2003
-#define EAR_TYPE_APP_STATUS     2004
-#define EAR_TYPE_EARGM_STATUS   2005
+#define EAR_TYPE_POWER_CHECK    2003
+#define EAR_TYPE_RELEASED       2004
+#define EAR_TYPE_APP_STATUS     2005
+#define EAR_TYPE_EARGM_STATUS   2006
 ///  |||||
 ///  vvvvv
 /******************* IMPORTANT ***********************/

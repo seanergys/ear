@@ -78,7 +78,7 @@ int _read(int fd, void *data, size_t ssize)
 	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_read > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
 
 	if (tries >= MAX_SOCKET_COMM_TRIES) { 
-        debug("_read: tries reached in send %d", tries); 
+        debug("_read: tries reached in read%d", tries); 
     }
 
 	/* If there are bytes left to send, we return a 0 */
@@ -1488,6 +1488,22 @@ request_header_t process_data(request_header_t data_head, char **temp_data_ptr, 
     head.type = data_head.type;
     switch(data_head.type)
     {
+        case EAR_TYPE_POWER_CHECK:
+            head.size = data_head.size;
+            if (final_data != NULL)
+            {
+                power_check_t *power = (power_check_t *)final_data; 
+                power_check_t *new_power = (power_check_t *)temp_data; 
+                power->power += new_power->power;
+                power->num_nodes += new_power->num_nodes;
+            }
+            else
+            {
+                final_data = realloc(final_data, final_size + data_head.size);
+                memcpy(&final_data[final_size], temp_data, data_head.size);
+                //cannot directly assign final_data = temp_data because the caller function (data_all_nodes) frees temp_data after passing through here
+            }
+            break;
         case EAR_TYPE_RELEASED:
             head.size = data_head.size;
             if (final_data != NULL)
