@@ -64,6 +64,8 @@ static ulong current_extra_power;
 static uint total_free;
 #define min(a,b) (a<b?a:b)
 
+void check_powercap_actions(uint cluster_powercap);
+
 void aggregate_data(powercap_status_t *cs)
 {
     int i;
