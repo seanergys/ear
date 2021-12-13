@@ -37,7 +37,7 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
   char pgpu_name[64];
   conf_install_t *data=&app_settings->installation;
 
-  char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
+  char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
 
 
 	if (masters_info.my_master_rank >= 0){
@@ -45,8 +45,8 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 #ifdef GPU_OPT 
 		verbose_master(2,"GPU optimization ON. Using policy base on %s", app_settings->policy_name);
 #endif
-  	obj_path = getenv(SCHED_EAR_GPU_POWER_POLICY);
-		if (obj_path != NULL) verbose_master(2,"%s defined %s",SCHED_EAR_GPU_POWER_POLICY,obj_path);
+  	obj_path = getenv(HACK_GPU_POWER_POLICY);
+		if (obj_path != NULL) verbose_master(2,"%s defined %s",HACK_GPU_POWER_POLICY,obj_path);
 #ifdef GPU_OPT
     xsnprintf(pgpu_name,sizeof(pgpu_name),"gpu_%s.so",app_settings->policy_name);
 #else

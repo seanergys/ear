@@ -25,9 +25,6 @@
 #include <common/system/symplug.h>
 #include <common/string_enhanced.h>
 
-
-
-
 int module_file_exists(char *path)
 {
 	return (access(path, X_OK) == 0);
@@ -42,9 +39,9 @@ void module_get_path_libear(char **path_lib,char **hack_lib )
 	*path_lib = NULL;
 	*hack_lib = NULL;
 
-	// SCHED_EARL_INSTALL_PATH is a hack for the whole library path, includes "lib" in the path
-	path = getenv(SCHED_EARL_INSTALL_PATH);
-	libhack = getenv(HACK_FILE_LIBR);
+	// HACK_EARL_INSTALL_PATH is a hack for the whole library path, includes "lib" in the path
+	path = getenv(HACK_EARL_INSTALL_PATH);
+	libhack = getenv(HACK_LIBRARY_FILE);
 	if (path == NULL){
 		// VAR_INS_PATH is the official installation path, doesn't include "lib"
 		if ((path = getenv(VAR_INS_PATH)) == NULL) {

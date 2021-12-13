@@ -26,11 +26,9 @@
 
 #define _GNU_SOURCE            
 #include <sched.h>
-
-
-#include <common/config.h>
 #include <common/types.h>
 #include <common/states.h>
+#include <common/config.h>
 #include <common/types/signature.h>
 #include <common/system/shared_areas.h>
 #include <daemon/local_api/node_mgr.h>
@@ -51,7 +49,6 @@ typedef struct mpi_information{
     double              perc_mpi;
 }mpi_information_t;
 
-
 typedef struct mpi_calls_types{
     ulong time_mpi;
     ulong time_period;
@@ -66,7 +63,6 @@ typedef struct mpi_calls_types{
     ulong time_sync_block;
     ulong max_sync_block;
 }mpi_calls_types_t;
-
 
 typedef struct lib_shared_data{
     uint 						earl_on;

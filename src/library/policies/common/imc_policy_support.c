@@ -129,14 +129,14 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
     double gbs_curr = sig->GBS;
 
-    ulong ref_imc_freq;
-    if (state_fail(pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq))){
+    ullong ref_imc_freq;
+    if (state_fail(pstate_pstofreq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate, &ref_imc_freq))){
         verbose_master(2, "%sIMC pstates invalid %d%s", COL_RED, ref_imc_pstate, COL_CLR);
         return 1;
     }
     double freq_ref = (double)ref_imc_freq;
     pstate_t ps;
-    avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
+    pstate_freqtops_upper((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
     double freq_curr = (double)imc_pstates[ps.idx].khz;
 
     debug("TIME ref %lf curr %lf CPI ref %lf curr %lf GBS ref %lf curr %lf IMC FREQ ref %lf curr %lf EFF_GAIN_TH %lf", 
@@ -158,9 +158,9 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
 
 
     // We get the normalized imc frequency that corresponds with the avg imc freq
-    avgfreq_to_pstate((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
+    pstate_freqtops_upper((pstate_t *)imc_pstates, imc_num_pstates, sig->avg_imc_f, &ps);
     ulong curr_imc_freq = imc_pstates[ps.idx].khz;
-    if (pstate_to_freq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
+    if (pstate_pstofreq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate,&ref_imc_freq) != EAR_SUCCESS){
         debug("IMC pstates invalid %d",ref_imc_pstate);
     }
     debug("Current IMC freq %s%lu%s | Ref IMC freq %s%lu%s", COL_GRE, curr_imc_freq, COL_CLR, COL_GRE, ref_imc_freq, COL_CLR);

@@ -45,7 +45,7 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 	int fd, ret;
 	debug("cpu_power_models_init_arch. Using tag %s etc %s", libconf->tag, conf->dir_conf);
 	char model_path[MAX_PATH_SIZE];
-	snprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
+	xsnprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
 	debug("cpu_power_models_init_arch coeffs path %s", model_path);
 
 	#if 0

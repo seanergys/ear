@@ -15,15 +15,9 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef EAR_EAR_SIG_EXT_H
-#define EAR_EAR_SIG_EXT_H
+#ifndef EARD_API_FRESH_H
+#define EARD_API_FRESH_H
 
-#include <metrics/io/io.h>
-#include <library/common/library_shared_data.h>
-typedef struct sig_ext{
-	io_data_t iod;
-	mpi_information_t *mpi_stats;		
-	mpi_calls_types_t *mpi_types;
-}sig_ext_t;
 
-#endif 
+
+#endif //EARD_API_FRESH_H

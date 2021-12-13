@@ -424,12 +424,9 @@ void create_job_area(uint ID)
 void clean_job_area(uint ID)
 {
 	char job_path[MAX_PATH_SIZE];
-
-  xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+    xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
 	folder_remove(job_path);
 }
-
-
 
 powermon_app_t *get_powermon_app() {
   return current_ear_app[max_context_created];

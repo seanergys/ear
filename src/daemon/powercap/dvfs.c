@@ -83,9 +83,9 @@ static timestamp_t last_dvfs_time;
 static void print_frequencies(int cpus, ulong *f)
 {
     int i;
-		char buff[4096];
-		char buffshort[64];
-		buff[0] = '\0';
+    char buff[4096];
+    char buffshort[64];
+    buff[0] = '\0';
     for (i=0;i<cpus;i++)
     {
         if (f[i]>0){

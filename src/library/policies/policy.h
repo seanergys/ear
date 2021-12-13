@@ -24,6 +24,7 @@
 #include <daemon/shared_configuration.h>
 #include <library/policies/policy_ctx.h>
 #include <library/api/mpi_support.h>
+#include <library/common/library_shared_data.h>
 
 state_t init_power_policy(settings_conf_t *app_settings,resched_t *res);
 state_t policy_init();

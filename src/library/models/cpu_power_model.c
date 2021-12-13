@@ -59,8 +59,8 @@ static settings_conf_t * copy_settings;
 state_t cpu_power_model_load(settings_conf_t *libconf,conf_install_t *data,architecture_t *arch_desc)
 {
   char basic_path[SZ_PATH_INCOMPLETE];
-  char *obj_path = getenv(SCHED_EAR_CPU_POWER_MODEL);
-  char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
+  char *obj_path = getenv(HACK_CPU_POWER_MODEL);
+  char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
 	state_t st;
 
 

@@ -263,6 +263,7 @@ int getenv_ear_num_nodes()
 
 	if (my_num_nodes == NULL)
 	{ 
+        // TODO: This call should be placed by SCHED_STEP_NUM_NODES
 		my_num_nodes = getenv("SLURM_STEP_NUM_NODES");
 
 		if (my_num_nodes == NULL) conf_ear_num_nodes=1;
