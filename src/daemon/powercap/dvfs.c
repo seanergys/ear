@@ -272,11 +272,15 @@ state_t dvfs_pc_thread_main(void *p)
     uint extra, tmp_pstate[MAX_CPUS_SUPPORTED];
     timestamp_t curr_time;
     ulong elapsed;
+
+    /* Get elapsed time since last call */
     timestamp_get(&curr_time);
     elapsed = timestamp_diff(&curr_time,  &last_dvfs_time, TIME_MSECS);
     last_dvfs_time = curr_time;
 
     /* Update target frequency */
+    memset(c_pstate, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    memset(t_pstate, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     memset(c_req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
@@ -296,7 +300,7 @@ state_t dvfs_pc_thread_main(void *p)
     power_rapl=(float)acum_energy/(((float)elapsed/1000.0)*RAPL_MSR_UNITS);
     my_limit=(float)current_dvfs_pc;
 
-    debug("dvfs current rapl power %f", power_rapl);
+    debug("dvfs current rapl power %f in a period of %u", power_rapl, elapsed);
 
     if (power_rapl < 0.5) return EAR_ERROR;
 

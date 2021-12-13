@@ -286,10 +286,13 @@ void cluster_only_powercap()
 
     power_check_t power;
     cluster_get_power(&my_cluster_conf, &power);
+    float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
+    float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
+
     verbose(VGM_PC, "cluster_only_powercap, power %lu and nodes %d", power.power, power.num_nodes);
-    if (power.power > current_cluster_powercap) {
+    if (power.power > upper_limit) {
         if (max_num_nodes > 0) {
-            cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
+            if (risk == 0) cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", max_cluster_power/max_num_nodes);
             //cluster_set_powerlimit_all_nodes(max_cluster_power/power.nodes, &my_cluster_conf);  //this could be another option?
             
@@ -298,11 +301,11 @@ void cluster_only_powercap()
         }
         risk = 1;
     } else {
-        if (risk == 1) {
+        if (risk == 1 && power.power <= lower_limit) {
             verbose(VGM_PC, "cluster_only_powercap: sending POWER_CAP_UNLIMTED to nodes");
             cluster_set_powerlimit_all_nodes(1, &my_cluster_conf); //set powercap unlimited
+            risk = 0;
         }
-        risk = 0;
     }
     check_powercap_actions(power.power);
 
@@ -325,12 +328,10 @@ void * eargm_powercap_th(void *noarg)
             if (powercap_unlimited) {
                 cluster_only_powercap();
             }
-            else {
-                if (my_cluster_conf.eargm.powercap_mode){
+            else if (my_cluster_conf.eargm.powercap_mode){
                     cluster_check_powercap();
-                }else{
+            } else {
                     cluster_power_monitor();
-                }
             }
         }
 #else
