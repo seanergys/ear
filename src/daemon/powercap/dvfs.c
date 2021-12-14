@@ -102,7 +102,10 @@ static void print_frequencies(int cpus, ulong *f)
 static void frequency_nfreq_to_npstate(ulong *f,uint *p,uint cpus)
 {
     int i;
-    for (i=0;i<cpus;i++) p[i] = frequency_freq_to_pstate(f[i]);
+    for (i=0;i<cpus;i++) {
+        if (f[i]) p[i] = frequency_freq_to_pstate(f[i]);
+        else p[i] = num_pstates - 1;
+    }
 }
 static void frequency_npstate_to_nfreq(uint *p,ulong *f,uint cpus)
 {
