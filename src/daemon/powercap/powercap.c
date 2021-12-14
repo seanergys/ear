@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <common/colors.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/states.h>
 #include <common/system/execute.h>
@@ -56,6 +56,7 @@ static pwr_mgt_t *pcmgr;
 static uint pc_pid=0;
 static uint pc_status_config=AUTO_CONFIG;
 static uint current_power=0;
+static timestamp_t last_powercap_reallocation_time;
 
 pthread_t powercapmon_th;
 unsigned long powercapmon_freq=1;
@@ -132,12 +133,17 @@ uint powercat_get_value()
 	return my_pc_opt.current_pc;
 }
 
+ulong powercap_elapsed_last_powercap()
+{
+    return timestamp_diffnow(&last_powercap_reallocation_time, TIME_SECS);
+}
+
 static int set_powercap_value(uint domain,uint limit)
 {
   char c_date[128];
-	int i;
+  int i;
+  verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u (current pc %u)%s",COL_BLU,domain,limit,my_pc_opt.current_pc, COL_CLR);
   if (limit == my_pc_opt.current_pc) return EAR_SUCCESS;
-  verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u%s",COL_BLU,domain,limit,COL_CLR);
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
     dprintf(fd_powercap_values,"%s domain %u limit %u \n",c_date,domain,limit);
@@ -151,6 +157,8 @@ static int set_powercap_value(uint domain,uint limit)
 			current_ear_app[i]->settings->pc_opt.current_pc = powercat_get_value();
 		}
 	}
+  verbose(VCONF, "entering pmgt_set_powercap_value from powercap.c");
+  timestamp_get(&last_powercap_reallocation_time);
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 
@@ -158,7 +166,7 @@ static int set_powercap_value(uint domain,uint limit)
 void set_default_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 {
 	my_powercap_opt->def_powercap = powermon_get_powercap_def();
-	my_powercap_opt->powercap_idle = powermon_get_powercap_def()*POWERCAP_IDLE_PERC;
+	my_powercap_opt->powercap_idle = ear_max(powermon_get_powercap_def()*POWERCAP_IDLE_PERC, 1);
 	my_powercap_opt->current_pc = 0;
 	my_powercap_opt->last_t1_allocated = powermon_get_powercap_def();
 	my_powercap_opt->max_node_power = powermon_get_max_powercap_def();
@@ -169,6 +177,7 @@ void set_default_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 	my_powercap_opt->powercap_status = PC_STATUS_ERROR;
 	my_powercap_opt->cluster_perc_power = 0;
 	my_powercap_opt->requested = 0;
+    debug("default powercap: %u", my_powercap_opt->def_powercap);
 	pthread_mutex_init(&my_powercap_opt->lock,NULL);
 }
 
@@ -575,7 +584,6 @@ void powercap_set_powercap(uint power)
 {
 	while(pthread_mutex_trylock(&my_pc_opt.lock));
 	my_pc_opt.def_powercap = power;
-	my_pc_opt.current_pc = power;	
 	my_pc_opt.last_t1_allocated = power;	
 	set_powercap_value(DOMAIN_NODE, my_pc_opt.last_t1_allocated);
 	pthread_mutex_unlock(&my_pc_opt.lock);

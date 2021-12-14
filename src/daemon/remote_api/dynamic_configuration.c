@@ -88,15 +88,8 @@ typedef struct eard_policy_symbols {
     state_t (*set_risk) (policy_conf_t *ref_pol,policy_conf_t *node_pol,ulong risk,ulong opt_target,ulong cfreq,ulong *nfreq,ulong *f_list,uint nump);
 } eard_polsym_t;
 
-/* Variables to manage non-repeating historic commands */
-typedef struct last_comm_info{
-    int req;
-    int dist;
-    int time;
-} last_comm_info_t;
-
 #define MAX_HISTORIC_COMM 50
-static last_comm_info_t list_last_commands[MAX_HISTORIC_COMM];
+static request_t list_last_commands[MAX_HISTORIC_COMM];
 static int current_pos_last_comm = 0;
 
 static eard_polsym_t *polsyms_fun;
@@ -764,7 +757,8 @@ static int is_new_command(request_t *comm)
 		if (comm->req == EAR_RC_NEW_JOB || comm->req == EAR_RC_END_JOB || comm->req == EAR_RC_NEW_TASK || comm->req == EAR_RC_STATUS) return 1;
     // if ((comm->req == last_command) && (comm->time_code == last_command_time)) return 0;
     for (uint i=0; i < MAX_HISTORIC_COMM ; i++){
-        if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time == comm->time_code)) return 0;
+    //    if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time_code == comm->time_code)) return 0;
+        if (!memcmp(&list_last_commands[i], comm, sizeof(request_t))) return 0;
     }
     return 1;
 }
@@ -774,9 +768,7 @@ static void new_command_received(request_t *comm)
     last_dist     = comm->node_dist;
     last_command  = comm->req;
     last_command_time = comm->time_code;
-    list_last_commands[current_pos_last_comm].req = comm->req;
-    list_last_commands[current_pos_last_comm].dist = comm->node_dist;
-    list_last_commands[current_pos_last_comm].time  = comm->time_code;
+    memcpy(&list_last_commands[current_pos_last_comm], comm, sizeof(request_t));
     current_pos_last_comm = (current_pos_last_comm +1) % MAX_HISTORIC_COMM;
 }
 

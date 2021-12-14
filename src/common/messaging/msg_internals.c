@@ -225,7 +225,6 @@ void close_server_socket(int sock)
 	close(sock);
 }
 
-#if DYNAMIC_COMMANDS
 int read_command(int s, request_t *command)
 {
     request_header_t head;
@@ -247,14 +246,12 @@ int read_command(int s, request_t *command)
     memcpy(command, tmp_command, sizeof(internal_request_t));
     aux_size += sizeof(internal_request_t);
 
-#if NODE_PROP
     if (command->nodes > 0)
     {
         command->nodes = calloc(command->num_nodes, sizeof(int)); //this will be freed in propagate_data since it's the last point where it is needed and the common point in all requests
         memcpy(command->nodes, &tmp_command[aux_size], command->num_nodes * sizeof(int));
         aux_size += command->num_nodes * sizeof(int);
     }
-#endif
 
     //there is still data pending to read
     if (head.size > aux_size)
@@ -288,46 +285,6 @@ int read_command(int s, request_t *command)
     return command->req;
 }
 
-#else
-
-int read_command(int s, request_t *command)
-{
-    request_header_t head;
-    char *tmp_command;
-
-
-    head = receive_data(s, (void **)&tmp_command);
-    debug("read_command:received command type %d\t size: %u \t sizeof req: %lu", head.type, head.size, sizeof(request_t));
-
-    if (head.type != EAR_TYPE_COMMAND || head.size < sizeof(request_t))
-    {
-        debug("read_command:NO_COMMAND");
-        command->req = NO_COMMAND;
-        if (head.size > 0) free(tmp_command);
-        return EAR_SOCK_DISCONNECTED;
-        return command->req;
-    }
-    memcpy(command, tmp_command, sizeof(request_t));
-
-    if (head.size > sizeof(request_t))
-    {
-        if (command->req == EAR_RC_SET_POWERCAP_OPT)
-        {
-            debug("read_command:received powercap_opt");
-            size_t offset = command->my_req.pc_opt.num_greedy * sizeof(int);
-            command->my_req.pc_opt.greedy_nodes = calloc(command->my_req.pc_opt.num_greedy, sizeof(int));
-            command->my_req.pc_opt.extra_power = calloc(command->my_req.pc_opt.num_greedy, sizeof(int));
-            memcpy(command->my_req.pc_opt.greedy_nodes, &tmp_command[sizeof(request_t)], offset);
-            memcpy(command->my_req.pc_opt.extra_power, &tmp_command[sizeof(request_t) + offset], offset);
-        }
-    }
-
-    free(tmp_command);
-
-    return command->req;
-}
-#endif
-
 void send_answer(int s,long *ack)
 {
     int ret;
@@ -335,7 +292,6 @@ void send_answer(int s,long *ack)
     if (ret < 0) error("(%s)", strerror(errno));
 }
 
-#if DYNAMIC_COMMANDS
 size_t get_command_size(request_t *command, char **data_to_send)
 {
     size_t size = sizeof(internal_request_t);
@@ -393,21 +349,17 @@ size_t get_command_size(request_t *command, char **data_to_send)
             break;
     }
  
-#if NODE_PROP
     if (command->num_nodes > 0)
     {
         size += command->num_nodes * sizeof(int);
         aux_size = command->num_nodes * sizeof(int);
     }
-#endif
 
     //copy the original command
     command_b = calloc(1, size);
     memcpy(command_b, command, sizeof(internal_request_t)); //the first portion of request_t and internal_request_t align
-#if NODE_PROP
     debug("get_command_size:copying nodes (%d num_nodes)", command->num_nodes);
     memcpy(&command_b[sizeof(internal_request_t)], command->nodes, aux_size); //copy the nodes to propagate to
-#endif
 
     aux_size += sizeof(internal_request_t); //aux_size holds the position we have to start writing from
 
@@ -432,37 +384,6 @@ size_t get_command_size(request_t *command, char **data_to_send)
     return size;
 
 }
-#else
-size_t get_command_size(request_t *command, char **data_to_send)
-{
-    size_t size = sizeof(request_t);
-    size_t offset = 0;
-    char *command_b;
-
-
-    switch(command->req)
-    {
-        case EAR_RC_SET_POWERCAP_OPT:
-            size += command->my_req.pc_opt.num_greedy * sizeof(int) * 2;
-            offset = command->my_req.pc_opt.num_greedy * sizeof(int);
-            break;
-    }
-
-    //copy the original command
-    command_b = calloc(1, size);
-    memcpy(command_b, command, sizeof(request_t));
-    switch(command->req)
-    {
-        case EAR_RC_SET_POWERCAP_OPT:
-            memcpy(&command_b[sizeof(request_t)], command->my_req.pc_opt.greedy_nodes, offset);
-            memcpy(&command_b[sizeof(request_t) + offset], command->my_req.pc_opt.extra_power, offset);
-            break;
-    }
-
-    *data_to_send = command_b; 
-    return size;
-}
-#endif
 
 // Sends a command to eard
 int send_command(request_t *command)
@@ -891,7 +812,6 @@ void correct_error(int target_idx, int total_ips, int *ips, request_t *command, 
     }
 }
 
-#if NODE_PROP
 void correct_error_nodes(request_t *command, int self_ip, uint port)
 {
      
@@ -1022,9 +942,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
 
 }
 
-#endif
 
-#if NODE_PROP
 
 #define MAX_PROP_DEPTH 3
 /* Calculates the "ideal" amount of nodes a node will comunicate to. See send_command_nodes for
@@ -1241,7 +1159,6 @@ request_header_t data_nodelist(request_t *command, cluster_conf_t *my_cluster_co
     head = internal_data_nodes(command, my_cluster_conf->eard.port, base_distance, num_sends, data);
     return head;
 }
-#endif
 
 void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
 {

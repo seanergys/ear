@@ -49,6 +49,7 @@ void powercap_reset_default_power();
 void powercap_reduce_def_power(uint power);
 void powercap_increase_def_power(uint power);
 void powercap_set_powercap(uint power);
+ulong powercap_elapsed_last_powercap();
 
 void powercap_new_job();
 void powercap_end_job();

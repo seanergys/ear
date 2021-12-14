@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/colors.h>
 #include <common/system/execute.h>
@@ -44,7 +44,10 @@ extern uint process_created;
 extern pthread_mutex_t plocks;
 void check_pending_processes();
 
-uint  current_cluster_powercap;
+uint current_cluster_powercap;
+uint powercap_unlimited = 0;
+uint risk = 0;
+uint max_num_nodes = 0;
 /* Shared data with eargm_ext thread to sent to meta_eargms */
 shared_powercap_data_t ext_powercap_data;
 pthread_mutex_t ext_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -60,6 +63,8 @@ static uint must_send_pc_options;
 static ulong current_extra_power; 
 static uint total_free;
 #define min(a,b) (a<b?a:b)
+
+void check_powercap_actions(uint cluster_powercap);
 
 void aggregate_data(powercap_status_t *cs)
 {
@@ -278,6 +283,36 @@ void update_powercap_options()
 }
 #endif
 
+void cluster_only_powercap()
+{
+
+    power_check_t power;
+    cluster_get_power(&my_cluster_conf, &power);
+    float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
+    float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
+
+    verbose(VGM_PC, "cluster_only_powercap, power %lu and nodes %d", power.power, power.num_nodes);
+    if (power.power > upper_limit) {
+        if (max_num_nodes > 0) {
+            if (risk == 0) cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
+            verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", max_cluster_power/max_num_nodes);
+            //cluster_set_powerlimit_all_nodes(max_cluster_power/power.nodes, &my_cluster_conf);  //this could be another option?
+            
+        } else {
+            warning("No nodes detected for this EARGM");
+        }
+        risk = 1;
+    } else {
+        if (risk == 1 && power.power <= lower_limit) {
+            verbose(VGM_PC, "cluster_only_powercap: sending POWER_CAP_UNLIMTED to nodes");
+            cluster_set_powerlimit_all_nodes(1, &my_cluster_conf); //set powercap unlimited
+            risk = 0;
+        }
+    }
+    check_powercap_actions(power.power);
+
+}
+
 void * eargm_powercap_th(void *noarg)
 {
     if (pthread_setname_np(pthread_self(), "cluster_powercap")!=0) error("Setting name forcluster_powercap thread %s", strerror(errno));
@@ -285,16 +320,20 @@ void * eargm_powercap_th(void *noarg)
     while(1)
     {
         sleep(cluster_powercap_period);
+        verbose(VGM_PC, "new powercap period");
         /* we check if there are zombie processes */
         if (process_created){
             check_pending_processes();
         }
 #if !EARGM_TEST
         if (cluster_power_limited()){
-            if (my_cluster_conf.eargm.powercap_mode){
-                cluster_check_powercap();
-            }else{
-                cluster_power_monitor();
+            if (powercap_unlimited) {
+                cluster_only_powercap();
+            }
+            else if (my_cluster_conf.eargm.powercap_mode){
+                    cluster_check_powercap();
+            } else {
+                    cluster_power_monitor();
             }
         }
 #else
@@ -337,24 +376,57 @@ void cluster_powercap_inc_pc(uint inc)
         current_extra_power = 0;
 }
 
+uint cluster_get_min_powercap(cluster_conf_t *conf)
+{
+    uint total = 0;
+    int i, j, k;
+    int tag_id, def_tag_id;
+    def_tag_id = get_default_tag_id(conf);
+
+    for (i = 0; i < conf->num_islands; i++)
+    {
+        for (j = 0; j < conf->islands[i].num_ranges; j++)
+        {
+            node_range_t *current_range = &conf->islands[i].ranges[j];
+            tag_id = -1;
+            for (k = 0; k < current_range->num_tags; k++)
+            {
+                tag_id = tag_id_exists(conf, conf->islands[i].specific_tags[current_range->specific_tags[k]]);
+                if (tag_id >= 0) {
+                    break;
+                }
+            }
+            if (tag_id < 0) {
+                tag_id = def_tag_id;
+            }
+            total += conf->tags[tag_id].powercap * (current_range->end - current_range->start + 1);
+        }
+    }
+
+    return total;
+}
+
+
 void cluster_powercap_init(cluster_conf_t *cc)
 {
     int ret;
+    max_num_nodes = get_num_nodes(cc);
     current_cluster_powercap = max_cluster_power;
+    if (current_cluster_powercap == -1) current_cluster_powercap = cluster_get_min_powercap(cc);
     if (current_cluster_powercap>0){
         verbose(VGM_PC,"Power cap limit set to %u",current_cluster_powercap);
     }else{
         verbose(VGM_PC,"Power cap unlimited");
     }
 
-    if (current_cluster_powercap==0) return;
+    if (current_cluster_powercap == 0) return;
 
     /* This thread accepts external commands */
     if ((ret=pthread_create(&cluster_powercap_th, NULL, eargm_powercap_th, NULL))){
         errno=ret;
         error("error creating eargm_server for external api %s",strerror(errno));
     }
-    current_cluster_powercap = max_cluster_power;
+    powercap_unlimited = tags_are_unlimited(cc); 
 }
 
 int cluster_power_limited()
@@ -399,6 +471,20 @@ void execute_powercap_limit_action()
         verbose(VGM_PC, "No action for powercap limit");
     }
 }
+
+void check_powercap_actions(uint cluster_powercap)
+{
+    if (cluster_powercap >= ((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_limit)/100.0) && !actions_executed)
+    {   
+        execute_powercap_limit_action();
+    }   
+    else if (cluster_powercap <= ((float)(max_cluster_power*my_cluster_conf.eargm.defcon_power_lower)/100.0) && actions_executed)
+    {   
+        execute_powercap_lower_action();
+    }   
+}
+
+
 
 void write_shared_data(ulong current_power, ulong freeable_power, ulong requested)
 {
@@ -449,7 +535,7 @@ void cluster_check_powercap()
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;
     }
-		memset(&cluster_options,0,sizeof(powercap_opt_t));
+    memset(&cluster_options,0,sizeof(powercap_opt_t));
     must_send_pc_options=0;
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);
@@ -474,14 +560,7 @@ void cluster_check_powercap()
         verbose(VGM_PC+1,"There is no need to send the pc_options");
     }
 
-    if (my_cluster_power_status->total_powercap>=((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0) && !actions_executed)
-    {
-        execute_powercap_limit_action();
-    }
-    else if (my_cluster_power_status->total_powercap<=((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0) && actions_executed)
-    {
-        execute_powercap_lower_action();
-    }
+    check_powercap_actions(my_cluster_power_status->total_powercap);
 
     free(my_cluster_power_status);
     free(cluster_options.greedy_nodes);
