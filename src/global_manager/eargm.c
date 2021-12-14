@@ -176,7 +176,7 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
     period_t2=cc->t2;	
     energy_budget=cc->energy;
     max_cluster_power=cc->power;
-    max_cluster_power=max_cluster_power*divisor;
+    //max_cluster_power=max_cluster_power*divisor;
     cluster_powercap_period=cc->t1_power;
     use_aggregation=cc->use_aggregation;
     return must_refil;
@@ -254,7 +254,7 @@ void update_eargm_configuration(cluster_conf_t *conf)
                   break;
         default:break;
     }
-    max_cluster_power=max_cluster_power*divisor;
+    //max_cluster_power=max_cluster_power*divisor;
 }
 void reopen_log()
 {
