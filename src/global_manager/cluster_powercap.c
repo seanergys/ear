@@ -287,6 +287,7 @@ void cluster_only_powercap()
 {
 
     power_check_t power;
+    memset(&power, 0, sizeof(power_check_t));
     cluster_get_power(&my_cluster_conf, &power);
     float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);

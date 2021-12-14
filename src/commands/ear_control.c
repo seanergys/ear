@@ -917,6 +917,7 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 'g': //get_power
+                memset(&power, 0, sizeof(power_check_t));
                 if (!optarg) {
                     if (!cluster_get_power(&my_cluster_conf, &power)) {
                         printf("Could not retrieve cluster power\n");
