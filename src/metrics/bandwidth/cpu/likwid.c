@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -94,8 +94,7 @@ state_t bwidth_likwid_status(topology_t *tp_in)
 {
 	state_t s;
 
-
-    if (tp->vendor != VENDOR_INTEL || tp->model < MODEL_SKYLAKE_X){
+    if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_SKYLAKE_X){
         return_msg(EAR_ERROR, Generr.api_incompatible);
     }
     // Total CPUs count
@@ -108,12 +107,8 @@ state_t bwidth_likwid_status(topology_t *tp_in)
 		debug("likwid_init failed: %s %d", state_msg, s);
 		return s;
 	}
-	if (state_fail(s = likwid_events_open(&events, &ctrs, &ctrs_count, evs, evs_count))) {
-		debug("likwid_init failed: %s %d", state_msg, s);
-		return s;
-	}
     // Icelake
-    if (tp->model >= MODEL_ICELAKE_X) {
+    if (tp_in->model >= MODEL_ICELAKE_X) {
         evs_count = ice_evs_count;
         evs_names = ice_evs_names;
         evs       = ice_evs;
@@ -124,6 +119,10 @@ state_t bwidth_likwid_status(topology_t *tp_in)
         evs_names = sky_evs_names;
         evs       = sky_evs;
     }
+	if (state_fail(s = likwid_events_open(&events, &ctrs, &ctrs_count, evs, evs_count))) {
+		debug("likwid_init failed: %s %d", state_msg, s);
+		return s;
+	}
     //
 	ctrs_accum = calloc(ctrs_count, sizeof(ullong));
 	devs_count = tp_in->socket_count * evs_count;
@@ -175,6 +174,7 @@ state_t bwidth_likwid_read(ctx_t *c, ullong *cas)
 		for (k = 0; k < evs_count; ++k, ++j) {
 			ctrs_accum[j] += (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
 			cas[j] = ctrs_accum[j];
+            debug("S%d%s: %lf", i, evs_names[k], cas[j]);
 		}
 	}
 	return EAR_SUCCESS;
