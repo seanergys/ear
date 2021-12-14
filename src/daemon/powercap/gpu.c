@@ -268,7 +268,7 @@ state_t plugin_set_burst()
 
 state_t plugin_set_relax()
 {
-    return monitor_relax(sus_pgu);
+    return monitor_relax(sus_gpu);
 }
 
 state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
