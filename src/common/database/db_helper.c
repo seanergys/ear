@@ -1689,3 +1689,18 @@ float get_max_dc_power(char is_max, char *app_name, ulong freq)
     return 0;
 #endif
 }
+
+int db_run_query_string_results(char *query, char ****results, int *num_columns)
+{
+
+#if DB_MYSQL
+    MYSQL *connection = mysql_create_connection();
+
+    if (connection == NULL) {
+        return EAR_ERROR;
+    }
+    return mysql_run_query_string_results(connection, query, results, num_columns);
+#else
+    return 0;
+#endif
+}
