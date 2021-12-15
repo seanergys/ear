@@ -99,8 +99,6 @@ int eards_write(int fd,char *buff,int size);
 #define CONNECT_FREQ            5
 #define START_APP_COMP_FREQ     6
 #define END_APP_COMP_FREQ       7
-// NEW FREQ functions
-#define READ_CPUFREQ            12
 
 /* Uncore frequency counters to compute GB/s */
 /* UNC frequency management */
@@ -170,9 +168,6 @@ int eards_write(int fd,char *buff,int size);
 #define CONNECT_FREQ 			5
 #define START_APP_COMP_FREQ 	6
 #define END_APP_COMP_FREQ 		7
-
-/*** NEW FREQ functions */
-#define READ_CPUFREQ			12
 
 /* UNC frequency management */
 #define UNC_SIZE                20

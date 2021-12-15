@@ -15,18 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_FREQUENCY_CPU_H
-#define METRICS_FREQUENCY_CPU_H
+#ifndef METRICS_CPUFREQ_H
+#define METRICS_CPUFREQ_H
 
 #include <common/types.h>
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
-
-#define MET_CPUFREQ_API_NONE    0
-#define MET_CPUFREQ_API_DUMMY   1
-#define MET_CPUFREQ_API_EARD    2
-#define MET_CPUFREQ_API_INTEL63 3
 
 typedef struct cpufreq_s
 {
@@ -70,4 +65,4 @@ state_t cpufreq_data_free(cpufreq_t **f, ulong **freqs);
 
 state_t cpufreq_data_print(ulong *freqs, ulong average, int fd);
 
-#endif //EAR_PRIVATE_CACHE_H
+#endif //METRICS_CPUFREQ_H

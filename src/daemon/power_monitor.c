@@ -73,7 +73,7 @@ static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
 state_t s;
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
-static cpufreq_t freq_job2;
+static cpufreq_t *freq_job2;
 
 nm_t my_nm_id;
 nm_data_t nm_init, nm_end, nm_diff, last_nm;
@@ -254,7 +254,7 @@ void end_context(int cc)
     app_mgt_shared_area_dispose(shmem_path);
     get_pc_app_info_path(ear_tmp, ID, shmem_path);
     pc_app_info_shared_area_dispose(shmem_path);
-    cpufreq_data_free(&current_ear_app[cc]->freq_job1, NULL);
+    cpufreq_data_free(&current_ear_app[cc]->freq_job1, &current_ear_app[cc]->freq_diff);
     free(current_ear_app[cc]);
     current_ear_app[cc] = NULL;
     num_contexts--;
@@ -370,7 +370,7 @@ int new_context(job_id id, job_id sid,int *cc)
     return EAR_ERROR;
   }
   current_ear_app[ccontext]->resched->force_rescheduling = 0;
-  cpufreq_data_alloc(&current_ear_app[ccontext]->freq_job1, NULL);
+  cpufreq_data_alloc(&current_ear_app[ccontext]->freq_job1, &current_ear_app[ccontext]->freq_diff);
   /* This area is for application data */
   get_app_mgt_path(ear_tmp, ID, shmem_path);
   debug("App_MGR for new context placed at %s",shmem_path);
@@ -536,7 +536,7 @@ state_t powermon_create_idle_context()
   alloc_energy_data(&pmapp->energy_init);
   pmapp->app.job.id = jid;
   pmapp->app.job.step_id = sid;
-  cpufreq_data_alloc(&pmapp->freq_job1, NULL);
+  cpufreq_data_alloc(&pmapp->freq_job1, &pmapp->freq_diff);
   ID = create_ID(jid,sid);
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
@@ -673,10 +673,9 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	read_enegy_data(ceh, &c_energy);
 	copy_energy_data(&pmapp->energy_init, &c_energy);
 	// CPU Frequency
-	state_assert(s, cpufreq_read(&pmapp->freq_job1), );
+	state_assert(s, cpufreq_read(pmapp->freq_job1), );
 	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu ",pmapp->app.job.id,pmapp->app.job.step_id);
 }
-
 
 void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 {
@@ -710,7 +709,7 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 		pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
 		pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
 		// CPU Frequency
-		state_assert(s, cpufreq_read_diff(&freq_job2, &pmapp->freq_job1, pmapp->freq_diff , &pmapp->app.power_sig.avg_f), );
+		state_assert(s, cpufreq_read_diff(no_ctx, freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
 		ulong lcpus;
 		if (pmapp->app.is_mpi) cpufreq_avgcpufreq_mask(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
 	}else{
@@ -1692,9 +1691,8 @@ void *eard_power_monitoring(void *noinfo)
 	verbose(VJOBPMON, "Power monitoring thread UP");
 	init_contexts();
 
-  powermon_create_idle_context();
-
-	state_assert(s, cpufreq_data_alloc(&freq_job2,    NULL), _exit(0));
+    powermon_create_idle_context();
+	state_assert(cpufreq_data_alloc(&freq_job2, NULL),);
 
 	if (pthread_setname_np(pthread_self(), TH_NAME)) error("Setting name for %s thread %s", TH_NAME, strerror(errno));
 	if (init_power_ponitoring(&my_eh_pm) != EAR_SUCCESS) {

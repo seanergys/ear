@@ -32,4 +32,6 @@ state_t service_close_by_id(ulong jid,ulong sid);
 
 void services_init(topology_t *tp);
 
+void services_dispose();
+
 #endif

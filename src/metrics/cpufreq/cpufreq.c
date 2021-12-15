@@ -21,8 +21,8 @@
 #include <pthread.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/cpufreq/archs/eard.h>
+#include <metrics/cpufreq/archs/perf.h>
 #include <metrics/cpufreq/archs/dummy.h>
-#include <metrics/cpufreq/archs/intel63.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cpufreq_ops_t ops;
@@ -83,7 +83,7 @@ state_t cpufreq_read(ctx_t *c, cpufreq_t *ef)
 state_t cpufreq_read_diff(ctx_t *c, cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
 	state_t s;
-	if (xtate_fail(s, cpufreq_read(c, f2))) {
+	if (state_fail(s = cpufreq_read(c, f2))) {
 		return s;
 	}
 	return cpufreq_data_diff(f2, f1, freqs, average);
@@ -92,7 +92,7 @@ state_t cpufreq_read_diff(ctx_t *c, cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, 
 state_t cpufreq_read_copy(ctx_t *c, cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
 	state_t s;
-	if (xtate_fail(s, cpufreq_read_diff(c, f2, f1, freqs, average))) {
+	if (state_fail(s = cpufreq_read_diff(c, f2, f1, freqs, average))) {
 		return s;
 	}
 	return cpufreq_data_copy(f1, f2);

@@ -36,10 +36,10 @@ mets_OBJS = \
     $(SRCDIR)/metrics/flops/cpu/amd49.o \
     $(SRCDIR)/metrics/flops/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/cpu/dummy.o \
-    $(SRCDIR)/metrics/frequency/cpu.o \
-    $(SRCDIR)/metrics/frequency/cpufreq_base.o \
-    $(SRCDIR)/metrics/frequency/cpu/intel63.o \
-    $(SRCDIR)/metrics/frequency/cpu/intel_dummy.o \
+    $(SRCDIR)/metrics/cpufreq/cpufreq.o \
+    $(SRCDIR)/metrics/cpufreq/archs/eard.o \
+    $(SRCDIR)/metrics/cpufreq/archs/dummy.o \
+    $(SRCDIR)/metrics/cpufreq/archs/perf.o \
     $(SRCDIR)/metrics/imcfreq/imcfreq.o \
     $(SRCDIR)/metrics/imcfreq/archs/amd17.o \
     $(SRCDIR)/metrics/imcfreq/archs/eard.o \

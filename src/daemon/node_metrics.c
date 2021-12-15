@@ -112,7 +112,7 @@ int start_compute_node_metrics(nm_t *id,nm_data_t *nm)
 	}
 
 	// CPU/IMC Frequency
-	state_assert(s, cpufreq_read(&nm->freq_cpu),);
+	state_assert(s, cpufreq_read(no_ctx, nm->freq_cpu),);
 	state_assert(s, imcfreq_read(no_ctx, nm->freq_imc),);
 
 	return EAR_SUCCESS;
@@ -131,7 +131,7 @@ int end_compute_node_metrics(nm_t *id,nm_data_t *nm)
 	state_assert(s, temp_read(&temp_ctx, nm->temp, &nm->avg_temp),);
 
 	// CPU/IMC Frequency
-	state_assert(s, cpufreq_read(&nm->freq_cpu),);
+	state_assert(s, cpufreq_read(no_ctx, nm->freq_cpu),);
 	state_assert(s, imcfreq_read(no_ctx, nm->freq_imc),);
 
 	return EAR_SUCCESS;
@@ -151,8 +151,8 @@ int diff_node_metrics(nm_t *id,nm_data_t *init,nm_data_t *end,nm_data_t *diff_nm
 	diff_nm->avg_temp = end->avg_temp;
 
 	// CPU & IMC Frequency
-	state_assert(s, cpufreq_data_diff(&end->freq_cpu, &init->freq_cpu, diff_nm->avg_per_cpu, &diff_nm->avg_cpu_freq),);
-	state_assert(s, imcfreq_data_diff( end->freq_imc,  init->freq_imc, NULL, &diff_nm->avg_imc_freq),);
+	state_assert(s, cpufreq_data_diff(end->freq_cpu, init->freq_cpu, diff_nm->avg_per_cpu, &diff_nm->avg_cpu_freq),);
+	state_assert(s, imcfreq_data_diff(end->freq_imc, init->freq_imc,                empty, &diff_nm->avg_imc_freq),);
 
 	return EAR_SUCCESS;
 }
@@ -190,8 +190,8 @@ int copy_node_metrics(nm_t *id, nm_data_t *dest, nm_data_t *src)
 	dest->avg_temp = src->avg_temp;
 
 	// Frequencies
-	state_assert(s, cpufreq_data_copy(&dest->freq_cpu, &src->freq_cpu),);
-	state_assert(s, imcfreq_data_copy( dest->freq_imc,  src->freq_imc),);
+	state_assert(s, cpufreq_data_copy(dest->freq_cpu, src->freq_cpu),);
+	state_assert(s, imcfreq_data_copy(dest->freq_imc, src->freq_imc),);
 	dest->avg_cpu_freq = src->avg_cpu_freq;
 	dest->avg_imc_freq = src->avg_imc_freq;
 

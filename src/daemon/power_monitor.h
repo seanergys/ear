@@ -38,29 +38,27 @@
 #define MAX_NESTED_LEVELS 16384
 
 typedef struct powermon_app {
-  application_t    app;
-  uint             job_created;
-	uint  					 is_job;
-	uint						 plug_num_cpus;
-	cpu_set_t        plug_mask;
-	uint						 earl_num_cpus;
-  uint             local_ids;
-  energy_data_t    energy_init;
-  governor_t       governor;
-  ulong            current_freq;
-  int              sig_reported;
-  settings_conf_t *settings;
-  resched_t       *resched;
-  app_mgt_t       *app_info;
-  pc_app_info_t   *pc_app_info;
-  cpufreq_t       freq_job1;
-	ulong           freq_diff[MAX_CPUS_SUPPORTED];
-  loop_t          last_loop;
-	uint						exclusive;
-	accum_power_sig_t accum_ps;
+    application_t    app;
+    uint             job_created;
+    uint             is_job;
+    uint             plug_num_cpus;
+    cpu_set_t        plug_mask;
+    uint             earl_num_cpus;
+    uint             local_ids;
+    energy_data_t    energy_init;
+    governor_t       governor;
+    ulong            current_freq;
+    int              sig_reported;
+    settings_conf_t *settings;
+    resched_t       *resched;
+    app_mgt_t       *app_info;
+    pc_app_info_t   *pc_app_info;
+    cpufreq_t       *freq_job1;
+    ulong           *freq_diff;
+    loop_t           last_loop;
+    uint             exclusive;
+    accum_power_sig_t accum_ps;
 } powermon_app_t;
-
-
 
 /** Periodically monitors the node power monitoring. 
 *

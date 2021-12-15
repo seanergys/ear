@@ -5,7 +5,7 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 freq_OBJS = \
     eard.o \
     dummy.o \
-    intel63.o
+    perf.o
 
 ######## RULES
 

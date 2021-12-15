@@ -15,14 +15,21 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_CPUFREQ_BASE_H
-#define METRICS_CPUFREQ_BASE_H
+#ifndef METRICS_CPUFREQ_PERF_H
+#define METRICS_CPUFREQ_PERF_H
 
-#include <common/types/types.h>
-#include <common/hardware/topology.h>
+#include <metrics/cpufreq/cpufreq.h>
 
-void cpufreq_get_base(topology_t *tp, ulong *freq_base);
+state_t cpufreq_intel63_status(topology_t *tp, cpufreq_ops_t *ops);
 
-void cpufreq_get_boost_enabled(topology_t *tp, uint *boost_enabled);
+state_t cpufreq_intel63_init(ctx_t *c);
 
-#endif
+state_t cpufreq_intel63_dispose(ctx_t *c);
+
+state_t cpufreq_intel63_count_devices(ctx_t *c, uint *cpu_count);
+
+state_t cpufreq_intel63_read(ctx_t *c, cpufreq_t *f);
+
+state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average);
+
+#endif //METRICS_CPUFREQ_PERF_H

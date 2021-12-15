@@ -457,27 +457,6 @@ ulong eards_write_loop_signature(loop_t *loop_signature)
     return ack;
 }
 
-/**** New API for cpufreq management */
-/* Load, init etc can be used directly from metrics */
-/* These are privileged functions */
-state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
-{
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = READ_CPUFREQ;
-  req.sec=create_sec_tag();
-  /* Specific info */
-  if (ear_fd_req >= 0)
-  {
-    if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for average cpufreq metrics")){ state_return_msg(EAR_ERROR,errno,"Asking for cpufreq metrics");}
-
-    if (warning_api(my_read(ear_fd_ack, (char *)(ef->context), size), size,
-      "receiving cpufreq metrics from EARD")){ state_return_msg(EAR_ERROR,errno,"Receiving cpufreq");}
-  }
-  return EAR_SUCCESS;
-}
-
 /************************************/
 state_t eards_imcfreq_data_count(uint *pack)
 {
@@ -881,28 +860,6 @@ ulong eards_end_app_compute_turbo_freq()
 	}
 	return ack;
 }
-
-/**** New API for cpufreq management */
-/* Load, init etc can be used directly from metrics */
-/* These are privileged functions */
-state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
-{
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = READ_CPUFREQ;
-  req.sec=create_sec_tag();
-  /* Specific info */
-  if (ear_fd_req[freq_req] >= 0)
-  { 
-    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for average cpufreq metrics")){ state_return_msg(EAR_ERROR,errno,"Asking for cpufreq metrics");}
-    
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)(ef->context), size), size,
-      "receiving cpufreq metrics from EARD")){ state_return_msg(EAR_ERROR,errno,"Receiving cpufreq");}
-  } 
-  return EAR_SUCCESS;
-}
-
 
 /************************************/
 // Uncore frequency management

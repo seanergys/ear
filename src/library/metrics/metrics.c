@@ -96,7 +96,6 @@ static edata_t     aux_energy;
 static edata_t     metrics_ipmi[2]; // mJ
 static ulong       acum_ipmi[2];
 static edata_t     aux_energy_stop;
-static ulong       metrics_avg_frequency[2]; // MHz
 static llong       metrics_instructions[2];
 static llong       metrics_cycles[2];
 static llong       metrics_usecs[2]; // uS
@@ -126,11 +125,6 @@ uint               ear_num_gpus_in_node=0;
 static llong       metrics_l1[2];
 //static llong     metrics_l2[2];
 static llong       metrics_l3[2];
-static ulong       cpufreq_data_avg[2];
-static cpufreq_t   cpufreq_data_init[2];
-static cpufreq_t   cpufreq_data_end[2];
-static uint        mycpufreq_data_size;
-static uint        mycpufreq_data_count;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static imcfreq_t  *imc_init[2];
 static imcfreq_t  *imc_end[2];
@@ -155,16 +149,23 @@ uint       *imc_max_pstate; //*
 uint       *imc_min_pstate; //*
 uint        imc_curr_max_pstate; //*
 uint        imc_curr_min_pstate; //*
+//
+static cpufreq_t *cpufreq_read1[2];
+static cpufreq_t *cpufreq_read2[2];
+       ulong     *cpufreq_diff;
+static ulong      cpufreq_avrg[2];
 
 /* New metrics */
 static metrics_t mgt_cpufreq;
 static metrics_t mgt_imcfreq;
+static metrics_t met_cpufreq;
 
 const metrics_t *metrics_get(uint api)
 {
     switch(api) {
         case MGT_CPUFREQ: return &mgt_cpufreq;
         case MGT_IMCFREQ: return &mgt_imcfreq;
+        case MET_CPUFREQ: return &met_cpufreq;
         default: return NULL;
     }
 }
@@ -179,23 +180,25 @@ static void metrics_static_init(topology_t *tp)
     // Load
     sa(mgt_cpufreq_load(tp, EARD));
     sa(mgt_imcfreq_load(tp, EARD));
+    sa(    cpufreq_load(tp, EARD));
     // This extinguishable
     frequency_init(EARD);
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
+    sa(    cpufreq_get_api(&met_cpufreq.api));
     // Working
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
-    // Granularity
-    //sa(mgt_cpufreq_get_granularity(&mgt_cpufreq.granularity));
-    //sa(mgt_imcfreq_get_granularity(&mgt_imcfreq.granularity));
+    met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));
+    sa(    cpufreq_init(no_ctx));
     // Count
     sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
+    sa(    cpufreq_count_devices(no_ctx, &met_cpufreq.devs_count));
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
@@ -205,8 +208,20 @@ static void metrics_static_init(topology_t *tp)
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
-    apis_print(mgt_cpufreq.api, "MET_CPUFREQ: ");
-    apis_print(mgt_imcfreq.api, "MET_IMCFREQ: ");
+    apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
+    apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
+    apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
+
+    cpufreq_data_alloc(&cpufreq_read1[0], empty);
+    cpufreq_data_alloc(&cpufreq_read1[1], empty);
+    cpufreq_data_alloc(&cpufreq_read2[0], empty);
+    cpufreq_data_alloc(&cpufreq_read2[1], &cpufreq_diff);
+
+    // cpufreq_data_init     cpufreq_read1
+    // cpufreq_data_end      cpufreq_read2
+    // cpufreq_data_per_core cpufreq_diff
+    // metrics_avg_frequency cpufreq_avrg
+    // cpufreq_data_avg      cpufreq_avrg
 }
 
 void metrics_static_dispose()
@@ -262,10 +277,9 @@ static void metrics_global_start()
 	if (masters_info.my_master_rank>=0)
 	{
 		/* Avg CPU freq */
-		debug("eards_cpufreq_read");
-		if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_init[APP],mycpufreq_data_size))){
-			debug("CPUFreq data read in global_start");
-		}
+        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read1[APP]))) {
+            debug("CPUFreq data read in global_start");
+        }
 		/* Reads IMC data */
 		if (mgt_imcfreq.ok){
 		    debug("imcfreq_read");
@@ -329,46 +343,45 @@ static void metrics_global_stop()
 		}
 	}
 	imc_avg[APP] = 0;
-	metrics_avg_frequency[APP]=0;
+	cpufreq_avrg[APP]=0;
 	/* Onle the master will collect these metrics */
-	if (masters_info.my_master_rank>=0){ 
-		/* MPI statistics */
-    if (is_mpi_enabled()){
-      read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
-      read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
-    }
+	if (masters_info.my_master_rank>=0) {
+        /* MPI statistics */
+        if (is_mpi_enabled()){
+          read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
+          read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
+        }
 
+        /* Avg CPU frequency */
+        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[APP]))) {
+            error("CPUFreq data read in global_stop");
+        }
+        if (state_fail(s = cpufreq_data_diff(cpufreq_read2[APP], cpufreq_read1[APP], cpufreq_diff, &cpufreq_avrg[APP]))){
+            error("CPUFreq data diff");
+        }else{
+            debug("CPUFreq average for the application is %.2fGHz", (float) cpufreq_avrg[APP] / 1000000.0);
+        }
+        cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[APP]);
 
-		/* Avg CPU frequency */
-    if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[APP],mycpufreq_data_size))){
-      error("CPUFreq data read in global_stop");
-    }
-		if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[APP],&cpufreq_data_init[APP],cpufreq_data_per_core,&cpufreq_data_avg[APP]))){
-			error("CPUFreq data diff");
-		}else{
-			debug("CPUFreq average for the application is %.2fGHz",(float)cpufreq_data_avg[APP]/1000000.0);
-		}
-		cpufreq_my_avgcpufreq(cpufreq_data_per_core, &cpufreq_data_avg[APP]);
-		metrics_avg_frequency[APP] = cpufreq_data_avg[APP];
-		/* AVG IMC frequency */
-		if (mgt_imcfreq.ok) {
+        /* AVG IMC frequency */
+        if (mgt_imcfreq.ok) {
             if (state_fail(s = imcfreq_read(&imc_ctx, imc_end[APP]))) {
                 error("IMCFreq data read in global_start");
-    	    }
-			if (state_fail(s = imcfreq_data_diff(imc_end[APP],imc_init[APP],imc_freq_end[APP],&imc_avg[APP]))){
-				error("IMC data diff fails");
-			}
-			verbose_master(2,"AVG IMC frequency %.2f", (float)imc_avg[APP]/1000000.0);
-  		    for (i=0; i< mgt_imcfreq.devs_count;i++) {
+            }
+            if (state_fail(s = imcfreq_data_diff(imc_end[APP],imc_init[APP],imc_freq_end[APP],&imc_avg[APP]))){
+                error("IMC data diff fails");
+            }
+            verbose_master(2,"AVG IMC frequency %.2f", (float)imc_avg[APP]/1000000.0);
+            for (i=0; i< mgt_imcfreq.devs_count;i++) {
                 imc_max_pstate[i]= imc_num_pstates-1;
                 imc_min_pstate[i] = 0;
             }
-  		    if (state_fail(s = mgt_imcfreq_set_current_ranged_list(no_ctx, imc_min_pstate,imc_max_pstate))){
-    		    error("Setting the IMC freq in global stop");
-  		    }
-  		    verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
-		}
-	}
+            if (state_fail(s = mgt_imcfreq_set_current_ranged_list(no_ctx, imc_min_pstate,imc_max_pstate))){
+                error("Setting the IMC freq in global stop");
+            }
+            verbose_master(2,"IMC freq restored to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
+        }
+	} //master_rank
 
 	/* Cache misses */
 	get_cache_metrics(&metrics_l1[APP], &metrics_l3[APP]);
@@ -445,9 +458,10 @@ static void metrics_partial_start()
     /* These data is measured only by the master */
     if (masters_info.my_master_rank>=0){
         /* Avg CPU freq */
-        if (state_fail(s = eards_cpufreq_read(&cpufreq_data_init[LOO],mycpufreq_data_size))){
-			verbose_master(2,"CPUFreq data read in partial start");
+        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read1[LOO]))) {
+            verbose_master(2, "CPUFreq data read in partial start");
         }
+
         /* Avg IMC freq */
         if (mgt_imcfreq.ok){
             /* Reads the IMC */
@@ -468,7 +482,8 @@ static void metrics_partial_start()
             debug("gpu_copy in partial start");
         }
 #endif
-    }
+    } //master_rank
+
     //There is always a partial_stop before a partial_start, we can guarantee a previous uncore_read
     /* Uncore counters to compute memory bancdwith */
     copy_uncores(metrics_bandwith_init[LOO],metrics_bandwith_end[LOO],bandwith_elements);
@@ -604,29 +619,28 @@ static int metrics_partial_stop(uint where)
 	metrics_usecs[LOO] = c_time;
 	metrics_usecs[APP] += metrics_usecs[LOO];
 	
-	// Daemon metrics
-	if (masters_info.my_master_rank>=0){ 
-		/* MPI statistics */
-		if (is_mpi_enabled()){
-    	read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
-    	read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
-		}
+    // Daemon metrics
+    if (masters_info.my_master_rank>=0) {
+        /* MPI statistics */
+        if (is_mpi_enabled()){
+        read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
+        read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
+        }
 
-		/* Avg CPU freq */
-    if (xtate_fail(s, eards_cpufreq_read(&cpufreq_data_end[LOO],mycpufreq_data_size))){
-      verbose_master(2,"CPUFreq data read in partial stop");
-    }
-    if (xtate_fail(s,cpufreq_data_diff(&cpufreq_data_end[LOO],&cpufreq_data_init[LOO],cpufreq_data_per_core,&cpufreq_data_avg[LOO]))){
-      verbose_master(2,"CPUFreq data diff");
-    }else{
-      verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_data_avg[LOO]/1000000.0);
-    }
+        /* Avg CPU freq */
+        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
+            verbose_master(2,"CPUFreq data read in partial stop");
+        }
+        if (xtate_fail(s,cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
+            verbose_master(2,"CPUFreq data diff");
+        }else{
+            verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_avrg[LOO]/1000000.0);
+        }
 		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++){ 
-			verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_data_per_core[cpu]/1000000.0);
+			verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_diff[cpu]/1000000.0);
 		}
 		verbosen_master(3,"\n");
-		cpufreq_my_avgcpufreq(cpufreq_data_per_core, &cpufreq_data_avg[LOO]);
-		metrics_avg_frequency[LOO] = cpufreq_data_avg[LOO];
+		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
 
         /* Avg IMC frequency */
         if (mgt_imcfreq.ok){
@@ -672,8 +686,7 @@ static int metrics_partial_stop(uint where)
 		for (i = 0; i < rapl_elements; i++) {
 				metrics_rapl[APP][i] += metrics_rapl[LOO][i];
 		}
-	} /* Metrics collected by node_master*/
-
+    } //master_rank (metrics collected by node_master)
 
 	// Local metrics
 	/* CPI */
@@ -740,7 +753,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				if ((s == APP) && !exclusive) verbose_master(2," Process %d ends in NOT exclusive mode", my_node_id);
 
 				/* Avg CPU frequency */
-				metrics->avg_f = metrics_avg_frequency[s];
+				metrics->avg_f = cpufreq_avrg[s];
 
 				/* Avg IMC frequency */
 				metrics->avg_imc_f = imc_avg[s];
@@ -1022,23 +1035,6 @@ int metrics_init(topology_t *topo)
 	metrics_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
   metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
-	/* CPU average frequency metrics */
-  if (xtate_fail(s,cpufreq_load(topo))){
-    verbose_master(2,"Cpufrequency load failed");
-  }
-  if (xtate_fail(s,cpufreq_init())){
-      verbose_master(2,"Cpufrequency init failed");
-  }
-	if (xtate_fail(s,cpufreq_data_count(&mycpufreq_data_size,&mycpufreq_data_count))){
-		verbose_master(2,"Cpufrequency data size failed");
-	}else{
-		verbose_master(2,"Cpufrequency data size %u count %u", mycpufreq_data_size,mycpufreq_data_count);
-	}
-  if (xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[APP],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_init[LOO],NULL)) || xtate_fail(s,cpufreq_data_alloc(&cpufreq_data_end[LOO],NULL))){
-			verbose_master(2,"Cpufreq allocation failed");
-	}
-	verbose_master(2,"CPUFreq data allocated");
-	cpufreq_data_per_core = (ulong *)calloc(topo->cpu_count,sizeof(ulong));
 	/* IMC average frequency initialization */
     if (mgt_imcfreq.ok){
 	    /* To compute IMC average */

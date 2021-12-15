@@ -38,17 +38,6 @@ int eards_connected();
 void eards_disconnect();
 
 /************************************/
-// Frequency services
-/** Given a frequency value, sends a request to change the frequency to that
-*   value. Returns -1 if there's an error, 0 if the change_freq service has not
-*   been provided, and the final frequency value otherwise. */
-/**** New API for cpufreq management */
-/* Load, init etc can be used directly from metrics */
-/* These are privileged functions */
-state_t eards_cpufreq_read(cpufreq_t *ef,size_t size);
-
-
-/************************************/
 // Uncore frequency management
 state_t eards_imcfreq_data_count(uint *count);
 state_t eards_imcfreq_read(imcfreq_t *ef,size_t size);

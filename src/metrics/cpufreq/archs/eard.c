@@ -50,9 +50,8 @@ state_t cpufreq_eard_status(topology_t *tp, cpufreq_ops_t *ops, int eard)
 	return EAR_SUCCESS;
 }
 
-state_t cpufreq_eard_read(ctx_t *c, cpufreq_t *f)
+state_t cpufreq_eard_read(ctx_t *c, cpufreq_t *list)
 {
-	state_t s = eards_cpufreq_read(f, cpu_count * sizeof(cpufreq_t));
-	debug("EARD returned %d, first sample APERF/MPERF = %lu/%lu", s, f[0].freq_aperf, f[0].freq_mperf);
-	return s;
+    memset((void *) list, 0, sizeof(cpufreq_t)*cpu_count);
+    return eard_rpc(RPC_GET_CURRENT, NULL, 0, (char *) list, sizeof(cpufreq_t)*cpu_count);
 }
