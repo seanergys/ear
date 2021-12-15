@@ -174,7 +174,7 @@ state_t bwidth_likwid_read(ctx_t *c, ullong *cas)
 		for (k = 0; k < evs_count; ++k, ++j) {
 			ctrs_accum[j] += (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
 			cas[j] = ctrs_accum[j];
-            debug("S%d%s: %lf", i, evs_names[k], cas[j]);
+            debug("S%d%s: %lu", i, evs_names[k], cas[j]);
 		}
 	}
 	return EAR_SUCCESS;
