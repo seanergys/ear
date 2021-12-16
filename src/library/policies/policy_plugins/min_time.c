@@ -74,6 +74,7 @@ ulong avg_to_khz(ulong freq_khz);
 /* Frequency management */
 static uint last_cpu_pstate;
 static node_freqs_t min_time_def_freqs, last_nodefreq_sel;
+extern ulong *cpufreq_diff;
 
 static uint num_processes;
 static ulong nominal_node;

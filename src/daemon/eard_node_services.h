@@ -19,6 +19,7 @@
 #define _EARD_NODE_SERVICES_H_
 
 #include <common/states.h>
+
 #define CLOSE_EARD -100
 #define CLOSE_PIPE -101
 

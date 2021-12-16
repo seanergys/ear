@@ -31,6 +31,7 @@ typedef struct sig_ext {
 
 #define MGT_CPUFREQ 1
 #define MGT_IMCFREQ 2
+#define MET_CPUFREQ 3
 
 /** New metrics **/
 const metrics_t *metrics_get(uint api);

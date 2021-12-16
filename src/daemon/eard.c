@@ -266,8 +266,6 @@ void eard_restart() {
  */
 void eard_exit(uint restart)
 {
-				state_t s;
-
 				verbose(VCONF, "Exiting");
 #if EARD_LOCK
 				eard_unlock();

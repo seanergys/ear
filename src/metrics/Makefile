@@ -37,6 +37,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/flops/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/cpu/dummy.o \
     $(SRCDIR)/metrics/cpufreq/cpufreq.o \
+    $(SRCDIR)/metrics/cpufreq/cpufreq_base.o \
     $(SRCDIR)/metrics/cpufreq/archs/eard.o \
     $(SRCDIR)/metrics/cpufreq/archs/dummy.o \
     $(SRCDIR)/metrics/cpufreq/archs/perf.o \

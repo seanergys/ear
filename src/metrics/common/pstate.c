@@ -76,7 +76,7 @@ void pstate_freqtoidx_nearest(pstate_t *ps_list, uint ps_count, ullong ps_khz, u
 	*idx_ret = ps_count-1;
 }
 
-void pstate_freqtoavg(cpu_set_t mask, ulong *freq_list, ulong *freq_avg, ulong *cpus_count)
+void pstate_freqtoavg(cpu_set_t mask, ulong *freq_list, uint freq_count, ulong *freq_avg, ulong *cpus_count)
 {
     ulong total_cpus = 0;
     ulong total_freq = 0;
@@ -86,7 +86,7 @@ void pstate_freqtoavg(cpu_set_t mask, ulong *freq_list, ulong *freq_avg, ulong *
         return;
     }
     *freq_avg = 0;
-    for (c = 0 ; c < MAX_CPUS_SUPPORTED; c++){
+    for (c = 0 ; c < freq_count; c++){
         if (CPU_ISSET(c, &mask)){
             total_freq += freq_list[c];
             total_cpus++;

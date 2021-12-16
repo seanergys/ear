@@ -59,8 +59,6 @@ static char *ear_tmp;
 static ulong uncore_size;
 static ulong energy_size;
 static ulong rapl_size;
-static ulong freq_size;
-
 
 #define my_read(...)          eards_read(__VA_ARGS__, WAIT_DATA)
 #define my_write(...)         eards_write(__VA_ARGS__)

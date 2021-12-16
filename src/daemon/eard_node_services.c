@@ -189,7 +189,6 @@ void connect_service(struct daemon_req *new_req);
 int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
-    state_t s;
 
     dcase_init(CONNECT_EARD_NODE_SERVICES);
         connect_service(&req);
@@ -1056,7 +1055,6 @@ state_t eard_local_api()
 	struct timeval *my_to;
 	int numfds_ready;
 	int ack_fd;
-	state_t ret;
 	state_t s;
 	
 	num_packs = node_desc.socket_count;
