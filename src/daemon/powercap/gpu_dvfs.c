@@ -398,14 +398,14 @@ state_t plugin_set_burst()
 
 state_t plugin_set_relax()
 {
-    return monitor_relax(sus_pgu);
+    return monitor_relax(sus_gpu);
 }
 
 void restore_frequency()
 {
     int i;
     pmgt_get_app_req_freq(DOMAIN_GPU, t_freq, gpu_pc_num_gpus);
-    for (i = 0; i < num_gpus; i++) {
+    for (i = 0; i < gpu_pc_num_gpus; i++) {
         if (t_freq[i] == 0) t_freq[i] = gpu_freq_list[i][0]; //set the nominal if no GPU freq was specified
         n_freq[i] = t_freq[i];
     }
