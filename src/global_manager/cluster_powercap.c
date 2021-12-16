@@ -293,6 +293,10 @@ void cluster_only_powercap()
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
 
     verbose(VGM_PC, "cluster_only_powercap, power %lu and nodes %ld", power.power, power.num_nodes);
+    if (current_cluster_powercap == POWER_CAP_UNLIMITED) {
+        verbose(VGM_PC, "cluster_powercap is set to unlimited, nothing to do");
+        return;
+    }
     if (power.power > upper_limit) {
         if (max_num_nodes > 0) {
             if (risk == 0) cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
