@@ -21,8 +21,8 @@
 #include <pthread.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/cpufreq/archs/eard.h>
-#include <metrics/cpufreq/archs/perf.h>
 #include <metrics/cpufreq/archs/dummy.h>
+#include <metrics/cpufreq/archs/intel63.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cpufreq_ops_t ops;

@@ -26,7 +26,7 @@
 #include <common/sizes.h>
 #include <common/output/debug.h>
 #include <metrics/common/msr.h>
-#include <metrics/cpufreq/archs/perf.h>
+#include <metrics/cpufreq/archs/intel63.h>
 #include <metrics/cpufreq/cpufreq_base.h>
 
 #define MSR_IA32_APERF 0x000000E8
@@ -71,13 +71,9 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 static state_t static_dispose(ctx_t *c, int close_msr_up_to, state_t s)
 {
 	int cpu;
-	if (((ulong) c->context) != -1LU) {
-		return s;
-	}
 	for (cpu = 0; cpu < close_msr_up_to; ++cpu) {
 		msr_close(tp.cpus[cpu].id);
 	}
-	c->context = (ulong) 0LU;
 	return s;
 }
 
@@ -85,17 +81,12 @@ state_t cpufreq_intel63_init(ctx_t *c)
 {
 	state_t s;
 	int cpu;
-	// Opening test
-	if (((ulong) c->context) == -1LU) {
-		return EAR_SUCCESS;
-	}
 	// Opening MSRs.
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (state_fail(s = msr_open(tp.cpus[cpu].id))) {
 			return static_dispose(c, cpu, s);
 		}
 	}
-	c->context = 0LU;
 	return EAR_SUCCESS;
 }
 

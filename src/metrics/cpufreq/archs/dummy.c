@@ -18,21 +18,16 @@
 #include <stdlib.h>
 #include <metrics/cpufreq/archs/dummy.h>
 
-static topology_t tp;
+static uint cpu_count;
 
-state_t cpufreq_dummy_status(topology_t *tp_in, cpufreq_ops_t *ops)
+state_t cpufreq_dummy_status(topology_t *tp, cpufreq_ops_t *ops)
 {
-	state_t s;
-	if (tp.cpus == NULL) {
-		if(state_fail(s = topology_select(tp_in, &tp, TPSelect.core, TPGroup.merge, 0))) {
-			return s;
-		}
-	}
 	replace_ops(ops->init,      cpufreq_dummy_init);
 	replace_ops(ops->dispose,   cpufreq_dummy_dispose);
 	replace_ops(ops->count_devices, cpufreq_dummy_count_devices);
 	replace_ops(ops->read,      cpufreq_dummy_read);
 	replace_ops(ops->data_diff, cpufreq_dummy_data_diff);
+    cpu_count = tp->cpu_count;
 	return EAR_SUCCESS;
 }
 
@@ -46,16 +41,16 @@ state_t cpufreq_dummy_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t cpufreq_dummy_count_devices(ctx_t *c, uint *cpu_count)
+state_t cpufreq_dummy_count_devices(ctx_t *c, uint *cpu_count_in)
 {
-	*cpu_count = tp.cpu_count;
+	*cpu_count_in = cpu_count;
 	return EAR_SUCCESS;
 }
 
 state_t cpufreq_dummy_read(ctx_t *c, cpufreq_t *f)
 {
 	int cpu;
-	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+	for (cpu = 0; cpu < cpu_count; ++cpu) {
 		f[cpu].freq_aperf = 0LU;
 		f[cpu].freq_mperf = 0LU;
 		f[cpu].error = 1;
@@ -66,7 +61,7 @@ state_t cpufreq_dummy_read(ctx_t *c, cpufreq_t *f)
 state_t cpufreq_dummy_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
 	if (freqs != NULL) {
-		memset(freqs, 0, tp.cpu_count * sizeof(ulong));
+		memset(freqs, 0, cpu_count * sizeof(ulong));
 	}
 	if (average != NULL) {
 		*average = 0;
