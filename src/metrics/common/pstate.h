@@ -43,7 +43,7 @@ state_t pstate_freqtops(pstate_t *ps_list, uint ps_count, ullong ps_khz, pstate_
 
 state_t pstate_freqtops_upper(pstate_t *ps_list, uint ps_count, ulong ps_khz, pstate_t *ps_ret);
 
-void pstate_freqtoavg(cpu_set_t mask, ulong *freq_list, ulong *freq_avg, ulong *cpus_count);
+void pstate_freqtoavg(cpu_set_t mask, ulong *freq_list, uint freq_count, ulong *freq_avg, ulong *cpus_counted);
 
 /* It requires descending sorted lists. Returns the closer P_STATE. */
 void pstate_freqtoidx_nearest(pstate_t *ps_list, uint ps_count, ullong ps_khz, uint *idx_ret, uint mode);

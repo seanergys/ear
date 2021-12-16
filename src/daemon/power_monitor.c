@@ -74,6 +74,7 @@ static char *TH_NAME = "PowerMon";
 state_t s;
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
 static cpufreq_t *freq_job2;
+static uint       freq_count;
 
 nm_t my_nm_id;
 nm_data_t nm_init, nm_end, nm_diff, last_nm;
@@ -536,7 +537,11 @@ state_t powermon_create_idle_context()
   alloc_energy_data(&pmapp->energy_init);
   pmapp->app.job.id = jid;
   pmapp->app.job.step_id = sid;
+
   cpufreq_data_alloc(&pmapp->freq_job1, &pmapp->freq_diff);
+  cpufreq_data_alloc(&freq_job2, NULL);
+  cpufreq_count_devices(no_ctx, freq_count);
+
   ID = create_ID(jid,sid);
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
@@ -711,7 +716,9 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 		// CPU Frequency
 		state_assert(s, cpufreq_read_diff(no_ctx, freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
 		ulong lcpus;
-		if (pmapp->app.is_mpi) pstate_freqtoavg(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
+		if (pmapp->app.is_mpi) {
+            pstate_freqtoavg(pmapp->app_info->node_mask, pmapp->freq_diff, freq_count, &pmapp->app.power_sig.avg_f, &lcpus);
+        }
 	}else{
 		if (pmapp->app.is_mpi){
 			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode. Using EARL signature");
@@ -1690,9 +1697,7 @@ void *eard_power_monitoring(void *noinfo)
 
 	verbose(VJOBPMON, "Power monitoring thread UP");
 	init_contexts();
-
     powermon_create_idle_context();
-	state_assert(cpufreq_data_alloc(&freq_job2, NULL),);
 
 	if (pthread_setname_np(pthread_self(), TH_NAME)) error("Setting name for %s thread %s", TH_NAME, strerror(errno));
 	if (init_power_ponitoring(&my_eh_pm) != EAR_SUCCESS) {
@@ -1709,8 +1714,6 @@ void *eard_power_monitoring(void *noinfo)
 	alloc_energy_data(&e_pmon_end);
 	alloc_energy_data(&e_pmon);
 	alloc_power_data(&p_pmon);
-
-
 
 	// current_sample is the current powermonitoring period
 	debug("init_periodic_metric");
