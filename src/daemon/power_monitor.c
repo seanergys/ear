@@ -711,7 +711,7 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 		// CPU Frequency
 		state_assert(s, cpufreq_read_diff(no_ctx, freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
 		ulong lcpus;
-		if (pmapp->app.is_mpi) cpufreq_avgcpufreq_mask(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
+		if (pmapp->app.is_mpi) pstate_freqtoavg(pmapp->app_info->node_mask, pmapp->freq_diff, &pmapp->app.power_sig.avg_f, &lcpus);
 	}else{
 		if (pmapp->app.is_mpi){
 			verbose(VJOBPMON, "Computing power signature. Job executed in NOT exclusive mode. Using EARL signature");

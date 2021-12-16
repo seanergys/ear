@@ -51,7 +51,7 @@ ulong get_nm_cpufreq_with_mask(nm_t *id,nm_data_t *nm, cpu_set_t m)
 {
 	ulong lavg, lcpus;
 	if ((id==NULL) || (nm==NULL) || (id->con!=NM_CONNECTED))  return 0;
-	cpufreq_avgcpufreq_mask(m, nm->avg_per_cpu, &lavg, &lcpus);
+	pstate_freqtoavg(m, nm->avg_per_cpu, &lavg, &lcpus);
 	return lavg;
 }
 
