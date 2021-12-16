@@ -238,7 +238,7 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
     for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
         m = sig_shared_region[p].cpu_mask;
-		cpufreq_avgcpufreq_mask(m, nodecpuf, &lavg, &lcpus);
+		pstate_freqtoavg(m, nodecpuf, &lavg, &lcpus);
 		total += lavg*lcpus;
 		total_cpus += lcpus;
 	}
