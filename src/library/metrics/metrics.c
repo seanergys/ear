@@ -51,7 +51,7 @@
 #include <metrics/cpi/cpi.h>
 #include <metrics/flops/flops.h>
 #include <metrics/energy/energy_node_lib.h>
-#include <metrics/frequency/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 #include <metrics/io/io.h>
 #include <metrics/cache/cache.h>

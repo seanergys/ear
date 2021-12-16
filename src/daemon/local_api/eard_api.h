@@ -21,7 +21,7 @@
 #include <common/types/generic.h>
 #include <common/types/log.h>
 #include <metrics/gpu/gpu.h>
-#include <metrics/frequency/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 
 #include <daemon/local_api/eard_api_rpc.h>

@@ -26,7 +26,7 @@
 #include <common/types/generic.h>
 #include <common/hardware/topology.h>
 #include <metrics/imcfreq/imcfreq.h>
-#include <metrics/frequency/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 
 typedef struct nm{
 	uint ncpus;

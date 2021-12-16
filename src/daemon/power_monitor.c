@@ -42,7 +42,7 @@
 #include <common/types/application.h>
 #include <common/types/periodic_metric.h>
 #include <common/types/configuration/cluster_conf.h>
-#include <metrics/frequency/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <common/hardware/hardware_info.h>
 #include <management/cpufreq/frequency.h>
 #include <daemon/power_monitor.h>
