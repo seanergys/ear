@@ -39,7 +39,7 @@ state_t cpufreq_eard_status(topology_t *tp, cpufreq_ops_t *ops, int eard)
 		debug("RPC RPC_MET_CPUFREQ_GET_API returned: %s (%d)", state_msg, s);
 		return s;
 	}
-	if (eard_api == MET_CPUFREQ_API_NONE || eard_api == MET_CPUFREQ_API_DUMMY) {
+	if (eard_api == API_NONE || eard_api == API_DUMMY) {
 		return_msg(EAR_ERROR, "EARD (daemon) has loaded DUMMY/NONE API");
 	}
 	//
@@ -53,5 +53,5 @@ state_t cpufreq_eard_status(topology_t *tp, cpufreq_ops_t *ops, int eard)
 state_t cpufreq_eard_read(ctx_t *c, cpufreq_t *list)
 {
     memset((void *) list, 0, sizeof(cpufreq_t)*cpu_count);
-    return eard_rpc(RPC_GET_CURRENT, NULL, 0, (char *) list, sizeof(cpufreq_t)*cpu_count);
+    return eard_rpc(RPC_MET_CPUFREQ_GET_CURRENT, NULL, 0, (char *) list, sizeof(cpufreq_t)*cpu_count);
 }

@@ -37,6 +37,10 @@
 #define NO_EARD          0
 #define no_ctx           NULL
 
+typedef struct ctx_s {
+    void *context;
+} ctx_t;
+
 typedef struct metrics_s {
     ctx_t c;
     uint  api;

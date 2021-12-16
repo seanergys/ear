@@ -26,7 +26,7 @@
 #include <common/sizes.h>
 #include <common/output/debug.h>
 #include <metrics/common/msr.h>
-#include <metrics/cpufreq/archs/intel63.h>
+#include <metrics/cpufreq/archs/perf.h>
 #include <metrics/cpufreq/cpufreq_base.h>
 
 #define MSR_IA32_APERF 0x000000E8

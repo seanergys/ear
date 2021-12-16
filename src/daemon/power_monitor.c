@@ -596,7 +596,7 @@ void copy_powermon_app(powermon_app_t *dest, powermon_app_t *src) {
   dest->resched->force_rescheduling = src->resched->force_rescheduling;
   memcpy(dest->app_info , src->app_info,sizeof(app_mgt_t));
   memcpy(dest->pc_app_info , src->pc_app_info,sizeof(pc_app_info_t));
-  cpufreq_data_copy(&dest->freq_job1, &src->freq_job1);
+  cpufreq_data_copy(dest->freq_job1, src->freq_job1);
 }
 
 
@@ -673,7 +673,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	read_enegy_data(ceh, &c_energy);
 	copy_energy_data(&pmapp->energy_init, &c_energy);
 	// CPU Frequency
-	state_assert(s, cpufreq_read(pmapp->freq_job1), );
+	state_assert(s, cpufreq_read(no_ctx, pmapp->freq_job1), );
 	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu ",pmapp->app.job.id,pmapp->app.job.step_id);
 }
 
@@ -1677,6 +1677,7 @@ void *eard_power_monitoring(void *noinfo)
 	energy_data_t e_begin;
 	energy_data_t e_end;
 	power_data_t my_current_power;
+    state_t s;
 
 	/* Powercap */
 	uint report_data = 1;
@@ -1692,7 +1693,7 @@ void *eard_power_monitoring(void *noinfo)
 	init_contexts();
 
     powermon_create_idle_context();
-	state_assert(cpufreq_data_alloc(&freq_job2, NULL),);
+	state_assert(s, cpufreq_data_alloc(&freq_job2, NULL),);
 
 	if (pthread_setname_np(pthread_self(), TH_NAME)) error("Setting name for %s thread %s", TH_NAME, strerror(errno));
 	if (init_power_ponitoring(&my_eh_pm) != EAR_SUCCESS) {

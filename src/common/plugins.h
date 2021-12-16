@@ -32,11 +32,6 @@
 #define none	0
 #define empty	NULL
 
-typedef struct ctx_s {
-	void *context;
-	size_t size;
-} ctx_t;
-
 #define preturn(call, ...) \
 	if (call == NULL) { \
 		return_msg(EAR_UNDEFINED, Generr.api_undefined); \
