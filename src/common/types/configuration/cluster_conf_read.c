@@ -490,7 +490,10 @@ void parse_island(cluster_conf_t *conf, char *line)
     }
     if (!contains_eargm)
     {
-        int last_eargm = current_ranges > 0 ? conf->islands[id_f].ranges[current_ranges-1].eargm_id : 1;
+        int last_eargm = current_ranges > 0 ? conf->islands[id_f].ranges[current_ranges-1].eargm_id : 0;
+        if (conf->eargm.num_eargms > 0 && last_eargm == 0) {
+            last_eargm = conf->eargm.eargms[0].id;
+        }
         for (i = current_ranges; i < conf->islands[id_f].num_ranges; i++)
             conf->islands[id_f].ranges[i].eargm_id = last_eargm;
     }
@@ -635,19 +638,23 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf)
         }
     }
 
-		/* Plugins */
-		if (strlen(conf->eard.plugins) == 0){
-			strcpy(conf->eard.plugins,"eardbd.so");	
-		}
-		if (strlen(conf->db_manager.plugins) == 0){
-			strcpy(conf->db_manager.plugins,"mysql.so");
-		}
-		if (strlen(conf->eargm.plugins) == 0){
-			strcpy(conf->eargm.plugins,"mysql.so");	
-		}
-		if (strlen(conf->earlib.plugins) == 0){
-			strcpy(conf->earlib.plugins,"eard.so");
-		}
+    /* Plugins */
+    if (strlen(conf->eard.plugins) == 0){
+        strcpy(conf->eard.plugins,"eardbd.so");	
+    }
+    if (strlen(conf->db_manager.plugins) == 0){
+        strcpy(conf->db_manager.plugins,"mysql.so");
+    }
+    if (strlen(conf->eargm.plugins) == 0){
+        strcpy(conf->eargm.plugins,"mysql.so");	
+    }
+    if (strlen(conf->earlib.plugins) == 0){
+        strcpy(conf->earlib.plugins,"eard.so");
+    }
+
+    /* EARGM checks */
+
+    check_cluster_conf_eargm(&conf->eargm);
 }
 
 
