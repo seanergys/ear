@@ -405,6 +405,7 @@ uint cluster_get_min_power(cluster_conf_t *conf, char type)
             }
             if (type == ENERGY_TYPE) {
                 total += conf->tags[tag_id].max_power * (current_range->end - current_range->start + 1);
+
             }
             else {
                 total += conf->tags[tag_id].powercap * (current_range->end - current_range->start + 1);

@@ -177,7 +177,7 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
     energy_budget=cc->energy;
     if (energy_budget == -1) {
         energy_budget = cluster_get_min_power(new, ENERGY_TYPE)*cc->t2;
-        energy_budget /= units;
+        energy_budget /= divisor;
         e_def->energy = energy_budget;
     }
     max_cluster_power=cc->power;
@@ -240,11 +240,6 @@ void update_eargm_configuration(cluster_conf_t *conf)
     energy_budget = e_def->energy;
     units = conf->eargm.units;
     policy = conf->eargm.policy;
-    if (energy_budget == -1) { //EARGM energy automatically calculated
-        energy_budget = cluster_get_min_power(conf, ENERGY_TYPE)*conf->eargm.t2;
-        energy_budget /= units;
-        e_def->energy = energy_budget;
-    }
     switch(units)
     {
         case BASIC:divisor=BASIC_U;
@@ -263,6 +258,12 @@ void update_eargm_configuration(cluster_conf_t *conf)
                   strcpy(unit_power,"MW");
                   break;
         default:break;
+    }
+    if (energy_budget == -1) { //EARGM energy automatically calculated
+        energy_budget = cluster_get_min_power(conf, ENERGY_TYPE)*conf->eargm.t2;
+        energy_budget /= divisor;
+        e_def->energy = energy_budget;
+        printf("units %d, energy_budget: %ld\n", divisor, energy_budget);
     }
     //max_cluster_power=max_cluster_power*divisor;
 }
