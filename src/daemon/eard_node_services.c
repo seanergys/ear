@@ -128,6 +128,7 @@ static wide_buffer_t wb;
 static metrics_t     mc;
 static metrics_t     mi;
 static metrics_t     uc;
+static metrics_t     ui;
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -156,18 +157,22 @@ void services_init(topology_t *tp)
 	sf(mgt_cpufreq_load(tp, NO_EARD));
 	sf(mgt_imcfreq_load(tp, NO_EARD));
     sf(    cpufreq_load(tp, NO_EARD));
+    sf(    imcfreq_load(tp, NO_EARD));
 
 	sf(mgt_cpufreq_get_api((uint *) &mc.api));
 	sf(mgt_imcfreq_get_api((uint *) &mi.api));
     sf(    cpufreq_get_api((uint *) &uc.api));
+    sf(    imcfreq_get_api((uint *) &ui.api));
 
 	sf(mgt_cpufreq_init(no_ctx));
 	sf(mgt_imcfreq_init(no_ctx));
     sf(    cpufreq_init(no_ctx));
+    sf(    imcfreq_init(no_ctx));
 
 	sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
 	sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
     sf(    cpufreq_count_devices(no_ctx, &uc.devs_count));
+    sf(    imcfreq_count_devices(no_ctx, &ui.devs_count));
 
 	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
@@ -175,6 +180,7 @@ void services_init(topology_t *tp)
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
+    sf(    imcfreq_data_alloc((cpufreq_t **) &ui.current_list, empty));
 
 	serial_alloc(&wb, SIZE_8KB);
 }
@@ -368,6 +374,35 @@ int services_met_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
         }
         data = (char *) uc.current_list;
         size = sizeof(cpufreq_t) * uc.devs_count;
+    dcase_fini();
+
+    // Always answering (if s != SUCCESS the error message is sent)
+    if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
+        serror("RPC answer failed");
+        return 0;
+    }
+    return 1;
+}
+
+int services_met_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
+{
+    uint call = head->req_service;
+    state_t s = EAR_SUCCESS;
+    char *data = NULL;
+    size_t size = 0;
+
+    dcase_init(RPC_MET_IMCFREQ_GET_API);
+        data = (char *) &ui.api;
+        size = sizeof(uint);
+    dcase(RPC_MET_IMCFREQ_COUNT_DEVICES);
+        data = (char *) &ui.devs_count;
+        size = sizeof(uint);
+    dcase(RPC_MET_IMCFREQ_GET_CURRENT);
+        if(state_fail(s = imcfreq_read(no_ctx, (imcfreq_t *) ui.current_list))) {
+            serror("Could not get imc frequency");
+        }
+        data = (char *) ui.current_list;
+        size = sizeof(imcfreq_t) * ui.devs_count;
     dcase_fini();
 
     // Always answering (if s != SUCCESS the error message is sent)
@@ -831,32 +866,6 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
   return 1;
 }
 
-int eard_imc(eard_head_t *head,int req_fd,int ack_fd)
-{
-  char buffer[4096];
-  uint *aux;
-  state_t s;
-
-  switch (head->req_service) {
-			case UNC_SIZE:
-			aux = (uint *) buffer;
-			aux[1] = unc_count;
-			imcfreq_get_api(aux);
-			write(ack_fd, aux, sizeof(uint)*2);
-			break;
-		case UNC_READ:
-			memset(unc_data, 0, unc_count);
-			if (state_fail(s = imcfreq_read(no_ctx, unc_data))){
-					error("WHen reading unc frequency requested by app (%d, %s)", s, state_msg);
-			}
-			write(ack_fd, unc_data, unc_count * sizeof(imcfreq_t));
-			break;
-	default:
-      return 0;
-	}
-	return 1;
-}
-
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
 {
   unsigned long ack = 0;
@@ -1022,10 +1031,10 @@ void service_select(int req_fd, int ack_fd)
     if (services_met_cpufreq(local_req, req_fd, ack_fd)) {
         return;
     }
-    // Old services
-    if (eard_imc(local_req,req_fd,ack_fd)) {
+    if (services_met_imcfreq(local_req, req_fd, ack_fd)) {
         return;
     }
+    // Old services
     if (eard_rapl(local_req,req_fd,ack_fd)) {
         return;
     }

@@ -38,11 +38,6 @@ int eards_connected();
 void eards_disconnect();
 
 /************************************/
-// Uncore frequency management
-state_t eards_imcfreq_data_count(uint *count);
-state_t eards_imcfreq_read(imcfreq_t *ef,size_t size);
-
-/************************************/
 // Uncore services
 /** Sends a request to read the uncores. Returns -1 if there's an error, on
 *   success stores the uncores values' into *values and returns 0. */
