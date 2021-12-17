@@ -35,8 +35,8 @@ typedef struct eargm_def
 {
     int id;
     uint port;
-    ulong energy;
-    ulong power;
+    long energy;
+    long power;
     char node[GENERIC_NAME];
     int num_subs;
     int *subs; //eargms under that meta_eargm

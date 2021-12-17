@@ -177,6 +177,8 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
     energy_budget=cc->energy;
     if (energy_budget == -1) {
         energy_budget = cluster_get_min_power(new, ENERGY_TYPE)*cc->t2;
+        energy_budget /= units;
+        e_def->energy = energy_budget;
     }
     max_cluster_power=cc->power;
     //max_cluster_power=max_cluster_power*divisor;
@@ -236,11 +238,13 @@ void update_eargm_configuration(cluster_conf_t *conf)
     period_t2 = conf->eargm.t2;
     use_aggregation = conf->eargm.use_aggregation;
     energy_budget = e_def->energy;
-    if (energy_budget == -1) {
-        energy_budget = cluster_get_min_power(conf, ENERGY_TYPE)*conf->eargm.t2;
-    }
     units = conf->eargm.units;
     policy = conf->eargm.policy;
+    if (energy_budget == -1) { //EARGM energy automatically calculated
+        energy_budget = cluster_get_min_power(conf, ENERGY_TYPE)*conf->eargm.t2;
+        energy_budget /= units;
+        e_def->energy = energy_budget;
+    }
     switch(units)
     {
         case BASIC:divisor=BASIC_U;

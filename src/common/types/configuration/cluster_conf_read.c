@@ -490,7 +490,10 @@ void parse_island(cluster_conf_t *conf, char *line)
     }
     if (!contains_eargm)
     {
-        int last_eargm = current_ranges > 0 ? conf->islands[id_f].ranges[current_ranges-1].eargm_id : 1;
+        int last_eargm = current_ranges > 0 ? conf->islands[id_f].ranges[current_ranges-1].eargm_id : 0;
+        if (conf->eargm.num_eargms > 0 && last_eargm == 0) {
+            last_eargm = conf->eargm.eargms[0].id;
+        }
         for (i = current_ranges; i < conf->islands[id_f].num_ranges; i++)
             conf->islands[id_f].ranges[i].eargm_id = last_eargm;
     }
