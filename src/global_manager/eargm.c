@@ -85,7 +85,7 @@ uint last_id=0;
 uint process_created=0;
 pthread_mutex_t plocks = PTHREAD_MUTEX_INITIALIZER;
 uint default_state=1;
-uint  max_cluster_power;
+int64_t max_cluster_power;
 uint  cluster_powercap_period;
 
 
@@ -114,7 +114,7 @@ uint my_port;
 uint current_sample=0,total_samples=0,last_level=EARGM_NO_PROBLEM,T1_stables=0;
 uint last_risk_sent=EARGM_NO_PROBLEM;
 ulong *energy_consumed;
-ulong energy_budget;
+int64_t energy_budget;
 uint aggregate_samples;
 uint in_action=0;
 double perc_energy,perc_time,perc_power;
@@ -175,6 +175,9 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
     period_t1=cc->t1;
     period_t2=cc->t2;	
     energy_budget=cc->energy;
+    if (energy_budget == -1) {
+        energy_budget = cluster_get_min_power(new, ENERGY_TYPE)*cc->t2;
+    }
     max_cluster_power=cc->power;
     //max_cluster_power=max_cluster_power*divisor;
     cluster_powercap_period=cc->t1_power;
@@ -225,7 +228,6 @@ void update_eargm_configuration(cluster_conf_t *conf)
     if (verbose_arg  >= 0) verb_level=verbose_arg;
 		
 
-    energy_budget = e_def->energy;
     my_port = e_def->port;
     eargm_id = e_def->id;
     max_cluster_power = e_def->power;
@@ -233,6 +235,10 @@ void update_eargm_configuration(cluster_conf_t *conf)
     period_t1 = conf->eargm.t1;
     period_t2 = conf->eargm.t2;
     use_aggregation = conf->eargm.use_aggregation;
+    energy_budget = e_def->energy;
+    if (energy_budget == -1) {
+        energy_budget = cluster_get_min_power(conf, ENERGY_TYPE)*conf->eargm.t2;
+    }
     units = conf->eargm.units;
     policy = conf->eargm.policy;
     switch(units)

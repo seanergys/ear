@@ -128,7 +128,7 @@ void print_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
             my_powercap_opt->th_release,my_powercap_opt->cluster_perc_power, my_powercap_opt->requested,my_powercap_opt->released);
 }
 
-uint powercat_get_value()
+uint powercap_get_value()
 {
 	return my_pc_opt.current_pc;
 }
@@ -154,7 +154,7 @@ static int set_powercap_value(uint domain,uint limit)
 	/* PENDING POWER allocation for jobs sharing the node */
 	for (i=1; i<= max_context_created; i++){
     if (current_ear_app[i] != NULL){
-			current_ear_app[i]->settings->pc_opt.current_pc = powercat_get_value();
+			current_ear_app[i]->settings->pc_opt.current_pc = powercap_get_value();
 		}
 	}
   verbose(VCONF, "entering pmgt_set_powercap_value from powercap.c");

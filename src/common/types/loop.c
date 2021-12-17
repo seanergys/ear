@@ -182,7 +182,6 @@ int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currti
 }
 static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime)
 {
-    char gpu_header[128];
     if (path == NULL) {
         return EAR_ERROR;
     }
@@ -194,6 +193,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
                          "DP_512";
 
 #if USE_GPUS
+    char gpu_header[128];
     char *HEADER_GPU_SIG = ";GPOWER%d;GFREQ%d;GMEMFREQ%d;GUTIL%d;GMEMUTIL%d";
 #endif
 

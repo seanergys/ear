@@ -891,7 +891,6 @@ int get_tags_powercap_value(cluster_conf_t *conf)
 
 void cluster_check_powercap_mode(cluster_conf_t *conf, eargm_def_t *e_def)
 {
-    int i, j;
     int tags = get_tags_powercap_value(conf);
     switch (tags) {
         case -1: 

@@ -37,7 +37,7 @@
 
 
 extern cluster_conf_t my_cluster_conf;
-extern uint  max_cluster_power;
+extern int64_t max_cluster_power;
 extern uint  cluster_powercap_period;
 
 extern uint process_created;
@@ -292,11 +292,16 @@ void cluster_only_powercap()
     float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
 
-    verbose(VGM_PC, "cluster_only_powercap, power %lu and nodes %d", power.power, power.num_nodes);
+    verbose(VGM_PC, "cluster_only_powercap, power %ld and nodes %ld", power.power, power.num_nodes);
+    if (current_cluster_powercap == POWER_CAP_UNLIMITED) {
+        verbose(VGM_PC, "cluster_powercap is unlimited, nothing to do");
+        return;
+    }
+
     if (power.power > upper_limit) {
         if (max_num_nodes > 0) {
             if (risk == 0) cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
-            verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", max_cluster_power/max_num_nodes);
+            verbose(VGM_PC, "cluster_only_powercap: sending new limit %ld", max_cluster_power/max_num_nodes);
             //cluster_set_powerlimit_all_nodes(max_cluster_power/power.nodes, &my_cluster_conf);  //this could be another option?
             
         } else {
@@ -347,7 +352,7 @@ void * eargm_powercap_th(void *noarg)
 
 void cluster_powercap_reset_pc()
 {
-    debug("Resetting cluster powercap to %u", max_cluster_power);
+    debug("Resetting cluster powercap to %ld", max_cluster_power);
     current_cluster_powercap = max_cluster_power;
     current_extra_power = 0;
 }
@@ -377,7 +382,7 @@ void cluster_powercap_inc_pc(uint inc)
         current_extra_power = 0;
 }
 
-uint cluster_get_min_powercap(cluster_conf_t *conf)
+uint cluster_get_min_power(cluster_conf_t *conf, char type)
 {
     uint total = 0;
     int i, j, k;
@@ -400,7 +405,12 @@ uint cluster_get_min_powercap(cluster_conf_t *conf)
             if (tag_id < 0) {
                 tag_id = def_tag_id;
             }
-            total += conf->tags[tag_id].powercap * (current_range->end - current_range->start + 1);
+            if (type == ENERGY_TYPE) {
+                total += conf->tags[tag_id].max_power * (current_range->end - current_range->start + 1);
+            }
+            else {
+                total += conf->tags[tag_id].powercap * (current_range->end - current_range->start + 1);
+            }
         }
     }
 
@@ -413,7 +423,7 @@ void cluster_powercap_init(cluster_conf_t *cc)
     int ret;
     max_num_nodes = get_num_nodes(cc);
     current_cluster_powercap = max_cluster_power;
-    if (current_cluster_powercap == -1) current_cluster_powercap = cluster_get_min_powercap(cc);
+    if (current_cluster_powercap == -1) current_cluster_powercap = cluster_get_min_power(cc, 0);
     if (current_cluster_powercap>0){
         verbose(VGM_PC,"Power cap limit set to %u",current_cluster_powercap);
     }else{

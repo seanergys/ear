@@ -192,7 +192,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
     {
         token = strtok(NULL, "=");
         /* It mas be included in power */
-        conf->power = atoi(token);
+        conf->power = atol(token);
         found=EAR_SUCCESS;
     }
     else if (!strcmp(token, "GLOBALMANAGERPOWERPERIOD") || !strcmp(token, "EARGMPOWERPERIOD"))
@@ -304,7 +304,20 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
     return found;
 }
 
-
+void check_cluster_conf_eargm(eargm_conf_t *conf)
+{
+    if (conf->num_eargms == 0) {
+        warning("Not having an EARGMId definition is deprecated. Using global values to create an EARGM def");
+        conf->eargms = realloc(conf->eargms, sizeof(eargm_def_t)*(conf->num_eargms+1));
+        memset(&conf->eargms[0], 0, sizeof(eargm_def_t)); //this could be replaced by a default init function
+        conf->eargms[0].id = 0;
+        conf->eargms[0].port = conf->port;
+        conf->eargms[0].energy = conf->energy;
+        conf->eargms[0].power = conf->power;
+        strcpy(conf->eargms[0].node, conf->host);
+        conf->num_eargms++;
+    }
+}
 
 void copy_eargmd_conf(eargm_conf_t *dest,eargm_conf_t *src)
 {
