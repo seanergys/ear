@@ -98,6 +98,7 @@
 #define SCHED_EAR_TRACE_PLUGIN       "SLURM_EAR_TRACE_PLUGIN"   // Sets the trace plugin in EARL.
 #define SCHED_EAR_GPU_DEF_FREQ       "SLURM_EAR_GPU_DEF_FREQ"   // This var sets a default GPU frequency.
 #define SCHED_LOADER_LOAD_NO_MPI_LIB "SLURM_LOADER_APPLICATION" // This variable forces to load the NON MPI version of the library for a given application (i.e. SLURM_LOADER_LOAD_NO_MPI_LIB=gromacs).
+#define SCHED_LOAD_MPI_VERSION       "SLURM_LOAD_MPI_VERSION"   // This variable is used for not detected MPI application (python) to specify which version it is: intel, ompi, etc
 #define SCHED_MAX_IMC_FREQ           "SLURM_MAX_IMC_FREQ"
 #define SCHED_MIN_IMC_FREQ           "SLURM_MIN_IMC_FREQ"
 #define SCHED_SET_IMC_FREQ           "SLURM_SET_IMC_FREQ"       // This variable specifies the IMC freq must be selected by the EAR policy.

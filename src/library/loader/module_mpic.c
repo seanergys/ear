@@ -14,7 +14,10 @@
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
-
+#include <stdlib.h>
+#include <unistd.h>
+#include <common/config.h>
+#include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
 
 extern mpic_t ear_mpic;
@@ -188,14 +191,54 @@ int MPI_Ibsend(MPI3_CONST void *buf, int count, MPI_Datatype datatype, int dest,
 {
 	return ear_mpic.Ibsend(buf, count, datatype, dest, tag, comm, request);
 }
+int ear_usage_mpi()
+{
+  char msg[1024];
+  snprintf(msg, sizeof(msg), "Error, you are using your mpi4py application with EAR library and the %s env var is not set. If you want to run your application with EAR set \"export %s = \"intel\"|\"ompi\". Otherwise use \"--ear=off\" to disable the EAR library. \n", SCHED_LOAD_MPI_VERSION, SCHED_LOAD_MPI_VERSION);
+  write(2, msg, strlen(msg));
+  exit(1);
+  return MPI_ERR_INTERN;
+}
+
+static  uint EAR_Init = 0;
+static  char *path_lib_so;
+static  char *libhack;
+extern  uint force_mpi_load;
+extern  uint MPI_Get_library_version_detected;
+
+static void EAR_force_mpi_library()
+{
+	if (!MPI_Get_library_version_detected && getenv(SCHED_LOAD_MPI_VERSION) == NULL) ear_usage_mpi();
+	  /* At this point we must force the symbol loading */
+  force_mpi_load = 1;
+
+  /* If EAR has not been already enabled we must load it */
+  if (!is_mpi_enabled() && !EAR_Init){
+    module_get_path_libear(&path_lib_so,&libhack);
+    if ((path_lib_so == NULL) && (libhack == NULL)){
+        verbose(1,"LOADER EAR path and EAR debug HACKS are NULL");
+				return;
+    }
+
+    // Module MPI
+    verbose(2,"Tring MPI module");
+    module_mpi(path_lib_so,libhack);
+    EAR_Init = 1;
+  }
+
+}
 
 int MPI_Init(int *argc, char ***argv)
 {
+	EAR_force_mpi_library();
+
 	return ear_mpic.Init(argc, argv);
 }
 
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
+	EAR_force_mpi_library();
+
 	return ear_mpic.Init_thread(argc, argv, required, provided);
 }
 

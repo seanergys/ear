@@ -302,8 +302,6 @@ void cluster_only_powercap()
         if (max_num_nodes > 0) {
             if (risk == 0) cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %ld", max_cluster_power/max_num_nodes);
-            //cluster_set_powerlimit_all_nodes(max_cluster_power/power.nodes, &my_cluster_conf);  //this could be another option?
-            
         } else {
             warning("No nodes detected for this EARGM");
         }

@@ -46,7 +46,7 @@
 #define MAX_TEMP							150
 #define MAX_POWER_CAP					0
 #define DEF_POWER_CAP					-1
-#define POWER_CAP_UNLIMITED				1
+#define POWER_CAP_UNLIMITED             1
 #define POWER_CAP_TYPE				"node"
 
 /* When set to 1, powercap events will be reported to database */
