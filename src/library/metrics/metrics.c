@@ -147,7 +147,7 @@ uint        imc_curr_min_pstate; //*
 static imcfreq_t  *imcfreq_read1[2];
 static imcfreq_t  *imcfreq_read2[2];
 static ulong       imcfreq_avrg[2];
-static ulong       imcfreq_diff;
+static ulong      *imcfreq_diff;
 //
 static cpufreq_t *cpufreq_read1[2];
 static cpufreq_t *cpufreq_read2[2];
@@ -386,7 +386,7 @@ static void metrics_global_stop()
             if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read2[APP]))) {
                 error("IMCFreq data read in global_start");
             }
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[APP],imcfreq_read1[APP],imcfreq_diff[APP],&imcfreq_avrg[APP]))){
+            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[APP],imcfreq_read1[APP], imcfreq_diff,&imcfreq_avrg[APP]))){
                 error("IMC data diff fails");
             }
             verbose_master(2,"AVG IMC frequency %.2f", (float)imcfreq_avrg[APP]/1000000.0);
@@ -665,7 +665,7 @@ static int metrics_partial_stop(uint where)
             if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
                 verbose_master(2,"IMCFreq data read in partial_stop");
             }
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO],imcfreq_diff[LOO],&imcfreq_avrg[LOO]))){
+            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff,&imcfreq_avrg[LOO]))){
                 verbose_master(2,"IMC data diff fails");
             }
             debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);

@@ -154,15 +154,15 @@ void services_init(topology_t *tp)
 {
 	state_t s;
 
-	sf(mgt_cpufreq_load(tp, NO_EARD));
-	sf(mgt_imcfreq_load(tp, NO_EARD));
-    sf(    cpufreq_load(tp, NO_EARD));
-    sf(    imcfreq_load(tp, NO_EARD));
+	mgt_cpufreq_load(tp, NO_EARD);
+	mgt_imcfreq_load(tp, NO_EARD);
+        cpufreq_load(tp, NO_EARD);
+        imcfreq_load(tp, NO_EARD);
 
-	sf(mgt_cpufreq_get_api((uint *) &mc.api));
-	sf(mgt_imcfreq_get_api((uint *) &mi.api));
-    sf(    cpufreq_get_api((uint *) &uc.api));
-    sf(    imcfreq_get_api((uint *) &ui.api));
+	mgt_cpufreq_get_api((uint *) &mc.api);
+	mgt_imcfreq_get_api((uint *) &mi.api);
+        cpufreq_get_api((uint *) &uc.api);
+        imcfreq_get_api((uint *) &ui.api);
 
 	sf(mgt_cpufreq_init(no_ctx));
 	sf(mgt_imcfreq_init(no_ctx));
@@ -180,7 +180,7 @@ void services_init(topology_t *tp)
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
-    sf(    imcfreq_data_alloc((cpufreq_t **) &ui.current_list, empty));
+    sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
 
 	serial_alloc(&wb, SIZE_8KB);
 }

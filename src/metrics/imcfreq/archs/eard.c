@@ -22,10 +22,11 @@
 #include <metrics/imcfreq/archs/eard.h>
 
 static uint dev_count;
+static uint eard_api;
 
 void imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
 {
-    uint eard_api = API_NONE;
+    state_t s;
 
 	debug("loading (eard: %d)", eard);
 	if (!eard) {
@@ -40,11 +41,11 @@ void imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
 	// Contacting daemon
     if (state_fail(s = eard_rpc(RPC_MET_CPUFREQ_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
         debug("RPC RPC_MET_CPUFREQ_GET_API returned: %s (%d)", state_msg, s);
-        return s;
+        return;
     }
     if (state_fail(s = eard_rpc(RPC_MET_IMCFREQ_COUNT_DEVICES, NULL, 0, (char *) &dev_count, sizeof(uint)))) {
         debug("RPC RPC_MET_IMCFREQ_COUNT_DEVICES returned: %s (%d)", state_msg, s);
-        return s;
+        return;
     }
 	//
 	if (eard_api == API_NONE || eard_api == API_DUMMY) {
