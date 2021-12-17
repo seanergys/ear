@@ -96,8 +96,6 @@ static edata_t     aux_energy;
 static edata_t     metrics_ipmi[2]; // mJ
 static ulong       acum_ipmi[2];
 static edata_t     aux_energy_stop;
-static llong       metrics_instructions[2];
-static llong       metrics_cycles[2];
 static llong       metrics_usecs[2]; // uS
 /* In the case of IO we will collect per process, per loop and per node */
 static io_data_t   metrics_io_init[4];
@@ -147,18 +145,24 @@ uint        imc_curr_min_pstate; //*
 static imcfreq_t  *imcfreq_read1[2];
 static imcfreq_t  *imcfreq_read2[2];
 static ulong       imcfreq_avrg[2];
-static ulong      *imcfreq_diff;
+static ulong      *imcfreq_diff[2];
 //
 static cpufreq_t *cpufreq_read1[2];
 static cpufreq_t *cpufreq_read2[2];
        ulong     *cpufreq_diff;
 static ulong      cpufreq_avrg[2];
+//
+static cpi_t      cpi_read1[2];
+static cpi_t      cpi_read2[2];
+static cpi_t      cpi_diff[2];
+static double     cpi_avrg[2]
 
 /* New metrics */
 static metrics_t mgt_cpufreq;
 static metrics_t mgt_imcfreq;
 static metrics_t met_cpufreq;
 static metrics_t met_imcfreq;
+static metrics_t met_cpi;
 
 const metrics_t *metrics_get(uint api)
 {
@@ -166,6 +170,7 @@ const metrics_t *metrics_get(uint api)
         case MGT_CPUFREQ: return &mgt_cpufreq;
         case MGT_IMCFREQ: return &mgt_imcfreq;
         case MET_CPUFREQ: return &met_cpufreq;
+        case MET_CPI:     return &met_cpi;
         default: return NULL;
     }
 }
@@ -182,6 +187,7 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_load(tp, EARD));
     sa(    cpufreq_load(tp, EARD));
     sa(    imcfreq_load(tp, EARD));
+    sa(        cpi_load(tp, EARD));
     // This extinguishable
     frequency_init(EARD);
     // Get API
@@ -189,16 +195,19 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
     sa(    cpufreq_get_api(&met_cpufreq.api));
     sa(    imcfreq_get_api(&met_imcfreq.api));
+    sa(        cpi_get_api(&met_cpi.api))
     // Working
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
+    met_cpi.ok     = (met_cpi.api     > API_DUMMY);
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));
     sa(    cpufreq_init(no_ctx));
     sa(    imcfreq_init(no_ctx));
+    sa(        cpi_init(no_ctx));
     // Count
     sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
@@ -217,6 +226,7 @@ static void metrics_static_init(topology_t *tp)
     apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
     apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
     apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
+    apis_print(met_imcfreq.api, "MET_CPI    : ");
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);
@@ -225,8 +235,8 @@ static void metrics_static_init(topology_t *tp)
 
     imcfreq_data_alloc(&imcfreq_read1[0], empty);
     imcfreq_data_alloc(&imcfreq_read1[1], empty);
-    imcfreq_data_alloc(&imcfreq_read2[0], empty);
-    imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff);
+    imcfreq_data_alloc(&imcfreq_read2[0], &imcfreq_diff[0]);
+    imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff[1]);
 
     // cpufreq_data_init     cpufreq_read1
     // cpufreq_data_end      cpufreq_read2
@@ -343,6 +353,8 @@ static void metrics_global_start()
 	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}
+
+    cpi_read(no_ctx, &cpi_read1[APP]);
 }
  
 static void metrics_global_stop()
@@ -386,7 +398,7 @@ static void metrics_global_stop()
             if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read2[APP]))) {
                 error("IMCFreq data read in global_start");
             }
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[APP],imcfreq_read1[APP], imcfreq_diff,&imcfreq_avrg[APP]))){
+            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[APP],imcfreq_read1[APP], imcfreq_diff[APP], &imcfreq_avrg[APP]))){
                 error("IMC data diff fails");
             }
             verbose_master(2,"AVG IMC frequency %.2f", (float)imcfreq_avrg[APP]/1000000.0);
@@ -404,7 +416,8 @@ static void metrics_global_stop()
 	/* Cache misses */
 	get_cache_metrics(&metrics_l1[APP], &metrics_l3[APP]);
 	/* CPI */
-	get_basic_metrics(&metrics_cycles[APP], &metrics_instructions[APP]);
+    cpi_read_diff(no_ctx, &cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
+
 	/* FLOPS */
 	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
 	metrics_accum_flops(metrics_flops[LOO]);	
@@ -510,7 +523,7 @@ static void metrics_partial_start()
         last_rapl[i]=aux_rapl[i];
     }
     /* CPI */
-    start_basic_metrics();
+    cpi_read(no_ctx, cpi_read1[LOO]);
     /* Cache misses */
     cache_start();
     /* FLOPS */
@@ -665,7 +678,7 @@ static int metrics_partial_stop(uint where)
             if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
                 verbose_master(2,"IMCFreq data read in partial_stop");
             }
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff,&imcfreq_avrg[LOO]))){
+            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
                 verbose_master(2,"IMC data diff fails");
             }
             debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);
@@ -708,7 +721,8 @@ static int metrics_partial_stop(uint where)
 
 	// Local metrics
 	/* CPI */
-	stop_basic_metrics(&metrics_cycles[LOO], &metrics_instructions[LOO]);
+    cpi_read_diff(no_ctx, &cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
+
 	/* FLOPS */
 	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
 	metrics_accum_flops(metrics_flops[LOO]);
@@ -720,23 +734,18 @@ static int metrics_partial_stop(uint where)
 
 static void metrics_reset()
 {
-				// eards_reset_uncore();
-				//eards_reset_rapl();
-
-				reset_basic_metrics();
-				reset_flops_metrics();
-
-				cache_reset();
+    reset_flops_metrics();
+    cache_reset();
 }
 
 ull metrics_vec_inst(signature_t *metrics)
 {
-				ull VI=0;
-				if (flops_supported){
-								if (metrics->FLOPS[3]>0) VI = metrics->FLOPS[3] / metrics_flops_weights[3];
-								if (metrics->FLOPS[7]>0) VI = VI + (metrics->FLOPS[7] / metrics_flops_weights[7]);
-				}
-				return VI;
+    ull VI=0;
+    if (flops_supported){
+        if (metrics->FLOPS[3]>0) VI = metrics->FLOPS[3] / metrics_flops_weights[3];
+        if (metrics->FLOPS[7]>0) VI = VI + (metrics->FLOPS[7] / metrics_flops_weights[7]);
+    }
+    return VI;
 }
 
 void copy_node_data(signature_t *dest,signature_t *src)
@@ -790,20 +799,23 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				/* FLOPS */
 				metrics->Gflops = 0.0;
-				if (flops_supported)
-				{
-
-								for (i = 0; i < flops_elements; i++) {
-												metrics->FLOPS[i] = metrics_flops[s][i] * metrics_flops_weights[i];
-												metrics->Gflops += (double) metrics->FLOPS[i];
-								}
-
-								if (s == APP) verbose_master(3,"Flops %lf time %lf",metrics->Gflops,time_s);
-
-								metrics->Gflops = metrics->Gflops / time_s; // Floating ops to FLOPS
-								metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
-								//metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
+				if (flops_supported) {
+                    for (i = 0; i < flops_elements; i++) {
+                                    metrics->FLOPS[i] = metrics_flops[s][i] * metrics_flops_weights[i];
+                                    metrics->Gflops += (double) metrics->FLOPS[i];
+                    }
+                    if (s == APP) {
+                        verbose_master(3,"Flops %lf time %lf",metrics->Gflops,time_s);
+                    }
+                    metrics->Gflops = metrics->Gflops / time_s; // Floating ops to FLOPS
+                    metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
+                    //metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
 				}
+
+                /* CPI */
+                metrics->cycles       = cpi_diff[s].cycles;
+                metrics->instructions = cpi_diff[s].instructions;
+                metrics->CPI          = cpi_avrg[s];
 				/* TPI and Memory bandwith */
 				aux = time_s * (double) (1024 * 1024 * 1024);
 
@@ -816,15 +828,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				}else{
 					cas_counter = lib_shared_region->cas_counters;
 				}
-
-	
-				metrics->GBS = cas_counter * hw_cache_line_size / aux;
-				metrics->TPI = cas_counter * hw_cache_line_size / (double) metrics_instructions[s];
-
-				/* CPI */
-				metrics->CPI = (double) metrics_cycles[s] / (double) metrics_instructions[s];
-				metrics->cycles = metrics_cycles[s];
-				metrics->instructions = metrics_instructions[s];
+				metrics->GBS = cas_counter * hw_cache_line_size / cyclesaux;
+				metrics->TPI = cas_counter * hw_cache_line_size / ((double) metrics->instructions);
 
 				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
 				/* Per process IO data */
@@ -952,8 +957,6 @@ int metrics_init(topology_t *topo)
 	}
 
 	// Local metrics initialization
-	if (init_basic_metrics()!=EAR_SUCCESS) return EAR_ERROR;
-	
 	if (state_ok(cache_load(topo))) {
 		cache_init();
 	}

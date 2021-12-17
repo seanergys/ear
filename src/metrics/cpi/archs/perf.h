@@ -15,23 +15,17 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_CPI_INTEL63
-#define METRICS_CPI_INTEL63
+#ifndef METRICS_CPI_PERF_H
+#define METRICS_CPI_PERF_H
 
 #include <metrics/cpi/cpi.h>
 
-state_t cpi_intel63_status(topology_t *tp);
+state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops);
 
-state_t cpi_intel63_init(ctx_t *c);
+state_t cpi_perf_init(ctx_t *c);
 
-state_t cpi_intel63_dispose(ctx_t *c);
+state_t cpi_perf_dispose(ctx_t *c);
 
-state_t cpi_intel63_reset(ctx_t *c);
+state_t cpi_perf_read(ctx_t *c, cpi_t *ci);
 
-state_t cpi_intel63_start(ctx_t *c);
-
-state_t cpi_intel63_stop(ctx_t *c, llong *cycles, llong *insts);
-
-state_t cpi_intel63_read(ctx_t *c, llong *cycles, llong *insts);
-
-#endif //METRICS_CPI_INTEL63
+#endif //METRICS_CPI_PERF_H
