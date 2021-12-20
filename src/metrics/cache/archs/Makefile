@@ -2,7 +2,9 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
 ######## FILES
 
-cach_OBJS = perf.o
+cach_OBJS = \
+	dummy.o \
+	perf.o
 
 ######## RULES
 
