@@ -721,7 +721,7 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 								}else{
 									continue;
 								}
-								verbose_affinity_mask(&m, node_size);
+								//verbose_affinity_mask(&m, dom_size);
 
 						
                 int i;

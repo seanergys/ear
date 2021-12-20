@@ -49,8 +49,8 @@
 #define DVFS_BURST_DURATION 1000
 #define DVFS_RELAX_DURATION 60000
 
-#define PSTATE_STEP 6
-#define PSTATE0_STEP 25
+#define PSTATE_STEP 8
+#define PSTATE0_STEP 30 
 
 static uint current_dvfs_pc=0;
 static uint default_dvfs_pc=0;
@@ -79,25 +79,6 @@ static timestamp_t last_dvfs_time;
 
 /************************ These functions must be implemented in cpufreq *****/
 
-#if 0
-static void print_frequencies(int cpus, ulong *f)
-{
-    int i;
-    char buff[4096];
-    char buffshort[64];
-    buff[0] = '\0';
-    for (i=0;i<cpus;i++)
-    {
-        if (f[i]>0){
-            sprintf(buffshort,"CPU[%d]=%.2f ",i,(float)f[i]/1000000.0);
-        }else{		
-            sprintf(buffshort,"CPU[%d]=0 ",i);
-				}
-				strcat(buff, buffshort);
-    }
-    verbose(VEARD_PC,buff);
-}
-#endif
 
 static void frequency_nfreq_to_npstate(ulong *f,uint *p,uint cpus)
 {
@@ -159,17 +140,6 @@ static void limit_pstate(uint *p1,uint *p2)
     }
 }
 
-void vector_print_pstates(uint *pstates, uint num_cpus) {
-    char *tmp_buff = calloc(num_cpus*32, sizeof(char));
-    char sml_buff[32];
-    int i;
-    for (i = 0; i < num_cpus; i++) {
-        sprintf(sml_buff, "p%d: %u, ", i, pstates[i]);
-        strcat(tmp_buff, sml_buff);
-    }
-    verbose(VEARD_PC,tmp_buff);
-    free(tmp_buff);
-}
 
 /* Computes how many cpus can reduce one pstate with the given limit */
 void num_cpus_to_reduce_pstates(uint *tmp,uint *target, uint *changes, uint *changes_max)
@@ -204,8 +174,8 @@ uint compute_extra_power(uint current_power, uint max_steps, uint *current, uint
     uint tmp[MAX_CPUS_SUPPORTED];
     //no pstate_change
     if (pstate_are_equal(current,target)) return 0;
-		vector_print_pstates(current, node_size);
-		vector_print_pstates(target, node_size);
+		//vector_print_pstates(current, node_size);
+		//vector_print_pstates(target, node_size);
 
     memcpy(tmp, current, sizeof(uint)*MAX_CPUS_SUPPORTED);
     do{
@@ -290,6 +260,8 @@ state_t dvfs_pc_thread_main(void *p)
     memset(c_req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
+		// verbose_frequencies(node_size, c_req_f);
+
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
     read_rapl_msr(fd_rapl,values_rapl_end);
     /* Calculate power */
@@ -306,7 +278,7 @@ state_t dvfs_pc_thread_main(void *p)
     power_rapl=(float)acum_energy/(((float)elapsed/1000.0)*RAPL_MSR_UNITS);
     my_limit=(float)current_dvfs_pc;
 
-    debug("dvfs current rapl power %f in a period of %lu", power_rapl, elapsed);
+		debug("Current power %f current limit %f (%u cpus)", power_rapl, my_limit,node_size);
 
     if (power_rapl < 0.5) return EAR_ERROR;
 

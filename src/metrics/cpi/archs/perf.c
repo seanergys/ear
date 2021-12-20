@@ -85,13 +85,13 @@ state_t cpi_perf_read(ctx_t *c, cpi_t *ci)
 {
 	memset(ci, 0, sizeof(cpi_t));
 	if (ins_en) {
-		perf_read(&perf_ins, &ci->instructions);
+		perf_read(&perf_ins, (llong *)&ci->instructions);
 	}
 	if (cyc_en) {
-		perf_read(&perf_cyc, &ci->cycles);
+		perf_read(&perf_cyc, (llong *)&ci->cycles);
 	}
 	if (sta_en) {
-		perf_read(&perf_sta, &ci->stalls);
+		perf_read(&perf_sta, (llong *)&ci->stalls);
 	}
 	debug("Instructions: %llu", ci->instructions);
 	debug("Cycles: %llu", ci->cycles);
