@@ -103,8 +103,8 @@ int init_rapl_msr(int *fd_map)
 		
 		cpu_energy_units = pow(0.5, (double) ((result >> 8) & 0x1f));
 		// Take a look to Intel's RAPL test
-		//dram_energy_units = pow(0.5, (double) 16);
-		dram_energy_units = cpu_energy_units;
+		dram_energy_units = pow(0.5, (double) 16);
+		// dram_energy_units = cpu_energy_units;
 	  
 	}
 	pthread_mutex_unlock(&rapl_msr_lock);
@@ -213,14 +213,17 @@ void dispose_rapl_msr(int *fd_map)
 void diff_rapl_msr_energy(ullong *diff, ullong *end, ullong *init)
 {
 	ullong ret = 0;
+    long long tmp_end, tmp_init;
 	int nump, j;
 	nump = get_total_packages();
 
 	for (j = 0; j < nump * RAPL_ENERGY_EV; j++) {
-		if (end[j] >= init[j]) {
-			ret = end[j] - init[j];
+        tmp_end = (long long) end[j];
+        tmp_init = (long long) init[j];
+		if (tmp_end >= tmp_init) {
+			ret = tmp_end - tmp_init;
 		} else {
-			ret = ullong_diff_overflow(init[j], end[j]);
+			ret = ullong_diff_overflow(tmp_init, tmp_end);
 		}
 		diff[j] = ret;
 	}

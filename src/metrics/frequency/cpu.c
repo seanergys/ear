@@ -127,18 +127,20 @@ state_t cpufreq_data_diff(cpufreq_t *ef2, cpufreq_t *ef1, ulong *freqs, ulong *a
 
 void cpufreq_avgcpufreq_mask(cpu_set_t m, ulong *nodecpuf, ulong *avgf, ulong *cpus)
 {
-  ulong total = 0, total_cpus = 0;
-  int c;
+    ulong total = 0, total_cpus = 0;
+    int c;
 	if ((nodecpuf == NULL) || (avgf == NULL) || (cpus == NULL)) return;
 	*avgf = 0;
-  for (c = 0 ; c < MAX_CPUS_SUPPORTED; c++){
-  	if (CPU_ISSET(c,&m)){
-  		total += nodecpuf[c];
-  		total_cpus++;
-  	}
-  }
-  *avgf = total/total_cpus;
-	*cpus = total_cpus;
+    for (c = 0 ; c < MAX_CPUS_SUPPORTED; c++){
+        if (CPU_ISSET(c,&m)){
+            total += nodecpuf[c];
+            total_cpus++;
+        }
+    }
+    if (total_cpus > 0) {
+        *avgf = total/total_cpus;
+    }
+    *cpus = total_cpus;
 }
 
 

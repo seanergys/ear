@@ -37,7 +37,6 @@
 #include <library/common/externs.h>
 #include <library/common/global_comm.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/signature_ext.h>
 #include <library/tracer/tracer.h>
 
 extern masters_info_t masters_info;

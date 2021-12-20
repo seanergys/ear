@@ -42,18 +42,20 @@ typedef struct model_symbols {
   state_t (*project_time)     (signature_t *sign,ulong from,ulong to,double *ptime);
   state_t (*project_power)    (signature_t *sign,ulong from,ulong to,double *ppower);
   state_t (*projection_available)    (ulong from,ulong to);
+  state_t (*projections_available)    ();
 } models_sym_t;
 
 
 
 // Static data
 static models_sym_t models_syms_fun;
-const int       models_funcs_n = 4;
+const int       models_funcs_n = 5;
 const char     *models_syms_nam[] = {
   "model_init",
   "model_project_time",
   "model_project_power",
   "model_projection_available",
+	"model_projections_available"
 };
 
 static state_t models_load(char *obj_path)
@@ -64,8 +66,8 @@ static state_t models_load(char *obj_path)
 state_t projections_init(uint user_type, conf_install_t *data, architecture_t * arch_desc)
 {
 	char basic_path[SZ_PATH_INCOMPLETE];
-	char *obj_path = getenv(SCHED_EAR_POWER_MODEL);
-  char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
+	char *obj_path = getenv(HACK_POWER_MODEL);
+  char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
 
 	state_t st;
 
@@ -114,6 +116,12 @@ state_t projection_available(ulong from,ulong to)
 {
 	freturn(models_syms_fun.projection_available,from,to);
 }
+
+state_t projections_available()
+{ 
+  freturn(models_syms_fun.projections_available);
+}
+
 
 // Inherited
 static projection_t *projections;

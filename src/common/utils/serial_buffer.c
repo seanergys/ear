@@ -127,7 +127,6 @@ static void serial_expand(wide_buffer_t *b, size_t size_new_elem)
 {
 	size_t *size_alloc = psize_alloc(b);
 	size_t *size_taken = psize_taken(b);
-	size_t *elem_next  = pelem_next(b);
 
 	if ((*size_taken + size_new_elem + sizeof(size_t)) > *size_alloc) {
 		serial_resize(b, *size_taken + size_new_elem + sizeof(size_t));
@@ -151,7 +150,6 @@ void serial_clean(wide_buffer_t *b)
 
 void serial_reset(wide_buffer_t *b, size_t size)
 {
-	size_t *size_taken = psize_taken(b);
 
 	// Resize with new value in case of requirement
 	serial_resize(b, size);

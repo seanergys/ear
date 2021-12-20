@@ -37,9 +37,9 @@ static int module_constructor_dlsym(char *path_so)
 	char *hack;
 
 	// Last chance to force a concrete library file.
-	if ((hack = getenv(HACK_FILE_LIBR)) != NULL) {
+	if ((hack = getenv(HACK_LIBRARY_FILE)) != NULL) {
 		sprintf(path_so, "%s", hack);
-	} else if ((hack = getenv(HACK_PATH_LIBR)) != NULL) {
+	} else if ((hack = getenv(HACK_LIBRARY_DIR)) != NULL) {
 		sprintf(path_so, "%s/%s.%s", hack, REL_NAME_LIBR,DEF_EXT);
 	} else if ((hack = getenv(VAR_INS_PATH)) != NULL) {
 		sprintf(path_so, "%s/%s/%s.%s", hack, REL_PATH_LIBR, REL_NAME_LIBR,DEF_EXT);

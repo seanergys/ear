@@ -45,8 +45,7 @@ typedef int state_t;
 
 /* global data */
 char *state_msg __attribute__((weak));
-int state_no __attribute__((weak));
-
+int state_no    __attribute__((weak));
 
 #define state_ok(state) \
 	((state) == EAR_SUCCESS)
@@ -54,17 +53,15 @@ int state_no __attribute__((weak));
 #define state_fail(state) \
 	((state) != EAR_SUCCESS)
 
-#define sfail(function) \
-	if (state_fail(function))
-
-
 #define state_is(state1, state2) \
 	(state1 == state2)
 
 #define serror(str) \
   error("%s: %s (%d)", str, state_msg, state_no);
 
-	
+#define sserror(format, ...) \
+	error(format ": %s (%d)", __VA_ARGS__, state_msg, state_no);
+
 #define return_msg(no, msg) { \
 	state_msg = msg; \
 	return no; \
@@ -83,16 +80,6 @@ int state_no __attribute__((weak));
         error("returned %d, %s (%s:%d)", s, state_msg, __FILE__, __LINE__); \
         cons; \
     }
-
-#define sserror(format, ...) \
-	error(format ": %s (%d)", __VA_ARGS__, state_msg, state_no);
-
-#define sassert(function, consecuence) \
-	sfail((function)) { \
-		error(#function " failed in %s:%d: %s (%d)", __FILE__, __LINE__, state_msg, state_no); \
-		consecuence; \
-	}
-
 
 struct generr_s {
 	char *api_undefined;
@@ -159,7 +146,6 @@ int intern_error_num __attribute__((weak));
 
 #define return_xmsg return_print
 
-
 #define state_return_msg(state, error_num, error_str) \
 { \
 	intern_error_num = error_num; \
@@ -172,5 +158,14 @@ int intern_error_num __attribute__((weak));
 
 #define xtate_ok(s, function) \
 	((s = function) == EAR_SUCCESS)
+
+#define sfail(function) \
+	if (state_fail(function))
+
+#define sassert(function, consecuence) \
+	sfail((function)) { \
+		error(#function " failed in %s:%d: %s (%d)", __FILE__, __LINE__, state_msg, state_no); \
+		consecuence; \
+	}
 
 #endif //STATES_H

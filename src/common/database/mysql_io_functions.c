@@ -2308,4 +2308,62 @@ int mysql_insert_gm_warning(MYSQL *connection, gm_warning_t *warning)
 }
 
 
+int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns)
+{
+    int i, j;
+    int num_rows, num_cols;
+    char ***tmp_res;
+    MYSQL_RES *result;
+    MYSQL_ROW row;
+
+    if (mysql_query(connection, query))
+    {
+        error("Error executing query");
+        return EAR_ERROR;
+    }
+
+    result = mysql_store_result(connection);
+
+    num_rows = mysql_num_rows(result);
+    num_cols = mysql_num_fields(result);
+    if (num_rows < 1 || num_cols < 1) {
+        error("No rows or columns were returned");
+        return EAR_ERROR;
+    }
+
+    tmp_res = calloc(num_rows, sizeof(char **));
+    for (i = 0; i < num_rows; i++)
+    {
+        row = mysql_fetch_row(result);
+        if (row == NULL) { //if no more rows exist we free the remaining memory and return early
+            num_rows = i;
+            tmp_res = realloc(tmp_res, num_rows*sizeof(char **));
+            break;
+        }
+
+        tmp_res[i] = calloc(num_cols, sizeof(char *));
+
+        for (j = 0; j < num_cols; j++)
+        {
+            if (row[i] == NULL)
+            {
+                tmp_res[i][j] = NULL;
+                continue;
+            }
+            tmp_res[i][j] = calloc(strlen(row[i]), sizeof(char));
+            strcpy(tmp_res[i][j], row[i]);
+        }
+
+    }
+
+
+    mysql_free_result(result);
+
+    *results = tmp_res;
+    *num_columns = num_cols;
+    return num_rows;
+
+}
+
+
 #endif

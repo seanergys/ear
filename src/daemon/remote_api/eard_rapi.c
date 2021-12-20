@@ -463,7 +463,6 @@ void increase_th_all_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf
     send_command_all(command, my_cluster_conf);
 }
 
-#if NODE_PROP
 void eards_new_job_nodelist(new_job_req_t *new_job, uint port, char *net_ext, char **nodes, int num_nodes)
 {
 	request_t command;
@@ -615,18 +614,6 @@ int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips
 
     return num_status;
 }
-#else
-
-void increase_th_nodelist(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
-
-void restore_conf_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
-
-void set_risk_nodelist(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
-
-void set_default_powercap_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips) {}
-
-int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips) {return 0;}
-#endif
 
 void set_th_all_nodes(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf)
 {

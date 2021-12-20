@@ -29,7 +29,7 @@
 #include <common/database/db_helper.h>
 #include <management/cpufreq/cpufreq.h>
 
-#include <library/models/cpu_power_model_intel_skl.h>
+#include <library/models/cpu_power_model_default.h>
 #include <metrics/flops/flops.h>
 
 //#define ACCUM_DATA 1

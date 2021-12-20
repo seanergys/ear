@@ -33,12 +33,12 @@ libs_PERM  = 0755
 ######## FILES
 
 comm_OBJS = \
-    $(SRCDIR)/daemon/local_api/libeard.a \
     $(SRCDIR)/daemon/shared_configuration.o \
     $(SRCDIR)/daemon/powercap/powercap_status.o \
     $(SRCDIR)/report/report.o \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
+    $(SRCDIR)/daemon/local_api/libeard.a \
     $(SRCDIR)/common/libcommon.a
 
 core_OBJS = \
@@ -57,7 +57,7 @@ core_OBJS = \
     policies/common/cpu_support.o \
     policies/common/mpi_stats_support.o \
     policies/common/imc_policy_support.o \
-	  policies/common/generic.o \
+    policies/common/generic.o \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \
