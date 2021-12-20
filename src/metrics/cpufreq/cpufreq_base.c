@@ -19,7 +19,7 @@
 
 #include <common/hardware/topology.h>
 #include <metrics/common/msr.h>
-#include <metrics/frequency/cpufreq_base.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <common/hardware/cpuid.h>
 #include <common/hardware/bithack.h>
 

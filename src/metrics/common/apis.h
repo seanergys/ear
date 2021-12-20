@@ -37,6 +37,22 @@
 #define NO_EARD          0
 #define no_ctx           NULL
 
+typedef struct ctx_s {
+    void *context;
+} ctx_t;
+
+typedef struct metrics_s {
+    ctx_t c;
+    uint  api;
+    uint  ok;
+    uint  granularity;
+    uint  devs_count;
+    void *avail_list;
+    uint  avail_count;
+    void *current_list;
+    void *set_list;
+} metrics_t;
+
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
     if (op == NULL) { \

@@ -15,14 +15,17 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_CPUFREQ_BASE_H
-#define METRICS_CPUFREQ_BASE_H
+#ifndef METRICS_CPI_PERF_H
+#define METRICS_CPI_PERF_H
 
-#include <common/types/types.h>
-#include <common/hardware/topology.h>
+#include <metrics/cpi/cpi.h>
 
-void cpufreq_get_base(topology_t *tp, ulong *freq_base);
+state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops);
 
-void cpufreq_get_boost_enabled(topology_t *tp, uint *boost_enabled);
+state_t cpi_perf_init(ctx_t *c);
 
-#endif
+state_t cpi_perf_dispose(ctx_t *c);
+
+state_t cpi_perf_read(ctx_t *c, cpi_t *ci);
+
+#endif //METRICS_CPI_PERF_H

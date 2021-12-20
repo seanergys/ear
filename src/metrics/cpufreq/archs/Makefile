@@ -1,22 +1,18 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 ######## FILES
 
 freq_OBJS = \
-	cpu.o \
-	cpufreq_base.o
+    eard.o \
+    dummy.o \
+    intel63.o
 
 ######## RULES
 
-all: all.components $(freq_OBJS)
+all: $(freq_OBJS)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
-
-######## SUBFOLDERS
-
-%.components:
-	@ $(MAKE) -C 'cpu' $* || exit
 
 ######## OPTIONS
 
@@ -24,7 +20,7 @@ install: ;
 
 %.install: ;
 
-clean: rclean clean.components;
+clean: rclean;
 
 ######## DEPENDENCIES
 

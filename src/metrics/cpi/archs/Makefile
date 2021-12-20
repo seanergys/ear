@@ -2,14 +2,19 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
 ######## FILES
 
-cach_OBJS = perf.o
+cycl_OBJS = \
+    perf.o \
+    dummy.o
 
 ######## RULES
 
-all: $(cach_OBJS)
+all: $(cycl_OBJS)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
+
+papi.o: papi.c papi.h
+	$(CC) $(CFLAGS) $(PAPI_CFLAGS) -c $<
 
 ######## OPTIONS
 
@@ -18,6 +23,10 @@ install: ;
 %.install: ;
 
 clean: rclean;
+
+depend: ;
+
+depend-clean: ;
 
 ######## DEPENDENCIES
 

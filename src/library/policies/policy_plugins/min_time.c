@@ -74,6 +74,7 @@ ulong avg_to_khz(ulong freq_khz);
 /* Frequency management */
 static uint last_cpu_pstate;
 static node_freqs_t min_time_def_freqs, last_nodefreq_sel;
+extern ulong *cpufreq_diff;
 
 static uint num_processes;
 static ulong nominal_node;
@@ -424,7 +425,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             }else{
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
                 ulong process_avgcpuf;
-                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_data_per_core, &process_avgcpuf);
+                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
 
                 /*

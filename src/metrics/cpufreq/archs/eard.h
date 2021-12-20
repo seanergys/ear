@@ -15,36 +15,21 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#include <metrics/cpi/cpu/dummy.h>
+#ifndef METRICS_CPUFREQ_EARD_H
+#define METRICS_CPUFREQ_EARD_H
 
-state_t cpi_dummy_init(ctx_t *c)
-{
-	return EAR_SUCCESS;
-}
+#include <metrics/cpufreq/cpufreq.h>
 
-state_t cpi_dummy_dispose(ctx_t *c)
-{
-	return EAR_SUCCESS;
-}
+state_t cpufreq_eard_status(topology_t *tp, cpufreq_ops_t *ops, int eard);
+// Fake
+state_t cpufreq_eard_init(ctx_t *c);
+// Fake
+state_t cpufreq_eard_dispose(ctx_t *c);
 
-state_t cpi_dummy_reset(ctx_t *c)
-{
-	return EAR_SUCCESS;
-}
+state_t cpufreq_eard_count_devices(ctx_t *c, uint *cpu_count);
 
-state_t cpi_dummy_start(ctx_t *c)
-{
-	return EAR_SUCCESS;
-}
+state_t cpufreq_eard_read(ctx_t *c, cpufreq_t *f);
 
-state_t cpi_dummy_stop(ctx_t *c, llong *cycles, llong *insts)
-{
-	return cpi_dummy_read(c, cycles, insts);
-}
+state_t cpufreq_eard_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average);
 
-state_t cpi_dummy_read(ctx_t *c, llong *cycles, llong *insts)
-{
-	*cycles = 0;
-	*insts  = 0;
-	return EAR_SUCCESS;
-}
+#endif //METRICS_CPUFREQ_EARD_H

@@ -14,12 +14,43 @@
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
+
+#ifndef COMMON_MATH_OPS_H
+#define COMMON_MATH_OPS_H
+
 #include <stdlib.h>
+#include <limits.h>
+#include <common/types/generic.h>
+
+#define MAXBITS32 0x00000000FFFFFFFF
+#define MAXBITS48 0x0000FFFFFFFFFFFF
+#define MAXBITS64 0xFFFFFFFFFFFFFFFF
+#define B_TO_KB   1E3
+#define B_TO_MB   1E6
+#define B_TO_GB   1E9
+
+/* Overflow functions:
+ * 	zeros: returns zero on overflow
+ * 	magic: returns (max - v1 + v2) on overflow
+ * 	mixed: like magic but returns zero if v1 isn't over the threshold (MAX >> bits)
+ */
+
+#define overflow_zeros(type, suffix) \
+	type overflow_zeros_ ##suffix (type v2, type v1)
+#define overflow_magic(type, suffix) \
+	type overflow_magic_ ##suffix (type v2, type v1, type max)
+#define overflow_mixed(type, suffix) \
+	type overflow_mixed_ ##suffix (type v2, type v1, type max, uint bits)
+
+overflow_zeros(ullong, u64);
+overflow_mixed(ullong, u64);
+overflow_magic(ullong, u64);
+overflow_magic(uint, u32);
 
 /** Given two doubles a and b, checks if they are equal within a margin of th.*/
 unsigned int equal_with_th(double a, double b, double th);
-uint equal_with_th_ul(ulong a,ulong b,double th);
 
+uint equal_with_th_ul(ulong a,ulong b,double th);
 
 /** Given two unsigned long's, one before and one after overflow, returns the
 *   value added to the first to obtain the second. This corrects end-begin when there 
@@ -80,3 +111,5 @@ double ear_math_scale(double src_range_min, double src_range_max, double n);
 float ear_math_roundf(float n);
 
 double ear_math_median(const double data[], size_t n);
+
+#endif

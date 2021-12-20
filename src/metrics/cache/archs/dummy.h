@@ -15,25 +15,26 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_CACHE_PERF
-#define METRICS_CACHE_PERF
+#ifndef METRICS_CACHE_DUMMY_H
+#define METRICS_CACHE_DUMMY_H
 
 #include <metrics/cache/cache.h>
 
-state_t cache_perf_status(topology_t *tp);
+state_t cache_dummy_load(topology_t *tp, cache_ops_t *ops);
 
-state_t cache_perf_init(ctx_t *c);
+state_t cache_dummy_init(ctx_t *c);
 
-state_t cache_perf_dispose(ctx_t *c);
+state_t cache_dummy_dispose(ctx_t *c);
 
-state_t cache_perf_reset(ctx_t *c);
+state_t cache_dummy_read(ctx_t *c, cache_t *ca);
 
-state_t cache_perf_start(ctx_t *c);
+// Helpers
+state_t cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
-state_t cache_perf_stop(ctx_t *c, llong *L1_misses, llong *LL_misses);
+state_t cache_dummy_data_copy(cache_t *src, cache_t *dst);
 
-state_t cache_perf_read(ctx_t *c, llong *L1_misses, llong *LL_misses);
+state_t cache_dummy_data_print(cache_t *b, double gbs, int fd);
 
-state_t cache_perf_data_print(ctx_t *c, llong L1_misses, llong LL_misses);
+state_t cache_dummy_data_tostr(cache_t *b, double gbs, char *buffer, size_t length);
 
-#endif //METRICS_CPI_INTEL63
+#endif //METRICS_CACHE_DUMMY_H

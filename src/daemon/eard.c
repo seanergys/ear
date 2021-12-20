@@ -40,7 +40,7 @@
 #include <metrics/energy/cpu.h>
 #include <metrics/energy/energy_node.h>
 #include <metrics/bandwidth/bandwidth.h>
-#include <metrics/frequency/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 
 #include <daemon/eard.h>
@@ -266,41 +266,29 @@ void eard_restart() {
  */
 void eard_exit(uint restart)
 {
-				state_t s;
-
 				verbose(VCONF, "Exiting");
 #if EARD_LOCK
 				eard_unlock();
 #endif
-
 				// Come disposes
 				//print_rapl_metrics();
-
 				// Recovering old frequency and governor configurations.
 				verbose(VCONF, "frequency_dispose");
 				frequency_dispose();
-
 				powercap_end();
-
-
 				verbose(VCONF, "Releasing node resources");
-
 				// More disposes
 				if (state_fail(energy_dispose(&eard_handler_energy))) {
 								error("Error disposing energy for eard");
 				}
 				report_dispose(&rid);
-
 				verbose(VCONF, "Releasing files");
-
 				clean_global_connector();
-
-				// CPU Frequency
-				state_assert(s, cpufreq_dispose(), );
 				// RAM Bandwidth
 				dispose_uncores();
+                services_dispose();
 
-				/* Releasing shared memory */
+                /* Releasing shared memory */
 				coeffs_shared_area_dispose(coeffs_path);
 				coeffs_default_shared_area_dispose(coeffs_default_path);
 				services_conf_shared_area_dispose(services_conf_path);
@@ -815,10 +803,6 @@ int main(int argc, char *argv[])
 				ear_node_freq = frequency_pstate_to_freq(eard_max_pstate);
 				eard_max_freq = ear_node_freq;
 				verbose(VCONF, "Default max frequency defined to %lu", eard_max_freq);
-				// CPU Frequency
-				verbose(VCONF, "Initializing CPUfreq API ");
-				state_assert(s, cpufreq_load(&node_desc), _exit(0));
-				state_assert(s, cpufreq_init(),           _exit(0));
 				// IMC frequency
 				verbose(VCONF, "Initializing IMCfreq metrics API ");
 				imcfreq_load(&node_desc, NO_EARD);

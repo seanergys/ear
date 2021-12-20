@@ -15,23 +15,17 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_CPI_DUMMY
-#define METRICS_CPI_DUMMY
+#ifndef METRICS_CACHE_PERF
+#define METRICS_CACHE_PERF
 
-#include <metrics/cpi/cpi.h>
+#include <metrics/cache/cache.h>
 
-state_t cpi_dummy_status(topology_t *tp);
+state_t cache_perf_load(topology_t *tp, cache_ops_t *ops);
 
-state_t cpi_dummy_init(ctx_t *c);
+state_t cache_perf_init(ctx_t *c);
 
-state_t cpi_dummy_dispose(ctx_t *c);
+state_t cache_perf_dispose(ctx_t *c);
 
-state_t cpi_dummy_reset(ctx_t *c);
+state_t cache_perf_read(ctx_t *c, cache_t *ca);
 
-state_t cpi_dummy_start(ctx_t *c);
-
-state_t cpi_dummy_stop(ctx_t *c, llong *cycles, llong *insts);
-
-state_t cpi_dummy_read(ctx_t *c, llong *cycles, llong *insts);
-
-#endif //METRICS_CPI_DUMMY
+#endif //METRICS_CPI_INTEL63
