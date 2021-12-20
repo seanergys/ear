@@ -1361,8 +1361,6 @@ void ear_finalize(int exit_status)
     }
 #endif
 
-    monitor_unregister(earl_monitor);
-    monitor_dispose();
     if (masters_info.my_master_rank>=0){
         verbose_master(2,"Stopping periodic earl thread");	
         verbose_master(2,"Stopping tracing");	
@@ -1371,6 +1369,8 @@ void ear_finalize(int exit_status)
 
         traces_mpi_end();
     }
+    monitor_unregister(earl_monitor);
+    monitor_dispose();
 
     // Closing and obtaining global metrics
     verbose_master(2,"metrics dispose");

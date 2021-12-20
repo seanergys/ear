@@ -367,8 +367,7 @@ static void metrics_global_stop()
 	
 	if (masters_info.my_master_rank < 0){
 		while(sig_shared_region[my_node_id].ready){ 
-			verbose(2,"Process %d global waiting", my_node_id);
-			usleep(1000000);
+			usleep(10);
 		}
 	}
 	imcfreq_avrg[APP] = 0;

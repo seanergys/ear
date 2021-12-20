@@ -231,10 +231,6 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     int i;
     char pol_grain_str[128];
     verbose_master(2,"policy_cpu_freq_selection");
-    if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
-        /* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data, freq_set, MAX_CPUS_SUPPORTED);
-    }
     memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
     else sprintf(pol_grain_str,"POL_GRAIN_NODE");
@@ -260,6 +256,11 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS) && (system_conf->pc_opt.current_pc <= POWER_CAP_UNLIMITED)){
         *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
     }
+    if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
+        /* Warning: POL_GRAIN_CORE not supported */
+        pcapp_info_set_req_f(pc_app_info_data, freq_per_core, MAX_CPUS_SUPPORTED);
+    }
+
     if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
     avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);
     verbose_master(2,"Setting CPU freq to %lu",*(c->ear_frequency));

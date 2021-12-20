@@ -35,6 +35,7 @@
 #include <common/system/symplug.h>
 #include <common/system/monitor.h>
 #include <common/hardware/topology.h>
+#include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #include <daemon/shared_configuration.h>
@@ -95,8 +96,10 @@ static ulong  dom_util_limit[NUM_DOMAINS];
 static dom_power_t pdist_per_domain;
 static float pdomains_def[NUM_DOMAINS]={0.6,0.5,0,GPU_PERC_UTIL};
 static float pdomains_def_dummy[NUM_DOMAINS]={1.0,0.9,0,0};
+static float pdomains_min[NUM_DOMAINS]={0.6,0.4,0,GPU_PERC_UTIL};
 #else
 static float pdomains_def[NUM_DOMAINS]={1.0,0.9,0,0};
+static float pdomains_min[NUM_DOMAINS]={1.0,0.75,0,0};
 #endif
 static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
@@ -192,6 +195,7 @@ void compute_power_distribution()
 		/* CPU and DRAM are read in eard.c during the initialization */
     bpd_cpu = rapl_pck_tdps[0];
     bpd_dram = rapl_dram_tdps[0];
+		debug("Using CPU TDP %u DRAM TDP %u", bpd_cpu, bpd_dram);
 #if USE_GPUS
     if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != MODEL_DUMMY)) bpd_gpu = TDP_GPU;
 #endif
@@ -687,7 +691,7 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
         float excess = ((float)(pdomain->platform - pmgt_limit))/(float)pmgt_limit;
         for (i=0;i< NUM_DOMAINS; i++){
             if (pdomains[i] > 0)
-                pdomains[i] = pdomains[i] - excess*pdomains[i];
+								pdomains[i] = ear_max(pdomains_min[i], pdomains[i] - excess*pdomains[i]);
         }
         pmgt_reset_pdomain();
         debug("reduced power domains by %.2f, new CPU %.2f new GPU %.2f", excess, pdomains[DOMAIN_CPU], pdomains[DOMAIN_GPU]);
@@ -712,10 +716,18 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
             if (domain == DOMAIN_CPU){ 
                 //memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
                 cpu_set_t m;
-                m = pmapp->app_info->node_mask;
+                if (pmapp->app.is_mpi){ 
+                	m = pmapp->app_info->node_mask;
+								}else{
+									continue;
+								}
+								//verbose_affinity_mask(&m, dom_size);
+
+						
                 int i;
                 for (i=0; i < MAX_CPUS_SUPPORTED; i++){
                     if (CPU_ISSET(i,&m)) f[i] = pmapp->pc_app_info->req_f[i];
+										else f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
                 }
             }
 #if USE_GPUS
@@ -731,14 +743,6 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
         }
 
     }
-    /* For each app, we must merge CPUfreq and GPUfreq requested */
-#ifndef SYN_TEST
-    if (domain == DOMAIN_CPU){
-        for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){		
-            if (f[i] == 0) f[i] = frequency_pstate_to_freq(1);
-        }
-    }
-#endif
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler)

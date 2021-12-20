@@ -68,6 +68,8 @@ extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 extern int max_context_created;
 extern int num_contexts;
 
+static timestamp_t last_powercap_reallocation_time;
+
 
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
@@ -157,8 +159,7 @@ static int set_powercap_value(uint domain,uint limit)
 			current_ear_app[i]->settings->pc_opt.current_pc = powercap_get_value();
 		}
 	}
-  verbose(VCONF, "entering pmgt_set_powercap_value from powercap.c");
-  timestamp_get(&last_powercap_reallocation_time);
+	timestamp_get( &last_powercap_reallocation_time); 
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 
@@ -188,6 +189,7 @@ void powercap_end()
 	}
 
 }
+
 
 int powercap_init()
 {
