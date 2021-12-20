@@ -138,12 +138,12 @@ static metrics_t     ui;
 #define dcase_init(id) \
 	switch (call) { \
 	case id: \
-	printf("Called " #id "\n");
+	//printf("Called " #id "\n");
 
 #define dcase(id) \
 	break; \
 	case id: \
-	printf("Called " #id "\n");
+	//printf("Called " #id "\n");
 
 #define dcase_fini() \
 	break; \

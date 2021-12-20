@@ -128,8 +128,8 @@ state_t cache_perf_read(ctx_t *c, cache_t *ca)
     debug("values[3]: %lld", values[3]);
 	debug("total L1D misses: %lld", ca->l1d_misses);
 	debug("total L2 misses : %lld", ca->l2_misses);
-    debug("total L3R misses : %lld", ca->l3w_misses);
-    debug("total L3W misses : %lld", ca->l3r_misses);
+    debug("total L3R misses : %lld", ca->l3r_misses);
+    debug("total L3W misses : %lld", ca->l3w_misses);
 
 	return EAR_SUCCESS;
 }
