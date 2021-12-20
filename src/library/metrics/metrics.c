@@ -155,7 +155,7 @@ static ulong      cpufreq_avrg[2];
 static cpi_t      cpi_read1[2];
 static cpi_t      cpi_read2[2];
 static cpi_t      cpi_diff[2];
-static double     cpi_avrg[2]
+static double     cpi_avrg[2];
 
 /* New metrics */
 static metrics_t mgt_cpufreq;
@@ -170,6 +170,7 @@ const metrics_t *metrics_get(uint api)
         case MGT_CPUFREQ: return &mgt_cpufreq;
         case MGT_IMCFREQ: return &mgt_imcfreq;
         case MET_CPUFREQ: return &met_cpufreq;
+        case MET_IMCFREQ: return &met_imcfreq;
         case MET_CPI:     return &met_cpi;
         default: return NULL;
     }
@@ -523,7 +524,7 @@ static void metrics_partial_start()
         last_rapl[i]=aux_rapl[i];
     }
     /* CPI */
-    cpi_read(no_ctx, cpi_read1[LOO]);
+    cpi_read(no_ctx, &cpi_read1[LOO]);
     /* Cache misses */
     cache_start();
     /* FLOPS */
@@ -828,7 +829,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				}else{
 					cas_counter = lib_shared_region->cas_counters;
 				}
-				metrics->GBS = cas_counter * hw_cache_line_size / cyclesaux;
+				metrics->GBS = cas_counter * hw_cache_line_size / aux;
 				metrics->TPI = cas_counter * hw_cache_line_size / ((double) metrics->instructions);
 
 				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
