@@ -18,6 +18,8 @@
 #ifndef _CPU_SUPPORT_H
 #define _CPU_SUPPORT_H
 
+#include <library/metrics/metrics.h>
+
 /* Compute reference metrics used before applying any policy projection/decision. */
 state_t compute_reference(polctx_t *c, signature_t *my_app, ulong *curr_freq, ulong *def_freq, ulong *freq_ref, double *time_ref, double *power_ref);
 

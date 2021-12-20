@@ -32,43 +32,12 @@
 #include <daemon/shared_configuration.h>
 #include <library/common/library_shared_data.h>
 
-#include <metrics/flops/flops.h>
-
-#include <library/models/cpu_power_model_intel_skl.h>
-
-static intel_skl_t my_node_coeffs;
 static uint arch_model_loaded = 0;
 static uint cpu_count;
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
 {
-	int fd, ret;
-	debug("cpu_power_models_init_arch. Using tag %s etc %s", libconf->tag, conf->dir_conf);
-	char model_path[MAX_PATH_SIZE];
-	snprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
-	debug("cpu_power_models_init_arch coeffs path %s", model_path);
-
-	#if 0
-	my_node_coeffs.ipc 		= IPC_COEFF;
-	my_node_coeffs.gbs 		=	GBS_COEFF;
-	my_node_coeffs.vpi 		=	VPI_COEFF;
-	my_node_coeffs.f   		=	F_COEFF;
-	my_node_coeffs.inter 	=	INTERCEPT;
-	#endif
-	fd = open(model_path, O_RDONLY);
-	if (fd < 0){ 
-		debug("Error opening cpu model file %s", strerror(errno));
-		return EAR_ERROR;
-	}
-	if ((ret = read(fd, &my_node_coeffs, sizeof(intel_skl_t))) != sizeof(intel_skl_t)){
-		if (ret < 0) 	debug("Error reading cpu model data %s", strerror(errno));
-		else 					debug("Error reading cpu model data %d bytes expected %d", ret, sizeof(intel_skl_t));
-		close(fd);
-		return EAR_ERROR;
-	}
-	close(fd);
 	cpu_count = arch->top.cpu_count;
-
 	arch_model_loaded = 1;	
 	
 	return EAR_SUCCESS;
@@ -91,10 +60,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	double power_estimations[MAX_CPUS_SUPPORTED];
 	double dram_power[MAX_CPUS_SUPPORTED];
 	double pck_power[MAX_CPUS_SUPPORTED];
-	double ipc[MAX_CPUS_SUPPORTED];
-	double tpi[MAX_CPUS_SUPPORTED];
 	double gbs[MAX_CPUS_SUPPORTED];
-	double vpi[MAX_CPUS_SUPPORTED];
 	ulong  f[MAX_CPUS_SUPPORTED];
 	ull    L3[MAX_CPUS_SUPPORTED];
 	uint   job_in_process[MAX_CPUS_SUPPORTED];
@@ -106,10 +72,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 
 
 
-	memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(process_power_ratio,0,sizeof(double)*MAX_CPUS_SUPPORTED);
-	memset(tpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
-	memset(vpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(gbs,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(f,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 	memset(L3,0,sizeof(ull)*MAX_CPUS_SUPPORTED);
@@ -126,16 +89,10 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
 		/* Power condition is to do only in case the signature is ready */
 		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
-			ull avx = 0;
 			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
 				if (nmgr[j].shsig[lp].sig.DC_power > 0){
 				  job_in_process[node_process] = j;
 				  L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
-				  ipc[node_process] = 1/nmgr[j].shsig[lp].sig.CPI;
-				  tpi[node_process] = (double)L3[node_process]/(double)nmgr[j].shsig[lp].sig.instructions;
-				  avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F]/WEIGHT_256F + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D]/WEIGHT_256D + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F]/WEIGHT_512F + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D]/WEIGHT_512D;
-				  vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
-				  f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
 				  node_L3 += L3[node_process];
 				}
 				node_process++;
@@ -169,24 +126,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 
 	/* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 
-	/* Per job in node loop */
 	double total_power_estimated = 0, CPU_power, GPU_power = 0;
-	lp = 0;
-	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-		/* If job is active we compute its power estimated */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp]){
-			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
-				double P;
-				P = (ipc[lp] * my_node_coeffs.ipc) + (gbs[lp] * my_node_coeffs.gbs) + (vpi[lp] * my_node_coeffs.vpi) + (f[lp] * my_node_coeffs.f ) + my_node_coeffs.inter;
-				power_estimations[lp] = P*nmgr[j].shsig[proc].num_cpus/cpus_in_node;
-				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
-				total_power_estimated += power_estimations[lp];
-			
-				lp++;
-			}
-		}
-	}
-
   CPU_power = lsig->DC_power;
   #if USE_GPUS
   for (uint gid = 0; gid < lsig->gpu_sig.num_gpus; gid++){
@@ -194,6 +134,23 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
   }
   #endif
   CPU_power -= GPU_power;
+
+
+	/* Per job in node loop */
+	lp = 0;
+	total_power_estimated = CPU_power;
+	double P = CPU_power / cpu_count;
+	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+		/* If job is active we compute its power estimated */
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp]){
+			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
+				power_estimations[lp] = P*nmgr[j].shsig[proc].num_cpus/cpus_in_node;
+				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
+			
+				lp++;
+			}
+		}
+	}
 
 
 	job_power_ratio = 0.0;

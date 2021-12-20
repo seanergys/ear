@@ -1,4 +1,4 @@
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #define EAR_CPUPOWER 1
 #define _GNU_SOURCE
 #include <sched.h>
@@ -10,6 +10,7 @@
 #include <common/sizes.h>
 #include <common/states.h>
 #include <common/hardware/topology.h>
+#include <daemon/local_api/eard_api.h>
 #if CONNECTOR
 #include <management/cpufreq/frequency.h>
 #else
@@ -61,8 +62,14 @@ int main(int argc, char *argv[])
 		debug("command: ");
 		scanf("%s", cmnd);
 
-		if (is(cmnd, "init")) {
-			RCALL(retint, frequency_init(topo.cpu_count));
+		if (is(cmnd, "conn")) {
+			RCALL(retint, eards_connection());
+			debug("eards_connection returned %d (%s)", retint, state_msg);
+		} else if (is(cmnd, "disc")) {
+			CALL(eards_disconnect());
+			debug("eards_disconnect called");
+		} else if (is(cmnd, "init")) {
+			CALL(frequency_init(NULL, EARD));
 			debug("frequency_init returned %d (%s)", retint, state_msg);
 		} else if (is(cmnd, "disp")) {
 			CALL(frequency_dispose());

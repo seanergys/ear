@@ -108,7 +108,6 @@ void close_ips()
     }
 }
 
-#if NODE_PROP
 char can_propagate(request_t *command)
 {
 
@@ -133,20 +132,7 @@ char can_propagate(request_t *command)
 
     return 1;
 }
-#else
-char can_propagate(request_t *command)
-{
-    // the following are separate because they come from different ideas
-    // the first is that the node does not need to propagate, while the 
-    // second is that it cannot propagate due to lack of an IP list
-    if (command->node_dist > total_ips) return 0;
-    if (self_ip == -1 || ips == NULL || total_ips < 1) return 0;
 
-    return 1;
-}
-#endif
-
-#if NODE_PROP
 void propagate_req(request_t *command, uint port)
 {
      
@@ -225,53 +211,6 @@ void propagate_req(request_t *command, uint port)
 
     
 }
-#else
-void propagate_req(request_t *command, uint port)
-{
-     
-    struct sockaddr_in temp;
-
-    int i, rc, off_ip, current_dist, current_idx;
-    char next_ip[50]; 
-
-    //if the command can't be propagated we return early
-    if (!can_propagate(command)) return;
-
-    current_dist = self_id - self_id%NUM_PROPS;
-    off_ip = self_id%NUM_PROPS;
-
-    for (i = 1; i <= NUM_PROPS; i++)
-    {
-        current_idx = current_dist*NUM_PROPS + i*NUM_PROPS + off_ip;
-        //check that the next ip exists within the range
-        if (current_idx >= total_ips) break;
-
-        //prepare next node data
-        temp.sin_addr.s_addr = ips[current_idx];
-        strcpy(next_ip, inet_ntoa(temp.sin_addr));
-        //prepare next node distance
-        command->node_dist = current_idx - off_ip;
-
-        //connect and send data
-        rc = remote_connect(next_ip, port);
-        if (rc < 0)
-        {
-            error("propagate_req:Error connecting to node: %s\n", next_ip);
-            correct_error(current_idx, total_ips, ips, command, port);
-        }
-        else
-        {
-            if (!send_command(command)) 
-            {
-                error("propagate_req: Error propagating command to node %s\n", next_ip);
-                remote_disconnect();
-                correct_error(current_idx, total_ips, ips, command, port);
-            }
-            else remote_disconnect();
-        }
-    }
-}
-#endif
 
 int get_self_ip()
 {
@@ -313,7 +252,6 @@ int get_self_ip()
 	return EAR_ERROR;
 }
 
-#if NODE_PROP
 request_header_t propagate_data(request_t *command, uint port, void **data)
 {
     char *temp_data, *final_data = NULL;
@@ -447,77 +385,6 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
     return head;
 	
 }
-#else
-request_header_t propagate_data(request_t *command, uint port, void **data)
-{
-    char *temp_data, *final_data = NULL;
-    int rc, i, current_dist, off_ip, current_idx, final_size = 0, default_type = EAR_ERROR;
-    struct sockaddr_in temp;
-    request_header_t head;
-    char next_ip[64];
-
-    current_dist = self_id - self_id%NUM_PROPS;
-    off_ip = self_id%NUM_PROPS;
-    for (i = 1; i <= NUM_PROPS; i++)
-    {
-        current_idx = current_dist*NUM_PROPS + i*NUM_PROPS + off_ip;
-        //check that the next ip exists within the range
-        if (current_idx >= total_ips) break;
-
-        //prepare next node data
-        temp.sin_addr.s_addr = ips[current_idx];
-        strcpy(next_ip, inet_ntoa(temp.sin_addr));
-        //prepare next node distance
-        command->node_dist = current_idx - off_ip;
-        verbose(VCONNECT+2, "Propagating to %s with distance %d\n", next_ip, command->node_dist);
-
-        //connect and send data
-        rc = remote_connect(next_ip, port);
-        if (rc < 0)
-        {
-            error("propagate_req: Error connecting to node: %s\n", next_ip);
-            head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
-        }
-        else
-        {
-            send_command(command);
-            head = receive_data(rc, (void **)&temp_data);
-            if ((head.size < 1 && head.type != EAR_TYPE_APP_STATUS) || head.type == EAR_ERROR) 
-            {
-                error("propagate_req: Error propagating command to node %s\n", next_ip);
-                remote_disconnect();
-                head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
-            }
-            else remote_disconnect();
-        }
-
-        if (head.type == EAR_TYPE_APP_STATUS)
-            default_type = head.type;
-
-        if (head.size > 0 && head.type != EAR_ERROR)
-        {
-            head = process_data(head, &temp_data, &final_data, final_size);
-            free(temp_data);
-            default_type = head.type;
-            final_size = head.size;
-        }
-    }
-
-    head.size = final_size;
-    head.type = default_type;
-    *data = final_data;
-
-    if (default_type == EAR_ERROR && final_size > 0)
-    {
-        free(final_data);
-        head.size = 0;
-    }
-    else if (final_size < 1 && (default_type != EAR_TYPE_APP_STATUS || default_type != EAR_ERROR)) head.type = EAR_ERROR;
-
-    return head;
-	
-}
-#endif
 
 int propagate_powercap_status(request_t *command, uint port, powercap_status_t **status)
 {
@@ -548,24 +415,24 @@ int propagate_powercap_status(request_t *command, uint port, powercap_status_t *
     return num_status;
 }
 
-int propagate_get_power(request_t *command, uint port, uint64_t **power)
+int propagate_get_power(request_t *command, uint port, power_check_t **power)
 {
-    uint64_t *temp_power, *final_power;
+    power_check_t *temp_power, *final_power;
 
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we allocate the power_status in this node and return
     if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
     {
-        final_power = calloc(1, sizeof(uint64_t));
+        final_power = calloc(1, sizeof(power_check_t));
         *power = final_power;
         return 1;
     }
 
     request_header_t head = propagate_data(command, port, (void **)&temp_power); //we don't check for number of uints since we will have 1 at most
-    int num_status = head.size / sizeof(uint64_t); //we still need a return value
-    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(uint64_t))
+    int num_status = head.size / sizeof(power_check_t); //we still need a return value
+    if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t))
     {
-        final_power = calloc(1, sizeof(uint64_t));
+        final_power = calloc(1, sizeof(power_check_t));
         if (head.size > 0) free(temp_power);
         *power = final_power;
         return 1; //maybe return EAR_ERROR?? -> for now we return 1 as we get a correct power_status (for this node)

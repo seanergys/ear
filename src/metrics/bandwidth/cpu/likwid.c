@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -23,8 +23,7 @@
 #include <metrics/common/likwid.h>
 #include <metrics/bandwidth/cpu/likwid.h>
 
-#if 1
-static char *evs = \
+static char *ice_evs = \
                            "CAS_COUNT_ALL:MBOX0C0," \
                            "CAS_COUNT_ALL:MBOX1C0," \
                            "CAS_COUNT_ALL:MBOX2C0," \
@@ -33,8 +32,7 @@ static char *evs = \
                            "CAS_COUNT_ALL:MBOX5C0," \
                            "CAS_COUNT_ALL:MBOX6C0," \
                            "CAS_COUNT_ALL:MBOX7C0";
-#if 0
-static char *evs_names[8] = {
+static char *ice_evs_names[8] = {
                            "CAS_COUNT_ALL:MBOX0C0" ,
                            "CAS_COUNT_ALL:MBOX1C0" ,
                            "CAS_COUNT_ALL:MBOX2C0" ,
@@ -43,9 +41,7 @@ static char *evs_names[8] = {
                            "CAS_COUNT_ALL:MBOX5C0" ,
                            "CAS_COUNT_ALL:MBOX6C0" ,
                            "CAS_COUNT_ALL:MBOX7C0" };
-#endif
-#else
-static char         *evs = \
+static char *sky_evs = \
                            "CAS_COUNT_RD:MBOX0C1," \
                            "CAS_COUNT_WR:MBOX0C2," \
                            "CAS_COUNT_RD:MBOX1C1," \
@@ -62,7 +58,7 @@ static char         *evs = \
                            "CAS_COUNT_WR:MBOX6C2," \
                            "CAS_COUNT_RD:MBOX7C1," \
                            "CAS_COUNT_WR:MBOX7C2,";
-static char         *evs_names[16] = {
+static char *sky_evs_names[16] = {
                            "CAS_COUNT_RD:MBOX0C1" ,
                            "CAS_COUNT_WR:MBOX0C2" ,
                            "CAS_COUNT_RD:MBOX1C1" ,
@@ -79,10 +75,14 @@ static char         *evs_names[16] = {
                            "CAS_COUNT_WR:MBOX6C2" ,
                            "CAS_COUNT_RD:MBOX7C1" ,
                            "CAS_COUNT_WR:MBOX7C2" };
-#endif
 
-#define evs_count  8
+static uint        ice_evs_count = 8;
+static uint        sky_evs_count = 16;
+//
 static topology_t  tp;
+static uint        evs_count;
+static char       *evs;
+static char      **evs_names;
 static likevs_t    events;
 static double     *ctrs;
 static uint        ctrs_count;
@@ -94,7 +94,12 @@ state_t bwidth_likwid_status(topology_t *tp_in)
 {
 	state_t s;
 
+    if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_SKYLAKE_X){
+        return_msg(EAR_ERROR, Generr.api_incompatible);
+    }
+    // Total CPUs count
 	cpus_count = tp_in->cpu_count;
+
 	if (state_fail(s = topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
 		return s;
 	}
@@ -102,13 +107,29 @@ state_t bwidth_likwid_status(topology_t *tp_in)
 		debug("likwid_init failed: %s %d", state_msg, s);
 		return s;
 	}
+    // Icelake
+    if (tp_in->model >= MODEL_ICELAKE_X) {
+        evs_count = ice_evs_count;
+        evs_names = ice_evs_names;
+        evs       = ice_evs;
+    }
+    // Skylake
+    else {
+        evs_count = sky_evs_count;
+        evs_names = sky_evs_names;
+        evs       = sky_evs;
+    }
 	if (state_fail(s = likwid_events_open(&events, &ctrs, &ctrs_count, evs, evs_count))) {
 		debug("likwid_init failed: %s %d", state_msg, s);
 		return s;
 	}
-	//
+    //
 	ctrs_accum = calloc(ctrs_count, sizeof(ullong));
 	devs_count = tp_in->socket_count * evs_count;
+    // Debugging
+    debug("sockets   : %u", tp.cpu_count);
+    debug("total cpus: %u", cpus_count);
+    debug("counters  : %u", devs_count);
 
 	return EAR_SUCCESS;
 }
@@ -153,8 +174,7 @@ state_t bwidth_likwid_read(ctx_t *c, ullong *cas)
 		for (k = 0; k < evs_count; ++k, ++j) {
 			ctrs_accum[j] += (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
 			cas[j] = ctrs_accum[j];
-			//cas[j] = (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
-			//printf("IMC%d: %llu\n", j, cas[j]);
+            debug("S%d%s: %llu", i, evs_names[k], cas[j]);
 		}
 	}
 	return EAR_SUCCESS;

@@ -133,7 +133,6 @@ ehandler_t eard_handler_energy,handler_energy;
 ulong current_node_freq;
 int eard_must_exit = 0;
 topology_t node_desc;
-ctx_t imc_eard_ctx;
 int fd_rapl[MAX_PACKAGES];
 double rapl_pck_tdps[MAX_PACKAGES];
 double rapl_dram_tdps[MAX_PACKAGES];
@@ -824,12 +823,9 @@ int main(int argc, char *argv[])
 				verbose(VCONF, "Initializing IMCfreq metrics API ");
 				imcfreq_load(&node_desc, NO_EARD);
 				state_assert(s, imcfreq_init(no_ctx), _exit(0));
-				// IMC Management
-				verbose(VCONF, "Initializing IMCfreq mgt API:Load ");
-				state_assert(s, mgt_imcfreq_load(&node_desc, NO_EARD), _exit(0));
-				verbose(VCONF, "Initializing IMCfreq mgt API:Init ");
-				state_assert(s, mgt_imcfreq_init(&imc_eard_ctx), _exit(0));
-				verbose(VCONF, "IMC metrics and management initialized ");
+
+                // Services
+                services_init(&node_desc);
 
 #if EARD_LOCK
 				eard_lock(ear_tmp);

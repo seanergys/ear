@@ -59,6 +59,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 		state_return_msg(EAR_BAD_ARGUMENT, 0,
 		 "the conf value cannot be NULL if the plugin is not loaded");
 	}
+    // TODO: This variable is not defined anywhere
 	my_energy_plugin=getenv("SLURM_EAR_ENERGY_PLUGIN");
 	if ((my_energy_plugin==NULL) || (conf->user_type!=AUTHORIZED)){
 		found = (strcmp(conf->installation.obj_ener, "default") != 0);

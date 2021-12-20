@@ -42,34 +42,16 @@ void eards_disconnect();
 /** Given a frequency value, sends a request to change the frequency to that
 *   value. Returns -1 if there's an error, 0 if the change_freq service has not
 *   been provided, and the final frequency value otherwise. */
-/* sets the same CPU freq in all the CPUs */
-unsigned long eards_change_freq(unsigned long newfreq);
-/* Sets the given CPU freq to CPUS set to 1 in the mask */
-unsigned long eards_change_freq_with_mask(unsigned long newfreq,cpu_set_t *mask);
-/* Changes the CPU freq of all the CPUs. If CPU freq for a CPU is 0, the CPU freq is not modified */
-unsigned long eards_change_freq_with_list(unsigned int num_cpus,unsigned long *newfreq);
-/* Returns the CPU freq in the given cpu */
-unsigned long eards_get_freq(unsigned int num_cpu);
-/* Sets the list of CPU freqs in freqlist and returns the avg*/
-unsigned long eards_get_freq_list(unsigned int num_cpus,unsigned long *freqlist); 
-/** Requests the frequency data size. Returns -1 if there's an error, and the
-*   actual value otherwise. */
-unsigned long eards_get_data_size_frequency();
 /**** New API for cpufreq management */
 /* Load, init etc can be used directly from metrics */
 /* These are privileged functions */
 state_t eards_cpufreq_read(cpufreq_t *ef,size_t size);
 
 
-state_t eards_set_turbo();
-
 /************************************/
 // Uncore frequency management
 state_t eards_imcfreq_data_count(uint *count);
 state_t eards_imcfreq_read(imcfreq_t *ef,size_t size);
-
-state_t eards_mgt_imcfreq_get(ulong service, char *data, size_t size);
-state_t eards_mgt_imcfreq_set(ulong service, uint *index_list, uint index_count);
 
 /************************************/
 // Uncore services

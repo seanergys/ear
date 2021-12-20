@@ -82,16 +82,6 @@ InstDir=@prefix@
 # Network extension (using another network instead of the local one). If compute nodes must be accessed from login nodes with a network different than default, and can be accesed using a expension, uncommmet next line and define 'netext' accordingly. 
 # NetworkExtension=netext
 
-#---------------------------------------------------------------------------------------------------
-# Plugin configuration. These values are used for the whole cluster except a specific configuration is
-# explicitly applied to one tag. They are mandatory since they are used by default 
-#---------------------------------------------------------------------------------------------------
-## Energy readings sources: List of plugins available at $EAR_INSTALL_PATH/lib/plugins/energy
-energy_plugin=energy_nm.so
-## Energy models: List of plugins available at $EAR_INSTALL_PATH/lib/plugins/models
-energy_model=avx512_model.so
-## Powercap plugins: List of plugins available at $EAR_INSTALL_PATH/lib/plugins/powercap
-powercap_plugin=inm.so
 
 #---------------------------------------------------------------------------------------------------
 # Authorized Users
@@ -111,8 +101,13 @@ AuthorizedGroups=grp1,grp2
 # monitoring the cluster's powercap, max_powercap can be used to ensure that a node's power will never
 # go beyond that value, regardless of the free power available cluster-wide.
 # At least a default tag is mandatory to be included in this file for a cluster to work properly.
-Tag=6148 default=yes max_avx512=2.2 max_avx2=2.6 max_power=500 min_power=50 error_power=600 coeffs=coeffs.default powercap=0
-Tag=6126 max_avx512=2.3 max_avx2=2.9 ceffs=coeffs.6126.default max_power=600 error_power=700 powercap=0
+
+# default powercap plugin can be specified for nodes using the tag. POWERCAP=0 --> disabled, POWERCAP=1 -->unlimited, POWERCAP=N (> 1) limits node to N watts
+
+Tag=6148 default=yes max_avx512=2.2 max_avx2=2.6 max_power=500 min_power=50 error_power=600 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plug
+in=energy_nm.so
+Tag=6148_GPU default=yes max_avx512=2.2 max_avx2=2.6 max_power=800 min_power=150 error_power=1000 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plugin=energy_nm.so  gpu_powercap_plugin=gpu.so
+
 
 #---------------------------------------------------------------------------------------------------
 ## Power policies
@@ -120,16 +115,18 @@ Tag=6126 max_avx512=2.3 max_avx2=2.9 ceffs=coeffs.6126.default max_power=600 err
 #
 ## policy names must be exactly file names for policies installeled in the system
 DefaultPowerPolicy=min_time
-Policy=monitoring Settings=0 DefaultFreq=2.4 Privileged=0
-Policy=min_time Settings=0.7 DefaultFreq=2.0 Privileged=0
-Policy=min_energy Settings=0.05 DefaultFreq=2.4 Privileged=1
+
+Policy=monitoring Settings=0 DefaultPstate=1 Privileged=0
+Policy=min_time Settings=0.7 DefaultPstate=4 Privileged=0
+Policy=min_energy Settings=0.05 DefaultPstate=1 Privileged=1
+
 
 # For homogeneous systems, default frequencies can be easily specified using freqs, for heterogeneous systems it is preferred to use pstates or use tags 
 
-# Example with pstates (lower pstates corresponds with higher frequencies). Pstate=1 is nominal and 0 is turbo
-#Policy=monitoring Settings=0 DefaultPstate=1 Privileged=0
-#Policy=min_time Settings=0.7 DefaultPstate=4 Privileged=0
-#Policy=min_energy Settings=0.05 DefaultPstate=1 Privileged=1
+# Example with freqs (lower pstates corresponds with higher frequencies). Pstate=1 is nominal and 0 is turbo
+#Policy=monitoring Settings=0 DefaultFreq=2.4 Privileged=0
+#Policy=min_time Settings=0.7 DefaultFreq=2.0 Privileged=0
+#Policy=min_energy Settings=0.05 DefaultFreq=2.4 Privileged=1
 
 
 #Example with tags

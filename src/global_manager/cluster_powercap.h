@@ -19,6 +19,8 @@
 #define CLUSTER_POWERCAP_H
 #include <daemon/remote_api/eard_rapi.h>
 
+#define POWER_TYPE 0
+#define ENERGY_TYPE 1
 
 typedef struct shared_powercap_data {
     ulong status;
@@ -39,6 +41,7 @@ void reduce_allocation(cluster_powercap_status_t *cluster_status,powercap_opt_t 
 uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_opt_t *cluster_options);
 void send_powercap_options_to_cluster(powercap_opt_t *cluster_options);
 void print_cluster_power_status(cluster_powercap_status_t *my_cluster_power_status);
+uint cluster_get_min_power(cluster_conf_t *conf, char type);
 void cluster_powercap_init();
 int cluster_power_limited();
 void cluster_check_powercap();

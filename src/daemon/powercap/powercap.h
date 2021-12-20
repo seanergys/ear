@@ -28,7 +28,7 @@ void powercap_end();
 //void get_powercap_status(powercap_status_t *my_status);
 void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status);
 void powercap_set_opt(powercap_opt_t *opt, int id);
-uint powercat_get_value();
+uint powercap_get_value();
 int is_powercap_set();
 void print_powercap_opt(powercap_opt_t *opt);
 int powercap_idle_to_run();
@@ -49,6 +49,7 @@ void powercap_reset_default_power();
 void powercap_reduce_def_power(uint power);
 void powercap_increase_def_power(uint power);
 void powercap_set_powercap(uint power);
+ulong powercap_elapsed_last_powercap();
 
 void powercap_new_job();
 void powercap_end_job();

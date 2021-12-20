@@ -31,7 +31,6 @@
 // Verbosity parameters
 #define none	0
 #define empty	NULL
-#define no_ctx  NULL
 
 typedef struct ctx_s {
 	void *context;

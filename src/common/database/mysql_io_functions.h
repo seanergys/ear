@@ -194,4 +194,6 @@ int mysql_statement_error(MYSQL_STMT *statement);
 int mysql_retrieve_power_signatures(MYSQL *connection, char *query, power_signature_t **pow_sigs);
 
 
+/** Given a MYSQL connection and a query, retrieves the corresponding result and stores it in results*/
+int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns);
 #endif

@@ -47,7 +47,7 @@
 
 #define DVFS_PERIOD 0.5
 #define DVFS_BURST_DURATION 1000
-#define DVFS_RELAX_DURATION 1000
+#define DVFS_RELAX_DURATION 60000
 
 #define PSTATE_STEP 6
 #define PSTATE0_STEP 25
@@ -75,6 +75,7 @@ static uint node_size;
 static uint dvfs_status = PC_STATUS_OK;
 static uint dvfs_ask_def = 0;
 static uint dvfs_monitor_initialized = 0;
+static timestamp_t last_dvfs_time;
 
 /************************ These functions must be implemented in cpufreq *****/
 
@@ -82,9 +83,9 @@ static uint dvfs_monitor_initialized = 0;
 static void print_frequencies(int cpus, ulong *f)
 {
     int i;
-		char buff[4096];
-		char buffshort[64];
-		buff[0] = '\0';
+    char buff[4096];
+    char buffshort[64];
+    buff[0] = '\0';
     for (i=0;i<cpus;i++)
     {
         if (f[i]>0){
@@ -101,7 +102,10 @@ static void print_frequencies(int cpus, ulong *f)
 static void frequency_nfreq_to_npstate(ulong *f,uint *p,uint cpus)
 {
     int i;
-    for (i=0;i<cpus;i++) p[i] = frequency_freq_to_pstate(f[i]);
+    for (i=0;i<cpus;i++) {
+        if (f[i]) p[i] = frequency_freq_to_pstate(f[i]);
+        else p[i] = num_pstates - 1;
+    }
 }
 static void frequency_npstate_to_nfreq(uint *p,ulong *f,uint cpus)
 {
@@ -266,31 +270,41 @@ state_t dvfs_pc_thread_init(void *p)
 /************************ This function is called by the monitor in iterative part ************************/
 state_t dvfs_pc_thread_main(void *p)
 {
+    debug("entering dvfs_pc_thread_main, current_dvfs_pc %lu and c_status %u", current_dvfs_pc, c_status);
     unsigned long long acum_energy;
     uint extra, tmp_pstate[MAX_CPUS_SUPPORTED];
+    timestamp_t curr_time;
+    ulong elapsed;
 
-		memset(c_pstate, 0, sizeof(uint)* MAX_CPUS_SUPPORTED);
-		memset(t_pstate, 0, sizeof(uint)* MAX_CPUS_SUPPORTED);
-		memset(c_req_f , 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    /* Get elapsed time since last call */
+    timestamp_get(&curr_time);
+    elapsed = timestamp_diff(&curr_time,  &last_dvfs_time, TIME_MSECS);
+    last_dvfs_time = curr_time;
 
     /* Update target frequency */
+    memset(c_pstate, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    memset(t_pstate, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    memset(c_req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
     read_rapl_msr(fd_rapl,values_rapl_end);
     /* Calculate power */
     diff_rapl_msr_energy(values_diff,values_rapl_end,values_rapl_init);
-    acum_energy=acum_rapl_energy(values_diff);
-    power_rapl=(float)acum_energy/(DVFS_PERIOD*RAPL_MSR_UNITS);
-    my_limit=(float)current_dvfs_pc;
-
 
     /* Copy init=end */
     memcpy(values_rapl_init, values_rapl_end, num_packs * RAPL_POWER_EVS * sizeof(unsigned long long));
 
-    if ((current_dvfs_pc <= 0) || (c_status != PC_STATUS_RUN)){
+    if ((current_dvfs_pc <= POWER_CAP_UNLIMITED) || (c_status != PC_STATUS_RUN)){
         return EAR_SUCCESS;
-    }
+    }   
+
+    acum_energy=acum_rapl_energy(values_diff);
+    power_rapl=(float)acum_energy/(((float)elapsed/1000.0)*RAPL_MSR_UNITS);
+    my_limit=(float)current_dvfs_pc;
+
+    debug("dvfs current rapl power %f in a period of %u", power_rapl, elapsed);
+
     if (power_rapl < 0.5) return EAR_ERROR;
 
     /* Apply limits */
@@ -298,13 +312,13 @@ state_t dvfs_pc_thread_main(void *p)
     frequency_nfreq_to_npstate(c_freq,c_pstate,node_size);
     frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
 
-			
+
     if (power_rapl > my_limit){ /* We are above the PC , reduce freq*/
-				//print_frequencies(node_size,c_freq);
-				//vector_print_pstates(c_pstate, node_size);
-				//print_frequencies(node_size,c_req_f);
-				//vector_print_pstates(t_pstate, node_size);
-				verbose(VEARD_PC,"%sCurrent freq freq0 %lu freqn %lu%s", COL_RED, c_freq[0], c_freq[node_size-1],COL_CLR);
+        //print_frequencies(node_size,c_freq);
+        //vector_print_pstates(c_pstate, node_size);
+        //print_frequencies(node_size,c_req_f);
+        //vector_print_pstates(t_pstate, node_size);
+        verbose(VEARD_PC,"%sCurrent freq freq0 %lu freqn %lu%s", COL_RED, c_freq[0], c_freq[node_size-1],COL_CLR);
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
         }
@@ -322,9 +336,9 @@ state_t dvfs_pc_thread_main(void *p)
         }
         /* Finally we set */
         memcpy(c_pstate,tmp_pstate,sizeof(uint)*MAX_CPUS_SUPPORTED);
-				//vector_print_pstates(c_pstate, node_size);
+        //vector_print_pstates(c_pstate, node_size);
         frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
-				//print_frequencies(node_size, c_freq);
+        //print_frequencies(node_size, c_freq);
         frequency_set_with_list(node_size,c_freq);
         verbose(VEARD_PC,"%spower above limit. Curr %.2f Limit %.2f, setting freq0 %lu freqm %lu%s", COL_RED, power_rapl, my_limit, c_freq[0], c_freq[node_size-1], COL_CLR);
 
@@ -336,7 +350,7 @@ state_t dvfs_pc_thread_main(void *p)
 
         frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
         if (higher_pstate(c_pstate,t_pstate)){
-            
+
             extra = compute_extra_power(power_rapl, 1, c_pstate, t_pstate);
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ 
                 if (higher_pstate(c_pstate, prev_pstate) && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
@@ -399,6 +413,32 @@ state_t enable(suscription_t *sus)
     return EAR_SUCCESS;
 }
 
+state_t plugin_set_burst()
+{
+    debug("setting dvfs to burst mode");
+    return monitor_burst(sus_dvfs);
+}
+
+state_t plugin_set_relax()
+{
+    return monitor_relax(sus_dvfs);
+}
+
+void restore_frequency()
+{
+    int i;
+    /* Get target frequency */
+    memset(c_req_f , 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
+    //frequency_get_cpufreq_list(node_size,c_freq); //necessary??
+    for (i = 0; i < node_size; i++) {
+        if (c_req_f[i] == 0) c_req_f[i] = frequency_get_nominal_freq();
+    }
+
+    //print_frequencies(node_size, c_freq);
+    frequency_set_with_list(node_size, c_req_f);
+}
+
 state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 {
     int i;
@@ -409,6 +449,9 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
     dvfs_status = PC_STATUS_OK;
     dvfs_ask_def = 0;
     for (i=0;i<MAX_CPUS_SUPPORTED;i++) prev_pstate[i] = UINT_MAX; //reset flipflop measures
+    if (limit == POWER_CAP_UNLIMITED) {
+        restore_frequency();
+    }
     return EAR_SUCCESS;
 }
 
@@ -528,7 +571,7 @@ uint get_powercap_status(domain_status_t *status)
     //debug("DVFS: get_powercap_status");
     if (!dvfs_monitor_initialized) return 0;
     /* Return 0 means we cannot release power */
-    if (current_dvfs_pc == PC_UNLIMITED) return 0;
+    if (current_dvfs_pc == POWER_CAP_UNLIMITED) return 0;
     /* If we don't know the req_f we cannot release power */
 
     if (is_null_f(c_req_f)) { 

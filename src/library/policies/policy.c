@@ -30,7 +30,7 @@
 #include <common/environment.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
-#include <library/metrics/signature_ext.h>
+#include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
 #include <library/metrics/gpu.h>
@@ -51,12 +51,10 @@
 #include <library/policies/common/pc_support.h>
 #include <library/policies/policy_state.h>
 
-
 extern masters_info_t masters_info;
 extern cpu_set_t ear_process_mask;
 extern int ear_affinity_is_set;
 extern uint *imc_max_pstate,*imc_min_pstate;
-extern uint imc_mgt_compatible;
 extern uint imc_devices;
 extern const pstate_t *imc_pstates;
 int my_globalrank;
@@ -259,7 +257,9 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 
     //if (*freq_set != *(c->ear_frequency) || dom->cpu == POL_GRAIN_CORE)
     print_freq_per_core();
-    *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
+    if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS) && (system_conf->pc_opt.current_pc <= POWER_CAP_UNLIMITED)){
+        *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
+    }
     if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
     avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);
     verbose_master(2,"Setting CPU freq to %lu",*(c->ear_frequency));
@@ -273,7 +273,7 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         return EAR_SUCCESS;
     }
     verbose_master(2,"Lower IMC pstate %lu and upper %lu",freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
-    if (dyn_unc && imc_mgt_compatible){
+    if (dyn_unc && metrics_get(MGT_IMCFREQ)->ok){
         imc_up = calloc(imc_devices,sizeof(uint));
         imc_low = calloc(imc_devices,sizeof(uint));
         /* We are using the same imc pstates for all the devices for now */
@@ -486,7 +486,7 @@ state_t policy_init()
     verbose_master(2,"Using turbo for CP when load unbalance set to %u", use_turbo_for_cp);
 
 		/* conf_dyn_unc is based on the configuration. dyn_unc is modified at runtime depending of number of jobs running */   
-    if (cdyn_unc != NULL && imc_mgt_compatible){
+    if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok){
        conf_dyn_unc = atoi(cdyn_unc);
     }
 		dyn_unc = conf_dyn_unc;
@@ -548,8 +548,8 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     conf_install_t *data=&app_settings->installation;
 
     /* This part of code is to decide which policy to load based on default and hacks */
-    char *obj_path = getenv(SCHED_EAR_POWER_POLICY);
-    char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
+    char *obj_path = getenv(HACK_POWER_POLICY);
+    char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
     char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
     char use_path[SZ_PATH_INCOMPLETE];
 
@@ -560,14 +560,14 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 #if SHOW_DEBUGS
     if (masters_info.my_master_rank >=0){
         if (obj_path!=NULL){ 
-            debug("%s = %s",SCHED_EAR_POWER_POLICY,obj_path);
+            debug("%s = %s",HACK_POWER_POLICY,obj_path);
         }else{
-            debug("%s undefined",SCHED_EAR_POWER_POLICY);
+            debug("%s undefined",HACK_POWER_POLICY);
         }
         if (ins_path !=NULL){
-            debug("%s = %s",SCHED_EARL_INSTALL_PATH,ins_path);
+            debug("%s = %s",HACK_EARL_INSTALL_PATH,ins_path);
         }else{
-            debug("%s undefined",SCHED_EARL_INSTALL_PATH);
+            debug("%s undefined",HACK_EARL_INSTALL_PATH);
         }
     }
 #endif
@@ -686,7 +686,7 @@ static int is_try_again()
 state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 {
     polctx_t *c=&my_pol_ctx;
-    signature_t node_sig, est_sig;
+    signature_t node_sig;
     node_freqs_t *freqs = &nf;
     state_t st=EAR_ERROR;
     uint busy, iobound, mpibound,earl_phase_classification;
@@ -866,7 +866,6 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     polctx_t *c = &my_pol_ctx;
     state_t ret,retg = EAR_SUCCESS;
 		uint jobs_in_node;
-		signature_t new_sig;
 		verbose(2,"policy_ok ");
     if (curr == NULL || prev == NULL){
         *ok = 1;
@@ -1003,23 +1002,30 @@ state_t policy_configure()
 /* This function is executed forces a given frequency independently of the policy */
 state_t policy_force_global_frequency(ulong new_f)
 {
-		ulong *freq_set = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
-		int i;
-		polctx_t *c=&my_pol_ctx;
+    ulong *freq_set = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+    polctx_t *c=&my_pol_ctx;
     ear_frequency = new_f;
-    if (masters_info.my_master_rank>=0){ 
-				c->app->def_freq = new_f;
-				for (i = 0 ; i < lib_shared_region->num_processes; i++) freq_set[i] = new_f;
+    int i;
+
+    if (masters_info.my_master_rank>=0)
+    {
+        c->app->def_freq = new_f;
+        for (i = 0 ; i < lib_shared_region->num_processes; i++) {
+            freq_set[i] = new_f;
+        }
         if (ear_affinity_is_set){
             from_proc_to_core(freq_set);
         }else{
-            for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = freq_set[0];
+            for (i=0;i<MAX_CPUS_SUPPORTED;i++) {
+                freq_per_core[i] = freq_set[0];
+            }
         }
-        *(c->ear_frequency) = eards_change_freq_with_list(arch_desc.top.cpu_count,freq_per_core);
-        if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
-
-			// eards_change_freq(ear_frequency);
-		}
+        *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
+        if (*(c->ear_frequency) == 0) {
+            *(c->ear_frequency) = freq_set[0];
+        }
+        // eards_change_freq(ear_frequency);
+    }
     return EAR_SUCCESS;
 }
 

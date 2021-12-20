@@ -33,7 +33,7 @@ int propagate_status(request_t *command, uint port, status_t **status);
 int propagate_app_status(request_t *command, uint port, app_status_t **status, int num_apps);
 int propagate_release_idle(request_t *command, uint port, pc_release_data_t *release);
 int propagate_powercap_status(request_t *command, uint port, powercap_status_t **status);
-int propagate_get_power(request_t *command, uint port, uint64_t **power);
+int propagate_get_power(request_t *command, uint port, power_check_t **power);
 
 powercap_status_t *mem_alloc_powercap_status(char *final_data);
 char *mem_alloc_char_powercap_status(powercap_status_t *status);

@@ -213,14 +213,17 @@ void dispose_rapl_msr(int *fd_map)
 void diff_rapl_msr_energy(ullong *diff, ullong *end, ullong *init)
 {
 	ullong ret = 0;
+    long long tmp_end, tmp_init;
 	int nump, j;
 	nump = get_total_packages();
 
 	for (j = 0; j < nump * RAPL_ENERGY_EV; j++) {
-		if (end[j] >= init[j]) {
-			ret = end[j] - init[j];
+        tmp_end = (long long) end[j];
+        tmp_init = (long long) init[j];
+		if (tmp_end >= tmp_init) {
+			ret = tmp_end - tmp_init;
 		} else {
-			ret = ullong_diff_overflow(init[j], end[j]);
+			ret = ullong_diff_overflow(tmp_init, tmp_end);
 		}
 		diff[j] = ret;
 	}

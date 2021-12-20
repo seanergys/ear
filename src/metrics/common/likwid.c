@@ -105,7 +105,7 @@ static int load_test(char *path)
 	if (access(path, X_OK) != 0) {
 		return 0;
 	}
-	if ((liblikwid = dlopen(path, RTLD_NOW | RTLD_LOCAL)) == NULL) {
+	if ((liblikwid = dlopen(path, RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND)) == NULL) {
 		debug("dlopen fail");
 		return 0;
 	}

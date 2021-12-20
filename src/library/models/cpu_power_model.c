@@ -56,38 +56,56 @@ static conf_install_t copy_conf;
 static architecture_t copy_arch;
 static settings_conf_t * copy_settings;
 
-state_t cpu_power_model_load(settings_conf_t *libconf,conf_install_t *data,architecture_t *arch_desc)
+state_t cpu_power_model_load(settings_conf_t *libconf,conf_install_t *data,architecture_t *arch_desc, uint API)
 {
   char basic_path[SZ_PATH_INCOMPLETE];
-  char *obj_path = getenv(SCHED_EAR_CPU_POWER_MODEL);
-  char *ins_path = getenv(SCHED_EARL_INSTALL_PATH);
+  char *obj_path = getenv(HACK_CPU_POWER_MODEL);
+  char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
 	state_t st;
+	uint already_loaded = cpu_power_model_loaded;
+
+	char *default_model="cpu_power_model_default.so";
+	char *dummy_model="cpu_power_model_dummy.so";
+	char *model = default_model;
+
+	if (API == API_DUMMY) model = dummy_model;
 
 
 	if (((obj_path == NULL) && (ins_path == NULL)) || (libconf->user_type != AUTHORIZED))
   { 
-    xsnprintf(basic_path,sizeof(basic_path), "%s/models/cpu_power_model_intel_skl.so", data->dir_plug);
+    xsnprintf(basic_path,sizeof(basic_path), "%s/models/%s", data->dir_plug, model);
     obj_path = basic_path;
   }else{
     if (obj_path == NULL){
-      snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/cpu_power_model_intel_skl.so",ins_path);
+      snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/%s",ins_path, model);
       obj_path=basic_path;
     }
   }
   debug("Using cpu power model path  %s", obj_path);
   st = symplug_open(obj_path,(void **) &cpu_power_models_syms_fun, cpu_power_models_syms_nam,  cpu_power_models_funcs_n);
 	if (st == EAR_SUCCESS) cpu_power_model_loaded = 1;
-	memcpy(&copy_conf, data, sizeof(conf_install_t));
-	memcpy(&copy_arch, arch_desc, sizeof(architecture_t));
-	copy_settings = libconf;
+	if (!already_loaded){
+		memcpy(&copy_conf, data, sizeof(conf_install_t));
+		memcpy(&copy_arch, arch_desc, sizeof(architecture_t));
+		copy_settings = libconf;
+	}
 
 	return st;
 }
 
 state_t cpu_power_model_init()
 {
-	if (cpu_power_models_syms_fun.init != NULL) cpu_power_models_syms_fun.init(copy_settings, &copy_conf, &copy_arch);
-	return EAR_SUCCESS;
+	state_t init_status = EAR_ERROR;
+	if (cpu_power_models_syms_fun.init != NULL) init_status = cpu_power_models_syms_fun.init(copy_settings, &copy_conf, &copy_arch);
+	if (init_status == EAR_SUCCESS) return EAR_SUCCESS;
+	
+	/* If coefficients are not available, we will load the dummy cpu power model */
+
+	if (cpu_power_model_load(copy_settings, &copy_conf, &copy_arch, API_DUMMY) == EAR_SUCCESS){
+		if (cpu_power_models_syms_fun.init != NULL) init_status = cpu_power_models_syms_fun.init(copy_settings, &copy_conf, &copy_arch);
+	}else return EAR_ERROR;
+	
+	return init_status;
 }
 
 state_t cpu_power_model_status()

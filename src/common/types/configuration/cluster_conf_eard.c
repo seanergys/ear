@@ -92,7 +92,7 @@ state_t EARD_parse_token(eard_conf_t *conf,char *token)
         conf->use_log = atoi(token);
         found = EAR_SUCCESS;
     }
-    else if (!strcmp(token, "NODEREPORTPLUGINS"))
+    else if (!strcmp(token, "EARDREPORTPLUGINS"))
     {
         token = strtok(NULL, "=");
         strclean(token, '\n');

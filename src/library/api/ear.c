@@ -61,7 +61,6 @@
 #include <library/models/cpu_power_model.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/signature_ext.h>
 
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
@@ -791,7 +790,7 @@ void update_configuration()
 	set_ear_coeff_db_pathname(system_conf->lib_info.coefficients_pathname);
 	set_ear_dynais_levels(system_conf->lib_info.dynais_levels);
 	/* Included for dynais tunning */
-	cdynais_window=getenv(SCHED_EAR_DYNAIS_WINDOW_SIZE);
+	cdynais_window=getenv(HACK_DYNAIS_WINDOW_SIZE);
   if ((cdynais_window!=NULL) && (system_conf->user_type==AUTHORIZED)){
 		dynais_window=atoi(cdynais_window);
 	}
@@ -848,7 +847,7 @@ void ear_init()
 	char *tmp;
 	state_t st;
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
-	char *ext_def_freq_str=getenv(SCHED_EAR_DEF_FREQ);
+	char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 	
 
 	if (ear_lib_initialized){
@@ -899,7 +898,7 @@ void ear_init()
 
 	verb_level = get_ear_verbose();
 	verb_channel=2;
-	if ((tmp = getenv(SCHED_EARL_VERBOSE)) != NULL) {
+	if ((tmp = getenv(HACK_EARL_VERBOSE)) != NULL) {
 		verb_level = atoi(tmp);
 		VERB_SET_LV(verb_level);
 	}
@@ -1116,29 +1115,13 @@ void ear_init()
     arch_desc.max_freq_avx512=system_conf->max_avx512_freq;
     arch_desc.max_freq_avx2=system_conf->max_avx2_freq;
 
-    // Frequencies
-    ulong *freq_list;
+    // Getting frequencies from EARD
     uint freq_count;
 
-    // Getting frequencies from EARD
     debug("initializing frequencies");
     get_frequencies_path(get_ear_tmp(), app_mgt_path);
     debug("looking for frequencies in '%s'", app_mgt_path);
-    freq_list = attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
-    freq_count = freq_count / sizeof(ulong);
-
-    // Initializing API in user mode	: We should move this to library/management
-    if (frequency_init_user(freq_list, freq_count) == EAR_SUCCESS){
-			for (uint i=0;i<freq_count;i++){
-					verbose_master(2,"Freq[%d] = %lu",i,freq_list[i]);
-			}
-			if ((st = mgt_cpufreq_get_api(&mgt_cpufreq_api)) == EAR_SUCCESS){
-				char mgt_cpufreq_api_text[64];
-				apis_tostr(mgt_cpufreq_api, mgt_cpufreq_api_text, sizeof(mgt_cpufreq_api_text));
-				verbose_master(2,"mgt_cpufreq API %s",mgt_cpufreq_api_text);
-			}
-		
-		}
+    attach_frequencies_shared_area(app_mgt_path, (int *) &freq_count);
     dettach_frequencies_shared_area();
     // You can utilize now the frequency API
     arch_desc.pstates = frequency_get_num_pstates();
@@ -1146,7 +1129,7 @@ void ear_init()
     if (ear_my_rank == 0) {
         if (ear_whole_app == 1 && ear_use_turbo == 1) {
             verbose_master(VEAR_INIT, "turbo learning phase, turbo selected and start computing");
-            if (!my_id) eards_set_turbo();
+            if (!my_id) { mgt_cpufreq_set_governor(no_ctx, Governor.performance); }
         } else {
             verbose_master(VEAR_INIT, "learning phase %d, turbo %d", ear_whole_app, ear_use_turbo);
         }
@@ -1209,7 +1192,7 @@ void ear_init()
     init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
     verbose_master(VEAR_INIT,"Policies and models initialized");	
 
-    if (cpu_power_model_load(system_conf, &system_conf->installation, &arch_desc) == EAR_SUCCESS){
+    if (cpu_power_model_load(system_conf, &system_conf->installation, &arch_desc, API_NONE) == EAR_SUCCESS){
 			verbose_master(VEAR_INIT, "CPU power models loaded");
 		}
 		if (cpu_power_model_init() == EAR_SUCCESS){
@@ -1223,11 +1206,16 @@ void ear_init()
     }else{
         EAR_default_frequency=ext_def_freq;
         EAR_default_pstate=frequency_closest_pstate(EAR_default_pstate);
-				#if 0
+        #if 0
         if (EAR_default_frequency != system_conf->def_freq) {
-            if (!my_id) eards_change_freq(EAR_default_frequency);
+            if (!my_id) {
+                uint pstate_index;
+                if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) EAR_default_frequency, &pstate_index, 0))) {
+                    mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus);
+                }
+            }
         }
-				#endif
+        #endif
     }
 
     strcpy(application.job.policy,system_conf->policy_name);
@@ -1246,7 +1234,7 @@ void ear_init()
 		if (masters_info.my_master_rank >= 0){
 		// Report API
     char my_plug_path[512];
-    utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(SCHED_EARL_INSTALL_PATH), system_conf->user_type);
+    utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
 
 			if (summary_pathname == NULL){
 				if (report_load(my_plug_path,system_conf->lib_info.plugins) != EAR_SUCCESS){

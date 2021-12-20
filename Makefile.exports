@@ -27,6 +27,7 @@ export PAPI_CFLAGS
 export PAPI_LDFLAGS
 export CUDA_BASE
 export LIKWID_BASE
+export FREEIPMI_BASE
 
 export ROOTDIR
 export SRCDIR

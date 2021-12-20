@@ -15,18 +15,18 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_CPUFREQ_USER
-#define MANAGEMENT_CPUFREQ_USER
+#ifndef METRICS_CPUFREQ_BASE_H
+#define METRICS_CPUFREQ_BASE_H
 
-#include <management/cpufreq/cpufreq.h>
+/*
+ * Provisional files to discover the base frequency by low level calls.
+ */
 
-// This is the userspace API.
-//
-// Check cpufreq.h to learn about the cpufreq API. The purpose of this API is
-// to offer an unprivileged version of some functions of cpufreq API. These
-// functions contact with EARD internally.
+#include <common/types/types.h>
+#include <common/hardware/topology.h>
 
-// Returns the current P_STATE (struct) per CPU.
-state_t mgt_cpufreq_user_get_current_list(ctx_t *c, pstate_t *pstate_list);
+void cpufreq_get_base(topology_t *tp, ulong *freq_base);
 
-#endif //MANAGEMENT_CPUFREQ_USER
+void cpufreq_get_boost_enabled(topology_t *tp, uint *boost_enabled);
+
+#endif

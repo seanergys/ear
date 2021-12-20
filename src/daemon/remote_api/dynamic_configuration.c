@@ -88,15 +88,8 @@ typedef struct eard_policy_symbols {
     state_t (*set_risk) (policy_conf_t *ref_pol,policy_conf_t *node_pol,ulong risk,ulong opt_target,ulong cfreq,ulong *nfreq,ulong *f_list,uint nump);
 } eard_polsym_t;
 
-/* Variables to manage non-repeating historic commands */
-typedef struct last_comm_info{
-    int req;
-    int dist;
-    int time;
-} last_comm_info_t;
-
 #define MAX_HISTORIC_COMM 50
-static last_comm_info_t list_last_commands[MAX_HISTORIC_COMM];
+static request_t list_last_commands[MAX_HISTORIC_COMM];
 static int current_pos_last_comm = 0;
 
 static eard_polsym_t *polsyms_fun;
@@ -682,12 +675,12 @@ void dyncon_get_powerstatus(int fd, request_t *command)
 
 void dyncon_get_power(int fd, request_t *command)
 {
-    uint64_t *power;
+    power_check_t *power;
     uint64_t curr_power = 0;
     int return_status;
     long int ack;
     send_answer(fd, &ack);
-    return_status = propagate_get_power(command, my_cluster_conf.eard.port, (uint64_t **)&power);
+    return_status = propagate_get_power(command, my_cluster_conf.eard.port, (power_check_t **)&power);
 
     if (return_status < 1) 
     {
@@ -697,10 +690,11 @@ void dyncon_get_power(int fd, request_t *command)
     debug("return_status %d power=%lu", return_status, *power);
 
     powermon_get_power(&curr_power);
-    *power += curr_power;
-    debug("return_status %d power=%lu current_power=%lu", return_status, *power, curr_power);
+    power->power += curr_power;
+    power->num_nodes++;
+    debug("return_status %d power=%lu current_power=%lu", return_status, power->power, curr_power);
 
-    send_data(fd, sizeof(uint64_t), (char *)power, EAR_TYPE_POWER_CHECK);
+    send_data(fd, sizeof(power_check_t), (char *)power, EAR_TYPE_POWER_CHECK);
 
     debug("Returning from dyncon_get_powerstatus");
     free(power);
@@ -763,7 +757,8 @@ static int is_new_command(request_t *comm)
 		if (comm->req == EAR_RC_NEW_JOB || comm->req == EAR_RC_END_JOB || comm->req == EAR_RC_NEW_TASK || comm->req == EAR_RC_STATUS) return 1;
     // if ((comm->req == last_command) && (comm->time_code == last_command_time)) return 0;
     for (uint i=0; i < MAX_HISTORIC_COMM ; i++){
-        if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time == comm->time_code)) return 0;
+    //    if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time_code == comm->time_code)) return 0;
+        if (!memcmp(&list_last_commands[i], comm, sizeof(request_t))) return 0;
     }
     return 1;
 }
@@ -773,9 +768,7 @@ static void new_command_received(request_t *comm)
     last_dist     = comm->node_dist;
     last_command  = comm->req;
     last_command_time = comm->time_code;
-    list_last_commands[current_pos_last_comm].req = comm->req;
-    list_last_commands[current_pos_last_comm].dist = comm->node_dist;
-    list_last_commands[current_pos_last_comm].time  = comm->time_code;
+    memcpy(&list_last_commands[current_pos_last_comm], comm, sizeof(request_t));
     current_pos_last_comm = (current_pos_last_comm +1) % MAX_HISTORIC_COMM;
 }
 

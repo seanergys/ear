@@ -424,12 +424,9 @@ void create_job_area(uint ID)
 void clean_job_area(uint ID)
 {
 	char job_path[MAX_PATH_SIZE];
-
-  xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
+    xsnprintf(job_path,sizeof(job_path),"%s/%u",ear_tmp,ID);
 	folder_remove(job_path);
 }
-
-
 
 powermon_app_t *get_powermon_app() {
   return current_ear_app[max_context_created];
@@ -1433,7 +1430,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
   pdomain.cpu      = accum_cpu_power(last_pmon);
   pdomain.dram     = accum_dram_power(last_pmon);
   pdomain.gpu      = accum_gpu_power(last_pmon);
-  powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
+  if (powercap_elapsed_last_powercap() >= f_monitoring) powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
 
 
 
@@ -1921,7 +1918,7 @@ void powermon_report_event(uint event_type, ulong value)
 
 uint powermon_is_idle()
 {
-  return (max_context_created == 0);
+  return (max_context_created == 1); //if only the idle context exists
 
 }
 uint powermon_current_power()
