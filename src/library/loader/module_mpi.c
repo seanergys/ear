@@ -227,11 +227,12 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 
 static int module_mpi_is()
 {
+	uint is_mpi = 1;
 	/* The env var oversubscribe the library version detected */
   load_mpi_version = getenv(SCHED_LOAD_MPI_VERSION);
   if (load_mpi_version != NULL){ 
     verbose(2, " %s = %s", SCHED_LOAD_MPI_VERSION, load_mpi_version);
-    return 1;
+		is_mpi = 1;
   }else verbose(2, " %s not defined", SCHED_LOAD_MPI_VERSION);
 
 	/* If not, we use the default approach of looking for the MPI symbol */
@@ -241,7 +242,7 @@ static int module_mpi_is()
     return 1;
   }else{
     verbose(2,"MPI_Get_library_version NOT detected");
-		return 0;
+		return is_mpi;
   }
 
 
