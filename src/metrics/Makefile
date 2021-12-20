@@ -24,7 +24,8 @@ mets_OBJS = \
     $(SRCDIR)/metrics/bandwidth/cpu/likwid.o \
     $(SRCDIR)/metrics/bandwidth/cpu/dummy.o \
     $(SRCDIR)/metrics/cache/cache.o \
-    $(SRCDIR)/metrics/cache/cpu/perf.o \
+    $(SRCDIR)/metrics/cache/archs/dummy.o \
+    $(SRCDIR)/metrics/cache/archs/perf.o \
     $(SRCDIR)/metrics/cpi/cpi.o \
     $(SRCDIR)/metrics/cpi/archs/dummy.o \
     $(SRCDIR)/metrics/cpi/archs/perf.o \

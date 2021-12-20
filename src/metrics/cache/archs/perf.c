@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -26,7 +26,7 @@
 #define HW_CACHE_LL   PERF_COUNT_HW_CACHE_LL
 #define HW_OP_READ    PERF_COUNT_HW_CACHE_OP_READ
 #define HW_OP_WRITE   PERF_COUNT_HW_CACHE_OP_WRITE
-#define HW_OP_ALL     (HW_OP_READ | HW_OP_WRITE)
+#define HW_OP_ALL     (HW_OP_READ)
 #define HW_RES_MISS   PERF_COUNT_HW_CACHE_RESULT_MISS
 
 static ullong hwell_l1_ev = HW_CACHE_L1D | (HW_OP_ALL << 8) | (HW_RES_MISS << 16);
