@@ -787,7 +787,11 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				metrics->L1_misses = cache_diff[s].l1d_misses;
 				metrics->L2_misses = cache_diff[s].l2_misses;
 				metrics->L3_misses = cache_diff[s].l3_misses;
-				if (metrics->sig_ext == NULL) metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
+			    cache_data_print(&cache_diff[s], cache_avrg[s], verb_channel);
+            
+                if (metrics->sig_ext == NULL) {
+                    metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
+                }
 				sig_ext = metrics->sig_ext;
 
 				/* FLOPS */
