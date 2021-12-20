@@ -35,8 +35,8 @@ typedef struct eargm_def
 {
     int id;
     uint port;
-    ulong energy;
-    ulong power;
+    long energy;
+    long power;
     char node[GENERIC_NAME];
     int num_subs;
     int *subs; //eargms under that meta_eargm
@@ -48,9 +48,9 @@ typedef struct eargm_conf
   uint  use_aggregation; /* Use aggregated metrics.Default 1 */
   ulong t1;       /* default 60 seconds */
   ulong t2;       /* default 600 seconds */
-  ulong   energy;     /* mandatory */
+  long   energy;     /* mandatory */
   /* PowerCap */
-  ulong power;
+  long power;
   ulong t1_power;
   ulong powercap_mode;  /* 1=auto by default, 0=monitoring_only */
   ulong defcon_power_limit;   /* Percentages from the maximum to execute the action (0..100)*/
@@ -78,6 +78,7 @@ typedef struct eargm_conf
 
 state_t EARGM_token(char *token);
 state_t EARGM_parse_token(eargm_conf_t *conf,char *token);
+void check_cluster_conf_eargm(eargm_conf_t *conf);
 void copy_eargmd_conf(eargm_conf_t *dest,eargm_conf_t *src);
 void set_default_eargm_conf(eargm_conf_t *eargmc);
 void print_eargm_conf(eargm_conf_t *conf);

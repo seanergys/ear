@@ -34,7 +34,7 @@
 
 #include <metrics/flops/flops.h>
 
-#include <library/models/cpu_power_model_intel_skl.h>
+#include <library/models/cpu_power_model_default.h>
 
 static intel_skl_t my_node_coeffs;
 static uint arch_model_loaded = 0;

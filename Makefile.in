@@ -26,6 +26,7 @@ DB_CFLAGS    = @DB_CPPFLAGS@
 DB_LDFLAGS   = @DB_LDFLAGS@ @DB_LIBS@
 CUDA_BASE    = @CUDA_DIR@
 LIKWID_BASE  =
+FREEIPMI_BASE=
 
 # Directories
 ROOTDIR      = $(shell pwd)

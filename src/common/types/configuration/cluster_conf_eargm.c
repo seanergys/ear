@@ -192,7 +192,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
     {
         token = strtok(NULL, "=");
         /* It mas be included in power */
-        conf->power = atoi(token);
+        conf->power = atol(token);
         found=EAR_SUCCESS;
     }
     else if (!strcmp(token, "GLOBALMANAGERPOWERPERIOD") || !strcmp(token, "EARGMPOWERPERIOD"))
@@ -304,7 +304,20 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
     return found;
 }
 
-
+void check_cluster_conf_eargm(eargm_conf_t *conf)
+{
+    if (conf->num_eargms == 0) {
+        warning("Not having an EARGMId definition is deprecated. Using global values to create an EARGM def");
+        conf->eargms = realloc(conf->eargms, sizeof(eargm_def_t)*(conf->num_eargms+1));
+        memset(&conf->eargms[0], 0, sizeof(eargm_def_t)); //this could be replaced by a default init function
+        conf->eargms[0].id = 0;
+        conf->eargms[0].port = conf->port;
+        conf->eargms[0].energy = conf->energy;
+        conf->eargms[0].power = conf->power;
+        strcpy(conf->eargms[0].node, conf->host);
+        conf->num_eargms++;
+    }
+}
 
 void copy_eargmd_conf(eargm_conf_t *dest,eargm_conf_t *src)
 {
@@ -345,7 +358,7 @@ void print_eargm_def(eargm_def_t *conf)
 {
     int i;
     verbosen(VCCONF,"\t\t->EARGM %d node %s (port %u) ", conf->id, conf->node, conf->port);
-    verbosen(VCCONF,"energy limit %lu power limit %lu ", conf->energy, conf->power);
+    verbosen(VCCONF,"energy limit %ld power limit %ld ", conf->energy, conf->power);
     if (conf->num_subs > 0) {
         verbosen(VCCONF, "meta-controlled eargms: ");
     }
@@ -359,13 +372,13 @@ void print_eargm_conf(eargm_conf_t *conf)
 {
     int i;
     verbosen(VCCONF,"--> EARGM configuration\n");
-    verbosen(VCCONF,"\t eargm: verbosen %u \tuse_aggregation %u \tt1 %lu \tt2 %lu \tenergy limit: %lu \tport: %u \tmode: %u\tmail: %s\thost: %s\n",
+    verbosen(VCCONF,"\t eargm: verbosen %u \tuse_aggregation %u \tt1 %lu \tt2 %lu \tenergy limit: %ld \tport: %u \tmode: %u\tmail: %s\thost: %s\n",
             conf->verbose,conf->use_aggregation,conf->t1,conf->t2,conf->energy,conf->port, conf->mode, conf->mail, conf->host);
     verbosen(VCCONF,"\t eargm: defcon levels [%u,%u,%u] grace period %u\n",conf->defcon_limits[0],conf->defcon_limits[1],conf->defcon_limits[2],
             conf->grace_periods);
     verbosen(VCCONF,"\t policy %u (0=MaxEnergy,other=error) units=%u (-,K,M)\n",conf->policy,conf->units);
     verbosen(VCCONF,"\t use_log %u report plugins %s\n",conf->use_log, conf->plugins);
-    verbosen(VCCONF,"\t cluster_power_limit %lu powercap_check_period %lu\n",conf->power,conf->t1_power);
+    verbosen(VCCONF,"\t cluster_power_limit %ld powercap_check_period %lu\n",conf->power,conf->t1_power);
     verbosen(VCCONF,"\t powercap_mode %lu (0=monitoring, 1=auto [def])\n",conf->powercap_mode);
     verbosen(VCCONF,"\t power limit for action %lu and for lower %lu\n",conf->defcon_power_limit, conf->defcon_power_lower);
     verbosen(VCCONF,"\t powercap_limit_action %s and powercap_lower_action %s\n",conf->powercap_limit_action, conf->powercap_lower_action);
