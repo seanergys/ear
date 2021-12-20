@@ -1433,7 +1433,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
   pdomain.cpu      = accum_cpu_power(last_pmon);
   pdomain.dram     = accum_dram_power(last_pmon);
   pdomain.gpu      = accum_gpu_power(last_pmon);
-  powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
+  if (powercap_elapsed_last_powercap() >= f_monitoring) powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
 
 
 
@@ -1766,7 +1766,7 @@ void *eard_power_monitoring(void *noinfo)
 
 	while (!eard_must_exit) {
 		verbose(VNODEPMON,"\n%s------------------- NEW PERIOD -------------------%s",COL_BLU,COL_CLR);
-		// Wait for N usecs
+		// Wait for N secs
 		sleep(f_monitoring);
 
 		// Get time and Energy

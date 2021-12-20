@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <common/config.h>
 #include <common/colors.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/states.h>
 #include <common/system/execute.h>
@@ -66,6 +66,8 @@ static uint8_t last_cluster_perc = 0;
 extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 extern int max_context_created;
 extern int num_contexts;
+
+static timestamp_t last_powercap_reallocation_time;
 
 
 #if POWERCAP_MON
@@ -151,6 +153,7 @@ static int set_powercap_value(uint domain,uint limit)
 			current_ear_app[i]->settings->pc_opt.current_pc = powercat_get_value();
 		}
 	}
+	timestamp_get( &last_powercap_reallocation_time); 
   return pmgt_set_powercap_value(pcmgr,pc_pid,domain,(ulong)limit);
 }
 
@@ -178,6 +181,12 @@ void powercap_end()
 		error("pmgt_disable");
 	}
 
+}
+
+ulong powercap_elapsed_last_powercap()
+{
+	return timestamp_diffnow(&last_powercap_reallocation_time, TIME_SECS);
+	
 }
 
 int powercap_init()
@@ -575,7 +584,7 @@ void powercap_set_powercap(uint power)
 {
 	while(pthread_mutex_trylock(&my_pc_opt.lock));
 	my_pc_opt.def_powercap = power;
-	my_pc_opt.current_pc = power;	
+	//my_pc_opt.current_pc = power;	
 	my_pc_opt.last_t1_allocated = power;	
 	set_powercap_value(DOMAIN_NODE, my_pc_opt.last_t1_allocated);
 	pthread_mutex_unlock(&my_pc_opt.lock);

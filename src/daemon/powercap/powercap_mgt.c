@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include <sched.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
@@ -522,7 +522,7 @@ state_t pmgt_set_powercap_value(pwr_mgt_t *phandler,uint pid,uint domain,ulong l
 		int cc;
     int i;
     for (i=0;i<NUM_DOMAINS;i++){
-        //debug("Using %f weigth for domain %d: Total %lu allocated %f",pdomains[i],i,limit,limit*pdomains[i]);
+        d1111111ebug("Using %f weigth for domain %d: Total %lu allocated %f",pdomains[i],i,limit,limit*pdomains[i]);
         ret=freturn(pcsyms_fun[i].set_powercap_value,pid,domain,limit*pdomains[i],current_util[i]);
 #ifndef SYN_TEST
 				for (cc = 0;cc <= max_context_created; cc++){
@@ -713,7 +713,7 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 #ifndef SYN_TEST
     if (domain == DOMAIN_CPU){
 			for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++){		
-				if (f[i] == 0) f[i] = frequency_pstate_to_freq(1);
+				if (f[i] == 0) f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
 			}
 		}
 #endif

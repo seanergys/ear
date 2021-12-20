@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <limits.h>
 #define _GNU_SOURCE
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <signal.h>
@@ -339,14 +339,15 @@ state_t dvfs_pc_thread_main(void *p)
             
             extra = compute_extra_power(power_rapl, 1, c_pstate, t_pstate);
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ 
-                if (higher_pstate(c_pstate, prev_pstate) && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
+							uint ish = higher_pstate(c_pstate, prev_pstate);
+                if (ish && ((extra*2.0+power_rapl) > my_limit)) { //the second condition is to prevent drastic power decreases from being unrecoverable
                     //debug("Can't raise frequency without a powercap increase (would exceed power usage)");
                     return EAR_SUCCESS;
                 }
                 reduce_one_pstate(c_pstate,t_pstate);
                 frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
                 frequency_set_with_list(node_size,c_freq);
-                debug("%spower below limit, setting freq0 %lu freqm %lu %s", COL_GRE, c_freq[0], c_freq[node_size-1], COL_CLR);
+                debug("%spower below limit, setting freq0 %lu freqm %lu (ish %u, extra %u)%s", COL_GRE, c_freq[0], c_freq[node_size-1], ish, extra, COL_CLR);
             }
         }else if (higher_pstate(t_pstate,c_pstate)){
             frequency_npstate_to_nfreq(t_pstate,c_freq,node_size);

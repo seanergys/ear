@@ -264,8 +264,7 @@ static void metrics_global_stop()
 	
 	if (masters_info.my_master_rank < 0){
 		while(sig_shared_region[my_node_id].ready){ 
-			verbose(2,"Process %d global waiting", my_node_id);
-			usleep(1000000);
+			usleep(10);
 		}
 	}
 	imc_avg[APP] = 0;
@@ -1126,9 +1125,11 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
   /* Waiting for node signatures */
-  verbose_master(2,"Waiting for node signatures");
-  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0) usleep(100);
-
+  verbose_master(2,"Waiting for node signatures:Loop %lu", (ulong)time(NULL));
+  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0){ 
+		usleep(10);
+	}
+	verbose_master(2," Computing app signature");
 	compute_per_process_and_job_metrics(&nodeapp);
 
 	/* At this point we mark signatures are not ready to be computed again */
@@ -1137,9 +1138,11 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	verbose(2,"Global stop ID=%d",my_node_id);	
 	metrics_global_stop();
 	metrics_compute_signature_data(APP, metrics, 1, procs);
-  verbose_master(2,"Waiting for node signatures");
+  verbose_master(2,"Waiting for node signatures:App %lu", (ulong)time(NULL));
   /* Waiting for node signatures */
-  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
+  while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ){ 
+		usleep(10);
+	}
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
