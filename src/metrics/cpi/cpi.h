@@ -38,7 +38,6 @@
 //  - Requires root: no
 
 typedef struct cpi_s {
-	timestamp_t time;
 	ullong instructions;
 	ullong cycles;
 	ullong stalls;

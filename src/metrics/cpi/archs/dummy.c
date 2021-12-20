@@ -17,7 +17,6 @@
 
 //#define SHOW_DEBUGS 1
 
-#include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <metrics/common/perf.h>
@@ -55,19 +54,12 @@ state_t cpi_dummy_read(ctx_t *c, cpi_t *ci)
 state_t cpi_dummy_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 {
 	ullong diff = 0LLU;
-	ullong time = 0LLU;
 	double secs = 0.0;
 	double cis  = 0.0;
 	int i;
 
 	*cpi = 0.0;
 	memset(ciD, 0, sizeof(cpi_t));
-	// Ms to seconds (for decimals)
-	if ((time = timestamp_diff(&ci2->time, &ci1->time, TIME_MSECS)) == 0LLU) {
-		return EAR_SUCCESS;
-	}
-	secs = (double) time;
-	secs = secs / 1000.0;
 	//
 	ciD->instructions = overflow_magic_u64(ci2->instructions, ci1->instructions, MAXBITS64);
 	ciD->cycles = overflow_magic_u64(ci2->cycles, ci1->cycles, MAXBITS64);

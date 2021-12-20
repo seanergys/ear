@@ -27,11 +27,11 @@
 //  ----------------------------------------------------------------------------
 //  | Architecture    | F/M | Comp. | Granularity | Comments                   |
 //  ----------------------------------------------------------------------------
-//  | Intel HASWELL   | 63  | v     | Process     |                            |
-//  | Intel BROADWELL | 79  | v     | Process     |                            |
-//  | Intel SKYLAKE   | 85  | v     | Process     |                            |
-//  | AMD ZEN+/2      | 17h | v     | Process     | No L2                      |
-//  | AMD ZEN3        | 19h | v     | Process     | No L2                      |
+//  | Intel HASWELL   | 63  | v     | Process     | L1 and L2 no writes        |
+//  | Intel BROADWELL | 79  | v     | Process     | L1 and L2 no writes        |
+//  | Intel SKYLAKE   | 85  | v     | Process     | L1 and L2 no writes        |
+//  | AMD ZEN+/2      | 17h | v     | Process     | L1 no writes, no L2        |
+//  | AMD ZEN3        | 19h | v     | Process     | L1 no writes, no L2        |
 //  ---------------------------------------------------------------------------|
 // Props:
 //  - Thread safe: yes
@@ -41,7 +41,9 @@ typedef struct cache_s {
 	timestamp_t time;
 	ullong l1d_misses;
 	ullong l2_misses;
-	ullong l3_misses;
+    ullong l3r_misses;
+    ullong l3w_misses;
+    ullong l3_misses;
 } cache_t;
 
 typedef struct coche_ops_s {

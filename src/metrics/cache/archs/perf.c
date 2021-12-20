@@ -26,22 +26,24 @@
 #define HW_CACHE_LL   PERF_COUNT_HW_CACHE_LL
 #define HW_OP_READ    PERF_COUNT_HW_CACHE_OP_READ
 #define HW_OP_WRITE   PERF_COUNT_HW_CACHE_OP_WRITE
-#define HW_OP_ALL     (HW_OP_READ | HW_OP_WRITE)
 #define HW_RES_MISS   PERF_COUNT_HW_CACHE_RESULT_MISS
 
-static ullong hwell_l1_ev = HW_CACHE_L1D | (HW_OP_ALL << 8) | (HW_RES_MISS << 16);
-static ullong hwell_l2_ev = 0x2724;
-static ullong hwell_l3_ev = HW_CACHE_LL  | (HW_OP_ALL << 8) | (HW_RES_MISS << 16);
-static uint   hwell_l1_tp = PERF_TYPE_HW_CACHE;
-static uint   hwell_l2_tp = PERF_TYPE_RAW;
-static uint   hwell_l3_tp = PERF_TYPE_HW_CACHE;
-static ullong zen_l1_ev   = HW_CACHE_L1D | (HW_OP_ALL << 8) | (HW_RES_MISS << 16);
-static ullong zen_l3_ev   = HW_CACHE_LL  | (HW_OP_ALL << 8) | (HW_RES_MISS << 16);
-static uint   zen_l1_tp   = PERF_TYPE_HW_CACHE;
-static uint   zen_l3_tp   = PERF_TYPE_HW_CACHE;
+// It seems that you can't mix OP_READ and OP_WRITE.
+static ullong hwell_l1_ev  = HW_CACHE_L1D  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong hwell_l2_ev  = 0x2724;
+static ullong hwell_l3r_ev = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong hwell_l3w_ev = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+static uint   hwell_l1_tp  = PERF_TYPE_HW_CACHE;
+static uint   hwell_l2_tp  = PERF_TYPE_RAW;
+static uint   hwell_l3_tp  = PERF_TYPE_HW_CACHE;
+static ullong zen_l1_ev    = HW_CACHE_L1D | (HW_OP_READ << 8) | (HW_RES_MISS << 16);
+static ullong zen_l3r_ev   = HW_CACHE_LL  | (HW_OP_READ << 8) | (HW_RES_MISS << 16);
+static ullong zen_l3w_ev   = HW_CACHE_LL  | (HW_OP_READ << 8) | (HW_RES_MISS << 16);
+static uint   zen_l1_tp    = PERF_TYPE_HW_CACHE;
+static uint   zen_l3_tp    = PERF_TYPE_HW_CACHE;
 //
-static perf_t perfs[3];
-static uint levels[3];
+static perf_t perfs[4];
+static uint levels[4];
 static uint counter;
 static uint started;
 
@@ -63,11 +65,13 @@ state_t cache_perf_load(topology_t *tp, cache_ops_t *ops)
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
 		set_cache(hwell_l1_ev, hwell_l1_tp, 1);
 		set_cache(hwell_l2_ev, hwell_l2_tp, 2);
-		set_cache(hwell_l3_ev, hwell_l3_tp, 3);
+		set_cache(hwell_l3r_ev, hwell_l3_tp, 3);
+        set_cache(hwell_l3w_ev, hwell_l3_tp, 4);
 	}
 	else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
 		set_cache(zen_l1_ev, zen_l1_tp, 1);
-		set_cache(zen_l3_ev, zen_l3_tp, 3);
+		set_cache(zen_l3r_ev, zen_l3_tp, 3);
+        set_cache(zen_l3w_ev, zen_l3_tp, 4);
 	}
 	else {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
@@ -94,7 +98,7 @@ state_t cache_perf_dispose(ctx_t *c)
 
 state_t cache_perf_read(ctx_t *c, cache_t *ca)
 {
-	ullong values[3];
+	ullong values[4];
 	state_t s;
 	int i;
 
@@ -102,6 +106,7 @@ state_t cache_perf_read(ctx_t *c, cache_t *ca)
 	values[0] = 0LLU;
 	values[1] = 0LLU;
 	values[2] = 0LLU;
+    values[3] = 0LLU;
 	if (state_fail(s = perf_read(&perfs[0], values))) {
 		return s;
 	}
@@ -112,15 +117,19 @@ state_t cache_perf_read(ctx_t *c, cache_t *ca)
 		} else if (levels[i] == 2) {
 			ca->l2_misses = values[i];
 		} else if (levels[i] == 3) {
-			ca->l3_misses = values[i];
-		}
+			ca->l3r_misses = values[i];
+		} else if (levels[i] == 4) {
+            ca->l3w_misses = values[i];
+        }
 	}
 	debug("values[0]: %lld", values[0]);
 	debug("values[1]: %lld", values[1]);
-	debug("values[2]: %lld", values[2]);
+    debug("values[2]: %lld", values[2]);
+    debug("values[3]: %lld", values[3]);
 	debug("total L1D misses: %lld", ca->l1d_misses);
 	debug("total L2 misses : %lld", ca->l2_misses);
-	debug("total L3 misses : %lld", ca->l3_misses);
-	
+    debug("total L3R misses : %lld", ca->l3w_misses);
+    debug("total L3W misses : %lld", ca->l3r_misses);
+
 	return EAR_SUCCESS;
 }

@@ -17,7 +17,6 @@
 
 //#define SHOW_DEBUGS 1
 
-#include <common/system/time.h>
 #include <common/output/debug.h>
 #include <metrics/common/perf.h>
 #include <metrics/cpi/archs/perf.h>
@@ -85,7 +84,6 @@ state_t cpi_perf_dispose(ctx_t *c)
 state_t cpi_perf_read(ctx_t *c, cpi_t *ci)
 {
 	memset(ci, 0, sizeof(cpi_t));
-	timestamp_get(&ci->time);
 	if (ins_en) {
 		perf_read(&perf_ins, &ci->instructions);
 	}

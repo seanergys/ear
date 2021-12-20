@@ -75,7 +75,9 @@ state_t cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *
 	//
 	caD->l1d_misses = overflow_zeros_u64(ca2->l1d_misses, ca1->l1d_misses);
 	caD->l2_misses  = overflow_zeros_u64(ca2->l2_misses,  ca1->l2_misses);
-	caD->l3_misses  = overflow_zeros_u64(ca2->l3_misses,  ca1->l3_misses);
+    caD->l3r_misses = overflow_zeros_u64(ca2->l3r_misses, ca1->l3r_misses);
+    caD->l3w_misses = overflow_zeros_u64(ca2->l3w_misses, ca1->l3w_misses);
+    caD->l3_misses  = caD->l3r_misses + caD->l3w_misses;
     debug("Total L1D misses: %lld", caD->l1d_misses);
     debug("Total L2 misses : %lld", caD->l2_misses);
     debug("Total L3 misses : %lld", caD->l3_misses);
