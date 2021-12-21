@@ -53,6 +53,10 @@ static uint                 boost_enabled;
 static uint                 pss_nominal;
 static uint                 pss_count;
 static uint                 init;
+static uint                 mode_virtual;
+
+//
+static state_t set_frequency_pX(uint cpu, uint pst, uint test, uint set_driver);
 
 state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driver_ops_t *ops_driver)
 {
@@ -60,7 +64,11 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	debug("testing AMD17 P_STATE control status");
 	#if AMD_OSCPUFREQ
 	return EAR_ERROR;
-	#endif
+    #endif
+    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
+    if (!mode_virtual) {
+        hsmp_scan(tp_in);
+    }
 	if (tp_in->vendor != VENDOR_AMD) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
@@ -201,8 +209,6 @@ static state_t pstate_build_psss_single(ullong freq_mhz, ullong *cof, ullong *fi
 	return EAR_SUCCESS;
 }
 
-static state_t set_frequency_p1(uint cpu, uint pst, uint test, uint set_driver);
-
 static int pstate_clean_psss(uint i)
 {
 	int how_many;
@@ -213,7 +219,7 @@ static int pstate_clean_psss(uint i)
 	//
 	how_many = pstate_clean_psss(i+1);
 	// If we are OK then return
-	if (state_ok(set_frequency_p1(0, i, 1, 0))) {
+	if (state_ok(set_frequency_pX(0, i, 1, 0))) {
 		return how_many+1;
 	}
 	// We are not OK
@@ -416,7 +422,29 @@ state_t mgt_cpufreq_amd17_get_available_list(ctx_t *c, pstate_t *pstate_list)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_amd17_get_current_list(ctx_t *c, pstate_t *pstate_list)
+state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
+{
+    uint args[2] = {  0, -1 };
+    uint reps[2] = {  0, -1 };
+    uint cpu;
+    uint pst;
+
+    for (cpu = 0; cpu < tp.cpu_count; ++cpu)
+    {
+        // HSMP
+        args[0] = tp.cpus[cpu].apicid;
+        reps[0] = 0;
+        hsmp_send(tp.cpus[cpu].socket_id, 0x0a, args, reps)
+
+        if (state_ok(static_get_index(&reps[0], &pst, 1))) {
+            pstate_list[cpu].idx = pst;
+            pstate_list[cpu].khz = p1_khz(psss[pst].cof);
+        }
+    }
+    return EAR_SUCCESS;
+}
+
+state_t get_current_virtual(ctx_t *c, pstate_t *pstate_list)
 {
 	const ullong *freq_list;
 	ullong reg, fid, did, cof;
@@ -424,10 +452,10 @@ state_t mgt_cpufreq_amd17_get_current_list(ctx_t *c, pstate_t *pstate_list)
 	uint cpu, pst;
 	state_t s;
 
-	if (xtate_fail(s, driver->get_governor(&driver_c, &governor))) {
+	if (state_fail(s = driver->get_governor(&driver_c, &governor))) {
 		return s;
 	}
-	if (xtate_fail(s, driver->get_current_list(&driver_c, &freq_list))) {
+	if (state_fail(s = driver->get_current_list(&driver_c, &freq_list))) {
 		return s;
 	}
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu)
@@ -459,7 +487,7 @@ state_t mgt_cpufreq_amd17_get_current_list(ctx_t *c, pstate_t *pstate_list)
 					}
 				}
 			}
-		}
+		} // Governor
 
 		#if SHOW_DEBUGS
 		ullong data[4];
@@ -484,6 +512,14 @@ state_t mgt_cpufreq_amd17_get_current_list(ctx_t *c, pstate_t *pstate_list)
 	return EAR_SUCCESS;
 }
 
+state_t mgt_cpufreq_amd17_get_current_list(ctx_t *c, pstate_t *pstate_list)
+{
+    if (mode_virtual) {
+        return get_current_virtual(c, pstate_list);
+    }
+    return get_current_hsmp(c, pstate_list);
+}
+
 state_t mgt_cpufreq_amd17_get_nominal(ctx_t *c, uint *pstate_index)
 {
 	*pstate_index = boost_enabled;
@@ -501,8 +537,21 @@ state_t mgt_cpufreq_amd17_get_index(ctx_t *c, ullong freq_khz, uint *pstate_inde
 }
 
 /** Setters */
+static state_t set_frequency_pX_hsmp(uint cpu, uint pst, uint test)
+{
+    uint args[2] = { 0, -1 };
+    uint reps[1] = { -1, };
+
+    args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | psss[pst].cof;
+
+    if (state_fail(hsmp_send(tp.cpus[cpu].socket_id, 0x08, args, reps))) {
+        serror("hsmp failed");
+    }
+    return EAR_SUCCESS;
+}
+
 // Sets the current P_STATE to MSR P1 adding new frequency.
-static state_t set_frequency_p1(uint cpu, uint pst, uint test, uint set_driver)
+static state_t set_frequency_pX_virtual(uint cpu, uint pst, uint test, uint set_driver)
 {
 	ullong aux;
 	ullong reg;
@@ -547,13 +596,21 @@ static state_t set_frequency_p1(uint cpu, uint pst, uint test, uint set_driver)
 	return EAR_SUCCESS;
 }
 
+static state_t set_frequency_pX(uint cpu, uint pst, uint test, uint set_driver)
+{
+    if (mode_virtual) {
+        return set_frequency_pX_virtual(cpu, pst, test, set_driver);
+    }
+    return set_frequency_pX_hsmp(cpu, pst, test);
+}
+
 // Sets the current P_STATE to MSR P0
-static state_t set_frequency_p0(uint cpu)
+static state_t set_frequency_p0_virtual(uint cpu)
 {
 	state_t s;
 	#if 0
 	// Recovering all MSR P1s to its original state (excess of robustness)
-	if (xtate_fail(s, msr_write(cpu, &regs[1], sizeof(ullong), REG_P1))) {
+	if (state_fail(s = msr_write(cpu, &regs[1], sizeof(ullong), REG_P1))) {
 		return s;
 	}
 	#endif
@@ -563,6 +620,14 @@ static state_t set_frequency_p0(uint cpu)
 	}
 	debug("edited CPU%d to MSR to P0", cpu);
 	return EAR_SUCCESS;
+}
+
+static state_t set_frequency_p0(uint cpu)
+{
+    if (mode_virtual) {
+        return set_frequency_p0_virtual(cpu);
+    }
+    return set_frequency_pX_hsmp(cpu, 0, 0);
 }
 
 state_t mgt_cpufreq_amd17_set_current_list(ctx_t *c, uint *pstate_index)
@@ -588,7 +653,7 @@ state_t mgt_cpufreq_amd17_set_current_list(ctx_t *c, uint *pstate_index)
 				s2 = s1;
 			}
 		// Else
-		} else if (state_fail(s1 = set_frequency_p1(cpu, pstate_index[cpu], 0, 1))) {
+		} else if (state_fail(s1 = set_frequency_pX(cpu, pstate_index[cpu], 0, 1))) {
 			s2 = s1;
 		}
 	}
@@ -618,10 +683,10 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int _cpu)
 			return set_frequency_p0((uint) tp.cpus[_cpu].sibling_id);
 		// Else
 		} else {
-			if (state_fail(s1 = set_frequency_p1((uint) _cpu, pstate_index, 0, 1))) {
+			if (state_fail(s1 = set_frequency_pX((uint) _cpu, pstate_index, 0, 1))) {
 				return s1;
 			}
-			return set_frequency_p1((uint) tp.cpus[_cpu].sibling_id, pstate_index, 0, 1);
+			return set_frequency_pX((uint) tp.cpus[_cpu].sibling_id, pstate_index, 0, 1);
 		}
 	}
 	// Step 2 (all CPUs to P0)
@@ -640,9 +705,9 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int _cpu)
 		}
 		return s2;
 	}
-	// Step 2 (all CPUs to P1)
+	// Step 2 (all CPUs to PX)
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (state_fail(s1 = set_frequency_p1(cpu, pstate_index, 0, 1))) {
+		if (state_fail(s1 = set_frequency_pX(cpu, pstate_index, 0, 1))) {
 			s2 = s1;
 		}
 	}
