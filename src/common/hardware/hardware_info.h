@@ -57,6 +57,8 @@ void cpus_not_in_mask(cpu_set_t *dst, cpu_set_t *src);
 
 /** Prints the affinity mask of the current process */
 void print_affinity_mask(topology_t *topo);
+state_t verbose_affinity_mask(cpu_set_t *mask, uint cpus);
+
 
 /** Prints the affinity mask passed by argument. */
 state_t print_this_affinity_mask(cpu_set_t *mask);

@@ -64,7 +64,6 @@ int warn_channel	__attribute__((weak)) = 2;
 	if (verb_enabled && v <= verb_level) \
 	{ \
 		if (!log_bypass) { \
-            timestamp(verb_channel); \
             dprintf(verb_channel, __VA_ARGS__); \
         } else { \
 			vlog(__VA_ARGS__); \

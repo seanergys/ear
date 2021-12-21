@@ -92,6 +92,18 @@ state_t print_this_affinity_mask(cpu_set_t *mask)
     return EAR_SUCCESS;
 }
 
+state_t verbose_affinity_mask(cpu_set_t *mask, uint cpus)
+{
+    if (mask == NULL) return EAR_ERROR;
+    verbosen(0,"mask affinity = ");
+    for (int i = 0; i < cpus; i++) {
+        verbosen(0,"CPU[%d]=%d ", i,CPU_ISSET(i, mask));
+    }
+    verbosen(0,"\n");
+    return EAR_SUCCESS;
+}
+
+
 state_t is_affinity_set(topology_t *topo,int pid,int *is_set,cpu_set_t *my_mask)
 {
 	cpu_set_t mask;
