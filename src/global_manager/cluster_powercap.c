@@ -67,6 +67,7 @@ static uint total_free;
 #define min(a,b) (a<b?a:b)
 
 void check_powercap_actions(uint cluster_powercap);
+void write_shared_data(ulong current_power, ulong freeable_power, ulong requested);
 
 void aggregate_data(powercap_status_t *cs)
 {
@@ -297,12 +298,16 @@ void cluster_only_powercap()
     float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
 
+
     verbose(VGM_PC, "cluster_only_powercap, power %ld and nodes %ld", power.power, power.num_nodes);
     if (current_cluster_powercap == POWER_CAP_UNLIMITED) {
         verbose(VGM_PC, "cluster_powercap is unlimited, nothing to do");
+        write_shared_data(power.power, 0, 0);
         return;
     }
 
+    uint64_t freeable_power = 0;
+    uint64_t requested = 0;
     if (power.power > upper_limit) {
         if (max_num_nodes > 0) {
             if (risk == 0) cluster_set_powerlimit_all_nodes(current_cluster_powercap/max_num_nodes, &my_cluster_conf); 
@@ -310,6 +315,7 @@ void cluster_only_powercap()
         } else {
             warning("No nodes detected for this EARGM");
         }
+        requested = power.power - upper_limit;
         risk = 1;
     } else {
         if (risk == 1 && power.power <= lower_limit) {
@@ -317,7 +323,9 @@ void cluster_only_powercap()
             cluster_set_powerlimit_all_nodes(1, &my_cluster_conf); //set powercap unlimited
             risk = 0;
         }
+        freeable_power = (uint64_t) (upper_limit - power.power) / 2; //for now, we will free half of whatever extra power
     }
+    write_shared_data(power.power, freeable_power, requested);
     check_powercap_actions(power.power);
 
 }
