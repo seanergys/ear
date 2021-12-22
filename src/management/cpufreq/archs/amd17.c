@@ -24,6 +24,7 @@
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
 #include <management/cpufreq/archs/amd17.h>
+#include <metrics/common/hsmp.h>
 
 typedef struct pss_s {
 	ullong fid;
@@ -252,13 +253,13 @@ static state_t pstate_build_psss()
 	ullong p;
 	int i;
 
-	// Getting the minimum frequency specified by the driver
+	// Getting the minimum frequency specified by the driver. In the past it was 1000.
 	if (state_fail(s = driver->get_available_list(&driver_c, &freqs_available, &freq_count))) {
 		return static_dispose(0, s, state_msg);
 	}
 	min_mhz = freqs_available[freq_count-1] / 1000LLU;
-	// Getting P0(b) information from the first of a list of registers. In case of user mode,
-	// this register is filled virtually, because its impossible to read the MSR.
+	// Getting P0(b) information from the first of a list of registers. Registers are read
+	// during init phase.
 	psss[0].fid = getbits64(regs[0],  7,  0);
 	psss[0].did = getbits64(regs[0], 13,  8);
 	if (psss[0].did == 0) {
@@ -266,23 +267,21 @@ static state_t pstate_build_psss()
 	}
 	// Getting the P0(b) Core Frequency
 	psss[0].cof = (psss[0].fid * 200LLU) / psss[0].did;
-	// Getting P0 in case boost is not enabled
+	// If boost is enabled, P0 is copied in P1. P1 then will have the same COF.
 	i = 1;
-	// If boost is enabled, the non-boosted P0 is defined, if not P0(b) becomes P0.
 	if (boost_enabled) {
 		psss[1].cof = psss[0].cof;
 		psss[1].fid = psss[0].fid;
 		psss[1].did = psss[0].did;
 		i = 2;
 	}
-	// Getting P1 Core Frequency (intervals of 100 MHz)
+	// Getting P2 (or P1 if boost is not enabled) Core Frequency (intervals of 100 MHz).
 	if ((psss[0].cof % 100LLU) != 0) {
 		p = psss[0].cof + (100LLU - (psss[0].cof % 100LLU)) - 100LLU;
 	} else {
 		p = psss[0].cof - 100LLU;
 	}
 	// Getting PSS objects from P1 to P7
-	//min_mhz = 1000;
 	for (; p >= min_mhz && i < MAX_PSTATES; p -= 100, ++i) {
 		if (state_fail(s = pstate_build_psss_single(p, &psss[i].cof, &psss[i].fid, &psss[i].did))) {
 			return s;
@@ -318,9 +317,13 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 	// Find maximum and minimum P_STATE
 	ullong pstate_max = getbits64(data, 2, 0); // P_STATE max ex: P0
 	ullong pstate_min = getbits64(data, 6, 4); // P_STATE min ex: P7
+    debug("PSTATE_MAX: %llu", pstate_max);
+    debug("PSTATE_MIN: %llu", pstate_min);
+    #if 0
 	if (pstate_max > 1LLU || pstate_min < 1LLU) {
-		return static_dispose(tp.cpu_count, s, "Incorrect P_STATE limits");
+		return static_dispose(tp.cpu_count, EAR_ERROR, "Incorrect P_STATE limits");
 	}
+    #endif
 	// Save registers configuration
 	for (data = 0LLU, i = MAX_REGISTERS - 1; i >= 0; --i) {
 		if (xtate_fail(s, msr_read(0, &regs[i], sizeof(ullong), REG_P0+((ullong) i)))) {
@@ -343,11 +346,14 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 	if (state_fail(s = pstate_build_psss())) {
 		return static_dispose(tp.cpu_count, s, state_msg);
 	}
-	// Cleaning (Governor userspace required)
-	//driver->get_governor(&driver_c, &aux);
-	driver->set_governor(&driver_c, Governor.userspace);
-	pss_count = pstate_clean_psss(1) + 1;
-	driver->set_governor(&driver_c, Governor.last);
+	// Cleaning (Governor userspace required). Cleaning means setting
+	// the frequency to test it. If it is not accepted, then its P_STATE
+	// is removed from the list. In case is not virtual, is not required.
+	if (mode_virtual) {
+	    driver->set_governor(&driver_c, Governor.userspace);
+	    pss_count = pstate_clean_psss(1) + 1;
+	    driver->set_governor(&driver_c, Governor.last);
+    }
 	//
 	amd17_print_psss();
 	debug("num P_STATEs: %d", pss_count);
@@ -431,12 +437,20 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
 
     for (cpu = 0; cpu < tp.cpu_count; ++cpu)
     {
-        // HSMP
+        // Preparing HSMP arguments and response
         args[0] = tp.cpus[cpu].apicid;
         reps[0] = 0;
-        hsmp_send(tp.cpus[cpu].socket_id, 0x0a, args, reps)
+        // Calling HSMP
+        hsmp_send(tp.cpus[cpu].socket_id, 0x0a, args, reps);
+        debug("HSMP read %u", reps[0]);
 
-        if (state_ok(static_get_index(&reps[0], &pst, 1))) {
+        // In case of reading maximum frequency or greater
+        if (boost_enabled && (reps[0] > psss[0].cof)) {
+            pstate_list[cpu].idx = 0;
+            pstate_list[cpu].khz = p0_khz(psss[0].cof);
+        }
+        // In case of reading a non-boosted P_STATE
+        else if (state_ok(static_get_index(((ullong) reps[0])*1000LLU, &pst, 1))) {
             pstate_list[cpu].idx = pst;
             pstate_list[cpu].khz = p1_khz(psss[pst].cof);
         }
@@ -543,11 +557,10 @@ static state_t set_frequency_pX_hsmp(uint cpu, uint pst, uint test)
     uint reps[1] = { -1, };
 
     args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | psss[pst].cof;
+    debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]",
+        pst, getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    if (state_fail(hsmp_send(tp.cpus[cpu].socket_id, 0x08, args, reps))) {
-        serror("hsmp failed");
-    }
-    return EAR_SUCCESS;
+    return hsmp_send(tp.cpus[cpu].socket_id, 0x08, args, reps);
 }
 
 // Sets the current P_STATE to MSR P1 adding new frequency.
@@ -604,6 +617,19 @@ static state_t set_frequency_pX(uint cpu, uint pst, uint test, uint set_driver)
     return set_frequency_pX_hsmp(cpu, pst, test);
 }
 
+static state_t set_frequency_p0_hsmp(uint cpu)
+{
+    uint args[2] = { 0, -1 };
+    uint reps[1] = { -1, };
+       
+    // Setting 16 bit MAX (it is converted by the system later) 
+    args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | 65535;
+    debug("setting PS0: %u MHz in cpu %d (apic %d) [%u]",
+        getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
+
+    return hsmp_send(tp.cpus[cpu].socket_id, 0x08, args, reps);
+}
+
 // Sets the current P_STATE to MSR P0
 static state_t set_frequency_p0_virtual(uint cpu)
 {
@@ -627,7 +653,7 @@ static state_t set_frequency_p0(uint cpu)
     if (mode_virtual) {
         return set_frequency_p0_virtual(cpu);
     }
-    return set_frequency_pX_hsmp(cpu, 0, 0);
+    return set_frequency_p0_hsmp(cpu);
 }
 
 state_t mgt_cpufreq_amd17_set_current_list(ctx_t *c, uint *pstate_index)
@@ -666,6 +692,12 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int _cpu)
 	state_t s2 = EAR_SUCCESS;
 	uint cpu;
 
+    if (_cpu >= tp.cpu_count) {
+        return_msg(EAR_ERROR, Generr.cpu_invalid);
+    }
+    if (pstate_index >= pss_count) {
+        return_msg(EAR_ERROR, Generr.arg_outbounds);
+    } 
 	#if 0
 	// Step 1 (excesss of robustness, better rely on external functions to change governor).
 	if (xtate_fail(s1, driver->set_governor(&driver_c, Governor.userspace))) {
@@ -691,19 +723,12 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int _cpu)
 	}
 	// Step 2 (all CPUs to P0)
 	if (pstate_index == 0 && pss_nominal) {
-		#if 0
-		// Excess of robustness, recovering all P1s to its original state
-		for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-			if (xtate_fail(s1, msr_write(cpu, &regs[1], sizeof(ullong), REG_P1))) {
-				s2 = s1;
-			}
-		}
-		#endif
-		// Calling the driver to set P0 in all CPUs
-		if (state_fail(s1 = driver->set_current(&driver_c, 0, all_cpus))) {
-			return s1;
-		}
-		return s2;
+        // Here in the past, when in mode virtual the P1 registers were
+        // recovered to their initial value.
+        if (mode_virtual) {
+		    // Calling the driver to set P0 in all CPUs
+		    return driver->set_current(&driver_c, 0, all_cpus);
+        }
 	}
 	// Step 2 (all CPUs to PX)
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
