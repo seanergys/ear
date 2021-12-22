@@ -260,7 +260,7 @@ state_t dvfs_pc_thread_main(void *p)
     memset(c_req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
-		// verbose_frequencies(node_size, c_req_f);
+		verbose_frequencies(node_size, c_req_f);
 
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
     read_rapl_msr(fd_rapl,values_rapl_end);
