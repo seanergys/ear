@@ -66,10 +66,6 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	#if AMD_OSCPUFREQ
 	return EAR_ERROR;
     #endif
-    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
-    if (!mode_virtual) {
-        hsmp_scan(tp_in);
-    }
 	if (tp_in->vendor != VENDOR_AMD) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
@@ -90,6 +86,11 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 			return s;
 		}
 	}
+    //
+    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
+    if (!mode_virtual) {
+        hsmp_scan(tp_in);
+    }
 	// Setting references (if driver set is not available, this API neither)
 	replace_ops(ops->init,             mgt_cpufreq_amd17_init);
 	replace_ops(ops->dispose,          mgt_cpufreq_amd17_dispose);
