@@ -93,11 +93,6 @@ extern ulong current_node_freq;
 extern char nodename[MAX_PATH_SIZE];
 
 /* This vector has 1 entry per job and numc is the number of contexts created for this job */
-typedef struct job_context{
-	job_id id;
-	uint   numc;
-	uint   num_cpus;
-}job_context_t;
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
 
 

@@ -60,6 +60,12 @@ typedef struct powermon_app {
     accum_power_sig_t accum_ps;
 } powermon_app_t;
 
+typedef struct job_context{
+	job_id id;
+	uint   numc;
+	uint   num_cpus;
+}job_context_t;
+
 /** Periodically monitors the node power monitoring. 
 *
 *	@param frequency_monitoring sample period expressed in usecs. It is dessigned to be executed by a thread
