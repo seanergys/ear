@@ -5,7 +5,7 @@
  *    EAR provides a dynamic, transparent and ligth-weigth solution for
  *    Energy management.
  *
- *        It has been developed in the context of the Barcelona Supercomputing Center (BSC)-Lenovo Collaboration project.
+ *  It has been developed in the context of the Barcelona Supercomputing Center (BSC)-Lenovo Collaboration project.
  *
  *       Copyright (C) 2017  
  *    BSC Contact     mailto:ear-support@bsc.es
@@ -44,17 +44,26 @@
 #include <pwd.h>
 #include <freeipmi/freeipmi.h>
 
+//#define SHOW_DEBUGS 1
+
+#include <common/config.h>
 #include <common/states.h>
+#include <common/system/execute.h>
+#include <common/math_operations.h>
+#include <metrics/common/apis.h>
+#include <metrics/accumulators/types.h>
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
 
 
 #define PACKAGE_NAME  "freeipmi"
 #define FREEIPMI_CONFIG_DIRECTORY_MODE    0700
-#define SDR_CACHE_DIR                     "sdr-cache"
+#define SDR_CACHE_DIR         "sdr-cache"
 #define MAXHOSTNAMELEN 64
 #define MAXPATHLEN 4096
+#define POWER_PERIOD 2
 
 
 static ipmi_ctx_t ipmi_ctx ;
@@ -66,11 +75,20 @@ static ipmi_sdr_ctx_t sdr_ctx;
 static uint8_t channel, slave, lun;
 static uint found = 0;
 static suscription_t *inm_sus;
-static ipmi_ctx_t     ipmi_ctx
-static time_t         last_timestamp;
+static ipmi_ctx_t     ipmi_ctx;
+static time_t   last_timestamp;
+static uint     inm_last_power_reading;
+static uint			inm_timeframe;
+static ulong 		inm_accumulated_energy;
+static uint			inm_initialized = 0;
+
+state_t energy_dispose(void **c);
+static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint *avgp, uint *currentp, uint *periodp);
+static state_t inm_thread_main(void *p);
+static state_t inm_thread_init(void *p);
 
 
-#define SDR_CACHE_FILENAME_PREFIX         "sdr-cache"
+#define SDR_CACHE_FILENAME_PREFIX   "sdr-cache"
 
 /* ipmi_sdr_cache_iterate
  *  * - iterate through all SDR records calling callback for each one.
@@ -78,18 +96,11 @@ static time_t         last_timestamp;
  *    *   value is returned here.
  *     */
 
-				static int
-intelnm_sdr_callback (ipmi_sdr_ctx_t sdr_ctx,
-								uint8_t record_type,
-								const void *sdr_record,
-								unsigned int sdr_record_len,
-								void *arg)
+static int intelnm_sdr_callback (ipmi_sdr_ctx_t sdr_ctx, uint8_t record_type,
+								const void *sdr_record, unsigned int sdr_record_len, void *arg)
 { 
 				int ret; 
-
-
 				debug("Record type %d OEMO RECORD %d\n", record_type, IPMI_SDR_FORMAT_OEM_RECORD);
-
 				if (record_type != IPMI_SDR_FORMAT_OEM_RECORD)
 								return (0);
 
@@ -121,9 +132,7 @@ intelnm_sdr_callback (ipmi_sdr_ctx_t sdr_ctx,
 				return 0;
 }
 
-				static int
-sdr_get_home_directory ( char *buf,
-								unsigned int buflen)
+static int sdr_get_home_directory ( char *buf, unsigned int buflen)
 {
 				uid_t user_id;
 				struct passwd pwd,*pwdptr;
@@ -144,19 +153,13 @@ sdr_get_home_directory ( char *buf,
 				user_id = getuid ();
 				debug("User id %d\n", user_id);
 				memset (&pwd, '\0', sizeof (struct passwd));
-				if (getpwuid_r (user_id,
-																&pwd,
-																tbuf,
-																tbuf_len,
-																&(pwdptr)) != 0)
+				if (getpwuid_r (user_id, &pwd, tbuf, tbuf_len, &(pwdptr)) != 0)
 				{
 								free(tbuf);
 								debug("getpwuid_r error\n");
 								return -1;
 				}
-
 				debug("pw_dir %s\n", pwd.pw_dir); 
-				free(tbuf);
 
 				if (pwd.pw_dir)
 				{
@@ -173,29 +176,14 @@ sdr_get_home_directory ( char *buf,
 								}
 				}
 
-				if ((ret = sndebug (buf,
-																				buflen,
-																				"/tmp/.%s-%s",
-																				PACKAGE_NAME,
-																				pwd.pw_name)) < 0)
-				{
-								debug("sndebug");
-								return -1;
-				}
-				if (ret >= buflen)
-				{
-								debug("sndebug invalid bytes written\n");
-								return -1;
-				}
-
+				snprintf (buf, buflen, "/tmp/.%s-%s", PACKAGE_NAME, pwd.pw_name);
 				if (access (buf, R_OK|W_OK|X_OK) < 0)
 				{
 								if (errno == ENOENT)
 								{
 												if (mkdir (buf, FREEIPMI_CONFIG_DIRECTORY_MODE) < 0)
 												{
-																debug("Cannot make cache directory: %s: %s\n", buf,
-																								strerror (errno));
+																debug("Cannot make cache directory: %s: %s\n", buf, strerror (errno));
 																return -1;
 												}
 								}
@@ -210,20 +198,15 @@ sdr_get_home_directory ( char *buf,
 				return (0);
 }
 
-				static int
-sdr_get_config_directory ( const char *cache_dir,
-								char *buf,
-								unsigned int buflen)
+static int sdr_get_config_directory ( const char *cache_dir, char *buf, unsigned int buflen)
 {
 				char tbuf[MAXPATHLEN+1];
 				int ret;
 
-
 				memset (tbuf, '\0', MAXPATHLEN+1);
 				if (!cache_dir)
 				{
-								if (sdr_get_home_directory ( tbuf,
-																				MAXPATHLEN) < 0){
+								if (sdr_get_home_directory ( tbuf, MAXPATHLEN) < 0){
 												debug("home directory error\n");
 												return (-1);
 								}
@@ -243,44 +226,24 @@ sdr_get_config_directory ( const char *cache_dir,
 												{
 																if (mkdir (tbuf, FREEIPMI_CONFIG_DIRECTORY_MODE) < 0)
 																{
-																				debug("Cannot make cache directory: %s: %s\n",
-																												tbuf,
-																												strerror (errno));
+																				debug("Cannot make cache directory: %s: %s\n", tbuf, strerror (errno));
 																				return (-1);
 																}
 												}
 												else
 												{
-																debug("Cannot access cache directory: %s\n",
-																								tbuf);
+																debug("Cannot access cache directory: %s\n", tbuf);
 																return (-1);
 												}
 								}
 				}
 				debug("home directory is %s\n", tbuf);
-				if ((ret = sndebug (buf,
-																				buflen,
-																				"%s/.%s",
-																				tbuf,
-																				PACKAGE_NAME)) < 0)
-				{
-								debug( "sndebug error");
-								return (-1);
-				}
-
-				if (ret >= buflen)
-				{
-								debug("sndebug invalid bytes written\n");
-								return (-1);
-				}
+				snprintf(buf, buflen, "%s/.%s", tbuf, PACKAGE_NAME);
 				debug("sdr_get_config_directory success\n");
 				return (0);
 }
 
-				static int
-sdr_cache_get_cache_directory ( const char *cache_dir,
-								char *buf,
-								unsigned int buflen)
+static int sdr_cache_get_cache_directory ( const char *cache_dir, char *buf, unsigned int buflen)
 {
 				char tbuf[MAXPATHLEN+1];
 				int ret;
@@ -292,29 +255,12 @@ sdr_cache_get_cache_directory ( const char *cache_dir,
 																MAXPATHLEN) < 0)
 								return (-1);
 
-				if ((ret = sndebug (buf,
-																				buflen,
-																				"%s/%s",
-																				tbuf,
-																				SDR_CACHE_DIR)) < 0)
-				{
-								debug("sndebug error\n");
-								return (-1);
-				}
-
-				if (ret >= buflen)
-				{
-								debug("sndebug invalid bytes written\n");
-								return (-1);
-				}
+				snprintf (buf, buflen, "%s/%s", tbuf, SDR_CACHE_DIR);
 				debug("sdr_cache_get_cache_directory success\n");
 
 				return (0);
 }
-				static int
-sdr_get_cache_filename ( const char *hostname,
-								char *buf,
-								unsigned int buflen)
+static int sdr_get_cache_filename ( const char *hostname, char *buf, unsigned int buflen)
 {
 				char sdrcachebuf[MAXPATHLEN+1];
 				char *cache_directory  = 0;
@@ -325,8 +271,9 @@ sdr_get_cache_filename ( const char *hostname,
 				char hostnamebuf[MAXHOSTNAMELEN+1];
 
 				memset (hostnamebuf, '\0', MAXHOSTNAMELEN+1);
-				if (gethostname (hostnamebuf, MAXHOSTNAMELEN) < 0)
-								sndebug (hostnamebuf, MAXHOSTNAMELEN, "localhost");
+				if (gethostname (hostnamebuf, MAXHOSTNAMELEN) < 0){
+								snprintf (hostnamebuf, MAXHOSTNAMELEN, "localhost");
+				}
 
 				/* shorten hostname if necessary */
 				if ((ptr = strchr (hostnamebuf, '.')))
@@ -337,25 +284,9 @@ sdr_get_cache_filename ( const char *hostname,
 																MAXPATHLEN) < 0)
 								return (-1);
 
-				if ((ret = sndebug (buf,
-																				buflen,
-																				"%s/%s-%s.%s",
-																				sdrcachebuf,
-																				SDR_CACHE_FILENAME_PREFIX,
-																				hostnamebuf,
-																				hostname ? hostname : "localhost")) < 0)
+				snprintf (buf, buflen, "%s/%s-%s.%s", sdrcachebuf, SDR_CACHE_FILENAME_PREFIX,
+																				hostnamebuf, hostname ? hostname : "localhost");
 
-				{
-								debug("sndebug error\n");
-								return (-1);
-				}
-
-				if (ret >= buflen)
-				{
-
-								debug("sndebug invalid bytes written\n");
-								return (-1);
-				}
 				debug("sdr name success %s\n", buf);
 				return (0);
 }
@@ -370,17 +301,17 @@ state_t energy_init(void **c)
 				int ret=0;
 				int rs_len;
 				unsigned int workaround_flags = 0;
-				pthread_mutex_lock(&node_energy_lock_nm);
 				char cachefilenamebuf[MAXPATHLEN+1];
 				char *hostname = 0;
 				int cache_create_flags = 0;
 
-				
+				if (inm_initialized) return EAR_SUCCESS;
 
-
-				//Creating the context
+				//
+				// Creating the context
 				//
 
+				pthread_mutex_lock(&node_energy_lock_nm);
 				debug("Create context\n");
 				if (!( ipmi_ctx = ipmi_ctx_create ())){
 								pthread_mutex_unlock(&node_energy_lock_nm);
@@ -434,12 +365,12 @@ state_t energy_init(void **c)
 								debug("Error in sdr_get_cache_filename\n");
 
 
-				if (ipmi_sdr_cache_open(sdr_ctx, *ipmi_ctx, cachefilenamebuf) < 0){
+				if (ipmi_sdr_cache_open(sdr_ctx, ipmi_ctx, cachefilenamebuf) < 0){
 								debug("Error ipmi_sdr_cache_open, creating it\n");
 								char buff[4096];
-								sndebug(buff,sizeof(buff), "%s/bin/ipmi-oem intelnm get-node-manager-statistics mode=globalpower", FREEIPMI_BASE);
+								snprintf(buff,sizeof(buff), "%s/sbin/ipmi-oem intelnm get-node-manager-statistics mode=globalpower", FREEIPMI_BASE);
 								if (execute(buff) != EAR_SUCCESS){
-												energy_dispose(*ipmi_ctx);
+												energy_dispose(no_ctx);
 												pthread_mutex_unlock(&node_energy_lock_nm);
 												return EAR_ERROR;
 								}
@@ -454,7 +385,7 @@ state_t energy_init(void **c)
 				{
 								if (!found){
 												debug("Error ipmi_sdr_cache_iterate\n");
-												energy_dispose(*ipmi_ctx);
+												energy_dispose(no_ctx);
 												pthread_mutex_unlock(&node_energy_lock_nm);
 												return EAR_ERROR;
 								}
@@ -467,6 +398,7 @@ state_t energy_init(void **c)
 								slave = 0x2c;
 								lun = 0x00;
 								channel = 0x06;
+								pthread_mutex_unlock(&node_energy_lock_nm);
 								return EAR_SUCCESS;
 
 				}
@@ -479,32 +411,32 @@ state_t energy_init(void **c)
 				ipmi_sdr_cache_close(sdr_ctx);
 				ipmi_sdr_ctx_destroy(sdr_ctx);
 				sdr_ctx = NULL;
-i
 		uint maxp, minp, avgp, currentp, periodp;
-    st = inm_power_reading(*ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
+		state_t st;
+    st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
     if (st != EAR_SUCCESS){
       debug("_power_reading fails");
-			energy_dispose(*ipmi_ctx);
+			energy_dispose(no_ctx);
+			pthread_mutex_unlock(&node_energy_lock_nm);
 			return EAR_ERROR;
     }else{
       inm_last_power_reading = currentp;
       inm_sus = suscription();
-			inm_timeframe = periodp * 2;
+			inm_timeframe = POWER_PERIOD * 1000;
       inm_sus->call_main = inm_thread_main;
       inm_sus->call_init = inm_thread_init;
       inm_sus->time_relax = inm_timeframe;
       inm_sus->time_burst = inm_timeframe;
       inm_sus->suscribe(inm_sus);
-      debug("inm energy plugin suscription initialized with timeframe %lu ms",inm_timeframe);
+      debug("inm energy plugin suscription initialized with timeframe %u ms",inm_timeframe);
+
     }
-  }
-
-
-				return EAR_SUCCESS;    
+		inm_initialized = 1;
+		pthread_mutex_unlock(&node_energy_lock_nm);
+		return EAR_SUCCESS;    
 
 }
-
-state_t inm_node_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint *avgp, uint *currentp, uint *periodp)
+static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint *avgp, uint *currentp, uint *periodp)
 {
 				uint8_t mode = IPMI_OEM_INTEL_NODE_MANAGER_STATISTICS_MODE_GLOBAL_POWER_STATISTICS;
 				uint8_t domainid = IPMI_OEM_INTEL_NODE_MANAGER_DOMAIN_ID_ENTIRE_PLATFORM;
@@ -516,7 +448,7 @@ state_t inm_node_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint
 				if (!(obj_cmd_rs = fiid_obj_create (tmpl_cmd_oem_intel_node_manager_get_node_manager_statistics_rs)))
 				{
 								debug("fiid_obj_create: %s\n", strerror (errno));
-								energy_dispose();
+								energy_dispose(no_ctx);
 								return EAR_ERROR;
 				}
 
@@ -530,7 +462,7 @@ state_t inm_node_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint
 																policyid,
 																obj_cmd_rs) < 0){
 								debug("Error ipmi_cmd_oem_intel_node_manager_get_node_manager_statistics\n");
-								energy_dispose(ipmi_ctx);
+								energy_dispose(no_ctx);
 								return EAR_ERROR;
 				}
 
@@ -584,16 +516,19 @@ state_t inm_node_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint
 				}
 				*periodp = val;
 				//debug("Statistics reporting period %d\n", val);
+				verbose(0, "power: Max power %u Min power %u Avg power %u Current power %u Period %u\n", *maxp, *minp, *avgp, *currentp, *periodp);
+
 				return EAR_SUCCESS;
 }
 
 /**** These functions are used to accumulate the eneergy */
-state_t inm_thread_main(void *p)
+static state_t inm_thread_main(void *p)
 {
   uint maxp, minp, avgp, currentp, periodp;
 	ulong current_elapsed;
 	ulong current_energy;
 	time_t currt = time(NULL);
+	state_t st;
 
   st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
   if (currentp > 0){
@@ -603,7 +538,7 @@ state_t inm_thread_main(void *p)
     current_energy = current_elapsed * currentp;
     /* Energy is reported in MJ */
     inm_accumulated_energy += (current_energy*1000);
-    debug("AVG power in last %lu ms is %lu",current_elapsed, currentp);
+    debug("AVG power in last %lu s is %u",current_elapsed, currentp);
   }else{
     debug("Current power is 0 in inm power reading ");
     return EAR_ERROR;
@@ -611,7 +546,7 @@ state_t inm_thread_main(void *p)
   return EAR_SUCCESS;
 }
 
-state_t dcmi_thread_init(void *p)
+static state_t inm_thread_init(void *p)
 {
 	last_timestamp = time(NULL);
   return EAR_SUCCESS;
@@ -660,10 +595,10 @@ state_t energy_to_str(char *str, edata_t e) {
 unsigned long diff_node_energy(ulong init,ulong end)
 { 
 				ulong ret=0;
-				if (end>=init){
-								ret=end-init;
+				if (end >= init){
+								ret = end-init;
 				} else{
-								ret=ulong_diff_overflow(init,end);
+								ret = ulong_diff_overflow(init,end);
 				}
 				return ret;
 }

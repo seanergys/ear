@@ -1920,7 +1920,7 @@ void powermon_report_event(uint event_type, ulong value)
 
 uint powermon_is_idle()
 {
-  return (max_context_created == 1); //if only the idle context exists
+  return (max_context_created == 0); //if only the idle context exists
 
 }
 uint powermon_current_power()
