@@ -706,8 +706,10 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
 
 void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 {
-    int cc;
+    int cc, i;
     powermon_app_t *pmapp;	
+    job_context_t *alloc;
+    int pos_job_in_node;
     for (cc = 1; cc  <= max_context_created; cc ++){
         if (current_ear_app[cc] != NULL){
             pmapp = current_ear_app[cc];
@@ -716,24 +718,27 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
             if (domain == DOMAIN_CPU){ 
                 //memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
                 cpu_set_t m;
-                if (pmapp->app.is_mpi){ 
-                	m = pmapp->app_info->node_mask;
-								}else{
-									continue;
-								}
-								//verbose_affinity_mask(&m, dom_size);
+                pos_job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);
+                if (pmapp->app.is_mpi) {  //job step with EARL
+                    m = pmapp->app_info->node_mask;
+                } else if (!pmapp->is_job) { //job step without EARL
+                    m = pmapp->plug_mask;
+                } else if (pmapp->is_job && alloc->numc == 1 && pos_job_in_node) { //srun without an sbatch
+                    m = pmapp->plug_mask;
+                } else { //sbatch with other steps inside
+                    continue;
+                }
+                //verbose_affinity_mask(&m, dom_size);
 
 						
-                int i;
                 for (i=0; i < MAX_CPUS_SUPPORTED; i++){
                     if (CPU_ISSET(i,&m)) f[i] = pmapp->pc_app_info->req_f[i];
-										else f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
+                    else f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
                 }
             }
 #if USE_GPUS
             if (domain == DOMAIN_GPU){ 
                 //memcpy(f,pc_app_info_data->req_gpu_f,sizeof(ulong)*MAX_GPUS_SUPPORTED);
-                int i;
                 for (i=0; i < MAX_GPUS_SUPPORTED; i++){
                     if (pmapp->pc_app_info->req_gpu_f[i] != 0) f[i] = pmapp->pc_app_info->req_gpu_f[i];
                 }
@@ -821,6 +826,7 @@ void pmgt_idle_to_run(pwr_mgt_t *phandler)
 {
     memcpy(pdomains,pdomains_def,sizeof(float)*NUM_DOMAINS);
     reallocate_power_between_domains();
+    debug("sending PC_STATUS_RUN to all domain");
     pmgt_set_status(phandler,PC_STATUS_RUN);
 }
 void pmgt_run_to_idle(pwr_mgt_t *phandler)
