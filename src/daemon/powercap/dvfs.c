@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <limits.h>
 #define _GNU_SOURCE
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <signal.h>
@@ -251,6 +251,9 @@ state_t dvfs_pc_thread_main(void *p)
     uint extra, tmp_pstate[MAX_CPUS_SUPPORTED];
     timestamp_t curr_time;
     ulong elapsed;
+    debug("--------------------------------------")
+    debug("new_dvfs");
+    debug("--------------------------------------")
 
     /* Get elapsed time since last call */
     timestamp_get(&curr_time);
@@ -258,8 +261,8 @@ state_t dvfs_pc_thread_main(void *p)
     last_dvfs_time = curr_time;
 
     /* Update target frequency */
-    memset(c_pstate, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
-    memset(t_pstate, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    memset(c_pstate, 0, sizeof(uint)*MAX_CPUS_SUPPORTED);
+    memset(t_pstate, 0, sizeof(uint)*MAX_CPUS_SUPPORTED);
     memset(c_req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
@@ -282,6 +285,7 @@ state_t dvfs_pc_thread_main(void *p)
     power_rapl=(float)acum_energy/(((float)elapsed/1000.0)*RAPL_MSR_UNITS);
     my_limit=(float)current_dvfs_pc;
 
+    //vector_print_pstates(prev_pstate, node_size);
     debug("Current power %f current limit %f (%u cpus)", power_rapl, my_limit,node_size);
 
     if (power_rapl < 0.5) return EAR_ERROR;
@@ -337,11 +341,13 @@ state_t dvfs_pc_thread_main(void *p)
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ 
                 uint ish = higher_pstate(c_pstate, prev_pstate);
                 if (ish) {
-                    if ((((extra*2.0+power_rapl) > my_limit || prev_counter > MAX_DVFS_TRIES))) { //the second condition is to prevent drastic power decreases from being unrecoverable
+                    vector_print_pstates(prev_pstate, node_size);
+                    if (((extra*2.0+power_rapl) > my_limit) && (prev_counter >= MAX_DVFS_TRIES)) { //the second condition is to prevent drastic power decreases from being unrecoverable
                         debug("Can't raise frequency without a powercap increase (would exceed power usage), number of tries: %d", prev_counter);
                         return EAR_SUCCESS;
                     }
                     prev_counter++;
+                    debug("increasing prev counter to %d", prev_counter);
                 }
 
                 reduce_one_pstate(c_pstate,t_pstate);
