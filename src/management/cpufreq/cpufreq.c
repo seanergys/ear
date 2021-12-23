@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -30,7 +30,7 @@
 #include <management/cpufreq/archs/default.h>
 #include <management/cpufreq/drivers/linux_cpufreq.h>
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t     lock = PTHREAD_MUTEX_INITIALIZER;
 static mgt_ps_driver_ops_t ops_driver;
 static mgt_ps_ops_t        ops;
 static uint                api;

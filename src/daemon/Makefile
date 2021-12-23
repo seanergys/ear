@@ -48,7 +48,7 @@ eard_OBJS += \
 		$(report_OBJ) \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
-    $(SRCDIR)/common/libcommon.a
+		$(SRCDIR)/common/libcommon.a	
 
 ######## RULES
 

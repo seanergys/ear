@@ -93,11 +93,18 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 			return s;
 		}
 	}
+<<<<<<< HEAD
     mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
     if (!mode_virtual) {
         if (state_fail(s = hsmp_scan(tp_in))) {
             return s;
         }
+=======
+    //
+    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
+    if (!mode_virtual) {
+        hsmp_scan(tp_in);
+>>>>>>> 56fe5dbee0c4a75b0a0168ba042c238a1b929ec0
     }
 	// Setting references (if driver set is not available, this API neither)
 	replace_ops(ops->init,             mgt_cpufreq_amd17_init);
