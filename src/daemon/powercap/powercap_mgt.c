@@ -104,6 +104,8 @@ static float pdomains_min[NUM_DOMAINS]={1.0,0.75,0,0};
 static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
+
+#define SECURITY_RANGE 0.95
 //static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
 const int   pcsyms_n = 19;
 
@@ -693,14 +695,14 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
             if (pdomains[i] > 0)
 								pdomains[i] = ear_max(pdomains_min[i], pdomains[i] - excess*pdomains[i]);
         }
-        pmgt_reset_pdomain();
         debug("reduced power domains by %.2f, new CPU %.2f new GPU %.2f", excess, pdomains[DOMAIN_CPU], pdomains[DOMAIN_GPU]);
-        default_pdomains = 0;
-    }else if ((pdomain->platform < pmgt_limit) && (!default_pdomains)){    
+    		pmgt_reset_pdomain();
+    }else if (pdomain->platform < (pmgt_limit * SECURITY_RANGE)){    
         for (i=0;i< NUM_DOMAINS; i++){
             pdomains[i] = ear_min(pdomains[i] + 0.02,pdomains_def[i]);
-            if (pdomains[i] == pdomains_def[i]) default_pdomains = 1;
         }
+        debug("increase power domains new CPU %.2f new GPU %.2f", pdomains[DOMAIN_CPU], pdomains[DOMAIN_GPU]);
+    		pmgt_reset_pdomain();
     }
 }
 
@@ -720,10 +722,13 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
                 cpu_set_t m;
                 pos_job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);
                 if (pmapp->app.is_mpi) {  //job step with EARL
+										verbose(VEARD_PC, "Using EARL mask");
                     m = pmapp->app_info->node_mask;
                 } else if (!pmapp->is_job) { //job step without EARL
+										verbose(VEARD_PC, "Using plugin mask (step without EARL)");
                     m = pmapp->plug_mask;
-                } else if (pmapp->is_job && alloc->numc == 1 && pos_job_in_node) { //srun without an sbatch
+                } else if (pmapp->is_job && pos_job_in_node && alloc->numc == 1) { //srun without an sbatch
+										verbose(VEARD_PC, "Using plugin mask (step without EARL neither sbatch)");
                     m = pmapp->plug_mask;
                 } else { //sbatch with other steps inside
                     continue;
@@ -733,7 +738,6 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
 						
                 for (i=0; i < MAX_CPUS_SUPPORTED; i++){
                     if (CPU_ISSET(i,&m)) f[i] = pmapp->pc_app_info->req_f[i];
-                    else f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
                 }
             }
 #if USE_GPUS
@@ -748,6 +752,10 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
         }
 
     }
+    for (i=0; i < MAX_CPUS_SUPPORTED; i++){
+    	if (!f[i]) f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
+    }
+
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler)

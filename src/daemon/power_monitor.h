@@ -153,4 +153,6 @@ uint powermon_get_max_powercap_def();
 
 void powermon_report_event(uint event_type, ulong value);
 
+uint is_job_in_node(job_id id, job_context_t **jc);
+
 #endif

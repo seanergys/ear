@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <library/loader/loader.h>
 #include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>

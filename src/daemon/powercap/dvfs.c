@@ -185,7 +185,7 @@ uint compute_extra_power(uint current_power, uint max_steps, uint *current, uint
         num_cpus_to_reduce_pstates(tmp, target, &changes, &changes_max);
         if (changes || changes_max){
             total += (PSTATE_STEP * (float)changes/(float)node_size) + (PSTATE0_STEP * (float)changes_max/(float)node_size);
-						debug("Total power estimated %u: changes (less than nominal) %u - %f changes (to nominal) %d - %f", total, changes, (float)changes/(float)node_size, changes_max, (float)changes_max/(float)node_size);
+						//debug("Total power estimated %u: changes (less than nominal) %u - %f changes (to nominal) %d - %f", total, changes, (float)changes/(float)node_size, changes_max, (float)changes_max/(float)node_size);
             reduce_one_pstate(tmp, target);
         }
         max_steps --;
@@ -263,7 +263,7 @@ state_t dvfs_pc_thread_main(void *p)
     memset(c_req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
 
-		// verbose_frequencies(node_size, c_req_f);
+		//verbose_frequencies(node_size, c_req_f);
 
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
     read_rapl_msr(fd_rapl,values_rapl_end);

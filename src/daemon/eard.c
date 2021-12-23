@@ -30,6 +30,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
+#include <common/system/execute.h>
 
 #include <report/report.h>
 

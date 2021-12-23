@@ -1,4 +1,4 @@
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #define EAR_CPUPOWER 1
 #define _GNU_SOURCE
 #include <sched.h>
