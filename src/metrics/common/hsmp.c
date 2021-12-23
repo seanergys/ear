@@ -76,12 +76,13 @@ state_t hsmp_scan(topology_t *tp)
 {
 	state_t s;
 
+	if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
+		return_msg(EAR_ERROR, Generr.api_incompatible);
+	}
+
 	while (pthread_mutex_trylock(&lock));
 	if (pcis != NULL) {
 		return unlock_msg(EAR_SUCCESS, "");
-	}
-	if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 	sockets_count = tp->socket_count;
 	// By now just ZEN2 and greater
