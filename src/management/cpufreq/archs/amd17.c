@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -453,7 +453,11 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
 
         if (state_ok(search_pstate_list(((ullong) reps[0])*1000LLU, &idx, 1))) {
             pstate_list[cpu].idx = idx;
-            pstate_list[cpu].khz = p1_khz(psss[idx].cof);
+            if (idx == 0) {
+                pstate_list[cpu].khz = p0_khz(psss[idx].cof);
+            } else {
+                pstate_list[cpu].khz = p1_khz(psss[idx].cof);
+            }
         }
     }
     return EAR_SUCCESS;
