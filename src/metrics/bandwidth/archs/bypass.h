@@ -15,29 +15,21 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_BANDWIDTH_AMD49_H
-#define METRICS_BANDWIDTH_AMD49_H
+#ifndef METRICS_BANDWIDTH_BYPASS_H
+#define METRICS_BANDWIDTH_BYPASS_H
 
 #include <metrics/bandwidth/bandwidth.h>
 
-state_t bwidth_amd49_status(topology_t *tp);
+state_t bwidth_bypass_load(topology_t *tp, bwidth_ops_t *ops);
 
-state_t bwidth_amd49_init(ctx_t *c, topology_t *tp);
+state_t bwidth_bypass_init(ctx_t *c);
 
-state_t bwidth_amd49_dispose(ctx_t *c);
+state_t bwidth_bypass_dispose(ctx_t *c);
 
-state_t bwidth_amd49_count(ctx_t *c, uint *count);
+state_t bwidth_bypass_count_devices(ctx_t *c, uint *devs_count);
 
-state_t bwidth_amd49_start(ctx_t *c);
+state_t bwidth_bypass_get_granularity(ctx_t *c, uint *granularity);
 
-state_t bwidth_amd49_reset(ctx_t *c);
-
-state_t bwidth_amd49_stop(ctx_t *c, ullong *cas);
-
-state_t bwidth_amd49_read(ctx_t *c, ullong *cas);
-
-/* Returns the total number of memory accesses */
-unsigned long long acum_uncores(unsigned long long * unc,int n);
-
+state_t bwidth_bypass_read(ctx_t *c, bwidth_t *b);
 
 #endif

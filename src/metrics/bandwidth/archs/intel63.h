@@ -15,21 +15,21 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_BANDWIDTH_LIKWID_H
-#define METRICS_BANDWIDTH_LIKWID_H
+#ifndef METRICS_BANDWIDTH_INTEL63_H
+#define METRICS_BANDWIDTH_INTEL63_H
 
 #include <metrics/bandwidth/bandwidth.h>
 
-state_t bwidth_likwid_status(topology_t *tp);
+state_t bwidth_intel63_load(topology_t *tp, bwidth_ops_t *ops);
 
-state_t bwidth_likwid_init(ctx_t *c, topology_t *fake);
+state_t bwidth_intel63_init(ctx_t *c);
 
-state_t bwidth_likwid_dispose(ctx_t *c);
+state_t bwidth_intel63_dispose(ctx_t *c);
 
-state_t bwidth_likwid_count_devices(ctx_t *c, uint *devs_count);
+state_t bwidth_intel63_count_devices(ctx_t *c, uint *devs_count);
 
-state_t bwidth_likwid_fake(ctx_t *c);
+state_t bwidth_intel63_get_granularity(ctx_t *c, uint *granularity);
 
-state_t bwidth_likwid_read(ctx_t *c, ullong *cas);
+state_t bwidth_intel63_read(ctx_t *c, bwidth_t *b);
 
 #endif

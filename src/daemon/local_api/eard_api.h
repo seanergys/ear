@@ -38,22 +38,6 @@ int eards_connected();
 void eards_disconnect();
 
 /************************************/
-// Uncore services
-/** Sends a request to read the uncores. Returns -1 if there's an error, on
-*   success stores the uncores values' into *values and returns 0. */
-int eards_read_uncore(unsigned long long *values);
-/** Sends a request to stop&read the uncores. Returns -1 if there's an error, on
-*   success stores the uncores values' into *values and returns 0. */
-int eards_stop_uncore(unsigned long long *values);
-/** Sends the request to start the uncores. Returns 0 on success, -1 on error */
-int eards_start_uncore();
-/** Sends a request to reset the uncores. Returns 0 on success, -1 on error */
-int eards_reset_uncore();
-/** Requests the uncore data size. Returns -1 if there's an error, and the
-*   actual value otherwise. */
-unsigned long eards_get_data_size_uncore();
-
-/************************************/
 // RAPL services
 /** Sends a request to read the RAPL counters. Returns -1 if there's an error,
 *   and on success returns 0 and fills the array given by parameter with the

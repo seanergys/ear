@@ -122,7 +122,6 @@ static int fd_my_log = 2;
 
 unsigned long eard_max_freq;
 int eard_max_pstate;
-int num_uncore_counters;
 
 char ear_tmp[MAX_PATH_SIZE];
 char nodename[MAX_PATH_SIZE];
@@ -139,7 +138,6 @@ double rapl_pck_tdps[MAX_PACKAGES];
 double rapl_dram_tdps[MAX_PACKAGES];
 
 /* EARD init errors control */
-static uint error_uncore=0;
 static uint error_rapl=0;
 static uint error_energy=0;
 static uint error_connector=0;
@@ -286,7 +284,6 @@ void eard_exit(uint restart)
 				verbose(VCONF, "Releasing files");
 				clean_global_connector();
 				// RAM Bandwidth
-				dispose_uncores();
                 services_dispose();
 
                 /* Releasing shared memory */
@@ -576,23 +573,15 @@ int read_coefficients() {
 
 void report_eard_init_error()
 {
-				if (error_uncore)
-				{
-								log_report_eard_init_error(&rid,UNCORE_INIT_ERROR,0);
-				}
-				if (error_rapl)
-				{
-								log_report_eard_init_error(&rid,RAPL_INIT_ERROR,0);
-				}
-				if (error_energy)
-				{
-								log_report_eard_init_error(&rid,ENERGY_INIT_ERROR,0);
-				}
-				if (error_connector)
-				{
-								log_report_eard_init_error(&rid,CONNECTOR_INIT_ERROR,0);
-
-				}
+    if (error_rapl) {
+        log_report_eard_init_error(&rid,RAPL_INIT_ERROR,0);
+    }
+    if (error_energy) {
+        log_report_eard_init_error(&rid,ENERGY_INIT_ERROR,0);
+    }
+    if (error_connector){
+        log_report_eard_init_error(&rid,CONNECTOR_INIT_ERROR,0);
+    }
 }
 
 void     update_global_configuration_with_local_ssettings(cluster_conf_t *my_cluster_conf,my_node_conf_t *my_node_conf)
@@ -630,7 +619,6 @@ int main(int argc, char *argv[])
 {
 				char my_name[1024];
 				unsigned long ear_node_freq;
-				int cpu_model;
 				int ret;
 
 				// Usage
@@ -816,31 +804,12 @@ int main(int argc, char *argv[])
 				eard_lock(ear_tmp);
 #endif
 				// At this point, only one daemon is running
-
-
 				// PAST: we had here a frequency set
-
-				verbose(VEARD_INIT,"Initializing uncore counters to compute memory bandwith");
-				// We initiaize uncore counters
-				cpu_model = get_model();
-				verbose(VEARD_INIT,"CPU Model detected %d",cpu_model);
-				num_uncore_counters = init_uncores(cpu_model);
-				verbose(VCONF + 1, "eard %d imc uncore counters detected", num_uncore_counters);
-				if (num_uncore_counters <= 0){
-								error("Uncore counters to compute memory bandwith not detected");
-								error_uncore=1;
-								num_uncore_counters=0;
-				}
-				verbose(VEARD_INIT,"%d uncore counters detected ",num_uncore_counters);
-				reset_uncores();
-				/* Start uncore to have counters ready for reading */
-				start_uncores();
-
 				verbose(VEARD_INIT,"Initializing RAPL counters");
 				// We initialize rapl counters
 				if (init_rapl_msr(fd_rapl)<0){ 
-								error("Error initializing rapl");
-								error_rapl=1;
+                    error("Error initializing rapl");
+                    error_rapl=1;
 				}
 				if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
 					error("Reading CPU TDPs");

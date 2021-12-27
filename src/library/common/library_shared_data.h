@@ -65,17 +65,17 @@ typedef struct mpi_calls_types{
 }mpi_calls_types_t;
 
 typedef struct lib_shared_data{
-    uint 						earl_on;
-    int             num_processes;
-    uint    				num_signatures;
-	  uint 						num_cpus;
-    double 					cas_counters;
-    signature_t 		node_signature;
-    signature_t 		job_signature;
-    int							master_rank;
-    uint						master_ready;
-		cpu_set_t       node_mask;
-		uint 						node_mgr_index;
+    uint        earl_on;
+    int         num_processes;
+    uint        num_signatures;
+    uint        num_cpus;
+    double      cas_counters;
+    signature_t node_signature;
+    signature_t job_signature;
+    int         master_rank;
+    uint        master_ready;
+    cpu_set_t   node_mask;
+    uint        node_mgr_index;
 }lib_shared_data_t;
 
 

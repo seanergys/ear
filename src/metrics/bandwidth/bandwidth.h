@@ -15,54 +15,85 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_BANDWIDTH_CPU
-#define METRICS_BANDWIDTH_CPU
+#ifndef METRICS_BANDWIDTH_H
+#define METRICS_BANDWIDTH_H
 
+#include <common/sizes.h>
 #include <common/states.h>
 #include <common/plugins.h>
+#include <common/system/time.h>
+#include <common/types/generic.h>
 #include <common/hardware/topology.h>
+#include <metrics/common/apis.h>
 
-#define BW_KB 1024.0
-#define BW_MB 1048576.0
-#define BW_GB 1073741824.0
+// Compatibility:
+//  -----------------------------------------------
+//  | Architecture    | F/M | Comp. | Granularity |
+//  -----------------------------------------------
+//  | Intel HASWELL   | 63  | v     | Socket      |
+//  | Intel BROADWELL | 79  | v     | Socket      |
+//  | Intel SKYLAKE   | 85  | v     | Socket      |
+//  | AMD ZEN+/2      | 17h | x     | -           |
+//  | AMD ZEN3        | 19h | x     | -           |
+//  -----------------------------------------------
+// Props:
+//  - Thread safe: yes
+//  - Requires root: no
 
-int init_uncores(int nothing);
+typedef struct bwidth_s {
+	union {
+		timestamp_t time;
+		ullong cas;
+	};
+} bwidth_t;
 
-int dispose_uncores();
+typedef struct bwidth_ops_s {
+	state_t (*init)            (ctx_t *c);
+	state_t (*dispose)         (ctx_t *c);
+	state_t (*count_devices)   (ctx_t *c, uint *dev_count);
+	state_t (*get_granularity) (ctx_t *c, uint *granularity);
+	state_t (*read)            (ctx_t *c, bwidth_t *b);
+	state_t (*data_diff)       (bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
+	state_t (*data_alloc)      (bwidth_t **b);
+	state_t (*data_free)       (bwidth_t **b);
+	state_t (*data_copy)       (bwidth_t *dst, bwidth_t *src);
+	state_t (*data_print)      (ullong cas, double gbs, int fd);
+	state_t (*data_tostr)      (ullong cas, double gbs, char *buffer, size_t length);
+} bwidth_ops_t;
 
-int count_uncores();
+state_t bwidth_load(topology_t *tp, int eard);
 
-int check_uncores();
+state_t bwidth_get_api(uint *api);
 
-int start_uncores();
+//
+state_t bwidth_init(ctx_t *c);
 
-int reset_uncores();
+state_t bwidth_dispose(ctx_t *c);
 
-int stop_uncores(ullong *cas);
+state_t bwidth_count_devices(ctx_t *c, uint *dev_count);
 
-int read_uncores(ullong *cas);
+state_t bwidth_get_granularity(ctx_t *c, uint *granularity);
 
-int compute_uncores(ullong *cas2, ullong *cas1, double *bytes, double units);
+state_t bwidth_read(ctx_t *c, bwidth_t *b);
 
-int alloc_array_uncores(ullong **array);
+// Helpers
 
+/* CAS and GBS are just one value. */
+state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
 
-int uncore_are_frozen(ullong *dest, int n);
+state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
 
-/* All these functions are unprivileged */
+/* Returns the total node CAS and total node GBs. */
+state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
 
+state_t bwidth_data_alloc(bwidth_t **b);
 
-/* Given two uncore counter readings and a period of time computes the memory bandwith in GS/s. T is supposed to be in secs. N is the number of uncore counters */
-int compute_mem_bw(ullong *cas2, ullong *cas1, double *bps, double t,int N);
-int compute_tpi(ullong *cas2, ullong *cas1, double *tpi, ullong inst,int N);
+state_t bwidth_data_free(bwidth_t **b);
 
-void copy_uncores(ullong *dest, ullong *src, int n);
-ullong uncore_ullong_diff_overflow(ullong begin, ullong end);
-void diff_uncores(ullong * diff,ullong *end,ullong  *begin,int N);
-void print_uncores(unsigned long long * DEST,int N);
-void uncores_to_str(unsigned long long * DEST,int N,char *txt,int len);
-int alloc_uncores(ullong **array,int N);
+state_t bwidth_data_copy(bwidth_t *dst, bwidth_t *src);
 
+state_t bwidth_data_print(ullong cas, double gbs, int fd);
 
+state_t bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length);
 
 #endif

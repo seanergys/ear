@@ -3,10 +3,13 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 ######## FILES
 
 band_OBJS = \
-    amd49.o \
+    eard.o \
+    dummy.o \
+    bypass.o \
     intel63.o \
-    likwid.o \
-    dummy.o
+    intel106.o \
+    amd17.o \
+	likwid.o
 
 ######## RULES
 

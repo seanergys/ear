@@ -15,23 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_BANDWIDTH_DUMMY_H
-#define METRICS_BANDWIDTH_DUMMY_H
+#ifndef METRICS_BANDWIDTH_CPU
+#define METRICS_BANDWIDTH_CPU
 
-#include <metrics/bandwidth/bandwidth.h>
+int uncore_are_frozen(ullong *dest, int n);
 
-state_t bwidth_dummy_init(ctx_t *c, topology_t *tp);
+void copy_uncores(ullong *dest, ullong *src, int n);
 
-state_t bwidth_dummy_dispose(ctx_t *c);
-
-state_t bwidth_dummy_count(ctx_t *c, uint *count);
-
-state_t bwidth_dummy_start(ctx_t *c);
-
-state_t bwidth_dummy_reset(ctx_t *c);
-
-state_t bwidth_dummy_stop(ctx_t *c, ullong *cas);
-
-state_t bwidth_dummy_read(ctx_t *c, ullong *cas);
+void diff_uncores(ullong * diff,ullong *end,ullong  *begin,int N);
 
 #endif

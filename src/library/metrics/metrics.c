@@ -75,7 +75,6 @@ extern int         dispose;
 static double      hw_cache_line_size;
 // Options
 static int         flops_supported;
-static int         bandwith_elements;
 static int         flops_elements;
 static int         rapl_elements;
 static ulong       node_energy_datasize;
@@ -84,10 +83,6 @@ static uint        node_energy_units;
 static int         num_packs=0;
 static llong      *metrics_flops[2]; // (vec)
 static int        *metrics_flops_weights; // (vec)
-static ull        *metrics_bandwith[3]; // ops (vec)
-static ull        *metrics_bandwith_init[2]; // ops (vec)
-static ull        *metrics_bandwith_end[2]; // ops (vec)
-static ull        *diff_uncore_value;
 static ull        *metrics_rapl[2]; // nJ (vec)
 static ull        *aux_rapl; // nJ (vec)
 static ull        *last_rapl; // nJ (vec)
@@ -137,34 +132,33 @@ uint       *imc_max_pstate; //*
 uint       *imc_min_pstate; //*
 uint        imc_curr_max_pstate; //*
 uint        imc_curr_min_pstate; //*
-//
+// New APis
 static imcfreq_t  *imcfreq_read1[2];
 static imcfreq_t  *imcfreq_read2[2];
 static ulong       imcfreq_avrg[2];
 static ulong      *imcfreq_diff[2];
-//
-static cpufreq_t *cpufreq_read1[2];
-static cpufreq_t *cpufreq_read2[2];
-       ulong     *cpufreq_diff;
-static ulong      cpufreq_avrg[2];
-//
+static cpufreq_t  *cpufreq_read1[2];
+static cpufreq_t  *cpufreq_read2[2];
+       ulong      *cpufreq_diff;
+static ulong       cpufreq_avrg[2];
+static bwidth_t   *bwidth_read1[2];
+static bwidth_t   *bwidth_read2[2];
+static ullong      bwidth_cas[2];
+static double     *bwidth_gbs[2];
 static cache_t     cache_read1[2];
 static cache_t     cache_read2[2];
 static cache_t     cache_diff[2];
 static double      cache_avrg[2];
-//static llong       metrics_l1[2];
-//static llong     metrics_l2[2];
-//static llong       metrics_l3[2];
-//
-static cpi_t      cpi_read1[2];
-static cpi_t      cpi_read2[2];
-static cpi_t      cpi_diff[2];
-static double     cpi_avrg[2];
+static cpi_t       cpi_read1[2];
+static cpi_t       cpi_read2[2];
+static cpi_t       cpi_diff[2];
+static double      cpi_avrg[2];
 /* New metrics */
 static metrics_t mgt_cpufreq;
 static metrics_t mgt_imcfreq;
 static metrics_t met_cpufreq;
 static metrics_t met_imcfreq;
+static metrics_t met_bwidth;
 static metrics_t met_cache;
 static metrics_t met_cpi;
 
@@ -175,6 +169,7 @@ const metrics_t *metrics_get(uint api)
         case MGT_IMCFREQ: return &mgt_imcfreq;
         case MET_CPUFREQ: return &met_cpufreq;
         case MET_IMCFREQ: return &met_imcfreq;
+        case MET_BWIDTH:  return &met_bwidth;
         case MET_CACHE:   return &met_cache;
         case MET_CPI:     return &met_cpi;
         default: return NULL;
@@ -184,31 +179,36 @@ const metrics_t *metrics_get(uint api)
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
+    uint eard;
 
     #define sa(function) \
         function;
 
+    eard = (masters_info.my_master_rank >= 0);
     // Load
-    sa(mgt_cpufreq_load(tp, EARD));
-    sa(mgt_imcfreq_load(tp, EARD));
-    sa(    cpufreq_load(tp, EARD));
-    sa(    imcfreq_load(tp, EARD));
-    sa(      cache_load(tp, EARD));
-    sa(        cpi_load(tp, EARD));
+    sa(mgt_cpufreq_load(tp, eard));
+    sa(mgt_imcfreq_load(tp, eard));
+    sa(    cpufreq_load(tp, eard));
+    sa(    imcfreq_load(tp, eard));
+    sa(     bwidth_load(tp, eard));
+    sa(      cache_load(tp, eard));
+    sa(        cpi_load(tp, eard));
     // This extinguishable
-    frequency_init(EARD);
+    frequency_init(eard);
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
     sa(    cpufreq_get_api(&met_cpufreq.api));
     sa(    imcfreq_get_api(&met_imcfreq.api));
-    sa(      cache_get_api(&met_cache.api  ))
-    sa(        cpi_get_api(&met_cpi.api    ))
+    sa(     bwidth_get_api(&met_bwidth.api ));
+    sa(      cache_get_api(&met_cache.api  ));
+    sa(        cpi_get_api(&met_cpi.api    ));
     // Working
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
+    met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
     // Init
@@ -216,6 +216,7 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_init(no_ctx));
     sa(    cpufreq_init(no_ctx));
     sa(    imcfreq_init(no_ctx));
+    sa(     bwidth_init(no_ctx));
     sa(      cache_init(no_ctx));
     sa(        cpi_init(no_ctx));
     // Count
@@ -223,6 +224,7 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
     sa(    cpufreq_count_devices(no_ctx, &met_cpufreq.devs_count));
     sa(    imcfreq_count_devices(no_ctx, &met_imcfreq.devs_count));
+    sa(     bwidth_count_devices(no_ctx, &met_bwidth.devs_count ));
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
@@ -236,6 +238,7 @@ static void metrics_static_init(topology_t *tp)
     apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
     apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
     apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
+    apis_print(met_bwidth.api , "MET_BWIDTH : ");
     apis_print(met_cache.api  , "MET_CACHE  : ");
     apis_print(met_cpi.api    , "MET_CPI    : ");
 
@@ -248,6 +251,9 @@ static void metrics_static_init(topology_t *tp)
     imcfreq_data_alloc(&imcfreq_read1[1], empty);
     imcfreq_data_alloc(&imcfreq_read2[0], &imcfreq_diff[0]);
     imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff[1]);
+
+    bwidth_data_alloc(&bwidth_read1[0]);
+    bwidth_data_alloc(&bwidth_read2[0]);
 }
 
 void metrics_static_dispose()
@@ -283,11 +289,6 @@ void set_null_rapl(ull *erapl)
     memset((void*)erapl,0,rapl_elements*sizeof(ull));
 }
 
-void set_null_uncores(ull *band)
-{
-    memset(band,0,bandwith_elements*sizeof(ull));
-}
-
 long long metrics_time()
 {
     return (llong) timestamp_getconvert(TIME_USECS);
@@ -321,9 +322,6 @@ static void metrics_global_start()
 		}
 		/* RAPL energy metrics */
 		eards_read_rapl(aux_rapl);
-		/* Uncore memory counters to compute Mem bancwith */
-		eards_start_uncore();
-		eards_read_uncore(metrics_bandwith_init[APP]);
 
 		#if USE_GPUS
 		/* GPu metrics */
@@ -334,26 +332,23 @@ static void metrics_global_start()
 			}
 			debug("gpu_lib_read in global start");
 			gpu_lib_data_copy(gpu_metrics_end[LOO],gpu_metrics_init[APP]);
-		}	
-	
+		}
 		#endif
 		/* Only the master computes per node metrics */
 		metrics_get_total_io(&metrics_io_init[APP_NODE]);
 	}else{
 		set_null_dc_energy(aux_energy);
 		set_null_rapl(aux_rapl);
-		set_null_uncores(metrics_bandwith_init[APP]);
 	}
-	copy_uncores(metrics_bandwith_end[LOO],metrics_bandwith_init[APP],bandwith_elements);
-	//eards_start_uncore();
 
 	/* Per process IO data */
 	if (io_read(&ctx_io,&metrics_io_init[APP]) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}
 
-    cache_read(no_ctx, &cache_read1[APP]);
-      cpi_read(no_ctx,   &cpi_read1[APP]);
+    bwidth_read(no_ctx, &bwidth_read1[APP]);
+     cache_read(no_ctx,  &cache_read1[APP]);
+       cpi_read(no_ctx,    &cpi_read1[APP]);
 }
  
 static void metrics_global_stop()
@@ -418,7 +413,6 @@ static void metrics_global_stop()
 	/* Only the master will collect these metrics */
 	if (masters_info.my_master_rank>=0){
 		/* Uncore counters to compute memory bandwith */
-		eards_read_uncore(metrics_bandwith_end[APP]);
 		#if USE_GPUS
 		/* GPU */
 		if (gpu_initialized){
@@ -434,10 +428,7 @@ static void metrics_global_stop()
 		/* IO node data */
 		metrics_get_total_io(&metrics_io_end[APP_NODE]);
 		io_diff(&metrics_io_diff[APP_NODE],&metrics_io_init[APP_NODE],&metrics_io_end[APP_NODE]);
-	}else{
-		set_null_uncores(metrics_bandwith_end[APP]);
 	}
-	//eards_start_uncore();
 
 	/* Per process IO */
 	if (io_read(&ctx_io,&metrics_io_end[APP]) != EAR_SUCCESS){
@@ -458,11 +449,9 @@ static void metrics_global_stop()
 		if (verb_path != NULL) close(fd);
 	}
 
-	/* Uncore Memory counters */
-	diff_uncores(metrics_bandwith[APP],metrics_bandwith_end[APP],metrics_bandwith_init[APP],bandwith_elements);
-
-    cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
-      cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
+    bwidth_read_diff(no_ctx, &bwidth_read2[APP], &bwidth_read1[APP], &bwidth_cas[APP], &bwidth_gbs[APP]);
+     cache_read_diff(no_ctx,  &cache_read2[APP],  &cache_read1[APP],  &cache_diff[APP],  &cache_avrg[APP]);
+       cpi_read_diff(no_ctx,    &cpi_read2[APP],    &cpi_read1[APP],    &cpi_diff[APP],    &cpi_avrg[APP]);
 }
 
 static void metrics_partial_start()
@@ -509,9 +498,6 @@ static void metrics_partial_start()
 #endif
     } //master_rank
 
-    //There is always a partial_stop before a partial_start, we can guarantee a previous uncore_read
-    /* Uncore counters to compute memory bancdwith */
-    copy_uncores(metrics_bandwith_init[LOO],metrics_bandwith_end[LOO],bandwith_elements);
     /* Energy RAPL */
     for (i = 0; i < rapl_elements; i++) {
         last_rapl[i]=aux_rapl[i];
@@ -519,8 +505,9 @@ static void metrics_partial_start()
     /* FLOPS */
     start_flops_metrics();
 
-    cache_read(no_ctx, &cache_read1[LOO]);
-      cpi_read(no_ctx,   &cpi_read1[LOO]);
+    bwidth_read(no_ctx, &bwidth_read1[LOO]);
+     cache_read(no_ctx,  &cache_read1[LOO]);
+       cpi_read(no_ctx,    &cpi_read1[LOO]);
 }
 
 /****************************************************************************************************************************************************************/
@@ -595,16 +582,6 @@ static int metrics_partial_stop(uint where)
 
 	/* This is new to avoid cases where uncore gets frozen */
 	if (masters_info.my_master_rank>=0){
-		/* Uncore counters for memory bandwith */
-		eards_read_uncore(metrics_bandwith_end[LOO]);
-		diff_uncores(diff_uncore_value,metrics_bandwith_end[LOO],metrics_bandwith_init[LOO],bandwith_elements);
-		if ((where==SIG_END) && uncore_are_frozen(diff_uncore_value,bandwith_elements)){
-			debug("Doing reset of uncore counters becuase they were frozen");
-			eards_reset_uncore();
-			return EAR_NOT_READY;
-		}else{
-			copy_uncores(metrics_bandwith[LOO],diff_uncore_value,bandwith_elements);	
-		}
 		#if USE_GPUS
 		/* GPUs */
     if (gpu_initialized){
@@ -688,17 +665,10 @@ static int metrics_partial_stop(uint where)
 
 	/* RAPL energy */
 		eards_read_rapl(aux_rapl);
-	//eards_start_uncore();
 
-
-		// Manual bandwith accumulation: We are also computing it at the end. Should we maintain it? For very long apps maybe this approach is better
-		for (i = 0; i < bandwith_elements; i++) {
-				metrics_bandwith[ACUM][i] += metrics_bandwith[LOO][i];
-		}
 		// We read acuumulated energy
 		for (i = 0; i < rapl_elements; i++) {
-			if (aux_rapl[i] < last_rapl[i])
-			{
+			if (aux_rapl[i] < last_rapl[i]) {
 				metrics_rapl[LOO][i] = ullong_diff_overflow(last_rapl[i], aux_rapl[i]);
 			}
 			else {
@@ -712,15 +682,14 @@ static int metrics_partial_stop(uint where)
 		}
     } //master_rank (metrics collected by node_master)
 
-	// Local metrics
-
 	/* FLOPS */
 	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
 	metrics_accum_flops(metrics_flops[LOO]);
 
 	/* Cache misses */
-    cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
-      cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
+    bwidth_read_diff(no_ctx, &bwidth_read2[LOO], &bwidth_read1[LOO], &bwidth_cas[LOO], &bwidth_gbs[LOO]);
+     cache_read_diff(no_ctx,  &cache_read2[LOO],  &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
+       cpi_read_diff(no_ctx,    &cpi_read2[LOO],    &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
 
 	return EAR_SUCCESS;
 }
@@ -742,13 +711,13 @@ ull metrics_vec_inst(signature_t *metrics)
 
 void copy_node_data(signature_t *dest,signature_t *src)
 {
-				dest->DC_power	=	src->DC_power;
-				dest->DRAM_power=	src->DRAM_power;
-				dest->PCK_power	=	src->PCK_power;
-				dest->avg_f			= src->avg_f;
-				dest->avg_imc_f = src->avg_imc_f;
+    dest->DC_power	=	src->DC_power;
+    dest->DRAM_power=	src->DRAM_power;
+    dest->PCK_power	=	src->PCK_power;
+    dest->avg_f			= src->avg_f;
+    dest->avg_imc_f = src->avg_imc_f;
 #if USE_GPUS
-				memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
+    memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
 #endif
 }
 
@@ -756,7 +725,7 @@ void copy_node_data(signature_t *dest,signature_t *src)
 /******************* The node master has computed the per-node metrics and the rest of processes uses this information ***********/
 static void metrics_compute_signature_data(uint global, signature_t *metrics, uint iterations, ulong procs)
 {
-				double time_s, cas_counter, aux;
+				double time_s;
 				sig_ext_t *sig_ext;
 				int i, s;
 				verbose(2,"Compute signature process %d", my_node_id);
@@ -777,10 +746,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				/* Avg IMC frequency */
 				metrics->avg_imc_f = imcfreq_avrg[s];
 
-
 				/* Time per iteration */
 				metrics->time = time_s / (double) iterations;
-
 
 				/* Cache misses */
 				metrics->L1_misses = cache_diff[s].l1d_misses;
@@ -811,20 +778,16 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->cycles       = cpi_diff[s].cycles;
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
-				/* TPI and Memory bandwith */
-				aux = time_s * (double) (1024 * 1024 * 1024);
 
-				cas_counter = 0.0;
-				if (masters_info.my_master_rank >= 0){
-					for (i = 0; i < bandwith_elements; ++i) {
-									cas_counter += (double) metrics_bandwith[s][i];
-					}
-					lib_shared_region->cas_counters = cas_counter;
-				}else{
-					cas_counter = lib_shared_region->cas_counters;
+				/* TPI and Memory bandwith */
+				if (masters_info.my_master_rank >= 0) {
+					lib_shared_region->cas_counters = (double) bwidth_cas[s];
+				} else {
+                    bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
 				}
-				metrics->GBS = cas_counter * hw_cache_line_size / aux;
-				metrics->TPI = cas_counter * hw_cache_line_size / ((double) metrics->instructions);
+
+				metrics->GBS = bwidth_gbs[s];
+				metrics->TPI = ((double) bwidth_cas[s]) * hw_cache_line_size / ((double) metrics->instructions);
 
 				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
 				/* Per process IO data */
@@ -918,7 +881,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 int metrics_init(topology_t *topo)
 {
 	ulong flops_size;
-	ulong bandwith_size;
 	ulong rapl_size;
 	char *cimc_max_khz,*cimc_min_khz;
 	char imc_buffer[1024];
@@ -979,15 +941,12 @@ int metrics_init(topology_t *topo)
 	// Daemon metrics allocation (TODO: standarize data size)
 	if (masters_info.my_master_rank>=0){
 		rapl_size = eards_get_data_size_rapl();
-		bandwith_size = eards_get_data_size_uncore();
 	}else{
 		rapl_size=sizeof(unsigned long long);
-		bandwith_size=sizeof(long long);
 	}
 
-	verbose_master(2,"RAPL size %lu Uncore size %lu",rapl_size,bandwith_size);
+	verbose_master(2,"RAPL size %lu",rapl_size);
 	rapl_elements = rapl_size / sizeof(unsigned long long);
-	bandwith_elements = bandwith_size / sizeof(long long);
 
 	// Allocating data for energy node metrics
 	// node_energy_datasize=eards_node_energy_data_size();
@@ -1001,36 +960,12 @@ int metrics_init(topology_t *topo)
 	memset(metrics_ipmi[0],0,node_energy_datasize);
 	memset(metrics_ipmi[1],0,node_energy_datasize);
 	acum_ipmi[0]=0;acum_ipmi[1]=0;
-	
-	metrics_bandwith[LOO] = malloc(bandwith_size);
-	metrics_bandwith[APP] = malloc(bandwith_size);
-	metrics_bandwith[ACUM] = malloc(bandwith_size);
-	metrics_bandwith_init[LOO] = malloc(bandwith_size);
-	metrics_bandwith_init[APP] = malloc(bandwith_size);
-	metrics_bandwith_end[LOO] = malloc(bandwith_size);
-	metrics_bandwith_end[APP] = malloc(bandwith_size);
-	diff_uncore_value = malloc(bandwith_size);
+
 	metrics_rapl[LOO] = malloc(rapl_size);
 	metrics_rapl[APP] = malloc(rapl_size);
 	aux_rapl = malloc(rapl_size);
 	last_rapl = malloc(rapl_size);
 
-	if (diff_uncore_value         == NULL || metrics_bandwith[LOO]      == NULL || metrics_bandwith[APP]      == NULL ||
-		metrics_bandwith[ACUM]    == NULL || metrics_bandwith_init[LOO] == NULL || metrics_bandwith_init[APP] == NULL ||
-		metrics_bandwith_end[LOO] == NULL || metrics_bandwith_end[APP]  == NULL || metrics_rapl[LOO]          == NULL ||
-		metrics_rapl[APP]         == NULL || aux_rapl                   == NULL || last_rapl                  == NULL)
-	{
-			return_msg(EAR_ERROR, "error allocating memory in metrics, exiting");
-	}
-	
-	memset(metrics_bandwith[LOO], 0, bandwith_size);
-	memset(metrics_bandwith[APP], 0, bandwith_size);
-	memset(metrics_bandwith[ACUM], 0, bandwith_size);
-	memset(metrics_bandwith_init[LOO], 0, bandwith_size);
-	memset(metrics_bandwith_init[APP], 0, bandwith_size);
-	memset(metrics_bandwith_end[LOO], 0, bandwith_size);
-	memset(metrics_bandwith_end[APP], 0, bandwith_size);
-	memset(diff_uncore_value, 0, bandwith_size);
 	memset(metrics_rapl[LOO], 0, rapl_size);
 	memset(metrics_rapl[APP], 0, rapl_size);
 	memset(aux_rapl, 0, rapl_size);
@@ -1130,7 +1065,6 @@ int metrics_init(topology_t *topo)
 	#endif
 
 	//debug( "detected %d RAPL counters for %d packages: %d events por package", rapl_elements,num_packs,rapl_elements/num_packs);
-	//debug( "detected %d bandwith counter", bandwith_elements);
 
 	metrics_reset();
 	metrics_global_start();

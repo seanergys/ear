@@ -90,7 +90,7 @@ static uint        devs_count;
 static uint        cpus_count;
 static ullong     *ctrs_accum;
 
-state_t bwidth_likwid_status(topology_t *tp_in)
+state_t bwidth_likwid_load(topology_t *tp_in, bwidth_ops_t *ops)
 {
 	state_t s;
 
@@ -130,11 +130,17 @@ state_t bwidth_likwid_status(topology_t *tp_in)
     debug("sockets   : %u", tp.cpu_count);
     debug("total cpus: %u", cpus_count);
     debug("counters  : %u", devs_count);
+    //
+    replace_ops(ops->init,            bwidth_likwid_init);
+    replace_ops(ops->dispose,         bwidth_likwid_dispose);
+    replace_ops(ops->count_devices,   bwidth_likwid_count_devices);
+    replace_ops(ops->get_granularity, bwidth_likwid_get_granularity);
+    replace_ops(ops->read,            bwidth_likwid_read);
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
-state_t bwidth_likwid_init(ctx_t *c, topology_t *fake)
+state_t bwidth_likwid_init(ctx_t *c)
 {
 	// Likwid events open
 	return EAR_SUCCESS;

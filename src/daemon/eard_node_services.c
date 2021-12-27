@@ -129,6 +129,7 @@ static metrics_t     mc;
 static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
+static metrics_t     ub;
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -158,21 +159,25 @@ void services_init(topology_t *tp)
 	mgt_imcfreq_load(tp, NO_EARD);
         cpufreq_load(tp, NO_EARD);
         imcfreq_load(tp, NO_EARD);
+         bwidth_load(tp, NO_EARD);
 
 	mgt_cpufreq_get_api((uint *) &mc.api);
 	mgt_imcfreq_get_api((uint *) &mi.api);
         cpufreq_get_api((uint *) &uc.api);
         imcfreq_get_api((uint *) &ui.api);
+         bwidth_get_api((uint *) &ub.api);
 
 	sf(mgt_cpufreq_init(no_ctx));
 	sf(mgt_imcfreq_init(no_ctx));
     sf(    cpufreq_init(no_ctx));
     sf(    imcfreq_init(no_ctx));
+    sf(     bwidth_init(no_ctx));
 
 	sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
 	sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
     sf(    cpufreq_count_devices(no_ctx, &uc.devs_count));
     sf(    imcfreq_count_devices(no_ctx, &ui.devs_count));
+    sf(     bwidth_count_devices(no_ctx, &ub.devs_count));
 
 	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
@@ -181,6 +186,7 @@ void services_init(topology_t *tp)
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
+    sf(     bwidth_data_alloc((bwidth_t  **) &ub.current_list));
 
 	serial_alloc(&wb, SIZE_8KB);
 }
@@ -413,6 +419,35 @@ int services_met_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
     return 1;
 }
 
+int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
+{
+    uint call = head->req_service;
+    state_t s = EAR_SUCCESS;
+    char *data = NULL;
+    size_t size = 0;
+
+    dcase_init(RPC_MET_BWIDTH_GET_API);
+        data = (char *) &ub.api;
+        size = sizeof(uint);
+    dcase(RPC_MET_BWIDTH_COUNT_DEVICES);
+        data = (char *) &ub.devs_count;
+        size = sizeof(uint);
+    dcase(RPC_MET_BWIDTH_READ);
+        if(state_fail(s = bwidth_read(no_ctx, (bwidth_t *) ub.current_list))) {
+            serror("Could not get imc frequency");
+        }
+        data = (char *) ub.current_list;
+        size = sizeof(bwidth_t) * ub.devs_count;
+    dcase_fini();
+
+    // Always answering (if s != SUCCESS the error message is sent)
+    if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
+        serror("RPC answer failed");
+        return 0;
+    }
+    return 1;
+}
+
 /* These functions links local fds with eard job context. The jobid.stepid must
  * be already created */
 uint is_anonymous(ulong jid,ulong sid);
@@ -534,48 +569,6 @@ int is_valid_sec_tag(ulong tag)
 	// You make define a constant at makefile time called SEC_KEY to use that option
 	return ((ulong) SEC_KEY == tag);
 	#endif
-}
-
-int eard_uncore(eard_head_t *head, int req_fd, int ack_fd)
-{
-	unsigned long ack = EAR_SUCCESS;
-	unsigned long long values[num_uncore_counters];
-
-	switch (head->req_service) {
-		case START_UNCORE:
-			start_uncores();
-			write(ack_fd, &ack, sizeof(ack));
-			break;
-		case RESET_UNCORE:
-			reset_uncores();
-			write(ack_fd, &ack, sizeof(ack));
-			break;
-		case READ_UNCORE: {
-			unsigned long demon_cas = 0;
-			int i;
-			read_uncores(values);
-			write(ack_fd, values, sizeof(unsigned long long) * num_uncore_counters);
-			for (i = 0; i < num_uncore_counters; i++) demon_cas += values[i];
-			break;
-		}
-		case STOP_UNCORE: {
-			unsigned long demon_cas = 0;
-			int i;
-			stop_uncores(values);
-			write(ack_fd, values, sizeof(unsigned long long) * num_uncore_counters);
-			for (i = 0; i < num_uncore_counters; i++) demon_cas += values[i];
-			break;
-		}
-		case DATA_SIZE_UNCORE:
-			ack = sizeof(unsigned long long) * num_uncore_counters;
-			verbose(VEARD_LAPI,"Uncore size %lu",ack);
-			write(ack_fd, &ack, sizeof(unsigned long));
-			break;
-		default:
-			return 0;
-
-	}
-	return 1;
 }
 
 void clean_global_connector()
@@ -820,7 +813,6 @@ int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd)
       return 0;
   }
   return 1;
-
 }
 
 int eard_system(eard_head_t *head,int req_fd,int ack_fd)
@@ -1034,6 +1026,9 @@ void service_select(int req_fd, int ack_fd)
     if (services_met_imcfreq(local_req, req_fd, ack_fd)) {
         return;
     }
+    if (services_met_bwidth(local_req, req_fd, ack_fd)) {
+        return;
+    }
     // Old services
     if (eard_rapl(local_req,req_fd,ack_fd)) {
         return;
@@ -1042,9 +1037,6 @@ void service_select(int req_fd, int ack_fd)
         return;
     }
     if (eard_node_energy(local_req,req_fd,ack_fd)) {
-        return;
-    }
-    if (eard_uncore(local_req,req_fd,ack_fd)) {
         return;
     }
     if (eard_gpu(local_req,req_fd,ack_fd)){
