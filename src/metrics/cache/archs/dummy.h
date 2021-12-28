@@ -31,7 +31,7 @@ state_t cache_dummy_read(ctx_t *c, cache_t *ca);
 // Helpers
 state_t cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
-state_t cache_dummy_data_copy(cache_t *src, cache_t *dst);
+state_t cache_dummy_data_copy(cache_t *dst, cache_t *src);
 
 state_t cache_dummy_data_print(cache_t *b, double gbs, int fd);
 
