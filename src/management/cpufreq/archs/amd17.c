@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -58,7 +58,7 @@ static uint                 mode_virtual;
 
 //
 static state_t set_pstate(uint cpu, uint pst, uint test, uint set_driver);
-static state_t set_pstate0(uint cpu, uint pst, uint test, uint set_driver);
+static state_t set_pstate0(uint cpu);
 
 // Modes:
 //  - HSMP: using HSMP mailing system to change frequency. You can select whatever frequency,
@@ -93,18 +93,11 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 			return s;
 		}
 	}
-<<<<<<< HEAD
     mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
     if (!mode_virtual) {
         if (state_fail(s = hsmp_scan(tp_in))) {
             return s;
         }
-=======
-    //
-    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
-    if (!mode_virtual) {
-        hsmp_scan(tp_in);
->>>>>>> 56fe5dbee0c4a75b0a0168ba042c238a1b929ec0
     }
 	// Setting references (if driver set is not available, this API neither)
 	replace_ops(ops->init,             mgt_cpufreq_amd17_init);
@@ -326,11 +319,11 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 		return static_dispose(tp.cpu_count, s, state_msg);
 	}
 	// Find maximum and minimum P_STATE
+    #if EXCESIVE_ROBUSTNESS
 	ullong pstate_max = getbits64(data, 2, 0); // P_STATE max ex: P0
 	ullong pstate_min = getbits64(data, 6, 4); // P_STATE min ex: P7
     debug("PSTATE_MAX: %llu", pstate_max);
     debug("PSTATE_MIN: %llu", pstate_min);
-    #if EXCESIVE_ROBUSTNESS
 	if (pstate_max > 1LLU || pstate_min < 1LLU) {
 		return static_dispose(tp.cpu_count, EAR_ERROR, "Incorrect P_STATE limits");
 	}
@@ -460,7 +453,11 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
 
         if (state_ok(search_pstate_list(((ullong) reps[0])*1000LLU, &idx, 1))) {
             pstate_list[cpu].idx = idx;
-            pstate_list[cpu].khz = p1_khz(psss[idx].cof);
+            if (idx == 0) {
+                pstate_list[cpu].khz = p0_khz(psss[idx].cof);
+            } else {
+                pstate_list[cpu].khz = p1_khz(psss[idx].cof);
+            }
         }
     }
     return EAR_SUCCESS;
@@ -686,7 +683,7 @@ state_t mgt_cpufreq_amd17_set_current_list(ctx_t *c, uint *pstate_index)
 	return s2;
 }
 
-state_t mgt_cpufreq_amd17_set_current(ctx_t *c, uint pstate_index, int cpu)
+state_t mgt_cpufreq_amd17_set_current(ctx_t *_c, uint pstate_index, int cpu)
 {
 	state_t s1 = EAR_SUCCESS;
 	state_t s2 = EAR_SUCCESS;

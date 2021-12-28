@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <metrics/common/msr.h>
@@ -137,7 +137,6 @@ state_t mgt_imcfreq_intel63_init(ctx_t *c)
 
 state_t mgt_imcfreq_intel63_dispose(ctx_t *c)
 {
-    c->context = NULL;
     return EAR_SUCCESS;
 }
 
