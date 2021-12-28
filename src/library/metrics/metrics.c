@@ -790,7 +790,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				metrics->GBS = bwidth_gbs[s];
 				metrics->TPI = ((double) bwidth_cas[s]) * hw_cache_line_size / ((double) metrics->instructions);
-                verbose(0, "GBS: %lf", metrics->GBS);
+                verbose(0, "GBS[%d]: %lf", s, metrics->GBS);
 
 				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
 				/* Per process IO data */

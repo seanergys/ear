@@ -81,6 +81,8 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *
 {
 	ullong diff = 0LLU;
 	ullong time = 0LLU;
+    ullong cas2 = 0LLU;
+    ullong cas1 = 0LLU;
 	double secs = 0.0;
 	double dcas = 0.0;
 	int i;
@@ -97,10 +99,13 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *
 	secs = secs / 1000.0;
 	//
 	for (i = 0; i < devs_count-1; ++i) {
+        cas1 += b1[i].cas;
+        cas2 += b2[i].cas;
 		diff  = overflow_mixed_u64(b2[i].cas, b1[i].cas, MAXBITS48, 4);
 		*cas += diff;
-		debug("IMC%d/%u: %llu (%llu - %llu = %llu)", i+1, devs_count, *cas, b2[i].cas, b1[i].cas, diff);
+		debug("IMC%d/%u: %llu (%llu - %llu = %llu)", i, devs_count-1, *cas, b2[i].cas, b1[i].cas, diff);
 	}
+    debug("CAS %llu (%llu - %llu = %llu), SECS %0.2lf", *cas, cas2, cas1, *cas, secs);
 	// Computing total
 	dcas = (double) *cas;
 	dcas = (dcas / secs);

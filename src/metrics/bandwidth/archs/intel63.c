@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -124,17 +124,21 @@ state_t bwidth_intel63_get_granularity(ctx_t *c, uint *granularity)
 
 state_t bwidth_intel63_read(ctx_t *c, bwidth_t *bw)
 {
+    ullong cas = 0LLU;
 	int p, t, i;
 	state_t s;
 
 	timestamp_get(&bw[devs_count].time);
 	for (p = i = 0; p < pcis_count; ++p) {
 		for (t = 0; t < ctrs_count; ++t, ++i){
-			bw[i].cas = 0LLU;
+            bw[i].cas = 0LLU;
 			s = pci_read(&pcis[p], &bw[i].cas, sizeof(ullong), ctrs_addr[t]);
 			bw[i].cas = bw[i].cas & 0x0000ffffffffffff;
-			debug("IMC%d/%u: %llu (read)", i+1, devs_count, bw[i].cas);
+			debug("IMC%d/%u: %llu (read)", i, devs_count-1, bw[i].cas);
+			cas += bw[i].cas; 
 		}
 	}
+    debug("CAS %llu", cas);
+ 
 	return EAR_SUCCESS;
 }
