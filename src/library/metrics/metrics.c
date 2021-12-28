@@ -144,7 +144,7 @@ static ulong       cpufreq_avrg[2];
 static bwidth_t   *bwidth_read1[2];
 static bwidth_t   *bwidth_read2[2];
 static ullong      bwidth_cas[2];
-static double     *bwidth_gbs[2];
+static double      bwidth_gbs[2];
 static cache_t     cache_read1[2];
 static cache_t     cache_read2[2];
 static cache_t     cache_diff[2];
@@ -253,7 +253,9 @@ static void metrics_static_init(topology_t *tp)
     imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff[1]);
 
     bwidth_data_alloc(&bwidth_read1[0]);
+    bwidth_data_alloc(&bwidth_read1[1]);
     bwidth_data_alloc(&bwidth_read2[0]);
+    bwidth_data_alloc(&bwidth_read2[1]);
 }
 
 void metrics_static_dispose()
@@ -346,9 +348,9 @@ static void metrics_global_start()
 		verbose_master(2,"Warning: IO data not available");
 	}
 
-    bwidth_read(no_ctx, &bwidth_read1[APP]);
-     cache_read(no_ctx,  &cache_read1[APP]);
-       cpi_read(no_ctx,    &cpi_read1[APP]);
+    bwidth_read(no_ctx, bwidth_read1[APP]);
+     cache_read(no_ctx, &cache_read1[APP]);
+       cpi_read(no_ctx,   &cpi_read1[APP]);
 }
  
 static void metrics_global_stop()
@@ -449,9 +451,9 @@ static void metrics_global_stop()
 		if (verb_path != NULL) close(fd);
 	}
 
-    bwidth_read_diff(no_ctx, &bwidth_read2[APP], &bwidth_read1[APP], &bwidth_cas[APP], &bwidth_gbs[APP]);
-     cache_read_diff(no_ctx,  &cache_read2[APP],  &cache_read1[APP],  &cache_diff[APP],  &cache_avrg[APP]);
-       cpi_read_diff(no_ctx,    &cpi_read2[APP],    &cpi_read1[APP],    &cpi_diff[APP],    &cpi_avrg[APP]);
+    bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], &bwidth_cas[APP], &bwidth_gbs[APP]);
+     cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
+       cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
 }
 
 static void metrics_partial_start()
@@ -505,9 +507,9 @@ static void metrics_partial_start()
     /* FLOPS */
     start_flops_metrics();
 
-    bwidth_read(no_ctx, &bwidth_read1[LOO]);
-     cache_read(no_ctx,  &cache_read1[LOO]);
-       cpi_read(no_ctx,    &cpi_read1[LOO]);
+    bwidth_read(no_ctx, bwidth_read1[LOO]);
+     cache_read(no_ctx, &cache_read1[LOO]);
+       cpi_read(no_ctx,   &cpi_read1[LOO]);
 }
 
 /****************************************************************************************************************************************************************/
@@ -687,9 +689,9 @@ static int metrics_partial_stop(uint where)
 	metrics_accum_flops(metrics_flops[LOO]);
 
 	/* Cache misses */
-    bwidth_read_diff(no_ctx, &bwidth_read2[LOO], &bwidth_read1[LOO], &bwidth_cas[LOO], &bwidth_gbs[LOO]);
-     cache_read_diff(no_ctx,  &cache_read2[LOO],  &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
-       cpi_read_diff(no_ctx,    &cpi_read2[LOO],    &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
+    bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], &bwidth_cas[LOO], &bwidth_gbs[LOO]);
+     cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
+       cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
 
 	return EAR_SUCCESS;
 }

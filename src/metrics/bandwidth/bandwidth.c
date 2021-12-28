@@ -155,7 +155,7 @@ state_t bwidth_data_print(ullong cas, double gbs, int fd)
 	return ops.data_print(cas, gbs, fd);
 }
 
-state_t gpu_lib_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
+state_t bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 {
 	return ops.data_tostr(cas, gbs, buffer, length);
 }

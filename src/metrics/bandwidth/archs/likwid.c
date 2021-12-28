@@ -15,13 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <metrics/common/likwid.h>
-#include <metrics/bandwidth/cpu/likwid.h>
+#include <metrics/bandwidth/archs/likwid.h>
 
 static char *ice_evs = \
                            "CAS_COUNT_ALL:MBOX0C0," \
@@ -152,10 +152,15 @@ state_t bwidth_likwid_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
+state_t bwidth_likwid_get_granularity(ctx_t *c, uint *granularity)
+{
+    *granularity = GRANULARITY_IMC;
+    return EAR_SUCCESS;
+}
+
 state_t bwidth_likwid_count_devices(ctx_t *c, uint *devs_count_in)
 {
-	//*devs_count_in = devs_count+1;
-	*devs_count_in = devs_count;
+	*devs_count_in = devs_count+1;
 	return EAR_SUCCESS;
 }
 
@@ -164,14 +169,14 @@ state_t bwidth_likwid_fake(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t bwidth_likwid_read(ctx_t *c, ullong *cas)
+state_t bwidth_likwid_read(ctx_t *c, bwidth_t *b)
 {
 	state_t s;
 	int i, j, k;
 
-	memset(cas, 0, sizeof(ullong)*(devs_count));
+	memset(b, 0, sizeof(bwidth_t)*(devs_count+1));
 	// Retrieving time in the position N
-	// timestamp_get(&cas[devs_count].time);
+	timestamp_get(&b[devs_count].time);
 	//
 	if (state_fail(s = likwid_events_read(&events, ctrs))) {
 		return s;
@@ -179,8 +184,8 @@ state_t bwidth_likwid_read(ctx_t *c, ullong *cas)
 	for (i = j = 0; i < tp.cpu_count; ++i) {
 		for (k = 0; k < evs_count; ++k, ++j) {
 			ctrs_accum[j] += (ullong) ctrs[(cpus_count*k) + tp.cpus[i].id];
-			cas[j] = ctrs_accum[j];
-            debug("S%d%s: %llu", i, evs_names[k], cas[j]);
+			b[j].cas = ctrs_accum[j];
+            debug("S%d%s: %llu", i, evs_names[k], b[j].cas);
 		}
 	}
 	return EAR_SUCCESS;

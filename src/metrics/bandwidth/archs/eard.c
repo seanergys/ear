@@ -44,7 +44,7 @@ state_t bwidth_eard_load(topology_t *tp, bwidth_ops_t *ops, uint eard)
 	if (state_fail(s = eard_rpc(RPC_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
 		return s;
 	}
-	if (eard_api == MET_CPUFREQ_API_NONE || eard_api == MET_CPUFREQ_API_DUMMY) {
+	if (eard_api == API_NONE || eard_api == API_DUMMY) {
 		return_msg(EAR_ERROR, "EARD (daemon) has loaded DUMMY/NONE API");
 	}
 	// Get devices
