@@ -348,6 +348,7 @@ static void metrics_global_start()
 		verbose_master(2,"Warning: IO data not available");
 	}
 
+    // New metrics
     bwidth_read(no_ctx, bwidth_read1[APP]);
      cache_read(no_ctx, &cache_read1[APP]);
        cpi_read(no_ctx,   &cpi_read1[APP]);
@@ -451,7 +452,8 @@ static void metrics_global_stop()
 		if (verb_path != NULL) close(fd);
 	}
 
-    bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], &bwidth_cas[APP], &bwidth_gbs[APP]);
+    // New metrics
+    bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP],             NULL, &bwidth_gbs[APP]);
      cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
        cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
 }
@@ -507,6 +509,7 @@ static void metrics_partial_start()
     /* FLOPS */
     start_flops_metrics();
 
+    // New metrics
     bwidth_read(no_ctx, bwidth_read1[LOO]);
      cache_read(no_ctx, &cache_read1[LOO]);
        cpi_read(no_ctx,   &cpi_read1[LOO]);
@@ -688,10 +691,13 @@ static int metrics_partial_stop(uint where)
 	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
 	metrics_accum_flops(metrics_flops[LOO]);
 
-	/* Cache misses */
+	// New metrics
     bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], &bwidth_cas[LOO], &bwidth_gbs[LOO]);
      cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
        cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
+
+    // Accumulations (by now, not sure if required this way in the future)
+    bwidth_cas[APP] += bwidth_cas[LOO];
 
 	return EAR_SUCCESS;
 }
@@ -782,15 +788,14 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->CPI          = cpi_avrg[s];
 
 				/* TPI and Memory bandwith */
-				if (masters_info.my_master_rank >= 0) {
+                if (masters_info.my_master_rank >= 0) {
 					lib_shared_region->cas_counters = (double) bwidth_cas[s];
 				} else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
 				}
-
-				metrics->GBS = bwidth_gbs[s];
+                
+                metrics->GBS = ((double) bwidth_cas[s]) * hw_cache_line_size / (time_s * 1073741824.0);
 				metrics->TPI = ((double) bwidth_cas[s]) * hw_cache_line_size / ((double) metrics->instructions);
-                verbose(0, "GBS[%d]: %lf", s, metrics->GBS);
 
 				io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
 				/* Per process IO data */

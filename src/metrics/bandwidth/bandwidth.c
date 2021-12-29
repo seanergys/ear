@@ -60,11 +60,11 @@ state_t bwidth_load(topology_t *tp, int eard)
 		api = API_AMD17;
 		debug("Loaded AMD17");
 	}
-    #if 0
 	if (state_ok(bwidth_likwid_load(tp, &ops))) {
 		api = API_LIKWID;
 		debug("Loaded LIKWID");
 	}
+    #if 0
 	if (state_ok(bwidth_bypass_load(tp, &ops))) {
 		api = API_BYPASS;
 		debug("Loaded BYPASS");

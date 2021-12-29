@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -94,8 +94,19 @@ state_t bwidth_likwid_load(topology_t *tp_in, bwidth_ops_t *ops)
 {
 	state_t s;
 
+    // This check is to avoid EARL procs which doesn't load EARD API,
+    // try to load LIKWID library and daemon, which by now doesn't
+    // work properly.
+    if (!user_is_root()) {
+        return_msg(EAR_ERROR, Generr.no_permissions);
+    }
     if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_SKYLAKE_X){
         return_msg(EAR_ERROR, Generr.api_incompatible);
+    }
+    // If read is defined, it means that another API is loaded with permissions,
+    // so it is preferred to avoid LIKWID's link and initialization.
+    if (ops->read != NULL) {
+        return_msg(EAR_ERROR, Generr.api_initialized);
     }
     // Total CPUs count
 	cpus_count = tp_in->cpu_count;

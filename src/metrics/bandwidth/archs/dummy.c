@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -81,14 +81,19 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *
 {
 	ullong diff = 0LLU;
 	ullong time = 0LLU;
+    ullong cas3 = 0LLU;
     ullong cas2 = 0LLU;
     ullong cas1 = 0LLU;
 	double secs = 0.0;
 	double dcas = 0.0;
 	int i;
-
-	*cas = 0LLU;
-	*gbs = 0.0;
+    
+    if (cas != NULL) {
+        *cas = 0LLU;
+    }
+    if (gbs != NULL) {
+        *gbs = 0.0;
+    }
 	// Ms to seconds (for decimals)
 	time = timestamp_diff(&b2[devs_count-1].time, &b1[devs_count-1].time, TIME_MSECS);
 	// If no time, no metrics
@@ -102,16 +107,23 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *
         cas1 += b1[i].cas;
         cas2 += b2[i].cas;
 		diff  = overflow_mixed_u64(b2[i].cas, b1[i].cas, MAXBITS48, 4);
-		*cas += diff;
-		debug("IMC%d/%u: %llu (%llu - %llu = %llu)", i, devs_count-1, *cas, b2[i].cas, b1[i].cas, diff);
+		cas3 += diff;
+		debug("IMC%d/%u: %llu (%llu - %llu = %llu)", i, devs_count-1, cas3, b2[i].cas, b1[i].cas, diff);
 	}
-    debug("CAS %llu (%llu - %llu = %llu), SECS %0.2lf", *cas, cas2, cas1, *cas, secs);
+    debug("CAS %llu (%llu - %llu = %llu), SECS %0.2lf", cas3, cas2, cas1, cas3, secs);
 	// Computing total
-	dcas = (double) *cas;
+	dcas = (double) cas3;
 	dcas = (dcas / secs);
 	dcas = (dcas * line_size);
 	dcas = (dcas / B_TO_GB);
-	*gbs = dcas;
+    
+    if (cas != NULL) {
+        *cas = cas3;
+    }
+    if (gbs != NULL) {
+        *gbs = dcas;
+    }
+
 	return EAR_SUCCESS;
 }
 
