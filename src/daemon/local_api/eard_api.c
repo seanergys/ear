@@ -54,9 +54,7 @@ static int my_step_id;
 static int my_job_id;
 static char *ear_tmp;
 
-
 // Metrics: Needed for old API where data size must be requested in advance
-static ulong uncore_size;
 static ulong energy_size;
 static ulong rapl_size;
 

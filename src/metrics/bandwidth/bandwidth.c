@@ -135,6 +135,11 @@ state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, 
 	return ops.data_diff(b2, b1, bD, cas, gbs);
 }
 
+state_t bwidth_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs)
+{
+	return ops.data_accum(bA, bD, cas, gbs);
+}
+
 state_t bwidth_data_alloc(bwidth_t **b)
 {
 	return ops.data_alloc(b);

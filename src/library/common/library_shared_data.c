@@ -404,7 +404,7 @@ void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,
 	int i;
 	*t_inst = 0;
 	for (i=0;i<data->num_processes;i++){
-        verb(2, "%s insts for proc %d: %lu%s", COL_YLW, i, sig[i].sig.instructions, COL_CLR);
+        verb(2, "%s insts for proc %d: %llu%s", COL_YLW, i, sig[i].sig.instructions, COL_CLR);
 		*t_inst += sig[i].sig.instructions;
 	}
 }
@@ -423,7 +423,7 @@ void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t
     int i;
     *t_cycles = 0;
     for (i=0;i<data->num_processes;i++){
-        verb(2, "%s cycles for proc %d: %lu%s", COL_YLW, i, sig[i].sig.cycles, COL_CLR);
+        verb(2, "%s cycles for proc %d: %llu%s", COL_YLW, i, sig[i].sig.cycles, COL_CLR);
         *t_cycles += sig[i].sig.cycles;
     }
 }

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -31,7 +31,7 @@ state_t flops_dummy_load(topology_t *tp, flops_ops_t *ops)
 	replace_ops(ops->dispose,    flops_dummy_dispose);
 	replace_ops(ops->read,       flops_dummy_read);
     replace_ops(ops->data_diff,  flops_dummy_data_diff);
-    replace_ops(ops->data_accum, flops_dummy_data_acum);
+    replace_ops(ops->data_accum, flops_dummy_data_accum);
 	replace_ops(ops->data_copy,  flops_dummy_data_copy);
 	replace_ops(ops->data_print, flops_dummy_data_print);
 	replace_ops(ops->data_tostr, flops_dummy_data_tostr);
@@ -59,10 +59,13 @@ state_t flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *
 {
 	ullong diff = 0LLU;
 	ullong time = 0LLU;
+    double aux = 0.0;
     flops_t flA; // flAux
 	int i;
 
-	*gfs = 0.0;
+    if (gfs != NULL) {
+        *gfs = 0.0;
+    }
     if (flD != NULL) {
         memset(flD, 0, sizeof(flops_t));
     }
@@ -70,47 +73,54 @@ state_t flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *
 	if ((time = timestamp_diff(&fl2->time, &fl1->time, TIME_MSECS)) == 0LLU) {
 		return EAR_SUCCESS;
 	}
-	flA->secs = (double) time;
-    flA->secs = flA->secs / 1000.0;
+	flA.secs = (double) time;
+    flA.secs = flA.secs / 1000.0;
 	// Instruction differences
-	flA->f64  = overflow_zeros_u64(fl2->f64 , fl1->f64);
-	flA->d64  = overflow_zeros_u64(fl2->d64 , fl1->d64);
-	flA->f128 = overflow_zeros_u64(fl2->f128, fl1->f128);
-	flA->d128 = overflow_zeros_u64(fl2->d128, fl1->d128);
-	flA->f256 = overflow_zeros_u64(fl2->f256, fl1->f256);
-	flA->d256 = overflow_zeros_u64(fl2->d256, fl1->d256);
-	flA->f512 = overflow_zeros_u64(fl2->f512, fl1->f512);
-	flA->d512 = overflow_zeros_u64(fl2->d512, fl1->d512);
+	flA.f64  = overflow_zeros_u64(fl2->f64 , fl1->f64);
+	flA.d64  = overflow_zeros_u64(fl2->d64 , fl1->d64);
+	flA.f128 = overflow_zeros_u64(fl2->f128, fl1->f128);
+	flA.d128 = overflow_zeros_u64(fl2->d128, fl1->d128);
+	flA.f256 = overflow_zeros_u64(fl2->f256, fl1->f256);
+	flA.d256 = overflow_zeros_u64(fl2->d256, fl1->d256);
+	flA.f512 = overflow_zeros_u64(fl2->f512, fl1->f512);
+	flA.d512 = overflow_zeros_u64(fl2->d512, fl1->d512);
 	// Giga floating point instructions per second
-	*gfs += (double) (flA->f64  * weights[0]);
-	*gfs += (double) (flA->d64  * weights[1]);
-	*gfs += (double) (flA->f128 * weights[2]);
-	*gfs += (double) (flA->d128 * weights[3]);
-	*gfs += (double) (flA->f256 * weights[4]);
-	*gfs += (double) (flA->d256 * weights[5]);
-	*gfs += (double) (flA->f512 * weights[6]);
-	*gfs += (double) (flA->d512 * weights[7]);
-	*gfs = (*gfs / flA->secs);
-	*gfs = (*gfs / B_TO_GB);
+	aux += (double) (flA.f64  * weights[0]);
+	aux += (double) (flA.d64  * weights[1]);
+	aux += (double) (flA.f128 * weights[2]);
+	aux += (double) (flA.d128 * weights[3]);
+	aux += (double) (flA.f256 * weights[4]);
+	aux += (double) (flA.d256 * weights[5]);
+	aux += (double) (flA.f512 * weights[6]);
+	aux += (double) (flA.d512 * weights[7]);
+	aux = (aux / flA.secs);
+	aux = (aux / B_TO_GB);
 	//
-	debug("Total f64  insts: %llu", flA->f64);
-	debug("Total d64  insts: %llu", flA->d64);
-	debug("Total f128 insts: %llu", flA->f128);
-	debug("Total d128 insts: %llu", flA->d128);
-	debug("Total f256 insts: %llu", flA->f256);
-	debug("Total d256 insts: %llu", flA->d256);
-	debug("Total f512 insts: %llu", flA->f512);
-	debug("Total d512 insts: %llu", flA->d512);
-	debug("Total GFLOPS: %0.2lf", *gfs);
+	#if 0
+	debug("Total f64  insts: %llu", flA.f64);
+	debug("Total d64  insts: %llu", flA.d64);
+	debug("Total f128 insts: %llu", flA.f128);
+	debug("Total d128 insts: %llu", flA.d128);
+	debug("Total f256 insts: %llu", flA.f256);
+	debug("Total d256 insts: %llu", flA.d256);
+	debug("Total f512 insts: %llu", flA.f512);
+	debug("Total d512 insts: %llu", flA.d512);
+	debug("Total GFLOPS: %0.2lf", aux);
+    #endif
 
     if (flD != NULL) {
-        memcpy(flD, flA, sizeof(bwidth_t))
+        memcpy(flD, &flA, sizeof(flops_t));
+    }
+    if (gfs != NULL) {
+        *gfs = aux;
     }
 	return EAR_SUCCESS;
 }
 
-state_t flops_data_accum(flops_t *fA, flops_t *fD, double *gfs)
+state_t flops_dummy_data_accum(flops_t *flA, flops_t *flD, double *gfs)
 {
+    double aux = 0.0;
+    
     if (flD != NULL) {
     flA->f64  += flD->f64;
     flA->d64  += flD->d64;
@@ -120,18 +130,24 @@ state_t flops_data_accum(flops_t *fA, flops_t *fD, double *gfs)
     flA->d256 += flD->d256;
     flA->f512 += flD->f512;
     flA->d512 += flD->d512;
+    flA->secs += flD->secs;
     }
     // Giga floating point instructions per second
-    *gfs += (double) (flA->f64  * weights[0]);
-    *gfs += (double) (flA->d64  * weights[1]);
-    *gfs += (double) (flA->f128 * weights[2]);
-    *gfs += (double) (flA->d128 * weights[3]);
-    *gfs += (double) (flA->f256 * weights[4]);
-    *gfs += (double) (flA->d256 * weights[5]);
-    *gfs += (double) (flA->f512 * weights[6]);
-    *gfs += (double) (flA->d512 * weights[7]);
-    *gfs = (*gfs / flA->secs);
-    *gfs = (*gfs / B_TO_GB);
+    aux += (double) (flA->f64  * weights[0]);
+    aux += (double) (flA->d64  * weights[1]);
+    aux += (double) (flA->f128 * weights[2]);
+    aux += (double) (flA->d128 * weights[3]);
+    aux += (double) (flA->f256 * weights[4]);
+    aux += (double) (flA->d256 * weights[5]);
+    aux += (double) (flA->f512 * weights[6]);
+    aux += (double) (flA->d512 * weights[7]);
+    aux = (aux / flA->secs);
+    aux = (aux / B_TO_GB);
+    debug("GBS: %0.2lf", aux);
+
+    if (gfs != NULL) {
+        *gfs = aux;
+    }
 
     return EAR_SUCCESS;
 }

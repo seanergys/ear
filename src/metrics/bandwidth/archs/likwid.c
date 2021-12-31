@@ -18,6 +18,7 @@
 #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
+#include <common/system/user.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <metrics/common/likwid.h>

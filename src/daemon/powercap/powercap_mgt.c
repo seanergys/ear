@@ -101,7 +101,6 @@ static float pdomains_min[NUM_DOMAINS]={0.6,0.4,0,GPU_PERC_UTIL};
 static float pdomains_def[NUM_DOMAINS]={1.0,0.9,0,0};
 static float pdomains_min[NUM_DOMAINS]={1.0,0.75,0,0};
 #endif
-static uint default_pdomains = 1;
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 

@@ -20,10 +20,9 @@
 
 #include <common/config.h>
 #include <common/types/generic.h>
-#if USE_GPUS
-#include <metrics/gpu/gpu.h>
-#endif
 #include <metrics/io/io.h>
+#include <metrics/gpu/gpu.h>
+#include <metrics/flops/flops.h>
 
 // 0: float
 // 1: 128 float

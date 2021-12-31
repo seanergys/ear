@@ -113,13 +113,14 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong 
         if (bD != NULL) {
             bD[i].cas = diff;
         }
-		debug("IMC%d/%u: %llu - %llu = %llu", i, devs_count-1, b2[i].cas, b1[i].cas, diff);
+		debug("IMC%d/%u: %llu - %llu = %llu", i, devs_count-2, b2[i].cas, b1[i].cas, diff);
 	}
+    debug("CAS: %llu in %0.2lf secs", tcas, secs);
     if (cas != NULL) {
         *cas = tcas;
     }
     if (gbs != NULL) {
-        *gbs = bwidth_castogbs(tcas, bD[it].secs);
+        *gbs = bwidth_dummy_help_castogbs(tcas, secs);
     }
 	return EAR_SUCCESS;
 }
@@ -135,7 +136,7 @@ state_t bwidth_dummy_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double 
         if (bD != NULL) {
             bA[i].cas += bD[i].cas;
         }
-        tcas = bA[i].cas;
+        tcas += bA[i].cas;
     }
     if (bD != NULL) {
         bA[it].secs += bD[it].secs;
@@ -144,8 +145,9 @@ state_t bwidth_dummy_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double 
         *cas = tcas;
     }
     if (gbs != NULL) {
-        *gbs = bwidth_castogbs(tcas, bA[it].secs);
+        *gbs = bwidth_dummy_help_castogbs(tcas, bA[it].secs);
     }
+    debug("CAS: %llu in %0.2lf secs", tcas, bA[it].secs);
     return EAR_SUCCESS;
 }
 
@@ -208,7 +210,7 @@ double bwidth_dummy_help_castogbs(ullong cas, double secs)
     return tgbs;
 }
 
-double bwidth_dummy_castotpi(ullong cas, ullong instructions)
+double bwidth_dummy_help_castotpi(ullong cas, ullong instructions)
 {
     return (((double) cas) * line_size) / ((double) instructions);
 }

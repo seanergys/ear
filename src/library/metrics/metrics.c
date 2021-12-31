@@ -139,11 +139,9 @@ static bwidth_t   *bwidth_read1[2];
 static bwidth_t   *bwidth_read2[2];
 static bwidth_t   *bwidth_diff[2];
 static ullong      bwidth_cas[2];
-static double      bwidth_gbs[2];
 static flops_t     flops_read1[2];
 static flops_t     flops_read2[2];
 static flops_t     flops_diff[2];
-static double      flops_gfs[2];
 static cache_t     cache_read1[2];
 static cache_t     cache_read2[2];
 static cache_t     cache_diff[2];
@@ -515,7 +513,7 @@ static void metrics_partial_start()
 
     // New metrics
     bwidth_read(no_ctx, bwidth_read1[LOO]);
-     flops_read(no_ctx,  flops_read1[LOO]);
+     flops_read(no_ctx, &flops_read1[LOO]);
      cache_read(no_ctx, &cache_read1[LOO]);
        cpi_read(no_ctx,   &cpi_read1[LOO]);
 }
@@ -700,6 +698,14 @@ static int metrics_partial_stop(uint where)
 	return EAR_SUCCESS;
 }
 
+ull metrics_vec_inst(signature_t *metrics)
+{
+    ullong fops = 0LLU;
+    if (metrics->FLOPS[INDEX_512F] > 0) fops += metrics->FLOPS[INDEX_512F] / WEIGHT_512F;
+    if (metrics->FLOPS[INDEX_512D] > 0) fops += metrics->FLOPS[INDEX_512D] / WEIGHT_512D;
+    return fops;
+}
+
 void copy_node_data(signature_t *dest,signature_t *src)
 {
     dest->DC_power	=	src->DC_power;
@@ -716,10 +722,11 @@ void copy_node_data(signature_t *dest,signature_t *src)
 /******************* The node master has computed the per-node metrics and the rest of processes uses this information ***********/
 static void metrics_compute_signature_data(uint global, signature_t *metrics, uint iterations, ulong procs)
 {
-				double time_s;
 				sig_ext_t *sig_ext;
-				int i, s;
-				verbose(2,"Compute signature process %d", my_node_id);
+				double time_s;
+				int s;
+				
+                verbose(2,"Compute signature process %d", my_node_id);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -751,8 +758,9 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				sig_ext = metrics->sig_ext;
 
 				/* FLOPS */
-                flops_data_accum(flops_diff[APP], NULL, &metrics->Gflops);
-                flops_help_toold(flops_diff[APP], metrics->FLOPS);
+                flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
+                verbose(0, "GFS[%d]: %0.2lf", s, metrics->Gflops);
+                flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
                 /* CPI */
                 metrics->cycles       = cpi_diff[s].cycles;
@@ -760,8 +768,10 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->CPI          = cpi_avrg[s];
 
 				/* TPI and Memory bandwith */
-                if (master) {
+                //if (master) {
+                if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
+                    verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
@@ -1266,8 +1276,6 @@ extern uint last_earl_gpu_phase_classification;
 state_t metrics_new_iteration(signature_t *sig)
 {
     llong f_time, elap_sec;
-    llong FLOPS[FLOPS_EVENTS];
-    int i;
 
 #if USE_GPUS
     gpu_t *gpud, *gpuddiff;
@@ -1291,7 +1299,7 @@ state_t metrics_new_iteration(signature_t *sig)
 
         // FLOPs
         flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], &sig->Gflops);
-        flops_help_toold(&flops_diff[LOO], &sig->FLOPS);
+        flops_help_toold(&flops_diff[LOO], sig->FLOPS);
 
         sig->time = elap_sec;
         debug("Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
