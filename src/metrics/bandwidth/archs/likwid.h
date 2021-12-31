@@ -30,8 +30,6 @@ state_t bwidth_likwid_get_granularity(ctx_t *c, uint *granularity);
 
 state_t bwidth_likwid_count_devices(ctx_t *c, uint *devs_count);
 
-state_t bwidth_likwid_fake(ctx_t *c);
-
 state_t bwidth_likwid_read(ctx_t *c, bwidth_t *b);
 
 #endif

@@ -112,27 +112,27 @@ state_t bwidth_read(ctx_t *c, bwidth_t *b)
 	return ops.read(c, b);
 }
 
-state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs)
+state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
 	state_t s;
 	if (state_fail(s = ops.read(c, b2))) {
 		return s;
 	}
-	return ops.data_diff(b2, b1, cas, gbs);
+	return ops.data_diff(b2, b1, bD, cas, gbs);
 }
 
-state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs)
+state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
 	state_t s;
-	if (state_fail(s = bwidth_read_diff(c, b2, b1, cas, gbs))) {
+	if (state_fail(s = bwidth_read_diff(c, b2, b1, bD, cas, gbs))) {
 		return s;
 	}
 	return ops.data_copy(b1, b2);
 }
 
-state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs)
+state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
-	return ops.data_diff(b2, b1, cas, gbs);
+	return ops.data_diff(b2, b1, bD, cas, gbs);
 }
 
 state_t bwidth_data_alloc(bwidth_t **b)
@@ -158,4 +158,14 @@ state_t bwidth_data_print(ullong cas, double gbs, int fd)
 state_t bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 {
 	return ops.data_tostr(cas, gbs, buffer, length);
+}
+
+double bwidth_help_castogbs(ullong cas, double secs)
+{
+    return bwidth_dummy_help_castogbs(cas, secs);
+}
+
+double bwidth_help_castotpi(ullong cas, ullong instructions)
+{
+    return bwidth_dummy_help_castotpi(cas, instructions);
 }

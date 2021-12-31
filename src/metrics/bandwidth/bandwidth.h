@@ -43,6 +43,7 @@
 typedef struct bwidth_s {
 	union {
 		timestamp_t time;
+        double secs;
 		ullong cas;
 	};
 } bwidth_t;
@@ -53,7 +54,8 @@ typedef struct bwidth_ops_s {
 	state_t (*count_devices)   (ctx_t *c, uint *dev_count);
 	state_t (*get_granularity) (ctx_t *c, uint *granularity);
 	state_t (*read)            (ctx_t *c, bwidth_t *b);
-	state_t (*data_diff)       (bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
+    state_t (*data_diff)       (bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs);
+    state_t (*data_accum)      (bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs);
 	state_t (*data_alloc)      (bwidth_t **b);
 	state_t (*data_free)       (bwidth_t **b);
 	state_t (*data_copy)       (bwidth_t *dst, bwidth_t *src);
@@ -76,15 +78,15 @@ state_t bwidth_get_granularity(ctx_t *c, uint *granularity);
 
 state_t bwidth_read(ctx_t *c, bwidth_t *b);
 
-// Helpers
-
 /* CAS and GBS are just one value. */
-state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
+state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs);
 
-state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
+state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs);
 
 /* Returns the total node CAS and total node GBs. */
-state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs);
+state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs);
+
+state_t bwidth_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs);
 
 state_t bwidth_data_alloc(bwidth_t **b);
 
@@ -95,5 +97,10 @@ state_t bwidth_data_copy(bwidth_t *dst, bwidth_t *src);
 state_t bwidth_data_print(ullong cas, double gbs, int fd);
 
 state_t bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length);
+
+// Helpers
+double bwidth_help_castogbs(ullong cas, double secs);
+
+double bwidth_help_castotpi(ullong cas, ullong instructions);
 
 #endif

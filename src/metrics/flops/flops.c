@@ -22,43 +22,10 @@
 #include <metrics/flops/archs/perf.h>
 #include <metrics/flops/archs/dummy.h>
 
-#define FLOPS_EVENTS 8
-
-#define NULL_PTR(ptr)\
-    if (ptr == NULL)\
-        return EAR_ERROR;
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static flops_ops_t ops;
 static uint init;
 static uint api;
-
-// Helper functions to get a single flop event
-static state_t flops_get_f64( flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_f128(flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_f256(flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_f512(flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_d64( flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_d128(flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_d256(flops_t *flops_st, ullong *flop_event);
-static state_t flops_get_d512(flops_t *flops_st, ullong *flop_event);
-
-// Declare the function type which gets some flops_t pointer and fills
-// an unsigned long long pointer with a specific flop event
-typedef state_t (*flops_get_event_func)(flops_t *, ullong *);
-
-// This array maps the above helper functions
-static flops_get_event_func flops_event_mapper[FLOPS_EVENTS] = {
-    &flops_get_f64,
-    &flops_get_f128,
-    &flops_get_f256,
-    &flops_get_f512,
-    &flops_get_d64,
-    &flops_get_d128,
-    &flops_get_d256,
-    &flops_get_d512
-};
-
 
 state_t flops_load(topology_t *tp, int eard)
 {
@@ -73,7 +40,6 @@ state_t flops_load(topology_t *tp, int eard)
 	}
 	flops_dummy_load(tp, &ops);
 	init = 1;
-
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;
 }
@@ -126,6 +92,11 @@ state_t flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 	return ops.data_diff(fl2, fl1, flD, gfs);
 }
 
+state_t flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
+{
+    return ops.data_accum(flA, flD, gfs);
+}
+
 state_t flops_data_copy(flops_t *dst, flops_t *src)
 {
 	return ops.data_copy(dst, src);
@@ -141,118 +112,7 @@ state_t flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length)
 	return ops.data_tostr(flD, gfs, buffer, length);
 }
 
-
-static state_t flops_get_f64(flops_t *flops_st,  ullong *flop_event)
+ullong *flops_help_toold(flops_t *flD, ullong *old_flops)
 {
-    NULL_PTR(flops_st);
-
-    debug("flops_get_f64");
-
-    *flop_event = flops_st->f64;
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_f128(flops_t *flops_st, ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    debug("flops_get_f128");
-
-    *flop_event = flops_st->f128;
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_f256(flops_t *flops_st, ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    debug("flops_get_f256");
-
-    *flop_event = flops_st->f256;
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_f512(flops_t *flops_st, ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    debug("flops_get_f512");
-
-    *flop_event = flops_st->f512;
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_d64(flops_t *flops_st,  ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    *flop_event = flops_st->d64;
-
-    debug("flops_get_d64");
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_d128(flops_t *flops_st, ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    *flop_event = flops_st->d128;
-
-    debug("flops_get_d128");
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_d256(flops_t *flops_st, ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    debug("flops_get_d256");
-
-    *flop_event = flops_st->d256;
-
-    return EAR_SUCCESS;
-}
-
-static state_t flops_get_d512(flops_t *flops_st, ullong *flop_event)
-{
-    NULL_PTR(flops_st);
-
-    debug("flops_get_d512");
-
-    *flop_event = flops_st->d512;
-
-    return EAR_SUCCESS;
-}
-
-state_t flops_map_idx_event(flops_t *fl, uint idx, ullong *fl_event)
-{
-    if (idx >= FLOPS_EVENTS)
-        return EAR_ERROR;
-
-    debug("flops_map_idx_event");
-
-    return flops_event_mapper[idx](fl, fl_event);
-}
-
-/* Legacy */
-
-int get_number_fops_events()
-{
-	return 1;
-}
-
-void get_total_fops(llong *flops)
-{
-	*flops = 1;
-}
-
-void get_weigth_fops_instructions(int *weights)
-{
-	*weights = 1;
+    return flops_dummy_help_toold(flD, old_flops);
 }

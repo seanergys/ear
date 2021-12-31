@@ -28,7 +28,7 @@ state_t flops_dummy_dispose(ctx_t *c);
 
 state_t flops_dummy_read(ctx_t *c, flops_t *fl);
 
-// Helpers
+// Data
 state_t flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
 state_t flops_dummy_data_copy(flops_t *dst, flops_t *src);
@@ -36,5 +36,8 @@ state_t flops_dummy_data_copy(flops_t *dst, flops_t *src);
 state_t flops_dummy_data_print(flops_t *b, double gfs, int fd);
 
 state_t flops_dummy_data_tostr(flops_t *b, double gfs, char *buffer, size_t length);
+
+// Helpers
+ullong *flops_dummy_help_toold(flops_t *flD, ullong *flops);
 
 #endif //METRICS_FLOPS_DUMMY_H

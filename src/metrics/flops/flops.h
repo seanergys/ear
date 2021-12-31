@@ -31,29 +31,13 @@
 //  | Intel BROADWELL | 79  | v     | Process     |                            |
 //  | Intel SKYLAKE   | 85  | v     | Process     |                            |
 //  | AMD ZEN+/2      | 17h | v     | Process     | AVX instruction counts     |
-//  | AMD ZEN3        | 19h | x     | Process     | No L2                      |
+//  | AMD ZEN3        | 19h | x     | Process     |                            |
 //  ---------------------------------------------------------------------------|
 // Props:
 //  - Thread safe: yes
 //  - Requires root: no
 
-#define INDEX_064F 0
-#define INDEX_064D 4
-#define INDEX_128F 1
-#define INDEX_128D 5
-#define INDEX_256F 2
-#define INDEX_256D 6
-#define INDEX_512F 3
-#define INDEX_512D 7
-
-#define WEIGHT_064F  1
-#define WEIGHT_064D  1
-#define WEIGHT_128F  4
-#define WEIGHT_128D  2
-#define WEIGHT_256F  8
-#define WEIGHT_256D  4
-#define WEIGHT_512F 16
-#define WEIGHT_512D  8
+#define FLOPS_EVENTS 8
 
 typedef struct flops_s {
 	ullong f64;
@@ -64,14 +48,18 @@ typedef struct flops_s {
 	ullong d256;
 	ullong f512;
 	ullong d512;
-	timestamp_t time;
+    union {
+        timestamp_t time;
+        double secs;
+    };
 } flops_t;
 
 typedef struct flops_ops_s {
 	state_t (*init)            (ctx_t *c);
 	state_t (*dispose)         (ctx_t *c);
 	state_t (*read)            (ctx_t *c, flops_t *fl);
-	state_t (*data_diff)       (flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+    state_t (*data_diff)       (flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+    state_t (*data_accum)      (flops_t *flA, flops_t *flD, double *gfs);
 	state_t (*data_copy)       (flops_t *dst, flops_t *src);
 	state_t (*data_print)      (flops_t *fl, double gfs, int fd);
 	state_t (*data_tostr)      (flops_t *fl, double gfs, char *buffer, size_t length);
@@ -87,12 +75,14 @@ state_t flops_dispose(ctx_t *c);
 
 state_t flops_read(ctx_t *c, flops_t *fl);
 
-// Helpers
+// Data
 state_t flops_read_diff(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
 state_t flops_read_copy(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
 state_t flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+
+state_t flops_data_accum(flops_t *fA, flops_t *fD, double *gfs);
 
 state_t flops_data_copy(flops_t *dst, flops_t *src);
 
@@ -100,6 +90,7 @@ state_t flops_data_print(flops_t *flD, double gfs, int fd);
 
 state_t flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
 
-state_t flops_map_idx_event(flops_t *fl, uint idx, ullong *fl_event);
+// Helpers
+ullong *flops_help_toold(flops_t *flD, ullong *flops);
 
 #endif

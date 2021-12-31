@@ -33,7 +33,6 @@
 // 5: 128 double
 // 6: 256 double
 // 7: 512 double
-#define FLOPS_EVENTS 8
 
 typedef struct gpu_app{
     double GPU_power;

@@ -33,7 +33,8 @@ state_t bwidth_dummy_load(topology_t *tp, bwidth_ops_t *ops)
 	replace_ops(ops->count_devices,   bwidth_dummy_count_devices);
 	replace_ops(ops->get_granularity, bwidth_dummy_get_granularity);
 	replace_ops(ops->read,            bwidth_dummy_read);
-	replace_ops(ops->data_diff,       bwidth_dummy_data_diff);
+    replace_ops(ops->data_diff,       bwidth_dummy_data_diff);
+    replace_ops(ops->data_accum,      bwidth_dummy_data_accum);
 	replace_ops(ops->data_alloc,      bwidth_dummy_data_alloc);
 	replace_ops(ops->data_free,       bwidth_dummy_data_free);
 	replace_ops(ops->data_copy,       bwidth_dummy_data_copy);
@@ -77,15 +78,14 @@ state_t bwidth_dummy_read(ctx_t *c, bwidth_t *b)
 	return EAR_SUCCESS;
 }
 
-state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *gbs)
+state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
-	ullong diff = 0LLU;
+	ullong tcas = 0LLU;
+    ullong diff = 0LLU;
 	ullong time = 0LLU;
-    ullong cas3 = 0LLU;
-    ullong cas2 = 0LLU;
-    ullong cas1 = 0LLU;
 	double secs = 0.0;
-	double dcas = 0.0;
+	double tgbs = 0.0;
+    int it = devs_count-1;
 	int i;
     
     if (cas != NULL) {
@@ -95,36 +95,58 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, ullong *cas, double *
         *gbs = 0.0;
     }
 	// Ms to seconds (for decimals)
-	time = timestamp_diff(&b2[devs_count-1].time, &b1[devs_count-1].time, TIME_MSECS);
+	time = timestamp_diff(&b2[it].time, &b1[it].time, TIME_MSECS);
 	// If no time, no metrics
 	if (time == 0LLU) {
 		return EAR_SUCCESS;
 	}
 	secs = (double) time;
 	secs = secs / 1000.0;
+
+    if (bD != NULL) {
+        bD[it].secs = secs;
+    }
 	//
 	for (i = 0; i < devs_count-1; ++i) {
-        cas1 += b1[i].cas;
-        cas2 += b2[i].cas;
-		diff  = overflow_mixed_u64(b2[i].cas, b1[i].cas, MAXBITS48, 4);
-		cas3 += diff;
-		debug("IMC%d/%u: %llu (%llu - %llu = %llu)", i, devs_count-1, cas3, b2[i].cas, b1[i].cas, diff);
+        diff  = overflow_mixed_u64(b2[i].cas, b1[i].cas, MAXBITS48, 4);
+		tcas += diff;
+        if (bD != NULL) {
+            bD[i].cas = diff;
+        }
+		debug("IMC%d/%u: %llu - %llu = %llu", i, devs_count-1, b2[i].cas, b1[i].cas, diff);
 	}
-    debug("CAS %llu (%llu - %llu = %llu), SECS %0.2lf", cas3, cas2, cas1, cas3, secs);
-	// Computing total
-	dcas = (double) cas3;
-	dcas = (dcas / secs);
-	dcas = (dcas * line_size);
-	dcas = (dcas / B_TO_GB);
-    
     if (cas != NULL) {
-        *cas = cas3;
+        *cas = tcas;
     }
     if (gbs != NULL) {
-        *gbs = dcas;
+        *gbs = bwidth_castogbs(tcas, bD[it].secs);
     }
-
 	return EAR_SUCCESS;
+}
+
+state_t bwidth_dummy_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs)
+{
+    ullong tcas = 0LLU;
+    double tgbs = 0.0;
+    int it = devs_count-1;
+    int i;
+
+    for (i = 0; i < devs_count-1; ++i) {
+        if (bD != NULL) {
+            bA[i].cas += bD[i].cas;
+        }
+        tcas = bA[i].cas;
+    }
+    if (bD != NULL) {
+        bA[it].secs += bD[it].secs;
+    }
+    if (cas != NULL) {
+        *cas = tcas;
+    }
+    if (gbs != NULL) {
+        *gbs = bwidth_castogbs(tcas, bA[it].secs);
+    }
+    return EAR_SUCCESS;
 }
 
 state_t bwidth_dummy_data_alloc(bwidth_t **b)
@@ -175,4 +197,18 @@ state_t bwidth_dummy_data_tostr(ullong cas, double gbs, char *buffer, size_t len
 	snprintf(&buffer[accum], length, "Total: %lf GB/s\n", gbs);
 #endif
 	return EAR_SUCCESS;
+}
+
+double bwidth_dummy_help_castogbs(ullong cas, double secs)
+{
+    double tgbs = (double) cas;
+    tgbs = (tgbs / secs);
+    tgbs = (tgbs * line_size);
+    tgbs = (tgbs / B_TO_GB);
+    return tgbs;
+}
+
+double bwidth_dummy_castotpi(ullong cas, ullong instructions)
+{
+    return (((double) cas) * line_size) / ((double) instructions);
 }
