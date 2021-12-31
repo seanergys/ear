@@ -47,18 +47,16 @@
 #include <library/metrics/gpu.h>
 #endif
 
-#include <metrics/bandwidth/bandwidth.h>
+#include <metrics/io/io.h>
 #include <metrics/cpi/cpi.h>
+#include <metrics/cache/cache.h>
 #include <metrics/flops/flops.h>
-#include <metrics/energy/energy_node_lib.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
-#include <metrics/io/io.h>
-#include <metrics/cache/cache.h>
-
+#include <metrics/bandwidth/bandwidth.h>
+#include <metrics/energy/energy_node_lib.h>
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
-
 #include <daemon/local_api/eard_api.h>
 
 // Registers
@@ -74,15 +72,11 @@ extern int         dispose;
 // Hardware
 static double      hw_cache_line_size;
 // Options
-static int         flops_supported;
-static int         flops_elements;
 static int         rapl_elements;
 static ulong       node_energy_datasize;
 static uint        node_energy_units;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static int         num_packs=0;
-static llong      *metrics_flops[2]; // (vec)
-static int        *metrics_flops_weights; // (vec)
 static ull        *metrics_rapl[2]; // nJ (vec)
 static ull        *aux_rapl; // nJ (vec)
 static ull        *last_rapl; // nJ (vec)
@@ -145,6 +139,10 @@ static bwidth_t   *bwidth_read1[2];
 static bwidth_t   *bwidth_read2[2];
 static ullong      bwidth_cas[2];
 static double      bwidth_gbs[2];
+static flops_t     flops_read1[2];
+static flops_t     flops_read2[2];
+static flops_t     flops_diff[2];
+static double      flops_gfs[2];
 static cache_t     cache_read1[2];
 static cache_t     cache_read2[2];
 static cache_t     cache_diff[2];
@@ -159,6 +157,7 @@ static metrics_t mgt_imcfreq;
 static metrics_t met_cpufreq;
 static metrics_t met_imcfreq;
 static metrics_t met_bwidth;
+static metrics_t met_flops;
 static metrics_t met_cache;
 static metrics_t met_cpi;
 
@@ -170,6 +169,7 @@ const metrics_t *metrics_get(uint api)
         case MET_CPUFREQ: return &met_cpufreq;
         case MET_IMCFREQ: return &met_imcfreq;
         case MET_BWIDTH:  return &met_bwidth;
+        case MET_FLOPS:   return &met_flops;
         case MET_CACHE:   return &met_cache;
         case MET_CPI:     return &met_cpi;
         default: return NULL;
@@ -191,6 +191,7 @@ static void metrics_static_init(topology_t *tp)
     sa(    cpufreq_load(tp, eard));
     sa(    imcfreq_load(tp, eard));
     sa(     bwidth_load(tp, eard));
+    sa(      flops_load(tp, eard));
     sa(      cache_load(tp, eard));
     sa(        cpi_load(tp, eard));
     // This extinguishable
@@ -201,6 +202,7 @@ static void metrics_static_init(topology_t *tp)
     sa(    cpufreq_get_api(&met_cpufreq.api));
     sa(    imcfreq_get_api(&met_imcfreq.api));
     sa(     bwidth_get_api(&met_bwidth.api ));
+    sa(      flops_get_api(&met_flops.api  ));
     sa(      cache_get_api(&met_cache.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
     // Working
@@ -209,6 +211,7 @@ static void metrics_static_init(topology_t *tp)
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
     met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
+    met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
     // Init
@@ -217,6 +220,7 @@ static void metrics_static_init(topology_t *tp)
     sa(    cpufreq_init(no_ctx));
     sa(    imcfreq_init(no_ctx));
     sa(     bwidth_init(no_ctx));
+    sa(      flops_init(no_ctx));
     sa(      cache_init(no_ctx));
     sa(        cpi_init(no_ctx));
     // Count
@@ -239,6 +243,7 @@ static void metrics_static_init(topology_t *tp)
     apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
     apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
     apis_print(met_bwidth.api , "MET_BWIDTH : ");
+    apis_print(met_flops.api  , "MET_FLOPS  : ");
     apis_print(met_cache.api  , "MET_CACHE  : ");
     apis_print(met_cpi.api    , "MET_CPI    : ");
 
@@ -278,8 +283,6 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	}
 	*avgf = total/total_cpus;
 }
-
-static void metrics_accum_flops(llong *loop_flops);
 
 void set_null_dc_energy(edata_t e)
 {
@@ -350,6 +353,7 @@ static void metrics_global_start()
 
     // New metrics
     bwidth_read(no_ctx, bwidth_read1[APP]);
+     flops_read(no_ctx, &flops_read1[APP]);
      cache_read(no_ctx, &cache_read1[APP]);
        cpi_read(no_ctx,   &cpi_read1[APP]);
 }
@@ -359,7 +363,6 @@ static void metrics_global_stop()
 	char io_info[256];
 	char file_name[256];
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
-	long long aux_flops;
     state_t s;
 	int i;
 	
@@ -409,10 +412,6 @@ static void metrics_global_stop()
         }
 	} //master_rank
 
-	/* FLOPS */
-	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
-	metrics_accum_flops(metrics_flops[LOO]);	
-	//get_total_fops(metrics_flops[APP]);
 	/* Only the master will collect these metrics */
 	if (masters_info.my_master_rank>=0){
 		/* Uncore counters to compute memory bandwith */
@@ -454,6 +453,7 @@ static void metrics_global_stop()
 
     // New metrics
     bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP],             NULL, &bwidth_gbs[APP]);
+     flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], &flops_diff[APP],             NULL);
      cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
        cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
 }
@@ -506,11 +506,10 @@ static void metrics_partial_start()
     for (i = 0; i < rapl_elements; i++) {
         last_rapl[i]=aux_rapl[i];
     }
-    /* FLOPS */
-    start_flops_metrics();
 
     // New metrics
     bwidth_read(no_ctx, bwidth_read1[LOO]);
+     flops_read(no_ctx,  flops_read1[LOO]);
      cache_read(no_ctx, &cache_read1[LOO]);
        cpi_read(no_ctx,   &cpi_read1[LOO]);
 }
@@ -518,19 +517,12 @@ static void metrics_partial_start()
 /****************************************************************************************************************************************************************/
 /*************************** This function is executed every N seconds to check if signature can be compute *****************************************************/
 /****************************************************************************************************************************************************************/
-void metrics_accum_flops(llong *loop_flops)
-{
-    uint i;
-    llong *app_flops = metrics_flops[APP];
-    for (i=0; i<FLOPS_EVENTS; i++) app_flops[i] += loop_flops[i];
-}
 
 extern uint ear_iterations;
 extern int ear_guided;
 
 static int metrics_partial_stop(uint where)
 {
-	long long aux_flops;
 	int i,ret;
 	ulong c_energy;
 	long long c_time;
@@ -687,34 +679,21 @@ static int metrics_partial_stop(uint where)
 		}
     } //master_rank (metrics collected by node_master)
 
-	/* FLOPS */
-	stop_flops_metrics(&aux_flops, metrics_flops[LOO]);
-	metrics_accum_flops(metrics_flops[LOO]);
-
 	// New metrics
     bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], &bwidth_cas[LOO], &bwidth_gbs[LOO]);
+     flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO],  &flops_gfs[LOO]);
      cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
        cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
 
     // Accumulations (by now, not sure if required this way in the future)
     bwidth_cas[APP] += bwidth_cas[LOO];
+     flops_gfs[APP] +=  flops_gfs[LOO];
 
 	return EAR_SUCCESS;
 }
 
 static void metrics_reset()
 {
-    reset_flops_metrics();
-}
-
-ull metrics_vec_inst(signature_t *metrics)
-{
-    ull VI=0;
-    if (flops_supported){
-        if (metrics->FLOPS[3]>0) VI = metrics->FLOPS[3] / metrics_flops_weights[3];
-        if (metrics->FLOPS[7]>0) VI = VI + (metrics->FLOPS[7] / metrics_flops_weights[7]);
-    }
-    return VI;
 }
 
 void copy_node_data(signature_t *dest,signature_t *src)
@@ -768,19 +747,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				sig_ext = metrics->sig_ext;
 
 				/* FLOPS */
-				metrics->Gflops = 0.0;
-				if (flops_supported) {
-                    for (i = 0; i < flops_elements; i++) {
-                                    metrics->FLOPS[i] = metrics_flops[s][i] * metrics_flops_weights[i];
-                                    metrics->Gflops += (double) metrics->FLOPS[i];
-                    }
-                    if (s == APP) {
-                        verbose_master(3,"Flops %lf time %lf",metrics->Gflops,time_s);
-                    }
-                    metrics->Gflops = metrics->Gflops / time_s; // Floating ops to FLOPS
-                    metrics->Gflops = metrics->Gflops / 1000000000.0; // FLOPS to GFLOPS
-                    //metrics->Gflops = metrics->Gflops * (double) procs; // Core GFLOPS to node GFLOPS
-				}
+				metrics->Gflops = TODO;
+                metrics->FLOPS[i] = TODO;
 
                 /* CPI */
                 metrics->cycles       = cpi_diff[s].cycles;
@@ -888,7 +856,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 /**************************** Init function used in ear_init ******************/
 int metrics_init(topology_t *topo)
 {
-	ulong flops_size;
 	ulong rapl_size;
 	char *cimc_max_khz,*cimc_min_khz;
 	char imc_buffer[1024];
@@ -925,26 +892,6 @@ int metrics_init(topology_t *topo)
 	}else{
 		verbose_master(INFO_METRICS,"IO data initialized");
 	}	
-	flops_supported = init_flops_metrics();
-
-	if (flops_supported==1)
-	{
-		// Fops size and elements
-		flops_elements = get_number_fops_events();
-		flops_size = sizeof(long long) * flops_elements;
-
-		// Fops metrics allocation
-		metrics_flops[APP] = (long long *) calloc(1,flops_size);
-		metrics_flops[LOO] = (long long *) calloc(1,flops_size);
-		metrics_flops_weights = (int *) malloc(flops_size);
-
-		if (metrics_flops[LOO] == NULL || metrics_flops[APP] == NULL) {
-			return_msg(EAR_ERROR, "error allocating memory, exiting");
-		}
-
-		get_weigth_fops_instructions(metrics_flops_weights);
-		//debug( "detected %d FLOP counter", flops_elements);
-	}
 
 	// Daemon metrics allocation (TODO: standarize data size)
 	if (masters_info.my_master_rank>=0){
@@ -1113,7 +1060,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
-		/* Computing flops */
   	verbose_master(2,"Computing application node signature");
   	se = (sig_ext_t *)metrics->sig_ext;
   	if (!exclusive) metrics_app_node_signature(metrics, &nodeapp);
@@ -1243,7 +1189,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	verbose_master(2, " metrics_app_node_signature");
 
   compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-  compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
+  compute_total_node_flops(lib_shared_region, sig_shared_region, TODO);
   compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
   compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &ns->L3_misses);
 
@@ -1293,7 +1239,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
 	
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
+	compute_total_node_flops(lib_shared_region, sig_shared_region, TODO);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
 	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &ns->L3_misses);
 
@@ -1322,7 +1268,6 @@ extern uint last_earl_gpu_phase_classification;
 
 state_t metrics_new_iteration(signature_t *sig)
 {
-				llong sflops;
 				llong f_time, elap_sec;
 				llong FLOPS[FLOPS_EVENTS];
 				int i;
@@ -1339,13 +1284,8 @@ state_t metrics_new_iteration(signature_t *sig)
 
 								if (elap_sec <= last_elap_sec) return EAR_ERROR;
 								last_elap_sec = elap_sec;
-								read_flops_metrics(&sflops, FLOPS);
-								sig->Gflops = 0;
-								for (i= 0; i< FLOPS_EVENTS; i++){
-												sig->FLOPS[i] = (ullong)FLOPS[i] * metrics_flops_weights[i];
-												sig->Gflops += (double) sig->FLOPS[i];
-								}
-								sig->Gflops = sig->Gflops /(elap_sec *1000000000.0);
+								sig->Gflops = TODO;
+                                sig->FLOPS[i] = TODO;
 								sig->time = elap_sec;
 								debug(" Flops in metrics for validation %lf time %lld",sig->Gflops, elap_sec);
 				}

@@ -15,29 +15,26 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_FLOPS_INTEL63
-#define METRICS_FLOPS_INTEL63
+#ifndef METRICS_FLOPS_DUMMY_H
+#define METRICS_FLOPS_DUMMY_H
 
 #include <metrics/flops/flops.h>
 
-state_t flops_intel63_status(topology_t *tp);
+state_t flops_dummy_load(topology_t *tp, flops_ops_t *ops);
 
-state_t flops_intel63_init(ctx_t *c);
+state_t flops_dummy_init(ctx_t *c);
 
-state_t flops_intel63_dispose(ctx_t *c);
+state_t flops_dummy_dispose(ctx_t *c);
 
-state_t flops_intel63_reset(ctx_t *c);
+state_t flops_dummy_read(ctx_t *c, flops_t *fl);
 
-state_t flops_intel63_start(ctx_t *c);
+// Helpers
+state_t flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
-state_t flops_intel63_read(ctx_t *c, llong *flops, llong *ops);
+state_t flops_dummy_data_copy(flops_t *dst, flops_t *src);
 
-state_t flops_intel63_stop(ctx_t *c, llong *flops, llong *ops);
+state_t flops_dummy_data_print(flops_t *b, double gfs, int fd);
 
-state_t flops_intel63_count(ctx_t *c, uint *count);
+state_t flops_dummy_data_tostr(flops_t *b, double gfs, char *buffer, size_t length);
 
-state_t flops_intel63_read_accum(ctx_t *c, llong *metrics);
-
-state_t flops_intel63_weights(uint *weigths);
-
-#endif
+#endif //METRICS_FLOPS_DUMMY_H

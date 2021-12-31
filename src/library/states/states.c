@@ -296,15 +296,15 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /***************************************************************************************************/
     sig_shared_region[my_node_id].iterations++;
     if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
-    	pst = policy_new_iteration(&check_signature);
-    	if (pst != EAR_SUCCESS){
-        	verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
-        	policy_set_default_freq(NULL);
-        	comp_N_begin = metrics_time();
-        	EAR_STATE = FIRST_ITERATION;
-        	return;
-    	}
-		}
+        pst = policy_new_iteration(&check_signature);
+        if (pst != EAR_SUCCESS){
+            verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
+            policy_set_default_freq(NULL);
+            comp_N_begin = metrics_time();
+            EAR_STATE = FIRST_ITERATION;
+            return;
+        }
+    }
 
     prev_f = ear_frequency;
     curr_pstate=frequency_closest_pstate(ear_frequency);
@@ -418,6 +418,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if the signature is ready */
             /* Included to accelerate the signature computation */
+            verbose(2, "%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
             if (!lib_shared_region->master_ready){
                 if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
                 /* Only when using dynais we consider the 'N' */
@@ -533,6 +534,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* If the policy is ok, we are in stable state and we increase the numbers of iterations to compute the signature */
         case SIGNATURE_STABLE:
+            verbose(2, "%s--- SIGNATURE STABLE ---%s", COL_YLW, COL_CLR);
             if (!lib_shared_region->master_ready){
 
                 if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) return;
@@ -649,6 +651,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             }
             break;
         case PROJECTION_ERROR:
+            verbose(2, "%s--- PROJECTION ERROR ---%s", COL_YLW, COL_CLR);
             if (masters_info.my_master_rank>=0 && traces_are_on()){
                 /* We compute the signature just in case EAR_GUI is on */
                 if (((iterations - 1) % perf_count_period) ) return;

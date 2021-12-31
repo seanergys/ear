@@ -15,29 +15,17 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_FLOPS_AMD49
-#define METRICS_FLOPS_AMD49
+#ifndef METRICS_FLOPS_PERF_H
+#define METRICS_FLOPS_PERF_H
 
 #include <metrics/flops/flops.h>
 
-state_t flops_amd49_status(topology_t *tp);
+state_t flops_perf_load(topology_t *tp, flops_ops_t *ops);
 
-state_t flops_amd49_init(ctx_t *c);
+state_t flops_perf_init(ctx_t *c);
 
-state_t flops_amd49_dispose(ctx_t *c);
+state_t flops_perf_dispose(ctx_t *c);
 
-state_t flops_amd49_reset(ctx_t *c);
+state_t flops_perf_read(ctx_t *c, flops_t *ca);
 
-state_t flops_amd49_start(ctx_t *c);
-
-state_t flops_amd49_read(ctx_t *c, llong *flops, llong *ops);
-
-state_t flops_amd49_stop(ctx_t *c, llong *flops, llong *ops);
-
-state_t flops_amd49_count(ctx_t *c, uint *count);
-
-state_t flops_amd49_read_accum(ctx_t *c, llong *metrics);
-
-state_t flops_amd49_weights(uint *weigths);
-
-#endif
+#endif //METRICS_FLOPS_PERF_H

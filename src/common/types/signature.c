@@ -25,8 +25,6 @@
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 
-
-
 void signature_copy(signature_t *destiny, signature_t *source)
 {
     memcpy(destiny, source, sizeof(signature_t));

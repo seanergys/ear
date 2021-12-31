@@ -52,8 +52,8 @@ typedef struct gpu_signature{
 typedef struct mini_sig
 {
     float DC_power;
-		float DRAM_power;
-		float PCK_power;
+	float DRAM_power;
+	float PCK_power;
     float GBS;
     float TPI;
     float CPI;

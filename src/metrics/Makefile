@@ -37,9 +37,8 @@ mets_OBJS = \
     $(SRCDIR)/metrics/energy/energy_node_lib.o \
     $(SRCDIR)/metrics/energy/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/flops.o \
-    $(SRCDIR)/metrics/flops/cpu/amd49.o \
-    $(SRCDIR)/metrics/flops/cpu/intel63.o \
-    $(SRCDIR)/metrics/flops/cpu/dummy.o \
+    $(SRCDIR)/metrics/flops/archs/perf.o \
+    $(SRCDIR)/metrics/flops/archs/dummy.o \
     $(SRCDIR)/metrics/cpufreq/cpufreq.o \
     $(SRCDIR)/metrics/cpufreq/cpufreq_base.o \
     $(SRCDIR)/metrics/cpufreq/archs/eard.o \

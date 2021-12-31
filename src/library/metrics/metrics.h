@@ -34,8 +34,9 @@ typedef struct sig_ext {
 #define MET_CPUFREQ 3
 #define MET_IMCFREQ 4
 #define MET_BWIDTH  5
-#define MET_CACHE   6
-#define MET_CPI     7
+#define MET_FLOPS   6
+#define MET_CACHE   7
+#define MET_CPI     8
 
 /** New metrics **/
 const metrics_t *metrics_get(uint api);
