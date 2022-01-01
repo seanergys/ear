@@ -414,8 +414,11 @@ void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *fl
 	int i,f;
 	memset(flops,0,FLOPS_EVENTS*sizeof(ull));
 	for (i=0;i<data->num_processes;i++){
-		for (f=0;f<FLOPS_EVENTS;f++) flops[f] += sig[i].sig.FLOPS[f];
+		for (f=0;f<FLOPS_EVENTS;f++) {
+            flops[f] += sig[i].sig.FLOPS[f];
+        }
 	}
+    verbose(0, "######## compute_total_node_flops ");
 }
 
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles)
@@ -544,7 +547,10 @@ double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
 {
 	double total = 0;
 	int i;
-	for (i=0;i<data->num_processes;i++) total += sig[i].sig.Gflops;
+	for (i=0;i<data->num_processes;i++) {
+        total += sig[i].sig.Gflops;
+    }
+    verbose(0, "######## compute_node_flops %0.2lf", total);
 	return total;
 }
 
@@ -560,13 +566,7 @@ void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *
 	*avx = total;
 }
 
-
-
-
-
 /* Node mgr support functions */
-
-
 void  init_earl_node_mgr_info()
 {
   for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
