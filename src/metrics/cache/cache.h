@@ -73,7 +73,7 @@ state_t cache_read_copy(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, doub
 
 state_t cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
-state_t cache_data_copy(cache_t *src, cache_t *dst);
+state_t cache_data_copy(cache_t *dst, cache_t *src);
 
 state_t cache_data_print(cache_t *caD, double gbs, int fd);
 
