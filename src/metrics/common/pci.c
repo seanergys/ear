@@ -131,10 +131,6 @@ state_t pci_read(pci_t *pci, void *buffer, size_t size, off_t addr)
 {
 	ssize_t psize;
 	errno = 0;
-//static uint i = 0;
-//debug("%d: FD%d read %ld bytes from %x address", i, pci->fd, size, addr);
-//++i;
-//return EAR_SUCCESS;
 	if ((psize = pread(pci->fd, buffer, size, addr)) != size) {
 		debug("%s read %ld bytes but expected %lu (errno %d)", pci->path, psize, size, errno);
 		if (errno == 0) {
@@ -160,8 +156,8 @@ state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *ad
 	uint written;
 	for (p = 0; p < pcis_count; ++p) {
 		for (a = 0; a < addrs_count; ++a) {
-//debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
-//p, pcis[p].fd, addrs[a], buffer[a], sizeof(int));
+            //debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
+                //p, pcis[p].fd, addrs[a], buffer[a], sizeof(int));
 			written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
 			debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
 				p, pcis[p].fd, addrs[a], buffer[a], written);
@@ -187,7 +183,7 @@ state_t pci_mmio_map(off_t addr, size_t size, void **p)
 	if ((*p = mmap(0, 0x4000, PROT_READ|PROT_WRITE, MAP_SHARED, fd, addr & pagemask)) == MAP_FAILED) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
-    	#if 0
+    #if 0
 	if ((*p = ioremap(addr, size)) == NULL) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}

@@ -23,6 +23,7 @@
 #include <metrics/common/msr.h>
 #include <metrics/bandwidth/archs/amd17.h>
 
+// TODO: explore the HSMP function GetMaxDDRBandwidthAndUtilization
 // Controllers (L3, L3 limited and DataFabric).
 //static off_t  ctls_dfs[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 };
 //static off_t  ctrs_dfs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 };

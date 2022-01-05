@@ -26,7 +26,7 @@
 #include <common/output/debug.h>
 #include <metrics/bandwidth/archs/intel106.h>
 
-//
+// TODO: have an ICE LAKE node and test it.
 static ushort ice_ids[2] = { 0x3451, 0x00 };
 static char  *ice_dfs[2] = { "00.1", NULL };
 //static uint   ice_cmds_init[2] = { 0x030000, 0x423F04 };

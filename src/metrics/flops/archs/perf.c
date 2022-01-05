@@ -25,6 +25,7 @@
 static ulong hwell_evs[8]  = { 0x02c7, 0x01c7, 0x08c7, 0x04c7, 0x20c7, 0x10c7, 0x80c7, 0x40c7 };
 //static uint  hwell_count   = 8;
 static ulong hwell_divisor = 1;
+// It is supposed that Perf keeps ff03 event in the correct CPU registers.
 static uint  zen_evs[8]    = { 0xff03 }; // Old event: 0x04cb
 //static uint  zen_count     = 1;
 static ulong zen_divisor   = 2;

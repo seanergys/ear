@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -25,6 +25,10 @@
 #include <common/hardware/bithack.h>
 #include <management/cpufreq/archs/amd17.h>
 #include <metrics/common/hsmp.h>
+
+// In both modes, the P_STATE list is built using the P0 MSR register 0xc0010064.
+// The list has P0 to PX, being X the last frequency found in the list given by
+// the driver. From a P_STATE to next there are always a difference of 100 MHz.
 
 typedef struct pss_s {
 	ullong fid;
