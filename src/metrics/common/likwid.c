@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #ifdef LIKWID_BASE
 #include <likwid.h>
@@ -29,6 +29,10 @@
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <metrics/common/likwid.h>
+
+// Likwid opens a daemon to read performance counters. But there is a compiling option
+// to prevents that to directly open the perfmon counters. Take a look to config.mk
+// file and look for this line (ACCESSMODE = accessdaemon).
 
 #ifndef LIKWID_BASE
 typedef struct CpuInfo_s {
@@ -154,8 +158,7 @@ static state_t static_init()
     debug("LIKWID force: %s", getenv("LIKWID_FORCE"));
     debug("LIKWID path : %s", getenv("PATH"));
     
-    likwid.perfmon_setVerbosity(1);
-
+    //likwid.perfmon_setVerbosity(1);
     if (likwid.topology_init() < 0) {
         return static_dispose(EAR_ERROR, "failed to initialize LIKWID's topology");
     }

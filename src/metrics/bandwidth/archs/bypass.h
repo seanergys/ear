@@ -20,6 +20,8 @@
 
 #include <metrics/bandwidth/bandwidth.h>
 
+// This API just calls cache API and transform L3 misses to CAS.
+
 state_t bwidth_bypass_load(topology_t *tp, bwidth_ops_t *ops);
 
 state_t bwidth_bypass_init(ctx_t *c);

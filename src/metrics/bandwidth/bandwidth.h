@@ -26,19 +26,29 @@
 #include <common/hardware/topology.h>
 #include <metrics/common/apis.h>
 
-// Compatibility:
-//  -----------------------------------------------
-//  | Architecture    | F/M | Comp. | Granularity |
-//  -----------------------------------------------
-//  | Intel HASWELL   | 63  | v     | Socket      |
-//  | Intel BROADWELL | 79  | v     | Socket      |
-//  | Intel SKYLAKE   | 85  | v     | Socket      |
-//  | AMD ZEN+/2      | 17h | x     | -           |
-//  | AMD ZEN3        | 19h | x     | -           |
-//  -----------------------------------------------
+// The API
+//
+// This API is designed to get the bandwidth from CPU caches to main memory.
+//
 // Props:
-//  - Thread safe: yes
-//  - Requires root: no
+// 	- Thread safe: yes.
+//	- Daemon API: yes.
+//  - Dummy API: yes.
+//  - Requires root: yes.
+//
+// Compatibility:
+//  -------------------------------------------------------------------------
+//  | Architecture    | F/M | Comp. | Granularity | System                  |
+//  -------------------------------------------------------------------------
+//  | Intel HASWELL   | 63  | v     | Node        | PCI                     |
+//  | Intel BROADWELL | 79  | v     | Node        | PCI                     |
+//  | Intel SKYLAKE   | 85  | v     | Node        | PCI                     |
+//  | Intel ICELAKE   | 106 | x     | Node        | MMIO (test required)    |
+//  | AMD ZEN+/2      | 17h | v     | Node        | L3 misses (future HSMP) |
+//  | AMD ZEN3        | 19h | v     | Node        | L3 misses (future HSMP) |
+//  | Likwid          | -   | v     | Node        | Used for ICELAKE        |
+//  | Cache bypass    | -   | v     | Cache API   | Normally is procf       |
+//  -------------------------------------------------------------------------
 
 typedef struct bwidth_s {
 	union {
@@ -86,6 +96,7 @@ state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ull
 /* Returns the total node CAS and total node GBs. */
 state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs);
 
+/* Accumulates bandwidth differences and return its data in CAS and/or GB/s (accepts NULL). */
 state_t bwidth_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs);
 
 state_t bwidth_data_alloc(bwidth_t **b);
@@ -99,8 +110,10 @@ state_t bwidth_data_print(ullong cas, double gbs, int fd);
 state_t bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length);
 
 // Helpers
-double bwidth_help_castogbs(ullong cas, double secs);
 
+/* Converts CAS to GBS given a time in seconds. */
+double bwidth_help_castogbs(ullong cas, double secs);
+/* Converts CAS to TPI given a number of instructions. */
 double bwidth_help_castotpi(ullong cas, ullong instructions);
 
 #endif

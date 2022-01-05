@@ -63,7 +63,7 @@ state_t bwidth_bypass_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t bwidth_bypass_get_granularity(ctx_t *c, uint *granularity)
 {
-	*granularity = GRANULARITY_IMC;
+	*granularity = GRANULARITY_PROCESS;
 	return EAR_SUCCESS;
 }
 

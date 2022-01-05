@@ -23,6 +23,16 @@
 #include <common/system/time.h>
 #include <common/hardware/topology.h>
 
+// The API
+//
+// This API is designed to get the floating point operations per second of the system.
+//
+// Props:
+//  - Thread safe: yes.
+//  - Requires root: no.
+//	- Daemon bypass: no.
+//  - Dummy API: yes.
+//
 // Compatibility:
 //  ----------------------------------------------------------------------------
 //  | Architecture    | F/M | Comp. | Granularity | Comments                   |
@@ -30,23 +40,22 @@
 //  | Intel HASWELL   | 63  | v     | Process     |                            |
 //  | Intel BROADWELL | 79  | v     | Process     |                            |
 //  | Intel SKYLAKE   | 85  | v     | Process     |                            |
-//  | AMD ZEN+/2      | 17h | v     | Process     | AVX instruction counts     |
-//  | AMD ZEN3        | 19h | x     | Process     |                            |
+//  | Intel ICELAKE   | 106 | v     | Process     | It is supposed             |
+//  | AMD ZEN+/2      | 17h | v     | Process     | Counts 256 flops.          |
+//  | AMD ZEN3        | 19h | ?     | Process     | Test required.             |
 //  ---------------------------------------------------------------------------|
-// Props:
-//  - Thread safe: yes
-//  - Requires root: no
+//
 
 // Old style, deprecated
 #define FLOPS_EVENTS 8
-#define INDEX_064F 0
-#define INDEX_064D 4
-#define INDEX_128F 1
-#define INDEX_128D 5
-#define INDEX_256F 2
-#define INDEX_256D 6
-#define INDEX_512F 3
-#define INDEX_512D 7
+#define INDEX_064F   0
+#define INDEX_064D   4
+#define INDEX_128F   1
+#define INDEX_128D   5
+#define INDEX_256F   2
+#define INDEX_256D   6
+#define INDEX_512F   3
+#define INDEX_512D   7
 #define WEIGHT_064F  1
 #define WEIGHT_064D  1
 #define WEIGHT_128F  4
@@ -99,6 +108,7 @@ state_t flops_read_copy(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, doub
 
 state_t flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
+/* Accumulates flops differences and return its data in GFLOPs (accepts NULL). */
 state_t flops_data_accum(flops_t *fA, flops_t *fD, double *gfs);
 
 state_t flops_data_copy(flops_t *dst, flops_t *src);
@@ -108,6 +118,8 @@ state_t flops_data_print(flops_t *flD, double gfs, int fd);
 state_t flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
 
 // Helpers
+
+/* Converts a flops difference into old FLOPs array system. */
 ullong *flops_help_toold(flops_t *flD, ullong *flops);
 
 #endif
