@@ -156,8 +156,8 @@ state_t pci_write(pci_t *pci, const void *buffer, size_t size, off_t addr)
 
 state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *addrs, uint addrs_count)
 {
-	ssize_t written = 0;
 	int p, a;
+	uint written;
 	for (p = 0; p < pcis_count; ++p) {
 		for (a = 0; a < addrs_count; ++a) {
 //debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",

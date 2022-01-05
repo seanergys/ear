@@ -1057,6 +1057,7 @@ state_t eard_local_api()
 	int numfds_ready;
 	int ack_fd;
 	state_t s;
+	uint ret;
 	
 	num_packs = node_desc.socket_count;
 

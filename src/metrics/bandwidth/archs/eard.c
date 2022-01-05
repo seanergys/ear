@@ -22,7 +22,6 @@
 #include <metrics/bandwidth/archs/eard.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
-static uint granularity;
 static uint devs_count;
 
 #define RPC_GET_API       RPC_MET_BWIDTH_GET_API

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 //#define FREE 1
 
 #include <fcntl.h>
@@ -29,9 +29,9 @@
 //
 static ushort ice_ids[2] = { 0x3451, 0x00 };
 static char  *ice_dfs[2] = { "00.1", NULL };
-static uint   ice_cmds_init[2] = { 0x030000, 0x423F04 };
-static uint   ice_ids_count    = 1;
-static uint   ice_dfs_count    = 1;
+//static uint   ice_cmds_init[2] = { 0x030000, 0x423F04 };
+//static uint   ice_ids_count    = 1;
+//static uint   ice_dfs_count    = 1;
 //
 static pci_t *pcis;
 static uint   pcis_count;

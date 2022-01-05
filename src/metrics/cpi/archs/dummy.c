@@ -53,10 +53,6 @@ state_t cpi_dummy_read(ctx_t *c, cpi_t *ci)
 // Helpers
 state_t cpi_dummy_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 {
-	ullong diff = 0LLU;
-	double secs = 0.0;
-	double cis  = 0.0;
-	int i;
 
 	*cpi = 0.0;
 	memset(ciD, 0, sizeof(cpi_t));
@@ -89,7 +85,6 @@ state_t cpi_dummy_data_print(cpi_t *ci, double cpi, int fd)
 
 state_t cpi_dummy_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
 {
-	size_t added = 0;
 	snprintf(buffer, length,
 		"Instructions: %llu\nCycles: %llu\nStalls: %llu\nCPI: %0.2lf\n",
 		ci->instructions, ci->cycles, ci->stalls, cpi);

@@ -49,7 +49,6 @@ static uint started;
 
 void set_cache(ullong event, uint type, uint level)
 {
-	perf_t *p = NULL;
 	state_t s;
 
 	if (state_fail(s = perf_open(&perfs[counter], &perfs[0], 0, type, event))) {

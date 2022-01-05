@@ -23,10 +23,10 @@
 #include <metrics/flops/archs/perf.h>
 
 static ulong hwell_evs[8]  = { 0x02c7, 0x01c7, 0x08c7, 0x04c7, 0x20c7, 0x10c7, 0x80c7, 0x40c7 };
-static uint  hwell_count   = 8;
+//static uint  hwell_count   = 8;
 static ulong hwell_divisor = 1;
 static uint  zen_evs[8]    = { 0xff03 }; // Old event: 0x04cb
-static uint  zen_count     = 1;
+//static uint  zen_count     = 1;
 static ulong zen_divisor   = 2;
 
 static perf_t perfs[8];
@@ -37,7 +37,6 @@ static uint started;
 
 void set_flops(ullong event, uint type, uint level)
 {
-	perf_t *p = NULL;
 	state_t s;
 
 	if (state_fail(s = perf_open(&perfs[counter], NULL, 0, type, event))) {
@@ -96,7 +95,6 @@ state_t flops_perf_read(ctx_t *c, flops_t *fl)
 {
 	ullong *p = (ullong *) fl;
 	ullong value;
-	state_t s;
 	int i;
 
 	memset(fl, 0, sizeof(flops_t));

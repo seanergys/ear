@@ -58,11 +58,9 @@ state_t cache_dummy_read(ctx_t *c, cache_t *ca)
 // Helpers
 state_t cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
-	ullong diff = 0LLU;
 	ullong time = 0LLU;
 	double secs = 0.0;
 	double cas  = 0.0;
-	int i;
 
 	memset(caD, 0, sizeof(cache_t));
 	// Ms to seconds (for decimals)
@@ -107,8 +105,7 @@ state_t cache_dummy_data_print(cache_t *ca, double gbs, int fd)
 
 state_t cache_dummy_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
-	size_t added = 0;
-	added = snprintf(buffer, length,
+	 snprintf(buffer, length,
 		"L1D misses: %llu\nL2 misses : %llu\nL3 misses : %llu (%0.2lf GB/s)\n",
 		ca->l1d_misses, ca->l2_misses, ca->l3_misses, gbs);
 	return EAR_SUCCESS;

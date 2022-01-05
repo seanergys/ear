@@ -24,21 +24,21 @@
 #include <metrics/bandwidth/archs/amd17.h>
 
 // Controllers (L3, L3 limited and DataFabric).
-static off_t  ctls_dfs[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 };
-static off_t  ctrs_dfs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 };
+//static off_t  ctls_dfs[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 };
+//static off_t  ctrs_dfs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 };
 static off_t  ctls_l3f[6] = { 0xc0010230, 0xc0010232, 0xc0010234, 0xc0010236, 0xc0010238, 0xc001023a };
 static off_t  ctrs_l3f[6] = { 0xc0010231, 0xc0010233, 0xc0010235, 0xc0010237, 0xc0010239, 0xc001023b };
-static ullong cmds_dfs[4] = { 0x0000000000403807, 0x0000000000403887, 0x0000000100403807, 0x0000000100403887 };
-static ullong cmds_l3f[4] = { 0x030f000000400104, 0x0c0f000000400104, 0x300f000000400104, 0xc00f000000400104 };
+//static ullong cmds_dfs[4] = { 0x0000000000403807, 0x0000000000403887, 0x0000000100403807, 0x0000000100403887 };
+//static ullong cmds_l3f[4] = { 0x030f000000400104, 0x0c0f000000400104, 0x300f000000400104, 0xc00f000000400104 };
 static ullong cmds_l3l[1] = { 0xff0f000000400104 };
-static ullong mask_dfs = 0x0000FFFFFFFFFFFF; // 48 bits
+//static ullong mask_dfs = 0x0000FFFFFFFFFFFF; // 48 bits
 static ullong mask_l3f = 0x0000FFFFFFFFFFFF; // 48 bits
-static uint count_l3f = 4;
+//static uint count_l3f = 4;
 static uint count_l3l = 1;
-static uint count_dfs = 4;
-static uint gran_l3f = GRANULARITY_CORE;
+//static uint count_dfs = 4;
+//static uint gran_l3f = GRANULARITY_CORE;
 static uint gran_l3l = GRANULARITY_CCX;
-static uint gran_dfs = GRANULARITY_CCD;
+// static uint gran_dfs = GRANULARITY_CCD;
 // Selected
 static off_t *ctls;
 static off_t *ctrs;
@@ -85,7 +85,6 @@ state_t bwidth_amd17_load(topology_t *tp_in, bwidth_ops_t *ops)
 
 state_t bwidth_amd17_init(ctx_t *c)
 {
-	state_t s;
 	int i, j;
 
 	// Finding the free counters (not by now)
@@ -121,7 +120,6 @@ state_t bwidth_amd17_get_granularity(ctx_t *c, uint *granularity)
 
 state_t bwidth_amd17_read(ctx_t *c_in, bwidth_t *b)
 {
-	state_t s;
 	int c, d, r;
 
 	// Retrieving time in the position N
@@ -130,7 +128,7 @@ state_t bwidth_amd17_read(ctx_t *c_in, bwidth_t *b)
 	for (c = d = 0; c < tp.cpu_count; ++c) {
 		msr_open(tp.cpus[c].id);
 		for (r = 0; r < ctrs_count; ++r, ++d) {
-			s = msr_read(tp.cpus[c].id, &b[d].cas, sizeof(ullong), ctrs[r]);
+			msr_read(tp.cpus[c].id, &b[d].cas, sizeof(ullong), ctrs[r]);
 			// In case of DFS, also you have tu multiply by 2.
 			b[d].cas &= mask;
 			debug("D%d: %llu cas (CPU%d, R%d)", d, b[d].cas, c, r);
