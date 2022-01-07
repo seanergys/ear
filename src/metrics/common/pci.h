@@ -40,6 +40,7 @@ state_t pci_write(pci_t *pci, const void *buffer, size_t size, off_t addr);
 
 state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *addrs, uint addrs_count);
 
+/* Maps a physical address to the void pointer p. */
 state_t pci_mmio_map(off_t addr, size_t size, void **p);
 
 state_t pci_mmio_unmap(void *p);

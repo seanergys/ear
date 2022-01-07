@@ -32,29 +32,30 @@
 // architecture limitations read the headers in archs folder.
 //
 // Props:
-// 	- Thread safe: partially.
-//	- User mode: no.
+// 	- Thread safe: yes.
+//	- Daemon bypass: yes.
+//  - Dummy API: yes.
+//
+// Compatibility:
+//  -------------------------------------------------------------------------------
+//  | Architecture    | F/M | Comp. | Granularity | Effective granularity         |
+//  -------------------------------------------------------------------------------
+//  | Intel HASWELL   | 63  | v     | Thread      | Core                          |
+//  | Intel BROADWELL | 79  | v     | Thread      | Core                          |
+//  | Intel SKYLAKE   | 85  | v     | Thread      | Core                          |
+//  | Intel ICELAKE   | 106 | v     | Thread      | Core                          |
+//  | AMD ZEN+/2      | 17h | v     | Thread      | Core (socket in virtual mode) |
+//  | AMD ZEN3        | 19h | x     | Thread      | Core (socket in virtual mode) |
+//  -------------------------------------------------------------------------------
 //
 // Folders:
 //	- archs: different node architectures, such as AMD and Intel.
 //	- drivers: API contacting to different system drivers, such as acpi_cpufreq.
-//	- recovery: old API.
 //	- tests: examples.
 //
-// Compiling options:
-//	- You can set DISABLE_AMD in archs/Makefile to disable the AMD17 loading,
-//	  allowing the default or generic API selection.
-//	- You can set RECOVERY in Makefile to replace current API by the old one in
-//	  case of failure.
-//
-// Future work:
-// 	- Offer a function to get frequency configurations between threads, cores,
-// 	  or other kind of group of CPUs. In example:
-// 	  	mgt_cpufreq_get_conf(thread, core, group);
-// 	- Offer a function to serialize/marshall context to copy its internal data
-// 	  (context) in user mode applications. In example:
-// 	  	mgt_cpufreq_serialize(ctx_t *c, void **serialization, size_t *size);
-// 	  Or maybe to force static sized context allocations.
+// Options:
+//  - You can set the environment variable HACK_AMD_ZEN_VIRTUAL to 1 to enable
+//    the virtual P_STATEs system instead the current HSMP procedure.
 //
 // Use example:
 //	- You can find an example in cpufreq/tests folder.

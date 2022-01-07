@@ -31,21 +31,20 @@ static char  *hwell_dfs[9] = { "14.0", "14.1", "15.0", "15.1", "17.0", "17.1", "
 static off_t  hwell_ctls_addr[2]  = { 0xF4, 0xD8 };
 static off_t  hwell_ctrs_addr[1]  = { 0xA0 };
 static uint   hwell_cmds_start[2] = { 0x030000, 0x420F04 };
-static uint   hwell_ids_count     = 8;
-static uint   hwell_dfs_count     = 8;
+//static uint   hwell_ids_count     = 8;
+//static uint   hwell_dfs_count     = 8;
 static uint   hwell_ctls_count    = 2;
 static uint   hwell_ctrs_count    = 1;
 // Broadwell
 static ushort bwell_ids[9] = { 0x6FB4, 0x6FB5, 0x6FB0, 0x6FB1, 0x6FD4, 0x6FD5, 0x6FD0, 0x6FD1, 0x00 };
-static uint   bwell_ids_count     = 8;
+//static uint   bwell_ids_count     = 8;
 // Skylake
 static ushort slake_ids[4] = { 0x2042, 0x2046, 0x204A, 0x00 };
 static char  *slake_dfs[9] = { "0a.2","0a.6","0b.2","0b.6","0c.2","0c.6","0d.2","0d.6", NULL };
-static uint   slake_ids_count     = 3;
-static uint   slake_dfs_count     = 8;
+//static uint   slake_ids_count     = 3;
+//static uint   slake_dfs_count     = 8;
 //
 static pci_t *pcis;
-static uint   pcis_init;
 static uint   pcis_count;
 static off_t *ctls_addr;
 static off_t *ctrs_addr;
@@ -126,13 +125,12 @@ state_t bwidth_intel63_read(ctx_t *c, bwidth_t *bw)
 {
     ullong cas = 0LLU;
 	int p, t, i;
-	state_t s;
 
 	timestamp_get(&bw[devs_count].time);
 	for (p = i = 0; p < pcis_count; ++p) {
 		for (t = 0; t < ctrs_count; ++t, ++i){
             bw[i].cas = 0LLU;
-			s = pci_read(&pcis[p], &bw[i].cas, sizeof(ullong), ctrs_addr[t]);
+			pci_read(&pcis[p], &bw[i].cas, sizeof(ullong), ctrs_addr[t]);
 			bw[i].cas = bw[i].cas & 0x0000ffffffffffff;
 			debug("IMC%d/%u: %llu (read)", i, devs_count-1, bw[i].cas);
 			cas += bw[i].cas; 

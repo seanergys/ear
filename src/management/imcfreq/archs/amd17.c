@@ -20,6 +20,8 @@
 #include <metrics/common/hsmp.h>
 #include <management/imcfreq/archs/amd17.h>
 
+// Used 7.4 HSMP Functions in Preliminary Processor Programming Reference (PPR)
+// for AMD Family 19h Model 01h, Revision B1 Processors, Volume 2 of 2.
 static char *err1 = "Incorrect result when asking for frequency by HSMP";
 static ullong freqs_khz[4];
 static ullong freqs_mhz[4];

@@ -203,7 +203,6 @@ static void topology_apicid(topology_t *topo)
     char *twop = NULL;
     char *line = NULL;
     size_t len = 0;
-    int apicid = -1;
     int cpu    = 0;
 
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");

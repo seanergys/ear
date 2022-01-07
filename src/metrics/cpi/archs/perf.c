@@ -27,8 +27,8 @@ static ullong gen_cyc_ev   = PERF_COUNT_HW_CPU_CYCLES;
 static uint   gen_ins_tp   = PERF_TYPE_HARDWARE;
 static uint   gen_cyc_tp   = PERF_TYPE_HARDWARE;
 // Since Haswell
-static ullong hwell_sta_ev = 0x010e;
-static uint   hwell_sta_tp = PERF_TYPE_RAW;
+//static ullong hwell_sta_ev = 0x010e;
+//static uint   hwell_sta_tp = PERF_TYPE_RAW;
 //
 static perf_t perf_ins;
 static perf_t perf_cyc;

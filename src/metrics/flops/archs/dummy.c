@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -76,10 +76,8 @@ static double compute_gflops(flops_t *fl)
 
 state_t flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 {
-	ullong diff = 0LLU;
 	ullong time = 0LLU;
     flops_t flA; // flAux
-	int i;
 
     if (gfs != NULL) {
         *gfs = 0.0;

@@ -24,6 +24,28 @@
 #include <common/hardware/topology.h>
 #include <metrics/common/pstate.h>
 
+// The API
+//
+// This API is designed to set the frequency in the of the uncore or integrated
+// memory controllers of the system.
+//
+// Props:
+// 	- Thread safe: yes.
+//	- Daemon bypass: yes.
+//  - Dummy API: yes.
+//
+// Compatibility:
+//  --------------------------------------------------------
+//  | Architecture    | F/M | Comp. | Granularity | System |
+//  --------------------------------------------------------
+//  | Intel HASWELL   | 63  | v     | Socket      | MSR    |
+//  | Intel BROADWELL | 79  | v     | Socket      | MSR    |
+//  | Intel SKYLAKE   | 85  | v     | Socket      | MSR    |
+//  | Intel ICELAKE   | 106 | v     | Socket      | MSR    |
+//  | AMD ZEN+/2      | 17h | v     | Socket      | HSMP   |
+//  | AMD ZEN3        | 19h | v     | Socket      | HSMP   |
+//  -------------------------------------------------------
+
 #define all_sockets all_devs
 
 typedef struct mgt_imcfreq_ops_s

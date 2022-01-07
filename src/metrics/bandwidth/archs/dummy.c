@@ -84,7 +84,6 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong 
     ullong diff = 0LLU;
 	ullong time = 0LLU;
 	double secs = 0.0;
-	double tgbs = 0.0;
     int it = devs_count-1;
 	int i;
     
@@ -128,7 +127,6 @@ state_t bwidth_dummy_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong 
 state_t bwidth_dummy_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs)
 {
     ullong tcas = 0LLU;
-    double tgbs = 0.0;
     int it = devs_count-1;
     int i;
 
