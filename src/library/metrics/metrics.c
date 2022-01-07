@@ -767,6 +767,16 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
 
+                if (metrics->CPI > 1) {
+                    char buff[128];
+                    cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
+                    verb(INFO_METRICS, "Start %s", buff);
+                    cpi_data_tostr(&cpi_read2[s], cpi_avrg[s], buff, sizeof(buff));
+                    verb(INFO_METRICS, "Stop %s", buff);
+                    cpi_data_tostr(&cpi_diff[s], cpi_avrg[s], buff, sizeof(buff));
+                    verb(INFO_METRICS, "Diff %s", buff);
+                }
+
 				/* TPI and Memory bandwith */
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
