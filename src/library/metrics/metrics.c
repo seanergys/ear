@@ -369,6 +369,8 @@ static void metrics_global_stop()
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
     state_t s;
 	int i;
+
+    verb(2, "%s--- process %d calling METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
 	
 	if (masters_info.my_master_rank < 0){
 		while(sig_shared_region[my_node_id].ready){ 
@@ -726,7 +728,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                verbose(2,"Compute signature process %d", my_node_id);
+                verbose(2,"Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
