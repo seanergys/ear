@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #include <stdlib.h>
 #include <pthread.h>
 #include <common/sizes.h>
@@ -131,6 +132,7 @@ state_t temp_intel63_read(ctx_t *c, llong *temp, llong *average)
         temp[i] = 0;
     }
 	for (i = 0; i < tp.cpu_count; ++i) {
+		debug("Accessing to cpu %d ID=%d", i, tp.cpus[i].id);
 		if (xtate_fail(s, msr_read(tp.cpus[i].id, &data, sizeof(llong), IA32_PKG_THERM_STATUS))) {
 			return s;
 		}

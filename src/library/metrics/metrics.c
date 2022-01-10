@@ -759,7 +759,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				/* FLOPS */
                 flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-                verbose(0, "GFS[%d]: %0.2lf", s, metrics->Gflops);
+                //verbose(0, "GFS[%d]: %0.2lf", s, metrics->Gflops);
                 flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
                 /* CPI */
@@ -771,7 +771,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
+                    //verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;

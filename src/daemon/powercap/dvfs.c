@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <limits.h>
 #define _GNU_SOURCE
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <signal.h>
@@ -392,6 +392,7 @@ state_t enable(suscription_t *sus)
     node_size = node_desc.cpu_count;
     debug("DVFS:Initializing frequency in dvfs_pc %u cpus",node_size);
     frequency_init(node_size);
+		frequency_set_userspace_governor_all_cpus();
     num_pstates = frequency_get_num_pstates();
     /* node_size or MAX_CPUS_SUPPORTED */
     c_freq = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
@@ -428,8 +429,8 @@ void restore_frequency()
     for (i = 0; i < node_size; i++) {
         if (c_req_f[i] == 0) c_req_f[i] = frequency_get_nominal_freq();
     }
-
-    //print_frequencies(node_size, c_freq);
+		debug("Node size is %lu. Nominal is %lu", node_size, frequency_get_nominal_freq());
+    verbose_frequencies(node_size, c_freq);
     frequency_set_with_list(node_size, c_req_f);
 }
 

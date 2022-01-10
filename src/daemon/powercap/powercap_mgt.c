@@ -257,7 +257,7 @@ static state_t util_detect_main(void *p)
     if ((pmgt_powercap_status_per_domain(CHECK_ASK_DEFAULT) == 0) && ((util_period % UTIL_BURST_PERIOD) == 0)){
         util_period = 0;
         loadavg(&min,&vmin,&xvmin,&runnable,&total,&lastpid);
-        debug("%sCPU load %.2f%s ",COL_MGT,min,COL_CLR);
+        //debug("%sCPU load %.2f%s ",COL_MGT,min,COL_CLR);
         /* DOMAIN_NODE and DOMAIN_CPU are evaluated as a whole, GPU is evaluated in more detail */
         dom_util[DOMAIN_NODE] = min;
         prev_util[DOMAIN_CPU][0] = current_util[DOMAIN_CPU][0];
@@ -286,7 +286,7 @@ static state_t util_detect_main(void *p)
         float ratio;
         for (i=0;i<NUM_DOMAINS;i++){
             ratio = (float)dom_util[i]/(float)dom_util_limit[i];
-            debug("%sDomain %d perc_use %.2f (%.2f/%.1f)%s",COL_RED,i,ratio,(float)dom_util[i],(float)dom_util_limit[i],COL_CLR);
+            //debug("%sDomain %d perc_use %.2f (%.2f/%.1f)%s",COL_RED,i,ratio,(float)dom_util[i],(float)dom_util_limit[i],COL_CLR);
         }
 #endif
         pmgt_powercap_status_per_domain(CHECK_POWER_RED);
