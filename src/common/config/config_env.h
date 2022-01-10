@@ -25,7 +25,7 @@
 
 #define SCHED_IS(prefix) (strcmp(xstr(SCHED_PREFIX), str(prefix)) == 0) ? 1 : 0
 
-#define SCHED_PREFIX     
+#define SCHED_PREFIX     SLURM
 
 /** @config_env.h */
 
