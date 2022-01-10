@@ -136,7 +136,6 @@ state_t temp_intel63_read(ctx_t *c, llong *temp, llong *average)
 		if (xtate_fail(s, msr_read(tp.cpus[i].id, &data, sizeof(llong), IA32_PKG_THERM_STATUS))) {
 			return s;
 		}
-		debug("read %s", data);
 		aux1  = throt[i] - ((data >> 16) & 0xff);
 		aux2 += aux1;
 		if (temp != NULL) {

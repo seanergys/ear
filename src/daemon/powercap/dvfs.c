@@ -429,8 +429,7 @@ void restore_frequency()
     for (i = 0; i < node_size; i++) {
         if (c_req_f[i] == 0) c_req_f[i] = frequency_get_nominal_freq();
     }
-		debug("Node size is %lu. Nominal is %lu", node_size, frequency_get_nominal_freq());
-    verbose_frequencies(node_size, c_freq);
+    verbose_frequencies(node_size, c_freq_f);
     frequency_set_with_list(node_size, c_req_f);
 }
 
