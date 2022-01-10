@@ -369,6 +369,8 @@ static void metrics_global_stop()
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
     state_t s;
 	int i;
+
+    verb(2, "%s--- process %d calling METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
 	
 	if (masters_info.my_master_rank < 0){
 		while(sig_shared_region[my_node_id].ready){ 
@@ -726,7 +728,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                verbose(2,"Compute signature process %d", my_node_id);
+                verbose(2,"Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -766,6 +768,16 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->cycles       = cpi_diff[s].cycles;
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
+
+                if (metrics->CPI > 1) {
+                    char buff[128];
+                    cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
+                    verb(INFO_METRICS, "Start %s", buff);
+                    cpi_data_tostr(&cpi_read2[s], cpi_avrg[s], buff, sizeof(buff));
+                    verb(INFO_METRICS, "Stop %s", buff);
+                    cpi_data_tostr(&cpi_diff[s], cpi_avrg[s], buff, sizeof(buff));
+                    verb(INFO_METRICS, "Diff %s", buff);
+                }
 
 				/* TPI and Memory bandwith */
                 //if (master) {
