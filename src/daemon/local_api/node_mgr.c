@@ -84,7 +84,7 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 		return EAR_ERROR; /* PENDING to return the appropiate message */
 	}
 
-	node_jobs_list = (ear_njob_t *)malloc(sizeof(ear_njob_t)*MAX_CPUS_SUPPORTED);
+	node_jobs_list = (ear_njob_t *)calloc(MAX_CPUS_SUPPORTED,sizeof(ear_njob_t));
 	if (node_jobs_list == NULL){ 
 		umask(oldm);
 		return EAR_ERROR;

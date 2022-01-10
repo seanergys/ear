@@ -258,12 +258,12 @@ int eards_connect(application_t *my_app, ulong lid)
   sprintf(ear_commack,"%s/%u/.ear_comm.ack_%d.%d.%lu",ear_tmp,(uint)my_id, i, my_id,lid);
   debug("comreq_global %s comreq %s comack %s",ear_commreq_global,ear_commreq,ear_commack);
   /* Private pipes are created before the connection request is sent */
-	verbose(2,"Creating %s",ear_commack);
+	//verbose(2,"Creating %s",ear_commack);
   if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
      error("Error when creating ear communicator for ack %s", strerror(errno));
   }
   chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	verbose(2,"Creating %s",ear_commreq);
+	//verbose(2,"Creating %s",ear_commreq);
   if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
      error("Error when creating ear communicator for requests %s", strerror(errno));
   }
@@ -271,7 +271,7 @@ int eards_connect(application_t *my_app, ulong lid)
   /* Pipes are created */
   /* We give some opportunities to connect */
   do{
-        verbose(2,"Connecting with EARD using file %s\n",ear_commreq_global);
+        //verbose(2,"Connecting with EARD using file %s\n",ear_commreq_global);
         if ((ear_fd_req_global = open(ear_commreq_global,O_WRONLY|O_NONBLOCK))<0) tries++;
         else connected=1;
         if ((MAX_TRIES>1) && (!connected)) sleep(1);
