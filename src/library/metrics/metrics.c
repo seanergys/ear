@@ -370,7 +370,7 @@ static void metrics_global_stop()
     state_t s;
 	int i;
 
-    verb(2, "%s--- process %d calling METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
+    verbose(2, "%s--- process %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
 	
 	if (masters_info.my_master_rank < 0){
 		while(sig_shared_region[my_node_id].ready){ 
@@ -379,6 +379,7 @@ static void metrics_global_stop()
 	}
 	imcfreq_avrg[APP] = 0;
 	cpufreq_avrg[APP] = 0;
+
 	/* Onle the master will collect these metrics */
 	if (masters_info.my_master_rank>=0) {
         /* MPI statistics */
@@ -540,8 +541,8 @@ static int metrics_partial_stop(uint where)
     /* If the signature of the master is not ready, we cannot compute our signature */
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-        debug("Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
-        debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
+        verbose(2, "Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
+        verbose(2, "Iterations %u ear_guided %u",ear_iterations,ear_guided);
         return EAR_NOT_READY;
     }
 
@@ -579,7 +580,7 @@ static int metrics_partial_stop(uint where)
 
 	/* If we are not the node master, we will continue */
 	if ((where==SIG_END) && (c_power<system_conf->min_sig_power) && (masters_info.my_master_rank>=0)){ 
-		debug("EAR_NOT_READY because of power %f\n",c_power);
+		verbose(2, "EAR_NOT_READY because of power %f\n",c_power);
 		return EAR_NOT_READY;
 	}
 
@@ -1058,13 +1059,14 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
+	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
 	if (!eards_connected()) return;
     
     metrics_static_dispose();
 
-	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
-  while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
+    while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
 
+    verb(0, "Proc %d calling metrics compute signature data (loop) from metrics dispose", my_node_id);
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
     /* Waiting for node signatures */
     verbose_master(2,"Waiting for node signatures");
@@ -1077,6 +1079,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 	verbose(2,"Global stop ID=%d",my_node_id);	
 	metrics_global_stop();
+    verb(0, "Proc %d calling metrics compute signature data (app) from metrics dispose", my_node_id);
 	metrics_compute_signature_data(APP, metrics, 1, procs);
     verbose_master(2,"Waiting for node signatures");
     
@@ -1162,6 +1165,7 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 								if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
 
 								//Marks the signature as ready
+                                verb(0, "Proc %d calling metrics compute signature data (loop) from metrics compute signature finish", my_node_id);
 								metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
 								//
