@@ -155,9 +155,11 @@ void services_init(topology_t *tp)
 {
 	state_t s;
 
+	// DONE
 	mgt_cpufreq_load(tp, NO_EARD);
 	mgt_imcfreq_load(tp, NO_EARD);
         cpufreq_load(tp, NO_EARD);
+	// DONE
         imcfreq_load(tp, NO_EARD);
          bwidth_load(tp, NO_EARD);
 
@@ -167,9 +169,11 @@ void services_init(topology_t *tp)
         imcfreq_get_api((uint *) &ui.api);
          bwidth_get_api((uint *) &ub.api);
 
+	// DONE
 	sf(mgt_cpufreq_init(no_ctx));
 	sf(mgt_imcfreq_init(no_ctx));
     sf(    cpufreq_init(no_ctx));
+	// DONE
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
 

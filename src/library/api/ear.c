@@ -542,7 +542,7 @@ void attach_shared_regions()
 	/****************************************/
 	/* Node mgr info in no-master processes */
 	/****************************************/
-  verbose(2,"Creating node_mgr region for no masters");
+  //verbose(2,"Creating node_mgr region for no masters");
   if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
     verbose_master(2,"Error creating node_mgr region");
   }
@@ -551,17 +551,17 @@ void attach_shared_regions()
   me.sid = application.job.step_id;
   me.creation_time = time(NULL);
   CPU_ZERO(&me.node_mask);
-  verbose(3,"Waiting for master to be attached to node_mgr region");
+  //verbose(3,"Waiting for master to be attached to node_mgr region");
 	while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 		usleep(100);
 		verbose(3, "Waiting, current index %u", lib_shared_region->node_mgr_index);
 	}
-	verbose(3, "We are attached at position %u", lib_shared_region->node_mgr_index);
+	//verbose(3, "We are attached at position %u", lib_shared_region->node_mgr_index);
   if (nodemgr_find_job(&me, &node_mgr_index) != EAR_SUCCESS){
     verbose_master(2,"Error attaching to node_mgr region");
 		node_mgr_index = NULL_NODE_MGR_INDEX;
   }
-  verbose(3,"Attached no-master! at pos %u", node_mgr_index);
+  //verbose(3,"Attached no-master! at pos %u", node_mgr_index);
   /* node_mgr_job_info maps other jobs data sharing the node */
   if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
   init_earl_node_mgr_info();
@@ -1349,7 +1349,8 @@ void ear_finalize(int exit_status)
 			cleanup_job_folder();
 			 return;
 		}
-		if (!eards_connected()){
+		if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+			lib_shared_region->earl_on = 0;
 			cleanup_job_folder();
        return;
     }

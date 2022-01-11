@@ -241,7 +241,7 @@ state_t monitor_apis_init(void *whatever)
 	sa(metrics_apis_init(&tp, EARD, &mets));
 	sa(metrics_apis_print());
 	
-    verbose(0, "-------------------------------------------------------------------");
+    debug("-------------------------------------------------------------------");
 
 	sa(metrics_read_alloc(&mr1));
 	sa(metrics_read_alloc(&mr2));
@@ -272,7 +272,7 @@ state_t monitor_apis_update(void *whatever)
 	if (print) {
 		sa(metrics_read_copy(&mr2, &mr1, &mrD));
 		sa(metrics_diff_print(&mrD));
-		verbose(0, "-------------------------------------------------------------------");
+		debug("-------------------------------------------------------------------");
 	}
 
 	return EAR_SUCCESS;
@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
 
 	while(1)
     {
-	verbose(0, "-------------------------------------------------------------------");
+	debug("-------------------------------------------------------------------");
     scanf("%s", cmnd);
 
     if (is(cmnd, "connect")) {

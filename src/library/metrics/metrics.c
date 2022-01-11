@@ -236,9 +236,9 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
 
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
-    verbose(2, "CPUFREQ available list of frequencies:\n%s", buffer);
+    verbose_master(2, "CPUFREQ available list of frequencies:\n%s", buffer);
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
-    verbose(2, "IMCFREQ available list of frequencies:\n%s", buffer);
+    verbose_master(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
     apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
     apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
@@ -538,6 +538,10 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256];
     state_t s;
 
+	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+      lib_shared_region->earl_on = 0;
+		}
+
     /* If the signature of the master is not ready, we cannot compute our signature */
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
@@ -762,7 +766,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				/* FLOPS */
                 flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-                verbose(0, "GFS[%d]: %0.2lf", s, metrics->Gflops);
+                //verbose(0, "GFS[%d]: %0.2lf", s, metrics->Gflops);
                 flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
                 /* CPI */
@@ -784,7 +788,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
+                    //verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;

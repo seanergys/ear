@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -61,8 +61,8 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 		return EAR_ERROR;
 	}
 	if ((ret = read(fd, &my_node_coeffs, sizeof(intel_skl_t))) != sizeof(intel_skl_t)){
-		if (ret < 0) 	debug("Error reading cpu model data %s", strerror(errno));
-		else 					debug("Error reading cpu model data %d bytes expected %d", ret, sizeof(intel_skl_t));
+		if (ret < 0){ 	debug("Error reading cpu model data %s", strerror(errno));}
+		else{ 					debug("Error reading cpu model data %d bytes expected %lu", ret, sizeof(intel_skl_t));}
 		close(fd);
 		return EAR_ERROR;
 	}
