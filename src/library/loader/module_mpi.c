@@ -227,7 +227,7 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 
 static int module_mpi_is()
 {
-	uint is_mpi = 1;
+	uint is_mpi = 0;
 	/* The env var oversubscribe the library version detected */
   load_mpi_version = getenv(SCHED_LOAD_MPI_VERSION);
   if (load_mpi_version != NULL){ 
@@ -242,7 +242,7 @@ static int module_mpi_is()
     return 1;
   }else{
     verbose(2,"MPI_Get_library_version NOT detected");
-		return is_mpi;
+		return 0;
   }
 
 
@@ -253,14 +253,14 @@ int module_mpi(char *path_lib_so,char *libhack)
 	static char path_so[4096];
 	int lang_c;
 	int lang_f;
-	int is_mpi = 1;
+	int is_mpi ;
 
 	verbose(3, "LOADER: loading module MPI");
 
 	is_mpi = module_mpi_is();
 
 	if (!is_mpi) {
-		verbose(3, "LOADER: no MPI detected");
+		verbose(2, "LOADER: no MPI detected");
 		return 0;
 	}
 

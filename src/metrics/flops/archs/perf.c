@@ -102,7 +102,7 @@ state_t flops_perf_read(ctx_t *c, flops_t *fl)
 	timestamp_get(&fl->time);
 	for (i = 0; i < counter; ++i) {
 		value = 0LU;
-		perf_read(&perfs[i], &value);
+		perf_read(&perfs[i], (long long *)&value);
 		debug("values[%d]: %lu", i, value);
 		p[levels[i]-1] = value / divisor;
 	}
