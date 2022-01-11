@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <limits.h>
 #define _GNU_SOURCE
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <signal.h>

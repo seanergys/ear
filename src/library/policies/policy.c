@@ -706,15 +706,19 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		/* Update node info */
 		/* Not needed. update_earl_node_mgr_info();*/
 
-		verbose_master(2,"policy node apply");
+		verbose_master(2, "--- policy node apply ---");
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
-		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+		verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+
 		/*
 		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &est_sig, PER_JOB, -1);
 		my_sig->GBS = est_sig.GBS;
 		my_sig->DC_power = est_sig.DC_power;		
 		*/
-		verbose_master(2,"policy node apply power %lf GBS %lf TPI %lf time %lf" , my_sig->DC_power, my_sig->GBS, my_sig->TPI, my_sig->time);
+
+        // Below is commented as the above call shows the same info
+		// verbose_master(2, "policy node apply power %lf GBS %lf TPI %lf time %lf",
+        //         my_sig->DC_power, my_sig->GBS, my_sig->TPI, my_sig->time);
 		if (jobs_in_node > 1) dyn_unc = 0;
 		else 									dyn_unc = conf_dyn_unc;
 		/* End update */
@@ -727,7 +731,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
     if (c->num_gpus && (gidle == GPU_IDLE)) verbose_master(2,"%sGPU idle phase%s",COL_BLU,COL_CLR);
-    verbose_master(POLICY_PHASES,"EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
+    verbose_master(POLICY_PHASES, "--- EARL phase classification %u: busy waiting %u / iobound %u / mpibound %u / using phases %u ---",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
     if (use_earl_phases){
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND){
@@ -777,7 +781,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
             }
             /* If not, we should restore to default settings */
             if ((last_earl_phase_classification == APP_BUSY_WAITING) || (last_earl_phase_classification == APP_IO_BOUND) || (last_earl_gpu_phase_classification != gidle)){
-                verbose_master(POLICY_PHASES,"COMP-MPI configuration");
+                verbose_master(POLICY_PHASES, "--- COMP-MPI configuration ---");
                 st = policy_restore_comp_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
                 *freq_set = avg_nf.cpu_freq[0];
                 *ready = EAR_POLICY_CONTINUE;

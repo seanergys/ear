@@ -74,6 +74,7 @@ typedef struct lib_shared_data{
     signature_t job_signature;
     int         master_rank;
     uint        master_ready;
+    uint        global_stop_ready;
     cpu_set_t   node_mask;
     uint        node_mgr_index;
 }lib_shared_data_t;

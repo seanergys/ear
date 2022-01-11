@@ -195,9 +195,9 @@ static void print_local_data()
 	if (masters_info.my_master_rank == 0 || using_verb_files) {
 	version_to_str(ver);
 	#if MPI
-	verbose(1, "------------EAR%s MPI enabled --------------------",ver);
+	verbose(1, "---------------- EAR %s MPI enabled ----------------",ver);
 	#else
-	verbose(1, "------------EAR%s MPI not enabled --------------------",ver);
+	verbose(1, "------------- EAR %s MPI not enabled -------------",ver);
 	#endif
 	verbose(1, "App/user id: '%s'/'%s'", application.job.app_id, application.job.user_id);
 	verbose(1, "Node/job id/step_id: '%s'/'%lu'/'%lu'", application.node_id, application.job.id,application.job.step_id);
@@ -209,7 +209,7 @@ static void print_local_data()
 	verbose(1, "DynAIS levels/window/AVX512: %d/%d/%d", get_ear_dynais_levels(), get_ear_dynais_window_size(), dynais_build_type());
 	verbose(1, "VAR path: %s", get_ear_tmp());
 	verbose(1, "EAR privileged user %u",system_conf->user_type==AUTHORIZED);
-	verbose(1, "--------------------------------");
+	verbose(1, "---------------------------------------------------");
 	}
 }
 
@@ -1374,7 +1374,6 @@ void ear_finalize(int exit_status)
     monitor_dispose();
 
     // Closing and obtaining global metrics
-    verbose_master(2,"metrics dispose");
     dispose=1;
     verbose_master(2,"Total resources computed %d",get_total_resources());
     metrics_dispose(&application.signature, get_total_resources());
@@ -1826,8 +1825,9 @@ state_t earl_periodic_actions(void *no_arg)
             ear_periodic_mode = PERIODIC_MODE_ON;
             if (ear_guided != new_ear_guided){ 
                 monitor_burst(earl_monitor);
-                verbose_master(2,"%d:Dynais guided --> time guided at time %lu",my_node_id,period_elapsed);
-								mpi_calls_in_period = lib_period;
+                verbose_master(2,"(l. rank) %d: Dynais guided --> time guided at time %lu",
+                        my_node_id, period_elapsed);
+                mpi_calls_in_period = lib_period;
                 states_begin_period(my_id, 1, (ulong) lib_period,1);
             }
         }

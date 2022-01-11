@@ -17,8 +17,9 @@
 
 #define _GNU_SOURCE
 
-//#define SHOW_DEBUGS           1
+// #define SHOW_DEBUGS           1
 #define INFO_METRICS           2
+#define INFO2_METRICS          3
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
 
@@ -370,13 +371,16 @@ static void metrics_global_stop()
     state_t s;
 	int i;
 
-    verbose(2, "%s--- process %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
-	
+    verbose(INFO2_METRICS, "%s--- (l. rank) %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
+
 	if (masters_info.my_master_rank < 0){
-		while(sig_shared_region[my_node_id].ready){ 
-			usleep(10);
+		while(!lib_shared_region->global_stop_ready){ 
+            verbose(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
+			if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) verbose_master(2, "%sMemory sync for lib shared region fails %s%s", COL_RED, strerror(errno), COL_CLR);
+			usleep(1000000);
 		}
 	}
+
 	imcfreq_avrg[APP] = 0;
 	cpufreq_avrg[APP] = 0;
 
@@ -538,15 +542,17 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256];
     state_t s;
 
+    
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
       lib_shared_region->earl_on = 0;
 		}
 
+
     /* If the signature of the master is not ready, we cannot compute our signature */
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-        verbose(2, "Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
-        verbose(2, "Iterations %u ear_guided %u",ear_iterations,ear_guided);
+        debug("Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
+        debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
         return EAR_NOT_READY;
     }
 
@@ -584,7 +590,7 @@ static int metrics_partial_stop(uint where)
 
 	/* If we are not the node master, we will continue */
 	if ((where==SIG_END) && (c_power<system_conf->min_sig_power) && (masters_info.my_master_rank>=0)){ 
-		verbose(2, "EAR_NOT_READY because of power %f\n",c_power);
+		debug("EAR_NOT_READY because of power %f\n",c_power);
 		return EAR_NOT_READY;
 	}
 
@@ -638,17 +644,20 @@ static int metrics_partial_stop(uint where)
 
         /* Avg CPU freq */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
-            verbose_master(2,"CPUFreq data read in partial stop");
+            verbose_master(2,"%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
         }
         if (xtate_fail(s,cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
-            verbose_master(2,"CPUFreq data diff");
+            verbose_master(2,"%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
         }else{
-            verbose_master(2,"CPUFreq average is %.2fGHz",(float)cpufreq_avrg[LOO]/1000000.0);
+            verbose_master(2,"CPUFreq average is %.2fGHz", (float)cpufreq_avrg[LOO]/1000000.0);
         }
-		for (int cpu = 0; cpu < mtopo.cpu_count;cpu++){ 
-			verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_diff[cpu]/1000000.0);
-		}
-		verbosen_master(3,"\n");
+        // Simple verbose
+        if (verb_level >= 3) {
+            for (int cpu = 0; cpu < mtopo.cpu_count;cpu++){ 
+                verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_diff[cpu]/1000000.0);
+            }
+        verbose_master(3, "%s", "");
+        }
 		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
 
         /* Avg IMC frequency */
@@ -733,7 +742,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                verbose(2,"Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
+                verbose(INFO2_METRICS,"Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -872,15 +881,20 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 								signature_copy(&lib_shared_region->job_signature,metrics);
 				}
 				sig_shared_region[my_node_id].period = time_s;
-				if (verb_level >= 2) signature_print_simple_fd(2, metrics);
-				verbose(2," ");
+				if (verb_level >= INFO2_METRICS && masters_info.my_master_rank >= 0) signature_print_simple_fd(2, metrics);
+				verbose_master(2," ");
 
 				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
 				update_earl_node_mgr_info();
 
 				signature_ready(&sig_shared_region[my_node_id],0);
-				verbose(2,"End Compute signature process %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
+				verbose(INFO_METRICS, "End compute signature for (l. rank) %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
+
+#if 0
 				if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+#endif
+
+				if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 
 }
 
@@ -1063,31 +1077,38 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t nodeapp;
 
-	verbose(2,"Metrics_dispose_init %d. End local signature",my_node_id);
-	if (!eards_connected()) return;
+	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
+    verbose_master(INFO_METRICS + 1, "End local signature");
+
+	if (!eards_connected() && masters_info.my_master_rank >= 0) return;
     
     metrics_static_dispose();
 
     while (metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) usleep(10);
 
-    verb(0, "Proc %d calling metrics compute signature data (loop) from metrics dispose", my_node_id);
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
-    /* Waiting for node signatures */
-    verbose_master(2,"Waiting for node signatures");
-    while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0) usleep(100);
 
+    /* Waiting for node signatures */
+    verbose_master(INFO_METRICS, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
+    while (are_signatures_ready(lib_shared_region,sig_shared_region) == 0
+            && !lib_shared_region->global_stop_ready) {
+        usleep(100);
+    }
+
+    // Only master does something in this funcion
 	compute_per_process_and_job_metrics(&nodeapp);
 
 	/* At this point we mark signatures are not ready to be computed again */
-	if (masters_info.my_master_rank >= 0)  free_node_signatures(lib_shared_region,sig_shared_region);
+    if (masters_info.my_master_rank >= 0)  {
+        free_node_signatures(lib_shared_region,sig_shared_region);
+        lib_shared_region->global_stop_ready = 1;
+    }
 
-	verbose(2,"Global stop ID=%d",my_node_id);	
 	metrics_global_stop();
-    verb(0, "Proc %d calling metrics compute signature data (app) from metrics dispose", my_node_id);
 	metrics_compute_signature_data(APP, metrics, 1, procs);
-    verbose_master(2,"Waiting for node signatures");
-    
+
     /* Waiting for node signatures */
+    verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
     while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */
@@ -1169,7 +1190,6 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 								if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
 
 								//Marks the signature as ready
-                                verb(0, "Proc %d calling metrics compute signature data (loop) from metrics compute signature finish", my_node_id);
 								metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
 								//
