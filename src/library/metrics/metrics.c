@@ -236,9 +236,9 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
 
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
-    verbose(2, "CPUFREQ available list of frequencies:\n%s", buffer);
+    verbose_master(2, "CPUFREQ available list of frequencies:\n%s", buffer);
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
-    verbose(2, "IMCFREQ available list of frequencies:\n%s", buffer);
+    verbose_master(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
     apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
     apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
