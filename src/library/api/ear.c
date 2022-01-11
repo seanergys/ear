@@ -1350,6 +1350,7 @@ void ear_finalize(int exit_status)
 			 return;
 		}
 		if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+			lib_shared_region->earl_on = 0;
 			cleanup_job_folder();
        return;
     }

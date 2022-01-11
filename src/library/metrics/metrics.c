@@ -537,6 +537,10 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256];
     state_t s;
 
+	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+      lib_shared_region->earl_on = 0;
+		}
+
     /* If the signature of the master is not ready, we cannot compute our signature */
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
