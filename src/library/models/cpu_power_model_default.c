@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -156,8 +156,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 				my_job_DRAM_power += dram_power[j];
 				sig[lp].sig.GBS = gbs[j];	
 				sig[lp].sig.DRAM_power = dram_power[j];	
-				lp++;
 				debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
+				lp++;
     }
   }
 	data->job_signature.GBS = my_job_GBS;
@@ -195,6 +195,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
   #endif
   CPU_power -= GPU_power;
 
+	debug("Baseline CPU power %lf", CPU_power);
 
 	job_power_ratio = 0.0;
 	double GPU_process_power = 0;

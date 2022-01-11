@@ -109,6 +109,8 @@ void  __attribute__ ((constructor)) loader()
         _loaded = module_mpi(path_lib_so, libhack);
 
         if (_loaded) return;
+        
+				verbose(2,"Tring openmp/mkl module");
 
         _loaded = module_constructor_openmp(path_lib_so,libhack);
         if (_loaded) return;

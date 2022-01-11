@@ -256,7 +256,7 @@ void notify_eard_connection(int status)
   if (masters_connected != masters_info.my_master_size){
   /* Some of the nodes is not ok , setting off EARL */
     if (masters_info.my_master_rank>=0) {
-      verbose_master(1,"%s:Number of nodes expected %d , number of nodes connected %d, setting EARL to off \n",node_name,masters_info.my_master_size,masters_connected);
+      verbose_master(1,"%s:setting EARL to off  because some EARD is not running\n",node_name);
     }
     eard_ok = 0;
     return;
