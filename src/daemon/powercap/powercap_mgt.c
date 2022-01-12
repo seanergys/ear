@@ -737,13 +737,13 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
                 cpu_set_t m;
                 pos_job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);
                 if (pmapp->app.is_mpi) {  //job step with EARL
-                    verbose(VEARD_PC, "Using EARL mask");
+                    debug("Using EARL mask");
                     m = pmapp->app_info->node_mask;
                 } else if (!pmapp->is_job) { //job step without EARL
-                    verbose(VEARD_PC, "Using plugin mask (step without EARL)");
+                    debug("Using plugin mask (step without EARL)");
                     m = pmapp->plug_mask;
                 } else if (pmapp->is_job && pos_job_in_node && alloc->numc == 1) { //srun without an sbatch
-                    verbose(VEARD_PC, "Using plugin mask (step without EARL neither sbatch)");
+                    debug("Using plugin mask (step without EARL neither sbatch)");
                     m = pmapp->plug_mask;
                 } else { //sbatch with other steps inside
                     continue;

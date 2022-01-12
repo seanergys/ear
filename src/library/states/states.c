@@ -519,7 +519,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
             if (dynais_used) sprintf(use_case,"D");
             else sprintf(use_case,"P");
-            state_verbose_signature(&loop,masters_info.my_master_rank,show_signatures,ear_app_name,application.node_id,iterations,prev_f,policy_freq,use_case);
+            state_verbose_signature(&loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id,
+                    iterations, prev_f, policy_freq, use_case);
 
             /* END VERBOSE */
             break;

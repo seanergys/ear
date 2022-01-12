@@ -848,7 +848,13 @@ void ear_init()
 	state_t st;
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
-	
+
+    /* Use a verbose file per process instead of only master */
+    char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
+    uint per_proc_verb_file = 0;
+    if (per_proc_v_file != NULL) {
+        per_proc_verb_file = atoi(per_proc_v_file);
+    }
 
 	if (ear_lib_initialized){
 		verbose_master(1,"EAR library already initialized");
@@ -1058,9 +1064,9 @@ void ear_init()
 	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
  /* create verbose file for each job */
     if (verb_path != NULL){
-        if (masters_info.my_master_rank >= 0){
+        if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
-                error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
+                error("MR[%d] Verbose files folder cannot be created (%s)", masters_info.my_master_rank, strerror(errno));
             }else{
                 using_verb_files = 1;
                 char file_name[128];
