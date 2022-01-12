@@ -399,3 +399,33 @@ void set_governor(governor_t *_governor)
 		return;
 	}
 }
+void verbose_frequencies(int cpus, ulong *f)
+{
+    int i;
+    char buff[4096];
+    char buffshort[64];
+    buff[0] = '\0';
+    for (i=0;i<cpus;i++)
+    {
+        if (f[i]>0){
+            sprintf(buffshort,"CPU[%d]=%.2f ",i,(float)f[i]/1000000.0);
+        }else{
+            sprintf(buffshort,"CPU[%d]=0 ",i);
+        }
+        strcat(buff, buffshort);
+    }
+    verbose(VEARD_PC,buff);
+}
+void vector_print_pstates(uint *pstates, uint num_cpus) {
+    char *tmp_buff = calloc(num_cpus*32, sizeof(char));
+    char sml_buff[32];
+    int i;
+    for (i = 0; i < num_cpus; i++) {
+        sprintf(sml_buff, "p%d: %u, ", i, pstates[i]);
+        strcat(tmp_buff, sml_buff);
+    }
+    verbose(VEARD_PC,tmp_buff);
+    free(tmp_buff);
+}
+
+

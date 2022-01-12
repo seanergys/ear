@@ -15,13 +15,14 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <metrics/common/msr.h>
 #include <common/output/debug.h>
 #include <management/imcfreq/archs/intel63.h>
 
+// TODO
 #define U_MSR_UNCORE_RATIO_LIMIT    0x000620
 #define U_MSR_UNCORE_RL_MASK_MAX    0x00007F
 #define U_MSR_UNCORE_RL_MASK_MIN    0x007F00
@@ -137,7 +138,6 @@ state_t mgt_imcfreq_intel63_init(ctx_t *c)
 
 state_t mgt_imcfreq_intel63_dispose(ctx_t *c)
 {
-    c->context = NULL;
     return EAR_SUCCESS;
 }
 

@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -54,12 +54,9 @@ static int my_step_id;
 static int my_job_id;
 static char *ear_tmp;
 
-
 // Metrics: Needed for old API where data size must be requested in advance
-static ulong uncore_size;
 static ulong energy_size;
 static ulong rapl_size;
-
 
 #define my_read(...)          eards_read(__VA_ARGS__, WAIT_DATA)
 #define my_write(...)         eards_write(__VA_ARGS__)
@@ -261,12 +258,12 @@ int eards_connect(application_t *my_app, ulong lid)
   sprintf(ear_commack,"%s/%u/.ear_comm.ack_%d.%d.%lu",ear_tmp,(uint)my_id, i, my_id,lid);
   debug("comreq_global %s comreq %s comack %s",ear_commreq_global,ear_commreq,ear_commack);
   /* Private pipes are created before the connection request is sent */
-	verbose(2,"Creating %s",ear_commack);
+	//verbose(2,"Creating %s",ear_commack);
   if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
      error("Error when creating ear communicator for ack %s", strerror(errno));
   }
   chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	verbose(2,"Creating %s",ear_commreq);
+	//verbose(2,"Creating %s",ear_commreq);
   if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
      error("Error when creating ear communicator for requests %s", strerror(errno));
   }
@@ -274,7 +271,7 @@ int eards_connect(application_t *my_app, ulong lid)
   /* Pipes are created */
   /* We give some opportunities to connect */
   do{
-        verbose(2,"Connecting with EARD using file %s\n",ear_commreq_global);
+        //verbose(2,"Connecting with EARD using file %s\n",ear_commreq_global);
         if ((ear_fd_req_global = open(ear_commreq_global,O_WRONLY|O_NONBLOCK))<0) tries++;
         else connected=1;
         if ((MAX_TRIES>1) && (!connected)) sleep(1);
@@ -454,72 +451,6 @@ ulong eards_write_loop_signature(loop_t *loop_signature)
     }
 
     return ack;
-}
-
-/**** New API for cpufreq management */
-/* Load, init etc can be used directly from metrics */
-/* These are privileged functions */
-state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
-{
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = READ_CPUFREQ;
-  req.sec=create_sec_tag();
-  /* Specific info */
-  if (ear_fd_req >= 0)
-  {
-    if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for average cpufreq metrics")){ state_return_msg(EAR_ERROR,errno,"Asking for cpufreq metrics");}
-
-    if (warning_api(my_read(ear_fd_ack, (char *)(ef->context), size), size,
-      "receiving cpufreq metrics from EARD")){ state_return_msg(EAR_ERROR,errno,"Receiving cpufreq");}
-  }
-  return EAR_SUCCESS;
-}
-
-/************************************/
-state_t eards_imcfreq_data_count(uint *pack)
-{
-	struct daemon_req req;
-	size_t size;
-	
-	if (!app_connected) {
-		return_msg(EAR_ERROR, Generr.api_uninitialized);
-	}
-	/* Specific info */
-	req.req_service = UNC_SIZE;
-	req.sec=create_sec_tag();
-	size = sizeof(uint) * 2;
-	pack[0] = 0;
-	pack[1] = 0;
-	
-	if (ear_fd_req >= 0) { 
-	    if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
-    	   "while asking for uncore freq size")) { return_msg(EAR_ERROR, "Asking for uncore freq size"); }
-		if (warning_api(my_read(ear_fd_ack, (char *)pack, size), size,
-			"receiving uncore freq size")){ return_msg(EAR_ERROR, "Receiving uncore freq size");}
-	}
-	return EAR_SUCCESS;
-}
-
-state_t eards_imcfreq_read(imcfreq_t *ef,size_t size)
-{
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = UNC_READ;
-  req.sec=create_sec_tag();
-  /* Specific info */
-	debug("eards_imcfreq_read %lu",size);
-  memset(ef,0,size);
-  if (ear_fd_req >= 0)
-  {
-    if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for uncore freq metric")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq metric");}
-
-    if (warning_api(my_read(ear_fd_ack, (char *)ef, size), size,
-      "receiving uncore freq metric ")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq metric");}
-  }
-  return EAR_SUCCESS;
 }
 
 //////////////// RAPL REQUESTS
@@ -881,204 +812,9 @@ ulong eards_end_app_compute_turbo_freq()
 	return ack;
 }
 
-/**** New API for cpufreq management */
-/* Load, init etc can be used directly from metrics */
-/* These are privileged functions */
-state_t eards_cpufreq_read(cpufreq_t *ef,size_t size)
-{
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = READ_CPUFREQ;
-  req.sec=create_sec_tag();
-  /* Specific info */
-  if (ear_fd_req[freq_req] >= 0)
-  { 
-    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for average cpufreq metrics")){ state_return_msg(EAR_ERROR,errno,"Asking for cpufreq metrics");}
-    
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)(ef->context), size), size,
-      "receiving cpufreq metrics from EARD")){ state_return_msg(EAR_ERROR,errno,"Receiving cpufreq");}
-  } 
-  return EAR_SUCCESS;
-}
-
-
-/************************************/
-// Uncore frequency management
-state_t eards_imcfreq_data_count(uint *pack)
-{
-	struct daemon_req req;
-	size_t size;
-	
-	if (!app_connected) {
-		return_msg(EAR_ERROR, Generr.api_uninitialized);
-	}
-	/* Specific info */
-	req.req_service = UNC_SIZE;
-	req.sec=create_sec_tag();
-	size = sizeof(uint) * 2;
-	pack[0] = 0;
-	pack[1] = 0;
-	
-	if (ear_fd_req >= 0) { 
-	    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
-    	   "while asking for uncore freq size")) { return_msg(EAR_ERROR, "Asking for uncore freq size"); }
-		if (warning_api(my_read(ear_fd_ack[freq_req], (char *)pack, size), size,
-			"receiving uncore freq size")){ return_msg(EAR_ERROR, "Receiving uncore freq size");}
-	}
-	return EAR_SUCCESS;
-}
-
-state_t eards_imcfreq_read(imcfreq_t *ef,size_t size)
-{
-  struct daemon_req req;
-  if (!app_connected){ state_return_msg(EAR_NOT_INITIALIZED,EAR_NOT_INITIALIZED, Generr.api_uninitialized);}
-  req.req_service = UNC_READ;
-  req.sec=create_sec_tag();
-  /* Specific info */
-	debug("eards_imcfreq_read %lu",size);
-  memset(ef,0,size);
-  if (ear_fd_req >= 0)
-  {
-    if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)), sizeof(req),
-       "while asking for uncore freq metric")){ state_return_msg(EAR_ERROR,errno,"Asking for uncore freq metric");}
-
-    if (warning_api(my_read(ear_fd_ack[freq_req], (char *)ef, size), size,
-      "receiving uncore freq metric ")){ state_return_msg(EAR_ERROR,errno,"Receiving uncore freq metric");}
-  }
-  return EAR_SUCCESS;
-}
-
 // END FREQUENCY SERVICES
 #endif
-//////////////// UNCORE REQUESTS
-ulong eards_get_data_size_uncore()
-{
-	struct daemon_req req;
-	ulong ack = EAR_SUCCESS;
-	if (!app_connected) return sizeof(ulong);
 
-	debug( "asking for uncore data size ");
-  req.req_service=DATA_SIZE_UNCORE;
-	req.sec=create_sec_tag();
-
-	if (ear_fd_req >= 0) {
-		if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)) , sizeof(req),
-			 "ERROR writing request for uncore data size ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack,(char *)&ack, sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for uncore data size ")) return EAR_ERROR;
-	} else {
-		debug( "ear_daemon_client_get_data_size_uncore service not provided");
-		ack=EAR_ERROR;
-	}
-    uncore_size=ack;
-    return ack;
-}
-
-
-int eards_reset_uncore()
-{
-	ulong ack = EAR_SUCCESS;
-  struct daemon_req req;
-	if (!app_connected) return EAR_SUCCESS;
-
-	req.req_service = RESET_UNCORE;
-	req.sec=create_sec_tag();
-	debug( "reset uncore");
-
-	if (ear_fd_req >= 0)
-	{
-		if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)), sizeof(req),
-			 "ERROR writing request for resetting uncores ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for resetting uncores ")) return EAR_ERROR;
-		debug( "RESET ACK Uncore counters received from daemon ");
-	    return EAR_SUCCESS;
-    }
-	debug( "reset uncore service not provided ");
-	return EAR_ERROR;
-}
-
-int eards_start_uncore()
-{
-	ulong ack;
-  struct daemon_req req;
-	if (!app_connected) return EAR_SUCCESS;
-  req.req_service=START_UNCORE;
-	req.sec=create_sec_tag();
-	debug( "start uncore");
-
-	if (ear_fd_req >= 0)
-	{
-		if (warning_api(my_write(ear_fd_req,(char *)&req, sizeof(req)) , sizeof(req),
-			 "ERROR writing request for starting uncores ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for starting uncores ")) return EAR_ERROR;
-		debug( "START ACK Uncore counters received from daemon ");
-		return EAR_SUCCESS;
-    }
-	debug( "start uncore service not provided ");
-	return EAR_ERROR;
-}
-int eards_stop_uncore(unsigned long long *values)
-{
-  ulong ack;
-  struct daemon_req req;
-
-    if (!app_connected){ values[0]=0;return EAR_SUCCESS;}
-
-    req.req_service=STOP_UNCORE;
-    req.sec=create_sec_tag();
-    debug( "stopping uncore counters");
-
-    if (ear_fd_req >= 0)
-    {
-        /* There is not request for uncore...only answer */
-        if (warning_api(my_write(ear_fd_req, (char *)&req, sizeof(req)) , sizeof(req),
-            "ERROR writing request for reading uncores ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack,(char *)values,uncore_size) , uncore_size, 
-             "ERROR reading ack for reading uncores ")){ 
-            return EAR_ERROR;
-        } else {
-            ack = EAR_SUCCESS;
-        }
-
-    }else{
-        ack=EAR_ERROR;
-        debug( "read uncore service not provided");
-    }
-    return ack;
-}
-
-int eards_read_uncore(unsigned long long *values)
-{
-	ulong ack;
-  struct daemon_req req;
-
-	if (!app_connected){ values[0]=0;return EAR_SUCCESS;}
-
-	req.req_service=READ_UNCORE;
-	req.sec=create_sec_tag();
-	debug( "reading uncore counters");
-
-	if (ear_fd_req>=0)
-	{
-		/* There is not request for uncore...only answer */
-		if (warning_api(my_write(ear_fd_req, (char *)&req, sizeof(req)) , sizeof(req),
-			"ERROR writing request for reading uncores ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack,(char *)values,uncore_size) , uncore_size, 
-			 "ERROR reading ack for reading uncores ")){ 
-			return EAR_ERROR;
-		} else {
-			ack = EAR_SUCCESS;
-		}
-
-	}else{
-		ack=EAR_ERROR;
-		debug( "read uncore service not provided");
-	}
-	return ack;
-}
 #if 0
 //////////////// RAPL REQUESTS
 ulong eards_get_data_size_rapl() // size in bytes

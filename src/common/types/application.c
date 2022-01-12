@@ -322,7 +322,7 @@ void report_mpi_application_data(application_t *app)
     //float pavg_f = ((double) app->power_sig.avg_f) / 1000000.0;
     //float pdef_f = ((double) app->power_sig.def_f) / 1000000.0;
 
-    verbose(VTYPE,"---------------------------------------------- Application Summary [%s] --\n",app->node_id);
+    verbose(VTYPE,"------------------------------------- Application Summary [%s] -----------------------------------\n",app->node_id);
     verbose(VTYPE,"-- App id: %s, user id: %s, job id: %lu.%lu", app->job.app_id, app->job.user_id, app->job.id,app->job.step_id);
     verbose(VTYPE,"   acc %s\n", app->job.user_acc);
     if (app->is_mpi){
@@ -337,7 +337,7 @@ void report_mpi_application_data(application_t *app)
     }
     verbose_gpu_app(VTYPE,app);
 
-    verbose(VTYPE,"-----------------------------------------------------------------------------------------------\n");
+    verbose(VTYPE,"--------------------------------------------------------------------------------------------------\n");
 }
 
 void mark_as_eard_connected(int jid,int sid,int pid)

@@ -29,7 +29,7 @@ typedef struct likevs_s {
 state_t likwid_init();
 
 state_t likwid_dispose();
-
+/* Given a list of event names, it returns a LIKWID event struct and allocations for counters. */
 state_t likwid_events_open(likevs_t *id, double **ctrs_alloc, uint *ctrs_count, char *evs_names, uint evs_count);
 
 state_t likwid_events_read(likevs_t *id, double *ctrs);

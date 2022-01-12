@@ -19,6 +19,7 @@
 #define _EARD_NODE_SERVICES_H_
 
 #include <common/states.h>
+
 #define CLOSE_EARD -100
 #define CLOSE_PIPE -101
 
@@ -31,5 +32,7 @@ state_t eard_local_api();
 state_t service_close_by_id(ulong jid,ulong sid);
 
 void services_init(topology_t *tp);
+
+void services_dispose();
 
 #endif

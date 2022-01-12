@@ -20,10 +20,9 @@
 
 #include <common/config.h>
 #include <common/types/generic.h>
-#if USE_GPUS
-#include <metrics/gpu/gpu.h>
-#endif
 #include <metrics/io/io.h>
+#include <metrics/gpu/gpu.h>
+#include <metrics/flops/flops.h>
 
 // 0: float
 // 1: 128 float
@@ -33,7 +32,6 @@
 // 5: 128 double
 // 6: 256 double
 // 7: 512 double
-#define FLOPS_EVENTS 8
 
 typedef struct gpu_app{
     double GPU_power;
@@ -52,8 +50,8 @@ typedef struct gpu_signature{
 typedef struct mini_sig
 {
     float DC_power;
-		float DRAM_power;
-		float PCK_power;
+	float DRAM_power;
+	float PCK_power;
     float GBS;
     float TPI;
     float CPI;

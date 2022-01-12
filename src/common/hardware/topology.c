@@ -95,6 +95,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 
 	// First settings	
 	topo->cpus[thread].id         = thread;
+	topo->cpus[thread].apicid     = -1;
 	topo->cpus[thread].socket_id  =  0;
 	topo->cpus[thread].sibling_id = -1;
 	topo->cpus[thread].is_thread  =  0;
@@ -179,7 +180,7 @@ state_t topology_copy(topology_t *dst, topology_t *src)
 	return EAR_SUCCESS;
 }
 
-static void topology_extras(topology_t *topo)
+static void topology_watchdog(topology_t *topo)
 {
 	char path[SZ_NAME_LARGE];
 	char c[2];
@@ -195,6 +196,30 @@ static void topology_extras(topology_t *topo)
 		}
 		close(fd);
 	}
+}
+
+static void topology_apicid(topology_t *topo)
+{
+    char *twop = NULL;
+    char *line = NULL;
+    size_t len = 0;
+    int cpu    = 0;
+
+    FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
+    while(getline(&line, &len, cpuinfo) != -1) {
+        if (strncmp(line, "apicid", 6) == 0) {
+            if ((twop = strchr(line, ':')) != NULL) {
+                ++twop;
+                ++twop;
+                // Now points to the number
+                topo->cpus[cpu].apicid = atoi(twop);
+                ++cpu;
+            }
+        }
+    }
+    topo->apicids_found = (cpu == topo->cpu_count);
+    fclose(cpuinfo);
+    free(line);
 }
 
 static void topology_cpuid(topology_t *topo)
@@ -300,13 +325,13 @@ state_t topology_init(topology_t *topo)
 		topology_copy(topo, &topo_static);
 	}
 
-	topo->cpu_count = 0;
-	topo->core_count = 0;
-	topo->socket_count = 0;
+	topo->cpu_count        = 0;
+	topo->core_count       = 0;
+	topo->socket_count     = 0;
 	topo->threads_per_core = 1;
-	topo->cache_line_size = 0;
-	topo->smt_enabled = 0;
-	topo->l3_count = 0;
+	topo->cache_line_size  = 0;
+	topo->smt_enabled      = 0;
+	topo->l3_count         = 0;
 
 	/* First characteristics */
 	topology_cpuid(topo);
@@ -318,11 +343,10 @@ state_t topology_init(topology_t *topo)
 	}
 	while(is_online(path));
 	
-	//
+	// Travelling through all CPUs
 	topo->cpus = calloc(topo->cpu_count, sizeof(core_t));
 	
-	for (i = 0; i < topo->cpu_count; ++i)
-	{
+	for (i = 0; i < topo->cpu_count; ++i) {
 		topology_init_thread(topo, i);
 
 		topo->core_count += !topo->cpus[i].is_thread;
@@ -345,8 +369,8 @@ state_t topology_init(topology_t *topo)
 		//}
 	}
 
-	topology_extras(topo);
-
+    topology_apicid(topo);
+	topology_watchdog(topo);
 	topology_copy(&topo_static, topo);
 
 	return EAR_SUCCESS;

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -113,8 +113,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 				my_job_DRAM_power += dram_power[j];
 				sig[lp].sig.GBS = gbs[j];	
 				sig[lp].sig.DRAM_power = dram_power[j];	
+				debug("Process %d/%d GBS %lf L3 %llu", job_in_process[j], lp, sig[lp].sig.GBS, L3[j]);
 				lp++;
-				debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
     }
   }
 	data->job_signature.GBS = my_job_GBS;
@@ -135,18 +135,19 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
   #endif
   CPU_power -= GPU_power;
 
+	debug("Baseline CPU power %lf", CPU_power);
 
 	/* Per job in node loop */
 	lp = 0;
-	total_power_estimated = CPU_power;
-	double P = CPU_power / cpu_count;
+	total_power_estimated = 0;
+	double P = (double)CPU_power / (double)cpu_count;
 	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
 		/* If job is active we compute its power estimated */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp]){
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
-				power_estimations[lp] = P*nmgr[j].shsig[proc].num_cpus/cpus_in_node;
-				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (ipc %.3lf,vpi %.3lf, gbs %.3lf f %.2lf",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],ipc[lp],vpi[lp],gbs[lp],(double)f[lp]/1000000.0);
-			
+				power_estimations[lp] = P * nmgr[j].shsig[proc].num_cpus;
+				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
+				total_power_estimated += power_estimations[lp];	
 				lp++;
 			}
 		}

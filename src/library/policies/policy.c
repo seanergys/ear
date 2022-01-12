@@ -231,10 +231,6 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     int i;
     char pol_grain_str[128];
     verbose_master(2,"policy_cpu_freq_selection");
-    if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
-        /* Warning: POL_GRAIN_CORE not supported */
-        pcapp_info_set_req_f(pc_app_info_data, freq_set, MAX_CPUS_SUPPORTED);
-    }
     memset(freq_per_core,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
     else sprintf(pol_grain_str,"POL_GRAIN_NODE");
@@ -260,6 +256,11 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS) && (system_conf->pc_opt.current_pc <= POWER_CAP_UNLIMITED)){
         *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
     }
+    if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS)){
+        /* Warning: POL_GRAIN_CORE not supported */
+        pcapp_info_set_req_f(pc_app_info_data, freq_per_core, MAX_CPUS_SUPPORTED);
+    }
+
     if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
     avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);
     verbose_master(2,"Setting CPU freq to %lu",*(c->ear_frequency));
@@ -705,15 +706,19 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		/* Update node info */
 		/* Not needed. update_earl_node_mgr_info();*/
 
-		verbose_master(2,"policy node apply");
+		verbose_master(2, "--- policy node apply ---");
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
-		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+		verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+
 		/*
 		estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &est_sig, PER_JOB, -1);
 		my_sig->GBS = est_sig.GBS;
 		my_sig->DC_power = est_sig.DC_power;		
 		*/
-		verbose_master(2,"policy node apply power %lf GBS %lf TPI %lf time %lf" , my_sig->DC_power, my_sig->GBS, my_sig->TPI, my_sig->time);
+
+        // Below is commented as the above call shows the same info
+		// verbose_master(2, "policy node apply power %lf GBS %lf TPI %lf time %lf",
+        //         my_sig->DC_power, my_sig->GBS, my_sig->TPI, my_sig->time);
 		if (jobs_in_node > 1) dyn_unc = 0;
 		else 									dyn_unc = conf_dyn_unc;
 		/* End update */
@@ -726,7 +731,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
     if (c->num_gpus && (gidle == GPU_IDLE)) verbose_master(2,"%sGPU idle phase%s",COL_BLU,COL_CLR);
-    verbose_master(POLICY_PHASES,"EARL_phase %u busy waiting %u iobound %u mpibound %u using phases %u",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
+    verbose_master(POLICY_PHASES, "--- EARL phase classification %u: busy waiting %u / iobound %u / mpibound %u / using phases %u ---",earl_phase_classification,busy,iobound,mpibound,use_earl_phases);
     if (use_earl_phases){
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND){
@@ -776,7 +781,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
             }
             /* If not, we should restore to default settings */
             if ((last_earl_phase_classification == APP_BUSY_WAITING) || (last_earl_phase_classification == APP_IO_BOUND) || (last_earl_gpu_phase_classification != gidle)){
-                verbose_master(POLICY_PHASES,"COMP-MPI configuration");
+                verbose_master(POLICY_PHASES, "--- COMP-MPI configuration ---");
                 st = policy_restore_comp_configuration(c,my_sig,freqs,&freqs_domain,&avg_nf);
                 *freq_set = avg_nf.cpu_freq[0];
                 *ready = EAR_POLICY_CONTINUE;

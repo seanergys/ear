@@ -20,7 +20,7 @@
 
 #include <management/cpufreq/cpufreq.h>
 
-// AMD Frequency limitations
+// AMD Frequency limitations when using Virtual P_STATEs mode
 //	- Although you can change the frequency by MSR, when doing it, all socket MSR Px register
 //	  change together. This means that is not possible to set different range of frequencies
 //	  accross the same socket. You can set different frequencies by using different MSR Px

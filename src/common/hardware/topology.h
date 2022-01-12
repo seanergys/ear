@@ -68,6 +68,7 @@ struct tp_group_s
 typedef struct core_s
 {
 	int id;
+	int apicid;
 	int is_thread;      // If is the second thread in a core.
 	int l3_id;
 	int sibling_id;     // The thread sibling within a core.
@@ -90,6 +91,7 @@ typedef struct topology_s
 	int gpr_count;		// Number of general purpose registers.
 	int gpr_bits;		// General purpose registers bit width.
 	int nmi_watchdog;	// NMI watdog enabled.
+    int apicids_found;  // List of CPUs ApicId's found.
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);

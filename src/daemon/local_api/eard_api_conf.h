@@ -99,22 +99,7 @@ int eards_write(int fd,char *buff,int size);
 #define CONNECT_FREQ            5
 #define START_APP_COMP_FREQ     6
 #define END_APP_COMP_FREQ       7
-// NEW FREQ functions
-#define READ_CPUFREQ            12
 
-/* Uncore frequency counters to compute GB/s */
-/* UNC frequency management */
-#define UNC_SIZE                20
-#define UNC_READ                21
-
-// Services related with uncore counters for memory bandwith computation
-#define START_UNCORE      100
-#define RESET_UNCORE      101
-#define READ_UNCORE       102
-#define DATA_SIZE_UNCORE    103
-#define CONNECT_UNCORE      104
-#define STOP_UNCORE       105
-//
 //
 #define END_COMM                1000
 //
@@ -171,24 +156,9 @@ int eards_write(int fd,char *buff,int size);
 #define START_APP_COMP_FREQ 	6
 #define END_APP_COMP_FREQ 		7
 
-/*** NEW FREQ functions */
-#define READ_CPUFREQ			12
-
-/* UNC frequency management */
-#define UNC_SIZE                20
-#define UNC_READ                21
-
 #define END_COMM 				1000
 #define EAR_COM_OK     	 		0
 #define EAR_COM_ERROR 			-1
-
-// Services related with uncore counters
-#define START_UNCORE 			100
-#define RESET_UNCORE 			101
-#define READ_UNCORE 			102
-#define DATA_SIZE_UNCORE 		103
-#define CONNECT_UNCORE 			104
-#define STOP_UNCORE 			105
 
 // Services related with rapl counters 
 #define START_RAPL 				200

@@ -195,9 +195,9 @@ static void print_local_data()
 	if (masters_info.my_master_rank == 0 || using_verb_files) {
 	version_to_str(ver);
 	#if MPI
-	verbose(1, "------------EAR%s MPI enabled --------------------",ver);
+	verbose(1, "---------------- EAR %s MPI enabled ----------------",ver);
 	#else
-	verbose(1, "------------EAR%s MPI not enabled --------------------",ver);
+	verbose(1, "------------- EAR %s MPI not enabled -------------",ver);
 	#endif
 	verbose(1, "App/user id: '%s'/'%s'", application.job.app_id, application.job.user_id);
 	verbose(1, "Node/job id/step_id: '%s'/'%lu'/'%lu'", application.node_id, application.job.id,application.job.step_id);
@@ -209,7 +209,7 @@ static void print_local_data()
 	verbose(1, "DynAIS levels/window/AVX512: %d/%d/%d", get_ear_dynais_levels(), get_ear_dynais_window_size(), dynais_build_type());
 	verbose(1, "VAR path: %s", get_ear_tmp());
 	verbose(1, "EAR privileged user %u",system_conf->user_type==AUTHORIZED);
-	verbose(1, "--------------------------------");
+	verbose(1, "---------------------------------------------------");
 	}
 }
 
@@ -256,7 +256,7 @@ void notify_eard_connection(int status)
   if (masters_connected != masters_info.my_master_size){
   /* Some of the nodes is not ok , setting off EARL */
     if (masters_info.my_master_rank>=0) {
-      verbose_master(1,"%s:Number of nodes expected %d , number of nodes connected %d, setting EARL to off \n",node_name,masters_info.my_master_size,masters_connected);
+      verbose_master(1,"%s:setting EARL to off  because some EARD is not running\n",node_name);
     }
     eard_ok = 0;
     return;
@@ -542,7 +542,7 @@ void attach_shared_regions()
 	/****************************************/
 	/* Node mgr info in no-master processes */
 	/****************************************/
-  verbose(2,"Creating node_mgr region for no masters");
+  //verbose(2,"Creating node_mgr region for no masters");
   if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
     verbose_master(2,"Error creating node_mgr region");
   }
@@ -551,17 +551,17 @@ void attach_shared_regions()
   me.sid = application.job.step_id;
   me.creation_time = time(NULL);
   CPU_ZERO(&me.node_mask);
-  verbose(3,"Waiting for master to be attached to node_mgr region");
+  //verbose(3,"Waiting for master to be attached to node_mgr region");
 	while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 		usleep(100);
 		verbose(3, "Waiting, current index %u", lib_shared_region->node_mgr_index);
 	}
-	verbose(3, "We are attached at position %u", lib_shared_region->node_mgr_index);
+	//verbose(3, "We are attached at position %u", lib_shared_region->node_mgr_index);
   if (nodemgr_find_job(&me, &node_mgr_index) != EAR_SUCCESS){
     verbose_master(2,"Error attaching to node_mgr region");
 		node_mgr_index = NULL_NODE_MGR_INDEX;
   }
-  verbose(3,"Attached no-master! at pos %u", node_mgr_index);
+  //verbose(3,"Attached no-master! at pos %u", node_mgr_index);
   /* node_mgr_job_info maps other jobs data sharing the node */
   if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
   init_earl_node_mgr_info();
@@ -848,7 +848,13 @@ void ear_init()
 	state_t st;
 	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 	char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
-	
+
+    /* Use a verbose file per process instead of only master */
+    char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
+    uint per_proc_verb_file = 0;
+    if (per_proc_v_file != NULL) {
+        per_proc_verb_file = atoi(per_proc_v_file);
+    }
 
 	if (ear_lib_initialized){
 		verbose_master(1,"EAR library already initialized");
@@ -1058,9 +1064,9 @@ void ear_init()
 	if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
  /* create verbose file for each job */
     if (verb_path != NULL){
-        if (masters_info.my_master_rank >= 0){
+        if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
             if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
-                error("MR[%d] Verbose files folder cannot be created (%s)",masters_info.my_master_rank,strerror(errno));
+                error("MR[%d] Verbose files folder cannot be created (%s)", masters_info.my_master_rank, strerror(errno));
             }else{
                 using_verb_files = 1;
                 char file_name[128];
@@ -1349,7 +1355,8 @@ void ear_finalize(int exit_status)
 			cleanup_job_folder();
 			 return;
 		}
-		if (!eards_connected()){
+		if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+			lib_shared_region->earl_on = 0;
 			cleanup_job_folder();
        return;
     }
@@ -1361,8 +1368,6 @@ void ear_finalize(int exit_status)
     }
 #endif
 
-    monitor_unregister(earl_monitor);
-    monitor_dispose();
     if (masters_info.my_master_rank>=0){
         verbose_master(2,"Stopping periodic earl thread");	
         verbose_master(2,"Stopping tracing");	
@@ -1371,9 +1376,10 @@ void ear_finalize(int exit_status)
 
         traces_mpi_end();
     }
+    monitor_unregister(earl_monitor);
+    monitor_dispose();
 
     // Closing and obtaining global metrics
-    verbose_master(2,"metrics dispose");
     dispose=1;
     verbose_master(2,"Total resources computed %d",get_total_resources());
     metrics_dispose(&application.signature, get_total_resources());
@@ -1825,8 +1831,9 @@ state_t earl_periodic_actions(void *no_arg)
             ear_periodic_mode = PERIODIC_MODE_ON;
             if (ear_guided != new_ear_guided){ 
                 monitor_burst(earl_monitor);
-                verbose_master(2,"%d:Dynais guided --> time guided at time %lu",my_node_id,period_elapsed);
-								mpi_calls_in_period = lib_period;
+                verbose_master(2,"(l. rank) %d: Dynais guided --> time guided at time %lu",
+                        my_node_id, period_elapsed);
+                mpi_calls_in_period = lib_period;
                 states_begin_period(my_id, 1, (ulong) lib_period,1);
             }
         }

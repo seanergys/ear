@@ -88,6 +88,7 @@
 #define HACK_DEF_FREQ                xstr(SCHED_PREFIX) str(_) str(HACK_DEF_FREQ)           // This var forces a different default frequency than the predefined for a policy. Replaces (SCHED_PREFIX)_EAR_DEF_FREQ.
 #define HACK_EARL_VERBOSE            xstr(SCHED_PREFIX) str(_) str(HACK_EARL_VERBOSE)       // This var forces an EARL verbosity.
 #define HACK_EARL_INSTALL_PATH       xstr(SCHED_PREFIX) str(_) str(HACK_EARL_INSTALL_PATH)  // This variable HACKS all the library environment, simplifies the utilization of a privatized environment.
+#define HACK_PROCS_VERB_FILES        xstr(SCHED_PREFIX) str(_) str(HACK_PROCS_VERB_FILES)   // This variable makes all processes having a log verbose file each one.
 /** @} */
 
 /**

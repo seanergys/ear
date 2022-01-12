@@ -34,7 +34,7 @@ void apis_print(uint api, char *prefix)
 {
     char buffer[128];
     apis_tostr(api, buffer, 128);
-    verbose(0, "%s%s", prefix, buffer);
+    debug("%s%s", prefix, buffer);
 }
 
 void apis_tostr(uint api, char *buffer, size_t size)

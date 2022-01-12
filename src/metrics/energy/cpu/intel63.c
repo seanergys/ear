@@ -103,8 +103,8 @@ int init_rapl_msr(int *fd_map)
 		
 		cpu_energy_units = pow(0.5, (double) ((result >> 8) & 0x1f));
 		// Take a look to Intel's RAPL test
-		//dram_energy_units = pow(0.5, (double) 16);
-		dram_energy_units = cpu_energy_units;
+		dram_energy_units = pow(0.5, (double) 16);
+		// dram_energy_units = cpu_energy_units;
 	  
 	}
 	pthread_mutex_unlock(&rapl_msr_lock);

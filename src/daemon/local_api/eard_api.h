@@ -21,7 +21,7 @@
 #include <common/types/generic.h>
 #include <common/types/log.h>
 #include <metrics/gpu/gpu.h>
-#include <metrics/frequency/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 
 #include <daemon/local_api/eard_api_rpc.h>
@@ -36,38 +36,6 @@ int eards_connect(application_t *my_app, ulong lid);
 int eards_connected();
 /** Closes the connection with the daemon. */
 void eards_disconnect();
-
-/************************************/
-// Frequency services
-/** Given a frequency value, sends a request to change the frequency to that
-*   value. Returns -1 if there's an error, 0 if the change_freq service has not
-*   been provided, and the final frequency value otherwise. */
-/**** New API for cpufreq management */
-/* Load, init etc can be used directly from metrics */
-/* These are privileged functions */
-state_t eards_cpufreq_read(cpufreq_t *ef,size_t size);
-
-
-/************************************/
-// Uncore frequency management
-state_t eards_imcfreq_data_count(uint *count);
-state_t eards_imcfreq_read(imcfreq_t *ef,size_t size);
-
-/************************************/
-// Uncore services
-/** Sends a request to read the uncores. Returns -1 if there's an error, on
-*   success stores the uncores values' into *values and returns 0. */
-int eards_read_uncore(unsigned long long *values);
-/** Sends a request to stop&read the uncores. Returns -1 if there's an error, on
-*   success stores the uncores values' into *values and returns 0. */
-int eards_stop_uncore(unsigned long long *values);
-/** Sends the request to start the uncores. Returns 0 on success, -1 on error */
-int eards_start_uncore();
-/** Sends a request to reset the uncores. Returns 0 on success, -1 on error */
-int eards_reset_uncore();
-/** Requests the uncore data size. Returns -1 if there's an error, and the
-*   actual value otherwise. */
-unsigned long eards_get_data_size_uncore();
 
 /************************************/
 // RAPL services

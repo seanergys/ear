@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <library/loader/loader.h>
 #include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
@@ -109,6 +109,8 @@ void  __attribute__ ((constructor)) loader()
         _loaded = module_mpi(path_lib_so, libhack);
 
         if (_loaded) return;
+        
+				verbose(2,"Tring openmp/mkl module");
 
         _loaded = module_constructor_openmp(path_lib_so,libhack);
         if (_loaded) return;
