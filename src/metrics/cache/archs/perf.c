@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -44,7 +44,7 @@ static uint   zen_l3_tp    = PERF_TYPE_HW_CACHE;
 //
 static perf_t perfs[4];
 static uint levels[4];
-static uint counter;
+static uint counter = 0;
 static uint started;
 
 void set_cache(ullong event, uint type, uint level)

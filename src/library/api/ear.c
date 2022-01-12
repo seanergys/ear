@@ -884,7 +884,7 @@ void ear_init()
   folder_t tmp_test;
   if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
 	/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
- 		verbose(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
+ 		verbose_master(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
  		set_ear_tmp("/tmp");
  		tmp = get_ear_tmp();
  }

@@ -1382,6 +1382,7 @@ int db_run_query(char *query, char *user, char *passw)
         exit(1);
     }
 
+
     if (!mysql_real_connect(connection, db_config->ip, user, passw, db_config->database, db_config->port, NULL, 0))
     {
         verbose(VDBH, "Error connecting to the database(%d):%s\n", mysql_errno(connection), mysql_error(connection));

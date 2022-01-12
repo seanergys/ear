@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <common/output/debug.h>
@@ -148,9 +148,11 @@ state_t imcfreq_amd17_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, 
 {
 	ulong aux1 = 0;
 	ulong aux2 = 0;
-    uint cpu;
+  uint cpu;
+	debug("imcfreq_amd17_data_diff %u devices", devs_count);
 	for (cpu = 0; cpu < devs_count; ++cpu) {
 		//aux1 = (i2[cpu].freq + i1[cpu].freq) / 2LU;
+		debug("IMCFREQ [%d] %lu", cpu, i2[cpu].freq);
 		aux1 = i2[cpu].freq;
 		if (freq_list != NULL) {
 			freq_list[cpu] = aux1;

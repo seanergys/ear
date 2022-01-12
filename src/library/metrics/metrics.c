@@ -182,6 +182,7 @@ const metrics_t *metrics_get(uint api)
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
+		pstate_t * cp;
 
     #define sa(function) \
         function;
@@ -235,6 +236,12 @@ static void metrics_static_init(topology_t *tp)
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
+
+		cp = (pstate_t*)mgt_cpufreq.avail_list;
+		for (uint ps = 0; ps < mgt_cpufreq.avail_count; ps++)
+		{
+			verbose_master(2,"PS %u: Freq %llu", ps, cp[ps].khz);
+		}
 
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_master(2, "CPUFREQ available list of frequencies:\n%s", buffer);
@@ -371,11 +378,11 @@ static void metrics_global_stop()
     state_t s;
 	int i;
 
-    verbose(INFO2_METRICS, "%s--- (l. rank) %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
+  debug("%s--- (l. rank) %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
 
 	if (masters_info.my_master_rank < 0){
 		while(!lib_shared_region->global_stop_ready){ 
-            verbose(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
+            //verbose_master(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
 			if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) verbose_master(2, "%sMemory sync for lib shared region fails %s%s", COL_RED, strerror(errno), COL_CLR);
 			usleep(1000000);
 		}
@@ -665,6 +672,9 @@ static int metrics_partial_stop(uint where)
             if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
                 verbose_master(2,"IMCFreq data read in partial_stop");
             }
+						for (uint dev = 0; dev < met_imcfreq.devs_count; dev++){
+							verbose_master(2,"IMC[%d] init %lu, end %lu", dev, imcfreq_read1[LOO][dev].freq, imcfreq_read2[LOO][dev].freq);
+						}
             if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
                 verbose_master(2,"IMC data diff fails");
             }
@@ -742,7 +752,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                verbose(INFO2_METRICS,"Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
+                debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -888,7 +898,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				update_earl_node_mgr_info();
 
 				signature_ready(&sig_shared_region[my_node_id],0);
-				verbose(INFO_METRICS, "End compute signature for (l. rank) %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
+				verbose_master(INFO_METRICS+1, "End compute signature for (l. rank) %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
 
 #if 0
 				if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
@@ -1108,7 +1118,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(APP, metrics, 1, procs);
 
     /* Waiting for node signatures */
-    verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
+    //verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
     while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */
