@@ -56,6 +56,7 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 	if (apis_loaded(ops)) {
 		debug("the API was already loaded");
 		ops->get_api(&api, &api_intern);
+		debug("API %u/%u Intern %u/%u", api, API_EARD, api_intern, API_AMD17);
 		//
 		if (api == API_EARD && api_intern == API_AMD17) {
 			apis_add(ops->init_static, imcfreq_amd17_init_static);

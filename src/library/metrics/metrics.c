@@ -237,11 +237,6 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
 
-		cp = (pstate_t*)mgt_cpufreq.avail_list;
-		for (uint ps = 0; ps < mgt_cpufreq.avail_count; ps++)
-		{
-			verbose_master(2,"PS %u: Freq %llu", ps, cp[ps].khz);
-		}
 
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_master(2, "CPUFREQ available list of frequencies:\n%s", buffer);
@@ -793,7 +788,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
 
-                if (metrics->CPI > 1) {
+                if (metrics->CPI > 5) {
                     char buff[128];
                     cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
                     verb(INFO_METRICS, "Start %s", buff);
@@ -1020,6 +1015,8 @@ int metrics_init(topology_t *topo)
   cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
 	imc_max_khz = def_imc_max_khz;
 	imc_min_khz = def_imc_min_khz;
+	if (cimc_max_khz!= NULL) verbose_master(2, "IMC MAX set to %s", cimc_max_khz);
+	if (cimc_min_khz!= NULL) verbose_master(2, "IMC MIN set to %s", cimc_min_khz);
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
 		if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){

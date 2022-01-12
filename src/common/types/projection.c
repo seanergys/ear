@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,7 +75,7 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	if (data->obj_power_model== NULL) debug("obj_power_model NULL\n");
 	if (((obj_path == NULL) && (ins_path == NULL)) || (user_type != AUTHORIZED))
 	{
-		if ((strcmp(data->obj_power_model,"default")==0) || (data->obj_power_model==NULL)){
+		if ((strncmp(data->obj_power_model, "default", strlen("default"))==0) || (data->obj_power_model==NULL)){
 			xsnprintf(basic_path,sizeof(basic_path), "%s/models/basic_model.so", data->dir_plug);
 		}else if (data->obj_power_model!=NULL){
 			xsnprintf(basic_path, sizeof(basic_path),"%s/models/%s", data->dir_plug,data->obj_power_model);
