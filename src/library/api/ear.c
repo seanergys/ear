@@ -287,7 +287,7 @@ void check_job_folder()
 		return;
 	}
   if (errno == ENOENT){
-  	error("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
+  	debug("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
   	clean_job_folder = 1;
   	ret = mkdir(block_file_dir, S_IRWXU);
   	if ((ret < 0 ) && (errno != EEXIST)){
@@ -973,7 +973,7 @@ void ear_init()
 		update_configuration();	
 	}else{
 		eard_ok = 0;
-		verbose_master(2,"Shared memory with EARD not present");
+		verbose_master(2,"EARD not detected");
 #if USE_LOCK_FILES
     if (!my_id){ 
     	debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
