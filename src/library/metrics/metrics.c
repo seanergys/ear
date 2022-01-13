@@ -164,6 +164,13 @@ static metrics_t   met_cpi;
 static uint master;
 static uint eard;
 
+node_freq_domain_t earl_default_domains = {
+	.cpu 	= POL_DEFAULT,
+	.mem 	= POL_DEFAULT,
+	.gpu 	= POL_DEFAULT,
+	.gpumem = POL_DEFAULT,
+};
+
 const metrics_t *metrics_get(uint api)
 {
     switch(api) {
@@ -178,10 +185,52 @@ const metrics_t *metrics_get(uint api)
         default: return NULL;
     }
 }
+static void metrics_configuration()
+{
+	if (eards_connected()){
+		verbose_master(2, "EARD connected");
+	}else{ 
+		verbose_master(2, "EARD not connected. Switch to monitoring?");
+	}
+	if (!mgt_cpufreq.ok){
+		verbose_master(2, "Mgt cpufreq is not ok, switching to monitoring");
+		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+	}
+	if (!mgt_imcfreq.ok){
+		verbose_master(2, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
+		earl_default_domains.mem = POL_NOT_SUPPORTED;
+	}
+	/* This must be migrated to mgt_gpu.ok */
+	if (earl_gpu_model == MODEL_DUMMY) {
+		verbose_master(2, "GPU dummy, swtching to monitoring for GPU");
+		earl_default_domains.gpu = POL_NOT_SUPPORTED;
+	}
+	if (!met_cpufreq.ok && mgt_cpufreq.ok){
+		verbose_master(2, "Avg cpufreq is not ok. Using mgt_cpufreq");
+	}
+	if (!met_imcfreq.ok && mgt_imcfreq.ok){
+		verbose_master(2, "Avg imcfreq is not ok. Using mgt_imcfreq");
+	}
+  if (! met_bwidth.ok){
+		verbose_master(2, "Mem bandwith not ok. swtching to monitoring");
+		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+	}
+  if(!met_flops.ok){
+		verbose_master(2, "FLOPS not available");
+	}
+  if (!met_cache.ok){
+		verbose_master(2, "Cache not available");
+	}
+  if (!met_cpi.ok){
+		verbose_master(2, "CPI not available. swtching to monitoring");
+		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+	}
+}
 
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
+		pstate_t * cp;
 
     #define sa(function) \
         function;
@@ -236,6 +285,7 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
 
+
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_master(2, "CPUFREQ available list of frequencies:\n%s", buffer);
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
@@ -266,6 +316,8 @@ static void metrics_static_init(topology_t *tp)
     bwidth_data_alloc(&bwidth_read2[1]);
     bwidth_data_alloc(&bwidth_diff[0]);
     bwidth_data_alloc(&bwidth_diff[1]);
+	
+		metrics_configuration();
 }
 
 void metrics_static_dispose()
@@ -371,11 +423,11 @@ static void metrics_global_stop()
     state_t s;
 	int i;
 
-    verbose(INFO2_METRICS, "%s--- (l. rank) %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
+  debug("%s--- (l. rank) %d  METRICS GLOBAL STOP ---%s", COL_YLW, my_node_id, COL_CLR);
 
 	if (masters_info.my_master_rank < 0){
 		while(!lib_shared_region->global_stop_ready){ 
-            verbose(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
+            //verbose_master(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
 			if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) verbose_master(2, "%sMemory sync for lib shared region fails %s%s", COL_RED, strerror(errno), COL_CLR);
 			usleep(1000000);
 		}
@@ -742,7 +794,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                verbose(INFO2_METRICS,"Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
+                debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -783,7 +835,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
 
-                if (metrics->CPI > 1) {
+                if (metrics->CPI > 5) {
                     char buff[128];
                     cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
                     verb(INFO_METRICS, "Start %s", buff);
@@ -797,7 +849,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    //verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
+                    verbose_master(2, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
@@ -888,7 +940,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				update_earl_node_mgr_info();
 
 				signature_ready(&sig_shared_region[my_node_id],0);
-				verbose(INFO_METRICS, "End compute signature for (l. rank) %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
+				verbose_master(INFO_METRICS+1, "End compute signature for (l. rank) %d. Period %lf secs", my_node_id, sig_shared_region[my_node_id].period);
 
 #if 0
 				if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
@@ -1010,6 +1062,8 @@ int metrics_init(topology_t *topo)
   cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
 	imc_max_khz = def_imc_max_khz;
 	imc_min_khz = def_imc_min_khz;
+	if (cimc_max_khz!= NULL) verbose_master(2, "IMC MAX set to %s", cimc_max_khz);
+	if (cimc_min_khz!= NULL) verbose_master(2, "IMC MIN set to %s", cimc_min_khz);
   if (cimc_max_khz != (char*)NULL){
 		ulong tmp_def_imc = atoi(cimc_max_khz);
 		if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
@@ -1089,7 +1143,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
 
     /* Waiting for node signatures */
-    verbose_master(INFO_METRICS, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
+    verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
     while (are_signatures_ready(lib_shared_region,sig_shared_region) == 0
             && !lib_shared_region->global_stop_ready) {
         usleep(100);
@@ -1108,7 +1162,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(APP, metrics, 1, procs);
 
     /* Waiting for node signatures */
-    verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
+    //verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
     while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */

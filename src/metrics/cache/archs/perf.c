@@ -44,7 +44,7 @@ static uint   zen_l3_tp    = PERF_TYPE_HW_CACHE;
 //
 static perf_t perfs[4];
 static uint levels[4];
-static uint counter;
+static uint counter = 0;
 static uint started;
 
 void set_cache(ullong event, uint type, uint level)

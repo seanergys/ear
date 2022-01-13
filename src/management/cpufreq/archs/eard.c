@@ -101,7 +101,7 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
 	if (state_fail(s = eard_rpc_buffered(RPC_GET_AVAILABLE, NULL, 0, &buffer, &size))) {
 		return s;
 	}
-	debug("EARD answered with %lu samples in the available list", size / sizeof(pstate_t));
+	debug("EARD answered with %lu samples in the available list pstate size %u", size / sizeof(pstate_t), sizeof(pstate_t));
 	// Inititializing the driver before (because if doesn't work we can't do anything).
 	if (state_fail(s = driver->init(&driver_c))) {
 		return static_dispose(c, s, state_msg);

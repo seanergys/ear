@@ -68,6 +68,7 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	char basic_path[SZ_PATH_INCOMPLETE];
 	char *obj_path = getenv(HACK_POWER_MODEL);
   char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
+	char *def_model = "basic_model.so";
 
 	state_t st;
 
@@ -75,7 +76,8 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	if (data->obj_power_model== NULL) debug("obj_power_model NULL\n");
 	if (((obj_path == NULL) && (ins_path == NULL)) || (user_type != AUTHORIZED))
 	{
-		if ((strcmp(data->obj_power_model,"default")==0) || (data->obj_power_model==NULL)){
+		debug("model %s size %u", data->obj_power_model, strlen(data->obj_power_model));
+		if ((strncmp(data->obj_power_model, "default", strlen("default"))==0) || (data->obj_power_model==NULL)){
 			xsnprintf(basic_path,sizeof(basic_path), "%s/models/basic_model.so", data->dir_plug);
 		}else if (data->obj_power_model!=NULL){
 			xsnprintf(basic_path, sizeof(basic_path),"%s/models/%s", data->dir_plug,data->obj_power_model);
@@ -83,10 +85,12 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 		obj_path = basic_path;
 		
 	}else{
-    if (obj_path == NULL){
-      snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/%s",ins_path,data->obj_power_model);
-      obj_path=basic_path;
-    }
+    if (obj_path == NULL) obj_path = data->obj_power_model;
+		if (ins_path == NULL) ins_path = data->dir_plug;
+		if (strncmp(obj_path, "default", strlen("default")) == 0) obj_path = def_model;
+	
+    snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/%s",ins_path, obj_path);
+    obj_path=basic_path;
 	}
 	debug("Using power model path  %s", obj_path);
 	
