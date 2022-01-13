@@ -1420,7 +1420,7 @@ void ear_finalize(int exit_status)
     // C'est fini
     if (!my_id){ 
         debug("Disconnecting");
-        eards_disconnect();
+        if (eards_connected()) eards_disconnect();
     }
 }
 

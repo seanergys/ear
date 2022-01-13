@@ -81,6 +81,7 @@ static int         num_packs=0;
 static ull        *metrics_rapl[2]; // nJ (vec)
 static ull        *aux_rapl; // nJ (vec)
 static ull        *last_rapl; // nJ (vec)
+static ulong rapl_size;
 static llong       aux_time;
 static edata_t     aux_energy;
 static edata_t     metrics_ipmi[2]; // mJ
@@ -377,13 +378,18 @@ static void metrics_global_start()
 		    }
 		}
 		/* Energy */
-		debug("eards_node_dc_energy");
-		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
-		if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
-			debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+		if (eards_connected()){
+			debug("eards_node_dc_energy");
+			ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
+			if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
+				debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+			}
+			/* RAPL energy metrics */
+			eards_read_rapl(aux_rapl);
+		}else{
+			aux_energy = 0;
+			memset(aux_rapl, 0 ,rapl_size);
 		}
-		/* RAPL energy metrics */
-		eards_read_rapl(aux_rapl);
 
 		#if USE_GPUS
 		/* GPu metrics */
@@ -611,18 +617,28 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	if (masters_info.my_master_rank>=0){
 		/* Energy node */
-		ret = eards_node_dc_energy(aux_energy_stop,node_energy_datasize);
-		if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)){ 
-			if (eards_connected()) return EAR_NOT_READY;
-			else 							     return EAR_SUCCESS;
+		if (eards_connected()){
+			ret = eards_node_dc_energy(aux_energy_stop,node_energy_datasize);
+
+			/* If EARD is present, we wait until the power is computed */
+			if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)){ 
+				if (eards_connected()) return EAR_NOT_READY;
+				else 							     return EAR_SUCCESS;
+			}
+		}else{
+			aux_energy_stop = 0;
 		}
 		energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
 		energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);	
 		energy_lib_data_to_str(stop_energy_str,aux_energy_stop);	
-		if ((where==SIG_END) && (c_energy==0) && (masters_info.my_master_rank>=0)){ 
-			debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
-			if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
-			return EAR_NOT_READY;
+
+		/* If EARD is present, we wait until the power is computed */
+		if (eards_connected()){
+			if ((where==SIG_END) && (c_energy==0) && (masters_info.my_master_rank>=0)){ 
+				debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
+				if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
+				return EAR_NOT_READY;
+			}
 		}
 	}
 	/* Time */
@@ -733,7 +749,8 @@ static int metrics_partial_stop(uint where)
  	*/
 
 	/* RAPL energy */
-		eards_read_rapl(aux_rapl);
+		if (eards_connected()) eards_read_rapl(aux_rapl);
+		else memset(aux_rapl, 0, rapl_size);
 
 		// We read acuumulated energy
 		for (i = 0; i < rapl_elements; i++) {
@@ -953,7 +970,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 /**************************** Init function used in ear_init ******************/
 int metrics_init(topology_t *topo)
 {
-	ulong rapl_size;
 	char *cimc_max_khz,*cimc_min_khz;
 	char imc_buffer[1024];
 	pstate_t tmp_def_imc_pstate;
@@ -991,7 +1007,7 @@ int metrics_init(topology_t *topo)
 	}	
 
 	// Daemon metrics allocation
-	if (masters_info.my_master_rank>=0){
+	if (masters_info.my_master_rank >= 0 && eards_connected()){
 		rapl_size = eards_get_data_size_rapl();
 	}else{
 		rapl_size=sizeof(unsigned long long);
