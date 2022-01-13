@@ -122,7 +122,7 @@ extern ear_njob_t *node_mgr_data;
 extern uint node_mgr_index;
 extern node_mgr_sh_data_t *node_mgr_job_info;
 
-
+extern node_freq_domain_t earl_default_domains;
 
 /**** Auxiliary functions ***/
 state_t policy_load(char *obj_path,polsym_t *psyms)
@@ -509,14 +509,14 @@ state_t policy_init()
         freqs_domain.gpumem = POL_NOT_SUPPORTED;
     }
 
-    if (polsyms_fun.domain != NULL){
-        ret = polsyms_fun.domain(c,&freqs_domain);
-    }else{
-        freqs_domain.cpu = POL_GRAIN_NODE;
-        freqs_domain.mem = POL_NOT_SUPPORTED;
-        freqs_domain.gpu = POL_NOT_SUPPORTED;
-        freqs_domain.gpumem = POL_NOT_SUPPORTED;
+		if (earl_default_domains.mem == POL_NOT_SUPPORTED){
+			freqs_domain.mem = POL_NOT_SUPPORTED;
+		}
+		if (earl_default_domains.gpu == POL_NOT_SUPPORTED){
+      freqs_domain.gpu = POL_NOT_SUPPORTED;
     }
+		
+
     if (masters_info.my_master_rank >= 0){
         for (i=0; i< lib_shared_region->num_processes;i++){
             sig_shared_region[i].unbalanced = 0;
@@ -553,6 +553,8 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
     char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
     char use_path[SZ_PATH_INCOMPLETE];
+		char *monitoring = "monitoring";
+		char *my_policy_name = app_settings->policy_name;
 
     int app_mgr=0;
     if (app_mgr_policy != NULL){
@@ -572,11 +574,15 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
         }
     }
 #endif
-    if (((obj_path==NULL) && (ins_path == NULL)) || (app_settings->user_type!=AUTHORIZED)){
+		if (earl_default_domains.cpu == POL_NOT_SUPPORTED){
+			my_policy_name = monitoring;
+			verbose_master(2, "Forcing %s policy", my_policy_name);
+		}
+		if (((obj_path==NULL) && (ins_path == NULL)) || (app_settings->user_type!=AUTHORIZED)){
         if (!app_mgr){
-            xsnprintf(basic_path,sizeof(basic_path),"%s/policies/%s.so",data->dir_plug,app_settings->policy_name);
+            xsnprintf(basic_path,sizeof(basic_path),"%s/policies/%s.so",data->dir_plug,my_policy_name);
         }else{
-            xsnprintf(basic_path,sizeof(basic_path),"%s/policies/app_%s.so",data->dir_plug,app_settings->policy_name);
+            xsnprintf(basic_path,sizeof(basic_path),"%s/policies/app_%s.so",data->dir_plug,my_policy_name);
         }
         obj_path=basic_path;
     }else{
@@ -587,9 +593,9 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
                 xsnprintf(use_path,sizeof(use_path),"%s/policies", data->dir_plug);
             }
             if (!app_mgr){
-                xsnprintf(basic_path,sizeof(basic_path),"%s/%s.so",use_path,app_settings->policy_name);		
+                xsnprintf(basic_path,sizeof(basic_path),"%s/%s.so",use_path,my_policy_name);		
             }else{
-                xsnprintf(basic_path,sizeof(basic_path),"%s/app_%s.so",use_path,app_settings->policy_name);		
+                xsnprintf(basic_path,sizeof(basic_path),"%s/app_%s.so",use_path,my_policy_name);		
             }
             obj_path=basic_path;
         }

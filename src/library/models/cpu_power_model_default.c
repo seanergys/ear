@@ -102,6 +102,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	uint   node_process = 0;
 	signature_t *lsig = &data->node_signature;
 	double my_job_GBS, my_job_DRAM_power;
+	uint used_cpus = 0;
 
 
 
@@ -127,6 +128,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 		/* Power condition is to do only in case the signature is ready */
 		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
 			ull avx = 0;
+			used_cpus += nmgr[j].libsh->num_cpus;
 			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
 				if (nmgr[j].shsig[lp].sig.DC_power > 0){
 				  job_in_process[node_process] = j;
@@ -145,13 +147,21 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	}
 
 	uint lp = 0;
+	uint cj = 0;
 	my_job_GBS = 0;
 	my_job_DRAM_power = 0;
 	for (uint j = 0; j < node_process; j ++){
 		/* GBs is per-node, we can use our own GBs */
-    gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
-    dram_power[j] = ((double)L3[j]/(double)node_L3)*lsig->DRAM_power;
-    if (L3[j] && (job_in_process[j] == node_mgr_index)){
+		if (node_L3){
+    	gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
+    	dram_power[j] = ((double)L3[j]/(double)node_L3)*lsig->DRAM_power;
+		}else{
+			/* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
+			cj = job_in_process[j];
+			gbs[j] = lsig->GBS * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+			dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
+		}
+    if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
 				my_job_GBS        += gbs[j];
 				my_job_DRAM_power += dram_power[j];
 				sig[lp].sig.GBS = gbs[j];	

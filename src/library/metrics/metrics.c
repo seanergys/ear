@@ -164,6 +164,13 @@ static metrics_t   met_cpi;
 static uint master;
 static uint eard;
 
+node_freq_domain_t earl_default_domains = {
+	.cpu 	= POL_DEFAULT,
+	.mem 	= POL_DEFAULT,
+	.gpu 	= POL_DEFAULT,
+	.gpumem = POL_DEFAULT,
+};
+
 const metrics_t *metrics_get(uint api)
 {
     switch(api) {
@@ -177,6 +184,47 @@ const metrics_t *metrics_get(uint api)
         case MET_CPI:     return &met_cpi;
         default: return NULL;
     }
+}
+static void metrics_configuration()
+{
+	if (eards_connected()){
+		verbose_master(2, "EARD connected");
+	}else{ 
+		verbose_master(2, "EARD not connected. Switch to monitoring?");
+	}
+	if (!mgt_cpufreq.ok){
+		verbose_master(2, "Mgt cpufreq is not ok, switching to monitoring");
+		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+	}
+	if (!mgt_imcfreq.ok){
+		verbose_master(2, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
+		earl_default_domains.mem = POL_NOT_SUPPORTED;
+	}
+	/* This must be migrated to mgt_gpu.ok */
+	if (earl_gpu_model == MODEL_DUMMY) {
+		verbose_master(2, "GPU dummy, swtching to monitoring for GPU");
+		earl_default_domains.gpu = POL_NOT_SUPPORTED;
+	}
+	if (!met_cpufreq.ok && mgt_cpufreq.ok){
+		verbose_master(2, "Avg cpufreq is not ok. Using mgt_cpufreq");
+	}
+	if (!met_imcfreq.ok && mgt_imcfreq.ok){
+		verbose_master(2, "Avg imcfreq is not ok. Using mgt_imcfreq");
+	}
+  if (! met_bwidth.ok){
+		verbose_master(2, "Mem bandwith not ok. swtching to monitoring");
+		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+	}
+  if(!met_flops.ok){
+		verbose_master(2, "FLOPS not available");
+	}
+  if (!met_cache.ok){
+		verbose_master(2, "Cache not available");
+	}
+  if (!met_cpi.ok){
+		verbose_master(2, "CPI not available. swtching to monitoring");
+		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+	}
 }
 
 static void metrics_static_init(topology_t *tp)
@@ -268,6 +316,8 @@ static void metrics_static_init(topology_t *tp)
     bwidth_data_alloc(&bwidth_read2[1]);
     bwidth_data_alloc(&bwidth_diff[0]);
     bwidth_data_alloc(&bwidth_diff[1]);
+	
+		metrics_configuration();
 }
 
 void metrics_static_dispose()
@@ -667,9 +717,6 @@ static int metrics_partial_stop(uint where)
             if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
                 verbose_master(2,"IMCFreq data read in partial_stop");
             }
-						for (uint dev = 0; dev < met_imcfreq.devs_count; dev++){
-							verbose_master(2,"IMC[%d] init %lu, end %lu", dev, imcfreq_read1[LOO][dev].freq, imcfreq_read2[LOO][dev].freq);
-						}
             if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
                 verbose_master(2,"IMC data diff fails");
             }
@@ -802,7 +849,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    //verbose(0, "GBS[%d]: %0.2lf", s, metrics->GBS);
+                    verbose_master(2, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
@@ -1096,7 +1143,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
 
     /* Waiting for node signatures */
-    verbose_master(INFO_METRICS, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
+    verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
     while (are_signatures_ready(lib_shared_region,sig_shared_region) == 0
             && !lib_shared_region->global_stop_ready) {
         usleep(100);

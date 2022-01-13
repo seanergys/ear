@@ -77,6 +77,7 @@ typedef struct node_freq_domain{
 
 #define POL_GRAIN_NODE 0
 #define POL_GRAIN_CORE 1
+#define POL_DEFAULT    2
 #define POL_NOT_SUPPORTED 100
 
 typedef struct policy_symbols {
