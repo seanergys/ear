@@ -140,7 +140,7 @@ int append_application_text_file(char *path, application_t *app, char is_extende
     if (is_extended) {
         char *ext_header = ";L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
                            "DP_128;DP_256;DP_512";
-        xstrncat(HEADER, ext_header, sizeof(ext_header));
+        xstrncat(HEADER, ext_header, strlen(ext_header));
     }
 
 #if USE_GPUS
