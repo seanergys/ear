@@ -39,7 +39,7 @@ void imcfreq_eard_load(topology_t *tp, imcfreq_ops_t *ops, int eard)
 	}
 	debug("asking data to daemon");
 	// Contacting daemon
-    if (state_fail(s = eard_rpc(RPC_MET_CPUFREQ_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
+    if (state_fail(s = eard_rpc(RPC_MET_IMCFREQ_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
         debug("RPC RPC_MET_CPUFREQ_GET_API returned: %s (%d)", state_msg, s);
         return;
     }

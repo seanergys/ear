@@ -130,13 +130,13 @@ static state_t compute_cpu_power_coefficients(intel_skl_t **cpu_power_coeffs, ap
     gsl_matrix_set(signature_base, a, 0, 1.0);
     gsl_matrix_set(signature_base, a, 1, 1/app_list[a].signature.CPI);
     gsl_matrix_set(signature_base, a, 2, app_list[a].signature.GBS);
-		//printf("AVGF %lu\n", app_list[b].signature.avg_f);
-		//printf("VPI data %llu %llu %llu %llu instructions %llu\n", app_list[b].signature.FLOPS[INDEX_256F], app_list[b].signature.FLOPS[INDEX_256D], app_list[b].signature.FLOPS[INDEX_512F], app_list[b].signature.FLOPS[INDEX_512D], app_list[b].signature.instructions);
+		//printf("AVGF %lu\n", app_list[a].signature.avg_f);
+		//printf("VPI data %llu %llu %llu %llu instructions %llu\n", app_list[a].signature.FLOPS[INDEX_256F], app_list[a].signature.FLOPS[INDEX_256D], app_list[a].signature.FLOPS[INDEX_512F], app_list[a].signature.FLOPS[INDEX_512D], app_list[a].signature.instructions);
 		double vpi; 
 		vpi = (double)((double)app_list[a].signature.FLOPS[INDEX_256F]/WEIGHT_256F + (double)app_list[a].signature.FLOPS[INDEX_256D]/WEIGHT_256D + (double)app_list[a].signature.FLOPS[INDEX_512F]/WEIGHT_512F + (double)app_list[a].signature.FLOPS[INDEX_512D]/WEIGHT_512D)/(double)app_list[a].signature.instructions;
     gsl_matrix_set(signature_base, a, 3, vpi);
     gsl_matrix_set(signature_base, a, 4, (double)app_list[a].signature.avg_f/1000000.0);
-    // printf("Adding IPC %lf GBS %lf VPI %lf F %lf\n", 1/app_list[a].signature.CPI, app_list[a].signature.GBS, vpi, (double)app_list[a].signature.avg_f/1000000.0);
+    //printf("Adding IPC %lf GBS %lf VPI %lf F %lf\n", 1/app_list[a].signature.CPI, app_list[a].signature.GBS, vpi, (double)app_list[a].signature.avg_f/1000000.0);
 			
   }
   // Linear least squares fitting (SVD algorithm)

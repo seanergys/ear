@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -101,22 +101,22 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
 	if (state_fail(s = eard_rpc_buffered(RPC_GET_AVAILABLE, NULL, 0, &buffer, &size))) {
 		return s;
 	}
-	debug("EARD answered with %lu samples in the available list", size / sizeof(pstate_t));
+	debug("EARD answered with %lu samples in the available list pstate size %u", size / sizeof(pstate_t), sizeof(pstate_t));
 	// Inititializing the driver before (because if doesn't work we can't do anything).
 	if (state_fail(s = driver->init(&driver_c))) {
 		return static_dispose(c, s, state_msg);
 	}
 	// Filling available P_STATEs
-	available_count = size / sizeof(pstate_t);
+	serial_copy_elem(&buffer, (char *) &available_count, NULL);
 	available_list = calloc(available_count, sizeof(pstate_t));
-	memcpy(available_list, buffer, size);
-        #if SHOW_DEBUGS
-        debug("Available processor frequencies:");
-        int i;
-        for (i = 0; i < available_count; ++i) {
-                debug("PS%d: %llu KHz", i, available_list[i].khz);
-        }
-        #endif
+	serial_copy_elem(&buffer, (char *) available_list, NULL);
+    #if SHOW_DEBUGS
+    debug("Available processor frequencies:");
+    int i;
+    for (i = 0; i < available_count; ++i) {
+        debug("PS%d: %llu KHz", i, available_list[i].khz);
+    }
+    #endif
 	// Is boost enabled? We can ask the driver, but EARD may have additional tests.
 	if (state_fail(s = eard_rpc(RPC_GET_NOMINAL, NULL, 0, (char *) &idx_nominal, sizeof(uint)))) {
 		return static_dispose(c, s, state_msg);

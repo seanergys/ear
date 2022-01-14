@@ -287,7 +287,7 @@ void check_job_folder()
 		return;
 	}
   if (errno == ENOENT){
-  	error("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
+  	debug("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
   	clean_job_folder = 1;
   	ret = mkdir(block_file_dir, S_IRWXU);
   	if ((ret < 0 ) && (errno != EEXIST)){
@@ -890,7 +890,7 @@ void ear_init()
   folder_t tmp_test;
   if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
 	/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
- 		verbose(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
+ 		verbose_master(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
  		set_ear_tmp("/tmp");
  		tmp = get_ear_tmp();
  }
@@ -973,7 +973,7 @@ void ear_init()
 		update_configuration();	
 	}else{
 		eard_ok = 0;
-		verbose_master(2,"Shared memory with EARD not present");
+		verbose_master(2,"EARD not detected");
 #if USE_LOCK_FILES
     if (!my_id){ 
     	debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
@@ -1291,9 +1291,9 @@ void ear_init()
 		
 		if (masters_info.my_master_rank >= 0 ){
 			cpu_set_t jmask;
-			verbose_master(2,"Waiting for processes to fill shared signatures");
+			debug("Waiting for processes to fill shared signatures");
 			while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
-			verbose_master(2,"Computing number of cpus per job and node mask ");
+			debug("Computing number of cpus per job and node mask ");
 			compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
 			aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
 			/* lib_shared_region is shared by all the processes in the same node */
@@ -1302,7 +1302,7 @@ void ear_init()
 			node_mgr_data[node_mgr_index].node_mask = jmask;	
 			/* app_mgt_info is shared with the eard through the powermon_app_t */
 			app_mgt_info->node_mask = jmask;	
-			verbose_master(2,"Node mask computed in");
+			debug("Node mask computed in");
 		}
 
 		/* SIGTERM action for job cancellation */

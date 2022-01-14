@@ -66,7 +66,7 @@ static MYSQL *mysql_create_connection()
 
     if (!mysql_real_connect(connection, db_config->ip, db_config->user, db_config->pass, db_config->database, db_config->port, NULL, 0))
     {
-        verbose(VDBH, "ERROR connecting to the database: %s", mysql_error(connection));
+        error("ERROR connecting to the database: %s", mysql_error(connection));
         mysql_close(connection);
         return NULL;
     }
@@ -1381,6 +1381,7 @@ int db_run_query(char *query, char *user, char *passw)
         verbose(VDBH, "Error creating MYSQL object: %s \n", mysql_error(connection));
         exit(1);
     }
+
 
     if (!mysql_real_connect(connection, db_config->ip, user, passw, db_config->database, db_config->port, NULL, 0))
     {
