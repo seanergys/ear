@@ -516,7 +516,12 @@ void write_shared_data(ulong current_power, ulong freeable_power, ulong requeste
     memset(&ext_powercap_data, 0, sizeof(shared_powercap_data_t));
     ext_powercap_data.status = PC_STATUS_OK;
     if (requested > 0 && default_cluster_powercap > current_cluster_powercap)
+    {
+        if (default_cluster_powercap < (current_cluster_powercap + requested)) {
+            requested = default_cluster_powercap - current_cluster_powercap;
+        }
         ext_powercap_data.status = PC_STATUS_ASK_DEF;
+    }
     else if (requested)
         ext_powercap_data.status = PC_STATUS_GREEDY;
 

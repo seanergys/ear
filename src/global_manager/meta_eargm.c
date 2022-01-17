@@ -118,7 +118,8 @@ void meta_aggregate_data(eargm_status_t *status, uint num_status)
 
         if (status[i].status == PC_STATUS_ASK_DEF) {
             num_ask_def ++;
-            total_req_ask_def += status[i].requested;
+            //total_req_ask_def += status[i].requested;
+            total_req_ask_def += status[i].def_power - status[i].current_powercap;
         } else if (status[i].status == PC_STATUS_GREEDY) {
             if (!status[i].extra_power) {
                 num_greedy_no_extra++;
@@ -136,6 +137,7 @@ void meta_aggregate_data(eargm_status_t *status, uint num_status)
         current_free_power = 0;
     } else {
         current_free_power = default_powercap - total_powercap;
+        verbose(VGM, "powercap left to allocate %lu (default %lu current %lu)", current_free_power, default_powercap, total_powercap);
     }
 
 }
@@ -157,7 +159,9 @@ void assign_ask_def(eargm_status_t *status, uint num_status, eargm_table_t *egm_
         if (status[i].status == PC_STATUS_ASK_DEF) {
             egm_id = get_eargm_position(egm_table, status[i].id);
             if (egm_id >= 0) {
-                egm_table->actions[egm_id] = EARGM_RESET_PC;
+                //egm_table->actions[egm_id] = EARGM_RESET_PC;
+                egm_table->actions[egm_id] = EARGM_INC_PC;
+                egm_table->actions_values[egm_id] = status[i].requested;
             }
         }
     }
