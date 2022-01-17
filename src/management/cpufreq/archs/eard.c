@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <common/output/debug.h>
+#include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api_rpc.h>
 #include <management/cpufreq/archs/eard.h>
 #include <management/cpufreq/archs/amd17.h>
@@ -107,9 +108,9 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
 		return static_dispose(c, s, state_msg);
 	}
 	// Filling available P_STATEs
-	serial_copy_elem(&buffer, (char *) &available_count, NULL);
+	serial_copy_elem((wide_buffer_t *)&buffer, (char *) &available_count, NULL);
 	available_list = calloc(available_count, sizeof(pstate_t));
-	serial_copy_elem(&buffer, (char *) available_list, NULL);
+	serial_copy_elem((wide_buffer_t *)&buffer, (char *) available_list, NULL);
     #if SHOW_DEBUGS
     debug("Available processor frequencies:");
     int i;

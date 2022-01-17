@@ -144,6 +144,10 @@ int read_eardbd_conf(char *conf_path,char *username,char *pass);
 /** frees a cluster_conf_t */
 void free_cluster_conf(cluster_conf_t *conf);
 
+
+void set_ear_conf_default(cluster_conf_t *my_conf);
+
+
 // Cluster configuration verbose
 
 
