@@ -46,6 +46,7 @@ core_OBJS = \
     api/clasify.o \
     api/mpi_support.o \
     api/cupti.o \
+    api/eard_dummy.o \
     common/library_shared_data.o \
     common/utils.o \
     metrics/metrics.o \
