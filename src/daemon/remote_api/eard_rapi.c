@@ -309,6 +309,14 @@ void set_powerlimit_nodelist(cluster_conf_t *my_cluster_conf, unsigned long limi
     free(ips);
 }
 
+void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes)
+{
+    if (nodes == NULL || num_nodes < 1)
+        cluster_set_powerlimit_all_nodes(limit, my_cluster_conf);
+    else
+        set_powerlimit_nodelist(my_cluster_conf, limit, nodes, num_nodes);
+}
+
 int eards_red_powerlimit(unsigned int type, unsigned long limit)
 {
     request_t command;

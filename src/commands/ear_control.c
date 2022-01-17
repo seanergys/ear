@@ -608,6 +608,7 @@ int main(int argc, char *argv[])
 
     char **nodes = NULL;
     int num_nodes = 0;
+    unsigned long set_limit = -2;
 
 
     if (read_cluster_conf(path_name, &my_cluster_conf) != EAR_SUCCESS) printf("ERROR reading cluster configuration\n");
@@ -896,9 +897,11 @@ int main(int argc, char *argv[])
                 status_type = EAR_TYPE_HEALTH_CHECK;
                 break;
             case 'c': //set_powercap
-                arg = atoi(optarg);
+                arg = atol(optarg);
+                set_limit = arg;
+#if 0
                 if (optind+1 > argc) {
-                    cluster_set_powerlimit_all_nodes(arg, &my_cluster_conf);
+                    //cluster_set_powerlimit_all_nodes(arg, &my_cluster_conf);
                 }
                 else {
                     int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
@@ -909,7 +912,7 @@ int main(int argc, char *argv[])
                         remote_disconnect();
                     }
                 }
-
+#endif
                 break;
             case 'x': //reset_powercap
                 if (!optarg) {
@@ -1009,6 +1012,11 @@ int main(int argc, char *argv[])
         if (dup2(mail_fd, STDOUT_FILENO) < 0) {
             printf("Error duplicating output: %s\n", strerror(errno)); 
         }
+    }
+
+    if (set_limit != -2) 
+    {
+        ear_set_powerlimit(&my_cluster_conf, set_limit, nodes, num_nodes);
     }
 
     if ((status_type != EAR_TYPE_EARDBD_STATUS) && (strlen(node_name) > 0)) strcat(node_name, my_cluster_conf.net_ext);

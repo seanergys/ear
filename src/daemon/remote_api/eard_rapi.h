@@ -190,5 +190,6 @@ int powercap_status_nodelist(cluster_conf_t *my_cluster_conf, powercap_status_t 
 /* Generic function. USE THIS BEFORE SPECIFIC ONES (if available) */
 int ear_get_powercap_status(cluster_conf_t *conf, powercap_status_t **pc_status, char **nodes, int num_nodes);
 int ear_get_status(cluster_conf_t *conf, status_t **status, char **nodes, int num_nodes);
+void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
 
 #endif
