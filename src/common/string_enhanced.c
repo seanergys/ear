@@ -315,3 +315,28 @@ void remove_chars(char *s, char c)
 
     s[writer]=0;
 }
+
+void str_cut_list(char *src, char ***elements, int *num_elements, char *separator)
+{
+    if (src == NULL) {
+        *elements = NULL;
+        *num_elements = 0;
+        return;
+    }
+    int tmp_num = 0;
+    char **tmp_elements = calloc(1, sizeof(char *));
+    tmp_elements[0] = strtok(src, separator);
+    tmp_num++;
+    char *token;
+    
+    while((token = strtok(NULL, separator)) != NULL)
+    {
+        tmp_elements = realloc(tmp_elements, sizeof(char *)*(tmp_num + 1));
+        tmp_elements[tmp_num] = token;
+        tmp_num++;
+    }
+
+    *elements = tmp_elements;
+    *num_elements = tmp_num;
+
+}

@@ -149,6 +149,7 @@ void cluster_set_powerlimit_all_nodes(unsigned long limit, cluster_conf_t *my_cl
 void cluster_red_powerlimit_all_nodes(unsigned int type, unsigned long limit, cluster_conf_t *my_cluster_conf);
 void cluster_inc_powerlimit_all_nodes(unsigned int type, unsigned long limit, cluster_conf_t *my_cluster_conf);
 
+void set_powerlimit_nodelist(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
 
 int eards_set_risk(risk_t risk,unsigned long target);
 void set_risk_all_nodes(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf);
@@ -179,6 +180,15 @@ void set_risk_nodelist(risk_t risk, unsigned long target, cluster_conf_t *my_clu
 
 void set_default_powercap_nodelist(cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
 
-int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips);
+int status_iplist(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips);
+
+int status_nodelist(cluster_conf_t *my_cluster_conf, status_t **status, char **nodes, int num_nodes);
+
+int powercap_status_nodelist(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, char **nodes, int num_nodes);
+
+
+/* Generic function. USE THIS BEFORE SPECIFIC ONES (if available) */
+int ear_get_powercap_status(cluster_conf_t *conf, powercap_status_t **pc_status, char **nodes, int num_nodes);
+int ear_get_status(cluster_conf_t *conf, status_t **status, char **nodes, int num_nodes);
 
 #endif

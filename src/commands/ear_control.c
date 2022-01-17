@@ -584,6 +584,7 @@ int main(int argc, char *argv[])
     int status_type = 0;
     int mail_fd = -1;
 
+
     char mail_command[1024];
     char path_name[128];
     char node_name[256];
@@ -605,6 +606,9 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    char **nodes = NULL;
+    int num_nodes = 0;
+
 
     if (read_cluster_conf(path_name, &my_cluster_conf) != EAR_SUCCESS) printf("ERROR reading cluster configuration\n");
 
@@ -625,7 +629,8 @@ int main(int argc, char *argv[])
             {"inc-th",       	required_argument, 0, 3},
             {"set-def-freq", 	required_argument, 0, 4},
             {"set-th",          required_argument, 0, 5},
-            {"restore-conf", 	optional_argument, 0, 6},
+            {"hosts",           required_argument, 0, 6},
+            {"restore-conf", 	optional_argument, 0, 7},
             {"ping", 	     	optional_argument, 0, 'p'},
             {"status",       	optional_argument, 0, 's'},
             {"powerstatus",     optional_argument, 0, 'w'},
@@ -725,6 +730,10 @@ int main(int argc, char *argv[])
                 set_th_all_nodes(arg, arg2, &my_cluster_conf);
                 break;
             case 6:
+                str_cut_list(optarg, &nodes, &num_nodes, ",");
+                //no_error = 1; //temporary workaround
+                break;
+            case 7:
                 if (optarg)
                 {
                     strcpy(node_name, optarg);
@@ -1072,7 +1081,7 @@ int main(int argc, char *argv[])
             powercap_status_t *powerstatus;
             app_status_t *appstatus;
             case EAR_TYPE_STATUS:
-            num_status = status_all_nodes(&my_cluster_conf, &status);
+            num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
             process_status(num_status, status, NODE_ONLY);
             break;
             case EAR_TYPE_POLICY:
@@ -1084,7 +1093,7 @@ int main(int argc, char *argv[])
             process_status(num_status, status, FULL_STATUS);
             break;
             case EAR_TYPE_POWER_STATUS:
-            num_status = cluster_get_powercap_status(&my_cluster_conf, &powerstatus);
+            num_status = ear_get_powercap_status(&my_cluster_conf, &powerstatus, nodes, num_nodes);
             process_powercap_status(powerstatus,num_status);
             break;
             case EAR_TYPE_APP_STATUS_MASTER:
