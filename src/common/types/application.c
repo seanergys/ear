@@ -26,7 +26,7 @@
 #include <common/config.h>
 #include <common/system/file.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/types/application.h>
@@ -147,9 +147,9 @@ int append_application_text_file(char *path, application_t *app, char is_extende
     int num_gpus = app->signature.gpu_sig.num_gpus;
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
-        xsnprintf(gpu_hdr, strlen(gpu_hdr), ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTIL",
+        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTIL",
                 i+1, i+1, i+1, i+1, i+1);
-        xstrncat(HEADER, gpu_hdr, strlen(gpu_hdr));
+        xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
     }
 #endif
 

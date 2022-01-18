@@ -263,6 +263,23 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
     current_dist = self_id - self_id%NUM_PROPS;
     off_ip = self_id%NUM_PROPS;
 
+   
+    //if we are propagating via specific nodes we need to remove ours from the list
+    if (command->num_nodes > 0)
+    {
+        debug("propagate_req with num_nodes > 0 (%d)", command->num_nodes);
+        for (i = 0; i < command->num_nodes; i++)
+        {
+            debug("propagate_req: node%d %d (self_ip=%d)", i, command->nodes[i], self_ip);
+            if (command->nodes[i] == self_ip)
+            {
+                command->num_nodes --;
+                command->nodes[i] = command->nodes[command->num_nodes];
+                command->nodes = realloc(command->nodes, sizeof(int) * command->num_nodes);
+            }
+        }
+    }
+
     if (command->num_nodes < 1)
     {
         for (i = 1; i <= NUM_PROPS; i++)
@@ -336,7 +353,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
             if (rc < 0)
             {
                 error("propagate_data: Error connecting to node: %s\n", next_ip);
-                head = correct_data_prop_nodes(&tmp_command, self_ip, port, (void **)&temp_data);
+                head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
             }
             else
             {
@@ -346,7 +363,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
                 {
                     error("propagate_data: Error propagating command to node %s\n", next_ip);
                     remote_disconnect();
-                    head = correct_data_prop_nodes(&tmp_command, self_ip, port, (void **)&temp_data);
+                    head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
                 }
                 else remote_disconnect();
             }
@@ -392,7 +409,7 @@ int propagate_powercap_status(request_t *command, uint port, powercap_status_t *
 
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we allocate the power_status in this node and return
-    if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
+    if (!can_propagate(command)) 
     {
         final_status = calloc(1, sizeof(powercap_status_t));
         *status = final_status;
@@ -421,7 +438,7 @@ int propagate_get_power(request_t *command, uint port, power_check_t **power)
 
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we allocate the power_status in this node and return
-    if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
+    if (!can_propagate(command)) 
     {
         final_power = calloc(1, sizeof(power_check_t));
         *power = final_power;
@@ -450,7 +467,7 @@ int propagate_release_idle(request_t *command, uint port, pc_release_data_t *rel
     
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we allocate the power_status in this node and return
-    if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
+    if (!can_propagate(command)) 
     {
         memset(release, 0, sizeof(pc_release_data_t));
         return 1;
@@ -479,7 +496,7 @@ int propagate_and_cat_data(request_t *command, uint port, void **status, size_t 
 
     // if the current node is a leaf node (either last node or ip_init had failed)
     // we set the status for this node and return
-    if (command->node_dist > total_ips || self_id < 0 || ips == NULL || total_ips < 1)
+    if (!can_propagate(command)) 
     {
         final_status = (char *)calloc(num_items, size);
 #if 0
