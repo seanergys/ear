@@ -61,7 +61,7 @@ void file_lock_clean(int fd,char *lock_file_name);
 int file_unlock(int fd);
 
 /** Releases a lock file */
-void file_unlock_master(int fd,char *lock_file_name);
+int file_unlock_master(int fd,char *lock_file_name);
 
 /** */
 int file_is_regular(const char *path);

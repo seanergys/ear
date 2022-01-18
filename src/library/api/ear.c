@@ -152,6 +152,7 @@ mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
 char sig_shared_region_path_jobs[GENERIC_NAME];
+char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
@@ -849,6 +850,7 @@ void ear_init()
 				state_t st;
 				char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
+				int fd_dummy = -1;
 
 				/* Use a verbose file per process instead of only master */
 				char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
@@ -960,12 +962,25 @@ void ear_init()
 
 				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
 				get_resched_path(get_ear_tmp(),ID, resched_conf_path);
+				do{
+	
+					debug("system_conf_path  = %s",system_conf_path);
+					debug("resched_conf_path = %s",resched_conf_path);
+	
+					system_conf = attach_settings_conf_shared_area(system_conf_path);
+					resched_conf = attach_resched_shared_area(resched_conf_path);
 
-				debug("system_conf_path  = %s",system_conf_path);
-				debug("resched_conf_path = %s",resched_conf_path);
-
-				system_conf = attach_settings_conf_shared_area(system_conf_path);
-				resched_conf = attach_resched_shared_area(resched_conf_path);
+					/* If I'm the master, I will create the dummy regions */
+					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
+					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id){
+							verbose(2, "Shared memory not present, creating dummy areas");
+							create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
+							fd_dummy = file_lock_create(dummy_areas_path);
+					}else if ((system_conf == NULL) && (resched_conf == NULL) && my_id){
+							/* If I'm not the master, I will wait */
+							while(!file_is_regular(dummy_areas_path));
+					}
+				}while((system_conf == NULL) && (resched_conf == NULL));
 
 				debug("system_conf  = %p", system_conf);
 				debug("resched_conf = %p", resched_conf);
@@ -977,7 +992,6 @@ void ear_init()
 								debug("Updating the configuration sent by the EARD");
 								update_configuration();	
 				}else{
-								create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
 								eard_ok = 0;
 								verbose_master(2,"EARD not detected");
 #if USE_LOCK_FILES
@@ -1057,8 +1071,16 @@ void ear_init()
 				if (!eard_ok){ 
 								debug("%s: EARL off because of EARD",node_name);
 								strcpy(application.job.policy," "); /* Cleaning policy */
+			        	/* Dummy areas path is used in case the EARD was not present */
+      			  	if (!my_id && (fd_dummy >= 0)){
+          				int err;
+          				err = file_unlock_master(fd_dummy, dummy_areas_path);
+          				if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
+        				}
+
 								return;
 				}
+
 				/* Cluster conf */
 				get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);
 				ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);

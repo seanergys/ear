@@ -72,18 +72,20 @@ int file_unlock(int fd)
 		return fcntl(fd, F_SETLKW, &lock);
 	}else return -1;
 }
-
-void file_unlock_master(int fd,char *lock_file_name)
+int file_unlock_master(int fd,char *lock_file_name)
 {
 	close(fd);
-	unlink(lock_file_name);
+	if (unlink(lock_file_name) < 0){
+		return errno;	
+	}
+	return 0;
 }
 
 int file_is_regular(const char *path)
 {
 	struct stat path_stat;
 	int s = stat(path, &path_stat);
-fprintf(stderr, "LOOKING AT %s => %d (%d)\n", path, S_ISREG(path_stat.st_mode), s);
+//fprintf(stderr, "LOOKING AT %s => %d (%d)\n", path, S_ISREG(path_stat.st_mode), s);
 
 	return S_ISREG(path_stat.st_mode);
 }
