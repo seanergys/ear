@@ -76,4 +76,6 @@ int strinargs(int argc, char *argv[], const char *opt, char *value);
 /** Removes characters c from string s. */
 void remove_chars(char *s, char c);
 
+/* Parses src into a list of char* elements with n num_elements separated by separator in src. */
+void str_cut_list(char *src, char ***elements, int *num_elements, char *separator);
 #endif

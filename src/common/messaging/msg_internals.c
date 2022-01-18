@@ -866,6 +866,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
         {
             if (command->nodes[i] == self_ip)
             {
+                debug("found node %d in list, removing it", self_ip);
                 command->num_nodes --;
                 command->nodes[i] = command->nodes[command->num_nodes];
                 command->nodes = realloc(command->nodes, sizeof(int) * command->num_nodes);
@@ -898,7 +899,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
         if (rc < 0)
         {
             error("correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
-            head = correct_data_prop_nodes(&tmp_command, self_ip, port, (void **)&temp_data);
+            head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
         }
         else
         {
@@ -908,7 +909,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
             {
                 error("correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
                 remote_disconnect();
-                head = correct_data_prop_nodes(&tmp_command, self_ip, port, (void **)&temp_data);
+                head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
             }
             else remote_disconnect();
         }
@@ -988,12 +989,13 @@ void internal_send_command_nodes(request_t *command, int port, int base_distance
     request_t tmp_command;
 
     memcpy(&tmp_command, command, sizeof(request_t));
-		#if SHOW_DEBUGS
-		for (i = 0; i < command->num_nodes;i++){
-			temp.sin_addr.s_addr = command->nodes[i];
-			debug("Node %i : %s",i,inet_ntoa(temp.sin_addr));
-		}
-		#endif
+#if SHOW_DEBUGS
+    for (i = 0; i < command->num_nodes;i++){
+        temp.sin_addr.s_addr = command->nodes[i];
+        debug("Node %i : %s",i,inet_ntoa(temp.sin_addr));
+    }
+#endif
+
 
     for (i = 0; i < num_sends; i++)
     {
@@ -1047,7 +1049,7 @@ void send_command_nodelist(request_t *command, cluster_conf_t *my_cluster_conf)
      * D will receive D E F, and G will only receive themselves. */
     base_distance = get_max_prop_group(NUM_PROPS, MAX_PROP_DEPTH, command->num_nodes);
     num_sends = command->num_nodes / base_distance; //number of nodes this function will comunicate with
-		if (command->num_nodes % base_distance) num_sends++;
+    if (command->num_nodes % base_distance) num_sends++;
     debug("sending command with %d nodes, %d base_distance and %d num_sends", command->num_nodes, base_distance, num_sends);
 
     /* Inner functionality for initial communication has been moved to its own function to avoid code replication */
@@ -1070,7 +1072,8 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
 
     memcpy(&tmp_command, command, sizeof(request_t));
     if (base_distance < 1) base_distance = 1; //if there is only 1 or 2 nodes
-    for (i = 0; i < NUM_PROPS; i++)
+    debug("entering internal_data_nodes with %d base_distance and %d num_sends", base_distance, num_sends);
+    for (i = 0; i < num_sends; i++)
     {
         if (base_distance * i >= command->num_nodes) break;
         //prepare next node data
@@ -1153,6 +1156,7 @@ request_header_t data_nodelist(request_t *command, cluster_conf_t *my_cluster_co
      * D will receive D E F, and G will only receive themselves. */
     base_distance = get_max_prop_group(NUM_PROPS, MAX_PROP_DEPTH, command->num_nodes);
     num_sends = command->num_nodes / base_distance; //number of nodes this function will comunicate with
+    if (command->num_nodes % base_distance) num_sends++;
     debug("sending command with %d nodes, %d base_distance and %d num_sends", command->num_nodes, base_distance, num_sends);
 
     /* Inner functionality for initial communication has been moved to its own function to avoid code replication */
