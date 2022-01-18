@@ -22,6 +22,7 @@
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/system/time.h>
+#include <metrics/common/apis.h>
 
 // This is an API to monitorize the GPU devices of the node.
 //
@@ -44,9 +45,9 @@
 //		gpu_data_diff(data2, data1, data_diff);
 //		gpu_dispose(&context);
 
-#define MODEL_NVML			2
-#define MODEL_DUMMY			1
-#define MODEL_UNDEFINED		0
+#define MODEL_NVML			API_NVML
+#define MODEL_DUMMY			API_DUMMY
+#define MODEL_UNDEFINED	API_NONE
 
 typedef struct gpu_s
 {

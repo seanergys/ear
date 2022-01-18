@@ -106,6 +106,7 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 				memset(dummy_sett, 0, sizeof(settings_conf_t));
 
   			dummy_sett->id             = ID;
+				dummy_sett->user_type	  	 = AUTHORIZED;
 				dummy_sett->lib_enabled = 1;
 				dummy_sett->policy           = dummy_cc.default_policy;
 				dummy_sett->def_freq         = 2600000;
@@ -162,7 +163,9 @@ state_t eard_dummy_pc_app_info(char *ear_tmp, uint ID)
 
 				memset(dummy, 0 , sizeof(pc_app_info_t));
 				dummy->cpu_mode = PC_POWER;
+				#if USE_GPUS
 				dummy->gpu_mode = PC_POWER;
+				#endif
 
 				verbose_master(2, "Dummy powercap are done");
 	

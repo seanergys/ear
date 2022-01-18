@@ -16,6 +16,16 @@
  */
 
 #define _GNU_SOURCE
+
+#define HEROES 1
+//#define SHOW_DEBUGS 1
+
+#if HEROES
+#define EARL_LIGHT (1)
+#else
+#define EARL_LIGHT (0)
+#endif
+
 #include <sched.h>
 #include <pthread.h>
 
@@ -31,7 +41,6 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <assert.h>
-//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -317,42 +326,46 @@ void cleanup_job_folder()
 /****************************************************************************************************************************************************************/
 void create_shared_regions()
 {
-				char *tmp=get_ear_tmp();
-				int bfd=-1;
-				int total_elements = 1;
-				int per_node_elements = 1;
-				uint current_jobs_in_node;
-#if SHOW_DEBUGS
-				int total_size;
-#endif
-				uint ID = create_ID(application.job.id, application.job.step_id);
+	char *tmp=get_ear_tmp();
+	int bfd=-1;
+  int total_elements = 1;
+  int per_node_elements = 1;
+	uint current_jobs_in_node;
+	#if SHOW_DEBUGS
+	int total_size;
+	#endif
+	uint ID = create_ID(application.job.id, application.job.step_id);
 
 
-				/* This section allocates shared memory for processes in same node */
-				debug("%s:Master creating shared regions for node synchro",node_name);
-				xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
-				if ((bfd=file_lock_create(block_file))<0){
-								error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
-				}
+	/* This section allocates shared memory for processes in same node */
+	debug("%s:Master creating shared regions for node synchro",node_name);
+  xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
+  if ((bfd=file_lock_create(block_file))<0){
+    error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
+  }
 
-				/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
-				/******************************* Depending on how EAR is compiled, only one signature per node is sent *************************/
-				if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path)!=EAR_SUCCESS){
-								error("Getting the lib_shared_region_path");
-				}else{
-								lib_shared_region=create_lib_shared_data_area(lib_shared_region_path);
-								if (lib_shared_region==NULL){
-												error("Creating the lib_shared_data region");
-								}
-								my_node_id=0;
-								lib_shared_region->node_mgr_index = NULL_NODE_MGR_INDEX;
-								lib_shared_region->earl_on = eard_ok;
-								lib_shared_region->num_processes=1;
-								lib_shared_region->num_signatures=0;
-								lib_shared_region->master_rank = masters_info.my_master_rank;
-				}
-				debug("create_shared_regions and eard=%d",eard_ok);
-				debug("Node connected %u",my_node_id);
+	/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
+	/******************************* Depending on how EAR is compiled, only one signature per node is sent *************************/
+  /*****************************************/
+  /* Attaching/Create to lib_shared region */
+  /*****************************************/
+
+	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path)!=EAR_SUCCESS){
+		error("Getting the lib_shared_region_path");
+	}else{
+		lib_shared_region=create_lib_shared_data_area(lib_shared_region_path);
+		if (lib_shared_region==NULL){
+			error("Creating the lib_shared_data region");
+		}
+		my_node_id=0;
+		lib_shared_region->node_mgr_index = NULL_NODE_MGR_INDEX;
+		lib_shared_region->earl_on = eard_ok || EARL_LIGHT;
+		lib_shared_region->num_processes=1;
+		lib_shared_region->num_signatures=0;
+		lib_shared_region->master_rank = masters_info.my_master_rank;
+	}
+	debug("create_shared_regions and eard=%d",eard_ok);
+	debug("Node connected %u",my_node_id);
 #if ONLY_MASTER == 0
 #if MPI
 				/* This barrier notifies the others the shared memory region is ready */
@@ -360,28 +373,32 @@ void create_shared_regions()
 								error("MPI_Barrier");
 								return;
 				}
-				if (!eard_ok) return;
+				if (!eard_ok && !EARL_LIGHT) return;
 				if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
 								error("MPI_Barrier");
 								return;
 				}
 #endif
 #endif
-				//print_lib_shared_data(lib_shared_region);
-				/* This region is for processes in the same node */
-				if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS){
-								error("Getting the shsignature_region_path	");
-				}else{
-								debug("Master node creating the signatures with %d processes",lib_shared_region->num_processes);
-								sig_shared_region=create_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
-								if (sig_shared_region==NULL){
-												error("NULL pointer returned in create_shared_signatures_area");
-								}
-				}
-				sig_shared_region[my_node_id].master = 1;
-				sig_shared_region[my_node_id].pid = getpid();
-				sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
-				clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
+	//print_lib_shared_data(lib_shared_region);
+	/* This region is for processes in the same node */
+  /************************************************/
+  /* Attaching/Create to shared_signatures region */
+  /************************************************/
+	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS){
+    error("Getting the shsignature_region_path	");
+	}else{
+		debug("Master node creating the signatures with %d processes",lib_shared_region->num_processes);
+		sig_shared_region=create_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
+		if (sig_shared_region==NULL){
+			error("NULL pointer returned in create_shared_signatures_area");
+		}
+	}
+	verbose_master(2,"Shared region for shared signatures created for %d processes", lib_shared_region->num_processes);
+	sig_shared_region[my_node_id].master = 1;
+	sig_shared_region[my_node_id].pid = getpid();
+	sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
+	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 #if ONLY_MASTER == 0
 #if MPI
 				if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
@@ -526,6 +543,7 @@ void attach_shared_regions()
 								error("In MPI_BARRIER");
 				}
 #endif
+				verbose(2,"My node ID is %d/%d", my_node_id, lib_shared_region->num_processes);
 				if (get_shared_signatures_path(tmp,ID, shsignature_region_path) != EAR_SUCCESS){
 								error("Getting the shsignature_region_path  ");
 				}else{
@@ -1068,17 +1086,24 @@ void ear_init()
 				}else{
 								attach_shared_regions();
 				}
+				verbose_master(2, "EARL with %d processes", lib_shared_region->num_processes);
 				if (!eard_ok){ 
-								debug("%s: EARL off because of EARD",node_name);
-								strcpy(application.job.policy," "); /* Cleaning policy */
+								
 			        	/* Dummy areas path is used in case the EARD was not present */
       			  	if (!my_id && (fd_dummy >= 0)){
           				int err;
           				err = file_unlock_master(fd_dummy, dummy_areas_path);
           				if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
         				}
+								if (!EARL_LIGHT){
+									debug("%s: EARL off because of EARD",node_name);
+									strcpy(application.job.policy," "); /* Cleaning policy */
+									return;
+								}
+				}
 
-								return;
+				if (!eard_ok && EARL_LIGHT){
+					verbose_master(2, "EARD is not running but EARL light version is enabled");
 				}
 
 				/* Cluster conf */
@@ -1124,7 +1149,7 @@ void ear_init()
 				}
 
 				// Initializing metrics
-				debug("Starting metrics init ");
+				verbose_master(1,"Starting metrics init ");
 
 				if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
 								error("in EAR metrics initialization (%s), setting EARL off", state_msg);
@@ -1133,7 +1158,8 @@ void ear_init()
 								return;
 				}
 
-				if (!eard_ok){ 
+
+				if (!eard_ok && !EARL_LIGHT){ 
 								lib_shared_region->earl_on = 0;
 								strcpy(application.job.policy," "); /* Cleaning policy */
 								return;
@@ -1375,7 +1401,7 @@ void ear_finalize(int exit_status)
 								return;
 				}	
 #endif
-				if (!eard_ok){ 
+				if (!eard_ok && !EARL_LIGHT){ 
 								cleanup_job_folder();
 								return;
 				}
@@ -1383,7 +1409,7 @@ void ear_finalize(int exit_status)
 								cleanup_job_folder();
 								return;
 				}
-				if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+				if (!eards_connected() && (masters_info.my_master_rank >= 0) && !EARL_LIGHT){
 								lib_shared_region->earl_on = 0;
 								cleanup_job_folder();
 								return;
@@ -1462,7 +1488,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 #if EAR_OVERHEAD_CONTROL
 				time_t curr_time;
 				double time_from_mpi_init;
-				if (!eard_ok) return;
+				if (!eard_ok && !EARL_LIGHT) return;
 				if (synchronize_masters == 0 ) return;
 				if (!lib_shared_region->earl_on) return;
 #if ONLY_MASTER

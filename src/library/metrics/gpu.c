@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <library/metrics/gpu.h>
@@ -167,6 +167,7 @@ state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 	int i, li = 0;
 	memset(node_gpu_data, 0 , node_dev_count*sizeof(gpu_t));
 	if (the_gpu_model == MODEL_DUMMY){
+		debug("Dummy gpu data");
 		memset(data,0,dev_count*sizeof(gpu_t));
 		return EAR_SUCCESS;
 	}
