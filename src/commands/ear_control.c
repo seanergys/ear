@@ -584,14 +584,18 @@ int main(int argc, char *argv[])
     int num_status = 0;
     int status_type = 0;
     int mail_fd = -1;
+    int num_nodes = 0;
+    unsigned long set_limit = -2;
 
 
+    char get_power = 0;
     char mail_command[1024];
     char path_name[128];
     char node_name[256];
     char mail_filename[2176]; //to match the stored mail size
 
     char *mail = NULL;
+    char **nodes = NULL;
 
     strcpy(node_name,"");
 
@@ -607,9 +611,6 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    char **nodes = NULL;
-    int num_nodes = 0;
-    unsigned long set_limit = -2;
 
 
     if (read_cluster_conf(path_name, &my_cluster_conf) != EAR_SUCCESS) printf("ERROR reading cluster configuration\n");
@@ -932,12 +933,7 @@ int main(int argc, char *argv[])
             case 'g': //get_power
                 memset(&power, 0, sizeof(power_check_t));
                 if (!optarg) {
-                    if (!cluster_get_power(&my_cluster_conf, &power)) {
-                        printf("Could not retrieve cluster power\n");
-                    }
-                    else {
-                        printf("Total cluster power reported by %li nodes: %luW\n", power.num_nodes, power.power);
-                    }
+                    get_power = 1;
                 }
                 else {
                     int rc = remote_connect(optarg, my_cluster_conf.eard.port);
@@ -1020,6 +1016,14 @@ int main(int argc, char *argv[])
         ear_set_powerlimit(&my_cluster_conf, set_limit, nodes, num_nodes);
     }
 
+    if (get_power) {
+        if (!ear_get_power(&my_cluster_conf, &power, nodes, num_nodes)) {
+            printf("Could not retrieve cluster power\n");
+        }
+        else {
+            printf("Total cluster power reported by %li nodes: %luW\n", power.num_nodes, power.power);
+        }
+    }
     if ((status_type != EAR_TYPE_EARDBD_STATUS) && (strlen(node_name) > 0)) strcat(node_name, my_cluster_conf.net_ext);
 
     if (strlen(node_name) > 0 && status_type > 0)
