@@ -646,7 +646,7 @@ void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_
         if ((nmgr_eard == NULL) || (nmgr_earl == NULL)) return;
         verbose_master(vl,"%s--- Jobs in node list ---", COL_BLU);
         for (uint i=0;i<MAX_CPUS_SUPPORTED; i++){
-            if (nmgr_eard[i].creation_time) {
+            if (nmgr_eard[i].creation_time && nmgr_earl[i].creation_time && (nmgr_earl[i].libsh != NULL) && (nmgr_earl[i].shsig != NULL)) {
                 verbosen_master(vl,"JOB[%u]=%lu.%lu\nNode: ", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
                 signature_print_simple_fd(verb_channel, &nmgr_earl[i].libsh->node_signature);	
                 verbosen_master(vl, "\nJob: ");
