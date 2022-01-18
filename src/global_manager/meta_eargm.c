@@ -161,7 +161,7 @@ void assign_ask_def(eargm_status_t *status, uint num_status, eargm_table_t *egm_
             if (egm_id >= 0) {
                 //egm_table->actions[egm_id] = EARGM_RESET_PC;
                 egm_table->actions[egm_id] = EARGM_INC_PC;
-                egm_table->actions_values[egm_id] = status[i].requested;
+                egm_table->action_values[egm_id] = status[i].requested;
             }
         }
     }
