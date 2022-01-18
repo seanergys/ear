@@ -335,6 +335,10 @@ void create_shared_regions()
 
 	/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
 	/******************************* Depending on how EAR is compiled, only one signature per node is sent *************************/
+  /*****************************************/
+  /* Attaching/Create to lib_shared region */
+  /*****************************************/
+
 	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path)!=EAR_SUCCESS){
 		error("Getting the lib_shared_region_path");
 	}else{
@@ -367,6 +371,9 @@ void create_shared_regions()
 #endif
 	//print_lib_shared_data(lib_shared_region);
 	/* This region is for processes in the same node */
+  /************************************************/
+  /* Attaching/Create to shared_signatures region */
+  /************************************************/
 	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS){
     error("Getting the shsignature_region_path	");
 	}else{
