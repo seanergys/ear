@@ -875,6 +875,51 @@ int cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power)
 
 }
 
+int get_power_nodelist(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes)
+{
+	request_t command;
+    request_header_t head;
+    int *ips;
+    power_check_t *temp_power;
+    int num_status = 0;
+
+    get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+    memset(&command, 0, sizeof(request_t));
+
+	command.req = EAR_RC_GET_POWER;
+    command.nodes = ips;
+    command.num_nodes = num_nodes;
+    command.time_code = time(NULL);
+
+    head = data_nodelist(&command, my_cluster_conf, (void **)&temp_power);
+    num_status = head.size / sizeof(power_check_t);
+
+    if (head.type != EAR_TYPE_POWER_CHECK || head.size < sizeof(power_check_t))
+    {
+        if (head.size > 0) free (temp_power);
+        temp_power = NULL;
+        num_status = 0;
+    }
+
+    if (temp_power != NULL)
+    {
+        *power = *temp_power;
+        free(temp_power);
+    }
+
+    free(ips);
+    return num_status;
+}
+
+int ear_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes) 
+{
+    if (nodes == NULL || num_nodes < 1)
+        return cluster_get_power(my_cluster_conf, power);
+    else
+        return get_power_nodelist(my_cluster_conf, power, nodes, num_nodes);
+}
+
 request_header_t send_powercap_status(request_t *command, powercap_status_t **status)
 {
     request_header_t head;
