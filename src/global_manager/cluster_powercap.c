@@ -520,10 +520,13 @@ void write_shared_data(ulong current_power, ulong freeable_power, ulong requeste
         if (default_cluster_powercap < (current_cluster_powercap + requested)) {
             requested = default_cluster_powercap - current_cluster_powercap;
         }
+        freeable_power = 0; //if pc_status_ask_def and requesting we cannot free
         ext_powercap_data.status = PC_STATUS_ASK_DEF;
     }
-    else if (requested)
+    else if (requested) {
+        freeable_power = 0; //if greedy and requesting, we cannot free more than our extra_power
         ext_powercap_data.status = PC_STATUS_GREEDY;
+    }
 
     ext_powercap_data.requested = requested; 
     ext_powercap_data.current_power = current_power;
