@@ -200,11 +200,13 @@ static void metrics_configuration()
 		verbose_master(2, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
 		earl_default_domains.mem = POL_NOT_SUPPORTED;
 	}
+	#if USE_GPUS
 	/* This must be migrated to mgt_gpu.ok */
 	if (earl_gpu_model == MODEL_DUMMY) {
 		verbose_master(2, "GPU dummy, swtching to monitoring for GPU");
 		earl_default_domains.gpu = POL_NOT_SUPPORTED;
 	}
+	#endif
 	if (!met_cpufreq.ok && mgt_cpufreq.ok){
 		verbose_master(2, "Avg cpufreq is not ok. Using mgt_cpufreq");
 	}
