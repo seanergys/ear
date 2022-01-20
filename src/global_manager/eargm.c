@@ -17,7 +17,6 @@
 
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 
-//#define EARGM_TEST 1
 
 #include <time.h>
 #include <errno.h>
@@ -100,6 +99,8 @@ pthread_t eargm_server_api_th;
 pthread_t meta_eargm_th;
 cluster_conf_t my_cluster_conf;
 eargm_def_t *e_def;
+char **nodes = NULL;
+int num_eargm_nodes = 0;
 char my_ear_conf_path[GENERIC_NAME];	
 uint total_nodes=0;
 char  unit_name[128],unit_energy[128],unit_power[128];
@@ -195,40 +196,39 @@ void update_eargm_configuration(cluster_conf_t *conf)
     /* EARGM specific conf */
     gethostname(host, sizeof(host));
     strtok(host, ".");
-#if !EARGM_TEST
-    e_def = get_eargm_conf(conf, host);
-    if (e_def == NULL) {
-        error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
-        exit(1);
-    }
-#else
     int i, id;
     char *idx = getenv("EARGMID");
     e_def = NULL;
-    if (idx != NULL) id = atoi(idx);
-    else {
-        error("Couldn't find EARGMID environment variable, exiting\n");
-        exit(1);
-    }
-    for (i = 0; i < conf->eargm.num_eargms; i++)
-    {
-        if (conf->eargm.eargms[i].id == id)
+    if (idx != NULL) {
+        id = atoi(idx);
+        for (i = 0; i < conf->eargm.num_eargms; i++)
         {
-            e_def = &conf->eargm.eargms[i];
-            break;
+            if (conf->eargm.eargms[i].id == id)
+            {
+                e_def = &conf->eargm.eargms[i];
+                break;
+            }
         }
+    }
+    else {
+        verbose(VGM, "Couldn't find EARGMID environment variable, using hostname\n");
+        e_def = get_eargm_conf(conf, host);
     }
     if (e_def == NULL) {
         error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
         exit(1);
     }
-#endif
+    char *nnodes = getenv("EARGM_NODES");
+    if (nnodes != NULL)
+    {
+        str_cut_list(nnodes, &nodes, &num_eargm_nodes, ",");
+    }
     /* Remove unnecessary islands from ear_conf */
     remove_extra_islands(conf, e_def);
-		print_cluster_conf(conf);
+    print_cluster_conf(conf);
 
     if (verbose_arg  >= 0) verb_level=verbose_arg;
-		
+
 
     my_port = e_def->port;
     eargm_id = e_def->id;
@@ -654,7 +654,7 @@ int main(int argc,char *argv[])
         errno=ret;
         error("error creating eargm_server for external api %s",strerror(errno));
     }
-    
+
     if (e_def->num_subs > 0) { //if it has subnodes, we need a META-EARGM
         if ((ret = pthread_create(&meta_eargm_th, NULL, meta_eargm, (void *)&my_cluster_conf))) {
             errno=ret;
@@ -706,7 +706,6 @@ int main(int argc,char *argv[])
         if (process_created){
             check_pending_processes();
         }   
-#if !EARGM_TEST
         // ALARM RECEIVED
         if (t1_expired){
             t1_expired=0;
@@ -854,7 +853,6 @@ int main(int argc,char *argv[])
             fill_periods(result);
 
         }
-#endif
     }
 
 #if SYSLOG_MSG
