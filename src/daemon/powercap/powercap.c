@@ -140,11 +140,12 @@ ulong powercap_elapsed_last_powercap()
     return timestamp_diffnow(&last_powercap_reallocation_time, TIME_SECS);
 }
 
-static int set_powercap_value(uint domain,uint limit)
+static int set_powercap_value(uint domain, uint limit)
 {
   char c_date[128];
   int i;
   verbose(VCONF,"%spowercap_set_powercap_value domain %u limit %u (current pc %u)%s",COL_BLU,domain,limit,my_pc_opt.current_pc, COL_CLR);
+  limit = ear_min(limit, powermon_get_max_powercap_def());
   if (limit == my_pc_opt.current_pc) return EAR_SUCCESS;
   get_date_str(c_date,sizeof(c_date));
   if (fd_powercap_values>=0){
