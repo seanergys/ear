@@ -37,8 +37,9 @@
 /*                      IMPORTANT                       */
 /*                      ---------                       */
 /* ear_node_xxx type functions require manually calling */
-/* ear_node_connect and ear_node_disconnect before and  */
-/* after using them, respectively.                      */
+/* remote_connect and remote_disconnect before and      */
+/* after using them, respectively (both functions can   */ 
+/* be found in common/messaging/msg_internals.          */
 /********************************************************/
 
 /**  Sets freq as the maximim frequency to be used in the node where the API is connected with

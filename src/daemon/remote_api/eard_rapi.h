@@ -36,10 +36,15 @@
 
 
 /* Generic function. USE THIS BEFORE SPECIFIC ONES (if available) */
+/* If **nodes is NULL or num_nodes < 1 the command will be send to every node in the cluster.
+ * Otherwise, the node will be send to the nodes in **nodes. If there is only 1 node
+ * calling the function is equivalent to calling remote_connect, the specific function and 
+ * remote_disconnect. */
 int ear_get_powercap_status(cluster_conf_t *conf, powercap_status_t **pc_status, char **nodes, int num_nodes);
 int ear_get_status(cluster_conf_t *conf, status_t **status, char **nodes, int num_nodes);
-void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
 int ear_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes);
 int ear_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes);
+
+void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
 
 #endif
