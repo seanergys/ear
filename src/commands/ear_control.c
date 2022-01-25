@@ -39,7 +39,10 @@
 #include <common/types/configuration/policy_conf.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/messaging/msg_internals.h>
+
+#include <daemon/remote_api/eard_rapi_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
+
 #include <database_cache/eardbd_api.h>
 
 #if SCHED_SLURM
@@ -257,9 +260,9 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 	for (i = 0; i < num_ips; i++) 
 	{    
 		if (!ips[i].counter) {
-			if (eards_remote_connect(ips[i].ip, my_cluster_conf.eard.port) < 0) {
+			if (remote_connect(ips[i].ip, my_cluster_conf.eard.port) < 0) {
 				printf("Node %s IP %s inactive \n", ips[i].name, ips[i].ip);
-			} else eards_remote_disconnect();
+			} else remote_disconnect();
 		}    
 	}    
 #endif
@@ -668,15 +671,15 @@ int main(int argc, char *argv[])
 		switch(c)
 		{
 			case 0:
-				set_freq_all_nodes(atoi(optarg),&my_cluster_conf);
+				ear_cluster_set_freq(&my_cluster_conf, atoi(optarg));
 				break;
 			case 1:
 				arg = atoi(optarg);
-				red_def_max_pstate_all_nodes(arg,&my_cluster_conf);
+				ear_cluster_red_def_max_pstate(&my_cluster_conf, arg);
 				break;
 			case 2:
 				arg = atoi(optarg);
-				set_max_freq_all_nodes(arg,&my_cluster_conf);
+				ear_cluster_set_max_freq(&my_cluster_conf, arg);
 				break;
 			case 3:
 				arg = atoi(optarg);
@@ -696,7 +699,7 @@ int main(int argc, char *argv[])
 					printf("Indicated threshold increase above theoretical maximum (100%%)\n");
 					break;
 				}
-				increase_th_all_nodes(arg, arg2, &my_cluster_conf);
+				ear_cluster_increase_th(&my_cluster_conf, arg, arg2);
 				break;
 			case 4:
 				arg = atoi(optarg);
@@ -711,7 +714,7 @@ int main(int argc, char *argv[])
 					printf("Invalid policy (%s).\n", argv[optind]);
 					break;
 				}
-				set_def_freq_all_nodes(arg, arg2, &my_cluster_conf);
+				ear_cluster_set_def_freq(&my_cluster_conf, arg, arg2);
 				break;
 			case 5:
 				arg = atoi(optarg);
@@ -731,7 +734,7 @@ int main(int argc, char *argv[])
 					printf("Invalid policy (%s).\n", argv[optind]);
 					break;
 				}
-				set_th_all_nodes(arg, arg2, &my_cluster_conf);
+				ear_cluster_set_th(&my_cluster_conf, arg, arg2);
 				break;
 			case 6:
 				str_cut_list(optarg, &nodes, &num_nodes, ",");
@@ -752,13 +755,13 @@ int main(int argc, char *argv[])
 					if (rc<0){
 						printf("Error connecting with node %s\n", node_name);
 					}else{
-						if (!eards_restore_conf()) printf("Error restoring configuration for node: %s\n", node_name);
+						if (!ear_node_restore_conf()) printf("Error restoring configuration for node: %s\n", node_name);
 						remote_disconnect();
 					}
 				}
 				else
 				{
-					restore_conf_all_nodes(&my_cluster_conf);
+					ear_cluster_restore_conf(&my_cluster_conf);
 				}
 				break;
 			case 'y':
@@ -780,12 +783,12 @@ int main(int argc, char *argv[])
 						printf("Error connecting with node %s\n", node_name);
 					}else{
 						printf("Node %s ping!\n", node_name);
-						if (!eards_ping()) printf("Error doing ping for node %s\n", node_name);
+						if (!ear_node_ping()) printf("Error doing ping for node %s\n", node_name);
 						remote_disconnect();
 					}
 				}
 				else
-					ping_all_nodes(&my_cluster_conf);
+					ear_cluster_ping(&my_cluster_conf);
 				break;
 			case 's':
 				status_type = EAR_TYPE_STATUS;
@@ -829,7 +832,7 @@ int main(int argc, char *argv[])
 				else {
 					arg2 = get_target(argv[optind]);
 					if (optind + 2 > argc) {
-						set_risk_all_nodes(arg, arg2, &my_cluster_conf);
+						ear_cluster_set_risk(&my_cluster_conf, arg, arg2);
 						break;
 					}
 					int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
@@ -837,7 +840,7 @@ int main(int argc, char *argv[])
 						printf("Error connecting with node %s\n", argv[optind]);
 					}else{
 						printf("Sending risk level %d to %s\n", arg, argv[optind]);
-						eards_set_risk(arg, 0);
+						ear_node_set_risk(arg, 0);
 						remote_disconnect();
 					}
 				}
@@ -889,11 +892,11 @@ int main(int argc, char *argv[])
 				else
 				{
 					pc_release_data_t pc;
-					cluster_release_idle_power(&my_cluster_conf, &pc);
+					ear_cluster_release_idle_power(&my_cluster_conf, &pc);
 					printf("released %u watts\n", pc.released);
 				}
 			case 'e':
-				num_status = status_all_nodes(&my_cluster_conf, &status);
+				num_status = ear_cluster_get_status(&my_cluster_conf, &status);
 				process_status(num_status, status, 1);
 				break;
 			case 'k':
@@ -911,7 +914,7 @@ int main(int argc, char *argv[])
 					if (rc < 0) {
 						printf("Error connecting with node %s\n", argv[optind]);
 					}else{
-						eards_set_powerlimit(arg);
+						ear_node_set_powerlimit(arg);
 						remote_disconnect();
 					}
 				}
@@ -919,14 +922,14 @@ int main(int argc, char *argv[])
 				break;
 			case 'x': //reset_powercap
 				if (!optarg) {
-					cluster_reset_default_powercap_all_nodes(&my_cluster_conf);
+					ear_cluster_reset_default_powercap(&my_cluster_conf);
 				}
 				else {
 					int rc = remote_connect(optarg, my_cluster_conf.eard.port);
 					if (rc < 0) {
 						printf("Error connecting with node %s\n", optarg);
 					}else{
-						eards_reset_default_powercap();
+						ear_node_reset_default_powercap();
 						remote_disconnect();
 					}
 				}
@@ -941,7 +944,7 @@ int main(int argc, char *argv[])
 					if (rc < 0) {
 						printf("Error connecting with node %s\n", optarg);
 					}else{
-						if (!eards_get_power(&power)) {
+						if (!ear_node_get_power(&power)) {
 							printf("Could not retrieve power for node %s\n", optarg);
 						}
 						else {
@@ -954,14 +957,14 @@ int main(int argc, char *argv[])
 			case 'i': //increase_powercap
 				arg = atoi(optarg);
 				if (optind+1 > argc) {
-					cluster_inc_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
+					ear_cluster_inc_powerlimit(&my_cluster_conf, ABSOLUTE, arg);
 				}
 				else {
 					int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
 					if (rc < 0) {
 						printf("Error connecting with node %s\n", optarg);
 					}else{
-						eards_inc_powerlimit(ABSOLUTE, arg);
+						ear_node_inc_powerlimit(ABSOLUTE, arg);
 						remote_disconnect();
 					}
 				}
@@ -969,14 +972,14 @@ int main(int argc, char *argv[])
 			case 'd': //reduce_powercap
 				arg = atoi(optarg);
 				if (optind+1 > argc) {
-					cluster_red_powerlimit_all_nodes(ABSOLUTE, arg, &my_cluster_conf);
+					ear_cluster_red_powerlimit(&my_cluster_conf, ABSOLUTE, arg);
 				}
 				else {
 					int rc = remote_connect(argv[optind], my_cluster_conf.eard.port);
 					if (rc < 0) {
 						printf("Error connecting with node %s\n", optarg);
 					}else{
-						eards_red_powerlimit(ABSOLUTE, arg);
+						ear_node_red_powerlimit(ABSOLUTE, arg);
 						remote_disconnect();
 					}
 				}
@@ -1045,31 +1048,31 @@ int main(int argc, char *argv[])
 			switch(status_type)
 			{
 				case EAR_TYPE_STATUS:
-					if ((num_status = eards_get_status(&my_cluster_conf, &status)) != 1) 
+					if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
 						printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
 					process_single_status(num_status, status, node_name, NODE_ONLY);
 					break;
 				case EAR_TYPE_POLICY:
-					if ((num_status = eards_get_status(&my_cluster_conf, &status)) != 1) 
+					if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
 						printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
 					process_single_status(num_status, status, node_name, POLICY_ONLY);
 					break;
 				case EAR_TYPE_FULL_STATUS:
-					if ((num_status = eards_get_status(&my_cluster_conf, &status)) != 1) 
+					if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
 						printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
 					process_single_status(num_status, status, node_name, FULL_STATUS);
 					break;
 				case EAR_TYPE_POWER_STATUS:
 					printf("Reading power_status from node %s\n", node_name);
-					num_status = eards_get_powercap_status(&my_cluster_conf, &powerstatus);
+					num_status = ear_node_get_powercap_status(&my_cluster_conf, &powerstatus);
 					process_powercap_status(powerstatus,num_status);
 					break;
 				case EAR_TYPE_APP_STATUS_MASTER:
-					num_status = eards_get_app_master_status(&my_cluster_conf, &appstatus);
+					num_status = ear_node_get_app_master_status(&my_cluster_conf, &appstatus);
 					process_app_status(num_status, appstatus, 1);
 					break;
 				case EAR_TYPE_APP_STATUS_NODE:
-					num_status = eards_get_app_node_status(&my_cluster_conf, &appstatus);
+					num_status = ear_node_get_app_node_status(&my_cluster_conf, &appstatus);
 					process_app_status(num_status, appstatus, 0);
 					break;
 				case EAR_TYPE_EARDBD_STATUS:
@@ -1099,11 +1102,11 @@ int main(int argc, char *argv[])
 			process_status(num_status, status, NODE_ONLY);
 			break;
 			case EAR_TYPE_POLICY:
-			num_status = status_all_nodes(&my_cluster_conf, &status);
+			num_status = ear_cluster_get_status(&my_cluster_conf, &status);
 			process_status(num_status, status, POLICY_ONLY);
 			break;
 			case EAR_TYPE_FULL_STATUS:
-			num_status = status_all_nodes(&my_cluster_conf, &status);
+			num_status = ear_cluster_get_status(&my_cluster_conf, &status);
 			process_status(num_status, status, FULL_STATUS);
 			break;
 			case EAR_TYPE_POWER_STATUS:
@@ -1111,11 +1114,11 @@ int main(int argc, char *argv[])
 			process_powercap_status(powerstatus,num_status);
 			break;
 			case EAR_TYPE_APP_STATUS_MASTER:
-			num_status = get_app_master_status_all_nodes(&my_cluster_conf, &appstatus);
+			num_status = ear_cluster_get_app_master_status(&my_cluster_conf, &appstatus);
 			process_app_status(num_status, appstatus, 1);
 			break;
 			case EAR_TYPE_APP_STATUS_NODE:
-			num_status = get_app_node_status_all_nodes(&my_cluster_conf, &appstatus);
+			num_status = ear_cluster_get_app_node_status(&my_cluster_conf, &appstatus);
 			process_app_status(num_status, appstatus, 0);
 			break;
 			case EAR_TYPE_EARDBD_STATUS:
@@ -1126,7 +1129,7 @@ int main(int argc, char *argv[])
 			break;
 			case EAR_TYPE_HEALTH_CHECK:
 			printf("---------------------\nINACTIVE NODES\n---------------------\n");
-			num_status = status_all_nodes(&my_cluster_conf, &status);
+			num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
 			process_status(num_status, status, ERR_ONLY);
 			printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
 			num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);

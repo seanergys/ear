@@ -29,6 +29,7 @@
 #include <common/types/generic.h>
 #include <common/types/configuration/cluster_conf.h>
 
+#include <daemon/remote_api/eard_rapi_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
 
 #include <global_manager/cluster_powercap.h>
@@ -250,7 +251,7 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
 
 void send_powercap_options_to_cluster(powercap_opt_t *cluster_options)
 {
-    cluster_set_powercap_opt(&my_cluster_conf,cluster_options);
+    ear_cluster_set_powercap_opt(&my_cluster_conf,cluster_options);
 }
 
 
@@ -288,7 +289,7 @@ void cluster_only_powercap()
 
     power_check_t power;
     memset(&power, 0, sizeof(power_check_t));
-    cluster_get_power(&my_cluster_conf, &power);
+    ear_cluster_get_power(&my_cluster_conf, &power);
     float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
 
@@ -300,7 +301,7 @@ void cluster_only_powercap()
 
     if (power.power > upper_limit) {
         if (max_num_nodes > 0) {
-            if (risk == 0) cluster_set_powerlimit_all_nodes(max_cluster_power/max_num_nodes, &my_cluster_conf); 
+            if (risk == 0) ear_cluster_set_powerlimit(&my_cluster_conf, max_cluster_power/max_num_nodes); 
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %ld", max_cluster_power/max_num_nodes);
         } else {
             warning("No nodes detected for this EARGM");
@@ -309,7 +310,7 @@ void cluster_only_powercap()
     } else {
         if (risk == 1 && power.power <= lower_limit) {
             verbose(VGM_PC, "cluster_only_powercap: sending POWER_CAP_UNLIMTED to nodes");
-            cluster_set_powerlimit_all_nodes(1, &my_cluster_conf); //set powercap unlimited
+            ear_cluster_set_powerlimit(&my_cluster_conf, 1); //set powercap unlimited
             risk = 0;
         }
     }
@@ -519,7 +520,7 @@ void cluster_power_monitor()
 {
     debug("%sGlobal POWER monitoring INIT----%s",COL_BLU,COL_CLR);
     /* We use this function for now, we must use a new light one */
-    num_power_status=cluster_get_powercap_status(&my_cluster_conf,&my_cluster_power_status);
+    num_power_status = ear_cluster_get_powercap_status(&my_cluster_conf,&my_cluster_power_status);
     if (num_power_status==0){
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;
@@ -540,7 +541,7 @@ void cluster_power_monitor()
 void cluster_check_powercap()
 {
     debug("%sSTART cluster_check_powercap---------%s",COL_BLU,COL_CLR);
-    num_power_status=cluster_get_powercap_status(&my_cluster_conf,&my_cluster_power_status);
+    num_power_status = ear_cluster_get_powercap_status(&my_cluster_conf,&my_cluster_power_status);
     if (num_power_status==0){
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;
@@ -551,7 +552,7 @@ void cluster_check_powercap()
     aggregate_data(my_cluster_power_status);
     if (powercap_reallocation(my_cluster_power_status,&cluster_options) == 0){
         pc_release_data_t rel_power;
-        if (cluster_release_idle_power(&my_cluster_conf,&rel_power)==0){
+        if (ear_cluster_release_idle_power(&my_cluster_conf,&rel_power)==0){
             error("Error in cluster_release_idle_power");
         } else{
             verbose(VGM_PC,"%s%u Watts from idle nodes released%s",COL_GRE,rel_power.released,COL_CLR);

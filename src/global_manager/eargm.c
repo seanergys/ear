@@ -46,6 +46,7 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_verbose.h>
 
+#include <daemon/remote_api/eard_rapi_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
 
 #include <global_manager/meta_eargm.h>
@@ -145,7 +146,7 @@ uint reload_eargm_configuration(cluster_conf_t *current,cluster_conf_t *new)
     }
     if ((cc->power!=newc->power) || (cc->t1_power!=newc->t1_power)){
         verbose(VGM,"New powercap arguments: Powercap %lu Power cap period %lu",newc->power,newc->t1_power);
-        if (cc->power>newc->power)    cluster_reset_default_powercap_all_nodes(&my_cluster_conf);  
+        if (cc->power>newc->power)    ear_cluster_reset_default_powercap(&my_cluster_conf);  
         if ((cc->power==0) && (newc->power>0)) powercap_th_start=1;
 
     }
@@ -754,7 +755,7 @@ int main(int argc,char *argv[])
                         verbose(VGM,"****************************************************************");
                         if ((my_cluster_conf.eargm.mode) && (last_level==EARGM_NO_PROBLEM) && (!default_state)){ 
                             verbose(VGM,"Restoring default configuration");
-                            restore_conf_all_nodes(&my_cluster_conf);
+                            ear_cluster_restore_conf(&my_cluster_conf);
                             last_risk_sent=EARGM_NO_PROBLEM;
                             default_state=1;
                         }
@@ -768,7 +769,7 @@ int main(int argc,char *argv[])
 
                         if (my_cluster_conf.eargm.mode && last_risk_sent!=EARGM_WARNING1){ // my_cluster_conf.eargm.mode==1 is AUTOMATIC mode
                             create_risk(&current_risk,EARGM_WARNING1);
-                            set_risk_all_nodes(current_risk,MAXENERGY,&my_cluster_conf);
+                            ear_cluster_set_risk(&my_cluster_conf, current_risk, MAXENERGY);
                         }
                         new_actions=send_mail(EARGM_WARNING1,perc_energy);
                         new_actions+=execute_action(energy_t1,total_energy_t2,energy_budget,period_t2,period_t1,unit_energy);
