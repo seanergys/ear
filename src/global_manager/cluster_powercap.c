@@ -29,6 +29,7 @@
 #include <common/types/generic.h>
 #include <common/types/configuration/cluster_conf.h>
 
+#include <daemon/remote_api/eard_rapi_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
 
 #include <global_manager/cluster_powercap.h>
@@ -257,7 +258,7 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
 
 void send_powercap_options_to_cluster(powercap_opt_t *cluster_options)
 {
-    ear_set_powercap_opt(&my_cluster_conf, cluster_options, nodes, num_eargm_nodes);
+    ear_cluster_set_powercap_opt(&my_cluster_conf,cluster_options);
 }
 
 
@@ -561,7 +562,7 @@ void cluster_check_powercap()
     aggregate_data(my_cluster_power_status);
     if (powercap_reallocation(my_cluster_power_status, &cluster_options) == 0){
         pc_release_data_t rel_power;
-        if (cluster_release_idle_power(&my_cluster_conf,&rel_power)==0){
+        if (ear_cluster_release_idle_power(&my_cluster_conf,&rel_power)==0){
             error("Error in cluster_release_idle_power");
         } else{
             verbose(VGM_PC,"%s%u Watts from idle nodes released%s",COL_GRE,rel_power.released,COL_CLR);

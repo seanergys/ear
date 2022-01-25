@@ -24,8 +24,8 @@
 * 	 Note:All these funcions applies to a single node . Global commands must be applying by sending commands to all nodes. 
 */
 
-#ifndef _REMOTE_CLIENT_API_INTERNALS_H
-#define _REMOTE_CLIENT_API_INTERNALS_H
+#ifndef _REMOTE_CLIENT_API_COMMON_INTERNALS_H
+#define _REMOTE_CLIENT_API_COMMON_INTERNALS_H
 
 #include <netdb.h>
 #include <sys/socket.h>

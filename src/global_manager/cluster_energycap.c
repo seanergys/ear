@@ -23,6 +23,7 @@
 #include <common/states.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
+#include <daemon/remote_api/eard_rapi_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
 #include <global_manager/cluster_energycap.h>
 
@@ -71,7 +72,7 @@ state_t get_nodes_status(cluster_conf_t my_cluster_conf,uint *nnodes,node_info_t
 	node_info_t *cinfo;
 	int num_n;
 	status_t *my_status;
-	num_n=status_all_nodes(&my_cluster_conf,&my_status);
+	num_n = ear_cluster_get_status(&my_cluster_conf,&my_status);
 	if (num_n<=0){
 		*nnodes=0;
 		return EAR_ERROR;
@@ -128,7 +129,7 @@ void manage_warning(risk_t * risk,uint level,cluster_conf_t my_cluster_conf,floa
 	#endif
 	if (mode){
 		create_risk(risk,level);
-		set_risk_all_nodes(*risk,0,&my_cluster_conf);
+		ear_cluster_set_risk(&my_cluster_conf, *risk, 0);
 	}
 }
 

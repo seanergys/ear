@@ -1,4 +1,4 @@
-CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) -Wall 
+CFLAGS  = $(CC_FLAGS) -I$(SRCDIR)
 LDFLAGS = -lm
 ifeq ($(FEAT_RESEARCH), 1)
 CFLAGS += -DEXT_OPT=1
@@ -21,7 +21,8 @@ endif
 
 comm_OBJS = $(SRCDIR)/common/libcommon.a -lm
 
-rapi_OBJS = $(SRCDIR)/daemon/remote_api/eard_rapi.o $(SRCDIR)/common/messaging/msg_internals.o $(SRCDIR)/database_cache/eardbd_api.o
+rapi_OBJS = $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o $(SRCDIR)/daemon/remote_api/eard_rapi.o \
+			$(SRCDIR)/common/messaging/msg_internals.o $(SRCDIR)/database_cache/eardbd_api.o
 
 ######## RULES
 
