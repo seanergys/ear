@@ -17,14 +17,6 @@
 
 #define _GNU_SOURCE
 
-#define HEROES 1
-//#define SHOW_DEBUGS 1
-
-#if HEROES
-#define EARL_LIGHT (1)
-#else
-#define EARL_LIGHT (0)
-#endif
 
 #include <sched.h>
 #include <pthread.h>
@@ -220,6 +212,7 @@ static void print_local_data()
 								verbose(1, "DynAIS levels/window/AVX512: %d/%d/%d", get_ear_dynais_levels(), get_ear_dynais_window_size(), dynais_build_type());
 								verbose(1, "VAR path: %s", get_ear_tmp());
 								verbose(1, "EAR privileged user %u",system_conf->user_type==AUTHORIZED);
+								verbose(1, "EARL on=%d ",lib_shared_region->earl_on);
 								verbose(1, "---------------------------------------------------");
 				}
 }
@@ -1391,6 +1384,7 @@ void ear_init()
 
 void ear_finalize(int exit_status)
 {
+				verbose_master(2, "ear_finalize on=%d", lib_shared_region->earl_on);
 				// if we are not the master, we return
 				if ((cancelled) || (synchronize_masters == 0 )){ 
 								cleanup_job_folder();
@@ -1448,9 +1442,11 @@ void ear_finalize(int exit_status)
 								debug("Reporting application data");
 								verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
 								clean_db_signature(&application.signature, system_conf->max_sig_power);
+								verbose_master(2, "Reporting data");
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(0,"Error reporting application");
 								}
+								report_dispose(&rep_id);
 								report_mpi_application_data(&application);
 				}
 				// Closing any remaining loop

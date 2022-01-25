@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-#define SHOW_DEBUGS           1
+//#define SHOW_DEBUGS           1
 #define INFO_METRICS           2
 #define INFO2_METRICS          2
 #define IO_VERB                3
@@ -631,7 +631,7 @@ static int metrics_partial_stop(uint where)
 
     
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
-      lib_shared_region->earl_on = 0;
+      if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
 		}
 
 
@@ -666,7 +666,7 @@ static int metrics_partial_stop(uint where)
 			if ((where==SIG_END) && (c_energy==0) && (masters_info.my_master_rank>=0)){ 
 				debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
 				if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
-				return EAR_NOT_READY;
+				if (!EARL_LIGHT) return EAR_NOT_READY;
 			}
 		}
 	}
@@ -688,7 +688,7 @@ static int metrics_partial_stop(uint where)
 	/* If we are not the node master, we will continue */
 	if ((where==SIG_END) && (c_power<system_conf->min_sig_power) && (masters_info.my_master_rank>=0)){ 
 		debug("EAR_NOT_READY because of power %f\n",c_power);
-		return EAR_NOT_READY;
+		if (!EARL_LIGHT) return EAR_NOT_READY;
 	}
 
 	/* This is new to avoid cases where uncore gets frozen */

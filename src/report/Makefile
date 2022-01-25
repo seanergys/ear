@@ -13,6 +13,7 @@ repo_BINS = \
 	eardbd.so \
 	csv.so \
 	csv_ts.so \
+  heroes.so \
 	dummy.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports

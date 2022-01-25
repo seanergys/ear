@@ -606,7 +606,7 @@ char database_csv_path[PATH_MAX];
 void report_application_in_file(application_t *app)
 {
 	int ret1,ret2;
-	ret2 = append_application_text_file(database_csv_path, app,app->is_mpi);
+	ret2 = append_application_text_file(database_csv_path, app,app->is_mpi, 1);
 	if (ret1 == EAR_SUCCESS && ret2 == EAR_SUCCESS)
 	{
 		debug( "application signature correctly written");

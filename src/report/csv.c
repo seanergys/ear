@@ -57,7 +57,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 	debug("csv report_applications");
 	if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
 	for (i=0;i<count;i++){
-		append_application_text_file(csv_log_file,&apps[i],1);
+		append_application_text_file(csv_log_file,&apps[i],1, 1);
 	}
 	return EAR_SUCCESS;
 }
@@ -69,7 +69,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 	debug("csv report_loops");
 	if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
 	for (i=0;i<count;i++){
-		append_loop_text_file_no_job(csv_loop_log_file,&loops[i]);
+		append_loop_text_file_no_job(csv_loop_log_file,&loops[i], 1);
 	}
 	return EAR_SUCCESS;
 }

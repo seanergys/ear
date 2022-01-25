@@ -130,10 +130,50 @@ static int print_application_fd(int fd, application_t *app, int new_line, char i
     return EAR_SUCCESS;
 }
 
-int append_application_text_file(char *path, application_t *app, char is_extended)
+int create_app_header(char * header, char *path, uint num_gpus, char is_extended)
+{
+    char *HEADER_BASE = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
+                        "AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;"\
+                        "PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS";
+		char HEADER[1024];
+
+		/* If file already exists we will not add the header */
+		if (file_is_regular(path)) return EAR_SUCCESS;
+
+		if (header != NULL){ 
+			strncpy(HEADER, header, sizeof(HEADER));
+			strncat(HEADER, HEADER_BASE, sizeof(HEADER));
+		}else{
+			strncpy(HEADER, HEADER_BASE, sizeof(HEADER));
+		}
+
+    if (is_extended) {
+        char *ext_header = ";L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
+                           "DP_128;DP_256;DP_512";
+        xstrncat(HEADER, ext_header, strlen(ext_header));
+    }
+#if USE_GPUS
+    for (int i = 0; i < num_gpus; i++){
+        char gpu_hdr[128];
+        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTIL",
+                i+1, i+1, i+1, i+1, i+1);
+        xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
+    }
+#endif
+	  int fd = open(path, OPTIONS, PERMISSION);
+    if (fd >= 0) {
+    	dprintf(fd, "%s\n", HEADER);
+    }
+		close(fd);
+
+	return EAR_SUCCESS;
+}
+
+int append_application_text_file(char *path, application_t *app, char is_extended, int add_header)
 {
     //lacking: NODENAME(node_id in loop_t), not linked to any loop
-    int fd, ret;
+    int fd;
+    #if 0
     char HEADER[1024] = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
                         "AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;"\
                         "PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS";
@@ -176,12 +216,22 @@ int append_application_text_file(char *path, application_t *app, char is_extende
     if (fd < 0) {
         return EAR_ERROR;
     }
+		#endif
+		uint num_gpus = 0;
+#if USE_GPUS
+		num_gpus = app->signature.gpu_sig.num_gpus;
+#endif
+    if (add_header) create_app_header(NULL, path, num_gpus, is_extended);
+		fd = open(path, O_WRONLY | O_APPEND);
+    if (fd < 0)
+    {
+			return EAR_ERROR;
+		}
 
     print_application_fd(fd, app, 1, is_extended);
 
     close(fd);
 
-    if (ret < 0) return EAR_ERROR;
     return EAR_SUCCESS;
 }
 
