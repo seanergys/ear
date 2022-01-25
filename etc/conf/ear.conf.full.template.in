@@ -85,7 +85,6 @@ CheckEARModeEvery=1000
 #---------------------------------------------------------------------------------------------------
 # EAR Global Manager (EARGMD): Update that section to use EARGM.
 #---------------------------------------------------------------------------------------------------
-EARGMHost=node1001
 #
 # Use aggregated periodic metrics or periodic power metrics.
 # Aggregated metrics are only available when EARDBD is running.
@@ -136,6 +135,14 @@ EARGMPowerCapResumeLimit=40
 # Format for action is: command_name current_power current_limit total_idle_nodes total_idle_power 
 EARGMPowerCapResumeAction=no_action
 
+# EARGMs must be specified with a unique id, their node and the port that receives remote
+# connections. An EARGM can also act as meta-eargm if the meta field is filled, and it will
+# control the EARGMs whose ids are in said field. If to EARGMs are in the same node, 
+# setting the EARGMID environment variable overrides the node field and chooses the characteristics
+# of the EARGM with the correspoding id.
+EARGMId=1 energy=1800 power=600 node=node1 port=50100 meta=1,2
+EARGMId=2 energy=1800 power=500 node=node2 port=50100
+
 #---------------------------------------------------------------------------------------------------
 # Common configuration
 #---------------------------------------------------------------------------------------------------
@@ -165,10 +172,11 @@ AuthorizedGroups=grp1,grp2
 #---------------------------------------------------------------------------------------------------
 # Tags are used for architectural descriptions. Max. AVX frequencies are used in predictor models
 # and are SKU-specific. Max. and min. power are used for warning and error tracking. 
-# Powercap specifies the maximum power a node is allowed to use by default. If EARGM is actively
-# monitoring the cluster's powercap, max_powercap can be used to ensure that a node's power will never
-# go beyond that value, regardless of the free power available cluster-wide. A different than the
-# default powercap plugin can be specified for nodes using the tag. POWERCAP=0 --> disabled, POWERCAP=1 -->unlimited, POWERCAP=N (> 1) limits node to N watts
+# Powercap specifies the maximum power a node is allowed to use by default. If an EARGM is
+# controlling the cluster with mode UNLIMITED (powercap=1) max_powercap is the set power that
+# a node will receive if the cluster needs to be power capped (otherwise it runs
+# with unlimited power). A different than the default powercap plugin can be specified for nodes 
+# using the tag. POWERCAP=0 --> disabled, POWERCAP=1 -->unlimited, POWERCAP=N (> 1) limits node to N watts
 # At least a default tag is mandatory to be included in this file for a cluster to work properly.
 Tag=6148 default=yes max_avx512=2.2 max_avx2=2.6 max_power=500 min_power=50 error_power=600 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plugin=energy_nm.so 
 Tag=6148_GPU default=yes max_avx512=2.2 max_avx2=2.6 max_power=800 min_power=150 error_power=1000 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plugin=energy_nm.so  gpu_powercap_plugin=gpu.so
@@ -217,7 +225,9 @@ EnergyTag=memory-intensive pstate=4 users=usr1,usr2 groups=grp1,grp2 accounts=ac
 #---------------------------------------------------------------------------------------------------
 # It is mandatory to specify all the nodes in the cluster, grouped by islands. More than one line
 # per island must be supported to hold nodes with different names or for pointing to different
-# EARDBDs through its IPs or hostnames.
+# EARDBDs through its IPs or hostnames. 
+# EARGMID is the field that specifies which EARGM controls the nodes in that line. If no EARGMID
+# is specified, it will pick the first EARGMID value that is found (ie, the previous line's EARGMID).
 #
 
 #
@@ -225,9 +235,10 @@ EnergyTag=memory-intensive pstate=4 users=usr1,usr2 groups=grp1,grp2 accounts=ac
 # two types of EARDBDs configurations. 
 #
 
-Island=0 Nodes=node10[01-80] DBIP=node1081 DBSECIP=node1082
+Island=0 Nodes=node10[01-80] DBIP=node1081 DBSECIP=node1082 EARGMID=1
 
-# These nodes are in island0 using different DB connections and with a different architecture.
+# These nodes are in island0 using different DB connections and with a different architecture. 
+# These nodes will use the same EARGM as the previous nodes.
 Island=0 Nodes=node11[01-80] DBIP=node1084 DBSECIP=node1085 tag=6126
 # These nodes are is island0 and will use default values for DB connection (line 0 for island0) and default tag.
 Island=0 Nodes=node12[01-80]
