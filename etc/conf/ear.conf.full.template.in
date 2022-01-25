@@ -139,9 +139,11 @@ EARGMPowerCapResumeAction=no_action
 # connections. An EARGM can also act as meta-eargm if the meta field is filled, and it will
 # control the EARGMs whose ids are in said field. If to EARGMs are in the same node, 
 # setting the EARGMID environment variable overrides the node field and chooses the characteristics
-# of the EARGM with the correspoding id.
-EARGMId=1 energy=1800 power=600 node=node1 port=50100 meta=1,2
-EARGMId=2 energy=1800 power=500 node=node2 port=50100
+# of the EARGM with the correspoding id. If energy is set to 0, cluster_energy_cap will be disabled
+# for that EARGM. Currently, only 1 cluster_energy_cap is supported.
+EARGMId=1 energy=1800 power=600 node=node1 port=50100 meta=1,2,3
+EARGMId=2 energy=0 power=500 node=node1 port=50101
+EARGMId=3 energy=0 power=500 node=node2 port=50100
 
 #---------------------------------------------------------------------------------------------------
 # Common configuration
