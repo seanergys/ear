@@ -663,7 +663,7 @@ void dyncon_get_powerstatus(int fd, request_t *command)
     }
     debug("return_status %d status=%p", return_status, status);
 
-    powercap_get_status(&status[return_status - 1], &p_status);
+    powercap_get_status(&status[return_status - 1], &p_status, command->my_req.release_power);
     process_pmgt_status(&status[return_status - 1], &p_status);
 
     status_data = mem_alloc_char_powercap_status(status);

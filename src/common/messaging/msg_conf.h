@@ -102,6 +102,7 @@ typedef union req_data{
     power_limit_t       pc;
     powercap_opt_t      pc_opt;
     eargm_req_t         eargm_data;
+	int                 release_power;
 }req_data_t;
 
 typedef struct request{

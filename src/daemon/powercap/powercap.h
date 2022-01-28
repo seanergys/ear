@@ -26,7 +26,7 @@
 int powercap_init();
 void powercap_end();
 //void get_powercap_status(powercap_status_t *my_status);
-void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status);
+void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status, int release_power);
 void powercap_set_opt(powercap_opt_t *opt, int id);
 uint powercap_get_value();
 int is_powercap_set();

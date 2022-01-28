@@ -530,7 +530,7 @@ void cluster_power_monitor()
 {
     debug("%sGlobal POWER monitoring INIT----%s",COL_BLU,COL_CLR);
     /* We use this function for now, we must use a new light one */
-    num_power_status = ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, nodes, num_eargm_nodes);
+    num_power_status = ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, 1, nodes, num_eargm_nodes);
     if (num_power_status==0){
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;
@@ -551,7 +551,7 @@ void cluster_power_monitor()
 void cluster_check_powercap()
 {
     debug("%sSTART cluster_check_powercap---------%s",COL_BLU,COL_CLR);
-    num_power_status = ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, nodes, num_eargm_nodes);
+    num_power_status = ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, 1, nodes, num_eargm_nodes);
     if (num_power_status==0){
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;

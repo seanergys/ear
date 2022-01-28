@@ -57,12 +57,12 @@ int ear_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **
 		return ear_nodelist_get_power(my_cluster_conf, power, nodes, num_nodes);
 }
 
-int ear_get_powercap_status(cluster_conf_t *conf, powercap_status_t **pc_status, char **nodes, int num_nodes)
+int ear_get_powercap_status(cluster_conf_t *conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes)
 {
 	if (nodes == NULL || num_nodes < 1)
-		return ear_cluster_get_powercap_status(conf, pc_status);
+		return ear_cluster_get_powercap_status(conf, pc_status, release_power);
 	else
-		return ear_nodelist_get_powercap_status(conf, pc_status, nodes, num_nodes);
+		return ear_nodelist_get_powercap_status(conf, pc_status, release_power, nodes, num_nodes);
 }
 
 int ear_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes)

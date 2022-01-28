@@ -1064,7 +1064,7 @@ int main(int argc, char *argv[])
 					break;
 				case EAR_TYPE_POWER_STATUS:
 					printf("Reading power_status from node %s\n", node_name);
-					num_status = ear_node_get_powercap_status(&my_cluster_conf, &powerstatus);
+					num_status = ear_node_get_powercap_status(&my_cluster_conf, &powerstatus, 0);
 					process_powercap_status(powerstatus,num_status);
 					break;
 				case EAR_TYPE_APP_STATUS_MASTER:
@@ -1110,7 +1110,7 @@ int main(int argc, char *argv[])
 			process_status(num_status, status, FULL_STATUS);
 			break;
 			case EAR_TYPE_POWER_STATUS:
-			num_status = ear_get_powercap_status(&my_cluster_conf, &powerstatus, nodes, num_nodes);
+			num_status = ear_get_powercap_status(&my_cluster_conf, &powerstatus, 0, nodes, num_nodes);
 			process_powercap_status(powerstatus,num_status);
 			break;
 			case EAR_TYPE_APP_STATUS_MASTER:

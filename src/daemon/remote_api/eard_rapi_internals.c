@@ -916,7 +916,7 @@ request_header_t send_powercap_status(request_t *command, powercap_status_t **st
 
 }
 
-int ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status) 
+int ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power) 
 {
 	powercap_status_t *temp_status;
 	request_t command;
@@ -924,6 +924,7 @@ int ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_statu
 
 	command.node_dist = INT_MAX;
 	command.req = EAR_RC_GET_POWERCAP_STATUS;
+	command.my_req.release_power = release_power;
 	command.time_code = time(NULL);
 	request_header_t head;
 
@@ -937,7 +938,7 @@ int ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_statu
 }
 
 /** Asks for powercap_status for all nodes */
-int ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status)
+int ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -947,6 +948,7 @@ int ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_st
 
 	command.time_code = time(NULL);
 	command.req = EAR_RC_GET_POWERCAP_STATUS;
+	command.my_req.release_power = release_power;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
@@ -965,7 +967,7 @@ int ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_st
 
 }
 
-int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, char **nodes, int num_nodes)
+int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes)
 {
 	request_t command;
 	request_header_t head;
@@ -980,6 +982,7 @@ int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_s
 	command.req = EAR_RC_GET_POWERCAP_STATUS;
 	command.nodes = ips;
 	command.num_nodes = num_nodes;
+	command.my_req.release_power = release_power;
 	command.time_code = time(NULL);
 
 	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);

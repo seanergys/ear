@@ -366,9 +366,10 @@ void powercap_release_power()
     pmgt_set_powercap_value(pcmgr, pc_pid, DOMAIN_NODE, (ulong)my_pc_opt.current_pc);
 }
 
-void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
+void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status, int release_power)
 {
-    verbose(VEARD_PC,"%spowercap_get_status: get_powercap_status_last_t1 %u def_pc %u%s",COL_GRE,my_pc_opt.last_t1_allocated,my_pc_opt.def_powercap,COL_CLR);
+    verbose(VEARD_PC,"%spowercap_get_status: get_powercap_status_last_t1 %u def_pc %u release_power %d %s", COL_GRE, 
+											my_pc_opt.last_t1_allocated, my_pc_opt.def_powercap, release_power, COL_CLR);
     while(pthread_mutex_trylock(&my_pc_opt.lock)); 
     my_status->total_nodes++;
     if (my_pc_opt.powercap_status == PC_STATUS_IDLE)
@@ -393,8 +394,10 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status)
             case PC_STATUS_RELEASE:
                 if (my_pc_opt.last_t1_allocated>my_pc_opt.def_powercap) status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
                 else status->extra = 0;
-                my_pc_opt.released = status->tbr;
-                my_pc_opt.current_pc -= status->tbr;
+				if (release_power) { //only release power if it comes from EARGM
+	                my_pc_opt.released = status->tbr;
+                	my_pc_opt.current_pc -= status->tbr;
+				}
                 verbose(VEARD_PC,"powercap_get_status: %sReleasing%s %u W allocated %u W",COL_BLU,COL_CLR,my_pc_opt.released,my_pc_opt.current_pc);
                 powercap_release_power();
                 break;
