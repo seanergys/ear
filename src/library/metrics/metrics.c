@@ -1185,7 +1185,9 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
     verbose_master(INFO_METRICS + 1, "End local signature");
 
-	if (!eards_connected() && masters_info.my_master_rank >= 0) return;
+	if (!eards_connected() && masters_info.my_master_rank >= 0){ 
+		if (!EARL_LIGHT) return;
+	}
     
     metrics_static_dispose();
 

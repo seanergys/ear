@@ -345,6 +345,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
             break;
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
+        case EARGM_INC_PC:
+        case EARGM_RED_PC:
+        case EARGM_RESET_PC:
             size += sizeof(eargm_req_t);
             break;
     }
@@ -916,11 +919,10 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
 
         if (head.size > 0 && head.type != EAR_ERROR)
         {
-            default_type = head.type;
-            final_data = realloc(final_data, final_size + head.size);
-            memcpy(&final_data[final_size], temp_data, head.size);
-            final_size += head.size;
+            head = process_data(head, (char **)&temp_data, (char **)&final_data, final_size);
             free(temp_data);
+            final_size = head.size;
+            default_type = head.type;
         }
 
         free(tmp_command.nodes);
@@ -1112,11 +1114,10 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
 
         if (head.size > 0 && head.type != EAR_ERROR)
         {
-            default_type = head.type;
-            final_data = realloc(final_data, final_size + head.size);
-            memcpy(&final_data[final_size], temp_data, head.size);
-            final_size += head.size;
+            head = process_data(head, (char **)&temp_data, (char **)&final_data, final_size);
             free(temp_data);
+            final_size = head.size;
+            default_type = head.type;
         }
 
         free(tmp_command.nodes);

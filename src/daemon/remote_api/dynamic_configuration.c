@@ -37,12 +37,14 @@
 #include <common/states.h>
 #include <common/types/job.h>
 #include <daemon/log_eard.h>
-#include <common/types/configuration/cluster_conf.h>
 #include <common/system/symplug.h>
-#include <management/cpufreq/frequency.h>
-#include <common/messaging/msg_conf.h>
-
 #include <common/output/verbose.h>
+#include <common/messaging/msg_conf.h>
+#include <common/messaging/msg_internals.h>
+#include <common/types/configuration/cluster_conf.h>
+
+#include <management/cpufreq/frequency.h>
+
 
 #include <daemon/remote_api/eard_rapi.h>
 #include <daemon/remote_api/eard_server_api.h>

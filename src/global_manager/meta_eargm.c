@@ -84,7 +84,7 @@ void print_eargm_status(eargm_status_t *status, uint num_status)
     int i;
     for (i = 0; i < num_status; i++) {
         verbose(VGM, "%sid %d powercap %lu power %lu requested %lu freeable %lu extra %lu status %u%s", 
-                COL_BLU,
+                COL_CLR,
                 status[i].id, status[i].current_powercap, status[i].current_power, status[i].requested, 
                 status[i].freeable_power, status[i].extra_power, status[i].status, COL_CLR);
     }
@@ -119,6 +119,7 @@ void meta_aggregate_data(eargm_status_t *status, uint num_status)
         if (status[i].status == PC_STATUS_ASK_DEF) {
             num_ask_def ++;
             total_req_ask_def += status[i].requested;
+            //total_req_ask_def += status[i].def_power - status[i].current_powercap;
         } else if (status[i].status == PC_STATUS_GREEDY) {
             if (!status[i].extra_power) {
                 num_greedy_no_extra++;
@@ -136,6 +137,7 @@ void meta_aggregate_data(eargm_status_t *status, uint num_status)
         current_free_power = 0;
     } else {
         current_free_power = default_powercap - total_powercap;
+        verbose(VGM, "powercap left to allocate %lu (default %lu current %lu)", current_free_power, default_powercap, total_powercap);
     }
 
 }
@@ -157,7 +159,9 @@ void assign_ask_def(eargm_status_t *status, uint num_status, eargm_table_t *egm_
         if (status[i].status == PC_STATUS_ASK_DEF) {
             egm_id = get_eargm_position(egm_table, status[i].id);
             if (egm_id >= 0) {
-                egm_table->actions[egm_id] = EARGM_RESET_PC;
+                //egm_table->actions[egm_id] = EARGM_RESET_PC;
+                egm_table->actions[egm_id] = EARGM_INC_PC;
+                egm_table->action_values[egm_id] += status[i].requested;
             }
         }
     }
@@ -166,15 +170,20 @@ void assign_ask_def(eargm_status_t *status, uint num_status, eargm_table_t *egm_
 void reduce_freeable_power(eargm_status_t *status, uint num_status, eargm_table_t *egm_table, ulong *pending, ulong *freeable)
 {
     int i = 0, egm_id;
+    ulong tmp_var = 0;
     while (*pending && i < num_status)
     {
         if (status[i].freeable_power) {
             egm_id = get_eargm_position(egm_table, status[i].id);
             if (egm_id >= 0) {
+                tmp_var = ear_min(*pending, status[i].freeable_power); //store it in an auxiliary value since we will need to remove it from both variables
+                
                 egm_table->actions[egm_id] = EARGM_RED_PC;
-                egm_table->action_values[egm_id] = ear_min(*pending, status[i].freeable_power);
-                *pending -= egm_table->action_values[egm_id];
-                *freeable -= egm_table->action_values[egm_id];
+                egm_table->action_values[egm_id] += tmp_var; //assign the power to the node
+                
+                *freeable -= tmp_var; //remove it from the free power pool
+                *pending  -= tmp_var; //remove it from the pending power pool
+                status[i].freeable_power -= tmp_var; //remove it from the individual node freeable power pool
             }
         }
         i++;
@@ -184,14 +193,20 @@ void reduce_freeable_power(eargm_status_t *status, uint num_status, eargm_table_
 void reduce_extra_power(eargm_status_t *status, uint num_status, eargm_table_t *egm_table, ulong *pending)
 {
     int i = 0, egm_id;
+    ulong tmp_var = 0;
+
     while (*pending && i < num_status)
     {
         if (status[i].extra_power) {
             egm_id = get_eargm_position(egm_table, status[i].id);
             if (egm_id >= 0) {
+                tmp_var = ear_min(*pending, status[i].extra_power); //store it in an auxiliary value since we will need to remove it from both variables
+
                 egm_table->actions[egm_id] = EARGM_RED_PC;
-                egm_table->action_values[egm_id] = ear_min(*pending, status[i].extra_power);
-                *pending -= egm_table->action_values[egm_id];
+                egm_table->action_values[egm_id] += tmp_var; //increase the reduction value for the node
+
+                *pending  -= tmp_var; //remove it from the pending power pool
+                status[i].extra_power -= tmp_var; //remove it from the individual node extra power
             }
         }
         i++;
@@ -201,6 +216,7 @@ void reduce_extra_power(eargm_status_t *status, uint num_status, eargm_table_t *
 void assign_extra_power(eargm_status_t *status, uint num_status, eargm_table_t *egm_table, ulong *free_power, ulong *pending, uint has_extra)
 {
     int i = 0, egm_id;
+    ulong tmp_var = 0;
 
     for (i = 0; (i < num_status) && *free_power; i++)
     {
@@ -214,10 +230,14 @@ void assign_extra_power(eargm_status_t *status, uint num_status, eargm_table_t *
 
             egm_id = get_eargm_position(egm_table, status[i].id);
             if (egm_id >= 0) {
+                tmp_var = ear_min(*free_power, status[i].requested); //store it in an auxiliary value since we will need to remove it from both variables
+
                 egm_table->actions[egm_id] = EARGM_INC_PC;
-                egm_table->action_values[egm_id] = ear_min(*free_power, status[i].requested);
-                *free_power -= egm_table->action_values[egm_id];
-                *pending -= egm_table->action_values[egm_id];
+                egm_table->action_values[egm_id] += tmp_var; //increase the main value
+
+                *free_power -= tmp_var; //remove it from the pool of free power
+                *pending    -= tmp_var; //remove it from the pool of pending to assign power
+                status[i].requested -= tmp_var; //remove it from the individual node requested power (since it has already been granted)
             }
         }
     }
@@ -326,8 +346,10 @@ void *meta_eargm(void *config)
             print_eargm_status(status, num_status);
 
             //reset actions
-            for (i = 0; i < egm_table.num_eargms; i++)
+            for (i = 0; i < egm_table.num_eargms; i++) {
                 egm_table.actions[i] = NO_COMMAND;
+                egm_table.action_values[i] = 0;
+            }
 
             meta_reallocate_power(status, num_status, &egm_table);
             print_eargm_actions(&egm_table);

@@ -1408,6 +1408,7 @@ void ear_finalize(int exit_status)
 								cleanup_job_folder();
 								return;
 				}
+				debug("%d: Finalizing", my_node_id);
 #if USE_LOCK_FILES
 				if (!my_id){
 								debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
@@ -1426,11 +1427,14 @@ void ear_finalize(int exit_status)
 				}
 				monitor_unregister(earl_monitor);
 				monitor_dispose();
+				debug("%d: monitor_disposed", my_node_id);
 
 				// Closing and obtaining global metrics
 				dispose=1;
 				verbose_master(2,"Total resources computed %d",get_total_resources());
+				debug("%d: before metrics_dispose" my_node_id);
 				metrics_dispose(&application.signature, get_total_resources());
+				debug("%d: after metrics_dispose" my_node_id);
 				dynais_dispose();
 				if (!my_id) frequency_dispose();
 
@@ -1446,7 +1450,6 @@ void ear_finalize(int exit_status)
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(0,"Error reporting application");
 								}
-								report_dispose(&rep_id);
 								report_mpi_application_data(&application);
 				}
 				// Closing any remaining loop

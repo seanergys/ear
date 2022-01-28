@@ -19,7 +19,7 @@
 #define _GNU_SOURCE 
 
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
@@ -72,7 +72,7 @@ void eargm_return_status(int clientfd, long ack)
     pthread_mutex_unlock(&ext_mutex);
     /* End of critical section */
 
-    debug("sending eargm_status with power %lu and energy %lu\n", status.current_power, status.energy);
+    debug("sending eargm_status with power %lu, powercap %lu and energy %lu\n", status.current_power, status.current_powercap, status.energy);
     send_data(clientfd, sizeof(eargm_status_t), (char *)&status, EAR_TYPE_EARGM_STATUS);
 }
 

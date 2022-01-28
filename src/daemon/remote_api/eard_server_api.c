@@ -38,6 +38,7 @@
 #include <common/types/job.h>
 #include <common/output/verbose.h>
 #include <common/messaging/msg_conf.h>
+#include <common/messaging/msg_internals.h>
 
 #include <daemon/remote_api/eard_rapi.h>
 #include <daemon/remote_api/eard_server_api.h>

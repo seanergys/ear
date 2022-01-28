@@ -243,12 +243,12 @@ void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def);
 /** Given a cluster_conf, checks if all node tags have their powercap set to 1 (unlimited) */
 uint tags_are_unlimited(cluster_conf_t *conf);
 
-/* It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
+/** It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
 state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t *conf_size);
 
-/* ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
+/** ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
 state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size);
 
-/* given a tag, returns 1 if said tag exists in the configuration, 0 if not */
+/** Checks if a tag with a given name is defined in ear.conf and returns its id if it exists */
 int tag_id_exists(cluster_conf_t *conf, char *tag);
 #endif

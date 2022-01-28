@@ -55,10 +55,10 @@ static int plug_rcom_eard_job_sbatch(spank_t sp, plug_serialization_t *sd, int n
 		++i;
 	}
 	if (new_job) {
-		eards_new_job_nodelist(&sd->job.app, port, net_ext,
+		ear_nodelist_ear_node_new_job(&sd->job.app, port, net_ext,
 			sd->job.nodes_list, sd->job.nodes_count);
 	} else {
-		eards_end_job_nodelist(sd->job.app.job.id, sd->job.app.job.step_id, port, net_ext,
+		ear_nodelist_ear_node_end_job(sd->job.app.job.id, sd->job.app.job.step_id, port, net_ext,
 			sd->job.nodes_list, sd->job.nodes_count);
 	}
 	return ESPANK_SUCCESS;
@@ -74,10 +74,10 @@ static int plug_rcom_eard_job_srun(spank_t sp, plug_serialization_t *sd, int new
     }
 	//
 	if (new_job) {
-		eards_new_job(&sd->job.app);
+		ear_node_new_job(&sd->job.app);
 		plug_print_application(sp, &sd->job.app);
 	} else {
-		eards_end_job(sd->job.app.job.id, sd->job.app.job.step_id);
+		ear_node_end_job(sd->job.app.job.id, sd->job.app.job.step_id);
 	}
     plug_rcom_eard_disconnect(sp, sd, "SRUN");
 
@@ -112,7 +112,7 @@ int plug_rcom_eard_task_start(spank_t sp, plug_serialization_t *sd)
 		return ESPANK_ERROR;
     }
     // 1: OK, 0: KO
-    if (!eards_new_task(&sd->job.task)) {
+    if (!ear_node_new_task(&sd->job.task)) {
 		plug_verbose(sp, 2, "EARD communication error on task: %d", sd->job.task.pid);
     }
     plug_rcom_eard_disconnect(sp, sd, "TASK");

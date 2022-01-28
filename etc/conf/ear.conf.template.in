@@ -37,7 +37,6 @@ CoefficientsDir=@sysconfdir@/ear/coeffs
 #---------------------------------------------------------------------------------------------------
 # EAR Global Manager (EARGMD) : Update that section to use EARGM 
 #---------------------------------------------------------------------------------------------------
-EARGMHost=node1001
 # Use aggregated periodic metrics or periodic power metrics. Aggregated metrics are only available
 # when EARDBD is running
 EARGMUseAggregated=1
@@ -72,6 +71,14 @@ EARGMPowerCapSuspendAction=no_action
 EARGMPowerCapResumeLimit=40
 # Format for action is: command_name current_power current_limit total_idle_nodes total_idle_power 
 EARGMPowerCapResumeAction=no_action
+
+# EARGMs must be specified with a unique id, their node and the port that receives remote
+# connections. An EARGM can also act as meta-eargm if the meta field is filled, and it will
+# control the EARGMs whose ids are in said field. If to EARGMs are in the same node, 
+# setting the EARGMID environment variable overrides the node field and chooses the characteristics
+# of the EARGM with the correspoding id.
+EARGMId=1 energy=1800 power=600 node=node1 port=50100 meta=1,2
+EARGMId=2 energy=1800 power=500 node=node2 port=50100
 
 #---------------------------------------------------------------------------------------------------
 # Common configuration
@@ -157,9 +164,10 @@ EnergyTag=memory-intensive pstate=4 users=usr1,usr2 groups=grp1,grp2 accounts=ac
 # two types of EARDBDs configurations. 
 Island=0 Nodes=node10[01-80] DBIP=node1081 DBSECIP=node1082 
 
-# These nodes are in island0 using different DB connections and with a different architecture
-Island=0 Nodes=node11[01-80] DBIP=node1084 DBSECIP=node1085 tag=6126 
-# These nodes are is island0 and will use default values for DB connection (line 0 for island0) and default tag
+# These nodes are in island0 using different DB connections and with a different architecture. 
+# These nodes will use the same EARGM as the previous nodes.
+Island=0 Nodes=node11[01-80] DBIP=node1084 DBSECIP=node1085 tag=6126
+# These nodes are is island0 and will use default values for DB connection (line 0 for island0) and default tag.
 Island=0 Nodes=node12[01-80]
 
 
