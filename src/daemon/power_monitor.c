@@ -111,6 +111,7 @@ static ulong * powermon_freq_list;
 static int powermon_num_pstates;
 static periodic_metric_t current_sample;
 static double last_power_reported = 0;
+static ulong  last_node_power     = 0;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
@@ -1497,6 +1498,9 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	if (pmon_info->avg_dc < rapl ) {
 		corrected_power = rapl;
 	}
+	if ((corrected_power > my_node_conf->max_error_power) || (corrected_power < 0)){
+		  corrected_power = my_node_conf->max_sig_power;
+	}
 	time_consumed = (ulong) difftime(pmon_info->end, pmon_info->begin);
 	current_sample.DRAM_energy = rapl_dram * time_consumed;
 	current_sample.PCK_energy  = rapl_pck  * time_consumed;
@@ -1548,14 +1552,10 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
 	/* report periodic metric */
 	if (report){	
-	  if ((pmon_info->avg_dc > my_node_conf->max_error_power) || (pmon_info->avg_dc < 0)){
-		  pmon_info->avg_dc = my_node_conf->max_sig_power;
-	  }
-	  if ((pmon_info->avg_dc >= 0) && (pmon_info->avg_dc < my_node_conf->max_error_power) && report){
-		  report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
-	  }
+		report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
+		last_power_reported = corrected_power;
 	}
-	last_power_reported = last_pmon->avg_dc;
+	last_node_power     = last_pmon->avg_dc;
 
 	return;
 }
@@ -1828,14 +1828,15 @@ void powermon_get_status(status_t *my_status) {
 	/* Node info */
 	my_status->node.avg_freq = (ulong)(last_nm.avg_cpu_freq);
 	my_status->node.temp = (ulong) get_nm_temp(&my_nm_id, &last_nm);
-	my_status->node.power = (ulong) last_power_reported;
+	my_status->node.power     = (ulong) last_node_power;
+	my_status->node.rep_power = (ulong) last_power_reported;
 	my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
 	my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
 }
 
 void powermon_get_power(uint64_t *power) 
 {
-    *power = (uint64_t) last_power_reported;
+    *power = (uint64_t) last_node_power;
 }
 
 /* Returns the number of applications all or only master */

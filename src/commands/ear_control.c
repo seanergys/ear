@@ -79,6 +79,7 @@ typedef struct ip_table
 	char name[IP_LENGTH];
 	int counter;
 	uint power;
+	uint rep_power;
 	uint max_power;
 	int job_id;
 	int step_id;
@@ -197,7 +198,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 	char step_id[12];
 	for (i=0; i<num_ips; i++)
 	{
-		if (ips[i].counter && ips[i].power != 0 )
+		if (ips[i].counter  )
 		{
 			if (mode != ERR_ONLY) 
 			{
@@ -209,7 +210,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 
 				if (mode == NODE_ONLY || mode == FULL_STATUS)
 				{
-					printf("%5d\t%3dC\t%.2lf\t%6d\t%6s", ips[i].power, ips[i].temp, 
+					printf("%5d\t%3dC\t%.2lf\t%6d\t%6s", ips[i].rep_power, ips[i].temp, 
 							(double)ips[i].current_freq/1000000.0, ips[i].job_id, step_id);
 				}
 
@@ -322,6 +323,7 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
 		{
 			ips[i].counter |= status.ok;
 			ips[i].power = status.node.power;
+			ips[i].rep_power = status.node.rep_power;
 			ips[i].current_freq = status.node.avg_freq;
 			ips[i].temp = status.node.temp;
 			ips[i].job_id = status.app.job_id;
