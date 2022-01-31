@@ -29,6 +29,7 @@
 
 #include <common/config.h>
 #include <common/system/time.h>
+#include <common/system/file.h>
 #include <common/types/loop.h>
 #include <common/states.h>
 
@@ -121,14 +122,13 @@ void print_loop_fd(int fd, loop_t *loop)
     dprintf(fd, "%lu\n", loop->total_iterations);
 }
 
-
-int append_loop_text_file(char *path, loop_t *loop,job_t *job)
+int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header)
 {
 #if DB_FILES
     if (path == NULL) {
         return EAR_ERROR;
     }
-
+#if 0
     char *HEADER = "NODENAME;USERNAME;JOB_ID;APPNAME;POLICY;POLICY_TH;AVG.CPUFREQ;AVG.IMC.FREQ;DEF.FREQ;" \
                     "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
                     "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
@@ -154,6 +154,20 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
     if (fd < 0) {
         return EAR_ERROR;
     }
+#endif
+    uint num_gpus = 0;
+#if USE_GPUS
+    num_gpus = loop->signature.gpu_sig.num_gpus;
+#endif
+
+		if (add_header)   create_loop_header(NULL, path, 0, num_gpus);
+    int fd, ret;
+    fd = open(path, O_WRONLY | O_APPEND);
+    if (fd < 0){
+      error("Couldn't open loop file\n");
+      return EAR_ERROR;
+    }
+
     assert(loop!=NULL);
     assert(loop->node_id!=NULL);
     dprintf(fd, "%s;", loop->node_id);
@@ -170,23 +184,66 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job)
     return EAR_SUCCESS;
 }
 
-static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts,ullong currtime);
-int append_loop_text_file_no_job(char *path, loop_t *loop)
+int create_loop_header(char * header, char *path, int ts, uint num_gpus)
 {
-    return append_loop_text_file_no_job_int(path,loop,0,0);
+    char *HEADER_NOTS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
+                         "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
+                         "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
+                         "DP_512";
+
+#if USE_GPUS
+    char gpu_header[128];
+    char *HEADER_GPU_SIG = ";GPOWER%d;GFREQ%d;GMEMFREQ%d;GUTIL%d;GMEMUTIL%d";
+#endif
+
+    char *HEADER_LOOP = ";FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
+    char HEADER[1024] = "";
+
+		if (file_is_regular(path)) return EAR_SUCCESS;
+
+		if (header != NULL) strncpy(HEADER, header, sizeof(HEADER));
+    strncat(HEADER,HEADER_NOTS,sizeof(HEADER));
+#if USE_GPUS
+    for (uint j = 0; j < num_gpus; ++j) {
+        sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j);
+        strncat(HEADER,gpu_header,strlen(gpu_header));
+    }
+#endif
+    strncat(HEADER,HEADER_LOOP,sizeof(HEADER));
+    if (ts){
+        xstrncat(HEADER,";TIMESTAMP",sizeof(HEADER));
+    }
+    int fd = open(path, OPTIONS, PERMISSION);
+    if (fd >= 0) {
+    	dprintf(fd, "%s\n", HEADER);
+    }
+		close(fd);
+		return EAR_SUCCESS;
+	
 }
 
-int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime)
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts,ullong currtime, int add_header);
+int append_loop_text_file_no_job(char *path, loop_t *loop, int add_header)
 {
-    return append_loop_text_file_no_job_int(path,loop,1, currtime);
+    return append_loop_text_file_no_job_int(path,loop,0,0, add_header);
 }
-static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime)
+
+int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime, int add_header)
+{
+    return append_loop_text_file_no_job_int(path,loop,1, currtime, add_header);
+}
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime, int add_header)
 {
     if (path == NULL) {
         return EAR_ERROR;
     }
 
-
+		uint num_gpus = 0;
+#if USE_GPUS
+		num_gpus = loop->signature.gpu_sig.num_gpus;
+#endif
+		if (add_header) 	create_loop_header(NULL, path, ts, num_gpus);
+#if 0
     char *HEADER_NOTS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
                          "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
                          "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
@@ -234,6 +291,14 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
         error("Couldn't open loop file\n");
         return EAR_ERROR;
     }
+#endif
+    int fd;
+    fd = open(path, O_WRONLY | O_APPEND);
+		if (fd < 0){
+			error("Couldn't open loop file\n");
+      return EAR_ERROR;
+		}
+
     assert(loop!=NULL);
     assert(loop->node_id!=NULL);
     dprintf(fd,"%lu;%lu;",loop->jid,loop->step_id);
@@ -249,7 +314,6 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 
     close(fd);
 
-    if (ret < 0) return EAR_ERROR;
 
     return EAR_SUCCESS;
 }

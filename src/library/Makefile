@@ -1,4 +1,4 @@
-CFLAGS  = -fPIC -O2 -I$(SRCDIR)  -Wall -g
+CFLAGS  = -fPIC -O2 -I$(SRCDIR)  -Wall -g -DEARL_LIGHT=1
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -46,6 +46,7 @@ core_OBJS = \
     api/clasify.o \
     api/mpi_support.o \
     api/cupti.o \
+    api/eard_dummy.o \
     common/library_shared_data.o \
     common/utils.o \
     metrics/metrics.o \

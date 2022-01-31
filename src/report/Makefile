@@ -1,4 +1,4 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g $(CONSTANTS)
 DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
 DB_PSQL_LDFLAGS = -lpq $(SRCDIR)/common/libcommon.a
 
@@ -13,6 +13,7 @@ repo_BINS = \
 	eardbd.so \
 	csv.so \
 	csv_ts.so \
+  heroes.so \
 	dummy.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports

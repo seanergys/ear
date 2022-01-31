@@ -1138,7 +1138,7 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
 	{
 		int i;
 		for (i = 0; i < num_loops; i++)
-			append_loop_text_file_no_job(csv_path, &loops[i]);
+			append_loop_text_file_no_job(csv_path, &loops[i], 1);
 		printf("appended %d loops to %s\n", num_loops, csv_path);
 	} else {
 		print_loops(loops, num_loops);
@@ -1248,7 +1248,7 @@ void read_from_database(char *user, int job_id, int limit, int step_id, char *e_
 	{
 		if (full_length)
 			for (i = 0; i < num_apps; i++)
-				append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail);
+				append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1);
 		else
 		{
 			int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);

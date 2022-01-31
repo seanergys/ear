@@ -209,7 +209,7 @@ void states_begin_job(int my_id,  char *app_name)
     /* LOOP WAS CREATED HERE BEFORE */
 
     perf_accuracy_min_time = get_ear_performance_accuracy();
-    if (masters_info.my_master_rank>=0){
+    if (masters_info.my_master_rank>=0 && eards_connected()){
         architecture_min_perf_accuracy_time=eards_node_energy_frequency();
     }else{
         architecture_min_perf_accuracy_time=1000000;

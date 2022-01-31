@@ -126,6 +126,7 @@ typedef struct status_node_info{
     ulong avg_freq; // In KH
     ulong temp; // In degres, No creo que haya falta enviar un unsigned long long
     ulong power; // In Watts 
+    ulong rep_power; // In Watts 
     ulong max_freq;// in KH
 } status_node_info_t;
 

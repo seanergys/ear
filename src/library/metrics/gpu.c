@@ -40,8 +40,12 @@ state_t gpu_lib_load(settings_conf_t *settings)
 {
 	state_t ret;
 	state_t s;
-	if ((ret=eards_gpu_model(&the_gpu_model))!=EAR_SUCCESS) return ret;
-	debug("eards_gpu_model %u ",the_gpu_model);
+	if (eards_connected()){
+		if ((ret=eards_gpu_model(&the_gpu_model))!=EAR_SUCCESS) return ret;
+		debug("eards_gpu_model %u ",the_gpu_model);
+	}else{
+		the_gpu_model = MODEL_DUMMY;
+	}
 	//
 	if (xtate_fail(s, gpu_load(&ops_met, none, empty))) {
 		error("gpu_load returned %d (%s)", s, state_msg);
@@ -51,7 +55,7 @@ state_t gpu_lib_load(settings_conf_t *settings)
 		error("mgt_gpu_load returned %d (%s)", s, state_msg);
 		return s;
 	}
-	if (the_gpu_model != gpu_model()){
+	if (the_gpu_model != gpu_model() && eards_connected()){
 		debug("GPU EARD model %u != EARL GPU model %u",the_gpu_model,gpu_model());
 		the_gpu_model = gpu_model();
 	}
@@ -64,8 +68,15 @@ state_t gpu_lib_init(ctx_t *_c)
 	ctx_gpu_t *c = (ctx_gpu_t *) _c->context;
 	state_t s;
 	state_t ret;
-	if ((ret=eards_gpu_dev_count(&node_dev_count))!=EAR_SUCCESS) return ret;
-	debug("eards_gpu_dev_count %u",node_dev_count);
+	
+	if (eards_connected()){
+		if ((ret=eards_gpu_dev_count(&node_dev_count))!=EAR_SUCCESS) return ret;
+		debug("eards_gpu_dev_count %u",node_dev_count);
+	}else{
+		/* What sould we do in this case? */
+		node_dev_count = 1;
+		the_gpu_model = MODEL_DUMMY;
+	}
 	if (c == NULL) {
 		c = calloc(1, sizeof(ctx_gpu_t));
 		_c->context = (ctx_t *) c;
@@ -82,6 +93,7 @@ state_t gpu_lib_init(ctx_t *_c)
 		return s;
 	}
 	if ((gpu_model() == MODEL_DUMMY) && (node_dev_count > 1)) dev_count = 1;
+	else if (the_gpu_model ==MODEL_DUMMY)                     dev_count = 1;
 	else if (node_dev_count != dev_count)                     ops_man->count(&c->ctx_man,&dev_count);
 	else                                                      dev_count = node_dev_count;
 	debug("Using %d gpus from %d in node ", dev_count,node_dev_count);
@@ -155,6 +167,7 @@ state_t gpu_lib_read(ctx_t *c, gpu_t *data)
 	int i, li = 0;
 	memset(node_gpu_data, 0 , node_dev_count*sizeof(gpu_t));
 	if (the_gpu_model == MODEL_DUMMY){
+		debug("Dummy gpu data");
 		memset(data,0,dev_count*sizeof(gpu_t));
 		return EAR_SUCCESS;
 	}

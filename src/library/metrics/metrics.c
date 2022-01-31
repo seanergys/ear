@@ -17,9 +17,9 @@
 
 #define _GNU_SOURCE
 
-// #define SHOW_DEBUGS           1
+//#define SHOW_DEBUGS           1
 #define INFO_METRICS           2
-#define INFO2_METRICS          3
+#define INFO2_METRICS          2
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
 
@@ -81,6 +81,7 @@ static int         num_packs=0;
 static ull        *metrics_rapl[2]; // nJ (vec)
 static ull        *aux_rapl; // nJ (vec)
 static ull        *last_rapl; // nJ (vec)
+static ulong rapl_size;
 static llong       aux_time;
 static edata_t     aux_energy;
 static edata_t     metrics_ipmi[2]; // mJ
@@ -200,8 +201,8 @@ static void metrics_configuration()
 		verbose_master(2, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
 		earl_default_domains.mem = POL_NOT_SUPPORTED;
 	}
-	#if USE_GPUS
 	/* This must be migrated to mgt_gpu.ok */
+	#if USE_GPUS
 	if (earl_gpu_model == MODEL_DUMMY) {
 		verbose_master(2, "GPU dummy, swtching to monitoring for GPU");
 		earl_default_domains.gpu = POL_NOT_SUPPORTED;
@@ -248,6 +249,8 @@ static void metrics_static_init(topology_t *tp)
     sa(      flops_load(tp, eard));
     sa(      cache_load(tp, eard));
     sa(        cpi_load(tp, eard));
+
+		debug("metics_load ready");
     // This extinguishable
     frequency_init(eard);
     // Get API
@@ -268,6 +271,8 @@ static void metrics_static_init(topology_t *tp)
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
+
+		debug("metrics_api ready");
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));
@@ -277,12 +282,22 @@ static void metrics_static_init(topology_t *tp)
     sa(      flops_init(no_ctx));
     sa(      cache_init(no_ctx));
     sa(        cpi_init(no_ctx));
+		debug("metrics_init ready");
+
     // Count
     sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
     sa(    cpufreq_count_devices(no_ctx, &met_cpufreq.devs_count));
     sa(    imcfreq_count_devices(no_ctx, &met_imcfreq.devs_count));
     sa(     bwidth_count_devices(no_ctx, &met_bwidth.devs_count ));
+		
+		debug("metrics_count_device ready");
+		debug("mgt cpufreq %u", mgt_cpufreq.devs_count);
+		debug("mgt imcfreq %u", mgt_imcfreq.devs_count);
+		debug("    cpufreq %u", met_cpufreq.devs_count);
+		debug("    imcfreq %u", met_imcfreq.devs_count);
+		debug("     bwidth %u", met_bwidth.devs_count);
+
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list, &mgt_imcfreq.avail_count));
@@ -318,6 +333,8 @@ static void metrics_static_init(topology_t *tp)
     bwidth_data_alloc(&bwidth_read2[1]);
     bwidth_data_alloc(&bwidth_diff[0]);
     bwidth_data_alloc(&bwidth_diff[1]);
+
+		debug("metrics_allocation ready");
 	
 		metrics_configuration();
 }
@@ -365,7 +382,7 @@ static void metrics_global_start()
     state_t s;
 	int ret;
 
-	if (masters_info.my_master_rank>=0)
+	if (masters_info.my_master_rank >= 0)
 	{
 		/* Avg CPU freq */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read1[APP]))) {
@@ -379,13 +396,18 @@ static void metrics_global_start()
 		    }
 		}
 		/* Energy */
-		debug("eards_node_dc_energy");
-		ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
-		if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
-			debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+		if (eards_connected()){
+			debug("eards_node_dc_energy");
+			ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
+			if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
+				debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+			}
+			/* RAPL energy metrics */
+			eards_read_rapl(aux_rapl);
+		}else{
+			memset(aux_energy, 0, node_energy_datasize);
+			memset(aux_rapl, 0 ,rapl_size);
 		}
-		/* RAPL energy metrics */
-		eards_read_rapl(aux_rapl);
 
 		#if USE_GPUS
 		/* GPu metrics */
@@ -396,9 +418,11 @@ static void metrics_global_start()
 			}
 			debug("gpu_lib_read in global start");
 			gpu_lib_data_copy(gpu_metrics_end[LOO],gpu_metrics_init[APP]);
+			debug("gpu_lib_data_copy in global start");
 		}
 		#endif
 		/* Only the master computes per node metrics */
+		debug("reading IO data");
 		metrics_get_total_io(&metrics_io_init[APP_NODE]);
 	}else{
 		set_null_dc_energy(aux_energy);
@@ -412,9 +436,13 @@ static void metrics_global_start()
 
     // New metrics
     bwidth_read(no_ctx, bwidth_read1[APP]);
+		debug("bwidth_read ready");
      flops_read(no_ctx, &flops_read1[APP]);
+		debug("flops_read ready");
      cache_read(no_ctx, &cache_read1[APP]);
+	  debug("cache_read ready");
        cpi_read(no_ctx,   &cpi_read1[APP]);
+		debug("cpi_read ready");
 }
  
 static void metrics_global_stop()
@@ -528,23 +556,27 @@ static void metrics_partial_start()
     state_t s;
     int i;
 
+		debug("metrics_partial_start starts %p %p %lu", metrics_ipmi[LOO],aux_energy,node_energy_datasize);
     /* This must be replaced by a copy of energy */
     /* Energy node */
+	
     memcpy(metrics_ipmi[LOO],aux_energy,node_energy_datasize);
     /* Time */
     metrics_usecs[LOO]=aux_time;
     last_elap_sec = 0;
     /* Per process IO data */
+		debug("starting IO for process");
     if (io_read(&ctx_io,&metrics_io_init[LOO]) != EAR_SUCCESS){
         verbose_master(2,"Warning:IO data not available");
     }
+		debug("IO read done");
     /* These data is measured only by the master */
     if (masters_info.my_master_rank>=0){
         /* Avg CPU freq */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read1[LOO]))) {
             verbose_master(2, "CPUFreq data read in partial start");
         }
-
+				debug("cpufreq_read ");
         /* Avg IMC freq */
         if (mgt_imcfreq.ok){
             /* Reads the IMC */
@@ -571,12 +603,13 @@ static void metrics_partial_start()
     for (i = 0; i < rapl_elements; i++) {
         last_rapl[i]=aux_rapl[i];
     }
-
+		debug("RAPL copied");
     // New metrics
     bwidth_read(no_ctx, bwidth_read1[LOO]);
      flops_read(no_ctx, &flops_read1[LOO]);
      cache_read(no_ctx, &cache_read1[LOO]);
        cpi_read(no_ctx,   &cpi_read1[LOO]);
+		debug("partial_start ends");
 }
 
 /****************************************************************************************************************************************************************/
@@ -598,7 +631,7 @@ static int metrics_partial_stop(uint where)
 
     
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
-      lib_shared_region->earl_on = 0;
+      if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
 		}
 
 
@@ -613,18 +646,28 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	if (masters_info.my_master_rank>=0){
 		/* Energy node */
-		ret = eards_node_dc_energy(aux_energy_stop,node_energy_datasize);
-		if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)){ 
-			if (eards_connected()) return EAR_NOT_READY;
-			else 							     return EAR_SUCCESS;
+		if (eards_connected()){
+			ret = eards_node_dc_energy(aux_energy_stop,node_energy_datasize);
+
+			/* If EARD is present, we wait until the power is computed */
+			if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)){ 
+				if (eards_connected()) return EAR_NOT_READY;
+				else 							     return EAR_SUCCESS;
+			}
+		}else{
+			memset(aux_energy_stop , 0, node_energy_datasize);
 		}
 		energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
 		energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);	
 		energy_lib_data_to_str(stop_energy_str,aux_energy_stop);	
-		if ((where==SIG_END) && (c_energy==0) && (masters_info.my_master_rank>=0)){ 
-			debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
-			if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
-			return EAR_NOT_READY;
+
+		/* If EARD is present, we wait until the power is computed */
+		if (eards_connected()){
+			if ((where==SIG_END) && (c_energy==0) && (masters_info.my_master_rank>=0)){ 
+				debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
+				if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
+				if (!EARL_LIGHT) return EAR_NOT_READY;
+			}
 		}
 	}
 	/* Time */
@@ -645,7 +688,7 @@ static int metrics_partial_stop(uint where)
 	/* If we are not the node master, we will continue */
 	if ((where==SIG_END) && (c_power<system_conf->min_sig_power) && (masters_info.my_master_rank>=0)){ 
 		debug("EAR_NOT_READY because of power %f\n",c_power);
-		return EAR_NOT_READY;
+		if (!EARL_LIGHT) return EAR_NOT_READY;
 	}
 
 	/* This is new to avoid cases where uncore gets frozen */
@@ -735,7 +778,8 @@ static int metrics_partial_stop(uint where)
  	*/
 
 	/* RAPL energy */
-		eards_read_rapl(aux_rapl);
+		if (eards_connected()) eards_read_rapl(aux_rapl);
+		else memset(aux_rapl, 0, rapl_size);
 
 		// We read acuumulated energy
 		for (i = 0; i < rapl_elements; i++) {
@@ -955,7 +999,6 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 /**************************** Init function used in ear_init ******************/
 int metrics_init(topology_t *topo)
 {
-	ulong rapl_size;
 	char *cimc_max_khz,*cimc_min_khz;
 	char imc_buffer[1024];
 	pstate_t tmp_def_imc_pstate;
@@ -963,7 +1006,8 @@ int metrics_init(topology_t *topo)
 	state_t s;
 	int i;
 
-    metrics_static_init(topo);
+  metrics_static_init(topo);
+	verbose_master(1, "metrics_static_init done");
 
 	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
 	//debug("My master rank %d",masters_info.my_master_rank);
@@ -993,18 +1037,19 @@ int metrics_init(topology_t *topo)
 	}	
 
 	// Daemon metrics allocation
-	if (masters_info.my_master_rank>=0){
+	if (masters_info.my_master_rank >= 0 && eards_connected()){
 		rapl_size = eards_get_data_size_rapl();
 	}else{
 		rapl_size=sizeof(unsigned long long);
 	}
 
-	verbose_master(2,"RAPL size %lu",rapl_size);
+	verbose(2,"RAPL size %lu",rapl_size);
 	rapl_elements = rapl_size / sizeof(unsigned long long);
 
 	// Allocating data for energy node metrics
 	// node_energy_datasize=eards_node_energy_data_size();
 	energy_lib_datasize(&node_energy_datasize);
+	debug("energy data size %lu", node_energy_datasize);
 	energy_lib_units(&node_energy_units);
 	/* We should create a data_alloc for enerrgy and a set_null */
 	aux_energy=(edata_t)malloc(node_energy_datasize);
@@ -1025,6 +1070,8 @@ int metrics_init(topology_t *topo)
 	memset(aux_rapl, 0, rapl_size);
 	memset(last_rapl, 0, rapl_size);
 	if (masters_info.my_master_rank>=0){
+
+	debug("Allocating data for %d processes", lib_shared_region->num_processes);
 	/* We will collect MPI statistics */
 	metrics_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
   metrics_last_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
@@ -1090,11 +1137,13 @@ int metrics_init(topology_t *topo)
 	verbose_master(INFO_METRICS,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
 		
 	/* End of IMC */	
+	}else{
+		verbose_master(2,"IMCFREQ not supported");
 	}
 	}
 
 	#if USE_GPUS
-	if (masters_info.my_master_rank>=0){
+	if (masters_info.my_master_rank >= 0){
 	if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
       gpu_initialized=0;
 			debug("Error in gpu_lib_load");
@@ -1136,7 +1185,9 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
     verbose_master(INFO_METRICS + 1, "End local signature");
 
-	if (!eards_connected() && masters_info.my_master_rank >= 0) return;
+	if (!eards_connected() && masters_info.my_master_rank >= 0){ 
+		if (!EARL_LIGHT) return;
+	}
     
     metrics_static_dispose();
 
@@ -1191,8 +1242,10 @@ void metrics_get_total_io(io_data_t *total)
 	io_data_t io;
 	ctx_t lio;
 	if (total == NULL) return;
+	debug("Reading IO node data for %d processes", lib_shared_region->num_processes);
 	memset((char *)total,0,sizeof(io_data_t));
 	for (i=0; i<lib_shared_region->num_processes;i++){
+			debug("Init IO data %d sig area %p, pid %d", i, sig_shared_region, sig_shared_region[i].pid);
 		  if (io_init(&lio,sig_shared_region[i].pid) != EAR_SUCCESS){
 				verbose_master(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
 			}else{
@@ -1204,9 +1257,11 @@ void metrics_get_total_io(io_data_t *total)
 				total->read_bytes += io.read_bytes;
 				total->write_bytes += io.write_bytes;
 				total->cancelled += io.cancelled;
+				debug("io dispose");
 				io_dispose(&lio);
 			}
 	}
+	debug("metrics_get_total_io ready master=%d", masters_info.my_master_rank);
 }
 
 int time_ready_signature(ulong min_time_us)
