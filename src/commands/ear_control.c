@@ -1102,11 +1102,11 @@ int main(int argc, char *argv[])
 			process_status(num_status, status, NODE_ONLY);
 			break;
 			case EAR_TYPE_POLICY:
-			num_status = ear_cluster_get_status(&my_cluster_conf, &status);
+			num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
 			process_status(num_status, status, POLICY_ONLY);
 			break;
 			case EAR_TYPE_FULL_STATUS:
-			num_status = ear_cluster_get_status(&my_cluster_conf, &status);
+			num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
 			process_status(num_status, status, FULL_STATUS);
 			break;
 			case EAR_TYPE_POWER_STATUS:
@@ -1114,11 +1114,11 @@ int main(int argc, char *argv[])
 			process_powercap_status(powerstatus,num_status);
 			break;
 			case EAR_TYPE_APP_STATUS_MASTER:
-			num_status = ear_cluster_get_app_master_status(&my_cluster_conf, &appstatus);
+			num_status = ear_get_app_master_status(&my_cluster_conf, &appstatus, nodes, num_nodes);
 			process_app_status(num_status, appstatus, 1);
 			break;
 			case EAR_TYPE_APP_STATUS_NODE:
-			num_status = ear_cluster_get_app_node_status(&my_cluster_conf, &appstatus);
+			num_status = ear_get_app_node_status(&my_cluster_conf, &appstatus, nodes, num_nodes);
 			process_app_status(num_status, appstatus, 0);
 			break;
 			case EAR_TYPE_EARDBD_STATUS:

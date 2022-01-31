@@ -64,6 +64,72 @@ int ear_node_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t
 	return head.size >= sizeof(app_status_t);
 }
 
+int ear_nodelist_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status, char **nodes, int num_nodes)
+{
+	request_t command;
+	request_header_t head;
+	int *ips;
+	app_status_t *temp_status;
+	int num_status = 0;
+
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+	memset(&command, 0, sizeof(request_t));
+
+	command.req = EAR_RC_APP_MASTER_STATUS;
+	command.nodes = ips;
+	command.num_nodes = num_nodes;
+	command.time_code = time(NULL);
+
+	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
+	num_status = head.size / sizeof(app_status_t);
+
+	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
+	{
+		if (head.size > 0) free (temp_status);
+		*status = temp_status;
+		num_status = 0;
+	}
+
+	*status = temp_status;
+
+	free(ips);
+	return num_status;
+}
+
+int ear_nodelist_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status, char **nodes, int num_nodes)
+{
+	request_t command;
+	request_header_t head;
+	int *ips;
+	app_status_t *temp_status;
+	int num_status = 0;
+
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+	memset(&command, 0, sizeof(request_t));
+
+	command.req = EAR_RC_APP_NODE_STATUS;
+	command.nodes = ips;
+	command.num_nodes = num_nodes;
+	command.time_code = time(NULL);
+
+	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
+	num_status = head.size / sizeof(app_status_t);
+
+	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
+	{
+		if (head.size > 0) free (temp_status);
+		*status = temp_status;
+		num_status = 0;
+	}
+
+	*status = temp_status;
+
+	free(ips);
+	return num_status;
+}
+
 /** Asks application status for a single node */
 int ear_node_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status)
 {
