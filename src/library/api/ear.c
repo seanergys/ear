@@ -1142,7 +1142,7 @@ void ear_init()
 				}
 
 				// Initializing metrics
-				verbose_master(1,"Starting metrics init ");
+				verbose_master(2,"Starting metrics init ");
 
 				if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
 								error("in EAR metrics initialization (%s), setting EARL off", state_msg);
