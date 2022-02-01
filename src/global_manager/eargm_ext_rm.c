@@ -19,7 +19,7 @@
 #define _GNU_SOURCE 
 
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
