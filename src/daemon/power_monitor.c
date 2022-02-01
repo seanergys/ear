@@ -1167,18 +1167,11 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 	app_mgt_end_job(pmapp->app_info);
 	pcapp_info_end_job(pmapp->pc_app_info);
 	powercap_end_job();
-  int i;
-  if (powermon_is_idle()){ 
-    memset(pmapp->pc_app_info->req_f, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
-		powercap_set_app_req_freq(pmapp->pc_app_info);
-		powercap_run_to_idle();
-	}else{ 
-    for (i = 0; i < MAX_CPUS_SUPPORTED; i++){
-			pmapp->pc_app_info->req_f[i] = pmapp->current_freq;
-		}
-		powercap_set_app_req_freq(pmapp->pc_app_info);
-	}
+	int i;
 	end_context(cc);
+	if (powermon_is_idle()) { 
+		powercap_run_to_idle();
+	}
 	verbose(VJOBPMON+1,"Cleaning job from node_mgr");
 	nodemgr_clean_job(jid, sid);
 	clean_job_area(ID);
@@ -1188,24 +1181,24 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 }
 
 /*
-* This function is called by dynamic_configuration thread: Used to notify when a new task has been created
-*/
+ * This function is called by dynamic_configuration thread: Used to notify when a new task has been created
+ */
 
 
 /*
-* These functions are called by dynamic_configuration thread: Used to notify when a configuracion setting is changed
-*
-*/
+ * These functions are called by dynamic_configuration thread: Used to notify when a configuracion setting is changed
+ *
+ */
 void powermon_inc_th(uint p_id,double th)
 {
-    policy_conf_t *p;
-    p=get_my_policy_conf(my_node_conf,p_id);
-    if (p==NULL){
-        warning("policy %u not supported, th setting has no effect",p_id);
-	    return;
-    }else{
+	policy_conf_t *p;
+	p=get_my_policy_conf(my_node_conf,p_id);
+	if (p==NULL){
+		warning("policy %u not supported, th setting has no effect",p_id);
+		return;
+	}else{
 		if (((p->settings[0]+th)>0) && ((p->settings[0]+th)<=1.0)){
-        	p->settings[0]=p->settings[0]+th;
+			p->settings[0]=p->settings[0]+th;
 		}else{
 			warning("Current th + new is out of range, not changed");
 		}
@@ -1228,20 +1221,20 @@ void powermon_set_th(uint p_id, double th) {
 /* Sets the maximum frequency in the node */
 void powermon_new_max_freq(ulong maxf) {
 	uint ps;
-  int cc;
-  powermon_app_t *pmapp;
+	int cc;
+	powermon_app_t *pmapp;
 
 	/* Job running and not EAR-aware */
 	for (cc = 0;cc <= max_context_created; cc++){
-    if (current_ear_app[cc] != NULL){
-      pmapp = current_ear_app[cc];
-      if ((pmapp->app.job.id > 0) && (pmapp->app.is_mpi == 0)) {
+		if (current_ear_app[cc] != NULL){
+			pmapp = current_ear_app[cc];
+			if ((pmapp->app.job.id > 0) && (pmapp->app.is_mpi == 0)) {
 				verbose(VJOBPMON, "MaxFreq: Application is not mpi, automatically changing freq from %lu to %lu",
-					current_node_freq, maxf);
+						current_node_freq, maxf);
 				/* PENDING: Use the affinity mask */
-				#if 0
+#if 0
 				frequency_set_all_cpus(maxf);
-				#endif
+#endif
 			}
 		}
 	}
@@ -1252,21 +1245,21 @@ void powermon_new_max_freq(ulong maxf) {
 }
 
 void powermon_new_def_freq(uint p_id, ulong def) {
-  uint ps;
-  uint cpolicy;
-  int cc;
-  powermon_app_t *pmapp;
-  verbose(VJOBPMON,"New default freq for policy %u set to %lu",p_id,def);
-  ps = frequency_closest_pstate(def);
-  /* Job running and not EAR-aware */
-  for (cc = 0;cc <= max_context_created; cc++){
-    if (current_ear_app[cc] != NULL){
-      pmapp = current_ear_app[cc];
-      if (pmapp->app.is_mpi == 0 && my_cluster_conf.eard.force_frequencies) {
+	uint ps;
+	uint cpolicy;
+	int cc;
+	powermon_app_t *pmapp;
+	verbose(VJOBPMON,"New default freq for policy %u set to %lu",p_id,def);
+	ps = frequency_closest_pstate(def);
+	/* Job running and not EAR-aware */
+	for (cc = 0;cc <= max_context_created; cc++){
+		if (current_ear_app[cc] != NULL){
+			pmapp = current_ear_app[cc];
+			if (pmapp->app.is_mpi == 0 && my_cluster_conf.eard.force_frequencies) {
 				cpolicy = policy_name_to_nodeid(pmapp->app.job.policy, my_node_conf);
 				if (cpolicy == p_id) { /* If the process runs at selected policy */
 					if (def < current_node_freq) {
-          	frequency_set_with_mask(&pmapp->app_info->node_mask,def);
+						frequency_set_with_mask(&pmapp->app_info->node_mask,def);
 					}
 				}
 			}
@@ -1285,19 +1278,19 @@ void powermon_new_def_freq(uint p_id, ulong def) {
 /** Sets temporally the default and max frequency to the same value. When application is not mpi, automatically chages the node freq if needed */
 
 void powermon_set_freq(ulong freq) {
-  int nump;
-  uint ps,cc;
-  powermon_app_t *pmapp;
+	int nump;
+	uint ps,cc;
+	powermon_app_t *pmapp;
 
-  ps = frequency_closest_pstate(freq);
-  for (cc = 0;cc <= max_context_created; cc++){
-    if (current_ear_app[cc] != NULL){
-      pmapp = current_ear_app[cc];
-      if ((my_cluster_conf.eard.force_frequencies) && (pmapp->app.is_mpi == 0)) {
-        frequency_set_with_mask(&pmapp->app_info->node_mask,freq);
-      }
-    }
-  }
+	ps = frequency_closest_pstate(freq);
+	for (cc = 0;cc <= max_context_created; cc++){
+		if (current_ear_app[cc] != NULL){
+			pmapp = current_ear_app[cc];
+			if ((my_cluster_conf.eard.force_frequencies) && (pmapp->app.is_mpi == 0)) {
+				frequency_set_with_mask(&pmapp->app_info->node_mask,freq);
+			}
+		}
+	}
 
 	my_node_conf->max_pstate = ps;
 	for (nump = 0; nump < my_node_conf->num_policies; nump++) {
@@ -1313,7 +1306,7 @@ void powermon_reload_conf() {
 }
 void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 {
-  powermon_app_t *pmapp;
+	powermon_app_t *pmapp;
 	ulong lcpus, tcpus = 0;
 	float cpu_ratio;
 	ulong num_jobs;
@@ -1332,10 +1325,10 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 	/* Set to 0 the num_cpus per job, we will compute again */
 	clean_cpus_in_jobs();
 
-  
+
 	for (uint cc = 1;cc <= max_context_created; cc++){
-    if (current_ear_app[cc] != NULL){
-      pmapp = current_ear_app[cc];
+		if (current_ear_app[cc] != NULL){
+			pmapp = current_ear_app[cc];
 			/* We must update the current signature */
 			pmapp->exclusive = (num_jobs == 1) && pmapp->exclusive;
 			pos_job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);
@@ -1346,7 +1339,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 			/* is job and 1 context means srun without sbatch */
 			else  if (pmapp->is_job && pos_job_in_node && alloc->numc == 1) pmapp->earl_num_cpus  = ear_min(num_cpus_in_mask(&pmapp->plug_mask), pmapp->plug_num_cpus);
 
-		
+
 			/* earl_num_cpus is > 0 when the app uses EARL */	
 			if (pmapp->earl_num_cpus){ 
 				if (is_job_in_node(pmapp->app.job.id, &alloc)){
@@ -1360,11 +1353,11 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
 
 	verbose_jobs_in_node(VCONF);
-	
-  for (uint cc = 1;cc <= max_context_created; cc++){
+
+	for (uint cc = 1;cc <= max_context_created; cc++){
 		verbose(VEARD_NMGR, "Testing context %d", cc);
-    if (current_ear_app[cc] != NULL){
-      pmapp = current_ear_app[cc];
+		if (current_ear_app[cc] != NULL){
+			pmapp = current_ear_app[cc];
 			/* We must update the current signature */
 			lcpus = pmapp->earl_num_cpus;
 			if (lcpus){
@@ -1394,8 +1387,8 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 			pmapp->accum_ps.GPU_energy  = accum_gpu_power(last_pmon)  * gpu_ratio * time_consumed;
 #endif
 
-    }
-  }
+		}
+	}
 	verbose(VEARD_NMGR,"Power update pmapp done");
 }
 
@@ -1418,22 +1411,22 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	/* last_pmon is the last short power monitor period info. pmon_info can be larger. Use last_pmon  for fine grain power metrics*/
 
 	pmapp 		= current_ear_app[max_context_created];
-  jid       = pmapp->app.job.id;
-  sid       = pmapp->app.job.step_id;
-  mpi       = pmapp->app.is_mpi;
-  maxpower  = pmapp->app.power_sig.max_DC_power;
-  minpower  = pmapp->app.power_sig.min_DC_power;
+	jid       = pmapp->app.job.id;
+	sid       = pmapp->app.job.step_id;
+	mpi       = pmapp->app.is_mpi;
+	maxpower  = pmapp->app.power_sig.max_DC_power;
+	minpower  = pmapp->app.power_sig.min_DC_power;
 
 	update_pmapps(last_pmon, nm);
 
 	/* If there is no powercap, last_pmon and pmon_info is the same info. Otherwise, last_pmon is a short period and pmon_info corresponds with the period set in the ear.conf */
-  /* Powercap */
+	/* Powercap */
 	current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);
-  pdomain.platform = last_pmon->avg_dc;
-  pdomain.cpu      = accum_cpu_power(last_pmon);
-  pdomain.dram     = accum_dram_power(last_pmon);
-  pdomain.gpu      = accum_gpu_power(last_pmon);
-  if (powercap_elapsed_last_powercap() >= f_monitoring) powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
+	pdomain.platform = last_pmon->avg_dc;
+	pdomain.cpu      = accum_cpu_power(last_pmon);
+	pdomain.dram     = accum_dram_power(last_pmon);
+	pdomain.gpu      = accum_gpu_power(last_pmon);
+	if (powercap_elapsed_last_powercap() >= f_monitoring) powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
 
 
 
@@ -1442,35 +1435,35 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	}
 
 
-	#if VERBOSE_POWERMON
-  print_app_mgt_data(pmapp->app_info);
+#if VERBOSE_POWERMON
+	print_app_mgt_data(pmapp->app_info);
 	verbose(VNODEPMON,"%s",COL_BLU);
-  dramp = accum_dram_power(last_pmon);
-  pckp  = accum_cpu_power(last_pmon);
-  #if USE_GPUS
-  double gpup;
-  gpup = accum_gpu_power(last_pmon);
-  verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
-      current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc,pckp,dramp,gpup, maxpower, minpower);
-  #else
-  verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
-      current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc, pckp,dramp,maxpower, minpower);
-  #endif
+	dramp = accum_dram_power(last_pmon);
+	pckp  = accum_cpu_power(last_pmon);
+#if USE_GPUS
+	double gpup;
+	gpup = accum_gpu_power(last_pmon);
+	verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
+			current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc,pckp,dramp,gpup, maxpower, minpower);
+#else
+	verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
+			current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc, pckp,dramp,maxpower, minpower);
+#endif
 	verbose_node_metrics(&my_nm_id, nm);
 	verbose(VNODEPMON,"%s",COL_CLR);
 
 	/* We use last context as reference but we print all of them */
 	if (verb_level >= VEARD_NMGR) {
-	    for (uint cc = 0;cc < MAX_CPUS_SUPPORTED; cc ++){ 
-		    pmapp = current_ear_app[cc];
-  	    if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
-    	    signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
-			    verbose(VEARD_NMGR," ");
-  	    }
-	    }
+		for (uint cc = 0;cc < MAX_CPUS_SUPPORTED; cc ++){ 
+			pmapp = current_ear_app[cc];
+			if ((pmapp != NULL) && !(is_null(&pmapp->last_loop)==1)){
+				signature_print_simple_fd(verb_channel,&pmapp->last_loop.signature);
+				verbose(VEARD_NMGR," ");
+			}
+		}
 	}
 	report_periodic_power(fd_periodic, last_pmon);
-	#endif
+#endif
 
 	pmapp     = current_ear_app[max_context_created];
 
@@ -1499,13 +1492,13 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 		corrected_power = rapl;
 	}
 	if ((corrected_power > my_node_conf->max_error_power) || (corrected_power < 0)){
-		  corrected_power = my_node_conf->max_sig_power;
+		corrected_power = my_node_conf->max_sig_power;
 	}
 	time_consumed = (ulong) difftime(pmon_info->end, pmon_info->begin);
 	current_sample.DRAM_energy = rapl_dram * time_consumed;
 	current_sample.PCK_energy  = rapl_pck  * time_consumed;
 #if USE_GPUS
-  current_sample.GPU_energy = accum_gpu_power(pmon_info) * time_consumed;
+	current_sample.GPU_energy = accum_gpu_power(pmon_info) * time_consumed;
 #endif
 	current_sample.DC_energy = corrected_power * time_consumed;
 	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
@@ -1518,10 +1511,10 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	/* Error control */
 #if SYSLOG_MSG
 	if ((last_pmon->avg_dc == 0) 
-	|| (last_pmon->avg_dc < my_node_conf->min_sig_power) 
-  || (last_pmon->avg_dc > my_node_conf->max_sig_power) 
-  || (last_pmon->avg_dc > my_node_conf->max_error_power))
-    {
+			|| (last_pmon->avg_dc < my_node_conf->min_sig_power) 
+			|| (last_pmon->avg_dc > my_node_conf->max_sig_power) 
+			|| (last_pmon->avg_dc > my_node_conf->max_error_power))
+	{
 		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,last_pmon->avg_dc);
 		log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,last_pmon->avg_dc);
 	}
@@ -1618,12 +1611,12 @@ void powermon_mpi_signature(application_t *app) {
 		error("powermon_mpi_signature: and NULL app provided");
 		return;
 	}
-  cc = find_context_for_job(app->job.id, app->job.step_id);
-  if (cc < 0){
-    error("powermon_mpi_signature and no context created for (%lu,%lu)",app->job.id, app->job.step_id);
-    return;
-  }
-  pmapp = current_ear_app[cc];
+	cc = find_context_for_job(app->job.id, app->job.step_id);
+	if (cc < 0){
+		error("powermon_mpi_signature and no context created for (%lu,%lu)",app->job.id, app->job.step_id);
+		return;
+	}
+	pmapp = current_ear_app[cc];
 
 	check_rt_error_for_signature(app);
 
@@ -1634,7 +1627,7 @@ void powermon_mpi_signature(application_t *app) {
 	strcpy(pmapp->app.job.policy, app->job.policy);
 	strcpy(pmapp->app.job.app_id, app->job.app_id);
 	pmapp->sig_reported = 1;
-  verbose(VJOBPMON,"MPI signature reported for context %d,freq = %lu",cc,pmapp->app.signature.avg_f);
+	verbose(VJOBPMON,"MPI signature reported for context %d,freq = %lu",cc,pmapp->app.signature.avg_f);
 
 	save_eard_conf(&eard_dyn_conf);
 }
@@ -1670,8 +1663,8 @@ void powermon_end_jobmask(cpu_set_t *endjobmask)
 
 
 /*
-*	MAIN POWER MONITORING THREAD
-*/
+ *	MAIN POWER MONITORING THREAD
+ */
 
 
 // frequency_monitoring will be expressed in usecs
@@ -1693,7 +1686,7 @@ void *eard_power_monitoring(void *noinfo)
 
 	verbose(VJOBPMON, "Power monitoring thread UP");
 	init_contexts();
-    powermon_create_idle_context();
+	powermon_create_idle_context();
 
 	if (pthread_setname_np(pthread_self(), TH_NAME)) error("Setting name for %s thread %s", TH_NAME, strerror(errno));
 	if (init_power_ponitoring(&my_eh_pm) != EAR_SUCCESS) {
@@ -1732,7 +1725,7 @@ void *eard_power_monitoring(void *noinfo)
 
 	/* Powercap */
 	copy_energy_data(&e_pmon_begin, &e_begin);
-	
+
 	/* Update with the curent node conf */
 	debug("Initializing node metrics");
 	powermon_init_nm();
@@ -1747,15 +1740,15 @@ void *eard_power_monitoring(void *noinfo)
 	powermon_freq_list   = frequency_get_freq_rank_list();
 	powermon_num_pstates = frequency_get_num_pstates();
 
-	#if USE_GPUS
+#if USE_GPUS
 	if (gpu_mgr_init() != EAR_SUCCESS){
 		error("Error initializing GPU management");
 	}
-	#endif
+#endif
 
 	/*
-	*	MAIN LOOP
-	*/
+	 *	MAIN LOOP
+	 */
 	debug("Starting power monitoring loop, reporting metrics every %d seconds",f_monitoring);
 
 	while (!eard_must_exit) {
@@ -1806,7 +1799,7 @@ void *eard_power_monitoring(void *noinfo)
 	if (dispose_node_metrics(&my_nm_id) != EAR_SUCCESS) {
 		error("dispose_node_metrics ");
 	}
-  powercap_end();
+	powercap_end();
 	pthread_exit(0);
 }
 
@@ -1836,26 +1829,26 @@ void powermon_get_status(status_t *my_status) {
 
 void powermon_get_power(uint64_t *power) 
 {
-    *power = (uint64_t) last_node_power;
+	*power = (uint64_t) last_node_power;
 }
 
 /* Returns the number of applications all or only master */
 int powermon_get_num_applications(int only_master)
 {
-  int i;
-  int total = 0,total_master = 0;
-  for (i=0;i <= max_context_created;i ++){
-    if (current_ear_app[i] != NULL){
-      total ++;
-      if (is_app_master(current_ear_app[i]->app_info)) total_master++;
+	int i;
+	int total = 0,total_master = 0;
+	for (i=0;i <= max_context_created;i ++){
+		if (current_ear_app[i] != NULL){
+			total ++;
+			if (is_app_master(current_ear_app[i]->app_info)) total_master++;
 			verbose(VJOBPMON,"App %d is master=%d",i,is_app_master(current_ear_app[i]->app_info));
-    }
-  }
-  total         = ear_max(1, total - 1);
-  total_master  = ear_max(1, total_master -1);
-  verbose(VJOBPMON,"We have %d apps created and %d masters",total, total_master);
-  if (only_master) return total_master;
-  return total;
+		}
+	}
+	total         = ear_max(1, total - 1);
+	total_master  = ear_max(1, total_master -1);
+	verbose(VJOBPMON,"We have %d apps created and %d masters",total, total_master);
+	if (only_master) return total_master;
+	return total;
 }
 
 
@@ -1863,38 +1856,38 @@ void powermon_get_app_status(app_status_t *my_status,  int num_apps, int only_ma
 {
 	time_t consumed_time;
 	int i,cs = 0;
-  /*if (max_context_created == 0 || (only_master && (num_apps == 1))){*/
-  if (max_context_created == 0 || (only_master && (num_apps == 0))){
-    my_status[cs].job_id = 0;
-    signature_init(&my_status[cs].signature);
-    my_status[cs].signature.DC_power = (ulong) last_power_reported;
-    my_status[cs].signature.avg_f = (ulong)(last_nm.avg_cpu_freq);
-    return;
-  }
-  for (i=1;(i<= max_context_created) && (cs<num_apps);i ++){
-    if (current_ear_app[i] != NULL){
-      if (!only_master || (only_master && is_app_master(current_ear_app[i]->app_info))){
-        debug("Adding app %d to the app status %lu/%lu MR %d", i,current_ear_app[i]->app.job.id,current_ear_app[i]->app.job.step_id,current_ear_app[i]->app_info->master_rank);
-        my_status[cs].job_id = current_ear_app[i]->app.job.id;
-        my_status[cs].step_id = current_ear_app[i]->app.job.step_id;
-        if (!(is_null(&current_ear_app[i]->last_loop) == 1)){
-          signature_copy(&my_status[cs].signature,&current_ear_app[i]->last_loop.signature);
-          debug("App with signature");
-        }else{
-          debug("App without signature");
-          signature_init(&my_status[cs].signature);
-          my_status[cs].signature.DC_power = (ulong) last_power_reported;
-          my_status[cs].signature.avg_f = (ulong)(last_nm.avg_cpu_freq);
-        }
-        time(&consumed_time);
-        my_status[cs].signature.time = difftime(consumed_time,current_ear_app[i]->app.job.start_time);
-        my_status[cs].nodes = current_ear_app[i]->app_info->nodes;
-        my_status[cs].master_rank = current_ear_app[i]->app_info->master_rank;
-        cs++;
-      }
-    }
-  }
-  debug("app_status end ");
+	/*if (max_context_created == 0 || (only_master && (num_apps == 1))){*/
+	if (max_context_created == 0 || (only_master && (num_apps == 0))){
+		my_status[cs].job_id = 0;
+		signature_init(&my_status[cs].signature);
+		my_status[cs].signature.DC_power = (ulong) last_power_reported;
+		my_status[cs].signature.avg_f = (ulong)(last_nm.avg_cpu_freq);
+		return;
+	}
+	for (i=1;(i<= max_context_created) && (cs<num_apps);i ++){
+		if (current_ear_app[i] != NULL){
+			if (!only_master || (only_master && is_app_master(current_ear_app[i]->app_info))){
+				debug("Adding app %d to the app status %lu/%lu MR %d", i,current_ear_app[i]->app.job.id,current_ear_app[i]->app.job.step_id,current_ear_app[i]->app_info->master_rank);
+				my_status[cs].job_id = current_ear_app[i]->app.job.id;
+				my_status[cs].step_id = current_ear_app[i]->app.job.step_id;
+				if (!(is_null(&current_ear_app[i]->last_loop) == 1)){
+					signature_copy(&my_status[cs].signature,&current_ear_app[i]->last_loop.signature);
+					debug("App with signature");
+				}else{
+					debug("App without signature");
+					signature_init(&my_status[cs].signature);
+					my_status[cs].signature.DC_power = (ulong) last_power_reported;
+					my_status[cs].signature.avg_f = (ulong)(last_nm.avg_cpu_freq);
+				}
+				time(&consumed_time);
+				my_status[cs].signature.time = difftime(consumed_time,current_ear_app[i]->app.job.start_time);
+				my_status[cs].nodes = current_ear_app[i]->app_info->nodes;
+				my_status[cs].master_rank = current_ear_app[i]->app_info->master_rank;
+				cs++;
+			}
+		}
+	}
+	debug("app_status end ");
 
 }
 
@@ -1906,17 +1899,17 @@ void print_powermon_app(powermon_app_t *app)
 
 void powermon_report_event(uint event_type, ulong value) 
 {
-    int jid, sid;
-		int cc = max_context_created;
-		jid = current_ear_app[cc]->app.job.id;
-		sid = current_ear_app[cc]->app.job.step_id; 
-    debug("powermon_report_event: sending event %u with value %lu", event_type, value);
-    log_report_eard_powercap_event(&rid,jid,sid,event_type, value);
+	int jid, sid;
+	int cc = max_context_created;
+	jid = current_ear_app[cc]->app.job.id;
+	sid = current_ear_app[cc]->app.job.step_id; 
+	debug("powermon_report_event: sending event %u with value %lu", event_type, value);
+	log_report_eard_powercap_event(&rid,jid,sid,event_type, value);
 }
 
 uint powermon_is_idle()
 {
-  return (max_context_created == 0); //if only the idle context exists
+	return (max_context_created == 0); //if only the idle context exists
 
 }
 uint powermon_current_power()
@@ -1930,7 +1923,7 @@ uint powermon_get_powercap_def()
 
 uint powermon_get_max_powercap_def()
 {
-  return (uint) my_node_conf->max_powercap;
+	return (uint) my_node_conf->max_powercap;
 }
 
 

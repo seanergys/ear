@@ -341,7 +341,7 @@ state_t dvfs_pc_thread_main(void *p)
             if (((power_rapl+extra)<my_limit) && (c_mode==PC_MODE_TARGET)){ 
                 uint ish = higher_pstate(c_pstate, prev_pstate);
                 if (ish) {
-                    vector_print_pstates(prev_pstate, node_size);
+                    //vector_print_pstates(prev_pstate, node_size);
                     if (((extra*2.0+power_rapl) > my_limit) && (prev_counter >= MAX_DVFS_TRIES)) { //the second condition is to prevent drastic power decreases from being unrecoverable
                         debug("Can't raise frequency without a powercap increase (would exceed power usage), number of tries: %d", prev_counter);
                         return EAR_SUCCESS;

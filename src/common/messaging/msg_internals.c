@@ -69,7 +69,7 @@ int _read(int fd, void *data, size_t ssize)
             if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
             else {	
                 must_abort = 1;
-                error("_read: Error sending command to eard %s,%d", strerror(errno), errno);
+                verbose(VAPI, "_read: Error sending command to eard %s,%d", strerror(errno), errno);
             }
         }else if (ret == 0) {
             debug("_read: read returns 0 bytes");
@@ -112,7 +112,7 @@ int _write(int fd, void *data, size_t ssize)
             if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
             else {	
                 must_abort = 1;
-                error("_write: Error sending command to eard %s,%d", strerror(errno), errno);
+                verbose(VAPI, "_write: Error sending command to eard %s,%d", strerror(errno), errno);
             }
         }else if (ret == 0) {
             debug("_write: send returns 0 bytes");
@@ -406,7 +406,7 @@ int send_command(request_t *command)
     
     if (send_non_block_data(eards_sfd, command_size, command_b, EAR_TYPE_COMMAND) != EAR_SUCCESS)
     {
-        error("send_command: Error sending command");
+        verbose(VAPI, "send_command: Error sending command");
         free(command_b);
         return 0;
     }
@@ -416,7 +416,7 @@ int send_command(request_t *command)
 
 	ret = _read(eards_sfd, &ack, sizeof(ulong)); //read ack
 	if (ret<0){
-		error("send_command: Error receiving ack %s",strerror(errno));
+		verbose(VAPI, "send_command: Error receiving ack %s", strerror(errno));
 	}
 	else if (ret!=sizeof(ulong)) {
 		debug("send_command: Error receiving ack: expected %lu ret %d",sizeof(ulong),ret);
@@ -440,7 +440,7 @@ int send_non_block_data(int fd, size_t size, char *data, int type)
     ret = _write(eards_sfd, &head, sizeof(request_header_t));
 
     if (ret < sizeof(request_header_t)) {
-        error("send_non_block_data:error sending request_header in non_block command");
+        verbose(VAPI, "send_non_block_data:error sending request_header in non_block command");
         return 0;
     }
 
@@ -494,7 +494,7 @@ request_header_t receive_data(int fd, void **data)
     ret = _read(fd, &head, sizeof(request_header_t));
     debug("receive_data: values read: type %d size %u", head.type, head.size);
     if (ret < 0) {
-        error("receive_data: Error recieving response data header (%s) ", strerror(errno));
+        verbose(VAPI, "receive_data: Error recieving response data header (%s) ", strerror(errno));
         head.type = EAR_ERROR;
         head.size = 0;
         return head;
@@ -521,7 +521,7 @@ request_header_t receive_data(int fd, void **data)
     ret = _read(fd, read_data, head.size);
 	if (ret < head.size) 
     {
-		error("Error by receive data (%s)",strerror(errno));
+		verbose(VAPI, "Error by receive data (%s)", strerror(errno));
         if (ret > 0)
             free(read_data);
         head.type = EAR_ERROR;
