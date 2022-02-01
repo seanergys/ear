@@ -904,7 +904,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
         rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
-            error("correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
+            verbose(VAPI, "correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
             head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
         }
         else
@@ -913,7 +913,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
             head = receive_data(rc, (void **)&temp_data);
             if ((head.size) < 1 || head.type == EAR_ERROR)
             {
-                error("correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
+                verbose(VAPI, "correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
                 remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
             }
@@ -1099,7 +1099,7 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
         rc = remote_connect(next_ip, port);
         if (rc < 0)
         {
-            error("correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
+            verbose(VAPI, "correct_data_prop_nodes: Error connecting to node: %s\n", next_ip);
             head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
         }
         else
@@ -1108,7 +1108,7 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
             head = receive_data(rc, (void **)&temp_data);
             if ((head.size) < 1 || head.type == EAR_ERROR)
             {
-                error("correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
+                verbose(VAPI, "correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
                 remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
             }
