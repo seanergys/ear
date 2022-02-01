@@ -188,6 +188,7 @@ const metrics_t *metrics_get(uint api)
 }
 static void metrics_configuration()
 {
+	if (!EARL_LIGHT) return;
 	if (eards_connected()){
 		verbose_master(2, "EARD connected");
 	}else{ 
