@@ -1,6 +1,7 @@
 # INCLUDES
 m4_include([m4/ax_compare_version.m4])
 m4_include([m4/ax_features.m4])
+m4_include([m4/ax_defaults.m4])
 m4_include([m4/x_ac_pgsql.m4])
 m4_include([m4/x_ac_mysql.m4])
 m4_include([m4/x_ac_slurm.m4])
@@ -17,6 +18,13 @@ AC_LANG(C)
 AC_PROG_CC
 AC_PROG_AWK
 AC_PROG_GREP
+
+############
+# DEFAULTS #
+############
+#
+
+AX_SET_DEFAULTS
 
 ################
 # PRE-FEATURES #
