@@ -200,20 +200,29 @@ static void print_local_data()
 #if MPI
 								verbose(1, "---------------- EAR %s MPI enabled ----------------",ver);
 #else
-								verbose(1, "------------- EAR %s MPI not enabled -------------",ver);
+								verbose(1, "-------------- EAR %s MPI not enabled --------------",ver);
 #endif
-								verbose(1, "App/user id: '%s'/'%s'", application.job.app_id, application.job.user_id);
-								verbose(1, "Node/job id/step_id: '%s'/'%lu'/'%lu'", application.node_id, application.job.id,application.job.step_id);
+								verbose(1, "%30s: '%s'/'%s'", "App/user id", application.job.app_id,
+                                        application.job.user_id);
+								verbose(1, "%30s: '%s'/'%lu'/'%lu'", "Node/job id/step_id",
+                                        application.node_id, application.job.id,
+                                        application.job.step_id);
 								//verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
-								verbose(1, "P_STATE/frequency (turbo): %u/%lu (%d)", EAR_default_pstate, application.job.def_f, ear_use_turbo);
-								verbose(1, "Tasks/nodes/ppn: %u/%d/%d", my_size, num_nodes, ppnode);
-								verbose(1, "Policy (learning): %s (%d)", application.job.policy, ear_whole_app);
-								verbose(1, "Policy threshold/Perf accuracy: %0.2lf/%0.2lf", application.job.th, get_ear_performance_accuracy());
-								verbose(1, "DynAIS levels/window/AVX512: %d/%d/%d", get_ear_dynais_levels(), get_ear_dynais_window_size(), dynais_build_type());
-								verbose(1, "VAR path: %s", get_ear_tmp());
-								verbose(1, "EAR privileged user %u",system_conf->user_type==AUTHORIZED);
-								verbose(1, "EARL on=%d ",lib_shared_region->earl_on);
-								verbose(1, "---------------------------------------------------");
+								verbose(1, "%30s: %u/%lu (%d)", "P_STATE/frequency (turbo)",
+                                        EAR_default_pstate, application.job.def_f, ear_use_turbo);
+								verbose(1, "%30s: %u/%d/%d", "Tasks/nodes/ppn", my_size, num_nodes, ppnode);
+								verbose(1, "%30s: %s (%d)", "Policy (learning)",
+                                        application.job.policy, ear_whole_app);
+								verbose(1, "%30s: %0.2lf/%0.2lf", "Policy threshold/Perf accuracy",
+                                        application.job.th, get_ear_performance_accuracy());
+								verbose(1, "%30s: %d/%d/%d", "DynAIS levels/window/AVX512",
+                                        get_ear_dynais_levels(), get_ear_dynais_window_size(),
+                                        dynais_build_type());
+								verbose(1, "%30s: %s", "VAR path", get_ear_tmp());
+								verbose(1, "%30s: %u", "EAR privileged user",
+                                        system_conf->user_type==AUTHORIZED);
+								verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
+								verbose(1, "----------------------------------------------------");
 				}
 }
 
