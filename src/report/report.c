@@ -101,7 +101,7 @@ static void static_load(const char *install_path, const char *_libs)
             debug("Loading '%s' plugin", path);
             if (state_fail(s = symplug_open_flags(path, (void **) &ops_aux, (cchar **) names, S_NUM, S_FLAGS))) {
                 // Loading /???/lib.so
-                debug("Loading '%s' plugin", path);
+                debug("Loading '%s' plugin", lib);
                 if (state_fail(s = symplug_open_flags(lib, (void **) &ops_aux, (cchar **) names, S_NUM, S_FLAGS))) {
                     error("Unable to load report plugin %s (%d)", state_msg, s);
                     goto next;

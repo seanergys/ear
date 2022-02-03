@@ -1287,24 +1287,24 @@ void ear_init()
 				if (masters_info.my_master_rank >= 0){
 								// Report API
 								char my_plug_path[512];
-								utils_create_report_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
+								utils_create_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
 
 								if (summary_pathname == NULL){
 												if (report_load(my_plug_path,system_conf->lib_info.plugins) != EAR_SUCCESS){
-																verbose_master(0,"Error in reports API load ");
+																verbose_master(1,"Error in reports API load ");
 												}
 								}else{
 												char plugins_ext[SZ_PATH_INCOMPLETE];
 												setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
 												xsnprintf(plugins_ext,sizeof(plugins_ext),"%s:csv_ts.so",system_conf->lib_info.plugins);
 												if (report_load(my_plug_path,plugins_ext) != EAR_SUCCESS){
-																verbose_master(0,"Error in reports API load ");
+																verbose_master(1,"Error in reports API load ");
 												}
 								}
 								/* local_rank, global_rank,  master_rank */
 								report_create_id(&rep_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
 								if (report_init(&rep_id,&cconf) != EAR_SUCCESS){
-												verbose_master(0,"Error in reports API initialization ");
+												verbose_master(1,"Error in reports API initialization ");
 								}
 				}
 

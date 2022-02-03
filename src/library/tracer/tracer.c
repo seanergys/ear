@@ -27,9 +27,10 @@
 #include <common/sizes.h>
 #include <common/config.h>
 #include <common/config/config_env.h>
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <library/tracer/tracer.h>
+#include <library/common/utils.h>
 #include <common/system/symplug.h>
 #include <common/types/signature.h>
 
@@ -78,9 +79,9 @@ const char     *trace_syms_nam[] = {
   "traces_earl_mode_periodic",
   "traces_reconfiguration",
   "traces_are_on",
-	"traces_mpi_init",
-	"traces_mpi_call",
-	"traces_mpi_end"
+  "traces_mpi_init",
+  "traces_mpi_call",
+  "traces_mpi_end"
 };
 
 
@@ -96,38 +97,75 @@ const char     *trace_syms_nam[] = {
 
 void traces_init(settings_conf_t *conf,char *app,int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
-  int ret;
-	char *traces_plugin;
-	traces_plugin=getenv(SCHED_EAR_TRACE_PLUGIN);
-	if (traces_plugin==NULL) trace_plugin=0;
-	else trace_plugin=1;
+    int ret;
+    
+    char *traces_plugin;
+    traces_plugin=getenv(SCHED_EAR_TRACE_PLUGIN);
 
-	if (trace_plugin==0){ 
-		debug("traces OFF");
-		return;
-	}
+    if (traces_plugin==NULL) {
+        trace_plugin=0;
+        debug("traces OFF");
+        return;
+    }
+    trace_plugin=1;
 
-  debug("traces library");
-  if (conf == NULL) {
-		debug("NULL configuration in traces_init");
-		return;
-  }
-	//debug("loading %s",traces_plugin);
-	verbose(1,"loading %s",traces_plugin);
+    debug("traces library");
 
-  ret = symplug_open(traces_plugin, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n);
-  if (ret!=EAR_SUCCESS){ 
-		debug("symplug_open() in library/traces returned %d (%s)", ret, intern_error_str);
-		trace_plugin=0;
-		return;
-	}
-	if (trace_syms_fun.traces_init!=NULL){
-		debug("trace_syms_fun.traces_init");
-		trace_syms_fun.traces_init(app,global_rank,local_rank,nodes,mpis,ppn);
-	}
-	return;
-	
+    if (conf == NULL) {
+        debug("NULL configuration in traces_init");
+        return;
+    }
 
+    char my_plug_path[SZ_PATH];
+    char tracer_path[SZ_PATH];
+    state_t st;
+
+    /* my_plug_path := [EAR_INSTALL_PATH/lib/plugins | HACK_EARL_INSTALL_PATH/plugins] */
+    st = utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
+            getenv(HACK_EARL_INSTALL_PATH), conf->user_type);
+
+    // Using current directory if there's no plugins path
+    if (state_fail(st)) {
+        sprintf(my_plug_path, ".");
+    }
+
+    // Loading install/lib/plugins/tracer/tracer.so OR ./tracer/tracer.so
+    sprintf(tracer_path, "%s/tracer/%s", my_plug_path, traces_plugin);
+    verbose(2, "Trying to load '%s' plugin", tracer_path);
+
+    if (state_fail(st = symplug_open(tracer_path, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n))) {
+        // Loading ./tracer.so
+        sprintf(tracer_path, "./%s", traces_plugin);
+        verbose(2, "Trying to load '%s' plugin", tracer_path);
+
+        if (state_fail(st = symplug_open(tracer_path, (void **) &trace_syms_fun,
+                        trace_syms_nam, trace_syms_n))) {
+            verbose(2, "Trying to load '%s' plugin", traces_plugin);
+
+            if (state_fail(st = symplug_open(traces_plugin, (void **) &trace_syms_fun,
+                            trace_syms_nam, trace_syms_n))) {
+                verbose(2, "%sERROR%s Unable to load tracer plugin %s (%d)", COL_RED, COL_CLR, state_msg, st);
+                trace_plugin = 0;
+                return;
+            }
+        }
+    }
+    verbose(1, "%sTracer plugin '%s' loaded%s", COL_GRE, traces_plugin, COL_CLR);
+
+
+    /*
+    ret = symplug_open(traces_plugin, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n);
+    if (ret!=EAR_SUCCESS){ 
+        debug("symplug_open() in library/traces returned %d (%s)", ret, intern_error_str);
+        trace_plugin=0;
+        return;
+    }
+    */
+    if (trace_syms_fun.traces_init!=NULL){
+        debug("trace_syms_fun.traces_init");
+        trace_syms_fun.traces_init(app,global_rank,local_rank,nodes,mpis,ppn);
+    }
+    return;
 }
 
 // ear_api.c

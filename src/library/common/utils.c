@@ -18,12 +18,14 @@
 #include <library/common/utils.h>
 #include <common/types/configuration/cluster_conf.h>
 
-state_t utils_create_report_plugin_path(char *result_path, char *install_path, char *custom_path, int authorized_user){
-    if (custom_path != NULL && authorized_user == AUTHORIZED){
-       sprintf(result_path, "%s/plugins", custom_path);
-    }else{
+state_t utils_create_plugin_path(char *result_path, char *install_path, char *custom_path, int authorized_user){
+    int ret;
+    if (custom_path != NULL && authorized_user == AUTHORIZED) {
+       ret = sprintf(result_path, "%s/plugins", custom_path);
+    }else {
         if (install_path == NULL) return EAR_ERROR;
-        sprintf(result_path, "%s", install_path);
+        ret = sprintf(result_path, "%s", install_path);
     }
-    return EAR_SUCCESS;
+    state_t st = ret > 0 ? EAR_SUCCESS : EAR_ERROR;
+    return st;
 }
