@@ -1360,6 +1360,10 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
     } 
     verbose_master(2," ");
   }
+  for (uint i = 0; i < FLOPS_EVENTS; i++){
+  	ns->FLOPS[i] = FLOPS[i];
+  }    
+
   ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
 	uint tcpus     = 0;
 	ns->DC_power   = 0;
