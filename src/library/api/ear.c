@@ -1064,6 +1064,7 @@ void ear_init()
 				debug("Job time initialized");
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
+				#if 0
 				if (!my_id && eard_ok){ //only the master will connect with eard
 								verbose_master(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
 								if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
@@ -1075,6 +1076,24 @@ void ear_init()
 												notify_eard_connection(0);
 								}
 				}
+				#endif
+				if (eard_ok){ //only the master will connect with eard
+								char *col;
+                if (!my_id) col = COL_BLU; 
+								else        col = COL_GRE;
+								verbose(2, "%sProcess %d Connecting with EAR Daemon (EARD) %d node %s%s", col,my_node_id, ear_my_rank,node_name,COL_CLR);
+                if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
+                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+												if (!my_id){
+                        notify_eard_connection(1);
+                        mark_as_eard_connected(my_job_id,my_step_id,getpid());
+												}
+                }else{   
+                        verbose(2, "%sRank %d NOT connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                        eard_ok=0;
+                        if (!my_id) notify_eard_connection(0);
+                }
+        }
 				/* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 				debug("End EARD connection section");
@@ -1480,9 +1499,15 @@ void ear_finalize(int exit_status)
 
 
 				// C'est fini
+				#if 0
 				if (!my_id){ 
 								debug("Disconnecting");
 								if (eards_connected()) eards_disconnect();
+				}
+				#endif
+				if (eards_connected()){ 
+					verbose(2, "Process %d disconnecting from EARD", my_node_id);
+					eards_disconnect();
 				}
 }
 

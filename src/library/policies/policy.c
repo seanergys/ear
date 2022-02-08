@@ -253,6 +253,8 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 
     //if (*freq_set != *(c->ear_frequency) || dom->cpu == POL_GRAIN_CORE)
     print_freq_per_core();
+
+		/* POWER_CAP_UNLIMITED ¡is equal to 1, so the CPU freq is set if powercap is 0 (disabled) or unlimited (1) */
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS) && (system_conf->pc_opt.current_pc <= POWER_CAP_UNLIMITED)){
         *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
     }
