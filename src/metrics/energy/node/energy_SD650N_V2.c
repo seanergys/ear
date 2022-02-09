@@ -534,8 +534,8 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
 		  gpu_data_diff(pend->gpus_energy, pinit->gpus_energy, gpu_diff);
 			for (uint i = 0; i < gpu_num; i++) total_gpu += (unsigned long)gpu_diff[i].energy_j;
 	}
-	verbose(VGPU, "Energy node %lu GPU energy %lu", total, total_gpu);
-	*e = total + total_gpu;
+	verbose(VGPU, "Energy node %lu GPU energy %lu", total, total_gpu*1000);
+	*e = total + total_gpu*1000;
 	return EAR_SUCCESS;
 }
 
