@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-
+#define SINGLE_CONNECTION 1
 #include <sched.h>
 #include <pthread.h>
 
@@ -1064,7 +1064,7 @@ void ear_init()
 				debug("Job time initialized");
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
-				#if 0
+				#if SINGLE_CONNECTION
 				if (!my_id && eard_ok){ //only the master will connect with eard
 								verbose_master(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
 								if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
@@ -1076,7 +1076,7 @@ void ear_init()
 												notify_eard_connection(0);
 								}
 				}
-				#endif
+				#else
 				if (eard_ok){ //only the master will connect with eard
 								char *col;
                 if (!my_id) col = COL_BLU; 
@@ -1094,6 +1094,7 @@ void ear_init()
                         if (!my_id) notify_eard_connection(0);
                 }
         }
+				#endif
 				/* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 				debug("End EARD connection section");
@@ -1499,16 +1500,17 @@ void ear_finalize(int exit_status)
 
 
 				// C'est fini
-				#if 0
+				#if SINGLE_CONNECTION
 				if (!my_id){ 
 								debug("Disconnecting");
 								if (eards_connected()) eards_disconnect();
 				}
-				#endif
+				#else
 				if (eards_connected()){ 
 					verbose(2, "Process %d disconnecting from EARD", my_node_id);
 					eards_disconnect();
 				}
+				#endif
 }
 
 #if MPI

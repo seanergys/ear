@@ -959,6 +959,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 																debug("Setting num_gpu to 0 because model is DUMMY");
 																metrics->gpu_sig.num_gpus = 0;
 												}
+												verbose_master(2, "We have %d GPUS ", metrics->gpu_sig.num_gpus);
 												for (p=0;p<metrics->gpu_sig.num_gpus;p++){
 																metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
 																metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;

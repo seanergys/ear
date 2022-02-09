@@ -13,6 +13,7 @@ ener_OBJS = \
     energy_dcmi.o \
     energy_sd650.o \
 		energy_inm_power.o \
+    energy_SD650N_V2.o \
 		energy_dummy.o 
 
 ifdef FREEIPMI_BASE
@@ -26,6 +27,7 @@ ener_BINS = \
     energy_dcmi.so \
     energy_sd650.so \
 		energy_inm_power.so \
+    energy_SD650N_V2.so \
 		energy_dummy.so 
 
 ifdef FREEIPMI_BASE

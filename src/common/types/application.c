@@ -23,13 +23,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/system/file.h>
 #include <common/states.h>
-// #define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/types/application.h>
+#include <common/output/debug.h>
 
 void init_application(application_t *app)
 {
@@ -152,6 +153,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
                            "DP_128;DP_256;DP_512";
         xstrncat(HEADER, ext_header, strlen(ext_header));
     }
+		debug("Creating header with %d GPUS", num_gpus);
 #if USE_GPUS
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
