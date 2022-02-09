@@ -20,10 +20,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <metrics/flops/flops.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
+#include <common/output/debug.h>
 
 void signature_copy(signature_t *destiny, signature_t *source)
 {
@@ -52,6 +55,8 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
             dprintf(fd, ";%llu", sig->FLOPS[i]);
         }
     }
+
+		debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS
     int num_gpu = sig->gpu_sig.num_gpus;

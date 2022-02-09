@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -260,14 +260,17 @@ int eards_connect(application_t *my_app, ulong lid)
   /* Private pipes are created before the connection request is sent */
 	//verbose(2,"Creating %s",ear_commack);
   if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
-     error("Error when creating ear communicator for ack %s", strerror(errno));
+     return_xmsg(EAR_ERROR, "Error when creating ear communicator for ack %s", strerror(errno));
   }
   chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	//verbose(2,"Creating %s",ear_commreq);
   if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
-     error("Error when creating ear communicator for requests %s", strerror(errno));
+     return_xmsg(EAR_ERROR, "Error when creating ear communicator for requests %s", strerror(errno));
   }
   chmod(ear_commreq, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	debug("Communication pipes create");
+
   /* Pipes are created */
   /* We give some opportunities to connect */
   do{
@@ -285,8 +288,7 @@ int eards_connect(application_t *my_app, ulong lid)
   #if USE_NON_BLOCKING_IO
   ret1=fcntl(ear_fd_req_global, F_SETFL, O_NONBLOCK);
   if (ret1<0){
-        error("Setting O_NONBLOCK for eard global req communicator %s",strerror(errno));
-        return EAR_ERROR;
+       return_xmsg(EAR_ERROR, "Setting O_NONBLOCK for eard global req communicator %s",strerror(errno));
   }
   #endif
 
@@ -300,7 +302,7 @@ int eards_connect(application_t *my_app, ulong lid)
           "writting req_service in ear_daemon_client_connect"))
       {
         ear_fd_req_global = -1;
-        return EAR_ERROR;
+        return_xmsg(EAR_ERROR, "Error sending connection request");
       }
     }
     /* At this point we have sent the data for connecting with EARD */
@@ -312,13 +314,12 @@ int eards_connect(application_t *my_app, ulong lid)
         error("Error opening local ack communicator with EARD (%s)",strerror(errno));
         close(ear_fd_req_global);
         ear_fd_req_global = -1;
-        return EAR_ERROR;
+        return EAR_ERROR; 
       }
       #if USE_NON_BLOCKING_IO
       ret1 = fcntl(ear_fd_ack, F_SETFL, O_NONBLOCK);
       if (ret1<0){
-        error("Setting O_NONBLOCK for eard ack communicator %s",strerror(errno));
-        return EAR_ERROR;
+        return_xmsg(EAR_ERROR,"Setting O_NONBLOCK for eard ack communicator %s",strerror(errno));
       }
       #endif
 

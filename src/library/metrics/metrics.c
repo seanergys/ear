@@ -959,6 +959,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 																debug("Setting num_gpu to 0 because model is DUMMY");
 																metrics->gpu_sig.num_gpus = 0;
 												}
+												verbose_master(2, "We have %d GPUS ", metrics->gpu_sig.num_gpus);
 												for (p=0;p<metrics->gpu_sig.num_gpus;p++){
 																metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
 																metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;
@@ -1360,6 +1361,10 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
     } 
     verbose_master(2," ");
   }
+  for (uint i = 0; i < FLOPS_EVENTS; i++){
+  	ns->FLOPS[i] = FLOPS[i];
+  }    
+
   ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
 	uint tcpus     = 0;
 	ns->DC_power   = 0;

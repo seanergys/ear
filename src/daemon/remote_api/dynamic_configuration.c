@@ -446,11 +446,11 @@ void dyncon_get_app_status(int fd, request_t *command)
     send_answer(fd, &ack); //send ack before propagating
     int local_status;
     local_status = powermon_get_num_applications(command->req == EAR_RC_APP_MASTER_STATUS);
-    verbose(1,"We have %d local apps in app_status",local_status);
+    verbose(VRAPI,"We have %d local apps in app_status",local_status);
 
     int num_status = propagate_app_status(command, my_cluster_conf.eard.port, &status, local_status);
     unsigned long return_status = num_status;
-    verbose(1,"return_app_tatus %lu status=%p",return_status,status);
+    verbose(VRAPI,"return_app_tatus %lu status=%p",return_status,status);
     if (num_status < 1) {
         error("Panic propagate_app_status returns less than 1 status");
         return_status = 0;
@@ -462,7 +462,7 @@ void dyncon_get_app_status(int fd, request_t *command)
     //if no job is present on the current node or we requested the master node and this one isn't, we free its data
 		if (status[num_status - local_status].job_id == 0 )
     {
-        verbose(1,"Only default context created, not app_status returned, removing %d items", local_status);
+        verbose(VRAPI,"Only default context created, not app_status returned, removing %d items", local_status);
         num_status -= local_status;
         status = realloc(status, sizeof(app_status_t)*num_status);
     }
@@ -475,7 +475,7 @@ void dyncon_get_app_status(int fd, request_t *command)
 		#endif
 
     send_data(fd, sizeof(app_status_t) * num_status, (char *)status, EAR_TYPE_APP_STATUS);
-    verbose(1,"Returning from dyncon_get_app_status %d app_status sent",num_status);
+    verbose(VRAPI,"Returning from dyncon_get_app_status %d app_status sent",num_status);
 
     free(status);
     debug("app_status released");
@@ -524,28 +524,28 @@ void dyncon_power_management(int fd, request_t *command)
             event = RED_POWERCAP;
             value = command->my_req.pc.limit;
             if (command->my_req.pc.type == ABSOLUTE){
-                verbose(1,"Reduce powercap default in %lu watts",command->my_req.pc.limit);
+                verbose(VRAPI,"Reduce powercap default in %lu watts",command->my_req.pc.limit);
                 powercap_reduce_def_power(command->my_req.pc.limit);
             }
             if (command->my_req.pc.type == RELATIVE){
-                verbose(0,"Error, reduce relative powercap not implemented");
+                verbose(VRAPI,"Error, reduce relative powercap not implemented");
             }
             break;	
         case EAR_RC_SET_POWER:
             event = SET_POWERCAP;
             value = command->my_req.pc.limit;
-            verbose(1,"We must set the power to %lu watts",command->my_req.pc.limit);
+            verbose(VRAPI,"We must set the power to %lu watts",command->my_req.pc.limit);
             powercap_set_powercap(command->my_req.pc.limit);
             break;
         case EAR_RC_INC_POWER:
             event = INC_POWERCAP;
             value = command->my_req.pc.limit;
             if (command->my_req.pc.type == ABSOLUTE){
-                verbose(1,"Increase powercap default in %lu watts",command->my_req.pc.limit);
+                verbose(VRAPI,"Increase powercap default in %lu watts",command->my_req.pc.limit);
                 powercap_increase_def_power(command->my_req.pc.limit);
             }
             if (command->my_req.pc.type == RELATIVE){
-                verbose(0,"Error, increase relative powercap not implemented");
+                verbose(VRAPI,"Error, increase relative powercap not implemented");
             }
             break;	
         case EAR_RC_DEF_POWERCAP:
@@ -554,7 +554,7 @@ void dyncon_power_management(int fd, request_t *command)
             value = 0;
             break;
         case EAR_RC_SET_POWERCAP_OPT:
-            verbose(1,"Set powercap options received");
+            verbose(VRAPI,"Set powercap options received");
             id = dyncon_filter_opt(&command->my_req.pc_opt);
             debug("returned filter with id %d", id);
             powercap_set_opt(&command->my_req.pc_opt, id);
@@ -563,7 +563,7 @@ void dyncon_power_management(int fd, request_t *command)
             event = -1;
             break;
         default:
-            verbose(1,"power command received not supported");
+            verbose(VRAPI,"power command received not supported");
             event = -1;
             break;
     }
@@ -582,12 +582,12 @@ void update_current_settings(policy_conf_t *cpolicy_settings)
       dyn_conf = current_ear_app[i]->settings;
       resched_conf = current_ear_app[i]->resched;
       if (dyn_conf->policy == cpolicy_settings->policy){
-        verbose(1,"current policy options: def freq %lu setting[0]=%.2lf def_pstate %u",dyn_conf->def_freq,dyn_conf->settings[0],dyn_conf->def_p_state);
+        verbose(VRAPI,"current policy options: def freq %lu setting[0]=%.2lf def_pstate %u",dyn_conf->def_freq,dyn_conf->settings[0],dyn_conf->def_p_state);
         dyn_conf->def_freq = frequency_pstate_to_freq(cpolicy_settings->p_state);
         memcpy(dyn_conf->settings,cpolicy_settings->settings,sizeof(double)*MAX_POLICY_SETTINGS);
         dyn_conf->def_p_state = cpolicy_settings->p_state;
         resched_conf->force_rescheduling = 1;
-        verbose(1,"new policy options: def freq %lu setting[0]=%.2lf def_pstate %u",dyn_conf->def_freq,dyn_conf->settings[0],dyn_conf->def_p_state);
+        verbose(VRAPI,"new policy options: def freq %lu setting[0]=%.2lf def_pstate %u",dyn_conf->def_freq,dyn_conf->settings[0],dyn_conf->def_p_state);
       }
     }
   }
@@ -716,7 +716,7 @@ void dyncon_set_risk(int fd, request_t *command)
   mfreq = c_max;
   for (i=0;i<my_node_conf->num_policies;i++){
     if (polsyms_fun[i].set_risk != NULL){
-      verbose(1,"Setting risk level for %s to %lu",my_node_conf->policies[i].name,(unsigned long)command->my_req.risk.level);
+      verbose(VRAPI,"Setting risk level for %s to %lu",my_node_conf->policies[i].name,(unsigned long)command->my_req.risk.level);
       polsyms_fun[i].set_risk(&my_original_node_conf.policies[i],&my_node_conf->policies[i],command->my_req.risk.level,command->my_req.risk.target,mfreq,&new_max_freq,f_list,num_f);
     }
     for (i=0;i<=max_context_created;i++){
@@ -724,7 +724,7 @@ void dyncon_set_risk(int fd, request_t *command)
         dyn_conf = current_ear_app[i]->settings;
         resched_conf = current_ear_app[i]->resched;
         if (dyn_conf->policy == i){
-          verbose(1,"Current policy for job %lu/%lu is %d", current_ear_app[i]->app.job.id,current_ear_app[i]->app.job.step_id,i);
+          verbose(VRAPI,"Current policy for job %lu/%lu is %d", current_ear_app[i]->app.job.id,current_ear_app[i]->app.job.step_id,i);
           update_current_settings(&my_node_conf->policies[i]);
           if (new_max_freq != dyn_conf->max_freq){
             dyn_conf->max_freq = new_max_freq;
@@ -737,7 +737,7 @@ void dyncon_set_risk(int fd, request_t *command)
   }
   my_node_conf->max_pstate = frequency_freq_to_pstate(node_max);
   powermon_new_max_freq(node_max);
-  verbose(1,"New max frequency is %lu pstate=%lu ",node_max,my_node_conf->max_pstate);
+  verbose(VRAPI,"New max frequency is %lu pstate=%lu ",node_max,my_node_conf->max_pstate);
 
 
 }
@@ -898,7 +898,7 @@ state_t process_remote_requests(int clientfd) {
             dyncon_release_idle_power(clientfd, &command);
             return EAR_SUCCESS;
         case EAR_RC_SET_RISK:
-            verbose(1,"set risk command received");
+            verbose(VRAPI,"set risk command received");
             dyncon_set_risk(clientfd, &command);
             break;
         case EAR_RC_GET_POWER:
@@ -927,7 +927,7 @@ void policy_load()
     }
     for (i=0; i<my_node_conf->num_policies;i++){
         sprintf(basic_path,"%s/eard_policies/%s_eard.so",my_cluster_conf.install.dir_plug,my_node_conf->policies[i].name);
-        verbose(1,"Loading functions for policy %s",basic_path);
+        verbose(VRAPI,"Loading functions for policy %s",basic_path);
         symplug_open(basic_path, (void **)&polsyms_fun[i], polsyms_nam, polsyms_n);
     }
 }
@@ -965,10 +965,10 @@ void *eard_dynamic_configuration(void *tmp)
     f_list = frequency_get_freq_rank_list();
     print_f_list(num_f, f_list);
     verbose(VRAPI + 2, "We have %u valid p_states", num_f);
-    verbose(0, "Init for ips");
+    verbose(VRAPI, "Init for ips");
     node_found = init_ips(&my_cluster_conf);
-    if (node_found == EAR_ERROR) verbose(0, "Node not found in configuration file");
-    verbose(0,"Init ips ready");
+    if (node_found == EAR_ERROR) verbose(VRAPI, "Node not found in configuration file");
+    verbose(VRAPI,"Init ips ready");
 
 
     verbose(VRAPI, "Creating socket for remote commands");

@@ -1851,13 +1851,15 @@ int powermon_get_num_applications(int only_master)
 	return total;
 }
 
-
+#define DEBUG_APP_STATUS 1
 void powermon_get_app_status(app_status_t *my_status,  int num_apps, int only_master)
 {
 	time_t consumed_time;
 	int i,cs = 0;
+  verbose(DEBUG_APP_STATUS, "powermon_get_app_status num_apps %d only_master %d max_context_created %d", num_apps, only_master, max_context_created);
 	/*if (max_context_created == 0 || (only_master && (num_apps == 1))){*/
 	if (max_context_created == 0 || (only_master && (num_apps == 0))){
+		verbose(DEBUG_APP_STATUS, "No applications found");
 		my_status[cs].job_id = 0;
 		signature_init(&my_status[cs].signature);
 		my_status[cs].signature.DC_power = (ulong) last_power_reported;
@@ -1865,16 +1867,17 @@ void powermon_get_app_status(app_status_t *my_status,  int num_apps, int only_ma
 		return;
 	}
 	for (i=1;(i<= max_context_created) && (cs<num_apps);i ++){
+		verbose(DEBUG_APP_STATUS, "Looking for app %d", i);
 		if (current_ear_app[i] != NULL){
 			if (!only_master || (only_master && is_app_master(current_ear_app[i]->app_info))){
-				debug("Adding app %d to the app status %lu/%lu MR %d", i,current_ear_app[i]->app.job.id,current_ear_app[i]->app.job.step_id,current_ear_app[i]->app_info->master_rank);
+				verbose(DEBUG_APP_STATUS, "Adding app %d to the app status %lu/%lu MR %d", i,current_ear_app[i]->app.job.id,current_ear_app[i]->app.job.step_id,current_ear_app[i]->app_info->master_rank);
 				my_status[cs].job_id = current_ear_app[i]->app.job.id;
 				my_status[cs].step_id = current_ear_app[i]->app.job.step_id;
 				if (!(is_null(&current_ear_app[i]->last_loop) == 1)){
 					signature_copy(&my_status[cs].signature,&current_ear_app[i]->last_loop.signature);
-					debug("App with signature");
+					verbose(DEBUG_APP_STATUS, "App with signature");
 				}else{
-					debug("App without signature");
+					verbose(DEBUG_APP_STATUS, "App without signature");
 					signature_init(&my_status[cs].signature);
 					my_status[cs].signature.DC_power = (ulong) last_power_reported;
 					my_status[cs].signature.avg_f = (ulong)(last_nm.avg_cpu_freq);

@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -124,8 +124,9 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
       uint num_gpus = 0;
 #if USE_GPUS
       for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, apps[l].signature.gpu_sig.num_gpus);
+			debug("Using %d GPUS", num_gpus);
 #endif
-      create_app_header(extra_header, csv_log_file, 1, num_gpus);
+      create_app_header(extra_header, csv_log_file, num_gpus, 1);
       file_app_created = 1;
 			fd_app = open(csv_log_file, O_WRONLY|O_APPEND);
     }
@@ -153,10 +154,11 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 
 		debug("header created %u , %s is regular %d", file_loop_created, csv_loop_log_file, file_is_regular(csv_loop_log_file));
     if (!file_loop_created && !file_is_regular(csv_loop_log_file)){
-			debug("heroes creating loop header");
+			debug("heroes creating loop header: GPUS on=%d", USE_GPUS);
     	uint num_gpus = 0;
 #if USE_GPUS
     	for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, loops[l].signature.gpu_sig.num_gpus);
+			debug("Using %d GPUS", num_gpus);
 #endif
       create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus);
 			file_loop_created = 1;
