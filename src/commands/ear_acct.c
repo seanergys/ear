@@ -249,7 +249,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			if (strchr(apps[i].job.app_id, '/') != NULL)
 				strcpy(apps[i].job.app_id, strrchr(apps[i].job.app_id, '/')+1);
 
-		if (apps[i].is_mpi && !all_mpi)
+		if (apps[i].is_mpi && !all_mpi && (apps[i].signature.avg_f > 0))
 		{
 			avg_f = (double) apps[i].signature.avg_f/1000000;
 			imc = (double) apps[i].signature.avg_imc_f/1000000;
@@ -634,7 +634,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 				get_short_policy(curr_policy, apps[i].job.policy, &my_conf);
 				current_job_id = apps[i].job.id;
 				current_step_id = apps[i].job.step_id;
-				current_is_mpi = apps[i].is_mpi;
+				current_is_mpi = apps[i].is_mpi && (apps[i].signature.avg_f > 0);
 				current_apps = 0;
 				avg_frequency = 0;
 				avg_time = 0;
@@ -670,7 +670,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 			apps[i-1].job.app_id[16] = '\0';
 		}
 
-		if (apps[i-1].is_mpi)
+		if (apps[i-1].is_mpi && (apps[i-1].signature.avg_f > 0))
 		{
 			gflops_watt /= avg_power;
 			avg_frequency /= current_apps;

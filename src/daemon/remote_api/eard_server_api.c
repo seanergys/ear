@@ -88,7 +88,7 @@ int init_ips(cluster_conf_t *my_conf)
         return EAR_ERROR;
     }
     total_ips = ret;
-    verbose(0,"Init_ips_ready=1");	
+    debug("Init_ips_ready=1");	
     init_ips_ready=1;	
     return EAR_SUCCESS;
   
