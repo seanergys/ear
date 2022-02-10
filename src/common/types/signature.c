@@ -38,7 +38,7 @@ void signature_init(signature_t *sig)
     memset(sig, 0, sizeof(signature_t));
 }
 
-void signature_print_fd(int fd, signature_t *sig, char is_extended)
+void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_column, char sep)
 {
     int i;
 
@@ -59,11 +59,26 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
 		debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS
+	
     int num_gpu = sig->gpu_sig.num_gpus;
-    for (int j = 0; j < num_gpu; ++j) {
+		if (single_column && num_gpu){
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lf%c", sig->gpu_sig.gpu_data[j].GPU_power, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_freq, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_freq, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_util, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_util, sep);
+			
+		}else{
+    	for (int j = 0; j < num_gpu; ++j) {
         dprintf(fd, ";%lf;%lu;%lu;%lu;%lu", sig->gpu_sig.gpu_data[j].GPU_power, sig->gpu_sig.gpu_data[j].GPU_freq, \
                 sig->gpu_sig.gpu_data[j].GPU_mem_freq, sig->gpu_sig.gpu_data[j].GPU_util, sig->gpu_sig.gpu_data[j].GPU_mem_util);
-    }
+    	}
+		}
 #endif
 }
 

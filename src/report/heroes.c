@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -64,6 +64,7 @@ static uint must_report;
 
 
 static char * extra_header="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;";
+static char * extra_header_app="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;MAX_POWER_W;";
 
 static char *heroes_wrf_id = NULL;
 static char *heroes_her_id = NULL;
@@ -83,9 +84,15 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     csv_log_file_env = getenv(VAR_OPT_USDB);
     /* Loop filename is automatically generated */
     if (csv_log_file_env != NULL){
-        xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes.time",csv_log_file_env,nodename);
+				if (file_is_directory(csv_log_file_env) || (csv_log_file_env[strlen(csv_log_file_env) - 1] == '/')){ 
+					debug("%s is directory", csv_log_file_env);
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/%s.heroes",csv_log_file_env,nodename);
+				} else{ 
+					debug("%s is NOT a directory", csv_log_file_env);
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
+				}
     }else{
-        xsnprintf(csv_log_file,sizeof(csv_log_file),"ear_app_log.%s.heroes.time",nodename);
+        xsnprintf(csv_log_file,sizeof(csv_log_file),"ear_app_log.%s.heroes",nodename);
     }
     xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
     xstrncat(csv_log_file,".csv",sizeof(csv_log_file));
@@ -116,6 +123,7 @@ static int fd_app = -1;
 state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
     int i;
+		char *dir;
     debug("heroes report_applications");
 		if (!must_report) return EAR_SUCCESS;
     if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
@@ -126,7 +134,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
       for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, apps[l].signature.gpu_sig.num_gpus);
 			debug("Using %d GPUS", num_gpus);
 #endif
-      create_app_header(extra_header, csv_log_file, num_gpus, 1);
+      create_app_header(extra_header_app, csv_log_file, num_gpus, 1, 1);
       file_app_created = 1;
 			fd_app = open(csv_log_file, O_WRONLY|O_APPEND);
     }
@@ -135,9 +143,9 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 
     for (i=0;i<count;i++){
         if (fd_app >= 0){
-          dprintf(fd_app, "%s", heroes_ids);
+          dprintf(fd_app, "%s%.2lf;", heroes_ids,apps[i].power_sig.max_DC_power);
         }
-        append_application_text_file(csv_log_file,&apps[i],1, 0);
+        append_application_text_file(csv_log_file,&apps[i],1, 0, 1);
     }
     return EAR_SUCCESS;
 }
@@ -160,7 +168,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
     	for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, loops[l].signature.gpu_sig.num_gpus);
 			debug("Using %d GPUS", num_gpus);
 #endif
-      create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus);
+      create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus, 1);
 			file_loop_created = 1;
 			fd_loops = open(csv_loop_log_file, O_WRONLY|O_APPEND);
     }
@@ -173,7 +181,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 				if (fd_loops >= 0){
 					dprintf(fd_loops, "%s", heroes_ids);
 				}
-        append_loop_text_file_no_job_with_ts(csv_loop_log_file,&loops[i], currtime, 0);
+        append_loop_text_file_no_job_with_ts(csv_loop_log_file,&loops[i], currtime, 0, 1, ',');
     }
     return EAR_SUCCESS;
 }

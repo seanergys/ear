@@ -170,6 +170,7 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
     my_loop->step_id 					= job->step_id;
     if (masters_info.my_master_rank>=0){
         clean_db_loop(my_loop, system_conf->max_sig_power);
+				application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
         if (report_loops(&rep_id,my_loop,1) != EAR_SUCCESS){
             verbose_master(0,"Error reporting Loop");
         }
