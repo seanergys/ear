@@ -118,11 +118,11 @@ void print_loop_fd(int fd, loop_t *loop)
 {
     dprintf(fd,"%lu;%lu;", loop->jid, loop->step_id);
     print_loop_id_fd(fd, &loop->id);
-    signature_print_fd(fd, &loop->signature, 1);
+    signature_print_fd(fd, &loop->signature, 1, 0 , ' ');
     dprintf(fd, "%lu\n", loop->total_iterations);
 }
 
-int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header)
+int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header, int single_column, char sep)
 {
 #if DB_FILES
     if (path == NULL) {
@@ -172,7 +172,7 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header)
     assert(loop->node_id!=NULL);
     dprintf(fd, "%s;", loop->node_id);
     print_job_fd(fd, job);
-    signature_print_fd(fd, &loop->signature,1);
+    signature_print_fd(fd, &loop->signature,1, single_column, sep);
     print_loop_id_fd(fd, &loop->id);
     dprintf(fd, "%lu\n", loop->total_iterations);
 
@@ -184,19 +184,19 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header)
     return EAR_SUCCESS;
 }
 
-int create_loop_header(char * header, char *path, int ts, uint num_gpus)
+int create_loop_header(char * header, char *path, int ts, uint num_gpus, int single_column)
 {
-    char *HEADER_NOTS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
-                         "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
-                         "L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;DP_128;DP_256;" \
+    char *HEADER_NOTS = "JOBID;STEPID;NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;" \
+                         "ITER_TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
+                         "L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;" \
                          "DP_512";
 
 #if USE_GPUS
     char gpu_header[128];
-    char *HEADER_GPU_SIG = ";GPOWER%d;GFREQ%d;GMEMFREQ%d;GUTIL%d;GMEMUTIL%d";
+    char *HEADER_GPU_SIG = ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTI";
 #endif
 
-    char *HEADER_LOOP = ";FIRST_EVENT;LEVEL;SIZE;ITERATIONS";
+    char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;ITERATIONS";
     char HEADER[1024] = "";
 
 		if (file_is_regular(path)) return EAR_SUCCESS;
@@ -204,6 +204,7 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus)
 		if (header != NULL) strncpy(HEADER, header, sizeof(HEADER));
     strncat(HEADER,HEADER_NOTS,sizeof(HEADER));
 #if USE_GPUS
+		if (single_column) num_gpus = ear_min(1,num_gpus);
     for (uint j = 0; j < num_gpus; ++j) {
         sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j);
         strncat(HEADER,gpu_header,strlen(gpu_header));
@@ -222,17 +223,17 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus)
 	
 }
 
-static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts,ullong currtime, int add_header);
-int append_loop_text_file_no_job(char *path, loop_t *loop, int add_header)
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts,ullong currtime, int add_header, int single_column, char sep);
+int append_loop_text_file_no_job(char *path, loop_t *loop, int add_header, int single_column, char sep)
 {
-    return append_loop_text_file_no_job_int(path,loop,0,0, add_header);
+    return append_loop_text_file_no_job_int(path,loop,0,0, add_header, single_column, sep);
 }
 
-int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime, int add_header)
+int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime, int add_header, int single_column, char sep)
 {
-    return append_loop_text_file_no_job_int(path,loop,1, currtime, add_header);
+    return append_loop_text_file_no_job_int(path,loop,1, currtime, add_header, single_column, sep);
 }
-static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime, int add_header)
+static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ullong currtime, int add_header, int single_column, char sep)
 {
     if (path == NULL) {
         return EAR_ERROR;
@@ -241,8 +242,9 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 		uint num_gpus = 0;
 #if USE_GPUS
 		num_gpus = loop->signature.gpu_sig.num_gpus;
+		if (single_column) num_gpus = ear_min(num_gpus,1);
 #endif
-		if (add_header) 	create_loop_header(NULL, path, ts, num_gpus);
+		if (add_header) 	create_loop_header(NULL, path, ts, num_gpus, single_column);
 #if 0
     char *HEADER_NOTS = "JID;STEPID;NODENAME;AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;" \
                          "TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
@@ -303,7 +305,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
     assert(loop->node_id!=NULL);
     dprintf(fd,"%lu;%lu;",loop->jid,loop->step_id);
     dprintf(fd, "%s;", loop->node_id);
-    signature_print_fd(fd, &loop->signature,1);
+    signature_print_fd(fd, &loop->signature,1, single_column, sep);
     print_loop_id_fd(fd, &loop->id);
     if (ts){
         dprintf(fd, "%lu;%llu", loop->total_iterations, currtime);

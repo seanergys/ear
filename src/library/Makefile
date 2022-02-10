@@ -1,4 +1,4 @@
-CFLAGS  = -fPIC -O2 -I$(SRCDIR)  -Wall -g -DEARL_LIGHT=0
+CFLAGS  = -fPIC -O2 -I$(SRCDIR)  -Wall -g -DEARL_LIGHT=1
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
