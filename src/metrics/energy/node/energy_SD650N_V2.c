@@ -15,7 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
+#define VGPU 0
 
 #include <math.h>
 #include <errno.h>
@@ -388,27 +389,27 @@ state_t energy_init(void **c)
 	debug("cmd arg is %hu\n",cmd_arg);
 	pthread_mutex_unlock(&ompi_lock);
 
-	debug("GPU part");
+	verbose(VGPU,"GPU part");
 
 	int gpu_error = 0;
   state_t s;
 
   if (xtate_fail(s, gpu_load(empty, none, &gpu_sel_model))) {
-    debug("gpu_load returned %d (%s)", s, state_msg);
+    verbose(VGPU, "gpu_load returned %d (%s)", s, state_msg);
     gpu_error = 1;
   }
   if (xtate_fail(s, gpu_init(&gpu_context))) {
-    debug("gpu_init returned %d (%s)", s, state_msg);
+    verbose(VGPU, "gpu_init returned %d (%s)", s, state_msg);
     gpu_error = 1;
   }
   if (gpu_sel_model == MODEL_DUMMY) {
     gpu_num = 0;
   }else{
 	  if (xtate_fail(s, gpu_count(&gpu_context, &gpu_num))) {
-	    debug("gpu_count returned %d (%s)", s, state_msg);
+	    verbose(VGPU, "gpu_count returned %d (%s)", s, state_msg);
 	  }
 	}
-	debug("GPU model %d DUMMY %d GPUS detected %d", gpu_sel_model, gpu_sel_model == MODEL_DUMMY, gpu_num);
+	verbose(VGPU, "GPU model %d DUMMY %d GPUS detected %d", gpu_sel_model, gpu_sel_model == MODEL_DUMMY, gpu_num);
 	return EAR_SUCCESS;
 }
 
@@ -453,8 +454,9 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 	if (gpu_num){
 		state_t s;
 		if (xtate_fail(s, gpu_read(&gpu_context, penergy_mj->gpus_energy))) {
-    	debug("gpu_read returned %d (%s)", s, state_msg);
+    	verbose(VGPU,"gpu_read returned %d (%s)", s, state_msg);
   	}
+		verbose(VGPU, "GPU read done");
 	}
 	return EAR_SUCCESS;
 }
@@ -489,8 +491,9 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms) {
 	if (gpu_num){
     state_t s;
     if (xtate_fail(s, gpu_read(&gpu_context, penergy_mj->gpus_energy))) {
-      debug("gpu_read returned %d (%s)", s, state_msg);
+      verbose(VGPU, "gpu_read returned %d (%s)", s, state_msg);
     }
+		verbose(VGPU, "GPU read done");
   }
 
 	gettimeofday(&t, NULL);
@@ -522,16 +525,17 @@ state_t energy_units(uint *units) {
 state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
 	sd650N_v2_t *pinit = (sd650N_v2_t *) init;
 	sd650N_v2_t *pend  = (sd650N_v2_t *) end;
-	gpu_t gpu_diff;
+	gpu_t gpu_diff[MAX_GPUS_SUPPORTED];
 	ulong total_gpu = 0;
 
 	unsigned long total = diff_node_energy(pinit->dc_energy, pend->dc_energy);
-	ulong diff_gpu = 0;
 	if (gpu_num) {
-		  gpu_data_diff(pend->gpus_energy, pinit->gpus_energy, &gpu_diff);
-			for (uint i = 0; i < gpu_num; i++) total_gpu += (unsigned long)gpu_diff.energy_j;
+			verbose(VGPU, "Computing energy per GPU");
+		  gpu_data_diff(pend->gpus_energy, pinit->gpus_energy, gpu_diff);
+			for (uint i = 0; i < gpu_num; i++) total_gpu += (unsigned long)gpu_diff[i].energy_j;
 	}
-	*e = total + total_gpu;
+	verbose(VGPU, "Energy node %lu GPU energy %lu", total, total_gpu*1000);
+	*e = total + total_gpu*1000;
 	return EAR_SUCCESS;
 }
 
