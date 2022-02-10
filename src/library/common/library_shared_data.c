@@ -439,6 +439,25 @@ void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull
   }
 }
 
+void compute_total_node_L1_misses(lib_shared_data_t *data,shsignature_t *sig,ull *l1)
+{
+  int i;
+  *l1 = 0;
+  for (i=0;i<data->num_processes;i++){
+    *l1 += sig[i].sig.L1_misses;
+  }
+}
+
+void compute_total_node_L2_misses(lib_shared_data_t *data,shsignature_t *sig,ull *l2)
+{
+  int i;
+  *l2 = 0;
+  for (i=0;i<data->num_processes;i++){
+    *l2 += sig[i].sig.L2_misses;
+  }
+}
+
+
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI)
 {
   int i;

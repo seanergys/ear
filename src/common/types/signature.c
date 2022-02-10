@@ -313,6 +313,8 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
     memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     s->instructions = minis->instructions;
     s->cycles = minis->cycles;
+    s->L1_misses = minis->L1_misses;
+    s->L2_misses = minis->L2_misses;
     s->L3_misses = minis->L3_misses;
     s->avg_f=minis->avg_f;
     s->def_f=minis->def_f;
@@ -336,6 +338,8 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
     memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     minis->instructions = s->instructions;
     minis->cycles 	= s->cycles;
+    minis->L1_misses = s->L1_misses;
+    minis->L2_misses = s->L2_misses;
     minis->L3_misses = s->L3_misses;
     minis->avg_f		= s->avg_f;
     minis->def_f		= s->def_f;

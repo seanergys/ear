@@ -201,6 +201,8 @@ void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
 void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst);
 void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
+void compute_total_node_L1_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L1);
+void compute_total_node_L2_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L2);
 void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L3);
 void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);

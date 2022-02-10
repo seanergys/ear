@@ -60,6 +60,8 @@ typedef struct mini_sig
     ull FLOPS[FLOPS_EVENTS];
     ull instructions;
     ull cycles;
+    ull L1_misses;
+    ull L2_misses;
     ull L3_misses;
     ulong avg_f;
     ulong def_f;
