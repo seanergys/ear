@@ -1009,7 +1009,7 @@ int metrics_init(topology_t *topo)
 	int i;
 
   metrics_static_init(topo);
-	verbose_master(1, "metrics_static_init done");
+	debug("metrics_static_init done");
 
 	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
 	//debug("My master rank %d",masters_info.my_master_rank);
@@ -1045,7 +1045,7 @@ int metrics_init(topology_t *topo)
 		rapl_size=sizeof(unsigned long long);
 	}
 
-	verbose(2,"RAPL size %lu",rapl_size);
+	debug("RAPL size %lu",rapl_size);
 	rapl_elements = rapl_size / sizeof(unsigned long long);
 
 	// Allocating data for energy node metrics

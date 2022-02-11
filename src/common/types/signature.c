@@ -63,15 +63,20 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
     int num_gpu = sig->gpu_sig.num_gpus;
 		if (single_column && num_gpu){
 			dprintf(fd, ";");
-    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lf%c", sig->gpu_sig.gpu_data[j].GPU_power, sep);
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lf%c", sig->gpu_sig.gpu_data[j].GPU_power, sep);
+			dprintf(fd, "%lf", sig->gpu_sig.gpu_data[num_gpu-1].GPU_power);
 			dprintf(fd, ";");
-    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_freq, sep);
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_freq, sep);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_freq);
 			dprintf(fd, ";");
-    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_freq, sep);
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_freq, sep);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_mem_freq);
 			dprintf(fd, ";");
-    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_util, sep);
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_util, sep);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_util);
 			dprintf(fd, ";");
-    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_util, sep);
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_util, sep);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_mem_util);
 			
 		}else{
     	for (int j = 0; j < num_gpu; ++j) {

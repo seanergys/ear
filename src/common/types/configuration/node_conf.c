@@ -158,6 +158,9 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
         if (my_node_conf->powercap_plugin != NULL && strlen(my_node_conf->powercap_plugin) > 1) {
             verbose(VCCONF,"powercap_plugin %s ",my_node_conf->powercap_plugin);
         }
+        if (my_node_conf->powercap_gpu_plugin != NULL && strlen(my_node_conf->powercap_gpu_plugin) > 1) {
+            verbose(VCCONF,"powercap_gpu_plugin %s ",my_node_conf->powercap_gpu_plugin);
+        }
         verbose(VCCONF,"\n");
         for (i=0;i<my_node_conf->num_policies;i++){
             print_policy_conf(&my_node_conf->policies[i]);

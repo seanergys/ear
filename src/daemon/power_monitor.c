@@ -649,7 +649,7 @@ void form_database_paths()
 */
 void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t *new_app, uint from_mpi) {
 	state_t s;
-	verbose(VJOBPMON+1,"job_init_powermon_app init");
+	verbose(VJOBPMON,"job_init_powermon_app init %lu/%lu ", new_app->job.id, new_app->job.step_id);
   if (pmapp == NULL){
     verbose(VJOBPMON,"Error, job_init_powermon_app with null pmapp");
     return;
@@ -675,7 +675,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 	copy_energy_data(&pmapp->energy_init, &c_energy);
 	// CPU Frequency
 	state_assert(s, cpufreq_read(no_ctx, pmapp->freq_job1), );
-	verbose(VJOBPMON+1,"job_init_powermon_app end %lu/%lu ",pmapp->app.job.id,pmapp->app.job.step_id);
+	verbose(VJOBPMON,"job_init_powermon_app end %lu/%lu is_mpi %d",pmapp->app.job.id,pmapp->app.job.step_id, pmapp->app.is_mpi);
 }
 
 void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
@@ -1070,7 +1070,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	/* Given a user type, application, and energy_tag, my_policy is the cofiguration for this user and application */
 	/* This function sets CPU frequency and GPu frequency */
 	my_policy = configure_context(user_type, my_tag, appID);
-	debug("Node configuration for policy %u p_state %d th %lf",my_policy->policy,my_policy->p_state,my_policy->settings[0]);
+	verbose(VJOBPMON,"Node configuration for policy %u p_state %d th %lf is_mpi %d",my_policy->policy,my_policy->p_state,my_policy->settings[0], appID->is_mpi);
 	/* Updating info in shared memory region */
 	f = frequency_pstate_to_freq(my_policy->p_state);
 	/* Info shared with the job */
@@ -1091,6 +1091,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   /* End app configuration */
   appID->job.def_f                  = pmapp->settings->def_freq;
 
+
 	app_mgt_new_job(pmapp->app_info);
 	/* Requested frequencies must be done per JOB: PENDING to apply the affinity mask */
 	pcapp_info_new_job(pmapp->pc_app_info);
@@ -1100,7 +1101,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   pmapp->pc_app_info->num_gpus_used = gpu_mgr_num_gpus();
 	for (uint gpuid = 0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++) pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
 	#endif
-	powercap_set_app_req_freq(pmapp->pc_app_info);
+	powercap_set_app_req_freq();
 	while (pthread_mutex_trylock(&app_lock));
 	job_init_powermon_app(pmapp,eh, appID, from_mpi);
 
@@ -1108,7 +1109,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
 	new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
 	pthread_mutex_unlock(&app_lock);
 	//save_eard_conf(&eard_dyn_conf);
-	verbose(VJOBPMON , "%sJob created (%lu,%lu) is_mpi %d procs %lu%s", COL_BLU,current_ear_app[ccontext]->app.job.id,
+	verbose(VJOBPMON , "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu%s", COL_BLU, ccontext, current_ear_app[ccontext]->app.job.id,
 			current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, COL_CLR);
 	verbose(VJOBPMON , "*******************");
 	pmapp->sig_reported = 0;

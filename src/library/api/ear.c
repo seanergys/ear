@@ -16,7 +16,7 @@
  */
 
 #define _GNU_SOURCE
-
+//#define SHOW_DEBUGS 1
 #define SINGLE_CONNECTION 1
 #include <sched.h>
 #include <pthread.h>
@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <assert.h>
+#include <sys/mman.h>
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -340,7 +341,7 @@ void create_shared_regions()
 
 
 	/* This section allocates shared memory for processes in same node */
-	debug("%s:Master creating shared regions for node synchro",node_name);
+	verbose(2,"%s:Master creating shared regions for node synchro PID=%d",node_name, getpid());
   xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
@@ -484,6 +485,9 @@ void create_shared_regions()
 								verbose_master(2,"Error attaching to node_mgr region");
 				}
 				lib_shared_region->node_mgr_index = node_mgr_index;
+        if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
+          verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
+        }
 				verbose_master(2,"Attached! at pos %u", node_mgr_index);
 				/* node_mgr_job_info maps other jobs data sharing the node */
 				node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
@@ -492,7 +496,7 @@ void create_shared_regions()
 								verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
 				}
 				exclusive = (current_jobs_in_node == 1);
-				verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+				verbose_jobs_in_node(3,node_mgr_data,node_mgr_job_info);
 }
 
 /****************************************************************************************************************************************************************/
@@ -545,7 +549,7 @@ void attach_shared_regions()
 								error("In MPI_BARRIER");
 				}
 #endif
-				verbose(2,"My node ID is %d/%d", my_node_id, lib_shared_region->num_processes);
+				verbose(3,"My node ID is %d/%d", my_node_id, lib_shared_region->num_processes);
 				if (get_shared_signatures_path(tmp,ID, shsignature_region_path) != EAR_SUCCESS){
 								error("Getting the shsignature_region_path  ");
 				}else{
@@ -573,12 +577,18 @@ void attach_shared_regions()
 				me.sid = application.job.step_id;
 				me.creation_time = time(NULL);
 				CPU_ZERO(&me.node_mask);
-				//verbose(3,"Waiting for master to be attached to node_mgr region");
-				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
-								usleep(100);
-								verbose(3, "Waiting, current index %u", lib_shared_region->node_mgr_index);
+				verbose(3,"%d: Waiting for master to be attached to node_mgr region", my_node_id);
+				if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
+					verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
 				}
-				//verbose(3, "We are attached at position %u", lib_shared_region->node_mgr_index);
+				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
+								usleep(10000);
+								verbose(3,"%d:Waiting, current index %u", my_node_id, lib_shared_region->node_mgr_index);
+								if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
+									verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
+								}
+				}
+				verbose(3,"%d:We are attached at position %u", my_node_id, lib_shared_region->node_mgr_index);
 				if (nodemgr_find_job(&me, &node_mgr_index) != EAR_SUCCESS){
 								verbose_master(2,"Error attaching to node_mgr region");
 								node_mgr_index = NULL_NODE_MGR_INDEX;
@@ -956,6 +966,13 @@ void ear_init()
 				/* my_id reflects whether we are the master or no my_id == 0 means we are the master *****/
 				my_id = get_local_id(node_name);
 
+
+				if (my_id == 0){ 
+					verbose(2, "I'm the master %d %s", getpid(), node_name);
+				}else{ 
+					verbose(3, "I'm NOT the master %d", getpid());
+				}
+
 				debug("attach to master %d",my_id);
 
 				/* All masters connect in a new MPI communicator */
@@ -1066,7 +1083,7 @@ void ear_init()
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 				#if SINGLE_CONNECTION
 				if (!my_id && eard_ok){ //only the master will connect with eard
-								verbose_master(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
+								verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
 								if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
 												debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
 												notify_eard_connection(1);
@@ -1081,7 +1098,7 @@ void ear_init()
 								char *col;
                 if (!my_id) col = COL_BLU; 
 								else        col = COL_GRE;
-								verbose(2, "%sProcess %d Connecting with EAR Daemon (EARD) %d node %s%s", col,my_node_id, ear_my_rank,node_name,COL_CLR);
+								verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s", col,my_node_id, getpid(), ear_my_rank,node_name,COL_CLR);
                 if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
                         verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
 												if (!my_id){
@@ -1108,7 +1125,6 @@ void ear_init()
 				}else{
 								attach_shared_regions();
 				}
-				verbose_master(2, "EARL with %d processes", lib_shared_region->num_processes);
 				if (!eard_ok){ 
 								
 			        	/* Dummy areas path is used in case the EARD was not present */
@@ -1167,16 +1183,17 @@ void ear_init()
 								/* How to proceeed here ? */
 								lib_shared_region->earl_on = 0;
 								strcpy(application.job.policy," "); /* Cleaning policy */
+								debug("Process %d not completes the initialization", my_node_id);
 								return;
 				}
 
 				// Initializing metrics
-				verbose_master(2,"Starting metrics init ");
 
 				if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
 								error("in EAR metrics initialization (%s), setting EARL off", state_msg);
 								eard_ok = 0;
 								strcpy(application.job.policy," "); /* Cleaning policy */
+								debug("Process %d not completes the initialization", my_node_id);
 								return;
 				}
 
@@ -1184,6 +1201,7 @@ void ear_init()
 				if (!eard_ok && !EARL_LIGHT){ 
 								lib_shared_region->earl_on = 0;
 								strcpy(application.job.policy," "); /* Cleaning policy */
+								debug("Process %d not completes the initialization", my_node_id);
 								return;
 				}
 
@@ -1227,6 +1245,7 @@ void ear_init()
 												eard_ok = 0;
 												lib_shared_region->earl_on = 0;
 												strcpy(application.job.policy," "); /* Cleaning policy */
+												debug("Process %d not completes the initialization", my_node_id);
 												return;
 								}
 								fill_application_mgt_data(app_mgt_info);
@@ -1268,9 +1287,7 @@ void ear_init()
 				print_arch_desc(&arch_desc);
 #endif
 
-				debug("init_power_policy");
 				init_power_policy(system_conf,resched_conf);
-				debug("init_power_models");
 				init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
 				verbose_master(VEAR_INIT,"Policies and models initialized");	
 
@@ -1461,9 +1478,9 @@ void ear_finalize(int exit_status)
 				// Closing and obtaining global metrics
 				dispose=1;
 				verbose_master(2,"Total resources computed %d",get_total_resources());
-				debug("%d: before metrics_dispose" my_node_id);
+				debug("%d: before metrics_dispose", my_node_id);
 				metrics_dispose(&application.signature, get_total_resources());
-				debug("%d: after metrics_dispose" my_node_id);
+				debug("%d: after metrics_dispose" ,my_node_id);
 				dynais_dispose();
 				if (!my_id) frequency_dispose();
 

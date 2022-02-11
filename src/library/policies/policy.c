@@ -23,7 +23,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config.h>
 #include <common/system/symplug.h>
@@ -558,6 +558,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 		char *monitoring = "monitoring";
 		char *my_policy_name = app_settings->policy_name;
 
+
     int app_mgr=0;
     if (app_mgr_policy != NULL){
         app_mgr = atoi(app_mgr_policy);
@@ -879,7 +880,6 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     polctx_t *c = &my_pol_ctx;
     state_t ret,retg = EAR_SUCCESS;
 		uint jobs_in_node;
-		verbose(2,"policy_ok ");
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;
