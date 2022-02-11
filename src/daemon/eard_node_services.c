@@ -624,7 +624,7 @@ void connect_service(struct daemon_req *new_req)
   /* This pipe is to send data, 1 per connection */
   sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, pid,lid);
   sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, pid,lid);
-  debug("Comm channels %s and %s",ear_commack,ear_commreq);
+  verbose(VEARD_LAPI,"Comm channels %s and %s",ear_commack,ear_commreq);
   /* We must create a new local connection, for now, 1 connection per job is allowed  */
   if ((newc = add_new_local_connection(eard_local_conn,new_job->id,new_job->step_id,new_req->con_id.lid)) <0){
       error("Error opening slot for new local connection");
@@ -950,6 +950,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 			return EAR_ERROR;
 		}
 	}
+  verbose(VEARD_LAPI, "New request. new connection %d", req_fd == global_req_fd);
 	// Reading the header.
 	if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
 		error("when reading the RPC header: expected %lu bytes and received %lu", sizeof(eard_head_t), size);
@@ -1112,7 +1113,7 @@ state_t eard_local_api()
 
   clean_fd_set(&rfds_basic,&total_local_fd);
   /* This function creates the pipe for new local connections */
-  verbose(0,"Initializing local connections");
+  verbose(VEARD_LAPI,"Initializing local connections");
   if (init_local_connections(&eard_local_conn,node_desc.cpu_count) != EAR_SUCCESS){
     error("Error initializing local connections");
     _exit(0);

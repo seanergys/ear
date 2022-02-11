@@ -419,7 +419,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if the signature is ready */
             /* Included to accelerate the signature computation */
-            verbose(3, "%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
+            verbose(4, "%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
             if (!lib_shared_region->master_ready){
                 if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
                 /* Only when using dynais we consider the 'N' */

@@ -374,11 +374,11 @@ state_t pmgt_init()
         }
     }
     if (obj_path!=NULL){
-        debug("Loading %s powercap plugin domain node",obj_path);
+        verbose(VEARD_PC, "Loading %s powercap plugin domain node",obj_path);
         ret=symplug_open(obj_path, (void **)&pcsyms_fun[DOMAIN_NODE], pcsyms_names, pcsyms_n);
         if (ret==EAR_SUCCESS) domains_loaded[DOMAIN_NODE]=1;
     }else{
-        debug("DOMAIN_NODE not loaded");
+        verbose(VEARD_PC, "DOMAIN_NODE not loaded");
     }
     /* We have a single domain node */
     debug("Initialzing Node util");
@@ -403,7 +403,7 @@ state_t pmgt_init()
             }
         } 
         if (obj_path!=NULL){
-            debug("Loading %s powercap plugin domain cpu",obj_path);
+            verbose(VEARD_PC, "Loading %s powercap plugin domain cpu",obj_path);
             ret=symplug_open(obj_path, (void **)&pcsyms_fun[DOMAIN_CPU], pcsyms_names, pcsyms_n);
             if (ret==EAR_SUCCESS){ 
                 domains_loaded[DOMAIN_CPU]=1;
@@ -431,7 +431,7 @@ state_t pmgt_init()
             }
         } 
         if (obj_path!=NULL){
-            debug("Loading %s powercap plugin domain dram",obj_path);
+            verbose(VEARD_PC, "Loading %s powercap plugin domain dram",obj_path);
             ret=symplug_open(obj_path, (void **)&pcsyms_fun[DOMAIN_DRAM], pcsyms_names, pcsyms_n);
             if (ret==EAR_SUCCESS) domains_loaded[DOMAIN_DRAM]=1;
         }else{
@@ -462,10 +462,10 @@ state_t pmgt_init()
             }
         } 
         if (obj_path!=NULL){
-            debug("Loading %s powercap plugin domain gpu",obj_path);
+            verbose(VEARD_PC, "Loading %s powercap plugin domain gpu",obj_path);
             ret=symplug_open(obj_path, (void **)&pcsyms_fun[DOMAIN_GPU], pcsyms_names, pcsyms_n);
             if (ret==EAR_SUCCESS) domains_loaded[DOMAIN_GPU]=1;
-            else debug("Error loading GPU powercap plugin");
+            else verbose(VEARD_PC, "Error loading GPU powercap plugin");
         }else{
             debug("DOMAIN_GPU not loaded");
             memset(&pcsyms_fun[DOMAIN_GPU], 0, sizeof(powercapsym_t));
@@ -767,10 +767,11 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
         }
 
     }
+		if (domain == DOMAIN_CPU){
     for (i=0; i < MAX_CPUS_SUPPORTED; i++){
         if (!f[i]) f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
     }
-
+		}
 }
 
 void pmgt_set_app_req_freq(pwr_mgt_t *phandler)
@@ -782,7 +783,7 @@ void pmgt_set_app_req_freq(pwr_mgt_t *phandler)
         freturn(pcsyms_fun[DOMAIN_NODE].set_app_req_freq,cpuf);
     }
     if (pcsyms_fun[DOMAIN_CPU].set_app_req_freq != NULL){
-        pmgt_get_app_req_freq(DOMAIN_NODE, cpuf, MAX_CPUS_SUPPORTED);
+        pmgt_get_app_req_freq(DOMAIN_CPU, cpuf, MAX_CPUS_SUPPORTED);
         freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,cpuf);
     }
 #if USE_GPUS
@@ -790,7 +791,7 @@ void pmgt_set_app_req_freq(pwr_mgt_t *phandler)
         ulong gpuf[MAX_GPUS_SUPPORTED];
         memset(gpuf, 0, sizeof(ulong)*MAX_GPUS_SUPPORTED);
         if (pcsyms_fun[DOMAIN_GPU].set_app_req_freq != NULL) {
-            pmgt_get_app_req_freq(DOMAIN_NODE, gpuf, MAX_GPUS_SUPPORTED);
+            pmgt_get_app_req_freq(DOMAIN_GPU, gpuf, MAX_GPUS_SUPPORTED);
             freturn(pcsyms_fun[DOMAIN_GPU].set_app_req_freq,gpuf);
         }
     }

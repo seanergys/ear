@@ -308,7 +308,7 @@ int eards_connect(application_t *my_app, ulong lid)
     /* At this point we have sent the data for connecting with EARD */
     if (ear_fd_req_global >= 0) {
       /* EARD sends an ack when ack pipe for specific service is created */
-			verbose(2,"Open %s",ear_commack);
+			verbose(2,"%s: Opening %s",nodename, ear_commack);
       ear_fd_ack = open(ear_commack,O_RDONLY);
       if (ear_fd_ack < 0){
         error("Error opening local ack communicator with EARD (%s)",strerror(errno));
@@ -316,6 +316,7 @@ int eards_connect(application_t *my_app, ulong lid)
         ear_fd_req_global = -1;
         return EAR_ERROR; 
       }
+			verbose(2,"%s: %s open",nodename, ear_commack);
       #if USE_NON_BLOCKING_IO
       ret1 = fcntl(ear_fd_ack, F_SETFL, O_NONBLOCK);
       if (ret1<0){
@@ -330,13 +331,14 @@ int eards_connect(application_t *my_app, ulong lid)
         return EAR_ERROR;
       }
       /* ACK received */
-      debug("ACK received from EARD ,opening REQ");
-			verbose(2,"Open %s",ear_commreq);
+      verbose(2,"ACK received from EARD %s,opening REQ", nodename);
+			verbose(2,"%s: Open %s",nodename, ear_commreq);
       if ((ear_fd_req = open(ear_commreq,O_WRONLY)) < 0){
         error("Error opening local req communicator, closing the EARD connection");
         CLOSE_LOCAL_COMM();
         return EAR_ERROR;
       }
+			verbose(2, "%s: %s open", nodename, ear_commreq);
       #if USE_NON_BLOCKING_IO
       ret1 = fcntl(ear_fd_req, F_SETFL, O_NONBLOCK);
       if (ret1<0){
@@ -344,7 +346,7 @@ int eards_connect(application_t *my_app, ulong lid)
         return EAR_ERROR;
       }
       #endif
-      debug("EARD-EARL in %s connected", nodename);
+      verbose(2, "EARD-EARL in %s connected", nodename);
       close(ear_fd_req_global);
   }
   app_connected = 1;

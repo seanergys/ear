@@ -48,6 +48,7 @@ int warn_channel	__attribute__((weak)) = 2;
 #define VERB_SET_LV(lv)	  verb_level   = lv;
 
 #define verbose(v, ...) \
+	{ \
 	if (verb_enabled && v <= verb_level) \
 	{ \
 		if (!log_bypass) { \
@@ -57,10 +58,12 @@ int warn_channel	__attribute__((weak)) = 2;
 		} else { \
 			vlog(__VA_ARGS__); \
 		} \
+	} \
 	}
 
 // No new line version
 #define verbosen(v, ...) \
+	{\
 	if (verb_enabled && v <= verb_level) \
 	{ \
 		if (!log_bypass) { \
@@ -68,6 +71,7 @@ int warn_channel	__attribute__((weak)) = 2;
         } else { \
 			vlog(__VA_ARGS__); \
 		} \
+	}\
 	}
 
 // Warnings
