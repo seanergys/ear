@@ -283,6 +283,9 @@ void cluster_only_powercap()
 {
 
     power_check_t power;
+
+		my_cluster_power_status = calloc(1, sizeof(cluster_powercap_status_t));
+
     memset(&power, 0, sizeof(power_check_t));
     ear_get_power(&my_cluster_conf, &power, nodes, num_eargm_nodes);
     float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
@@ -293,6 +296,7 @@ void cluster_only_powercap()
     if (current_cluster_powercap == POWER_CAP_UNLIMITED) {
         verbose(VGM_PC, "cluster_powercap is unlimited, nothing to do");
         write_shared_data(power.power, 0, 0);
+				free(my_cluster_power_status);
         return;
     }
 
@@ -319,8 +323,16 @@ void cluster_only_powercap()
         freeable_power = (uint64_t) (upper_limit - power.power) / 2; //for now, we will free half of whatever extra power
     }
     write_shared_data(power.power, freeable_power, requested);
-    check_powercap_actions(power.power);
 
+		/* These values in my_cluster_power_status are used automatically by the actions */
+		my_cluster_power_status->current_power = power.power;
+    my_cluster_power_status->idle_nodes    = 0;
+    my_cluster_power_status->total_idle_power = 0;
+
+
+    check_powercap_actions(power.power);
+		
+		free(my_cluster_power_status);
 }
 
 void *eargm_powercap_th(void *noarg)
@@ -352,14 +364,14 @@ void *eargm_powercap_th(void *noarg)
 
 void cluster_powercap_reset_pc()
 {
-    verbose(0, "Resetting cluster powercap to %ld", default_cluster_powercap);
+    verbose(VGM_PC, "Resetting cluster powercap to %ld", default_cluster_powercap);
     current_cluster_powercap = default_cluster_powercap;
     current_extra_power = 0;
 }
 
 void cluster_powercap_red_pc(uint red)
 {
-    verbose(0, "Reducing cluster powercap by %u (from %u to %u)", red, current_cluster_powercap, current_cluster_powercap-red);
+    verbose(VGM_PC, "Reducing cluster powercap by %u (from %u to %u)", red, current_cluster_powercap, current_cluster_powercap-red);
     if (red > current_cluster_powercap) {
         verbose(VGM_PC, "Cannot reduce powercap by %u (would overflow)", red);
     } else {
@@ -374,7 +386,7 @@ void cluster_powercap_red_pc(uint red)
 
 void cluster_powercap_inc_pc(uint inc)
 {
-    verbose(0, "Increasing cluster powercap by %u (from %u to %u)", inc, current_cluster_powercap, current_cluster_powercap+inc);
+    verbose(VGM_PC, "Increasing cluster powercap by %u (from %u to %u)", inc, current_cluster_powercap, current_cluster_powercap+inc);
     current_cluster_powercap += inc;
     if (default_cluster_powercap < current_cluster_powercap)
         current_extra_power = current_cluster_powercap - default_cluster_powercap;

@@ -38,7 +38,7 @@ void signature_init(signature_t *sig)
     memset(sig, 0, sizeof(signature_t));
 }
 
-void signature_print_fd(int fd, signature_t *sig, char is_extended)
+void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_column, char sep)
 {
     int i;
 
@@ -59,11 +59,26 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended)
 		debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS
+	
     int num_gpu = sig->gpu_sig.num_gpus;
-    for (int j = 0; j < num_gpu; ++j) {
+		if (single_column && num_gpu){
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lf%c", sig->gpu_sig.gpu_data[j].GPU_power, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_freq, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_freq, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_util, sep);
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_util, sep);
+			
+		}else{
+    	for (int j = 0; j < num_gpu; ++j) {
         dprintf(fd, ";%lf;%lu;%lu;%lu;%lu", sig->gpu_sig.gpu_data[j].GPU_power, sig->gpu_sig.gpu_data[j].GPU_freq, \
                 sig->gpu_sig.gpu_data[j].GPU_mem_freq, sig->gpu_sig.gpu_data[j].GPU_util, sig->gpu_sig.gpu_data[j].GPU_mem_util);
-    }
+    	}
+		}
 #endif
 }
 
@@ -313,6 +328,8 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis)
     memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     s->instructions = minis->instructions;
     s->cycles = minis->cycles;
+    s->L1_misses = minis->L1_misses;
+    s->L2_misses = minis->L2_misses;
     s->L3_misses = minis->L3_misses;
     s->avg_f=minis->avg_f;
     s->def_f=minis->def_f;
@@ -336,6 +353,8 @@ void from_sig_to_mini(ssig_t *minis,signature_t *s)
     memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
     minis->instructions = s->instructions;
     minis->cycles 	= s->cycles;
+    minis->L1_misses = s->L1_misses;
+    minis->L2_misses = s->L2_misses;
     minis->L3_misses = s->L3_misses;
     minis->avg_f		= s->avg_f;
     minis->def_f		= s->def_f;

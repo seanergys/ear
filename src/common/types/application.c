@@ -115,14 +115,14 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
     return i;
 }
 
-static int print_application_fd(int fd, application_t *app, int new_line, char is_extended)
+static int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
 {
     char buff[1024];
     sprintf(buff, "%s;", app->node_id);
     write(fd, buff, strlen(buff));
     print_job_fd(fd, &app->job);
     dprintf(fd, ";");
-    signature_print_fd(fd, &app->signature, is_extended);
+    signature_print_fd(fd, &app->signature, is_extended, single_column,',');
 
     if (new_line) {
         dprintf(fd, "\n");
@@ -131,11 +131,11 @@ static int print_application_fd(int fd, application_t *app, int new_line, char i
     return EAR_SUCCESS;
 }
 
-int create_app_header(char * header, char *path, uint num_gpus, char is_extended)
+int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column)
 {
-    char *HEADER_BASE = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
-                        "AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;"\
-                        "PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS";
+    char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
+                        "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
+                        "PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS";
 		char HEADER[1024];
 
 		/* If file already exists we will not add the header */
@@ -149,15 +149,16 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 		}
 
     if (is_extended) {
-        char *ext_header = ";L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
-                           "DP_128;DP_256;DP_512";
+        char *ext_header = ";L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;"\
+                           "DPOPS_128;DP_256;DPOPS_512";
         xstrncat(HEADER, ext_header, strlen(ext_header));
     }
 		debug("Creating header with %d GPUS", num_gpus);
 #if USE_GPUS
+		if (single_column) num_gpus = ear_min(num_gpus, 1);
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
-        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTIL",
+        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC",
                 i+1, i+1, i+1, i+1, i+1);
         xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
     }
@@ -171,7 +172,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	return EAR_SUCCESS;
 }
 
-int append_application_text_file(char *path, application_t *app, char is_extended, int add_header)
+int append_application_text_file(char *path, application_t *app, char is_extended, int add_header, int single_column)
 {
     //lacking: NODENAME(node_id in loop_t), not linked to any loop
     int fd;
@@ -223,14 +224,14 @@ int append_application_text_file(char *path, application_t *app, char is_extende
 #if USE_GPUS
 		num_gpus = app->signature.gpu_sig.num_gpus;
 #endif
-    if (add_header) create_app_header(NULL, path, num_gpus, is_extended);
+    if (add_header) create_app_header(NULL, path, num_gpus, is_extended, single_column);
 		fd = open(path, O_WRONLY | O_APPEND);
     if (fd < 0)
     {
 			return EAR_ERROR;
 		}
 
-    print_application_fd(fd, app, 1, is_extended);
+    print_application_fd(fd, app, 1, is_extended, single_column);
 
     close(fd);
 
@@ -304,7 +305,7 @@ void read_application_fd_binary(int fd,application_t *app)
 
 int print_application(application_t *app)
 {
-    return print_application_fd(STDOUT_FILENO, app, 1, 1);
+    return print_application_fd(STDOUT_FILENO, app, 1, 1, 0);
 }
 
 void verbose_gpu_app(uint vl,application_t *myapp)

@@ -60,6 +60,8 @@ typedef struct mini_sig
     ull FLOPS[FLOPS_EVENTS];
     ull instructions;
     ull cycles;
+    ull L1_misses;
+    ull L2_misses;
     ull L3_misses;
     ulong avg_f;
     ulong def_f;
@@ -117,7 +119,7 @@ void signature_copy(signature_t *destiny, signature_t *source);
 void clean_db_signature(signature_t *sig, double limit);
 
 /** Outputs the signature contents to the file pointed by the fd. */
-void signature_print_fd(int fd, signature_t *sig, char is_extended);
+void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_column, char sep);
 void compute_vpi(double *vpi,signature_t *sig);
 void compute_ssig_vpi(double *vpi,ssig_t *sig);
 void compute_ssig_vpi2(double *vpi,ssig_t *sig);
