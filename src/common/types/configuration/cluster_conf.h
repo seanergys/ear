@@ -251,4 +251,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 
 /** Checks if a tag with a given name is defined in ear.conf and returns its id if it exists */
 int tag_id_exists(cluster_conf_t *conf, char *tag);
+
+
+void generate_node_ranges(node_island_t *island, char *nodelist);
 #endif

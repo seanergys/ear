@@ -77,6 +77,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 	}
 	if (found) debug("loading shared object '%s'", energy_objc);
 
+
 	if (found)
 	{
 		//
@@ -92,6 +93,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 	} else {
 		ret = EAR_NOT_FOUND;
 	}
+	debug("Energy plugin %s loaded", energy_objc);
 	if (energy_ops.datasize != NULL){
 		energy_ops.datasize(&my_energy_data_size);
 	}else{

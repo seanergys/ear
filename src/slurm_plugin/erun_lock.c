@@ -53,7 +53,22 @@ int lock_master(char *path_tmp)
     plug_verbose(_sp, 3, "function lock_master");
     // Getting the master lock
     sprintf(path_master, "%s/erun.master.lock", path_tmp);
+    plug_verbose(_sp, 3, "lock master in path %s", path_master);
     fd_master = file_lock_master(path_master);
+    if (fd_master < 0){
+	plug_verbose(_sp, 3, " Error in lock_master %s", strerror(errno));
+	// Check if folder exists
+	if ((access(path_tmp, W_OK) != 0 ) && (errno == ENOENT)){
+		plug_verbose(_sp, 3, "EAR tmp %s does not exists, creating it", path_tmp);
+		if (mkdir(path_tmp, S_IRUSR|S_IWUSR|S_IXUSR) < 0){
+			plug_verbose(_sp, 1, "EAR tmp cannot be created, please review the configuration (%s)", strerror(errno));
+		}else{
+			plug_verbose(_sp, 3, "Trying again");
+			fd_master = file_lock_master(path_master);
+		}
+	}
+    }
+    plug_verbose(_sp, 3, "function lock_master ready");
     // Returning FD means it got the unique master lock
     return fd_master >= 0;
 }

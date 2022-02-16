@@ -15,12 +15,15 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <common/system/file.h>
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 
 static struct flock lock;
 
