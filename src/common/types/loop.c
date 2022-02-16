@@ -189,7 +189,7 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
     char *HEADER_NOTS = "JOBID;STEPID;NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;" \
                          "ITER_TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
                          "L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;" \
-                         "DP_512";
+                         "DPOPS_512";
 
 #if USE_GPUS
     char gpu_header[128];
