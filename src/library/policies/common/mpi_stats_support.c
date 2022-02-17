@@ -58,17 +58,16 @@ state_t mpi_app_init(polctx_t *c)
 {
 	char * clb_th;
 
-    if (c!=NULL){
-				if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL){
-					LB_TH = (float)atoi(clb_th);
-				}
-				verbose_master(2,"Using a LB th %.1f",LB_TH);
+    if (c != NULL) {
+        if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+            LB_TH = (float)atoi(clb_th);
+        }
+        verbose_master(2, "Using a LB th %.1f", LB_TH);
 
         sig_shared_region[my_node_id].mpi_info.mpi_time=0;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
         sig_shared_region[my_node_id].mpi_info.exec_time=0;
         sig_shared_region[my_node_id].mpi_info.perc_mpi=0;
-
 
         sig_shared_region[my_node_id].mpi_types_info.sync = 0;
         sig_shared_region[my_node_id].mpi_types_info.collec = 0;
@@ -82,16 +81,23 @@ state_t mpi_app_init(polctx_t *c)
         mpi_stats.total_mpi_calls = 0;
         mpi_stats.exec_time = 0;
         mpi_stats.perc_mpi = 0;
-        if (is_mpi_enabled()){
+
+        if (is_mpi_enabled()) {
             mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
         }else{
             mpi_stats.rank = 0;
         }
-        timestamp_getfast(&app_init);
-				timestamp_getfast(&start_no_mpi);
-				//memcpy(&start_no_mpi,&app_init,sizeof(timestamp));
-        return EAR_SUCCESS;
-    }else return EAR_ERROR;
+
+        timestamp_getfast(&app_init); // TODO: This variable is not used.
+        timestamp_getfast(&start_no_mpi);
+
+        // memcpy(&start_no_mpi,&app_init,sizeof(timestamp)); TODO: Why?
+
+    } else {
+        return EAR_ERROR;
+    }
+    
+    return EAR_SUCCESS;
 
 }
 
@@ -100,67 +106,101 @@ state_t mpi_app_end(polctx_t *c)
     timestamp end;
     ullong elap;
     int fd;
-    char buff[256],buff2[300];
-    char file_name[256];
-    char *stats=getenv(SCHED_GET_EAR_STATS);
-    char stats_per_call[256];
+    char buff[256] ,buff2[300];
+    char mpi_stats_filename[256];
+    char mpi_stats_per_call_filename[256];
+
     /* Global statistics */
     timestamp_getfast(&end);
-    elap = timestamp_diff(&end,&start_no_mpi,TIME_USECS);
+    elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
     mpi_stats.exec_time += elap;
-    if (mpi_stats.total_mpi_calls){
 
-        mpi_stats.perc_mpi = (float) mpi_stats.mpi_time/(float)mpi_stats.exec_time;
-        if (stats != NULL){
-            sprintf(file_name,"%s",stats);
-            sprintf(stats_per_call,"%s.mpi_call_dist.csv",stats);
-            verbose(2,"Using %s STATS output file and mpi calls dist file %s",stats,stats_per_call);
-            fd=open(file_name,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
-            if (fd < 0){
-                mpi_info_to_str(&mpi_stats,buff,sizeof(buff));
-                verbose(0,"MR[%d] %s",lib_shared_region->master_rank,buff);
-            }else{
-                if (masters_info.my_master_rank == 0){
-                    mpi_info_head_to_str_csv(buff,sizeof(buff));
-                    sprintf(buff2,"mrank;%s\n",buff);
-                    write(fd,buff2,strlen(buff2));
+    if (mpi_stats.total_mpi_calls) {
+        mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float)mpi_stats.exec_time;
+
+        char *stats = getenv(SCHED_GET_EAR_STATS);
+        if (stats != NULL) {
+            sprintf(mpi_stats_filename, "%s", stats);
+            sprintf(mpi_stats_per_call_filename, "%s.mpi_call_dist.csv", stats);
+
+            verbose(2,"      MPI stats file: %s\nMPI calls stats file: %s",
+                    mpi_stats_filename, mpi_stats_per_call_filename);
+
+            // Open mpi_stats_filename to store per process global MPI stats
+            fd=open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
+
+            if (fd < 0) {
+                verbose(2, "%sWARNING%s MPI stats file could not be opened: %d", COL_YLW, COL_CLR, errno);
+                mpi_info_to_str(&mpi_stats, buff, sizeof(buff));
+                verbose(1, "MR[%d] %s", lib_shared_region->master_rank, buff);
+            } else {
+                // Only the master writes the header
+                if (masters_info.my_master_rank == 0) {
+                    mpi_info_head_to_str_csv(buff, sizeof(buff));
+                    sprintf(buff2, "mrank;%s\n", buff);
+                    write(fd, buff2, strlen(buff2));
                 }
-                mpi_info_to_str_csv(&mpi_stats,buff,sizeof(buff));
-                sprintf(buff2,"%d;%s\n",lib_shared_region->master_rank,buff);
-                write(fd,buff2,strlen(buff2));
+                mpi_info_to_str_csv(&mpi_stats, buff, sizeof(buff));
+                sprintf(buff2, "%d;%s\n", lib_shared_region->master_rank, buff);
+                write(fd, buff2, strlen(buff2));
                 close(fd);
             }
-            fd = open(stats_per_call,O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR);
+
+            // Open mpi_stats_per_call_filename to store per process MPI calls stats
+            fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
+
             if (fd >= 0){
-                if (mpi_stats.rank == 0){
-                    sprintf(buff,"MASTER;RANK;Total MPI calls;MPI time;Time synchronizing;Time Blocking;Time Collectives;Total MPI sync calls;Total blocking calls;Total collective calls\n");
-                    write(fd,buff,strlen(buff));
+
+                // Only the master writes the header
+                if (mpi_stats.rank == 0) {
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI time;Time synchronizing;\
+                            Time Blocking;Time Collectives;Total MPI sync calls;\
+                            Total blocking calls;Total collective calls\n");
+                    write(fd, buff, strlen(buff));
                 }
-                sprintf(buff,"%d;%d;%u;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f\n",lib_shared_region->master_rank,mpi_stats.rank,mpi_stats.total_mpi_calls,mpi_stats.perc_mpi*100,((float)total_mpi_time_sync/(float)mpi_stats.exec_time)*100.0,((float)total_mpi_time_blocking/(float)mpi_stats.exec_time)*100.0,((float)total_mpi_time_collectives/(float)mpi_stats.exec_time)*100.0,
-                        ((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0,
-                        ((float)total_blocking_calls/(float)mpi_stats.total_mpi_calls)*100.0,
-                        ((float)total_synchronizations/(float)mpi_stats.total_mpi_calls)*100.0);
-                write(fd,buff,strlen(buff));
+
+                sprintf(buff,"%d;%d;%u;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f\n",
+                        lib_shared_region->master_rank,
+                        mpi_stats.rank,
+                        mpi_stats.total_mpi_calls,
+                        mpi_stats.perc_mpi * 100,
+                        ((float) total_mpi_time_sync / (float) mpi_stats.exec_time) * 100.0,
+                        ((float) total_mpi_time_blocking / (float) mpi_stats.exec_time) * 100.0,
+                        ((float) total_mpi_time_collectives / (float) mpi_stats.exec_time) * 100.0,
+                        ((float) total_synchronizations / (float) mpi_stats.total_mpi_calls) * 100.0,
+                        ((float) total_blocking_calls / (float) mpi_stats.total_mpi_calls) * 100.0,
+                        ((float) total_synchronizations / (float) mpi_stats.total_mpi_calls) * 100.0);
+                write(fd, buff, strlen(buff));
             }
         }
     }
     return EAR_SUCCESS;
 }
-state_t mpi_call_init(polctx_t *c,mpi_call call_type)
+
+state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
-    if (is_mpi_enabled()){
-				ullong time_no_mpi;	
+    if (is_mpi_enabled()) {
+
+        // Init the MPI call timer
         timestamp_getfast(&pol_time_init);
-				time_no_mpi = timestamp_diff(&pol_time_init,&start_no_mpi,TIME_USECS);
-				sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;	
-				mpi_stats.exec_time += time_no_mpi;
-				#if SHOW_DEBUGS
-        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls%100) == 0){ 
-          debug("P[%d]  (sec %ld nsec %ld) -(sec %ld nsec %ld) %llu not_mpi_elap",my_node_id, pol_time_init.tv_sec,pol_time_init.tv_nsec,start_no_mpi.tv_sec,start_no_mpi.tv_nsec, time_no_mpi);
+
+        // Get the time not been in MPI
+        ullong time_no_mpi = timestamp_diff(&pol_time_init, &start_no_mpi, TIME_USECS);
+
+        // Accumulate
+        mpi_stats.exec_time += time_no_mpi;
+
+        // Update
+        // sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;
+        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
+
+#if SHOW_DEBUGS
+        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0){ 
+            debug("P[%d] (sec %ld nsec %ld) - (sec %ld nsec %ld) %llu not_mpi_elap",
+                    my_node_id, pol_time_init.tv_sec, pol_time_init.tv_nsec,
+                    start_no_mpi.tv_sec, start_no_mpi.tv_nsec, time_no_mpi);
         }
-				#endif
-
-
+#endif
     }
     return EAR_SUCCESS;
 }
@@ -171,65 +211,87 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
     timestamp_t end;
     mpi_call nbcall_type;
     ullong elap;
-		// ,elap_app;
-    if (is_mpi_enabled()){
+
+    if (is_mpi_enabled()) {
 
         timestamp_getfast(&end);
-				debug("MPI END %d: sec %ld nsec %ld",my_node_id,end.tv_sec,end.tv_nsec);
-        elap = timestamp_diff(&end,&pol_time_init,TIME_USECS);
-        //elap_app = timestamp_diff(&end,&app_init,TIME_USECS);
+        elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
 
-        if	(is_mpi_blocking(call_type)){
-            max_sync_block = ear_max(max_sync_block, (ulong)elap);
+        debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
+
+        // Only collect stats for blocking calls
+        if (is_mpi_blocking(call_type)) {
+
             total_blocking_calls++;
             total_mpi_time_blocking += (ulong)elap;
-            nbcall_type = (mpi_call)remove_blocking(call_type);
-            if (is_collective(nbcall_type)){
+
+            max_sync_block = ear_max(max_sync_block, (ulong)elap);
+
+            // Get which type of blocking call is
+            nbcall_type = (mpi_call) remove_blocking(call_type);
+
+            if (is_collective(nbcall_type)) {
+                // Collective
                 total_collectives++;
                 total_mpi_time_collectives += (ulong)elap;
-            }else if (is_synchronization(nbcall_type)){
+            } else if (is_synchronization(nbcall_type)){
+                // Sync
                 total_synchronizations++;
                 total_mpi_time_sync += (ulong)elap;
-            }else{
+            } else {
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
         }
-        sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
-        sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
-        sig_shared_region[my_node_id].mpi_info.exec_time += elap;
-
-
-        sig_shared_region[my_node_id].mpi_types_info.sync = total_synchronizations;
-        sig_shared_region[my_node_id].mpi_types_info.collec = total_collectives;
-        sig_shared_region[my_node_id].mpi_types_info.blocking = total_blocking_calls;
-        sig_shared_region[my_node_id].mpi_types_info.time_sync = total_mpi_time_sync;
-        sig_shared_region[my_node_id].mpi_types_info.time_collec = total_mpi_time_collectives;
-        sig_shared_region[my_node_id].mpi_types_info.time_blocking = total_mpi_time_blocking;
-        sig_shared_region[my_node_id].mpi_types_info.sync_block = total_sync_block;
-        sig_shared_region[my_node_id].mpi_types_info.time_sync_block = time_sync_block;
-        sig_shared_region[my_node_id].mpi_types_info.max_sync_block = max_sync_block;
 
         /* Global statistics */
         mpi_stats.mpi_time += elap;
         mpi_stats.total_mpi_calls++;
         mpi_stats.exec_time += elap;
-				timestamp_getfast(&start_no_mpi);
-				// memcpy(&start_no_mpi,&end,sizeof(timestamp));
-				#if SHOW_DEBUGS
-				if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls%100) == 0){ 
-					debug("P[%d] MPI %llu exec %llu %llu elap (sec %ld nsec %ld)",my_node_id,sig_shared_region[my_node_id].mpi_info.mpi_time, sig_shared_region[my_node_id].mpi_info.exec_time, elap,start_no_mpi.tv_sec,start_no_mpi.tv_nsec);
-				}
-				#endif
+
+        /*
+        sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
+        sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
+        sig_shared_region[my_node_id].mpi_info.exec_time += elap;
+        */
+
+        sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
+
+        sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
+        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
+
+        sig_shared_region[my_node_id].mpi_types_info.sync            = total_synchronizations;
+        sig_shared_region[my_node_id].mpi_types_info.collec          = total_collectives;
+        sig_shared_region[my_node_id].mpi_types_info.blocking        = total_blocking_calls;
+        sig_shared_region[my_node_id].mpi_types_info.time_sync       = total_mpi_time_sync;
+        sig_shared_region[my_node_id].mpi_types_info.time_collec     = total_mpi_time_collectives;
+        sig_shared_region[my_node_id].mpi_types_info.time_blocking   = total_mpi_time_blocking;
+        sig_shared_region[my_node_id].mpi_types_info.sync_block      = total_sync_block;
+        sig_shared_region[my_node_id].mpi_types_info.time_sync_block = time_sync_block;
+        sig_shared_region[my_node_id].mpi_types_info.max_sync_block  = max_sync_block;
+
+
+        timestamp_getfast(&start_no_mpi);
+        // memcpy(&start_no_mpi,&end,sizeof(timestamp)); TODO: Why?
+
+#if SHOW_DEBUGS
+        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0){ 
+            debug("P[%d] MPI %llu exec %llu %llu elap (sec %ld nsec %ld)",
+                    my_node_id, sig_shared_region[my_node_id].mpi_info.mpi_time,
+                    sig_shared_region[my_node_id].mpi_info.exec_time, elap,
+                    start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
+        }
+#endif
     }
     return EAR_SUCCESS;
 }
+
 /* If src is null, dst = local data, else dst = src */
-state_t mpi_call_get_stats(mpi_information_t *dst,mpi_information_t * src,int i)
+state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i)
 {
 
     if (dst == NULL) return EAR_ERROR;
-    if (src == NULL){
+    if (src == NULL) {
         if (i < 0) src = &sig_shared_region[my_node_id].mpi_info;
         else src = &sig_shared_region[i].mpi_info;
     }
@@ -256,10 +318,10 @@ void verbose_mpi_data(int vl,mpi_information_t *mc)
     verbose_master(vl,"Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",mc->total_mpi_calls,mc->mpi_time,mc->exec_time,mc->perc_mpi);
 }
 
-state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i)
+state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int i)
 {
     mpi_information_t current;
-    mpi_call_get_stats(&current,NULL,i);
+    mpi_call_get_stats(&current, NULL, i);
     mpi_call_diff(diff,&current,last);
 		verbose_master(3, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",i,diff->mpi_time,current.mpi_time,last->mpi_time,diff->exec_time,current.exec_time,last->exec_time);
     diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
@@ -406,8 +468,8 @@ state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_i
     int i;
     int bad_read_diff = 0;
     if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
-    for (i=0;i<data->num_processes;i++){
-        if (mpi_call_read_diff(&node_mpi_calls[i],&last_node[i],i) != EAR_SUCCESS){
+    for (i = 0; i < data->num_processes; i++){
+        if (state_fail(mpi_call_read_diff(&node_mpi_calls[i], &last_node[i], i))) {
             bad_read_diff = 1;
         }
     }

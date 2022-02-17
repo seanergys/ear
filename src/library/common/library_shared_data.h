@@ -39,7 +39,8 @@ typedef struct mpi_summary{
     float sd;
     float mean;
     float mag;
-}mpi_summary_t;
+} mpi_summary_t;
+
 /* Time is stored in USECS */
 typedef struct mpi_information{
     unsigned int        total_mpi_calls;
@@ -47,7 +48,7 @@ typedef struct mpi_information{
     unsigned long long  mpi_time;
     int                 rank;
     double              perc_mpi;
-}mpi_information_t;
+} mpi_information_t;
 
 typedef struct mpi_calls_types{
     ulong time_mpi;
@@ -81,23 +82,22 @@ typedef struct lib_shared_data{
 
 
 typedef struct shsignature{
-    uint 							master;
-    pid_t 						pid;
-    uint 							ready;
-    uint 							iterations;
+    uint              master;
+    pid_t             pid;
+    uint              ready;
+    uint              iterations;
     mpi_information_t mpi_info;
     mpi_calls_types_t mpi_types_info;		
-    /* sig was originally a signature_t */
-    ssig_t 					sig;
-    int 				  	app_state;
-    unsigned long 	new_freq;
-		uint						num_cpus;
-    cpu_set_t 			cpu_mask;
-    int 						affinity;
-    uint 						unbalanced;
-    ulong 					policy_freq;
-		double					period;
-}shsignature_t;
+    ssig_t            sig; // it was originally a signature_t
+    int               app_state;
+    unsigned long     new_freq;
+	uint              num_cpus;
+    cpu_set_t         cpu_mask;
+    int               affinity;
+    uint              unbalanced;
+    ulong             policy_freq;
+	double            period;
+} shsignature_t;
 
 typedef struct node_mgr_sh_data{
 	time_t						creation_time;
