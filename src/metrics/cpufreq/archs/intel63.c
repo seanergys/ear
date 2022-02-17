@@ -57,9 +57,11 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
 	// Permissions test
 	if (state_fail(s = msr_test(tp_in))) {
+		debug("msr_test failed");
 		return EAR_ERROR;
 	}
-	debug("INTEL63 full permissions? %d", can_read);
+	//debug("INTEL63 full permissions? %d", can_read);
+	debug("INTEL63 cpufreq ok");
 	// If reading MSR is allowed
 	replace_ops(ops->init,    cpufreq_intel63_init);
 	replace_ops(ops->dispose, cpufreq_intel63_dispose);
@@ -87,6 +89,7 @@ state_t cpufreq_intel63_init(ctx_t *c)
 			return static_dispose(c, cpu, s);
 		}
 	}
+	debug("cpufreq_intel63_init ready");
 	return EAR_SUCCESS;
 }
 
@@ -106,6 +109,7 @@ state_t cpufreq_intel63_read(ctx_t *c, cpufreq_t *f)
 	state_t s1, s2;
 	int cpu;
 
+	debug("cpufreq_intel63_read");
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		s1 = msr_read(tp.cpus[cpu].id, &f[cpu].freq_mperf, sizeof(ulong), MSR_IA32_MPERF);
 		s2 = msr_read(tp.cpus[cpu].id, &f[cpu].freq_aperf, sizeof(ulong), MSR_IA32_APERF);
@@ -121,7 +125,7 @@ state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ul
 	ulong freq_aux;
 	int cpu;
 
-	debug("data diff");
+	debug("cpufreq_intel63_data diff");
 	// If null return.
 	if (f2 == NULL || f1 == NULL) {
 		return_msg(EAR_ERROR, Generr.input_null);

@@ -186,8 +186,10 @@ const metrics_t *metrics_get(uint api)
         default: return NULL;
     }
 }
-static void metrics_configuration()
+static void metrics_configuration(topology_t *tp)
 {
+	char topo_str[1024];
+	ulong freq_base;
 	if (!EARL_LIGHT) return;
 	if (eards_connected()){
 		verbose_master(2, "EARD connected");
@@ -197,6 +199,11 @@ static void metrics_configuration()
 	if (!mgt_cpufreq.ok){
 		verbose_master(2, "Mgt cpufreq is not ok, switching to monitoring");
 		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		topology_tostr(tp, topo_str, sizeof(topo_str));
+		verbose_master(2,"%s", topo_str);
+		if (topology_freq_getbase(0, &freq_base) == EAR_SUCCESS){
+			verbose_master(2, "Frequency detected %lu", freq_base);
+		}
 	}
 	if (!mgt_imcfreq.ok){
 		verbose_master(2, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
@@ -337,7 +344,7 @@ static void metrics_static_init(topology_t *tp)
 
 		debug("metrics_allocation ready");
 	
-		metrics_configuration();
+		metrics_configuration(tp);
 }
 
 void metrics_static_dispose()
@@ -1007,8 +1014,8 @@ int metrics_init(topology_t *topo)
 	state_t st;
 	state_t s;
 	int i;
-
-  metrics_static_init(topo);
+	
+  	metrics_static_init(topo);
 	debug("metrics_static_init done");
 
 	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));

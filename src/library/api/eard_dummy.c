@@ -127,7 +127,7 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 					create_dummy_island(&dummy_cc);
 					create_dummy_policy(&dummy_cc);
 				}
-				print_cluster_conf(&dummy_cc);
+				//print_cluster_conf(&dummy_cc);
 				
 
 				/* serialization */
@@ -140,9 +140,11 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 				verbose_master(2, "Looking for node conf. Nodename %s", nodename);
 				dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
 				check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
+				#if 0
 				if (dummy_node_conf != NULL){
 					print_my_node_conf(dummy_node_conf);
 				}
+				#endif
 
 				verbose_master(2, "Dummy cluster_conf done");
 
@@ -154,6 +156,8 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 				settings_conf_t * dummy_sett;
 				resched_t       * dummy_resch;
   			policy_conf_t   * my_policy;
+			ulong             freq_base;
+			topology_freq_getbase(0, &freq_base);
 
 				verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	
   			my_policy = get_my_policy_conf(dummy_node_conf,dummy_cc.default_policy);
@@ -169,9 +173,9 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 				dummy_sett->user_type	  	 = AUTHORIZED;
 				dummy_sett->lib_enabled = 1;
 				dummy_sett->policy           = dummy_cc.default_policy;
-				dummy_sett->def_freq         = 2600000;
+				dummy_sett->def_freq         = freq_base;
   			dummy_sett->def_p_state      = my_policy->p_state;
-  			dummy_sett->max_freq         = 2600000;
+  			dummy_sett->max_freq         = freq_base;
   			strncpy(dummy_sett->policy_name, my_policy->name, 64);
   			memcpy(dummy_sett->settings, my_policy->settings, sizeof(double)*MAX_POLICY_SETTINGS);
   			dummy_sett->min_sig_power    = dummy_node_conf->min_sig_power;
