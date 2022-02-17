@@ -16,7 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
-#define VGPU 0
+#define VGPU 2
 
 #include <math.h>
 #include <errno.h>
@@ -42,7 +42,6 @@
 
 #include <metrics/gpu/gpu.h>
 
-static gpu_t  *gpu_diff;
 static ctx_t   gpu_context;
 static uint    gpu_sel_model;
 static uint    gpu_num;
@@ -51,6 +50,7 @@ typedef struct sd650N_v2{
 	ulong ac_energy;
 	ulong dc_energy;
 	gpu_t gpus_energy[MAX_GPUS_SUPPORTED];
+	uint  gpu_num;
 }sd650N_v2_t;
 
 
@@ -391,16 +391,15 @@ state_t energy_init(void **c)
 
 	verbose(VGPU,"GPU part");
 
-	int gpu_error = 0;
   state_t s;
 
   if (xtate_fail(s, gpu_load(empty, none, &gpu_sel_model))) {
     verbose(VGPU, "gpu_load returned %d (%s)", s, state_msg);
-    gpu_error = 1;
+    gpu_sel_model = MODEL_DUMMY;
   }
   if (xtate_fail(s, gpu_init(&gpu_context))) {
     verbose(VGPU, "gpu_init returned %d (%s)", s, state_msg);
-    gpu_error = 1;
+    gpu_sel_model = MODEL_DUMMY;
   }
   if (gpu_sel_model == MODEL_DUMMY) {
     gpu_num = 0;
@@ -440,7 +439,6 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 	state_t st;
 	ulong * energyp;
 	sd650N_v2_t *penergy_mj = (sd650N_v2_t *)energy_mj;
-	ulong gpu_energy = 0;
 	
 	debug("energy_dc_read\n");
 
@@ -451,6 +449,7 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 	bytes_rs = out.data;
 	energyp = (unsigned long *)&bytes_rs[FIRST_BYTE_EMJ];
 	penergy_mj->dc_energy = (unsigned long)be64toh(*energyp);
+	penergy_mj->gpu_num   = (uint)gpu_num;
 	if (gpu_num){
 		state_t s;
 		if (xtate_fail(s, gpu_read(&gpu_context, penergy_mj->gpus_energy))) {
@@ -478,7 +477,6 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms) {
 	state_t st;
 	struct timeval t;
 	sd650N_v2_t *penergy_mj = (sd650N_v2_t *) energy_mj;
-	ulong gpu_energy = 0;
 
 	penergy_mj->dc_energy = 0;
 	*time_ms = 0;
@@ -488,6 +486,7 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms) {
 	FIRST_BYTE_EMJ = out.data_len - 8;
 	energyp = (unsigned long *) &bytes_rs[FIRST_BYTE_EMJ];
 	penergy_mj->dc_energy = (unsigned long) be64toh(*energyp);
+	penergy_mj->gpu_num   = (uint)gpu_num;
 	if (gpu_num){
     state_t s;
     if (xtate_fail(s, gpu_read(&gpu_context, penergy_mj->gpus_energy))) {
@@ -529,26 +528,31 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
 	ulong total_gpu = 0;
 
 	unsigned long total = diff_node_energy(pinit->dc_energy, pend->dc_energy);
-	if (gpu_num) {
+	verbose(0, "Enode init %lu Enode end %lu Ediff %lu", pinit->dc_energy,pend->dc_energy, total);
+	if (pinit->gpu_num) {
 			verbose(VGPU, "Computing energy per GPU");
-		  gpu_data_diff(pend->gpus_energy, pinit->gpus_energy, gpu_diff);
-			for (uint i = 0; i < gpu_num; i++) total_gpu += (unsigned long)gpu_diff[i].energy_j;
+		  gpu_data_diff_gpus(pend->gpus_energy, pinit->gpus_energy, gpu_diff,pinit->gpu_num);
+			for (uint i = 0; i < pinit->gpu_num; i++){ 
+				verbose(0, "GPU[%d]=%lu acum %lu", i, (unsigned long)gpu_diff[i].energy_j, total_gpu);
+				total_gpu += (unsigned long)gpu_diff[i].energy_j;
+			}
 	}
-	verbose(VGPU, "Energy node %lu GPU energy %lu", total, total_gpu*1000);
+	verbose(0, "Energy node %lu (%lu-%lu) GPU energy %lu", total, pinit->dc_energy, pend->dc_energy, total_gpu*1000);
 	*e = total + total_gpu*1000;
 	return EAR_SUCCESS;
 }
 
 state_t energy_to_str(char *str, edata_t e) {
         sd650N_v2_t *pe = (sd650N_v2_t *) e;
-        sprintf(str, "dc_emergy %lu " , pe->dc_energy);
-				if (gpu_num){
+        sprintf(str, "dc_energy %lu " , pe->dc_energy);
+				if (pe->gpu_num){
 					char gpu_power_buffer[128];
-					for (uint i = 0; i < gpu_num; i++){
+					for (uint i = 0; i < pe->gpu_num; i++){
 						snprintf(gpu_power_buffer, sizeof(gpu_power_buffer), "gpu_power[%d] = %.1lf ", i, pe->gpus_energy[i].power_w);
 						strcat(str, gpu_power_buffer);	
 					}
 				}
+				verbose(VGPU,"energy_to_str:%s" , str);
         return EAR_SUCCESS;
 }
 

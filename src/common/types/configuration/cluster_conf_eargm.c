@@ -307,7 +307,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
 void check_cluster_conf_eargm(eargm_conf_t *conf)
 {
     if (conf->num_eargms == 0) {
-        warning("Not having an EARGMId definition is deprecated. Using global values to create an EARGM def");
+        verbose(2,"Not having an EARGMId definition is deprecated. Using global values to create an EARGM def");
         conf->eargms = realloc(conf->eargms, sizeof(eargm_def_t)*(conf->num_eargms+1));
         memset(&conf->eargms[0], 0, sizeof(eargm_def_t)); //this could be replaced by a default init function
         conf->eargms[0].id = 0;

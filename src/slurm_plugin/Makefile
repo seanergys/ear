@@ -56,7 +56,6 @@ erun: $(erun_SRCS) $(plug_SRCS) $(plug_HDRS)
 ######## OPTIONS
 
 install: erun.ginstall plug.ginstall;
-#install:  plug.ginstall;
 
 %.install: ;
 
