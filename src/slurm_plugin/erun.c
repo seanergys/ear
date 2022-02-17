@@ -88,15 +88,18 @@ int pipeline(int argc, char *argv[], int sp, int at)
 		}
 		else if (plug_context_is(_sp, Context.remote)) {
 			slurm_spank_user_init(_sp, argc, argv);
+            // By now, the master calls user_init before any task is calling
+            // task_init, then there is no problem.
+            slurm_spank_task_init(_sp, argc, argv);
 		}
 	}
 	else if(plug_is_action(_at, Action.exit)) {
 		if (plug_context_is(_sp, Context.remote)) {
-			slurm_spank_task_exit(_sp, argc, argv);
-			if (sd.erun.is_master) {
-				slurm_spank_exit(_sp, argc, argv);
-			}
-		}	
+            slurm_spank_task_exit(_sp, argc, argv);
+            if (sd.erun.is_master) {
+                slurm_spank_exit(_sp, argc, argv);
+            }
+        }
 		if (plug_context_is(_sp, Context.srun)) {
 			slurm_spank_exit(_sp, argc, argv);
 		}
@@ -255,13 +258,25 @@ int job(int argc, char *argv[])
 	return 0;
 }
 
-int step(int argc, char *argv[], int job_id, int step_id)
+int step(int argc, char *argv[])
 {
-	sprintf(buffer, "%d", step_id);
+	sprintf(buffer, "%d", sd.erun.step_id);
 	setenv("SLURM_STEP_ID", buffer, 1);
-	
+
+    // Currently, SLURM_LOCALID is only used to determine the master node. In
+    // case its value gains new uses, a lock would have to be used to numerate
+    // each local task id.
+    if ((p = getenv("SLURM_LOCALID")) == NULL) {
+        if (sd.erun.is_master) {
+            setenv("SLURM_LOCALID", "0", 1);
+        } else {
+            setenv("SLURM_LOCALID", "1", 1);
+        }
+    }
+
 	plug_verbose(_sp, 2, "program: '%s'", path_app);
-	plug_verbose(_sp, 2, "job/step id: '%d/%d'", job_id, step_id);
+	plug_verbose(_sp, 2, "job/step id: '%d/%d'", sd.erun.job_id, sd.erun.step_id);
+
 	return 0;
 }
 
@@ -385,7 +400,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Creating step
-	step(_argc, _argv, sd.erun.job_id, sd.erun.step_id);
+	step(_argc, _argv);
 
 	// Local context initialization
 	pipeline(_argc, _argv, Context.srun, Action.init);
