@@ -38,7 +38,7 @@ int plug_shared_readservs(spank_t sp, plug_serialization_t *sd)
 	memcpy(&sd->pack.eard.servs, servs, sizeof(services_conf_t));
 	sd->pack.eard.port = servs->eard.port;
 	dettach_services_conf_shared_area();
-
+    
 	return ESPANK_SUCCESS;
 }
 

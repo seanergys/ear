@@ -266,7 +266,7 @@ int step(int argc, char *argv[])
     // Currently, SLURM_LOCALID is only used to determine the master node. In
     // case its value gains new uses, a lock would have to be used to numerate
     // each local task id.
-    if ((p = getenv("SLURM_LOCALID")) == NULL) {
+    if (getenv("SLURM_LOCALID") == NULL) {
         if (sd.erun.is_master) {
             setenv("SLURM_LOCALID", "0", 1);
         } else {

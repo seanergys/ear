@@ -90,11 +90,11 @@ int slurm_spank_user_init_eard(spank_t sp)
 {
 	plug_verbose(sp, 2, "function slurm_spank_user_init_eard");
 
+	// If no shared services, EARD contact won't work, so plugin disabled.
+	if (fail(plug_shared_readservs(sp, &sd))) {
+		return ESPANK_ERROR;
+	}
 	if (!sd.erun.is_erun || sd.erun.is_master) {
-		// If no shared services, EARD contact won't work, so plugin disabled.
-		if (fail(plug_shared_readservs(sp, &sd))) {
-			return ESPANK_ERROR;
-		}
 		// If no frequencies, then no more processing.
 		if (fail(plug_shared_readfreqs(sp, &sd))) {
 			return ESPANK_ERROR;
