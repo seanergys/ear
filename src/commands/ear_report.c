@@ -33,6 +33,7 @@
 #include <common/types/version.h>
 #include <daemon/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
+ #include <global_manager/log_eargmd.h>
 
 #if DB_MYSQL
 #include <mysql/mysql.h>
@@ -646,6 +647,15 @@ void event_type_to_str(int type, char *buff, size_t size)
             break;
         case POWERCAP_VALUE:
             strncpy(buff, "POWERCAP_VALUE", size);
+            break;
+        case CLUSTER_POWER:
+            strncpy(buff, "CLUSTER_POWER", size);
+            break;
+        case NODE_POWERCAP:
+            strncpy(buff, "NODE_POWERCAP", size);
+            break;
+        case POWER_UNLIMITED:
+            strncpy(buff, "POWER_UNLIMITED", size);
             break;
         default:
             snprintf(buff, size, "UNKNOWN(%d) ", type);

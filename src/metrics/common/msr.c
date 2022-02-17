@@ -95,7 +95,16 @@ state_t msr_open(uint cpu)
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
 	if (counters[cpu] == 0) {
 		sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
+		debug("testing %s", msr_file_name);
 		fds[cpu] = open(msr_file_name, O_RDWR);
+		if (fds[cpu] < 0){
+			sprintf(msr_file_name, "/dev/cpu/%d/msr_safe", cpu);
+			debug("Testing %s", msr_file_name);
+			fds[cpu] = open(msr_file_name, O_RDWR);
+			if (fds[cpu] < 0) {
+				debug("msr_safe not ready %s", strerror(errno));	
+			}
+		}	
 	}
 	debug("msr open cpu[%d] = %d", cpu,fds[cpu]);
 	if (fds[cpu] < 0) {

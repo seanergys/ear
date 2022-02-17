@@ -147,7 +147,7 @@ static void fill_policies(cluster_conf_t *conf)
     }
 }
 
-static void generate_node_ranges(node_island_t *island, char *nodelist)
+void generate_node_ranges(node_island_t *island, char *nodelist)
 {
     char *buffer_ptr;
     char *second_ptr;

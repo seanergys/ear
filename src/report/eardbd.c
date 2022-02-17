@@ -117,7 +117,10 @@ state_t report_periodic_metrics(report_id_t *id,periodic_metric_t *mets, uint co
 	}
 	/* If the reporting fails, we will try in next report function call */
 	for (uint pm = 0; (pm < count) && connected; pm ++){
-		if (state_fail(s = eardbd_send_periodic_metric(&mets[pm]))) connected = 0;
+		if (state_fail(s = eardbd_send_periodic_metric(&mets[pm]))){ 
+			debug("eardbd report_periodic_metrics fails");
+			connected = 0;
+		}
 	}
 	return s;
 }

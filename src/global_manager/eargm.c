@@ -635,7 +635,7 @@ int main(int argc,char *argv[])
 
 
 
-    if ((period_t1<=0) || (period_t2<=0) || (energy_budget<=0)) usage(argv[0]);
+    if ((period_t1<=0) || (period_t2<=0) ) usage(argv[0]);
     cluster_powercap_init(&my_cluster_conf);
 
     aggregate_samples=period_t2/period_t1;

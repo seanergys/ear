@@ -516,7 +516,7 @@ static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, ui
 				}
 				*periodp = val;
 				//debug("Statistics reporting period %d\n", val);
-				verbose(0,"power: Max power %u Min power %u Avg power %u Current power %u Period %u\n", *maxp, *minp, *avgp, *currentp, *periodp);
+				debug("power: Max power %u Min power %u Avg power %u Current power %u Period %u\n", *maxp, *minp, *avgp, *currentp, *periodp);
 
 				return EAR_SUCCESS;
 }

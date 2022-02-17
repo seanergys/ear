@@ -92,7 +92,7 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
 				}
     }else{
-        xsnprintf(csv_log_file,sizeof(csv_log_file),"ear_app_log.%s.heroes",nodename);
+        xsnprintf(csv_log_file,sizeof(csv_log_file),"./%s.heroes",nodename);
     }
     xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
     xstrncat(csv_log_file,".csv",sizeof(csv_log_file));

@@ -33,6 +33,9 @@
 #include <daemon/remote_api/eard_rapi.h>
 
 #include <global_manager/cluster_powercap.h>
+#include <common/types/log.h>
+#include <common/database/db_helper.h>
+#include <global_manager/log_eargmd.h>
 
 
 
@@ -70,6 +73,20 @@ static uint total_free;
 
 void check_powercap_actions(uint cluster_powercap);
 void write_shared_data(ulong current_power, ulong freeable_power, ulong requested);
+void eargm_report_event(uint event_type, ulong value)
+{
+    ear_event_t event;
+
+    event.timestamp = time(NULL);
+    event.jid 			= 0;
+    event.step_id		= 0;
+    strcpy(event.node_id,"eargm");
+    event.event     = event_type;
+    event.freq      = value;
+    db_insert_ear_event(&event);
+}
+
+
 
 void aggregate_data(powercap_status_t *cs)
 {
@@ -288,6 +305,9 @@ void cluster_only_powercap()
 
     memset(&power, 0, sizeof(power_check_t));
     ear_get_power(&my_cluster_conf, &power, nodes, num_eargm_nodes);
+
+		eargm_report_event(CLUSTER_POWER, (ulong)power.power);
+
     float upper_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0);
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
 
@@ -309,6 +329,7 @@ void cluster_only_powercap()
             //if (risk == 0) cluster_set_powerlimit_all_nodes(current_cluster_powercap/max_num_nodes, &my_cluster_conf); 
             if (risk == 0) ear_set_powerlimit(&my_cluster_conf, UINT_MAX, nodes, num_eargm_nodes); 
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %u", current_cluster_powercap/max_num_nodes);
+						eargm_report_event(NODE_POWERCAP, (ulong)current_cluster_powercap/max_num_nodes);
         } else {
             warning("No nodes detected for this EARGM");
         }
@@ -319,6 +340,7 @@ void cluster_only_powercap()
             verbose(VGM_PC, "cluster_only_powercap: sending POWER_CAP_UNLIMTED to nodes");
             ear_set_powerlimit(&my_cluster_conf, 1, nodes, num_eargm_nodes); //set powercap unlimited
             risk = 0;
+						eargm_report_event(POWER_UNLIMITED, 1);
         }
         freeable_power = (uint64_t) (upper_limit - power.power) / 2; //for now, we will free half of whatever extra power
     }
