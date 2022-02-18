@@ -15,7 +15,6 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
 #define _GNU_SOURCE
 #include <sched.h>
 
@@ -25,26 +24,29 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/math_operations.h>
-
 #include <common/output/verbose.h>
-
 #include <common/hardware/topology.h>
-#include <management/cpufreq/frequency.h>
 #include <common/types/projection.h>
+
+#include <management/cpufreq/frequency.h>
+
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/policies/policy_ctx.h>
 #include <library/api/clasify.h>
+#include <library/policies/policy_ctx.h>
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
+
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
 
-void process_avg_cpu_freq(cpu_set_t *aff,ulong *cpuflist,ulong *avgcpu)
+void process_avg_cpu_freq(cpu_set_t *aff, ulong *cpuflist, ulong *avgcpu)
 {
     int i = 0;
     ulong cpuftotal = 0;

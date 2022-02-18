@@ -20,6 +20,13 @@
 
 #include <library/metrics/metrics.h>
 
+#ifdef EARL_RESEARCH
+extern unsigned long ext_def_freq;
+#define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
+#else
+#define DEF_FREQ(f) f
+#endif
+
 /* Compute reference metrics used before applying any policy projection/decision. */
 state_t compute_reference(polctx_t *c, signature_t *my_app, ulong *curr_freq, ulong *def_freq, ulong *freq_ref, double *time_ref, double *power_ref);
 
