@@ -715,7 +715,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
 		/* Update node info */
 		/* Not needed. update_earl_node_mgr_info();*/
 
-		verbose_master(2, "--- policy node apply ---");
+		verbose_master(3, "--- policy node apply ---");
 		nodemgr_get_num_jobs_attached(&jobs_in_node);
 		verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
 

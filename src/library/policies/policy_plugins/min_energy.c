@@ -15,7 +15,6 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-// #define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -23,18 +22,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <common/environment.h>
+#include <common/types/projection.h>
+
+#include <management/cpufreq/frequency.h>
+
+#include <daemon/local_api/eard_api.h>
+#include <daemon/powercap/powercap_status.h>
+
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
-#include <management/cpufreq/frequency.h>
-#include <common/types/projection.h>
-#include <daemon/local_api/eard_api.h>
-#include <daemon/powercap/powercap_status.h>
+#include <library/metrics/gpu.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/imc_policy_support.h>
@@ -42,7 +47,6 @@
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/generic.h>
-#include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -51,7 +55,7 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-/*  IMC management */
+/* IMC management */
 extern uint dyn_unc;
 extern double imc_extra_th;
 extern uint *imc_max_pstate,*imc_min_pstate;
@@ -134,54 +138,60 @@ extern uint last_earl_phase_classification;
 state_t policy_init(polctx_t *c)
 {
     // char *cuse_imc_ref;
-    char *cmin_cpufreq = NULL; // getenv(SCHED_MIN_CPUFREQ);
+    char *cmin_cpufreq = NULL;     // getenv(SCHED_MIN_CPUFREQ);
     char *cnetwork_use_imc = NULL; // getenv(SCHED_NETWORK_USE_IMC);
-    char *cimc_set_by_hw = NULL; // getenv(SCHED_LET_HW_CTRL_IMC);
+    char *cimc_set_by_hw = NULL;   // getenv(SCHED_LET_HW_CTRL_IMC);
 
     int i, sid = 0;
 
-    if (c!=NULL){
-        imc_data = calloc(c->num_pstates*NUM_UNC_FREQ,sizeof(imc_data_t));
+    if (c!=NULL) {
         nominal_node = frequency_get_nominal_freq();
-        verbose_master(2,"Nominal is %lu",nominal_node);
-        if (is_mpi_enabled()){
+        verbose_master(2, "Nominal is %lu", nominal_node);
+
+        imc_data = calloc(c->num_pstates * NUM_UNC_FREQ, sizeof(imc_data_t));
+
+        if (is_mpi_enabled()) {
             mpi_app_init(c);
             is_blocking_busy_waiting(&block_type);
-            verbose_master(1,"Busy_waiting MPI set to %u",block_type == BUSY_WAITING_BLOCK);
+            verbose_master(1, "Busy_waiting MPI set to %u", block_type == BUSY_WAITING_BLOCK);
         }
+
         /*  Config env variables */
         if (state_ok(read_config_env(cmin_cpufreq, SCHED_MIN_CPUFREQ))){
             min_cpufreq = atoi(cmin_cpufreq);
         }
-        if (min_cpufreq) verbose_master(2,"Min CPUfreq is limited = %lu",min_cpufreq);
+        if (min_cpufreq) verbose_master(2, "Min CPUfreq is limited = %lu", min_cpufreq);
 
-        if (state_ok(read_config_env(cimc_set_by_hw, SCHED_LET_HW_CTRL_IMC))) read_config(&imc_set_by_hw, cimc_set_by_hw);
-        verbose_master(2,"Dyn UNC Freq mgt set to %d. Using HW selection as ref set to %d. Using an extra IMC penalty of %.2lf"
-                ,dyn_unc,imc_set_by_hw,imc_extra_th);
+        if (state_ok(read_config_env(cimc_set_by_hw, SCHED_LET_HW_CTRL_IMC))) {
+            read_config(&imc_set_by_hw, cimc_set_by_hw);
+        }
+        verbose_master(2,"Dynamic Uncore freq. management: %d\n      Using HW selection as ref: %d\n              Extra IMC penalty: %.2lf",
+                dyn_unc, imc_set_by_hw, imc_extra_th);
 
-        if (state_ok(read_config_env(cnetwork_use_imc, SCHED_NETWORK_USE_IMC))){
+        if (state_ok(read_config_env(cnetwork_use_imc, SCHED_NETWORK_USE_IMC))) {
             read_config(&network_use_imc, cnetwork_use_imc);
         }
-        verbose_master(2,"Network uses IMC set to %u",network_use_imc);
+        verbose_master(2, "               Network uses IMC: %u", network_use_imc);
 
         num_processes = lib_shared_region->num_processes;
 
-        my_app = calloc(1,sizeof(signature_t));
+        my_app          = calloc(1, sizeof(signature_t));
         my_app->sig_ext =  (void *)calloc(1,sizeof(sig_ext_t));
 
         /* We store the signatures for the case where models are not used */
-        if (!use_energy_models){
-            sig_list  = (signature_t *)calloc(c->num_pstates,sizeof(signature_t));
-            sig_ready = (uint *)calloc(c->num_pstates,sizeof(uint));
+        if (!use_energy_models) {
+            sig_list  = (signature_t *) calloc(c->num_pstates,sizeof(signature_t));
+            sig_ready = (uint *) calloc(c->num_pstates,sizeof(uint));
 
-            if ((sig_list==NULL) || (sig_ready==NULL)) return EAR_ERROR;
-
+            if ((sig_list==NULL) || (sig_ready==NULL)) {
+                return EAR_ERROR;
+            }
         }
 
-        percs_mpi = calloc(num_processes, sizeof(double));
+        percs_mpi      = calloc(num_processes, sizeof(double));
         last_percs_mpi = calloc(num_processes, sizeof(double));
 
-        critical_path = calloc(num_processes,sizeof(uint));
+        critical_path      = calloc(num_processes,sizeof(uint));
         last_critical_path = calloc(num_processes,sizeof(uint));
 
         node_freqs_alloc(&min_energy_def_freqs);
@@ -191,25 +201,25 @@ state_t policy_init(polctx_t *c)
             last_mpi_stats_perc_mpi_mag = last_mpi_stats_perc_mpi_median = 0;
 
         /* Configuring default freqs */
-        for (i=0;i<num_processes;i++) {
+        for (i=0; i < num_processes; i++) {
             min_energy_def_freqs.cpu_freq[i] = *(c->ear_frequency);
         }
 
-        for (sid=0; sid < imc_devices; sid ++){
+        for (sid=0; sid < imc_devices; sid++) {
             min_energy_def_freqs.imc_freq[sid*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
             min_energy_def_freqs.imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
         }
 
 #if USE_GPUS
-        memset(&gpus,0,sizeof(gpus));
-        if (c->num_gpus){
-            if (policy_gpu_load(c->app,&gpus) != EAR_SUCCESS){
-                verbose_master(2,"Error loading GPU policy");
+        memset(&gpus, 0, sizeof(gpus));
+        if (c->num_gpus) {
+            if (policy_gpu_load(c->app, &gpus) != EAR_SUCCESS){
+                verbose_master(2, "Error loading GPU policy");
             }
-            verbose_master(2,"Initialzing GPU policy part");
+            verbose_master(2, "Initialzing GPU policy part");
             if (gpus.init != NULL) gpus.init(c);
             if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
-                verbose_master(2,"Error asking for gpu freq list");
+                verbose_master(2, "Error asking for gpu freq list");
             }
             /* replace by default settings in GPU policy */
             for (i=0;i<c->num_gpus;i++){
