@@ -53,7 +53,7 @@ int help(int argc, char *argv[])
 {
 	printf("Usage: %s [OPTIONS]\n", argv[0]);
 	printf("\nOptions:\n");
-	printf("\t--job-id=<arg>\t\tSet the JOB_ID.\n");
+//	printf("\t--job-id=<arg>\t\tSet the JOB_ID.\n");
 	printf("\t--nodes=<arg>\t\tSets the number of nodes.\n");
 	printf("\t--program=<arg>\t\tSets the program to run.\n");
 //	printf("\t--plugstack [ARGS]\tSet the SLURM's plugstack arguments. I.e:\n");
@@ -61,17 +61,6 @@ int help(int argc, char *argv[])
 	printf("\t--clean\t\t\tRemoves the internal files.\n");
 	printf("SLURM options:\n");
 
-	return 0;
-}
-
-int clean(int argc, char *argv[])
-{
-	plug_verbose(_sp, 0, "cleaning temporal folder");
-	//
-	xsprintf(path_sys, "rm %s/erun.*.lock &> /dev/null", path_tmp);
-	//
-	system(path_sys);
-	
 	return 0;
 }
 
@@ -88,15 +77,20 @@ int pipeline(int argc, char *argv[], int sp, int at)
 		}
 		else if (plug_context_is(_sp, Context.remote)) {
 			slurm_spank_user_init(_sp, argc, argv);
+            // The master calls user_init before any task is calling
+            // task_init, because all the other tasks waits the master 
+            // to finish its remote pipeline completely. Then there
+            // isn't required a task wait here.
+            slurm_spank_task_init(_sp, argc, argv);
 		}
 	}
 	else if(plug_is_action(_at, Action.exit)) {
 		if (plug_context_is(_sp, Context.remote)) {
-			slurm_spank_task_exit(_sp, argc, argv);
-			if (sd.erun.is_master) {
-				slurm_spank_exit(_sp, argc, argv);
-			}
-		}	
+            slurm_spank_task_exit(_sp, argc, argv);
+            if (sd.erun.is_master) {
+                slurm_spank_exit(_sp, argc, argv);
+            }
+        }
 		if (plug_context_is(_sp, Context.srun)) {
 			slurm_spank_exit(_sp, argc, argv);
 		}
@@ -255,13 +249,25 @@ int job(int argc, char *argv[])
 	return 0;
 }
 
-int step(int argc, char *argv[], int job_id, int step_id)
+int step(int argc, char *argv[])
 {
-	sprintf(buffer, "%d", step_id);
+	sprintf(buffer, "%d", sd.erun.step_id);
 	setenv("SLURM_STEP_ID", buffer, 1);
-	
+
+    // Currently, SLURM_LOCALID is only used to determine the master node. In
+    // case its value gains new uses, a lock would have to be used to numerate
+    // each local task id.
+    if (getenv("SLURM_LOCALID") == NULL) {
+        if (sd.erun.is_master) {
+            setenv("SLURM_LOCALID", "0", 1);
+        } else {
+            setenv("SLURM_LOCALID", "1", 1);
+        }
+    }
+
 	plug_verbose(_sp, 2, "program: '%s'", path_app);
-	plug_verbose(_sp, 2, "job/step id: '%d/%d'", job_id, step_id);
+	plug_verbose(_sp, 2, "job/step id: '%d/%d'", sd.erun.job_id, sd.erun.step_id);
+
 	return 0;
 }
 
@@ -332,7 +338,8 @@ int main(int argc, char *argv[])
 
 	// Clean
 	if (_clean) {
-		return clean(_argc, _argv);
+	    plug_verbose(_sp, 0, "cleaning temporal folder");
+		return all_clean(path_tmp);
 	}
 
 	// Help
@@ -349,31 +356,31 @@ int main(int argc, char *argv[])
 	if (_error)
 	{
 		if (_error == 1) {
-			if ((sd.erun.is_master = lock_master(path_tmp))) {
+			if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
 				plug_verbose(_sp, 0, "missing environment vars, is the EAR module loaded?");
 				//
 				sleep(2);
 				//
-				lock_clean(path_tmp, 0);
+				folder_clean(path_tmp, sd.erun.job_id);
 			}
 			return 0;	
 		}
 		if (_error == 2) {
-			if ((sd.erun.is_master = lock_master(path_tmp))) {
+			if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
 				plug_verbose(_sp, 0, "detected SRUN, going inactive");	
 			}
 			//	
 			execute(_argc, _argv);
 			//
 			if (sd.erun.is_master) {	
-				lock_clean(path_tmp, 0);
+				folder_clean(path_tmp, sd.erun.job_id);
 			}
 			return 0;	
 		}
 	}
 
 	// Simulating the single pipeline, take the lock.master
-	if ((sd.erun.is_master = lock_master(path_tmp))) {
+	if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
 		plug_verbose(_sp, 2, "got the lock file");
 		// Take the lock.job and read its old step id
 		sd.erun.step_id = lock_job(path_tmp, sd.erun.job_id, sd.erun.step_id);
@@ -381,11 +388,11 @@ int main(int argc, char *argv[])
 		plug_verbose(_sp, 4, "missed the lock file, spinlock");
 		plug_verbosity_silence(_sp);
 		// Spinlock over lock.step
-		sd.erun.step_id = spinlock_step(path_tmp, sd.erun.step_id);
+		sd.erun.step_id = spinlock_step(path_tmp, sd.erun.job_id, sd.erun.step_id);
 	}
 
 	// Creating step
-	step(_argc, _argv, sd.erun.job_id, sd.erun.step_id);
+	step(_argc, _argv);
 
 	// Local context initialization
 	pipeline(_argc, _argv, Context.srun, Action.init);
@@ -394,7 +401,7 @@ int main(int argc, char *argv[])
 
 	if (sd.erun.is_master) {
 		// Free lock.step
-		unlock_step(path_tmp, sd.erun.step_id);
+		unlock_step(path_tmp, sd.erun.job_id, sd.erun.step_id);
 	}
 
 	execute(_argc, _argv);
@@ -409,7 +416,7 @@ int main(int argc, char *argv[])
 	pipeline(_argc, _argv, Context.srun, Action.exit);
 
 	if (sd.erun.is_master) {
-		lock_clean(path_tmp, sd.erun.step_id);
+		lock_clean(path_tmp, sd.erun.job_id, sd.erun.step_id);
 	}
 
 	return 0;
