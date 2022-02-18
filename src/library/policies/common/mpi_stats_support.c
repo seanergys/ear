@@ -82,9 +82,10 @@ state_t mpi_app_init(polctx_t *c)
         mpi_stats.exec_time = 0;
         mpi_stats.perc_mpi = 0;
 
+        // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
             mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
-        }else{
+        }else {
             mpi_stats.rank = 0;
         }
 
@@ -566,7 +567,8 @@ void chech_node_mpi_summary()
 
 
 
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean, double *sd, double *mag, uint *lb){
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
+        double *sd, double *mag, uint *lb){
 
     /*  Get only perc_mpi info */
     mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi);
@@ -574,12 +576,12 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     /*  Compute statistics for determinate whether application is load balanced */
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
 
-		mpi_support_set_mpi_summary(&my_mpi_summary,percs_mpi, num_procs, *mean, *sd, *mag);
-		#if NODE_LB
+    mpi_support_set_mpi_summary(&my_mpi_summary,percs_mpi, num_procs, *mean, *sd, *mag);
+#if NODE_LB
     *lb = (*sd > LB_TH);
-		#else
-		*lb = 0;
-		#endif
+#else
+    *lb = 0;
+#endif
 
     return EAR_SUCCESS;
 }
