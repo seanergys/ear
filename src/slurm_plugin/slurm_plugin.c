@@ -90,11 +90,11 @@ int slurm_spank_user_init_eard(spank_t sp)
 {
 	plug_verbose(sp, 2, "function slurm_spank_user_init_eard");
 
+	// If no shared services, EARD contact won't work, so plugin disabled.
+	if (fail(plug_shared_readservs(sp, &sd))) {
+		return ESPANK_ERROR;
+	}
 	if (!sd.erun.is_erun || sd.erun.is_master) {
-		// If no shared services, EARD contact won't work, so plugin disabled.
-		if (fail(plug_shared_readservs(sp, &sd))) {
-			return ESPANK_ERROR;
-		}
 		// If no frequencies, then no more processing.
 		if (fail(plug_shared_readfreqs(sp, &sd))) {
 			return ESPANK_ERROR;
@@ -109,25 +109,25 @@ int slurm_spank_user_init_eard(spank_t sp)
 		}
 	}
 
-        // LD_PRELOAD can be DISABLED by plugstack.conf or flag is OFF
-        // LD_PRELOAD can be DISABLED by EARD when reading settings
-        // LD_PRELOAD can be DISABLED if energy tag flag is present (during remote deserialization)
-        //
+    // LD_PRELOAD can be DISABLED by plugstack.conf or flag is OFF
+    // LD_PRELOAD can be DISABLED by EARD when reading settings
+    // LD_PRELOAD can be DISABLED if energy tag flag is present (during remote deserialization)
+    //
 	// If is an SBATCH remote environment, then there is no serialization
-        // to task, so then is no libearld.so.
-        if (plug_context_was(&sd, Context.srun)) {
-                if (plug_component_isenabled(sp, Component.library)) {
-                        if (fail(plug_shared_readsetts(sp, &sd))) {
-                                return ESPANK_ERROR;
-                        }
-                } else {
-                        plug_verbose(sp, 2, "library is not enabled");
-                }
-                if (plug_component_isenabled(sp, Component.library)) {
-                        plug_serialize_task_settings(sp, &sd);
-                        plug_serialize_task_preload(sp, &sd);
-                }
+    // to task, so then is no libearld.so.
+    if (plug_context_was(&sd, Context.srun)) {
+        if (plug_component_isenabled(sp, Component.library)) {
+            if (fail(plug_shared_readsetts(sp, &sd))) {
+                return ESPANK_ERROR;
+            }
+        } else {
+            plug_verbose(sp, 2, "library is not enabled");
         }
+        if (plug_component_isenabled(sp, Component.library)) {
+            plug_serialize_task_settings(sp, &sd);
+            plug_serialize_task_preload(sp, &sd);
+        }
+    }
 
 	return ESPANK_SUCCESS;
 }
@@ -166,9 +166,11 @@ int slurm_spank_user_init(spank_t sp, int ac, char **av)
 	if (fail(slurm_spank_user_init_eard(sp))) {
 		// Loading library anyway, because if a single node in a job runs
 		// without the library, it can freeze during EAR synchronization.
-      if (plug_component_isenabled(sp, Component.library)) {
-			plug_serialize_task_preload(sp, &sd);
-		}
+        if (plug_context_was(&sd, Context.srun)) {
+            if (plug_component_isenabled(sp, Component.library)) {
+			    plug_serialize_task_preload(sp, &sd);
+		    }
+        }
 	}
 	//
 	plug_print_variables(sp);
