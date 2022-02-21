@@ -87,19 +87,18 @@ AC_DEFUN([AX_PRE_OPT_FEATURES],
 	AC_ARG_VAR([MPICC_FLAGS],[Appends parameters to MPI compiler])
 	AC_ARG_VAR([MPI_VERSION],[Adds a suffix to the EAR library referring the MPI version used to compile])
 
-	# !I && !O
-	if test -z "$MPICC"; then
-		MPICC=mpicc
-	fi
+    FEAT_MPI_API=1
 
-	if echo "$MPICC" | grep -q "/"; then
-		echo nothing &> /dev/null
-	else
+	if test -z "$MPICC"; then
+		if which mpicc &> /dev/null; then
+			MPICC="`which mpicc`"
+		else
+            FEAT_MPI_API=0
+		fi
+    else
 		if which $MPICC &> /dev/null; then
 			MPICC="`which $MPICC`"
-		else
-			MPICC="mpicc"
-		fi
+        fi
 	fi
 
 	if echo "$CC" | grep -q "/"; then
@@ -179,6 +178,7 @@ AC_DEFUN([AX_POST_OPT_FEATURES],
 	AC_SUBST(MPI_DIR)
 	AC_SUBST(MPI_CPPFLAGS)
 	AC_SUBST(MPI_VERSION)
+	AC_SUBST(FEAT_MPI_API)
 	AC_SUBST(FEAT_AVX512)
 	AC_SUBST(FEAT_GPUS)
 	AC_SUBST(DB_MYSQL)

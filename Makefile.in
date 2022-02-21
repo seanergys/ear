@@ -1,4 +1,4 @@
-FEAT_MPI_API       = 1
+FEAT_MPI_API       = @FEAT_MPI_API@
 FEAT_AVX512        = @FEAT_AVX512@
 FEAT_RESEARCH      = 0
 FEAT_GPU_OPT       = 1
