@@ -22,19 +22,18 @@
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>
 
-// The API
-//
-// This API is designed to load plugin libraries to report some information to
-// EARD, to EARDBD, to different databases and what the programmer wants, such
-// as text files. You have to pass an installation path and a list of library
-// files sepparated by ':'. If installation path is NULL, it will use the
-// current path. If not, it will search in INSTALL_PATH/lib/plugins/report/
-// folder. The library files have to include the '.so' extension.
-//
-// Props:
-//	- Thread safe: yes.
-//	- User mode: yes, if the plugin does user operations.
-//------------------------------------------------------------------------------
+/** \defgroup report_api Report API
+ * @{
+ * This API is designed to load plugin libraries to report some information to EARD, to EARDBD,
+ * to different databases and what the programmer wants, such as text files. You have to pass an
+ * installation path and a list of library files sepparated by ':'. If installation path is NULL,
+ * it will use the current path. If not, it will search in INSTALL_PATH/lib/plugins/report/ folder.
+ * The library files have to include the '.so' extension.
+ *
+ * Props:
+ *     - Thread safe: yes.
+ *     - User mode: yes, if the plugin does user operations.
+ */
 
 #define EARGM_WARNINGS        1
 #define PERIODIC_AGGREGATIONS 2
@@ -73,6 +72,7 @@ state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int m
  * names separated with `:`. This functions is used internally by EAR to load the report plugin API. */
 state_t report_load(const char *install_path, const char *libs);
 
+
 /** The first API function called once the report plugin is loaded.
  * This function is designed to store report configuration (e.g., report filenames).
  * \param id The calling process information.
@@ -101,5 +101,9 @@ state_t report_events(report_id_t *id, ear_event_t *eves, uint count);
 state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count);
 
 state_t report_misc(report_id_t *id, uint type, const char *data, uint count);
+
+/**
+ * @}
+ */
 
 #endif // REPORT_H
