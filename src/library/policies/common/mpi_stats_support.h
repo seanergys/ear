@@ -15,6 +15,7 @@
 
 #ifndef MPI_SUPPORT_H
 #define MPI_SUPPORT_H
+
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
@@ -31,8 +32,12 @@ state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i
 state_t mpi_call_new_phase(polctx_t *c);
 
 
-state_t mpi_call_get_stats(mpi_information_t *dst,mpi_information_t * src,int i);
-state_t mpi_call_get_types(mpi_calls_types_t *dst,shsignature_t * src,int i);
+/** Copies MPI metrics from `src` to `dst`.
+ * If `src` is a NULL pointer, `dst` is filled with the MPI metrics of the `i`-th stored in the shared region.
+ * If `i` is negative, `dst` is filled with the MPI metrics of the current process (my_node_id). */
+state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i);
+
+state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
 
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t);
 state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i);
@@ -76,7 +81,9 @@ state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump);
 state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd);
 state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag);
 state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
-float compute_mpi_in_period(mpi_information_t *dst);
+
+/** Returns the number of total_mpi_calls normalized by a period, e.g., 10 seconds. */
+float compute_mpi_in_period(mpi_information_t *mc);
 
 
 state_t is_blocking_busy_waiting(uint *block_type);
@@ -84,8 +91,5 @@ state_t is_blocking_busy_waiting(uint *block_type);
 void get_last_mpi_summary(mpi_summary_t *l);
 void verbose_mpi_summary(int vl,mpi_summary_t *l);
 void chech_node_mpi_summary();
-
-
-
 
 #endif

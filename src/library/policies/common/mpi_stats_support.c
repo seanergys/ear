@@ -25,7 +25,7 @@
 #include <math.h>
 #include <common/config.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #define LB_VERB			3
 #include <common/output/verbose.h>
 #include <common/system/time.h>
@@ -287,26 +287,31 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
     return EAR_SUCCESS;
 }
 
-/* If src is null, dst = local data, else dst = src */
 state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i)
 {
 
     if (dst == NULL) return EAR_ERROR;
     if (src == NULL) {
-        if (i < 0) src = &sig_shared_region[my_node_id].mpi_info;
-        else src = &sig_shared_region[i].mpi_info;
+        if (i < 0) {
+            src = &sig_shared_region[my_node_id].mpi_info;
+        }
+        else {
+            src = &sig_shared_region[i].mpi_info;
+        }
     }
-    memcpy(dst,src,sizeof(mpi_information_t));
+    memcpy(dst, src, sizeof(mpi_information_t));
     return EAR_SUCCESS;
 }
 
-static void mpi_call_copy(mpi_information_t *dst,mpi_information_t * src)
+/*
+static void mpi_call_copy(mpi_information_t *dst, mpi_information_t * src)
 {
     if ((dst == NULL) || (src == NULL)) return;
-    memcpy(dst,src,sizeof(mpi_information_t));
+    memcpy(dst, src, sizeof(mpi_information_t));
 }
+*/
 
-static state_t mpi_call_diff(mpi_information_t *diff,mpi_information_t *end,mpi_information_t *init)
+static state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init)
 {
     diff->total_mpi_calls = end->total_mpi_calls - init->total_mpi_calls;
     diff->exec_time       = end->exec_time - init->exec_time;
@@ -314,43 +319,58 @@ static state_t mpi_call_diff(mpi_information_t *diff,mpi_information_t *end,mpi_
     return EAR_SUCCESS;
 }
 
-void verbose_mpi_data(int vl,mpi_information_t *mc)
-{
-    verbose_master(vl,"Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",mc->total_mpi_calls,mc->mpi_time,mc->exec_time,mc->perc_mpi);
-}
-
 state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int i)
 {
     mpi_information_t current;
-    mpi_call_get_stats(&current, NULL, i);
-    mpi_call_diff(diff,&current,last);
-		verbose_master(3, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",i,diff->mpi_time,current.mpi_time,last->mpi_time,diff->exec_time,current.exec_time,last->exec_time);
-    diff->perc_mpi =  (double)diff->mpi_time*100.0/(double)diff->exec_time;
-    mpi_call_copy(last,&current);
-    last->perc_mpi =  (double)last->mpi_time*100.0/(double)last->exec_time;
 
-    /*  Check wether values are correctly bounded */
-    if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100){
-        debug("%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf", COL_RED, COL_CLR, (double)diff->mpi_time*100.0, (double)diff->exec_time,
-                diff->perc_mpi, (double)last->mpi_time*100.0, (double)last->exec_time, last->perc_mpi);
+    mpi_call_get_stats(&current, NULL, i);
+    mpi_call_diff(diff, &current, last);
+
+	verbose_master(3, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
+            i, diff->mpi_time, current.mpi_time, last->mpi_time, diff->exec_time, current.exec_time, last->exec_time);
+
+    diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
+
+    // mpi_call_copy(last, &current);
+    mpi_call_get_stats(last, &current); // Copy from current to last
+    last->perc_mpi =  (double) last->mpi_time * 100.0 / (double) last->exec_time;
+
+    //  Check wether values are correctly bounded
+    if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100) {
+        debug("%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf",
+                COL_RED, COL_CLR, (double) diff->mpi_time * 100.0, (double) diff->exec_time,
+                diff->perc_mpi, (double) last->mpi_time * 100.0, (double) last->exec_time, last->perc_mpi);
         return EAR_WARNING;
     }
     return EAR_SUCCESS;
 }
 
-state_t mpi_call_new_phase(polctx_t *c)
+state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i)
 {
-#if RESET_STATISTICS_AT_SIGNATURE
-    clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
-#endif
-    return EAR_SUCCESS;
-}
+    mpi_information_t *src_stat;
+    mpi_calls_types_t *src_types;
 
-float compute_mpi_in_period(mpi_information_t *dst)
-{
-	float mpis = dst[my_node_id].total_mpi_calls;
-	ullong tsec = dst[my_node_id].exec_time/1000000;
-	return mpis/(float)tsec;
+    if (dst == NULL) return EAR_ERROR;
+    if (src == NULL) {
+        if (i < 0) {
+            src_types = &sig_shared_region[my_node_id].mpi_types_info;
+            src_stat  = &sig_shared_region[my_node_id].mpi_info;
+        } else {
+            src_types = &sig_shared_region[i].mpi_types_info;
+            src_stat  = &sig_shared_region[i].mpi_info;
+        }
+    } else {
+        src_types = &src->mpi_types_info;
+        src_stat = &src->mpi_info;
+    }
+
+    memcpy(dst, src_types, sizeof(mpi_calls_types_t));
+
+    dst->time_mpi 		= src_stat->mpi_time;
+    dst->time_period 	= src_stat->exec_time;
+    dst->mpi 			= src_stat->total_mpi_calls;
+
+    return EAR_SUCCESS;
 }
 
 static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current, mpi_calls_types_t *last)
@@ -367,41 +387,40 @@ static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *
     diff->sync_block        = current->sync_block - last->sync_block;
     diff->time_sync_block   = current->time_sync_block - last->time_sync_block;
     diff->max_sync_block    = ear_max(current->max_sync_block , last->max_sync_block);
+
     return EAR_SUCCESS;
 }
 
 state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i)
 {
     mpi_calls_types_t current;
+
     mpi_call_get_types(&current, NULL, i);
+
     mpi_call_types_diff(diff, &current, last);
-    memcpy(last,&current,sizeof(mpi_calls_types_t));
+    memcpy(last, &current, sizeof(mpi_calls_types_t));
     return EAR_SUCCESS;
 }
 
-state_t mpi_call_get_types(mpi_calls_types_t *dst,shsignature_t * src,int i)
+void verbose_mpi_data(int vl, mpi_information_t *mc)
 {
-    mpi_information_t *src_stat;
-    mpi_calls_types_t * src_types;
-    if (dst == NULL) return EAR_ERROR;
-    if (src == NULL){
-        if (i < 0){
-            src_types = &sig_shared_region[my_node_id].mpi_types_info;
-            src_stat  = &sig_shared_region[my_node_id].mpi_info;
-        }else{
-            src_types = &sig_shared_region[i].mpi_types_info;
-            src_stat  = &sig_shared_region[i].mpi_info;
-        }
-    }else{
-			src_types = &src->mpi_types_info;
-			src_stat = &src->mpi_info;
-		}
-    memcpy(dst,src_types,sizeof(mpi_calls_types_t));
-    dst->time_mpi 		= src_stat->mpi_time;
-    dst->time_period 	= src_stat->exec_time;
-    dst->mpi 					= src_stat->total_mpi_calls;
+    verbose_master(vl, "Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",
+            mc->total_mpi_calls, mc->mpi_time, mc->exec_time, mc->perc_mpi);
+}
 
+state_t mpi_call_new_phase(polctx_t *c)
+{
+#if RESET_STATISTICS_AT_SIGNATURE
+    clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
+#endif
     return EAR_SUCCESS;
+}
+
+float compute_mpi_in_period(mpi_information_t *mc)
+{
+	float mpis  = mc[my_node_id].total_mpi_calls;
+	ullong tsec = mc[my_node_id].exec_time / 1000000;
+	return mpis / (float) tsec;
 }
 
 
@@ -411,12 +430,12 @@ void verbose_mpi_types(int vl,mpi_calls_types_t *t)
     if (t->time_period == 0){
         sprintf(psync,"NAV");
         sprintf(pcollect," NAV");
-    }else{
-        sprintf(psync,"%.2lf",(float)t->time_sync/(float)t->time_period);
-        sprintf(pcollect," %.2lf",(float)t->time_collec/(float)t->time_mpi);
+    } else {
+        sprintf(psync,"%.2lf", (float) t->time_sync / (float) t->time_period);
+        sprintf(pcollect," %.2lf", (float) t->time_collec / (float) t->time_mpi);
     }
-    verbose_master(vl,"MPI types: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",
-            t->mpi,t->time_mpi,t->time_period,t->sync,t->collec,t->blocking,t->time_sync,t->time_collec,t->time_blocking,
+    verbose_master(vl, "MPI types: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",
+            t->mpi, t->time_mpi, t->time_period, t->sync, t->collec, t->blocking,t->time_sync,t->time_collec,t->time_blocking,
             (float)t->mpi*1000000.0/(float)t->time_period,(float)t->time_mpi/(float)t->time_period,psync,pcollect,
             t->sync_block, t->time_sync_block,t->max_sync_block);
 }
@@ -425,11 +444,11 @@ void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t)
 {
     int i;
     ulong tmpi = 0, texec = 0;
-    float max_mpi = 0.0, min_mpi = 100.0,  pmpi;
-    if (vl == 1){
-        verbose_mpi_types(vl,&t[0]);
+    float max_mpi = 0.0, min_mpi = 100.0, pmpi;
+    if (vl == 1) {
+        verbose_mpi_types(vl, &t[0]);
     }
-    if (vl == 2){
+    if (vl == 2) {
         for (i=0; i<nump; i++){
             tmpi += t[i].time_mpi;
             texec += t[i].time_period;
@@ -437,10 +456,11 @@ void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t)
             max_mpi = ear_max(pmpi,max_mpi);
             min_mpi = ear_min(pmpi,min_mpi);
         }
-        verbose_master(vl,"MPI types summary: avg mpi %.2f max mpi %.2f min mpi %.2f ",(float)tmpi/(float)texec, max_mpi, min_mpi);
+        verbose_master(vl, "MPI types summary: avg mpi %.2f max mpi %.2f min mpi %.2f ",
+                (float) tmpi/(float)texec, max_mpi, min_mpi);
     }
-    if (vl >= 3){
-        for (i=0;i<nump;i++){
+    if (vl >= 3) {
+        for (i=0;i<nump;i++) {
             verbose_mpi_types(vl,&t[i]);
         }
     }
@@ -449,7 +469,7 @@ void verbose_node_mpi_types(int vl,uint nump,mpi_calls_types_t *t)
 
 state_t clean_my_mpi_type_info(mpi_calls_types_t *t)
 {
-    memset(t,0,sizeof(mpi_calls_types_t));
+    memset(t, 0, sizeof(mpi_calls_types_t));
     return EAR_SUCCESS;
 }
 
@@ -457,9 +477,9 @@ state_t copy_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_inform
 {
     int i;
     if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL)) return EAR_ERROR;
-    for (i=0;i<data->num_processes;i++){
-        memcpy(&node_mpi_calls[i],&sig[i].mpi_info,sizeof(mpi_information_t));
-        node_mpi_calls[i].perc_mpi = (double)node_mpi_calls[i].mpi_time*100.0/(double)node_mpi_calls[i].exec_time;
+    for (i=0; i < data->num_processes; i++) {
+        memcpy(&node_mpi_calls[i], &sig[i].mpi_info, sizeof(mpi_information_t));
+        node_mpi_calls[i].perc_mpi = (double) node_mpi_calls[i].mpi_time * 100.0 / (double) node_mpi_calls[i].exec_time;
     }
     return EAR_SUCCESS;
 }
@@ -567,6 +587,7 @@ void chech_node_mpi_summary()
 
 
 
+// TODO: Evaluate Load Balance efficiency
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
         double *sd, double *mag, uint *lb){
 

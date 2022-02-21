@@ -735,7 +735,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
     is_io_bound(my_sig->IO_MBS,&iobound);
-    is_network_bound(mpi_in_period,&mpibound);
+    is_network_bound(mpi_in_period, &mpibound);
     classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);
