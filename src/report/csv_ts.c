@@ -32,7 +32,7 @@ static char csv_log_file[1024];
 static ullong my_time = 0;
 
 static uint must_report;
-state_t report_init(report_id_t *id,cluster_conf_t *cconf)
+state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 {
     debug("eard report_init");
     char nodename[128];
