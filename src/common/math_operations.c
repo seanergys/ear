@@ -172,10 +172,6 @@ void** ear_math_apply(void **arr, size_t len, void* (*fn_ptr)(void*)){
     return res;
 }
 
-void ear_math_free_gen_array(void **arr) {
-    free(arr);
-}
-
 double ear_math_cosine_similarity(double *a, double *b, size_t n) {
     double dot_product = 0, magnitude_a = 0, magnitude_b = 0;
     for (int i = 0; i < n; i++) {
@@ -203,7 +199,7 @@ mean_sd_t ear_math_mean_sd(const double data[], size_t n){
         return result;
     double sum, sq_sum;
     sum = sq_sum = 0;
-    for (int i = 0; i < n; i++){
+    for (int i = 0; i < n; i++) {
         sum += data[i];
         sq_sum += pow(data[i], 2);
     }

@@ -331,7 +331,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int
     diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
 
     // mpi_call_copy(last, &current);
-    mpi_call_get_stats(last, &current); // Copy from current to last
+    mpi_call_get_stats(last, &current, -1); // Copy from current to last
     last->perc_mpi =  (double) last->mpi_time * 100.0 / (double) last->exec_time;
 
     //  Check wether values are correctly bounded
@@ -539,7 +539,7 @@ state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, doubl
 /* This function sets the values to be shared with other nodes */
 static mpi_summary_t my_mpi_summary;
 
-state_t     mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
+state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
 {
 	int i;
 	double max = 0.0, min = 100.0;
@@ -597,7 +597,20 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
 
 #if NODE_LB
 #if EARL_RESEARCH
-    
+    double avg_tcomp = 0;
+    ullong max_tcomp = -1;
+    for (int i = 0; i < num_procs; i++) {
+        ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
+        if (max_tcomp < current_tcomp) {
+            max_tcomp = current_tcomp;
+        }
+        avg_tcomp += current_tcomp;
+    }
+    avg_tcomp /= num_procs;
+
+    double lb_eff = avg_tcomp / (double) max_tcomp;
+
+    *lb = (lb_eff < LB_TH);
 #else
     *lb = (*sd > LB_TH);
 #endif
@@ -675,6 +688,7 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
 state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi)
 {
     mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
+
     for (int i = 0; i < nump; i++) {
         mpi_calls[i] = &node_mpi_calls[i];
     }
@@ -684,7 +698,9 @@ state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump
     for (int i = 0; i < nump; i++) {
         percs_mpi[i] = *(double*)percs_mpi_v[i];
     }
-    ear_math_free_gen_array(percs_mpi_v);
+
+    free(percs_mpi_v);
+
     return EAR_SUCCESS;
 }
 
