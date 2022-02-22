@@ -50,7 +50,7 @@ static int init()
     }
     pid1 = getpid();
 
-    if (SCHED_IS(SLURM)) {
+    if (SCHED_IS(SCHED_SLURM)) {
         // SLURM prolog/epilog control
         if ((task = getenv(FLAG_TASK_PID)) == NULL) {
             return 0;
