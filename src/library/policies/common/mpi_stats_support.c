@@ -29,6 +29,7 @@
 #define LB_VERB			3
 #include <common/output/verbose.h>
 #include <common/system/time.h>
+#include <common/math_operations.h>
 #include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
@@ -37,8 +38,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/global_comm.h>
-#include <common/math_operations.h>
-
 
 static timestamp pol_time_init,app_init, start_no_mpi;
 static mpi_information_t mpi_stats;
@@ -85,7 +84,7 @@ state_t mpi_app_init(polctx_t *c)
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
             mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
-        }else {
+        } else {
             mpi_stats.rank = 0;
         }
 
@@ -585,21 +584,23 @@ void chech_node_mpi_summary()
 	#endif
 }
 
-
-
-// TODO: Evaluate Load Balance efficiency
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
-        double *sd, double *mag, uint *lb){
-
-    /*  Get only perc_mpi info */
+        double *sd, double *mag, uint *lb)
+{
+    // Get only perc_mpi info.
     mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi);
 
-    /*  Compute statistics for determinate whether application is load balanced */
+    // Compute statistics for determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
 
-    mpi_support_set_mpi_summary(&my_mpi_summary,percs_mpi, num_procs, *mean, *sd, *mag);
+    mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
+
 #if NODE_LB
+#if EARL_RESEARCH
+    
+#else
     *lb = (*sd > LB_TH);
+#endif
 #else
     *lb = 0;
 #endif
@@ -607,7 +608,8 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi){
+state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi)
+{
     /*  Computes max and min perc_mpi processes */
     mpi_support_perc_mpi_max_min(num_procs, percs_mpi, max_mpi, min_mpi);
 
@@ -622,7 +624,7 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
         if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)){
             verbose_master(LB_VERB, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
-        }else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)){
+        } else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)){
             debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
         }
     }
@@ -630,7 +632,8 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag){
+state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag)
+{
     if (verb_lvl == 3){
         debug("Previous percs_mpi:");
         for (int i = 0; i < num_procs; i++){
@@ -645,28 +648,32 @@ state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int 
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp, int num_procs, double *similarity, uint *mpi_changed){
+state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp, int num_procs, double *similarity, uint *mpi_changed)
+{
     *mpi_changed = 0;
 
     /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
-    if (!equal_with_th(prev_mag, current_mag, 0.05)){
+    if (!equal_with_th(prev_mag, current_mag, 0.05))
+    {
         if (prev_mag < current_mag){
             debug("%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
                     prev_mag, current_mag);
             *mpi_changed = 1;
         }
-    }else{
+    } else {
         /*  Check similarity between critical paths */
         mpi_stats_evaluate_sim_uint(cp, prev_cp, num_procs, similarity);
         verbose_master(LB_VERB, "Similarity between last and current critical path selection %lf", *similarity);
-        if (*similarity < 0.5){
+        if (*similarity < 0.5)
+        {
             *mpi_changed = 1;
         }
     }
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi){
+state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi)
+{
     mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
     for (int i = 0; i < nump; i++) {
         mpi_calls[i] = &node_mpi_calls[i];
@@ -681,43 +688,51 @@ state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_sd(int nump, double *percs_mpi, double mean, double *sd){
+state_t mpi_stats_evaluate_sd(int nump, double *percs_mpi, double mean, double *sd)
+{
     *sd = ear_math_standard_deviation(percs_mpi, nump, mean);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn){
+state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn)
+{
     *mn = ear_math_mean(percs_mpi, nump);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity) {
+state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity)
+{
     *similarity = ear_math_cosine_similarity(current_perc_mpi, last_perc_mpi, size);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp, size_t size, double *sim){
+state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp, size_t size, double *sim)
+{
     *sim = ear_math_cosine_sim_uint(current_cp, last_cp, size);
     return EAR_SUCCESS;
 }
 
-int compare_perc_mpi(const void *p1, const void *p2) {
+int compare_perc_mpi(const void *p1, const void *p2)
+{
     return (*(double * const *) p1 < *(double * const *) p2) ? -1 : (*(double * const *) p1 > *(double * const *) p2) ? 1 : 0;
 }
 
-state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump) {
+state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump)
+{
     qsort(perc_mpi_arr, nump, sizeof(double), compare_perc_mpi);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd){
+state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd)
+{
     mean_sd_t mean_sd = ear_math_mean_sd(percs_mpi, nump);
     *mean = mean_sd.mean;
     *sd = mean_sd.sd;
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag){
+state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag)
+{
     mean_sd_t mean_sd_mag = ear_math_mean_sd(percs_mpi, nump);
     *mean = mean_sd_mag.mean;
     *sd = mean_sd_mag.sd;
@@ -725,7 +740,8 @@ state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median){
+state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median)
+{
     *median = ear_math_median(percs_mpi, nump);
     return EAR_SUCCESS;
 }
