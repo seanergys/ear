@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SOCKETS_DEBUG 1
+#define SOCKETS_DEBUG 0
 
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
@@ -460,10 +460,10 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 	type  = storage_type_extract(header, content);
 	index = storage_index_extract(type, &name);
 
-	verbose(0,"received from host '%s' an object of type: '%s' (t: '%d', i: '%d')",
-			header->host_src, name, type, index);
 	if (verbosity) {
 		#if SOCKETS_DEBUG
+		verb_who("received from host '%s' an object of type: '%s' (t: '%d', i: '%d')",
+			header->host_src, name, type, index);
 		#else
 		verb_who("received object of type: '%s' (t: '%d', i: '%d')",
 			name, type, index);
