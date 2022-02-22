@@ -30,8 +30,8 @@
 #define ONLY_MASTER         (FEAT_ONLY_MASTER || !MPI)
 
 // Database
-#define DB_MYSQL            @DB_MYSQL@
-#define DB_PSQL             @DB_PGSQL@
+#define DB_MYSQL            @FEAT_DB_MYSQL@
+#define DB_PSQL             @FEAT_DB_PGSQL@
 #define USE_DB              DB_MYSQL || DB_PSQL
 
 // Others
