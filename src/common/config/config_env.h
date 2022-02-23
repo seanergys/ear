@@ -20,8 +20,6 @@
 
 #include <string.h>
 
-#define str(s)           #s
-#define xstr(s)          str(s)
 #define SCHED_SLURM     "SLURM"
 #define SCHED_PBS       "PBS"
 #define SCHED_IS(name)  (strcmp("SLURM", name) == 0) ? 1 : 0
