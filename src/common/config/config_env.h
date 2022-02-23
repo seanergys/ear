@@ -19,10 +19,8 @@
 #define CONFIG_ENVIRONMENT_H
 
 #include <string.h>
+#include <common/config/config_install.h>
 
-#define SCHED_SLURM     "SLURM"
-#define SCHED_PBS       "PBS"
-#define SCHED_IS(name)  (strcmp("SLURM", name) == 0) ? 1 : 0
 #define SCHED_PREFIX    "SLURM_"
 
 /** @config_env.h */
@@ -143,6 +141,15 @@
 #define EAR_STATS                    "SLURM_GET_EAR_STATS"
 #define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"
 #define EAR_POLICY_GRAIN             "SLURM_EAR_POLICY_GRAIN"
+
+/**
+ * Different variables per scheduling manager
+ */
+#if SCHED_SLURM
+#define BATCH_STEP                   0xfffffffb
+#else
+#define BATCH_STEP                   -2
+#endif
 
 /** @}  */
 #endif //CONFIG_ENVIRONMENT_H

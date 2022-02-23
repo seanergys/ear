@@ -158,6 +158,14 @@ AC_DEFUN([AX_POST_OPT_FEATURES],
         fi
 	fi
 
+    if test "x$SCHED_NAME" = "xSLURM"; then
+        FEAT_SCHED_SLURM=1
+        FEAT_SCHED_PBS=0
+    else
+        FEAT_SCHED_SLURM=0
+        FEAT_SCHED_PBS=1
+    fi
+
 	#IFS='.' read -r -a array_version <<< "$PACKAGE_VERSION" && echo $array_version[0]
 	#column -t -s '\ $PACKAGE_VERSION
 	#echo ${PACKAGE_VERSION} | column -t -s '.' | awk '{print $1}'
@@ -188,6 +196,8 @@ AC_DEFUN([AX_POST_OPT_FEATURES],
 	AC_SUBST(FEAT_GPUS)
 	AC_SUBST(FEAT_DB_MYSQL)
 	AC_SUBST(FEAT_DB_PGSQL)
+	AC_SUBST(FEAT_SCHED_SLURM)
+	AC_SUBST(FEAT_SCHED_PBS)
 	AC_SUBST(EAR_TMP)
 	AC_SUBST(VERSION_MAJOR)
 	AC_SUBST(VERSION_MINOR)

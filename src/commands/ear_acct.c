@@ -25,11 +25,9 @@
 #include <common/config.h>
 #include <common/system/user.h>
 #include <common/output/verbose.h>
-
 #include <common/types/loop.h>
 #include <common/types/version.h>
 #include <common/types/application.h>
-
 #if USE_DB
 #include <common/states.h>
 #include <common/database/db_helper.h>
@@ -38,14 +36,6 @@
 #include <common/types/configuration/cluster_conf.h>
 cluster_conf_t my_conf;
 #endif
-
-#if SCHED_SLURM
-#include <slurm/slurm.h>
-#define BATCH_STEP SLURM_BATCH_SCRIPT
-#else
-#define BATCH_STEP -2
-#endif
-
 
 int full_length = 0;
 int verbose = 0;
