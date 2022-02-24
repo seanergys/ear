@@ -65,7 +65,7 @@ typedef struct mpi_calls_types
     ulong max_sync_block;
 } mpi_calls_types_t;
 
-typedef struct lib_shared_data{
+typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
     uint        num_signatures;
@@ -78,7 +78,7 @@ typedef struct lib_shared_data{
     uint        global_stop_ready;
     cpu_set_t   node_mask;
     uint        node_mgr_index;
-}lib_shared_data_t;
+} lib_shared_data_t;
 
 
 typedef struct shsignature{

@@ -65,19 +65,25 @@ state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls, int *max,
 /*  Computes basic statistics of percs_mpi */
 state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, double *mean, double *sd, double *mag);
 
-/*  Based on perc. of mpi calls for each of 'num_procs' passed,
- *  compute basic statistics (therefore stores their results) and determines whether the application is load balanced. */
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean, double *sd, double *mag, uint *lb);
+#if 0
+/**  Based on computation time for each of \p num_procs passed, and determines whether the application is load balanced. */
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *lb_eff, uint *lb);
+#else
+/** Based on perc. of mpi calls for each of \p num_procs passed, compute basic statistics
+ * (therefore stores their results) and determines whether the application is load balanced. */
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
+        double *sd, double *mag, uint *lb);
+#endif
 
-/*  This function sets the critical path and also stores max and min perc_mpi processes */
+/** This function sets the critical path and also stores max and min perc_mpi processes. */
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi);
 
 state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag);
 
-/*  This function checks whether current mpi data has changed from previous iteration */
+/** This function checks whether current mpi data has changed from previous iteration. */
 state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp, int num_procs, double *similarity, uint *mpi_changed);
 
-/** \defgroup mpi_stats  MPI statistics
+/** \defgroup mpi_stats MPI statistics
  * These group of pure functions provide utilities to compute MPI statistics.
  * @{
  */

@@ -70,5 +70,8 @@ state_t set_all_cores(ulong *freqs, int len, ulong freq_val);
 
 ulong node_freqs_avgcpufreq(ulong *f);
 
+/** Given a value representing an averaged frequency, returns the nearest frequency (in kHz) rounded. */
+ulong avg_to_khz(ulong freq_khz);
+
 #endif
 
