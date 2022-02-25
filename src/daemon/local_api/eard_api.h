@@ -18,6 +18,10 @@
 #ifndef _EAR_DAEMON_CLIENT_H
 #define _EAR_DAEMON_CLIENT_H
 
+/** \defgroup local_api EARD Local API
+ * \todo Add a description.
+ * @{*/
+
 #include <common/types/generic.h>
 #include <common/types/log.h>
 #include <metrics/gpu/gpu.h>
@@ -27,73 +31,83 @@
 #include <daemon/local_api/eard_api_rpc.h>
 #include <daemon/local_api/eard_api_conf.h>
 
-
-/************************************/
-/** This function is to be used for external commands or applications not using the EARL */
+/** \defgroup connection Connection 
+ * \todo Add a description.
+ * @{ */
+/** This function is to be used for external commands or applications not using the EARL. */
 int eards_connection();
-/** EARL connection: Tries to connect with the daemon. Returns 0 on success and -1 otherwise. */
+/** EARL connection: Tries to connect with the daemon.
+ * Returns 0 on success and -1 otherwise. */
 int eards_connect(application_t *my_app, ulong lid);
+
+/** \todo Add a description for this function. */
 int eards_connected();
 /** Closes the connection with the daemon. */
 void eards_disconnect();
+/** @} */
 
-/************************************/
-// RAPL services
+/** \defgroup rapl_services RAPL services
+ * \todo Add a description.
+ * @{ */
 /** Sends a request to read the RAPL counters. Returns -1 if there's an error,
-*   and on success returns 0 and fills the array given by parameter with the
-*   counters' values. */
+ * and on success returns 0 and fills the array \p values with the counters' values. */
 int eards_read_rapl(unsigned long long *values);
 /** Sends the request to start the RAPL counters. Returns 0 on success or if
-*   the application is not connected, -1 if there's an error. */
+ * the application is not connected, -1 if there's an error. */
 int eards_start_rapl();
 /** Sends the request to reset the RAPL counters. Returns 0 on success or if
-*    the application is not connected, -1 if there's an error. */
+ * the application is not connected, -1 if there's an error. */
 int eards_reset_rapl();
-/** Requests the rapl data size. Returns -1 if there's an error, and the
-*   actual value otherwise. */
+/** Requests the rapl data size.
+ * Returns -1 if there's an error, and the actual value otherwise. */
 unsigned long eards_get_data_size_rapl();
+/** @} */
 
-/************************************/
-// System services
+/** \defgroup system_services System services
+ * \todo Add a description.
+ * @{ */
 /** Sends a request to the deamon to write the whole application signature.
-*   Returns 0 on success, -1 on error. */
+ * Returns 0 on success, -1 on error. */
 ulong eards_write_app_signature(application_t *app_signature);
 /** Sends a request to the deamon to write one loop  signature into the DB.
-*   Returns 0 on success, -1 on error. */
+ * Returns 0 on success, -1 on error. */
 ulong eards_write_loop_signature(loop_t *loop_signature);
-/** Reports a new EAR event */
+/** Reports a new EAR event. */
 ulong eards_write_event(ear_event_t *event);
+/** @}*/
 
-/************************************/
-// Node energy services
-/** Requests the IPMI data size. Returns -1 if there's an error, and the
-*   actual value otherwise. */
+/** \defgroup node_energy_services Node energy services
+ * \todo Add a description.
+ * @{ */
+/** Requests the IPMI data size.
+ * Returns -1 if there's an error, and the actual value otherwise. */
 unsigned long eards_node_energy_data_size();
-/** Requests the DC energy to the node. Returns 0 on success, -1 if there's
-*   an error. */
+/** Requests the DC energy to the node.
+ * Returns 0 on success, -1 if there's an error. */
 int eards_node_dc_energy(void *energy,ulong datasize);
-/** Requests the dc energy node frequency. Returns -1 if there's an error,
-*   and 10000000 otherwise. */
+/** Requests the dc energy node frequency.
+ * Returns -1 if there's an error, and 10000000 otherwise. */
 ulong eards_node_energy_frequency();
-
-/** Sends the loop_signature to eard to be reported in the DB */
+/** Sends the loop_signature to eard to be reported in the DB. */
 ulong eards_write_loop_signature(loop_t *loop_signature);
-
-/** Returns the frequency at which the node energy frequency is refreshed */
+/** Returns the frequency at which the node energy frequency is refreshed. */
 ulong eards_node_energy_frequency();
+/** @}  */
 
-/************************************/
-// GPU services
+/** \defgroup gpu_services GPU services
+ * \todo Add a description.
+ * @{ */
+/** \todo  */
 int eards_gpu_model(uint *gpu_model);
+/** \todo  */
 int eards_gpu_dev_count(uint *gpu_dev_count);
+/** \todo  */
 int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev);
+/** \todo  */
 int eards_gpu_set_freq(uint num_dev,ulong *freqs);
+/** \todo  */
 int eards_gpu_get_info(gpu_info_t *info, uint num_dev);
+/** @}  */
+/** @}  */
 
-
-/*************************************/
-/* CPufreq metrics */
-state_t eard_cpufreq_init();
-
-#else
 #endif
