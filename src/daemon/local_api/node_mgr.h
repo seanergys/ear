@@ -18,10 +18,6 @@
 #ifndef _LIB_NODE_MGR_H
 #define _LIB_NODE_MGR_H
 
-/** \defgroup node_mgr EARD NodeMGR
- * \todo Add a description.
- * @{ */
-
 #define _GNU_SOURCE
 #include <sched.h>
 
@@ -65,9 +61,6 @@ state_t nodemgr_clean_job(job_id jid,job_id sid);
 /** Removes the shared region. To be used by eard at eard exit */
 state_t nodemgr_server_end();
 
-/** \todo */
 state_t node_mgr_info_lock();
-/** \todo */
 void node_mgr_info_unlock();
-/** @} */
 #endif
