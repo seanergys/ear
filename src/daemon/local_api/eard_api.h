@@ -90,5 +90,10 @@ int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev);
 int eards_gpu_set_freq(uint num_dev,ulong *freqs);
 int eards_gpu_get_info(gpu_info_t *info, uint num_dev);
 
+
+/*************************************/
+/* CPufreq metrics */
+state_t eard_cpufreq_init();
+
 #else
 #endif

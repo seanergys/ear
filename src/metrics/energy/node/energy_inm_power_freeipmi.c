@@ -42,7 +42,7 @@
 #include <pwd.h>
 #include <freeipmi/freeipmi.h>
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/config.h>
 #include <common/states.h>
@@ -338,7 +338,7 @@ state_t energy_init(void **c)
         error("%s",ipmi_ctx_errormsg(ipmi_ctx));
         energy_dispose(no_ctx);
         pthread_mutex_unlock(&node_energy_lock_nm);
-
+				
         return EAR_ERROR;    
     }
     if (ret==0) {
@@ -369,6 +369,7 @@ state_t energy_init(void **c)
         char buff[4096];
         snprintf(buff,sizeof(buff), "%s/sbin/ipmi-oem intelnm get-node-manager-statistics mode=globalpower", FREEIPMI_BASE);
         if (execute(buff) != EAR_SUCCESS){
+						verbose(0,"SDR cache not initialized");
             energy_dispose(no_ctx);
             pthread_mutex_unlock(&node_energy_lock_nm);
             return EAR_ERROR;
@@ -412,6 +413,7 @@ state_t energy_init(void **c)
     sdr_ctx = NULL;
     uint maxp, minp, avgp, currentp, periodp;
     state_t st;
+    inm_initialized = 1;
     st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
     if (st != EAR_SUCCESS) {
         debug("_power_reading fails");
@@ -432,7 +434,6 @@ state_t energy_init(void **c)
         debug("inm energy plugin suscription initialized with timeframe %u ms",inm_timeframe);
 
     }
-    inm_initialized = 1;
     pthread_mutex_unlock(&node_energy_lock_nm);
     return EAR_SUCCESS;    
 
@@ -447,6 +448,12 @@ static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp,
     int policyid_specified = 0;
     uint64_t val;
     fiid_obj_t obj_cmd_rs = NULL;
+
+		*currentp = 0;
+		if (!inm_initialized) {
+			debug("INM not initialized");
+			return EAR_ERROR;
+		}
 
     if (!(obj_cmd_rs = fiid_obj_create (tmpl_cmd_oem_intel_node_manager_get_node_manager_statistics_rs)))
     {
@@ -519,7 +526,7 @@ static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp,
     }
     *periodp = val;
     //debug("Statistics reporting period %d\n", val);
-    debug("power: Max power %u Min power %u Avg power %u Current power %u Period %u\n", *maxp, *minp, *avgp, *currentp, *periodp);
+    verbose(0,"power: Max power %u Min power %u Avg power %u Current power %u Period %u\n", *maxp, *minp, *avgp, *currentp, *periodp);
 
     return EAR_SUCCESS;
 }
@@ -531,10 +538,13 @@ static state_t inm_thread_main(void *p)
     ulong curr_time_elapsed;
     ulong total_time_elapsed;
     ulong current_energy;
-    time_t curr_time = time(NULL);
-
     state_t st;
+
+		debug("inm_thread_main");
+    pthread_mutex_lock(&node_energy_lock_nm);
+    time_t curr_time = time(NULL);
     st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
+
     if (currentp > 0) {
         curr_time_elapsed = curr_time - last_timestamp;
         last_timestamp = curr_time;
@@ -542,6 +552,8 @@ static state_t inm_thread_main(void *p)
         current_energy = curr_time_elapsed * currentp;
         /* Energy is reported in MJ */
         inm_accumulated_energy += (current_energy*1000);
+    		pthread_mutex_unlock(&node_energy_lock_nm);
+
         debug("AVG power in last %lu s is %u", curr_time_elapsed, currentp);
 
         /*  We check if we must restart the connection */
@@ -552,6 +564,7 @@ static state_t inm_thread_main(void *p)
 
             /* ************************************************** */
 
+            pthread_mutex_lock(&node_energy_lock_nm);
             time_t t_init = time(NULL); // Debug only purposes
             int ret = 0;
             // Close context
@@ -564,11 +577,11 @@ static state_t inm_thread_main(void *p)
             // Creating the context
             //
 
-            pthread_mutex_lock(&node_energy_lock_nm);
             debug("Create context\n");
             if (!( ipmi_ctx = ipmi_ctx_create ())) {
                 pthread_mutex_unlock(&node_energy_lock_nm);
                 error("Error in ipmi_ctx_create %s",strerror(errno));
+								inm_initialized = 0;
                 return EAR_ERROR;
             }
             // inband context
@@ -610,8 +623,8 @@ static state_t inm_thread_main(void *p)
                 inm_last_power_reading = currentp;
             }
 
-            pthread_mutex_unlock(&node_energy_lock_nm);
 #endif
+            pthread_mutex_unlock(&node_energy_lock_nm);
             first_timestamp = time(NULL);
             /*  Debug only */
             ulong overhead = first_timestamp - t_init;
@@ -619,6 +632,7 @@ static state_t inm_thread_main(void *p)
         }
 
     } else {
+    		pthread_mutex_unlock(&node_energy_lock_nm);
         debug("Current power is 0 in inm power reading ");
         return EAR_ERROR;
     }
@@ -641,13 +655,14 @@ state_t energy_dispose(void **c) {
     // delete context
     ipmi_ctx_destroy (ipmi_ctx);
     ipmi_ctx = NULL;
+		inm_initialized = 0;
+
     if (sdr_ctx == NULL){
         return EAR_SUCCESS;
     }
     ipmi_sdr_cache_close(sdr_ctx);
     ipmi_sdr_ctx_destroy(sdr_ctx);
     sdr_ctx = NULL;
-
     return EAR_SUCCESS;
 }
 
@@ -698,6 +713,27 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 				ulong *penergy_mj=(ulong *)energy_mj;
 
 				debug("energy_dc_read\n");
+				/* Given we are reading every 2 secs, we compute the current power */
+    		uint maxp, minp, avgp, currentp, periodp;
+    		ulong curr_time_elapsed;
+    		ulong total_time_elapsed;
+    		ulong current_energy;
+    		state_t st;
+
+
+    		pthread_mutex_lock(&node_energy_lock_nm);
+    		time_t curr_time = time(NULL);
+    		st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
+
+    		if (currentp > 0) {
+        		curr_time_elapsed = curr_time - last_timestamp;
+        		last_timestamp = curr_time;
+        		current_energy = curr_time_elapsed * currentp;
+        		/* Energy is reported in MJ */
+        		inm_accumulated_energy += (current_energy*1000);
+				}
+        pthread_mutex_unlock(&node_energy_lock_nm);
+
 
 				*penergy_mj= inm_accumulated_energy;
 
@@ -709,9 +745,30 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
 				ulong *penergy_mj=(ulong *)energy_mj;
 
 				debug("energy_dc_read\n");
+        /* Given we are reading every 2 secs, we compute the current power */
+        uint maxp, minp, avgp, currentp, periodp;
+        ulong curr_time_elapsed;
+        ulong total_time_elapsed;
+        ulong current_energy;
+        state_t st;
+
+
+        pthread_mutex_lock(&node_energy_lock_nm);
+        time_t curr_time = time(NULL);
+        st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
+
+        if (currentp > 0) {
+            curr_time_elapsed = curr_time - last_timestamp;
+            last_timestamp = curr_time;
+            current_energy = curr_time_elapsed * currentp;
+            /* Energy is reported in MJ */
+            inm_accumulated_energy += (current_energy*1000);
+        }
+        pthread_mutex_unlock(&node_energy_lock_nm);
+
 
 				*penergy_mj = inm_accumulated_energy;
-				*time_ms = last_timestamp*1000;
+				*time_ms = curr_time*1000;
 
 				return EAR_SUCCESS;
 
