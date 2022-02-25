@@ -189,9 +189,9 @@ static void from_proc_to_core(ulong *cpuf)
     {
         f = cpuf[p];
         m = sig_shared_region[p].cpu_mask;
-        verbose_master(lv,"Frequency for process %d is %lu",p,f);
-        for (c = 0 ; c < ccount; c++){
-            if (CPU_ISSET(c,&m)){ 
+        verbose_master(lv,"Frequency for process %d is %lu", p, f);
+        for (c = 0 ; c < ccount; c++) {
+            if (CPU_ISSET(c,&m)) { 
                 verbosen_master(lv+1,"CPU %d ",c);
                 freq_per_core[c] = f;
             }
@@ -212,16 +212,6 @@ void fill_cpus_out_of_cgroup(uint exc)
         }
     }	
 
-}
-
-ulong avg_to_khz(ulong freq_khz)
-{
-    ulong newf;
-    float ff;
-
-    ff = roundf((float) freq_khz / 100000.0);
-    newf = (ulong) ((ff / 10.0) * 1000000);
-    return newf;
 }
 
 //static void policy_cpu_freq_selection(signature_t *my_sig,node_freqs_t *freqs)
@@ -735,7 +725,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
     is_io_bound(my_sig->IO_MBS,&iobound);
-    is_network_bound(mpi_in_period,&mpibound);
+    is_network_bound(mpi_in_period, &mpibound);
     classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig,&busy);
     is_gpu_idle(my_sig,&gidle);

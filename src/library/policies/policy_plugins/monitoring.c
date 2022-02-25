@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 // #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
@@ -35,18 +36,12 @@
 #include <library/common/verbose_lib.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/common/cpu_support.h>
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
 extern uint gpu_initialized;
 extern uint cpu_ready, gpu_ready, gidle;
-
-#ifdef EARL_RESEARCH
-extern unsigned long ext_def_freq;
-#define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
-#else
-#define DEF_FREQ(f) f
-#endif
 
 static mpi_information_t *my_node_mpi_calls, *last_node_mpi_calls;
 static mpi_calls_types_t *my_node_mpi_types_calls, *last_node_mpi_types_calls;
