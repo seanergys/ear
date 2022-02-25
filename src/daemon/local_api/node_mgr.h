@@ -17,52 +17,57 @@
 
 #ifndef _LIB_NODE_MGR_H
 #define _LIB_NODE_MGR_H
+
+/** \defgroup node_mgr EARD NodeMGR
+ * \todo Add a description.
+ * @{ */
+
 #define _GNU_SOURCE
 #include <sched.h>
 
 #include <common/states.h>
-
 #include <common/types/generic.h>
 
-#define LOCK_NODE_MGR_LCK	  ".node_mgr_lck"
+#define LOCK_NODE_MGR_LCK	".node_mgr_lck"
 #define LOCK_NODE_MGR_INFO	".node_mgr_data"
 #define NULL_NODE_MGR_INDEX 10000
 
-typedef struct ear_njob{
+typedef struct ear_njob {
 	job_id     jid;
 	job_id     sid;
 	cpu_set_t  node_mask;
 	time_t     creation_time;
-}ear_njob_t;
+} ear_njob_t;
 
-/** Initialices the lock file and attaches the shared memory region. nodelist is internally allocated. Must be used by earl */
+/** Initializes the lock file and attaches the shared memory region.
+ * Nodelist is internally allocated. Must be used by the EARL. */
 state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist );
 
-/* Created the lock and the shared region. To be used by eard */
+/** Created the lock and the shared region. To be used by EARD. */
 state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist);
 
-/* Computes the number of jobs attached */
+/** Computes the number of jobs attached. */
 state_t nodemgr_get_num_jobs_attached(uint *num_jobs);
 
-/* Attaches a new job . To be used by earl */
+/** Attaches a new job . To be used by EARL. */
 state_t nodemgr_attach_job(ear_njob_t *my_job, uint *my_index);
 
-/* Finds for an already existing attached job */
+/** Finds for an already existing attached job. */
 state_t nodemgr_find_job(ear_njob_t *my_job, uint *my_index);
 
 
-/* Marks a job entry as free. To be used by earl before job end */
+/** Marks a job entry as free. To be used by EARL before job ends. */
 state_t nodemgr_job_end(uint index);
 
-/* Cleans a given job entry. Tobe used by eard to guarantee the job is not there */
+/** Cleans a given job entry. Tobe used by EARD to guarantee the job is not there. */
 state_t nodemgr_clean_job(job_id jid,job_id sid);
 
-/* Removes the shared region. To be used by eard at eard exit */
+/** Removes the shared region. To be used by eard at eard exit */
 state_t nodemgr_server_end();
 
+/** \todo */
 state_t node_mgr_info_lock();
+/** \todo */
 void node_mgr_info_unlock();
-
-
-
+/** @} */
 #endif
