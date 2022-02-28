@@ -18,6 +18,8 @@
 #ifndef EAR_CONFIG_DEF_H
 #define EAR_CONFIG_DEF_H
 
+#include <common/config/config_dev.h>
+
 
 /* LOADER definitions */
 #define INTEL_EXT 	"so"
@@ -124,16 +126,15 @@
 #define LIMIT_LARGE_JOBS				2
 #define RED_PSTATES_LARGE_JOBS 	1
 
-
-
-/* IMC Management and Phases management default options */
+/** IMC Management and Phases management default options. */
 #define  EAR_eUFS         1
 #define  EAR_IMC_TH       0.02
 #define  EAR_USE_PHASES   1
 #define  EAR_USE_LB       1
 #define  EAR_USE_TURBO_CP 1
+#if EARL_RESEARCH
 #define  EAR_LB_TH        0.65
-#if 0
+#else
 #define  EAR_LB_TH        15.0
 #endif
 
