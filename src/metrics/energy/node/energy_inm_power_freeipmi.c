@@ -42,7 +42,7 @@
 #include <pwd.h>
 #include <freeipmi/freeipmi.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/config.h>
 #include <common/states.h>
@@ -64,8 +64,8 @@
 #define POWER_PERIOD 2
 
 #define RESTART_TH 1800
+#define MAX_LOCK_TRIES 1000000000
 
-static ipmi_ctx_t      ipmi_ctx;
 static uint8_t        *bytes_rq = NULL;
 static uint8_t        *bytes_rs = NULL;
 static unsigned int    send_len;
@@ -84,6 +84,8 @@ static uint			  inm_timeframe;
 static ulong 		  inm_accumulated_energy;
 static uint			  inm_initialized = 0;
 static unsigned int   workaround_flags = 0;
+static int        sdr_done = 0;
+static int 				monitor_done = 0;
 
 state_t energy_dispose(void **c);
 static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint *avgp, uint *currentp, uint *periodp);
@@ -303,6 +305,7 @@ state_t energy_init(void **c)
     char cachefilenamebuf[MAXPATHLEN+1];
     char *hostname = 0;
     int cache_create_flags = 0;
+	 	int etries = 0, lret;
 
     if (inm_initialized) return EAR_SUCCESS;
 
@@ -310,7 +313,10 @@ state_t energy_init(void **c)
     // Creating the context
     //
 
-    pthread_mutex_lock(&node_energy_lock_nm);
+    while((lret = pthread_mutex_trylock(&node_energy_lock_nm)) && (etries < MAX_LOCK_TRIES)) etries++;
+		if ((etries == MAX_LOCK_TRIES) && lret){
+			return EAR_ERROR;
+		}
     debug("Create context\n");
     if (!( ipmi_ctx = ipmi_ctx_create ())) {
         pthread_mutex_unlock(&node_energy_lock_nm);
@@ -320,8 +326,8 @@ state_t energy_init(void **c)
     // Checking for root
     uid = getuid ();
     if (uid != 0){ 
-        energy_dispose(no_ctx);
         pthread_mutex_unlock(&node_energy_lock_nm);
+        energy_dispose(no_ctx);
         error("No root permissions");
         return EAR_ERROR;
     }
@@ -336,105 +342,111 @@ state_t energy_init(void **c)
                     workaround_flags,
                     IPMI_FLAGS_DEFAULT)) < 0) {
         error("%s",ipmi_ctx_errormsg(ipmi_ctx));
-        energy_dispose(no_ctx);
         pthread_mutex_unlock(&node_energy_lock_nm);
+        energy_dispose(no_ctx);
 				
         return EAR_ERROR;    
     }
     if (ret==0) {
         error("Not inband device found %s",ipmi_ctx_errormsg(ipmi_ctx));
-        energy_dispose(no_ctx);
         pthread_mutex_unlock(&node_energy_lock_nm);
+        energy_dispose(no_ctx);
         return EAR_ERROR;    
     }
 
-    /* SDR context */
-    debug( "ipmi_sdr_ctx_create");
-    if (!(sdr_ctx = ipmi_sdr_ctx_create ()) ) {
-        error("INM SDR ctx create");
-        energy_dispose(no_ctx);
-        pthread_mutex_unlock(&node_energy_lock_nm);
-        return EAR_ERROR;
-    }
-    debug("Callback and sdr process\n");
+		if (!sdr_done){
 
-    /* Cache file name generation */
+    	/* SDR context */
+    	debug( "ipmi_sdr_ctx_create");
+    	if (!(sdr_ctx = ipmi_sdr_ctx_create ()) ) {
+        	error("INM SDR ctx create");
+        	pthread_mutex_unlock(&node_energy_lock_nm);
+        	energy_dispose(no_ctx);
+        	return EAR_ERROR;
+    	}
+    	debug("Callback and sdr process\n");
+	
+    	/* Cache file name generation */
+	
+    	if (sdr_get_cache_filename(hostname, cachefilenamebuf, MAXPATHLEN) < 0)
+        	debug("Error in sdr_get_cache_filename\n");
+	
+	
+    	if (ipmi_sdr_cache_open(sdr_ctx, ipmi_ctx, cachefilenamebuf) < 0) {
+        	debug("Error ipmi_sdr_cache_open, creating it\n");
+        	char buff[4096];
+        	snprintf(buff,sizeof(buff), "%s/sbin/ipmi-oem intelnm get-node-manager-statistics mode=globalpower", FREEIPMI_BASE);
+        	if (execute(buff) != EAR_SUCCESS){
+							verbose(0,"SDR cache not initialized");
+            	pthread_mutex_unlock(&node_energy_lock_nm);
+            	energy_dispose(no_ctx);
+            	return EAR_ERROR;
+        	}
+	
+    	}
+	
+	
+    	debug("ipmi_sdr_cache_iterate\n");
+    	if (ipmi_sdr_cache_iterate (sdr_ctx,
+                	intelnm_sdr_callback,
+                	NULL) < 0)
+    	{
+        	if (!found) {
+            	debug("Error ipmi_sdr_cache_iterate\n");
+            	pthread_mutex_unlock(&node_energy_lock_nm);
+            	energy_dispose(no_ctx);
+            	return EAR_ERROR;
+        	}
+    	}
+	
 
-    if (sdr_get_cache_filename(hostname, cachefilenamebuf, MAXPATHLEN) < 0)
-        debug("Error in sdr_get_cache_filename\n");
+    	if (!found)
+    	{  
+        	debug("ARG not fount! using default\n");
+        	slave = 0x2c;
+        	lun = 0x00;
+        	channel = 0x06;
+        	pthread_mutex_unlock(&node_energy_lock_nm);
+        	return EAR_SUCCESS;
+	
+    	}
 
+    	/* From IPMI documentation */
+    	slave <<= 1;
 
-    if (ipmi_sdr_cache_open(sdr_ctx, ipmi_ctx, cachefilenamebuf) < 0) {
-        debug("Error ipmi_sdr_cache_open, creating it\n");
-        char buff[4096];
-        snprintf(buff,sizeof(buff), "%s/sbin/ipmi-oem intelnm get-node-manager-statistics mode=globalpower", FREEIPMI_BASE);
-        if (execute(buff) != EAR_SUCCESS){
-						verbose(0,"SDR cache not initialized");
-            energy_dispose(no_ctx);
-            pthread_mutex_unlock(&node_energy_lock_nm);
-            return EAR_ERROR;
-        }
+    	debug("after init channel %x slave %x lun %x \n", channel,  slave, lun);
 
-    }
-
-
-    debug("ipmi_sdr_cache_iterate\n");
-    if (ipmi_sdr_cache_iterate (sdr_ctx,
-                intelnm_sdr_callback,
-                NULL) < 0)
-    {
-        if (!found) {
-            debug("Error ipmi_sdr_cache_iterate\n");
-            energy_dispose(no_ctx);
-            pthread_mutex_unlock(&node_energy_lock_nm);
-            return EAR_ERROR;
-        }
-    }
-
-
-    if (!found)
-    {  
-        debug("ARG not fount! using default\n");
-        slave = 0x2c;
-        lun = 0x00;
-        channel = 0x06;
-        pthread_mutex_unlock(&node_energy_lock_nm);
-        return EAR_SUCCESS;
-
-    }
-
-    /* From IPMI documentation */
-    slave <<= 1;
-
-    debug("after init channel %x slave %x lun %x \n", channel,  slave, lun);
-
-    ipmi_sdr_cache_close(sdr_ctx);
-    ipmi_sdr_ctx_destroy(sdr_ctx);
-    sdr_ctx = NULL;
+    	ipmi_sdr_cache_close(sdr_ctx);
+    	ipmi_sdr_ctx_destroy(sdr_ctx);
+    	sdr_ctx = NULL;
+			sdr_done = 1;
+		}
     uint maxp, minp, avgp, currentp, periodp;
     state_t st;
     inm_initialized = 1;
     st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
+    pthread_mutex_unlock(&node_energy_lock_nm);
     if (st != EAR_SUCCESS) {
         debug("_power_reading fails");
         energy_dispose(no_ctx);
-        pthread_mutex_unlock(&node_energy_lock_nm);
         return EAR_ERROR;
     } else {
         // Read the first read time
         first_timestamp = time(NULL);
         inm_last_power_reading = currentp;
-        inm_sus = suscription();
-        inm_timeframe = POWER_PERIOD * 1000;
-        inm_sus->call_main = inm_thread_main;
-        inm_sus->call_init = inm_thread_init;
-        inm_sus->time_relax = inm_timeframe;
-        inm_sus->time_burst = inm_timeframe;
-        inm_sus->suscribe(inm_sus);
-        debug("inm energy plugin suscription initialized with timeframe %u ms",inm_timeframe);
+				if (!monitor_done){
+        	inm_sus = suscription();
+        	inm_timeframe = POWER_PERIOD * 1000;
+        	inm_sus->call_main = inm_thread_main;
+        	inm_sus->call_init = inm_thread_init;
+        	inm_sus->time_relax = inm_timeframe;
+        	inm_sus->time_burst = inm_timeframe;
+        	inm_sus->suscribe(inm_sus);
+        	debug("inm energy plugin suscription initialized with timeframe %u ms",inm_timeframe);
+					monitor_done = 1;
+				}
 
     }
-    pthread_mutex_unlock(&node_energy_lock_nm);
     return EAR_SUCCESS;    
 
 }
@@ -458,11 +470,10 @@ static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp,
     if (!(obj_cmd_rs = fiid_obj_create (tmpl_cmd_oem_intel_node_manager_get_node_manager_statistics_rs)))
     {
         debug("fiid_obj_create: %s\n", strerror (errno));
-        energy_dispose(no_ctx);
         return EAR_ERROR;
     }
 
-
+		debug("executing ipmi_cmd_oem_intel_node_manager_get_node_manager_statistics");
     if (ipmi_cmd_oem_intel_node_manager_get_node_manager_statistics (ipmi_ctx,
                 channel,
                 slave,
@@ -472,10 +483,9 @@ static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp,
                 policyid,
                 obj_cmd_rs) < 0){
         debug("Error ipmi_cmd_oem_intel_node_manager_get_node_manager_statistics\n");
-        energy_dispose(no_ctx);
         return EAR_ERROR;
     }
-
+		debug("parsing information from ipmi_cmd_oem_intel_node_manager_get_node_manager_statistics");
     if (FIID_OBJ_GET (obj_cmd_rs,
                 "average",
                 &val) < 0)
@@ -539,11 +549,22 @@ static state_t inm_thread_main(void *p)
     ulong total_time_elapsed;
     ulong current_energy;
     state_t st;
+		int etries = 0,lret;
 
 		debug("inm_thread_main");
-    pthread_mutex_lock(&node_energy_lock_nm);
+    //pthread_mutex_lock(&node_energy_lock_nm);
+		while((lret = pthread_mutex_trylock(&node_energy_lock_nm)) && (etries < MAX_LOCK_TRIES)) etries++;
+		if ((etries == MAX_LOCK_TRIES) && lret){
+			return EAR_ERROR;
+		}
+
     time_t curr_time = time(NULL);
     st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
+		if (st == EAR_ERROR){
+			debug("inm_power_reading fails in inm_thread_main");
+			pthread_mutex_unlock(&node_energy_lock_nm);
+			return EAR_ERROR;
+		}
 
     if (currentp > 0) {
         curr_time_elapsed = curr_time - last_timestamp;
@@ -564,7 +585,13 @@ static state_t inm_thread_main(void *p)
 
             /* ************************************************** */
 
-            pthread_mutex_lock(&node_energy_lock_nm);
+            //pthread_mutex_lock(&node_energy_lock_nm);
+            etries = 0;
+						while((lret = pthread_mutex_trylock(&node_energy_lock_nm)) && (etries < MAX_LOCK_TRIES)) etries++;
+						if ((etries == MAX_LOCK_TRIES) && lret){
+							return EAR_ERROR;
+						}
+						
             time_t t_init = time(NULL); // Debug only purposes
             int ret = 0;
             // Close context
@@ -579,9 +606,9 @@ static state_t inm_thread_main(void *p)
 
             debug("Create context\n");
             if (!( ipmi_ctx = ipmi_ctx_create ())) {
+								inm_initialized = 0;
                 pthread_mutex_unlock(&node_energy_lock_nm);
                 error("Error in ipmi_ctx_create %s",strerror(errno));
-								inm_initialized = 0;
                 return EAR_ERROR;
             }
             // inband context
@@ -595,35 +622,18 @@ static state_t inm_thread_main(void *p)
                             workaround_flags,
                             IPMI_FLAGS_DEFAULT)) < 0) {
                 error("%s",ipmi_ctx_errormsg(ipmi_ctx));
-                energy_dispose(no_ctx);
                 pthread_mutex_unlock(&node_energy_lock_nm);
+                energy_dispose(no_ctx);
 
                 return EAR_ERROR;    
             }
             if (ret==0) {
                 error("Not inband device found %s",ipmi_ctx_errormsg(ipmi_ctx));
-                energy_dispose(no_ctx);
                 pthread_mutex_unlock(&node_energy_lock_nm);
+                energy_dispose(no_ctx);
                 return EAR_ERROR;    
             }
 
-
-#if 0
-            uint maxp, minp, avgp, currentp, periodp;
-            state_t st;
-            st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
-            if (st != EAR_SUCCESS) {
-                debug("_power_reading fails");
-                energy_dispose(no_ctx);
-                pthread_mutex_unlock(&node_energy_lock_nm);
-                return EAR_ERROR;
-            } else {
-                // Read the first read time
-                first_timestamp = time(NULL);
-                inm_last_power_reading = currentp;
-            }
-
-#endif
             pthread_mutex_unlock(&node_energy_lock_nm);
             first_timestamp = time(NULL);
             /*  Debug only */
@@ -647,8 +657,15 @@ static state_t inm_thread_init(void *p)
 
 /* Release access to ipmi device */
 state_t energy_dispose(void **c) {
-
+		int etries = 0, lret;
     if (!inm_initialized) return EAR_ERROR;
+
+		while((lret = pthread_mutex_trylock(&node_energy_lock_nm)) && (etries < MAX_LOCK_TRIES)) etries++;
+		if ((etries == MAX_LOCK_TRIES) && lret){
+			return EAR_ERROR;
+		}
+
+		
 
     // // Close context
     ipmi_ctx_close (ipmi_ctx);
@@ -658,11 +675,13 @@ state_t energy_dispose(void **c) {
 		inm_initialized = 0;
 
     if (sdr_ctx == NULL){
+				pthread_mutex_unlock(&node_energy_lock_nm);
         return EAR_SUCCESS;
     }
     ipmi_sdr_cache_close(sdr_ctx);
     ipmi_sdr_ctx_destroy(sdr_ctx);
     sdr_ctx = NULL;
+		pthread_mutex_unlock(&node_energy_lock_nm);
     return EAR_SUCCESS;
 }
 
@@ -719,12 +738,22 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
     		ulong total_time_elapsed;
     		ulong current_energy;
     		state_t st;
+				int etries = 0, lret;
 
-
-    		pthread_mutex_lock(&node_energy_lock_nm);
+				*penergy_mj = inm_accumulated_energy;
+    		//pthread_mutex_lock(&node_energy_lock_nm);
+				while((lret = pthread_mutex_trylock(&node_energy_lock_nm)) && (etries < MAX_LOCK_TRIES)) etries++;
+				if ((etries == MAX_LOCK_TRIES) && lret){
+					return EAR_ERROR;
+				}
+				
     		time_t curr_time = time(NULL);
     		st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
 
+				if (st == EAR_ERROR){
+					pthread_mutex_unlock(&node_energy_lock_nm);
+					return EAR_ERROR;
+				}
     		if (currentp > 0) {
         		curr_time_elapsed = curr_time - last_timestamp;
         		last_timestamp = curr_time;
@@ -751,12 +780,23 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
         ulong total_time_elapsed;
         ulong current_energy;
         state_t st;
+				int etries = 0, lret;
 
-
-        pthread_mutex_lock(&node_energy_lock_nm);
+				*penergy_mj = inm_accumulated_energy;
+        //pthread_mutex_lock(&node_energy_lock_nm);
+				while((lret = pthread_mutex_trylock(&node_energy_lock_nm)) && (etries < MAX_LOCK_TRIES)) etries++;
+				if ((etries == MAX_LOCK_TRIES) && lret){
+					return EAR_ERROR;
+				}
         time_t curr_time = time(NULL);
         st = inm_power_reading(ipmi_ctx, &maxp, &minp, &avgp, &currentp, &periodp);
 
+				if (st == EAR_ERROR){
+					pthread_mutex_unlock(&node_energy_lock_nm);
+          return EAR_ERROR;
+        }
+
+		
         if (currentp > 0) {
             curr_time_elapsed = curr_time - last_timestamp;
             last_timestamp = curr_time;
