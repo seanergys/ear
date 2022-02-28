@@ -41,7 +41,6 @@
 #include <common/types/configuration/cluster_conf_eardbd.h>
 #include <common/types/configuration/cluster_conf_earlib.h>
 
-
 #define NORMAL 		0
 #define AUTHORIZED	1
 #define ENERGY_TAG	2
@@ -52,22 +51,15 @@
  *
  */
 
-
 #define POWERCAP_TYPE_NODE  0 
 #define POWERCAP_TYPE_APP   1
 #define TAG_TYPE_ARCH       0 
-
-
-
 
 typedef struct communication_node
 {
     char name[GENERIC_NAME];
     int  distance;
 } communication_node_t;
-
-
-
 
 typedef struct conf_install {
 	char dir_temp[SZ_PATH_INCOMPLETE];
@@ -78,41 +70,48 @@ typedef struct conf_install {
 	char obj_power_model[SZ_PATH_SHORT];
 } conf_install_t;
 
+/** Stores information about EAR installation. */
 typedef struct cluster_conf
 {
-	// Library & common conf
-	char DB_pathname[GENERIC_NAME];
-  char net_ext[ID_SIZE];
-	uint verbose;
-	uint cluster_num_nodes;
-	eard_conf_t		eard;
-	eargm_conf_t 	eargm;
-	// List of policies	
-	uint num_policies;
-	policy_conf_t *power_policies;
-	uint default_policy;			// selecs one of the power_policies
-	// Lis of autorized users
-	uint num_priv_users;
-	char **priv_users;
-	uint num_priv_groups;
-	char **priv_groups;
-	uint num_acc;
-	char **priv_acc;
-	// Special cases
-	uint min_time_perf_acc;
-	// List of nodes
-	uint num_nodes;
-	node_conf_t *nodes;
-	db_conf_t database;
-	eardb_conf_t db_manager;
-    uint num_tags;
-    tag_t *tags;
-	uint num_etags;
-	energy_tag_t *e_tags;
-	uint num_islands;
-	node_island_t *islands;
+    /**@{ Library & common configuration. */
+    char         DB_pathname[GENERIC_NAME];
+    char         net_ext[ID_SIZE];
+    uint         verbose;
+    uint         cluster_num_nodes;
+    eard_conf_t	 eard;
+    eargm_conf_t eargm;
+    /**@}*/
+    /**@{ List of policies. */
+    uint           num_policies;
+    policy_conf_t *power_policies;
+    uint           default_policy;
+    /**@}*/
+    /**@{ List of authorized users. */
+    uint   num_priv_users;
+    char **priv_users;
+    uint   num_priv_groups;
+    char **priv_groups;
+    uint   num_acc;
+    char **priv_acc;
+    /**@}*/
+    /**@{ Special cases. */
+    uint min_time_perf_acc;
+    /**@}*/
+    /**@{ List of nodes. */
+    uint         num_nodes;
+    node_conf_t *nodes;
+    /**@}*/
+    /**@{ Installation (other). */
+    db_conf_t    database;
+    eardb_conf_t db_manager;
+    uint         num_tags;
+    tag_t       *tags;
+    uint         num_etags;
+    energy_tag_t *e_tags;
+    uint num_islands;
+    node_island_t *islands;
     earlib_conf_t earlib;
-	conf_install_t install;
+    conf_install_t install;
 } cluster_conf_t;
 
 /*

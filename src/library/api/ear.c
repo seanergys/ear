@@ -1363,17 +1363,18 @@ void ear_init()
 				fflush(stderr);
 
 				// Tracing init
-				if (masters_info.my_master_rank>=0){
-								traces_init(system_conf,application.job.app_id,masters_info.my_master_rank, my_id, num_nodes, my_size, ppnode);
+                if (masters_info.my_master_rank>=0) {
+                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
+                            my_id, num_nodes, my_size, ppnode);
 
-								traces_start();
-								traces_frequency(ear_my_rank, my_id, EAR_default_frequency);
-								traces_stop();
+                    traces_start();
+                    traces_frequency(ear_my_rank, my_id, EAR_default_frequency);
+                    traces_stop();
 
-								traces_mpi_init();
-				}
+                    traces_mpi_init();
+                }
 
-				ear_lib_initialized=1;
+                ear_lib_initialized=1;
 
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {

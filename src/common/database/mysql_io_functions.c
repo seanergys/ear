@@ -403,7 +403,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
 
         //string types
         bind[2+offset].buffer_type = MYSQL_TYPE_VAR_STRING;
-        bind[2+offset].buffer_length = strlen(app->node_id);
+        bind[2+offset].buffer_length = strlen(app[i].node_id);
 
         //storage variable assignation
         bind[0+offset].buffer = (char *)&app[i].job.id;
@@ -596,7 +596,7 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
 
         //string types
         bind[2+offset].buffer_type = MYSQL_TYPE_STRING;
-        bind[2+offset].buffer_length = strlen(app->node_id);
+        bind[2+offset].buffer_length = strlen(app[i].node_id);
 
         //storage variable assignation
         bind[0+offset].buffer = (char *)&app[i].job.id;
