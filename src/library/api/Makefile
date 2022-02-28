@@ -6,7 +6,7 @@ OBJS = \
     clasify.o \
     mpi_support.o \
     cupti.o \
-		eard_dummy.o
+    eard_dummy.o
 
 ifeq ($(FEAT_MPI_API), 1)
 OBJS += \

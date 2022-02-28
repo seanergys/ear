@@ -96,16 +96,16 @@ AC_DEFUN([X_AC_PGSQL],
 			DB_LIBS=$_x_ac_pgsql_gcc_libs
 			DB_LDFLAGS=$_x_ac_pgsql_gcc_ldflags
 		
-		if test "x$_x_ac_pgsql_custom" = "xyes"; then
-			DB_LIBDIR=$_x_ac_pgsql_dir_lib
-			DB_CPPFLAGS="-I$DB_DIR/include"
-		fi
+		    if test "x$_x_ac_pgsql_custom" = "xyes"; then
+			    DB_LIBDIR=$_x_ac_pgsql_dir_lib
+			    DB_CPPFLAGS="-I$DB_DIR/include"
+		    fi
 
-		echo checking for PostgreSQL compiler link... yes
-		echo checking for PostgreSQL CPPFLAGS... $DB_CPPFLAGS
-		echo checking for PostgreSQL LDFLAGS... $DB_LDFLAGS
-		echo checking for PostgreSQL libraries... $DB_LIBS
-    		fi
+		    echo checking for PostgreSQL compiler link... yes
+		    echo checking for PostgreSQL CPPFLAGS... $DB_CPPFLAGS
+		    echo checking for PostgreSQL LDFLAGS... $DB_LDFLAGS
+		    echo checking for PostgreSQL libraries... $DB_LIBS
+    	fi
 	])
 
 	AC_SUBST(DB_LIBS)
