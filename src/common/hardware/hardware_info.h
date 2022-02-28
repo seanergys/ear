@@ -69,5 +69,9 @@ state_t is_affinity_set(topology_t *topo,int pid,int *is_set,cpu_set_t *my_mask)
 /** dest results from doing the OR between dest and src. cpu_count is used */
 state_t add_affinity(topology_t *topo, cpu_set_t *dest,cpu_set_t *src);
 
+/** Returns whether \p cpu is in \p mask. -1 if an error occurred.
+ * This function just wraps CPU_ISSET macro. */
+int cpu_isset(int cpu, cpu_set_t *mask);
+
 
 #endif

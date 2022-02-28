@@ -229,3 +229,10 @@ int is_cpu_boost_enabled()
 	return cpuid_getbits(r.eax, 1, 1);
 }
 
+int cpu_isset(int cpu, cpu_set_t *mask)
+{
+    if (cpu < 0 || mask == NULL) {
+        return -1;
+    }
+    return CPU_ISSET(cpu, mask);
+}
