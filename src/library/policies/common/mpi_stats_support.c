@@ -27,8 +27,14 @@
 #include <common/states.h>
 //#define SHOW_DEBUGS 1
 #define LB_VERB			3
+#define VERB_BARR       1
+#include <management/cpufreq/cpufreq.h>
 #include <common/output/verbose.h>
 #include <common/system/time.h>
+#include <common/math_operations.h>
+#include <common/hardware/hardware_info.h>
+#include <common/config/config_dev.h>
+
 #include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
@@ -37,8 +43,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/global_comm.h>
-#include <common/math_operations.h>
-
 
 static timestamp pol_time_init,app_init, start_no_mpi;
 static mpi_information_t mpi_stats;
@@ -202,6 +206,20 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec, time_no_mpi);
         }
 #endif
+        if (call_type == Barrier) {
+            uint num_cpus;
+           if (state_fail(mgt_cpufreq_count_devices(no_ctx, &num_cpus))) {
+               verbose(VERB_BARR, "%sERROR%s Reading cpufreq num. devices.", COL_RED, COL_CLR);
+           }
+           for (int i = 0; i < num_cpus; i++) {
+               if (cpu_isset(i, &sig_shared_region[my_node_id].cpu_mask)) {
+                   verbose(VERB_BARR, "%sProc. %d has CPU %d%s", COL_GRE, my_node_id, i, COL_CLR);
+                  if (state_fail(mgt_cpufreq_set_current(no_ctx, 6, i))) {
+                    verbose(VERB_BARR, "%sERROR%s Setting cpufreq proc %d", COL_RED, COL_CLR, my_node_id);
+                  }
+               }
+           }
+        }
     }
     return EAR_SUCCESS;
 }
@@ -283,6 +301,20 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
         }
 #endif
+        if (call_type == Barrier) {
+            uint num_cpus;
+           if (state_fail(mgt_cpufreq_count_devices(no_ctx, &num_cpus))) {
+               verbose(VERB_BARR, "%sERROR%s Reading cpufreq num. devices.", COL_RED, COL_CLR);
+           }
+           for (int i = 0; i < num_cpus; i++) {
+               if (cpu_isset(i, &sig_shared_region[my_node_id].cpu_mask)) {
+                   verbose(VERB_BARR, "%sProc. %d has CPU %d%s", COL_GRE, my_node_id, i, COL_CLR);
+                  if (state_fail(mgt_cpufreq_set_current(no_ctx, 1, i))) {
+                    verbose(VERB_BARR, "%sERROR%s Setting cpufreq proc %d", COL_RED, COL_CLR, my_node_id);
+                  }
+               }
+           }
+        }
     }
     return EAR_SUCCESS;
 }
