@@ -41,17 +41,17 @@
 #include <library/common/global_comm.h>
 #include <report/report.h>
 
-static timestamp pol_time_init,app_init, start_no_mpi;
+static timestamp pol_time_init, app_init, start_no_mpi;
 static mpi_information_t mpi_stats;
-static ulong total_mpi_time_sync = 0;
+static ulong total_mpi_time_sync        = 0;
 static ulong total_mpi_time_collectives = 0;
-static ulong total_mpi_time_blocking = 0;
-static ulong total_blocking_calls = 0;
-static ulong total_collectives = 0;
-static ulong total_synchronizations = 0;
-static ulong total_sync_block = 0;
-static ulong time_sync_block = 0;
-static ulong max_sync_block = 0;
+static ulong total_mpi_time_blocking    = 0;
+static ulong total_blocking_calls       = 0;
+static ulong total_collectives          = 0;
+static ulong total_synchronizations     = 0;
+static ulong total_sync_block           = 0;
+static ulong time_sync_block            = 0;
+static ulong max_sync_block             = 0;
 
 float LB_TH = EAR_LB_TH;
 
@@ -78,10 +78,10 @@ state_t mpi_app_init(polctx_t *c)
         sig_shared_region[my_node_id].mpi_types_info.time_blocking = 0;
 
         /* Gobal mpi statistics */
-        mpi_stats.mpi_time = 0;
+        mpi_stats.mpi_time        = 0;
         mpi_stats.total_mpi_calls = 0;
-        mpi_stats.exec_time = 0;
-        mpi_stats.perc_mpi = 0;
+        mpi_stats.exec_time       = 0;
+        mpi_stats.perc_mpi        = 0;
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
@@ -152,7 +152,7 @@ state_t mpi_app_end(polctx_t *c)
             
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename, mpi_stats_per_call_filename))) {
                 verbose(MPI_EAR_STATS, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
-                goto exit;
+                return EAR_WARNING;
             }
 
             verbose(2,"      MPI stats file: %s\nMPI calls stats file: %s",
@@ -204,7 +204,6 @@ state_t mpi_app_end(polctx_t *c)
             }
         }
     }
-exit:
     return EAR_SUCCESS;
 }
 
@@ -682,31 +681,6 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     return EAR_SUCCESS;
 }
 
-#if 0
-state_t mpi_support_select_critical_path(mpi_information_t *node_mpi_calls, int num_procs, int *cp_idx)
-{
-    // We start with the first process idx
-    (*cp_idx) = 0;
-    ullong max_tcomp = node_mpi_calls[(*cp_idx)].exec_time - node_mpi_calls[(*cp_idx)].mpi_time;
-
-    verbosen_master(LB_VERB, "Load balance data ");
-
-    for (int i = 1; i < num_procs; i++) {
-        ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
-
-        verbosen_master(LB_VERB, "MR[%d]= %.2lf ", i, current_tcomp);
-
-        if (current_tcomp > max_tcomp) {
-            max_tcomp = current_tcomp;
-            (*cp_idx) = i;
-        }
-
-    }
-    verbose_master(LB_VERB," ");
-
-    return EAR_SUCCESS;
-}
-#else
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean,
         double *median, int *max_mpi, int *min_mpi)
 {
@@ -732,7 +706,6 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
 
     return EAR_SUCCESS;
 }
-#endif
 
 state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag)
 {
