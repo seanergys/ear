@@ -68,9 +68,6 @@ static uint last_imc_pstate;
 
 static imc_data_t *imc_data;
 
-/*  Utility */
-ulong avg_to_khz(ulong freq_khz);
-
 /*  Frequency management */
 static uint last_cpu_pstate;
 static node_freqs_t min_energy_def_freqs;

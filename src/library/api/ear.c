@@ -1330,7 +1330,7 @@ void ear_init()
 				memcpy(&loop_signature, &application, sizeof(application_t));
 
 				summary_pathname = get_ear_user_db_pathname();
-				if (masters_info.my_master_rank >= 0){
+				// if (masters_info.my_master_rank >= 0){
 								// Report API
 								char my_plug_path[512];
 								utils_create_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
@@ -1347,12 +1347,12 @@ void ear_init()
 																verbose_master(1,"Error in reports API load ");
 												}
 								}
-								/* local_rank, global_rank,  master_rank */
+								/* local_rank, global_rank, master_rank */
 								report_create_id(&rep_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
 								if (report_init(&rep_id,&cconf) != EAR_SUCCESS){
 												verbose_master(1,"Error in reports API initialization ");
 								}
-				}
+				// }
 
 				// States
 				states_begin_job(my_id,  ear_app_name);

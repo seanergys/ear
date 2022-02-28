@@ -5,14 +5,15 @@ DB_PSQL_LDFLAGS  = -lpq $(SRCDIR)/common/libcommon.a
 ######## FILES
 
 repo_OBJS = \
-	report.o
+    report.o
 repo_BINS = \
-	eard.so \
-	eardbd.so \
-	csv.so \
-	csv_ts.so \
+    eard.so \
+    eardbd.so \
+    csv.so \
+    csv_ts.so \
     heroes.so \
-	dummy.so
+    dummy.so \
+    mpitrace.so
 repo_PERM = 0775
 repo_PATH = $(DESTDIR)/lib/plugins/reports
 
