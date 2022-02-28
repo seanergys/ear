@@ -65,15 +65,10 @@ state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls, int *max,
 /*  Computes basic statistics of percs_mpi */
 state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, double *mean, double *sd, double *mag);
 
-#if 0
-/**  Based on computation time for each of \p num_procs passed, and determines whether the application is load balanced. */
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *lb_eff, uint *lb);
-#else
 /** Based on perc. of mpi calls for each of \p num_procs passed, compute basic statistics
  * (therefore stores their results) and determines whether the application is load balanced. */
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
         double *sd, double *mag, uint *lb);
-#endif
 
 /** This function sets the critical path and also stores max and min perc_mpi processes. */
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi);

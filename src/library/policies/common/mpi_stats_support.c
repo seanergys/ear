@@ -647,31 +647,6 @@ void chech_node_mpi_summary()
 	#endif
 }
 
-#if 0
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *lb_eff, uint *lb)
-{
-    double avg_tcomp = 0;
-    ullong max_tcomp = -1;
-    for (int i = 0; i < num_procs; i++) {
-        ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
-        if (max_tcomp < current_tcomp) {
-            max_tcomp = current_tcomp;
-        }
-        avg_tcomp += current_tcomp;
-    }
-    avg_tcomp /= num_procs;
-
-    (*lb_eff) = avg_tcomp / (double) max_tcomp;
-
-#if NODE_LB
-    *lb = ((*lb_eff) < LB_TH);
-#else
-    *lb = 0;
-#endif
-    return EAR_SUCCESS;
-}
-#endif
-
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
         double *sd, double *mag, uint *lb)
 {
