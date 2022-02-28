@@ -477,7 +477,7 @@ static void metrics_global_stop()
 	/* Onle the master will collect these metrics */
 	if (masters_info.my_master_rank>=0) {
         /* MPI statistics */
-        if (is_mpi_enabled()){
+        if (is_mpi_enabled()) {
           read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
           read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
         }
@@ -740,7 +740,7 @@ static int metrics_partial_stop(uint where)
 	metrics_usecs[APP] += metrics_usecs[LOO];
 	
     // Daemon metrics
-    if (masters_info.my_master_rank>=0) {
+    if (masters_info.my_master_rank >= 0) {
         /* MPI statistics */
         if (is_mpi_enabled()){
         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
@@ -924,59 +924,58 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				/* Each process will compute its own IO_MBS, except the master, that computes per node IO_MBS */
 				metrics->IO_MBS = iogb/time_s;
 
-				if (masters_info.my_master_rank>=0){
+                if (masters_info.my_master_rank>=0){
 
-								/* MPI statistics */
-								if (is_mpi_enabled()){
-												double pmpi = 0.0, lpmpi;
-												for (int i=0;i<lib_shared_region->num_processes;i++){	
-																mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
-																exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
-																if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = (double)(mpit*100.0 / exect);
-																else lpmpi = 0;
-																pmpi += lpmpi;
-																verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
-												}
-												metrics->perc_MPI = pmpi/lib_shared_region->num_processes;		
-								}else{
-												metrics->perc_MPI = 0.0;
-								}
-								sig_ext->mpi_stats = metrics_mpi_calls[s];
-								sig_ext->mpi_types = metrics_mpi_calls_types[s];
+                    /* MPI statistics */
+                    if (is_mpi_enabled()) {
+                        double pmpi = 0.0, lpmpi;
+                        for (int i=0;i<lib_shared_region->num_processes;i++){	
+                            mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
+                            exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
+                            if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = (double)(mpit*100.0 / exect);
+                            else lpmpi = 0;
+                            pmpi += lpmpi;
+                            verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
+                        }
+                        metrics->perc_MPI = pmpi/lib_shared_region->num_processes;
+                    } else{
+                        metrics->perc_MPI = 0.0;
+                    }
+                    sig_ext->mpi_stats = metrics_mpi_calls[s];
+                    sig_ext->mpi_types = metrics_mpi_calls_types[s];
 
+                    /* Power: Node, DRAM, PCK */
+                    metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
 
-								/* Power: Node, DRAM, PCK */
-								metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
-								
-								/* DRAM and PCK PENDING for Njobs */
-								metrics->PCK_power=0;
-								metrics->DRAM_power=0;
-								int p;
-								for (p=0;p<num_packs;p++) metrics->DRAM_power=metrics->DRAM_power+(double) metrics_rapl[s][p];
-								for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[s][num_packs+p];
-								metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
-								metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
-								metrics->EDP = time_s * time_s * metrics->DC_power;
+                    /* DRAM and PCK PENDING for Njobs */
+                    metrics->PCK_power=0;
+                    metrics->DRAM_power=0;
+                    int p;
+                    for (p=0;p<num_packs;p++) metrics->DRAM_power=metrics->DRAM_power+(double) metrics_rapl[s][p];
+                    for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[s][num_packs+p];
+                    metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
+                    metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
+                    metrics->EDP = time_s * time_s * metrics->DC_power;
 
-								/* GPUS */
+                    /* GPUS */
 #if USE_GPUS
-								if (gpu_initialized){
-												metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
-												if (earl_gpu_model == MODEL_DUMMY){ 
-																debug("Setting num_gpu to 0 because model is DUMMY");
-																metrics->gpu_sig.num_gpus = 0;
-												}
-												verbose_master(2, "We have %d GPUS ", metrics->gpu_sig.num_gpus);
-												for (p=0;p<metrics->gpu_sig.num_gpus;p++){
-																metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
-																metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;
-																metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[s][p].freq_mem;
-																metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[s][p].util_gpu;
-																metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[s][p].util_mem;
-												}	
-								}
+                    if (gpu_initialized){
+                        metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
+                        if (earl_gpu_model == MODEL_DUMMY){ 
+                            debug("Setting num_gpu to 0 because model is DUMMY");
+                            metrics->gpu_sig.num_gpus = 0;
+                        }
+                        verbose_master(2, "We have %d GPUS ", metrics->gpu_sig.num_gpus);
+                        for (p=0;p<metrics->gpu_sig.num_gpus;p++){
+                            metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
+                            metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;
+                            metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[s][p].freq_mem;
+                            metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[s][p].util_gpu;
+                            metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[s][p].util_mem;
+                        }	
+                    }
 #endif
-				}else{
+                }else{
 								copy_node_data(metrics,&lib_shared_region->node_signature);
 				}
 

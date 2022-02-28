@@ -28,11 +28,13 @@
 // #define SHOW_DEBUGS 1
 #define LB_VERB			3
 #define VERB_BARR       1
+#define MPI_EAR_STATS   2
 #include <management/cpufreq/cpufreq.h>
-#include <common/output/verbose.h>
-#include <common/system/time.h>
+
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
+#include <common/output/verbose.h>
+#include <common/system/time.h>
 #include <common/config/config_dev.h>
 
 #include <library/common/library_shared_data.h>
@@ -43,6 +45,7 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/global_comm.h>
+#include <report/report.h>
 
 static timestamp pol_time_init,app_init, start_no_mpi;
 static mpi_information_t mpi_stats;
@@ -89,7 +92,7 @@ state_t mpi_app_init(polctx_t *c)
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
             mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
-        }else {
+        } else {
             mpi_stats.rank = 0;
         }
 
@@ -104,6 +107,33 @@ state_t mpi_app_init(polctx_t *c)
     
     return EAR_SUCCESS;
 
+}
+
+static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)
+{
+    if (sprintf(mpi_stats_fn, "%s.ear_mpi_stats.", prefix) < 0) {
+        verbose(MPI_EAR_STATS, "%sWARNING%s Writing <prefix>%s.ear_mpi_stats.", COL_RED, COL_CLR, prefix);
+        return EAR_ERROR;
+    }
+    if (sprintf(mpi_calls_stats_fn, "%s.ear_mpi_calls_stats.", prefix) < 0) {
+        verbose(MPI_EAR_STATS, "%sWARNING%s Writing <prefix>%s.ear_mpi_calls_stats.", COL_RED, COL_CLR, prefix);
+        return EAR_ERROR;
+    }
+
+    char nodename[GENERIC_NAME];
+    if (gethostname(nodename, sizeof(nodename)) < 0) {
+        verbose(MPI_EAR_STATS, "%sWARNING%s Nodename could not be read: %d", COL_RED, COL_CLR, errno);
+    }
+
+    strcat(mpi_stats_fn, nodename);
+    strcat(mpi_calls_stats_fn, nodename);
+    
+    char suffix[GENERIC_NAME] = ".csv";
+
+    strcat(mpi_stats_fn, suffix);
+    strcat(mpi_calls_stats_fn, suffix);
+
+    return EAR_SUCCESS;
 }
 
 state_t mpi_app_end(polctx_t *c)
@@ -125,8 +155,11 @@ state_t mpi_app_end(polctx_t *c)
 
         char *stats = getenv(SCHED_GET_EAR_STATS);
         if (stats != NULL) {
-            sprintf(mpi_stats_filename, "%s", stats);
-            sprintf(mpi_stats_per_call_filename, "%s.mpi_call_dist.csv", stats);
+            
+            if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename, mpi_stats_per_call_filename))) {
+                verbose(MPI_EAR_STATS, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
+                goto exit;
+            }
 
             verbose(2,"      MPI stats file: %s\nMPI calls stats file: %s",
                     mpi_stats_filename, mpi_stats_per_call_filename);
@@ -140,7 +173,7 @@ state_t mpi_app_end(polctx_t *c)
                 verbose(1, "MR[%d] %s", lib_shared_region->master_rank, buff);
             } else {
                 // Only the master writes the header
-                if (masters_info.my_master_rank == 0) {
+                if (masters_info.my_master_rank >= 0) {
                     mpi_info_head_to_str_csv(buff, sizeof(buff));
                     sprintf(buff2, "mrank;%s\n", buff);
                     write(fd, buff2, strlen(buff2));
@@ -154,13 +187,11 @@ state_t mpi_app_end(polctx_t *c)
             // Open mpi_stats_per_call_filename to store per process MPI calls stats
             fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
-            if (fd >= 0){
+            if (fd >= 0) {
 
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI time;Time synchronizing;\
-                            Time Blocking;Time Collectives;Total MPI sync calls;\
-                            Total blocking calls;Total collective calls\n");
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI time;Time synchronizing;Time Blocking;Time Collectives;Total MPI sync calls;Total blocking calls;Total collective calls\n");
                     write(fd, buff, strlen(buff));
                 }
 
@@ -179,6 +210,7 @@ state_t mpi_app_end(polctx_t *c)
             }
         }
     }
+exit:
     return EAR_SUCCESS;
 }
 
@@ -364,7 +396,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int
     diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
 
     // mpi_call_copy(last, &current);
-    mpi_call_get_stats(last, &current, 0); // Copy from current to last
+    mpi_call_get_stats(last, &current, -1); // Copy from current to last
     last->perc_mpi =  (double) last->mpi_time * 100.0 / (double) last->exec_time;
 
     //  Check wether values are correctly bounded
@@ -521,12 +553,15 @@ state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_i
     int i;
     int bad_read_diff = 0;
     if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
-    for (i = 0; i < data->num_processes; i++){
+    for (i = 0; i < data->num_processes; i++) {
         if (state_fail(mpi_call_read_diff(&node_mpi_calls[i], &last_node[i], i))) {
             bad_read_diff = 1;
+        } else {
+            report_id_t id = { .local_rank = i };
+            report_misc(&id, MPITRACE, (char *) &node_mpi_calls[i], 0);
         }
     }
-    if (bad_read_diff){
+    if (bad_read_diff) {
         return EAR_WARNING;
     }
     return EAR_SUCCESS;
@@ -536,27 +571,23 @@ state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,
 {
     int i = 0;
     if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
-    for (i=0;i<data->num_processes;i++){
+    for (i=0;i<data->num_processes;i++) {
         mpi_call_types_read_diff(&node_mpi_calls[i],&last_node[i],i);
     }
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_perc_mpi_max_min(int nump,double *percs_mpi,int *max,int *min)
+state_t mpi_support_perc_mpi_max_min(int nump, double *percs_mpi, int *max, int *min)
 {
-    int i = 0;
     *max = 0;
     *min = 0;
-    verbosen_master(LB_VERB,"Load balance data ");
-    for (i=0; i< nump;i++){
-        verbosen_master(LB_VERB,"MR[%d]= %.2lf ",i,percs_mpi[i]);
-        // verbosen_master(3," (%lu/%lu) ",node_mpi_calls[i].mpi_time,node_mpi_calls[i].exec_time);
-    }
-    verbose_master(LB_VERB," ");
-    for (i=1 ; i < nump ; i++){
+    verbosen_master(LB_VERB, "Load balance data ");
+    for (int i = 1; i < nump; i++) {
+        verbosen_master(LB_VERB, "MR[%d]= %.2lf ", i, percs_mpi[i]);
         if (percs_mpi[i] > percs_mpi[*max])	*max = i;
         if (percs_mpi[i] < percs_mpi[*min])	*min = i;
     }
+    verbose_master(LB_VERB, "");
     return EAR_SUCCESS;
 }
 
@@ -572,7 +603,7 @@ state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, doubl
 /* This function sets the values to be shared with other nodes */
 static mpi_summary_t my_mpi_summary;
 
-state_t     mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
+state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
 {
 	int i;
 	double max = 0.0, min = 100.0;
@@ -617,21 +648,67 @@ void chech_node_mpi_summary()
 	#endif
 }
 
+#if 0
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *lb_eff, uint *lb)
+{
+    double avg_tcomp = 0;
+    ullong max_tcomp = -1;
+    for (int i = 0; i < num_procs; i++) {
+        ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
+        if (max_tcomp < current_tcomp) {
+            max_tcomp = current_tcomp;
+        }
+        avg_tcomp += current_tcomp;
+    }
+    avg_tcomp /= num_procs;
 
+    (*lb_eff) = avg_tcomp / (double) max_tcomp;
 
-// TODO: Evaluate Load Balance efficiency
+#if NODE_LB
+    *lb = ((*lb_eff) < LB_TH);
+#else
+    *lb = 0;
+#endif
+    return EAR_SUCCESS;
+}
+#endif
+
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
-        double *sd, double *mag, uint *lb){
-
-    /*  Get only perc_mpi info */
+        double *sd, double *mag, uint *lb)
+{
+    // Get only perc_mpi info.
     mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi);
 
-    /*  Compute statistics for determinate whether application is load balanced */
+    // Compute statistics for determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
 
-    mpi_support_set_mpi_summary(&my_mpi_summary,percs_mpi, num_procs, *mean, *sd, *mag);
+    mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
+
 #if NODE_LB
+#if EARL_RESEARCH
+    ullong max_tcomp = node_mpi_calls[0].exec_time - node_mpi_calls[0].mpi_time;
+    double avg_tcomp = (double) max_tcomp;
+
+    for (int i = 1; i < num_procs; i++) {
+        ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
+        verbose_master(2, "tcomp (l. rank) %d %llu - %llu = %llu | max_tcomp %llu ", i,
+                node_mpi_calls[i].exec_time, node_mpi_calls[i].mpi_time, current_tcomp, max_tcomp);
+        if (max_tcomp < current_tcomp) {
+            max_tcomp = current_tcomp;
+        }
+        avg_tcomp += current_tcomp;
+    }
+    avg_tcomp /= num_procs;
+
+    double lb_eff = avg_tcomp / (double) max_tcomp;
+
+    verbose_master(2, "%sLoad Balance efficiency%s %lf %smax tcomp%s %llu %savg tcomp%s %lf %sLB_TH%s %lf",
+            COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH);
+
+    *lb = (lb_eff < LB_TH);
+#else
     *lb = (*sd > LB_TH);
+#endif
 #else
     *lb = 0;
 #endif
@@ -639,30 +716,60 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean, double *median, int *max_mpi, int *min_mpi){
-    /*  Computes max and min perc_mpi processes */
+#if 0
+state_t mpi_support_select_critical_path(mpi_information_t *node_mpi_calls, int num_procs, int *cp_idx)
+{
+    // We start with the first process idx
+    (*cp_idx) = 0;
+    ullong max_tcomp = node_mpi_calls[(*cp_idx)].exec_time - node_mpi_calls[(*cp_idx)].mpi_time;
+
+    verbosen_master(LB_VERB, "Load balance data ");
+
+    for (int i = 1; i < num_procs; i++) {
+        ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
+
+        verbosen_master(LB_VERB, "MR[%d]= %.2lf ", i, current_tcomp);
+
+        if (current_tcomp > max_tcomp) {
+            max_tcomp = current_tcomp;
+            (*cp_idx) = i;
+        }
+
+    }
+    verbose_master(LB_VERB," ");
+
+    return EAR_SUCCESS;
+}
+#else
+state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean,
+        double *median, int *max_mpi, int *min_mpi)
+{
+    /* Computes max and min perc_mpi processes */
     mpi_support_perc_mpi_max_min(num_procs, percs_mpi, max_mpi, min_mpi);
 
-    /*  Computes median */
+    /* Computes median */
     mpi_stats_evaluate_median(num_procs, percs_mpi, median);
 
     memset(critical_path, 0, sizeof(uint)*num_procs);
     verbose_master(LB_VERB+1,"%sPer-core CPU freq. selection%s", COL_RED, COL_CLR);
 
-    for (uint i=0; i < num_procs; i++){
+    for (uint i=0; i < num_procs; i++) {
         /*  Decides whether process i is part of the critical path */
-        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)){
+        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)) {
             verbose_master(LB_VERB, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
-        }else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)){
-            debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path", COL_RED, COL_CLR, i);
+        } else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)) {
+            debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path",
+                    COL_RED, COL_CLR, i);
         }
     }
 
     return EAR_SUCCESS;
 }
+#endif
 
-state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag){
+state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag)
+{
     if (verb_lvl == 3){
         debug("Previous percs_mpi:");
         for (int i = 0; i < num_procs; i++){
@@ -677,29 +784,35 @@ state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int 
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp, int num_procs, double *similarity, uint *mpi_changed){
+state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, uint *prev_cp,
+        int num_procs, double *similarity, uint *mpi_changed)
+{
     *mpi_changed = 0;
 
     /*  Check whether perc_mpi vector magnitude has increased with respect to previous one */
-    if (!equal_with_th(prev_mag, current_mag, 0.05)){
+    if (!equal_with_th(prev_mag, current_mag, 0.05))
+    {
         if (prev_mag < current_mag){
             debug("%sMore MPI than before%s (%.2lf/%.2lf)", COL_MGT, COL_CLR,
                     prev_mag, current_mag);
             *mpi_changed = 1;
         }
-    }else{
+    } else {
         /*  Check similarity between critical paths */
         mpi_stats_evaluate_sim_uint(cp, prev_cp, num_procs, similarity);
         verbose_master(LB_VERB, "Similarity between last and current critical path selection %lf", *similarity);
-        if (*similarity < 0.5){
+        if (*similarity < 0.5)
+        {
             *mpi_changed = 1;
         }
     }
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi){
+state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi)
+{
     mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
+
     for (int i = 0; i < nump; i++) {
         mpi_calls[i] = &node_mpi_calls[i];
     }
@@ -709,47 +822,57 @@ state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump
     for (int i = 0; i < nump; i++) {
         percs_mpi[i] = *(double*)percs_mpi_v[i];
     }
-    ear_math_free_gen_array(percs_mpi_v);
+
+    free(percs_mpi_v);
+
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_sd(int nump, double *percs_mpi, double mean, double *sd){
+state_t mpi_stats_evaluate_sd(int nump, double *percs_mpi, double mean, double *sd)
+{
     *sd = ear_math_standard_deviation(percs_mpi, nump, mean);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn){
+state_t mpi_stats_evaluate_mean(int nump, double *percs_mpi, double *mn)
+{
     *mn = ear_math_mean(percs_mpi, nump);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity) {
+state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi, size_t size, double *similarity)
+{
     *similarity = ear_math_cosine_similarity(current_perc_mpi, last_perc_mpi, size);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp, size_t size, double *sim){
+state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp, size_t size, double *sim)
+{
     *sim = ear_math_cosine_sim_uint(current_cp, last_cp, size);
     return EAR_SUCCESS;
 }
 
-int compare_perc_mpi(const void *p1, const void *p2) {
+int compare_perc_mpi(const void *p1, const void *p2)
+{
     return (*(double * const *) p1 < *(double * const *) p2) ? -1 : (*(double * const *) p1 > *(double * const *) p2) ? 1 : 0;
 }
 
-state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump) {
+state_t mpi_stats_sort_perc_mpi(double *perc_mpi_arr, size_t nump)
+{
     qsort(perc_mpi_arr, nump, sizeof(double), compare_perc_mpi);
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd){
+state_t mpi_stats_evaluate_mean_sd(int nump, double *percs_mpi, double *mean, double *sd)
+{
     mean_sd_t mean_sd = ear_math_mean_sd(percs_mpi, nump);
     *mean = mean_sd.mean;
     *sd = mean_sd.sd;
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag){
+state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag)
+{
     mean_sd_t mean_sd_mag = ear_math_mean_sd(percs_mpi, nump);
     *mean = mean_sd_mag.mean;
     *sd = mean_sd_mag.sd;
@@ -757,7 +880,8 @@ state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean
     return EAR_SUCCESS;
 }
 
-state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median){
+state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median)
+{
     *median = ear_math_median(percs_mpi, nump);
     return EAR_SUCCESS;
 }
