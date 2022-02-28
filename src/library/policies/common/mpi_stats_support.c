@@ -364,7 +364,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int
     diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
 
     // mpi_call_copy(last, &current);
-    mpi_call_get_stats(last, &current); // Copy from current to last
+    mpi_call_get_stats(last, &current, 0); // Copy from current to last
     last->perc_mpi =  (double) last->mpi_time * 100.0 / (double) last->exec_time;
 
     //  Check wether values are correctly bounded
