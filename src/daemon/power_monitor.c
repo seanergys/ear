@@ -1080,6 +1080,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
   if (user_type == AUTHORIZED) pmapp->settings->learning = appID->is_learning;
   else pmapp->settings->learning  = 0;
   pmapp->settings->lib_enabled    = (user_type!=ENERGY_TAG);
+	verbose(0, "User type %u, etag %u lib_enabled %u", user_type, ENERGY_TAG, pmapp->settings->lib_enabled);
   pmapp->settings->policy         = my_policy->policy;
   strcpy(pmapp->settings->policy_name,  my_policy->name);
   pmapp->settings->def_freq       = f;
@@ -1401,7 +1402,10 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 //
 //
 //
+//
+//
 
+static uint test_reset = 0;
 #define VERBOSE_POWERMON 1
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
 	ulong jid, mpi,sid;
