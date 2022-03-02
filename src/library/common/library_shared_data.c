@@ -470,13 +470,13 @@ void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *C
 
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
 {
-  int i;
-	*cpus = 0;
-  for (i=0;i<data->num_processes;i++){
-		uint lcpus = num_cpus_in_mask(&sig[i].cpu_mask);
-		*cpus += lcpus;
-  }
-	verbose_master(2,"Job %u has %u cpus ",node_mgr_index,*cpus);
+    int i;
+    *cpus = 0;
+    for (i = 0; i < data->num_processes; i++) {
+        uint lcpus = num_cpus_in_mask(&sig[i].cpu_mask);
+        *cpus += lcpus;
+    }
+    verbose_master(2,"Job %u has %u cpus ",node_mgr_index,*cpus);
 }
 
 

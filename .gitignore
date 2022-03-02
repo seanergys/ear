@@ -24,6 +24,7 @@ cmake*
 CMake*
 *_trash
 *.idea
+build/
 
 # Julita's
 DB/

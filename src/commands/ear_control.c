@@ -27,8 +27,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/user.h>
@@ -39,19 +37,9 @@
 #include <common/types/configuration/policy_conf.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/messaging/msg_internals.h>
-
 #include <daemon/remote_api/eard_rapi_internals.h>
 #include <daemon/remote_api/eard_rapi.h>
-
 #include <database_cache/eardbd_api.h>
-
-#if SCHED_SLURM
-#include <slurm/slurm.h>
-#define BATCH_STEP SLURM_BATCH_SCRIPT
-#else
-#define BATCH_STEP -2
-#endif
-
 
 #define NUM_LEVELS  4
 #define MAX_PSTATE  16

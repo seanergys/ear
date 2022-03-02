@@ -15,16 +15,16 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+
+// #define SHOW_DEBUGS 1
 #define _GNU_SOURCE
+
+#include <stdio.h>
 #include <sched.h>
-
-
 #include <errno.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>
-// #define SHOW_DEBUGS 1
+#include <sys/types.h>
 #include <library/loader/loader.h>
 #include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
@@ -50,7 +50,7 @@ static int init()
     }
     pid1 = getpid();
 
-    if (SCHED_IS(SLURM)) {
+    if (SCHED_IS(SCHED_SLURM)) {
         // SLURM prolog/epilog control
         if ((task = getenv(FLAG_TASK_PID)) == NULL) {
             return 0;

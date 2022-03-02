@@ -20,6 +20,13 @@
 
 #include <library/metrics/metrics.h>
 
+#ifdef EARL_RESEARCH
+extern unsigned long ext_def_freq;
+#define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
+#else
+#define DEF_FREQ(f) f
+#endif
+
 /* Compute reference metrics used before applying any policy projection/decision. */
 state_t compute_reference(polctx_t *c, signature_t *my_app, ulong *curr_freq, ulong *def_freq, ulong *freq_ref, double *time_ref, double *power_ref);
 
@@ -62,6 +69,9 @@ state_t copy_cpufreq_sel(ulong *to, ulong *from, size_t size);
 state_t set_all_cores(ulong *freqs, int len, ulong freq_val);
 
 ulong node_freqs_avgcpufreq(ulong *f);
+
+/** Given a value representing an averaged frequency, returns the nearest frequency (in kHz) rounded. */
+ulong avg_to_khz(ulong freq_khz);
 
 #endif
 
