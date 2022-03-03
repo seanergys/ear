@@ -28,6 +28,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <common/config.h>
+#include <common/config/config_sched.h>
 #include <common/states.h>
 #include <common/system/user.h>
 #include <common/system/execute.h>

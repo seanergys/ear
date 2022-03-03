@@ -17,7 +17,7 @@ eargmd_OBJS = \
     eargm_rapi.o
 
 ifdef DB_BASE
-eargmd_OBJS = \
+eargmd_OBJS += \
     cluster_powercap.o \
     cluster_energycap.o \
     meta_eargm.o \

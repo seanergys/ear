@@ -23,6 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <common/config.h>
+#include <common/config/config_sched.h>
 #include <common/system/user.h>
 #include <common/output/verbose.h>
 #include <common/types/loop.h>

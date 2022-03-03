@@ -1538,7 +1538,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
 	/* We check if we have to reset the IPMI interface */
 	if ((last_pmon->avg_dc == 0) || (last_pmon->avg_dc > my_node_conf->max_error_power)) {
-		warning("Resetting IPMI interface since power is %.2lf", last_pmon->avg_dc);
+		warning("Resetting IPMI interface since power is %.2lf  (limit %lf)", last_pmon->avg_dc, my_node_conf->max_error_power);
 
 		if (energy_dispose(&my_eh_pm) != EAR_SUCCESS) {
 			error("when resetting IPMI interface 'energy_dispose'");
