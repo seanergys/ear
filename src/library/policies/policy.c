@@ -30,6 +30,7 @@
 #include <common/environment.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
+#include <management/cpufreq/cpufreq.h>
 #include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
@@ -124,6 +125,11 @@ extern node_mgr_sh_data_t *node_mgr_job_info;
 
 extern node_freq_domain_t earl_default_domains;
 
+#if EARL_RESEARCH
+static pstate_t *pstate_list; /*!< The list of available pstates in the current system. */
+static uint pstate_count;
+#endif
+
 /**** Auxiliary functions ***/
 state_t policy_load(char *obj_path,polsym_t *psyms)
 {
@@ -175,28 +181,48 @@ static void print_freq_per_core()
     }
     verbose_master(3," ");
 }
+
 static void from_proc_to_core(ulong *cpuf)
 {
-    int p,c;
+    int p, c;
     ulong f;
     int ccount;
-    int lv = 2;
     cpu_set_t m;
+
+    int lv = 2;
     if (first_print){ lv = 1;first_print = 0;}
-    verbose_master(lv,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
+
+    verbose_master(lv, "Generating list of freqs for %d procs", lib_shared_region->num_processes);
+
     ccount = arch_desc.top.cpu_count;
-    for (p = 0; p < lib_shared_region->num_processes ; p++)
+
+    for (p = 0; p < lib_shared_region->num_processes; p++)
     {
         f = cpuf[p];
         m = sig_shared_region[p].cpu_mask;
-        verbose_master(lv,"Frequency for process %d is %lu", p, f);
-        for (c = 0 ; c < ccount; c++) {
-            if (CPU_ISSET(c,&m)) { 
-                verbosen_master(lv+1,"CPU %d ",c);
+
+#if EARL_RESEARCH
+        pstate_t curr_pstate;
+        state_t ps_manag_st = pstate_freqtops(pstate_list, pstate_count, (ullong) f, &curr_pstate);
+        if (state_fail(ps_manag_st)) {
+            verbose_master(3, "%sERROR%s converting freq %lu to P-STATE", COL_RED, COL_CLR, f);
+            sig_shared_region[p].pstate_index = ps_nothing;
+        } else {
+            sig_shared_region[p].pstate_index = curr_pstate.idx;
+        }
+
+        verbose_master(lv, "Frequency for process %d is %lu (P-STATE %u)", p, f, curr_pstate.idx);
+#else
+        verbose_master(lv, "Frequency for process %d is %lu", p, f);
+#endif
+
+        for (c = 0; c < ccount; c++) {
+            if (CPU_ISSET(c,&m)) {
+                verbosen_master(lv + 1,"CPU %d ",c);
                 freq_per_core[c] = f;
             }
         }
-        verbose_master(lv+1," ");
+        verbose_master(lv + 1," ");
     }
     return;
 }
@@ -228,7 +254,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     /* Assumption: If affinity is set for master, it is set for all, we could check individually */
     if ((dom->cpu == POL_GRAIN_CORE) && (ear_affinity_is_set)){
         from_proc_to_core(freq_set);		
-    }else{
+    } else {
         debug("Setting same freq in all node %lu",freq_set[0]);
         for (i=1;i<MAX_CPUS_SUPPORTED;i++) freq_set[i] = freq_set[0];
         if (ear_affinity_is_set){ 
@@ -258,6 +284,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     verbose_master(2,"Setting CPU freq to %lu",*(c->ear_frequency));
     return EAR_SUCCESS;
 }
+
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     uint *imc_up,*imc_low;
@@ -465,8 +492,8 @@ state_t policy_init()
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
 #if USE_GPUS
-		gpu_lib_count((uint *)&policy_last_local_signature.gpu_sig.num_gpus);
-		policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
+    gpu_lib_count((uint *)&policy_last_local_signature.gpu_sig.num_gpus);
+    policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
 #endif
 
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
@@ -478,11 +505,11 @@ state_t policy_init()
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
     verbose_master(2,"Using turbo for CP when load unbalance set to %u", use_turbo_for_cp);
 
-		/* conf_dyn_unc is based on the configuration. dyn_unc is modified at runtime depending of number of jobs running */   
+    /* conf_dyn_unc is based on the configuration. dyn_unc is modified at runtime depending of number of jobs running */   
     if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok){
-       conf_dyn_unc = atoi(cdyn_unc);
+        conf_dyn_unc = atoi(cdyn_unc);
     }
-		dyn_unc = conf_dyn_unc;
+    dyn_unc = conf_dyn_unc;
 
     if (cimc_extra_th != NULL){
         imc_extra_th = atof(cimc_extra_th);
@@ -501,13 +528,12 @@ state_t policy_init()
         freqs_domain.gpumem = POL_NOT_SUPPORTED;
     }
 
-		if (earl_default_domains.mem == POL_NOT_SUPPORTED){
-			freqs_domain.mem = POL_NOT_SUPPORTED;
-		}
-		if (earl_default_domains.gpu == POL_NOT_SUPPORTED){
-      freqs_domain.gpu = POL_NOT_SUPPORTED;
+    if (earl_default_domains.mem == POL_NOT_SUPPORTED){
+        freqs_domain.mem = POL_NOT_SUPPORTED;
     }
-		
+    if (earl_default_domains.gpu == POL_NOT_SUPPORTED){
+        freqs_domain.gpu = POL_NOT_SUPPORTED;
+    }
 
     if (masters_info.my_master_rank >= 0){
         for (i=0; i< lib_shared_region->num_processes;i++){
@@ -518,23 +544,31 @@ state_t policy_init()
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
         verbose_master(2, "%sERROR on getting domains.%s",COL_RED, COL_CLR);
     }
+
+#if EARL_RESEARCH
+    /* Get mgt_cpufreq from metrics.c */
+    const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
+    if (mgt_cpufreq == NULL) {
+        verbose_master(3, "%sERROR%s Policy init could not read mgt_cpufreq.", COL_RED, COL_CLR);
+    } else if (mgt_cpufreq->avail_list != NULL) {
+        pstate_list = (pstate_t *)mgt_cpufreq->avail_list;
+        pstate_count = mgt_cpufreq->avail_count;
+    }
+#endif
+
     if (masters_info.my_master_rank>=0){
         pc_support_init(c);
     }
-		/* We have migrated frequency set from eard to earl */
-		policy_get_default_freq(&nf);
-		/* What do we need at this point in  the signature ? */
-		policy_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain,&avg_nf);
+    /* We have migrated frequency set from eard to earl */
+    policy_get_default_freq(&nf);
+    /* What do we need at this point in  the signature ? */
+    policy_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain,&avg_nf);
 
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
 }
 
-
-
-
 /* This function loads specific CPU and GPU policy functions and calls the initialization functions */
-
 state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
 {
     char basic_path[SZ_PATH_INCOMPLETE];

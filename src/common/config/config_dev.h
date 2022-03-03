@@ -30,7 +30,7 @@
 
 /*** EARL ***/
 /* To be removed and set fixed in the code */
-#define EARL_RESEARCH 1
+#define EARL_RESEARCH 0
 /* Still under development */
 
 /**** Deprecated. To be removed ****/

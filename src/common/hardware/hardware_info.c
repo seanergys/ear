@@ -31,18 +31,39 @@
 
 uint num_cpus_in_mask(cpu_set_t *my_mask)
 {
-	uint c, lcpus = 0;
-	
-  for (c = 0; c < MAX_CPUS_SUPPORTED; c++){
-      if (CPU_ISSET(c, my_mask)) lcpus++;
-  }
-	return lcpus;
+    uint c, lcpus = 0;
+
+    for (c = 0; c < MAX_CPUS_SUPPORTED; c++){
+        if (CPU_ISSET(c, my_mask)) lcpus++;
+    }
+    return lcpus;
+
+}
+
+int list_cpus_in_mask(cpu_set_t *my_mask, uint n_cpus, uint *cpu_list)
+{
+    if (my_mask == NULL || cpu_list == NULL || n_cpus < 1) return -1;
+
+    uint c, lcpus = 0;
+
+    for (c = 0; c < MAX_CPUS_SUPPORTED && lcpus < n_cpus; c++) {
+        if (CPU_ISSET(c, my_mask)) {
+            cpu_list[lcpus] = c;
+            lcpus++;
+        }
+    }
+
+    if (lcpus < n_cpus) {
+        return -1;
+    }
+
+    return 0;
 
 }
 
 void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src)
 {
-	for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
+    for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
       if (CPU_ISSET(c, src)) CPU_SET(c, dst);
   }
 

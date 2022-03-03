@@ -1094,7 +1094,7 @@ void ear_init()
 								}
 				}
 				#else
-				if (eard_ok){ //only the master will connect with eard
+				if (eard_ok){ // all processes will connect with eard
 								char *col;
                 if (!my_id) col = COL_BLU; 
 								else        col = COL_GRE;
@@ -1271,7 +1271,7 @@ void ear_init()
 								if (ear_affinity_is_set){ 
 												sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
 												sig_shared_region[my_node_id].affinity = 1;
-												sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask);
+												sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
 #if 0
 												if (masters_info.my_master_rank>=0){ 
 																print_affinity_mask(&arch_desc.top);

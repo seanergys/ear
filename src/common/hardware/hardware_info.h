@@ -45,6 +45,13 @@ int detect_packages(int **package_map);
 /** Computes the number of cpus in a given mask */
 uint num_cpus_in_mask(cpu_set_t *my_mask);
 
+/** Fills \p cpu_list with the numbers of CPUs set in \p my_mask.
+ * Returns 0 on success, -1 on error.
+ * \param my_mask An allocated affinity mask pointer.
+ * \param n_cpus The number of CPUs known to be in \p my_mask.
+ * \param cpu_list The output list. This pointer must be allocated with \p n_cpus elements. */
+int list_cpus_in_mask(cpu_set_t *my_mask, uint n_cpus, uint *cpu_list);
+
 /* Add cpus set in src to dst */
 void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src);
 

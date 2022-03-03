@@ -81,31 +81,32 @@ typedef struct lib_shared_data {
 } lib_shared_data_t;
 
 
-typedef struct shsignature{
+typedef struct shsignature {
     uint              master;
     pid_t             pid;
     uint              ready;
     uint              iterations;
     mpi_information_t mpi_info;
-    mpi_calls_types_t mpi_types_info;		
+    mpi_calls_types_t mpi_types_info;
     ssig_t            sig; // it was originally a signature_t
     int               app_state;
     unsigned long     new_freq;
 	uint              num_cpus;
     cpu_set_t         cpu_mask;
+    uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
     int               affinity;
     uint              unbalanced;
     ulong             policy_freq;
 	double            period;
 } shsignature_t;
 
-typedef struct node_mgr_sh_data{
-	time_t						creation_time;
-	int 							fd_lib;
-	int 							fd_sig;
+typedef struct node_mgr_sh_data {
+	time_t            creation_time;
+	int               fd_lib;
+	int               fd_sig;
 	lib_shared_data_t *libsh;
-	shsignature_t 		*shsig;
-}node_mgr_sh_data_t;
+	shsignature_t     *shsig;
+} node_mgr_sh_data_t;
 
 
 /*********** SETTINGS configuration *******************/

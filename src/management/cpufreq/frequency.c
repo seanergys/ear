@@ -416,6 +416,7 @@ void verbose_frequencies(int cpus, ulong *f)
     }
     verbose(VEARD_PC,buff);
 }
+
 void vector_print_pstates(uint *pstates, uint num_cpus) {
     char *tmp_buff = calloc(num_cpus*32, sizeof(char));
     char sml_buff[32];

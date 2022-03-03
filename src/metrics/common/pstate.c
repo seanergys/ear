@@ -30,7 +30,7 @@ state_t pstate_freqtops(pstate_t *ps_list, uint ps_count, ullong ps_khz, pstate_
 {
     int i;
     for (i = 0; i < ps_count; ++i) {
-        if (ps_list[i].khz == ps_khz){
+        if (ps_list[i].khz == ps_khz) {
             memcpy(ps_ret, &ps_list[i], sizeof(pstate_t));
             return EAR_SUCCESS;
         }
