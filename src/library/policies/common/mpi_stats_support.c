@@ -650,7 +650,7 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
 
 #if NODE_LB
-#if EARL_RESEARCH
+#if 0
     ullong max_tcomp = node_mpi_calls[0].exec_time - node_mpi_calls[0].mpi_time;
     double avg_tcomp = (double) max_tcomp;
 
@@ -671,9 +671,8 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
             COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH);
 
     *lb = (lb_eff < LB_TH);
-#else
-    *lb = (*sd > LB_TH);
 #endif
+    *lb = (*sd > LB_TH);
 #else
     *lb = 0;
 #endif
