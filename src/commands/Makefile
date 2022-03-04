@@ -5,24 +5,36 @@ CFLAGS += -DEXT_OPT=1
 endif
 CCC     = $(CC) $(CFLAGS)
 
-
 ######## INSTALLATION
 
+com1_BINS = ear-info
+
 ifdef DB_BASE
-com1_BINS = eacct econtrol ereport ear-info
+com1_BINS += \
+    eacct \
+    econtrol \
+    ereport
+
+com2_BINS += \
+    edb_create \
+    edb_clean_apps \
+    edb_clean_pm
+endif
+
 com1_PATH = $(DESTDIR)/bin
 com1_PERM = 2771
-com2_BINS = edb_create edb_clean_apps edb_clean_pm
 com2_PATH = $(DESTDIR)/sbin
 com2_PERM = 0770
-endif
 
 ######## FILES
 
 comm_OBJS = $(SRCDIR)/common/libcommon.a -lm
 
-rapi_OBJS = $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o $(SRCDIR)/daemon/remote_api/eard_rapi.o \
-			$(SRCDIR)/common/messaging/msg_internals.o $(SRCDIR)/database_cache/eardbd_api.o
+rapi_OBJS = \
+    $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
+    $(SRCDIR)/daemon/remote_api/eard_rapi.o \
+    $(SRCDIR)/common/messaging/msg_internals.o \
+    $(SRCDIR)/database_cache/eardbd_api.o
 
 ######## RULES
 

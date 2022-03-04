@@ -20,8 +20,14 @@
 #include <common/sizes.h>
 #include <common/utils/string.h>
 
-size_t xsnsize(size_t size) {
+size_t xsnsize(size_t size)
+{
 	return size;
+}
+
+char *xsnbuffer(char *buffer)
+{
+    return buffer;
 }
 
 int appenv(const char *var, const char *string)

@@ -679,8 +679,7 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 				n = xsprintf(buffer2, "%s:", buffer1);
 			}
 			// Append the current LD_PRELOAD content to our library.
-			n = snprintf(      0,       0, "%s%s", buffer2, ld_buf);
-			n = snprintf(buffer1, t(m, n), "%s%s", buffer2, ld_buf);
+			n = xsnprintf(buffer1, t(m, n), "%s%s", buffer2, ld_buf);
 		}
 		// Setting LD_PRELOAD environment variable.
 		setenv_agnostic(sp, Var.ld_prel.ear, buffer1, 1);
