@@ -42,11 +42,11 @@ typedef struct mpi_summary {
 } mpi_summary_t;
 
 typedef struct mpi_information {
-    unsigned int        total_mpi_calls;
-    unsigned long long  exec_time; /**< Time stored in USECS. */
-    unsigned long long  mpi_time;
-    int                 rank;
-    double              perc_mpi;
+    uint        total_mpi_calls;
+    ullong      exec_time;       /**< Time stored in USECS. */
+    ullong      mpi_time;
+    int         rank;
+    double      perc_mpi;
 } mpi_information_t;
 
 typedef struct mpi_calls_types
@@ -64,6 +64,12 @@ typedef struct mpi_calls_types
     ulong time_sync_block;
     ulong max_sync_block;
 } mpi_calls_types_t;
+
+typedef struct mpitrace_s
+{
+    mpi_information_t *mpi_info;
+    mpi_calls_types_t *mpi_types_info;;
+} mpitrace_t;
 
 typedef struct lib_shared_data {
     uint        earl_on;
