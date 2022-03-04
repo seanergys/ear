@@ -678,8 +678,7 @@ void verbose_mpi_summary(int vl,mpi_summary_t *l)
 
 void chech_node_mpi_summary()
 {
-	#if 0
-    #if NODE_LB
+    #if 0 // NODE_LB
     if (is_mpi_enabled()){
       verbose_mpi_summary(LB_VERB,&my_mpi_summary);
       if (is_mpi_summary_pending() == 0){
@@ -691,7 +690,6 @@ void chech_node_mpi_summary()
         }
     }
     }
-    #endif
 	#endif
 }
 
@@ -707,7 +705,7 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
 
 #if NODE_LB
-#if 0
+#if EARL_RESEARCH
     ullong max_tcomp = node_mpi_calls[0].exec_time - node_mpi_calls[0].mpi_time;
     double avg_tcomp = (double) max_tcomp;
 
@@ -728,8 +726,9 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
             COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH);
 
     *lb = (lb_eff < LB_TH);
-#endif
+#else
     *lb = (*sd > LB_TH);
+#endif
 #else
     *lb = 0;
 #endif
