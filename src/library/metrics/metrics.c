@@ -60,6 +60,8 @@
 #include <management/imcfreq/imcfreq.h>
 #include <daemon/local_api/eard_api.h>
 
+#include <report/report.h>
+
 // Registers
 #define LOO         0 // loop
 #define APP         1 // application
@@ -1288,6 +1290,7 @@ int time_ready_signature(ulong min_time_us)
 int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs)
 {
 				long long aux_time;
+                report_id_t report_id;
 
                 if (!sig_shared_region[my_node_id].ready){
 
@@ -1310,6 +1313,12 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 
 								//Marks the signature as ready
 								metrics_compute_signature_data(LOO, metrics, iterations, procs);
+
+                                // Call report mpitrace
+                                report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
+                                if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
+                                    verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+                                }
 
 								//
 								metrics_partial_start();

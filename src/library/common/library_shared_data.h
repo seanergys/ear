@@ -65,12 +65,6 @@ typedef struct mpi_calls_types
     ulong max_sync_block;
 } mpi_calls_types_t;
 
-typedef struct mpitrace_s
-{
-    mpi_information_t *mpi_info;
-    mpi_calls_types_t *mpi_types_info;;
-} mpitrace_t;
-
 typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;

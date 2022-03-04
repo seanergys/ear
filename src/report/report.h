@@ -38,7 +38,7 @@
 
 #define EARGM_WARNINGS        1
 #define PERIODIC_AGGREGATIONS 2
-#define MPITRACE              3
+#define MPITRACE              4
 
 /** Short name for const char. */
 typedef const char cchar;
@@ -110,7 +110,7 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
  * \param type The identifier of the report call to be compatible with your plugin. This parameter was designed for report plugins 
  * to filter the calls triggered for any other report plugin which also uses this funcion.
  * \param data The data sent. It is your responsability the management and conversion of the content of this parameter.
- * \param count You can freely use this parameter for whatever you want. */
+ * \param count You can freely use this parameter for whatever you want as it is here for design purposes. */
 state_t report_misc(report_id_t *id, uint type, const char *data, uint count);
 
 /** @} */
