@@ -19,7 +19,10 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <common/system/lock.h>
 #include <daemon/local_api/eard_api_rpc.h>
+
+pthread_mutex_t lock_rpc = PTHREAD_MUTEX_INITIALIZER;
 
 __thread char *rpc_buffer = NULL;
 __thread size_t rpc_size  = 0;
@@ -127,12 +130,15 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
 	if (state_fail(s = data_check(data, size))) {
 		return s;
 	}
+    if (state_fail(s = ear_trylock(&lock_rpc))) {
+        return s;
+    }
 	// Sending header+data
 	if (state_fail(s = eard_send(ear_fd_req, call, EAR_SUCCESS, data, size, NULL))) {
-		return s;
+		return_unlock(s, &lock_rpc);
 	}
 	// Receiving the data and returning the RPC state
-	return eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+	return_unlock(eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size), &lock_rpc);
 }
 
 state_t eard_rpc(uint call, char *data, size_t size, char *recv_data, size_t expc_size)
@@ -159,19 +165,39 @@ state_t eard_rpc_answer(int fd, uint call, state_t s, char *data, size_t size, c
 	if (state_fail(s2 = data_check(data, size))) {
 		return s2;
 	}
-	return eard_send(fd, call, s, data, size, error);
+    if (state_fail(s2 = ear_trylock(&lock_rpc))) {
+        return s2;
+    }
+	return_unlock(eard_send(fd, call, s, data, size, error), &lock_rpc);
+}
+
+static state_t protected_read(int fd, char *buffer, int size, uint wait_mode)
+{
+    size_t aux_size;
+    state_t s;
+
+    if (state_fail(s = ear_trylock(&lock_rpc))) {
+        return s;
+    }
+    aux_size = eards_read(fd, buffer, size, wait_mode);
+    ear_unlock(&lock_rpc);
+
+    if (aux_size != size) {
+        return_print(EAR_ERROR, "problem when reading EARD pipe (%s)", strerror(errno));
+    }
+    return EAR_SUCCESS;
 }
 
 state_t eard_rpc_read_pending(int fd, char *recv_data, size_t read_size, size_t expc_size)
 {
 	state_t s;
 	// Testing data dissonances
-	if (xtate_fail(s, data_check(recv_data, read_size))) {
+	if (state_fail(s = data_check(recv_data, read_size))) {
 		return s;
 	}
-	if (eards_read(fd, recv_data, read_size, WAIT_DATA) != read_size) {
-		return_print(EAR_ERROR, "problem when reading EARD pipe (%s)", strerror(errno));
-	}
+    if (state_fail(s = protected_read(fd, recv_data, read_size, WAIT_DATA))) {
+        return s;
+    }
 	if (expc_size != 0 && read_size != expc_size) {
 		return_msg(EAR_ERROR, "the read and expected size from the data pipe differs");
 	}
@@ -180,12 +206,11 @@ state_t eard_rpc_read_pending(int fd, char *recv_data, size_t read_size, size_t 
 
 state_t eard_rpc_clean(int fd, size_t size)
 {
-	//
+    state_t s;
 	rpc_buffer_test(size);
 	//
-	if (eards_read(fd, rpc_buffer, size, WAIT_DATA) != size) {
-		return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
-	}
+    if (state_fail(s = protected_read(fd, rpc_buffer, size, WAIT_DATA))) {
+        return s;
+    }
 	return EAR_SUCCESS;	
 }
-
