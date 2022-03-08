@@ -34,6 +34,7 @@
 #include <common/system/lock.h>
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
+#include <metrics/common/apis.h>
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
 
@@ -370,21 +371,22 @@ void eards_disconnect()
 ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, const char *description, int retsuc)
 {
     state_t s;
-
+		debug("local api init : %s", description);
     if (ear_fd_req < 0) {
         return (ulong) EAR_SUCCESS;
     }
     if (state_fail(s = ear_trylock(&lock_rpc))) {
         return s;
     }
-    if (eards_read(ear_fd_req, send_buf, send_size, WAIT_DATA) != send_size) {
+    if (eards_write(ear_fd_req, send_buf, send_size) != send_size) {
         return_unlock((ulong) EAR_ERROR, &lock_rpc);
     }
-    if (eards_write(ear_fd_ack, ack_buf, ack_size) != ack_size) {
+    if (eards_read(ear_fd_ack, ack_buf, ack_size, WAIT_DATA) != ack_size) {
         return_unlock((ulong) EAR_ERROR, &lock_rpc);
     }
+		debug("local api end : %s", description);
     if (!retsuc) {
-        return_unlock((ulong) ack_buf, &lock_rpc);
+        return_unlock((ulong) *ack_buf, &lock_rpc);
     }
     return_unlock((ulong) EAR_SUCCESS, &lock_rpc);
 }
@@ -469,14 +471,14 @@ ulong eards_node_energy_frequency()
 
 int eards_gpu_model(uint *gpu_model)
 {
-    *gpu_model=0;
+    *gpu_model = API_DUMMY;
     init_service(GPU_MODEL);
     return (int) sendack((char *) &req, sizeof(req), (char *) gpu_model, sizeof(uint), "GPU model", 1);
 }
 
 int eards_gpu_dev_count(uint *gpu_dev_count)
 {
-    *gpu_dev_count=0;
+    *gpu_dev_count = 0;
     init_service(GPU_DEV_COUNT);
     return (int) sendack((char *) &req, sizeof(req), (char *) gpu_dev_count, sizeof(uint), "GPU count devices", 1);
 }
@@ -500,14 +502,14 @@ int eards_gpu_set_freq(uint num_dev,ulong *freqs)
     init_service(GPU_SET_FREQ);
     int i;
 
-    for (i = 0; i < num_dev; i++) {
-        debug("GPU %d: Freq requested %lu", i, freqs[i]);
-    }
-    req.req_data.gpu_freq.num_dev=num_dev;
     if (num_dev>MAX_GPUS_SUPPORTED){
         error("Using more GPUS than supported: Requested %u Max %u", num_dev, MAX_GPUS_SUPPORTED);
         num_dev=MAX_GPUS_SUPPORTED;
     }
+    for (i = 0; i < num_dev; i++) {
+        debug("GPU %d: Freq requested %lu", i, freqs[i]);
+    }
+    req.req_data.gpu_freq.num_dev=num_dev;
     memcpy(req.req_data.gpu_freq.gpu_freqs, freqs, sizeof(ulong)*num_dev);
 
     return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU set freq", 1);
