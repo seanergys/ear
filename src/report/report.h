@@ -65,8 +65,6 @@ typedef struct report_ops_s
 
 state_t report_load(const char *install_path, const char *libs);
 
-/** Fills a report_id_t with process information. This function is used internally by EAR in the Library
- * to fill process information before triggering report functions. */
 state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int master_rank);
 
 /** The first API function called once the report plugin is loaded.
@@ -82,26 +80,26 @@ state_t report_dispose(report_id_t *id);
 /** This function is called at the end of a job/step, once the application metrics are computed.
  * \param id The calling process information.
  * \param apps An array of application signatures. For this EAR version, expect to receive only one.
- * \param count The number of elements in \p `apps` parameter. For this EAR version, expect to receive a 1. */
+ * \param count The number of elements in \p apps parameter. For this EAR version, expect to receive a 1. */
 state_t report_applications(report_id_t *id, application_t *apps, uint count);
 
 /** This function is reported for each loop signature once it is computed. It is called by the master process
  * with per node average metrics.
  * \param id The master process of the current node information.
  * \param loops An array of loops signatures in the current node of the job. For this EAR version, expect to receive only one.
- * \param count The number of elements in \p `loops` parameter. For this EAR version, expect to receive a 1.*/
+ * \param count The number of elements in \p loops parameter. For this EAR version, expect to receive a 1. */
 state_t report_loops(report_id_t *id, loop_t *loops, uint count);
 
-/** Todo:
+/** \todo Add a description.
  * \param id The calling process information.
  * \param eves An array of events.
- * \param count The number of elements in \p `eves` parameter. */
+ * \param count The number of elements in \p eves parameter. */
 state_t report_events(report_id_t *id, ear_event_t *eves, uint count);
 
-/** Todo:
+/** \todo Add a description.
  * \param id The calling process information.
- * \param eves An array of periodic metrics.
- * \param count The number of elements in \p `mets` parameter. */
+ * \param mets An array of periodic metrics.
+ * \param count The number of elements in \p mets parameter. */
 state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count);
 
 /** This functions is a sugar to be called whatever you want in the EAR library, and lets you pass any kind of data as bytes array.
