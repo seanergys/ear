@@ -99,12 +99,13 @@ int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
         // Closing shared memory
         dettach_settings_conf_shared_area();
 
+        plug_print_settings(sp, sd);
+
         // If returned !lib_enabled, disable library component
         if (!setts->lib_enabled) {
                 return plug_component_setenabled(sp, Component.library, 0);
         }
         // Finally print
-        plug_print_settings(sp, sd);
 
 	return ESPANK_SUCCESS;
 }

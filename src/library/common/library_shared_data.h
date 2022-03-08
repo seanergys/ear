@@ -33,7 +33,7 @@
 #include <common/system/shared_areas.h>
 #include <daemon/local_api/node_mgr.h>
 
-typedef struct mpi_summary{
+typedef struct mpi_summary {
     float max;
     float min;
     float sd;
@@ -41,16 +41,16 @@ typedef struct mpi_summary{
     float mag;
 } mpi_summary_t;
 
-/* Time is stored in USECS */
-typedef struct mpi_information{
+typedef struct mpi_information {
     unsigned int        total_mpi_calls;
-    unsigned long long  exec_time;
+    unsigned long long  exec_time; /**< Time stored in USECS. */
     unsigned long long  mpi_time;
     int                 rank;
     double              perc_mpi;
 } mpi_information_t;
 
-typedef struct mpi_calls_types{
+typedef struct mpi_calls_types
+{
     ulong time_mpi;
     ulong time_period;
     ulong mpi;
@@ -63,9 +63,9 @@ typedef struct mpi_calls_types{
     ulong sync_block;
     ulong time_sync_block;
     ulong max_sync_block;
-}mpi_calls_types_t;
+} mpi_calls_types_t;
 
-typedef struct lib_shared_data{
+typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
     uint        num_signatures;
@@ -78,7 +78,7 @@ typedef struct lib_shared_data{
     uint        global_stop_ready;
     cpu_set_t   node_mask;
     uint        node_mgr_index;
-}lib_shared_data_t;
+} lib_shared_data_t;
 
 
 typedef struct shsignature{
@@ -214,15 +214,14 @@ void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
 
 uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
 
-
 double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig);
-
 
 void load_app_mgr_env();
 int my_shsig_id();
 int shsig_id(int node,int rank);
 
-void* mpi_info_get_perc_mpi(void* mpi_inf);
+void* mpi_info_get_perc_mpi(void *mpi_inf);
+void* mpi_info_get_tcomp(void *mpi_inf);
 
 
 /* Node mgr earl support functions */

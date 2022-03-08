@@ -38,6 +38,7 @@
 
 #define EARGM_WARNINGS        1
 #define PERIODIC_AGGREGATIONS 2
+#define MPITRACE              3
 
 /** Short name for const char. */
 typedef const char cchar;

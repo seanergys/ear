@@ -19,13 +19,9 @@
 #define CONFIG_ENVIRONMENT_H
 
 #include <string.h>
+#include <common/config/config_install.h>
 
-#define str(s)           #s
-#define xstr(s)          str(s)
-
-#define SCHED_IS(prefix) (strcmp(xstr(SCHED_PREFIX), str(prefix)) == 0) ? 1 : 0
-
-#define SCHED_PREFIX     SLURM
+#define SCHED_PREFIX    "SLURM_"
 
 /** @config_env.h */
 
@@ -48,6 +44,7 @@
 #define VAR_OPT_THRA "EAR_POWER_POLICY_TH"
 #define VAR_OPT_THRB "EAR_PERFORMANCE_PENALTY"
 #define VAR_OPT_THRC "EAR_MIN_PERFORMANCE_EFFICIENCY_GAIN"
+#define VAR_OPT_TRAC "SLURM_EAR_TRACE_PATH"
 
 /**
  * @defgroup EAR_PATHS EAR installation
@@ -60,35 +57,24 @@
 /** @} */
 
 /**
- * @defgroup SCHED Scheduler definitions
- * Scheduler definitions
- * @{
- */
-
-/** SLURM removes some env vars. Variables starting with SLURM are not removed. */
-#define SCHED_SLURM 1
-#ifdef  SCHED_SLURM
-
-#define VAR_OPT_TRAC "SLURM_EAR_TRACE_PATH"
-/**
  * @defgroup HACK Hack variables.
  * They modify the default configuration.
  * @{
  */
-#define HACK_LIBRARY_DIR             xstr(SCHED_PREFIX) str(_) str(HACK_LIBRARY_DIR)        // Sets a specific library path (the loader selects the file).
-#define HACK_LIBRARY_FILE            xstr(SCHED_PREFIX) str(_) str(HACK_LIBRARY_FILE)       // Sets a specific library file. 
-#define HACK_LOADER_FILE             xstr(SCHED_PREFIX) str(_) str(HACK_LOADER_FILE)        // Sets a specific loader file.
-#define HACK_NVML_FILE               xstr(SCHED_PREFIX) str(_) str(HACK_NVML_FILE)          // The GPU API loads a specific NVML library file.
-#define HACK_MPI_VERSION             xstr(SCHED_PREFIX) str(_) str(HACK_MPI_VERSION)        // Adds a suffix to libear.so (i.e: libear.hello.so).
-#define HACK_POWER_POLICY            xstr(SCHED_PREFIX) str(_) str(HACK_POWER_POLICY)       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
-#define HACK_GPU_POWER_POLICY        xstr(SCHED_PREFIX) str(_) str(HACK_GPU_POWER_POLICY)   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
-#define HACK_POWER_MODEL             xstr(SCHED_PREFIX) str(_) str(HACK_POWER_MODEL)        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
-#define HACK_CPU_POWER_MODEL         xstr(SCHED_PREFIX) str(_) str(HACK_CPU_POWER_MODEL)    // This var forces to load a specific cpu power model plugin.
-#define HACK_DYNAIS_WINDOW_SIZE      xstr(SCHED_PREFIX) str(_) str(HACK_DYNAIS_WINDOW_SIZE) // This var forces a specific dynais windows size. Replaces (SCHED_PREFIX)_EAR_DYNAIS_WINDOW_SIZE.
-#define HACK_DEF_FREQ                xstr(SCHED_PREFIX) str(_) str(HACK_DEF_FREQ)           // This var forces a different default frequency than the predefined for a policy. Replaces (SCHED_PREFIX)_EAR_DEF_FREQ.
-#define HACK_EARL_VERBOSE            xstr(SCHED_PREFIX) str(_) str(HACK_EARL_VERBOSE)       // This var forces an EARL verbosity.
-#define HACK_EARL_INSTALL_PATH       xstr(SCHED_PREFIX) str(_) str(HACK_EARL_INSTALL_PATH)  // This variable HACKS all the library environment, simplifies the utilization of a privatized environment.
-#define HACK_PROCS_VERB_FILES        xstr(SCHED_PREFIX) str(_) str(HACK_PROCS_VERB_FILES)   // This variable makes all processes having a log verbose file each one.
+#define HACK_LIBRARY_DIR             SCHED_PREFIX "HACK_LIBRARY_DIR"        // Sets a specific library path (the loader selects the file).
+#define HACK_LIBRARY_FILE            SCHED_PREFIX "HACK_LIBRARY_FILE"       // Sets a specific library file.
+#define HACK_LOADER_FILE             SCHED_PREFIX "HACK_LOADER_FILE"        // Sets a specific loader file.
+#define HACK_NVML_FILE               SCHED_PREFIX "HACK_NVML_FILE"          // The GPU API loads a specific NVML library file.
+#define HACK_MPI_VERSION             SCHED_PREFIX "HACK_MPI_VERSION"        // Adds a suffix to libear.so (i.e: libear.hello.so).
+#define HACK_POWER_POLICY            SCHED_PREFIX "HACK_POWER_POLICY"       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
+#define HACK_GPU_POWER_POLICY        SCHED_PREFIX "HACK_GPU_POWER_POLICY"   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
+#define HACK_POWER_MODEL             SCHED_PREFIX "HACK_POWER_MODEL"        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
+#define HACK_CPU_POWER_MODEL         SCHED_PREFIX "HACK_CPU_POWER_MODEL"    // This var forces to load a specific cpu power model plugin.
+#define HACK_DYNAIS_WINDOW_SIZE      SCHED_PREFIX "HACK_DYNAIS_WINDOW_SIZE" // This var forces a specific dynais windows size. Replaces (SCHED_PREFIX)_EAR_DYNAIS_WINDOW_SIZE.
+#define HACK_DEF_FREQ                SCHED_PREFIX "HACK_DEF_FREQ"           // This var forces a different default frequency than the predefined for a policy. Replaces (SCHED_PREFIX)_EAR_DEF_FREQ.
+#define HACK_EARL_VERBOSE            SCHED_PREFIX "HACK_EARL_VERBOSE"       // This var forces an EARL verbosity.
+#define HACK_EARL_INSTALL_PATH       SCHED_PREFIX "HACK_EARL_INSTALL_PATH"  // This variable HACKS all the library environment, simplifies the utilization of a privatized environment.
+#define HACK_PROCS_VERB_FILES        SCHED_PREFIX "HACK_PROCS_VERB_FILES"   // This variable makes all processes having a log verbose file each one.
 /** @} */
 
 /**
@@ -116,14 +102,14 @@
 #define SCHED_EAR_REPORT_ADD         "SLURM_EAR_REPORT_ADD"
 #define SCHED_USE_ENERGY_MODELS      "SLURM_USE_ENERGY_MODELS"
 #define SCHED_EARL_VERBOSE_PATH      "SLURM_EARL_VERBOSE_PATH"  // Asks EARL to write verbose messages in separate per-task files.
-#define FLAG_LOADER_VERBOSE          xstr(SCHED_PREFIX) str(_) str(EAR_LOADER_VERBOSE) // Loader's verbosity.
-#define FLAG_TASK_PID                xstr(SCHED_PREFIX) str(_) str(TASK_PID)           // Delivered by SLURM, this flag contains the task PID.
-#define SCHED_JOB_ID                 xstr(SCHED_PREFIX) str(_) str(JOB_ID)
-#define SCHED_STEP_ID                xstr(SCHED_PREFIX) str(_) str(STEP_ID)
-#define SCHED_STEPID                 xstr(SCHED_PREFIX) str(_) str(STEPID)             // Deprecated by SLURM, maintained for backwards compatibility.
-#define SCHED_JOB_ACCOUNT            xstr(SCHED_PREFIX) str(_) str(JOB_ACCOUNT)
-#define SCHED_NUM_TASKS              xstr(SCHED_PREFIX) str(_) str(STEP_TASKS_PER_NODE)
-#define SCHED_JOB_NAME               xstr(SCHED_PREFIX) str(_) str(JOB_NAME)
+#define FLAG_LOADER_VERBOSE          SCHED_PREFIX "EAR_LOADER_VERBOSE" // Loader's verbosity.
+#define FLAG_TASK_PID                SCHED_PREFIX "TASK_PID"      // Delivered by SLURM, this flag contains the task PID.
+#define SCHED_JOB_ID                 SCHED_PREFIX "JOB_ID"
+#define SCHED_STEP_ID                SCHED_PREFIX "STEP_ID"
+#define SCHED_STEPID                 SCHED_PREFIX "STEPID"        // Deprecated by SLURM, maintained for backwards compatibility.
+#define SCHED_JOB_ACCOUNT            SCHED_PREFIX "JOB_ACCOUNT"
+#define SCHED_NUM_TASKS              SCHED_PREFIX "STEP_TASKS_PER_NODE"
+#define SCHED_JOB_NAME               SCHED_PREFIX "JOB_NAME"
 #define SCHED_NUM_NODES              "SLURM_NNODES"
 #define SCHED_STEP_NUM_NODES         "SLURM_STEP_NUM_NODES"
 
@@ -149,19 +135,12 @@
 #define SCHED_EAR_SHOW_SIGNATURES    "SLURM_EAR_SHOW_SIGNATURES"
 #define REPORT_NODE_SIGNATURES       "SLURM_REPORT_NODE_SIGNATURES"
 #define REPORT_ALL_SIGNATURES        "SLURM_REPORT_ALL_SIGNATURES"
-/** @} */
-
-#define SHARE_INFO_PER_PROCESS       "SLURM_SHARE_INFO_PER_PROCESS" /* Force to shares all the signatures. */
-
-#define SHARE_INFO_PER_NODE 	     "SLURM_SHARE_INFO_PER_NODE" /* Force to share only the average signature
-                                                                  * per node. */
+#define SHARE_INFO_PER_PROCESS       "SLURM_SHARE_INFO_PER_PROCESS" // Force to shares all the signatures.
+#define SHARE_INFO_PER_NODE 	     "SLURM_SHARE_INFO_PER_NODE" // Force to share only the average signature per node.
 #define USE_APP_MGR_POLICIES	     "SLURM_APP_MGR_POLICIES"
 #define EAR_STATS                    "SLURM_GET_EAR_STATS"
 #define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"
 #define EAR_POLICY_GRAIN             "SLURM_EAR_POLICY_GRAIN"
-
-/** @}  */
-#endif //SCHED_SLURM
 
 /** @}  */
 #endif //CONFIG_ENVIRONMENT_H
