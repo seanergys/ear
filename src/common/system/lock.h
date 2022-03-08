@@ -34,6 +34,6 @@ state_t ear_trylock(pthread_mutex_t *lock);
 
 #define return_unlock(state, lock) \
     { ear_unlock(lock); \
-    return s; }
+    return state; }
 
 #endif //COMMON_LOCK_H

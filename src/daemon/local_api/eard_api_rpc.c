@@ -138,7 +138,8 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
 		return_unlock(s, &lock_rpc);
 	}
 	// Receiving the data and returning the RPC state
-	return_unlock(eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size), &lock_rpc);
+    s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+	return_unlock(s, &lock_rpc);
 }
 
 state_t eard_rpc(uint call, char *data, size_t size, char *recv_data, size_t expc_size)
@@ -168,7 +169,8 @@ state_t eard_rpc_answer(int fd, uint call, state_t s, char *data, size_t size, c
     if (state_fail(s2 = ear_trylock(&lock_rpc))) {
         return s2;
     }
-	return_unlock(eard_send(fd, call, s, data, size, error), &lock_rpc);
+    s2 = eard_send(fd, call, s, data, size, error);
+	return_unlock(s2, &lock_rpc);
 }
 
 static state_t protected_read(int fd, char *buffer, int size, uint wait_mode)
