@@ -260,6 +260,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         }
 #endif
 #if EARL_RESEARCH
+        verb(0, "%sThis message should not exist%s", COL_RED, COL_CLR);
         if (cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
                 // Get which type of blocking call is
@@ -603,9 +604,6 @@ state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_i
     for (i = 0; i < data->num_processes; i++) {
         if (state_fail(mpi_call_read_diff(&node_mpi_calls[i], &last_node[i], i))) {
             bad_read_diff = 1;
-        } else {
-            report_id_t id = { .local_rank = i };
-            report_misc(&id, MPITRACE, (char *) &node_mpi_calls[i], 0);
         }
     }
     if (bad_read_diff) {

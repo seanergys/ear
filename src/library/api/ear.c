@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
-#define SINGLE_CONNECTION 1
+#define SINGLE_CONNECTION 0
 #include <sched.h>
 #include <pthread.h>
 

@@ -17,6 +17,8 @@
 
 #define _GNU_SOURCE
 
+#define SINGLE_CONNECTION 0
+
 //#define SHOW_DEBUGS           1
 #define INFO_METRICS           2
 #define INFO2_METRICS          2
@@ -251,7 +253,11 @@ static void metrics_static_init(topology_t *tp)
     master = (masters_info.my_master_rank >= 0);
     eard   = (master);
     // Load
+#if SINGLE_CONNECTION
     sa(mgt_cpufreq_load(tp, eard));
+#else
+    sa(mgt_cpufreq_load(tp, 1));
+#endif
     sa(mgt_imcfreq_load(tp, eard));
     sa(    cpufreq_load(tp, eard));
     sa(    imcfreq_load(tp, eard));
