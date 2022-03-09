@@ -18,7 +18,7 @@
 #define _GNU_SOURCE
 
 //#define SHOW_DEBUGS           1
-#define INFO_METRICS           2
+#define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -889,7 +889,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->cycles       = cpi_diff[s].cycles;
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
-
+								#if SHOW_DEBUGS
                 if (metrics->CPI > 5) {
                     char buff[128];
                     cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
@@ -899,12 +899,13 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                     cpi_data_tostr(&cpi_diff[s], cpi_avrg[s], buff, sizeof(buff));
                     verb(INFO_METRICS, "Diff %s", buff);
                 }
+								#endif
 
 				/* TPI and Memory bandwith */
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    verbose_master(2, "GBS[%d]: %0.2lf", s, metrics->GBS);
+                    verbose_master(INFO_METRICS, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;

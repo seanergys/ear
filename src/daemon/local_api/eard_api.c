@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/lock.h>
@@ -38,7 +38,7 @@
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
 
-#define MAX_PIPE_TRIES       (MAX_SOCKET_COMM_TRIES*100)
+#define MAX_PIPE_TRIES       (MAX_SOCKET_COMM_TRIES*10)
 #define MAX_TRIES            1
 #define USE_NON_BLOCKING_IO  1
 
