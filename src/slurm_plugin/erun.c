@@ -352,6 +352,8 @@ int main(int argc, char *argv[])
 
 		return 0;
 	}
+
+  plug_verbose(_sp, 2, "Special case detected %u", _error);
 	
 	if (_error)
 	{
@@ -386,7 +388,7 @@ int main(int argc, char *argv[])
 		sd.erun.step_id = lock_job(path_tmp, sd.erun.job_id, sd.erun.step_id);
 	} else {
 		plug_verbose(_sp, 4, "missed the lock file, spinlock");
-		plug_verbosity_silence(_sp);
+		// plug_verbosity_silence(_sp);
 		// Spinlock over lock.step
 		sd.erun.step_id = spinlock_step(path_tmp, sd.erun.job_id, sd.erun.step_id);
 	}
