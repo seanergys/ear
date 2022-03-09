@@ -85,7 +85,7 @@ extern node_mgr_sh_data_t *node_mgr_job_info;
 extern node_freq_domain_t earl_default_domains;
 
 /** Options */
-uint conf_dyn_unc   = EAR_eUFS
+uint conf_dyn_unc   = EAR_eUFS;
 uint dyn_unc        = EAR_eUFS;
 double imc_extra_th = EAR_IMC_TH;
 
