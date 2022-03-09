@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -53,11 +53,14 @@ static state_t eard_send(int fd, uint call, state_t state, char *data, size_t si
 	head.size         = send_size;
 	head.sec          = create_sec_tag();
 	head.state        = state;
+	
+	debug("Sending eard req RPC header with size %lu", head_szof);
 	// Sending
 	if (eards_write(fd, (char *) &head, head_szof) != head_szof) {
 		return_print(EAR_ERROR, "Problem when writing EARD pipe (%s)", strerror(errno));
 	}
 	if (head.size > 0) {
+		debug("Sending RPC data with size %lu", head.size);
 		if (eards_write(fd, send_data, head.size) != head.size) {
 			return_print(EAR_ERROR, "Problem when writing EARD pipe (%s)", strerror(errno));
 		}
@@ -81,11 +84,13 @@ static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t exp
 {
 	eard_head_t head;
 	size_t head_szof;
+	int ret;
 	//
 	head_szof  = sizeof(eard_head_t);
-	debug("Waiting RPC %u of expected size %lu through FD %d", call, expc_size, fd);
+	debug("Waiting RPC header %u of expected size %lu through FD %d", call, expc_size, fd);
 	// Receiving
-	if (eards_read(fd, (char *) &head, head_szof, WAIT_DATA) != head_szof) {
+	if ((ret = eards_read(fd, (char *) &head, head_szof, WAIT_DATA)) != head_szof) {
+		debug("RPC header recv failed with ret %d", ret);
 		return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
 	}
 	if (head.req_service != call) {
@@ -99,7 +104,9 @@ static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t exp
 		if (state_fail(head.state)) {
 			data = state_buffer;
 		}
-		if (eards_read(fd, data, head.size, WAIT_DATA) != head.size) {
+		debug("Waiting RPC data of size %lu", head.size);	
+		if ((ret = eards_read(fd, data, head.size, WAIT_DATA)) != head.size) {
+			debug("RPC body failed with ret %d", ret);
 			return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
 		}
 		if (state_fail(head.state)) {
@@ -126,6 +133,7 @@ static state_t data_check(char *data, size_t size)
 static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, size_t *recv_size, size_t expc_size)
 {
 	state_t s;
+	if (!eards_connected()) return_msg(EAR_ERROR, "EARD disconnected");
 	// Testing data dissonances
 	if (state_fail(s = data_check(data, size))) {
 		return s;

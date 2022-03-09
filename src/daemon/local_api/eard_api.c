@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/lock.h>
@@ -38,7 +38,7 @@
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
 
-#define MAX_PIPE_TRIES       (MAX_SOCKET_COMM_TRIES*10)
+#define MAX_PIPE_TRIES       (MAX_SOCKET_COMM_TRIES*100)
 #define MAX_TRIES            1
 #define USE_NON_BLOCKING_IO  1
 
@@ -371,7 +371,7 @@ void eards_disconnect()
 ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, const char *description, int retsuc)
 {
     state_t s;
-		debug("local api init : %s", description);
+		debug("local api init : %s. send size %lu. FD %d", description, send_size, ear_fd_req);
     if (ear_fd_req < 0) {
         return (ulong) EAR_SUCCESS;
     }
@@ -379,12 +379,16 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
         return s;
     }
     if (eards_write(ear_fd_req, send_buf, send_size) != send_size) {
+				debug("local api end error write: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
+				app_connected = 0;
         return_unlock((ulong) EAR_ERROR, &lock_rpc);
     }
     if (eards_read(ear_fd_ack, ack_buf, ack_size, WAIT_DATA) != ack_size) {
+				debug("local api end error read: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
+				app_connected = 0;
         return_unlock((ulong) EAR_ERROR, &lock_rpc);
     }
-		debug("local api end : %s", description);
+		debug("local api end : %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
     if (!retsuc) {
         return_unlock((ulong) *ack_buf, &lock_rpc);
     }

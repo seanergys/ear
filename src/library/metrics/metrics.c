@@ -39,6 +39,7 @@
 #include <common/hardware/hardware_info.h>
 
 #include <library/api/clasify.h>
+#include <library/loader/module_cuda.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
@@ -1494,7 +1495,7 @@ state_t metrics_new_iteration(signature_t *sig)
     }
 
 #if USE_GPUS
-    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0)){
+    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0) && is_cuda_enabled()){
         debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
         /* GPUs */
         if (gpu_initialized){

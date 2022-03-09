@@ -1431,7 +1431,7 @@ void ear_init()
 
 void ear_finalize(int exit_status)
 {
-				verbose_master(2, "ear_finalize on=%d", lib_shared_region->earl_on);
+				verbose_master(2, "ear_finalize on=%d status %d", lib_shared_region->earl_on, exit_status);
 				// if we are not the master, we return
 				if ((cancelled) || (synchronize_masters == 0 )){ 
 								cleanup_job_folder();
