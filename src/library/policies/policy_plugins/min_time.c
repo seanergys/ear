@@ -51,11 +51,11 @@
 
 /*  IMC management */
 extern uint dyn_unc;
-static uint imc_set_by_hw = 0;
-static uint last_imc_pstate;
 extern double imc_extra_th;
 extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
+static uint imc_set_by_hw = 0;
+static uint last_imc_pstate;
 
 static int min_pstate;
 static int ref_imc_pstate = -1;
@@ -415,9 +415,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         }
         verbose_master(2, "Min_time per process set to %u", freq_per_core);
 
-        /*  Here we are running at the default freqs */
+        //  Here we are running at the default freqs
         for (uint i = 0; i < nump; i++) {
-            verbose_master(3, "Processing proc %d freq per core = %d", i, freq_per_core);
+            verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (!freq_per_core) {
                 compute_total_node_metrics();
@@ -790,13 +790,9 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
             nump = num_processes;
 
             /*  Select critical path */
-#if 0
-            int cp_idx;
-            mpi_support_select_critical_path(my_node_mpi_calls, num_processes, &cp_idx);
-#else
             double median;
             mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean, &median, &max_mpi, &min_mpi);
-#endif
+
             /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
              * state and we don't need to check variation between policy iterations  */
             if (!first_time_unbalanced && *ok==1) {
@@ -946,7 +942,7 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
         }
-        memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
+        memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, imc_devices * IMC_VAL * sizeof(ulong));
     }
 
 #if USE_GPUS

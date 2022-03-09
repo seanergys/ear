@@ -234,13 +234,13 @@ state_t policy_init(polctx_t *c)
 // TODO: no_models policy does not have policy end func
 state_t policy_end(polctx_t *c)
 {
-    if (c != NULL) return  mpi_app_end(c);
+    if (c != NULL) return mpi_app_end(c);
     else return EAR_ERROR;
 }
 
 state_t policy_loop_init(polctx_t *c,loop_id_t *l)
 {
-    if (c!=NULL){
+    if (c!=NULL) {
         projection_reset(c->num_pstates);
         if (!use_energy_models){
             memset(sig_ready,0,sizeof(uint)*c->num_pstates);
@@ -409,8 +409,8 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
         }
         verbose_master(2,"Min_energy per process set to %u",freq_per_core);
 
-        /* here we are running at the default freqs */
-        for (uint i=0;i<nump;i++){
+        // Here we are running at the default freqs.
+        for (uint i = 0; i < nump; i++){
             verbose_master(3,"Processing proc %d freq per core = %d",i,freq_per_core);
             if (!freq_per_core){
                 compute_total_node_instructions(lib_shared_region,sig_shared_region,&my_app->instructions);
@@ -428,7 +428,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                 my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
                 memcpy(my_app->FLOPS,sig_shared_region[local_process_with_high_vpi].sig.FLOPS,sizeof(ull)*FLOPS_EVENTS);
                 local_penalty = base_penalty;
-            }else{
+            } else{
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
                 ulong eff_p_cpuf, process_avgcpuf;
                 process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff,&process_avgcpuf);
@@ -440,7 +440,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
                  * my_node_mpi_calls[min_mpi].perc_mpi, lvpi, critical_path[i]);
                  */
 
-                if (critical_path[i] == 1){
+                if (critical_path[i] == 1) {
                     /* Critical path */
                     if (!mbound){
                         eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf,0);
@@ -517,7 +517,7 @@ state_t policy_apply(polctx_t *c,signature_t *sig,node_freqs_t *freqs,int *ready
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
-        if (!freq_per_core){
+        if (!freq_per_core) {
             set_all_cores(new_freq, num_processes, new_freq[0]);
         }
 
@@ -695,14 +695,14 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
     *ok = 1;
 
-    sig_ext_t *se = (sig_ext_t *)curr_sig->sig_ext;
-    my_node_mpi_calls 				= se->mpi_stats;
-    my_node_mpi_types_calls   = se->mpi_types;
+    sig_ext_t *se           = (sig_ext_t *) curr_sig->sig_ext;
+    my_node_mpi_calls 		= se->mpi_stats;
+    my_node_mpi_types_calls = se->mpi_types;
 
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance && use_energy_models){
 
-        verbose_mpi_types(3,my_node_mpi_types_calls);
+        verbose_mpi_types(3, my_node_mpi_types_calls);
 
         uint unbalance;
         double mean, sd, mag;
@@ -715,11 +715,11 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
         /* This function sends mpi_summary to other nodes */
         //chech_node_mpi_summary();
         /*  Check whether application has changed from unbalanced to balanced and viceversa */
-        if (unbalance != signature_is_unbalance){
-            if (!unbalance){
+        if (unbalance != signature_is_unbalance) {
+            if (!unbalance) {
                 verbose_master(2, "%sApplication becomes balanced!%s", COL_GRE, COL_CLR);
                 signature_is_unbalance = 0;
-            }else{
+            } else {
                 verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
                 signature_is_unbalance = 1;
                 *ok=0;
@@ -822,15 +822,18 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
     domain->cpu = POL_GRAIN_CORE;
-    if (dyn_unc) 	domain->mem = POL_GRAIN_NODE;
-    else 			domain->mem = POL_NOT_SUPPORTED;
+    if (dyn_unc) domain->mem = POL_GRAIN_NODE;
+    else         domain->mem = POL_NOT_SUPPORTED;
+
 #if USE_GPUS
     if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
-    else domain->gpu = POL_NOT_SUPPORTED;
+    else             domain->gpu = POL_NOT_SUPPORTED;
 #else
-    domain->gpu = POL_NOT_SUPPORTED;
+    domain->gpu                  = POL_NOT_SUPPORTED;
 #endif
+
     domain->gpumem = POL_NOT_SUPPORTED;
+
     return EAR_SUCCESS;
 }
 
@@ -849,17 +852,24 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
 state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) return EAR_ERROR;
-    verbose_master(2,"%sCPU IO phase%s",COL_BLU,COL_CLR);
+
+    verbose_master(2, "%sCPU IO phase%s", COL_BLU, COL_CLR);
+
     cpu_ready = EAR_POLICY_READY;
-    for (uint i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-    memcpy(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,MAX_CPUS_SUPPORTED*sizeof(ulong));
-    if (dyn_unc){
-        for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+
+    for (uint i = 0; i < num_processes; i++) {
+        freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+    }
+    memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
+
+    if (dyn_unc) {
+        for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++) {
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
             freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
         }
         memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
     }
+
 #if USE_GPUS
     gpu_ready = EAR_POLICY_READY;
     return EAR_SUCCESS;

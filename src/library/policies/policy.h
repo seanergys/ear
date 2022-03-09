@@ -32,6 +32,9 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res);
 state_t policy_init();
 state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready);
 state_t policy_app_apply(ulong *freq_set, int *ready);
+/** This function fills \p freq_set with the default freq (only CPU) configured by the policy plugin loaded.
+ * Only if the master has called this function the parameter will be set. If called by other process just
+ * returns EAR_SUCCESS. */
 state_t policy_get_default_freq(node_freqs_t *freq_set);
 state_t policy_get_current_freq(node_freqs_t *freq_set);
 state_t policy_set_default_freq(signature_t *sig);

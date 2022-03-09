@@ -43,14 +43,17 @@
 extern uint gpu_initialized;
 extern uint cpu_ready, gpu_ready, gidle;
 
+#if EARL_RESEARCH
 static mpi_information_t *my_node_mpi_calls, *last_node_mpi_calls;
 static mpi_calls_types_t *my_node_mpi_types_calls, *last_node_mpi_types_calls;
+#endif
 
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
     if (is_mpi_enabled()) {
         mpi_app_init(c);
+#if EARL_RESEARCH
         if (masters_info.my_master_rank >= 0) {
             // TODO: These symbols are not used.
             my_node_mpi_calls         = calloc(lib_shared_region->num_processes, sizeof(mpi_information_t));
@@ -58,12 +61,12 @@ state_t policy_init(polctx_t *c)
             last_node_mpi_calls       = calloc(lib_shared_region->num_processes, sizeof(mpi_information_t));
             last_node_mpi_types_calls = calloc(lib_shared_region->num_processes, sizeof(mpi_calls_types_t));
         }
+#endif
     }
 
 #if USE_GPUS
     if (masters_info.my_master_rank >= 0 && gpu_initialized) {
         if (policy_gpu_init_ctx(c) != EAR_SUCCESS) {
-            // verbose_master(2, "%sError%s Loading GPU context.", COL_RED, COL_CLR);
             verbose(2, "%sError%s Loading GPU context.", COL_RED, COL_CLR);
         }
         verbose(2, "RANK %d GPU init", masters_info.my_master_rank);
@@ -71,7 +74,7 @@ state_t policy_init(polctx_t *c)
         if (c->num_gpus) {
             verbose(2, "RANK %d GPUs %d", masters_info.my_master_rank, c->num_gpus);
 
-            if (policy_gpu_load(c->app, &gpus) != EAR_SUCCESS){
+            if (policy_gpu_load(c->app, &gpus) != EAR_SUCCESS) {
                 verbose(2, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
             }
 
@@ -124,11 +127,13 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *prev_sig, int
     if ((c == NULL) || (curr_sig == NULL) || (prev_sig == NULL)) return EAR_ERROR;
 
     *ok = 1;
+
     return EAR_SUCCESS;
 }
 
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t *s)
 {
+    // TODO: The behaviour is the same done by policy.c by default when a plugin does not have this symbol.
 	freq_set->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
 	return EAR_SUCCESS;
 }
