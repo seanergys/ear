@@ -20,7 +20,7 @@
 
 /** \defgroup local_api EARD Local API
  * \todo Add a description.
- * @{*/
+ */
 
 #include <common/types/generic.h>
 #include <common/types/log.h>
@@ -31,7 +31,8 @@
 #include <daemon/local_api/eard_api_rpc.h>
 #include <daemon/local_api/eard_api_conf.h>
 
-/** \defgroup connection Connection 
+/** @addtogroup connection Connection 
+ * \ingroup local_api
  * \todo Add a description.
  * @{ */
 /** This function is to be used for external commands or applications not using the EARL. */
@@ -39,7 +40,6 @@ int eards_connection();
 /** EARL connection: Tries to connect with the daemon.
  * Returns 0 on success and -1 otherwise. */
 int eards_connect(application_t *my_app, ulong lid);
-
 /** \todo Add a description for this function. */
 int eards_connected();
 /** Closes the connection with the daemon. */
@@ -47,6 +47,7 @@ void eards_disconnect();
 /** @} */
 
 /** \defgroup rapl_services RAPL services
+ * \ingroup local_api
  * \todo Add a description.
  * @{ */
 /** Sends a request to read the RAPL counters. Returns -1 if there's an error,
@@ -64,6 +65,7 @@ unsigned long eards_get_data_size_rapl();
 /** @} */
 
 /** \defgroup system_services System services
+ * \ingroup local_api
  * \todo Add a description.
  * @{ */
 /** Sends a request to the deamon to write the whole application signature.
@@ -77,6 +79,7 @@ ulong eards_write_event(ear_event_t *event);
 /** @}*/
 
 /** \defgroup node_energy_services Node energy services
+ * \ingroup local_api
  * \todo Add a description.
  * @{ */
 /** Requests the IPMI data size.
@@ -95,6 +98,7 @@ ulong eards_node_energy_frequency();
 /** @}  */
 
 /** \defgroup gpu_services GPU services
+ * \ingroup local_api
  * \todo Add a description.
  * @{ */
 /** \todo  */
@@ -107,7 +111,6 @@ int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev);
 int eards_gpu_set_freq(uint num_dev,ulong *freqs);
 /** \todo  */
 int eards_gpu_get_info(gpu_info_t *info, uint num_dev);
-/** @}  */
 /** @}  */
 
 #endif
