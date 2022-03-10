@@ -22,12 +22,19 @@
 #include <common/types.h>
 #include <common/states.h>
 #include <common/hardware/topology.h>
+#include <metrics/common/pstate.h>
+
+#define MSR_RD O_RDONLY
+#define MSR_WR O_RDWR
 
 #define msr_clean(fd) \
 	*fd = -1
 
 /** Tests if the MSR register is available and readable. */
-state_t msr_test(topology_t *tp);
+state_t msr_test(topology_t *tp, mode_t mode);
+
+/** Looks for already used registers. */
+state_t msr_scan(topology_t *tp, off_t *regs, uint regs_count, ullong andval, off_t *offs);
 
 /** Opens an MSR register for a specific CPU */
 state_t msr_open(uint cpu);
@@ -43,5 +50,8 @@ state_t msr_write(uint cpu, const void *buffer, size_t count, off_t offset);
 
 /** Prints a register of all threads in the node. */
 state_t msr_print(topology_t *tp, off_t offset);
+
+/** Develoment function to print the content of a list of MSR registers. */
+void msr_inspect(topology_t *tp, int cpu, off_t *offsets, int fd);
 
 #endif //EAR_MSR_H

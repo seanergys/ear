@@ -89,7 +89,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	}
 	driver = ops_driver;
 	// This is also an MSR class, without MSR this API can't do anything
-	if (state_fail(s = msr_test(tp_in))) {
+	if (state_fail(s = msr_test(tp_in, MSR_WR))) {
 		return s;
 	}
 	if (tp.cpu_count == 0) {

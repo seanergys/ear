@@ -58,7 +58,7 @@ state_t bwidth_amd17_load(topology_t *tp_in, bwidth_ops_t *ops)
 	if (tp_in->vendor != VENDOR_AMD || tp_in->family < FAMILY_ZEN){
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-	if (state_fail(s = msr_test(tp_in))) {
+	if (state_fail(s = msr_test(tp_in, MSR_WR))) {
 		return s;
 	}
 	// Getting the L3 groups

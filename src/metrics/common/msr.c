@@ -15,8 +15,6 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
-
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,35 +53,91 @@ static struct error_s {
 	pthread_mutex_unlock(lock); \
 	return s;
 
-
-state_t msr_test(topology_t *tp)
+state_t msr_test(topology_t *tp, mode_t mode)
 {
 	state_t s = EAR_SUCCESS;
-	int c, b;
-	if (tp->cpu_count == 0) {
+	int cpu, b;
+    int fd;
+
+    if (!tp->initialized) {
 		return_msg(EAR_ERROR, Generr.input_uninitialized);
 	}
+	for (cpu = 0; cpu < tp->cpu_count; ++cpu) {
+        fd = static_open(cpu, mode);
+        close(fd);
+
+        if (fd < 0) {
+            if (errno == EACCES) {
+                return_msg(EAR_NO_PERMISSIONS, strerror(errno));
+            }
+            return_msg(EAR_ERROR, strerror(errno));
+        }
+	}
+	return EAR_SUCCESS;
+}
+
+state_t msr_scan(topology_t *tp, off_t *regs, uint regs_count, ullong andval, off_t *offs)
+{
+	ullong content;
+	off_t zero;
+	uint c, r;
+	state_t s;
+
 	for (c = 0; c < tp->cpu_count; ++c) {
-		if (xtate_fail(s, msr_open(c))) {
+		if (state_fail(msr_open(tp->cpus[c].id))) {
 			break;
 		}
+		// Initializing
+		offs[c] = 0;
+		zero    = 0;
+		// Reading registers
+		for (r = 0; r < regs_count; ++r) {
+			if (state_fail(s = msr_read(tp->cpus[c].id, &content, sizeof(content), regs[r]))) {
+				return s;
+			}
+			// If a register is using the same event, use that
+			if (content & andval) {
+				offs[c] = regs[r];
+				continue;
+			}
+			if (!content && !zero) {
+				zero = regs[r];
+			}
+		}
+		// If free register is not found, use the first in the lis
+		if (!offs[c] && !zero) {
+			offs[c] = regs[0];
+		}
+		// If a free register is found, use that
+		if (!offs[c] && zero) {
+			offs[c] = zero;
+		}
+
+		msr_close(msr_open(tp->cpus[c].id));
 	}
-	for (b = 0; b < c; ++b) {
-		msr_close(b);
-	}
-	return s;
+}
+
+int static_open(uint cpu, mode_t mode)
+{
+    char msr_file_name[SZ_PATH_KERNEL];
+    int fd;
+    #if MSR_SAFE
+    sprintf(msr_file_name, "/dev/cpu/%d/msr_safe", cpu);
+    #else
+    sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
+    #endif
+    fd = open(msr_file_name, mode);
+    debug("msr open %d", fd);
+    return fd;
 }
 
 state_t msr_open(uint cpu)
 {
-	char msr_file_name[SZ_PATH_KERNEL];
-
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
 	// General exclusion
 	while (pthread_mutex_trylock(&lock_gen));
-
 	if (init[cpu] == 0) {
 		if (pthread_mutex_init(&lock_cpu[cpu], NULL) != 0) {
 			return_unlock_msg(EAR_ERROR, Error.lock, &lock_gen);
@@ -94,24 +148,15 @@ state_t msr_open(uint cpu)
 	// CPU exclusion
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
 	if (counters[cpu] == 0) {
-		sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
-		debug("testing %s", msr_file_name);
-		fds[cpu] = open(msr_file_name, O_RDWR);
-		if (fds[cpu] < 0){
-			sprintf(msr_file_name, "/dev/cpu/%d/msr_safe", cpu);
-			debug("Testing %s", msr_file_name);
-			fds[cpu] = open(msr_file_name, O_RDWR);
-			if (fds[cpu] < 0) {
-				debug("msr_safe not ready %s", strerror(errno));	
-			}
-		}	
-	}
-	debug("msr open cpu[%d] = %d", cpu,fds[cpu]);
-	if (fds[cpu] < 0) {
-		if (errno == EACCES) {
-			return_unlock_msg(EAR_NO_PERMISSIONS, strerror(errno), &lock_cpu[cpu]);
-		}
-		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
+        if ((fds[cpu] = static_open(cpu, MSR_WR)) < 0) {
+            fds[cpu] = static_open(cpu, MSR_RD);
+        }
+        if (fds[cpu] < 0) {
+            if (errno == EACCES) {
+                return_unlock_msg(EAR_NO_PERMISSIONS, strerror(errno), &lock_cpu[cpu]);
+            }
+            return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
+        }
 	}
 	counters[cpu] += 1;
 
@@ -221,4 +266,38 @@ state_t msr_print(topology_t *tp, off_t offset)
 	}
 
 	return EAR_SUCCESS;
+}
+
+void msr_inspect(topology_t *tp, int cpu, off_t *offsets, int fd)
+{
+	int max_cpu = 0;
+	int min_cpu = 0;
+	ullong value;
+	int c, o;
+	
+	if (cpu == all_cpus) {
+		max_cpu = tp->cpu_count;
+	} else if (cpu == all_cores) {
+		max_cpu = tp->core_count;
+	} else {
+		max_cpu = cpu+1;
+		min_cpu = cpu;
+	}
+
+	for (c = min_cpu; c < max_cpu; ++c)
+	{
+		if (init[c] == 0) {
+			msr_open(c);
+		}
+		// Through all the offsets
+		o = 0;
+
+		while (offsets[o] != 0LLU) {
+			value = 0LLU;
+			msr_read(c, &value, sizeof(ullong), offsets[o]);
+			dprintf(fd, "%09llx ", value);
+			++o;
+		}
+		dprintf(fd, "\n");
+	}
 }

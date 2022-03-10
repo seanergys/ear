@@ -56,7 +56,7 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 	replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
 	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
 	// Permissions test
-	if (state_fail(s = msr_test(tp_in))) {
+	if (state_fail(s = msr_test(tp_in, MSR_RD))) {
 		debug("msr_test failed");
 		return EAR_ERROR;
 	}

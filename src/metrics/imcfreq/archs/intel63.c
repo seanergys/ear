@@ -45,7 +45,7 @@ void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 		return;
 	}
 	debug("testing MSR");
-	if (state_fail(msr_test(tp_in))) {
+	if (state_fail(msr_test(tp_in, MSR_WR))) {
 		return;
 	}
 	debug("testing MSR finalized");
