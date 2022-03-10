@@ -99,20 +99,27 @@ void signature_to_str(signature_t *sig,char *msg,size_t limit)
             (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
 }
 
-void compute_ssig_vpi(double *vpi,ssig_t *sig)
+void compute_ssig_vpi(double *vpi, ssig_t *sig)
 {
-    ull vins;
-    vins=0;
-    if (sig->FLOPS[3]>0){
-        vins=sig->FLOPS[3]/WEIGHT_512F;
-    }
+    *vpi=0;
 
-    if (sig->FLOPS[7]>0){
-        vins=vins+sig->FLOPS[7]/WEIGHT_512D;
+    if (sig->instructions > 0) {
+        ull vins = 0;
+
+        if (sig->FLOPS[3] > 0) {
+            vins=sig->FLOPS[3] / WEIGHT_512F;
+        }
+
+        if (sig->FLOPS[7] > 0) {
+            vins += (sig->FLOPS[7] / WEIGHT_512D);
+        }
+
+        if (vins>0) {
+            *vpi = (double) vins / (double) sig->instructions;
+        }
     }
-    if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
-    else *vpi=0;
 }
+
 void compute_ssig_vpi2(double *vpi,ssig_t *sig)
 {
     ull vins;
@@ -128,20 +135,26 @@ void compute_ssig_vpi2(double *vpi,ssig_t *sig)
     else *vpi=0;
 }
 
-
-void compute_vpi(double *vpi,signature_t *sig)
+void compute_vpi(double *vpi, signature_t *sig)
 {
-    ull vins;
-    vins=0;
-    if (sig->FLOPS[3]>0){
-        vins=sig->FLOPS[3]/16;
-    }   
+    *vpi = 0;
 
-    if (sig->FLOPS[7]>0){
-        vins=vins+sig->FLOPS[7]/8;
-    }   
-    if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
-    else *vpi=0;
+    if (sig->instructions > 0) {
+
+        ull vins = 0;
+
+        if (sig->FLOPS[3] > 0) {
+            vins = sig->FLOPS[3] / 16;
+        }
+
+        if (sig->FLOPS[7] > 0) {
+            vins += (sig->FLOPS[7] / 8);
+        }
+
+        if ((vins > 0)) {
+            *vpi = (double) vins / (double) sig->instructions;
+        }
+    }
 }
 
 void print_signature_fd_binary(int fd, signature_t *sig)

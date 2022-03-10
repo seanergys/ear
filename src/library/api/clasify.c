@@ -87,7 +87,7 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	return EAR_SUCCESS;
 }
 
-state_t is_cpu_bound(signature_t *sig,uint *cbound)
+state_t is_cpu_bound(signature_t *sig, uint *cbound)
 {
     *cbound = 0;
     if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;
