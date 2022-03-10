@@ -352,7 +352,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     /*  We save data in imc data structure for policy comparision.
      *  We are computing the imc_pstate based on the avg_imc_freq, no looking at selection */
-    pstate_t tmp_state;
+    pstate_t tmp_pstate;
     curr_imc_freq = avg_to_khz(my_app->avg_imc_f);
 
     if (state_fail(pstate_freqtops_upper((pstate_t *) imc_pstates, imc_num_pstates,
@@ -361,7 +361,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 COL_RED, COL_CLR, curr_imc_freq);
     }
 
-    curr_imc_pstate = tmp_state.idx;
+    curr_imc_pstate = tmp_pstate.idx;
 
     if (eUFS) {
         /*  Min time has more stable IMC freq. Below code avoids overriding the first IMC ref data*/
