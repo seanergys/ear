@@ -1912,7 +1912,7 @@ state_t earl_periodic_actions(void *no_arg)
 				ear_iterations++;
 				timestamp_getfast(&curr_periodic_time);
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
-				debug("elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided);
+				verbose_master(2,"elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided);
 				if (first_exec_monitor){
 								first_exec_monitor = 0;
 								return EAR_SUCCESS;

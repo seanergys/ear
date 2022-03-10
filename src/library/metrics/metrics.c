@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-//#define SHOW_DEBUGS           1
+#define SHOW_DEBUGS           1
 #define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3
@@ -638,7 +638,7 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256];
     state_t s;
 
-    
+   debug("metrics_partial_stop"); 
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
       if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
 		}
@@ -849,7 +849,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
+        debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -1290,6 +1290,8 @@ int time_ready_signature(ulong min_time_us)
 int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs)
 {
 				long long aux_time;
+
+				debug("metrics_compute_signature_finish");
 
                 if (!sig_shared_region[my_node_id].ready){
 

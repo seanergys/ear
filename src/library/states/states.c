@@ -190,6 +190,7 @@ void states_end_job(int my_id,  char *app_name)
 
 
 /* This function is executed at application init */
+#define MAX_SIG_TIME 10000000
 void states_begin_job(int my_id,  char *app_name)
 {
     ulong	architecture_min_perf_accuracy_time;
@@ -210,12 +211,16 @@ void states_begin_job(int my_id,  char *app_name)
     /* LOOP WAS CREATED HERE BEFORE */
 
     perf_accuracy_min_time = get_ear_performance_accuracy();
+		verbose_master(2, "perf_accuracy_min_time default %lu", perf_accuracy_min_time);
     if (masters_info.my_master_rank>=0 && eards_connected()){
         architecture_min_perf_accuracy_time=eards_node_energy_frequency();
+				if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR) architecture_min_perf_accuracy_time = perf_accuracy_min_time;
+				verbose_master(2, "eard perf_accuracy_min_time default %lu", architecture_min_perf_accuracy_time);
     }else{
         architecture_min_perf_accuracy_time=1000000;
     }
-    if (architecture_min_perf_accuracy_time>perf_accuracy_min_time) perf_accuracy_min_time=architecture_min_perf_accuracy_time;
+    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME)) perf_accuracy_min_time=architecture_min_perf_accuracy_time;
+		verbose_master(2, "perf_accuracy_min_time %lu", perf_accuracy_min_time);
 
     EAR_STATE = NO_PERIOD;
     policy_freq = EAR_default_frequency;
@@ -247,6 +252,7 @@ void states_begin_period(int my_id, ulong event, ulong size,ulong level)
 
     policy_loop_init(&loop.id);
     comp_N_begin = metrics_time();
+		verbose_master(2,"states_begin_period Begin time %lu", comp_N_begin);
     if (masters_info.my_master_rank>=0) traces_new_period(ear_my_rank, my_id, event);
     loop_with_signature = 0;
     for (i=0;i<frequency_get_num_pstates();i++){
@@ -295,6 +301,8 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
+		verbose_master(2, "New iteration");
+
     sig_shared_region[my_node_id].iterations++;
     if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
         pst = policy_new_iteration(&check_signature);
@@ -337,6 +345,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case TEST_LOOP:
             comp_N_end = metrics_time();
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
+						verbose_master(2, "TEST_LOOP elapsed %lu (end %lu begin %lu) limit %f", comp_N_time, comp_N_end, comp_N_begin, perf_accuracy_min_time*0.1);
             if (comp_N_time>(perf_accuracy_min_time*0.1)){
                 debug("Going to FIRST_ITERATION after %d iterations",iterations);
                 comp_N_begin=comp_N_end;
@@ -362,6 +371,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             perf_count_period_10p=perf_count_period/10;
             if (perf_count_period_10p==0) perf_count_period_10p=1;
             /**/
+
 
             /* Once min iterations is computed for performance accuracy we start computing application signature */
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
@@ -419,7 +429,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if the signature is ready */
             /* Included to accelerate the signature computation */
-            verbose(4, "%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
+            verbose_master(4,"%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
             if (!lib_shared_region->master_ready){
                 if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
                 /* Only when using dynais we consider the 'N' */

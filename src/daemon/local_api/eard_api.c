@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/lock.h>
@@ -376,6 +376,7 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
         return (ulong) EAR_SUCCESS;
     }
     if (state_fail(s = ear_trylock(&lock_rpc))) {
+				debug("local api, cannot get the lock");
         return s;
     }
     if (eards_write(ear_fd_req, send_buf, send_size) != send_size) {
@@ -390,6 +391,7 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
     }
 		debug("local api end : %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
     if (!retsuc) {
+				debug("local api returns %lu from eard", (ulong) *ack_buf);
         return_unlock((ulong) *ack_buf, &lock_rpc);
     }
     return_unlock((ulong) EAR_SUCCESS, &lock_rpc);
