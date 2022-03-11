@@ -231,7 +231,7 @@ static void from_proc_to_core(ulong *cpuf)
         pstate_t curr_pstate;
         state_t ps_manag_st = pstate_freqtops(pstate_list, pstate_count, (ullong) f, &curr_pstate);
         if (state_fail(ps_manag_st)) {
-            verbose_master(3, "%sERROR%s converting freq %lu to P-STATE", COL_RED, COL_CLR, f);
+            verbose_master(0, "%sERROR%s converting freq %lu to P-STATE", COL_RED, COL_CLR, f);
             sig_shared_region[p].pstate_index = ps_nothing;
         } else {
             sig_shared_region[p].pstate_index = curr_pstate.idx;
@@ -578,6 +578,8 @@ state_t policy_init()
 
         // Powercap (?)
         pc_support_init(c);
+    }
+
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
         verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
     }
@@ -586,7 +588,7 @@ state_t policy_init()
     /* Get mgt_cpufreq from metrics.c */
     const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
     if (mgt_cpufreq == NULL) {
-        verbose_master(3, "%sERROR%s Policy init could not read mgt_cpufreq.", COL_RED, COL_CLR);
+        verbose_master(0, "%sERROR%s Policy init could not read mgt_cpufreq.", COL_RED, COL_CLR);
     } else if (mgt_cpufreq->avail_list != NULL) {
         pstate_list = (pstate_t *)mgt_cpufreq->avail_list;
         pstate_count = mgt_cpufreq->avail_count;
@@ -600,18 +602,6 @@ state_t policy_init()
     policy_get_default_freq(&nf);
     /* What do we need at this point in  the signature ? */
     policy_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain,&avg_nf);
-
-    if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
-    else return EAR_ERROR;
-}
-
-/* This function loads specific CPU and GPU policy functions and calls the initialization functions */
-state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
-{
-    char basic_path[SZ_PATH_INCOMPLETE];
-    conf_install_t *data=&app_settings->installation;
-
-    /* This part of code is to decide which policy to load based on default and hacks */
 
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;

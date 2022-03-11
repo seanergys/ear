@@ -266,7 +266,8 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_load(tp, eard));
     sa(        cpi_load(tp, eard));
 
-		debug("metics_load ready");
+	debug("metics_load ready");
+
     // This extinguishable
     frequency_init(eard);
     // Get API

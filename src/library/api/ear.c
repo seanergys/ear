@@ -223,7 +223,7 @@ static void print_local_data()
 								verbose(1, "%30s: %u", "EAR privileged user",
                                         system_conf->user_type==AUTHORIZED);
 								verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
-								verbose(1, "----------------------------------------------------");
+								verbose(1, "-------------------------------------------------------");
 				}
 }
 
@@ -270,7 +270,7 @@ void notify_eard_connection(int status)
 								if (masters_connected != masters_info.my_master_size){
 												/* Some of the nodes is not ok , setting off EARL */
 												if (masters_info.my_master_rank>=0) {
-																verbose_master(1,"%s:EARD is not running\n",node_name);
+																verbose_master(1,"%s: EARD is not running\n",node_name);
 												}
 												eard_ok = 0;
 												return;
@@ -1272,10 +1272,10 @@ void ear_init()
 												sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
 												sig_shared_region[my_node_id].affinity = 1;
 												sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
-#if 0
-												if (masters_info.my_master_rank>=0){ 
+#if 1
+												// if (masters_info.my_master_rank>=0){ 
 																print_affinity_mask(&arch_desc.top);
-												}
+												// }
 #endif
 								}else{ 
 												sig_shared_region[my_node_id].affinity = 0;

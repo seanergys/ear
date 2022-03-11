@@ -101,8 +101,14 @@ state_t mpi_app_init(polctx_t *c)
         /* Process CPUs */
         cpu_list = calloc(sig_shared_region[my_node_id].num_cpus, sizeof(uint));
         if (list_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask, sig_shared_region[my_node_id].num_cpus, cpu_list) < 0) {
-            verbose(2, "%sWARNING%s cpu_list for process %d could not be read.", COL_RED, COL_CLR, my_node_id);
+            verbose(0, "%sWARNING%s cpu_list for process %d could not be read.", COL_RED, COL_CLR, my_node_id);
             free(cpu_list);
+        } else {
+            verbosen(0, "proc %d: ", my_node_id);
+            for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
+                verbosen(0, "%u ", cpu_list[i]);
+            }
+            verb(0, "");
         }
 
         for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
@@ -260,22 +266,24 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         }
 #endif
 #if EARL_RESEARCH
-        verb(0, "%sThis message should not exist%s", COL_RED, COL_CLR);
         if (cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
                 // Get which type of blocking call is
                 mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 
                 if (nbcall_type == Only_Barrier) {
+                    verb(0, "%sBarrier init%s", COL_RED, COL_CLR);
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                         uint cpu = cpu_list[i];
                         pstate_list[cpu] = 3;
                     }
 
-                    // vector_print_pstates(pstate_idx, lib_shared_region->num_cpus);
+                    vector_print_pstates(pstate_list, sizeof(pstate_list));
 
-                    mgt_cpufreq_set_current_list(no_ctx, pstate_list);
+                    if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
+                        verb(0, "%sERROR%s", COL_RED, COL_CLR);
+                    }
                 }
             }
         }
@@ -322,6 +330,7 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
 #if EARL_RESEARCH
                 if (cpu_list != NULL) {
                     if (nbcall_type == Only_Barrier) {
+                        verb(0, "%sBarrier end%s time %llu", COL_RED, COL_CLR, elap);
                         barriers++;
                         total_barrier_time += elap;
 
@@ -330,7 +339,11 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
                             pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index;
                         }
 
-                        mgt_cpufreq_set_current_list(no_ctx, pstate_list);
+                    vector_print_pstates(pstate_list, sizeof(pstate_list));
+
+                        if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
+                            verb(0, "%sERROR%s", COL_RED, COL_CLR);
+                        }
                     }
                 }
 #endif
