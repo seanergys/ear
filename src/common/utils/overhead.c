@@ -26,19 +26,22 @@ typedef struct ohdata_s {
     const char *description;
     timestamp_t time_start;
     timestamp_t time_stop;
+    ullong call_count;
     ullong accum_us;
     uint active;
 } ohdata_t;
 
 static uint        init;
-static timestamp_t global_time_start;
+static clock_t     global_clock_start;
+static timestamp_t global_stamp_start;
 static ohdata_t    queue[N_QUEUE];
 static uint        queue_last;
 
 void overhead_suscribe(const char *description, uint *id)
 {
     if (!init) {
-        timestamp_get(&global_time_start);
+        timestamp_get(&global_stamp_start);
+        global_clock_start = clock();
         init = 1;
     }
 
@@ -51,6 +54,7 @@ void overhead_suscribe(const char *description, uint *id)
 void overhead_start(uint id)
 {
     timestamp_get(&queue[id].time_start);
+    queue[id].call_count += 1;
 }
 
 void overhead_stop(uint id)
@@ -61,19 +65,36 @@ void overhead_stop(uint id)
 
 void overhead_report()
 {
-    double global_accum_s;
-    double accum_s;
+    double global_stamp_secs;
+    double global_clock_secs;
+    double percent_clock;
+    double percent_stamp;
+    double percall_msecs;
+    double accum_msecs;
+    double accum_secs;
     int id;
 
-    tprintf_init(fderr, STR_MODE_DEF, "14 14 32");
-    tprintf("Accum. secs.||%% from start||Description");
-    tprintf("------------||------------ ||-----------");
+    global_stamp_secs = ((double) timestamp_diffnow(&global_stamp_start, TIME_USECS)) / 1000000.0;
+    global_clock_secs = ((double) (clock() - global_clock_start)) / CLOCKS_PER_SEC;
 
-    global_accum_s = ((double) timestamp_diffnow(&global_time_start, TIME_USECS)) / 1000000.0;
+    tprintf_init(fderr, STR_MODE_DEF, "10 14 14 14 14 32");
+    tprintf("#calls||time accum||time/#calls||%%cpu time||%%wall time||description");
+    tprintf("------||----------||-----------||---------||----------||-----------");
 
-    for(id = 0; id < queue_last; ++id) {
-        accum_s = ((double) queue[id].accum_us) / 1000000.0;
-        tprintf("%0.2lf||%0.2lf||%s", accum_s, (accum_s / global_accum_s)*100.0, queue[id].description);
+    for(id = 0; id < queue_last; ++id)
+    {
+        accum_msecs   = ((double) queue[id].accum_us) / 1000.0;
+        percall_msecs = accum_msecs / ((double) queue[id].call_count);
+        accum_secs    = accum_msecs / 1000.0;
+        percent_clock = (accum_secs / global_clock_secs)*100.0;
+        percent_stamp = (accum_secs / global_stamp_secs)*100.0;
+
+        if (percent_clock > 100.0) {
+            percent_clock = 0.0;
+        }
+
+        tprintf("%llu||%0.3lf s||%0.3lf ms||%0.2lf %%||%0.2lf %%||%s", queue[id].call_count,
+                accum_secs, percall_msecs, percent_clock, percent_stamp, queue[id].description);
     }
 }
 
@@ -88,7 +109,7 @@ int main(int argc, char *argv[])
     overhead_suscribe("PIPE communication", &id2);
     overhead_suscribe("GPU read", &id3);
 
-    for (i = 0; i < 5; ++i) {
+    for (i = 0; i < 2; ++i) {
         overhead_start(id1);
         sleep(1);
         overhead_stop(id1);

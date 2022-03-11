@@ -18,6 +18,7 @@
 #ifndef EAR_MSR_H
 #define EAR_MSR_H
 
+#include <fcntl.h>
 #include <unistd.h>
 #include <common/types.h>
 #include <common/states.h>

@@ -38,7 +38,7 @@ state_t temp_intel63_status(topology_t *_tp)
 	}
 	while (pthread_mutex_trylock(&lock));
 	if (!tp.initialized) {
-        if (state_fail(s = msr_test(tp_in, MSR_RD))) {
+        if (state_fail(s = msr_test(_tp, MSR_RD))) {
             return EAR_ERROR;
         }
 		s = topology_select(_tp, &tp, TPSelect.socket, TPGroup.merge, 0);

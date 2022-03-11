@@ -41,9 +41,14 @@ static topology_t tp;
 void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 {
 	debug("loading");
+    // It seems to fail in:
+    // - TIGER_LAKE
 	if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_HASWELL_X) {
 		return;
 	}
+    if (tp_in->vendor == VENDOR_INTEL && tp_in->model == MODEL_TIGERLAKE_U) {
+        return;
+    }
 	debug("testing MSR");
 	if (state_fail(msr_test(tp_in, MSR_WR))) {
 		return;

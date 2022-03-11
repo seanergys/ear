@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,7 +129,11 @@ int static_open(uint cpu, mode_t mode)
     sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
     #endif
     fd = open(msr_file_name, mode);
-    debug("msr open %d", fd);
+    if (mode == MSR_WR) {
+        debug("Opened MSR %s (MSR_WR): fd %d (%s)", msr_file_name, fd, strerror(errno));
+    } else {
+        debug("Opened MSR %s (MSR_RD): fd %d (%s)", msr_file_name, fd, strerror(errno));
+    }
     return fd;
 }
 
@@ -193,7 +199,8 @@ state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 	}
 	#ifdef MSR_LOCK
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
-	#endif
+    #endif
+    debug("Reading MSR of CPU%d (fd %d), address %p", cpu, fds[cpu], offset);
 	if (pread(fds[cpu], buffer, size, offset) != size) {
 		#ifdef MSR_LOCK
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
