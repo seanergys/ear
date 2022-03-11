@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/lock.h>
@@ -371,6 +371,7 @@ void eards_disconnect()
 ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, const char *description, int retsuc)
 {
     state_t s;
+		ulong *ack_long;
 		debug("local api init : %s. send size %lu. FD %d", description, send_size, ear_fd_req);
     if (ear_fd_req < 0) {
         return (ulong) EAR_SUCCESS;
@@ -391,8 +392,9 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
     }
 		debug("local api end : %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
     if (!retsuc) {
-				debug("local api returns %lu from eard", (ulong) *ack_buf);
-        return_unlock((ulong) *ack_buf, &lock_rpc);
+				ack_long = (ulong *)ack_buf;
+				debug("local api returns %lu from eard", *ack_long);
+        return_unlock(*ack_long, &lock_rpc);
     }
     return_unlock((ulong) EAR_SUCCESS, &lock_rpc);
 }

@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-#define SHOW_DEBUGS           1
+//#define SHOW_DEBUGS           1
 #define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3

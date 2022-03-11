@@ -252,7 +252,6 @@ void states_begin_period(int my_id, ulong event, ulong size,ulong level)
 
     policy_loop_init(&loop.id);
     comp_N_begin = metrics_time();
-		verbose_master(2,"states_begin_period Begin time %lu", comp_N_begin);
     if (masters_info.my_master_rank>=0) traces_new_period(ear_my_rank, my_id, event);
     loop_with_signature = 0;
     for (i=0;i<frequency_get_num_pstates();i++){
@@ -301,7 +300,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
-		verbose_master(2, "New iteration");
 
     sig_shared_region[my_node_id].iterations++;
     if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
@@ -345,7 +343,6 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case TEST_LOOP:
             comp_N_end = metrics_time();
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
-						verbose_master(2, "TEST_LOOP elapsed %lu (end %lu begin %lu) limit %f", comp_N_time, comp_N_end, comp_N_begin, perf_accuracy_min_time*0.1);
             if (comp_N_time>(perf_accuracy_min_time*0.1)){
                 debug("Going to FIRST_ITERATION after %d iterations",iterations);
                 comp_N_begin=comp_N_end;
