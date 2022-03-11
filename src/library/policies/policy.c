@@ -97,6 +97,7 @@ uint try_turbo_enabled = 0;
 uint use_energy_models = 1;
 
 static uint exclusive_mode = 0;
+static ulong min_cpufreq = 0; // Bound the minimum CPU freq.
 
 static uint use_earl_phases = EAR_USE_PHASES;
 //
@@ -213,12 +214,12 @@ static void from_proc_to_core(ulong *cpuf)
     ccount = arch_desc.top.cpu_count;
     for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
-        f = cpuf[p];
+        f = ear_max(cpuf[p], min_cpufreq);
         m = sig_shared_region[p].cpu_mask;
-        verbose_master(lv,"Frequency for process %d is %lu", p, f);
+        verbose_master(lv, "Frequency for process %d is %lu", p, f);
         for (c = 0 ; c < ccount; c++) {
             if (CPU_ISSET(c,&m)) { 
-                verbosen_master(lv+1,"CPU %d ",c);
+                verbosen_master(lv+1, "CPU %d ", c);
                 freq_per_core[c] = f;
             }
         }
@@ -243,32 +244,38 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
 {
     ulong *freq_set = freqs->cpu_freq;
     int i;
-    char pol_grain_str[128];
+    char pol_grain_str[16];
+
     verbose_master(3, "policy_cpu_freq_selection");
+
     memset(freq_per_core, 0, sizeof(ulong) * MAX_CPUS_SUPPORTED);
-    if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str,"POL_GRAIN_CORE");
-    else sprintf(pol_grain_str,"POL_GRAIN_NODE");
-    verbose_master(2, "Policy level set to %s and affinity %d", pol_grain_str, ear_affinity_is_set);
-    /* Assumption: If affinity is set for master, it is set for all, we could check individually */
-    if ((dom->cpu == POL_GRAIN_CORE) && (ear_affinity_is_set)){
-        from_proc_to_core(freq_set);		
-    }else{
-        debug("Setting same freq in all node %lu",freq_set[0]);
-        for (i=1;i<MAX_CPUS_SUPPORTED;i++) freq_set[i] = freq_set[0];
-        if (ear_affinity_is_set){ 
+
+    if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str, "GRAIN_CORE");
+    else sprintf(pol_grain_str, "GRAIN_NODE");
+
+    verbose_master(2, "%-12s: %s\n%-12s: %d", "Policy level", pol_grain_str, "Affinity", ear_affinity_is_set);
+
+    // Assumption: If affinity is set for master, it is set for all, we could check individually
+    if ((dom->cpu == POL_GRAIN_CORE) && (ear_affinity_is_set)) {
+        from_proc_to_core(freq_set);
+    } else {
+        debug("Setting same freq in all node %lu", freq_set[0]);
+        for (i = 1; i < MAX_CPUS_SUPPORTED; i++) freq_set[i] = freq_set[0];
+        if (ear_affinity_is_set) {
             from_proc_to_core(freq_set);
-        }else{
-            for (i=0;i<MAX_CPUS_SUPPORTED;i++) freq_per_core[i] = freq_set[0];
+        } else {
+            for (i = 0; i < MAX_CPUS_SUPPORTED; i++) freq_per_core[i] = freq_set[0];
         }
     }
-    if (dom->cpu == POL_GRAIN_CORE){
+
+    if (dom->cpu == POL_GRAIN_CORE) {
         fill_cpus_out_of_cgroup(exclusive_mode);
     }
 
     //if (*freq_set != *(c->ear_frequency) || dom->cpu == POL_GRAIN_CORE)
     print_freq_per_core();
 
-		/* POWER_CAP_UNLIMITED ¡is equal to 1, so the CPU freq is set if powercap is 0 (disabled) or unlimited (1) */
+	// POWER_CAP_UNLIMITED ¡is equal to 1, so the CPU freq is set if powercap is 0 (disabled) or unlimited (1)
     if ((pc_app_info_data != NULL) && (pc_app_info_data->cpu_mode == PC_DVFS) && (system_conf->pc_opt.current_pc <= POWER_CAP_UNLIMITED)){
         *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
     }
@@ -278,10 +285,13 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     }
 
     if (*(c->ear_frequency) == 0) *(c->ear_frequency) = freq_set[0];
-    avg_freq->cpu_freq[0] = compute_avg_freq(freq_set,lib_shared_region->num_processes);
-    verbose_master(2,"Setting CPU freq to %lu",*(c->ear_frequency));
+    verbose_master(2, "%sPOLICY%s Setting CPU freq.: %lu", COL_BLU, COL_CLR, *(c->ear_frequency));
+
+    avg_freq->cpu_freq[0] = compute_avg_freq(freq_set, lib_shared_region->num_processes);
+
     return EAR_SUCCESS;
 }
+
 static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     uint *imc_up,*imc_low;
@@ -454,14 +464,15 @@ state_t policy_init()
 
     int i;
 
-    char *cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
-    char *cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
-    char *cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
-    char *cuse_earl_phases = getenv(SCHED_USE_EARL_PHASES);
-    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
-    char *cuse_turbo_for_cp = getenv(SCHED_USE_TURBO_FOR_CP);
-    char *ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
-    char *cuse_energy_models = getenv(SCHED_USE_ENERGY_MODELS);
+    char *cdyn_unc             = getenv(SCHED_SET_IMC_FREQ);        // eUFS
+    char *cimc_extra_th        = getenv(SCHED_IMC_EXTRA_TH);        // eUFS threshold
+    char *cexclusive_mode      = getenv(SCHED_EXCLUSIVE_MODE);      // Job has the node exclusive
+    char *cuse_earl_phases     = getenv(SCHED_USE_EARL_PHASES);     // Detect application phases
+    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE); // Load balance efficiency
+    char *cuse_turbo_for_cp    = getenv(SCHED_USE_TURBO_FOR_CP);    // Boost critical path processes
+    char *ctry_turbo_enabled   = getenv(SCHED_TRY_TURBO);           // Boost turbo if policy sets max cpufreq
+    char *cuse_energy_models   = getenv(SCHED_USE_ENERGY_MODELS);   // Use energy models
+    char *cmin_cpufreq         = getenv(SCHED_MIN_CPUFREQ);         // Minimum CPU freq.
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
     policy_gpu_init_ctx(c);
@@ -473,7 +484,7 @@ state_t policy_init()
     if (cuse_energy_models != NULL) {
         use_energy_models = atoi(cuse_energy_models);
     }
-    verbose_master(POLICY_INFO, "%sINFO%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
 
     // Calling policy plugin init
     if (polsyms_fun.init != NULL) {
@@ -482,10 +493,13 @@ state_t policy_init()
 
     // Read policy configuration
     if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
-    verbose_master(POLICY_INFO, "%sINFO%s Running in exclusive mode: %u", COL_BLU, COL_CLR, exclusive_mode);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u", COL_BLU, COL_CLR, exclusive_mode);
 
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
-    verbose_master(POLICY_INFO, "%sINFO%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
+
+    if (cmin_cpufreq != NULL) min_cpufreq = atoi(cmin_cpufreq);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %lu kHz", COL_BLU, COL_CLR, min_cpufreq);
 
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
@@ -505,10 +519,10 @@ state_t policy_init()
     if (arch_desc.top.vendor == VENDOR_AMD) {
         enable_load_balance = 0;
     }
-    verbose_master(POLICY_INFO, "%sINFO%s Load balance: %u", COL_BLU, COL_CLR, enable_load_balance);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Load balance: %u", COL_BLU, COL_CLR, enable_load_balance);
 
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
-    verbose_master(POLICY_INFO, "%sINFO%s Turbo for CP when app in the node is unbalanced: %u",
+    verbose_master(POLICY_INFO, "%sPOLICY%s Turbo for CP when app in the node is unbalanced: %u",
             COL_BLU, COL_CLR, use_turbo_for_cp);
 
     /* conf_dyn_unc is based on the configuration.
@@ -518,13 +532,13 @@ state_t policy_init()
     }
     dyn_unc = conf_dyn_unc;
 
-    if (cimc_extra_th != NULL){
+    if (cimc_extra_th != NULL) {
         imc_extra_th = atof(cimc_extra_th);
     }
 
     try_turbo_enabled = c->use_turbo;
     if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
-    verbose_master(POLICY_INFO, "%sINFO%s Turbo for cbound app in the node: %u",
+    verbose_master(POLICY_INFO, "%sPOLICY%s Turbo for cbound app in the node: %u",
             COL_BLU, COL_CLR, try_turbo_enabled);
 
     // Read the domain of the loaded policy plugin
@@ -845,7 +859,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     last_earl_phase_classification = earl_phase_classification;
     last_earl_gpu_phase_classification = gidle;
     /* Here we are COMP or MPI bound AND not busy waiting*/
-    if (polsyms_fun.node_policy_apply!=NULL){
+    if (polsyms_fun.node_policy_apply != NULL) {
 
         /* Initializations */
         signature_copy(&node_sig,my_sig);
@@ -854,7 +868,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         if ((cpu_ready != EAR_POLICY_READY) && (freqs_domain.cpu == POL_GRAIN_CORE)) memset(freqs->cpu_freq,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
 
         /* CPU specific function is applied here */
-        st=polsyms_fun.node_policy_apply(c, &node_sig,freqs,&cpu_ready);
+        st=polsyms_fun.node_policy_apply(c, &node_sig,freqs, &cpu_ready);
 
         /* Depending on the policy status and granularity we adapt the CPU freq selection */
         if (is_all_ready() || is_try_again()){

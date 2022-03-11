@@ -102,7 +102,6 @@ extern uint use_turbo_for_cp;
 extern uint try_turbo_enabled;
 extern uint use_energy_models;
 
-static ulong min_cpufreq = 0;
 static uint network_use_imc = 1; /*!< This variable controls the UFS when the application is communication intensive , set to 1 means UFS will not be applied. */
 
 #define SELECT_CPUFREQ 		100
@@ -140,8 +139,6 @@ static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signat
 
 state_t policy_init(polctx_t *c)
 {
-    // char *cuse_imc_ref;
-    char *cmin_cpufreq = NULL;     // getenv(SCHED_MIN_CPUFREQ);
     char *cnetwork_use_imc = NULL; // getenv(SCHED_NETWORK_USE_IMC);
     char *cimc_set_by_hw = NULL;   // getenv(SCHED_LET_HW_CTRL_IMC);
 
@@ -158,11 +155,6 @@ state_t policy_init(polctx_t *c)
     }
 
     /*  Config env variables */
-    if (state_ok(read_config_env(cmin_cpufreq, SCHED_MIN_CPUFREQ))) {
-        min_cpufreq = atoi(cmin_cpufreq);
-    }
-    if (min_cpufreq) verbose_master(2, "Min. CPU freq. limited: %lu kHz", min_cpufreq);
-
     if (state_ok(read_config_env(cimc_set_by_hw, SCHED_LET_HW_CTRL_IMC))) {
         read_config(&imc_set_by_hw, cimc_set_by_hw);
     }
@@ -539,7 +531,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     }
                 }
             }
-            if (min_cpufreq) new_freq[i] = ear_max(min_cpufreq, new_freq[i]);
+#if 0
+            // if (min_cpufreq) new_freq[i] = ear_max(min_cpufreq, new_freq[i]);
+#endif
             debug("CPU freq for process %d is %lu",i,new_freq[i]);
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
