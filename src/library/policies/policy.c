@@ -753,7 +753,7 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
     /* Update node info */
     /* Not needed. update_earl_node_mgr_info(); */
 
-    verbose_master(POLICY_INFO + 1, "Policy node apply");
+    verbose_master(POLICY_INFO + 1, "%sINFO%d%s Policy node apply", COL_BLU, POLICY_INFO + 1, COL_CLR);
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
 
@@ -785,16 +785,16 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND){
             if (busy == BUSY_WAITING){
-                verbose_master(POLICY_PHASES,"%sIO configuration%s",COL_BLU,COL_CLR);
+                verbose_master(POLICY_PHASES,"%sINFO%s I/O configuration", COL_BLU, COL_CLR);
                 st = policy_io_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
-                /* GPU ? */
+                // TODO: GPU ?
                 *freq_set = avg_nf.cpu_freq[0];
                 if (is_all_ready()){
                     last_earl_phase_classification = earl_phase_classification;
                     last_earl_gpu_phase_classification = gidle;
                     policy_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
                     *ready = EAR_POLICY_READY;
-                    clean_signatures(lib_shared_region,sig_shared_region);
+                    clean_signatures(lib_shared_region, sig_shared_region);
                     return EAR_SUCCESS;
                 }
             }else if (last_earl_phase_classification == APP_IO_BOUND){
@@ -859,7 +859,6 @@ state_t policy_node_apply(signature_t *my_sig,ulong *freq_set, int *ready)
         /* Depending on the policy status and granularity we adapt the CPU freq selection */
         if (is_all_ready() || is_try_again()){
             /* This functions  checks the powercap and the processor affinity, finally sets the CPU freq asking the eard to do it */
-            // policy_cpu_freq_selection(my_sig,freqs);
             st = policy_freq_selection(c,&node_sig,freqs,&freqs_domain,&avg_nf);
             *freq_set = avg_nf.cpu_freq[0];
         } /* Stop*/
