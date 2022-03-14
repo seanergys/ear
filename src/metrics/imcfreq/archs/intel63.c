@@ -107,7 +107,7 @@ state_t imcfreq_intel63_init(ctx_t *c)
 	}	
 	// Opening MSR
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (state_fail(s = msr_open(tp.cpus[cpu].id))) {
+		if (state_fail(s = msr_open(tp.cpus[cpu].id, MSR_WR))) {
 			return s;
 		}
 	}

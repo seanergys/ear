@@ -67,7 +67,7 @@ static state_t mgt_imcfreq_intel63_build_list()
 	// First scan, getting the maximum and the minimum.
 	for (i = 0; i < tp_static.cpu_count; ++i) {
 		// Opening
-		if (state_fail(s = msr_open(tp_static.cpus[i].id))) {
+		if (state_fail(s = msr_open(tp_static.cpus[i].id, MSR_WR))) {
 			return s;
 		}
 		// Reading

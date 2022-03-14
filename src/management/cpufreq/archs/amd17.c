@@ -314,7 +314,7 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 	}
 	// Opening MSRs (switch to user mode if permission denied)
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (state_fail(s = msr_open(tp.cpus[cpu].id))) {
+		if (state_fail(s = msr_open(tp.cpus[cpu].id, MSR_WR))) {
 			return static_dispose(cpu, s, state_msg);
 		}
 	}

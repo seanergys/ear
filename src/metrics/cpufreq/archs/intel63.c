@@ -85,7 +85,7 @@ state_t cpufreq_intel63_init(ctx_t *c)
 	int cpu;
 	// Opening MSRs.
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (state_fail(s = msr_open(tp.cpus[cpu].id))) {
+		if (state_fail(s = msr_open(tp.cpus[cpu].id, MSR_RD))) {
 			return static_dispose(c, cpu, s);
 		}
 	}

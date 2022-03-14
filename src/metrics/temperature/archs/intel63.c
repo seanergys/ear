@@ -65,7 +65,7 @@ state_t temp_intel63_init(ctx_t *c)
 	throt = (llong *) c->context;
 	for (i = 0; i < tp.cpu_count; ++i) {
 		debug("accessing to CPU %d", tp.cpus[i].id);
-		if (state_fail(s = msr_open(tp.cpus[i].id))) {
+		if (state_fail(s = msr_open(tp.cpus[i].id, MSR_RD))) {
 			return s;
 		}
 		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), MSR_TEMPERATURE_TARGET))) {

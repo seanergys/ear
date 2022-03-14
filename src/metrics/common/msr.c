@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -33,18 +33,24 @@
 
 static pthread_mutex_t lock_gen = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t lock_cpu[MSR_MAX];
-static int counters[MSR_MAX];
-static int init[MSR_MAX];
-static int fds[MSR_MAX];
+static int init_lock[MSR_MAX];
+static int init_msr[MSR_MAX];
+static int errno_wr[MSR_MAX];
+static int errno_rd[MSR_MAX];
+static int fds_wr[MSR_MAX];
+static int fds_rd[MSR_MAX];
 
 static struct error_s {
 	char *lock;
 	char *cpu_invalid;
 	char *cpu_uninitialized;
+    char *open;
 } Error = {
 	.lock        = "error during pthread_mutex",
 	.cpu_invalid = "cpu number is out of range",
 	.cpu_uninitialized = "cpu MSR is not initialized",
+    .open        = "can't open neither MSR nor MSR_SAFE files",
+
 };
 
 #define return_unlock_msg(s, message, lock) \
@@ -57,7 +63,7 @@ static struct error_s {
 
 state_t msr_test(topology_t *tp, mode_t mode)
 {
-	state_t s = EAR_SUCCESS;
+	state_t s;
 	int cpu, b;
     int fd;
 
@@ -65,107 +71,66 @@ state_t msr_test(topology_t *tp, mode_t mode)
 		return_msg(EAR_ERROR, Generr.input_uninitialized);
 	}
 	for (cpu = 0; cpu < tp->cpu_count; ++cpu) {
-        fd = static_open(cpu, mode);
-        close(fd);
-
-        if (fd < 0) {
-            if (errno == EACCES) {
-                return_msg(EAR_NO_PERMISSIONS, strerror(errno));
-            }
-            return_msg(EAR_ERROR, strerror(errno));
+        if (state_fail(s = msr_open(cpu, mode))) {
+            return s;
         }
 	}
 	return EAR_SUCCESS;
 }
 
-state_t msr_scan(topology_t *tp, off_t *regs, uint regs_count, ullong andval, off_t *offs)
+static char *strerrfd(int fd)
 {
-	ullong content;
-	off_t zero;
-	uint c, r;
-	state_t s;
-
-	for (c = 0; c < tp->cpu_count; ++c) {
-		if (state_fail(msr_open(tp->cpus[c].id))) {
-			break;
-		}
-		// Initializing
-		offs[c] = 0;
-		zero    = 0;
-		// Reading registers
-		for (r = 0; r < regs_count; ++r) {
-			if (state_fail(s = msr_read(tp->cpus[c].id, &content, sizeof(content), regs[r]))) {
-				return s;
-			}
-			// If a register is using the same event, use that
-			if (content & andval) {
-				offs[c] = regs[r];
-				continue;
-			}
-			if (!content && !zero) {
-				zero = regs[r];
-			}
-		}
-		// If free register is not found, use the first in the lis
-		if (!offs[c] && !zero) {
-			offs[c] = regs[0];
-		}
-		// If a free register is found, use that
-		if (!offs[c] && zero) {
-			offs[c] = zero;
-		}
-
-		msr_close(msr_open(tp->cpus[c].id));
-	}
+    if (fd >= 0) return strerror(0);
+    return strerror(errno);
 }
 
-int static_open(uint cpu, mode_t mode)
+static int static_open_debug(char *file, mode_t mode, char *cmode)
 {
-    char msr_file_name[SZ_PATH_KERNEL];
+    int fd = open(file, mode);
+    debug("Attempted to open MSR %s (%s): fd %d (%s)", file, cmode, fd, strerrfd(fd));
+    return fd;
+}
+
+static int static_open(uint cpu, mode_t mode, char *cmode)
+{
+    char file[SZ_PATH_KERNEL];
     int fd;
-    #if MSR_SAFE
-    sprintf(msr_file_name, "/dev/cpu/%d/msr_safe", cpu);
-    #else
-    sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
-    #endif
-    fd = open(msr_file_name, mode);
-    if (mode == MSR_WR) {
-        debug("Opened MSR %s (MSR_WR): fd %d (%s)", msr_file_name, fd, strerror(errno));
-    } else {
-        debug("Opened MSR %s (MSR_RD): fd %d (%s)", msr_file_name, fd, strerror(errno));
+    sprintf(file, "/dev/cpu/%d/msr", cpu);
+    if ((fd = static_open_debug(file, mode, cmode)) < 0) {
+        sprintf(file, "/dev/cpu/%d/msr_safe", cpu);
+        fd = static_open_debug(file, mode, cmode);
     }
     return fd;
 }
 
-state_t msr_open(uint cpu)
+state_t msr_open(uint cpu, mode_t mode)
 {
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
 	// General exclusion
 	while (pthread_mutex_trylock(&lock_gen));
-	if (init[cpu] == 0) {
+	if (init_lock[cpu] == 0) {
 		if (pthread_mutex_init(&lock_cpu[cpu], NULL) != 0) {
 			return_unlock_msg(EAR_ERROR, Error.lock, &lock_gen);
 		}
 	}
-	init[cpu] = 1;
+	init_lock[cpu] = 1;
 	pthread_mutex_unlock(&lock_gen);
 	// CPU exclusion
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
-	if (counters[cpu] == 0) {
-        if ((fds[cpu] = static_open(cpu, MSR_WR)) < 0) {
-            fds[cpu] = static_open(cpu, MSR_RD);
-        }
-        if (fds[cpu] < 0) {
-            if (errno == EACCES) {
-                return_unlock_msg(EAR_NO_PERMISSIONS, strerror(errno), &lock_cpu[cpu]);
-            }
-            return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
-        }
+	if (init_msr[cpu] == 0) {
+        fds_wr[cpu] = static_open(cpu, MSR_WR, "MSR_WR");
+        fds_rd[cpu] = static_open(cpu, MSR_RD, "MSR_RD");
+        //
+        init_msr[cpu] = 1;
 	}
-	counters[cpu] += 1;
-
+    if ((mode == MSR_WR) && (fds_wr[cpu] < 0)) {
+        return_unlock_msg(EAR_ERROR, Error.open, &lock_cpu[cpu]);
+    }
+    if ((mode == MSR_RD) && (fds_rd[cpu] < 0)) {
+        return_unlock_msg(EAR_ERROR, Error.open, &lock_cpu[cpu]);
+    }
 	return_unlock(EAR_SUCCESS, &lock_cpu[cpu]);
 }
 
@@ -174,19 +139,7 @@ state_t msr_close(uint cpu)
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
-	if (counters[cpu] == 0) {
-		return_msg(EAR_NOT_INITIALIZED, Error.cpu_uninitialized);
-	}
-	while (pthread_mutex_trylock(&lock_cpu[cpu]));
-	if (counters[cpu] == 0) {
-		return_unlock_msg(EAR_NOT_INITIALIZED, Error.cpu_uninitialized, &lock_cpu[cpu]);
-	}
-	counters[cpu] -= 1;
-	if (counters[cpu] == 0) {
-		close(fds[cpu]);
-		fds[cpu] = -1;
-	}
-	return_unlock(EAR_SUCCESS, &lock_cpu[cpu]);
+	return EAR_SUCCESS;
 }
 
 state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
@@ -194,14 +147,17 @@ state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
-	if (counters[cpu] == 0 || fds[cpu] < 0) {
+	if (init_msr[cpu] == 0) {
 		return_msg(EAR_NOT_INITIALIZED, Error.cpu_uninitialized);
 	}
+    if (fds_rd[cpu] < 0) {
+        return_msg(EAR_ERROR, Error.open);
+    }
 	#ifdef MSR_LOCK
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
     #endif
-    debug("Reading MSR of CPU%d (fd %d), address %p", cpu, fds[cpu], offset);
-	if (pread(fds[cpu], buffer, size, offset) != size) {
+    debug("Reading MSR of CPU%d (fd %d), address %p", cpu, fds_wr[cpu], offset);
+	if (pread(fds_rd[cpu], buffer, size, offset) != size) {
 		#ifdef MSR_LOCK
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
 		#else
@@ -220,13 +176,16 @@ state_t msr_write(uint cpu, const void *buffer, size_t size, off_t offset)
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
-	if (counters[cpu] == 0 || fds[cpu] < 0) {
+	if (init_msr[cpu] == 0) {
 		return_msg(EAR_NOT_INITIALIZED, Error.cpu_uninitialized);
 	}
-	#ifdef MSR_LOCK
+    if (fds_wr[cpu] < 0) {
+        return_msg(EAR_ERROR, Error.open);
+    }
+    #ifdef MSR_LOCK
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
 	#endif
-	if (pwrite(fds[cpu], buffer, size, offset) != size) {
+	if (pwrite(fds_wr[cpu], buffer, size, offset) != size) {
 		#ifdef MSR_LOCK
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
 		#else
@@ -240,71 +199,106 @@ state_t msr_write(uint cpu, const void *buffer, size_t size, off_t offset)
 	#endif
 }
 
-state_t msr_print(topology_t *tp, off_t offset)
+void msr_print(topology_t *tp, off_t offset)
 {
-	ulong value_c;
-	ulong value_t;
-	state_t s_c;
-	state_t s_t;
-	int id_c;
-	int id_t;
-	int i;
+	ulong value_cpu1;
+	ulong value_cpu2;
+	state_t s_cpu1;
+	state_t s_cpu2;
+	int id_cpu1;
+	int id_cpu2;
+	int cpu;
 
-	for (i = 0; i < tp->cpu_count; ++i)
-	{
-		if (tp->cpus[i].is_thread) {
+	for (cpu = 0; cpu < tp->cpu_count; ++cpu) {
+		if (tp->cpus[cpu].is_thread) {
 			continue;
 		}
-		id_c = tp->cpus[i].id;
-		id_t = tp->cpus[i].sibling_id;
-		value_c = 0LU;
-		value_t = 0LU;
+        // Print the MSR value of both threads of a core.
+		id_cpu1 = tp->cpus[cpu].id;
+		id_cpu2 = tp->cpus[cpu].sibling_id;
+		value_cpu1 = 0LU;
+		value_cpu2 = 0LU;
 		// Open both core and thread
-		s_c = msr_open(id_c);
-		s_t = msr_open(id_t);
+		s_cpu1 = msr_open(id_cpu1, MSR_RD);
+		s_cpu2 = msr_open(id_cpu2, MSR_RD);
 		// Reading both values
-		if (state_ok(s_c)) msr_read(id_c, &value_c, sizeof(ulong), offset);
-		if (state_ok(s_t)) msr_read(id_t, &value_t, sizeof(ulong), offset);
+		if (state_ok(s_cpu1)) msr_read(id_cpu1, &value_cpu1, sizeof(ulong), offset);
+		if (state_ok(s_cpu2)) msr_read(id_cpu2, &value_cpu2, sizeof(ulong), offset);
 		// Printing
-		verbose(0, "%d/%d: %lu %lu", id_c, id_t, value_c, value_t);
-		// Closing
-		if (state_ok(s_c)) msr_close(id_c);
-		if (state_ok(s_t)) msr_close(id_t);
+		verbose(0, "%d/%d: %lu %lu", id_cpu1, id_cpu2, value_cpu1, value_cpu2);
 	}
-
-	return EAR_SUCCESS;
 }
 
-void msr_inspect(topology_t *tp, int cpu, off_t *offsets, int fd)
+void msr_inspect(topology_t *tp, int cpu_wanted, off_t *offsets, int fd)
 {
 	int max_cpu = 0;
 	int min_cpu = 0;
-	ullong value;
-	int c, o;
-	
-	if (cpu == all_cpus) {
+	int cpu, off;
+    ullong value;
+
+	if (cpu_wanted == all_cpus) {
 		max_cpu = tp->cpu_count;
-	} else if (cpu == all_cores) {
+	} else if (cpu_wanted == all_cores) {
 		max_cpu = tp->core_count;
 	} else {
-		max_cpu = cpu+1;
-		min_cpu = cpu;
+		max_cpu = cpu_wanted+1;
+		min_cpu = cpu_wanted;
 	}
-
-	for (c = min_cpu; c < max_cpu; ++c)
-	{
-		if (init[c] == 0) {
-			msr_open(c);
+	for (cpu = min_cpu; cpu < max_cpu; ++cpu) {
+		if (!init_msr[cpu]) {
+			if (state_fail(msr_open(cpu, MSR_RD))) {
+                continue;
+            }
 		}
 		// Through all the offsets
-		o = 0;
+		off = 0;
 
-		while (offsets[o] != 0LLU) {
+		while (offsets[off] != 0LLU) {
 			value = 0LLU;
-			msr_read(c, &value, sizeof(ullong), offsets[o]);
+			msr_read(cpu, &value, sizeof(ullong), offsets[off]);
 			dprintf(fd, "%09llx ", value);
-			++o;
+			++off;
 		}
 		dprintf(fd, "\n");
 	}
+}
+
+state_t msr_scan(topology_t *tp, off_t *regs, uint regs_count, ullong andval, off_t *offs)
+{
+    ullong content;
+    uint cpu, reg;
+    off_t zero;
+    state_t s;
+
+    for (cpu = 0; cpu < tp->cpu_count; ++cpu) {
+        if (state_fail(s = msr_open(tp->cpus[cpu].id, MSR_RD))) {
+            break;
+        }
+        // Initializing
+        offs[cpu] = 0;
+        zero      = 0;
+        // Reading registers
+        for (reg = 0; reg < regs_count; ++reg) {
+            if (state_fail(s = msr_read(tp->cpus[cpu].id, &content, sizeof(content), regs[reg]))) {
+                return s;
+            }
+            // If a register is using the same event, use that
+            if (content & andval) {
+                offs[cpu] = regs[reg];
+                continue;
+            }
+            if (!content && !zero) {
+                zero = regs[reg];
+            }
+        }
+        // If free register is not found, use the first in the list
+        if (!offs[cpu] && !zero) {
+            offs[cpu] = regs[0];
+        }
+        // If a free register is found, use that
+        if (!offs[cpu] && zero) {
+            offs[cpu] = zero;
+        }
+    }
+    return s;
 }

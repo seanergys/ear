@@ -142,5 +142,6 @@
 #define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"
 #define EAR_POLICY_GRAIN             "SLURM_EAR_POLICY_GRAIN"
 
+
 /** @}  */
 #endif //CONFIG_ENVIRONMENT_H
