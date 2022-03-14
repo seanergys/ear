@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <common/utils/args.h>
+#include <common/utils/string.h>
 
 int args_get(int argc, char *argv[], const char *arg_in, char *buffer)
 {
@@ -47,8 +48,8 @@ int args_get(int argc, char *argv[], const char *arg_in, char *buffer)
 	is_short = (strlen(aux) == 1);
 	is_long  = (strlen(aux) >= 2);
 	//
-	if (is_short) snprintf(arg, sizeof(arg),  "-%s", aux);
-	if (is_long)  snprintf(arg, sizeof(arg), "--%s", aux);
+	if (is_short) xsnprintf(arg, sizeof(arg),  "-%s", aux);
+	if (is_long)  xsnprintf(arg, sizeof(arg), "--%s", aux);
 	//
 	if (buffer != NULL) {
 		buffer[0] = '\0';
