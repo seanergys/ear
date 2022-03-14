@@ -241,7 +241,6 @@ static void metrics_configuration(topology_t *tp)
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
-		pstate_t * cp;
 
     #define sa(function) \
         function;
@@ -258,7 +257,7 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_load(tp, eard));
     sa(        cpi_load(tp, eard));
 
-		debug("metics_load ready");
+    debug("metics_load ready");
     // This extinguishable
     frequency_init(eard);
     // Get API
@@ -299,12 +298,12 @@ static void metrics_static_init(topology_t *tp)
     sa(    imcfreq_count_devices(no_ctx, &met_imcfreq.devs_count));
     sa(     bwidth_count_devices(no_ctx, &met_bwidth.devs_count ));
 		
-		debug("metrics_count_device ready");
-		debug("mgt cpufreq %u", mgt_cpufreq.devs_count);
-		debug("mgt imcfreq %u", mgt_imcfreq.devs_count);
-		debug("    cpufreq %u", met_cpufreq.devs_count);
-		debug("    imcfreq %u", met_imcfreq.devs_count);
-		debug("     bwidth %u", met_bwidth.devs_count);
+    debug("metrics_count_device ready");
+    debug("mgt cpufreq %u", mgt_cpufreq.devs_count);
+    debug("mgt imcfreq %u", mgt_imcfreq.devs_count);
+    debug("    cpufreq %u", met_cpufreq.devs_count);
+    debug("    imcfreq %u", met_imcfreq.devs_count);
+    debug("     bwidth %u", met_bwidth.devs_count);
 
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
@@ -342,9 +341,9 @@ static void metrics_static_init(topology_t *tp)
     bwidth_data_alloc(&bwidth_diff[0]);
     bwidth_data_alloc(&bwidth_diff[1]);
 
-		debug("metrics_allocation ready");
+    debug("metrics_allocation ready");
 	
-		metrics_configuration(tp);
+    metrics_configuration(tp);
 }
 
 void metrics_static_dispose()
@@ -1372,7 +1371,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
     verbose_master(2," ");
   }
 	#endif
-  for (uint i = 0; i < FLOPS_EVENTS; i++){
+  for (i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
   ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);

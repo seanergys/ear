@@ -123,7 +123,6 @@ static int fd_app = -1;
 state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
     int i;
-		char *dir;
     debug("heroes report_applications");
 		if (!must_report) return EAR_SUCCESS;
     if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;

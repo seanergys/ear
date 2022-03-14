@@ -370,7 +370,7 @@ void get_governor(governor_t *_governor)
 	// Clear
 	_governor->max_f = 0LU;
 	_governor->min_f = 0LU;
-	sprintf(_governor->name, Goverstr.other);
+	sprintf(_governor->name, "%s", Goverstr.other);
 	//
 	if (!init) {
 		return;
@@ -414,7 +414,7 @@ void verbose_frequencies(int cpus, ulong *f)
         }
         strcat(buff, buffshort);
     }
-    verbose(VEARD_PC,buff);
+    verbose(VEARD_PC, "%s", buff);
 }
 void vector_print_pstates(uint *pstates, uint num_cpus) {
     char *tmp_buff = calloc(num_cpus*32, sizeof(char));
@@ -424,7 +424,7 @@ void vector_print_pstates(uint *pstates, uint num_cpus) {
         sprintf(sml_buff, "p%d: %u, ", i, pstates[i]);
         strcat(tmp_buff, sml_buff);
     }
-    verbose(VEARD_PC,tmp_buff);
+    verbose(VEARD_PC, "%s", tmp_buff);
     free(tmp_buff);
 }
 

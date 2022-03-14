@@ -156,7 +156,7 @@ state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 	#ifdef MSR_LOCK
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
     #endif
-    debug("Reading MSR of CPU%d (fd %d), address %p", cpu, fds_wr[cpu], offset);
+    debug("Reading MSR of CPU%d (fd %d), address %lx", cpu, fds_wr[cpu], offset);
 	if (pread(fds_rd[cpu], buffer, size, offset) != size) {
 		#ifdef MSR_LOCK
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
