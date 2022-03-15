@@ -356,11 +356,13 @@ ulong frequency_closest_high_freq(ulong freq_khz, int pstate_min)
 	ulong newf;
 	float ff;
 
-	ff = roundf((float) freq_khz / 100000.0);
+	ff   = roundf((float) freq_khz / 100000.0);
 	newf = (ulong) ((ff / 10.0) * 1000000);
 
-	if (newf > (ulong) available_list[pstate_min].khz)
-		return (ulong) available_list[pstate_min].khz;
+	if (newf > (ulong) available_list[pstate_min].khz) {
+        return (ulong) available_list[pstate_min].khz;
+    }
+
 	return frequency_closest_frequency(newf);
 }
 
