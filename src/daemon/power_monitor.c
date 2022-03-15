@@ -702,12 +702,16 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 	if (pmapp->exclusive){
 		verbose(VJOBPMON, "Computing power signature. Job executed in exclusive mode");
 		pmapp->app.power_sig.DC_power = accum_node_power(&app_power);
-		if ((app_power.avg_dc > pmapp->app.power_sig.max_DC_power) && (app_power.avg_dc < my_node_conf->max_error_power)){
-			pmapp->app.power_sig.max_DC_power = app_power.avg_dc;
-		}
-		if (app_power.avg_dc < pmapp->app.power_sig.min_DC_power){
-			pmapp->app.power_sig.min_DC_power = app_power.avg_dc;
-		}
+
+		/* Filter */
+		if (pmapp->app.power_sig.DC_power > my_node_conf->max_sig_power) pmapp->app.power_sig.DC_power = my_node_conf->max_sig_power;
+		if (pmapp->app.power_sig.DC_power < my_node_conf->min_sig_power) pmapp->app.power_sig.DC_power = my_node_conf->min_sig_power;
+
+		/* Compute max and min */
+		pmapp->app.power_sig.max_DC_power = ear_max(pmapp->app.power_sig.max_DC_power, pmapp->app.power_sig.max_DC_power);
+		pmapp->app.power_sig.min_DC_power = ear_min(pmapp->app.power_sig.min_DC_power, pmapp->app.power_sig.max_DC_power);
+
+		/* DRAM and PCK */
 		pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
 		pmapp->app.power_sig.PCK_power = accum_cpu_power(&app_power);
 		// CPU Frequency
@@ -730,6 +734,8 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
 			pmapp->app.power_sig.PCK_power	= pmapp->accum_ps.PCK_energy / elapsed;
 			pmapp->app.power_sig.avg_f        = pmapp->accum_ps.avg_f / elapsed;
 		}
+		if (pmapp->app.power_sig.DC_power > my_node_conf->max_sig_power) pmapp->app.power_sig.DC_power = my_node_conf->max_sig_power;
+		if (pmapp->app.power_sig.DC_power < my_node_conf->min_sig_power) pmapp->app.power_sig.DC_power = my_node_conf->min_sig_power;
 		pmapp->app.power_sig.max_DC_power = ear_max(pmapp->accum_ps.max, pmapp->app.power_sig.DC_power); 
 		pmapp->app.power_sig.min_DC_power = ear_min(pmapp->accum_ps.min, pmapp->app.power_sig.DC_power);
 	}
@@ -1410,7 +1416,7 @@ static uint test_reset = 0;
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
 	ulong jid, mpi,sid;
 	ulong time_consumed;
-	double maxpower, minpower, rapl_dram, rapl_pck, corrected_power,pckp,dramp, rapl;
+	double maxpower, minpower, rapl_dram, rapl_pck, corrected_power,pckp,dramp, gpup, gpu_power, node_dom_power;
 	powermon_app_t *pmapp;
 	uint current_jobs_running_in_node = 0;
 
@@ -1432,6 +1438,10 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	pdomain.cpu      = accum_cpu_power(last_pmon);
 	pdomain.dram     = accum_dram_power(last_pmon);
 	pdomain.gpu      = accum_gpu_power(last_pmon);
+
+	dramp = pdomain.dram;
+	pckp  = pdomain.cpu;
+	gpup  = pdomain.gpu;
 	if (powercap_elapsed_last_powercap() >= f_monitoring) powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
 
 
@@ -1444,11 +1454,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 #if VERBOSE_POWERMON
 	print_app_mgt_data(pmapp->app_info);
 	verbose(VNODEPMON,"%s",COL_BLU);
-	dramp = accum_dram_power(last_pmon);
-	pckp  = accum_cpu_power(last_pmon);
 #if USE_GPUS
-	double gpup;
-	gpup = accum_gpu_power(last_pmon);
 	verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
 			current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc,pckp,dramp,gpup, maxpower, minpower);
 #else
@@ -1480,7 +1486,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 		if ((last_pmon->avg_dc > maxpower) && (last_pmon->avg_dc < my_node_conf->max_error_power)){
 			pmapp->app.power_sig.max_DC_power = last_pmon->avg_dc;
 		}
-		if ((last_pmon->avg_dc < minpower) && (minpower>0)){
+		if ((last_pmon->avg_dc < minpower) && (minpower>= my_node_conf->min_sig_power)){
 			pmapp->app.power_sig.min_DC_power = last_pmon->avg_dc;
 		}
 	}
@@ -1491,11 +1497,14 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	current_sample.start_time = pmon_info->begin;
 	current_sample.end_time   = pmon_info->end;
 	corrected_power           = pmon_info->avg_dc;
+
+	/* we use per domain power as a minimum */
 	rapl_dram                 = accum_dram_power(pmon_info);
 	rapl_pck                  = accum_cpu_power(pmon_info); 
-	rapl = rapl_dram + rapl_pck;
-	if (pmon_info->avg_dc < rapl ) {
-		corrected_power = rapl;
+	gpu_power                 = accum_gpu_power(pmon_info);
+  node_dom_power = rapl_dram + rapl_pck + gpu_power;
+	if (pmon_info->avg_dc < node_dom_power ) {
+		corrected_power = node_dom_power;
 	}
 	if ((corrected_power > my_node_conf->max_error_power) || (corrected_power < 0)){
 		corrected_power = my_node_conf->max_sig_power;
@@ -1504,7 +1513,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 	current_sample.DRAM_energy = rapl_dram * time_consumed;
 	current_sample.PCK_energy  = rapl_pck  * time_consumed;
 #if USE_GPUS
-	current_sample.GPU_energy = accum_gpu_power(pmon_info) * time_consumed;
+	current_sample.GPU_energy = gpu_power * time_consumed;
 #endif
 	current_sample.DC_energy = corrected_power * time_consumed;
 	current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
@@ -1528,8 +1537,8 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 		syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %lu degress (max %lu)\n",nodename,current_sample.temp,my_node_conf->max_temp);
 		log_report_eard_rt_error(&rid,jid,sid,TEMP_ERROR,current_sample.temp);
 	}
-	if (rapl == 0) {
-		log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,rapl);
+	if ((rapl_dram + rapl_pck) == 0) {
+		log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,0);
 	}
 	if ((current_sample.avg_f == 0) || ((current_sample.avg_f > frequency_get_nominal_freq()) && (mpi))){
 		log_report_eard_rt_error(&rid,jid,sid,FREQ_ERROR,current_sample.avg_f);

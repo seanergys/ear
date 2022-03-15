@@ -80,6 +80,9 @@ static uint dvfs_ask_def = 0;
 static uint dvfs_monitor_initialized = 0;
 static timestamp_t last_dvfs_time;
 
+
+extern ulong pmgt_idle_def_freq;
+
 /************************ These functions must be implemented in cpufreq *****/
 
 
@@ -427,7 +430,8 @@ void restore_frequency()
     pmgt_get_app_req_freq(DOMAIN_CPU, c_req_f, node_size);
     //frequency_get_cpufreq_list(node_size,c_freq); //necessary??
     for (i = 0; i < node_size; i++) {
-        if (c_req_f[i] == 0) c_req_f[i] = frequency_get_nominal_freq();
+        //if (c_req_f[i] == 0) c_req_f[i] = frequency_get_nominal_freq();
+        if (c_req_f[i] == 0) c_req_f[i] = pmgt_idle_def_freq;
     }
     verbose_frequencies(node_size, c_req_f);
     frequency_set_with_list(node_size, c_req_f);

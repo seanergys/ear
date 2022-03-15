@@ -62,7 +62,8 @@ state_t is_gpu_idle(signature_t *sig,uint *gidle);
 state_t is_io_bound(float rwsec,uint *iobound);
 state_t is_network_bound(float mpisec,uint *mpibound);
 
-state_t must_switch_to_time_guide(float mpisec, uint *ear_guided);
+state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided);
+
 
 
 

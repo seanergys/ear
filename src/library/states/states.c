@@ -163,11 +163,20 @@ static void print_loop_signature(char *title, signature_t *loop)
 
 
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter,uint dynais_used);
+timestamp_t time_last_signature;
+uint signature_reported = 0;
+
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 {
     my_loop->total_iterations = iterations;
     my_loop->jid 							= job->id;
     my_loop->step_id 					= job->step_id;
+
+		/* EAR uses this timestamp to switch to periodic mode (or not ) */
+    timestamp_getfast(&time_last_signature);
+    signature_reported = 1;
+
+
     if (masters_info.my_master_rank>=0){
         clean_db_loop(my_loop, system_conf->max_sig_power);
 				application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);

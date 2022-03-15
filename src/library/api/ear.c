@@ -1898,11 +1898,14 @@ state_t earl_periodic_actions_init(void *no_arg)
 
 				return EAR_SUCCESS;
 }
+
+extern timestamp_t time_last_signature;
+
 state_t earl_periodic_actions(void *no_arg)
 {
 				uint mpi_period;
 				float mpi_in_period;
-				ulong period_elapsed;
+				ulong period_elapsed, last_signature_elapsed;
 				timestamp_t curr_periodic_time;
 				uint new_ear_guided = ear_guided;
 
@@ -1912,6 +1915,8 @@ state_t earl_periodic_actions(void *no_arg)
 				ear_iterations++;
 				timestamp_getfast(&curr_periodic_time);
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
+    		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+
 				debug("elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided);
 				if (first_exec_monitor){
 								first_exec_monitor = 0;
@@ -1930,7 +1935,7 @@ state_t earl_periodic_actions(void *no_arg)
 								if (mpi_period) mpi_in_period = (float)mpi_period/(float)seconds;
 								else mpi_in_period = 0;
 								/* IO metrics are now computed in metrics.c as part of the signature */
-								if (must_switch_to_time_guide(mpi_in_period, &new_ear_guided) != EAR_SUCCESS){
+								if (must_switch_to_time_guide(mpi_in_period, last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
 												verbose_master(2,"Error estimating dynais/time guided");
 								}
 								debug("%d:Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);
