@@ -231,13 +231,13 @@ static void from_proc_to_core(ulong *cpuf)
         pstate_t curr_pstate;
         state_t ps_manag_st = pstate_freqtops(pstate_list, pstate_count, (ullong) f, &curr_pstate);
         if (state_fail(ps_manag_st)) {
-            verbose_master(0, "%sERROR%s converting freq %lu to P-STATE", COL_RED, COL_CLR, f);
+            verbose_master(2, "%sERROR%s converting freq %lu to P-STATE", COL_RED, COL_CLR, f);
             sig_shared_region[p].pstate_index = ps_nothing;
         } else {
             sig_shared_region[p].pstate_index = curr_pstate.idx;
         }
 
-        verbose_master(lv, "Frequency for process %d is %lu (P-STATE %u)", p, f, curr_pstate.idx);
+        verbose_master(lv, "Frequency for process %d is %lu (P-STATE %u)", p, f, sig_shared_region[p].pstate_index);
 #else
         verbose_master(lv, "Frequency for process %d is %lu", p, f);
 #endif

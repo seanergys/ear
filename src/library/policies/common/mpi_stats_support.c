@@ -59,10 +59,11 @@ static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 
+
+#if EARL_RESEARCH
 static uint barriers = 0;
 static ulong total_barrier_time = 0;
 
-#if EARL_RESEARCH
 static uint pstate_list[MAX_CPUS_SUPPORTED];
 static uint *cpu_list;
 #endif
@@ -279,7 +280,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
                         pstate_list[cpu] = 3;
                     }
 
-                    vector_print_pstates(pstate_list, sizeof(pstate_list));
+                    // vector_print_pstates(pstate_list, sizeof(pstate_list));
 
                     if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
                         verb(0, "%sERROR%s", COL_RED, COL_CLR);
@@ -292,8 +293,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
     return EAR_SUCCESS;
 }
 
-
-state_t mpi_call_end(polctx_t *c,mpi_call call_type)
+state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
     timestamp_t end;
     mpi_call nbcall_type;
@@ -331,15 +331,15 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
                 if (cpu_list != NULL) {
                     if (nbcall_type == Only_Barrier) {
                         verb(0, "%sBarrier end%s time %llu", COL_RED, COL_CLR, elap);
-                        barriers++;
-                        total_barrier_time += elap;
+                         barriers++;
+                         total_barrier_time += elap;
 
                         for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                             uint cpu = cpu_list[i];
                             pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index;
                         }
 
-                    vector_print_pstates(pstate_list, sizeof(pstate_list));
+                    // vector_print_pstates(pstate_list, sizeof(pstate_list));
 
                         if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
                             verb(0, "%sERROR%s", COL_RED, COL_CLR);
@@ -347,7 +347,6 @@ state_t mpi_call_end(polctx_t *c,mpi_call call_type)
                     }
                 }
 #endif
-
             } else {
                 total_sync_block++;
                 time_sync_block += (ulong)elap;

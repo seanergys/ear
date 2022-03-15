@@ -190,6 +190,8 @@ static uint synchronize_masters = 1;
 /*  Sets verbose level for ear init messages */
 #define VEAR_INIT 3
 
+#define MAX_TRIES 1
+
 uint using_verb_files = 0;
 uint exclusive = 1;
 
@@ -1081,38 +1083,57 @@ void ear_init()
 				debug("Job time initialized");
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
-				#if SINGLE_CONNECTION
-				if (!my_id && eard_ok){ //only the master will connect with eard
-								verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
-								if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
-												debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
-												notify_eard_connection(1);
-												mark_as_eard_connected(my_job_id,my_step_id,getpid());
-								}else{   
-												eard_ok=0;
-												notify_eard_connection(0);
-								}
-				}
-				#else
-				if (eard_ok){ // all processes will connect with eard
-								char *col;
-                if (!my_id) col = COL_BLU; 
-								else        col = COL_GRE;
-								verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s", col,my_node_id, getpid(), ear_my_rank,node_name,COL_CLR);
-                if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
-                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
-												if (!my_id){
+#if SINGLE_CONNECTION
+                if (!my_id && eard_ok){ //only the master will connect with eard
+                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
+                    if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+                        debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
                         notify_eard_connection(1);
                         mark_as_eard_connected(my_job_id,my_step_id,getpid());
-												}
-                }else{   
-                        verbose(2, "%sRank %d NOT connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                    }else{   
+                        eard_ok=0;
+                        notify_eard_connection(0);
+                    }
+                }
+#else
+                if (eard_ok){ // all processes will connect with eard
+                    char *col;
+                    if (!my_id) col = COL_BLU; 
+                    else        col = COL_GRE;
+                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s", col,my_node_id, getpid(), ear_my_rank,node_name,COL_CLR);
+#if EARL_RESEARCH
+                    int try = 0;
+                    while (eards_connect(&application, ear_my_rank) != EAR_SUCCESS && try < MAX_TRIES) {
+                        try++;
+                    }
+                    if (try == MAX_TRIES) {
+                        verbose(2, "%sRank %d NOT connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         eard_ok=0;
                         if (!my_id) notify_eard_connection(0);
+                    } else {
+                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                        if (!my_id){
+                            notify_eard_connection(1);
+                            mark_as_eard_connected(my_job_id,my_step_id,getpid());
+                        }
+                    }
+
+#else
+                if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
+                    verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                    if (!my_id){
+                        notify_eard_connection(1);
+                        mark_as_eard_connected(my_job_id,my_step_id,getpid());
+                    }
+                }else{   
+                    verbose(2, "%sRank %d NOT connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                        eard_ok=0;
+                        if (!my_id) notify_eard_connection(0);
+                    }
+#endif
                 }
-        }
-				#endif
-				/* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
+#endif
+                /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 				debug("End EARD connection section");
 
@@ -1266,21 +1287,22 @@ void ear_init()
 				}
 				if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
 								error("Checking the affinity mask");
-				}else{
-								/* Copy mask in shared memory */
-								if (ear_affinity_is_set){ 
-												sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
-												sig_shared_region[my_node_id].affinity = 1;
-												sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
+                }else{
+                    /* Copy mask in shared memory */
+                    if (ear_affinity_is_set){ 
+                        sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
+                        sig_shared_region[my_node_id].affinity = 1;
+                        sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
+                        verb(0, "%sNum cpus for proc %d: %d%s", COL_YLW, my_node_id, sig_shared_region[my_node_id].num_cpus, COL_CLR);
 #if 1
-												// if (masters_info.my_master_rank>=0){ 
-																print_affinity_mask(&arch_desc.top);
-												// }
+                        // if (masters_info.my_master_rank>=0){ 
+                        print_affinity_mask(&arch_desc.top);
+                        // }
 #endif
-								}else{ 
-												sig_shared_region[my_node_id].affinity = 0;
-												verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
-								} 
+                    }else{ 
+                        sig_shared_region[my_node_id].affinity = 0;
+                        verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
+                    } 
 				}
 
 #ifdef SHOW_DEBUGS
