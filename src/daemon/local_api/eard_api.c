@@ -28,7 +28,7 @@
 #define _GNU_SOURCE             
 #include <sched.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -37,7 +37,7 @@
 #include <daemon/local_api/eard_api.h>
 
 #define MAX_PIPE_TRIES (MAX_SOCKET_COMM_TRIES*10)
-#define MAX_TRIES           100
+#define MAX_TRIES           1
 #define USE_NON_BLOCKING_IO 1
 
 /* These pipes are used for local communication between ear library and eard */
@@ -298,7 +298,7 @@ int eards_connect(application_t *my_app, ulong lid)
   if (ear_fd_req_global >= 0)
   {
       debug("Sending connection request to EARD\n");
-      if (warning_api(write(ear_fd_req_global, &req, sizeof(req)), sizeof(req),
+      if (warning_api(my_write(ear_fd_req_global,(char *) &req, sizeof(req)), sizeof(req),
           "writting req_service in ear_daemon_client_connect"))
       {
         ear_fd_req_global = -1;
@@ -325,7 +325,7 @@ int eards_connect(application_t *my_app, ulong lid)
       #endif
 
       debug( "ear_client: waiting for ear_daemon ok");
-      if (warning_api(read(ear_fd_ack,&ack,sizeof(ulong)),sizeof(ulong),
+      if (warning_api(my_read(ear_fd_ack, (char *) &ack,sizeof(ulong)),sizeof(ulong),
         "ERROR while reading ack ")) {
         CLOSE_LOCAL_COMM();
         return EAR_ERROR;
