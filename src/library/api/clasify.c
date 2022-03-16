@@ -28,6 +28,10 @@
 
 #define INFO_CLASSIFY 3
 
+extern ulong perf_accuracy_min_time;
+extern uint signature_reported;
+
+
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
 	*app_state = APP_COMP_BOUND;
@@ -56,10 +60,13 @@ state_t is_network_bound(float mpisec,uint *mpibound)
 	return EAR_SUCCESS;
 }
 
-state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
+state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided)
 {
     if (mpisec < MIN_MPI_TH){
         *ear_guided = TIME_GUIDED;
+    }
+    if (signature_reported && (last_sig_elapsed > ((5*perf_accuracy_min_time)/1000000))){
+      *ear_guided = TIME_GUIDED;
     }
     return EAR_SUCCESS;
 }
@@ -80,7 +87,7 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	c2 = (sig->GBS < GBS_BUSY_WAITING);
 	c3 = (flops    < GFLOPS_BUSY_WAITING);
     if (c1 || c2 || c3){
-        verbose_master(INFO_CLASSIFY, "--- Is CPI busy waiting ---\n(last sig/current/thresh) CPI (%.3lf/%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)",
+        verbose_master(INFO_CLASSIFY, "--- NO Busy waiting ---\n(prev/current/th) CPI (%.3lf/%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)",
                 sig->CPI, cpi, CPI_BUSY_WAITING, sig->GBS, GBS_BUSY_WAITING, flops, GFLOPS_BUSY_WAITING);
     }
     if (c1 && c2 && c3) *busy = BUSY_WAITING;
@@ -106,10 +113,13 @@ state_t  is_gpu_idle(signature_t *sig,uint *gidle)
 #if USE_GPUS
 	int total = 0;
 	int i;
+#if 0
+    /* Below code is redundant  */
 	if (sig->gpu_sig.num_gpus == 0){
 		*gidle = GPU_IDLE;
 		return EAR_SUCCESS;
 	}
+#endif
 	for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
 	if (total == 0) *gidle = GPU_IDLE;
 	else *gidle = GPU_COMP;

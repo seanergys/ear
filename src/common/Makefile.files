@@ -9,6 +9,7 @@ libc_OBJS = \
     $(SRCDIR)/common/system/user.o \
     $(SRCDIR)/common/system/sockets.o \
     $(SRCDIR)/common/system/execute.o \
+    $(SRCDIR)/common/system/lock.o \
     $(SRCDIR)/common/system/monitor.o \
     $(SRCDIR)/common/system/random.o \
     $(SRCDIR)/common/system/shared_areas.o \

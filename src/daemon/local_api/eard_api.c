@@ -31,35 +31,36 @@
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
+#include <common/system/lock.h>
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
+#include <metrics/common/apis.h>
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
 
-#define MAX_PIPE_TRIES (MAX_SOCKET_COMM_TRIES*10)
-#define MAX_TRIES             1
-#define USE_NON_BLOCKING_IO 1
+#define MAX_PIPE_TRIES       (MAX_SOCKET_COMM_TRIES*10)
+#define MAX_TRIES            1
+#define USE_NON_BLOCKING_IO  1
 
 /* These pipes are used for local communication between ear library and eard */
-
-char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs, then a specific per job-step-localid is created */ 
+char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
+                                         * then a specific per job-step-localid is created */
 char ear_commreq[SZ_PATH];
 char ear_commack[SZ_PATH];
 int ear_fd_req_global = -1;
-int ear_fd_req        = -1;
-int ear_fd_ack        = -1;
+int ear_fd_req = -1;
+int ear_fd_ack = -1;
+
 static uint8_t app_connected = 0;
 static app_id_t local_con_info;
 static int my_step_id;
 static int my_job_id;
 static char *ear_tmp;
-
 // Metrics: Needed for old API where data size must be requested in advance
 static ulong energy_size;
 static ulong rapl_size;
 
-#define my_read(...)          eards_read(__VA_ARGS__, WAIT_DATA)
-#define my_write(...)         eards_write(__VA_ARGS__)
+extern pthread_mutex_t lock_rpc;
 
 #define CLOSE_LOCAL_COMM()    \
   close(ear_fd_req_global); \
@@ -68,7 +69,6 @@ static ulong rapl_size;
   ear_fd_ack = -1;          \
   unlink(ear_commack);      \
   unlink(ear_commreq);
-
 
 int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
@@ -113,8 +113,6 @@ int eards_write(int fd,char *buff,int size)
   int tries=0;
   uint to_send,sended=0;
   uint must_abort=0;
-
-
   to_send=size;
   do
   {
@@ -140,7 +138,6 @@ int eards_write(int fd,char *buff,int size)
   return write(fd,buff,size);
 #endif
 }
-
 
 void eards_signal_handler(int s)
 {
@@ -179,7 +176,6 @@ ulong create_sec_tag()
 
 }
 
-
 uint warning_api(int return_value, int expected, char *msg)
 {
 	if (return_value != expected){ 
@@ -208,7 +204,6 @@ state_t eards_connection()
   my_dummy_app.job.step_id = 0;
   return eards_connect(&my_dummy_app,getpid());
 }
-
 
 int eards_connect(application_t *my_app, ulong lid)
 {
@@ -354,6 +349,7 @@ int eards_connect(application_t *my_app, ulong lid)
   debug("Connected");
   return EAR_SUCCESS;
 }
+
 void eards_disconnect()
 {
   struct daemon_req req;
@@ -363,7 +359,7 @@ void eards_disconnect()
   debug( "Disconnecting");
   if (!app_connected) return;
   if (ear_fd_req >= 0) {
-    warning_api(my_write(ear_fd_req, (char *)&req,sizeof(req)), sizeof(req),
+    warning_api(eards_write(ear_fd_req, (char *)&req,sizeof(req)), sizeof(req),
         "witting req in ear_daemon_client_disconnect");
   }
   CLOSE_LOCAL_COMM();
@@ -372,780 +368,158 @@ void eards_disconnect()
 }
 
 //////////////// SYSTEM REQUESTS
+ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, const char *description, int retsuc)
+{
+    state_t s;
+		ulong *ack_long;
+		debug("local api init : %s. send size %lu. FD %d", description, send_size, ear_fd_req);
+    if (ear_fd_req < 0) {
+        return (ulong) EAR_SUCCESS;
+    }
+    if (state_fail(s = ear_trylock(&lock_rpc))) {
+				debug("local api, cannot get the lock");
+        return s;
+    }
+    if (eards_write(ear_fd_req, send_buf, send_size) != send_size) {
+				debug("local api end error write: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
+				app_connected = 0;
+        return_unlock((ulong) EAR_ERROR, &lock_rpc);
+    }
+    if (eards_read(ear_fd_ack, ack_buf, ack_size, WAIT_DATA) != ack_size) {
+				debug("local api end error read: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
+				app_connected = 0;
+        return_unlock((ulong) EAR_ERROR, &lock_rpc);
+    }
+		debug("local api end : %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
+    if (!retsuc) {
+				ack_long = (ulong *)ack_buf;
+				debug("local api returns %lu from eard", *ack_long);
+        return_unlock(*ack_long, &lock_rpc);
+    }
+    return_unlock((ulong) EAR_SUCCESS, &lock_rpc);
+}
+
+#define init_service(service)               \
+    struct daemon_req req;                  \
+    ulong ack = EAR_SUCCESS;                \
+    (void) (ack);                           \
+    if (!app_connected) return EAR_SUCCESS; \
+    req.req_service = service;              \
+    req.sec=create_sec_tag();
+
 ulong eards_write_app_signature(application_t *app_signature)
 {
-  struct daemon_req req;
-  ulong ack=EAR_SUCCESS;
-
-  if (!app_connected) return EAR_SUCCESS;
-  debug( "asking the daemon to write the whole application signature (DB)");
-
-  req.req_service = WRITE_APP_SIGNATURE;
-  req.sec=create_sec_tag();
-  memcpy(&req.req_data.app, app_signature, sizeof(application_t));
-
-  if (ear_fd_req >= 0)
-  {
-    debug( "writing request...");
-    if (warning_api(my_write(ear_fd_req, (char *)&req, sizeof(req)), sizeof(req),
-      "ERROR writing request for app signature")) return EAR_ERROR;
-
-    debug( "reading ack...");
-    if (warning_api(my_read(ear_fd_ack, (char *)&ack, sizeof(ulong)),sizeof(ulong),
-            "ERROR reading ack for app signature")) return EAR_ERROR;
-  }else{
-    debug( "writting application signature (DB) service unavailable");
-    ack=EAR_SUCCESS;
-  }
-
-  return ack;
+    init_service(WRITE_APP_SIGNATURE);
+    memcpy(&req.req_data.app, app_signature, sizeof(application_t));
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "APP signature", 0);
 }
 
 ulong eards_write_event(ear_event_t *event)
 {
-    struct daemon_req req;
-    ulong ack=EAR_SUCCESS;
-
-    if (!app_connected) return EAR_SUCCESS;
-    debug( "asking the daemon to write an event)");
-
-    req.req_service = WRITE_EVENT;
-    req.sec=create_sec_tag();
+    init_service(WRITE_EVENT);
     memcpy(&req.req_data.event, event, sizeof(ear_event_t));
-
-    if (ear_fd_req >= 0)
-    {
-        debug( "writing request...");
-        if (warning_api(write(ear_fd_req, (char *)&req, sizeof(req)), sizeof(req),
-            "ERROR writing request for event")) return EAR_ERROR;
-
-        debug( "reading ack...");
-        if (warning_api(my_read(ear_fd_ack, (char *)&ack, sizeof(ulong)),sizeof(ulong),
-                "ERROR reading ack event")) return EAR_ERROR;
-    }else{
-        debug( "eards_write_event service not available");
-        ack=EAR_SUCCESS;
-    }
-    return ack;
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "EVENT write", 0);
 }
+
 ulong eards_write_loop_signature(loop_t *loop_signature)
 {
-    struct daemon_req req;
-    ulong ack=EAR_SUCCESS;
-
-    if (!app_connected) return EAR_SUCCESS;
-    debug( "asking the daemon to write the loop signature (DB)");
-
-    req.req_service = WRITE_LOOP_SIGNATURE;
-    req.sec=create_sec_tag();
+    init_service(WRITE_LOOP_SIGNATURE);
     memcpy(&req.req_data.loop, loop_signature, sizeof(loop_t));
-    if (ear_fd_req >= 0)
-    {
-        debug( "writing request...");
-        if (warning_api(my_write(ear_fd_req, (char *)&req, sizeof(req)), sizeof(req),
-            "ERROR writing request for loop signature")) return EAR_ERROR;
-
-        debug( "reading ack...");
-        if (warning_api(my_read(ear_fd_ack, (char *)&ack, sizeof(ulong)),sizeof(ulong),
-                "ERROR reading ack for loop signature")) return EAR_ERROR;
-    }else{
-        debug( "writting loop signature (DB) service unavailable");
-        ack=EAR_SUCCESS;
-    }
-
-    return ack;
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "LOOP signature", 0);
 }
 
-//////////////// RAPL REQUESTS
 ulong eards_get_data_size_rapl() // size in bytes
 {
-    struct daemon_req req;
-  ulong ack;
-  if (!app_connected) return sizeof(ulong);
-
-    debug( "asking for rapl data size ");
-    req.req_service=DATA_SIZE_RAPL;
-  req.sec=create_sec_tag();
-    ack=EAR_SUCCESS;
-
-    if (ear_fd_req >= 0)
-  {
-        if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-       "ERROR writing request for RAPL data size ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-      "ERROR reading ack for RAPL data size ")) return EAR_ERROR;
-    } else {
-    debug( "ear_daemon_client_get_data_size_rapl service not provided");
-    ack=EAR_ERROR;
-  }
-    rapl_size=ack;
-    return ack;
+    if (!app_connected) return sizeof(ulong);
+    init_service(DATA_SIZE_RAPL);
+    rapl_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL size", 0);
+    return rapl_size;
 }
-
 
 int eards_reset_rapl()
 {
-  struct daemon_req req;
-  ulong ack=EAR_SUCCESS;
-  if (!app_connected) return EAR_SUCCESS;
-  req.req_service = RESET_RAPL;
-  req.sec=create_sec_tag();
-  debug( "reset rapl");
-
-  if (ear_fd_req>=0)
-  {
-    if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-       "ERROR writing request for resetting RAPL counters ")) return EAR_ERROR;
-    if (warning_api(my_read(ear_fd_ack,(char *)&ack, sizeof(ulong)) , sizeof(ulong),
-       "ERROR reading ack for resetting RAPL counters ")) return EAR_ERROR;
-    debug( "RESET ACK rapl counters received from daemon ");
-    return ack;
-    }
-  debug( "reset rapl service not provided");
-  return EAR_ERROR;
+    init_service(RESET_RAPL);
+    return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL reset", 0);
 }
+
 int eards_start_rapl()
 {
-  struct daemon_req req;
-  ulong ack;
-  if (!app_connected) return EAR_SUCCESS;
-  req.req_service=START_RAPL;
-  req.sec=create_sec_tag();
-  debug( "start rapl");
-
-    if (ear_fd_req>=0)
-  {
-    if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-       "ERROR writing request for starting RAPL counters ")) return EAR_ERROR;
-    if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-       "ERROR reading ack for starting RAPL counters ")) return EAR_ERROR;
-    debug( "START ACK rapl counters received from daemon ");
-    return EAR_SUCCESS;
-    }
-  debug( "start rapl service not provided");
-  return EAR_ERROR;
+    init_service(START_RAPL);
+    return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL start", 1);
 }
 
 int eards_read_rapl(unsigned long long *values)
 {
-  struct daemon_req req;
-  ulong ack;
-  if (!app_connected){ values[0]=0;return EAR_SUCCESS;}
-
-  req.req_service=READ_RAPL;
-  req.sec=create_sec_tag();
-  debug( "reading rapl counters");
-
-  if (ear_fd_req>=0)
-  {
-    // There is not request for uncore...only answer
-    if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-       "ERROR writing request for stopping RAPL counters ")) return EAR_ERROR;
-    if (warning_api(my_read(ear_fd_ack,(char *)values,rapl_size) , rapl_size,
-       "ERROR reading ack for stopping RAPL counters "))
-    {
-      return EAR_ERROR;
-    }else{
-      ack = EAR_SUCCESS;
-    }
-
-  }else{
-    debug( "read rapl service not provided");
-    ack = EAR_ERROR;
-  }
-  return ack;
+    if (!app_connected) { values[0]=0; return EAR_SUCCESS; }
+    init_service(READ_RAPL);
+    return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
 }
-// END RAPL SERVICES
-// NODE ENERGY SERVICES
+
 ulong eards_node_energy_data_size()
 {
-    struct daemon_req req;
-  ulong ack = EAR_SUCCESS;
-
-  if (!app_connected) return sizeof(ulong);
-
-    debug( "asking for node energy data size ");
-    req.req_service=DATA_SIZE_ENERGY_NODE;
-  req.sec=create_sec_tag();
-
-    if (ear_fd_req>=0)
-  {
-        if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-       "ERROR writing request for IPMI data size ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-       "ERROR reading ack for IPMI data size ")) return EAR_ERROR;
-    } else {
-    debug( "ear_daemon_client_node_energy_data_size service not provided");
-    ack=EAR_ERROR;
-    }
-    energy_size=ack;
-    return ack;
+    if (!app_connected) return sizeof(ulong);
+    init_service(DATA_SIZE_ENERGY_NODE);
+    energy_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "energy data size", 0);
+    return energy_size;
 }
+
 int eards_node_dc_energy(void *energy,ulong datasize)
 {
-  ulong ack=EAR_SUCCESS;
-  struct daemon_req req;
-
-  if (!app_connected){
     memset(energy,0,datasize);
-    return EAR_SUCCESS;
-  }
-
-    debug( "asking for node dc energy ");
-    req.req_service=READ_DC_ENERGY;
-  req.sec=create_sec_tag();
-
-  if (ear_fd_req>=0)
-  {
-        if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-      "ERROR writing request for dc_node_energy ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack,(char *)energy,datasize) , datasize,
-      "ERROR reading data for dc_node_energy ")) return EAR_ERROR;
-    } else
-  {
-    debug( "ear_daemon_client_node_dc_energy service not provided");
-    ack=EAR_ERROR;
-    }
-    return ack;
+    init_service(READ_DC_ENERGY);
+    return (int) sendack((char *) &req, sizeof(req), (char *) energy, datasize, "energy read", 1);
 }
+
 ulong eards_node_energy_frequency()
 {
-    ulong ack=EAR_ERROR;
-    struct daemon_req req;
-
-  if (!app_connected) return 10000000;
-
-    debug( "asking for dc node energy frequency ");
-    req.req_service=ENERGY_FREQ;
-  req.sec=create_sec_tag();
-    if (ear_fd_req>=0)
-    {
-        if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-             "ERROR writing request for energy freq of update ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-            "ERROR reading ack for energy freq of update ")) return ack;
-    } else
-    {
-        debug( "eards_node_energy_frequency service not provided");
-        ack=EAR_ERROR;
-    }
-    return ack;
-
+    if (!app_connected) return 10000000;
+    init_service(ENERGY_FREQ);
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "energy freq", 0);
 }
 
-
-#if 0
-//////////////// SYSTEM REQUESTS
-ulong eards_write_app_signature(application_t *app_signature)
-{
-	int com_fd=system_req;
-	struct daemon_req req;
-	ulong ack=EAR_SUCCESS;
-
-	if (!app_connected) return EAR_SUCCESS;
-	debug( "asking the daemon to write the whole application signature (DB)");
-
-	req.req_service = WRITE_APP_SIGNATURE;
-	req.sec=create_sec_tag();
-	memcpy(&req.req_data.app, app_signature, sizeof(application_t));
-
-	if (ear_fd_req[com_fd] >= 0)
-	{
-		debug( "writing request...");
-		if (warning_api(my_write(ear_fd_req[com_fd], (char *)&req, sizeof(req)), sizeof(req),
-			"ERROR writing request for app signature")) return EAR_ERROR;
-        
-		debug( "reading ack...");
-		if (warning_api(my_read(ear_fd_ack[com_fd], (char *)&ack, sizeof(ulong)),sizeof(ulong),
-        		"ERROR reading ack for app signature")) return EAR_ERROR;
-	}else{
-		debug( "writting application signature (DB) service unavailable");
-		ack=EAR_SUCCESS;
-	}
-
-	return ack;
-}
-
-ulong eards_write_event(ear_event_t *event)
-{
-	int com_fd=system_req;
-    struct daemon_req req;
-    ulong ack=EAR_SUCCESS;
-
-    if (!app_connected) return EAR_SUCCESS;
-    debug( "asking the daemon to write an event)");
-
-    req.req_service = WRITE_EVENT;
-	req.sec=create_sec_tag();
-    memcpy(&req.req_data.event, event, sizeof(ear_event_t));
-
-    if (ear_fd_req[com_fd] >= 0)
-    {
-        debug( "writing request...");
-        if (warning_api(write(ear_fd_req[com_fd], (char *)&req, sizeof(req)), sizeof(req),
-            "ERROR writing request for event")) return EAR_ERROR;
-
-        debug( "reading ack...");
-        if (warning_api(my_read(ear_fd_ack[com_fd], (char *)&ack, sizeof(ulong)),sizeof(ulong),
-                "ERROR reading ack event")) return EAR_ERROR;
-    }else{
-        debug( "eards_write_event service not available");
-        ack=EAR_SUCCESS;
-    }
-
-    return ack;
-	
-}
-ulong eards_write_loop_signature(loop_t *loop_signature)
-{
-    int com_fd=system_req;
-    struct daemon_req req;
-    ulong ack=EAR_SUCCESS;
-
-    if (!app_connected) return EAR_SUCCESS;
-    debug( "asking the daemon to write the loop signature (DB)");
-
-    req.req_service = WRITE_LOOP_SIGNATURE;
-	req.sec=create_sec_tag();
-    memcpy(&req.req_data.loop, loop_signature, sizeof(loop_t));
-
-	
-
-    if (ear_fd_req[com_fd] >= 0)
-    {
-        debug( "writing request...");
-        if (warning_api(my_write(ear_fd_req[com_fd], (char *)&req, sizeof(req)), sizeof(req),
-            "ERROR writing request for loop signature")) return EAR_ERROR;
-
-        debug( "reading ack...");
-        if (warning_api(my_read(ear_fd_ack[com_fd], (char *)&ack, sizeof(ulong)),sizeof(ulong),
-                "ERROR reading ack for loop signature")) return EAR_ERROR;
-    }else{
-        debug( "writting loop signature (DB) service unavailable");
-        ack=EAR_SUCCESS;
-    }
-
-    return ack;
-}
-
-void eards_begin_compute_turbo_freq()
-{
-	struct daemon_req req;
-	ulong ack=EAR_SUCCESS;
-	if (!app_connected) return;
-	debug( "start getting turbo freq ");
-    req.req_service=START_GET_FREQ;
-	req.sec=create_sec_tag();
-    if (ear_fd_req[freq_req]>=0)
-	{
-		if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req,sizeof(req)) , sizeof(req),
-			"ERROR writing request for starting frequency ")) return ;
-		if (warning_api(my_read(ear_fd_ack[freq_req],(char *)&ack, sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for starting frequency ")) return ;
-		return;
-   }   
-   debug( "ear_daemon_client_begin_compute_turbo_freq service not provided");
-   return;
-}
-
-ulong eards_end_compute_turbo_freq()
-{
-	struct daemon_req req;
-	ulong ack=EAR_SUCCESS;
-
-	if (!app_connected) return 0;
-
-	debug( "end getting turbo freq ");
-    req.req_service = END_GET_FREQ;
-	req.sec=create_sec_tag();
-	if (ear_fd_req[freq_req] >= 0)
-	{
-		if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)) ,sizeof(req),
-			 "ERROR writing request for finishing frequency")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[freq_req],(char *)&ack, sizeof(ulong)) , sizeof(ulong),
-				"ERROR reading ack for finishing frequency ")) return EAR_ERROR;
-
-		debug("TURBO freq computed as  %lu",  ack);
-	} else {
-		debug( "ear_daemon_client_end_compute_turbo_freq service not provided");
-	}
-    return ack;
-}
-void eards_begin_app_compute_turbo_freq()
-{
-    struct daemon_req req;
-    ulong ack = EAR_SUCCESS;
-	if (!app_connected) return;
-
-    debug( "start getting turbo freq");
-    req.req_service = START_APP_COMP_FREQ;
-	req.sec=create_sec_tag();
-
-	if (ear_fd_req[freq_req]>=0)
-	{
-		if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req, sizeof(req)) , sizeof(req),
-			"ERROR writing request for starting frequency for app")) return;
-		if (warning_api(my_read(ear_fd_ack[freq_req],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			"ERROR reading ack for starting frequency")) return;
-		return;
-   }
-   debug( "ear_daemon_client_begin_app_compute_turbo_freq service not provided");
-   return;
-}
-ulong eards_end_app_compute_turbo_freq()
-{
-	struct daemon_req req;
-	ulong ack=EAR_SUCCESS;
-	if (!app_connected) return 0;
-	debug( "end getting turbo freq");
-	req.req_service = END_APP_COMP_FREQ;
-	req.sec=create_sec_tag();
-
-	if (ear_fd_req[freq_req]>=0)
-	{
-		if (warning_api(my_write(ear_fd_req[freq_req],(char *)&req,sizeof(req)) , sizeof(req),
-			 "ERROR writing request for finishing frequency for app")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[freq_req],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			"ERROR writing ack for finishing frequency for app ")) return EAR_ERROR;
-
-		debug("TURBO freq computed as  %lu", ack);
-	} else {
-		debug( "ear_daemon_client_end_app_compute_turbo_freq service not provided");
-	}
-	return ack;
-}
-
-// END FREQUENCY SERVICES
-#endif
-
-#if 0
-//////////////// RAPL REQUESTS
-ulong eards_get_data_size_rapl() // size in bytes
-{
-    int com_fd=rapl_req;
-    struct daemon_req req;
-	ulong ack;
-	if (!app_connected) return sizeof(ulong);
-
-    debug( "asking for rapl data size ");
-    req.req_service=DATA_SIZE_RAPL;
-	req.sec=create_sec_tag();
-    ack=EAR_SUCCESS;
-
-    if (ear_fd_req[com_fd] >= 0)
-	{
-        if (warning_api(my_write(ear_fd_req[com_fd],(char *)&req,sizeof(req)) , sizeof(req),
-			 "ERROR writing request for RAPL data size ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack[com_fd],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			"ERROR reading ack for RAPL data size ")) return EAR_ERROR;
-    } else {
-		debug( "ear_daemon_client_get_data_size_rapl service not provided");
-		ack=EAR_ERROR;
-	}
-    rapl_size=ack;
-    return ack;
-}
-
-
-int eards_reset_rapl()
-{
-	struct daemon_req req;
-	ulong ack=EAR_SUCCESS;
-	if (!app_connected) return EAR_SUCCESS;
-	req.req_service = RESET_RAPL;
-	req.sec=create_sec_tag();
-	debug( "reset rapl");
-
-	if (ear_fd_req[rapl_req]>=0)
-	{
-		if (warning_api(my_write(ear_fd_req[rapl_req],(char *)&req,sizeof(req)) , sizeof(req),
-			 "ERROR writing request for resetting RAPL counters ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[rapl_req],(char *)&ack, sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for resetting RAPL counters ")) return EAR_ERROR;
-		debug( "RESET ACK rapl counters received from daemon ");
-		return ack;
-    }
-	debug( "reset rapl service not provided");
-	return EAR_ERROR;
-}
-
-int eards_start_rapl()
-{
-	struct daemon_req req;
-	ulong ack;
-	if (!app_connected) return EAR_SUCCESS;
-	req.req_service=START_RAPL;
-	req.sec=create_sec_tag();
-	debug( "start rapl");
-
-    if (ear_fd_req[rapl_req]>=0)
-	{
-		if (warning_api(my_write(ear_fd_req[rapl_req],(char *)&req,sizeof(req)) , sizeof(req),
-			 "ERROR writing request for starting RAPL counters ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[rapl_req],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for starting RAPL counters ")) return EAR_ERROR;
-		debug( "START ACK rapl counters received from daemon ");
-		return EAR_SUCCESS;
-    }
-	debug( "start rapl service not provided");
-	return EAR_ERROR;
-}
-
-int eards_read_rapl(unsigned long long *values)
-{
-	struct daemon_req req;
-	ulong ack;
-	if (!app_connected){ values[0]=0;return EAR_SUCCESS;}
-
-	req.req_service=READ_RAPL;
-	req.sec=create_sec_tag();
-	debug( "reading rapl counters");
-
-	if (ear_fd_req[rapl_req]>=0)
-	{
-		// There is not request for uncore...only answer
-		if (warning_api(my_write(ear_fd_req[rapl_req],(char *)&req,sizeof(req)) , sizeof(req),
-			 "ERROR writing request for stopping RAPL counters ")) return EAR_ERROR;
-		if (warning_api(my_read(ear_fd_ack[rapl_req],(char *)values,rapl_size) , rapl_size,
-			 "ERROR reading ack for stopping RAPL counters "))
-		{ 
-			return EAR_ERROR;
-		}else{
-			ack = EAR_SUCCESS;
-		}
-
-	}else{
-		debug( "read rapl service not provided");
-		ack = EAR_ERROR;
-	}
-	return ack;
-}
-// END RAPL SERVICES
-// NODE ENERGY SERVICES
-ulong eards_node_energy_data_size()
-{
-    int com_fd =node_energy_req;
-    struct daemon_req req;
-	ulong ack = EAR_SUCCESS;
-	
-	if (!app_connected) return sizeof(ulong);
-
-    debug( "asking for node energy data size ");
-    req.req_service=DATA_SIZE_ENERGY_NODE;
-	req.sec=create_sec_tag();
-
-    if (ear_fd_req[com_fd]>=0)
-	{
-        if (warning_api(my_write(ear_fd_req[com_fd],(char *)&req,sizeof(req)) , sizeof(req),
-			 "ERROR writing request for IPMI data size ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack[com_fd],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-			 "ERROR reading ack for IPMI data size ")) return EAR_ERROR;
-    } else {
-		debug( "ear_daemon_client_node_energy_data_size service not provided");
-		ack=EAR_ERROR;
-    }   
-    energy_size=ack;
-    return ack;
-}
-int eards_node_dc_energy(void *energy,ulong datasize)
-{
-    int com_fd = node_energy_req;
-	ulong ack=EAR_SUCCESS;
-	struct daemon_req req;
-
-	if (!app_connected){
-		memset(energy,0,datasize);
-		return EAR_SUCCESS;
-	}
-
-    debug( "asking for node dc energy ");
-    req.req_service=READ_DC_ENERGY;
-	req.sec=create_sec_tag();
-
-	if (ear_fd_req[com_fd]>=0)
-	{
-        if (warning_api(my_write(ear_fd_req[com_fd],(char *)&req,sizeof(req)) , sizeof(req),
-			"ERROR writing request for dc_node_energy ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack[com_fd],(char *)energy,datasize) , datasize,
-			"ERROR reading data for dc_node_energy ")) return EAR_ERROR;
-    } else
-	{
-		debug( "ear_daemon_client_node_dc_energy service not provided");
-		ack=EAR_ERROR;
-    }   
-    return ack;
-}
-ulong eards_node_energy_frequency()
-{
-    int com_fd = node_energy_req;
-    ulong ack=EAR_ERROR;
-    struct daemon_req req;
-
-	if (!app_connected) return 10000000;
-
-    debug( "asking for dc node energy frequency ");
-    req.req_service=ENERGY_FREQ;
-	req.sec=create_sec_tag();
-    if (ear_fd_req[com_fd]>=0)
-    {
-        if (warning_api(my_write(ear_fd_req[com_fd],(char *)&req,sizeof(req)) , sizeof(req),
-             "ERROR writing request for energy freq of update ")) return EAR_ERROR;
-        if (warning_api(my_read(ear_fd_ack[com_fd],(char *)&ack,sizeof(ulong)) , sizeof(ulong),
-            "ERROR reading ack for energy freq of update ")) return ack;
-    } else
-    {
-        debug( "eards_node_energy_frequency service not provided");
-        ack=EAR_ERROR;
-    }
-    return ack;
-
-}
-#endif
-
-/********** GPU *********/
 int eards_gpu_model(uint *gpu_model)
 {
-  ulong ack=EAR_SUCCESS;
-  struct daemon_req req;
-  
-	*gpu_model=0;
-  if (!app_connected){
-    return EAR_SUCCESS;
-  }
-  debug( "asking for gpu_model ");
-  req.req_service = GPU_MODEL;
-  req.sec = create_sec_tag();
-  if (ear_fd_req >= 0)
-  {      
-      if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-      "ERROR writing request for gpu model ")) return EAR_ERROR;
-      if (warning_api(my_read(ear_fd_ack,(char *)gpu_model,sizeof(uint)) , sizeof(uint),
-      "ERROR reading data for gpu model")) return EAR_ERROR;
-      ack = EAR_SUCCESS;
-  } else
-  { 
-    debug( "gpu_model service not provided");
-    ack=EAR_ERROR;
-  }   
-  return ack;
+    *gpu_model = API_DUMMY;
+    init_service(GPU_MODEL);
+    return (int) sendack((char *) &req, sizeof(req), (char *) gpu_model, sizeof(uint), "GPU model", 1);
 }
 
 int eards_gpu_dev_count(uint *gpu_dev_count)
 {
-  ulong ack=EAR_SUCCESS;
-  struct daemon_req req;
- 
-	*gpu_dev_count=0; 
-  if (!app_connected){
-    return EAR_SUCCESS;
-  }
-  debug( "asking for gpu_dev_count ");
-  req.req_service = GPU_DEV_COUNT;
-  req.sec = create_sec_tag();
-  if (ear_fd_req >= 0)
-  {      
-      if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-      "ERROR writing request for gpu dev_coubt ")) return EAR_ERROR;
-      if (warning_api(my_read(ear_fd_ack,(char *)gpu_dev_count,sizeof(uint)) , sizeof(uint),
-      "ERROR reading data for gpu dev_count")) return EAR_ERROR;
-      ack = EAR_SUCCESS;
-  } else
-  { 
-    debug( "gpu_dev_count service not provided");
-    ack=EAR_ERROR;
-  }   
-  return ack;
+    *gpu_dev_count = 0;
+    init_service(GPU_DEV_COUNT);
+    return (int) sendack((char *) &req, sizeof(req), (char *) gpu_dev_count, sizeof(uint), "GPU count devices", 1);
 }
 
 int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev)
 {
-  ulong ack=EAR_SUCCESS;
-  struct daemon_req req;
-  
-	memset(gpu_info,0,sizeof(gpu_t)*num_dev);
-  if (!app_connected){
-    return EAR_SUCCESS;
-  }
-  debug( "asking for gpu_data ");
-  req.req_service = GPU_DATA_READ;
-  req.sec = create_sec_tag();
-  if (ear_fd_req >= 0)
-  {     
-      if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-      "ERROR writing request for gpu data read ")) return EAR_ERROR;
-			debug("gpu_data_read, reading %lu bytes",sizeof(gpu_t)*num_dev);
-      if (warning_api(my_read(ear_fd_ack,(char *)gpu_info,sizeof(gpu_t)*num_dev) , sizeof(gpu_t)*num_dev,
-      "ERROR reading data for gpu data read ")) return EAR_ERROR;
-			ack = EAR_SUCCESS;
-  } else
-  { 
-    debug( "gpu_data_read service not provided");
-    ack=EAR_ERROR;
-  }   
-	return ack;
+    memset(gpu_info,0,sizeof(gpu_t)*num_dev);
+    init_service(GPU_DATA_READ);
+    return (int) sendack((char *) &req, sizeof(req), (char *) gpu_info, sizeof(gpu_t)*num_dev, "GPU data read", 1);
 }
 
 int eards_gpu_get_info(gpu_info_t *info, uint num_dev)
 {
-  ulong ack=EAR_SUCCESS;
-  struct daemon_req req;
-  
-	memset(info,0,sizeof(gpu_info_t)*num_dev);
-  if (!app_connected){
-    return EAR_SUCCESS;
-  }
-  debug("asking for gpu_data ");
-  req.req_service = GPU_GET_INFO;
-  req.sec = create_sec_tag();
-  if (ear_fd_req >= 0)
-  {     
-      if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-      "ERROR writing request for gpu data read ")) return EAR_ERROR;
-			debug("gpu_data_read, reading %lu bytes",sizeof(gpu_info_t)*num_dev);
-      if (warning_api(my_read(ear_fd_ack,(char *)info,sizeof(gpu_info_t)*num_dev) , sizeof(gpu_info_t)*num_dev,
-      "ERROR reading data for gpu data read ")) return EAR_ERROR;
-			ack = EAR_SUCCESS;
-  } else
-  { 
-    debug( "gpu_data_read service not provided");
-    ack=EAR_ERROR;
-  }   
-	return ack;
+    memset(info,0,sizeof(gpu_info_t)*num_dev);
+    init_service(GPU_GET_INFO);
+    return (int) sendack((char *) &req, sizeof(req), (char *) info, sizeof(gpu_info_t)*num_dev, "GPU info", 1);
 }
 
 int eards_gpu_set_freq(uint num_dev,ulong *freqs)
 {
-  ulong ack=EAR_SUCCESS;
-  struct daemon_req req;
-	int i;
-  
-  if (!app_connected){
-    return EAR_SUCCESS;
-  }
-  debug( "setting GPU freqs ");
-	for (i=0;i<num_dev;i++) debug("GPU %d: Freq requested %lu",i,freqs[i]);
-  req.req_service = GPU_SET_FREQ;
-  req.sec=create_sec_tag();
-	req.req_data.gpu_freq.num_dev=num_dev;
-	if (num_dev>MAX_GPUS_SUPPORTED){
-		error("Using more GPUS than supported: Requested %u Max %u",num_dev,MAX_GPUS_SUPPORTED);
-		num_dev=MAX_GPUS_SUPPORTED;
-	}
-	memcpy(req.req_data.gpu_freq.gpu_freqs,freqs,sizeof(ulong)*num_dev);
+    init_service(GPU_SET_FREQ);
+    int i;
 
-  if (ear_fd_req >= 0)
-  {      
-      if (warning_api(my_write(ear_fd_req,(char *)&req,sizeof(req)) , sizeof(req),
-      "ERROR writing request for gpu set freq ")) return EAR_ERROR;
-      debug("eards_gpu_set_freq, reading %lu bytes",sizeof(ack));
-      if (warning_api(my_read(ear_fd_ack,(char *)&ack,sizeof(ack)) , sizeof(ack),
-      "ERROR reading data for eards_gpu_set_freq")) return EAR_ERROR;
-      ack = EAR_SUCCESS;
-  } else
-  { 
-    debug( "eards_gpu_set_freq service not provided");
-    ack=EAR_ERROR;
-  }   
-  return ack;
+    if (num_dev>MAX_GPUS_SUPPORTED){
+        error("Using more GPUS than supported: Requested %u Max %u", num_dev, MAX_GPUS_SUPPORTED);
+        num_dev=MAX_GPUS_SUPPORTED;
+    }
+    for (i = 0; i < num_dev; i++) {
+        debug("GPU %d: Freq requested %lu", i, freqs[i]);
+    }
+    req.req_data.gpu_freq.num_dev=num_dev;
+    memcpy(req.req_data.gpu_freq.gpu_freqs, freqs, sizeof(ulong)*num_dev);
+
+    return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU set freq", 1);
 }
 
