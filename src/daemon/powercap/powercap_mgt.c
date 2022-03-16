@@ -59,6 +59,7 @@ cluster_conf_t my_cluster_conf;
 extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 extern int max_context_created;
 extern int num_contexts;
+ulong  pmgt_idle_def_freq;
 
 
 typedef struct powercap_symbols {
@@ -342,6 +343,7 @@ state_t pmgt_init()
 {
     state_t ret;
     int i;
+		policy_conf_t *my_policy;
     char basic_path[SZ_PATH];
     topology_init(&pc_topology_info);
 #if USE_GPUS
@@ -363,6 +365,9 @@ state_t pmgt_init()
         debug("Setting the percentage of powercap to GPUS to 0 because DUMMY");
     }
 #endif
+    my_policy = get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
+    pmgt_idle_def_freq = frequency_pstate_to_freq(my_policy->p_state);
+
     /* DOMAIN_NODE is not cmpatible with CPU+DRAM */
     /* DOMAIN_NODE */
     char *obj_path = getenv("EAR_POWERCAP_POLICY_NODE");
@@ -767,9 +772,14 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
         }
 
     }
+		#define USE_IDLE_PC_MINFREQ 1
 		if (domain == DOMAIN_CPU){
     for (i=0; i < MAX_CPUS_SUPPORTED; i++){
+				#if USE_IDLE_PC_MINFREQ
         if (!f[i]) f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
+				#else
+        if (!f[i]) f[i] = pmgt_idle_def_freq;
+				#endif
     }
 		}
 }
