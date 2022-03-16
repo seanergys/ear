@@ -83,7 +83,7 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
 
     
     if (!report_file_created) {
-        char header[] = "JOB_ID;STEP_ID;NODE_ID;LOCAL_RANK;GLOBAL_RANK;TOTAL_MPI_CALLS;EXEC_TIME;MPI_TIME;BLOCK;T_BLOCK;SYNC;T_SYNC;COLLEC;T_COLLEC";
+        char header[] = "JOB_ID;STEP_ID;NODE_ID;LOCAL_RANK;GLOBAL_RANK;TOTAL_MPI_CALLS;EXEC_TIME;MPI_TIME;BLOCK;T_BLOCK;SYNC;T_SYNC;COLLEC;T_COLLEC;GFlop/s";
         if (fprintf(fd, "%s\n", header) < 0) {
             return EAR_ERROR;
         }
@@ -92,12 +92,13 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
 
     mpi_information_t *mpi_info = &data->mpi_info;
     mpi_calls_types_t *mpi_types = &data->mpi_types_info;
+    ssig_t            *sig       = &data->sig;
 
-    fprintf(fd, "%s;%d;%s;%d;%d;%u;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu\n",
+    fprintf(fd, "%s;%d;%s;%d;%d;%u;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%f\n",
             jobid, 0, nodename, id->local_rank, id->global_rank,
             mpi_info->total_mpi_calls, mpi_info->exec_time, mpi_info->mpi_time,
             mpi_types->blocking, mpi_types->time_blocking,
-            mpi_types->sync, mpi_types->time_sync, mpi_types->collec, mpi_types->time_collec);
+            mpi_types->sync, mpi_types->time_sync, mpi_types->collec, mpi_types->time_collec, sig->Gflops);
 
     fclose(fd);
 
