@@ -16,6 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
+#define VEARD_LAPI_DEBUG 0
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
@@ -207,6 +208,7 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
 
+		verbose(VEARD_LAPI_DEBUG, "EARD misc");
     dcase_init(CONNECT_EARD_NODE_SERVICES);
         connect_service(&req);
     dcase(DISCONNECT_EARD_NODE_SERVICES);
@@ -223,6 +225,7 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
+		verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpufreq");
     dcase_init(RPC_MGT_CPUFREQ_GET_API);
         data = (char *) &mc.api;
         size = sizeof(uint);
@@ -301,6 +304,7 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 	char *data = NULL;
 	size_t size = 0;
 
+	verbose(VEARD_LAPI_DEBUG, "EARD mgt imcfreq");
 	dcase_init(RPC_MGT_IMCFREQ_GET_API);
 		data = (char *) &mi.api;
 		size = sizeof(uint);
@@ -362,6 +366,7 @@ int services_mgt_gpu(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
+		verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpu");
     // Always answering (if s != SUCCESS the error message is sent)
     if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
         return 0;
@@ -376,6 +381,7 @@ int services_met_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
+		verbose(VEARD_LAPI_DEBUG,"EARD met cpufreq");
     dcase_init(RPC_MET_CPUFREQ_GET_API);
         data = (char *) &uc.api;
         size = sizeof(uint);
@@ -402,6 +408,7 @@ int services_met_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
+		verbose(VEARD_LAPI_DEBUG, "EARD met_imcfreq");
     dcase_init(RPC_MET_IMCFREQ_GET_API);
         data = (char *) &ui.api;
         size = sizeof(uint);
@@ -431,6 +438,7 @@ int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
+		verbose(VEARD_LAPI_DEBUG,"EARD met bandwith");
     dcase_init(RPC_MET_BWIDTH_GET_API);
         data = (char *) &ub.api;
         size = sizeof(uint);
@@ -735,6 +743,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
     gpu_info_t *info;
 	gpu_info_t fake;
 
+	verbose(VEARD_LAPI_DEBUG,"EARD old eard_gpu");
 	switch (head->req_service) {
 		case GPU_MODEL:
 			debug("GPU_MODEL %d",eard_gpu_model);
@@ -800,6 +809,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd)
 {
   unsigned long ack;
+	verbose(VEARD_LAPI_DEBUG, "EARD old node_energy");
   switch (head->req_service) {
     case READ_DC_ENERGY:
       energy_dc_read(&handler_energy, node_energy_data);
@@ -826,6 +836,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
   int con_id;
   con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 
+	verbose(VEARD_LAPI_DEBUG,"EARD old system");
   switch (head->req_service) {
     case WRITE_APP_SIGNATURE:
 			verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
@@ -866,6 +877,8 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
 {
   unsigned long ack = 0;
+
+  verbose(VEARD_LAPI_DEBUG, "EARD old eard_rapl");
   switch (head->req_service) {
     case START_RAPL:
       error("starting rapl msr not supported");
@@ -959,6 +972,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 	// Reading the union part
 	size = sizeof(union daemon_req_opt);
 	rpc  = (req->req_service > NEW_API_SERVICES);
+	verbose(VEARD_LAPI_DEBUG,"EARD new local call: %lu, new %u", req->req_service, rpc);
 	// If is not RPC, complete the daemon_req.
 	if (!rpc && (eards_read(req_fd, (char *) &req->req_data, size, NO_WAIT_DATA) != size)) {
 		error("when reading union daemon_req: %s", strerror(errno));
@@ -1012,7 +1026,7 @@ void service_select(int req_fd, int ack_fd)
 
 	// Hanging up
 	if (state_fail(service_listen(req_fd, ack_fd, &req))) {
-		verbose(VEARD_LAPI,"Closing local service");
+		verbose(VEARD_LAPI_DEBUG,"Closing local service");
 		service_close(req_fd, ack_fd);
 		return;
 	}

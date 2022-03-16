@@ -18,7 +18,7 @@
 #define _GNU_SOURCE
 
 //#define SHOW_DEBUGS           1
-#define INFO_METRICS           2
+#define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -39,6 +39,7 @@
 #include <common/hardware/hardware_info.h>
 
 #include <library/api/clasify.h>
+#include <library/loader/module_cuda.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
@@ -637,7 +638,7 @@ static int metrics_partial_stop(uint where)
 	char stop_energy_str[256],start_energy_str[256];
     state_t s;
 
-    
+   debug("metrics_partial_stop"); 
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
       if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
 		}
@@ -848,7 +849,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				double time_s;
 				int s;
 				
-                debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
+        debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
 				// If global is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 's' is just a signature index.
@@ -888,7 +889,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->cycles       = cpi_diff[s].cycles;
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
-
+								#if SHOW_DEBUGS
                 if (metrics->CPI > 5) {
                     char buff[128];
                     cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
@@ -898,12 +899,13 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                     cpi_data_tostr(&cpi_diff[s], cpi_avrg[s], buff, sizeof(buff));
                     verb(INFO_METRICS, "Diff %s", buff);
                 }
+								#endif
 
 				/* TPI and Memory bandwith */
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    verbose_master(2, "GBS[%d]: %0.2lf", s, metrics->GBS);
+                    verbose_master(INFO_METRICS, "GBS[%d]: %0.2lf", s, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[s];
                 } else {
                     bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
@@ -1289,6 +1291,8 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 {
 				long long aux_time;
 
+				debug("metrics_compute_signature_finish");
+
                 if (!sig_shared_region[my_node_id].ready){
 
 								// Time requirements
@@ -1494,7 +1498,7 @@ state_t metrics_new_iteration(signature_t *sig)
     }
 
 #if USE_GPUS
-    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0)){
+    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0) && is_cuda_enabled()){
         debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
         /* GPUs */
         if (gpu_initialized){

@@ -163,11 +163,20 @@ static void print_loop_signature(char *title, signature_t *loop)
 
 
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter,uint dynais_used);
+timestamp_t time_last_signature;
+uint signature_reported = 0;
+
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 {
     my_loop->total_iterations = iterations;
     my_loop->jid 							= job->id;
     my_loop->step_id 					= job->step_id;
+
+		/* EAR uses this timestamp to switch to periodic mode (or not ) */
+    timestamp_getfast(&time_last_signature);
+    signature_reported = 1;
+
+
     if (masters_info.my_master_rank>=0){
         clean_db_loop(my_loop, system_conf->max_sig_power);
 				application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
@@ -190,6 +199,7 @@ void states_end_job(int my_id,  char *app_name)
 
 
 /* This function is executed at application init */
+#define MAX_SIG_TIME 10000000
 void states_begin_job(int my_id,  char *app_name)
 {
     ulong	architecture_min_perf_accuracy_time;
@@ -210,12 +220,16 @@ void states_begin_job(int my_id,  char *app_name)
     /* LOOP WAS CREATED HERE BEFORE */
 
     perf_accuracy_min_time = get_ear_performance_accuracy();
+		verbose_master(2, "perf_accuracy_min_time default %lu", perf_accuracy_min_time);
     if (masters_info.my_master_rank>=0 && eards_connected()){
         architecture_min_perf_accuracy_time=eards_node_energy_frequency();
+				if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR) architecture_min_perf_accuracy_time = perf_accuracy_min_time;
+				verbose_master(2, "eard perf_accuracy_min_time default %lu", architecture_min_perf_accuracy_time);
     }else{
         architecture_min_perf_accuracy_time=1000000;
     }
-    if (architecture_min_perf_accuracy_time>perf_accuracy_min_time) perf_accuracy_min_time=architecture_min_perf_accuracy_time;
+    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME)) perf_accuracy_min_time=architecture_min_perf_accuracy_time;
+		verbose_master(2, "perf_accuracy_min_time %lu", perf_accuracy_min_time);
 
     EAR_STATE = NO_PERIOD;
     policy_freq = EAR_default_frequency;
@@ -295,6 +309,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
+
     sig_shared_region[my_node_id].iterations++;
     if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
         pst = policy_new_iteration(&check_signature);
@@ -363,6 +378,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             if (perf_count_period_10p==0) perf_count_period_10p=1;
             /**/
 
+
             /* Once min iterations is computed for performance accuracy we start computing application signature */
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             state_report_traces_state(masters_info.my_master_rank,ear_my_rank, my_id,EVALUATING_LOCAL_SIGNATURE);
@@ -419,7 +435,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         case EVALUATING_LOCAL_SIGNATURE: /********* EVALUATING_LOCAL_SIGNATURE **********/
             /* We check from time to time if the signature is ready */
             /* Included to accelerate the signature computation */
-            verbose(4, "%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
+            verbose_master(4,"%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
             if (!lib_shared_region->master_ready){
                 if (!dynais_used && (((iterations % mpi_calls_iter) != 0))) return;
                 /* Only when using dynais we consider the 'N' */

@@ -28,6 +28,10 @@
 
 #define INFO_CLASSIFY 3
 
+extern ulong perf_accuracy_min_time;
+extern uint signature_reported;
+
+
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
 	*app_state = APP_COMP_BOUND;
@@ -56,10 +60,13 @@ state_t is_network_bound(float mpisec,uint *mpibound)
 	return EAR_SUCCESS;
 }
 
-state_t must_switch_to_time_guide(float mpisec, uint *ear_guided)
+state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided)
 {
     if (mpisec < MIN_MPI_TH){
         *ear_guided = TIME_GUIDED;
+    }
+    if (signature_reported && (last_sig_elapsed > ((5*perf_accuracy_min_time)/1000000))){
+      *ear_guided = TIME_GUIDED;
     }
     return EAR_SUCCESS;
 }
@@ -87,7 +94,7 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	return EAR_SUCCESS;
 }
 
-state_t is_cpu_bound(signature_t *sig,uint *cbound)
+state_t is_cpu_bound(signature_t *sig, uint *cbound)
 {
     *cbound = 0;
     if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;

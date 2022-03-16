@@ -44,6 +44,7 @@ int lock_master(char *path_tmp, int job_id)
     create_folder(path_job);
     // Getting the master lock
     sprintf(path_master, "%s/erun%d/master.lock", path_tmp, job_id);
+		plug_verbose(_sp, 3, "Trying to get the lock %s", path_master);
     fd_master = file_lock_master(path_master);
     if (fd_master < 0){
 	plug_verbose(_sp, 3, " Error in lock_master %s", strerror(errno));
@@ -116,6 +117,7 @@ int spinlock_step(char *path_tmp, int job_id, int step_id)
     // 1. Form the step.lock path
     sprintf(path_step, "%s/erun%d/step.lock", path_tmp, job_id);
     // 2. While !step.lock file, spinlock
+    plug_verbose(_sp, 3," Waiting for step lock file %s", path_step);
     while (access(path_step, F_OK) != 0);
     // 3. Read the %step_id contained in step.lock
     file_read(path_step, (char *) &step_id, sizeof(int));
@@ -128,7 +130,7 @@ int lock_clean(char *path_tmp, int job_id, int step_id)
 {
 	plug_verbose(_sp, 3, "function lock_clean");
 	// 1. Creating the cleaning command
-	sprintf(command, "rm %s/erun%d/*.lock 2> /dev/null", path_tmp, job_id);
+	sprintf(command, "rm -f %s/erun%d/*.lock 2> /dev/null", path_tmp, job_id);
 	// 2. Remove master.lock
 	file_unlock_master(fd_master, path_master);
 	// 3. Remove step.lock
@@ -145,14 +147,15 @@ int lock_clean(char *path_tmp, int job_id, int step_id)
 int folder_clean(char *path_tmp, int job_id)
 {
 	// 1. Creating the cleaning command
-	sprintf(command, "rm -r %s/erun%d 2> /dev/null", path_tmp, job_id);
+	sprintf(command, "rm -rf %s/erun%d 2> /dev/null", path_tmp, job_id);
     system(command);
     return 0;
 }
 
 int all_clean(char *path_tmp)
 {
-    xsprintf(command, "rm -r %s/erun* &> /dev/null", path_tmp);
+    xsprintf(command, "rm -rf %s/erun* &> /dev/null", path_tmp);
+		plug_verbose(_sp, 3, "Executing %s", command);
     system(command);
     return 0;
 }

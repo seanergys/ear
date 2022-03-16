@@ -638,8 +638,8 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
 }
 #endif
 
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi, double *mean,
-        double *sd, double *mag, uint *lb)
+state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi,
+        double *mean, double *sd, double *mag, uint *lb)
 {
     // Get only perc_mpi info.
     mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi);

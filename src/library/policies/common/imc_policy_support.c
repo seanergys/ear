@@ -131,7 +131,7 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
 
     ullong ref_imc_freq;
     if (state_fail(pstate_pstofreq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate, &ref_imc_freq))){
-        verbose_master(2, "%sIMC pstates invalid %d%s", COL_RED, ref_imc_pstate, COL_CLR);
+        verbose_master(2, "%sERROR%s IMC pstate invalid: %d", COL_RED, COL_CLR, ref_imc_pstate);
         return 1;
     }
     double freq_ref = (double)ref_imc_freq;
