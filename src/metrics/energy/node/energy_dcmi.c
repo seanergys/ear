@@ -439,7 +439,7 @@ state_t dcmi_thread_main(void *p)
 
         /* Energy is reported in MJ */
         dcmi_accumulated_energy += (current_energy * 1000);
-        verbose(0,"DCMI AVG power in last %lu sec is %lu", current_elapsed, dcmi_current_power_reading.avg_power);		
+        verbose(2,"DCMI AVG power in last %lu sec is %lu", current_elapsed, dcmi_current_power_reading.avg_power);		
     } else {
         debug("Current power is 0 in dcmi power reading pool reading, Resetting the context");
 				closedev(&dcmi_context_for_pool);
@@ -519,14 +519,14 @@ state_t energy_init(void **c)
             monitor_done = 1;
         }
     }
-		verbose(0, "DCMI Init ok");
+		verbose(2, "DCMI Init ok");
 
     return EAR_SUCCESS;
 }
 
 state_t energy_dispose(void **c) {
     if ((c == NULL) || (*c == NULL)){ 
-			verbose(0, "DCMI context is NULL in energy dispose");
+			verbose(2, "DCMI context is NULL in energy dispose");
 			return EAR_ERROR;
 		}
 
@@ -542,7 +542,7 @@ state_t energy_dispose(void **c) {
     free(*c);
 
     pthread_mutex_unlock(&ompi_lock);
-		verbose(0, "DCMI Dispose ok");
+		verbose(2, "DCMI Dispose ok");
     return EAR_SUCCESS;
 }
 
