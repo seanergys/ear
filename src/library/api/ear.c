@@ -1100,42 +1100,24 @@ void ear_init()
                     char *col;
                     if (!my_id) col = COL_BLU; 
                     else        col = COL_GRE;
-                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s", col,my_node_id, getpid(), ear_my_rank,node_name,COL_CLR);
-#if EARL_RESEARCH
-                    int try = 0;
-                    while (eards_connect(&application, ear_my_rank) != EAR_SUCCESS && try < MAX_TRIES) {
-                        try++;
-                    }
-                    if (try == MAX_TRIES) {
-                        verbose(2, "%sRank %d NOT connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
-                        eard_ok=0;
-                        if (!my_id) notify_eard_connection(0);
-                    } else {
+                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
+                            col,my_node_id, getpid(), ear_my_rank,node_name,COL_CLR);
+                    if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
                         verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
                         if (!my_id){
                             notify_eard_connection(1);
                             mark_as_eard_connected(my_job_id,my_step_id,getpid());
                         }
-                    }
-
-#else
-                if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
-                    verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
-                    if (!my_id){
-                        notify_eard_connection(1);
-                        mark_as_eard_connected(my_job_id,my_step_id,getpid());
-                    }
-                }else{   
-                    verbose(2, "%sRank %d NOT connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                    }else{   
+                        verbose(2, "%sRank %d NOT connected with EARD%s %s", COL_BLU,ear_my_rank,COL_CLR, state_msg);
                         eard_ok=0;
                         if (!my_id) notify_eard_connection(0);
                     }
-#endif
                 }
 #endif
                 /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
-				debug("End EARD connection section");
+                debug("End EARD connection section");
 
 
 				debug("Shared region creation section");

@@ -37,7 +37,7 @@
 #include <daemon/local_api/eard_api.h>
 
 #define MAX_PIPE_TRIES (MAX_SOCKET_COMM_TRIES*10)
-#define MAX_TRIES             1
+#define MAX_TRIES           100
 #define USE_NON_BLOCKING_IO 1
 
 /* These pipes are used for local communication between ear library and eard */
@@ -274,7 +274,7 @@ int eards_connect(application_t *my_app, ulong lid)
   /* Pipes are created */
   /* We give some opportunities to connect */
   do{
-        //verbose(2,"Connecting with EARD using file %s\n",ear_commreq_global);
+        verbose(2,"Connecting with EARD using file %s\n",ear_commreq_global);
         if ((ear_fd_req_global = open(ear_commreq_global,O_WRONLY|O_NONBLOCK))<0) tries++;
         else connected=1;
         if ((MAX_TRIES>1) && (!connected)) sleep(1);
