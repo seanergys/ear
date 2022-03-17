@@ -493,6 +493,7 @@ static void metrics_global_stop()
             debug("CPUFreq average for the application is %.2fGHz", (float) cpufreq_avrg[APP] / 1000000.0);
         }
         cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[APP]);
+        memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* AVG IMC frequency */
         if (mgt_imcfreq.ok) {
@@ -765,6 +766,7 @@ static int metrics_partial_stop(uint where)
         verbose_master(3, "%s", "");
         }
 		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
+        memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* Avg IMC frequency */
         if (mgt_imcfreq.ok){

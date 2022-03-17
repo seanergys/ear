@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 
 // #define SHOW_DEBUGS 1
+#include <metrics/common/pstate.h>
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -122,7 +123,15 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         // CPU
         debug("avgf");
-        AVGF = (float)sig->signature.avg_f/1000000.0; 
+        if (!using_verb_files) {
+            AVGF = (float) sig->signature.avg_f / 1000000.0;
+        } else {
+            cpu_set_t *mask = &sig_shared_region[my_node_id].cpu_mask;
+            ulong freq_avg, cpus_count;
+            pstate_freqtoavg(*mask, lib_shared_region->avg_cpufreq, metrics_get(MET_CPUFREQ)->devs_count, &freq_avg, &cpus_count);
+            AVGF = (float) freq_avg / 1000000.0;
+        }
+         
 
         // AVX 
         if (using_verb_files) {

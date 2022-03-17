@@ -77,6 +77,7 @@ typedef struct lib_shared_data {
     uint        master_ready;
     uint        global_stop_ready;
     cpu_set_t   node_mask;
+    ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     uint        node_mgr_index;
 } lib_shared_data_t;
 
@@ -93,7 +94,6 @@ typedef struct shsignature{
     unsigned long     new_freq;
 	uint              num_cpus;
     cpu_set_t         cpu_mask;
-    ulong             avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     int               affinity;
     uint              unbalanced;
     ulong             policy_freq;
