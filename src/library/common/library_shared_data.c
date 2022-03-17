@@ -169,9 +169,10 @@ int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
     return total;
 }
 
-int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
+int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig, uint *num_ready)
 {
     int total = compute_total_signatures_ready(data, sig);
+		*num_ready = total;
     debug("There are %d signatures ready from %d",data->num_signatures,data->num_processes);
     return(total == data->num_processes);
 }
@@ -358,8 +359,9 @@ void print_shared_signatures(lib_shared_data_t *data,shsignature_t *sig)
 }
 void print_ready_shared_signatures(int master_rank,lib_shared_data_t *data,shsignature_t *sig)
 {
+	uint num_ready;
 	if (master_rank < 0) return;
-	if (are_signatures_ready(data,sig)){
+	if (are_signatures_ready(data,sig, &num_ready)){
 		print_shared_signatures(data,sig);
 	}
 }
