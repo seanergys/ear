@@ -172,7 +172,7 @@ void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig);
 int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
 
-int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
+int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig, uint *num_ready);
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig);
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig);
 void print_shared_signatures(lib_shared_data_t *data,shsignature_t *sig);

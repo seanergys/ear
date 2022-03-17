@@ -638,20 +638,23 @@ static int metrics_partial_stop(uint where)
 	long long aux_time_stop;
 	char stop_energy_str[256],start_energy_str[256];
     state_t s;
+	float elapsed;
 
-   debug("metrics_partial_stop"); 
+   debug("metrics_partial_stop %u", my_node_id); 
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
       if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
 		}
 
+		elapsed = (metrics_time() - app_start)/1000000;
 
     /* If the signature of the master is not ready, we cannot compute our signature */
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-        debug("Master signature not ready at time %lld",(metrics_time() - app_start)/1000000);
         debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
+				//if (elapsed > 30) verbose(2, "I'm the local ID %u and I'm waiting for the master (t = %f)", my_node_id, elapsed);
         return EAR_NOT_READY;
     }
+    debug("Master signature ready at time %f",elapsed);
 
 	// Manual IPMI accumulation
 	if (masters_info.my_master_rank>=0){
@@ -1001,7 +1004,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				if (verb_level >= INFO2_METRICS && masters_info.my_master_rank >= 0) signature_print_simple_fd(2, metrics);
 				verbose_master(2," ");
 
-				debug("Signature ready node %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
+				debug("Signature ready local ID %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
 				update_earl_node_mgr_info();
 
 				signature_ready(&sig_shared_region[my_node_id],0);
@@ -1200,6 +1203,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 {
 	sig_ext_t *se;
 	signature_t nodeapp;
+	uint num_ready;
 
 	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
     verbose_master(INFO_METRICS + 1, "End local signature");
@@ -1216,7 +1220,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
     /* Waiting for node signatures */
     verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
-    while (are_signatures_ready(lib_shared_region,sig_shared_region) == 0
+    while (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0
             && !lib_shared_region->global_stop_ready) {
         usleep(100);
     }
@@ -1235,7 +1239,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
     /* Waiting for node signatures */
     //verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
-    while ( are_signatures_ready(lib_shared_region,sig_shared_region) == 0 ) usleep(100);
+    while ( are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 ) usleep(100);
 
 	/* Estimate local metrics, accumulate */
 	if (masters_info.my_master_rank >= 0){
@@ -1264,7 +1268,7 @@ void metrics_get_total_io(io_data_t *total)
 	debug("Reading IO node data for %d processes", lib_shared_region->num_processes);
 	memset((char *)total,0,sizeof(io_data_t));
 	for (i=0; i<lib_shared_region->num_processes;i++){
-			debug("Init IO data %d sig area %p, pid %d", i, sig_shared_region, sig_shared_region[i].pid);
+			//debug("Init IO data %d sig area %p, pid %d", i, sig_shared_region, sig_shared_region[i].pid);
 		  if (io_init(&lio,sig_shared_region[i].pid) != EAR_SUCCESS){
 				verbose_master(2,"IO data for process %d-%d can not be read",i,sig_shared_region[i].pid);
 			}else{
@@ -1276,7 +1280,7 @@ void metrics_get_total_io(io_data_t *total)
 				total->read_bytes += io.read_bytes;
 				total->write_bytes += io.write_bytes;
 				total->cancelled += io.cancelled;
-				debug("io dispose");
+				//debug("io dispose");
 				io_dispose(&lio);
 			}
 	}
@@ -1299,8 +1303,9 @@ int time_ready_signature(ulong min_time_us)
 int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs)
 {
 				long long aux_time;
+				uint num_ready;
 
-				debug("metrics_compute_signature_finish");
+				debug("metrics_compute_signature_finish %u", my_node_id);
 
                 if (!sig_shared_region[my_node_id].ready){
 
@@ -1308,12 +1313,9 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 								aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
 								//
-								if ((aux_time<min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
-#if 0
-												verbose(1,"EAR_NOT_READY because of time %llu\n",aux_time);
-#endif
+								if ((aux_time < min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
 												metrics->time=0;
-
+												debug("EAR_NOT_READY because of time %llu\n",aux_time);
 												return EAR_NOT_READY;
 								}
 
@@ -1327,10 +1329,11 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 								//
 								metrics_partial_start();
 				}
-				if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
+				if (!are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready)){
 								if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
 												lib_shared_region->master_ready = 1;
 								}
+								verbose_master(2,"Signatures for process in node are still not ready :num sig computed %u", num_ready);
 								return EAR_NOT_READY;
 				}else if (masters_info.my_master_rank >= 0){
 								lib_shared_region->master_ready = 0;
