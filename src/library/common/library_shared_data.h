@@ -93,6 +93,7 @@ typedef struct shsignature{
     unsigned long     new_freq;
 	uint              num_cpus;
     cpu_set_t         cpu_mask;
+    ulong             avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     int               affinity;
     uint              unbalanced;
     ulong             policy_freq;

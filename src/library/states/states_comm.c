@@ -68,38 +68,99 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     int gpui;
     char gpu_buff[256];
 
-    if (master_rank == 0 || show || using_verb_files){
+    if (master_rank == 0 || show || using_verb_files) {
         debug("%swriting pmpi_txt%s", COL_YLW, COL_CLR);
-        if (sig->signature.perc_MPI > 0.0) {
-            sprintf(pmpi_txt, "Avg. MPI_time/exec_Time: %.1lf %%", sig->signature.perc_MPI);
-        }else {
+
+#if 0
+        double perc_mpi = (using_verb_files) ? ((double) (sig_shared_region[my_node_id].mpi_info.mpi_time * 100) / (double) sig_shared_region[my_node_id].mpi_info.exec_time) : sig->signature.perc_MPI;
+#endif
+
+        double perc_mpi = (using_verb_files) ? (sig_shared_region[my_node_id].mpi_info.perc_mpi) : sig->signature.perc_MPI;
+
+        if (perc_mpi > 0.0) {
+
+            char pmpi_msg[32];
+            if (using_verb_files) {
+                sprintf(pmpi_msg, "MPI_time/exec_Time");
+            } else {
+                // Since when only master verboses, it prints the average across all processes of the job
+                sprintf(pmpi_msg, "Avg. MPI_time/exec_Time");
+            }
+
+            sprintf(pmpi_txt, "%s: %.1lf %%", pmpi_msg, perc_mpi);
+
+        } else {
             sprintf(pmpi_txt,"No MPI");
         }
+
+        // IMC
         debug("imc");
         imcf = (float)sig->signature.avg_imc_f/1000000.0;
+
+        // CPI
         debug("cpi");
-        CPI = sig->signature.CPI; 
+        CPI = (using_verb_files) ? (double) sig_shared_region[my_node_id].sig.CPI : sig->signature.CPI; 
+
+        // GB/s
         debug("gbs");
-        GBS = sig->signature.GBS; 
-        IO_MBS = (float)sig->signature.IO_MBS; 
+        GBS = sig->signature.GBS;
+
+        // I/O MB/s
+        io_data_t *iod = (using_verb_files) ? &sig_shared_region[my_node_id].sig.iod : &se->iod;
+
+        // TODO: period or time ?
+        IO_MBS = (using_verb_files) ? ((float) iod->rchar / (float) (1024 * 1024) + (float) iod->wchar / (float) (1024 * 1024)) / sig_shared_region[my_node_id].period : (float) sig->signature.IO_MBS;
+
+        // DC Node Power
         POWER = sig->signature.DC_power; 
-        TIME = sig->signature.time; 
-        FLOPS = sig->signature.Gflops;
+
+        // Time
+        TIME = (using_verb_files) ? sig_shared_region[my_node_id].sig.time : sig->signature.time; 
+
+        // GFlop/s
+        FLOPS = (using_verb_files) ? sig_shared_region[my_node_id].sig.Gflops : sig->signature.Gflops;
+
+        // CPU
         debug("avgf");
         AVGF = (float)sig->signature.avg_f/1000000.0; 
+
+        // AVX 
+        if (using_verb_files) {
+            // TODO ssig_vpi vs. ssig vpi2 in signature.h
+            compute_ssig_vpi(&VPI, &sig_shared_region[my_node_id].sig);
+        } else {
+            compute_vpi(&VPI, &sig->signature);
+        }
+#if 0
         VI=metrics_vec_inst(&sig->signature); 
         VPI=(double)VI/(double)sig->signature.instructions; 
+#endif
+
         GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0; 
+
         debug("prevf");
         if (prevf > 0 ){ PFREQ = (float)prevf/1000000.0;}
+
         if (new_freq > 0 ){ NFREQ = (float)new_freq/1000000.0;}
+
         debug("io");
+        
+        if (se != NULL) {
+            io_tostr(iod, io_info, sizeof(io_info)); // iod declared above
+        }
+        else {
+            sprintf(io_info,"No IO data");
+        }
+#if 0
         if (se != NULL && master_rank == 0) io_tostr(&se->iod, io_info, sizeof(io_info));
         else sprintf(io_info,"No IO data");
+#endif
+
 #if USE_GPUS
         if (master_rank == 0 && sig->signature.gpu_sig.num_gpus > 0) { 
             debug("%swriting gpu info%s", COL_YLW, COL_CLR);
             verbose(3," ");
+
             for(gpui=0;gpui<sig->signature.gpu_sig.num_gpus;gpui++) { 
                 verbosen(3,"(GPU[%d] Power %.2f Util %lu Freq %lu)",
                         gpui, sig->signature.gpu_sig.gpu_data[gpui].GPU_power,
@@ -116,38 +177,56 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                 }
             } 
             verbose(3," ");
+
             if (gpuused){
                 GPU_POWER = GPU_POWER/(float)gpuused;
                 AVGGPUF = (float)GPU_FREQ/(float)(gpuused*1000000.0); 
                 GPU_UTIL = GPU_UTIL/gpuused; 
             }
+
             gpuf = gpuf / sig->signature.gpu_sig.num_gpus;
             snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(total gpupower %.0lf avg_gfreq %.2fGHz)", gpu_tpower, gpuf/1000000.0);
         } 
 #endif
+
         debug("%swriting app info%s", COL_YLW, COL_CLR);
         verbose(2,"EAR+%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
                 mode, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
+
         debug("%swriting aname at elapsed%s", COL_YLW, COL_CLR)
         verbosen(1,"EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
                 mode, aname, PFREQ, nname, master_rank, elapsed); 
         verbosen(1,"%s",COL_GRE);
+
 #if USE_GPUS
         if (sig->signature.gpu_sig.num_gpus > 0 ) verbosen(2,"%s", gpu_buff);
 #endif
+
         strcpy(gpu_buff," ");
         if (GPU_UTIL) snprintf(gpu_buff,sizeof(gpu_buff),"\n\t(Used GPUS %lu GPU_power %.2lfW GPU_freq %.2fGHz GPU_util %lu)",gpuused,GPU_POWER,AVGGPUF,GPU_UTIL);
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);
-        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfsec.\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlops=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
+        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
+
         if (new_freq > 0){ verbosen(1,"\n\t Next Frequency %.2f",NFREQ);}
+
         verbosen(2,"\n\t DRAM power %.2lf PCK power %.2lf",sig->signature.DRAM_power,sig->signature.PCK_power);
-        l1_sec = sig->signature.L1_misses/(sig->signature.time*1024*1024*1024);
-        l2_sec = sig->signature.L2_misses/(sig->signature.time*1024*1024*1024);
-        l3_sec = sig->signature.L3_misses/(sig->signature.time*1024*1024*1024);
+
+        ullong l1_miss = (using_verb_files) ? sig_shared_region[my_node_id].sig.L1_misses : sig->signature.L1_misses;
+        ullong l2_miss = (using_verb_files) ? sig_shared_region[my_node_id].sig.L2_misses : sig->signature.L2_misses;
+        ullong l3_miss = (using_verb_files) ? sig_shared_region[my_node_id].sig.L3_misses : sig->signature.L3_misses;
+
+        l1_sec = l1_miss/(TIME * 1024*1024*1024);
+        l2_sec = l2_miss/(TIME * 1024*1024*1024);
+        l3_sec = l3_miss/(TIME * 1024*1024*1024);
+
         verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f",l1_sec,l2_sec,l3_sec);
-        verbosen(2," VPI %.2f Total MPI calls %u",VPI,total_mpi);
+
+        uint n_mpi_calls = (using_verb_files) ? sig_shared_region[my_node_id].mpi_info.total_mpi_calls : total_mpi;
+
+        verbosen(2," VPI %.2f Total MPI calls %u",VPI, n_mpi_calls);
         verbosen(2,"\n\t IO DATA: %s ",io_info);
+
         verbose(1,"%s",COL_CLR);
     }
 } 

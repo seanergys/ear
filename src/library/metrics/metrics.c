@@ -915,6 +915,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 
 				/* Per process IO data */
                 io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
+                io_copy(&sig_shared_region[my_node_id].sig.iod, &metrics_io_diff[s]);
 				double iogb;
 				int ios;
 				ullong mpit, exect;
@@ -932,10 +933,16 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                     if (is_mpi_enabled()) {
                         double pmpi = 0.0, lpmpi;
                         for (int i=0;i<lib_shared_region->num_processes;i++){	
+                            // TODO: I think metrics_mpi_calls has per process perc_mpi already computed from loop/app stops.
                             mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
                             exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
-                            if ((metrics_mpi_calls[s])[i].mpi_time > 0) lpmpi = (double)(mpit*100.0 / exect);
-                            else lpmpi = 0;
+                            if ((metrics_mpi_calls[s])[i].mpi_time > 0) {
+                                lpmpi = (double)(mpit*100.0 / exect);
+                            }
+                            else {
+                                lpmpi = 0;
+                            }
+                            sig_shared_region[i].mpi_info.perc_mpi = lpmpi;
                             pmpi += lpmpi;
                             verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
                         }
