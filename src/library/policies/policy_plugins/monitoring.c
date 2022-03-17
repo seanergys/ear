@@ -139,6 +139,12 @@ state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t
 {
     // TODO: The behaviour is the same done by policy.c by default when a plugin does not have this symbol.
 	freq_set->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
+#if USE_GPUS
+  if (gpus.get_default_freq != NULL){
+    gpus.get_default_freq(c, freq_set, s);
+  }
+#endif
+
 	return EAR_SUCCESS;
 }
 

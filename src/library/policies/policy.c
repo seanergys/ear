@@ -967,6 +967,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 {
     polctx_t *c = &my_pol_ctx;
     state_t ret,retg = EAR_SUCCESS;
+		uint num_ready;
 		uint jobs_in_node;
     if (curr == NULL || prev == NULL){
         *ok = 1;
@@ -987,7 +988,7 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 
     if (polsyms_fun.ok != NULL){
         /* We wait for node signature computation */
-        if (!are_signatures_ready(lib_shared_region,sig_shared_region)){
+        if (!are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready)){
             *ok = 1;
             return EAR_SUCCESS;
         }

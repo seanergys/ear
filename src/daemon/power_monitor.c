@@ -762,6 +762,7 @@ void report_powermon_app(powermon_app_t *app) {
 	}
 
 	verbose_application_data(0, &app->app);
+	clean_db_power_signature(&app->app.power_sig, my_node_conf->max_sig_power);
 	report_application_in_file(&app->app);
 	report_connection_status = report_applications(&rid,&app->app,1);
 }

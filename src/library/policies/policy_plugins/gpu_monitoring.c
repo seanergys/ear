@@ -100,6 +100,8 @@ state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok
 
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set,signature_t *s)
 {
+  ulong *new_freq=freq_set->gpu_freq;
+  memcpy(new_freq,gfreqs,sizeof(ulong)*c->num_gpus);
 	return EAR_SUCCESS;
 }
 
