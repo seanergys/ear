@@ -23,14 +23,13 @@
 #include <unistd.h>
 #include <assert.h>
 #include <math.h>
-#include <common/config.h>
-#include <common/states.h>
-#define SHOW_DEBUGS 1
-#define LB_VERB			3
-#define VERB_BARR       1
-#define MPI_EAR_STATS   2
+
+// #define SHOW_DEBUGS 1
+
 #include <management/cpufreq/cpufreq.h>
 
+#include <common/config.h>
+#include <common/states.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
 #include <common/output/verbose.h>
@@ -45,7 +44,12 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/global_comm.h>
+
 #include <report/report.h>
+
+#define LB_VERB			3
+#define VERB_BARR       0
+#define MPI_EAR_STATS   2
 
 static timestamp pol_time_init, app_init, start_no_mpi;
 static mpi_information_t mpi_stats;
@@ -66,6 +70,8 @@ static ulong total_barrier_time = 0;
 
 static uint pstate_list[MAX_CPUS_SUPPORTED];
 static uint *cpu_list;
+
+static uint reduce_cpufreq;
 #endif
 
 float LB_TH = EAR_LB_TH;
@@ -99,21 +105,27 @@ state_t mpi_app_init(polctx_t *c)
         mpi_stats.perc_mpi        = 0;
 
 #if EARL_RESEARCH
-        /* Process CPUs */
-        cpu_list = calloc(sig_shared_region[my_node_id].num_cpus, sizeof(uint));
-        if (list_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask, sig_shared_region[my_node_id].num_cpus, cpu_list) < 0) {
-            verbose(0, "%sWARNING%s cpu_list for process %d could not be read.", COL_RED, COL_CLR, my_node_id);
-            free(cpu_list);
-        } else {
-            verbosen(0, "proc %d: ", my_node_id);
-            for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
-                verbosen(0, "%u ", cpu_list[i]);
-            }
-            verb(0, "");
-        }
 
-        for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
-            pstate_list[i] = ps_nothing;
+        reduce_cpufreq = ((ear_my_rank == 2) || (ear_my_rank == 4) || (ear_my_rank == 7) || (ear_my_rank == 10) || (ear_my_rank == 12) || (ear_my_rank == 15) || (ear_my_rank == 18) || (ear_my_rank == 20) ||  (ear_my_rank == 23) ||  (ear_my_rank == 26) ||  (ear_my_rank == 28) ||  (ear_my_rank == 31) ||  (ear_my_rank == 34) ||  (ear_my_rank == 36) ||  (ear_my_rank == 39)) ? 1 : 0;
+
+        if (reduce_cpufreq) {
+
+            /* Process CPUs */
+            cpu_list = calloc(sig_shared_region[my_node_id].num_cpus, sizeof(uint));
+            if (list_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask, sig_shared_region[my_node_id].num_cpus, cpu_list) < 0) {
+                verbose(VERB_BARR, "%sWARNING%s cpu_list for process %d could not have been read.", COL_RED, COL_CLR, my_node_id);
+                free(cpu_list);
+            } else {
+                verbosen(VERB_BARR, "proc %d: ", my_node_id);
+                for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
+                    verbosen(VERB_BARR, "%u ", cpu_list[i]);
+                }
+                verb(VERB_BARR, " ");
+            }
+
+            for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
+                pstate_list[i] = ps_nothing;
+            }
         }
 #endif
 
@@ -155,7 +167,7 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 
     strcat(mpi_stats_fn, nodename);
     strcat(mpi_calls_stats_fn, nodename);
-    
+
     char suffix[GENERIC_NAME] = ".csv";
 
     strcat(mpi_stats_fn, suffix);
@@ -183,20 +195,20 @@ state_t mpi_app_end(polctx_t *c)
 
         char *stats = getenv(SCHED_GET_EAR_STATS);
         if (stats != NULL) {
-            
+
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename, mpi_stats_per_call_filename))) {
                 verbose(MPI_EAR_STATS, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
                 return EAR_WARNING;
             }
 
-            verbose(2,"      MPI stats file: %s\nMPI calls stats file: %s",
+            verbose(MPI_EAR_STATS,"      MPI stats file: %s\nMPI calls stats file: %s",
                     mpi_stats_filename, mpi_stats_per_call_filename);
 
             // Open mpi_stats_filename to store per process global MPI stats
             fd=open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
             if (fd < 0) {
-                verbose(2, "%sWARNING%s MPI stats file could not be opened: %d", COL_YLW, COL_CLR, errno);
+                verbose(2, "%sWARNING%s MPI stats file couldn't have opened: %d", COL_YLW, COL_CLR, errno);
                 mpi_info_to_str(&mpi_stats, buff, sizeof(buff));
                 verbose(1, "MR[%d] %s", lib_shared_region->master_rank, buff);
             } else {
@@ -267,23 +279,21 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         }
 #endif
 #if EARL_RESEARCH
-        if (cpu_list != NULL) {
+        if (reduce_cpufreq && cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
                 // Get which type of blocking call is
                 mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 
                 if (nbcall_type == Only_Barrier) {
-                    verb(0, "%sBarrier init%s", COL_RED, COL_CLR);
+                    verb(VERB_BARR, "%sBarrier init%s", COL_RED, COL_CLR);
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                         uint cpu = cpu_list[i];
                         pstate_list[cpu] = 3;
                     }
 
-                    // vector_print_pstates(pstate_list, sizeof(pstate_list));
-
                     if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
-                        verb(0, "%sERROR%s", COL_RED, COL_CLR);
+                        verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d", COL_RED, COL_CLR, my_node_id);
                     }
                 }
             }
@@ -328,9 +338,9 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 total_mpi_time_sync += (ulong)elap;
 
 #if EARL_RESEARCH
-                if (cpu_list != NULL) {
+                if (reduce_cpufreq && cpu_list != NULL) {
                     if (nbcall_type == Only_Barrier) {
-                        verb(0, "%sBarrier end%s time %llu", COL_RED, COL_CLR, elap);
+                        verb(VERB_BARR, "%sBarrier end%s - %llu", COL_RED, COL_CLR, elap);
                          barriers++;
                          total_barrier_time += elap;
 
@@ -339,10 +349,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                             pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index;
                         }
 
-                    // vector_print_pstates(pstate_list, sizeof(pstate_list));
-
                         if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
-                            verb(0, "%sERROR%s", COL_RED, COL_CLR);
+                            verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d", COL_RED, COL_CLR, my_node_id);
                         }
                     }
                 }
