@@ -1543,6 +1543,12 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 #if EAR_OVERHEAD_CONTROL
 				time_t curr_time;
 				double time_from_mpi_init;
+
+				if (!ear_lib_initialized){
+					ear_init();
+				}
+
+
 				if (!eard_ok && !EARL_LIGHT) return;
 				if (synchronize_masters == 0 ) return;
 				if (!lib_shared_region->earl_on) return;
