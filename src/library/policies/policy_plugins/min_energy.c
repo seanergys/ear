@@ -23,7 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -139,14 +139,16 @@ static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signat
 
 state_t policy_init(polctx_t *c)
 {
-    char *cnetwork_use_imc = NULL; // getenv(SCHED_NETWORK_USE_IMC);
-    char *cimc_set_by_hw = NULL;   // getenv(SCHED_LET_HW_CTRL_IMC);
+    char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
+    char *cimc_set_by_hw =   getenv(SCHED_LET_HW_CTRL_IMC);
 
     int i, sid = 0;
 
     if (c == NULL) {
         return EAR_ERROR;
     }
+
+		debug("min_energy init");
 
     if (is_mpi_enabled()) {
         mpi_app_init(c);
@@ -155,15 +157,10 @@ state_t policy_init(polctx_t *c)
     }
 
     /*  Config env variables */
-    if (state_ok(read_config_env(cimc_set_by_hw, SCHED_LET_HW_CTRL_IMC))) {
-        read_config(&imc_set_by_hw, cimc_set_by_hw);
-    }
+		if (cimc_set_by_hw != NULL)     imc_set_by_hw = atoi(cimc_set_by_hw);	
+		if (cnetwork_use_imc != NULL) network_use_imc = atoi(cnetwork_use_imc);
     verbose_master(2,"Dynamic Uncore freq. management: %d\n      Using HW selection as ref: %d\n              Extra IMC penalty: %.2lf",
             dyn_unc, imc_set_by_hw, imc_extra_th);
-
-    if (state_ok(read_config_env(cnetwork_use_imc, SCHED_NETWORK_USE_IMC))) {
-        read_config(&network_use_imc, cnetwork_use_imc);
-    }
     verbose_master(2, "               Network uses IMC: %u", network_use_imc);
 
     nominal_node = frequency_get_nominal_freq();
@@ -228,6 +225,7 @@ state_t policy_init(polctx_t *c)
 #endif
 
     node_freqs_copy(&last_nodefreq_sel, &min_energy_def_freqs);
+		debug("min_energy init ends");
     return EAR_SUCCESS;
 }
 
@@ -505,7 +503,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 } else {
                     /* If energy models are not available, we just execute a linear search */
                     if (sig_ready[def_pstate] == 0) {
-                        debug("signature for default pstate %u is not ready", def_pstate);
                         *new_freq = def_freq;
                         *ready = EAR_POLICY_TRY_AGAIN;
                     } else {

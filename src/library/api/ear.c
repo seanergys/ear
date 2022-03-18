@@ -188,7 +188,7 @@ uint ear_guided = DYNAIS_GUIDED;
 static uint synchronize_masters = 1;
 
 /*  Sets verbose level for ear init messages */
-#define VEAR_INIT 3
+#define VEAR_INIT 2
 
 uint using_verb_files = 0;
 uint exclusive = 1;
@@ -1153,8 +1153,10 @@ void ear_init()
 				debug("END Shared region creation section");
 				/* Processes in same node connectes each other*/
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
+
 				/* create verbose file for each job */
 				if (verb_path != NULL){
+							  verbose_master(2, " Per process log set to %u", per_proc_verb_file);	
 								if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
 												if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
 																error("MR[%d] Verbose files folder cannot be created (%s)", masters_info.my_master_rank, strerror(errno));
@@ -1541,6 +1543,12 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 #if EAR_OVERHEAD_CONTROL
 				time_t curr_time;
 				double time_from_mpi_init;
+
+				if (!ear_lib_initialized){
+					ear_init();
+				}
+
+
 				if (!eard_ok && !EARL_LIGHT) return;
 				if (synchronize_masters == 0 ) return;
 				if (!lib_shared_region->earl_on) return;
@@ -1917,7 +1925,7 @@ state_t earl_periodic_actions(void *no_arg)
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
-				debug("elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided);
+				debug("elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d %u",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided, my_node_id);
 				if (first_exec_monitor){
 								first_exec_monitor = 0;
 								return EAR_SUCCESS;
