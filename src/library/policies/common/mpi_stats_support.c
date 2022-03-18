@@ -63,16 +63,27 @@ static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 
-
 #if EARL_RESEARCH
+
+#define LOW_CPU 0
+#define MPI_CALL_COUNT 1
+
+#if MPI_CALL_COUNT
+static uint mpi_call_count[N_CALL_TYPES];
+static ulong mpi_call_time[N_CALL_TYPES]; 
+#else
 static uint barriers = 0;
 static ulong total_barrier_time = 0;
+#endif // MPI_CALL_COUNT
 
+#if LOW_CPU
 static uint pstate_list[MAX_CPUS_SUPPORTED];
 static uint *cpu_list;
 
 static uint reduce_cpufreq;
-#endif
+#endif // LOW_CPU
+
+#endif // EARL_RESEARCH
 
 float LB_TH = EAR_LB_TH;
 
@@ -106,6 +117,7 @@ state_t mpi_app_init(polctx_t *c)
 
 #if EARL_RESEARCH
 
+#if LOW_CPU
         reduce_cpufreq = ((ear_my_rank == 2) || (ear_my_rank == 4) || (ear_my_rank == 7) || (ear_my_rank == 10) || (ear_my_rank == 12) || (ear_my_rank == 15) || (ear_my_rank == 18) || (ear_my_rank == 20) ||  (ear_my_rank == 23) ||  (ear_my_rank == 26) ||  (ear_my_rank == 28) ||  (ear_my_rank == 31) ||  (ear_my_rank == 34) ||  (ear_my_rank == 36) ||  (ear_my_rank == 39)) ? 1 : 0;
 
         if (reduce_cpufreq) {
@@ -127,7 +139,9 @@ state_t mpi_app_init(polctx_t *c)
                 pstate_list[i] = ps_nothing;
             }
         }
-#endif
+#endif // LOW_CPU
+
+#endif // EARL_RESEARCH
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
@@ -228,26 +242,96 @@ state_t mpi_app_end(polctx_t *c)
             fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
             if (fd >= 0) {
-
+#if EARL_RESEARCH
+#if MPI_CALL_COUNT
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI time;Time synchronizing;Time Blocking;Time Collectives;Total MPI sync calls;Total blocking calls;Total collective calls;Total Barriers;Time in Barrier\n");
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;Block_time;Collec_time;Total MPI sync calls;Total blocking calls;Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;t_Send;t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait\n");
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%u;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.1f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
-                        mpi_stats.perc_mpi * 100,
-                        ((float) total_mpi_time_sync / (float) mpi_stats.exec_time) * 100.0,
-                        ((float) total_mpi_time_blocking / (float) mpi_stats.exec_time) * 100.0,
-                        ((float) total_mpi_time_collectives / (float) mpi_stats.exec_time) * 100.0,
-                        ((float) total_synchronizations / (float) mpi_stats.total_mpi_calls) * 100.0,
-                        ((float) total_blocking_calls / (float) mpi_stats.total_mpi_calls) * 100.0,
-                        ((float) total_synchronizations / (float) mpi_stats.total_mpi_calls) * 100.0,
+                        mpi_stats.perc_mpi,
+                        mpi_stats.exec_time,
+                        total_mpi_time_sync,
+                        total_mpi_time_blocking,
+                        total_mpi_time_collectives,
+                        total_synchronizations,
+                        total_blocking_calls,
+                        total_collectives,
+                        mpi_call_count[GATHER],
+                        mpi_call_count[REDUCE],
+                        mpi_call_count[ALL2ALL],
+                        mpi_call_count[BARRIER],
+                        mpi_call_count[BCAST],
+                        mpi_call_count[SEND],
+                        mpi_call_count[COMM],
+                        mpi_call_count[RECEIVE],
+                        mpi_call_count[SCAN],
+                        mpi_call_count[SCATTER],
+                        mpi_call_count[SENDRECV],
+                        mpi_call_count[WAIT],
+                        mpi_call_time[GATHER],
+                        mpi_call_time[REDUCE],
+                        mpi_call_time[ALL2ALL],
+                        mpi_call_time[BARRIER],
+                        mpi_call_time[BCAST],
+                        mpi_call_time[SEND],
+                        mpi_call_time[COMM],
+                        mpi_call_time[RECEIVE],
+                        mpi_call_time[SCAN],
+                        mpi_call_time[SCATTER],
+                        mpi_call_time[SENDRECV],
+                        mpi_call_time[WAIT]
+                        );
+                write(fd, buff, strlen(buff));
+#else
+                // Only the master writes the header
+                if (mpi_stats.rank == 0) {
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;Block_time;Collec_time;Total MPI sync calls;Total blocking calls;Total collective calls;Total Barriers;Time in Barrier\n");
+                    write(fd, buff, strlen(buff));
+                }
+
+                sprintf(buff,"%d;%d;%u;%.1f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                        lib_shared_region->master_rank,
+                        mpi_stats.rank,
+                        mpi_stats.total_mpi_calls,
+                        mpi_stats.perc_mpi,
+                        mpi_stats.exec_time,
+                        total_mpi_time_sync,
+                        total_mpi_time_blocking,
+                        total_mpi_time_collectives,
+                        total_synchronizations,
+                        total_blocking_calls,
+                        total_collectives,
                         barriers, total_barrier_time);
                 write(fd, buff, strlen(buff));
+#endif // MPI_CALL_COUNT
+#else
+                // Only the master writes the header
+                if (mpi_stats.rank == 0) {
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;Block_time;Collec_time;Total MPI sync calls;Total blocking calls;Total collective calls\n");
+                    write(fd, buff, strlen(buff));
+                }
+
+                sprintf(buff,"%d;%d;%u;%.1f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                        lib_shared_region->master_rank,
+                        mpi_stats.rank,
+                        mpi_stats.total_mpi_calls,
+                        mpi_stats.perc_mpi,
+                        mpi_stats.exec_time,
+                        total_mpi_time_sync,
+                        total_mpi_time_blocking,
+                        total_mpi_time_collectives,
+                        total_synchronizations,
+                        total_blocking_calls,
+                        total_collectives
+                        );
+                write(fd, buff, strlen(buff));
+#endif // EARL_RESEARCH
             }
         }
     }
@@ -279,13 +363,14 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         }
 #endif
 #if EARL_RESEARCH
+#if LOW_CPU
         if (reduce_cpufreq && cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
                 // Get which type of blocking call is
-                mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
+                 mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 
-                if (nbcall_type == Only_Barrier) {
-                    verb(VERB_BARR, "%sBarrier init%s", COL_RED, COL_CLR);
+                 if (nbcall_type == Only_Barrier) {
+
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                         uint cpu = cpu_list[i];
@@ -295,9 +380,10 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
                     if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
                         verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d", COL_RED, COL_CLR, my_node_id);
                     }
-                }
+                 }
             }
         }
+#endif
 #endif
     }
     return EAR_SUCCESS;
@@ -336,13 +422,15 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 // Sync
                 total_synchronizations++;
                 total_mpi_time_sync += (ulong)elap;
-
 #if EARL_RESEARCH
-                if (reduce_cpufreq && cpu_list != NULL) {
-                    if (nbcall_type == Only_Barrier) {
-                        verb(VERB_BARR, "%sBarrier end%s - %llu", COL_RED, COL_CLR, elap);
-                         barriers++;
-                         total_barrier_time += elap;
+
+#if !MPI_CALL_COUNT
+                if (nbcall_type == Only_Barrier) {
+                        barriers++;
+                        total_barrier_time += elap;
+#endif // MPI_CALL_COUNT
+#if LOW_CPU
+                    if (reduce_cpufreq && cpu_list != NULL) {
 
                         for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                             uint cpu = cpu_list[i];
@@ -353,12 +441,19 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                             verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d", COL_RED, COL_CLR, my_node_id);
                         }
                     }
+#endif // LOW_CPU
+#if !MPI_CALL_COUNT
                 }
-#endif
+#endif // MPI_CALL_COUNT
+#endif // EARL_RESEARCH
             } else {
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
+#if MPI_CALL_COUNT
+            mpi_call_count[nbcall_type]++; 
+            mpi_call_time[nbcall_type]+= (ulong)elap;
+#endif // MPI_CALL_COUNT
         }
 
         /* Global statistics */
@@ -397,22 +492,6 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     my_node_id, sig_shared_region[my_node_id].mpi_info.mpi_time,
                     sig_shared_region[my_node_id].mpi_info.exec_time, elap,
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
-        }
-#endif
-#if 0
-        if (call_type == Barrier) {
-            uint num_cpus;
-           if (state_fail(mgt_cpufreq_count_devices(no_ctx, &num_cpus))) {
-               verbose(VERB_BARR, "%sERROR%s Reading cpufreq num. devices.", COL_RED, COL_CLR);
-           }
-           for (int i = 0; i < num_cpus; i++) {
-               if (cpu_isset(i, &sig_shared_region[my_node_id].cpu_mask)) {
-                   verbose(VERB_BARR, "%sProc. %d has CPU %d%s", COL_GRE, my_node_id, i, COL_CLR);
-                  if (state_fail(mgt_cpufreq_set_current(no_ctx, 1, i))) {
-                    verbose(VERB_BARR, "%sERROR%s Setting cpufreq proc %d", COL_RED, COL_CLR, my_node_id);
-                  }
-               }
-           }
         }
 #endif
     }

@@ -18,6 +18,8 @@
 #ifndef _MPI_SUPPORT_
 #define _MPI_SUPPORT_
 
+#include <math.h>
+
 enum type_mpi_call {
     _Unknown=0,
     _Send=1,
@@ -155,6 +157,7 @@ typedef enum
 #define remove_blocking(call)		(call&~Only_Blocking)
 #define is_recv(call)						((call == Only_Receive) || (call == Only_SendRecv))
 
+
 int is_mpi_enabled();
 int is_intelmpi();
 int is_openmpi();
@@ -163,4 +166,42 @@ int openmpi_num_nodes();
 
 #define BUSY_WAITING_BLOCK  0
 #define YIELD_BLOCK					1
+
+/* New */
+#if 0
+#define is_scatter(call) (call & Only_Scatter)
+#define is_gather(call) (call & Only_Gather)
+#define is_alltoall(call) (call & Only_All2All)
+#define is_reduce(call) (call & Only_Reduce)
+#define is_barrier(call) (call & Only_Barrier)
+#define is_receive(call) (call & Only_Receive)
+#define is_sendrecv(call) (call & Only_SendRecv)
+#define is_bcast(call) (call & Only_Bcast)
+#define is_wait(call) (call & Only_Wait)
+#define is_test(call) (call & Only_Test)
+
+#define remove_call(call, call_type) (call & ~call_type)
+#endif
+
+#define N_CALL_TYPES 16
+
+// #define log2(x) (log(x) * M_LOG2E)
+
+#define UNKNOWN  0
+#define SEND     1
+#define RECEIVE  2
+#define BARRIER  3
+#define WAIT     4
+#define BCAST    5
+#define ALL2ALL  6
+#define GATHER   7
+#define SCATTER  8
+#define SCAN     9
+#define REDUCE   10
+#define SENDRECV 11
+#define TEST     12
+#define COMM     13
+#define IO       14
+#define BLOCKING 15
+
 #endif
