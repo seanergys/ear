@@ -1545,6 +1545,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 				double time_from_mpi_init;
 
 				if (!ear_lib_initialized){
+					verbose_master(2,"Warnin: EAR not initialized");
 					ear_init();
 				}
 
