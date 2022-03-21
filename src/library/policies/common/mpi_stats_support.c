@@ -205,7 +205,7 @@ state_t mpi_app_end(polctx_t *c)
     mpi_stats.exec_time += elap;
 
     if (mpi_stats.total_mpi_calls) {
-        mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float)mpi_stats.exec_time;
+        mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
         char *stats = getenv(SCHED_GET_EAR_STATS);
         if (stats != NULL) {
@@ -250,11 +250,11 @@ state_t mpi_app_end(polctx_t *c)
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.1f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.3f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
-                        mpi_stats.perc_mpi,
+                        mpi_stats.perc_mpi*100,
                         mpi_stats.exec_time,
                         total_mpi_time_sync,
                         total_mpi_time_blocking,
@@ -295,7 +295,7 @@ state_t mpi_app_end(polctx_t *c)
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.1f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.3f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
@@ -317,7 +317,7 @@ state_t mpi_app_end(polctx_t *c)
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.1f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.3f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
