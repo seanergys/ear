@@ -768,7 +768,7 @@ static int metrics_partial_stop(uint where)
             }
         verbose_master(3, "%s", "");
         }
-		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
+				cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* Avg IMC frequency */
