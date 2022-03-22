@@ -42,9 +42,6 @@ coefficients_list.csv
 *.csv
 *TOOLADMIN_NOTES.txt
 
-# Jordi's
-bench/
-
 # Build files
 etc/module/ear
 etc/conf/ear.conf
