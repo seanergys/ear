@@ -380,7 +380,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                         uint cpu = cpu_list[i];
-                        pstate_list[cpu] = 5;
+                        pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index + 1;
                     }
 
                     if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
