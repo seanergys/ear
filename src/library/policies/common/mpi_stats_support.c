@@ -65,15 +65,14 @@ static ulong max_sync_block             = 0;
 
 #if EARL_RESEARCH
 
-#define LOW_CPU 0
+#define LOW_CPU        1
 #define MPI_CALL_COUNT 1
 
 #if MPI_CALL_COUNT
 static uint mpi_call_count[N_CALL_TYPES];
 static ulong mpi_call_time[N_CALL_TYPES]; 
-#else
-static uint barriers = 0;
-static ulong total_barrier_time = 0;
+
+static uint mpi_count           = 0;
 #endif // MPI_CALL_COUNT
 
 #if LOW_CPU
@@ -81,6 +80,11 @@ static uint pstate_list[MAX_CPUS_SUPPORTED];
 static uint *cpu_list;
 
 static uint reduce_cpufreq;
+
+static uint low_cpu = 0;
+
+static uint recv_reduced = 0;
+static ulong recv_reduced_time = 0;
 #endif // LOW_CPU
 
 #endif // EARL_RESEARCH
@@ -95,7 +99,7 @@ state_t mpi_app_init(polctx_t *c)
         if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
             LB_TH = (float)atoi(clb_th);
         }
-        verbose_master(2, "Using a LB th %.1f", LB_TH);
+        verbose_master(LB_VERB, "Load Balance threshold: %.1f", LB_TH);
 
         sig_shared_region[my_node_id].mpi_info.mpi_time=0;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
@@ -118,23 +122,33 @@ state_t mpi_app_init(polctx_t *c)
 #if EARL_RESEARCH
 
 #if LOW_CPU
+        char *clow_cpu = getenv("SLURM_EAR_COUNTDOWN");
+        if (clow_cpu != NULL) {
+            low_cpu = atoi(clow_cpu);
+        }
+        verbose(VERB_BARR, "Countdown: %u", low_cpu);
+
         reduce_cpufreq = ((ear_my_rank == 2) || (ear_my_rank == 4) || (ear_my_rank == 7) || (ear_my_rank == 10) || (ear_my_rank == 12) || (ear_my_rank == 15) || (ear_my_rank == 18) || (ear_my_rank == 20) ||  (ear_my_rank == 23) ||  (ear_my_rank == 26) ||  (ear_my_rank == 28) ||  (ear_my_rank == 31) ||  (ear_my_rank == 34) ||  (ear_my_rank == 36) ||  (ear_my_rank == 39)) ? 1 : 0;
 
         if (reduce_cpufreq) {
 
             /* Process CPUs */
             cpu_list = calloc(sig_shared_region[my_node_id].num_cpus, sizeof(uint));
-            if (list_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask, sig_shared_region[my_node_id].num_cpus, cpu_list) < 0) {
-                verbose(VERB_BARR, "%sWARNING%s cpu_list for process %d could not have been read.", COL_RED, COL_CLR, my_node_id);
+            if (list_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask,
+                        sig_shared_region[my_node_id].num_cpus, cpu_list) < 0) {
+                verbose(VERB_BARR, "%sWARNING%s cpu_list for process %d could not have been read.",
+                        COL_RED, COL_CLR, my_node_id);
                 free(cpu_list);
-            } else {
-                verbosen(VERB_BARR, "proc %d: ", my_node_id);
+            }
+// TODO: #if SHOW_DEBUGS
+            else {
+                verbosen(VERB_BARR, "proc (l/g) (%d/%d): ", my_node_id, ear_my_rank);
                 for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                     verbosen(VERB_BARR, "%u ", cpu_list[i]);
                 }
                 verb(VERB_BARR, " ");
             }
-
+// TODO: #endif
             for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
                 pstate_list[i] = ps_nothing;
             }
@@ -166,17 +180,17 @@ state_t mpi_app_init(polctx_t *c)
 static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)
 {
     if (sprintf(mpi_stats_fn, "%s.ear_mpi_stats.", prefix) < 0) {
-        verbose(MPI_EAR_STATS, "%sWARNING%s Writing <prefix>%s.ear_mpi_stats.", COL_RED, COL_CLR, prefix);
+        verbose(MPI_EAR_STATS + 1, "%sWARNING%s Writing <prefix>%s.ear_mpi_stats.", COL_RED, COL_CLR, prefix);
         return EAR_ERROR;
     }
     if (sprintf(mpi_calls_stats_fn, "%s.ear_mpi_calls_stats.", prefix) < 0) {
-        verbose(MPI_EAR_STATS, "%sWARNING%s Writing <prefix>%s.ear_mpi_calls_stats.", COL_RED, COL_CLR, prefix);
+        verbose(MPI_EAR_STATS + 1, "%sWARNING%s Writing <prefix>%s.ear_mpi_calls_stats.", COL_RED, COL_CLR, prefix);
         return EAR_ERROR;
     }
 
     char nodename[GENERIC_NAME];
     if (gethostname(nodename, sizeof(nodename)) < 0) {
-        verbose(MPI_EAR_STATS, "%sWARNING%s Nodename could not be read: %d", COL_RED, COL_CLR, errno);
+        verbose(MPI_EAR_STATS + 1, "%sWARNING%s Nodename could not be read: %d", COL_RED, COL_CLR, errno);
     }
 
     strcat(mpi_stats_fn, nodename);
@@ -210,7 +224,8 @@ state_t mpi_app_end(polctx_t *c)
         char *stats = getenv(SCHED_GET_EAR_STATS);
         if (stats != NULL) {
 
-            if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename, mpi_stats_per_call_filename))) {
+            if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
+                            mpi_stats_per_call_filename))) {
                 verbose(MPI_EAR_STATS, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
                 return EAR_WARNING;
             }
@@ -222,7 +237,8 @@ state_t mpi_app_end(polctx_t *c)
             fd=open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
             if (fd < 0) {
-                verbose(2, "%sWARNING%s MPI stats file couldn't have opened: %d", COL_YLW, COL_CLR, errno);
+                verbose(MPI_EAR_STATS, "%sWARNING%s MPI stats file couldn't have opened: %d",
+                        COL_YLW, COL_CLR, errno);
                 mpi_info_to_str(&mpi_stats, buff, sizeof(buff));
                 verbose(1, "MR[%d] %s", lib_shared_region->master_rank, buff);
             } else {
@@ -246,15 +262,20 @@ state_t mpi_app_end(polctx_t *c)
 #if MPI_CALL_COUNT
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;Block_time;Collec_time;Total MPI sync calls;Total blocking calls;Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;t_Send;t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait\n");
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
+                            "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
+                            "Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;"
+                            "Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;t_Send;"
+                            "t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait;Block;t_Block;Recv_red;t_Recv_red\n");
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.3f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u"
+                        "%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
-                        mpi_stats.perc_mpi*100,
+                        mpi_stats.perc_mpi,
                         mpi_stats.exec_time,
                         total_mpi_time_sync,
                         total_mpi_time_blocking,
@@ -274,6 +295,7 @@ state_t mpi_app_end(polctx_t *c)
                         mpi_call_count[SCATTER],
                         mpi_call_count[SENDRECV],
                         mpi_call_count[WAIT],
+                        mpi_call_count[BLOCKING],
                         mpi_call_time[GATHER],
                         mpi_call_time[REDUCE],
                         mpi_call_time[ALL2ALL],
@@ -285,39 +307,22 @@ state_t mpi_app_end(polctx_t *c)
                         mpi_call_time[SCAN],
                         mpi_call_time[SCATTER],
                         mpi_call_time[SENDRECV],
-                        mpi_call_time[WAIT]
+                        mpi_call_time[WAIT],
+                        mpi_call_time[BLOCKING],
+                        recv_reduced,
+                        recv_reduced_time
                         );
-                write(fd, buff, strlen(buff));
-#else
-                // Only the master writes the header
-                if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;Block_time;Collec_time;Total MPI sync calls;Total blocking calls;Total collective calls;Total Barriers;Time in Barrier\n");
-                    write(fd, buff, strlen(buff));
-                }
-
-                sprintf(buff,"%d;%d;%u;%.3f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
-                        lib_shared_region->master_rank,
-                        mpi_stats.rank,
-                        mpi_stats.total_mpi_calls,
-                        mpi_stats.perc_mpi,
-                        mpi_stats.exec_time,
-                        total_mpi_time_sync,
-                        total_mpi_time_blocking,
-                        total_mpi_time_collectives,
-                        total_synchronizations,
-                        total_blocking_calls,
-                        total_collectives,
-                        barriers, total_barrier_time);
-                write(fd, buff, strlen(buff));
 #endif // MPI_CALL_COUNT
 #else
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;Block_time;Collec_time;Total MPI sync calls;Total blocking calls;Total collective calls\n");
+                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
+                            "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
+                            "Total collective calls\n");
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.3f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
@@ -330,8 +335,8 @@ state_t mpi_app_end(polctx_t *c)
                         total_blocking_calls,
                         total_collectives
                         );
-                write(fd, buff, strlen(buff));
 #endif // EARL_RESEARCH
+                write(fd, buff, strlen(buff));
             }
         }
     }
@@ -362,23 +367,27 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec, time_no_mpi);
         }
 #endif
+
 #if EARL_RESEARCH
 #if LOW_CPU
-        if (reduce_cpufreq && cpu_list != NULL) {
+        if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
+
                 // Get which type of blocking call is
                  mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 
-                 if (nbcall_type == Only_Barrier) {
-
+                 if (is_recv(nbcall_type)) {
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                         uint cpu = cpu_list[i];
-                        pstate_list[cpu] = 3;
+                        pstate_list[cpu] = 5;
                     }
 
                     if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
-                        verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d", COL_RED, COL_CLR, my_node_id);
+                        verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d",
+                                COL_RED, COL_CLR, my_node_id);
+                    } else {
+                        recv_reduced++;
                     }
                  }
             }
@@ -406,7 +415,14 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         if (is_mpi_blocking(call_type)) {
 
             total_blocking_calls++;
-            total_mpi_time_blocking += (ulong)elap;
+            total_mpi_time_blocking += (ulong) elap;
+
+#if EARL_RESEARCH
+#if MPI_CALL_COUNT
+            mpi_call_count[BLOCKING]++;
+            mpi_call_time[BLOCKING] += (ulong) elap;
+#endif // MPI_CALL_COUNT
+#endif // EARL_RESEARCH
 
             max_sync_block = ear_max(max_sync_block, (ulong)elap);
 
@@ -418,42 +434,41 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 total_collectives++;
                 total_mpi_time_collectives += (ulong)elap;
 
-            } else if (is_synchronization(nbcall_type)){
+            } else if (is_synchronization(nbcall_type)) {
                 // Sync
                 total_synchronizations++;
                 total_mpi_time_sync += (ulong)elap;
-#if EARL_RESEARCH
-
-#if !MPI_CALL_COUNT
-                if (nbcall_type == Only_Barrier) {
-                        barriers++;
-                        total_barrier_time += elap;
-#endif // MPI_CALL_COUNT
-#if LOW_CPU
-                    if (reduce_cpufreq && cpu_list != NULL) {
-
-                        for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
-                            uint cpu = cpu_list[i];
-                            pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index;
-                        }
-
-                        if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
-                            verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d", COL_RED, COL_CLR, my_node_id);
-                        }
-                    }
-#endif // LOW_CPU
-#if !MPI_CALL_COUNT
-                }
-#endif // MPI_CALL_COUNT
-#endif // EARL_RESEARCH
             } else {
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
+#if EARL_RESEARCH
+
+#if LOW_CPU
+            if (is_recv(nbcall_type)) {
+                if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
+
+                    for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
+                        uint cpu = cpu_list[i];
+                        pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index;
+                    }
+
+                    if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
+                        verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d",
+                                COL_RED, COL_CLR, my_node_id);
+                    } else {
+                        recv_reduced_time += (ulong) elap;
+                    }
+                }
+            }
+#endif // LOW_CPU
+
 #if MPI_CALL_COUNT
             mpi_call_count[nbcall_type]++; 
-            mpi_call_time[nbcall_type]+= (ulong)elap;
+            mpi_call_time[nbcall_type]+= (ulong) elap;
 #endif // MPI_CALL_COUNT
+
+#endif // EARL_RESEARCH
         }
 
         /* Global statistics */

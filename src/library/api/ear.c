@@ -1277,8 +1277,7 @@ void ear_init()
                         sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
                         sig_shared_region[my_node_id].affinity = 1;
                         sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
-                        verb(0, "%sNum cpus for proc %d: %d%s", COL_YLW, my_node_id, sig_shared_region[my_node_id].num_cpus, COL_CLR);
-#if 1
+#if 0
                         // if (masters_info.my_master_rank>=0){ 
                         print_affinity_mask(&arch_desc.top);
                         // }
