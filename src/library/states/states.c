@@ -63,7 +63,7 @@ static ulong policy_freq;
 static uint tries_current_loop=0;
 static uint tries_current_loop_same_freq=0;
 
-static ulong perf_accuracy_min_time = 1000000;
+ulong perf_accuracy_min_time = 1000000;
 static uint perf_count_period = 100,loop_perf_count_period,perf_count_period_10p;
 uint EAR_STATE = NO_PERIOD;
 uint current_earl_state = NO_PERIOD;

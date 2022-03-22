@@ -7,6 +7,10 @@ CCC     = $(CC) $(CFLAGS)
 
 ######## INSTALLATION
 
+com1_PATH = $(DESTDIR)/bin
+com1_PERM = 2771
+com2_PATH = $(DESTDIR)/sbin
+com2_PERM = 0770
 com1_BINS = ear-info
 
 ifdef DB_BASE
@@ -20,11 +24,6 @@ com2_BINS += \
     edb_clean_apps \
     edb_clean_pm
 endif
-
-com1_PATH = $(DESTDIR)/bin
-com1_PERM = 2771
-com2_PATH = $(DESTDIR)/sbin
-com2_PERM = 0770
 
 ######## FILES
 

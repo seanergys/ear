@@ -95,9 +95,9 @@ static int static_open(uint cpu, mode_t mode, char *cmode)
 {
     char file[SZ_PATH_KERNEL];
     int fd;
-    sprintf(file, "/dev/cpu/%d/msr", cpu);
+    sprintf(file, "/dev/cpu/%d/msr_safe", cpu);
     if ((fd = static_open_debug(file, mode, cmode)) < 0) {
-        sprintf(file, "/dev/cpu/%d/msr_safe", cpu);
+        sprintf(file, "/dev/cpu/%d/msr", cpu);
         fd = static_open_debug(file, mode, cmode);
     }
     return fd;
@@ -144,6 +144,7 @@ state_t msr_close(uint cpu)
 
 state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 {
+    size_t psize;
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
@@ -156,8 +157,10 @@ state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 	#ifdef MSR_LOCK
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
     #endif
-    debug("Reading MSR of CPU%d (fd %d), address %lx", cpu, fds_wr[cpu], offset);
-	if (pread(fds_rd[cpu], buffer, size, offset) != size) {
+    psize = pread(fds_rd[cpu], buffer, size, offset);
+    debug("MSR read in CPU%d (fd %d, address %lx): %lu bytes of %lu expected",
+        cpu, fds_wr[cpu], offset, psize, size);
+	if (psize != size) {
 		#ifdef MSR_LOCK
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
 		#else
@@ -173,6 +176,7 @@ state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 
 state_t msr_write(uint cpu, const void *buffer, size_t size, off_t offset)
 {
+    size_t psize;
 	if (cpu >= MSR_MAX) {
 		return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
 	}
@@ -185,7 +189,10 @@ state_t msr_write(uint cpu, const void *buffer, size_t size, off_t offset)
     #ifdef MSR_LOCK
 	while (pthread_mutex_trylock(&lock_cpu[cpu]));
 	#endif
-	if (pwrite(fds_wr[cpu], buffer, size, offset) != size) {
+	psize = pwrite(fds_wr[cpu], buffer, size, offset);
+    debug("MSR written in CPU%d (fd %d, address %lx): %lu bytes of %lu expected",
+        cpu, fds_wr[cpu], offset, psize, size);
+	if (psize != size) {
 		#ifdef MSR_LOCK
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
 		#else

@@ -209,6 +209,10 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
 #endif
 
 }
+
+#define MAX_CPU_FREQ 10000000
+#define MAX_IMC_FREQ 10000000
+
 /** Checks all the values are valid to be reported to DB and fixes potential problems*/
 void clean_db_signature(signature_t *sig, double limit)
 {
@@ -226,6 +230,10 @@ void clean_db_signature(signature_t *sig, double limit)
     if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
     if (sig->PCK_power > limit)			sig->PCK_power = 0;
 		if (!isnormal(sig->perc_MPI))		sig->perc_MPI = 0;
+    if (sig->avg_f > MAX_CPU_FREQ)  sig->avg_f = MAX_CPU_FREQ;
+    if (sig->avg_imc_f > MAX_IMC_FREQ) sig->avg_imc_f = MAX_IMC_FREQ;
+    if (sig->def_f > MAX_CPU_FREQ)   sig->def_f = MAX_CPU_FREQ;
+
 
 #if USE_GPUS
     if (sig->gpu_sig.num_gpus){

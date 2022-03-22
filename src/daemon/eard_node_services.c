@@ -16,7 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
-#define VEARD_LAPI_DEBUG 0
+#define VEARD_LAPI_DEBUG 2
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>

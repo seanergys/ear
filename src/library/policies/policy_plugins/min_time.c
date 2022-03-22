@@ -105,8 +105,8 @@ static signature_t *my_app, cpufreq_signature;
 extern uint cpu_ready, gpu_ready, gidle;
 
 /* No models extra */
-signature_t *sig_list;
-uint *sig_ready;
+static signature_t *sig_list;
+static uint *sig_ready;
 
 static uint first_time_unbalanced = 1;
 
@@ -160,12 +160,10 @@ state_t policy_init(polctx_t *c)
     my_app          = calloc(1, sizeof(signature_t));
     my_app->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 
-    if (!use_energy_models) {
-        sig_list  = (signature_t *) calloc(c->num_pstates, sizeof(signature_t));
-        sig_ready = (uint*) calloc(c->num_pstates, sizeof(uint));
+    sig_list  = (signature_t *) calloc(c->num_pstates, sizeof(signature_t));
+    sig_ready = (uint*) calloc(c->num_pstates, sizeof(uint));
 
-        if ((sig_list==NULL) || (sig_ready==NULL)) return EAR_ERROR;
-    }
+    if ((sig_list==NULL) || (sig_ready==NULL)) return EAR_ERROR;
 
     imc_data = calloc(c->num_pstates * NUM_UNC_FREQ, sizeof(imc_data_t));
 
