@@ -94,7 +94,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	if (strstr(buffer, "intel") != NULL) {
 		fndi = 1;
 		intelmpi = 1;
-	} else if (strstr(buffer, "open mpi") != NULL) {
+	} else if ((strstr(buffer, "open mpi") != NULL) || (strstr(buffer, "ompi") != NULL)) {
 		fndo = 1;
 		openmpi = 1;
 	} else if (strstr(buffer, "mvapich") != NULL) {
@@ -242,7 +242,7 @@ static int module_mpi_is()
     return 1;
   }else{
     verbose(2,"MPI_Get_library_version NOT detected");
-		return 0;
+		return is_mpi;
   }
 
 
