@@ -95,9 +95,9 @@ static int static_open(uint cpu, mode_t mode, char *cmode)
 {
     char file[SZ_PATH_KERNEL];
     int fd;
-    sprintf(file, "/dev/cpu/%d/msr_safe", cpu);
-    if ((fd = static_open_debug(file, mode, cmode)) < 0) {
         sprintf(file, "/dev/cpu/%d/msr", cpu);
+    if ((fd = static_open_debug(file, mode, cmode)) < 0) {
+        sprintf(file, "/dev/cpu/%d/msr_safe", cpu);
         fd = static_open_debug(file, mode, cmode);
     }
     return fd;
