@@ -109,7 +109,7 @@ state_t msr_open(uint cpu)
 	debug("msr open cpu[%d] = %d", cpu,fds[cpu]);
 	if (fds[cpu] < 0) {
 		if (errno == EACCES) {
-			return_unlock_msg(EAR_NO_PERMISSIONS, strerror(errno), &lock_cpu[cpu]);
+			return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
 		}
 		return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
 	}
