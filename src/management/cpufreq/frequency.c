@@ -37,7 +37,7 @@ state_t frequency_init(uint eard)
 	state_t s;
 	
 	if (init) {
-		return_msg(EAR_INITIALIZED, Generr.api_initialized);
+		return_msg(EAR_ERROR, Generr.api_initialized);
 	}
 	if (xtate_fail(s, topology_init(&topo))) {
 		return s;
