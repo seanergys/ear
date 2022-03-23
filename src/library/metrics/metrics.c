@@ -768,7 +768,7 @@ static int metrics_partial_stop(uint where)
             }
         verbose_master(3, "%s", "");
         }
-		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
+				cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* Avg IMC frequency */
@@ -1333,7 +1333,7 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 								if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
 												lib_shared_region->master_ready = 1;
 								}
-								verbose_master(2,"Signatures for process in node are still not ready :num sig computed %u", num_ready);
+								//verbose_master(2,"Signatures for process in node are still not ready :num sig computed %u", num_ready);
 								return EAR_NOT_READY;
 				}else if (masters_info.my_master_rank >= 0){
 								lib_shared_region->master_ready = 0;

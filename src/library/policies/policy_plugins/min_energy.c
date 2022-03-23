@@ -170,13 +170,11 @@ state_t policy_init(polctx_t *c)
     my_app->sig_ext =  (void *) calloc(1, sizeof(sig_ext_t));
 
     /* We store the signatures for the case where models are not used */
-    if (!use_energy_models) {
-        sig_list  = (signature_t *) calloc(c->num_pstates,sizeof(signature_t));
-        sig_ready = (uint *) calloc(c->num_pstates,sizeof(uint));
+    sig_list  = (signature_t *) calloc(c->num_pstates,sizeof(signature_t));
+    sig_ready = (uint *) calloc(c->num_pstates,sizeof(uint));
 
-        if ((sig_list == NULL) || (sig_ready == NULL)) {
+    if ((sig_list == NULL) || (sig_ready == NULL)) {
             return EAR_ERROR;
-        }
     }
 
     imc_data = calloc(c->num_pstates * NUM_UNC_FREQ, sizeof(imc_data_t));
