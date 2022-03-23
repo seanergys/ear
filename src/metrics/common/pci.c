@@ -177,11 +177,11 @@ state_t pci_mmio_map(off_t addr, size_t size, void **p)
 	pagesize = sysconf(_SC_PAGE_SIZE);
 	pagemask = ~(pagesize - 1);
 
-	if ((fd = open("/dev/mem", O_RDONLY | O_SYNC)) < 0) {
-		return_msg(EAR_ERROR, strerror(errno));
+	if ((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
+		return_print(EAR_ERROR, "while opening /dev/mem: %s", strerror(errno));
 	}
 	if ((*p = mmap(0, 0x4000, PROT_READ|PROT_WRITE, MAP_SHARED, fd, addr & pagemask)) == MAP_FAILED) {
-		return_msg(EAR_ERROR, strerror(errno));
+		return_print(EAR_ERROR, "while mapping /dev/mem: %s", strerror(errno));
 	}
     #if 0
 	if ((*p = ioremap(addr, size)) == NULL) {
