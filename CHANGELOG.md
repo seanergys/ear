@@ -15,6 +15,7 @@
 - Likwid support for IceLake Meory bandwith computation
 - Icelake support 
 - msr_safe 
+- HEROES plugin
 
 ### EAR4.0
 - AMD virtual p-states support and DF frequency management included
