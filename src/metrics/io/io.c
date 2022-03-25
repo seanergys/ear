@@ -114,7 +114,7 @@ state_t io_print(io_data_t *iodata)
 	char msg[512];
 	if (iodata == NULL) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
 	io_tostr(iodata,msg,sizeof(msg));
-	printf(msg);
+	printf("%s", msg);
 	state_return(EAR_SUCCESS);
 }
 

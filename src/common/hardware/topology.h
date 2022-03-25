@@ -29,6 +29,7 @@
 #define MODEL_BROADWELL_X			79 // Also 0x4F (extended 4, model F)
 #define MODEL_SKYLAKE_X				85 // Also 0x55 (extended 5, model 5)
 #define MODEL_ICELAKE_X             106
+#define MODEL_TIGERLAKE_U           140
 // https://en.wikichip.org/wiki/amd/cpuid
 #define FAMILY_BOBCAT				20
 #define FAMILY_BULLDOZER			21
@@ -92,6 +93,7 @@ typedef struct topology_s
 	int gpr_bits;		// General purpose registers bit width.
 	int nmi_watchdog;	// NMI watdog enabled.
     int apicids_found;  // List of CPUs ApicId's found.
+    int initialized;    // 1 if the topology is initialized
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);

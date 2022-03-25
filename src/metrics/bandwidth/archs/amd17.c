@@ -58,7 +58,7 @@ state_t bwidth_amd17_load(topology_t *tp_in, bwidth_ops_t *ops)
 	if (tp_in->vendor != VENDOR_AMD || tp_in->family < FAMILY_ZEN){
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-	if (state_fail(s = msr_test(tp_in))) {
+	if (state_fail(s = msr_test(tp_in, MSR_WR))) {
 		return s;
 	}
 	// Getting the L3 groups
@@ -86,6 +86,7 @@ state_t bwidth_amd17_load(topology_t *tp_in, bwidth_ops_t *ops)
 
 state_t bwidth_amd17_init(ctx_t *c)
 {
+    state_t s;
 	int i, j;
 
 	// Finding the free counters (not by now)
@@ -94,7 +95,9 @@ state_t bwidth_amd17_init(ctx_t *c)
 	}
 	#endif
 	for (i = 0; i < tp.cpu_count; ++i) {
-		msr_open(tp.cpus[i].id);
+        if (state_fail(s = msr_open(tp.cpus[i].id, MSR_WR))) {
+            return s;
+        }
 		for (j = 0; j < ctrs_count; ++j) {
 			msr_write(tp.cpus[i].id, (void *) &cmds[j], sizeof(ullong), ctls[j]);
 		}
@@ -127,7 +130,6 @@ state_t bwidth_amd17_read(ctx_t *c_in, bwidth_t *b)
 	timestamp_get(&b[devs_count].time);
 	//
 	for (c = d = 0; c < tp.cpu_count; ++c) {
-		msr_open(tp.cpus[c].id);
 		for (r = 0; r < ctrs_count; ++r, ++d) {
 			msr_read(tp.cpus[c].id, &b[d].cas, sizeof(ullong), ctrs[r]);
 			// In case of DFS, also you have tu multiply by 2.

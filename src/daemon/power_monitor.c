@@ -1177,8 +1177,8 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 	app_mgt_end_job(pmapp->app_info);
 	pcapp_info_end_job(pmapp->pc_app_info);
 	powercap_end_job();
-	int i;
 	end_context(cc);
+
 	if (powermon_is_idle()) { 
 		powercap_run_to_idle();
 	}
@@ -1412,7 +1412,6 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 //
 //
 
-static uint test_reset = 0;
 #define VERBOSE_POWERMON 1
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
 	ulong jid, mpi,sid;

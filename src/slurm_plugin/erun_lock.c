@@ -138,7 +138,9 @@ int lock_clean(char *path_tmp, int job_id, int step_id)
 	// 5. Remove job.lock
 	file_clean(path_job);
 	// 6. Launch cleaning command to remove other files.
-	system(command);
+	if (system(command)) {
+        //
+    }
 	// 5. Write again job.lock 
 	file_write(path_job, (char *) &step_id, sizeof(int));
 	return 0;
@@ -148,7 +150,9 @@ int folder_clean(char *path_tmp, int job_id)
 {
 	// 1. Creating the cleaning command
 	sprintf(command, "rm -rf %s/erun%d 2> /dev/null", path_tmp, job_id);
-    system(command);
+    if (system(command)) {
+        //
+    }
     return 0;
 }
 
@@ -156,6 +160,8 @@ int all_clean(char *path_tmp)
 {
     xsprintf(command, "rm -rf %s/erun* &> /dev/null", path_tmp);
 		plug_verbose(_sp, 3, "Executing %s", command);
-    system(command);
+    if (system(command)) {
+        //
+    }
     return 0;
 }

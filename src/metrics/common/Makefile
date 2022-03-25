@@ -11,7 +11,7 @@ comm_OBJS = \
     msr.o \
     omsr.o \
     pci.o \
-    perf.o \
+    perf.o
 
 ifdef LIKWID_BASE
 LIKWID_FLAGS = -I$(LIKWID_BASE)/include -DLIKWID_BASE=\"$(LIKWID_BASE)\"

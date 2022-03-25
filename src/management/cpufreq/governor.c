@@ -20,17 +20,17 @@
 state_t mgt_governor_tostr(uint governor, char *buffer)
 {
 	if (governor == Governor.conservative) {
-		sprintf(buffer, Goverstr.conservative);
+		sprintf(buffer, "%s", Goverstr.conservative);
 	} else if (governor == Governor.performance) {
-		sprintf(buffer, Goverstr.performance);
+		sprintf(buffer, "%s", Goverstr.performance);
 	} else if (governor == Governor.userspace) {
-		sprintf(buffer, Goverstr.userspace);
+		sprintf(buffer, "%s", Goverstr.userspace);
 	} else if (governor == Governor.powersave) {
-		sprintf(buffer, Goverstr.powersave);
+		sprintf(buffer, "%s", Goverstr.powersave);
 	} else if (governor == Governor.ondemand) {
-		sprintf(buffer, Goverstr.ondemand);
+		sprintf(buffer, "%s", Goverstr.ondemand);
 	} else {
-		sprintf(buffer, Goverstr.other);
+		sprintf(buffer, "%s", Goverstr.other);
 		return_msg(EAR_ERROR, "undefined governor");
 	}
 	return EAR_SUCCESS;

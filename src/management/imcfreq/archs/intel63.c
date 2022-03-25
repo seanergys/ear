@@ -67,7 +67,7 @@ static state_t mgt_imcfreq_intel63_build_list()
 	// First scan, getting the maximum and the minimum.
 	for (i = 0; i < tp_static.cpu_count; ++i) {
 		// Opening
-		if (state_fail(s = msr_open(tp_static.cpus[i].id))) {
+		if (state_fail(s = msr_open(tp_static.cpus[i].id, MSR_WR))) {
 			return s;
 		}
 		// Reading
@@ -110,7 +110,7 @@ state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 	if (tp->vendor != VENDOR_INTEL || tp->model < MODEL_HASWELL_X) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-	if (state_fail(s = msr_test(tp))) {
+	if (state_fail(s = msr_test(tp, MSR_WR))) {
 		return s;
 	}
 	if (state_fail(s = topology_select(tp, &tp_static, TPSelect.socket, TPGroup.merge, 0))) {

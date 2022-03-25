@@ -40,12 +40,12 @@ typedef struct apis_info_s {
 
 typedef struct metrics_apis_s {
 	apis_info_t cpu; // cpufreq
-#if NOT_READY
 	apis_info_t imc; // imcfreq
-	apis_info_t ram; // bwidth
-	apis_info_t cch; // cache
-	apis_info_t flp; // flops
-	apis_info_t cpi; // cpi
+    apis_info_t ram; // bwidth
+    apis_info_t cch; // cache
+    apis_info_t flp; // flops
+    apis_info_t cpi; // cpi
+#if NOT_READY
 	apis_info_t gpu; // gpu
 #endif
 } metrics_apis_t;
@@ -53,12 +53,12 @@ typedef struct metrics_apis_s {
 typedef struct metrics_read_s {
 	timestamp_t time;
 	cpufreq_t  *cpu;
-#if NOT_READY
 	imcfreq_t  *imc;
-	bwidth_t   *ram;
-	cache_t     cch;
-	flops_t     flp;
-	cpi_t       cpi;
+    bwidth_t   *ram;
+    cache_t     cch;
+    flops_t     flp;
+    cpi_t       cpi;
+#if NOT_READY
 	gpu_t      *gpu;
 #endif
 } metrics_read_t;
@@ -67,17 +67,17 @@ typedef struct metrics_diff_s {
 	ullong  time; // Seconds
 	ulong  *cpu_diff; // KHz (per device)
 	ulong   cpu_avrg; // KHz
-#if NOT_READY
 	ulong  *imc_diff; // KHz (per device)
 	ulong   imc_avrg; // KHz
-	ullong  ram_diff; // CAS
-	double  ram_avrg; // GB/s
-	cache_t cch_diff; // Misses
-	double  cch_avrg; // GB/s
-	flops_t flp_diff; // F. instructions
-	double  flp_avrg; // Giga F. operations per second
-	cpi_t   cpi_diff;
-	double  cpi_avrg; // GPI
+    ullong  ram_diff; // CAS
+    double  ram_avrg; // GB/s
+    cache_t cch_diff; // Misses
+    double  cch_avrg; // GB/s
+    flops_t flp_diff; // F. instructions
+    double  flp_avrg; // Giga F. operations per second
+    cpi_t   cpi_diff;
+    double  cpi_avrg; // GPI
+#if NOT_READY
 	gpu_t  *gpu_diff;
 #endif
 } metrics_diff_t;

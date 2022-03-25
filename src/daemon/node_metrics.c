@@ -231,6 +231,6 @@ int verbose_node_metrics(nm_t *id,nm_data_t *nm)
 		(double)nm->avg_imc_freq/(double)1000000,
 		nm->avg_temp);
 
-	verbose(VNODEPMON,msg);
+	verbose(VNODEPMON, "%s", msg);
 	return EAR_SUCCESS;
 }

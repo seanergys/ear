@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 //#define FREE 1
 
 #include <fcntl.h>
@@ -72,7 +72,7 @@ static state_t load_icelake()
 			addr_fi = (addr_hi | addr_lo);
 			debug("IMC%u address = %x (%x | %x)", i, addr_fi, addr_hi, addr_lo);
 
-			if (state_fail(s = pci_mmio_map(addr_fi, 0x4000, imc_maps[(p*4)+i]))) {
+			if (state_fail(s = pci_mmio_map(addr_fi, 0x4000, &imc_maps[(p*4)+i]))) {
 				return s;
 			}
 
@@ -98,12 +98,13 @@ state_t bwidth_intel106_load(topology_t *tp, bwidth_ops_t *ops)
 		serror("pci_scan");
 		return s;
 	}
-	if (state_fail(s = load_icelake())) {
+	// It is shared by all Intel's architecture from Haswell to Skylake
+	debug("PCIs count: %d", pcis_count);
+	
+    if (state_fail(s = load_icelake())) {
 		serror("load_icelake");
 		return s;
 	}
-	// It is shared by all Intel's architecture from Haswell to Skylake
-	debug("PCIs count: %d", pcis_count);
 	// In the future it can be initialized in read only mode
 	replace_ops(ops->init,            bwidth_intel106_init);
 	replace_ops(ops->dispose,         bwidth_intel106_dispose);
@@ -151,3 +152,40 @@ state_t bwidth_intel106_read(ctx_t *c, bwidth_t *bw)
 	}
 	return EAR_SUCCESS;
 }
+
+#if 0
+// /opt/rh/devtoolset-7/root/bin/gcc -g -I ../../../ -o test intel106.c ../../libmetrics.a ../../../common/libcommon.a
+
+#define N 262144
+static ullong array1[N];
+static ullong array2[N];
+static ullong array3[N];
+
+void work()
+{
+    int i;
+
+    for (i = 2; i < N; ++i) {
+        array1[i] = array2[i-1] + array3[i-2];
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    topology_t   tp;
+    state_t      s;
+    bwidth_ops_t ops;
+    bwidth_t     bw[128];    
+
+    topology_init(&tp);
+    
+    bwidth_intel106_load(&tp, &ops);
+
+    bwidth_intel106_read(NULL, bw);
+    debug("WORKING");
+    work();
+    bwidth_intel106_read(NULL, bw); 
+
+    return 0;
+}
+#endif

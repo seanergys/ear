@@ -53,6 +53,9 @@ state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 	if (state_ok(perf_open(&perf_cyc, NULL, 0, gen_cyc_tp, gen_cyc_ev))) {
 		cyc_en = 1;
 	}
+    if (!ins_en && !cyc_en) {
+        return EAR_ERROR;
+    }
 	replace_ops(ops->init,    cpi_perf_init);
 	replace_ops(ops->dispose, cpi_perf_dispose);
 	replace_ops(ops->read,    cpi_perf_read);

@@ -68,6 +68,9 @@ state_t flops_perf_load(topology_t *tp, flops_ops_t *ops)
 	else {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
+    if (!counter) {
+        return EAR_ERROR;
+    }
 	replace_ops(ops->init,    flops_perf_init);
 	replace_ops(ops->dispose, flops_perf_dispose);
 	replace_ops(ops->read,    flops_perf_read);
