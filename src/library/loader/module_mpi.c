@@ -43,6 +43,8 @@ static uint openmpi = 0;
 
 static char *load_mpi_version = NULL;
 uint MPI_Get_library_version_detected = 0;
+static int (*my_MPI_Get_library_version)(char *version, int *resultlen);
+
 uint force_mpi_load = 0;
 
 int is_mpi_enabled()
@@ -81,7 +83,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	if (libhack != NULL) verbose(2,"LOADER  using HACK %s",libhack);
 
 	// Getting the library version
-	if (MPI_Get_library_version_detected) MPI_Get_library_version(buffer, &len);
+	if (MPI_Get_library_version_detected) my_MPI_Get_library_version(buffer, &len);
   else if (load_mpi_version != NULL){
     strcpy(buffer,load_mpi_version);
   }else{
@@ -236,7 +238,8 @@ static int module_mpi_is()
   }else verbose(2, " %s not defined", SCHED_LOAD_MPI_VERSION);
 
 	/* If not, we use the default approach of looking for the MPI symbol */
-  if (dlsym(RTLD_DEFAULT, "MPI_Get_library_version") != NULL){
+	my_MPI_Get_library_version = dlsym(RTLD_DEFAULT, "MPI_Get_library_version");
+  if (my_MPI_Get_library_version != NULL){
     MPI_Get_library_version_detected = 1;
     verbose(2,"MPI_Get_library_version detected");
     return 1;

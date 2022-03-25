@@ -34,7 +34,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/cpi/archs/perf.o \
     $(SRCDIR)/metrics/energy/cpu.o \
     $(SRCDIR)/metrics/energy/energy_node.o \
-    $(SRCDIR)/metrics/energy/energy_node_lib.o \
     $(SRCDIR)/metrics/energy/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/flops.o \
     $(SRCDIR)/metrics/flops/archs/perf.o \

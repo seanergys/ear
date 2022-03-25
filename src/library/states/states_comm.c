@@ -53,7 +53,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         int iterations, ulong prevf, ulong new_freq, char *mode)
 {
     char io_info[256];
-    char pmpi_txt[64];
+    char pmpi_txt[256];
     double CPI, GBS, POWER, TIME, VPI, GPU_POWER = 0, FLOPS, gpu_tpower =0;
     float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0, VI, gpuf =0 ;
     float l1_sec=0,l2_sec=0,l3_sec=0;
@@ -75,20 +75,22 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #if 0
         double perc_mpi = (using_verb_files) ? ((double) (sig_shared_region[my_node_id].mpi_info.mpi_time * 100) / (double) sig_shared_region[my_node_id].mpi_info.exec_time) : sig->signature.perc_MPI;
 #endif
-
-        double perc_mpi = (using_verb_files) ? (sig_shared_region[my_node_id].mpi_info.perc_mpi) : sig->signature.perc_MPI;
+				sig_ext_t *sigex = sig->signature.sig_ext; 
+        float perc_mpi = (using_verb_files) ? (sig_shared_region[my_node_id].mpi_info.perc_mpi) : sig->signature.perc_MPI;
+        float max_mpi = (master_rank >= 0) ? (sigex->max_mpi) : 0.0;
+        float min_mpi = (master_rank >= 0) ? (sigex->min_mpi) : 0.0;
 
         if (perc_mpi > 0.0) {
 
-            char pmpi_msg[32];
+            char pmpi_msg[64];
             if (using_verb_files) {
-                sprintf(pmpi_msg, "MPI_time/exec_Time");
+                snprintf(pmpi_msg, sizeof(pmpi_msg), "MPI_time/exec_Time (max/avg/min)");
             } else {
                 // Since when only master verboses, it prints the average across all processes of the job
-                sprintf(pmpi_msg, "Avg. MPI_time/exec_Time");
+                snprintf(pmpi_msg, sizeof(pmpi_msg), "MPI_time/exec_Time (max/avg/min)");
             }
 
-            sprintf(pmpi_txt, "%s: %.1lf %%", pmpi_msg, perc_mpi);
+            snprintf(pmpi_txt, sizeof(pmpi_txt), "%s: %.1f/%.1f/%.1f %%", pmpi_msg, max_mpi, perc_mpi, min_mpi);
 
         } else {
             sprintf(pmpi_txt,"No MPI");

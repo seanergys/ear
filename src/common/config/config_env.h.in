@@ -66,6 +66,7 @@
 #define HACK_LOADER_FILE             SCHED_PREFIX "HACK_LOADER_FILE"        // Sets a specific loader file.
 #define HACK_NVML_FILE               SCHED_PREFIX "HACK_NVML_FILE"          // The GPU API loads a specific NVML library file.
 #define HACK_MPI_VERSION             SCHED_PREFIX "HACK_MPI_VERSION"        // Adds a suffix to libear.so (i.e: libear.hello.so).
+#define HACK_ENERGY_PLUGIN           SCHED_PREFIX "HACK_ENERGY_PLUGIN"       // This var forces to load a specific energy plugin.
 #define HACK_POWER_POLICY            SCHED_PREFIX "HACK_POWER_POLICY"       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
 #define HACK_GPU_POWER_POLICY        SCHED_PREFIX "HACK_GPU_POWER_POLICY"   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
 #define HACK_POWER_MODEL             SCHED_PREFIX "HACK_POWER_MODEL"        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
