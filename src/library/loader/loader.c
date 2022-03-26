@@ -78,8 +78,19 @@ int must_load()
 
 int load_no_official()
 {
-    char *app_to_load=getenv(SCHED_LOADER_LOAD_NO_MPI_LIB);
-    if (app_to_load == NULL) return 0;
+    char *app_to_load=getenv(FLAG_LOADER_APPLICATION);
+    if (app_to_load == NULL) {
+        // TODO: This check is for the transition to the new environment variables.
+        // It will be removed when SCHED_LOADER_LOAD_NO_MPI_LIB will be removed, in the next release.
+        app_to_load = getenv(SCHED_LOADER_LOAD_NO_MPI_LIB);
+        if (app_to_load != NULL) {
+            verbose(1, "LOADER: %sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_LOADER_LOAD_NO_MPI_LIB, FLAG_LOADER_APPLICATION);
+        } else {
+            return 0;
+        }
+    }
     if (strstr(program_invocation_name,app_to_load) == NULL) return 0;
     return 1;
 }

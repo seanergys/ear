@@ -103,7 +103,7 @@ const char     *trace_syms_nam[] = {
 void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
     char *traces_plugin;
-    traces_plugin=getenv(SCHED_EAR_TRACE_PLUGIN);
+    traces_plugin=getenv(FLAG_TRACE_PLUGIN);
 
     if (traces_plugin==NULL) {
         trace_plugin=0;

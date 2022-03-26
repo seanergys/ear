@@ -131,8 +131,28 @@ state_t policy_init(polctx_t *c)
         return EAR_ERROR;
     }
 
-    char *cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
-    char *cimc_set_by_hw   = getenv(SCHED_LET_HW_CTRL_IMC);
+    char *cnetwork_use_imc = getenv(FLAG_NTWRK_IMC);
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_NETWORK_USE_IMC will be removed, in the next release.
+    if (cnetwork_use_imc == NULL) {
+        cnetwork_use_imc = getenv(SCHED_NETWORK_USE_IMC);
+        if (cnetwork_use_imc != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_NETWORK_USE_IMC, FLAG_NTWRK_IMC);
+        }
+    }
+    char *cimc_set_by_hw =   getenv(FLAG_LET_HW_IMC);
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_LET_HW_CTRL_IMC will be removed, in the next release.
+    if (cimc_set_by_hw == NULL) {
+        cimc_set_by_hw = getenv(SCHED_LET_HW_CTRL_IMC);
+        if (cimc_set_by_hw != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_LET_HW_CTRL_IMC, FLAG_LET_HW_IMC);
+        }
+    }
 
     int i, sid = 0;
 

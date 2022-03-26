@@ -23,7 +23,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config.h>
 #include <common/system/symplug.h>
@@ -115,7 +115,7 @@ node_freqs_t nf;     /*!< Nominal frequency  */
 node_freqs_t avg_nf;
 
 uint last_earl_phase_classification = APP_COMP_BOUND;
-uint last_earl_gpu_phase_classification = GPU_COMP; 
+uint last_earl_gpu_phase_classification = GPU_COMP; // Initial GPU state as Computation
 
 int cpu_ready = EAR_POLICY_NO_STATE ,gpu_ready = EAR_POLICY_NO_STATE ;
 uint gidle;
@@ -464,27 +464,53 @@ state_t policy_init()
 
     int i;
 
-    char *cdyn_unc             = getenv(SCHED_SET_IMC_FREQ);        // eUFS
-    char *cimc_extra_th        = getenv(SCHED_IMC_EXTRA_TH);        // eUFS threshold
-    char *cexclusive_mode      = getenv(SCHED_EXCLUSIVE_MODE);      // Job has the node exclusive
-    char *cuse_earl_phases     = getenv(SCHED_USE_EARL_PHASES);     // Detect application phases
-    char *cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE); // Load balance efficiency
-    char *cuse_turbo_for_cp    = getenv(SCHED_USE_TURBO_FOR_CP);    // Boost critical path processes
-    char *ctry_turbo_enabled   = getenv(SCHED_TRY_TURBO);           // Boost turbo if policy sets max cpufreq
-    char *cuse_energy_models   = getenv(SCHED_USE_ENERGY_MODELS);   // Use energy models
-    char *cmin_cpufreq         = getenv(SCHED_MIN_CPUFREQ);         // Minimum CPU freq.
+    char *cdyn_unc             = getenv(FLAG_SET_IMCFREQ);          // eUFS
+    char *cimc_extra_th        = getenv(FLAG_IMC_TH);               // eUFS threshold
+    char *cexclusive_mode      = getenv(FLAG_EXCLUSIVE_MODE);       // Job has the node exclusive
+    char *cuse_earl_phases     = getenv(FLAG_EARL_PHASES);          // Detect application phases
+    char *cenable_load_balance = getenv(FLAG_LOAD_BALANCE);         // Load balance efficiency
+    char *cuse_turbo_for_cp    = getenv(FLAG_TURBO_CP);             // Boost critical path processes
+    char *ctry_turbo_enabled   = getenv(FLAG_TRY_TURBO);            // Boost turbo if policy sets max cpufreq
+    char *cuse_energy_models   = getenv(FLAG_USE_ENERGY_MODELS);    // Use energy models
+    char *cmin_cpufreq         = getenv(FLAG_MIN_CPUFREQ);          // Minimum CPU freq.
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
     policy_gpu_init_ctx(c);
 
     // Here it is a good place to print policy context:
 
-    /* We read SCHED_USE_ENERGY_MODELS before calling to polsyms_fun.init() because this function
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_USE_ENERGY_MODELS will be removed, in the next release.
+    if (cuse_energy_models == NULL) {
+        cuse_energy_models = getenv(SCHED_USE_ENERGY_MODELS);
+        if (cuse_energy_models != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_USE_ENERGY_MODELS, FLAG_USE_ENERGY_MODELS);
+        }
+    }
+
+    /* We read FLAG_USE_ENERGY_MODELS before calling to polsyms_fun.init() because this function
      * may needs `use_energy_models` to configure itself. */
     if (cuse_energy_models != NULL) {
         use_energy_models = atoi(cuse_energy_models);
     }
     verbose_master(POLICY_INFO, "%sPOLICY%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
+
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_IMC_EXTRA_TH will be removed, in the next release.
+    if (cimc_extra_th == NULL) {
+        cimc_extra_th = getenv(SCHED_IMC_EXTRA_TH);
+        if (cimc_extra_th != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_IMC_EXTRA_TH, FLAG_IMC_TH);
+        }
+    }
+
+    if (cimc_extra_th != NULL) {
+        imc_extra_th = atof(cimc_extra_th);
+    }
 
     // Calling policy plugin init
     if (polsyms_fun.init != NULL) {
@@ -492,12 +518,32 @@ state_t policy_init()
     }
 
     // Read policy configuration
+    if (cexclusive_mode == NULL) {
+        // TODO: This check is for the transition to the new environment variables.
+        // It will be removed when SCHED_EXCLUSIVE_MODE will be removed, in the next release.
+        cexclusive_mode = getenv(SCHED_EXCLUSIVE_MODE);
+        if (cexclusive_mode != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_EXCLUSIVE_MODE, FLAG_EXCLUSIVE_MODE);
+        }
+    }
     if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
     verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u", COL_BLU, COL_CLR, exclusive_mode);
 
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
 
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_MIN_CPUFREQ will be removed, in the next release.
+    if (cmin_cpufreq == NULL) {
+        cmin_cpufreq = getenv(SCHED_MIN_CPUFREQ);     
+        if (cmin_cpufreq != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_MIN_CPUFREQ, FLAG_MIN_CPUFREQ);
+        }
+    }
     if (cmin_cpufreq != NULL) min_cpufreq = atoi(cmin_cpufreq);
     verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %lu kHz", COL_BLU, COL_CLR, min_cpufreq);
 
@@ -515,6 +561,17 @@ state_t policy_init()
     policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
 #endif
 
+
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_ENABLE_LOAD_BALANCE will be removed, in the next release.
+    if (cenable_load_balance == NULL) {
+        cenable_load_balance = getenv(SCHED_ENABLE_LOAD_BALANCE);
+        if (cenable_load_balance != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_ENABLE_LOAD_BALANCE, FLAG_LOAD_BALANCE);
+        }
+    }
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
     if (arch_desc.top.vendor == VENDOR_AMD) {
         enable_load_balance = 0;
@@ -527,16 +584,34 @@ state_t policy_init()
 
     /* conf_dyn_unc is based on the configuration.
      * dyn_unc is modified at runtime depending of number of jobs running. */   
+    if (cdyn_unc == NULL) {
+        // TODO: This check is for the transition to the new environment variables.
+        // It will be removed when SCHED_SET_IMC_FREQ will be removed, in the next release.
+        cdyn_unc = getenv(SCHED_SET_IMC_FREQ);
+        if (cdyn_unc != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_SET_IMC_FREQ, FLAG_SET_IMCFREQ);
+        }
+    }
     if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok) {
         conf_dyn_unc = atoi(cdyn_unc);
     }
     dyn_unc = conf_dyn_unc;
 
-    if (cimc_extra_th != NULL) {
-        imc_extra_th = atof(cimc_extra_th);
-    }
+
 
     try_turbo_enabled = c->use_turbo;
+    // TODO: This check is for the transition to the new environment variables.
+    // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
+    if (ctry_turbo_enabled == NULL) {
+        ctry_turbo_enabled = getenv(SCHED_TRY_TURBO);
+        if (ctry_turbo_enabled != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_TRY_TURBO, FLAG_TRY_TURBO);
+        }
+    }
     if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
     verbose_master(POLICY_INFO, "%sPOLICY%s Turbo for cbound app in the node: %u",
             COL_BLU, COL_CLR, try_turbo_enabled);

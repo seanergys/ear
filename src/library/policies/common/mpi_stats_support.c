@@ -60,7 +60,14 @@ state_t mpi_app_init(polctx_t *c)
 	char * clb_th;
 
     if (c != NULL) {
-        if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+        if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
+            LB_TH = (float)atoi(clb_th);
+        } else if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+            // TODO: This check is for the transition to the new environment variables.
+            // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_LOAD_BALANCE_TH, FLAG_LOAD_BALANCE_TH);
             LB_TH = (float)atoi(clb_th);
         }
         verbose_master(2, "Using a LB th %.1f", LB_TH);
@@ -355,7 +362,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int
     mpi_call_get_stats(&current, NULL, i);
     mpi_call_diff(diff, &current, last);
 
-	verbose_master(3, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
+	verbose_master(4, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
             i, diff->mpi_time, current.mpi_time, last->mpi_time, diff->exec_time, current.exec_time, last->exec_time);
 
     diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;

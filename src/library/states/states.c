@@ -314,7 +314,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
         pst = policy_new_iteration(&check_signature);
         if (pst != EAR_SUCCESS){
-            verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
+            verbose_master(2, "%sNew Phase detected%s",COL_BLU,COL_CLR);
             policy_set_default_freq(NULL);
             comp_N_begin = metrics_time();
             EAR_STATE = FIRST_ITERATION;

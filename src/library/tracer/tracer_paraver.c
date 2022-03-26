@@ -359,7 +359,7 @@ void traces_stop()
 
 void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
-    pathname = getenv(VAR_OPT_TRAC);
+    pathname = getenv(FLAG_TRACE_PATH);
 
     //
     file_prv = -1;
@@ -367,7 +367,7 @@ void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis,
     file_row = -1;
 
     if (pathname == NULL) {
-        debug("trace path not defined %s, trace disabled", VAR_OPT_TRAC);
+        debug("trace path not defined %s, trace disabled", FLAG_TRACE_PATH);
         enabled = 0;
         return;
     }

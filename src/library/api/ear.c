@@ -878,7 +878,7 @@ void ear_init()
 				char *summary_pathname;
 				char *tmp;
 				state_t st;
-				char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
+				char *verb_path=getenv(FLAG_EARL_VERBOSE_PATH);
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 
@@ -1343,8 +1343,9 @@ void ear_init()
 												}
 								}else{
 												char plugins_ext[SZ_PATH_INCOMPLETE];
-												setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
-												xsnprintf(plugins_ext,sizeof(plugins_ext),"%s:csv_ts.so",system_conf->lib_info.plugins);
+												setenv(VAR_OPT_USDB,summary_pathname,1);
+												xsnprintf(plugins_ext,sizeof(plugins_ext),
+                                                        "%s:csv_ts.so",system_conf->lib_info.plugins);
 												if (report_load(my_plug_path,plugins_ext) != EAR_SUCCESS){
 																verbose_master(1,"Error in reports API load ");
 												}

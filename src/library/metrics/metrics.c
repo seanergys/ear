@@ -457,7 +457,7 @@ static void metrics_global_stop()
 {
 	char io_info[256];
 	char file_name[256];
-	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
+	char *verb_path=getenv(FLAG_EARL_VERBOSE_PATH);
     state_t s;
 	int i;
 
