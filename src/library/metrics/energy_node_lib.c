@@ -20,7 +20,7 @@
 #include <common/includes.h>
 #include <common/output/verbose.h>
 #include <common/system/symplug.h>
-#include <metrics/energy/energy_node_lib.h>
+#include <library/metrics/energy_node_lib.h>
 
 static struct energy_op
 {
@@ -53,6 +53,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 	state_t ret=EAR_SUCCESS;
 	int found=0;
 	char *my_energy_plugin;
+	char *ins_path       = getenv(HACK_EARL_INSTALL_PATH);
 
 	debug("energy_init library");
 	if (conf == NULL) {
@@ -60,6 +61,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 		 "the conf value cannot be NULL if the plugin is not loaded");
 	}
     // TODO: This variable is not defined anywhere
+
 	my_energy_plugin=getenv("SLURM_EAR_ENERGY_PLUGIN");
 	if ((my_energy_plugin==NULL) || (conf->user_type!=AUTHORIZED)){
 		found = (strcmp(conf->installation.obj_ener, "default") != 0);

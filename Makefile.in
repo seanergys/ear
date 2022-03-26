@@ -1,9 +1,17 @@
+# Features
+# Compiles the MPI EAR library version or non-MPI
 FEAT_MPI_API       = @FEAT_MPI_API@
+# This is automatically generated based on the CPU version detected
 FEAT_AVX512        = @FEAT_AVX512@
+# Extend the set of files installed.
 FEAT_RESEARCH      = 0
+# Enables the installation of GPU optimization policies. If 0, only monitoring is supported.
 FEAT_GPU_OPT       = 1
+# Disables the utilization of virtual PSTATES in AMD and selects OS CPUFreq
 FEAT_AMD_OSCPUFREQ = 0
+# Uses mysql API
 FEAT_DB_MYSQL      = @FEAT_DB_MYSQL@
+# Uses Postgress API
 FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 
 # Compilers
@@ -25,7 +33,9 @@ DB_BASE      = @DB_DIR@
 DB_CFLAGS    = @DB_CPPFLAGS@
 DB_LDFLAGS   = @DB_LDFLAGS@ @DB_LIBS@
 CUDA_BASE    = @CUDA_DIR@
+# Define if Likwid must be used
 LIKWID_BASE  =
+# Used for the energy plugin inm_power
 FREEIPMI_BASE=
 
 # Directories

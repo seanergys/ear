@@ -50,6 +50,8 @@ core_OBJS = \
     common/library_shared_data.o \
     common/utils.o \
     metrics/metrics.o \
+    metrics/gpu.o \
+		metrics/energy_node_lib.o \
     models/models.o \
     models/cpu_power_model.o \
     policies/policy.o \
@@ -62,8 +64,7 @@ core_OBJS = \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \
-    dynais/dynais.a \
-    metrics/gpu.o 
+    dynais/dynais.a 
 
 ifeq ($(FEAT_MPI_API), 1)
 mpix_OBJS = \

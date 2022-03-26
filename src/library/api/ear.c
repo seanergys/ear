@@ -18,6 +18,8 @@
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
 #define SINGLE_CONNECTION 1
+#define BASIC_PERIOD 1000
+
 #include <sched.h>
 #include <pthread.h>
 
@@ -133,13 +135,13 @@ static short ear_status = NO_LOOP;
 #if EAR_OVERHEAD_CONTROL
 /* in us */
 // These variables are shared
-uint ear_periodic_mode=PERIODIC_MODE_OFF;
-uint mpi_calls_in_period=10000;
+uint 		ear_periodic_mode = PERIODIC_MODE_OFF;
+uint 	mpi_calls_in_period = 10000;
 uint mpi_calls_per_second;
-static uint total_mpi_calls=0;
-static uint dynais_timeout=MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
-uint lib_period=PERIOD;
-static uint check_every=MPI_CALLS_TO_CHECK_PERIODIC;
+static uint total_mpi_calls = 0;
+static uint  dynais_timeout = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
+uint             lib_period = PERIOD;
+static uint     check_every = MPI_CALLS_TO_CHECK_PERIODIC;
 #endif
 #define MASTERS_SYNC_VERBOSE 1
 masters_info_t masters_info;
@@ -186,6 +188,7 @@ static ulong seconds = 0;
 uint ear_guided = DYNAIS_GUIDED; 
 //static int end_periodic_th=0;
 static uint synchronize_masters = 1;
+static uint ITERS_PER_PERIOD;
 
 /*  Sets verbose level for ear init messages */
 #define VEAR_INIT 2
@@ -253,7 +256,7 @@ void notify_eard_connection(int status)
 												debug("Number of nodes expected %d\n",masters_info.my_master_size);
 								}
 #if MPI
-								debug("Connecting with other masters. Status=%d",status);
+								verbose_master(2,"Node %s .Synchronizing with other masters. Status=%d. Waiting for %d masters",node_name,status, masters_info.my_master_size);
 								masters_connected=0;
 								if (synchronize_masters){
 												PMPI_Allgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm);
@@ -270,7 +273,7 @@ void notify_eard_connection(int status)
 								if (masters_connected != masters_info.my_master_size){
 												/* Some of the nodes is not ok , setting off EARL */
 												if (masters_info.my_master_rank>=0) {
-																verbose_master(1,"%s:EARD is not running\n",node_name);
+																verbose_master(1,"%s:some EARD is not running (connected nodes %d expected %d)\n",node_name, masters_connected, masters_info.my_master_size);
 												}
 												eard_ok = 0;
 												return;
@@ -1085,7 +1088,7 @@ void ear_init()
 				if (!my_id && eard_ok){ //only the master will connect with eard
 								verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
 								if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
-												debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+												verbose_master(2,"%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
 												notify_eard_connection(1);
 												mark_as_eard_connected(my_job_id,my_step_id,getpid());
 								}else{   
@@ -1114,7 +1117,7 @@ void ear_init()
 				#endif
 				/* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
-				debug("End EARD connection section");
+				verbose_master(2,"End EARD connection section");
 
 
 				debug("Shared region creation section");
@@ -1134,7 +1137,7 @@ void ear_init()
           				if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
         				}
 								if (!EARL_LIGHT){
-									debug("%s: EARL off because of EARD",node_name);
+									verbose_master(2,"%s: EARL off because of EARD",node_name);
 									strcpy(application.job.policy," "); /* Cleaning policy */
 									return;
 								}
@@ -1417,8 +1420,9 @@ void ear_init()
 				earl_monitor = suscription();
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = 10000;
-				earl_monitor->time_burst = 1000;
+				earl_monitor->time_relax = BASIC_PERIOD*10;
+				earl_monitor->time_burst = BASIC_PERIOD;
+				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
 #if USE_GPUS
@@ -1922,7 +1926,7 @@ state_t earl_periodic_actions(void *no_arg)
 				if (ear_whole_app) return EAR_SUCCESS;
 
 
-				ear_iterations++;
+				ear_iterations += ITERS_PER_PERIOD;
 				timestamp_getfast(&curr_periodic_time);
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
@@ -1934,7 +1938,7 @@ state_t earl_periodic_actions(void *no_arg)
 				}
 				if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
 								if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
-								states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
+								states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
 				}
 				seconds = period_elapsed - last_check;
 				if (seconds >= 5){ 

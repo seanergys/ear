@@ -23,16 +23,19 @@ endif
 
 all: dynais.a
 
+ARCHITECTURE=skylake-avx512
+ARCHITECTURE=icelake-server
+
 avx512/dynais_core.o: avx512/dynais_core.c avx512/dynais_core.h
-	$(CC) $(CC_FLAGS) $(CFLAGS) -march=native -march=skylake-avx512 -DDYN_CORE_N -o avx512/dynais_core_n.o -c $<
-	$(CC) $(CC_FLAGS) $(CFLAGS) -march=native -march=skylake-avx512 -DDYN_CORE_0 -o avx512/dynais_core_0.o -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) -march=native -march=$(ARCHITECTURE) -DDYN_CORE_N -o avx512/dynais_core_n.o -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) -march=native -march=$(ARCHITECTURE) -DDYN_CORE_0 -o avx512/dynais_core_0.o -c $<
 
 avx2/dynais_core.o: avx2/dynais_core.c avx2/dynais_core.h
 	$(CC) $(CC_FLAGS) $(CFLAGS) -mavx2 -DDYN_CORE_N -o avx2/dynais_core_n.o -c $<
 	$(CC) $(CC_FLAGS) $(CFLAGS) -mavx2 -DDYN_CORE_0 -o avx2/dynais_core_0.o -c $<
 
 avx512/dynais.o: avx512/dynais.c avx512/dynais.h
-	$(CC) $(CC_FLAGS) $(CFLAGS) -march=native -o avx512/dynais.o -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) -march=$(ARCHITECTURE) -o avx512/dynais.o -c $<
 
 avx2/dynais.o: avx2/dynais.c avx2/dynais.h
 	$(CC) $(CC_FLAGS) $(CFLAGS) -mavx2 -o avx2/dynais.o -c $<

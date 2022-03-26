@@ -100,6 +100,7 @@ static uint exclusive_mode = 0;
 static ulong min_cpufreq = 0; // Bound the minimum CPU freq.
 
 static uint use_earl_phases = EAR_USE_PHASES;
+static ulong initial_def_freq;
 //
 
 int my_globalrank;
@@ -210,13 +211,13 @@ static void from_proc_to_core(ulong *cpuf)
     int lv = 2;
     cpu_set_t m;
     if (first_print){ lv = 1;first_print = 0;}
-    verbose_master(lv,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
+    verbose_master(2,"Generating list of freqs for %d procs",lib_shared_region->num_processes);
     ccount = arch_desc.top.cpu_count;
     for (p = 0; p < lib_shared_region->num_processes ; p++)
     {
         f = ear_max(cpuf[p], min_cpufreq);
         m = sig_shared_region[p].cpu_mask;
-        verbose_master(lv, "Frequency for process %d is %lu", p, f);
+				if (f != initial_def_freq) verbose_master(lv, "Frequency for process %d is %lu", p, f);
         for (c = 0 ; c < ccount; c++) {
             if (CPU_ISSET(c,&m)) { 
                 verbosen_master(lv+1, "CPU %d ", c);
@@ -240,13 +241,29 @@ void fill_cpus_out_of_cgroup(uint exc)
     }
 }
 
+#define DEBUG_CPUFREQ_COST 0
+
+#if DEBUG_CPUFREQ_COST
+static ulong total_cpufreq_cost_us = 0;
+static ulong calls_cpufreq = 0;
+#endif
+
 static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     ulong *freq_set = freqs->cpu_freq;
     int i;
     char pol_grain_str[16];
+		
+		#if DEBUG_CPUFREQ_COST
+		timestamp init_cpufreq_cost, end_cpufreq_cost;
+		ulong elapsed_cpufreq_cost_us;
+		#endif
 
     verbose_master(3, "policy_cpu_freq_selection");
+		#if DEBUG_CPUFREQ_COST
+    timestamp_getfast(&init_cpufreq_cost);
+		#endif
+
 
     memset(freq_per_core, 0, sizeof(ulong) * MAX_CPUS_SUPPORTED);
 
@@ -288,6 +305,14 @@ static state_t policy_cpu_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
     verbose_master(2, "%sPOLICY%s Setting CPU freq.: %lu", COL_BLU, COL_CLR, *(c->ear_frequency));
 
     avg_freq->cpu_freq[0] = compute_avg_freq(freq_set, lib_shared_region->num_processes);
+
+		#if DEBUG_CPUFREQ_COST
+		/* For debugging purposes */
+    timestamp_getfast(&end_cpufreq_cost);
+    elapsed_cpufreq_cost_us = timestamp_diff(&end_cpufreq_cost, &init_cpufreq_cost, TIME_USECS);
+		total_cpufreq_cost_us += elapsed_cpufreq_cost_us;
+		calls_cpufreq++;
+		#endif
 
     return EAR_SUCCESS;
 }
@@ -734,6 +759,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     }
 
     ear_frequency                 = DEF_FREQ(app_settings->def_freq);
+		initial_def_freq              = ear_frequency;
     my_pol_ctx.app	              = app_settings;
     my_pol_ctx.reconfigure        = res;
     my_pol_ctx.user_selected_freq = DEF_FREQ(app_settings->def_freq);
@@ -1065,7 +1091,13 @@ state_t policy_max_tries(int *intents)
 state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
+	
+		#if DEBUG_CPUFREQ_COST
+		verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f", total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
+		#endif
+
     preturn(polsyms_fun.end, c);
+
 }
 /** LOOPS */
 /* This function is executed  at loop init or period init */
@@ -1100,8 +1132,8 @@ state_t policy_new_iteration(signature_t *sig)
         }
     }
 #if USE_GPUS
-    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (sig->gpu_sig.num_gpus)){
-        verbose_master(3,"Validating GPU phase");
+    if (is_cuda_enabled() && (last_earl_gpu_phase_classification == GPU_IDLE) && (sig->gpu_sig.num_gpus)){
+        verbose_master(1,"Validating GPU phase for %u gpus", sig->gpu_sig.num_gpus);
         int i;
         for (i = 0; i< sig->gpu_sig.num_gpus; i++){
             if (sig->gpu_sig.gpu_data[i].GPU_util > 0){

@@ -4,8 +4,7 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -rdynamic
 
 ener_BINS = \
     cpu.o \
-    energy_node.o \
-    energy_node_lib.o
+    energy_node.o 
 ener_DEPS = \
     $(SRCDIR)/common/libcommon.a
 
