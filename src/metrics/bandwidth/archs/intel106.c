@@ -60,7 +60,7 @@ static state_t load_icelake()
 			return s;
 		}
 		addr_hi = (addr_hi & 0x1FFFFFFF) << 23;
-		debug("PCI%u base address %x", p, addr_hi);
+		debug("PCI%u base address %lx", p, addr_hi);
 
 		for (i = 0; i < 4; ++i) {
 			addr_lo = 0x00;
@@ -70,7 +70,7 @@ static state_t load_icelake()
 			}
 			addr_lo = (addr_lo & 0x7FF) << 12;
 			addr_fi = (addr_hi | addr_lo);
-			debug("IMC%u address = %x (%x | %x)", i, addr_fi, addr_hi, addr_lo);
+			debug("IMC%u address = %lx (%lx | %lx)", i, addr_fi, addr_hi, addr_lo);
 
 			if (state_fail(s = pci_mmio_map(addr_fi, 0x4000, &imc_maps[(p*4)+i]))) {
 				return s;
