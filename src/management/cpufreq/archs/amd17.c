@@ -89,7 +89,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	}
 	driver = ops_driver;
 	// This is also an MSR class, without MSR this API can't do anything
-	if (state_fail(s = msr_test(tp_in))) {
+	if (state_fail(s = msr_test(tp_in, MSR_WR))) {
 		return s;
 	}
 	if (tp.cpu_count == 0) {
@@ -314,7 +314,7 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 	}
 	// Opening MSRs (switch to user mode if permission denied)
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (state_fail(s = msr_open(tp.cpus[cpu].id))) {
+		if (state_fail(s = msr_open(tp.cpus[cpu].id, MSR_WR))) {
 			return static_dispose(cpu, s, state_msg);
 		}
 	}

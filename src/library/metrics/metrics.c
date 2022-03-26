@@ -46,6 +46,7 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
 #include <library/metrics/metrics.h>
+#include <library/metrics/energy_node_lib.h>
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
 #if USE_GPUS
 #include <library/metrics/gpu.h>
@@ -58,7 +59,6 @@
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 #include <metrics/bandwidth/bandwidth.h>
-#include <metrics/energy/energy_node_lib.h>
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 #include <daemon/local_api/eard_api.h>
@@ -108,12 +108,14 @@ mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 static gpu_t      *gpu_metrics_init[2];
 static gpu_t      *gpu_metrics_end[2];
 static gpu_t      *gpu_metrics_diff[2];
+static gpu_t     *gpud_busy, *gpuddiff_busy;
 static ctx_t       gpu_lib_ctx;
        uint        gpu_initialized = 0;
 static uint        gpu_loop_stopped = 0;
 static uint        earl_gpu_model = MODEL_UNDEFINED;
 char               gpu_str[256];
 uint               ear_num_gpus_in_node=0;
+
 #endif
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static llong       last_elap_sec = 0;
@@ -246,7 +248,6 @@ static void metrics_configuration(topology_t *tp)
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
-		pstate_t * cp;
 
     #define sa(function) \
         function;
@@ -267,8 +268,7 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_load(tp, eard));
     sa(        cpi_load(tp, eard));
 
-	debug("metics_load ready");
-
+    debug("metics_load ready");
     // This extinguishable
     frequency_init(eard);
     // Get API
@@ -309,12 +309,12 @@ static void metrics_static_init(topology_t *tp)
     sa(    imcfreq_count_devices(no_ctx, &met_imcfreq.devs_count));
     sa(     bwidth_count_devices(no_ctx, &met_bwidth.devs_count ));
 		
-		debug("metrics_count_device ready");
-		debug("mgt cpufreq %u", mgt_cpufreq.devs_count);
-		debug("mgt imcfreq %u", mgt_imcfreq.devs_count);
-		debug("    cpufreq %u", met_cpufreq.devs_count);
-		debug("    imcfreq %u", met_imcfreq.devs_count);
-		debug("     bwidth %u", met_bwidth.devs_count);
+    debug("metrics_count_device ready");
+    debug("mgt cpufreq %u", mgt_cpufreq.devs_count);
+    debug("mgt imcfreq %u", mgt_imcfreq.devs_count);
+    debug("    cpufreq %u", met_cpufreq.devs_count);
+    debug("    imcfreq %u", met_imcfreq.devs_count);
+    debug("     bwidth %u", met_bwidth.devs_count);
 
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list, &mgt_cpufreq.avail_count));
@@ -352,9 +352,9 @@ static void metrics_static_init(topology_t *tp)
     bwidth_data_alloc(&bwidth_diff[0]);
     bwidth_data_alloc(&bwidth_diff[1]);
 
-		debug("metrics_allocation ready");
+    debug("metrics_allocation ready");
 	
-		metrics_configuration(tp);
+    metrics_configuration(tp);
 }
 
 void metrics_static_dispose()
@@ -467,7 +467,7 @@ static void metrics_global_stop()
 {
 	char io_info[256];
 	char file_name[256];
-	char *verb_path=getenv(SCHED_EARL_VERBOSE_PATH);
+	char *verb_path=getenv(FLAG_EARL_VERBOSE_PATH);
     state_t s;
 	int i;
 
@@ -477,7 +477,7 @@ static void metrics_global_stop()
 		while(!lib_shared_region->global_stop_ready){ 
             //verbose_master(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
 			if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) verbose_master(2, "%sMemory sync for lib shared region fails %s%s", COL_RED, strerror(errno), COL_CLR);
-			usleep(1000000);
+			usleep(10000);
 		}
 	}
 
@@ -757,8 +757,8 @@ static int metrics_partial_stop(uint where)
     if (masters_info.my_master_rank >= 0) {
         /* MPI statistics */
         if (is_mpi_enabled()){
-        read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
-        read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
+         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
+         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
         }
 
         /* Avg CPU freq */
@@ -777,7 +777,7 @@ static int metrics_partial_stop(uint where)
             }
         verbose_master(3, "%s", "");
         }
-		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
+				cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* Avg IMC frequency */
@@ -942,7 +942,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 				metrics->IO_MBS = iogb/time_s;
 
                 if (masters_info.my_master_rank>=0){
-
+										sig_ext->max_mpi = 0;
+										sig_ext->min_mpi = 100;
                     /* MPI statistics */
                     if (is_mpi_enabled()) {
                         double pmpi = 0.0, lpmpi;
@@ -958,6 +959,8 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                             }
                             sig_shared_region[i].mpi_info.perc_mpi = lpmpi;
                             pmpi += lpmpi;
+														sig_ext->max_mpi = ear_max(lpmpi, sig_ext->max_mpi);
+														sig_ext->min_mpi = ear_min(lpmpi, sig_ext->min_mpi);
                             verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
                         }
                         metrics->perc_MPI = pmpi/lib_shared_region->num_processes;
@@ -1192,6 +1195,8 @@ int metrics_init(topology_t *topo)
 			gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
 			gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
 			gpu_lib_count(&ear_num_gpus_in_node);
+      gpu_lib_data_alloc(&gpud_busy);
+      gpu_lib_data_alloc(&gpuddiff_busy);
 			debug("GPU library data initialized");
 		}
 	}
@@ -1404,7 +1409,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
     verbose_master(2," ");
   }
 	#endif
-  for (uint i = 0; i < FLOPS_EVENTS; i++){
+  for (i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
   ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
@@ -1498,7 +1503,6 @@ state_t metrics_new_iteration(signature_t *sig)
     llong f_time, elap_sec;
 
 #if USE_GPUS
-    gpu_t *gpud, *gpuddiff;
     int p;
 #endif
 
@@ -1526,30 +1530,27 @@ state_t metrics_new_iteration(signature_t *sig)
     }
 
 #if USE_GPUS
+		sig->gpu_sig.num_gpus = 0;
     if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0) && is_cuda_enabled()){
         debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
         /* GPUs */
         if (gpu_initialized){
-            gpu_lib_data_alloc(&gpud);
-            gpu_lib_data_alloc(&gpuddiff);
-            if (gpu_lib_read(&gpu_lib_ctx,gpud) != EAR_SUCCESS){
+            if (gpu_lib_read(&gpu_lib_ctx,gpud_busy) != EAR_SUCCESS){
                 debug("gpu_lib_read error");
             }
-            gpu_lib_data_diff(gpud, gpu_metrics_init[LOO], gpuddiff);
+            gpu_lib_data_diff(gpud_busy, gpu_metrics_init[LOO], gpuddiff_busy);
             sig->gpu_sig.num_gpus = ear_num_gpus_in_node;
             if (earl_gpu_model == MODEL_DUMMY){
                 debug("Setting num_gpu to 0 because model is DUMMY");
                 sig->gpu_sig.num_gpus = 0;
             }
             for (p=0; p < sig->gpu_sig.num_gpus;p++){
-                sig->gpu_sig.gpu_data[p].GPU_power    = gpuddiff[p].power_w;
-                sig->gpu_sig.gpu_data[p].GPU_freq     = gpuddiff[p].freq_gpu;
-                sig->gpu_sig.gpu_data[p].GPU_mem_freq = gpuddiff[p].freq_mem;
-                sig->gpu_sig.gpu_data[p].GPU_util     = gpuddiff[p].util_gpu;
-                sig->gpu_sig.gpu_data[p].GPU_mem_util = gpuddiff[p].util_mem;
+                sig->gpu_sig.gpu_data[p].GPU_power    = gpuddiff_busy[p].power_w;
+                sig->gpu_sig.gpu_data[p].GPU_freq     = gpuddiff_busy[p].freq_gpu;
+                sig->gpu_sig.gpu_data[p].GPU_mem_freq = gpuddiff_busy[p].freq_mem;
+                sig->gpu_sig.gpu_data[p].GPU_util     = gpuddiff_busy[p].util_gpu;
+                sig->gpu_sig.gpu_data[p].GPU_mem_util = gpuddiff_busy[p].util_mem;
             }
-            gpu_lib_data_free(&gpud);
-            gpu_lib_data_free(&gpuddiff);
         }
     }
 #endif

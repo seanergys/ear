@@ -100,13 +100,10 @@ const char     *trace_syms_nam[] = {
  */
 
 
-void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_rank,
-        int nodes, int mpis, int ppn)
+void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
-    int ret;
-
     char *traces_plugin;
-    traces_plugin=getenv(SCHED_EAR_TRACE_PLUGIN);
+    traces_plugin=getenv(FLAG_TRACE_PLUGIN);
 
     if (traces_plugin==NULL) {
         trace_plugin=0;
@@ -136,7 +133,7 @@ void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_ra
     }
 
     // Loading install/lib/plugins/tracer/tracer.so OR ./tracer/tracer.so
-    sprintf(tracer_path, "%s/tracer/%s", my_plug_path, traces_plugin);
+    xsprintf(tracer_path, "%s/tracer/%s", my_plug_path, traces_plugin);
     verbose(2, "Trying to load '%s' plugin", tracer_path);
 
     if (state_fail(st = symplug_open(tracer_path, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n))) {
@@ -160,7 +157,7 @@ void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_ra
 
 
     /*
-       ret = symplug_open(traces_plugin, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n);
+       int ret = symplug_open(traces_plugin, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n);
        if (ret!=EAR_SUCCESS){ 
        debug("symplug_open() in library/traces returned %d (%s)", ret, intern_error_str);
        trace_plugin=0;

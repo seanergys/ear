@@ -75,6 +75,7 @@ static uint total_th;
 static uint signatures_stables = 0;
 static signature_t /* cpu_sel_signature, */ policy_sel_signature;
 static node_freqs_t nf;
+static float MAX_DYNAIS_OVERHEAD_DYN = MAX_DYNAIS_OVERHEAD;
 uint waiting_for_node_signatures = 0;
 
 /* Defined in ear.c */
@@ -120,7 +121,7 @@ static void check_dynais_off(ulong mpi_calls_iter,uint period, uint level, ulong
     dynais_overhead_usec = mpi_calls_iter;
     if (loop_signature.signature.time > 0){
         dynais_overhead_perc = ((float)dynais_overhead_usec/(float)1000000)*(float)100/loop_signature.signature.time;
-        if (dynais_overhead_perc>MAX_DYNAIS_OVERHEAD){
+        if (dynais_overhead_perc>MAX_DYNAIS_OVERHEAD_DYN){
             // Disable dynais : API is still pending
 #if DYNAIS_CUTOFF
             dynais_enabled = DYNAIS_DISABLED;
@@ -128,7 +129,7 @@ static void check_dynais_off(ulong mpi_calls_iter,uint period, uint level, ulong
             if (masters_info.my_master_rank>=0) log_report_dynais_off(application.job.id,application.job.step_id);
         }
         if (dynais_enabled == DYNAIS_DISABLED){
-            debug("DYNAIS_DISABLED: Total time %lf (s) dynais overhead %lu usec in %lu mpi calls(%lf percent), event=%lu min_time=%lu",
+            verbose_master(3,"DYNAIS_DISABLED: Total time %lf (s) dynais overhead %lu usec in %lu mpi calls(%lf percent), event=%lu min_time=%lu",
                     loop_signature.signature.time,dynais_overhead_usec,mpi_calls_iter,dynais_overhead_perc,event,perf_accuracy_min_time);
         }
     }
@@ -205,6 +206,11 @@ void states_begin_job(int my_id,  char *app_name)
     ulong	architecture_min_perf_accuracy_time;
     int i;
 
+		char *max_dyn_ov = getenv("EAR_MAX_DYNAIS_OVERHEAD");
+		if (max_dyn_ov != NULL){
+			MAX_DYNAIS_OVERHEAD_DYN = atof(max_dyn_ov);
+		}
+
     node_freqs_alloc(&nf);
     signatures=(application_t *) calloc(frequency_get_num_pstates(),sizeof(application_t));
     sig_ready=(uint *)calloc(frequency_get_num_pstates(),sizeof(uint));
@@ -222,13 +228,13 @@ void states_begin_job(int my_id,  char *app_name)
     perf_accuracy_min_time = get_ear_performance_accuracy();
 		verbose_master(2, "perf_accuracy_min_time default %lu", perf_accuracy_min_time);
     if (masters_info.my_master_rank>=0 && eards_connected()){
-        architecture_min_perf_accuracy_time=eards_node_energy_frequency();
+        architecture_min_perf_accuracy_time = eards_node_energy_frequency();
 				if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR) architecture_min_perf_accuracy_time = perf_accuracy_min_time;
 				verbose_master(2, "eard perf_accuracy_min_time default %lu", architecture_min_perf_accuracy_time);
     }else{
         architecture_min_perf_accuracy_time=1000000;
     }
-    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME)) perf_accuracy_min_time=architecture_min_perf_accuracy_time;
+    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME)) perf_accuracy_min_time = architecture_min_perf_accuracy_time;
 		verbose_master(2, "perf_accuracy_min_time %lu", perf_accuracy_min_time);
 
     EAR_STATE = NO_PERIOD;
@@ -314,7 +320,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
     if (metrics_new_iteration(&check_signature) == EAR_SUCCESS){
         pst = policy_new_iteration(&check_signature);
         if (pst != EAR_SUCCESS){
-            verbose_master(2,"%sNew Phase detected%s",COL_BLU,COL_CLR);
+            verbose_master(2, "%sNew Phase detected%s",COL_BLU,COL_CLR);
             policy_set_default_freq(NULL);
             comp_N_begin = metrics_time();
             EAR_STATE = FIRST_ITERATION;
@@ -372,10 +378,10 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             } else {
                 perf_count_period = 1;
             }
-            loop_perf_count_period=perf_count_period;
+            loop_perf_count_period = perf_count_period;
             /* Included to accelerate the signature computation */
-            perf_count_period_10p=perf_count_period/10;
-            if (perf_count_period_10p==0) perf_count_period_10p=1;
+            perf_count_period_10p = perf_count_period/10;
+            if (perf_count_period_10p == 0) perf_count_period_10p = 1;
             /**/
 
 

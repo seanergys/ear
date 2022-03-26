@@ -191,13 +191,18 @@ int MPI_Ibsend(MPI3_CONST void *buf, int count, MPI_Datatype datatype, int dest,
 {
 	return ear_mpic.Ibsend(buf, count, datatype, dest, tag, comm, request);
 }
+
 int ear_usage_mpi()
 {
-  char msg[1024];
-  snprintf(msg, sizeof(msg), "Error, you are using your mpi4py application with EAR library and the %s env var is not set. If you want to run your application with EAR set \"export %s = \"intel\"|\"ompi\". Otherwise use \"--ear=off\" to disable the EAR library. \n", SCHED_LOAD_MPI_VERSION, SCHED_LOAD_MPI_VERSION);
-  write(2, msg, strlen(msg));
-  exit(1);
-  return MPI_ERR_INTERN;
+    char msg[1024];
+    snprintf(msg, sizeof(msg),
+            "Error, you are using your mpi4py application with EAR library and the %s env var is not set."
+            "If you want to run your application with EAR set \"export %s = \"intel\"|\"ompi\". "
+            "Otherwise use \"--ear=off\" to disable the EAR library. \n",
+            FLAG_LOAD_MPI_VERSION, FLAG_LOAD_MPI_VERSION);
+    write(2, msg, strlen(msg));
+    exit(1);
+    return MPI_ERR_INTERN;
 }
 
 static  uint EAR_Init = 0;
@@ -208,7 +213,18 @@ extern  uint MPI_Get_library_version_detected;
 
 static void EAR_force_mpi_library()
 {
-	if (!MPI_Get_library_version_detected && getenv(SCHED_LOAD_MPI_VERSION) == NULL) ear_usage_mpi();
+	if (!MPI_Get_library_version_detected && getenv(FLAG_LOAD_MPI_VERSION) == NULL) {
+        // TODO: This check is for the transition to the new environment variables.
+        // It will be removed when SCHED_LOAD_MPI_VERSION will be removed, on the next release.
+        if (getenv(SCHED_LOAD_MPI_VERSION) != NULL) {
+            verbose(1, "LOADER: %sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_LOAD_MPI_VERSION, FLAG_LOAD_MPI_VERSION);
+        }
+        else {
+            ear_usage_mpi();
+        }
+    }
 	  /* At this point we must force the symbol loading */
   force_mpi_load = 1;
 

@@ -105,8 +105,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 	sprintf(path, "/sys/devices/system/cpu/cpu%d/topology/thread_siblings_list", thread);
 	fd = open(path, F_RD);
 
-	if (fd >= 0)
-	{	
+	if (fd >= 0) {
 		do {
 			aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
 			aux1 += aux2;
@@ -114,7 +113,6 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 
 		// Parsing
 		char *tok = strtok(buffer, ",");
-
 		//
 		while (tok != NULL) {
 			if ((aux1 = atoi(tok)) != thread) {
@@ -136,15 +134,13 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 	aux1 = 0;
 	aux2 = 0;
 
-	if (fd >= 0)
-	{	
+	if (fd >= 0) {
 		do {
 			aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
 			aux1 += aux2;
 		} while(aux2 > 0);
 
 		topo->cpus[thread].socket_id = atoi(buffer);
-	
 		close(fd);
 	}
 
@@ -155,15 +151,13 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 	aux1 = 0;
 	aux2 = 0;
 
-	if (fd >= 0)
-	{
+	if (fd >= 0) {
 		do {
 			aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
 			aux1 += aux2;
 		} while(aux2 > 0);
 
 		topo->cpus[thread].l3_id = atoi(buffer);
-		
 		close(fd);
 	}
 
@@ -332,6 +326,7 @@ state_t topology_init(topology_t *topo)
 	topo->cache_line_size  = 0;
 	topo->smt_enabled      = 0;
 	topo->l3_count         = 0;
+    topo->initialized      = 1;
 
 	/* First characteristics */
 	topology_cpuid(topo);

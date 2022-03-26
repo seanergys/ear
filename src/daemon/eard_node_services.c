@@ -1077,8 +1077,7 @@ state_t eard_local_api()
 	int numfds_ready;
 	int ack_fd;
 	state_t s;
-	uint ret;
-	
+
 	num_packs = node_desc.socket_count;
 
 	verbose(VEARD_LAPI,"Creating node_mgr data");
@@ -1111,7 +1110,7 @@ state_t eard_local_api()
 
 	#if USE_GPUS
 	/* GPU Initialization for app requests */
-	ret = gpu_init(&eard_main_gpu_ctx);
+	uint ret = gpu_init(&eard_main_gpu_ctx);
 	if (ret != EAR_SUCCESS){
 		error("EARD error when initializing GPU context for EARD API queries");
 		eard_gpu_initialized = 0;	

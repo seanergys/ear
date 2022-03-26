@@ -75,7 +75,7 @@ static int trace_fin=0;
 static int my_trace_rank=0;
 static int my_num_nodes=0;
 static char my_app[GENERIC_NAME];
-static char  hostname[256];
+static char  hostname[SZ_BUFFER];
 static char *pathname;
 
 #define PARAVER_EVENTS  400 
@@ -107,6 +107,9 @@ static long long metrics_usecs_diff(long long end, long long init)
 
 static void row_file_create(char *pathname, char *hostname)
 {
+    #define write_unused(...) \
+        if (write(__VA_ARGS__)) {}
+
     sprintf(buffer1, "%s/%d_%s.%d.row", pathname, my_trace_rank,my_app,getpid());
     if (my_trace_rank==1){
         file_row=open(buffer1,
@@ -114,94 +117,93 @@ static void row_file_create(char *pathname, char *hostname)
                 S_IRUSR  | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
         if (file_row<0) return;
         sprintf(buffer1,"LEVEL TASK SIZE %d\n",my_num_nodes);
-        write(file_row, buffer1, strlen(buffer1));
+        write_unused(file_row, buffer1, strlen(buffer1));
     }else{
         file_row=open(buffer1,
                 O_WRONLY | O_CREAT | O_APPEND,
                 S_IRUSR  | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
         if (file_row<0) return;
     }
-    sprintf(buffer1,"%s %d\n",hostname,my_trace_rank);
-    write(file_row, buffer1, strlen(buffer1));
+    xsprintf(buffer1,"%s %d\n",hostname,my_trace_rank);
+    write_unused(file_row, buffer1, strlen(buffer1));
     close(file_row);
-
-
 }
 
 static void config_file_create(char *pathname, char* hostname)
 {
-    //
-    if (my_trace_rank>1) return;
+    if (my_trace_rank>1) { return; }
+
     sprintf(buffer1, "%s/%d_%s.%d.pcf", pathname, my_trace_rank,my_app,getpid());
 
-    //
     file_pcf = open(buffer1,
             O_WRONLY | O_CREAT | O_TRUNC,
-            S_IRUSR  | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-    if (file_pcf<0) return;
+            S_IRUSR  | S_IWUSR | S_IRGRP |
+            S_IWGRP  | S_IROTH | S_IWOTH);
+
+    if (file_pcf<0) { return; }
 
     sprintf(buffer1, "GRADIENT_COLOR\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "0\t{255,255,255}\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "GRADIENT_NAMES\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "0\twhite\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t1\tRUN\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60001\tPERIOD_ID\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60002\tPERIOD_LENGTH\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60003\tPERIOD_ITERATIONS\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60004\tPERIOD_TIME\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60005\tPERIOD_CPI\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60006\tPERIOD_TPI\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60007\tPERIOD_GBS\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60008\tPERIOD_POWER\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60009\tPERIOD_TIME_PROJECTION\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60010\tPERIOD_CPI_PROJECTION\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60011\tPERIOD_POWER_PROJECTION\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60012\tFREQUENCY\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60013\tENERGY\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60014\tDYNAIS_ON_OFF\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60015\tEARL_STATE\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "VALUES\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1,"2\tEVALUATING_POLICY\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1,"3\tVALIDATING_POLICY\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1,"4\tPOLICY_ERROR\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60016\tEARL_MODE\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "VALUES\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1,"1\tDYNAIS\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1,"2\tPERIODIC\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60017\tVPI\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60018\tRECONFIGURATION\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60019\tAVG_FREQ\n\n");
-    write(file_pcf, buffer1, strlen(buffer1));
+    write_unused(file_pcf, buffer1, strlen(buffer1));
 
     close(file_pcf);
 }
@@ -267,18 +269,18 @@ static void trace_file_init(int n_nodes)
         b[1] = '\n';
         b[2] = '\0';
 
-        write(file_prv, buffer, strlen(buffer));
+        write_unused(file_prv, buffer, strlen(buffer));
     }
     // 1:cpu:app:task:thread:b_time:e_time:state
     i = sprintf(buffer, "1:%d:1:%d:1:0:", my_trace_rank, my_trace_rank);
-    write(file_prv, buffer, strlen(buffer));
+    write_unused(file_prv, buffer, strlen(buffer));
 
     //
     edit_time_states = lseek(file_prv, 0, SEEK_CUR);
 
     //
     sprintf(buffer, "%020llu:1\n", (unsigned long long) 0);
-    write(file_prv, buffer, strlen(buffer));
+    write_unused(file_prv, buffer, strlen(buffer));
 }
 
 static void trace_file_write_in_file()
@@ -295,12 +297,12 @@ static void trace_file_write_in_file()
             sprintf(buffer1,"2:%d:1:%d:1:%llu:%d:%llu\n", my_trace_rank, my_trace_rank,
                     events_list[ready+i].t,events_list[ready+i].event,events_list[ready+i].value);
             if ((strlen(buffer1)+strlen(buffer2))>SZ_BUFFER){
-                write(file_prv, buffer2, strlen(buffer2));
+                write_unused(file_prv, buffer2, strlen(buffer2));
                 buffer2[0]='\0';
             }	
             strcat(buffer2,buffer1);
         }
-        write(file_prv, buffer2, strlen(buffer2));
+        write_unused(file_prv, buffer2, strlen(buffer2));
         ready+=events;
         pendings-=events;
     }
@@ -357,7 +359,7 @@ void traces_stop()
 
 void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
-    pathname = getenv(VAR_OPT_TRAC);
+    pathname = getenv(FLAG_TRACE_PATH);
 
     //
     file_prv = -1;
@@ -365,7 +367,7 @@ void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis,
     file_row = -1;
 
     if (pathname == NULL) {
-        debug("trace path not defined %s, trace disabled", VAR_OPT_TRAC);
+        debug("trace path not defined %s, trace disabled", FLAG_TRACE_PATH);
         enabled = 0;
         return;
     }
@@ -413,11 +415,11 @@ void traces_end(int global_rank, int local_rank, unsigned long total_energy)
 
     if (my_trace_rank==1){
         lseek(file_prv, edit_time_header, SEEK_SET);
-        write(file_prv, buffer1, 20);
+        write_unused(file_prv, buffer1, 20);
     }
 
     lseek(file_prv, edit_time_states, SEEK_SET);
-    write(file_prv, buffer1, 20);
+    write_unused(file_prv, buffer1, 20);
 
     //
     close(file_prv);

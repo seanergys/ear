@@ -46,8 +46,8 @@ void manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
 	sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpufreq.avail_list, &m.cpufreq.avail_count));
 	sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imcfreq.avail_list, &m.imcfreq.avail_count));
 	// Current allocation
-    sa(mgt_cpufreq_data_alloc((pstate_t **) &m.cpufreq.current_list, (uint **) &m.cpufreq.set_list));
-    sa(mgt_cpufreq_data_alloc((pstate_t **) &m.imcfreq.current_list, (uint **) &m.imcfreq.set_list));
+	sa(mgt_cpufreq_data_alloc((pstate_t **) &m.cpufreq.current_list, (uint **) &m.cpufreq.set_list));
+	sa(mgt_cpufreq_data_alloc((pstate_t **) &m.imcfreq.current_list, (uint **) &m.imcfreq.set_list));
 	
 	if (m_in != NULL) {
 		*m_in = &m;
@@ -63,7 +63,7 @@ void manages_apis_dispose()
 void manages_apis_print()
 {
 	apis_print(m.cpufreq.api, "MGT_CPUFREQ: ");
-    apis_print(m.imcfreq.api, "MGT_IMCFREQ: ");
+	apis_print(m.imcfreq.api, "MGT_IMCFREQ: ");
 }
 
 #define printline() \
@@ -85,6 +85,8 @@ void manages_apis_print_current()
 }
 
 #if TEST
+// gcc -I .. -DTEST=1 -o test management.c ../management/libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl
+
 #include <daemon/local_api/eard_api_rpc.h>
 
 static topology_t tp;

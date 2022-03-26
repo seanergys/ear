@@ -37,7 +37,7 @@ state_t frequency_init(uint eard)
 	state_t s;
 	
 	if (init) {
-		return_msg(EAR_INITIALIZED, Generr.api_initialized);
+		return_msg(EAR_ERROR, Generr.api_initialized);
 	}
 	if (xtate_fail(s, topology_init(&topo))) {
 		return s;
@@ -372,7 +372,7 @@ void get_governor(governor_t *_governor)
 	// Clear
 	_governor->max_f = 0LU;
 	_governor->min_f = 0LU;
-	sprintf(_governor->name, Goverstr.other);
+	sprintf(_governor->name, "%s", Goverstr.other);
 	//
 	if (!init) {
 		return;
@@ -416,7 +416,7 @@ void verbose_frequencies(int cpus, ulong *f)
         }
         strcat(buff, buffshort);
     }
-    verbose(VEARD_PC,buff);
+    verbose(VEARD_PC, "%s", buff);
 }
 
 void vector_print_pstates(uint *pstates, uint num_cpus) {
@@ -427,7 +427,7 @@ void vector_print_pstates(uint *pstates, uint num_cpus) {
         sprintf(sml_buff, "p%d: %u, ", i, pstates[i]);
         strcat(tmp_buff, sml_buff);
     }
-    verbose(VEARD_PC,tmp_buff);
+    verbose(VEARD_PC, "%s", tmp_buff);
     free(tmp_buff);
 }
 

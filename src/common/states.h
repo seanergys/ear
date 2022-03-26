@@ -28,14 +28,12 @@
 #define EAR_SUCCESS              0
 #define EAR_ERROR               -1
 #define EAR_WARNING             -2
-#define EAR_NO_PERMISSIONS		-6
-#define EAR_INITIALIZED			-7
 #define EAR_NOT_INITIALIZED		-8
 #define EAR_BAD_ARGUMENT		-13
 #define EAR_SYSCALL_ERROR		-18
 #define EAR_TIMEOUT				-21
 #define EAR_UNDEFINED			-24
-#define EAR_CANCELLED     -25
+#define EAR_CANCELLED           -25
 
 /* error buffer */
 char state_buffer[SZ_BUFFER] __attribute__((weak));
@@ -72,14 +70,6 @@ int state_no    __attribute__((weak));
 	xsnprintf(state_buffer, sizeof(state_buffer), __VA_ARGS__); \
 	return no; \
 	}
-
-// error(#func " returned %d (%s)", s, state_msg);
-
-#define state_assert(s, func, cons) \
-    if (xtate_fail(s, func)) { \
-        error("returned %d, %s (%s:%d)", s, state_msg, __FILE__, __LINE__); \
-        cons; \
-    }
 
 struct generr_s {
 	char *api_undefined;
@@ -126,7 +116,6 @@ struct generr_s {
 #define EAR_BUSY                -10
 #define EAR_MYSQL_ERROR         -14
 #define EAR_MYSQL_STMT_ERROR    -15
-#define EAR_ADDR_NOT_FOUND      -17 //*
 #define EAR_SOCK_OP_ERROR       -18
 #define EAR_SOCK_DISCONNECTED   -20
 #define EAR_NO_RESOURCES        -22 //*
@@ -144,8 +133,6 @@ int intern_error_num __attribute__((weak));
 #define state_return(state) \
 	return state;
 
-#define return_xmsg return_print
-
 #define state_return_msg(state, error_num, error_str) \
 { \
 	intern_error_num = error_num; \
@@ -156,16 +143,14 @@ int intern_error_num __attribute__((weak));
 #define xtate_fail(s, function) \
 	((s = function) != EAR_SUCCESS)
 
-#define xtate_ok(s, function) \
-	((s = function) == EAR_SUCCESS)
-
-#define sfail(function) \
-	if (state_fail(function))
-
 #define sassert(function, consecuence) \
-	sfail((function)) { \
-		error(#function " failed in %s:%d: %s (%d)", __FILE__, __LINE__, state_msg, state_no); \
+	if (state_fail(function)) { \
 		consecuence; \
 	}
+
+#define state_assert(s, func, cons) \
+    if (state_fail(s = func)) { \
+        cons; \
+    }
 
 #endif //STATES_H

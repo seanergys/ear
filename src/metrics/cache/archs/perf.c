@@ -75,6 +75,9 @@ state_t cache_perf_load(topology_t *tp, cache_ops_t *ops)
 	else {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
+    if (!counter) {
+        return_msg(EAR_ERROR, Generr.api_incompatible);
+    }
 	replace_ops(ops->init,    cache_perf_init);
 	replace_ops(ops->dispose, cache_perf_dispose);
 	replace_ops(ops->read,    cache_perf_read);

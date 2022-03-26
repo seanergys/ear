@@ -43,6 +43,8 @@ static uint openmpi = 0;
 
 static char *load_mpi_version = NULL;
 uint MPI_Get_library_version_detected = 0;
+static int (*my_MPI_Get_library_version)(char *version, int *resultlen);
+
 uint force_mpi_load = 0;
 
 int is_mpi_enabled()
@@ -81,7 +83,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	if (libhack != NULL) verbose(2,"LOADER  using HACK %s",libhack);
 
 	// Getting the library version
-	if (MPI_Get_library_version_detected) MPI_Get_library_version(buffer, &len);
+	if (MPI_Get_library_version_detected) my_MPI_Get_library_version(buffer, &len);
   else if (load_mpi_version != NULL){
     strcpy(buffer,load_mpi_version);
   }else{
@@ -227,16 +229,31 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 
 static int module_mpi_is()
 {
-	uint is_mpi = 0;
-	/* The env var oversubscribe the library version detected */
-  load_mpi_version = getenv(SCHED_LOAD_MPI_VERSION);
-  if (load_mpi_version != NULL){ 
-    verbose(2, " %s = %s", SCHED_LOAD_MPI_VERSION, load_mpi_version);
-		is_mpi = 1;
-  }else verbose(2, " %s not defined", SCHED_LOAD_MPI_VERSION);
+    uint is_mpi = 0;
+
+    // The env var oversubscribes the library version detected.
+    load_mpi_version = getenv(FLAG_LOAD_MPI_VERSION);
+    if (load_mpi_version != NULL){ 
+        verbose(2, " %s = %s", FLAG_LOAD_MPI_VERSION, load_mpi_version);
+        is_mpi = 1;
+    } else {
+        // TODO: This check is for the transition to the new environment variables.
+        // It will be removed when SCHED_LOAD_MPI_VERSION will be removed, on the next release.
+        load_mpi_version = getenv(SCHED_LOAD_MPI_VERSION);            
+        if (load_mpi_version != NULL) { 
+            verbose(1, "LOADER: %sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_LOAD_MPI_VERSION, FLAG_LOAD_MPI_VERSION);
+            verbose(2, " %s = %s", FLAG_LOAD_MPI_VERSION, load_mpi_version);
+            is_mpi = 1;
+        } else {
+            verbose(2, " %s not defined", FLAG_LOAD_MPI_VERSION);
+        }
+    }
 
 	/* If not, we use the default approach of looking for the MPI symbol */
-  if (dlsym(RTLD_DEFAULT, "MPI_Get_library_version") != NULL){
+	my_MPI_Get_library_version = dlsym(RTLD_DEFAULT, "MPI_Get_library_version");
+  if (my_MPI_Get_library_version != NULL){
     MPI_Get_library_version_detected = 1;
     verbose(2,"MPI_Get_library_version detected");
     return 1;

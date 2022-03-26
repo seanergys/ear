@@ -91,12 +91,21 @@ static ulong recv_reduced_time = 0;
 
 float LB_TH = EAR_LB_TH;
 
+#define PER_MPI_STATS 1
+
 state_t mpi_app_init(polctx_t *c)
 {
     char * clb_th;
 
     if (c != NULL) {
-        if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+        if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
+            LB_TH = (float)atoi(clb_th);
+        } else if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+            // TODO: This check is for the transition to the new environment variables.
+            // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_LOAD_BALANCE_TH, FLAG_LOAD_BALANCE_TH);
             LB_TH = (float)atoi(clb_th);
         }
         verbose_master(LB_VERB, "Load Balance threshold: %.1f", LB_TH);
@@ -345,6 +354,7 @@ state_t mpi_app_end(polctx_t *c)
 
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
+#if PER_MPI_STATS
     if (is_mpi_enabled()) {
 
         // Init the MPI call timer
@@ -395,6 +405,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 #endif
 #endif
     }
+#endif
     return EAR_SUCCESS;
 }
 
@@ -403,6 +414,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     timestamp_t end;
     mpi_call nbcall_type;
     ullong elap;
+#if PER_MPI_STATS 
 
     if (is_mpi_enabled()) {
 
@@ -510,6 +522,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         }
 #endif
     }
+#endif
     return EAR_SUCCESS;
 }
 
@@ -552,7 +565,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int
     mpi_call_get_stats(&current, NULL, i);
     mpi_call_diff(diff, &current, last);
 
-	verbose_master(3, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
+	verbose_master(4, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
             i, diff->mpi_time, current.mpi_time, last->mpi_time, diff->exec_time, current.exec_time, last->exec_time);
 
     diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
@@ -746,7 +759,7 @@ state_t mpi_support_perc_mpi_max_min(int nump, double *percs_mpi, int *max, int 
         if (percs_mpi[i] > percs_mpi[*max])	*max = i;
         if (percs_mpi[i] < percs_mpi[*min])	*min = i;
     }
-    verbose_master(LB_VERB, "");
+    verbose_master(LB_VERB, " ");
     return EAR_SUCCESS;
 }
 

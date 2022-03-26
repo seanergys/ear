@@ -37,7 +37,10 @@ state_t temp_intel63_status(topology_t *_tp)
 		return EAR_ERROR;
 	}
 	while (pthread_mutex_trylock(&lock));
-	if (tp.cpus == NULL) {
+	if (!tp.initialized) {
+        if (state_fail(s = msr_test(_tp, MSR_RD))) {
+            return EAR_ERROR;
+        }
 		s = topology_select(_tp, &tp, TPSelect.socket, TPGroup.merge, 0);
 	}
 	pthread_mutex_unlock(&lock);
@@ -62,10 +65,10 @@ state_t temp_intel63_init(ctx_t *c)
 	throt = (llong *) c->context;
 	for (i = 0; i < tp.cpu_count; ++i) {
 		debug("accessing to CPU %d", tp.cpus[i].id);
-		if (xtate_fail(s, msr_open(tp.cpus[i].id))) {
+		if (state_fail(s = msr_open(tp.cpus[i].id, MSR_RD))) {
 			return s;
 		}
-		if (xtate_fail(s, msr_read(tp.cpus[i].id, &data, sizeof(llong), MSR_TEMPERATURE_TARGET))) {
+		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), MSR_TEMPERATURE_TARGET))) {
 			return s;
 		}
 		throt[i] = (data >> 16);
