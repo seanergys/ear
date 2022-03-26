@@ -43,6 +43,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
+#include <library/loader/module_cuda.h>
 #include <common/environment.h>
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
