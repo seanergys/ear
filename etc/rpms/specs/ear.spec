@@ -18,7 +18,7 @@ Summary:  EAR package
 Group:    System
 Packager: EAR Team
 URL:    https://github.com/BarcelonaSupercomputingCenter/ear_private
-License: BSD-3 license for individual/non-commercial use and EPL-1.0 license for commercial use 
+License:  BSD-3 license for individual/non-commercial use and EPL-1.0 license for commercial use
 Name:   %{name}
 Version:  %{version}%{?dist}
 Release:  %{release}
