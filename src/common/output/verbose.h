@@ -61,6 +61,9 @@ int warn_channel	__attribute__((weak)) = 2;
 	} \
 	}
 
+#define VERB_ON(v) \
+	(verb_enabled && (v <= verb_level))
+
 // No new line version
 #define verbosen(v, ...) \
 	{\
