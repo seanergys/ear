@@ -330,6 +330,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     verbose_master(2, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
 
+
+		/* GPU Policy : It's independent of the CPU and IMC frequency selection */
     if (gpus.node_policy_apply != NULL) {
         // Basic support for GPUs
         gpus.node_policy_apply(c, sig, freqs, &gready);
@@ -338,6 +340,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         gpu_ready = EAR_POLICY_READY;
     }
 
+		/* This use case applies when IO bound for example */
     if (cpu_ready == EAR_POLICY_READY) {
         return EAR_SUCCESS;
     }
@@ -393,8 +396,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
 
     int policy_stable;
+
+		/* This function computes the load balance, the critical path etc */
     int_policy_ok(sig, &cpufreq_signature, &policy_stable);
     debug("Policy ok returns %d",policy_stable);
+
+		/* If there is some change in the Signature, we apply default values and computes again the signature */
 
     /* If we are not stable, we start again */
     if ((min_energy_state != SELECT_CPUFREQ) && !policy_stable){
@@ -404,6 +411,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         last_earl_phase_classification = APP_COMP_BOUND;
     }
 
+
+		/* STEP 1: CPU frequency selectiomn phase */
     if ((min_energy_state == SELECT_CPUFREQ) || (eUFS == 0)) {
         /**** SELECT_CPUFREQ ****/
         verbose_master(2,"%sSelecting CPU frequency %s. eUFS %u", COL_BLU, COL_CLR, eUFS);
@@ -411,6 +420,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
 
+				/* Classification */
         is_cpu_bound(my_app, &cbound);
         is_mem_bound(my_app, &mbound);
 
@@ -442,7 +452,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         for (uint i = 0; i < nump; i++) {
             verbose_master(3, "Proc. %d - Freq. per core: %d", i, freq_per_core);
 
+						/* This variable is set internally  by int_policy_ok function. It depends on the load balance of the application */
             if (!freq_per_core) {
+
+								/* 1.1: If we have to select a single frequency, we compute the average */
 
                 compute_total_node_instructions(lib_shared_region, sig_shared_region, &my_app->instructions);
                 compute_total_node_flops(lib_shared_region, sig_shared_region, my_app->FLOPS);
@@ -467,6 +480,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
                 local_penalty = base_penalty;
             } else {
+
+							/* 1.2: Per process CPU frequency selection */
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig); // Local VPI
 
                 ulong eff_p_cpuf, process_avgcpuf;
@@ -474,16 +489,20 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
 
+								/* Critical path is computed in int_policy_ok */
                 if (critical_path[i] == 1) {
                     // Process was selected to be in the critical path
                     if (!mbound) {
+												/* If the process is part of the critical path and is CPU bound */
                         eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf, 0);
                         if (eff_p_cpuf < process_avgcpuf) {
                             eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf + 100000, 0);
                         }
                         if (use_turbo_for_cp) {
+														/* 1.2.1: Use turbo for critial path process */
                             new_freq[i] = frequency_pstate_to_freq(0);
                         } else {
+														/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
                             new_freq[i] = ear_min(eff_p_cpuf, frequency_pstate_to_freq(1));
                         }
                         verbose_master(2,
@@ -491,6 +510,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                                 i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi]);
                         continue;
                     } else {
+												/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
                         local_penalty = base_penalty / 2;
                     }
                 } else if (critical_path[i] == 2) {
@@ -498,7 +518,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     local_penalty = 0.5;
                     sig_shared_region[i].unbalanced = 1;
                 } else {
-                    /* Mix process */
+                    /* Mix process : A per-process penalty is computed */
                     local_penalty = base_penalty + EXTRA_TH * (my_node_mpi_calls[i].perc_mpi
                             - my_node_mpi_calls[min_mpi].perc_mpi) / 10.0;
                 }
@@ -553,6 +573,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
+
+				/* If we use the same CPU freq for all cores, we set for all processes */
         if (!freq_per_core) {
             set_all_cores(new_freq, num_processes, new_freq[0]);
         }
@@ -572,7 +594,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         signature_copy(&cpufreq_signature, sig);
         memcpy(cpufreq_signature.sig_ext, se, sizeof(sig_ext_t));
 
-        /* IMC freq selection */
+        /* Phase 2:  IMC freq selection */
         if ((use_energy_models || *ready==EAR_POLICY_READY) &&
                 eUFS && !((earl_phase_classification == APP_MPI_BOUND) && network_use_imc)){
 

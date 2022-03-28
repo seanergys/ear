@@ -474,7 +474,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 if (!lib_shared_region->master_ready) perf_count_period++;
                 return;
             }
-						/* At this point, signatures are ready */ 
+						/* At this point, signatures for all the process in the node are ready */ 
 						compute_per_process_and_job_metrics(&loop_signature.signature);
 
             /* Included for dynais test */
@@ -506,8 +506,11 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /****** We mark our local signature as ready ************ Moved to metrics*/
             //signature_ready(&sig_shared_region[my_node_id],EVALUATING_LOCAL_SIGNATURE);
 
+						/* This function takes into account if we are using or not the whole node */
             adapt_signature_to_node(&app_signature,&loop_signature.signature,ratio_PPN);
-            /* This function executes the energy policy */
+
+            /* This function executes the energy policy . app_signature is the local process signature, the 
+ 						 * policy will compute the average if needed */
             pst=policy_node_apply(&app_signature,&policy_freq,&ready);
 
             /* For no masters, ready will be 0, pending */
