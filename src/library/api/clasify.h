@@ -29,11 +29,6 @@
 #define APP_IO_BOUND		3
 #define APP_BUSY_WAITING	4
 
-#define GPU_IDLE 1
-#define GPU_COMP 0
-
-#define APP_CPU_BOUND APP_COMP_BOUND
-
 #define DYNAIS_GUIDED 0
 #define TIME_GUIDED	  1
 
@@ -53,11 +48,17 @@
 
 //#define FLOPS_CPU_BOUND 100.0
 
+typedef enum {
+    _GPU_NoGPU = 1,
+    _GPU_Comp  = 2,
+    _GPU_Idle  = 4,
+} gpu_state_t;
+
 state_t classify(uint iobound, uint mibound, uint *app_state);
 state_t is_cpu_busy_waiting(signature_t *sig,uint *busy);
 state_t is_cpu_bound(signature_t *sig,uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint *mbound);
-state_t is_gpu_idle(signature_t *sig,uint *gidle);
+state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state);
 state_t is_io_bound(float rwsec,uint *iobound);
 state_t is_network_bound(float mpisec,uint *mpibound);
 

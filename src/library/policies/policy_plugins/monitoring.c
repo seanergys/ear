@@ -41,7 +41,7 @@
 #include <library/policies/common/mpi_stats_support.h>
 
 extern uint gpu_initialized;
-extern uint cpu_ready, gpu_ready, gidle;
+extern uint cpu_ready, gpu_ready;
 
 #if 0
 #if EARL_RESEARCH

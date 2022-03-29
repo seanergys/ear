@@ -102,7 +102,8 @@ extern uint use_energy_models;
 /* Policy/Other */
 static uint min_time_state = SELECT_CPUFREQ;
 static signature_t *my_app, cpufreq_signature;
-extern uint cpu_ready, gpu_ready, gidle;
+extern uint cpu_ready, gpu_ready;
+extern gpu_state_t curr_gpu_state;
 
 /* No models extra */
 static signature_t *sig_list;
@@ -964,13 +965,6 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
 #if USE_GPUS
     gpu_ready = EAR_POLICY_READY;
     return EAR_SUCCESS;
-    if (gidle) {
-        gpu_ready = EAR_POLICY_READY;
-        for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-            freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
-        }
-        memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
-    }
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -1006,13 +1000,6 @@ state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t
 #if USE_GPUS
     gpu_ready = EAR_POLICY_READY;
     return EAR_SUCCESS;
-    if (gidle){
-        gpu_ready = EAR_POLICY_READY;
-        for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-            freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][0];
-        }
-        memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
-    }
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif

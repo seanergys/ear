@@ -128,7 +128,8 @@ static signature_t cpufreq_signature;
 static uint block_type;
 static uint first_time = 1;
 
-extern uint cpu_ready, gpu_ready, gidle;
+extern uint cpu_ready, gpu_ready;
+// extern gpu_state_t curr_gpu_state;
 extern uint last_earl_phase_classification;
 
 static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok);

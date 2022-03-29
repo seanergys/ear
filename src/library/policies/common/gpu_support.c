@@ -73,33 +73,33 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 
 state_t policy_gpu_init_ctx(polctx_t *c)
 {
-	uint policy_gpu_model;
-	uint gpun;
-	c->num_gpus = 0;
-	#if USE_GPUS
-	if (gpu_lib_load(c->app) != EAR_SUCCESS){
-    error("gpu_lib_load in init_power_policy");
-		return EAR_ERROR;
-  }else{
-		c->gpu_mgt_ctx.context = NULL;
-  	if (gpu_lib_init(&c->gpu_mgt_ctx) == EAR_SUCCESS){
-      verbose_master(2,"gpu_lib_init success");
-      gpu_lib_model(&c->gpu_mgt_ctx,&policy_gpu_model);
-      if (policy_gpu_model == MODEL_DUMMY){ 
-      	debug("Setting policy num gpus to 0 because DUMMY");
-      	c->num_gpus = 0;
-      }else{
-      	gpu_lib_count(&gpun);
-				c->num_gpus= gpun;
-      }
-      verbose_master(2,"Num gpus detected in policy_load %u ",c->num_gpus);	
-
+    uint policy_gpu_model;
+    uint gpun;
+    c->num_gpus = 0;
+#if USE_GPUS
+    if (gpu_lib_load(c->app) != EAR_SUCCESS){
+        error("gpu_lib_load in init_power_policy");
+        return EAR_ERROR;
     }else{
-      error("gpu_lib_init");
-			return EAR_ERROR;
+        c->gpu_mgt_ctx.context = NULL;
+        if (gpu_lib_init(&c->gpu_mgt_ctx) == EAR_SUCCESS){
+            verbose_master(2,"gpu_lib_init success");
+            gpu_lib_model(&c->gpu_mgt_ctx,&policy_gpu_model);
+            if (policy_gpu_model == MODEL_DUMMY){ 
+                debug("Setting policy num gpus to 0 because DUMMY");
+                c->num_gpus = 0;
+            }else{
+                gpu_lib_count(&gpun);
+                c->num_gpus= gpun;
+            }
+            verbose_master(2,"Num gpus detected in policy_load %u ",c->num_gpus);	
+
+        }else{
+            error("gpu_lib_init");
+            return EAR_ERROR;
+        }
     }
-  }
-	#endif
-	return EAR_SUCCESS;
+#endif
+    return EAR_SUCCESS;
 }
 

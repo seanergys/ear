@@ -19,7 +19,7 @@
 
 #define SINGLE_CONNECTION 0
 
-//#define SHOW_DEBUGS           1
+#define SHOW_DEBUGS           1
 #define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3
@@ -1498,7 +1498,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 }
 
 extern uint last_earl_phase_classification;
-extern uint last_earl_gpu_phase_classification;
+extern gpu_state_t last_gpu_state;
 
 state_t metrics_new_iteration(signature_t *sig)
 {
@@ -1532,9 +1532,9 @@ state_t metrics_new_iteration(signature_t *sig)
     }
 
 #if USE_GPUS
-		sig->gpu_sig.num_gpus = 0;
-    if ((last_earl_gpu_phase_classification == GPU_IDLE) && (ear_num_gpus_in_node > 0) && is_cuda_enabled()){
-        debug("Computing GPU util because of application gpu phase is IDLE = %d",last_earl_gpu_phase_classification == GPU_IDLE);
+    sig->gpu_sig.num_gpus = 0;
+    if (last_gpu_state & _GPU_Idle) {
+        debug("Computing GPU util because of application gpu phase is IDLE");
         /* GPUs */
         if (gpu_initialized){
             if (gpu_lib_read(&gpu_lib_ctx,gpud_busy) != EAR_SUCCESS){

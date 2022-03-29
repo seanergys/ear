@@ -25,19 +25,19 @@
 #include <library/dynais/dynais.h>
 #include <library/api/clasify.h>
 #include <library/states/states_comm.h>
+#include <library/loader/module_cuda.h>
 
 #define INFO_CLASSIFY 3
 
 extern ulong perf_accuracy_min_time;
 extern uint signature_reported;
 
-
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
 	*app_state = APP_COMP_BOUND;
 	if (iobound && !mpibound){
 		*app_state = APP_IO_BOUND;
-	}else if (mpibound){
+	} else if (mpibound) {
 		*app_state = APP_MPI_BOUND;
 	}
 	return EAR_SUCCESS;
@@ -108,17 +108,28 @@ state_t is_mem_bound(signature_t *sig,uint *mbound)
     return EAR_SUCCESS;
 }
 
-state_t  is_gpu_idle(signature_t *sig,uint *gidle)
+state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state)
 {
 #if USE_GPUS
-	int total = 0;
-	int i;
-	for (i=0;i< sig->gpu_sig.num_gpus;i++) total += sig->gpu_sig.gpu_data[i].GPU_util;
-	if (total == 0) *gidle = GPU_IDLE;
-	else *gidle = GPU_COMP;
-	return EAR_SUCCESS;
+    if (!is_cuda_enabled()) {
+        /* One of the following cases:
+         * - Node does not have GPUs
+         * - Node has GPUs but Job does not use them
+         */
+        *gpu_state = _GPU_NoGPU;
+        return EAR_SUCCESS;
+    }
+    // for sure the Job has been assigned to use GPUs, but are they being used?
+	for (int i = 0; i < sig->gpu_sig.num_gpus; i++) {
+        if (sig->gpu_sig.gpu_data[i].GPU_util > 0) {
+            *gpu_state = _GPU_Comp;
+            return EAR_SUCCESS;
+        }
+    }
+    // GPUs are idle here
+    *gpu_state = _GPU_Idle;
 #else
-	*gidle = GPU_IDLE;
-	return EAR_SUCCESS;
+	*gpu_state = _GPU_NoGPU;
 #endif // USE_GPUS
+	return EAR_SUCCESS;
 }
