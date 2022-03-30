@@ -315,7 +315,7 @@ state_t mpi_app_end(polctx_t *c)
                     write(fd, buff, strlen(buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
