@@ -782,68 +782,72 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
 
         debug("%sNode Load Balance Efficiency%s LB_TH %lf LB_EFF %lf unbalance ? %u",
                 COL_MGT, COL_CLR, LB_TH, lb_eff, unbalance);
-#else
-        double mean, sd, mag;
-        mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
-
-        debug("%sNode load unbalance%s: LB_TH %lf LB_EFF %lf mean %lf standard deviation %lf magnitude %lf unbalance ? %u",
-                COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 #endif
-        /*  Check whether application has changed from unbalanced to balanced and viceversa */
-        if (unbalance != signature_is_unbalance) {
-            if (!unbalance) {
-                verbose_master(2, "%sApplication becomes balanced.%s", COL_GRE, COL_CLR);
-                signature_is_unbalance = 0;
-            } else {
-                verbose_master(2, "%sApplication becomes unbalanced.%s", COL_RED, COL_CLR);
-                signature_is_unbalance = 1;
-                *ok=0;
-                first_time_unbalanced = 1;
+        double mean, sd, mag;
+        if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
+                        &mean, &sd, &mag, &unbalance))) {
+            debug("%sNode load unbalance%s: LB_TH %lf LB_EFF %lf mean %lf"
+                    " standard deviation %lf magnitude %lf unbalance ? %u",
+                    COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
+            /*  Check whether application has changed from unbalanced to balanced and viceversa */
+            if (unbalance != signature_is_unbalance) {
+                if (!unbalance) {
+                    verbose_master(2, "%sApplication becomes balanced.%s", COL_GRE, COL_CLR);
+                    signature_is_unbalance = 0;
+                } else {
+                    verbose_master(2, "%sApplication becomes unbalanced.%s", COL_RED, COL_CLR);
+                    signature_is_unbalance = 1;
+                    *ok=0;
+                    first_time_unbalanced = 1;
+                }
             }
-        }
 
-        if (unbalance) {
-            freq_per_core = 1;
-            nump = num_processes;
+            if (unbalance) {
+                freq_per_core = 1;
+                nump = num_processes;
 
-            /*  Select critical path */
-            double median;
-            mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean, &median, &max_mpi, &min_mpi);
+                /*  Select critical path */
+                double median;
+                mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean, &median, &max_mpi, &min_mpi);
 
-            /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
-             * state and we don't need to check variation between policy iterations  */
-            if (!first_time_unbalanced && *ok==1) {
+                /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
+                 * state and we don't need to check variation between policy iterations  */
+                if (!first_time_unbalanced && *ok==1) {
 
-                mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean,
-                        last_mpi_stats_perc_mpi_median, last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
+                    mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean,
+                            last_mpi_stats_perc_mpi_median, last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
-                /*  This code has not been encapsulated because is (by now) only for verbose purposes */
-                double similarity;
-                mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-                verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
-                /* *************************************************************************** */
+                    /*  This code has not been encapsulated because is (by now) only for verbose purposes */
+                    double similarity;
+                    mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                    verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+                    /* *************************************************************************** */
 
-                uint mpi_changed;
-                mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
-                        num_processes, &similarity, &mpi_changed);
+                    uint mpi_changed;
+                    mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
+                            num_processes, &similarity, &mpi_changed);
 
-                if (mpi_changed){
-                    *ok = 0;
+                    if (mpi_changed){
+                        *ok = 0;
+                    }
+
+                } else if (*ok) {
+                    first_time_unbalanced = 0;
                 }
 
-            } else if (*ok) {
-                first_time_unbalanced = 0;
+                verbose_master(3, "Copying data...");
+
+                /*  Save current stats and critical path to be used later */
+                memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
+                memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
+                last_mpi_stats_perc_mpi_sd = sd;
+                last_mpi_stats_perc_mpi_mean = mean;
+                last_mpi_stats_perc_mpi_mag = mag;
+                last_mpi_stats_perc_mpi_median = median;
+            } else {
+                freq_per_core = 0;
+                nump = 1;
             }
-
-            verbose_master(3, "Copying data...");
-
-            /*  Save current stats and critical path to be used later */
-            memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
-            memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
-            last_mpi_stats_perc_mpi_sd = sd;
-            last_mpi_stats_perc_mpi_mean = mean;
-            last_mpi_stats_perc_mpi_mag = mag;
-            last_mpi_stats_perc_mpi_median = median;
         } else {
             freq_per_core = 0;
             nump = 1;

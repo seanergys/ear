@@ -100,10 +100,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	uint   job_in_process[MAX_CPUS_SUPPORTED];
 	double job_power_ratio, process_power_ratio[MAX_CPUS_SUPPORTED];;
 	uint   node_process = 0;
-	signature_t *lsig = &data->node_signature;
+	signature_t *lsig;
 	double my_job_GBS, my_job_DRAM_power;
 	uint used_cpus = 0;
 
+	if (data == NULL) return EAR_SUCCESS;
+
+	lsig = &data->node_signature;
 
 
 
@@ -119,7 +122,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 
 
-	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
+	if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
 
 	
 	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
