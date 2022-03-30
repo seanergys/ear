@@ -158,7 +158,7 @@ static const uint   *gpuf_pol_list_items;
 
 static uint first_print = 1;
 
-#if EARL_RESEARCH
+#if COUNTDOWN
 static pstate_t *pstate_list; /*!< The list of available pstates in the current system. */
 static uint pstate_count;
 #endif
@@ -233,7 +233,7 @@ static void from_proc_to_core(ulong *cpuf)
         f = ear_max(cpuf[p], min_cpufreq);
         m = sig_shared_region[p].cpu_mask;
 
-#if EARL_RESEARCH
+#if COUNTDOWN
         pstate_t curr_pstate;
         state_t ps_manag_st = pstate_freqtops(pstate_list, pstate_count, (ullong) f, &curr_pstate);
         if (state_fail(ps_manag_st)) {
@@ -244,7 +244,7 @@ static void from_proc_to_core(ulong *cpuf)
         }
 #endif
         if (f != initial_def_freq) {
-#if EARL_RESEARCH
+#if COUNTDOWN
             verbose_master(lv, "Frequency for process %d is %lu (P-STATE %u)", p, f, sig_shared_region[p].pstate_index);
 #else
             verbose_master(lv, "Frequency for process %d is %lu", p, f);
@@ -716,13 +716,13 @@ state_t policy_init()
         verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
     }
 
-#if EARL_RESEARCH
+#if COUNTDOWN
     /* Get mgt_cpufreq from metrics.c */
     const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
     if (mgt_cpufreq == NULL) {
-        verbose_master(0, "%sERROR%s Policy init could not read mgt_cpufreq.", COL_RED, COL_CLR);
+        verbose_master(2, "%sERROR%s Policy init could not read mgt_cpufreq.", COL_RED, COL_CLR);
     } else if (mgt_cpufreq->avail_list != NULL) {
-        pstate_list = (pstate_t *)mgt_cpufreq->avail_list;
+        pstate_list = (pstate_t *) mgt_cpufreq->avail_list;
         pstate_count = mgt_cpufreq->avail_count;
     }
 #endif

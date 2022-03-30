@@ -18,8 +18,6 @@
 #ifndef EAR_CONFIG_DEF_H
 #define EAR_CONFIG_DEF_H
 
-#include <common/config/config_dev.h>
-
 
 /* LOADER definitions */
 #define INTEL_EXT 	"so"
@@ -135,8 +133,8 @@
 #define  EAR_USE_PHASES 			1
 #define  EAR_USE_LB           1
 #define  EAR_USE_TURBO_CP     1
-#if EARL_RESEARCH
-#define  EAR_LB_TH						0.65
+#if NEW_LB_EFF
+#define  EAR_LB_TH						0.85
 #else
 #define  EAR_LB_TH						15.0
 #endif

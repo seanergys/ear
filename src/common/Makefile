@@ -1,6 +1,9 @@
 include ./Makefile.files
 
 CFLAGS = -fPIC -I$(SRCDIR) $(CONSTANTS) -O2
+ifeq ($(FEAT_RESEARCH), 1)
+	CFLAGS += -DNEW_LB_EFF=1
+endif
 
 ######## FILES
 

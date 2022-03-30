@@ -91,13 +91,13 @@ typedef struct shsignature {
     mpi_calls_types_t mpi_types_info;
     ssig_t            sig; // it was originally a signature_t
     int               app_state;
-    unsigned long     new_freq;
+    ulong             new_freq;
 	uint              num_cpus;
     cpu_set_t         cpu_mask;
     uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
     int               affinity;
     uint              unbalanced;
-    ulong             policy_freq;
+    // ulong             policy_freq;
 	double            period;
 } shsignature_t;
 

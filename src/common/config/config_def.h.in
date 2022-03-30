@@ -133,7 +133,11 @@
 #define  EAR_USE_PHASES 			1
 #define  EAR_USE_LB           1
 #define  EAR_USE_TURBO_CP     1
+#if NEW_LB_EFF
+#define  EAR_LB_TH						0.85
+#else
 #define  EAR_LB_TH						15.0
+#endif
 
 
 

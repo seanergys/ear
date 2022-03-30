@@ -43,29 +43,12 @@
 extern uint gpu_initialized;
 extern uint cpu_ready, gpu_ready;
 
-#if 0
-#if EARL_RESEARCH
-static mpi_information_t *my_node_mpi_calls, *last_node_mpi_calls;
-static mpi_calls_types_t *my_node_mpi_types_calls, *last_node_mpi_types_calls;
-#endif
-#endif
 
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
 {
     if (is_mpi_enabled()) {
         mpi_app_init(c);
-#if 0
-#if EARL_RESEARCH
-        if (masters_info.my_master_rank >= 0) {
-            // TODO: These symbols are not used.
-            my_node_mpi_calls         = calloc(lib_shared_region->num_processes, sizeof(mpi_information_t));
-            my_node_mpi_types_calls   = calloc(lib_shared_region->num_processes, sizeof(mpi_calls_types_t));
-            last_node_mpi_calls       = calloc(lib_shared_region->num_processes, sizeof(mpi_information_t));
-            last_node_mpi_types_calls = calloc(lib_shared_region->num_processes, sizeof(mpi_calls_types_t));
-        }
-#endif
-#endif
     }
 
 #if USE_GPUS

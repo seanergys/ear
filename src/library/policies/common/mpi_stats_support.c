@@ -48,10 +48,9 @@
 #include <report/report.h>
 
 #define LB_VERB			3
-#define VERB_BARR       0
 #define MPI_EAR_STATS   2
 
-static timestamp pol_time_init, app_init, start_no_mpi;
+static timestamp pol_time_init, start_no_mpi;
 static mpi_information_t mpi_stats;
 static ulong total_mpi_time_sync        = 0;
 static ulong total_mpi_time_collectives = 0;
@@ -63,31 +62,20 @@ static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 
-#if EARL_RESEARCH
+#if NEW_MPI_STATS
+/* Statistics of all call types */
+static uint   mpi_call_count[N_CALL_TYPES];
+static ullong mpi_call_time[N_CALL_TYPES];
+#endif // NEW_MPI_STATS
 
-#define LOW_CPU        1
-#define MPI_CALL_COUNT 1
+#if COUNTDOWN
+#define VERB_COUNTDOWN 1
+static uint low_cpu = 0;    // Countdown approach configuration
+static uint reduce_cpufreq; // Used to mark processes arbitrary selected for gromacs
 
-#if MPI_CALL_COUNT
-static uint mpi_call_count[N_CALL_TYPES];
-static ulong mpi_call_time[N_CALL_TYPES]; 
-
-static uint mpi_count           = 0;
-#endif // MPI_CALL_COUNT
-
-#if LOW_CPU
 static uint pstate_list[MAX_CPUS_SUPPORTED];
 static uint *cpu_list;
-
-static uint reduce_cpufreq;
-
-static uint low_cpu = 0;
-
-static uint recv_reduced = 0;
-static ulong recv_reduced_time = 0;
-#endif // LOW_CPU
-
-#endif // EARL_RESEARCH
+#endif // COUNTDOWN
 
 float LB_TH = EAR_LB_TH;
 
@@ -128,14 +116,19 @@ state_t mpi_app_init(polctx_t *c)
         mpi_stats.exec_time       = 0;
         mpi_stats.perc_mpi        = 0;
 
-#if EARL_RESEARCH
+#if NEW_MPI_STATS
+        for (int i = 0; i < N_CALL_TYPES; i++) {
+            mpi_call_count[i] = 0;
+            mpi_call_time[i]  = 0;
+        }
+#endif
 
-#if LOW_CPU
+#if COUNTDOWN
         char *clow_cpu = getenv("SLURM_EAR_COUNTDOWN");
         if (clow_cpu != NULL) {
             low_cpu = atoi(clow_cpu);
         }
-        verbose(VERB_BARR, "Countdown: %u", low_cpu);
+        verbose(VERB_COUNTDOWN, "Countdown: %u", low_cpu);
 
         reduce_cpufreq = ((ear_my_rank == 2) || (ear_my_rank == 4) || (ear_my_rank == 7) || (ear_my_rank == 10) || (ear_my_rank == 12) || (ear_my_rank == 15) || (ear_my_rank == 18) || (ear_my_rank == 20) ||  (ear_my_rank == 23) ||  (ear_my_rank == 26) ||  (ear_my_rank == 28) ||  (ear_my_rank == 31) ||  (ear_my_rank == 34) ||  (ear_my_rank == 36) ||  (ear_my_rank == 39)) ? 1 : 0;
 
@@ -162,9 +155,7 @@ state_t mpi_app_init(polctx_t *c)
                 pstate_list[i] = ps_nothing;
             }
         }
-#endif // LOW_CPU
-
-#endif // EARL_RESEARCH
+#endif // COUNTDOWN
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
@@ -173,10 +164,7 @@ state_t mpi_app_init(polctx_t *c)
             mpi_stats.rank = 0;
         }
 
-        timestamp_getfast(&app_init); // TODO: This variable is not used.
         timestamp_getfast(&start_no_mpi);
-
-        // memcpy(&start_no_mpi,&app_init,sizeof(timestamp)); TODO: Why?
 
     } else {
         return EAR_ERROR;
@@ -230,7 +218,7 @@ state_t mpi_app_end(polctx_t *c)
     if (mpi_stats.total_mpi_calls) {
         mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
-        char *stats = getenv(SCHED_GET_EAR_STATS);
+        char *stats = getenv(SCHED_GET_EAR_STATS); // TODO Update this macro to the new convention
         if (stats != NULL) {
 
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
@@ -239,7 +227,7 @@ state_t mpi_app_end(polctx_t *c)
                 return EAR_WARNING;
             }
 
-            verbose(MPI_EAR_STATS,"      MPI stats file: %s\nMPI calls stats file: %s",
+            verbose_master(MPI_EAR_STATS,"      MPI stats file: %s\nMPI calls stats file: %s",
                     mpi_stats_filename, mpi_stats_per_call_filename);
 
             // Open mpi_stats_filename to store per process global MPI stats
@@ -267,20 +255,19 @@ state_t mpi_app_end(polctx_t *c)
             fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
             if (fd >= 0) {
-#if EARL_RESEARCH
-#if MPI_CALL_COUNT
+#if NEW_MPI_STATS
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
                     sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
                             "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
                             "Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;"
                             "Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;t_Send;"
-                            "t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait;Block;t_Block;Recv_red;t_Recv_red\n");
+                            "t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait;Block;t_Block\n");
                     write(fd, buff, strlen(buff));
                 }
 
                 sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u"
-                        "%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%lu\n",
+                        "%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
@@ -317,11 +304,8 @@ state_t mpi_app_end(polctx_t *c)
                         mpi_call_time[SCATTER],
                         mpi_call_time[SENDRECV],
                         mpi_call_time[WAIT],
-                        mpi_call_time[BLOCKING],
-                        recv_reduced,
-                        recv_reduced_time
+                        mpi_call_time[BLOCKING]
                         );
-#endif // MPI_CALL_COUNT
 #else
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
@@ -344,7 +328,7 @@ state_t mpi_app_end(polctx_t *c)
                         total_blocking_calls,
                         total_collectives
                         );
-#endif // EARL_RESEARCH
+#endif // NEW_MPI_STATS
                 write(fd, buff, strlen(buff));
             }
         }
@@ -371,39 +355,35 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
 
 #if SHOW_DEBUGS
-        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0){ 
+        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0) {
             debug("P[%d] (sec %ld nsec %ld) - (sec %ld nsec %ld) %llu not_mpi_elap",
                     my_node_id, pol_time_init.tv_sec, pol_time_init.tv_nsec,
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec, time_no_mpi);
         }
 #endif
 
-#if EARL_RESEARCH
-#if LOW_CPU
+#if COUNTDOWN
         if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
 
                 // Get which type of blocking call is
                  mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 
-                 if (is_recv(nbcall_type)) {
+                 if (nbcall_type == Only_Barrier) {
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
                         uint cpu = cpu_list[i];
-                        pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index + 1;
+                        pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index; // + 1;
                     }
 
                     if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
                         verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d",
                                 COL_RED, COL_CLR, my_node_id);
-                    } else {
-                        recv_reduced++;
                     }
                  }
             }
         }
-#endif
-#endif
+#endif // COUNTDOWN
     }
 #endif
     return EAR_SUCCESS;
@@ -414,7 +394,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     timestamp_t end;
     mpi_call nbcall_type;
     ullong elap;
-#if PER_MPI_STATS 
+#if PER_MPI_STATS
 
     if (is_mpi_enabled()) {
 
@@ -429,18 +409,18 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
             total_blocking_calls++;
             total_mpi_time_blocking += (ulong) elap;
 
-#if EARL_RESEARCH
-#if MPI_CALL_COUNT
-            mpi_call_count[BLOCKING]++;
-            mpi_call_time[BLOCKING] += (ulong) elap;
-#endif // MPI_CALL_COUNT
-#endif // EARL_RESEARCH
 
             max_sync_block = ear_max(max_sync_block, (ulong)elap);
 
             // Get which type of blocking call is
             nbcall_type = (mpi_call) remove_blocking(call_type);
+#if NEW_MPI_STATS
+            mpi_call_count[BLOCKING]++;
+            mpi_call_time[BLOCKING] += elap;
 
+            mpi_call_count[nbcall_type]++;
+            mpi_call_time[nbcall_type] += elap;
+#endif // NEW_MPI_STATS
             if (is_collective(nbcall_type)) {
                 // Collective
                 total_collectives++;
@@ -454,10 +434,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
-#if EARL_RESEARCH
-
-#if LOW_CPU
-            if (is_recv(nbcall_type)) {
+#if COUNTDOWN
+            if (nbcall_type == Only_Barrier) {
                 if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
 
                     for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
@@ -468,36 +446,19 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
                         verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d",
                                 COL_RED, COL_CLR, my_node_id);
-                    } else {
-                        recv_reduced_time += (ulong) elap;
                     }
                 }
             }
-#endif // LOW_CPU
-
-#if MPI_CALL_COUNT
-            mpi_call_count[nbcall_type]++; 
-            mpi_call_time[nbcall_type]+= (ulong) elap;
-#endif // MPI_CALL_COUNT
-
-#endif // EARL_RESEARCH
+#endif // COUNTDOWN
         }
-
         /* Global statistics */
-        mpi_stats.mpi_time += elap;
-        mpi_stats.total_mpi_calls++;
+        mpi_stats.mpi_time  += elap;
         mpi_stats.exec_time += elap;
-
-        /*
-        sig_shared_region[my_node_id].mpi_info.mpi_time += elap;
-        sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
-        sig_shared_region[my_node_id].mpi_info.exec_time += elap;
-        */
-
-        sig_shared_region[my_node_id].mpi_info.total_mpi_calls++;
+        mpi_stats.total_mpi_calls++;
 
         sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
+        sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
         sig_shared_region[my_node_id].mpi_types_info.sync            = total_synchronizations;
         sig_shared_region[my_node_id].mpi_types_info.collec          = total_collectives;
@@ -509,20 +470,17 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_types_info.time_sync_block = time_sync_block;
         sig_shared_region[my_node_id].mpi_types_info.max_sync_block  = max_sync_block;
 
-
-        timestamp_getfast(&start_no_mpi);
-        // memcpy(&start_no_mpi,&end,sizeof(timestamp)); TODO: Why?
-
 #if SHOW_DEBUGS
-        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0){ 
+        if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0) {
             debug("P[%d] MPI %llu exec %llu %llu elap (sec %ld nsec %ld)",
                     my_node_id, sig_shared_region[my_node_id].mpi_info.mpi_time,
                     sig_shared_region[my_node_id].mpi_info.exec_time, elap,
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
         }
-#endif
+#endif // SHOW_DEBUGS
+        timestamp_getfast(&start_no_mpi);
     }
-#endif
+#endif // PER_MPI_STATS
     return EAR_SUCCESS;
 }
 
@@ -565,7 +523,7 @@ state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int
     mpi_call_get_stats(&current, NULL, i);
     mpi_call_diff(diff, &current, last);
 
-	verbose_master(4, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
+    verbose_master(4, "Process %d: mpi %llu = (%llu - %llu) exec %llu = (%llu - %llu)",
             i, diff->mpi_time, current.mpi_time, last->mpi_time, diff->exec_time, current.exec_time, last->exec_time);
 
     diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
@@ -657,9 +615,9 @@ state_t mpi_call_new_phase(polctx_t *c)
 
 float compute_mpi_in_period(mpi_information_t *mc)
 {
-	float mpis  = mc[my_node_id].total_mpi_calls;
-	ullong tsec = mc[my_node_id].exec_time / 1000000;
-	return mpis / (float) tsec;
+    float mpis  = mc[my_node_id].total_mpi_calls;
+    ullong tsec = mc[my_node_id].exec_time / 1000000;
+    return mpis / (float) tsec;
 }
 
 
@@ -777,28 +735,28 @@ static mpi_summary_t my_mpi_summary;
 
 state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
 {
-	int i;
-	double max = 0.0, min = 100.0;
-	for (i=0;i<num_procs;i++){
-		min = ear_min(min,percs_mpi[i]);
-		max = ear_max(max,percs_mpi[i]);
-	}
-	mpisumm->max = (float)max;
-	mpisumm->min = (float)min;
-	mpisumm->sd  = (float)sd;
-	mpisumm->mean = (float)mean;
-	mpisumm->mag  = (float)mag;
-  return EAR_SUCCESS;
+    int i;
+    double max = 0.0, min = 100.0;
+    for (i=0;i<num_procs;i++) {
+        min = ear_min(min,percs_mpi[i]);
+        max = ear_max(max,percs_mpi[i]);
+    }
+    mpisumm->max = (float)max;
+    mpisumm->min = (float)min;
+    mpisumm->sd  = (float)sd;
+    mpisumm->mean = (float)mean;
+    mpisumm->mag  = (float)mag;
+    return EAR_SUCCESS;
 }
 
 void get_last_mpi_summary(mpi_summary_t *l)
 {
-	memcpy(l,&my_mpi_summary,sizeof(mpi_summary_t));
+    memcpy(l,&my_mpi_summary,sizeof(mpi_summary_t));
 }
 
 void verbose_mpi_summary(int vl,mpi_summary_t *l)
 {
-	verbose_master(vl,"maxp %.2f minp %.2f sd %.2f mean %.2f mag %.2f",l->max,l->min,l->sd,l->mean,l->mag);
+    verbose_master(vl,"maxp %.2f minp %.2f sd %.2f mean %.2f mag %.2f",l->max,l->min,l->sd,l->mean,l->mag);
 }
 
 void chech_node_mpi_summary()
@@ -830,7 +788,7 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
 
 #if NODE_LB
-#if EARL_RESEARCH
+#if NEW_LB_EFF
     ullong max_tcomp = node_mpi_calls[0].exec_time - node_mpi_calls[0].mpi_time;
     double avg_tcomp = (double) max_tcomp;
 
