@@ -765,80 +765,85 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
         uint unbalance;
         double mean, sd, mag;
-        mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi, &mean, &sd, &mag, &unbalance);
+        if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
+                        &mean, &sd, &mag, &unbalance))) {
+            debug("%sNode load unbalance%s: LB_TH %.2lf mean %.2lf"
+                    " standard deviation %.2lf magnitude %.2lf unbalance ? %u",
+                    COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
 
-
-        debug("%sNode load unbalance%s: LB_TH %.2lf mean %.2lf\
-                standard deviation %.2lf magnitude %.2lf unbalance ? %u", COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
-
-        /* This function sends mpi_summary to other nodes */
-        //chech_node_mpi_summary();
-        /*  Check whether application has changed from unbalanced to balanced and viceversa */
-        if (unbalance != signature_is_unbalance) {
-            if (!unbalance) {
-                verbose_master(2, "%sApplication becomes balanced!%s", COL_GRE, COL_CLR);
-                signature_is_unbalance = 0;
-            } else {
-                verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
-                signature_is_unbalance = 1;
-                *ok=0;
+            /* This function sends mpi_summary to other nodes */
+            //chech_node_mpi_summary();
+            /*  Check whether application has changed from unbalanced to balanced and viceversa */
+            if (unbalance != signature_is_unbalance) {
+                if (!unbalance) {
+                    verbose_master(2, "%sApplication becomes balanced!%s", COL_GRE, COL_CLR);
+                    signature_is_unbalance = 0;
+                } else {
+                    verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
+                    signature_is_unbalance = 1;
+                    *ok=0;
+                }
             }
-        }
 
-        if (unbalance){
-            /* These variables are global to the policy */
-            freq_per_core = 1;
-            nump = num_processes;
+            if (unbalance){
+                /* These variables are global to the policy */
+                freq_per_core = 1;
+                nump = num_processes;
 
-            double median;
-            /*  Select critical path */
-            mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean, &median, &max_mpi, &min_mpi);
+                double median;
+                /*  Select critical path */
+                mpi_support_select_critical_path(critical_path, percs_mpi, num_processes, mean,
+                        &median, &max_mpi, &min_mpi);
 
-            /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
-             * state and we don't need to check variation between policy iterations  */
-            if (!first_time && *ok==1){
+                /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
+                 * state and we don't need to check variation between policy iterations  */
+                if (!first_time && *ok==1){
 
-                mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean,
-                        last_mpi_stats_perc_mpi_median, last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
+                    mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes,
+                            last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
+                            last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
+                    /*  This code has not been encapsulated because is by (now) only for verbose purposes */
+                    double similarity;
+                    mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                    verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+                    /* *************************************************************************** */
 
-                /*  This code has not been encapsulated because is by (now) only for verbose purposes */
-                double similarity;
-                mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-                verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
-                /* *************************************************************************** */
+                    uint mpi_changed;
+                    mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
+                            num_processes, &similarity, &mpi_changed);
 
-                uint mpi_changed;
-                mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
-                        num_processes, &similarity, &mpi_changed);
+                    if (mpi_changed){
+                        *ok = 0;
+                    }
 
-                if (mpi_changed){
-                    *ok = 0;
+                }else if (*ok){
+                    first_time = 0;
                 }
 
-            }else if (*ok){
-                first_time = 0;
+                /*  Save current stats and critical path to be used later */
+                memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
+                memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
+                last_mpi_stats_perc_mpi_sd = sd;
+                last_mpi_stats_perc_mpi_mean = mean;
+                last_mpi_stats_perc_mpi_mag = mag;
+                last_mpi_stats_perc_mpi_median = median;
+            } else{
+                nump = 1;
+                freq_per_core = 0;
             }
-
-            /*  Save current stats and critical path to be used later */
-            memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
-            memcpy(last_critical_path, critical_path, sizeof(uint) * num_processes);
-            last_mpi_stats_perc_mpi_sd = sd;
-            last_mpi_stats_perc_mpi_mean = mean;
-            last_mpi_stats_perc_mpi_mag = mag;
-            last_mpi_stats_perc_mpi_median = median;
-        }else{
+        }  else {
             nump = 1;
             freq_per_core = 0;
         }
-    }else{
+    } else{
         nump = 1;
         freq_per_core = 0;
     }
 
-    if (*ok == 1){
+    if (*ok == 1) {
         /*  If signature has changed, we must start again */
-        if (signatures_different(last_sig, curr_sig, 0.2)){
+        if (signatures_different(last_sig, curr_sig, 0.2)) {
             verbose_master(2, "%sSignature is too different from the one used for CPU freq. starting again%s",
                     COL_RED, COL_CLR);
             *ok = 0;

@@ -654,8 +654,9 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs, double *percs_mpi,
         double *mean, double *sd, double *mag, uint *lb)
 {
+    state_t ret;
     // Get only perc_mpi info.
-    mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi);
+    ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok
 
     // Compute statistics for determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
@@ -684,13 +685,13 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
             COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH);
 
     *lb = (lb_eff < LB_TH);
-#endif
+#endif // 0
     *lb = (*sd > LB_TH);
 #else
     *lb = 0;
-#endif
+#endif // NODE_LB
 
-    return EAR_SUCCESS;
+    return ret;
 }
 
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean,
@@ -770,11 +771,17 @@ state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump
     void** percs_mpi_v = ear_math_apply((void**) mpi_calls, nump, mpi_info_get_perc_mpi);
     free(mpi_calls);
 
+    double perc_mpi_check = 0; // Used ONLY for checking if perc_mpi > 0
+
     for (int i = 0; i < nump; i++) {
         percs_mpi[i] = *(double*)percs_mpi_v[i];
+        perc_mpi_check += percs_mpi[i];
     }
-
     free(percs_mpi_v);
+
+    if (perc_mpi_check == 0) {
+        return EAR_WARNING;
+    }
 
     return EAR_SUCCESS;
 }
