@@ -1354,7 +1354,7 @@ void ear_init()
 												}
 								}else{
 												char plugins_ext[SZ_PATH_INCOMPLETE];
-												setenv(VAR_OPT_USDB,summary_pathname,1);
+												setenv("EAR_USER_DB_PATHNAME",summary_pathname,1);
 												xsnprintf(plugins_ext,sizeof(plugins_ext),
                                                         "%s:csv_ts.so",system_conf->lib_info.plugins);
 												if (report_load(my_plug_path,plugins_ext) != EAR_SUCCESS){

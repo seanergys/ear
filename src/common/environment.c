@@ -33,6 +33,8 @@
 #include <common/types/configuration/policy_conf.h>
 #include <common/types/configuration/cluster_conf.h>
 
+#define EAR_DEBUG 0
+
 extern char *conf_ear_tmp;
 char *conf_ear_user_db_pathname=NULL;
 char *conf_ear_gui_pathname=NULL;
@@ -80,7 +82,7 @@ int get_ear_total_processes()
 
 char *getenv_ear_user_db_pathname()
 {
-	char *my_user_db_pathname = getenv(VAR_OPT_USDB);
+	char *my_user_db_pathname = getenv("EAR_USER_DB_PATHNAME");
 
 	if (my_user_db_pathname != NULL && strcmp(my_user_db_pathname, "") != 0)
 	{
@@ -452,9 +454,9 @@ void ear_print_lib_environment()
 	write(fd,var,strlen(var));
 	sprintf(var,"EAR_VERBOSE=%d\n",get_ear_verbose());
 	write(fd,var,strlen(var));
-	sprintf(var,"EAR_DB_PATHNAME=%s\n",get_ear_db_pathname());
-	write(fd,var,strlen(var));
-	sprintf(var,"EAR_USER_DB=%s\n",get_ear_user_db_pathname());
+	// sprintf(var,"EAR_DB_PATHNAME=%s\n",get_ear_db_pathname());
+	// write(fd,var,strlen(var));
+	sprintf(var,"EAR_USER_DB_PATHNAME=%s\n",get_ear_user_db_pathname());
 	write(fd,var,strlen(var));
 	sprintf(var,"EAR_COEFF_DB_PATHNAME=%s\n",get_ear_coeff_db_pathname());
 	write(fd,var,strlen(var));
