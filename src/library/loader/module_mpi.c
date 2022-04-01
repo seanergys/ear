@@ -164,6 +164,17 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 		symplug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names, MPIF_N);
 		verbose(3, "LOADER: MPI (C) next symbols loaded, Init address is %p", next_mpic.Init);
 		verbose(3, "LOADER: MPI (F) next symbols loaded, Init address is %p", next_mpif.init);
+    if (next_mpif.init == NULL){
+      void *Initf = dlsym(RTLD_NEXT, "mpi_init_");
+      if (Initf != NULL){
+        verbose(3, "LOADER: MPI (F_) mpi_init returns %p, loading again ", Initf);
+        symplug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names_, MPIF_N);
+        if (next_mpif.init != NULL){
+          verbose(3, "LOADER: MPI (F_) next symbols loaded, Init address is %p", next_mpif.init);
+        }
+      }
+    }
+
 	}
 
 	//
