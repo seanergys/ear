@@ -197,7 +197,7 @@ int ear_usage_mpi()
     char msg[1024];
     snprintf(msg, sizeof(msg),
             "Error, you are using your mpi4py application with EAR library and the %s env var is not set."
-            "If you want to run your application with EAR set \"export %s = \"intel\"|\"ompi\". "
+            "If you want to run your application with EAR set \"export %s = \"intel\"|\"open mpi\". "
             "Otherwise use \"--ear=off\" to disable the EAR library. \n",
             FLAG_LOAD_MPI_VERSION, FLAG_LOAD_MPI_VERSION);
     write(2, msg, strlen(msg));

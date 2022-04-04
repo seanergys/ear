@@ -132,6 +132,8 @@ report_id_t 						rid;
  *
  */
 
+void create_tmp(char *tmp_dir) ;
+
 static void init_general_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
 {
 	int mode;
@@ -173,6 +175,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	verb_master("reading '%s' database configuration file", extra_buffer);
 	read_eardbd_conf(extra_buffer, conf_clus->database.user, conf_clus->database.pass);
 	#endif
+
+	create_tmp(conf_clus->install.dir_temp);
 
 	// Output redirection
 	if (conf_clus->db_manager.use_log) {
@@ -649,6 +653,21 @@ static state_t usage(int argc, char *argv[])
 	verbose(0, "\t        \tEARDBD_MIRROR=<host> environment variable.");
 	return 1;
 }
+
+void create_tmp(char *tmp_dir) {
+        int ret;
+        ret = mkdir(tmp_dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        if ((ret < 0) && (errno != EEXIST)) {
+                error("ear tmp dir cannot be created (%s)", strerror(errno));
+                _exit(0);
+        }
+
+        if (chmod(tmp_dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) < 0) {
+                warning("ear_tmp permissions cannot be set (%s)", strerror(errno));
+                _exit(0);
+        }
+}
+
 
 int main(int argc, char **argv)
 {
