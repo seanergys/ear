@@ -242,13 +242,13 @@ static void from_proc_to_core(ulong *cpuf)
         } else {
             sig_shared_region[p].pstate_index = curr_pstate.idx;
         }
-#endif
+#endif // COUNTDOWN
         if (f != initial_def_freq) {
 #if COUNTDOWN
             verbose_master(lv, "Frequency for process %d is %lu (P-STATE %u)", p, f, sig_shared_region[p].pstate_index);
 #else
             verbose_master(lv, "Frequency for process %d is %lu", p, f);
-#endif
+#endif // COUNTDOWN
         }
 
         for (c = 0; c < ccount; c++) {
@@ -669,8 +669,6 @@ state_t policy_init()
     }
     dyn_unc = conf_dyn_unc;
 
-
-
     try_turbo_enabled = c->use_turbo;
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
@@ -696,8 +694,11 @@ state_t policy_init()
         freqs_domain.gpumem = POL_NOT_SUPPORTED;
     }
 
+    // TODO
+#if 0
     if (earl_default_domains.mem == POL_NOT_SUPPORTED){
     }
+#endif
 
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
         verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
@@ -727,9 +728,6 @@ state_t policy_init()
     }
 #endif
 
-    if (masters_info.my_master_rank>=0){
-        pc_support_init(c);
-    }
     /* We have migrated frequency set from eard to earl */
     policy_get_default_freq(&nf);
     /* What do we need at this point in  the signature ? */
