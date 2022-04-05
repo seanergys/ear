@@ -713,10 +713,6 @@ state_t policy_init()
         pc_support_init(c);
     }
 
-    if (policy_show_domain(&freqs_domain) == EAR_ERROR){
-        verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
-    }
-
 #if COUNTDOWN
     /* Get mgt_cpufreq from metrics.c */
     const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
