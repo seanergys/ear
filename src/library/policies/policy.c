@@ -744,7 +744,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     // This part of code is to decide which policy to load based on default and hacks
     char *obj_path       = getenv(HACK_POWER_POLICY);
     char *ins_path       = getenv(HACK_EARL_INSTALL_PATH); // TODO: this path may be recicled without calling again getenv
-    char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
+    char *app_mgr_policy = getenv(FLAG_APP_MGR_POLICIES);
 
     char *monitoring = "monitoring";
 

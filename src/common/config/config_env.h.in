@@ -149,8 +149,8 @@
 #define SCHED_JOB_ACCOUNT            SCHED_PREFIX "JOB_ACCOUNT"
 #define SCHED_NUM_TASKS              SCHED_PREFIX "STEP_TASKS_PER_NODE"
 #define SCHED_JOB_NAME               SCHED_PREFIX "JOB_NAME"
-#define SCHED_NUM_NODES              "SLURM_NNODES"
-#define SCHED_STEP_NUM_NODES         "SLURM_STEP_NUM_NODES"
+#define SCHED_NUM_NODES              SCHED_PREFIX "NNODES"
+#define SCHED_STEP_NUM_NODES         SCHED_PREFIX "STEP_NUM_NODES"
 
 #define NULL_JOB_ID                  getpid()
 #define NULL_STEPID                  (0xfffffffe)
@@ -169,18 +169,14 @@
  * Prints all the signatures in state.c, and print per node or all shared signatures.
  * @{
  */
-#define SCHED_EAR_MIN_PERC_MPI       "SLURM_EAR_MIN_PERC_MPI"
-#define SCHED_EAR_RED_FREQ_IN_MPI    "SLURM_EAR_RED_FREQ_IN_MPI"
-#define SCHED_EAR_SHOW_SIGNATURES    "SLURM_EAR_SHOW_SIGNATURES"
-#define REPORT_NODE_SIGNATURES       "SLURM_REPORT_NODE_SIGNATURES"
-#define REPORT_ALL_SIGNATURES        "SLURM_REPORT_ALL_SIGNATURES"
-#define SHARE_INFO_PER_PROCESS       "SLURM_SHARE_INFO_PER_PROCESS" // Force to shares all the signatures.
-#define SHARE_INFO_PER_NODE 	     "SLURM_SHARE_INFO_PER_NODE" // Force to share only the average signature per node.
-#define USE_APP_MGR_POLICIES	     "SLURM_APP_MGR_POLICIES"
-#define EAR_STATS                    "SLURM_GET_EAR_STATS"
-#define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"
-#define EAR_POLICY_GRAIN             "SLURM_EAR_POLICY_GRAIN"
-
+#define FLAG_SHOW_SIGNATURES         SCHED_PREFIX "EAR_SHOW_SIGNATURES"
+#define FLAG_REPORT_NODE_SIGNATURES  SCHED_PREFIX "EAR_REPORT_NODE_SIGNATURES"
+#define FLAG_REPORT_ALL_SIGNATURES   SCHED_PREFIX "EAR_REPORT_ALL_SIGNATURES"
+#define FLAG_SHARE_INFO_PPROC        SCHED_PREFIX "EAR_SHARE_INFO_PER_PROCESS" // Forces to share all the signatures.
+#define FLAG_SHARE_INFO_PNODE 	     SCHED_PREFIX "EAR_SHARE_INFO_PER_NODE"    // Forces to share only the average signature per node.
+#define FLAG_APP_MGR_POLICIES	     SCHED_PREFIX "EAR_APP_MGR_POLICIES"
+#define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"                     // TODO: Deprecated.
+#define FLAG_GET_MPI_STATS           SCHED_PREFIX "EAR_GET_MPI_STATS"
 
 /** @}  */
 #endif //CONFIG_ENVIRONMENT_H
