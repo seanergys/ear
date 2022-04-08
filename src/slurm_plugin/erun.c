@@ -286,9 +286,6 @@ static void execute_parse(char *program, char *args[])
 				++j;
 			}
 		}
-		if (program[i] == '\0') {
-			i = len; 
-		}
 	}
 	args[j] = NULL;
 	
