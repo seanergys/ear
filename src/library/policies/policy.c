@@ -631,6 +631,9 @@ state_t policy_init()
     gpu_lib_count((uint *) &policy_last_local_signature.gpu_sig.num_gpus);
     policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
 #endif
+    if (arch_desc.top.vendor == VENDOR_AMD) {
+        enable_load_balance = 0;
+    }
 
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_ENABLE_LOAD_BALANCE will be removed, in the next release.
@@ -643,9 +646,6 @@ state_t policy_init()
         }
     }
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
-    if (arch_desc.top.vendor == VENDOR_AMD) {
-        enable_load_balance = 0;
-    }
     verbose_master(POLICY_INFO, "%sPOLICY%s Load balance: %u", COL_BLU, COL_CLR, enable_load_balance);
 
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
