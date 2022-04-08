@@ -54,3 +54,12 @@ state_t mgt_governor_toint(char *buffer, uint *governor)
 	}
 	return EAR_SUCCESS;
 }
+
+int mgt_governor_is(char *buffer, uint governor)
+{
+    uint aux;
+    if (state_fail(mgt_governor_toint(buffer, &aux))) {
+        return 0;
+    }
+    return (aux == governor);
+}

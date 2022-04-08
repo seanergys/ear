@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -470,7 +470,7 @@ state_t mgt_cpufreq_linux_set_governor(ctx_t *c, uint governor)
 	uint current;
 	state_t s;
 
-	if (xtate_fail(s, mgt_cpufreq_linux_get_governor(c, &current))) {
+	if (state_fail(s = mgt_cpufreq_linux_get_governor(c, &current))) {
 		return s;
 	}
 	if (governor == current) {
@@ -488,11 +488,11 @@ state_t mgt_cpufreq_linux_set_governor(ctx_t *c, uint governor)
 	if (governor == Governor.init) {
 		sprintf(govr_aux, "%s", f->govr_init);
 		sprintf(freq_aux, "%s", f->freq_init);	
-		set_freq = 1;
+		set_freq = mgt_governor_is(f->govr_init, Governor.userspace);
 	} else if (governor == Governor.last) {
-		set_freq = 1;
+		set_freq = mgt_governor_is(f->govr_last, Governor.userspace);
 	} else {
-		if (xtate_fail(s, mgt_governor_tostr(governor, govr_aux))) {
+		if (state_fail(s = mgt_governor_tostr(governor, govr_aux))) {
 			return s;
 		}
 	}
