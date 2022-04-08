@@ -33,6 +33,7 @@ static void  (*next_free)   (void *);
 
 static long address;
 
+#if (DTOOLS_MALLOC || DTOOLS_FREE)
 __attribute__ ((constructor)) void dtools_init()
 {
     #if DTOOLS_MALLOC
@@ -46,6 +47,7 @@ __attribute__ ((constructor)) void dtools_init()
     }
     #endif
 }
+#endif
 
 void dtools_break()
 {
