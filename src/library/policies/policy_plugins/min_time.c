@@ -654,8 +654,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
     else if ((min_time_state == SELECT_IMCFREQ) && eUFS){
         /*  SELECT IMCFREQ */
-        verbose_master(2,"%sSelecting IMC freq%s: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %u",
-                COL_BLU, COL_CLR, min_pstate, last_cpu_pstate, last_imc_pstate, curr_pstate, curr_imc_pstate);
+        verbose_master(2,"%sSelecting IMC freq%s: nominal %d - last CPU %u,ref IMC %u -- current CPU %lu, IMC %u",
+                COL_BLU, COL_CLR, min_pstate, last_cpu_pstate, ref_imc_pstate, curr_pstate, curr_imc_pstate);
         if (!imc_set_by_hw){
             uint decrease_imc;
             if (ref_imc_pstate != imc_min_pstate[sid]){
@@ -786,7 +786,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
-            debug("%sNode load unbalance%s: LB_TH %lf LB_EFF %lf mean %lf"
+            debug("%sNode load unbalance%s: LB_TH %lf mean %lf"
                     " standard deviation %lf magnitude %lf unbalance ? %u",
                     COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
             /*  Check whether application has changed from unbalanced to balanced and viceversa */

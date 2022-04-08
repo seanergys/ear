@@ -539,11 +539,11 @@ void compute_per_node_avg_sig_info(lib_shared_data_t *data,shsignature_t *sig,sh
 
 void load_app_mgr_env()
 {
-	char *cshow_sig=getenv(SCHED_EAR_SHOW_SIGNATURES);
-	char *csh_sig_per_process=getenv(SHARE_INFO_PER_PROCESS);
-	char *csh_sig_per_node=getenv(SHARE_INFO_PER_NODE);
-	char *creport_node_sig=getenv(REPORT_NODE_SIGNATURES);
-	char *creport_all_sig=getenv(REPORT_ALL_SIGNATURES);
+	char *cshow_sig=getenv(FLAG_SHOW_SIGNATURES);
+	char *csh_sig_per_process=getenv(FLAG_SHARE_INFO_PPROC);
+	char *csh_sig_per_node=getenv(FLAG_SHARE_INFO_PNODE);
+	char *creport_node_sig=getenv(FLAG_REPORT_NODE_SIGNATURES);
+	char *creport_all_sig=getenv(FLAG_REPORT_ALL_SIGNATURES);
 
 	if (cshow_sig != NULL) show_signatures = atoi(cshow_sig);
 	if (csh_sig_per_process != NULL) sh_sig_per_proces = atoi(csh_sig_per_process);

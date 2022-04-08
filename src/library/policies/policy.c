@@ -242,13 +242,13 @@ static void from_proc_to_core(ulong *cpuf)
         } else {
             sig_shared_region[p].pstate_index = curr_pstate.idx;
         }
-#endif
+#endif // COUNTDOWN
         if (f != initial_def_freq) {
 #if COUNTDOWN
             verbose_master(lv, "Frequency for process %d is %lu (P-STATE %u)", p, f, sig_shared_region[p].pstate_index);
 #else
             verbose_master(lv, "Frequency for process %d is %lu", p, f);
-#endif
+#endif // COUNTDOWN
         }
 
         for (c = 0; c < ccount; c++) {
@@ -669,8 +669,6 @@ state_t policy_init()
     }
     dyn_unc = conf_dyn_unc;
 
-
-
     try_turbo_enabled = c->use_turbo;
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
@@ -696,8 +694,11 @@ state_t policy_init()
         freqs_domain.gpumem = POL_NOT_SUPPORTED;
     }
 
+    // TODO
+#if 0
     if (earl_default_domains.mem == POL_NOT_SUPPORTED){
     }
+#endif
 
     if (policy_show_domain(&freqs_domain) == EAR_ERROR){
         verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
@@ -712,10 +713,6 @@ state_t policy_init()
         pc_support_init(c);
     }
 
-    if (policy_show_domain(&freqs_domain) == EAR_ERROR){
-        verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
-    }
-
 #if COUNTDOWN
     /* Get mgt_cpufreq from metrics.c */
     const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
@@ -727,9 +724,6 @@ state_t policy_init()
     }
 #endif
 
-    if (masters_info.my_master_rank>=0){
-        pc_support_init(c);
-    }
     /* We have migrated frequency set from eard to earl */
     policy_get_default_freq(&nf);
     /* What do we need at this point in  the signature ? */
@@ -750,7 +744,7 @@ state_t init_power_policy(settings_conf_t *app_settings,resched_t *res)
     // This part of code is to decide which policy to load based on default and hacks
     char *obj_path       = getenv(HACK_POWER_POLICY);
     char *ins_path       = getenv(HACK_EARL_INSTALL_PATH); // TODO: this path may be recicled without calling again getenv
-    char *app_mgr_policy = getenv(USE_APP_MGR_POLICIES);
+    char *app_mgr_policy = getenv(FLAG_APP_MGR_POLICIES);
 
     char *monitoring = "monitoring";
 

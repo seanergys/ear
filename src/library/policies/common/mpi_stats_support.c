@@ -218,7 +218,15 @@ state_t mpi_app_end(polctx_t *c)
     if (mpi_stats.total_mpi_calls) {
         mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
-        char *stats = getenv(SCHED_GET_EAR_STATS); // TODO Update this macro to the new convention
+        char *stats = getenv(FLAG_GET_MPI_STATS);
+        if (stats == NULL) {
+            stats = getenv(SCHED_GET_EAR_STATS);
+            if (stats != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_GET_EAR_STATS, FLAG_GET_MPI_STATS);
+            }
+        }
         if (stats != NULL) {
 
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
