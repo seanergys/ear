@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -129,6 +129,14 @@ uint must_decrease_imc(imc_data_t *my_imc_data,uint cpu_pstate,uint my_imc_pstat
     double gbs_ref = my_imc_data[ref_cpu_pstate*NUM_UNC_FREQ+ref_imc_pstate].GBS;
     double gbs_curr = sig->GBS;
 
+    // This control checks whether the ref imc_data does not exist, due to "not controlled by ear"
+    // change of the reference cpu pstate, which is the current mesured by the library.
+    if (time_ref == 0 && cpi_ref == 0 && gbs_ref == 0) {
+        // the reference imc data does not exist. Use the current as reference.
+        copy_imc_data_from_signature(my_imc_data, ref_cpu_pstate, ref_imc_pstate, sig);
+        return 0;
+    }
+
     ullong ref_imc_freq;
     if (state_fail(pstate_pstofreq((pstate_t *)imc_pstates, imc_num_pstates, ref_imc_pstate, &ref_imc_freq))){
         verbose_master(2, "%sERROR%s IMC pstate invalid: %d", COL_RED, COL_CLR, ref_imc_pstate);
@@ -204,7 +212,8 @@ void copy_imc_data_from_signature(imc_data_t *my_imc_data,uint cpu_pstate,uint m
 #if SHOW_DEBUGS
     float flops = 0;
     flops = (float)tfops/(s->time*1000000000.0);
-    debug("IMC data: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",
+    debug("IMC data [CPU %u, IMC %u]: time %.3lf power %2.lf GBS %.2lf I/s %.2f flops %.2f",
+            cpu_pstate, my_imc_pstate,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].time,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].power,
             my_imc_data[cpu_pstate*NUM_UNC_FREQ+my_imc_pstate].GBS,s->instructions/(s->time*1000000000.0),
