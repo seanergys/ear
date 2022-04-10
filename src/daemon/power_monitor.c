@@ -44,6 +44,7 @@
 #include <common/types/periodic_metric.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <metrics/cpufreq/cpufreq.h>
+#include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
 #include <management/cpufreq/frequency.h>
 #include <daemon/power_monitor.h>
@@ -895,9 +896,10 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
 		uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
 		frequency_set_with_mask(&not_in_jobs_mask, f);
 		verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)", my_policy->p_state, cpus_free, cpus_used);
-		/** PENDING TO use the job cpumask */
+		if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
+			verbose(VJOBPMON, "Error when setting IMCFREQ by default");
+		}
 		#if 0
-		frequency_set_all_cpus(f);
 		#if USE_GPUS
 		if (my_node_conf->gpu_def_freq>0){
 			/** Can we know which GPUS are used by this job?? */

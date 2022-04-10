@@ -97,6 +97,7 @@ int load_no_official()
 
 int load_no_parallel()
 {
+		printf("Testing %s\n", program_invocation_name);
 		if (strstr(program_invocation_name,"python") != NULL) return 1;
 		return 0;
 }
@@ -138,13 +139,13 @@ void  __attribute__ ((constructor)) loader()
         // Module default
         if (load_no_parallel()) {
 					verbose(2,"Tring default module because app name is %s", program_invocation_name);
-					_loaded = module_constructor();
+					_loaded = module_constructor(path_lib_so,libhack);
 				}
         if (_loaded) return;
 
         if (load_no_official()) {
             verbose(2,"Tring default module");
-            _loaded = module_constructor();
+            _loaded = module_constructor(path_lib_so,libhack);
         }
     }
 

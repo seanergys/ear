@@ -18,18 +18,12 @@
 #ifndef LIBRARY_LOADER_MPI_H
 #define LIBRARY_LOADER_MPI_H
 
-#if MPI
 #include <library/api/mpic.h>
 #include <library/api/mpif.h>
 #include <library/loader/module_mpic.h>
 #include <library/loader/module_mpif.h>
-#endif
 
-#if MPI
 int module_mpi(char *path_lib_so, char *libhack);
-#else
-#define module_mpi(path_lib_so, libhack) 0
-#endif
 
 void module_mpi_destructor();
 

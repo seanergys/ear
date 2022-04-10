@@ -645,8 +645,8 @@ int sched_num_nodes()
 void attach_to_master_set(int master)
 {
 				int color;
-				char *is_erun = getenv(SCHED_IS_ERUN);
 #if MPI
+				char *is_erun = getenv(SCHED_IS_ERUN);
 				int flag = 1;
 #endif
 				//my_master_rank=0;
@@ -898,6 +898,9 @@ void ear_init()
 				/* Use a verbose file per process instead of only master */
 				char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
 				uint per_proc_verb_file = 0;
+
+				printf("EAR Init\n");
+
 				if (per_proc_v_file != NULL) {
 								per_proc_verb_file = atoi(per_proc_v_file);
 				}
