@@ -6,7 +6,7 @@ FEAT_AVX512        = @FEAT_AVX512@
 # Extend the set of files installed.
 FEAT_RESEARCH      = 0
 # Enables the installation of GPU optimization policies. If 0, only monitoring is supported.
-FEAT_GPU_OPT       = 1
+FEAT_GPU_OPT       = 0
 # Disables the utilization of virtual PSTATES in AMD and selects OS CPUFreq
 FEAT_AMD_OSCPUFREQ = 0
 # Uses mysql API

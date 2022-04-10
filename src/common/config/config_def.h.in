@@ -128,7 +128,7 @@
 
 
 /* IMC Management and Phases management default options */
-#define  EAR_eUFS   					1
+#define  EAR_eUFS   					0
 #define  EAR_IMC_TH 					0.02
 #define  EAR_USE_PHASES 			1
 #define  EAR_USE_LB           1
