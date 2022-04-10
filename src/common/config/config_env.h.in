@@ -152,6 +152,8 @@
 #define SCHED_NUM_NODES              SCHED_PREFIX "NNODES"
 #define SCHED_STEP_NUM_NODES         SCHED_PREFIX "STEP_NUM_NODES"
 
+#define SCHED_IS_ERUN                SCHED_PREFIX "IS_ERUN"
+
 #define NULL_JOB_ID                  getpid()
 #define NULL_STEPID                  (0xfffffffe)
 #define NULL_ACCOUNT                 "NO_SLURM_ACCOUNT"

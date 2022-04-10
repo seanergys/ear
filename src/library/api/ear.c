@@ -645,6 +645,7 @@ int sched_num_nodes()
 void attach_to_master_set(int master)
 {
 				int color;
+				char *is_erun = getenv(SCHED_IS_ERUN);
 #if MPI
 				int flag = 1;
 #endif
@@ -660,7 +661,9 @@ void attach_to_master_set(int master)
 				/* If OpenMPI, we will not synchronize if not all the processes answer the gather */
 				if (is_mpi_enabled() && is_openmpi()){
 								int n = openmpi_num_nodes();
-								if ((n > 0) && (n != sched_num_nodes())) flag = 0;
+								if ((n > 0) && (n != sched_num_nodes())){ 
+									if ((is_erun == NULL) || ((is_erun != NULL) && (atoi(is_erun) == 0))) flag = 0;
+								}
 								debug("OpenMPI num nodes detected %d - Sched num nodes detected %d",n, sched_num_nodes());
 								if (flag == 0){ 
 												synchronize_masters = 0;

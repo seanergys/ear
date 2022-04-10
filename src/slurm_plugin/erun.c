@@ -349,6 +349,7 @@ int main(int argc, char *argv[])
 
 		return 0;
 	}
+	setenv(SCHED_IS_ERUN,"1",1);
 
   plug_verbose(_sp, 2, "Special case detected %u", _error);
 	
