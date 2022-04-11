@@ -132,12 +132,12 @@ state_t mpi_app_init(polctx_t *c)
         sig_shared_region[my_node_id].mpi_info.exec_time=0;
         sig_shared_region[my_node_id].mpi_info.perc_mpi=0;
 
-        sig_shared_region[my_node_id].mpi_types_info.sync = 0;
-        sig_shared_region[my_node_id].mpi_types_info.collec = 0;
-        sig_shared_region[my_node_id].mpi_types_info.blocking = 0;
-        sig_shared_region[my_node_id].mpi_types_info.time_sync = 0;
-        sig_shared_region[my_node_id].mpi_types_info.time_collec = 0;
-        sig_shared_region[my_node_id].mpi_types_info.time_blocking = 0;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt = 0;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_cnt = 0;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_block_call_cnt = 0;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_time = 0;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_time = 0;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_block_call_time = 0;
 
         /* Gobal mpi statistics */
         mpi_stats.mpi_time        = 0;
@@ -499,12 +499,12 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
-        sig_shared_region[my_node_id].mpi_types_info.sync            = total_synchronizations;
-        sig_shared_region[my_node_id].mpi_types_info.collec          = total_collectives;
-        sig_shared_region[my_node_id].mpi_types_info.blocking        = total_blocking_calls;
-        sig_shared_region[my_node_id].mpi_types_info.time_sync       = total_mpi_time_sync;
-        sig_shared_region[my_node_id].mpi_types_info.time_collec     = total_mpi_time_collectives;
-        sig_shared_region[my_node_id].mpi_types_info.time_blocking   = total_mpi_time_blocking;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt            = total_synchronizations;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_cnt          = total_collectives;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_block_call_cnt        = total_blocking_calls;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_time       = total_mpi_time_sync;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_time     = total_mpi_time_collectives;
+        sig_shared_region[my_node_id].mpi_types_info.mpi_block_call_time   = total_mpi_time_blocking;
         sig_shared_region[my_node_id].mpi_types_info.sync_block      = total_sync_block;
         sig_shared_region[my_node_id].mpi_types_info.time_sync_block = time_sync_block;
         sig_shared_region[my_node_id].mpi_types_info.max_sync_block  = max_sync_block;
@@ -566,7 +566,7 @@ static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *la
             i, diff->mpi_time, current.mpi_time, last->mpi_time,
             diff->exec_time, current.exec_time, last->exec_time);
 
-    diff->perc_mpi =  (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
+    diff->perc_mpi = (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
 
     // mpi_call_copy(last, &current);
     mpi_call_get_stats(last, &current, -1); // Copy from current to last
@@ -574,7 +574,7 @@ static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *la
 
     //  Check wether values are correctly bounded
     if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100) {
-        debug("%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf",
+        verbose_master(2, "%s[WARNING] Bad perc_mpi computation%s: diff = %lf / %lf = %lf, last = %lf / %lf = %lf",
                 COL_RED, COL_CLR, (double) diff->mpi_time * 100.0, (double) diff->exec_time,
                 diff->perc_mpi, (double) last->mpi_time * 100.0, (double) last->exec_time, last->perc_mpi);
         return EAR_WARNING;
@@ -603,32 +603,33 @@ static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, i
 
     memcpy(dst, src_types, sizeof(mpi_calls_types_t));
 
-    dst->time_mpi 		= src_stat->mpi_time;
-    dst->time_period 	= src_stat->exec_time;
-    dst->mpi 			= src_stat->total_mpi_calls;
+    dst->mpi_time 	  = src_stat->mpi_time;
+    dst->exec_time 	  = src_stat->exec_time;
+    dst->mpi_call_cnt = src_stat->total_mpi_calls;
 
     return EAR_SUCCESS;
 }
 
-static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current, mpi_calls_types_t *last)
+static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
+        mpi_calls_types_t *last)
 {
-    diff->mpi               = current->mpi - last->mpi;
-    diff->time_mpi          = current->time_mpi - last->time_mpi;
-    diff->time_period       = current->time_period - last->time_period;
-    diff->sync              = current->sync - last->sync;
-    diff->collec            = current->collec - last->collec;
-    diff->blocking          = current->blocking - last->blocking;
-    diff->time_sync	        = current->time_sync - last->time_sync;
-    diff->time_collec       = current->time_collec - last->time_collec;
-    diff->time_blocking     = current->time_blocking - last->time_blocking;
-    diff->sync_block        = current->sync_block - last->sync_block;
-    diff->time_sync_block   = current->time_sync_block - last->time_sync_block;
-    diff->max_sync_block    = ear_max(current->max_sync_block , last->max_sync_block);
+    diff->mpi_call_cnt         = current->mpi_call_cnt - last->mpi_call_cnt;
+    diff->mpi_time             = current->mpi_time - last->mpi_time;
+    diff->exec_time            = current->exec_time - last->exec_time;
+    diff->mpi_sync_call_cnt    = current->mpi_sync_call_cnt - last->mpi_sync_call_cnt;
+    diff->mpi_collec_call_cnt  = current->mpi_collec_call_cnt - last->mpi_collec_call_cnt;
+    diff->mpi_block_call_cnt   = current->mpi_block_call_cnt - last->mpi_block_call_cnt;
+    diff->mpi_sync_call_time   = current->mpi_sync_call_time - last->mpi_sync_call_time;
+    diff->mpi_collec_call_time = current->mpi_collec_call_time - last->mpi_collec_call_time;
+    diff->mpi_block_call_time  = current->mpi_block_call_time - last->mpi_block_call_time;
+    diff->sync_block           = current->sync_block - last->sync_block;
+    diff->time_sync_block      = current->time_sync_block - last->time_sync_block;
+    diff->max_sync_block       = ear_max(current->max_sync_block , last->max_sync_block);
 
     return EAR_SUCCESS;
 }
 
-static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff,mpi_calls_types_t *last, int i)
+static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i)
 {
     mpi_calls_types_t current;
 
@@ -647,60 +648,46 @@ void verbose_mpi_data(int verb_lvl, mpi_information_t *mc)
 
 float compute_mpi_in_period(mpi_information_t *mc)
 {
-    float mpis  = mc[my_node_id].total_mpi_calls;
-    ullong tsec = mc[my_node_id].exec_time / 1000000;
-    return mpis / (float) tsec;
+    float mpi_call_cnt  = mc[my_node_id].total_mpi_calls;
+    ullong exec_time_sec = mc[my_node_id].exec_time / 1000000;
+    return mpi_call_cnt / (float) exec_time_sec;
 }
 
 
-void verbose_mpi_types(int verb_lvl, mpi_calls_types_t *t)
+void verbose_mpi_call_types(int verb_lvl, mpi_calls_types_t *t)
 {
-    char psync[64], pcollect[64];
+    char perc_sync_time[16], perc_collec_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
 
-    if (t->time_period == 0){
-        sprintf(psync,"NAV");
-        sprintf(pcollect," NAV");
+    if (t->exec_time == 0) {
+        sprintf(perc_sync_time,    "NAV");
+        sprintf(perc_collec_time,  "NAV");
+        sprintf(mpi_calls_per_sec, "NAV");
+        sprintf(perc_mpi_time,     "NAV");
     } else {
-        sprintf(psync,"%.2lf", (float) t->time_sync / (float) t->time_period);
-        sprintf(pcollect," %.2lf", (float) t->time_collec / (float) t->time_mpi);
+        sprintf(perc_sync_time, "%.2lf", (float) t->mpi_sync_call_time / (float) t->exec_time);
+        sprintf(perc_collec_time, "%.2lf", (float) t->mpi_collec_call_time / (float) t->mpi_time);
+        sprintf(mpi_calls_per_sec, "%.2lf", (float) t->mpi_call_cnt * 1000000.0 / (float) t->exec_time);
+        sprintf(perc_mpi_time, "%.2lf", (float) t->mpi_time / (float) t->exec_time);
     }
-    verbose_master(verb_lvl, "MPI types: mpis %lu mpi_time %lu exec time %lu sync calls %lu collec %lu blocking %lu time sync %lu time collec %lu time blocking %lu mpis/s=%.2f/pmpi=%.2f/syncp=%s/collecp=%s sblock=%lu/%lu/%lu",
-            t->mpi, t->time_mpi, t->time_period, t->sync, t->collec, t->blocking,t->time_sync,t->time_collec,t->time_blocking,
-            (float)t->mpi*1000000.0/(float)t->time_period,(float)t->time_mpi/(float)t->time_period,psync,pcollect,
-            t->sync_block, t->time_sync_block,t->max_sync_block);
+
+    verbose_master(verb_lvl, "MPI types\n---------\n\tTotal MPI calls: %lu\n\tMPI time (us): %lu\n\tExecution time (us): %lu\n"
+            "\tTotal synchronization calls: %lu\n\tTotal collective calls: %lu\n\tTotal blocking calls: %lu\n\t%%Time synchronization: %lu\n"
+            "\t%%Time collective: %lu\n\t%%Time blocking: %lu\n\t#MPI calls/s: %s\n\t%%MPI time: %s\n"
+            "\tsyncp: %s/collecp: %s sblock=%lu/%lu/%lu",
+            t->mpi_call_cnt, t->mpi_time, t->exec_time,
+            t->mpi_sync_call_cnt, t->mpi_collec_call_cnt, t->mpi_block_call_cnt, t->mpi_sync_call_time,
+            t->mpi_collec_call_time, t->mpi_block_call_time, mpi_calls_per_sec, perc_mpi_time,
+            perc_sync_time, perc_collec_time, t->sync_block, t->time_sync_block, t->max_sync_block);
 }
 
-void verbose_node_mpi_types(int verb_lvl,uint nump,mpi_calls_types_t *t)
-{
-    int i;
-    ulong tmpi = 0, texec = 0;
-    float max_mpi = 0.0, min_mpi = 100.0, pmpi;
-    if (verb_lvl == 1) {
-        verbose_mpi_types(verb_lvl, &t[0]);
-    }
-    if (verb_lvl == 2) {
-        for (i=0; i<nump; i++){
-            tmpi += t[i].time_mpi;
-            texec += t[i].time_period;
-            pmpi = (float)t[i].time_mpi/(float)t[i].time_period;
-            max_mpi = ear_max(pmpi,max_mpi);
-            min_mpi = ear_min(pmpi,min_mpi);
-        }
-        verbose_master(verb_lvl, "MPI types summary: avg mpi %.2f max mpi %.2f min mpi %.2f ",
-                (float) tmpi/(float)texec, max_mpi, min_mpi);
-    }
-    if (verb_lvl >= 3) {
-        for (i=0;i<nump;i++) {
-            verbose_mpi_types(verb_lvl,&t[i]);
-        }
-    }
-}
-
-state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *node_mpi_calls,mpi_information_t *last_node)
+state_t read_diff_node_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
+        mpi_information_t *node_mpi_calls,mpi_information_t *last_node)
 {
     int i;
     int bad_read_diff = 0;
-    if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
+    if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) {
+        return EAR_ERROR;
+    }
     for (i = 0; i < data->num_processes; i++) {
         if (state_fail(mpi_call_read_diff(&node_mpi_calls[i], &last_node[i], i))) {
             bad_read_diff = 1;
@@ -712,12 +699,15 @@ state_t read_diff_node_mpi_data(lib_shared_data_t *data,shsignature_t *sig,mpi_i
     return EAR_SUCCESS;
 }
 
-state_t read_diff_node_mpi_type_info(lib_shared_data_t *data,shsignature_t *sig,mpi_calls_types_t *node_mpi_calls,mpi_calls_types_t *last_node)
+state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *sig,
+        mpi_calls_types_t *node_mpi_calls, mpi_calls_types_t *last_node)
 {
     int i = 0;
-    if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) return EAR_ERROR;
+    if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) {
+        return EAR_ERROR;
+    }
     for (i=0;i<data->num_processes;i++) {
-        mpi_call_types_read_diff(&node_mpi_calls[i],&last_node[i],i);
+        mpi_call_types_read_diff(&node_mpi_calls[i], &last_node[i], i);
     }
     return EAR_SUCCESS;
 }
@@ -736,7 +726,8 @@ static state_t mpi_support_perc_mpi_max_min(int nump, double *percs_mpi, int *ma
     return EAR_SUCCESS;
 }
 
-static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, double *mean, double *sd, double *mag){
+static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs,
+        double *mean, double *sd, double *mag) {
 
     /*  Compute mean, standard deviation and magnitude of percs_mpi vector */
     mpi_stats_evaluate_mean_sd_mag(num_procs, percs_mpi, mean,
@@ -748,7 +739,8 @@ static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs
 /* This function sets the values to be shared with other nodes */
 static mpi_summary_t my_mpi_summary;
 
-state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm,double *percs_mpi, int num_procs, double mean, double sd, double mag)
+state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, int num_procs,
+        double mean, double sd, double mag)
 {
     int i;
     double max = 0.0, min = 100.0;
@@ -839,7 +831,8 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
     return EAR_SUCCESS;
 }
 
-state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs, double mean, double median, double sd, double mag)
+state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs,
+        double mean, double median, double sd, double mag)
 {
     if (verb_lvl == 3){
         debug("Previous percs_mpi:");
@@ -871,7 +864,8 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
     } else {
         /*  Check similarity between critical paths */
         mpi_stats_evaluate_sim_uint(cp, prev_cp, num_procs, similarity);
-        verbose_master(LB_VERB_LVL, "Similarity between last and current critical path selection %lf", *similarity);
+        verbose_master(LB_VERB_LVL,
+                "Similarity between last and current critical path selection %lf", *similarity);
         if (*similarity < 0.5)
         {
             *mpi_changed = 1;
@@ -880,7 +874,8 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
     return EAR_SUCCESS;
 }
 
-static state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump, double *percs_mpi)
+static state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump,
+        double *percs_mpi)
 {
     mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
 

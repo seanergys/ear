@@ -34,10 +34,10 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type);
 state_t mpi_call_end(polctx_t *c, mpi_call call_type);
 
 /** Per-Node Executes the read-diff for mpi statistics on mpi calls types */
-state_t read_diff_node_mpi_type_info(lib_shared_data_t *data, shsignature_t *sig,
+state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *sig,
         mpi_calls_types_t *node_mpi_calls, mpi_calls_types_t *last_node);
 /* Per-Node Executes the read-diff for mpi statistics */
-state_t read_diff_node_mpi_data(lib_shared_data_t *data, shsignature_t *sig,
+state_t read_diff_node_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
         mpi_information_t *node_mpi_calls, mpi_information_t *last_node);
 
 state_t is_blocking_busy_waiting(uint *block_type);
@@ -45,7 +45,7 @@ state_t is_blocking_busy_waiting(uint *block_type);
 /** \defgroup mpi_verbose Verbose
  * @{
  */
-void verbose_mpi_types(int verb_lvl,mpi_calls_types_t *t);
+void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t);
 void verbose_mpi_data(int verb_lvl, mpi_information_t *mc);
 state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int num_procs,
         double mean, double median, double sd, double mag);
