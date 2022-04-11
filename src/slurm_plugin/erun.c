@@ -126,7 +126,7 @@ int job(int argc, char *argv[])
 	// Its ERUN
 	sd.erun.is_erun = 1;
     // Setting ERUN reference
-    setenv(Var.is_erun.ear, "1", 1)
+    setenv(Var.is_erun.ear, "1", 1);
     // Enabling plugin and ERUN components
 	setenv(Var.comp_plug.cmp, "1", 1);
 
