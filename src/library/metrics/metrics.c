@@ -18,7 +18,7 @@
 #define _GNU_SOURCE
 
 
-// #define SHOW_DEBUGS           1
+// #define SHOW_DEBUGS            1
 #define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3
@@ -904,7 +904,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                 metrics->cycles       = cpi_diff[s].cycles;
                 metrics->instructions = cpi_diff[s].instructions;
                 metrics->CPI          = cpi_avrg[s];
-								#if SHOW_DEBUGS
+#if SHOW_DEBUGS
                 if (metrics->CPI > 5) {
                     char buff[128];
                     cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
@@ -914,7 +914,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                     cpi_data_tostr(&cpi_diff[s], cpi_avrg[s], buff, sizeof(buff));
                     verb(INFO_METRICS, "Diff %s", buff);
                 }
-								#endif
+#endif
 
 				/* TPI and Memory bandwith */
                 //if (master) {
