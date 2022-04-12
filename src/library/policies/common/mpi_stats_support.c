@@ -659,7 +659,7 @@ float compute_mpi_in_period(mpi_information_t *mc)
 
 void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 {
-    char perc_sync_time[16], perc_collec_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
+    char perc_sync_time[16], perc_collec_time[16], perc_block_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
 
     if (t->exec_time == 0) {
         sprintf(perc_sync_time,    "NAV");
@@ -667,20 +667,21 @@ void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
         sprintf(mpi_calls_per_sec, "NAV");
         sprintf(perc_mpi_time,     "NAV");
     } else {
-        sprintf(perc_sync_time, "%.2lf", (float) t->mpi_sync_call_time / (float) t->exec_time);
-        sprintf(perc_collec_time, "%.2lf", (float) t->mpi_collec_call_time / (float) t->mpi_time);
+        sprintf(perc_sync_time, "%.2lf", (float) t->mpi_sync_call_time * 100.0 / (float) t->exec_time);
+        sprintf(perc_collec_time, "%.2lf", (float) t->mpi_collec_call_time * 100.0 / (float) t->exec_time);
+        sprintf(perc_block_time, "%.2lf", (float) t->mpi_block_call_time * 100.0 / (float) t->exec_time);
         sprintf(mpi_calls_per_sec, "%.2lf", (float) t->mpi_call_cnt * 1000000.0 / (float) t->exec_time);
-        sprintf(perc_mpi_time, "%.2lf", (float) t->mpi_time / (float) t->exec_time);
+        sprintf(perc_mpi_time, "%.2lf", (float) t->mpi_time * 100.0 / (float) t->exec_time);
     }
 
-    verbose_master(verb_lvl, "MPI types\n---------\n\tTotal MPI calls: %lu\n\tMPI time (us): %lu\n\tExecution time (us): %lu\n"
-            "\tTotal synchronization calls: %lu\n\tTotal collective calls: %lu\n\tTotal blocking calls: %lu\n\t%%Time synchronization: %lu\n"
-            "\t%%Time collective: %lu\n\t%%Time blocking: %lu\n\t#MPI calls/s: %s\n\t%%MPI time: %s\n"
-            "\tsyncp: %s/collecp: %s sblock=%lu/%lu/%lu",
+    verbose_master(verb_lvl, "MPI types\n---------\n\t# MPI calls: %lu\n\tMPI time (us): %lu\n\tExecution time (us): %lu\n"
+            "\t# Synchronization calls: %lu\n\t# Collective calls: %lu\n\t# Blocking calls: %lu\n\t%% Time synchronization: %s\n"
+            "\t%% Time collective: %lu\n\t%% Time blocking: %lu\n\t# MPI calls/s: %s\n\t%% MPI time: %s\n"
+            "sblock=%lu/%lu/%lu",
             t->mpi_call_cnt, t->mpi_time, t->exec_time,
-            t->mpi_sync_call_cnt, t->mpi_collec_call_cnt, t->mpi_block_call_cnt, t->mpi_sync_call_time,
-            t->mpi_collec_call_time, t->mpi_block_call_time, mpi_calls_per_sec, perc_mpi_time,
-            perc_sync_time, perc_collec_time, t->sync_block, t->time_sync_block, t->max_sync_block);
+            t->mpi_sync_call_cnt, t->mpi_collec_call_cnt, t->mpi_block_call_cnt, perc_sync_time,
+            perc_collec_time, perc_block_time, mpi_calls_per_sec, perc_mpi_time,
+            t->sync_block, t->time_sync_block, t->max_sync_block);
 }
 
 state_t read_diff_node_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
