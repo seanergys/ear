@@ -23,6 +23,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <math.h>
+#if USE_GSL
+#include <gsl/gsl_statistics_double.h>
+#endif
 
 // #define SHOW_DEBUGS 1
 
@@ -654,7 +657,7 @@ float compute_mpi_in_period(mpi_information_t *mc)
 }
 
 
-void verbose_mpi_call_types(int verb_lvl, mpi_calls_types_t *t)
+void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 {
     char perc_sync_time[16], perc_collec_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
 
@@ -742,17 +745,23 @@ static mpi_summary_t my_mpi_summary;
 state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, int num_procs,
         double mean, double sd, double mag)
 {
+    double max, min;
+#if USE_GSL
+    gsl_stats_minmax(&min, &max, percs_mpi, 1, num_procs);
+#else
+    max = 0.0;
+    min = 100.0; 
     int i;
-    double max = 0.0, min = 100.0;
     for (i=0;i<num_procs;i++) {
         min = ear_min(min,percs_mpi[i]);
         max = ear_max(max,percs_mpi[i]);
     }
-    mpisumm->max = (float)max;
-    mpisumm->min = (float)min;
-    mpisumm->sd  = (float)sd;
-    mpisumm->mean = (float)mean;
-    mpisumm->mag  = (float)mag;
+#endif // USE_GSL
+    mpisumm->max  = (float) max;
+    mpisumm->min  = (float) min;
+    mpisumm->sd   = (float) sd;
+    mpisumm->mean = (float) mean;
+    mpisumm->mag  = (float) mag;
     return EAR_SUCCESS;
 }
 
@@ -765,9 +774,27 @@ static void verbose_mpi_summary(int verb_lvl,mpi_summary_t *l)
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs,
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb)
 {
+    /* Get only the percentage time spent in MPI blocking calls. */
+#if USE_GSL
+    if (percs_mpi == NULL) {
+        return EAR_ERROR;
+    }
+
+    double perc_mpi_check = 0; // Used ONLY for checking if perc_mpi > 0
+
+    for (int i = 0; i < num_procs; i++) {
+       percs_mpi[i] = node_mpi_calls[i].perc_mpi; 
+       perc_mpi_check += percs_mpi[i];
+    }
+
+    if (perc_mpi_check == 0) {
+        return EAR_ERROR;
+    }
+#else
     state_t ret;
-    // Get only perc_mpi info.
+   // Get only perc_mpi info.
     ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok
+#endif // USE_GSL
 
     // Compute statistics for determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
@@ -783,9 +810,13 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
         ullong current_tcomp = node_mpi_calls[i].exec_time - node_mpi_calls[i].mpi_time;
         verbose_master(LB_VERB_LVL, "tcomp (l. rank) %d %llu - %llu = %llu | max_tcomp %llu ", i,
                 node_mpi_calls[i].exec_time, node_mpi_calls[i].mpi_time, current_tcomp, max_tcomp);
+
+        max_tcomp = ear_max(current_tcomp, max_tcomp);
+        /*
         if (max_tcomp < current_tcomp) {
             max_tcomp = current_tcomp;
         }
+        */
         avg_tcomp += current_tcomp;
     }
     avg_tcomp /= num_procs;
@@ -802,7 +833,11 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     *lb = 0;
 #endif // NODE_LB
 
+#if USE_GSL
+    return EAR_SUCCESS;
+#else
     return ret;
+#endif // USE_GSL
 }
 
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean,
@@ -925,10 +960,20 @@ int compare_perc_mpi(const void *p1, const void *p2)
 
 static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean, double *sd, double *mag)
 {
+    if (nump == 0 || percs_mpi == NULL) {
+        return EAR_ERROR;
+    }
+
+#if USE_GSL
+    *mean = gsl_stats_mean(percs_mpi, 1, nump);
+    *sd = gsl_stats_sd_m(percs_mpi, 1, nump, *mean);
+    *mag = 0;
+#else
     mean_sd_t mean_sd_mag = ear_math_mean_sd(percs_mpi, nump);
     *mean = mean_sd_mag.mean;
     *sd = mean_sd_mag.sd;
     *mag = mean_sd_mag.mag;
+#endif // USE_GSL
     return EAR_SUCCESS;
 }
 
