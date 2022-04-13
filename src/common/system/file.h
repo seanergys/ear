@@ -69,15 +69,15 @@ int file_is_regular(const char *path);
 int file_is_directory(const char *path);
 
 /** */
-ssize_t file_size(char *path);
+ssize_t ear_file_read(char *path);
 
 /** */
-state_t file_read(const char *path, char *buffer, size_t size);
+state_t ear_file_read(const char *path, char *buffer, size_t size);
 
 /** */
-state_t file_write(const char *path, const char *buffer, size_t size);
+state_t ear_file_write(const char *path, const char *buffer, size_t size);
 
 /** */
-state_t file_clean(const char *path);
+state_t ear_file_clean(const char *path);
 
 #endif
