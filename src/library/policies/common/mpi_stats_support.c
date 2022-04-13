@@ -29,6 +29,8 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <metrics/cpi/cpi.h>
+
 #include <management/cpufreq/cpufreq.h>
 
 #include <common/config.h>
@@ -83,6 +85,17 @@ static uint reduce_cpufreq; // Used to mark processes arbitrary selected for gro
 static uint pstate_list[MAX_CPUS_SUPPORTED];
 static uint *cpu_list;
 #endif // COUNTDOWN
+       //
+#define COMP_CPI 0
+
+#if COMP_CPI
+static cpi_t cpi_1;
+static cpi_t cpi_2;
+static cpi_t cpi_diff;
+static double comp_cpi;
+    static ullong comp_cycles;
+    static ullong comp_insts;
+#endif
 
 float LB_TH = EAR_LB_TH;
 
@@ -197,6 +210,10 @@ state_t mpi_app_init(polctx_t *c)
         }
 
         timestamp_getfast(&start_no_mpi);
+
+#if COMP_CPI
+        cpi_read(no_ctx, &cpi_1);
+#endif
 
     } else {
         return EAR_ERROR;
@@ -375,6 +392,14 @@ state_t mpi_app_end(polctx_t *c)
             }
         }
     }
+#if COMP_CPI
+    cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
+    comp_cycles += cpi_diff.cycles;
+    comp_insts += cpi_diff.instructions;
+    // sig_shared_region[my_node_id].comp_cycles = comp_cycles;
+    // sig_shared_region[my_node_id].comp_insts = comp_insts;
+    verbose(0, "Comp. CPI (%u): %lf", my_node_id, (double) comp_cycles / (double) comp_insts);
+#endif
     return EAR_SUCCESS;
 }
 
@@ -391,6 +416,14 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 
         // Accumulate
         mpi_stats.exec_time += time_no_mpi;
+
+#if COMP_CPI
+    cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
+    comp_cycles += cpi_diff.cycles;
+    comp_insts += cpi_diff.instructions;
+    // sig_shared_region[my_node_id].comp_cycles = comp_cycles;
+    // sig_shared_region[my_node_id].comp_insts = comp_insts;
+#endif
 
         // Update
         // sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;
@@ -521,6 +554,9 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         }
 #endif // SHOW_DEBUGS
         timestamp_getfast(&start_no_mpi);
+#if COMP_CPI
+        cpi_read(no_ctx, &cpi_1);
+#endif
     }
 #endif // PER_MPI_STATS
     return EAR_SUCCESS;
