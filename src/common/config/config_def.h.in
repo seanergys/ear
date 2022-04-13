@@ -134,7 +134,7 @@
 #define  EAR_USE_LB           1
 #define  EAR_USE_TURBO_CP     1
 #if NEW_LB_EFF
-#define  EAR_LB_TH						0.85
+#define  EAR_LB_TH						0.8
 #else
 #define  EAR_LB_TH						15.0
 #endif

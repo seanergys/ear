@@ -121,7 +121,7 @@ struct variables_s {
 	varnames_t job_nodn;
 	varnames_t step_nodl;
 	varnames_t step_nodn;
-  varnames_t cpus_nodn;
+    varnames_t cpus_nodn;
 	varnames_t task_pid;
 	varnames_t ctx_last;
 	varnames_t was_sbac;
@@ -130,6 +130,7 @@ struct variables_s {
 	varnames_t ld_libr;
 	varnames_t node_num;
 	varnames_t version;
+    varnames_t is_erun;
 //	varnames_t nodes_allowed;
 //	varnames_t nodes_excluded;
 }
@@ -171,7 +172,8 @@ struct variables_s {
 .ld_prel   = { .rem = "",                    .ear = "LD_PRELOAD"      },
 .ld_libr   = { .rem = "",                    .ear = "LD_LIBRARY_PATH" },
 .node_num  = { .loc = "SLURM_NNODES",        .ear = "" },
-.version   = { .loc = "SLURM_EAR_MPI_VERSION",     .ear = ""          },
+.version   = { .loc = "SLURM_EAR_MPI_VERSION", .ear = ""              },
+.is_erun   = { .loc = "",                    .ear = SCHED_IS_ERUN     },
 //.nodes_allowed  = { .rem = "SLURM_NODES_ALLOWED",  .ear = ""          },
 //.nodes_excluded = { .rem = "SLURM_NODES_EXCLUDED", .ear = ""          },
 };

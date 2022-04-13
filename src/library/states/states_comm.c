@@ -109,10 +109,10 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         GBS = sig->signature.GBS;
 
         // I/O MB/s
-        io_data_t *iod = (using_verb_files) ? &sig_shared_region[my_node_id].sig.iod : &se->iod;
+        io_data_t *io_data = (using_verb_files) ? &sig_shared_region[my_node_id].sig.iod : &se->iod;
 
         // TODO: period or time ?
-        IO_MBS = (using_verb_files) ? ((float) iod->rchar / (float) (1024 * 1024) + (float) iod->wchar / (float) (1024 * 1024)) / sig_shared_region[my_node_id].period : (float) sig->signature.IO_MBS;
+        IO_MBS = (using_verb_files) ? ((float) io_data->rchar / (float) (1024 * 1024) + (float) io_data->wchar / (float) (1024 * 1024)) / sig_shared_region[my_node_id].period : (float) sig->signature.IO_MBS;
 
         // DC Node Power
         POWER = sig->signature.DC_power; 
@@ -157,9 +157,8 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         debug("io");
         
         if (se != NULL) {
-            io_tostr(iod, io_info, sizeof(io_info)); // iod declared above
-        }
-        else {
+            io_tostr(io_data, io_info, sizeof(io_info)); // io_data declared above
+        } else {
             sprintf(io_info,"No IO data");
         }
 #if 0
@@ -240,7 +239,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         verbose(1,"%s",COL_CLR);
     }
-} 
+}
 
 void state_report_traces(int master_rank, int my_rank,int lid, loop_t *lsig,ulong freq,ulong status)
 {

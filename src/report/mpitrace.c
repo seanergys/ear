@@ -98,9 +98,9 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
     fprintf(fd, "%s;%d;%s;%d;%d;%u;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%f;%f;%llu\n",
             jobid, 0, nodename, id->local_rank, id->global_rank,
             mpi_info->total_mpi_calls, mpi_info->exec_time, mpi_info->mpi_time,
-            mpi_types->blocking, mpi_types->time_blocking,
-            mpi_types->sync, mpi_types->time_sync, mpi_types->collec,
-            mpi_types->time_collec, sig->Gflops, sig->CPI, sig->L3_misses);
+            mpi_types->mpi_block_call_cnt, mpi_types->mpi_block_call_time,
+            mpi_types->mpi_sync_call_cnt, mpi_types->mpi_sync_call_time, mpi_types->mpi_collec_call_cnt,
+            mpi_types->mpi_collec_call_time, sig->Gflops, sig->CPI, sig->L3_misses);
 
     fclose(fd);
 

@@ -18,7 +18,7 @@
 #define _GNU_SOURCE
 
 
-// #define SHOW_DEBUGS           1
+// #define SHOW_DEBUGS            1
 #define INFO_METRICS           3
 #define INFO2_METRICS          2
 #define IO_VERB                3
@@ -85,7 +85,7 @@ static int         num_packs=0;
 static ull        *metrics_rapl[2]; // nJ (vec)
 static ull        *aux_rapl; // nJ (vec)
 static ull        *last_rapl; // nJ (vec)
-static ulong rapl_size;
+static ulong       rapl_size;
 static llong       aux_time;
 static edata_t     aux_energy;
 static edata_t     metrics_ipmi[2]; // mJ
@@ -98,9 +98,9 @@ static io_data_t   metrics_io_end[4];
 static io_data_t   metrics_io_diff[4];
 static ctx_t       ctx_io;
 /* MPI statistics */
-mpi_information_t *metrics_mpi_calls[2];
-mpi_information_t *metrics_last_mpi_calls[2];
-mpi_calls_types_t *metrics_mpi_calls_types[2];
+mpi_information_t *metrics_mpi_info[2];             // Contains the data of the period
+mpi_information_t *metrics_last_mpi_info[2];
+mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 #if USE_GPUS
 /* These vectors have position APP for application granularity and LOO for loop granularity */
@@ -486,24 +486,31 @@ static void metrics_global_stop()
 	cpufreq_avrg[APP] = 0;
 
 	/* Onle the master will collect these metrics */
-	if (masters_info.my_master_rank>=0) {
+	if (masters_info.my_master_rank >= 0) {
         /* MPI statistics */
         if (is_mpi_enabled()) {
-          read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[APP], metrics_last_mpi_calls[APP]);
-          read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
+          read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
+                  metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
+          read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
+                  metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
         }
 
         /* Avg CPU frequency */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[APP]))) {
             error("CPUFreq data read in global_stop");
         }
-        if (state_fail(s = cpufreq_data_diff(cpufreq_read2[APP], cpufreq_read1[APP], cpufreq_diff, &cpufreq_avrg[APP]))){
+        if (state_fail(s = cpufreq_data_diff(cpufreq_read2[APP], cpufreq_read1[APP],
+                        cpufreq_diff, &cpufreq_avrg[APP]))){
             error("CPUFreq data diff");
-        }else{
-            debug("CPUFreq average for the application is %.2fGHz", (float) cpufreq_avrg[APP] / 1000000.0);
+        } else {
+            debug("CPUFreq average for the application is %.2fGHz",
+                    (float) cpufreq_avrg[APP] / 1000000.0);
         }
+
         cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[APP]);
-        memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
+        // Copy the average CPU freq. in the shared signature
+        memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff,
+                met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* AVG IMC frequency */
         if (mgt_imcfreq.ok) {
@@ -757,9 +764,11 @@ static int metrics_partial_stop(uint where)
     // Daemon metrics
     if (masters_info.my_master_rank >= 0) {
         /* MPI statistics */
-        if (is_mpi_enabled()){
-         read_diff_node_mpi_data(lib_shared_region, sig_shared_region, metrics_mpi_calls[LOO], metrics_last_mpi_calls[LOO]);
-         read_diff_node_mpi_type_info(lib_shared_region, sig_shared_region, metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
+        if (is_mpi_enabled()) {
+         read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
+                 metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
+         read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
+                 metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
         }
 
         /* Avg CPU freq */
@@ -858,128 +867,145 @@ void copy_node_data(signature_t *dest,signature_t *src)
 
 /******************* This function computes the signature : per loop (global = LOO) or application ( global = APP)  **************/
 /******************* The node master has computed the per-node metrics and the rest of processes uses this information ***********/
-static void metrics_compute_signature_data(uint global, signature_t *metrics, uint iterations, ulong procs)
+static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *metrics,
+        uint iterations, ulong procs)
 {
+				// If global is 1, it means that the global application metrics are required
+				// instead the small time metrics for loops. 'sign_app_loop_idx' is just a
+                // signature index.
 				sig_ext_t *sig_ext;
 				double time_s;
-				int s;
 				
         debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
 
-				// If global is 1, it means that the global application metrics are required
-				// instead the small time metrics for loops. 's' is just a signature index.
-				s = global;
-
 				/* Total time */
-				time_s = (double) metrics_usecs[s] / 1000000.0;
+				time_s = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
 
-				if ((s == APP) && exclusive) verbose_master(2," Process %d ends in exclusive mode", my_node_id);
-				if ((s == APP) && !exclusive) verbose_master(2," Process %d ends in NOT exclusive mode", my_node_id);
+				if ((sign_app_loop_idx == APP) && exclusive) verbose_master(2," Process %d ends in exclusive mode", my_node_id);
+				if ((sign_app_loop_idx == APP) && !exclusive) verbose_master(2," Process %d ends in NOT exclusive mode", my_node_id);
 
 				/* Avg CPU frequency */
-				metrics->avg_f = cpufreq_avrg[s];
+				metrics->avg_f = cpufreq_avrg[sign_app_loop_idx];
 
 				/* Avg IMC frequency */
-				metrics->avg_imc_f = imcfreq_avrg[s];
+				metrics->avg_imc_f = imcfreq_avrg[sign_app_loop_idx];
 
 				/* Time per iteration */
 				metrics->time = time_s / (double) iterations;
 
 				/* Cache misses */
-				metrics->L1_misses = cache_diff[s].l1d_misses;
-				metrics->L2_misses = cache_diff[s].l2_misses;
-				metrics->L3_misses = cache_diff[s].l3_misses;
+				metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d_misses;
+				metrics->L2_misses = cache_diff[sign_app_loop_idx].l2_misses;
+				metrics->L3_misses = cache_diff[sign_app_loop_idx].l3_misses;
  
                 if (metrics->sig_ext == NULL) {
-                    metrics->sig_ext = (void *)calloc(1,sizeof(sig_ext_t));
+                    metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
                 }
 				sig_ext = metrics->sig_ext;
 
 				/* FLOPS */
                 flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-                //verbose(0, "GFS[%d]: %0.2lf", s, metrics->Gflops);
+                //verbose(0, "GFS[%d]: %0.2lf", sign_app_loop_idx, metrics->Gflops);
                 flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
                 /* CPI */
-                metrics->cycles       = cpi_diff[s].cycles;
-                metrics->instructions = cpi_diff[s].instructions;
-                metrics->CPI          = cpi_avrg[s];
-								#if SHOW_DEBUGS
+                metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles;
+                metrics->instructions = cpi_diff[sign_app_loop_idx].instructions;
+                metrics->CPI          = cpi_avrg[sign_app_loop_idx];
+#if SHOW_DEBUGS
                 if (metrics->CPI > 5) {
                     char buff[128];
-                    cpi_data_tostr(&cpi_read1[s], cpi_avrg[s], buff, sizeof(buff));
+                    cpi_data_tostr(&cpi_read1[sign_app_loop_idx], cpi_avrg[sign_app_loop_idx], buff, sizeof(buff));
                     verb(INFO_METRICS, "Start %s", buff);
-                    cpi_data_tostr(&cpi_read2[s], cpi_avrg[s], buff, sizeof(buff));
+                    cpi_data_tostr(&cpi_read2[sign_app_loop_idx], cpi_avrg[sign_app_loop_idx], buff, sizeof(buff));
                     verb(INFO_METRICS, "Stop %s", buff);
-                    cpi_data_tostr(&cpi_diff[s], cpi_avrg[s], buff, sizeof(buff));
+                    cpi_data_tostr(&cpi_diff[sign_app_loop_idx], cpi_avrg[sign_app_loop_idx], buff, sizeof(buff));
                     verb(INFO_METRICS, "Diff %s", buff);
                 }
-								#endif
+#endif
 
 				/* TPI and Memory bandwith */
                 //if (master) {
                 if (masters_info.my_master_rank >= 0) {
-                    bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[s], &metrics->GBS);
-                    verbose_master(INFO_METRICS, "GBS[%d]: %0.2lf", s, metrics->GBS);
-                    lib_shared_region->cas_counters = (double) bwidth_cas[s];
+                    bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[sign_app_loop_idx], &metrics->GBS);
+                    verbose_master(INFO_METRICS, "GBS[%d]: %0.2lf", sign_app_loop_idx, metrics->GBS);
+                    lib_shared_region->cas_counters = (double) bwidth_cas[sign_app_loop_idx];
                 } else {
-                    bwidth_cas[s] = (ullong) lib_shared_region->cas_counters;
-                    metrics->GBS = bwidth_help_castogbs(bwidth_cas[s], time_s);
+                    bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
+                    metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
                 }
-                metrics->TPI = bwidth_help_castotpi(bwidth_cas[s], metrics->instructions);
+                metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
 
 				/* Per process IO data */
-                io_copy(&(sig_ext->iod),&metrics_io_diff[s]);
-                io_copy(&sig_shared_region[my_node_id].sig.iod, &metrics_io_diff[s]);
+                io_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
+                io_copy(&sig_shared_region[my_node_id].sig.iod, &metrics_io_diff[sign_app_loop_idx]);
 				double iogb;
 				int ios;
-				ullong mpit, exect;
 				/* Per Node IO data */
-				ios = s;
-				if ((masters_info.my_master_rank>=0) && (s == APP)) 								ios = APP_NODE;
-				else if ((masters_info.my_master_rank>=0)  && (s == LOO))          	ios = LOO_NODE;
+				ios = sign_app_loop_idx;
+				if ((masters_info.my_master_rank>=0) && (sign_app_loop_idx == APP)) 								ios = APP_NODE;
+				else if ((masters_info.my_master_rank>=0)  && (sign_app_loop_idx == LOO))          	ios = LOO_NODE;
 				iogb = (double)metrics_io_diff[ios].rchar/(double)(1024*1024) + (double)metrics_io_diff[ios].wchar/(double)(1024*1024);
 				/* Each process will compute its own IO_MBS, except the master, that computes per node IO_MBS */
 				metrics->IO_MBS = iogb/time_s;
 
-                if (masters_info.my_master_rank>=0){
-										sig_ext->max_mpi = 0;
-										sig_ext->min_mpi = 100;
+                if (masters_info.my_master_rank >= 0) {
+                    sig_ext->max_mpi = 0;
+                    sig_ext->min_mpi = 100;
                     /* MPI statistics */
                     if (is_mpi_enabled()) {
-                        double pmpi = 0.0, lpmpi;
-                        for (int i=0;i<lib_shared_region->num_processes;i++){	
-                            // TODO: I think metrics_mpi_calls has per process perc_mpi already computed from loop/app stops.
-                            mpit = ((mpi_information_t *)metrics_mpi_calls[s])[i].mpi_time;
-                            exect = ((mpi_information_t *)metrics_mpi_calls[s])[i].exec_time;
-                            if ((metrics_mpi_calls[s])[i].mpi_time > 0) {
-                                lpmpi = (double)(mpit*100.0 / exect);
+                        double mpi_time_perc = 0.0;
+                        for (int i = 0; i < lib_shared_region->num_processes; i++) {
+                            // TODO: Used only for verbose
+                            ullong mpi_time_usecs = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].mpi_time;
+                            ullong exec_time_usecs = ((mpi_information_t *)metrics_mpi_info[sign_app_loop_idx])[i].exec_time;
+
+#if 0
+                            double local_mpi_time_perc;
+                            double local_mpi_time_perc_test = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].perc_mpi;
+                            if ((metrics_mpi_info[sign_app_loop_idx])[i].mpi_time > 0) {
+                                local_mpi_time_perc = (double) (mpi_time_usecs * 100.0 / exec_time_usecs);
                             }
                             else {
-                                lpmpi = 0;
+                                local_mpi_time_perc = 0;
                             }
-                            sig_shared_region[i].mpi_info.perc_mpi = lpmpi;
-                            pmpi += lpmpi;
-														sig_ext->max_mpi = ear_max(lpmpi, sig_ext->max_mpi);
-														sig_ext->min_mpi = ear_min(lpmpi, sig_ext->min_mpi);
-                            verbose_master(3,"PerMPI Proc %d %.2lf mpit = %llu exect = %llu",i,lpmpi,mpit,exect);
+#endif
+                            // The percentage of time spent in MPI calls is computed on metrics_[partial|global]_stop,
+                            // so we can avoid the above code.
+                            double local_mpi_time_perc = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].perc_mpi;
+
+                            sig_shared_region[i].mpi_info.perc_mpi = local_mpi_time_perc;
+                            mpi_time_perc += local_mpi_time_perc;
+
+                            sig_ext->max_mpi = ear_max(local_mpi_time_perc, sig_ext->max_mpi);
+                            sig_ext->min_mpi = ear_min(local_mpi_time_perc, sig_ext->min_mpi);
+
+#if 0
+                            verbose_master(3, "%%MPI process %d: %.2lf | MPI time (us): %llu"
+                                    " | Wall time (us): %llu | TEST %%MPI %.2lf", i, local_mpi_time_perc,
+                                    mpi_time_usecs, exec_time_usecs, local_mpi_time_perc_test);
+#endif
+                            verbose_master(3, "%%MPI process %d: %.2lf | MPI time (us): %llu"
+                                    " | Wall time (us): %llu", i, local_mpi_time_perc,
+                                    mpi_time_usecs, exec_time_usecs);
                         }
-                        metrics->perc_MPI = pmpi/lib_shared_region->num_processes;
-                    } else{
+                        metrics->perc_MPI = mpi_time_perc / lib_shared_region->num_processes;
+                    } else { // MPI not enabled
                         metrics->perc_MPI = 0.0;
                     }
-                    sig_ext->mpi_stats = metrics_mpi_calls[s];
-                    sig_ext->mpi_types = metrics_mpi_calls_types[s];
+
+                    sig_ext->mpi_stats = metrics_mpi_info[sign_app_loop_idx];
+                    sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
                     /* Power: Node, DRAM, PCK */
-                    metrics->DC_power = (double) acum_ipmi[s] / (time_s * node_energy_units);
+                    metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
 
                     /* DRAM and PCK PENDING for Njobs */
                     metrics->PCK_power=0;
                     metrics->DRAM_power=0;
                     int p;
-                    for (p=0;p<num_packs;p++) metrics->DRAM_power=metrics->DRAM_power+(double) metrics_rapl[s][p];
-                    for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[s][num_packs+p];
+                    for (p=0;p<num_packs;p++) metrics->DRAM_power=metrics->DRAM_power+(double) metrics_rapl[sign_app_loop_idx][p];
+                    for (p=0;p<num_packs;p++) metrics->PCK_power=metrics->PCK_power+(double) metrics_rapl[sign_app_loop_idx][num_packs+p];
                     metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
                     metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
                     metrics->EDP = time_s * time_s * metrics->DC_power;
@@ -994,11 +1020,11 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
                         }
                         verbose_master(2, "We have %d GPUS ", metrics->gpu_sig.num_gpus);
                         for (p=0;p<metrics->gpu_sig.num_gpus;p++){
-                            metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[s][p].power_w;
-                            metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[s][p].freq_gpu;
-                            metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[s][p].freq_mem;
-                            metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[s][p].util_gpu;
-                            metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[s][p].util_mem;
+                            metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[sign_app_loop_idx][p].power_w;
+                            metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[sign_app_loop_idx][p].freq_gpu;
+                            metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
+                            metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
+                            metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
                         }	
                     }
 #endif
@@ -1108,14 +1134,14 @@ int metrics_init(topology_t *topo)
 
 	debug("Allocating data for %d processes", lib_shared_region->num_processes);
 	/* We will collect MPI statistics */
-	metrics_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-  metrics_last_mpi_calls[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-	metrics_mpi_calls[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-  metrics_last_mpi_calls[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+	metrics_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+    metrics_last_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+	metrics_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+    metrics_last_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 	metrics_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-  metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+    metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 	metrics_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-  metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+    metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
 	/* IMC average frequency initialization */
     if (mgt_imcfreq.ok){

@@ -773,7 +773,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance && use_energy_models) {
 
-        verbose_mpi_types(3, my_node_mpi_types_calls);
+        verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 
         uint unbalance;
 #if 0

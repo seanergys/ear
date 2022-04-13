@@ -125,7 +125,9 @@ int job(int argc, char *argv[])
 
 	// Its ERUN
 	sd.erun.is_erun = 1;
-	// Enabling plugin and erun components
+    // Setting ERUN reference
+    setenv(Var.is_erun.ear, "1", 1);
+    // Enabling plugin and ERUN components
 	setenv(Var.comp_plug.cmp, "1", 1);
 
 	// Clean
@@ -251,6 +253,7 @@ int job(int argc, char *argv[])
 
 int step(int argc, char *argv[])
 {
+    // Setting STEP_ID
 	sprintf(buffer, "%d", sd.erun.step_id);
 	setenv("SLURM_STEP_ID", buffer, 1);
 
@@ -349,10 +352,8 @@ int main(int argc, char *argv[])
 
 		return 0;
 	}
-	setenv(SCHED_IS_ERUN,"1",1);
 
-  plug_verbose(_sp, 2, "Special case detected %u", _error);
-	
+    // Error pipeline
 	if (_error)
 	{
 		if (_error == 1) {
