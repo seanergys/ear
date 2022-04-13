@@ -98,7 +98,7 @@ int file_is_directory(const char *path)
 	return 0;
 }
 
-ssize_t ear_file_read(char *path)
+ssize_t ear_file_size(char *path)
 {
 	int fd = open(path, O_RDONLY);
 	ssize_t size;
