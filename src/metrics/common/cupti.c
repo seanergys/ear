@@ -15,16 +15,24 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdlib.h>
+#include <pthread.h>
+#include <common/system/symplug.h>
 #include <metrics/common/cupti.h>
+
+// Provisional
+#define HACK_CUDA_FILE  "HACK_CUDA_FILE"
+#define HACK_CUPTI_FILE "HACK_CUPTI_FILE"
 
 #ifndef ZERO_BASE
 #define CUPTI_PATH   ""
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
-#define CUDA_N     4
-#define CUPTI_N    11
-#define CUPTI_LIB  "libcupti.so"
+#define CUDA_N       4
+#define CUPTI_N      11
+#define CUDA_LIB     "libcuda.so"
+#define CUPTI_LIB    "libcupti.so"
 
 static const char *cuda_names[] = {
     "cuInit",
@@ -50,13 +58,13 @@ static const char *cupti_names[] = {
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static uint            devs_count;
 static cupti_t         cupti;
-static cuda_t          cuda;
+static cuda_t          cu;
 static uint            ok;
 
 static state_t static_open_cuda()
 {
     #define open_test_cuda(path) \
-    if (state_ok(plug_open(path, (void **) &cuda, cuda_names, CUDA_N, RTLD_NOW | RTLD_LOCAL))) { \
+    if (state_ok(plug_open(path, (void **) &cu, cuda_names, CUDA_N, RTLD_NOW | RTLD_LOCAL))) { \
         return EAR_SUCCESS; \
     }
 
@@ -91,7 +99,8 @@ static state_t static_open_cupti()
 
 static state_t static_open()
 {
-    if (state_fail(s = static_open_cuda)) {
+    state_t s;
+    if (state_fail(s = static_open_cuda())) {
         return s;
     }
     return static_open_cupti();
@@ -115,14 +124,14 @@ static state_t static_init()
         cu.GetErrorString(s, (const char **) &str);
         return static_free(EAR_ERROR, str);
     }
-    if (((int) dev_count) <= 0) {
-        return static_free(EAR_ERROR, Error.gpus_not);
+    if (((int) devs_count) <= 0) {
+        return static_free(EAR_ERROR, Generr.gpus_not);
     }
     debug("detected devices: %u", devs_count);
     return EAR_SUCCESS;
 }
 
-state_t cupti_open(cupti_t *cupti_in, cuta_t *cu_in)
+state_t cupti_open(cupti_t *cupti_in, cuda_t *cu_in)
 {
     state_t s = EAR_SUCCESS;
     #ifndef CUPTI_BASE

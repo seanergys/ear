@@ -31,11 +31,17 @@
 
 //static nvml_t nvml;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static nvml_t         nvml;
 static suscription_t *sus;
 static uint           dev_count;
 static gpu_t         *pool;
 static nvmlDevice_t  *devices;
 static uint           ok_init;
+
+state_t nvml_load()
+{
+    return nvml_open(&nvml);
+}
 
 static state_t static_init()
 {
@@ -91,7 +97,7 @@ static int static_read(int i, gpu_t *metric)
 	// Cleaning
 	memset(metric, 0, sizeof(gpu_t));
 	// Testing if all is right
-	if ((s = nvml.Mode(devices[i], &mode)) != NVML_SUCCESS) {
+	if ((s = nvml.GetPowerMode(devices[i], &mode)) != NVML_SUCCESS) {
 		return 0;
 	}
 	if (mode != NVML_FEATURE_ENABLED) {
@@ -105,12 +111,12 @@ static int static_read(int i, gpu_t *metric)
 	uint temp_gpu;
 	uint power_mw;
 	// Getting the metrics by calling NVML (no MEM temp)
-	s = nvml.Power(devices[i], &power_mw);
-	s = nvml.Clocks(devices[i], NVML_CLOCK_MEM, &freq_mem_mhz);
-	s = nvml.Clocks(devices[i], NVML_CLOCK_SM , &freq_gpu_mhz);
-	s = nvml.Temp(devices[i], NVML_TEMPERATURE_GPU, &temp_gpu);
-	s = nvml.Util(devices[i], &util);
-	s = nvml.Procs(devices[i], &proc_count, procs);
+	s = nvml.GetPowerUsage(devices[i], &power_mw);
+	s = nvml.GetClocks(devices[i], NVML_CLOCK_MEM, &freq_mem_mhz);
+	s = nvml.GetClocks(devices[i], NVML_CLOCK_SM , &freq_gpu_mhz);
+	s = nvml.GetTemp(devices[i], NVML_TEMPERATURE_GPU, &temp_gpu);
+	s = nvml.GetUtil(devices[i], &util);
+	s = nvml.GetProcs(devices[i], &proc_count, procs);
 	// Pooling the data (time is not set here)
 	metric->samples  = 1;
 	metric->freq_mem = (ulong) freq_mem_mhz * 1000LU;
@@ -135,7 +141,7 @@ state_t nvml_pool(void *p)
 	int i;
 
 	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
+		return_msg(EAR_NOT_INITIALIZED, Generr.api_uninitialized);
 	}
 	//
 	working = 0;
@@ -181,7 +187,7 @@ state_t nvml_pool(void *p)
 state_t nvml_read(ctx_t *c, gpu_t *data)
 {
 	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
+		return_msg(EAR_NOT_INITIALIZED, Generr.api_uninitialized);
 	}
 	while (pthread_mutex_trylock(&lock));
 	memcpy(data, pool, dev_count * sizeof(gpu_t));

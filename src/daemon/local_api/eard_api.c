@@ -498,11 +498,11 @@ int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev)
     return (int) sendack((char *) &req, sizeof(req), (char *) gpu_info, sizeof(gpu_t)*num_dev, "GPU data read", 1);
 }
 
-int eards_gpu_get_info(gpu_info_t *info, uint num_dev)
+int eards_gpu_get_info(gpu_devs_t *info, uint num_dev)
 {
-    memset(info,0,sizeof(gpu_info_t)*num_dev);
+    memset(info,0,sizeof(gpu_devs_t)*num_dev);
     init_service(GPU_GET_INFO);
-    return (int) sendack((char *) &req, sizeof(req), (char *) info, sizeof(gpu_info_t)*num_dev, "GPU info", 1);
+    return (int) sendack((char *) &req, sizeof(req), (char *) info, sizeof(gpu_devs_t)*num_dev, "GPU info", 1);
 }
 
 int eards_gpu_set_freq(uint num_dev,ulong *freqs)

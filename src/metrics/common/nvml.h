@@ -21,8 +21,16 @@
 #ifdef CUDA_BASE
 #include <nvml.h>
 #endif
+#include <common/types.h>
+#include <common/states.h>
 
 #ifndef CUDA_BASE
+#define NVML_SUCCESS         0
+#define NVML_FEATURE_ENABLED 0
+#define NVML_CLOCK_MEM       0
+#define NVML_CLOCK_SM        0
+#define NVML_TEMPERATURE_GPU 0
+
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;
 typedef int nvmlEnableState_t;

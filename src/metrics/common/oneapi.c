@@ -15,7 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdlib.h>
+#include <pthread.h>
+#include <common/system/symplug.h>
 #include <metrics/common/oneapi.h>
+
+// Provisional
+#define HACK_ONEAPI_FILE  "HACK_ONEAPI_FILE"
 
 #ifndef ZERO_BASE
 #define ZE_PATH          ""

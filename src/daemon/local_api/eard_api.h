@@ -110,7 +110,7 @@ int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev);
 /** \todo  */
 int eards_gpu_set_freq(uint num_dev,ulong *freqs);
 /** \todo  */
-int eards_gpu_get_info(gpu_info_t *info, uint num_dev);
+int eards_gpu_get_info(gpu_devs_t *info, uint num_dev);
 /** @}  */
 
 #endif

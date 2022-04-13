@@ -115,7 +115,7 @@ static int load_test(char *path)
 	}
 	debug("dlopen ok");
 	// Finding symbols
-	symplug_join(liblikwid, (void **) &likwid, likwid_names, LIKWID_N);
+	plug_join(liblikwid, (void **) &likwid, likwid_names, LIKWID_N);
 
 	for(i = 0, error = 0; i < LIKWID_N; ++i) {
 		debug("symbol %s: %d", likwid_names[i], (p[i] != NULL));

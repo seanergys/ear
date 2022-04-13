@@ -21,24 +21,32 @@
 #ifdef ZERO_BASE
 #include <zero.h>
 #endif
+#include <common/types.h>
+#include <common/states.h>
 
 #ifndef ZERO_BASE
+#define ZE_DEVICE_TYPE_GPU 0
+
 typedef int ze_result_t;
 typedef int ze_init_flags_t;
-typedef int ze_driver_handle_t;
 typedef int ze_device_handle_t;
-typedef int zes_engine_handle_t;
-typedef int zes_pwr_handle_t;
-typedef int zes_freq_handle_t;
+typedef struct ze_device_properties_s {
+    int type;
+} ze_device_properties_t;
+typedef int ze_device_memory_properties_t;
+typedef int ze_driver_handle_t;
 typedef int ze_driver_properties_t;
 typedef int ze_driver_extension_properties_t;
-typedef int ze_device_properties_t;
-typedef int ze_device_memory_properties_t;
-typedef int zes_freq_properties_t;
-typedef int zes_engine_stats_t;
-typedef int zes_freq_state_t;
-typedef int zes_power_energy_counter_t;
 typedef int ze_api_version_t;
+typedef int zes_device_handle_t;
+typedef int zes_engine_handle_t;
+typedef int zes_engine_properties_t;
+typedef int zes_engine_stats_t;
+typedef int zes_freq_handle_t;
+typedef int zes_freq_properties_t;
+typedef int zes_freq_state_t;
+typedef int zes_pwr_handle_t;
+typedef int zes_power_energy_counter_t;
 #endif
 
 typedef struct ze_s {

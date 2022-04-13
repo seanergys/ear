@@ -30,7 +30,7 @@ static uint api;
 
 state_t gpu_load(int eard)
 {
-	state_t s;
+	//state_t s;
 
 	if (api != API_NONE) {
 		return EAR_SUCCESS;

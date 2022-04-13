@@ -740,8 +740,8 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     unsigned long ack = 0;
 #if USE_GPUS
-    gpu_info_t *info;
-	gpu_info_t fake;
+    gpu_devs_t *info;
+	gpu_devs_t fake;
 
 	verbose(VEARD_LAPI_DEBUG,"EARD old eard_gpu");
 	switch (head->req_service) {
@@ -756,12 +756,12 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 		case GPU_GET_INFO:
 			debug("GPU_GET_INFO %d", eard_num_gpus);
 			if (eard_gpu_initialized) {
-				gpu_get_info(&eard_main_gpu_ctx, (const gpu_info_t **) &info, NULL);
+				gpu_get_info(&eard_main_gpu_ctx, (const gpu_devs_t **) &info, NULL);
 			} else {
-				memset(&fake, 0, sizeof(gpu_info_t));
+				memset(&fake, 0, sizeof(gpu_devs_t));
 				info = &fake;
 			}
-			write(ack_fd, info, sizeof(gpu_info_t)*eard_num_gpus);
+			write(ack_fd, info, sizeof(gpu_devs_t)*eard_num_gpus);
 			break;
 		case GPU_DATA_READ:
 			if (eard_gpu_initialized){

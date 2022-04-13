@@ -85,11 +85,11 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'bandwidth'    $* || exit
 	@ $(MAKE) -C 'cache'        $* || exit
 	@ $(MAKE) -C 'common'       $* || exit
+	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'cpi'          $* || exit
 	@ $(MAKE) -C 'cpufreq'      $* || exit
 	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
-	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit

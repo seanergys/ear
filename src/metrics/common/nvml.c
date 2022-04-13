@@ -15,7 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdlib.h>
+#include <pthread.h>
+#include <common/system/symplug.h>
 #include <metrics/common/nvml.h>
+
+// Provisional
+#define HACK_NVML_FILE       "HACK_NVML_FILE"
 
 #ifndef CUDA_BASE
 #define NVML_PATH            ""
@@ -59,7 +65,7 @@ static const char *nvml_names[] =
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static nvmlDevice_t   *devices;
 static nvml_t          nvml;
-static uint            dev_count;
+static uint            devs_count;
 static uint            ok;
 
 static state_t static_open()
@@ -102,25 +108,25 @@ static state_t static_init()
         debug("nvml.Init");
         return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
     }
-    if ((r = nvml.Count(&dev_count)) != NVML_SUCCESS) {
-        debug("nvml.Count %u",dev_count);
+    if ((r = nvml.Count(&devs_count)) != NVML_SUCCESS) {
+        debug("nvml.Count %u",devs_count);
         return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
     }
-    if (((int) dev_count) <= 0) {
+    if (((int) devs_count) <= 0) {
         return static_free(EAR_ERROR, Generr.gpus_not);
     }
-    if ((devices = calloc(dev_count, sizeof(nvmlDevice_t))) == NULL) {
+    if ((devices = calloc(devs_count, sizeof(nvmlDevice_t))) == NULL) {
         return static_free(EAR_ERROR, strerror(errno));
     }
-    for (d = 0; d < dev_count; ++d) {
+    for (d = 0; d < devs_count; ++d) {
         if ((r = nvml.Handle(d, &devices[d])) != NVML_SUCCESS) {
             debug("nvmlDeviceGetHandleByIndex returned %d (%s)",
                   r, nvml.ErrorString(r));
-            return static_free(EAR_ERROR, myErrorString(r));
+            return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
         }
     }
     return EAR_SUCCESS;
-}}
+}
 
 state_t nvml_open(nvml_t *nvml_in)
 {
@@ -152,12 +158,12 @@ state_t nvml_close()
 
 state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in)
 {
-    if (nvml_in != NULL) {
-        devs = malloc(sizeof(nvmlDevice_t)*devs_count);
+    if (devs != NULL) {
+        *devs = malloc(sizeof(nvmlDevice_t)*devs_count);
         memcpy(devs, devices, sizeof(nvmlDevice_t)*devs_count);
     }
     if (devs_count_in != NULL) {
-        *devs_count_in = dev_count
+        *devs_count_in = devs_count;
     }
     return EAR_SUCCESS;
 }

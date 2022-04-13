@@ -25,21 +25,27 @@
 #include <cupti_callbacks.h>
 #include <cuda_runtime_api.h>
 #endif
+#include <common/types.h>
+#include <common/states.h>
 
 #ifndef CUPTI_BASE
+#define CUDA_SUCCESS 0
+
+typedef int CUresult;
 typedef int CUdevice;
 typedef int CUcontext;
 typedef int CUptiResult;
-typedef int CUpti_SubscriberHandle;
+typedef int CUpti_CallbackId;
 typedef int CUpti_CallbackFunc;
 typedef int CUpti_CallbackDomain;
-typedef int CUpti_CallbackId;
+typedef int CUpti_SubscriberHandle;
+typedef int CUpti_EventID;
 typedef int CUpti_MetricID;
+typedef int CUpti_EventGroup;
+typedef int CUpti_EventGroupSets;
 typedef int CUpti_EventCollectionMode;
 typedef int CUpti_EventGroupAttribute;
-typedef int CUpti_EventGroup;
 typedef int CUpti_ReadEventFlags;
-typedef int CUpti_EventID;
 #endif
 
 typedef struct cuda_s {
@@ -63,7 +69,7 @@ typedef struct cupti_s {
     CUptiResult (*GetResultString) (CUptiResult result, const char** str);
 } cupti_t;
 
-state_t cupti_open(cupti_t *cupti, cuta_t *cu);
+state_t cupti_open(cupti_t *cupti, cuda_t *cu);
 
 state_t cupti_close();
 

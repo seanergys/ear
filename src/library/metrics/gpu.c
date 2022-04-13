@@ -106,8 +106,8 @@ state_t gpu_lib_init(ctx_t *_c)
 	}
 	/* This line must be replaces by the commented code */
 	if (the_gpu_model != MODEL_DUMMY){
-		gpu_info_t *info = malloc(sizeof(gpu_info_t)*node_dev_count);
-		const gpu_info_t *local_info;
+		gpu_devs_t *info = malloc(sizeof(gpu_devs_t)*node_dev_count);
+		const gpu_devs_t *local_info;
 		if (gpu_get_info(&c->ctx_met,&local_info,NULL) != EAR_SUCCESS){
 			verbose_master(2,"Error requesting local GPU info");
 		}else{
@@ -116,7 +116,7 @@ state_t gpu_lib_init(ctx_t *_c)
 				verbose_master(2,"Local GPU[%d] serial: %llu", i, local_info[i].serial);
 			}
 		}
-		eards_gpu_get_info((gpu_info_t *) info, node_dev_count);
+		eards_gpu_get_info((gpu_devs_t *) info, node_dev_count);
 		int i, li;
 		for (i = 0; i < node_dev_count; ++i) {
 			li = 0;
