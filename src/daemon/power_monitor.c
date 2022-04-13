@@ -894,18 +894,22 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
 		cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
 		uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
 		uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
+
+		/* Setting the default CPU freq for the new job */
 		frequency_set_with_mask(&not_in_jobs_mask, f);
 		verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)", my_policy->p_state, cpus_free, cpus_used);
+
+		/* Setting the default IMC freq by default in all the sockets */
 		if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
 			verbose(VJOBPMON, "Error when setting IMCFREQ by default");
 		}
-		#if 0
+		verbose(VJOBPMON,"Restoring IMC frequency" );
 		#if USE_GPUS
-		if (my_node_conf->gpu_def_freq>0){
+		if (my_node_conf->gpu_def_freq > 0){
 			/** Can we know which GPUS are used by this job?? */
 			gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
+			verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
 		}
-		#endif
 		#endif
 	}
 	appID->is_mpi = 0;
