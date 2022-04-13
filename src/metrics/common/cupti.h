@@ -1,0 +1,70 @@
+/*
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* This file is licensed under both the BSD-3 license for individual/non-commercial
+* use and EPL-1.0 license for commercial use. Full text of both licenses can be
+* found in COPYING.BSD and COPYING.EPL files.
+*/
+
+#ifndef METRICS_COMMON_CUPTI_H
+#define METRICS_COMMON_CUPTI_H
+
+#ifdef CUPTI_BASE
+#include <cupti.h>
+#include <cupti_events.h>
+#include <cupti_metrics.h>
+#include <cupti_callbacks.h>
+#include <cuda_runtime_api.h>
+#endif
+
+#ifndef CUPTI_BASE
+typedef int CUdevice;
+typedef int CUcontext;
+typedef int CUptiResult;
+typedef int CUpti_SubscriberHandle;
+typedef int CUpti_CallbackFunc;
+typedef int CUpti_CallbackDomain;
+typedef int CUpti_CallbackId;
+typedef int CUpti_MetricID;
+typedef int CUpti_EventCollectionMode;
+typedef int CUpti_EventGroupAttribute;
+typedef int CUpti_EventGroup;
+typedef int CUpti_ReadEventFlags;
+typedef int CUpti_EventID;
+#endif
+
+typedef struct cuda_s {
+    CUresult (*Init) (uint flags);
+    CUresult (*CtxGetDevice) (CUdevice *device);
+    CUresult (*DeviceGetCount) (int *count);
+    CUresult (*GetErrorString) (CUresult error, const char **str);
+} cuda_t;
+
+typedef struct cupti_s {
+    CUptiResult (*Subscribe) (CUpti_SubscriberHandle *sus, CUpti_CallbackFunc cb, void *data);
+    CUptiResult (*EnableCallback) (uint enable, CUpti_SubscriberHandle sus, CUpti_CallbackDomain dom, CUpti_CallbackId id);
+    CUptiResult (*MetricGetIdFromName) (CUdevice dev, const char *name, CUpti_MetricID *met);
+    CUptiResult (*MetricGetNumEvents) (CUpti_MetricID met, uint *num);
+    CUptiResult (*MetricCreateEventGroupSets) (CUcontext c, size_t size, CUpti_MetricID *ids, CUpti_EventGroupSets **passes);
+    CUptiResult (*SetEventCollectionMode) (CUcontext context, CUpti_EventCollectionMode mode);
+    CUptiResult (*EventGroupSetAttribute) (CUpti_EventGroup group, CUpti_EventGroupAttribute attrib, size_t size, void *values);
+    CUptiResult (*EventGroupGetAttribute) (CUpti_EventGroup group, CUpti_EventGroupAttribute attrib, size_t *size, void *values);
+    CUptiResult (*EventGroupEnable) (CUpti_EventGroup group);
+    CUptiResult (*EventGroupReadAllEvents) (CUpti_EventGroup g, CUpti_ReadEventFlags f, size_t *b1, ullong *b2, size_t *sz2, CUpti_EventID *b3, size_t *n);
+    CUptiResult (*GetResultString) (CUptiResult result, const char** str);
+} cupti_t;
+
+state_t cupti_open(cupti_t *cupti, cuta_t *cu);
+
+state_t cupti_close();
+
+#endif //METRICS_COMMON_CUPTI_H

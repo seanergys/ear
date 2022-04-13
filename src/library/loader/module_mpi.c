@@ -160,15 +160,15 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 		path_so, lang_c, lang_f);
 
 	if (MPI_Get_library_version_detected){
-		symplug_join(RTLD_NEXT, (void **) &next_mpic, mpic_names, MPIC_N);
-		symplug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names, MPIF_N);
+		plug_join(RTLD_NEXT, (void **) &next_mpic, mpic_names, MPIC_N);
+		plug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names, MPIF_N);
 		verbose(3, "LOADER: MPI (C) next symbols loaded, Init address is %p", next_mpic.Init);
 		verbose(3, "LOADER: MPI (F) next symbols loaded, Init address is %p", next_mpif.init);
     if (next_mpif.init == NULL){
       void *Initf = dlsym(RTLD_NEXT, "mpi_init_");
       if (Initf != NULL){
         verbose(3, "LOADER: MPI (F_) mpi_init returns %p, loading again ", Initf);
-        symplug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names_, MPIF_N);
+        plug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names_, MPIF_N);
         if (next_mpif.init != NULL){
           verbose(3, "LOADER: MPI (F_) next symbols loaded, Init address is %p", next_mpif.init);
         }
@@ -206,8 +206,8 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 		}
 	}
 
-	if (libear != NULL && lang_c) symplug_join(libear, (void **) &ear_mpic, ear_mpic_names, MPIC_N);
-	if (libear != NULL && lang_f) symplug_join(libear, (void **) &ear_mpif, ear_mpif_names, MPIF_N);
+	if (libear != NULL && lang_c) plug_join(libear, (void **) &ear_mpic, ear_mpic_names, MPIC_N);
+	if (libear != NULL && lang_f) plug_join(libear, (void **) &ear_mpif, ear_mpif_names, MPIF_N);
 
 	//
 	for(i = 0; i < MPIC_N; ++i)

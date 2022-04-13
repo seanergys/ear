@@ -4,12 +4,15 @@ CFLAGS = $(CC_FLAGS) -fPIC -I$(SRCDIR) $(CONSTANTS)
 
 comm_OBJS = \
     apis.o \
+    cupti.o \
     pstate.o \
     hsmp.o \
     hwmon.o \
     likwid.o \
     msr.o \
+    nvml.o \
     omsr.o \
+    oneapi.o \
     pci.o \
     perf.o
 

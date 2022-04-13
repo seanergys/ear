@@ -85,6 +85,8 @@ struct generr_s {
 	char *cpu_invalid;
 	char *no_permissions;
 	char *not_found;
+    char *gpus_not;
+    char *dlopen;
 } Generr __attribute__((weak)) = {
 	.api_undefined = "the API is undefined",
 	.api_incompatible = "current hardware is not supported by the API",
@@ -99,6 +101,8 @@ struct generr_s {
 	.cpu_invalid = "invalid CPU",
 	.no_permissions = "not enough privileges to perform this action.",
 	.not_found = "Not found",
+    .gpus_not = "no GPUs detected",
+    .dlopen = "error during dlopen",
 };
 
 /*

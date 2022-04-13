@@ -17,10 +17,6 @@
 
 //#define SHOW_DEBUGS 1
 
-#ifdef CUDA_BASE
-#include <nvml.h>
-#endif
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -28,64 +24,6 @@
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
 #include <management/gpu/archs/nvml.h>
-
-#define NVML_N 16
-
-#ifndef CUDA_BASE
-typedef int nvmlDevice_t;
-typedef int nvmlEnableState_t;
-typedef int nvmlClockType_t;
-typedef int nvmlClockId_t;
-typedef int nvmlReturn_t;
-typedef int nvmlDriverModel_t;
-
-#define NVML_PATH            ""
-#define NVML_SUCCESS         0
-#define NVML_CLOCK_GRAPHICS  0
-#define NVML_CLOCK_ID_APP_CLOCK_TARGET 0
-#else
-#define NVML_PATH            CUDA_BASE
-#endif
-
-static const char *nvml_names[] =
-{
-	"nvmlInit_v2",
-	"nvmlDeviceGetCount_v2",
-	"nvmlDeviceGetHandleByIndex_v2",
-	"nvmlDeviceGetDefaultApplicationsClock",
-	"nvmlDeviceGetSupportedMemoryClocks",
-	"nvmlDeviceGetSupportedGraphicsClocks",
-	"nvmlDeviceGetClock",
-	"nvmlDeviceSetGpuLockedClocks",
-	"nvmlDeviceSetApplicationsClocks",
-	"nvmlDeviceResetApplicationsClocks",
-	"nvmlDeviceResetGpuLockedClocks",
-	"nvmlDeviceGetPowerManagementLimit",
-	"nvmlDeviceGetPowerManagementDefaultLimit",
-	"nvmlDeviceGetPowerManagementLimitConstraints",
-	"nvmlDeviceSetPowerManagementLimit",
-	"nvmlErrorString",
-};
-
-static struct nvml_s
-{
-	nvmlReturn_t (*Init)				(void);
-	nvmlReturn_t (*Count)				(uint *devCount);
-	nvmlReturn_t (*Handle)				(uint index, nvmlDevice_t *device);
-	nvmlReturn_t (*GetDefaultAppsClock)	(nvmlDevice_t dev, nvmlClockType_t clockType, uint* mhz);
-	nvmlReturn_t (*GetMemoryClocks)		(nvmlDevice_t dev, uint *count, uint *mhz);
-	nvmlReturn_t (*GetGraphicsClocks)	(nvmlDevice_t dev, uint mem_mhz, uint *count, uint *mhz);
-	nvmlReturn_t (*GetClock)			(nvmlDevice_t device, nvmlClockType_t clockType, nvmlClockId_t clockId, uint* mhz);
-	nvmlReturn_t (*SetLockedClocks)		(nvmlDevice_t dev, uint min_mhz, uint max_mhz);
-	nvmlReturn_t (*SetAppsClocks)		(nvmlDevice_t dev, uint mem_mgz, uint gpu_mhz);
-	nvmlReturn_t (*ResetAppsClocks)		(nvmlDevice_t dev);
-	nvmlReturn_t (*ResetLockedClocks)	(nvmlDevice_t dev);
-	nvmlReturn_t (*GetPowerLimit)		(nvmlDevice_t dev, uint *watts);
-	nvmlReturn_t (*GetPowerDefaultLimit)(nvmlDevice_t dev, uint *watts);
-	nvmlReturn_t (*GetPowerLimitConstraints)(nvmlDevice_t dev, uint *min_watts, uint *max_watts);
-	nvmlReturn_t (*SetPowerLimit)		(nvmlDevice_t dev, uint watts);
-	char*        (*ErrorString)			(nvmlReturn_t result);
-} nvml;
 
 static struct error_s {
 	char *init;
@@ -112,135 +50,8 @@ static uint			 *clock_lens;
 static ulong		 *power_max_default; // W
 static ulong		 *power_max; // W
 static ulong		 *power_min; // W
-static uint 		  ok_status;
 static uint			  ok_unprivileged;
 static uint			  ok_init;
-
-#define myErrorString(r) \
-	((char *) nvml.ErrorString(r))
-
-static state_t static_status_undo(char *error)
-{
-	#define static_free(v) \
-		if (v != NULL) { free(v); v = NULL; }
-
-	static_free(devices);
-
-	return_msg(EAR_ERROR, error);
-}
-
-static state_t static_status()
-{
-	nvmlReturn_t r;
-	int d;
-
-	if ((r = nvml.Init()) != NVML_SUCCESS) {
-		debug("nvml.Init");
-		return_msg(EAR_ERROR, (char *) nvml.ErrorString(r));
-	}
-	if ((r = nvml.Count(&dev_count)) != NVML_SUCCESS) {
-		debug("nvml.Count %u",dev_count);
-		return_msg(EAR_ERROR, (char *) nvml.ErrorString(r));
-	}
-	if (((int) dev_count) <= 0) {
-		return_msg(EAR_ERROR, Error.gpus_not);
-	}
-	if ((devices = calloc(dev_count, sizeof(nvmlDevice_t))) == NULL) {
-	    return_msg(EAR_SYSCALL_ERROR, strerror(errno));
-  	}
-
-	for (d = 0; d < dev_count; ++d) {
-		if ((r = nvml.Handle(d, &devices[d])) != NVML_SUCCESS) {
-			debug("nvmlDeviceGetHandleByIndex returned %d (%s)",
-				  r, nvml.ErrorString(r));
-			return static_status_undo(myErrorString(r));
-		}
-	}
-	return EAR_SUCCESS;
-}
-
-static int load_test(char *path)
-{
-	void **p = (void **) &nvml;
-	void *libnvml;
-	int error;
-	int i;
-
-	//
-	debug("trying to access to '%s'", path);
-	if (access(path, X_OK) != 0) {
-		return 0;
-	}
-	if ((libnvml = dlopen(path, RTLD_NOW | RTLD_LOCAL)) == NULL) {
-		debug("dlopen fail %s",dlerror());
-		return 0;
-	}
-	debug("dlopen ok");
-
-	//
-	symplug_join(libnvml, (void **) &nvml, nvml_names, NVML_N);
-
-	for(i = 0, error = 0; i < NVML_N; ++i) {
-		debug("symbol %s: %d", nvml_names[i], (p[i] != NULL));
-		error += (p[i] == NULL);
-	}
-	if (error > 0) {
-		memset((void *) &nvml, 0, sizeof(nvml));
-		dlclose(libnvml);
-		return 0;
-	}
-
-	return 1;
-}
-
-static int static_load()
-{
-  if (load_test(getenv(HACK_NVML_FILE))) return 1;
-  if (load_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so")) return 1;
-  if (load_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so.1")) return 1;
-  if (load_test(NVML_PATH "/lib64/libnvidia-ml.so")) return 1;
-  if (load_test(NVML_PATH "/lib64/libnvidia-ml.so.1")) return 1;
-  if (load_test(NVML_PATH "/lib/libnvidia-ml.so")) return 1;
-  if (load_test(NVML_PATH "/lib/libnvidia-ml.so.1")) return 1;
-  if (load_test("/usr/lib64/libnvidia-ml.so")) return 1;
-  if (load_test("/usr/lib64/libnvidia-ml.so.1")) return 1;
-  if (load_test("/usr/lib/x86_64-linux-gnu/libnvidia-ml.so")) return 1;
-  if (load_test("/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1")) return 1;
-  if (load_test("/usr/lib32/libnvidia-ml.so")) return 1;
-  if (load_test("/usr/lib32/libnvidia-ml.so.1")) return 1;
-  if (load_test("/usr/lib/libnvidia-ml.so")) return 1;
-  if (load_test("/usr/lib/libnvidia-ml.so.1")) return 1;
-
-	return 0;
-}
-
-state_t mgt_nvml_status()
-{
-	state_t s;
-
-	#ifndef CUDA_BASE
-	return EAR_ERROR;
-	#endif
-	debug("mgt_nvml_status");
-	while (pthread_mutex_trylock(&lock));
-	if (ok_status) {
-		pthread_mutex_unlock(&lock);
-		return EAR_SUCCESS;
-	}
-	if (!static_load()) {
-		pthread_mutex_unlock(&lock);
-		return_msg(EAR_ERROR, Error.dlopen);
-	}
-	dev_count = 0;
-	if (xtate_fail(s, static_status())) {
-		pthread_mutex_unlock(&lock);
-		return s;
-	}
-	ok_status = 1;
-	debug("OK status");
-	pthread_mutex_unlock(&lock);
-	return EAR_SUCCESS;
-}
 
 static state_t static_init_unprivileged_undo(char *error)
 {

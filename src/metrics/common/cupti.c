@@ -1,0 +1,154 @@
+/*
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* This file is licensed under both the BSD-3 license for individual/non-commercial
+* use and EPL-1.0 license for commercial use. Full text of both licenses can be
+* found in COPYING.BSD and COPYING.EPL files.
+*/
+
+#include <metrics/common/cupti.h>
+
+#ifndef ZERO_BASE
+#define CUPTI_PATH   ""
+#else
+#define CUPTI_PATH   CUPTI_BASE
+#endif
+#define CUDA_N     4
+#define CUPTI_N    11
+#define CUPTI_LIB  "libcupti.so"
+
+static const char *cuda_names[] = {
+    "cuInit",
+    "cuCtxGetDevice",
+    "cuDeviceGetCount",
+    "cuGetErrorString",
+};
+
+static const char *cupti_names[] = {
+    "cuptiSubscribe",
+    "cuptiEnableCallback",
+    "cuptiMetricGetIdFromName",
+    "cuptiMetricGetNumEvents",
+    "cuptiMetricCreateEventGroupSets",
+    "cuptiSetEventCollectionMode",
+    "cuptiEventGroupSetAttribute",
+    "cuptiEventGroupGetAttribute",
+    "cuptiEventGroupEnable",
+    "cuptiEventGroupReadAllEvents",
+    "cuptiGetResultString",
+};
+
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static uint            devs_count;
+static cupti_t         cupti;
+static cuda_t          cuda;
+static uint            ok;
+
+static state_t static_open_cuda()
+{
+    #define open_test_cuda(path) \
+    if (state_ok(plug_open(path, (void **) &cuda, cuda_names, CUDA_N, RTLD_NOW | RTLD_LOCAL))) { \
+        return EAR_SUCCESS; \
+    }
+
+    open_test_cuda(NULL);
+    open_test_cuda(getenv(HACK_CUDA_FILE));
+
+    return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
+}
+
+static state_t static_open_cupti()
+{
+    #define _open_test(path) \
+    if (state_ok(plug_open(path, (void **) &cupti, cupti_names, CUPTI_N, RTLD_NOW | RTLD_LOCAL))) { \
+        return EAR_SUCCESS; \
+    }
+    #define open_test(path) \
+    _open_test(path CUPTI_LIB); \
+    _open_test(path CUPTI_LIB ".1");
+
+    // Looking for cupti library in tipical paths.
+    _open_test(getenv(HACK_CUPTI_FILE));
+    open_test(CUPTI_PATH "/targets/x86_64-linux/lib/");
+    open_test(CUPTI_PATH "/lib64/");
+    open_test(CUPTI_PATH "/lib/");
+    open_test("/usr/lib64/");
+    open_test("/usr/lib/x86_64-linux-gnu/");
+    open_test("/usr/lib32/");
+    open_test("/usr/lib/");
+
+    return_print(EAR_ERROR, "Can not load %s", CUPTI_LIB);
+}
+
+static state_t static_open()
+{
+    if (state_fail(s = static_open_cuda)) {
+        return s;
+    }
+    return static_open_cupti();
+}
+
+static state_t static_free(state_t s, char *error)
+{
+    return_msg(s, error);
+}
+
+static state_t static_init()
+{
+    CUresult s;
+    char *str;
+
+    if ((s = cu.Init(0)) != CUDA_SUCCESS) {
+        cu.GetErrorString(s, (const char **) &str);
+        return static_free(EAR_ERROR, str);
+    }
+    if ((s = cu.DeviceGetCount((int *) &devs_count)) != CUDA_SUCCESS) {
+        cu.GetErrorString(s, (const char **) &str);
+        return static_free(EAR_ERROR, str);
+    }
+    if (((int) dev_count) <= 0) {
+        return static_free(EAR_ERROR, Error.gpus_not);
+    }
+    debug("detected devices: %u", devs_count);
+    return EAR_SUCCESS;
+}
+
+state_t cupti_open(cupti_t *cupti_in, cuta_t *cu_in)
+{
+    state_t s = EAR_SUCCESS;
+    #ifndef CUPTI_BASE
+    return EAR_ERROR;
+    #endif
+    while (pthread_mutex_trylock(&lock));
+    if (ok) {
+        goto fini;
+    }
+    if (state_ok(s = static_open())) {
+        if (state_ok(s = static_init())) {
+            ok = 1;
+        }
+    }
+    fini:
+    pthread_mutex_unlock(&lock);
+    if (cupti_in != NULL) {
+        memcpy(cupti_in, &cupti, sizeof(cupti_t));
+    }
+    if (cu_in != NULL) {
+        memcpy(cu_in, &cu, sizeof(cuda_t));
+    }
+    return s;
+}
+
+state_t cupti_close()
+{
+    return EAR_SUCCESS;
+}
