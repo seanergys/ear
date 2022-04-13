@@ -90,7 +90,7 @@ int lock_job(char *path_tmp, int job_id, int step_id)
     //          3.1 Spin while can't access step.lock
     //          3.2 Read the %step_id in step.lock
 	if (step_id == 0) {
-		if (state_ok(file_read(path_job, (char *) &step_id, sizeof(int)))) {
+		if (state_ok(ear_file_read(path_job, (char *) &step_id, sizeof(int)))) {
         	    	plug_verbose(_sp, 2, "read %d step_id in the file '%s'", step_id, path_job);
 			step_id += 1;
 		} else {
@@ -107,7 +107,7 @@ int unlock_step(char *path_tmp, int job_id, int step_id)
     // 1. Form the step.lock path
     sprintf(path_step, "%s/erun%d/step.lock", path_tmp, job_id);
     // 2. Create and write step.lock
-    file_write(path_step, (char *) &step_id, sizeof(int));
+    ear_file_write(path_step, (char *) &step_id, sizeof(int));
     return step_id;
 }
 
@@ -120,7 +120,7 @@ int spinlock_step(char *path_tmp, int job_id, int step_id)
     plug_verbose(_sp, 3," Waiting for step lock file %s", path_step);
     while (access(path_step, F_OK) != 0);
     // 3. Read the %step_id contained in step.lock
-    file_read(path_step, (char *) &step_id, sizeof(int));
+    ear_file_read(path_step, (char *) &step_id, sizeof(int));
     // 4. Return %step_id
     plug_verbose(_sp, 2, "read %d step_id in the file '%s'", step_id, path_job);
     return step_id;
@@ -134,15 +134,15 @@ int lock_clean(char *path_tmp, int job_id, int step_id)
 	// 2. Remove master.lock
 	file_unlock_master(fd_master, path_master);
 	// 3. Remove step.lock
-	file_clean(path_step);
+	ear_file_clean(path_step);
 	// 5. Remove job.lock
-	file_clean(path_job);
+	ear_file_clean(path_job);
 	// 6. Launch cleaning command to remove other files.
 	if (system(command)) {
         //
     }
 	// 5. Write again job.lock 
-	file_write(path_job, (char *) &step_id, sizeof(int));
+	ear_file_write(path_job, (char *) &step_id, sizeof(int));
 	return 0;
 }
 
