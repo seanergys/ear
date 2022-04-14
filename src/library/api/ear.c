@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
-#if COUNTDOWN
+#if 0
 #define SINGLE_CONNECTION 0
 #else
 #define SINGLE_CONNECTION 1

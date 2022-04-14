@@ -1446,7 +1446,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         }
 #endif // SHOW_DEBUGS
 
-#if COUNTDOWN
+#if 0
         pstate_t curr_pstate;
         state_t ps_manag_st = pstate_freqtops(pstate_list, pstate_count,
                 (ullong) cpu_freq_khz, &curr_pstate);
@@ -1475,7 +1475,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         }
 
         if (cpu_freq_khz != init_def_cpufreq_khz) {
-#if COUNTDOWN
+#if 0
             verbose_master(verb_lvl, "Frequency for process %d is %lu (P-STATE %u)",
                     proc_lrank, cpu_freq_khz, sig_shared_region[proc_lrank].pstate_index);
 #else

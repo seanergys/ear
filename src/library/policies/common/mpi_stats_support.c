@@ -77,7 +77,7 @@ static uint   mpi_call_count[N_CALL_TYPES];
 static ullong mpi_call_time[N_CALL_TYPES];
 #endif // NEW_MPI_STATS
 
-#if COUNTDOWN
+#if 0
 #define VERB_COUNTDOWN 1
 static uint low_cpu = 0;    // Countdown approach configuration
 static uint reduce_cpufreq; // Used to mark processes arbitrary selected for gromacs
@@ -168,7 +168,7 @@ state_t mpi_app_init(polctx_t *c)
         }
 #endif
 
-#if COUNTDOWN
+#if 0
         char *clow_cpu = getenv("SLURM_EAR_COUNTDOWN");
         if (clow_cpu != NULL) {
             low_cpu = atoi(clow_cpu);
@@ -437,7 +437,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         }
 #endif
 
-#if COUNTDOWN
+#if 0
         if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
             if (is_mpi_blocking(call_type)) {
 
@@ -509,7 +509,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
-#if COUNTDOWN
+#if 0
             if (nbcall_type == Only_Barrier) {
                 if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
 

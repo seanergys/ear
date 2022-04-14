@@ -254,7 +254,7 @@ static void metrics_static_init(topology_t *tp)
     master = (masters_info.my_master_rank >= 0);
     eard   = (master);
     // Load
-#if COUNTDOWN
+#if 0
     sa(mgt_cpufreq_load(tp, 1));
 #else
     sa(mgt_cpufreq_load(tp, eard));
