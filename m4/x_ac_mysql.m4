@@ -95,21 +95,21 @@ AC_DEFUN([X_AC_MYSQL],
 		DB_DIR=$_cv_mysql_dir_root
 		DB_LIBS=$_x_ac_mysql_gcc_libs
 		DB_LDFLAGS=$_x_ac_mysql_gcc_ldflags
+		DB_CFLAGS="-I$DB_DIR/include"
 
 		if test "x$_x_ac_mysql_custom" = "xyes"; then
-			DB_LIBDIR=$_x_ac_mysql_dir_lib
-			DB_CPPFLAGS="-I$DB_DIR/include"
+		    DB_LIBDIR=$_x_ac_mysql_dir_lib
 		fi
 
 		echo checking for MySQL compiler link... yes
-		echo checking for MySQL CPPFLAGS... $DB_CPPFLAGS
+		echo checking for MySQL CFFLAGS... $DB_CFLAGS
 		echo checking for MySQL LDFLAGS... $DB_LDFLAGS
 		echo checking for MySQL libraries... $DB_LIBS
 	fi
 
     AC_SUBST(DB_LIBS)
     AC_SUBST(DB_LIBDIR)
-    AC_SUBST(DB_CPPFLAGS)
+    AC_SUBST(DB_CFLAGS)
     AC_SUBST(DB_LDFLAGS)
     AC_SUBST(DB_DIR)
 

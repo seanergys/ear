@@ -9,7 +9,7 @@
 #
 #  DESCRIPTION:
 #    Check the usual suspects for a postgresql installation,
-#    updating CPPFLAGS and LDFLAGS as necessary.
+#    updating CFLAGS and LDFLAGS as necessary.
 #
 #  WARNINGS:
 #    This macro must be placed after AC_PROG_CC and before AC_PROG_LIBTOOL.
@@ -95,14 +95,14 @@ AC_DEFUN([X_AC_PGSQL],
 			DB_DIR=$_cv_pgsql_dir_root
 			DB_LIBS=$_x_ac_pgsql_gcc_libs
 			DB_LDFLAGS=$_x_ac_pgsql_gcc_ldflags
+			DB_CFLAGS="-I$DB_DIR/include"
 		
 		    if test "x$_x_ac_pgsql_custom" = "xyes"; then
 			    DB_LIBDIR=$_x_ac_pgsql_dir_lib
-			    DB_CPPFLAGS="-I$DB_DIR/include"
 		    fi
 
 		    echo checking for PostgreSQL compiler link... yes
-		    echo checking for PostgreSQL CPPFLAGS... $DB_CPPFLAGS
+		    echo checking for PostgreSQL CFLAGS... $DB_CFLAGS
 		    echo checking for PostgreSQL LDFLAGS... $DB_LDFLAGS
 		    echo checking for PostgreSQL libraries... $DB_LIBS
     	fi
@@ -110,7 +110,7 @@ AC_DEFUN([X_AC_PGSQL],
 
 	AC_SUBST(DB_LIBS)
 	AC_SUBST(DB_LIBDIR)
-	AC_SUBST(DB_CPPFLAGS)
+	AC_SUBST(DB_CFLAGS)
 	AC_SUBST(DB_LDFLAGS)
 	AC_SUBST(DB_DIR)
 
