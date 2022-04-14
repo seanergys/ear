@@ -22,6 +22,7 @@
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/system/time.h>
+#include <metrics/common/apis.h>
 
 // This is an API to monitorize the GPU devices of the node.
 //
@@ -67,25 +68,25 @@ typedef struct gpu_devs_s {
 
 typedef struct gpu_ops_s
 {
-    state_t (*init)			(ctx_t *c);
-    state_t (*dispose)		(ctx_t *c);
-    state_t (*count)		(ctx_t *c, uint *gpu_count);
-    state_t (*read)			(ctx_t *c, gpu_t *data);
-    state_t (*read_copy)	(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
-    state_t (*read_raw)		(ctx_t *c, gpu_t *data);
+    state_t (*init[2])       (ctx_t *c);
+    state_t (*dispose[2])    (ctx_t *c);
+//    state_t (*get_devices)   (ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
+    state_t (*count_devices) (ctx_t *c, uint *devs_count);
+    state_t (*read[2])       (ctx_t *c, gpu_t *data);
+    state_t (*read_raw[2])   (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
 
 // Discovers the low level API.
-state_t gpu_load(int eard);
+void gpu_load(int eard);
+
+void gpu_get_api(uint *api);
 
 // Initializes the context.
 state_t gpu_init(ctx_t *c);
 
-void gpu_get_api(uint *api);
-
 state_t gpu_dispose(ctx_t *c);
 
-state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **info, uint *devs_count);
+//state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
 
 // Counts the number of GPUs (devices) in the node.
 state_t gpu_count_devices(ctx_t *c, uint *dev_count);

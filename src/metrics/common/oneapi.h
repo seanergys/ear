@@ -18,21 +18,31 @@
 #ifndef METRICS_COMMON_ONEAPI_H
 #define METRICS_COMMON_ONEAPI_H
 
-#ifdef ZERO_BASE
-#include <zero.h>
+#ifdef ONEAPI_BASE
+#include <level_zero/ze_api.h>
+#include <level_zero/zes_ddi.h>
 #endif
 #include <common/types.h>
 #include <common/states.h>
 
-#ifndef ZERO_BASE
-#define ZE_DEVICE_TYPE_GPU 0
+#ifndef ONEAPI_BASE
+#define ZE_SUCCESS             0
+#define ZE_DEVICE_TYPE_GPU     0
+#define ZES_FREQ_DOMAIN_GPU    0
+#define ZES_FREQ_DOMAIN_MEMORY 0
+#define ZES_ENGINE_GROUP_ALL   0
+
+typedef struct ze_info_s {
+    int type;
+    int activeTime;
+    int energy;
+    int actual;
+} ze_info_t;
 
 typedef int ze_result_t;
 typedef int ze_init_flags_t;
 typedef int ze_device_handle_t;
-typedef struct ze_device_properties_s {
-    int type;
-} ze_device_properties_t;
+typedef ze_info_t ze_device_properties_t;
 typedef int ze_device_memory_properties_t;
 typedef int ze_driver_handle_t;
 typedef int ze_driver_properties_t;
@@ -40,13 +50,15 @@ typedef int ze_driver_extension_properties_t;
 typedef int ze_api_version_t;
 typedef int zes_device_handle_t;
 typedef int zes_engine_handle_t;
-typedef int zes_engine_properties_t;
-typedef int zes_engine_stats_t;
+typedef ze_info_t zes_engine_stats_t;
+typedef ze_info_t zes_engine_properties_t;
 typedef int zes_freq_handle_t;
-typedef int zes_freq_properties_t;
-typedef int zes_freq_state_t;
+typedef ze_info_t zes_freq_properties_t;
+typedef ze_info_t zes_freq_state_t;
 typedef int zes_pwr_handle_t;
-typedef int zes_power_energy_counter_t;
+typedef int zes_power_properties_t;
+typedef ze_info_t zes_power_energy_counter_t;
+typedef int zes_temp_handle_t;
 #endif
 
 typedef struct ze_s {
@@ -72,5 +84,9 @@ typedef struct ze_s {
 state_t oneapi_open(ze_t *ze);
 
 state_t oneapi_close();
+
+state_t oneapi_get_devices(zes_device_handle_t **devs, uint devs_count);
+
+int oneapi_is_privileged();
 
 #endif //METRICS_COMMON_ONEAPI_H

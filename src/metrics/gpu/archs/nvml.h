@@ -20,19 +20,21 @@
 
 #include <metrics/gpu/gpu.h>
 
-state_t nvml_load();
+void gpu_nvml_load(gpu_ops_t *ops);
 
-state_t nvml_init(ctx_t *c);
+void gpu_nvml_get_api(uint *api);
 
-state_t nvml_dispose(ctx_t *c);
+state_t gpu_nvml_init(ctx_t *c);
 
-state_t nvml_count(ctx_t *c, uint *gpu_count);
+state_t gpu_nvml_dispose(ctx_t *c);
 
-state_t nvml_pool(void *c);
+state_t gpu_nvml_count_devices(ctx_t *c, uint *devs_count);
 
-state_t nvml_read(ctx_t *c, gpu_t *data);
+state_t gpu_nvml_pool(void *c);
+
+state_t gpu_nvml_read(ctx_t *c, gpu_t *data);
 
 /* Reads the data directly from the GPU API (not preprocessed data). */
-state_t nvml_read_raw(ctx_t *c, gpu_t *data);
+state_t gpu_nvml_read_raw(ctx_t *c, gpu_t *data);
 
 #endif //METRICS_GPU_NVML_H

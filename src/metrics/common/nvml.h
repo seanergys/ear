@@ -75,6 +75,8 @@ state_t nvml_open(nvml_t *nvml);
 
 state_t nvml_close();
 
-state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in);
+state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count);
+
+int nvml_is_privileged();
 
 #endif //METRICS_COMMON_NVML_H

@@ -23,39 +23,56 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-#include <level_zero/ze_api.h>
-#include <level_zero/zes_ddi.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
 #include <metrics/common/oneapi.h>
+#include <metrics/gpu/archs/oneapi.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t          *pool; // change to sysmans_pool
 static timestamp_t     pool_time1;
 static timestamp_t     pool_time2;
 static suscription_t  *sus;
+static zes_device_handle_t *devs;
+static uint            devs_count;
+static ze_t            ze;
+
+#define ret_fail(function) \
+    if ((z = function) != ZE_SUCCESS) { \
+        debug("Failed " #function " with error 0x%x", z); \
+        return EAR_ERROR; \
+    }
 
 state_t oneapi_load()
 {
-	state_t s;
-	// This function is protected from above. Lock is not required.
-	if (state_fail(s = static_load())) {
-		return s;
-	}
-	return EAR_SUCCESS;
+    if (state_fail(oneapi_open(&ze))) {
+        debug("oneapi_open failed: %s", state_msg);
+        return;
+    }
+    if (state_fail(oneapi_get_devices(&devs, &devs_count))) {
+        debug("oneapi_get_devices failed: %s", state_msg);
+        return;
+    }
+    apis_set(ops->get_api,       gpu_oneapi_get_api);
+    apis_set(ops->init,          gpu_oneapi_init);
+    apis_set(ops->dispose,       gpu_oneapi_dispose);
+    apis_set(ops->count_devices, gpu_oneapi_count_devices);
+    apis_set(ops->read,          gpu_oneapi_read);
+    apis_set(ops->read_raw,      gpu_oneapi_read_raw);
 }
 
 state_t oneapi_init(ctx_t *c)
 {
+    state_t s;
     #if 1
 	// Monitor suscription
-	pool = calloc(devices_count, sizeof(gpu_t));
+	pool = calloc(devs_count, sizeof(gpu_t));
 	// Initializing monitoring thread suscription.
 	sus = suscription();
 	sus->call_main  = oneapi_pool;
-	sus->time_relax = 1000;
-	sus->time_burst = 300;
+	sus->time_relax = 2000;
+	sus->time_burst = 1000;
 	// Initializing monitoring thread.
 	if (state_fail(s = sus->suscribe(sus))) {
 		debug("GPU monitor FAILS");
@@ -73,7 +90,7 @@ state_t oneapi_dispose(ctx_t *c)
 
 state_t oneapi_count(ctx_t *c, uint *dev_count)
 {
-	*dev_count = devices_count;
+	*dev_count = devs_count;
 	return EAR_SUCCESS;
 }
 
@@ -81,13 +98,13 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
 {
 	zes_pwr_handle_t           domains[4]; // Its enough
 	uint                       domains_count = 4;
-	zes_power_properties_t     props;
+	//zes_power_properties_t     props;
 	zes_power_energy_counter_t info;
 	uint                       ma;
 	ze_result_t                z;
 
 	// Retrieving the domains
-	ret_fail(ze.sDeviceEnumPowerDomains(devices[dv], &domains_count, domains));
+	ret_fail(ze.sDeviceEnumPowerDomains(devs[dv], &domains_count, domains));
 	
 	for (ma = 0; ma < domains_count; ++ma) {
 		ret_fail(ze.sPowerGetEnergyCounter(domains[ma], &info));
@@ -108,7 +125,7 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
 	ze_result_t             z;
 
 	// Retrieving the domains
-	ret_fail(ze.sDeviceEnumEngineGroups(devices[dv], &domains_count, domains));
+	ret_fail(ze.sDeviceEnumEngineGroups(devs[dv], &domains_count, domains));
 	
 	for (ma = 0; ma < domains_count; ++ma) {
 		// Getting domain characteristics
@@ -134,7 +151,7 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
 	ze_result_t           z;
 
 	// Retrieving the domains
-	ret_fail(ze.sDeviceEnumFrequencyDomains(devices[dv], &domains_count, domains));
+	ret_fail(ze.sDeviceEnumFrequencyDomains(devs[dv], &domains_count, domains));
 	for (ma = 0; ma < domains_count; ++ma) {
 		// Getting domain characteristics
 		ret_fail(ze.sFrequencyGetProperties(domains[ma], &props));
@@ -154,8 +171,9 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
 
 static state_t oneapi_read_temperature(int dv, gpu_t *data)
 {
-	zes_temp_handle_t domains[6]; // Its enough
+	//zes_temp_handle_t domains[6]; // Its enough
 	// Future.
+    return EAR_SUCCESS;
 }
 
 static void read_single(int dv, gpu_t *gpu)
@@ -179,7 +197,7 @@ state_t oneapi_pool(void *p)
 	// Getting current time
 	timestamp_getfast(&pool_time2);
 	// Adding to the pool
-	for (dv = 0; dv < devices_count; ++dv)
+	for (dv = 0; dv < devs_count; ++dv)
 	{
 		read_single(dv, &current);
 
@@ -213,7 +231,7 @@ state_t oneapi_pool(void *p)
 state_t oneapi_read(ctx_t *c, gpu_t *data)
 {
 	while (pthread_mutex_trylock(&lock));
-	memcpy(data, pool, devices_count * sizeof(gpu_t));
+	memcpy(data, pool, devs_count * sizeof(gpu_t));
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;
 }
@@ -223,16 +241,3 @@ state_t oneapi_read_raw(ctx_t *c, gpu_t *data)
 	// First it requires tests
 	return EAR_SUCCESS;
 }
-
-#if 0
-int main(int argc, char *argv)
-{
-	oneapi_load();
-	oneapi_init(NULL);
-
-	monitor_init();
-	sleep(20);
-	
-	return 0;
-}
-#endif

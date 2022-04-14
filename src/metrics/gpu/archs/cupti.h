@@ -20,14 +20,14 @@
 
 #include <metrics/gpu/gpu.h>
 
-state_t cupti_status();
+void gpu_cupti_load(gpu_ops_t *ops);
 
-state_t cupti_init(ctx_t *c);
+state_t gpu_cupti_init(ctx_t *c);
 
-state_t cupti_dispose(ctx_t *c);
+state_t gpu_cupti_dispose(ctx_t *c);
 
-state_t cupti_pool(void *p);
+state_t gpu_cupti_pool(void *p);
 
-state_t cupti_read(ctx_t *c, gpu_t *data);
+state_t gpu_cupti_read(ctx_t *c, gpu_t *data);
 
 #endif //METRICS_GPU_CUPTI_H

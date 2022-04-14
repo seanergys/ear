@@ -20,13 +20,15 @@
 
 #include <metrics/gpu/gpu.h>
 
-state_t gpu_eard_status(int eard);
+void gpu_eard_load(gpu_ops_t *ops, int eard);
+
+void gpu_eard_get_api(uint *api);
 
 state_t gpu_eard_init(ctx_t *c);
 
 state_t gpu_eard_dispose(ctx_t *c);
 
-state_t gpu_eard_count(ctx_t *c, uint *dev_count);
+state_t gpu_eard_count_devices(ctx_t *c, uint *dev_count);
 
 state_t gpu_eard_read(ctx_t *c, gpu_t *data);
 

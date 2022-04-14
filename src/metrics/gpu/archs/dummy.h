@@ -15,18 +15,22 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef METRICS_GPU_DUMMY_
-#define METRICS_GPU_DUMMY
+#ifndef METRICS_GPU_DUMMY_H
+#define METRICS_GPU_DUMMY_H
 
 #include <metrics/gpu/gpu.h>
 
-state_t gpu_dummy_status();
+void gpu_dummy_load(gpu_ops_t *ops);
+
+void gpu_dummy_get_api(uint *api);
 
 state_t gpu_dummy_init(ctx_t *c);
 
 state_t gpu_dummy_dispose(ctx_t *c);
 
-state_t gpu_dummy_count(ctx_t *c, uint *dev_count);
+//state_t gpu_dummy_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
+
+state_t gpu_dummy_count_devices(ctx_t *c, uint *dev_count);
 
 state_t gpu_dummy_read(ctx_t *c, gpu_t *data);
 

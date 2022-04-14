@@ -20,49 +20,68 @@
 #include <metrics/gpu/archs/eard.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
-state_t gpu_eard_status(int eard)
+static uint devs_count;
+
+void gpu_eard_load(gpu_ops_t *ops, int eard);
 {
 	uint eard_api;
 	state_t s;
 
 	if (!eard) {
-		return_msg(EAR_ERROR, "EARD (daemon) not required");
+		debug("EARD (daemon) not required");
+        return;
 	}
 	if (!eards_connected()) {
-		return_msg(EAR_ERROR, "EARD (daemon) not connected");
+		debug("EARD (daemon) not connected");
+        return;
 	}
-	if (xtate_fail(s, eard_rpc(RPC_MET_GPU_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
-		return s;
+	if (state_fail(s = eard_rpc(RPC_MET_GPU_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
+		debug("Received: %s", state_msg)
+        return;
 	}
 	if (eard_api == API_NONE || eard_api == API_DUMMY) {
-		return_msg(EAR_ERROR, "EARD (daemon) has loaded DUMMY/NONE API");
+		debug("EARD (daemon) has loaded DUMMY/NONE API");
+        return;
 	}
-	return EAR_SUCCESS;
+    apis_put(ops->get_api,       gpu_eard_get_api);
+    apis_put(ops->init,          gpu_eard_init);
+    apis_put(ops->dispose,       gpu_eard_dispose);
+    apis_put(ops->get_devices,   gpu_eard_get_devices);
+    apis_put(ops->count_devices, gpu_eard_count_devices);
+    apis_put(ops->read,          gpu_eard_read);
+    apis_put(ops->read_raw,      gpu_eard_read_raw);
+}
+
+void gpu_eard_get_api(uint *api)
+{
+    *api = API_EARD;
 }
 
 state_t gpu_eard_init(ctx_t *c)
 {
 	state_t s;
-	c->context = NULL;
-	if (state_fail(s = eard_rpc(RPC_MET_GPU_COUNT_DEVICES, NULL, 0, (char *) &c->context, sizeof(uint)))) {
+	if (state_fail(s = eard_rpc(RPC_MET_GPU_COUNT_DEVICES, NULL, 0, (char *) &devs_count, sizeof(uint)))) {
 		return s;
-	}
-	if (((ulong) c->context) == 0) {
-		return_msg(EAR_ERROR, "There are no GPUs");
 	}
 	return EAR_SUCCESS;
 }
 
 state_t gpu_eard_dispose(ctx_t *c)
 {
-	c->context = NULL;
 	return EAR_SUCCESS;
 }
 
-state_t gpu_eard_count(ctx_t *c, uint *dev_count_in)
+state_t gpu_eard_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
 {
-	ulong aux = (ulong) c->context;
-	*dev_count_in = (uint) aux;
+    if (devs != NULL) {
+        *devs = dev;
+    }
+    return gpu_eard_count(c, devs_count);
+}
+
+state_t gpu_eard_count_devices(ctx_t *c, uint *devs_count_in)
+{
+	*devs_count_in = (uint) devs_count;
 	return EAR_SUCCESS;
 }
 

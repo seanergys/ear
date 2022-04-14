@@ -29,23 +29,50 @@
 #include <common/states.h>
 
 #ifndef CUPTI_BASE
-#define CUDA_SUCCESS 0
+#define CUDA_SUCCESS                                        0
+#define CUPTI_SUCCESS                                       0
+#define CUPTI_API_EXIT                                      0
+#define CUPTI_EVENT_ATTR_NAME                               0
+#define CUPTI_EVENT_READ_FLAG_NONE                          0
+#define CUPTI_CB_DOMAIN_DRIVER_API                          0
+#define CUPTI_EVENT_GROUP_ATTR_EVENTS                       0
+#define CUPTI_EVENT_GROUP_ATTR_NUM_EVENTS                   0
+#define CUPTI_EVENT_GROUP_ATTR_INSTANCE_COUNT               0
+#define CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS              0
+#define CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel              0
+#define CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES 0
 
 typedef int CUresult;
 typedef int CUdevice;
-typedef int CUcontext;
+typedef int *CUcontext;
 typedef int CUptiResult;
 typedef int CUpti_CallbackId;
-typedef int CUpti_CallbackFunc;
+typedef void *CUpti_CallbackFunc;
 typedef int CUpti_CallbackDomain;
 typedef int CUpti_SubscriberHandle;
 typedef int CUpti_EventID;
 typedef int CUpti_MetricID;
-typedef int CUpti_EventGroup;
-typedef int CUpti_EventGroupSets;
+typedef void *CUpti_EventGroup;
 typedef int CUpti_EventCollectionMode;
 typedef int CUpti_EventGroupAttribute;
+typedef int CUpti_EventAttribute;
 typedef int CUpti_ReadEventFlags;
+
+typedef struct CUpti_EventGroupSet_s {
+    CUpti_EventGroup *eventGroups;
+    int numEventGroups;
+} CUpti_EventGroupSet;
+
+typedef struct CUpti_EventGroupSets_s {
+    CUpti_EventGroupSet *sets;
+    int numSets;
+} CUpti_EventGroupSets;
+
+typedef struct CUpti_CallbackData_s {
+    char *functionName;
+    CUcontext context;
+    int callbackSite;
+} CUpti_CallbackData;
 #endif
 
 typedef struct cuda_s {
@@ -58,15 +85,18 @@ typedef struct cuda_s {
 typedef struct cupti_s {
     CUptiResult (*Subscribe) (CUpti_SubscriberHandle *sus, CUpti_CallbackFunc cb, void *data);
     CUptiResult (*EnableCallback) (uint enable, CUpti_SubscriberHandle sus, CUpti_CallbackDomain dom, CUpti_CallbackId id);
+    CUptiResult (*EnableDomain) (uint enable, CUpti_SubscriberHandle subscriber, CUpti_CallbackDomain domain);
     CUptiResult (*MetricGetIdFromName) (CUdevice dev, const char *name, CUpti_MetricID *met);
     CUptiResult (*MetricGetNumEvents) (CUpti_MetricID met, uint *num);
     CUptiResult (*MetricCreateEventGroupSets) (CUcontext c, size_t size, CUpti_MetricID *ids, CUpti_EventGroupSets **passes);
     CUptiResult (*SetEventCollectionMode) (CUcontext context, CUpti_EventCollectionMode mode);
+    CUptiResult (*EventGroupSetsDestroy) (CUpti_EventGroupSets *eventGroupSets);
     CUptiResult (*EventGroupSetAttribute) (CUpti_EventGroup group, CUpti_EventGroupAttribute attrib, size_t size, void *values);
     CUptiResult (*EventGroupGetAttribute) (CUpti_EventGroup group, CUpti_EventGroupAttribute attrib, size_t *size, void *values);
     CUptiResult (*EventGroupEnable) (CUpti_EventGroup group);
     CUptiResult (*EventGroupReadAllEvents) (CUpti_EventGroup g, CUpti_ReadEventFlags f, size_t *b1, ullong *b2, size_t *sz2, CUpti_EventID *b3, size_t *n);
-    CUptiResult (*GetResultString) (CUptiResult result, const char** str);
+    CUptiResult (*EventGetAttribute) (CUpti_EventID event, CUpti_EventAttribute attrib, size_t *valueSize, void *value);
+    CUptiResult (*GetResultString) (CUptiResult result, const char **str);
 } cupti_t;
 
 state_t cupti_open(cupti_t *cupti, cuda_t *cu);

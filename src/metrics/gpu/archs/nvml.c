@@ -32,27 +32,41 @@
 //static nvml_t nvml;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static nvml_t         nvml;
+static nvmlDevice_t  *devs;
 static suscription_t *sus;
-static uint           dev_count;
+static uint           devs_count;
 static gpu_t         *pool;
 static nvmlDevice_t  *devices;
 static uint           ok_init;
 
-state_t nvml_load()
+void gpu_nvml_load(gpu_ops_t *ops)
 {
-    return nvml_open(&nvml);
+    if (state_fail(nvml_open(&nvml))) {
+        debug("nvml_open failed: %s", state_msg);
+        return;
+    }
+    if (state_fail(nvml_get_devices(&devs, &devs_count))) {
+        debug("nvml_get_devices failed: %s", state_msg);
+        return;
+    }
+    apis_set(ops->get_api,       gpu_nvml_get_api);
+    apis_set(ops->init,          gpu_nvml_init);
+    apis_set(ops->dispose,       gpu_nvml_dispose);
+    apis_set(ops->count_devices, gpu_nvml_count_devices);
+    apis_set(ops->read,          gpu_nvml_read);
+    apis_set(ops->read_raw,      gpu_nvml_read_raw);
 }
 
 static state_t static_init()
 {
 	state_t s = EAR_SUCCESS;
 	// Allocation
-	pool = calloc(dev_count, sizeof(gpu_t));
+	pool = calloc(devs_count, sizeof(gpu_t));
 	// Initializing monitoring thread suscription.
 	sus = suscription();
-	sus->call_main  = nvml_pool;
-	sus->time_relax = 1000;
-	sus->time_burst = 300;
+	sus->call_main  = gpu_nvml_pool;
+	sus->time_relax = 2000;
+	sus->time_burst = 1000;
 	// Initializing monitoring thread.
 	if (state_fail(s = sus->suscribe(sus))) {
 		debug("GPU monitor FAILS");
@@ -62,7 +76,7 @@ static state_t static_init()
 	return s;
 }
 
-state_t nvml_init(ctx_t *c)
+state_t gpu_nvml_init(ctx_t *c)
 {
 	state_t s = EAR_SUCCESS;
 	while (pthread_mutex_trylock(&lock));
@@ -76,15 +90,15 @@ state_t nvml_init(ctx_t *c)
 	return s;
 }
 
-state_t nvml_dispose(ctx_t *c)
+state_t gpu_nvml_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
 }
 
-state_t nvml_count(ctx_t *c, uint *dev_count_in)
+state_t gpu_nvml_count_devices(ctx_t *c, uint *devs_count_in)
 {
-	if (dev_count_in != NULL) {
-		*dev_count_in = dev_count;
+	if (devs_count_in != NULL) {
+		*devs_count_in = devs_count;
 	}
 	return EAR_SUCCESS;
 }
@@ -97,7 +111,7 @@ static int static_read(int i, gpu_t *metric)
 	// Cleaning
 	memset(metric, 0, sizeof(gpu_t));
 	// Testing if all is right
-	if ((s = nvml.GetPowerMode(devices[i], &mode)) != NVML_SUCCESS) {
+	if ((s = nvml.GetPowerMode(devs[i], &mode)) != NVML_SUCCESS) {
 		return 0;
 	}
 	if (mode != NVML_FEATURE_ENABLED) {
@@ -111,12 +125,12 @@ static int static_read(int i, gpu_t *metric)
 	uint temp_gpu;
 	uint power_mw;
 	// Getting the metrics by calling NVML (no MEM temp)
-	s = nvml.GetPowerUsage(devices[i], &power_mw);
-	s = nvml.GetClocks(devices[i], NVML_CLOCK_MEM, &freq_mem_mhz);
-	s = nvml.GetClocks(devices[i], NVML_CLOCK_SM , &freq_gpu_mhz);
-	s = nvml.GetTemp(devices[i], NVML_TEMPERATURE_GPU, &temp_gpu);
-	s = nvml.GetUtil(devices[i], &util);
-	s = nvml.GetProcs(devices[i], &proc_count, procs);
+	s = nvml.GetPowerUsage(devs[i], &power_mw);
+	s = nvml.GetClocks(devs[i], NVML_CLOCK_MEM, &freq_mem_mhz);
+	s = nvml.GetClocks(devs[i], NVML_CLOCK_SM , &freq_gpu_mhz);
+	s = nvml.GetTemp(devs[i], NVML_TEMPERATURE_GPU, &temp_gpu);
+	s = nvml.GetUtil(devs[i], &util);
+	s = nvml.GetProcs(devs[i], &proc_count, procs);
 	// Pooling the data (time is not set here)
 	metric->samples  = 1;
 	metric->freq_mem = (ulong) freq_mem_mhz * 1000LU;
@@ -133,23 +147,20 @@ static int static_read(int i, gpu_t *metric)
 	return 1;
 }
 
-state_t nvml_pool(void *p)
+state_t gpu_nvml_pool(void *p)
 {
 	timestamp_t time;
 	gpu_t metric;
 	int working;
 	int i;
 
-	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Generr.api_uninitialized);
-	}
 	//
 	working = 0;
 	// Lock
 	while (pthread_mutex_trylock(&lock));
 	timestamp_getfast(&time);
 	//
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		if (!static_read(i, &metric)) {
 			continue;
 		}
@@ -184,23 +195,20 @@ state_t nvml_pool(void *p)
 	return EAR_SUCCESS;
 }
 
-state_t nvml_read(ctx_t *c, gpu_t *data)
+state_t gpu_nvml_read(ctx_t *c, gpu_t *data)
 {
-	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Generr.api_uninitialized);
-	}
 	while (pthread_mutex_trylock(&lock));
-	memcpy(data, pool, dev_count * sizeof(gpu_t));
+	memcpy(data, pool, devs_count * sizeof(gpu_t));
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;
 }
 
-state_t nvml_read_raw(ctx_t *c, gpu_t *data)
+state_t gpu_nvml_read_raw(ctx_t *c, gpu_t *data)
 {
 	timestamp_t time;
 	int i;
 	timestamp_getfast(&time);
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		static_read(i, &data[i]);
 		data[i].time     = time;
 		data[i].power_w /= 1000;

@@ -23,75 +23,41 @@
 #include <metrics/gpu/archs/eard.h>
 #include <metrics/gpu/archs/nvml.h>
 #include <metrics/gpu/archs/dummy.h>
+#include <metrics/gpu/archs/cupti.h>
+#include <metrics/gpu/archs/oneapi.h>
 
-static uint dev_count;
+static uint devs_count;
 static gpu_ops_t ops;
 static uint api;
 
-state_t gpu_load(int eard)
+void gpu_load(int eard)
 {
-	//state_t s;
+    gpu_nvml_load(&ops);
+    gpu_oneapi_load(&ops);
+    gpu_eard_load(&ops, eard);
+    gpu_dummy_load(&ops);
+    // Complementary APIs
+    gpu_cupti_load(&ops);
+}
 
-	if (api != API_NONE) {
-		return EAR_SUCCESS;
-	}
-    #if 0
-	// Load order:
-    //  1) EARD
-    //  2) NVML
-    //  3) DUMMY
-	//
-	// Why? It is because NVML uses a monitor (additional
-	// thread) to continuously store information. It is
-	// recommended to contact with EARD before.
-	if (state_ok(s = gpu_eard_status(eard))) {
-		ops.init     = gpu_eard_init;
-		ops.dispose  = gpu_eard_dispose;
-		ops.count    = gpu_eard_count;
-		ops.read     = gpu_eard_read;
-		ops.read_raw = gpu_eard_read_raw;
-		api = API_EARD;
-		debug("Loaded EARD");
-		return EAR_SUCCESS;
-	}
-	debug("Not loaded EARD: %s (%d)", state_msg, s);
-	if (state_ok(s = nvml_status())) {
-		ops.init     = nvml_init;
-		ops.dispose  = nvml_dispose;
-		ops.count    = nvml_count;
-		ops.read     = nvml_read;
-		ops.read_raw = nvml_read_raw;
-		api = API_NVML;
-		debug("Loaded NVML");
-		return EAR_SUCCESS;
-	}
-	debug("Not loaded NVML: %s (%d)", state_msg, s);
-	ops.init     = gpu_dummy_init;
-	ops.dispose  = gpu_dummy_dispose;
-	ops.count    = gpu_dummy_count;
-	ops.read     = gpu_dummy_read;
-	ops.read_raw = gpu_dummy_read_raw;
-	api = API_DUMMY;
-	debug("Loaded DUMMY");
-    #endif
-	return EAR_SUCCESS;
+void gpu_get_api(uint *api)
+{
+    if (ops.get_api != NULL) {
+        return ops.get_api(api);
+    }
+    *api = API_NONE;
 }
 
 state_t gpu_init(ctx_t *c)
 {
 	state_t s = ops.init(c);
 	if (state_ok(s)) {
-		if (state_fail(s = ops.count(c, &dev_count)))  {
+		if (state_fail(s = ops.count(c, &devs_count)))  {
 			ops.dispose(c);
 		}
 	}
-	debug("dev_count %u");
+	debug("devs_count %u");
 	return s;
-}
-
-void gpu_get_api(uint *api_in)
-{
-	*api_in = api;
 }
 
 state_t gpu_dispose(ctx_t *c)
@@ -99,14 +65,14 @@ state_t gpu_dispose(ctx_t *c)
 	preturn (ops.dispose, c);
 }
 
-state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **info, uint *devs_count)
-{
-    return EAR_SUCCESS;
-}
+//state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count)
+//{
+//    preturn (ops.get_devices, c, devs, devs_count);
+//}
 
-state_t gpu_count_devices(ctx_t *c, uint *dev_count)
+state_t gpu_count_devices(ctx_t *c, uint *devs_count)
 {
-	preturn (ops.count, c, dev_count);
+	preturn (ops.count, c, devs_count);
 }
 
 state_t gpu_read(ctx_t *c, gpu_t *data)
@@ -181,10 +147,10 @@ state_t gpu_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
 	state_t s;
 	int i;
 
-	if (xtate_fail(s, gpu_data_null(data_diff))) {
+	if (state_fail(s = gpu_data_null(data_diff))) {
 		return s;
 	}
-	for (i = 0; i < dev_count; i++) {
+	for (i = 0; i < devs_count; i++) {
 		static_data_diff(data2, data1, data_diff, i);
 	}
 	#if 0
@@ -200,7 +166,7 @@ state_t gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge)
 	// Cleaning (do not use null, because is just 1 sample)
 	memset((void *) data_merge, 0, sizeof(gpu_t));
 	// Accumulators: power and energy
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		data_merge->freq_mem += data_diff[i].freq_mem;
 		data_merge->freq_gpu += data_diff[i].freq_gpu;
 		data_merge->util_mem += data_diff[i].util_mem;
@@ -214,12 +180,12 @@ state_t gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge)
 	data_merge->time    = data_diff[0].time;
 	data_merge->samples = data_diff[0].samples;
 	// Averages
-	data_merge->freq_mem /= dev_count;
-	data_merge->freq_gpu /= dev_count;
-	data_merge->util_mem /= dev_count;
-	data_merge->util_gpu /= dev_count;
-	data_merge->temp_gpu /= dev_count;
-	data_merge->temp_mem /= dev_count;
+	data_merge->freq_mem /= devs_count;
+	data_merge->freq_gpu /= devs_count;
+	data_merge->util_mem /= devs_count;
+	data_merge->util_gpu /= devs_count;
+	data_merge->temp_gpu /= devs_count;
+	data_merge->temp_mem /= devs_count;
 
 	return EAR_SUCCESS;
 }
@@ -229,7 +195,7 @@ state_t gpu_data_alloc(gpu_t **data)
 	if (data == NULL) {
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
-	*data = calloc(dev_count, sizeof(gpu_t));
+	*data = calloc(devs_count, sizeof(gpu_t));
 	if (*data == NULL) {
 		return_msg(EAR_SYSCALL_ERROR, strerror(errno));
 	}
@@ -249,7 +215,7 @@ state_t gpu_data_null(gpu_t *data)
 	if (data == NULL) {
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
-	memset(data, 0, dev_count * sizeof(gpu_t));
+	memset(data, 0, devs_count * sizeof(gpu_t));
 	return EAR_SUCCESS;
 }
 
@@ -258,14 +224,14 @@ state_t gpu_data_copy(gpu_t *data_dst, gpu_t *data_src)
 	if (data_dst == NULL || data_src == NULL) {
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
-	memcpy(data_dst, data_src, dev_count * sizeof(gpu_t));
+	memcpy(data_dst, data_src, devs_count * sizeof(gpu_t));
 	return EAR_SUCCESS;
 }
 
 void gpu_data_print(gpu_t *data, int fd)
 {
 	int i;
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		dprintf(fd, "gpu%u: %0.2lfJ, %0.2lfW, %luMHz, %luMHz, %lu%%, %lu%%, %luº, %luº, %u, %lu\n", i,
 			data[i].energy_j, data[i].power_w,
 			data[i].freq_gpu, data[i].freq_mem,
@@ -281,7 +247,7 @@ void gpu_data_tostr(gpu_t *data, char *buffer, int length)
 	size_t s;
 	int i;
 
-	for (i = accuml = 0; i < dev_count && length > 0; ++i) {
+	for (i = accuml = 0; i < devs_count && length > 0; ++i) {
 		s = snprintf(&buffer[accuml], length,
 			 "gpu%u: %0.2lfJ, %0.2lfW, %luKHz, %luMHz, %lu, %lu, %lu, %lu, %u, %lu correct=%u\n", i,
 			 data[i].energy_j, data[i].power_w,

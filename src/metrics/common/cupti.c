@@ -29,8 +29,8 @@
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
+#define CUPTI_N      14
 #define CUDA_N       4
-#define CUPTI_N      11
 #define CUDA_LIB     "libcuda.so"
 #define CUPTI_LIB    "libcupti.so"
 
@@ -44,16 +44,33 @@ static const char *cuda_names[] = {
 static const char *cupti_names[] = {
     "cuptiSubscribe",
     "cuptiEnableCallback",
+    "cuptiEnableDomain",
     "cuptiMetricGetIdFromName",
     "cuptiMetricGetNumEvents",
     "cuptiMetricCreateEventGroupSets",
     "cuptiSetEventCollectionMode",
+    "cuptiEventGroupSetsDestroy",
     "cuptiEventGroupSetAttribute",
     "cuptiEventGroupGetAttribute",
     "cuptiEventGroupEnable",
     "cuptiEventGroupReadAllEvents",
+    "cuptiEventGetAttribute",
     "cuptiGetResultString",
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static uint            devs_count;
@@ -148,10 +165,10 @@ state_t cupti_open(cupti_t *cupti_in, cuda_t *cu_in)
     }
     fini:
     pthread_mutex_unlock(&lock);
-    if (cupti_in != NULL) {
+    if (ok && cupti_in != NULL) {
         memcpy(cupti_in, &cupti, sizeof(cupti_t));
     }
-    if (cu_in != NULL) {
+    if (ok && cu_in != NULL) {
         memcpy(cu_in, &cu, sizeof(cuda_t));
     }
     return s;

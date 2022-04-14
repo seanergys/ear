@@ -23,11 +23,11 @@
 // Provisional
 #define HACK_ONEAPI_FILE  "HACK_ONEAPI_FILE"
 
-#ifndef ZERO_BASE
+#ifndef ONEAPI_BASE
 #define ZE_PATH          ""
 #define ZE_SUCCESS       0
 #else
-#define ZE_PATH          ZERO_BASE
+#define ZE_PATH          ONEAPI_BASE
 #define ZE_SUCCESS       ZE_RESULT_SUCCESS
 #endif
 #define ZE_N             17
@@ -205,7 +205,7 @@ static state_t static_init()
 state_t oneapi_open(ze_t *ze_in)
 {
     state_t s = EAR_SUCCESS;
-    #ifndef ZERO_BASE
+    #ifndef ONEAPI_BASE
     return EAR_ERROR;
     #endif
     while (pthread_mutex_trylock(&lock));
