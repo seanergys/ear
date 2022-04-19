@@ -61,19 +61,13 @@ typedef struct gpu_s
 	uint correct;
 } gpu_t;
 
-typedef struct gpu_devs_s {
-    ullong serial;
-    uint index;
-} gpu_devs_t;
-
 typedef struct gpu_ops_s
 {
     void    (*get_api)       (uint *api);
-    state_t (*init[2])       (ctx_t *c);
-    state_t (*dispose[2])    (ctx_t *c);
-//    state_t (*get_devices)   (ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
+    state_t (*init)          (ctx_t *c);
+    state_t (*dispose)       (ctx_t *c);
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
-    state_t (*read[2])       (ctx_t *c, gpu_t *data);
+    state_t (*read)          (ctx_t *c, gpu_t *data);
     state_t (*read_raw)      (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
 
@@ -86,8 +80,6 @@ void gpu_get_api(uint *api);
 state_t gpu_init(ctx_t *c);
 
 state_t gpu_dispose(ctx_t *c);
-
-//state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
 
 // Counts the number of GPUs (devices) in the node.
 state_t gpu_count_devices(ctx_t *c, uint *dev_count);

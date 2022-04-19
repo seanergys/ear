@@ -15,33 +15,19 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
+#include <metrics/common/nvml.h>
 #include <management/gpu/archs/nvml.h>
 
-static struct error_s {
-	char *init;
-	char *init_not;
-	char *null_data;
-	char *gpus_not;
-	char *dlopen;
-} Error = {
-	.init         = "context already initialized or not empty",
-	.init_not     = "context not initialized",
-	.null_data    = "data pointer is NULL",
-	.gpus_not     = "no GPUs detected",
-	.dlopen       = "error during dlopen",
-};
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static uint			  dev_count;
-static nvmlDevice_t  *devices;
+static nvml_t         nvml;
+static uint			  devs_count;
+static nvmlDevice_t  *devs;
 static ulong 		 *clock_max_default; // KHz
 static ulong		 *clock_max; // KHz
 static ulong		 *clock_max_mem; // MHz
@@ -50,13 +36,53 @@ static uint			 *clock_lens;
 static ulong		 *power_max_default; // W
 static ulong		 *power_max; // W
 static ulong		 *power_min; // W
-static uint			  ok_unprivileged;
 static uint			  ok_init;
 
-static state_t static_init_unprivileged_undo(char *error)
+#define myErrorString(r) \
+	((char *) nvml.ErrorString(r))
+
+void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops)
+{
+    if (state_fail(nvml_open(&nvml))) {
+        debug("nvml_open failed: %s", state_msg);
+        return;
+    }
+    if (state_fail(nvml_get_devices(&devs, &devs_count))) {
+        debug("nvml_get_devices failed: %s", state_msg);
+        return;
+    }
+    // Set always
+    apis_set(ops->init                  , mgt_gpu_nvml_init);
+    apis_set(ops->dispose               , mgt_gpu_nvml_dispose);
+    // Queries
+    apis_set(ops->get_devices,            mgt_gpu_nvml_get_devices);
+    apis_set(ops->count_devices         , mgt_gpu_nvml_count_devices);
+    apis_set(ops->freq_limit_get_current, mgt_gpu_nvml_freq_limit_get_current);
+    apis_set(ops->freq_limit_get_default, mgt_gpu_nvml_freq_limit_get_default);
+    apis_set(ops->freq_limit_get_max    , mgt_gpu_nvml_freq_limit_get_max);
+    apis_set(ops->freq_list             , mgt_gpu_nvml_freq_list);
+    apis_set(ops->power_cap_get_current , mgt_gpu_nvml_power_cap_get_current);
+    apis_set(ops->power_cap_get_default , mgt_gpu_nvml_power_cap_get_default);
+    apis_set(ops->power_cap_get_rank    , mgt_gpu_nvml_power_cap_get_rank);
+    // Checking if NVML is capable to run commands
+    if (!nvml_is_privileged()) {
+        return;
+    }
+    // Commands
+    apis_set(ops->freq_limit_reset      , mgt_gpu_nvml_freq_limit_reset);
+    apis_set(ops->freq_limit_set        , mgt_gpu_nvml_freq_limit_set);
+    apis_set(ops->power_cap_reset       , mgt_gpu_nvml_power_cap_reset);
+    apis_set(ops->power_cap_set         , mgt_gpu_nvml_power_cap_set);
+}
+
+static state_t static_dispose(ctx_t *c, state_t s, char *error)
 {
 	int d;
-	for (d = 0; d < dev_count; ++d) {
+	
+	#define static_free(v) \
+		if (v != NULL) { free(v); v = NULL; }
+
+	for (d = 0; d < devs_count; ++d) {
 		static_free(clock_list[d]);
 	}
 	static_free(clock_max_default);
@@ -67,10 +93,11 @@ static state_t static_init_unprivileged_undo(char *error)
 	static_free(power_min);
 	static_free(clock_list);
 	static_free(clock_lens);
+
 	return_msg(EAR_ERROR, error);
 }
 
-static state_t static_init_unprivileged()
+static state_t static_init(ctx_t *c)
 {
 	nvmlReturn_t r;
 	uint aux_mem[1000];
@@ -80,36 +107,30 @@ static state_t static_init_unprivileged()
 
 	// Allocation
 	#define static_alloc(v, l, s) \
-		if ((v = calloc(l, s)) == NULL) { return static_init_unprivileged_undo(strerror(errno)); }
-	
-	debug("static_init_unprivileged");
+		if ((v = calloc(l, s)) == NULL) { return static_dispose(c, EAR_ERROR, strerror(errno)); }
 
-	static_alloc(clock_max_default, dev_count, sizeof(ulong));
-	static_alloc(clock_max,         dev_count, sizeof(ulong));
-	static_alloc(clock_max_mem,     dev_count, sizeof(ulong));
-	static_alloc(power_max_default, dev_count, sizeof(ulong));
-	static_alloc(power_max,         dev_count, sizeof(ulong));
-	static_alloc(power_min,         dev_count, sizeof(ulong));
-	static_alloc(clock_list,        dev_count, sizeof(ulong *));
-	static_alloc(clock_lens,        dev_count, sizeof(uint));
+	static_alloc(clock_max_default, devs_count, sizeof(ulong));
+	static_alloc(clock_max,         devs_count, sizeof(ulong));
+	static_alloc(clock_max_mem,     devs_count, sizeof(ulong));
+	static_alloc(power_max_default, devs_count, sizeof(ulong));
+	static_alloc(power_max,         devs_count, sizeof(ulong));
+	static_alloc(power_min,         devs_count, sizeof(ulong));
+	static_alloc(clock_list,        devs_count, sizeof(ulong *));
+	static_alloc(clock_lens,        devs_count, sizeof(uint));
 
-	/*
-	 *
-	 * Power fill
-	 *
-	 */
+	// Power fill
 	debug("power list:");
-	for (d = 0; d < dev_count; ++d)
+	for (d = 0; d < devs_count; ++d)
 	{
-		if ((r = nvml.GetPowerDefaultLimit(devices[d], &aux)) != NVML_SUCCESS) {
+		if ((r = nvml.GetPowerDefaultLimit(devs[d], &aux)) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetPowerManagementDefaultLimit returned %d (%s)",
 				  r, nvml.ErrorString(r));
-			return static_init_unprivileged_undo(myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
-		if ((r = nvml.GetPowerLimitConstraints(devices[d], &c1, &c2)) != NVML_SUCCESS) {
+		if ((r = nvml.GetPowerLimitConstraints(devs[d], &c1, &c2)) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetPowerManagementLimitConstraints returned %d (%s)",
 				  r, nvml.ErrorString(r));
-			return static_init_unprivileged_undo(myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
 		power_max_default[d] = ((ulong) aux) / 1000LU;
 		power_max[d] = ((ulong) c2) / 1000LU;
@@ -118,23 +139,18 @@ static state_t static_init_unprivileged()
 		debug("D%d new max: %lu W", d, power_max[d]);
 		debug("D%d new min: %lu W", d, power_min[d]);
 	}
-
-	/*
-	 *
-	 * Clocks fill
-	 *
-	 */
+	// Clocks fill
 	debug("clock list:");
-	for (d = 0; d < dev_count; ++d)
+	for (d = 0; d < devs_count; ++d)
 	{
 		clock_max_default[d] = 0LU;
 		clock_max[d]         = 0LU;
 
 		//Retrieving default application clocks
-		if ((r = nvml.GetDefaultAppsClock(devices[d], NVML_CLOCK_GRAPHICS, &aux)) != NVML_SUCCESS) {
+		if ((r = nvml.GetDefaultAppsClock(devs[d], NVML_CLOCK_GRAPHICS, &aux)) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetDefaultApplicationsClock(dev: %d) returned %d (%s)",
 				  d, r, nvml.ErrorString(r));
-			return static_init_unprivileged_undo(myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
 
 		clock_max_default[d] = ((ulong) aux) * 1000LU;
@@ -144,10 +160,10 @@ static state_t static_init_unprivileged()
 		 * Retrieving a list of clock P_STATEs and saving its maximum.
 		 */
 		c1 = 1000;
-		if ((r = nvml.GetMemoryClocks(devices[d], &c1, aux_mem)) != NVML_SUCCESS) {
+		if ((r = nvml.GetMemoryClocks(devs[d], &c1, aux_mem)) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetSupportedMemoryClocks(dev: %d) returned %d (%s)",
 				  d, r, nvml.ErrorString(r));
-			return static_init_unprivileged_undo(myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
 		for (m = 0; m < c1; ++m)
 		{
@@ -157,10 +173,10 @@ static state_t static_init_unprivileged()
 			debug("D%d MEM %d: %d (%u)", d, m, aux_mem[m], c1);
 
 			c2 = 1000;
-			if ((r = nvml.GetGraphicsClocks(devices[d], aux_mem[m], &c2, aux_gpu)) != NVML_SUCCESS) {
+			if ((r = nvml.GetGraphicsClocks(devs[d], aux_mem[m], &c2, aux_gpu)) != NVML_SUCCESS) {
 				debug("\t\tnvmlDeviceGetSupportedGraphicsClocks(dev: %d) returned %d (%s)",
 					  d, r, nvml.ErrorString(r));
-				return static_init_unprivileged_undo(myErrorString(r));
+				return static_dispose(c, EAR_ERROR, myErrorString(r));
 			}
 
 			for (g = 0; g < c2; ++g) {
@@ -174,18 +190,13 @@ static state_t static_init_unprivileged()
 		}
 		clock_max[d] *= 1000LU;
 	}
-
-	/*
-	 *
-	 * P_STATEs fill
-	 *
-	 */
-	for (d = 0; d < dev_count; ++d)
+	// P_STATEs fill
+	for (d = 0; d < devs_count; ++d)
 	{
 		clock_lens[d] = 1000;
-		if ((r = nvml.GetGraphicsClocks(devices[d], clock_max_mem[d], &clock_lens[d], aux_gpu)) != NVML_SUCCESS) {
+		if ((r = nvml.GetGraphicsClocks(devs[d], clock_max_mem[d], &clock_lens[d], aux_gpu)) != NVML_SUCCESS) {
 			clock_lens[d] = 0;
-			return static_init_unprivileged_undo(myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
 		clock_list[d] = calloc(clock_lens[d], sizeof(ulong *));
 		for (m = 0; m < clock_lens[d]; ++m) {
@@ -194,140 +205,92 @@ static state_t static_init_unprivileged()
 		}
 	}
 
-	ok_unprivileged = 1;
-
-	return EAR_SUCCESS;
-}
-
-static state_t static_init()
-{
-	nvmlReturn_t r;
-	uint aux;
-	int d;
-	debug("static_init");
+	#if 0
 	// Full clocks reset (application + locked)
-	for (d = 0; d < dev_count; ++d) {
-		if ((r = nvml.ResetAppsClocks(devices[d])) != NVML_SUCCESS) {
+	for (d = 0; d < devs_count; ++d) {
+		if ((r = nvml.ResetAppsClocks(devs[d])) != NVML_SUCCESS) {
 			debug("nvmlDeviceResetApplicationsClocks(dev: %d) returned %d (%s)",
 				  d, r, nvml.ErrorString(r));
-			return_msg(EAR_ERROR, myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
-		if ((r = nvml.ResetLockedClocks(devices[d])) != NVML_SUCCESS) {
+		if ((r = nvml.ResetLockedClocks(devs[d])) != NVML_SUCCESS) {
 			debug("nvmlDeviceResetGpuLockedClocks(dev: %d) returned %d (%s)",
 				  d, r, nvml.ErrorString(r));
 			//return_msg(EAR_ERROR, myErrorString(r));
 		}
 	}
-
 	// Power limit reset
-	for (d = 0; d < dev_count; ++d) {
+	for (d = 0; d < devs_count; ++d) {
 		aux = ((uint) power_max_default[d]) * 1000U;
-		if ((r = nvml.SetPowerLimit(devices[d], aux)) != NVML_SUCCESS) {
+		if ((r = nvml.SetPowerLimit(devs[d], aux)) != NVML_SUCCESS) {
 			debug("nvmlDeviceSetPowerManagementLimit(dev: %d) returned %d (%s)",
 				  d, r, nvml.ErrorString(r));
-			return_msg(EAR_ERROR, myErrorString(r));
+			return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
 	}
+	#endif
+
 	return EAR_SUCCESS;
 }
 
-state_t mgt_nvml_init(ctx_t *c)
+state_t mgt_gpu_nvml_init(ctx_t *c)
 {
-	state_t s;
-	debug("mgt_nvml_init");
-	if (xtate_fail(s, mgt_nvml_init_unprivileged(c))) {
-		return s;
-	}
-#if 1
-	while (pthread_mutex_trylock(&lock));
-	if (ok_init) {
-		pthread_mutex_unlock(&lock);
-		return EAR_SUCCESS;
-	}
-	if (xtate_fail(s, static_init())) {
-		pthread_mutex_unlock(&lock);
-		return s;
-	}
-	ok_init = 1;
-	debug("OK init");
-	pthread_mutex_unlock(&lock);
-#endif
-	return EAR_SUCCESS;
-}
-
-state_t mgt_nvml_init_unprivileged(ctx_t *c)
-{
-	state_t s;
+	state_t s = EAR_SUCCESS;
 	debug("mgt_nvml_init_unprivileged");
 	while (pthread_mutex_trylock(&lock));
-	if (ok_unprivileged) {
-		pthread_mutex_unlock(&lock);
-		return EAR_SUCCESS;
+	if (!ok_init) {
+		if (state_ok(s = static_init(c))) {
+			ok_init = 1;
+		}
 	}
-	if (xtate_fail(s, static_init_unprivileged())) {
-		pthread_mutex_unlock(&lock);
-		return s;
-	}
-	ok_unprivileged = 1;
-	debug("OK init unprivileged");
 	pthread_mutex_unlock(&lock);
+	return s;
+}
+
+state_t mgt_gpu_nvml_dispose(ctx_t *c)
+{
+	return static_dispose(c, EAR_SUCCESS, NULL);
+}
+
+state_t mgt_gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
+{
+    return nvml_get_devices(devs, devs_count);
+}
+
+state_t mgt_gpu_nvml_count_devices(ctx_t *c, uint *devs_count_in)
+{
+	if (devs_count_in != NULL) {
+		*devs_count_in = devs_count;
+	}
 	return EAR_SUCCESS;
 }
 
-state_t mgt_nvml_dispose(ctx_t *c)
+state_t mgt_gpu_nvml_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	return EAR_SUCCESS;
-}
-
-state_t mgt_nvml_count(ctx_t *c, uint *_dev_count)
-{
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	if (_dev_count != NULL) {
-		*_dev_count = dev_count;
-	}
-	return EAR_SUCCESS;
-}
-
-state_t nvml_freq_limit_get_current(ctx_t *c, ulong *khz)
-{
-	int i;
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
 	uint mhz;
-	for (i = 0; i < dev_count; ++i)
+	int i;
+	for (i = 0; i < devs_count; ++i)
 	{
-		nvml.GetClock(devices[i], NVML_CLOCK_GRAPHICS, NVML_CLOCK_ID_APP_CLOCK_TARGET, &mhz);
+		nvml.GetClock(devs[i], NVML_CLOCK_GRAPHICS, NVML_CLOCK_ID_APP_CLOCK_TARGET, &mhz);
 		debug("NVML_CLOCK_ID_APP_CLOCK_TARGET %u KHz", mhz * 1000U);
 		khz[i] = ((ulong) mhz) * 1000LU;
 	}
 	return EAR_SUCCESS;
 }
 
-state_t nvml_freq_limit_get_default(ctx_t *c, ulong *khz)
+state_t mgt_gpu_nvml_freq_limit_get_default(ctx_t *c, ulong *khz)
 {
 	int i;
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		khz[i] = clock_max_default[i];
 	}
 	return EAR_SUCCESS;
 }
 
-state_t nvml_freq_limit_get_max(ctx_t *c, ulong *khz)
+state_t mgt_gpu_nvml_freq_limit_get_max(ctx_t *c, ulong *khz)
 {
 	int i;
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		khz[i] = clock_max[i];
 	}
 	return EAR_SUCCESS;
@@ -339,12 +302,12 @@ static state_t clocks_reset(int i)
 	debug("resetting clocks of device %d", i);
 
 	#if 0
-	if ((r = nvml.ResetLockedClocks(devices[i])) != NVML_SUCCESS)
+	if ((r = nvml.ResetLockedClocks(devs[i])) != NVML_SUCCESS)
 	{
 		debug("nvmlDeviceResetGpuLockedClocks(dev: %d) returned %d (%s)",
 			  i, r, nvml.ErrorString(r));
 	#endif
-		if ((r = nvml.ResetAppsClocks(devices[i])) != NVML_SUCCESS) {
+		if ((r = nvml.ResetAppsClocks(devs[i])) != NVML_SUCCESS) {
 			return_msg(EAR_ERROR, myErrorString(r));
 		}
 	#if 0
@@ -353,93 +316,16 @@ static state_t clocks_reset(int i)
 	return EAR_SUCCESS;
 }
 
-state_t nvml_freq_limit_reset(ctx_t *c)
+state_t mgt_gpu_nvml_freq_limit_reset(ctx_t *c)
 {
 	state_t s, e;
 	int i;
-	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0, e = EAR_SUCCESS; i < dev_count; ++i) {
-		if (xtate_fail(s, clocks_reset(i))) {
+	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
+		if (state_fail(s = clocks_reset(i))) {
 			e = s;
 		}
 	}
 	return e;
-}
-
-state_t nvml_freq_get_valid(ctx_t *c, uint d, ulong freq_ref, ulong *freq_near)
-{
-	ulong *_clock_list = clock_list[d];
-	uint   _clock_lens = clock_lens[d];
-	ulong freq_floor;
-	ulong freq_ceil;
-	uint i;
-
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-
-	if (freq_ref > _clock_list[0]) {
-		*freq_near = _clock_list[0];
-		return EAR_SUCCESS;
-	}
-
-	for (i = 0; i < _clock_lens-1; ++i)
-	{
-		freq_ceil  = _clock_list[i+0];
-		freq_floor = _clock_list[i+1];
-
-		if (freq_ref <= freq_ceil && freq_ref >= freq_floor) {
-			if ((freq_ceil - freq_ref) <= (freq_ref - freq_floor)) {
-				*freq_near = freq_ceil;
-				return EAR_SUCCESS;
-			} else {
-				*freq_near = freq_floor;
-				return EAR_SUCCESS;
-			}
-		}
-	}
-	*freq_near  = _clock_list[i];
-	return EAR_SUCCESS;
-}
-
-state_t nvml_freq_get_next(ctx_t *c, uint d, ulong freq_ref, uint *freq_idx, uint flag)
-{
-	ulong *_clock_list = clock_list[d];
-	uint   _clock_lens = clock_lens[d];
-	ulong freq_floor;
-	ulong freq_ceil;
-	uint i;
-	
-	if (freq_ref >= _clock_list[0]) {
-		if (flag == FREQ_TOP) {
-			*freq_idx = 0;
-		} else {
-			*freq_idx = 1;
-		}
-		return EAR_SUCCESS;
-	}
-	for (i = 1; i < _clock_lens-1; ++i)
-	{
-		freq_ceil  = _clock_list[i+0];
-		freq_floor = _clock_list[i+1];
-		
-		if (freq_ref == freq_ceil || (freq_ref < freq_ceil && freq_ref > freq_floor)) {
-			if (flag == FREQ_TOP) {
-				*freq_idx = i-1;
-			} else {
-				*freq_idx = i+1;
-			}
-			return EAR_SUCCESS;
-		}
-	}
-	if (flag == FREQ_TOP) {
-		*freq_idx = i-1;
-	} else {
-		*freq_idx = i;
-	}
-	return EAR_SUCCESS;
 }
 
 static state_t clocks_set(int i, uint mhz)
@@ -448,17 +334,17 @@ static state_t clocks_set(int i, uint mhz)
 	uint parsed_mhz;
 	ulong aux;
 
-	nvml_freq_get_valid(NULL, i, ((ulong) mhz) * 1000LU, &aux);
+	mgt_gpu_freq_get_valid(NULL, i, ((ulong) mhz) * 1000LU, &aux);
 	parsed_mhz = ((uint) aux) / 1000U;
 
 	debug("D%d setting clock %u KHz (parsed => %u)", i, mhz * 1000U, parsed_mhz * 1000U);
 #if 0
-	if ((r = nvml.SetLockedClocks(devices[i], 0, parsed_mhz)) != NVML_SUCCESS)
+	if ((r = nvml.SetLockedClocks(devs[i], 0, parsed_mhz)) != NVML_SUCCESS)
 	{
 		debug("nvmlDeviceSetGpuLockedClocks(dev: %d) returned %d (%s)",
 			i, r, nvml.ErrorString(r));
 #endif
-		if ((r = nvml.SetAppsClocks(devices[i], clock_max_mem[i], parsed_mhz)) != NVML_SUCCESS)
+		if ((r = nvml.SetAppsClocks(devs[i], clock_max_mem[i], parsed_mhz)) != NVML_SUCCESS)
 		{
 			debug("nvmlDeviceSetApplicationsClocks(dev: %d) returned %d (%s)",
 				i, r, nvml.ErrorString(r));
@@ -476,17 +362,15 @@ static state_t clocks_set(int i, uint mhz)
 	return EAR_SUCCESS;
 }
 
-state_t nvml_freq_limit_set(ctx_t *c, ulong *khz)
+/* If freq == 0 for a given GPU, it's not changed */
+state_t mgt_gpu_nvml_freq_limit_set(ctx_t *c, ulong *khz)
 {
 	state_t s, e;
 	int i;
-	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	debug("nvml_clock_limit_set devices %d",dev_count);
-	for (i = 0, e = EAR_SUCCESS; i < dev_count; ++i) {
+	debug("nvml_clock_limit_set devices %d",devs_count);
+	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
 		if (khz[i] > 0){
-		  if (xtate_fail(s, clocks_set(i, (uint) (khz[i] / 1000LU)))) {
+		  if (xtate_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
 			  e = s;
 		  }
 		}
@@ -494,12 +378,9 @@ state_t nvml_freq_limit_set(ctx_t *c, ulong *khz)
 	return e;
 }
 
-state_t nvml_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
+state_t mgt_gpu_nvml_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
 	debug("nvml_freq_list");
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
 	if (list_khz != NULL) {
 		*list_khz = (const ulong **) clock_list;
 	}
@@ -509,17 +390,15 @@ state_t nvml_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 	return EAR_SUCCESS;
 }
 
-state_t nvml_power_cap_get_current(ctx_t *c, ulong *watts)
+state_t mgt_gpu_nvml_power_cap_get_current(ctx_t *c, ulong *watts)
 {
 	nvmlReturn_t r;
 	state_t e;
 	uint aux;
 	int i;
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0, e = EAR_SUCCESS; i < dev_count; ++i) {
-		if ((r = nvml.GetPowerLimit(devices[i], &aux)) != NVML_SUCCESS) {
+
+	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
+		if ((r = nvml.GetPowerLimit(devs[i], &aux)) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetPowerManagementLimit(dev: %d) returned %d (%s)",
 				  i, r, nvml.ErrorString(r));
 			// Setting error and unknown value parameter
@@ -532,28 +411,22 @@ state_t nvml_power_cap_get_current(ctx_t *c, ulong *watts)
 	return e;
 }
 
-state_t nvml_power_cap_get_default(ctx_t *c, ulong *watts)
+state_t mgt_gpu_nvml_power_cap_get_default(ctx_t *c, ulong *watts)
 {
 	int i;
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0; i < dev_count; ++i) {
+	for (i = 0; i < devs_count; ++i) {
 		watts[i] = power_max_default[i];
 	}
 	return EAR_SUCCESS;
 }
 
-state_t nvml_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
+state_t mgt_gpu_nvml_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
 {
 	int i;
-	if (!ok_unprivileged) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0; i < dev_count && watts_max != NULL; ++i) {
+	for (i = 0; i < devs_count && watts_max != NULL; ++i) {
 		watts_max[i] = power_max[i];
 	}
-	for (i = 0; i < dev_count && watts_min != NULL; ++i) {
+	for (i = 0; i < devs_count && watts_min != NULL; ++i) {
 		watts_min[i] = power_min[i];
 	}
 	return EAR_SUCCESS;
@@ -564,7 +437,7 @@ static state_t powers_set(int i, uint mw)
 	nvmlReturn_t r;
 	
 	debug("D%d setting power to %u mW", i, mw);
-	if ((r = nvml.SetPowerLimit(devices[i], mw)) != NVML_SUCCESS)
+	if ((r = nvml.SetPowerLimit(devs[i], mw)) != NVML_SUCCESS)
 	{
 		debug("nvmlDeviceSetPowerManagementLimit(dev: %d) returned %d (%s)",
 			  i, r, nvml.ErrorString(r));
@@ -573,20 +446,21 @@ static state_t powers_set(int i, uint mw)
 	return EAR_SUCCESS;
 }
 
-state_t nvml_power_cap_reset(ctx_t *c)
+state_t mgt_gpu_nvml_power_cap_reset(ctx_t *c)
 {
-	return nvml_power_cap_set(c, power_max_default);
+	return mgt_gpu_nvml_power_cap_set(c, power_max_default);
 }
 
-state_t nvml_power_cap_set(ctx_t *c, ulong *watts)
+state_t mgt_gpu_nvml_power_cap_set(ctx_t *c, ulong *watts)
 {
 	state_t s, e;
 	int i;
-	if (!ok_init) {
-		return_msg(EAR_NOT_INITIALIZED, Error.init_not);
-	}
-	for (i = 0, e = EAR_SUCCESS; i < dev_count; ++i) {
-		if (xtate_fail(s, powers_set(i, (uint) (watts[i] * 1000LU)))) {
+
+	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
+        if (watts == 0LU) {
+            continue;
+        }
+		if (state_fail(s = powers_set(i, (uint) (watts[i] * 1000LU)))) {
 			e = s;
 		}
 	}

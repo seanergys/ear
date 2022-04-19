@@ -217,7 +217,7 @@ state_t oneapi_open(ze_t *ze_in)
             ok = 1;
         }
     }
-    fini:
+fini:
     pthread_mutex_unlock(&lock);
     if (ze_in != NULL) {
         memcpy(ze_in, &ze, sizeof(ze_t));
@@ -228,4 +228,13 @@ state_t oneapi_open(ze_t *ze_in)
 state_t oneapi_close()
 {
     return EAR_SUCCESS;
+}
+
+int oneapi_is_privileged()
+{
+    if (!ok) {
+        return 0;
+    }
+    // Provisional
+    return (getuid() == 0);
 }

@@ -27,10 +27,12 @@
 #include <metrics/gpu/archs/oneapi.h>
 
 static uint devs_count;
-static gpu_ops_t ops;
+static gpu_ops_t ops[2];
 
 void gpu_load(int eard)
 {
+    // NVML and ONEAPI are fully loaded.
+    // If not, EARD is fully loaded.
     gpu_nvml_load(&ops);
     gpu_oneapi_load(&ops);
     gpu_eard_load(&ops, eard);
@@ -41,8 +43,8 @@ void gpu_load(int eard)
 
 void gpu_get_api(uint *api)
 {
-    if (ops.get_api != NULL) {
-        return ops.get_api(api);
+    if (ops[0].get_api != NULL) {
+        return ops[0].get_api(api);
     }
     *api = API_NONE;
 }
@@ -51,42 +53,38 @@ state_t gpu_init(ctx_t *c)
 {
     state_t s;
     int i = 0;
-    while (ops.init[i] != NULL) {
-        if (state_fail(s = ops.init[i++](c))) {
+    while (ops[i].init != NULL) {
+        if (state_fail(s = ops[i].init(c))) {
             return s;
         }
     }
-    return ops.count_devices(c, &devs_count);
+    return ops[0].count_devices(c, &devs_count);
 }
 
 state_t gpu_dispose(ctx_t *c)
 {
     state_t s;
     int i = 0;
-    while (ops.dispose[i] != NULL) {
-        if (state_fail(s = ops.dispose[i++](c))) {
+
+    while (ops[0].dispose[i] != NULL) {
+        if (state_fail(s = ops[0].dispose[i++](c))) {
             return s;
         }
     }
     return s;
 }
 
-//state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count)
-//{
-//    preturn (ops.get_devices, c, devs, devs_count);
-//}
-
 state_t gpu_count_devices(ctx_t *c, uint *devs_count)
 {
-	preturn (ops.count_devices, c, devs_count);
+	preturn (ops[0].count_devices, c, devs_count);
 }
 
 state_t gpu_read(ctx_t *c, gpu_t *data)
 {
     state_t s;
     int i = 0;
-    while (ops.read[i] != NULL) {
-        if (state_fail(s = ops.read[i++](c, data))) {
+    while (ops[i].read != NULL) {
+        if (state_fail(s = ops[i].read(c, data))) {
             return s;
         }
     }
@@ -95,7 +93,7 @@ state_t gpu_read(ctx_t *c, gpu_t *data)
 
 state_t gpu_read_raw(ctx_t *c, gpu_t *data)
 {
-	preturn (ops.read_raw, c, data);
+	preturn (ops[0].read_raw, c, data);
 }
 
 state_t gpu_read_diff(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff)

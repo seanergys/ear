@@ -38,21 +38,21 @@
 
 static const char *nvml_names[] =
 {
-    "nvmlInit_v2",
+    "nvmlInit_v2", //NP (No Permissions)
     "nvmlDeviceGetCount_v2",
-    "nvmlDeviceGetHandleByIndex_v2",
+    "nvmlDeviceGetHandleByIndex_v2", //NP
     "nvmlDeviceGetPowerManagementMode",
     "nvmlDeviceGetPowerUsage",
     "nvmlDeviceGetClockInfo",
     "nvmlDeviceGetTemperature",
     "nvmlDeviceGetUtilizationRates",
-    "nvmlDeviceGetComputeRunningProcesses",
+    "nvmlDeviceGetComputeRunningProcesses", //NP
     "nvmlDeviceGetDefaultApplicationsClock",
     "nvmlDeviceGetSupportedMemoryClocks",
     "nvmlDeviceGetSupportedGraphicsClocks",
     "nvmlDeviceGetClock",
-    "nvmlDeviceSetGpuLockedClocks",
-    "nvmlDeviceSetApplicationsClocks",
+    "nvmlDeviceSetGpuLockedClocks", //NP
+    "nvmlDeviceSetApplicationsClocks", //NP
     "nvmlDeviceResetApplicationsClocks",
     "nvmlDeviceResetGpuLockedClocks",
     "nvmlDeviceGetPowerManagementLimit",
@@ -166,4 +166,18 @@ state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in)
         *devs_count_in = devs_count;
     }
     return EAR_SUCCESS;
+}
+
+int nvml_is_privileged()
+{
+    #if 0
+    nvmlEnableState_t e;
+    if ((r = nvml.GetAPIRestriction(devs[d], NVML_APP_CLOCKS_PERMISSIONS, &e)) != NVML_SUCCESS) {}
+    if ((r = nvml.GetAPIRestriction(devs[d], NVML_BOOSTED_CLOCKS_PERMISSIONS, &e)) != NVML_SUCCESS) {}
+    #endif
+    if (!ok) {
+        return 0;
+    }
+    // Provisional
+    return (getuid() == 0);
 }

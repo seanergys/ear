@@ -98,9 +98,9 @@ void gpu_cupti_load(gpu_ops_t *ops)
     if (state_fail(cupti_open(&cupti, &cu))) {
         return;
     }
-    apis_add(ops->init,    gpu_cupti_init);
-    apis_add(ops->dispose, gpu_cupti_dispose);
-    apis_add(ops->read,    gpu_cupti_read);
+    apis_add(ops, init,    gpu_cupti_init);
+    apis_add(ops, dispose, gpu_cupti_dispose);
+    apis_add(ops, read,    gpu_cupti_read);
 }
 
 static state_t intern_init()

@@ -72,9 +72,6 @@ typedef struct metrics_s {
         op = func; \
     }
 
-#define apis_put0(op, func) \
-    apis_put(op [0], func)
-
 /* Replaces the currect function of the operation. */
 #define apis_set(op, func) op = func;
 
@@ -85,10 +82,10 @@ typedef struct metrics_s {
 #define apis_not(ops) (ops->init == NULL)
 
 /* Adds a new function to an array. */
-#define apis_add(op, func) \
-	apis_append((void **) op, func);
+#define apis_add(obj, obj_func, func) \
+	apis_append((void *) obj -> obj_func, sizeof(obj), func);
 
-void apis_append(void **op, void *func);
+void apis_append(void *address, size_t size, void *function);
 
 void apis_print(uint api, char *prefix);
 

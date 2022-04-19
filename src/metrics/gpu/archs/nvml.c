@@ -37,17 +37,22 @@ static suscription_t *sus;
 static uint           devs_count;
 static gpu_t         *pool;
 static nvmlDevice_t  *devices;
+static uint           ok_load;
 static uint           ok_init;
 
 void gpu_nvml_load(gpu_ops_t *ops)
 {
+    while (pthread_mutex_trylock(&lock));
+    if (ok_load) {
+        goto unlock;
+    }
     if (state_fail(nvml_open(&nvml))) {
         debug("nvml_open failed: %s", state_msg);
-        return;
+        goto unlock;
     }
     if (state_fail(nvml_get_devices(&devs, &devs_count))) {
         debug("nvml_get_devices failed: %s", state_msg);
-        return;
+        goto unlock;
     }
     apis_set(ops->get_api,       gpu_nvml_get_api);
     apis_set(ops->init,          gpu_nvml_init);
@@ -55,6 +60,10 @@ void gpu_nvml_load(gpu_ops_t *ops)
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_set(ops->read,          gpu_nvml_read);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
+
+    ok_load = 1;
+unlock:
+    pthread_mutex_unlock(&lock);
 }
 
 static state_t static_init()

@@ -22,33 +22,33 @@ static ulong  clock_khz;
 static ulong *clock_list[1]; // MHz
 static uint	  clock_lens[1];
 
-state_t mgt_dummy_status()
+state_t mgt_gpu_dummy_status()
 {
 	return 1;
 }
 
-state_t mgt_dummy_init(ctx_t *c)
+state_t mgt_gpu_dummy_init(ctx_t *c)
 {
 	clock_list[0] = &clock_khz;
 	clock_lens[0] = 1;
-	clock_khz     = 0;
+	clock_khz     = 1000;
 	return EAR_SUCCESS;
 }
 
-state_t mgt_dummy_dispose(ctx_t *c)
+state_t mgt_gpu_dummy_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
 }
 
-state_t mgt_dummy_count(ctx_t *c, uint *_dev_count)
+state_t mgt_gpu_dummy_count(ctx_t *c, uint *dev_count)
 {
-	if (_dev_count != NULL) {
-		*_dev_count = 1;
+	if (dev_count != NULL) {
+		*dev_count = 1;
 	}
 	return EAR_SUCCESS;
 }
 
-state_t dummy_freq_limit_get_current(ctx_t *c, ulong *khz)
+state_t mgt_gpu_dummy_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
 	if (khz != NULL) {
 		khz[0] = 0;
@@ -56,7 +56,7 @@ state_t dummy_freq_limit_get_current(ctx_t *c, ulong *khz)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_freq_limit_get_default(ctx_t *c, ulong *khz)
+state_t mgt_gpu_dummy_freq_limit_get_default(ctx_t *c, ulong *khz)
 {
 	if (khz != NULL) {
 		khz[0] = 0;
@@ -64,7 +64,7 @@ state_t dummy_freq_limit_get_default(ctx_t *c, ulong *khz)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_freq_limit_get_max(ctx_t *c, ulong *khz)
+state_t mgt_gpu_dummy_freq_limit_get_max(ctx_t *c, ulong *khz)
 {
 	if (khz != NULL) {
 		khz[0] = 0;
@@ -72,12 +72,12 @@ state_t dummy_freq_limit_get_max(ctx_t *c, ulong *khz)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_freq_limit_reset(ctx_t *c)
+state_t mgt_gpu_dummy_freq_limit_reset(ctx_t *c)
 {
 	return EAR_SUCCESS;
 }
 
-state_t dummy_freq_limit_set(ctx_t *c, ulong *khz)
+state_t mgt_gpu_dummy_freq_limit_set(ctx_t *c, ulong *khz)
 {
 	if (khz != NULL) {
 		khz[0] = 0;
@@ -85,23 +85,7 @@ state_t dummy_freq_limit_set(ctx_t *c, ulong *khz)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_freq_get_valid(ctx_t *c, uint d, ulong freq_ref, ulong *freq_near)
-{
-	if (freq_near != NULL) {
-		*freq_near = 0;
-	}
-	return EAR_SUCCESS;
-}
-
-state_t dummy_freq_get_next(ctx_t *c, uint d, ulong freq_ref, uint *freq_idx, uint flag)
-{
-	if (freq_idx != NULL) {
-		*freq_idx = 0;
-	}
-	return EAR_SUCCESS;
-}
-
-state_t dummy_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
+state_t mgt_gpu_dummy_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
 	if (list_khz != NULL) {
 		*list_khz = (const ulong **) clock_list;
@@ -112,7 +96,7 @@ state_t dummy_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len
 	return EAR_SUCCESS;
 }
 
-state_t dummy_power_cap_get_current(ctx_t *c, ulong *watts)
+state_t mgt_gpu_dummy_power_cap_get_current(ctx_t *c, ulong *watts)
 {
 	if (watts != NULL) {
 		watts[0] = 0;
@@ -120,7 +104,7 @@ state_t dummy_power_cap_get_current(ctx_t *c, ulong *watts)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_power_cap_get_default(ctx_t *c, ulong *watts)
+state_t mgt_gpu_dummy_power_cap_get_default(ctx_t *c, ulong *watts)
 {
 	if (watts != NULL) {
 		watts[0] = 0;
@@ -128,7 +112,7 @@ state_t dummy_power_cap_get_default(ctx_t *c, ulong *watts)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
+state_t mgt_gpu_dummy_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
 {
 	if (watts_max != NULL) {
 		watts_max[0] = 0;
@@ -139,12 +123,12 @@ state_t dummy_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
 	return EAR_SUCCESS;
 }
 
-state_t dummy_power_cap_reset(ctx_t *c)
+state_t mgt_gpu_dummy_power_cap_reset(ctx_t *c)
 {
 	return EAR_SUCCESS;
 }
 
-state_t dummy_power_cap_set(ctx_t *c, ulong *watts)
+state_t mgt_gpu_dummy_power_cap_set(ctx_t *c, ulong *watts)
 {
 	if (watts != NULL) {
 		watts[0] = 0;

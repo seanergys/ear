@@ -20,16 +20,17 @@
 #include <metrics/common/apis.h>
 #include <common/output/verbose.h>
 
-void apis_append(void *op[], void *func)
+void apis_append(void *address, size_t size, void *func)
 {
-	// [f0] <- ops->static_init
-	// [f1]
-	// [f2]
-	// [f3]
-    while (*op != NULL) {
-        ++op;
+    ulong base   = (ulong) address;
+    ulong offset = (ulong) size;
+    ulong index  = 0;
+
+    while (address != NULL) {
+        address = (void *) (base + (size * index));
+        ++index;
     }
-    *op = func;
+    *address = func;
 }
 
 void apis_print(uint api, char *prefix)
