@@ -89,17 +89,18 @@ static uint     ok;
 
 static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_CallbackId id, CUpti_CallbackData *data);
 
-void gpu_cupti_load()
+void gpu_cupti_load(gpu_ops_t *ops)
 {
     if ((root.metric_name = getenv("CUPTI_METRIC")) == NULL) {
-        return_msg(EAR_ERROR, "CUPTI_METRIC environent variable doesn't found");
+        debug("CUPTI_METRIC environent variable doesn't found");
+        return;
     }
     if (state_fail(cupti_open(&cupti, &cu))) {
         return;
     }
-    apis_append(ops->init,    gpu_cupti_init);
-    apis_append(ops->dispose, gpu_cupti_dispose);
-    apis_append(ops->read,    gpu_cupti_read);
+    apis_add(ops->init,    gpu_cupti_init);
+    apis_add(ops->dispose, gpu_cupti_dispose);
+    apis_add(ops->read,    gpu_cupti_read);
 }
 
 static state_t intern_init()

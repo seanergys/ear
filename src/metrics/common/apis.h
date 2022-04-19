@@ -72,6 +72,9 @@ typedef struct metrics_s {
         op = func; \
     }
 
+#define apis_put0(op, func) \
+    apis_put(op [0], func)
+
 /* Replaces the currect function of the operation. */
 #define apis_set(op, func) op = func;
 

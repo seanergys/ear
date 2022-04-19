@@ -28,7 +28,6 @@
 
 static uint devs_count;
 static gpu_ops_t ops;
-static uint api;
 
 void gpu_load(int eard)
 {
@@ -50,19 +49,26 @@ void gpu_get_api(uint *api)
 
 state_t gpu_init(ctx_t *c)
 {
-	state_t s = ops.init(c);
-	if (state_ok(s)) {
-		if (state_fail(s = ops.count(c, &devs_count)))  {
-			ops.dispose(c);
-		}
-	}
-	debug("devs_count %u");
-	return s;
+    state_t s;
+    int i = 0;
+    while (ops.init[i] != NULL) {
+        if (state_fail(s = ops.init[i++](c))) {
+            return s;
+        }
+    }
+    return ops.count_devices(c, &devs_count);
 }
 
 state_t gpu_dispose(ctx_t *c)
 {
-	preturn (ops.dispose, c);
+    state_t s;
+    int i = 0;
+    while (ops.dispose[i] != NULL) {
+        if (state_fail(s = ops.dispose[i++](c))) {
+            return s;
+        }
+    }
+    return s;
 }
 
 //state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count)
@@ -72,12 +78,19 @@ state_t gpu_dispose(ctx_t *c)
 
 state_t gpu_count_devices(ctx_t *c, uint *devs_count)
 {
-	preturn (ops.count, c, devs_count);
+	preturn (ops.count_devices, c, devs_count);
 }
 
 state_t gpu_read(ctx_t *c, gpu_t *data)
 {
-	preturn (ops.read, c, data);
+    state_t s;
+    int i = 0;
+    while (ops.read[i] != NULL) {
+        if (state_fail(s = ops.read[i++](c, data))) {
+            return s;
+        }
+    }
+    return s;
 }
 
 state_t gpu_read_raw(ctx_t *c, gpu_t *data)

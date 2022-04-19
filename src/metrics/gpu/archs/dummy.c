@@ -19,20 +19,19 @@
 #include <common/output/debug.h>
 #include <metrics/gpu/archs/dummy.h>
 
-static gpu_devs_t dev;
 
 void gpu_dummy_load(gpu_ops_t *ops)
 {
     apis_put(ops->get_api,       gpu_dummy_get_api);
-    apis_put(ops->init,          gpu_dummy_init);
-    apis_put(ops->dispose,       gpu_dummy_dispose);
+    apis_put(ops->init[0],       gpu_dummy_init);
+    apis_put(ops->dispose[0],    gpu_dummy_dispose);
 //    apis_put(ops->get_devices,   gpu_dummy_get_devices);
     apis_put(ops->count_devices, gpu_dummy_count_devices);
-    apis_put(ops->read,          gpu_dummy_read);
+    apis_put(ops->read[0],       gpu_dummy_read);
     apis_put(ops->read_raw,      gpu_dummy_read_raw);
 }
 
-void gpu_dummy_get_api()
+void gpu_dummy_get_api(uint *api)
 {
     *api = API_DUMMY;
 }
@@ -49,6 +48,7 @@ state_t gpu_dummy_dispose(ctx_t *c)
 
 //state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count)
 //{
+//    static gpu_devs_t dev;
 //    if (devs != NULL) {
 //        *devs = dev;
 //    }

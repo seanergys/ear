@@ -22,7 +22,7 @@
 
 static uint devs_count;
 
-void gpu_eard_load(gpu_ops_t *ops, int eard);
+void gpu_eard_load(gpu_ops_t *ops, int eard)
 {
 	uint eard_api;
 	state_t s;
@@ -44,11 +44,11 @@ void gpu_eard_load(gpu_ops_t *ops, int eard);
         return;
 	}
     apis_put(ops->get_api,       gpu_eard_get_api);
-    apis_put(ops->init,          gpu_eard_init);
-    apis_put(ops->dispose,       gpu_eard_dispose);
+    apis_put0(ops->init,          gpu_eard_init);
+    apis_put0(ops->dispose,       gpu_eard_dispose);
     apis_put(ops->get_devices,   gpu_eard_get_devices);
     apis_put(ops->count_devices, gpu_eard_count_devices);
-    apis_put(ops->read,          gpu_eard_read);
+    apis_put0(ops->read,          gpu_eard_read);
     apis_put(ops->read_raw,      gpu_eard_read_raw);
 }
 
