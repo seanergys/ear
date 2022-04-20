@@ -1446,23 +1446,6 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         }
 #endif // SHOW_DEBUGS
 
-#if 0
-        pstate_t curr_pstate;
-        state_t ps_manag_st = pstate_freqtops(pstate_list, pstate_count,
-                (ullong) cpu_freq_khz, &curr_pstate);
-
-        if (state_fail(ps_manag_st)) {
-
-            verbose_master(POLICY_INFO, "%sERROR%s converting freq %lu to P-STATE",
-                    COL_RED, COL_CLR, cpu_freq_khz);
-
-            sig_shared_region[proc_lrank].pstate_index = ps_nothing;
-
-        } else {
-            sig_shared_region[proc_lrank].pstate_index = curr_pstate.idx;
-        }
-#endif // COUNTDOWN
-
         // The frequency is filtered by the minimum permitted in the EAR configuration
         ulong cpu_freq_khz = ear_max(process_cpu_freqs_khz[proc_lrank], (ulong) min_cpufreq);
 
@@ -1475,13 +1458,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         }
 
         if (cpu_freq_khz != init_def_cpufreq_khz) {
-#if 0
-            verbose_master(verb_lvl, "Frequency for process %d is %lu (P-STATE %u)",
-                    proc_lrank, cpu_freq_khz, sig_shared_region[proc_lrank].pstate_index);
-#else
             verbose_master(verb_lvl, "Frequency for process %d is %lu", proc_lrank, cpu_freq_khz);
-#endif // COUNTDOWN
-
         }
 
         cpu_set_t process_mask = sig_shared_region[proc_lrank].cpu_mask;
