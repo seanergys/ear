@@ -75,6 +75,11 @@ static state_t static_init()
 	return s;
 }
 
+void gpu_nvml_get_api(uint *api)
+{
+    *api = API_NVML;
+}
+
 state_t gpu_nvml_init(ctx_t *c)
 {
     return static_init();

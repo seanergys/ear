@@ -9,12 +9,15 @@ dyna_BINS = libmetrics.so
 
 mets_OBJS = \
     $(SRCDIR)/metrics/common/apis.o \
+    $(SRCDIR)/metrics/common/cupti.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
+    $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
     $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/msr.o \
     $(SRCDIR)/metrics/common/omsr.o \
+    $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
@@ -47,8 +50,11 @@ mets_OBJS = \
     $(SRCDIR)/metrics/imcfreq/archs/intel63.o \
 	$(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
-    $(SRCDIR)/metrics/gpu/archs/nvml.o \
+    $(SRCDIR)/metrics/gpu/archs/cupti.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
+    $(SRCDIR)/metrics/gpu/archs/eard.o \
+    $(SRCDIR)/metrics/gpu/archs/nvml.o \
+    $(SRCDIR)/metrics/gpu/archs/oneapi.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \

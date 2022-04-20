@@ -17,8 +17,10 @@ root_OBJS = \
     $(SRCDIR)/management/imcfreq/archs/eard.o \
     $(SRCDIR)/management/imcfreq/archs/intel63.o \
     $(SRCDIR)/management/gpu/gpu.o \
+    $(SRCDIR)/management/gpu/archs/eard.o \
+    $(SRCDIR)/management/gpu/archs/dummy.o \
     $(SRCDIR)/management/gpu/archs/nvml.o \
-    $(SRCDIR)/management/gpu/archs/dummy.o
+    $(SRCDIR)/management/gpu/archs/oneapi.o
     
 
 ######## RULES

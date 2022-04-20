@@ -44,7 +44,7 @@ state_t gpu_dummy_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t gpu_dummy_count(ctx_t *c, uint *dev_count_in)
+state_t gpu_dummy_count_devices(ctx_t *c, uint *dev_count_in)
 {
 	if (dev_count_in != NULL) {
 		*dev_count_in = 1;

@@ -103,6 +103,11 @@ void gpu_cupti_load(gpu_ops_t *ops)
     apis_add(ops, read,    gpu_cupti_read);
 }
 
+state_t gpu_cupti_dispose(ctx_t *c)
+{
+    return cupti_close();
+}
+
 static state_t intern_init()
 {
     CUptiResult s;

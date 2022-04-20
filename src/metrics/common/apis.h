@@ -89,7 +89,7 @@ typedef struct metrics_s {
 #define apis_multi(n, obj, func, ...) \
     state_t s[n]; \
     int i = 0; \
-    while (i < n) { \
+    while (i < n && obj [i]. func != NULL) { \
         if (state_fail(s[i] = obj [i]. func (__VA_ARGS__))) { \
             s[0] = s[i]; \
         } \

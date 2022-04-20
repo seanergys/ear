@@ -44,7 +44,7 @@ static ze_t            ze;
         return EAR_ERROR; \
     }
 
-void oneapi_load(gpu_ops_t *ops)
+void gpu_oneapi_load(gpu_ops_t *ops)
 {
     if (state_fail(oneapi_open(&ze))) {
         debug("oneapi_open failed: %s", state_msg);
@@ -62,7 +62,12 @@ void oneapi_load(gpu_ops_t *ops)
     apis_set(ops->read_raw,      gpu_oneapi_read_raw);
 }
 
-state_t oneapi_init(ctx_t *c)
+void gpu_oneapi_get_api(uint *api)
+{
+    *api = API_ONEAPI;
+}
+
+state_t gpu_oneapi_init(ctx_t *c)
 {
     state_t s;
     #if 1
@@ -83,12 +88,12 @@ state_t oneapi_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t oneapi_dispose(ctx_t *c)
+state_t gpu_oneapi_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
 }
 
-state_t oneapi_count(ctx_t *c, uint *dev_count)
+state_t gpu_oneapi_count_devices(ctx_t *c, uint *dev_count)
 {
 	*dev_count = devs_count;
 	return EAR_SUCCESS;
@@ -187,7 +192,7 @@ static void read_single(int dv, gpu_t *gpu)
 	oneapi_read_temperature(dv, gpu);
 }
 
-state_t oneapi_pool(void *p)
+state_t gpu_oneapi_pool(void *p)
 {
 	gpu_t       current;
 	int         dv;
@@ -228,7 +233,7 @@ state_t oneapi_pool(void *p)
 	return EAR_SUCCESS;
 }
 
-state_t oneapi_read(ctx_t *c, gpu_t *data)
+state_t gpu_oneapi_read(ctx_t *c, gpu_t *data)
 {
 	while (pthread_mutex_trylock(&lock));
 	memcpy(data, pool, devs_count * sizeof(gpu_t));
@@ -236,7 +241,7 @@ state_t oneapi_read(ctx_t *c, gpu_t *data)
 	return EAR_SUCCESS;
 }
 
-state_t oneapi_read_raw(ctx_t *c, gpu_t *data)
+state_t gpu_oneapi_read_raw(ctx_t *c, gpu_t *data)
 {
 	// First it requires tests
 	return EAR_SUCCESS;
