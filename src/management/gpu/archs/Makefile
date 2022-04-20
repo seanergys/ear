@@ -4,8 +4,9 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 gpu_OBJS = \
     eard.o \
+    dummy.o \
     nvml.o \
-    dummy.o
+    oneapi.o
 
 ifdef CUDA_BASE
 gpu_DEFS  = -DCUDA_BASE=\"$(CUDA_BASE)\"

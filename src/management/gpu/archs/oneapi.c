@@ -24,8 +24,10 @@
 #include <metrics/common/oneapi.h>
 #include <management/gpu/archs/oneapi.h>
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static uint			   devs_count;
+//static pthread_mutex_t      lock = PTHREAD_MUTEX_INITIALIZER;
+static zes_device_handle_t *devs;
+static uint			        devs_count;
+static ze_t                 ze;
 
 void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
 {
@@ -44,6 +46,7 @@ void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
     apis_set(ops->init                  , mgt_gpu_oneapi_init);
     apis_set(ops->dispose               , mgt_gpu_oneapi_dispose);
     // Queries
+    apis_set(ops->get_api               , mgt_gpu_oneapi_get_api);
     apis_set(ops->get_devices,            mgt_gpu_oneapi_get_devices);
     apis_set(ops->count_devices         , mgt_gpu_oneapi_count_devices);
     apis_set(ops->freq_limit_get_current, mgt_gpu_oneapi_freq_limit_get_current);
@@ -64,6 +67,11 @@ void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
     apis_set(ops->power_cap_set         , mgt_gpu_oneapi_power_cap_set);
 }
 
+void mgt_gpu_oneapi_get_api(uint *api)
+{
+    *api = API_ONEAPI;
+}
+
 state_t mgt_gpu_oneapi_init(ctx_t *c)
 {
     // A lot of statics
@@ -77,12 +85,12 @@ state_t mgt_gpu_oneapi_dispose(ctx_t *c)
 
 state_t mgt_gpu_oneapi_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
 {
-    return oneapi_get_devices(devs, devs_count);
+    return EAR_SUCCESS;
 }
 
 state_t mgt_gpu_oneapi_count_devices(ctx_t *c, uint *devs_count_in)
 {
-    devs_count_in = devs_count;
+    *devs_count_in = devs_count;
 	return EAR_SUCCESS;
 }
 

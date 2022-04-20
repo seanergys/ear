@@ -50,7 +50,6 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
     apis_put(ops->get_api,       gpu_eard_get_api);
     apis_put(ops->init,          gpu_eard_init);
     apis_put(ops->dispose,       gpu_eard_dispose);
-    apis_put(ops->get_devices,   gpu_eard_get_devices);
     apis_put(ops->count_devices, gpu_eard_count_devices);
     apis_put(ops->read,          gpu_eard_read);
     apis_put(ops->read_raw,      gpu_eard_read_raw);
@@ -73,14 +72,6 @@ state_t gpu_eard_init(ctx_t *c)
 state_t gpu_eard_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
-}
-
-state_t gpu_eard_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
-{
-    if (devs != NULL) {
-        *devs = dev;
-    }
-    return gpu_eard_count(c, devs_count);
 }
 
 state_t gpu_eard_count_devices(ctx_t *c, uint *devs_count_in)

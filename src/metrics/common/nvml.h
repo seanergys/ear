@@ -30,6 +30,8 @@
 #define NVML_CLOCK_MEM       0
 #define NVML_CLOCK_SM        0
 #define NVML_TEMPERATURE_GPU 0
+#define NVML_CLOCK_GRAPHICS  0
+#define NVML_CLOCK_ID_APP_CLOCK_TARGET 0
 
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;
@@ -50,6 +52,7 @@ typedef struct nvml_s
     nvmlReturn_t (*Init)                (void);
     nvmlReturn_t (*Count)               (uint *devCount);
     nvmlReturn_t (*Handle)              (uint index, nvmlDevice_t *device);
+    nvmlReturn_t (*GetSerial)           (nvmlDevice_t dev, char *serial, uint length);
     nvmlReturn_t (*GetPowerMode)        (nvmlDevice_t dev, nvmlEnableState_t *mode);
     nvmlReturn_t (*GetPowerUsage)       (nvmlDevice_t dev, uint *power);
     nvmlReturn_t (*GetClocks)           (nvmlDevice_t dev, nvmlClockType_t type, uint *clock);

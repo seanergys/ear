@@ -85,7 +85,7 @@ state_t oneapi_open(ze_t *ze);
 
 state_t oneapi_close();
 
-state_t oneapi_get_devices(zes_device_handle_t **devs, uint devs_count);
+state_t oneapi_get_devices(zes_device_handle_t **devs, uint *devs_count);
 
 int oneapi_is_privileged();
 

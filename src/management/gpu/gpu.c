@@ -19,18 +19,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
 #include <management/gpu/gpu.h>
 #include <management/gpu/archs/eard.h>
 #include <management/gpu/archs/nvml.h>
 #include <management/gpu/archs/dummy.h>
+#include <management/gpu/archs/oneapi.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static mgt_gpu_ops_t ops[2];
+static uint devs_count;
 static uint ok_load;
-static uint ok_init;
 
-__attribute__((used)) state_t mgt_gpu_load(int eard)
+__attribute__((used)) void mgt_gpu_load(int eard)
 {
     while (pthread_mutex_trylock(&lock));
     if (ok_load) {
@@ -38,10 +40,10 @@ __attribute__((used)) state_t mgt_gpu_load(int eard)
     }
     // NVML and ONEAPI can be partially loaded.
     // EARD then can be partially loaded.
-    mgt_gpu_nvml_load(&ops);
-    mgt_gpu_oneapi_load(&ops);
-    mgt_gpu_eard_load(&ops, eard);
-    mgt_gpu_dummy_load(&ops);
+    mgt_gpu_nvml_load(ops);
+    mgt_gpu_oneapi_load(ops);
+    mgt_gpu_eard_load(ops, eard);
+    mgt_gpu_dummy_load(ops);
     ok_load = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
@@ -57,36 +59,23 @@ void mgt_gpu_get_api(uint *api)
 
 __attribute__((used)) state_t mgt_gpu_init(ctx_t *c)
 {
-    state_t s;
-    int i = 0;
-    while (pthread_mutex_trylock(&lock));
-    if (ok_init) {
-        goto unlock_init;
-    }
-    while (ops[i].init != NULL) {
-        if (state_fail(s = ops[i].init(c))) {
-            goto unlock_init;
-        }
-    }
-    ok_init = 1;
-unlock_init:
-    pthread_mutex_unlock(&lock);
-    return s;
+    apis_multi(2, ops, init, c);
+    return mgt_gpu_count_devices(c, &devs_count);
 }
 
 __attribute__((used)) state_t mgt_gpu_dispose(ctx_t *c)
 {
-	preturn (ops[0].dispose, c);
+    apis_multiret(2, ops, dispose, c);
 }
 
-state_t gpu_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count)
+state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
 {
     preturn (ops[0].get_devices, c, devs, devs_count);
 }
 
 __attribute__((used)) state_t mgt_gpu_count_devices(ctx_t *c, uint *dev_count)
 {
-	preturn (ops[0].count, c, dev_count);
+	preturn (ops[0].count_devices, c, dev_count);
 }
 
 state_t mgt_gpu_freq_limit_get_current(ctx_t *c, ulong *khz)
@@ -233,17 +222,31 @@ state_t mgt_gpu_power_cap_set(ctx_t *c, ulong *watts)
 	preturn (ops[0].power_cap_set, c, watts);
 }
 
-state_t mgt_gpu_data_alloc(ctx_t *c, ulong **array, uint *dev_count_in)
+state_t mgt_gpu_data_alloc(ulong **data)
 {
-    uint dev_count;
-
-    mgt_gpu_count_devices(c, &dev_count);
-
-    *array = calloc(dev_count, sizeof(ulong));
-
-    if (dev_count_in != NULL) {
-        *dev_count_in = dev_count;
+    if (data == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
     }
+    *data = calloc(devs_count, sizeof(ulong));
+    if (*data == NULL) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    return EAR_SUCCESS;
+}
 
+state_t mgt_gpu_data_free(ulong **data)
+{
+    if (data != NULL) {
+        free(*data);
+    }
+    return EAR_SUCCESS;
+}
+
+state_t mgt_gpu_data_null(ulong *data)
+{
+    if (data == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+    memset(data, 0, devs_count * sizeof(ulong));
     return EAR_SUCCESS;
 }

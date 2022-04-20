@@ -22,11 +22,15 @@
 
 void mgt_gpu_dummy_load(mgt_gpu_ops_t *ops);
 
+void mgt_gpu_dummy_get_api(uint *api);
+
 state_t mgt_gpu_dummy_init(ctx_t *c);
 
 state_t mgt_gpu_dummy_dispose(ctx_t *c);
 
-state_t mgt_gpu_dummy_count(ctx_t *c, uint *_dev_count);
+state_t mgt_gpu_dummy_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
+
+state_t mgt_gpu_dummy_count_devices(ctx_t *c, uint *devs_count);
 
 state_t mgt_gpu_dummy_freq_limit_get_current(ctx_t *c, ulong *khz);
 

@@ -20,7 +20,9 @@
 
 #include <management/gpu/gpu.h>
 
-void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops, int eard);
+void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops);
+
+void mgt_gpu_nvml_get_api(uint *api);
 
 state_t mgt_gpu_nvml_init(ctx_t *c);
 

@@ -32,9 +32,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/cpi/cpi.o \
     $(SRCDIR)/metrics/cpi/archs/dummy.o \
     $(SRCDIR)/metrics/cpi/archs/perf.o \
-    $(SRCDIR)/metrics/energy/cpu.o \
-    $(SRCDIR)/metrics/energy/energy_node.o \
-    $(SRCDIR)/metrics/energy/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/flops.o \
     $(SRCDIR)/metrics/flops/archs/perf.o \
     $(SRCDIR)/metrics/flops/archs/dummy.o \
@@ -88,7 +85,6 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'cpi'          $* || exit
 	@ $(MAKE) -C 'cpufreq'      $* || exit
-	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit

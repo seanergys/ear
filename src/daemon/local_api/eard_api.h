@@ -27,6 +27,7 @@
 #include <metrics/gpu/gpu.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <management/gpu/gpu.h>
 
 #include <daemon/local_api/eard_api_rpc.h>
 #include <daemon/local_api/eard_api_conf.h>

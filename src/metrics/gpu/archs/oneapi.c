@@ -44,7 +44,7 @@ static ze_t            ze;
         return EAR_ERROR; \
     }
 
-state_t oneapi_load()
+void oneapi_load(gpu_ops_t *ops)
 {
     if (state_fail(oneapi_open(&ze))) {
         debug("oneapi_open failed: %s", state_msg);
@@ -70,7 +70,7 @@ state_t oneapi_init(ctx_t *c)
 	pool = calloc(devs_count, sizeof(gpu_t));
 	// Initializing monitoring thread suscription.
 	sus = suscription();
-	sus->call_main  = oneapi_pool;
+	sus->call_main  = gpu_oneapi_pool;
 	sus->time_relax = 2000;
 	sus->time_burst = 1000;
 	// Initializing monitoring thread.

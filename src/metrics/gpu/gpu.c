@@ -18,6 +18,7 @@
 //#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/gpu/archs/eard.h>
@@ -26,19 +27,28 @@
 #include <metrics/gpu/archs/cupti.h>
 #include <metrics/gpu/archs/oneapi.h>
 
-static uint devs_count;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_ops_t ops[2];
+static uint devs_count;
+static uint ok_load;
 
 void gpu_load(int eard)
 {
+    while (pthread_mutex_trylock(&lock));
+    if (ok_load) {
+        goto unlock_load;
+    }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(&ops);
-    gpu_oneapi_load(&ops);
-    gpu_eard_load(&ops, eard);
-    gpu_dummy_load(&ops);
+    gpu_nvml_load(ops);
+    gpu_oneapi_load(ops);
+    gpu_eard_load(ops, eard);
+    gpu_dummy_load(ops);
     // Complementary APIs
-    gpu_cupti_load(&ops);
+    gpu_cupti_load(ops);
+    ok_load = 1;
+unlock_load:
+    pthread_mutex_unlock(&lock);
 }
 
 void gpu_get_api(uint *api)
@@ -51,27 +61,13 @@ void gpu_get_api(uint *api)
 
 state_t gpu_init(ctx_t *c)
 {
-    state_t s;
-    int i = 0;
-    while (ops[i].init != NULL) {
-        if (state_fail(s = ops[i].init(c))) {
-            return s;
-        }
-    }
-    return ops[0].count_devices(c, &devs_count);
+    apis_multi(2, ops, init, c);
+    return gpu_count_devices(c, &devs_count);
 }
 
 state_t gpu_dispose(ctx_t *c)
 {
-    state_t s;
-    int i = 0;
-
-    while (ops[0].dispose[i] != NULL) {
-        if (state_fail(s = ops[0].dispose[i++](c))) {
-            return s;
-        }
-    }
-    return s;
+    apis_multiret(2, ops, dispose, c);
 }
 
 state_t gpu_count_devices(ctx_t *c, uint *devs_count)
@@ -81,14 +77,7 @@ state_t gpu_count_devices(ctx_t *c, uint *devs_count)
 
 state_t gpu_read(ctx_t *c, gpu_t *data)
 {
-    state_t s;
-    int i = 0;
-    while (ops[i].read != NULL) {
-        if (state_fail(s = ops[i].read(c, data))) {
-            return s;
-        }
-    }
-    return s;
+    apis_multiret(2, ops, read, c, data);
 }
 
 state_t gpu_read_raw(ctx_t *c, gpu_t *data)

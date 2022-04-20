@@ -83,9 +83,27 @@ typedef struct metrics_s {
 
 /* Adds a new function to an array. */
 #define apis_add(obj, obj_func, func) \
-	apis_append((void *) obj -> obj_func, sizeof(obj), func);
+	apis_append((void **) & obj -> obj_func, sizeof(obj), func);
 
-void apis_append(void *address, size_t size, void *function);
+/* Provisional multicall function */
+#define apis_multi(n, obj, func, ...) \
+    state_t s[n]; \
+    int i = 0; \
+    while (i < n) { \
+        if (state_fail(s[i] = obj [i]. func (__VA_ARGS__))) { \
+            s[0] = s[i]; \
+        } \
+        ++i; \
+    } \
+    if (state_fail(s[0])) { \
+        return s[0]; \
+    }
+
+#define apis_multiret(n, obj, func, ...) \
+    apis_multi(n, obj, func, __VA_ARGS__); \
+    return s[0];
+ 
+void apis_append(void **address, size_t size, void *function);
 
 void apis_print(uint api, char *prefix);
 

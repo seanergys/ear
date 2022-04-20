@@ -22,9 +22,32 @@ static ulong  clock_khz;
 static ulong *clock_list[1]; // MHz
 static uint	  clock_lens[1];
 
-state_t mgt_gpu_dummy_status()
+void mgt_gpu_dummy_load(mgt_gpu_ops_t *ops)
 {
-	return 1;
+    // Additional
+    apis_add(ops, init                  , mgt_gpu_dummy_init);
+    apis_add(ops, dispose               , mgt_gpu_dummy_dispose);
+    // Queries (put if empty)
+    apis_put(ops->get_api               , mgt_gpu_dummy_get_api);
+    apis_put(ops->get_devices           , mgt_gpu_dummy_get_devices);
+    apis_put(ops->count_devices         , mgt_gpu_dummy_count_devices);
+    apis_put(ops->freq_limit_get_current, mgt_gpu_dummy_freq_limit_get_current);
+    apis_put(ops->freq_limit_get_default, mgt_gpu_dummy_freq_limit_get_default);
+    apis_put(ops->freq_limit_get_max    , mgt_gpu_dummy_freq_limit_get_max);
+    apis_put(ops->power_cap_get_current , mgt_gpu_dummy_power_cap_get_current);
+    apis_put(ops->power_cap_get_default , mgt_gpu_dummy_power_cap_get_default);
+    apis_put(ops->power_cap_get_rank    , mgt_gpu_dummy_power_cap_get_rank);
+    // Commands (put if empty)
+    apis_put(ops->freq_limit_reset      , mgt_gpu_dummy_freq_limit_reset);
+    apis_put(ops->freq_limit_set        , mgt_gpu_dummy_freq_limit_set);
+    apis_put(ops->freq_list             , mgt_gpu_dummy_freq_list);
+    apis_put(ops->power_cap_reset       , mgt_gpu_dummy_power_cap_reset);
+    apis_put(ops->power_cap_set         , mgt_gpu_dummy_power_cap_set);
+}
+
+void mgt_gpu_dummy_get_api(uint *api)
+{
+    *api = API_DUMMY;
 }
 
 state_t mgt_gpu_dummy_init(ctx_t *c)
@@ -40,7 +63,13 @@ state_t mgt_gpu_dummy_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_dummy_count(ctx_t *c, uint *dev_count)
+state_t mgt_gpu_dummy_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
+{
+    *devs = calloc(1, sizeof(gpu_devs_t));
+    return mgt_gpu_dummy_count_devices(c, devs_count);
+}
+
+state_t mgt_gpu_dummy_count_devices(ctx_t *c, uint *dev_count)
 {
 	if (dev_count != NULL) {
 		*dev_count = 1;

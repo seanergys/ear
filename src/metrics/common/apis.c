@@ -20,7 +20,7 @@
 #include <metrics/common/apis.h>
 #include <common/output/verbose.h>
 
-void apis_append(void *address, size_t size, void *func)
+void apis_append(void **address, size_t size, void *func)
 {
     ulong base   = (ulong) address;
     ulong offset = (ulong) size;

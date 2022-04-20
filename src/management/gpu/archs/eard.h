@@ -22,11 +22,15 @@
 
 void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard);
 
+void mgt_gpu_eard_get_api(uint *api);
+
 state_t mgt_gpu_eard_init(ctx_t *c);
 
 state_t mgt_gpu_eard_dispose(ctx_t *c);
 
-state_t mgt_gpu_eard_count(ctx_t *c, uint *dev_count);
+state_t mgt_gpu_eard_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
+
+state_t mgt_gpu_eard_count_devices(ctx_t *c, uint *dev_count);
 
 state_t mgt_gpu_eard_freq_limit_get_current(ctx_t *c, ulong *khz);
 

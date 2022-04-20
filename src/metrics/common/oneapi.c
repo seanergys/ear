@@ -16,6 +16,7 @@
 */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <common/system/symplug.h>
 #include <metrics/common/oneapi.h>
@@ -227,6 +228,18 @@ fini:
 
 state_t oneapi_close()
 {
+    return EAR_SUCCESS;
+}
+
+state_t oneapi_get_devices(zes_device_handle_t **devs_in, uint *devs_count_in)
+{
+    if (devs != NULL) {
+        *devs_in = malloc(sizeof(zes_device_handle_t)*devs_count);
+        memcpy(*devs_in, devs, sizeof(zes_device_handle_t)*devs_count);
+    }
+    if (devs_count_in != NULL) {
+        *devs_count_in = devs_count;
+    }
     return EAR_SUCCESS;
 }
 

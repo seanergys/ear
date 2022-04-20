@@ -55,6 +55,7 @@ void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops)
     apis_set(ops->init                  , mgt_gpu_nvml_init);
     apis_set(ops->dispose               , mgt_gpu_nvml_dispose);
     // Queries
+    apis_set(ops->get_api               , mgt_gpu_nvml_get_api);
     apis_set(ops->get_devices,            mgt_gpu_nvml_get_devices);
     apis_set(ops->count_devices         , mgt_gpu_nvml_count_devices);
     apis_set(ops->freq_limit_get_current, mgt_gpu_nvml_freq_limit_get_current);
@@ -73,6 +74,11 @@ void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops)
     apis_set(ops->freq_limit_set        , mgt_gpu_nvml_freq_limit_set);
     apis_set(ops->power_cap_reset       , mgt_gpu_nvml_power_cap_reset);
     apis_set(ops->power_cap_set         , mgt_gpu_nvml_power_cap_set);
+}
+
+void mgt_gpu_nvml_get_api(uint *api)
+{
+    *api = API_NVML;
 }
 
 static state_t static_dispose(ctx_t *c, state_t s, char *error)
@@ -252,9 +258,26 @@ state_t mgt_gpu_nvml_dispose(ctx_t *c)
 	return static_dispose(c, EAR_SUCCESS, NULL);
 }
 
-state_t mgt_gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
+state_t mgt_gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
 {
-    return nvml_get_devices(devs, devs_count);
+    char serial[32];
+    nvmlReturn_t r;
+    int i;
+
+    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
+    //
+    for (i = 0; i < devs_count; ++i) { 
+        if ((r = nvml.GetSerial(devs[i], serial, 32)) != NVML_SUCCESS) {
+            return_msg(EAR_ERROR, myErrorString(r));
+        }
+        (*devs_in)[i].serial = (ullong) atoll(serial);
+        (*devs_in)[i].index  = i;
+    }
+    if (devs_count_in != NULL) {
+        *devs_count_in = devs_count;
+    }
+
+    return EAR_SUCCESS;
 }
 
 state_t mgt_gpu_nvml_count_devices(ctx_t *c, uint *devs_count_in)
@@ -370,7 +393,7 @@ state_t mgt_gpu_nvml_freq_limit_set(ctx_t *c, ulong *khz)
 	debug("nvml_clock_limit_set devices %d",devs_count);
 	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
 		if (khz[i] > 0){
-		  if (xtate_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
+		  if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
 			  e = s;
 		  }
 		}

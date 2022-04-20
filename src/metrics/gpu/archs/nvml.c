@@ -36,23 +36,17 @@ static nvmlDevice_t  *devs;
 static suscription_t *sus;
 static uint           devs_count;
 static gpu_t         *pool;
-static nvmlDevice_t  *devices;
-static uint           ok_load;
-static uint           ok_init;
 
 void gpu_nvml_load(gpu_ops_t *ops)
 {
-    while (pthread_mutex_trylock(&lock));
-    if (ok_load) {
-        goto unlock;
-    }
+    // The locking and duplicate control is at higher level
     if (state_fail(nvml_open(&nvml))) {
         debug("nvml_open failed: %s", state_msg);
-        goto unlock;
+        return;
     }
     if (state_fail(nvml_get_devices(&devs, &devs_count))) {
         debug("nvml_get_devices failed: %s", state_msg);
-        goto unlock;
+        return;
     }
     apis_set(ops->get_api,       gpu_nvml_get_api);
     apis_set(ops->init,          gpu_nvml_init);
@@ -60,10 +54,6 @@ void gpu_nvml_load(gpu_ops_t *ops)
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_set(ops->read,          gpu_nvml_read);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
-
-    ok_load = 1;
-unlock:
-    pthread_mutex_unlock(&lock);
 }
 
 static state_t static_init()
@@ -87,16 +77,7 @@ static state_t static_init()
 
 state_t gpu_nvml_init(ctx_t *c)
 {
-	state_t s = EAR_SUCCESS;
-	while (pthread_mutex_trylock(&lock));
-	if (!ok_init) {
-		if (state_ok(s = static_init())) {
-			ok_init = 1;
-		}
-	}
-	pthread_mutex_unlock(&lock);
-	debug("returning %d", s);
-	return s;
+    return static_init();
 }
 
 state_t gpu_nvml_dispose(ctx_t *c)

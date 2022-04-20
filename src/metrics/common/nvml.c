@@ -16,6 +16,7 @@
 */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <common/system/symplug.h>
 #include <metrics/common/nvml.h>
@@ -33,7 +34,7 @@
 #define NVML_N               0
 #else
 #define NVML_PATH            CUDA_BASE
-#define NVML_N               22
+#define NVML_N               23
 #endif
 
 static const char *nvml_names[] =
@@ -41,6 +42,7 @@ static const char *nvml_names[] =
     "nvmlInit_v2", //NP (No Permissions)
     "nvmlDeviceGetCount_v2",
     "nvmlDeviceGetHandleByIndex_v2", //NP
+    "nvmlDeviceGetSerial",
     "nvmlDeviceGetPowerManagementMode",
     "nvmlDeviceGetPowerUsage",
     "nvmlDeviceGetClockInfo",
@@ -160,7 +162,7 @@ state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in)
 {
     if (devs != NULL) {
         *devs = malloc(sizeof(nvmlDevice_t)*devs_count);
-        memcpy(devs, devices, sizeof(nvmlDevice_t)*devs_count);
+        memcpy(*devs, devices, sizeof(nvmlDevice_t)*devs_count);
     }
     if (devs_count_in != NULL) {
         *devs_count_in = devs_count;
