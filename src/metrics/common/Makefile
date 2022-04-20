@@ -16,16 +16,21 @@ comm_OBJS = \
     pci.o \
     perf.o
 
-ifdef LIKWID_BASE
-LIKWID_FLAGS = -I$(LIKWID_BASE)/include -DLIKWID_BASE=\"$(LIKWID_BASE)\"
-endif
-
 ######## RULES
 
 all: $(comm_OBJS)
 
+nvml.o: nvml.c nvml.h
+	$(CC) $(CFLAGS) $(NVML_CFLAGS) -c $<
+
+cupti.o: cupti.c cupti.h
+	$(CC) $(CFLAGS) $(CUPTI_CFLAGS) -c $<
+
 likwid.o: likwid.c likwid.h
-	$(CC) $(CFLAGS) $(LIKWID_FLAGS) -c $<
+	$(CC) $(CFLAGS) $(LIKWID_CFLAGS) -c $<
+
+oneapi.o: oneapi.c oneapi.h
+	$(CC) $(CFLAGS) $(ONEAPI_CFLAGS) -c $<
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<

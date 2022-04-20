@@ -26,7 +26,7 @@
 #include <common/states.h>
 
 #ifndef ONEAPI_BASE
-#define ZE_SUCCESS             0
+#define ZE_RESULT_SUCCESS      0
 #define ZE_DEVICE_TYPE_GPU     0
 #define ZES_FREQ_DOMAIN_GPU    0
 #define ZES_FREQ_DOMAIN_MEMORY 0

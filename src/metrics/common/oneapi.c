@@ -15,9 +15,12 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <metrics/common/oneapi.h>
 
@@ -26,10 +29,8 @@
 
 #ifndef ONEAPI_BASE
 #define ZE_PATH          ""
-#define ZE_SUCCESS       0
 #else
 #define ZE_PATH          ONEAPI_BASE
-#define ZE_SUCCESS       ZE_RESULT_SUCCESS
 #endif
 #define ZE_N             17
 #define ZE_LIB           "libze_loader.so"
@@ -64,6 +65,7 @@ static uint                 ok;
 static state_t static_open()
 {
     #define _open_test(path) \
+        debug("openning %s", path); \
         if (state_ok(plug_open(path, (void **) &ze, ze_names, ZE_N, RTLD_NOW | RTLD_LOCAL))) { \
             return EAR_SUCCESS; \
         }
@@ -99,7 +101,7 @@ static state_t print_driver_info(ze_driver_handle_t driver, int dr)
     uint                             i;
 
     #define ret_fail(function) \
-		if ((z = function) != ZE_SUCCESS) { \
+		if ((z = function) != ZE_RESULT_SUCCESS) { \
 			debug("Failed " #function " with error 0x%x", z); \
 			return EAR_ERROR; \
 		}

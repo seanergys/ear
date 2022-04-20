@@ -39,7 +39,7 @@ static uint            devs_count;
 static ze_t            ze;
 
 #define ret_fail(function) \
-    if ((z = function) != ZE_SUCCESS) { \
+    if ((z = function) != ZE_RESULT_SUCCESS) { \
         debug("Failed " #function " with error 0x%x", z); \
         return EAR_ERROR; \
     }
