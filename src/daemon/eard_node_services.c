@@ -88,7 +88,6 @@ extern uint             eard_gpu_model;
 extern gpu_t           *eard_read_gpu;
 extern uint             eard_num_gpus;
 extern char             gpu_str[256];
-static ctx_t            eard_main_gpu_ctx;
 static uint             eard_gpu_initialized=0;
 #endif
 extern int              num_uncore_counters; // Me extraña que esto funcione.
@@ -756,7 +755,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 		case GPU_GET_INFO:
 			debug("GPU_GET_INFO %d", eard_num_gpus);
 			if (eard_gpu_initialized) {
-				gpu_get_info(&eard_main_gpu_ctx, (const gpu_devs_t **) &info, NULL);
+				gpu_get_devices(no_ctx, (const gpu_devs_t **) &info, NULL);
 			} else {
 				memset(&fake, 0, sizeof(gpu_devs_t));
 				info = &fake;
@@ -765,7 +764,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			break;
 		case GPU_DATA_READ:
 			if (eard_gpu_initialized){
-				gpu_read(&eard_main_gpu_ctx,eard_read_gpu);
+				gpu_read(no_ctx,eard_read_gpu);
 			}else{
 				memset(eard_read_gpu,0,sizeof(gpu_t));
 			}
@@ -1110,7 +1109,7 @@ state_t eard_local_api()
 
 	#if USE_GPUS
 	/* GPU Initialization for app requests */
-	uint ret = gpu_init(&eard_main_gpu_ctx);
+	uint ret = gpu_init(no_ctx);
 	if (ret != EAR_SUCCESS){
 		error("EARD error when initializing GPU context for EARD API queries");
 		eard_gpu_initialized = 0;	
@@ -1118,9 +1117,9 @@ state_t eard_local_api()
 		eard_gpu_initialized = 1;
 	}
 	gpu_data_alloc(&eard_read_gpu);
-	gpu_count(&eard_main_gpu_ctx,&eard_num_gpus);
+	gpu_count_devices(no_ctx,&eard_num_gpus);
 	debug("gpu_count %u",eard_num_gpus);
-	eard_gpu_model=gpu_model();
+    gpu_get_api(&eard_gpu_model);
 	debug("gpu_model %u",eard_gpu_model);
 	#endif
 

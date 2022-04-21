@@ -169,7 +169,6 @@ void pmgt_set_burst(int b)
 #if USE_GPUS
 static suscription_t *sus_util_detection;
 static gpu_t *gpu_detection_raw_data;
-static ctx_t gpu_pc;
 static uint gpu_pc_num_gpus=0;
 static uint gpu_pc_model = 0;
 static uint util_period = 0;
@@ -200,7 +199,7 @@ void compute_power_distribution()
     bpd_dram = rapl_dram_tdps[0];
 		debug("Using CPU TDP %u DRAM TDP %u", bpd_cpu, bpd_dram);
 #if USE_GPUS
-    if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != MODEL_DUMMY)) bpd_gpu = TDP_GPU;
+    if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != API_DUMMY)) bpd_gpu = TDP_GPU;
 #endif
     pd_cpu = bpd_cpu * pc_topology_info.socket_count;
     pd_dram = bpd_dram * pc_topology_info.socket_count;
@@ -274,7 +273,7 @@ static state_t util_detect_main(void *p)
 
         dom_util[DOMAIN_DRAM] = pc_topology_info.socket_count;
         dom_util[DOMAIN_GPU]=0;
-        if (gpu_read_raw(&gpu_pc,gpu_detection_raw_data) != EAR_SUCCESS){
+        if (gpu_read_raw(no_ctx, gpu_detection_raw_data) != EAR_SUCCESS){
             error("Error reading GPU data in powercap");
         }
         for (i=0;i<gpu_pc_num_gpus;i++){
@@ -327,7 +326,7 @@ static state_t util_detect_init(void *p)
 void util_monitoring_init()
 {
 #if USE_GPUS
-    if (gpu_pc_model != MODEL_DUMMY) {
+    if (gpu_pc_model != API_DUMMY) {
         sus_util_detection=suscription();
         sus_util_detection->call_main = util_detect_main;
         sus_util_detection->call_init = util_detect_init;
@@ -347,17 +346,15 @@ state_t pmgt_init()
     char basic_path[SZ_PATH];
     topology_init(&pc_topology_info);
 #if USE_GPUS
-    if (gpu_load(NULL,0,NULL)!= EAR_SUCCESS){
-        error("Initializing GPU(load) in powercap");
-    }
-    if (gpu_init(&gpu_pc)!=EAR_SUCCESS){
+    gpu_load(NO_EARD);
+    gpu_get_api(&gpu_pc_model);
+    if (gpu_init(no_ctx)!=EAR_SUCCESS){
         error("Initializing GPU in powercap");
     }
-    if (gpu_count(&gpu_pc,&gpu_pc_num_gpus)!=EAR_SUCCESS){
+    if (gpu_count_devices(no_ctx, &gpu_pc_num_gpus)!=EAR_SUCCESS){
         error("Getting num gpus");
     }
-    gpu_pc_model = gpu_model();
-    if (gpu_pc_model == MODEL_DUMMY) {
+    if (gpu_pc_model == API_DUMMY) {
         memcpy(pdomains_def,pdomains_def_dummy,sizeof(pdomains_def));
         memcpy(pdomains,pdomains_def_dummy,sizeof(pdomains_def));
         memcpy(pdomains_idle,pdomains_def_dummy,sizeof(pdomains_def));
@@ -453,7 +450,7 @@ state_t pmgt_init()
 #if USE_GPUS
     /* DOMAIN_GPU */
     obj_path = getenv("EAR_POWERCAP_POLICY_GPU");
-    if (gpu_pc_model != MODEL_DUMMY) {
+    if (gpu_pc_model != API_DUMMY) {
         if (obj_path==NULL){
             obj_path = my_node_conf->powercap_gpu_plugin;
             if (obj_path != NULL && strlen(obj_path) > 1) {
@@ -797,7 +794,7 @@ void pmgt_set_app_req_freq(pwr_mgt_t *phandler)
         freturn(pcsyms_fun[DOMAIN_CPU].set_app_req_freq,cpuf);
     }
 #if USE_GPUS
-    if (gpu_pc_model != MODEL_DUMMY) {
+    if (gpu_pc_model != API_DUMMY) {
         ulong gpuf[MAX_GPUS_SUPPORTED];
         memset(gpuf, 0, sizeof(ulong)*MAX_GPUS_SUPPORTED);
         if (pcsyms_fun[DOMAIN_GPU].set_app_req_freq != NULL) {

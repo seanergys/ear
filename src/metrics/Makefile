@@ -20,6 +20,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
     $(SRCDIR)/metrics/common/likwid.o \
+    $(SRCDIR)/metrics/accumulators/power_metrics.o \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
     $(SRCDIR)/metrics/bandwidth/archs/amd17.o \
     $(SRCDIR)/metrics/bandwidth/archs/bypass.o \
@@ -34,6 +35,9 @@ mets_OBJS = \
     $(SRCDIR)/metrics/cpi/cpi.o \
     $(SRCDIR)/metrics/cpi/archs/dummy.o \
     $(SRCDIR)/metrics/cpi/archs/perf.o \
+    $(SRCDIR)/metrics/energy/cpu.o \
+    $(SRCDIR)/metrics/energy/energy_node.o \
+    $(SRCDIR)/metrics/energy/cpu/intel63.o \
     $(SRCDIR)/metrics/flops/flops.o \
     $(SRCDIR)/metrics/flops/archs/perf.o \
     $(SRCDIR)/metrics/flops/archs/dummy.o \
@@ -83,12 +87,14 @@ clean: clean.components rclean;
 ######## SUBFOLDERS
 
 %.components:
+	@ $(MAKE) -C 'accumulators' $* || exit
 	@ $(MAKE) -C 'bandwidth'    $* || exit
 	@ $(MAKE) -C 'cache'        $* || exit
 	@ $(MAKE) -C 'common'       $* || exit
 	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'cpi'          $* || exit
 	@ $(MAKE) -C 'cpufreq'      $* || exit
+	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
