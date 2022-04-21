@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -67,13 +69,15 @@ void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops)
     apis_set(ops->power_cap_get_rank    , mgt_gpu_nvml_power_cap_get_rank);
     // Checking if NVML is capable to run commands
     if (!nvml_is_privileged()) {
-        return;
+        goto done;
     }
     // Commands
     apis_set(ops->freq_limit_reset      , mgt_gpu_nvml_freq_limit_reset);
     apis_set(ops->freq_limit_set        , mgt_gpu_nvml_freq_limit_set);
     apis_set(ops->power_cap_reset       , mgt_gpu_nvml_power_cap_reset);
     apis_set(ops->power_cap_set         , mgt_gpu_nvml_power_cap_set);
+done:
+    debug("Loaded NVML");
 }
 
 void mgt_gpu_nvml_get_api(uint *api)

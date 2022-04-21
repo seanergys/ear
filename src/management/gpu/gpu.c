@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@
 #include <management/gpu/archs/oneapi.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static mgt_gpu_ops_t ops[2];
+static mgt_gpu_ops_t ops;
 static uint devs_count;
 static uint ok_load;
 
@@ -40,10 +40,10 @@ __attribute__((used)) void mgt_gpu_load(int eard)
     }
     // NVML and ONEAPI can be partially loaded.
     // EARD then can be partially loaded.
-    mgt_gpu_nvml_load(ops);
-    mgt_gpu_oneapi_load(ops);
-    mgt_gpu_eard_load(ops, eard);
-    mgt_gpu_dummy_load(ops);
+    mgt_gpu_nvml_load(&ops);
+    mgt_gpu_oneapi_load(&ops);
+    mgt_gpu_eard_load(&ops, eard);
+    mgt_gpu_dummy_load(&ops);
     ok_load = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
@@ -51,56 +51,56 @@ unlock_load:
 
 void mgt_gpu_get_api(uint *api)
 {
-    if (ops[0].get_api != NULL) {
-        return ops[0].get_api(api);
+    if (ops.get_api != NULL) {
+        return ops.get_api(api);
     }
     *api = API_NONE;
 }
 
 __attribute__((used)) state_t mgt_gpu_init(ctx_t *c)
 {
-    apis_multi(2, ops, init, c);
+    apis_multi(ops.init, c);
     return mgt_gpu_count_devices(c, &devs_count);
 }
 
 __attribute__((used)) state_t mgt_gpu_dispose(ctx_t *c)
 {
-    apis_multiret(2, ops, dispose, c);
+    apis_multiret(ops.dispose, c);
 }
 
 state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
 {
-    preturn (ops[0].get_devices, c, devs, devs_count);
+    preturn (ops.get_devices, c, devs, devs_count);
 }
 
 __attribute__((used)) state_t mgt_gpu_count_devices(ctx_t *c, uint *dev_count)
 {
-	preturn (ops[0].count_devices, c, dev_count);
+	preturn (ops.count_devices, c, dev_count);
 }
 
 state_t mgt_gpu_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
-	preturn (ops[0].freq_limit_get_current, c, khz);
+	preturn (ops.freq_limit_get_current, c, khz);
 }
 
 state_t mgt_gpu_freq_limit_get_default(ctx_t *c, ulong *khz)
 {
-	preturn (ops[0].freq_limit_get_default, c, khz);
+	preturn (ops.freq_limit_get_default, c, khz);
 }
 
 state_t mgt_gpu_freq_limit_get_max(ctx_t *c, ulong *khz)
 {
-	preturn (ops[0].freq_limit_get_max, c, khz);
+	preturn (ops.freq_limit_get_max, c, khz);
 }
 
 state_t mgt_gpu_freq_limit_reset(ctx_t *c)
 {
-	preturn (ops[0].freq_limit_reset, c);
+	preturn (ops.freq_limit_reset, c);
 }
 
 state_t mgt_gpu_freq_limit_set(ctx_t *c, ulong *khz)
 {
-	preturn (ops[0].freq_limit_set, c, khz);
+	preturn (ops.freq_limit_set, c, khz);
 }
 
 state_t mgt_gpu_freq_get_valid(ctx_t *c, uint dev, ulong freq_ref, ulong *freq_near)
@@ -194,32 +194,32 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 
 state_t mgt_gpu_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
-	preturn (ops[0].freq_list, c, list_khz, list_len);
+	preturn (ops.freq_list, c, list_khz, list_len);
 }
 
 state_t mgt_gpu_power_cap_get_current(ctx_t *c, ulong *watts)
 {
-	preturn (ops[0].power_cap_get_current, c, watts);
+	preturn (ops.power_cap_get_current, c, watts);
 }
 
 state_t mgt_gpu_power_cap_get_default(ctx_t *c, ulong *watts)
 {
-	preturn (ops[0].power_cap_get_default, c, watts);
+	preturn (ops.power_cap_get_default, c, watts);
 }
 
 state_t mgt_gpu_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
 {
-	preturn (ops[0].power_cap_get_rank, c, watts_min, watts_max);
+	preturn (ops.power_cap_get_rank, c, watts_min, watts_max);
 }
 
 state_t mgt_gpu_power_cap_reset(ctx_t *c)
 {
-	preturn (ops[0].power_cap_reset, c);
+	preturn (ops.power_cap_reset, c);
 }
 
 state_t mgt_gpu_power_cap_set(ctx_t *c, ulong *watts)
 {
-	preturn (ops[0].power_cap_set, c, watts);
+	preturn (ops.power_cap_set, c, watts);
 }
 
 state_t mgt_gpu_data_alloc(ulong **data)

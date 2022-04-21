@@ -64,8 +64,8 @@ typedef struct gpu_devs_s {
 typedef struct mgt_gpu_ops_s {
 
     void    (*get_api)                (uint *api);
-    state_t (*init)                   (ctx_t *c);
-	state_t (*dispose)                (ctx_t *c);
+    state_t (*init[4])                (ctx_t *c);
+	state_t (*dispose[4])             (ctx_t *c);
     state_t (*get_devices)            (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
 	state_t (*count_devices)          (ctx_t *c, uint *dev_count);
 	state_t (*alloc_array)            (ctx_t *c, ulong **list, uint *dev_count);

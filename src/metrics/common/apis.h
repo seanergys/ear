@@ -69,11 +69,14 @@ typedef struct metrics_s {
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
     if (op == NULL) { \
-        op = func; \
+        *((void **) &op) = func; \
     }
 
+#define apis_pin(op, func) \
+    apis_put(op[0], func)
+
 /* Replaces the currect function of the operation. */
-#define apis_set(op, func) op = func;
+#define apis_set(op, func) *((void **) &op) = func;
 
 /* */
 #define apis_loaded(ops) (ops->init != NULL)
@@ -82,28 +85,26 @@ typedef struct metrics_s {
 #define apis_not(ops) (ops->init == NULL)
 
 /* Adds a new function to an array. */
-#define apis_add(obj, obj_func, func) \
-	apis_append((void **) & obj -> obj_func, sizeof(obj), func);
+#define apis_add(ops, func) \
+	apis_append((void **) ops, func);
 
 /* Provisional multicall function */
-#define apis_multi(n, obj, func, ...) \
-    state_t s[n]; \
+#define apis_multi(ops, ...) \
+    state_t s; \
     int i = 0; \
-    while (i < n && obj [i]. func != NULL) { \
-        if (state_fail(s[i] = obj [i]. func (__VA_ARGS__))) { \
-            s[0] = s[i]; \
+    while (ops [i] != NULL) { \
+        if (state_fail(s = ops [i](__VA_ARGS__))) { \
+            debug("failed " #ops "[%d]: %s", i, state_msg); \
+            return s; \
         } \
         ++i; \
-    } \
-    if (state_fail(s[0])) { \
-        return s[0]; \
     }
 
-#define apis_multiret(n, obj, func, ...) \
-    apis_multi(n, obj, func, __VA_ARGS__); \
-    return s[0];
+#define apis_multiret(ops, ...) \
+    apis_multi(ops, __VA_ARGS__); \
+    return s;
  
-void apis_append(void **address, size_t size, void *function);
+void apis_append(void *op[], void *func);
 
 void apis_print(uint api, char *prefix);
 

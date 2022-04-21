@@ -64,10 +64,10 @@ typedef struct gpu_s
 typedef struct gpu_ops_s
 {
     void    (*get_api)       (uint *api);
-    state_t (*init)          (ctx_t *c);
-    state_t (*dispose)       (ctx_t *c);
+    state_t (*init[3])       (ctx_t *c);
+    state_t (*dispose[3])    (ctx_t *c);
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
-    state_t (*read)          (ctx_t *c, gpu_t *data);
+    state_t (*read[3])       (ctx_t *c, gpu_t *data);
     state_t (*read_raw)      (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
 

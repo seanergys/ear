@@ -15,22 +15,18 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <metrics/common/apis.h>
+#include <common/output/debug.h>
 #include <common/output/verbose.h>
 
-void apis_append(void **address, size_t size, void *func)
+void apis_append(void *op[], void *func)
 {
-    ulong base   = (ulong) address;
-    ulong offset = (ulong) size;
-    ulong index  = 0;
-
-    while (address != NULL) {
-        address = (void *) (base + (size * index));
-        ++index;
+    while (*op != NULL) {
+        ++op;
     }
-    *address = func;
+    *op = func;
 }
 
 void apis_print(uint api, char *prefix)

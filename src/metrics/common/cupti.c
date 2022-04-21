@@ -15,8 +15,11 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <metrics/common/cupti.h>
 
@@ -58,20 +61,6 @@ static const char *cupti_names[] = {
     "cuptiGetResultString",
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static uint            devs_count;
 static cupti_t         cupti;
@@ -81,6 +70,7 @@ static uint            ok;
 static state_t static_open_cuda()
 {
     #define open_test_cuda(path) \
+    debug("Openning %s", path); \
     if (state_ok(plug_open(path, (void **) &cu, cuda_names, CUDA_N, RTLD_NOW | RTLD_LOCAL))) { \
         return EAR_SUCCESS; \
     }
@@ -94,6 +84,7 @@ static state_t static_open_cuda()
 static state_t static_open_cupti()
 {
     #define _open_test(path) \
+    debug("Openning %s", path); \
     if (state_ok(plug_open(path, (void **) &cupti, cupti_names, CUPTI_N, RTLD_NOW | RTLD_LOCAL))) { \
         return EAR_SUCCESS; \
     }

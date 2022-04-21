@@ -15,7 +15,10 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
+#include <common/output/debug.h>
 #include <management/gpu/archs/dummy.h>
 
 static ulong  clock_khz;
@@ -25,8 +28,8 @@ static uint	  clock_lens[1];
 void mgt_gpu_dummy_load(mgt_gpu_ops_t *ops)
 {
     // Additional
-    apis_add(ops, init                  , mgt_gpu_dummy_init);
-    apis_add(ops, dispose               , mgt_gpu_dummy_dispose);
+    apis_add(ops->init                  , mgt_gpu_dummy_init);
+    apis_add(ops->dispose               , mgt_gpu_dummy_dispose);
     // Queries (put if empty)
     apis_put(ops->get_api               , mgt_gpu_dummy_get_api);
     apis_put(ops->get_devices           , mgt_gpu_dummy_get_devices);

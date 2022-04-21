@@ -59,7 +59,7 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 		debug("API %u/%u Intern %u/%u", api, API_EARD, api_intern, API_AMD17);
 		//
 		if (api == API_EARD && api_intern == API_AMD17) {
-			//apis_add(ops->init_static, imcfreq_amd17_init_static);
+			apis_add(ops->init_static, imcfreq_amd17_init_static);
 	    	apis_set(ops->data_diff,   imcfreq_amd17_data_diff);
 			debug("AMD17 loaded limited");
 		}

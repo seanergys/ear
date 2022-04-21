@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
@@ -61,7 +61,10 @@ static gpu_devs_t *user_devs;
 void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
 {
 	uint eard_api;
-	state_t s;
+	#ifdef RPCS
+    state_t s;
+    #endif
+    int i;
 
 	if (!eard) {
 	    debug("EARD (daemon) not required");
@@ -71,19 +74,29 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
 		debug("EARD (daemon) not connected");
         return;
 	}
+    #ifdef RPCS
 	if (state_fail(s = eard_rpc(RPC_GET_API, NULL, 0, (char *) &eard_api, sizeof(int)))) {
 		return;
 	}
+    #else
+    eards_gpu_model(&eard_api);
+    #endif
 	debug("Received API %u", eard_api);
 	if (eard_api == API_NONE || eard_api == API_DUMMY) {
 		debug("EARD (daemon) has loaded DUMMY/NONE API");
         return;
     }
-    // TODO: RPC_GET_DEVICES
+    #ifdef RPCS
     if (state_fail(s = eard_rpc(RPC_COUNT_DEVICES, NULL, 0, (char *) &root_devs_count, sizeof(uint)))) {
         return;
     }
-    debug("Received from EARD %u GPUs", count);
+    // TODO: RPC_GET_DEVICES
+    #else
+    eards_gpu_dev_count(&root_devs_count);
+    root_devs = calloc(root_devs_count, sizeof(gpu_devs_t));
+    eards_gpu_get_info(root_devs, root_devs_count);
+    #endif
+    debug("Received from EARD %u GPUs", root_devs_count);
     if (root_devs_count == 0) {
         debug("There are no GPUs");
     }
@@ -91,10 +104,24 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
     // If there is an already loaded API
     if (ops->get_devices != NULL) {
         ops->get_devices(NULL, &user_devs, &user_devs_count);
+    } else {
+        // If not, just copy root devices
+        user_devs = calloc(user_devs_count, sizeof(gpu_devs_t));
+        memcpy(user_devs, root_devs, user_devs_count*sizeof(gpu_devs_t));
     }
+    #ifdef SHOW_DEBUGS
+    debug("Global GPUs:");
+    for (i = 0; i < root_devs_count; ++i) {
+        debug("GPU%d: %u_%llu", i, root_devs[i].index, root_devs[i].serial);
+    }
+    debug("Instanced GPUs:");
+    for (i = 0; i < user_devs_count; ++i) {
+        debug("GPU%d: %u_%llu", i, user_devs[i].index, user_devs[i].serial);
+    }
+    #endif
     // Additionally (appended because init is required)
-    apis_add(ops, init                  , mgt_gpu_eard_init);
-    apis_add(ops, dispose               , mgt_gpu_eard_dispose);
+    apis_add(ops->init                  , mgt_gpu_eard_init);
+    apis_add(ops->dispose               , mgt_gpu_eard_dispose);
     // Queries (put if empty)
     apis_put(ops->get_api               , mgt_gpu_eard_get_api);
     apis_put(ops->get_devices           , mgt_gpu_eard_get_devices);
@@ -111,6 +138,7 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
     apis_put(ops->freq_list             , mgt_gpu_eard_freq_list);
     apis_put(ops->power_cap_reset       , mgt_gpu_eard_power_cap_reset);
     apis_put(ops->power_cap_set         , mgt_gpu_eard_power_cap_set);
+    debug("Loaded EARD");
 }
 
 void mgt_gpu_eard_get_api(uint *api)
@@ -120,10 +148,12 @@ void mgt_gpu_eard_get_api(uint *api)
 
 state_t mgt_gpu_eard_init(ctx_t *c)
 {
+    #ifdef RPCS
     uint cn = root_devs_count;
 	wide_buffer_t b;
-    uint i, j, k;
 	state_t s;
+    #endif
+    uint i, j, k;
 
     root_freq_default    = calloc(root_devs_count, sizeof(ulong));
     root_freq_max        = calloc(root_devs_count, sizeof(ulong));
@@ -140,6 +170,7 @@ state_t mgt_gpu_eard_init(ctx_t *c)
     user_power_max       = calloc(user_devs_count, sizeof(ulong));
     user_power_min       = calloc(user_devs_count, sizeof(ulong));
 
+    #ifdef RPCS
 	if (state_fail(s = eard_rpc(RPC_FREQ_DEFAULT, NULL, 0, (char *) root_freq_default, cn*sizeof(ulong)))) {
 		return s;
 	}
@@ -171,13 +202,18 @@ state_t mgt_gpu_eard_init(ctx_t *c)
 		debug("GPU%u: default/max freq. limits %lu/%lu, default/min/max power cap %lu/%lu/%lu",
 			i, root_freq_default[i], root_freq_max[i], root_power_default[i], root_power_max[i], root_power_min[i]);
 	}
+    #endif
     // Static shuffle
     for (i = 0; i < root_devs_count; ++i) {
         for (j = 0; j < user_devs_count; ++j) {
             if (root_devs[i].serial == user_devs[j].serial) {
+                #ifndef RPCS
+                root_freqs_count[i]     = 1;
+                root_freqs_available[j] = calloc(root_freqs_count[i], sizeof(ulong));
+                #endif
                 user_freq_default[j]    = root_freq_default[i];
                 user_freq_max[j]        = root_freq_max[i];
-                user_freqs_available[j] = malloc(root_freqs_count[i]*sizeof(ulong));
+                user_freqs_available[j] = calloc(root_freqs_count[i], sizeof(ulong));
                 user_freqs_count[j]     = root_freqs_count[i];
                 user_power_default[j]   = root_power_default[i];
                 user_power_max[j]       = root_power_max[i];
@@ -214,6 +250,7 @@ state_t mgt_gpu_eard_count_devices(ctx_t *c, uint *dev_count)
 	return EAR_SUCCESS;
 }
 
+#ifdef RPCS
 static state_t shuffle_in(ulong *user_list, ulong *root_list, state_t s)
 {
     int i, j;
@@ -228,11 +265,17 @@ static state_t shuffle_in(ulong *user_list, ulong *root_list, state_t s)
     }
     return s;
 }
+#endif
 
 state_t mgt_gpu_eard_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
+    #ifdef RPCs
     ulong aux[128]; // khz
 	return shuffle_in(khz, aux, eard_rpc(RPC_FREQ_CURRENT, NULL, 0, (char *) aux, root_devs_count*sizeof(ulong)));
+    #else
+    memset(khz, 0, user_devs_count*sizeof(ulong));
+    return EAR_SUCCESS;
+    #endif
 }
 
 state_t mgt_gpu_eard_freq_limit_get_default(ctx_t *c, ulong *khz)
@@ -249,7 +292,11 @@ state_t mgt_gpu_eard_freq_limit_get_max(ctx_t *c, ulong *khz)
 
 state_t mgt_gpu_eard_freq_limit_reset(ctx_t *c)
 {
+    #ifdef RPCs
 	return eard_rpc(RPC_FREQ_RESET, NULL, 0, NULL, 0);
+    #else
+    return EAR_SUCCESS;
+    #endif
 }
 
 static char *shuffle_out(ulong *user_list, ulong *root_list)
@@ -266,6 +313,7 @@ static char *shuffle_out(ulong *user_list, ulong *root_list)
                 root_list[i] = user_list[j];
             }
         }
+        debug("Leaving FREQ%d: %lu KHz", i, root_list[i]);
     }
     return (char *) root_list;
 }
@@ -273,7 +321,11 @@ static char *shuffle_out(ulong *user_list, ulong *root_list)
 state_t mgt_gpu_eard_freq_limit_set(ctx_t *c, ulong *khz)
 {
     ulong aux[128];
+    #ifdef RPCs
     return eard_rpc(RPC_FREQ_SET, shuffle_out(khz, aux), root_devs_count*sizeof(ulong), NULL, 0);
+    #else
+    return eards_gpu_set_freq(root_devs_count, (ulong *) shuffle_out(khz, aux));
+    #endif
 }
 
 state_t mgt_gpu_eard_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
@@ -285,8 +337,13 @@ state_t mgt_gpu_eard_freq_list(ctx_t *c, const ulong ***list_khz, const uint **l
 
 state_t mgt_gpu_eard_power_cap_get_current(ctx_t *c, ulong *watts)
 {
+    #ifdef RPCs
     ulong aux[128];
 	return shuffle_in(watts, aux, eard_rpc(RPC_POWER_CURRENT, NULL, 0, (char *) aux, root_devs_count*sizeof(ulong)));
+    #else
+    memset(watts, 0, user_devs_count*sizeof(ulong));
+    return EAR_SUCCESS;
+    #endif
 }
 
 state_t mgt_gpu_eard_power_cap_get_default(ctx_t *c, ulong *watts)
@@ -304,11 +361,19 @@ state_t mgt_gpu_eard_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts
 
 state_t mgt_gpu_eard_power_cap_reset(ctx_t *c)
 {
+    #ifdef RPCs
 	return eard_rpc(RPC_POWER_RESET, NULL, 0, NULL, 0);
+    #else
+    return EAR_SUCCESS;
+    #endif
 }
 
 state_t mgt_gpu_eard_power_cap_set(ctx_t *c, ulong *watts)
 {
+    #ifdef RPCs
     ulong aux[128];
 	return eard_rpc(RPC_POWER_SET, shuffle_out(watts, aux), root_devs_count*sizeof(ulong), NULL, 0);
+    #else
+    return EAR_SUCCESS;
+    #endif
 }

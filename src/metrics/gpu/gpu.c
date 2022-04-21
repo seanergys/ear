@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -28,7 +28,7 @@
 #include <metrics/gpu/archs/oneapi.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static gpu_ops_t ops[2];
+static gpu_ops_t ops;
 static uint devs_count;
 static uint ok_load;
 
@@ -40,12 +40,12 @@ void gpu_load(int eard)
     }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(ops);
-    gpu_oneapi_load(ops);
-    gpu_eard_load(ops, eard);
-    gpu_dummy_load(ops);
+    gpu_nvml_load(&ops);
+    gpu_oneapi_load(&ops);
+    gpu_eard_load(&ops, eard);
+    gpu_dummy_load(&ops);
     // Complementary APIs
-    gpu_cupti_load(ops);
+    gpu_cupti_load(&ops);
     ok_load = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
@@ -53,36 +53,36 @@ unlock_load:
 
 void gpu_get_api(uint *api)
 {
-    if (ops[0].get_api != NULL) {
-        return ops[0].get_api(api);
+    if (ops.get_api != NULL) {
+        return ops.get_api(api);
     }
     *api = API_NONE;
 }
 
 state_t gpu_init(ctx_t *c)
 {
-    apis_multi(2, ops, init, c);
+    apis_multi(ops.init, c);
     return gpu_count_devices(c, &devs_count);
 }
 
 state_t gpu_dispose(ctx_t *c)
 {
-    apis_multiret(2, ops, dispose, c);
+    apis_multiret(ops.dispose, c);
 }
 
 state_t gpu_count_devices(ctx_t *c, uint *devs_count)
 {
-	preturn (ops[0].count_devices, c, devs_count);
+	preturn (ops.count_devices, c, devs_count);
 }
 
 state_t gpu_read(ctx_t *c, gpu_t *data)
 {
-    apis_multiret(2, ops, read, c, data);
+    apis_multiret(ops.read, c, data);
 }
 
 state_t gpu_read_raw(ctx_t *c, gpu_t *data)
 {
-	preturn (ops[0].read_raw, c, data);
+	preturn (ops.read_raw, c, data);
 }
 
 state_t gpu_read_diff(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff)

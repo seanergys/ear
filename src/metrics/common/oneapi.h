@@ -37,15 +37,24 @@ typedef struct ze_info_s {
     int activeTime;
     int energy;
     int actual;
+    char *name;
+    char *vendorId;
+    int deviceId;
+    int driverVersion;
+    uint maxClockRate;
+    uint maxBusWidth;
+    uint coreClockRate;
+    ulong maxMemAllocSize;
+    ulong totalSize;
 } ze_info_t;
 
 typedef int ze_result_t;
 typedef int ze_init_flags_t;
 typedef int ze_device_handle_t;
 typedef ze_info_t ze_device_properties_t;
-typedef int ze_device_memory_properties_t;
+typedef ze_info_t ze_device_memory_properties_t;
 typedef int ze_driver_handle_t;
-typedef int ze_driver_properties_t;
+typedef ze_info_t ze_driver_properties_t;
 typedef int ze_driver_extension_properties_t;
 typedef int ze_api_version_t;
 typedef int zes_device_handle_t;

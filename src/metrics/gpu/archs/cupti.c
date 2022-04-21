@@ -96,11 +96,13 @@ void gpu_cupti_load(gpu_ops_t *ops)
         return;
     }
     if (state_fail(cupti_open(&cupti, &cu))) {
+        debug("Can not open CUPTI: %s", state_msg);
         return;
     }
-    apis_add(ops, init,    gpu_cupti_init);
-    apis_add(ops, dispose, gpu_cupti_dispose);
-    apis_add(ops, read,    gpu_cupti_read);
+    apis_add(ops->init,    gpu_cupti_init);
+    apis_add(ops->dispose, gpu_cupti_dispose);
+    apis_add(ops->read,    gpu_cupti_read);
+    debug("Loaded CUPTI");
 }
 
 state_t gpu_cupti_dispose(ctx_t *c)
@@ -127,13 +129,18 @@ static state_t intern_init()
 
 state_t gpu_cupti_init(ctx_t *c)
 {
+    state_t s;
     suscription_t *sus;
     while (pthread_mutex_trylock(&lock));
+    debug("Initializing CUPTI");
     if (ok) {
         goto fini;
     }
     // Setting callbacks
-    intern_init();
+    if (state_fail(s = intern_init())) {
+        debug("Error while initializing CUPTI: %s", state_msg);
+        goto fini;
+    }
     // Setting suscriptions
     sus = suscription();
     sus->call_main  = gpu_cupti_pool;

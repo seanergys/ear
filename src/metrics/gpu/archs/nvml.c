@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -54,6 +54,7 @@ void gpu_nvml_load(gpu_ops_t *ops)
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_set(ops->read,          gpu_nvml_read);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
+    debug("Loaded NVML");
 }
 
 static state_t static_init()
@@ -82,6 +83,7 @@ void gpu_nvml_get_api(uint *api)
 
 state_t gpu_nvml_init(ctx_t *c)
 {
+    debug("Initializing NVML");
     return static_init();
 }
 

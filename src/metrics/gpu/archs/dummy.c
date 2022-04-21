@@ -22,10 +22,10 @@
 void gpu_dummy_load(gpu_ops_t *ops)
 {
     apis_put(ops->get_api,       gpu_dummy_get_api);
-    apis_put(ops->init,          gpu_dummy_init);
-    apis_put(ops->dispose,       gpu_dummy_dispose);
+    apis_pin(ops->init,          gpu_dummy_init);
+    apis_pin(ops->dispose,       gpu_dummy_dispose);
     apis_put(ops->count_devices, gpu_dummy_count_devices);
-    apis_put(ops->read,          gpu_dummy_read);
+    apis_pin(ops->read,          gpu_dummy_read);
     apis_put(ops->read_raw,      gpu_dummy_read_raw);
 }
 
