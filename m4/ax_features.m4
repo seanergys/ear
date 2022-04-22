@@ -154,7 +154,7 @@ AC_DEFUN([AX_BEFORE_FEATURES],
     #
     # Makefile name
     #
-	AC_ARG_VAR([NAME],[Add a name to the compilation. It adds an additional Makefile with a suffix.])
+	AC_ARG_VAR([MAKE_NAME],[Add a name to the compilation. It adds an additional Makefile with a suffix.])
 ])
 
 AC_DEFUN([AX_AFTER_FEATURES],
@@ -221,7 +221,7 @@ AC_DEFUN([AX_AFTER_FEATURES],
 
 AC_DEFUN([AX_AFTER_OUTPUT],
 [
-	if test -n "$NAME"; then
-        cp Makefile Makefile.$NAME
+	if test -n "$MAKE_NAME"; then
+        cp Makefile Makefile.$MAKE_NAME
 	fi
 ])
