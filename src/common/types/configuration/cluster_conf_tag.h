@@ -34,7 +34,9 @@ typedef struct tags
     ulong min_power;
     ulong max_temp;
     ulong error_power;
-		ulong gpu_def_freq;
+    ulong gpu_def_freq;
+    int   cpu_max_pstate;
+    int   imc_max_pstate;
     long powercap;
     long max_powercap;
     char energy_model[GENERIC_NAME];

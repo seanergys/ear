@@ -35,7 +35,6 @@
 #include <common/types/configuration/cluster_conf_db.h>
 #include <common/environment.h>
 
-
 //#define __OLD__CONF__
 
 /** IP functions */
@@ -365,21 +364,26 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
     if (tag_id >= 0)
     {
         debug("Found my_node_conf with tag: %s\n", my_conf->tags[tag_id].id);
-        n->max_sig_power = (double)my_conf->tags[tag_id].max_power;
-        n->min_sig_power = (double)my_conf->tags[tag_id].min_power;
-        n->max_error_power = (double)my_conf->tags[tag_id].error_power;
-        n->max_temp = my_conf->tags[tag_id].max_temp;
-        n->powercap = (double)my_conf->tags[tag_id].powercap;
-        n->max_powercap = (double)my_conf->tags[tag_id].max_powercap;
-        n->max_avx512_freq = my_conf->tags[tag_id].max_avx512_freq;
-        n->max_avx2_freq = my_conf->tags[tag_id].max_avx2_freq;
 
-        n->powercap_type = my_conf->tags[tag_id].powercap_type;
-        n->gpu_def_freq = my_conf->tags[tag_id].gpu_def_freq;
-				strcpy(n->tag, my_conf->tags[tag_id].id);
+        n->max_sig_power   = (double)my_conf->tags[tag_id].max_power;
+        n->min_sig_power   = (double)my_conf->tags[tag_id].min_power;
+        n->max_error_power = (double)my_conf->tags[tag_id].error_power;
+        n->max_temp        = my_conf->tags[tag_id].max_temp;
+        n->powercap        = (double)my_conf->tags[tag_id].powercap;
+        n->max_powercap    = (double)my_conf->tags[tag_id].max_powercap;
+        n->max_avx512_freq = my_conf->tags[tag_id].max_avx512_freq;
+        n->max_avx2_freq   = my_conf->tags[tag_id].max_avx2_freq;
+
+        n->powercap_type  = my_conf->tags[tag_id].powercap_type;
+        n->gpu_def_freq   = my_conf->tags[tag_id].gpu_def_freq;
+        n->cpu_max_pstate = my_conf->tags[tag_id].cpu_max_pstate;
+        n->imc_max_pstate = my_conf->tags[tag_id].imc_max_pstate;
+
+        strcpy(n->tag, my_conf->tags[tag_id].id);
 
         if (my_conf->tags[tag_id].energy_plugin != NULL && strlen(my_conf->tags[tag_id].energy_plugin) > 0)
             n->energy_plugin = my_conf->tags[tag_id].energy_plugin;
+
         if (my_conf->tags[tag_id].energy_model != NULL && strlen(my_conf->tags[tag_id].energy_model) > 0)
             n->energy_model = my_conf->tags[tag_id].energy_model;
 
@@ -387,7 +391,6 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         n->powercap_gpu_plugin = my_conf->tags[tag_id].powercap_gpu_plugin;
 
         n->coef_file = strlen(my_conf->tags[tag_id].coeffs) > 0 ? my_conf->tags[tag_id].coeffs : "coeffs.default";
-
     }
     else warning("No tag found for current node in ear.conf\n");
 
@@ -620,6 +623,8 @@ void set_default_tag_values(tag_t *tag)
     tag->min_power      = MIN_SIG_POWER;
     tag->max_temp       = MAX_TEMP;
     tag->gpu_def_freq   = 0;
+    tag->cpu_max_pstate = 5;
+    tag->imc_max_pstate = 5;
 
     strcpy(tag->coeffs, "coeffs.default");
     strcpy(tag->energy_model, "");

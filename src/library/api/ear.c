@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
-#if COUNTDOWN
+#if 0
 #define SINGLE_CONNECTION 0
 #else
 #define SINGLE_CONNECTION 1
@@ -1307,7 +1307,7 @@ void ear_init()
 #endif
 
 				init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
-				init_power_policy(system_conf,resched_conf);
+				init_power_policy(system_conf, resched_conf);
 				verbose_master(VEAR_INIT,"Policies and models initialized");	
 
 				if (cpu_power_model_load(system_conf, &system_conf->installation, &arch_desc, API_NONE) == EAR_SUCCESS){

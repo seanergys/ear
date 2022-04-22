@@ -23,9 +23,6 @@
 #include <unistd.h>
 #include <assert.h>
 #include <math.h>
-#if USE_GSL
-#include <gsl/gsl_statistics_double.h>
-#endif
 
 // #define SHOW_DEBUGS 1
 
@@ -77,24 +74,13 @@ static uint   mpi_call_count[N_CALL_TYPES];
 static ullong mpi_call_time[N_CALL_TYPES];
 #endif // NEW_MPI_STATS
 
-#if COUNTDOWN
-#define VERB_COUNTDOWN 1
-static uint low_cpu = 0;    // Countdown approach configuration
-static uint reduce_cpufreq; // Used to mark processes arbitrary selected for gromacs
-
-static uint pstate_list[MAX_CPUS_SUPPORTED];
-static uint *cpu_list;
-#endif // COUNTDOWN
-       //
-#define COMP_CPI 0
-
 #if COMP_CPI
 static cpi_t cpi_1;
 static cpi_t cpi_2;
 static cpi_t cpi_diff;
 static double comp_cpi;
-    static ullong comp_cycles;
-    static ullong comp_insts;
+static ullong comp_cycles;
+static ullong comp_insts;
 #endif
 
 float LB_TH = EAR_LB_TH;
@@ -167,40 +153,6 @@ state_t mpi_app_init(polctx_t *c)
             mpi_call_time[i]  = 0;
         }
 #endif
-
-#if COUNTDOWN
-        char *clow_cpu = getenv("SLURM_EAR_COUNTDOWN");
-        if (clow_cpu != NULL) {
-            low_cpu = atoi(clow_cpu);
-        }
-        verbose(VERB_COUNTDOWN, "Countdown: %u", low_cpu);
-
-        reduce_cpufreq = ((ear_my_rank == 2) || (ear_my_rank == 4) || (ear_my_rank == 7) || (ear_my_rank == 10) || (ear_my_rank == 12) || (ear_my_rank == 15) || (ear_my_rank == 18) || (ear_my_rank == 20) ||  (ear_my_rank == 23) ||  (ear_my_rank == 26) ||  (ear_my_rank == 28) ||  (ear_my_rank == 31) ||  (ear_my_rank == 34) ||  (ear_my_rank == 36) ||  (ear_my_rank == 39)) ? 1 : 0;
-
-        if (reduce_cpufreq) {
-
-            /* Process CPUs */
-            cpu_list = calloc(sig_shared_region[my_node_id].num_cpus, sizeof(uint));
-            if (list_cpus_in_mask(&sig_shared_region[my_node_id].cpu_mask,
-                        sig_shared_region[my_node_id].num_cpus, cpu_list) < 0) {
-                verbose(VERB_BARR, "%sWARNING%s cpu_list for process %d could not have been read.",
-                        COL_RED, COL_CLR, my_node_id);
-                free(cpu_list);
-            }
-// TODO: #if SHOW_DEBUGS
-            else {
-                verbosen(VERB_BARR, "proc (l/g) (%d/%d): ", my_node_id, ear_my_rank);
-                for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
-                    verbosen(VERB_BARR, "%u ", cpu_list[i]);
-                }
-                verb(VERB_BARR, " ");
-            }
-// TODO: #endif
-            for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
-                pstate_list[i] = ps_nothing;
-            }
-        }
-#endif // COUNTDOWN
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
@@ -423,7 +375,7 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
     comp_insts += cpi_diff.instructions;
     // sig_shared_region[my_node_id].comp_cycles = comp_cycles;
     // sig_shared_region[my_node_id].comp_insts = comp_insts;
-#endif
+#endif // COMP_CPI
 
         // Update
         // sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;
@@ -435,32 +387,9 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
                     my_node_id, pol_time_init.tv_sec, pol_time_init.tv_nsec,
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec, time_no_mpi);
         }
-#endif
-
-#if COUNTDOWN
-        if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
-            if (is_mpi_blocking(call_type)) {
-
-                // Get which type of blocking call is
-                 mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
-
-                 if (nbcall_type == Only_Barrier) {
-
-                    for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
-                        uint cpu = cpu_list[i];
-                        pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index; // + 1;
-                    }
-
-                    if(state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
-                        verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d",
-                                COL_RED, COL_CLR, my_node_id);
-                    }
-                 }
-            }
-        }
-#endif // COUNTDOWN
+#endif // SHOW_DEBUGS
     }
-#endif
+#endif // PER_MPI_STATS
     return EAR_SUCCESS;
 }
 
@@ -509,22 +438,6 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
-#if COUNTDOWN
-            if (nbcall_type == Only_Barrier) {
-                if (low_cpu && reduce_cpufreq && cpu_list != NULL) {
-
-                    for (int i = 0; i < sig_shared_region[my_node_id].num_cpus; i++) {
-                        uint cpu = cpu_list[i];
-                        pstate_list[cpu] = sig_shared_region[my_node_id].pstate_index;
-                    }
-
-                    if (state_fail(mgt_cpufreq_set_current_list(no_ctx, pstate_list))) {
-                        verb(VERB_BARR, "%sERROR%s Setting CPU freq. list for process %d",
-                                COL_RED, COL_CLR, my_node_id);
-                    }
-                }
-            }
-#endif // COUNTDOWN
         }
         /* Global statistics */
         mpi_stats.mpi_time  += elap;
@@ -783,9 +696,6 @@ state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, i
         double mean, double sd, double mag)
 {
     double max, min;
-#if USE_GSL
-    gsl_stats_minmax(&min, &max, percs_mpi, 1, num_procs);
-#else
     max = 0.0;
     min = 100.0; 
     int i;
@@ -793,7 +703,6 @@ state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, i
         min = ear_min(min,percs_mpi[i]);
         max = ear_max(max,percs_mpi[i]);
     }
-#endif // USE_GSL
     mpisumm->max  = (float) max;
     mpisumm->min  = (float) min;
     mpisumm->sd   = (float) sd;
@@ -812,26 +721,9 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb)
 {
     /* Get only the percentage time spent in MPI blocking calls. */
-#if USE_GSL
-    if (percs_mpi == NULL) {
-        return EAR_ERROR;
-    }
-
-    double perc_mpi_check = 0; // Used ONLY for checking if perc_mpi > 0
-
-    for (int i = 0; i < num_procs; i++) {
-       percs_mpi[i] = node_mpi_calls[i].perc_mpi; 
-       perc_mpi_check += percs_mpi[i];
-    }
-
-    if (perc_mpi_check == 0) {
-        return EAR_ERROR;
-    }
-#else
     state_t ret;
-   // Get only perc_mpi info.
+    // Get only perc_mpi info.
     ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok
-#endif // USE_GSL
 
     // Compute statistics for determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
@@ -870,11 +762,7 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
     *lb = 0;
 #endif // NODE_LB
 
-#if USE_GSL
-    return EAR_SUCCESS;
-#else
     return ret;
-#endif // USE_GSL
 }
 
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean,
@@ -1001,16 +889,11 @@ static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, doubl
         return EAR_ERROR;
     }
 
-#if USE_GSL
-    *mean = gsl_stats_mean(percs_mpi, 1, nump);
-    *sd = gsl_stats_sd_m(percs_mpi, 1, nump, *mean);
-    *mag = 0;
-#else
     mean_sd_t mean_sd_mag = ear_math_mean_sd(percs_mpi, nump);
     *mean = mean_sd_mag.mean;
     *sd = mean_sd_mag.sd;
     *mag = mean_sd_mag.mag;
-#endif // USE_GSL
+
     return EAR_SUCCESS;
 }
 
