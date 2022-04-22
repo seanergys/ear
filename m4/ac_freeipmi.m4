@@ -61,7 +61,7 @@ AC_DEFUN([X_AC_FREEIPMI],
 		echo checking for FREEIPMI CFLAGS... no
 	else
 		FREEIPMI_DIR=$_cv_freeipmi_dir_root
-		FREEIPMI_CFLAGS="-I\$(FREEIPMI_BASE)/include -DLIKWID_BASE=\"\$(FREEIPMI_BASE)\""
+		FREEIPMI_CFLAGS="-I\$(FREEIPMI_BASE)/include -DFREEIPMI_BASE=\\\"\$(FREEIPMI_BASE)\\\""
 		FREEIPMI_LDFLAGS="-L\$(FREEIPMI_BASE)/lib -lfreeipmi -Wl,-rpath,\$(FREEIPMI_BASE)/lib -rdynamic"
 		echo checking for FREEIPMI CFLAGS... $FREEIPMI_CFLAGS
 		echo checking for FREEIPMI LDFLAGS... $FREEIPMI_LDFLAGS

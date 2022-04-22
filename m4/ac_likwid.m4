@@ -61,7 +61,7 @@ AC_DEFUN([X_AC_LIKWID],
 		echo checking for LIKWID CFLAGS... no
 	else
 		LIKWID_DIR=$_cv_likwid_dir_root
-		LIKWID_CFLAGS="-I\$(LIKWID_BASE)/include -DLIKWID_BASE=\"\$(LIKWID_BASE)\""
+		LIKWID_CFLAGS="-I\$(LIKWID_BASE)/include -DLIKWID_BASE=\\\"\$(LIKWID_BASE)\\\""
 		echo checking for LIKWID CFLAGS... $LIKWID_CFLAGS
 	fi
 
