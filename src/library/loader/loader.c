@@ -97,7 +97,6 @@ int load_no_official()
 
 int load_no_parallel()
 {
-		printf("Testing %s\n", program_invocation_name);
 		if (strstr(program_invocation_name,"python") != NULL) return 1;
 		return 0;
 }
