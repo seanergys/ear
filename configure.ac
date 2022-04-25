@@ -2,6 +2,8 @@
 m4_include([m4/ax_compare_version.m4])
 m4_include([m4/ax_features.m4])
 m4_include([m4/ax_defaults.m4])
+m4_include([m4/ac_freeipmi.m4])
+m4_include([m4/ac_likwid.m4])
 m4_include([m4/ac_pgsql.m4])
 m4_include([m4/ac_mysql.m4])
 m4_include([m4/ac_slurm.m4])
@@ -36,87 +38,19 @@ AX_BEFORE_FEATURES
 ############
 # FEATURES #
 ############
-#
-
-############
-# GSL TEST #
-############
-#
-# Installation directories:
-#   --prefix=PREFIX         install architecture-independent files in PREFIX [/usr/local]
-#   --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX [PREFIX]
-#
-# By default, `make install' will install all the files in
-# `/usr/local/bin', `/usr/local/lib' etc.  You can specify
-# an installation prefix other than `/usr/local' using `--prefix',
-# for instance `--prefix=$HOME'.
-#
-# For better control, use the options below.
-#
-# Fine tuning of the installation directories:
-#   --bindir=DIR            user executables [EPREFIX/bin]
-#   --sbindir=DIR           system admin executables [EPREFIX/sbin]
-#   --libdir=DIR            object code libraries [EPREFIX/lib]
-#   --includedir=DIR        C header files [PREFIX/include]
-#
-
-X_AC_GSL
-
-#########
-# SLURM #
-#########
-# Installation directories:
-#     --prefix=PREFIX         install architecture-independent files in PREFIX [/usr/local]
-#     --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX [PREFIX]
-#
-#   By default, `make install' will install all the files in
-#   `/usr/local/bin', `/usr/local/lib' etc.  You can specify
-#   an installation prefix other than `/usr/local' using `--prefix',
-#   for instance `--prefix=$HOME'.
-#
-#   For better control, use the options below.
-#
-#   Fine tuning of the installation directories:
-#     --bindir=DIR            user executables [EPREFIX/bin]
-#     --sbindir=DIR           system admin executables [EPREFIX/sbin]
-#     --libdir=DIR            object code libraries [EPREFIX/lib]
-#     --includedir=DIR        C header files [PREFIX/include]
-#
-
-X_AC_SLURM
-
-#########
-# PBS   #
-#########
-#
-
-X_AC_PBS
-
-#########
-# PGSQL #
-#########
-#
-
-X_AC_PGSQL
-
-#########
-# MYSQL #
-#########
-#
-
-X_AC_MYSQL
-
-#########
-# CUDA  #
-#########
-#
 
 X_AC_CUDA
+X_AC_FREEIPMI
+X_AC_GSL
+X_AC_LIKWID
+X_AC_MYSQL
+X_AC_PBS
+X_AC_PGSQL
+X_AC_SLURM
 
 #################
 # POST-FEATURES #
 #################
-#
 
 AX_AFTER_FEATURES
 

@@ -623,8 +623,8 @@ void set_default_tag_values(tag_t *tag)
     tag->min_power      = MIN_SIG_POWER;
     tag->max_temp       = MAX_TEMP;
     tag->gpu_def_freq   = 0;
-    tag->cpu_max_pstate = 5;
-    tag->imc_max_pstate = 5;
+    tag->cpu_max_pstate = MAX_CPUF_PSTATE;
+    tag->imc_max_pstate = MAX_IMCF_PSTATE;
 
     strcpy(tag->coeffs, "coeffs.default");
     strcpy(tag->energy_model, "");

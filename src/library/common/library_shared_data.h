@@ -90,6 +90,7 @@ typedef struct shsignature {
     uint              master;
     pid_t             pid;
     uint              ready;
+		uint 							exited;
     uint              iterations;
     mpi_information_t mpi_info;
     mpi_calls_types_t mpi_types_info;
@@ -175,6 +176,8 @@ int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
 
 int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig, uint *num_ready);
+int num_processes_exited(lib_shared_data_t *data,shsignature_t *sig);
+
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig);
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig);
 void print_shared_signatures(lib_shared_data_t *data,shsignature_t *sig);

@@ -23,7 +23,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config.h>
 #include <common/system/symplug.h>
@@ -68,13 +68,16 @@ extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) f
 #endif
 
+// TODO remove after reinstalling on Lenox
+#define COMPATIBLE_SHARED_MEM 1
+
 extern masters_info_t masters_info;
 
 extern cpu_set_t ear_process_mask;
 extern int       ear_affinity_is_set;
 
-extern       uint *imc_max_pstate;
-extern       uint *imc_min_pstate;
+extern       uint *imc_max_pstate; // Hardware, not config
+extern       uint *imc_min_pstate; // Hardware, not config
 extern       uint  imc_devices;
 extern const pstate_t *imc_pstates;
 
@@ -110,7 +113,7 @@ static uint exclusive_mode = 0;
 /* CPU and IMC lower bounds */
 static ullong min_cpufreq  = 0; // CPu freq. selection works with khz
 static ullong min_imcfreq  = 0;
-static uint   max_imcfreq_ps = ps_nothing; // IMC freq. selection works with pstates
+uint   max_policy_imcfreq_ps = ps_nothing; // IMC freq. selection works with pstates
 
 static pstate_t *cpu_pstate_lst; /*!< The list of available CPU pstates in the current system.*/
 static uint      cpu_pstate_cnt;
@@ -290,7 +293,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
     verbose_master(2, "%-12s: %s\n%-12s: %d", "Policy level",
             pol_grain_str, "Affinity", ear_affinity_is_set);
 
-    ulong max_cpufreq_sel_khz, min_cpufreq_sel_khz;
+    ulong max_cpufreq_sel_khz = 0 , min_cpufreq_sel_khz = 1000000000;
     memset(freq_per_core, 0, sizeof(ulong) * MAX_CPUS_SUPPORTED);
 
     // Assumption: If affinity is set for master, it
@@ -322,7 +325,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
     print_freq_per_core();
 
     // We decided arbitrarely to put show the minimum CPU freq. selected.
-    *(c->ear_frequency) = min_cpufreq_sel_khz;
+    *(c->ear_frequency) = max_cpufreq_sel_khz;
 
 #if SHOW_DEBUGS
     debug("pc_app_info_data %p", pc_app_info_data);
@@ -361,13 +364,13 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
     return EAR_SUCCESS;
 }
 
-static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+static state_t policy_mem_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, node_freq_domain_t *dom, node_freqs_t *avg_freq)
 {
     if ((freqs == NULL) || (freqs->imc_freq == NULL)) {
         verbose_master(POLICY_INFO, "%sERROR%s policy_mem_freq_selection NULL", COL_RED, COL_CLR);
         return EAR_SUCCESS;
     }
-    verbose_master(POLICY_INFO, "(Lower/Upper) IMC pstate (%lu/%lu)",
+    verbose_master(POLICY_INFO, "(Lower/Upper) requested IMC pstate (%lu/%lu)",
             freqs->imc_freq[IMC_MAX],freqs->imc_freq[IMC_MIN]);
 
     uint *imc_up, *imc_low;
@@ -379,18 +382,18 @@ static state_t policy_mem_freq_selection(polctx_t *c,signature_t *my_sig,node_fr
         /* We are using the same imc pstates for all the devices for now */
 #if SHOW_DEBUGS
             // Below code assumes the same IMC freq. was selected for all devices!
-            if (max_imcfreq_ps < freqs->imc_freq[0 * IMC_VAL + IMC_MAX]) {
+            if (max_policy_imcfreq_ps < freqs->imc_freq[0 * IMC_VAL + IMC_MAX]) {
                 debug("The selected upper IMC P-State (%lu) is greather than the maximum"
                         " permitted (%u). Fitering...",
-                        freqs->imc_freq[0 * IMC_VAL + IMC_MAX], max_imcfreq_ps);
+                        freqs->imc_freq[0 * IMC_VAL + IMC_MAX], max_policy_imcfreq_ps);
             }
 #endif
         for (int sid = 0; sid < imc_devices; sid++) {
-            imc_low[sid] = ear_min((uint) freqs->imc_freq[sid * IMC_VAL + IMC_MAX], max_imcfreq_ps);
+            imc_low[sid] = ear_min((uint) freqs->imc_freq[sid * IMC_VAL + IMC_MAX], max_policy_imcfreq_ps);
             imc_up[sid]  = freqs->imc_freq[sid * IMC_VAL + IMC_MIN];	
 
             // Check whether selected IMC upper bound is correct
-            if (imc_up[sid] > imc_max_pstate[sid]) { 
+            if (imc_up[sid] < imc_min_pstate[sid]) { 
                 verbose_master(POLICY_INFO, "%sERROR%s IMC upper bound is greather"
                         " than max %u", COL_RED, COL_CLR, imc_up[sid]);
                 return EAR_SUCCESS;
@@ -652,8 +655,12 @@ state_t policy_init()
         }
     }
     if (cmin_cpufreq != NULL) {
-        min_cpufreq = (ullong) atoi(cmin_cpufreq);
+        min_cpufreq = (ulong) atoi(cmin_cpufreq);
     }
+		if (cmin_cpufreq == NULL){ verbose_master(POLICY_INFO, "%s = NULL", FLAG_MIN_CPUFREQ );
+		}else{ 
+			verbose_master(POLICY_INFO, "%s = %s", FLAG_MIN_CPUFREQ, cmin_cpufreq);
+		}
     verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %lu kHz"
             " / Min. IMC freq. limited: %lu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
@@ -880,21 +887,43 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     debug("max cpu pstate: %u / cpu pstate cnt %u",
             (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
-    if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
-                    (uint) app_settings->cpu_max_pstate, &min_cpufreq))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
-                COL_RED, COL_CLR);
+    if (strcmp(my_policy_name, "monitoring") == 0) {
+        pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
+                cpu_pstate_cnt - 1, &min_cpufreq);
+    } else {
+#if COMPATIBLE_SHARED_MEM
+        if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
+                        (uint) app_settings->cpu_max_pstate, &min_cpufreq))) {
+            verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
+                    COL_RED, COL_CLR);
+        }
+#else
+        if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
+                        (uint) MAX_CPUF_PSTATE, &min_cpufreq))) {
+            verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
+                    COL_RED, COL_CLR);
+        }
+#endif
     }
 
     debug("max imc pstate: %u / imc pstate cnt %u",
             (uint) app_settings->imc_max_pstate, imc_pstate_cnt);
 
+#if COMPATIBLE_SHARED_MEM
     if (state_fail(pstate_pstofreq(imc_pstate_lst, imc_pstate_cnt,
                     (uint) app_settings->imc_max_pstate, &min_imcfreq))) {
         verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate.",
                 COL_RED, COL_CLR);
     }
-    max_imcfreq_ps = (uint) app_settings->imc_max_pstate;
+    max_policy_imcfreq_ps = (uint) app_settings->imc_max_pstate;
+#else
+    if (state_fail(pstate_pstofreq(imc_pstate_lst, imc_pstate_cnt,
+                    (uint) MAX_IMCF_PSTATE, &min_imcfreq))) {
+        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate.",
+                COL_RED, COL_CLR);
+    }
+    max_policy_imcfreq_ps = (uint) MAX_IMCF_PSTATE;
+#endif
 
     return policy_init();
 }
@@ -1427,16 +1456,6 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
     }
     verbose_master(verb_lvl, "Generating list of frequencies for %d processes...", process_cnt);
 
-    // Compute the max CPU freq if given a non-NULL argument
-    if (cpu_freq_max != NULL) {
-        pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt, cpu_pstate_cnt - 1, (ullong *) cpu_freq_max);
-    }
-
-    // Compute the max CPU freq if given a non-NULL argument
-    if (cpu_freq_min != NULL) {
-        pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt, 0, (ullong *) cpu_freq_min);
-    }
-
     for (int proc_lrank = 0; proc_lrank < process_cnt; proc_lrank++)
     {
 #if SHOW_DEBUGS
@@ -1448,6 +1467,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
         // The frequency is filtered by the minimum permitted in the EAR configuration
         ulong cpu_freq_khz = ear_max(process_cpu_freqs_khz[proc_lrank], (ulong) min_cpufreq);
+
 
         /* Compute the maximum and minimum if required */
         if (cpu_freq_max != NULL) {

@@ -41,6 +41,10 @@ coefficients_list.csv
 *accepted_intel_ptu_license
 *.csv
 *TOOLADMIN_NOTES.txt
+Makefile.impi
+Makefile.nompi
+Makefile.ompi
+Makefile.gcc.impi
 
 # Build files
 etc/module/ear
@@ -145,4 +149,7 @@ src/tools/ear_events*
 src/tools/ear_conf
 src/commands/ear-info
 
-
+# Oriol's
+/Makefile.icc_impi
+/Makefile.gcc_ompi
+/Makefile.gcc_nompi

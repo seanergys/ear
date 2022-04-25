@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -56,6 +56,7 @@ extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
 static uint imc_set_by_hw = 0;
 static uint last_imc_pstate;
+extern uint max_policy_imcfreq_ps;
 
 static int min_pstate;
 static int ref_imc_pstate = -1;
@@ -322,9 +323,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         *ready = EAR_POLICY_CONTINUE;
         return EAR_ERROR;
     }
+    verbose_master(2, "%sMin_time_to_solution...........starts.......%s", COL_GRE, COL_CLR);
+
     verbose_master(2, "%sCPU COMP phase%s", COL_BLU, COL_CLR);
 
-    verbose_master(2, "%sMin_time_to_solution...........starts.......%s", COL_GRE, COL_CLR);
 
     if (gpus.node_policy_apply != NULL) {
         /* Basic support for GPUS */
@@ -745,7 +747,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
                 /* We are assuming all sockets uses the same frequency range */
-                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
+                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < max_policy_imcfreq_ps) *ready = EAR_POLICY_TRY_AGAIN;
                 else{
                     *ready = EAR_POLICY_READY;
                     min_time_state = SELECT_CPUFREQ;

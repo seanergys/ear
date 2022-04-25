@@ -177,6 +177,14 @@ int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig, uint *num_r
     return(total == data->num_processes);
 }
 
+int num_processes_exited(lib_shared_data_t *data,shsignature_t *sig)
+{
+  uint total = 0;
+  for (uint i = 0; i < data->num_processes;i++) total += sig[i].exited;
+  return total;
+}
+
+
 void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
 {
     int i;

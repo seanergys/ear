@@ -591,6 +591,7 @@ void attach_shared_regions()
 				if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
 					verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
 				}
+				/* Synchro: This value is set by the master */
 				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 								usleep(10000);
 								verbose(3,"%d:Waiting, current index %u", my_node_id, lib_shared_region->node_mgr_index);
@@ -899,7 +900,6 @@ void ear_init()
 				char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
 				uint per_proc_verb_file = 0;
 
-				printf("EAR Init\n");
 
 				if (per_proc_v_file != NULL) {
 								per_proc_verb_file = atoi(per_proc_v_file);
@@ -1406,6 +1406,8 @@ void ear_init()
 				if (masters_info.my_master_rank >= 0 ){
 								cpu_set_t jmask;
 								debug("Waiting for processes to fill shared signatures");
+
+								/* Synchro : Wait the PID is set by all the processes*/
 								while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
 								debug("Computing number of cpus per job and node mask ");
 								compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
