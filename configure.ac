@@ -2,12 +2,12 @@
 m4_include([m4/ax_compare_version.m4])
 m4_include([m4/ax_features.m4])
 m4_include([m4/ax_defaults.m4])
-m4_include([m4/x_ac_pgsql.m4])
-m4_include([m4/x_ac_mysql.m4])
-m4_include([m4/x_ac_slurm.m4])
-m4_include([m4/x_ac_cuda.m4])
-m4_include([m4/x_ac_pbs.m4])
-m4_include([m4/x_ac_gsl.m4])
+m4_include([m4/ac_pgsql.m4])
+m4_include([m4/ac_mysql.m4])
+m4_include([m4/ac_slurm.m4])
+m4_include([m4/ac_cuda.m4])
+m4_include([m4/ac_pbs.m4])
+m4_include([m4/ac_gsl.m4])
 
 # INIT
 AC_PREREQ([2.69])
@@ -31,7 +31,7 @@ AX_SET_DEFAULTS
 ################
 #
 
-AX_PRE_OPT_FEATURES
+AX_BEFORE_FEATURES
 
 ############
 # FEATURES #
@@ -118,7 +118,7 @@ X_AC_CUDA
 #################
 #
 
-AX_POST_OPT_FEATURES
+AX_AFTER_FEATURES
 
 ##########
 # OUTPUT #
@@ -174,3 +174,4 @@ AC_CONFIG_FILES([Makefile
                  etc/rpms/specs/ear.spec])
 AC_CONFIG_FILES([etc/rpms/rpmbuild.sh], [chmod +x etc/rpms/rpmbuild.sh])
 AC_OUTPUT
+AX_AFTER_OUTPUT
