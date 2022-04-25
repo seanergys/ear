@@ -23,7 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -58,9 +58,10 @@ extern unsigned long ext_def_freq;
 /* IMC management */
 extern uint dyn_unc;
 extern double imc_extra_th;
-extern uint *imc_max_pstate,*imc_min_pstate;
+extern uint *imc_max_pstate, *imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
 static uint imc_set_by_hw = 1;
+extern uint max_policy_imcfreq_ps;
 
 static int min_pstate;
 static uint ref_imc_pstate;
@@ -735,9 +736,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             debug("%sTrying a lower IMC freq %llu-%llu%s",COL_GRE,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
-            /* We are assuming all sockets uses the same frequency range */
-            if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
-            else{
+            /* We are assuming all sockets uses the same frequency range. */
+            if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < max_policy_imcfreq_ps) *ready = EAR_POLICY_TRY_AGAIN;
+            else {
                 *ready = EAR_POLICY_READY;
                 min_energy_state = SELECT_CPUFREQ;
             }
