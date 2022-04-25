@@ -884,40 +884,41 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     debug("max cpu pstate: %u / cpu pstate cnt %u",
             (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
-		if (strcmp(my_policy_name,"monitoring") == 0){
-			pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
-				cpu_pstate_cnt-1, &min_cpufreq);
-		}else{
-    	if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
-                    (uint) app_settings->cpu_max_pstate, &min_cpufreq))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
-                COL_RED, COL_CLR);
-    	}
-			#if 0
-    	if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
-                    (uint) MAX_CPUF_PSTATE, &min_cpufreq))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
-                COL_RED, COL_CLR);
-    	}
-			#endif
-		}
+    if (strcmp(my_policy_name, "monitoring") == 0) {
+        pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
+                cpu_pstate_cnt - 1, &min_cpufreq);
+    } else {
+        if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
+                        (uint) app_settings->cpu_max_pstate, &min_cpufreq))) {
+            verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
+                    COL_RED, COL_CLR);
+        }
+#if 0
+        if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
+                        (uint) MAX_CPUF_PSTATE, &min_cpufreq))) {
+            verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
+                    COL_RED, COL_CLR);
+        }
+#endif
+    }
 
     debug("max imc pstate: %u / imc pstate cnt %u",
             (uint) app_settings->imc_max_pstate, imc_pstate_cnt);
+
     if (state_fail(pstate_pstofreq(imc_pstate_lst, imc_pstate_cnt,
                     (uint) app_settings->imc_max_pstate, &min_imcfreq))) {
         verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate.",
                 COL_RED, COL_CLR);
     }
     max_imcfreq_ps = (uint) app_settings->imc_max_pstate;
-		#if 0
+#if 0
     if (state_fail(pstate_pstofreq(imc_pstate_lst, imc_pstate_cnt,
                     (uint) MAX_IMCF_PSTATE, &min_imcfreq))) {
         verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate.",
                 COL_RED, COL_CLR);
     }
-		max_imcfreq_ps = (uint) MAX_IMCF_PSTATE;
-		#endif
+    max_imcfreq_ps = (uint) MAX_IMCF_PSTATE;
+#endif
 
     return policy_init();
 }
