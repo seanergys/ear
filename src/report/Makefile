@@ -13,6 +13,7 @@ repo_BINS = \
     csv_ts.so \
     heroes.so \
     dummy.so \
+		dcdb.so \
     mpitrace.so
 ifeq ($(FEAT_DB_PSQL),1)
 repo_BINS += \
@@ -32,6 +33,10 @@ all: $(repo_OBJS) $(repo_BINS)
 
 %.so: %.c
 	$(CC) $(CFLAGS) -shared -o $@ $^
+
+dcdb.so:dcdb.o
+	$(CC) $(CFLAGS) -shared -o dcdb.so dcdb.o -lrt $(LDFLAGS)
+
 
 eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
