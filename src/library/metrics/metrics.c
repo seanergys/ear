@@ -870,7 +870,7 @@ void copy_node_data(signature_t *dest,signature_t *src)
 static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *metrics,
         uint iterations, ulong procs)
 {
-				// If global is 1, it means that the global application metrics are required
+				// If sign_app_loop_idx is 1, it means that the global application metrics are required
 				// instead the small time metrics for loops. 'sign_app_loop_idx' is just a
                 // signature index.
 				sig_ext_t *sig_ext;
