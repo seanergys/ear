@@ -9,6 +9,10 @@
 src/tests
 etc/rpms/rpmbuild.sh
 src/tests
+Makefile.impi
+Makefile.nompi
+Makefile.ompi
+Makefile.gcc.impi
 
 # Autotools
 *aclocal.m4

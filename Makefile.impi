@@ -21,27 +21,28 @@ MPICC        = /hpc/base/intel/inteloneapi/mpi/2021.2.0/bin/mpiicc
 MPICC_FLAGS  = -static-intel -Werror-all
 
 # Includes
-MPI_BASE     = /hpc/base/intel/inteloneapi/mpi/2021.2.0
-MPI_CFLAGS   = -I$(MPI_BASE)/include
-MPI_VERSION  = 
-GSL_BASE     = /usr
-GSL_CFLAGS   = 
-GSL_LDFLAGS  =  -lm -lgsl -lgslcblas
-SLURM_BASE   = /hpc/base/ctt/build/slurm-21.08.4
-SLURM_CFLAGS = -I$(SLURM_BASE)
-DB_BASE      = /usr
-DB_CFLAGS    = -I/usr/include
-DB_LDFLAGS   = -L/usr/lib64/mysql -lmysqlclient
-CUDA_BASE    = /hpc/base/cuda/cuda-10.1
-# Define if Likwid must be used
-LIKWID_BASE  = /hpc/base/ctt/packages/likwid/5.2.1
-# Used for the energy plugin inm_power
-FREEIPMI_BASE=
+MPI_BASE         = /hpc/base/intel/inteloneapi/mpi/2021.2.0
+MPI_CFLAGS       = -I$(MPI_BASE)/include
+MPI_VERSION      = 
+GSL_BASE         = /usr
+GSL_CFLAGS       = 
+GSL_LDFLAGS      =  -lm -lgsl -lgslcblas
+SLURM_BASE       = /hpc/base/ctt/build/slurm-21.08.4
+SLURM_CFLAGS     = -I$(SLURM_BASE)
+DB_BASE          = /usr
+DB_CFLAGS        = -I/usr/include
+DB_LDFLAGS       = -L/usr/lib64/mysql -lmysqlclient
+CUDA_BASE        = /hpc/base/cuda/cuda-10.1
+LIKWID_BASE      = /hpc/base/ctt/packages/likwid/5.2.1
+LIKWID_CFLAGS    = -I$(LIKWID_BASE)/include -DLIKWID_BASE=\"$(LIKWID_BASE)\"
+FREEIPMI_BASE    = /usr
+FREEIPMI_CFLAGS  = -I$(FREEIPMI_BASE)/include -DFREEIPMI_BASE=\"$(FREEIPMI_BASE)\"
+FREEIPMI_LDFLAGS = -L$(FREEIPMI_BASE)/lib -lfreeipmi -Wl,-rpath,$(FREEIPMI_BASE)/lib -rdynamic
 
 # Directories
 ROOTDIR      = $(shell pwd)
 SRCDIR       = $(ROOTDIR)/src
-DESTDIR      = /home/xjcorbalan/ear4.0
+DESTDIR      = /home/xjcorbalan/ear4.0-debug
 ETCDIR       = /home/xjcorbalan/ear4.0/etc
 TMPDIR       = /var/ear
 DOCDIR       = /share/doc/ear
