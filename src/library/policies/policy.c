@@ -23,7 +23,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config.h>
 #include <common/system/symplug.h>
