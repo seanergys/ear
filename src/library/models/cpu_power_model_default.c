@@ -224,6 +224,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			lp++;
 		}
 	}
+	/* Extra power should be equally distributed: PENDING */
 	data->job_signature.DC_power = (CPU_power	* job_power_ratio) + GPU_power;
 	data->job_signature.PCK_power = job_power_ratio * lsig->PCK_power;
 	debug("My job[%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf) PCK %lf", node_mgr_index, data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio, data->job_signature.PCK_power);
