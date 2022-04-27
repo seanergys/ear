@@ -1472,9 +1472,11 @@ void ear_finalize(int exit_status)
 								cleanup_job_folder();
 								return;
 				}
-				if (!eards_connected() && (masters_info.my_master_rank >= 0) && !EARL_LIGHT){
+				if (!eards_connected() && !EARL_LIGHT){
 								lib_shared_region->earl_on = 0;
-								cleanup_job_folder();
+                                if (masters_info.my_master_rank>=0) {
+								    cleanup_job_folder();
+                                }
 								return;
 				}
 				debug("%d: Finalizing", my_node_id);
