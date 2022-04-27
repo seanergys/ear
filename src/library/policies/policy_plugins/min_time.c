@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -161,23 +161,31 @@ state_t policy_init(polctx_t *c)
     if (is_mpi_enabled()) {
         mpi_app_init(c);
         is_blocking_busy_waiting(&block_type);
-        verbose_master(1, "Busy_waiting MPI set to %u", block_type == BUSY_WAITING_BLOCK);
+        verbose_master(2, "%sMIN TIME%s Busy waiting MPI: %u",
+                COL_BLU, COL_CLR, block_type == BUSY_WAITING_BLOCK);
     }
 
     /*  Config from env variables */
     if (cimc_set_by_hw != NULL) {
         imc_set_by_hw = atoi(cimc_set_by_hw);
     }
-    verbose_master(2, "Dynamic Uncore freq. management: %d\n      Using HW selection as ref: %d\n              Extra IMC penalty: %.2lf",
-            dyn_unc, imc_set_by_hw, imc_extra_th);
 
     if (cnetwork_use_imc != NULL) {
         network_use_imc = atoi(cnetwork_use_imc);
     }
-    verbose_master(2, "               Network uses IMC: %u", network_use_imc);
+
+    // Read-friendly verbose of eUFS configuration
+    verbose_master(2, "      --- eUFS configuration ---\n"
+            "Dynamic Uncore freq. management: %d\n"
+            "      Using HW selection as ref: %d\n"
+            "              Extra IMC penalty: %.2lf\n"
+            "               Network uses IMC: %u\n"
+            "      --------------------------",
+            dyn_unc, imc_set_by_hw, imc_extra_th, network_use_imc);
 
     nominal_node = frequency_get_nominal_freq();
-    verbose_master(2, "Nominal frequency is %lu", nominal_node);
+    verbose_master(2, "%sMIN TIME%s Nominal frequency of the node: %lu kHz",
+            COL_BLU, COL_CLR, nominal_node);
 
     my_app          = calloc(1, sizeof(signature_t));
     my_app->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
@@ -220,7 +228,7 @@ state_t policy_init(polctx_t *c)
         if (state_fail(policy_gpu_load(c->app, &gpus))) {
             verbose_master(2, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
         }
-        verbose_master(2, "Initializing GPU policy.");
+        verbose_master(2, "%sMIN TIME%s Initializing GPU policy...", COL_BLU, COL_CLR);
 
         if (gpus.init != NULL) {
             gpus.init(c);

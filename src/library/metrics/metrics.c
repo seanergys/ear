@@ -19,8 +19,7 @@
 
 
 // #define SHOW_DEBUGS            1
-#define INFO_METRICS           3
-#define INFO2_METRICS          2
+#define INFO_METRICS           2
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
 
@@ -876,7 +875,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 				sig_ext_t *sig_ext;
 				double time_s;
 				
-        debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, global, COL_CLR);
+                debug("Compute signature process %d %sapp/loop(1/0) %u%s", my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
 
 				/* Total time */
 				time_s = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
@@ -913,14 +912,15 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                 metrics->instructions = cpi_diff[sign_app_loop_idx].instructions;
                 metrics->CPI          = cpi_avrg[sign_app_loop_idx];
 #if SHOW_DEBUGS
+                // Handles situations where an unusual CPI is reported
                 if (metrics->CPI > 5) {
                     char buff[128];
                     cpi_data_tostr(&cpi_read1[sign_app_loop_idx], cpi_avrg[sign_app_loop_idx], buff, sizeof(buff));
-                    verb(INFO_METRICS, "Start %s", buff);
+                    verb(INFO_METRICS + 1, "Start %s", buff);
                     cpi_data_tostr(&cpi_read2[sign_app_loop_idx], cpi_avrg[sign_app_loop_idx], buff, sizeof(buff));
-                    verb(INFO_METRICS, "Stop %s", buff);
+                    verb(INFO_METRICS + 1, "Stop %s", buff);
                     cpi_data_tostr(&cpi_diff[sign_app_loop_idx], cpi_avrg[sign_app_loop_idx], buff, sizeof(buff));
-                    verb(INFO_METRICS, "Diff %s", buff);
+                    verb(INFO_METRICS + 1, "Diff %s", buff);
                 }
 #endif
 
@@ -1062,7 +1062,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 int metrics_init(topology_t *topo)
 {
     char *cimc_max_khz,*cimc_min_khz;
+#if 0
     char imc_buffer[1024];
+#endif
     pstate_t tmp_def_imc_pstate;
     state_t st;
     state_t s;
@@ -1131,26 +1133,22 @@ int metrics_init(topology_t *topo)
     memset(metrics_rapl[APP], 0, rapl_size);
     memset(aux_rapl, 0, rapl_size);
     memset(last_rapl, 0, rapl_size);
-    if (masters_info.my_master_rank>=0){
+    if (masters_info.my_master_rank>=0) {
 
         debug("Allocating data for %d processes", lib_shared_region->num_processes);
+
         /* We will collect MPI statistics */
-        metrics_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-        metrics_last_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-        metrics_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-        metrics_last_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-        metrics_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+        metrics_mpi_info[APP]             = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_last_mpi_info[APP]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_mpi_info[LOO]             = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_last_mpi_info[LOO]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
         metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-        metrics_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+        metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
         metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
-        /* IMC average frequency initialization */
+        /* IMC management */
         if (mgt_imcfreq.ok) {
-            /* IMC management */
-            char imc_mgt_txt[32];
-            apis_tostr(mgt_imcfreq.api, imc_mgt_txt, sizeof(imc_mgt_txt));
-
-            verbose_master(INFO_METRICS, "IMC API selected: %s", imc_mgt_txt);
 
             imc_devices = mgt_imcfreq.devs_count;
 
@@ -1161,14 +1159,15 @@ int metrics_init(topology_t *topo)
                 error("Asking for memory");
                 return EAR_ERROR;
             }
-            verbose_master(INFO_METRICS," IMC num devices %u",mgt_imcfreq.devs_count);
 
-            if (state_fail(s = mgt_imcfreq_get_available_list(NULL,(const pstate_t **)&imc_pstates, &imc_num_pstates))){
+            if (state_fail(s = mgt_imcfreq_get_available_list(NULL, (const pstate_t **)&imc_pstates, &imc_num_pstates))){
                 error("Asking for IMC frequency list");
             }
 
-            mgt_imcfreq_data_tostr(imc_pstates,imc_num_pstates,imc_buffer,sizeof(imc_buffer));
-            verbose_master(2,"IMC pstates lust:%s",imc_buffer);
+#if 0
+            mgt_imcfreq_data_tostr(imc_pstates, imc_num_pstates, imc_buffer, sizeof(imc_buffer));
+            verbose_master(2, "IMC pstates list:\n%s", imc_buffer);
+#endif
 
             /* Default values */
             def_imc_max_khz = imc_pstates[0].khz;
@@ -1180,13 +1179,6 @@ int metrics_init(topology_t *topo)
 
             cimc_max_khz = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MAX_IMCFREQ) : NULL; // Max. IMC freq. (kHz)
             cimc_min_khz = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_IMCFREQ) : NULL; // Min. IMC freq. (kHz)
-            if (cimc_max_khz != NULL) {
-                verbose_master(2, "%sMETRICS%s Maximum IMC/DF: %s kHz", COL_BLU, COL_CLR, cimc_max_khz);
-            }
-
-            if (cimc_min_khz != NULL) {
-                verbose_master(2, "%sMETRICS%s Minimum IMC/DF: %s kHz", COL_BLU, COL_CLR, cimc_min_khz);
-            }
 
             imc_max_khz = def_imc_max_khz;
             imc_min_khz = def_imc_min_khz;
@@ -1216,12 +1208,26 @@ int metrics_init(topology_t *topo)
             /* We assume all the sockets have the same configuration */
             imc_curr_max_pstate = imc_max_pstate[0];
             imc_curr_min_pstate = imc_min_pstate[0];	
-            verbose_master(INFO_METRICS,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
 
-            /* End of IMC */	
+            // Verbose a resume
+            if (verb_level >= INFO_METRICS) {
+                verbose_master(INFO_METRICS, "\n           --- IMC info ---\n            #devices: %u", mgt_imcfreq.devs_count);
+
+                if (cimc_max_khz != NULL) {
+                    verbose_master(INFO_METRICS, "              Maximum: %s kHz", cimc_max_khz);
+                }
+
+                if (cimc_min_khz != NULL) {
+                    verbose_master(INFO_METRICS, "             Minimum: %s kHz", cimc_min_khz);
+                }
+
+                verbose_master(INFO_METRICS, "Init (max/min) (kHz): %.2f/%.2f\n           ----------------\n",
+                        (float) imc_pstates[imc_min_pstate[0]].khz, (float) imc_pstates[imc_max_pstate[0]].khz);
+            }
+
         } else {
-            verbose_master(2, "IMCFREQ not supported");
-        }
+            verbose_master(2, "%sMETRICS%s IMCFREQ not supported.", COL_BLU, COL_CLR);
+        } // IMC
     }
 
 #if USE_GPUS
@@ -1392,42 +1398,48 @@ int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulon
 				debug("metrics_compute_signature_finish %u", my_node_id);
 
                 if (!sig_shared_region[my_node_id].ready){
+                    
+                    debug("Signature for proc. %d is not ready", my_node_id);
 
-								// Time requirements
-								aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+                    // Time requirements
+                    aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
-								//
-								if ((aux_time < min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
-												metrics->time=0;
-												debug("EAR_NOT_READY because of time %llu\n",aux_time);
-												return EAR_NOT_READY;
-								}
+                    //
+                    if ((aux_time < min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
+                        metrics->time=0;
+                        debug("EAR_NOT_READY because of time %llu\n",aux_time);
+                        return EAR_NOT_READY;
+                    }
 
-								//Master: Returns not ready when power is not ready
-								//Not master: when master signature not ready
-								if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
+                    //Master: Returns not ready when power is not ready
+                    //Not master: when master signature not ready
+                    if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
 
-								//Marks the signature as ready
-								metrics_compute_signature_data(LOO, metrics, iterations, procs);
+                    //Marks the signature as ready
+                    metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
-                                // Call report mpitrace
-                                report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
-                                if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
-                                    verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
-                                }
+                    // Call report mpitrace
+                    report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
+                    if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
+                        verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+                    }
 
-								//
-								metrics_partial_start();
-				}
-				if (!are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready)){
-								if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
-												lib_shared_region->master_ready = 1;
-								}
-								//verbose_master(2,"Signatures for process in node are still not ready :num sig computed %u", num_ready);
-								return EAR_NOT_READY;
-				}else if (masters_info.my_master_rank >= 0){
-								lib_shared_region->master_ready = 0;
-				}
+                    //
+                    metrics_partial_start();
+                } else {
+                    debug("Signature for proc. %d is ready", my_node_id);
+                }
+
+                if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
+                    if ((masters_info.my_master_rank >= 0) && (sig_shared_region[0].ready)){
+                        debug("Setting Master ready");
+                        lib_shared_region->master_ready = 1;
+                    }
+                    return EAR_NOT_READY;
+                } else if (masters_info.my_master_rank >= 0) {
+                    lib_shared_region->master_ready = 0;
+                }
+
 				return EAR_SUCCESS;
 }
 
