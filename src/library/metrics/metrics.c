@@ -477,7 +477,6 @@ static void metrics_global_stop()
 	if (masters_info.my_master_rank < 0){
 		/* Synchro 4: Waiting for master signature */
 		while(!lib_shared_region->global_stop_ready){ 
-            //verbose_master(INFO2_METRICS, "Proc %d and master not ready", my_node_id);
 			if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) verbose_master(2, "%sMemory sync for lib shared region fails %s%s", COL_RED, strerror(errno), COL_CLR);
 			usleep(10000);
 		}
@@ -1041,7 +1040,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 								signature_copy(&lib_shared_region->job_signature,metrics);
 				}
 				sig_shared_region[my_node_id].period = time_s;
-				if (verb_level >= INFO2_METRICS && masters_info.my_master_rank >= 0) signature_print_simple_fd(2, metrics);
+				if (verb_level >= 2 && masters_info.my_master_rank >= 0) signature_print_simple_fd(2, metrics);
 				verbose_master(2," ");
 
 				debug("Signature ready local ID %d at time %lld",my_node_id,(metrics_time() - app_start)/1000000);
@@ -1062,206 +1061,226 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 /**************************** Init function used in ear_init ******************/
 int metrics_init(topology_t *topo)
 {
-	char *cimc_max_khz,*cimc_min_khz;
-	char imc_buffer[1024];
-	pstate_t tmp_def_imc_pstate;
-	state_t st;
-	state_t s;
-	int i;
-	
-  	metrics_static_init(topo);
-	debug("metrics_static_init done");
+    char *cimc_max_khz,*cimc_min_khz;
+    char imc_buffer[1024];
+    pstate_t tmp_def_imc_pstate;
+    state_t st;
+    state_t s;
+    int i;
 
-	//debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
-	//debug("My master rank %d",masters_info.my_master_rank);
+    metrics_static_init(topo);
+    debug("metrics_static_init done");
 
-	hw_cache_line_size = topo->cache_line_size;
-	num_packs = topo->socket_count;
-	topology_copy(&mtopo,topo);
+    //debug("Masters region %p size %lu",&masters_info,sizeof(masters_info));
+    //debug("My master rank %d",masters_info.my_master_rank);
 
-	//debug("detected cache line size: %0.2lf bytes", hw_cache_line_size);
-	//debug("detected sockets: %d", num_packs);
+    hw_cache_line_size = topo->cache_line_size;
+    num_packs = topo->socket_count;
+    topology_copy(&mtopo,topo);
 
-	if (hw_cache_line_size == 0) {
-		return_msg(EAR_ERROR, "error detecting the cache line size");
-	}
-	if (num_packs == 0) {
-		return_msg(EAR_ERROR, "error detecting number of packges");
-	}
+    //debug("detected cache line size: %0.2lf bytes", hw_cache_line_size);
+    //debug("detected sockets: %d", num_packs);
 
-	st=energy_lib_init(system_conf);
-	if (st!=EAR_SUCCESS){
-		return_msg(EAR_ERROR, "error loading energy plugin");
-	}
-	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
-		verbose_master(2,"Warning: IO data not available");
-	}else{
-		verbose_master(INFO_METRICS,"IO data initialized");
-	}	
+    if (hw_cache_line_size == 0) {
+        return_msg(EAR_ERROR, "error detecting the cache line size");
+    }
+    if (num_packs == 0) {
+        return_msg(EAR_ERROR, "error detecting number of packges");
+    }
 
-	// Daemon metrics allocation
-	if (masters_info.my_master_rank >= 0 && eards_connected()){
-		rapl_size = eards_get_data_size_rapl();
-	}else{
-		rapl_size=sizeof(unsigned long long);
-	}
+    st=energy_lib_init(system_conf);
+    if (st!=EAR_SUCCESS){
+        return_msg(EAR_ERROR, "error loading energy plugin");
+    }
+    if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
+        verbose_master(2,"Warning: IO data not available");
+    }else{
+        verbose_master(INFO_METRICS,"IO data initialized");
+    }	
 
-	debug("RAPL size %lu",rapl_size);
-	rapl_elements = rapl_size / sizeof(unsigned long long);
+    // Daemon metrics allocation
+    if (masters_info.my_master_rank >= 0 && eards_connected()){
+        rapl_size = eards_get_data_size_rapl();
+    }else{
+        rapl_size=sizeof(unsigned long long);
+    }
 
-	// Allocating data for energy node metrics
-	// node_energy_datasize=eards_node_energy_data_size();
-	energy_lib_datasize(&node_energy_datasize);
-	debug("energy data size %lu", node_energy_datasize);
-	energy_lib_units(&node_energy_units);
-	/* We should create a data_alloc for enerrgy and a set_null */
-	aux_energy=(edata_t)malloc(node_energy_datasize);
-	aux_energy_stop=(edata_t)malloc(node_energy_datasize);
-	metrics_ipmi[0]=(edata_t)malloc(node_energy_datasize);
-	metrics_ipmi[1]=(edata_t)malloc(node_energy_datasize);
-	memset(metrics_ipmi[0],0,node_energy_datasize);
-	memset(metrics_ipmi[1],0,node_energy_datasize);
-	acum_ipmi[0]=0;acum_ipmi[1]=0;
+    debug("RAPL size %lu",rapl_size);
+    rapl_elements = rapl_size / sizeof(unsigned long long);
 
-	metrics_rapl[LOO] = malloc(rapl_size);
-	metrics_rapl[APP] = malloc(rapl_size);
-	aux_rapl = malloc(rapl_size);
-	last_rapl = malloc(rapl_size);
+    // Allocating data for energy node metrics
+    // node_energy_datasize=eards_node_energy_data_size();
+    energy_lib_datasize(&node_energy_datasize);
+    debug("energy data size %lu", node_energy_datasize);
+    energy_lib_units(&node_energy_units);
+    /* We should create a data_alloc for enerrgy and a set_null */
+    aux_energy=(edata_t)malloc(node_energy_datasize);
+    aux_energy_stop=(edata_t)malloc(node_energy_datasize);
+    metrics_ipmi[0]=(edata_t)malloc(node_energy_datasize);
+    metrics_ipmi[1]=(edata_t)malloc(node_energy_datasize);
+    memset(metrics_ipmi[0],0,node_energy_datasize);
+    memset(metrics_ipmi[1],0,node_energy_datasize);
+    acum_ipmi[0]=0;acum_ipmi[1]=0;
 
-	memset(metrics_rapl[LOO], 0, rapl_size);
-	memset(metrics_rapl[APP], 0, rapl_size);
-	memset(aux_rapl, 0, rapl_size);
-	memset(last_rapl, 0, rapl_size);
-	if (masters_info.my_master_rank>=0){
+    metrics_rapl[LOO] = malloc(rapl_size);
+    metrics_rapl[APP] = malloc(rapl_size);
+    aux_rapl = malloc(rapl_size);
+    last_rapl = malloc(rapl_size);
 
-	debug("Allocating data for %d processes", lib_shared_region->num_processes);
-	/* We will collect MPI statistics */
-	metrics_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-    metrics_last_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-	metrics_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-    metrics_last_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-	metrics_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-    metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-	metrics_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-    metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+    memset(metrics_rapl[LOO], 0, rapl_size);
+    memset(metrics_rapl[APP], 0, rapl_size);
+    memset(aux_rapl, 0, rapl_size);
+    memset(last_rapl, 0, rapl_size);
+    if (masters_info.my_master_rank>=0){
 
-	/* IMC average frequency initialization */
-    if (mgt_imcfreq.ok){
-	/* IMC management */
-	char imc_mgt_txt[32];
-	apis_tostr(mgt_imcfreq.api,imc_mgt_txt,sizeof(imc_mgt_txt));
-	verbose_master(INFO_METRICS,"IMC API selected %s",imc_mgt_txt);
-    imc_devices = mgt_imcfreq.devs_count;
-	imc_max_pstate = calloc(mgt_imcfreq.devs_count,sizeof(uint));
-	imc_min_pstate = calloc(mgt_imcfreq.devs_count,sizeof(uint));
-	if ((imc_max_pstate == NULL) || (imc_min_pstate == NULL)){
-		error("Asking for memory");
-		return EAR_ERROR;
-	}
-	verbose_master(INFO_METRICS," IMC num devices %u",mgt_imcfreq.devs_count);
-	if (state_fail(s = mgt_imcfreq_get_available_list(NULL,(const pstate_t **)&imc_pstates, &imc_num_pstates))){
-		error("Asking for IMC frequency list");
-	}
-	mgt_imcfreq_data_tostr(imc_pstates,imc_num_pstates,imc_buffer,sizeof(imc_buffer));
-	verbose_master(2,"IMC pstates lust:%s",imc_buffer);
-	/* Default values */
-	def_imc_max_khz = imc_pstates[0].khz;
-	def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;
-	for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = 0;
-	for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i]= imc_num_pstates-1;
-	/* This section checks for HACKS */
-  cimc_max_khz = getenv(SCHED_MAX_IMC_FREQ);
-  cimc_min_khz = getenv(SCHED_MIN_IMC_FREQ);
-	imc_max_khz = def_imc_max_khz;
-	imc_min_khz = def_imc_min_khz;
-	if (cimc_max_khz!= NULL) verbose_master(2, "IMC MAX set to %s", cimc_max_khz);
-	if (cimc_min_khz!= NULL) verbose_master(2, "IMC MIN set to %s", cimc_min_khz);
-  if (cimc_max_khz != (char*)NULL){
-		ulong tmp_def_imc = atoi(cimc_max_khz);
-		if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
-			for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
-			imc_max_khz = imc_pstates[imc_min_pstate[0]].khz;
-		}
-	}
-  if (cimc_min_khz != (char*)NULL){
-		ulong tmp_def_imc = atoi(cimc_min_khz);
-		if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
-			for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
-			imc_min_khz = imc_pstates[imc_max_pstate[0]].khz;
-		}
-  }
-	/* End HACKS */
-	if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL,imc_min_pstate,imc_max_pstate))){
-		error("Initialzing the IMC freq");
-	}
-	/* We assume all the sockets have the same configuration */
-	imc_curr_max_pstate = imc_max_pstate[0];
-	imc_curr_min_pstate = imc_min_pstate[0];	
-	verbose_master(INFO_METRICS,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
-		
-	/* End of IMC */	
-	}else{
-		verbose_master(2,"IMCFREQ not supported");
-	}
-	}
+        debug("Allocating data for %d processes", lib_shared_region->num_processes);
+        /* We will collect MPI statistics */
+        metrics_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_last_mpi_info[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_last_mpi_info[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
+        metrics_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+        metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+        metrics_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+        metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
-	#if USE_GPUS
-	if (masters_info.my_master_rank >= 0){
-	if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
-      gpu_initialized=0;
-			debug("Error in gpu_lib_load");
-	}else gpu_initialized=1;
-	if (gpu_initialized){
-		debug("Initializing GPU");
-		if (gpu_lib_init(&gpu_lib_ctx) != EAR_SUCCESS){
-				error("Error in GPU initiaization");
-				gpu_initialized=0;
-		}else{
-			debug("GPU initialization successfully");
-			gpu_lib_model(&gpu_lib_ctx,&earl_gpu_model);
-			debug("GPU model %u",earl_gpu_model);
-			gpu_lib_data_alloc(&gpu_metrics_init[LOO]);gpu_lib_data_alloc(&gpu_metrics_init[APP]);
-			gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
-			gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
-			gpu_lib_count(&ear_num_gpus_in_node);
-      gpu_lib_data_alloc(&gpud_busy);
-      gpu_lib_data_alloc(&gpuddiff_busy);
-			debug("GPU library data initialized");
-		}
-	}
-	debug("GPU initialization successfully");
-	}
-	fflush(stderr);	
-	#endif
+        /* IMC average frequency initialization */
+        if (mgt_imcfreq.ok) {
+            /* IMC management */
+            char imc_mgt_txt[32];
+            apis_tostr(mgt_imcfreq.api, imc_mgt_txt, sizeof(imc_mgt_txt));
 
-	//debug( "detected %d RAPL counters for %d packages: %d events por package", rapl_elements,num_packs,rapl_elements/num_packs);
+            verbose_master(INFO_METRICS, "IMC API selected: %s", imc_mgt_txt);
 
-	metrics_global_start();
-	metrics_partial_start();
+            imc_devices = mgt_imcfreq.devs_count;
 
-	return EAR_SUCCESS;
+            imc_max_pstate = calloc(mgt_imcfreq.devs_count, sizeof(uint));
+            imc_min_pstate = calloc(mgt_imcfreq.devs_count, sizeof(uint));
+
+            if ((imc_max_pstate == NULL) || (imc_min_pstate == NULL)){
+                error("Asking for memory");
+                return EAR_ERROR;
+            }
+            verbose_master(INFO_METRICS," IMC num devices %u",mgt_imcfreq.devs_count);
+
+            if (state_fail(s = mgt_imcfreq_get_available_list(NULL,(const pstate_t **)&imc_pstates, &imc_num_pstates))){
+                error("Asking for IMC frequency list");
+            }
+
+            mgt_imcfreq_data_tostr(imc_pstates,imc_num_pstates,imc_buffer,sizeof(imc_buffer));
+            verbose_master(2,"IMC pstates lust:%s",imc_buffer);
+
+            /* Default values */
+            def_imc_max_khz = imc_pstates[0].khz;
+            def_imc_min_khz = imc_pstates[imc_num_pstates-1].khz;
+            for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = 0;
+            for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i]= imc_num_pstates-1;
+
+            /* This section checks for explicitly requested IMC freq. range */
+
+            cimc_max_khz = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MAX_IMCFREQ) : NULL; // Max. IMC freq. (kHz)
+            cimc_min_khz = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_IMCFREQ) : NULL; // Min. IMC freq. (kHz)
+            if (cimc_max_khz != NULL) {
+                verbose_master(2, "%sMETRICS%s Maximum IMC/DF: %s kHz", COL_BLU, COL_CLR, cimc_max_khz);
+            }
+
+            if (cimc_min_khz != NULL) {
+                verbose_master(2, "%sMETRICS%s Minimum IMC/DF: %s kHz", COL_BLU, COL_CLR, cimc_min_khz);
+            }
+
+            imc_max_khz = def_imc_max_khz;
+            imc_min_khz = def_imc_min_khz;
+
+            if (cimc_max_khz != (char*)NULL){
+                ulong tmp_def_imc = atoi(cimc_max_khz);
+                if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
+                    for (i=0; i< mgt_imcfreq.devs_count;i++) imc_min_pstate[i] = tmp_def_imc_pstate.idx;
+                    /* We are assuming that all devices work at the same IMC freq. */
+                    imc_max_khz = imc_pstates[imc_min_pstate[0]].khz;
+                }
+            }
+            if (cimc_min_khz != (char*)NULL){
+                ulong tmp_def_imc = atoi(cimc_min_khz);
+                if (state_ok(pstate_freqtops(imc_pstates,imc_num_pstates,tmp_def_imc,&tmp_def_imc_pstate))){
+                    for (i=0; i< mgt_imcfreq.devs_count;i++) imc_max_pstate[i] = tmp_def_imc_pstate.idx;
+                    /* We are assuming that all devices ork at the same IMC freq. */
+                    imc_min_khz = imc_pstates[imc_max_pstate[0]].khz;
+                }
+            }
+
+            /* End sets */
+            if (state_fail(s = mgt_imcfreq_set_current_ranged_list(NULL, imc_min_pstate, imc_max_pstate))) {
+                error("Initialzing the IMC freq");
+            }
+
+            /* We assume all the sockets have the same configuration */
+            imc_curr_max_pstate = imc_max_pstate[0];
+            imc_curr_min_pstate = imc_min_pstate[0];	
+            verbose_master(INFO_METRICS,"New CPUfreq and IMC initialized IMC freq set to %.2f-%.2f",(float)imc_pstates[imc_min_pstate[0]].khz/1000000.0,(float)imc_pstates[imc_max_pstate[0]].khz/1000000.0);
+
+            /* End of IMC */	
+        } else {
+            verbose_master(2, "IMCFREQ not supported");
+        }
+    }
+
+#if USE_GPUS
+    if (masters_info.my_master_rank >= 0){
+        if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
+            gpu_initialized=0;
+            debug("Error in gpu_lib_load");
+        }else gpu_initialized=1;
+        if (gpu_initialized){
+            debug("Initializing GPU");
+            if (gpu_lib_init(&gpu_lib_ctx) != EAR_SUCCESS){
+                error("Error in GPU initiaization");
+                gpu_initialized=0;
+            }else{
+                debug("GPU initialization successfully");
+                gpu_lib_model(&gpu_lib_ctx,&earl_gpu_model);
+                debug("GPU model %u",earl_gpu_model);
+                gpu_lib_data_alloc(&gpu_metrics_init[LOO]);gpu_lib_data_alloc(&gpu_metrics_init[APP]);
+                gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
+                gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
+                gpu_lib_count(&ear_num_gpus_in_node);
+                gpu_lib_data_alloc(&gpud_busy);
+                gpu_lib_data_alloc(&gpuddiff_busy);
+                debug("GPU library data initialized");
+            }
+        }
+        debug("GPU initialization successfully");
+    }
+    fflush(stderr);	
+#endif
+
+    //debug( "detected %d RAPL counters for %d packages: %d events por package", rapl_elements,num_packs,rapl_elements/num_packs);
+
+    metrics_global_start();
+    metrics_partial_start();
+
+    return EAR_SUCCESS;
 }
 
 #define MAX_SYNCHO_TIME 100
 
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
-	sig_ext_t *se;
-	signature_t nodeapp;
-	uint num_ready;
-	uint exited;
-	float wait_time = 0;
+    sig_ext_t *se;
+    signature_t nodeapp;
+    uint num_ready;
+    uint exited;
+    float wait_time = 0;
 
-	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
+    verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
     verbose_master(INFO_METRICS + 1, "End local signature");
 
-	if (!eards_connected() && masters_info.my_master_rank >= 0){ 
-		if (!EARL_LIGHT) return;
-	}
-    
+    if (!eards_connected() && masters_info.my_master_rank >= 0){ 
+        if (!EARL_LIGHT) return;
+    }
 
-	/* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
-  while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME)){ 
+
+    /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
+    while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME)){ 
 		usleep(10000);
 		wait_time += 0.01;
 	}

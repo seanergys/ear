@@ -192,11 +192,16 @@ static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint
  * \param[out] cpu_freq_max          If a non-NULL address is passed, the argument is filled with the maximum CPU freq. found in \process_cpu_freqs_khz.
  * \param[out] cpu_freq_min          If a non-NULL address is passed, the argument is filled with the minimum CPU freq. found in \process_cpu_freqs_khz.
  */
-static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz, int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min);
+static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz,
+        int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min);
 /** This function returns whether the CPU frequency selected by the policy itself must be selected.
  * The result depends on current Powercap status.
  */
 static uint must_set_policy_cpufreq(pc_app_info_t *pcdata, settings_conf_t *settings_conf);
+/** Calls the different methods for applying the frequency selection for the domains compatible with the
+ * current loaded policy. It only works if master process (node-level) called the function. */
+static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
+        node_freq_domain_t *dom, node_freqs_t *avg_freq);
 
 /**** Auxiliary functions ***/
 state_t policy_load(char *obj_path, polsym_t *psyms)
@@ -278,7 +283,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
     int i;
     char pol_grain_str[16];
 
-    verbose_master(3, "policy_cpu_freq_selection");
+    verbose_master(POLICY_INFO + 1, "%sPOLICY%s CPU freq. selection.", COL_BLU, COL_CLR);
 
 #if DEBUG_CPUFREQ_COST
     timestamp init_cpufreq_cost, end_cpufreq_cost;
@@ -472,7 +477,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_
     return EAR_SUCCESS;
 }
 
-state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
+static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq)
 {
     if (masters_info.my_master_rank < 0 ) {
