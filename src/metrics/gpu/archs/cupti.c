@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -52,10 +52,11 @@ typedef struct CUmeta_s {
     CUextra                extras[GRP_N];
     uint                   groups_count;
     uint                   events_count;
-    uint                   init;
-    uint                   reset;
-    uint                   read;
-    uint                   ban;
+    uint                   init;  // Is already initialized
+    uint                   reset; // Is set to reset
+    uint                   read;  // Is set to read
+    uint                   ban;   // Is banned
+    uint                   ban_count;
 } CUmeta;
 
 typedef struct CUroot_s {
@@ -86,8 +87,8 @@ static uint     ok;
         if (_status != CUPTI_SUCCESS) {                                         \
             const char *errstr;                                                 \
             cupti.GetResultString(_status, &errstr);                            \
-            debug(#call ": FAILED, %s", errstr);                                \
-            context_destroy(m);                                                     \
+            debug(#call ": FAILED, %s (context %p)", errstr, m->context);       \
+            context_ban(m);                                                     \
             return 0;                                                           \
         }                                                                       \
     } while (0)
@@ -169,7 +170,8 @@ static void context_destroy(CUmeta *m)
 
 static void context_ban(CUmeta *m)
 {
-    m->ban = 1;
+    ++m->ban_count;
+    m->ban = (m->ban_count >= 5);
 }
 
 static int metric_print(CUmeta *m)
@@ -349,8 +351,8 @@ static int context_find(CUcontext pctx, int meta_id, uint *index)
     int i;
 
     for (i = CTX_N-1; i >= 0 && !found; --i) {
-        //if (!meta[i].init && !meta[i].reset && !meta[i].ban) {
-        if (!meta[i].init && !meta[i].reset) {
+        if (!meta[i].init && !meta[i].reset && !meta[i].ban) {
+        //if (!meta[i].init && !meta[i].reset) {
             *index = i;
         }
         found = (meta[i].context == pctx) && (meta[i].meta_id == meta_id);
@@ -358,6 +360,13 @@ static int context_find(CUcontext pctx, int meta_id, uint *index)
     if (found) {
         *index = i+1;
     }
+    #if 1
+    if (found) {
+        debug("Found context %p in index %d", pctx, *index);
+    } else {
+        debug("Doen't found context %p, free index %d", pctx, *index);
+    }
+    #endif
     //debug("Finding... %d (%u)", found, *index);
     return found;
 }
@@ -389,6 +398,10 @@ static void context_push(CUcontext pctx, int meta_id)
         meta[i].meta_id = meta_id;
         meta[i].reset   = 1;
         meta_count     += 1;
+    } 
+    // If not banned and not initted.
+    else if (!meta[i].ban && !meta[i].init) {
+        meta[i].reset = 1;
     }
 }
 
