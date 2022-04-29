@@ -607,6 +607,23 @@ state_t policy_init()
     }
     verbose_master(POLICY_INFO, "%sPOLICY%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
 
+    /* conf_dyn_unc is based on the configuration.
+     * dyn_unc is modified at runtime depending of number of jobs running. */   
+    if (cdyn_unc == NULL) {
+        // TODO: This check is for the transition to the new environment variables.
+        // It will be removed when SCHED_SET_IMC_FREQ will be removed, in the next release.
+        cdyn_unc = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_SET_IMC_FREQ) : NULL;
+        if (cdyn_unc != NULL) {
+            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
+                    "Please, change it by %s in your submission scripts.",
+                    COL_RED, COL_CLR, SCHED_SET_IMC_FREQ, FLAG_SET_IMCFREQ);
+        }
+    }
+    if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok) {
+        conf_dyn_unc = atoi(cdyn_unc);
+    }
+    dyn_unc = conf_dyn_unc;
+
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_IMC_EXTRA_TH will be removed, in the next release.
     if (cimc_extra_th == NULL) {
@@ -697,23 +714,6 @@ state_t policy_init()
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
     verbose_master(POLICY_INFO, "%sPOLICY%s Turbo for CP when app in the node is unbalanced: %u",
             COL_BLU, COL_CLR, use_turbo_for_cp);
-
-    /* conf_dyn_unc is based on the configuration.
-     * dyn_unc is modified at runtime depending of number of jobs running. */   
-    if (cdyn_unc == NULL) {
-        // TODO: This check is for the transition to the new environment variables.
-        // It will be removed when SCHED_SET_IMC_FREQ will be removed, in the next release.
-        cdyn_unc = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_SET_IMC_FREQ) : NULL;
-        if (cdyn_unc != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_SET_IMC_FREQ, FLAG_SET_IMCFREQ);
-        }
-    }
-    if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok) {
-        conf_dyn_unc = atoi(cdyn_unc);
-    }
-    dyn_unc = conf_dyn_unc;
 
     try_turbo_enabled = c->use_turbo;
     // TODO: This check is for the transition to the new environment variables.
