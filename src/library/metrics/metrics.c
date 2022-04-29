@@ -111,7 +111,7 @@ static gpu_t     *gpud_busy, *gpuddiff_busy;
 static ctx_t       gpu_lib_ctx;
        uint        gpu_initialized = 0;
 static uint        gpu_loop_stopped = 0;
-static uint        earl_gpu_model = MODEL_UNDEFINED;
+static uint        earl_gpu_model = API_NONE;
 char               gpu_str[256];
 uint               ear_num_gpus_in_node=0;
 
@@ -217,7 +217,7 @@ static void metrics_configuration(topology_t *tp)
 	}
 	/* This must be migrated to mgt_gpu.ok */
 	#if USE_GPUS
-	if (earl_gpu_model == MODEL_DUMMY) {
+	if (earl_gpu_model == API_DUMMY) {
 		verbose_master(2, "GPU dummy, swtching to monitoring for GPU");
 		earl_default_domains.gpu = POL_NOT_SUPPORTED;
 	}
@@ -988,7 +988,7 @@ static void metrics_compute_signature_data(uint global, signature_t *metrics, ui
 #if USE_GPUS
                     if (gpu_initialized){
                         metrics->gpu_sig.num_gpus = ear_num_gpus_in_node;
-                        if (earl_gpu_model == MODEL_DUMMY){ 
+                        if (earl_gpu_model == API_DUMMY){ 
                             debug("Setting num_gpu to 0 because model is DUMMY");
                             metrics->gpu_sig.num_gpus = 0;
                         }
@@ -1541,7 +1541,7 @@ state_t metrics_new_iteration(signature_t *sig)
             }
             gpu_lib_data_diff(gpud_busy, gpu_metrics_init[LOO], gpuddiff_busy);
             sig->gpu_sig.num_gpus = ear_num_gpus_in_node;
-            if (earl_gpu_model == MODEL_DUMMY){
+            if (earl_gpu_model == API_DUMMY){
                 debug("Setting num_gpu to 0 because model is DUMMY");
                 sig->gpu_sig.num_gpus = 0;
             }

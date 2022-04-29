@@ -68,7 +68,7 @@ __attribute__((used)) state_t mgt_gpu_dispose(ctx_t *c)
     apis_multiret(ops.dispose, c);
 }
 
-state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
+state_t mgt_gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
 {
     preturn (ops.get_devices, c, devs, devs_count);
 }

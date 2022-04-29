@@ -211,7 +211,9 @@ static state_t static_init(ctx_t *c)
 		clock_list[d] = calloc(clock_lens[d], sizeof(ulong *));
 		for (m = 0; m < clock_lens[d]; ++m) {
 			clock_list[d][m] = ((ulong) aux_gpu[m]) * 1000LU;
+            #if 0
 			debug("D%u,M%u: %lu", d, m, clock_list[d][m]);
+            #endif
 		}
 	}
 

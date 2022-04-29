@@ -899,6 +899,10 @@ void ear_init()
 				char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
 				uint per_proc_verb_file = 0;
 
+printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
+printf("JORDI\n");
+printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
+
 				printf("EAR Init\n");
 
 				if (per_proc_v_file != NULL) {

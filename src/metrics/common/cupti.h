@@ -41,6 +41,7 @@
 #define CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS              0
 #define CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel              0
 #define CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES 0
+#define CUPTI_METRIC_ATTR_VALUE_KIND                        0
 
 typedef int CUresult;
 typedef int CUdevice;
@@ -52,6 +53,8 @@ typedef int CUpti_CallbackDomain;
 typedef int CUpti_SubscriberHandle;
 typedef int CUpti_EventID;
 typedef int CUpti_MetricID;
+typedef int CUpti_MetricValueKind;
+typedef int CUpti_MetricAttribute;
 typedef void *CUpti_EventGroup;
 typedef int CUpti_EventCollectionMode;
 typedef int CUpti_EventGroupAttribute;
@@ -73,6 +76,14 @@ typedef struct CUpti_CallbackData_s {
     CUcontext context;
     int callbackSite;
 } CUpti_CallbackData;
+
+typedef union {
+  double metricValueDouble;
+  ullong metricValueUint64;
+  llong metricValueInt64;
+  double metricValuePercent;
+  ullong metricValueThroughput;
+} CUpti_MetricValue;
 #endif
 
 typedef struct cuda_s {
@@ -89,6 +100,7 @@ typedef struct cupti_s {
     CUptiResult (*MetricGetIdFromName) (CUdevice dev, const char *name, CUpti_MetricID *met);
     CUptiResult (*MetricGetNumEvents) (CUpti_MetricID met, uint *num);
     CUptiResult (*MetricCreateEventGroupSets) (CUcontext c, size_t size, CUpti_MetricID *ids, CUpti_EventGroupSets **passes);
+    CUptiResult (*MetricGetAttribute) (CUpti_MetricID met, CUpti_MetricAttribute attrib, size_t *valueSize, void *value);
     CUptiResult (*SetEventCollectionMode) (CUcontext context, CUpti_EventCollectionMode mode);
     CUptiResult (*EventGroupSetsDestroy) (CUpti_EventGroupSets *eventGroupSets);
     CUptiResult (*EventGroupSetAttribute) (CUpti_EventGroup group, CUpti_EventGroupAttribute attrib, size_t size, void *values);

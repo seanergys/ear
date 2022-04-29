@@ -40,6 +40,9 @@ typedef struct CUextra_s {
 
 typedef struct CUmeta_s {
     CUpti_MetricID         metric_id;
+    CUpti_MetricValueKind  metric_kind;
+    CUpti_MetricValue      metric_value;
+    timestamp_t            stamp_init;
     int                    meta_id;
     CUdevice               device;
     CUcontext              context;
@@ -52,6 +55,7 @@ typedef struct CUmeta_s {
     uint                   init;
     uint                   reset;
     uint                   read;
+    uint                   ban;
 } CUmeta;
 
 typedef struct CUroot_s {
@@ -67,9 +71,10 @@ typedef struct CUpool_s {
     ullong                 values[GRP_N];
 } CUpool;
 
-static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static CUroot   root;
-static CUmeta   meta[CTX_N];
+static uint     meta_count;
+static CUmeta   meta[CTX_N]; //Context queue
 static CUpool   pool[DEV_N];
 static cupti_t  cupti;
 static cuda_t   cu;
@@ -82,7 +87,7 @@ static uint     ok;
             const char *errstr;                                                 \
             cupti.GetResultString(_status, &errstr);                            \
             debug(#call ": FAILED, %s", errstr);                                \
-            context_destroy(m);                                                  \
+            context_destroy(m);                                                     \
             return 0;                                                           \
         }                                                                       \
     } while (0)
@@ -148,15 +153,23 @@ state_t gpu_cupti_init(ctx_t *c)
     sus->time_burst = 1500;
     sus->suscribe(sus);
     ok = 1;
+    debug("Initialized CUPTI");
     fini:
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
+#if 1
 static void context_destroy(CUmeta *m)
 {
     cupti.EventGroupSetsDestroy(m->passes);
     memset(m, 0, sizeof(CUmeta));
+}
+#endif
+
+static void context_ban(CUmeta *m)
+{
+    m->ban = 1;
 }
 
 static int metric_print(CUmeta *m)
@@ -241,6 +254,9 @@ static int metric_enable(CUmeta *m)
             size = sizeof(m->extras[g].events_names[e]);
             cc(cupti.EventGetAttribute(m->extras[g].events_ids[e], CUPTI_EVENT_ATTR_NAME, &size, m->extras[g].events_names[e]));
         }
+        
+        size = sizeof(CUpti_MetricValueKind);
+        cc(cupti.MetricGetAttribute(m->metric_id, CUPTI_METRIC_ATTR_VALUE_KIND, &size, &m->metric_kind));
     }
     return 1;
 }
@@ -248,6 +264,8 @@ static int metric_enable(CUmeta *m)
 static int metric_create(CUmeta *m)
 {
     debug("Resetting...");
+    m->reset = 0;
+    
     cc(cupti.SetEventCollectionMode(m->context, CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS));
     cc(cupti.MetricGetIdFromName(m->device, root.metric_name, &m->metric_id));
 
@@ -268,6 +286,8 @@ static int metric_create(CUmeta *m)
     if (!metric_enable(m)) {
         return 0;
     }
+    // Getting the timestamp
+    timestamp_get(&m->stamp_init);
     // State change
     m->reset = 0;
     m->init  = 1;
@@ -300,6 +320,14 @@ static int metric_read_group(CUmeta *m, uint g)
         }
         debug("D%d, %s: %llu", m->device, m->extras[g].events_names[e], m->extras[g].events_counters[e]);
     }
+    #if 0
+    // Wait until saving metrics
+    cc(cupti.MetricGetValue(m->device, m->metric_id,
+        m->events_count * sizeof(CUpti_EventID), m->extras[g].events_ids,
+        m->events_count * sizeof(uint64_t), m->extras[g].events_counters,
+        kernelDuration, &m->metric_value));
+    #endif
+    
     return 1;
 }
 
@@ -310,7 +338,7 @@ static void metric_read(CUmeta *m)
     debug("Reading... %p", m->context);
     for (i = 0; i < m->set->numEventGroups; ++i) {
         if (!metric_read_group(m, i)) {
-            return;
+            //return;
         }
     }
 }
@@ -321,6 +349,7 @@ static int context_find(CUcontext pctx, int meta_id, uint *index)
     int i;
 
     for (i = CTX_N-1; i >= 0 && !found; --i) {
+        //if (!meta[i].init && !meta[i].reset && !meta[i].ban) {
         if (!meta[i].init && !meta[i].reset) {
             *index = i;
         }
@@ -329,10 +358,11 @@ static int context_find(CUcontext pctx, int meta_id, uint *index)
     if (found) {
         *index = i+1;
     }
-    debug("Finding... %d (%u)", found, *index);
+    //debug("Finding... %d (%u)", found, *index);
     return found;
 }
 
+#if 0
 static void context_pop(CUcontext pctx, int meta_id)
 {
     uint i;
@@ -342,24 +372,29 @@ static void context_pop(CUcontext pctx, int meta_id)
     }
     meta[i].read = 0;
 }
+#endif
 
 static void context_push(CUcontext pctx, int meta_id)
 {
     uint i;
 
+    if (meta_count >= CTX_N) {
+        return; 
+    }
     if(!context_find(pctx, meta_id, &i))
     {
-        debug("Pushing... %d (%d)", i, meta_id);
+        debug("Adding new context to queue... %d (%d)", i, meta_id);
         cu.CtxGetDevice(&meta[i].device);
         meta[i].context = pctx;
         meta[i].meta_id = meta_id;
         meta[i].reset   = 1;
+        meta_count     += 1;
     }
 }
 
 static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_CallbackId id, CUpti_CallbackData *data)
 {
-    debug("Callback ... %s %p", data->functionName, data->context);
+    //debug("Callback ... %s %p", data->functionName, data->context);
     uint enter = (data->callbackSite != CUPTI_API_EXIT);
 
     if (data->context == NULL) {
@@ -370,7 +405,7 @@ static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_Callbac
         if (enter) {
             context_push(data->context, 1);
         } else {
-            context_pop(data->context, 1);
+            //context_pop(data->context, 1);
         }
     }
 }
