@@ -1468,11 +1468,9 @@ void ear_finalize(int exit_status)
 #endif
 				if (!eard_ok && !EARL_LIGHT){ 
 								cleanup_job_folder();
-								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}
 				if (!lib_shared_region->earl_on){
-								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}
 				if (!eards_connected() && !EARL_LIGHT && (masters_info.my_master_rank>=0)){
