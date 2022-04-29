@@ -16,7 +16,7 @@
  */
 
 #define _GNU_SOURCE
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #if 0
 #define SINGLE_CONNECTION 0
 #else
@@ -909,6 +909,7 @@ void ear_init()
 								verbose_master(1,"EAR library already initialized");
 								return;
 				}
+                ear_lib_initialized = 1;
 				VERB_SET_LV(0);
 
 				timestamp_getfast(&ear_application_time_init);
@@ -975,7 +976,7 @@ void ear_init()
 								unlink(lib_shared_region_path);
 				}
 				if (is_already_connected(my_job_id,my_step_id,getpid())){
-								verbose_master(VEAR_INIT,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
+								verbose_master(VEAR_INIT, "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n", COL_RED, COL_CLR, my_job_id, my_step_id, getpid());
 								return;
 				}
 				// Getting if the local process is the master or not
@@ -1394,8 +1395,6 @@ void ear_init()
                     traces_mpi_init();
                 }
 
-                ear_lib_initialized=1;
-
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {
 								verbose_master(1, "EAR initialized successfully ");
@@ -1473,9 +1472,11 @@ void ear_finalize(int exit_status)
 								cleanup_job_folder();
 								return;
 				}
-				if (!eards_connected() && (masters_info.my_master_rank >= 0) && !EARL_LIGHT){
+				if (!eards_connected() && !EARL_LIGHT){
 								lib_shared_region->earl_on = 0;
-								cleanup_job_folder();
+                                if (masters_info.my_master_rank>=0) {
+								    cleanup_job_folder();
+                                }
 								return;
 				}
 				debug("%d: Finalizing", my_node_id);
@@ -1565,8 +1566,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 				time_t curr_time;
 				double time_from_mpi_init;
 
-				if (!ear_lib_initialized){
-					verbose_master(2,"Warnin: EAR not initialized");
+				if (!ear_lib_initialized) {
+					verbose_master(2, "%sWARNING%s EAR not initialized.", COL_RED, COL_CLR);
 					ear_init();
 				}
 
