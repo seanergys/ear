@@ -48,6 +48,12 @@ int eardbd_is_initialized()
 
 static state_t state_global()
 {
+    if (server_enabled && state_ok(server_s)) {
+        return_msg(server_s, server_err);
+    }
+    if (mirror_enabled && state_ok(mirror_s)) {
+        return_msg(mirror_s, mirror_err);
+    }
 	if (server_enabled && state_fail(server_s)) {
 		return_msg(server_s, server_err);
 	}
