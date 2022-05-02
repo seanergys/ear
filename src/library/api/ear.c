@@ -1457,10 +1457,12 @@ void ear_finalize(int exit_status)
 				// if we are not the master, we return
 				if ((cancelled) || (synchronize_masters == 0 )){ 
 								cleanup_job_folder();
+								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}
 #if ONLY_MASTER
 				if (my_id) {
+								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}	
 #endif
@@ -1469,14 +1471,12 @@ void ear_finalize(int exit_status)
 								return;
 				}
 				if (!lib_shared_region->earl_on){
-								cleanup_job_folder();
 								return;
 				}
-				if (!eards_connected() && !EARL_LIGHT){
+				if (!eards_connected() && !EARL_LIGHT && (masters_info.my_master_rank>=0)){
 								lib_shared_region->earl_on = 0;
-                                if (masters_info.my_master_rank>=0) {
-								    cleanup_job_folder();
-                                }
+								cleanup_job_folder();
+								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}
 				debug("%d: Finalizing", my_node_id);
@@ -1505,6 +1505,7 @@ void ear_finalize(int exit_status)
 				verbose_master(2,"Total resources computed %d",get_total_resources());
 				debug("%d: before metrics_dispose", my_node_id);
 				metrics_dispose(&application.signature, get_total_resources());
+				sig_shared_region[my_node_id].exited = 1;
 				debug("%d: after metrics_dispose" ,my_node_id);
 				dynais_dispose();
 				if (!my_id) frequency_dispose();
