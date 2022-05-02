@@ -1219,7 +1219,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
     int verb_lvl = POLICY_INFO;
 
-    verbose_master(verb_lvl, "Generating list of frequencies for %d processes...", process_cnt);
+    verbose_master(verb_lvl, "Mapping frequencies from %d processes to %d CPUs...", process_cnt, cpu_cnt);
 
     if (first_print) {
         verb_lvl = 1;
@@ -1247,19 +1247,24 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
             *cpu_freq_min = ear_min(cpu_freq_khz, *cpu_freq_min);
         }
 
-        if (cpu_freq_khz != init_def_cpufreq_khz) {
-            verbose_master(verb_lvl, "Frequency for process %d is %lu", proc_lrank, cpu_freq_khz);
+        uint verb = (cpu_freq_khz != init_def_cpufreq_khz); // Verbose only when the frequency to set is
+                                                            // different from the initial
+        if (verb) {
+            verbosen_master(verb_lvl, "Process %d: %lu kHz", proc_lrank, cpu_freq_khz);
+            verbosen_master(verb_lvl + 1, " -> CPUs:")
         }
 
         cpu_set_t process_mask = sig_shared_region[proc_lrank].cpu_mask;
 
         for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
             if (CPU_ISSET(cpu_idx, &process_mask)) {
-                verbosen_master(verb_lvl + 1, "CPU %d ", cpu_idx);
+                if (verb) {
+                    verbosen_master(verb_lvl + 1, " %d", cpu_idx);
+                }
                 (*core_cpu_freqs_khz)[cpu_idx] = cpu_freq_khz;
             }
         }
-        verbose_master(verb_lvl + 1," ");
+        verbosen_master(verb_lvl,"\n");
     }
 
     return EAR_SUCCESS;
