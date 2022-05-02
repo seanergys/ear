@@ -646,24 +646,16 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_serialize_task_preload");
 	
-	char *lib_path = REL_PATH_LOAD;
-	const int m = SZ_BUFFER_EXTRA;
-	int n;
-	
+	const int bsize = SZ_BUFFER_EXTRA;
 	buffer1[0] = '\0';
 	buffer2[0] = '\0';
 
-	#define t(max, val) \
-		((val + 1) > max) ? max : val + 1
-
-	if (getenv_agnostic(sp, Var.hack_load.hck, buffer2, m)) {
-		n = snprintf(      0,       0, "%s", buffer2);
-		n = snprintf(buffer1, t(m, n), "%s", buffer2);
+	if (getenv_agnostic(sp, Var.hack_load.hck, buffer2, bsize)) {
+		xsprintf(buffer1, "%s", buffer2);
 	} else {	
 		// Copying INSTALL_PATH into buffer and adding library and the folder.
-		apenv_agnostic(buffer2, sd->pack.path_inst, 64);
-		n = snprintf(      0,       0, "%s/%s", buffer2, lib_path);
-		n = snprintf(buffer1, t(m, n), "%s/%s", buffer2, lib_path);
+		apenv_agnostic(buffer2, sd->pack.path_inst, bsize);
+		xsprintf(buffer1, "%s/%s", buffer2, REL_PATH_LOAD);
 	}
 	plug_verbose(sp, 2, "trying to load file '%s'", buffer1);
 
@@ -671,15 +663,12 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 	if (access(buffer1, X_OK) == 0)
 	{
 		char *ld_buf = sd->job.user.env.ld_preload;
-
 		// If LD_PRELOAD already exists.
-		if (getenv_agnostic(sp, Var.ld_prel.ear, ld_buf, m))
+		if (getenv_agnostic(sp, Var.ld_prel.ear, ld_buf, bsize))
 		{
-			if (n > 0) {
-				n = xsprintf(buffer2, "%s:", buffer1);
-			}
+			xsprintf(buffer2, "%s:", buffer1);
 			// Append the current LD_PRELOAD content to our library.
-			n = xsnprintf(buffer1, t(m, n), "%s%s", buffer2, ld_buf);
+			xsprintf(buffer1, "%s%s", buffer2, ld_buf);
 		}
 		// Setting LD_PRELOAD environment variable.
 		setenv_agnostic(sp, Var.ld_prel.ear, buffer1, 1);
