@@ -16,7 +16,7 @@
 */
 
 #include <common/config.h>
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/output/verbose.h>
 #include <common/system/symplug.h>
@@ -55,7 +55,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 	char *my_energy_plugin;
 	char *ins_path       = getenv(HACK_EARL_INSTALL_PATH);
 
-	debug("energy_init library");
+	debug("energy_init library: plugin path %s, object %s", conf->installation.dir_plug,conf->installation.obj_ener);
 	if (conf == NULL) {
 		state_return_msg(EAR_BAD_ARGUMENT, 0,
 		 "the conf value cannot be NULL if the plugin is not loaded");
@@ -63,6 +63,7 @@ state_t energy_lib_init(settings_conf_t *conf)
     // TODO: This variable is not defined anywhere
 
 	my_energy_plugin=getenv("SLURM_EAR_ENERGY_PLUGIN");
+	
 	if ((my_energy_plugin==NULL) || (conf->user_type!=AUTHORIZED)){
 		found = (strcmp(conf->installation.obj_ener, "default") != 0);
 
@@ -77,6 +78,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 		found=1;
 		strcpy(energy_objc,my_energy_plugin);
 	}
+	debug("looking for object %s:", energy_objc);
 	if (found) debug("loading shared object '%s'", energy_objc);
 
 

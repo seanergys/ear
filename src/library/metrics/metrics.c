@@ -658,6 +658,7 @@ static int metrics_partial_stop(uint where)
 
    debug("metrics_partial_stop %u", my_node_id); 
 	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+			verbose_master(2,"Disconnecting library because eard not connected");
       if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
 		}
 
@@ -1281,14 +1282,19 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     verbose_master(INFO_METRICS + 1, "End local signature");
 
     if (!eards_connected() && masters_info.my_master_rank >= 0){ 
-        if (!EARL_LIGHT) return;
+        if (!EARL_LIGHT){ 
+					return;
+				}
     }
 
 
     /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
-    while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME)){ 
+    while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
 		usleep(10000);
 		wait_time += 0.01;
+	}
+	if (!lib_shared_region->earl_on){ 
+		return;
 	}
 	metrics_compute_signature_data(LOO, metrics, 1, procs);
 
