@@ -69,7 +69,7 @@ extern unsigned long ext_def_freq;
 #endif
 
 // TODO remove after reinstalling on Lenox
-#define COMPATIBLE_SHARED_MEM 1
+#define COMPATIBLE_SHARED_MEM 0
 
 extern masters_info_t masters_info;
 
@@ -1264,7 +1264,9 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
                 (*core_cpu_freqs_khz)[cpu_idx] = cpu_freq_khz;
             }
         }
-        verbosen_master(verb_lvl,"\n");
+        if (verb) {
+            verbosen_master(verb_lvl,"\n");
+        }
     }
 
     return EAR_SUCCESS;

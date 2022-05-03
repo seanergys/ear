@@ -9,7 +9,6 @@ Description=EARD - Energy Aware Runtime node daemon
 Type=simple
 Environment="EAR_ETC=@sysconfdir@"
 ExecStart=@prefix@/sbin/eard 1
-ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 KillMode=process
 Restart=on-failure
