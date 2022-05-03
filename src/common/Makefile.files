@@ -52,6 +52,7 @@ libc_OBJS = \
     $(SRCDIR)/common/hardware/topology.o \
     $(SRCDIR)/common/hardware/architecture.o \
 	$(SRCDIR)/common/messaging/msg_internals.o \
+	$(SRCDIR)/common/utils/keeper.o \
 	$(SRCDIR)/common/utils/string.o \
 	$(SRCDIR)/common/utils/serial_buffer.o \
 	$(SRCDIR)/common/utils/stress.o
