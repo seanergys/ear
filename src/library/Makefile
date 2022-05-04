@@ -1,4 +1,4 @@
-CFLAGS  = -fPIC -O2 -I$(SRCDIR) -Wall -g -DEARL_LIGHT=0 -g
+CFLAGS  = -fPIC -O2 -I$(SRCDIR) -Wall -g -DEARL_LIGHT=0
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -56,7 +56,7 @@ core_OBJS = \
     common/utils.o \
     metrics/metrics.o \
     metrics/gpu.o \
-		metrics/energy_node_lib.o \
+	metrics/energy_node_lib.o \
     models/models.o \
     models/cpu_power_model.o \
     policies/policy.o \
