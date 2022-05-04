@@ -15,7 +15,6 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
 #include <library/common/utils.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/output/verbose.h>

@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/system/file.h>
 #include <common/states.h>
@@ -378,39 +378,45 @@ void report_mpi_application_data(application_t *app)
     float avg_f = ((double) app->signature.avg_f) / 1000000.0;
     float avg_imc_f = ((double) app->signature.avg_imc_f) / 1000000.0;
     float def_f = ((double) app->job.def_f) / 1000000.0;
-    //float pavg_f = ((double) app->power_sig.avg_f) / 1000000.0;
-    //float pdef_f = ((double) app->power_sig.def_f) / 1000000.0;
 
 #if NEW_APP_SUMMARY
     char job_info_txt[1024];
-    snprintf(job_info_txt, sizeof(job_info_txt), "App id: %s / user id: %s / account: %s / job.step: %lu.%lu\n", app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id);
+    snprintf(job_info_txt, sizeof(job_info_txt), "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n", app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id);
 
     char mpi_info_txt[512];
     if (app->is_mpi) {
-        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n        Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
+        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n          Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
                 app->signature.time, def_f, avg_f, avg_imc_f, app->signature.perc_MPI, app->job.procs, app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS, app->signature.DC_power, app->signature.DRAM_power, app->signature.PCK_power, app->signature.Gflops/app->signature.DC_power);
     }
 
     size_t max_str_len = strlen(job_info_txt);
 
-    size_t mpi_info_txt_len = strnlen(mpi_info_txt, sizeof(mpi_info_txt));
-    if (mpi_info_txt_len != sizeof(mpi_info_txt)) {
-        max_str_len = ear_max(max_str_len, mpi_info_txt_len);
-    }
-
     char app_summ_hdr_txt[512];
     snprintf(app_summ_hdr_txt, sizeof(app_summ_hdr_txt), " Application Summary [%s] ", app->node_id);
 
-    char app_summ_hdr_dec_txt[128];
-    snprintf(app_summ_hdr_dec_txt, sizeof(app_summ_hdr_dec_txt), "%0*s", (int)((max_str_len - strlen(app_summ_hdr_txt)) / 2), "-");
+    int app_summ_hdr_dec_len = (int)((max_str_len - strlen(app_summ_hdr_txt)) / 2);
+    char *app_summ_hdr_dec_txt = malloc(app_summ_hdr_dec_len + 1);
+    memset(app_summ_hdr_dec_txt, '-', app_summ_hdr_dec_len);
+    app_summ_hdr_dec_txt[app_summ_hdr_dec_len] = '\0';
 
     verbose(VTYPE, "%s%s%s\n%s\n", app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt);
+
+    free(app_summ_hdr_dec_txt);
 
     if (app->is_mpi) {
         verbose(VTYPE, "%s", mpi_info_txt);
     }
 
-    verbose(VTYPE, "%0*s", (int)(strlen(app_summ_hdr_txt) + strlen(app_summ_hdr_dec_txt) * 2), "-");
+    verbose_gpu_app(VTYPE, app);
+
+    int app_summ_ftr_dec_len = (int)(strlen(app_summ_hdr_txt) + app_summ_hdr_dec_len * 2);
+    char *app_summ_ftr_dec = malloc(app_summ_ftr_dec_len + 1);
+    memset(app_summ_ftr_dec, '-', app_summ_ftr_dec_len);
+    app_summ_ftr_dec[app_summ_ftr_dec_len] = '\0';
+
+    verbose(VTYPE, "%s", app_summ_ftr_dec);
+
+    free(app_summ_ftr_dec);
 
 #else
     verbose(VTYPE,"------------------------------------- Application Summary [%s] -----------------------------------\n", app->node_id);
