@@ -23,19 +23,25 @@
 
 typedef struct afd_set_s {
     struct pollfd fds[8192];
-    nfds fds_count;
+    nfds_t fds_count;
     int timeout;
-} afd_set;
+} afd_set_t;
+
+void afd_set(int fd, afd_set_t *set);
+
+int afd_isset(int fd, afd_set_t *set);
+
+void afd_clear(int fd, afd_set_t *set);
 
 #define AFD_SET(fd, set) \
-    void afd_set(fd, set);
+    afd_set(fd, set);
 
 #define AFD_ISSET(fd, set) \
-    int afd_isset(fd, set);
+    afd_isset(fd, set);
 
-#define AFD_CLEAR() \
-    void afd_clear(fd, set);
+#define AFD_CLEAR(fd, set) \
+    afd_clear(fd, set);
 
-int aselect(afd_set set);
+int aselect(afd_set_t *set);
 
 #endif //COMMON_SYSTEM_POLL

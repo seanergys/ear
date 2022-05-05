@@ -17,7 +17,7 @@
 
 #include <common/system/poll.h>
 
-int afd_set(fd, afd_set *set)
+void afd_set(int fd, afd_set_t *set)
 {
     int i;
     for (i = 0; i < set->fds_count; ++i) {
@@ -33,18 +33,18 @@ int afd_set(fd, afd_set *set)
     set->fds[i].revents = 0;
 }
 
-int afd_isset(fd, afd_set *set)
+int afd_isset(int fd, afd_set_t *set)
 {
     int i;
     for (i = 0; i < set->fds_count; ++i) {
         if (fd == set->fds[i].fd) {
-            return (fds[j].revents & POLLIN) || (fds[j].revents & POLLOUT);
+            return (set->fds[i].revents & POLLIN) || (set->fds[i].revents & POLLOUT);
         }
     }
     return 0;
 }
 
-void afd_clear(fd, afd_set *set)
+void afd_clear(int fd, afd_set_t *set)
 {
     int i, j;
     for (i = 0; i < set->fds_count; ++i) {
@@ -63,7 +63,7 @@ void afd_clear(fd, afd_set *set)
     set->fds_count = j+1;
 }
 
-int aselect(afd_set *set)
+int aselect(afd_set_t *set)
 {
     return poll(set->fds, set->fds_count, set->timeout);
 }
