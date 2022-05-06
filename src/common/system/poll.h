@@ -21,6 +21,8 @@
 #include <poll.h>
 #include <common/states.h>
 
+#define ATIMEOUT_INFINITE -1
+
 typedef struct afd_set_s {
     struct pollfd fds[8192];
     nfds_t fds_count;
@@ -34,14 +36,14 @@ int afd_isset(int fd, afd_set_t *set);
 void afd_clear(int fd, afd_set_t *set);
 
 #define AFD_SET(fd, set) \
-    afd_set(fd, set);
+    afd_set(fd, set)
 
 #define AFD_ISSET(fd, set) \
-    afd_isset(fd, set);
+    afd_isset(fd, set)
 
-#define AFD_CLEAR(fd, set) \
-    afd_clear(fd, set);
+#define AFD_CLR(fd, set) \
+    afd_clear(fd, set)
 
-int aselect(afd_set_t *set);
+int aselect(afd_set_t *set, int timeout, int *time_passed);
 
 #endif //COMMON_SYSTEM_POLL

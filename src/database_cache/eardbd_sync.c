@@ -45,8 +45,7 @@ extern sync_answer_t data_answer;
 
 // Descriptors
 extern struct sockaddr_storage addr_new;
-extern fd_set fds_incoming;
-extern fd_set fds_active;
+extern afd_set_t fds_active;
 extern int fd_new;
 extern int fd_min;
 extern int fd_max;
@@ -145,7 +144,7 @@ int sync_fd_exists(long ip, int *fd_old)
 		return 0;
 	}
 	for (i = 0; i < (fd_max + 1); ++i) {
-		if (FD_ISSET(i, &fds_active) && fd_hosts[i] == ip) {
+		if (AFD_ISSET(i, &fds_active) && fd_hosts[i] == ip) {
 			*fd_old = i;
 			return 1;
 		}
@@ -164,7 +163,7 @@ void sync_fd_add(int fd, long ip)
 	// Saving IP
 	fd_hosts[fd] = ip;
 	// Enabling FD in select
-	FD_SET(fd, &fds_active);
+	AFD_SET(fd, &fds_active);
 	
 	if (fd > fd_max) {
 		fd_max = fd;
@@ -186,7 +185,7 @@ void sync_fd_disconnect(int fd)
 {
 	sockets_close_fd(fd);
 	// Disabling FD in select
-	FD_CLR(fd, &fds_active);
+	AFD_CLR(fd, &fds_active);
 	// If is 0 maybe was cleaned already
 	if (fd_hosts[fd] > 0) {
 		sockets_online -= 1;

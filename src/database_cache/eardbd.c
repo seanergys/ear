@@ -50,8 +50,7 @@ uint                    sockets_unrecognized;
 uint                    sockets_timeout;
 // Descriptors
 struct sockaddr_storage addr_new;
-fd_set                  fds_incoming;
-fd_set                  fds_active;
+afd_set_t               fds_active;
 int                     fd_new;
 int                     fd_min;
 int                     fd_max;
@@ -488,7 +487,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 		fd_max = socket_mirror->fd;
 		fd_min = socket_mirror->fd;
 		//
-		FD_SET(socket_mirror->fd, &fds_active);
+		AFD_SET(socket_mirror->fd, &fds_active);
 	} else {
 		// Destroying mirror soockets
 		sockets_dispose(socket_mirror);
@@ -503,8 +502,8 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 			fd_min = socket_server->fd;
 		}
 		//
-		FD_SET(socket_server->fd, &fds_active);
-		FD_SET(socket_sync01->fd, &fds_active);
+		AFD_SET(socket_server->fd, &fds_active);
+		AFD_SET(socket_sync01->fd, &fds_active);
 	}
 
 	// Ok, all here is done

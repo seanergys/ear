@@ -37,8 +37,7 @@ extern socket_t *socket_sync02;
 
 // Descriptors
 extern struct sockaddr_storage addr_new;
-extern fd_set fds_incoming;
-extern fd_set fds_active;
+extern afd_set_t fds_active;
 extern int fd_new;
 extern int fd_min;
 extern int fd_max;
@@ -188,7 +187,7 @@ static void manage_sockets()
 
 	for(i = fd_min; i <= fd_max && listening; i++)
 	{
-		if (listening && FD_ISSET(i, &fds_incoming)) // we got one!!
+		if (listening && AFD_ISSET(i, &fds_active)) // we got one!!
 		{
 			// Handle new connections (just for TCP)
 			if (sync_fd_is_new(i))
@@ -257,19 +256,38 @@ static void manage_sockets()
 	}
 }
 
+int timeval_convert(struct timeval *ts, ullong time_unit)
+{
+    ullong nanos = (((ullong) ts->tv_sec) * 1E9) + (((ullong) ts->tv_usec) * 1E3);
+    printf("TIMEVAL_CONVERT %lu s - %lu us TO %d ms\n", ts->tv_sec, ts->tv_usec, (int) (nanos / time_unit));
+    return ((int) nanos / time_unit);
+}
+
+struct timeval timeval_create(int time, ullong time_unit)
+{
+    struct timeval ts;
+    ullong nanos1 = ((ullong) time) * time_unit;
+    ullong nanos2 = nanos1 - ((nanos1 / TIME_SECS) * TIME_SECS);
+    ts.tv_sec    = nanos1 / TIME_SECS;
+    ts.tv_usec   = nanos2 / TIME_USECS;
+    printf("TIMEVAL_CREATE %d ms TO %lu s - %lu us\n", time, ts.tv_sec, ts.tv_usec);
+    return ts; 
+}
+
 void body()
 {
+    int time_passed;
 	int s;
 
 	while(listening)
 	{
-		fds_incoming = fds_active;
-
-		if ((s = select(fd_max + 1, &fds_incoming, NULL, NULL, &timeout_slct)) == -1) {
+		if ((s = aselect(&fds_active, timeval_convert(&timeout_slct, TIME_MSECS), &time_passed)) == -1) {
 			if (listening && !updating) {
 				edb_error("during select (%s)", strerror(errno));
 			}
 		}
+        // Conversion
+        timeout_slct = timeval_create(time_passed, TIME_MSECS);
 		// Checks alarms states
 		manage_alarms(&timeout_slct);
 		// Checks new incoming connections or data
@@ -300,8 +318,7 @@ void release()
 	sockets_dispose(socket_sync01);
 	sockets_dispose(socket_sync02);
 	//
-	FD_ZERO(&fds_incoming);
-	FD_ZERO(&fds_active);
+	//FD_ZERO(&fds_active);
 	// Freeing data
 	free_cluster_conf(&conf_clus);
 

@@ -15,7 +15,11 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+#define SHOW_DEBUGS 1
+
 #include <common/system/poll.h>
+#include <common/system/time.h>
+#include <common/output/debug.h>
 
 void afd_set(int fd, afd_set_t *set)
 {
@@ -31,14 +35,18 @@ void afd_set(int fd, afd_set_t *set)
     set->fds[i].fd      = fd;
     set->fds[i].events  = POLLIN;
     set->fds[i].revents = 0;
+    debug("FD_SET(%d): position %d of %d", fd, i, set->fds_count);
 }
 
 int afd_isset(int fd, afd_set_t *set)
 {
+    int r;
     int i;
     for (i = 0; i < set->fds_count; ++i) {
         if (fd == set->fds[i].fd) {
-            return (set->fds[i].revents & POLLIN) || (set->fds[i].revents & POLLOUT);
+            r = (set->fds[i].revents & POLLIN) || (set->fds[i].revents & POLLOUT);
+            debug("FD_ISSET(%d): position %d of %d, returns %d", fd, i, set->fds_count, r);
+            return r;
         }
     }
     return 0;
@@ -55,6 +63,7 @@ void afd_clear(int fd, afd_set_t *set)
             break;
         }
     }
+    debug("FD_CLR(%d): position %d of %d", fd, i, set->fds_count);
     for (i = 0; i < set->fds_count; ++i) {
         if (set->fds[i].fd >= 0) {
             j = i;
@@ -63,7 +72,18 @@ void afd_clear(int fd, afd_set_t *set)
     set->fds_count = j+1;
 }
 
-int aselect(afd_set_t *set)
+int aselect(afd_set_t *set, int timeout, int *_time_passed)
 {
-    return poll(set->fds, set->fds_count, set->timeout);
+    timestamp_t ts;
+    int time_passed;
+    int res;
+
+    timestamp_get(&ts);
+    res = poll(set->fds, set->fds_count, timeout);
+    time_passed = (int) timestamp_diffnow(&ts, TIME_MSECS);
+    debug("Poll with timeout %d ms returned after %d ms", timeout, time_passed);
+    if (_time_passed != NULL) {
+        *_time_passed = time_passed;
+    }
+    return res;
 }
