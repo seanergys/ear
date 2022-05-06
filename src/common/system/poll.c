@@ -72,18 +72,29 @@ void afd_clear(int fd, afd_set_t *set)
     set->fds_count = j+1;
 }
 
-int aselect(afd_set_t *set, int timeout, int *_time_passed)
+int aselect(afd_set_t *set, int timeout, int *time_left)
 {
+    int time_passed, r;
     timestamp_t ts;
-    int time_passed;
-    int res;
 
+    // Polling and calculating time
     timestamp_get(&ts);
-    res = poll(set->fds, set->fds_count, timeout);
+    r = poll(set->fds, set->fds_count, timeout);
     time_passed = (int) timestamp_diffnow(&ts, TIME_MSECS);
-    debug("Poll with timeout %d ms returned after %d ms", timeout, time_passed);
-    if (_time_passed != NULL) {
-        *_time_passed = time_passed;
+    debug("%d = poll(timeout: %d, time_left: %d)", r, timeout, time_passed);
+    // Calculating the lefting time
+    if (time_left != NULL) {
+        *time_left = 0;
+        if (time_passed < timeout) {
+            *time_left = timeout - time_passed;
+        }
     }
-    return res;
+
+    return r;
+}
+
+int aselectv(afd_set_t *set, struct timeval *timeout)
+{
+
+    return aselect(set);   
 }

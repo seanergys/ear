@@ -259,8 +259,8 @@ static void manage_sockets()
 int timeval_convert(struct timeval *ts, ullong time_unit)
 {
     ullong nanos = (((ullong) ts->tv_sec) * 1E9) + (((ullong) ts->tv_usec) * 1E3);
-    printf("TIMEVAL_CONVERT %lu s - %lu us TO %d ms\n", ts->tv_sec, ts->tv_usec, (int) (nanos / time_unit));
-    return ((int) nanos / time_unit);
+    dprintf(debug_channel, "TIMEVAL_BEFORE %lu s - %lu us TO %d ms\n", ts->tv_sec, ts->tv_usec, (int) (nanos / time_unit));
+    return (int) (nanos / time_unit);
 }
 
 struct timeval timeval_create(int time, ullong time_unit)
@@ -270,7 +270,7 @@ struct timeval timeval_create(int time, ullong time_unit)
     ullong nanos2 = nanos1 - ((nanos1 / TIME_SECS) * TIME_SECS);
     ts.tv_sec    = nanos1 / TIME_SECS;
     ts.tv_usec   = nanos2 / TIME_USECS;
-    printf("TIMEVAL_CREATE %d ms TO %lu s - %lu us\n", time, ts.tv_sec, ts.tv_usec);
+    dprintf(debug_channel, "TIMEVAL_AFTER %d ms TO %lu s - %lu us\n", time, ts.tv_sec, ts.tv_usec);
     return ts; 
 }
 
