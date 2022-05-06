@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -460,8 +460,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
             } else {
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
-                ulong process_avgcpuf;
-                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
 
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],

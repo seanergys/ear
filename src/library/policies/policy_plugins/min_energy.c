@@ -483,28 +483,31 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 local_penalty = base_penalty;
             } else {
 
-							/* 1.2: Per process CPU frequency selection */
+				/* 1.2: Per process CPU frequency selection */
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig); // Local VPI
 
-                ulong eff_p_cpuf, process_avgcpuf;
-                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff, &process_avgcpuf);
+                ulong eff_p_cpuf, process_avgcpuf, cpus_cnt_ret;
+
+                pstate_freqtoavg(sig_shared_region[i].cpu_mask, lib_shared_region->avg_cpufreq, metrics_get(MET_CPUFREQ)->devs_count, &process_avgcpuf, &cpus_cnt_ret);
+
+                debug("Process %d: avg. cpufreq %lu num cpus %lu", i, process_avgcpuf, cpus_cnt_ret);
 
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
 
-								/* Critical path is computed in int_policy_ok */
+				/* Critical path is computed in int_policy_ok */
                 if (critical_path[i] == 1) {
                     // Process was selected to be in the critical path
                     if (!mbound) {
-												/* If the process is part of the critical path and is CPU bound */
+						/* If the process is part of the critical path and is CPU bound */
                         eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf, 0);
                         if (eff_p_cpuf < process_avgcpuf) {
                             eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf + 100000, 0);
                         }
                         if (use_turbo_for_cp) {
-														/* 1.2.1: Use turbo for critial path process */
+							/* 1.2.1: Use turbo for critial path process */
                             new_freq[i] = frequency_pstate_to_freq(0);
                         } else {
-														/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
+							/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
                             new_freq[i] = ear_min(eff_p_cpuf, frequency_pstate_to_freq(1));
                         }
                         verbose_master(2,
@@ -512,7 +515,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                                 i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi]);
                         continue;
                     } else {
-												/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
+						/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
                         local_penalty = base_penalty / 2;
                     }
                 } else if (critical_path[i] == 2) {
