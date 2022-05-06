@@ -19,6 +19,7 @@
 #define EAR_COMMON_TIME_H
 
 #include <time.h>
+#include <sys/time.h>
 #include <common/types/generic.h>
 
 // Time units
@@ -70,7 +71,7 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit);
 ullong timestamp_diffnow(timestamp *ts1, ullong time_unit);
 
 /* Converts a time to timestamp */
-void timestamp_revert(timestamp *ts, ullong *tr, ullong time_unit);
+void timestamp_revert(timestamp *ts, ullong time, ullong time_unit);
 
 void timestamp_print(timestamp *ts, int fd);
 

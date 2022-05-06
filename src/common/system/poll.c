@@ -22,6 +22,7 @@
 
 static void afd_init(afd_set_t *set)
 {
+    int i;
     for (i = 0; i < AFD_MAX; ++i) {
         set->fds[i].fd      = -1;
         set->fds[i].events  =  0;
@@ -33,16 +34,16 @@ static void afd_init(afd_set_t *set)
 
 void afd_set(int fd, afd_set_t *set)
 {
-    if (fd >= AFD_MAX || set->fds[fd].fd != -1) {
-        return;
-    }
     if (set->fds_count == 0) {
         afd_init(set);
     }
+    if (fd >= AFD_MAX || set->fds[fd].fd != -1) {
+        return;
+    }
 
-    set->fds[fd].fd     = fd;
-    set->fds[i].events  = POLLIN;
-    set->fds[i].revents = 0;
+    set->fds[fd].fd      = fd;
+    set->fds[fd].events  = POLLIN;
+    set->fds[fd].revents = 0;
 
     if (fd > set->fd_max) {
         set->fd_max = fd;
@@ -58,25 +59,27 @@ void afd_set(int fd, afd_set_t *set)
 int afd_isset(int fd, afd_set_t *set, int flag)
 {
     int r = (set->fds[fd].revents & flag);
-    debug("FD_ISSET(%d): ret %d", set->fds[fd], r);
+    debug("FD_ISSET(%d): ret %d", fd, r);
     return r;
 }
 
 void afd_clear(int fd, afd_set_t *set)
 {
+    int i;    
+
     set->fds[fd].fd      = -1;
     set->fds[fd].events  =  0;
     set->fds[fd].revents =  0;
 
     for (i = set->fd_min; i < AFD_MAX; ++i) {
-        if (set->fds[i] != -1) {
-            set->fd_min = set->fds[i];
+        if (set->fds[i].fd != -1) {
+            set->fd_min = set->fds[i].fd;
             break;
         }
     }
     for (i = set->fd_max; i >= 0; --i) {
-        if (set->fds[i] != -1) {
-            set->fd_max = set->fds[i];
+        if (set->fds[i].fd != -1) {
+            set->fd_max = set->fds[i].fd;
             break;
         }
     }
@@ -93,7 +96,7 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     timestamp_get(&ts);
     r = poll(&set->fds[set->fd_min], set->fds_count, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    debug("%d = poll(timeout: %llu, time_left: %llu)", r, timeout, time_passed);
+    debug("%d = poll(fds_count: %d, timeout: %llu, time_passed: %llu)", r, set->fds_count, timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;
@@ -116,8 +119,8 @@ int aselectv(afd_set_t *set, struct timeval *_timeout)
     // Converting timeval to single time value.
     r = aselect(set, timeout, &time_left);
     // Converting lefting time to timeval.
-    if (timeout != NULL) {
-        *timeout = timeval_create(atime_left, TIME_MSECS);
+    if (_timeout != NULL) {
+        *_timeout = timeval_create(time_left, TIME_MSECS);
     }
     return r;
 }
