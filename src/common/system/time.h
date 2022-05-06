@@ -72,8 +72,15 @@ ullong timestamp_diffnow(timestamp *ts1, ullong time_unit);
 /* Converts a time to timestamp */
 void timestamp_revert(timestamp *ts, ullong *tr, ullong time_unit);
 
-void timestamp_to_str(timestamp *ts,char *txt,uint size);
+void timestamp_print(timestamp *ts, int fd);
 
-void print_timestamp(timestamp *ts);
+void timestamp_tostr(timestamp *ts, char *buffer, size_t size);
+
+// Helpers
+/* Converts a timeval to a 64 bits time value in `time_unit` units. */
+ullong timeval_convert(struct timeval *ts, ullong time_unit);
+
+/* Converts a 64 bits time value in `time_unit` units in a timeval. */
+struct timeval timeval_create(ullong time, ullong time_unit);
 
 #endif //EAR_COMMON_TIME_H

@@ -256,24 +256,6 @@ static void manage_sockets()
 	}
 }
 
-int timeval_convert(struct timeval *ts, ullong time_unit)
-{
-    ullong nanos = (((ullong) ts->tv_sec) * 1E9) + (((ullong) ts->tv_usec) * 1E3);
-    dprintf(debug_channel, "TIMEVAL_BEFORE %lu s - %lu us TO %d ms\n", ts->tv_sec, ts->tv_usec, (int) (nanos / time_unit));
-    return (int) (nanos / time_unit);
-}
-
-struct timeval timeval_create(int time, ullong time_unit)
-{
-    struct timeval ts;
-    ullong nanos1 = ((ullong) time) * time_unit;
-    ullong nanos2 = nanos1 - ((nanos1 / TIME_SECS) * TIME_SECS);
-    ts.tv_sec    = nanos1 / TIME_SECS;
-    ts.tv_usec   = nanos2 / TIME_USECS;
-    dprintf(debug_channel, "TIMEVAL_AFTER %d ms TO %lu s - %lu us\n", time, ts.tv_sec, ts.tv_usec);
-    return ts; 
-}
-
 void body()
 {
     int time_passed;
@@ -281,13 +263,11 @@ void body()
 
 	while(listening)
 	{
-		if ((s = aselect(&fds_active, timeval_convert(&timeout_slct, TIME_MSECS), &time_passed)) == -1) {
+		if ((s = aselectv(&fds_active, &timeout_slct)) == -1) {
 			if (listening && !updating) {
 				edb_error("during select (%s)", strerror(errno));
 			}
 		}
-        // Conversion
-        timeout_slct = timeval_create(time_passed, TIME_MSECS);
 		// Checks alarms states
 		manage_alarms(&timeout_slct);
 		// Checks new incoming connections or data

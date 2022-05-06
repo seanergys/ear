@@ -18,70 +18,82 @@
 #define SHOW_DEBUGS 1
 
 #include <common/system/poll.h>
-#include <common/system/time.h>
 #include <common/output/debug.h>
+
+static void afd_init(afd_set_t *set)
+{
+    for (i = 0; i < AFD_MAX; ++i) {
+        set->fds[i].fd      = -1;
+        set->fds[i].events  =  0;
+        set->fds[i].revents =  0;
+    }
+    set->fd_min = AFD_MAX;
+    set->fd_max = 0;
+}
 
 void afd_set(int fd, afd_set_t *set)
 {
-    int i;
-    for (i = 0; i < set->fds_count; ++i) {
-        if (set->fds[i].fd == -1) {
-            break;
-        }
+    if (fd >= AFD_MAX || set->fds[fd].fd != -1) {
+        return;
     }
-    if (i == set->fds_count) {
-        set->fds_count += 1;
+    if (set->fds_count == 0) {
+        afd_init(set);
     }
-    set->fds[i].fd      = fd;
+
+    set->fds[fd].fd     = fd;
     set->fds[i].events  = POLLIN;
     set->fds[i].revents = 0;
-    debug("FD_SET(%d): position %d of %d", fd, i, set->fds_count);
+
+    if (fd > set->fd_max) {
+        set->fd_max = fd;
+    }
+    if (fd < set->fd_min) {
+        set->fd_min = fd;
+    }
+    // Counting
+    set->fds_count = set->fd_max - set->fd_min + 1;
+    debug("FD_SET(%d) [%d,%d]", fd, set->fd_min, set->fd_max);
 }
 
-int afd_isset(int fd, afd_set_t *set)
+int afd_isset(int fd, afd_set_t *set, int flag)
 {
-    int r;
-    int i;
-    for (i = 0; i < set->fds_count; ++i) {
-        if (fd == set->fds[i].fd) {
-            r = (set->fds[i].revents & POLLIN) || (set->fds[i].revents & POLLOUT);
-            debug("FD_ISSET(%d): position %d of %d, returns %d", fd, i, set->fds_count, r);
-            return r;
-        }
-    }
-    return 0;
+    int r = (set->fds[fd].revents & flag);
+    debug("FD_ISSET(%d): ret %d", set->fds[fd], r);
+    return r;
 }
 
 void afd_clear(int fd, afd_set_t *set)
 {
-    int i, j;
-    for (i = 0; i < set->fds_count; ++i) {
-        if (fd == set->fds[i].fd) {
-            set->fds[i].fd      = -1;
-            set->fds[i].events  =  0;
-            set->fds[i].revents =  0;
+    set->fds[fd].fd      = -1;
+    set->fds[fd].events  =  0;
+    set->fds[fd].revents =  0;
+
+    for (i = set->fd_min; i < AFD_MAX; ++i) {
+        if (set->fds[i] != -1) {
+            set->fd_min = set->fds[i];
             break;
         }
     }
-    debug("FD_CLR(%d): position %d of %d", fd, i, set->fds_count);
-    for (i = 0; i < set->fds_count; ++i) {
-        if (set->fds[i].fd >= 0) {
-            j = i;
+    for (i = set->fd_max; i >= 0; --i) {
+        if (set->fds[i] != -1) {
+            set->fd_max = set->fds[i];
+            break;
         }
     }
-    set->fds_count = j+1;
+    // Counting
+    set->fds_count = set->fd_max - set->fd_min + 1;
+    debug("FD_CLR(%d) [%d,%d]", fd, set->fd_min, set->fd_max);
 }
 
-int aselect(afd_set_t *set, int timeout, int *time_left)
+int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
 {
-    int time_passed, r;
+    ullong time_passed, r;
     timestamp_t ts;
-
     // Polling and calculating time
     timestamp_get(&ts);
-    r = poll(set->fds, set->fds_count, timeout);
-    time_passed = (int) timestamp_diffnow(&ts, TIME_MSECS);
-    debug("%d = poll(timeout: %d, time_left: %d)", r, timeout, time_passed);
+    r = poll(&set->fds[set->fd_min], set->fds_count, (int) timeout);
+    time_passed = timestamp_diffnow(&ts, TIME_MSECS);
+    debug("%d = poll(timeout: %llu, time_left: %llu)", r, timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;
@@ -89,12 +101,23 @@ int aselect(afd_set_t *set, int timeout, int *time_left)
             *time_left = timeout - time_passed;
         }
     }
-
     return r;
 }
 
-int aselectv(afd_set_t *set, struct timeval *timeout)
+int aselectv(afd_set_t *set, struct timeval *_timeout)
 {
-
-    return aselect(set);   
+    ullong timeout = AFD_INFINITE;
+    ullong time_left;
+    int r;
+    // If timeout is NULL, then the timeout is infinite.
+    if (_timeout != NULL) {
+        timeout = timeval_convert(_timeout, TIME_MSECS);
+    }
+    // Converting timeval to single time value.
+    r = aselect(set, timeout, &time_left);
+    // Converting lefting time to timeval.
+    if (timeout != NULL) {
+        *timeout = timeval_create(atime_left, TIME_MSECS);
+    }
+    return r;
 }

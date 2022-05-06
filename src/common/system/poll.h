@@ -20,30 +20,43 @@
 
 #include <poll.h>
 #include <common/states.h>
+#include <common/system/time.h>
 
-#define ATIMEOUT_INFINITE -1
+#define AFD_MAX        8192
+#define AFD_INFINITE  -1 // Infinite timeout
 
 typedef struct afd_set_s {
-    struct pollfd fds[8192];
+    struct pollfd fds[AFD_MAX];
     nfds_t fds_count;
-    int timeout;
+    int fd_max;
+    int fd_min;
 } afd_set_t;
 
 void afd_set(int fd, afd_set_t *set);
 
-int afd_isset(int fd, afd_set_t *set);
+int afd_isset(int fd, afd_set_t *set, int flag);
 
 void afd_clear(int fd, afd_set_t *set);
 
 #define AFD_SET(fd, set) \
-    afd_set(fd, set)
+    afd_set(fd, set);
 
 #define AFD_ISSET(fd, set) \
-    afd_isset(fd, set)
+    afd_isset(fd, set, POLLIN | POLLOUT)
+
+#define AFD_ISSETR(fd, set) \
+    afd_isset(fd, set, POLLIN)
+
+#define AFD_ISSETW(fd, set) \
+    afd_isset(fd, set, POLLOUT)
 
 #define AFD_CLR(fd, set) \
     afd_clear(fd, set)
 
-int aselect(afd_set_t *set, int timeout, int *time_passed);
+/* New select based in poll. Time values are in milliseconds. */
+int aselect(afd_set_t *set, ullong timeout, ullong *time_passed);
+
+/* Version using timevals to ease the compatibility. */
+int aselectv(afd_set_t *set, struct timeval *timeout);
 
 #endif //COMMON_SYSTEM_POLL

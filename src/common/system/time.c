@@ -94,13 +94,30 @@ void timestamp_revert(timestamp *ts, ullong *tr, ullong time_unit)
     ts->tv_nsec   = aux_ns - (ts->tv_sec * 1000000000);
 }
 
-void print_timestamp(timestamp *ts)
+void timestamp_print(timestamp *ts)
 {
 	fprintf(stdout,"Secs %ld nsec %ld\n", ts->tv_sec,ts->tv_nsec);
 }
 
-void timestamp_to_str(timestamp *ts,char *txt,uint size)
+void timestamp_tostr(timestamp *ts,char *txt,uint size)
 {
 	snprintf(txt,size,"Secs %ld nsec %ld", ts->tv_sec,ts->tv_nsec);
 }
 
+ullong timeval_convert(struct timeval *ts, ullong time_unit)
+{
+    ullong nanos = (((ullong) ts->tv_sec) * 1E9) + (((ullong) ts->tv_usec) * 1E3);
+    dprintf(debug_channel, "TIMEVAL_BEFORE %lu s - %lu us TO %d ms\n", ts->tv_sec, ts->tv_usec, (nanos / time_unit));
+    return (nanos / time_unit);
+}
+
+struct timeval timeval_create(ullong time, ullong time_unit)
+{
+    struct timeval ts;
+    ullong nanos = time * time_unit;
+    ullong nosec = nanos - ((nanos / TIME_SECS) * TIME_SECS);
+    ts.tv_sec    = nanos / TIME_SECS;
+    ts.tv_usec   = nosec / TIME_USECS;
+    dprintf(debug_channel, "TIMEVAL_AFTER %d ms TO %lu s - %lu us\n", time, ts.tv_sec, ts.tv_usec);
+    return ts;
+}
