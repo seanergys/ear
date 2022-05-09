@@ -15,11 +15,12 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <metrics/common/msr.h>
 #include <common/output/debug.h>
+#include <common/utils/keeper.h>
 #include <management/imcfreq/archs/intel63.h>
 
 // TODO
@@ -82,6 +83,18 @@ static state_t mgt_imcfreq_intel63_build_list()
 			min_khz = min_khz_aux;
 		}
 	}
+    if (!keeper_load_uint64("ImcFreqMax", &max_khz)) {
+	    if (max_khz == 0) {
+		    return_msg(EAR_ERROR, "Can't build a frequency list");
+    	}
+        keeper_save_uint64("ImcFreqMax", max_khz);
+        debug("Saved ImcFreqMax %llu", max_khz);
+    }
+    #if SHOW_DEBUGS
+    else {
+        debug("Loaded ImcFreqMax %llu", max_khz);
+    }
+    #endif
 	if (max_khz == 0 || min_khz == 0) {
 		return_msg(EAR_ERROR, "Can't build a frequency list");
 	}
