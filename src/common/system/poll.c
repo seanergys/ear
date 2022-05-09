@@ -32,7 +32,7 @@ static void afd_init(afd_set_t *set)
     set->fd_max = 0;
 }
 
-void afd_set(int fd, afd_set_t *set)
+void afd_set(int fd, afd_set_t *set, int flags)
 {
     if (set->fds_count == 0) {
         afd_init(set);
@@ -42,7 +42,7 @@ void afd_set(int fd, afd_set_t *set)
     }
 
     set->fds[fd].fd      = fd;
-    set->fds[fd].events  = POLLIN;
+    set->fds[fd].events  = flags;
     set->fds[fd].revents = 0;
 
     if (fd > set->fd_max) {

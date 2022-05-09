@@ -32,14 +32,20 @@ typedef struct afd_set_s {
     int fd_min;
 } afd_set_t;
 
-void afd_set(int fd, afd_set_t *set);
+void afd_set(int fd, afd_set_t *set, int flags);
 
 int afd_isset(int fd, afd_set_t *set, int flag);
 
 void afd_clear(int fd, afd_set_t *set);
 
 #define AFD_SET(fd, set) \
-    afd_set(fd, set);
+    afd_set(fd, set, POLLIN);
+
+#define AFD_SETR(fd, set) \
+    afd_set(fd, set, POLLIN);
+
+#define AFD_SETW(fd, set) \
+    afd_set(fd, set, POLLOUT);
 
 #define AFD_ISSET(fd, set) \
     afd_isset(fd, set, POLLIN | POLLOUT)
@@ -54,9 +60,9 @@ void afd_clear(int fd, afd_set_t *set);
     afd_clear(fd, set)
 
 /* New select based in poll. Time values are in milliseconds. */
-int aselect(afd_set_t *set, ullong timeout, ullong *time_passed);
+int aselect(afd_set_t *set, ullong timeout, ullong *time_left);
 
-/* Version using timevals to ease the compatibility. */
+/* Version using timevals to ease the compatibility. The lefting time is saved in timeout like select(). */
 int aselectv(afd_set_t *set, struct timeval *timeout);
 
 #endif //COMMON_SYSTEM_POLL
