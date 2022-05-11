@@ -46,7 +46,7 @@ int afd_isset(int fd, afd_set_t *set)
 
 void afd_clear(int fd, afd_set_t *set)
 {
-    int i, j;
+    int i, j = 0;
     for (i = 0; i < set->fds_count; ++i) {
         if (fd == set->fds[i].fd) {
             set->fds[i].fd      = -1;

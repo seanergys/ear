@@ -28,9 +28,7 @@
 
 static char  ids[128][128];
 static char  values[128][128];
-static int   types[128];
 static int   lines_count;
-static int   lines_diff;
 static int   fd = -1;
 
 static int keeper_read_line(int fd, char *id, char *value)
@@ -67,10 +65,7 @@ static int keeper_read_line(int fd, char *id, char *value)
 
 static void keeper_open()
 {
-    char line[256];
     char path[256];
-    int i = 0;
-    int res;
 
     // Open file if not previously opened
     if (getenv("EAR_TMP") == NULL) {
@@ -86,19 +81,19 @@ static void keeper_open()
         return;
     }
     while(1) {
-        res = keeper_read_line(fd, ids[lines_count], values[lines_count]);
+        int res = keeper_read_line(fd, ids[lines_count], values[lines_count]);
         debug("Returned %d", res);
         lines_count += (res > 0);
         if (res ==  2) break;
         if (res == -1) break;
     }
-    #if SHOW_DEBUGS
-    i = 0;
+#if SHOW_DEBUGS
+    int i = 0;
     while(i < lines_count) {
         printf("Read %s=%s\n", ids[i], values[i]);
         ++i;
     }
-    #endif
+#endif
 }
 
 static void super_write(int fd, char *buffer)
@@ -161,7 +156,6 @@ static int keeper_is_different(const char *id, char *value)
 
 void keeper_save_string(const char *id, char *value)
 {
-    char aux[128];
     int i;
 
     if (keeper_is_saved(id, &i)) {

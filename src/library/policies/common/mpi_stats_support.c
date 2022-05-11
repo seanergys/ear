@@ -110,8 +110,6 @@ static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, doubl
         double *sd, double *mag);
 static state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
 
-static void verbose_mpi_summary(int verb_lvl, mpi_summary_t *l);
-
 state_t mpi_app_init(polctx_t *c)
 {
     char * clb_th;
@@ -625,7 +623,7 @@ void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 
     verbose_master(verb_lvl, "MPI types\n---------\n\t# MPI calls: %lu\n\tMPI time (us): %lu\n\tExecution time (us): %lu\n"
             "\t# Synchronization calls: %lu\n\t# Collective calls: %lu\n\t# Blocking calls: %lu\n\t%% Time synchronization: %s\n"
-            "\t%% Time collective: %lu\n\t%% Time blocking: %lu\n\t# MPI calls/s: %s\n\t%% MPI time: %s\n"
+            "\t%% Time collective: %s\n\t%% Time blocking: %s\n\t# MPI calls/s: %s\n\t%% MPI time: %s\n"
             "sblock=%lu/%lu/%lu",
             t->mpi_call_cnt, t->mpi_time, t->exec_time,
             t->mpi_sync_call_cnt, t->mpi_collec_call_cnt, t->mpi_block_call_cnt, perc_sync_time,
@@ -709,12 +707,6 @@ state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, i
     mpisumm->mean = (float) mean;
     mpisumm->mag  = (float) mag;
     return EAR_SUCCESS;
-}
-
-static void verbose_mpi_summary(int verb_lvl,mpi_summary_t *l)
-{
-    verbose_master(verb_lvl, "maxp %.2f minp %.2f sd %.2f mean %.2f mag %.2f",
-            l->max, l->min, l->sd, l->mean, l->mag);
 }
 
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs,

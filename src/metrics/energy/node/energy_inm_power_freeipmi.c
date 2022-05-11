@@ -42,7 +42,7 @@
 #include <pwd.h>
 #include <freeipmi/freeipmi.h>
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/config.h>
 #include <common/states.h>
@@ -66,9 +66,6 @@
 #define RESTART_TH 1800
 #define MAX_LOCK_TRIES 1000000000
 
-static uint8_t        *bytes_rq = NULL;
-static uint8_t        *bytes_rs = NULL;
-static unsigned int    send_len;
 static pthread_mutex_t node_energy_lock_nm = PTHREAD_MUTEX_INITIALIZER;
 static ipmi_sdr_ctx_t  sdr_ctx;
 static uint8_t         channel;
@@ -143,8 +140,6 @@ static int sdr_get_home_directory ( char *buf, unsigned int buflen)
 				struct passwd pwd,*pwdptr;
 				long int tbuf_len;
 				char *tbuf = NULL;
-				int ret;
-				int rv = -1;
 
 
 				tbuf_len = 4096;      /* XXX */
@@ -206,7 +201,6 @@ static int sdr_get_home_directory ( char *buf, unsigned int buflen)
 static int sdr_get_config_directory ( const char *cache_dir, char *buf, unsigned int buflen)
 {
 				char tbuf[MAXPATHLEN+1];
-				int ret;
 
 				memset (tbuf, '\0', MAXPATHLEN+1);
 				if (!cache_dir)
@@ -251,7 +245,6 @@ static int sdr_get_config_directory ( const char *cache_dir, char *buf, unsigned
 static int sdr_cache_get_cache_directory ( const char *cache_dir, char *buf, unsigned int buflen)
 {
     char tbuf[MAXPATHLEN+1];
-    int ret;
 
 
     memset (tbuf, '\0', MAXPATHLEN+1);
@@ -271,7 +264,6 @@ static int sdr_get_cache_filename ( const char *hostname, char *buf, unsigned in
     char sdrcachebuf[MAXPATHLEN+1];
     char *cache_directory  = 0;
     char *ptr;
-    int ret;
 
 
     char hostnamebuf[MAXHOSTNAMELEN+1];
@@ -301,11 +293,9 @@ state_t energy_init(void **c)
 {
     uid_t uid;
     int ret=0;
-    int rs_len;
     char cachefilenamebuf[MAXPATHLEN+1];
     char *hostname = 0;
-    int cache_create_flags = 0;
-	 	int etries = 0, lret;
+	int etries = 0, lret;
 
     if (inm_initialized) return EAR_SUCCESS;
 
@@ -457,7 +447,6 @@ static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp,
     uint8_t mode = IPMI_OEM_INTEL_NODE_MANAGER_STATISTICS_MODE_GLOBAL_POWER_STATISTICS;
     uint8_t domainid = IPMI_OEM_INTEL_NODE_MANAGER_DOMAIN_ID_ENTIRE_PLATFORM;
     uint8_t policyid = 0;
-    int policyid_specified = 0;
     uint64_t val;
     fiid_obj_t obj_cmd_rs = NULL;
 
@@ -592,7 +581,9 @@ static state_t inm_thread_main(void *p)
 							return EAR_ERROR;
 						}
 						
+#if SHOW_DEBUGS
             time_t t_init = time(NULL); // Debug only purposes
+#endif
             int ret = 0;
             // Close context
             ipmi_ctx_close (ipmi_ctx);
@@ -636,9 +627,11 @@ static state_t inm_thread_main(void *p)
 
             pthread_mutex_unlock(&node_energy_lock_nm);
             first_timestamp = time(NULL);
+#if SHOW_DEBUGS
             /*  Debug only */
             ulong overhead = first_timestamp - t_init;
             debug("%sNew overhead generated: %lu%s", COL_YLW, overhead, COL_CLR);
+#endif
         }
 
     } else {
@@ -735,7 +728,6 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 				/* Given we are reading every 2 secs, we compute the current power */
     		uint maxp, minp, avgp, currentp, periodp;
     		ulong curr_time_elapsed;
-    		ulong total_time_elapsed;
     		ulong current_energy;
     		state_t st;
 				int etries = 0, lret;
@@ -777,7 +769,6 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
         /* Given we are reading every 2 secs, we compute the current power */
         uint maxp, minp, avgp, currentp, periodp;
         ulong curr_time_elapsed;
-        ulong total_time_elapsed;
         ulong current_energy;
         state_t st;
 				int etries = 0, lret;

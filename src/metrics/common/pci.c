@@ -153,14 +153,15 @@ state_t pci_write(pci_t *pci, const void *buffer, size_t size, off_t addr)
 state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *addrs, uint addrs_count)
 {
 	int p, a;
-	uint written;
 	for (p = 0; p < pcis_count; ++p) {
 		for (a = 0; a < addrs_count; ++a) {
-            //debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
-                //p, pcis[p].fd, addrs[a], buffer[a], sizeof(int));
-			written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
+#if SHOW_DEBUGS
+			uint written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
 			debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
 				p, pcis[p].fd, addrs[a], buffer[a], written);
+#else
+            pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
+#endif
 		}
 	}
 	return EAR_SUCCESS;

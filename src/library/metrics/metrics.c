@@ -647,31 +647,32 @@ extern int ear_guided;
 
 static int metrics_partial_stop(uint where)
 {
-	int i,ret;
+	int i, ret;
 	ulong c_energy;
 	long long c_time;
 	float c_power;
 	long long aux_time_stop;
-	char stop_energy_str[256],start_energy_str[256];
+	char stop_energy_str[256], start_energy_str[256];
     state_t s;
-	float elapsed;
 
-   debug("metrics_partial_stop %u", my_node_id); 
-	  if (!eards_connected() && (masters_info.my_master_rank >= 0)){
-			verbose_master(2,"Disconnecting library because eard not connected");
-      if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
-		}
+    debug("metrics_partial_stop %u", my_node_id); 
 
-		elapsed = (metrics_time() - app_start)/1000000;
+    if (!eards_connected() && (masters_info.my_master_rank >= 0)){
+        verbose_master(2,"Disconnecting library because eard not connected");
+        if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
+    }
 
     /* If the signature of the master is not ready, we cannot compute our signature */
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
-        debug("Iterations %u ear_guided %u",ear_iterations,ear_guided);
-				//if (elapsed > 30) verbose(2, "I'm the local ID %u and I'm waiting for the master (t = %f)", my_node_id, elapsed);
+        debug("Iterations %u ear_guided %u", ear_iterations, ear_guided);
         return EAR_NOT_READY;
     }
-    debug("Master signature ready at time %f",elapsed);
+
+#if SHOW_DEBUGS
+    float elapsed = (metrics_time() - app_start) / 1000000;
+    debug("Master signature ready at time %f", elapsed);
+#endif
 
 	// Manual IPMI accumulation
 	if (masters_info.my_master_rank>=0){

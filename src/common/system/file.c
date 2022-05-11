@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdio.h>
@@ -87,8 +87,7 @@ int file_unlock_master(int fd,char *lock_file_name)
 int file_is_regular(const char *path)
 {
 	struct stat path_stat;
-	int s = stat(path, &path_stat);
-//fprintf(stderr, "LOOKING AT %s => %d (%d)\n", path, S_ISREG(path_stat.st_mode), s);
+	stat(path, &path_stat);
 
 	return S_ISREG(path_stat.st_mode);
 }
