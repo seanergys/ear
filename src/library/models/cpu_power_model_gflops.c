@@ -38,11 +38,10 @@
 static uint arch_model_loaded = 0;
 static uint cpu_count;
 
-state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
+state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf,
+        architecture_t *arch)
 {
-	int fd, ret;
 	cpu_count = arch->top.cpu_count;
-
 	return EAR_SUCCESS;
 }
 
@@ -52,7 +51,8 @@ state_t cpu_power_model_status_arch()
 	return EAR_SUCCESS;
 }
 
-state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, uint node_mgr_index)
+state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig,
+        node_mgr_sh_data_t *nmgr, uint node_mgr_index)
 {
 	debug("cpu_power_model_project_arch");
 	if (!arch_model_loaded) return EAR_ERROR;
@@ -66,7 +66,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	double job_power_ratio, process_power_ratio[MAX_CPUS_SUPPORTED];;
 	float  gflops[MAX_CPUS_SUPPORTED], total_gflops = 0.0;
   double dram_power[MAX_CPUS_SUPPORTED];
-  double pck_power[MAX_CPUS_SUPPORTED];
 	uint   node_process = 0;
 	signature_t *lsig; 
 	double my_job_GBS, my_job_DRAM_power;

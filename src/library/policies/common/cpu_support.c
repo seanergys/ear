@@ -47,21 +47,6 @@
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
 
-void process_avg_cpu_freq(cpu_set_t *aff, ulong *cpuflist, ulong *avgcpu)
-{
-    int i = 0;
-    ulong cpuftotal = 0;
-    int total = 0;
-    for (i=0; i<mtopo.cpu_count;i++){
-        if (CPU_ISSET(i,aff)){ 
-            total ++;
-            cpuftotal += cpuflist[i];
-        }
-    }
-    *avgcpu = cpuftotal / total; 
-
-}
-
 state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong *def_freq,ulong *freq_ref,double *time_ref,
         double *power_ref)
 {

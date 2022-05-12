@@ -55,7 +55,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     char io_info[256];
     char pmpi_txt[256];
     double CPI, GBS, POWER, TIME, VPI, GPU_POWER = 0, FLOPS, gpu_tpower =0;
-    float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0, VI, gpuf =0 ;
+    float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0, gpuf =0 ;
     float l1_sec=0,l2_sec=0,l3_sec=0;
     float IO_MBS;
     ulong GPU_UTIL = 0,GPU_FREQ = 0,gpuused=0;
@@ -72,10 +72,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     if (master_rank == 0 || show || using_verb_files) {
         debug("%swriting pmpi_txt%s", COL_YLW, COL_CLR);
 
-#if 0
-        double perc_mpi = (using_verb_files) ? ((double) (sig_shared_region[my_node_id].mpi_info.mpi_time * 100) / (double) sig_shared_region[my_node_id].mpi_info.exec_time) : sig->signature.perc_MPI;
-#endif
-				sig_ext_t *sigex = sig->signature.sig_ext; 
+		sig_ext_t *sigex = sig->signature.sig_ext; 
         float perc_mpi = (using_verb_files) ? (sig_shared_region[my_node_id].mpi_info.perc_mpi) : sig->signature.perc_MPI;
         float max_mpi = (master_rank >= 0) ? (sigex->max_mpi) : 0.0;
         float min_mpi = (master_rank >= 0) ? (sigex->min_mpi) : 0.0;
@@ -142,10 +139,6 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         } else {
             compute_vpi(&VPI, &sig->signature);
         }
-#if 0
-        VI=metrics_vec_inst(&sig->signature); 
-        VPI=(double)VI/(double)sig->signature.instructions; 
-#endif
 
         GPU_POWER=0;GPU_FREQ=0;GPU_UTIL=0; 
 

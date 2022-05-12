@@ -446,8 +446,8 @@ state_t policy_init()
 		}else{ 
 			verbose_master(POLICY_INFO, "%s = %s", FLAG_MIN_CPUFREQ, cmin_cpufreq);
 		}
-    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %lu kHz"
-            " / Min. IMC freq. limited: %lu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
+            " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
