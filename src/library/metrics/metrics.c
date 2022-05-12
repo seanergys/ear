@@ -1301,15 +1301,21 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
     /* Waiting for node signatures */
     verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
-		/* Synchro 2: Waiting for local signatures to compute loops. Master will wait for the others and Other
- * 	will wait for the master */
-		wait_time = 0;
-		exited = num_processes_exited(lib_shared_region,sig_shared_region);
-    while ((are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0)
-            && !lib_shared_region->global_stop_ready && (wait_time < MAX_SYNCHO_TIME) && (exited != lib_shared_region->num_processes)) {
+
+    /* Synchro 2: Waiting for local signatures to compute loops.
+     * Master will wait for the others and Other will wait for the master */
+    wait_time = 0;
+    exited = num_processes_exited(lib_shared_region,sig_shared_region);
+    while (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
+        if (masters_info.my_master_rank < 0 && !lib_shared_region->global_stop_ready) {
+            break;
+        }
+        if (masters_info.my_master_rank >= 0 && (exited != lib_shared_region->num_processes)) {
+            break;
+        }
         usleep(10000);
-				wait_time += 0.01;
-				exited = num_processes_exited(lib_shared_region,sig_shared_region);
+        wait_time += 0.01;
+        exited = num_processes_exited(lib_shared_region,sig_shared_region);
     }
 
     // Only master does something in this funcion
@@ -1327,19 +1333,19 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     /* Waiting for node signatures */
     //verbose(2, "(l. rank) %d: Waiting for app node signatures", my_node_id);
     /* Synchro 3: Waiting for app signature: global stop */
-		wait_time = 0;
-		exited = num_processes_exited(lib_shared_region,sig_shared_region);
+    wait_time = 0;
+    exited = num_processes_exited(lib_shared_region,sig_shared_region);
     while ( (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
-					&& (wait_time < MAX_SYNCHO_TIME) && (exited != lib_shared_region->num_processes)){ 
-			usleep(100000);
-			wait_time += 0.01;
-			exited = num_processes_exited(lib_shared_region,sig_shared_region);
-		}
+            && (wait_time < MAX_SYNCHO_TIME) && (exited != lib_shared_region->num_processes)){ 
+        usleep(100000);
+        wait_time += 0.01;
+        exited = num_processes_exited(lib_shared_region,sig_shared_region);
+    }
 
-	/* Estimate local metrics, accumulate */
-	if (masters_info.my_master_rank >= 0){
-  	verbose_master(2,"Computing application node signature");
-  	se = (sig_ext_t *)metrics->sig_ext;
+    /* Estimate local metrics, accumulate */
+    if (masters_info.my_master_rank >= 0){
+        verbose_master(2,"Computing application node signature");
+        se = (sig_ext_t *)metrics->sig_ext;
   	if (!exclusive) metrics_app_node_signature(metrics, &nodeapp);
 		else           metrics_node_signature(&lib_shared_region->job_signature, &nodeapp);
   	signature_copy(metrics, &nodeapp);

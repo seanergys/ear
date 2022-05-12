@@ -873,8 +873,9 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 
 void ear_lib_sig_handler(int s)
 {
-				ear_finalize(EAR_CANCELLED);
+                verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
 				cancelled = 1;
+				ear_finalize(EAR_CANCELLED);
 				exit(0);
 }
 /****************************************************************************************************************************************************************/
@@ -1455,8 +1456,9 @@ void ear_init()
 void ear_finalize(int exit_status)
 {
 				verbose_master(2, "ear_finalize on=%d status %d", lib_shared_region->earl_on, exit_status);
+
 				// if we are not the master, we return
-				if ((cancelled) || (synchronize_masters == 0 )){ 
+				if ((cancelled && masters_info.my_master_rank < 0) || (synchronize_masters == 0 )) {
 								cleanup_job_folder();
 								sig_shared_region[my_node_id].exited = 1;
 								return;
@@ -1465,7 +1467,7 @@ void ear_finalize(int exit_status)
 				if (my_id) {
 								sig_shared_region[my_node_id].exited = 1;
 								return;
-				}	
+				}
 #endif
 				if (!eard_ok && !EARL_LIGHT){ 
 								cleanup_job_folder();
@@ -1491,7 +1493,7 @@ void ear_finalize(int exit_status)
 
 				if (masters_info.my_master_rank>=0){
 								verbose_master(2,"Stopping periodic earl thread");	
-								verbose_master(2,"Stopping tracing");	
+								verbose_master(2,"Stopping tracing");
 								traces_stop();
 								traces_end(ear_my_rank, my_id, 0);
 

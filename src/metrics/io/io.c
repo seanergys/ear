@@ -72,20 +72,27 @@ static void assign_token_value(io_data_t *iodata,char *token,char *value)
 }
 state_t io_read(ctx_t *c, io_data_t *iodata)
 {
-	char line[256];	
-	char *token,*value;
-	fseek((FILE *)c->context,0L, SEEK_SET);
-	while (fgets(line, 256, (FILE *)c->context) != NULL)
-  {
-    token = strtok(line, ":");
-		if (token != NULL){
-			remove_chars(token,' ');
-			debug("token found %s",token);
-			value=strtok(NULL,"");
-			if (value != NULL){
+    char line[256];	
+    char *token,*value;
+
+    if (iodata == NULL) {
+        state_return(EAR_ERROR);
+    }
+
+    memset(iodata, 0, sizeof(io_data_t));
+
+    fseek((FILE *)c->context,0L, SEEK_SET);
+    while (fgets(line, 256, (FILE *)c->context) != NULL)
+    {
+        token = strtok(line, ":");
+        if (token != NULL){
+            remove_chars(token,' ');
+            debug("token found %s",token);
+			value = strtok(NULL,"");
+			if (value != NULL) {
 				remove_chars(value,' ');
 				debug("value %s",value);
-				assign_token_value(iodata,token,value);
+				assign_token_value(iodata, token, value);
 			}
 		}
 	}
