@@ -315,6 +315,7 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
 			ips[i].power = status.node.power;
 			ips[i].rep_power = status.node.rep_power;
 			ips[i].current_freq = status.node.avg_freq;
+			ips[i].max_freq = status.node.max_freq;
 			ips[i].temp = status.node.temp;
 			ips[i].job_id = status.app.job_id;
 			ips[i].step_id = status.app.step_id;

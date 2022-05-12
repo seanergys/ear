@@ -233,6 +233,7 @@ static void print_local_data()
 								verbose(1, "%30s: %u", "EAR privileged user",
                                         system_conf->user_type==AUTHORIZED);
 								verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
+								verbose(1, "%30s: %lu", "Max CPU freq", system_conf->max_freq);
 								verbose(1, "-------------------------------------------------------");
 				}
 }
