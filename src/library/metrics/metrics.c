@@ -1310,7 +1310,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         if (masters_info.my_master_rank < 0 && !lib_shared_region->global_stop_ready) {
             break;
         }
-        if (masters_info.my_master_rank >= 0 && (exited != lib_shared_region->num_processes)) {
+        if (masters_info.my_master_rank >= 0 && (exited == lib_shared_region->num_processes - 1)) {
             break;
         }
         usleep(10000);
