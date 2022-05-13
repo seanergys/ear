@@ -160,3 +160,19 @@ state_t io_dispose(ctx_t *c)
 	state_return(EAR_SUCCESS);
 }
 
+state_t io_accum(ctx_t *c, io_data_t *dst, io_data_t *src)
+{
+    if ((dst == NULL) || (src == NULL)) {
+        return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
+    }
+
+	dst->rchar       += src->rchar      ;
+	dst->wchar       += src->wchar      ;
+	dst->syscr       += src->syscr      ;
+	dst->syscw       += src->syscw      ;
+	dst->read_bytes  += src->read_bytes ;
+	dst->write_bytes += src->write_bytes;
+	dst->cancelled   += src->cancelled  ;
+
+    state_return(EAR_SUCCESS);
+}
