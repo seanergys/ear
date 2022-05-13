@@ -1383,8 +1383,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
     if (!eards_connected() && master){ 
         if (!EARL_LIGHT){ 
-					return;
-				}
+            return;
+        }
     }
 
 
@@ -1406,7 +1406,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     wait_time = 0;
     exited = num_processes_exited(lib_shared_region,sig_shared_region);
     while (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
-        if (!(master) && !lib_shared_region->global_stop_ready) {
+        if (!(master) && lib_shared_region->global_stop_ready) {
             break;
         }
         if (master && (exited == lib_shared_region->num_processes - 1)) {
@@ -1414,7 +1414,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         }
         usleep(10000);
         wait_time += 0.01;
-        exited = num_processes_exited(lib_shared_region,sig_shared_region);
+        exited = num_processes_exited(lib_shared_region, sig_shared_region);
     }
 
     // Only master does something in this funcion
