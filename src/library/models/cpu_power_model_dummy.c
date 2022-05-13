@@ -56,7 +56,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	if (!arch_model_loaded) return EAR_ERROR;
 
 	ull  node_L3 = 0;
-  int cpus_in_node = cpu_count;	
 	double power_estimations[MAX_CPUS_SUPPORTED];
 	double dram_power[MAX_CPUS_SUPPORTED];
 	double pck_power[MAX_CPUS_SUPPORTED];

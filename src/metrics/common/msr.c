@@ -35,8 +35,6 @@ static pthread_mutex_t lock_gen = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t lock_cpu[MSR_MAX];
 static int init_lock[MSR_MAX];
 static int init_msr[MSR_MAX];
-static int errno_wr[MSR_MAX];
-static int errno_rd[MSR_MAX];
 static int fds_wr[MSR_MAX];
 static int fds_rd[MSR_MAX];
 
@@ -64,8 +62,7 @@ static struct error_s {
 state_t msr_test(topology_t *tp, mode_t mode)
 {
 	state_t s;
-	int cpu, b;
-    int fd;
+	int cpu;
 
     if (!tp->initialized) {
 		return_msg(EAR_ERROR, Generr.input_uninitialized);
@@ -78,11 +75,13 @@ state_t msr_test(topology_t *tp, mode_t mode)
 	return EAR_SUCCESS;
 }
 
+#if SHOW_DEBUGS
 static char *strerrfd(int fd)
 {
     if (fd >= 0) return strerror(0);
     return strerror(errno);
 }
+#endif
 
 static int static_open_debug(char *file, mode_t mode, char *cmode)
 {
