@@ -81,7 +81,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
             char pmpi_msg[64];
             if (using_verb_files) {
-                snprintf(pmpi_msg, sizeof(pmpi_msg), "MPI_time/exec_Time (max/avg/min)");
+                snprintf(pmpi_msg, sizeof(pmpi_msg), "MPI_time/exec_Time (max/master/min)");
             } else {
                 // Since when only master verboses, it prints the average across all processes of the job
                 snprintf(pmpi_msg, sizeof(pmpi_msg), "MPI_time/exec_Time (max/avg/min)");

@@ -50,7 +50,7 @@ state_t EARD_parse_token(eard_conf_t *conf,char *token)
         conf->period_powermon = atoi(token);
         found = EAR_SUCCESS;
     }
-    else if (!strcmp(token, "NODEDAEMONMAXPSTATE"))
+    else if (!strcmp(token, "NODEDAEMONMINPSTATE"))
     {
         token = strtok(NULL, "=");
         conf->max_pstate = atoi(token);

@@ -903,6 +903,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
                 }
 				sig_ext = metrics->sig_ext;
+				sig_ext->elapsed = time_s;
 
 				/* FLOPS */
                 flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
@@ -1057,6 +1058,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 				if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 				if (sign_app_loop_idx == APP) sig_shared_region[my_node_id].exited = 1;
+
+				/* Compute and print the total savings */
+				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->elapsed){
+					float avg_esaving = sig_ext->saving / sig_ext->elapsed;
+					float avg_psaving = sig_ext->psaving / sig_ext->elapsed;
+					verbose_master(1, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, sig_ext->elapsed);
+				}
 
 }
 
@@ -1288,6 +1296,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 				}
     }
 
+		verbose_master(2, "Partial stop");
 
     /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
     while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
@@ -1306,11 +1315,16 @@ void metrics_dispose(signature_t *metrics, ulong procs)
      * Master will wait for the others and Other will wait for the master */
     wait_time = 0;
     exited = num_processes_exited(lib_shared_region,sig_shared_region);
-    while (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
-        if (masters_info.my_master_rank < 0 && !lib_shared_region->global_stop_ready) {
+
+    while ((exited < lib_shared_region->num_processes - 1) 
+			&& (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0)
+			&& (wait_time < MAX_SYNCHO_TIME)) {
+        if (masters_info.my_master_rank < 0 && lib_shared_region->global_stop_ready) {
+						verbose(1,"No master break");
             break;
         }
-        if (masters_info.my_master_rank >= 0 && (exited == lib_shared_region->num_processes - 1)) {
+        if (masters_info.my_master_rank >= 0 && (exited == (lib_shared_region->num_processes - 1))) {
+						verbose_master(1,"Master break because processes are done");
             break;
         }
         usleep(10000);
@@ -1326,8 +1340,9 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         free_node_signatures(lib_shared_region,sig_shared_region);
         lib_shared_region->global_stop_ready = 1;
     }
-
+	verbose_master(2, "Global stop");
 	metrics_global_stop();
+	verbose_master(2, "metrics_compute_signature_data APP");
 	metrics_compute_signature_data(APP, metrics, 1, procs);
 
     /* Waiting for node signatures */
@@ -1335,8 +1350,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     /* Synchro 3: Waiting for app signature: global stop */
     wait_time = 0;
     exited = num_processes_exited(lib_shared_region,sig_shared_region);
-    while ( (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
-            && (wait_time < MAX_SYNCHO_TIME) && (exited != lib_shared_region->num_processes)){ 
+    while ( (exited != lib_shared_region->num_processes) && (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
+            && (wait_time < MAX_SYNCHO_TIME) ){ 
         usleep(100000);
         wait_time += 0.01;
         exited = num_processes_exited(lib_shared_region,sig_shared_region);

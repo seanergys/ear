@@ -297,6 +297,25 @@ void states_end_period(uint iterations)
     policy_loop_end(&loop.id);
 }
 
+static void accumulate_energy_savins(signature_t *loops, signature_t *apps)
+{
+	sig_ext_t *lsig_ext = loops->sig_ext;	
+	sig_ext_t *asig_ext;
+
+	if (lsig_ext == NULL) return;
+	if (apps->sig_ext == NULL){
+		apps->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+	}
+	asig_ext = apps->sig_ext;
+
+	if (lsig_ext->saving == 0) return;
+	asig_ext->saving  += lsig_ext->saving;
+	asig_ext->psaving += lsig_ext->psaving;
+	asig_ext->elapsed += lsig_ext->elapsed;
+
+	verbose_master(2,"loop (%.2lf, %.2lf) App ((%.2lf, %.2lf)", lsig_ext->saving, lsig_ext->elapsed, asig_ext->saving, asig_ext->elapsed);
+
+}
 
 /* This is the main function when used DynAIS. It applies the EAR state diagram that drives the internal behaviour */
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter,uint dynais_used)
@@ -626,6 +645,9 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 return;
             }
             pst = policy_ok(&loop_signature.signature, l_sig,&pok);
+						
+						/* Accumulate Energy savings */
+						accumulate_energy_savins(&loop_signature.signature, &application.signature);
             ok_clr = COL_GRE;
             if (pok){
                 /* When collecting traces, we maintain the period */
