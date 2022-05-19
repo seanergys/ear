@@ -995,16 +995,19 @@ state_t policy_set_default_freq(signature_t *sig)
     }
 }
 
-static void compute_energy_savings(signature_t *curr,signature_t *prev, float *esaving)
+static void compute_energy_savings(signature_t *curr,signature_t *prev)
 {
-	*esaving = 0;
 	float performance_prev, performance_curr;
 	float psaving = 0;
+	float tpenalty = 0;
+	float esaving = 0;
+	double tflops;
+
 	
-	sig_ext_t *sig_ext = curr->sig_ext;;
+	sig_ext_t *sig_ext = curr->sig_ext;
 
 	if ((prev->Gflops == 0) || (curr->Gflops == 0)){
-		*esaving = 0;
+		esaving = 0;
 		return;
 	}
 
@@ -1012,14 +1015,21 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev, float *e
 	performance_prev = prev->Gflops/prev->DC_power;
 	performance_curr = curr->Gflops/curr->DC_power;
 
+	tflops = compute_node_flops(lib_shared_region, sig_shared_region);
 
-	verbose_master(2, "MR[%d] Curr performance %f Last performance %f", masters_info.my_master_rank, performance_curr, performance_prev); 
+	#if 0
+	verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
+	performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
+	performance_prev, prev->Gflops, prev->DC_power); 
+	#endif
 
-	*esaving = ((performance_curr - performance_prev) / performance_prev) * 100;
+	esaving = ((performance_curr - performance_prev) / performance_prev) * 100;
 	psaving = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;
+	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
 
-	sig_ext->saving   = sig_ext->elapsed * *esaving;
+	sig_ext->saving   = esaving * sig_ext->elapsed;
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
+	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
 	
 }
 
@@ -1078,10 +1088,9 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     }
 		/* If signatures are ok, not different phase, we compute the energy savings estimations */
 		if (!is_monitoring && *ok){
-			float esaving = 0;
-			compute_energy_savings(curr, prev, &esaving);
-			verbose_master(1,"MR[%d]: Energy savings %.2f", masters_info.my_master_rank, esaving);
-			if (esaving < 0) *ok = 0;
+			compute_energy_savings(curr, prev);
+			verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f", masters_info.my_master_rank, sig_ext->saving, sig_ext->psaving, sig_ext->tpenalty);
+			if (sig_ext->saving < 0) *ok = 0;
 		}
     return EAR_SUCCESS;
 }

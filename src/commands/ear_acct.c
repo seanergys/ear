@@ -29,6 +29,7 @@
 #include <common/types/loop.h>
 #include <common/types/version.h>
 #include <common/types/application.h>
+#include <common/types/log.h>
 #if USE_DB
 #include <common/states.h>
 #include <common/database/db_helper.h>
@@ -499,7 +500,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 			int idx = (i > 0) ? i - 1: 0;
 			if (strlen(apps[idx].job.app_id) > 30)
 			{
-				char *token = strrchr(apps[i-1].job.app_id, '/');
+				char *token = strrchr(apps[idx].job.app_id, '/');
 				if (token != NULL) 
 				{
 					token++;
@@ -843,28 +844,32 @@ void add_int_list_filter(char *query, char *addition, char *value)
 	//	sprintf(query, query, value);
 	query_filters ++;
 }
-
+#if 0
 #define ENERGY_POLICY_NEW_FREQ	0
 #define GLOBAL_ENERGY_POLICY	1
 #define ENERGY_POLICY_FAILS		2
 #define DYNAIS_OFF				3
+#endif
 
 void print_event_type(int type)
 {
 	switch(type)
 	{
-		case 0:
+		case ENERGY_POLICY_NEW_FREQ:
 			printf("%15s ", "NEW FREQ");
 			break;
-		case 1:
+		case GLOBAL_ENERGY_POLICY:
 			printf("%15s ", "GLOBAL POLICY");
 			break;
-		case 2:
+		case ENERGY_POLICY_FAILS:
 			printf("%15s ", "POLICY FAILS");
 			break;
-		case 3:
+		case DYNAIS_OFF:
 			printf("%15s ", "DYNAIS OFF");
 			break;
+		case ENERGY_SAVING:
+			printf("%15s ", "ENERGY SAV.");
+      break;
 		default:
 			if (verbose)
 				printf("%12s(%d) ","UNKNOWN", type);
@@ -898,9 +903,9 @@ void mysql_print_events(MYSQL_RES *result)
 				printf("%20s ", row[i] ? row[i] : "NULL");
 			else if (i == 4 || i == 3)
 				printf("%8s ", row[i] ? row[i] : "NULL");
-			else if (i == 5)
+			else if (i == 5){
 				printf("%20s ", row[i] ? row[i] : "NULL");
-			else
+			}else
 				printf("%12s ", row[i] ? row[i] : "NULL");
 		}
 		printf("\n");

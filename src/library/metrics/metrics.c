@@ -192,6 +192,10 @@ static metrics_t   met_cpi;
 static int master = -1;
 static uint eard;
 
+/* Energy saving app event */
+static ear_event_t app_energy_saving;
+extern report_id_t rep_id;
+
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
 
@@ -426,6 +430,10 @@ static void metrics_global_start()
 	app_start = aux_time;
     state_t s;
 	int ret;
+
+	app_energy_saving.jid 		= application.job.id;
+	app_energy_saving.step_id = application.job.step_id;
+	strcpy(app_energy_saving.node_id, application.node_id);
 
 	if (master)
 	{
@@ -1155,10 +1163,21 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                 }
 
 				/* Compute and print the total savings */
-				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->elapsed){
-					float avg_esaving = sig_ext->saving / sig_ext->elapsed;
-					float avg_psaving = sig_ext->psaving / sig_ext->elapsed;
-					verbose_master(1, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, sig_ext->elapsed);
+				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed){
+					float avg_esaving = sig_ext->saving / sig_ext->telapsed;
+					float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
+					float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
+					verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+					app_energy_saving.event = ENERGY_SAVING;
+					/* We will use freq for the energy saving */
+					app_energy_saving.freq = (ulong)(avg_esaving * 10);
+					report_events(&rep_id, &app_energy_saving, 1);
+
+					#if 0
+					/* Not yet reported */
+					app_energy_saving.event = POWER_SAVING;
+					app_energy_saving.event = PERF_PENALTY;
+					#endif
 				}
 
 				if (sign_app_loop_idx == APP) {
@@ -1681,7 +1700,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 
 	se = (sig_ext_t *)master->sig_ext;	
 	signature_copy(ns,master);
-	if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+	if ((se != NULL) && (ns->sig_ext != NULL))  memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
 	
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
@@ -1707,6 +1726,8 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
   for (uint i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
+
+	verbose_master(2,"Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
 
 
 	#if 0

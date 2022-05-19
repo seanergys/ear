@@ -54,6 +54,7 @@ extern char lib_shared_region_path_jobs[GENERIC_NAME];
 extern char sig_shared_region_path_jobs[GENERIC_NAME];
 static int fd_conf,fd_signatures;
 extern uint exclusive;
+static char sig_bug[1024];
 
 int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
 {
@@ -676,11 +677,14 @@ void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_
         verbose_master(vl,"%s--- Jobs in node list ---", COL_BLU);
         for (uint i=0;i<MAX_CPUS_SUPPORTED; i++){
             if (nmgr_eard[i].creation_time && nmgr_earl[i].creation_time && (nmgr_earl[i].libsh != NULL) && (nmgr_earl[i].shsig != NULL)) {
-                verbosen_master(vl,"JOB[%u]=%lu.%lu\nNode: ", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
-                signature_print_simple_fd(verb_channel, &nmgr_earl[i].libsh->node_signature);	
-                verbosen_master(vl, "\nJob: ");
-                signature_print_simple_fd(verb_channel,&nmgr_earl[i].libsh->job_signature);	
-                verbosen_master(vl, "\n");
+								signature_to_str(&nmgr_earl[i].libsh->node_signature, sig_bug, sizeof(sig_bug));
+                verbose_master(vl,"JOB[%u]=%lu.%lu\nNode: %s", i,nmgr_eard[i].jid,nmgr_eard[i].sid, sig_bug);
+
+                //signature_print_simple_fd(verb_channel, &nmgr_earl[i].libsh->node_signature);	
+
+                // signature_print_simple_fd(verb_channel,&nmgr_earl[i].libsh->job_signature);	
+								signature_to_str(&nmgr_earl[i].libsh->job_signature, sig_bug, sizeof(sig_bug));
+                verbose_master(vl, "Job: %s", sig_bug);
             }
         }
         verbose_master(vl,"%s",COL_CLR);

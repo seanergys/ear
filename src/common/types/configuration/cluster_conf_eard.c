@@ -56,6 +56,13 @@ state_t EARD_parse_token(eard_conf_t *conf,char *token)
         conf->max_pstate = atoi(token);
         found = EAR_SUCCESS;
     }
+    else if (!strcmp(token, "NODEDAEMONMAXPSTATE"))
+    {
+				verbose(0,"Warning: NodeDaemonMaxPstate is deprecated. New Name is NodeDaemonMinPstate");
+        token = strtok(NULL, "=");
+        conf->max_pstate = atoi(token);
+        found = EAR_SUCCESS;
+    }
     else if (!strcmp(token, "NODEDAEMONTURBO"))
     {
         token = strtok(NULL, "=");

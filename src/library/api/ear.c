@@ -377,6 +377,8 @@ void create_shared_regions()
 		lib_shared_region->num_processes=1;
 		lib_shared_region->num_signatures=0;
 		lib_shared_region->master_rank = masters_info.my_master_rank;
+		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
 	}
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);

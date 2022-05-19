@@ -15,6 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+// #define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,8 +25,7 @@
 #include <assert.h>
 #include <math.h>
 
-// #define SHOW_DEBUGS 1
-
+//#define COMP_CPI 1
 #include <metrics/cpi/cpi.h>
 
 #include <management/cpufreq/cpufreq.h>
