@@ -461,6 +461,17 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             } else {
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                double ltpi, lgbs, lpower;
+
+                ltpi = my_app->TPI;
+                lgbs = my_app->GBS;
+                lpower = my_app->DC_power;
+
+                my_app->GBS      = lgbs * lib_shared_region->num_processes;
+                my_app->DC_power = lpower * lib_shared_region->num_processes;
+
+                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
+
 
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];

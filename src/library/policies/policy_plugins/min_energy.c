@@ -426,7 +426,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         is_cpu_bound(my_app, &cbound);
         is_mem_bound(my_app, &mbound);
 
-        debug("App CPU bound %u memory bound %u", cbound, mbound);
+        verbose_master(2, "App CPU bound %u memory bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the coefficents were available.
@@ -493,11 +493,21 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 debug("Process %d: avg. cpufreq %lu num cpus %lu", i, process_avgcpuf, cpus_cnt_ret);
 
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+								double ltpi, lgbs, lpower;
+
+								ltpi = my_app->TPI;
+								lgbs = my_app->GBS;
+								lpower = my_app->DC_power;
+
+								my_app->GBS 		 = lgbs * lib_shared_region->num_processes;
+								my_app->DC_power = lpower * lib_shared_region->num_processes;
+								
+								verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
 				/* Critical path is computed in int_policy_ok */
                 if (critical_path[i] == 1) {
                     // Process was selected to be in the critical path
-                    if (!mbound) {
+                    if (cbound) {
 						/* If the process is part of the critical path and is CPU bound */
                         eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf, 0);
                         if (eff_p_cpuf < process_avgcpuf) {
