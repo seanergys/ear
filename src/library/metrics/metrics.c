@@ -1789,6 +1789,5 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 		accum_estimations(lib_shared_region, sig_shared_region);
 		signature_copy(dest, &lib_shared_region->job_signature);	
 	}
-		
 }
 
