@@ -23,15 +23,20 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 // #define SHOW_DEBUGS 1
+
+#if !SHOW_DEBUGS
+#define NDEBUG
+#endif
+
+#include <assert.h>
+
 #include <metrics/io/io.h>
 #include <common/states.h>
 #include <common/types/generic.h>
 #include <common/string_enhanced.h>
 #include <common/plugins.h>
 #include <common/output/verbose.h>
-
 
 state_t io_init(ctx_t *c,pid_t pid)
 {
@@ -134,16 +139,34 @@ state_t io_tostr(io_data_t *iodata,char *msg,size_t len)
 
 state_t io_diff(io_data_t *diff,io_data_t *iodata_init,io_data_t *iodata_end)
 {
-	if ((diff == NULL) || ( iodata_init == NULL) || (iodata_end == NULL)) return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
+	if ((diff == NULL) || ( iodata_init == NULL) || (iodata_end == NULL)) {
+        return_msg(EAR_BAD_ARGUMENT,Generr.input_null);
+    }
+
+    assert(iodata_end->rchar > iodata_init->rchar);
 	diff->rchar = iodata_end->rchar -  iodata_init->rchar;
+
+    assert(iodata_end->wchar > iodata_init->wchar);
 	diff->wchar = iodata_end->wchar -  iodata_init->wchar;
+
+    assert(iodata_end->syscr > iodata_init->syscr);
 	diff->syscr = iodata_end->syscr - iodata_init->syscr;
+
+    assert(iodata_end->syscw > iodata_init->syscw);
 	diff->syscw = iodata_end->syscw - iodata_init->syscw;
+
+    assert(iodata_end->read_bytes > iodata_init->read_bytes);
 	diff->read_bytes = iodata_end->read_bytes - iodata_init->read_bytes;
+
+    assert(iodata_end->write_bytes > iodata_init->write_bytes);
 	diff->write_bytes = iodata_end->write_bytes - iodata_init->write_bytes;
+
+    assert(iodata_end->cancelled > iodata_init->cancelled);
 	diff->cancelled = iodata_end->cancelled - iodata_init->cancelled;
+
 	state_return(EAR_SUCCESS);
 }
+
 /** Copies from src to dst */
 state_t io_copy(io_data_t *dst,io_data_t *src)
 {

@@ -1220,8 +1220,10 @@ int metrics_init(topology_t *topo)
 
     st = energy_lib_init(system_conf);
     if (st != EAR_SUCCESS) {
-        return_msg(EAR_ERROR, "error loading energy plugin");
+        verbose(2, "%sError%s returned by energy_lib_init: %s", COL_RED, COL_CLR, state_msg);
+        return_msg(EAR_ERROR, "Loading energy plugin");
     }
+
     if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
         verbose_master(2,"Warning: IO data not available");
     } else {
@@ -1821,6 +1823,5 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 		accum_estimations(lib_shared_region, sig_shared_region);
 		signature_copy(dest, &lib_shared_region->job_signature);	
 	}
-		
 }
 
