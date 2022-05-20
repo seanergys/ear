@@ -39,6 +39,7 @@
 #include <library/common/global_comm.h>
 #include <library/metrics/metrics.h>
 #include <library/tracer/tracer.h>
+#include <library/common/verbose_lib.h>
 
 extern masters_info_t masters_info;
 extern float ratio_PPN;

@@ -1221,12 +1221,12 @@ void ear_init()
 
 				// Initializing metrics
 
-				if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
-								error("in EAR metrics initialization (%s), setting EARL off", state_msg);
-								eard_ok = 0;
-								strcpy(application.job.policy," "); /* Cleaning policy */
-								debug("Process %d not completes the initialization", my_node_id);
-								return;
+                if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
+                    verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
+                    eard_ok = 0;
+                    strcpy(application.job.policy," "); /* Cleaning policy */
+                    debug("Process %d not completes the initialization", my_node_id);
+                    return;
 				}
 
 

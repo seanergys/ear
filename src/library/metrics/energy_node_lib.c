@@ -57,7 +57,7 @@ state_t energy_lib_init(settings_conf_t *conf)
     char my_plug_path[512];
     if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
                     getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
-        return EAR_ERROR;
+        return_msg(EAR_ERROR, "Plugins path can not be built.");
     }
 
     char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
@@ -70,7 +70,7 @@ state_t energy_lib_init(settings_conf_t *conf)
         debug("Using the configured energy plugin shared object file");
         sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
     } else {
-        return EAR_NOT_FOUND;
+        return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
     }
 
     debug("Loading %s plugin...", energy_objc);
@@ -79,7 +79,7 @@ state_t energy_lib_init(settings_conf_t *conf)
     if (state_fail(ret = symplug_open(energy_objc, (void **) &energy_ops,
                     energy_names, energy_nops))) {
         debug("symplug_open() returned %d (%s)", ret, intern_error_str);
-        return ret;
+        return_msg(ret, "Energy plugin symbols can not be opened.");
     }
     
     energy_loaded = 1;
