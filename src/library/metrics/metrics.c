@@ -192,6 +192,10 @@ static metrics_t   met_cpi;
 static int master = -1;
 static uint eard;
 
+/* Energy saving app event */
+static ear_event_t app_energy_saving;
+extern report_id_t rep_id;
+
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
 
@@ -427,6 +431,10 @@ static void metrics_global_start()
     state_t s;
 	int ret;
 
+	app_energy_saving.jid 		= application.job.id;
+	app_energy_saving.step_id = application.job.step_id;
+	strcpy(app_energy_saving.node_id, application.node_id);
+
 	if (master)
 	{
 		/* Avg CPU freq */
@@ -550,7 +558,7 @@ static void metrics_global_stop()
         /* AVG IMC frequency */
         if (mgt_imcfreq.ok) {
             if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read2[APP]))) {
-                error("IMCFreq data read in global_start");
+                error("IMCFreq data read in global_stop");
             }
             if (state_fail(s = imcfreq_data_diff(imcfreq_read2[APP], imcfreq_read1[APP],
                             imcfreq_diff[APP], &imcfreq_avrg[APP]))){
@@ -993,6 +1001,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
                 }
 				sig_ext = metrics->sig_ext;
+				sig_ext->elapsed = time_s;
 
 				/* FLOPS */
                 flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
@@ -1153,6 +1162,24 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     verbose_master(2, "Memory sync fails: %s", strerror(errno));
                 }
 
+				/* Compute and print the total savings */
+				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed){
+					float avg_esaving = sig_ext->saving / sig_ext->telapsed;
+					float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
+					float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
+					verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+					app_energy_saving.event = ENERGY_SAVING;
+					/* We will use freq for the energy saving */
+					app_energy_saving.freq = (ulong)(avg_esaving * 10);
+					report_events(&rep_id, &app_energy_saving, 1);
+
+					#if 0
+					/* Not yet reported */
+					app_energy_saving.event = POWER_SAVING;
+					app_energy_saving.event = PERF_PENALTY;
+					#endif
+				}
+
 				if (sign_app_loop_idx == APP) {
                     sig_shared_region[my_node_id].exited = 1;
                 }
@@ -1193,8 +1220,10 @@ int metrics_init(topology_t *topo)
 
     st = energy_lib_init(system_conf);
     if (st != EAR_SUCCESS) {
-        return_msg(EAR_ERROR, "error loading energy plugin");
+        verbose(2, "%sError%s returned by energy_lib_init: %s", COL_RED, COL_CLR, state_msg);
+        return_msg(EAR_ERROR, "Loading energy plugin");
     }
+
     if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
         verbose_master(2,"Warning: IO data not available");
     } else {
@@ -1387,6 +1416,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         }
     }
 
+		verbose_master(2, "Partial stop");
 
     /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
     while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
@@ -1405,7 +1435,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
      * Master will wait for the others and Other will wait for the master */
     wait_time = 0;
     exited = num_processes_exited(lib_shared_region,sig_shared_region);
-    while (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
+    while ((exited < lib_shared_region->num_processes - 1) 
+				&& are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
         if (!(master) && lib_shared_region->global_stop_ready) {
             break;
         }
@@ -1425,8 +1456,9 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         free_node_signatures(lib_shared_region,sig_shared_region);
         lib_shared_region->global_stop_ready = 1;
     }
-
+	verbose_master(2, "Global stop");
 	metrics_global_stop();
+	verbose_master(2, "metrics_compute_signature_data APP");
 	metrics_compute_signature_data(APP, metrics, 1, procs);
 
     /* Waiting for node signatures */
@@ -1434,8 +1466,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     /* Synchro 3: Waiting for app signature: global stop */
     wait_time = 0;
     exited = num_processes_exited(lib_shared_region,sig_shared_region);
-    while ( (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
-            && (wait_time < MAX_SYNCHO_TIME) && (exited != lib_shared_region->num_processes)){ 
+    while ( (exited != lib_shared_region->num_processes) && (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
+            && (wait_time < MAX_SYNCHO_TIME) ){ 
         usleep(100000);
         wait_time += 0.01;
         exited = num_processes_exited(lib_shared_region,sig_shared_region);
@@ -1670,7 +1702,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 
 	se = (sig_ext_t *)master->sig_ext;	
 	signature_copy(ns,master);
-	if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+	if ((se != NULL) && (ns->sig_ext != NULL))  memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
 	
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
@@ -1696,6 +1728,8 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
   for (uint i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
+
+	verbose_master(2,"Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
 
 
 	#if 0
@@ -1789,6 +1823,5 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 		accum_estimations(lib_shared_region, sig_shared_region);
 		signature_copy(dest, &lib_shared_region->job_signature);	
 	}
-		
 }
 

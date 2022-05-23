@@ -28,6 +28,11 @@ typedef struct sig_ext {
     mpi_information_t *mpi_stats;
     mpi_calls_types_t *mpi_types;
 	float max_mpi, min_mpi;
+	float elapsed;
+	float telapsed;
+	float saving;
+	float psaving;
+	float tpenalty;
 } sig_ext_t;
 
 #define MGT_CPUFREQ 1

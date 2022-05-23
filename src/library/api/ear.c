@@ -201,6 +201,8 @@ static uint ITERS_PER_PERIOD;
 #define MAX_TRIES 1
 
 uint using_verb_files = 0;
+uint per_proc_verb_file = 0;
+
 uint exclusive = 1;
 
 static void print_local_data()
@@ -377,6 +379,8 @@ void create_shared_regions()
 		lib_shared_region->num_processes=1;
 		lib_shared_region->num_signatures=0;
 		lib_shared_region->master_rank = masters_info.my_master_rank;
+		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
 	}
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
@@ -873,7 +877,7 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 
 void ear_lib_sig_handler(int s)
 {
-                verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
+        //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
 				cancelled = 1;
 				ear_finalize(EAR_CANCELLED);
 				exit(0);
@@ -894,18 +898,9 @@ void ear_init()
 				char *summary_pathname;
 				char *tmp;
 				state_t st;
-				char *verb_path=getenv(FLAG_EARL_VERBOSE_PATH);
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 
-				/* Use a verbose file per process instead of only master */
-				char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
-				uint per_proc_verb_file = 0;
-
-
-				if (per_proc_v_file != NULL) {
-								per_proc_verb_file = atoi(per_proc_v_file);
-				}
 
 				if (ear_lib_initialized){
 								verbose_master(1,"EAR library already initialized");
@@ -1175,29 +1170,44 @@ void ear_init()
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
 
 				/* create verbose file for each job */
-				if (verb_path != NULL){
-							  verbose_master(2, " Per process log set to %u", per_proc_verb_file);	
-								if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
-												if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
-																error("MR[%d] Verbose files folder cannot be created (%s)", masters_info.my_master_rank, strerror(errno));
-												}else{
-																using_verb_files = 1;
-																char file_name[128];
-																sprintf(file_name, "%s/earl_log.%d.%d.%d.%d", verb_path,lib_shared_region->master_rank,my_node_id, my_step_id, my_job_id);
-																verbose_master(VEAR_INIT,"Using %s as earl log file",file_name);
-																int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
-																if (fd != -1){
-																				VERB_SET_FD(fd);
-																				DEBUG_SET_FD(fd);
-																				ERROR_SET_FD(fd);
-																				WARN_SET_FD(fd);
-																}else{
-																				verbose_master(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
-																}
-												}
-								}
-				}
+				char *verb_path = getenv(FLAG_EARL_VERBOSE_PATH);
+                if (verb_path != NULL) {
 
+                    /* Use a verbose file per process instead of only master */
+                    char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
+
+                    if (per_proc_v_file != NULL) {
+                        per_proc_verb_file = atoi(per_proc_v_file);
+                        verbose_master(2, "Per-process log: %u", per_proc_verb_file);	
+                    }
+
+                    if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
+                        if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
+                            per_proc_verb_file = 0;
+                            error("MR[%d] Verbose files folder cannot be created (%s)",
+                                    masters_info.my_master_rank, strerror(errno));
+                        } else {
+                            using_verb_files = 1;
+
+                            char file_name[128];
+                            // Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>
+                            sprintf(file_name, "%s/earl_log.%d.%d.%d.%d",
+                                    verb_path, lib_shared_region->master_rank,
+                                    my_node_id, my_step_id, my_job_id);
+                            verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
+
+                            int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
+                            if (fd != -1) {
+                                VERB_SET_FD(fd);
+                                DEBUG_SET_FD(fd);
+                                ERROR_SET_FD(fd);
+                                WARN_SET_FD(fd);
+                            } else {
+                                verbose_master(VEAR_INIT, "Log file cannot be created (%s)", strerror(errno));
+                            }
+                        }
+                    }
+                }
 
 				// Initializing architecture and topology
 				if ((st=get_arch_desc(&arch_desc))!=EAR_SUCCESS){
@@ -1211,12 +1221,12 @@ void ear_init()
 
 				// Initializing metrics
 
-				if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
-								error("in EAR metrics initialization (%s), setting EARL off", state_msg);
-								eard_ok = 0;
-								strcpy(application.job.policy," "); /* Cleaning policy */
-								debug("Process %d not completes the initialization", my_node_id);
-								return;
+                if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
+                    verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
+                    eard_ok = 0;
+                    strcpy(application.job.policy," "); /* Cleaning policy */
+                    debug("Process %d not completes the initialization", my_node_id);
+                    return;
 				}
 
 
@@ -1458,7 +1468,7 @@ void ear_finalize(int exit_status)
 				verbose_master(2, "ear_finalize on=%d status %d", lib_shared_region->earl_on, exit_status);
 
 				// if we are not the master, we return
-				if ((cancelled && masters_info.my_master_rank < 0) || (synchronize_masters == 0 )) {
+				if ((cancelled && (masters_info.my_master_rank < 0)) || (synchronize_masters == 0 )) {
 								cleanup_job_folder();
 								sig_shared_region[my_node_id].exited = 1;
 								return;

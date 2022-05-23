@@ -82,6 +82,9 @@ uint waiting_for_node_signatures = 0;
 extern report_id_t rep_id;
 extern cluster_conf_t cconf;
 
+/* Aux to print signatures */
+static char sig_buff[1024];
+
 
 #define DYNAIS_CUTOFF	1
 
@@ -297,6 +300,28 @@ void states_end_period(uint iterations)
     policy_loop_end(&loop.id);
 }
 
+static void accumulate_energy_savins(signature_t *loops, signature_t *apps)
+{
+	sig_ext_t *lsig_ext = loops->sig_ext;	
+	sig_ext_t *asig_ext;
+
+	if (lsig_ext == NULL) return;
+	if (apps->sig_ext == NULL){
+		apps->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+	}
+	asig_ext = apps->sig_ext;
+
+	if (lsig_ext->saving == 0) return;
+	asig_ext->saving  += lsig_ext->saving;
+	asig_ext->psaving += lsig_ext->psaving;
+	asig_ext->telapsed += lsig_ext->elapsed;
+	asig_ext->tpenalty+= lsig_ext->tpenalty;
+
+	verbose_master(2,"loop (%.2lf, %.2f, %.2f, %.2lf) App (%.2lf, %.2f, %.2f, %.2lf)", 
+		lsig_ext->saving, lsig_ext->psaving, lsig_ext->tpenalty, lsig_ext->elapsed, 
+		asig_ext->saving, asig_ext->psaving, asig_ext->tpenalty, asig_ext->telapsed);
+
+}
 
 /* This is the main function when used DynAIS. It applies the EAR state diagram that drives the internal behaviour */
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event,ulong mpi_calls_iter,uint dynais_used)
@@ -474,7 +499,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 if (!lib_shared_region->master_ready) perf_count_period++;
                 return;
             }
-						/* At this point, signatures for all the process in the node are ready */ 
+						/* At this point, signatures for all the process in the node are ready. lib_shared_region->job_signature includes the job signature */ 
 						compute_per_process_and_job_metrics(&loop_signature.signature);
 
             /* Included for dynais test */
@@ -511,10 +536,25 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* This function executes the energy policy . app_signature is the local process signature, the 
  						 * policy will compute the average if needed */
+
             pst=policy_node_apply(&app_signature,&policy_freq,&ready);
 
             /* For no masters, ready will be 0, pending */
             EAR_POLICY_STATE = ready;
+
+						/* Now we compute the JOB signature for reporting */
+
+						if (masters_info.my_master_rank >= 0){
+							metrics_node_signature(&lib_shared_region->job_signature, &loop.signature);
+							signature_copy(&lib_shared_region->job_signature, &loop.signature);
+							#if 0
+							signature_to_str(&lib_shared_region->job_signature, sig_buff, sizeof(sig_buff));
+							verbose_master(2, "job sig: %s", sig_buff);
+							signature_to_str(&loop.signature, sig_buff, sizeof(sig_buff));
+							verbose_master(2, "loop sig: %s", sig_buff);
+							#endif
+						}
+						/* At this point loop and job_signature are the JOB signature with accumulated per process and global metrics */
 
             /* State check */
             /* When the policy is ready to be evaluated, we go to the next state */
@@ -527,67 +567,91 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                     comp_N_begin = metrics_time();
                     EAR_STATE = RECOMPUTING_N;
                 } else {
-                    signature_copy(&policy_sel_signature, &loop_signature.signature);
-                    EAR_STATE = SIGNATURE_STABLE; }
+                    //signature_copy(&policy_sel_signature, &loop_signature.signature);
+                    EAR_STATE = SIGNATURE_STABLE; 
+								}
+                signature_copy(&policy_sel_signature, &lib_shared_region->job_signature);
             }
             if (EAR_POLICY_STATE == EAR_POLICY_GLOBAL_EV){ EAR_STATE = EVALUATING_GLOBAL_SIGNATURE; }
             begin_iter = iterations;
             //signature_copy(&loop.signature, &loop_signature.signature);
 
-						signature_copy(&loop.signature, &lib_shared_region->job_signature);
+            /* TODO: To be removed */
+			signature_copy(&loop.signature, &lib_shared_region->job_signature);
 
-            report_loop_signature(iterations,&loop,&loop_signature.job);
+            report_loop_signature(iterations, &loop,&loop_signature.job); // report plugin
+
             policy_get_current_freq(&nf);
             lavg = node_freqs_avgcpufreq(nf.cpu_freq);	
-            if (lavg > 0 ) loop_signature.signature.def_f = lavg;
+
+            if (lavg > 0 ) {
+                loop_signature.signature.def_f = lavg;
+            }
 
             /* VERBOSE */
-            state_report_traces(masters_info.my_master_rank,ear_my_rank, my_id,&loop,policy_freq,EAR_STATE);
-            if (dynais_used) sprintf(use_case,"D");
-            else sprintf(use_case,"P");
-            state_verbose_signature(&loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id,
-                    iterations, prev_f, policy_freq, use_case);
+            state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id, &loop, policy_freq,EAR_STATE); // tracer plugin
 
-            /* END VERBOSE */
-            break;
+            // The reported signature will show whether the Library is using DynAIS
+            if (dynais_used) {
+                sprintf(use_case, "D");
+            } else {
+                sprintf(use_case, "P");
+            }
+            
+            // Verbose loop signature
+            state_verbose_signature(&loop, masters_info.my_master_rank, show_signatures,
+                    ear_app_name, application.node_id, iterations, prev_f, policy_freq, use_case);
+
+            break; // EVALUATING_LOCAL_SIGNATURE
+
         case EVALUATING_GLOBAL_SIGNATURE:
-            //if (masters_info.my_master_rank>=0) verbose(1,"EVALUATING_GLOBAL_SIGNATURE");
-            /* st =  */policy_app_apply(&policy_freq,&ready);
-            /* State validation */
+
+            policy_app_apply(&policy_freq, &ready);
+
+            // Select the next state
             if (ready == EAR_POLICY_READY){
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
+
             break;
 
-            /* If the policy is ok, we are in stable state and we increase the numbers of iterations to compute the signature */
+        /* If the policy is ok, we are in stable state and we increase
+         * the number of iterations to compute the signature. */
         case SIGNATURE_STABLE:
-            verbose(3, "%s--- SIGNATURE STABLE ---%s", COL_YLW, COL_CLR);
-            if (!lib_shared_region->master_ready){
 
-                if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) return;
+            if (!lib_shared_region->master_ready) {
+                if (!dynais_used && ((iterations % mpi_calls_iter) != 0)) {
+                    return;
+                }
+
                 // I have executed N iterations more with a new frequency, we must check the signature
-                if (dynais_used &&  ((iterations - 1) % perf_count_period) ) return;
+                if (dynais_used && ((iterations - 1) % perf_count_period)) {
+                    return;
+                }
             }
+
 #if SHOW_DEBUGS
-            if (lib_shared_region->master_ready){
+            if (lib_shared_region->master_ready) {
                 if (masters_info.my_master_rank >= 0){
-                    debug(" Master: master ready waiting for slaves stable");
-                }else{
-                    debug("Slave: going to compute signature because master is ready stable");
+                    debug("(Stable) Master ready and waiting for slaves");
+                } else {
+                    debug("(Stable) Slave going to compute signature because master is ready");
                 }
             }
 #endif
             /* We can compute the signature */
             N_iter = iterations - begin_iter;
+
             result = metrics_compute_signature_finish(&loop_signature.signature, N_iter, perf_accuracy_min_time, total_th);
             if (result == EAR_NOT_READY)
             {
-                if (!lib_shared_region->master_ready) perf_count_period++;
+                if (!lib_shared_region->master_ready) {
+                    perf_count_period++;
+                }
                 return;
             }
 
-
-            /* Marked in metrics */
+            /* Commented because marked in metrics */
             //signature_ready(&sig_shared_region[my_node_id],SIGNATURE_STABLE);
 
             /*print_loop_signature("signature refreshed", &loop_signature.signature);*/
@@ -595,8 +659,25 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             //signature_copy(&loop.signature, &loop_signature.signature);
             //metrics_node_signature(&loop_signature.signature,&loop.signature);
 						/* At this point, signatures are ready */
+
+						/* This function uses cpu power model and accumulates global metrics (GBS, Power etc) */
             compute_per_process_and_job_metrics(&loop.signature);
-						signature_copy(&loop_signature.signature, &loop.signature);
+					
+						/* This function accumulates per procecss metrics in loop.signature, so loop.signature is the job
+ 						* signature */	 	
+						if (masters_info.my_master_rank >= 0){
+							metrics_node_signature(&lib_shared_region->job_signature, &loop.signature);
+							signature_copy(&loop_signature.signature, &loop.signature);
+							signature_copy(&lib_shared_region->job_signature, &loop.signature);
+							#if 0
+							signature_to_str(&lib_shared_region->job_signature, sig_buff, sizeof(sig_buff));
+							verbose_master(2, "job sig: %s", sig_buff);
+							signature_to_str(&loop.signature, sig_buff, sizeof(sig_buff));
+							verbose_master(2, "loop sig: %s", sig_buff);
+							#endif
+						}
+						/* At this point loop, loop_signature and job_signature are the JOB signature with accumulated per process and global metrics */
+
 
             report_loop_signature(iterations,&loop,&loop_signature.job);
 
@@ -626,6 +707,12 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                 return;
             }
             pst = policy_ok(&loop_signature.signature, l_sig,&pok);
+						
+						/* Accumulate Energy savings */
+						accumulate_energy_savins(&loop_signature.signature, &application.signature);
+						
+						//accumulate_energy_savins(&lib_shared_region->job_signature, &application.signature);
+
             ok_clr = COL_GRE;
             if (pok){
                 /* When collecting traces, we maintain the period */

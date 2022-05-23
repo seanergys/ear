@@ -59,6 +59,7 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
         debug("curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
         if (projection_available(curr_pstate,def_pstate)==EAR_SUCCESS)
         {
+						verbose_master(3, "Using projections for references");
             project_power(my_app,curr_pstate,def_pstate,power_ref);
             project_time(my_app,curr_pstate,def_pstate,time_ref);
             freq_ref[0] = def_freq[0];
