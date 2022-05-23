@@ -176,10 +176,10 @@ int job(int argc, char *argv[])
 
 	//
 	if (p != NULL) {
-        program_parse(path_app, args);
 		// Setting the job name
 		sprintf(path_app, "%s", p);
-		setenv("SLURM_JOB_NAME", p, 1);
+        program_parse(path_app, args);
+		setenv("SLURM_JOB_NAME", path_app, 1);
 	} else {
 		_help = !_clean;
 	}
