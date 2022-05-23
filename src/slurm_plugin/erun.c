@@ -41,8 +41,9 @@ static int _help;
 static int _at;
 int _sp;
 //
-char **_argv;
-int    _argc;
+static char *args[128];
+char       **_argv;
+int          _argc;
 
 int plug_is_action(int _ac, int action)
 {
@@ -114,6 +115,30 @@ int print_argv(int argc, char *argv[])
 	return 0;
 }
 
+static void program_parse(char *program, char *args[])
+{
+    int len = strlen(program);
+    int i;
+    int j;
+
+    args[0] = program;
+    for (i = 0, j = 1; i < len; ++i) {
+        if (program[i] == ' ') {
+            program[i] = '\0';
+            if (program[i+1] != '\0' && program[i+1] != ' ') {
+                args[j] = &program[i+1];
+                ++j;
+            }
+        }
+    }
+    args[j] = NULL;
+
+    plug_verbose(_sp, 4, "ERUN --program decomposition:");
+    for (i = 0; args[i] != NULL; ++i) {
+        plug_verbose(_sp, 4, "%d: %s", i, args[i]);
+    }
+}
+
 int job(int argc, char *argv[])
 {
 	int err_pfx = 1;
@@ -151,6 +176,7 @@ int job(int argc, char *argv[])
 
 	//
 	if (p != NULL) {
+        program_parse(path_app, args);
 		// Setting the job name
 		sprintf(path_app, "%s", p);
 		setenv("SLURM_JOB_NAME", p, 1);
@@ -274,37 +300,9 @@ int step(int argc, char *argv[])
 	return 0;
 }
 
-static void execute_parse(char *program, char *args[])
-{
-	int len = strlen(program);
-	int i;
-	int j;
-	
-	args[0] = program;
-	for (i = 0, j = 1; i < len; ++i) {
-		if (program[i] == ' ') {
-			program[i] = '\0';
-			if (program[i+1] != '\0' && program[i+1] != ' ') {
-				args[j] = &program[i+1];
-				++j;
-			}
-		}
-	}
-	args[j] = NULL;
-	
-	plug_verbose(_sp, 4, "ERUN --program decomposition:");
-	for (i = 0; args[i] != NULL; ++i) {
-		plug_verbose(_sp, 4, "%d: %s", i, args[i]);
-	}
-}
-
 static int execute(int argc, char *argv[])
 {
-	char *args[128];
 	pid_t fpid;
-
-	//
-	execute_parse(path_app, args);
 	//
 	fpid = fork();
 
