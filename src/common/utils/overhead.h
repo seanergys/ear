@@ -20,6 +20,8 @@
 
 #include <common/types.h>
 
+#define ENABLE_OVERHEAD 0
+
 void overhead_suscribe(const char *description, uint *id);
 
 void overhead_start(uint id);

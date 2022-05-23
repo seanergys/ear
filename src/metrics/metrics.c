@@ -18,12 +18,16 @@
 #include <stdlib.h>
 #include <metrics/metrics.h>
 #include <common/output/verbose.h>
+#include <common/utils/overhead.h>
 
 #define sa(f) \
 	if (state_fail(f)) { \
 		serror(#f " FAILED"); \
 		exit(0); \
 	}
+
+#define printline() \
+    dprintf(verb_channel, "-------------------------------------------------------------------\n");
 
 static metrics_apis_t m;
 
@@ -113,6 +117,7 @@ state_t metrics_apis_print()
 #if NOT_READY
 	apis_print(m.gpu.api, "MET_GPU    : ");
 #endif
+    printline();
 	
 	return EAR_SUCCESS;
 }
@@ -241,8 +246,6 @@ state_t monitor_apis_init(void *whatever)
 	sa(metrics_apis_init(&tp, EARD, &mets));
 	sa(metrics_apis_print());
 	
-    debug("-------------------------------------------------------------------");
-
 	sa(metrics_read_alloc(&mr1));
 	sa(metrics_read_alloc(&mr2));
 	sa(metrics_diff_alloc(&mrD));
@@ -272,7 +275,7 @@ state_t monitor_apis_update(void *whatever)
 	if (print) {
 		sa(metrics_read_copy(&mr2, &mr1, &mrD));
 		sa(metrics_diff_print(&mrD));
-		debug("-------------------------------------------------------------------");
+        printline();
 	}
 
 	return EAR_SUCCESS;
@@ -296,10 +299,8 @@ int init()
 
 int is(char *buf, char *string)
 {
-        return strcmp(buf, string) == 0;
+    return strcmp(buf, string) == 0;
 }
-
-//gcc -I .. -DTEST=1 -o test metrics.c ../management/libmgt.a libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl -lm
 
 int main(int argc, char *argv[])
 {
@@ -307,7 +308,7 @@ int main(int argc, char *argv[])
 
 	while(1)
     {
-	debug("-------------------------------------------------------------------");
+    printline();
     scanf("%s", cmnd);
 
     if (is(cmnd, "connect")) {
@@ -318,7 +319,8 @@ int main(int argc, char *argv[])
         init();
     } else if (is(cmnd, "dispose")) {
         metrics_apis_dispose();
-    } else if (is(cmnd, "print")) {
+    } else if (is(cmnd, "oh")) {
+       overhead_report(); 
     }
 	outif:
 	;
