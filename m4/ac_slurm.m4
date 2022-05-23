@@ -62,6 +62,11 @@ AC_DEFUN([X_AC_SLURM],
         ]
     )
 
+    # Force custom
+    if test "x$_x_ac_slurm_custom" = "xyes" && test -z "$_cv_slurm_dir_root"; then
+        _cv_slurm_dir_root="$withval"
+	fi
+
     if test -z "$_cv_slurm_dir_root"; then
         echo checking for SLURM compiler link... no
     else
