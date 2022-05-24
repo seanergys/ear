@@ -121,7 +121,7 @@ static void keeper_save()
     lseek(fd, 0, SEEK_SET);
 
     while(i < lines_count) {
-        sprintf(buffer, "%s=%s\n", ids[i], values[i]);
+        xsprintf(buffer, "%s=%s\n", ids[i], values[i]);
         super_write(fd, buffer);
         ++i;
     }
