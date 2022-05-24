@@ -25,6 +25,14 @@
 
 #define BASIC_PERIOD 1000
 
+/* 1 means invatid shared memory or invalid id (all processes), 
+ * 2 means invatid shared memory or invalid id (half processes),
+ * 3 eard not present . 0 means no fake (default) */
+#define FAKE_EARD_ERROR "FAKE_EARD_ERROR"
+
+/* 1 means master error, 2 means no master error at ear_finalize i. 0 no fake (default)*/
+#define FAKE_PROCESS_ERRROR "FAKE_PROCESS_ERRROR"
+
 #include <sched.h>
 #include <pthread.h>
 
@@ -901,6 +909,10 @@ void ear_init()
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 
+				uint fake_eard_error = 0;
+				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
+				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
+
 
 				if (ear_lib_initialized){
 								verbose_master(1,"EAR library already initialized");
@@ -1037,9 +1049,23 @@ void ear_init()
 				debug("resched_conf = %p", resched_conf);
 				if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
 				debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
+				if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
 
+				uint valid_ID;
+				if ((system_conf != NULL) && (resched_conf != NULL)){
+					valid_ID = (system_conf->id == create_ID(my_job_id,my_step_id));
+					if (fake_eard_error == 1){
+						/* This is synthetic error to simulated the case the shared memory is not present OR invalid ID */
+						valid_ID = 0;	
+					}
+					if (fake_eard_error == 2){
+						if (ear_my_rank %2 ) valid_ID = 0;
+					}
+				}else {
+					valid_ID = 0;
+				}
 				/* Updating configuration */
-				if ((system_conf != NULL) && (resched_conf != NULL) && (system_conf->id == create_ID(my_job_id,my_step_id))){
+				if (valid_ID){
 								debug("Updating the configuration sent by the EARD");
 								update_configuration();	
 				}else{
@@ -1098,7 +1124,12 @@ void ear_init()
 #if SINGLE_CONNECTION
                 if (!my_id && eard_ok){ //only the master will connect with eard
                     verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
-                    if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+										state_t ret = eards_connect(&application, my_node_id);
+										if (fake_eard_error == 3){
+											ret = EAR_ERROR;
+										}
+                    //if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+                    if (ret == EAR_SUCCESS) {
                         debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
                         notify_eard_connection(1);
                         mark_as_eard_connected(my_job_id,my_step_id,getpid());
@@ -1208,6 +1239,7 @@ void ear_init()
                         }
                     }
                 }
+
 
 				// Initializing architecture and topology
 				if ((st=get_arch_desc(&arch_desc))!=EAR_SUCCESS){
@@ -1465,7 +1497,27 @@ void ear_init()
 
 void ear_finalize(int exit_status)
 {
-				verbose_master(2, "ear_finalize on=%d status %d", lib_shared_region->earl_on, exit_status);
+				uint fake_error = 0;
+				char *cfake = getenv(FAKE_PROCESS_ERRROR);
+				if (cfake != NULL) fake_error = atoi(cfake);
+
+				verbose_master(2, "ear_finalize on=%d status %d ", lib_shared_region->earl_on, exit_status);
+				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
+		
+				if (fake_error){	
+				/* This use case forces sintheticaly a master proces exiting because an error. The
+ 				 * objective is to test the EARL is not blocking. We just mark all the masters as 
+ 				 * cancelled */ 	
+				if (masters_info.my_master_rank >= 0) cancelled = 1;
+				}
+
+				if (fake_error == 2){
+				/* This use case forces sintheticaly a NO master proces exiting because an error. The
+         * objective is to test the EARL is not blocking. We just mark all the NO masters as 
+         * cancelled */
+        if (masters_info.my_master_rank < 0) cancelled = 1;
+				}
+
 
 				// if we are not the master, we return
 				if ((cancelled && (masters_info.my_master_rank < 0)) || (synchronize_masters == 0 )) {
