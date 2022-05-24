@@ -86,7 +86,7 @@ static state_t mgt_imcfreq_intel63_build_list()
     if (!keeper_load_uint64("ImcFreqMax", &max_khz)) {
 	    if (max_khz == 0) {
 		    return_msg(EAR_ERROR, "Can't build a frequency list");
-    	}
+        }
         keeper_save_uint64("ImcFreqMax", max_khz);
         debug("Saved ImcFreqMax %llu", max_khz);
     }
@@ -95,9 +95,18 @@ static state_t mgt_imcfreq_intel63_build_list()
         debug("Loaded ImcFreqMax %llu", max_khz);
     }
     #endif
-	if (max_khz == 0 || min_khz == 0) {
-		return_msg(EAR_ERROR, "Can't build a frequency list");
-	}
+    if (!keeper_load_uint64("ImcFreqMin", &min_khz)) {
+        // We don't want to save a 0
+	    if (min_khz > 0) {
+            keeper_save_uint64("ImcFreqMin", min_khz);
+            debug("Saved ImcFreqMin %llu", min_khz);
+        }
+    }
+    #if SHOW_DEBUGS
+    else {
+        debug("Loaded ImcFreqMin %llu", min_khz);
+    }
+    #endif
 	// Hardcoding the values
 	max_khz = 24 * HUNDRED_MHZ;
 	min_khz = 12 * HUNDRED_MHZ;
