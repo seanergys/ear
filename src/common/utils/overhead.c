@@ -39,6 +39,9 @@ static uint        queue_last;
 
 void overhead_suscribe(const char *description, uint *id)
 {
+    #if !ENABLE_OVERHEAD
+    return; 
+    #endif
     if (!init) {
         timestamp_get(&global_stamp_start);
         global_clock_start = clock();
@@ -53,18 +56,27 @@ void overhead_suscribe(const char *description, uint *id)
 
 void overhead_start(uint id)
 {
+    #if !ENABLE_OVERHEAD
+    return; 
+    #endif
     timestamp_get(&queue[id].time_start);
     queue[id].call_count += 1;
 }
 
 void overhead_stop(uint id)
 {
+    #if !ENABLE_OVERHEAD
+    return; 
+    #endif
     timestamp_get(&queue[id].time_stop);
     queue[id].accum_us += timestamp_diff(&queue[id].time_stop, &queue[id].time_start, TIME_USECS);
 }
 
 void overhead_report()
 {
+    #if !ENABLE_OVERHEAD
+    return; 
+    #endif
     double global_stamp_secs;
     double global_clock_secs;
     double percent_clock;
@@ -98,6 +110,7 @@ void overhead_report()
     }
 }
 
+#if 0
 int main(int argc, char *argv[])
 {
     uint id1;
@@ -125,3 +138,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+#endif

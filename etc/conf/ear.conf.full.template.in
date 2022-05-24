@@ -81,6 +81,8 @@ DynaisTimeout=15
 LibraryPeriod=10
 # EAR will check every N mpi calls whether it must go to periodic mode or not.
 CheckEARModeEvery=1000
+# EAR library default report plugin
+EARLReportPlugins=eard.so
 
 #---------------------------------------------------------------------------------------------------
 # EAR Global Manager (EARGMD): Update that section to use EARGM.

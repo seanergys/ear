@@ -157,6 +157,8 @@ state_t mgt_imcfreq_eard_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_list
 	static wide_buffer_t b;
 	state_t s;
 
+    memset(ps_min_list, 0, sizeof(pstate_t)*sockets_count);
+    memset(ps_max_list, 0, sizeof(pstate_t)*sockets_count);
 	if (state_fail(s = eard_rpc_buffered(RPC_GET_CURR_PSM, NULL, 0, (char **) &b, NULL))) {
 		return s;
 	}
