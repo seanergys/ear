@@ -206,7 +206,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                     GPU_UTIL     += sig->signature.gpu_sig.gpu_data[i].GPU_util; 
                 }
             } 
-            verbose_master(3, "---------------------------------------");
+            verbose_master(3, "-------------------------------------");
 
             if (gpu_used_cnt) {
                 GPU_POWER /= (float) gpu_used_cnt;
