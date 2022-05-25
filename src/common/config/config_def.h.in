@@ -51,6 +51,9 @@
 
 #define MAX_CPUF_PSTATE 5
 #define MAX_IMCF_PSTATE 5
+#define MAX_IMCF_FREQ 2400000
+#define MIN_IMCF_FREQ 1200000
+
 
 /* When set to 1, powercap events will be reported to database */
 #define REPORT_POWERCAP             0
