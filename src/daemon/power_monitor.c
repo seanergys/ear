@@ -1798,7 +1798,7 @@ void *eard_power_monitoring(void *noinfo)
             // Compute the power
             compute_power(&e_begin, &e_end, &my_current_power);
 
-            print_power(&my_current_power,1,-1);
+            // print_power(&my_current_power,1,-1);
 
             /* Powercap */
             current_periods++;
