@@ -1127,8 +1127,8 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
     new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
     pthread_mutex_unlock(&app_lock);
     //save_eard_conf(&eard_dyn_conf);
-    verbose(VJOBPMON , "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu%s", COL_BLU, ccontext, current_ear_app[ccontext]->app.job.id,
-            current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, COL_CLR);
+    verbose(VJOBPMON_BASIC , "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu def_cpuf %lu%s", COL_BLU, ccontext, current_ear_app[ccontext]->app.job.id,
+            current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, pmapp->settings->def_freq, COL_CLR);
     verbose(VJOBPMON , "*******************");
     pmapp->sig_reported = 0;
 
@@ -1152,7 +1152,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     pmapp = current_ear_app[cc];
 
     /* We set ccontex to the specific one */
-    verbose(VJOBPMON, "%spowermon_end_job (%lu,%lu)%s",COL_BLU, pmapp->app.job.id, pmapp->app.job.step_id,COL_CLR);
+    verbose(VJOBPMON_BASIC, "%spowermon end job (%lu,%lu)%s",COL_BLU, pmapp->app.job.id, pmapp->app.job.step_id,COL_CLR);
     while (pthread_mutex_trylock(&app_lock));
     uint ID = create_ID(jid, sid);
     job_end_powermon_app(pmapp, eh);
@@ -1464,10 +1464,10 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
     print_app_mgt_data(pmapp->app_info);
     verbose(VNODEPMON,"%s",COL_BLU);
 #if USE_GPUS
-    verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
+    verbose(VNODEPMON_BASIC, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf GPU=%.1lf] max %.1lf min %.1lf ",
             current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc,pckp,dramp,gpup, maxpower, minpower);
 #else
-    verbose(VNODEPMON, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
+    verbose(VNODEPMON_BASIC, "JOBS %u ID %lu EARL=%lu  Power [Node=%.1lf PCK=%.1lf DRAM=%.1lf] max %.1lf min %.1lf ",
             current_jobs_running_in_node, jid, mpi, last_pmon->avg_dc, pckp,dramp,maxpower, minpower);
 #endif
     verbose_node_metrics(&my_nm_id, nm);

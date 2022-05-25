@@ -35,8 +35,10 @@ typedef struct tags
     ulong max_temp;
     ulong error_power;
     ulong gpu_def_freq;
-    int   cpu_max_pstate;
-    int   imc_max_pstate;
+    int   cpu_max_pstate; /* Used as lower limit for policies */
+    int   imc_max_pstate; /* Used as lower limit for policies */
+		ulong imc_max_freq;   /* Used to create the imcf list */
+		ulong imc_min_freq;   /* Used to create the imcf list */
     long powercap;
     long max_powercap;
     char energy_model[GENERIC_NAME];

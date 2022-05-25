@@ -84,8 +84,10 @@ typedef struct my_node_conf
     long           powercap;
     char           powercap_type;
 	ulong          gpu_def_freq;
-    int            cpu_max_pstate;
-    int            imc_max_pstate;
+    int            cpu_max_pstate; /* Used by policies as lower limit */
+    int            imc_max_pstate; /* Used by policies as lower limit */
+		ulong 				 imc_max_freq;   /* Used to create the imcf list */
+		ulong          imc_min_freq;   /* Used to create the imcf list */
     uint           use_log;
 	char           tag[GENERIC_NAME];
 } my_node_conf_t;
