@@ -51,11 +51,11 @@ static int keeper_read_line(int fd, char *id, char *value)
     while(1) {
         size = read(fd, &value[i], 1);
         debug("%c", value[i]);
-        if (size  ==  0)   return  2;
-        if (size  <= -1)   return -1;
-        if (id[i] == '\n') break;
-        if (id[i] == EOF)  return  2;
-        if (id[i] == '=')  return  0;
+        if (size     ==  0)   return  2;
+        if (size     <= -1)   return -1;
+        if (value[i] == '\n') break;
+        if (value[i] == EOF)  return  2;
+        if (value[i] == '=')  return  0;
         ++i;
     }
     value[i] = '\0';
@@ -131,13 +131,16 @@ static int keeper_is_saved(const char *id, int *index)
 {
     int i;
     for (i = 0; i < lines_count; ++i) {
+        debug("Comparing ids %s vs %s", id, ids[i]);
         if (strcmp(ids[i], id) == 0) {
             if (index != NULL) {
                 *index = i;
             }
+            debug("%s id is found in position %d (%s)", id, *index, ids[*index]);
             return 1;
         }
     }
+    debug("%s id is not found", id);
     return 0;
 }
 
@@ -149,8 +152,10 @@ static int keeper_is_different(const char *id, char *value)
         return 0;
     }
     if (strcmp(values[i], value) == 0) {
+        debug("'%s' and '%s' are equal");
         return 0;
     }
+    debug("'%s' and '%s' are different");
     return 1;
 }
 
@@ -158,6 +163,7 @@ void keeper_save_string(const char *id, char *value)
 {
     int i;
 
+    debug("Saving %s = %s", id, value);
     if (keeper_is_saved(id, &i)) {
         debug("%s is previously saved", id);
         if (keeper_is_different(id, value)) {
