@@ -164,7 +164,7 @@ void metrics_print()
 	print_line(VL2);
     // When empty
     if (!verbosity) {
-        verbose(VL0, "Inserting APPS: %u+%u, LOOPS: %u, EVENTS: %u, POWERMON: %u/%u | Current sockets: %u", 
+        verbose(VL0, "Inserting APPS: %lu+%lu, LOOPS: %lu, EVENTS: %lu, POWERMON: %lu/%lu | Current sockets: %u", 
             samples_index[0], samples_index[1], samples_index[3],
             samples_index[4], samples_index[5], samples_index[6],
             sockets_online); 
