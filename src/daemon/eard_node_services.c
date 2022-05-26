@@ -159,7 +159,7 @@ void services_init(topology_t *tp)
 
 	// DONE
 	mgt_cpufreq_load(tp, NO_EARD);
-	mgt_imcfreq_load(tp, NO_EARD);
+	mgt_imcfreq_load(tp, NO_EARD, NULL);
         cpufreq_load(tp, NO_EARD);
 	// DONE
         imcfreq_load(tp, NO_EARD);

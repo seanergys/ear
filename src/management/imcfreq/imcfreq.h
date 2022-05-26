@@ -21,6 +21,7 @@
 #include <common/types.h>
 #include <common/states.h>
 #include <common/plugins.h>
+#include <common/types/configuration/cluster_conf.h>
 #include <common/hardware/topology.h>
 #include <metrics/common/pstate.h>
 

@@ -627,8 +627,8 @@ void set_default_tag_values(tag_t *tag)
     tag->gpu_def_freq   = 0;
     tag->cpu_max_pstate = MAX_CPUF_PSTATE; /* Used by policies */
     tag->imc_max_pstate = MAX_IMCF_PSTATE; /* Used by policies */
-    tag->imc_max_freq   = MAX_IMCF_FREQ;   /* To create the imcf list */
-    tag->imc_min_freq   = MIN_IMCF_FREQ;
+    tag->imc_max_freq   = 0;   /* To create the imcf list */
+    tag->imc_min_freq   = 0;
 
     strcpy(tag->coeffs, "coeffs.default");
     strcpy(tag->energy_model, "");
