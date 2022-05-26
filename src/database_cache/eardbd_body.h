@@ -20,13 +20,15 @@
 
 #include <common/output/verbose.h>
 
-#define VERB_LEVEL 0 // Verbose level
+#define VERB_LEVEL 0 // Verbose level (deprecated)
+#define VL0        0
+#define VL2        VL0+2
 #define line "---------------------------------------------------------------"
 #define col1 "\x1b[35m"
 #define col2 "\x1b[0m"
 
-#define print_line() \
-    verb(VERB_LEVEL, col1 line col2);
+#define print_line(level) \
+    verb(level, col1 line col2);
 
 #define verb_who_noarg(format) \
     verb(VERB_LEVEL, "%s, %s", str_who[mirror_iam], format);

@@ -1001,7 +1001,9 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	float psaving = 0;
 	float tpenalty = 0;
 	float esaving = 0;
+#if 0
 	double tflops;
+#endif
 
 	
 	sig_ext_t *sig_ext = curr->sig_ext;
@@ -1015,13 +1017,13 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	performance_prev = prev->Gflops/prev->DC_power;
 	performance_curr = curr->Gflops/curr->DC_power;
 
-	tflops = compute_node_flops(lib_shared_region, sig_shared_region);
+#if 0
+    tflops = compute_node_flops(lib_shared_region, sig_shared_region);
 
-	#if 0
-	verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
-	performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
-	performance_prev, prev->Gflops, prev->DC_power); 
-	#endif
+    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
+            performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
+            performance_prev, prev->Gflops, prev->DC_power); 
+#endif
 
 	esaving = ((performance_curr - performance_prev) / performance_prev) * 100;
 	psaving = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;

@@ -64,7 +64,7 @@ typedef struct mgt_imcfreq_ops_s
 } mgt_imcfreq_ops_t;
 
 /** */
-state_t mgt_imcfreq_load(topology_t *c, int eard);
+state_t mgt_imcfreq_load(topology_t *c, int eard, my_node_conf_t *conf);
 /** Returns the loaded API. */
 state_t mgt_imcfreq_get_api(uint *api);
 /** */

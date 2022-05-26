@@ -272,7 +272,7 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		edb_error("another EARDBD process is currently running");
 	}
 	#endif
-	// Server & mirro verbosity
+	// Server & mirror verbosity
 	verb_master("enabled cache server: %s",                  server_enabled ? "OK": "NO");
 	verb_master("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK": "NO", server_host);
 }

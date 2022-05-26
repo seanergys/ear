@@ -185,8 +185,8 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
             // By now, the below verboses are not showed with using_verb_files set to 1
 
-            verbose_master(3, "----------- GPU signature -----------\n"
-                    "GPU Id. Power (W) Util (%) Freq (GHz)");
+            char gpu_sig_hdr[] = "----------- GPU signature -----------\nGPU Id. Power (W) Util (%) Freq (GHz)\0";
+            verbose_master(3, "%s", gpu_sig_hdr);
 
             for(int i = 0; i < gpu_cnt; i++) { 
 

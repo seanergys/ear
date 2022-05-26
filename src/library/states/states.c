@@ -82,8 +82,10 @@ uint waiting_for_node_signatures = 0;
 extern report_id_t rep_id;
 extern cluster_conf_t cconf;
 
+#if 0
 /* Aux to print signatures */
 static char sig_buff[1024];
+#endif
 
 
 #define DYNAIS_CUTOFF	1

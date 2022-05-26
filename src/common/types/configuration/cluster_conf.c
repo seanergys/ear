@@ -378,6 +378,8 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         n->gpu_def_freq   = my_conf->tags[tag_id].gpu_def_freq;
         n->cpu_max_pstate = my_conf->tags[tag_id].cpu_max_pstate;
         n->imc_max_pstate = my_conf->tags[tag_id].imc_max_pstate;
+        n->imc_max_freq   = my_conf->tags[tag_id].imc_max_freq;
+        n->imc_min_freq   = my_conf->tags[tag_id].imc_min_freq;
 
         strcpy(n->tag, my_conf->tags[tag_id].id);
 
@@ -623,8 +625,10 @@ void set_default_tag_values(tag_t *tag)
     tag->min_power      = MIN_SIG_POWER;
     tag->max_temp       = MAX_TEMP;
     tag->gpu_def_freq   = 0;
-    tag->cpu_max_pstate = MAX_CPUF_PSTATE;
-    tag->imc_max_pstate = MAX_IMCF_PSTATE;
+    tag->cpu_max_pstate = MAX_CPUF_PSTATE; /* Used by policies */
+    tag->imc_max_pstate = MAX_IMCF_PSTATE; /* Used by policies */
+    tag->imc_max_freq   = MAX_IMCF_FREQ;   /* To create the imcf list */
+    tag->imc_min_freq   = MIN_IMCF_FREQ;
 
     strcpy(tag->coeffs, "coeffs.default");
     strcpy(tag->energy_model, "");
