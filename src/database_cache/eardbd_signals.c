@@ -77,6 +77,7 @@ void signal_handler(int signal, siginfo_t *info, void *context)
 	if (signal == SIGUSR1) {
 		verb_who("signal SIGUSR1 received, switching verbosity to '%d'", verbosity);
 		verbosity   = (verbosity != 2) * 2;
+        verb_level  = verbosity;
 		updating    = 1;
 	}
 	// Log rotation signal

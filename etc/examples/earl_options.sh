@@ -6,7 +6,8 @@
 # Orders for EAR loader, to load the ear library with:
 # Specific application name : text, no spaces.
 export SLURM_EAR_LOADER_APPLICATION=
-# Specific MPI version: WARNING, To be used only with MPI applications. accepted values: intel, "open mpi"
+# Specific MPI version: WARNING, To be used only with MPI applications. 
+# accepted values: intel, "open mpi"
 export SLURM_EAR_LOAD_MPI_VERSION=
 
 # Modifies PATHS, plugins, library version etc
@@ -18,7 +19,8 @@ export SLURM_HACK_LOADER_FILE=
 export SLURM_HACK_LIBRARY_FILE=
 # Specific libnvidia-ml.so file
 export SLURM_HACK_NVML_FILE=
-# Forces the loader lo load a non-std mpi version. For example, setting to "dummy" will load libear.dummy.so
+# Forces the loader lo load a non-std mpi version. For example, setting to 
+# "dummy" will load libear.dummy.so
 export SLRURM_HACK_MPI_VERSION=
 
 # EAR library Plugins
@@ -62,7 +64,8 @@ export SLURM_EAR_MIN_IMCFREQ=
 export SLURM_EAR_SET_IMCFREQ=
 # Defines the maximum extra threshold used by energy policies when reducing the memory frequency: 0..1
 export SLURM_EAR_POLICY_IMC_TH=
-# Enables(1)/Disables(0) the energy policies to allow the hardware to select the default memory frequency. Applies to Intel and Min_time_to_solution: 1
+# Enables(1)/Disables(0) the energy policies to allow the hardware to 
+# select the default memory frequency. Applies to Intel and Min_time_to_solution: 1
 export SLURM_EAR_LET_HW_IMC=
 # Specified the job is using the job in exclusive mode. Some optimizations are applied to idle CPUs. 1
 export SLURM_EAR_JOB_EXCLUSIVE_MODE=
@@ -70,13 +73,17 @@ export SLURM_EAR_JOB_EXCLUSIVE_MODE=
 export SLURM_USE_EARL_PHASES=
 # Enables(1)/Disables(0) the load balance strategy in energy policies
 export SLURM_EAR_LOAD_BALANCE=
-# Sets the threashold used to classify an application as unbalanced. The higher the threshols the higher the difference to classy as unbalanced: Values 0..100
+# Sets the threashold used to classify an application as unbalanced. The higher 
+# the threshols the higher the difference to classy as unbalanced: Values 0..100
 export SLURM_EAR_LOAD_BALANCE_TH=
-# Enables(1)/Disables(0) the utilization of boost CPU frequency for processes in the critical path. Applies only to unbalanced scenarios.
+# Enables(1)/Disables(0) the utilization of boost CPU frequency for processes in 
+# the critical path. Applies only to unbalanced scenarios.
 export SLURM_USE_TURBO_FOR_CP=
-# Hin(1/0)t about the network and uncore frequency relationship to force the energy policy to be more conservative in terms of memory frequency
+# Hin(1/0)t about the network and uncore frequency relationship to force 
+# the energy policy to be more conservative in terms of memory frequency
 export SLURM_EAR_NTWRK_IMC=
-# Enables(1)/Disables(0) the utilization of boost CPU frequency when CPU frequency selected is nominal and application is cpu bound classified
+# Enables(1)/Disables(0) the utilization of boost CPU frequency when 
+# CPU frequency selected is nominal and application is cpu bound classified
 export SLURM_EAR_TRY_TURBO=
 # Enables(1)/Disables(0) the utilization of energy models in energy polciies 
 export SLURM_EAR_USE_ENERGY_MODELS=
