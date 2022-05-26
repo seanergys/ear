@@ -243,7 +243,7 @@ static int module_mpi_is()
   uint is_mpi = 0;
 	load_mpi_version = NULL;
 	/* We use the default approach of looking for the MPI symbol */
-	my_MPI_Get_library_version = dlsym(RTLD_DEFAULT, "MPI_Get_library_version");
+	my_MPI_Get_library_version = dlsym(RTLD_DEFAULT, "PMPI_Get_library_version");
   if (my_MPI_Get_library_version != NULL){
     MPI_Get_library_version_detected = 1;
     verbose(2,"MPI_Get_library_version detected");
