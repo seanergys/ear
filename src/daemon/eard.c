@@ -798,7 +798,7 @@ int main(int argc, char *argv[])
 				state_assert(s, imcfreq_init(no_ctx), _exit(0));
 
                 // Services
-                services_init(&node_desc);
+                services_init(&node_desc, my_node_conf);
 
 #if EARD_LOCK
 				eard_lock(ear_tmp);
