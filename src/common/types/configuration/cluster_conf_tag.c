@@ -140,14 +140,14 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
         {
             tags[idx].imc_max_pstate = atol(value);
         }
-				else if (!strcmp(key, "IMC_MAX_FREQ"))
-				{
-					tags[idx].imc_max_freq = (ulong)atol(value);
-				}
-				else if (!strcmp(key, "IMC_MIN_FREQ"))
-				{
-					tags[idx].imc_min_freq = (ulong)atol(value);
-				}
+		else if (!strcmp(key, "IMC_MAX_FREQ"))
+		{
+			tags[idx].imc_max_freq = (ulong)atol(value);
+		}
+		else if (!strcmp(key, "IMC_MIN_FREQ"))
+		{
+			tags[idx].imc_min_freq = (ulong)atol(value);
+		}
         //MODELS
         else if (!strcmp(key, "ENERGY_MODEL"))
         {
