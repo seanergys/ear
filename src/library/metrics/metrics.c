@@ -288,7 +288,7 @@ static void metrics_static_init(topology_t *tp)
 #else
     sa(mgt_cpufreq_load(tp, eard));
 #endif
-    sa(mgt_imcfreq_load(tp, eard));
+    sa(mgt_imcfreq_load(tp, eard, NULL));
     sa(    cpufreq_load(tp, eard));
     sa(    imcfreq_load(tp, eard));
     sa(     bwidth_load(tp, eard));

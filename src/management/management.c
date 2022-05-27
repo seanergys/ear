@@ -32,7 +32,7 @@ void manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
 	state_t s;
 	// Load
 	sa(mgt_cpufreq_load(tp, eard));
-	sa(mgt_imcfreq_load(tp, eard));
+	sa(mgt_imcfreq_load(tp, eard, NULL));
 	// Get API
 	sa(mgt_cpufreq_get_api(&m.cpufreq.api));
 	sa(mgt_imcfreq_get_api(&m.imcfreq.api));
