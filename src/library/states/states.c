@@ -82,8 +82,10 @@ uint waiting_for_node_signatures = 0;
 extern report_id_t rep_id;
 extern cluster_conf_t cconf;
 
+#if 0
 /* Aux to print signatures */
 static char sig_buff[1024];
+#endif
 
 
 #define DYNAIS_CUTOFF	1
@@ -91,19 +93,6 @@ static char sig_buff[1024];
 #if EAR_OVERHEAD_CONTROL
 extern uint check_periodic_mode;
 #endif
-
-
-
-/** This funcion must be policy dependent */
-ulong select_near_freq(ulong avg)
-{
-    ulong near;
-    ulong norm;
-    norm=avg/100000;
-    near=norm*100000;
-    return near;
-}
-
 
 /* This function check is this application is going to be affected or not (an estimation based on CPI and GBS) by DynIAS */
 static void check_dynais_on(signature_t *A, signature_t *B)
@@ -194,19 +183,11 @@ static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 
 /* End auxiliary functions */
 
-/* This function is executed at application end */
-void states_end_job(int my_id,  char *app_name)
-{
-    debug("EAR(%s) Ends execution. ", app_name);
-    end_log();
-}
-
-
-/* This function is executed at application init */
+/** Executed at application start. Reads EAR configuration environment variables. */
 #define MAX_SIG_TIME 10000000
 void states_begin_job(int my_id,  char *app_name)
 {
-    ulong	architecture_min_perf_accuracy_time;
+    ulong architecture_min_perf_accuracy_time;
     int i;
 
 		char *max_dyn_ov = getenv("EAR_MAX_DYNAIS_OVERHEAD");
@@ -246,6 +227,13 @@ void states_begin_job(int my_id,  char *app_name)
     pst=policy_max_tries(&MAX_POLICY_TRIES);
     total_th =  get_total_resources();
     debug("Using %u total_threads",total_th);
+}
+
+/* This function is executed at application end */
+void states_end_job(int my_id,  char *app_name)
+{
+    debug("EAR(%s) Ends execution. ", app_name);
+    end_log();
 }
 
 

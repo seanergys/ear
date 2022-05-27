@@ -288,7 +288,7 @@ static void metrics_static_init(topology_t *tp)
 #else
     sa(mgt_cpufreq_load(tp, eard));
 #endif
-    sa(mgt_imcfreq_load(tp, eard));
+    sa(mgt_imcfreq_load(tp, eard, NULL));
     sa(    cpufreq_load(tp, eard));
     sa(    imcfreq_load(tp, eard));
     sa(     bwidth_load(tp, eard));
@@ -740,7 +740,7 @@ static int metrics_partial_stop(uint where)
     debug("metrics_partial_stop %u", my_node_id);
 
     if (!eards_connected() && (master)){
-        verbose_master(2,"Disconnecting library because eard not connected");
+        verbose_master(2, "Disconnecting library because EARD not connected.");
         if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
     }
 
@@ -807,40 +807,40 @@ static int metrics_partial_stop(uint where)
 	}
 
 	/* This is new to avoid cases where uncore gets frozen */
-	if (master){
-		#if USE_GPUS
-		/* GPUs */
-    if (gpu_initialized){
-    if (gpu_lib_read(&gpu_lib_ctx,gpu_metrics_end[LOO])!= EAR_SUCCESS){
-      debug("gpu_lib_read error");
+    if (master) {
+#if USE_GPUS
+        /* GPUs */
+        if (gpu_initialized){
+            if (gpu_lib_read(&gpu_lib_ctx, gpu_metrics_end[LOO])!= EAR_SUCCESS){
+                debug("gpu_lib_read error");
+            }
+            debug("gpu_read in partial stop");
+            gpu_loop_stopped = 1;
+            gpu_lib_data_diff(gpu_metrics_end[LOO], gpu_metrics_init[LOO], gpu_metrics_diff[LOO]);
+            gpu_lib_data_tostr(gpu_metrics_diff[LOO], gpu_str, sizeof(gpu_str));
+            debug("gpu_diff in partial_stop: %s", gpu_str);
+        }
+#endif
     }
-		debug("gpu_read in partial stop");
-		gpu_loop_stopped=1;
-    gpu_lib_data_diff(gpu_metrics_end[LOO], gpu_metrics_init[LOO], gpu_metrics_diff[LOO]);
-		gpu_lib_data_tostr(gpu_metrics_diff[LOO],gpu_str,sizeof(gpu_str));
-		debug("gpu_diff in partial_stop: %s",gpu_str);
-    }
-		#endif
-	}
+
 	/* End new section to check frozen uncore counters */
 	energy_lib_data_copy(aux_energy,aux_energy_stop);
 	aux_time=aux_time_stop;
 
-	if (master){
-		if (c_power < system_conf->max_sig_power){
+	if (master) {
+		if (c_power < system_conf->max_sig_power) {
 			acum_ipmi[LOO] = c_energy;
 		}else{
-			verbose_master(2,"Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);
+			verbose_master(2, "Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);
 			acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
 		}
 		acum_ipmi[APP] += acum_ipmi[LOO];
 	}
 	/* Per process IO data */
-  if (io_read(&ctx_io,&metrics_io_end[LOO]) != EAR_SUCCESS){
-    verbose_master(2,"Warning:IO data not available");
-  }
+    if (io_read(&ctx_io, &metrics_io_end[LOO]) != EAR_SUCCESS){
+        verbose_master(2,"%sWarning%s I/O data not available", COL_RED, COL_CLR);
+    }
 	io_diff(&metrics_io_diff[LOO],&metrics_io_init[LOO],&metrics_io_end[LOO]);
-
 
 	//  Manual time accumulation
 	metrics_usecs[LOO] = c_time;
@@ -858,30 +858,30 @@ static int metrics_partial_stop(uint where)
 
         /* Avg CPU freq */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
-            verbose_master(2,"%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
+            verbose_master(2, "%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
         }
-        if (xtate_fail(s,cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
-            verbose_master(2,"%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
-        }else{
-            verbose_master(2,"CPUFreq average is %.2fGHz", (float)cpufreq_avrg[LOO]/1000000.0);
+        if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
+            verbose_master(2, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
+        } else {
+            verbose_master(2, "%sPARTIAL STOP%s CPUFreq average is %.2f GHz", COL_BLU, COL_CLR, (float) cpufreq_avrg[LOO] / 1000000.0);
         }
         // Simple verbose
         if (verb_level >= 3) {
-            for (int cpu = 0; cpu < mtopo.cpu_count;cpu++){ 
-                verbosen_master(3,"AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_diff[cpu]/1000000.0);
+            for (int cpu = 0; cpu < mtopo.cpu_count; cpu++) {
+                verbosen_master(3, "AVGCPU[%d] = %.2f ",cpu,(float)cpufreq_diff[cpu]/1000000.0);
             }
-        verbose_master(3, "%s", "");
+            verbose_master(3, "%s", "");
         }
-				cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
+		cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[LOO]);
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* Avg IMC frequency */
         if (mgt_imcfreq.ok){
             if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
-                verbose_master(2,"IMCFreq data read in partial_stop");
+                verbose_master(2, "%sError%s IMC freq. data read in partial stop", COL_RED, COL_CLR);
             }
             if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
-                verbose_master(2,"IMC data diff fails");
+                verbose_master(2, "IMC data diff fails");
             }
             debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);
 		}
@@ -1015,7 +1015,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 				/* TPI and Memory bandwith */
                 if (master) {
                     bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[sign_app_loop_idx], &metrics->GBS);
-                    verbose_master(INFO_METRICS, "GBS[%d]: %0.2lf", sign_app_loop_idx, metrics->GBS);
+                    verbose_master(INFO_METRICS + 1, "%sCOMPUTE SIGNATURE DATA%s GBS[%d]: %0.2lf", COL_BLU, COL_CLR, sign_app_loop_idx, metrics->GBS);
                     lib_shared_region->cas_counters = (double) bwidth_cas[sign_app_loop_idx];
                 } else {
                     bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;

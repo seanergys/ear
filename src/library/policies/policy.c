@@ -1001,8 +1001,9 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	float psaving = 0;
 	float tpenalty = 0;
 	float esaving = 0;
+// #if 0
 	double tflops;
-
+// #endif
 	
 	sig_ext_t *sig_ext = curr->sig_ext;
 
@@ -1015,17 +1016,19 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	performance_prev = prev->Gflops/prev->DC_power;
 	performance_curr = curr->Gflops/curr->DC_power;
 
-	tflops = compute_node_flops(lib_shared_region, sig_shared_region);
+// #if 0
+    tflops = compute_node_flops(lib_shared_region, sig_shared_region);
 
-	#if 0
-	verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
-	performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
-	performance_prev, prev->Gflops, prev->DC_power); 
-	#endif
+    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
+            performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
+            performance_prev, prev->Gflops, prev->DC_power); 
+// #endif
 
 	esaving = ((performance_curr - performance_prev) / performance_prev) * 100;
 	psaving = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;
 	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
+
+	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f", masters_info.my_master_rank, esaving, psaving, tpenalty);
 
 	sig_ext->saving   = esaving * sig_ext->elapsed;
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
@@ -1055,11 +1058,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     /* update_earl_node_mgr_info(); */
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_master(2,"There are %u jobs in the node", jobs_in_node);
-		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+	verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
     /* End update */
 
     /* estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1); */
-    verbose_master(2,"Job's GB/s: %.2lf - Job's Power: %.2lf", curr->GBS, curr->DC_power);
+    verbose_master(2, "Job's GB/s: %.2lf - Job's Power: %.2lf", curr->GBS, curr->DC_power);
 
     if (polsyms_fun.ok != NULL) {
         /* We wait for node signature computation */
@@ -1089,7 +1092,6 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
 		/* If signatures are ok, not different phase, we compute the energy savings estimations */
 		if (!is_monitoring && *ok){
 			compute_energy_savings(curr, prev);
-			verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f", masters_info.my_master_rank, sig_ext->saving, sig_ext->psaving, sig_ext->tpenalty);
 			if (sig_ext->saving < 0) *ok = 0;
 		}
     return EAR_SUCCESS;
@@ -1442,7 +1444,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         verbose_master(POLICY_INFO, "%sPOLICY%s Setting a CPU frequency (kHz) range of "
                 "[%lu, %lu] GHz...", COL_BLU, COL_CLR, min_cpufreq_sel_khz, max_cpufreq_sel_khz);
 
-        frequency_set_with_list(0, freq_per_core);
+        frequency_set_with_list(0, freq_per_core); // Setting the selected CPU frequency
 
     } else {
         verbose_master(POLICY_INFO, "%sPOLICY%s Requesting a CPU frequency (kHz) range of "
