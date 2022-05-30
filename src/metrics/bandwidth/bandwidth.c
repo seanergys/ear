@@ -48,7 +48,7 @@ state_t bwidth_load(topology_t *tp, int eard)
 		debug("Loaded EARD");
 		api = API_EARD;
 	}
-    #if 0
+    #if 1
 	if (state_ok(bwidth_intel106_load(tp, &ops))) {
 		api = API_INTEL106;
 		debug("Loaded INTEL106");
