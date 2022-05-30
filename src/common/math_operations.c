@@ -73,7 +73,7 @@ uint equal_with_th_ul(ulong a,ulong b,double th)
     return eq;
 
 }
-unsigned int equal_with_th(double a, double b, double th)
+uint equal_with_th(double a, double b, double th)
 {
     int eq = 1;
     if (a == b) return eq;
