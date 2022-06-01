@@ -46,9 +46,6 @@ extern sync_answer_t data_answer;
 // Descriptors
 extern struct sockaddr_storage addr_new;
 extern afd_set_t fds_active;
-extern int fd_new;
-extern int fd_min;
-extern int fd_max;
 // Descriptors storage
 extern long fd_hosts[FD_SETSIZE];
 //
@@ -143,8 +140,8 @@ int sync_fd_exists(long ip, int *fd_old)
 	if (ip == 0) {
 		return 0;
 	}
-	for (i = 0; i < (fd_max + 1); ++i) {
-		if (AFD_ISSET(i, &fds_active) && fd_hosts[i] == ip) {
+	for (i = fds_active.fd_min; i <= fds_active.fd_max; ++i) {
+		if (fd_hosts[i] == ip && AFD_ISSET(i, &fds_active)) {
 			*fd_old = i;
 			return 1;
 		}
@@ -158,19 +155,12 @@ void sync_fd_add(int fd, long ip)
 	if (ip == 0) {
 		verb_who("Warning, the IP of the new connection is %ld", ip);
 		// Fake IP (255.0.0.0)
-		ip =  4278190080;
+		ip = 4278190080;
 	}
 	// Saving IP
 	fd_hosts[fd] = ip;
 	// Enabling FD in select
 	AFD_SET(fd, &fds_active);
-	
-	if (fd > fd_max) {
-		fd_max = fd;
-	}
-	if (fd < fd_min) {
-		fd_min = fd;
-	}
 	// Metrics
 	sockets_accepted += 1;
 	sockets_online   += 1;

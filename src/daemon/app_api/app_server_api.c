@@ -57,8 +57,7 @@ typedef struct connect{
 }connect_t;
 static int connections=0;
 static connect_t apps_eard[MAX_FDS];
-static fd_set rfds_basic;
-static int numfds_req;
+static afd_set rfds_basic;
 
 extern cluster_conf_t my_cluster_conf;
 extern my_node_conf_t my_node_conf;
@@ -158,11 +157,10 @@ void accept_new_connection(char *root,int pid)
 
 	if ((apps_eard[i].recv>=0) && (apps_eard[i].send>=0)){
 		debug("Connection established pos %d  fds=%d-%d\n",i,apps_eard[i].recv,apps_eard[i].send);
-		FD_SET(apps_eard[i].recv,&rfds_basic);
-		if (apps_eard[i].recv>=numfds_req) numfds_req=apps_eard[i].recv+1;
+		AFD_SET(apps_eard[i].recv,&rfds_basic);
 		apps_eard[i].pid=pid;
 		connections++;
-		debug("connections %d numfds_req %d",connections,numfds_req);
+		debug("connections %d fds %d", connections, rfds_basic.fds_count);
 	}else{
 		debug("Not connected %d-%d",apps_eard[i].recv,apps_eard[i].send);
 		close(apps_eard[i].recv);
@@ -200,7 +198,7 @@ void remove_connection(char *root,int i)
 	close(fd_in);
 	apps_eard[i].recv=-1;
 	apps_eard[i].pid=-1;
-	FD_CLR(fd_in,&rfds_basic);
+	AFD_CLR(fd_in,&rfds_basic);
     /* We reconfigure the arguments */
     for (i=0;i<MAX_FDS;i++){
         if (apps_eard[i].recv>=0){
@@ -209,7 +207,6 @@ void remove_connection(char *root,int i)
         }
     }
     connections=new_con;
-    numfds_req=max+1;
 	unlink(app_to_eard);
 	unlink(eard_to_app);
 }
@@ -227,7 +224,7 @@ static void close_connection(int fd_in,int fd_out)
 			apps_eard[i].recv=-1;
 			apps_eard[i].send=-1;
 			apps_eard[i].pid=-1;
-			FD_CLR(fd_in,&rfds_basic);
+			AFD_CLR(fd_in,&rfds_basic);
 		}
 	}
 	/* We reconfigure the arguments */
@@ -239,8 +236,7 @@ static void close_connection(int fd_in,int fd_out)
 		}
 	}
 	connections=new_con+1;
-	numfds_req=max+1;
-	debug("connections %d numfds_req %d\n",connections,numfds_req);
+	debug("connections %d fds %d\n", connections, rfds_basic.fds_count);
 	
 }
 
@@ -510,9 +506,8 @@ void app_api_process_request(int fd_in)
 
 void *eard_non_earl_api_service(void *noinfo)
 {
-	fd_set rfds;
 	int numfds_ready;
-	int max_fd,i;
+	int i;
 
 	app_api_set_sigterm();
 
@@ -538,29 +533,23 @@ void *eard_non_earl_api_service(void *noinfo)
   	pthread_exit(0);
 	}
 
-	FD_ZERO(&rfds);
-	FD_SET(fd_app_to_eard, &rfds);
+	AFD_ZERO(&rfds_basic);
+	AFD_SET(fd_app_to_eard, &rfds_basic);
 	/* fd_eard_to_app is created the last */
-    max_fd=fd_app_to_eard;
-    numfds_req=max_fd+1;
-	rfds_basic=rfds;
 
 	/* Wait for messages */
 	verbose(VAPP_API,"Waiting for non-earl requestst\n");
-	while ((eard_must_exit==0) && (numfds_ready=select(numfds_req,&rfds,NULL,NULL,NULL))>=0){
+    while ((eard_must_exit==0) && (numfds_ready=aselectv(&rfds_basic, NULL))>=0){
 		verbose(VAPP_API,"New APP_API connections");
-		if (numfds_ready>0){
-			for (i=0;i<numfds_req;i++){
-				if (FD_ISSET(i,&rfds)){
-					if (i==fd_app_to_eard){
-						app_api_process_connection(my_cluster_conf.install.dir_temp);
-					}else{
-						app_api_process_request(i);	
-					}
-				}
-			}	
-		}
-		rfds=rfds_basic;	
+        for (i = rfds_basic.fd_min; numfds_ready > 0 && i =< rfds_basic.fd_max; i++){
+            if (AFD_ISSET(i, &rfds_basic)){
+                if (i==fd_app_to_eard){
+                    app_api_process_connection(my_cluster_conf.install.dir_temp);
+                }else{
+                    app_api_process_request(i);
+                }
+            }
+        }
 	}
 	/* Close and remove files , never reached if thread is killed */
 	energy_dispose(&my_eh_app_api);

@@ -38,9 +38,6 @@ extern socket_t *socket_sync02;
 // Descriptors
 extern struct sockaddr_storage addr_new;
 extern afd_set_t fds_active;
-extern int fd_new;
-extern int fd_min;
-extern int fd_max;
 
 // PID
 extern process_data_t proc_server;
@@ -175,9 +172,10 @@ static int body_new_connection(int fd)
 
 static void manage_sockets()
 {
-	long ip;
-	state_t s;
-	int fd_old;
+    int fd_old;
+    int fd_new;
+    state_t s;
+    long ip;
 	int i;
 
 	// Nothing to be done here
@@ -185,7 +183,7 @@ static void manage_sockets()
 		return;
 	}
 
-	for(i = fd_min; i <= fd_max && listening; i++)
+	for(i = fds_active.fd_min; i <= fds_active.fd_max && listening; i++)
 	{
 		if (listening && AFD_ISSET(i, &fds_active)) // we got one!!
 		{
@@ -289,7 +287,7 @@ void release()
 	int i;
 
 	// Socket closing
-	for(i = fd_max; i >= fd_min && !listening; --i) {
+	for(i = fds_active.fd_max; i >= fds_active.fd_min && !listening; --i) {
 		close(i);
 	}
 	// Cleaning sockets

@@ -105,10 +105,7 @@ static int              RAPL_counting = 0;
 /* This var is used in all the eard services, no thread-safe */
 static struct daemon_req req;
 /* FDs for local connections */
-int                     numfds_req = 0;
-static fd_set           rfds;
-static fd_set           rfds_basic;
-int                     total_local_fd=0;
+static afd_set           rfds_basic;
 static local_connection_t *eard_local_conn;
 static uint             num_local_con=0;
 
@@ -609,7 +606,7 @@ void create_global_connector(char *ear_tmp, char *nodename)
     error("Error creating global communicator for connections");
     _exit(0);
   }
-  new_fd(&rfds_basic,global_req_fd,&numfds_req,&total_local_fd);
+  AFD_SET(global_req_fd, &rfds_basic);
 }
 
 void connect_service(struct daemon_req *new_req)
@@ -647,7 +644,6 @@ void connect_service(struct daemon_req *new_req)
   if (add_local_fd(&eard_local_conn[newc],ear_ack_fd,ACK_LOCAL_FD) != EAR_SUCCESS){
         error("Opening adding local ack newc");
   }
-  //new_fd(&rfds_basic,ear_ack_fd,&numfds_req,&total_local_fd);
   /* we send and ack to the earl */
   if (write(ear_ack_fd, &ack, sizeof(ack)) != sizeof(ack)) {
         warning("WARNING while sending ack to  %d", pid);
@@ -664,7 +660,7 @@ void connect_service(struct daemon_req *new_req)
         error("Opening adding local ack newc");
   }
   debug("New communication FDs created for application FD[%d]=%d,%d",newc,ear_ack_fd,ear_req_fd);
-  new_fd(&rfds_basic,ear_req_fd,&numfds_req,&total_local_fd);
+  AFD_SET(ear_req_fd, &rfds_basic);
   /* This function notifies the local connection */
   if (!eard_local_conn[newc].anonymous) powermon_mpi_init(&handler_energy, new_app);
   debug("Application %d connected with local API (anonymous %lu)",pid,eard_local_conn[newc].anonymous);
@@ -672,68 +668,68 @@ void connect_service(struct daemon_req *new_req)
 
 void eard_close_comm(int req_fd,int ack_fd)
 {
-  int i, ret;
-  int id;
-  ulong jid,sid;
-  ulong was_anonymous = 1;
-  char ear_commack[MAX_PATH_SIZE * 2];
-  char ear_commreq[MAX_PATH_SIZE * 2];
+    int i, ret;
+    int id;
+    ulong jid, sid;
+    ulong was_anonymous = 1;
+    char ear_commack[MAX_PATH_SIZE * 2];
+    char ear_commreq[MAX_PATH_SIZE * 2];
 
-  /* This is a special case where one of the fds has been closed */
-  if ((req_fd == -1) && (ack_fd == -1)){
-    for (i=0;i<numfds_req;i++){
-			/* What about was_anonymous ? */
-      if (check_fd(&rfds_basic,i) == EAR_ERROR){
-        id = get_local_connection_by_req(eard_local_conn,i);
-        close(i);
-        close(eard_local_conn[id].fds[ACK_LOCAL_FD]);
-        clean_fd(&rfds_basic,i,&numfds_req,&total_local_fd);
-        clean_fd(&rfds_basic,eard_local_conn[id].fds[ACK_LOCAL_FD],&numfds_req,&total_local_fd);
+    /* This is a special case where one of the fds has been closed */
+    if ((req_fd == -1) && (ack_fd == -1)) {
+        for (i = 0; i < numfds_req; i++) {
+            /* What about was_anonymous ? */
+            if (AFD_ISSET(i, &rfds_basic) && !AFD_STAT(&rfds_basic, NULL)) {
+                id = get_local_connection_by_req(eard_local_conn, i);
+                close(i);
+                close(eard_local_conn[id].fds[ACK_LOCAL_FD]);
+                AFD_CLR(i, &rfds_basic);
+                AFD_CLR(eard_local_conn[id].fds[ACK_LOCAL_FD], &rfds_basic);
+                clean_local_connection(&eard_local_conn[id]);
+            }
+        }
+    } else if (req_fd == CLOSE_PIPE) {
+        /* SIGPIPE received  in eard */
+        verbose(VEARD_LAPI, "SIGPIPE received in EARD: PENDING");
+    } else if (req_fd == CLOSE_EARD) {
+        /* End eard */
+        verbose(VEARD_LAPI, "Releasing all the files: PENDING");
+    } else { /* this is the normal use case */
+        id = get_local_connection_by_fd(eard_local_conn, req_fd, ack_fd);
+        if (id < 0) {
+            error("We cannot find (%d,%d) in the list of local connections", req_fd, ack_fd);
+            return;
+        }
+        debug("Closing communication for (%lu,%lu)", eard_local_conn[id].jid, eard_local_conn[id].sid);
+        jid = eard_local_conn[id].jid;
+        sid = eard_local_conn[id].sid;
+        ulong lid = eard_local_conn[id].lid;
+        uint ID = create_ID(jid, sid);
+        sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%u.%lu", ear_tmp, ID, ID, lid);
+        sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%u.%lu", ear_tmp, ID, ID, lid);
+        verbose(VEARD_LAPI, "Cleaning files for job %lu/%lu/%lu", jid, sid, lid);
+        verbose(VEARD_LAPI, "Deleting %s", ear_commack);
+        ret = unlink(ear_commack);
+        if (ret != ENOENT) verbose(VEARD_LAPI, "Error deleting file %s", strerror(errno));
+        verbose(VEARD_LAPI, "Deleting %s", ear_commreq);
+        ret = unlink(ear_commreq);
+        if (ret != ENOENT) verbose(VEARD_LAPI, "Error deleting file %s", strerror(errno));
+        was_anonymous = eard_local_conn[id].anonymous;
+        if (req_fd != -1) {
+            close(req_fd);
+            AFD_CLR(req_fd, &rfds_basic);
+        }
+        if (ack_fd != -1) {
+            close(ack_fd);
+            AFD_CLR(ack_fd, &rfds_basic);
+        }
+        debug("application (%lu,%lu) disconnected (anonymous %lu)", jid, sid, was_anonymous);
         clean_local_connection(&eard_local_conn[id]);
-      }
+        // This debug was set outside, but it requires a valid id to prevent segmentation faults.
     }
-  }else if (req_fd == CLOSE_PIPE){
-		/* SIGPIPE received  in eard */
-		verbose(VEARD_LAPI,"SIGPIPE received in EARD: PENDING");
-	}else if (req_fd == CLOSE_EARD){
-		/* End eard */
-		verbose(VEARD_LAPI,"Releasing all the files: PENDING");
-	}else{ /* this is the normal use case */
-    id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
-    if (id < 0){
-      error("We cannot find (%d,%d) in the list of local connections",req_fd,ack_fd);
-      return;
+    if (!was_anonymous) {
+        powermon_mpi_finalize(&handler_energy, jid, sid);
     }
-    debug("Closing communication for (%lu,%lu)",eard_local_conn[id].jid,eard_local_conn[id].sid);
-    jid = eard_local_conn[id].jid;
-    sid = eard_local_conn[id].sid;
-		ulong lid = eard_local_conn[id].lid;
-		uint ID = create_ID(jid, sid);
-  	sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%u.%lu", ear_tmp, ID, ID,lid);
-  	sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%u.%lu", ear_tmp, ID, ID,lid);
-		verbose(VEARD_LAPI,"Cleaning files for job %lu/%lu/%lu",jid,sid,lid);
-		verbose(VEARD_LAPI,"Deleting %s",ear_commack);
-		ret = unlink(ear_commack);
-		if (ret != ENOENT) verbose(VEARD_LAPI,"Error deleting file %s",strerror(errno));
-		verbose(VEARD_LAPI,"Deleting %s",ear_commreq);
-		ret = unlink(ear_commreq);
-		if (ret != ENOENT) verbose(VEARD_LAPI,"Error deleting file %s",strerror(errno));
-    was_anonymous = eard_local_conn[id].anonymous;
-    if (req_fd != -1){
-      close(req_fd);
-      clean_fd(&rfds_basic,req_fd,&numfds_req,&total_local_fd);
-    }
-    if (ack_fd != -1){
-      close(ack_fd);
-      clean_fd(&rfds_basic,ack_fd,&numfds_req,&total_local_fd);
-    }
-    debug("application (%lu,%lu) disconnected (anonymous %lu)", jid,sid,was_anonymous);
-    clean_local_connection(&eard_local_conn[id]);
-    // This debug was set outside, but it requires a valid id to prevent segmentation faults.
-  }
-  if (!was_anonymous) {
-    powermon_mpi_finalize(&handler_energy,jid,sid);
-  }
 }
 
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
@@ -924,9 +920,10 @@ state_t service_close(int req_fd, int ack_fd)
 	job_id  = eard_local_conn[id].jid;
 	step_id = eard_local_conn[id].sid;
 	// Remove from fd_set and close
-	clean_fd(&rfds_basic, req_fd, &numfds_req, &total_local_fd);
-	clean_fd(&rfds_basic, ack_fd, &numfds_req, &total_local_fd);
-	clean_local_connection(&eard_local_conn[id]);
+    AFD_CLR(req_fd, &rfds_basic);
+    AFD_CLR(ack_fd, &rfds_basic);
+
+    clean_local_connection(&eard_local_conn[id]);
 	close(req_fd);
 	close(ack_fd);
 	// End job
@@ -1073,7 +1070,6 @@ void service_select(int req_fd, int ack_fd)
 state_t eard_local_api()
 {
 	ear_njob_t *eard_jobs_list;
-	struct timeval *my_to;
 	int numfds_ready;
 	int ack_fd;
 	state_t s;
@@ -1096,91 +1092,90 @@ state_t eard_local_api()
 	energy_datasize(&handler_energy,&node_energy_datasize);
 	verbose(VEARD_LAPI,"EARD main thread: node_energy_datasize %lu",node_energy_datasize);
 	node_energy_data=(edata_t)malloc(node_energy_datasize);
-  energy_frequency(&handler_energy, &energy_freq);
+    energy_frequency(&handler_energy, &energy_freq);
 	verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
 	// RAPL metrics
-  values_rapl=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
-  if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
+    values_rapl=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
+    if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
 
-	verbose(VEARD_LAPI,"RAPL data allocated in node_serices");
+    verbose(VEARD_LAPI,"RAPL data allocated in node_serices");
 
-	// HW initialized HERE...creating communication channels
-	verbose(VEARD_LAPI, "Creating comm in %s for node %s", ear_tmp, nodename);
+    // HW initialized HERE...creating communication channels
+    verbose(VEARD_LAPI, "Creating comm in %s for node %s", ear_tmp, nodename);
 
-	#if USE_GPUS
-	/* GPU Initialization for app requests */
-	uint ret = gpu_init(&eard_main_gpu_ctx);
-	if (ret != EAR_SUCCESS){
-		error("EARD error when initializing GPU context for EARD API queries");
-		eard_gpu_initialized = 0;	
-	}else{
-		eard_gpu_initialized = 1;
-	}
-	gpu_data_alloc(&eard_read_gpu);
-	gpu_count(&eard_main_gpu_ctx,&eard_num_gpus);
-	debug("gpu_count %u",eard_num_gpus);
-	eard_gpu_model=gpu_model();
-	debug("gpu_model %u",eard_gpu_model);
-	#endif
+    #if USE_GPUS
+    /* GPU Initialization for app requests */
+    uint ret = gpu_init(&eard_main_gpu_ctx);
+    if (ret != EAR_SUCCESS){
+        error("EARD error when initializing GPU context for EARD API queries");
+        eard_gpu_initialized = 0;
+    }else{
+        eard_gpu_initialized = 1;
+    }
+    gpu_data_alloc(&eard_read_gpu);
+    gpu_count(&eard_main_gpu_ctx,&eard_num_gpus);
+    debug("gpu_count %u",eard_num_gpus);
+    eard_gpu_model=gpu_model();
+    debug("gpu_model %u",eard_gpu_model);
+    #endif
 
-  clean_fd_set(&rfds_basic,&total_local_fd);
-  /* This function creates the pipe for new local connections */
-  verbose(VEARD_LAPI,"Initializing local connections");
-  if (init_local_connections(&eard_local_conn,node_desc.cpu_count) != EAR_SUCCESS){
+    AFD_ZERO(&rfds_basic);
+    /* This function creates the pipe for new local connections */
+    verbose(VEARD_LAPI,"Initializing local connections");
+    if (init_local_connections(&eard_local_conn,node_desc.cpu_count) != EAR_SUCCESS){
     error("Error initializing local connections");
     _exit(0);
-  }
-	verbose(VEARD_LAPI,"Creating global connector");
-  create_global_connector(ear_tmp, nodename);
-  rfds = rfds_basic;
+    }
+    verbose(VEARD_LAPI,"Creating global connector");
+    create_global_connector(ear_tmp, nodename);
 
 	verbose(VEARD_LAPI, "Communicator for %s ON", nodename);
 	// we wait until EAR daemon receives a request
 	// We support requests realted to frequency and to uncore counters
 	// rapl support is pending to be supported
 	// EAR daemon main loop
-	my_to = NULL;
+
 	/*
 	*
 	*	MAIN LOOP 
 	*
 	*/
-  while (((numfds_ready = select(numfds_req, &rfds, NULL, NULL, my_to)) >= 0) ||
-       ((numfds_ready < 0) && (errno == EINTR)))
-  {
-		debug("select unblock with numfds_ready %d", numfds_ready);
-    if (eard_must_exit) {
-      verbose(0, "eard exiting");
-      eard_exit(2);
-    }
-    if (numfds_ready >= 0) {
-      if (numfds_ready > 0) {
-        for (uint i = 0; i < numfds_req; i++) {
-          if (FD_ISSET(i, &rfds)) {
-            if (i == global_req_fd){
-              /* New connection */
-            }else{
-              /* We need to find the local req and ack fds */
-              ack_fd = get_local_connection_ack(eard_local_conn,i);
+// numfds_req
+    while (((numfds_ready = aselectv(&rfds_basic, NULL)) >= 0) ||
+           ((numfds_ready < 0) && (errno == EINTR)))
+    {
+        debug("select unblock with numfds_ready %d", numfds_ready);
+        if (eard_must_exit) {
+            verbose(0, "eard exiting");
+            eard_exit(2);
+        }
+        if (numfds_ready >= 0) {
+            if (numfds_ready > 0) {
+                for (uint i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
+                    if (AFD_ISSET(i, &rfds_basic)) {
+                        if (i == global_req_fd) {
+                            /* New connection */
+                        } else {
+                            /* We need to find the local req and ack fds */
+                            ack_fd = get_local_connection_ack(eard_local_conn, i);
+                        }
+                        debug("Reading from %d ack %d", i, ack_fd);
+                        if (ack_fd >= 0) service_select(i, ack_fd);
+                        else _exit(0);
+                    }    // IF AFD_ISSET
+                } //for
+                // We have to check if there is something else
+            } else {
+                debug("select unblocks with numfds_ready  = 0");
             }
-						debug("Reading from %d ack %d",i, ack_fd);
-            if (ack_fd >=0) service_select(i,ack_fd);
-            else _exit(0);
-          }    // IF FD_ISSET
-        } //for
-        // We have to check if there is something else
-      }else{
-				debug("select unblocks with numfds_ready  = 0");
-			}
-    } else {// Signal received
-      my_to = NULL;
-      debug("signal received");
-    }
-    rfds = rfds_basic;
-		debug("Waiting for %d fds. global req fd %d", numfds_req, global_req_fd);
-    //debug("eard waiting.....\n");
-  }//while
+        } else {// Signal received
+            debug("signal received");
+        }
+        debug("Waiting for %d fds. global req fd %d", numfds_req, global_req_fd);
+        //debug("eard waiting.....\n");
+    }//while
+
 	verbose(VEARD_LAPI,"Releasing node_mgr data ");
 	nodemgr_server_end();
 

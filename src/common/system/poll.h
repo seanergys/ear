@@ -19,6 +19,7 @@
 #define COMMON_SYSTEM_POLL
 
 #include <poll.h>
+#include <sys/stat.h>
 #include <common/states.h>
 #include <common/system/time.h>
 
@@ -37,6 +38,8 @@ void afd_set(int fd, afd_set_t *set, int flags);
 int afd_isset(int fd, afd_set_t *set, int flag);
 
 void afd_clear(int fd, afd_set_t *set);
+
+int afd_stat(int fd, struct stat *st);
 
 #define AFD_SET(fd, set) \
     afd_set(fd, set, POLLIN);
@@ -58,6 +61,9 @@ void afd_clear(int fd, afd_set_t *set);
 
 #define AFD_CLR(fd, set) \
     afd_clear(fd, set)
+
+#define AFD_STAT(fd, stat) \
+    afd_stat(fd, stat)
 
 /* New select based in poll. Time values are in milliseconds. */
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left);

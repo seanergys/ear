@@ -88,6 +88,20 @@ void afd_clear(int fd, afd_set_t *set)
     debug("FD_CLR(%d) [%d,%d]", fd, set->fd_min, set->fd_max);
 }
 
+int afd_stat(int fd, struct stat *s)
+{
+    struct stat *p = s;
+    struct stat aux;
+
+    if (s == NULL) {
+        p = &aux;
+    }
+    if (fstat(fd, p) < 0) {
+        return 0;
+    }
+    return 1;
+}
+
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
 {
     ullong time_passed, r;
