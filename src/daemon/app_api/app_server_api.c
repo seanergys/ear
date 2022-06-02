@@ -28,6 +28,7 @@
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
+#include <common/system/poll.h>
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -57,7 +58,7 @@ typedef struct connect{
 }connect_t;
 static int connections=0;
 static connect_t apps_eard[MAX_FDS];
-static afd_set rfds_basic;
+static afd_set_t rfds_basic;
 
 extern cluster_conf_t my_cluster_conf;
 extern my_node_conf_t my_node_conf;
@@ -541,7 +542,7 @@ void *eard_non_earl_api_service(void *noinfo)
 	verbose(VAPP_API,"Waiting for non-earl requestst\n");
     while ((eard_must_exit==0) && (numfds_ready=aselectv(&rfds_basic, NULL))>=0){
 		verbose(VAPP_API,"New APP_API connections");
-        for (i = rfds_basic.fd_min; numfds_ready > 0 && i =< rfds_basic.fd_max; i++){
+        for (i = rfds_basic.fd_min; numfds_ready > 0 && i <= rfds_basic.fd_max; i++){
             if (AFD_ISSET(i, &rfds_basic)){
                 if (i==fd_app_to_eard){
                     app_api_process_connection(my_cluster_conf.install.dir_temp);

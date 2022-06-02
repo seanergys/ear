@@ -27,6 +27,7 @@
 #include <common/includes.h>
 #include <common/environment.h>
 #include <common/system/fd_sets.h>
+#include <common/system/poll.h>
 #include <common/system/monitor.h>
 #include <common/types/generic.h>
 #include <common/types/pc_app_info.h>
@@ -105,7 +106,7 @@ static int              RAPL_counting = 0;
 /* This var is used in all the eard services, no thread-safe */
 static struct daemon_req req;
 /* FDs for local connections */
-static afd_set           rfds_basic;
+static afd_set_t        rfds_basic;
 static local_connection_t *eard_local_conn;
 static uint             num_local_con=0;
 
@@ -677,9 +678,9 @@ void eard_close_comm(int req_fd,int ack_fd)
 
     /* This is a special case where one of the fds has been closed */
     if ((req_fd == -1) && (ack_fd == -1)) {
-        for (i = 0; i < numfds_req; i++) {
+        for (i = 0; i < rfds_basic.fds_count; i++) {
             /* What about was_anonymous ? */
-            if (AFD_ISSET(i, &rfds_basic) && !AFD_STAT(&rfds_basic, NULL)) {
+            if (AFD_ISSET(i, &rfds_basic) && !AFD_STAT(i, NULL)) {
                 id = get_local_connection_by_req(eard_local_conn, i);
                 close(i);
                 close(eard_local_conn[id].fds[ACK_LOCAL_FD]);
@@ -1160,9 +1161,13 @@ state_t eard_local_api()
                             /* We need to find the local req and ack fds */
                             ack_fd = get_local_connection_ack(eard_local_conn, i);
                         }
-                        debug("Reading from %d ack %d", i, ack_fd);
-                        if (ack_fd >= 0) service_select(i, ack_fd);
-                        else _exit(0);
+                        fast_debug("Reading from %d ack %d", i, ack_fd);
+                        if (ack_fd >= 0) {
+                            service_select(i, ack_fd);
+                        } else {
+                            fast_debug("Exitting because");
+                            _exit(0);
+                        }
                     }    // IF AFD_ISSET
                 } //for
                 // We have to check if there is something else

@@ -37,13 +37,14 @@ void afd_set(int fd, afd_set_t *set, int flags)
     if (set->fds_count == 0) {
         afd_init(set);
     }
-    if (fd >= AFD_MAX || set->fds[fd].fd != -1) {
+    if (fd >= AFD_MAX || fd < 0 || set->fds[fd].fd != -1) {
         return;
     }
 
     set->fds[fd].fd      = fd;
     set->fds[fd].events  = flags;
     set->fds[fd].revents = 0;
+    set->fds_count      += 1;
 
     if (fd > set->fd_max) {
         set->fd_max = fd;
@@ -52,24 +53,37 @@ void afd_set(int fd, afd_set_t *set, int flags)
         set->fd_min = fd;
     }
     // Counting
-    set->fds_count = set->fd_max - set->fd_min + 1;
-    debug("FD_SET(%d) [%d,%d]", fd, set->fd_min, set->fd_max);
+    set->fds_rank = set->fd_max - set->fd_min + 1;
+    debug("AFD_SET(%d) [%d,%d], fds_count %u, fds_rank %d", fd, set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank);
 }
 
 int afd_isset(int fd, afd_set_t *set, int flag)
 {
-    int r = (set->fds[fd].revents & flag);
-    debug("FD_ISSET(%d): ret %d", fd, r);
-    return r;
+    int reterr = (set->fds[fd].revents & (POLLHUP | POLLERR | POLLNVAL));
+    int retval = (set->fds[fd].revents & flag);
+    debug("FD_ISSET(%d): ret %d, err %d (revents %d)", fd, retval, set->fds[fd].revents);
+    if (!retval && reterr) {
+        //debug("FD_ISSET(%d): detected POLLHUP (%d), POLLERR (%d) or POLLNVAL (%d)", fd, POLLHUP, POLLERR, POLLNVAL);
+        return reterr;
+    }
+    return retval;
 }
 
 void afd_clear(int fd, afd_set_t *set)
 {
     int i;    
 
+    if (fd < 0) {
+        return;
+    }
+    if (set->fds[fd].fd == -1) {
+        debug("AFD_CLR is trying to clear invalid fd %d", fd);
+        return;
+    }
     set->fds[fd].fd      = -1;
     set->fds[fd].events  =  0;
     set->fds[fd].revents =  0;
+    set->fds_count      -=  1;
 
     for (i = set->fd_min; i < AFD_MAX; ++i) {
         if (set->fds[i].fd != -1) {
@@ -84,8 +98,8 @@ void afd_clear(int fd, afd_set_t *set)
         }
     }
     // Counting
-    set->fds_count = set->fd_max - set->fd_min + 1;
-    debug("FD_CLR(%d) [%d,%d]", fd, set->fd_min, set->fd_max);
+    set->fds_rank = set->fd_max - set->fd_min + 1;
+    debug("FD_CLR(%d) [%d,%d], fds_count %u, fds_rank %d", fd, set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank);
 }
 
 int afd_stat(int fd, struct stat *s)
@@ -102,15 +116,20 @@ int afd_stat(int fd, struct stat *s)
     return 1;
 }
 
+void afd_zero(afd_set_t *set)
+{
+    memset(set, 0, sizeof(afd_set_t));
+}
+
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
 {
     ullong time_passed, r;
     timestamp_t ts;
     // Polling and calculating time
     timestamp_get(&ts);
-    r = poll(&set->fds[set->fd_min], set->fds_count, (int) timeout);
+    r = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    debug("%d = poll(fds_count: %d, timeout: %llu, time_passed: %llu)", r, set->fds_count, timeout, time_passed);
+    debug("%d = poll(fds_rank: %d, timeout: %d, time_passed: %llu)", r, set->fds_rank, (int) timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;

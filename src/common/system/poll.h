@@ -22,13 +22,15 @@
 #include <sys/stat.h>
 #include <common/states.h>
 #include <common/system/time.h>
+#include <common/output/verbose.h>
 
 #define AFD_MAX        8192
 #define AFD_INFINITE  -1 // Infinite timeout
 
 typedef struct afd_set_s {
     struct pollfd fds[AFD_MAX];
-    nfds_t fds_count;
+    nfds_t fds_rank;
+    uint fds_count;
     int fd_max;
     int fd_min;
 } afd_set_t;
@@ -41,7 +43,10 @@ void afd_clear(int fd, afd_set_t *set);
 
 int afd_stat(int fd, struct stat *st);
 
+void afd_zero(afd_set_t *set);
+
 #define AFD_SET(fd, set) \
+    fast_debug("AFD_SET entering fd %d...", fd); \
     afd_set(fd, set, POLLIN);
 
 #define AFD_SETR(fd, set) \
@@ -60,10 +65,14 @@ int afd_stat(int fd, struct stat *st);
     afd_isset(fd, set, POLLOUT)
 
 #define AFD_CLR(fd, set) \
+    fast_debug("AFD_CLR entering fd %d...", fd); \
     afd_clear(fd, set)
 
 #define AFD_STAT(fd, stat) \
     afd_stat(fd, stat)
+
+#define AFD_ZERO(set) \
+    afd_zero(set);
 
 /* New select based in poll. Time values are in milliseconds. */
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left);
