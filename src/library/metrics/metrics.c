@@ -1690,57 +1690,58 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 }
 
-void metrics_node_signature(signature_t *master,signature_t *ns)
+void metrics_node_signature(signature_t *master, signature_t *ns)
 {
-	ullong inst;
-	ullong cycles;
-	ullong FLOPS[FLOPS_EVENTS];
-	sig_ext_t *se;
-	int i;
-	ullong L1, L2, L3;
+    ullong inst;
+    ullong cycles;
+    ullong FLOPS[FLOPS_EVENTS];
+    sig_ext_t *se;
+    ullong L1, L2, L3;
 
 
-	se = (sig_ext_t *)master->sig_ext;	
-	signature_copy(ns,master);
-	if ((se != NULL) && (ns->sig_ext != NULL))  memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
-	
-	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
-	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
-  compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-  compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
+    se = (sig_ext_t *) master->sig_ext;	
+    signature_copy(ns, master);
+    if ((se != NULL) && (ns->sig_ext != NULL)) memcpy(ns->sig_ext, se, sizeof(sig_ext_t));
 
-	ns->CPI = (double)cycles/(double)inst;
-	/* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-	if (ns->CPI > 2.0){
-		for (i=0; i< lib_shared_region->num_processes;i ++){
-			verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
-		}	
-		verbose_master(2," ");
-	}
-	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
-  ns->L1_misses  = L1;
-  ns->L2_misses  = L2;
-  ns->L3_misses  = L3;
-  ns->cycles     = cycles;
-  ns->instructions = inst;
-  for (uint i = 0; i < FLOPS_EVENTS; i++){
-  	ns->FLOPS[i] = FLOPS[i];
-  }    
+    compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
+    compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
+    compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
+    compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
+    compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
+    compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
 
-	verbose_master(2,"Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
+    ns->CPI = (double) cycles / (double)inst;
+    /* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
+    if (ns->CPI > 2.0) {
+        for (int i = 0; i < lib_shared_region->num_processes; i++) {
+            verbosen_master(2, " CPI[%d]=%lf", i, sig_shared_region[i].sig.CPI);
+        }
+        verbose_master(2," ");
+    }
 
+    ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+    ns->L1_misses  = L1;
+    ns->L2_misses  = L2;
+    ns->L3_misses  = L3;
 
-	#if 0
-	signature_copy(&lib_shared_region->node_signature,ns);
+    ns->cycles       = cycles;
+    ns->instructions = inst;
 
-	if (master){
-		/* Updating shared info */
-  	update_earl_node_mgr_info();
-  	estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, ns, PER_JOB, -1);
-	}
-	#endif
+    for (uint i = 0; i < FLOPS_EVENTS; i++){
+        ns->FLOPS[i] = FLOPS[i];
+    }    
+
+    verbose_master(2, "Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
+
+#if 0
+    signature_copy(&lib_shared_region->node_signature,ns);
+
+    if (master){
+        /* Updating shared info */
+        update_earl_node_mgr_info();
+        estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, ns, PER_JOB, -1);
+    }
+#endif
 }
 
 extern uint last_earl_phase_classification;
