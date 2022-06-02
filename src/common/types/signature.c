@@ -20,8 +20,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-
 //#define SHOW_DEBUGS 1
+#if !SHOW_DEBUGS
+#define NDEBUG
+#endif
+#include <assert.h>
+
 #include <common/config.h>
 #include <metrics/flops/flops.h>
 #include <common/types/signature.h>
@@ -166,15 +170,18 @@ void read_signature_fd_binary(int fd, signature_t *sig)
     read(fd,sig,sizeof(signature_t));
 }
 
-void adapt_signature_to_node(signature_t *dest,signature_t *src,float ratio_PPN)
+void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PPN)
 {
-    double new_TPI,new_DC_power;
-    signature_copy(dest,src);
-    new_TPI=src->TPI/(double)ratio_PPN;
-    new_DC_power=src->DC_power/(double)ratio_PPN;
+    signature_copy(dest, src);
+
+    assert(ratio_PPN != 0);
+    double new_TPI      = src->TPI / (double) ratio_PPN;
+    double new_DC_power = src->DC_power / (double) ratio_PPN;
+
     dest->TPI=new_TPI;
     dest->DC_power=new_DC_power;
 }
+
 void acum_sig_metrics(signature_t *dst,signature_t *src)
 {
     int i;
