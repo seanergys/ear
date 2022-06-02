@@ -57,6 +57,7 @@ void set_default_settings(node_freqs_t *freqs, node_freqs_t * def);
 
 void verbose_node_freqs(int vl, node_freqs_t *freqs);
 void node_freqs_alloc(node_freqs_t *node_freq);
+void node_freqs_free(node_freqs_t *node_freq);
 void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src);
 
 /*  Copy current information to use it in the next iteration as last information. */

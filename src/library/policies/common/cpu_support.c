@@ -304,6 +304,16 @@ void node_freqs_alloc(node_freqs_t *node_freq)
 #endif
 }
 
+void node_freqs_free(node_freqs_t *node_freq)
+{
+    free(node_freq->cpu_freq);
+    free(node_freq->imc_freq);
+#if USE_GPUS
+    free(node_freq->gpu_freq);
+    free(node_freq->gpu_mem_freq);
+#endif
+}
+
 void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src)
 {
     if ((dst == NULL) || (src == NULL)) return;

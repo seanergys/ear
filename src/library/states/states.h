@@ -34,6 +34,6 @@ void states_end_period(uint iterations);
 /** Executed at application end */
 void states_end_job(int my_id, char *app_name);
 
-/** Returns the current EAR state */
-int states_my_state();
+/** Returns the current EAR state. */
+int states_ear_state();
 #endif

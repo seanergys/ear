@@ -64,7 +64,7 @@ extern ulong last_loop_size;
 extern ulong last_loop_level;
 extern uint dynais_enabled;
 extern uint check_periodic_mode;
-extern uint EAR_STATE;
+// extern uint EAR_STATE;
 
 // Shared regions for processes in same node
 extern lib_shared_data_t *lib_shared_region;
