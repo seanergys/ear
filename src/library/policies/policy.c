@@ -967,13 +967,13 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
         return EAR_SUCCESS;
     }
 
-    polctx_t *c = &my_pol_ctx;
     if (polsyms_fun.get_default_freq != NULL) {
-        return polsyms_fun.get_default_freq(c, freq_set, NULL);
-    } else {
-        if (c != NULL) freq_set->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
-        return EAR_SUCCESS;
+        return polsyms_fun.get_default_freq(&my_pol_ctx, freq_set, NULL);
     }
+
+    freq_set->cpu_freq[0] = DEF_FREQ(my_pol_ctx.app->def_freq);
+
+    return EAR_SUCCESS;
 }
 
 /* This function sets the default freq (only CPU) */
@@ -1140,15 +1140,15 @@ state_t policy_loop_end(loop_id_t *loop_id)
 /* This function is executed at each loop iteration or beginning of a period */
 state_t policy_new_iteration(signature_t *sig)
 {
-    state_t st = EAR_SUCCESS;
-    polctx_t *c = &my_pol_ctx;
 
     // TODO: Here we are doing things useless in monitoring mode.
     /* This validation is common to all policies */
     /* Check cpu idle or gpu idle */
-    if ((last_earl_phase_classification == APP_IO_BOUND)
-            || (last_earl_phase_classification == APP_BUSY_WAITING)) {
-        verbose_master(POLICY_INFO + 1, "%sPOLICY%s Validating CPU phase: (GFlop/s) %lf - (B.W. min) %lf", COL_BLU, COL_CLR, sig->Gflops, GFLOPS_BUSY_WAITING);
+    uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
+    uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
+    if (last_phase_io_bnd || last_phase_bw) {
+        verbose_master(POLICY_INFO + 1, "%sPOLICY%s Validating CPU phase: (GFlop/s) %lf - (B.W. min) %lf",
+                COL_BLU, COL_CLR, sig->Gflops, GFLOPS_BUSY_WAITING);
         if (sig->Gflops > GFLOPS_BUSY_WAITING) {
             /* We must reset the configuration */
             last_earl_phase_classification = APP_COMP_BOUND;
@@ -1160,9 +1160,11 @@ state_t policy_new_iteration(signature_t *sig)
 
 #if USE_GPUS
     if (last_gpu_state & _GPU_Idle) {
-        verbose_master(POLICY_GPU, "%sPOLICY%s Validating GPU phase: (#GPUs) %u", COL_BLU, COL_CLR, sig->gpu_sig.num_gpus);
-        int i;
-        for (i = 0; i< sig->gpu_sig.num_gpus; i++){
+
+        verbose_master(POLICY_GPU, "%sPOLICY%s Validating GPU phase: (#GPUs) %u",
+                COL_BLU, COL_CLR, sig->gpu_sig.num_gpus);
+
+        for (int i = 0; i < sig->gpu_sig.num_gpus; i++){
             if (sig->gpu_sig.gpu_data[i].GPU_util > 0){
                 last_gpu_state = _GPU_Comp;
                 return EAR_ERROR;
@@ -1170,8 +1172,10 @@ state_t policy_new_iteration(signature_t *sig)
         }
     }
 #endif
-    st = EAR_SUCCESS;
-    if (polsyms_fun.new_iter != NULL) st = polsyms_fun.new_iter(c, sig);
+    state_t st = EAR_SUCCESS;
+    if (polsyms_fun.new_iter != NULL) {
+        st = polsyms_fun.new_iter(&my_pol_ctx, sig);
+    }
     return st;
 }
 
