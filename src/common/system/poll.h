@@ -29,15 +29,18 @@
 
 typedef struct afd_set_s {
     struct pollfd fds[AFD_MAX];
+    cchar *tags[AFD_MAX];
     nfds_t fds_rank;
     uint fds_count;
     int fd_max;
     int fd_min;
 } afd_set_t;
 
-void afd_set(int fd, afd_set_t *set, int flags);
+void afd_set(int fd, afd_set_t *set, int flags, cchar *tag);
 
-int afd_isset(int fd, afd_set_t *set, int flag);
+int afd_isset(int fd, afd_set_t *set, int flags);
+
+int afd_ishup(int fd, afd_set_t *set);
 
 void afd_clear(int fd, afd_set_t *set);
 
@@ -45,24 +48,24 @@ int afd_stat(int fd, struct stat *st);
 
 void afd_zero(afd_set_t *set);
 
+#define AFD_SETT(fd, set, tag) \
+    afd_set(fd, set, POLLIN, tag); 
+
 #define AFD_SET(fd, set) \
     fast_debug("AFD_SET entering fd %d...", fd); \
-    afd_set(fd, set, POLLIN);
-
-#define AFD_SETR(fd, set) \
-    afd_set(fd, set, POLLIN);
+    afd_set(fd, set, POLLIN, "-");
 
 #define AFD_SETW(fd, set) \
-    afd_set(fd, set, POLLOUT);
+    afd_set(fd, set, POLLOUT, "-");
 
 #define AFD_ISSET(fd, set) \
     afd_isset(fd, set, POLLIN | POLLOUT)
 
-#define AFD_ISSETR(fd, set) \
-    afd_isset(fd, set, POLLIN)
-
 #define AFD_ISSETW(fd, set) \
     afd_isset(fd, set, POLLOUT)
+
+#define AFD_ISHUP(fd, set) \
+    afd_ishup(fd, set)
 
 #define AFD_CLR(fd, set) \
     fast_debug("AFD_CLR entering fd %d...", fd); \

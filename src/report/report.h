@@ -40,9 +40,6 @@
 #define PERIODIC_AGGREGATIONS 2
 #define MPITRACE              4
 
-/** Short name for const char. */
-typedef const char cchar;
-
 /** This structure is used to pass information about the process calling your plugin function. 
  * The API functions receive a parameter of this type with the calling process information. */
 typedef struct report_id_s

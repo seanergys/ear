@@ -607,7 +607,7 @@ void create_global_connector(char *ear_tmp, char *nodename)
     error("Error creating global communicator for connections");
     _exit(0);
   }
-  AFD_SET(global_req_fd, &rfds_basic);
+  AFD_SETT(global_req_fd, &rfds_basic, "global-req");
 }
 
 void connect_service(struct daemon_req *new_req)
@@ -661,7 +661,7 @@ void connect_service(struct daemon_req *new_req)
         error("Opening adding local ack newc");
   }
   debug("New communication FDs created for application FD[%d]=%d,%d",newc,ear_ack_fd,ear_req_fd);
-  AFD_SET(ear_req_fd, &rfds_basic);
+  AFD_SETT(ear_req_fd, &rfds_basic, "req");
   /* This function notifies the local connection */
   if (!eard_local_conn[newc].anonymous) powermon_mpi_init(&handler_energy, new_app);
   debug("Application %d connected with local API (anonymous %lu)",pid,eard_local_conn[newc].anonymous);
@@ -685,7 +685,7 @@ void eard_close_comm(int req_fd,int ack_fd)
                 close(i);
                 close(eard_local_conn[id].fds[ACK_LOCAL_FD]);
                 AFD_CLR(i, &rfds_basic);
-                AFD_CLR(eard_local_conn[id].fds[ACK_LOCAL_FD], &rfds_basic);
+                //AFD_CLR(eard_local_conn[id].fds[ACK_LOCAL_FD], &rfds_basic);
                 clean_local_connection(&eard_local_conn[id]);
             }
         }
@@ -722,7 +722,7 @@ void eard_close_comm(int req_fd,int ack_fd)
         }
         if (ack_fd != -1) {
             close(ack_fd);
-            AFD_CLR(ack_fd, &rfds_basic);
+            //AFD_CLR(ack_fd, &rfds_basic);
         }
         debug("application (%lu,%lu) disconnected (anonymous %lu)", jid, sid, was_anonymous);
         clean_local_connection(&eard_local_conn[id]);
@@ -922,7 +922,7 @@ state_t service_close(int req_fd, int ack_fd)
 	step_id = eard_local_conn[id].sid;
 	// Remove from fd_set and close
     AFD_CLR(req_fd, &rfds_basic);
-    AFD_CLR(ack_fd, &rfds_basic);
+    //AFD_CLR(ack_fd, &rfds_basic);
 
     clean_local_connection(&eard_local_conn[id]);
 	close(req_fd);
@@ -1154,15 +1154,27 @@ state_t eard_local_api()
         if (numfds_ready >= 0) {
             if (numfds_ready > 0) {
                 for (uint i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
+                    // Instruction manual for dummies:
+                    //
+                    // REQ is for request/demand, from libear to eard
+                    // ACK is for answer/result, from eard to libear
+                    //
+                    // - When new connection, i is equal to global_req_fd,
+                    //   the service_select detects that is global_req_fd
+                    //   and then reads the petition which must be
+                    //   CONNECT_EARD_NODE_SERVICES, and then the function
+                    //   connect_services is called. This function, creates
+                    //   two files in TMP (comm.req and comm.ack).
                     if (AFD_ISSET(i, &rfds_basic)) {
                         if (i == global_req_fd) {
                             /* New connection */
+                            fast_debug("NEW_CONNECTION %d (global_req_fd %d)", i, global_req_fd);
                         } else {
                             /* We need to find the local req and ack fds */
                             ack_fd = get_local_connection_ack(eard_local_conn, i);
                         }
-                        fast_debug("Reading from %d ack %d", i, ack_fd);
                         if (ack_fd >= 0) {
+                            fast_debug("SERVICE_SELECT from req %d ack %d", i, ack_fd);
                             service_select(i, ack_fd);
                         } else {
                             fast_debug("Exitting because");

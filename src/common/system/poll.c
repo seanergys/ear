@@ -24,15 +24,16 @@ static void afd_init(afd_set_t *set)
 {
     int i;
     for (i = 0; i < AFD_MAX; ++i) {
-        set->fds[i].fd      = -1;
-        set->fds[i].events  =  0;
-        set->fds[i].revents =  0;
+        set->fds[i].fd      =  -1;
+        set->fds[i].events  =   0;
+        set->fds[i].revents =   0;
+        set->tags[i]        = "-";
     }
     set->fd_min = AFD_MAX;
     set->fd_max = 0;
 }
 
-void afd_set(int fd, afd_set_t *set, int flags)
+void afd_set(int fd, afd_set_t *set, int flags, cchar *tag)
 {
     if (set->fds_count == 0) {
         afd_init(set);
@@ -41,6 +42,7 @@ void afd_set(int fd, afd_set_t *set, int flags)
         return;
     }
 
+    set->tags[fd]       = tag;
     set->fds[fd].fd      = fd;
     set->fds[fd].events  = flags;
     set->fds[fd].revents = 0;
@@ -54,24 +56,31 @@ void afd_set(int fd, afd_set_t *set, int flags)
     }
     // Counting
     set->fds_rank = set->fd_max - set->fd_min + 1;
-    debug("AFD_SET(%d) [%d,%d], fds_count %u, fds_rank %d", fd, set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank);
+    debug("AFD_SET(%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", fd,
+        set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank, tag);
+}
+
+int afd_ishup(int fd, afd_set_t *set)
+{
+    return (set->fds[fd].revents & (POLLHUP | POLLERR | POLLNVAL));
 }
 
 int afd_isset(int fd, afd_set_t *set, int flag)
 {
-    int reterr = (set->fds[fd].revents & (POLLHUP | POLLERR | POLLNVAL));
-    int retval = (set->fds[fd].revents & flag);
-    debug("FD_ISSET(%d): ret %d, err %d (revents %d)", fd, retval, set->fds[fd].revents);
-    if (!retval && reterr) {
-        //debug("FD_ISSET(%d): detected POLLHUP (%d), POLLERR (%d) or POLLNVAL (%d)", fd, POLLHUP, POLLERR, POLLNVAL);
-        return reterr;
+    int retset = (set->fds[fd].revents & flag);
+    int rethup = afd_ishup(fd, set); 
+    debug("FD_ISSET(%d): ret %d, hup %d (revents %d), tag %s", fd,
+        retset, rethup, set->fds[fd].revents, set->tags[fd]);
+    if (!retset && rethup) {
+        retset = rethup;
     }
-    return retval;
+    return retset;
 }
 
 void afd_clear(int fd, afd_set_t *set)
 {
-    int i;    
+    cchar *tag = set->tags[fd];
+    int i;
 
     if (fd < 0) {
         return;
@@ -99,7 +108,8 @@ void afd_clear(int fd, afd_set_t *set)
     }
     // Counting
     set->fds_rank = set->fd_max - set->fd_min + 1;
-    debug("FD_CLR(%d) [%d,%d], fds_count %u, fds_rank %d", fd, set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank);
+    debug("FD_CLR(%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", fd,
+        set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank, tag);
 }
 
 int afd_stat(int fd, struct stat *s)
