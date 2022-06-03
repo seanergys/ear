@@ -133,6 +133,18 @@ void afd_zero(afd_set_t *set)
 
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
 {
+    // select()
+    // On success, return the number of file descriptors contained in the three returned descriptor
+    // sets (that is, the total number of bits that are set in readfds, writefds, exceptfds) which
+    // may be zero if the timeout expires before anything interesting happens. On error, -1 is
+    // returned, and errno is set to indicate the error; the file descriptor sets  are  unmodified,
+    // and timeout becomes undefined.
+    //
+    // poll()
+    // On success, a positive number is returned; this is the number of structures which have
+    // nonzero revents fields (in other words, those descriptors with events or errors reported). A
+    // value of 0 indicates that the call timed out and no file descriptors were ready. On error, -1
+    // is returned, and errno is set appropriately.
     ullong time_passed, r;
     timestamp_t ts;
     // Polling and calculating time

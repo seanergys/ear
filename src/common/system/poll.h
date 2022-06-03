@@ -49,14 +49,14 @@ int afd_stat(int fd, struct stat *st);
 void afd_zero(afd_set_t *set);
 
 #define AFD_SETT(fd, set, tag) \
-    afd_set(fd, set, POLLIN, tag); 
+    afd_set(fd, set, POLLIN, tag)
 
 #define AFD_SET(fd, set) \
     fast_debug("AFD_SET entering fd %d...", fd); \
-    afd_set(fd, set, POLLIN, "-");
+    afd_set(fd, set, POLLIN, "-")
 
 #define AFD_SETW(fd, set) \
-    afd_set(fd, set, POLLOUT, "-");
+    afd_set(fd, set, POLLOUT, "-")
 
 #define AFD_ISSET(fd, set) \
     afd_isset(fd, set, POLLIN | POLLOUT)
@@ -75,7 +75,7 @@ void afd_zero(afd_set_t *set);
     afd_stat(fd, stat)
 
 #define AFD_ZERO(set) \
-    afd_zero(set);
+    afd_zero(set)
 
 /* New select based in poll. Time values are in milliseconds. */
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left);
