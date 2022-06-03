@@ -82,17 +82,16 @@ state_t add_new_connection()
 
 state_t remove_remote_connection(int fd)
 {
-    int i=0;
 	debug("Closing remote connection %d",fd);
 	AFD_CLR(fd, &rfds_basic);
 	close(fd);
     return EAR_SUCCESS;
 }
 
-void check_sockets(fd_set *fdlist)
+void check_sockets(afd_set_t *fdlist)
 {
 	int i;
-	for (i=0;i<max_fd;i++){
+    for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
 		if (AFD_ISSET(i,fdlist)){
 			debug("Validating socket %d",i);
 			if (!AFD_STAT(i, NULL)){
@@ -112,13 +111,13 @@ void *process_remote_req_th(void * arg)
     int i;
 
     debug("Thread to process remote requests created ");
-    while ((numfds_ready = select(max_fd, &rfds_basic, NULL, NULL, NULL)) && (eard_must_exit == 0))
+    while ((numfds_ready = aselectv(&rfds_basic, NULL)) && (eard_must_exit == 0))
     {
         verbose(VRAPI, "RemoteAPI thread new info received (new_conn/new_data)");
         if (numfds_ready > 0) {
             /* This is the normal use case */
-            for (i = 0; i < max_fd; i++) {
-                if (FD_ISSET(i, &rfds_basic)) {
+            for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
+                if (AFD_ISSET(i, &rfds_basic)) {
                     debug("Channel %d ready for reading", i);
                     if (i == pipe_for_new_conn[0]) {
                         verbose(VRAPI, "New connection received in RemoteAPI thread");

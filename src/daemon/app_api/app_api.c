@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -22,12 +23,10 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <errno.h>
-
-
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
+#include <common/system/poll.h>
 #include <common/types/generic.h>
 #include <common/output/verbose.h>
 #include <daemon/app_api/app_conf_api.h>
