@@ -42,9 +42,9 @@ static uint  *imc_ctrs;
 static state_t load_icelake()
 {
     void *addr_ma;
-	off_t addr_hi;
-	off_t addr_lo;
-	off_t addr_fi;
+	addr_t addr_hi;
+	addr_t addr_lo;
+	addr_t addr_fi;
 	uint p, i, c;
 	state_t s;
 
@@ -138,14 +138,18 @@ state_t bwidth_intel106_get_granularity(ctx_t *c, uint *granularity)
 
 state_t bwidth_intel106_read(ctx_t *c, bwidth_t *bw)
 {
+    addr_t addr0;
+    addr_t addr1; 
 	int i, j;
 	
 	timestamp_get(&bw[imc_ctrs_count].time);
 
 	for (i = j = 0; i < imc_maps_count; ++i, j+=2) {
 		debug("IMC%d: RD DDR addr 0x%lx", i, imc_maps[i]);
-		bw[j+0].cas = (ullong) *((ullong *) (imc_maps[i] + imc_ctrs[j+0]));
-		bw[j+1].cas = (ullong) *((ullong *) (imc_maps[i] + imc_ctrs[j+1]));
+        addr0 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+0]);
+        addr1 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+1]);
+		bw[j+0].cas = (ullong) *((ullong *) (addr0));
+		bw[j+1].cas = (ullong) *((ullong *) (addr1));
 		bw[j+0].cas = bw[j+0].cas & 0x0000ffffffffffff;
 		bw[j+1].cas = bw[j+1].cas & 0x0000ffffffffffff;
 		debug("IMC%d: %llu cas", i, bw[i].cas + bw[i].cas);

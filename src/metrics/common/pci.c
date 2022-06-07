@@ -167,7 +167,7 @@ state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *ad
 	return EAR_SUCCESS;
 }
 
-state_t pci_mmio_map(off_t addr, void **p)
+state_t pci_mmio_map(addr_t addr, void **p)
 {
     void *maddr;
 	int fd;
@@ -178,7 +178,7 @@ state_t pci_mmio_map(off_t addr, void **p)
 	if ((maddr = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, PAGE_MASK(addr))) == MAP_FAILED) {
 		return_print(EAR_ERROR, "while mapping /dev/mem: %s", strerror(errno));
 	}
-    *p = maddr + (addr - PAGE_MASK(addr)); 
+    *p = (void *) (((addr_t) maddr) + (addr - PAGE_MASK(addr)));
     debug("Mapped at 0x%lx and size 0x%x", addr, PAGE_SIZE);
     #if 0
 	if ((*p = ioremap(addr, size)) == NULL) {
