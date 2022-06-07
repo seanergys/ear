@@ -76,7 +76,7 @@ void usage(char *app)
 			"\t\t-j\tspecifies the job id and step id to retrieve with the format [jobid.stepid] or the format [jobid1,jobid2,...,jobid_n].\n" \
 			"\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n"\
 			"\t\t-a\tspecifies the application names that will be retrieved. [default: all app_ids]\n" \
-			"\t\t-c\tspecifies the file where the output will be stored in CSV format. [default: no file]\n" \
+			"\t\t-c\tspecifies the file where the output will be stored in CSV format. If the argument is \"no_file\" the output will be printed to STDOUT [default: off]\n" \
 			"\t\t-t\tspecifies the energy_tag of the jobs that will be retrieved. [default: all tags].\n" \
 			"\t\t-s\tspecifies the minimum start time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].\n" \
 			"\t\t-e\tspecifies the maximum end time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].\n" \
@@ -339,7 +339,7 @@ void print_full_apps(application_t *apps, int num_apps)
 	}
 }
 
-void print_short_apps(application_t *apps, int num_apps, int fd)
+void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 {
 	uint current_job_id = -1;
 	uint current_step_id = -1;
@@ -384,7 +384,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 	int j = 0;
 #endif
 
-	if (fd == STDOUT_FILENO)
+	if (!is_csv)
 	{
 		if (avx)
 		{
@@ -788,7 +788,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 
 		}
 	}
-	if (missing_apps > 0 && fd==STDOUT_FILENO)
+	if (missing_apps > 0 && !is_csv)
 		printf("\nSome jobs are not being shown because either their avg. frequency, time or total energy were 0. To see those jobs run with -l option.\n");
 
 	if (avx)
@@ -1075,7 +1075,7 @@ void print_loops(loop_t *loops, int num_loops)
 			}
 			if (sig.gpu_sig.num_gpus)
 				gpuf /= sig.gpu_sig.num_gpus;
-
+ 
 			if (gpuused > 0)
 			{
 				gpuu /= gpuused;
@@ -1156,9 +1156,16 @@ void read_loops(char *user, query_adds_t *q_a)
 	if (strlen(csv_path) > 0)
 	{
 		int i;
-		for (i = 0; i < num_loops; i++)
-			append_loop_text_file_no_job(csv_path, &loops[i], 1, 0, ' ');
-		printf("appended %d loops to %s\n", num_loops, csv_path);
+		if (!strcmp(csv_path, "no_file"))
+		{
+			for (i = 0; i < num_loops; i++)
+				print_loop_fd(STDOUT_FILENO, &loops[i]);
+		}
+		else {
+			for (i = 0; i < num_loops; i++)
+				append_loop_text_file_no_job(csv_path, &loops[i], 1, 0, ' ');
+			printf("appended %d loops to %s\n", num_loops, csv_path);
+		}
 	} else {
 		print_loops(loops, num_loops);
 	}
@@ -1264,21 +1271,41 @@ void read_from_database(char *user, query_adds_t *q_a)
 	{
 
 		if (full_length) print_full_apps(apps, num_apps);
-		else print_short_apps(apps, num_apps, STDOUT_FILENO);
+		else print_short_apps(apps, num_apps, STDOUT_FILENO, 0);
 	}
 
 	else
 	{
-		if (full_length)
-			for (i = 0; i < num_apps; i++)
-				append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+		if (full_length) 
+		{
+			if (!strcmp(csv_path, "no_file")) 
+			{
+				for (i = 0; i < num_apps; i++)
+					print_application_fd(STDOUT_FILENO, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+			} 
+			else
+			{
+				for (i = 0; i < num_apps; i++) {
+					append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+				}
+			}
+		}
 		else
 		{
-			int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
-			print_short_apps(apps, num_apps, fd);
-			close(fd);
+			if (!strcmp(csv_path, "no_file")) 
+			{
+				int fd = STDOUT_FILENO;
+				print_short_apps(apps, num_apps, fd, 1);
+			}
+			else 
+			{
+				int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+				print_short_apps(apps, num_apps, fd, 1);
+				close(fd);
+			}
 		}
-		printf("Successfully written applications to csv. Only applications with EARL will have its information properly written.\n");
+		if (strcmp(csv_path, "no_file")) //don't print the message if we are outputting to stdout
+			printf("Successfully written applications to csv. Only applications with EARL will have its information properly written.\n");
 	}
 
 	free(apps);
@@ -1291,7 +1318,7 @@ void read_from_files(char *path, char *user, query_adds_t *q_a)
 	application_t *apps;
 	int num_apps = read_application_text_file(path, &apps, 0);
 	if (full_length) print_full_apps(apps, num_apps);
-	else print_short_apps(apps, num_apps, STDOUT_FILENO);
+	else print_short_apps(apps, num_apps, STDOUT_FILENO, 0);
 }
 
 int main(int argc, char *argv[])
@@ -1418,7 +1445,7 @@ int main(int argc, char *argv[])
 			case 's':
                 if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
                 {
-                    printf( "Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
                     free_cluster_conf(&my_conf);
 					exit(1);
 				}
@@ -1427,7 +1454,7 @@ int main(int argc, char *argv[])
 			case 'e':
                 if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
                 {
-                    printf( "Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
                     free_cluster_conf(&my_conf);
 					exit(1);
 				}
