@@ -24,7 +24,7 @@
 #include <common/system/time.h>
 #include <common/output/verbose.h>
 
-#define AFD_MAX        8192
+#define AFD_MAX        4096
 #define AFD_INFINITE  -1 // Infinite timeout
 
 typedef struct afd_set_s {
@@ -34,8 +34,13 @@ typedef struct afd_set_s {
     uint fds_count;
     int fd_max;
     int fd_min;
+    int init;
 } afd_set_t;
 
+/* Used to clean and initialize an afd_set. */
+void afd_init(afd_set_t *set);
+
+/* Set a file descriptor, and init the afd_set if not done yet. */
 void afd_set(int fd, afd_set_t *set, int flags, cchar *tag);
 
 int afd_isset(int fd, afd_set_t *set, int flags);

@@ -206,7 +206,7 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
 
-		verbose(VEARD_LAPI_DEBUG, "EARD misc");
+    verbose(VEARD_LAPI_DEBUG, "EARD misc");
     dcase_init(CONNECT_EARD_NODE_SERVICES);
         connect_service(&req);
     dcase(DISCONNECT_EARD_NODE_SERVICES);
@@ -223,7 +223,7 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
-		verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpufreq");
+    verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpufreq");
     dcase_init(RPC_MGT_CPUFREQ_GET_API);
         data = (char *) &mc.api;
         size = sizeof(uint);
@@ -364,7 +364,7 @@ int services_mgt_gpu(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
-		verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpu");
+    verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpu");
     // Always answering (if s != SUCCESS the error message is sent)
     if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
         return 0;
@@ -379,7 +379,7 @@ int services_met_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
-		verbose(VEARD_LAPI_DEBUG,"EARD met cpufreq");
+    verbose(VEARD_LAPI_DEBUG,"EARD met cpufreq");
     dcase_init(RPC_MET_CPUFREQ_GET_API);
         data = (char *) &uc.api;
         size = sizeof(uint);
@@ -406,7 +406,7 @@ int services_met_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
-		verbose(VEARD_LAPI_DEBUG, "EARD met_imcfreq");
+    verbose(VEARD_LAPI_DEBUG, "EARD met_imcfreq");
     dcase_init(RPC_MET_IMCFREQ_GET_API);
         data = (char *) &ui.api;
         size = sizeof(uint);
@@ -436,7 +436,7 @@ int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
-		verbose(VEARD_LAPI_DEBUG,"EARD met bandwith");
+    verbose(VEARD_LAPI_DEBUG,"EARD met bandwith");
     dcase_init(RPC_MET_BWIDTH_GET_API);
         data = (char *) &ub.api;
         size = sizeof(uint);

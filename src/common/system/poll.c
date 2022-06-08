@@ -20,7 +20,7 @@
 #include <common/system/poll.h>
 #include <common/output/debug.h>
 
-static void afd_init(afd_set_t *set)
+void afd_init(afd_set_t *set)
 {
     int i;
     for (i = 0; i < AFD_MAX; ++i) {
@@ -31,18 +31,19 @@ static void afd_init(afd_set_t *set)
     }
     set->fd_min = AFD_MAX;
     set->fd_max = 0;
+    set->init   = 1;
 }
 
 void afd_set(int fd, afd_set_t *set, int flags, cchar *tag)
 {
-    if (set->fds_count == 0) {
+    if (set->init == 0) {
         afd_init(set);
     }
     if (fd >= AFD_MAX || fd < 0 || set->fds[fd].fd != -1) {
         return;
     }
 
-    set->tags[fd]       = tag;
+    set->tags[fd]        = tag;
     set->fds[fd].fd      = fd;
     set->fds[fd].events  = flags;
     set->fds[fd].revents = 0;
