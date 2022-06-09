@@ -641,15 +641,18 @@ void update_earl_node_mgr_info()
         job_id sid = node_mgr_data[j].sid;
 
         time_t ct = node_mgr_data[j].creation_time;
+
         if (ct != node_mgr_job_info[j].creation_time) {
             while (node_mgr_info_lock() != EAR_SUCCESS);
+
             jid = node_mgr_data[j].jid;
             sid = node_mgr_data[j].sid;
-            ct = node_mgr_data[j].creation_time;
+            ct  = node_mgr_data[j].creation_time;
+
             node_mgr_info_unlock();
 
             /* Double validation after getting the lock */
-            if (ct != node_mgr_job_info[j].creation_time){
+            if (ct != node_mgr_job_info[j].creation_time) {
                 if (ct == 0) {
                     dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
                     dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
@@ -667,7 +670,6 @@ void update_earl_node_mgr_info()
     }
     nodemgr_get_num_jobs_attached(&current_jobs_in_node);
     exclusive = exclusive && (current_jobs_in_node == 1);
-
 }
 
 void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmgr_earl)
@@ -697,26 +699,32 @@ void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmg
     }
 }
 
-void accum_estimations(lib_shared_data_t *data,shsignature_t *sig)
+void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 {
-	uint p;
-	double time_s;	
-	for (p = 0; p< data->num_processes; p++){
-		time_s = sig_shared_region[p].period;
-		sig_shared_region[p].sig.accum_energy     += sig_shared_region[p].sig.DC_power * time_s;
-		sig_shared_region[p].sig.accum_mem_access += sig_shared_region[p].sig.GBS * 1024 * 1024 * 1024 * time_s;
-		sig_shared_region[p].sig.accum_avg_f      += sig_shared_region[p].sig.avg_f * time_s;
-		sig_shared_region[p].sig.valid_time       += time_s;
-		sig_shared_region[p].sig.accum_dram_energy      += sig_shared_region[p].sig.DRAM_power * time_s;
-		sig_shared_region[p].sig.accum_pack_energy      += sig_shared_region[p].sig.PCK_power  * time_s;
-		verbose_master(3,"Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ", p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power, time_s, sig_shared_region[p].sig.accum_mem_access, sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f , time_s, sig_shared_region[p].sig.accum_dram_energy, sig_shared_region[p].sig.DRAM_power, sig_shared_region[p].sig.accum_pack_energy, sig_shared_region[p].sig.PCK_power);
+    uint p;
+    double time_s;
+    for (p = 0; p < data->num_processes; p++) {
+        time_s = sig_shared_region[p].period;
 
-	}
+        sig_shared_region[p].sig.accum_energy      += sig_shared_region[p].sig.DC_power * time_s;
+        sig_shared_region[p].sig.accum_mem_access  += sig_shared_region[p].sig.GBS * 1024 * 1024 * 1024 * time_s;
+        sig_shared_region[p].sig.accum_avg_f       += sig_shared_region[p].sig.avg_f * time_s;
+        sig_shared_region[p].sig.valid_time        += time_s;
+        sig_shared_region[p].sig.accum_dram_energy += sig_shared_region[p].sig.DRAM_power * time_s;
+        sig_shared_region[p].sig.accum_pack_energy += sig_shared_region[p].sig.PCK_power * time_s;
+
+        verbose_master(3, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ",
+                p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power,
+                time_s, sig_shared_region[p].sig.accum_mem_access,
+                sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f,
+                time_s, sig_shared_region[p].sig.accum_dram_energy,
+                sig_shared_region[p].sig.DRAM_power, sig_shared_region[p].sig.accum_pack_energy,
+                sig_shared_region[p].sig.PCK_power);
+    }
 }
 
-
-void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr)
+void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
 	cpu_power_model_project(data, sig, nmgr);
-	return;	
+	return;
 }

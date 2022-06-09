@@ -17,8 +17,9 @@
 
 /**
  *    \file shared_configuration.h
- *    \brief This file defines the API to create/attach/dettach/release the shared memory area between the EARD and the EARLib. It is used to communicate the EARLib updates 
- *	remotelly requested
+ *    \brief This file defines the API to create/attach/dettach/release the shared memory area
+ *    between the EARD and the EARLib. It is used to communicate the EARLib updates remotelly
+ *    requested.
  */
 
 #ifndef _LIB_SHARED_DATA_H
@@ -90,7 +91,7 @@ typedef struct shsignature {
     uint              master;
     pid_t             pid;
     uint              ready;
-		uint 							exited;
+	uint              exited;
     uint              iterations;
     mpi_information_t mpi_info;
     mpi_calls_types_t mpi_types_info;
@@ -114,34 +115,35 @@ typedef struct node_mgr_sh_data {
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
 
-
 /*********** SETTINGS configuration *******************/
 
 /** Sets in path the filename for the shared memory area between MPI processes
- * @param path (output)
+ * @param[out] path Output path.
  */
 int get_lib_shared_data_path(char *tmp, uint ID, char *path);
 
-/** Creates the shared mmemory. It is used by node master process
-*/
+/** \brief Creates the shared mmemory.
+ * It is used by node master process.
+ */
 lib_shared_data_t * create_lib_shared_data_area(char * path);
 
-/** Connects with a previously created shared memory region. It is used by no node master processes
-*/
+/** \brief Connects with a previously created shared memory region.
+ * It is used by no node master processes.
+ */
 lib_shared_data_t * attach_lib_shared_data_area(char * path, int *fd);
 
-/** Disconnect from a previously connected shared memory region. It is used by no node master processes
-*/
+/** \brief Disconnect from a previously connected shared memory region.
+ * It is used by no node master processes.
+ */
 void dettach_lib_shared_data_area(int fd);
 
-/** Releases a shared memory area previously created. It is used by node master process
-*/
-void lib_shared_data_area_dispose(char * path);
+/** \brief Releases a shared memory area previously created.
+ * It is used by node master process.
+ */
+void lib_shared_data_area_dispose(char *path);
 
-/** Prints in the stderr values for the setting 
-*/
+/** Prints in the stderr values for the setting. */
 void print_lib_shared_data(lib_shared_data_t *setting);
-
 
 /************** SHARED SIGNATURES ***************/
 
@@ -150,27 +152,32 @@ void print_lib_shared_data(lib_shared_data_t *setting);
  */
 int get_shared_signatures_path(char *tmp,uint ID, char *path);
 
-/** Creates the shared mmemory. It is used by node master process
+/** Creates the shared mmemory.
+ * It is used by node master process.
  */
-shsignature_t * create_shared_signatures_area(char * path,int num_processes);
+shsignature_t * create_shared_signatures_area(char * path, int num_processes);
 
-/** Connects with a previously created shared memory region. It is used by no node master processes
+/** Connects with a previously created shared memory region.
+ * It is used by no node master processes.
  */
 shsignature_t * attach_shared_signatures_area(char * path,int num_processes, int *fd);
 
-/** Disconnect from a previously connected shared memory region. It is used by no node master processes
+/** Disconnect from a previously connected shared memory region.
+ * It is used by no node master processes.
  */
 void dettach_shared_signatures_area(int fd);
 
-/** Releases a shared memory area previously created. It is used by node master process
+/** Releases a shared memory area previously created.
+ * It is used by node master process.
  */
 void shared_signatures_area_dispose(char * path);
 
-void signature_ready(shsignature_t *sig,int cur_state);
-int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
+void signature_ready(shsignature_t *sig, int cur_state);
+
+int compute_total_signatures_ready(lib_shared_data_t *data, shsignature_t *sig);
 
 /** Marks all the sh signatures ready = 0 */
-void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig);
+void free_node_signatures(lib_shared_data_t *data, shsignature_t *sig);
 
 int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
@@ -225,8 +232,8 @@ void* mpi_info_get_perc_mpi(void *mpi_inf);
 void* mpi_info_get_tcomp(void *mpi_inf);
 
 /* Node mgr earl support functions */
-void  init_earl_node_mgr_info();
-void  update_earl_node_mgr_info();
+void init_earl_node_mgr_info();
+void update_earl_node_mgr_info();
 #define PER_PROCESS 0
 #define PER_JOB     1
 void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);
