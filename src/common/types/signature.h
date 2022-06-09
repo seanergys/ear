@@ -77,7 +77,6 @@ typedef struct mini_sig
 		double valid_time;
 }ssig_t;
 
-
 typedef struct signature
 {
     double DC_power;
@@ -110,26 +109,24 @@ typedef struct signature
 
 // Misc
 
-/** Initializes all values of the signature to 0.*/
+/** Initializes all values of the signature to 0.
+ * \param[out] sig The signature pointer to be initialized. */
 void signature_init(signature_t *sig);
 
-/** Replicates the signature in *source to *destiny */
-void signature_copy(signature_t *destiny, signature_t *source);
-/** Checks all the values are valid to be reported to DB and fixes potential problems*/
+/** Replicates the signature in *source to *destiny. */
+void signature_copy(signature_t *destiny, const signature_t *source);
+/** Checks all the values are valid to be reported to DB and fixes potential problems. */
 void clean_db_signature(signature_t *sig, double limit);
-
 /** Outputs the signature contents to the file pointed by the fd. */
 void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_column, char sep);
+
 void compute_vpi(double *vpi,signature_t *sig);
 void compute_ssig_vpi(double *vpi,ssig_t *sig);
 void compute_ssig_vpi2(double *vpi,ssig_t *sig);
 
-
-
 void print_signature_fd_binary(int fd, signature_t *sig);
 void read_signature_fd_binary(int fd, signature_t *sig);
-void signature_to_str(signature_t *sig,char *msg,size_t limit);
-
+void signature_to_str(signature_t *sig, char *msg, size_t limit);
 
 void acum_sig_metrics(signature_t *dst,signature_t *src);
 void acum_ssig_metrics(ssig_t *avg_sig,ssig_t *s);
@@ -143,14 +140,10 @@ void from_minis_to_sig(signature_t *s,ssig_t *minis);
 void copy_mini_sig(ssig_t *dst,ssig_t *src);
 void minis_to_str(ssig_t *s,char *b);
 
-
 double sig_total_gpu_power(signature_t *s);
 double sig_node_power(signature_t *s);
 int sig_gpus_used(signature_t *s);
 
-void set_global_metrics(ssig_t *avg_sig,ssig_t *s);
-
-
-
+void set_global_metrics(ssig_t *avg_sig, ssig_t *s);
 
 #endif

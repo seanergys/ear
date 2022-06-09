@@ -32,7 +32,7 @@
 #include <common/math_operations.h>
 #include <common/output/debug.h>
 
-void signature_copy(signature_t *destiny, signature_t *source)
+void signature_copy(signature_t *destiny, const signature_t *source)
 {
     memcpy(destiny, source, sizeof(signature_t));
 }
