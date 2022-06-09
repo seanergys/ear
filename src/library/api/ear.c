@@ -57,7 +57,6 @@
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
 #include <common/types/version.h>
-#include <common/types/application.h>
 #include <common/types/pc_app_info.h>
 #include <management/cpufreq/frequency.h>
 #include <common/hardware/hardware_info.h>
@@ -1116,7 +1115,7 @@ void ear_init()
 				application.job.step_id = my_step_id;
 
 				debug("Starting job");
-				//sets the job start_time
+				// sets the job start_time
 				start_job(&application.job);
 				debug("Job time initialized");
 
