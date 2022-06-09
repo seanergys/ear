@@ -31,7 +31,7 @@ static const char *mgt_names[] = {
     "mgt_imcfreq_get_current_list" };
 
 static struct mgt_ops_s {
-	state_t (*load)             (topology_t *c, int eard);
+	state_t (*load)             (topology_t *c, int eard, void *p);
 	state_t (*get_api)          (uint *api);
 	state_t (*init)             (ctx_t *c);
 	state_t (*dispose)          (ctx_t *c);
@@ -74,7 +74,7 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 			return;
 		}
 		// Loading management imcfreq API
-		mgt_ops.load(tp, eard);
+		mgt_ops.load(tp, eard, NULL);
 		mgt_ops.get_api(&api);
 		// If management API is not cool, bye
 		if (api <= API_DUMMY) {

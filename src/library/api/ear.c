@@ -16,14 +16,22 @@
  */
 
 #define _GNU_SOURCE
-//#define SHOW_DEBUGS 1
-#if COUNTDOWN
+// #define SHOW_DEBUGS 1
+#if 0
 #define SINGLE_CONNECTION 0
 #else
 #define SINGLE_CONNECTION 1
 #endif
 
 #define BASIC_PERIOD 1000
+
+/* 1 means invatid shared memory or invalid id (all processes), 
+ * 2 means invatid shared memory or invalid id (half processes),
+ * 3 eard not present . 0 means no fake (default) */
+#define FAKE_EARD_ERROR "FAKE_EARD_ERROR"
+
+/* 1 means master error, 2 means no master error at ear_finalize i. 0 no fake (default)*/
+#define FAKE_PROCESS_ERRROR "FAKE_PROCESS_ERRROR"
 
 #include <sched.h>
 #include <pthread.h>
@@ -201,6 +209,8 @@ static uint ITERS_PER_PERIOD;
 #define MAX_TRIES 1
 
 uint using_verb_files = 0;
+uint per_proc_verb_file = 0;
+
 uint exclusive = 1;
 
 static void print_local_data()
@@ -233,6 +243,7 @@ static void print_local_data()
 								verbose(1, "%30s: %u", "EAR privileged user",
                                         system_conf->user_type==AUTHORIZED);
 								verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
+								verbose(1, "%30s: %lu", "Max CPU freq", system_conf->max_freq);
 								verbose(1, "-------------------------------------------------------");
 				}
 }
@@ -376,6 +387,8 @@ void create_shared_regions()
 		lib_shared_region->num_processes=1;
 		lib_shared_region->num_signatures=0;
 		lib_shared_region->master_rank = masters_info.my_master_rank;
+		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
 	}
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
@@ -591,6 +604,7 @@ void attach_shared_regions()
 				if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
 					verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
 				}
+				/* Synchro: This value is set by the master */
 				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 								usleep(10000);
 								verbose(3,"%d:Waiting, current index %u", my_node_id, lib_shared_region->node_mgr_index);
@@ -871,8 +885,9 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 
 void ear_lib_sig_handler(int s)
 {
-				ear_finalize(EAR_CANCELLED);
+        //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
 				cancelled = 1;
+				ear_finalize(EAR_CANCELLED);
 				exit(0);
 }
 /****************************************************************************************************************************************************************/
@@ -891,28 +906,20 @@ void ear_init()
 				char *summary_pathname;
 				char *tmp;
 				state_t st;
-				char *verb_path=getenv(FLAG_EARL_VERBOSE_PATH);
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 
-				/* Use a verbose file per process instead of only master */
-				char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
-				uint per_proc_verb_file = 0;
-
-printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
-printf("JORDI\n");
-printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
-
 				printf("EAR Init\n");
+				uint fake_eard_error = 0;
+				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
+				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
 
-				if (per_proc_v_file != NULL) {
-								per_proc_verb_file = atoi(per_proc_v_file);
-				}
 
 				if (ear_lib_initialized){
 								verbose_master(1,"EAR library already initialized");
 								return;
 				}
+                ear_lib_initialized = 1;
 				VERB_SET_LV(0);
 
 				timestamp_getfast(&ear_application_time_init);
@@ -979,7 +986,7 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 								unlink(lib_shared_region_path);
 				}
 				if (is_already_connected(my_job_id,my_step_id,getpid())){
-								verbose_master(VEAR_INIT,"Warning, Job %d step %d process %d already conncted\n",my_job_id,my_step_id,getpid());
+								verbose_master(VEAR_INIT, "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n", COL_RED, COL_CLR, my_job_id, my_step_id, getpid());
 								return;
 				}
 				// Getting if the local process is the master or not
@@ -1043,9 +1050,23 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 				debug("resched_conf = %p", resched_conf);
 				if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
 				debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
+				if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
 
+				uint valid_ID;
+				if ((system_conf != NULL) && (resched_conf != NULL)){
+					valid_ID = (system_conf->id == create_ID(my_job_id,my_step_id));
+					if (fake_eard_error == 1){
+						/* This is synthetic error to simulated the case the shared memory is not present OR invalid ID */
+						valid_ID = 0;	
+					}
+					if (fake_eard_error == 2){
+						if (ear_my_rank %2 ) valid_ID = 0;
+					}
+				}else {
+					valid_ID = 0;
+				}
 				/* Updating configuration */
-				if ((system_conf != NULL) && (resched_conf != NULL) && (system_conf->id == create_ID(my_job_id,my_step_id))){
+				if (valid_ID){
 								debug("Updating the configuration sent by the EARD");
 								update_configuration();	
 				}else{
@@ -1104,7 +1125,12 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 #if SINGLE_CONNECTION
                 if (!my_id && eard_ok){ //only the master will connect with eard
                     verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
-                    if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+										state_t ret = eards_connect(&application, my_node_id);
+										if (fake_eard_error == 3){
+											ret = EAR_ERROR;
+										}
+                    //if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+                    if (ret == EAR_SUCCESS) {
                         debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
                         notify_eard_connection(1);
                         mark_as_eard_connected(my_job_id,my_step_id,getpid());
@@ -1176,28 +1202,44 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
 
 				/* create verbose file for each job */
-				if (verb_path != NULL){
-							  verbose_master(2, " Per process log set to %u", per_proc_verb_file);	
-								if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
-												if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
-																error("MR[%d] Verbose files folder cannot be created (%s)", masters_info.my_master_rank, strerror(errno));
-												}else{
-																using_verb_files = 1;
-																char file_name[128];
-																sprintf(file_name, "%s/earl_log.%d.%d.%d.%d", verb_path,lib_shared_region->master_rank,my_node_id, my_step_id, my_job_id);
-																verbose_master(VEAR_INIT,"Using %s as earl log file",file_name);
-																int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
-																if (fd != -1){
-																				VERB_SET_FD(fd);
-																				DEBUG_SET_FD(fd);
-																				ERROR_SET_FD(fd);
-																				WARN_SET_FD(fd);
-																}else{
-																				verbose_master(VEAR_INIT,"Log file cannot be created (%s)",strerror(errno));
-																}
-												}
-								}
-				}
+				char *verb_path = getenv(FLAG_EARL_VERBOSE_PATH);
+                if (verb_path != NULL) {
+
+                    /* Use a verbose file per process instead of only master */
+                    char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
+
+                    if (per_proc_v_file != NULL) {
+                        per_proc_verb_file = atoi(per_proc_v_file);
+                        verbose_master(2, "Per-process log: %u", per_proc_verb_file);	
+                    }
+
+                    if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
+                        if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
+                            per_proc_verb_file = 0;
+                            error("MR[%d] Verbose files folder cannot be created (%s)",
+                                    masters_info.my_master_rank, strerror(errno));
+                        } else {
+                            using_verb_files = 1;
+
+                            char file_name[128];
+                            // Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>
+                            sprintf(file_name, "%s/earl_log.%d.%d.%d.%d",
+                                    verb_path, lib_shared_region->master_rank,
+                                    my_node_id, my_step_id, my_job_id);
+                            verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
+
+                            int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
+                            if (fd != -1) {
+                                VERB_SET_FD(fd);
+                                DEBUG_SET_FD(fd);
+                                ERROR_SET_FD(fd);
+                                WARN_SET_FD(fd);
+                            } else {
+                                verbose_master(VEAR_INIT, "Log file cannot be created (%s)", strerror(errno));
+                            }
+                        }
+                    }
+                }
 
 
 				// Initializing architecture and topology
@@ -1212,12 +1254,12 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 
 				// Initializing metrics
 
-				if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
-								error("in EAR metrics initialization (%s), setting EARL off", state_msg);
-								eard_ok = 0;
-								strcpy(application.job.policy," "); /* Cleaning policy */
-								debug("Process %d not completes the initialization", my_node_id);
-								return;
+                if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
+                    verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
+                    eard_ok = 0;
+                    strcpy(application.job.policy," "); /* Cleaning policy */
+                    debug("Process %d not completes the initialization", my_node_id);
+                    return;
 				}
 
 
@@ -1311,7 +1353,7 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 #endif
 
 				init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
-				init_power_policy(system_conf,resched_conf);
+				init_power_policy(system_conf, resched_conf);
 				verbose_master(VEAR_INIT,"Policies and models initialized");	
 
 				if (cpu_power_model_load(system_conf, &system_conf->installation, &arch_desc, API_NONE) == EAR_SUCCESS){
@@ -1398,8 +1440,6 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
                     traces_mpi_init();
                 }
 
-                ear_lib_initialized=1;
-
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {
 								verbose_master(1, "EAR initialized successfully ");
@@ -1410,6 +1450,8 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 				if (masters_info.my_master_rank >= 0 ){
 								cpu_set_t jmask;
 								debug("Waiting for processes to fill shared signatures");
+
+								/* Synchro : Wait the PID is set by all the processes*/
 								while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
 								debug("Computing number of cpus per job and node mask ");
 								compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
@@ -1456,28 +1498,51 @@ printf("##@@##@@##@@##@@##@@##@@##@@##@@##@@\n");
 
 void ear_finalize(int exit_status)
 {
-				verbose_master(2, "ear_finalize on=%d status %d", lib_shared_region->earl_on, exit_status);
+				uint fake_error = 0;
+				char *cfake = getenv(FAKE_PROCESS_ERRROR);
+				if (cfake != NULL) fake_error = atoi(cfake);
+
+				verbose_master(2, "ear_finalize on=%d status %d ", lib_shared_region->earl_on, exit_status);
+				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
+		
+				if (fake_error){	
+				/* This use case forces sintheticaly a master proces exiting because an error. The
+ 				 * objective is to test the EARL is not blocking. We just mark all the masters as 
+ 				 * cancelled */ 	
+				if (masters_info.my_master_rank >= 0) cancelled = 1;
+				}
+
+				if (fake_error == 2){
+				/* This use case forces sintheticaly a NO master proces exiting because an error. The
+         * objective is to test the EARL is not blocking. We just mark all the NO masters as 
+         * cancelled */
+        if (masters_info.my_master_rank < 0) cancelled = 1;
+				}
+
+
 				// if we are not the master, we return
-				if ((cancelled) || (synchronize_masters == 0 )){ 
+				if ((cancelled && (masters_info.my_master_rank < 0)) || (synchronize_masters == 0 )) {
 								cleanup_job_folder();
+								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}
 #if ONLY_MASTER
 				if (my_id) {
+								sig_shared_region[my_node_id].exited = 1;
 								return;
-				}	
+				}
 #endif
 				if (!eard_ok && !EARL_LIGHT){ 
 								cleanup_job_folder();
 								return;
 				}
 				if (!lib_shared_region->earl_on){
-								cleanup_job_folder();
 								return;
 				}
-				if (!eards_connected() && (masters_info.my_master_rank >= 0) && !EARL_LIGHT){
+				if (!eards_connected() && !EARL_LIGHT && (masters_info.my_master_rank>=0)){
 								lib_shared_region->earl_on = 0;
 								cleanup_job_folder();
+								sig_shared_region[my_node_id].exited = 1;
 								return;
 				}
 				debug("%d: Finalizing", my_node_id);
@@ -1491,7 +1556,7 @@ void ear_finalize(int exit_status)
 
 				if (masters_info.my_master_rank>=0){
 								verbose_master(2,"Stopping periodic earl thread");	
-								verbose_master(2,"Stopping tracing");	
+								verbose_master(2,"Stopping tracing");
 								traces_stop();
 								traces_end(ear_my_rank, my_id, 0);
 
@@ -1506,6 +1571,7 @@ void ear_finalize(int exit_status)
 				verbose_master(2,"Total resources computed %d",get_total_resources());
 				debug("%d: before metrics_dispose", my_node_id);
 				metrics_dispose(&application.signature, get_total_resources());
+				sig_shared_region[my_node_id].exited = 1;
 				debug("%d: after metrics_dispose" ,my_node_id);
 				dynais_dispose();
 				if (!my_id) frequency_dispose();
@@ -1567,8 +1633,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 				time_t curr_time;
 				double time_from_mpi_init;
 
-				if (!ear_lib_initialized){
-					verbose_master(2,"Warnin: EAR not initialized");
+				if (!ear_lib_initialized) {
+					verbose_master(2, "%sWARNING%s EAR not initialized.", COL_RED, COL_CLR);
 					ear_init();
 				}
 

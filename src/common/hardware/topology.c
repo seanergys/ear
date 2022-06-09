@@ -301,7 +301,7 @@ static int is_online(const char *path)
 	if (access(path, F_OK) != 0) {
 		return 0;
 	}
-	if (state_fail(file_read(path, &c, sizeof(char)))) {
+	if (state_fail(ear_file_read(path, &c, sizeof(char)))) {
 		return 0;
 	}
 	if (c != '1') {

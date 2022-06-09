@@ -60,7 +60,6 @@
  * They modify the default configuration.
  * @{
  */
-#define HACK_LIBRARY_DIR             SCHED_PREFIX "HACK_LIBRARY_DIR"        // Sets a specific library path (the loader selects the file).
 #define HACK_LIBRARY_FILE            SCHED_PREFIX "HACK_LIBRARY_FILE"       // Sets a specific library file.
 #define HACK_LOADER_FILE             SCHED_PREFIX "HACK_LOADER_FILE"        // Sets a specific loader file.
 #define HACK_NVML_FILE               SCHED_PREFIX "HACK_NVML_FILE"          // The GPU API loads a specific NVML library file.

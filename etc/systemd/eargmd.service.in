@@ -10,7 +10,6 @@ Type=simple
 Environment="EAR_ETC=@sysconfdir@"
 
 ExecStart=@prefix@/sbin/eargmd
-ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 KillMode=process
 Restart=on-failure

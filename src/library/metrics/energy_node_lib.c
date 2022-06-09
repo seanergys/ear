@@ -15,28 +15,32 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+// #define SHOW_DEBUGS 1
+
 #include <common/config.h>
-//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/output/verbose.h>
 #include <common/system/symplug.h>
 #include <library/metrics/energy_node_lib.h>
+#include <library/common/utils.h>
 
 static struct energy_op
 {
-	state_t (*datasize)	(size_t *size);
-	state_t (*frequency)	(ulong *freq);
-	state_t (*units)	(uint *units);
-	state_t (*accumulated)	(unsigned long *e,edata_t init,edata_t end);
-  state_t (*energy_to_str)	(char *str,edata_t end);
-	uint    (*is_null)				(edata_t end);
-	state_t (*copy)						(edata_t dest,edata_t src);
+    state_t (*datasize)	     (size_t *size);
+    state_t (*frequency)     (ulong *freq);
+    state_t (*units)	     (uint *units);
+    state_t (*accumulated)   (unsigned long *e, edata_t init,edata_t end);
+    state_t (*energy_to_str) (char *str,edata_t end);
+    uint    (*is_null)       (edata_t end);
+    state_t (*copy)          (edata_t dest, edata_t src);
 } energy_ops;
-static char energy_manu[SZ_NAME_MEDIUM];
-static char energy_prod[SZ_NAME_MEDIUM];
+
 static char energy_objc[SZ_PATH];
+
 static int  energy_loaded  = 0;
+
 static size_t my_energy_data_size;
+
 static const int   energy_nops    = 7;
 static const char *energy_names[] = {
 	"energy_datasize",
@@ -50,58 +54,43 @@ static const char *energy_names[] = {
 
 state_t energy_lib_init(settings_conf_t *conf)
 {
-	state_t ret=EAR_SUCCESS;
-	int found=0;
-	char *my_energy_plugin;
-	char *ins_path       = getenv(HACK_EARL_INSTALL_PATH);
+    char my_plug_path[512];
+    if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
+                    getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
+        return_msg(EAR_ERROR, "Plugins path can not be built.");
+    }
 
-	debug("energy_init library");
-	if (conf == NULL) {
-		state_return_msg(EAR_BAD_ARGUMENT, 0,
-		 "the conf value cannot be NULL if the plugin is not loaded");
-	}
-    // TODO: This variable is not defined anywhere
+    char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
 
-	my_energy_plugin=getenv("SLURM_EAR_ENERGY_PLUGIN");
-	if ((my_energy_plugin==NULL) || (conf->user_type!=AUTHORIZED)){
-		found = (strcmp(conf->installation.obj_ener, "default") != 0);
+    // If hack, then the energy plugin is a path, otherwise is a shared object file.
+    if (hack_energy_plugin_path != NULL) {
+        debug("Using a hack energy plugin path");
+        strcpy(energy_objc, hack_energy_plugin_path);
+    } else if (conf->installation.obj_ener != NULL) {
+        debug("Using the configured energy plugin shared object file");
+        sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
+    } else {
+        return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
+    }
 
-		if (found)
-		{
-			sprintf(energy_objc, "%s/energy/%s",
-				conf->installation.dir_plug, conf->installation.obj_ener);
-			sprintf(energy_prod, "custom");
-			sprintf(energy_manu, "custom");
-		}
-	}else{
-		found=1;
-		strcpy(energy_objc,my_energy_plugin);
-	}
-	if (found) debug("loading shared object '%s'", energy_objc);
+    debug("Loading %s plugin...", energy_objc);
 
+    state_t ret;
+    if (state_fail(ret = symplug_open(energy_objc, (void **) &energy_ops,
+                    energy_names, energy_nops))) {
+        debug("symplug_open() returned %d (%s)", ret, intern_error_str);
+        return_msg(ret, "Energy plugin symbols can not be opened.");
+    }
+    
+    energy_loaded = 1;
 
-	if (found)
-	{
-		//
-		ret = symplug_open(energy_objc, (void **) &energy_ops, energy_names, energy_nops);
-		if (ret!=EAR_SUCCESS) debug("symplug_open() returned %d (%s)", ret, intern_error_str);		
+    if (energy_ops.datasize != NULL) {
+        energy_ops.datasize(&my_energy_data_size);
+    } else {
+        my_energy_data_size = 1;
+    }
 
-		if (state_fail(ret)) {
-			return ret;
-		}
-
-		//
-		energy_loaded = 1;
-	} else {
-		ret = EAR_NOT_FOUND;
-	}
-	debug("Energy plugin %s loaded", energy_objc);
-	if (energy_ops.datasize != NULL){
-		energy_ops.datasize(&my_energy_data_size);
-	}else{
-		my_energy_data_size = 1;
-	}
-	return ret;
+    return EAR_SUCCESS;
 }
 
 state_t energy_lib_datasize(size_t *size)

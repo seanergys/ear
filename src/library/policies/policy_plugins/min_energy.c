@@ -23,7 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -58,9 +58,10 @@ extern unsigned long ext_def_freq;
 /* IMC management */
 extern uint dyn_unc;
 extern double imc_extra_th;
-extern uint *imc_max_pstate,*imc_min_pstate;
+extern uint *imc_max_pstate, *imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
 static uint imc_set_by_hw = 1;
+extern uint max_policy_imcfreq_ps;
 
 static int min_pstate;
 static uint ref_imc_pstate;
@@ -425,7 +426,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         is_cpu_bound(my_app, &cbound);
         is_mem_bound(my_app, &mbound);
 
-        debug("App CPU bound %u memory bound %u", cbound, mbound);
+        verbose_master(2, "App CPU bound %u memory bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the coefficents were available.
@@ -482,28 +483,41 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 local_penalty = base_penalty;
             } else {
 
-							/* 1.2: Per process CPU frequency selection */
+				/* 1.2: Per process CPU frequency selection */
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig); // Local VPI
 
-                ulong eff_p_cpuf, process_avgcpuf;
-                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff, &process_avgcpuf);
+                ulong eff_p_cpuf, process_avgcpuf, cpus_cnt_ret;
+
+                pstate_freqtoavg(sig_shared_region[i].cpu_mask, lib_shared_region->avg_cpufreq, metrics_get(MET_CPUFREQ)->devs_count, &process_avgcpuf, &cpus_cnt_ret);
+
+                debug("Process %d: avg. cpufreq %lu num cpus %lu", i, process_avgcpuf, cpus_cnt_ret);
 
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+								double ltpi, lgbs, lpower;
 
-								/* Critical path is computed in int_policy_ok */
+								ltpi = my_app->TPI;
+								lgbs = my_app->GBS;
+								lpower = my_app->DC_power;
+
+								my_app->GBS 		 = lgbs * lib_shared_region->num_processes;
+								my_app->DC_power = lpower * lib_shared_region->num_processes;
+								
+								verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
+
+				/* Critical path is computed in int_policy_ok */
                 if (critical_path[i] == 1) {
                     // Process was selected to be in the critical path
-                    if (!mbound) {
-												/* If the process is part of the critical path and is CPU bound */
+                    if (cbound) {
+						/* If the process is part of the critical path and is CPU bound */
                         eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf, 0);
                         if (eff_p_cpuf < process_avgcpuf) {
                             eff_p_cpuf = frequency_closest_high_freq(process_avgcpuf + 100000, 0);
                         }
                         if (use_turbo_for_cp) {
-														/* 1.2.1: Use turbo for critial path process */
+							/* 1.2.1: Use turbo for critial path process */
                             new_freq[i] = frequency_pstate_to_freq(0);
                         } else {
-														/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
+							/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
                             new_freq[i] = ear_min(eff_p_cpuf, frequency_pstate_to_freq(1));
                         }
                         verbose_master(2,
@@ -511,7 +525,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                                 i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi]);
                         continue;
                     } else {
-												/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
+						/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
                         local_penalty = base_penalty / 2;
                     }
                 } else if (critical_path[i] == 2) {
@@ -735,9 +749,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             debug("%sTrying a lower IMC freq %llu-%llu%s",COL_GRE,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
-            /* We are assuming all sockets uses the same frequency range */
-            if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
-            else{
+            /* We are assuming all sockets uses the same frequency range. */
+            if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < max_policy_imcfreq_ps) *ready = EAR_POLICY_TRY_AGAIN;
+            else {
                 *ready = EAR_POLICY_READY;
                 min_energy_state = SELECT_CPUFREQ;
             }
@@ -762,7 +776,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance && use_energy_models){
 
-        verbose_mpi_types(3, my_node_mpi_types_calls);
+        verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 
         uint unbalance;
         double mean, sd, mag;

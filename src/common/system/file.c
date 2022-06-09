@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdio.h>
@@ -87,8 +87,7 @@ int file_unlock_master(int fd,char *lock_file_name)
 int file_is_regular(const char *path)
 {
 	struct stat path_stat;
-	int s = stat(path, &path_stat);
-//fprintf(stderr, "LOOKING AT %s => %d (%d)\n", path, S_ISREG(path_stat.st_mode), s);
+	stat(path, &path_stat);
 
 	return S_ISREG(path_stat.st_mode);
 }
@@ -98,7 +97,7 @@ int file_is_directory(const char *path)
 	return 0;
 }
 
-ssize_t file_size(char *path)
+ssize_t ear_file_size(char *path)
 {
 	int fd = open(path, O_RDONLY);
 	ssize_t size;
@@ -113,7 +112,7 @@ ssize_t file_size(char *path)
 	return size;
 }
 
-state_t file_read(const char *path, char *buffer, size_t size)
+state_t ear_file_read(const char *path, char *buffer, size_t size)
 {
 	int fd = open(path, O_RDONLY);
 	ssize_t r;
@@ -137,7 +136,7 @@ state_t file_read(const char *path, char *buffer, size_t size)
 	state_return(EAR_SUCCESS);
 }
 
-state_t file_write(const char *path, const char *buffer, size_t size)
+state_t ear_file_write(const char *path, const char *buffer, size_t size)
 {
 	int fd = open(path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	ssize_t w;
@@ -161,7 +160,7 @@ state_t file_write(const char *path, const char *buffer, size_t size)
 	state_return(EAR_SUCCESS);
 }
 
-state_t file_clean(const char *path)
+state_t ear_file_clean(const char *path)
 {
 	if (remove(path) != 0) {
 		state_return_msg(EAR_ERROR, errno, strerror(errno));

@@ -56,6 +56,7 @@ extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
 static uint imc_set_by_hw = 0;
 static uint last_imc_pstate;
+extern uint max_policy_imcfreq_ps;
 
 static int min_pstate;
 static int ref_imc_pstate = -1;
@@ -160,23 +161,31 @@ state_t policy_init(polctx_t *c)
     if (is_mpi_enabled()) {
         mpi_app_init(c);
         is_blocking_busy_waiting(&block_type);
-        verbose_master(1, "Busy_waiting MPI set to %u", block_type == BUSY_WAITING_BLOCK);
+        verbose_master(2, "%sMIN TIME%s Busy waiting MPI: %u",
+                COL_BLU, COL_CLR, block_type == BUSY_WAITING_BLOCK);
     }
 
     /*  Config from env variables */
     if (cimc_set_by_hw != NULL) {
         imc_set_by_hw = atoi(cimc_set_by_hw);
     }
-    verbose_master(2, "Dynamic Uncore freq. management: %d\n      Using HW selection as ref: %d\n              Extra IMC penalty: %.2lf",
-            dyn_unc, imc_set_by_hw, imc_extra_th);
 
     if (cnetwork_use_imc != NULL) {
         network_use_imc = atoi(cnetwork_use_imc);
     }
-    verbose_master(2, "               Network uses IMC: %u", network_use_imc);
+
+    // Read-friendly verbose of eUFS configuration
+    verbose_master(2, "      --- eUFS configuration ---\n"
+            "Dynamic Uncore freq. management: %d\n"
+            "      Using HW selection as ref: %d\n"
+            "              Extra IMC penalty: %.2lf\n"
+            "               Network uses IMC: %u\n"
+            "      --------------------------",
+            dyn_unc, imc_set_by_hw, imc_extra_th, network_use_imc);
 
     nominal_node = frequency_get_nominal_freq();
-    verbose_master(2, "Nominal frequency is %lu", nominal_node);
+    verbose_master(2, "%sMIN TIME%s Nominal frequency of the node: %lu kHz",
+            COL_BLU, COL_CLR, nominal_node);
 
     my_app          = calloc(1, sizeof(signature_t));
     my_app->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
@@ -219,7 +228,7 @@ state_t policy_init(polctx_t *c)
         if (state_fail(policy_gpu_load(c->app, &gpus))) {
             verbose_master(2, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
         }
-        verbose_master(2, "Initializing GPU policy.");
+        verbose_master(2, "%sMIN TIME%s Initializing GPU policy...", COL_BLU, COL_CLR);
 
         if (gpus.init != NULL) {
             gpus.init(c);
@@ -322,9 +331,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         *ready = EAR_POLICY_CONTINUE;
         return EAR_ERROR;
     }
+    verbose_master(2, "%sMin_time_to_solution...........starts.......%s", COL_GRE, COL_CLR);
+
     verbose_master(2, "%sCPU COMP phase%s", COL_BLU, COL_CLR);
 
-    verbose_master(2, "%sMin_time_to_solution...........starts.......%s", COL_GRE, COL_CLR);
 
     if (gpus.node_policy_apply != NULL) {
         /* Basic support for GPUS */
@@ -450,9 +460,18 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
             } else {
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
-                ulong process_avgcpuf;
-                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                double ltpi, lgbs, lpower;
+
+                ltpi = my_app->TPI;
+                lgbs = my_app->GBS;
+                lpower = my_app->DC_power;
+
+                my_app->GBS      = lgbs * lib_shared_region->num_processes;
+                my_app->DC_power = lpower * lib_shared_region->num_processes;
+
+                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
+
 
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];
@@ -745,7 +764,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                         imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
                 /* We are assuming all sockets uses the same frequency range */
-                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid]) *ready = EAR_POLICY_TRY_AGAIN;
+                if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < max_policy_imcfreq_ps) *ready = EAR_POLICY_TRY_AGAIN;
                 else{
                     *ready = EAR_POLICY_READY;
                     min_time_state = SELECT_CPUFREQ;
@@ -773,7 +792,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
     /*  Check for load balance data */
     if (is_mpi_enabled() && enable_load_balance && use_energy_models) {
 
-        verbose_mpi_types(3, my_node_mpi_types_calls);
+        verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 
         uint unbalance;
 #if 0

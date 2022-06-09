@@ -64,6 +64,8 @@ typedef struct settings_conf{
 	node_powercap_opt_t pc_opt;
 	uint                island;   
 	char                tag[GENERIC_NAME];
+  int                 cpu_max_pstate;
+  int                 imc_max_pstate;
 } settings_conf_t;
 
 typedef struct resched{

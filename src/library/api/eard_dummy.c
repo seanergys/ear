@@ -206,11 +206,9 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 
 state_t eard_dummy_app_mgt(char *ear_tmp, uint ID)
 {
-				app_mgt_t *dummy;
-
 				get_app_mgt_path(ear_tmp, ID, path);
-				dummy = create_app_mgt_shared_area(path);
-				check_null(dummy_nodemgr, "Error creating app_mgr in path %s ", path);
+				app_mgt_t *dummy = create_app_mgt_shared_area(path);
+				check_null(dummy, "Error creating app_mgr in path %s ", path);
 
 				verbose_master(2, "Dummy app_mgt area done");
 
@@ -265,7 +263,7 @@ state_t eard_dummy_coefficients(char *ear_tmp, uint ID)
 state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 {
 				ulong * frequencies, *dummy_frequencies;
-				int ps, i;
+				int ps;
 				ps = 1;
 				int size = ps * sizeof(ulong);
 				frequencies = (ulong *) malloc(size);

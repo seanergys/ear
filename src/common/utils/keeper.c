@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdio.h>
@@ -28,9 +28,7 @@
 
 static char  ids[128][128];
 static char  values[128][128];
-static int   types[128];
 static int   lines_count;
-static int   lines_diff;
 static int   fd = -1;
 
 static int keeper_read_line(int fd, char *id, char *value)
@@ -53,11 +51,11 @@ static int keeper_read_line(int fd, char *id, char *value)
     while(1) {
         size = read(fd, &value[i], 1);
         debug("%c", value[i]);
-        if (size  ==  0)   return  2;
-        if (size  <= -1)   return -1;
-        if (id[i] == '\n') break;
-        if (id[i] == EOF)  return  2;
-        if (id[i] == '=')  return  0;
+        if (size     ==  0)   return  2;
+        if (size     <= -1)   return -1;
+        if (value[i] == '\n') break;
+        if (value[i] == EOF)  return  2;
+        if (value[i] == '=')  return  0;
         ++i;
     }
     value[i] = '\0';
@@ -67,38 +65,35 @@ static int keeper_read_line(int fd, char *id, char *value)
 
 static void keeper_open()
 {
-    char line[256];
     char path[256];
-    int i = 0;
-    int res;
 
     // Open file if not previously opened
-    if (getenv("EAR_ETC") == NULL) {
+    if (getenv("EAR_TMP") == NULL) {
         return;
     }
     if (fd >= 0) {
         return;
     }
-    sprintf(path, "%s/ear-dyn.conf", getenv("EAR_ETC"));
+    sprintf(path, "%s/ear-dyn.conf", getenv("EAR_TMP"));
     debug("Opening %s", path);
     if ((fd = open(path, O_RDWR | O_CREAT, F_UR | F_UW | F_GR | F_OR)) < 0) {
         debug("Failed: %s", strerror(errno));
         return;
     }
     while(1) {
-        res = keeper_read_line(fd, ids[lines_count], values[lines_count]);
+        int res = keeper_read_line(fd, ids[lines_count], values[lines_count]);
         debug("Returned %d", res);
         lines_count += (res > 0);
         if (res ==  2) break;
         if (res == -1) break;
     }
-    #if SHOW_DEBUGS
-    i = 0;
+#if SHOW_DEBUGS
+    int i = 0;
     while(i < lines_count) {
         printf("Read %s=%s\n", ids[i], values[i]);
         ++i;
     }
-    #endif
+#endif
 }
 
 static void super_write(int fd, char *buffer)
@@ -126,7 +121,7 @@ static void keeper_save()
     lseek(fd, 0, SEEK_SET);
 
     while(i < lines_count) {
-        sprintf(buffer, "%s=%s\n", ids[i], values[i]);
+        xsprintf(buffer, "%s=%s\n", ids[i], values[i]);
         super_write(fd, buffer);
         ++i;
     }
@@ -136,13 +131,16 @@ static int keeper_is_saved(const char *id, int *index)
 {
     int i;
     for (i = 0; i < lines_count; ++i) {
+        debug("Comparing ids %s vs %s", id, ids[i]);
         if (strcmp(ids[i], id) == 0) {
             if (index != NULL) {
                 *index = i;
             }
+            debug("%s id is found in position %d (%s)", id, *index, ids[*index]);
             return 1;
         }
     }
+    debug("%s id is not found", id);
     return 0;
 }
 
@@ -154,16 +152,18 @@ static int keeper_is_different(const char *id, char *value)
         return 0;
     }
     if (strcmp(values[i], value) == 0) {
+        debug("'%s' and '%s' are equal");
         return 0;
     }
+    debug("'%s' and '%s' are different");
     return 1;
 }
 
 void keeper_save_string(const char *id, char *value)
 {
-    char aux[128];
     int i;
 
+    debug("Saving %s = %s", id, value);
     if (keeper_is_saved(id, &i)) {
         debug("%s is previously saved", id);
         if (keeper_is_different(id, value)) {
@@ -208,14 +208,17 @@ int keeper_load_##suffix (const char *id, type value) \
 KEEPER_SAVE(   text,   char *, strcpy(buffer, value));
 KEEPER_SAVE(  int32,    int  , sprintf(buffer, "%d", value));
 KEEPER_SAVE(  int64,  llong  , sprintf(buffer, "%lld", value));
+KEEPER_SAVE( uint64, ullong  , sprintf(buffer, "%llu", value));
 KEEPER_SAVE(float32,  float  , sprintf(buffer, "%f", value));
 KEEPER_SAVE(float64, double  , sprintf(buffer, "%lf", value));
 KEEPER_LOAD(   text,   char *, strcpy(value, values[i]));
 KEEPER_LOAD(  int32,    int *, *value = atoi(values[i]));
 KEEPER_LOAD(  int64,  llong *, *value = atoll(values[i]));
+KEEPER_LOAD( uint64, ullong *, *value = (ullong) atoll(values[i]));
 KEEPER_LOAD(float32,  float *, *value = (float) atof(values[i]));
 KEEPER_LOAD(float64, double *, *value = atof(values[i]));
 
+#if 0
 int main(int argc, char *argv)
 {
     int x;
@@ -228,3 +231,4 @@ int main(int argc, char *argv)
 
     return 0;
 }
+#endif

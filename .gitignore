@@ -1,5 +1,6 @@
 # General
 /Makefile
+/Makefile.*
 *.o
 *.a
 *.so
@@ -144,5 +145,3 @@ src/tools/learning_validate*
 src/tools/ear_events*
 src/tools/ear_conf
 src/commands/ear-info
-
-

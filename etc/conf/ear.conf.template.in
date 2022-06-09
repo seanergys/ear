@@ -32,7 +32,7 @@ DBDaemonMemorySize=120
 # EAR Library (EARL)
 #---------------------------------------------------------------------------------------------------
 CoefficientsDir=@sysconfdir@/ear/coeffs
-
+EARLReportPlugins=eard.so
 
 #---------------------------------------------------------------------------------------------------
 # EAR Global Manager (EARGMD) : Update that section to use EARGM 

@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/system/file.h>
 #include <common/states.h>
@@ -115,7 +115,7 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
     return i;
 }
 
-static int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
+int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
 {
     char buff[1024];
     sprintf(buff, "%s;", app->node_id);
@@ -327,7 +327,7 @@ void verbose_gpu_app(uint vl,application_t *myapp)
 #endif
 }
 
-void verbose_application_data(uint vl,application_t *app)
+void verbose_application_data(uint vl, application_t *app)
 {
     float avg_f = ((double) app->signature.avg_f) / 1000000.0;
     float avg_imc_f = ((double) app->signature.avg_imc_f) / 1000000.0;
@@ -347,7 +347,7 @@ void verbose_application_data(uint vl,application_t *app)
     strftime(etmpi, sizeof(etmpi), "%c", tmp);
 
 
-    verbose(vl,"----------------------------------- Application Summary[%s] --\n",app->node_id);
+    verbose(vl,"----------------------------------- Application Summary [%s] --\n",app->node_id);
     verbose(vl,"-- App id: %s, user id: %s, job id: %lu.%lu", app->job.app_id, app->job.user_id, app->job.id,app->job.step_id);
     verbose(vl,"   procs: %lu  acc %s\n", app->job.procs,app->job.user_acc);
     verbose(vl,"   start time %s end time %s start mpi %s end mpi %s\n",st,et,stmpi,etmpi);
@@ -378,25 +378,70 @@ void report_mpi_application_data(application_t *app)
     float avg_f = ((double) app->signature.avg_f) / 1000000.0;
     float avg_imc_f = ((double) app->signature.avg_imc_f) / 1000000.0;
     float def_f = ((double) app->job.def_f) / 1000000.0;
-    //float pavg_f = ((double) app->power_sig.avg_f) / 1000000.0;
-    //float pdef_f = ((double) app->power_sig.def_f) / 1000000.0;
 
-    verbose(VTYPE,"------------------------------------- Application Summary [%s] -----------------------------------\n",app->node_id);
-    verbose(VTYPE,"-- App id: %s, user id: %s, job id: %lu.%lu", app->job.app_id, app->job.user_id, app->job.id,app->job.step_id);
-    verbose(VTYPE,"   acc %s\n", app->job.user_acc);
-    if (app->is_mpi){
+#if NEW_APP_SUMMARY
+    char job_info_txt[1024];
+    snprintf(job_info_txt, sizeof(job_info_txt), "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n", app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id);
 
-        verbose(VTYPE,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
-        verbose(VTYPE,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.perc_MPI);
-        verbose(VTYPE,"   tasks: %lu \n", app->job.procs);
-        verbose(VTYPE,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s) ", app->signature.CPI, app->signature.TPI,
-                app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS);
-        verbose(VTYPE,"  DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n", app->signature.DC_power, app->signature.DRAM_power,
-                app->signature.PCK_power,app->signature.Gflops/app->signature.DC_power);
+    char mpi_info_txt[512];
+    if (app->is_mpi) {
+        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n          Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
+                app->signature.time, def_f, avg_f, avg_imc_f, app->signature.perc_MPI, app->job.procs, app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS, app->signature.DC_power, app->signature.DRAM_power, app->signature.PCK_power, app->signature.Gflops/app->signature.DC_power);
     }
-    verbose_gpu_app(VTYPE,app);
+
+    size_t max_str_len = strlen(job_info_txt);
+
+    char app_summ_hdr_txt[512];
+    snprintf(app_summ_hdr_txt, sizeof(app_summ_hdr_txt), " Application Summary [%s] ", app->node_id);
+
+    int app_summ_hdr_dec_len = (int)((max_str_len - strlen(app_summ_hdr_txt)) / 2);
+    char *app_summ_hdr_dec_txt = malloc(app_summ_hdr_dec_len + 1);
+    memset(app_summ_hdr_dec_txt, '-', app_summ_hdr_dec_len);
+    app_summ_hdr_dec_txt[app_summ_hdr_dec_len] = '\0';
+
+    verbose(VTYPE, "%s%s%s\n%s\n", app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt);
+
+    free(app_summ_hdr_dec_txt);
+
+    if (app->is_mpi) {
+        verbose(VTYPE, "%s", mpi_info_txt);
+    }
+
+    verbose_gpu_app(VTYPE, app);
+
+    int app_summ_ftr_dec_len = (int)(strlen(app_summ_hdr_txt) + app_summ_hdr_dec_len * 2);
+    char *app_summ_ftr_dec = malloc(app_summ_ftr_dec_len + 1);
+    memset(app_summ_ftr_dec, '-', app_summ_ftr_dec_len);
+    app_summ_ftr_dec[app_summ_ftr_dec_len] = '\0';
+
+    verbose(VTYPE, "%s", app_summ_ftr_dec);
+
+    free(app_summ_ftr_dec);
+
+#else
+    verbose(VTYPE,"------------------------------------- Application Summary [%s] -----------------------------------\n", app->node_id);
+
+    verbose(VTYPE,"--- App id: %s / user id: %s / job.step id: %lu.%lu ---",
+            app->job.app_id, app->job.user_id, app->job.id, app->job.step_id);
+    verbose(VTYPE,"--- account: %s\n", app->job.user_acc);
+
+    if (app->is_mpi) {
+        verbose(VTYPE,"--- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (GHz), avg freq: %0.2f (GHz), avg imc freq: %0.2f (GHz) ---",
+                app->signature.time, def_f, avg_f, avg_imc_f);
+        verbose(VTYPE,"             Avg. mpi_time/exec_time %.1lf %%\n", app->signature.perc_MPI);
+
+        verbose(VTYPE,"             tasks: %lu\n", app->job.procs);
+
+        verbose(VTYPE,"             CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)",
+                app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS);
+        verbose(VTYPE,"             DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n",
+                app->signature.DC_power, app->signature.DRAM_power, app->signature.PCK_power, app->signature.Gflops/app->signature.DC_power);
+    }
+
+    verbose_gpu_app(VTYPE, app);
 
     verbose(VTYPE,"--------------------------------------------------------------------------------------------------\n");
+#endif
 }
 
 void mark_as_eard_connected(int jid,int sid,int pid)

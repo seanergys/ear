@@ -1,4 +1,4 @@
-CFLAGS  = -fPIC -O2 -I$(SRCDIR)  -Wall -g -DEARL_LIGHT=0
+CFLAGS  = -fPIC -O2 -I$(SRCDIR) -Wall -g -DEARL_LIGHT=0
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -13,7 +13,8 @@ LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -g
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
-	CFLAGS += -DNEW_LB_EFF=1 -DNEW_MPI_STATS=1 # -DCOUNTDOWN=1
+	CFLAGS += -DNEW_LB_EFF=1 -DNEW_MPI_STATS=1 # $(GSL_CFLAGS) -DCOUNTDOWN=1 -DUSE_GSL=1
+	# LDFLAGS += $(GSL_LDFLAGS) 
 endif
 
 export LIBCC
@@ -55,7 +56,7 @@ core_OBJS = \
     common/utils.o \
     metrics/metrics.o \
     metrics/gpu.o \
-		metrics/energy_node_lib.o \
+	metrics/energy_node_lib.o \
     models/models.o \
     models/cpu_power_model.o \
     policies/policy.o \

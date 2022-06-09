@@ -1,11 +1,11 @@
-CFLAGS           = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g $(CONSTANTS)
-DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
-DB_PSQL_LDFLAGS  = -lpq $(SRCDIR)/common/libcommon.a
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS)
 
 ######## FILES
 
-repo_OBJS = \
-    report.o
+repo_PERM = 0775
+repo_PATH = $(DESTDIR)/lib/plugins/reports
+repo_DEPS = $(SRCDIR)/common/libcommon.a
+repo_OBJS = report.o
 repo_BINS = \
     eard.so \
     eardbd.so \
@@ -13,15 +13,12 @@ repo_BINS = \
     csv_ts.so \
     heroes.so \
     dummy.so \
+		dcdb.so \
     mpitrace.so
-repo_PERM = 0775
-repo_PATH = $(DESTDIR)/lib/plugins/reports
-
 ifeq ($(FEAT_DB_PSQL),1)
 repo_BINS += \
 	psql.so 
 endif
-
 ifeq ($(FEAT_DB_MYSQL),1)
 repo_BINS += \
 	mysql.so 
@@ -35,23 +32,23 @@ all: $(repo_OBJS) $(repo_BINS)
 	$(CC) $(CFLAGS) -c $<
 
 %.so: %.c
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -shared -o $@ $^
 
-eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(SRCDIR)/common/libcommon.a
-	$(CC) $(CFLAGS) -shared -o eard.so  eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(LDFLAGS) $(SRCDIR)/common/libcommon.a
+dcdb.so:dcdb.o
+	$(CC) $(CFLAGS) -shared -o dcdb.so dcdb.o -lrt $(LDFLAGS)
 
-eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(SRCDIR)/common/libcommon.a
-	$(CC) $(CFLAGS) -shared -o eardbd.so eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(LDFLAGS) $(SRCDIR)/common/libcommon.a
 
-ifeq ($(FEAT_DB_MYSQL),1)
-mysql.so: mysql.c
-	$(CC) $(CFLAGS) -shared -o mysql.so mysql.c $(LDFLAGS) $(DB_MYSQL_LDFLAGS)
-endif
+eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(repo_DEPS)
+	$(CC) $(CFLAGS) -shared -o $@ $^
 
-ifeq ($(FEAT_DB_PSQL),1)
-psql.so: psql.c
-	$(CC) $(CFLAGS) -shared -o psql.so psql.c $(LDFLAGS) $(DB_PSQL_LDFLAGS)
-endif
+eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(repo_DEPS)
+	$(CC) $(CFLAGS) -shared -o $@ $^
+
+mysql.so: mysql.c $(repo_DEPS)
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS)
+
+psql.so: psql.c $(repo_DEPS)
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS)
 
 ######## SUBFOLDERS
 

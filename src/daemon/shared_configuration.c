@@ -99,12 +99,17 @@ void settings_conf_shared_area_dispose(char * path)
 
 void print_settings_conf(settings_conf_t *setting)
 {
-	verbose(VCONF,"settings: user_type(0=NORMAL,1=AUTH,2=ENERGY) %u learning %u lib_enabled %d policy(0=min_energy, 1=min_time,2=monitoring) %u \n",
-	setting->user_type,setting->learning,setting->lib_enabled,setting->policy);
-	verbose(VCONF,"\tmax_freq %lu def_freq %lu def_p_state %u th %.2lf\n",setting->max_freq,setting->def_freq,setting->def_p_state,setting->settings[0]);
-	print_earlib_conf(&setting->lib_info);	
-	verbose(VCONF,"\tmin_sig_power %.0lf",setting->min_sig_power);
+	verbose(VCONF,"Settings\n--------\n\tUser type --- NORMAL(0)/AUTH(1)/ENERGY(2) --- %u\n"
+            "\tLearning: %u\n\tLibrary enabled: %d\n"
+            "\tPolicy --- min_energy(0)/min_time(1)/monitoring(2) --- %u\n",
+            setting->user_type, setting->learning, setting->lib_enabled, setting->policy);
+	verbose(VCONF,"\tMax. CPU freq.: %lu / Def. CPU freq.: %lu / Def. P-State: %u"
+            " / CPU policy th.: %.2lf / CPU max. P-State: %d\n", setting->max_freq, setting->def_freq,
+            setting->def_p_state, setting->settings[0], setting->cpu_max_pstate);
 
+	print_earlib_conf(&setting->lib_info);
+
+	verbose(VCONF,"\tMin. sign. power: %.0lf\n--------", setting->min_sig_power);
 }
 
 /// RESCHED

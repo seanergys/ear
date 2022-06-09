@@ -1,10 +1,5 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
-ifdef FREEIPMI_BASE
-C_FREEIPMIFLAGS = -I$(FREEIPMI_BASE) -DFREEIPMI_BASE=\"$(FREEIPMI_BASE)\"
-LD_FREEIPMIFLAGS = -L$(FREEIPMI_BASE)/lib -lfreeipmi -Wl,-rpath,$(FREEIPMI_BASE)/lib -rdynamic
-endif
-
 ######## FILES
 
 ener_OBJS = \
@@ -12,9 +7,9 @@ ener_OBJS = \
     energy_rapl.o \
     energy_dcmi.o \
     energy_sd650.o \
-		energy_inm_power.o \
+    energy_inm_power.o \
     energy_SD650N_V2.o \
-		energy_dummy.o 
+    energy_dummy.o
 
 ifdef FREEIPMI_BASE
 ener_OBJS +=\
@@ -26,9 +21,9 @@ ener_BINS = \
     energy_rapl.so \
     energy_dcmi.so \
     energy_sd650.so \
-		energy_inm_power.so \
+    energy_inm_power.so \
     energy_SD650N_V2.so \
-		energy_dummy.so 
+    energy_dummy.so
 
 ifdef FREEIPMI_BASE
 ener_BINS += \
@@ -48,10 +43,10 @@ rapl_DEPS = \
 all: $(ener_BINS)
 
 energy_inm_power_freeipmi.o:energy_inm_power_freeipmi.c
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(C_FREEIPMIFLAGS) -c $<  
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(FREEIPMI_CFLAGS) -c $<
 
 energy_inm_power_freeipmi.so:energy_inm_power_freeipmi.o
-	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(LD_FREEIPMIFLAGS) $(ener_DEPS)
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(FREEIPMI_LDFLAGS) $(ener_DEPS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
@@ -61,8 +56,6 @@ energy_rapl.so: energy_rapl.o $(rapl_DEPS) $(ener_DEPS)
 
 %.so: %.o $(ener_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(ener_DEPS) 
-
-
 
 ######## OPTIONS
 

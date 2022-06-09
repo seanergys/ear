@@ -177,6 +177,14 @@ int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig, uint *num_r
     return(total == data->num_processes);
 }
 
+int num_processes_exited(lib_shared_data_t *data,shsignature_t *sig)
+{
+  uint total = 0;
+  for (uint i = 0; i < data->num_processes;i++) total += sig[i].exited;
+  return total;
+}
+
+
 void print_sig_readiness(lib_shared_data_t *data,shsignature_t *sig)
 {
     int i;
@@ -622,57 +630,67 @@ void  init_earl_node_mgr_info()
     }
   }
 }
-void    update_earl_node_mgr_info()
+
+void update_earl_node_mgr_info()
 {
-		uint current_jobs_in_node = 0;
-		char *tmp = get_ear_tmp();
-    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-      job_id jid,sid;
-      time_t ct;
-      jid = node_mgr_data[j].jid;
-      sid = node_mgr_data[j].sid;
-      ct = node_mgr_data[j].creation_time;
-      if (ct != node_mgr_job_info[j].creation_time){
-        while (node_mgr_info_lock() != EAR_SUCCESS);
-        jid = node_mgr_data[j].jid;
-        sid = node_mgr_data[j].sid;
-        ct = node_mgr_data[j].creation_time;
-        node_mgr_info_unlock();
-        /* Double validation after getting the lock */
-        if (ct != node_mgr_job_info[j].creation_time){
-          if (ct == 0){
-            dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
-						dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
-            node_mgr_job_info[j].creation_time = 0;
-          }else{
-            uint ID = create_ID(jid,sid);
-            get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs );
-            node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd_lib);
-						get_shared_signatures_path(tmp, ID, sig_shared_region_path_jobs);
-						node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
-            node_mgr_job_info[j].creation_time = ct;
-          }
+    uint current_jobs_in_node = 0;
+    char *tmp = get_ear_tmp();
+
+    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++) {
+        job_id jid = node_mgr_data[j].jid;
+        job_id sid = node_mgr_data[j].sid;
+
+        time_t ct = node_mgr_data[j].creation_time;
+        if (ct != node_mgr_job_info[j].creation_time) {
+            while (node_mgr_info_lock() != EAR_SUCCESS);
+            jid = node_mgr_data[j].jid;
+            sid = node_mgr_data[j].sid;
+            ct = node_mgr_data[j].creation_time;
+            node_mgr_info_unlock();
+
+            /* Double validation after getting the lock */
+            if (ct != node_mgr_job_info[j].creation_time){
+                if (ct == 0) {
+                    dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
+                    dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
+                    node_mgr_job_info[j].creation_time = 0;
+                } else {
+                    uint ID = create_ID(jid, sid);
+                    get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs);
+                    node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd_lib);
+                    get_shared_signatures_path(tmp, ID, sig_shared_region_path_jobs);
+                    node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
+                    node_mgr_job_info[j].creation_time = ct;
+                }
+            }
         }
-     
     }
-		}
-  	nodemgr_get_num_jobs_attached(&current_jobs_in_node);
-  	exclusive = exclusive && (current_jobs_in_node == 1);
-		
+    nodemgr_get_num_jobs_attached(&current_jobs_in_node);
+    exclusive = exclusive && (current_jobs_in_node == 1);
+
 }
 
-void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl)
+void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmgr_earl)
 {
-    if (verb_level >= vl){
+    if (verb_level >= vl) {
         if ((nmgr_eard == NULL) || (nmgr_earl == NULL)) return;
-        verbose_master(vl,"%s--- Jobs in node list ---", COL_BLU);
-        for (uint i=0;i<MAX_CPUS_SUPPORTED; i++){
-            if (nmgr_eard[i].creation_time && nmgr_earl[i].creation_time && (nmgr_earl[i].libsh != NULL) && (nmgr_earl[i].shsig != NULL)) {
-                verbosen_master(vl,"JOB[%u]=%lu.%lu\nNode: ", i,nmgr_eard[i].jid,nmgr_eard[i].sid);
-                signature_print_simple_fd(verb_channel, &nmgr_earl[i].libsh->node_signature);	
-                verbosen_master(vl, "\nJob: ");
-                signature_print_simple_fd(verb_channel,&nmgr_earl[i].libsh->job_signature);	
-                verbosen_master(vl, "\n");
+        verbose_master(vl, "%s--- Jobs in node list ---", COL_BLU);
+        char sig_buff[1024];
+        for (uint i = 0; i < MAX_CPUS_SUPPORTED; i++) {
+            if (nmgr_eard[i].creation_time && nmgr_earl[i].creation_time
+                    && (nmgr_earl[i].libsh != NULL) && (nmgr_earl[i].shsig != NULL)) {
+
+				signature_to_str(&nmgr_earl[i].libsh->job_signature, sig_buff, sizeof(sig_buff));
+                verbose_master(vl,"Job[%u] %lu.%lu %s\nNode [%.2lf GB/s %.2lf W]",
+                        i, nmgr_eard[i].jid, nmgr_eard[i].sid, sig_buff,
+                        nmgr_earl[i].libsh->node_signature.GBS,
+                        nmgr_earl[i].libsh->node_signature.DC_power);
+
+                /*
+				signature_to_str(&nmgr_earl[i].libsh->node_signature, sig_buff, sizeof(sig_buff));
+                verbose_master(vl,"JOB[%u]=%lu.%lu \nNode: %s",i , nmgr_eard[i].jid, nmgr_eard[i].sid, sig_buff);
+                */
+
             }
         }
         verbose_master(vl,"%s",COL_CLR);

@@ -153,7 +153,7 @@ void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_ra
             }
         }
     }
-    verbose(1, "Tracer plugin '%s%s%s' has been loaded.", COL_GRE, traces_plugin, COL_CLR);
+    verbose(1, "Tracer plugin '%s%s%s' has been loaded with EAR.", COL_GRE, traces_plugin, COL_CLR);
 
 
     /*
