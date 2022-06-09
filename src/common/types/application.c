@@ -115,7 +115,7 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
     return i;
 }
 
-static int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
+int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
 {
     char buff[1024];
     sprintf(buff, "%s;", app->node_id);

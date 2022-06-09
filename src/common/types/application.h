@@ -62,6 +62,9 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
 *   of the following states: EAR_SUCCESS or EAR_ERROR. */
 int append_application_text_file(char *path, application_t *app, char is_extended, int add_header, int single_column);
 
+/** Outputs an application to the fd given in CSV format. Returns EAR_SUCCESS */
+int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column);
+
 int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column);
 
 

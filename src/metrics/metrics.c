@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <metrics/metrics.h>
 #include <common/output/verbose.h>
+#include <common/utils/stress.h>
 #include <common/utils/overhead.h>
 
 #define sa(f) \
@@ -254,23 +255,9 @@ state_t monitor_apis_init(void *whatever)
 	return EAR_SUCCESS;
 }
 
-void work()
-{
-    #define N 262144
-    static ullong array1[N];
-    static ullong array2[N];
-    static ullong array3[N];
-
-	int i;
-
-	for (i = 2; i < N; ++i) {
-		array1[i] = array2[i-1] + array3[i-2];
-	}
-}
-
 state_t monitor_apis_update(void *whatever)
 {
-    work();
+    stress_bandwidth(3);
 
 	if (print) {
 		sa(metrics_read_copy(&mr2, &mr1, &mrD));
@@ -293,6 +280,9 @@ int init()
 	sus->time_relax    = 2000;
 	sus->time_burst    = 2000;
 	sa(sus->suscribe(sus));
+    // Stress
+    stress_alloc();
+
 
 	return 0;
 }
