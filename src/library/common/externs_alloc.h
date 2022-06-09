@@ -34,7 +34,7 @@ char node_name[PATH_MAX];
 
 char loop_summary_path[PATH_MAX];
 char app_summary_path[PATH_MAX];
-char ear_app_name[PATH_MAX]; //TODO: use application.app_id
+char ear_app_name[PATH_MAX]; // TODO: use application.app_id
 
 // Common variables
 ulong ear_frequency; 
