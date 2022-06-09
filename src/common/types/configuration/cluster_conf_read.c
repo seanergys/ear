@@ -385,7 +385,7 @@ void parse_island(cluster_conf_t *conf, char *line)
         {
             tag_parsing = 1;
             int i, found = 0;
-            char aux_token[256], *next_token = NULL;
+            char aux_token[512], *next_token = NULL;
             token = strtok(NULL, " ");
             strcpy(aux_token, token);
             token = strtok(NULL, " ");
@@ -419,7 +419,7 @@ void parse_island(cluster_conf_t *conf, char *line)
         else if (!strcmp(token, "TAGS") || !strcmp(token, "TAG") )
         {
             tag_parsing = 1;
-            char aux_token[256], *next_token = NULL;
+            char aux_token[512], *next_token = NULL;
             token = strtok(NULL, " ");
             strcpy(aux_token, token);
             token = strtok(NULL, " ");
@@ -503,7 +503,7 @@ void parse_island(cluster_conf_t *conf, char *line)
 
 void get_cluster_config(FILE *conf_file, cluster_conf_t *conf)
 {
-    char line[256];
+    char line[512];
     char def_policy[128];
     char *token;
 
@@ -512,7 +512,7 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf)
     conf->num_etags=0;
     conf->power_policies = calloc(TOTAL_POLICIES, sizeof(policy_conf_t));
     fill_policies(conf);
-    while (fgets(line, 256, conf_file) != NULL)
+    while (fgets(line, 512, conf_file) != NULL)
     {
         if (line[0] == '#') continue;
         remove_chars(line, 13); //carriage return (\n or \r)
@@ -700,14 +700,14 @@ int read_cluster_conf(char *conf_path,cluster_conf_t *my_conf)
 int read_eardbd_conf(char *conf_path,char *username,char *pass)
 {
     FILE *conf_file = fopen(conf_path, "r");
-    char line[256];
+    char line[512];
     if (conf_file == NULL)
     {
         error("ERROR opening file: %s\n", conf_path);
         return EAR_ERROR;
     }
     int current_line=0;
-    while ((fgets(line, 256, conf_file) != NULL) && (current_line<2))
+    while ((fgets(line, 512, conf_file) != NULL) && (current_line<2))
     {
         strclean(line, '\n');
         if (current_line==0) 	strcpy(username,line);

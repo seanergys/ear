@@ -33,6 +33,10 @@
 // Likwid opens a daemon to read performance counters. But there is a compiling option
 // to prevents that to directly open the perfmon counters. Take a look to config.mk
 // file and look for this line (ACCESSMODE = accessdaemon).
+//
+// In version 5.2.1, we fixed a segmentation fault in an installation with ACCESSMODE
+// 'direct' by setting 'perf_event'. After that, the problem was fixed even in the
+// 'direct' binaries. So it seems to be a bug in LIKWID that should be investigated.
 
 #ifndef LIKWID_BASE
 typedef struct CpuInfo_s {
@@ -110,7 +114,7 @@ static int load_test(char *path)
 		return 0;
 	}
 	if ((liblikwid = dlopen(path, RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND)) == NULL) {
-		debug("dlopen fail");
+		debug("dlopen fail (%s)", strerror(errno));
 		return 0;
 	}
 	debug("dlopen ok");

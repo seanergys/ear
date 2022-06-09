@@ -15,13 +15,14 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-#define STANDARD_NODENAME_LENGTH	25
-#define APP_TEXT_FILE_FIELDS		22
+#define _XOPEN_SOURCE 700 //to get rid of the warning
 
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 #include <common/config.h>
 #include <common/config/config_sched.h>
 #include <common/system/user.h>
@@ -29,6 +30,8 @@
 #include <common/types/loop.h>
 #include <common/types/version.h>
 #include <common/types/application.h>
+#include <common/types/log.h>
+
 #if USE_DB
 #include <common/states.h>
 #include <common/database/db_helper.h>
@@ -38,6 +41,9 @@
 cluster_conf_t my_conf;
 #endif
 
+#define STANDARD_NODENAME_LENGTH	25
+#define APP_TEXT_FILE_FIELDS		22
+
 int full_length = 0;
 int verbose = 0;
 int query_filters = 0;
@@ -45,6 +51,18 @@ int all_mpi = 0;
 int avx = 0;
 int print_gpus = 1;
 char csv_path[256] = "";
+
+typedef struct query_addons 
+{
+	int limit;
+	int job_id;
+	int step_id;
+	int start_time;
+	int end_time;
+	char e_tag[64];
+	char app_id[64];
+	char job_ids[64];
+} query_adds_t;
 
 void usage(char *app)
 {
@@ -58,8 +76,10 @@ void usage(char *app)
 			"\t\t-j\tspecifies the job id and step id to retrieve with the format [jobid.stepid] or the format [jobid1,jobid2,...,jobid_n].\n" \
 			"\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n"\
 			"\t\t-a\tspecifies the application names that will be retrieved. [default: all app_ids]\n" \
-			"\t\t-c\tspecifies the file where the output will be stored in CSV format. [default: no file]\n" \
+			"\t\t-c\tspecifies the file where the output will be stored in CSV format. If the argument is \"no_file\" the output will be printed to STDOUT [default: off]\n" \
 			"\t\t-t\tspecifies the energy_tag of the jobs that will be retrieved. [default: all tags].\n" \
+			"\t\t-s\tspecifies the minimum start time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].\n" \
+			"\t\t-e\tspecifies the maximum end time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].\n" \
 			"\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n" \
 			"\t\t-x\tshows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
 			"\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n" \
@@ -319,7 +339,7 @@ void print_full_apps(application_t *apps, int num_apps)
 	}
 }
 
-void print_short_apps(application_t *apps, int num_apps, int fd)
+void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 {
 	uint current_job_id = -1;
 	uint current_step_id = -1;
@@ -357,14 +377,14 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 	unsigned long gpu_freq = 0;
 	unsigned long gpu_util = 0;
 	unsigned long gpu_mem_util = 0;
-	unsigned long gpu_freq_aux = 0;
+	unsigned long gpu_frequery_addsux = 0;
 	unsigned long gpu_util_aux = 0;
 	unsigned long gpu_mem_util_aux = 0;
 	int num_gpus = 0;
 	int j = 0;
 #endif
 
-	if (fd == STDOUT_FILENO)
+	if (!is_csv)
 	{
 		if (avx)
 		{
@@ -451,13 +471,13 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 					if (apps[i].signature.gpu_sig.num_gpus > 0)
 					{
 						num_gpus = 0;
-						gpu_freq_aux = 0;
+						gpu_frequery_addsux = 0;
 						gpu_util_aux = 0;
 						gpu_mem_util_aux = 0;
 						for (j = 0; j < apps[i].signature.gpu_sig.num_gpus; j++)
 						{
 							gpu_total_power += apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
-							gpu_freq_aux	+= apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
+							gpu_frequery_addsux	+= apps[i].signature.gpu_sig.gpu_data[j].GPU_freq;
 							if (apps[i].signature.gpu_sig.gpu_data[j].GPU_util)
 							{
 								gpu_power		+= apps[i].signature.gpu_sig.gpu_data[j].GPU_power;
@@ -468,14 +488,14 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 						}
 
 						if (apps[i].signature.gpu_sig.num_gpus)
-							gpu_freq_aux /= apps[i].signature.gpu_sig.num_gpus;
+							gpu_frequery_addsux /= apps[i].signature.gpu_sig.num_gpus;
 
 						if (num_gpus > 0)
 						{
 							gpu_util_aux	 /= num_gpus;
 							gpu_mem_util_aux /= num_gpus;
 						}
-						gpu_freq	 += gpu_freq_aux;
+						gpu_freq	 += gpu_frequery_addsux;
 						gpu_util	 += gpu_util_aux;
 						gpu_mem_util += gpu_mem_util_aux;
 					}
@@ -499,7 +519,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 			int idx = (i > 0) ? i - 1: 0;
 			if (strlen(apps[idx].job.app_id) > 30)
 			{
-				char *token = strrchr(apps[i-1].job.app_id, '/');
+				char *token = strrchr(apps[idx].job.app_id, '/');
 				if (token != NULL) 
 				{
 					token++;
@@ -768,7 +788,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd)
 
 		}
 	}
-	if (missing_apps > 0 && fd==STDOUT_FILENO)
+	if (missing_apps > 0 && !is_csv)
 		printf("\nSome jobs are not being shown because either their avg. frequency, time or total energy were 0. To see those jobs run with -l option.\n");
 
 	if (avx)
@@ -843,28 +863,32 @@ void add_int_list_filter(char *query, char *addition, char *value)
 	//	sprintf(query, query, value);
 	query_filters ++;
 }
-
+#if 0
 #define ENERGY_POLICY_NEW_FREQ	0
 #define GLOBAL_ENERGY_POLICY	1
 #define ENERGY_POLICY_FAILS		2
 #define DYNAIS_OFF				3
+#endif
 
 void print_event_type(int type)
 {
 	switch(type)
 	{
-		case 0:
+		case ENERGY_POLICY_NEW_FREQ:
 			printf("%15s ", "NEW FREQ");
 			break;
-		case 1:
+		case GLOBAL_ENERGY_POLICY:
 			printf("%15s ", "GLOBAL POLICY");
 			break;
-		case 2:
+		case ENERGY_POLICY_FAILS:
 			printf("%15s ", "POLICY FAILS");
 			break;
-		case 3:
+		case DYNAIS_OFF:
 			printf("%15s ", "DYNAIS OFF");
 			break;
+		case ENERGY_SAVING:
+			printf("%15s ", "ENERGY SAV.");
+      break;
 		default:
 			if (verbose)
 				printf("%12s(%d) ","UNKNOWN", type);
@@ -898,9 +922,9 @@ void mysql_print_events(MYSQL_RES *result)
 				printf("%20s ", row[i] ? row[i] : "NULL");
 			else if (i == 4 || i == 3)
 				printf("%8s ", row[i] ? row[i] : "NULL");
-			else if (i == 5)
+			else if (i == 5){
 				printf("%20s ", row[i] ? row[i] : "NULL");
-			else
+			}else
 				printf("%12s ", row[i] ? row[i] : "NULL");
 		}
 		printf("\n");
@@ -948,7 +972,7 @@ void postgresql_print_events(PGresult *res)
 #define EVENTS_QUERY "SELECT id, to_timestamp(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
 #endif
 
-void read_events(char *user, int job_id, int limit, int step_id, char *job_ids) 
+void read_events(char *user, query_adds_t *q_a) 
 {
 	char query[512];
 	char subquery[128];
@@ -968,18 +992,22 @@ void read_events(char *user, int job_id, int limit, int step_id, char *job_ids)
 	strcpy(query, EVENTS_QUERY);
 
 	add_int_comp_filter(query, "event_type", 100, 0);
-	if (job_id >= 0)
-		add_int_filter(query, "job_id", job_id);
-	else if (strlen(job_ids) > 0)
-		add_int_list_filter(query, "job_id", job_ids);
-	if (step_id >= 0)
-		add_int_filter(query, "step_id", step_id);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
 	if (user != NULL)
 		add_string_filter(query, "node_id", user);
+	if (q_a->start_time != 0)
+		add_int_comp_filter(query, "timestamp", q_a->start_time, 1);
+	if (q_a->end_time != 0)
+		add_int_comp_filter(query, "timestamp", q_a->end_time, 0);
 
-	if (limit > 0)
+	if (q_a->limit > 0)
 	{
-		sprintf(subquery, " ORDER BY timestamp desc LIMIT %d", limit);
+		sprintf(subquery, " ORDER BY timestamp desc LIMIT %d", q_a->limit);
 		strcat(query, subquery);
 	}
 
@@ -1047,7 +1075,7 @@ void print_loops(loop_t *loops, int num_loops)
 			}
 			if (sig.gpu_sig.num_gpus)
 				gpuf /= sig.gpu_sig.num_gpus;
-
+ 
 			if (gpuused > 0)
 			{
 				gpuu /= gpuused;
@@ -1074,7 +1102,7 @@ void print_loops(loop_t *loops, int num_loops)
 #define LOOPS_QUERY "SELECT * FROM Loops "
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
 
-void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids) 
+void read_loops(char *user, query_adds_t *q_a) 
 {
 	char query[512];
 	char subquery[128];
@@ -1097,16 +1125,16 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
 		strcpy(query, LOOPS_QUERY);
 	}
 
-	if (job_id >= 0)
-		add_int_filter(query, "job_id", job_id);
-	else if (strlen(job_ids) > 0)
-		add_int_list_filter(query, "job_id", job_ids);
-	if (step_id >= 0)
-		add_int_filter(query, "step_id", step_id);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
 
-	if (limit > 0 && job_id < 0)
+	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
-		sprintf(subquery, " ORDER BY job_id desc LIMIT %d", limit);
+		sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
 		strcat(query, subquery);
 	}
 	else strcat(query, " ORDER BY job_id desc");
@@ -1128,9 +1156,16 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
 	if (strlen(csv_path) > 0)
 	{
 		int i;
-		for (i = 0; i < num_loops; i++)
-			append_loop_text_file_no_job(csv_path, &loops[i], 1, 0, ' ');
-		printf("appended %d loops to %s\n", num_loops, csv_path);
+		if (!strcmp(csv_path, "no_file"))
+		{
+			for (i = 0; i < num_loops; i++)
+				print_loop_fd(STDOUT_FILENO, &loops[i]);
+		}
+		else {
+			for (i = 0; i < num_loops; i++)
+				append_loop_text_file_no_job(csv_path, &loops[i], 1, 0, ' ');
+			printf("appended %d loops to %s\n", num_loops, csv_path);
+		}
 	} else {
 		print_loops(loops, num_loops);
 	}
@@ -1141,7 +1176,7 @@ void read_loops(char *user, int job_id, int limit, int step_id, char *job_ids)
 //select Applications.* from Applications join Jobs on job_id = id where Jobs.end_time in (select end_time from (select end_time from Jobs where user_id = "xjcorbalan" and id = 284360 order by end_time desc limit 25) as t1) order by Jobs.end_time desc;
 //select Applications.* from Applications join Jobs on job_id=id where Jobs.user_id = "xjcorbalan" group by job_id order by Jobs.end_time desc limit 5;
 #if USE_DB
-void read_from_database(char *user, int job_id, int limit, int step_id, char *e_tag, char *job_ids, char *app_id) 
+void read_from_database(char *user, query_adds_t *q_a) 
 {
 	int num_apps = 0;
 	if (strlen(my_conf.database.user_commands) < 1) 
@@ -1166,33 +1201,37 @@ void read_from_database(char *user, int job_id, int limit, int step_id, char *e_
 
 	sprintf(query, "SELECT Applications.* FROM Applications join Jobs on job_id=id and Applications.step_id = Jobs.step_id where Jobs.id in (select id from (select id, end_time from Jobs" );
 	application_t *apps;
-	if (job_id >= 0)
-		add_int_filter(query, "id", job_id);
-	else if (strlen(job_ids) > 0)
-		add_int_list_filter(query, "id", job_ids);
-	if (step_id >= 0)
-		add_int_filter(query, "step_id", step_id);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
 	if (user != NULL)
 		add_string_filter(query, "user_id", user);
-	if (strlen(e_tag) > 0)
-		add_string_filter(query, "e_tag", e_tag);
-	if (strlen(app_id) > 0)
-		add_string_filter(query, "app_id", app_id);
+	if (strlen(q_a->e_tag) > 0)
+		add_string_filter(query, "e_tag", q_a->e_tag);
+	if (strlen(q_a->app_id) > 0)
+		add_string_filter(query, "app_id", q_a->app_id);
+	if (q_a->start_time != 0)
+		add_int_comp_filter(query, "start_time", q_a->start_time, 1);
+	if (q_a->end_time != 0)
+		add_int_comp_filter(query, "end_time", q_a->end_time, 0);
 
-	if (limit > 0)
+	if (q_a->limit > 0)
 	{
-		sprintf(subquery, " ORDER BY Jobs.end_time desc LIMIT %d", limit);
+		sprintf(subquery, " ORDER BY Jobs.end_time desc LIMIT %d", q_a->limit);
 		strcat(query, subquery);
 	}
 	strcat(query, ") as t1");
 
 	query_filters = 0;
-	if (job_id >= 0)
-		add_int_filter(query, "id", job_id);
-	else if (strlen(job_ids) > 0)
-		add_int_list_filter(query, "id", job_ids);
-	if (step_id >= 0)
-		add_int_filter(query, "Jobs.step_id", step_id);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "Jobs.step_id", q_a->step_id);
 	if (user != NULL)
 		add_string_filter(query, "user_id", user);
 
@@ -1225,28 +1264,48 @@ void read_from_database(char *user, int job_id, int limit, int step_id, char *e_
 
 
 	int i = 0;	
-	if (limit == 20 && strlen(csv_path) < 1)
+	if (q_a->limit == 20 && strlen(csv_path) < 1)
 		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
 
 	if (strlen(csv_path) < 1)
 	{
 
 		if (full_length) print_full_apps(apps, num_apps);
-		else print_short_apps(apps, num_apps, STDOUT_FILENO);
+		else print_short_apps(apps, num_apps, STDOUT_FILENO, 0);
 	}
 
 	else
 	{
-		if (full_length)
-			for (i = 0; i < num_apps; i++)
-				append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+		if (full_length) 
+		{
+			if (!strcmp(csv_path, "no_file")) 
+			{
+				for (i = 0; i < num_apps; i++)
+					print_application_fd(STDOUT_FILENO, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+			} 
+			else
+			{
+				for (i = 0; i < num_apps; i++) {
+					append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+				}
+			}
+		}
 		else
 		{
-			int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
-			print_short_apps(apps, num_apps, fd);
-			close(fd);
+			if (!strcmp(csv_path, "no_file")) 
+			{
+				int fd = STDOUT_FILENO;
+				print_short_apps(apps, num_apps, fd, 1);
+			}
+			else 
+			{
+				int fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+				print_short_apps(apps, num_apps, fd, 1);
+				close(fd);
+			}
 		}
-		printf("Successfully written applications to csv. Only applications with EARL will have its information properly written.\n");
+		if (strcmp(csv_path, "no_file")) //don't print the message if we are outputting to stdout
+			printf("Successfully written applications to csv. Only applications with EARL will have its information properly written.\n");
 	}
 
 	free(apps);
@@ -1254,31 +1313,32 @@ void read_from_database(char *user, int job_id, int limit, int step_id, char *e_
 }
 #endif
 
-void read_from_files(char *path, char *user, int job_id, int limit, int step_id)
+void read_from_files(char *path, char *user, query_adds_t *q_a)
 {
 	application_t *apps;
 	int num_apps = read_application_text_file(path, &apps, 0);
 	if (full_length) print_full_apps(apps, num_apps);
-	else print_short_apps(apps, num_apps, STDOUT_FILENO);
+	else print_short_apps(apps, num_apps, STDOUT_FILENO, 0);
 }
 
 int main(int argc, char *argv[])
 {
 	int opt;
-	int limit = 20;
-	int job_id = -1;
-	int step_id = -1;
+
+	query_adds_t query_adds;
+	memset(&query_adds, 0, sizeof(query_adds_t));
+
+	query_adds.limit = 20;
+	query_adds.job_id = -1;
+	query_adds.step_id = -1;
 
 	char is_loops = 0;
 	char is_events = 0;
 
-	char e_tag[64] = "";
-	char app_id[64] = "";
-	char job_ids[256] = "";
-
 	char path_name[256];
 	char *file_name = NULL;
 
+    struct tm tinfo = {0};
 
 	verb_level = -1;
 	verb_enabled = 0;
@@ -1305,13 +1365,13 @@ int main(int argc, char *argv[])
 	}
 
 	char *token;
-	while ((opt = getopt(argc, argv, "n:u:j:f:t:vma:pbglrc:hx::")) != -1) 
+	while ((opt = getopt(argc, argv, "n:u:j:f:t:vma:pbglrs:e:c:hx::")) != -1) 
 	{
 		switch (opt)
 		{
 			case 'n':
-				if (!strcmp(optarg, "all")) limit = -1;
-				else limit = atoi(optarg);
+				if (!strcmp(optarg, "all")) query_adds.limit = -1;
+				else query_adds.limit = atoi(optarg);
 				break;
 			case 'r':
 				is_loops = 1;
@@ -1321,16 +1381,16 @@ int main(int argc, char *argv[])
 				user = optarg;
 				break;
 			case 'j':
-				limit = limit == 20 ? -1 : limit; //if the limit is still the default
+				query_adds.limit = query_adds.limit == 20 ? -1 : query_adds.limit; //if the limit is still the default
 				if (strchr(optarg, ','))
 				{
-					strcpy(job_ids, optarg);
+					strcpy(query_adds.job_ids, optarg);
 				}
 				else
 				{
-					job_id = atoi(strtok(optarg, "."));
+					query_adds.job_id = atoi(strtok(optarg, "."));
 					token = strtok(NULL, ".");
-					if (token != NULL) step_id = atoi(token);
+					if (token != NULL) query_adds.step_id = atoi(token);
 				}
 				break;
 			case 'x':
@@ -1339,13 +1399,13 @@ int main(int argc, char *argv[])
 				{
 					if (strchr(argv[optind], ','))
 					{
-						strcpy(job_ids, argv[optind]);
+						strcpy(query_adds.job_ids, argv[optind]);
 					}
 					else
 					{
-						job_id = atoi(strtok(argv[optind], "."));
+						query_adds.job_id = atoi(strtok(argv[optind], "."));
 						token = strtok(NULL, ".");
-						if (token != NULL) step_id = atoi(token);
+						if (token != NULL) query_adds.step_id = atoi(token);
 					}
 				}
 				else if (verbose) printf("No argument for -x\n");
@@ -1374,13 +1434,31 @@ int main(int argc, char *argv[])
 				strcpy(csv_path, optarg);
 				break;
 			case 't':
-				strcpy(e_tag, optarg);
+				strcpy(query_adds.e_tag, optarg);
 				break;
 			case 'p':
 				avx = 1;
 				break;
 			case 'a':
-				strcpy(app_id, optarg);
+				strcpy(query_adds.app_id, optarg);
+				break;
+			case 's':
+                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+                {
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    free_cluster_conf(&my_conf);
+					exit(1);
+				}
+                query_adds.start_time = mktime(&tinfo);
+				break;
+			case 'e':
+                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+                {
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    free_cluster_conf(&my_conf);
+					exit(1);
+				}
+                query_adds.end_time = mktime(&tinfo);
 				break;
 			case 'h':
 				free_cluster_conf(&my_conf);
@@ -1389,12 +1467,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (verbose) printf("Limit set to %d\n", limit);
+	if (verbose) printf("Limit set to %d\n", query_adds.limit);
 
-	if (file_name != NULL) read_from_files(file_name, user, job_id, limit, step_id);
-	else if (is_events) read_events(user, job_id, limit, step_id, job_ids);
-	else if (is_loops) read_loops(user, job_id, limit, step_id, job_ids);
-	else read_from_database(user, job_id, limit, step_id, e_tag, job_ids, app_id); 
+	if (file_name != NULL) read_from_files(file_name, user, &query_adds);
+	else if (is_events) read_events(user, &query_adds);
+	else if (is_loops) read_loops(user, &query_adds);
+	else read_from_database(user, &query_adds); 
 
 	free_cluster_conf(&my_conf);
 	exit(0);

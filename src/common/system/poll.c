@@ -23,6 +23,9 @@
 void afd_init(afd_set_t *set)
 {
     int i;
+    // Full clean
+    memset(set, 0, sizeof(afd_set_t));
+    //
     for (i = 0; i < AFD_MAX; ++i) {
         set->fds[i].fd      =  -1;
         set->fds[i].events  =   0;
@@ -127,11 +130,6 @@ int afd_stat(int fd, struct stat *s)
     return 1;
 }
 
-void afd_zero(afd_set_t *set)
-{
-    memset(set, 0, sizeof(afd_set_t));
-}
-
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
 {
     // select()
@@ -146,13 +144,15 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     // nonzero revents fields (in other words, those descriptors with events or errors reported). A
     // value of 0 indicates that the call timed out and no file descriptors were ready. On error, -1
     // is returned, and errno is set appropriately.
-    ullong time_passed, r;
+    ullong time_passed;
     timestamp_t ts;
+    int r;
     // Polling and calculating time
     timestamp_get(&ts);
     r = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    debug("%d = poll(fds_rank: %d, timeout: %d, time_passed: %llu)", r, set->fds_rank, (int) timeout, time_passed);
+    debug("%d = poll(fds_rank: %lu, timeout: %d, time_passed: %llu)",
+        r, set->fds_rank, (int) timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;

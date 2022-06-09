@@ -151,13 +151,13 @@ static metrics_t     ub;
 	default: return 0; \
 	}
 
-void services_init(topology_t *tp)
+void services_init(topology_t *tp, my_node_conf_t *conf)
 {
 	state_t s;
 
 	// DONE
+	mgt_imcfreq_load(tp, NO_EARD, conf);
 	mgt_cpufreq_load(tp, NO_EARD);
-	mgt_imcfreq_load(tp, NO_EARD);
         cpufreq_load(tp, NO_EARD);
 	// DONE
         imcfreq_load(tp, NO_EARD);

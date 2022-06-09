@@ -73,6 +73,7 @@ typedef struct ip_table
 	int job_id;
 	int step_id;
 	uint current_freq;
+	uint max_freq;
 	uint temp;
 	eard_policy_info_t policies[TOTAL_POLICIES];
 } ip_table_t;
@@ -177,7 +178,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 	{
 		printf("%10s\t", "hostname");
 		if (mode == NODE_ONLY || mode == FULL_STATUS)
-			printf("%5s\t%4s\t%4s\t%6s\t%6s", "power", "temp", "freq", "job_id", "stepid");
+			printf("%5s\t%4s\t%4s\t%4s\t%6s\t%6s", "power", "temp", "maxf", "freq", "job_id", "stepid");
 		if (mode == FULL_STATUS || mode == POLICY_ONLY)
 			printf("  %6s  %5s  %2s", "policy", "pfreq", "th");
 		printf("\n");
@@ -199,7 +200,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 
 				if (mode == NODE_ONLY || mode == FULL_STATUS)
 				{
-					printf("%5d\t%3dC\t%.2lf\t%6d\t%6s", ips[i].rep_power, ips[i].temp, 
+					printf("%5d\t%3dC\t%.2lf\t%.2lf\t%6d\t%6s", ips[i].power, ips[i].temp, (double)ips[i].max_freq/1000000.0,
 							(double)ips[i].current_freq/1000000.0, ips[i].job_id, step_id);
 				}
 
@@ -314,6 +315,7 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
 			ips[i].power = status.node.power;
 			ips[i].rep_power = status.node.rep_power;
 			ips[i].current_freq = status.node.avg_freq;
+			ips[i].max_freq = status.node.max_freq;
 			ips[i].temp = status.node.temp;
 			ips[i].job_id = status.app.job_id;
 			ips[i].step_id = status.app.step_id;

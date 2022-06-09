@@ -40,9 +40,6 @@ state_t compute_cpu_freq_min_energy(polctx_t *c,signature_t *my_app,ulong freq_r
 state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double time_ref,
         double min_eff_gain, ulong curr_pstate, ulong best_pstate, ulong best_freq, ulong def_freq, ulong *newf);
 
-/* Computes the average CPU frequency across all processes. */
-void process_avg_cpu_freq(cpu_set_t *aff, ulong *cpuflist, ulong *avgcpu);
-
 /* This function compares signatures with a given margin p. Comparison is done based on CPI and GBS 
  * TODO: This function is also used in states.c, we may put it on a higher level of the library*/
 int signatures_different(signature_t *s1, signature_t *s2,float p);

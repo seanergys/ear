@@ -22,15 +22,21 @@
 #include <common/system/lock.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
-pthread_mutex_t lock_rpc = PTHREAD_MUTEX_INITIALIZER;
-
-__thread char *rpc_buffer = NULL;
-__thread size_t rpc_size  = 0;
-
-extern int ear_fd_req;
-extern int ear_fd_ack;
+pthread_mutex_t  lock_rpc = PTHREAD_MUTEX_INITIALIZER;
+__thread char   *rpc_buffer = NULL;
+__thread size_t  rpc_size  = 0;
+static int       rpc_disconnected;
+extern int       ear_fd_req;
+extern int       ear_fd_ack;
 
 ulong create_sec_tag();
+
+static state_t and_disconnect(state_t s, char *msg)
+{
+    eards_disconnect();
+    rpc_disconnected = 1;
+    return_print(s, msg, strerror(errno));
+}
 
 static state_t eard_send(int fd, uint call, state_t state, char *data, size_t size, char *error)
 {
@@ -38,6 +44,7 @@ static state_t eard_send(int fd, uint call, state_t state, char *data, size_t si
 	size_t send_size = size;
 	size_t head_szof;
 	eard_head_t head;
+	int ret;
 	debug("Preparing to send RPC %u of size %lu through FD %d", call, size, fd);
 	// If we are sending an error or content
 	if (state_fail(state)) {
@@ -56,13 +63,15 @@ static state_t eard_send(int fd, uint call, state_t state, char *data, size_t si
 	
 	debug("Sending eard req RPC header with size %lu", head_szof);
 	// Sending
-	if (eards_write(fd, (char *) &head, head_szof) != head_szof) {
-		return_print(EAR_ERROR, "Problem when writing EARD pipe (%s)", strerror(errno));
+	if ((ret = eards_write(fd, (char *) &head, head_szof)) != head_szof) {
+		debug("RPC header recv failed with ret %d", ret);
+		return and_disconnect(EAR_ERROR, "Problem when writing EARD pipe (%s)");
 	}
 	if (head.size > 0) {
 		debug("Sending RPC data with size %lu", head.size);
-		if (eards_write(fd, send_data, head.size) != head.size) {
-			return_print(EAR_ERROR, "Problem when writing EARD pipe (%s)", strerror(errno));
+		if ((ret = eards_write(fd, send_data, head.size)) != head.size) {
+		    debug("RPC header recv failed with ret %d", ret);
+			return and_disconnect(EAR_ERROR, "Problem when writing EARD pipe (%s)");
 		}
 	}
 	return EAR_SUCCESS;
@@ -78,6 +87,7 @@ static void rpc_buffer_test(size_t size)
 		rpc_buffer = realloc(rpc_buffer, size);
 		rpc_size = size;
 	}
+    memset(rpc_buffer, 0, rpc_size);
 }
 
 static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t expc_size)
@@ -91,7 +101,7 @@ static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t exp
 	// Receiving
 	if ((ret = eards_read(fd, (char *) &head, head_szof, WAIT_DATA)) != head_szof) {
 		debug("RPC header recv failed with ret %d", ret);
-		return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
+		return and_disconnect(EAR_ERROR, "Problem when reading EARD pipe (%s)");
 	}
 	if (head.req_service != call) {
 		return_print(EAR_ERROR, "Expected header of service %u, received %lu",
@@ -107,7 +117,7 @@ static state_t eard_recv(int fd, uint call, char *data, size_t *size, size_t exp
 		debug("Waiting RPC data of size %lu", head.size);	
 		if ((ret = eards_read(fd, data, head.size, WAIT_DATA)) != head.size) {
 			debug("RPC body failed with ret %d", ret);
-			return_print(EAR_ERROR, "Problem when reading EARD pipe (%s)", strerror(errno));
+			return and_disconnect(EAR_ERROR, "Problem when reading EARD pipe (%s)");
 		}
 		if (state_fail(head.state)) {
 			return_msg(head.state, state_buffer);
@@ -130,10 +140,20 @@ static state_t data_check(char *data, size_t size)
 	return EAR_SUCCESS;
 }
 
+static int rpc_is_connected()
+{
+    if (rpc_disconnected) {
+        return 0;
+    }
+    return eards_connected();
+}
+
 static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, size_t *recv_size, size_t expc_size)
 {
 	state_t s;
-	if (!eards_connected()) return_msg(EAR_ERROR, "EARD disconnected");
+	if (!rpc_is_connected()) {
+        return_msg(EAR_ERROR, "EARD disconnected");
+    }
 	// Testing data dissonances
 	if (state_fail(s = data_check(data, size))) {
 		return s;
@@ -152,6 +172,9 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
 
 state_t eard_rpc(uint call, char *data, size_t size, char *recv_data, size_t expc_size)
 {
+    if (recv_data != NULL && expc_size > 0) {
+        memset(recv_data, 0, expc_size);
+    }
 	return static_rpc(call, data, size, recv_data, NULL, expc_size);
 }
 

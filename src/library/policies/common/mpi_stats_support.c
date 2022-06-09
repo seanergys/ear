@@ -15,6 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
+// #define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,8 +25,7 @@
 #include <assert.h>
 #include <math.h>
 
-// #define SHOW_DEBUGS 1
-
+//#define COMP_CPI 1
 #include <metrics/cpi/cpi.h>
 
 #include <management/cpufreq/cpufreq.h>
@@ -84,6 +84,7 @@ static ullong comp_insts;
 #endif
 
 float LB_TH = EAR_LB_TH;
+static float critical_path_th   = 1;
 
 
 static state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i);
@@ -110,8 +111,6 @@ static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, doubl
         double *sd, double *mag);
 static state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
 
-static void verbose_mpi_summary(int verb_lvl, mpi_summary_t *l);
-
 state_t mpi_app_init(polctx_t *c)
 {
     char * clb_th;
@@ -127,7 +126,7 @@ state_t mpi_app_init(polctx_t *c)
                     COL_RED, COL_CLR, SCHED_LOAD_BALANCE_TH, FLAG_LOAD_BALANCE_TH);
             LB_TH = (float)atoi(clb_th);
         }
-        verbose_master(LB_VERB_LVL, "Load Balance threshold: %.1f", LB_TH);
+        verbose_master(LB_VERB_LVL, "Load Balance threshold: %.1f. Critical path proximity %.1f", LB_TH, critical_path_th);
 
         sig_shared_region[my_node_id].mpi_info.mpi_time=0;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
@@ -625,7 +624,7 @@ void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 
     verbose_master(verb_lvl, "MPI types\n---------\n\t# MPI calls: %lu\n\tMPI time (us): %lu\n\tExecution time (us): %lu\n"
             "\t# Synchronization calls: %lu\n\t# Collective calls: %lu\n\t# Blocking calls: %lu\n\t%% Time synchronization: %s\n"
-            "\t%% Time collective: %lu\n\t%% Time blocking: %lu\n\t# MPI calls/s: %s\n\t%% MPI time: %s\n"
+            "\t%% Time collective: %s\n\t%% Time blocking: %s\n\t# MPI calls/s: %s\n\t%% MPI time: %s\n"
             "sblock=%lu/%lu/%lu",
             t->mpi_call_cnt, t->mpi_time, t->exec_time,
             t->mpi_sync_call_cnt, t->mpi_collec_call_cnt, t->mpi_block_call_cnt, perc_sync_time,
@@ -711,12 +710,6 @@ state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, i
     return EAR_SUCCESS;
 }
 
-static void verbose_mpi_summary(int verb_lvl,mpi_summary_t *l)
-{
-    verbose_master(verb_lvl, "maxp %.2f minp %.2f sd %.2f mean %.2f mag %.2f",
-            l->max, l->min, l->sd, l->mean, l->mag);
-}
-
 state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs,
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb)
 {
@@ -768,6 +761,7 @@ state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs, double mean,
         double *median, int *max_mpi, int *min_mpi)
 {
+		uint total_cp = 0;
     /* Computes max and min perc_mpi processes */
     mpi_support_perc_mpi_max_min(num_procs, percs_mpi, max_mpi, min_mpi);
 
@@ -779,14 +773,16 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
 
     for (uint i=0; i < num_procs; i++) {
         /*  Decides whether process i is part of the critical path */
-        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - *median)) {
+        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < (abs(percs_mpi[i] - *median) * critical_path_th)) {
             verbose_master(LB_VERB_LVL, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
+						total_cp++;
         } else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)) {
             debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path",
                     COL_RED, COL_CLR, i);
         }
     }
+		verbose_master(2, "Total processes selected as critical path %u. Max MPI %.2f Min MPI %.2f Mean %.2f", total_cp, percs_mpi[*max_mpi], percs_mpi[*min_mpi], mean);
 
     return EAR_SUCCESS;
 }

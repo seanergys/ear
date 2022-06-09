@@ -28,8 +28,10 @@
 #define VEARD_INIT 0
 #define VEARD_NMGR 1
 #define VEARD_LAPI 2
-#define VNODEPMON 1 //power monitoring
-#define VJOBPMON  1 //power monitoring
+#define VNODEPMON 1 			// Node power monitoring
+#define VNODEPMON_BASIC 0   // Minimum Node power monitoring 
+#define VJOBPMON  1 			// Job accounting in power monitoring
+#define VJOBPMON_BASIC 0 	// Basic job accounting in power monitoring. Only new & end msg
 #define VRAPI     2 //dynamic_configuration
 #define VAPI      2 //eard_api.c
 #define VCHCK     2 //checkpoint

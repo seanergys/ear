@@ -460,9 +460,18 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
             } else {
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
-                ulong process_avgcpuf;
-                process_avg_cpu_freq(&sig_shared_region[i].cpu_mask, cpufreq_diff, &process_avgcpuf);
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                double ltpi, lgbs, lpower;
+
+                ltpi = my_app->TPI;
+                lgbs = my_app->GBS;
+                lpower = my_app->DC_power;
+
+                my_app->GBS      = lgbs * lib_shared_region->num_processes;
+                my_app->DC_power = lpower * lib_shared_region->num_processes;
+
+                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
+
 
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];

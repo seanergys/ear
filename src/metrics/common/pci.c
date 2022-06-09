@@ -79,7 +79,7 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
                 if (errno == EACCES) {
                     debug("Exists '%s', but no permissions", path);
                 } else {
-                    debug("Exists '%s', but error %s", strerror(errno));
+                    debug("Exists '%s', but error %s", path, strerror(errno));
                 }
                 continue;
             }
@@ -153,36 +153,33 @@ state_t pci_write(pci_t *pci, const void *buffer, size_t size, off_t addr)
 state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *addrs, uint addrs_count)
 {
 	int p, a;
-	uint written;
 	for (p = 0; p < pcis_count; ++p) {
 		for (a = 0; a < addrs_count; ++a) {
-            //debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
-                //p, pcis[p].fd, addrs[a], buffer[a], sizeof(int));
-			written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
+#if SHOW_DEBUGS
+			uint written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
 			debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
 				p, pcis[p].fd, addrs[a], buffer[a], written);
+#else
+            pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
+#endif
 		}
 	}
 	return EAR_SUCCESS;
 }
 
-void *ioremap(off_t addr, size_t size);
-
-state_t pci_mmio_map(off_t addr, size_t size, void **p)
+state_t pci_mmio_map(addr_t addr, void **p)
 {
-	off_t pagemask;
-	int pagesize;
+    void *maddr;
 	int fd;
-
-	pagesize = sysconf(_SC_PAGE_SIZE);
-	pagemask = ~(pagesize - 1);
 
 	if ((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
 		return_print(EAR_ERROR, "while opening /dev/mem: %s", strerror(errno));
 	}
-	if ((*p = mmap(0, 0x4000, PROT_READ|PROT_WRITE, MAP_SHARED, fd, addr & pagemask)) == MAP_FAILED) {
+	if ((maddr = mmap(0, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, PAGE_MASK(addr))) == MAP_FAILED) {
 		return_print(EAR_ERROR, "while mapping /dev/mem: %s", strerror(errno));
 	}
+    *p = (void *) (((addr_t) maddr) + (addr - PAGE_MASK(addr)));
+    debug("Mapped at 0x%lx and size 0x%x", addr, PAGE_SIZE);
     #if 0
 	if ((*p = ioremap(addr, size)) == NULL) {
 		return_msg(EAR_ERROR, strerror(errno));

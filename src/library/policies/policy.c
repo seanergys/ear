@@ -123,6 +123,7 @@ static uint      imc_pstate_cnt;
 
 static uint use_earl_phases = EAR_USE_PHASES;
 static ulong init_def_cpufreq_khz;
+static uint is_monitoring = 0;
 
 int my_globalrank;
 
@@ -446,8 +447,8 @@ state_t policy_init()
 		}else{ 
 			verbose_master(POLICY_INFO, "%s = %s", FLAG_MIN_CPUFREQ, cmin_cpufreq);
 		}
-    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %lu kHz"
-            " / Min. IMC freq. limited: %lu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
+            " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
@@ -656,6 +657,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
             (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
     if (strcmp(my_policy_name, "monitoring") == 0) {
+				is_monitoring = 1;
         pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
                 cpu_pstate_cnt - 1, &min_cpufreq);
     } else {
@@ -993,6 +995,47 @@ state_t policy_set_default_freq(signature_t *sig)
     }
 }
 
+static void compute_energy_savings(signature_t *curr,signature_t *prev)
+{
+	float performance_prev, performance_curr;
+	float psaving = 0;
+	float tpenalty = 0;
+	float esaving = 0;
+// #if 0
+	double tflops;
+// #endif
+	
+	sig_ext_t *sig_ext = curr->sig_ext;
+
+	if ((prev->Gflops == 0) || (curr->Gflops == 0)){
+		esaving = 0;
+		return;
+	}
+
+	/* The Energy saving is the ration bettween GFlops/W */
+	performance_prev = prev->Gflops/prev->DC_power;
+	performance_curr = curr->Gflops/curr->DC_power;
+
+// #if 0
+    tflops = compute_node_flops(lib_shared_region, sig_shared_region);
+
+    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
+            performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
+            performance_prev, prev->Gflops, prev->DC_power); 
+// #endif
+
+	esaving = ((performance_curr - performance_prev) / performance_prev) * 100;
+	psaving = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;
+	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
+
+	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f", masters_info.my_master_rank, esaving, psaving, tpenalty);
+
+	sig_ext->saving   = esaving * sig_ext->elapsed;
+	sig_ext->psaving  = psaving * sig_ext->elapsed;
+	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
+	
+}
+
 
 /* This function checks the CPU freq selection accuracy (only CPU), ok is an output */
 state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
@@ -1001,6 +1044,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     state_t ret, retg = EAR_SUCCESS;
 		uint num_ready;
 		uint jobs_in_node;
+		sig_ext_t *sig_ext = curr->sig_ext;
+
+		sig_ext->saving = 0;
+		
+
     if (curr == NULL || prev == NULL){
         *ok = 1;
         return EAR_SUCCESS;
@@ -1010,11 +1058,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     /* update_earl_node_mgr_info(); */
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_master(2,"There are %u jobs in the node", jobs_in_node);
-		verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
+	verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
     /* End update */
 
     /* estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1); */
-    verbose_master(2,"Job's GB/s: %.2lf - Job's Power: %.2lf", curr->GBS, curr->DC_power);
+    verbose_master(2, "Job's GB/s: %.2lf - Job's Power: %.2lf", curr->GBS, curr->DC_power);
 
     if (polsyms_fun.ok != NULL) {
         /* We wait for node signature computation */
@@ -1041,6 +1089,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     } else {
         *ok=1;
     }
+		/* If signatures are ok, not different phase, we compute the energy savings estimations */
+		if (!is_monitoring && *ok){
+			compute_energy_savings(curr, prev);
+			if (sig_ext->saving < 0) *ok = 0;
+		}
     return EAR_SUCCESS;
 }
 
@@ -1391,7 +1444,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         verbose_master(POLICY_INFO, "%sPOLICY%s Setting a CPU frequency (kHz) range of "
                 "[%lu, %lu] GHz...", COL_BLU, COL_CLR, min_cpufreq_sel_khz, max_cpufreq_sel_khz);
 
-        frequency_set_with_list(0, freq_per_core);
+        frequency_set_with_list(0, freq_per_core); // Setting the selected CPU frequency
 
     } else {
         verbose_master(POLICY_INFO, "%sPOLICY%s Requesting a CPU frequency (kHz) range of "

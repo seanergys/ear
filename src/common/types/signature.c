@@ -93,10 +93,10 @@ void signature_print_simple_fd(int fd, signature_t *sig)
             (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
 }
 
-void signature_to_str(signature_t *sig,char *msg,size_t limit)
+void signature_to_str(signature_t *sig, char *msg, size_t limit)
 {
-    snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
-            (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
+    snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf GFLOPS %.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
+            (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->Gflops, sig->DC_power);
 }
 
 void compute_ssig_vpi(double *vpi, ssig_t *sig)

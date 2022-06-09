@@ -51,8 +51,6 @@ void afd_clear(int fd, afd_set_t *set);
 
 int afd_stat(int fd, struct stat *st);
 
-void afd_zero(afd_set_t *set);
-
 #define AFD_SETT(fd, set, tag) \
     afd_set(fd, set, POLLIN, tag)
 
@@ -80,7 +78,7 @@ void afd_zero(afd_set_t *set);
     afd_stat(fd, stat)
 
 #define AFD_ZERO(set) \
-    afd_zero(set)
+    afd_init(set)
 
 /* New select based in poll. Time values are in milliseconds. */
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left);
