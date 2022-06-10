@@ -131,8 +131,9 @@ static uint are_cpi_gbs_eq(double cpi_a, double cpi_b, double gbs_a, double gbs_
 
 #if DYNAIS_CUTOFF
 /** This function checks whether this application is going to be
- * affected or not (an estimation based on CPI and GBS) by DynIAS. */
-static state_t check_dynais_on(const signature_t *A, const signature_t *B);
+ * affected or not (an estimation based on CPI and GBS) by DynIAS.
+ * Sets \p dynais_on to DYNAIS_ENABLED if needed. */
+static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dynais_on);
 #endif // DYNAIS_CUTOFF
 
 #if EAR_OVERHEAD_CONTROL
@@ -333,14 +334,13 @@ void states_end_period(uint iterations)
 /** This is the main function when used DynAIS. It applies
  * the EAR state diagram that drives the internal behaviour. */
 void states_new_iteration(int my_id, uint period, uint iterations,
-        uint level, ulong event, ulong mpi_calls_iter,uint dynais_used)
+        uint level, ulong event, ulong mpi_calls_iter, uint dynais_used)
 {
     ulong prev_cpufreq_khz, lavg;
     int ready;
     int result;
     int pok;
     int curr_pstate,def_pstate;
-    signature_t *l_sig;
     ulong policy_def_freq;
 
     char use_case[SHORT_GENERIC_NAME]; // 16 bytes allocated. Used for verbose signature.
@@ -450,7 +450,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             loop.id.event = event;
             loop.id.level = level;
             loop.id.size = period;
-            break;
+            break; // FIRST_ITERATION
 
         /* If the signature (basically CPI and GBS) changes,
          * we must recompute the number of iterations. */
@@ -608,16 +608,16 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 			/* Now we compute the JOB signature for reporting. */
             if (masters_info.my_master_rank >= 0) {
-                metrics_node_signature(&lib_shared_region->job_signature, &loop.signature);
+                metrics_node_signature(&lib_shared_region->job_signature, &loop.signature); // loop.signature <- lib_shared_region->job_signature
                 signature_copy(&lib_shared_region->job_signature, &loop.signature);
             }
             /* At this point loop and job_signature are the JOB signature
-             * with accumulated per process and global metrics. */
+             * with accumulated per process and global (node) metrics. */
 
             /* State check */
             if (EAR_POLICY_STATE == EAR_POLICY_READY) {
                 /* When the policy is ready to be evaluated, we go to the next state */
-                verbose_master(2, "Policy ready after evaluating local signature");
+                verbose_master(2, "[EVALUATING LOCAL SIGNATURE] Policy ready.");
 
                 signatures_stables = 0;
                 if ((policy_cpufreq_khz != prev_cpufreq_khz) && dynais_used) {
@@ -638,10 +638,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             begin_iter = iterations;
 
-            /* TODO: To be removed. */
+            /* TODO: To be removed. All processes have the node signature. */
 			signature_copy(&loop.signature, &lib_shared_region->job_signature);
 
-            report_loop_signature(iterations, &loop, &loop_signature.job); // report plugin
+            // Only the master process will report the loop.
+            report_loop_signature(iterations, &loop, &loop_signature.job);
 
             policy_get_current_freq(&node_freqs);
             lavg = node_freqs_avgcpufreq(node_freqs.cpu_freq);
@@ -676,7 +677,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
 
-            break;
+            break; // EVALUATING_GLOBAL_SIGNATURE
 
         /* If the policy is ok, we are in stable state and we increase
          * the number of iterations to compute the signature. */
@@ -748,7 +749,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* We must evaluate policy decissions */
             signatures_stables++;
-            l_sig = &policy_sel_signature;
+
             if (sig_ready[def_pstate] == 0){
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
@@ -758,7 +759,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 }
                 return;
             }
-            policy_state_ret = policy_ok(&loop_signature.signature, l_sig,&pok);
+
+            signature_t *l_sig = &policy_sel_signature;
+            policy_state_ret = policy_ok(&loop_signature.signature, l_sig, &pok);
 
 			/* Accumulate Energy savings */
 			accumulate_energy_savings(&loop_signature.signature, &application.signature);
@@ -809,15 +812,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 comp_N_begin = metrics_time();
                 policy_loop_init(&loop.id);
 #if DYNAIS_CUTOFF
-                if (state_ok(check_dynais_on(&loop_signature.signature, l_sig))) {
-                    debug("Dynais ON");
-                    dynais_enabled = DYNAIS_ENABLED;
-                }
+                check_dynais_on(&loop_signature.signature, l_sig, &dynais_enabled);
 #endif
             } else {
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
-            break;
+            break; // SIGNATURE_STABLE
+
         case PROJECTION_ERROR:
             verbose(2, "%s--- PROJECTION ERROR ---%s", COL_YLW, COL_CLR);
 
@@ -864,14 +865,13 @@ static uint are_cpi_gbs_eq(double cpi_a, double cpi_b, double gbs_a, double gbs_
 }
 
 #if DYNAIS_CUTOFF
-static state_t check_dynais_on(const signature_t *A, const signature_t *B)
+static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dynais_on)
 {
     assert(A != NULL && B != NULL);
 
     if (!are_cpi_gbs_eq(A->CPI, B->CPI, A->GBS, B->GBS, EAR_ACCEPTED_TH * 2)) {
-        return EAR_SUCCESS;
-    } else {
-        return EAR_ERROR;
+        *dynais_on = DYNAIS_ENABLED;
+        debug("DynAIS %sON%s", COL_GRE, COL_CLR);
     }
 }
 #endif
