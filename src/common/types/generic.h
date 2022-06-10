@@ -30,6 +30,7 @@ typedef unsigned long		ulong;
 typedef unsigned short		ushort;
 typedef unsigned int		uint;
 typedef     long double		ldouble;
+typedef unsigned long long  addr_t;
 
 // Not generic
 typedef uint8_t			job_type;
