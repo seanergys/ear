@@ -95,7 +95,7 @@ static uint     ok;
 
 static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_CallbackId id, CUpti_CallbackData *data);
 
-void gpu_cupti_load(gpu_ops_t *ops)
+void gpu_cupti_load(gpuproc_ops_t *ops)
 {
     if ((root.metric_name = getenv("CUPTI_METRIC")) == NULL) {
         debug("CUPTI_METRIC environent variable doesn't found");
@@ -438,7 +438,7 @@ state_t gpu_cupti_pool(void *p)
     return EAR_SUCCESS;
 }
 
-state_t gpu_cupti_read(ctx_t *c, gpu_t *data)
+state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data)
 {
     uint d;
     for (d = 0; d < root.devs_count; ++d) {

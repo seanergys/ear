@@ -44,8 +44,6 @@ void gpu_load(int eard)
     gpu_oneapi_load(&ops);
     gpu_eard_load(&ops, eard);
     gpu_dummy_load(&ops);
-    // Complementary APIs
-    gpu_cupti_load(&ops);
     ok_load = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
