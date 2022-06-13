@@ -91,7 +91,7 @@ static uint           tries_current_loop_same_freq = 0;
 
 // TODO: usage
 static uint           perf_count_period            = 100;
-static uint           loop_perf_count_period; // TODO: removable
+// static uint           loop_perf_count_period; // TODO: removable
 static uint           perf_count_period_10p;
 
 static ulong          policy_cpufreq_khz;
@@ -141,7 +141,11 @@ static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dy
 static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event);
 #endif // EAR_OVERHEAD_CONTROL
 
-static uint policy_had_effect(signature_t *A, signature_t *B);
+/** Returns wether the policy affected some metrics. */
+static uint policy_had_effect(const signature_t *A, const signature_t *B);
+
+static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min,
+        uint *loop_perf_count_period, uint *loop_perf_count_period_accel);
 
 // void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter, uint dynais_used);
 
@@ -425,7 +429,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
             if (comp_N_time == 0) comp_N_time = 1;
-
+#if 0
             /* We include a dynamic configurarion of EAR */
             if (comp_N_time < (llong) perf_accuracy_min_time) {
                 perf_count_period = (perf_accuracy_min_time / comp_N_time) + 1;
@@ -433,16 +437,19 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 perf_count_period = 1;
             }
 
-            loop_perf_count_period = perf_count_period;
+            // loop_perf_count_period = perf_count_period;
 
             /* Included to accelerate the signature computation */
             perf_count_period_10p = perf_count_period / 10;
             if (perf_count_period_10p == 0) {
                 perf_count_period_10p = 1;
             }
+#endif
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
 
             /* Once min iterations are computed for performance accuracy we start computing application signature */
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+
             state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
             metrics_compute_signature_begin();
             begin_iter = iterations;
@@ -450,6 +457,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             loop.id.event = event;
             loop.id.level = level;
             loop.id.size = period;
+
             break; // FIRST_ITERATION
 
         /* If the signature (basically CPI and GBS) changes,
@@ -459,20 +467,22 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
             // TODO: Here we don't check whether comp_N_time is equal to 0.
-
+#if 0
             if (comp_N_time < (llong) perf_accuracy_min_time) {
                 perf_count_period = (perf_accuracy_min_time / comp_N_time) + 1;
             } else {
                 perf_count_period = 1;
             }
 
-            loop_perf_count_period = perf_count_period;
+            // loop_perf_count_period = perf_count_period;
 
             /* Included to accelerate the signature computation. */
             perf_count_period_10p = perf_count_period / 10;
             if (perf_count_period_10p == 0) {
                 perf_count_period_10p = 1;
             }
+#endif
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
 
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 
@@ -484,11 +494,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
+            assert(comp_N_time != 0); // Only compiled with SHOW_DEBUGS enabled.
+
             // TODO: Here we don't tolerate comp_N_begin equal to 0
             if (comp_N_time == 0) {
                 error( "EAR(%s): PANIC comp_N_time must be > 0", ear_app_name);
             }
 
+#if 0
             /* We include a dynamic configuration of DPD behaviour */
             if (comp_N_time < (llong) perf_accuracy_min_time) {
                 perf_count_period = (perf_accuracy_min_time / comp_N_time) + 1;
@@ -496,13 +509,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 perf_count_period = 1;
             }
 
-            loop_perf_count_period = perf_count_period;
+            // loop_perf_count_period = perf_count_period;
 
             /* Included to accelerate the signature computation. */
             perf_count_period_10p = perf_count_period / 10;
             if (perf_count_period_10p == 0) {
                 perf_count_period_10p = 1;
             }
+#endif
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
 
             EAR_STATE = SIGNATURE_STABLE;
 
@@ -673,7 +688,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             policy_app_apply(&policy_cpufreq_khz, &ready);
 
             // Select the next state
-            if (ready == EAR_POLICY_READY){
+            if (ready == EAR_POLICY_READY) {
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
 
@@ -772,7 +787,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             ok_clr = COL_GRE;
             if (pok) {
                 /* When collecting traces, we maintain the period */
-                if ((masters_info.my_master_rank>=0) && (traces_are_on()==0)){
+                if ((masters_info.my_master_rank >= 0) && (traces_are_on() == 0)){
                     perf_count_period = perf_count_period * 2;
                 }
                 tries_current_loop = 0;
@@ -874,7 +889,7 @@ static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dy
         debug("DynAIS %sON%s", COL_GRE, COL_CLR);
     }
 }
-#endif
+#endif // DYNAIS_CUTOFF
 
 #if EAR_OVERHEAD_CONTROL
 static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event)
@@ -911,9 +926,25 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
 }
 #endif // EAR_OVERHEAD_CONTROL
 
-static uint policy_had_effect(signature_t *A, signature_t *B)
+static uint policy_had_effect(const signature_t *A, const signature_t *B)
 {
     assert(A != NULL && B != NULL);
 
     return are_cpi_gbs_eq(A->CPI, B->CPI, A->GBS, B->GBS, EAR_ACCEPTED_TH);
+}
+
+static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min,
+        uint *loop_perf_count_period, uint *loop_perf_count_period_accel)
+{
+    if (n_iters_time < (llong) n_iters_time_min) {
+        *loop_perf_count_period = (n_iters_time_min / n_iters_time) + 1;
+    } else {
+        *loop_perf_count_period = 1;
+    }
+
+    /* Included to accelerate the signature computation */
+    *loop_perf_count_period_accel = *loop_perf_count_period / 10;
+    if (*loop_perf_count_period_accel == 0) {
+        *loop_perf_count_period_accel = 1;
+    }
 }
