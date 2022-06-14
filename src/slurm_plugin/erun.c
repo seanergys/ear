@@ -20,6 +20,7 @@
 #include <slurm_plugin/slurm_plugin_environment.h>
 #include <slurm_plugin/slurm_plugin_serialization.h>
 #include <slurm_plugin/erun_lock.h>
+#include <slurm_plugin/erun_signals.h>
 
 //
 extern plug_serialization_t sd;
@@ -333,6 +334,9 @@ int main(int argc, char *argv[])
 {
 	// Creating job and reading arguments
 	job(argc, argv);
+
+    // Signals initialization
+    signals();
 
 	// Clean
 	if (_clean) {
