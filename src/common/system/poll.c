@@ -15,38 +15,50 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-#define SHOW_DEBUGS 1
-
 #include <common/system/poll.h>
 #include <common/output/debug.h>
+
+static int ids_count;
+
+#define adebug(...) \
+    cdebug(AFD_DEBUG, __VA_ARGS__);
 
 void afd_init(afd_set_t *set)
 {
     int i;
     // Full clean
     memset(set, 0, sizeof(afd_set_t));
+    // Tags
+    #if AFD_DEBUG
+    char *p = calloc(sizeof(char), AFD_MAX * AFD_TAG);
+    #endif
     //
     for (i = 0; i < AFD_MAX; ++i) {
         set->fds[i].fd      =  -1;
         set->fds[i].events  =   0;
         set->fds[i].revents =   0;
-        set->tags[i]        = "-";
+        #if !AFD_DEBUG
+        set->tags[i]        = NULL;
+        #else
+        set->tags[i]        = &p[i*AFD_TAG];
+        sprintf(set->tags[i], "-");
+        #endif
     }
+    set->id     = ++ids_count;
     set->fd_min = AFD_MAX;
     set->fd_max = 0;
     set->init   = 1;
 }
 
-void afd_set(int fd, afd_set_t *set, int flags, cchar *tag)
+int afd_set(int fd, afd_set_t *set, int flags)
 {
     if (set->init == 0) {
         afd_init(set);
     }
     if (fd >= AFD_MAX || fd < 0 || set->fds[fd].fd != -1) {
-        return;
+        return 0;
     }
 
-    set->tags[fd]        = tag;
     set->fds[fd].fd      = fd;
     set->fds[fd].events  = flags;
     set->fds[fd].revents = 0;
@@ -60,8 +72,7 @@ void afd_set(int fd, afd_set_t *set, int flags, cchar *tag)
     }
     // Counting
     set->fds_rank = set->fd_max - set->fd_min + 1;
-    debug("AFD_SET(%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", fd,
-        set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank, tag);
+    return 1;
 }
 
 int afd_ishup(int fd, afd_set_t *set)
@@ -73,8 +84,8 @@ int afd_isset(int fd, afd_set_t *set, int flag)
 {
     int retset = (set->fds[fd].revents & flag);
     int rethup = afd_ishup(fd, set); 
-    debug("FD_ISSET(%d): ret %d, hup %d (revents %d), tag %s", fd,
-        retset, rethup, set->fds[fd].revents, set->tags[fd]);
+    adebug("AFD_ISSET(%d, set%d): ret %d, hup %d (revents %d), tag %s",
+        fd, set->id, retset, rethup, set->fds[fd].revents, set->tags[fd]);
     if (!retset && rethup) {
         retset = rethup;
     }
@@ -83,14 +94,13 @@ int afd_isset(int fd, afd_set_t *set, int flag)
 
 void afd_clear(int fd, afd_set_t *set)
 {
-    cchar *tag = set->tags[fd];
     int i;
 
     if (fd < 0) {
         return;
     }
     if (set->fds[fd].fd == -1) {
-        debug("AFD_CLR is trying to clear invalid fd %d", fd);
+        adebug("AFD_CLR is trying to clear invalid fd %d", fd);
         return;
     }
     set->fds[fd].fd      = -1;
@@ -112,8 +122,10 @@ void afd_clear(int fd, afd_set_t *set)
     }
     // Counting
     set->fds_rank = set->fd_max - set->fd_min + 1;
-    debug("FD_CLR(%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", fd,
-        set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank, tag);
+    #if AFD_DEBUG
+    sprintf(set->tags[i], "-");
+    #endif
+    afd_debug(fd, set, "AFD_CLR");
 }
 
 int afd_stat(int fd, struct stat *s)
@@ -128,6 +140,12 @@ int afd_stat(int fd, struct stat *s)
         return 0;
     }
     return 1;
+}
+
+void afd_debug(int fd, afd_set_t *set, const char *prefix)
+{
+    adebug("%s(%d, set%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", prefix, fd,
+        set->id, set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank, set->tags[fd]);
 }
 
 int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
@@ -151,8 +169,8 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     timestamp_get(&ts);
     r = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    debug("%d = poll(fds_rank: %lu, timeout: %d, time_passed: %llu)",
-        r, set->fds_rank, (int) timeout, time_passed);
+    adebug("%d = poll(set%d, fds_count: %u, fds_rank: %lu, timeout: %d, time_passed: %llu)",
+        r, set->id, set->fds_count, set->fds_rank, (int) timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;

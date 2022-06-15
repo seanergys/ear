@@ -22,26 +22,29 @@
 #include <sys/stat.h>
 #include <common/states.h>
 #include <common/system/time.h>
-#include <common/output/verbose.h>
+//#include <common/output/verbose.h>
 
 #define AFD_MAX        4096
+#define AFD_TAG        64
 #define AFD_INFINITE  -1 // Infinite timeout
+#define AFD_DEBUG      0
 
 typedef struct afd_set_s {
     struct pollfd fds[AFD_MAX];
-    cchar *tags[AFD_MAX];
+    char *tags[AFD_MAX];
     nfds_t fds_rank;
     uint fds_count;
     int fd_max;
     int fd_min;
     int init;
+    int id;
 } afd_set_t;
 
 /* Used to clean and initialize an afd_set. */
 void afd_init(afd_set_t *set);
 
 /* Set a file descriptor, and init the afd_set if not done yet. */
-void afd_set(int fd, afd_set_t *set, int flags, cchar *tag);
+int afd_set(int fd, afd_set_t *set, int flags);
 
 int afd_isset(int fd, afd_set_t *set, int flags);
 
@@ -51,15 +54,24 @@ void afd_clear(int fd, afd_set_t *set);
 
 int afd_stat(int fd, struct stat *st);
 
-#define AFD_SETT(fd, set, tag) \
-    afd_set(fd, set, POLLIN, tag)
+void afd_debug(int fd, afd_set_t *set, const char *prefix);
+
+#if AFD_DEBUG
+#define AFD_SETT(fd, set, ...) \
+    if (afd_set(fd, set, POLLIN)) { \
+        snprintf((set)->tags[fd], AFD_TAG, __VA_ARGS__); \
+        afd_debug(fd, set, "AFD_SET"); \
+    }
+#else
+#define AFD_SETT(fd, set, ...) \
+    afd_set(fd, set, POLLIN)
+#endif
 
 #define AFD_SET(fd, set) \
-    fast_debug("AFD_SET entering fd %d...", fd); \
-    afd_set(fd, set, POLLIN, "-")
+    afd_set(fd, set, POLLIN)
 
 #define AFD_SETW(fd, set) \
-    afd_set(fd, set, POLLOUT, "-")
+    afd_set(fd, set, POLLOUT)
 
 #define AFD_ISSET(fd, set) \
     afd_isset(fd, set, POLLIN | POLLOUT)
@@ -71,7 +83,6 @@ int afd_stat(int fd, struct stat *st);
     afd_ishup(fd, set)
 
 #define AFD_CLR(fd, set) \
-    fast_debug("AFD_CLR entering fd %d...", fd); \
     afd_clear(fd, set)
 
 #define AFD_STAT(fd, stat) \
