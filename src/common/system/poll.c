@@ -15,7 +15,7 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/system/poll.h>
 #include <common/output/debug.h>
@@ -151,8 +151,8 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     timestamp_get(&ts);
     r = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    debug("%d = poll(fds_rank: %lu, timeout: %d, time_passed: %llu)",
-        r, set->fds_rank, (int) timeout, time_passed);
+    debug("%d = poll(fds_count: %d, timeout: %d, time_passed: %llu)",
+        r, set->fds_count, (int) timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;

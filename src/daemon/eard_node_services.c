@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #define VEARD_LAPI_DEBUG 2
 #include <string.h>
 #include <signal.h>
@@ -139,12 +139,12 @@ static metrics_t     ub;
 #define dcase_init(id) \
 	switch (call) { \
 	case id: \
-	//printf("Called " #id "\n");
+	debug("Called " #id "\n");
 
 #define dcase(id) \
 	break; \
 	case id: \
-	//printf("Called " #id "\n");
+	debug("Called " #id "\n");
 
 #define dcase_fini() \
 	break; \
@@ -505,6 +505,9 @@ int add_new_local_connection(local_connection_t *my_con,ulong jid,ulong sid,ulon
   my_con[i].lid = lid;
   my_con[i].anonymous = is_anonymous(jid,sid);
   my_con[i].cancelled = 0;
+
+  debug("New local connection: pos %d lid %lu", i, lid);
+
   return i;
 }
 
@@ -516,9 +519,10 @@ int get_local_connection_ack(local_connection_t *my_con,int reqfd)
       i++;
   }
   if (i == num_local_con){
+      debug("Local connection not found %d", reqfd);
     return_msg(EAR_ERROR, "Local connection not found");
   }
-  //debug("ACK for %d found at pos %d = %d",reqfd,i,my_con[i].fds[ACK_LOCAL_FD]);
+  debug("ACK for %d found at pos %d = %d | lid %lu", reqfd,i,my_con[i].fds[ACK_LOCAL_FD], my_con[i].lid);
   return my_con[i].fds[ACK_LOCAL_FD];
 }
 
@@ -854,15 +858,19 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
       write(ack_fd, &ack, sizeof(ulong));
       break;
     case WRITE_LOOP_SIGNATURE:
+      debug("WRITE_LOOP_SIGNATURE");
+
       ack = EAR_COM_OK;
+      
       powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
       // print_loop_fd(1,&req.req_data.loop);
-			report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
+	  report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
 
       if (report_connection_status == EAR_SUCCESS) ack = EAR_COM_OK;
       else ack = EAR_COM_ERROR;
 
       write(ack_fd, &ack, sizeof(ulong));
+
       break;
 /* Add new_services for RAPL here. Use req_fd to read pending data and ack_fd to send data*/
     default:
@@ -1189,8 +1197,7 @@ state_t eard_local_api()
         } else {// Signal received
             debug("signal received");
         }
-        debug("Waiting for %d fds. global req fd %d", numfds_req, global_req_fd);
-        //debug("eard waiting.....\n");
+        // debug("eard waiting.....\n");
     }//while
 
 	verbose(VEARD_LAPI,"Releasing node_mgr data ");
