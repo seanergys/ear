@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -128,7 +128,7 @@ static void static_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data
     if (d3->insts > 0) {
 	    d3->cpi  = ((double) d3->cycles) / ((double) d3->insts);
     }
-	#if 1
+	#if 0
 	debug("%d flops_sp, %llu = %llu - %llu", i, d3->flops_sp, d2->flops_sp, d1->flops_sp);
 	debug("%d flops_dp, %llu = %llu - %llu", i, d3->flops_dp, d2->flops_dp, d1->flops_dp);
     debug("%d cycles  , %llu = %llu - %llu", i, d3->cycles,   d2->cycles,   d1->cycles);
@@ -213,56 +213,3 @@ void gpuproc_data_tostr(gpuproc_t *data, char *buffer, int length)
 		accuml = accuml + s;
 	}
 }
-
-static gpuproc_t *data1;
-static gpuproc_t *data2;
-static gpuproc_t *dataD;
-
-int repetir(void *x)
-{
-    gpuproc_read_copy(no_ctx, data2, data1, dataD); 
-
-    gpuproc_data_print(dataD, fderr);
-}
-
-void __main(int argc, char **argv, char **envp)
-{
-    static int protected = 0;
-    uint api;
-    
-    if (protected) {
-        return;
-    }
-    protected = 1;
-    
-    debug("__main");
-
-    monitor_init();
-
-    gpuproc_load(NO_EARD);
-    
-    gpuproc_get_api(&api);
-    
-    apis_print(api, "API: ");
-
-    gpuproc_init(no_ctx);
-    
-    gpuproc_data_alloc(&data1);
-    gpuproc_data_alloc(&data2);
-    gpuproc_data_alloc(&dataD);
-
-    gpuproc_read(no_ctx, data1); 
-  
-	suscription_t *sus = suscription();
-	sus->call_init     = NULL;
-	sus->call_main     = repetir;
-	sus->time_relax    = 2000;
-	sus->time_burst    = 2000;
-	sus->suscribe(sus);
- 
-    return;
-    
-    //sleep(100);
-}
-
-__attribute__((section(".init_array"))) typeof(__main) *__init = __main;
