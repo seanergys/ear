@@ -110,6 +110,7 @@ typedef struct cupti_s {
     CUptiResult (*EventGroupReadAllEvents) (CUpti_EventGroup g, CUpti_ReadEventFlags f, size_t *b1, ullong *b2, size_t *sz2, CUpti_EventID *b3, size_t *n);
     CUptiResult (*EventGetAttribute) (CUpti_EventID event, CUpti_EventAttribute attrib, size_t *valueSize, void *value);
     CUptiResult (*EventGroupAddEvent) (CUpti_EventGroup g, CUpti_EventID e);
+    CUptiResult (*EventGroupCreate) (CUcontext context, CUpti_EventGroup *g, uint32_t flags);
     CUptiResult (*GetResultString) (CUptiResult result, const char **str);
 } cupti_t;
 
