@@ -115,7 +115,7 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
     return i;
 }
 
-static int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
+int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
 {
     char buff[1024];
     sprintf(buff, "%s;", app->node_id);
@@ -385,7 +385,7 @@ void report_mpi_application_data(application_t *app)
 
     char mpi_info_txt[512];
     if (app->is_mpi) {
-        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n          Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
+        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n          Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
                 app->signature.time, def_f, avg_f, avg_imc_f, app->signature.perc_MPI, app->job.procs, app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS, app->signature.DC_power, app->signature.DRAM_power, app->signature.PCK_power, app->signature.Gflops/app->signature.DC_power);
     }
 
