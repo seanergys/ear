@@ -28,8 +28,10 @@
 
 typedef struct gpuproc_s
 {
+    timestamp_t time;
     ullong samples;
-    ullong flops;
+    ullong flops_dp;
+    ullong flops_sp;
     ullong insts;
     ullong cycles;
     double cpi;
@@ -69,9 +71,6 @@ state_t gpuproc_read_copy(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_
 /** Helpers */
 // Substracts the elements of the gpuproc_t array (data_diff = data2 - data1).
 state_t gpuproc_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff);
-
-// Makes an average of all the elements of the data_diff array.
-state_t gpuproc_data_merge(gpuproc_t *data_diff, gpuproc_t *data_merge);
 
 // Allocates an array of gpuproc_t (1 per device).
 state_t gpuproc_data_alloc(gpuproc_t **data);

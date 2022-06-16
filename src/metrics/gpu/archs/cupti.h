@@ -18,16 +18,20 @@
 #ifndef METRICS_GPU_CUPTI_H
 #define METRICS_GPU_CUPTI_H
 
-#include <metrics/gpu/gpu.h>
+#include <metrics/gpu/gpuproc.h>
 
-void gpu_cupti_load(gpu_ops_t *ops);
+void gpu_cupti_load(gpuproc_ops_t *ops);
+
+void gpu_cupti_get_api(uint *api);
 
 state_t gpu_cupti_init(ctx_t *c);
 
 state_t gpu_cupti_dispose(ctx_t *c);
 
+state_t gpu_cupti_count_devices(ctx_t *c, uint *devs_count);
+
 state_t gpu_cupti_pool(void *p);
 
-state_t gpu_cupti_read(ctx_t *c, gpu_t *data);
+state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data);
 
 #endif //METRICS_GPU_CUPTI_H

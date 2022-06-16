@@ -32,7 +32,7 @@
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
-#define CUPTI_N      15
+#define CUPTI_N      17
 #define CUDA_N       4
 #define CUDA_LIB     "libcuda.so"
 #define CUPTI_LIB    "libcupti.so"
@@ -52,6 +52,7 @@ static const char *cupti_names[] = {
     "cuptiMetricGetNumEvents",
     "cuptiMetricCreateEventGroupSets",
     "cuptiMetricGetAttribute",
+    "cuptiMetricGetValue",
     "cuptiSetEventCollectionMode",
     "cuptiEventGroupSetsDestroy",
     "cuptiEventGroupSetAttribute",
@@ -59,6 +60,7 @@ static const char *cupti_names[] = {
     "cuptiEventGroupEnable",
     "cuptiEventGroupReadAllEvents",
     "cuptiEventGetAttribute",
+    "cuptiEventGroupAddEvent",
     "cuptiGetResultString",
 };
 
@@ -71,12 +73,12 @@ static uint            ok;
 static state_t static_open_cuda()
 {
     #define open_test_cuda(path) \
-    debug("Openning %s", path); \
+    debug("Openning %s", (char *) path); \
     if (state_ok(plug_open(path, (void **) &cu, cuda_names, CUDA_N, RTLD_NOW | RTLD_LOCAL))) { \
         return EAR_SUCCESS; \
     }
 
-    open_test_cuda(NULL);
+    //open_test_cuda(NULL);
     open_test_cuda(getenv(HACK_CUDA_FILE));
 
     return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
@@ -164,6 +166,11 @@ state_t cupti_open(cupti_t *cupti_in, cuda_t *cu_in)
         memcpy(cu_in, &cu, sizeof(cuda_t));
     }
     return s;
+}
+
+void cupti_count_devices(uint *devs_count_in)
+{
+    *devs_count_in = devs_count;
 }
 
 state_t cupti_close()

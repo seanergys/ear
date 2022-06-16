@@ -15,12 +15,13 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <common/output/debug.h>
+#include <common/system/time.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
 #include <metrics/common/cupti.h>
@@ -33,8 +34,10 @@
 typedef struct CUextra_s {
     CUpti_EventID          events_ids[GRP_N];
     ullong                 events_counters[GRP_N];
+    ullong                 events_normals[GRP_N];
     char                   events_names[GRP_N][128];
     uint                   instances_count;
+    uint                   total_instances_count;
     uint                   events_count;
 } CUextra;
 
@@ -42,7 +45,7 @@ typedef struct CUmeta_s {
     CUpti_MetricID         metric_id;
     CUpti_MetricValueKind  metric_kind;
     CUpti_MetricValue      metric_value;
-    timestamp_t            stamp_init;
+    timestamp_t            time;
     int                    meta_id;
     CUdevice               device;
     CUcontext              context;
@@ -62,24 +65,24 @@ typedef struct CUmeta_s {
 typedef struct CUroot_s {
     CUpti_SubscriberHandle subscriber;
     char                  *metric_name;
-    char                  *metric2_name;
+    int                    metric_num;
     uint                   devs_count;
     uint                   ctxs_count;
     uint                   protected;
 } CUroot;
 
-typedef struct CUpool_s {
-    ullong                 values[GRP_N];
-} CUpool;
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static CUroot   root;
-static uint     meta_count;
-static CUmeta   meta[CTX_N]; //Context queue
-static CUpool   pool[DEV_N];
-static cupti_t  cupti;
-static cuda_t   cu;
-static uint     ok;
+static CUroot    root;
+static uint      meta_count;
+static CUmeta    meta[CTX_N]; //Context queue
+static gpuproc_t pool[DEV_N];
+static cupti_t   cupti;
+static cuda_t    cu;
+static uint      ok;
+
+#define METRIC_CPI       1
+#define METRIC_FLOPS_SP  2
+#define METRIC_FLOPS_DP  3
 
 #define cc(call)                                                                \
     do {                                                                        \
@@ -95,20 +98,46 @@ static uint     ok;
 
 static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_CallbackId id, CUpti_CallbackData *data);
 
+static int enum_metric()
+{
+    if (!strcmp(root.metric_name, "ipc")) {
+        return METRIC_CPI;
+    }
+    if (!strcmp(root.metric_name, "flop_count_sp")) {
+        return METRIC_FLOPS_SP;
+    }
+    if (!strcmp(root.metric_name, "flop_count_dp")) {
+        return METRIC_FLOPS_DP;
+    }
+    return 0;
+}
+
 void gpu_cupti_load(gpuproc_ops_t *ops)
 {
     if ((root.metric_name = getenv("CUPTI_METRIC")) == NULL) {
         debug("CUPTI_METRIC environent variable doesn't found");
         return;
     }
+    root.metric_num = enum_metric();
+    //
     if (state_fail(cupti_open(&cupti, &cu))) {
         debug("Can not open CUPTI: %s", state_msg);
         return;
     }
-    apis_add(ops->init,    gpu_cupti_init);
-    apis_add(ops->dispose, gpu_cupti_dispose);
-    apis_add(ops->read,    gpu_cupti_read);
-    debug("Loaded CUPTI");
+    cupti_count_devices(&root.devs_count); 
+    //
+    apis_set(ops->get_api,       gpu_cupti_get_api);
+    apis_set(ops->init,          gpu_cupti_init);
+    apis_set(ops->dispose,       gpu_cupti_dispose);
+    apis_set(ops->read,          gpu_cupti_read);
+    apis_set(ops->count_devices, gpu_cupti_count_devices);
+    
+    debug("Loaded CUPTI (%d devices)", root.devs_count);
+}
+
+void gpu_cupti_get_api(uint *api)
+{
+    *api = API_CUPTI;
 }
 
 state_t gpu_cupti_dispose(ctx_t *c)
@@ -150,13 +179,19 @@ state_t gpu_cupti_init(ctx_t *c)
     // Setting suscriptions
     sus = suscription();
     sus->call_main  = gpu_cupti_pool;
-    sus->time_relax = 1500;
-    sus->time_burst = 1500;
+    sus->time_relax = 2000;
+    sus->time_burst = 2000;
     sus->suscribe(sus);
     ok = 1;
     debug("Initialized CUPTI");
     fini:
     pthread_mutex_unlock(&lock);
+    return EAR_SUCCESS;
+}
+
+state_t gpu_cupti_count_devices(ctx_t *c, uint *devs_count)
+{
+    *devs_count = root.devs_count;
     return EAR_SUCCESS;
 }
 
@@ -186,6 +221,8 @@ static int metric_print(CUmeta *m)
     cc(cupti.MetricGetNumEvents(m->metric_id, &events_count));
 
     debug("-- [CUPTI] ----------------------");
+    debug("context: %p", m->context);
+    debug("met. id: 0x%X", m->metric_id);
     debug("#passes: %d", m->passes->numSets);
     debug("#events: %u", events_count);
 
@@ -208,7 +245,11 @@ static int metric_print(CUmeta *m)
             for (e = 0; e < events_count; ++e) {
                 size = sizeof(event_name);
                 cc(cupti.EventGetAttribute(events_ids[e], CUPTI_EVENT_ATTR_NAME, &size, event_name));
-                debug("%s", event_name);
+                if (!strcmp(event_name, "event_name")) {
+                    debug("unknown (id 0x%X)", events_ids[e]);
+                } else {
+                    debug("%s (id 0x%X)", event_name, events_ids[e]);
+                }
             }
         }
         debug("---------------------------------");
@@ -248,6 +289,10 @@ static int metric_enable(CUmeta *m)
         size = sizeof(m->extras[g].instances_count);
         cc(cupti.EventGroupGetAttribute(m->groups[g], CUPTI_EVENT_GROUP_ATTR_INSTANCE_COUNT, &size, &m->extras[g].instances_count));
 
+        // Counting total instances
+        //size = sizeof(m->extras[g].total_instances_count);
+        //cc(cupti.DeviceGetEventDomainAttribute(metricData->device, groupDomain, CUPTI_EVENT_DOMAIN_ATTR_TOTAL_INSTANCE_COUNT, &size, &numTotalInstances));
+
         // Enabling all domains
         cc(cupti.EventGroupSetAttribute(m->groups[g], CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES, sizeof(aux), &aux));
         cc(cupti.EventGroupEnable(m->groups[g]));
@@ -255,6 +300,10 @@ static int metric_enable(CUmeta *m)
         for (e = 0; e < m->extras[g].events_count; ++e) {
             size = sizeof(m->extras[g].events_names[e]);
             cc(cupti.EventGetAttribute(m->extras[g].events_ids[e], CUPTI_EVENT_ATTR_NAME, &size, m->extras[g].events_names[e]));
+
+            if (!strcmp(m->extras[g].events_names[e], "event_name")) {
+                sprintf(m->extras[g].events_names[e], "ev%X", m->extras[g].events_ids[e]); 
+            }
         }
         
         size = sizeof(CUpti_MetricValueKind);
@@ -267,7 +316,19 @@ static int metric_create(CUmeta *m)
 {
     debug("Resetting...");
     m->reset = 0;
-    
+  
+    #if 0 
+    char *metric_name;
+    if (m->meta_id == 1) {
+        metric_name = "ipc";
+    } else {
+        metric_name = "flop_count_sp";
+        metric_name = "flop_count_dp";
+        metric_name = "dram_utilization";
+    }
+        metric_name = "ipc";
+    #endif
+ 
     cc(cupti.SetEventCollectionMode(m->context, CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS));
     cc(cupti.MetricGetIdFromName(m->device, root.metric_name, &m->metric_id));
 
@@ -279,6 +340,7 @@ static int metric_create(CUmeta *m)
     // CUpti_EventGroupSet: a struct that contains an array of CUpti_EventGroup
     // CUpti_EventGroup: an array of events
     cc(cupti.MetricCreateEventGroupSets(m->context, sizeof(m->metric_id), &m->metric_id, &m->passes));
+    //cc(cupti.EventGroupAddEvent(m->passes->sets->eventGroups, (CUpti_EventID) 0x16000090));
 
     // Print (or debugging)
     if (!metric_print(m)) {
@@ -289,7 +351,7 @@ static int metric_create(CUmeta *m)
         return 0;
     }
     // Getting the timestamp
-    timestamp_get(&m->stamp_init);
+    timestamp_get(&m->time);
     // State change
     m->reset = 0;
     m->init  = 1;
@@ -314,21 +376,51 @@ static int metric_read_group(CUmeta *m, uint g)
     cc(cupti.EventGroupReadAllEvents(m->groups[g], CUPTI_EVENT_READ_FLAG_NONE, &size1, buffer, &size2, m->extras[g].events_ids, &events_read));
 
     events_count = m->extras[g].events_count;
-    debug("Readed %lu/%d events (%p)", events_read, m->extras[g].events_count, m->context);
+    debug("Pooled %lu/%d events (ctx %p)", events_read, m->extras[g].events_count, m->context);
 
     for (e = 0; e < events_count; ++e) {
         for (i = 0; i < m->extras[g].instances_count; ++i) {
-            m->extras[g].events_counters[e] += buffer[(i * events_count) + e];
+            m->extras[g].events_counters[e] = buffer[(i * events_count) + e];
         }
+        // Future: normalize these values
         debug("D%d, %s: %llu", m->device, m->extras[g].events_names[e], m->extras[g].events_counters[e]);
     }
+    // Kind: Events
+    // --------------------
+    // CPI     : DOUBLE (0)
+    // FLOPS_SP: UINT64 (1): fadd + fmul + ffma (OPS)
+    // FLOPS_DP: UINT64 (1): fadd (0x16000090) + fmul (0x16000091) + ffma (0x16000092)
+    //
+    
     #if 0
-    // Wait until saving metrics
+    // This doesn't works well
     cc(cupti.MetricGetValue(m->device, m->metric_id,
         m->events_count * sizeof(CUpti_EventID), m->extras[g].events_ids,
-        m->events_count * sizeof(uint64_t), m->extras[g].events_counters,
-        kernelDuration, &m->metric_value));
+        m->events_count * sizeof(uint64_t), (uint64_t *) m->extras[g].events_counters,
+        (uint64_t) timestamp_diffnow(&m->time, TIME_NSECS), &m->metric_value));
     #endif
+    while (pthread_mutex_trylock(&lock));
+    if (root.metric_num == METRIC_CPI) {
+        pool[m->device].insts  += (ullong) m->extras[g].events_counters[0];
+        pool[m->device].cycles += (ullong) m->extras[g].events_counters[1];
+    }
+    if (root.metric_num == METRIC_FLOPS_SP) {
+        pool[m->device].flops_sp += (ullong) m->extras[g].events_counters[0];
+        pool[m->device].flops_sp += (ullong) m->extras[g].events_counters[1];
+        pool[m->device].flops_sp += (ullong) m->extras[g].events_counters[2] * 2LLU;
+    }
+    if (root.metric_num == METRIC_FLOPS_DP) {
+        pool[m->device].flops_dp += (ullong) m->extras[g].events_counters[0];
+        pool[m->device].flops_dp += (ullong) m->extras[g].events_counters[1];
+        pool[m->device].flops_dp += (ullong) m->extras[g].events_counters[2] * 2LLU;     
+    }
+    //gpuproc_data_print(pool, fderr);
+    pthread_mutex_unlock(&lock);
+    // Saving metadata
+    pool[m->device].time     = m->time;
+    pool[m->device].samples += 1;
+    // Getting new time
+    timestamp_get(&m->time);
     
     return 1;
 }
@@ -337,7 +429,6 @@ static void metric_read(CUmeta *m)
 {
     int i;
 
-    debug("Reading... %p", m->context);
     for (i = 0; i < m->set->numEventGroups; ++i) {
         if (!metric_read_group(m, i)) {
             //return;
@@ -360,7 +451,7 @@ static int context_find(CUcontext pctx, int meta_id, uint *index)
     if (found) {
         *index = i+1;
     }
-    #if 1
+    #if 0
     if (found) {
         debug("Found context %p in index %d", pctx, *index);
     } else {
@@ -392,7 +483,7 @@ static void context_push(CUcontext pctx, int meta_id)
     }
     if(!context_find(pctx, meta_id, &i))
     {
-        debug("Adding new context to queue... %d (%d)", i, meta_id);
+        debug("Adding new context to queue... %p, id %d, meta %d", pctx, i, meta_id);
         cu.CtxGetDevice(&meta[i].device);
         meta[i].context = pctx;
         meta[i].meta_id = meta_id;
@@ -417,6 +508,7 @@ static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_Callbac
     if (id == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel) {
         if (enter) {
             context_push(data->context, 1);
+            //context_push(data->context, 2);
         } else {
             //context_pop(data->context, 1);
         }
@@ -426,7 +518,6 @@ static void callback(void *user_data, CUpti_CallbackDomain domain, CUpti_Callbac
 state_t gpu_cupti_pool(void *p)
 {
     uint d;
-    debug("Pooling...");
     for (d = 0; d < CTX_N; ++d) {
         if (meta[d].reset) {
             metric_create(&meta[d]);
@@ -440,10 +531,9 @@ state_t gpu_cupti_pool(void *p)
 
 state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data)
 {
-    uint d;
-    for (d = 0; d < root.devs_count; ++d) {
-        // Nothing by now
-        debug("%llu", pool[d].values[0]);
-    }
+    while (pthread_mutex_trylock(&lock));
+    memcpy(data, pool, root.devs_count * sizeof(gpuproc_t));
+    pthread_mutex_unlock(&lock);
+
     return EAR_SUCCESS;
 }

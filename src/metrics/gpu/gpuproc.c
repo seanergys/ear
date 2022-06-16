@@ -18,10 +18,13 @@
 #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <metrics/gpu/gpuproc.h>
 #include <metrics/gpu/archs/cupti.h>
+
+#include <common/system/monitor.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpuproc_ops_t ops;
@@ -30,22 +33,24 @@ static uint ok_load;
 
 void gpuproc_load(int eard)
 {
+    debug("gpuproc_load enters");
     while (pthread_mutex_trylock(&lock));
     if (ok_load) {
         goto unlock_load;
     }
-    gpuproc_cupti_load(&ops);
+    gpu_cupti_load(&ops);
     ok_load = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
+    debug("gpuproc_load exits");
 }
 
 void gpuproc_get_api(uint *api)
 {
-    if (ops.get_api != NULL) {
-        return ops.get_api(api);
-    }
     *api = API_DUMMY;
+    if (ops.get_api != NULL) {
+        ops.get_api(api);
+    }
 }
 
 state_t gpuproc_init(ctx_t *c)
@@ -65,44 +70,47 @@ state_t gpuproc_dispose(ctx_t *c)
 state_t gpuproc_count_devices(ctx_t *c, uint *devs_count)
 {
     *devs_count = 1;
-	preturn(ops.count_devices, c, devs_count);
+    if (ops.count_devices != NULL) {
+        return ops.count_devices(c, devs_count);
+    }
+    return EAR_SUCCESS;
 }
 
 state_t gpuproc_read(ctx_t *c, gpuproc_t *data)
 {
     gpuproc_data_null(data);
-    preturn(ops.read, c, data);
+    if (ops.read != NULL) {
+        return ops.read(c, data);
+    }
+    return EAR_SUCCESS;
 }
 
-state_t gpuproc_read_diff(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff)
+state_t gpuproc_read_diff(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *dataD)
 {
 	state_t s;
 	if (state_fail(s = gpuproc_read(c, data2))) {
 		return s;
 	}
-	return gpuproc_data_diff(data2, data1, data_diff);
+	return gpuproc_data_diff(data2, data1, dataD);
 }
 
-state_t gpuproc_read_copy(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff)
+state_t gpuproc_read_copy(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *dataD)
 {
 	state_t s;
-	if (state_fail(s = gpuproc_read_diff(c, data2, data1, data_diff))) {
+	if (state_fail(s = gpuproc_read_diff(c, data2, data1, dataD))) {
 		return s;
 	}
 	return gpuproc_data_copy(data1, data2);
 }
 
-static void static_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff, int i)
+static void static_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *dataD, int i)
 {
-	gpuproc_t *d3 = &data_diff[i];
+	gpuproc_t *d3 = &dataD[i];
 	gpuproc_t *d2 = &data2[i];
 	gpuproc_t *d1 = &data1[i];
 	ullong time_i;
 	double time_f;
 
-	if (d2->correct != 1 || d1->correct != 1) {
-		return;
-	}
 	// Computing time
 	time_i = timestamp_diff(&d2->time, &d1->time, TIME_USECS);
 	time_f = ((double) time_i) / 1000000.0;
@@ -112,29 +120,33 @@ static void static_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data
 		return;
 	}
 	// No overflow control is required (64-bits are enough)
-	d3->flops   = (d2->flops - d1->flops) / d3->flops;
-	d3->insts   = (d2->insts - d1->insts) / d3->insts;
-	d3->cycles  = (d2->cycles - d1->cycles) / d3->cycles;
-	d3->cpi     = 0.0;
+	d3->flops_sp = (d2->flops_sp - d1->flops_sp);
+	d3->flops_dp = (d2->flops_dp - d1->flops_dp);
+	d3->insts    = (d2->insts    - d1->insts);
+	d3->cycles   = (d2->cycles   - d1->cycles);
 
+    if (d3->insts > 0) {
+	    d3->cpi  = ((double) d3->cycles) / ((double) d3->insts);
+    }
 	#if 1
-	debug("%d flops  , %lu = %llu - %llu", i, d3->flops, d2->flops, d1->flops);
-    debug("%d insts  , %lu = %llu - %llu", i, d3->insts, d2->insts, d1->insts);
-    debug("%d cycles , %lu = %llu - %llu", i, d3->cycles, d2->cycles, d1->cycles);
-    debug("%d cpi    , %0.2lf = %0.2lf - %0.2lf", i, d3->cpi, d2->cpi, d1->cpi);
+	debug("%d flops_sp, %llu = %llu - %llu", i, d3->flops_sp, d2->flops_sp, d1->flops_sp);
+	debug("%d flops_dp, %llu = %llu - %llu", i, d3->flops_dp, d2->flops_dp, d1->flops_dp);
+    debug("%d cycles  , %llu = %llu - %llu", i, d3->cycles,   d2->cycles,   d1->cycles);
+    debug("%d insts   , %llu = %llu - %llu", i, d3->insts,    d2->insts,    d1->insts);
+    debug("%d cpi     , %0.2lf = %0.2lf - %0.2lf", i, d3->cpi, d2->cpi, d1->cpi);
 	#endif
 }
 
-state_t gpuproc_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff)
+state_t gpuproc_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *dataD)
 {
 	state_t s;
 	int i;
 
-	if (state_fail(s = gpuproc_data_null(data_diff))) {
+	if (state_fail(s = gpuproc_data_null(dataD))) {
 		return s;
 	}
 	for (i = 0; i < devs_count; i++) {
-		static_data_diff(data2, data1, data_diff, i);
+		static_data_diff(data2, data1, dataD, i);
 	}
 	#if 0
 	gpuproc_data_print(data_diff, debug_channel);
@@ -195,17 +207,62 @@ void gpuproc_data_tostr(gpuproc_t *data, char *buffer, int length)
 
 	for (i = accuml = 0; i < devs_count && length > 0; ++i) {
 		s = snprintf(&buffer[accuml], length,
-			 "gpu%u: %llu FLOPS\n", i,
-			 data[i].flops);
+			 "gpu%u: FLOPs %llu/%llu, instructions %llu, cycles %llu, CPI %0.2lf\n", i,
+			 data[i].flops_sp, data[i].flops_dp, data[i].insts, data[i].cycles, data[i].cpi);
 		length = length - s;
 		accuml = accuml + s;
 	}
 }
 
-int main(int argc, char *argv[])
+static gpuproc_t *data1;
+static gpuproc_t *data2;
+static gpuproc_t *dataD;
+
+int repetir(void *x)
 {
-    gpuproc_load(NO_EARD);
-    gpuproc_init(no_ctx);
-    sleep(100);
-    return 0;
+    gpuproc_read_copy(no_ctx, data2, data1, dataD); 
+
+    gpuproc_data_print(dataD, fderr);
 }
+
+void __main(int argc, char **argv, char **envp)
+{
+    static int protected = 0;
+    uint api;
+    
+    if (protected) {
+        return;
+    }
+    protected = 1;
+    
+    debug("__main");
+
+    monitor_init();
+
+    gpuproc_load(NO_EARD);
+    
+    gpuproc_get_api(&api);
+    
+    apis_print(api, "API: ");
+
+    gpuproc_init(no_ctx);
+    
+    gpuproc_data_alloc(&data1);
+    gpuproc_data_alloc(&data2);
+    gpuproc_data_alloc(&dataD);
+
+    gpuproc_read(no_ctx, data1); 
+  
+	suscription_t *sus = suscription();
+	sus->call_init     = NULL;
+	sus->call_main     = repetir;
+	sus->time_relax    = 2000;
+	sus->time_burst    = 2000;
+	sus->suscribe(sus);
+ 
+    return;
+    
+    //sleep(100);
+}
+
+__attribute__((section(".init_array"))) typeof(__main) *__init = __main;

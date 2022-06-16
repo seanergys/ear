@@ -101,6 +101,7 @@ typedef struct cupti_s {
     CUptiResult (*MetricGetNumEvents) (CUpti_MetricID met, uint *num);
     CUptiResult (*MetricCreateEventGroupSets) (CUcontext c, size_t size, CUpti_MetricID *ids, CUpti_EventGroupSets **passes);
     CUptiResult (*MetricGetAttribute) (CUpti_MetricID met, CUpti_MetricAttribute attrib, size_t *valueSize, void *value);
+    CUptiResult (*MetricGetValue) (CUdevice dev, CUpti_MetricID met, size_t size1, CUpti_EventID* ids, size_t size2, uint64_t* values, uint64_t ns, CUpti_MetricValue* value);
     CUptiResult (*SetEventCollectionMode) (CUcontext context, CUpti_EventCollectionMode mode);
     CUptiResult (*EventGroupSetsDestroy) (CUpti_EventGroupSets *eventGroupSets);
     CUptiResult (*EventGroupSetAttribute) (CUpti_EventGroup group, CUpti_EventGroupAttribute attrib, size_t size, void *values);
@@ -108,11 +109,14 @@ typedef struct cupti_s {
     CUptiResult (*EventGroupEnable) (CUpti_EventGroup group);
     CUptiResult (*EventGroupReadAllEvents) (CUpti_EventGroup g, CUpti_ReadEventFlags f, size_t *b1, ullong *b2, size_t *sz2, CUpti_EventID *b3, size_t *n);
     CUptiResult (*EventGetAttribute) (CUpti_EventID event, CUpti_EventAttribute attrib, size_t *valueSize, void *value);
+    CUptiResult (*EventGroupAddEvent) (CUpti_EventGroup g, CUpti_EventID e);
     CUptiResult (*GetResultString) (CUptiResult result, const char **str);
 } cupti_t;
 
 state_t cupti_open(cupti_t *cupti, cuda_t *cu);
 
 state_t cupti_close();
+
+void cupti_count_devices(uint *devs_count);
 
 #endif //METRICS_COMMON_CUPTI_H
