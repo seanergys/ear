@@ -714,8 +714,13 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
     
 	spank_get_item(sp, S_STEP_CPUS_PER_TASK, (int *)&sd->job.task.num_cpus);
 
+    #if !ERUN
     #define SPACE "                            "
-    xsprintf(buffer2, "------------------------------------- task summary ---\n");	
+    #else
+    #define SPACE "            "
+    #endif
+    xsprintf(buffer1, "task summary:\n");
+    xsprintf(buffer2, "%s" SPACE "------------------------------------------------------\n", buffer1);
 	xsprintf(buffer1, "%s" SPACE "jid.sid.tid.pid: %lu.%lu.%d.%d\n", buffer2,
         sd->job.task.jid, sd->job.task.sid, task, sd->job.task.pid);
     xsprintf(buffer2, "%s" SPACE "affinity mask  : ", buffer1);
