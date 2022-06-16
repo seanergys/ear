@@ -665,7 +665,7 @@ void connect_service(struct daemon_req *new_req)
         error("Opening adding local ack newc");
   }
   debug("New communication FDs created for application FD[%d]=%d,%d",newc,ear_ack_fd,ear_req_fd);
-  AFD_SETT(ear_req_fd, &rfds_basic, "req");
+  AFD_SETT(ear_req_fd, &rfds_basic, "req%lu", new_req->con_id.lid);
   /* This function notifies the local connection */
   if (!eard_local_conn[newc].anonymous) powermon_mpi_init(&handler_energy, new_app);
   debug("Application %d connected with local API (anonymous %lu)",pid,eard_local_conn[newc].anonymous);
@@ -1176,16 +1176,13 @@ state_t eard_local_api()
                     if (AFD_ISSET(i, &rfds_basic)) {
                         if (i == global_req_fd) {
                             /* New connection */
-                            fast_debug("NEW_CONNECTION %d (global_req_fd %d)", i, global_req_fd);
                         } else {
                             /* We need to find the local req and ack fds */
                             ack_fd = get_local_connection_ack(eard_local_conn, i);
                         }
                         if (ack_fd >= 0) {
-                            fast_debug("SERVICE_SELECT from req %d ack %d", i, ack_fd);
                             service_select(i, ack_fd);
                         } else {
-                            fast_debug("Exitting because");
                             _exit(0);
                         }
                     }    // IF AFD_ISSET
