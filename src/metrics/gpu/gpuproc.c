@@ -108,12 +108,12 @@ static void static_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data
 	gpuproc_t *d3 = &dataD[i];
 	gpuproc_t *d2 = &data2[i];
 	gpuproc_t *d1 = &data1[i];
-	ullong time_i;
-	double time_f;
+	//ullong time_i;
+	//double time_f;
 
 	// Computing time
-	time_i = timestamp_diff(&d2->time, &d1->time, TIME_USECS);
-	time_f = ((double) time_i) / 1000000.0;
+	//time_i = timestamp_diff(&d2->time, &d1->time, TIME_USECS);
+	//time_f = ((double) time_i) / 1000000.0;
 	// Averages
 	if ((d3->samples = d2->samples - d1->samples) == 0) {
 		memset(d3, 0, sizeof(gpuproc_t));

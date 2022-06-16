@@ -195,7 +195,7 @@ state_t gpu_cupti_count_devices(ctx_t *c, uint *devs_count)
     return EAR_SUCCESS;
 }
 
-#if 1
+#if 0
 static void context_destroy(CUmeta *m)
 {
     cupti.EventGroupSetsDestroy(m->passes);
