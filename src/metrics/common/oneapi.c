@@ -59,7 +59,6 @@ static pthread_mutex_t      lock = PTHREAD_MUTEX_INITIALIZER;
 static zes_device_handle_t *devs;
 static uint                 devs_count;
 static ze_t                 ze;
-static uint                 dev_count;
 static uint                 ok;
 
 static state_t static_open()
@@ -86,10 +85,12 @@ static state_t static_open()
     return_msg(EAR_ERROR, "Can not load ");
 }
 
+#if 0
 static state_t static_free(state_t s, char *error)
 {
     return_msg(s, error);
 }
+#endif
 
 static state_t print_driver_info(ze_driver_handle_t driver, int dr)
 {
@@ -98,16 +99,18 @@ static state_t print_driver_info(ze_driver_handle_t driver, int dr)
     ze_driver_properties_t           props;
     ze_api_version_t                 version;
     ze_result_t                      z;
-    uint                             i;
+    //uint                             i;
 
     #define ret_fail(function) \
 		if ((z = function) != ZE_RESULT_SUCCESS) { \
 			debug("Failed " #function " with error 0x%x", z); \
 			return EAR_ERROR; \
 		}
-    //} else { \
-		//	debug("Succeded " #function); \
-		//}
+    #if 0
+    } else {
+		debug("Succeded " #function); \
+	}
+    #endif
 
     // Driver info
     ret_fail(ze.DriverGetProperties(driver, &props));
@@ -138,7 +141,7 @@ static state_t print_device_info(ze_device_handle_t device, int dv)
     ret_fail(ze.DeviceGetMemoryProperties(device, &mem_count, mem));
     ret_fail(ze.DeviceGetSubDevices(device, &sub_count, NULL));
 
-    debug("DEVICE%d name: %s %s (id 0x%x.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
+    debug("DEVICE%d name: %s %s (id 0x%s.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
           props.name, props.vendorId, props.deviceId);
     debug("DEVICE%d performance: %u MHz@%lu MB allocatable", dv,
           props.coreClockRate, props.maxMemAllocSize / 1000000LU);
@@ -161,7 +164,7 @@ static state_t static_init()
     ze_result_t            z;
     int                    dr;
     int                    dv;
-    state_t                s;
+    //state_t                s;
 
     // This functions is protected from above. Lock is not required.
     ret_fail(ze.Init(0));
