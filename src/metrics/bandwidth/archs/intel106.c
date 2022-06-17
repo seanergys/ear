@@ -41,7 +41,6 @@ static uint  *imc_ctrs;
 
 static state_t load_icelake()
 {
-    void *addr_ma;
 	addr_t addr_hi;
 	addr_t addr_lo;
 	addr_t addr_fi;
@@ -76,7 +75,7 @@ static state_t load_icelake()
 				return s;
 			}
 			debug("IMC%u address physical = 0x%lx (0x%lx | 0x%lx)", (p*4)+i, addr_fi, addr_hi, addr_lo);
-            debug("IMC%u address virtual  = 0x%lx", (p*4)+i, addr_ma);
+            debug("IMC%u address virtual  = 0x%lx", (p*4)+i, imc_maps[(p*4)+i]);
 			// Filling RD and WR counters
 			imc_ctrs[c++] = 0x00;
 			imc_ctrs[c++] = 0x08;

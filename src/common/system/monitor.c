@@ -60,7 +60,7 @@ static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
 
 	//
 	units = ((ullong) wait_units) * 100LL;
-	timestamp_revert(&time, &units, TIME_MSECS);
+	timestamp_revert(&time, units, TIME_MSECS);
 
 	// Sleeping
 	timestamp_t t2;
