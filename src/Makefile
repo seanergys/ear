@@ -6,6 +6,7 @@ COMPONENTS = \
     metrics \
     management\
     daemon \
+    library \
     commands \
     tools \
     global_manager \
