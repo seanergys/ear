@@ -31,6 +31,7 @@
 #include <common/config.h>
 #include <common/types/types.h>
 #include <common/system/time.h>
+#include <common/system/poll.h>
 #include <common/system/process.h>
 #include <common/system/sockets.h>
 #include <common/string_enhanced.h>

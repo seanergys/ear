@@ -17,11 +17,6 @@
 
 #define _GNU_SOURCE
 // #define SHOW_DEBUGS 1
-#if 0
-#define SINGLE_CONNECTION 0
-#else
-#define SINGLE_CONNECTION 1
-#endif
 
 #define BASIC_PERIOD 1000
 
@@ -1122,34 +1117,34 @@ void ear_init()
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
-                if (!my_id && eard_ok){ //only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU,ear_my_rank,node_name,COL_CLR);
-										state_t ret = eards_connect(&application, my_node_id);
-										if (fake_eard_error == 3){
-											ret = EAR_ERROR;
-										}
-                    //if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+                if (!my_id && eard_ok) { // only the master will connect with eard
+                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU, ear_my_rank, node_name, COL_CLR);
+                    state_t ret = eards_connect(&application, my_node_id);
+                    if (fake_eard_error == 3){
+                        ret = EAR_ERROR;
+                    }
+                    // if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
                     if (ret == EAR_SUCCESS) {
-                        debug("%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                        debug("%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         notify_eard_connection(1);
-                        mark_as_eard_connected(my_job_id,my_step_id,getpid());
-                    }else{   
-                        eard_ok=0;
+                        mark_as_eard_connected(my_job_id, my_step_id, getpid());
+                    } else {   
+                        eard_ok = 0;
                         notify_eard_connection(0);
                     }
                 }
 #else
-                if (eard_ok){ // all processes will connect with eard
+                if (eard_ok) { // all processes will connect with eard
                     char *col;
                     if (!my_id) col = COL_BLU; 
                     else        col = COL_GRE;
                     verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
-                            col,my_node_id, getpid(), ear_my_rank,node_name,COL_CLR);
+                            col,my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
                     if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
-                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU,ear_my_rank,COL_CLR);
+                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         if (!my_id){
                             notify_eard_connection(1);
-                            mark_as_eard_connected(my_job_id,my_step_id,getpid());
+                            mark_as_eard_connected(my_job_id, my_step_id, getpid());
                         }
                     }else{   
                         verbose(2, "%sRank %d NOT connected with EARD%s %s", COL_BLU,ear_my_rank,COL_CLR, state_msg);
