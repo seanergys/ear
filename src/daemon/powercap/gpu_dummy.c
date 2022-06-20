@@ -36,7 +36,7 @@
 
 
 
-static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; 
+static domain_settings_t settings = { .node_ratio = 0.00, .security_range = 0.00 }; 
 
 static uint current_gpu_pc=0;
 static uint gpu_pc_enabled=0;
