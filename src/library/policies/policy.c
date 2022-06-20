@@ -581,7 +581,11 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     }
 
     // Policy file selection
-    if (((obj_path == NULL) && (ins_path == NULL)) || (app_settings->user_type!=AUTHORIZED)) {
+#if !USER_TEST
+    if ((obj_path == NULL) && (ins_path == NULL) || (app_settings->user_type != AUTHORIZED)) {
+#else
+    if (obj_path == NULL && ins_path == NULL) {
+#endif
         if (!app_mgr) {
             xsnprintf(basic_path,sizeof(basic_path),"%s/policies/%s.so",data->dir_plug,my_policy_name);
         } else {

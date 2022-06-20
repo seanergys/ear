@@ -65,6 +65,7 @@ static double *gpu_cons_power;
 static ulong *gpu_freq;
 static suscription_t *sus_gpu;
 
+static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; 
 
 #define MIN_GPU_IDLE_POWER 40
 
@@ -245,6 +246,11 @@ state_t plugin_set_relax()
     return monitor_relax(sus_gpu);
 }
 
+void plugin_get_settings(domain_settings_t *s) 
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
+}
+
 state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 {
     debug("GPU: powermgr gpu power allocated %lu",limit);
@@ -398,6 +404,8 @@ void set_app_req_freq(ulong *f)
         t_freq[i]=f[i];
     }
 }
+
+
 #define MIN_GPU_POWER_MARGIN 10
 /* Returns 0 when 1) No info, 2) No limit 3) We cannot share power. */
 /* Returns 1 when power can be shared with other modules */

@@ -24,16 +24,24 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <common/output/verbose.h>
 
-state_t utils_create_plugin_path(char *result_path, char *install_path, char *custom_path, int authorized_user) {
-    debug("install path: %s | custom path: %s | Authorised ? %d", install_path, custom_path, authorized_user == AUTHORIZED);
+state_t utils_create_plugin_path(char *result_path, char *install_path,
+        char *custom_path, int authorized_user) {
+    debug("install path: %s | custom path: %s | Authorised ? %d",
+            install_path, custom_path, authorized_user == AUTHORIZED);
     int ret;
-    if (custom_path != NULL && authorized_user == AUTHORIZED) {
-        ret = sprintf(result_path, "%s/plugins", custom_path);
-    } else {
-        assert(install_path != NULL);
-        if (install_path == NULL) return EAR_ERROR;
-        ret = sprintf(result_path, "%s", install_path);
-    }
+#if !USER_TEST
+    if (custom_path != NULL && authorized_user == AUTHORIZED)
+#else
+    if (custom_path != NULL)
+#endif
+        {
+            ret = sprintf(result_path, "%s/plugins", custom_path);
+        } else {
+            assert(install_path != NULL);
+            if (install_path == NULL) return EAR_ERROR;
+            ret = sprintf(result_path, "%s", install_path);
+        }
+
     assert(ret > 0);
     state_t st = ret > 0 ? EAR_SUCCESS : EAR_ERROR;
     return st;
