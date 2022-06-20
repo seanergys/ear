@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include <sched.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
@@ -82,12 +82,14 @@ typedef struct powercap_symbols {
     state_t (*increase_powercap_allocation)(uint increase);
     state_t (*plugin_set_burst)();
     state_t (*plugin_set_relax)();
+    void 	(*plugin_get_settings)(domain_settings_t *settings);
 } powercapsym_t;
 
 static uint pmgt_limit;
 static float pdomains[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
 static float pdomains_idle[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
 static domain_status_t cdomain_status[NUM_DOMAINS];
+static domain_settings_t cdomain_settings[NUM_DOMAINS];
 static ulong *current_util[NUM_DOMAINS],*prev_util[NUM_DOMAINS];
 static ulong  dom_util[NUM_DOMAINS],last_dom_util[NUM_DOMAINS],dom_changed[NUM_DOMAINS];
 #if USE_GPUS || SHOW_DEBUGS
@@ -101,14 +103,14 @@ static float pdomains_min[NUM_DOMAINS]={0.6,0.4,0,GPU_PERC_UTIL};
 static float pdomains_min_dummy[NUM_DOMAINS]={1.0,0.75,0,0};
 #else
 static float pdomains_def[NUM_DOMAINS]={1.0,0.9,0,0};
-static float pdomains_min[NUM_DOMAINS]={1.0,07575,0,0};
+static float pdomains_min[NUM_DOMAINS]={1.0,0.7575,0,0};
 #endif
 static uint domains_loaded[NUM_DOMAINS]={0,0,0,0};
 static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 
-#define SECURITY_RANGE 0.95
+static float security_range = 1.0;
 //static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
-const int   pcsyms_n = 19;
+const int   pcsyms_n = 20;
 
 static suscription_t *sus[NUM_DOMAINS];
 
@@ -132,6 +134,7 @@ const char     *pcsyms_names[] ={
     "increase_powercap_allocation",
     "plugin_set_burst",
     "plugin_set_relax",
+    "plugin_get_settings",
 };
 
 #ifndef SYN_TEST
@@ -187,11 +190,7 @@ extern double rapl_dram_tdps[MAX_PACKAGES];
 #define TDP_GPU 250
 void compute_power_distribution()
 {
-#if USE_GPUS
-    float node_ratio = 0.05;
-#else
-    float node_ratio = 0.1;
-#endif
+    float node_ratio = cdomain_settings[DOMAIN_CPU].node_ratio;
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
 
@@ -206,7 +205,7 @@ void compute_power_distribution()
     pd_dram = bpd_dram * pc_topology_info.socket_count;
     pd_gpu = bpd_gpu * gpu_pc_num_gpus;
     pd_pckg = pd_cpu + pd_dram;
-    pd_total = pd_pckg + pd_gpu + (pd_pckg + pd_gpu) * node_ratio;        
+    pd_total = pd_pckg + pd_gpu + pd_pckg * node_ratio;        
     pdomains_def[DOMAIN_NODE] = ((float)pd_pckg +(float)pd_pckg * node_ratio) / (float)pd_total;
     pdomains_def[DOMAIN_CPU] = (float) pd_pckg / (float)pd_total;
     pdomains_def[DOMAIN_DRAM] = (float) pd_dram / (float)pd_total;
@@ -503,8 +502,15 @@ state_t pmgt_init()
 #endif
     debug("Initializing Util monitoring");
     util_monitoring_init();
-    compute_power_distribution();
     memset(cdomain_status,0,NUM_DOMAINS*sizeof(domain_status_t));
+	memset(&cdomain_settings, 0, sizeof(domain_settings_t)*NUM_DOMAINS);
+	for (i = 0; i<NUM_DOMAINS; i++) {
+		if (domains_loaded[i]) {
+			freturn(pcsyms_fun[i].plugin_get_settings, &cdomain_settings[i]);
+			security_range -= cdomain_settings[i].security_range; //security_range starts at 100 and every domain takes a bit from it
+		}
+	}
+    compute_power_distribution(); //power distribution can only be computed AFTER we have all the domain's settings (for now only CPU matters)
     debug("Returng from pmgt_init with %d (%d = SUCCESS, %d ERROR)", ret, EAR_SUCCESS, EAR_ERROR);
     return ret;
 }
@@ -717,7 +723,7 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler,dom_power_t *pdomain,uint st)
         }
         debug("reduced power domains by %.2f, new CPU %.2f new GPU %.2f", excess, pdomains[DOMAIN_CPU], pdomains[DOMAIN_GPU]);
         pmgt_reset_pdomain();
-    }else if (pdomain->platform < (pmgt_limit * SECURITY_RANGE)){    
+    }else if (pdomain->platform < (pmgt_limit * security_range)){  //check if we can comfortably give power back to the domains without risking an excess of power use   
         for (i=0;i< NUM_DOMAINS; i++){
             pdomains[i] = ear_min(pdomains[i] + 0.02,pdomains_def[i]);
         }

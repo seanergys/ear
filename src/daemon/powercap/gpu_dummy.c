@@ -36,6 +36,7 @@
 
 
 
+static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; 
 
 static uint current_gpu_pc=0;
 static uint gpu_pc_enabled=0;
@@ -67,6 +68,11 @@ state_t plugin_set_relax()
 state_t plugin_set_burst()
 {
     return EAR_SUCCESS;
+}
+
+void plugin_get_settings(domain_settings_t *s) 
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
 }
 
 state_t set_powercap_value(uint pid,uint domain,uint limit,uint *gpu_util)

@@ -23,7 +23,7 @@
 #include <errno.h>
 #define _GNU_SOURCE
 #include <pthread.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/colors.h>
 #include <common/states.h>
@@ -34,7 +34,6 @@
 #include <management/cpufreq/frequency.h>
 
 #define POWERCAP_MON 0
-
 
 
 /* This version is a prototype and should be replaced by an INM plugin+GPU commands for powercap */
@@ -57,6 +56,9 @@ static uint pc_on=0;
 static ulong c_req_f;
 static suscription_t *sus_inm;
 
+static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; //
+
+
 int do_cmd(char *cmd)
 {
   if (strcmp(cmd,"NO_CMD")==0) return 0;
@@ -76,6 +78,9 @@ state_t inm_disable_powercap_policy(uint pid)
   }
 	return EAR_SUCCESS;
 }
+
+
+
 state_t inm_disable_powercap_policies()
 {
 	char cmd[1024];
@@ -152,6 +157,11 @@ state_t plugin_set_relax()
     return monitor_relax(sus_inm);
 }
 
+void plugin_get_settings(domain_settings_t *s) 
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
+}
+
 state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 {
 	char cmd[1024];
@@ -164,6 +174,8 @@ state_t set_powercap_value(uint pid,uint domain,uint limit,uint *cpu_util)
 	debug(cmd);
 	return execute(cmd);
 }
+
+
 
 state_t get_powercap_value(uint pid,uint *powercap)
 {

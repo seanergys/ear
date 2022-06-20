@@ -82,6 +82,8 @@ static suscription_t *sus_gpu;
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
 
+static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; 
+
 static char gpu_dvfs_greedy = 0;
 
 static int gpu_freq_to_pstate(int gpuid,ulong f)
@@ -399,6 +401,11 @@ state_t plugin_set_burst()
 state_t plugin_set_relax()
 {
     return monitor_relax(sus_gpu);
+}
+
+void plugin_get_settings(domain_settings_t *s) 
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
 }
 
 void restore_frequency()

@@ -136,5 +136,10 @@ typedef struct pmgt_status {
     uint8_t  stress;
 } pmgt_status_t;
 
+typedef struct domain_settings {
+	float node_ratio;
+	float security_range;
+} domain_settings_t;
+
 
 #endif

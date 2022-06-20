@@ -80,6 +80,7 @@ static uint dvfs_ask_def = 0;
 static uint dvfs_monitor_initialized = 0;
 static timestamp_t last_dvfs_time;
 
+static domain_settings_t settings = { .node_ratio = 0.1, .security_range= 0.05};
 
 extern ulong pmgt_idle_def_freq;
 
@@ -420,6 +421,11 @@ state_t plugin_set_burst()
 state_t plugin_set_relax()
 {
     return monitor_relax(sus_dvfs);
+}
+
+void plugin_get_settings(domain_settings_t *s)
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
 }
 
 void restore_frequency()
