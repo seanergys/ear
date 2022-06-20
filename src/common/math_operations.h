@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <limits.h>
+
 #include <common/types/generic.h>
 
 #define MAXBITS32 0x00000000FFFFFFFF
@@ -47,8 +48,8 @@ overflow_mixed(ullong, u64);
 overflow_magic(ullong, u64);
 overflow_magic(uint, u32);
 
-/** Given two doubles a and b, checks if they are equal within a margin of th.*/
-unsigned int equal_with_th(double a, double b, double th);
+/** Given two doubles a and b, checks whether they are equal within a margin of th.*/
+uint equal_with_th(double a, double b, double th);
 
 uint equal_with_th_ul(ulong a,ulong b,double th);
 
