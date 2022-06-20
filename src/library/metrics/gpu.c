@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <library/metrics/gpu.h>
@@ -26,11 +26,16 @@
 static uint	dev_count;
 static gpu_t *node_gpu_data;
 static ulong *node_gpu_freqs = NULL;
+static uint api1;
+static uint api2;
 
 state_t gpu_lib_load(settings_conf_t *settings)
 {
 	mgt_gpu_load(EARD);
 	    gpu_load(EARD);
+
+    mgt_gpu_get_api(&api1);
+        gpu_get_api(&api2);
 
 	return EAR_SUCCESS;
 }

@@ -72,9 +72,6 @@ typedef struct metrics_s {
         *((void **) &op) = func; \
     }
 
-#define apis_pin(op, func) \
-    apis_put(op[0], func)
-
 /* Replaces the currect function of the operation. */
 #define apis_set(op, func) *((void **) &op) = func;
 
@@ -103,7 +100,7 @@ typedef struct metrics_s {
 #define apis_multiret(ops, ...) \
     apis_multi(ops, __VA_ARGS__); \
     return s;
- 
+
 void apis_append(void *op[], void *func);
 
 void apis_print(uint api, char *prefix);

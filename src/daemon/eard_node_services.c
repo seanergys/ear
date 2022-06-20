@@ -124,11 +124,13 @@ static char          big_chunk2[16384];
 static wide_buffer_t wb;
 static metrics_t     mc;
 static metrics_t     mi;
-static metrics_t     mg;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
+#if USE_GPUS
+static metrics_t     mg;
 static metrics_t     ug;
+#endif
 
 #define sf(function) \
 	if (state_fail(s = function)) { \

@@ -354,7 +354,7 @@ static void metrics_static_init(topology_t *tp)
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_master(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
-    if (VERB_ON(2) && master) {
+    if (VERB_ON(1) && master) {
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
         apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
         apis_print(met_cpufreq.api, "MET_CPUFREQ: ");

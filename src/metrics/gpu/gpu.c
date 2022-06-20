@@ -51,36 +51,38 @@ unlock_load:
 
 void gpu_get_api(uint *api)
 {
+    *api = API_NONE;
     if (ops.get_api != NULL) {
         return ops.get_api(api);
     }
-    *api = API_NONE;
 }
 
 state_t gpu_init(ctx_t *c)
 {
-    apis_multi(ops.init, c);
+    if (ops.init != NULL) {
+        ops.init(c);
+    }
     return gpu_count_devices(c, &devs_count);
 }
 
 state_t gpu_dispose(ctx_t *c)
 {
-    apis_multiret(ops.dispose, c);
+    preturn(ops.dispose, c);
 }
 
 state_t gpu_count_devices(ctx_t *c, uint *devs_count)
 {
-	preturn (ops.count_devices, c, devs_count);
+	preturn(ops.count_devices, c, devs_count);
 }
 
 state_t gpu_read(ctx_t *c, gpu_t *data)
 {
-    apis_multiret(ops.read, c, data);
+    preturn(ops.read, c, data);
 }
 
 state_t gpu_read_raw(ctx_t *c, gpu_t *data)
 {
-	preturn (ops.read_raw, c, data);
+	preturn(ops.read_raw, c, data);
 }
 
 state_t gpu_read_diff(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff)

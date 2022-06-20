@@ -15,6 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <common/output/debug.h>
 #include <metrics/gpu/archs/eard.h>
@@ -37,6 +39,7 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
 		debug("EARD (daemon) not connected");
         return;
 	}
+    debug("EARD (daemon) is connected");
     #ifdef RPCS
 	if (state_fail(s = eard_rpc(RPC_MET_GPU_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
 		debug("Received: %s", state_msg)
