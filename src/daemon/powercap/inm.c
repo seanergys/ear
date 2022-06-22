@@ -23,7 +23,7 @@
 #include <errno.h>
 #define _GNU_SOURCE
 #include <pthread.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/colors.h>
 #include <common/states.h>

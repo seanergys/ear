@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include <sched.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
