@@ -156,8 +156,6 @@ masters_info_t masters_info;
 #if MPI
 MPI_Comm new_world_comm,masters_comm;
 #endif
-int num_masters;
-int my_master_size;
 int masters_connected=0;
 unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
@@ -168,7 +166,7 @@ char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
-float ratio_PPN;
+float ratio_PPN = 1.0;
 app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
@@ -184,7 +182,6 @@ ear_njob_t *node_mgr_data;
 uint node_mgr_index;
 node_mgr_sh_data_t *node_mgr_job_info;
 
-uint mgt_cpufreq_api;
 // Dynais
 static dynais_call_t dynais;
 

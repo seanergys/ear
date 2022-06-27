@@ -169,9 +169,18 @@ void read_signature_fd_binary(int fd, signature_t *sig)
 void adapt_signature_to_node(signature_t *dest,signature_t *src,float ratio_PPN)
 {
     double new_TPI,new_DC_power;
+
     signature_copy(dest,src);
+
+    verbose(3, " TPI %.3lf Power %.3lf ratio %.4f", src->TPI, src->DC_power, ratio_PPN);
+
+    if ((ratio_PPN == 0) || (fpclassify(ratio_PPN) != FP_NORMAL)) return;
+    if ((src->TPI == 0)  || (fpclassify(src->TPI)  != FP_NORMAL)) return;
+    if ((src->DC_power == 0)  || (fpclassify(src->DC_power)  != FP_NORMAL)) return;
+
     new_TPI=src->TPI/(double)ratio_PPN;
     new_DC_power=src->DC_power/(double)ratio_PPN;
+
     dest->TPI=new_TPI;
     dest->DC_power=new_DC_power;
 }
