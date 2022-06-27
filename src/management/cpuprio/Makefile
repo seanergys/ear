@@ -1,11 +1,17 @@
 CC        = /usr/bin/gcc
+CC        = /opt/rh/devtoolset-7/root/bin/gcc
 CC_FLAGS  = -Wall -g
 SRCDIR    = ../..
+SRCDIR    = /home/xjaneas/ngit/ear_private/src
 CFLAGS    = $(CC_FLAGS) -I$(SRCDIR)
 LDFLAGS   = -lpthread
 ISST_BASE = /home/jordi/Documents/git/linux/tools/power/x86/intel-speed-select
+ISST_BASE = /hpc/home/xjaneas/git/linux/tools/power/x86/intel-speed-select
 
 ######## FILES
+
+true_OBJS = \
+	isst_driver.o
 
 root_OBJS = \
 	cpuprio.o \
@@ -18,10 +24,13 @@ isst_OBJS = \
 
 ######## RULES
 
-all: $(root_OBJS) test
+all: true_test
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
+
+true_test: $(true_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 isst.o: isst.c
 	$(CC) $(CFLAGS) -I$(ISST_BASE) -D_GNU_SOURCE -c $<
