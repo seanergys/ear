@@ -52,6 +52,7 @@ static        ulong           dcmi_accumulated_energy = 0;
 static        pthread_mutex_t ompi_lock               = PTHREAD_MUTEX_INITIALIZER;
 
 static state_t dcmi_thread_init(void *p);
+static        timestamp_t     last_timestamp;
 
 static int opendev(struct ipmi_intf *intf)
 {
@@ -417,6 +418,8 @@ state_t dcmi_thread_main(void *p)
     debug("dcmi_thread_main");
 
     ulong current_elapsed, current_energy;
+		timestamp_t   curr_time;
+    ullong        dcmi_elapsed;
 
     while ((lret = pthread_mutex_trylock(&ompi_lock)) && (etries < MAX_LOCK_TRIES)) {
         etries++;
@@ -432,8 +435,15 @@ state_t dcmi_thread_main(void *p)
         return st;
     }
 
+    /* We use this timestamp because DCMI fails */
+    timestamp_get(&curr_time);
+    dcmi_elapsed = timestamp_diff(&curr_time, &last_timestamp, TIME_SECS);
+    last_timestamp = curr_time;
+
+
     if (dcmi_current_power_reading.current_power > 0) {
-        current_elapsed = dcmi_current_power_reading.timestamp - dcmi_last_power_reading.timestamp;	
+        //current_elapsed = dcmi_current_power_reading.timestamp - dcmi_last_power_reading.timestamp;	
+        current_elapsed = (ulong) dcmi_elapsed;
         current_energy = current_elapsed * dcmi_current_power_reading.avg_power;
 
         /* Energy is reported in MJ */
@@ -458,6 +468,9 @@ state_t dcmi_thread_init(void *p)
         debug("opendev fails in dcmi energy plugin when initializing pool");
         return EAR_ERROR;
     } 
+
+    timestamp_get(&last_timestamp);
+
 
     debug("thread_init for dcmi_power OK");
     return EAR_SUCCESS;
@@ -593,6 +606,9 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
 state_t energy_dc_read(void *c, edata_t energy_mj)
 {
     ulong *penergy_mj = (ulong *) energy_mj;
+    timestamp_t   curr_time;
+    ullong        dcmi_elapsed;
+
 
     debug("energy_dc_read");
 
@@ -617,8 +633,15 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
         return st;
     }
 
+    /* We use this timestamp because DCMI fails */
+    timestamp_get(&curr_time);
+    dcmi_elapsed = timestamp_diff(&curr_time, &last_timestamp, TIME_SECS);
+    last_timestamp = curr_time;
+
+
     if (dcmi_current_power_reading.current_power > 0) {
-        current_elapsed = dcmi_current_power_reading.timestamp - dcmi_last_power_reading.timestamp;	
+        //current_elapsed = dcmi_current_power_reading.timestamp - dcmi_last_power_reading.timestamp;	
+        current_elapsed = (ulong) dcmi_elapsed;
         current_energy = current_elapsed * dcmi_current_power_reading.avg_power;
 
         /* Energy is reported in MJ */
