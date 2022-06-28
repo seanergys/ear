@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #include <stdio.h>
 #include <string.h>
@@ -172,11 +172,18 @@ void read_signature_fd_binary(int fd, signature_t *sig)
 
 void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PPN)
 {
-    signature_copy(dest, src);
+    double new_TPI,new_DC_power;
 
-    assert(ratio_PPN != 0);
-    double new_TPI      = src->TPI / (double) ratio_PPN;
-    double new_DC_power = src->DC_power / (double) ratio_PPN;
+    signature_copy(dest,src);
+
+    verbose(3, " TPI %.3lf Power %.3lf ratio %.4f", src->TPI, src->DC_power, ratio_PPN);
+
+    if ((ratio_PPN == 0) || (fpclassify(ratio_PPN) != FP_NORMAL)) return;
+    if ((src->TPI == 0)  || (fpclassify(src->TPI)  != FP_NORMAL)) return;
+    if ((src->DC_power == 0)  || (fpclassify(src->DC_power)  != FP_NORMAL)) return;
+
+    new_TPI=src->TPI/(double)ratio_PPN;
+    new_DC_power=src->DC_power/(double)ratio_PPN;
 
     dest->TPI=new_TPI;
     dest->DC_power=new_DC_power;

@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #include <errno.h>
 #include <stdio.h>
@@ -80,6 +80,7 @@ static uint dvfs_ask_def = 0;
 static uint dvfs_monitor_initialized = 0;
 static timestamp_t last_dvfs_time;
 
+static domain_settings_t settings = { .node_ratio = 0.1, .security_range= 0.05};
 
 extern ulong pmgt_idle_def_freq;
 
@@ -420,6 +421,11 @@ state_t plugin_set_burst()
 state_t plugin_set_relax()
 {
     return monitor_relax(sus_dvfs);
+}
+
+void plugin_get_settings(domain_settings_t *s)
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
 }
 
 void restore_frequency()

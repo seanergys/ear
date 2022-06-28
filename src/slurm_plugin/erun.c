@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #include <sys/wait.h>
@@ -20,6 +20,7 @@
 #include <slurm_plugin/slurm_plugin_environment.h>
 #include <slurm_plugin/slurm_plugin_serialization.h>
 #include <slurm_plugin/erun_lock.h>
+#include <slurm_plugin/erun_signals.h>
 
 //
 extern plug_serialization_t sd;
@@ -333,6 +334,9 @@ int main(int argc, char *argv[])
 {
 	// Creating job and reading arguments
 	job(argc, argv);
+
+    // Signals initialization
+    signals();
 
 	// Clean
 	if (_clean) {

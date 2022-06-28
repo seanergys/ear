@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #include <errno.h>
 #include <stdio.h>
@@ -67,6 +67,7 @@ static double *gpu_cons_power;
 static ulong *gpu_freq;
 static suscription_t *sus_gpu;
 
+static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; 
 
 #define MIN_GPU_IDLE_POWER 40
 
@@ -271,6 +272,11 @@ state_t plugin_set_relax()
     return monitor_relax(sus_gpu);
 }
 
+void plugin_get_settings(domain_settings_t *s) 
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
+}
+
 state_t set_powercap_value(uint pid,uint domain,ulong limit,ulong *gpu_util)
 {
     debug("GPU: powermgr gpu power allocated %lu",limit);
@@ -424,6 +430,8 @@ void set_app_req_freq(ulong *f)
         t_freq[i]=f[i];
     }
 }
+
+
 #define MIN_GPU_POWER_MARGIN 10
 /* Returns 0 when 1) No info, 2) No limit 3) We cannot share power. */
 /* Returns 1 when power can be shared with other modules */

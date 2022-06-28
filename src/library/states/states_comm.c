@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #if MPI
@@ -206,7 +206,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                     GPU_UTIL     += sig->signature.gpu_sig.gpu_data[i].GPU_util; 
                 }
             } 
-            verbose_master(3, "---------------------------------------");
+            verbose_master(3, "-------------------------------------");
 
             if (gpu_used_cnt) {
                 GPU_POWER /= (float) gpu_used_cnt;
