@@ -788,25 +788,27 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 			/* Accumulate Energy savings */
 			accumulate_energy_savings(&loop_signature, &application.signature);
 
-            char *ok_clr = COL_GRE;
-            if (pol_ok) {
-                /* When collecting traces, we maintain the period */
-                if ((masters_info.my_master_rank >= 0) && (traces_are_on() == 0)) {
-                    perf_count_period = perf_count_period * 2;
+            {
+                char *ok_clr = COL_GRE;
+                if (pol_ok) {
+                    /* When collecting traces, we maintain the period */
+                    if ((masters_info.my_master_rank >= 0) && (traces_are_on() == 0)) {
+                        perf_count_period = perf_count_period * 2;
+                    }
+                    tries_current_loop = 0;
+                } else {
+                    /* Reset */
+                    policy_set_default_freq(&loop_signature);
+                    EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+                    ok_clr = COL_RED;
                 }
-                tries_current_loop = 0;
-            } else {
-                /* Reset */
-                policy_set_default_freq(&loop_signature);
-                EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-                ok_clr = COL_RED;
+
+
+                verbose_master(2, "%sPOLICY OK%s (CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy_selected (%.2lf/%.2lf/%.2lf)",
+                        ok_clr,COL_CLR,
+                        loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
+                        policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
             }
-
-            verbose_master(2, "%sPOLICY OK%s (CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy_selected (%.2lf/%.2lf/%.2lf)",
-                    ok_clr,COL_CLR,
-                    loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
-                    policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
-
             if (pol_ok) {
                 return;
             }
