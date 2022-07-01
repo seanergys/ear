@@ -27,8 +27,7 @@
 #include <library/common/library_shared_data.h>
 #include <daemon/shared_configuration.h>
 
-extern loop_t loop;
-extern application_t loop_signature;
+// extern application_t loop_signature;
 extern application_t application;
 extern settings_conf_t *system_conf;
 extern resched_t *resched_conf;

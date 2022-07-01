@@ -1133,11 +1133,12 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     copy_node_data(metrics,&lib_shared_region->node_signature);
                 }
 
-				/* Copying my info in the shared signature */
-				from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
+				/* Copying my info in the shared signature (the process signature) */
+				from_sig_to_mini(&sig_shared_region[my_node_id].sig, metrics);
 
-				/* If I'm the master, I have to copy in the special section */
-                if (master){
+				/* If I'm the master, I have to copy in the special section.
+                 * Note that below destinations only contain the current master signature here. */
+                if (master) {
                     signature_copy(&lib_shared_region->node_signature, metrics);
                     signature_copy(&lib_shared_region->job_signature, metrics);
 
@@ -1152,7 +1153,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                 update_earl_node_mgr_info();
 
 				debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
-				signature_ready(&sig_shared_region[my_node_id],0);
+				signature_ready(&sig_shared_region[my_node_id], 0);
 
 				verbose_master(INFO_METRICS + 1,
                         "End compute signature for (l. rank) %d. Period %lf secs",
@@ -1482,7 +1483,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         if (!exclusive) {
             metrics_app_node_signature(metrics, &nodeapp);
         } else {
-            metrics_node_signature(&lib_shared_region->job_signature, &nodeapp);
+            metrics_job_signature(&lib_shared_region->job_signature, &nodeapp);
         }
 
         signature_copy(metrics, &nodeapp);
@@ -1694,7 +1695,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 }
 
-void metrics_node_signature(const signature_t *master, signature_t *ns)
+void metrics_job_signature(const signature_t *master, signature_t *dst)
 {
     ullong inst;
     ullong cycles;
@@ -1703,8 +1704,8 @@ void metrics_node_signature(const signature_t *master, signature_t *ns)
     ullong L1, L2, L3;
 
     se = (sig_ext_t *) master->sig_ext;	
-    signature_copy(ns, master);
-    if ((se != NULL) && (ns->sig_ext != NULL)) memcpy(ns->sig_ext, se, sizeof(sig_ext_t));
+    signature_copy(dst, master);
+    if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
     compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
     compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
@@ -1713,36 +1714,37 @@ void metrics_node_signature(const signature_t *master, signature_t *ns)
     compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
     compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
 
-    ns->CPI = (double) cycles / (double)inst;
-    /* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-    if (ns->CPI > 2.0) {
+    dst->CPI = (double) cycles / (double)inst;
+#if SHOW_DEBUGS
+    if (dst->CPI > 2.0) {
         for (int i = 0; i < lib_shared_region->num_processes; i++) {
             verbosen_master(2, " CPI[%d]=%lf", i, sig_shared_region[i].sig.CPI);
         }
         verbose_master(2," ");
     }
+#endif
 
-    ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
-    ns->L1_misses  = L1;
-    ns->L2_misses  = L2;
-    ns->L3_misses  = L3;
+    dst->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+    dst->L1_misses  = L1;
+    dst->L2_misses  = L2;
+    dst->L3_misses  = L3;
 
-    ns->cycles       = cycles;
-    ns->instructions = inst;
+    dst->cycles       = cycles;
+    dst->instructions = inst;
 
-    for (uint i = 0; i < FLOPS_EVENTS; i++){
-        ns->FLOPS[i] = FLOPS[i];
+    for (uint i = 0; i < FLOPS_EVENTS; i++) {
+        dst->FLOPS[i] = FLOPS[i];
     }    
 
-    verbose_master(2, "Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
+    // verbose_master(2, "Node metrics: CPI %.2lf Gflops %.2lf", dst->CPI, dst->Gflops);
 
 #if 0
-    signature_copy(&lib_shared_region->node_signature,ns);
+    signature_copy(&lib_shared_region->node_signature,dst);
 
     if (master){
         /* Updating shared info */
         update_earl_node_mgr_info();
-        estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, ns, PER_JOB, -1);
+        estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, dst, PER_JOB, -1);
     }
 #endif
 }

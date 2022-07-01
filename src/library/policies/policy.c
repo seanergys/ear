@@ -1038,27 +1038,31 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 
 
 /* This function checks the CPU freq selection accuracy (only CPU), ok is an output */
-state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
+state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 {
-    polctx_t *c = &my_pol_ctx;
-    state_t ret, retg = EAR_SUCCESS;
-		uint num_ready;
-		uint jobs_in_node;
-		sig_ext_t *sig_ext = curr->sig_ext;
-
-		sig_ext->saving = 0;
-		
-
-    if (curr == NULL || prev == NULL){
+    if (masters_info.my_master_rank < 0) {
         *ok = 1;
         return EAR_SUCCESS;
     }
-    if (masters_info.my_master_rank < 0 ){*ok = 1; return EAR_SUCCESS;}
+
+    if (curr == NULL || prev == NULL) {
+        *ok = 1;
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    polctx_t *c = &my_pol_ctx;
+    state_t ret, retg = EAR_SUCCESS;
+    uint num_ready;
+    uint jobs_in_node;
+
+    sig_ext_t *sig_ext = curr->sig_ext;
+    sig_ext->saving = 0;
+
     /* Update node info */
     /* update_earl_node_mgr_info(); */
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_master(2,"There are %u jobs in the node", jobs_in_node);
-	verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+    verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
     /* End update */
 
     /* estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1); */
@@ -1089,11 +1093,11 @@ state_t policy_ok(signature_t *curr,signature_t *prev,int *ok)
     } else {
         *ok=1;
     }
-		/* If signatures are ok, not different phase, we compute the energy savings estimations */
-		if (!is_monitoring && *ok){
-			compute_energy_savings(curr, prev);
-			if (sig_ext->saving < 0) *ok = 0;
-		}
+    /* If signatures are ok, not different phase, we compute the energy savings estimations */
+    if (!is_monitoring && *ok){
+        compute_energy_savings(curr, prev);
+        if (sig_ext->saving < 0) *ok = 0;
+    }
     return EAR_SUCCESS;
 }
 
@@ -1126,8 +1130,7 @@ state_t policy_end()
 /* This function is executed  at loop init or period init */
 state_t policy_loop_init(loop_id_t *loop_id)
 {
-    polctx_t *c=&my_pol_ctx;
-    preturn(polsyms_fun.loop_init,c, loop_id);
+    preturn(polsyms_fun.loop_init, &my_pol_ctx, loop_id);
 }
 
 /* This function is executed at each loop end */

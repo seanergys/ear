@@ -71,8 +71,8 @@ int time_ready_signature(ulong min_time_us);
 /** Copute the number of vector instructions since signature reports FP ops, metrics is valid signature*/
 unsigned long long metrics_vec_inst(signature_t *metrics);
 
-/* Computes the node signature including data from other processes. */
-void metrics_node_signature(const signature_t *master,signature_t *ns);
+/* Computes the job signature including data from other processes. */
+void metrics_job_signature(const signature_t *master, signature_t *dst);
 
 /* Computes the node signature at app end */
 void metrics_app_node_signature(signature_t *master,signature_t *ns);

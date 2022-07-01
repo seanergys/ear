@@ -23,8 +23,7 @@
 #include <library/common/library_shared_data.h>
 #include <library/api/clasify.h>
 
-loop_t loop;
-application_t loop_signature;
+// application_t loop_signature;
 application_t application;
 settings_conf_t *system_conf=NULL;
 resched_t *resched_conf=NULL;

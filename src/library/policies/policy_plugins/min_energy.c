@@ -457,7 +457,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 						/* This variable is set internally  by int_policy_ok function. It depends on the load balance of the application */
             if (!freq_per_core) {
 
-								/* 1.1: If we have to select a single frequency, we compute the average */
+                /* 1.1: If we have to select a single frequency, we compute the average */
 
                 compute_total_node_instructions(lib_shared_region, sig_shared_region, &my_app->instructions);
                 compute_total_node_flops(lib_shared_region, sig_shared_region, my_app->FLOPS);

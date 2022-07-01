@@ -265,7 +265,7 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *loop_id)
     if (c != NULL) {
         projection_reset(c->num_pstates);
         if (!use_energy_models) {
-            memset(sig_ready, 0, sizeof(uint)*c->num_pstates);
+            memset(sig_ready, 0, sizeof(uint) * c->num_pstates);
         }
     } else {
         return EAR_ERROR;

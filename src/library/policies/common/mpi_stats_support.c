@@ -206,7 +206,7 @@ state_t mpi_app_end(polctx_t *c)
     timestamp end;
     ullong elap;
     int fd;
-    char buff[256] ,buff2[300];
+    char buff[512], buff2[300];
     char mpi_stats_filename[256];
     char mpi_stats_per_call_filename[256];
 

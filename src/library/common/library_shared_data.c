@@ -132,7 +132,6 @@ void shared_signatures_area_dispose(char * path)
 /************** Marks the signature is computed *****************/
 void signature_ready(shsignature_t *sig,int cur_state)
 {
-	debug("Process %d rank %d signature_ready",my_node_id,sig->mpi_info.rank);
 	sig->ready = 1;
 	sig->app_state = cur_state;
 }

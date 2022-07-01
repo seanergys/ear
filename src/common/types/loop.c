@@ -43,35 +43,49 @@
 
 int create_loop_id(loop_id_t *lid, ulong event, ulong size, ulong level)
 {
-    if (lid!=NULL){
+    if (lid != NULL) {
         lid->event = event;
-        lid->size = size;
+        lid->size  = size;
         lid->level = level;
+
         return EAR_SUCCESS;
-    }else return EAR_ERROR;
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
 }
 
 int create_loop(loop_t *l)
 {
-    if (l!=NULL)
+    if (l != NULL)
     {
-        l->jid=0;
-        l->step_id=0;
-        l->total_iterations=0;
-        memset(&l->signature,0,sizeof(signature_t));
+        l->jid              = 0;
+        l->step_id          = 0;
+        l->total_iterations = 0;
+
+        memset(&l->signature, 0, sizeof(signature_t));
+
         return EAR_SUCCESS;
-    }else return EAR_ERROR;
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
 }
 
-int loop_init(loop_t *loop, job_t *job,ulong event, ulong size, ulong level)
+int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ulong event, ulong size, ulong level)
 {
     int ret;
-    if ((ret=create_loop(loop))!=EAR_SUCCESS) return ret;
-    if ((ret=create_loop_id(&loop->id,event,size,level))!=EAR_SUCCESS) return ret;
-    loop->jid = job->id;
-    loop->step_id=job->step_id;
-    gethostname(loop->node_id,sizeof(loop->node_id));
-    strtok(loop->node_id,".");
+
+    if ((ret=create_loop(loop)) != EAR_SUCCESS) return ret;
+
+    if ((ret=create_loop_id(&loop->id, event, size, level)) != EAR_SUCCESS) return ret;
+
+    loop->jid     = job_id;
+    loop->step_id = step_id;
+
+    // gethostname(loop->node_id, sizeof(loop->node_id));
+    // strtok(loop->node_id,".");
+
+    memcpy(loop->node_id, node_id, sizeof loop->node_id);
+
     return EAR_SUCCESS;
 }
 

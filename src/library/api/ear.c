@@ -1089,16 +1089,14 @@ void ear_init()
 #endif
 
 				// Application static data and metrics
-				debug("init application");
 				init_application(&application);
-				debug("init loop_signature");
-				init_application(&loop_signature);
 				application.is_mpi   	= 1;
-				loop_signature.is_mpi	= 1;
 				application.is_learning	= ear_whole_app;
-				application.job.def_f		= getenv_ear_p_state();
-				loop_signature.is_learning	= ear_whole_app;
-				debug("application data initialized");
+				application.job.def_f   = getenv_ear_p_state();
+				// debug("init loop_signature");
+				// init_application(&loop_signature);
+				// loop_signature.is_mpi	= 1;
+				// loop_signature.is_learning	= ear_whole_app;
 
 				// Getting environment data
 				get_app_name(ear_app_name);
@@ -1390,7 +1388,7 @@ void ear_init()
 
 
 				// Copying static application info into the loop info
-				memcpy(&loop_signature, &application, sizeof(application_t));
+				// memcpy(&loop_signature, &application, sizeof(application_t));
 
 				summary_pathname = get_ear_user_db_pathname();
 				// if (masters_info.my_master_rank >= 0){
