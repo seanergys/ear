@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #include <fcntl.h>
 #include <errno.h>
@@ -385,7 +385,7 @@ void report_mpi_application_data(application_t *app)
 
     char mpi_info_txt[512];
     if (app->is_mpi) {
-        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n          Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf,IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
+        snprintf(mpi_info_txt, sizeof(mpi_info_txt), "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n          Avg. mpi_time/exec_time %.1lf %%\n\n          tasks: %lu\n\n          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
                 app->signature.time, def_f, avg_f, avg_imc_f, app->signature.perc_MPI, app->job.procs, app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS, app->signature.DC_power, app->signature.DRAM_power, app->signature.PCK_power, app->signature.Gflops/app->signature.DC_power);
     }
 

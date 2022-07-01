@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #ifndef _NODE_CONF_H
@@ -21,7 +21,7 @@
 #include <common/config.h>
 #include <common/types/generic.h>
 #include <common/types/configuration/policy_conf.h>
-#include <common/types/configuration/cluster_conf.h>
+//#include <common/types/configuration/cluster_conf.h>
 
 /**
 * @file node_conf.h

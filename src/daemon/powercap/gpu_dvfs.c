@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #define _GNU_SOURCE
 #include <errno.h>
@@ -81,6 +81,8 @@ static uint gpu_dvfs_util = 0;
 static suscription_t *sus_gpu;
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
+
+static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; 
 
 static char gpu_dvfs_greedy = 0;
 
@@ -399,6 +401,11 @@ state_t plugin_set_burst()
 state_t plugin_set_relax()
 {
     return monitor_relax(sus_gpu);
+}
+
+void plugin_get_settings(domain_settings_t *s) 
+{
+	memcpy(s, &settings, sizeof(domain_settings_t));
 }
 
 void restore_frequency()

@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #define _GNU_SOURCE
@@ -714,8 +714,13 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
     
 	spank_get_item(sp, S_STEP_CPUS_PER_TASK, (int *)&sd->job.task.num_cpus);
 
+    #if !ERUN
     #define SPACE "                            "
-    xsprintf(buffer2, "------------------------------------- task summary ---\n");	
+    #else
+    #define SPACE "            "
+    #endif
+    xsprintf(buffer1, "task summary:\n");
+    xsprintf(buffer2, "%s" SPACE "------------------------------------------------------\n", buffer1);
 	xsprintf(buffer1, "%s" SPACE "jid.sid.tid.pid: %lu.%lu.%d.%d\n", buffer2,
         sd->job.task.jid, sd->job.task.sid, task, sd->job.task.pid);
     xsprintf(buffer2, "%s" SPACE "affinity mask  : ", buffer1);

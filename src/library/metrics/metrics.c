@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #define _GNU_SOURCE
 
@@ -787,7 +787,7 @@ static int metrics_partial_stop(uint where)
 	aux_time_stop = metrics_time();
 
 	/* Sometimes energy is not zero but power is not correct */
-	c_time=metrics_usecs_diff(aux_time_stop, metrics_usecs[LOO]);
+	c_time = ear_max(metrics_usecs_diff(aux_time_stop, metrics_usecs[LOO]), 1);
 
 	/* energy is computed in node_energy_units and time in usecs */
 	c_power=(float)(c_energy*(1000000.0/(double)node_energy_units))/(float)c_time;
@@ -966,22 +966,22 @@ void copy_node_data(signature_t *dest,signature_t *src)
 static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *metrics,
         uint iterations, ulong procs)
 {
-    /* If sign_app_loop_idx is 1, it means that the global application metrics are
-     * required instead the small time metrics for loops. 'sign_app_loop_idx' is
-     * just a signature index. */
+				// If sign_app_loop_idx is 1, it means that the global application metrics are required
+				// instead the small time metrics for loops. 'sign_app_loop_idx' is just a
+                // signature index.
+				sig_ext_t *sig_ext;
+				
+                debug("process %d - %sapp/loop(1/0) %u%s",
+                        my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
 
-    sig_ext_t *sig_ext;
+				/* Total time */
+                metrics_usecs[sign_app_loop_idx] = ear_max(metrics_usecs[sign_app_loop_idx], 1);
+				double time_s = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
 
-    debug("process %d - %sapp/loop(1/0) %u%s",
-            my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
-
-    /* Total time */
-    double time_sec = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
-
-    if (VERB_ON(2) && (sign_app_loop_idx == APP)) {
-        verbose_master(2, "Process %d ends in exclusive mode: %u",
-                my_node_id, exclusive);
-    }
+                if (VERB_ON(2) && (sign_app_loop_idx == APP)) {
+                    verbose_master(2, "Process %d ends in exclusive mode: %u",
+                            my_node_id, exclusive);
+                }
 
     /* Avg CPU frequency */
     metrics->avg_f = cpufreq_avrg[sign_app_loop_idx];
@@ -989,8 +989,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	/* Avg IMC frequency */
     metrics->avg_imc_f = imcfreq_avrg[sign_app_loop_idx];
 
-    /* Time per iteration */
-    metrics->time = time_sec / (double) iterations;
+				/* Time per iteration */
+                iterations = ear_max(iterations, 1);
+				metrics->time = time_s / (double) iterations;
 
     /* Cache misses */
     metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d_misses;
@@ -1007,10 +1008,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
     flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
-    /* CPI */
-    metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles;
-    metrics->instructions = cpi_diff[sign_app_loop_idx].instructions;
-    metrics->CPI          = cpi_avrg[sign_app_loop_idx];
+                /* CPI */
+                metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles;
+                metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx].instructions, 1);
+                metrics->CPI          = cpi_avrg[sign_app_loop_idx];
 
     /* TPI and Memory bandwith */
     if (master) {
@@ -1056,7 +1057,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                         double mpi_time_perc = 0.0;
                         for (int i = 0; i < lib_shared_region->num_processes; i++) {
                             ullong mpi_time_usecs = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].mpi_time;
-                            ullong exec_time_usecs = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].exec_time;
+                            ullong exec_time_usecs = ear_max(((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].exec_time, 1);
 
 #if 0
                             double local_mpi_time_perc;

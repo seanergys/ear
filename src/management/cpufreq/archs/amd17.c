@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 //#define SHOW_DEBUGS 1
@@ -48,6 +48,10 @@ typedef struct pss_s {
 
 #define p0_khz(cof) ((cof * 1000LLU) + 1000LLU)
 #define p1_khz(cof) ((cof * 1000LLU))
+
+
+#define READ_BOOST_LIMIT	0x0A  //gets the frequency limit currently enforced or Fmax
+#define WRITE_BOOST_LIMIT 	0x08  //sets the frequency limit 
 
 static topology_t           tp;
 static ctx_t                driver_c;
@@ -436,6 +440,7 @@ state_t mgt_cpufreq_amd17_get_available_list(ctx_t *c, pstate_t *pstate_list)
 	return EAR_SUCCESS;
 }
 
+
 state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
 {
     uint args[2] = {  0, -1 };
@@ -449,7 +454,7 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
         args[0] = tp.cpus[cpu].apicid;
         reps[0] = 0;
         // Calling HSMP
-        hsmp_send(tp.cpus[cpu].socket_id, 0x0a, args, reps);
+        hsmp_send(tp.cpus[cpu].socket_id, READ_BOOST_LIMIT, args, reps); //response is freq (MHz)
         debug("HSMP read %u", reps[0]);
 
         pstate_list[cpu].idx = pss_nominal;
@@ -562,11 +567,11 @@ static state_t set_pstate_hsmp(uint cpu, uint pst, uint test)
     uint args[2] = {  0, -1 };
     uint reps[1] = { -1, };
 
-    args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | psss[pst].cof;
+    args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | psss[pst].cof; //arguments are apicid and max_freq
     debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]",
         pst, getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    return hsmp_send(tp.cpus[cpu].socket_id, 0x08, args, reps);
+    return hsmp_send(tp.cpus[cpu].socket_id, WRITE_BOOST_LIMIT, args, reps);
 }
 
 // Sets the current P_STATE to MSR P1 adding new frequency.
@@ -628,7 +633,7 @@ static state_t set_pstate0_hsmp(uint cpu)
     debug("setting PS0: %u MHz in cpu %d (apic %d) [%u]",
         getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    return hsmp_send(tp.cpus[cpu].socket_id, 0x08, args, reps);
+    return hsmp_send(tp.cpus[cpu].socket_id, WRITE_BOOST_LIMIT, args, reps);
 }
 
 // Sets the current P_STATE to MSR P0
