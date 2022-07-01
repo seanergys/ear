@@ -976,7 +976,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 				/* Total time */
                 metrics_usecs[sign_app_loop_idx] = ear_max(metrics_usecs[sign_app_loop_idx], 1);
-				double time_s = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
+				double time_sec = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
 
                 if (VERB_ON(2) && (sign_app_loop_idx == APP)) {
                     verbose_master(2, "Process %d ends in exclusive mode: %u",
@@ -991,7 +991,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 				/* Time per iteration */
                 iterations = ear_max(iterations, 1);
-				metrics->time = time_s / (double) iterations;
+				metrics->time = time_sec / (double) iterations;
 
     /* Cache misses */
     metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d_misses;

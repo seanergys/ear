@@ -61,69 +61,67 @@
                           // instead of the deprecated frequency API.
 #define VERB_SAV_PEN    2 // Verbose level for saving and penalty estimation.
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
+
 #define MAX_SIG_TIME    10000000 // 10 s. It is a time limit for signature computation.
 
 extern masters_info_t masters_info; // TODO: Where declared ?
 extern float          ratio_PPN;    // TODO: Where declared ?
-
-// static application_t *signatures; // TODO: usage
-static uint          *sig_ready;  // TODO: usage
 
 /* Defined at ear.c */
 extern report_id_t    rep_id;
 
 extern cluster_conf_t cconf;
 
-// static application_t last_signature; TODO: remove if not needed
+
+/* Period time computation control. */
+static llong comp_N_begin;
+static llong comp_N_end;
+static llong comp_N_time;
+
+       ulong perf_accuracy_min_time = 1000000; // The minimum period time to be elapsed
+                                               // before starting signature computation.
 
 // TODO: usage
-static llong          comp_N_begin;
-static llong          comp_N_end;
-static llong          comp_N_time;
+static uint begin_iter;
+static uint N_iter;
 
 // TODO: usage
-static uint           begin_iter;
-static uint           N_iter;
+static uint tries_current_loop           = 0;
+static uint tries_current_loop_same_freq = 0;
 
 // TODO: usage
-static uint           tries_current_loop           = 0;
-static uint           tries_current_loop_same_freq = 0;
+static uint perf_count_period            = 100;
+static uint perf_count_period_10p;
 
-// TODO: usage
-static uint           perf_count_period            = 100;
-// static uint           loop_perf_count_period; // TODO: removable
-static uint           perf_count_period_10p;
+/* Policy related variables. */
+static uint         EAR_POLICY_STATE    = EAR_POLICY_NO_STATE; // Policy state ("state machine")
+static int          MAX_POLICY_TRIES;
+static state_t      policy_state_ret;                          // Policy state (state
+                                                               // returned by functions)
+static ulong        policy_cpufreq_khz;
+static signature_t  policy_sel_signature;                      // Stores the signature used by
+                                                               // the last policy application
+                                                               // which returned EAR_POLICY_READY
 
-static ulong          policy_cpufreq_khz;
-
-       ulong          perf_accuracy_min_time       = 1000000; // Default value for this setting. TODO: what means?
-
-static uint           EAR_STATE                    = NO_PERIOD; // State machine controller
-// uint current_earl_state = NO_PERIOD; Commented because it doesn't seems this variable is used.
-
-static uint           EAR_POLICY_STATE             = EAR_POLICY_NO_STATE; // Policy state ("state machine")
-
-// static int            current_loop_id; // TODO: This variable does not seems to be used.
-
-static int            MAX_POLICY_TRIES;
-
-static state_t        policy_state_ret; // Policy state (state returned by functions)
-
-static uint           total_threads_cnt; // Total number of processes being executed at the node.
-
-static uint           signatures_stables           = 0;
-
-static loop_t curr_loop; // Stores the current loop data reported to the report module.
-
-static signature_t    policy_sel_signature; // Stores the signature used by the last policy application which returned EAR_POLICY_READY
-static signature_t    loop_signature;       // Stores the current loop signature computed.
-
-static node_freqs_t   node_freqs;
-
-static float          MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maximum DynAIS overhead permitted.
-       uint           waiting_for_node_signatures  = 0;
-
-
+/* Other */
+static uint         EAR_STATE                    = NO_PERIOD; // State machine controller.
+static uint         total_threads_cnt;                        // Total number of processes
+                                                              // being executed at the node.
+static uint         signatures_stables           = 0;
+static uint         *sig_ready;                               // An array indexed by CPU
+                                                              // p-state which indicated whether
+                                                              // a signature at that p-state
+                                                              // is ready.
+static loop_t       curr_loop;                                // Stores the current loop data
+                                                              // reported to the report module.
+static signature_t  loop_signature;                           // Stores the current loop
+                                                              // signature computed.
+static node_freqs_t node_freqs;
+static float        MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maximum DynAIS
+                                                                        // overhead permitted.
+       uint         waiting_for_node_signatures  = 0;
+       timestamp_t  time_last_signature;
+       uint         signature_reported           = 0;
 
 #if EAR_OVERHEAD_CONTROL // at common/config/config_def.h set to 1 by default.
 extern uint check_periodic_mode;
@@ -148,13 +146,12 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
 /** Returns wether the policy affected some metrics. */
 static uint policy_had_effect(const signature_t *A, const signature_t *B);
 
+/**TODO */
 static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min,
         uint *loop_perf_count_period, uint *loop_perf_count_period_accel);
 
-// void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter, uint dynais_used);
-
-timestamp_t time_last_signature;
-uint signature_reported = 0;
+/** Restarts the beginning time counter of the period stored at \p time_init. */
+static void restart_period_time_init(llong *time_init);
 
 static void report_loop_signature(uint iterations, loop_t *my_loop/*, job_t *job*/)
 {
@@ -299,7 +296,8 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 
     policy_loop_init(&curr_loop.id);
 
-    comp_N_begin = metrics_time();
+    // comp_N_begin = metrics_time();
+    restart_period_time_init(&comp_N_begin);
 
     if (masters_info.my_master_rank >= 0) {
         traces_new_period(ear_my_rank, my_id, event);
@@ -367,7 +365,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
         if (state_fail(policy_state_ret)) {
             verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
             policy_set_default_freq(NULL);
-            comp_N_begin = metrics_time();
+            // comp_N_begin = metrics_time();
+            restart_period_time_init(&comp_N_begin);
             EAR_STATE = FIRST_ITERATION;
             return;
         }
@@ -393,7 +392,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     system_conf->def_freq, "Policy th", system_conf->settings[0]);
 
 
-            comp_N_begin = metrics_time();
+            // comp_N_begin = metrics_time();
+            restart_period_time_init(&comp_N_begin);
 
             EAR_STATE = SIGNATURE_HAS_CHANGED;
             verbose_master(2,"New state by reschedduling: %u", EAR_STATE);
@@ -646,7 +646,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
                     tries_current_loop++;
 
-                    comp_N_begin = metrics_time();
+                    // comp_N_begin = metrics_time();
+                    restart_period_time_init(&comp_N_begin);
 
                     EAR_STATE = RECOMPUTING_N;
                 } else {
@@ -832,7 +833,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             if (!policy_had_effect(&loop_signature, &policy_sel_signature))
             {
                 EAR_STATE = SIGNATURE_HAS_CHANGED;
-                comp_N_begin = metrics_time();
+                // comp_N_begin = metrics_time();
+                restart_period_time_init(&comp_N_begin);
                 policy_loop_init(&curr_loop.id);
 #if DYNAIS_CUTOFF
                 check_dynais_on(&loop_signature, &policy_sel_signature, &dynais_enabled);
@@ -956,4 +958,9 @@ static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min
     if (*loop_perf_count_period_accel == 0) {
         *loop_perf_count_period_accel = 1;
     }
+}
+
+static void restart_period_time_init(llong *time_init)
+{
+    *time_init = metrics_time();
 }
