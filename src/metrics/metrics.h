@@ -29,6 +29,7 @@
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 #include <metrics/bandwidth/bandwidth.h>
+#include <metrics/temperature/temperature.h>
 
 typedef struct apis_info_s {
 	ctx_t c;
@@ -44,6 +45,7 @@ typedef struct metrics_apis_s {
     apis_info_t ram; // bwidth
     apis_info_t cch; // cache
     apis_info_t flp; // flops
+    apis_info_t tmp; // flops
     apis_info_t cpi; // cpi
 #if NOT_READY
 	apis_info_t gpu; // gpu
@@ -75,6 +77,8 @@ typedef struct metrics_diff_s {
     double  cch_avrg; // GB/s
     flops_t flp_diff; // F. instructions
     double  flp_avrg; // Giga F. operations per second
+    llong  *tmp_diff;
+    llong   tmp_avrg;
     cpi_t   cpi_diff;
     double  cpi_avrg; // GPI
 #if NOT_READY

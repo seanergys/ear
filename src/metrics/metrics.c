@@ -40,6 +40,7 @@ state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
      bwidth_load(tp, eard);
       cache_load(tp, eard);
       flops_load(tp, eard);
+       temp_load(tp      );
         cpi_load(tp, eard);
 #if NOT_READY
 	    gpu_load(    eard);
@@ -50,6 +51,7 @@ state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
      bwidth_get_api(&m.ram.api);
       cache_get_api(&m.cch.api);
       flops_get_api(&m.flp.api);
+       temp_get_api(&m.tmp.api);
         cpi_get_api(&m.cpi.api);
 #if NOT_READY
 	    gpu_get_api(&m.gpu.api);
@@ -60,6 +62,7 @@ state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
     m.ram.working = (m.ram.api > API_DUMMY);
     m.cch.working = (m.cch.api > API_DUMMY);
     m.flp.working = (m.flp.api > API_DUMMY);
+    m.tmp.working = (m.tmp.api > API_DUMMY);
     m.cpi.working = (m.cpi.api > API_DUMMY);
 #if NOT_READY
 	m.gpu.working = (m.gpu.api > API_DUMMY);
@@ -70,6 +73,7 @@ state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
     sa( bwidth_init(&m.ram.c));
     sa(  cache_init(&m.cch.c));
     sa(  flops_init(&m.flp.c));
+    sa(   temp_init(&m.tmp.c));
     sa(    cpi_init(&m.cpi.c));
 #if NOT_READY
 	sa(    gpu_init(&m.gpu.c));
@@ -78,6 +82,7 @@ state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
 	sa(cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count));
 	sa(imcfreq_count_devices(&m.imc.c, &m.imc.devs_count));
     sa( bwidth_count_devices(&m.ram.c, &m.ram.devs_count));
+    sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count));
     m.cch.devs_count = 1;
     m.flp.devs_count = 1;
     m.cpi.devs_count = 1;
@@ -99,6 +104,7 @@ state_t metrics_apis_dispose()
     sa( bwidth_dispose(&m.ram.c));
     sa(  cache_dispose(&m.cch.c));
     sa(  flops_dispose(&m.flp.c));
+    sa(   temp_dispose(&m.tmp.c));
     sa(    cpi_dispose(&m.cpi.c));
 #if NOT_READY
 	sa(    gpu_dispose(&m.gpu.c));
@@ -114,6 +120,7 @@ state_t metrics_apis_print()
     apis_print(m.ram.api, "MET_BWIDTH : ");
     apis_print(m.cch.api, "MET_CACHE  : ");
     apis_print(m.flp.api, "MET_FLOPS  : ");
+    apis_print(m.tmp.api, "MET_TEMP   : ");
     apis_print(m.cpi.api, "MET_CPI    : ");
 #if NOT_READY
 	apis_print(m.gpu.api, "MET_GPU    : ");
@@ -183,6 +190,7 @@ state_t metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
     sa( bwidth_read_copy(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg));
     sa(  cache_read_copy(&m.cch.c, &mr2->cch, &mr1->cch, &mrD->cch_diff, &mrD->cch_avrg));
     sa(  flops_read_copy(&m.flp.c, &mr2->flp, &mr1->flp, &mrD->flp_diff, &mrD->flp_avrg));
+    sa(   temp_read     (&m.tmp.c,                              mrD->tmp_diff, &mrD->tmp_avrg));
     sa(    cpi_read_copy(&m.cpi.c, &mr2->cpi, &mr1->cpi, &mrD->cpi_diff, &mrD->cpi_avrg));
 #if NOT_READY
 	sa(    gpu_read_copy(&m.gpu.c,  mr2->gpu,  mr1->gpu,  mrD->gpu_diff                ));
@@ -196,6 +204,7 @@ state_t metrics_diff_alloc(metrics_diff_t *md)
 {
 	sa(cpufreq_data_alloc(empty, &md->cpu_diff));
 	sa(imcfreq_data_alloc(empty, &md->imc_diff));
+	sa(   temp_data_alloc(&md->tmp_diff));
 #if NOT_READY
 	sa(    gpu_data_alloc(&md->gpu_diff));
 #endif
@@ -212,10 +221,7 @@ state_t metrics_diff_print(metrics_diff_t *mrD)
 {
 	cpufreq_data_print( mrD->cpu_diff, mrD->cpu_avrg, verb_channel);
 	imcfreq_data_print( mrD->imc_diff,&mrD->imc_avrg, verb_channel);
-     bwidth_data_print( mrD->ram_diff, mrD->ram_avrg, verb_channel);
-      cache_data_print(&mrD->cch_diff, mrD->cch_avrg, verb_channel);
-      flops_data_print(&mrD->flp_diff, mrD->flp_avrg, verb_channel);
-        cpi_data_print(&mrD->cpi_diff, mrD->cpi_avrg, verb_channel);
+       temp_data_print( mrD->tmp_diff, mrD->tmp_avrg, verb_channel);
 #if NOT_READY
 	    gpu_data_print( mrD->gpu_diff,                verb_channel);
 #endif
@@ -277,8 +283,8 @@ int init()
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 2000;
-	sus->time_burst    = 2000;
+	sus->time_relax    = 1000;
+	sus->time_burst    = 1000;
 	sa(sus->suscribe(sus));
     // Stress
     stress_alloc();

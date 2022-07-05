@@ -16,6 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <pthread.h>
 #include <common/sizes.h>
@@ -92,11 +93,11 @@ state_t temp_intel63_dispose(ctx_t *c)
 	state_t s;
 	int i;
 
-	if (xtate_fail(s, get_context(c, &throt))) {
+	if (state_fail(s = get_context(c, &throt))) {
 		return s;
 	}
 	for (i = 0; i < tp.cpu_count; ++i) {
-		if (xtate_fail(s, msr_close(tp.cpus[i].id))) {
+		if (state_fail(s = msr_close(tp.cpus[i].id))) {
 			return s;
 		}
 	}
@@ -110,7 +111,7 @@ state_t temp_intel63_count_devices(ctx_t *c, uint *count)
 {
 	llong *throt;
 	state_t s;
-	if (xtate_fail(s, get_context(c, &throt))) {
+	if (state_fail(s = get_context(c, &throt))) {
 		return s;
 	}
 	if (count != NULL) {
@@ -128,17 +129,20 @@ state_t temp_intel63_read(ctx_t *c, llong *temp, llong *average)
 	state_t s;
 	int i;
 
-	if (xtate_fail(s, get_context(c, &throt))) {
+    debug("1");
+	if (state_fail(s = get_context(c, &throt))) {
 		return s;
 	}
+    debug("2");
 	for (i = 0, aux1 = aux2 = 0; i < tp.cpu_count && temp != NULL; ++i) {
         temp[i] = 0;
     }
 	for (i = 0; i < tp.cpu_count; ++i) {
 		debug("Accessing to cpu %d ID=%d", i, tp.cpus[i].id);
-		if (xtate_fail(s, msr_read(tp.cpus[i].id, &data, sizeof(llong), IA32_PKG_THERM_STATUS))) {
+		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), IA32_PKG_THERM_STATUS))) {
 			return s;
 		}
+        debug("Returned %lld", data);
 		aux1  = throt[i] - ((data >> 16) & 0xff);
 		aux2 += aux1;
 		if (temp != NULL) {
