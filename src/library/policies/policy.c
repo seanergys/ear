@@ -973,6 +973,9 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
 
     if (polsyms_fun.get_default_freq != NULL) {
         return polsyms_fun.get_default_freq(&my_pol_ctx, freq_set, NULL);
+    } else {
+        verbose(POLICY_INFO, "%sWARNING%s The policy plugin has no symbol for setting the default frequency.",
+                COL_RED, COL_CLR);
     }
 
     freq_set->cpu_freq[0] = DEF_FREQ(my_pol_ctx.app->def_freq);
