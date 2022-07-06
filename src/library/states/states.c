@@ -59,8 +59,11 @@
 
 #define NEW_CPUFREQ_API 1 // Enables the usage of the new metrics API,
                           // instead of the deprecated frequency API.
+#define VERBOSE_WARN    2 // Verbose level for warning messages.
 #define VERB_SAV_PEN    2 // Verbose level for saving and penalty estimation.
+#if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
+#endif
 
 #define MAX_SIG_TIME    10000000 // 10 s. It is a time limit for signature computation.
 
@@ -94,14 +97,14 @@ static uint perf_count_period            = 100;
 static uint perf_count_period_10p;
 
 /* Policy related variables. */
-static uint         EAR_POLICY_STATE    = EAR_POLICY_NO_STATE; // Policy state ("state machine")
-static int          MAX_POLICY_TRIES;
-static state_t      policy_state_ret;                          // Policy state (state
-                                                               // returned by functions)
+static uint         EAR_POLICY_STATE      = EAR_POLICY_NO_STATE; // Policy state ("state machine")
+static int          policy_max_tries_cnt;                        // The maximum number of tries we
+                                                                 // let a policy to change the CPU
+                                                                 // frequency.
 static ulong        policy_cpufreq_khz;
-static signature_t  policy_sel_signature;                      // Stores the signature used by
-                                                               // the last policy application
-                                                               // which returned EAR_POLICY_READY
+static signature_t  policy_sel_signature;                        // Stores the signature used by
+                                                                 // the last policy application
+                                                                 // which returned EAR_POLICY_READY
 
 /* Other */
 static uint         EAR_STATE                    = NO_PERIOD; // State machine controller.
@@ -123,9 +126,7 @@ static float        MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maxim
        timestamp_t  time_last_signature;
        uint         signature_reported           = 0;
 
-#if EAR_OVERHEAD_CONTROL // at common/config/config_def.h set to 1 by default.
 extern uint check_periodic_mode;
-#endif // EAR_OVERHEAD_CONTROL
 
 /** Returns whether \p cpi_a and \p cpi_b and \p gbs_a \p gbs_b are
  * equal, respectively, with a maximum difference of \p eq_thresh permitted. */
@@ -138,10 +139,8 @@ static uint are_cpi_gbs_eq(double cpi_a, double cpi_b, double gbs_a, double gbs_
 static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dynais_on);
 #endif // DYNAIS_CUTOFF
 
-#if EAR_OVERHEAD_CONTROL
 /** This function checks if there is too much overhead from DynAIS and sets it to OFF. */
 static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event);
-#endif // EAR_OVERHEAD_CONTROL
 
 /** Returns wether the policy affected some metrics. */
 static uint policy_had_effect(const signature_t *A, const signature_t *B);
@@ -198,11 +197,9 @@ static void accumulate_energy_savings(signature_t *loops, signature_t *apps)
 	app_sig_ext->telapsed += loop_sig_ext->elapsed;
 	app_sig_ext->tpenalty += loop_sig_ext->tpenalty;
 
-#ifdef VERB_SAV_PEN
     verbose_master(VERB_SAV_PEN, "%s\n Loop %-7.2lf %-7.2f %-7.2f %-9.2lf\n  App %-7.2lf %-7.2f %-7.2f %-9.2lf\n", verb_savs_pens_hdr,
             loop_sig_ext->saving, loop_sig_ext->psaving, loop_sig_ext->tpenalty, loop_sig_ext->elapsed,
             app_sig_ext->saving, app_sig_ext->psaving, app_sig_ext->tpenalty, app_sig_ext->telapsed);
-#endif
 }
 
 /* --- End auxiliary functions --- */
@@ -225,7 +222,7 @@ void states_begin_job(int my_id, char *app_name)
 #endif
 
     // signatures = (application_t *) calloc(pstate_cnt, sizeof(application_t));
-    sig_ready  =          (uint *) calloc(pstate_cnt, sizeof(uint));
+    sig_ready  = (uint *) calloc(pstate_cnt, sizeof(uint));
 
     for (uint i = 0; i < pstate_cnt; i++) {
         // init_application(&signatures[i]);
@@ -258,17 +255,17 @@ void states_begin_job(int my_id, char *app_name)
 
     EAR_STATE = NO_PERIOD;
 
-    policy_cpufreq_khz = EAR_default_frequency;
+    policy_cpufreq_khz   = EAR_default_frequency;
+    loop_signature.def_f = EAR_default_frequency;
 
     init_log();
 
-    policy_state_ret = policy_max_tries(&MAX_POLICY_TRIES);
+    if (state_fail(policy_max_tries(&policy_max_tries_cnt))) {
+        verbose_master(VERBOSE_WARN, "%sWARNING%s Policy max tries could not be read.", COL_RED, COL_CLR);
+    }
 
     total_threads_cnt =  get_total_resources();
     debug("Total threads: %u", total_threads_cnt);
-
-    loop_signature.def_f = EAR_default_frequency;
-
 }
 
 /** This function is executed at application end. */
@@ -361,8 +358,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     sig_shared_region[my_node_id].iterations++;
     signature_t check_signature;
     if (state_ok(metrics_new_iteration(&check_signature))) {
-        policy_state_ret = policy_new_iteration(&check_signature);
-        if (state_fail(policy_state_ret)) {
+        if (state_fail(policy_new_iteration(&check_signature))) {
             verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
             policy_set_default_freq(NULL);
             // comp_N_begin = metrics_time();
@@ -375,7 +371,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     prev_cpufreq_khz = ear_frequency; // TODO: Why khz are prev, but pstate is curr?
     curr_pstate      = frequency_closest_pstate(ear_frequency);
 
-    policy_state_ret = policy_get_default_freq(&node_freqs); // Slaves don't fill node_freqs
+    policy_get_default_freq(&node_freqs); // Slaves don't fill node_freqs
+
     policy_def_freq  = node_freqs.cpu_freq[0];
     def_pstate       = frequency_closest_pstate(policy_def_freq);
 
@@ -600,7 +597,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             loop_with_signature = 1;
 
-#if EAR_OVERHEAD_CONTROL
             if (dynais_used) {
                 check_periodic_mode = 0;
             }
@@ -609,7 +605,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             if (dynais_used && (dynais_enabled == DYNAIS_ENABLED)) {
                 check_dynais_off(mpi_calls_iter, period, level, event);
             }
-#endif
+
             // current_loop_id = event;
             //begin_iter = iterations;
 
@@ -623,7 +619,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
              * the policy will compute the average if needed */
-            policy_state_ret = policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
+            policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
 
             /* TODO: For no masters, ready will be 0, pending. */
             EAR_POLICY_STATE = ready;
@@ -783,7 +779,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 return;
             }
 
-            policy_state_ret = policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
+            policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
 
 			/* Accumulate Energy savings */
 			accumulate_energy_savings(&loop_signature, &application.signature);
@@ -814,15 +810,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             // We can give the library a second change in case we are at def freq
-            if ((tries_current_loop < MAX_POLICY_TRIES && curr_pstate == def_pstate) || !dynais_used) {
+            if ((tries_current_loop < policy_max_tries_cnt && curr_pstate == def_pstate) || !dynais_used) {
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
                 break;
             }
 
             /* If we cannot select an optimal frequency, We must report a problem and go to the default configuration. */
-            if (tries_current_loop >= MAX_POLICY_TRIES) {
+            if (tries_current_loop >= policy_max_tries_cnt) {
                 EAR_STATE = PROJECTION_ERROR;
-                policy_state_ret=policy_get_default_freq(&node_freqs);
+                policy_get_default_freq(&node_freqs);
                 policy_cpufreq_khz = node_freqs.cpu_freq[0];
                 if (masters_info.my_master_rank >= 0) {
                     log_report_max_tries(application.job.id,application.job.step_id, application.job.def_f);
@@ -904,7 +900,6 @@ static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dy
 }
 #endif // DYNAIS_CUTOFF
 
-#if EAR_OVERHEAD_CONTROL
 static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event)
 {
     if (loop_signature.time > 0) {
@@ -937,7 +932,6 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
     last_loop_size      = period;         // TODO: where it comes from? usage
     last_loop_level     = level;          // TODO: where it comes from? usage
 }
-#endif // EAR_OVERHEAD_CONTROL
 
 static uint policy_had_effect(const signature_t *A, const signature_t *B)
 {

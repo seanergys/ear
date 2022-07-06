@@ -139,7 +139,6 @@ static uint ear_loop_level;
 static int in_loop;
 static short ear_status = NO_LOOP;
 
-#if EAR_OVERHEAD_CONTROL
 /* in us */
 // These variables are shared
 uint 		ear_periodic_mode = PERIODIC_MODE_OFF;
@@ -149,7 +148,6 @@ static uint total_mpi_calls = 0;
 static uint  dynais_timeout = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
 uint             lib_period = PERIOD;
 static uint     check_every = MPI_CALLS_TO_CHECK_PERIODIC;
-#endif
 #define MASTERS_SYNC_VERBOSE 1
 masters_info_t masters_info;
 #if MPI
@@ -1617,7 +1615,6 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest);
 
 void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 {
-#if EAR_OVERHEAD_CONTROL
     time_t curr_time;
     double time_from_mpi_init;
 
@@ -1704,10 +1701,6 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                 break;
         }
     }
-#else
-    if (dynais_enabled == DYNAIS_ENABLED) ear_mpi_call_dynais_on(call_type,buf,dest);
-    else ear_mpi_call_dynais_off(call_type,buf,dest);
-#endif
 }
 
 
