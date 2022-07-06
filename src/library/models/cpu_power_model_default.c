@@ -81,13 +81,19 @@ state_t cpu_power_model_status_arch()
 	return EAR_SUCCESS;
 }
 
-state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, uint node_mgr_index)
+state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig,
+        node_mgr_sh_data_t *nmgr, uint node_mgr_index)
 {
-	debug("cpu_power_model_project_arch");
-	if (!arch_model_loaded) return EAR_ERROR;
+    debug("cpu_power_model_project_arch");
 
-	ull  node_L3 = 0;
-  int cpus_in_node = cpu_count;	
+    if (!arch_model_loaded) return EAR_ERROR;
+
+	if (data == NULL) return EAR_SUCCESS;
+
+    ull  node_L3 = 0;
+
+    int cpus_in_node = cpu_count;	
+
 	double power_estimations[MAX_CPUS_SUPPORTED];
 	double dram_power[MAX_CPUS_SUPPORTED];
 	double pck_power[MAX_CPUS_SUPPORTED];
@@ -95,20 +101,22 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	double tpi[MAX_CPUS_SUPPORTED];
 	double gbs[MAX_CPUS_SUPPORTED];
 	double vpi[MAX_CPUS_SUPPORTED];
+
 	ulong  f[MAX_CPUS_SUPPORTED];
 	ull    L3[MAX_CPUS_SUPPORTED];
 	uint   job_in_process[MAX_CPUS_SUPPORTED];
+
 	double job_power_ratio, process_power_ratio[MAX_CPUS_SUPPORTED];;
+
 	uint   node_process = 0;
+
 	signature_t *lsig;
+
 	double my_job_GBS, my_job_DRAM_power;
+
 	uint used_cpus = 0;
 
-	if (data == NULL) return EAR_SUCCESS;
-
 	lsig = &data->node_signature;
-
-
 
 	memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(process_power_ratio,0,sizeof(double)*MAX_CPUS_SUPPORTED);
@@ -121,58 +129,75 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	memset(dram_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 
-
 	if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
-
 	
-	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
+	/* compute_job_node_XXX compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
 	
-	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
-		/* Power condition is to do only in case the signature is ready */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
-			ull avx = 0;
-			used_cpus += nmgr[j].libsh->num_cpus;
-			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
-				if (nmgr[j].shsig[lp].sig.DC_power > 0){
-				  job_in_process[node_process] = j;
-				  L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
-				  ipc[node_process] = 1/nmgr[j].shsig[lp].sig.CPI;
-				  tpi[node_process] = (double)L3[node_process]/(double)nmgr[j].shsig[lp].sig.instructions;
-				  avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F]/WEIGHT_256F + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D]/WEIGHT_256D + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F]/WEIGHT_512F + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D]/WEIGHT_512D;
-				  vpi[node_process] = (double)avx/(double)nmgr[j].shsig[lp].sig.instructions;
-				  f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
-				  node_L3 += L3[node_process];
-				}
-				node_process++;
-			}
+    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
+        /* Power condition is to do only in case the signature is ready */
+        if (nmgr[j].creation_time
+                && nmgr[j].libsh != NULL
+                && nmgr[j].shsig != NULL
+                && nmgr[j].libsh->node_signature.DC_power) {
 
-		}
-	}
+            ull avx = 0;
 
-	uint lp = 0;
-	uint cj = 0;
-	my_job_GBS = 0;
-	my_job_DRAM_power = 0;
-	for (uint j = 0; j < node_process; j ++){
-		/* GBs is per-node, we can use our own GBs */
-		if (node_L3){
-    	gbs[j] = ((double)L3[j]/(double)node_L3)*lsig->GBS;
-    	dram_power[j] = ((double)L3[j]/(double)node_L3)*lsig->DRAM_power;
-		}else{
-			/* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
-			cj = job_in_process[j];
-			gbs[j] = lsig->GBS * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
-			dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
-		}
-    if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
-				my_job_GBS        += gbs[j];
-				my_job_DRAM_power += dram_power[j];
-				sig[lp].sig.GBS = gbs[j];	
-				sig[lp].sig.DRAM_power = dram_power[j];	
-				debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
-				lp++;
+            used_cpus += nmgr[j].libsh->num_cpus;
+
+            for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++) {
+                if (nmgr[j].shsig[lp].sig.DC_power > 0) {
+
+                    job_in_process[node_process] = j;
+
+                    L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
+
+                    ipc[node_process]            = 1 / nmgr[j].shsig[lp].sig.CPI;
+
+                    tpi[node_process]            = (double) L3[node_process]
+                        / (double) nmgr[j].shsig[lp].sig.instructions;
+
+                    avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F]/WEIGHT_256F
+                        + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D]/WEIGHT_256D
+                        + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F]/WEIGHT_512F
+                        + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D]/WEIGHT_512D;
+
+                    vpi[node_process] = (double) avx / (double) nmgr[j].shsig[lp].sig.instructions;
+
+                    f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
+
+                    node_L3          += L3[node_process];
+                }
+
+                node_process++;
+            }
+        }
     }
-  }
+
+	uint lp           = 0;
+	uint cj           = 0;
+	my_job_GBS        = 0;
+	my_job_DRAM_power = 0;
+
+    for (uint j = 0; j < node_process; j ++) {
+        /* GBs is per-node, we can use our own GBs */
+        if (node_L3) {
+            gbs[j]        = ((double) L3[j] / (double) node_L3) * lsig->GBS;
+            dram_power[j] = ((double) L3[j] / (double) node_L3) * lsig->DRAM_power;
+        } else {
+            /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
+            cj = job_in_process[j];
+            gbs[j] = lsig->GBS * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+            dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
+        }
+        if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
+            my_job_GBS        += gbs[j];
+            my_job_DRAM_power += dram_power[j];
+            sig[lp].sig.GBS = gbs[j];	
+            sig[lp].sig.DRAM_power = dram_power[j];	
+            debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
+            lp++;
+        }
+    }
 	data->job_signature.GBS = my_job_GBS;
 	data->job_signature.DRAM_power = my_job_DRAM_power;
 
@@ -224,6 +249,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			lp++;
 		}
 	}
+
 	/* Extra power should be equally distributed: PENDING */
 	data->job_signature.DC_power = (CPU_power	* job_power_ratio) + GPU_power;
 	data->job_signature.PCK_power = job_power_ratio * lsig->PCK_power;
@@ -231,6 +257,3 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 
 	return EAR_SUCCESS;
 }
-
-
-

@@ -77,10 +77,9 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	ullong inst, cycles;
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;
-	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
 	flops = compute_node_flops(lib_shared_region,sig_shared_region);
-	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
+	compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
+	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
 	//compute_total_node_CPI(lib_shared_region,sig_shared_region,&cpi); 
 	cpi = (double)cycles/(double)inst;
 	c1 = (cpi      < CPI_BUSY_WAITING);

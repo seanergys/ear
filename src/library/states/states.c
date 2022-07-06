@@ -152,26 +152,22 @@ static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min
 /** Restarts the beginning time counter of the period stored at \p time_init. */
 static void restart_period_time_init(llong *time_init);
 
-static void report_loop_signature(uint iterations, loop_t *my_loop/*, job_t *job*/)
+static void report_loop_signature(uint iterations, loop_t *my_loop)
 {
     my_loop->total_iterations = iterations;
-    /*
-     * my_loop->jid              = job->id;
-     * my_loop->step_id          = job->step_id;
-     */
-
-	// EAR uses this timestamp to switch to periodic mode (or not).
-    timestamp_getfast(&time_last_signature);
-
-    signature_reported = 1;
 
     if (masters_info.my_master_rank >= 0) {
+
         clean_db_loop(my_loop, system_conf->max_sig_power);
+
         application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
+
         if (state_fail(report_loops(&rep_id, my_loop, 1))) {
-            verbose_master(1, "%sError%s Reporting loop.", COL_RED, COL_CLR);
+            verbose_master(2, "%sError%s Reporting loop.", COL_RED, COL_CLR);
         }
     }
+
+    signature_reported = 1;
 }
 
 static void accumulate_energy_savings(signature_t *loops, signature_t *apps)
@@ -221,11 +217,9 @@ void states_begin_job(int my_id, char *app_name)
     uint pstate_cnt = frequency_get_num_pstates();
 #endif
 
-    // signatures = (application_t *) calloc(pstate_cnt, sizeof(application_t));
     sig_ready  = (uint *) calloc(pstate_cnt, sizeof(uint));
 
     for (uint i = 0; i < pstate_cnt; i++) {
-        // init_application(&signatures[i]);
         sig_ready[i] = 0;
     }
 
@@ -273,7 +267,6 @@ void states_end_job(int my_id,  char *app_name)
 {
     debug("EAR(%s) Ends execution.", app_name);
     node_freqs_free(&node_freqs);
-    // free(signatures);
     free(sig_ready);
     end_log();
 }
@@ -288,7 +281,7 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 
     if (state_fail(loop_init(&curr_loop, application.job.id,
                     application.job.step_id, application.node_id, event, size, level))) {
-        verbose_master(1, "%sEAR Error%s Creating loop: %s", COL_RED, COL_CLR, state_msg);
+        verbose_master(2, "%sEAR Error%s Creating loop: %s", COL_RED, COL_CLR, state_msg);
     }
 
     policy_loop_init(&curr_loop.id);
@@ -310,7 +303,6 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 
     assert(pstate_cnt != 0);
     for (uint i = 0; i < pstate_cnt; i++){
-        // init_application(&signatures[i]);
         sig_ready[i]=0;
     }
 }
@@ -322,7 +314,6 @@ void states_end_period(uint iterations)
     if (loop_with_signature)
     {
         curr_loop.total_iterations = iterations;
-        //append_loop_text_file(loop_summary_path, &curr_loop,&loop_signature.job);
         if (system_conf->report_loops){
             if (masters_info.my_master_rank>=0){
                 clean_db_loop(&curr_loop, system_conf->max_sig_power);
@@ -570,6 +561,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* Signature computation */
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
                     perf_accuracy_min_time, total_threads_cnt);
+			/* At this point, signatures for all the process in the node are ready.
+             * lib_shared_region->job_signature includes the master signature. */
 
             if (result == EAR_NOT_READY)
             {
@@ -579,8 +572,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 return;
             }
 
-			/* At this point, signatures for all the process in the node are ready.
-             * lib_shared_region->job_signature includes the job signature. */
+
+            // Both loop_signature and lib_shared_region->job_signature have the same data:
 			compute_per_process_and_job_metrics(&loop_signature);
 
             /* Included for dynais test */
@@ -609,7 +602,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             // current_loop_id = event;
             //begin_iter = iterations;
 
-            // memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
             sig_ready[curr_pstate] = 1;
 
             /* This function takes into account if we are using or not the whole node. */
@@ -629,13 +621,16 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
                 signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
             }
+
+            // EAR uses this timestamp to switch to periodic mode (or not).
+            timestamp_getfast(&time_last_signature);
+
             /* At this point curr_loop and job_signature signatures are the JOB signature
-             * with accumulated per process and global (node) metrics. */
+             * with accumulated per process and global (node) metrics (e.g., DC power). */
 
             /* State check */
             if (EAR_POLICY_STATE == EAR_POLICY_READY) {
                 /* When the policy is ready to be evaluated, we go to the next state */
-                verbose_master(2, "[EVALUATING LOCAL SIGNATURE] Policy ready.");
 
                 signatures_stables = 0;
                 if ((policy_cpufreq_khz != prev_cpufreq_khz) && dynais_used) {
@@ -657,16 +652,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             begin_iter = iterations;
 
-            /* TODO: To be removed. All processes have the node signature. */
-			signature_copy(&curr_loop.signature, &lib_shared_region->job_signature);
-
             // Only the master process will report the loop.
-            report_loop_signature(iterations, &curr_loop/*, &loop_signature.job*/);
+            report_loop_signature(iterations, &curr_loop);
 
             policy_get_current_freq(&node_freqs);
             lavg = node_freqs_avgcpufreq(node_freqs.cpu_freq);
 
-            // TODO: Bad usage of def_f storing a per-process average.
             if (lavg > 0) {
                 loop_signature.def_f = lavg;
             }
@@ -746,9 +737,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 signature_copy(&loop_signature, &curr_loop.signature); // loop_signature <- curr_loop.signature
                 signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
 			}
+
+            timestamp_getfast(&time_last_signature);
+
             /* At this point curr_loop, loop_signature and job_signature are the
              * JOB signature with accumulated per process and global metrics */
-            report_loop_signature(iterations, &curr_loop/*, &loop_signature.job*/);
+
+            report_loop_signature(iterations, &curr_loop);
 
             /* VERBOSE */
             if (dynais_used) {
@@ -762,7 +757,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             begin_iter = iterations;
             if (sig_ready[curr_pstate] == 0){
-                // memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
                 sig_ready[curr_pstate]=1;
             }
 
@@ -773,7 +767,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
                 if (sig_ready[curr_pstate] == 0){
-                    // memcpy(&signatures[curr_pstate], &loop_signature, sizeof(application_t));
                     sig_ready[curr_pstate] = 1;
                 }
                 return;
@@ -875,7 +868,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
         default: break;
     }
 
-    // current_earl_state = EAR_STATE;
     state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
     debug("End states_end_iteration");
 }

@@ -60,10 +60,9 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
         }
     }
 
-		debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
+	debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS
-	
     int num_gpu = sig->gpu_sig.num_gpus;
 		if (single_column && num_gpu){
 			dprintf(fd, ";");
@@ -227,33 +226,35 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
 #define MAX_CPU_FREQ 10000000
 #define MAX_IMC_FREQ 10000000
 
-/** Checks all the values are valid to be reported to DB and fixes potential problems*/
-void clean_db_signature(signature_t *sig, double limit)
+void signature_clean_before_db(signature_t *sig, double pwr_limit)
 {
-    if (!isnormal(sig->time))				sig->time = 0;
-    if (!isnormal(sig->EDP))				sig->EDP = 0;
-    if (!isnormal(sig->DC_power)) 	sig->DC_power = 0;
-    if (!isnormal(sig->DRAM_power)) sig->DRAM_power = 0;
-    if (!isnormal(sig->PCK_power)) 	sig->PCK_power = 0;
-    if (!isnormal(sig->CPI))				sig->CPI = 0;
-    if (!isnormal(sig->TPI))				sig->TPI = 0;
-    if (!isnormal(sig->GBS))				sig->GBS = 0;
-    if (!isnormal(sig->IO_MBS))			sig->IO_MBS = 0;
-    if (!isnormal(sig->Gflops))			sig->Gflops = 0;
-    if (sig->DC_power > limit)		  sig->DC_power = limit;
-    if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
-    if (sig->PCK_power > limit)			sig->PCK_power = 0;
-		if (!isnormal(sig->perc_MPI))		sig->perc_MPI = 0;
-    if (sig->avg_f > MAX_CPU_FREQ)  sig->avg_f = MAX_CPU_FREQ;
-    if (sig->avg_imc_f > MAX_IMC_FREQ) sig->avg_imc_f = MAX_IMC_FREQ;
-    if (sig->def_f > MAX_CPU_FREQ)   sig->def_f = MAX_CPU_FREQ;
+    if (!isnormal(sig->time))          sig->time       = 0;
+    if (!isnormal(sig->EDP))           sig->EDP        = 0;
+    if (!isnormal(sig->DC_power)) 	   sig->DC_power   = 0;
+    if (!isnormal(sig->DRAM_power))    sig->DRAM_power = 0;
+    if (!isnormal(sig->PCK_power))     sig->PCK_power  = 0;
+    if (!isnormal(sig->CPI))           sig->CPI        = 0;
+    if (!isnormal(sig->TPI))           sig->TPI        = 0;
+    if (!isnormal(sig->GBS))           sig->GBS        = 0;
+    if (!isnormal(sig->IO_MBS))        sig->IO_MBS     = 0;
+    if (!isnormal(sig->Gflops))        sig->Gflops     = 0;
+	if (!isnormal(sig->perc_MPI))      sig->perc_MPI   = 0;
 
+    if (sig->DC_power   > pwr_limit)   sig->DC_power   = pwr_limit;
+    if (sig->DRAM_power > pwr_limit)   sig->DRAM_power = 0;
+    if (sig->PCK_power  > pwr_limit)   sig->PCK_power  = 0;
+
+    if (sig->avg_f     > MAX_CPU_FREQ) sig->avg_f      = MAX_CPU_FREQ;
+    if (sig->avg_imc_f > MAX_IMC_FREQ) sig->avg_imc_f  = MAX_IMC_FREQ;
+    if (sig->def_f     > MAX_CPU_FREQ) sig->def_f      = MAX_CPU_FREQ;
 
 #if USE_GPUS
-    if (sig->gpu_sig.num_gpus){
+    if (sig->gpu_sig.num_gpus) {
         int g;
-        for (g=0;g<sig->gpu_sig.num_gpus;g++){
-            if (!isnormal(sig->gpu_sig.gpu_data[g].GPU_power)) sig->gpu_sig.gpu_data[g].GPU_power = 0;
+        for (g = 0;g < sig->gpu_sig.num_gpus; g++) {
+            if (!isnormal(sig->gpu_sig.gpu_data[g].GPU_power)) {
+                sig->gpu_sig.gpu_data[g].GPU_power = 0;
+            }
         }
     }
 #endif
@@ -313,7 +314,7 @@ void compute_avg_node_sig(ssig_t *avg_sig,int n)
     avg_sig->instructions = avg_sig->instructions/n;
     avg_sig->cycles       = avg_sig->cycles/n;
     avg_sig->L3_misses    = avg_sig->L3_misses/n;
-    for (i=0;i<FLOPS_EVENTS;i++){   
+    for (i=0;i<FLOPS_EVENTS;i++) {
         my_flops[i] = avg_sig->FLOPS[i]/n;
         avg_sig->FLOPS[i] = my_flops[i];
     }

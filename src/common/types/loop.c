@@ -81,9 +81,6 @@ int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ul
     loop->jid     = job_id;
     loop->step_id = step_id;
 
-    // gethostname(loop->node_id, sizeof(loop->node_id));
-    // strtok(loop->node_id,".");
-
     memcpy(loop->node_id, node_id, sizeof loop->node_id);
 
     return EAR_SUCCESS;
@@ -94,7 +91,7 @@ void clean_db_loop(loop_t *loop, double limit)
     if (loop->id.event > INT_MAX) loop->id.event = INT_MAX;
     if (loop->id.size > INT_MAX) loop->id.size = INT_MAX; 
     if (loop->id.level > INT_MAX) loop->id.level = INT_MAX;
-    clean_db_signature(&loop->signature, limit);
+    signature_clean_before_db(&loop->signature, limit);
 }
 
 int set_null_loop(loop_t *loop)

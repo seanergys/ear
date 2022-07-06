@@ -409,61 +409,109 @@ void compute_per_node_avg_mpi_info(lib_shared_data_t *data,shsignature_t *sig,mp
 	my_mpi_info->perc_mpi = avg_mpi.perc_mpi/data->num_processes;
 }
 
-void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst)
+state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs, ull *instructions)
 {
+    if (sig == NULL || instructions) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (n_procs == 0) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
 	int i;
-	*t_inst = 0;
-	for (i=0;i<data->num_processes;i++){
-		*t_inst += sig[i].sig.instructions;
+	*instructions = 0;
+	for (i = 0; i < n_procs; i++) {
+		*instructions += sig[i].sig.instructions;
 	}
+
+    return EAR_SUCCESS;
 }
 
-void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops)
+state_t compute_job_node_flops(const shsignature_t *sig, int n_procs, ull *flops)
 {
-	int i,f;
-	memset(flops,0,FLOPS_EVENTS*sizeof(ull));
-	for (i=0;i<data->num_processes;i++){
-		for (f=0;f<FLOPS_EVENTS;f++) {
+    if (sig == NULL || flops == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (n_procs == 0) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
+	int i, f;
+	memset(flops, 0, FLOPS_EVENTS * sizeof(ull));
+
+	for (i = 0; i < n_procs; i++) {
+		for (f = 0; f < FLOPS_EVENTS; f++) {
             flops[f] += sig[i].sig.FLOPS[f];
         }
 	}
-    verbose(3, "######## compute_total_node_flops ");
+
+    return EAR_SUCCESS;
 }
 
-void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles)
+state_t compute_job_node_cycles(const shsignature_t *sig, int n_procs, ull *t_cycles)
 {
+    if (sig == NULL || t_cycles == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (n_procs == 0) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
     int i;
     *t_cycles = 0;
-    for (i=0;i<data->num_processes;i++){
+    for (i = 0; i < n_procs; i++) {
         *t_cycles += sig[i].sig.cycles;
     }
+
+    return EAR_SUCCESS;
 }
 
-void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L3)
+state_t compute_job_node_L3_misses(const shsignature_t *sig, int n_procs, ull *t_L3)
 {
-  int i;
-  *t_L3 = 0;
-  for (i=0;i<data->num_processes;i++){
-    *t_L3 += sig[i].sig.L3_misses;
-  }
+    if (sig == NULL || t_L3 == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (n_procs == 0) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
+    int i;
+    *t_L3 = 0;
+    for (i = 0; i < n_procs; i++) {
+        *t_L3 += sig[i].sig.L3_misses;
+    }
+    
+    return EAR_SUCCESS;
 }
 
-void compute_total_node_L1_misses(lib_shared_data_t *data,shsignature_t *sig,ull *l1)
+state_t compute_job_node_L1_misses(const shsignature_t *sig, int n_procs, ull *t_L1)
 {
-  int i;
-  *l1 = 0;
-  for (i=0;i<data->num_processes;i++){
-    *l1 += sig[i].sig.L1_misses;
-  }
+    if (sig == NULL || t_L1 == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (n_procs == 0) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
+    int i;
+    *t_L1 = 0;
+    for (i = 0; i < n_procs; i++) {
+        *t_L1 += sig[i].sig.L1_misses;
+    }
+
+    return EAR_SUCCESS;
 }
 
-void compute_total_node_L2_misses(lib_shared_data_t *data,shsignature_t *sig,ull *l2)
+state_t compute_job_node_L2_misses(const shsignature_t *sig, int n_procs, ull *t_L2)
 {
-  int i;
-  *l2 = 0;
-  for (i=0;i<data->num_processes;i++){
-    *l2 += sig[i].sig.L2_misses;
-  }
+    if (sig == NULL || t_L2 == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (n_procs == 0) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
+    int i;
+    *t_L2 = 0;
+    for (i = 0; i < n_procs; i++) {
+        *t_L2 += sig[i].sig.L2_misses;
+    }
+
+    return EAR_SUCCESS;
 }
 
 
@@ -632,7 +680,6 @@ void  init_earl_node_mgr_info()
 
 void update_earl_node_mgr_info()
 {
-    uint current_jobs_in_node = 0;
     char *tmp = get_ear_tmp();
 
     for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++) {
@@ -657,16 +704,25 @@ void update_earl_node_mgr_info()
                     dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
                     node_mgr_job_info[j].creation_time = 0;
                 } else {
+
                     uint ID = create_ID(jid, sid);
+
                     get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs);
-                    node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,&node_mgr_job_info[j].fd_lib);
+                    node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,
+                            &node_mgr_job_info[j].fd_lib);
+
                     get_shared_signatures_path(tmp, ID, sig_shared_region_path_jobs);
-                    node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
+                    node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs,
+                            node_mgr_job_info[j].libsh->num_processes,
+                            &node_mgr_job_info[j].fd_sig);
+
                     node_mgr_job_info[j].creation_time = ct;
                 }
             }
         }
     }
+
+    uint current_jobs_in_node = 0;
     nodemgr_get_num_jobs_attached(&current_jobs_in_node);
     exclusive = exclusive && (current_jobs_in_node == 1);
 }

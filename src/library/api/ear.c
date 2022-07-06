@@ -1569,7 +1569,7 @@ void ear_finalize(int exit_status)
 								if (application.is_learning) verbose_master(1,"Application in learning phase mode");
 								debug("Reporting application data");
 								verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
-								clean_db_signature(&application.signature, system_conf->max_sig_power);
+								signature_clean_before_db(&application.signature, system_conf->max_sig_power);
 								verbose_master(2, "Reporting data");
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(0,"Error reporting application");

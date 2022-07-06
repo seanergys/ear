@@ -1165,12 +1165,16 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                 }
 
 				/* Compute and print the total savings */
-				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed){
+				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
 					float avg_esaving = sig_ext->saving / sig_ext->telapsed;
 					float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
 					float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
-					verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+
+					verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f",
+                            masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+
 					app_energy_saving.event = ENERGY_SAVING;
+
 					/* We will use freq for the energy saving */
 					app_energy_saving.freq = (ulong)(avg_esaving * 10);
 					report_events(&rep_id, &app_energy_saving, 1);
@@ -1404,13 +1408,12 @@ int metrics_init(topology_t *topo)
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
     sig_ext_t *se;
-    signature_t nodeapp;
+    signature_t job_node_sig;
     uint num_ready;
     uint exited;
     float wait_time = 0;
 
     verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
-    verbose_master(INFO_METRICS + 1, "End local signature");
 
     if (!eards_connected() && master){ 
         if (!EARL_LIGHT){ 
@@ -1418,7 +1421,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         }
     }
 
-		verbose_master(2, "Partial stop");
+	verbose_master(INFO_METRICS, "Calling last partial stop...");
 
     /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
     while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
@@ -1451,7 +1454,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     }
 
     // Only master does something in this funcion
-	compute_per_process_and_job_metrics(&nodeapp);
+	compute_per_process_and_job_metrics(&job_node_sig);
 
 	/* At this point we mark signatures are not ready to be computed again */
     if (master)  {
@@ -1482,12 +1485,12 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         se = (sig_ext_t *) metrics->sig_ext;
 
         if (!exclusive) {
-            metrics_app_node_signature(metrics, &nodeapp);
+            metrics_app_node_signature(metrics, &job_node_sig);
         } else {
-            metrics_job_signature(&lib_shared_region->job_signature, &nodeapp);
+            metrics_job_signature(&lib_shared_region->job_signature, &job_node_sig);
         }
 
-        signature_copy(metrics, &nodeapp);
+        signature_copy(metrics, &job_node_sig);
         metrics->sig_ext = se;
 	}
 
@@ -1644,23 +1647,17 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 	verbose_master(2, " metrics_app_node_signature");
 
-  compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-  compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-  compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
-  compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
-  compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-  compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
+  compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
+  compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
 
-  ns->CPI = (double)cycles/(double)inst;
-	#if 0
-  verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-  if (ns->CPI > 5.0){
-    for (i=0; i< lib_shared_region->num_processes;i ++){
-      verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
-    } 
-    verbose_master(2," ");
-  }
-	#endif
+  ns->CPI = (double) cycles / (double) inst;
+
+  compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
+
+  compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+  compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+  compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+
   for (i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
@@ -1693,7 +1690,6 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 		verbose_master(2,"AVG  %lu", ns->avg_f);
   }
   signature_copy(&lib_shared_region->node_signature,ns);
-
 }
 
 void metrics_job_signature(const signature_t *master, signature_t *dst)
@@ -1701,53 +1697,37 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
     ullong inst;
     ullong cycles;
     ullong FLOPS[FLOPS_EVENTS];
-    sig_ext_t *se;
     ullong L1, L2, L3;
 
-    se = (sig_ext_t *) master->sig_ext;	
     signature_copy(dst, master);
+
+    sig_ext_t *se = (sig_ext_t *) master->sig_ext;
     if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
-    compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-    compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-    compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
-    compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
-    compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-    compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
-
-    dst->CPI = (double) cycles / (double)inst;
-#if SHOW_DEBUGS
-    if (dst->CPI > 2.0) {
-        for (int i = 0; i < lib_shared_region->num_processes; i++) {
-            verbosen_master(2, " CPI[%d]=%lf", i, sig_shared_region[i].sig.CPI);
-        }
-        verbose_master(2," ");
-    }
-#endif
-
-    dst->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
-    dst->L1_misses  = L1;
-    dst->L2_misses  = L2;
-    dst->L3_misses  = L3;
+    compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
+    compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);	
 
     dst->cycles       = cycles;
     dst->instructions = inst;
 
+    assert(inst != 0);
+    dst->CPI = (double) cycles / (double) inst;
+
+    compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
+
     for (uint i = 0; i < FLOPS_EVENTS; i++) {
         dst->FLOPS[i] = FLOPS[i];
-    }    
-
-    // verbose_master(2, "Node metrics: CPI %.2lf Gflops %.2lf", dst->CPI, dst->Gflops);
-
-#if 0
-    signature_copy(&lib_shared_region->node_signature,dst);
-
-    if (master){
-        /* Updating shared info */
-        update_earl_node_mgr_info();
-        estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, dst, PER_JOB, -1);
     }
-#endif
+
+    dst->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+
+    compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+    compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+    compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+
+    dst->L1_misses = L1;
+    dst->L2_misses = L2;
+    dst->L3_misses = L3;
 }
 
 extern uint last_earl_phase_classification;

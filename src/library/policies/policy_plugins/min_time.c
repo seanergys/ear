@@ -1046,9 +1046,9 @@ state_t policy_restore_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *
 }
 
 state_t compute_total_node_metrics() {
-    compute_total_node_instructions(lib_shared_region, sig_shared_region, &my_app->instructions);
-    compute_total_node_flops(lib_shared_region, sig_shared_region, my_app->FLOPS);
-    compute_total_node_cycles(lib_shared_region, sig_shared_region, &my_app->cycles);
+    compute_job_node_instructions(sig_shared_region, num_processes, &my_app->instructions);
+    compute_job_node_flops(sig_shared_region, num_processes, my_app->FLOPS);
+    compute_job_node_cycles(sig_shared_region, num_processes, &my_app->cycles);
 
     return EAR_SUCCESS;
 }

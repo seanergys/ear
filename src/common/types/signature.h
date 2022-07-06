@@ -75,14 +75,14 @@ typedef struct mini_sig
 		ull   accum_mem_access;
 		ulong accum_avg_f;
 		double valid_time;
-}ssig_t;
+} ssig_t;
 
 typedef struct signature
 {
     double DC_power;
     double DRAM_power;
     double PCK_power;
-    double EDP;
+    double EDP; // TODO: ?
     double GBS;
     double IO_MBS;
     double TPI;
@@ -105,8 +105,6 @@ typedef struct signature
     void *sig_ext;
 } signature_t;
 
-
-
 // Misc
 
 /** Initializes all values of the signature to 0.
@@ -116,7 +114,7 @@ void signature_init(signature_t *sig);
 /** Replicates the signature in *source to *destiny. */
 void signature_copy(signature_t *destiny, const signature_t *source);
 /** Checks all the values are valid to be reported to DB and fixes potential problems. */
-void clean_db_signature(signature_t *sig, double limit);
+void signature_clean_before_db(signature_t *sig, double pwr_limit);
 /** Outputs the signature contents to the file pointed by the fd. */
 void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_column, char sep);
 

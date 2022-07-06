@@ -120,6 +120,3 @@ state_t cpu_power_model_project(lib_shared_data_t *data,shsignature_t *sig, node
 	if (cpu_power_models_syms_fun.project != NULL) cpu_power_models_syms_fun.project(data, sig, nmgr, node_mgr_index);
 	return EAR_SUCCESS;
 }
-
-
-

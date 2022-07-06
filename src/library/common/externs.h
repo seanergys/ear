@@ -27,7 +27,6 @@
 #include <library/common/library_shared_data.h>
 #include <daemon/shared_configuration.h>
 
-// extern application_t loop_signature;
 extern application_t application;
 extern settings_conf_t *system_conf;
 extern resched_t *resched_conf;
@@ -63,7 +62,6 @@ extern ulong last_loop_size;
 extern ulong last_loop_level;
 extern uint dynais_enabled;
 extern uint check_periodic_mode;
-// extern uint EAR_STATE;
 
 // Shared regions for processes in same node
 extern lib_shared_data_t *lib_shared_region;

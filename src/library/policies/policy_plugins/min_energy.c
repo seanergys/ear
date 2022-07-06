@@ -459,9 +459,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
                 /* 1.1: If we have to select a single frequency, we compute the average */
 
-                compute_total_node_instructions(lib_shared_region, sig_shared_region, &my_app->instructions);
-                compute_total_node_flops(lib_shared_region, sig_shared_region, my_app->FLOPS);
-                compute_total_node_cycles(lib_shared_region, sig_shared_region, &my_app->cycles);
+                compute_job_node_instructions(sig_shared_region, num_processes, &my_app->instructions);
+                compute_job_node_flops(sig_shared_region, num_processes, my_app->FLOPS);
+                compute_job_node_cycles(sig_shared_region, num_processes, &my_app->cycles);
 
                 my_app->CPI = (double) my_app->cycles / (double) my_app->instructions;
 
