@@ -1135,17 +1135,17 @@ int main(int argc,char *argv[])
 
 	int option_idx = 0;
 	static struct option long_options[] = {
-		{"help", no_argument, 0, 'h'},
-		{"version", no_argument, 0, 'v'},
-		{"verbose", no_argument, 0, 'b'},
-		{"nodes", required_argument, 0, 'n'},
-		{"users", required_argument, 0, 'u'},
-		{"etags", required_argument, 0, 't'},
-		{"islands", required_argument, 0, 'i'},
-		{"start-time", required_argument, 0, 's'},
-		{"end-time", required_argument, 0, 'e'},
+		{"help",          no_argument, 0, 'h'},
+		{"version",       no_argument, 0, 'v'},
+		{"verbose",       no_argument, 0, 'b'},
 		{"global-energy", no_argument, 0, 'g'},
-		{"events", no_argument, 0, 'x'},
+		{"events",        no_argument, 0, 'x'},
+		{"nodes",      required_argument, 0, 'n'},
+		{"users",      required_argument, 0, 'u'},
+		{"etags",      required_argument, 0, 't'},
+		{"islands",    required_argument, 0, 'i'},
+		{"start-time", required_argument, 0, 's'},
+		{"end-time",   required_argument, 0, 'e'},
 	};
 	while (1)
 	{
