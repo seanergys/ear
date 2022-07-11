@@ -31,9 +31,11 @@ void usage(char *argv)
 	printf("Usage: %s [OPTIONS]\n", argv);
 	printf("\nOptions:\n");
 	printf("\t-j\t--job-id  <id.step>\tSpecifies which job-id the periodic metrics will be retrieved from. It can be a list of jobs.\n");
-	printf("\t-n\t--node-id <id>\t\tSpecifies which nodes the periodic metrics will be retrieved from. It can be a list of nodes\n");
+	printf("\t-n\t--node-id <\"id\">\tSpecifies which nodes the periodic metrics will be retrieved from. It can be a list of nodes\n");
 	printf("\t-f\t--no-filter\t\tPeriodic metrics will be filtered by their job id field, not by time.\n");
+	printf("\t-v\t--verbose\t\tDisplays execution messages.\n");
 	printf("\t-h\t--help \t\t\tDisplays this message.\n");
+    printf("Note: for more efficient executions, when possible execute the program with the node-ids specified in a \n\t list (i.e -n \"node1\",\"node2\") to avoid running an additional query\n\n");
 	exit(1);
 }
 
@@ -168,6 +170,7 @@ int main(int argc, char *argv[])
 		char *end_time 	= values[0][1];
 
 		char list_nodes[512];
+		int len = 0, max_len = 512; //max len is the capacity of list_nodes
 
 		// If the nodelist is provided, copy it. Otherwise, get it from Applications
 		if (node_ids != NULL) {
@@ -186,11 +189,10 @@ int main(int argc, char *argv[])
 			}
 			// Format the list of nodes as a string
 			strcpy(list_nodes, "");
-			int len = 0;
 			for (i = 0; i < rows-1; i++) {
-				len += sprintf(list_nodes+len, "\"%s\",", values[i][0]);
+				len += snprintf(list_nodes+len, max_len-len, "\"%s\",", values[i][0]);
 			}
-			len += sprintf(list_nodes+len, "\"%s\"", values[i][rows-1]);
+			len += snprintf(list_nodes+len, max_len-len, "\"%s\"", values[rows-1][0]);
 		}
 
 		// Finally, get the last query and the results 
