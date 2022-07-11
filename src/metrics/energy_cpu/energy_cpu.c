@@ -194,6 +194,7 @@ state_t enercy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 		strcat(str, buffer); */
 	}
 	strcat(str, ")");
+    return EAR_SUCCESS;
 }
 
 double energy_cpu_compute_power(double energy, double elapsed_time)

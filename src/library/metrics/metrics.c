@@ -934,7 +934,6 @@ static int metrics_partial_stop(uint where)
 	energy_cpu_read(no_ctx, aux_rapl);
 	// We read acuumulated energy
 	energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
-	//energy_cpu_data_diff(no_ctx, aux_rapl, last_rapl, metrics_rapl[LOO]);
 
 	// Manual RAPL accumulation
 	for (int i = 0; i < rapl_elements; i++) {

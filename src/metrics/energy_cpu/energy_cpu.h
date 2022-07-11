@@ -51,4 +51,6 @@ state_t energy_cpu_count_devices(ctx_t *c, uint *count);
 // Getters
 state_t energy_cpu_read(ctx_t *c, ullong *values);
 
+// Other
+double energy_cpu_compute_power(double energy, double elapsed_time);
 #endif
