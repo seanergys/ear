@@ -1691,7 +1691,7 @@ float get_max_dc_power(char is_max, char *app_name, ulong freq)
 #endif
 }
 
-int db_run_query_string_results(char *query, char ****results, int *num_columns)
+int db_run_query_string_results(char *query, char ****results, int *num_columns, int *num_rows)
 {
 
 #if DB_MYSQL
@@ -1700,8 +1700,8 @@ int db_run_query_string_results(char *query, char ****results, int *num_columns)
     if (connection == NULL) {
         return EAR_ERROR;
     }
-    return mysql_run_query_string_results(connection, query, results, num_columns);
+    return mysql_run_query_string_results(connection, query, results, num_columns, num_rows);
 #else
-    return 0;
+    return EAR_ERROR;
 #endif
 }

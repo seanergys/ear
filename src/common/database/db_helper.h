@@ -126,7 +126,7 @@ void db_reset_counters();
 
 /** Runs the received query to database, and stores the results as a string in results.
  *  the number of columns in each row is stored in num_columns, and the number of 
- *  rows is the return value. Returns EAR_ERROR if anything fails. */
-int db_run_query_string_results(char *query, char ****results, int *num_columns);
+ *  rows in num_rows. Returns EAR_SUCCESS on completion, or EAR_ERROR if anything fails. */
+int db_run_query_string_results(char *query, char ****results, int *num_columns, int *num_rows);
 
 #endif
