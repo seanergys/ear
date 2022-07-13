@@ -32,7 +32,8 @@ void usage(char *argv)
 	printf("\nOptions:\n");
 	printf("\t-j\t--job-id  <id.step>\tSpecifies which job-id the periodic metrics will be retrieved from. It can be a list of jobs.\n");
 	printf("\t-n\t--node-id <\"id\">\tSpecifies which nodes the periodic metrics will be retrieved from. It can be a list of nodes\n");
-	printf("\t-f\t--no-filter\t\tPeriodic metrics will be filtered by their job id field, not by time.\n");
+	printf("\t-f\t--file <filename>\tRedirects the output to the file specified.\n");
+	printf("\t-x\t--no-filter\t\tPeriodic metrics will be filtered by their job id field, not by time.\n");
 	printf("\t-v\t--verbose\t\tDisplays execution messages.\n");
 	printf("\t-h\t--help \t\t\tDisplays this message.\n");
     printf("Note: for more efficient executions, when possible execute the program with the node-ids specified in a \n\t list (i.e -n \"node1\",\"node2\") to avoid running an additional query\n\n");
@@ -56,14 +57,23 @@ void prepare_query(char *query, char *BASE_QUERY, char *job_ids, char *job_id, c
 	}
 }
 
-void print_values(char ***values, int columns, int rows)
+void print_header(int fd, char ***values, int columns, int rows)
+{
+	int i;
+	for (i = 0; i < rows; i++) {
+		dprintf(fd, "%s;", values[i][0]);
+	}
+	dprintf(fd, "\n");
+}
+
+void print_values(int fd, char ***values, int columns, int rows)
 {
 	int i, j;
 	for (i = 0; i < rows; i++) {
 		for (j = 0; j < columns; j++) {
-			printf("%s;", values[i][j]);
+			dprintf(fd, "%s;", values[i][j]);
 		}
-		printf("\n");
+		dprintf(fd, "\n");
 	}
 }
 
@@ -74,7 +84,7 @@ int main(int argc, char *argv[])
 	char *job_ids = NULL, *token, *job_id = NULL, *step_id = NULL, *node_ids = NULL;
 	int no_filter = 0, rows, columns;
 	cluster_conf_t my_conf;
-	int i, option_idx, ret; 
+	int i, option_idx, ret, fd = STDOUT_FILENO; 
 	char c, debug = 0;
 
 	if (argc < 2) usage(argv[0]);
@@ -82,14 +92,15 @@ int main(int argc, char *argv[])
 	static struct option long_options[] = {
 		{"help",      no_argument,       0, 'h'},
 		{"verbose",   no_argument,       0, 'v'},
-		{"no-filter", no_argument,       0, 'f'},
+		{"no-filter", no_argument,       0, 'x'},
 		{"job-id",    required_argument, 0, 'n'},
 		{"node-id",   required_argument, 0, 'j'},
+		{"file",      required_argument, 0, 'f'},
 	};
 
 	while (1)
 	{
-		c = getopt_long(argc, argv, "fn:hj:", long_options, &option_idx);
+		c = getopt_long(argc, argv, "f:xn:hj:", long_options, &option_idx);
 		if (c == -1) break;
 		switch (c)
 		{
@@ -105,6 +116,9 @@ int main(int argc, char *argv[])
 				node_ids = optarg;
 				break;
 			case 'f':
+				fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+				break;
+			case 'x':
 				no_filter = 1;
 				break;
 			case 'v':
@@ -137,6 +151,15 @@ int main(int argc, char *argv[])
 
 	init_db_helper(&my_conf.database);
 
+	//get and print header
+	sprintf(query, "DESCRIBE Periodic_metrics");
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error retrieving data\n");
+		goto cleanup;
+	}
+	print_header(fd, values, columns, rows);
+
 	if (no_filter) { //1 query
 		// Prepare query
 		prepare_query(query, DIRECT_PERIODIC_QUERY, job_ids, job_id, step_id, node_ids);
@@ -152,7 +175,7 @@ int main(int argc, char *argv[])
 			goto cleanup;
 		}
 		// Print result
-		print_values(values, columns, rows);
+		print_values(fd, values, columns, rows);
 	} else { // up to 3 queries
 		// Prepare query
 		prepare_query(query, JOB_QUERY, job_ids, job_id, step_id, NULL);
@@ -182,7 +205,7 @@ int main(int argc, char *argv[])
 			// Run query to get the list of nodes
 			ret = db_run_query_string_results(query, &values, &columns, &rows);
 			if (debug) printf("num rows: %d, num cols %d\n", rows, columns);
-			
+
 			if (ret != EAR_SUCCESS || rows < 1 || columns != 1) {
 				printf("Error retrieving nodelist\n");
 				goto cleanup;
@@ -207,9 +230,12 @@ int main(int argc, char *argv[])
 			goto cleanup;
 		}
 		// Print result
-		print_values(values, columns, rows);
+		print_values(fd, values, columns, rows);
 	}
 
 cleanup:
+	if (fd != STDOUT_FILENO) {
+		close(fd);
+	}
 	free_cluster_conf(&my_conf);
 }
