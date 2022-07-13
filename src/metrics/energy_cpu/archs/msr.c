@@ -170,6 +170,7 @@ state_t rapl_msr_read(ctx_t *c, ullong *values)
 			values[i*NUM_PACKS+offset] *= es_dram_units; 
 			offset++;
 		}
+#if 0
 		// CORE
 		for (t = 0; t < es_core_count; ++t) {
 			s = msr_read(tp.cpus[i].id, &values[i*NUM_PACKS+offset], sizeof(ullong), es_core_addr[t]);
@@ -177,6 +178,7 @@ state_t rapl_msr_read(ctx_t *c, ullong *values)
 			values[i*NUM_PACKS+offset] *= es_core_units;
 			offset++;
 		}
+#endif
 	}
 	return EAR_SUCCESS;
 }

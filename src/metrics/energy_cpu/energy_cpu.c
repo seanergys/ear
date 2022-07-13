@@ -199,6 +199,10 @@ state_t enercy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 
 double energy_cpu_compute_power(double energy, double elapsed_time)
 {
-	return ((energy / 1000000000.0) / elapsed_time);
+    
+	double computed_power = ((energy / 1000000000.0) / elapsed_time);
+
+    debug("computed power: %lf", computed_power);
+    return computed_power;
 }
 
