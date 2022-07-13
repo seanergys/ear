@@ -79,9 +79,9 @@ void print_values(int fd, char ***values, int columns, int rows)
 
 int main(int argc, char *argv[])
 {
-	char buffer[256], query[512], aux_query[256];
+	char buffer[256], query[1024];
 	char ***values = NULL;
-	char *job_ids = NULL, *token, *job_id = NULL, *step_id = NULL, *node_ids = NULL;
+	char *job_ids = NULL, *job_id = NULL, *step_id = NULL, *node_ids = NULL;
 	int no_filter = 0, rows, columns;
 	cluster_conf_t my_conf;
 	int i, option_idx, ret, fd = STDOUT_FILENO; 
