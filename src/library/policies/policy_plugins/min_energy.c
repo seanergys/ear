@@ -275,17 +275,6 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *l)
 
 state_t policy_loop_end(polctx_t *c,loop_id_t *l)
 {
-    #if 0
-    if ((c!=NULL) && (c->reset_freq_opt)) {
-        uint pstate_index;
-        *(c->ear_frequency) = 0;
-        if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) FREQ_DEF(c->app->def_freq), &pstate_index, 0))) {
-            if(state_ok(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
-                *(c->ear_frequency) = FREQ_DEF(c->app->def_freq);
-            }
-        }
-    }
-    #endif
     return EAR_SUCCESS;
 }
 
@@ -422,9 +411,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
 
-				/* Classification */
-        is_cpu_bound(my_app, &cbound);
-        is_mem_bound(my_app, &mbound);
+	/* Classification */
+        is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
+        is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
 
         verbose_master(2, "App CPU bound %u memory bound %u", cbound, mbound);
 
@@ -617,7 +606,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
              * IMC_MAX means the maximum frequency, lower pstate,
              * IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound){
-                if (sig->GBS <= GBS_BUSY_WAITING){
+                //if (sig->GBS <= GBS_BUSY_WAITING){
+                if (low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus)){
                     debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++) {
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;

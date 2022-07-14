@@ -194,11 +194,12 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
                 COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
         return 0;
     }
-    if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+    //if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+    if (!low_mem_activity(s1, lib_shared_region->num_cpus) || !low_mem_activity(s2, lib_shared_region->num_cpus)){
         if (!equal_with_th(s1->CPI,s2->CPI,p)){
             uint s1_cbound, s2_cbound;
-            is_cpu_bound(s1, &s1_cbound);
-            is_cpu_bound(s2, &s2_cbound);
+            is_cpu_bound(s1, lib_shared_region->num_cpus, &s1_cbound);
+            is_cpu_bound(s2, lib_shared_region->num_cpus, &s2_cbound);
             if (s1_cbound != s2_cbound){
                 verbose_master(2, "CPI (%.2lfvs%.2lf) and cpu bound phase changed from %u to %u",
                         s1->CPI,s2->CPI, s1_cbound, s2_cbound);
@@ -209,8 +210,8 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
         }
         if (!equal_with_th(s1->GBS, s2->GBS,p)){
             uint s1_mbound, s2_mbound;
-            is_mem_bound(s1, &s1_mbound);
-            is_mem_bound(s2, &s2_mbound);
+            is_mem_bound(s1, lib_shared_region->num_cpus, &s1_mbound);
+            is_mem_bound(s2, lib_shared_region->num_cpus, &s2_mbound);
             if (s1_mbound != s2_mbound){
                 verbose_master(2, "GBS (%.2lfvs%.2lf) and mem bound phase changed from %u to %u",
                         s1->GBS,s2->GBS, s1_mbound, s2_mbound);
