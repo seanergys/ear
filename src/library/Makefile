@@ -1,5 +1,6 @@
 # If USER_TEST is set to 1, any user cam execute the hacks with the library.
-CFLAGS  = -fPIC -O2 -I$(SRCDIR) -Wall -g -DEARL_LIGHT=0 -DUSER_TEST=0
+# TODO: EARL_LIGHT option
+CFLAGS  = -I$(SRCDIR) -fPIC -g -DEARL_LIGHT=0 -DUSER_TEST=0
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -10,7 +11,7 @@ MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -g
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
@@ -20,8 +21,8 @@ else
 	CFLAGS += -DSINGLE_CONNECTION=1
 endif
 
-export LIBCC
-export LIBCC_FLAGS
+# export LIBCC
+# export LIBCC_FLAGS
 export LIB_CFLAGS
 export CFLAGS
 
@@ -87,7 +88,7 @@ endif
 all: all.components $(libs_OBJS)
 
 %.so: $(mpix_OBJS) $(core_OBJS) $(comm_OBJS)
-	$(LIBCC)  $(LIBCC_FLAGS) -o $*.$(ext) $^ $(LDFLAGS)
+	$(LIBCC) $(LIBCC_FLAGS) -o $*.$(ext) $^ $(LDFLAGS)
 
 ######## OPTIONS
 
