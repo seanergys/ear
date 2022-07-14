@@ -1510,18 +1510,21 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     if (mysql_stmt_bind_result(statement, bind)) 
     {
         free(sig_aux);
+		free(bind);
         return mysql_statement_error(statement);
     }
 
     if (mysql_stmt_execute(statement)) 
     {
         free(sig_aux);
+		free(bind);
         return mysql_statement_error(statement);
     }
 
     if (mysql_stmt_store_result(statement)) 
     {
         free(sig_aux);
+		free(bind);
         return mysql_statement_error(statement);
     }
 
@@ -1531,6 +1534,7 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     {
         mysql_stmt_close(statement);
         free(sig_aux);
+		free(bind);
         return EAR_ERROR;
     }
 
@@ -1561,6 +1565,7 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
         status = mysql_stmt_fetch(statement);
         i++;
     }
+	free(bind);
     free(sig_aux);
     if (mysql_stmt_close(statement)) {
         free(sigs_aux);
