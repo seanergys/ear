@@ -1103,7 +1103,8 @@ void print_loops(loop_t *loops, int num_loops)
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
-#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
+#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED) " \
+							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
 							"INNER JOIN Signatures ON signature_id = Signatures.id"
 
 void print_header(int fd, char ***values, int columns, int rows)
@@ -1176,7 +1177,7 @@ void extended_loop_print(char *query)
 	print_header(fd, values, columns, rows);
 	db_free_results(values, columns, rows);
 
-	dprintf(fd, "start_time;end_time;");
+	dprintf(fd, "start_time;end_time;elapsed;");
 	dprintf(fd, "\n");
 
 	ret = db_run_query_string_results(query, &values, &columns, &rows);
@@ -1191,7 +1192,7 @@ void extended_loop_print(char *query)
 
 void read_loops(char *user, query_adds_t *q_a) 
 {
-	char query[512];
+	char query[1024];
 
 	if (strlen(my_conf.database.user_commands) < 1) 
 	{
