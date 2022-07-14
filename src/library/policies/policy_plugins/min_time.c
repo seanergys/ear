@@ -243,7 +243,7 @@ state_t policy_init(polctx_t *c)
             min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
         }
     }
-    verbose_node_freqs(2, &min_time_def_freqs);
+    verbose_node_freqs(3, &min_time_def_freqs);
 #endif
 
     node_freqs_copy(&last_nodefreq_sel, &min_time_def_freqs);
@@ -427,8 +427,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
         if (use_energy_models && !are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
-            verbose_node_freqs(2, &last_nodefreq_sel);
-            verbose_node_freqs(2, &min_time_def_freqs);
+            verbose_node_freqs(3, &last_nodefreq_sel);
+            verbose_node_freqs(3, &min_time_def_freqs);
 
             set_default_settings(freqs, &min_time_def_freqs);
             if (gpus.restore_settings != NULL){

@@ -1723,6 +1723,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
   compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
 
 	ns->CPI = (double)cycles/(double)inst;
+        #ifdef SHOW_DEBUGS
 	/* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
 	if (ns->CPI > 2.0){
 		for (i=0; i< lib_shared_region->num_processes;i ++){
@@ -1730,6 +1731,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 		}	
 		verbose_master(2," ");
 	}
+        #endif
 	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
   ns->L1_misses  = L1;
   ns->L2_misses  = L2;

@@ -281,16 +281,16 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
     if (freqs == NULL) return;
     int num_processes = lib_shared_region->num_processes;
     for (i=0;i<num_processes;i++){
-        verbosen_master(2,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
+        verbosen_master(vl,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
     }
 		for (sid = 0;sid < arch_desc.top.socket_count; sid++){
-    	verbose_master(2,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+    	verbose_master(vl,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
 		}
 #if USE_GPUS
     for (i=0; i< my_pol_ctx.num_gpus;i++){
-        verbosen_master(2,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
+        verbosen_master(vl,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
     }
-    verbose_master(2," ");
+    verbose_master(vl," ");
 #endif
 
 }

@@ -241,7 +241,7 @@ state_t policy_init(polctx_t *c)
             min_energy_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
         }
     }
-    verbose_node_freqs(2, &min_energy_def_freqs);
+    verbose_node_freqs(3, &min_energy_def_freqs);
 #endif
 
     node_freqs_copy(&last_nodefreq_sel, &min_energy_def_freqs);
@@ -421,8 +421,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         // is made for the reference P_STATE in case the coefficents were available.
         // NEW: This code is new because projections from lower pstates are reporting bad cpu freqs
         if (use_energy_models && !are_default_settings(&last_nodefreq_sel, &min_energy_def_freqs)) {
-            verbose_node_freqs(2, &last_nodefreq_sel);
-            verbose_node_freqs(2, &min_energy_def_freqs);
+            verbose_node_freqs(3, &last_nodefreq_sel);
+            verbose_node_freqs(3, &min_energy_def_freqs);
 
             verbose_master(2,"Setting default conf for ME");
 

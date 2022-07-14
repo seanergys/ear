@@ -100,7 +100,7 @@ state_t bwidth_intel106_load(topology_t *tp, bwidth_ops_t *ops)
 	debug("PCIs count: %d", pcis_count);
 	
     if (state_fail(s = load_icelake())) {
-		serror("load_icelake");
+		// serror("load_icelake");
 		return s;
 	}
 	// In the future it can be initialized in read only mode

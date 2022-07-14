@@ -56,17 +56,16 @@ state_t bwidth_load(topology_t *tp, int eard)
 		api = API_AMD17;
 		debug("Loaded AMD17");
 	}
+    // EAR memory bandwith plugin for Icelake using Likwid
 	if (state_ok(bwidth_likwid_load(tp, &ops))) {
 		api = API_LIKWID;
 		debug("Loaded LIKWID");
 	}
-    // The result is the same than Likwid's. But porsiaca.
-    #if 1
+    // EAR memory bandwith plugin for Icelake
 	if (state_ok(bwidth_intel106_load(tp, &ops))) {
 		api = API_INTEL106;
 		debug("Loaded INTEL106");
 	}
-    #endif
     #if 0
 	if (state_ok(bwidth_bypass_load(tp, &ops))) {
 		api = API_BYPASS;
