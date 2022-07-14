@@ -50,6 +50,7 @@ int query_filters = 0;
 int all_mpi = 0;
 int avx = 0;
 int print_gpus = 1;
+int loop_extended = 0;
 char csv_path[256] = "";
 
 typedef struct query_addons 
@@ -83,7 +84,8 @@ void usage(char *app)
 			"\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n" \
 			"\t\t-x\tshows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
 			"\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n" \
-			"\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n", app);
+			"\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
+			"\t\t-o\tmodifies the -r option to show extended EAR loop signatures.\n", app);
 	printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
 	printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
 #endif
@@ -1115,29 +1117,25 @@ void print_loops(loop_t *loops, int num_loops)
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
+#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED) " \
+							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
+							"INNER JOIN Signatures ON signature_id = Signatures.id"
 
-void read_loops(char *user, query_adds_t *q_a) 
+void print_header(int fd, char ***values, int columns, int rows)
 {
-	char query[512];
+	int i;
+	for (i = 0; i < rows; i++) {
+		dprintf(fd, "%s;", values[i][0]);
+	}
+}
+
+
+void format_loop_query(char *user, char *query, char *base_query, query_adds_t *q_a)
+{
 	char subquery[128];
 
-	if (strlen(my_conf.database.user_commands) < 1) 
-	{
-		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
-	}
-	else
-	{
-		strcpy(my_conf.database.user, my_conf.database.user_commands);
-		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
-	}
-	init_db_helper(&my_conf.database);
-
-	if (user != NULL) {
-		strcpy(query, LOOPS_FILTER_QUERY);
-		add_string_filter(query, "user_id", user);
-	} else {
-		strcpy(query, LOOPS_QUERY);
-	}
+	strcpy(query, base_query);
+	if (user != NULL) add_string_filter(query, "user_id", user);
 
 	if (q_a->job_id >= 0)
 		add_int_filter(query, "job_id", q_a->job_id);
@@ -1155,7 +1153,85 @@ void read_loops(char *user, query_adds_t *q_a)
 
 	if (verbose) printf("QUERY: %s\n", query);
 
-	loop_t *loops;
+}
+
+void print_values(int fd, char ***values, int columns, int rows)
+{
+	int i, j;
+	for (i = 0; i < rows; i++) {
+		for (j = 0; j < columns; j++) {
+			dprintf(fd, "%s;", values[i][j]);
+		}
+		dprintf(fd, "\n");
+	}
+}
+
+void extended_loop_print(char *query)
+{
+	char ***values;
+	int ret, columns, rows, fd = STDOUT_FILENO;
+
+
+	if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file"))
+		fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+
+	ret = db_run_query_string_results("DESCRIBE Loops", &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+	ret = db_run_query_string_results("DESCRIBE Signatures", &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+	dprintf(fd, "start_time;end_time;elapsed;");
+	dprintf(fd, "\n");
+
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading from database.\n");
+		return;
+	}
+	print_values(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+}
+
+void read_loops(char *user, query_adds_t *q_a) 
+{
+	char query[1024];
+
+	if (strlen(my_conf.database.user_commands) < 1) 
+	{
+		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
+	}
+	else
+	{
+		strcpy(my_conf.database.user, my_conf.database.user_commands);
+		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
+	}
+	init_db_helper(&my_conf.database);
+
+	if (loop_extended) {
+		format_loop_query(user, query, LOOPS_EXTENDED_QUERY, q_a);
+		return extended_loop_print(query);
+	}
+
+	if (user != NULL) {
+		format_loop_query(user, query, LOOPS_FILTER_QUERY, q_a);
+	} else {
+		format_loop_query(user, query, LOOPS_QUERY, q_a);
+	}
+
+
+	loop_t *loops = NULL;
 	int num_loops;
 
 	num_loops = db_read_loops_query(&loops, query);
@@ -1183,6 +1259,7 @@ void read_loops(char *user, query_adds_t *q_a)
 	} else {
 		print_loops(loops, num_loops);
 	}
+	if (loops != NULL) free(loops);
 
 }
 
@@ -1192,7 +1269,10 @@ void read_loops(char *user, query_adds_t *q_a)
 #if USE_DB
 void read_from_database(char *user, query_adds_t *q_a) 
 {
-	int num_apps = 0;
+	int num_apps = 0, i = 0;
+	char subquery[256];
+	char query[512];
+
 	if (strlen(my_conf.database.user_commands) < 1) 
 	{
 		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
@@ -1205,9 +1285,6 @@ void read_from_database(char *user, query_adds_t *q_a)
 	init_db_helper(&my_conf.database);
 
 	set_signature_simple(my_conf.database.report_sig_detail);
-
-	char subquery[256];
-	char query[512];
 
 	if (verbose) {
 		printf("Preparing query statement\n");
@@ -1277,7 +1354,6 @@ void read_from_database(char *user, query_adds_t *q_a)
 	}
 
 
-	int i = 0;	
 	if (q_a->limit == 20 && strlen(csv_path) < 1)
 		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
 
@@ -1381,15 +1457,16 @@ int main(int argc, char *argv[])
 	char *token;
 	int option_idx;
 	static struct option long_options [] = {
-		{"help",      no_argument, 0, 'h'},
-		{"version",   no_argument, 0, 'v'},
-		{"no-mpi",    no_argument, 0, 'm'},
-		{"avx",       no_argument, 0, 'p'},
-		{"verbose",   no_argument, 0, 'b'},
-		{"show-gpus", no_argument, 0, 'g'},
-		{"long-apps", no_argument, 0, 'l'},
-		{"loops",     no_argument, 0, 'r'},
-		{"help",      no_argument, 0, 'h'},
+		{"help",       no_argument, 0, 'h'},
+		{"version",    no_argument, 0, 'v'},
+		{"no-mpi",     no_argument, 0, 'm'},
+		{"avx",        no_argument, 0, 'p'},
+		{"verbose",    no_argument, 0, 'b'},
+		{"show-gpus",  no_argument, 0, 'g'},
+		{"long-apps",  no_argument, 0, 'l'},
+		{"loops",      no_argument, 0, 'r'},
+		{"ext_loops",  no_argument, 0, 'o'},
+		{"help",       no_argument, 0, 'h'},
 		{"limit",      required_argument, 0, 'n'},
 		{"user",       required_argument, 0, 'u'},
 		{"jobs",       required_argument, 0, 'j'},
@@ -1403,7 +1480,7 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-		c = getopt_long(argc, argv, "n:u:j:f:t:vma:pbglrs:e:c:hx::", long_options, &option_idx);
+		c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hx::", long_options, &option_idx);
 
 		if (c == -1)
 			break;
@@ -1450,6 +1527,9 @@ int main(int argc, char *argv[])
 					}
 				}
 				else if (verbose) printf("No argument for -x\n");
+				break;
+			case 'o':
+				loop_extended = 1;
 				break;
 			case 'g':
 				print_gpus = 1;
