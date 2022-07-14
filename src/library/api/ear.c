@@ -1594,9 +1594,11 @@ void ear_finalize(int exit_status)
 				if (loop_with_signature) {
 								debug("loop ends with %d iterations detected", ear_iterations);
 				}
+                                #if 0
 				if (in_loop) {
 								states_end_period(ear_iterations);
 				}
+                                #endif
 				states_end_job(my_id,  ear_app_name);
 
 				policy_end();
