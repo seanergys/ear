@@ -82,4 +82,6 @@ state_t gpu_lib_power_cap_reset();
 
 state_t gpu_lib_power_cap_set(ulong *watts);
 
+uint gpu_lib_gpus_supported();
+
 #endif

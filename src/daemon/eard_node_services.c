@@ -785,6 +785,10 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			ack=EAR_SUCCESS;
 			write(ack_fd,&ack,sizeof(ack));
 			break;
+                case GPU_SUPPORTED:
+                        ack = 1;
+                        write(ack_fd,&ack,sizeof(ack));
+                        break;
 	  default:
 			error("Invalid GPU command");
       return 0;
@@ -799,6 +803,11 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
             ack=EAR_ERROR;
             write(ack_fd,&ack,sizeof(ack));
             error("GPUS not supported");
+            break;
+        case GPU_SUPPORTED:
+            ack = 0;
+            write(ack_fd,&ack,sizeof(ack));
+            return 1;
             break;
         default: break;
     }

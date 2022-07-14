@@ -161,7 +161,11 @@ uint signature_reported = 0;
 
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 {
+    #if REPORT_TIMESTAMP
+    my_loop->total_iterations =  (ulong) timestamp_getconvert(TIME_SECS);
+    #else
     my_loop->total_iterations = iterations;
+    #endif
     my_loop->jid 							= job->id;
     my_loop->step_id 					= job->step_id;
 
