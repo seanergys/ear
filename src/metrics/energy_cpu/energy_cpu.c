@@ -178,7 +178,7 @@ state_t energy_cpu_read(ctx_t *c, ullong *values)
 
 }
 
-state_t enercy_cpu_to_str(ctx_t *c, char *str, ullong *values)
+state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 {
 	char buffer[512];
 	strcpy(str, "energy_cpu (");

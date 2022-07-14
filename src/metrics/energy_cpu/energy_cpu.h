@@ -53,4 +53,6 @@ state_t energy_cpu_read(ctx_t *c, ullong *values);
 
 // Other
 double energy_cpu_compute_power(double energy, double elapsed_time);
+
+state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values);
 #endif
