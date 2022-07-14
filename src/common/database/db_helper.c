@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #include <math.h>
@@ -1691,7 +1691,7 @@ float get_max_dc_power(char is_max, char *app_name, ulong freq)
 #endif
 }
 
-int db_run_query_string_results(char *query, char ****results, int *num_columns)
+int db_run_query_string_results(char *query, char ****results, int *num_columns, int *num_rows)
 {
 
 #if DB_MYSQL
@@ -1700,8 +1700,8 @@ int db_run_query_string_results(char *query, char ****results, int *num_columns)
     if (connection == NULL) {
         return EAR_ERROR;
     }
-    return mysql_run_query_string_results(connection, query, results, num_columns);
+    return mysql_run_query_string_results(connection, query, results, num_columns, num_rows);
 #else
-    return 0;
+    return EAR_ERROR;
 #endif
 }

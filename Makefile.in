@@ -71,7 +71,7 @@ DOCDIR       = @docdir@
 CHOWN_USR    = @USER@
 CHOWN_GRP    = @GROUP@
 #CONSTANTS   = -DSEC_KEY=10001 -DSYN_TEST # Define SYN_TEST for external synthetic tests compilation
-CONSTANTS    = -DSEC_KEY=10001
+CONSTANTS    = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1
 REPLACE      =
 
 ######## EXPORTS

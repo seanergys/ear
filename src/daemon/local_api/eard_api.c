@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #include <errno.h>
@@ -521,5 +521,11 @@ int eards_gpu_set_freq(uint num_dev,ulong *freqs)
     memcpy(req.req_data.gpu_freq.gpu_freqs, freqs, sizeof(ulong)*num_dev);
 
     return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU set freq", 1);
+}
+
+int eards_gpu_support()
+{
+  init_service(GPU_SUPPORTED);
+  return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
 }
 

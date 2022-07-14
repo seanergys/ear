@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #include <errno.h>
 #include <netdb.h>
@@ -609,7 +609,6 @@ int main(int argc, char *argv[])
 	}
 
 
-
 	if (read_cluster_conf(path_name, &my_cluster_conf) != EAR_SUCCESS) printf("ERROR reading cluster configuration\n");
 
 	if (getuid() != 0 && !is_privileged_command(&my_cluster_conf))
@@ -619,39 +618,39 @@ int main(int argc, char *argv[])
 		exit(1); //error
 	}
 
+	int option_idx = 0;
+	static struct option long_options[] = {
+		{"set-freq",     	required_argument, 0, 0},
+		{"red-def-freq", 	required_argument, 0, 1},
+		{"set-max-freq", 	required_argument, 0, 2},
+		{"inc-th",       	required_argument, 0, 3},
+		{"set-def-freq", 	required_argument, 0, 4},
+		{"set-th",          required_argument, 0, 5},
+		{"hosts",           required_argument, 0, 6},
+		{"restore-conf", 	optional_argument, 0, 7},
+		{"ping", 	     	optional_argument, 0, 'p'},
+		{"status",       	optional_argument, 0, 's'},
+		{"powerstatus",     optional_argument, 0, 'w'},
+		{"power",           optional_argument, 0, 'g'},
+		{"release",         optional_argument, 0, 'l'},
+		{"set-risk",        required_argument, 0, 'r'},
+		{"setopt",          required_argument, 0, 'o'},
+		{"type",            required_argument, 0, 't'},
+		{"set-powercap",    required_argument, 0, 'c'},
+		{"reset-powercap",  required_argument, 0, 'x'},
+		{"inc-powercap",    required_argument, 0, 'i'},
+		{"red-powercap",    required_argument, 0, 'd'},
+		{"mail",            required_argument, 0, 'm'},
+		{"verbose",         optional_argument, 0, 'b'},
+		{"error",           no_argument, 0, 'e'},
+		{"health-check",    no_argument, 0, 'k'},
+		{"active-only",     no_argument, 0, 'y'},
+		{"help",         	no_argument, 0, 'h'},
+		{"version",         no_argument, 0, 'v'},
+		{0, 0, 0, 0}
+	};
 	while (1)
 	{
-		int option_idx = 0;
-		static struct option long_options[] = {
-			{"set-freq",     	required_argument, 0, 0},
-			{"red-def-freq", 	required_argument, 0, 1},
-			{"set-max-freq", 	required_argument, 0, 2},
-			{"inc-th",       	required_argument, 0, 3},
-			{"set-def-freq", 	required_argument, 0, 4},
-			{"set-th",          required_argument, 0, 5},
-			{"hosts",           required_argument, 0, 6},
-			{"restore-conf", 	optional_argument, 0, 7},
-			{"ping", 	     	optional_argument, 0, 'p'},
-			{"status",       	optional_argument, 0, 's'},
-			{"powerstatus",     optional_argument, 0, 'w'},
-			{"power",           optional_argument, 0, 'g'},
-			{"release",         optional_argument, 0, 'l'},
-			{"set-risk",        required_argument, 0, 'r'},
-			{"setopt",          required_argument, 0, 'o'},
-			{"type",            required_argument, 0, 't'},
-			{"set-powercap",    required_argument, 0, 'c'},
-			{"reset-powercap",  required_argument, 0, 'x'},
-			{"inc-powercap",    required_argument, 0, 'i'},
-			{"red-powercap",    required_argument, 0, 'd'},
-			{"mail",            required_argument, 0, 'm'},
-			{"verbose",         optional_argument, 0, 'b'},
-			{"error",           no_argument, 0, 'e'},
-			{"health-check",    no_argument, 0, 'k'},
-			{"active-only",     no_argument, 0, 'y'},
-			{"help",         	no_argument, 0, 'h'},
-			{"version",         no_argument, 0, 'v'},
-			{0, 0, 0, 0}
-		};
 
 		c = getopt_long(argc, argv, "p::shvb::", long_options, &option_idx);
 

@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 // #define SHOW_DEBUGS 1
@@ -793,6 +793,10 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			ack=EAR_SUCCESS;
 			write(ack_fd,&ack,sizeof(ack));
 			break;
+                case GPU_SUPPORTED:
+                        ack = 1;
+                        write(ack_fd,&ack,sizeof(ack));
+                        break;
 	  default:
 			error("Invalid GPU command");
       return 0;
@@ -807,6 +811,11 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
             ack=EAR_ERROR;
             write(ack_fd,&ack,sizeof(ack));
             error("GPUS not supported");
+            break;
+        case GPU_SUPPORTED:
+            ack = 0;
+            write(ack_fd,&ack,sizeof(ack));
+            return 1;
             break;
         default: break;
     }

@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #include <time.h>
@@ -2308,7 +2308,7 @@ int mysql_insert_gm_warning(MYSQL *connection, gm_warning_t *warning)
 }
 
 
-int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns)
+int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns, int *num_r)
 {
     int i, j;
     int num_rows, num_cols;
@@ -2345,13 +2345,13 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
 
         for (j = 0; j < num_cols; j++)
         {
-            if (row[i] == NULL)
+            if (row[j] == NULL)
             {
                 tmp_res[i][j] = NULL;
                 continue;
             }
-            tmp_res[i][j] = calloc(strlen(row[i]), sizeof(char));
-            strcpy(tmp_res[i][j], row[i]);
+            tmp_res[i][j] = calloc(strlen(row[j]), sizeof(char));
+            strcpy(tmp_res[i][j], row[j]);
         }
 
     }
@@ -2361,7 +2361,8 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
 
     *results = tmp_res;
     *num_columns = num_cols;
-    return num_rows;
+	*num_r = num_rows;
+    return EAR_SUCCESS;
 
 }
 

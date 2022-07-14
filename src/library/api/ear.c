@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #define _GNU_SOURCE
 // #define SHOW_DEBUGS 1
@@ -156,8 +156,6 @@ masters_info_t masters_info;
 #if MPI
 MPI_Comm new_world_comm,masters_comm;
 #endif
-int num_masters;
-int my_master_size;
 int masters_connected=0;
 unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
@@ -168,7 +166,7 @@ char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
-float ratio_PPN;
+float ratio_PPN = 1.0;
 app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
@@ -184,7 +182,6 @@ ear_njob_t *node_mgr_data;
 uint node_mgr_index;
 node_mgr_sh_data_t *node_mgr_job_info;
 
-uint mgt_cpufreq_api;
 // Dynais
 static dynais_call_t dynais;
 
@@ -1580,6 +1577,9 @@ void ear_finalize(int exit_status)
 								verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
 								clean_db_signature(&application.signature, system_conf->max_sig_power);
 								verbose_master(2, "Reporting data");
+#if USE_GPUS
+								verbose_master(2, " Application with %d GPUS", application.signature.gpu_sig.num_gpus);
+#endif
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(0,"Error reporting application");
 								}

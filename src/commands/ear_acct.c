@@ -1,19 +1,19 @@
 /*
- *
- * This program is part of the EAR software.
- *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
 
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 
@@ -1323,7 +1323,7 @@ void read_from_files(char *path, char *user, query_adds_t *q_a)
 
 int main(int argc, char *argv[])
 {
-	int opt;
+	int c;
 
 	query_adds_t query_adds;
 	memset(&query_adds, 0, sizeof(query_adds_t));
@@ -1365,9 +1365,36 @@ int main(int argc, char *argv[])
 	}
 
 	char *token;
-	while ((opt = getopt(argc, argv, "n:u:j:f:t:vma:pbglrs:e:c:hx::")) != -1) 
+	int option_idx;
+	static struct option long_options [] = {
+		{"help",      no_argument, 0, 'h'},
+		{"version",   no_argument, 0, 'v'},
+		{"no-mpi",    no_argument, 0, 'm'},
+		{"avx",       no_argument, 0, 'p'},
+		{"verbose",   no_argument, 0, 'b'},
+		{"show-gpus", no_argument, 0, 'g'},
+		{"long-apps", no_argument, 0, 'l'},
+		{"loops",     no_argument, 0, 'r'},
+		{"help",      no_argument, 0, 'h'},
+		{"limit",      required_argument, 0, 'n'},
+		{"user",       required_argument, 0, 'u'},
+		{"jobs",       required_argument, 0, 'j'},
+		{"events",     required_argument, 0, 'x'},
+		{"csv",        required_argument, 0, 'c'},
+		{"tag",        required_argument, 0, 't'},
+		{"app-id",     required_argument, 0, 'a'},
+		{"start-time", required_argument, 0, 's'},
+		{"end-time",   required_argument, 0, 'e'},
+	};
+
+	while (1)
 	{
-		switch (opt)
+		c = getopt_long(argc, argv, "n:u:j:f:t:vma:pbglrs:e:c:hx::", long_options, &option_idx);
+
+		if (c == -1)
+			break;
+
+		switch (c)
 		{
 			case 'n':
 				if (!strcmp(optarg, "all")) query_adds.limit = -1;
@@ -1443,22 +1470,22 @@ int main(int argc, char *argv[])
 				strcpy(query_adds.app_id, optarg);
 				break;
 			case 's':
-                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
-                {
-                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-                    free_cluster_conf(&my_conf);
+				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+				{
+					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+					free_cluster_conf(&my_conf);
 					exit(1);
 				}
-                query_adds.start_time = mktime(&tinfo);
+				query_adds.start_time = mktime(&tinfo);
 				break;
 			case 'e':
-                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
-                {
-                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-                    free_cluster_conf(&my_conf);
+				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+				{
+					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+					free_cluster_conf(&my_conf);
 					exit(1);
 				}
-                query_adds.end_time = mktime(&tinfo);
+				query_adds.end_time = mktime(&tinfo);
 				break;
 			case 'h':
 				free_cluster_conf(&my_conf);

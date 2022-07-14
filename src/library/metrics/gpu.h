@@ -10,9 +10,9 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
 */
 
 #ifndef LIBRARY_METRICS_GPU_H
@@ -81,5 +81,7 @@ state_t gpu_lib_power_cap_get_rank(ulong *watts_min, ulong *watts_max);
 state_t gpu_lib_power_cap_reset();
 
 state_t gpu_lib_power_cap_set(ulong *watts);
+
+uint gpu_lib_gpus_supported();
 
 #endif
