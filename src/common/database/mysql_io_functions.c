@@ -2321,13 +2321,16 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
     MYSQL_RES *result;
     MYSQL_ROW row;
 
-    if (mysql_query(connection, query))
-    {
+    if (mysql_query(connection, query)) {
         error("Error executing query");
         return EAR_ERROR;
     }
 
     result = mysql_store_result(connection);
+	if (result == NULL) {
+        error("Error storing result. Check the query types.");
+        return EAR_ERROR;
+    }
 
     num_rows = mysql_num_rows(result);
     num_cols = mysql_num_fields(result);
