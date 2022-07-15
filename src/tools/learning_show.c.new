@@ -107,7 +107,7 @@ int main(int argc,char *argv[])
         #if USE_GPUS
 		verbose(0, "Node name;JID;App name;Def. F.;Avg. F.;Seconds;Watts;GBS;CPI;VPI;Gflops;GPU_power");
         #else
-		verbose(0, "Node name;JID;App name;Def. F.;Avg. F.;Seconds;Watts;GBS;CPI;VPI");
+		verbose(0, "Node name;JID;App name;Def. F.;Avg. F.;Seconds;Watts;GBS;CPI;VPI;Gflops");
         #endif
 	}
 
