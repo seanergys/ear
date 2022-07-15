@@ -195,6 +195,8 @@ uint ear_guided = DYNAIS_GUIDED;
 static uint synchronize_masters = 1;
 static uint ITERS_PER_PERIOD;
 
+static const uint lib_supports_gpu = USE_GPUS; // Library supports GPU
+
 /*  Sets verbose level for ear init messages */
 #define VEAR_INIT 2
 
@@ -901,11 +903,9 @@ void ear_init()
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 
-				printf("EAR Init\n");
 				uint fake_eard_error = 0;
 				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
-
 
 				if (ear_lib_initialized){
 								verbose_master(1,"EAR library already initialized");
@@ -1116,36 +1116,74 @@ void ear_init()
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
                 if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU, ear_my_rank, node_name, COL_CLR);
+                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s",
+                            COL_BLU, ear_my_rank, node_name, COL_CLR);
+
+                    // Connect process with EARD
                     state_t ret = eards_connect(&application, my_node_id);
-                    if (fake_eard_error == 3){
+
+                    // Only for testing purposes
+                    if (fake_eard_error == 3) {
                         ret = EAR_ERROR;
                     }
-                    // if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+
+                    // Checking GPU support compatibility with EARD
+                    uint eard_supports_gpu = eards_gpu_support();
+                    if (lib_supports_gpu != eard_supports_gpu) {
+                        verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Check your EAR installation.",
+                                COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);
+                        ret = EAR_ERROR;
+                    }
+
                     if (ret == EAR_SUCCESS) {
                         debug("%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         notify_eard_connection(1);
                         mark_as_eard_connected(my_job_id, my_step_id, getpid());
-                    } else {   
+                    } else {
                         eard_ok = 0;
                         notify_eard_connection(0);
                     }
                 }
 #else
                 if (eard_ok) { // all processes will connect with eard
+
                     char *col;
-                    if (!my_id) col = COL_BLU; 
-                    else        col = COL_GRE;
+                    if (!my_id) {
+                        col = COL_BLU;
+                    } else {
+                        col = COL_GRE;
+                    }
                     verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
-                            col,my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
-                    if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
+                            col, my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
+
+                    // Connect process with EARD
+                    state_t ret = eards_connect(&application, ear_my_rank);
+
+                    // Only for testing purposes
+                    if (fake_eard_error == 3) {
+                        ret = EAR_ERROR;
+                    }
+
+                    // Checking GPU support compatibility with EARD
+                    uint eard_supports_gpu = eards_gpu_support();
+                    if (lib_supports_gpu != eard_supports_gpu) {
+                        verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Please, inform to your system admin about this issue.",
+                                COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);
+                        ret = EAR_ERROR;
+                    }
+
+                    if (ret == EAR_SUCCESS) {
+
                         verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
-                        if (!my_id){
+
+                        if (!my_id) {
                             notify_eard_connection(1);
                             mark_as_eard_connected(my_job_id, my_step_id, getpid());
                         }
-                    }else{   
-                        verbose(2, "%sRank %d NOT connected with EARD%s %s", COL_BLU,ear_my_rank,COL_CLR, state_msg);
+
+                    } else {
+                        verbose(2, "%sRank %d NOT connected with EARD%s %s",
+                                COL_BLU,ear_my_rank,COL_CLR, state_msg);
                         eard_ok=0;
                         if (!my_id) notify_eard_connection(0);
                     }
@@ -1153,35 +1191,33 @@ void ear_init()
 #endif
                 /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
-				verbose_master(2,"End EARD connection section");
-
+				verbose_master(2, "End EARD connection section");
 
 				debug("Shared region creation section");
-
-				if (!my_id){
+				if (!my_id) {
 								debug("%sI'm the master, creating shared regions%s",COL_BLU,COL_CLR);
 								create_shared_regions();
-				}else{
+				} else {
 								attach_shared_regions();
 				}
-				if (!eard_ok){ 
-								
-			        	/* Dummy areas path is used in case the EARD was not present */
-      			  	if (!my_id && (fd_dummy >= 0)){
-          				int err;
-          				err = file_unlock_master(fd_dummy, dummy_areas_path);
-          				if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
-        				}
-								if (!EARL_LIGHT){
-									verbose_master(2,"%s: EARL off because of EARD",node_name);
-									strcpy(application.job.policy," "); /* Cleaning policy */
-									return;
-								}
-				}
 
-				if (!eard_ok && EARL_LIGHT){
-					verbose_master(2, "EARD is not running but EARL light version is enabled");
-				}
+                if (!eard_ok) {
+
+                    /* Dummy areas path is used in case the EARD was not present */
+                    if (!my_id && (fd_dummy >= 0)) {
+                        int err;
+                        err = file_unlock_master(fd_dummy, dummy_areas_path);
+                        if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
+                    }
+
+                    if (!EARL_LIGHT) {
+                        verbose_master(2,"%s: EARL off because of EARD",node_name);
+                        strcpy(application.job.policy," "); /* Cleaning policy */
+                        return;
+                    } else {
+                        verbose_master(2, "EARD is not running but EARL light version is enabled");
+                    }
+                }
 
 				/* Cluster conf */
 				get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);

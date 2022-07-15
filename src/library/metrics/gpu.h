@@ -22,6 +22,7 @@
 #include <management/gpu/gpu.h>
 #include <daemon/shared_configuration.h>
 
+#if !NEW_GPU_API
 state_t gpu_lib_load(settings_conf_t *settings);
 
 state_t gpu_lib_init(ctx_t *c);
@@ -83,5 +84,6 @@ state_t gpu_lib_power_cap_reset();
 state_t gpu_lib_power_cap_set(ulong *watts);
 
 uint gpu_lib_gpus_supported();
+#endif
 
 #endif

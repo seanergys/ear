@@ -15,7 +15,6 @@
  * and COPYING.EPL files.
  */
 
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -233,9 +232,16 @@ state_t policy_init(polctx_t *c)
         }
         verbose_master(2, "Initialzing GPU policy part");
         if (gpus.init != NULL) gpus.init(c);
-        if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
-            verbose_master(2, "Error asking for gpu freq list");
+
+#if !NEW_GPU_API
+        if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS) {
+            verbose_master(2, "%sError%s Asking for gpu frequency list.", COL_RED, COL_CLR);
         }
+#else
+        gpuf_pol_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+        gpuf_pol_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
+#endif // NEW_GPU_API
+
         /* replace by default settings in GPU policy */
         for (i=0; i < c->num_gpus; i++){
             min_energy_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];

@@ -64,7 +64,6 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
 	#ifdef RPCS
     state_t s;
     #endif
-    int i;
 
 	if (!eard) {
 	    debug("EARD (daemon) not required");

@@ -66,6 +66,20 @@ typedef struct metrics_s {
     void *set_list;
 } metrics_t;
 
+#if NEW_GPU_API
+#if USE_GPUS
+// Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs
+typedef struct metrics_gpus_s {
+    uint  api;
+    uint  ok;
+    uint  devs_count;
+    void **avail_list;
+    uint *avail_count;
+    void *current_list;
+} metrics_gpus_t;
+#endif // USE_GPUS
+#endif // NEW_GPU_API
+
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
     if (op == NULL) { \

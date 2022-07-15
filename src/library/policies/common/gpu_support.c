@@ -24,6 +24,7 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
+#include <library/metrics/metrics.h>
 #if USE_GPUS
 #include <library/metrics/gpu.h>
 #endif
@@ -73,14 +74,18 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 
 state_t policy_gpu_init_ctx(polctx_t *c)
 {
+#if !NEW_GPU_API
     uint policy_gpu_model;
     uint gpun;
+#endif
     c->num_gpus = 0;
+
 #if USE_GPUS
-    if (gpu_lib_load(no_ctx) != EAR_SUCCESS){
+#if !NEW_GPU_API
+    if (gpu_lib_load(no_ctx) != EAR_SUCCESS) {
         error("gpu_lib_load in init_power_policy");
         return EAR_ERROR;
-    }else{
+    } else {
         if (gpu_lib_init(no_ctx) == EAR_SUCCESS){
             verbose_master(2,"gpu_lib_init success");
             gpu_lib_model(no_ctx, &policy_gpu_model);
@@ -93,11 +98,16 @@ state_t policy_gpu_init_ctx(polctx_t *c)
             }
             debug("Num gpus detected in policy_load %u ",c->num_gpus);	
 
-        }else{
+        } else {
             error("gpu_lib_init");
             return EAR_ERROR;
         }
     }
-#endif
+#else
+    if (metrics_gpus_get(MET_GPU)->ok) {
+        c->num_gpus = metrics_gpus_get(MET_GPU)->devs_count;
+    }
+#endif // NEW_GPU_API
+#endif // USE_GPUS
     return EAR_SUCCESS;
 }

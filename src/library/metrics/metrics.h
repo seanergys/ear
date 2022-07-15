@@ -43,9 +43,14 @@ typedef struct sig_ext {
 #define MET_FLOPS   6
 #define MET_CACHE   7
 #define MET_CPI     8
+#define MGT_GPU     9
+#define MET_GPU     10
 
 /** New metrics **/
 const metrics_t *metrics_get(uint api);
+#if USE_GPUS
+const metrics_gpus_t *metrics_gpus_get(uint api);
+#endif
 
 /** Returns the current time in usecs */
 long long metrics_time();
