@@ -64,12 +64,14 @@ state_t rapl_msr_load(topology_t *tp_in)
 {
 	state_t s;
 
+	debug("tp_in initialized %d", tp_in->initialized);
 	// Testing
-	if (state_fail(s = msr_test(&tp, MSR_RD))) {
+	if (state_fail(s = msr_test(tp_in, MSR_RD))) {
 		debug("msr_test fails");
 		return s;
 	}
-	if (tp_in->vendor == VENDOR_INTEL && tp_in->model == MODEL_HASWELL_X) {
+	//if (tp_in->vendor == VENDOR_INTEL && tp_in->model == MODEL_HASWELL_X) {
+	if (tp_in->vendor == VENDOR_INTEL) {
 		pu_addr       = hwell_pu_addr;
 		es_pack_addr  = hwell_es_pack_addr;
 		es_dram_addr  = hwell_es_dram_addr;
@@ -88,10 +90,12 @@ state_t rapl_msr_load(topology_t *tp_in)
 		es_dram_count = zen_es_dram_count;
 		es_core_count = zen_es_core_count;
 	} else {
+		debug("incompatible architecture");
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 	//
 	if (state_fail(s = topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
+		debug("topology select fails");
 		return s;
 	}
 	//
@@ -118,16 +122,16 @@ state_t rapl_msr_init(ctx_t *c)
 	}
 	for (i = 0; i < tp.cpu_count; ++i) {
 		s = msr_open(tp.cpus[i].id, MSR_RD);
+		if (s) debug("error opening cpu %d", i);
 	}
 	if (s = msr_read(tp.cpus[0].id, &result, sizeof(result), *pu_addr)) {
 		return s;
 	}
 	// Take a look to Intel's RAPL test
-//	es_pack_units = (ullong) (pow(0.5, (double) ((result >> 8) & 0x1f)) * (double) 1e9); //why is it multiplying by 1e9???
-//	es_dram_units = (ullong) (pow(0.5, (double) 16) * (double) 1e9);
-	es_pack_units = (ullong) (pow(0.5, (double) ((result >> 8) & 0x1f)));
+	es_pack_units = pow(0.5, (double) ((result >> 8) & 0x1f)) * 1e9;
+	debug("es_pack_units %lf", es_pack_units);
 	es_core_units = es_pack_units;
-	es_dram_units = (ullong) (pow(0.5, (double) 16));
+	es_dram_units = pow(0.5, (double) 16) * 1e9;
 	init = 1;
 	return EAR_SUCCESS;
 }
@@ -153,22 +157,23 @@ state_t rapl_msr_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t rapl_msr_read(ctx_t *c, ullong *values)
 {
-	int i, t, s, offset;
-	for (i = 0; i < tp.cpu_count; ++i) {
-		offset = 0;
+	int i, t, s;
+	debug("entering cpu_read");
+	for (i = 0; i < tp.cpu_count; i++) {
+		debug("reading cpu %d", i);
 		// PACK
-		for (t = 0; t < es_pack_count; ++t) { //this for loop is a glorified if statement, inherited from previous code
-			s = msr_read(tp.cpus[i].id, &values[i*NUM_PACKS+offset], sizeof(ullong), es_pack_addr[t]);
-			values[i*NUM_PACKS+offset] &= 0xffffffff;
-			values[i*NUM_PACKS+offset] *= es_pack_units; //transform to proper units
-			offset++;
+		for (t = 0; t < es_pack_count; t++) { //this for loop is a glorified if statement, inherited from previous code
+			s = msr_read(tp.cpus[i].id, &values[tp.cpu_count+i], sizeof(ullong), es_pack_addr[t]);
+			values[tp.cpu_count + i] &= 0xffffffff;
+			values[tp.cpu_count + i] *= es_pack_units ; //transform to proper units
+			debug("read value %llu from PKG", values[tp.cpu_count + i]);
 		}
 		// DRAM
-		for (t = 0; t < es_dram_count; ++t) {
-			s = msr_read(tp.cpus[i].id, &values[i*NUM_PACKS+offset], sizeof(ullong), es_dram_addr[t]);
-			values[i*NUM_PACKS+offset] &= 0xffffffff;
-			values[i*NUM_PACKS+offset] *= es_dram_units; 
-			offset++;
+		for (t = 0; t < es_dram_count; t++) {
+			s = msr_read(tp.cpus[i].id, &values[i], sizeof(ullong), es_dram_addr[t]);
+			values[i] &= 0xffffffff;
+			values[i] *= es_dram_units; 
+			debug("read value %llu from DRAM", values[i]);
 		}
 #if 0
 		// CORE

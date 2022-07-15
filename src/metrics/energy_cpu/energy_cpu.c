@@ -41,6 +41,7 @@ static struct energy_cpu_ops
 state_t energy_cpu_load(topology_t *tp, uint eard)
 {
 	
+	debug("entering cpu_load with tp->initialized %d", tp->initialized);
 	state_t s;
 	if (state_fail(s = ear_trylock(&lock))) {
 		return s;	
@@ -107,6 +108,7 @@ state_t energy_cpu_data_diff(ctx_t *c, ullong *start, ullong *end, ullong *resul
 			result[i] = ullong_diff_overflow(start[i], end[i]);
 		else
 			result[i] = end[i] - start[i];
+		debug("doing diff %d, result %llu", i, result[i]);
 	}
 	return EAR_SUCCESS;
 }
