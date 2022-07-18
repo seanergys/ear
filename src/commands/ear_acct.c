@@ -1119,7 +1119,7 @@ void print_loops(loop_t *loops, int num_loops)
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
 #if USE_GPUS
 #define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED), " \
-							"max_GPU_sig_id, min_GPU_sig_id " \
+							"min_GPU_sig_id, max_GPU_sig_id " \
 							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
 							"INNER JOIN Signatures ON signature_id = Signatures.id"
 #else
