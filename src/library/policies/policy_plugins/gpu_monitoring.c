@@ -25,9 +25,10 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <management/gpu/gpu.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
-#include <library/metrics/gpu.h>
+#include <library/metrics/metrics.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 
@@ -55,10 +56,10 @@ state_t policy_init(polctx_t *c)
     gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 #endif // NEW_GPU_API
 
-    for (i=0;i<c->num_gpus;i++) {
-        verbose_master(2,"Freqs in GPU[%d]=%u",i,gpuf_list_items[i]);
-        for (j=0;j<gpuf_list_items[i];j++){
-            verbose_master(2,"GPU[%d][%d]=%.2f",i,j,(float)gpuf_list[i][j]/1000000.0);
+    for (i = 0; i < c->num_gpus; i++) {
+        verbose_master(2,"Freqs in GPU[%d]=%u", i, gpuf_list_items[i]);
+        for (j = 0; j < gpuf_list_items[i]; j++) {
+            verbose_master(2, "GPU[%d][%d]=%.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
         }
     }
 #if !NEW_GPU_API
@@ -66,10 +67,10 @@ state_t policy_init(polctx_t *c)
 #else
     mgt_gpu_data_alloc(&gfreqs);
 #endif
-    for (i=0;i<c->num_gpus;i++){
+    for (i = 0; i < c->num_gpus; i++) {
         if (g_freq) gfreqs[i] = g_freq;
         else        gfreqs[i] = gpuf_list[i][0];
-        verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
+        verbose_master(2, "Setting GPUfreq[%d] = %.2f", i, (float) gfreqs[i] / 1000000.0);
     }
 
 #if !NEW_GPU_API
@@ -81,24 +82,29 @@ state_t policy_init(polctx_t *c)
     verbose_master(2,"GPU monitoring loaded");
     return EAR_SUCCESS;
 }
-state_t policy_apply(polctx_t *c,signature_t *my_sig, node_freqs_t *freqs,int *ready)
+
+state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
 {
-	ulong *new_freq=freqs->gpu_freq;
-	uint i;
-	#if USE_GPUS
-	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
-	for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
-		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]",i,
-		my_sig->gpu_sig.gpu_data[i].GPU_power,(float)my_sig->gpu_sig.gpu_data[i].GPU_freq/1000.0,(float)my_sig->gpu_sig.gpu_data[i].GPU_mem_freq/1000.0,
-		my_sig->gpu_sig.gpu_data[i].GPU_util,my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
-	}
-	#endif
-	
-	*ready = EAR_POLICY_READY;
-	memcpy(new_freq,gfreqs,sizeof(ulong)*c->num_gpus);
-	
-	return EAR_SUCCESS;
+    ulong *new_freq=freqs->gpu_freq;
+    uint i;
+#if USE_GPUS
+    debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
+    for (i = 0; i < my_sig->gpu_sig.num_gpus; i++) {
+        debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]",
+                i, my_sig->gpu_sig.gpu_data[i].GPU_power,
+                (float) my_sig->gpu_sig.gpu_data[i].GPU_freq / 1000.0,
+                (float) my_sig->gpu_sig.gpu_data[i].GPU_mem_freq/1000.0,
+                my_sig->gpu_sig.gpu_data[i].GPU_util,
+                my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
+    }
+#endif
+
+    *ready = EAR_POLICY_READY;
+    memcpy(new_freq, gfreqs, sizeof(ulong) * c->num_gpus);
+
+    return EAR_SUCCESS;
 }
+
 state_t policy_ok(polctx_t *c, signature_t *my_sig,signature_t *prev_sig,int *ok)
 {
 	uint i;
