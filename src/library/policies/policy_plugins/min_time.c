@@ -243,7 +243,7 @@ state_t policy_init(polctx_t *c)
             min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
         }
     }
-    verbose_node_freqs(2, &min_time_def_freqs);
+    verbose_node_freqs(3, &min_time_def_freqs);
 #endif
 
     node_freqs_copy(&last_nodefreq_sel, &min_time_def_freqs);
@@ -420,15 +420,15 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
-        is_cpu_bound(my_app, &cbound);
-        is_mem_bound(my_app, &mbound);
+        is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
+        is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
         if (use_energy_models && !are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
-            verbose_node_freqs(2, &last_nodefreq_sel);
-            verbose_node_freqs(2, &min_time_def_freqs);
+            verbose_node_freqs(3, &last_nodefreq_sel);
+            verbose_node_freqs(3, &min_time_def_freqs);
 
             set_default_settings(freqs, &min_time_def_freqs);
             if (gpus.restore_settings != NULL){
@@ -562,7 +562,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             /*  If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound) {
-                if (sig->GBS <= GBS_BUSY_WAITING){
+                //if (sig->GBS <= GBS_BUSY_WAITING){
+                if (low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus)){
                     debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;

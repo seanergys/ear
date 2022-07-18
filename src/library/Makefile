@@ -1,6 +1,6 @@
 # If USER_TEST is set to 1, any user cam execute the hacks with the library.
 # TODO: EARL_LIGHT option
-CFLAGS  = -I$(SRCDIR) -fPIC -g -DEARL_LIGHT=0 -DUSER_TEST=0
+CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DEARL_LIGHT=0 -DUSER_TEST=0 $(CONSTANTS) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -15,7 +15,7 @@ LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
-	CFLAGS += -DNEW_LB_EFF=1 -DNEW_MPI_STATS=1 -DSINGLE_CONNECTION=0 # $(GSL_CFLAGS) -DCOUNTDOWN=1 -DUSE_GSL=1
+	CFLAGS += -DNEW_LB_EFF=1 -DNEW_MPI_STATS=1 -DSINGLE_CONNECTION=0
 	# LDFLAGS += $(GSL_LDFLAGS) 
 else
 	CFLAGS += -DSINGLE_CONNECTION=1

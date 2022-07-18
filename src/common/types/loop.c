@@ -210,8 +210,11 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
     char gpu_header[128];
     char *HEADER_GPU_SIG = ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTI";
 #endif
-
+#if REPORT_TIMESTAMP
+    char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;TIMESTAMP";
+#else
     char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;ITERATIONS";
+#endif
     char HEADER[1024] = "";
 
     if (file_is_regular(path)) {

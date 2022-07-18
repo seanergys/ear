@@ -69,7 +69,7 @@ extern unsigned long ext_def_freq;
 #endif
 
 // TODO remove after reinstalling on Lenox
-#define COMPATIBLE_SHARED_MEM 1
+#define COMPATIBLE_SHARED_MEM 0
 
 extern masters_info_t masters_info;
 
@@ -124,6 +124,7 @@ static uint      imc_pstate_cnt;
 static uint use_earl_phases = EAR_USE_PHASES;
 static ulong init_def_cpufreq_khz;
 static uint is_monitoring = 0;
+extern ear_classify_t phases_limits;
 
 int my_globalrank;
 
@@ -810,22 +811,33 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
+    #if 0
     is_io_bound(my_sig->IO_MBS, &iobound);
     is_network_bound(mpi_in_period, &mpibound);
     classify(iobound, mpibound, &earl_phase_classification);
     is_cpu_busy_waiting(my_sig, &busy);
-
     is_gpu_idle(my_sig, &curr_gpu_state); // GPU phase classification
+    #endif
+    is_io_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &iobound);
+    is_network_bound(mpi_in_period, &mpibound);
+    classify(iobound, mpibound, &earl_phase_classification);
+    is_cpu_busy_waiting(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &busy);
+    is_gpu_idle(&lib_shared_region->job_signature, &curr_gpu_state); // GPU phase classification
     if (curr_gpu_state & _GPU_Idle) {
         verbose_master(POLICY_GPU, "%sGPU idle phase%s", COL_BLU, COL_CLR);
     }
 
-    verbose_master(POLICY_PHASES,
-            "------------- EARL phase classification ------------\n"
+    verbose_master(POLICY_PHASES, "------------- EARL phase classification ------------\n"
             "I/O (3) vs. MPI (2): %u\n"
             "Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u\n"
+            "cpi_busy %.2f gbs_busy %.2f gflops_busy %.2f\n"
+            "cpi_cpu_bound %.2f gbs_cpu_bound %.2f\n"
+            "cpi_mem_bound %.2f gbs_mem_bound %.2f\n"
             "----------------------------------------------------",
-            earl_phase_classification, busy, iobound, mpibound, use_earl_phases);
+            earl_phase_classification, busy, iobound, mpibound, use_earl_phases,
+            phases_limits.cpi_busy_waiting, phases_limits.gbs_busy_waiting, phases_limits.gflops_busy_waiting,
+            phases_limits.cpi_cpu_bound, phases_limits.gbs_cpu_bound,
+            phases_limits.cpi_mem_bound, phases_limits.gbs_mem_bound);
 
     if (use_earl_phases) {
         /* IO Use case */
@@ -1158,8 +1170,8 @@ state_t policy_new_iteration(signature_t *sig)
     uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
     if (last_phase_io_bnd || last_phase_bw) {
         verbose_master(POLICY_INFO + 1, "%sPOLICY%s Validating CPU phase: (GFlop/s) %lf - (B.W. min) %lf",
-                COL_BLU, COL_CLR, sig->Gflops, GFLOPS_BUSY_WAITING);
-        if (sig->Gflops > GFLOPS_BUSY_WAITING) {
+                COL_BLU, COL_CLR, sig->Gflops, phases_limits.gflops_busy_waiting);
+        if (sig->Gflops > phases_limits.gflops_busy_waiting) {
             /* We must reset the configuration */
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;

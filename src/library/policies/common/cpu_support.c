@@ -194,11 +194,12 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
                 COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
         return 0;
     }
-    if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+    //if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+    if (!low_mem_activity(s1, lib_shared_region->num_cpus) || !low_mem_activity(s2, lib_shared_region->num_cpus)){
         if (!equal_with_th(s1->CPI,s2->CPI,p)){
             uint s1_cbound, s2_cbound;
-            is_cpu_bound(s1, &s1_cbound);
-            is_cpu_bound(s2, &s2_cbound);
+            is_cpu_bound(s1, lib_shared_region->num_cpus, &s1_cbound);
+            is_cpu_bound(s2, lib_shared_region->num_cpus, &s2_cbound);
             if (s1_cbound != s2_cbound){
                 verbose_master(2, "CPI (%.2lfvs%.2lf) and cpu bound phase changed from %u to %u",
                         s1->CPI,s2->CPI, s1_cbound, s2_cbound);
@@ -209,8 +210,8 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
         }
         if (!equal_with_th(s1->GBS, s2->GBS,p)){
             uint s1_mbound, s2_mbound;
-            is_mem_bound(s1, &s1_mbound);
-            is_mem_bound(s2, &s2_mbound);
+            is_mem_bound(s1, lib_shared_region->num_cpus, &s1_mbound);
+            is_mem_bound(s2, lib_shared_region->num_cpus, &s2_mbound);
             if (s1_mbound != s2_mbound){
                 verbose_master(2, "GBS (%.2lfvs%.2lf) and mem bound phase changed from %u to %u",
                         s1->GBS,s2->GBS, s1_mbound, s2_mbound);
@@ -280,16 +281,16 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
     if (freqs == NULL) return;
     int num_processes = lib_shared_region->num_processes;
     for (i=0;i<num_processes;i++){
-        verbosen_master(2,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
+        verbosen_master(vl,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
     }
 		for (sid = 0;sid < arch_desc.top.socket_count; sid++){
-    	verbose_master(2,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+    	verbose_master(vl,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
 		}
 #if USE_GPUS
     for (i=0; i< my_pol_ctx.num_gpus;i++){
-        verbosen_master(2,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
+        verbosen_master(vl,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
     }
-    verbose_master(2," ");
+    verbose_master(vl," ");
 #endif
 
 }

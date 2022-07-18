@@ -42,6 +42,10 @@ coefficients_list.csv
 *accepted_intel_ptu_license
 *.csv
 *TOOLADMIN_NOTES.txt
+Makefile.nocpu.icc.impi
+Makefile.gcc*
+Makefile.icc*
+Makefile.ompi*
 
 # Build files
 etc/module/ear
@@ -107,6 +111,7 @@ src/common/config/config_env.h
 *get_active_nodes
 *get_app_list
 *get_ear_events
+*get_periodic
 *ips
 *postgres_test
 *ping

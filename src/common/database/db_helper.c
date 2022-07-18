@@ -171,6 +171,7 @@ float run_query_float_result(char *query)
             for(i = 0; i < num_fields; i++)
                 num_indexes = atof(row[i]);
         }
+		mysql_free_result(result);
     }
     return num_indexes;
 }
@@ -194,6 +195,7 @@ int run_query_int_result(char *query)
             for(i = 0; i < num_fields; i++)
                 num_indexes = atoi(row[i]);
         }
+		mysql_free_result(result);
     }
     return num_indexes;
 }
@@ -1691,17 +1693,35 @@ float get_max_dc_power(char is_max, char *app_name, ulong freq)
 #endif
 }
 
-int db_run_query_string_results(char *query, char ****results, int *num_columns)
+int db_run_query_string_results(char *query, char ****results, int *num_columns, int *num_rows)
 {
 
 #if DB_MYSQL
+	int ret;
     MYSQL *connection = mysql_create_connection();
 
     if (connection == NULL) {
         return EAR_ERROR;
     }
-    return mysql_run_query_string_results(connection, query, results, num_columns);
+    ret = mysql_run_query_string_results(connection, query, results, num_columns, num_rows);
+    mysql_close(connection);
+	return ret;
 #else
-    return 0;
+    return EAR_ERROR;
 #endif
+}
+
+void db_free_results(char ***results, int num_cols, int num_rows)
+{
+	int i, j;
+	if (results == NULL) return; //the nullity checks probably are unnecessary, but it doesn't hurt
+	for (i = 0; i < num_rows; i++) {
+		if (results[i] == NULL) continue;
+		for (j = 0; j < num_cols; j++) {
+			if (results[i][j] == NULL) continue;
+			free(results[i][j]);
+		}
+		free(results[i]);
+	}
+	free(results);
 }

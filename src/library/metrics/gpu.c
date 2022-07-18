@@ -338,4 +338,15 @@ state_t gpu_lib_power_cap_set(ulong *watts)
 	return EAR_SUCCESS;
 }
 
+uint gpu_lib_gpus_supported()
+{
+#if 0
+  return eards_gpu_support();
+#endif
+  #if USE_GPUS
+  return 1;
+  #endif
+  return 0;
+}
+
 

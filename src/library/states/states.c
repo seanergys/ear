@@ -154,7 +154,11 @@ static void restart_period_time_init(llong *time_init);
 
 static void report_loop_signature(uint iterations, loop_t *my_loop)
 {
+#if REPORT_TIMESTAMP
+    my_loop->total_iterations =  (ulong)time(NULL);
+#else
     my_loop->total_iterations = iterations;
+#endif
 
     if (masters_info.my_master_rank >= 0) {
 
@@ -608,6 +612,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             signature_t norm_signature;
             adapt_signature_to_node(&norm_signature, &loop_signature, ratio_PPN);
 
+			/* ******************* MOVED **********************
+             * Now we compute the JOB signature for reporting. */
+            if (masters_info.my_master_rank >= 0) {
+                metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
+                signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
+            }
+            /* At this point curr_loop and job_signature signatures are the JOB signature
+             * with accumulated per process and global (node) metrics (e.g., DC power). */
+
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
              * the policy will compute the average if needed */
@@ -616,17 +629,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* TODO: For no masters, ready will be 0, pending. */
             EAR_POLICY_STATE = ready;
 
-			/* Now we compute the JOB signature for reporting. */
-            if (masters_info.my_master_rank >= 0) {
-                metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
-                signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
-            }
-
             // EAR uses this timestamp to switch to periodic mode (or not).
             timestamp_getfast(&time_last_signature);
-
-            /* At this point curr_loop and job_signature signatures are the JOB signature
-             * with accumulated per process and global (node) metrics (e.g., DC power). */
 
             /* State check */
             if (EAR_POLICY_STATE == EAR_POLICY_READY) {

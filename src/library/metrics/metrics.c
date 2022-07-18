@@ -51,9 +51,7 @@
 #include <library/metrics/metrics.h>
 #include <library/metrics/energy_node_lib.h>
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
-#if USE_GPUS
 #include <library/metrics/gpu.h>
-#endif
 
 #include <metrics/io/io.h>
 #include <metrics/cpi/cpi.h>
@@ -1368,6 +1366,10 @@ int metrics_init(topology_t *topo)
 
 #if USE_GPUS
     if (master){
+        if (!gpu_lib_gpus_supported()){
+          verbose_master(0,"Warning, EARL compiled with GPU suppor but EAR installed it's no");
+          return EAR_ERROR;
+        }
         if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
             gpu_initialized=0;
             debug("Error in gpu_lib_load");
@@ -1393,6 +1395,13 @@ int metrics_init(topology_t *topo)
         debug("GPU initialization successfully");
     }
     fflush(stderr);	
+#else
+    if (master){
+      if (gpu_lib_gpus_supported()){
+        verbose_master(0,"Warning, EARL compiled without GPU suppor but EAR installed is supporting it");
+        return EAR_ERROR;
+      }
+    }
 #endif
 
     //debug( "detected %d RAPL counters for %d packages: %d events por package", rapl_elements,num_packs,rapl_elements/num_packs);

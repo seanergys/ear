@@ -523,3 +523,9 @@ int eards_gpu_set_freq(uint num_dev,ulong *freqs)
     return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU set freq", 1);
 }
 
+int eards_gpu_support()
+{
+  init_service(GPU_SUPPORTED);
+  return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
+}
+
