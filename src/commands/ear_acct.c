@@ -1117,9 +1117,16 @@ void print_loops(loop_t *loops, int num_loops)
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
-#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED) " \
+#if USE_GPUS
+#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED), " \
+							"max_GPU_sig_id, min_GPU_sig_id " \
 							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
 							"INNER JOIN Signatures ON signature_id = Signatures.id"
+#else
+#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED), " \
+							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
+							"INNER JOIN Signatures ON signature_id = Signatures.id"
+#endif
 
 void print_header(int fd, char ***values, int columns, int rows)
 {
@@ -1155,6 +1162,45 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 
 }
 
+#if USE_GPUS
+void get_and_print_gpus(int fd, char *min, char *max)
+{
+	char query[256];
+	char ***values;
+	int i, j, columns, rows, ret;
+	//if (verbose) printf("entering get_and_print_gpus with %s min and %s max\n", min, max);
+	if (min == NULL || max == NULL) return;
+	if (!strcmp(min, "NULL") || ! strcmp(max, "NULL")) return;
+
+
+	sprintf(query, "SELECT * from GPU_signatures WHERE id >= %s AND id <= %s", min, max);
+	if (verbose) printf("running query %s\n", query);
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loops from database.\n");
+		return;
+	}
+
+
+	for (i = 0; i < rows; i++) 
+		for (j = 0; j < columns; j++) 
+			dprintf(fd, "%s;", values[i][j]); //simple print
+
+	db_free_results(values, columns, rows);
+
+}
+void print_values(int fd, char ***values, int columns, int rows)
+{
+	int i, j;
+	for (i = 0; i < rows; i++) {
+		for (j = 0; j < columns - 2; j++) { // the last 2 colums are a repeat of max and min gpu sig, to always have them in the same place
+			dprintf(fd, "%s;", values[i][j]);
+		}
+		get_and_print_gpus(fd, values[i][columns-2], values[i][columns-1]);
+		dprintf(fd, "\n");
+	}
+}
+#else
 void print_values(int fd, char ***values, int columns, int rows)
 {
 	int i, j;
@@ -1165,6 +1211,7 @@ void print_values(int fd, char ***values, int columns, int rows)
 		dprintf(fd, "\n");
 	}
 }
+#endif
 
 void extended_loop_print(char *query)
 {
@@ -1176,27 +1223,43 @@ void extended_loop_print(char *query)
 		fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
 
 	ret = db_run_query_string_results("DESCRIBE Loops", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Loops\n");
 	if (ret != EAR_SUCCESS) {
-		printf("Error reading from database.\n");
+		printf("Error reading Loop description from database.\n");
 		return;
 	}
 	print_header(fd, values, columns, rows);
 	db_free_results(values, columns, rows);
 
 	ret = db_run_query_string_results("DESCRIBE Signatures", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Signatures\n");
 	if (ret != EAR_SUCCESS) {
-		printf("Error reading from database.\n");
+		printf("Error reading Signature description from database.\n");
 		return;
 	}
 	print_header(fd, values, columns, rows);
 	db_free_results(values, columns, rows);
 
+
 	dprintf(fd, "start_time;end_time;elapsed;");
 	dprintf(fd, "\n");
 
-	ret = db_run_query_string_results(query, &values, &columns, &rows);
+#if USE_GPUS
+	ret = db_run_query_string_results("DESCRIBE GPU_signatures", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE GPU_signatures\n");
 	if (ret != EAR_SUCCESS) {
-		printf("Error reading from database.\n");
+		printf("Error reading GPU description from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+#endif
+
+
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (verbose) printf("running query %s\n", query);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loops from database.\n");
 		return;
 	}
 	print_values(fd, values, columns, rows);
