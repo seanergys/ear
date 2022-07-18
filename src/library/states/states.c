@@ -161,7 +161,11 @@ uint signature_reported = 0;
 
 static void report_loop_signature(uint iterations,loop_t *my_loop,job_t *job)
 {
+    #if REPORT_TIMESTAMP
+    my_loop->total_iterations =  (ulong)time(NULL);
+    #else
     my_loop->total_iterations = iterations;
+    #endif
     my_loop->jid 							= job->id;
     my_loop->step_id 					= job->step_id;
 
@@ -524,25 +528,20 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 
             /* This function executes the energy policy . app_signature is the local process signature, the 
  						 * policy will compute the average if needed */
+	  /* Now we compute the JOB signature for reporting */
+          /** Moved **/
+	  if (masters_info.my_master_rank >= 0){
+	    metrics_node_signature(&lib_shared_region->job_signature, &loop.signature);
+	    signature_copy(&lib_shared_region->job_signature, &loop.signature);
+	  }
+	  /* At this point loop and job_signature are the JOB signature with accumulated per process and global metrics */
+          /** Moved **/
 
             pst=policy_node_apply(&app_signature,&policy_freq,&ready);
 
             /* For no masters, ready will be 0, pending */
             EAR_POLICY_STATE = ready;
 
-						/* Now we compute the JOB signature for reporting */
-
-						if (masters_info.my_master_rank >= 0){
-							metrics_node_signature(&lib_shared_region->job_signature, &loop.signature);
-							signature_copy(&lib_shared_region->job_signature, &loop.signature);
-							#if 0
-							signature_to_str(&lib_shared_region->job_signature, sig_buff, sizeof(sig_buff));
-							verbose_master(2, "job sig: %s", sig_buff);
-							signature_to_str(&loop.signature, sig_buff, sizeof(sig_buff));
-							verbose_master(2, "loop sig: %s", sig_buff);
-							#endif
-						}
-						/* At this point loop and job_signature are the JOB signature with accumulated per process and global metrics */
 
             /* State check */
             /* When the policy is ready to be evaluated, we go to the next state */

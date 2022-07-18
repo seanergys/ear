@@ -51,9 +51,7 @@
 #include <library/metrics/metrics.h>
 #include <library/metrics/energy_node_lib.h>
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
-#if USE_GPUS
 #include <library/metrics/gpu.h>
-#endif
 
 #include <metrics/io/io.h>
 #include <metrics/cpi/cpi.h>
@@ -1361,32 +1359,43 @@ int metrics_init(topology_t *topo)
 	}
 
 #if USE_GPUS
-	if (master){
-		if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
-			gpu_initialized=0;
-			debug("Error in gpu_lib_load");
-		}else gpu_initialized=1;
-		if (gpu_initialized){
-			debug("Initializing GPU");
-			if (gpu_lib_init(&gpu_lib_ctx) != EAR_SUCCESS){
-				error("Error in GPU initiaization");
-				gpu_initialized=0;
-			}else{
-				debug("GPU initialization successfully");
-				gpu_lib_model(&gpu_lib_ctx,&earl_gpu_model);
-				debug("GPU model %u",earl_gpu_model);
-				gpu_lib_data_alloc(&gpu_metrics_init[LOO]);gpu_lib_data_alloc(&gpu_metrics_init[APP]);
-				gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
-				gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
-				gpu_lib_count(&ear_num_gpus_in_node);
-				gpu_lib_data_alloc(&gpud_busy);
-				gpu_lib_data_alloc(&gpuddiff_busy);
-				debug("GPU library data initialized");
-			}
-		}
-		debug("GPU initialization successfully");
-	}
-	fflush(stderr);	
+    if (master){
+        if (!gpu_lib_gpus_supported()){
+          verbose_master(0,"Warning, EARL compiled with GPU suppor but EAR installed it's no");
+          return EAR_ERROR;
+        }
+        if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
+            gpu_initialized=0;
+            debug("Error in gpu_lib_load");
+        }else gpu_initialized=1;
+        if (gpu_initialized){
+            debug("Initializing GPU");
+            if (gpu_lib_init(&gpu_lib_ctx) != EAR_SUCCESS){
+                error("Error in GPU initiaization");
+                gpu_initialized=0;
+            }else{
+                debug("GPU initialization successfully");
+                gpu_lib_model(&gpu_lib_ctx,&earl_gpu_model);
+                debug("GPU model %u",earl_gpu_model);
+                gpu_lib_data_alloc(&gpu_metrics_init[LOO]);gpu_lib_data_alloc(&gpu_metrics_init[APP]);
+                gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
+                gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
+                gpu_lib_count(&ear_num_gpus_in_node);
+                gpu_lib_data_alloc(&gpud_busy);
+                gpu_lib_data_alloc(&gpuddiff_busy);
+                debug("GPU library data initialized");
+            }
+        }
+        debug("GPU initialization successfully");
+    }
+    fflush(stderr);	
+#else
+    if (master){
+      if (gpu_lib_gpus_supported()){
+        verbose_master(0,"Warning, EARL compiled without GPU suppor but EAR installed is supporting it");
+        return EAR_ERROR;
+      }
+    }
 #endif
 
 	//debug( "detected %d RAPL counters for %d packages: %d events por package", rapl_elements,num_packs,rapl_elements/num_packs);
@@ -1712,6 +1721,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
 
 	ns->CPI = (double)cycles/(double)inst;
+        #ifdef SHOW_DEBUGS
 	/* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
 	if (ns->CPI > 2.0){
 		for (i=0; i< lib_shared_region->num_processes;i ++){
@@ -1719,6 +1729,7 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 		}	
 		verbose_master(2," ");
 	}
+        #endif
 	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
 	ns->L1_misses  = L1;
 	ns->L2_misses  = L2;
@@ -1732,15 +1743,6 @@ void metrics_node_signature(signature_t *master,signature_t *ns)
 	verbose_master(2,"Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
 
 
-#if 0
-	signature_copy(&lib_shared_region->node_signature,ns);
-
-	if (master){
-		/* Updating shared info */
-		update_earl_node_mgr_info();
-		estimate_power_and_gbs(master,lib_shared_region,sig_shared_region, node_mgr_job_info, ns, PER_JOB, -1);
-	}
-#endif
 }
 
 extern uint last_earl_phase_classification;

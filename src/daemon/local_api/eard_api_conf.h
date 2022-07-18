@@ -129,6 +129,7 @@ int eards_write(int fd,char *buff,int size);
 #define GPU_DATA_READ           502
 #define GPU_SET_FREQ            503
 #define GPU_GET_INFO            504
+#define GPU_SUPPORTED           505
 
 
 #define CONNECT_EARD_NODE_SERVICES 		CONNECT_FREQ

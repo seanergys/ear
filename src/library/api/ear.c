@@ -204,6 +204,7 @@ uint using_verb_files = 0;
 uint per_proc_verb_file = 0;
 
 uint exclusive = 1;
+ear_classify_t phases_limits;
 
 static void print_local_data()
 {
@@ -1243,8 +1244,13 @@ void ear_init()
 								return;
 				}
 
-				// Initializing metrics
+                /* Based on family and model we set limits for this node */
+                classify_init(&arch_desc.top);
+                /* Getting limits for this node */
+                get_classify_limits(&phases_limits);
 
+
+		// Initializing metrics
                 if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
                     verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
                     eard_ok = 0;
@@ -1588,9 +1594,11 @@ void ear_finalize(int exit_status)
 				if (loop_with_signature) {
 								debug("loop ends with %d iterations detected", ear_iterations);
 				}
+                                #if 0
 				if (in_loop) {
 								states_end_period(ear_iterations);
 				}
+                                #endif
 				states_end_job(my_id,  ear_app_name);
 
 				policy_end();
