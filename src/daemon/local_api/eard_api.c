@@ -525,7 +525,11 @@ int eards_gpu_set_freq(uint num_dev,ulong *freqs)
 
 int eards_gpu_support()
 {
+#if !COMPATIBLE_EARD
   init_service(GPU_SUPPORTED);
   return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
+#else
+  return 1;
+#endif
 }
 
