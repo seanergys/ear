@@ -104,8 +104,8 @@ char *slurm_hostlist_shift (hostlist_t host_list)
 
 hostlist_t slurm_hostlist_create (char *node_list)
 {
-	char *copy = malloc(strlen(node_list));
-	return strcpy(copy, node_list);
+	char *copy = malloc(strlen(node_list)+8);
+    return strcpy(copy, node_list);
 }
 
 spank_err_t spank_option_register_print(spank_t sp, struct spank_option *opt)
