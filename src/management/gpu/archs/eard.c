@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
@@ -110,11 +110,11 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
     }
     #ifdef SHOW_DEBUGS
     debug("Global GPUs:");
-    for (i = 0; i < root_devs_count; ++i) {
+    for (int i = 0; i < root_devs_count; ++i) {
         debug("GPU%d: %u_%llu", i, root_devs[i].index, root_devs[i].serial);
     }
     debug("Instanced GPUs:");
-    for (i = 0; i < user_devs_count; ++i) {
+    for (int i = 0; i < user_devs_count; ++i) {
         debug("GPU%d: %u_%llu", i, user_devs[i].index, user_devs[i].serial);
     }
     #endif
@@ -329,8 +329,17 @@ state_t mgt_gpu_eard_freq_limit_set(ctx_t *c, ulong *khz)
 
 state_t mgt_gpu_eard_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
+    debug("mgt_gpu_eard_freq_list");
 	*list_khz = (const ulong **) user_freqs_available;
 	*list_len = (const uint *) user_freqs_count;
+#if SHOW_DEBUGS
+    for (int i = 0; i < user_devs_count; i++) {
+        debug("GPU %d avail freqs: %u", i, user_freqs_count[i]);
+        for (int j = 0; j < user_freqs_count[i]; i++) {
+            debug("freq %d: %lu", j, user_freqs_available[i][j]);
+        }
+    }
+#endif
 	return EAR_SUCCESS;
 }
 
