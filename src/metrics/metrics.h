@@ -22,8 +22,10 @@
 #include <common/plugins.h>
 #include <common/types/generic.h>
 #include <common/hardware/topology.h>
+#include <common/utils/data_register.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/cpi/cpi.h>
+#include <metrics/rapl/rapl.h>
 #include <metrics/flops/flops.h>
 #include <metrics/cache/cache.h>
 #include <metrics/cpufreq/cpufreq.h>
@@ -45,7 +47,8 @@ typedef struct metrics_apis_s {
     apis_info_t ram; // bwidth
     apis_info_t cch; // cache
     apis_info_t flp; // flops
-    apis_info_t tmp; // flops
+    apis_info_t tmp; // temp
+    apis_info_t rap; // rapl
     apis_info_t cpi; // cpi
 #if NOT_READY
 	apis_info_t gpu; // gpu
@@ -59,6 +62,7 @@ typedef struct metrics_read_s {
     bwidth_t   *ram;
     cache_t     cch;
     flops_t     flp;
+    rapl_t     *rap;
     cpi_t       cpi;
 #if NOT_READY
 	gpu_t      *gpu;
@@ -71,6 +75,7 @@ typedef struct metrics_diff_s {
 	ulong   cpu_avrg; // KHz
 	ulong  *imc_diff; // KHz (per device)
 	ulong   imc_avrg; // KHz
+    dreg_t  imc_dreg;
     ullong  ram_diff; // CAS
     double  ram_avrg; // GB/s
     cache_t cch_diff; // Misses
@@ -79,6 +84,9 @@ typedef struct metrics_diff_s {
     double  flp_avrg; // Giga F. operations per second
     llong  *tmp_diff;
     llong   tmp_avrg;
+    dreg_t  tmp_dreg;
+    rapl_t *rap_diff;
+    dreg_t  rap_dreg;
     cpi_t   cpi_diff;
     double  cpi_avrg; // GPI
 #if NOT_READY

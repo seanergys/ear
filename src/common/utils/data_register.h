@@ -22,7 +22,6 @@
 
 typedef struct dreg_s {
     char  *buffer;
-    uint   columns;
     uint   rows;
     size_t colsize_full;
     size_t colsize_mix;
@@ -34,7 +33,7 @@ typedef struct dreg_s {
 #define DREG_STYLE_ARRAY 2
 #define DREG_TYPE_ALLOC  1000
 
-void dreg_init(dreg_t *d, uint columns, size_t size);
+void dreg_init(dreg_t *d, size_t colsize);
 
 void dreg_add(dreg_t *d, void *p);
 

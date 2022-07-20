@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,12 +37,11 @@ typedef struct dreg_col_s {
 #define DREG_TYPE_UINT   2
 #define DREG_TYPE_DOUBLE 3
 
-void dreg_init(dreg_t *d, uint columns, size_t colsize)
+void dreg_init(dreg_t *d, size_t colsize)
 {
     d->colsize_full = colsize+sizeof(timestamp_t);
     d->colsize_mix  = colsize;
     d->buffer       = calloc(DREG_TYPE_ALLOC, d->colsize_full);
-    d->columns      = columns;
     d->rows         = 0;
     d->p            = 0;
 }
@@ -108,7 +107,7 @@ void dreg_fmt_build(dreg_t *d, dreg_col_t *cols, uint *cols_count, cchar *fmt)
             cols[c].p    = accum;
             accum       += cols[0].size;
         }
-        goto ret;
+        goto out;
     }
     // Not all the same
     strcpy(buffer, fmt);
@@ -123,13 +122,14 @@ void dreg_fmt_build(dreg_t *d, dreg_col_t *cols, uint *cols_count, cchar *fmt)
         accum       += cols[c].size;
         *cols_count  = ++c;
     } while((p = strtok(NULL, "|")));
-ret:
+out:
     #if SHOW_DEBUGS
     for (c = 0; c < *cols_count; ++c) {
        debug("%u: '%s', type %u, show %d, %lu bytes, %lu p",
             c, cols[c].fmt, cols[c].type, cols[c].show, cols[c].size, cols[c].p);
     }
     #endif
+    return;
 }
 
 void dreg_print(dreg_t *d, uint style, cchar *fmt, int fd)
@@ -188,6 +188,9 @@ void dreg_print(dreg_t *d, uint style, cchar *fmt, int fd)
     {
     debug("per columns");
     for (c = 0; c < cols_count; ++c) {
+        if (!cols[c].show) {
+            continue;
+        }
         comma = 0;
         dprintf(fd, "(");
         for (r = 0, q = d->buffer; r < d->rows; ++r, q += d->colsize_full) {
@@ -205,7 +208,7 @@ void dreg_print(dreg_t *d, uint style, cchar *fmt, int fd)
     }
 }
 
-#if 1
+#if 0
 int main(int argc, char *argv[])
 {
     double test[2] = { 0.1, 0.2 };

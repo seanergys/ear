@@ -135,7 +135,7 @@ state_t imcfreq_dummy_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, 
     ulong aux2; // Counts valid devices
     int cpu;
 
-		debug("imcfreq_dummy_data_diff");
+	debug("imcfreq_dummy_data_diff");
 
     if (i2 == NULL || i1 == NULL) {
         return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
