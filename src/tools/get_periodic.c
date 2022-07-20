@@ -158,7 +158,9 @@ int main(int argc, char *argv[])
 		printf("Error retrieving data\n");
 		goto cleanup;
 	}
+	// Print header and free values
 	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
 
 	if (no_filter) { //1 query
 		// Prepare query
@@ -174,8 +176,9 @@ int main(int argc, char *argv[])
 			printf("Error retrieving data\n");
 			goto cleanup;
 		}
-		// Print result
+		// Print result and free it
 		print_values(fd, values, columns, rows);
+		db_free_results(values, columns, rows);
 	} else { // up to 3 queries
 		// Prepare query
 		prepare_query(query, JOB_QUERY, job_ids, job_id, step_id, NULL);
@@ -189,12 +192,15 @@ int main(int argc, char *argv[])
 			printf("Error retrieving start and end_time\n");
 			goto cleanup;
 		}
-		char *start_time = values[0][0];
-		char *end_time 	= values[0][1];
+		char start_time[32], end_time[32];
+		strcpy(start_time, values[0][0]);
+		strcpy(end_time,   values[0][1]);
 
 		char list_nodes[512];
 		int len = 0, max_len = 512; //max len is the capacity of list_nodes
 
+		// Free results
+		db_free_results(values, columns, rows);
 		// If the nodelist is provided, copy it. Otherwise, get it from Applications
 		if (node_ids != NULL) {
 			strcpy(list_nodes, node_ids);
@@ -216,6 +222,8 @@ int main(int argc, char *argv[])
 				len += snprintf(list_nodes+len, max_len-len, "\"%s\",", values[i][0]);
 			}
 			len += snprintf(list_nodes+len, max_len-len, "\"%s\"", values[rows-1][0]);
+			// Once processed, free results
+			db_free_results(values, columns, rows);
 		}
 
 		// Finally, get the last query and the results 
@@ -229,8 +237,9 @@ int main(int argc, char *argv[])
 			printf("Error retrieving data\n");
 			goto cleanup;
 		}
-		// Print result
+		// Print result and free it
 		print_values(fd, values, columns, rows);
+		db_free_results(values, columns, rows);
 	}
 
 cleanup:

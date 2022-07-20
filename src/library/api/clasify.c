@@ -20,6 +20,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/debug.h>
+#include <common/hardware/topology.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/externs.h>
 #include <library/dynais/dynais.h>
@@ -32,6 +33,64 @@
 extern ulong perf_accuracy_min_time;
 extern uint signature_reported;
 
+static float CPI_CPU_BOUND =       0.6;
+static float GBS_CPU_BOUND =      30.0;
+static float CPI_BUSY_WAITING =    0.6;
+static float GBS_BUSY_WAITING =    3.0;
+static float GFLOPS_BUSY_WAITING = 0.1;
+static float IO_TH               = 10.0;
+static float MPI_TH              = 10000;
+static float MIN_MPI_TH          = 200;
+static float CPI_MEM_BOUND       = 1.0;
+static float GBS_MEM_BOUND       = 60.0;
+
+void get_classify_limits(ear_classify_t *limits)
+{
+  limits->cpi_cpu_bound     = CPI_CPU_BOUND;
+  limits->gbs_cpu_bound     = GBS_CPU_BOUND;
+  limits->cpi_busy_waiting  = CPI_BUSY_WAITING;
+  limits->gbs_busy_waiting  = GBS_BUSY_WAITING;
+  limits->gflops_busy_waiting = GFLOPS_BUSY_WAITING;
+  limits->io_th               = IO_TH;
+  limits->mpi_th              = MPI_TH;
+  limits->cpi_mem_bound       = CPI_MEM_BOUND;
+  limits->gbs_mem_bound       = GBS_MEM_BOUND;
+}
+
+
+
+state_t classify_init(topology_t *tp_in)
+{
+  switch (tp_in->vendor){
+    case VENDOR_INTEL:
+      /* Before Sylake */
+      if (tp_in->model <= MODEL_BROADWELL_X){
+        return EAR_SUCCESS;
+      }
+      /* Skylake */
+      if (tp_in->model < MODEL_ICELAKE_X){
+        return EAR_SUCCESS;
+      }
+      /* Icelake */
+      if (tp_in->model >= MODEL_ICELAKE_X){
+        return EAR_SUCCESS;
+      }
+      break;
+    case VENDOR_AMD:
+      /* Zen2 = Rome */
+      if (tp_in->family < FAMILY_ZEN3){
+        return EAR_SUCCESS;
+      }
+      /* Zen3 = Milan */
+      if (tp_in->family >= FAMILY_ZEN3){
+        return EAR_SUCCESS;
+      }
+      break;
+    default:break;
+  }
+  return EAR_SUCCESS;
+}
+
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
 	*app_state = APP_COMP_BOUND;
@@ -43,8 +102,9 @@ state_t classify(uint iobound,uint mpibound, uint *app_state)
 	return EAR_SUCCESS;
 }
 
-state_t is_io_bound(float rwsec,uint *iobound)
+state_t is_io_bound(signature_t *sig, uint  num_cpus, uint *iobound)
 {
+    float rwsec = sig->IO_MBS;
     *iobound = 0;
     if (rwsec > IO_TH) *iobound = 1;
     return EAR_SUCCESS;
@@ -71,7 +131,7 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     return EAR_SUCCESS;
 }
 
-state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
+state_t is_cpu_busy_waiting(signature_t *sig,uint num_cpus, uint *busy)
 {
 	double flops, cpi;
 	ullong inst, cycles;
@@ -94,14 +154,21 @@ state_t is_cpu_busy_waiting(signature_t *sig,uint *busy)
 	return EAR_SUCCESS;
 }
 
-state_t is_cpu_bound(signature_t *sig, uint *cbound)
+uint    low_mem_activity(signature_t *sig,uint num_cpus)
+{
+  float per_proc_gbs = sig->GBS / num_cpus;
+  return (per_proc_gbs < GBS_BUSY_WAITING);
+
+}
+
+state_t is_cpu_bound(signature_t *sig, uint num_cpus, uint *cbound)
 {
     *cbound = 0;
     if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;
     return EAR_SUCCESS;
 }
 
-state_t is_mem_bound(signature_t *sig,uint *mbound)
+state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound)
 {
     *mbound = 0;
     if ((sig->CPI > CPI_MEM_BOUND) && (sig->GBS > GBS_MEM_BOUND)) *mbound = 1;

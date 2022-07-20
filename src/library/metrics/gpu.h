@@ -17,10 +17,12 @@
 
 #ifndef LIBRARY_METRICS_GPU_H
 #define LIBRARY_METRICS_GPU_H
-
+#include <common/types/generic.h>
 #include <metrics/gpu/gpu.h>
 #include <management/gpu/gpu.h>
 #include <daemon/shared_configuration.h>
+#if USE_GPUS
+
 
 #if !NEW_GPU_API
 state_t gpu_lib_load(settings_conf_t *settings);
@@ -82,6 +84,7 @@ state_t gpu_lib_power_cap_get_rank(ulong *watts_min, ulong *watts_max);
 state_t gpu_lib_power_cap_reset();
 
 state_t gpu_lib_power_cap_set(ulong *watts);
+#endif
 
 uint gpu_lib_gpus_supported();
 #endif

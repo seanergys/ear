@@ -1,5 +1,5 @@
 # If USER_TEST is set to 1, any user cam execute the hacks with the library.
-CFLAGS  = -fPIC -O2 -I$(SRCDIR) -Wall -g -DEARL_LIGHT=0 -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DEARL_LIGHT=0 -DUSER_TEST=0 $(CONSTANTS) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -10,7 +10,7 @@ MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -g
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)

@@ -129,4 +129,6 @@ void db_reset_counters();
  *  rows in num_rows. Returns EAR_SUCCESS on completion, or EAR_ERROR if anything fails. */
 int db_run_query_string_results(char *query, char ****results, int *num_columns, int *num_rows);
 
+/** Frees the result of a db_run_query_string_results  * */
+void db_free_results(char ***results, int num_cols, int num_rows);
 #endif
