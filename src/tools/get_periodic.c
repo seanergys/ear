@@ -24,7 +24,7 @@
 #define DIRECT_PERIODIC_QUERY "SELECT * FROM Periodic_metrics WHERE job_id IN (%s)"
 #define JOB_QUERY "SELECT min(start_time), max(end_time) FROM Jobs WHERE id IN (%s)"
 #define APP_QUERY "SELECT distinct(node_id) FROM Applications WHERE job_id IN (%s)"
-#define INDIRECT_PERIODIC_QUERY "SELECT * FROM Periodic_metrics WHERE start_time >= %s AND end_time <= %s AND node_id IN (%s)"
+#define INDIRECT_PERIODIC_QUERY "SELECT * FROM Periodic_metrics WHERE end_time >= %s AND start_time <= %s AND node_id IN (%s)"
 
 void usage(char *argv)
 {
