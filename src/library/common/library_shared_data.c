@@ -536,24 +536,24 @@ void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
     verbose_master(2,"Job %u has %u cpus ",node_mgr_index,*cpus);
 }
 
-
-
-
-
-uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi)
+uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi)
 {
-	int i;
-	double local_max = 0.0;
-	uint max_ssig = 0;
-	*max_vpi = 0.0;
-	for (i=0;i<data->num_processes;i++){
-		compute_ssig_vpi(&local_max,&sig[i].sig);
-		if (local_max > *max_vpi ){ 
-			*max_vpi = local_max;
-			max_ssig = i;
-		}
-	}
-	return max_ssig;
+    double local_max = 0.0;
+
+    uint max_ssig_idx = 0;
+
+    *max_vpi = 0.0;
+
+    for (int i = 0; i < n_procs; i++) {
+        compute_ssig_vpi(&local_max, &sig[i].sig);
+
+        if (local_max > *max_vpi) { 
+            *max_vpi = local_max;
+            max_ssig_idx = i;
+        }
+    }
+
+    return max_ssig_idx;
 }
 
 

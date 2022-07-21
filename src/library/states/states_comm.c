@@ -160,7 +160,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
             // Each process computes its VPI
             compute_ssig_vpi(&VPI, &sig_shared_region[my_node_id].sig);
         } else {
-            compute_vpi(&VPI, &sig->signature);
+            compute_sig_vpi(&VPI, &sig->signature);
         }
         
         double GPU_POWER = 0;

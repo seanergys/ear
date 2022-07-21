@@ -140,7 +140,7 @@ void print_full_apps(application_t *apps, int num_apps)
 		{
 			avg_f = (double) apps[i].signature.avg_f/1000000;
 			imc = (double) apps[i].signature.avg_imc_f/1000000;
-			compute_vpi(&vpi, &apps[i].signature);
+			compute_sig_vpi(&vpi, &apps[i].signature);
 			if (apps[i].job.step_id != BATCH_STEP)
 			{
 				printf("%8lu-%-4lu\t %-10s %-10s %-16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
@@ -327,7 +327,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 		{
 			if (current_is_mpi && !all_mpi)
 			{
-				compute_vpi(&vpi, &apps[i].signature); 
+				compute_sig_vpi(&vpi, &apps[i].signature); 
 				avg_VPI += vpi;
 				avg_f = (double) apps[i].signature.avg_f/1000000;
 				avg_frequency += avg_f;

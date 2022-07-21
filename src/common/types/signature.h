@@ -117,9 +117,10 @@ void signature_copy(signature_t *destiny, const signature_t *source);
 void signature_clean_before_db(signature_t *sig, double pwr_limit);
 /** Outputs the signature contents to the file pointed by the fd. */
 void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_column, char sep);
+/** Computes the VPI of \p sig and stores it at \p vpi. */
+void compute_sig_vpi(double *vpi, const signature_t *sig);
 
-void compute_vpi(double *vpi,signature_t *sig);
-void compute_ssig_vpi(double *vpi,ssig_t *sig);
+void compute_ssig_vpi(double *vpi, const ssig_t *sig);
 void compute_ssig_vpi2(double *vpi,ssig_t *sig);
 
 void print_signature_fd_binary(int fd, signature_t *sig);

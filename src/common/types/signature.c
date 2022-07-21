@@ -32,6 +32,8 @@
 #include <common/math_operations.h>
 #include <common/output/debug.h>
 
+static double compute_vpi(const ullong *FLOPS, ullong instructions);
+
 void signature_copy(signature_t *destiny, const signature_t *source)
 {
     memcpy(destiny, source, sizeof(signature_t));
@@ -92,34 +94,33 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
 
 void signature_print_simple_fd(int fd, signature_t *sig)
 {
-    dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
-            (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
+    dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",
+            (float) sig->avg_f / 1000000.0, (float) sig->avg_imc_f/1000000.0, (float) sig->def_f / 1000000.0,
+            sig->time, sig->CPI, sig->GBS, sig->DC_power);
 }
 
 void signature_to_str(signature_t *sig, char *msg, size_t limit)
 {
-    snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf GFLOPS %.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
-            (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->Gflops, sig->DC_power);
+    snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf GFLOPS %.2lf POWER=%.2lf]",
+            (float) sig->avg_f / 1000000.0, (float) sig->avg_imc_f / 1000000.0, (float) sig->def_f / 1000000.0,
+            sig->time, sig->CPI, sig->GBS, sig->Gflops, sig->DC_power);
 }
 
-void compute_ssig_vpi(double *vpi, ssig_t *sig)
+void compute_sig_vpi(double *vpi, const signature_t *sig)
 {
-    *vpi=0;
+    *vpi = 0;
 
     if (sig->instructions > 0) {
-        ull vins = 0;
+        *vpi = compute_vpi(sig->FLOPS, sig->instructions);
+    }
+}
 
-        if (sig->FLOPS[3] > 0) {
-            vins=sig->FLOPS[3] / WEIGHT_512F;
-        }
+void compute_ssig_vpi(double *vpi, const ssig_t *sig)
+{
+    *vpi = 0;
 
-        if (sig->FLOPS[7] > 0) {
-            vins += (sig->FLOPS[7] / WEIGHT_512D);
-        }
-
-        if (vins>0) {
-            *vpi = (double) vins / (double) sig->instructions;
-        }
+    if (sig->instructions > 0) {
+        *vpi = compute_vpi(sig->FLOPS, sig->instructions);
     }
 }
 
@@ -136,28 +137,6 @@ void compute_ssig_vpi2(double *vpi,ssig_t *sig)
     }
     if ((vins>0) && (sig->instructions>0)) *vpi=(double)vins/(double)sig->instructions;
     else *vpi=0;
-}
-
-void compute_vpi(double *vpi, signature_t *sig)
-{
-    *vpi = 0;
-
-    if (sig->instructions > 0) {
-
-        ull vins = 0;
-
-        if (sig->FLOPS[3] > 0) {
-            vins = sig->FLOPS[3] / 16;
-        }
-
-        if (sig->FLOPS[7] > 0) {
-            vins += (sig->FLOPS[7] / 8);
-        }
-
-        if ((vins > 0)) {
-            *vpi = (double) vins / (double) sig->instructions;
-        }
-    }
 }
 
 void print_signature_fd_binary(int fd, signature_t *sig)
@@ -452,4 +431,16 @@ int sig_gpus_used(signature_t *s)
     return util;
 }
 
+static double compute_vpi(const ullong *FLOPS, ullong instructions) {
+    ull vins = 0;
 
+    if (FLOPS[3] > 0) {
+        vins = FLOPS[3] / 16;
+    }
+
+    if (FLOPS[7] > 0) {
+        vins += (FLOPS[7] / 8);
+    }
+
+    return (double) vins / (double) instructions;
+}

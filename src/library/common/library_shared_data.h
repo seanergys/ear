@@ -228,12 +228,13 @@ state_t compute_job_node_L2_misses(const shsignature_t *sig, int n_procs, ull *t
 /** Computes the total number of L3 misses of a job where its \p n_procs processses have their
  * signatures at \p sig. The result is stored at the address pointed by \p t_L3. */
 state_t compute_job_node_L3_misses(const shsignature_t *sig, int n_procs, ull *t_L3);
+
+uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi);
+
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
-
-uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
 
 double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig);
 

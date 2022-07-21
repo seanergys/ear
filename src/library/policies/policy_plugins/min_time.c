@@ -447,11 +447,20 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (!freq_per_core) {
-                compute_total_node_metrics();
-                compute_vpi(&sig_vpi, sig);
-                compute_vpi(&node_sig_vpi, my_app);
-                local_process_with_high_vpi = compute_max_vpi(lib_shared_region, sig_shared_region, &max_vpi);
-                my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
+                // compute_total_node_metrics();
+                // We set the job node signature
+                my_app->instructions = lib_shared_region->job_signature.instructions;
+                my_app->cycles       = lib_shared_region->job_signature.cycles;
+
+                my_app->CPI = lib_shared_region->job_signature.CPI; // (double)my_app->cycles/(double)my_app->instructions; This is commented because job_signature already contains the job node signature.
+
+                memcpy(my_app->FLOPS, lib_shared_region->job_signature.FLOPS, FLOPS_EVENTS * sizeof (ullong));
+
+                compute_sig_vpi(&sig_vpi, sig);
+                compute_sig_vpi(&node_sig_vpi, my_app);
+
+                local_process_with_high_vpi = compute_max_vpi_idx(sig_shared_region, num_processes, &max_vpi);
+
                 debug("Node signature MR[%d] CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %3lf/MAX VPI %.3lf",
                         my_globalrank, sig->CPI, sig_vpi, my_app->CPI, node_sig_vpi, max_vpi);
 
@@ -470,7 +479,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 my_app->GBS      = lgbs * lib_shared_region->num_processes;
                 my_app->DC_power = lpower * lib_shared_region->num_processes;
 
-                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
+                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf",
+                        my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
 
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
