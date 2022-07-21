@@ -36,6 +36,9 @@ all:$(powercap_OBJS)  $(powercap_BINS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
+%.so: %.o 
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ 
+
 dvfs.so:dvfs.o $(dvfs_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(dvfs_DEPS)
 
@@ -48,16 +51,13 @@ gpu_dvfs.so:gpu_dvfs.o $(gpu_dvfs_DEPS)
 inm.so:inm.o $(inm_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(inm_DEPS)
 
-
-%.so: %.o 
-	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ 
-
 powercap.o: powercap.c powercap.h
 	$(CC) $(CFLAGS) -c $<
 
 powercap_status.o:powercap_status.c powercap_status.h powercap.h
 	$(CC) $(CFLAGS) -fPIC -c $< 
-	powercap_mgt.o:powercap_mgt.c powercap_mgt.h
+
+powercap_mgt.o: powercap_mgt.c powercap_mgt.h
 	$(CC) $(CFLAGS) -c $< 
 
 
