@@ -950,7 +950,7 @@ void *eard_dynamic_configuration(void *tmp)
         error("Setting name for %s thread %s", TH_NAME, strerror(errno));
     }
     debug("Initializing energy in main dyn_conf thread");
-    if (init_power_ponitoring(&my_eh_rapi) != EAR_SUCCESS) {
+    if (init_power_monitoring(&my_eh_rapi) != EAR_SUCCESS) {
         error("Error initializing energy in %s thread", TH_NAME);
     }
 

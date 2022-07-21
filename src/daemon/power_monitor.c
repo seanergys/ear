@@ -1713,7 +1713,7 @@ void *eard_power_monitoring(void *noinfo)
     powermon_create_idle_context();
 
     if (pthread_setname_np(pthread_self(), TH_NAME)) error("Setting name for %s thread %s", TH_NAME, strerror(errno));
-    if (init_power_ponitoring(&my_eh_pm) != EAR_SUCCESS) {
+    if (init_power_monitoring(&my_eh_pm) != EAR_SUCCESS) {
         error("Error in init_power_ponitoring");
     }
     debug("Allocating memory for energy data");	

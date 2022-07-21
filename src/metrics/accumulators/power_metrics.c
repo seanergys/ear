@@ -219,7 +219,7 @@ static int pm_connect(ehandler_t *my_eh)
  *
  */
 
-int init_power_ponitoring(ehandler_t *my_eh)
+int init_power_monitoring(ehandler_t *my_eh)
 {
 	state_t s;
 	debug("init_power_ponitoring");
