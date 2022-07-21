@@ -187,11 +187,11 @@ AuthorizedGroups=grp1,grp2
 # List of accepted options is: max_avx512(GHz), max_avx2(GHz), max_power(W), min_power(W), error_power(W), coeffs(filename), 
 # powercap(W), powercap_plugin(filename), energy_plugin(filename), gpu_powercap_plugin(filename), max_powercap(W), gpu_def_freq(GHz), 
 # cpu_max_pstate(0..max_pstate), imc_max_pstate(0..max_imc_pstate), energy_model(filename)
-# imc_max_freq, imc_min_freq
+# imc_max_freq, imc_min_freq, idle_governor, idle_pstate
 #
 #
 Tag=6148 default=yes max_avx512=2.2 max_avx2=2.6 max_power=500 min_power=50 error_power=600 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plugin=energy_nm.so 
-Tag=6148_GPU  max_avx512=2.2 max_avx2=2.6 max_power=800 min_power=150 error_power=1000 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plugin=energy_nm.so  gpu_powercap_plugin=gpu.so
+Tag=6148_GPU  max_avx512=2.2 max_avx2=2.6 max_power=800 min_power=150 error_power=1000 coeffs=coeffs.default powercap=1 powercap_plugin=dvfs.so energy_plugin=energy_nm.so  gpu_powercap_plugin=gpu.so idle_governor=ondemand idle_pstate=1000
 
 #---------------------------------------------------------------------------------------------------
 ## Power policies

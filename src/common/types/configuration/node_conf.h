@@ -70,6 +70,7 @@ typedef struct my_node_conf
     char          *coef_file;
     char          *energy_plugin;
     char          *energy_model;
+    char          *idle_governor;
     char          *powercap_plugin;
     char          *powercap_gpu_plugin;
     uint           num_policies;
@@ -86,8 +87,9 @@ typedef struct my_node_conf
 	ulong          gpu_def_freq;
     int            cpu_max_pstate; /* Used by policies as lower limit */
     int            imc_max_pstate; /* Used by policies as lower limit */
-		ulong 				 imc_max_freq;   /* Used to create the imcf list */
-		ulong          imc_min_freq;   /* Used to create the imcf list */
+    int            idle_pstate; 
+	ulong          imc_max_freq;   /* Used to create the imcf list */
+	ulong          imc_min_freq;   /* Used to create the imcf list */
     uint           use_log;
 	char           tag[GENERIC_NAME];
 } my_node_conf_t;

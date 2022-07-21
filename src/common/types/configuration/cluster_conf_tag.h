@@ -37,8 +37,9 @@ typedef struct tags
     ulong gpu_def_freq;
     int   cpu_max_pstate; /* Used as lower limit for policies */
     int   imc_max_pstate; /* Used as lower limit for policies */
-		ulong imc_max_freq;   /* Used to create the imcf list */
-		ulong imc_min_freq;   /* Used to create the imcf list */
+	int   idle_pstate;
+	ulong imc_max_freq;   /* Used to create the imcf list */
+	ulong imc_min_freq;   /* Used to create the imcf list */
     long powercap;
     long max_powercap;
     char energy_model[GENERIC_NAME];
@@ -46,6 +47,8 @@ typedef struct tags
     char powercap_plugin[GENERIC_NAME];
     char powercap_gpu_plugin[GENERIC_NAME];
     char coeffs[GENERIC_NAME];
+	char idle_governor[GENERIC_NAME];
+
 } tag_t;
 
 
