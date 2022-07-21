@@ -794,16 +794,6 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
 
-    /*
-       estimate_power_and_gbs(my_sig,lib_shared_region,sig_shared_region, node_mgr_job_info, &est_sig, PER_JOB, -1);
-       my_sig->GBS = est_sig.GBS;
-       my_sig->DC_power = est_sig.DC_power;		
-       */
-
-    // Below is commented as the above call shows the same info
-    // verbose_master(2, "policy node apply power %lf GBS %lf TPI %lf time %lf",
-    //         my_sig->DC_power, my_sig->GBS, my_sig->TPI, my_sig->time);
-
     if (jobs_in_node > 1) dyn_unc = 0;
     else                  dyn_unc = conf_dyn_unc;
 
@@ -811,17 +801,12 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     mpi_in_period = compute_mpi_in_period(se->mpi_stats);
 
-    #if 0
-    is_io_bound(my_sig->IO_MBS, &iobound);
-    is_network_bound(mpi_in_period, &mpibound);
-    classify(iobound, mpibound, &earl_phase_classification);
-    is_cpu_busy_waiting(my_sig, &busy);
-    is_gpu_idle(my_sig, &curr_gpu_state); // GPU phase classification
-    #endif
     is_io_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &iobound);
     is_network_bound(mpi_in_period, &mpibound);
     classify(iobound, mpibound, &earl_phase_classification);
-    is_cpu_busy_waiting(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &busy);
+
+    is_cpu_busy_waiting(&lib_shared_region->job_signature, &busy);
+
     is_gpu_idle(&lib_shared_region->job_signature, &curr_gpu_state); // GPU phase classification
     if (curr_gpu_state & _GPU_Idle) {
         verbose_master(POLICY_GPU, "%sGPU idle phase%s", COL_BLU, COL_CLR);
@@ -842,7 +827,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     if (use_earl_phases) {
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND) {
-            if (busy == BUSY_WAITING){
+            if (busy == BUSY_WAITING) {
                 verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration", COL_BLU, COL_CLR);
                 // TODO Below function always returns EAR_SUCCESS
                 st = policy_io_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
@@ -851,21 +836,30 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                 if (is_all_ready()) {
                     last_earl_phase_classification = earl_phase_classification;
                     last_gpu_state = curr_gpu_state;
+
                     policy_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
-                    *ready = EAR_POLICY_READY;
+
                     clean_signatures(lib_shared_region, sig_shared_region);
+
+                    *ready = EAR_POLICY_READY;
+
                     return EAR_SUCCESS;
                 }
             } else if (last_earl_phase_classification == APP_IO_BOUND) {
+                st = policy_restore_comp_configuration(c, my_sig, freqs, &freqs_domain, &avg_nf);
+
+                last_earl_phase_classification = APP_COMP_BOUND;
+                last_gpu_state = curr_gpu_state;
+
+                *ready = EAR_POLICY_CONTINUE;
+
+                *freq_set = avg_nf.cpu_freq[0];
+                clean_signatures(lib_shared_region,sig_shared_region);
+
                 verbose_master(POLICY_PHASES,
                         "%sPOLICY%s I/O and not busy waiting: COMP-MPI configuration",
                         COL_BLU, COL_CLR);
-                st = policy_restore_comp_configuration(c, my_sig, freqs, &freqs_domain, &avg_nf);
-                last_earl_phase_classification = APP_COMP_BOUND;
-                last_gpu_state = curr_gpu_state;
-                *ready = EAR_POLICY_CONTINUE;
-                *freq_set = avg_nf.cpu_freq[0];
-                clean_signatures(lib_shared_region,sig_shared_region);
+
                 return EAR_SUCCESS;
             } else {
                 verbose_master(POLICY_PHASES,"%sPOLICY%s IO -> COMP", COL_BLU, COL_CLR);
@@ -888,20 +882,22 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                 if (is_all_ready()) {
                     policy_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
 
-                    *ready = EAR_POLICY_READY;
-
                     last_gpu_state = curr_gpu_state;
                     last_earl_phase_classification = APP_BUSY_WAITING;
 
                     clean_signatures(lib_shared_region,sig_shared_region);
 
+                    *ready = EAR_POLICY_READY;
+
                     return EAR_SUCCESS;
                 }
             }
+
             /* If not, we should restore to default settings */
             if ((last_earl_phase_classification == APP_BUSY_WAITING)
                     || (last_earl_phase_classification == APP_IO_BOUND)
                     || !(last_gpu_state & curr_gpu_state)) {
+
                 verbose_master(POLICY_PHASES, "%sPOLICY%s COMP-MPI configuration",
                         COL_BLU, COL_CLR);
 
@@ -909,12 +905,13 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                         &freqs_domain, &avg_nf);
 
                 *freq_set = avg_nf.cpu_freq[0];
-                *ready = EAR_POLICY_CONTINUE;
 
                 last_earl_phase_classification = earl_phase_classification;
                 last_gpu_state = curr_gpu_state;
 
                 clean_signatures(lib_shared_region, sig_shared_region);
+
+                *ready = EAR_POLICY_CONTINUE;
 
                 return st;
             }
@@ -929,7 +926,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     last_earl_phase_classification     = earl_phase_classification;
     last_gpu_state = curr_gpu_state;
 
-    if (polsyms_fun.node_policy_apply != NULL) {
+    if (polsyms_fun.node_policy_apply) {
 
         /* Initializations */
         signature_copy(&node_sig, my_sig);
@@ -965,12 +962,14 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
         *ready = EAR_POLICY_CONTINUE;
     }
 
-    if (verb_level >= POLICY_INFO && *ready == EAR_POLICY_READY) {
-        verbose_master(POLICY_INFO, "%sNode policy ready%s", COL_GRE, COL_CLR);
+    if (VERB_ON(POLICY_INFO)) {
+        if (*ready == EAR_POLICY_READY) {
+            verbose_master(POLICY_INFO, "%sNode policy ready%s", COL_GRE, COL_CLR);
+        }
+        verbose_master(POLICY_INFO + 1, "%sPOLICY%s CPU freq. policy ready: %d\n"
+                "GPU policy ready: %d\nGlobal node readiness: %d", COL_BLU, COL_CLR,
+                cpu_ready, gpu_ready, *ready);
     }
-    verbose_master(POLICY_INFO + 1, "%sPOLICY%s CPU freq. policy ready: %d\n"
-            "GPU policy ready: %d\nGlobal node readiness: %d", COL_BLU, COL_CLR,
-            cpu_ready, gpu_ready, *ready);
 
     clean_signatures(lib_shared_region,sig_shared_region);
 

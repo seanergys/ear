@@ -58,7 +58,6 @@ void get_classify_limits(ear_classify_t *limits)
 }
 
 
-
 state_t classify_init(topology_t *tp_in)
 {
   switch (tp_in->vendor){
@@ -131,25 +130,58 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     return EAR_SUCCESS;
 }
 
-state_t is_cpu_busy_waiting(signature_t *sig,uint num_cpus, uint *busy)
+state_t is_cpu_busy_waiting(signature_t *sig, uint *busy)
 {
-	double flops, cpi;
-	ullong inst, cycles;
-	uint c1, c2, c3;
-	*busy = USEFUL_COMP;
-	flops = compute_node_flops(lib_shared_region,sig_shared_region);
-	compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
-	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
-	//compute_total_node_CPI(lib_shared_region,sig_shared_region,&cpi); 
-	cpi = (double)cycles/(double)inst;
-	c1 = (cpi      < CPI_BUSY_WAITING);
-	c2 = (sig->GBS < GBS_BUSY_WAITING);
-	c3 = (flops    < GFLOPS_BUSY_WAITING);
-    if (c1 || c2 || c3){
-        verbose_master(INFO_CLASSIFY, "--- NO Busy waiting ---\n(prev/current/th) CPI (%.3lf/%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)",
-                sig->CPI, cpi, CPI_BUSY_WAITING, sig->GBS, GBS_BUSY_WAITING, flops, GFLOPS_BUSY_WAITING);
+    
+    if (!sig || !busy) {
+        return_msg(EAR_ERROR, Generr.input_null);
     }
-    if (c1 && c2 && c3) *busy = BUSY_WAITING;
+
+	uint c1 = (sig->CPI    < CPI_BUSY_WAITING);
+	uint c2 = (sig->GBS    < GBS_BUSY_WAITING);
+	uint c3 = (sig->Gflops < GFLOPS_BUSY_WAITING);
+
+	*busy = USEFUL_COMP;
+
+    if (c1 && c2 && c3) {
+        *busy = BUSY_WAITING;
+    }
+
+    if (VERB_ON(INFO_CLASSIFY)) {
+
+        if (c1 || c2 || c3) {
+            char hdr_msg[] = "--- Busy waiting values (value/thresh) ---";
+
+            char cpi_msg[32];
+            snprintf(cpi_msg, sizeof cpi_msg, "CPI (%.3lf/%.3lf)", sig->CPI, CPI_BUSY_WAITING);
+
+            char gbs_msg[32];
+            snprintf(gbs_msg, sizeof gbs_msg, "Mem. bwidth (%.3lf/%.3lf)", sig->GBS, GBS_BUSY_WAITING);
+
+            char gflops_msg[32];
+            snprintf(gflops_msg, sizeof gflops_msg, "GFLOP/s (%.3lf/%.3lf)", sig->Gflops, GFLOPS_BUSY_WAITING);
+
+            char busy_waiting_msg[64];
+            snprintf(busy_waiting_msg, sizeof busy_waiting_msg,
+                    "App node workload declared as busy waiting: %u", *busy);
+
+            int max_strlen = strlen(busy_waiting_msg);
+            /*
+               int max_strlen = ear_max(strlen(hdr_msg), strlen(cpi_msg));
+               max_strlen = ear_max(max_strlen, strlen(gbs_msg));
+               max_strlen = ear_max(max_strlen, strlen(gflops_msg));
+               */
+
+            verbose_master(INFO_CLASSIFY, "%*s%s\n%*s%s\n%*s%s\n%*s%s\n%s\n",
+                    (int) (max_strlen - strlen(hdr_msg)) / 2,    " ",  hdr_msg,
+                    (int) (max_strlen - strlen(cpi_msg)) / 2,    " ",  cpi_msg,
+                    (int) (max_strlen - strlen(gbs_msg)) / 2,    " ",  gbs_msg,
+                    (int) (max_strlen - strlen(gflops_msg)) / 2, " ",  gflops_msg,
+                    busy_waiting_msg);
+        }
+
+    }
+
 	return EAR_SUCCESS;
 }
 

@@ -61,7 +61,7 @@ typedef struct ear_classify{
 state_t classify_init(topology_t *tp_in);
 void get_classify_limits(ear_classify_t *limits);
 state_t classify(uint iobound, uint mibound, uint *app_state);
-state_t is_cpu_busy_waiting(signature_t *sig,uint num_cpus, uint *busy);
+state_t is_cpu_busy_waiting(signature_t *sig, uint *busy);
 state_t is_cpu_bound(signature_t *sig,uint num_cpus, uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound);
 state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state);
