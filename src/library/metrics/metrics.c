@@ -1077,7 +1077,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                             sig_ext->max_mpi = ear_max(local_mpi_time_perc, sig_ext->max_mpi);
                             sig_ext->min_mpi = ear_min(local_mpi_time_perc, sig_ext->min_mpi);
 
-                            verbose_master(MPI_VERB,
+                            verbose_master(MPI_VERB+1,
                                     "%%MPI process %d: %.2lf | MPI time (us): %llu"
                                     " | Wall time (us): %llu", i, local_mpi_time_perc,
                                     mpi_time_usecs, exec_time_usecs);
@@ -1713,14 +1713,23 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
     sig_ext_t *se = (sig_ext_t *) master->sig_ext;
     if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
-    compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
-    compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);	
+    if (state_fail(compute_job_node_instructions(sig_shared_region,
+                    lib_shared_region->num_processes, &inst))) {
+                verbose_master(2, "%sERROR%s Computing job's node instructions: %s",
+                        COL_RED, COL_CLR, state_msg);
+            }
+
+    if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
+                verbose_master(2, "%sERROR%s Computing job's node cycles: %s",
+                        COL_RED, COL_CLR, state_msg);
+    }
 
     dst->cycles       = cycles;
     dst->instructions = inst;
 
     assert(inst != 0);
     dst->CPI = (double) cycles / (double) inst;
+    assert(dst->CPI != 0);
 
     compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
 
