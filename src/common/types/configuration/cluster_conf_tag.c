@@ -78,6 +78,7 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
             for (i = 0; i < num_tags; i++)
                 if (!strcmp(tags[i].id, value)) idx = i;
 
+
             if (idx < 0)
             {
                 tags = realloc(tags, sizeof(tag_t) * (num_tags + 1));
@@ -85,9 +86,6 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
                 num_tags++;
                 memset(&tags[idx], 0, sizeof(tag_t));
                 set_default_tag_values(&tags[idx]);
-                strcpy(tags[idx].energy_model, "");
-                strcpy(tags[idx].energy_plugin, "");
-                strcpy(tags[idx].powercap_plugin, "");
                 strcpy(tags[idx].id, value);
             }
         }
@@ -140,6 +138,10 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
         {
             tags[idx].imc_max_pstate = atol(value);
         }
+		else if (!strcmp(key, "IDLE_PSTATE"))
+		{
+            tags[idx].idle_pstate = atol(value);
+		}
 		else if (!strcmp(key, "IMC_MAX_FREQ"))
 		{
 			tags[idx].imc_max_freq = (ulong)atol(value);
@@ -165,6 +167,10 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
         {
             strcpy(tags[idx].powercap_gpu_plugin, value);
         }
+		else if (!strcmp(key, "IDLE_GOVERNOR")) 
+		{
+            strcpy(tags[idx].idle_governor, value);
+		}
         else if (!strcmp(key, "COEFFS"))
         {
             strcpy(tags[idx].coeffs, value);
@@ -209,7 +215,8 @@ void print_tags_conf(tag_t *tag)
     verbosen(VCCONF, "\t\tavx512_freq: %lu\tavx2_freq: %lu\tmax_power: %lu\tmin_power: %lu\terror_power: %lu\t max_powercap: %lu\n", 
                      tag->max_avx512_freq, tag->max_avx2_freq, tag->max_power, tag->min_power, tag->error_power, tag->max_powercap);
 	verbosen(VCCONF, "\t\tgpu_def_freq %lu / cpu_max_pstate %d / imc_max_pstate %d\n", tag->gpu_def_freq, tag->cpu_max_pstate, tag->imc_max_pstate);
-		verbosen(VCCONF, "\t\timc_max_freq %lu imc_min_freq %lu\n", tag->imc_max_freq, tag->imc_min_freq);
+	verbosen(VCCONF, "\t\timc_max_freq %lu imc_min_freq %lu\n", tag->imc_max_freq, tag->imc_min_freq);
+    verbosen(VCCONF, "\t\tidle_governor: %s\tidle_pstate: %d\n", tag->idle_governor, tag->idle_pstate);
     verbosen(VCCONF, "\t\tenergy_model: %s\tenergy_plugin: %s\tpowercap_plugin: %s", tag->energy_model, tag->energy_plugin, tag->powercap_plugin);
 		if (tag->powercap == DEF_POWER_CAP){
 			verbosen(VCCONF,"\t\t powercap set_def\n");
