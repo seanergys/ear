@@ -397,7 +397,7 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	ulong total = 0, total_cpus = 0;
 	ulong lavg, lcpus;
 	int p;
-    for (p = 0; p < lib_shared_region->num_processes ; p++)
+    for (p = 0; p < lib_shared_region->num_processes; p++)
     {
         m = sig_shared_region[p].cpu_mask;
 		pstate_freqtoavg(m, nodecpuf, met_cpufreq.devs_count, &lavg, &lcpus);
@@ -737,14 +737,13 @@ static int metrics_partial_stop(uint where)
 
     debug("metrics_partial_stop %u", my_node_id);
 
-    if (!eards_connected() && (master)){
+    if (!eards_connected() && master){
         verbose_master(2, "Disconnecting library because EARD not connected.");
         if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
     }
 
-    /* If the signature of the master is not ready, we cannot compute our signature */
-    //debug("My rank is %d",masters_info.my_master_rank);
-    if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)){
+    /* If the signature of the master is not ready, we cannot compute our signature. */
+    if (masters_info.my_master_rank < 0 && !sig_shared_region[0].ready){
         debug("Iterations %u ear_guided %u", ear_iterations, ear_guided);
         return EAR_NOT_READY;
     }
@@ -757,7 +756,7 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	if (master) {
 		/* Energy node */
-		if (eards_connected()){
+		if (eards_connected()) {
 			int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
 
 			/* If EARD is present, we wait until the power is computed */
@@ -874,17 +873,17 @@ static int metrics_partial_stop(uint where)
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff, met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
         /* Avg IMC frequency */
-        if (mgt_imcfreq.ok){
-            if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
+        if (mgt_imcfreq.ok) {
+            if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))) {
                 verbose_master(2, "%sError%s IMC freq. data read in partial stop", COL_RED, COL_CLR);
             }
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
+            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO], imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))) {
                 verbose_master(2, "IMC data diff fails");
             }
-            debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);
+            debug("AVG IMC frequency %.2f", (float) imcfreq_avrg[LOO] / 1000000.0);
 		}
 
-		/* Per node IO data */
+        /* Per node IO data */
         if (state_ok(metrics_compute_total_io(&metrics_io_end[LOO_NODE]))) {
 
             // Diff
@@ -960,8 +959,8 @@ void copy_node_data(signature_t *dest,signature_t *src)
 #endif
 }
 
-/******************* This function computes the signature : per loop (global = LOO) or application ( global = APP)  **************/
-/******************* The node master has computed the per-node metrics and the rest of processes uses this information ***********/
+/* This function computes the signature: per loop (global = LOO) or application ( global = APP)
+ * The node master has computed the per-node metrics and the rest of processes uses this information. */
 static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *metrics,
         uint iterations, ulong procs)
 {
@@ -975,52 +974,53 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 				/* Total time */
                 metrics_usecs[sign_app_loop_idx] = ear_max(metrics_usecs[sign_app_loop_idx], 1);
-				double time_s = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
+				double time_sec = (double) metrics_usecs[sign_app_loop_idx] / 1000000.0;
 
                 if (VERB_ON(2) && (sign_app_loop_idx == APP)) {
                     verbose_master(2, "Process %d ends in exclusive mode: %u",
                             my_node_id, exclusive);
                 }
 
-				/* Avg CPU frequency */
-				metrics->avg_f = cpufreq_avrg[sign_app_loop_idx];
+    /* Avg CPU frequency */
+    metrics->avg_f = cpufreq_avrg[sign_app_loop_idx];
 
-				/* Avg IMC frequency */
-				metrics->avg_imc_f = imcfreq_avrg[sign_app_loop_idx];
+	/* Avg IMC frequency */
+    metrics->avg_imc_f = imcfreq_avrg[sign_app_loop_idx];
 
 				/* Time per iteration */
                 iterations = ear_max(iterations, 1);
-				metrics->time = time_s / (double) iterations;
+				metrics->time = time_sec / (double) iterations;
 
-				/* Cache misses */
-				metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d_misses;
-				metrics->L2_misses = cache_diff[sign_app_loop_idx].l2_misses;
-				metrics->L3_misses = cache_diff[sign_app_loop_idx].l3_misses;
+    /* Cache misses */
+    metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d_misses;
+    metrics->L2_misses = cache_diff[sign_app_loop_idx].l2_misses;
+    metrics->L3_misses = cache_diff[sign_app_loop_idx].l3_misses;
  
-                if (metrics->sig_ext == NULL) {
-                    metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
-                }
-				sig_ext = metrics->sig_ext;
-				sig_ext->elapsed = time_s;
+    if (metrics->sig_ext == NULL) {
+        metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+    }
+    sig_ext = metrics->sig_ext;
+    sig_ext->elapsed = time_sec;
 
-				/* FLOPS */
-                flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-                flops_help_toold(&flops_diff[APP], metrics->FLOPS);
+    /* FLOPS */
+    flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
+    flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
                 /* CPI */
                 metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles;
                 metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx].instructions, 1);
                 metrics->CPI          = cpi_avrg[sign_app_loop_idx];
 
-				/* TPI and Memory bandwith */
-                if (master) {
-                    bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[sign_app_loop_idx], &metrics->GBS);
-                    verbose_master(INFO_METRICS + 1, "%sCOMPUTE SIGNATURE DATA%s GBS[%d]: %0.2lf", COL_BLU, COL_CLR, sign_app_loop_idx, metrics->GBS);
-                    lib_shared_region->cas_counters = (double) bwidth_cas[sign_app_loop_idx];
-                } else {
-                    bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
-                    metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
-                }
+    /* TPI and Memory bandwith */
+    if (master) {
+        bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[sign_app_loop_idx], &metrics->GBS);
+        verbose_master(INFO_METRICS + 1, "%sCOMPUTE SIGNATURE DATA%s GBS[%d]: %0.2lf",
+                COL_BLU, COL_CLR, sign_app_loop_idx, metrics->GBS);
+        lib_shared_region->cas_counters = (double) bwidth_cas[sign_app_loop_idx];
+    } else {
+        bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
+        metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_sec);
+    }
 
                 metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
                         metrics->instructions);
@@ -1044,7 +1044,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
                 double iogb = (double) metrics_io_diff[io_app_loop_idx].rchar / (double) (1024*1024) + (double) metrics_io_diff[io_app_loop_idx].wchar/(double)(1024*1024);
 
-				metrics->IO_MBS = iogb/time_s;
+				metrics->IO_MBS = iogb/time_sec;
 
                 if (master) {
                     sig_ext->max_mpi = 0;
@@ -1077,7 +1077,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                             sig_ext->max_mpi = ear_max(local_mpi_time_perc, sig_ext->max_mpi);
                             sig_ext->min_mpi = ear_min(local_mpi_time_perc, sig_ext->min_mpi);
 
-                            verbose_master(MPI_VERB,
+                            verbose_master(MPI_VERB+1,
                                     "%%MPI process %d: %.2lf | MPI time (us): %llu"
                                     " | Wall time (us): %llu", i, local_mpi_time_perc,
                                     mpi_time_usecs, exec_time_usecs);
@@ -1092,7 +1092,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
                     /* Power: Node, DRAM, PCK */
-                    metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
+                    metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_sec * node_energy_units);
 
                     /* DRAM and PCK PENDING for Njobs */
                     metrics->PCK_power=0;
@@ -1106,9 +1106,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                         metrics->PCK_power = metrics->PCK_power + rapl_pck;
                     }
 
-                    metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_s;
-                    metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_s;
-                    metrics->EDP = time_s * time_s * metrics->DC_power;
+                    metrics->PCK_power   = (metrics->PCK_power / 1000000000.0) / time_sec;
+                    metrics->DRAM_power  = (metrics->DRAM_power / 1000000000.0) / time_sec;
+                    metrics->EDP = time_sec * time_sec * metrics->DC_power;
 
 #if USE_GPUS
                     /* GPUS */
@@ -1132,13 +1132,14 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     copy_node_data(metrics,&lib_shared_region->node_signature);
                 }
 
-				/* Copying my info in the shared signature */
-				from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
+				/* Copying my info in the shared signature (the process signature) */
+				from_sig_to_mini(&sig_shared_region[my_node_id].sig, metrics);
 
-				/* If I'm the master, I have to copy in the special section */
-                if (master){
-                    signature_copy(&lib_shared_region->node_signature,metrics);
-                    signature_copy(&lib_shared_region->job_signature,metrics);
+				/* If I'm the master, I have to copy in the special section.
+                 * Note that below destinations only contain the current master signature here. */
+                if (master) {
+                    signature_copy(&lib_shared_region->node_signature, metrics);
+                    signature_copy(&lib_shared_region->job_signature, metrics);
 
                     if (VERB_ON(2)) {
                         //signature_print_simple_fd(2, metrics);
@@ -1146,13 +1147,12 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     }
                 }
 
-                sig_shared_region[my_node_id].period = time_s;
+                sig_shared_region[my_node_id].period = time_sec;
 
-
-				update_earl_node_mgr_info();
+                update_earl_node_mgr_info();
 
 				debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
-				signature_ready(&sig_shared_region[my_node_id],0);
+				signature_ready(&sig_shared_region[my_node_id], 0);
 
 				verbose_master(INFO_METRICS + 1,
                         "End compute signature for (l. rank) %d. Period %lf secs",
@@ -1163,22 +1163,26 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                 }
 
 				/* Compute and print the total savings */
-				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed){
+				if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
 					float avg_esaving = sig_ext->saving / sig_ext->telapsed;
 					float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
 					float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
-					verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+
+					verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f",
+                            masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+
 					app_energy_saving.event = ENERGY_SAVING;
+
 					/* We will use freq for the energy saving */
 					app_energy_saving.freq = (ulong)(avg_esaving * 10);
 					report_events(&rep_id, &app_energy_saving, 1);
 
-					#if 0
-					/* Not yet reported */
+#if 0
+                    /* Not yet reported */
 					app_energy_saving.event = POWER_SAVING;
 					app_energy_saving.event = PERF_PENALTY;
-					#endif
-				}
+#endif
+                }
 
 				if (sign_app_loop_idx == APP) {
                     sig_shared_region[my_node_id].exited = 1;
@@ -1413,13 +1417,12 @@ int metrics_init(topology_t *topo)
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
     sig_ext_t *se;
-    signature_t nodeapp;
+    signature_t job_node_sig;
     uint num_ready;
     uint exited;
     float wait_time = 0;
 
     verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
-    verbose_master(INFO_METRICS + 1, "End local signature");
 
     if (!eards_connected() && master){ 
         if (!EARL_LIGHT){ 
@@ -1427,7 +1430,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         }
     }
 
-		verbose_master(2, "Partial stop");
+	verbose_master(INFO_METRICS, "Calling last partial stop...");
 
     /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
     while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
@@ -1460,7 +1463,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     }
 
     // Only master does something in this funcion
-	compute_per_process_and_job_metrics(&nodeapp);
+	compute_per_process_and_job_metrics(&job_node_sig);
 
 	/* At this point we mark signatures are not ready to be computed again */
     if (master)  {
@@ -1491,12 +1494,12 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         se = (sig_ext_t *) metrics->sig_ext;
 
         if (!exclusive) {
-            metrics_app_node_signature(metrics, &nodeapp);
+            metrics_app_node_signature(metrics, &job_node_sig);
         } else {
-            metrics_node_signature(&lib_shared_region->job_signature, &nodeapp);
+            metrics_job_signature(&lib_shared_region->job_signature, &job_node_sig);
         }
 
-        signature_copy(metrics, &nodeapp);
+        signature_copy(metrics, &job_node_sig);
         metrics->sig_ext = se;
 	}
 
@@ -1554,69 +1557,73 @@ static state_t metrics_compute_total_io(io_data_t *total)
 
 int time_ready_signature(ulong min_time_us)
 {
-    long long f_time;
-    f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-    if (f_time<min_time_us) return 0;
-    else return 1;
+    llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+    if (f_time < min_time_us) {
+        return 0;
+    }
+    return 1;
 }
 
-/****************************************************************************************************************************************************************/
-/******************* This function checks if data is ready to be shared **************************************/
-/****************************************************************************************************************************************************************/
+/**********************************************************************************************
+ ******************* This function checks if data is ready to be shared ***********************
+ **********************************************************************************************/
 
-
-int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs)
+state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
+        ulong min_time_us, ulong procs)
 {
-				long long aux_time;
-                report_id_t report_id;
-				uint num_ready;
 
-				debug("metrics_compute_signature_finish %u", my_node_id);
+    debug("metrics_compute_signature_finish %u", my_node_id);
 
-                if (!sig_shared_region[my_node_id].ready){
-                    
-                    debug("Signature for proc. %d is not ready", my_node_id);
+    if (!sig_shared_region[my_node_id].ready) {
 
-                    // Time requirements
-                    aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+        debug("Signature for proc. %d is not ready", my_node_id);
 
-                    //
-                    if ((aux_time < min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
-                        metrics->time=0;
-                        debug("EAR_NOT_READY because of time %llu\n",aux_time);
-                        return EAR_NOT_READY;
-                    }
+        // Time requirements
+        llong elap_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
-                    //Master: Returns not ready when power is not ready
-                    //Not master: when master signature not ready
-                    if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
+        uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
+        if (elap_time < min_time_us && !time_eq) {
+            metrics->time = 0;
+            debug("EAR_NOT_READY because of time %lld\n", elap_time);
+            return EAR_NOT_READY;
+        }
 
-                    //Marks the signature as ready
-                    metrics_compute_signature_data(LOO, metrics, iterations, procs);
+        // Master: Returns not ready when power is not ready
+        // Not master: when master signature not ready
+        if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
+            return EAR_NOT_READY;
+        }
 
-                    // Call report mpitrace
-                    report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
-                    if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
-                        verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
-                    }
+        // Marks the signature as ready
+        metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
-                    //
-                    metrics_partial_start();
-                } else {
-                    debug("Signature for proc. %d is ready", my_node_id);
-                }
+        // Call report mpitrace
+        report_id_t report_id;
+        report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
+        if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
+            verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+        }
 
-                if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
-                    if ((master) && (sig_shared_region[0].ready)){
-                        debug("Setting Master ready");
-                        lib_shared_region->master_ready = 1;
-                    }
-                    return EAR_NOT_READY;
-                } else if (master) {
-                    lib_shared_region->master_ready = 0;
-                }
+        metrics_partial_start();
+    }
+#if SHOW_DEBUGS
+    else {
+        debug("Signature for proc. %d is ready", my_node_id);
+    }
+#endif
 
-				return EAR_SUCCESS;
+    uint num_ready;
+    if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
+        if ((master) && (sig_shared_region[0].ready)) {
+            debug("Setting Master ready");
+            lib_shared_region->master_ready = 1;
+        }
+        return EAR_NOT_READY;
+    } else if (master) {
+        lib_shared_region->master_ready = 0;
+    }
+
+    return EAR_SUCCESS;
 }
 
 long long metrics_usecs_diff(long long end, long long init)
@@ -1649,27 +1656,26 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 	verbose_master(2, " metrics_app_node_signature");
 
-  compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-  compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-  compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
-  compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
-  compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-  compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
+  compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
+  compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
 
-  ns->CPI = (double)cycles/(double)inst;
-	#if 0
-  verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-  if (ns->CPI > 5.0){
-    for (i=0; i< lib_shared_region->num_processes;i ++){
-      verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
-    } 
-    verbose_master(2," ");
-  }
-	#endif
+  ns->CPI = (double) cycles / (double) inst;
+
+  compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
+
+  compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+  compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+  compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+
   for (i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
-  ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+
+    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &ns->Gflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
+
 	ns->L1_misses  = L1;
 	ns->L2_misses  = L2;
 	ns->L3_misses  = L3;
@@ -1683,6 +1689,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	ns->avg_f      = 0;
 	ns->DRAM_power = 0;
 	ns->PCK_power  = 0;
+
   if (master){
 		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 			valid_period    = sig_shared_region[lp].sig.valid_time;
@@ -1698,53 +1705,59 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 		verbose_master(2,"AVG  %lu", ns->avg_f);
   }
   signature_copy(&lib_shared_region->node_signature,ns);
-
 }
 
-void metrics_node_signature(signature_t *master,signature_t *ns)
+void metrics_job_signature(const signature_t *master, signature_t *dst)
 {
-	ullong inst;
-	ullong cycles;
-	ullong FLOPS[FLOPS_EVENTS];
-	sig_ext_t *se;
-	int i;
-	ullong L1, L2, L3;
+    ullong inst;
+    ullong cycles;
+    ullong FLOPS[FLOPS_EVENTS];
+    ullong L1, L2, L3;
 
+    signature_copy(dst, master);
 
-	se = (sig_ext_t *)master->sig_ext;	
-	signature_copy(ns,master);
-	if ((se != NULL) && (ns->sig_ext != NULL))  memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
-	
-	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
-	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
-  compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-  compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
+    sig_ext_t *se = (sig_ext_t *) master->sig_ext;
+    if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
-	ns->CPI = (double)cycles/(double)inst;
-        #ifdef SHOW_DEBUGS
-	/* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-	if (ns->CPI > 2.0){
-		for (i=0; i< lib_shared_region->num_processes;i ++){
-			verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
-		}	
-		verbose_master(2," ");
-	}
-        #endif
-	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
-  ns->L1_misses  = L1;
-  ns->L2_misses  = L2;
-  ns->L3_misses  = L3;
-  ns->cycles     = cycles;
-  ns->instructions = inst;
-  for (uint i = 0; i < FLOPS_EVENTS; i++){
-  	ns->FLOPS[i] = FLOPS[i];
-  }    
+    /* If some job node computation fails, we use the CPI data we had from \p master */
+    if (state_fail(compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst))) {
+                verbose(3, "%sWARNING%s Error on computing job's node instructions: %s",
+                        COL_RED, COL_CLR, state_msg);
+            }
+    else if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
+                verbose(3, "%sWARNING%s Error on computing job's node cycles: %s",
+                        COL_RED, COL_CLR, state_msg);
+    } else {
 
-	verbose_master(2,"Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
+        dst->cycles       = cycles;
+        dst->instructions = inst;
 
+        assert(inst != 0);
+        dst->CPI = (double) cycles / (double) inst;
 
+    }
+
+    if (state_fail(compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS))) {
+        verbose(3, "%sWARNING%s Error on computing job's node FLOPs events: %s",
+                COL_RED, COL_CLR, state_msg);
+    } else {
+        for (uint i = 0; i < FLOPS_EVENTS; i++) {
+            dst->FLOPS[i] = FLOPS[i];
+        }
+    }
+
+    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &dst->Gflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
+
+    compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+    compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+    compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+
+    dst->L1_misses = L1;
+    dst->L2_misses = L2;
+    dst->L3_misses = L3;
 }
 
 extern uint last_earl_phase_classification;
@@ -1815,17 +1828,17 @@ state_t metrics_new_iteration(signature_t *sig)
         }
     }
 #endif
-				return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
-/* This function computes local metrics per process, computes per job and computes the accumulated */
+/* This function computes local metrics per process,
+ * computes per job and computes the accumulated. */
 void compute_per_process_and_job_metrics(signature_t *dest)
 {
 	if (master) {
 		update_earl_node_mgr_info();
-		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info)	;
+		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info);
 		accum_estimations(lib_shared_region, sig_shared_region);
-		signature_copy(dest, &lib_shared_region->job_signature);	
+		signature_copy(dest, &lib_shared_region->job_signature);
 	}
 }
-

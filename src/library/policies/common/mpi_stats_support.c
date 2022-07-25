@@ -224,7 +224,6 @@ state_t mpi_app_end(polctx_t *c)
     timestamp end;
     ullong elap;
     int fd;
-    char buff[256] ,buff2[300];
     char mpi_stats_filename[256];
     char mpi_stats_per_call_filename[256];
 
@@ -250,13 +249,13 @@ state_t mpi_app_end(polctx_t *c)
         char *stats = getenv(FLAG_GET_MPI_STATS);
         if (stats == NULL) {
             stats = getenv(SCHED_GET_EAR_STATS);
-            if (stats != NULL) {
+            if (stats) {
             verbose(VAR_DEPRECATED, "%sWARNING%s %s will be removed on the next EAR release. "
                     "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_GET_EAR_STATS, FLAG_GET_MPI_STATS);
             }
         }
-        if (stats != NULL) {
+        if (stats) {
 
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
                             mpi_stats_per_call_filename))) {
@@ -270,23 +269,27 @@ state_t mpi_app_end(polctx_t *c)
             // Open mpi_stats_filename to store per process global MPI stats
             fd=open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
+            char mpi_stats_buff[512];
+            char mpi_stats_buff_aux[64];
+
             if (fd < 0) {
                 verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats file couldn't have opened: %d",
                         COL_YLW, COL_CLR, errno);
 
-                mpi_info_to_str(&mpi_stats, buff, sizeof(buff));
+                mpi_info_to_str(&mpi_stats, mpi_stats_buff, sizeof(mpi_stats_buff));
                 verbose(MPI_STATS_VERB_LVL - 1, "MR[%d] %s",
-                        lib_shared_region->master_rank, buff);
+                        lib_shared_region->master_rank, mpi_stats_buff);
             } else {
                 // Only the master writes the header
                 if (masters_info.my_master_rank >= 0) {
-                    mpi_info_head_to_str_csv(buff, sizeof(buff));
-                    sprintf(buff2, "mrank;%s\n", buff);
-                    write(fd, buff2, strlen(buff2));
+                    char mpi_stats_hdr_buff_aux[64];
+                    mpi_info_head_to_str_csv(mpi_stats_hdr_buff_aux, sizeof(mpi_stats_hdr_buff_aux));
+                    snprintf(mpi_stats_buff, sizeof mpi_stats_buff, "mrank;%s\n", mpi_stats_hdr_buff_aux);
+                    write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 }
-                mpi_info_to_str_csv(&mpi_stats, buff, sizeof(buff));
-                sprintf(buff2, "%d;%s\n", lib_shared_region->master_rank, buff);
-                write(fd, buff2, strlen(buff2));
+                mpi_info_to_str_csv(&mpi_stats, mpi_stats_buff_aux, sizeof(mpi_stats_buff_aux));
+                sprintf(mpi_stats_buff, "%d;%s\n", lib_shared_region->master_rank, mpi_stats_buff_aux);
+                write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 close(fd);
             }
 
@@ -297,15 +300,15 @@ state_t mpi_app_end(polctx_t *c)
 #if NEW_MPI_STATS
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
+                    sprintf(mpi_stats_buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
                             "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
                             "Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;"
                             "Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;t_Send;"
                             "t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait;Block;t_Block\n");
-                    write(fd, buff, strlen(buff));
+                    write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u"
+                sprintf(mpi_stats_buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u"
                         "%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
@@ -348,13 +351,13 @@ state_t mpi_app_end(polctx_t *c)
 #else
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
+                    sprintf(mpi_stats_buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
                             "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
                             "Total collective calls\n");
-                    write(fd, buff, strlen(buff));
+                    write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 }
 
-                sprintf(buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu\n",
+                sprintf(mpi_stats_buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
                         mpi_stats.total_mpi_calls,
@@ -368,7 +371,7 @@ state_t mpi_app_end(polctx_t *c)
                         total_collectives
                         );
 #endif // NEW_MPI_STATS
-                write(fd, buff, strlen(buff));
+                write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
             }
         }
     }
@@ -482,10 +485,6 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
         in_mpi_call = 0;
 
-        if ((elap > 1000000) && (pol_time_init.tv_sec == 0) && (pol_time_init.tv_nsec == 0)) {
-          verbose(0, "WARNING!!! in mpi and mpi time 0");
-          return EAR_SUCCESS;
-        }
 
         debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
 
@@ -540,9 +539,6 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     list_mpi_to_optimize[num_mpi_to_optimize].elap       = (ulong)elap;
       
                     print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
-                    if ((ulong)elap > 1000000){
-                    verbose(0, "elap %lu (llu= %llu) init sec %llu nsec %llu end sec %llu nsec %llu", (ulong)elap, elap, pol_time_init.tv_sec, pol_time_init.tv_nsec, end.tv_sec, end.tv_nsec);
-                    }
                     num_mpi_to_optimize++;
                     //print_stack();
                    }

@@ -51,20 +51,22 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 
 state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 {
-	int i;
-        char sig_bufg[1024];
-	debug("eard report_loops");
-	if (!must_report) return EAR_SUCCESS;
-	if (!eards_connected()) return EAR_ERROR;
-	if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
-	for (i=0;i<count;i++){
-        #if SHOW_DEBUGS
-                signature_to_str(&loops[i].signature, sig_bufg, sizeof(sig_bufg));
-                verbose(0,"Loop_reported: %s", sig_bufg);
-        #endif
-		eards_write_loop_signature(&loops[i]);
-	}
-	return EAR_SUCCESS;
+    int i;
+#if SHOW_DEBUGS
+    char sig_bufg[1024];
+#endif
+    debug("eard report_loops");
+    if (!must_report) return EAR_SUCCESS;
+    if (!eards_connected()) return EAR_ERROR;
+    if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
+    for (i = 0; i < count; i++) {
+#if SHOW_DEBUGS
+        signature_to_str(&loops[i].signature, sig_bufg, sizeof(sig_bufg));
+        verbose(0,"Loop_reported: %s", sig_bufg);
+#endif
+        eards_write_loop_signature(&loops[i]);
+    }
+    return EAR_SUCCESS;
 }
 
 state_t report_events(report_id_t *id, ear_event_t *eves, uint count)

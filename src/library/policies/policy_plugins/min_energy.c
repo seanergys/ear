@@ -451,42 +451,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         for (uint i = 0; i < nump; i++) {
             verbose_master(3, "Proc. %d - Freq. per core: %d", i, freq_per_core);
 
-						/* This variable is set internally  by int_policy_ok function. It depends on the load balance of the application */
-            if (!freq_per_core) {
-
-								/* 1.1: If we have to select a single frequency, we compute the average */
-                #if 0
-
-                compute_total_node_instructions(lib_shared_region, sig_shared_region, &my_app->instructions);
-                compute_total_node_flops(lib_shared_region, sig_shared_region, my_app->FLOPS);
-                compute_total_node_cycles(lib_shared_region, sig_shared_region, &my_app->cycles);
-
-                my_app->CPI = (double) my_app->cycles / (double) my_app->instructions;
-
-                compute_vpi(&sig_vpi, sig);
-                compute_vpi(&node_sig_vpi, my_app);
-
-                local_process_with_high_vpi = compute_max_vpi(lib_shared_region, sig_shared_region, &max_vpi);
-
-                debug("(CPI/VPI) MR[%d] (%.3lf/%.3lf) Total node (%.3lf/%.3lf) MAX VPI (l. proc %d): %.3lf",
-                        my_globalrank, sig->CPI, sig_vpi,
-                        my_app->CPI, node_sig_vpi,
-                        local_process_with_high_vpi, max_vpi);
-
-                // With below two lines, we force the VPI of the signature to the most loaded in the node.
-                my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
-                memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS,
-                        sizeof(ull) * FLOPS_EVENTS);
-                #endif
-
-                local_penalty = base_penalty;
-            } else {
-
-				/* 1.2: Per process CPU frequency selection */
-                #if 0
-                compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig); // Local VPI
-                #endif
-
+			/* This variable is set internally  by int_policy_ok function. It depends on the load balance of the application */
+            local_penalty = base_penalty;
+            if (freq_per_core) { 
+		/* 1.2: Per process CPU frequency selection */
                 ulong eff_p_cpuf, process_avgcpuf, cpus_cnt_ret;
 
                 pstate_freqtoavg(sig_shared_region[i].cpu_mask, lib_shared_region->avg_cpufreq, metrics_get(MET_CPUFREQ)->devs_count, &process_avgcpuf, &cpus_cnt_ret);
@@ -503,7 +471,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 		my_app->GBS 		 = lgbs * lib_shared_region->num_processes;
 		my_app->DC_power = lpower * lib_shared_region->num_processes;
 								
-		verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
 	        /* Critical path is computed in int_policy_ok */
                 if (critical_path[i] == 1) {

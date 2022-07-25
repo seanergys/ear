@@ -54,10 +54,10 @@ get_periodic: get_periodic.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 learning_delete: learning_delete.c $(comm_OBJS)
-	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
 ear_conf: ear_conf.c $(comm_OBJS)
-	$(CCC) -g -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
 ######## OPTIONS
 

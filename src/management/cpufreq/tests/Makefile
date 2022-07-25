@@ -1,7 +1,7 @@
 SRCDIR   = ../../..
 CC       = /opt/rh/devtoolset-7/root/bin/gcc
 CC       = /hpc/base/ctt/packages/compiler/gnu/9.1.0/bin/gcc
-CC_FLAGS = -Wall -fPIC -I ../../.. -g
+CC_FLAGS = -Wall -fPIC -I ../../.. 
 
 ######## FILES
 

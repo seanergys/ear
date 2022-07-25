@@ -121,9 +121,10 @@ void print_cluster_conf(cluster_conf_t *conf)
 	
     verbosen(VCCONF, "\nGENERAL TAGS\n");
     for (i = 0; i < conf->num_tags; i++)
-		{
-        print_tags_conf(&conf->tags[i]);
-		}
+	{
+		//printf("tagid%d : %s\n", i, conf->tags[i].id);
+		print_tags_conf(&conf->tags[i]);
+	}
 
 	verbosen(VCCONF, "\nENERGY TAGS\n");
 	for (i = 0; i < conf->num_etags; i++)

@@ -53,11 +53,11 @@ typedef struct node_freqs {
 typedef struct policy_context {
 	settings_conf_t *app;
 	resched_t *reconfigure;
-	unsigned long user_selected_freq;
-	unsigned long reset_freq_opt;
-	unsigned long *ear_frequency;
-	unsigned int  num_pstates;
-	unsigned int use_turbo;
+	ulong user_selected_freq;
+	ulong reset_freq_opt;
+	ulong *ear_frequency;
+	uint  num_pstates;
+	uint use_turbo;
 	//job_t 		*my_job
 	ctx_t     gpu_mgt_ctx;
 	uint      num_gpus;
