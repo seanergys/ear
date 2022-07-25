@@ -827,7 +827,7 @@ int main(int argc, char *argv[])
 								error("While initializing energy plugin: %s\n", state_msg);
 								error_energy=1;
 				}
-				if (state_fail(s = init_power_monitoring(&handler_energy))) {
+				if (state_fail(s = init_power_monitoring(&handler_energy, &node_desc))) {
 								error("While initializing power monitor: %s\n", state_msg);
 								_exit(0);	
 				}

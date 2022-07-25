@@ -60,28 +60,29 @@ extern report_id_t rid;
 
 
 extern int eard_must_exit;
+static int my_ip;
+extern int *ips;
+extern int self_id;
+extern int max_context_created;
+extern volatile int init_ips_ready;
 extern unsigned long eard_max_freq;
 extern policy_conf_t default_policy_context;
 extern cluster_conf_t my_cluster_conf;
 extern my_node_conf_t *my_node_conf;
 extern my_node_conf_t my_original_node_conf;
-static int my_ip;
-extern int *ips;
-extern int self_id;
-extern volatile int init_ips_ready;
 extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
-extern int max_context_created;
+extern topology_t node_desc;
 
 
 int eards_remote_socket, eards_client;
-struct sockaddr_in eards_remote_client;
-char *my_tmp;
-static ulong *f_list;
-static uint num_f;
 int last_command = -1;
 int last_dist = -1;
 int last_command_time = -1;
 int node_found = EAR_ERROR;
+struct sockaddr_in eards_remote_client;
+char *my_tmp;
+static ulong *f_list;
+static uint num_f;
 pthread_t act_conn_th;
 
 
@@ -950,7 +951,7 @@ void *eard_dynamic_configuration(void *tmp)
         error("Setting name for %s thread %s", TH_NAME, strerror(errno));
     }
     debug("Initializing energy in main dyn_conf thread");
-    if (init_power_monitoring(&my_eh_rapi) != EAR_SUCCESS) {
+    if (init_power_monitoring(&my_eh_rapi, &node_desc) != EAR_SUCCESS) {
         error("Error initializing energy in %s thread", TH_NAME);
     }
 

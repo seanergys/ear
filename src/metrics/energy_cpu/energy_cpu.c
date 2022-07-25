@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <stdlib.h>
 #include <common/plugins.h>
 #include <common/system/lock.h>
@@ -47,6 +47,7 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		return s;	
 	}
 	if (ops.init != NULL) {
+		ear_unlock(&lock);
 		return EAR_SUCCESS;
 	}
 
@@ -166,16 +167,20 @@ state_t energy_cpu_data_free(ctx_t *c, ullong **values)
 state_t energy_cpu_read(ctx_t *c, ullong *values)
 {
 	state_t s;
+	debug("entering energy_cpu_read");
 	if (state_fail(s = ear_trylock(&lock))) {
+		debug("cannot get pthread lock");
 		return s;	
 	}
+	debug("got energy_cpu_lock, reading");
 	s = ops.read(c, values);
+	ear_unlock(&lock);
+	debug("finished read");
 	int i;
 	for (i = 0; i < socket_count*NUM_PACKS; ++i) {
 		debug("cpu read %d returns %llu", i, values[i]);
 	}
 
-	ear_unlock(&lock);
 	return s;
 
 }
@@ -188,9 +193,9 @@ state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 
 	for (i = 0; i < socket_count; i++)
 	{
-		sprintf(buffer, "PKG%d: %llu ",  i, values[i*NUM_PACKS+0]);
+		sprintf(buffer, "DRAM%d: %llu ",  i, values[i*NUM_PACKS+0]);
 		strcat(str, buffer);
-		sprintf(buffer, "DRAM%d: %llu ", i, values[i*NUM_PACKS+1]);
+		sprintf(buffer, "PKG%d: %llu ", i, values[i*NUM_PACKS+1]);
 		strcat(str, buffer);
 		/*sprintf(buffer, "CPU%d: %llu ",  i, values[i*NUM_PACKS+2]);
 		strcat(str, buffer); */
