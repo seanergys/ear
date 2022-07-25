@@ -213,8 +213,10 @@ int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *
 /** Computes the total number of instructions of a job where its \p n_procs processses have their signatures
  * at \p sig. The result is stored at the address pointed by \p instructions. */
 state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs, ull *instructions);
-/** Computes the total number of FLOP instructions of a job where its \p n_procs processses have their
- * signatures at \p sig. The result is stored at the address pointed by \p flops. */
+/** Computes the total number of FLOP instructions of a job where its \p n_procs processses
+ * have their signatures at \p sig. The result is stored at the address pointed by \p flops.
+ * \param flops The address of this pointer must be the first position of an allocated space of
+ * size FLOPS_EVENTS * sizeof (unsigned long). Otherwise you will overwrite memory. */
 state_t compute_job_node_flops(const shsignature_t *sig, int n_procs, ull *flops);
 /** Computes the total number of cycles of a job where its \p n_procs processses have their
  * signatures at \p sig. The result is stored at the address pointed by \p t_cycles. */
@@ -228,15 +230,16 @@ state_t compute_job_node_L2_misses(const shsignature_t *sig, int n_procs, ull *t
 /** Computes the total number of L3 misses of a job where its \p n_procs processses have their
  * signatures at \p sig. The result is stored at the address pointed by \p t_L3. */
 state_t compute_job_node_L3_misses(const shsignature_t *sig, int n_procs, ull *t_L3);
+/** Compute the total GFlop/s rate of a job where its \p n_procs processes have their signatures
+ * at \p sig. The result is stored at the address pointed by \p t_gflops. */
+state_t compute_job_node_gflops(const shsignature_t *sig, int n_procs, double *t_gflops);
 
 uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi);
 
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
-void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
 
-double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig);
 
 void load_app_mgr_env();
 int my_shsig_id();

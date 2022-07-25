@@ -1035,23 +1035,27 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	performance_curr = curr->Gflops/curr->DC_power;
 
 // #if 0
-    tflops = compute_node_flops(lib_shared_region, sig_shared_region);
+    if (state_fail(compute_job_node_gflops(sig_shared_region,
+                    lib_shared_region->num_processes, &tflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
 
     verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
             performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
             performance_prev, prev->Gflops, prev->DC_power); 
 // #endif
 
-	esaving = ((performance_curr - performance_prev) / performance_prev) * 100;
-	psaving = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;
+	esaving  = ((performance_curr - performance_prev) / performance_prev) * 100;
+	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;
 	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
 
-	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f", masters_info.my_master_rank, esaving, psaving, tpenalty);
+	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f",
+            masters_info.my_master_rank, esaving, psaving, tpenalty);
 
 	sig_ext->saving   = esaving * sig_ext->elapsed;
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
 	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
-	
 }
 
 

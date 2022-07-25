@@ -1670,7 +1670,12 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
   for (i = 0; i < FLOPS_EVENTS; i++){
   	ns->FLOPS[i] = FLOPS[i];
   }    
-  ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+
+    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &ns->Gflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
+
 	ns->L1_misses  = L1;
 	ns->L2_misses  = L2;
 	ns->L3_misses  = L3;
@@ -1684,6 +1689,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	ns->avg_f      = 0;
 	ns->DRAM_power = 0;
 	ns->PCK_power  = 0;
+
   if (master){
 		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 			valid_period    = sig_shared_region[lp].sig.valid_time;
@@ -1713,31 +1719,37 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
     sig_ext_t *se = (sig_ext_t *) master->sig_ext;
     if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
-    if (state_fail(compute_job_node_instructions(sig_shared_region,
-                    lib_shared_region->num_processes, &inst))) {
-                verbose_master(2, "%sERROR%s Computing job's node instructions: %s",
+    /* If some job node computation fails, we use the CPI data we had from \p master */
+    if (state_fail(compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst))) {
+                verbose(3, "%sWARNING%s Error on computing job's node instructions: %s",
                         COL_RED, COL_CLR, state_msg);
             }
-
-    if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
-                verbose_master(2, "%sERROR%s Computing job's node cycles: %s",
+    else if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
+                verbose(3, "%sWARNING%s Error on computing job's node cycles: %s",
                         COL_RED, COL_CLR, state_msg);
+    } else {
+
+        dst->cycles       = cycles;
+        dst->instructions = inst;
+
+        assert(inst != 0);
+        dst->CPI = (double) cycles / (double) inst;
+
     }
 
-    dst->cycles       = cycles;
-    dst->instructions = inst;
-
-    assert(inst != 0);
-    dst->CPI = (double) cycles / (double) inst;
-    assert(dst->CPI != 0);
-
-    compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
-
-    for (uint i = 0; i < FLOPS_EVENTS; i++) {
-        dst->FLOPS[i] = FLOPS[i];
+    if (state_fail(compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS))) {
+        verbose(3, "%sWARNING%s Error on computing job's node FLOPs events: %s",
+                COL_RED, COL_CLR, state_msg);
+    } else {
+        for (uint i = 0; i < FLOPS_EVENTS; i++) {
+            dst->FLOPS[i] = FLOPS[i];
+        }
     }
 
-    dst->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &dst->Gflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
 
     compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
     compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);

@@ -411,7 +411,7 @@ void compute_per_node_avg_mpi_info(lib_shared_data_t *data,shsignature_t *sig,mp
 
 state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs, ull *instructions)
 {
-    if (sig == NULL || instructions) {
+    if (!sig || !instructions) {
         return_msg(EAR_ERROR, Generr.input_null);
     } else if (n_procs == 0) {
         return_msg(EAR_WARNING, "Number of processes is zero.");
@@ -431,7 +431,7 @@ state_t compute_job_node_flops(const shsignature_t *sig, int n_procs, ull *flops
     if (sig == NULL || flops == NULL) {
         return_msg(EAR_ERROR, Generr.input_null);
     } else if (n_procs == 0) {
-        return_msg(EAR_WARNING, "Number of processes is zero.");
+        return_msg(EAR_ERROR, "Number of processes is zero.");
     }
 
 	int i, f;
@@ -514,15 +514,20 @@ state_t compute_job_node_L2_misses(const shsignature_t *sig, int n_procs, ull *t
     return EAR_SUCCESS;
 }
 
-
-void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI)
+state_t compute_job_node_gflops(const shsignature_t *sig, int n_procs, double *t_gflops)
 {
-  int i;
-  *CPI = 0;
-  for (i=0;i<data->num_processes;i++){
-    *CPI += (double)sig[i].sig.CPI;
-  }
-	*CPI = *CPI/data->num_processes;
+    if (sig == NULL || t_gflops == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (!n_procs) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
+	*t_gflops = 0;
+	for (int i = 0; i < n_procs; i++) {
+        *t_gflops += sig[i].sig.Gflops;
+    }
+
+    return EAR_SUCCESS;
 }
 
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
@@ -618,16 +623,6 @@ void* mpi_info_get_perc_mpi(void* mpi_inf){
 }
 
 
-double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig)
-{
-	double total = 0;
-	int i;
-	for (i=0;i<data->num_processes;i++) {
-        total += sig[i].sig.Gflops;
-    }
-    verbose(3, "######## compute_node_flops %0.2lf", total);
-	return total;
-}
 
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx)
 {
@@ -768,7 +763,7 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
         sig_shared_region[p].sig.accum_dram_energy += sig_shared_region[p].sig.DRAM_power * time_s;
         sig_shared_region[p].sig.accum_pack_energy += sig_shared_region[p].sig.PCK_power * time_s;
 
-        verbose_master(3, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ",
+        verbose_master(4, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ",
                 p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power,
                 time_s, sig_shared_region[p].sig.accum_mem_access,
                 sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f,
