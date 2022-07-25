@@ -420,6 +420,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
+        //  NEW CLASSIFY
         is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
         is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
@@ -447,6 +448,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (!freq_per_core) {
+                #if 0
                 compute_total_node_metrics();
                 compute_vpi(&sig_vpi, sig);
                 compute_vpi(&node_sig_vpi, my_app);
@@ -458,8 +460,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 /*  With this two lines, we force the VPI of the signature to the most loaded in the node */
                 my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
                 memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
+                #endif
+                my_app = &lib_shared_region->job_signature;
             } else {
+                #if 0
                 compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
+                #endif
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
                 double ltpi, lgbs, lpower;
 
@@ -548,6 +554,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         }
 
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, new_freq, sizeof(ulong) * num_processes);
+        /* We copy in shared  memory to be used later in MPI init/end if needed */
+        for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) sig_shared_region[lp].new_freq = new_freq[lp];
+
 
         /*  We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
         verbose_master(3, "Updating cpufreq_signature");
@@ -922,7 +931,7 @@ state_t policy_max_tries(polctx_t *c, int *intents)
     return EAR_SUCCESS;
 }
 
-state_t policy_mpi_init(polctx_t *c, mpi_call call_type)
+state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
     if (c != NULL) {
         return mpi_call_init(c,call_type);
@@ -930,7 +939,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type)
     return EAR_ERROR;
 }
 
-state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
+state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
     if (c != NULL) {
         return mpi_call_end(c,call_type);

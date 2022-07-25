@@ -198,6 +198,7 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
     if (!low_mem_activity(s1, lib_shared_region->num_cpus) || !low_mem_activity(s2, lib_shared_region->num_cpus)){
         if (!equal_with_th(s1->CPI,s2->CPI,p)){
             uint s1_cbound, s2_cbound;
+            //  NEW CLASSIFY
             is_cpu_bound(s1, lib_shared_region->num_cpus, &s1_cbound);
             is_cpu_bound(s2, lib_shared_region->num_cpus, &s2_cbound);
             if (s1_cbound != s2_cbound){

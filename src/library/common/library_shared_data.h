@@ -102,6 +102,7 @@ typedef struct shsignature {
     uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
     int               affinity;
     uint              unbalanced;
+    float             perc_MPI;
     // ulong             policy_freq;
 	double            period;
 } shsignature_t;

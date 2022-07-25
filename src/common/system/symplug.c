@@ -42,7 +42,7 @@ static state_t load(char *path, void *calls[], const char *names[], uint n, int 
 {
 	void *handle = dlopen(path, flags);
 	if (handle == NULL) {
-		debug("dlopen fails %s", dlerror());
+		verbose(2,"dlopen fails %s", dlerror());
 		return_msg(EAR_ERROR, dlerror());
 	}
 	return symplug_join(handle, calls, names, n);

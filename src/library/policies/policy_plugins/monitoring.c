@@ -51,6 +51,7 @@ state_t policy_init(polctx_t *c)
         mpi_app_init(c);
     }
 
+
 #if USE_GPUS
     if (masters_info.my_master_rank >= 0 && gpu_initialized) {
         if (policy_gpu_init_ctx(c) != EAR_SUCCESS) {
@@ -87,6 +88,9 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 {
     ulong *new_freq = freqs->cpu_freq;
     *new_freq= DEF_FREQ(c->app->def_freq);
+    /* We copy in shared  memory to be used later in MPI init/end if needed */
+    for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) sig_shared_region[lp].new_freq = new_freq[0];
+
 
     cpu_ready = EAR_POLICY_READY; // TODO: This variable is not used.
 
@@ -146,7 +150,7 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
     return EAR_SUCCESS;
 }
 
-state_t policy_mpi_init(polctx_t *c, mpi_call call_type)
+state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
 	if (c != NULL) {
         return mpi_call_init(c, call_type);
@@ -154,7 +158,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type)
 	return EAR_ERROR;
 }
 
-state_t policy_mpi_end(polctx_t *c, mpi_call call_type)
+state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
 	if (c != NULL) {
         return mpi_call_end(c,call_type);

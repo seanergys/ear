@@ -56,6 +56,7 @@ typedef struct ear_classify{
   float mpi_th;
   float cpi_mem_bound;
   float gbs_mem_bound;
+  float mpi_bound;
 }ear_classify_t;
 
 state_t classify_init(topology_t *tp_in);
@@ -66,7 +67,7 @@ state_t is_cpu_bound(signature_t *sig,uint num_cpus, uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound);
 state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state);
 state_t is_io_bound(signature_t *sig,uint num_cpus, uint *iobound);
-state_t is_network_bound(float mpisec,uint *mpibound);
+state_t is_network_bound(signature_t *sig,uint *mpibound);
 uint    low_mem_activity(signature_t *sig,uint num_cpus);
 
 

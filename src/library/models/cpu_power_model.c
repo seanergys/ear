@@ -29,7 +29,9 @@
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <common/hardware/architecture.h>
+#include <library/common/externs.h>
 #include <library/models/cpu_power_model.h>
+#include <library/common/verbose_lib.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <daemon/shared_configuration.h>
 
@@ -81,7 +83,7 @@ state_t cpu_power_model_load(settings_conf_t *libconf,conf_install_t *data,archi
       obj_path=basic_path;
     }
   }
-  debug("Using cpu power model path  %s", obj_path);
+  verbose_master(2,"Using cpu power model path  %s", obj_path);
   st = symplug_open(obj_path,(void **) &cpu_power_models_syms_fun, cpu_power_models_syms_nam,  cpu_power_models_funcs_n);
 	if (st == EAR_SUCCESS) cpu_power_model_loaded = 1;
 	if (!already_loaded){

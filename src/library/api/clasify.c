@@ -40,6 +40,7 @@ static float GBS_BUSY_WAITING =    3.0;
 static float GFLOPS_BUSY_WAITING = 0.1;
 static float IO_TH               = 10.0;
 static float MPI_TH              = 10000;
+static float MPI_BOUND           = 50.0;
 static float MIN_MPI_TH          = 200;
 static float CPI_MEM_BOUND       = 1.0;
 static float GBS_MEM_BOUND       = 60.0;
@@ -55,6 +56,7 @@ void get_classify_limits(ear_classify_t *limits)
   limits->mpi_th              = MPI_TH;
   limits->cpi_mem_bound       = CPI_MEM_BOUND;
   limits->gbs_mem_bound       = GBS_MEM_BOUND;
+  limits->mpi_bound           = MPI_BOUND;
 }
 
 
@@ -111,10 +113,10 @@ state_t is_io_bound(signature_t *sig, uint  num_cpus, uint *iobound)
 
 }
 
-state_t is_network_bound(float mpisec,uint *mpibound)
+state_t is_network_bound(signature_t *sig,uint *mpibound)
 {
 	*mpibound = 0;
-	if (mpisec > MPI_TH){
+	if (sig->perc_MPI > MPI_BOUND){
 		*mpibound = 1;
 	}
 	return EAR_SUCCESS;
@@ -133,24 +135,25 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
 
 state_t is_cpu_busy_waiting(signature_t *sig,uint num_cpus, uint *busy)
 {
-	double flops, cpi;
+	double flops, cpi, gbs;
 	ullong inst, cycles;
 	uint c1, c2, c3;
 	*busy = USEFUL_COMP;
+        #if 0
 	//for (i=0;i<FLOPS_EVENTS;i++) flop+=sig->FLOPS[i];
 	flops = compute_node_flops(lib_shared_region,sig_shared_region);
 	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
 	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
 	//compute_total_node_CPI(lib_shared_region,sig_shared_region,&cpi); 
 	cpi = (double)cycles/(double)inst;
-	c1 = (cpi      < CPI_BUSY_WAITING);
-	c2 = (sig->GBS < GBS_BUSY_WAITING);
-	c3 = (flops    < GFLOPS_BUSY_WAITING);
-    if (c1 || c2 || c3){
-        verbose_master(INFO_CLASSIFY, "--- NO Busy waiting ---\n(prev/current/th) CPI (%.3lf/%.3lf/%.3lf) GBS(%.3lf/%.3lf) FLOPS (%.3lf/%.3lf)",
-                sig->CPI, cpi, CPI_BUSY_WAITING, sig->GBS, GBS_BUSY_WAITING, flops, GFLOPS_BUSY_WAITING);
-    }
-    if (c1 && c2 && c3) *busy = BUSY_WAITING;
+        #endif
+        cpi   = sig->CPI;
+        flops = sig->Gflops;
+        gbs   = sig->GBS;
+	c1 = (cpi       < CPI_BUSY_WAITING);
+	c2 = (gbs       < GBS_BUSY_WAITING);
+	c3 = (flops     < GFLOPS_BUSY_WAITING);
+        if (c1 && c2 && c3) *busy = BUSY_WAITING;
 	return EAR_SUCCESS;
 }
 

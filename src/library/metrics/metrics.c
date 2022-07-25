@@ -284,7 +284,7 @@ static void metrics_static_init(topology_t *tp)
 #if 0
     sa(mgt_cpufreq_load(tp, 1));
 #else
-    sa(mgt_cpufreq_load(tp, eard));
+    sa(mgt_cpufreq_load(tp, eard || (SINGLE_CONNECTION == 0)));
 #endif
     sa(mgt_imcfreq_load(tp, eard, NULL));
     sa(    cpufreq_load(tp, eard));
@@ -353,7 +353,7 @@ static void metrics_static_init(topology_t *tp)
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_master(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
-    if (VERB_ON(2) && master) {
+    if (VERB_ON(2) && (master)) {
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
         apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
         apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
@@ -861,7 +861,7 @@ static int metrics_partial_stop(uint where)
         if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
             verbose_master(2, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
         } else {
-            verbose_master(2, "%sPARTIAL STOP%s CPUFreq average is %.2f GHz", COL_BLU, COL_CLR, (float) cpufreq_avrg[LOO] / 1000000.0);
+            //verbose_master(2, "%sPARTIAL STOP%s CPUFreq average is %.2f GHz", COL_BLU, COL_CLR, (float) cpufreq_avrg[LOO] / 1000000.0);
         }
         // Simple verbose
         if (verb_level >= 3) {
@@ -1141,7 +1141,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                     signature_copy(&lib_shared_region->job_signature,metrics);
 
                     if (VERB_ON(2)) {
-                        signature_print_simple_fd(2, metrics);
+                        //signature_print_simple_fd(2, metrics);
                         verbose_master(2," ");
                     }
                 }
