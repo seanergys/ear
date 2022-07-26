@@ -36,6 +36,8 @@ export SLURM_HACK_POWER_MODEL=
 export SLURM_HACK_CPU_POWER_MODEL=
 # List of report plugins to be added to the default ones: myplug1.so:myplug2.so
 export SLURM_EAR_REPORT_ADD=
+# Forces to load a specific coefficient file
+export SLURM_HACK_EARL_COEFF_FILE=
 
 # Verbosity
 # Sets the EARL verbosity level: 1..4
@@ -60,7 +62,7 @@ export SLURM_EAR_GPU_DEF_FREQ=
 export SLURM_EAR_MAX_IMCFREQ=
 # Defines a minimum memory frequency (in KHz). Data Fabric in AMD.
 export SLURM_EAR_MIN_IMCFREQ=
-# Sets maximum and minimum memory frequency to same value (in KHz). Data Fabric in AMD.
+# Enables/disables eUFS 0 = disable 1 = enable
 export SLURM_EAR_SET_IMCFREQ=
 # Defines the maximum extra threshold used by energy policies when reducing the memory frequency: 0..1
 export SLURM_EAR_POLICY_IMC_TH=

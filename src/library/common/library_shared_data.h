@@ -17,8 +17,9 @@
 
 /**
  *    \file shared_configuration.h
- *    \brief This file defines the API to create/attach/dettach/release the shared memory area between the EARD and the EARLib. It is used to communicate the EARLib updates 
- *	remotelly requested
+ *    \brief This file defines the API to create/attach/dettach/release the shared memory area
+ *    between the EARD and the EARLib. It is used to communicate the EARLib updates remotelly
+ *    requested.
  */
 
 #ifndef _LIB_SHARED_DATA_H
@@ -90,7 +91,7 @@ typedef struct shsignature {
     uint              master;
     pid_t             pid;
     uint              ready;
-		uint 							exited;
+	uint              exited;
     uint              iterations;
     mpi_information_t mpi_info;
     mpi_calls_types_t mpi_types_info;
@@ -102,6 +103,7 @@ typedef struct shsignature {
     uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
     int               affinity;
     uint              unbalanced;
+    float             perc_MPI;
     // ulong             policy_freq;
 	double            period;
 } shsignature_t;
@@ -114,34 +116,35 @@ typedef struct node_mgr_sh_data {
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
 
-
 /*********** SETTINGS configuration *******************/
 
 /** Sets in path the filename for the shared memory area between MPI processes
- * @param path (output)
+ * @param[out] path Output path.
  */
 int get_lib_shared_data_path(char *tmp, uint ID, char *path);
 
-/** Creates the shared mmemory. It is used by node master process
-*/
+/** \brief Creates the shared mmemory.
+ * It is used by node master process.
+ */
 lib_shared_data_t * create_lib_shared_data_area(char * path);
 
-/** Connects with a previously created shared memory region. It is used by no node master processes
-*/
+/** \brief Connects with a previously created shared memory region.
+ * It is used by no node master processes.
+ */
 lib_shared_data_t * attach_lib_shared_data_area(char * path, int *fd);
 
-/** Disconnect from a previously connected shared memory region. It is used by no node master processes
-*/
+/** \brief Disconnect from a previously connected shared memory region.
+ * It is used by no node master processes.
+ */
 void dettach_lib_shared_data_area(int fd);
 
-/** Releases a shared memory area previously created. It is used by node master process
-*/
-void lib_shared_data_area_dispose(char * path);
+/** \brief Releases a shared memory area previously created.
+ * It is used by node master process.
+ */
+void lib_shared_data_area_dispose(char *path);
 
-/** Prints in the stderr values for the setting 
-*/
+/** Prints in the stderr values for the setting. */
 void print_lib_shared_data(lib_shared_data_t *setting);
-
 
 /************** SHARED SIGNATURES ***************/
 
@@ -150,27 +153,32 @@ void print_lib_shared_data(lib_shared_data_t *setting);
  */
 int get_shared_signatures_path(char *tmp,uint ID, char *path);
 
-/** Creates the shared mmemory. It is used by node master process
+/** Creates the shared mmemory.
+ * It is used by node master process.
  */
-shsignature_t * create_shared_signatures_area(char * path,int num_processes);
+shsignature_t * create_shared_signatures_area(char * path, int num_processes);
 
-/** Connects with a previously created shared memory region. It is used by no node master processes
+/** Connects with a previously created shared memory region.
+ * It is used by no node master processes.
  */
 shsignature_t * attach_shared_signatures_area(char * path,int num_processes, int *fd);
 
-/** Disconnect from a previously connected shared memory region. It is used by no node master processes
+/** Disconnect from a previously connected shared memory region.
+ * It is used by no node master processes.
  */
 void dettach_shared_signatures_area(int fd);
 
-/** Releases a shared memory area previously created. It is used by node master process
+/** Releases a shared memory area previously created.
+ * It is used by node master process.
  */
 void shared_signatures_area_dispose(char * path);
 
-void signature_ready(shsignature_t *sig,int cur_state);
-int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig);
+void signature_ready(shsignature_t *sig, int cur_state);
+
+int compute_total_signatures_ready(lib_shared_data_t *data, shsignature_t *sig);
 
 /** Marks all the sh signatures ready = 0 */
-void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig);
+void free_node_signatures(lib_shared_data_t *data, shsignature_t *sig);
 
 int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig);
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m);
@@ -202,20 +210,37 @@ void copy_my_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *
 void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
-void compute_total_node_instructions(lib_shared_data_t *data,shsignature_t *sig,ull *t_inst);
-void compute_total_node_flops(lib_shared_data_t *data,shsignature_t *sig,ull *flops);
-void compute_total_node_L1_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L1);
-void compute_total_node_L2_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L2);
-void compute_total_node_L3_misses(lib_shared_data_t *data,shsignature_t *sig,ull *t_L3);
-void compute_total_node_cycles(lib_shared_data_t *data,shsignature_t *sig,ull *t_cycles);
+
+/** Computes the total number of instructions of a job where its \p n_procs processses have their signatures
+ * at \p sig. The result is stored at the address pointed by \p instructions. */
+state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs, ull *instructions);
+/** Computes the total number of FLOP instructions of a job where its \p n_procs processses
+ * have their signatures at \p sig. The result is stored at the address pointed by \p flops.
+ * \param flops The address of this pointer must be the first position of an allocated space of
+ * size FLOPS_EVENTS * sizeof (unsigned long). Otherwise you will overwrite memory. */
+state_t compute_job_node_flops(const shsignature_t *sig, int n_procs, ull *flops);
+/** Computes the total number of cycles of a job where its \p n_procs processses have their
+ * signatures at \p sig. The result is stored at the address pointed by \p t_cycles. */
+state_t compute_job_node_cycles(const shsignature_t *sig, int n_procs, ull *t_cycles);
+/** Computes the total number of L1 misses of a job where its \p n_procs processses have their
+ * signatures at \p sig. The result is stored at the address pointed by \p t_L1. */
+state_t compute_job_node_L1_misses(const shsignature_t *sig, int n_procs, ull *t_L1);
+/** Computes the total number of L2 misses of a job where its \p n_procs processses have their
+ * signatures at \p sig. The result is stored at the address pointed by \p t_L2. */
+state_t compute_job_node_L2_misses(const shsignature_t *sig, int n_procs, ull *t_L2);
+/** Computes the total number of L3 misses of a job where its \p n_procs processses have their
+ * signatures at \p sig. The result is stored at the address pointed by \p t_L3. */
+state_t compute_job_node_L3_misses(const shsignature_t *sig, int n_procs, ull *t_L3);
+/** Compute the total GFlop/s rate of a job where its \p n_procs processes have their signatures
+ * at \p sig. The result is stored at the address pointed by \p t_gflops. */
+state_t compute_job_node_gflops(const shsignature_t *sig, int n_procs, double *t_gflops);
+
+uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi);
+
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
-void compute_total_node_CPI(lib_shared_data_t *data,shsignature_t *sig,double *CPI);
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
 
-uint compute_max_vpi(lib_shared_data_t *data,shsignature_t *sig,double *max_vpi);
-
-double compute_node_flops(lib_shared_data_t *data,shsignature_t *sig);
 
 void load_app_mgr_env();
 int my_shsig_id();
@@ -225,8 +250,8 @@ void* mpi_info_get_perc_mpi(void *mpi_inf);
 void* mpi_info_get_tcomp(void *mpi_inf);
 
 /* Node mgr earl support functions */
-void  init_earl_node_mgr_info();
-void  update_earl_node_mgr_info();
+void init_earl_node_mgr_info();
+void update_earl_node_mgr_info();
 #define PER_PROCESS 0
 #define PER_JOB     1
 void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);

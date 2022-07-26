@@ -286,7 +286,7 @@ static void metrics_static_init(topology_t *tp)
 #if 0
     sa(mgt_cpufreq_load(tp, 1));
 #else
-    sa(mgt_cpufreq_load(tp, eard));
+    sa(mgt_cpufreq_load(tp, eard || (SINGLE_CONNECTION == 0)));
 #endif
     sa(mgt_imcfreq_load(tp, eard, NULL));
     sa( energy_cpu_load(tp, eard));
@@ -361,7 +361,7 @@ static void metrics_static_init(topology_t *tp)
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_master(2, "IMCFREQ available list of frequencies:\n%s", buffer);
 
-    if (VERB_ON(2) && master) {
+    if (VERB_ON(2) && (master)) {
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
         apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
         apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
@@ -414,7 +414,7 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	ulong total = 0, total_cpus = 0;
 	ulong lavg, lcpus;
 	int p;
-    for (p = 0; p < lib_shared_region->num_processes ; p++)
+    for (p = 0; p < lib_shared_region->num_processes; p++)
     {
         m = sig_shared_region[p].cpu_mask;
 		pstate_freqtoavg(m, nodecpuf, met_cpufreq.devs_count, &lavg, &lcpus);
@@ -778,7 +778,7 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	if (master) {
 		/* Energy node */
-		if (eards_connected()){
+		if (eards_connected()) {
 			int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
 
 			/* If EARD is present, we wait until the power is computed */
@@ -882,7 +882,7 @@ static int metrics_partial_stop(uint where)
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(2, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
-			verbose_master(2, "%sPARTIAL STOP%s CPUFreq average is %.2f GHz", COL_BLU, COL_CLR, (float) cpufreq_avrg[LOO] / 1000000.0);
+			//verbose_master(2, "%sPARTIAL STOP%s CPUFreq average is %.2f GHz", COL_BLU, COL_CLR, (float) cpufreq_avrg[LOO] / 1000000.0);
 		}
 		// Simple verbose
 		if (verb_level >= 3) {
@@ -973,8 +973,8 @@ void copy_node_data(signature_t *dest,signature_t *src)
 #endif
 }
 
-/******************* This function computes the signature : per loop (global = LOO) or application ( global = APP)  **************/
-/******************* The node master has computed the per-node metrics and the rest of processes uses this information ***********/
+/* This function computes the signature: per loop (global = LOO) or application ( global = APP)
+ * The node master has computed the per-node metrics and the rest of processes uses this information. */
 static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *metrics,
 		uint iterations, ulong procs)
 {
@@ -1410,22 +1410,21 @@ int metrics_init(topology_t *topo)
 
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
-	sig_ext_t *se;
-	signature_t nodeapp;
-	uint num_ready;
-	uint exited;
-	float wait_time = 0;
+    sig_ext_t *se;
+    signature_t job_node_sig;
+    uint num_ready;
+    uint exited;
+    float wait_time = 0;
 
-	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
-	verbose_master(INFO_METRICS + 1, "End local signature");
+    verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
 
-	if (!eards_connected() && master){ 
-		if (!EARL_LIGHT){ 
-			return;
-		}
-	}
+    if (!eards_connected() && master){ 
+        if (!EARL_LIGHT){ 
+            return;
+        }
+    }
 
-	verbose_master(2, "Partial stop");
+	verbose_master(INFO_METRICS, "Calling last partial stop...");
 
 	/* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
 	while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
@@ -1457,8 +1456,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		exited = num_processes_exited(lib_shared_region, sig_shared_region);
 	}
 
-	// Only master does something in this funcion
-	compute_per_process_and_job_metrics(&nodeapp);
+    // Only master does something in this funcion
+	compute_per_process_and_job_metrics(&job_node_sig);
 
 	/* At this point we mark signatures are not ready to be computed again */
 	if (master)  {
@@ -1488,14 +1487,14 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 		se = (sig_ext_t *) metrics->sig_ext;
 
-		if (!exclusive) {
-			metrics_app_node_signature(metrics, &nodeapp);
-		} else {
-			metrics_node_signature(&lib_shared_region->job_signature, &nodeapp);
-		}
+        if (!exclusive) {
+            metrics_app_node_signature(metrics, &job_node_sig);
+        } else {
+            metrics_job_signature(&lib_shared_region->job_signature, &job_node_sig);
+        }
 
-		signature_copy(metrics, &nodeapp);
-		metrics->sig_ext = se;
+        signature_copy(metrics, &job_node_sig);
+        metrics->sig_ext = se;
 	}
 
 	metrics_static_dispose();
@@ -1552,69 +1551,73 @@ static state_t metrics_compute_total_io(io_data_t *total)
 
 int time_ready_signature(ulong min_time_us)
 {
-	long long f_time;
-	f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-	if (f_time<min_time_us) return 0;
-	else return 1;
+    llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+    if (f_time < min_time_us) {
+        return 0;
+    }
+    return 1;
 }
 
-/****************************************************************************************************************************************************************/
-/******************* This function checks if data is ready to be shared **************************************/
-/****************************************************************************************************************************************************************/
+/**********************************************************************************************
+ ******************* This function checks if data is ready to be shared ***********************
+ **********************************************************************************************/
 
-
-int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs)
+state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
+        ulong min_time_us, ulong procs)
 {
-	long long aux_time;
-	report_id_t report_id;
-	uint num_ready;
 
-	debug("metrics_compute_signature_finish %u", my_node_id);
+    debug("metrics_compute_signature_finish %u", my_node_id);
 
-	if (!sig_shared_region[my_node_id].ready){
+    if (!sig_shared_region[my_node_id].ready) {
 
-		debug("Signature for proc. %d is not ready", my_node_id);
+        debug("Signature for proc. %d is not ready", my_node_id);
 
-		// Time requirements
-		aux_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+        // Time requirements
+        llong elap_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
-		//
-		if ((aux_time < min_time_us) && !equal_with_th((double)aux_time, (double)min_time_us,0.1)) {
-			metrics->time=0;
-			debug("EAR_NOT_READY because of time %llu\n",aux_time);
-			return EAR_NOT_READY;
-		}
+        uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
+        if (elap_time < min_time_us && !time_eq) {
+            metrics->time = 0;
+            debug("EAR_NOT_READY because of time %lld\n", elap_time);
+            return EAR_NOT_READY;
+        }
 
-		//Master: Returns not ready when power is not ready
-		//Not master: when master signature not ready
-		if (metrics_partial_stop(SIG_END)==EAR_NOT_READY) return EAR_NOT_READY;
+        // Master: Returns not ready when power is not ready
+        // Not master: when master signature not ready
+        if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
+            return EAR_NOT_READY;
+        }
 
-		//Marks the signature as ready
-		metrics_compute_signature_data(LOO, metrics, iterations, procs);
+        // Marks the signature as ready
+        metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
-		// Call report mpitrace
-		report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
-		if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
-			verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
-		}
+        // Call report mpitrace
+        report_id_t report_id;
+        report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
+        if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
+            verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+        }
 
-		//
-		metrics_partial_start();
-	} else {
-		debug("Signature for proc. %d is ready", my_node_id);
-	}
+        metrics_partial_start();
+    }
+#if SHOW_DEBUGS
+    else {
+        debug("Signature for proc. %d is ready", my_node_id);
+    }
+#endif
 
-	if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
-		if ((master) && (sig_shared_region[0].ready)){
-			debug("Setting Master ready");
-			lib_shared_region->master_ready = 1;
-		}
-		return EAR_NOT_READY;
-	} else if (master) {
-		lib_shared_region->master_ready = 0;
-	}
+    uint num_ready;
+    if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
+        if ((master) && (sig_shared_region[0].ready)) {
+            debug("Setting Master ready");
+            lib_shared_region->master_ready = 1;
+        }
+        return EAR_NOT_READY;
+    } else if (master) {
+        lib_shared_region->master_ready = 0;
+    }
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 long long metrics_usecs_diff(long long end, long long init)
@@ -1647,27 +1650,26 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 	verbose_master(2, " metrics_app_node_signature");
 
-	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);
-	compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
-	compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
+  compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
+  compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
 
-	ns->CPI = (double)cycles/(double)inst;
-#if 0
-	verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-		if (ns->CPI > 5.0){
-			for (i=0; i< lib_shared_region->num_processes;i ++){
-				verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
-			} 
-			verbose_master(2," ");
-		}
-#endif
-	for (i = 0; i < FLOPS_EVENTS; i++){
-		ns->FLOPS[i] = FLOPS[i];
-	}    
-	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
+  ns->CPI = (double) cycles / (double) inst;
+
+  compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
+
+  compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+  compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+  compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+
+  for (i = 0; i < FLOPS_EVENTS; i++){
+  	ns->FLOPS[i] = FLOPS[i];
+  }    
+
+    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &ns->Gflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
+
 	ns->L1_misses  = L1;
 	ns->L2_misses  = L2;
 	ns->L3_misses  = L3;
@@ -1699,50 +1701,57 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 }
 
-void metrics_node_signature(signature_t *master,signature_t *ns)
+void metrics_job_signature(const signature_t *master, signature_t *dst)
 {
-	ullong inst;
-	ullong cycles;
-	ullong FLOPS[FLOPS_EVENTS];
-	sig_ext_t *se;
-	int i;
-	ullong L1, L2, L3;
+    ullong inst;
+    ullong cycles;
+    ullong FLOPS[FLOPS_EVENTS];
+    ullong L1, L2, L3;
 
+    signature_copy(dst, master);
 
-	se = (sig_ext_t *)master->sig_ext;	
-	signature_copy(ns,master);
-	if ((se != NULL) && (ns->sig_ext != NULL))  memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+    sig_ext_t *se = (sig_ext_t *) master->sig_ext;
+    if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
-	compute_total_node_instructions(lib_shared_region, sig_shared_region, &inst);
-	compute_total_node_flops(lib_shared_region, sig_shared_region, FLOPS);
-	compute_total_node_cycles(lib_shared_region, sig_shared_region, &cycles);	
-	compute_total_node_L3_misses(lib_shared_region, sig_shared_region, &L3);
-	compute_total_node_L2_misses(lib_shared_region, sig_shared_region, &L2);
-	compute_total_node_L1_misses(lib_shared_region, sig_shared_region, &L1);
+    /* If some job node computation fails, we use the CPI data we had from \p master */
+    if (state_fail(compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst))) {
+                verbose(3, "%sWARNING%s Error on computing job's node instructions: %s",
+                        COL_RED, COL_CLR, state_msg);
+            }
+    else if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
+                verbose(3, "%sWARNING%s Error on computing job's node cycles: %s",
+                        COL_RED, COL_CLR, state_msg);
+    } else {
 
-	ns->CPI = (double)cycles/(double)inst;
-        #ifdef SHOW_DEBUGS
-	/* verbose_master(2,"CPI %lf CPI2 %lf",ns->CPI, CPI/(double)lib_shared_region->num_processes); */
-	if (ns->CPI > 2.0){
-		for (i=0; i< lib_shared_region->num_processes;i ++){
-			verbosen_master(2," CPI[%d]=%lf",i,sig_shared_region[i].sig.CPI);
-		}	
-		verbose_master(2," ");
-	}
-        #endif
-	ns->Gflops = compute_node_flops(lib_shared_region, sig_shared_region);
-	ns->L1_misses  = L1;
-	ns->L2_misses  = L2;
-	ns->L3_misses  = L3;
-	ns->cycles     = cycles;
-	ns->instructions = inst;
-	for (uint i = 0; i < FLOPS_EVENTS; i++){
-		ns->FLOPS[i] = FLOPS[i];
-	}    
+        dst->cycles       = cycles;
+        dst->instructions = inst;
 
-	verbose_master(2,"Node metrics: CPI %.2lf Gflops %.2lf", ns->CPI, ns->Gflops);
+        assert(inst != 0);
+        dst->CPI = (double) cycles / (double) inst;
 
+    }
 
+    if (state_fail(compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS))) {
+        verbose(3, "%sWARNING%s Error on computing job's node FLOPs events: %s",
+                COL_RED, COL_CLR, state_msg);
+    } else {
+        for (uint i = 0; i < FLOPS_EVENTS; i++) {
+            dst->FLOPS[i] = FLOPS[i];
+        }
+    }
+
+    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &dst->Gflops))) {
+        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+                COL_RED, COL_CLR, state_msg);
+    }
+
+    compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+    compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+    compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+
+    dst->L1_misses = L1;
+    dst->L2_misses = L2;
+    dst->L3_misses = L3;
 }
 
 extern uint last_earl_phase_classification;
@@ -1816,14 +1825,14 @@ state_t metrics_new_iteration(signature_t *sig)
 	return EAR_SUCCESS;
 }
 
-/* This function computes local metrics per process, computes per job and computes the accumulated */
+/* This function computes local metrics per process,
+ * computes per job and computes the accumulated. */
 void compute_per_process_and_job_metrics(signature_t *dest)
 {
 	if (master) {
 		update_earl_node_mgr_info();
-		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info)	;
+		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info);
 		accum_estimations(lib_shared_region, sig_shared_region);
-		signature_copy(dest, &lib_shared_region->job_signature);	
+		signature_copy(dest, &lib_shared_region->job_signature);
 	}
 }
-

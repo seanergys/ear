@@ -23,8 +23,7 @@
 #include <library/common/library_shared_data.h>
 #include <library/api/clasify.h>
 
-loop_t loop;
-application_t loop_signature;
+// application_t loop_signature;
 application_t application;
 settings_conf_t *system_conf=NULL;
 resched_t *resched_conf=NULL;
@@ -34,7 +33,7 @@ char node_name[PATH_MAX];
 
 char loop_summary_path[PATH_MAX];
 char app_summary_path[PATH_MAX];
-char ear_app_name[PATH_MAX]; //TODO: use application.app_id
+char ear_app_name[PATH_MAX]; // TODO: use application.app_id
 
 // Common variables
 ulong ear_frequency; 

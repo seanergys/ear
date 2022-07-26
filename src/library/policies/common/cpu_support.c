@@ -91,7 +91,7 @@ state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq
     best_solution	= energy_ref;
     time_max 			= time_ref + (time_ref * penalty);	
     from 					= curr_pstate;	
-    compute_vpi(&vpi,my_app);
+    compute_sig_vpi(&vpi,my_app);
     verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf. Pstates %lu...%lu",time_ref,power_ref,
             energy_ref,best_freq,vpi,minp,maxp);
     for (i = minp; i < maxp;i++)
@@ -124,7 +124,7 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     double time_current, power_proj, time_proj, freq_gain, perf_gain, vpi;
     ulong freq_ref;
 
-    compute_vpi(&vpi,my_app);
+    compute_sig_vpi(&vpi,my_app);
     // error al compilar con verbose_master :( error: identifier "masters_info" is undefined
     verbose_master(3, "CPUfreq algorithm for min_time. timeref %lf; pstate %lu; F %lu; deffreq %lu; VPI %lf",
             time_ref, curr_pstate, best_freq, def_freq, vpi);
@@ -198,6 +198,7 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
     if (!low_mem_activity(s1, lib_shared_region->num_cpus) || !low_mem_activity(s2, lib_shared_region->num_cpus)){
         if (!equal_with_th(s1->CPI,s2->CPI,p)){
             uint s1_cbound, s2_cbound;
+            //  NEW CLASSIFY
             is_cpu_bound(s1, lib_shared_region->num_cpus, &s1_cbound);
             is_cpu_bound(s2, lib_shared_region->num_cpus, &s2_cbound);
             if (s1_cbound != s2_cbound){
@@ -302,6 +303,16 @@ void node_freqs_alloc(node_freqs_t *node_freq)
 #if USE_GPUS
     node_freq->gpu_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
     node_freq->gpu_mem_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
+#endif
+}
+
+void node_freqs_free(node_freqs_t *node_freq)
+{
+    free(node_freq->cpu_freq);
+    free(node_freq->imc_freq);
+#if USE_GPUS
+    free(node_freq->gpu_freq);
+    free(node_freq->gpu_mem_freq);
 #endif
 }
 

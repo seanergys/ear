@@ -71,14 +71,21 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
 		endsec--;
 		endnsec += 1E9;
 	}
+        #if 0
 	endnsec  /= time_unit;
 	initnsec /= time_unit;
 
 	stamp = ((endsec - initsec) * (1E9 / time_unit));
 	if (endnsec < initnsec) {
         return stamp;
+        #endif
+        stamp = ((endsec - initsec)) * 1E9 + (endnsec - initnsec);
+        return stamp / time_unit;
+        #if 0
     }
     return stamp + (endnsec - initnsec);
+    #endif
+
 }
 
 ullong timestamp_diffnow(timestamp *ts1, ullong time_unit)

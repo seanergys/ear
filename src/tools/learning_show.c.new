@@ -131,7 +131,7 @@ int main(int argc,char *argv[])
       #endif
 
 
-			compute_vpi(&VPI , &apps[i].signature);
+			compute_sig_vpi(&VPI , &apps[i].signature);
 			if (opt_c) {
                         #if USE_GPUS
 				verbose(0, "%s;%lu;%s;%lu;%lu;%0.2lf;%0.2lf;%0.2lf;%0.2lf;%0.2lf;%.2lf;%.2lf",
