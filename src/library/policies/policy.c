@@ -207,9 +207,9 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 static uint must_set_policy_cpufreq(pc_app_info_t *pcdata, settings_conf_t *settings_conf);
 /** Calls the different methods for applying the frequency selection for the domains compatible with the
  * current loaded policy. It only works if master process (node-level) called the function. */
-state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
+static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id);
-state_t policy_master_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
+static state_t policy_master_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id);
 /** Returns the mean of the frequency list \p freq_list with size \p n. */
 static ulong compute_avg_freq(ulong *freq_list, int n);
@@ -344,7 +344,6 @@ state_t policy_init()
 {
     polctx_t *c = &my_pol_ctx;
 
-    int i;
 
     char *cdyn_unc             = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_SET_IMCFREQ)       : NULL; // eUFS
     char *cimc_extra_th        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IMC_TH)            : NULL; // eUFS threshold
@@ -600,7 +599,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
     // Policy file selection
 #if !USER_TEST
-    if ((obj_path == NULL) && (ins_path == NULL) || (app_settings->user_type != AUTHORIZED)) {
+    if (((obj_path == NULL) && (ins_path == NULL)) || (app_settings->user_type != AUTHORIZED)) {
 #else
     if (obj_path == NULL && ins_path == NULL) {
 #endif
@@ -782,13 +781,11 @@ static int is_try_again()
 state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 {
     signature_t node_sig;
-    sig_ext_t *se;
 
     uint busy, iobound, mpibound, earl_phase_classification;
 
     uint jobs_in_node;
 
-    float mpi_in_period;
 
     polctx_t *c = &my_pol_ctx;
 
@@ -796,7 +793,6 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     state_t st = EAR_ERROR;
 
-    se = (sig_ext_t *) my_sig->sig_ext;
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
