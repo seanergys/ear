@@ -56,6 +56,10 @@ mets_OBJS = \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
+	$(SRCDIR)/metrics/energy_cpu/energy_cpu.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/msr.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/eard.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
     $(SRCDIR)/metrics/io/io.o
 
 ######## RULES
@@ -94,6 +98,7 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'io'           $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
+	@ $(MAKE) -C 'energy_cpu'   $* || exit
 
 ######## DEPENDENCIES
 

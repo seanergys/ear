@@ -32,6 +32,7 @@
 #define API_PERF         8
 #define API_INTEL106     9
 #define API_LIKWID      10
+#define API_RAPL 		11
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0

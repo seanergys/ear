@@ -40,6 +40,7 @@
 #include <metrics/energy/cpu.h>
 #include <metrics/energy/energy_node.h>
 #include <metrics/bandwidth/bandwidth.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 #include <report/report.h>
@@ -904,7 +905,8 @@ int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
       write(ack_fd, &ack, sizeof(ack));
       break;
     case READ_RAPL:
-      if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
+      //if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
+      if (energy_cpu_read(no_ctx, values_rapl) < 0) error("Error reading rapl msr counters");
       write(ack_fd, values_rapl, sizeof(unsigned long long) * RAPL_POWER_EVS*num_packs);
       break;
     case DATA_SIZE_RAPL:
@@ -1088,6 +1090,7 @@ void service_select(int req_fd, int ack_fd)
 state_t eard_local_api()
 {
 	ear_njob_t *eard_jobs_list;
+	uint rapl_count;
 	int numfds_ready;
 	int ack_fd;
 	state_t s;
@@ -1114,7 +1117,9 @@ state_t eard_local_api()
 	verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
 	// RAPL metrics
-    values_rapl=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
+	state_assert(s, energy_cpu_load(&node_desc, 0), _exit(0)); //no context and no eards
+	state_assert(s, energy_cpu_init(no_ctx),        _exit(0));
+	state_assert(s, energy_cpu_data_alloc(no_ctx, &values_rapl, &rapl_count), _exit(0));
     if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
 
     verbose(VEARD_LAPI,"RAPL data allocated in node_serices");

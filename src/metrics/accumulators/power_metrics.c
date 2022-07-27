@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -25,10 +26,10 @@
 #include <sys/types.h>
 #include <common/config.h>
 #include <common/system/monitor.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/accumulators/power_metrics.h>
 
 uint8_t 		power_mon_connected = 0;
@@ -41,7 +42,7 @@ static uint8_t 	pm_already_connected = 0;
 static uint8_t 	pm_connected_status = 0;
 static char 	my_buffer[1024];
 static int 		num_packs = 0;
-static int 		*pm_fds_rapl;
+static int      num_counters = 0;
 
 // GPU
 #if USE_GPUS
@@ -64,28 +65,12 @@ static uint		 gpu_num;
 /** Computes the difference betwen two RAPL energy measurements */
 static rapl_data_t diff_RAPL_energy(rapl_data_t end,rapl_data_t init);
 
-static int pm_get_data_size_rapl()
-{
-	if (rootp) {
-		// Check that 
-		if (num_packs == 0) {
-			num_packs = detect_packages(NULL);
-			if (num_packs == 0) {
-				error("Error detecting num packages");
-				return EAR_ERROR;
-			}
-		}
-		return RAPL_POWER_EVS * sizeof(rapl_data_t) * num_packs;
-	} else {
-		return EAR_ERROR;
-	}
-}
-
 static void pm_disconnect(ehandler_t *my_eh)
 {
 	if (rootp)
 	{
 		energy_dispose(my_eh);
+		energy_cpu_dispose(NULL);
 
 		#if USE_GPUS
 		if (gpu_num > 0) {
@@ -95,11 +80,13 @@ static void pm_disconnect(ehandler_t *my_eh)
 	}
 }
 
-static int pm_read_rapl(ehandler_t *my_eh, rapl_data_t *rm)
+static int pm_read_rapl(rapl_data_t *rm)
 {
 	if (rootp) {
-		return read_rapl_msr(my_eh->fds_rapl, (unsigned long long *) rm);
+		debug("rootp reading rapl");
+		return energy_cpu_read(NULL, (unsigned long long *)rm);
 	} else {
+		debug("not rootp");
 		return EAR_ERROR;
 	}
 }
@@ -114,9 +101,10 @@ static int pm_node_dc_energy(ehandler_t *my_eh, node_data_t *dc)
 	}
 }
 
-static int pm_connect(ehandler_t *my_eh)
+static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 {
 	int status_enode,i;
+	state_t s;
 	
 	if ((pm_already_connected) && (pm_connected_status==EAR_SUCCESS))
 	{
@@ -124,10 +112,7 @@ static int pm_connect(ehandler_t *my_eh)
 			pm_connected_status=status_enode;
 			return status_enode;
 		}
-		/* We reuse RAPL fdds */
-		for (i=0;i<num_packs;i++) {
-			my_eh->fds_rapl[i]=pm_fds_rapl[i];
-		}
+		/* Nothing for energy_cpu */
 		/* Nothing for GPUS */
 		return EAR_SUCCESS;
 	}
@@ -150,46 +135,37 @@ static int pm_connect(ehandler_t *my_eh)
 	energy_units(my_eh, &node_units);
 	energy_datasize(my_eh, &node_size);
 
-	num_packs = detect_packages(NULL);
-	if (num_packs == 0) {
-		error("Packages cannot be detected");
-		pm_connected_status = EAR_ERROR;
-		return EAR_ERROR;
-	}
-	/* We will use this vector for fd reutilization */
-	pm_fds_rapl=calloc(num_packs,sizeof(int));
-	if (pm_fds_rapl==NULL){
-		error("Allocating memory for RAPL fds in power_metrics");
-		return EAR_ERROR;
-	}
-
-	// Initializing CPU/DRAM energy
-	unsigned long rapl_size;
-
-	debug("%d packages detected in power metrics ", num_packs);
-	pm_connected_status = init_rapl_msr(my_eh->fds_rapl);
 
 	if (pm_connected_status != EAR_SUCCESS) {
 		error("Error initializing RAPl in pm_connect");
 	}
 
-	for (i=0;i<num_packs;i++) pm_fds_rapl[i]=my_eh->fds_rapl[i];
-	// Allocating CPU/DRAM energy data
-	rapl_size = pm_get_data_size_rapl();
-	if (rapl_size == 0) {
-		pm_disconnect(my_eh);
-		return EAR_ERROR;
-	}
-	RAPL_metrics = (rapl_data_t *) malloc(rapl_size);
-	if (RAPL_metrics == NULL) {
-		pm_disconnect(my_eh);
-		return EAR_ERROR;
-	}
-	memset((char *) RAPL_metrics, 0, rapl_size);
 
+	// Initializing CPU/DRAM energy
+	if (xtate_fail(s, energy_cpu_load(tp, 0))) {
+		error("energy_cpu_load returned %d (%s)", s, state_msg);
+		return s;
+	}
+	
+	if (xtate_fail(s, energy_cpu_init(NULL))) {
+		error("energy_cpu_init returned %d (%s)", s, state_msg);
+		return s;
+	}
+
+	if (xtate_fail(s, energy_cpu_count_devices(NULL, &num_packs))) {
+		error("energy_cpu_count_devices returned %d (%s)", s, state_msg);
+		return s;
+	}
+
+	// Allocating CPU/DRAM energy data
+	if (xtate_fail(s, energy_cpu_data_alloc(NULL, (ullong **) &RAPL_metrics, &num_counters))) {
+		error("energy_cpu_data_alloc returned %d (%s)", s, state_msg);
+		return s;
+	}
+
+	debug("%d packages detected in power metrics ", num_packs);
 	#if USE_GPUS
 	int gpu_error = 0;
-	state_t s;
 
 	if (xtate_fail(s, gpu_load(empty, none, &gpu_sel_model))) {
 		error("gpu_load returned %d (%s)", s, state_msg);
@@ -219,11 +195,11 @@ static int pm_connect(ehandler_t *my_eh)
  *
  */
 
-int init_power_ponitoring(ehandler_t *my_eh)
+int init_power_monitoring(ehandler_t *my_eh, topology_t *tp)
 {
 	state_t s;
 	debug("init_power_ponitoring");
-	if (state_fail(s = pm_connect(my_eh))) {
+	if (state_fail(s = pm_connect(my_eh, tp))) {
 		return s;
 	}
 	power_mon_connected = 1;
@@ -258,7 +234,7 @@ int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
 	pm_node_dc_energy(my_eh, acc_energy->DC_node_energy);
 
 	// CPU/DRAM
-	pm_read_rapl(my_eh, RAPL_metrics);
+	pm_read_rapl(RAPL_metrics);
 
 	memcpy(acc_energy->DRAM_energy,  RAPL_metrics,            num_packs * sizeof(rapl_data_t));
 	memcpy(acc_energy->CPU_energy , &RAPL_metrics[num_packs], num_packs * sizeof(rapl_data_t));
@@ -266,14 +242,11 @@ int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
 	// Debugging data
 	#ifdef SHOW_DEBUGS
 	int p;
+	char buffer[256];
 	energy_to_str(my_eh,buffer,acc_energy->DC_node_energy);
 	debug("Node %s",buffer);
-	for (p = 0; p < num_packs; p++) {
-		debug("DRAM pack %d = %llu", p, RAPL_metrics[p]);
-	}
-	for (p = 0; p < num_packs; p++) {
-		debug("CPU pack %d = %llu", p, RAPL_metrics[num_packs + p]);
-	}
+	energy_cpu_to_str(NULL, buffer, RAPL_metrics);
+	debug("%s ", buffer);
 	#endif
 
 	#if USE_GPUS
@@ -317,6 +290,7 @@ void compute_power(energy_data_t *e_begin, energy_data_t *e_end, power_data_t *m
 	my_power->avg_ac = 0;
 	my_power->avg_dc = (double) (curr_node_energy) / (t_diff * node_units);
 
+	//for (p = 0; p < num_packs; p++) my_power->avg_dram[p] = (double) (dram[p]) / (t_diff * 1000000000);
 	for (p = 0; p < num_packs; p++) my_power->avg_dram[p] = (double) (dram[p]) / (t_diff * 1000000000);
 	for (p = 0; p < num_packs; p++) my_power->avg_cpu[p]  = (double) (pack[p]) / (t_diff * 1000000000);
 
