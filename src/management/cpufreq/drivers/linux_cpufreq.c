@@ -81,7 +81,7 @@ static state_t write_word(int fd, char *word, int s, int line_break)
 	}
         i = 0;
         do{
-          r = pwrite(fd, (void*) &word[i], s);
+          r = pwrite(fd, (void*) &word[i], s, i);
           if (r > 0){ 
             i += r;
             s -= r;

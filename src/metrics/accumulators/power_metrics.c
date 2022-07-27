@@ -41,8 +41,8 @@ static uint8_t 	rootp = 0;
 static uint8_t 	pm_already_connected = 0;
 static uint8_t 	pm_connected_status = 0;
 static char 	my_buffer[1024];
-static int 		num_packs = 0;
-static int      num_counters = 0;
+static uint 	num_packs = 0;
+static uint      num_counters = 0;
 
 // GPU
 #if USE_GPUS
@@ -245,7 +245,7 @@ int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
 	char buffer[256];
 	energy_to_str(my_eh,buffer,acc_energy->DC_node_energy);
 	debug("Node %s",buffer);
-	energy_cpu_to_str(NULL, buffer, RAPL_metrics);
+	energy_cpu_to_str(NULL, buffer, (ullong*)RAPL_metrics);
 	debug("%s ", buffer);
 	#endif
 
