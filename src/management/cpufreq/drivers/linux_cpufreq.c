@@ -78,13 +78,22 @@ static state_t write_word(int fd, char *word, int s, int line_break)
 	if (line_break) {
 		s += 1;
 		word[s-1] = '\n';
-		word[s-0] = '\0';
 	}
+        i = 0;
+        do{
+          r = pwrite(fd, (void*) &word[i], s);
+          if (r > 0){ 
+            i += r;
+            s -= r;
+          } 
+        }while((s > 0) && (r > 0));
+        #if 0
 	for (i = 0, r = 1, p = s; i < s && r > 0;) {
 		r = pwrite(fd, (void*) &word[i], p, i);
 		i = i + r;
 		p = s - i;
 	}
+        #endif
 	if (r == -1) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
@@ -95,13 +104,13 @@ static state_t write_word(int fd, char *word, int s, int line_break)
 static state_t write_multi(int *fds, char *word, int line_break)
 {
 	state_t s = EAR_SUCCESS;
-	int len = strlen(word)+1;
+	int len = strlen(word);
 	int cpu;
 	debug("Multiple writing a word '%s'", word);
 	// Adding a line break
 	if (line_break) {
-		word[len-1] = '\n';
-		word[len-0] = '\0';
+		word[len] = '\n';
+                len++; 
 	}
 	for (cpu = 0; cpu < tp.cpu_count && state_ok(s); ++cpu) {
 		s = write_word(fds[cpu], word, len, 0);

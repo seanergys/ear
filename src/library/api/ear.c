@@ -1131,10 +1131,10 @@ void ear_init()
                     char *col;
                     if (!my_id) col = COL_BLU; 
                     else        col = COL_GRE;
-                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
+                    verbose(3, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
                             col,my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
                     if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
-                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
+                        verbose(3, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         if (!my_id){
                             notify_eard_connection(1);
                             mark_as_eard_connected(my_job_id, my_step_id, getpid());

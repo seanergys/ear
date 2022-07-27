@@ -903,21 +903,27 @@ static uint resume_cpufreq = 0;
 extern p2i last_buf, last_dest;
 state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *per_process)
 {
+    state_t st;
     #if !SINGLE_CONNECTION
     resume_cpufreq = 0;
     pstate_t *sel_pstate, *pstate_list;
+    uint currindex;
     if (c != NULL){ 
+      st = mpi_call_init(c,call_type);
       #if MPI_OPTIMIZED
       if (ear_mpi_opt){
       /* Check conditions */
-      if (sig_shared_region[my_node_id].unbalanced){  
+      if (!sig_shared_region[my_node_id].unbalanced){  
         state_t st;
         st = must_be_optimized(call_type, last_buf, last_dest);
         //st = must_be_optimized(call_type, (p2i)get_stack(2), 0);
         if (st == EAR_SUCCESS){
           /* We should select a low freq. The list of freqs is in metrics_get(MGT_CPUFREQ)->avail_list  */
           pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
-          sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count/2];
+          mgt_cpufreq_get_index(no_ctx,sig_shared_region[my_node_id].new_freq, &currindex , 1);
+
+          //sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count/2];
+          sel_pstate = &pstate_list[ear_min(currindex+2, metrics_get(MGT_CPUFREQ)->avail_count)];
           freqs->cpu_freq[my_node_id] = sel_pstate->khz;
           *per_process = my_node_id;
           // debug("Process %d reducing CPU freq to %.2f", my_node_id, (float)freqs->cpu_freq[my_node_id]/1000000.0);
@@ -926,7 +932,7 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
       }
       }
       #endif
-      return mpi_call_init(c,call_type);
+      return st;
 
     } else return EAR_ERROR;
     #else

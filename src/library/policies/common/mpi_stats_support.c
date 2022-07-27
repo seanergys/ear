@@ -16,7 +16,11 @@
 */
 
 // #define SHOW_DEBUGS 1
+#if MPI_OPTIMIZED
 #define VERBOSE_MPI_OPT 1
+#else
+#define VERBOSE_MPI_OPT 0
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +75,9 @@ static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 
 #define MAX_MPI_TO_OPT 100
-#define MIN_USEC_MPI   10000
+#define DEF_MIN_USEC_MPI   50000
+
+static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
 typedef struct ear_calls{
   mpi_call call;
   p2i last_buf; 
@@ -132,6 +138,13 @@ static state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *me
 state_t mpi_app_init(polctx_t *c)
 {
     char * clb_th;
+    #if MPI_OPTIMIZED
+    char * cear_min_usec_for_mpi_opt = getenv(FLAG_MIN_USEC_MPI);
+
+    if (cear_min_usec_for_mpi_opt != NULL) ear_min_usec_for_mpi_opt = (ulong)atoi(cear_min_usec_for_mpi_opt);
+    verbose_master(2, "Using %lu usecs for min time for MPI optimization", ear_min_usec_for_mpi_opt);
+    #endif
+
 
     if (c != NULL) {
         if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
@@ -231,7 +244,7 @@ state_t mpi_app_end(polctx_t *c)
     #if VERBOSE_MPI_OPT
     if (num_mpi_to_optimize){
       for (uint mo = 0; mo < num_mpi_to_optimize; mo++){
-        verbose(2, "MPI_OPTIMI[%u-%u de %u] call %lu buff %lu dest %lu elap %lu", my_node_id, mo, num_mpi_to_optimize, (ulong) list_mpi_to_optimize[mo].call, \
+        verbose(1, "MPI_OPTIMI[%u-%u de %u] call %lu buff %lu dest %lu elap %lu", my_node_id, mo, num_mpi_to_optimize, (ulong) list_mpi_to_optimize[mo].call, \
           (ulong) list_mpi_to_optimize[mo].last_buf,\
           (ulong) list_mpi_to_optimize[mo].last_dest, list_mpi_to_optimize[mo].elap);
       }
@@ -462,7 +475,7 @@ static void print_mpi_optimized(char *msg, uint index)
 {
 
 #if VERBOSE_MPI_OPT
-                    verbose(0,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
+                    verbose(2,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
                       my_node_id, index,\
                       (ulong) list_mpi_to_optimize[index].call, \
                       (ulong) list_mpi_to_optimize[index].last_buf,\
@@ -518,7 +531,9 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 /* We check if the call must be on the list */
                 #if MPI_OPTIMIZED
                 if (last_optimized){
-                  if ((ulong)elap < MIN_USEC_MPI){ 
+                  list_mpi_to_optimize[index_last_optimized].elap += (ulong)elap;
+                  if ((ulong)elap < ear_min_usec_for_mpi_opt){ 
+                    list_mpi_to_optimize[index_last_optimized].elap = (ulong)elap;
                     list_mpi_to_optimize[index_last_optimized].call = (mpi_call)0;
                     #if VERBOSE_MPI_OPT
                     print_mpi_optimized("Removing symbol ", index_last_optimized);
@@ -527,7 +542,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 }else{
                 /* Otherwise, we check if we should add it */
                 #define FIRST_NO_EAR_SYMBOL 4
-                if (((ulong)elap > MIN_USEC_MPI) && (num_mpi_to_optimize < MAX_MPI_TO_OPT)){
+                if (((ulong)elap > ear_min_usec_for_mpi_opt) && (num_mpi_to_optimize < MAX_MPI_TO_OPT)){
                   if (already_optimized(call_type, last_buf, last_dest) == EAR_ERROR){
                     list_mpi_to_optimize[num_mpi_to_optimize].call       = call_type;
                     #if 0
@@ -537,13 +552,16 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     list_mpi_to_optimize[num_mpi_to_optimize].last_buf   = last_buf;
                     list_mpi_to_optimize[num_mpi_to_optimize].last_dest  = last_dest;
                     list_mpi_to_optimize[num_mpi_to_optimize].elap       = (ulong)elap;
-      
+     
+                    #if VERBOSE_MPI_OPT
                     print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
+                    #endif
                     num_mpi_to_optimize++;
                     //print_stack();
                    }
                 }
                 }
+                last_optimized = 0;
                 #endif
 
             } else {

@@ -404,6 +404,10 @@ state_t policy_init()
 
     if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
 
+    if (ear_mpi_opt){
+      verbose_master(2, "MPI optimization enabled");
+    }
+
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_IMC_EXTRA_TH will be removed, in the next release.
     if (cimc_extra_th == NULL) {
@@ -805,7 +809,9 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     verbose_master(POLICY_INFO + 1, "%sPOLICY%s Policy node apply", COL_BLU, COL_CLR);
     nodemgr_get_num_jobs_attached(&jobs_in_node);
-    verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+    if (jobs_in_node > 1){
+      verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+    }
 
     if (jobs_in_node > 1) dyn_unc = 0;
     else                  dyn_unc = conf_dyn_unc;
@@ -1095,7 +1101,9 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
     /* update_earl_node_mgr_info(); */
     nodemgr_get_num_jobs_attached(&jobs_in_node);
     verbose_master(2,"There are %u jobs in the node", jobs_in_node);
-    verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+    if (jobs_in_node > 1){ 
+      verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
+    }
     /* End update */
 
     /* estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1); */
@@ -1151,7 +1159,7 @@ state_t policy_max_tries(int *intents)
 state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
-    verbose(2, "[%d] Total number of MPI call with optimization %u",my_node_id,  total_mpi_optimized);
+    verbose(1, "[%d] Total number of MPI call with optimization %u",my_node_id,  total_mpi_optimized);
 	
 		#if DEBUG_CPUFREQ_COST
 		verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f", total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
@@ -1491,11 +1499,9 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
 
     // Assumption: If affinity is set for master, it
     // is set for all, we could check individually
-    #if 0
     if (process_id != ALL_PROCESSES){
-      verbose(2, "Setting CPU freq %.2f for process process_id %d (affinity %u)", (float)freq_set[process_id]/(float)1000000.0, process_id, ear_affinity_is_set);
+      verbose(1, "Setting CPU freq %.2f for process process_id %d ", (float)freq_set[process_id]/(float)1000000.0, process_id);
     }
-    #endif
     if ((dom->cpu == POL_GRAIN_CORE) && (ear_affinity_is_set)) {
         from_proc_to_core(freq_set, lib_shared_region->num_processes, &freq_per_core,
                 arch_desc.top.cpu_count, &max_cpufreq_sel_khz, &min_cpufreq_sel_khz, process_id);

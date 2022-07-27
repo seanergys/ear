@@ -108,6 +108,7 @@
 #define FLAG_EARL_VERBOSE_PATH       SCHED_PREFIX "EARL_VERBOSE_PATH"      // Asks EARL to write verbose messages in separate per-task files.
 #define FLAG_LOADER_VERBOSE          SCHED_PREFIX "EAR_LOADER_VERBOSE"     // Loader's verbosity.
 #define FLAG_MPI_OPT                 SCHED_PREFIX "EAR_MPI_OPTIMIZATION"   // Enables/Disables MPI optimization when supported by policies
+#define FLAG_MIN_USEC_MPI            SCHED_PREFIX "EAR_MIN_USEC_MPI_OPT"   // Minimum time to apply MPI optimization
 
 
 #define FLAG_TASK_PID                SCHED_PREFIX "TASK_PID"               // Delivered by SLURM, this flag contains the task PID.

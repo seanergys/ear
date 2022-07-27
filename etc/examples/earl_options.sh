@@ -89,6 +89,8 @@ export SLURM_EAR_NTWRK_IMC=
 export SLURM_EAR_TRY_TURBO=
 # Enables(1)/Disables(0) the utilization of energy models in energy polciies 
 export SLURM_EAR_USE_ENERGY_MODELS=
+# Enables(1)/Disables(0) the utilization of MPI optimizations
+export SLURM_EAR_MPI_OPTIMIZATION=
 
 
 # Tracing
