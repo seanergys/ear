@@ -22,6 +22,7 @@
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
 #include <management/cpufreq/governor.h>
+#include <management/cpufreq/priority.h>
 #include <management/cpufreq/frequency.h>
 #include <metrics/common/pstate.h>
 
@@ -102,7 +103,6 @@ state_t mgt_cpufreq_dispose(ctx_t *c);
 
 state_t mgt_cpufreq_count_devices(ctx_t *c, uint *dev_count);
 
-// Getters
 /** Returns the available P_STATE (struct) list. The allocated list depends on the user. */
 state_t mgt_cpufreq_get_available_list(ctx_t *c, const pstate_t **pstate_list, uint *pstate_count);
 
@@ -112,23 +112,15 @@ state_t mgt_cpufreq_get_current_list(ctx_t *c, pstate_t *pstate_list);
 /** Returns the nominal P_STATE index. */
 state_t mgt_cpufreq_get_nominal(ctx_t *c, uint *pstate_index);
 
-/** Gets the governor (check governor.h to translate its int id to string). */
-state_t mgt_cpufreq_get_governor(ctx_t *c, uint *governor);
-
 /** Given a frequency in KHz, returns its available P_STATE index. */
 state_t mgt_cpufreq_get_index(ctx_t *c, ullong freq_khz, uint *pstate_index, uint closest);
 
-// Setters
 /** Sets a P_STATE and userspace governor per CPU. The allocated list depends on the user. */
 state_t mgt_cpufreq_set_current_list(ctx_t *c, uint *pstate_index);
 
 /** Set a P_STATE in specified CPU. Accepts 'all_cpus' to set that P_STATE in all CPUs. */
 state_t mgt_cpufreq_set_current(ctx_t *c, uint pstate_index, int cpu);
 
-/** Sets the governor (take a look to Governor global variable. */
-state_t mgt_cpufreq_set_governor(ctx_t *c, uint governor);
-
-// Data
 /** Allocates a list of current P_STATE per CPU (devices). */
 state_t mgt_cpufreq_data_alloc(pstate_t **pstate_list, uint **index_list);
 

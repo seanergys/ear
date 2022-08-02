@@ -20,6 +20,7 @@
 
 #include <common/types.h>
 #include <common/states.h>
+#include <common/plugins.h>
 
 // Governors
 //
@@ -68,10 +69,16 @@ struct goverstr_s {
 	.other = "other",
 };
 
-state_t mgt_governor_tostr(uint governor, char *buffer);
+/** Gets the governor (check governor.h to translate its int id to string). */
+state_t mgt_cpufreq_governor_get_current(ctx_t *c, uint *governor);
 
-state_t mgt_governor_toint(char *buffer, uint *governor);
+/** Sets the governor (take a look to Governor global variable. */
+state_t mgt_cpufreq_governor_set_current(ctx_t *c, uint governor);
 
-int mgt_governor_is(char *buffer, uint governor);
+void mgt_cpufreq_governor_tostr(uint governor, char *buffer);
+
+void mgt_cpufreq_governor_toint(char *buffer, uint *governor);
+
+int mgt_cpufreq_governor_is(char *buffer, uint governor);
 
 #endif //MANAGEMENT_GOVERNOR

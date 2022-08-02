@@ -5,14 +5,18 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall -g
 root_OBJS = \
     cpufreq.o \
     frequency.o \
-	governor.o
+	governor.o \
+	priority.o
 
 ######## RULES
 
-all: all.components $(root_OBJS)
+all: all.components $(root_OBJS) test_prio
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
+
+test_prio: priority.o
+	$(CC) $(CFLAGS) -o $@ $< $(SRCDIR)/common/libcommon.a
 
 ######## SUBFOLDERS
 
