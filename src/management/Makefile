@@ -1,3 +1,4 @@
+CC_FLAGS += $(CONSTANTS)
 ######## FILES
 
 root_BINS = libmgt.a

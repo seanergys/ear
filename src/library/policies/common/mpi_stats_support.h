@@ -24,6 +24,8 @@
 
 extern float LB_TH;
 
+#define MIN_PERC_MPI_OPT 0.15
+
 /** Called on MPI_Init */
 state_t mpi_app_init(polctx_t *c);
 /** Called on MPI_Finalize */
@@ -41,6 +43,7 @@ state_t read_diff_node_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
         mpi_information_t *node_mpi_calls, mpi_information_t *last_node);
 
 state_t is_blocking_busy_waiting(uint *block_type);
+uint is_blocking_collective(mpi_call call);
 
 /** \defgroup mpi_verbose Verbose
  * @{

@@ -19,6 +19,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <common/system/lock.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
@@ -166,7 +167,16 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
 		return_unlock(s, &lock_rpc);
 	}
 	// Receiving the data and returning the RPC state
-    s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+	#if SYNC_SET_RPC
+	if (expc_size == UINT_MAX) expc_size = 0;
+  s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+	#else
+	s = EAR_SUCCESS;
+	if (expc_size){
+		if (expc_size == UINT_MAX) expc_size = 0;
+  	s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+	}
+	#endif
 	return_unlock(s, &lock_rpc);
 }
 
@@ -187,7 +197,8 @@ state_t eard_rpc_buffered(uint call, char *data, size_t size, char **buffer, siz
 	rpc_buffer_test(size);
 	*buffer = rpc_buffer;
 	//
-	return static_rpc(call, data, size, rpc_buffer, recv_size, 0);
+	/* UINT_MAX in size_t means size will come on the header, unknown size */
+	return static_rpc(call, data, size, rpc_buffer, recv_size, UINT_MAX);
 }
 
 state_t eard_rpc_answer(int fd, uint call, state_t s, char *data, size_t size, char *error)
@@ -200,7 +211,14 @@ state_t eard_rpc_answer(int fd, uint call, state_t s, char *data, size_t size, c
     if (state_fail(s2 = ear_trylock(&lock_rpc))) {
         return s2;
     }
+	#if SYNC_SET_RPC
     s2 = eard_send(fd, call, s, data, size, error);
+  #else
+		s2 = EAR_SUCCESS;
+		if (size){
+    	s2 = eard_send(fd, call, s, data, size, error);
+		}
+ 	#endif
 	return_unlock(s2, &lock_rpc);
 }
 

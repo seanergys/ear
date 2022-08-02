@@ -362,6 +362,42 @@ ulong node_freqs_avgcpufreq(ulong *f)
 	//verbose_master(2,"Computing a total of %lu cpus and f = %lu, avg %lu",ctotal,ftotal, ftotal/ctotal);
 	return ftotal / ctotal;
 }
+/*
+ *   ulong *cpu_freq;
+ *     ulong *imc_freq;
+ *       ulong *gpu_freq;
+ *         ulong *gpu_mem_freq;
+ */
+
+static uint node_dom_freqs_are_diff(ulong *v1, ulong *v2, uint l)
+{
+	uint i = 0;
+	while ((i < l) && (v1[i] == v2[i])) i++;
+	if (i < l) return 1;
+	return 0;
+}
+
+uint node_freqs_are_diff(uint flag, node_freqs_t * nf1, node_freqs_t *nf2)
+{
+	switch (flag){
+	case DOM_CPU:
+		return node_dom_freqs_are_diff(nf1->cpu_freq, nf2->cpu_freq, MAX_CPUS_SUPPORTED);
+		break;
+	case DOM_MEM:
+		return node_dom_freqs_are_diff(nf1->imc_freq, nf2->imc_freq, MAX_SOCKETS_SUPPORTED);
+		break;
+  #if USE_GPUS
+	case DOM_GPU:
+		return 1;
+		break;
+	case DOM_GPU_MEM:
+		return 0;
+		break;
+  #endif
+	default: return 0;
+	}
+	return 0;
+}
 
 ulong avg_to_khz(ulong freq_khz)
 {
