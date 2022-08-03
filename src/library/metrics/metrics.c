@@ -404,7 +404,6 @@ static void metrics_static_init(topology_t *tp)
 	/* Energy node lib goes here since it doesn't follow the same pattern as the previous
 	 * metrics. */
 	energy_lib_init(system_conf);
-
 	
 
     debug("metrics_allocation ready");
@@ -1273,6 +1272,7 @@ int metrics_init(topology_t *topo)
 
 
 	if (master) {
+
 
 		debug("Allocating data for %d processes", lib_shared_region->num_processes);
 

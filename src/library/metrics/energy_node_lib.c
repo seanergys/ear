@@ -15,15 +15,20 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/config.h>
 #include <common/includes.h>
+
 #include <common/output/verbose.h>
+
+#include <common/system/lock.h>
 #include <common/system/symplug.h>
+
 #include <daemon/local_api/eard_api.h>
-#include <library/metrics/energy_node_lib.h>
+
 #include <library/common/utils.h>
+#include <library/metrics/energy_node_lib.h>
 
 static struct energy_op
 {
@@ -54,6 +59,8 @@ static const char *energy_names[] = {
 	"energy_data_is_null",
 	"energy_data_copy"
 };
+
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 state_t dummy_dc_read_substitute(void *data, edata_t t)
 {
@@ -101,9 +108,21 @@ state_t energy_node_load(char *path, int eard)
 
 state_t energy_lib_init(settings_conf_t *conf)
 {
+	state_t ret;
+	if (state_fail(ret = ear_trylock(&lock))) {
+		return ret;
+	}
+
+	if (energy_loaded) {
+		ear_unlock(&lock);
+		return EAR_SUCCESS;
+	}
+
+
     char my_plug_path[512];
     if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
                     getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
+		ear_unlock(&lock);
         return_msg(EAR_ERROR, "Plugins path can not be built.");
     }
 
@@ -117,16 +136,23 @@ state_t energy_lib_init(settings_conf_t *conf)
         debug("Using the configured energy plugin shared object file");
         sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
     } else {
+		ear_unlock(&lock);
         return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
     }
 
+	ear_unlock(&lock);
 	return energy_node_load(energy_objc, 0);
 
 }
 
 state_t energy_lib_datasize(size_t *size)
 {
+	state_t ret;
+	if (state_fail(ret = ear_trylock(&lock))) {
+		return ret;
+	}
 	preturn(energy_ops.datasize,size);
+	ear_unlock(&lock);
 }
 
 state_t energy_lib_frequency(ulong *fus)
@@ -145,7 +171,12 @@ state_t energy_lib_units(uint *units)
 state_t energy_lib_data_accumulated(unsigned long *e, edata_t init, edata_t end)
 {
 	*e=0;
+	state_t ret;
+	if (state_fail(ret = ear_trylock(&lock))) {
+		return ret;
+	}
 	preturn(energy_ops.accumulated,e,init,end );
+	ear_unlock(&lock);
 }
 
 state_t energy_lib_read(void *data, edata_t e)
