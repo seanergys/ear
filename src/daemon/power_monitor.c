@@ -1421,7 +1421,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 //
 //
 
-#define VERBOSE_POWERMON 1
+#define VERBOSE_POWERMON 0
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
     ulong jid, mpi,sid;
     ulong time_consumed;

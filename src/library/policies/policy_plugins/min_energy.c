@@ -26,6 +26,7 @@
 // #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
+#include <common/system/file.h>
 #include <common/output/verbose.h>
 #include <common/environment.h>
 #include <common/types/projection.h>
@@ -62,6 +63,7 @@ extern uint *imc_max_pstate, *imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
 static uint imc_set_by_hw = 1;
 extern uint max_policy_imcfreq_ps;
+extern int lib_shared_lock_fd;
 
 static int min_pstate;
 static uint ref_imc_pstate;
@@ -912,8 +914,38 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
       st = mpi_call_init(c,call_type);
       #if MPI_OPTIMIZED
       if (ear_mpi_opt){
+			uint last = 0;
+      /* Barriers (etc) */
+      if (is_blocking_collective(call_type) && (lib_shared_region->num_processes > 1)){
+          while(file_lock(lib_shared_lock_fd) < 0);
+          if (lib_shared_region->processes_in_barrier == 0){
+            lib_shared_region->processes_in_barrier = lib_shared_region->num_processes - 1;
+          }else{
+            lib_shared_region->processes_in_barrier--;
+            last = (lib_shared_region->processes_in_barrier == 0);
+          }
+          file_unlock(lib_shared_lock_fd);
+          if (last){
+            verbose(0,"Last in barrier!!");
+            /* If I'm the last one I restore the CPU freq */
+            for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
+							if (sig_shared_region[my_node_id].new_freq){
+              	freqs->cpu_freq[lp] = sig_shared_region[lp].new_freq;
+							}else{
+              	freqs->cpu_freq[lp] = DEF_FREQ(c->app->def_freq);
+							}
+            }
+            *per_process = ALL_PROCESSES;
+          }else{
+            pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
+            sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count-1];
+            freqs->cpu_freq[my_node_id] = sel_pstate->khz;
+            *per_process = my_node_id;
+          }
+      }else{
+
       /* Check conditions */
-      if (!sig_shared_region[my_node_id].unbalanced){  
+      if (!sig_shared_region[my_node_id].unbalanced && (sig_shared_region[my_node_id].mpi_info.perc_mpi > MIN_PERC_MPI_OPT)){  
         state_t st;
         st = must_be_optimized(call_type, last_buf, last_dest);
         //st = must_be_optimized(call_type, (p2i)get_stack(2), 0);
@@ -931,6 +963,7 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
         }
       }
       }
+			}
       #endif
       return st;
 
@@ -960,14 +993,17 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) return EAR_ERROR;
 
-    verbose_master(2, "%sCPU IO phase%s", COL_BLU, COL_CLR);
+    verbose_master(1, "%sCPU IO settings%s", COL_BLU, COL_CLR);
 
     cpu_ready = EAR_POLICY_READY;
 
     for (uint i = 0; i < num_processes; i++) {
         freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+    		/* We copy in shared  memory to be used later in MPI init/end if needed */
+				sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
     }
     memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
+
 
     if (dyn_unc) {
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++) {
@@ -991,9 +1027,13 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) return EAR_ERROR;
-    verbose_master(2,"%sCPU busy waiting phase%s",COL_BLU,COL_CLR);
+    verbose_master(1, "%sCPU busy waiting settings%s", COL_BLU, COL_CLR);
     cpu_ready = EAR_POLICY_READY;
-    for (uint i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+    for (uint i=0;i<num_processes;i++){ 
+			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+    	/* We copy in shared  memory to be used later in MPI init/end if needed */
+			sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
+		}
     copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){

@@ -484,6 +484,16 @@ static void print_mpi_optimized(char *msg, uint index)
 #endif
 }
 
+uint is_blocking_collective(mpi_call call)
+{
+	if (is_mpi_blocking(call)) {
+		mpi_call nbcall_type;
+    nbcall_type = (mpi_call) remove_blocking(call);
+		return (is_synchronization(nbcall_type));
+	}
+	return 0;
+}
+
 state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
     timestamp_t end;
@@ -536,7 +546,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     list_mpi_to_optimize[index_last_optimized].elap = (ulong)elap;
                     list_mpi_to_optimize[index_last_optimized].call = (mpi_call)0;
                     #if VERBOSE_MPI_OPT
-                    print_mpi_optimized("Removing symbol ", index_last_optimized);
+                    //print_mpi_optimized("Removing symbol ", index_last_optimized);
                     #endif
                   }
                 }else{
@@ -554,7 +564,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     list_mpi_to_optimize[num_mpi_to_optimize].elap       = (ulong)elap;
      
                     #if VERBOSE_MPI_OPT
-                    print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
+                    //print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
                     #endif
                     num_mpi_to_optimize++;
                     //print_stack();

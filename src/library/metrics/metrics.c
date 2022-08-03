@@ -286,10 +286,10 @@ static void metrics_static_init(topology_t *tp)
     master = (masters_info.my_master_rank >= 0);
     eard   = (master);
     // Load
-#if 0
-    sa(mgt_cpufreq_load(tp, 1));
+#if SINGLE_CONNECTION
+    sa(mgt_cpufreq_load(tp, eard));
 #else
-    sa(mgt_cpufreq_load(tp, eard || (SINGLE_CONNECTION == 0)));
+    sa(mgt_cpufreq_load(tp, 1));
 #endif
     sa(mgt_imcfreq_load(tp, eard, NULL));
     sa( energy_cpu_load(tp, eard));
@@ -302,7 +302,11 @@ static void metrics_static_init(topology_t *tp)
 
     debug("metics_load ready");
     // This extinguishable
+#if SINGLE_CONNECTION
     frequency_init(eard);
+#else
+    frequency_init(1);
+#endif
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
@@ -375,6 +379,11 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_cache.api  , "MET_CACHE  : ");
         apis_print(met_cpi.api    , "MET_CPI    : ");
     }
+		#if !SINGLE_CONNECTION
+		if (VERB_ON(2)){
+			apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
+		}
+		#endif
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);
