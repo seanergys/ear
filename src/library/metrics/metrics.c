@@ -79,6 +79,9 @@
 
 // #define MASTER(master_rank) (master_rank >= 0)
 
+// extern configuration from the main ear library
+extern cluster_conf_t cconf;
+
 extern int         dispose;
 // Hardware
 static double      hw_cache_line_size;
@@ -396,6 +399,12 @@ static void metrics_static_init(topology_t *tp)
     energy_cpu_data_alloc(no_ctx, &last_rapl, &rapl_size);
 
 	rapl_elements = rapl_size;
+
+
+	/* Energy node lib goes here since it doesn't follow the same pattern as the previous
+	 * metrics. */
+	energy_lib_init(system_conf);
+
 	
 
     debug("metrics_allocation ready");
@@ -466,7 +475,8 @@ static void metrics_global_start()
 		/* Energy */
 		if (eards_connected()){
 			debug("eards_node_dc_energy");
-			ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
+			//ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
+			ret = energy_lib_read(NULL, aux_energy);
 			if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
 				debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
 			}
@@ -779,7 +789,8 @@ static int metrics_partial_stop(uint where)
 	if (master) {
 		/* Energy node */
 		if (eards_connected()) {
-			int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
+			//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
+			int ret = energy_lib_read(NULL, aux_energy);
 
 			/* If EARD is present, we wait until the power is computed */
 			if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)) {

@@ -21,6 +21,7 @@
 #include <common/includes.h>
 #include <common/output/verbose.h>
 #include <common/system/symplug.h>
+#include <daemon/local_api/eard_api.h>
 #include <library/metrics/energy_node_lib.h>
 #include <library/common/utils.h>
 
@@ -30,7 +31,8 @@ static struct energy_op
     state_t (*frequency)     (ulong *freq);
     state_t (*units)	     (uint *units);
     state_t (*accumulated)   (unsigned long *e, edata_t init,edata_t end);
-    state_t (*energy_to_str) (char *str,edata_t end);
+    state_t (*energy_to_str) (char *str, edata_t end);
+	state_t (*energy_dc_read)(void *data, edata_t t);
     uint    (*is_null)       (edata_t end);
     state_t (*copy)          (edata_t dest, edata_t src);
 } energy_ops;
@@ -48,9 +50,54 @@ static const char *energy_names[] = {
 	"energy_units",
 	"energy_accumulated",
 	"energy_to_str",
+	"energy_dc_read",
 	"energy_data_is_null",
 	"energy_data_copy"
 };
+
+state_t dummy_dc_read_substitute(void *data, edata_t t)
+{
+	memset(&t, 0, sizeof(edata_t));
+	return EAR_SUCCESS;
+}
+
+state_t eards_dc_read_substitute(void *data, edata_t t)
+{
+	if (!eards_connected()) {
+		debug("eard not connected");
+		return EAR_ERROR;
+	}
+
+	return eards_node_dc_energy(&t, my_energy_data_size);
+}
+
+state_t energy_node_load(char *path, int eard)
+{
+
+    debug("Loading %s plugin...", path);
+
+    state_t ret;
+    if (state_fail(ret = symplug_open(path, (void **) &energy_ops,
+                    energy_names, energy_nops))) {
+        debug("symplug_open() returned %d (%s)", ret, intern_error_str);
+        return_msg(ret, "Energy plugin symbols can not be opened.");
+    }
+    
+    energy_loaded = 1;
+
+	if (eard) {
+		energy_ops.energy_dc_read = eards_dc_read_substitute;
+	}
+
+    if (energy_ops.datasize != NULL) {
+        energy_ops.datasize(&my_energy_data_size);
+    } else {
+        my_energy_data_size = 1;
+    }
+
+
+    return EAR_SUCCESS;
+}
 
 state_t energy_lib_init(settings_conf_t *conf)
 {
@@ -73,24 +120,8 @@ state_t energy_lib_init(settings_conf_t *conf)
         return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
     }
 
-    debug("Loading %s plugin...", energy_objc);
+	return energy_node_load(energy_objc, 0);
 
-    state_t ret;
-    if (state_fail(ret = symplug_open(energy_objc, (void **) &energy_ops,
-                    energy_names, energy_nops))) {
-        debug("symplug_open() returned %d (%s)", ret, intern_error_str);
-        return_msg(ret, "Energy plugin symbols can not be opened.");
-    }
-    
-    energy_loaded = 1;
-
-    if (energy_ops.datasize != NULL) {
-        energy_ops.datasize(&my_energy_data_size);
-    } else {
-        my_energy_data_size = 1;
-    }
-
-    return EAR_SUCCESS;
 }
 
 state_t energy_lib_datasize(size_t *size)
@@ -108,18 +139,23 @@ state_t energy_lib_frequency(ulong *fus)
 state_t energy_lib_units(uint *units)
 {
 	*units=1;
-	preturn (energy_ops.units, units);
+	preturn(energy_ops.units, units);
 }
 
-state_t energy_lib_data_accumulated(unsigned long *e,edata_t init,edata_t end)
+state_t energy_lib_data_accumulated(unsigned long *e, edata_t init, edata_t end)
 {
 	*e=0;
-	preturn (energy_ops.accumulated,e,init,end );
+	preturn(energy_ops.accumulated,e,init,end );
+}
+
+state_t energy_lib_read(void *data, edata_t e)
+{
+	preturn(energy_ops.energy_dc_read, data, e);
 }
 
 state_t energy_lib_data_to_str(char *str,edata_t e)
 {
-	preturn (energy_ops.energy_to_str,str,e );
+	preturn(energy_ops.energy_to_str,str,e );
 }
 
 uint energy_lib_data_is_null(edata_t e)
