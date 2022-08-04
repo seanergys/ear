@@ -412,7 +412,7 @@ static void metrics_static_init(topology_t *tp)
 
 	/* Energy node lib goes here since it doesn't follow the same pattern as the previous
 	 * metrics. */
-	energy_lib_init(system_conf);
+	//energy_lib_init(system_conf);
 	
 
     debug("metrics_allocation ready");
@@ -811,6 +811,8 @@ static int metrics_partial_stop(uint where)
 		energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
 		energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);
 		energy_lib_data_to_str(stop_energy_str,aux_energy_stop);
+		debug("start energy str %s", start_energy_str);
+		debug("end energy str %s", end_energy_str);
 
 		/* If EARD is present, we wait until the power is computed */
 		if (eards_connected()){
