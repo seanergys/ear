@@ -798,7 +798,7 @@ static int metrics_partial_stop(uint where)
 		/* Energy node */
 		if (eards_connected()) {
 			//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
-			int ret = energy_lib_read(NULL, aux_energy);
+			int ret = energy_lib_read(NULL, aux_energy_stop);
 
 			/* If EARD is present, we wait until the power is computed */
 			if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)) {

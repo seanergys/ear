@@ -77,7 +77,7 @@ state_t eards_dc_read_substitute(void *data, edata_t t)
 	}
 	debug("eards read");
 
-	return eards_node_dc_energy(&t, my_energy_data_size);
+	return eards_node_dc_energy(t, my_energy_data_size);
 }
 
 state_t energy_node_load(char *path, int eard)
@@ -94,7 +94,7 @@ state_t energy_node_load(char *path, int eard)
     
     energy_loaded = 1;
 
-	if (eard) {
+	if (eards_connected()) {
 		energy_ops.energy_dc_read = eards_dc_read_substitute;
 		debug("energy_dc_read is eards");
 	} else {
@@ -165,11 +165,9 @@ state_t energy_lib_datasize(size_t *size)
 		ret = EAR_SUCCESS;
 	}
 	else {
-		debug("reads datasize");
 		ret = energy_ops.datasize(size);
-		debug("datasize finished reading");
 	}
-	debug("read energy datasize %lu", *size);
+	//debug("read energy datasize %lu", *size);
 	ear_unlock(&lock);
 	return ret;
 }
@@ -196,7 +194,6 @@ state_t energy_lib_data_accumulated(unsigned long *e, edata_t init, edata_t end)
 state_t energy_lib_read(void *data, edata_t e)
 {
 	state_t ret;
-	debug("energy_lib_read with %d data", data);
 	if (state_fail(ret = ear_trylock(&lock))) {
 		debug("cannot get lock");
 		return ret;
@@ -206,7 +203,6 @@ state_t energy_lib_read(void *data, edata_t e)
 		ear_unlock(&lock);
 		return EAR_ERROR;
 	}
-	debug("energy_lib_read starting");
 	ret = energy_ops.energy_dc_read(data, e);
 	debug("energy_lib_read finished");
 	ear_unlock(&lock);
