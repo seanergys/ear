@@ -98,10 +98,10 @@ static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
 static uint        rapl_size;
 static llong       aux_time;
-static edata_t     aux_energy;
-static edata_t     metrics_ipmi[2];  // mJ
+static edata_t     aux_energy = NULL;
+static edata_t     metrics_ipmi[2] = { NULL, NULL};  // mJ
 static ulong       acum_ipmi[2];
-static edata_t     aux_energy_stop;
+static edata_t     aux_energy_stop = NULL;
 static llong       metrics_usecs[2]; // uS
 
 /* In the case of IO we will collect per process, per loop,
@@ -409,11 +409,6 @@ static void metrics_static_init(topology_t *tp)
 
 	rapl_elements = rapl_size;
 
-
-	/* Energy node lib goes here since it doesn't follow the same pattern as the previous
-	 * metrics. */
-	//energy_lib_init(system_conf);
-	
 
     debug("metrics_allocation ready");
 
@@ -1273,12 +1268,10 @@ int metrics_init(topology_t *topo)
 	debug("energy data size %lu", node_energy_datasize);
 	energy_lib_units(&node_energy_units);
 	/* We should create a data_alloc for enerrgy and a set_null */
-	aux_energy=(edata_t)malloc(node_energy_datasize);
-	aux_energy_stop=(edata_t)malloc(node_energy_datasize);
-	metrics_ipmi[0]=(edata_t)malloc(node_energy_datasize);
-	metrics_ipmi[1]=(edata_t)malloc(node_energy_datasize);
-	memset(metrics_ipmi[0],0,node_energy_datasize);
-	memset(metrics_ipmi[1],0,node_energy_datasize);
+	energy_data_alloc(&aux_energy);
+	energy_data_alloc(&aux_energy_stop);
+	energy_data_alloc(&metrics_ipmi[0]);
+	energy_data_alloc(&metrics_ipmi[1]);
 	acum_ipmi[0]=0;acum_ipmi[1]=0;
 
 
