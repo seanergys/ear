@@ -156,6 +156,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 	int eard = eards_connected();
 
 	ret = energy_node_load(energy_objc, eard);
+	//TODO: if ret fails, generate dummy path and load that one
 	ear_unlock(&lock);
 
 	return ret;
@@ -217,9 +218,9 @@ state_t energy_lib_read(void *ctx, edata_t e)
 	return ret;
 }
 
-state_t energy_lib_data_to_str(char *str,edata_t e)
+state_t energy_lib_data_to_str(char *str, edata_t e)
 {
-	preturn(energy_ops.energy_to_str,str,e );
+	preturn(energy_ops.energy_to_str, str, e);
 }
 
 uint energy_lib_data_is_null(edata_t e)

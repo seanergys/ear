@@ -475,17 +475,6 @@ static void metrics_global_start()
 			    debug("IMCFreq data read in global_start");
 		    }
 		}
-		/* Energy */
-		if (eards_connected()){
-			debug("eards_node_dc_energy");
-			//ret = eards_node_dc_energy(aux_energy,node_energy_datasize);
-			ret = energy_lib_read(NULL, aux_energy);
-			if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
-				debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
-			}
-		}else{
-			memset(aux_energy, 0, node_energy_datasize);
-		}
 
 		#if USE_GPUS
 		/* GPu metrics */
@@ -506,10 +495,6 @@ static void metrics_global_start()
             verbose_master(2, "%sWarning%s Node total I/O could not be"
                     " read (%s)." , COL_RED, COL_CLR, state_msg);
         }
-
-	} else {
-		set_null_dc_energy(aux_energy);
-		set_null_rapl(aux_rapl);
 	}
 
 	/* Per process IO data */
@@ -518,6 +503,13 @@ static void metrics_global_start()
 	}
 
 	// New metrics
+	/* Energy */
+	debug(" node_dc_energy");
+	ret = energy_lib_read(NULL, aux_energy);
+	if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
+		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+	}
+
 	/* RAPL energy metrics */
 	energy_cpu_read(no_ctx, aux_rapl);
 	debug("energy_cpu_read ready");
@@ -533,6 +525,7 @@ static void metrics_global_start()
 
 	cpi_read(no_ctx,   &cpi_read1[APP]);
 	debug("cpi_read ready");
+
 }
 
 static void metrics_global_stop()
@@ -789,35 +782,28 @@ static int metrics_partial_stop(uint where)
 #endif
 
 	// Manual IPMI accumulation
-	if (master) {
-		/* Energy node */
-		if (eards_connected()) {
-			//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
-			int ret = energy_lib_read(NULL, aux_energy_stop);
+	/* Energy node */
+	//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
+	int ret = energy_lib_read(NULL, aux_energy_stop);
 
-			/* If EARD is present, we wait until the power is computed */
-			if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)) {
-				if (eards_connected()) return EAR_NOT_READY;
-				else 							     return EAR_SUCCESS;
-			}
-		}else{
-			memset(aux_energy_stop , 0, node_energy_datasize);
-		}
-		energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
-		energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);
-		energy_lib_data_to_str(stop_energy_str,aux_energy_stop);
-		debug("start energy str %s", start_energy_str);
-		debug("end energy str %s", end_energy_str);
+	/* If EARD is present, we wait until the power is computed */
+	/*if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)) {
+		if (eards_connected()) return EAR_NOT_READY;
+		else return EAR_SUCCESS;
+	}*/
 
-		/* If EARD is present, we wait until the power is computed */
-		if (eards_connected()){
-			if ((where==SIG_END) && (c_energy==0) && (master)) {
-				debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
-				if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
-				if (!EARL_LIGHT) return EAR_NOT_READY;
-			}
-		}
-	} // master
+	energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
+	energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);
+	energy_lib_data_to_str(stop_energy_str,aux_energy_stop);
+	debug("start energy str %s", start_energy_str);
+	debug("end energy str %s", end_energy_str);
+
+	/* If EARD is present, we wait until the power is computed */
+	if ((where==SIG_END) && (c_energy==0) && (master)) {
+		debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
+		if (dispose) fprintf(stderr,"partial stop and EAR_NOT_READY\n");
+		if (!EARL_LIGHT) return EAR_NOT_READY;
+	}
 
 	/* Time */
 	aux_time_stop = metrics_time();
@@ -1374,43 +1360,43 @@ int metrics_init(topology_t *topo)
 	}
 
 #if USE_GPUS
-    if (master){
-        if (!gpu_lib_gpus_supported()){
-          verbose_master(0,"Warning, EARL compiled with GPU suppor but EAR installed it's no");
-          return EAR_ERROR;
-        }
-        if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
-            gpu_initialized=0;
-            debug("Error in gpu_lib_load");
-        }else gpu_initialized=1;
-        if (gpu_initialized){
-            debug("Initializing GPU");
-            if (gpu_lib_init(&gpu_lib_ctx) != EAR_SUCCESS){
-                error("Error in GPU initiaization");
-                gpu_initialized=0;
-            }else{
-                debug("GPU initialization successfully");
-                gpu_lib_model(&gpu_lib_ctx,&earl_gpu_model);
-                debug("GPU model %u",earl_gpu_model);
-                gpu_lib_data_alloc(&gpu_metrics_init[LOO]);gpu_lib_data_alloc(&gpu_metrics_init[APP]);
-                gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
-                gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
-                gpu_lib_count(&ear_num_gpus_in_node);
-                gpu_lib_data_alloc(&gpud_busy);
-                gpu_lib_data_alloc(&gpuddiff_busy);
-                debug("GPU library data initialized");
-            }
-        }
-        debug("GPU initialization successfully");
-    }
-    fflush(stderr);	
+	if (master){
+		if (!gpu_lib_gpus_supported()){
+			verbose_master(0,"Warning, EARL compiled with GPU suppor but EAR installed it's no");
+			return EAR_ERROR;
+		}
+		if (gpu_lib_load(system_conf) !=EAR_SUCCESS){
+			gpu_initialized=0;
+			debug("Error in gpu_lib_load");
+		}else gpu_initialized=1;
+		if (gpu_initialized){
+			debug("Initializing GPU");
+			if (gpu_lib_init(&gpu_lib_ctx) != EAR_SUCCESS){
+				error("Error in GPU initiaization");
+				gpu_initialized=0;
+			}else{
+				debug("GPU initialization successfully");
+				gpu_lib_model(&gpu_lib_ctx,&earl_gpu_model);
+				debug("GPU model %u",earl_gpu_model);
+				gpu_lib_data_alloc(&gpu_metrics_init[LOO]);gpu_lib_data_alloc(&gpu_metrics_init[APP]);
+				gpu_lib_data_alloc(&gpu_metrics_end[LOO]);gpu_lib_data_alloc(&gpu_metrics_end[APP]);
+				gpu_lib_data_alloc(&gpu_metrics_diff[LOO]);gpu_lib_data_alloc(&gpu_metrics_diff[APP]);
+				gpu_lib_count(&ear_num_gpus_in_node);
+				gpu_lib_data_alloc(&gpud_busy);
+				gpu_lib_data_alloc(&gpuddiff_busy);
+				debug("GPU library data initialized");
+			}
+		}
+		debug("GPU initialization successfully");
+	}
+	fflush(stderr);	
 #else
-    if (master){
-      if (gpu_lib_gpus_supported()){
-        verbose_master(0,"Warning, EARL compiled without GPU suppor but EAR installed is supporting it");
-        return EAR_ERROR;
-      }
-    }
+	if (master){
+		if (gpu_lib_gpus_supported()){
+			verbose_master(0,"Warning, EARL compiled without GPU suppor but EAR installed is supporting it");
+			return EAR_ERROR;
+		}
+	}
 #endif
 
 	//debug( "detected %d RAPL counters for %d packages: %d events por package", rapl_elements,num_packs,rapl_elements/num_packs);
@@ -1425,19 +1411,19 @@ int metrics_init(topology_t *topo)
 
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
-    sig_ext_t *se;
-    signature_t job_node_sig;
-    uint num_ready;
-    uint exited;
-    float wait_time = 0;
+	sig_ext_t *se;
+	signature_t job_node_sig;
+	uint num_ready;
+	uint exited;
+	float wait_time = 0;
 
-    verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
+	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
 
-    if (!eards_connected() && master){ 
-        if (!EARL_LIGHT){ 
-            return;
-        }
-    }
+	if (!eards_connected() && master){ 
+		if (!EARL_LIGHT){ 
+			return;
+		}
+	}
 
 	verbose_master(INFO_METRICS, "Calling last partial stop...");
 
@@ -1471,7 +1457,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		exited = num_processes_exited(lib_shared_region, sig_shared_region);
 	}
 
-    // Only master does something in this funcion
+	// Only master does something in this funcion
 	compute_per_process_and_job_metrics(&job_node_sig);
 
 	/* At this point we mark signatures are not ready to be computed again */
@@ -1502,14 +1488,14 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
 		se = (sig_ext_t *) metrics->sig_ext;
 
-        if (!exclusive) {
-            metrics_app_node_signature(metrics, &job_node_sig);
-        } else {
-            metrics_job_signature(&lib_shared_region->job_signature, &job_node_sig);
-        }
+		if (!exclusive) {
+			metrics_app_node_signature(metrics, &job_node_sig);
+		} else {
+			metrics_job_signature(&lib_shared_region->job_signature, &job_node_sig);
+		}
 
-        signature_copy(metrics, &job_node_sig);
-        metrics->sig_ext = se;
+		signature_copy(metrics, &job_node_sig);
+		metrics->sig_ext = se;
 	}
 
 	metrics_static_dispose();
@@ -1566,11 +1552,11 @@ static state_t metrics_compute_total_io(io_data_t *total)
 
 int time_ready_signature(ulong min_time_us)
 {
-    llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-    if (f_time < min_time_us) {
-        return 0;
-    }
-    return 1;
+	llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+	if (f_time < min_time_us) {
+		return 0;
+	}
+	return 1;
 }
 
 /**********************************************************************************************
@@ -1578,61 +1564,61 @@ int time_ready_signature(ulong min_time_us)
  **********************************************************************************************/
 
 state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
-        ulong min_time_us, ulong procs)
+		ulong min_time_us, ulong procs)
 {
 
-    debug("metrics_compute_signature_finish %u", my_node_id);
+	debug("metrics_compute_signature_finish %u", my_node_id);
 
-    if (!sig_shared_region[my_node_id].ready) {
+	if (!sig_shared_region[my_node_id].ready) {
 
-        debug("Signature for proc. %d is not ready", my_node_id);
+		debug("Signature for proc. %d is not ready", my_node_id);
 
-        // Time requirements
-        llong elap_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+		// Time requirements
+		llong elap_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
-        uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
-        if (elap_time < min_time_us && !time_eq) {
-            metrics->time = 0;
-            debug("EAR_NOT_READY because of time %lld\n", elap_time);
-            return EAR_NOT_READY;
-        }
+		uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
+		if (elap_time < min_time_us && !time_eq) {
+			metrics->time = 0;
+			debug("EAR_NOT_READY because of time %lld\n", elap_time);
+			return EAR_NOT_READY;
+		}
 
-        // Master: Returns not ready when power is not ready
-        // Not master: when master signature not ready
-        if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
-            return EAR_NOT_READY;
-        }
+		// Master: Returns not ready when power is not ready
+		// Not master: when master signature not ready
+		if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
+			return EAR_NOT_READY;
+		}
 
-        // Marks the signature as ready
-        metrics_compute_signature_data(LOO, metrics, iterations, procs);
+		// Marks the signature as ready
+		metrics_compute_signature_data(LOO, metrics, iterations, procs);
 
-        // Call report mpitrace
-        report_id_t report_id;
-        report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
-        if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
-            verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
-        }
+		// Call report mpitrace
+		report_id_t report_id;
+		report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
+		if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
+			verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+		}
 
-        metrics_partial_start();
-    }
+		metrics_partial_start();
+	}
 #if SHOW_DEBUGS
-    else {
-        debug("Signature for proc. %d is ready", my_node_id);
-    }
+	else {
+		debug("Signature for proc. %d is ready", my_node_id);
+	}
 #endif
 
-    uint num_ready;
-    if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
-        if ((master) && (sig_shared_region[0].ready)) {
-            debug("Setting Master ready");
-            lib_shared_region->master_ready = 1;
-        }
-        return EAR_NOT_READY;
-    } else if (master) {
-        lib_shared_region->master_ready = 0;
-    }
+	uint num_ready;
+	if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
+		if ((master) && (sig_shared_region[0].ready)) {
+			debug("Setting Master ready");
+			lib_shared_region->master_ready = 1;
+		}
+		return EAR_NOT_READY;
+	} else if (master) {
+		lib_shared_region->master_ready = 0;
+	}
 
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 long long metrics_usecs_diff(long long end, long long init)
@@ -1665,25 +1651,25 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 	verbose_master(2, " metrics_app_node_signature");
 
-  compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
-  compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
+	compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
+	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
 
-  ns->CPI = (double) cycles / (double) inst;
+	ns->CPI = (double) cycles / (double) inst;
 
-  compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
+	compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
 
-  compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
-  compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
-  compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+	compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+	compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+	compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
 
-  for (i = 0; i < FLOPS_EVENTS; i++){
-  	ns->FLOPS[i] = FLOPS[i];
-  }    
+	for (i = 0; i < FLOPS_EVENTS; i++){
+		ns->FLOPS[i] = FLOPS[i];
+	}    
 
-    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &ns->Gflops))) {
-        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
-                COL_RED, COL_CLR, state_msg);
-    }
+	if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &ns->Gflops))) {
+		verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+				COL_RED, COL_CLR, state_msg);
+	}
 
 	ns->L1_misses  = L1;
 	ns->L2_misses  = L2;
@@ -1718,55 +1704,55 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 void metrics_job_signature(const signature_t *master, signature_t *dst)
 {
-    ullong inst;
-    ullong cycles;
-    ullong FLOPS[FLOPS_EVENTS];
-    ullong L1, L2, L3;
+	ullong inst;
+	ullong cycles;
+	ullong FLOPS[FLOPS_EVENTS];
+	ullong L1, L2, L3;
 
-    signature_copy(dst, master);
+	signature_copy(dst, master);
 
-    sig_ext_t *se = (sig_ext_t *) master->sig_ext;
-    if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
+	sig_ext_t *se = (sig_ext_t *) master->sig_ext;
+	if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
 
-    /* If some job node computation fails, we use the CPI data we had from \p master */
-    if (state_fail(compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst))) {
-                verbose(3, "%sWARNING%s Error on computing job's node instructions: %s",
-                        COL_RED, COL_CLR, state_msg);
-            }
-    else if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
-                verbose(3, "%sWARNING%s Error on computing job's node cycles: %s",
-                        COL_RED, COL_CLR, state_msg);
-    } else {
+	/* If some job node computation fails, we use the CPI data we had from \p master */
+	if (state_fail(compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst))) {
+		verbose(3, "%sWARNING%s Error on computing job's node instructions: %s",
+				COL_RED, COL_CLR, state_msg);
+	}
+	else if (state_fail(compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles))) {
+		verbose(3, "%sWARNING%s Error on computing job's node cycles: %s",
+				COL_RED, COL_CLR, state_msg);
+	} else {
 
-        dst->cycles       = cycles;
-        dst->instructions = inst;
+		dst->cycles       = cycles;
+		dst->instructions = inst;
 
-        assert(inst != 0);
-        dst->CPI = (double) cycles / (double) inst;
+		assert(inst != 0);
+		dst->CPI = (double) cycles / (double) inst;
 
-    }
+	}
 
-    if (state_fail(compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS))) {
-        verbose(3, "%sWARNING%s Error on computing job's node FLOPs events: %s",
-                COL_RED, COL_CLR, state_msg);
-    } else {
-        for (uint i = 0; i < FLOPS_EVENTS; i++) {
-            dst->FLOPS[i] = FLOPS[i];
-        }
-    }
+	if (state_fail(compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS))) {
+		verbose(3, "%sWARNING%s Error on computing job's node FLOPs events: %s",
+				COL_RED, COL_CLR, state_msg);
+	} else {
+		for (uint i = 0; i < FLOPS_EVENTS; i++) {
+			dst->FLOPS[i] = FLOPS[i];
+		}
+	}
 
-    if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &dst->Gflops))) {
-        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
-                COL_RED, COL_CLR, state_msg);
-    }
+	if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &dst->Gflops))) {
+		verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
+				COL_RED, COL_CLR, state_msg);
+	}
 
-    compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
-    compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
-    compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+	compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
+	compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
+	compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
 
-    dst->L1_misses = L1;
-    dst->L2_misses = L2;
-    dst->L3_misses = L3;
+	dst->L1_misses = L1;
+	dst->L2_misses = L2;
+	dst->L3_misses = L3;
 }
 
 extern uint last_earl_phase_classification;
