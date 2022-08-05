@@ -17,6 +17,8 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <unistd.h>
+
 #include <common/config.h>
 #include <common/includes.h>
 
@@ -103,9 +105,8 @@ state_t energy_node_load(char *path, int eard)
     
     energy_loaded = 1;
 
-	int root_privileges = 0;
+	int root_privileges = (getuid() == 0);
 
-	//TODO: sacar root privileges
 	if (!root_privileges) {
 		if (eard) {
 			energy_ops.read = eards_dc_read_substitute;
