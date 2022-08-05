@@ -43,8 +43,6 @@ static struct energy_op
     state_t (*data_copy)     (edata_t dest, edata_t src);
 } energy_ops;
 
-static char energy_objc[SZ_PATH];
-
 static int  energy_loaded  = 0;
 
 static size_t my_energy_data_size = 0;
@@ -85,9 +83,18 @@ state_t eards_dc_read_substitute(void *ctx, edata_t t)
 state_t energy_node_load(char *path, int eard)
 {
 
+	state_t ret;
+	if (state_fail(ret = ear_trylock(&lock))) {
+		return ret;
+	}
+
+	if (energy_loaded) {
+		ear_unlock(&lock);
+		return EAR_SUCCESS;
+	}
+
     debug("Loading %s plugin...", path);
 
-    state_t ret;
     if (state_fail(ret = symplug_open(path, (void **) &energy_ops,
                     energy_names, energy_nops))) {
         debug("symplug_open() returned %d (%s)", ret, intern_error_str);
@@ -116,51 +123,9 @@ state_t energy_node_load(char *path, int eard)
 	}
 
 
-	return EAR_SUCCESS;
-}
-
-state_t energy_lib_init(settings_conf_t *conf)
-{
-	state_t ret;
-	if (state_fail(ret = ear_trylock(&lock))) {
-		return ret;
-	}
-
-	if (energy_loaded) {
-		ear_unlock(&lock);
-		return EAR_SUCCESS;
-	}
-
-
-	char my_plug_path[512];
-	if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
-					getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
-		ear_unlock(&lock);
-		return_msg(EAR_ERROR, "Plugins path can not be built.");
-	}
-
-	char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
-
-	// If hack, then the energy plugin is a path, otherwise is a shared object file.
-	if (hack_energy_plugin_path != NULL) {
-		debug("Using a hack energy plugin path");
-		strcpy(energy_objc, hack_energy_plugin_path);
-	} else if (conf->installation.obj_ener != NULL) {
-		debug("Using the configured energy plugin shared object file");
-		sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
-	} else {
-		ear_unlock(&lock);
-		return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
-	}
-
-	int eard = eards_connected();
-
-	ret = energy_node_load(energy_objc, eard);
-	//TODO: if ret fails, generate dummy path and load that one
 	ear_unlock(&lock);
 
-	return ret;
-
+	return EAR_SUCCESS;
 }
 
 state_t energy_datasize(size_t *size)

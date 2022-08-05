@@ -45,6 +45,7 @@
 
 #include <library/api/clasify.h>
 #include <library/loader/module_cuda.h>
+#include <library/common/utils.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
@@ -222,6 +223,40 @@ const metrics_t *metrics_get(uint api)
         case MET_CPI:     return &met_cpi;
         default: return NULL;
     }
+}
+
+static char energy_objc[SZ_PATH];
+
+state_t energy_lib_init(settings_conf_t *conf)
+{
+
+    state_t ret;
+
+	char my_plug_path[512];
+	if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
+					getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
+		return_msg(EAR_ERROR, "Plugins path can not be built.");
+	}
+
+	char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
+
+	// If hack, then the energy plugin is a path, otherwise is a shared object file.
+	if (hack_energy_plugin_path != NULL) {
+		debug("Using a hack energy plugin path");
+		strcpy(energy_objc, hack_energy_plugin_path);
+	} else if (conf->installation.obj_ener != NULL) {
+		debug("Using the configured energy plugin shared object file");
+		sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
+	} else {
+		return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
+	}
+
+	int eard = eards_connected();
+
+	ret = energy_node_load(energy_objc, eard);
+	//TODO: if ret fails, generate dummy path and load that one
+	return ret;
+
 }
 
 static void metrics_configuration(topology_t *tp)
