@@ -163,7 +163,7 @@ state_t energy_lib_init(settings_conf_t *conf)
 
 }
 
-state_t energy_lib_datasize(size_t *size)
+state_t energy_datasize(size_t *size)
 {
 	state_t ret;
 	if (state_fail(ret = ear_trylock(&lock))) {
@@ -181,26 +181,26 @@ state_t energy_lib_datasize(size_t *size)
 	return ret;
 }
 
-state_t energy_lib_frequency(ulong *fus)
+state_t energy_frequency(ulong *fus)
 {
 	*fus=ULONG_MAX;
 	preturn(energy_ops.frequency,fus);
 }
 
 /* Energy units are 1=Joules, 1000=mJ, 1000000=uJ, 1000000000nJ */
-state_t energy_lib_units(uint *units)
+state_t energy_units(uint *units)
 {
 	*units=1;
 	preturn(energy_ops.units, units);
 }
 
-state_t energy_lib_data_accumulated(unsigned long *e, edata_t init, edata_t end)
+state_t energy_data_accumulated(unsigned long *e, edata_t init, edata_t end)
 {
 	*e=0;
 	preturn(energy_ops.accumulated,e,init,end );
 }
 
-state_t energy_lib_read(void *ctx, edata_t e)
+state_t energy_read(void *ctx, edata_t e)
 {
 	state_t ret;
 	if (state_fail(ret = ear_trylock(&lock))) {
@@ -213,17 +213,17 @@ state_t energy_lib_read(void *ctx, edata_t e)
 		return EAR_ERROR;
 	}
 	ret = energy_ops.read(ctx, e);
-	debug("energy_lib_read finished");
+	debug("energy_read finished");
 	ear_unlock(&lock);
 	return ret;
 }
 
-state_t energy_lib_data_to_str(char *str, edata_t e)
+state_t energy_data_to_str(char *str, edata_t e)
 {
 	preturn(energy_ops.energy_to_str, str, e);
 }
 
-uint energy_lib_data_is_null(edata_t e)
+uint energy_data_is_null(edata_t e)
 {
 	if (energy_ops.is_null != NULL){
 		preturn(energy_ops.is_null,e);
@@ -248,7 +248,7 @@ state_t energy_data_alloc(edata_t *data)
 	return EAR_SUCCESS;
 }
 
-state_t energy_lib_data_copy(edata_t dst, edata_t src)
+state_t energy_data_copy(edata_t dst, edata_t src)
 {
 	if (energy_ops.data_copy != NULL){
 		preturn(energy_ops.data_copy, dst, src);

@@ -505,8 +505,8 @@ static void metrics_global_start()
 	// New metrics
 	/* Energy */
 	debug(" node_dc_energy");
-	ret = energy_lib_read(NULL, aux_energy);
-	if ((ret == EAR_ERROR) || energy_lib_data_is_null(aux_energy)){
+	ret = energy_read(NULL, aux_energy);
+	if ((ret == EAR_ERROR) || energy_data_is_null(aux_energy)){
 		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
 	}
 
@@ -784,7 +784,10 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	/* Energy node */
 	//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
-	int ret = energy_lib_read(NULL, aux_energy_stop);
+	int ret = energy_read(NULL, aux_energy_stop);
+	if (ret == EAR_ERROR){
+		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+	}
 
 	/* If EARD is present, we wait until the power is computed */
 	/*if (energy_lib_data_is_null(aux_energy_stop) || (ret == EAR_ERROR)) {
@@ -792,9 +795,9 @@ static int metrics_partial_stop(uint where)
 		else return EAR_SUCCESS;
 	}*/
 
-	energy_lib_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
-	energy_lib_data_to_str(start_energy_str,metrics_ipmi[LOO]);
-	energy_lib_data_to_str(stop_energy_str,aux_energy_stop);
+	energy_data_accumulated(&c_energy,metrics_ipmi[LOO],aux_energy_stop);
+	energy_data_to_str(start_energy_str,metrics_ipmi[LOO]);
+	energy_data_to_str(stop_energy_str,aux_energy_stop);
 	debug("start energy str %s", start_energy_str);
 	debug("end energy str %s", end_energy_str);
 
@@ -845,7 +848,7 @@ static int metrics_partial_stop(uint where)
 	}
 
 	/* End new section to check frozen uncore counters */
-	energy_lib_data_copy(aux_energy,aux_energy_stop);
+	energy_data_copy(aux_energy,aux_energy_stop);
 	aux_time=aux_time_stop;
 
 	if (master) {
@@ -1250,9 +1253,9 @@ int metrics_init(topology_t *topo)
 
 	// Allocating data for energy node metrics
 	// node_energy_datasize=eards_node_energy_data_size();
-	energy_lib_datasize(&node_energy_datasize);
+	energy_datasize(&node_energy_datasize);
 	debug("energy data size %lu", node_energy_datasize);
-	energy_lib_units(&node_energy_units);
+	energy_units(&node_energy_units);
 	/* We should create a data_alloc for enerrgy and a set_null */
 	energy_data_alloc(&aux_energy);
 	energy_data_alloc(&aux_energy_stop);
