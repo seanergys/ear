@@ -486,11 +486,27 @@ static void print_mpi_optimized(char *msg, uint index)
 
 uint is_blocking_collective(mpi_call call)
 {
+	return (is_bbarrier(call) || is_bgather(call));
+}
+
+
+uint is_bbarrier(mpi_call call)
+{
 	if (is_mpi_blocking(call)) {
 		mpi_call nbcall_type;
     nbcall_type = (mpi_call) remove_blocking(call);
 		return (is_barrier(nbcall_type));
 		//return (is_synchronization(nbcall_type));
+	}
+	return 0;
+}
+
+uint is_bgather(mpi_call call)
+{
+  if (is_mpi_blocking(call)) {
+    mpi_call nbcall_type;
+    nbcall_type = (mpi_call) remove_blocking(call);
+		return is_gather(nbcall_type);
 	}
 	return 0;
 }
