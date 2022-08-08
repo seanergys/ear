@@ -489,7 +489,8 @@ uint is_blocking_collective(mpi_call call)
 	if (is_mpi_blocking(call)) {
 		mpi_call nbcall_type;
     nbcall_type = (mpi_call) remove_blocking(call);
-		return (is_synchronization(nbcall_type));
+		return (is_barrier(nbcall_type));
+		//return (is_synchronization(nbcall_type));
 	}
 	return 0;
 }

@@ -45,6 +45,9 @@ extern uint gpu_initialized;
 extern uint cpu_ready, gpu_ready;
 
 extern int lib_shared_lock_fd;
+static uint total_barriers = 0;
+static uint total_barriers_resume = 0;
+static uint total_barriers_suspend = 0;
 
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
@@ -80,6 +83,7 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
+  verbose(0,"[%d] Barriers %d Suspend %d resume %d", my_node_id, total_barriers, total_barriers_suspend, total_barriers_resume);
 	if (c != NULL) {
         return mpi_app_end(c);
     }
@@ -175,30 +179,35 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
 			uint last = 0;
 			/* Barriers (etc) */
 			if (is_blocking_collective(call_type) && (lib_shared_region->num_processes > 1)){ 
+					total_barriers ++;
 					while(file_lock(lib_shared_lock_fd) < 0);
 					if (lib_shared_region->processes_in_barrier == 0){
 						lib_shared_region->processes_in_barrier = lib_shared_region->num_processes - 1;
+						lib_shared_region->reduced_in_barrier = 1;
 					}else{
 						lib_shared_region->processes_in_barrier--;
 						last = (lib_shared_region->processes_in_barrier == 0);
+						if (last) lib_shared_region->reduced_in_barrier = 0;
 					}
 					file_unlock(lib_shared_lock_fd);
 					if (last){
-						verbose(0,"Last in barrier!!");
 						/* If I'm the last one I restore the CPU freq */
 						for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 							freqs->cpu_freq[lp] = DEF_FREQ(c->app->def_freq);
 						}
 						*process_id = ALL_PROCESSES;
+						total_barriers_resume++;
 					}else{
           	pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
 						sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count-1];
 						freqs->cpu_freq[my_node_id] = sel_pstate->khz;
 						*process_id = my_node_id;
+						total_barriers_suspend++;
 					}
 			}else{
 			//verbose(0, "[%d] checking optimizations perc MPI %.2f", my_node_id, sig_shared_region[my_node_id].mpi_info.perc_mpi);
       /* Check conditions */
+			#if 0
       if (sig_shared_region[my_node_id].mpi_info.perc_mpi > MIN_PERC_MPI_OPT){  
         state_t st;
         st = must_be_optimized(call_type, last_buf, last_dest);
@@ -213,6 +222,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
           resume_cpufreq = 1;
         }
       }
+			#endif
       }
 			}
       #endif
@@ -236,10 +246,13 @@ state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int
 #endif
     if (c != NULL){ 
       #if !SINGLE_CONNECTION 
-      if (resume_cpufreq && ear_mpi_opt){
-        resume_cpufreq = 0;
-        *process_id = my_node_id;
-        freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].new_freq;
+      if (ear_mpi_opt ){
+				if (resume_cpufreq || (is_blocking_collective(call_type) && lib_shared_region->reduced_in_barrier)){
+        	resume_cpufreq = 0;
+        	*process_id = my_node_id;
+        	freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].new_freq;
+					lib_shared_region->reduced_in_barrier = 0;
+				}
       }
       #endif
       return mpi_call_end(c,call_type);

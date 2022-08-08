@@ -85,6 +85,7 @@ typedef struct lib_shared_data {
     ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     uint        node_mgr_index;
 		uint        processes_in_barrier;
+		uint        reduced_in_barrier;
 } lib_shared_data_t;
 
 

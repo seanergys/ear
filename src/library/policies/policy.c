@@ -1259,7 +1259,6 @@ state_t policy_mpi_init(mpi_call call_type)
       if (process_id != NO_PROCESS){
         total_mpi_optimized++;
 				if (process_id == ALL_PROCESSES){
-					verbose(0,"[%d] restoring in barrier", my_node_id);
 				}
         if (state_fail( policy_freq_selection(c, &aux_per_process, &per_process_node_freq, 
         &per_process_dom, NULL, process_id))){
