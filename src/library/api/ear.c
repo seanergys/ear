@@ -44,6 +44,9 @@
 #include <signal.h>
 #include <assert.h>
 #include <sys/mman.h>
+#include <semaphore.h>
+
+
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -160,11 +163,13 @@ char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
 /* This lock is used to access the lib_shared_region shared memory */
 int  lib_shared_lock_fd = -1;
+sem_t *lib_shared_lock_sem;
 char sig_shared_region_path_jobs[GENERIC_NAME];
 char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
+char sem_file[GENERIC_NAME];
 float ratio_PPN = 1.0;
 app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
@@ -358,6 +363,12 @@ void create_shared_regions()
   	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
   }
 
+  xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", ID, node_name);
+  lib_shared_lock_sem = sem_open(sem_file, O_CREAT, S_IRUSR|S_IWUSR, 1);
+  if (lib_shared_lock_sem == SEM_FAILED){
+    error("Creating sempahore %s (%s)", sem_file, strerror(errno));
+  }
+
 
 	/* This section allocates shared memory for processes in same node */
 	verbose(2,"%s:Master creating shared regions for node synchro PID=%d",node_name, getpid());
@@ -539,6 +550,11 @@ void attach_shared_regions()
 				if ((bfd = file_lock_create(block_file))<0){
 								error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 				}
+        xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", ID, node_name);
+        lib_shared_lock_sem = sem_open(sem_file, O_CREAT, S_IRUSR|S_IWUSR, 1);
+        if (lib_shared_lock_sem == SEM_FAILED){
+          error("Creating/Attaching sempahore %s (%s)", sem_file, strerror(errno));
+        }
 				/* This link will be used to access the lib_shared_region lock file */
 				lib_shared_lock_fd = bfd;
 				if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){

@@ -46,6 +46,7 @@ state_t is_blocking_busy_waiting(uint *block_type);
 uint is_blocking_collective(mpi_call call);
 uint is_bgather(mpi_call call);
 uint is_bbarrier(mpi_call call);
+uint is_bwait(mpi_call call);
 
 
 

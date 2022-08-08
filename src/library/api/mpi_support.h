@@ -159,6 +159,7 @@ typedef enum
 #define is_recv(call)            ((call == Only_Receive) || (call == Only_SendRecv))
 #define is_barrier(call)         (call == Only_Barrier)
 #define is_gather(call)					 (call == _Gather)
+#define is_wait(call)            (call == _Wait);
 
 
 int is_mpi_enabled();

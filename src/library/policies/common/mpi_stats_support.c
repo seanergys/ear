@@ -486,7 +486,8 @@ static void print_mpi_optimized(char *msg, uint index)
 
 uint is_blocking_collective(mpi_call call)
 {
-	return (is_bbarrier(call) || is_bgather(call));
+	//return (is_bbarrier(call) || is_bgather(call));
+	return (is_bbarrier(call));
 }
 
 
@@ -501,6 +502,8 @@ uint is_bbarrier(mpi_call call)
 	return 0;
 }
 
+
+
 uint is_bgather(mpi_call call)
 {
   if (is_mpi_blocking(call)) {
@@ -510,6 +513,17 @@ uint is_bgather(mpi_call call)
 	}
 	return 0;
 }
+
+uint is_bwait(mpi_call call)
+{
+  if (is_mpi_blocking(call)) {
+    mpi_call nbcall_type;
+    nbcall_type = (mpi_call) remove_blocking(call);
+    return is_wait(nbcall_type);
+  }
+  return 0;
+}
+
 
 state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
@@ -555,23 +569,27 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 // Sync
                 total_synchronizations++;
                 total_mpi_time_sync += (ulong)elap;
-                /* We check if the call must be on the list */
-                #if MPI_OPTIMIZED
-                if (last_optimized){
-                  list_mpi_to_optimize[index_last_optimized].elap += (ulong)elap;
-                  if ((ulong)elap < ear_min_usec_for_mpi_opt){ 
+            } else {
+                total_sync_block++;
+                time_sync_block += (ulong)elap;
+            }
+            /* We check if the call must be on the list */
+            #if MPI_OPTIMIZED
+            if (last_optimized){
+              list_mpi_to_optimize[index_last_optimized].elap += (ulong)elap;
+              if ((ulong)elap < ear_min_usec_for_mpi_opt){ 
                     list_mpi_to_optimize[index_last_optimized].elap = (ulong)elap;
                     list_mpi_to_optimize[index_last_optimized].call = (mpi_call)0;
                     #if VERBOSE_MPI_OPT
                     //print_mpi_optimized("Removing symbol ", index_last_optimized);
                     #endif
-                  }
-                }else{
+               }
+             }else{
                 /* Otherwise, we check if we should add it */
                 #define FIRST_NO_EAR_SYMBOL 4
                 if (((ulong)elap > ear_min_usec_for_mpi_opt) && (num_mpi_to_optimize < MAX_MPI_TO_OPT)){
-                  if (already_optimized(call_type, last_buf, last_dest) == EAR_ERROR){
-                    list_mpi_to_optimize[num_mpi_to_optimize].call       = call_type;
+                  if (already_optimized(nbcall_type, last_buf, last_dest) == EAR_ERROR){
+                    list_mpi_to_optimize[num_mpi_to_optimize].call       = nbcall_type;
                     #if 0
                     list_mpi_to_optimize[num_mpi_to_optimize].last_buf  = (p2i)get_stack(FIRST_NO_EAR_SYMBOL);
                     list_mpi_to_optimize[num_mpi_to_optimize].last_dest = (p2i)0;
@@ -587,14 +605,10 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     //print_stack();
                    }
                 }
-                }
-                last_optimized = 0;
-                #endif
+             }
+             last_optimized = 0;
+             #endif
 
-            } else {
-                total_sync_block++;
-                time_sync_block += (ulong)elap;
-            }
         }
         /* Global statistics */
         mpi_stats.mpi_time  += elap;
