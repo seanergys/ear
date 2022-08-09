@@ -37,7 +37,7 @@ state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
 	// Load
 	cpufreq_load(tp, eard);
 	imcfreq_load(tp, eard);
-     //bwidth_load(tp, eard);
+     bwidth_load(tp, eard);
       cache_load(tp, eard);
       flops_load(tp, eard);
        temp_load(tp      );

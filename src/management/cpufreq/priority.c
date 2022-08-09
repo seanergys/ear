@@ -112,9 +112,14 @@ static int        driver_fd   = -1;
 static char      *strprio[2]  = { "high", "low" };
 static cpuprio_t  clos[4];
 static uint       cpus_count;
-static uint       cores_count;
 static uint      *punit_cpus;
 static topology_t tp;
+
+/*
+ *
+ * SST API
+ *
+ */
 
 static int send_msr_command(uint cpu, ullong msr, int write, ullong value, ullong *answer)
 {
@@ -197,7 +202,18 @@ static void send_mbox_command(uint cpu, uint cmd1, uint cmd2, uint param, uint r
     }
 }
 
-static int probe()
+// Command         | Count         | Optimizable
+// ----------------|---------------| ------------
+// driver info     | 1             | no
+// cp status       | 1             | no
+// map cpus        | cpus_count    | yes
+// get clos config | 4             | yes
+// get clos assoc  | cpus_count    | yes
+// set clos assoc  | cpus_count    | yes
+// enable cp       | sockets_count | no
+// enable tf       | sockets_count | no
+
+static state_t sst_map_cpus()
 {
     struct isst_if_platform_info info = { 0 };
     struct isst_if_cpu_maps map;
@@ -230,10 +246,63 @@ static int probe()
     debug("API version   : %d", info.api_version);
     debug("Driver version: %d", info.driver_version);
     debug("MBOX supported: %d", info.mbox_supported);
-    debug("MMIO supported: %d", info.mmio_supported);    
+    debug("MMIO supported: %d", info.mmio_supported);
+
+    return EAR_SUCCESS;
 }
 
-static void print_clos_list(cpuprio_t *clos, int fd)
+state_t sst_init(topology_t *_tp)
+{
+    // Opening driver
+    if ((driver_fd = open(driver_path, O_RDWR)) < 0) {
+        return EAR_ERROR;
+    }
+    debug("Opened %s with FD %d", driver_path, driver_fd);
+    
+    // Counting CPUs 
+    cpus_count = _tp->cpu_count;
+    // Allocating SST CPU mapping
+    punit_cpus = calloc(cpus_count, sizeof(uint));
+    // Getting the list of sockets
+    topology_select(_tp, &tp, TPSelect.socket, TPGroup.merge, 0);
+    // Mapping the CPUs SST style
+    sst_map_cpus();
+
+    return EAR_SUCCESS;
+}
+
+state_t sst_enable(uint core_power, uint turbo_freq)
+{
+    ullong ans2;
+    uint ans1;
+    uint i;
+
+    for (i = 0; core_power && i < tp.cpu_count; ++i)
+    {
+        // Enabling PM (¿What is PM?)
+        send_mbox_command(tp.cpus[i].id, PM_CMD1, PM_CMD2_SET_CONFIG, 0, PM_ARG2_SET_CONFIG, &ans1);
+        // Get current core-power status (prio 0: proportional, prio 1: ordered)
+        send_mbox_command(tp.cpus[i].id, CP_CMD1, CP_CMD2_GET_CONFIG, 0, 0, &ans1);
+        debug("CP enabled : %d", getbits32(ans1, 1, 1));
+        debug("CP priority: %d", getbits32(ans1, 2, 2));
+        // Enabling CP, append the current core-power status enabling it with orderder priority 
+        send_mbox_command(tp.cpus[i].id, CP_CMD1, CP_CMD2_SET_CONFIG, CP_ARG1_SET_CONFIG,
+            ans1 | CP_ARG2_SET_CONFIG(1, 1), &ans1);
+
+    }
+    for (i = 0; i < tp.cpu_count; ++i) {
+        // Enabling TF
+        send_mbox_command(tp.cpus[i].id, TF_CMD1, TF_CMD2_SET_CONFIG, 0, TF_ARG2_SET_CONFIG(1), &ans1);
+        // Comentar a Julita. Encontrada la opcion turbo-mode en el código de la aplicación,
+        // pero no en la aplicación del Ice Lake. ¿Posible función para llegar a MAX BOOST
+        // sin necesidad de turbo-freq?
+        send_msr_command(tp.cpus[i].id, 0x1AD, 1, 0xFFFFFFFFFFFFFFFFULL, &ans2);
+    }
+
+    return EAR_SUCCESS;
+}
+
+static void sst_clos_print(cpuprio_t *clos, int fd)
 {
     int c;
 
@@ -249,7 +318,7 @@ static void print_clos_list(cpuprio_t *clos, int fd)
     } 
 }
 
-static void get_available_priority_list(cpuprio_t *clos)
+state_t sst_clos_get_available_list(cpuprio_t *clos)
 {
     uint answer;
     int c;
@@ -265,11 +334,13 @@ static void get_available_priority_list(cpuprio_t *clos)
         clos[c].min_khz = ((answer >>  8) & 0xff) * 1000;
     }
     #if SHOW_DEBUGS
-    print_clos_list(clos, verb_channel);
+    sst_clos_print(clos, verb_channel);
     #endif
+
+    return EAR_SUCCESS;
 }
 
-static void get_current_priority_list(uint *clos_list)
+state_t sst_clos_get_assoc_list(uint *clos_list)
 {
     uint answer;
     int cpu;
@@ -286,102 +357,93 @@ static void get_current_priority_list(uint *clos_list)
     }
     dprintf(debug_channel, "\n");
     #endif
+    
+    return EAR_SUCCESS;
 }
 
-static void set_current_priority(uint cpu, uint clos)
+state_t sst_clos_set_assoc(uint cpu, uint clos)
 {
     uint answer;
+    
     send_mmio_command(cpu, CP_CMD1, CP_CMD2_GET_CPU_ASSOC(punit_cpus[cpu]), 1, ((clos & 0x03) << 16), &answer);
+    
+    return EAR_SUCCESS;
 }
 
-static void set_current_priority_list(uint *clos_list)
+state_t sst_clos_set_assoc_list(uint *clos_list)
 {
     uint cpu;
+
     for (cpu = 0; cpu < cpus_count; ++cpu) {
-        set_current_priority(cpu, clos_list[cpu]);
+        sst_clos_set_assoc(cpu, clos_list[cpu]);
     }
+
+    return EAR_SUCCESS;
 }
 
-// Command         | Count         | Optimizable
-// ----------------|---------------| ------------
-// driver info     | 1             | no
-// cp status       | 1             | no
-// map cpus        | cpus_count    | yes
-// get clos config | 4             | yes
-// get clos assoc  | cpus_count    | yes
-// set clos assoc  | cpus_count    | yes
-// enable cp       | sockets_count |
-// enable tf       | sockets_count |
 
-void enable_cp()
-{
-    uint answer = 0;
-    uint i;
-    
-    for (i = 0; i < tp.cpu_count; ++i)
-    {
-        send_mbox_command(tp.cpus[i].id, PM_CMD1, PM_CMD2_SET_CONFIG, 0, PM_ARG2_SET_CONFIG, &answer);
-        // priority 0: proportional
-        // priority 1: ordered
-        send_mbox_command(tp.cpus[i].id, CP_CMD1, CP_CMD2_GET_CONFIG, 0, 0, &answer);
-        debug("CP enabled : %d", getbits32(answer, 1, 1));
-        debug("CP priority: %d", getbits32(answer, 2, 2));
-        //  
-        debug("Enabling CP for CPU%d", tp.cpus[i].id);
-        send_mbox_command(tp.cpus[i].id, CP_CMD1, CP_CMD2_SET_CONFIG, CP_ARG1_SET_CONFIG,
-            answer | CP_ARG2_SET_CONFIG(1, 1), &answer);
+/*
+ *
+ * MANAGEMENT API
+ *
+ */
 
-    }
-}
-
-void enable_tf()
-{
-    uint answer;
-    ullong ans;
-    uint i;    
-
-    for (i = 0; i < tp.cpu_count; ++i) {
-        debug("Enabling TF for CPU%d", tp.cpus[i].id);
-        send_mbox_command(tp.cpus[i].id, TF_CMD1, TF_CMD2_SET_CONFIG, 0, TF_ARG2_SET_CONFIG(1), &answer);
-        send_msr_command(tp.cpus[i].id, 0x1AD, 1, 0xFFFFFFFFFFFFFFFFULL, &ans);
-    }
-}
 
 void mgt_cpufreq_prio_load(topology_t *_tp)
 {
-    uint clos_list[256];    
-    
-    // Counting CPUs and cores 
-    cpus_count = _tp->cpu_count;
-    cores_count = _tp->core_count;
-    // Allocating SST CPU mapping
-    punit_cpus = calloc(cpus_count, sizeof(uint));
-    // Getting the list of sockets
-    topology_select(_tp, &tp, TPSelect.socket, TPGroup.merge, 0);
-    // Opening driver
-    if ((driver_fd = open(driver_path, O_RDWR)) < 0) {
+    if (state_fail(sst_init(_tp))) {
         return;
     }
-    debug("Opened %s with FD %d", driver_path, driver_fd); 
+}
+
+void mgt_cpufreq_prio_init()
+{
     // Enabling CP and TF
-    enable_cp();
-    enable_tf();
+    if (state_fail(sst_enable(1, 1))) {
+        return;
+    }
+}
 
-    probe();
-
-    get_available_priority_list(clos);
-    get_current_priority_list(clos_list);
-    
+void mgt_cpufreq_prio_dispose()
+{
     close(driver_fd);
+}
+
+state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *clos)
+{
+    return sst_clos_get_available_list(clos);
+}
+
+state_t mgt_cpufreq_prio_get_current_list(uint *clos)
+{
+    return sst_clos_get_assoc_list(clos);
+}
+
+state_t mgt_cpufreq_prio_set_current_list(uint *clos)
+{
+    return sst_clos_set_assoc_list(clos);
+}
+
+state_t mgt_cpufreq_prio_set_current(uint cpu, uint clos)
+{
+    return sst_clos_set_assoc(cpu, clos);
 }
 
 int main(int argc, char *argv[])
 {
+    cpuprio_t clos1[4];
+    uint clos2[256];
     topology_t tp;
 
     topology_init(&tp);
 
     mgt_cpufreq_prio_load(&tp);
+    mgt_cpufreq_prio_init();   
+
+    mgt_cpufreq_prio_get_available_list(clos1);
+    mgt_cpufreq_prio_get_current_list(clos2);
+ 
+    mgt_cpufreq_prio_dispose();
 
     return 0;
 }

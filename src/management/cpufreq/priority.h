@@ -30,14 +30,4 @@ typedef struct cpuprio_s {
     uint idx;
 } cpuprio_t;
 
-void mgt_cpufreq_prio_load();
-
-state_t mgt_cpufreq_prio_get_available(ctx_t *c, const cpuprio_t **prio_list);
-
-state_t mgt_cpufreq_prio_get_current(ctx_t *c, cpuprio_t **prio_list);
-
-state_t mgt_cpufreq_prio_get_granularity(ctx_t *c, uint *prio_granularity);
-
-state_t mgt_cpufreq_prio_set_current(ctx_t *c, uint *prio_list);
-
 #endif //MANAGEMENT_PRIORITY_H

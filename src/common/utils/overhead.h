@@ -20,7 +20,7 @@
 
 #include <common/types.h>
 
-#define ENABLE_OVERHEAD 0
+#define ENABLE_OVERHEAD 1
 
 void overhead_suscribe(const char *description, uint *id);
 
@@ -28,6 +28,8 @@ void overhead_start(uint id);
 
 void overhead_stop(uint id);
 
-void overhead_report();
+void overhead_report(int print_header);
+
+void overhead_print_header();
 
 #endif //COMMON_UTILS_OVERHEAD_H
