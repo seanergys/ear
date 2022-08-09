@@ -96,9 +96,9 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 {
     ulong *new_freq = freqs->cpu_freq;
     *new_freq= DEF_FREQ(c->app->def_freq);
-    /* We copy in shared  memory to be used later in MPI init/end if needed */
-    for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) sig_shared_region[lp].new_freq = new_freq[0];
-
+    for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
+      sig_shared_region[lp].new_freq = new_freq[0];
+    }
 
     cpu_ready = EAR_POLICY_READY; // TODO: This variable is not used.
 
@@ -161,6 +161,7 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 static uint resume_cpufreq = 0;
 extern p2i last_buf, last_dest;
 extern uint ear_mpi_opt;
+extern double low_mpi_ref;
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
 #if 0
@@ -177,11 +178,11 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
     if (c != NULL){ 
       st = mpi_call_init(c,call_type);
       #if MPI_OPTIMIZED
-      if (ear_mpi_opt && is_mpi_blocking(call_type)){
+      if (ear_mpi_opt && is_mpi_blocking(call_type) && (lib_shared_region->num_processes > 1)){
 			uint last = 0;
       mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 			/* Barriers (etc) */
-			if (is_barrier(nbcall_type) && (lib_shared_region->num_processes > 1)){ 
+			if (is_barrier(nbcall_type)){ 
 					total_barriers ++;
 					//while(file_lock(lib_shared_lock_fd) < 0);
           sem_wait(lib_shared_lock_sem);
@@ -213,7 +214,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
 			}else{
 			//verbose(0, "[%d] checking optimizations perc MPI %.2f", my_node_id, sig_shared_region[my_node_id].mpi_info.perc_mpi);
       /* Check conditions */
-      if ((sig_shared_region[my_node_id].mpi_info.perc_mpi > MIN_PERC_MPI_OPT) && (nbcall_type == WAIT)){  
+      if ((sig_shared_region[my_node_id].mpi_info.perc_mpi > low_mpi_ref) && (nbcall_type == WAIT)){  
         state_t st;
         st = must_be_optimized(nbcall_type, last_buf, last_dest);
         if (st == EAR_SUCCESS){

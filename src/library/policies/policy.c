@@ -28,6 +28,7 @@
 #include <common/config.h>
 #include <common/system/symplug.h>
 #include <common/environment.h>
+#include <common/types/generic.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/cpufreq/cpufreq.h>
@@ -45,7 +46,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
 #include <library/loader/module_cuda.h>
-#include <common/environment.h>
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/powercap/powercap_status_conf.h>
@@ -784,14 +784,13 @@ static int is_try_again()
 /* This is the main function for frequency selection at node level */
 /* my_sig is an input and freq_set and ready are output values */
 /* The CPU freq and GPu freq are set in this function, so freq_set is just a reference for the CPU freq selected */
+double low_mpi_ref = 100;
 state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 {
     signature_t node_sig;
-
     uint busy, iobound, mpibound, earl_phase_classification;
-
     uint jobs_in_node;
-
+    double max_mpi = 0, min_mpi = 100;
 
     polctx_t *c = &my_pol_ctx;
 
@@ -801,6 +800,16 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
+
+    if (is_mpi_enabled()){
+      for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
+        max_mpi = ear_max(max_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
+        min_mpi = ear_min(min_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
+      }
+      low_mpi_ref = min_mpi + ((max_mpi - min_mpi)/2);
+      low_mpi_ref = ear_max(low_mpi_ref, 10);
+      verbose(0,"[%d] low_mpi %.2f", my_node_id, low_mpi_ref);
+    }
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;

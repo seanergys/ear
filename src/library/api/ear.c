@@ -1630,6 +1630,9 @@ void ear_finalize(int exit_status)
 				if (masters_info.my_master_rank >= 0) nodemgr_job_end(node_mgr_index);
 				verbose_master(2,"Dettached from node_mgr region id %u",node_mgr_index);
 
+        sem_unlink(sem_file);
+        sem_close(lib_shared_lock_sem);
+
 
 				// C'est fini
 				#if SINGLE_CONNECTION

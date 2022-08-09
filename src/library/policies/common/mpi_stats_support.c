@@ -74,7 +74,7 @@ static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 
-#define MAX_MPI_TO_OPT 100
+#define MAX_MPI_TO_OPT 10
 #define DEF_MIN_USEC_MPI   50000
 
 static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
