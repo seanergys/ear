@@ -800,7 +800,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
-
+    #if MPI_OPTIMIZED
     if (is_mpi_enabled()){
       for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
         max_mpi = ear_max(max_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
@@ -810,6 +810,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
       low_mpi_ref = ear_max(low_mpi_ref, 10);
       verbose(0,"[%d] low_mpi %.2f", my_node_id, low_mpi_ref);
     }
+    #endif
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
