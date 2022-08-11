@@ -50,6 +50,7 @@ static uint total_barriers = 0;
 static uint total_barriers_resume = 0;
 static uint total_barriers_suspend = 0;
 extern sem_t *lib_shared_lock_sem;
+extern uint ear_mpi_opt;
 
 static polsym_t gpus;
 state_t policy_init(polctx_t *c)
@@ -85,7 +86,9 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-  verbose(0,"[%d] Barriers %d Suspend %d resume %d", my_node_id, total_barriers, total_barriers_suspend, total_barriers_resume);
+  if (ear_mpi_opt){
+    verbose(0,"[%d] Barriers %d Suspend %d resume %d", my_node_id, total_barriers, total_barriers_suspend, total_barriers_resume);
+  }
 	if (c != NULL) {
         return mpi_app_end(c);
     }
@@ -160,7 +163,6 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 
 static uint resume_cpufreq = 0;
 extern p2i last_buf, last_dest;
-extern uint ear_mpi_opt;
 extern double low_mpi_ref;
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {

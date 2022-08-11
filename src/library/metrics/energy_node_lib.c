@@ -96,10 +96,15 @@ state_t energy_node_load(char *path, int eard)
 	}
 
     debug("Loading %s plugin...", path);
-
-    if (state_fail(ret = symplug_open(path, (void **) &energy_ops,
-                    energy_names, energy_nops))) {
+    #if FAKE_ERROR_ERROR_PATH
+    ret = EAR_ERROR;
+    #else
+    ret = symplug_open(path, (void **) &energy_ops, 
+    energy_names, energy_nops);
+    #endif
+    if (state_fail(ret)) {
         debug("symplug_open() returned %d (%s)", ret, intern_error_str);
+		    ear_unlock(&lock);
         return_msg(ret, "Energy plugin symbols can not be opened.");
     }
     
@@ -108,7 +113,11 @@ state_t energy_node_load(char *path, int eard)
 	int root_privileges = (getuid() == 0);
 
 	if (!root_privileges) {
-		if (eard) {
+  #if FAKE_ERROR_EARD_NOT_CONNECTED
+    if (0){
+  #else
+		if (eard && eards_connected()) {
+  #endif
 			energy_ops.read = eards_dc_read_substitute;
 			debug("energy_dc_read is eards");
 		} else {

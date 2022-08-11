@@ -42,6 +42,7 @@ state_t bwidth_load(topology_t *tp, int eard)
 		pthread_mutex_unlock(&lock);
 		return EAR_SUCCESS;
 	}
+  #ifndef FAKE_ERROR_USE_DUMMY
 	// Dummy by default
 	api = API_DUMMY;
 	if (state_ok(bwidth_eard_load(tp, &ops, eard))) {
@@ -71,6 +72,7 @@ state_t bwidth_load(topology_t *tp, int eard)
 		api = API_BYPASS;
 		debug("Loaded BYPASS");
 	}
+    #endif
     #endif
 	bwidth_dummy_load(tp, &ops);
     // Overhead control

@@ -801,7 +801,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
     #if MPI_OPTIMIZED
-    if (is_mpi_enabled()){
+    if (ear_mpi_opt && is_mpi_enabled()){
       for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
         max_mpi = ear_max(max_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
         min_mpi = ear_min(min_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
@@ -1183,7 +1183,9 @@ state_t policy_max_tries(int *intents)
 state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
-    verbose(1, "[%d] Total number of MPI call with optimization %u",my_node_id,  total_mpi_optimized);
+    if (ear_mpi_opt){
+      verbose(1, "[%d] Total number of MPI call with optimization %u",my_node_id,  total_mpi_optimized);
+    }
 	
 		#if DEBUG_CPUFREQ_COST
 		verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f", total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);

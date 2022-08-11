@@ -251,7 +251,8 @@ state_t energy_lib_init(settings_conf_t *conf)
 		return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
 	}
 
-	int eard = eards_connected();
+  /* master is defined in metrics_static_init */
+	int eard = (master);
 
 	ret = energy_node_load(energy_objc, eard);
 	//TODO: if ret fails, generate dummy path and load that one

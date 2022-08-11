@@ -73,6 +73,7 @@ static ulong total_synchronizations     = 0;
 static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
+extern uint ear_mpi_opt;
 
 #define MAX_MPI_TO_OPT 10
 #define DEF_MIN_USEC_MPI   50000
@@ -575,6 +576,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
             }
             /* We check if the call must be on the list */
             #if MPI_OPTIMIZED
+            if (ear_mpi_opt){
             if (last_optimized){
               list_mpi_to_optimize[index_last_optimized].elap += (ulong)elap;
               if ((ulong)elap < ear_min_usec_for_mpi_opt){ 
@@ -607,6 +609,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 }
              }
              last_optimized = 0;
+             }
              #endif
 
         }

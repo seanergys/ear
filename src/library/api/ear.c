@@ -928,6 +928,9 @@ void ear_init()
 				uint fake_eard_error = 0;
 				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
+        ullong elap_eard_init;
+        timestamp start_eard_init, end_eard_init;
+        timestamp_getfast(&start_eard_init);
 
 
 				if (ear_lib_initialized){
@@ -1174,7 +1177,7 @@ void ear_init()
 #endif
                 /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
-				verbose_master(2,"End EARD connection section");
+
 
 
 				debug("Shared region creation section");
@@ -1503,6 +1506,9 @@ void ear_init()
 				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
+        timestamp_getfast(&end_eard_init);
+        elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
+				verbose(1,"Initialization cost: %llu usec", elap_eard_init);
 #if USE_GPUS
 				if (is_cuda_enabled()){
 								ear_cuda_init();
@@ -1519,6 +1525,10 @@ void ear_finalize(int exit_status)
 				uint fake_error = 0;
 				char *cfake = getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+        ullong elap_eard_init;
+        timestamp start_eard_init, end_eard_init;
+        timestamp_getfast(&start_eard_init);
+
 
 				verbose_master(2, "ear_finalize on=%d status %d ", lib_shared_region->earl_on, exit_status);
 				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
@@ -1646,6 +1656,10 @@ void ear_finalize(int exit_status)
 					eards_disconnect();
 				}
 				#endif
+        timestamp_getfast(&end_eard_init);
+        elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
+        verbose(1,"Finalization cost: %llu usec", elap_eard_init);
+
 }
 
 #if MPI
