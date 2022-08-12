@@ -209,6 +209,7 @@ uint per_proc_verb_file = 0;
 
 uint exclusive = 1;
 ear_classify_t phases_limits;
+static ulong dynais_calls = 0;
 
 static void print_local_data()
 {
@@ -916,7 +917,7 @@ void ear_lib_sig_handler(int s)
 /****************************************************************************************************************************************************************/
 /****************************************************************************************************************************************************************/
 
-
+//#define START_END_OVH 1
 void ear_init()
 {
 				char *summary_pathname;
@@ -928,9 +929,12 @@ void ear_init()
 				uint fake_eard_error = 0;
 				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
+
+        #if START_END_OVH
         ullong elap_eard_init;
         timestamp start_eard_init, end_eard_init;
         timestamp_getfast(&start_eard_init);
+        #endif
 
 
 				if (ear_lib_initialized){
@@ -1506,9 +1510,13 @@ void ear_init()
 				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
+
+        #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-				verbose(1,"Initialization cost: %llu usec", elap_eard_init);
+				verbose(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
+        #endif
+
 #if USE_GPUS
 				if (is_cuda_enabled()){
 								ear_cuda_init();
@@ -1525,9 +1533,12 @@ void ear_finalize(int exit_status)
 				uint fake_error = 0;
 				char *cfake = getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+
+        #if START_END_OVH
         ullong elap_eard_init;
         timestamp start_eard_init, end_eard_init;
         timestamp_getfast(&start_eard_init);
+        #endif
 
 
 				verbose_master(2, "ear_finalize on=%d status %d ", lib_shared_region->earl_on, exit_status);
@@ -1656,9 +1667,12 @@ void ear_finalize(int exit_status)
 					eards_disconnect();
 				}
 				#endif
+
+        #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose(1,"Finalization cost: %llu usec", elap_eard_init);
+        verbose(1,"Finalization cost: %llu useci dynais calls %lu", elap_eard_init, dynais_calls);
+        #endif
 
 }
 
@@ -1704,6 +1718,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
          */
         switch(ear_periodic_mode) {
             case PERIODIC_MODE_OFF:
+                {
                 switch(dynais_enabled){
                     case DYNAIS_ENABLED:
                         {
@@ -1744,6 +1759,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                         ear_mpi_call_dynais_off(call_type,buf,dest);
                         break;
 
+                }
                 }
                 break;
             case PERIODIC_MODE_ON:
@@ -1789,6 +1805,7 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 								mpi_calls_per_loop++;
 								// This is key to detect periods
 								ear_status = dynais(ear_event_s, &ear_size, &ear_level);
+                dynais_calls++;
 
 								switch (ear_status)
 								{
@@ -2049,8 +2066,9 @@ state_t earl_periodic_actions(void *no_arg)
 				timestamp_getfast(&curr_periodic_time);
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+        
 
-				debug("elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d %u",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided, my_node_id);
+				debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",my_node_id, period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 				if (first_exec_monitor){
 								first_exec_monitor = 0;
 								return EAR_SUCCESS;
@@ -2076,7 +2094,7 @@ state_t earl_periodic_actions(void *no_arg)
 												ear_periodic_mode = PERIODIC_MODE_ON;
 												if (ear_guided != new_ear_guided){ 
 																monitor_burst(earl_monitor);
-																verbose_master(2,"(l. rank) %d: Dynais guided --> time guided at time %lu",
+																debug("[%d]: Dynais guided --> time guided at time %lu",
 																								my_node_id, period_elapsed);
 																mpi_calls_in_period = lib_period;
 																states_begin_period(my_id, 1, (ulong) lib_period,1);

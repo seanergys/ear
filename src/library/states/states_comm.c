@@ -64,6 +64,9 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #if 0
     sig_ext_t *se = (sig_ext_t *)sig->signature.sig_ext;
 #endif
+
+    if (VERB_GET_LV() == 0) return;
+
     timestamp_getfast(&end);
     elapsed=timestamp_diff(&end, &ear_application_time_init, TIME_SECS);
 

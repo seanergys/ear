@@ -46,6 +46,7 @@ int warn_channel	__attribute__((weak)) = 2;
 #define VERB_SET_FD(fd)	  verb_channel = fd;
 #define VERB_SET_EN(en)	  verb_enabled = en;
 #define VERB_SET_LV(lv)	  verb_level   = lv;
+#define VERB_GET_LV()	    (verb_level)
 
 #define verbose(v, ...) \
 	{ \

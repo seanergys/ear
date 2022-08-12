@@ -724,7 +724,7 @@ void update_earl_node_mgr_info()
 
 void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmgr_earl)
 {
-    if (verb_level >= vl) {
+    if (VERB_GET_LV() >= vl) {
         if ((nmgr_eard == NULL) || (nmgr_earl == NULL)) return;
         verbose_master(vl, "%s--- Jobs in node list ---", COL_BLU);
         char sig_buff[1024];
@@ -763,7 +763,7 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
         sig_shared_region[p].sig.accum_dram_energy += sig_shared_region[p].sig.DRAM_power * time_s;
         sig_shared_region[p].sig.accum_pack_energy += sig_shared_region[p].sig.PCK_power * time_s;
 
-        verbose_master(4, "Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ",
+        debug("Accumulated energy for process %d %lu (%lf x %lf) mem %llu avg %lu (%lu x %lf) dram %lu (%lf) pack %lu (%lf) ",
                 p, sig_shared_region[p].sig.accum_energy, sig_shared_region[p].sig.DC_power,
                 time_s, sig_shared_region[p].sig.accum_mem_access,
                 sig_shared_region[p].sig.accum_avg_f, sig_shared_region[p].sig.avg_f,

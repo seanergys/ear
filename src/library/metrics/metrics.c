@@ -1447,6 +1447,10 @@ int metrics_init(topology_t *topo)
 }
 
 #define MAX_SYNCHO_TIME 100
+#define METRICS_OVH 0
+#if METRICS_OVH
+static ulong total_metrics_ovh = 0;
+#endif
 
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
@@ -1455,6 +1459,10 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	uint num_ready;
 	uint exited;
 	float wait_time = 0;
+
+  #if METRICS_OVH
+  verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+  #endif
 
 	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
 
@@ -1605,6 +1613,11 @@ int time_ready_signature(ulong min_time_us)
 state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		ulong min_time_us, ulong procs)
 {
+    #if METRICS_OVH
+    timestamp met_ovh_init, met_ovh_end;
+    timestamp_getfast(&met_ovh_init);
+    #endif
+
 
 	debug("metrics_compute_signature_finish %u", my_node_id);
 
@@ -1619,12 +1632,20 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		if (elap_time < min_time_us && !time_eq) {
 			metrics->time = 0;
 			debug("EAR_NOT_READY because of time %lld\n", elap_time);
+      #if METRICS_OVH
+      timestamp_getfast(&met_ovh_end);
+      total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+      #endif
 			return EAR_NOT_READY;
 		}
 
 		// Master: Returns not ready when power is not ready
 		// Not master: when master signature not ready
 		if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
+      #if METRICS_OVH
+      timestamp_getfast(&met_ovh_end);
+      total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+      #endif
 			return EAR_NOT_READY;
 		}
 
@@ -1652,10 +1673,18 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 			debug("Setting Master ready");
 			lib_shared_region->master_ready = 1;
 		}
+    #if METRICS_OVH
+    timestamp_getfast(&met_ovh_end);
+    total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+    #endif
 		return EAR_NOT_READY;
 	} else if (master) {
 		lib_shared_region->master_ready = 0;
 	}
+  #if METRICS_OVH
+  timestamp_getfast(&met_ovh_end);
+  total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+  #endif
 
 	return EAR_SUCCESS;
 }

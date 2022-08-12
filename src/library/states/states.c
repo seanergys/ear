@@ -166,6 +166,7 @@ void states_begin_job(int my_id, char *app_name)
     char *max_dyn_ov = getenv("EAR_MAX_DYNAIS_OVERHEAD");
     if (max_dyn_ov != NULL) {
         MAX_DYNAIS_OVERHEAD_DYN = atof(max_dyn_ov);
+        debug("Using dynamic limit for dynais %lf", MAX_DYNAIS_OVERHEAD_DYN);
     }
 
     node_freqs_alloc(&node_freqs);
@@ -238,6 +239,7 @@ void states_end_job(int my_id,  char *app_name)
 void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 {
     EAR_STATE = TEST_LOOP;
+
 
     tries_current_loop           = 0;
     tries_current_loop_same_freq = 0;
@@ -494,7 +496,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 
             // Both loop_signature and lib_shared_region->job_signature have the same data:
-	compute_per_process_and_job_metrics(&loop_signature);
+	          compute_per_process_and_job_metrics(&loop_signature);
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -812,6 +814,7 @@ static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dy
 
 static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event)
 {
+    debug("[%d] Dynais: Time %f ov %f limit %f", my_node_id, loop_signature.time, ((float) mpi_calls_iter / 1000000.0) * 100.0 / loop_signature.time, MAX_DYNAIS_OVERHEAD_DYN);
     if (loop_signature.time > 0) {
         ulong dynais_overhead_usec = mpi_calls_iter;
 
@@ -828,7 +831,7 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
         }
 
         if (dynais_enabled == DYNAIS_DISABLED) {
-            verbose_master(2, "    --- DynAIS disabled ---\n%15s: %lf s\n%15s: %lu us\n%15s: %lu (%lf %%)\n%15s: %lu\n%15s: %lu\n",
+            debug("    --- DynAIS disabled ---\n%15s: %lf s\n%15s: %lu us\n%15s: %lu (%lf %%)\n%15s: %lu\n%15s: %lu\n",
                     "Total time", loop_signature.time,
                     "DynAIS overhead", dynais_overhead_usec,
                     "MPI calls", mpi_calls_iter, dynais_overhead_perc,

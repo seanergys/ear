@@ -165,6 +165,7 @@ state_t mpi_app_init(polctx_t *c)
         sig_shared_region[my_node_id].mpi_info.exec_time=0;
         sig_shared_region[my_node_id].mpi_info.perc_mpi=0;
 
+
         sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt = 0;
         sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_cnt = 0;
         sig_shared_region[my_node_id].mpi_types_info.mpi_block_call_cnt = 0;
@@ -540,8 +541,20 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
         in_mpi_call = 0;
 
+                /* Global statistics */
+        mpi_stats.mpi_time  += elap;
+        mpi_stats.exec_time += elap;
+        mpi_stats.total_mpi_calls++;
+
+        sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
+        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
+        sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
+
+
 
         debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
+
+        #if MPI_STATS
 
         // Only collect stats for blocking calls
         if (is_mpi_blocking(call_type)) {
@@ -613,14 +626,6 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
              #endif
 
         }
-        /* Global statistics */
-        mpi_stats.mpi_time  += elap;
-        mpi_stats.exec_time += elap;
-        mpi_stats.total_mpi_calls++;
-
-        sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
-        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
-        sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
         sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt            = total_synchronizations;
         sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_cnt          = total_collectives;
@@ -631,6 +636,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_types_info.sync_block      = total_sync_block;
         sig_shared_region[my_node_id].mpi_types_info.time_sync_block = time_sync_block;
         sig_shared_region[my_node_id].mpi_types_info.max_sync_block  = max_sync_block;
+        #endif
 
 #if SHOW_DEBUGS
         if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0) {
@@ -739,6 +745,8 @@ static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, i
 static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
         mpi_calls_types_t *last)
 {
+
+    #if MPI_STATS
     diff->mpi_call_cnt         = current->mpi_call_cnt - last->mpi_call_cnt;
     diff->mpi_time             = current->mpi_time - last->mpi_time;
     diff->exec_time            = current->exec_time - last->exec_time;
@@ -751,6 +759,9 @@ static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *
     diff->sync_block           = current->sync_block - last->sync_block;
     diff->time_sync_block      = current->time_sync_block - last->time_sync_block;
     diff->max_sync_block       = ear_max(current->max_sync_block , last->max_sync_block);
+    #else
+    memset(diff, 0, sizeof(mpi_calls_types_t));
+    #endif
 
     return EAR_SUCCESS;
 }
@@ -783,6 +794,8 @@ float compute_mpi_in_period(mpi_information_t *mc)
 void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 {
     char perc_sync_time[16], perc_collec_time[16], perc_block_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
+    #if MPI_STATS
+    if (verb_lvl >= VERB_GET_LV()){
 
     if (t->exec_time == 0) {
         sprintf(perc_sync_time,    "NAV");
@@ -805,6 +818,8 @@ void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
             t->mpi_sync_call_cnt, t->mpi_collec_call_cnt, t->mpi_block_call_cnt, perc_sync_time,
             perc_collec_time, perc_block_time, mpi_calls_per_sec, perc_mpi_time,
             t->sync_block, t->time_sync_block, t->max_sync_block);
+   }
+   #endif
 }
 
 state_t read_diff_node_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
@@ -830,12 +845,15 @@ state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *si
         mpi_calls_types_t *node_mpi_calls, mpi_calls_types_t *last_node)
 {
     int i = 0;
+    #if MPI_STATS
+
     if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) {
         return EAR_ERROR;
     }
     for (i=0;i<data->num_processes;i++) {
         mpi_call_types_read_diff(&node_mpi_calls[i], &last_node[i], i);
     }
+    #endif
     return EAR_SUCCESS;
 }
 
