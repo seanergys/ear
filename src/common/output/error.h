@@ -40,7 +40,7 @@ int error_enabled	__attribute__((weak)) = 1;
 	{ \
 		if (!log_bypass) { \
 			timestamp(error_channel); \
-			dprintf(error_channel, COL_RED "Error:" COL_CLR ", " __VA_ARGS__); \
+			dprintf(error_channel, COL_RED "Error:" COL_CLR " " __VA_ARGS__); \
 			dprintf(error_channel, "\n"); \
 		} else { \
 			vlog(__VA_ARGS__); \

@@ -156,7 +156,7 @@ static int send_mmio_command(uint cpu, uint cmd1, uint cmd2, int write, uint val
     io_regs.io_reg[0].reg         = cmd2;
     io_regs.io_reg[0].read_write  = write;
     io_regs.io_reg[0].value       = write * value;
-    debug("MMIO_CMD: cpu %d, reg %d, read_write %d, value %d",
+    debug("MMIO_CMD: cpu %d, reg 0x%X, read_write %d, value 0x%X",
         io_regs.io_reg[0].logical_cpu, io_regs.io_reg[0].reg, io_regs.io_reg[0].read_write, io_regs.io_reg[0].value);
  
     if (ioctl(driver_fd, ISST_IF_MMIO_CMD, &io_regs) == -1) {
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
     topology_init(&tp);
 
     mgt_cpufreq_prio_load(&tp);
-    mgt_cpufreq_prio_init();   
+//    mgt_cpufreq_prio_init();   
 
     mgt_cpufreq_prio_get_available_list(clos1);
     mgt_cpufreq_prio_get_current_list(clos2);
