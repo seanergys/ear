@@ -1260,12 +1260,14 @@ static node_freq_domain_t per_process_dom = {
   .gpu = POL_NOT_SUPPORTED,
   .gpumem = POL_NOT_SUPPORTED};
 
+#define POLICY_MPI_OPT 0
 state_t policy_mpi_init(mpi_call call_type)
 {
     int process_id = NO_PROCESS;
     state_t st;
     polctx_t *c=&my_pol_ctx;
     total_mpi ++;
+    #if POLICY_MPI_OPT
     if (polsyms_fun.mpi_init !=  NULL){
       st = polsyms_fun.mpi_init(c, call_type,&per_process_node_freq , &process_id);
       if (process_id != NO_PROCESS){
@@ -1279,6 +1281,9 @@ state_t policy_mpi_init(mpi_call call_type)
       }
       return st;
     }else return EAR_SUCCESS;
+    #else
+    return EAR_SUCCESS;
+    #endif
 }
 
 /* This function is executed after each mpi call: Warning! it could introduce a lot of overhead. */
@@ -1287,6 +1292,7 @@ state_t policy_mpi_end(mpi_call call_type)
     int process_id = NO_PROCESS;
     state_t st;
     polctx_t *c=&my_pol_ctx;
+    #if POLICY_MPI_OPT
     if (polsyms_fun.mpi_end != NULL){
       st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);
       if (process_id != NO_PROCESS){
@@ -1297,6 +1303,9 @@ state_t policy_mpi_end(mpi_call call_type)
       }
       return st;
     }else return EAR_SUCCESS;
+    #else
+    return EAR_SUCCESS;
+    #endif
 }
 
 /** GLOBAL EVENTS */
