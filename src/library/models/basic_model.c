@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+// #define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <common/types/signature.h>
@@ -85,11 +86,13 @@ state_t model_init(char *etc,char *tmp,architecture_t *myarch)
     }
   }
 	basic_model_init=1;	
+#if SHOW_DEBUGS
     for (ref = 0; ref < num_pstates; ref++)
     {
         for (i = 0; i < num_pstates; i++)
                 debug("coefficient from ref: %d i: %d available: %d\n", ref, i, coefficients[ref][i].available);
     }
+#endif
 	return EAR_SUCCESS;
 }
 
