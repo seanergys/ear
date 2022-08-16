@@ -152,7 +152,7 @@ int gpu_ready = EAR_POLICY_NO_STATE;
 gpu_state_t curr_gpu_state;
 gpu_state_t last_gpu_state = _GPU_Comp;             // Initial GPU state as Computation
 
-const int   polsyms_n = 17;
+const int   polsyms_n = 18;
 const char *polsyms_nam[] = {
     "policy_init",
     "policy_apply",
@@ -169,6 +169,7 @@ const char *polsyms_nam[] = {
     "policy_configure",
     "policy_domain",
     "policy_io_settings",
+    "policy_cpu_gpu_settings",
     "policy_busy_wait_settings",
     "policy_restore_settings",
 };
@@ -261,6 +262,15 @@ void fill_cpus_out_of_cgroup(uint exc)
 static ulong total_cpufreq_cost_us = 0;
 static ulong calls_cpufreq = 0;
 #endif
+
+/* This function confgures freqs for apps consuming lot GPU */
+state_t policy_cpu_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
+{
+    if (polsyms_fun.cpu_gpu_settings != NULL){
+        polsyms_fun.cpu_gpu_settings(c,my_sig,freqs);
+    }
+    return EAR_SUCCESS;
+}
 
 
 /* This function confgures freqs based on IO criteria */
@@ -837,10 +847,11 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     classify(iobound, mpibound, &earl_phase_classification);
 
     is_cpu_busy_waiting(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &busy);
-    is_gpu_idle(&lib_shared_region->job_signature, &curr_gpu_state); // GPU phase classification
+    gpu_activity_state(&lib_shared_region->job_signature, &curr_gpu_state); // GPU phase classification
     if (curr_gpu_state & _GPU_Idle) {
         verbose_master(POLICY_GPU, "%sGPU idle phase%s", COL_BLU, COL_CLR);
     }
+
 		/* Busy waiting is critical , we must verify all the processes are waiting */
 		uint all_processes_busy = 1;
 		if (busy){
@@ -850,6 +861,14 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 				cp++;
 			}
 		}
+		/* If not all processes are busy waiting we don't apply special settings */
+		if (!all_processes_busy) busy = 0;
+
+    /* Applications gpu bound cannot be applied as CPU-GPU */
+    if ((curr_gpu_state & _GPU_Bound) && busy != BUSY_WAITING){
+      earl_phase_classification = APP_CPU_GPU;
+    }
+
     //  NEW CLASSIFY
     verbose_master(POLICY_PHASES, "------------- EARL phase classification ------------\n"
             "I/O (3) vs. MPI (2): %u\n"
@@ -863,10 +882,24 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
             phases_limits.cpi_cpu_bound, phases_limits.gbs_cpu_bound,
             phases_limits.cpi_mem_bound, phases_limits.gbs_mem_bound);
 
-		/* If not all processes are busy waiting we don't apply special settings */
-		if (!all_processes_busy) busy = 0;
 
     if (use_earl_phases) {
+      /* CPU-GPU Code */
+      if (earl_phase_classification == APP_CPU_GPU){
+            //verbose_master(POLICY_PHASES,"%sCPU-GPU application%s", COL_BLU,COL_CLR);
+            verbose_master(0,"%sCPU-GPU application%s", COL_BLU,COL_CLR);
+            st = policy_cpu_gpu_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
+            *freq_set = avg_nf.cpu_freq[0];
+            if (is_all_ready()){
+                  last_earl_phase_classification = earl_phase_classification;
+                  last_gpu_state = curr_gpu_state;
+                  policy_master_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
+                  *ready = EAR_POLICY_READY;
+                  clean_signatures(lib_shared_region,sig_shared_region);
+                  return EAR_SUCCESS;
+            }
+      }
+
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND) {
             if (busy == BUSY_WAITING) {

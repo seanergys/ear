@@ -216,9 +216,10 @@ state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound)
     return EAR_SUCCESS;
 }
 
-state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state)
+state_t gpu_activity_state(signature_t *sig, gpu_state_t *gpu_state)
 {
 #if USE_GPUS
+    int total = 0;
     if (!is_cuda_enabled()) {
         /* One of the following cases:
          * - Node does not have GPUs
@@ -227,17 +228,22 @@ state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state)
         *gpu_state = _GPU_NoGPU;
         return EAR_SUCCESS;
     }
+    *gpu_state = _GPU_Idle;
     // for sure the Job has been assigned to use GPUs, but are they being used?
-	for (int i = 0; i < sig->gpu_sig.num_gpus; i++) {
+	  for (int i = 0; i < sig->gpu_sig.num_gpus; i++) {
         if (sig->gpu_sig.gpu_data[i].GPU_util > 0) {
+            total += sig->gpu_sig.gpu_data[i].GPU_util;
             *gpu_state = _GPU_Comp;
-            return EAR_SUCCESS;
         }
     }
-    // GPUs are idle here
-    *gpu_state = _GPU_Idle;
+    if (total > 0){
+      uint avg_gpu_util = total / sig->gpu_sig.num_gpus;
+      if (avg_gpu_util > 0) *gpu_state = _GPU_Bound;
+    }
 #else
-	*gpu_state = _GPU_NoGPU;
+	  *gpu_state = _GPU_NoGPU;
 #endif // USE_GPUS
 	return EAR_SUCCESS;
 }
+
+

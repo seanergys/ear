@@ -27,8 +27,9 @@
 
 #define APP_COMP_BOUND   	1
 #define APP_MPI_BOUND   	2
-#define APP_IO_BOUND		3
+#define APP_IO_BOUND		  3
 #define APP_BUSY_WAITING	4
+#define APP_CPU_GPU       5
 
 #define DYNAIS_GUIDED 0
 #define TIME_GUIDED	  1
@@ -43,6 +44,7 @@ typedef enum {
     _GPU_NoGPU = 1,
     _GPU_Comp  = 2,
     _GPU_Idle  = 4,
+    _GPU_Bound = 8,
 } gpu_state_t;
 
 
@@ -63,10 +65,10 @@ state_t classify_init(topology_t *tp_in);
 void get_classify_limits(ear_classify_t *limits);
 state_t classify(uint iobound, uint mibound, uint *app_state);
 state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy);
+state_t gpu_activity_state(signature_t *sig, gpu_state_t *gpu_state);
 uint is_process_busy_waiting(ssig_t *sig);
 state_t is_cpu_bound(signature_t *sig,uint num_cpus, uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound);
-state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state);
 state_t is_io_bound(signature_t *sig,uint num_cpus, uint *iobound);
 state_t is_network_bound(signature_t *sig, uint num_cpus, uint *mpibound);
 uint    low_mem_activity(signature_t *sig,uint num_cpus);
