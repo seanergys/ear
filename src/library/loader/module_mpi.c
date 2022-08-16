@@ -153,6 +153,7 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 	void **next_mpif_v = (void **) &next_mpif;
 	void **ear_mpic_v  = (void **) &ear_mpic;
 	void **ear_mpif_v  = (void **) &ear_mpif;
+  char *disable_cntd = getenv(FLAG_DISABLE_CNTD);
 	void *libear;
 	int i;
 
@@ -160,8 +161,38 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 		path_so, lang_c, lang_f);
 
 	if (MPI_Get_library_version_detected){
+  #if USE_CNTD
+    #ifdef COUNTDOWN_BASE
+    static char buffer[4096];
+    snprintf(buffer, 4096, "%s/libcntd.so",COUNTDOWN_BASE);
+    verbose(0, "Using countdown library path %s", buffer);
+    //if ((disable_cntd != NULL) || state_fail(symplug_open(buffer, (void **) &next_mpic, mpic_names, MPIC_N))){
+		if ((disable_cntd != NULL) || state_fail(symplug_open_flags(buffer, (void **) &next_mpic, mpic_names, MPIC_N, RTLD_GLOBAL | RTLD_LAZY))){
+      if (disable_cntd == NULL){
+        verbose(1, "Warning, countdown C symbols cannot be loaded, using NEXT symbols");
+      }else {
+        verbose(1, "CNTD disabled");
+      }
 		plug_join(RTLD_NEXT, (void **) &next_mpic, mpic_names, MPIC_N);
+    }
+    //if ((disable_cntd != NULL) || state_fail(symplug_open(buffer, (void **) &next_mpif, mpif_names, MPIF_N ))){
+		if ((disable_cntd != NULL) || state_fail(symplug_open_flags(buffer, (void **) &next_mpif, mpif_names, MPIF_N, RTLD_GLOBAL | RTLD_LAZY))){
+      if (disable_cntd == NULL){
+        verbose(1, "Warning, countdown F symbols cannot be loaded, using NEXT symbols");
+      }else{
+        verbose(1, "CNTD disabled");
+      }
 		plug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names, MPIF_N);
+    }
+    #else
+	plug_join(RTLD_NEXT, (void **) &next_mpic, mpic_names, MPIC_N);
+	plug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names, MPIF_N);
+    #endif
+
+  #else
+		symplug_join(RTLD_NEXT, (void **) &next_mpic, mpic_names, MPIC_N);
+		symplug_join(RTLD_NEXT, (void **) &next_mpif, mpif_names, MPIF_N);
+  #endif
 		verbose(3, "LOADER: MPI (C) next symbols loaded, Init address is %p", next_mpic.Init);
 		verbose(3, "LOADER: MPI (F) next symbols loaded, Init address is %p", next_mpif.init);
     if (next_mpif.init == NULL){

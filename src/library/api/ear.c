@@ -52,7 +52,6 @@
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
 #include <common/types/version.h>
-#include <common/types/application.h>
 #include <common/types/pc_app_info.h>
 #include <management/cpufreq/frequency.h>
 #include <common/hardware/hardware_info.h>
@@ -140,7 +139,6 @@ static uint ear_loop_level;
 static int in_loop;
 static short ear_status = NO_LOOP;
 
-#if EAR_OVERHEAD_CONTROL
 /* in us */
 // These variables are shared
 uint 		ear_periodic_mode = PERIODIC_MODE_OFF;
@@ -150,7 +148,6 @@ static uint total_mpi_calls = 0;
 static uint  dynais_timeout = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
 uint             lib_period = PERIOD;
 static uint     check_every = MPI_CALLS_TO_CHECK_PERIODIC;
-#endif
 #define MASTERS_SYNC_VERBOSE 1
 masters_info_t masters_info;
 #if MPI
@@ -161,6 +158,8 @@ unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
+/* This lock is used to access the lib_shared_region shared memory */
+int  lib_shared_lock_fd = -1;
 char sig_shared_region_path_jobs[GENERIC_NAME];
 char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
@@ -355,6 +354,12 @@ void create_shared_regions()
 	#endif
 	uint ID = create_ID(application.job.id, application.job.step_id);
 
+	/* This file is going to be used to access the lib_shared region in exclusive mode */
+	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
+  if ((lib_shared_lock_fd = file_lock_create(block_file))<0){
+  	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
+  }
+
 
 	/* This section allocates shared memory for processes in same node */
 	verbose(2,"%s:Master creating shared regions for node synchro PID=%d",node_name, getpid());
@@ -536,6 +541,8 @@ void attach_shared_regions()
 				if ((bfd = file_lock_create(block_file))<0){
 								error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 				}
+				/* This link will be used to access the lib_shared_region lock file */
+				lib_shared_lock_fd = bfd;
 				if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
 								error("Getting the lib_shared_region_path");
 				}else{
@@ -1084,16 +1091,14 @@ void ear_init()
 #endif
 
 				// Application static data and metrics
-				debug("init application");
 				init_application(&application);
-				debug("init loop_signature");
-				init_application(&loop_signature);
 				application.is_mpi   	= 1;
-				loop_signature.is_mpi	= 1;
 				application.is_learning	= ear_whole_app;
-				application.job.def_f		= getenv_ear_p_state();
-				loop_signature.is_learning	= ear_whole_app;
-				debug("application data initialized");
+				application.job.def_f   = getenv_ear_p_state();
+				// debug("init loop_signature");
+				// init_application(&loop_signature);
+				// loop_signature.is_mpi	= 1;
+				// loop_signature.is_learning	= ear_whole_app;
 
 				// Getting environment data
 				get_app_name(ear_app_name);
@@ -1110,7 +1115,7 @@ void ear_init()
 				application.job.step_id = my_step_id;
 
 				debug("Starting job");
-				//sets the job start_time
+				// sets the job start_time
 				start_job(&application.job);
 				debug("Job time initialized");
 
@@ -1149,6 +1154,7 @@ void ear_init()
                 if (eard_ok) { // all processes will connect with eard
 
                     char *col;
+
                     if (!my_id) {
                         col = COL_BLU;
                     } else {
@@ -1426,7 +1432,7 @@ void ear_init()
 
 
 				// Copying static application info into the loop info
-				memcpy(&loop_signature, &application, sizeof(application_t));
+				// memcpy(&loop_signature, &application, sizeof(application_t));
 
 				summary_pathname = get_ear_user_db_pathname();
 				// if (masters_info.my_master_rank >= 0){
@@ -1617,7 +1623,7 @@ void ear_finalize(int exit_status)
 								if (application.is_learning) verbose_master(1,"Application in learning phase mode");
 								debug("Reporting application data");
 								verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
-								clean_db_signature(&application.signature, system_conf->max_sig_power);
+								signature_clean_before_db(&application.signature, system_conf->max_sig_power);
 								verbose_master(2, "Reporting data");
 #if USE_GPUS
 								verbose_master(2, " Application with %d GPUS", application.signature.gpu_sig.num_gpus);
@@ -1668,97 +1674,92 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest);
 
 void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 {
-#if EAR_OVERHEAD_CONTROL
-				time_t curr_time;
-				double time_from_mpi_init;
+    time_t curr_time;
+    double time_from_mpi_init;
 
-				if (!ear_lib_initialized) {
-					verbose_master(2, "%sWARNING%s EAR not initialized.", COL_RED, COL_CLR);
-					ear_init();
-				}
+    if (!ear_lib_initialized) {
+        verbose_master(2, "%sWARNING%s EAR not initialized.", COL_RED, COL_CLR);
+        ear_init();
+    }
 
 
-				if (!eard_ok && !EARL_LIGHT) return;
-				if (synchronize_masters == 0 ) return;
-				if (!lib_shared_region->earl_on) return;
+    if (!eard_ok && !EARL_LIGHT) return;
+    if (synchronize_masters == 0 ) return;
+    if (!lib_shared_region->earl_on) return;
 #if ONLY_MASTER
-				if (my_id) return;
+    if (my_id) return;
 #endif
-				if (ear_guided == TIME_GUIDED) return;
-				/* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
-				if (!ear_whole_app)
-				{
-								unsigned long  ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
-								//unsigned short ear_event_s = dynais_sample_convert(ear_event_l);
-								if (masters_info.my_master_rank>=0){
-												traces_mpi_call(ear_my_rank, my_id,
-																				(ulong) ear_event_l,
-																				(ulong) buf,
-																				(ulong) dest,
-																				(ulong) call_type);
-								}
+    if (ear_guided == TIME_GUIDED) return;
+    /* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
+    if (!ear_whole_app)
+    {
+        ulong  ear_event_l = (ulong)((((buf>>5)^dest)<<5)|call_type);
+        //unsigned short ear_event_s = dynais_sample_convert(ear_event_l);
+        if (masters_info.my_master_rank>=0){
+            traces_mpi_call(ear_my_rank, my_id,
+                    (ulong) ear_event_l,
+                    (ulong) buf,
+                    (ulong) dest,
+                    (ulong) call_type);
+        }
 
-								total_mpi_calls++;
-								/* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
-								 * ear_periodic_mode can be ON or OFF 
-								 */
-								switch(ear_periodic_mode){
-												case PERIODIC_MODE_OFF:
-																switch(dynais_enabled){
-																				case DYNAIS_ENABLED:
-																								{
-																												/* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
-																												if (check_periodic_mode == 0){  // check_periodic_mode=0 the first time a signature is computed
-																																ear_mpi_call_dynais_on(call_type,buf,dest);
-																												}else{ // Check every N=check_every mpi calls
-																																/* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
-																																if ((total_mpi_calls%check_every) == 0){
-																																				time(&curr_time);
-																																				time_from_mpi_init = difftime(curr_time,application.job.start_time);
+        total_mpi_calls++;
+        /* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
+         * ear_periodic_mode can be ON or OFF 
+         */
+        switch(ear_periodic_mode) {
+            case PERIODIC_MODE_OFF:
+                switch(dynais_enabled){
+                    case DYNAIS_ENABLED:
+                        {
+                            /* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
+                            if (check_periodic_mode == 0){  // check_periodic_mode=0 the first time a signature is computed
+                                ear_mpi_call_dynais_on(call_type,buf,dest);
+                            }else{ // Check every N=check_every mpi calls
+                                /* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
+                                if ((total_mpi_calls%check_every) == 0){
+                                    time(&curr_time);
+                                    time_from_mpi_init = difftime(curr_time,application.job.start_time);
 
-																																				/* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
-																																				if (time_from_mpi_init >= dynais_timeout){
-																																								// we must compute N here
-																																								ear_periodic_mode = PERIODIC_MODE_ON;
-																																								assert(dynais_timeout > 0);
-																																								mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
-																																								if (masters_info.my_master_rank >= 0) traces_start();
-																																								verbose_master(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
-																																																time_from_mpi_init,mpi_calls_in_period,ear_status);
-																																								ear_iterations = 0;
-																																								states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
-																																								states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
-																																				}else{
+                                    /* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
+                                    if (time_from_mpi_init >= dynais_timeout){
+                                        // we must compute N here
+                                        ear_periodic_mode = PERIODIC_MODE_ON;
+                                        assert(dynais_timeout > 0);
+                                        mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
+                                        if (masters_info.my_master_rank >= 0) traces_start();
+                                        verbose_master(3, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
+                                                time_from_mpi_init,mpi_calls_in_period,ear_status);
+                                        ear_iterations = 0;
+                                        states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
+                                        states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
+                                    }else{
 
-																																								/* We continue using dynais */
-																																								ear_mpi_call_dynais_on(call_type,buf,dest);	
-																																				}
-																																}else{	// We check the periodic mode every check_every mpi calls
-																																				ear_mpi_call_dynais_on(call_type,buf,dest);
-																																}
-																												}
-																								}
-																								break;
-																				case DYNAIS_DISABLED:
-																								/** That case means we have computed some signature and we have decided to set dynais disabled */
-																								ear_mpi_call_dynais_off(call_type,buf,dest);
-																								break;
+                                        /* We continue using dynais */
+                                        ear_mpi_call_dynais_on(call_type,buf,dest);	
+                                    }
+                                }else{	// We check the periodic mode every check_every mpi calls
+                                    ear_mpi_call_dynais_on(call_type,buf,dest);
+                                }
+                            }
+                        }
+                        break;
+                    case DYNAIS_DISABLED:
+                        /** That case means we have computed some signature and we have decided to set dynais disabled */
+                        ear_mpi_call_dynais_off(call_type,buf,dest);
+                        break;
 
-																}
-																break;
-												case PERIODIC_MODE_ON:
-																/* EAR energy policy is called periodically */
-																if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
-																				ear_iterations++;
-																				states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
-																}
-																break;
-								}
-				}
-#else
-				if (dynais_enabled == DYNAIS_ENABLED) ear_mpi_call_dynais_on(call_type,buf,dest);
-				else ear_mpi_call_dynais_off(call_type,buf,dest);
-#endif
+                }
+                break;
+            case PERIODIC_MODE_ON:
+                /* EAR energy policy is called periodically */
+                if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
+                    ear_iterations++;
+                    states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
+                }
+                break;
+        }
+    }
 }
 
 
@@ -1779,7 +1780,7 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 								uint ear_size;
 								uint ear_level;
 
-								ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
+								ear_event_l = (ulong) ((((buf>>5)^dest)<<5)|call_type);
 								ear_event_s = dynais_sample_convert(ear_event_l);
 								//debug("EAR(%s) EAR executing before an MPI Call: DYNAIS ON\n",__FILE__);
 

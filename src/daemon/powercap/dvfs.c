@@ -15,6 +15,9 @@
 * and COPYING.EPL files.
 */
 
+#define _GNU_SOURCE
+//#define SHOW_DEBUGS 1
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,23 +25,26 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include <limits.h>
-#define _GNU_SOURCE
-// #define SHOW_DEBUGS 1
-#include <pthread.h>
-#include <common/config.h>
 #include <signal.h>
+#include <limits.h>
+#include <pthread.h>
+
+#include <common/config.h>
 #include <common/colors.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <common/system/execute.h>
-#include <metrics/energy/cpu.h>
-#include <management/cpufreq/frequency.h>
-#include <common/hardware/hardware_info.h>
-#include <daemon/powercap/powercap_status_conf.h>
-#include <daemon/powercap/powercap_status.h>
-#include <daemon/powercap/powercap_mgt.h>
 #include <common/system/monitor.h>
+#include <common/hardware/hardware_info.h>
+
+#include <management/cpufreq/frequency.h>
+
+#include <metrics/energy/cpu.h>
+#include <metrics/energy_cpu/energy_cpu.h>
+
+#include <daemon/powercap/powercap_mgt.h>
+#include <daemon/powercap/powercap_status.h>
+#include <daemon/powercap/powercap_status_conf.h>
 
 
 #define RAPL_VS_NODE_POWER 1
@@ -68,7 +74,6 @@ static suscription_t *sus_dvfs;
 /* This  subscription will take care automatically of the power monitoring */
 static uint dvfs_pc_secs=0, num_packs;
 static  unsigned long long *values_rapl_init,*values_rapl_end,*values_diff;
-static int *fd_rapl;
 static float power_rapl,my_limit;
 static uint *prev_pstate;
 static int32_t prev_counter;
@@ -221,28 +226,24 @@ state_t dvfs_pc_thread_init(void *p)
         pthread_exit(NULL);
     }
     debug("DVFS:Num pcks detected in dvfs_pc thread %u",num_packs);
-    values_rapl_init=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
-    values_rapl_end=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
-    values_diff=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
+
+	// Init energy_cpu and alloc data
+	if (energy_cpu_init(NULL)) {
+		error("cannot initialize energy_cpu layer in dvfs_pc thread initialization");
+		pthread_exit(NULL);
+	}
+	energy_cpu_data_alloc(NULL, &values_rapl_init, &num_packs);
+	energy_cpu_data_alloc(NULL, &values_rapl_end,  &num_packs);
+	energy_cpu_data_alloc(NULL, &values_diff, &num_packs);
     if ((values_rapl_init==NULL) || (values_rapl_end==NULL) || (values_diff==NULL))
     {
         error("values_rapl returns NULL in dvfs_pc thread initialization");
         pthread_exit(NULL);
     }
-    fd_rapl=(int*)calloc(sizeof(int),num_packs);
-    if (fd_rapl==NULL){
-        error("fd_rapl cannot be allocated in dvfs_pc thread initialization");
-        pthread_exit(NULL);
-    }
-    debug("DVFS:Initializing RAPL in dvfs_pc");
-    if (init_rapl_msr(fd_rapl)<0){
-        error("Error initializing rapl in dvfs_pc thread initialization");
-        pthread_exit(NULL);
-    }
-    dvfs_pc_enabled=1;
-    verbose(1,"Power measurement initialized in dvfs_pc thread initialization");
-    /* RAPL is initialized */
-    read_rapl_msr(fd_rapl,values_rapl_init);
+
+
+	// read initial values
+	energy_cpu_read(NULL, values_rapl_init);
     dvfs_monitor_initialized = 1;
     return EAR_SUCCESS;
 }
@@ -273,12 +274,12 @@ state_t dvfs_pc_thread_main(void *p)
 		//verbose_frequencies(node_size, c_req_f);
 
     dvfs_pc_secs=(dvfs_pc_secs+1)%DEBUG_PERIOD;
-    read_rapl_msr(fd_rapl,values_rapl_end);
+	energy_cpu_read(NULL, values_rapl_end);
     /* Calculate power */
-    diff_rapl_msr_energy(values_diff,values_rapl_end,values_rapl_init);
+	energy_cpu_data_diff(NULL, values_rapl_init, values_rapl_end, values_diff);
 
     /* Copy init=end */
-    memcpy(values_rapl_init, values_rapl_end, num_packs * RAPL_POWER_EVS * sizeof(unsigned long long));
+	energy_cpu_data_copy(NULL, values_rapl_init, values_rapl_end);
 
     if ((current_dvfs_pc <= POWER_CAP_UNLIMITED) || (c_status != PC_STATUS_RUN)){
         debug("powercap unlimited or status != PC_STATUS_RUN");
@@ -392,12 +393,19 @@ state_t enable(suscription_t *sus)
     /* Init data */
     s = topology_init(&node_desc);
     if (s == EAR_ERROR) debug("Error getting node topology");
-
     node_size = node_desc.cpu_count;
+
+	/* Load energy cpu plugin */
+	if (energy_cpu_load(&node_desc, 0)) {
+		error("energy_cpu cannot be loaded");
+		return EAR_ERROR;
+	}
+
     debug("DVFS:Initializing frequency in dvfs_pc %u cpus",node_size);
     frequency_init(node_size);
-		frequency_set_userspace_governor_all_cpus();
+	frequency_set_userspace_governor_all_cpus();
     num_pstates = frequency_get_num_pstates();
+
     /* node_size or MAX_CPUS_SUPPORTED */
     c_freq = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
     c_req_f = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));

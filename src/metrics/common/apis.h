@@ -34,6 +34,7 @@
 #define API_LIKWID      10
 #define API_CUPTI       11
 #define API_ONEAPI      12
+#define API_RAPL 		13
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0

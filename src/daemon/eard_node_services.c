@@ -40,6 +40,7 @@
 #include <metrics/energy/cpu.h>
 #include <metrics/energy/energy_node.h>
 #include <metrics/bandwidth/bandwidth.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
 #include <report/report.h>
@@ -249,7 +250,6 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     char *data = NULL;
     size_t size = 0;
 
-    verbose(VEARD_LAPI_DEBUG, "EARD mgt_cpufreq");
     dcase_init(RPC_MGT_CPUFREQ_GET_API);
         data = (char *) &mc.api;
         size = sizeof(uint);
@@ -548,7 +548,6 @@ int get_local_connection_ack(local_connection_t *my_con,int reqfd)
       debug("Local connection not found %d", reqfd);
     return_msg(EAR_ERROR, "Local connection not found");
   }
-  debug("ACK for %d found at pos %d = %d | lid %lu", reqfd,i,my_con[i].fds[ACK_LOCAL_FD], my_con[i].lid);
   return my_con[i].fds[ACK_LOCAL_FD];
 }
 
@@ -656,7 +655,7 @@ void connect_service(struct daemon_req *new_req)
   verbose(VEARD_LAPI, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
 
   /* Creates 1 pipe (per node),  jobid and step id to send acks. pid is a combination of jobid and stepid */
-  verbose(VEARD + 1, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
+  verbose(VEARD_LAPI, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
   /* This pipe is to send data, 1 per connection */
   sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, pid,lid);
   sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, pid,lid);
@@ -912,7 +911,8 @@ int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
       write(ack_fd, &ack, sizeof(ack));
       break;
     case READ_RAPL:
-      if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
+      //if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
+      if (energy_cpu_read(no_ctx, values_rapl) < 0) error("Error reading rapl msr counters");
       write(ack_fd, values_rapl, sizeof(unsigned long long) * RAPL_POWER_EVS*num_packs);
       break;
     case DATA_SIZE_RAPL:
@@ -1057,6 +1057,7 @@ void service_select(int req_fd, int ack_fd)
     if (services_misc(local_req, req_fd, ack_fd)) {
         return;
     }
+		
     if(services_mgt_cpufreq(local_req, req_fd, ack_fd)) {
         return;
     }
@@ -1096,6 +1097,7 @@ void service_select(int req_fd, int ack_fd)
 state_t eard_local_api()
 {
 	ear_njob_t *eard_jobs_list;
+	uint rapl_count;
 	int numfds_ready;
 	int ack_fd;
 	state_t s;
@@ -1121,7 +1123,9 @@ state_t eard_local_api()
     verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
 	// RAPL metrics
-    values_rapl=(unsigned long long*)calloc(num_packs*RAPL_POWER_EVS,sizeof(unsigned long long));
+	state_assert(s, energy_cpu_load(&node_desc, 0), _exit(0)); //no context and no eards
+	state_assert(s, energy_cpu_init(no_ctx),        _exit(0));
+	state_assert(s, energy_cpu_data_alloc(no_ctx, &values_rapl, &rapl_count), _exit(0));
     if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
 	verbose(VEARD_LAPI,"RAPL data allocated in node_serices");
 	

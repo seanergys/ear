@@ -55,7 +55,7 @@ typedef struct power_data {
 
 
 /**  Starts power monitoring */
-int init_power_ponitoring(ehandler_t *eh);
+int init_power_monitoring(ehandler_t *eh, topology_t *tp);
 
 /** Ends power monitoring */
 void end_power_monitoring(ehandler_t *eh);

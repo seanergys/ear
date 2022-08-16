@@ -126,7 +126,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
             sprintf(io_info, "No IO data");
         }
 
-        // TODO: period or time ?
+        // TODO: period or time ? time is the time per iteration. This metric is computed periodically by a thread.
         // If enabled each process computes it I/O bandwidth, otherwise the node I/O bandwidth is already computed
         IO_MBS = (per_proc_verb_file) ? ((float) io_data->rchar / (float) (1024 * 1024) + (float) io_data->wchar / (float) (1024 * 1024)) / sig_shared_region[my_node_id].period : (float) sig->signature.IO_MBS;
 
@@ -160,7 +160,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
             // Each process computes its VPI
             compute_ssig_vpi(&VPI, &sig_shared_region[my_node_id].sig);
         } else {
-            compute_vpi(&VPI, &sig->signature);
+            compute_sig_vpi(&VPI, &sig->signature);
         }
         
         double GPU_POWER = 0;

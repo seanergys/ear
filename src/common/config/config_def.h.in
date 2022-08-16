@@ -89,7 +89,6 @@
 #define MAX_ENERGY                          300
 #define DEFAULT_POWER                      	300 
 #define GRACE_T1                            3
-#define EAR_OVERHEAD_CONTROL                1
 #define MAX_TIME_DYNAIS_WITHOUT_SIGNATURE   15
 #define MPI_CALLS_TO_CHECK_PERIODIC         1000
 /* Maximum power error supported. It is used to compute the min time to compute

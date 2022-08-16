@@ -33,9 +33,12 @@ void after_init()
 	ear_init();
 }
 
+p2i last_buf, last_dest;
 void before_mpi(mpi_call call_type, p2i buf, p2i dest)
 {
 	debug("before_mpi");
+        last_buf  = buf;
+        last_dest = dest;
 	policy_mpi_init(call_type);
 	ear_mpi_call(call_type,buf,dest);
 }

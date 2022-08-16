@@ -451,7 +451,7 @@ void parse_island(cluster_conf_t *conf, char *line)
                 if (!found)
                 {
                     conf->islands[id_f].specific_tags = realloc(conf->islands[id_f].specific_tags, sizeof(char *)*(conf->islands[id_f].num_specific_tags+1));
-                    conf->islands[id_f].specific_tags[conf->islands[id_f].num_specific_tags] = calloc(strlen(token), sizeof(char));
+                    conf->islands[id_f].specific_tags[conf->islands[id_f].num_specific_tags] = calloc(strlen(token)+1, sizeof(char));
                     strcpy(conf->islands[id_f].specific_tags[conf->islands[id_f].num_specific_tags], token);
                     current_tags[current_num_tags] = conf->islands[id_f].num_specific_tags;
                     conf->islands[id_f].num_specific_tags++;
@@ -803,6 +803,13 @@ void free_cluster_conf(cluster_conf_t *conf)
     }
     free(conf->e_tags);
     free(conf->power_policies);
+	for (i = 0; i < conf->eargm.num_eargms; i++) 
+	{
+		if (conf->eargm.eargms[i].num_subs > 0)
+			free(conf->eargm.eargms[i].subs);
+	}
+	if (conf->eargm.num_eargms > 0) free(conf->eargm.eargms);
+
 
     memset(conf, 0, sizeof(cluster_conf_t));
 }

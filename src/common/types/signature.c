@@ -20,15 +20,21 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-
 //#define SHOW_DEBUGS 1
+#if !SHOW_DEBUGS
+#define NDEBUG
+#endif
+#include <assert.h>
+
 #include <common/config.h>
 #include <metrics/flops/flops.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/output/debug.h>
 
-void signature_copy(signature_t *destiny, signature_t *source)
+static double compute_vpi(const ullong *FLOPS, ullong instructions);
+
+void signature_copy(signature_t *destiny, const signature_t *source)
 {
     memcpy(destiny, source, sizeof(signature_t));
 }
@@ -56,10 +62,9 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
         }
     }
 
-		debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
+	debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS
-	
     int num_gpu = sig->gpu_sig.num_gpus;
 		if (single_column && num_gpu){
 			dprintf(fd, ";");
@@ -89,34 +94,33 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
 
 void signature_print_simple_fd(int fd, signature_t *sig)
 {
-    dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
-            (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->DC_power);
+    dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf POWER=%.2lf]",
+            (float) sig->avg_f / 1000000.0, (float) sig->avg_imc_f/1000000.0, (float) sig->def_f / 1000000.0,
+            sig->time, sig->CPI, sig->GBS, sig->DC_power);
 }
 
 void signature_to_str(signature_t *sig, char *msg, size_t limit)
 {
-    snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf GFLOPS %.2lf POWER=%.2lf]",(float)sig->avg_f/1000000.0,
-            (float)sig->avg_imc_f/1000000.0, (float)sig->def_f/1000000.0,sig->time, sig->CPI,sig->GBS,sig->Gflops, sig->DC_power);
+    snprintf(msg,limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf GFLOPS %.2lf POWER=%.2lf]",
+            (float) sig->avg_f / 1000000.0, (float) sig->avg_imc_f / 1000000.0, (float) sig->def_f / 1000000.0,
+            sig->time, sig->CPI, sig->GBS, sig->Gflops, sig->DC_power);
 }
 
-void compute_ssig_vpi(double *vpi, ssig_t *sig)
+void compute_sig_vpi(double *vpi, const signature_t *sig)
 {
-    *vpi=0;
+    *vpi = 0;
 
     if (sig->instructions > 0) {
-        ull vins = 0;
+        *vpi = compute_vpi(sig->FLOPS, sig->instructions);
+    }
+}
 
-        if (sig->FLOPS[3] > 0) {
-            vins=sig->FLOPS[3] / WEIGHT_512F;
-        }
+void compute_ssig_vpi(double *vpi, const ssig_t *sig)
+{
+    *vpi = 0;
 
-        if (sig->FLOPS[7] > 0) {
-            vins += (sig->FLOPS[7] / WEIGHT_512D);
-        }
-
-        if (vins>0) {
-            *vpi = (double) vins / (double) sig->instructions;
-        }
+    if (sig->instructions > 0) {
+        *vpi = compute_vpi(sig->FLOPS, sig->instructions);
     }
 }
 
@@ -135,28 +139,6 @@ void compute_ssig_vpi2(double *vpi,ssig_t *sig)
     else *vpi=0;
 }
 
-void compute_vpi(double *vpi, signature_t *sig)
-{
-    *vpi = 0;
-
-    if (sig->instructions > 0) {
-
-        ull vins = 0;
-
-        if (sig->FLOPS[3] > 0) {
-            vins = sig->FLOPS[3] / 16;
-        }
-
-        if (sig->FLOPS[7] > 0) {
-            vins += (sig->FLOPS[7] / 8);
-        }
-
-        if ((vins > 0)) {
-            *vpi = (double) vins / (double) sig->instructions;
-        }
-    }
-}
-
 void print_signature_fd_binary(int fd, signature_t *sig)
 {
     write(fd,sig,sizeof(signature_t));
@@ -166,7 +148,7 @@ void read_signature_fd_binary(int fd, signature_t *sig)
     read(fd,sig,sizeof(signature_t));
 }
 
-void adapt_signature_to_node(signature_t *dest,signature_t *src,float ratio_PPN)
+void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PPN)
 {
     double new_TPI,new_DC_power;
 
@@ -184,6 +166,7 @@ void adapt_signature_to_node(signature_t *dest,signature_t *src,float ratio_PPN)
     dest->TPI=new_TPI;
     dest->DC_power=new_DC_power;
 }
+
 void acum_sig_metrics(signature_t *dst,signature_t *src)
 {
     int i;
@@ -222,33 +205,35 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
 #define MAX_CPU_FREQ 10000000
 #define MAX_IMC_FREQ 10000000
 
-/** Checks all the values are valid to be reported to DB and fixes potential problems*/
-void clean_db_signature(signature_t *sig, double limit)
+void signature_clean_before_db(signature_t *sig, double pwr_limit)
 {
-    if (!isnormal(sig->time))				sig->time = 0;
-    if (!isnormal(sig->EDP))				sig->EDP = 0;
-    if (!isnormal(sig->DC_power)) 	sig->DC_power = 0;
-    if (!isnormal(sig->DRAM_power)) sig->DRAM_power = 0;
-    if (!isnormal(sig->PCK_power)) 	sig->PCK_power = 0;
-    if (!isnormal(sig->CPI))				sig->CPI = 0;
-    if (!isnormal(sig->TPI))				sig->TPI = 0;
-    if (!isnormal(sig->GBS))				sig->GBS = 0;
-    if (!isnormal(sig->IO_MBS))			sig->IO_MBS = 0;
-    if (!isnormal(sig->Gflops))			sig->Gflops = 0;
-    if (sig->DC_power > limit)		  sig->DC_power = limit;
-    if (sig->DRAM_power > limit)		sig->DRAM_power = 0;
-    if (sig->PCK_power > limit)			sig->PCK_power = 0;
-		if (!isnormal(sig->perc_MPI))		sig->perc_MPI = 0;
-    if (sig->avg_f > MAX_CPU_FREQ)  sig->avg_f = MAX_CPU_FREQ;
-    if (sig->avg_imc_f > MAX_IMC_FREQ) sig->avg_imc_f = MAX_IMC_FREQ;
-    if (sig->def_f > MAX_CPU_FREQ)   sig->def_f = MAX_CPU_FREQ;
+    if (!isnormal(sig->time))          sig->time       = 0;
+    if (!isnormal(sig->EDP))           sig->EDP        = 0;
+    if (!isnormal(sig->DC_power)) 	   sig->DC_power   = 0;
+    if (!isnormal(sig->DRAM_power))    sig->DRAM_power = 0;
+    if (!isnormal(sig->PCK_power))     sig->PCK_power  = 0;
+    if (!isnormal(sig->CPI))           sig->CPI        = 0;
+    if (!isnormal(sig->TPI))           sig->TPI        = 0;
+    if (!isnormal(sig->GBS))           sig->GBS        = 0;
+    if (!isnormal(sig->IO_MBS))        sig->IO_MBS     = 0;
+    if (!isnormal(sig->Gflops))        sig->Gflops     = 0;
+	if (!isnormal(sig->perc_MPI))      sig->perc_MPI   = 0;
 
+    if (sig->DC_power   > pwr_limit)   sig->DC_power   = pwr_limit;
+    if (sig->DRAM_power > pwr_limit)   sig->DRAM_power = 0;
+    if (sig->PCK_power  > pwr_limit)   sig->PCK_power  = 0;
+
+    if (sig->avg_f     > MAX_CPU_FREQ) sig->avg_f      = MAX_CPU_FREQ;
+    if (sig->avg_imc_f > MAX_IMC_FREQ) sig->avg_imc_f  = MAX_IMC_FREQ;
+    if (sig->def_f     > MAX_CPU_FREQ) sig->def_f      = MAX_CPU_FREQ;
 
 #if USE_GPUS
-    if (sig->gpu_sig.num_gpus){
+    if (sig->gpu_sig.num_gpus) {
         int g;
-        for (g=0;g<sig->gpu_sig.num_gpus;g++){
-            if (!isnormal(sig->gpu_sig.gpu_data[g].GPU_power)) sig->gpu_sig.gpu_data[g].GPU_power = 0;
+        for (g = 0;g < sig->gpu_sig.num_gpus; g++) {
+            if (!isnormal(sig->gpu_sig.gpu_data[g].GPU_power)) {
+                sig->gpu_sig.gpu_data[g].GPU_power = 0;
+            }
         }
     }
 #endif
@@ -308,7 +293,7 @@ void compute_avg_node_sig(ssig_t *avg_sig,int n)
     avg_sig->instructions = avg_sig->instructions/n;
     avg_sig->cycles       = avg_sig->cycles/n;
     avg_sig->L3_misses    = avg_sig->L3_misses/n;
-    for (i=0;i<FLOPS_EVENTS;i++){   
+    for (i=0;i<FLOPS_EVENTS;i++) {
         my_flops[i] = avg_sig->FLOPS[i]/n;
         avg_sig->FLOPS[i] = my_flops[i];
     }
@@ -446,4 +431,16 @@ int sig_gpus_used(signature_t *s)
     return util;
 }
 
+static double compute_vpi(const ullong *FLOPS, ullong instructions) {
+    ull vins = 0;
 
+    if (FLOPS[3] > 0) {
+        vins = FLOPS[3] / 16;
+    }
+
+    if (FLOPS[7] > 0) {
+        vins += (FLOPS[7] / 8);
+    }
+
+    return (double) vins / (double) instructions;
+}

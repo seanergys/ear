@@ -78,7 +78,7 @@ static state_t write_word(int fd, char *word, int s, int line_break)
 	if (line_break) {
 		s += 1;
 		word[s-1] = '\n';
-		word[s-0] = '\0';
+		word[s] = '\0';
 	}
 	for (i = 0, r = 1, p = s; i < s && r > 0;) {
 		r = pwrite(fd, (void*) &word[i], p, i);
@@ -95,13 +95,14 @@ static state_t write_word(int fd, char *word, int s, int line_break)
 static state_t write_multi(int *fds, char *word, int line_break)
 {
 	state_t s = EAR_SUCCESS;
-	int len = strlen(word)+1;
+	int len = strlen(word);
 	int cpu;
 	debug("Multiple writing a word '%s'", word);
 	// Adding a line break
 	if (line_break) {
-		word[len-1] = '\n';
-		word[len-0] = '\0';
+		word[len]   = '\n';
+		word[len+1] = '0';
+                len++; 
 	}
 	for (cpu = 0; cpu < tp.cpu_count && state_ok(s); ++cpu) {
 		s = write_word(fds[cpu], word, len, 0);
@@ -427,9 +428,9 @@ state_t mgt_cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
 		if (freqs_index[cpu] > f->freqs_count) {
 			freqs_index[cpu] = f->freqs_count-1;
 		}
+
 		sprintf(data, "%llu", f->freqs_avail[freqs_index[cpu]]);
 		s1 = write_word(f->fds_freq[cpu], data, strlen(data), 1);
-		//debug("writing a word '%s' returned %d", data, s1);
 		if (state_fail(s1)) {
 			s2 = s1;
 		}
