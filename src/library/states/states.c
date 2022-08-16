@@ -279,9 +279,9 @@ void states_end_period(uint iterations)
     if (loop_with_signature)
     {
 #if REPORT_TIMESTAMP
-      curr_loop.total_iterations =  (ulong)time(NULL);
+        curr_loop.total_iterations = (ulong) time(NULL);
 #else
-      curr_loop.total_iterations = iterations;
+        curr_loop.total_iterations = iterations;
 #endif
         if (system_conf->report_loops) {
             if (master) {
