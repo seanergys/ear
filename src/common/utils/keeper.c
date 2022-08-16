@@ -208,12 +208,14 @@ int keeper_load_##suffix (const char *id, type value) \
 KEEPER_SAVE(   text,   char *, strcpy(buffer, value));
 KEEPER_SAVE(  int32,    int  , sprintf(buffer, "%d", value));
 KEEPER_SAVE(  int64,  llong  , sprintf(buffer, "%lld", value));
+KEEPER_SAVE( uint32,   uint  , sprintf(buffer, "%u", value));
 KEEPER_SAVE( uint64, ullong  , sprintf(buffer, "%llu", value));
 KEEPER_SAVE(float32,  float  , sprintf(buffer, "%f", value));
 KEEPER_SAVE(float64, double  , sprintf(buffer, "%lf", value));
 KEEPER_LOAD(   text,   char *, strcpy(value, values[i]));
 KEEPER_LOAD(  int32,    int *, *value = atoi(values[i]));
 KEEPER_LOAD(  int64,  llong *, *value = atoll(values[i]));
+KEEPER_LOAD( uint32,   uint *, *value = (uint) atoi(values[i]));
 KEEPER_LOAD( uint64, ullong *, *value = (ullong) atoll(values[i]));
 KEEPER_LOAD(float32,  float *, *value = (float) atof(values[i]));
 KEEPER_LOAD(float64, double *, *value = atof(values[i]));
