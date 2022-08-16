@@ -1859,7 +1859,6 @@ state_t metrics_new_iteration(signature_t *sig)
 	}
 
 #if USE_GPUS
-<<<<<<< HEAD
     sig->gpu_sig.num_gpus = 0;
     if (last_gpu_state & _GPU_Idle) {
 
