@@ -193,8 +193,12 @@ suscription_t *earl_monitor;
 state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
 static ulong seconds = 0;
-//static uint ear_guided = DYNAIS_GUIDED; 
+
+#if EAR_DEF_TIME_GUIDED
+uint ear_guided = TIME_GUIDED;
+#else
 uint ear_guided = DYNAIS_GUIDED; 
+#endif
 //static int end_periodic_th=0;
 static uint synchronize_masters = 1;
 static uint ITERS_PER_PERIOD;

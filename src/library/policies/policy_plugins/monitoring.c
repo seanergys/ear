@@ -190,11 +190,9 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
           sem_wait(lib_shared_lock_sem);
 					if (lib_shared_region->processes_in_barrier == 0){
 						lib_shared_region->processes_in_barrier = lib_shared_region->num_processes - 1;
-						lib_shared_region->reduced_in_barrier = 1;
 					}else{
 						lib_shared_region->processes_in_barrier--;
 						last = (lib_shared_region->processes_in_barrier == 0);
-						if (last) lib_shared_region->reduced_in_barrier = 0;
 					}
 					//file_unlock(lib_shared_lock_fd);
           sem_post(lib_shared_lock_sem);
@@ -255,7 +253,7 @@ state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int
     if (c != NULL){ 
       #if !SINGLE_CONNECTION 
       if (ear_mpi_opt ){
-				if (resume_cpufreq || (is_blocking_collective(call_type) && lib_shared_region->reduced_in_barrier)){
+				if (resume_cpufreq){
         	resume_cpufreq = 0;
         	*process_id = my_node_id;
         	freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].new_freq;

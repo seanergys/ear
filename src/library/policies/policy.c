@@ -1260,7 +1260,7 @@ static node_freq_domain_t per_process_dom = {
   .gpu = POL_NOT_SUPPORTED,
   .gpumem = POL_NOT_SUPPORTED};
 
-#define POLICY_MPI_OPT 0
+#define POLICY_MPI_OPT 1
 state_t policy_mpi_init(mpi_call call_type)
 {
     int process_id = NO_PROCESS;

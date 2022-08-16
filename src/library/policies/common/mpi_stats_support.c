@@ -181,8 +181,8 @@ state_t mpi_app_init(polctx_t *c)
 
 #if NEW_MPI_STATS
         for (int i = 0; i < N_CALL_TYPES; i++) {
-            mpi_call_count[i] = 0;
-            mpi_call_time[i]  = 0;
+            mpi_call_count[i] = (uint)0;
+            mpi_call_time[i]  = (ullong)0;
         }
 #endif
 
@@ -252,13 +252,24 @@ state_t mpi_app_end(polctx_t *c)
       }
     }
     #endif
+    #if NEW_MPI_STATS
+
+    for (int i = 0; i < N_CALL_TYPES; i++) {
+      if (mpi_call_count[i]){
+        if ((mpi_call_time[i] / mpi_call_count[i]) > 200000){
+          verbose(0, "[%d] CALL %d Time %llu instances %d", my_node_id, i , mpi_call_time[i], mpi_call_count[i]);
+        }
+      }
+    }
+    #endif
+
 
     /* Global statistics */
     timestamp_getfast(&end);
     elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
     mpi_stats.exec_time += elap;
 
-    if (mpi_stats.total_mpi_calls) {
+    if (mpi_stats.total_mpi_calls && mpi_stats.exec_time) {
         mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
         char *stats = getenv(FLAG_GET_MPI_STATS);
@@ -315,15 +326,14 @@ state_t mpi_app_end(polctx_t *c)
 #if NEW_MPI_STATS
                 // Only the master writes the header
                 if (mpi_stats.rank == 0) {
-                    sprintf(mpi_stats_buff, "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
+                    snprintf(mpi_stats_buff, sizeof(mpi_stats_buff),"Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
                             "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
                             "Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;"
                             "Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;t_Send;"
                             "t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait;Block;t_Block\n");
                     write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 }
-
-                sprintf(mpi_stats_buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u"
+                snprintf(mpi_stats_buff,sizeof(mpi_stats_buff),"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u"
                         "%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
@@ -541,6 +551,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
         in_mpi_call = 0;
 
+
                 /* Global statistics */
         mpi_stats.mpi_time  += elap;
         mpi_stats.exec_time += elap;
@@ -557,7 +568,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         #if MPI_STATS
 
         // Only collect stats for blocking calls
-        if (is_mpi_blocking(call_type)) {
+        if (is_mpi_blocking(call_type) ) {
 
             total_blocking_calls++;
             total_mpi_time_blocking += (ulong) elap;
@@ -646,12 +657,12 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
         }
 #endif // SHOW_DEBUGS
-        timestamp_getfast(&start_no_mpi);
 #if COMP_CPI
         cpi_read(no_ctx, &cpi_1);
 #endif
     }
 #endif // PER_MPI_STATS
+    timestamp_getfast(&start_no_mpi);
     return EAR_SUCCESS;
 }
 
