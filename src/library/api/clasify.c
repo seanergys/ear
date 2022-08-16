@@ -40,6 +40,7 @@ static float GBS_BUSY_WAITING =    3.0;
 static float GFLOPS_BUSY_WAITING = 0.1;
 static float IO_TH               = 10.0;
 static float MPI_TH              = 10000;
+static float MPI_BOUND           = 50.0;
 static float MIN_MPI_TH          = 200;
 static float CPI_MEM_BOUND       = 1.0;
 static float GBS_MEM_BOUND       = 60.0;
@@ -55,6 +56,7 @@ void get_classify_limits(ear_classify_t *limits)
   limits->mpi_th              = MPI_TH;
   limits->cpi_mem_bound       = CPI_MEM_BOUND;
   limits->gbs_mem_bound       = GBS_MEM_BOUND;
+  limits->mpi_bound           = MPI_BOUND;
 }
 
 
@@ -110,10 +112,10 @@ state_t is_io_bound(signature_t *sig, uint  num_cpus, uint *iobound)
 
 }
 
-state_t is_network_bound(float mpisec,uint *mpibound)
+state_t is_network_bound(signature_t *sig, uint  num_cpus, uint *mpibound)
 {
 	*mpibound = 0;
-	if (mpisec > MPI_TH){
+	if (sig->perc_MPI > MPI_BOUND){
 		*mpibound = 1;
 	}
 	return EAR_SUCCESS;
@@ -130,7 +132,15 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     return EAR_SUCCESS;
 }
 
-state_t is_cpu_busy_waiting(signature_t *sig, uint *busy)
+uint is_process_busy_waiting(ssig_t *sig)
+{
+	uint c1 = (sig->CPI    < CPI_BUSY_WAITING);
+	uint c2 = (sig->GBS    < GBS_BUSY_WAITING);
+	uint c3 = (sig->Gflops < GFLOPS_BUSY_WAITING);
+	return c1 && c2 && c3;
+}
+
+state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
 {
     
     if (!sig || !busy) {
@@ -138,8 +148,8 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint *busy)
     }
 
 	uint c1 = (sig->CPI    < CPI_BUSY_WAITING);
-	uint c2 = (sig->GBS    < GBS_BUSY_WAITING);
-	uint c3 = (sig->Gflops < GFLOPS_BUSY_WAITING);
+	uint c2 = ((sig->GBS/num_cpus)    < GBS_BUSY_WAITING);
+	uint c3 = ((sig->Gflops/num_cpus) < GFLOPS_BUSY_WAITING);
 
 	*busy = USEFUL_COMP;
 

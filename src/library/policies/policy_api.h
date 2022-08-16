@@ -68,13 +68,13 @@ state_t policy_new_iteration(polctx_t *c, signature_t *sig);
  * Warning! it could introduce a lot of overhead.
  * \param c The policy context within this function is called.
  * \param call_type The call type information. */
-state_t policy_mpi_init(polctx_t *c, mpi_call call_type);
+state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
 
 /** This function is executed after each MPI call.
  * Warning! it could introduce a lot of overhead.
  * \param c The policy context within this function is called.
  * \param call_type The call type information. */
-state_t policy_mpi_end(polctx_t *c, mpi_call call_type);
+state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
 
 /** This function is executed at loop init or period init.
  * \param c The policy context within this function is called.

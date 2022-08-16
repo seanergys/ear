@@ -56,17 +56,19 @@ typedef struct ear_classify{
   float mpi_th;
   float cpi_mem_bound;
   float gbs_mem_bound;
+  float mpi_bound;
 }ear_classify_t;
 
 state_t classify_init(topology_t *tp_in);
 void get_classify_limits(ear_classify_t *limits);
 state_t classify(uint iobound, uint mibound, uint *app_state);
-state_t is_cpu_busy_waiting(signature_t *sig, uint *busy);
+state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy);
+uint is_process_busy_waiting(ssig_t *sig);
 state_t is_cpu_bound(signature_t *sig,uint num_cpus, uint *cbound);
 state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound);
 state_t is_gpu_idle(signature_t *sig, gpu_state_t *gpu_state);
 state_t is_io_bound(signature_t *sig,uint num_cpus, uint *iobound);
-state_t is_network_bound(float mpisec,uint *mpibound);
+state_t is_network_bound(signature_t *sig, uint num_cpus, uint *mpibound);
 uint    low_mem_activity(signature_t *sig,uint num_cpus);
 
 

@@ -60,7 +60,7 @@
 #define NEW_CPUFREQ_API 1 // Enables the usage of the new metrics API,
                           // instead of the deprecated frequency API.
 #define VERBOSE_WARN    2 // Verbose level for warning messages.
-#define VERB_SAV_PEN    2 // Verbose level for saving and penalty estimation.
+#define VERB_SAV_PEN    3 // Verbose level for saving and penalty estimation.
 #if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
 #endif
@@ -494,7 +494,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 
             // Both loop_signature and lib_shared_region->job_signature have the same data:
-			compute_per_process_and_job_metrics(&loop_signature);
+	compute_per_process_and_job_metrics(&loop_signature);
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -522,9 +522,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             sig_ready[curr_pstate] = 1;
 
-            /* This function takes into account if we are using or not the whole node. */
-            signature_t norm_signature;
-            adapt_signature_to_node(&norm_signature, &loop_signature, ratio_PPN);
 
 			/* ******************* MOVED **********************
              * Now we compute the JOB signature for reporting. */
@@ -532,6 +529,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
                 signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
             }
+            /* This function takes into account if we are using or not the whole node. */
+            signature_t norm_signature;
+            adapt_signature_to_node(&norm_signature, &lib_shared_region->job_signature, ratio_PPN);
             /* At this point curr_loop and job_signature signatures are the JOB signature
              * with accumulated per process and global (node) metrics (e.g., DC power). */
 

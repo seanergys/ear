@@ -69,13 +69,14 @@ typedef struct mini_sig
 #if USE_GPUS
     gpu_signature_t gpu_sig;
 #endif
-		ulong accum_energy;
-		ulong accum_dram_energy;
-		ulong accum_pack_energy;
-		ull   accum_mem_access;
-		ulong accum_avg_f;
-		double valid_time;
-} ssig_t;
+  ulong accum_energy;
+  ulong accum_dram_energy;
+  ulong accum_pack_energy;
+  ull   accum_mem_access;
+  ulong accum_avg_f;
+  double valid_time;
+}ssig_t;
+
 
 typedef struct signature
 {

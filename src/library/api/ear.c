@@ -158,6 +158,8 @@ unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
+/* This lock is used to access the lib_shared_region shared memory */
+int  lib_shared_lock_fd = -1;
 char sig_shared_region_path_jobs[GENERIC_NAME];
 char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
@@ -350,6 +352,12 @@ void create_shared_regions()
 	#endif
 	uint ID = create_ID(application.job.id, application.job.step_id);
 
+	/* This file is going to be used to access the lib_shared region in exclusive mode */
+	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
+  if ((lib_shared_lock_fd = file_lock_create(block_file))<0){
+  	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
+  }
+
 
 	/* This section allocates shared memory for processes in same node */
 	verbose(2,"%s:Master creating shared regions for node synchro PID=%d",node_name, getpid());
@@ -531,6 +539,8 @@ void attach_shared_regions()
 				if ((bfd = file_lock_create(block_file))<0){
 								error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 				}
+				/* This link will be used to access the lib_shared_region lock file */
+				lib_shared_lock_fd = bfd;
 				if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
 								error("Getting the lib_shared_region_path");
 				}else{
@@ -1131,10 +1141,10 @@ void ear_init()
                     char *col;
                     if (!my_id) col = COL_BLU; 
                     else        col = COL_GRE;
-                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
+                    verbose(3, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
                             col,my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
                     if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
-                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
+                        verbose(1, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         if (!my_id){
                             notify_eard_connection(1);
                             mark_as_eard_connected(my_job_id, my_step_id, getpid());

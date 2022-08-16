@@ -84,6 +84,8 @@ typedef struct lib_shared_data {
     cpu_set_t   node_mask;
     ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     uint        node_mgr_index;
+		uint        processes_in_barrier;
+		uint        reduced_in_barrier;
 } lib_shared_data_t;
 
 
@@ -103,6 +105,7 @@ typedef struct shsignature {
     uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
     int               affinity;
     uint              unbalanced;
+    float             perc_MPI;
     // ulong             policy_freq;
 	double            period;
 } shsignature_t;

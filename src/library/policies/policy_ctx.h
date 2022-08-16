@@ -79,6 +79,8 @@ typedef struct node_freq_domain {
 #define POL_GRAIN_CORE 1
 #define POL_DEFAULT    2
 #define POL_NOT_SUPPORTED 100
+#define ALL_PROCESSES     -1
+#define NO_PROCESS        -2
 
 typedef struct policy_symbols {
     state_t (*init)               (polctx_t *c);
@@ -91,8 +93,8 @@ typedef struct policy_symbols {
     state_t (*loop_init)          (polctx_t *c, loop_id_t *loop_id);
     state_t (*loop_end)           (polctx_t *c, loop_id_t *loop_id);
     state_t (*new_iter)           (polctx_t *c, signature_t *sig);
-    state_t (*mpi_init)           (polctx_t *c, mpi_call call_type);
-    state_t (*mpi_end)            (polctx_t *c, mpi_call call_type);
+    state_t (*mpi_init)           (polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
+    state_t (*mpi_end)            (polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
     state_t (*configure)          (polctx_t *c);
     state_t (*domain)             (polctx_t *c, node_freq_domain_t *domain);
 	state_t (*io_settings)        (polctx_t *c, signature_t *my_sig, node_freqs_t *freqs);

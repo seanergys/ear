@@ -20,6 +20,11 @@
 
 #include <library/metrics/metrics.h>
 
+#define DOM_CPU 0
+#define DOM_MEM 1
+#define DOM_GPU 2
+#define DOM_GPU_MEM 3
+
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
@@ -59,6 +64,7 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs);
 void node_freqs_alloc(node_freqs_t *node_freq);
 void node_freqs_free(node_freqs_t *node_freq);
 void node_freqs_copy(node_freqs_t * dst, node_freqs_t *src);
+uint node_freqs_are_diff(uint flag, node_freqs_t * nf1, node_freqs_t *nf2);
 
 /*  Copy current information to use it in the next iteration as last information. */
 state_t copy_cpufreq_sel(ulong *to, ulong *from, size_t size);
