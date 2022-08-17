@@ -24,7 +24,7 @@
  * 2 means invatid shared memory or invalid id (half processes),
  * 3 eard not present . 0 means no fake (default) */
 #define FAKE_EARD_ERROR "FAKE_EARD_ERROR"
-#define FAKE_LEARNING 1
+//#define FAKE_LEARNING 1
 
 /* 1 means master error, 2 means no master error at ear_finalize i. 0 no fake (default)*/
 #define FAKE_PROCESS_ERRROR "FAKE_PROCESS_ERRROR"

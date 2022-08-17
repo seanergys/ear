@@ -405,7 +405,8 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
     (void) (ack);                           \
     if (!app_connected) return EAR_SUCCESS; \
     req.req_service = service;              \
-    req.sec=create_sec_tag();
+    req.sec=create_sec_tag();               \
+    memset(&req.req_data, 0, sizeof(union daemon_req_opt));
 
 ulong eards_write_app_signature(application_t *app_signature)
 {
