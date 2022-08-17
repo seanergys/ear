@@ -1190,6 +1190,8 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     if (powermon_is_idle()) { 
         powercap_run_to_idle();
+        if (strcmp(my_node_conf->idle_governor, "default") != 0){
+        }
     }
     verbose(VJOBPMON+1,"Cleaning job from node_mgr");
     nodemgr_clean_job(jid, sid);
