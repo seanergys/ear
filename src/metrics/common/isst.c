@@ -29,12 +29,11 @@
 #include <common/hardware/bithack.h>
 #include <metrics/common/isst.h>
 
-//#define PM_SET_CONFIG(e)             0x095,0x03,0x00,(e << 16) //WRITE_PM_CONFIG,PM_FEATURE
-//#define CP_SET_CONFIG(e,p)           0x0D0,0x02,(0x01 << 0x08),((p << 2) | (e << 1)) //CONFIG_CLOS,CLOS_PM_QOS_CONFIG,MBOX_CMD_WRITE_BIT
-
 #define BC(b)                         (~(0x01 << b)) //BIT CLEAN
 #define PM_GET_CONFIG                  0x094,0x03,0x00,0x00 //READ_PM_CONFIG,PM_FEATURE
 #define PM_SET_CONFIG(o,e)             0x095,0x03,0x00,((o & BC(16)) | (e << 16))  //WRITE_PM_CONFIG,PM_FEATURE
+#define PM_DEF_CONFIG(o)               0x095,0x03,0x00,o //WRITE_PM_CONFIG,PM_FEATURE
+
 #define CP_GET_CONFIG                  0x0D0,0x02,0x00,0x00 //CONFIG_CLOS,CLOS_PM_QOS_CONFIG
 #define CP_SET_CONFIG(o,e,p)           0x0D0,0x02,(0x01 << 0x08),((o & BC(2) & BC(1)) | (p << 2) | (e << 1)) //CONFIG_CLOS,CLOS_PM_QOS_CONFIG,MBOX_CMD_WRITE_BIT
 #define TF_GET_CONFIG                  0x07F,0x01,0x00,0x00 //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
@@ -53,7 +52,6 @@
 #define ISST_IF_MSR_CMD               _IOWR(ISST_IF_MAGIC, 4, struct isst_if_msr_cmds *)
 #define CMDS_MAX                       64 //ISST_IF_CMD_LIMIT
 #define CMDS_SPLIT(i, total)          (((i + CMDS_MAX) <= total) * CMDS_MAX) + (((i + CMDS_MAX) > total) * (total % CMDS_MAX))
-#define MAX_FREQ                       25500000
 
 struct isst_if_msr_cmd {
     uint read_write;
@@ -567,7 +565,6 @@ static state_t init()
 
 state_t isst_init(topology_t *_tp)
 {
-    //TODO: Remember to use the Keeper
     // Opening driver
     if ((driver_fd = open(driver_path, O_RDWR)) < 0) {
         return EAR_ERROR;
@@ -581,6 +578,11 @@ state_t isst_init(topology_t *_tp)
     topology_select(_tp, &tp, TPSelect.socket, TPGroup.merge, 0);
     // Mapping the CPUs SST style
     return init();
+}
+
+state_t isst_dispose()
+{
+    //TODO: reset
 }
 
 static state_t enable(int e)
@@ -621,6 +623,52 @@ state_t isst_disable()
     return enable(0);
 }
 
+state_t isst_clos_count(uint *count)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_clos_alloc(clos_t **clos_list)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_clos_get_list(clos_t *clos_list)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_clos_set_list(clos_t *clos_list)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_assoc_count_devices(uint *count)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_assoc_alloc_list(uint **idx_list)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_assoc_get_list(uint *idx_list)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_assoc_set_list(uint *idx_list)
+{
+    return EAR_SUCCESS;
+}
+
+state_t isst_assoc_set(uint idx, int cpu)
+{
+    return EAR_SUCCESS;
+}
+
+#if 0
 int main(int argc, char *argv[])
 {
     topology_t tp;
@@ -630,8 +678,9 @@ int main(int argc, char *argv[])
     if (state_fail(isst_init(&tp))) {
         serror("while initializing SST");
     }
-    isst_enable();
-//    isst_disable();
+//    isst_enable();
+    isst_disable();
 
     return 0;
 }
+#endif

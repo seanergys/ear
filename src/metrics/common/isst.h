@@ -22,6 +22,8 @@
 #include <common/states.h>
 #include <common/hardware/topology.h>
 
+#define ISST_MAX_FREQ    25500000
+
 typedef struct clos_s {
     ullong max_khz;
     ullong min_khz;
@@ -30,24 +32,30 @@ typedef struct clos_s {
     uint idx;
 } clos_t;
 
-state_t sst_init(topology_t *tp);
+state_t isst_init(topology_t *tp);
 
-state_t sst_dispose();
+state_t isst_dispose();
 
-state_t sst_enable();
+state_t isst_enable();
 
-state_t sst_disable();
+state_t isst_disable();
+/* CLOS */
+state_t isst_clos_count(uint *count);
 
-state_t sst_clos_count();
+state_t isst_clos_alloc(clos_t **clos_list);
 
-state_t sst_clos_get_list();
+state_t isst_clos_get_list(clos_t *clos_list);
 
-state_t sst_clos_set_list();
+state_t isst_clos_set_list(clos_t *clos_list);
+/* Assoc */
+state_t isst_assoc_count_devices(uint *count);
 
-state_t sst_assoc_get_list();
+state_t isst_assoc_alloc_list(uint **idx_list);
 
-state_t sst_assoc_set_list();
+state_t isst_assoc_get_list(uint *idx_list);
 
-state_t sst_assoc_set();
+state_t isst_assoc_set_list(uint *idx_list);
+
+state_t isst_assoc_set(uint idx, int cpu);
 
 #endif
