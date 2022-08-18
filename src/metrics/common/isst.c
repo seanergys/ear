@@ -27,6 +27,7 @@
 #include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <common/hardware/bithack.h>
+#include <metrics/common/apis.h>
 #include <metrics/common/isst.h>
 
 #define BC(b)                         (~(0x01 << b)) //BIT CLEAN
@@ -36,10 +37,16 @@
 
 #define CP_GET_CONFIG                  0x0D0,0x02,0x00,0x00 //CONFIG_CLOS,CLOS_PM_QOS_CONFIG
 #define CP_SET_CONFIG(o,e,p)           0x0D0,0x02,(0x01 << 0x08),((o & BC(2) & BC(1)) | (p << 2) | (e << 1)) //CONFIG_CLOS,CLOS_PM_QOS_CONFIG,MBOX_CMD_WRITE_BIT
+#define CP_DEF_CONFIG(o)               0x0D0,0x02,(0x01 << 0x08),o //CONFIG_CLOS,CLOS_PM_QOS_CONFIG,MBOX_CMD_WRITE_BIT
+
 #define TF_GET_CONFIG                  0x07F,0x01,0x00,0x00 //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
 #define TF_SET_CONFIG(o,e)             0x07F,0x02,0x00,((o & BC(16)) | (e << 16)) //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
+#define TF_DEF_CONFIG(o)               0x07F,0x02,0x00,o //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
+
 #define TR_GET_CONFIG                  0x1AD,0x00,0x00 //Turbo Ratio Limit
 #define TR_SET_CONFIG(o,e)             0x1AD,(o | ((~(e) + 0x01) & 0xFFFFFFFFFFFFFFFFULL)),0x01 //Turbo Ratio Limit
+#define TR_DEF_CONFIG(o)               0x1AD,o,0x01 //Turbo Ratio Limit
+
 #define CP_GET_CLOS(i)                (0x08 + ((i & 0x03) * 0x04)),0x00,0x00 //PM_CLOS_OFFSET
 #define CP_SET_CLOS(i, c)             (0x08 + ((i & 0x03) * 0x04)),   c,0x01 //PM_CLOS_OFFSET
 #define CP_GET_ASSOC(c)               (0x20 + ((c & 0xFF) * 0x04)),0x00,0x00 //PQR_ASSOC_OFFSET
@@ -52,6 +59,7 @@
 #define ISST_IF_MSR_CMD               _IOWR(ISST_IF_MAGIC, 4, struct isst_if_msr_cmds *)
 #define CMDS_MAX                       64 //ISST_IF_CMD_LIMIT
 #define CMDS_SPLIT(i, total)          (((i + CMDS_MAX) <= total) * CMDS_MAX) + (((i + CMDS_MAX) > total) * (total % CMDS_MAX))
+#define CLOS_COUNT                     4
 
 struct isst_if_msr_cmd {
     uint read_write;
@@ -131,7 +139,7 @@ typedef struct envals_s {
     uint    cp_enabled;
     uint    tf_enabled;
     uint    bf_enabled;
-    clos_t  clos[4];
+    clos_t  clos[CLOS_COUNT];
 } envals_t;
 
 static char      *strtype[2]  = { "proportional", "ordered" };
@@ -298,7 +306,7 @@ static void clos_print(clos_t *clos, int fd)
 {
     int c;
 
-    for (c = 0; c < 4; ++c)
+    for (c = 0; c < CLOS_COUNT; ++c)
     {
         if (clos[c].max_khz == HHZ_TO_KHZ(255)) {
             dprintf(fd, "CLOS%d: MAX GHZ - %.1lf GHz (%s)\n", c,
@@ -320,13 +328,13 @@ static void clos_print(clos_t *clos, int fd)
 static state_t clos_get(clos_t *clos)
 {
     cmds_mmio_t cmds = { 0 };
-    uint answers[4];
+    uint answers[CLOS_COUNT];
     int c;
 
-    for (c = 0; c < 4; ++c) {
+    for (c = 0; c < CLOS_COUNT; ++c) {
         commands_mmio_fill(&cmds, 0, CP_GET_CLOS(c), answers, c == 3);
     }
-    for (c = 0; c < 4; ++c) {
+    for (c = 0; c < CLOS_COUNT; ++c) {
         clos[c].idx     = c;
         clos[c].low     = c > 1;
         clos[c].high    = c < 2;
@@ -345,7 +353,7 @@ static state_t clos_set(clos_t *clos)
     int s, c;
 
     for (s = 0; s < tp.cpu_count; ++s) {
-        for (c = 0; c < 4; ++c) {
+        for (c = 0; c < CLOS_COUNT; ++c) {
             CLOS_TO_UINT(clos[c], value);
             commands_mmio_fill(&cmds, tp.cpus[s].id, CP_SET_CLOS(c, value), NULL, c == 3);
         }
@@ -384,6 +392,11 @@ static state_t assoc_get(uint *clos)
     #endif
 
     return EAR_SUCCESS;
+}
+
+static state_t assoc_set_single(uint clos, int cpu)
+{
+    return commands_mmio_send_single(cpu, CP_SET_ASSOC(punit_cpus[cpu], clos), NULL);
 }
 
 static state_t assoc_set(uint *clos)
@@ -580,9 +593,31 @@ state_t isst_init(topology_t *_tp)
     return init();
 }
 
+static state_t reset()
+{
+    state_t s;
+    int i;
+
+    for (i = 0; i < tp.cpu_count; ++i) {
+        if (state_fail(s = commands_mbox_send_single(tp.cpus[i].id, PM_DEF_CONFIG(ev.pm_reg), NULL))) {
+            return s;
+        }
+        if (state_fail(s = commands_mbox_send_single(tp.cpus[i].id, TF_DEF_CONFIG(ev.tf_reg), NULL))) {
+            return s;
+        }
+        if (state_fail(s = commands_mmsr_send_single(tp.cpus[i].id, TR_DEF_CONFIG(ev.tr_reg), NULL))) {
+            return s;
+        }
+        if (state_fail(s = commands_mbox_send_single(tp.cpus[i].id, CP_DEF_CONFIG(ev.cp_reg), NULL))) {
+            return s;
+        }
+    }
+    return EAR_SUCCESS;
+}
+
 state_t isst_dispose()
 {
-    //TODO: reset
+    return reset();
 }
 
 static state_t enable(int e)
@@ -593,7 +628,7 @@ static state_t enable(int e)
     for (i = 0; i < tp.cpu_count; ++i)
     {
         #if 1
-        if (state_fail(s = commands_mbox_send_single(tp.cpus[i].id, PM_SET_CONFIG(ev.pm_reg, e), NULL))) {
+        if (e && state_fail(s = commands_mbox_send_single(tp.cpus[i].id, PM_SET_CONFIG(ev.pm_reg, e), NULL))) {
             return s;
         }
         if (e && state_fail(s = commands_mbox_send_single(tp.cpus[i].id, CP_SET_CONFIG(ev.cp_reg, e, e), NULL))) {
@@ -606,6 +641,9 @@ static state_t enable(int e)
             return s;
         }
         if (!e && state_fail(s = commands_mbox_send_single(tp.cpus[i].id, CP_SET_CONFIG(ev.cp_reg, e, e), NULL))) {
+            return s;
+        }
+        if (!e && state_fail(s = commands_mbox_send_single(tp.cpus[i].id, PM_SET_CONFIG(ev.pm_reg, e), NULL))) {
             return s;
         }
         #endif
@@ -623,49 +661,67 @@ state_t isst_disable()
     return enable(0);
 }
 
+state_t isst_reset()
+{
+    return reset();
+}
+
 state_t isst_clos_count(uint *count)
 {
+    *count = CLOS_COUNT;
     return EAR_SUCCESS;
 }
 
 state_t isst_clos_alloc(clos_t **clos_list)
 {
+    *clos_list = calloc(CLOS_COUNT, sizeof(clos_t));
     return EAR_SUCCESS;
 }
 
 state_t isst_clos_get_list(clos_t *clos_list)
 {
-    return EAR_SUCCESS;
+    return clos_get(clos_list);
 }
 
 state_t isst_clos_set_list(clos_t *clos_list)
 {
-    return EAR_SUCCESS;
+    return clos_set(clos_list);
 }
 
 state_t isst_assoc_count_devices(uint *count)
 {
+    *count = cpus_count;
     return EAR_SUCCESS;
 }
 
 state_t isst_assoc_alloc_list(uint **idx_list)
 {
+    *idx_list = calloc(cpus_count, sizeof(uint));
     return EAR_SUCCESS;
 }
 
 state_t isst_assoc_get_list(uint *idx_list)
 {
-    return EAR_SUCCESS;
+    return assoc_get(idx_list); 
 }
 
 state_t isst_assoc_set_list(uint *idx_list)
 {
-    return EAR_SUCCESS;
+    return assoc_set(idx_list); 
 }
 
 state_t isst_assoc_set(uint idx, int cpu)
 {
-    return EAR_SUCCESS;
+    uint fake_list[2048];
+    int i;
+
+    if (cpu == all_cpus) {
+        for (i = 0; i < cpus_count; ++i) {
+            fake_list[i] = idx;
+        }
+        return assoc_set(fake_list);
+    }
+    return assoc_set_single(idx, cpu);
 }
 
 #if 0
@@ -678,9 +734,9 @@ int main(int argc, char *argv[])
     if (state_fail(isst_init(&tp))) {
         serror("while initializing SST");
     }
-//    isst_enable();
-    isst_disable();
-
+    isst_enable();
+    //isst_disable();
+    isst_dispose();
     return 0;
 }
 #endif

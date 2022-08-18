@@ -33,16 +33,18 @@ typedef struct clos_s {
 } clos_t;
 
 state_t isst_init(topology_t *tp);
-
+// Resets the SST registers to the original values and frees the data
 state_t isst_dispose();
 
 state_t isst_enable();
 
 state_t isst_disable();
+// Resets the SST registers to the original values
+state_t isst_reset();
 /* CLOS */
 state_t isst_clos_count(uint *count);
 
-state_t isst_clos_alloc(clos_t **clos_list);
+state_t isst_clos_alloc_list(clos_t **clos_list);
 
 state_t isst_clos_get_list(clos_t *clos_list);
 

@@ -15,9 +15,11 @@
 * and COPYING.EPL files.
 */
 
+#include <common/output/debug.h>
 #include <metrics/common/isst.h>
 #include <management/cpufreq/cpufreq.h>
 
+static char      *strprio[2]  = { "high", "low" };
 static cpuprio_t  avail; //Dummy available list
 static uint       avail_idx;
 static uint      *current;
@@ -103,7 +105,7 @@ state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list)
     if (api == API_ISST) {
         return isst_clos_get_list((clos_t *) prio_list); 
     } else {
-        memcpy(prio_list, avail, sizeof(cpuprio_t)*2); 
+        memcpy(prio_list, avail, sizeof(cpuprio_t)); 
     }
     return EAR_SUCCESS;
 }
@@ -112,10 +114,9 @@ state_t mgt_cpufreq_prio_set_available_list(cpuprio_t *prio_list)
 {
     if (api == API_ISST) {
         return isst_clos_set_list((clos_t *) prio_list);
-    } else {
-        memcpy(avail, prio_list, sizeof(cpuprio_t)*2);
-        // TODO: Convert KHZ to index and set the frequency
     }
+    memcpy(avail, prio_list, sizeof(cpuprio_t));
+    pstate_freqtoidx_nearest(ps_list, ps_count, avail[0].max_khz, &avail_idx, MODE_UPPER);
     return mgt_cpufreq_prio_set_current(avail_idx, all_cpus);
 }
 
@@ -142,4 +143,42 @@ state_t mgt_cpufreq_prio_set_current(uint prio, int cpu)
         return isst_assoc_set(prio, cpu);
     }
     return EAR_SUCCESS;
+}
+
+void mgt_cpufreq_prio_data_count(uint *prios_count, uint *idxs_count)
+{
+    state_t s;
+    if (api == API_ISST) {
+        if (state_fail(s = isst_clos_count(prio_count))) {
+            return s;
+        }
+        return isst_assoc_count_devices(idx_count);
+    }
+    prios_count = 1;
+    idxs_count  = cpus_count;
+    return EAR_SUCCESS; 
+}
+
+void mgt_cpufreq_prio_data_alloc(cpuoprio_t **prio_list, uint **idx_list)
+{
+    if (api == API_ISST) {
+        if (state_fail(s = isst_clos_alloc_list(prio_list))) {
+            return s;
+        }
+        return isst_assoc_alloc_list(idx_list);
+    }
+    prio_list = calloc(1, sizeof(cpuprio_t));
+    idx_list  = calloc(cpus_count, sizeof(uint));
+    return EAR_SUCCESS;
+}
+
+void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd)
+{
+    char buffer[1024];
+    mgt_cpufreq_prio_data_tostr(prio_list, idx_list, buffer, 1024);
+    dprintf(fd, "%s", buffer); 
+}
+
+void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buffer, int length)
+{
 }

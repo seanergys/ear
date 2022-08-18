@@ -61,6 +61,6 @@ void mgt_cpufreq_prio_data_alloc(cpuoprio_t **prio_list, uint **idx_list);
 
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd);
 
-void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, int fd);
+void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, char *buffer, int length);
 
 #endif //MANAGEMENT_PRIORITY_H

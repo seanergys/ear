@@ -23,9 +23,6 @@
 #include <common/types.h>
 #include <common/states.h>
 
-#define all_devs   -1
-#define all_cpus   all_devs
-#define all_cores  -2
 #define ps_nothing (uint) -1
 #define ps_auto    (uint) -2
 

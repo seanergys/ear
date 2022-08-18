@@ -20,6 +20,10 @@
 
 #include <common/types/generic.h>
 
+// Devices
+#define all_devs   -1
+#define all_cpus   all_devs
+#define all_cores  -2
 // APIs IDs
 #define API_NONE         0
 #define API_DUMMY        1
