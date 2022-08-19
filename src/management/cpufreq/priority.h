@@ -21,9 +21,12 @@
 #include <common/types.h>
 #include <common/states.h>
 #include <common/plugins.h>
+#include <common/hardware/topology.h>
 
 #define PRIO_FREQ_MAX      ULLONG_MAX // Max boosted frequency
 #define PRIO_FREQ_MAX_NB  (ULLONG_MAX-1) // Max non-boosted frequency
+#define PRIO_HIGH         (UINT_MAX-2)
+#define PRIO_LOW          (UINT_MAX-3)
 
 typedef struct cpuprio_s {
     ullong max_khz;
@@ -33,7 +36,23 @@ typedef struct cpuprio_s {
     uint idx;
 } cpuprio_t;
 
-void mgt_cpufreq_prio_load(topology_t *tp);
+typedef struct mgt_prio_ops_s
+{
+    void    (*get_api) (uint *api);
+    state_t (*init)    ();
+    state_t (*dispose) ();
+    state_t (*enable)  ();
+    state_t (*disable) ();
+    int     (*is_enabled) ();
+    state_t (*get_available_list) (cpuprio_t *prio_list);
+    state_t (*set_available_list) (cpuprio_t *prio_list);
+    state_t (*get_current_list)   (uint *list_idx);
+    state_t (*set_current_list)   (uint *list_idx);
+    state_t (*set_current)        (uint idx, int cpu);
+    void    (*data_count)         (uint *prio_count, uint *idx_count);
+} mgt_prio_ops_t;
+
+void mgt_cpufreq_prio_load(topology_t *tp, int eard);
 
 void mgt_cpufreq_prio_get_api(uint *api);
 
@@ -41,9 +60,11 @@ state_t mgt_cpufreq_prio_init();
 
 state_t mgt_cpufreq_prio_dispose();
 
-staet_t mgt_cpufreq_prio_enable();
+state_t mgt_cpufreq_prio_enable();
 
-staet_t mgt_cpufreq_prio_disable();
+state_t mgt_cpufreq_prio_disable();
+
+int mgt_cpufreq_prio_is_enabled();
 
 state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list);
 
@@ -53,14 +74,14 @@ state_t mgt_cpufreq_prio_get_current_list(uint *list_idx);
 
 state_t mgt_cpufreq_prio_set_current_list(uint *list_idx);
 
-state_t mgt_cpufreq_prio_set_current(uint cpu, uint prio);
+state_t mgt_cpufreq_prio_set_current(uint idx, int cpu);
 
 void mgt_cpufreq_prio_data_count(uint *prio_count, uint *idx_count);
 
-void mgt_cpufreq_prio_data_alloc(cpuoprio_t **prio_list, uint **idx_list);
-
+void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list);
+    
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd);
 
-void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, char *buffer, int length);
+void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buffer, int length);
 
 #endif //MANAGEMENT_PRIORITY_H

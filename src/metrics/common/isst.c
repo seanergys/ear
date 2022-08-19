@@ -661,6 +661,10 @@ state_t isst_disable()
     return enable(0);
 }
 
+int isst_is_enabled()
+{
+}
+
 state_t isst_reset()
 {
     return reset();
@@ -688,7 +692,7 @@ state_t isst_clos_set_list(clos_t *clos_list)
     return clos_set(clos_list);
 }
 
-state_t isst_assoc_count_devices(uint *count)
+state_t isst_assoc_count(uint *count)
 {
     *count = cpus_count;
     return EAR_SUCCESS;

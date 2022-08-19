@@ -16,7 +16,7 @@ all: all.components $(root_OBJS) test_prio
 	$(CC) $(CFLAGS) -c $<
 
 test_prio: priority.o
-	$(CC) $(CFLAGS) -o $@ $< $(SRCDIR)/common/libcommon.a
+	$(CC) $(CFLAGS) -o $@ $< ./archs/prio_dummy.o ./archs/prio_isst.o ./archs/prio_eard.o $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/common/libcommon.a -lpthread
 
 ######## SUBFOLDERS
 

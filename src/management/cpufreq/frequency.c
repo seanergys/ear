@@ -22,6 +22,7 @@
 #include <sched.h>
 #include <stdlib.h>
 #include <common/output/debug.h>
+#include <management/cpufreq/cpufreq.h>
 #include <management/cpufreq/frequency.h>
 
 static topology_t      topo;

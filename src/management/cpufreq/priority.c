@@ -15,170 +15,110 @@
 * and COPYING.EPL files.
 */
 
-#include <common/output/debug.h>
-#include <metrics/common/isst.h>
-#include <management/cpufreq/cpufreq.h>
+#include <pthread.h>
+#include <management/cpufreq/priority.h>
+#include <management/cpufreq/archs/prio_eard.h>
+#include <management/cpufreq/archs/prio_isst.h>
+#include <management/cpufreq/archs/prio_dummy.h>
 
-static char      *strprio[2]  = { "high", "low" };
-static cpuprio_t  avail; //Dummy available list
-static uint       avail_idx;
-static uint      *current;
-static uint       cpus_count;
-static uint       api;
-
-static void dummy_init(topology_t *tp)
-{
-    const pstate_t *ps_list;
-    uint ps_count;
-    
-    avail[0].max_khz = PRIO_FREQ_MAX;
-    avail[0].min_khz = 0LLU;
-    avail[0].high    = 1;
-    avail[0].low     = 0;
-    avail[0].idx     = 0;
-    // Dummy priorities
-    if (state_ok(mgt_cpufreq_get_available_list(no_ctx, &ps_list, &ps_count))) {
-        avail.min_khz = ps_list[ps_count-1].khz;
-    }
-    // Saving current list
-    cpus_count = tp->cpu_count;
-    current = calloc(cpus_count, sizeof(uint));
-}
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static mgt_prio_ops_t  ops;
+static uint            init;
 
 void mgt_cpufreq_prio_load(topology_t *tp, int eard)
 {
-    // TODO: split dummy and isst in archs folder
-    if (state_ok(isst_init(tp))) {
-        api = API_ISST;
-    } else {
-        dummy_init(tp);
-        api = API_DUMMY;
+    while (pthread_mutex_trylock(&lock));
+    if (init) {
+        goto leave;
     }
+    mgt_prio_isst_load(tp, &ops);
+    mgt_prio_eard_load(tp, &ops, eard);
+    mgt_prio_dummy_load(tp, &ops);
+    init = 1;
+leave:
+    pthread_mutex_unlock(&lock);
 }
 
-void mgt_cpufreq_prio_get_api(uint *_api)
+void mgt_cpufreq_prio_get_api(uint *api)
 {
-    *_api = api;
+    return ops.get_api(api);
 }
 
 state_t mgt_cpufreq_prio_init()
 {
-    return EAR_SUCCESS;
+    return ops.init();
 }
 
 state_t mgt_cpufreq_prio_dispose()
 {
-    if (api == API_ISST) {
-        return isst_dispose();
-    }
-    return EAR_SUCCESS;
+    return ops.dispose();
 }
 
-staet_t mgt_cpufreq_prio_enable()
+state_t mgt_cpufreq_prio_enable()
 {
-    if (api == API_ISST) {
-        return isst_enable();
-    }
-    return mgt_cpufreq_set_current(no_ctx, avail_idx, all_cpus);
+    return ops.enable();
 }
 
-staet_t mgt_cpufreq_prio_disable()
+state_t mgt_cpufreq_prio_disable()
 {
-    if (api == API_ISST) {
-        return isst_disable();
-    }
-    return EAR_SUCCESS;
-}
-
-state_t mgt_cpufreq_prio_count_devices(uint *devs_count)
-{
-    if (api == API_ISST) {
-        return isst_assoc_count_devices(devs_count);
-    } else {
-        *devs_count = cpu_count;
-    }
-    return EAR_SUCCESS;
+    return ops.disable();
 }
 
 state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list)
 {
-    if (api == API_ISST) {
-        return isst_clos_get_list((clos_t *) prio_list); 
-    } else {
-        memcpy(prio_list, avail, sizeof(cpuprio_t)); 
-    }
-    return EAR_SUCCESS;
+    return ops.get_available_list(prio_list);
 }
 
 state_t mgt_cpufreq_prio_set_available_list(cpuprio_t *prio_list)
 {
-    if (api == API_ISST) {
-        return isst_clos_set_list((clos_t *) prio_list);
-    }
-    memcpy(avail, prio_list, sizeof(cpuprio_t));
-    pstate_freqtoidx_nearest(ps_list, ps_count, avail[0].max_khz, &avail_idx, MODE_UPPER);
-    return mgt_cpufreq_prio_set_current(avail_idx, all_cpus);
+    return ops.set_available_list(prio_list);
 }
 
 state_t mgt_cpufreq_prio_get_current_list(uint *idx_list)
 {
-    if (api == API_ISST) {
-        return isst_assoc_get_list(idx_list);
-    }
-    memset((void *) list_idx, 0, sizeof(uint)*cpus_count);
-    return EAR_SUCCESS;
+    return ops.get_current_list(idx_list);
 }
 
 state_t mgt_cpufreq_prio_set_current_list(uint *idx_list)
 {
-    if (api == API_ISST) {
-        return isst_assoc_set_list(idx_list);
-    }
-    return EAR_SUCCESS;
+    return ops.set_current_list(idx_list);
 }
 
 state_t mgt_cpufreq_prio_set_current(uint prio, int cpu)
 {
-    if (api == API_ISST) {
-        return isst_assoc_set(prio, cpu);
-    }
-    return EAR_SUCCESS;
+    return ops.set_current(prio, cpu);
 }
 
 void mgt_cpufreq_prio_data_count(uint *prios_count, uint *idxs_count)
 {
-    state_t s;
-    if (api == API_ISST) {
-        if (state_fail(s = isst_clos_count(prio_count))) {
-            return s;
-        }
-        return isst_assoc_count_devices(idx_count);
-    }
-    prios_count = 1;
-    idxs_count  = cpus_count;
-    return EAR_SUCCESS; 
+    return ops.data_count(prios_count, idxs_count);
 }
 
-void mgt_cpufreq_prio_data_alloc(cpuoprio_t **prio_list, uint **idx_list)
+void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list)
 {
-    if (api == API_ISST) {
-        if (state_fail(s = isst_clos_alloc_list(prio_list))) {
-            return s;
-        }
-        return isst_assoc_alloc_list(idx_list);
-    }
-    prio_list = calloc(1, sizeof(cpuprio_t));
-    idx_list  = calloc(cpus_count, sizeof(uint));
-    return EAR_SUCCESS;
+    // mgt_cpufreq_prio_data_count
+    // calloc
+    // calloc
 }
 
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd)
 {
     char buffer[1024];
     mgt_cpufreq_prio_data_tostr(prio_list, idx_list, buffer, 1024);
-    dprintf(fd, "%s", buffer); 
+    dprintf(fd, "%s", buffer);
 }
 
 void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buffer, int length)
 {
 }
+
+#if 1
+int main(int argc, char *argv[])
+{
+    topology_t tp;
+
+    topology_init(&tp);
+
+    return 0;
+}
+#endif

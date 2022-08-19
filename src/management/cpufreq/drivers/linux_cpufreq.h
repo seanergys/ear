@@ -19,6 +19,7 @@
 #define MANAGEMENT_CPUFREQ_DRIVERS_LINUX_CPUFREQ
 
 #include <management/cpufreq/cpufreq.h>
+#include <management/cpufreq/governor.h>
 
 // This API contacts with CPUFreq files to change frequency and governor. These
 // files are used by the ACPI_CPUFreq and Intel_PSTATE drivers. Is adapted to

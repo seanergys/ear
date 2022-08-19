@@ -52,4 +52,5 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_PERF    ) { snprintf(buffer, size, "PERF"    ); }
     else if (api == API_INTEL106) { snprintf(buffer, size, "INTEL106"); }
     else if (api == API_LIKWID  ) { snprintf(buffer, size, "LIKWID"  ); }
+    else if (api == API_ISST    ) { snprintf(buffer, size, "INTELSST:"); }
 }

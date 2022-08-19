@@ -12,7 +12,10 @@ arch_OBJS = \
     amd17.o \
     default.o \
 	dummy.o \
-    eard.o
+    eard.o \
+    prio_dummy.o \
+    prio_eard.o \
+    prio_isst.o
 
 ######## RULES
 
