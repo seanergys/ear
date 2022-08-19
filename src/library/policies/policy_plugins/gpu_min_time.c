@@ -62,12 +62,8 @@ state_t policy_init(polctx_t *c)
         g_freq = atol(gpu_freq);
     }
 
-#if !NEW_GPU_API
-    gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
-#else
     gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
     gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
-#endif // NEW_GPU_API
 
     for (i = 0; i < c->num_gpus; i++) {
         verbose_master(3,"Freqs in GPU[%d]=%u",i,gpuf_list_items[i]);
@@ -76,11 +72,7 @@ state_t policy_init(polctx_t *c)
         }
     }
 
-#if !NEW_GPU_API
-    gpu_lib_alloc_array(&gfreqs);
-#else
     mgt_gpu_data_alloc(&gfreqs);
-#endif
     for (i = 0;i < c->num_gpus; i++) {
         if (g_freq) {
             gfreqs[i] = g_freq;
@@ -90,11 +82,7 @@ state_t policy_init(polctx_t *c)
         verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
     }
 
-#if !NEW_GPU_API
-    gpu_lib_freq_limit_set(gfreqs);
-#else
     mgt_gpu_freq_limit_set(no_ctx, gfreqs);
-#endif
 
     return EAR_SUCCESS;
 }

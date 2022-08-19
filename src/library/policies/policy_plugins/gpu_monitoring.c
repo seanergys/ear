@@ -49,12 +49,8 @@ state_t policy_init(polctx_t *c)
     }
 
     debug("Asking for frequencies");
-#if !NEW_GPU_API
-    gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
-#else
     gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
     gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
-#endif // NEW_GPU_API
 
     for (i = 0; i < c->num_gpus; i++) {
         verbose_master(2,"Freqs in GPU[%d]=%u", i, gpuf_list_items[i]);
@@ -62,22 +58,14 @@ state_t policy_init(polctx_t *c)
             verbose_master(2, "GPU[%d][%d]=%.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
         }
     }
-#if !NEW_GPU_API
-    gpu_lib_alloc_array(&gfreqs);
-#else
     mgt_gpu_data_alloc(&gfreqs);
-#endif
     for (i = 0; i < c->num_gpus; i++) {
         if (g_freq) gfreqs[i] = g_freq;
         else        gfreqs[i] = gpuf_list[i][0];
         verbose_master(2, "Setting GPUfreq[%d] = %.2f", i, (float) gfreqs[i] / 1000000.0);
     }
 
-#if !NEW_GPU_API
-    gpu_lib_freq_limit_set(gfreqs);
-#else
     mgt_gpu_freq_limit_set(no_ctx, gfreqs);
-#endif // NEW_GPU_API
 
     verbose_master(2,"GPU monitoring loaded");
     return EAR_SUCCESS;

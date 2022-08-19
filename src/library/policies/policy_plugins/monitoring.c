@@ -41,10 +41,6 @@
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
-#if !NEW_GPU_API
-extern uint gpu_initialized;
-#endif
-
 extern uint cpu_ready, gpu_ready;
 
 extern int lib_shared_lock_fd;
@@ -61,11 +57,7 @@ state_t policy_init(polctx_t *c)
 
 
 #if USE_GPUS
-#if !NEW_GPU_API
-    if (masters_info.my_master_rank >= 0 && gpu_initialized) {
-#else
     if (masters_info.my_master_rank >= 0) {
-#endif
         if (policy_gpu_init_ctx(c) != EAR_SUCCESS) {
             verbose(2, "%sError%s Loading GPU context.", COL_RED, COL_CLR);
         }

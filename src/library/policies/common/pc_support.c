@@ -44,16 +44,9 @@ static const uint           *gpu_freq_num;
 state_t pc_support_init(polctx_t *c)
 {
 #if USE_GPUS
-#if !NEW_GPU_API
-    state_t ret;
-    if ((ret = gpu_lib_freq_list(&gpu_freq_list,&gpu_freq_num)) != EAR_SUCCESS) {
-        debug("Error accessing gpu_freq list");
-        return ret;
-    }
-#else
     gpu_freq_list = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
     gpu_freq_num  = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
-#endif // NEW_GPU_API
+
     pc_app_info_data->num_gpus_used=c->num_gpus;
 #endif // USE_GPUS
     return EAR_SUCCESS;
@@ -124,11 +117,7 @@ void pc_support_adapt_gpu_freq(polctx_t *c,node_powercap_opt_t *pc,ulong *f,sign
     plimit = pc->pper_domain[DOMAIN_GPU];        /* limit */
     gpower = new_s.DC_power;
     debug("checking gpu frequency: gpu_power %lf gpu_powercap %u",gpower,plimit);
-#if !NEW_GPU_API
-    gpu_lib_freq_limit_get_current(&c->gpu_mgt_ctx,f);
-#else
     mgt_gpu_freq_limit_get_current(no_ctx, f);
-#endif // NEW_GPU_API
 
     if ((uint)gpower <= plimit) {
         pc_app_info_data->pc_gpu_status = PC_STATUS_OK;
