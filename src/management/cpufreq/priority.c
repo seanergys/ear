@@ -15,15 +15,21 @@
 * and COPYING.EPL files.
 */
 
+#include <stdlib.h>
 #include <pthread.h>
+#include <common/math_operations.h>
 #include <management/cpufreq/priority.h>
 #include <management/cpufreq/archs/prio_eard.h>
 #include <management/cpufreq/archs/prio_isst.h>
 #include <management/cpufreq/archs/prio_dummy.h>
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static mgt_prio_ops_t  ops;
-static uint            init;
+static char            *strprio[2]  = { "high", "low" };
+static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
+static mgt_prio_ops_t   ops;
+static uint             init;
+static uint             prios_count;
+static uint             idxs_count;
+
 
 void mgt_cpufreq_prio_load(topology_t *tp, int eard)
 {
@@ -46,7 +52,12 @@ void mgt_cpufreq_prio_get_api(uint *api)
 
 state_t mgt_cpufreq_prio_init()
 {
-    return ops.init();
+    state_t s;
+    if (state_fail(s = ops.init())) {
+        return s;
+    }
+    ops.data_count(&prios_count, &idxs_count);
+    return s;
 }
 
 state_t mgt_cpufreq_prio_dispose()
@@ -96,9 +107,8 @@ void mgt_cpufreq_prio_data_count(uint *prios_count, uint *idxs_count)
 
 void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list)
 {
-    // mgt_cpufreq_prio_data_count
-    // calloc
-    // calloc
+    *prio_list = calloc(prios_count, sizeof(cpuprio_t));
+    *idx_list = calloc(idxs_count, sizeof(uint));
 }
 
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd)
@@ -110,6 +120,19 @@ void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd)
 
 void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buffer, int length)
 {
+    int acc = 0;
+    int c;
+
+    for (c = 0; c < prios_count; ++c)
+    {
+        if (prio_list[c].max_khz == PRIO_FREQ_MAX) {
+            acc += sprintf(&buffer[acc], "PRIO%d: MAX GHZ - %.1lf GHz (%s)\n", c,
+               ((double) prio_list[c].min_khz) / 1000000.0, strprio[prio_list[c].low]);
+        } else {
+            acc += sprintf(&buffer[acc], "PRIO%d: %.1lf GHz - %.1lf GHz (%s)\n", c,
+               KHZ_TO_GHZ((double) prio_list[c].max_khz), KHZ_TO_GHZ((double) prio_list[c].min_khz), strprio[prio_list[c].low]);
+        }
+    }
 }
 
 #if 1

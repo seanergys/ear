@@ -727,20 +727,3 @@ state_t isst_assoc_set(uint idx, int cpu)
     }
     return assoc_set_single(idx, cpu);
 }
-
-#if 0
-int main(int argc, char *argv[])
-{
-    topology_t tp;
-
-    topology_init(&tp);
-
-    if (state_fail(isst_init(&tp))) {
-        serror("while initializing SST");
-    }
-    isst_enable();
-    //isst_disable();
-    isst_dispose();
-    return 0;
-}
-#endif
