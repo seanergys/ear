@@ -75,6 +75,11 @@ state_t mgt_cpufreq_prio_disable()
     return ops.disable();
 }
 
+int mgt_cpufreq_prio_is_enabled()
+{
+    return ops.is_enabled();
+}
+
 state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list)
 {
     return ops.get_available_list(prio_list);
@@ -113,7 +118,7 @@ void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list)
 
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd)
 {
-    char buffer[1024];
+    char buffer[2048];
     mgt_cpufreq_prio_data_tostr(prio_list, idx_list, buffer, 1024);
     dprintf(fd, "%s", buffer);
 }
@@ -123,7 +128,7 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
     int acc = 0;
     int c;
 
-    for (c = 0; c < prios_count; ++c)
+    for (c = 0; prio_list && c < prios_count; ++c)
     {
         if (prio_list[c].max_khz == PRIO_FREQ_MAX) {
             acc += sprintf(&buffer[acc], "PRIO%d: MAX GHZ - %.1lf GHz (%s)\n", c,
@@ -133,15 +138,75 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
                KHZ_TO_GHZ((double) prio_list[c].max_khz), KHZ_TO_GHZ((double) prio_list[c].min_khz), strprio[prio_list[c].low]);
         }
     }
+    for (c = 0; idx_list && c < idxs_count; ++c) {
+        if ((c != 0) && (c % 8) == 0) acc += sprintf(&buffer[acc], "\n");
+        acc += sprintf(&buffer[acc], "[%03d,%d] ", c, idx_list[c]);
+    }
+    acc += sprintf(&buffer[acc], "\n");
 }
 
-#if 1
+#if TEST
+// /opt/rh/devtoolset-7/root/bin/gcc -I ../.. -o test_prio priority.c ./archs/prio_dummy.o ./archs/prio_isst.o ./archs/prio_eard.o ../../daemon/local_api/libeard.a ../../metrics/libmetrics.a ../../common/libcommon.a -lpthread -lm
+#include <daemon/local_api/eard_api_rpc.h>
+
 int main(int argc, char *argv[])
 {
+    cpuprio_t *prios;
     topology_t tp;
+    uint *devs;
+    state_t s;
+    uint api;
 
     topology_init(&tp);
 
+    eards_connection();
+
+    mgt_cpufreq_prio_load(&tp, 1);
+    mgt_cpufreq_prio_init();
+    mgt_cpufreq_prio_get_api(&api);
+    apis_print(api, "PRIO API: ");
+
+    mgt_cpufreq_prio_data_alloc(&prios, &devs);
+    if (state_fail(s = mgt_cpufreq_prio_get_available_list(prios))) {
+        serror("mgt_cpufreq_prio_get_available_list");
+    }
+    if (state_fail(s = mgt_cpufreq_prio_get_current_list(devs))) {
+        serror("mgt_cpufreq_prio_get_current_list");
+    }
+    mgt_cpufreq_prio_data_print(prios, devs, 0);
+    #if 1
+    printf("IS ENABLED %d\n", mgt_cpufreq_prio_is_enabled());   
+    mgt_cpufreq_prio_enable();
+    printf("IS ENABLED %d\n", mgt_cpufreq_prio_is_enabled());   
+    //mgt_cpufreq_prio_disable();
+    //printf("IS ENABLED %d\n", mgt_cpufreq_prio_is_enabled());   
+    #endif
+    #if 0
+    #define FFF 800000;
+    prios[0].min_khz = FFF;
+    prios[1].min_khz = FFF;
+    prios[2].min_khz = FFF;
+    prios[3].min_khz = FFF;
+    
+    if (state_fail(s = mgt_cpufreq_prio_set_available_list(prios))) {
+        serror("mgt_cpufreq_prio_get_current_list");
+    }
+    if (state_fail(s = mgt_cpufreq_prio_get_available_list(prios))) {
+        serror("mgt_cpufreq_prio_get_available_list");
+    }
+    #endif
+    #if 1
+    if (state_fail(s = mgt_cpufreq_prio_set_current(3, all_cpus))) {
+        serror("mgt_cpufreq_prio_set_current");
+    }
+    if (state_fail(s = mgt_cpufreq_prio_get_current_list(devs))) {
+        serror("mgt_cpufreq_prio_get_current_list");
+    }
+    #endif
+    mgt_cpufreq_prio_data_print(prios, devs, 0);
+    
+    mgt_cpufreq_prio_dispose();
+ 
     return 0;
 }
 #endif

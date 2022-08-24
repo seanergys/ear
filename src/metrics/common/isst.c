@@ -663,6 +663,9 @@ state_t isst_disable()
 
 int isst_is_enabled()
 {
+    envals_t en;
+    status_get(&en);
+    return en.cp_enabled && en.tf_enabled;
 }
 
 state_t isst_reset()

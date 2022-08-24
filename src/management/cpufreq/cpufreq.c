@@ -76,6 +76,9 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
 	// DUMMY loads always
 	mgt_cpufreq_dummy_load(tp, &ops);
 	debug("Loaded DUMMY");
+    // PRIORITY subsystem
+    mgt_cpufreq_prio_load(tp, eard);
+    // Finishing
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;
 }
@@ -88,12 +91,20 @@ state_t mgt_cpufreq_get_api(uint *api_in)
 
 state_t mgt_cpufreq_init(ctx_t *c)
 {
-	preturn (ops.init, c);
+	state_t s;
+    if (state_fail(s = ops.init(c))) {
+        return s;
+    }
+    return mgt_cpufreq_prio_init();
 }
 
 state_t mgt_cpufreq_dispose(ctx_t *c)
 {
-	preturn (ops.dispose, c);
+	state_t s;
+    if (state_fail(s = ops.dispose(c))) {
+        return s;
+    }
+    return mgt_cpufreq_prio_dispose();
 }
 
 /** Data */

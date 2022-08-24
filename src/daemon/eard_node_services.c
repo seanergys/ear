@@ -33,8 +33,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
-#include <management/cpufreq/frequency.h>
-#include <management/imcfreq/imcfreq.h>
+#include <management/management.h>
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -109,19 +108,6 @@ static struct daemon_req req;
 static afd_set_t        rfds_basic;
 static local_connection_t *eard_local_conn;
 static uint             num_local_con=0;
-
-typedef struct apis_svc_s {
-    ctx_t c;
-    uint  api;
-    uint  working;
-    uint  granularity;
-    uint  devs_count;
-    uint  avail_count;
-    void *current_list;
-    void *avail_list;
-    void *set_list;
-} apis_svc_t;
-
 static char          big_chunk1[16384];
 static char          big_chunk2[16384];
 static wide_buffer_t wb;
@@ -130,6 +116,7 @@ static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
+static metrics_t     pr;
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -155,25 +142,24 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
 {
 	state_t s;
 
-	// DONE
-	mgt_imcfreq_load(tp, NO_EARD, conf);
-	mgt_cpufreq_load(tp, NO_EARD);
+    management_init(tp, NO_EARD);
+
+	//mgt_imcfreq_load(tp, NO_EARD, conf);
+	//mgt_cpufreq_load(tp, NO_EARD);
         cpufreq_load(tp, NO_EARD);
-	// DONE
         imcfreq_load(tp, NO_EARD);
          bwidth_load(tp, NO_EARD);
 
 	mgt_cpufreq_get_api((uint *) &mc.api);
+	//mgt_cpuprio_get_api((uint *) &pr.api);
 	mgt_imcfreq_get_api((uint *) &mi.api);
         cpufreq_get_api((uint *) &uc.api);
         imcfreq_get_api((uint *) &ui.api);
          bwidth_get_api((uint *) &ub.api);
 
-	// DONE
-	sf(mgt_cpufreq_init(no_ctx));
-	sf(mgt_imcfreq_init(no_ctx));
+	//sf(mgt_cpufreq_init(no_ctx));
+	//sf(mgt_imcfreq_init(no_ctx));
     sf(    cpufreq_init(no_ctx));
-	// DONE
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
 
@@ -185,9 +171,12 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
 
 	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
+    
+       //mgt_cpuprio_data_count(&pr.avail_count, &pr.devs_count);
 
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
+       //mgt_cpuprio_data_alloc((cpuprio_t **) &pr.  avail_list, (uint **) &pr.set_list );
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
     sf(     bwidth_data_alloc((bwidth_t  **) &ub.current_list));
@@ -286,6 +275,47 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
                 serror(Rpcerr.answer);
             }
         }
+    #if 0
+    dcase(RPC_MGT_PRIO_GET_STATIC_VALUES);
+        serial_clean(&wb);
+        serial_add_elem(&wb, (char *) &pr.api        , sizeof(uint));
+        serial_add_elem(&wb, (char *) &pr.avail_count, sizeof(uint));
+        serial_add_elem(&wb, (char *) &pr. devs_count, sizeof(uint));
+        size = serial_size(&wb);
+        data = serial_data(&wb);
+    dcase(RPC_MGT_PRIO_ENABLE);
+        s = mgt_cpuprio_enable();
+    dcase(RPC_MGT_PRIO_DISABLE);
+        s = mgt_cpuprio_disable();
+    dcase(RPC_MGT_PRIO_IS_ENABLED);
+        *((uint *) big_chunk1) = mgt_cpuprio_is_enabled();
+        data = big_chunk1; 
+        size = sizeof(int);
+    dcase(RPC_MGT_PRIO_GET_AVAILABLE);
+        s    = mgt_cpuprio_get_available_list(pr.avail_list);
+        data = (char *) pr.avail_list;
+        size = sizeof(cpuprio_t) * pr.avail_count;
+    dcase(RPC_MGT_PRIO_SET_AVAILABLE);
+        if (state_fail(s = eard_rpc_read_pending(req_fd, pr.avail_list, head->size, 0))) {
+            serror(Rpcerr.pending);
+        } else {
+            s = mgt_cpuprio_set_available_list(pr.avail_list);
+        }
+    dcase(RPC_MGT_PRIO_GET_CURRENT);
+        s = mgt_cpuprio_get_available_list(pr.set_list);
+    dcase(RPC_MGT_PRIO_SET_CURRENT_LIST);
+        if (state_fail(s = eard_rpc_read_pending(req_fd, pr.set_list, head->size, 0))) {
+            serror(Rpcerr.pending);
+        } else {
+            s = mgt_cpuprio_set_current_list(pr.set_list);
+        }
+    dcase(RPC_MGT_PRIO_SET_CURRENT);
+        if (state_fail(s = eard_rpc_read_pending(req_fd, big_chunk1, head->size, 0))) {
+            serror(Rpcerr.pending);
+        } else {
+            s = mgt_cpuprio_set_current(*((uint *) big_chunk1), *((uint *) &big_chunk1[sizeof(uint)]));
+        }
+    #endif
     dcase_fini();
 
     // Always answering (if s != SUCCESS the error message is sent)
@@ -962,6 +992,8 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 	uint rpc;
 	int i;
 
+printf("SERVICE %d\n", req->req_service);
+
 	if (req_fd != global_req_fd){
 		i = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 		if ((i >= 0) && (i < num_local_con) && eard_local_conn[i].cancelled){ 
@@ -1038,6 +1070,10 @@ void service_select(int req_fd, int ack_fd)
 	}
 	// New services
     if (services_misc(local_req, req_fd, ack_fd)) {
+        return;
+    }
+    // New management
+    if (management_rpcs(local_req->req_service, local_req->size, req_fd, ack_fd)) {
         return;
     }
     if(services_mgt_cpufreq(local_req, req_fd, ack_fd)) {
