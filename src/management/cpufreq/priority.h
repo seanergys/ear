@@ -23,6 +23,10 @@
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
 
+// PRIORITY is a subsystem of CPUFREQ. It can take the control over the
+// frequency by using the enable function. Also, you can set the maximum
+// and minimum frequency per priority.
+
 #define PRIO_FREQ_MAX      25500000 // Max boosted frequency
 #define PRIO_FREQ_MAX_NB  (PRIO_FREQ_MAX-1) // Max non-boosted frequency
 #define PRIO_HIGH         (UINT_MAX-2)
@@ -52,6 +56,7 @@ typedef struct mgt_prio_ops_s
     void    (*data_count)         (uint *prio_count, uint *idx_count);
 } mgt_prio_ops_t;
 
+/* PRIORITY is a CPUFREQ subsystem, loading CPUFREQ also loads PRIORITY automatically. */
 void mgt_cpufreq_prio_load(topology_t *tp, int eard);
 
 void mgt_cpufreq_prio_get_api(uint *api);
@@ -59,7 +64,7 @@ void mgt_cpufreq_prio_get_api(uint *api);
 state_t mgt_cpufreq_prio_init();
 
 state_t mgt_cpufreq_prio_dispose();
-
+/* Enables the PRIORITY subsystem, taking the control of the frequency. */
 state_t mgt_cpufreq_prio_enable();
 
 state_t mgt_cpufreq_prio_disable();

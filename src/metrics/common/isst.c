@@ -30,23 +30,22 @@
 #include <metrics/common/apis.h>
 #include <metrics/common/isst.h>
 
+//
+// Find the references in the commentaries in the intel-speed-select application source code.
+// 
 #define BC(b)                         (~(0x01 << b)) //BIT CLEAN
 #define PM_GET_CONFIG                  0x094,0x03,0x00,0x00 //READ_PM_CONFIG,PM_FEATURE
 #define PM_SET_CONFIG(o,e)             0x095,0x03,0x00,((o & BC(16)) | (e << 16))  //WRITE_PM_CONFIG,PM_FEATURE
 #define PM_DEF_CONFIG(o)               0x095,0x03,0x00,o //WRITE_PM_CONFIG,PM_FEATURE
-
 #define CP_GET_CONFIG                  0x0D0,0x02,0x00,0x00 //CONFIG_CLOS,CLOS_PM_QOS_CONFIG
 #define CP_SET_CONFIG(o,e,p)           0x0D0,0x02,(0x01 << 0x08),((o & BC(2) & BC(1)) | (p << 2) | (e << 1)) //CONFIG_CLOS,CLOS_PM_QOS_CONFIG,MBOX_CMD_WRITE_BIT
 #define CP_DEF_CONFIG(o)               0x0D0,0x02,(0x01 << 0x08),o //CONFIG_CLOS,CLOS_PM_QOS_CONFIG,MBOX_CMD_WRITE_BIT
-
 #define TF_GET_CONFIG                  0x07F,0x01,0x00,0x00 //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
 #define TF_SET_CONFIG(o,e)             0x07F,0x02,0x00,((o & BC(16)) | (e << 16)) //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
 #define TF_DEF_CONFIG(o)               0x07F,0x02,0x00,o //CONFIG_TDP,CONFIG_TDP_GET_TDP_CONTROL
-
 #define TR_GET_CONFIG                  0x1AD,0x00,0x00 //Turbo Ratio Limit
 #define TR_SET_CONFIG(o,e)             0x1AD,(o | ((~(e) + 0x01) & 0xFFFFFFFFFFFFFFFFULL)),0x01 //Turbo Ratio Limit
 #define TR_DEF_CONFIG(o)               0x1AD,o,0x01 //Turbo Ratio Limit
-
 #define CP_GET_CLOS(i)                (0x08 + ((i & 0x03) * 0x04)),0x00,0x00 //PM_CLOS_OFFSET
 #define CP_SET_CLOS(i, c)             (0x08 + ((i & 0x03) * 0x04)),   c,0x01 //PM_CLOS_OFFSET
 #define CP_GET_ASSOC(c)               (0x20 + ((c & 0xFF) * 0x04)),0x00,0x00 //PQR_ASSOC_OFFSET
