@@ -29,7 +29,7 @@
 #define attr_internal    visibility("internal")
 #define attr_weak        weak
 // Verbosity parameters
-#define none	0
+//#define none	0
 #define empty	NULL
 
 #define preturn(call, ...) \

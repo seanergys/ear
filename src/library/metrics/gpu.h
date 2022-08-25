@@ -24,6 +24,7 @@
 #if USE_GPUS
 
 
+#if !NEW_GPU_API
 state_t gpu_lib_load(settings_conf_t *settings);
 
 state_t gpu_lib_init(ctx_t *c);
@@ -86,5 +87,6 @@ state_t gpu_lib_power_cap_set(ulong *watts);
 #endif
 
 uint gpu_lib_gpus_supported();
+#endif
 
 #endif

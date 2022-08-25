@@ -86,12 +86,9 @@ extern char             nodename[MAX_PATH_SIZE];
 extern int              eard_must_exit;
 extern ulong            eard_max_freq;
 #if USE_GPUS
-extern uint             eard_gpu_model;
+static gpu_devs_t      *gpu_devs;
 extern gpu_t           *eard_read_gpu;
-extern uint             eard_num_gpus;
 extern char             gpu_str[256];
-static ctx_t            eard_main_gpu_ctx;
-static uint             eard_gpu_initialized=0;
 #endif
 extern int              num_uncore_counters; // Me extraña que esto funcione.
 static ulong            node_energy_datasize;
@@ -131,6 +128,10 @@ static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
+#if USE_GPUS
+static metrics_t     mg;
+static metrics_t     ug;
+#endif
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -154,15 +155,19 @@ static metrics_t     ub;
 
 void services_init(topology_t *tp, my_node_conf_t *conf)
 {
-	state_t s;
+    state_t s;
 
 	// DONE
 	mgt_imcfreq_load(tp, NO_EARD, conf);
 	mgt_cpufreq_load(tp, NO_EARD);
         cpufreq_load(tp, NO_EARD);
-	// DONE
         imcfreq_load(tp, NO_EARD);
          bwidth_load(tp, NO_EARD);
+
+	#if USE_GPUS
+    mgt_gpu_load(NO_EARD);
+        gpu_load(NO_EARD);
+    #endif
 
 	mgt_cpufreq_get_api((uint *) &mc.api);
 	mgt_imcfreq_get_api((uint *) &mi.api);
@@ -170,13 +175,21 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
         imcfreq_get_api((uint *) &ui.api);
          bwidth_get_api((uint *) &ub.api);
 
-	// DONE
+    #if USE_GPUS
+    mgt_gpu_get_api((uint *) &mg.api);
+        gpu_get_api((uint *) &ug.api);
+    #endif
+
 	sf(mgt_cpufreq_init(no_ctx));
 	sf(mgt_imcfreq_init(no_ctx));
     sf(    cpufreq_init(no_ctx));
-	// DONE
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
+	
+    #if USE_GPUS
+    sf(mgt_gpu_init(no_ctx));
+    sf(    gpu_init(no_ctx));
+    #endif
 
 	sf(mgt_cpufreq_count_devices(no_ctx, &mc.devs_count));
 	sf(mgt_imcfreq_count_devices(no_ctx, &mi.devs_count));
@@ -184,7 +197,16 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    imcfreq_count_devices(no_ctx, &ui.devs_count));
     sf(     bwidth_count_devices(no_ctx, &ub.devs_count));
 
-	sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
+    #if USE_GPUS
+	sf(mgt_gpu_count_devices(no_ctx, &mg.devs_count));
+    sf(    gpu_count_devices(no_ctx, &ug.devs_count));
+    #endif
+    
+    #if USE_GPUS
+	sf(mgt_gpu_get_devices(no_ctx, &gpu_devs, NULL));
+    #endif
+	
+    sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
 
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
@@ -192,6 +214,10 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
     sf(     bwidth_data_alloc((bwidth_t  **) &ub.current_list));
+    
+    #if USE_GPUS
+	sf(gpu_data_alloc(&eard_read_gpu));
+    #endif
 
 	serial_alloc(&wb, SIZE_8KB);
 }
@@ -740,47 +766,29 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     unsigned long ack = 0;
 #if USE_GPUS
-    gpu_info_t *info;
-	gpu_info_t fake;
-
 	verbose(VEARD_LAPI_DEBUG,"EARD old eard_gpu");
 	switch (head->req_service) {
 		case GPU_MODEL:
-			debug("GPU_MODEL %d",eard_gpu_model);
-			write(ack_fd,&eard_gpu_model,sizeof(eard_gpu_model));
+			debug("GPU_MODEL %d",ug.api);
+			write(ack_fd, &ug.api, sizeof(ug.api));
 		break;
 		case GPU_DEV_COUNT:
-			debug("GPU_DEV_COUNT %d",eard_num_gpus);
-			write(ack_fd,&eard_num_gpus,sizeof(eard_num_gpus));
+			debug("GPU_DEV_COUNT %d", ug.devs_count);
+			write(ack_fd, &ug.devs_count, sizeof(ug.devs_count));
 			break;
 		case GPU_GET_INFO:
-			debug("GPU_GET_INFO %d", eard_num_gpus);
-			if (eard_gpu_initialized) {
-				gpu_get_info(&eard_main_gpu_ctx, (const gpu_info_t **) &info, NULL);
-			} else {
-				memset(&fake, 0, sizeof(gpu_info_t));
-				info = &fake;
-			}
-			write(ack_fd, info, sizeof(gpu_info_t)*eard_num_gpus);
+			debug("GPU_GET_INFO %d", mg.devs_count);
+			write(ack_fd, gpu_devs, sizeof(gpu_devs_t)*mg.devs_count);
 			break;
 		case GPU_DATA_READ:
-			if (eard_gpu_initialized){
-				gpu_read(&eard_main_gpu_ctx,eard_read_gpu);
-			}else{
-				memset(eard_read_gpu,0,sizeof(gpu_t));
-			}
-			debug("Sending %lu bytes en gpu_data_read",sizeof(gpu_t)*eard_num_gpus);
+			gpu_read(no_ctx,eard_read_gpu);
+			debug("Sending %lu bytes en gpu_data_read",sizeof(gpu_t)*ug.devs_count);
 			gpu_data_tostr(eard_read_gpu,gpu_str,sizeof(gpu_str));
 			debug("gpu_data_read info: %s",gpu_str);
-			write(ack_fd,eard_read_gpu,sizeof(gpu_t)*eard_num_gpus);
+			write(ack_fd,eard_read_gpu,sizeof(gpu_t)*ug.devs_count);
 			break;
 		case GPU_SET_FREQ:
-			if (eard_gpu_initialized){
-				debug("Setting the GPU freq");
-				gpu_mgr_set_freq(req.req_data.gpu_freq.num_dev,req.req_data.gpu_freq.gpu_freqs);
-			}else{
-				error("GPU not initialized and GPU_SET_FREQ requested");
-			}
+			gpu_mgr_set_freq(req.req_data.gpu_freq.num_dev,req.req_data.gpu_freq.gpu_freqs);
 			ack=EAR_SUCCESS;
 			write(ack_fd,&ack,sizeof(ack));
 			break;
@@ -1097,7 +1105,7 @@ state_t eard_local_api()
 	num_packs = node_desc.socket_count;
 
 	verbose(VEARD_LAPI,"Creating node_mgr data");
-	if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS){
+    if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS){
 		verbose(VEARD_LAPI,"Error creating shared memory region for node_mgr");
 		exit(1);
 	}
@@ -1105,49 +1113,31 @@ state_t eard_local_api()
 	// IMC frequency metrics
 	state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
 	state_assert(s, imcfreq_data_alloc(&unc_data, NULL),       _exit(0));
-
 	verbose(VEARD_LAPI,"CPUfreq and IMC freq data ok for node_services devices %u", unc_count);
 
 	// Energy node metrics
-	energy_datasize(&handler_energy,&node_energy_datasize);
-	verbose(VEARD_LAPI,"EARD main thread: node_energy_datasize %lu",node_energy_datasize);
-	node_energy_data=(edata_t)malloc(node_energy_datasize);
+    energy_datasize(&handler_energy,&node_energy_datasize);
+    verbose(VEARD_LAPI,"EARD main thread: node_energy_datasize %lu",node_energy_datasize);
+    node_energy_data=(edata_t)malloc(node_energy_datasize);
     energy_frequency(&handler_energy, &energy_freq);
-	verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
+    verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
 	// RAPL metrics
 	state_assert(s, energy_cpu_load(&node_desc, 0), _exit(0)); //no context and no eards
 	state_assert(s, energy_cpu_init(no_ctx),        _exit(0));
 	state_assert(s, energy_cpu_data_alloc(no_ctx, &values_rapl, &rapl_count), _exit(0));
     if (values_rapl==NULL) error("values_rapl returns NULL in eard initialization");
-
-    verbose(VEARD_LAPI,"RAPL data allocated in node_serices");
-
+	verbose(VEARD_LAPI,"RAPL data allocated in node_serices");
+	
     // HW initialized HERE...creating communication channels
-    verbose(VEARD_LAPI, "Creating comm in %s for node %s", ear_tmp, nodename);
-
-    #if USE_GPUS
-    /* GPU Initialization for app requests */
-    uint ret = gpu_init(&eard_main_gpu_ctx);
-    if (ret != EAR_SUCCESS){
-        error("EARD error when initializing GPU context for EARD API queries");
-        eard_gpu_initialized = 0;
-    }else{
-        eard_gpu_initialized = 1;
-    }
-    gpu_data_alloc(&eard_read_gpu);
-    gpu_count(&eard_main_gpu_ctx,&eard_num_gpus);
-    debug("gpu_count %u",eard_num_gpus);
-    eard_gpu_model=gpu_model();
-    debug("gpu_model %u",eard_gpu_model);
-    #endif
-
+	verbose(VEARD_LAPI, "Creating comm in %s for node %s", ear_tmp, nodename);
+	
     AFD_ZERO(&rfds_basic);
     /* This function creates the pipe for new local connections */
     verbose(VEARD_LAPI,"Initializing local connections");
     if (init_local_connections(&eard_local_conn,node_desc.cpu_count) != EAR_SUCCESS){
-    error("Error initializing local connections");
-    _exit(0);
+        error("Error initializing local connections");
+        _exit(0);
     }
     verbose(VEARD_LAPI,"Creating global connector");
     create_global_connector(ear_tmp, nodename);
@@ -1163,7 +1153,6 @@ state_t eard_local_api()
 	*	MAIN LOOP 
 	*
 	*/
-// numfds_req
     while (((numfds_ready = aselectv(&rfds_basic, NULL)) >= 0) ||
            ((numfds_ready < 0) && (errno == EINTR)))
     {

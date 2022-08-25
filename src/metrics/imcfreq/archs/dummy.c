@@ -28,7 +28,7 @@ void imcfreq_dummy_load(topology_t *tp, imcfreq_ops_t *ops)
 {
 	// If there is an API already loaded
 	if (apis_loaded(ops)) {
-		apis_add(ops->init_static, imcfreq_dummy_init_static);
+        apis_add(ops->init_static, imcfreq_dummy_init_static);
 	}
 
 	// Filling each gap

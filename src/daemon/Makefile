@@ -20,7 +20,7 @@ remote_api_OBJS= \
     remote_api/dynamic_configuration.o 
 
 report_OBJ=\
-		$(SRCDIR)/report/report.o
+    $(SRCDIR)/report/report.o
 
 powercap_OBJS = \
 	powercap/powercap_status.o \

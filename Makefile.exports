@@ -26,6 +26,13 @@ export PAPI_BASE
 export PAPI_CFLAGS
 export PAPI_LDFLAGS
 export CUDA_BASE
+export CUDA_CFLAGS
+export NVML_BASE
+export NVML_CFLAGS
+export CUPTI_BASE
+export CUPTI_CFLAGS
+export ONEAPI_BASE
+export ONEAPI_CFLAGS
 export LIKWID_BASE
 export LIKWID_CFLAGS
 export FREEIPMI_BASE

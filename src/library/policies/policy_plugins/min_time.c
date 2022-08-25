@@ -234,9 +234,8 @@ state_t policy_init(polctx_t *c)
             gpus.init(c);
         }
 
-        if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
-            verbose_master(2, "%sError%s Asking for gpu frequency list.", COL_RED, COL_CLR);
-        }
+        gpuf_pol_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+        gpuf_pol_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
         /* Replace by default_setting in gpu policy */
         for (i = 0; i < c->num_gpus; i++) {

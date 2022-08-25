@@ -478,8 +478,9 @@ state_t policy_init()
 
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
-    gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items);
-#endif
+    gpuf_pol_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+    gpuf_pol_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
+#endif // USE_GPUS
     node_freqs_alloc(&nf);
     node_freqs_alloc(&avg_nf);
     node_freqs_alloc(&last_nf);
@@ -489,8 +490,8 @@ state_t policy_init()
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
 #if USE_GPUS
-    gpu_lib_count((uint *) &policy_last_local_signature.gpu_sig.num_gpus);
-    policy_last_global_signature.gpu_sig.num_gpus =  policy_last_local_signature.gpu_sig.num_gpus;
+    policy_last_local_signature.gpu_sig.num_gpus  = metrics_gpus_get(MET_GPU)->devs_count;
+    policy_last_global_signature.gpu_sig.num_gpus = policy_last_local_signature.gpu_sig.num_gpus;
 #endif
     if (arch_desc.top.vendor == VENDOR_AMD) {
         enable_load_balance = 0;
@@ -615,7 +616,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
     // Policy file selection
 #if !USER_TEST
-    if (((obj_path == NULL) && (ins_path == NULL)) || (app_settings->user_type != AUTHORIZED)) {
+    if ((obj_path == NULL && ins_path == NULL) || app_settings->user_type != AUTHORIZED) {
 #else
     if (obj_path == NULL && ins_path == NULL) {
 #endif
@@ -1764,7 +1765,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_
     memcpy(pc_app_info_data->req_gpu_f, gpu_f, c->num_gpus * sizeof(ulong));
 
     // TODO We must filter the GPUs I'm using.
-    if (gpu_lib_freq_limit_set(gpu_f) != EAR_SUCCESS){
+   if (state_fail(mgt_gpu_freq_limit_set(no_ctx, gpu_f))) {
         verbose_master(POLICY_GPU, "%sERROR%s setting GPU frequency. %d: %s",
                 COL_RED, COL_CLR, intern_error_num, intern_error_str);
     }

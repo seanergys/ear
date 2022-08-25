@@ -1,8 +1,10 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 ######## FILES
 
-gpu_BINS = gpu.o
+gpu_BINS = \
+    gpu.o \
+    gpuproc.o
 
 ######## RULES
 

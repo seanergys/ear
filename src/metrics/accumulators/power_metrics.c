@@ -47,8 +47,6 @@ static uint      num_counters = 0;
 // GPU
 #if USE_GPUS
 static gpu_t	*gpu_diff;
-static ctx_t	 gpu_context;
-static uint		 gpu_sel_model;
 static uint		 gpu_num;
 #endif
 
@@ -74,7 +72,7 @@ static void pm_disconnect(ehandler_t *my_eh)
 
 		#if USE_GPUS
 		if (gpu_num > 0) {
-			gpu_dispose(&gpu_context);
+			gpu_dispose(no_ctx);
 		}
 		#endif
 	}
@@ -167,19 +165,16 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 	#if USE_GPUS
 	int gpu_error = 0;
 
-	if (xtate_fail(s, gpu_load(empty, none, &gpu_sel_model))) {
-		error("gpu_load returned %d (%s)", s, state_msg);
-		gpu_error = 1;
-	}
-	if (xtate_fail(s, gpu_init(&gpu_context))) {
+	gpu_load(EARD);
+	if (state_fail(s = gpu_init(no_ctx))) {
 		error("gpu_init returned %d (%s)", s, state_msg);
 		gpu_error = 1;
 	}
-	if (xtate_fail(s, gpu_count(&gpu_context, &gpu_num))) {
+	if (state_fail(s = gpu_count_devices(no_ctx, &gpu_num))) {
 		error("gpu_count returned %d (%s)", s, state_msg);
 		gpu_error = 1;
 	}
-	if (xtate_fail(s, gpu_data_alloc(&gpu_diff))) {
+	if (state_fail(s = gpu_data_alloc(&gpu_diff))) {
 		error("gpu_data_alloc returned %d (%s)", s, state_msg);
 		gpu_error = 1;
 	}
@@ -252,7 +247,7 @@ int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
 	#if USE_GPUS
 	state_t s;
 
-	if (xtate_fail(s, gpu_read(&gpu_context, acc_energy->gpu_data))) {
+	if (state_fail(s = gpu_read(no_ctx, acc_energy->gpu_data))) {
 		error("gpu_read returned %d (%s)", s, state_msg);
 	}
 	#endif

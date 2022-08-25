@@ -15,50 +15,63 @@
 * and COPYING.EPL files.
 */
 //#define SHOW_DEBUGS 1
+
+#include <unistd.h>
 #include <common/includes.h>
 #include <common/system/symplug.h>
 
-state_t symplug_join(void *handle, void *calls[], const char *names[], uint n)
+state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
 {
-	char *error;
-	uint i;
+    uint i, counter;
+    char *error;
 
-	for (i = 0; i < n; ++i)
-	{
-		calls[i] = dlsym(handle, names[i]);
-		error    = dlerror();
-		if ((calls[i] != NULL) && (error == NULL)) {
-			debug("symbol %s found (%p)", names[i], calls[i]);
-		} else {
-			debug("warning, symbol %s not found (%s)", names[i], error);
-			calls[i] = NULL;
-		}
-	}
+    for (counter = i = 0; i < n; ++i)
+    {
+        calls[i] = dlsym(handle, names[i]);
+        error    = dlerror();
 
-	return EAR_SUCCESS;
+        if ((calls[i] != NULL) && (error == NULL)) {
+            debug("symbol %s found (%p)", names[i], calls[i]);
+            counter++;
+        } else {
+            debug("warning, symbol %s not found (%s)", names[i], error);
+            calls[i] = NULL;
+        }
+    }
+    if (counter == 0) {
+        dlclose(handle);
+        return_msg(EAR_ERROR, "No symbols loaded");
+    }
+
+    return EAR_SUCCESS;
 }
 
-static state_t load(char *path, void *calls[], const char *names[], uint n, int flags)
+static state_t static_open(char *path, void *calls[], const char *names[], uint n, int flags)
 {
-	void *handle = dlopen(path, flags);
-	if (handle == NULL) {
-		verbose(2,"dlopen fails %s", dlerror());
-		return_msg(EAR_ERROR, dlerror());
-	}
-	return symplug_join(handle, calls, names, n);
+    void *handle;
+    debug("trying to access to '%s'", path);
+    if (access(path, X_OK) != 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    if ((handle = dlopen(path, flags)) == NULL) {
+        debug("dlopen fails %s", dlerror());
+        return_msg(EAR_ERROR, dlerror());
+    }
+    debug("dlopen ok");
+    return plug_join(handle, calls, names, n);
 }
 
 state_t symplug_open(char *path, void *calls[], const char *names[], uint n)
 {
-	return load(path, calls, names, n, RTLD_GLOBAL | RTLD_NOW);
+	return static_open(path, calls, names, n, RTLD_GLOBAL | RTLD_NOW);
 }
 
-state_t symplug_open_flags(char *path, void *calls[], const char *names[], uint n, int flags)
+state_t plug_open(char *path, void *calls[], const char *names[], uint n, int flags)
 {
-	return load(path, calls, names, n, flags);
+    return static_open(path, calls, names, n, flags);
 }
 
-state_t symplug_test(void *calls[], uint n)
+state_t plug_test(void *calls[], uint n)
 {
 	uint i;
 	for (i = 0; i < n; ++i)

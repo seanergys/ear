@@ -15,17 +15,14 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <metrics/common/apis.h>
+#include <common/output/debug.h>
 #include <common/output/verbose.h>
 
 void apis_append(void *op[], void *func)
 {
-	// [f0] <- ops->static_init
-	// [f1]
-	// [f2]
-	// [f3]
     while (*op != NULL) {
         ++op;
     }
@@ -52,4 +49,6 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_PERF    ) { snprintf(buffer, size, "PERF"    ); }
     else if (api == API_INTEL106) { snprintf(buffer, size, "INTEL106"); }
     else if (api == API_LIKWID  ) { snprintf(buffer, size, "LIKWID"  ); }
+    else if (api == API_CUPTI   ) { snprintf(buffer, size, "CUPTI"  ); }
+    else if (api == API_ONEAPI  ) { snprintf(buffer, size, "ONEAPI"  ); }
 }

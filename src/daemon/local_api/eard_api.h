@@ -27,6 +27,7 @@
 #include <metrics/gpu/gpu.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <management/gpu/gpu.h>
 
 #include <daemon/local_api/eard_api_rpc.h>
 #include <daemon/local_api/eard_api_conf.h>
@@ -110,7 +111,7 @@ int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev);
 /** \todo  */
 int eards_gpu_set_freq(uint num_dev,ulong *freqs);
 /** \todo  */
-int eards_gpu_get_info(gpu_info_t *info, uint num_dev);
+int eards_gpu_get_info(gpu_devs_t *info, uint num_dev);
 /** EARD GPU support */
 int eards_gpu_support();
 

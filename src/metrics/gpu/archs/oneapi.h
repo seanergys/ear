@@ -20,18 +20,20 @@
 
 #include <metrics/gpu/gpu.h>
 
-state_t oneapi_load();
+void gpu_oneapi_load(gpu_ops_t *ops);
 
-state_t oneapi_init(ctx_t *c);
+void gpu_oneapi_get_api(uint *api);
 
-state_t oneapi_dispose(ctx_t *c);
+state_t gpu_oneapi_init(ctx_t *c);
 
-state_t oneapi_count(ctx_t *c, uint *dev_count);
+state_t gpu_oneapi_dispose(ctx_t *c);
 
-state_t oneapi_pool(void *p);
+state_t gpu_oneapi_count_devices(ctx_t *c, uint *devs_count);
 
-state_t oneapi_read(ctx_t *c, gpu_t *data);
+state_t gpu_oneapi_pool(void *p);
 
-state_t oneapi_read_raw(ctx_t *c, gpu_t *data);
+state_t gpu_oneapi_read(ctx_t *c, gpu_t *data);
+
+state_t gpu_oneapi_read_raw(ctx_t *c, gpu_t *data);
 
 #endif

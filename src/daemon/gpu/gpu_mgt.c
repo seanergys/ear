@@ -27,7 +27,6 @@
 #include <common/output/debug.h>
 #include <common/types/configuration/cluster_conf.h>
 
-static ctx_t gpu_node_mgr;
 static uint num_dev;
 static ulong *def_khz,*max_khz,*current_khz;
 static ulong *def_w,*max_w,*current_w,*min_w;
@@ -36,17 +35,13 @@ state_t gpu_mgr_init()
 {
 	uint i;
 	state_t ret;
-	ret=mgt_gpu_load(NULL);
-	if (ret!=EAR_SUCCESS){
-		debug("Error in mgt_gpu_load");
-		return ret;
-	}
-	ret=mgt_gpu_init(&gpu_node_mgr);
+	mgt_gpu_load(NO_EARD);
+	ret=mgt_gpu_init(no_ctx);
 	if (ret!=EAR_SUCCESS){
 		debug("Error in mgt_gpu_init");
 		return ret;
 	}
-	ret=mgt_gpu_count(&gpu_node_mgr,&num_dev);
+	ret=mgt_gpu_count_devices(no_ctx,&num_dev);
 	if (ret!=EAR_SUCCESS){
 		debug("Error in mgt_gpu_count");
 		return ret;
@@ -68,33 +63,33 @@ state_t gpu_mgr_init()
 		return EAR_ALLOC_ERROR;
 	}
 	/* GPU frequency limits */
-	ret=mgt_gpu_freq_limit_get_default(&gpu_node_mgr,def_khz);
+	ret=mgt_gpu_freq_limit_get_default(no_ctx,def_khz);
 	if (ret!=EAR_SUCCESS){
 		debug("mgt_gpu_freq_limit_get_default");
 		return ret;
 	}
-	ret=mgt_gpu_freq_limit_get_max(&gpu_node_mgr,max_khz);
+	ret=mgt_gpu_freq_limit_get_max(no_ctx,max_khz);
 	if (ret!=EAR_SUCCESS){
 		debug("mgt_gpu_freq_limit_get_max");
 		return ret;
 	}
-	ret=mgt_gpu_freq_limit_get_current(&gpu_node_mgr,current_khz);
+	ret=mgt_gpu_freq_limit_get_current(no_ctx,current_khz);
 	if (ret!=EAR_SUCCESS){
 		debug("mgt_gpu_freq_limit_get_current");
 		return ret;
 	}
 	/* GPU power limits */
-	ret=mgt_gpu_power_cap_get_default(&gpu_node_mgr,def_w);
+	ret=mgt_gpu_power_cap_get_default(no_ctx,def_w);
 	if (ret!=EAR_SUCCESS){
 		debug("mgt_gpu_power_cap_limit_get_default");
 		return ret;
 	}
-	ret=mgt_gpu_power_cap_get_rank(&gpu_node_mgr,min_w,max_w);
+	ret=mgt_gpu_power_cap_get_rank(no_ctx,min_w,max_w);
 	if (ret!=EAR_SUCCESS){
 		debug("mgt_gpu_power_cap_get_rank");
 		return ret;
 	}
-	ret=mgt_gpu_power_cap_get_current(&gpu_node_mgr,current_w);
+	ret=mgt_gpu_power_cap_get_current(no_ctx,current_w);
 	if (ret!=EAR_SUCCESS){
 		debug("mgt_gpu_power_cap_limit_get_current");
 		return ret;
@@ -121,7 +116,7 @@ state_t gpu_mgr_set_freq(uint num_dev_req,ulong *freqs)
 		freqs[i]=freqs[i];
 		debug("gpu_mgr_set_freq gpu[%d]=%lu",i,freqs[i]);
 	}
-	return mgt_gpu_freq_limit_set(&gpu_node_mgr,freqs);
+	return mgt_gpu_freq_limit_set(no_ctx,freqs);
 }
 
 state_t gpu_mgr_set_freq_all_gpus(ulong gfreq)
@@ -133,7 +128,7 @@ state_t gpu_mgr_set_freq_all_gpus(ulong gfreq)
 	for (i=0;i<num_dev;i++){
 		nfreq[i]=gfreq;
   }
-  ret=mgt_gpu_freq_limit_set(&gpu_node_mgr,nfreq);
+  ret=mgt_gpu_freq_limit_set(no_ctx,nfreq);
 	free(nfreq);
 	return ret;
 }

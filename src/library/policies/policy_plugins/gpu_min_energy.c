@@ -21,17 +21,17 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/debug.h>
+
 #include <library/common/externs.h>
-#include <library/policies/policy_api.h>
-#include <library/policies/policy_state.h>
 #include <library/common/verbose_lib.h>
 #include <library/metrics/gpu.h>
 #include <library/api/clasify.h>
-
-
+#include <library/policies/policy_api.h>
+#include <library/policies/policy_state.h>
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -70,19 +70,25 @@ state_t policy_init(polctx_t *c)
         g_freq=atol(gpu_freq);
     }
     gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
+    gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+    gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
+
     for (i=0;i<c->num_gpus;i++){
         verbose_master(3,"Freqs in GPU[%d]=%u",i,gpuf_list_items[i]);
         for (j=0;j<gpuf_list_items[i];j++){
             verbose_master(3,"GPU[%d][%d]=%.2f",i,j,(float)gpuf_list[i][j]/1000000.0);
         }
     }
-    gpu_lib_alloc_array(&gfreqs);
+
+    mgt_gpu_data_alloc(&gfreqs);
+
     for (i=0;i<c->num_gpus;i++){
         if (g_freq) gfreqs[i] = g_freq;
         else 				gfreqs[i] = gpuf_list[i][0];
         verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
     }
-    gpu_lib_freq_limit_set(gfreqs);
+
+    mgt_gpu_freq_limit_set(no_ctx, gfreqs);
 
     return EAR_SUCCESS;
 }
