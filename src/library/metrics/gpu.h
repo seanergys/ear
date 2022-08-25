@@ -24,7 +24,7 @@
 #if USE_GPUS
 
 
-#if !NEW_GPU_API
+#if 0
 state_t gpu_lib_load(settings_conf_t *settings);
 
 state_t gpu_lib_init(ctx_t *c);

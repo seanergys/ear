@@ -74,14 +74,14 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 
 state_t policy_gpu_init_ctx(polctx_t *c)
 {
-#if !NEW_GPU_API
+#if 0
     uint policy_gpu_model;
     uint gpun;
 #endif
     c->num_gpus = 0;
 
 #if USE_GPUS
-#if !NEW_GPU_API
+#if 0
     if (gpu_lib_load(no_ctx) != EAR_SUCCESS) {
         error("gpu_lib_load in init_power_policy");
         return EAR_ERROR;
