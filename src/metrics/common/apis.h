@@ -36,7 +36,10 @@
 #define API_PERF         8
 #define API_INTEL106     9
 #define API_LIKWID      10
-#define API_ISST        11
+#define API_CUPTI       11
+#define API_ONEAPI      12
+#define API_RAPL 		13
+#define API_ISST        14
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
@@ -69,14 +72,26 @@ typedef struct metrics_s {
     void *set_list;
 } metrics_t;
 
+#if USE_GPUS
+// Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs
+typedef struct metrics_gpus_s {
+    uint  api;
+    uint  ok;
+    uint  devs_count;
+    void **avail_list;
+    uint *avail_count;
+    void *current_list;
+} metrics_gpus_t;
+#endif // USE_GPUS
+
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
     if (op == NULL) { \
-        op = func; \
+        *((void **) &op) = func; \
     }
 
 /* Replaces the currect function of the operation. */
-#define apis_set(op, func) op = func;
+#define apis_set(op, func) *((void **) &op) = func;
 
 /* */
 #define apis_loaded(ops) (ops->init != NULL)
@@ -85,10 +100,26 @@ typedef struct metrics_s {
 #define apis_not(ops) (ops->init == NULL)
 
 /* Adds a new function to an array. */
-#define apis_add(op, func) \
-	apis_append((void **) op, func);
+#define apis_add(ops, func) \
+	apis_append((void **) ops, func);
 
-void apis_append(void **op, void *func);
+/* Provisional multicall function */
+#define apis_multi(ops, ...) \
+    state_t s; \
+    int i = 0; \
+    while (ops [i] != NULL) { \
+        if (state_fail(s = ops [i](__VA_ARGS__))) { \
+            debug("failed " #ops "[%d]: %s", i, state_msg); \
+            return s; \
+        } \
+        ++i; \
+    }
+
+#define apis_multiret(ops, ...) \
+    apis_multi(ops, __VA_ARGS__); \
+    return s;
+
+void apis_append(void *op[], void *func);
 
 void apis_print(uint api, char *prefix);
 

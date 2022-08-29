@@ -807,7 +807,7 @@ int ear_mpic_Testsome(int incount, MPI_Request array_of_requests[], int *outcoun
 int ear_mpic_Wait(MPI_Request *request, MPI_Status *status)
 {
     debug(">> C Wait...............");
-    before_mpi(Wait, (p2i)request,(p2i)0);
+    before_mpi(Wait, (p2i)request,(p2i)status);
     int res = next_mpic.Wait(request, status);
     debug("<< C Wait...............");
     after_mpi(Wait);

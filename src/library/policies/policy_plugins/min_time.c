@@ -234,16 +234,15 @@ state_t policy_init(polctx_t *c)
             gpus.init(c);
         }
 
-        if (gpu_lib_freq_list(&gpuf_pol_list, &gpuf_pol_list_items) != EAR_SUCCESS){
-            verbose_master(2, "%sError%s Asking for gpu frequency list.", COL_RED, COL_CLR);
-        }
+        gpuf_pol_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+        gpuf_pol_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
         /* Replace by default_setting in gpu policy */
         for (i = 0; i < c->num_gpus; i++) {
             min_time_def_freqs.gpu_freq[i] = gpuf_pol_list[i][0];
         }
     }
-    verbose_node_freqs(2, &min_time_def_freqs);
+    verbose_node_freqs(3, &min_time_def_freqs);
 #endif
 
     node_freqs_copy(&last_nodefreq_sel, &min_time_def_freqs);
@@ -265,7 +264,7 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *loop_id)
     if (c != NULL) {
         projection_reset(c->num_pstates);
         if (!use_energy_models) {
-            memset(sig_ready, 0, sizeof(uint)*c->num_pstates);
+            memset(sig_ready, 0, sizeof(uint) * c->num_pstates);
         }
     } else {
         return EAR_ERROR;
@@ -420,15 +419,16 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
-        is_cpu_bound(my_app, &cbound);
-        is_mem_bound(my_app, &mbound);
+        //  NEW CLASSIFY
+        is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
+        is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
         if (use_energy_models && !are_default_settings(&last_nodefreq_sel, &min_time_def_freqs)){
-            verbose_node_freqs(2, &last_nodefreq_sel);
-            verbose_node_freqs(2, &min_time_def_freqs);
+            verbose_node_freqs(3, &last_nodefreq_sel);
+            verbose_node_freqs(3, &min_time_def_freqs);
 
             set_default_settings(freqs, &min_time_def_freqs);
             if (gpus.restore_settings != NULL){
@@ -446,20 +446,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         for (uint i = 0; i < nump; i++) {
             verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
-            if (!freq_per_core) {
-                compute_total_node_metrics();
-                compute_vpi(&sig_vpi, sig);
-                compute_vpi(&node_sig_vpi, my_app);
-                local_process_with_high_vpi = compute_max_vpi(lib_shared_region, sig_shared_region, &max_vpi);
-                my_app->CPI = (double)my_app->cycles/(double)my_app->instructions;
-                debug("Node signature MR[%d] CPI %.3lf VPI %.3lf/Node CPI %.3lf VPI %3lf/MAX VPI %.3lf",
-                        my_globalrank, sig->CPI, sig_vpi, my_app->CPI, node_sig_vpi, max_vpi);
-
-                /*  With this two lines, we force the VPI of the signature to the most loaded in the node */
-                my_app->instructions = sig_shared_region[local_process_with_high_vpi].sig.instructions;
-                memcpy(my_app->FLOPS, sig_shared_region[local_process_with_high_vpi].sig.FLOPS, sizeof(ull) * FLOPS_EVENTS);
-            } else {
-                compute_ssig_vpi(&lvpi, &sig_shared_region[i].sig);
+            if (freq_per_core) {
                 from_minis_to_sig(my_app, &sig_shared_region[i].sig);
                 double ltpi, lgbs, lpower;
 
@@ -470,7 +457,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 my_app->GBS      = lgbs * lib_shared_region->num_processes;
                 my_app->DC_power = lpower * lib_shared_region->num_processes;
 
-                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf", my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
+                verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf",
+                        my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
 
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
@@ -548,6 +536,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         }
 
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, new_freq, sizeof(ulong) * num_processes);
+        /* We copy in shared  memory to be used later in MPI init/end if needed */
+        for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) sig_shared_region[lp].new_freq = new_freq[lp];
+
 
         /*  We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
         verbose_master(3, "Updating cpufreq_signature");
@@ -562,7 +553,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             /*  If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound) {
-                if (sig->GBS <= GBS_BUSY_WAITING){
+                //if (sig->GBS <= GBS_BUSY_WAITING){
+                if (low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus)){
                     debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
@@ -921,7 +913,7 @@ state_t policy_max_tries(polctx_t *c, int *intents)
     return EAR_SUCCESS;
 }
 
-state_t policy_mpi_init(polctx_t *c, mpi_call call_type)
+state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
     if (c != NULL) {
         return mpi_call_init(c,call_type);
@@ -929,7 +921,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type)
     return EAR_ERROR;
 }
 
-state_t policy_mpi_end(polctx_t *c,mpi_call call_type)
+state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
     if (c != NULL) {
         return mpi_call_end(c,call_type);
@@ -1046,9 +1038,9 @@ state_t policy_restore_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *
 }
 
 state_t compute_total_node_metrics() {
-    compute_total_node_instructions(lib_shared_region, sig_shared_region, &my_app->instructions);
-    compute_total_node_flops(lib_shared_region, sig_shared_region, my_app->FLOPS);
-    compute_total_node_cycles(lib_shared_region, sig_shared_region, &my_app->cycles);
+    compute_job_node_instructions(sig_shared_region, num_processes, &my_app->instructions);
+    compute_job_node_flops(sig_shared_region, num_processes, my_app->FLOPS);
+    compute_job_node_cycles(sig_shared_region, num_processes, &my_app->cycles);
 
     return EAR_SUCCESS;
 }

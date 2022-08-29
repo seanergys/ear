@@ -1,4 +1,5 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
+CFLAGS    = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
+CC_FLAGS += $(CONSTANTS)
 
 ######## FILES
 
@@ -23,10 +24,11 @@ root_OBJS = \
     $(SRCDIR)/management/imcfreq/archs/eard.o \
     $(SRCDIR)/management/imcfreq/archs/intel63.o \
     $(SRCDIR)/management/gpu/gpu.o \
-    $(SRCDIR)/management/gpu/archs/nvml.o \
+    $(SRCDIR)/management/gpu/archs/eard.o \
     $(SRCDIR)/management/gpu/archs/dummy.o \
+    $(SRCDIR)/management/gpu/archs/nvml.o \
+    $(SRCDIR)/management/gpu/archs/oneapi.o \
     $(SRCDIR)/management/management.o
-    
 
 ######## RULES
 

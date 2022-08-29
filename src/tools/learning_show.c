@@ -116,7 +116,7 @@ int main(int argc,char *argv[])
 				apps[i].node_id[15] = '\0';
 			}
 
-			compute_vpi(&VPI , &apps[i].signature);
+			compute_sig_vpi(&VPI , &apps[i].signature);
 			if (opt_c) {
 				verbose(0, "%s;%lu;%s;%lu;%lu;%0.2lf;%0.2lf;%0.2lf;%0.2lf;%0.2lf",
                     apps[i].node_id, apps[i].job.id,apps[i].job.app_id, apps[i].job.def_f, apps[i].signature.avg_f,

@@ -36,7 +36,7 @@ typedef struct application
 } application_t;
 
 
-/** Resets the data. */
+/** Resets the memory region pointed by \p app.  */
 void init_application(application_t *app);
 
 /** Replicates the application in *source to *destiny */

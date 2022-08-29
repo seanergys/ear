@@ -378,6 +378,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         n->gpu_def_freq   = my_conf->tags[tag_id].gpu_def_freq;
         n->cpu_max_pstate = my_conf->tags[tag_id].cpu_max_pstate;
         n->imc_max_pstate = my_conf->tags[tag_id].imc_max_pstate;
+        n->idle_pstate    = my_conf->tags[tag_id].idle_pstate;
         n->imc_max_freq   = my_conf->tags[tag_id].imc_max_freq;
         n->imc_min_freq   = my_conf->tags[tag_id].imc_min_freq;
 
@@ -389,6 +390,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         if (my_conf->tags[tag_id].energy_model != NULL && strlen(my_conf->tags[tag_id].energy_model) > 0)
             n->energy_model = my_conf->tags[tag_id].energy_model;
 
+        n->idle_governor = my_conf->tags[tag_id].idle_governor;
         n->powercap_plugin = my_conf->tags[tag_id].powercap_plugin;
         n->powercap_gpu_plugin = my_conf->tags[tag_id].powercap_gpu_plugin;
 
@@ -627,6 +629,7 @@ void set_default_tag_values(tag_t *tag)
     tag->gpu_def_freq   = 0;
     tag->cpu_max_pstate = MAX_CPUF_PSTATE; /* Used by policies */
     tag->imc_max_pstate = MAX_IMCF_PSTATE; /* Used by policies */
+    tag->idle_pstate    = 1000; 
     tag->imc_max_freq   = MAX_IMCF_FREQ;   /* To create the imcf list */
     tag->imc_min_freq   = MIN_IMCF_FREQ;
 
@@ -635,6 +638,7 @@ void set_default_tag_values(tag_t *tag)
     strcpy(tag->energy_plugin, "");
     strcpy(tag->powercap_plugin, "");
     strcpy(tag->powercap_gpu_plugin, "");
+    strcpy(tag->idle_governor, "ondemand");
 }
 
 
@@ -1045,7 +1049,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     }
 
     /* Priv accounts */
-    serial_add_elem(&ear_conf_serial, (char *)&conf->priv_acc, sizeof(conf->priv_acc));
+    serial_add_elem(&ear_conf_serial, (char *)&conf->num_acc, sizeof(conf->num_acc));
     for (uint auth = 0; auth < conf->num_acc; auth ++){
         uint size_auth = strlen(conf->priv_acc[auth]);
         serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
@@ -1159,8 +1163,8 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
     }
 
     /* Priv accounts */
-    serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_acc, NULL);
-    if (conf->priv_acc){
+    serial_copy_elem(&ear_conf_serial, (char *)&conf->num_acc, NULL);
+    if (conf->num_acc){
         conf->priv_acc = calloc(sizeof(char *), conf->num_acc);
         for (uint auth = 0; auth < conf->num_acc; auth ++){
             uint size_auth;

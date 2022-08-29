@@ -42,7 +42,7 @@ void timestamp_getreal(timestamp *ts)
 
 ullong timestamp_convert(timestamp *ts, ullong time_unit)
 {
-	ullong stamp;
+	ullong stamp = 0;
 	stamp  = (ullong) (ts->tv_sec * 1000000000);
 	stamp += (ullong) (ts->tv_nsec);
 	stamp /= time_unit;
@@ -58,27 +58,35 @@ ullong timestamp_getconvert(ullong time_unit)
 
 ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
 {
-	ullong initsec, initnsec;
-	ullong endsec, endnsec;
-	ullong stamp;
+	ullong initsec = 0, initnsec = 0;
+	ullong endsec = 0 , endnsec = 0;
+	ullong stamp = 0;
+  if ((ts1->tv_sec == ts2->tv_sec) && (ts1->tv_nsec == ts2->tv_nsec)) return (ullong)0;
 
-	initsec  = ts1->tv_sec;
-	initnsec = ts1->tv_nsec;
-	endsec   = ts2->tv_sec;
-	endnsec  = ts2->tv_nsec;
+	initsec  = (ullong)ts1->tv_sec;
+	initnsec = (ullong)ts1->tv_nsec;
+	endsec   = (ullong)ts2->tv_sec;
+	endnsec  = (ullong)ts2->tv_nsec;
 	
 	if (endnsec < initnsec){
 		endsec--;
 		endnsec += 1E9;
 	}
+        #if 0
 	endnsec  /= time_unit;
 	initnsec /= time_unit;
 
 	stamp = ((endsec - initsec) * (1E9 / time_unit));
 	if (endnsec < initnsec) {
         return stamp;
+        #endif
+        stamp = ((endsec - initsec)) * 1E9 + (endnsec - initnsec);
+        return stamp / time_unit;
+        #if 0
     }
     return stamp + (endnsec - initnsec);
+    #endif
+
 }
 
 ullong timestamp_diffnow(timestamp *ts1, ullong time_unit)

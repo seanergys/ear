@@ -50,6 +50,7 @@ int query_filters = 0;
 int all_mpi = 0;
 int avx = 0;
 int print_gpus = 1;
+int loop_extended = 0;
 char csv_path[256] = "";
 
 typedef struct query_addons 
@@ -83,156 +84,31 @@ void usage(char *app)
 			"\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n" \
 			"\t\t-x\tshows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
 			"\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n" \
-			"\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n", app);
+			"\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
+			"\t\t-o\tmodifies the -r option to also show the corresponding jobs. Should be used with -j.\n", app);
 	printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
 	printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
 #endif
 	exit(0);
 }
 
-void read_from_files2(int job_id, int step_id, char verbose, char *file_path)
+void print_values(int fd, char ***values, int columns, int rows)
 {
-	int i, num_nodes;
-	char **nodes;
-
-	char nodelist_file_path[256], *nodelog_file_path;
-	char line_buf[256];
-	FILE *nodelist_file, *node_file;
-
-
-	strcpy(nodelist_file_path, EAR_INSTALL_PATH);
-	strcat(nodelist_file_path, "/etc/sysconf/nodelist.conf");
-
-	nodelist_file = fopen(nodelist_file_path, "r");
-	if (nodelist_file == NULL)
-	{
-		printf("Error opening nodelist file at \"$EAR_INSTALL_PATH/etc/sysconf/nodelist.conf\".\n");
-		printf("Filepath: %s\n", nodelist_file_path);
-		exit(1);
-	}
-	if (verbose) printf("Nodelist found at: %s\n", nodelist_file_path);
-
-	//count the total number of nodes
-	if (verbose) printf("Counting nodes...\n");
-	num_nodes = 0;
-	while(fscanf(nodelist_file, "%s\n", line_buf) > 0) {
-		num_nodes += 1;
-	}
-	rewind(nodelist_file);
-
-	if (num_nodes == 0)
-	{
-		fprintf(stderr, "No nodes found.\n"); //error
-		return;
-	}
-
-	if (verbose) printf("Found %d nodes.\n", num_nodes);
-
-	//initialize memory for each 
-	nodes = calloc(num_nodes, sizeof(char*));
-	for (i = 0; i < num_nodes; i++)
-	{
-		nodes[i] = malloc(sizeof(char) * STANDARD_NODENAME_LENGTH);
-		fscanf(nodelist_file, "%s", nodes[i]);
-	}
-	//all the information needed from nodelist_file has been read, it can be closed
-	fclose(nodelist_file);
-
-
-	char *nodename_extension = ".hpc.eu.lenovo.com.csv";
-	char *nodename_prepend = file_path;
-	nodelog_file_path = malloc(strlen(nodename_extension) + strlen(nodename_prepend) + STANDARD_NODENAME_LENGTH + 1);
-
-
-	//allocate memory to hold all possible found jobs
-	application_t **apps = (application_t**) malloc(sizeof(application_t*)*num_nodes);
-	int jobs_counter = 0;
-
-	//parse and filter job executions
-	for (i = 0; i < num_nodes; i++)
-	{
-		sprintf(nodelog_file_path, "%s%s%s", nodename_prepend, nodes[i], nodename_extension);
-		if (verbose) printf("Opening file for node %s (%s).\n", nodes[i], nodelog_file_path);
-		node_file = fopen(nodelog_file_path, "r");
-
-		if (node_file == NULL)
-		{
-			continue;
+	int i, j;
+	for (i = 0; i < rows; i++) {
+		for (j = 0; j < columns; j++) {
+			dprintf(fd, "%s;", values[i][j]);
 		}
-		if (verbose) printf("File for node %s (%s) opened.\n", nodes[i], nodelog_file_path);
-
-		//first line of each file is the header
-		fscanf(node_file, "%s\n", line_buf);
-
-		apps[jobs_counter] = (application_t*) malloc(sizeof(application_t));
-		init_application(apps[jobs_counter]);
-		if (verbose) printf("Checking node for signatures with %d job id.\n", job_id);
-		while (scan_application_fd(node_file, apps[jobs_counter], 0) == APP_TEXT_FILE_FIELDS)
-		{
-			if (apps[jobs_counter]->job.id == job_id && apps[jobs_counter]->job.step_id == step_id)
-			{
-				if (verbose) printf("Found job_id %ld in file %s\n", apps[jobs_counter]->job.id, nodelog_file_path);
-				jobs_counter++;
-				break;
-			}
-		}
-
-		fclose(node_file);
+		dprintf(fd, "\n");
 	}
+}
 
-	if (i == 1)
-	{
-		fprintf(stderr, "No jobs were found with id: %u\n", job_id); //error
-
-		free(nodelog_file_path);
-		for (i = 0; i < num_nodes; i++)
-			free(nodes[i]);
-		free(nodes);
-		return;
+void print_header(int fd, char ***values, int columns, int rows)
+{
+	int i;
+	for (i = 0; i < rows; i++) {
+		dprintf(fd, "%s;", values[i][0]);
 	}
-
-	printf("Node information:\nJob_id \tNodename \t\t\tTime (secs) \tDC Power (Watts) \tEnergy (Joules) \tAvg_freq (GHz)\n");
-
-	double avg_time, avg_power, total_energy, avg_f, avg_frequency;
-	avg_frequency = 0;
-	avg_time = 0;
-	avg_power = 0;
-	total_energy = 0;
-	for (i = 0; i < jobs_counter; i++)
-	{
-		avg_f = (double) apps[i]->signature.avg_f/1000000;
-		printf("%ld \t%s \t%.2lf \t\t%.2lf \t\t\t%.2lf \t\t%.2lf\n", 
-				apps[i]->job.id, apps[i]->node_id, apps[i]->signature.time, apps[i]->signature. DC_power, 
-				apps[i]->signature.DC_power * apps[i]->signature.time, avg_f);
-		avg_frequency += avg_f;
-		avg_time += apps[i]->signature.time;
-		avg_power += apps[i]->signature. DC_power;
-		total_energy += apps[i]->signature.time * apps[i]->signature.DC_power;
-
-	}
-
-	avg_frequency /= jobs_counter;
-	avg_time /= jobs_counter;
-	avg_power /= jobs_counter;
-
-	printf("\nApplication average:\nJob_id \tTime (secs.) \tDC Power (Watts) \tAccumulated Energy (Joules) \tAvg_freq (GHz)\n");
-
-	printf("%d.%d \t%.2lf \t\t%.2lf \t\t\t%.2lf \t\t\t%.2lf\n", 
-			job_id, step_id, avg_time, avg_power, total_energy, avg_frequency);
-
-
-	for (i = 0; i < jobs_counter; i++)
-		free(apps[i]);
-	free(apps);
-
-	free(nodelog_file_path);
-
-
-	//freeing variables
-	for (i = 0; i < num_nodes; i++)
-		free(nodes[i]);
-	free(nodes);
-
 }
 
 void print_full_apps(application_t *apps, int num_apps)
@@ -264,7 +140,7 @@ void print_full_apps(application_t *apps, int num_apps)
 		{
 			avg_f = (double) apps[i].signature.avg_f/1000000;
 			imc = (double) apps[i].signature.avg_imc_f/1000000;
-			compute_vpi(&vpi, &apps[i].signature);
+			compute_sig_vpi(&vpi, &apps[i].signature);
 			if (apps[i].job.step_id != BATCH_STEP)
 			{
 				printf("%8lu-%-4lu\t %-10s %-10s %-16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
@@ -451,7 +327,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 		{
 			if (current_is_mpi && !all_mpi)
 			{
-				compute_vpi(&vpi, &apps[i].signature); 
+				compute_sig_vpi(&vpi, &apps[i].signature); 
 				avg_VPI += vpi;
 				avg_f = (double) apps[i].signature.avg_f/1000000;
 				avg_frequency += avg_f;
@@ -1038,10 +914,18 @@ void print_loops(loop_t *loops, int num_loops)
 	int i;
 	char line[256];
 	signature_t sig;
+        char date_iter[128];
+#if REPORT_TIMESTAMP
+        struct tm *date_info;
+#endif
 
-
+#if REPORT_TIMESTAMP
+	strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-8s %-8s %-8s %-8s %-5s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F", "IMC_F", "IO(MBS)", "MPI%");
+#else
 	strcpy(line, "%6s-%-4s\t %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-5s %-5s %-7s %-5s ");
 	printf(line, "JOB", "STEP", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F", "IMC_F", "IO(MBS)", "MPI%");
+#endif
 #if USE_GPUS
 	//GPU variable declaration
 	int s;
@@ -1056,7 +940,7 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 	printf("\n");
 
-	strcpy(line, "%6u-%-4u\t %-10s %-6u %-8.1lf %-8.1lf %-8.3lf %-8.3lf %-8.3lf %-5.2lf %-5.2lf %-7.1lf %-5.1lf ");
+	strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-8.1lf %-8.3lf %-8.3lf %-8.3lf %-5.2lf %-5.2lf %-7.1lf %-5.1lf ");
 	for (i = 0; i < num_loops; i++)
 	{
 		signature_copy(&sig, &loops[i].signature);
@@ -1083,7 +967,13 @@ void print_loops(loop_t *loops, int num_loops)
 			}
 		}
 #endif
-		printf(line, loops[i].jid, loops[i].step_id, loops[i].node_id, loops[i].total_iterations,
+#if REPORT_TIMESTAMP
+                date_info = localtime( (time_t *)&loops[i].total_iterations);
+                strftime(date_iter, sizeof(date_iter), "%H:%M:%S", date_info );
+#else
+                sprintf(date_iter,"%lu", loops[i].total_iterations);
+#endif
+		printf(line, loops[i].jid, loops[i].step_id, loops[i].node_id, date_iter,
 				sig.DC_power, sig.GBS, sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
 #if USE_GPUS
 		sprintf(tmp, "%lu%%/%lu%%", gpuu, gpu_mem_util);
@@ -1101,29 +991,123 @@ void print_loops(loop_t *loops, int num_loops)
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
+#if 0
+#if USE_GPUS
+#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED), " \
+							"min_GPU_sig_id, max_GPU_sig_id " \
+							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
+							"INNER JOIN Signatures ON signature_id = Signatures.id"
+#else
+#define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED), " \
+							"from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id " \
+							"INNER JOIN Signatures ON signature_id = Signatures.id"
+#endif
 
-void read_loops(char *user, query_adds_t *q_a) 
+
+
+#if USE_GPUS
+void get_and_print_gpus(int fd, char *min, char *max)
 {
-	char query[512];
+	char query[256];
+	char ***values;
+	int i, j, columns, rows, ret;
+	//if (verbose) printf("entering get_and_print_gpus with %s min and %s max\n", min, max);
+	if (min == NULL || max == NULL) return;
+	if (!strcmp(min, "NULL") || ! strcmp(max, "NULL")) return;
+
+
+	sprintf(query, "SELECT * from GPU_signatures WHERE id >= %s AND id <= %s", min, max);
+	if (verbose) printf("running query %s\n", query);
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loops from database.\n");
+		return;
+	}
+
+
+	for (i = 0; i < rows; i++) 
+		for (j = 0; j < columns; j++) 
+			dprintf(fd, "%s;", values[i][j]); //simple print
+
+	db_free_results(values, columns, rows);
+
+}
+void print_values(int fd, char ***values, int columns, int rows)
+{
+	int i, j;
+	for (i = 0; i < rows; i++) {
+		for (j = 0; j < columns - 2; j++) { // the last 2 colums are a repeat of max and min gpu sig, to always have them in the same place
+			dprintf(fd, "%s;", values[i][j]);
+		}
+		get_and_print_gpus(fd, values[i][columns-2], values[i][columns-1]);
+		dprintf(fd, "\n");
+	}
+}
+#else
+#endif
+
+
+void extended_loop_print(char *query)
+{
+	char ***values;
+	int ret, columns, rows, fd = STDOUT_FILENO;
+
+
+	if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file"))
+		fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+
+	ret = db_run_query_string_results("DESCRIBE Loops", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Loops\n");
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loop description from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+	ret = db_run_query_string_results("DESCRIBE Signatures", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Signatures\n");
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Signature description from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+
+	dprintf(fd, "start_time;end_time;elapsed;");
+	dprintf(fd, "\n");
+
+#if USE_GPUS
+	ret = db_run_query_string_results("DESCRIBE GPU_signatures", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE GPU_signatures\n");
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading GPU description from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+#endif
+
+
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (verbose) printf("running query %s\n", query);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loops from database.\n");
+		return;
+	}
+	print_values(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+}
+#endif 
+
+void format_loop_query(char *user, char *query, char *base_query, query_adds_t *q_a)
+{
 	char subquery[128];
 
-	if (strlen(my_conf.database.user_commands) < 1) 
-	{
-		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
-	}
-	else
-	{
-		strcpy(my_conf.database.user, my_conf.database.user_commands);
-		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
-	}
-	init_db_helper(&my_conf.database);
-
-	if (user != NULL) {
-		strcpy(query, LOOPS_FILTER_QUERY);
-		add_string_filter(query, "user_id", user);
-	} else {
-		strcpy(query, LOOPS_QUERY);
-	}
+	strcpy(query, base_query);
+	if (user != NULL) add_string_filter(query, "user_id", user);
 
 	if (q_a->job_id >= 0)
 		add_int_filter(query, "job_id", q_a->job_id);
@@ -1141,7 +1125,95 @@ void read_loops(char *user, query_adds_t *q_a)
 
 	if (verbose) printf("QUERY: %s\n", query);
 
-	loop_t *loops;
+}
+
+void read_jobs_from_loops(query_adds_t *q_a)
+{
+    char query[256], subquery[256], tmp_path[512];
+    char ***values;
+    int columns, rows;
+    int fd = STDOUT_FILENO, ret;
+
+	if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
+        sprintf(tmp_path, "out_jobs.%s", csv_path);
+		fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+    }
+
+	ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Jobs\n");
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loop description from database.\n");
+		return;
+	}
+	print_header(fd, values, columns, rows);
+    dprintf(fd, "\n"); //print_header does not print a new_line
+	db_free_results(values, columns, rows);
+
+    // reset filters
+    query_filters = 0;
+    strcpy(query, "SELECT * FROM Jobs ");
+
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "id", q_a->job_ids);
+    else printf("WARNING: -o option is meant to be used with a -j specification\n\n");
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
+    if (q_a->start_time > 0)
+		add_int_filter(query, "start_time", q_a->step_id);
+    if (q_a->end_time > 0)
+		add_int_filter(query, "end_time", q_a->step_id);
+
+	if (q_a->limit > 0 && q_a->job_id < 0)
+	{
+		sprintf(subquery, " ORDER BY id desc LIMIT %d", q_a->limit);
+		strcat(query, subquery);
+	}
+	else strcat(query, " ORDER BY id desc");
+
+	if (verbose) printf("\nQUERY: %s\n", query);
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+    if (ret != EAR_SUCCESS) {
+        printf("Error reading Jobs from database\n");
+        return;
+    }
+
+	print_values(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
+
+}
+
+void read_loops(char *user, query_adds_t *q_a) 
+{
+	char query[1024];
+
+	if (strlen(my_conf.database.user_commands) < 1) 
+	{
+		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
+	}
+	else
+	{
+		strcpy(my_conf.database.user, my_conf.database.user_commands);
+		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
+	}
+	init_db_helper(&my_conf.database);
+
+#if 0
+	if (loop_extended) {
+		format_loop_query(user, query, LOOPS_EXTENDED_QUERY, q_a);
+		return extended_loop_print(query);
+	}
+#endif
+
+	if (user != NULL) {
+		format_loop_query(user, query, LOOPS_FILTER_QUERY, q_a);
+	} else {
+		format_loop_query(user, query, LOOPS_QUERY, q_a);
+	}
+
+
+	loop_t *loops = NULL;
 	int num_loops;
 
 	num_loops = db_read_loops_query(&loops, query);
@@ -1169,6 +1241,8 @@ void read_loops(char *user, query_adds_t *q_a)
 	} else {
 		print_loops(loops, num_loops);
 	}
+	if (loops != NULL) free(loops);
+    if (loop_extended) read_jobs_from_loops(q_a);
 
 }
 
@@ -1178,7 +1252,10 @@ void read_loops(char *user, query_adds_t *q_a)
 #if USE_DB
 void read_from_database(char *user, query_adds_t *q_a) 
 {
-	int num_apps = 0;
+	int num_apps = 0, i = 0;
+	char subquery[256];
+	char query[512];
+
 	if (strlen(my_conf.database.user_commands) < 1) 
 	{
 		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
@@ -1191,9 +1268,6 @@ void read_from_database(char *user, query_adds_t *q_a)
 	init_db_helper(&my_conf.database);
 
 	set_signature_simple(my_conf.database.report_sig_detail);
-
-	char subquery[256];
-	char query[512];
 
 	if (verbose) {
 		printf("Preparing query statement\n");
@@ -1263,7 +1337,6 @@ void read_from_database(char *user, query_adds_t *q_a)
 	}
 
 
-	int i = 0;	
 	if (q_a->limit == 20 && strlen(csv_path) < 1)
 		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
 
@@ -1323,7 +1396,7 @@ void read_from_files(char *path, char *user, query_adds_t *q_a)
 
 int main(int argc, char *argv[])
 {
-	int opt;
+	int c;
 
 	query_adds_t query_adds;
 	memset(&query_adds, 0, sizeof(query_adds_t));
@@ -1365,9 +1438,37 @@ int main(int argc, char *argv[])
 	}
 
 	char *token;
-	while ((opt = getopt(argc, argv, "n:u:j:f:t:vma:pbglrs:e:c:hx::")) != -1) 
+	int option_idx;
+	static struct option long_options [] = {
+		{"help",       no_argument, 0, 'h'},
+		{"version",    no_argument, 0, 'v'},
+		{"no-mpi",     no_argument, 0, 'm'},
+		{"avx",        no_argument, 0, 'p'},
+		{"verbose",    no_argument, 0, 'b'},
+		{"show-gpus",  no_argument, 0, 'g'},
+		{"long-apps",  no_argument, 0, 'l'},
+		{"loops",      no_argument, 0, 'r'},
+		{"ext_loops",  no_argument, 0, 'o'},
+		{"help",       no_argument, 0, 'h'},
+		{"limit",      required_argument, 0, 'n'},
+		{"user",       required_argument, 0, 'u'},
+		{"jobs",       required_argument, 0, 'j'},
+		{"events",     required_argument, 0, 'x'},
+		{"csv",        required_argument, 0, 'c'},
+		{"tag",        required_argument, 0, 't'},
+		{"app-id",     required_argument, 0, 'a'},
+		{"start-time", required_argument, 0, 's'},
+		{"end-time",   required_argument, 0, 'e'},
+	};
+
+	while (1)
 	{
-		switch (opt)
+		c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hx::", long_options, &option_idx);
+
+		if (c == -1)
+			break;
+
+		switch (c)
 		{
 			case 'n':
 				if (!strcmp(optarg, "all")) query_adds.limit = -1;
@@ -1410,6 +1511,9 @@ int main(int argc, char *argv[])
 				}
 				else if (verbose) printf("No argument for -x\n");
 				break;
+			case 'o':
+				loop_extended = 1;
+				break;
 			case 'g':
 				print_gpus = 1;
 				break;
@@ -1443,22 +1547,22 @@ int main(int argc, char *argv[])
 				strcpy(query_adds.app_id, optarg);
 				break;
 			case 's':
-                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
-                {
-                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-                    free_cluster_conf(&my_conf);
+				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+				{
+					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+					free_cluster_conf(&my_conf);
 					exit(1);
 				}
-                query_adds.start_time = mktime(&tinfo);
+				query_adds.start_time = mktime(&tinfo);
 				break;
 			case 'e':
-                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
-                {
-                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-                    free_cluster_conf(&my_conf);
+				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+				{
+					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+					free_cluster_conf(&my_conf);
 					exit(1);
 				}
-                query_adds.end_time = mktime(&tinfo);
+				query_adds.end_time = mktime(&tinfo);
 				break;
 			case 'h':
 				free_cluster_conf(&my_conf);

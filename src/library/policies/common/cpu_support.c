@@ -91,7 +91,7 @@ state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq
     best_solution	= energy_ref;
     time_max 			= time_ref + (time_ref * penalty);	
     from 					= curr_pstate;	
-    compute_vpi(&vpi,my_app);
+    compute_sig_vpi(&vpi,my_app);
     verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf. Pstates %lu...%lu",time_ref,power_ref,
             energy_ref,best_freq,vpi,minp,maxp);
     for (i = minp; i < maxp;i++)
@@ -124,7 +124,7 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
     double time_current, power_proj, time_proj, freq_gain, perf_gain, vpi;
     ulong freq_ref;
 
-    compute_vpi(&vpi,my_app);
+    compute_sig_vpi(&vpi,my_app);
     // error al compilar con verbose_master :( error: identifier "masters_info" is undefined
     verbose_master(3, "CPUfreq algorithm for min_time. timeref %lf; pstate %lu; F %lu; deffreq %lu; VPI %lf",
             time_ref, curr_pstate, best_freq, def_freq, vpi);
@@ -194,11 +194,13 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
                 COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
         return 0;
     }
-    if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+    //if ((s1->GBS > GBS_BUSY_WAITING) || (s2->GBS > GBS_BUSY_WAITING)){
+    if (!low_mem_activity(s1, lib_shared_region->num_cpus) || !low_mem_activity(s2, lib_shared_region->num_cpus)){
         if (!equal_with_th(s1->CPI,s2->CPI,p)){
             uint s1_cbound, s2_cbound;
-            is_cpu_bound(s1, &s1_cbound);
-            is_cpu_bound(s2, &s2_cbound);
+            //  NEW CLASSIFY
+            is_cpu_bound(s1, lib_shared_region->num_cpus, &s1_cbound);
+            is_cpu_bound(s2, lib_shared_region->num_cpus, &s2_cbound);
             if (s1_cbound != s2_cbound){
                 verbose_master(2, "CPI (%.2lfvs%.2lf) and cpu bound phase changed from %u to %u",
                         s1->CPI,s2->CPI, s1_cbound, s2_cbound);
@@ -209,8 +211,8 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
         }
         if (!equal_with_th(s1->GBS, s2->GBS,p)){
             uint s1_mbound, s2_mbound;
-            is_mem_bound(s1, &s1_mbound);
-            is_mem_bound(s2, &s2_mbound);
+            is_mem_bound(s1, lib_shared_region->num_cpus, &s1_mbound);
+            is_mem_bound(s2, lib_shared_region->num_cpus, &s2_mbound);
             if (s1_mbound != s2_mbound){
                 verbose_master(2, "GBS (%.2lfvs%.2lf) and mem bound phase changed from %u to %u",
                         s1->GBS,s2->GBS, s1_mbound, s2_mbound);
@@ -280,16 +282,16 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
     if (freqs == NULL) return;
     int num_processes = lib_shared_region->num_processes;
     for (i=0;i<num_processes;i++){
-        verbosen_master(2,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
+        verbosen_master(vl,"CPU[%d] = %.2f ",i,(float)freqs->cpu_freq[i]/1000000.0);
     }
 		for (sid = 0;sid < arch_desc.top.socket_count; sid++){
-    	verbose_master(2,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
+    	verbose_master(vl,"\n IMC %d (%lu-%lu)",sid,freqs->imc_freq[sid*IMC_VAL+IMC_MAX],freqs->imc_freq[sid*IMC_VAL+IMC_MIN]);
 		}
 #if USE_GPUS
     for (i=0; i< my_pol_ctx.num_gpus;i++){
-        verbosen_master(2,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
+        verbosen_master(vl,"GPU[%d] = %.2f ",i,(float)freqs->gpu_freq[i]/1000000.0);
     }
-    verbose_master(2," ");
+    verbose_master(vl," ");
 #endif
 
 }
@@ -301,6 +303,16 @@ void node_freqs_alloc(node_freqs_t *node_freq)
 #if USE_GPUS
     node_freq->gpu_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
     node_freq->gpu_mem_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
+#endif
+}
+
+void node_freqs_free(node_freqs_t *node_freq)
+{
+    free(node_freq->cpu_freq);
+    free(node_freq->imc_freq);
+#if USE_GPUS
+    free(node_freq->gpu_freq);
+    free(node_freq->gpu_mem_freq);
 #endif
 }
 
@@ -349,6 +361,42 @@ ulong node_freqs_avgcpufreq(ulong *f)
 	}
 	//verbose_master(2,"Computing a total of %lu cpus and f = %lu, avg %lu",ctotal,ftotal, ftotal/ctotal);
 	return ftotal / ctotal;
+}
+/*
+ *   ulong *cpu_freq;
+ *     ulong *imc_freq;
+ *       ulong *gpu_freq;
+ *         ulong *gpu_mem_freq;
+ */
+
+static uint node_dom_freqs_are_diff(ulong *v1, ulong *v2, uint l)
+{
+	uint i = 0;
+	while ((i < l) && (v1[i] == v2[i])) i++;
+	if (i < l) return 1;
+	return 0;
+}
+
+uint node_freqs_are_diff(uint flag, node_freqs_t * nf1, node_freqs_t *nf2)
+{
+	switch (flag){
+	case DOM_CPU:
+		return node_dom_freqs_are_diff(nf1->cpu_freq, nf2->cpu_freq, MAX_CPUS_SUPPORTED);
+		break;
+	case DOM_MEM:
+		return node_dom_freqs_are_diff(nf1->imc_freq, nf2->imc_freq, MAX_SOCKETS_SUPPORTED);
+		break;
+  #if USE_GPUS
+	case DOM_GPU:
+		return 1;
+		break;
+	case DOM_GPU_MEM:
+		return 0;
+		break;
+  #endif
+	default: return 0;
+	}
+	return 0;
 }
 
 ulong avg_to_khz(ulong freq_khz)

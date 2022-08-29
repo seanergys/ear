@@ -15,10 +15,10 @@ FEAT_DB_MYSQL      = @FEAT_DB_MYSQL@
 FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 
 # Compilers
-CC           = @CC@
-CC_FLAGS     = @CC_FLAGS@
-MPICC        = @MPICC@
-MPICC_FLAGS  = @MPICC_FLAGS@
+CC               = @CC@
+CC_FLAGS         = @CC_FLAGS@
+MPICC            = @MPICC@
+MPICC_FLAGS      = @MPICC_FLAGS@
 
 # Includes
 MPI_BASE         = @MPI_DIR@
@@ -33,11 +33,32 @@ DB_BASE          = @DB_DIR@
 DB_CFLAGS        = @DB_CFLAGS@
 DB_LDFLAGS       = @DB_LDFLAGS@ @DB_LIBS@
 CUDA_BASE        = @CUDA_DIR@
+CUDA_CFLAGS      =
+NVML_BASE        =
+NVML_CFLAGS      =
+CUPTI_BASE       =
+CUPTI_CFLAGS     =
+ONEAPI_BASE      =
+ONEAPI_CFLAGS    =
 LIKWID_BASE      = @LIKWID_DIR@
 LIKWID_CFLAGS    = @LIKWID_CFLAGS@
 FREEIPMI_BASE    = @FREEIPMI_DIR@
 FREEIPMI_CFLAGS  = @FREEIPMI_CFLAGS@
 FREEIPMI_LDFLAGS = @FREEIPMI_LDFLAGS@
+COUNTDOWN_BASE=
+
+ifdef CUDA_BASE
+CUDA_CFLAGS = -I$(CUDA_BASE)/include -DCUDA_BASE=\"$(CUDA_BASE)\"
+endif
+ifdef CUPTI_BASE
+CUPTI_CFLAGS = -I$(CUPTI_BASE)/include -DCUPTI_BASE=\"$(CUDA_BASE)\"
+endif
+ifdef LIKWID_BASE
+LIKWID_CFLAGS = -I$(LIKWID_BASE)/include -DLIKWID_BASE=\"$(LIKWID_BASE)\"
+endif
+ifdef ONEAPI_BASE
+ONEAPI_CFLAGS = -I$(ONEAPI_BASE)/include -DONEAPI_BASE=\"$(ONEAPI_BASE)\"
+endif
 
 # Directories
 ROOTDIR      = $(shell pwd)
@@ -51,7 +72,7 @@ DOCDIR       = @docdir@
 CHOWN_USR    = @USER@
 CHOWN_GRP    = @GROUP@
 #CONSTANTS   = -DSEC_KEY=10001 -DSYN_TEST # Define SYN_TEST for external synthetic tests compilation
-CONSTANTS    = -DSEC_KEY=10001
+CONSTANTS    = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1 -DSYNC_SET_RPC=1 -DUSE_CNTD=0
 REPLACE      =
 
 ######## EXPORTS

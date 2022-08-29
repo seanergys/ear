@@ -1,6 +1,7 @@
 # If USER_TEST is set to 1, any user cam execute the hacks with the library.
-CFLAGS  = -fPIC -O2 -I$(SRCDIR) -Wall -g -DEARL_LIGHT=0 -DUSER_TEST=0
-LDFLAGS = -shared -ldl -lm -lpthread -rdynamic
+# TODO: EARL_LIGHT option
+CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DEARL_LIGHT=0 -DUSER_TEST=0 $(CONSTANTS) 
+LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 ifeq ($(FEAT_MPI_API), 0)
 LIBCC       = $(CC)
@@ -10,18 +11,19 @@ MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -g
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
-	CFLAGS += -DNEW_LB_EFF=1 -DNEW_MPI_STATS=1 -DSINGLE_CONNECTION=0 # $(GSL_CFLAGS) -DCOUNTDOWN=1 -DUSE_GSL=1
+	CFLAGS += -DNEW_LB_EFF=1 -DMPI_STATS=1 -DNEW_MPI_STATS=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=1 # $(GSL_CFLAGS) -DCOUNTDOWN=1 -DUSE_GSL=1
+	CFLAGS += -DEAR_DEF_TIME_GUIDED=0
 	# LDFLAGS += $(GSL_LDFLAGS) 
 else
-	CFLAGS += -DSINGLE_CONNECTION=1
+	CFLAGS += -DSINGLE_CONNECTION=1 -DMPI_OPTIMIZED=0 -DMPI_STATS=0 -DEAR_DEF_TIME_GUIDED=0
 endif
 
-export LIBCC
-export LIBCC_FLAGS
+# export LIBCC
+# export LIBCC_FLAGS
 export LIB_CFLAGS
 export CFLAGS
 
@@ -87,7 +89,7 @@ endif
 all: all.components $(libs_OBJS)
 
 %.so: $(mpix_OBJS) $(core_OBJS) $(comm_OBJS)
-	$(LIBCC)  $(LIBCC_FLAGS) -o $*.$(ext) $^ $(LDFLAGS)
+	$(LIBCC) $(LIBCC_FLAGS) -o $*.$(ext) $^ $(LDFLAGS)
 
 ######## OPTIONS
 

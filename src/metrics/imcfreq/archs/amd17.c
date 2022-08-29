@@ -68,9 +68,9 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
 	debug("the API was not loaded yet");
 	if (apis_not(ops)) {
 		// Loading symbols in runtime to avoid dependancies
-		symplug_join(RTLD_DEFAULT, (void **) &mgt_ops, mgt_names, 6);
+		plug_join(RTLD_DEFAULT, (void **) &mgt_ops, mgt_names, 6);
 		// Testing all symbols are available
-		if (state_fail(symplug_test((void **) &mgt_ops, 6))) {
+		if (state_fail(plug_test((void **) &mgt_ops, 6))) {
 			return;
 		}
 		// Loading management imcfreq API

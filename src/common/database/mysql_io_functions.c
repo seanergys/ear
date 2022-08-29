@@ -1510,18 +1510,21 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     if (mysql_stmt_bind_result(statement, bind)) 
     {
         free(sig_aux);
+		free(bind);
         return mysql_statement_error(statement);
     }
 
     if (mysql_stmt_execute(statement)) 
     {
         free(sig_aux);
+		free(bind);
         return mysql_statement_error(statement);
     }
 
     if (mysql_stmt_store_result(statement)) 
     {
         free(sig_aux);
+		free(bind);
         return mysql_statement_error(statement);
     }
 
@@ -1531,6 +1534,7 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     {
         mysql_stmt_close(statement);
         free(sig_aux);
+		free(bind);
         return EAR_ERROR;
     }
 
@@ -1561,6 +1565,7 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
         status = mysql_stmt_fetch(statement);
         i++;
     }
+	free(bind);
     free(sig_aux);
     if (mysql_stmt_close(statement)) {
         free(sigs_aux);
@@ -2308,7 +2313,7 @@ int mysql_insert_gm_warning(MYSQL *connection, gm_warning_t *warning)
 }
 
 
-int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns)
+int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns, int *num_r)
 {
     int i, j;
     int num_rows, num_cols;
@@ -2316,13 +2321,16 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
     MYSQL_RES *result;
     MYSQL_ROW row;
 
-    if (mysql_query(connection, query))
-    {
+    if (mysql_query(connection, query)) {
         error("Error executing query");
         return EAR_ERROR;
     }
 
     result = mysql_store_result(connection);
+	if (result == NULL) {
+        error("Error storing result. Check the query types.");
+        return EAR_ERROR;
+    }
 
     num_rows = mysql_num_rows(result);
     num_cols = mysql_num_fields(result);
@@ -2345,13 +2353,13 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
 
         for (j = 0; j < num_cols; j++)
         {
-            if (row[i] == NULL)
+            if (row[j] == NULL)
             {
                 tmp_res[i][j] = NULL;
                 continue;
             }
-            tmp_res[i][j] = calloc(strlen(row[i]), sizeof(char));
-            strcpy(tmp_res[i][j], row[i]);
+            tmp_res[i][j] = calloc(strlen(row[j]), sizeof(char));
+            strcpy(tmp_res[i][j], row[j]);
         }
 
     }
@@ -2361,7 +2369,8 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
 
     *results = tmp_res;
     *num_columns = num_cols;
-    return num_rows;
+	*num_r = num_rows;
+    return EAR_SUCCESS;
 
 }
 

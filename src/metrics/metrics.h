@@ -50,9 +50,7 @@ typedef struct metrics_apis_s {
     apis_info_t tmp; // temp
     apis_info_t rap; // rapl
     apis_info_t cpi; // cpi
-#if NOT_READY
 	apis_info_t gpu; // gpu
-#endif
 } metrics_apis_t;
 
 typedef struct metrics_read_s {
@@ -64,9 +62,7 @@ typedef struct metrics_read_s {
     flops_t     flp;
     rapl_t     *rap;
     cpi_t       cpi;
-#if NOT_READY
 	gpu_t      *gpu;
-#endif
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
@@ -89,9 +85,7 @@ typedef struct metrics_diff_s {
     dreg_t  rap_dreg;
     cpi_t   cpi_diff;
     double  cpi_avrg; // GPI
-#if NOT_READY
 	gpu_t  *gpu_diff;
-#endif
 } metrics_diff_t;
 
 state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m);

@@ -24,6 +24,7 @@ repo_BINS += \
 	mysql.so 
 endif
 
+
 ######## RULES
 
 all: $(repo_OBJS) $(repo_BINS)
@@ -49,6 +50,7 @@ mysql.so: mysql.c $(repo_DEPS)
 
 psql.so: psql.c $(repo_DEPS)
 	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS)
+
 
 ######## SUBFOLDERS
 

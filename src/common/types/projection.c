@@ -68,7 +68,7 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	char basic_path[SZ_PATH_INCOMPLETE];
 	char *obj_path = getenv(HACK_POWER_MODEL);
     char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
-	char *def_model = "basic_model.so";
+	char *def_model = "avx512_model.so";
 
 	state_t st;
 

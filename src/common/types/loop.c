@@ -43,35 +43,46 @@
 
 int create_loop_id(loop_id_t *lid, ulong event, ulong size, ulong level)
 {
-    if (lid!=NULL){
+    if (lid != NULL) {
         lid->event = event;
-        lid->size = size;
+        lid->size  = size;
         lid->level = level;
+
         return EAR_SUCCESS;
-    }else return EAR_ERROR;
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
 }
 
 int create_loop(loop_t *l)
 {
-    if (l!=NULL)
+    if (l != NULL)
     {
-        l->jid=0;
-        l->step_id=0;
-        l->total_iterations=0;
-        memset(&l->signature,0,sizeof(signature_t));
+        l->jid              = 0;
+        l->step_id          = 0;
+        l->total_iterations = 0;
+
+        memset(&l->signature, 0, sizeof(signature_t));
+
         return EAR_SUCCESS;
-    }else return EAR_ERROR;
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
 }
 
-int loop_init(loop_t *loop, job_t *job,ulong event, ulong size, ulong level)
+int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ulong event, ulong size, ulong level)
 {
     int ret;
-    if ((ret=create_loop(loop))!=EAR_SUCCESS) return ret;
-    if ((ret=create_loop_id(&loop->id,event,size,level))!=EAR_SUCCESS) return ret;
-    loop->jid = job->id;
-    loop->step_id=job->step_id;
-    gethostname(loop->node_id,sizeof(loop->node_id));
-    strtok(loop->node_id,".");
+
+    if ((ret=create_loop(loop)) != EAR_SUCCESS) return ret;
+
+    if ((ret=create_loop_id(&loop->id, event, size, level)) != EAR_SUCCESS) return ret;
+
+    loop->jid     = job_id;
+    loop->step_id = step_id;
+
+    memcpy(loop->node_id, node_id, sizeof loop->node_id);
+
     return EAR_SUCCESS;
 }
 
@@ -80,7 +91,7 @@ void clean_db_loop(loop_t *loop, double limit)
     if (loop->id.event > INT_MAX) loop->id.event = INT_MAX;
     if (loop->id.size > INT_MAX) loop->id.size = INT_MAX; 
     if (loop->id.level > INT_MAX) loop->id.level = INT_MAX;
-    clean_db_signature(&loop->signature, limit);
+    signature_clean_before_db(&loop->signature, limit);
 }
 
 int set_null_loop(loop_t *loop)
@@ -199,8 +210,11 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
     char gpu_header[128];
     char *HEADER_GPU_SIG = ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTI";
 #endif
-
+#if REPORT_TIMESTAMP
+    char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;TIMESTAMP";
+#else
     char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;ITERATIONS";
+#endif
     char HEADER[1024] = "";
 
     if (file_is_regular(path)) {

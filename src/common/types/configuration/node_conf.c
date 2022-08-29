@@ -135,6 +135,8 @@ void copy_my_node_conf(my_node_conf_t *dest,my_node_conf_t *src)
     dest->imc_max_pstate  = src->imc_max_pstate;
     dest->imc_max_freq    = src->imc_max_freq;
     dest->imc_min_freq    = src->imc_min_freq;
+    strcpy(dest->idle_governor, src->idle_governor);
+    dest->idle_pstate     = src->idle_pstate;
 
     memcpy(dest->tag, src->tag, strlen(src->tag));
 
@@ -178,14 +180,15 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
         for (i=0;i<my_node_conf->num_policies;i++){
             print_policy_conf(&my_node_conf->policies[i]);
         }
-    }
-	verbose(VCCONF, "max_sig_power %.0lf min_sig_power %.0lf error_power %.0lf\nmax_temp %lu powercap"
+	      verbose(VCCONF, "max_sig_power %.0lf min_sig_power %.0lf error_power %.0lf\nmax_temp %lu powercap"
             " %ld max_powercap %ld powercap_type %d\ngpu_def_freq %lu / cpu_max_pstate %d / imc_max_pstate %d\n",
             my_node_conf->max_sig_power, my_node_conf->min_sig_power,
             my_node_conf->max_error_power, my_node_conf->max_temp, my_node_conf->powercap,
             my_node_conf->max_powercap, my_node_conf->powercap_type,
             my_node_conf->gpu_def_freq, my_node_conf->cpu_max_pstate, my_node_conf->imc_max_pstate);
-	verbose(VCCONF, "imc_max_freq %lu imc_min_freq %lu", my_node_conf->imc_max_freq, my_node_conf->imc_min_freq);
+	      verbose(VCCONF, "imc_max_freq %lu imc_min_freq %lu", my_node_conf->imc_max_freq, my_node_conf->imc_min_freq);
+        verbose(VCCONF, "Governor used in the IDLE %s pstate %d", my_node_conf->idle_governor, my_node_conf->idle_pstate);
+    }
 }
 
 /** Converts from policy name to policy_id . Returns EAR_ERROR if error*/

@@ -43,9 +43,14 @@ typedef struct sig_ext {
 #define MET_FLOPS   6
 #define MET_CACHE   7
 #define MET_CPI     8
+#define MGT_GPU     9
+#define MET_GPU     10
 
 /** New metrics **/
 const metrics_t *metrics_get(uint api);
+#if USE_GPUS
+const metrics_gpus_t *metrics_gpus_get(uint api);
+#endif
 
 /** Returns the current time in usecs */
 long long metrics_time();
@@ -63,7 +68,7 @@ void metrics_dispose(signature_t *metrics, ulong procs);
 void metrics_compute_signature_begin();
 
 /** */
-int metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs);
+state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs);
 
 /** Estimates whether the current time running the loops is enough to compute the signature */
 int time_ready_signature(ulong min_time_us);
@@ -71,8 +76,8 @@ int time_ready_signature(ulong min_time_us);
 /** Copute the number of vector instructions since signature reports FP ops, metrics is valid signature*/
 unsigned long long metrics_vec_inst(signature_t *metrics);
 
-/* Computes the node signature including data from other processes */
-void metrics_node_signature(signature_t *master,signature_t *ns);
+/* Computes the job signature including data from other processes. */
+void metrics_job_signature(const signature_t *master, signature_t *dst);
 
 /* Computes the node signature at app end */
 void metrics_app_node_signature(signature_t *master,signature_t *ns);

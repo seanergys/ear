@@ -1190,6 +1190,8 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     if (powermon_is_idle()) { 
         powercap_run_to_idle();
+        if (strcmp(my_node_conf->idle_governor, "default") != 0){
+        }
     }
     verbose(VJOBPMON+1,"Cleaning job from node_mgr");
     nodemgr_clean_job(jid, sid);
@@ -1421,7 +1423,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 //
 //
 
-#define VERBOSE_POWERMON 1
+#define VERBOSE_POWERMON 0
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
     ulong jid, mpi,sid;
     ulong time_consumed;
@@ -1713,7 +1715,7 @@ void *eard_power_monitoring(void *noinfo)
     powermon_create_idle_context();
 
     if (pthread_setname_np(pthread_self(), TH_NAME)) error("Setting name for %s thread %s", TH_NAME, strerror(errno));
-    if (init_power_ponitoring(&my_eh_pm) != EAR_SUCCESS) {
+    if (init_power_monitoring(&my_eh_pm, &node_desc) != EAR_SUCCESS) {
         error("Error in init_power_ponitoring");
     }
     debug("Allocating memory for energy data");	

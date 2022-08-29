@@ -1,4 +1,5 @@
-CFLAGS = $(CC_FLAGS) -fPIC -shared -O2 -Wextra
+CC_FLAGS += $(CONSTANTS)
+CFLAGS = $(CC_FLAGS) -fPIC -shared -O2 -Wextra 
 
 ######## INSTALLATION
 
@@ -10,13 +11,16 @@ dyna_BINS = libmetrics.so
 mets_OBJS = \
     $(SRCDIR)/metrics/rapl/archs/intel63.o \
     $(SRCDIR)/metrics/common/apis.o \
+    $(SRCDIR)/metrics/common/cupti.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/isst.o \
+    $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
     $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/msr.o \
     $(SRCDIR)/metrics/common/omsr.o \
+    $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
@@ -52,12 +56,19 @@ mets_OBJS = \
     $(SRCDIR)/metrics/imcfreq/archs/intel63.o \
 	$(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
-    $(SRCDIR)/metrics/gpu/archs/nvml.o \
+    $(SRCDIR)/metrics/gpu/archs/cupti.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
+    $(SRCDIR)/metrics/gpu/archs/eard.o \
+    $(SRCDIR)/metrics/gpu/archs/nvml.o \
+    $(SRCDIR)/metrics/gpu/archs/oneapi.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
+	$(SRCDIR)/metrics/energy_cpu/energy_cpu.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/msr.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/eard.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
     $(SRCDIR)/metrics/io/io.o
 
 ######## RULES
@@ -87,16 +98,17 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'bandwidth'    $* || exit
 	@ $(MAKE) -C 'cache'        $* || exit
 	@ $(MAKE) -C 'common'       $* || exit
+	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'cpi'          $* || exit
 	@ $(MAKE) -C 'cpufreq'      $* || exit
 	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
-	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'rapl'         $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
+	@ $(MAKE) -C 'energy_cpu'   $* || exit
 
 ######## DEPENDENCIES
 

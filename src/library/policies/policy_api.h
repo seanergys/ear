@@ -68,13 +68,13 @@ state_t policy_new_iteration(polctx_t *c, signature_t *sig);
  * Warning! it could introduce a lot of overhead.
  * \param c The policy context within this function is called.
  * \param call_type The call type information. */
-state_t policy_mpi_init(polctx_t *c, mpi_call call_type);
+state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
 
 /** This function is executed after each MPI call.
  * Warning! it could introduce a lot of overhead.
  * \param c The policy context within this function is called.
  * \param call_type The call type information. */
-state_t policy_mpi_end(polctx_t *c, mpi_call call_type);
+state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
 
 /** This function is executed at loop init or period init.
  * \param c The policy context within this function is called.
@@ -91,6 +91,12 @@ state_t policy_loop_end(polctx_t *c, loop_id_t *loop_id);
  * \param my_sig The input signature with node metrics.
  * \param freq_set Output array with per-proc frequency. */
 state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs);
+
+/** This function confgures freqs based on CPU/GPU criteria. It is called before call policy_apply.
+ * \param c The policy context within this function is called.
+ * \param my_sig The input signature with node metrics.
+ * \param freq_set Output array with per-proc frequency. */
+state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs);
 
 /** This function confgures freqs based on Busy Waiting criteria. It is called before call policy_apply.
  * \param c The policy context within this function is called.

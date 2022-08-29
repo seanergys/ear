@@ -24,6 +24,7 @@
  * 2 means invatid shared memory or invalid id (half processes),
  * 3 eard not present . 0 means no fake (default) */
 #define FAKE_EARD_ERROR "FAKE_EARD_ERROR"
+//#define FAKE_LEARNING 1
 
 /* 1 means master error, 2 means no master error at ear_finalize i. 0 no fake (default)*/
 #define FAKE_PROCESS_ERRROR "FAKE_PROCESS_ERRROR"
@@ -44,6 +45,9 @@
 #include <signal.h>
 #include <assert.h>
 #include <sys/mman.h>
+#include <semaphore.h>
+
+
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -52,7 +56,6 @@
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
 #include <common/types/version.h>
-#include <common/types/application.h>
 #include <common/types/pc_app_info.h>
 #include <management/cpufreq/frequency.h>
 #include <common/hardware/hardware_info.h>
@@ -140,7 +143,6 @@ static uint ear_loop_level;
 static int in_loop;
 static short ear_status = NO_LOOP;
 
-#if EAR_OVERHEAD_CONTROL
 /* in us */
 // These variables are shared
 uint 		ear_periodic_mode = PERIODIC_MODE_OFF;
@@ -150,25 +152,26 @@ static uint total_mpi_calls = 0;
 static uint  dynais_timeout = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
 uint             lib_period = PERIOD;
 static uint     check_every = MPI_CALLS_TO_CHECK_PERIODIC;
-#endif
 #define MASTERS_SYNC_VERBOSE 1
 masters_info_t masters_info;
 #if MPI
 MPI_Comm new_world_comm,masters_comm;
 #endif
-int num_masters;
-int my_master_size;
 int masters_connected=0;
 unsigned masters_comm_created=0;
 mpi_information_t *per_node_mpi_info, *global_mpi_info;
 char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
+/* This lock is used to access the lib_shared_region shared memory */
+int  lib_shared_lock_fd = -1;
+sem_t *lib_shared_lock_sem;
 char sig_shared_region_path_jobs[GENERIC_NAME];
 char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
 char shsignature_region_path[GENERIC_NAME];
 char block_file[GENERIC_NAME];
-float ratio_PPN;
+char sem_file[GENERIC_NAME];
+float ratio_PPN = 1.0;
 app_mgt_t *app_mgt_info = NULL;
 char app_mgt_path[GENERIC_NAME];
 pc_app_info_t *pc_app_info_data = NULL;
@@ -184,7 +187,6 @@ ear_njob_t *node_mgr_data;
 uint node_mgr_index;
 node_mgr_sh_data_t *node_mgr_job_info;
 
-uint mgt_cpufreq_api;
 // Dynais
 static dynais_call_t dynais;
 
@@ -192,11 +194,17 @@ suscription_t *earl_monitor;
 state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
 static ulong seconds = 0;
-//static uint ear_guided = DYNAIS_GUIDED; 
+
+#if EAR_DEF_TIME_GUIDED
+uint ear_guided = TIME_GUIDED;
+#else
 uint ear_guided = DYNAIS_GUIDED; 
+#endif
 //static int end_periodic_th=0;
 static uint synchronize_masters = 1;
 static uint ITERS_PER_PERIOD;
+
+static const uint lib_supports_gpu = USE_GPUS; // Library supports GPU
 
 /*  Sets verbose level for ear init messages */
 #define VEAR_INIT 2
@@ -207,6 +215,8 @@ uint using_verb_files = 0;
 uint per_proc_verb_file = 0;
 
 uint exclusive = 1;
+ear_classify_t phases_limits;
+static ulong dynais_calls = 0;
 
 static void print_local_data()
 {
@@ -354,6 +364,18 @@ void create_shared_regions()
 	int total_size;
 	#endif
 	uint ID = create_ID(application.job.id, application.job.step_id);
+
+	/* This file is going to be used to access the lib_shared region in exclusive mode */
+	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
+  if ((lib_shared_lock_fd = file_lock_create(block_file))<0){
+  	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
+  }
+
+  xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", ID, node_name);
+  lib_shared_lock_sem = sem_open(sem_file, O_CREAT, S_IRUSR|S_IWUSR, 1);
+  if (lib_shared_lock_sem == SEM_FAILED){
+    error("Creating sempahore %s (%s)", sem_file, strerror(errno));
+  }
 
 
 	/* This section allocates shared memory for processes in same node */
@@ -536,6 +558,13 @@ void attach_shared_regions()
 				if ((bfd = file_lock_create(block_file))<0){
 								error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 				}
+        xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", ID, node_name);
+        lib_shared_lock_sem = sem_open(sem_file, O_CREAT, S_IRUSR|S_IWUSR, 1);
+        if (lib_shared_lock_sem == SEM_FAILED){
+          error("Creating/Attaching sempahore %s (%s)", sem_file, strerror(errno));
+        }
+				/* This link will be used to access the lib_shared_region lock file */
+				lib_shared_lock_fd = bfd;
 				if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
 								error("Getting the lib_shared_region_path");
 				}else{
@@ -853,7 +882,11 @@ void update_configuration()
 				dynais_timeout=system_conf->lib_info.dynais_timeout;
 				lib_period=system_conf->lib_info.lib_period;
 				check_every=system_conf->lib_info.check_every;
-				ear_whole_app=system_conf->learning;
+        #if FAKE_LEARNING
+        ear_whole_app = 1;
+        #else
+				ear_whole_app = system_conf->learning;
+        #endif
 }
 
 void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
@@ -885,17 +918,17 @@ void ear_lib_sig_handler(int s)
 				ear_finalize(EAR_CANCELLED);
 				exit(0);
 }
-/****************************************************************************************************************************************************************/
-/****************************************************************************************************************************************************************/
-/****************************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
 /**************************************** ear_init ************************/
-/****************************************************************************************************************************************************************/
-/****************************************************************************************************************************************************************/
-/****************************************************************************************************************************************************************/
-/****************************************************************************************************************************************************************/
-/****************************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
+/*****************************************************************************************************************************************************/
 
-
+//#define START_END_OVH 1
 void ear_init()
 {
 				char *summary_pathname;
@@ -907,6 +940,12 @@ void ear_init()
 				uint fake_eard_error = 0;
 				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
+
+        #if START_END_OVH
+        ullong elap_eard_init;
+        timestamp start_eard_init, end_eard_init;
+        timestamp_getfast(&start_eard_init);
+        #endif
 
 
 				if (ear_lib_initialized){
@@ -964,7 +1003,11 @@ void ear_init()
 				}
 
 				set_ear_total_processes(my_size);
+        #if FAKE_LEARNING
+        ear_whole_app = 1;
+        #else
 				ear_whole_app = get_ear_learning_phase();
+        #endif
 #if MPI
 				num_nodes = get_ear_num_nodes();
 				ppnode = my_size / num_nodes;
@@ -1085,16 +1128,18 @@ void ear_init()
 #endif
 
 				// Application static data and metrics
-				debug("init application");
 				init_application(&application);
-				debug("init loop_signature");
-				init_application(&loop_signature);
 				application.is_mpi   	= 1;
-				loop_signature.is_mpi	= 1;
+        #if FAKE_LEARNING
+        application.is_learning = 0;
+        #else
 				application.is_learning	= ear_whole_app;
-				application.job.def_f		= getenv_ear_p_state();
-				loop_signature.is_learning	= ear_whole_app;
-				debug("application data initialized");
+        #endif
+				application.job.def_f   = getenv_ear_p_state();
+				// debug("init loop_signature");
+				// init_application(&loop_signature);
+				// loop_signature.is_mpi	= 1;
+				// loop_signature.is_learning	= ear_whole_app;
 
 				// Getting environment data
 				get_app_name(ear_app_name);
@@ -1111,43 +1156,82 @@ void ear_init()
 				application.job.step_id = my_step_id;
 
 				debug("Starting job");
-				//sets the job start_time
+				// sets the job start_time
 				start_job(&application.job);
 				debug("Job time initialized");
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
                 if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s", COL_BLU, ear_my_rank, node_name, COL_CLR);
+                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s",
+                            COL_BLU, ear_my_rank, node_name, COL_CLR);
+
+                    // Connect process with EARD
                     state_t ret = eards_connect(&application, my_node_id);
-                    if (fake_eard_error == 3){
+
+                    // Only for testing purposes
+                    if (fake_eard_error == 3) {
                         ret = EAR_ERROR;
                     }
-                    // if (eards_connect(&application, my_node_id) == EAR_SUCCESS) {
+
+                    // Checking GPU support compatibility with EARD
+                    uint eard_supports_gpu = eards_gpu_support();
+                    if (lib_supports_gpu != eard_supports_gpu) {
+                        verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Check your EAR installation.",
+                                COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);
+                        ret = EAR_ERROR;
+                    }
+
                     if (ret == EAR_SUCCESS) {
                         debug("%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         notify_eard_connection(1);
                         mark_as_eard_connected(my_job_id, my_step_id, getpid());
-                    } else {   
+                    } else {
                         eard_ok = 0;
                         notify_eard_connection(0);
                     }
                 }
 #else
                 if (eard_ok) { // all processes will connect with eard
+
                     char *col;
-                    if (!my_id) col = COL_BLU; 
-                    else        col = COL_GRE;
+
+                    if (!my_id) {
+                        col = COL_BLU;
+                    } else {
+                        col = COL_GRE;
+                    }
                     verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
-                            col,my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
-                    if (eards_connect(&application, ear_my_rank) == EAR_SUCCESS) {
+                            col, my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
+
+                    // Connect process with EARD
+                    state_t ret = eards_connect(&application, ear_my_rank);
+
+                    // Only for testing purposes
+                    if (fake_eard_error == 3) {
+                        ret = EAR_ERROR;
+                    }
+
+                    // Checking GPU support compatibility with EARD
+                    uint eard_supports_gpu = eards_gpu_support();
+                    if (lib_supports_gpu != eard_supports_gpu) {
+                        verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Please, inform to your system admin about this issue.",
+                                COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);
+                        ret = EAR_ERROR;
+                    }
+
+                    if (ret == EAR_SUCCESS) {
+
                         verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
-                        if (!my_id){
+
+                        if (!my_id) {
                             notify_eard_connection(1);
                             mark_as_eard_connected(my_job_id, my_step_id, getpid());
                         }
-                    }else{   
-                        verbose(2, "%sRank %d NOT connected with EARD%s %s", COL_BLU,ear_my_rank,COL_CLR, state_msg);
+
+                    } else {
+                        verbose(2, "%sRank %d NOT connected with EARD%s %s",
+                                COL_BLU,ear_my_rank,COL_CLR, state_msg);
                         eard_ok=0;
                         if (!my_id) notify_eard_connection(0);
                     }
@@ -1155,35 +1239,31 @@ void ear_init()
 #endif
                 /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
-				verbose_master(2,"End EARD connection section");
-
-
 				debug("Shared region creation section");
-
-				if (!my_id){
+				if (!my_id) {
 								debug("%sI'm the master, creating shared regions%s",COL_BLU,COL_CLR);
 								create_shared_regions();
-				}else{
+				} else {
 								attach_shared_regions();
 				}
-				if (!eard_ok){ 
-								
-			        	/* Dummy areas path is used in case the EARD was not present */
-      			  	if (!my_id && (fd_dummy >= 0)){
-          				int err;
-          				err = file_unlock_master(fd_dummy, dummy_areas_path);
-          				if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
-        				}
-								if (!EARL_LIGHT){
-									verbose_master(2,"%s: EARL off because of EARD",node_name);
-									strcpy(application.job.policy," "); /* Cleaning policy */
-									return;
-								}
-				}
 
-				if (!eard_ok && EARL_LIGHT){
-					verbose_master(2, "EARD is not running but EARL light version is enabled");
-				}
+                if (!eard_ok) {
+
+                    /* Dummy areas path is used in case the EARD was not present */
+                    if (!my_id && (fd_dummy >= 0)) {
+                        int err;
+                        err = file_unlock_master(fd_dummy, dummy_areas_path);
+                        if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
+                    }
+
+                    if (!EARL_LIGHT) {
+                        verbose_master(2,"%s: EARL off because of EARD",node_name);
+                        strcpy(application.job.policy," "); /* Cleaning policy */
+                        return;
+                    } else {
+                        verbose_master(2, "EARD is not running but EARL light version is enabled");
+                    }
+                }
 
 				/* Cluster conf */
 				get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);
@@ -1246,8 +1326,13 @@ void ear_init()
 								return;
 				}
 
-				// Initializing metrics
+                /* Based on family and model we set limits for this node */
+                classify_init(&arch_desc.top);
+                /* Getting limits for this node */
+                get_classify_limits(&phases_limits);
 
+
+		// Initializing metrics
                 if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
                     verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
                     eard_ok = 0;
@@ -1386,7 +1471,7 @@ void ear_init()
 
 
 				// Copying static application info into the loop info
-				memcpy(&loop_signature, &application, sizeof(application_t));
+				// memcpy(&loop_signature, &application, sizeof(application_t));
 
 				summary_pathname = get_ear_user_db_pathname();
 				// if (masters_info.my_master_rank >= 0){
@@ -1479,6 +1564,13 @@ void ear_init()
 				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
+
+        #if START_END_OVH
+        timestamp_getfast(&end_eard_init);
+        elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
+				verbose(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
+        #endif
+
 #if USE_GPUS
 				if (is_cuda_enabled()){
 								ear_cuda_init();
@@ -1495,6 +1587,13 @@ void ear_finalize(int exit_status)
 				uint fake_error = 0;
 				char *cfake = getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+
+        #if START_END_OVH
+        ullong elap_eard_init;
+        timestamp start_eard_init, end_eard_init;
+        timestamp_getfast(&start_eard_init);
+        #endif
+
 
 				verbose_master(2, "ear_finalize on=%d status %d ", lib_shared_region->earl_on, exit_status);
 				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
@@ -1577,8 +1676,11 @@ void ear_finalize(int exit_status)
 								if (application.is_learning) verbose_master(1,"Application in learning phase mode");
 								debug("Reporting application data");
 								verbose_master(2,"Filtering DC node power with limit %.2lf",system_conf->max_sig_power);
-								clean_db_signature(&application.signature, system_conf->max_sig_power);
+								signature_clean_before_db(&application.signature, system_conf->max_sig_power);
 								verbose_master(2, "Reporting data");
+#if USE_GPUS
+								verbose_master(2, " Application with %d GPUS", application.signature.gpu_sig.num_gpus);
+#endif
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(0,"Error reporting application");
 								}
@@ -1588,9 +1690,11 @@ void ear_finalize(int exit_status)
 				if (loop_with_signature) {
 								debug("loop ends with %d iterations detected", ear_iterations);
 				}
+                                #if 0
 				if (in_loop) {
 								states_end_period(ear_iterations);
 				}
+                                #endif
 				states_end_job(my_id,  ear_app_name);
 
 				policy_end();
@@ -1600,6 +1704,9 @@ void ear_finalize(int exit_status)
 
 				if (masters_info.my_master_rank >= 0) nodemgr_job_end(node_mgr_index);
 				verbose_master(2,"Dettached from node_mgr region id %u",node_mgr_index);
+
+        sem_unlink(sem_file);
+        sem_close(lib_shared_lock_sem);
 
 
 				// C'est fini
@@ -1614,6 +1721,13 @@ void ear_finalize(int exit_status)
 					eards_disconnect();
 				}
 				#endif
+
+        #if START_END_OVH
+        timestamp_getfast(&end_eard_init);
+        elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
+        verbose(1,"Finalization cost: %llu useci dynais calls %lu", elap_eard_init, dynais_calls);
+        #endif
+
 }
 
 #if MPI
@@ -1623,97 +1737,94 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest);
 
 void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 {
-#if EAR_OVERHEAD_CONTROL
-				time_t curr_time;
-				double time_from_mpi_init;
+    time_t curr_time;
+    double time_from_mpi_init;
 
-				if (!ear_lib_initialized) {
-					verbose_master(2, "%sWARNING%s EAR not initialized.", COL_RED, COL_CLR);
-					ear_init();
-				}
+    if (!ear_lib_initialized) {
+        verbose_master(2, "%sWARNING%s EAR not initialized.", COL_RED, COL_CLR);
+        ear_init();
+    }
 
 
-				if (!eard_ok && !EARL_LIGHT) return;
-				if (synchronize_masters == 0 ) return;
-				if (!lib_shared_region->earl_on) return;
+    if (!eard_ok && !EARL_LIGHT) return;
+    if (synchronize_masters == 0 ) return;
+    if (!lib_shared_region->earl_on) return;
 #if ONLY_MASTER
-				if (my_id) return;
+    if (my_id) return;
 #endif
-				if (ear_guided == TIME_GUIDED) return;
-				/* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
-				if (!ear_whole_app)
-				{
-								unsigned long  ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
-								//unsigned short ear_event_s = dynais_sample_convert(ear_event_l);
-								if (masters_info.my_master_rank>=0){
-												traces_mpi_call(ear_my_rank, my_id,
-																				(ulong) ear_event_l,
-																				(ulong) buf,
-																				(ulong) dest,
-																				(ulong) call_type);
-								}
+    if (ear_guided == TIME_GUIDED) return;
+    /* The learning phase avoids EAR internals ear_whole_app is set to 1 when learning-phase is set */
+    if (!ear_whole_app)
+    {
+        ulong  ear_event_l = (ulong)((((buf>>5)^dest)<<5)|call_type);
+        //unsigned short ear_event_s = dynais_sample_convert(ear_event_l);
+        if (masters_info.my_master_rank>=0){
+            traces_mpi_call(ear_my_rank, my_id,
+                    (ulong) ear_event_l,
+                    (ulong) buf,
+                    (ulong) dest,
+                    (ulong) call_type);
+        }
 
-								total_mpi_calls++;
-								/* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
-								 * ear_periodic_mode can be ON or OFF 
-								 */
-								switch(ear_periodic_mode){
-												case PERIODIC_MODE_OFF:
-																switch(dynais_enabled){
-																				case DYNAIS_ENABLED:
-																								{
-																												/* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
-																												if (check_periodic_mode == 0){  // check_periodic_mode=0 the first time a signature is computed
-																																ear_mpi_call_dynais_on(call_type,buf,dest);
-																												}else{ // Check every N=check_every mpi calls
-																																/* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
-																																if ((total_mpi_calls%check_every) == 0){
-																																				time(&curr_time);
-																																				time_from_mpi_init = difftime(curr_time,application.job.start_time);
+        total_mpi_calls++;
+        /* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
+         * ear_periodic_mode can be ON or OFF 
+         */
+        switch(ear_periodic_mode) {
+            case PERIODIC_MODE_OFF:
+                {
+                switch(dynais_enabled){
+                    case DYNAIS_ENABLED:
+                        {
+                            /* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
+                            if (check_periodic_mode == 0){  // check_periodic_mode=0 the first time a signature is computed
+                                ear_mpi_call_dynais_on(call_type,buf,dest);
+                            }else{ // Check every N=check_every mpi calls
+                                /* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
+                                if ((total_mpi_calls%check_every) == 0){
+                                    time(&curr_time);
+                                    time_from_mpi_init = difftime(curr_time,application.job.start_time);
 
-																																				/* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
-																																				if (time_from_mpi_init >= dynais_timeout){
-																																								// we must compute N here
-																																								ear_periodic_mode = PERIODIC_MODE_ON;
-																																								assert(dynais_timeout > 0);
-																																								mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
-																																								if (masters_info.my_master_rank >= 0) traces_start();
-																																								verbose_master(3,"Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
-																																																time_from_mpi_init,mpi_calls_in_period,ear_status);
-																																								ear_iterations = 0;
-																																								states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
-																																								states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
-																																				}else{
+                                    /* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
+                                    if (time_from_mpi_init >= dynais_timeout){
+                                        // we must compute N here
+                                        ear_periodic_mode = PERIODIC_MODE_ON;
+                                        assert(dynais_timeout > 0);
+                                        mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
+                                        if (masters_info.my_master_rank >= 0) traces_start();
+                                        verbose_master(3, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
+                                                time_from_mpi_init,mpi_calls_in_period,ear_status);
+                                        ear_iterations = 0;
+                                        states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
+                                        states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
+                                    }else{
 
-																																								/* We continue using dynais */
-																																								ear_mpi_call_dynais_on(call_type,buf,dest);	
-																																				}
-																																}else{	// We check the periodic mode every check_every mpi calls
-																																				ear_mpi_call_dynais_on(call_type,buf,dest);
-																																}
-																												}
-																								}
-																								break;
-																				case DYNAIS_DISABLED:
-																								/** That case means we have computed some signature and we have decided to set dynais disabled */
-																								ear_mpi_call_dynais_off(call_type,buf,dest);
-																								break;
+                                        /* We continue using dynais */
+                                        ear_mpi_call_dynais_on(call_type,buf,dest);	
+                                    }
+                                }else{	// We check the periodic mode every check_every mpi calls
+                                    ear_mpi_call_dynais_on(call_type,buf,dest);
+                                }
+                            }
+                        }
+                        break;
+                    case DYNAIS_DISABLED:
+                        /** That case means we have computed some signature and we have decided to set dynais disabled */
+                        ear_mpi_call_dynais_off(call_type,buf,dest);
+                        break;
 
-																}
-																break;
-												case PERIODIC_MODE_ON:
-																/* EAR energy policy is called periodically */
-																if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
-																				ear_iterations++;
-																				states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
-																}
-																break;
-								}
-				}
-#else
-				if (dynais_enabled == DYNAIS_ENABLED) ear_mpi_call_dynais_on(call_type,buf,dest);
-				else ear_mpi_call_dynais_off(call_type,buf,dest);
-#endif
+                }
+                }
+                break;
+            case PERIODIC_MODE_ON:
+                /* EAR energy policy is called periodically */
+                if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
+                    ear_iterations++;
+                    states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
+                }
+                break;
+        }
+    }
 }
 
 
@@ -1734,7 +1845,7 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 								uint ear_size;
 								uint ear_level;
 
-								ear_event_l = (unsigned long)((((buf>>5)^dest)<<5)|call_type);
+								ear_event_l = (ulong) ((((buf>>5)^dest)<<5)|call_type);
 								ear_event_s = dynais_sample_convert(ear_event_l);
 								//debug("EAR(%s) EAR executing before an MPI Call: DYNAIS ON\n",__FILE__);
 
@@ -1748,6 +1859,7 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 								mpi_calls_per_loop++;
 								// This is key to detect periods
 								ear_status = dynais(ear_event_s, &ear_size, &ear_level);
+                dynais_calls++;
 
 								switch (ear_status)
 								{
@@ -2008,8 +2120,9 @@ state_t earl_periodic_actions(void *no_arg)
 				timestamp_getfast(&curr_periodic_time);
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+        
 
-				debug("elapsed %lu : first_exec_monitor %d Iterations %d MPI %d ear_guided %d %u",period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided, my_node_id);
+				debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",my_node_id, period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 				if (first_exec_monitor){
 								first_exec_monitor = 0;
 								return EAR_SUCCESS;
@@ -2035,7 +2148,7 @@ state_t earl_periodic_actions(void *no_arg)
 												ear_periodic_mode = PERIODIC_MODE_ON;
 												if (ear_guided != new_ear_guided){ 
 																monitor_burst(earl_monitor);
-																verbose_master(2,"(l. rank) %d: Dynais guided --> time guided at time %lu",
+																debug("[%d]: Dynais guided --> time guided at time %lu",
 																								my_node_id, period_elapsed);
 																mpi_calls_in_period = lib_period;
 																states_begin_period(my_id, 1, (ulong) lib_period,1);

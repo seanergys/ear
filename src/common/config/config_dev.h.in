@@ -25,8 +25,6 @@
 #define RESET_STATISTICS_AT_SIGNATURE 1
 
 /**** These variables modifies features under development ****/
-/*** EARD ***/
-#define POWERCAP 			1
 
 /*** EARL ***/
 /* To be removed and set fixed in the code */
@@ -44,5 +42,12 @@
 /* When set to 1 , creates a thread in EARD for external commands, do not set to
  *  *  * 0 except for debug purposes */
 #define EXTERNAL_COMMANDS_THREAD        1
+
+
+/* For EAR validation */
+//#define FAKE_ERROR_USE_DUMMY 1
+//define FAKE_ERROR_EARD_NOT_CONNECTED 1
+//#define FAKE_ERROR_ERROR_PATH 1
+
 
 #endif //EAR_CONFIG_DEV_H
