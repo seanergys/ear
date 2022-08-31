@@ -135,7 +135,7 @@ void copy_my_node_conf(my_node_conf_t *dest,my_node_conf_t *src)
     dest->imc_max_pstate  = src->imc_max_pstate;
     dest->imc_max_freq    = src->imc_max_freq;
     dest->imc_min_freq    = src->imc_min_freq;
-    strcpy(dest->idle_governor, src->idle_governor);
+    dest->idle_governor   = src->idle_governor;
     dest->idle_pstate     = src->idle_pstate;
 
     memcpy(dest->tag, src->tag, strlen(src->tag));
