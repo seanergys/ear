@@ -477,7 +477,7 @@ state_t mgt_cpufreq_linux_governor_get_list(ctx_t *c, uint *governors)
 	debug("cpufreq_linux_get_governor_list");
     for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
         governors[cpu] = Governor.other;     
-    	if (state_ok(s = read_word(f->fds_govr[0], data, 1))) {
+    	if (state_ok(s = read_word(f->fds_govr[cpu], data, 1))) {
             mgt_governor_toint(data, &governors[cpu]);
 	    }
     }

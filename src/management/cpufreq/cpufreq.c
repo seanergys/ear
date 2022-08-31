@@ -168,7 +168,7 @@ state_t mgt_cpufreq_governor_get(ctx_t *c, uint *governor)
 
 state_t mgt_cpufreq_governor_get_list(ctx_t *c, uint *governors)
 {
-    preturn (ops.set_governor_list, c, governors);
+    preturn (ops.get_governor_list, c, governors);
 }
 
 state_t mgt_cpufreq_governor_set(ctx_t *c, uint governor)
