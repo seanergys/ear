@@ -20,6 +20,10 @@
 
 #include <common/types/generic.h>
 
+// Devices
+#define all_devs   -1
+#define all_cpus   all_devs
+#define all_cores  -2
 // APIs IDs
 #define API_NONE         0
 #define API_DUMMY        1
@@ -35,6 +39,7 @@
 #define API_CUPTI       11
 #define API_ONEAPI      12
 #define API_RAPL 		13
+#define API_ISST        14
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
@@ -85,13 +90,19 @@ typedef struct metrics_gpus_s {
         *((void **) &op) = func; \
     }
 
+/* Conditional put. */
+#define apis_pin(op, func, cond) \
+    if (cond) { \
+        apis_put(op, func); \
+    }
+
 /* Replaces the currect function of the operation. */
 #define apis_set(op, func) *((void **) &op) = func;
 
-/* */
+/* Verbose "if loaded" */
 #define apis_loaded(ops) (ops->init != NULL)
 
-/* */
+/* Verbose "if not loaded" */
 #define apis_not(ops) (ops->init == NULL)
 
 /* Adds a new function to an array. */

@@ -24,6 +24,7 @@
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
 #include <management/cpufreq/archs/amd17.h>
+#include <metrics/common/apis.h>
 #include <metrics/common/hsmp.h>
 
 // In both modes, the P_STATE list is built using the P0 MSR register 0xc0010064.
@@ -77,6 +78,9 @@ static state_t set_pstate0(uint cpu);
 state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driver_ops_t *ops_driver)
 {
 	state_t s;
+    int cond1;
+    int cond2;
+
 	debug("testing AMD17 P_STATE control status");
 	#if AMD_OSCPUFREQ
 	return EAR_ERROR;
@@ -107,22 +111,26 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
             return s;
         }
     }
+
+    // Conditional 1, if can set frequencies
+    cond1 = (!mode_virtual || driver->set_current_list != NULL);
+    // Conditional 2, if can set governor
+    cond2 = (driver->set_governor != NULL);
 	// Setting references (if driver set is not available, this API neither)
-	replace_ops(ops->init,             mgt_cpufreq_amd17_init);
-	replace_ops(ops->dispose,          mgt_cpufreq_amd17_dispose);
-	replace_ops(ops->count_available,  mgt_cpufreq_amd17_count_available);
-	replace_ops(ops->get_available_list, mgt_cpufreq_amd17_get_available_list);
-	replace_ops(ops->get_current_list, mgt_cpufreq_amd17_get_current_list);
-	replace_ops(ops->get_nominal,      mgt_cpufreq_amd17_get_nominal);
-	replace_ops(ops->get_governor,     mgt_cpufreq_amd17_get_governor);
-	replace_ops(ops->get_index,        mgt_cpufreq_amd17_get_index);
-	if (!mode_virtual || driver->set_current_list != NULL) {
-    replace_ops(ops->set_current_list, mgt_cpufreq_amd17_set_current_list);
-    replace_ops(ops->set_current,      mgt_cpufreq_amd17_set_current);
-    }
-	if (driver->set_governor != NULL) {
-	replace_ops(ops->set_governor,     mgt_cpufreq_amd17_set_governor);
-	}
+	apis_put(ops->init,               mgt_cpufreq_amd17_init);
+	apis_put(ops->dispose,            mgt_cpufreq_amd17_dispose);
+	apis_put(ops->count_available,    mgt_cpufreq_amd17_count_available);
+	apis_put(ops->get_available_list, mgt_cpufreq_amd17_get_available_list);
+	apis_put(ops->get_current_list,   mgt_cpufreq_amd17_get_current_list);
+	apis_put(ops->get_nominal,        mgt_cpufreq_amd17_get_nominal);
+	apis_put(ops->get_index,          mgt_cpufreq_amd17_get_index);
+    apis_pin(ops->set_current_list,   mgt_cpufreq_amd17_set_current_list, cond1);
+    apis_pin(ops->set_current,        mgt_cpufreq_amd17_set_current, cond1);
+	apis_put(ops->get_governor,       mgt_cpufreq_amd17_governor_get);
+	apis_put(ops->get_governor_list,  mgt_cpufreq_amd17_governor_get_list);
+	apis_pin(ops->set_governor,       mgt_cpufreq_amd17_governor_set, cond2);
+	apis_pin(ops->set_governor_mask,  mgt_cpufreq_amd17_governor_set_mask, cond2);
+	apis_pin(ops->set_governor_list,  mgt_cpufreq_amd17_governor_set_list, cond2);
 
 	return EAR_SUCCESS;
 }
@@ -551,11 +559,6 @@ state_t mgt_cpufreq_amd17_get_nominal(ctx_t *c, uint *pstate_index)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_amd17_get_governor(ctx_t *c, uint *governor)
-{
-	return driver->get_governor(&driver_c, governor);
-}
-
 state_t mgt_cpufreq_amd17_get_index(ctx_t *c, ullong freq_khz, uint *pstate_index, uint closest)
 {
     return search_pstate_list(freq_khz, pstate_index, closest);
@@ -745,19 +748,45 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *_c, uint pstate_index, int cpu)
 	return s2;
 }
 
-state_t mgt_cpufreq_amd17_set_governor(ctx_t *c, uint governor)
+// Governors
+state_t mgt_cpufreq_amd17_governor_get(ctx_t *c, uint *governor)
+{
+    return driver->get_governor(&driver_c, governor);
+}
+
+state_t mgt_cpufreq_amd17_governor_get_list(ctx_t *c, uint *governors)
+{
+    return driver->get_governor_list(&driver_c, governors);
+}
+
+static state_t recover()
 {
 	state_t s;
 	int cpu;
-
+    // Recovering CPUs to its original frecuencies
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (state_fail(s = msr_write(cpu, &regs[1], sizeof(ullong), REG_P1))) {
 			return s;
 		}
 	}
-	if (state_fail(s = driver->set_governor(&driver_c, governor))) {
-		return s;
-	}
-
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
+
+state_t mgt_cpufreq_amd17_governor_set(ctx_t *c, uint governor)
+{
+    recover();
+	return driver->set_governor(&driver_c, governor);
+}
+
+state_t mgt_cpufreq_amd17_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask)
+{
+    recover();
+    return driver->set_governor_mask(&driver_c, governor, mask);
+}
+
+state_t mgt_cpufreq_amd17_governor_set_list(ctx_t *c, uint *governors)
+{
+    recover();
+    return driver->set_governor_list(&driver_c, governors);
+}
+

@@ -23,12 +23,21 @@
 
 #include <common/types/generic.h>
 
-#define MAXBITS32 0x00000000FFFFFFFF
-#define MAXBITS48 0x0000FFFFFFFFFFFF
-#define MAXBITS64 0xFFFFFFFFFFFFFFFF
-#define B_TO_KB   1E3
-#define B_TO_MB   1E6
-#define B_TO_GB   1E9
+#define MAXBITS32  0x00000000FFFFFFFF
+#define MAXBITS48  0x0000FFFFFFFFFFFF
+#define MAXBITS64  0xFFFFFFFFFFFFFFFF
+#define B_TO_KB    1E3
+#define B_TO_MB    1E6
+#define B_TO_GB    1E9
+#define KB_TO_MB(n)    (n / 1000)
+#define KB_TO_HB(n)    (n / 100000) //Hundred of megahertz
+#define MB_TO_KB(n)    (n * 1000) 
+#define HB_TO_KB(n)    (n * 100000)
+#define KHZ_TO_MHZ(n)  KB_TO_MB(n)
+#define KHZ_TO_HHZ(n)  KB_TO_HB(n)
+#define MHZ_TO_KHZ(n)  MB_TO_KB(n)
+#define HHZ_TO_KHZ(n)  HB_TO_KB(n)
+#define KHZ_TO_GHZ(n)  (n / 1000000)
 
 /* Overflow functions:
  * 	zeros: returns zero on overflow

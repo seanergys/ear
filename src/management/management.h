@@ -22,30 +22,33 @@
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 
-typedef struct manages_s {
+typedef struct _manages_s {
     ctx_t c;
     uint  api;
     uint  ok;
     uint  granularity;
     uint  devs_count;
-    void *avail_list;
-    uint  avail_count;
-    void *current_list;
-    void *set_list;
+    void *list1;
+    void *list2;
+    void *list3;
+    uint  list1_count;
+    uint  list2_count;
+    uint  list3_count;
+} _manages_t;
+
+typedef struct manages_s {
+	_manages_t cpufreq;
+	_manages_t cpuprio;
+	_manages_t imcfreq;
+	_manages_t gpu;
 } manages_t;
 
-typedef struct manages_apis_s {
-	manages_t cpufreq;
-	manages_t imcfreq;
-	manages_t gpu;
-} manages_apis_t;
+void management_init(topology_t *tp, int eard);
 
-void manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in);
+void management_dispose();
 
-void manages_apis_dispose();
-
-void manages_apis_print();
-
-void manages_apis_print_available();
+void management_print_apis();
+// RPC management (remember to add this part wen new EARD API is introduced)
+int management_rpcs(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack);
 
 #endif //MANAGEMENT_H

@@ -8,6 +8,7 @@ comm_OBJS = \
     pstate.o \
     hsmp.o \
     hwmon.o \
+    isst.o \
     likwid.o \
     msr.o \
     nvml.o \

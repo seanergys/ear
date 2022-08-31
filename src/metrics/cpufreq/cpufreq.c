@@ -140,19 +140,14 @@ state_t cpufreq_data_print(ulong *freqs, ulong average, int fd)
 	int i;
 
 	//
-	dprintf(fd, "CPU:");
-
 	for (i = 0; i < cpu_count; ++i) {
-		if ((i != 0) && (i % 12 == 0)) {
-			dprintf(fd, "\nCPU:");
+		if ((i != 0) && (i % 24 == 0)) {
+			dprintf(fd, "\n");
 		}
 		freq_ghz = ((double) freqs[i]) / 1000000.0;
-		dprintf(fd, " %0.1lf", freq_ghz);
+		dprintf(fd, "%0.3lf\t", freq_ghz);
 	}
 	//
-	if (freqs != NULL) {
-		dprintf(fd, ",");
-	}
 	freq_ghz = ((double) average) / 1000000.0;
 	dprintf(fd, " avg %0.1lf", freq_ghz);
 	dprintf(fd, " (GHz)\n");

@@ -33,8 +33,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
-#include <management/cpufreq/frequency.h>
-#include <management/imcfreq/imcfreq.h>
+#include <management/management.h>
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -107,19 +106,6 @@ static struct daemon_req req;
 static afd_set_t        rfds_basic;
 static local_connection_t *eard_local_conn;
 static uint             num_local_con=0;
-
-typedef struct apis_svc_s {
-    ctx_t c;
-    uint  api;
-    uint  working;
-    uint  granularity;
-    uint  devs_count;
-    uint  avail_count;
-    void *current_list;
-    void *avail_list;
-    void *set_list;
-} apis_svc_t;
-
 static char          big_chunk1[16384];
 static char          big_chunk2[16384];
 static wide_buffer_t wb;
@@ -157,9 +143,8 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
 {
     state_t s;
 
-	// DONE
-	mgt_imcfreq_load(tp, NO_EARD, conf);
-	mgt_cpufreq_load(tp, NO_EARD);
+    management_init(tp, NO_EARD);
+
         cpufreq_load(tp, NO_EARD);
         imcfreq_load(tp, NO_EARD);
          bwidth_load(tp, NO_EARD);
@@ -179,9 +164,7 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     mgt_gpu_get_api((uint *) &mg.api);
         gpu_get_api((uint *) &ug.api);
     #endif
-
-	sf(mgt_cpufreq_init(no_ctx));
-	sf(mgt_imcfreq_init(no_ctx));
+    
     sf(    cpufreq_init(no_ctx));
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
@@ -208,6 +191,7 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
 	
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
+    
 
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
@@ -1057,7 +1041,10 @@ void service_select(int req_fd, int ack_fd)
     if (services_misc(local_req, req_fd, ack_fd)) {
         return;
     }
-		
+    // New management
+    if (management_rpcs(local_req->req_service, local_req->size, req_fd, ack_fd)) {
+        return;
+    }
     if(services_mgt_cpufreq(local_req, req_fd, ack_fd)) {
         return;
     }

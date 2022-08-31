@@ -18,134 +18,128 @@
 #include <stdlib.h>
 #include <management/management.h>
 #include <common/output/verbose.h>
-
-#define sa(f) \
-        if (state_fail(f)) { \
-                serror(#f " FAILED"); \
-                exit(0); \
-        }
-
-static manages_apis_t m;
-
-void manages_apis_init(topology_t *tp, uint eard, manages_apis_t **m_in)
-{
-	state_t s;
-	// Load
-	sa(mgt_cpufreq_load(tp, eard));
-	sa(mgt_imcfreq_load(tp, eard, NULL));
-	// Get API
-	sa(mgt_cpufreq_get_api(&m.cpufreq.api));
-	sa(mgt_imcfreq_get_api(&m.imcfreq.api));
-	// Init
-	sa(mgt_cpufreq_init(no_ctx));
-	sa(mgt_imcfreq_init(no_ctx));
-	// Count (cache does not need)
-	sa(mgt_cpufreq_count_devices(no_ctx, &m.cpufreq.devs_count));
-	sa(mgt_imcfreq_count_devices(no_ctx, &m.imcfreq.devs_count));
-	// Availability
-	sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpufreq.avail_list, &m.cpufreq.avail_count));
-	sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imcfreq.avail_list, &m.imcfreq.avail_count));
-	// Current allocation
-	sa(mgt_cpufreq_data_alloc((pstate_t **) &m.cpufreq.current_list, (uint **) &m.cpufreq.set_list));
-	sa(mgt_cpufreq_data_alloc((pstate_t **) &m.imcfreq.current_list, (uint **) &m.imcfreq.set_list));
-	
-	if (m_in != NULL) {
-		*m_in = &m;
-	}
-}
-
-void manages_apis_dispose()
-{
-	sa(mgt_cpufreq_dispose(no_ctx));
-	sa(mgt_imcfreq_dispose(no_ctx));
-}
-
-void manages_apis_print()
-{
-	apis_print(m.cpufreq.api, "MGT_CPUFREQ: ");
-	apis_print(m.imcfreq.api, "MGT_IMCFREQ: ");
-}
-
-#define printline() \
-    verbose(0, "------------------------------");
-
-void manages_apis_print_available()
-{
-	mgt_cpufreq_data_print(m.cpufreq.avail_list, m.cpufreq.avail_count, verb_channel);
-	mgt_imcfreq_data_print(m.imcfreq.avail_list, m.imcfreq.avail_count, verb_channel);
-}
-
-void manages_apis_print_current()
-{
-    sa(mgt_cpufreq_get_current_list(no_ctx, m.cpufreq.current_list));
-    sa(mgt_imcfreq_get_current_list(no_ctx, m.imcfreq.current_list));
-	
-    mgt_cpufreq_data_print(m.cpufreq.current_list, m.cpufreq.devs_count, verb_channel);
-    mgt_imcfreq_data_print(m.imcfreq.current_list, m.imcfreq.devs_count, verb_channel);
-}
-
-#if TEST
-// gcc -I .. -DTEST=1 -o test management.c ../management/libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lpthread -ldl
-
+#include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
-static topology_t tp;
-
-int is(char *buf, char *string)
-{
-    return strcmp(buf, string) == 0;
-}
-
-void read_command()
-{
-    char cmnd[SZ_PATH];
-    char aux_string[SZ_PATH];
-    uint aux_uint;
-
-    scanf("%s", cmnd);
- 
-    if (is(cmnd, "mgt_cpufreq_set")) {
-        scanf("%d", &aux_uint);
-        sa(mgt_cpufreq_set_current(no_ctx, aux_uint, all_devs));
-    } else if (is(cmnd, "mgt_cpufreq_get_governor")) {
-        sa(mgt_cpufreq_get_governor(no_ctx, &aux_uint));
-        sa(mgt_governor_tostr(aux_uint, aux_string));
-        verbose(0, "Governor: %s", aux_string);
-    } else if (is(cmnd, "mgt_cpufreq_set_governor")) {
-        scanf("%s", aux_string);
-        sa(mgt_governor_toint(aux_string, &aux_uint));
-        sa(mgt_cpufreq_set_governor(no_ctx, aux_uint));
-    } else if (is(cmnd, "mgt_imcfreq_set")) {
-        scanf("%d", &aux_uint);
-        sa(mgt_imcfreq_set_current(no_ctx, aux_uint, all_devs));
-    } else if (is(cmnd, "print")) {
-        manages_apis_print_current();
-    } else if (is(cmnd, "disconnect")) {
-        eards_disconnect();
-    } else {
+#define sa(f) \
+    if (state_fail(f)) { \
+        serror(#f " FAILED"); \
+        exit(0); \
     }
+#define sn(f) \
+    f;
 
-    printline();
-}
+static char           cbuffer[16384];
+static uint          *ibuffer = (uint *) cbuffer;
+//static ullong        *lbuffer = (ullong *) cbuffer;
+static wide_buffer_t  sbuffer;
+static manages_t      m;
 
-int main(int argc, char *argv[])
+void management_init(topology_t *tp, int eard)
 {
-    sa(topology_init(&tp));
+	state_t s;
 
-    // Connecting with EARD
-    eards_connection();
+	sa(mgt_imcfreq_load(tp, eard, NULL));
+	sa(mgt_cpufreq_load(tp, eard));
+	sa(mgt_imcfreq_init(no_ctx));
+	sa(mgt_cpufreq_init(no_ctx));
     
-    // General init
-    manages_apis_init(&tp, EARD, NULL);
-    manages_apis_print();
-    manages_apis_print_available();
-    printline();
-  
-    // Main loop 
-    while(1) {
-        read_command();
+	sa(mgt_imcfreq_get_api(&m.imcfreq.api));
+    sa(mgt_cpufreq_get_api(&m.cpufreq.api));
+    sn(mgt_cpuprio_get_api(&m.cpuprio.api));
+	
+    sa(mgt_cpufreq_count_devices(no_ctx, &m.cpufreq.devs_count));
+	sa(mgt_imcfreq_count_devices(no_ctx, &m.imcfreq.devs_count));
+
+	sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpufreq.list1, &m.cpufreq.list1_count));
+	sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imcfreq.list1, &m.imcfreq.list1_count));
+    
+    //sn(mgt_imcfreq_data_count(&m.cpuprio.list1_count, &m.cpuprio.list2_count));
+    //sn(mgt_cpufreq_data_count(&m.cpuprio.list1_count, &m.cpuprio.list2_count));
+    sn(mgt_cpuprio_data_count(&m.cpuprio.list1_count, &m.cpuprio.list2_count));
+	
+    sa(mgt_cpufreq_data_alloc((pstate_t **)  &m.cpufreq.list2, (uint **) &m.cpufreq.list3));
+	sa(mgt_cpufreq_data_alloc((pstate_t **)  &m.imcfreq.list2, (uint **) &m.imcfreq.list3));
+    sn(mgt_cpuprio_data_alloc((cpuprio_t **) &m.cpuprio.list1, (uint **) &m.cpuprio.list2));
+
+    // Serialization buffer
+    serial_alloc(&sbuffer, SIZE_8KB);
+}
+
+void management_dispose()
+{
+	sa(mgt_imcfreq_dispose(no_ctx));
+	sa(mgt_cpufreq_dispose(no_ctx));
+}
+
+void management_print_apis()
+{
+	apis_print(m.imcfreq.api, "MGT_IMCFREQ: ");
+	apis_print(m.cpufreq.api, "MGT_CPUFREQ: ");
+	apis_print(m.cpuprio.api, "MGT_CPUPRIO: ");
+}
+
+int management_rpcs(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
+{
+    state_t  ret_s    = EAR_SUCCESS;
+    char    *ret_data = NULL;    
+    size_t   ret_size = 0;
+
+    switch(rpc_id) {
+    case RPC_MGT_PRIO_GET_STATIC_VALUES:
+        serial_clean(&sbuffer);
+        serial_add_elem(&sbuffer, (char *) &m.cpuprio.api        , sizeof(uint));
+        serial_add_elem(&sbuffer, (char *) &m.cpuprio.list1_count, sizeof(uint));
+        serial_add_elem(&sbuffer, (char *) &m.cpuprio.list2_count, sizeof(uint));
+        ret_size = serial_size(&sbuffer);
+        ret_data = serial_data(&sbuffer);
+    break;
+    case RPC_MGT_PRIO_ENABLE:
+        ret_s = mgt_cpuprio_enable();
+    break;
+    case RPC_MGT_PRIO_DISABLE:
+        ret_s = mgt_cpuprio_disable();
+    break;
+    case RPC_MGT_PRIO_IS_ENABLED:
+        ibuffer[0] = mgt_cpuprio_is_enabled();
+        ret_data = (char *) ibuffer;
+        ret_size = sizeof(int);
+    break;
+    case RPC_MGT_PRIO_GET_AVAILABLE:
+        ret_s    = mgt_cpuprio_get_available_list((cpuprio_t *) m.cpuprio.list1);
+        ret_data = (char *) m.cpuprio.list1;
+        ret_size = sizeof(cpuprio_t) * m.cpuprio.list1_count;
+    break;
+    case RPC_MGT_PRIO_SET_AVAILABLE:
+        if (state_fail(ret_s = eard_rpc_read_pending(fd_req, m.cpuprio.list1, rpc_size, 0))) {
+            serror(Rpcerr.pending);
+        } else {
+            ret_s = mgt_cpuprio_set_available_list(m.cpuprio.list1);
+        }
+    break;
+    case RPC_MGT_PRIO_GET_CURRENT:
+        ret_s = mgt_cpuprio_get_available_list(m.cpuprio.list2);
+    break;
+    case RPC_MGT_PRIO_SET_CURRENT_LIST:
+        if (state_fail(ret_s = eard_rpc_read_pending(fd_req, m.cpuprio.list2, rpc_size, 0))) {
+            serror(Rpcerr.pending);
+        } else {
+            ret_s = mgt_cpuprio_set_current_list(m.cpuprio.list2);
+        }
+    break;
+    case RPC_MGT_PRIO_SET_CURRENT:
+        if (state_fail(ret_s = eard_rpc_read_pending(fd_req, cbuffer, rpc_size, 0))) {
+            serror(Rpcerr.pending);
+        } else {
+            ret_s = mgt_cpuprio_set_current(ibuffer[0], (int) ibuffer[1]);
+        }
+    break;
+    default:
+        return 0;
     }
 
-    return 0;
+    if (state_fail(eard_rpc_answer(fd_ack, rpc_id, ret_s, ret_data, ret_size, state_msg))) {
+        return 0;
+    }
+    return 1;
 }
-#endif

@@ -15,11 +15,14 @@
 * and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_GOVERNOR
-#define MANAGEMENT_GOVERNOR
+#ifndef MANAGEMENT_GOVERNOR_H
+#define MANAGEMENT_GOVERNOR_H
 
+#define _GNU_SOURCE
+#include <sched.h>
 #include <common/types.h>
 #include <common/states.h>
+#include <common/plugins.h>
 
 // Governors
 //
@@ -68,10 +71,15 @@ struct goverstr_s {
 	.other = "other",
 };
 
-state_t mgt_governor_tostr(uint governor, char *buffer);
+// To compile well
+#define mgt_governor_tostr(g, b)       governor_tostr(g, b)
+#define mgt_governor_toint(b, g)       governor_toint(b, g)
+#define mgt_governor_is(b, g)          governor_is(b, g)
 
-state_t mgt_governor_toint(char *buffer, uint *governor);
+char *governor_tostr(uint governor, char *buffer);
 
-int mgt_governor_is(char *buffer, uint governor);
+state_t governor_toint(char *buffer, uint *governor);
 
-#endif //MANAGEMENT_GOVERNOR
+int governor_is(char *buffer, uint governor);
+
+#endif //MANAGEMENT_GOVERNOR_H

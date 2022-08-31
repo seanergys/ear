@@ -23,7 +23,7 @@
 #include <common/types.h>
 #include <common/states.h>
 #include <common/hardware/topology.h>
-#include <metrics/common/pstate.h>
+#include <metrics/common/apis.h>
 
 #define MSR_RD O_RDONLY
 #define MSR_WR O_RDWR
