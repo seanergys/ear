@@ -34,22 +34,27 @@ state_t mgt_cpufreq_default_dispose(ctx_t *c);
 // Data
 state_t mgt_cpufreq_default_count_available(ctx_t *c, uint *pstate_count);
 
-// Getters
 state_t mgt_cpufreq_default_get_available_list(ctx_t *c, pstate_t *pstate_list);
 
 state_t mgt_cpufreq_default_get_current_list(ctx_t *c, pstate_t *pstate_list);
 
 state_t mgt_cpufreq_default_get_nominal(ctx_t *c, uint *pstate_index);
 
-state_t mgt_cpufreq_default_get_governor(ctx_t *c, uint *governor);
-
 state_t mgt_cpufreq_default_get_index(ctx_t *c, ullong freq_khz, uint *pstate_index, uint closest);
 
-// Setters
 state_t mgt_cpufreq_default_set_current_list(ctx_t *c, uint *pstate_index);
 
 state_t mgt_cpufreq_default_set_current(ctx_t *c, uint pstate_index, int cpu);
 
-state_t mgt_cpufreq_default_set_governor(ctx_t *c, uint governor);
+//Governors
+state_t mgt_cpufreq_default_governor_get(ctx_t *c, uint *governor);
+
+state_t mgt_cpufreq_default_governor_get_list(ctx_t *c, uint *governors);
+
+state_t mgt_cpufreq_default_governor_set(ctx_t *c, uint governor);
+
+state_t mgt_cpufreq_default_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
+
+state_t mgt_cpufreq_default_governor_set_list(ctx_t *c, uint *governors);
 
 #endif //MANAGEMENT_CPUFREQ_ARCHS_DEFAULT

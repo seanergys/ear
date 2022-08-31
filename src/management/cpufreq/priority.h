@@ -22,20 +22,22 @@
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
+#include <metrics/common/isst.h>
 
 // PRIORITY is a subsystem of CPUFREQ. It can take the control over the
 // frequency by using the enable function. Also, you can set the maximum
 // and minimum frequency per priority.
 
-#define PRIO_FREQ_MAX      25500000 // Max boosted frequency
+#define PRIO_FREQ_MAX      ISST_MAX_FREQ // Max boosted frequency
 #define PRIO_FREQ_MAX_NB  (PRIO_FREQ_MAX-1) // Max non-boosted frequency
 #define PRIO_HIGH         (UINT_MAX-2)
 #define PRIO_LOW          (UINT_MAX-3)
+#define PRIO_SAME          ISST_SAME_PRIO // Do not change the priority, use the same
 
 typedef struct cpuprio_s {
     ullong max_khz;
     ullong min_khz;
-    uint high;
+    uint high; // Current version only supports modify max and min khz.
     uint low;
     uint idx;
 } cpuprio_t;
@@ -70,19 +72,19 @@ state_t mgt_cpufreq_prio_enable();
 state_t mgt_cpufreq_prio_disable();
 
 int mgt_cpufreq_prio_is_enabled();
-
+/* Returns the list of priorities, ej: in intel CLOS0 to CLOS3. Its sorted from high priority to low. */
 state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list);
-
+/* */
 state_t mgt_cpufreq_prio_set_available_list(cpuprio_t *prio_list);
-
+/* Returns the list of */
 state_t mgt_cpufreq_prio_get_current_list(uint *list_idx);
 
 state_t mgt_cpufreq_prio_set_current_list(uint *list_idx);
 
 state_t mgt_cpufreq_prio_set_current(uint idx, int cpu);
-
-void mgt_cpufreq_prio_data_count(uint *prio_count, uint *idx_count);
-
+/* */
+void mgt_cpufreq_prio_data_count(uint *prio_count, uint *devs_count);
+/* */
 void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list);
     
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd);
@@ -90,6 +92,9 @@ void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd);
 void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buffer, int length);
 
 // Short names
+#define mgt_cpuprio_load               mgt_cpufreq_prio_load
+#define mgt_cpuprio_init               mgt_cpufreq_prio_init
+#define mgt_cpuprio_dispose            mgt_cpufreq_prio_dispose
 #define mgt_cpuprio_get_api            mgt_cpufreq_prio_get_api
 #define mgt_cpuprio_enable             mgt_cpufreq_prio_enable
 #define mgt_cpuprio_disable            mgt_cpufreq_prio_disable

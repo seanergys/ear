@@ -114,7 +114,6 @@ static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
-static metrics_t     pr;
 #if USE_GPUS
 static metrics_t     mg;
 static metrics_t     ug;
@@ -193,11 +192,9 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
     
-       //mgt_cpuprio_data_count(&pr.avail_count, &pr.devs_count);
 
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
-       //mgt_cpuprio_data_alloc((cpuprio_t **) &pr.  avail_list, (uint **) &pr.set_list );
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
     sf(     bwidth_data_alloc((bwidth_t  **) &ub.current_list));
@@ -299,47 +296,6 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
                 serror(Rpcerr.answer);
             }
         }
-    #if 0
-    dcase(RPC_MGT_PRIO_GET_STATIC_VALUES);
-        serial_clean(&wb);
-        serial_add_elem(&wb, (char *) &pr.api        , sizeof(uint));
-        serial_add_elem(&wb, (char *) &pr.avail_count, sizeof(uint));
-        serial_add_elem(&wb, (char *) &pr. devs_count, sizeof(uint));
-        size = serial_size(&wb);
-        data = serial_data(&wb);
-    dcase(RPC_MGT_PRIO_ENABLE);
-        s = mgt_cpuprio_enable();
-    dcase(RPC_MGT_PRIO_DISABLE);
-        s = mgt_cpuprio_disable();
-    dcase(RPC_MGT_PRIO_IS_ENABLED);
-        *((uint *) big_chunk1) = mgt_cpuprio_is_enabled();
-        data = big_chunk1; 
-        size = sizeof(int);
-    dcase(RPC_MGT_PRIO_GET_AVAILABLE);
-        s    = mgt_cpuprio_get_available_list(pr.avail_list);
-        data = (char *) pr.avail_list;
-        size = sizeof(cpuprio_t) * pr.avail_count;
-    dcase(RPC_MGT_PRIO_SET_AVAILABLE);
-        if (state_fail(s = eard_rpc_read_pending(req_fd, pr.avail_list, head->size, 0))) {
-            serror(Rpcerr.pending);
-        } else {
-            s = mgt_cpuprio_set_available_list(pr.avail_list);
-        }
-    dcase(RPC_MGT_PRIO_GET_CURRENT);
-        s = mgt_cpuprio_get_available_list(pr.set_list);
-    dcase(RPC_MGT_PRIO_SET_CURRENT_LIST);
-        if (state_fail(s = eard_rpc_read_pending(req_fd, pr.set_list, head->size, 0))) {
-            serror(Rpcerr.pending);
-        } else {
-            s = mgt_cpuprio_set_current_list(pr.set_list);
-        }
-    dcase(RPC_MGT_PRIO_SET_CURRENT);
-        if (state_fail(s = eard_rpc_read_pending(req_fd, big_chunk1, head->size, 0))) {
-            serror(Rpcerr.pending);
-        } else {
-            s = mgt_cpuprio_set_current(*((uint *) big_chunk1), *((uint *) &big_chunk1[sizeof(uint)]));
-        }
-    #endif
     dcase_fini();
 
     // Always answering (if s != SUCCESS the error message is sent)
@@ -1006,8 +962,6 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
 	size_t size;
 	uint rpc;
 	int i;
-
-printf("SERVICE %d\n", req->req_service);
 
 	if (req_fd != global_req_fd){
 		i = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);

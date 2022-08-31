@@ -155,6 +155,7 @@ static state_t commands_mmsr_send_single(uint cpu, ullong msr, ullong data, int 
     struct isst_if_msr_cmds msr_cmds;
     int read = !write;
 
+    // MSR does not have fill function because is barely used.
     if (answer != NULL) {
         *answer = 0;
     }
@@ -165,6 +166,8 @@ static state_t commands_mmsr_send_single(uint cpu, ullong msr, ullong data, int 
     msr_cmds.msr_cmd[0].data        = data * write;
     msr_cmds.msr_cmd[0].read_write  = write;
 
+    // Sending MSR type command through IOCTL. Its ID is
+    // copied from ISST application and driver.
     if (ioctl(driver_fd, ISST_IF_MSR_CMD, &msr_cmds) == -1) {
             debug("ioctl failed for MSR command 0x%llX (%d, %s)",
                 msr, errno, strerror(errno));
@@ -195,7 +198,8 @@ static state_t commands_mmio_send(cmds_mmio_t *cmds, uint *answers)
     for(i = 0; answers != NULL && i < cmds->req_count; ++i) {
         answers[i] = 0;
     }
-    // Sending command 
+    // Sending MMIO type command through IOCTL. Its ID is
+    // copied from ISST application and driver.
     if (ioctl(driver_fd, ISST_IF_MMIO_CMD, cmds) == -1) {
         debug("ioctl failed to send %d MMIO commands 0x%X: %d, %s",
             cmds->req_count, cmds->io_reg[0].reg, errno, strerror(errno));
@@ -213,6 +217,8 @@ static state_t commands_mmio_send(cmds_mmio_t *cmds, uint *answers)
 
 static int commands_mmio_fill(cmds_mmio_t *cmds, uint cpu, uint reg, uint value, int write, uint *answers, int send)
 {
+    // Fills an array of MMIO commands. If send is 1 or if the array is full
+    // of commands, the bulk is passed to the send function.
     cmds->io_reg[cmds->req_count].logical_cpu = cpu;
     cmds->io_reg[cmds->req_count].reg         = reg;
     cmds->io_reg[cmds->req_count].value       = value;
@@ -247,7 +253,8 @@ static state_t commands_mbox_send(cmds_mbox_t *cmds, uint *answers)
     for(i = 0; answers != NULL && i < cmds->cmd_count; ++i) {
         answers[i] = 0;
     }
-    // Sending command 
+    // Sending MBOX type command through IOCTL. Its ID is
+    // copied from ISST application and driver.
     do {
         if (ioctl(driver_fd, ISST_IF_MBOX_CMD, cmds) == -1) {
             debug("ioctl failed to send %d MBOX commands 0x%X_0x%X: %u retrys remaining (%d, %s)",
@@ -272,6 +279,8 @@ static state_t commands_mbox_send(cmds_mbox_t *cmds, uint *answers)
 
 static int commands_mbox_fill(cmds_mbox_t *cmds, uint cpu, uint cmd1, uint cmd2, uint param, uint req_data, uint *answers, int send)
 {
+    // Fills an array of MBOX commands. If send is 1 or if the array is full
+    // of commands, the bulk is passed to the send function.
     cmds->mbox_cmd[cmds->cmd_count].logical_cpu = cpu;
     cmds->mbox_cmd[cmds->cmd_count].command     = cmd1;
     cmds->mbox_cmd[cmds->cmd_count].sub_command = cmd2;
@@ -395,6 +404,7 @@ static state_t assoc_get(uint *clos)
 
 static state_t assoc_set_single(uint clos, int cpu)
 {
+    debug("associating CPU%d to CLOS%u", cpu, clos);
     return commands_mmio_send_single(cpu, CP_SET_ASSOC(punit_cpus[cpu], clos), NULL);
 }
 
@@ -443,7 +453,7 @@ static state_t status_get(envals_t *en)
 
     // 1 Socket is enough
     for (i = 0; i < 1; ++i) {
-        // Enabling PM (¿What is PM?)
+        // Enabling PM (¿What is PM?) Don't kwnow but the ISST application does this thing.
         if (state_fail(s = commands_mbox_send_single(tp.cpus[i].id, PM_GET_CONFIG, &en->pm_reg))) {
              return s;
         }
@@ -522,7 +532,13 @@ static state_t cpus_map()
     struct isst_if_cpu_maps map;
     int i, j;
 
+    // Mapping is required because the driver has its own
+    // CPU mapping procedure.
     for (i = 0; i < cpus_count; i += CMDS_MAX) {
+        // THe CMDS_SPLIT macros is legacy code. It creates bulks of
+        // up to CMDS_MAX commands, and takes into the account the rest
+        // using a logic formula. The commands "fill style" functions
+        // are the new approach.
         map.cmd_count = CMDS_SPLIT(i, cpus_count);
         for (j = 0; j < map.cmd_count; ++j) {
             map.cpu_map[j].logical_cpu = i+j;
@@ -551,6 +567,7 @@ static state_t init()
     struct isst_if_platform_info info = { 0 };
     state_t s;
 
+    // Revealing the first information about ISST system.
     if (ioctl(driver_fd, ISST_IF_INFO_CMD, &info) == -1) {
         debug("ioctl failed: %s", strerror(errno));
         return 0;
@@ -624,6 +641,11 @@ static state_t enable(int e)
     state_t s;
     int i;
 
+    // E is 1 for enabled and 0 for disable. As can be seen in the following code, e changes
+    // the order of commands. The sequence is the following:
+    //     0: PM -> CP -> TF -> TR
+    //     1: TF -> TR -> CP -> PM
+    // It is not clear if there is any difference when switching between TR and TF.
     for (i = 0; i < tp.cpu_count; ++i)
     {
         #if 1

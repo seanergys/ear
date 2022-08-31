@@ -23,6 +23,7 @@
 #include <common/hardware/topology.h>
 
 #define ISST_MAX_FREQ    25500000
+#define ISST_SAME_PRIO   UINT_MAX
 
 typedef struct clos_s {
     ullong max_khz;

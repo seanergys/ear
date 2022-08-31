@@ -32,9 +32,9 @@
 
 static pthread_mutex_t     lock = PTHREAD_MUTEX_INITIALIZER;
 static mgt_ps_driver_ops_t ops_driver;
-static mgt_ps_ops_t        ops;
-static uint                api;
+       mgt_ps_ops_t        ops;
 static uint                cpu_count;
+static uint                api;
 
 state_t mgt_cpufreq_load(topology_t *tp, int eard)
 {
@@ -114,7 +114,6 @@ state_t mgt_cpufreq_count_devices(ctx_t *c, uint *dev_count)
 	return EAR_SUCCESS;
 }
 
-/** Getters */
 state_t mgt_cpufreq_get_available_list(ctx_t *c, const pstate_t **pstate_list, uint *pstate_count)
 {
 	static pstate_t *list = NULL;
@@ -145,11 +144,6 @@ state_t mgt_cpufreq_get_nominal(ctx_t *c, uint *pstate_index)
 	preturn (ops.get_nominal, c, pstate_index);
 }
 
-state_t mgt_cpufreq_get_governor(ctx_t *c, uint *governor)
-{
-	preturn (ops.get_governor, c, governor);
-}
-
 state_t mgt_cpufreq_get_index(ctx_t *c, ullong freq_khz, uint *pstate_index, uint closest)
 {
 	preturn (ops.get_index, c, freq_khz, pstate_index, closest);
@@ -166,9 +160,30 @@ state_t mgt_cpufreq_set_current(ctx_t *c, uint pstate_index, int cpu)
 	preturn (ops.set_current, c, pstate_index, cpu);
 }
 
-state_t mgt_cpufreq_set_governor(ctx_t *c, uint governor)
+/** Governors */
+state_t mgt_cpufreq_governor_get(ctx_t *c, uint *governor)
 {
-	preturn (ops.set_governor, c, governor);
+    preturn (ops.get_governor, c, governor);
+}
+
+state_t mgt_cpufreq_governor_get_list(ctx_t *c, uint *governors)
+{
+    preturn (ops.set_governor_list, c, governors);
+}
+
+state_t mgt_cpufreq_governor_set(ctx_t *c, uint governor)
+{
+    preturn (ops.set_governor, c, governor);
+}
+
+state_t mgt_cpufreq_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask)
+{
+    preturn (ops.set_governor_mask, c, governor, mask);
+}
+
+state_t mgt_cpufreq_governor_set_list(ctx_t *c, uint *governors)
+{
+    preturn (ops.set_governor_list, c, governors);
 }
 
 /** Data */

@@ -30,7 +30,6 @@ static uint             init;
 static uint             prios_count;
 static uint             idxs_count;
 
-
 void mgt_cpufreq_prio_load(topology_t *tp, int eard)
 {
     while (pthread_mutex_trylock(&lock));

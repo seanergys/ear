@@ -90,13 +90,19 @@ typedef struct metrics_gpus_s {
         *((void **) &op) = func; \
     }
 
+/* Conditional put. */
+#define apis_pin(op, func, cond) \
+    if (cond) { \
+        apis_put(op, func); \
+    }
+
 /* Replaces the currect function of the operation. */
 #define apis_set(op, func) *((void **) &op) = func;
 
-/* */
+/* Verbose "if loaded" */
 #define apis_loaded(ops) (ops->init != NULL)
 
-/* */
+/* Verbose "if not loaded" */
 #define apis_not(ops) (ops->init == NULL)
 
 /* Adds a new function to an array. */
