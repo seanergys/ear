@@ -2358,7 +2358,7 @@ int mysql_run_query_string_results(MYSQL *connection, char *query, char ****resu
                 tmp_res[i][j] = NULL;
                 continue;
             }
-            tmp_res[i][j] = calloc(strlen(row[j]), sizeof(char));
+            tmp_res[i][j] = calloc(strlen(row[j]) + 1, sizeof(char));
             strcpy(tmp_res[i][j], row[j]);
         }
 
