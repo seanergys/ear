@@ -23,7 +23,7 @@
 #include <common/states.h>
 #include <common/system/file.h>
 #include <common/output/debug.h>
-#include <common/hardware/topology_spec.h>
+#include <common/hardware/topology_asm.h>
 
 static topology_t topo_static;
 

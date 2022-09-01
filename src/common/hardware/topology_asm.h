@@ -23,6 +23,6 @@
 #define GENUINE_INTEL 1970169159
 #define AUTHENTIC_AMD 0
 
-state_t topology_getid(topology_t *topo);
+void topology_getid(topology_t *topo);
 
 #endif

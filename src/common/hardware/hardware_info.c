@@ -216,40 +216,6 @@ int detect_packages(int **mypackage_map)
 	return num_packages;
 }
 
-int get_model()
-{
-    cpuid_regs_t r;
-	int model_full;
-	int model_low;
-
-	CPUID(r,1,0);
-	model_low  = cpuid_getbits(r.eax, 7, 4);
-	model_full = cpuid_getbits(r.eax, 19, 16);
-	return (model_full << 4) | model_low;
-}
-
-int is_aperf_compatible()
-{
-    cpuid_regs_t r;
-
-	if (!cpuid_isleaf(11)) {
-		return EAR_ERROR;
-	}
-
-	CPUID(r,6,0);
-    return r.ecx & 0x01;
-}
-
-int is_cpu_boost_enabled()
-{
-	cpuid_regs_t r;
-	//
-	CPUID(r,6,0);
-	//
-
-	return cpuid_getbits(r.eax, 1, 1);
-}
-
 int cpu_isset(int cpu, cpu_set_t *mask)
 {
     if (cpu < 0 || mask == NULL) {

@@ -16,7 +16,7 @@
 */
 
 #include <common/hardware/cpuid.h>
-#include <common/hardware/topology_spec.h>
+#include <common/hardware/topology_asm.h>
 
 static void topology_getid_x86(topology_t *topo)
 {
@@ -104,9 +104,9 @@ static void topology_getid_arm64(topology_t *topo)
     topo->cache_line_size = 64; // 64 bytes
 }
 
-state_t topology_getid(topology_t *topo)
+void topology_getid(topology_t *topo)
 {
-    #ifdef __aarch64__
+    #if __ARCH_ARM
     return topology_getid_arm64(topo);
     #else
     return topology_getid_x86(topo);

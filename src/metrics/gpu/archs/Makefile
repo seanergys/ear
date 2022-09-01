@@ -14,13 +14,13 @@ gpu_OBJS = \
 all: $(gpu_OBJS)
 
 nvml.o: nvml.c nvml.h
-	$(CC) $(CFLAGS) $(NVML_CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(CUDA_CFLAGS) -c $<
 
 cupti.o: cupti.c cupti.h
-	$(CC) $(CFLAGS) $(CUPTI_CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(CUDA_CFLAGS) -c $<
 
 oneapi.o: oneapi.c oneapi.h
-	$(CC) $(CFLAGS) $(ONEAPI_FLAGS) -c $<
+	$(CC) $(CFLAGS) $(ONEAPI_CFLAGS) -c $<
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
