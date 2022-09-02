@@ -23,8 +23,7 @@
 #include <common/states.h>
 #include <common/system/file.h>
 #include <common/output/debug.h>
-#include <common/hardware/cpuid.h>
-#include <common/hardware/topology.h>
+#include <common/hardware/topology_asm.h>
 
 static topology_t topo_static;
 
@@ -216,84 +215,7 @@ static void topology_apicid(topology_t *topo)
     free(line);
 }
 
-static void topology_cpuid(topology_t *topo)
-{
-	cpuid_regs_t r;
-	int buffer[4];
 
-	/* Vendor */
-	CPUID(r,0,0);
-	buffer[0] = r.ebx;
-	buffer[1] = r.edx;
-	buffer[2] = r.ecx;
-	topo->vendor = !(buffer[0] == 1970169159); // Intel
-	
-	/* Family */
-	CPUID(r,1,0);
-	buffer[0] = cpuid_getbits(r.eax, 11,  8);
-	buffer[1] = cpuid_getbits(r.eax, 27, 20); // extended
-	buffer[2] = buffer[0]; // auxiliar
-	
-	if (buffer[0] == 0x0F) {
-		topo->family = buffer[1] + buffer[0];
-	} else {
-		topo->family = buffer[0];
-	}
-
-	/* Model */
-	CPUID(r,1,0);
-	buffer[0] = cpuid_getbits(r.eax,  7,  4);
-	buffer[1] = cpuid_getbits(r.eax, 19, 16); // extended
-	
-	if (buffer[2] == 0x0F || (buffer[2] == 0x06 && topo->vendor == VENDOR_INTEL)) {
-		topo->model = (buffer[1] << 4) | buffer[0];
-	} else {
-		topo->model = buffer[0];
-	}
-
-	/* Cache line size */
-	uint max_level = 0;
-	uint cur_level = 0;
-	int index      = 0;
-
-	if (topo->vendor == VENDOR_INTEL)
-	{
-		while (1)
-		{
-			CPUID(r,4,index);
-
-			if (!(r.eax & 0x0F)) break;
-			cur_level = cpuid_getbits(r.eax, 7, 5);
-
-			if (cur_level >= max_level) {
-				topo->cache_line_size = cpuid_getbits(r.ebx, 11, 0) + 1;
-				max_level = cur_level;
-			}
-
-			index = index + 1;
-		}
-	} else {
-		CPUID(r,0x80000005,0);
-		topo->cache_line_size = r.edx & 0xFF;
-	}
-
-	/* General-purpose/fixed registers */
-    CPUID(r, 0x0a, 0);
-
-	if (topo->vendor == VENDOR_INTEL) {
-		//  Intel Vol. 2A
-		// 	bits   7,0: version of architectural performance monitoring
-		// 	bits  15,8: number of GPR counters per logical processor
-		//	bits 23,16: bit width of GPR counters
-		topo->gpr_count = cpuid_getbits(r.eax, 15,  8);
-		topo->gpr_bits  = cpuid_getbits(r.eax, 23, 16);
-	} else {
-		if (topo->family >= FAMILY_ZEN) {
-			topo->gpr_count = 6;
-			topo->gpr_bits  = 48;
-		}
-	}
-}
 
 static int is_online(const char *path)
 {
@@ -329,7 +251,7 @@ state_t topology_init(topology_t *topo)
     topo->initialized      = 1;
 
 	/* First characteristics */
-	topology_cpuid(topo);
+	topology_getid(topo);
 
 	/* Number of CPUs */
 	do {
