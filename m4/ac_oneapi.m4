@@ -18,7 +18,6 @@
 
 AC_DEFUN([X_AC_ONEAPI_FIND_ROOT_DIR],
 [
-    echo HOLAAAAAAAAAAAAA
 	for d in $_x_ac_oneapi_dirs_root;
 	do
 		test -d "$d" || continue
@@ -44,8 +43,6 @@ AC_DEFUN([X_AC_ONEAPI],
 			_x_ac_oneapi_custom="yes"
 		]
 	)
-
-    echo _x_ac_oneapi_dirs_root $_x_ac_oneapi_dirs_root
 
     AC_CACHE_CHECK(
         [for ONEAPI root directory],
