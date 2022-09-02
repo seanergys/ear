@@ -15,7 +15,6 @@
 #    This macro must be placed after AC_PROG_CC and before AC_PROG_LIBTOOL.
 ##*****************************************************************************
 
-
 AC_DEFUN([X_AC_CUPTI_FIND_ROOT_DIR],
 [
 	for d in $_x_ac_cupti_dirs_root;
@@ -43,26 +42,32 @@ AC_DEFUN([X_AC_CUPTI],
 	)
 
     AC_CACHE_CHECK(
-      [for CUUPTI root directory],
-      [_cv_cupti_dir_root],
-      [
-        X_AC_CUPTI_FIND_ROOT_DIR([])
+        [for CUPTI root directory],
+        [_cv_cupti_dir_root],
+        [
+            X_AC_CUPTI_FIND_ROOT_DIR([])
 
-        if test -z "$_cv_cupti_dir_root"; then
-          _x_ac_cupti_dirs_root="${_ax_ld_dirs_root}"
-          _x_ac_cupti_custom="yes"
+            if test -z "$_cv_cupti_dir_root"; then
+                _x_ac_cupti_dirs_root="${_ax_ld_dirs_root}"
+                _x_ac_cupti_custom="yes"
 
-          X_AC_CUPTI_FIND_ROOT_DIR([])
-        fi
-      ]
-    )
+                X_AC_CUPTI_FIND_ROOT_DIR([])
+            fi
+            if test -z "$_cv_cupti_dir_root"; then
+                _x_ac_cupti_dirs_root="$CUDA_DIR/extras/CUPTI"
+                _x_ac_cupti_custom="yes"
+                 
+                X_AC_CUPTI_FIND_ROOT_DIR([])
+            fi
+        ]
+        )
 
 
 	if test -z "$_cv_cupti_dir_root"; then
 		echo checking for CUPTI CFLAGS... no
 	else
 		CUPTI_DIR=$_cv_cupti_dir_root
-		CUPTI_CFLAGS="-I\$(CUPTI_BASE)/include -DCUPTI_BASE=\\\"\$(CUPTI_BASE)\\\" \$(CUDA_CFLAGS)"
+		CUPTI_CFLAGS="\$(CUDA_CFLAGS) -I\$(CUPTI_BASE)/include -DCUPTI_BASE=\\\"\$(CUPTI_BASE)\\\""
 		echo checking for CUPTI CFLAGS... $CUPTI_CFLAGS
 	fi
 
