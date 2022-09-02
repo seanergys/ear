@@ -141,7 +141,7 @@ static state_t print_device_info(ze_device_handle_t device, int dv)
     ret_fail(ze.DeviceGetMemoryProperties(device, &mem_count, mem));
     ret_fail(ze.DeviceGetSubDevices(device, &sub_count, NULL));
 
-    debug("DEVICE%d name: %s %s (id 0x%s.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
+    debug("DEVICE%d name: %s %s (id 0x%x.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
           props.name, props.vendorId, props.deviceId);
     debug("DEVICE%d performance: %u MHz@%lu MB allocatable", dv,
           props.coreClockRate, props.maxMemAllocSize / 1000000LU);

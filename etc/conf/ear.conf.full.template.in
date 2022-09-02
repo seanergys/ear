@@ -97,7 +97,6 @@ EARGMPeriodT1=90
 EARGMPeriodT2=259200
 # '-' are Joules, 'K' KiloJoules and 'M' MegaJoules.
 EARGMUnits=K
-EARGMEnergyLimit=550000
 EARGMPort=50000
 # Two modes are supported '0=manual' and '1=automatic'.
 EARGMMode=0
@@ -118,9 +117,7 @@ EARGMUseLog=1
 EARGMEnergyAction=no_action
 
 #### POWERCAP definition for EARGM: Powercap is still under development. Do not activate.
-# 0 means no powercap
-EARGMPowerLimit=0
-# Period at which the powercap thread is activated.
+# Period at which the powercap thread is activated. Meta-EARGM checks the EARGMs it controls every 2*EARGMPowerPeriod
 EARGMPowerPeriod=120
 # 1 means automatic, 0 is only monitoring.
 EARGMPowerCapMode=1
@@ -139,13 +136,19 @@ EARGMPowerCapResumeAction=no_action
 
 # EARGMs must be specified with a unique id, their node and the port that receives remote
 # connections. An EARGM can also act as meta-eargm if the meta field is filled, and it will
-# control the EARGMs whose ids are in said field. If to EARGMs are in the same node, 
+# control the EARGMs whose ids are in said field. If two EARGMs are in the same node, 
 # setting the EARGMID environment variable overrides the node field and chooses the characteristics
-# of the EARGM with the correspoding id. If energy is set to 0, cluster_energy_cap will be disabled
-# for that EARGM. Currently, only 1 cluster_energy_cap is supported.
-EARGMId=1 energy=1800 power=600 node=node1 port=50100 meta=1,2,3
-EARGMId=2 energy=0 power=500 node=node1 port=50101
-EARGMId=3 energy=0 power=500 node=node2 port=50100
+# of the EARGM with the correspoding id.
+# 
+# Only one EARGM can currently control the energy caps, so setting the rest to 0 is recommended.
+# energy = 0 -> energy_cap disabled
+# power = 0  -> powercap disabled
+# power = N  -> powercap budget for that EARGM (and the nodes it controls) is N
+# power = -1 -> powercap budget is calculated by adding up the powercap set to each of the nodes under its control.
+# 				This is incompatible with nodes that have their powercap unlimited (powercap = 1)
+EARGMId=1 energy=1800 power=600 node=node1 port=50100 meta=1,2
+EARGMId=2 energy=0 power=500 node=node2 port=50100
+EARGMId=3 energy=0 power=500 node=node3 port=50100
 
 #---------------------------------------------------------------------------------------------------
 # Common configuration
