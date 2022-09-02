@@ -18,7 +18,7 @@
 #ifndef METRICS_COMMON_CUPTI_H
 #define METRICS_COMMON_CUPTI_H
 
-#ifdef CUDA_BASE
+#ifdef CUPTI_BASE
 #include <cupti.h>
 #include <cupti_events.h>
 #include <cupti_metrics.h>
@@ -28,7 +28,7 @@
 #include <common/types.h>
 #include <common/states.h>
 
-#ifndef CUDA_BASE
+#ifndef CUPTI_BASE
 #define CUDA_SUCCESS                                        0
 #define CUPTI_SUCCESS                                       0
 #define CUPTI_API_EXIT                                      0

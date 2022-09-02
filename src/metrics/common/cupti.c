@@ -30,7 +30,7 @@
 #ifndef ZERO_BASE
 #define CUPTI_PATH   ""
 #else
-#define CUPTI_PATH   CUDA_BASE
+#define CUPTI_PATH   CUPTI_BASE
 #endif
 #define CUPTI_N      18
 #define CUDA_N       4
@@ -146,7 +146,7 @@ static state_t static_init()
 state_t cupti_open(cupti_t *cupti_in, cuda_t *cu_in)
 {
     state_t s = EAR_SUCCESS;
-    #ifndef CUDA_BASE
+    #ifndef CUPTI_BASE
     return EAR_ERROR;
     #endif
     while (pthread_mutex_trylock(&lock));
