@@ -1,3 +1,16 @@
+########################################################################################################
+# Flags information:
+#
+# ARCH_X86 and ARCH_ARM define the compiling architecture and are mutually exclusive
+# FEAT_MPI_API allows to compile the MPI EAR library version or non-MPI.
+# FEAT_AVX512 enables/disables the AVX-512 code.
+# FEAT_RESEARCH extend the set of files installed.
+# FEAT_GPU_OPT installs GPU optimization policies. 0 means only monitoring.
+# FEAT_AMD_OSCPUFREQ disables the utilization of virtual PSTATES in AMD and selects OS CPUFreq.
+# FEAT_DB_MYSQL and FEAT_DB_PSQL defines the database (MySQL or PostgreSQL) and are mutually exclusive.
+# REPLACE also replaces the current installation permissions by the user's current values.
+########################################################################################################
+
 # Architectures
 ARCH_X86           = @ARCH_X86@
 ARCH_ARM           = @ARCH_ARM@
