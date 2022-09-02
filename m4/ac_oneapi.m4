@@ -22,11 +22,8 @@ AC_DEFUN([X_AC_ONEAPI_FIND_ROOT_DIR],
 	for d in $_x_ac_oneapi_dirs_root;
 	do
 		test -d "$d" || continue
-		echo $d
 		test -f "$d/include/level_zero/ze_api.h" || continue
-		echo $d $d/include/level_zero/ze_api.h
 		test -f "$d/include/level_zero/zes_ddi.h" || continue
-		echo $d $d/include/level_zero/zes_ddi.h
 
 		AS_VAR_SET(_cv_oneapi_dir_root, $d)
 		test -n "$_cv_oneapi_dir_root" && break
