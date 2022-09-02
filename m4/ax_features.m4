@@ -13,7 +13,6 @@ AC_DEFUN([X_AC_VAR_UNBACKUP], [
     LIBS=$LIBS_backup
 ])
 
-
 AC_DEFUN([X_AC_VAR_PRINT], [
     echo $CPPFLAGS
     echo $LDFLAGS

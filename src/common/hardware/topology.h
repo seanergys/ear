@@ -36,9 +36,13 @@
 #define FAMILY_JAGUAR				22
 #define FAMILY_ZEN					0x17 // Also 23
 #define FAMILY_ZEN3					25
+//
+#define MODEL_A8                    0x01
+#define MODEL_A9                    0x02
 // Supported vendors
 #define VENDOR_INTEL				0
 #define VENDOR_AMD					1
+#define VENDOR_ARM                  2
 
 #include <common/states.h>
 

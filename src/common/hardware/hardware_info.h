@@ -27,20 +27,11 @@
 #include <common/hardware/cpuid.h>
 #include <common/hardware/topology.h>
 
-/** Returns 1 if the CPU is APERF/MPERF compatible. */
-int is_aperf_compatible();
-
-/** Returns an EAR architecture index (top). */
-int get_model();
-
-/** Returns true if turbo is enabled */
-int is_cpu_boost_enabled();
+/** Returns the number of packages detected*/
+int detect_packages(int **package_map);
 
 /** Sets all bits of `mask` to one. */
 state_t set_mask_all_ones(cpu_set_t *mask);
-
-/** Returns the number of packages detected*/
-int detect_packages(int **package_map);
 
 /** Computes the number of cpus in a given mask */
 uint num_cpus_in_mask(cpu_set_t *my_mask);

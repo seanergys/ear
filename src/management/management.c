@@ -37,8 +37,6 @@ static manages_t      m;
 
 void management_init(topology_t *tp, int eard)
 {
-	state_t s;
-
 	sa(mgt_imcfreq_load(tp, eard, NULL));
 	sa(mgt_cpufreq_load(tp, eard));
 	sa(mgt_imcfreq_init(no_ctx));

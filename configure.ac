@@ -1,9 +1,11 @@
 # INCLUDES
 m4_include([m4/ax_compare_version.m4])
+m4_include([m4/ax_architectures.m4])
 m4_include([m4/ax_features.m4])
 m4_include([m4/ax_defaults.m4])
 m4_include([m4/ac_freeipmi.m4])
 m4_include([m4/ac_likwid.m4])
+m4_include([m4/ac_oneapi.m4])
 m4_include([m4/ac_pgsql.m4])
 m4_include([m4/ac_mysql.m4])
 m4_include([m4/ac_slurm.m4])
@@ -21,18 +23,13 @@ AC_PROG_CC
 AC_PROG_AWK
 AC_PROG_GREP
 
-############
-# DEFAULTS #
-############
+#################
+# FIRST SCRIPTS #
+#################
 #
 
 AX_SET_DEFAULTS
-
-################
-# PRE-FEATURES #
-################
-#
-
+AX_SET_ARCHITECTURES
 AX_BEFORE_FEATURES
 
 ############
@@ -45,6 +42,7 @@ X_AC_GSL
 X_AC_LIKWID
 X_AC_PGSQL
 X_AC_MYSQL
+X_AC_ONEAPI
 X_AC_PBS
 X_AC_SLURM
 
