@@ -18,6 +18,7 @@
 #ifndef COMMON_HARDWARE_TOPOLOGY_H_
 #define COMMON_HARDWARE_TOPOLOGY_H_
 
+#include <cpuid.h>
 #include <common/types/generic.h>
 
 // https://en.wikichip.org/wiki/intel/cpuid
@@ -43,6 +44,10 @@
 #define VENDOR_INTEL				0
 #define VENDOR_AMD					1
 #define VENDOR_ARM                  2
+
+
+#define Intel_Xeon_Platinum_8175M 	0x50654
+#define Intel_Xeon_E5_2686_V4 		0x406F1
 
 #include <common/states.h>
 
@@ -93,12 +98,16 @@ typedef struct topology_s
 	int vendor;         // Take a look to top defines.
 	int family;         // Take a look to top defines.
 	int model;          // Take a look to top defines.
+	int stepping;
 	int gpr_count;		// Number of general purpose registers.
 	int gpr_bits;		// General purpose registers bit width.
 	int nmi_watchdog;	// NMI watdog enabled.
     int apicids_found;  // List of CPUs ApicId's found.
     int initialized;    // 1 if the topology is initialized
 	ulong cpu_freq;
+	uint  TDP_cpu;
+	int   eax;
+	char brand[384];
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);

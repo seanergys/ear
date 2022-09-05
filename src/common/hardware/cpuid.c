@@ -15,7 +15,8 @@
 * and COPYING.EPL files.
 */
 
-#include <common/hardware/cpuid.h>
+#include <cpuid.h>
+#include <common/hardware/ear_cpuid.h>
 
 void cpuid_native(uint *eax, uint *ebx, uint *ecx, uint *edx)
 {

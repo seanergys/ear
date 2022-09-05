@@ -190,6 +190,74 @@ static void topology_watchdog(topology_t *topo)
 		close(fd);
 	}
 }
+static state_t get_brand(topology_t *topo)
+{
+    uint32_t brand[12];
+    strcpy(topo->brand, "UNKNOW");
+
+    if (!__get_cpuid_max(0x80000004, NULL)) {
+        return EAR_ERROR;
+    }
+
+    __get_cpuid(0x80000002, brand+0x0, brand+0x1, brand+0x2, brand+0x3);
+    __get_cpuid(0x80000003, brand+0x4, brand+0x5, brand+0x6, brand+0x7);
+    __get_cpuid(0x80000004, brand+0x8, brand+0x9, brand+0xa, brand+0xb);
+    debug("Brand: %s", brand);
+    strcpy(topo->brand,brand);	
+}
+
+static uint TPD_BROADWELL_X(topology_t *topo)
+{
+	switch	(topo->eax){
+		case Intel_Xeon_E5_2686_V4:return 145;
+	}
+	return 100;
+	
+}
+static uint TDP_SKYLAKE_X(topology_t *topo)
+{
+	switch (topo->eax){
+		case Intel_Xeon_Platinum_8175M: return 125;
+	}
+	return 150;
+}
+static uint TDP_ICELAKE_X(topology_t *topo)
+{
+}
+static uint TDP_ZEN(topology_t *topo)
+{
+}
+static uint TDP_ZEN3(topology_t *topo)
+{
+}
+
+static uint get_TDP(topology_t *topo)
+{
+	switch (topo->vendor){
+		case VENDOR_INTEL:
+			switch(topo->model){
+				case MODEL_BROADWELL_X:
+					return TPD_BROADWELL_X(topo);
+				case MODEL_SKYLAKE_X:
+					return TDP_SKYLAKE_X(topo);
+				case MODEL_ICELAKE_X:
+					return TDP_ICELAKE_X(topo);
+			}
+			break;
+		case VENDOR_AMD:
+			switch (topo->family){
+				case FAMILY_ZEN:
+					return TDP_ZEN(topo);
+				case FAMILY_ZEN3:
+					return TDP_ZEN3(topo);
+			}
+			break;
+		case VENDOR_ARM:
+			break;
+		default: return 200;
+	}
+	return 200;
+}
 
 static void topology_apicid(topology_t *topo)
 {
@@ -260,10 +328,11 @@ state_t topology_init(topology_t *topo)
 	topo->cache_line_size  = 0;
 	topo->smt_enabled      = 0;
 	topo->l3_count         = 0;
-    topo->initialized      = 1;
+    	topo->initialized      = 1;
 
 	/* First characteristics */
 	topology_getid(topo);
+
 
 	/* Number of CPUs */
 	do {
@@ -300,6 +369,10 @@ state_t topology_init(topology_t *topo)
 
     topology_apicid(topo);
 	topology_watchdog(topo);
+
+	topo->TDP_cpu = get_TDP(topo);
+	get_brand(topo);
+
 	topology_copy(&topo_static, topo);
 
 	return EAR_SUCCESS;
@@ -327,10 +400,14 @@ state_t topology_close(topology_t *topo)
     	"l3_count         : %d\n" \
 		"vendor           : %d\n" \
 		"family           : %d\n" \
+		"model            : %x\n" \
+		"stepping         : %x\n" \
 		"gpr_count        : %d\n" \
 		"gpr_bits         : %d\n" \
 		"nmi_watchdog     : %d\n" \
 		"cpu_freq         : %lu\n" \
+		"brand            : %s\n" \
+		"TDP              : %d\n" \
 	, \
 		topo->cpu_count, \
 		topo->socket_count, \
@@ -339,10 +416,14 @@ state_t topology_close(topology_t *topo)
 		topo->l3_count, \
 		topo->vendor, \
 		topo->family, \
+		topo->model, \
+		topo->stepping, \
 		topo->gpr_count, \
 		topo->gpr_bits, \
 		topo->nmi_watchdog, \
-		topo->cpu_freq);
+		topo->cpu_freq, \
+		topo->brand, \
+		topo->TDP_cpu);
 
 state_t topology_print(topology_t *topo, int fd)
 {
