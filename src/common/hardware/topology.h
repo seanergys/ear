@@ -98,6 +98,7 @@ typedef struct topology_s
 	int nmi_watchdog;	// NMI watdog enabled.
     int apicids_found;  // List of CPUs ApicId's found.
     int initialized;    // 1 if the topology is initialized
+	ulong cpu_freq;
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);

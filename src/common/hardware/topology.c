@@ -208,6 +208,18 @@ static void topology_apicid(topology_t *topo)
                 topo->cpus[cpu].apicid = atoi(twop);
                 ++cpu;
             }
+            if (strcmp(line,"model name") != -1){
+                char *GHz_str ;
+                if ((twop = strchr(line, '@')) != NULL) {
+                        twop++;
+                        while (*twop == ' ') twop++;
+                        GHz_str = twop;
+                        while (*twop != 'G') twop++;
+                        *twop = '\0';
+                        topo->cpu_freq = atof(GHz_str)*1000000;
+                }
+            }
+
         }
     }
     topo->apicids_found = (cpu == topo->cpu_count);
@@ -318,6 +330,7 @@ state_t topology_close(topology_t *topo)
 		"gpr_count        : %d\n" \
 		"gpr_bits         : %d\n" \
 		"nmi_watchdog     : %d\n" \
+		"cpu_freq         : %lu\n" \
 	, \
 		topo->cpu_count, \
 		topo->socket_count, \
@@ -328,7 +341,8 @@ state_t topology_close(topology_t *topo)
 		topo->family, \
 		topo->gpr_count, \
 		topo->gpr_bits, \
-		topo->nmi_watchdog);
+		topo->nmi_watchdog, \
+		topo->cpu_freq);
 
 state_t topology_print(topology_t *topo, int fd)
 {
@@ -388,4 +402,24 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 
 	return EAR_SUCCESS;
 }
+
+//#define TOPO_TEST 1
+#ifdef TOPO_TEST
+int main(int *argc, char *argv[])
+{
+        topology_t t;
+        ulong f = 0;
+        uint boost;
+        topology_init(&t);
+        if (t.cpu_freq == 0){
+                topology_freq_getbase(0, &f);
+                if (f == 0) cpufreq_get_base(&t, &f);
+                if (f != 0 ) t.cpu_freq = f;
+        }
+        topology_print(&t, 1);
+        cpufreq_get_boost_enabled(&t, &boost);
+        fprintf(stdout, "Boost %u\n", boost);
+
+}
+#endif
 

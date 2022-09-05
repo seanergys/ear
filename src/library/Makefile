@@ -1,6 +1,6 @@
 # If USER_TEST is set to 1, any user cam execute the hacks with the library.
 # TODO: EARL_LIGHT option
-CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DEARL_LIGHT=0 -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DEARL_LIGHT=1 -DUSER_TEST=0 $(CONSTANTS) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 ifeq ($(FEAT_MPI_API), 0)
