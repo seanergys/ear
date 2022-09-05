@@ -10,6 +10,7 @@ m4_include([m4/ac_pgsql.m4])
 m4_include([m4/ac_mysql.m4])
 m4_include([m4/ac_slurm.m4])
 m4_include([m4/ac_cuda.m4])
+m4_include([m4/ac_cupti.m4])
 m4_include([m4/ac_pbs.m4])
 m4_include([m4/ac_gsl.m4])
 
@@ -37,6 +38,7 @@ AX_BEFORE_FEATURES
 ############
 
 X_AC_CUDA
+X_AC_CUPTI
 X_AC_FREEIPMI
 X_AC_GSL
 X_AC_LIKWID
