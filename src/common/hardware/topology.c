@@ -208,7 +208,8 @@ static void topology_apicid(topology_t *topo)
                 topo->cpus[cpu].apicid = atoi(twop);
                 ++cpu;
             }
-            if (strcmp(line,"model name") != -1){
+         }
+         if (strncmp(line,"model name", 10) == 0){
                 char *GHz_str ;
                 if ((twop = strchr(line, '@')) != NULL) {
                         twop++;
@@ -218,9 +219,8 @@ static void topology_apicid(topology_t *topo)
                         *twop = '\0';
                         topo->cpu_freq = atof(GHz_str)*1000000;
                 }
-            }
+         }
 
-        }
     }
     topo->apicids_found = (cpu == topo->cpu_count);
     fclose(cpuinfo);
