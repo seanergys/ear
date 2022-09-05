@@ -208,17 +208,13 @@ static state_t get_brand(topology_t *topo)
 
 static uint TPD_BROADWELL_X(topology_t *topo)
 {
-	switch	(topo->eax){
-		case Intel_Xeon_E5_2686_V4:return 145;
-	}
+	if (strstr(topo->brand,"E5-2686 v4") != NULL) return 145;
 	return 100;
 	
 }
 static uint TDP_SKYLAKE_X(topology_t *topo)
 {
-	switch (topo->eax){
-		case Intel_Xeon_Platinum_8175M: return 125;
-	}
+	if (strstr(topo->brand,"Platinum 8175M") != NULL) return 125;
 	return 150;
 }
 static uint TDP_ICELAKE_X(topology_t *topo)
@@ -370,8 +366,8 @@ state_t topology_init(topology_t *topo)
     topology_apicid(topo);
 	topology_watchdog(topo);
 
-	topo->TDP_cpu = get_TDP(topo);
 	get_brand(topo);
+	topo->TDP_cpu = get_TDP(topo);
 
 	topology_copy(&topo_static, topo);
 
@@ -465,6 +461,7 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 	sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
 	if ((fd = open(path, O_RDONLY)) < 0)
 	{
+		if (*freq_base == 0) *freq_base = topo_static.cpu_freq;
 		*freq_base = 1000000LU;
     	return EAR_ERROR;
 	}
@@ -480,6 +477,7 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 	}
 
 	close(fd);
+	if (*freq_base == 0) *freq_base = topo_static.cpu_freq;
 
 	return EAR_SUCCESS;
 }

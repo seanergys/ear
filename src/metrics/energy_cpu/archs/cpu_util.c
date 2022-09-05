@@ -20,12 +20,13 @@
 #include <common/hardware/topology.h>
 #include <metrics/energy_cpu/archs/dummy.h>
 #include <common/system/time.h>
+#include <common/system/loadavg.h>
 
-static uint socket_count;
+static uint socket_count, cpu_count;
 static ulong   freq_base;
 static topology_t cpu_util_topo;
 static timestamp last;
-state_t energy_cpu_dummy_load(topology_t *topo)
+state_t energy_cpu_util_load(topology_t *topo)
 {
 	if (socket_count == 0) {
 		if (topo->socket_count > 0) {
@@ -39,18 +40,19 @@ state_t energy_cpu_dummy_load(topology_t *topo)
 	return EAR_SUCCESS;
 }
 
-state_t energy_cpu_dummy_init(ctx_t *c)
+state_t energy_cpu_util_init(ctx_t *c)
 {
+	timestamp_getfast(&last);
 	return EAR_SUCCESS;
 }
 
-state_t energy_cpu_dummy_dispose(ctx_t *c)
+state_t energy_cpu_util_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
 }
 
 // Data
-state_t energy_cpu_dummy_count_devices(ctx_t *c, uint *count)
+state_t energy_cpu_util_count_devices(ctx_t *c, uint *count)
 {
 	if (count != NULL) {
 		*count = socket_count;
@@ -59,7 +61,7 @@ state_t energy_cpu_dummy_count_devices(ctx_t *c, uint *count)
 }
 
 // Getters
-state_t energy_cpu_dummy_read(ctx_t *c, ullong *values)
+state_t energy_cpu_util_read(ctx_t *c, ullong *values)
 {
 	timestamp curr;
 	ulong elapsed;
@@ -70,17 +72,33 @@ state_t energy_cpu_dummy_read(ctx_t *c, ullong *values)
 	}
 	float min, Vmin, XVmin, ratio;
 	uint runnable, total, lastpid;
-	ulong curr, total;
 
 	timestamp_getfast(&curr);
 	elapsed = timestamp_diff(&curr, &last,TIME_MSECS);
 
 	loadavg(&min,&Vmin,&XVmin,&runnable,&total,&lastpid);
 
+	debug("Average utilization %f", min);
+
 	ratio = (float)cpu_util_topo.cpu_count / min;
-	float CPU_Power = cpu_util_topo.TDP_cpu * ear_min(1.0, ratio);
+	
+	debug("Ratio %s", ratio);
+	float CPU_Power = (cpu_util_topo.TDP_cpu * socket_count) * ear_min(1.0, ratio);
 	
 	ullong CPU_energy = CPU_Power * elapsed;
+
+	debug("Estimated power %f energy %llu elapsed %lu", CPU_Power, CPU_energy, elapsed);
+
+	/* DRAM is 0 */
+	for (uint s = 0; s < socket_count; s++){
+		values[s] = 0;
+	}
+	/* CPU */
+	for (uint s = socket_count ; s < socket_count * 2; s++){
+		values[s] = CPU_energy / socket_count;
+		debug("Energy[%u] = %llu", s, values[ s]);
+	}
+	
 
 	last = curr;
 

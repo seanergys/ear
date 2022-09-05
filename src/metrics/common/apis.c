@@ -52,4 +52,5 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_CUPTI   ) { snprintf(buffer, size, "CUPTI"   ); }
     else if (api == API_ONEAPI  ) { snprintf(buffer, size, "ONEAPI"  ); }
     else if (api == API_ISST    ) { snprintf(buffer, size, "INTELSST"); }
+    else if (api == API_CPUMODEL) { snprintf(buffer, size, "CPUMODEL"); }
 }

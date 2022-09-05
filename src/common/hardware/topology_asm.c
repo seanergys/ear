@@ -14,21 +14,22 @@
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
 * and COPYING.EPL files.
 */
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <common/hardware/ear_cpuid.h>
 #include <common/hardware/topology_asm.h>
 
+/* Source http://www.intel.com/Assets/PDF/appnote/241618.pdf */
 static void topology_getid_x86(topology_t *topo)
 {
     cpuid_regs_t r;
     int buffer[4];
     int stepping = 0;
+    int brand_index = 0;
 
     /* Vendor */
     CPUID(r,0,0);
 
-    debug("Brand index %d", r.ebx);
     buffer[0] = r.ebx;
     buffer[1] = r.edx;
     buffer[2] = r.ecx;
@@ -41,6 +42,8 @@ static void topology_getid_x86(topology_t *topo)
     debug("EAX %x", r.eax);
     buffer[0] = cpuid_getbits(r.eax, 11,  8);
     buffer[1] = cpuid_getbits(r.eax, 27, 20); // extended
+    brand_index = cpuid_getbits(r.ebx, 7, 0);
+    debug("Brand index %d", brand_index);
     stepping = cpuid_getbits(r.eax, 3, 0);
     topo->stepping = stepping;
     debug("Stepping %d", stepping);

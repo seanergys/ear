@@ -262,13 +262,14 @@ state_t eard_dummy_coefficients(char *ear_tmp, uint ID)
 
 state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 {
-				ulong * frequencies, *dummy_frequencies;
+				ulong * frequencies, *dummy_frequencies, freq_base;
 				int ps;
 				ps = 1;
 				int size = ps * sizeof(ulong);
 				frequencies = (ulong *) malloc(size);
 				check_null(frequencies, "Error allocating memory for frequencies %s", " ");	
-				frequencies[0] = 2600000;
+				topology_freq_getbase(0, &freq_base);
+				frequencies[0] = freq_base;
 
 				get_frequencies_path(ear_tmp, path);
 				dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
