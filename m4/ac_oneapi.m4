@@ -38,7 +38,6 @@ AC_DEFUN([X_AC_ONEAPI],
 		[oneapi],
 		AS_HELP_STRING(--with-oneapi=PATH,Specify path to OneAPI Level Zero installation),
 		[
-		echo WITH VAL $withval
 			_x_ac_oneapi_dirs_root="$withval"
 			_x_ac_oneapi_custom="yes"
 		]
