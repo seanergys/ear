@@ -14,7 +14,7 @@
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
 * and COPYING.EPL files.
 */
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <common/hardware/ear_cpuid.h>
 #include <common/hardware/topology_asm.h>

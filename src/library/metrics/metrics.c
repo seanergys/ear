@@ -984,7 +984,7 @@ static int metrics_partial_stop(uint where)
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(2, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
-			verbose_master(1, "CPUFreq average is %.2f GHz", (float) cpufreq_avrg[LOO] / 1000000.0);
+			//verbose_master(1, "CPUFreq average is %.2f GHz", (float) cpufreq_avrg[LOO] / 1000000.0);
 		}
 		// Simple verbose
 		if (verb_level >= 3) {
@@ -1927,6 +1927,7 @@ state_t metrics_new_iteration(signature_t *sig)
  * computes per job and computes the accumulated. */
 void compute_per_process_and_job_metrics(signature_t *dest)
 {
+
 	if (master) {
 		update_earl_node_mgr_info();
 		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info);

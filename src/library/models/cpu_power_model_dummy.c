@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -104,6 +104,10 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 
 		}
 	}
+	#if EARL_LIGHT
+	debug("There are %d jobs in node ", node_process);
+	#endif
+
 
 	uint lp = 0;
 	int cj = 0;
@@ -146,9 +150,24 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
     GPU_power +=  lsig->gpu_sig.gpu_data[gid].GPU_power;
   }
   #endif
-  CPU_power -= GPU_power;
+	#if EARL_LIGHT	
+	if (CPU_power == 0) CPU_power = lsig->PCK_power + lsig->DRAM_power + GPU_power;
+	#endif
+  	CPU_power -= GPU_power;
 
 	debug("Baseline CPU power %lf", CPU_power);
+	double GPU_process_power = 0;
+
+	if (node_process == 0){
+		for (uint lp = 0; lp < data->num_processes; lp ++){
+			sig[lp].sig.DC_power	= (CPU_power + GPU_power) / data->num_processes;
+			sig[lp].sig.PCK_power   = lsig->PCK_power / data->num_processes;
+			debug("process[%u] DC power %f PCK power %f", lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
+		}
+		data->job_signature.DC_power  = CPU_power + GPU_power;
+		data->job_signature.PCK_power = CPU_power;
+		return EAR_SUCCESS;
+	}
 
 	/* Per job in node loop */
 	lp = 0;
@@ -168,12 +187,12 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 
 
 	job_power_ratio = 0.0;
-	double GPU_process_power = 0;
 	lp = 0;
 	for (uint proc =0; proc < node_process; proc++){
 	  if ((job_in_process[proc] == node_mgr_index) && (power_estimations[proc] > 0)){ 
 		  job_power_ratio += power_estimations[proc]/total_power_estimated;
 		  process_power_ratio[proc] = power_estimations[proc]/total_power_estimated;
+		  debug("ID[%u] Ratio %f power estimation %f total %f process ratio %f", proc, job_power_ratio, power_estimations[proc], total_power_estimated, process_power_ratio[proc]);
 			if (GPU_power) GPU_process_power = GPU_power / data->num_processes;
 			sig[lp].sig.DC_power = (CPU_power * process_power_ratio[proc]) + GPU_process_power; // what about GPU power in processes	
 			sig[lp].sig.PCK_power = process_power_ratio[proc] * lsig->PCK_power;

@@ -29,7 +29,7 @@ state_t mgt_cpufreq_dummy_load(topology_t *tp_in, mgt_ps_ops_t *ops)
 {
 	cpu_count = tp_in->cpu_count;
 	// Base freq
-	topology_freq_getbase(tp_in, (ulong *) &base_freq);
+	topology_freq_getbase(0, (ulong *) &base_freq);
 	if (base_freq == 0LLU) {
 	#if EARL_LIGHT
 		base_freq = tp_in->cpu_freq;
