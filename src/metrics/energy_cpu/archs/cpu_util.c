@@ -14,9 +14,13 @@
  * * use and EPL-1.0 license for commercial use. Full text of both licenses can be
  * * found in COPYING.BSD and COPYING.EPL files.
  * */
-
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <stdlib.h>
+
+#include <common/states.h>
+#include <common/output/debug.h>
+
 #include <common/hardware/topology.h>
 #include <metrics/energy_cpu/archs/dummy.h>
 #include <common/system/time.h>
