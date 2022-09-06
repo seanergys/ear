@@ -7,6 +7,7 @@ export FEAT_GPU_OPT
 export FEAT_AMD_OSCPUFREQ
 export FEAT_DB_MYSQL
 export FEAT_DB_PSQL    
+export FEAT_EARL_LIGHT    
 export CC
 export CC_FLAGS
 export MPICC

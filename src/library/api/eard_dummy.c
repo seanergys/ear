@@ -140,11 +140,9 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 				verbose_master(2, "Looking for node conf. Nodename %s", nodename);
 				dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
 				check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
-				#if 0
 				if (dummy_node_conf != NULL){
 					print_my_node_conf(dummy_node_conf);
 				}
-				#endif
 
 				verbose_master(2, "Dummy cluster_conf done");
 
@@ -158,6 +156,7 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
   			policy_conf_t   * my_policy;
 			ulong             freq_base;
 			topology_freq_getbase(0, &freq_base);
+			verbose_master(1,"Using freq_base %lu", freq_base);
 
 				verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	
   			my_policy = get_my_policy_conf(dummy_node_conf,dummy_cc.default_policy);
@@ -270,6 +269,7 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 				check_null(frequencies, "Error allocating memory for frequencies %s", " ");	
 				topology_freq_getbase(0, &freq_base);
 				frequencies[0] = freq_base;
+				verbose_master(1,"Using freq_base %lu", freq_base);
 
 				get_frequencies_path(ear_tmp, path);
 				dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);

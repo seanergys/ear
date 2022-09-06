@@ -49,6 +49,8 @@ state_t cpufreq_load(topology_t *tp, int eard)
 	}
 	debug("Not loaded INTEL63: %s (%d)", state_msg, s);
 	if (state_ok(s = cpufreq_dummy_status(tp, &ops))) {}
+	debug("Loaded metrics/cpufreq/DUMMY %p", ops.data_diff);
+	
 	cpu_count = tp->cpu_count;
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;
@@ -77,6 +79,7 @@ state_t cpufreq_count_devices(ctx_t *c, uint *dev_count)
 
 state_t cpufreq_read(ctx_t *c, cpufreq_t *ef)
 {
+	debug("cpufreq_read");
 	preturn(ops.read, c, ef);
 }
 
@@ -101,7 +104,11 @@ state_t cpufreq_read_copy(ctx_t *c, cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, 
 // Helpers
 state_t cpufreq_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
-	preturn(ops.data_diff, f2, f1, freqs, average);
+	debug("cpufreq_data_diff %p", ops.data_diff);
+	if (ops.data_diff != NULL){
+		return ops.data_diff(f2, f1, freqs, average);
+	}
+	return EAR_SUCCESS;
 }
 
 state_t cpufreq_data_alloc(cpufreq_t **f, ulong **freqs)

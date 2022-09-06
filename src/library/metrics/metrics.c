@@ -984,7 +984,7 @@ static int metrics_partial_stop(uint where)
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(2, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
-			//verbose_master(2, "%sPARTIAL STOP%s CPUFreq average is %.2f GHz", COL_BLU, COL_CLR, (float) cpufreq_avrg[LOO] / 1000000.0);
+			verbose_master(1, "CPUFreq average is %.2f GHz", (float) cpufreq_avrg[LOO] / 1000000.0);
 		}
 		// Simple verbose
 		if (verb_level >= 3) {
@@ -1224,8 +1224,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		metrics->PCK_power   = energy_cpu_compute_power(metrics->PCK_power, time_s);
 		metrics->DRAM_power  = energy_cpu_compute_power(metrics->DRAM_power, time_s);
 		metrics->EDP = time_s * time_s * metrics->DC_power;
+		#if EARL_LIGHT
+		verbose_master(1,"computing dram power %.2lf", metrics->DRAM_power);
+		verbose_master(1,"computing pck power %.2lf", metrics->PCK_power);
+		#else
 		debug("computing dram power %.2lf", metrics->DRAM_power);
 		debug("computing pck power %.2lf", metrics->PCK_power);
+		#endif
 
 #if USE_GPUS
                     /* GPUS */

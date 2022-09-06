@@ -15,10 +15,13 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
 #include <stdlib.h>
+#include <common/output/debug.h>
 #include <metrics/cpufreq/archs/dummy.h>
 
 static uint cpu_count;
+static topology_t my_topo;
 
 state_t cpufreq_dummy_status(topology_t *tp, cpufreq_ops_t *ops)
 {
@@ -27,7 +30,8 @@ state_t cpufreq_dummy_status(topology_t *tp, cpufreq_ops_t *ops)
 	replace_ops(ops->count_devices, cpufreq_dummy_count_devices);
 	replace_ops(ops->read,      cpufreq_dummy_read);
 	replace_ops(ops->data_diff, cpufreq_dummy_data_diff);
-    cpu_count = tp->cpu_count;
+    	cpu_count = tp->cpu_count;
+	topology_copy(&my_topo, tp);
 	return EAR_SUCCESS;
 }
 
@@ -50,21 +54,45 @@ state_t cpufreq_dummy_count_devices(ctx_t *c, uint *cpu_count_in)
 state_t cpufreq_dummy_read(ctx_t *c, cpufreq_t *f)
 {
 	int cpu;
+	debug("cpufreq_dummy_readi cpus=%d", cpu_count);
 	for (cpu = 0; cpu < cpu_count; ++cpu) {
+	#if EARL_LIGHT
+		f[cpu].freq_aperf = my_topo.cpu_freq;
+		f[cpu].freq_mperf = my_topo.cpu_freq;
+		f[cpu].error = 0;
+		debug("aperf %lu mperf %lu", f[cpu].freq_aperf, f[cpu].freq_mperf);
+	#else
 		f[cpu].freq_aperf = 0LU;
 		f[cpu].freq_mperf = 0LU;
 		f[cpu].error = 1;
+	#endif
 	}
 	return EAR_SUCCESS;
 }
 
 state_t cpufreq_dummy_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
+	debug("cpufreq_dummy_data_diff cpus %d light=%d", cpu_count,EARL_LIGHT);
+	if ((freqs == NULL) || (average == NULL)){
+		if (freqs == NULL) {debug("freqs are null");}
+		if (average == NULL) {debug("average is null");}
+	}
 	if (freqs != NULL) {
 		memset(freqs, 0, cpu_count * sizeof(ulong));
+		#if EARL_LIGHT
+		for (uint c = 0; c < cpu_count; c++){
+			freqs[c] = my_topo.cpu_freq;
+			debug("Met/cpufreq[%u] = %lu", c, freqs[c]);
+		}
+		#endif
+		
 	}
 	if (average != NULL) {
 		*average = 0;
+		#if EARL_LIGHT
+		*average = my_topo.cpu_freq;
+		#endif
 	}
+	debug("Average cpufreq %lu", *average);
 	return EAR_SUCCESS;
 }

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -81,7 +81,10 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 
 
-	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
+	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)){ 
+		debug("Warning, cpupower model cannot be applied");
+		return EAR_SUCCESS;
+	}
 
 	
 	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */

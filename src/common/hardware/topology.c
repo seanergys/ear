@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -457,12 +458,17 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 {
 	char path[1024];
 	int fd;
+	*freq_base = 0;
 
 	sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
 	if ((fd = open(path, O_RDONLY)) < 0)
 	{
+		#if EARL_LIGHT
 		if (*freq_base == 0) *freq_base = topo_static.cpu_freq;
+		return EAR_SUCCESS;
+		#else
 		*freq_base = 1000000LU;
+		#endif
     	return EAR_ERROR;
 	}
 
@@ -478,6 +484,8 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 
 	close(fd);
 	if (*freq_base == 0) *freq_base = topo_static.cpu_freq;
+
+	debug("FREQ base detected in topology %lu", *freq_base);
 
 	return EAR_SUCCESS;
 }
