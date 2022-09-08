@@ -14,14 +14,16 @@
  * * use and EPL-1.0 license for commercial use. Full text of both licenses can be
  * * found in COPYING.BSD and COPYING.EPL files.
  * */
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 
 #include <common/states.h>
 #include <common/output/debug.h>
 
 #include <common/hardware/topology.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/energy_cpu/archs/dummy.h>
 #include <common/system/time.h>
 #include <common/system/loadavg.h>
@@ -31,6 +33,7 @@ static ulong   freq_base;
 static topology_t cpu_util_topo;
 static timestamp last;
 static ullong *last_energy_reported;
+#define NUM_EV NUM_PACKS
 state_t energy_cpu_util_load(topology_t *topo)
 {
 	if (socket_count == 0) {
@@ -42,7 +45,7 @@ state_t energy_cpu_util_load(topology_t *topo)
 		}
 	}
 	topology_copy(&cpu_util_topo , topo);
-	last_energy_reported = (ullong *)calloc(socket_count, sizeof(ullong));
+	last_energy_reported = (ullong *)calloc(socket_count * NUM_EV, sizeof(ullong));
 	return EAR_SUCCESS;
 }
 
@@ -72,6 +75,10 @@ state_t energy_cpu_util_count_devices(ctx_t *c, uint *count)
 state_t energy_cpu_util_read(ctx_t *c, ullong *values)
 {
 	timestamp curr;
+	struct rusage my_usage;
+
+
+	getrusage(RUSAGE_SELF, &my_usage);
 	ulong elapsed;
 	if (values != NULL) {
 		if (memset((void *) values, 0, NUM_PACKS*sizeof(ullong)*socket_count) != values) {
@@ -97,16 +104,23 @@ state_t energy_cpu_util_read(ctx_t *c, ullong *values)
 
 	debug("Estimated power %f energy %llu elapsed %lu ratio %f", CPU_Power, CPU_energy, elapsed, ratio);
 
+	ulong utime_usec, stime_usec;
+	utime_usec = my_usage.ru_utime.tv_sec*1000000 + my_usage.ru_utime.tv_usec;
+	stime_usec = my_usage.ru_stime.tv_sec*1000000 + my_usage.ru_stime.tv_usec;
+
+	debug("Usage %%User time %f page faults %ld BI %ld BO %ld Total IPC %ld", (float)(utime_usec) / (float) (stime_usec + utime_usec),\
+	my_usage.ru_minflt + my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock, my_usage.ru_msgsnd + my_usage.ru_msgrcv); 
+
 	/* DRAM is 0 */
 	for (uint s = 0; s < socket_count; s++){
 		values[s] = 0;
 	}
 	/* CPU */
-	for (uint s = socket_count ; s < socket_count * 2; s++){
-		values[s] = (CPU_energy / socket_count) + last_energy_reported[s - socket_count];
-		debug("Energy[%u] = %llu", s, values[ s]);
+	for (uint s = socket_count ; s < (socket_count * NUM_EV); s++){
+		values[s] = (CPU_energy / socket_count) + last_energy_reported[s];
+		debug("Energy[%u] = %llu", s, values[s]);
 		/* last_energy_reported is the accumulated energy */
-		last_energy_reported[s - socket_count] += values[s];
+		last_energy_reported[s] = values[s];
 	}
 	
 

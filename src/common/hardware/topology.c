@@ -25,8 +25,11 @@
 #include <common/system/file.h>
 #include <common/output/debug.h>
 #include <common/hardware/topology_asm.h>
+#include <common/config/config_env.h>
 
 static topology_t topo_static;
+static char *flag_cpu_tdp;
+static uint custom_cpu_tdp = 0;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val)
 {
@@ -207,29 +210,42 @@ static state_t get_brand(topology_t *topo)
     strcpy(topo->brand,brand);	
 }
 
+
 static uint TPD_BROADWELL_X(topology_t *topo)
 {
+	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_BOARDWELL_TDP;
 	if (strstr(topo->brand,"E5-2686 v4") != NULL) return 145;
-	return 100;
+	return custom_cpu_tdp;
 	
 }
 static uint TDP_SKYLAKE_X(topology_t *topo)
 {
+	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_SKYLAKE_TDP;
 	if (strstr(topo->brand,"Platinum 8175M") != NULL) return 125;
-	return 150;
+	return custom_cpu_tdp;
 }
 static uint TDP_ICELAKE_X(topology_t *topo)
 {
+	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_ICELAKE_TDP;
+	return custom_cpu_tdp;
 }
 static uint TDP_ZEN(topology_t *topo)
 {
+	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_ZEN_TDP;
+	return custom_cpu_tdp;
 }
 static uint TDP_ZEN3(topology_t *topo)
 {
+	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_ZEN3_TDP;
+	return custom_cpu_tdp;
 }
 
 static uint get_TDP(topology_t *topo)
 {
+	flag_cpu_tdp = getenv(FLAG_CPU_TDP);
+	if (flag_cpu_tdp != NULL){ 
+		custom_cpu_tdp = (uint)atoi(flag_cpu_tdp);
+	}
 	switch (topo->vendor){
 		case VENDOR_INTEL:
 			switch(topo->model){

@@ -82,17 +82,23 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     strtok(nodename, ".");
 
     csv_log_file_env = getenv(VAR_OPT_USDB);
+    
     /* Loop filename is automatically generated */
     if (csv_log_file_env != NULL){
+	debug("Using PATH :%s", csv_log_file_env);
 				if (file_is_directory(csv_log_file_env) || (csv_log_file_env[strlen(csv_log_file_env) - 1] == '/')){ 
 					debug("%s is directory", csv_log_file_env);
-					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/%s.heroes",csv_log_file_env,nodename);
+					//xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/%s.heroes",csv_log_file_env,nodename);
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/heroes",csv_log_file_env);
 				} else{ 
 					debug("%s is NOT a directory", csv_log_file_env);
-					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
+					//xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.heroes",csv_log_file_env);
 				}
     }else{
-        xsnprintf(csv_log_file,sizeof(csv_log_file),"./%s.heroes",nodename);
+	debug("PATH not specified using default");
+        //xsnprintf(csv_log_file,sizeof(csv_log_file),"./%s.heroes",nodename);
+        xsnprintf(csv_log_file,sizeof(csv_log_file),"./heroes");
     }
     xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
     xstrncat(csv_log_file,".csv",sizeof(csv_log_file));

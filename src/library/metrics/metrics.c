@@ -601,6 +601,9 @@ static void metrics_global_start()
             verbose_master(2, "%sWarning%s Node total I/O could not be"
                     " read (%s)." , COL_RED, COL_CLR, state_msg);
         }
+	/* RAPL energy metrics */
+	energy_cpu_read(no_ctx, aux_rapl);
+	debug("energy_cpu_read ready");
 	}
 
 	/* Per process IO data */
@@ -616,9 +619,6 @@ static void metrics_global_start()
 		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
 	}
 
-	/* RAPL energy metrics */
-	energy_cpu_read(no_ctx, aux_rapl);
-	debug("energy_cpu_read ready");
 
 	bwidth_read(no_ctx, bwidth_read1[APP]);
 	debug("bwidth_read ready");
@@ -900,6 +900,7 @@ static int metrics_partial_stop(uint where)
 	debug("start energy str %s", start_energy_str);
 	debug("end energy str %s", end_energy_str);
 
+
 	/* If EARD is present, we wait until the power is computed */
 	if ((where==SIG_END) && (c_energy==0) && (master)) {
 		debug("EAR_NOT_READY because of accumulated energy %lu\n",c_energy);
@@ -1023,6 +1024,17 @@ static int metrics_partial_stop(uint where)
 					" no I/O data for this loop.", COL_RED, COL_CLR, state_msg);
 		}
 
+		/* Only the master read RAPL because is not per-process metric */
+		/* RAPL energy */
+		energy_cpu_read(no_ctx, aux_rapl);
+		// We read acuumulated energy
+		energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
+	
+		// Manual RAPL accumulation
+		for (int i = 0; i < rapl_elements; i++) {
+			metrics_rapl[APP][i] += metrics_rapl[LOO][i];
+			debug("energy CPU: %llu", metrics_rapl[LOO][i]);
+		}
 
 	} //master_rank (metrics collected by node_master)
 
@@ -1030,16 +1042,6 @@ static int metrics_partial_stop(uint where)
 	 * diff_uncores(values,values_end,values_begin,num_counters);
 	 * copy_uncores(values_begin,values_end,num_counters);
 	 */
-	/* RAPL energy */
-	energy_cpu_read(no_ctx, aux_rapl);
-	// We read acuumulated energy
-	energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
-
-	// Manual RAPL accumulation
-	for (int i = 0; i < rapl_elements; i++) {
-		metrics_rapl[APP][i] += metrics_rapl[LOO][i];
-		debug("energy CPU: %llu", metrics_rapl[LOO][i]);
-	}
 	// New metrics
 	bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], NULL, NULL);
 	flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
@@ -1207,7 +1209,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
 		/* Power: Node, DRAM, PCK */
-		metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
+		metrics->DC_power = 0;
+		if (acum_ipmi[sign_app_loop_idx]){
+			metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
+		}
 
 		/* DRAM and PCK PENDING for Njobs */
 		metrics->PCK_power=0;
@@ -1226,12 +1231,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		metrics->EDP = time_s * time_s * metrics->DC_power;
 		#if EARL_LIGHT
 		verbose_master(1,"computing dram power %.2lf", metrics->DRAM_power);
-		verbose_master(1,"computing pck power %.2lf", metrics->PCK_power);
+		verbose_master(1,"computing pck power %.2lf time %lf", metrics->PCK_power, time_s);
 		#else
 		debug("computing dram power %.2lf", metrics->DRAM_power);
 		debug("computing pck power %.2lf", metrics->PCK_power);
 		#endif
 
+		float total_gpu_power = 0;
 #if USE_GPUS
                     /* GPUS */
                     metrics->gpu_sig.num_gpus = met_gpu.devs_count;
@@ -1239,15 +1245,21 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
                         metrics->gpu_sig.num_gpus = 0;
                     }
                     verbose_master(2, "We have %d GPUS ", metrics->gpu_sig.num_gpus);
-
                     for (int p=0;p<metrics->gpu_sig.num_gpus;p++){
                         metrics->gpu_sig.gpu_data[p].GPU_power    = gpu_metrics_diff[sign_app_loop_idx][p].power_w;
                         metrics->gpu_sig.gpu_data[p].GPU_freq     = gpu_metrics_diff[sign_app_loop_idx][p].freq_gpu;
                         metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
                         metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
                         metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
+			total_gpu_power + = metrics->gpu_sig.gpu_data[p].GPU_power;
                     }	
 #endif
+		#if EARL_LIGHT
+		if (metrics->DC_power == 0){
+			metrics->DC_power = total_gpu_power + metrics->DRAM_power + metrics->PCK_power;
+			verbose_master(1,"Estimated power %lf", metrics->DC_power);
+		}
+		#endif
 	} else {
 		copy_node_data(metrics,&lib_shared_region->node_signature);
 	}

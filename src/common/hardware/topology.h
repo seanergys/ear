@@ -46,6 +46,14 @@
 #define VENDOR_ARM                  2
 
 
+#define DEF_BOARDWELL_TDP 	100
+#define DEF_SKYLAKE_TDP		150
+#define DEF_ICELAKE_TDP		175
+#define DEF_ZEN_TDP		150
+#define DEF_ZEN3_TDP		200
+
+
+
 #define Intel_Xeon_Platinum_8175M 	0x50654
 #define Intel_Xeon_E5_2686_V4 		0x406F1
 

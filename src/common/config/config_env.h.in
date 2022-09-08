@@ -110,6 +110,8 @@
 #define FLAG_MPI_OPT                 SCHED_PREFIX "EAR_MPI_OPTIMIZATION"   // Enables/Disables MPI optimization when supported by policies
 #define FLAG_MIN_USEC_MPI            SCHED_PREFIX "EAR_MIN_USEC_MPI_OPT"   // Minimum time to apply MPI optimization
 
+/* Hardware info */
+#define FLAG_CPU_TDP		     SCHED_PREFIX "EAR_CPU_TDP"            // CPU TPD for models not yet supported
 
 
 #define FLAG_DISABLE_CNTD            SCHED_PREFIX "EAR_DISABLE_CNTD"       // disables automatic CNTD loadin
