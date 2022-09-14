@@ -158,8 +158,8 @@ typedef enum
 #define remove_blocking(call)    (call&~Only_Blocking)
 #define is_recv(call)            ((call == Only_Receive) || (call == Only_SendRecv))
 #define is_barrier(call)         (call == Only_Barrier)
-#define is_gather(call)					 (call == _Gather)
-#define is_wait(call)            (call == _Wait);
+#define is_gather(call)			 (call == Only_Gather)
+#define is_wait(call)            (call == Only_Wait);
 
 
 int is_mpi_enabled();
