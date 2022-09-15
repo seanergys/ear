@@ -32,6 +32,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <common/colors.h>
+#include <sys/wait.h>
+
 
 #include <common/config.h>
 #include <common/system/sockets.h>
@@ -116,6 +118,53 @@ static double last_power_reported = 0;
 static ulong  last_node_power     = 0;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
+
+
+/***************** Job verification ***********************/
+static int is_running(char * status_text)
+{
+  if (strlen(status_text) == 0) return 0;
+  if (strstr(status_text, "COMPLETED") != NULL) return 0;
+  if (strstr(status_text, "FAILED")    != NULL) return 0;
+  if (strstr(status_text, "EXITED")    != NULL) return 0;
+  if (strstr(status_text, "TIMEOUT")   != NULL) return 0;
+  if (strstr(status_text, "CANCELLED") != NULL) return 0;
+  return 1;
+}
+
+static int read_word(int fd, char * buff, int limit)
+{
+  int t = 0, r = 0;
+  while(((r = read(fd, &buff[t], (limit-t))) > 0) && (t < limit)){
+    t += r;
+  }
+  return t;
+}
+
+
+static int is_job_running(char *tmp,int jobid)
+{
+  /* sacct -j 1512221.4294967291 -o state -n*/
+  char path_file[GENERIC_NAME], pid_str[128], status[128];
+  int fd, size;
+
+  sprintf(path_file,"%s/jobid_status_file", tmp);
+  fd = open(path_file, O_RDWR|O_CREAT|O_TRUNC,S_IWUSR|S_IRUSR);
+  pid_t status_pid = fork();
+  if (status_pid == 0 ){
+    dup2(fd,1);
+    sprintf(pid_str,"%d.batch", jobid);
+    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) perror ("error execlp");
+    exit(1);
+   }
+   if (waitpid(status_pid,  NULL, 0) < 0 ) perror ("Error waitpid");
+   if (lseek(fd, 0 , SEEK_SET) < 0 ) perror("Error lseek");
+   size = read_word(fd, status, 128);
+   status[size] = '\0';
+   return is_running(status);
+
+}
+
 
 /***************** JOBS in NODE ***************************/
 void init_jobs_in_node()
@@ -1034,8 +1083,25 @@ void powermon_new_task(new_task_req_t *newtask)
  *
  */
 
-/* This functiono is called by dynamic_configuration thread when a new_job command arrives */
+/* This function is called to validate the jobs in the list are still alive */
+static void check_status_of_jobs(job_id current)
+{
+  powermon_app_t *pmapp; 
+  for (uint cc = 0;cc <= max_context_created; cc++){
+    if (current_ear_app[cc] != NULL){
+      pmapp = current_ear_app[cc];
+      /* No need to check the new one :) */
+      if (pmapp->app.job.id != current){
+        if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
+          verbose(VJOBPMON_BASIC, "Warning, we must clean that job");
+        }
+      }
+    } 
+  }
+}
 
+
+/* This function is called by dynamic_configuration thread when a new_job command arrives */
 void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi, uint is_job) {
     int i;
     int ccontext;
@@ -1052,6 +1118,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
     policy_conf_t *my_policy;
     ulong f;
     uint user_type;
+    if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
     verbose(VJOBPMON , "*******************");
     verbose(VJOBPMON, "%spowermon_new_job (%lu,%lu)%s", COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
     if (powermon_is_idle()) powercap_idle_to_run();
