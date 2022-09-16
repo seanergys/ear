@@ -154,7 +154,8 @@ static int is_job_running(char *tmp,int jobid)
   if (status_pid == 0 ){
     dup2(fd,1);
     sprintf(pid_str,"%d.batch", jobid);
-    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) perror ("error execlp");
+    verbose(0, "job id: %d", jobid);
+    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) verbose(0, "Error execlp"); // perror ("error execlp");
     exit(1);
    }
    if (waitpid(status_pid,  NULL, 0) < 0 ) perror ("Error waitpid");
@@ -1087,9 +1088,10 @@ void powermon_new_task(new_task_req_t *newtask)
 static void check_status_of_jobs(job_id current)
 {
   powermon_app_t *pmapp; 
-  for (uint cc = 0;cc <= max_context_created; cc++){
-    if (current_ear_app[cc] != NULL){
+  for (uint cc = 1; cc <= max_context_created; cc++) {
+    if (current_ear_app[cc] != NULL) {
       pmapp = current_ear_app[cc];
+      verbose(0, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
       /* No need to check the new one :) */
       if (pmapp->app.job.id != current){
         if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
