@@ -36,6 +36,7 @@
 
 
 #include <common/config.h>
+#include <common/config/config_sched.h>
 #include <common/system/sockets.h>
 #include <common/system/folder.h>
 #include <common/messaging/msg_conf.h>
@@ -154,12 +155,12 @@ static int is_job_running(char *tmp,int jobid)
   if (status_pid == 0 ){
     dup2(fd,1);
     sprintf(pid_str,"%d.batch", jobid);
-    verbose(0, "job id: %d", jobid);
-    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) verbose(0, "Error execlp"); // perror ("error execlp");
+    debug("job id: %d", jobid);
+    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) error( "Error execlp (%s)", strerror(errno)); // perror ("error execlp");
     exit(1);
    }
-   if (waitpid(status_pid,  NULL, 0) < 0 ) perror ("Error waitpid");
-   if (lseek(fd, 0 , SEEK_SET) < 0 ) perror("Error lseek");
+   if (waitpid(status_pid,  NULL, 0) < 0 ) error("Error waitpid (%s)", strerror(errno));
+   if (lseek(fd, 0 , SEEK_SET) < 0 ) error("Error lseek (%s)", strerror(errno));
    size = read_word(fd, status, 128);
    status[size] = '\0';
    return is_running(status);
@@ -243,7 +244,7 @@ void verbose_jobs_in_node(uint vl)
 }
 
 /****************** CONTEXT MANAGEMENT ********************/
-#define NULL_SID 4294967294
+//#define NULL_SID 4294967294
 powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 int max_context_created = 0;
 int num_contexts = 0;
@@ -1091,11 +1092,11 @@ static void check_status_of_jobs(job_id current)
   for (uint cc = 1; cc <= max_context_created; cc++) {
     if (current_ear_app[cc] != NULL) {
       pmapp = current_ear_app[cc];
-      verbose(0, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
+      verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
       /* No need to check the new one :) */
       if (pmapp->app.job.id != current){
         if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
-          verbose(VJOBPMON_BASIC, "Warning, we must clean that job");
+          verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
         }
       }
     } 

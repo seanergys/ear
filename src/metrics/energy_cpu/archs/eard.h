@@ -18,7 +18,6 @@
 
 #ifndef METRICS_ENERGY_CPU_EARD_H
 #define METRICS_ENERGY_CPU_EARD_H
-#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <unistd.h>
