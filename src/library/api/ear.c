@@ -143,6 +143,9 @@ static uint ear_loop_level;
 static int in_loop;
 static short ear_status = NO_LOOP;
 
+
+static pid_t main_pid;
+
 /* in us */
 // These variables are shared
 uint 		ear_periodic_mode = PERIODIC_MODE_OFF;
@@ -914,6 +917,10 @@ void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
 void ear_lib_sig_handler(int s)
 {
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
+        /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
+        if (cancelled || sig_shared_region[my_node_id].exited) return;
+        if (gettid() != main_pid) return;
+
 				cancelled = 1;
 				ear_finalize(EAR_CANCELLED);
 				exit(0);
@@ -946,6 +953,8 @@ void ear_init()
         timestamp start_eard_init, end_eard_init;
         timestamp_getfast(&start_eard_init);
         #endif
+
+        main_pid = gettid();
 
 
 				if (ear_lib_initialized){
@@ -1727,6 +1736,7 @@ void ear_finalize(int exit_status)
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
         verbose(1,"Finalization cost: %llu useci dynais calls %lu", elap_eard_init, dynais_calls);
         #endif
+        if (exit_status != EAR_SUCCESS) exit(exit_status);
 
 }
 
@@ -2114,6 +2124,8 @@ state_t earl_periodic_actions(void *no_arg)
 				uint new_ear_guided = ear_guided;
 
 				if (ear_whole_app) return EAR_SUCCESS;
+
+        if (cancelled || sig_shared_region[my_node_id].exited) return;
 
 
 				ear_iterations += ITERS_PER_PERIOD;
