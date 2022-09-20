@@ -176,9 +176,9 @@ int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
             int total_ips = range.end-range.start + 1;
             int it = 0;
             sec_aux_ips = calloc(total_ips, sizeof(int));
-            for (k = range.start; k <= range.end ; k++)
+            for (k = range.start; k <= range.end; k++)
             {
-                if (k < 10 && range.end > 10)
+                if (is_smaller_unit(k, range.end))
                     sprintf(aux_name, "%s0%u", range.prefix, k);
                 else
                     sprintf(aux_name, "%s%u", range.prefix, k);

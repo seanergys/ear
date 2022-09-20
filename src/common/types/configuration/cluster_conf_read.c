@@ -147,6 +147,17 @@ static void fill_policies(cluster_conf_t *conf)
     }
 }
 
+static void set_num_zeroes(node_range_t *r, int max_range)
+{
+	int tmp_end = r->end;
+	while (max_range)
+	{
+		if (tmp_end == 0) strcat(r->prefix, "0");
+		tmp_end /= 10;
+		max_range /= 10;
+	}
+}
+
 void generate_node_ranges(node_island_t *island, char *nodelist)
 {
     char *buffer_ptr;
@@ -154,11 +165,12 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
     char *token;
     char *start;
     char *next_token;
+	int i;
 
     strclean(nodelist, '\n');
     start = strtok_r(nodelist, "[", &buffer_ptr);
     token = strtok_r(NULL, ",", &buffer_ptr);
-    //in this case, no node ranges are specified in the line
+    //in this case, no node ranges are specified in the line and they are of the format node1234,node2345,node3456
     if (token == NULL)
     {
         token = strtok_r(start, ",", &buffer_ptr);
@@ -195,31 +207,64 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
         }
         else next_token = NULL;
 
-        if (strchr(token, '-'))
+        if (strchr(token, '-')) // contains a range of the type node22[00-22]
         {
             char *first_token = strtok_r(token, "-", &second_ptr);
             char *second_token = strtok_r(NULL, "-", &second_ptr);
-            island->ranges[island->num_ranges+range_count].start = atoi(first_token);
-            island->ranges[island->num_ranges+range_count].end = atoi(second_token);
-            if (atoi(first_token) < 10 && atoi(second_token) < 10 && (strchr(first_token, '0') || strchr(second_token, '0')))
-                strcat(island->ranges[island->num_ranges+range_count].prefix, "0");
+			int r_start = atoi(first_token);
+			int r_end = atoi(second_token);
+#define MAX_RANGE 30
+			int curr_start = r_start;
+			int curr_end = ear_min(r_end, r_start+MAX_RANGE);
 
-            range_count++;
+			//calculate the number of ranges we need to fit the big range
+			int extra_ranges = ((r_end-r_start)/MAX_RANGE) + 1;
+			//reallocate memory (the +1 from the previous allocation is not taken into account)
+        	island->ranges = realloc(island->ranges, 
+									 sizeof(node_range_t)*(island->num_ranges+range_count+extra_ranges));
+			//set all the ranges' memory to 0
+        	memset(&island->ranges[island->num_ranges+range_count], 0, extra_ranges*sizeof(node_range_t));
+
+			//iterate over the big ranges
+			for (i = 0; i < extra_ranges; i++) {
+        		strncpy(island->ranges[island->num_ranges+range_count+i].prefix, start, strlen(start)); //they all have the same prefix
+            	island->ranges[island->num_ranges+range_count+i].start = curr_start;
+            	island->ranges[island->num_ranges+range_count+i].end = curr_end;
+
+
+
+				//add 0s to the prefix if needed
+				set_num_zeroes(&island->ranges[island->num_ranges+range_count+i], r_end);
+            	//if (curr_start < 10 && curr_end < 10 && (strchr(first_token, '0') || strchr(second_token, '0')))
+               	//	strcat(island->ranges[island->num_ranges+range_count+i].prefix, "0");
+				//else if ((curr_start < 10 || curr_end < 10) && (r_end - r_start) > 100 && 
+				//		(strchr(first_token, '0') || strchr(second_token, '0')))
+               	//		strcat(island->ranges[island->num_ranges+range_count+i].prefix, "0");
+
+				//prepare start and end for the next iteration
+				curr_start = curr_end + 1;
+				curr_end = ear_min(r_end, curr_start+MAX_RANGE);
+			}
+           	range_count += extra_ranges; //add the new ranges to the total range count
         }
-        else
+        else //this one contains a single number (ex node22[22])
         {
             island->ranges[island->num_ranges+range_count].start = island->ranges[island->num_ranges+range_count].end =
                 atoi(token);
-            if (atoi(token) < 10 && strchr(token, '0'))
-                strcat(island->ranges[island->num_ranges+range_count].prefix, "0");
+			//add zeroes to the left of the number, the -1 is to prevent nodes ending with 0 to have an extra character 
+			for (i = 0; i < strlen(token)-1; i++) { 
+				if (token[i] == '0')
+                	strcat(island->ranges[island->num_ranges+range_count].prefix, "0");
+				else break;
+			}
+			
+            //if (atoi(token) < 10 && strchr(token, '0'))
+            //    strcat(island->ranges[island->num_ranges+range_count].prefix, "0");
             range_count++;
         }
         token = strtok_r(NULL, ",", &buffer_ptr);
         if (next_token != NULL) start = next_token;
     }
-
-    //
-    int i;
 
     for (i = island->num_ranges; i < island->num_ranges + range_count; i++) {
         island->ranges[i].db_ip = island->ranges[i].sec_ip = -1;
