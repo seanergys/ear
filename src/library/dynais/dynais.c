@@ -54,6 +54,7 @@
 #endif
 
 static int type;
+static uint dynais_initialized = 0;
 
 static int dynais_intel_switch(int model)
 {
@@ -78,6 +79,7 @@ dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 	} else {
 		type = 2;
 	}
+  dynais_initialized = 1;
 	if (type == 512) {
 		debug("selected DynAIS for AVX-512");
 		#ifdef FEAT_AVX512
@@ -90,6 +92,9 @@ dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 
 void dynais_dispose()
 {
+  if (!dynais_initialized) return;
+  dynais_initialized = 0;
+
 	if (type == 512) {
 		#ifdef FEAT_AVX512
 		avx512_dynais_dispose();
