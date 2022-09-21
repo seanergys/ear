@@ -628,6 +628,7 @@ int postgresql_retrieve_signatures(PGconn *connection, char *query, signature_t 
 
 int postgresql_retrieve_applications(PGconn *connection, char *query, application_t **apps, char is_learning)
 {
+	is_learning &= USE_LEARNING_APPS;
 
     int i, num_rows, job_id, step_id, sig_id, pow_sig_id;
     char job_query[256], pow_sig_query[256], sig_query[256];
@@ -1395,6 +1396,7 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
     if (num_sigs < 0 || sigs == NULL)
         return EAR_ERROR;
 
+	is_learning &= USE_LEARNING_APPS;
     char **param_values;
     int i, j, offset, *param_lengths, *param_formats;
     char *query;
@@ -1617,7 +1619,7 @@ int postgresql_batch_insert_jobs(PGconn *connection, application_t *apps, int nu
     query = calloc((strlen(JOB_PSQL_QUERY)+(num_jobs*JOB_ARGS*10)+strlen("ON CONFLICT DO NOTHING")), sizeof(char));
 
     strcpy(query, JOB_PSQL_QUERY);
-    if (apps[0].is_learning)
+    if (apps[0].is_learning &= USE_LEARNING_APPS)
     {
         strcpy(lock_query, LOCK_LEARNING_JOBS_PSQL_QUERY);
         strcpy(insert_query, INSERT_NEW_LEARNING_JOBS);
@@ -1876,7 +1878,7 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
     signature_t *sigs;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
-    char is_learning = apps[0].is_learning; 
+    char is_learning = apps[0].is_learning &= USE_LEARNING_APPS; 
     char is_mpi      = apps[0].is_mpi; 
 
     /* Memory allocation */
@@ -2014,7 +2016,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
     int i, j, offset, pow_sig_id, *param_lengths, *param_formats, *sig_ids, *pow_sig_ids;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
-    char is_learning = apps[0].is_learning; 
+    char is_learning = apps[0].is_learning &= USE_LEARNING_APPS; 
 
     /* Memory allocation */
     pow_sigs = calloc(num_apps, sizeof(power_signature_t));

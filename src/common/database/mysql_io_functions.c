@@ -302,7 +302,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
         return EAR_ERROR;
     }
     
-    char is_learning = app[0].is_learning;
+    char is_learning = app[0].is_learning & USE_LEARNING_APPS;
     char is_mpi      = app[0].is_mpi;
     
     int i;
@@ -438,7 +438,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
 
 int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
 {
-    char is_learning = app[0].is_learning;
+    char is_learning = app[0].is_learning & USE_LEARNING_APPS;
 
     MYSQL_STMT *statement = mysql_stmt_init(connection);
     if (!statement) return EAR_MYSQL_ERROR;
@@ -528,7 +528,7 @@ int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
 
 int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app, int num_apps)
 {
-    char is_learning = app[0].is_learning;
+    char is_learning = app[0].is_learning & USE_LEARNING_APPS;
     MYSQL_STMT *statement = mysql_stmt_init(connection);
     if (!statement) return EAR_MYSQL_ERROR;
 
@@ -627,6 +627,7 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
 
 int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **apps, char is_learning)
 {
+	is_learning &= USE_LEARNING_APPS;
     MYSQL_STMT *statement = mysql_stmt_init(connection);
     if (!statement) return EAR_MYSQL_ERROR;
     application_t *app_aux = xcalloc(1, sizeof(application_t));
@@ -1174,6 +1175,7 @@ int mysql_batch_insert_avg_signatures(MYSQL *connection, application_t *app, int
 //returns id of the first inserted signature
 int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont, char is_learning, int num_sigs)
 {
+	is_learning &= USE_LEARNING_APPS;
     MYSQL_STMT *statement = mysql_stmt_init(connection);
 
     if (!statement) return EAR_MYSQL_ERROR;
