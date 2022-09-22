@@ -36,7 +36,7 @@
 
 
 #include <common/config.h>
-// #include <common/config/config_sched.h>
+#include <common/config/config_sched.h>
 #include <common/system/sockets.h>
 #include <common/system/folder.h>
 #include <common/messaging/msg_conf.h>
@@ -266,6 +266,17 @@ int find_empty_context() {
     } else i++;
   }
   return pos;
+}
+
+void mark_contexts_to_finish(job_id id, job_id step_id) {
+  int i = 0;
+  if (step_id != BATCH_STEP) return; //only batch steps need to check this
+  debug("marking_contexts_to_finish %lu %lu", id, sid);
+  for (i = 0; i <= max_context_created; i++) {
+    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id)) {
+		current_ear_app[i]->state = APP_FINISHED;
+    } 
+  }
 }
 
 int find_context_for_job(job_id id, job_id sid) {
@@ -1227,6 +1238,8 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     uint ID = create_ID(jid, sid);
     job_end_powermon_app(pmapp, eh);
 
+	// mark any pending context for that job if it's an SBATCH
+    mark_contexts_to_finish(jid, sid);
     // After that function, the avg power is computed
     memcpy(&summary, pmapp, sizeof(powermon_app_t));
 

@@ -37,10 +37,14 @@
 
 #define MAX_NESTED_LEVELS 16384
 
+#define APP_DEFAULT  0
+#define APP_FINISHED 1
+
 typedef struct powermon_app {
     application_t    app;
     uint             job_created;
     uint             is_job;
+	char             state;
     uint             plug_num_cpus;
     cpu_set_t        plug_mask;
     uint             earl_num_cpus;
