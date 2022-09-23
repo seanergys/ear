@@ -741,12 +741,6 @@ void add_int_list_filter(char *query, char *addition, char *value)
 	//	sprintf(query, query, value);
 	query_filters ++;
 }
-#if 0
-#define ENERGY_POLICY_NEW_FREQ	0
-#define GLOBAL_ENERGY_POLICY	1
-#define ENERGY_POLICY_FAILS		2
-#define DYNAIS_OFF				3
-#endif
 
 void print_event_type(int type)
 {

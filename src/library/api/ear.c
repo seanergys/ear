@@ -99,6 +99,8 @@
 #include <library/api/mpi_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
+pid_t gettid(void);
+
 
 void ear_finalize(int exit_status);
 static uint cancelled = 0;
@@ -145,6 +147,10 @@ static short ear_status = NO_LOOP;
 
 
 static pid_t main_pid;
+
+uint report_earl_events = 0;
+static char *creport_earl_events;
+
 
 /* in us */
 // These variables are shared
@@ -1507,6 +1513,9 @@ void ear_init()
 												verbose_master(1,"Error in reports API initialization ");
 								}
 				// }
+        creport_earl_events = getenv(FLAG_REPORT_EARL_EVENTS);
+        if (creport_earl_events != NULL) report_earl_events = atoi(creport_earl_events);
+        if (report_earl_events) verbose_master(1," EARL events reported to DB %s", (report_earl_events?"enabled":"disabled"));
 
 				// States
 				states_begin_job(my_id,  ear_app_name);
@@ -2125,7 +2134,7 @@ state_t earl_periodic_actions(void *no_arg)
 
 				if (ear_whole_app) return EAR_SUCCESS;
 
-        if (cancelled || sig_shared_region[my_node_id].exited) return;
+        if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
 
 				ear_iterations += ITERS_PER_PERIOD;

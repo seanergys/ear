@@ -158,6 +158,27 @@ static void report_loop_signature(uint iterations, loop_t *my_loop);
 
 static void accumulate_energy_savings(signature_t *loops, signature_t *apps);
 
+
+static ear_event_t curr_state_event;
+extern uint report_earl_events;
+extern report_id_t rep_id;
+
+
+void fill_common_event(ear_event_t *ev)
+{
+	ev->jid 		= application.job.id;
+	ev->step_id = application.job.step_id;
+	strcpy(ev->node_id, application.node_id);
+}
+
+void fill_event(ear_event_t *ev, uint event, ulong value)
+{
+  ev->event = event;
+  ev->freq  = value;
+  ev->timestamp = time(NULL);
+}
+
+
 /** Executed at application start. Reads EAR configuration environment variables.*/
 void states_begin_job(int my_id, char *app_name)
 {
@@ -186,6 +207,8 @@ void states_begin_job(int my_id, char *app_name)
         sig_ready[i] = 0;
     }
 #endif
+
+    fill_common_event(&curr_state_event);
 
 #if ONLY_MASTER
     if (my_id) return;
@@ -324,6 +347,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             // comp_N_begin = metrics_time();
             restart_period_time_init(&comp_N_begin);
             EAR_STATE = FIRST_ITERATION;
+            if (report_earl_events){
+						  fill_event(&curr_state_event, EARL_OPT_ACCURACY, OPT_TRY_AGAIN);
+						  report_events(&rep_id, &curr_state_event, 1);
+              fill_event(&curr_state_event, EARL_STATE, FIRST_ITERATION);
+						  report_events(&rep_id, &curr_state_event, 1);
+					  }
+
             return;
         }
     }
@@ -787,6 +817,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             break;
         default: break;
     }
+    if (report_earl_events && (EAR_STATE != TEST_LOOP)){
+			fill_event(&curr_state_event, EARL_STATE, EAR_STATE);
+			report_events(&rep_id, &curr_state_event, 1);
+		}
+
 
     state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
     debug("End states_end_iteration");

@@ -26,6 +26,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/file.h>
+#include <common/hardware/topology.h>
 #include <common/output/verbose.h>
 #include <common/environment.h>
 #include <common/types/projection.h>
@@ -143,7 +144,7 @@ static state_t policy_no_models_go_next_me(int curr_pstate, int *ready,
 static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signature_t *prev_sig,
         double time_ref, double cpi_ref, double gbs_ref, double penalty_th);
 
-
+static topology_t me_top;
 
 state_t policy_init(polctx_t *c)
 {
@@ -171,6 +172,8 @@ state_t policy_init(polctx_t *c)
     }
 
     int i, sid = 0;
+
+    topology_init(&me_top);
 
     if (c == NULL) {
         return EAR_ERROR;
@@ -589,7 +592,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
              * IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound){
                 //if (sig->GBS <= GBS_BUSY_WAITING){
-                if (low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus)){
+                uint lowm;
+                low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &lowm);
+                if (lowm){
                     debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++) {
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
@@ -1022,6 +1027,9 @@ state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
 state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
+    signature_t lsig;
+    uint io, busy;
+    char sig_buff[256];
     if (c == NULL) return EAR_ERROR;
 
     verbose_master(1, "%sCPU IO settings%s", COL_BLU, COL_CLR);
@@ -1029,9 +1037,27 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
     cpu_ready = EAR_POLICY_READY;
 
     for (uint i = 0; i < num_processes; i++) {
+    #if 0
         freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
     		/* We copy in shared  memory to be used later in MPI init/end if needed */
 				sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
+    #endif
+      freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
+      from_minis_to_sig(&lsig, &sig_shared_region[i].sig);
+      is_io_bound(&lsig, lib_shared_region->num_cpus, &io);
+      if (io){
+          if (me_top.vendor == VENDOR_INTEL) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+          minis_to_str(&sig_shared_region[i].sig, sig_buff);
+          verbose_master(1,"%s.[%d] io config %s", node_name, i, sig_buff);
+      }else{
+          is_process_busy_waiting(&sig_shared_region[i].sig, &busy);
+          if (busy){
+            minis_to_str(&sig_shared_region[i].sig, sig_buff);
+            verbose_master(1,"%s.[%d] busy waiting in io config %s", node_name, i, sig_buff);
+            freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+          }
+      }
+
     }
     memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
 
@@ -1057,13 +1083,28 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
+    signature_t lsig;
+    char sig_buff[256];
+    uint busy;
+
     if (c == NULL) return EAR_ERROR;
     verbose_master(1, "%sCPU busy waiting settings%s", COL_BLU, COL_CLR);
     cpu_ready = EAR_POLICY_READY;
     for (uint i=0;i<num_processes;i++){ 
+    #if 0
 			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
     	/* We copy in shared  memory to be used later in MPI init/end if needed */
 			sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
+    #endif
+      is_process_busy_waiting(&sig_shared_region[i].sig, &busy);
+			if (busy){
+				minis_to_str(&sig_shared_region[i].sig, sig_buff);
+				verbose_master(1,"%s.[%d] busy waiting config %s", node_name, i, sig_buff);
+				freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+			}else{
+				freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
+			}
+
 		}
     copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){

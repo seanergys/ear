@@ -658,6 +658,8 @@ int main(int argc, char *argv[])
 				verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",
 												node_desc.socket_count, node_desc.core_count, node_desc.cpu_count);
 
+        topology_print(&node_desc, verb_fd);
+
 				if (msr_test(&node_desc, MSR_WR) != EAR_SUCCESS){
 								error("msr files are not available, please check the msr kernel module is loaded (modprobe msr)");
 								_exit(1);
