@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <time.h>
 #include <stdio.h>
@@ -268,13 +268,44 @@ int find_empty_context() {
   return pos;
 }
 
-void mark_contexts_to_finish(job_id id, job_id step_id) {
-  int i = 0;
+#if SHOW_DEBUGS
+void debug_powermon_app(powermon_app_t *app)
+{
+	debug("jid %lu sid %lu created %u is_job %u state %d sig_reported %d exclusive %d",
+			app->app.job.id, app->app.job.step_id, app->job_created, app->is_job, app->state,
+			app->sig_reported, app->exclusive);
+}
+
+void print_contexts_status() {
+	int i;
+	for (i = 0; i <= max_context_created; i++) {
+		if ((current_ear_app[i] != NULL)) {
+			debug("app in position %d", i);
+			debug_powermon_app(current_ear_app[i]);
+		}
+	}
+}
+#endif
+
+int mark_contexts_to_finish(job_id id, job_id step_id) {
+  int i = 0, found_contexts = 0;
   if (step_id != BATCH_STEP) return; //only batch steps need to check this
-  debug("marking_contexts_to_finish %lu %lu", id, sid);
+  debug("marking_contexts_to_finish %lu %lu", id, step_id);
   for (i = 0; i <= max_context_created; i++) {
     if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id)) {
 		current_ear_app[i]->state = APP_FINISHED;
+		found_contexts++;
+    } 
+  }
+  return found_contexts;
+}
+
+void finish_pending_contexts(ehandler_t *eh)
+{
+	int i;
+  for (i = 0; i <= max_context_created; i++) {
+    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->state == APP_FINISHED)) {
+		powermon_end_job(eh, current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id, 0);
     } 
   }
 }
@@ -1238,8 +1269,6 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     uint ID = create_ID(jid, sid);
     job_end_powermon_app(pmapp, eh);
 
-	// mark any pending context for that job if it's an SBATCH
-    mark_contexts_to_finish(jid, sid);
     // After that function, the avg power is computed
     memcpy(&summary, pmapp, sizeof(powermon_app_t));
 
@@ -1281,6 +1310,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     clean_job_area(ID);
     verbose(VJOBPMON+1 , "*******************");
     service_close_by_id(jid,sid);
+
 
 }
 
