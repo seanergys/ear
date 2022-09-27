@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+//#define PRINT_ONLY 1 //prints config and exits
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 
 
@@ -284,6 +285,7 @@ void update_eargm_configuration(cluster_conf_t *conf)
     }
     //default_cluster_power=default_cluster_power*divisor;
 }
+
 void reopen_log()
 {
     log_close(fd_my_log);
@@ -666,6 +668,9 @@ int main(int argc,char *argv[])
     energy_consumed=malloc(sizeof(ulong)*aggregate_samples);
 
 
+#if PRINT_ONLY
+	exit(0);
+#endif
 
     catch_signals();
 

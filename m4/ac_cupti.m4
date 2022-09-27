@@ -53,12 +53,6 @@ AC_DEFUN([X_AC_CUPTI],
 
                 X_AC_CUPTI_FIND_ROOT_DIR([])
             fi
-            if test -z "$_cv_cupti_dir_root"; then
-                _x_ac_cupti_dirs_root="$CUDA_DIR/extras/CUPTI"
-                _x_ac_cupti_custom="yes"
-                 
-                X_AC_CUPTI_FIND_ROOT_DIR([])
-            fi
         ]
         )
 

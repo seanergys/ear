@@ -18,7 +18,9 @@
 #include <signal.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/select.h>
+#include <sys/resource.h>
 #include <linux/limits.h>
 #include <strings.h>
 #include <string.h>
@@ -646,233 +648,241 @@ int main(int argc, char *argv[])
 				log_report_eard_min_interval(MIN_INTERVAL_RT_ERROR);
 				verbose(VEARD_INIT,"Reading hardware topology");
 
-				/* We initialize topology */
-				s = topology_init(&node_desc);
-				node_size = node_desc.cpu_count;
+                /** Change the open file limit */
+                struct rlimit rl;
+                getrlimit(RLIMIT_NOFILE, &rl);
+                debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
+                rl.rlim_cur = rl.rlim_max;
+                setrlimit(RLIMIT_NOFILE, &rl);
+                
+                /* We initialize topology */
+                s = topology_init(&node_desc);
+                node_size = node_desc.cpu_count;
 
-				if (state_fail(s) || node_size <= 0 || node_desc.socket_count <= 0) {
-								error("topology information can't be initialized (%d)", s);
-								_exit(1);
-				}
+                if (state_fail(s) || node_size <= 0 || node_desc.socket_count <= 0) {
+                    error("topology information can't be initialized (%d)", s);
+                    _exit(1);
+                }
 
-				verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",
-												node_desc.socket_count, node_desc.core_count, node_desc.cpu_count);
+                verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",
+                        node_desc.socket_count, node_desc.core_count, node_desc.cpu_count);
 
-				if (msr_test(&node_desc, MSR_WR) != EAR_SUCCESS){
-								error("msr files are not available, please check the msr kernel module is loaded (modprobe msr)");
-								_exit(1);
-				}
+                if (msr_test(&node_desc, MSR_WR) != EAR_SUCCESS){
+                    error("msr files are not available, please check the msr kernel module is loaded (modprobe msr)");
+                    _exit(1);
+                }
 
-				//
-				verbose(VEARD_INIT,"Initializing frequency list");
-				/* We initialize frecuency */
-				if (frequency_init(node_size) < 0) {
-								error("frequency information can't be initialized");
-								_exit(1);
-				}
-				verbose(VEARD_INIT,"Reading ear.conf configuration");
-				// We read the cluster configuration and sets default values in the shared memory
-				if (get_ear_conf_path(my_ear_conf_path) == EAR_ERROR) {
-								error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
-								_exit(0);
-				}
-				if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
-								error(" Error reading cluster configuration\n");
-								_exit(1);
-				} else {
-								verbose(VEARD_INIT,"%d Nodes detected in ear.conf configuration",my_cluster_conf.cluster_num_nodes);
-								compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
-								print_cluster_conf(&my_cluster_conf);
-								my_node_conf = get_my_node_conf(&my_cluster_conf, nodename);
-								if (my_node_conf == NULL) {
-												error( " Node %s not found in ear.conf, exiting\n", nodename);
-												_exit(0);
-								}
-								check_policy_values(my_node_conf->policies,my_node_conf->num_policies);
-								print_my_node_conf(my_node_conf);
-								copy_my_node_conf(&my_original_node_conf, my_node_conf);
-								update_global_configuration_with_local_ssettings(&my_cluster_conf,my_node_conf);
-				}
-				verbose(VEARD_INIT,"Serializing cluster_conf");
-				serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
-				verbose(VEARD_INIT,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
+                //
+                verbose(VEARD_INIT,"Initializing frequency list");
+                /* We initialize frecuency */
+                if (frequency_init(node_size) < 0) {
+                    error("frequency information can't be initialized");
+                    verbose(VEARD_INIT, "frequency information can't be initialized");
+                    _exit(1);
+                }
+                verbose(VEARD_INIT,"Reading ear.conf configuration");
+                // We read the cluster configuration and sets default values in the shared memory
+                if (get_ear_conf_path(my_ear_conf_path) == EAR_ERROR) {
+                    error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
+                    _exit(0);
+                }
+                if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
+                    error(" Error reading cluster configuration\n");
+                    _exit(1);
+                } else {
+                    verbose(VEARD_INIT,"%d Nodes detected in ear.conf configuration",my_cluster_conf.cluster_num_nodes);
+                    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
+                    print_cluster_conf(&my_cluster_conf);
+                    my_node_conf = get_my_node_conf(&my_cluster_conf, nodename);
+                    if (my_node_conf == NULL) {
+                        error( " Node %s not found in ear.conf, exiting\n", nodename);
+                        _exit(0);
+                    }
+                    check_policy_values(my_node_conf->policies,my_node_conf->num_policies);
+                    print_my_node_conf(my_node_conf);
+                    copy_my_node_conf(&my_original_node_conf, my_node_conf);
+                    update_global_configuration_with_local_ssettings(&my_cluster_conf,my_node_conf);
+                }
+                verbose(VEARD_INIT,"Serializing cluster_conf");
+                serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
+                verbose(VEARD_INIT,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
 
-				verbose(VEARD_INIT,"Initializing dynamic information and creating tmp");
-				/* This info is used for eard checkpointing */
-				eard_dyn_conf.cconf = &my_cluster_conf;
-				eard_dyn_conf.nconf = my_node_conf;
-				eard_dyn_conf.pm_app = get_powermon_app();
-				set_global_eard_variables();
-				verbose(VEARD_INIT,"Creating tmp dir");
-				create_tmp(ear_tmp);
-				if (my_cluster_conf.eard.use_log) {
-					verbose(VEARD_INIT,"Creating log file");
-					create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
-				}
-				set_verbose_variables();
+                verbose(VEARD_INIT,"Initializing dynamic information and creating tmp");
+                /* This info is used for eard checkpointing */
+                eard_dyn_conf.cconf = &my_cluster_conf;
+                eard_dyn_conf.nconf = my_node_conf;
+                eard_dyn_conf.pm_app = get_powermon_app();
+                set_global_eard_variables();
+                verbose(VEARD_INIT,"Creating tmp dir");
+                create_tmp(ear_tmp);
+                if (my_cluster_conf.eard.use_log) {
+                    verbose(VEARD_INIT,"Creating log file");
+                    create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
+                }
+                set_verbose_variables();
 
-				verbose(VEARD_INIT,"Creating frequency list in shared memory");
-				/** Shared memory is used between EARD and EARL **/
-				init_frequency_list();
+                verbose(VEARD_INIT,"Creating frequency list in shared memory");
+                /** Shared memory is used between EARD and EARL **/
+                init_frequency_list();
 
-				/**** SHARED MEMORY REGIONS ****/
-				/* This area is for shared info */
-				verbose(VEARD_INIT, "creating shared memory regions");
-				/* Coefficients */
-				verbose(VEARD_INIT,"Loading coefficients");
-				coeffs_size = read_coefficients();
-				verbose(VCONF, "Coefficients loaded");
-				get_coeffs_path(my_cluster_conf.install.dir_temp, coeffs_path);
-				verbose(VCONF, "Using %s as coeff path (shared memory region)", coeffs_path);
-				coeffs_conf = create_coeffs_shared_area(coeffs_path, my_coefficients, coeffs_size);
-				if (coeffs_conf == NULL) {
-								error("Error creating shared memory for coefficients\n");
-								_exit(0);
-				}
-				/* Default coefficients */
-				verbose(VEARD_INIT,"Loading default coefficients");
-				coeffs_default_size = read_coefficients_default();
-				verbose(VCONF, "Coefficients by default loaded");
-				if ((coeffs_size==0) && (coeffs_default_size==0)) verbose(VEARD_INIT,"No coefficients found, power policies will not be applied");
-				get_coeffs_default_path(my_cluster_conf.install.dir_temp, coeffs_default_path);
-				verbose(VCONF + 1, "Using %s as coeff by default path (shared memory region)", coeffs_default_path);
-				coeffs_default_conf = create_coeffs_default_shared_area(coeffs_default_path, my_coefficients_default,
-												coeffs_default_size);
-				if (coeffs_default_conf == NULL) {
-								error("Error creating shared memory for coefficients by default\n");
-								_exit(0);
-				}
+                /**** SHARED MEMORY REGIONS ****/
+                /* This area is for shared info */
+                verbose(VEARD_INIT, "creating shared memory regions");
+                /* Coefficients */
+                verbose(VEARD_INIT,"Loading coefficients");
+                coeffs_size = read_coefficients();
+                verbose(VCONF, "Coefficients loaded");
+                get_coeffs_path(my_cluster_conf.install.dir_temp, coeffs_path);
+                verbose(VCONF, "Using %s as coeff path (shared memory region)", coeffs_path);
+                coeffs_conf = create_coeffs_shared_area(coeffs_path, my_coefficients, coeffs_size);
+                if (coeffs_conf == NULL) {
+                    error("Error creating shared memory for coefficients\n");
+                    _exit(0);
+                }
+                /* Default coefficients */
+                verbose(VEARD_INIT,"Loading default coefficients");
+                coeffs_default_size = read_coefficients_default();
+                verbose(VCONF, "Coefficients by default loaded");
+                if ((coeffs_size==0) && (coeffs_default_size==0)) verbose(VEARD_INIT,"No coefficients found, power policies will not be applied");
+                get_coeffs_default_path(my_cluster_conf.install.dir_temp, coeffs_default_path);
+                verbose(VCONF + 1, "Using %s as coeff by default path (shared memory region)", coeffs_default_path);
+                coeffs_default_conf = create_coeffs_default_shared_area(coeffs_default_path, my_coefficients_default,
+                        coeffs_default_size);
+                if (coeffs_default_conf == NULL) {
+                    error("Error creating shared memory for coefficients by default\n");
+                    _exit(0);
+                }
 
-				/* This area incldues services details */
-				get_services_conf_path(my_cluster_conf.install.dir_temp, services_conf_path);
-				verbose(VCONF + 1, "Using %s as services_conf path (shared memory region)", services_conf_path);
-				my_services_conf = create_services_conf_shared_area(services_conf_path);
-				if (my_services_conf == NULL) {
-								error("Error creating shared memory\n");
-								_exit(0);
-				}
-				/* Serialized cluster conf */
-				get_ser_cluster_conf_path(my_cluster_conf.install.dir_temp, ser_cluster_conf_path);
-				verbose(VCONF + 1, "Using %s as serialized cluster conf path", ser_cluster_conf_path);
-				my_ser_cluster_conf = create_ser_cluster_conf_shared_area(ser_cluster_conf_path, ser_cluster_conf, ser_cluster_conf_size);
-				/**** END CREATION SHARED MEMORY REGIONS ****/
-				verbose(VEARD_INIT,"Shared memory regions created");
+                /* This area incldues services details */
+                get_services_conf_path(my_cluster_conf.install.dir_temp, services_conf_path);
+                verbose(VCONF + 1, "Using %s as services_conf path (shared memory region)", services_conf_path);
+                my_services_conf = create_services_conf_shared_area(services_conf_path);
+                if (my_services_conf == NULL) {
+                    error("Error creating shared memory\n");
+                    _exit(0);
+                }
+                /* Serialized cluster conf */
+                get_ser_cluster_conf_path(my_cluster_conf.install.dir_temp, ser_cluster_conf_path);
+                verbose(VCONF + 1, "Using %s as serialized cluster conf path", ser_cluster_conf_path);
+                my_ser_cluster_conf = create_ser_cluster_conf_shared_area(ser_cluster_conf_path, ser_cluster_conf, ser_cluster_conf_size);
+                /**** END CREATION SHARED MEMORY REGIONS ****/
+                verbose(VEARD_INIT,"Shared memory regions created");
 
-				/** We must control if we come from a crash **/
-				int must_recover = new_service("eard");
-				if (must_recover) {
-								verbose(VCONF, "We must recover from a crash");
-								restore_eard_conf(&eard_dyn_conf);
-				}
-				/* After potential recoveries, we set the info in the shared memory */
-				configure_default_values(&my_cluster_conf,my_node_conf);
+                /** We must control if we come from a crash **/
+                int must_recover = new_service("eard");
+                if (must_recover) {
+                    verbose(VCONF, "We must recover from a crash");
+                    restore_eard_conf(&eard_dyn_conf);
+                }
+                /* After potential recoveries, we set the info in the shared memory */
+                configure_default_values(&my_cluster_conf,my_node_conf);
 
-				// Check
-				if (argc == 2) {
-								if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) Usage(argv[0]);
-								verb_level = atoi(argv[1]);
+                // Check
+                if (argc == 2) {
+                    if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) Usage(argv[0]);
+                    verb_level = atoi(argv[1]);
 
 
-								if ((verb_level < 0) || (verb_level > 4)) {
-												Usage(argv[0]);
-								}
+                    if ((verb_level < 0) || (verb_level > 4)) {
+                        Usage(argv[0]);
+                    }
 
-				}
-				set_ear_verbose(verb_level);
-				VERB_SET_LV(verb_level);
-				verbose(VEARD_INIT,"Catching signals");
-				// We catch signals
-				signal_catcher();
+                }
+                set_ear_verbose(verb_level);
+                VERB_SET_LV(verb_level);
+                verbose(VEARD_INIT,"Catching signals");
+                // We catch signals
+                signal_catcher();
 
-				state_assert(s, monitor_init(), _exit(0));
+                state_assert(s, monitor_init(), _exit(0));
 
-				if (eard_max_pstate < 0) Usage(argv[0]);
-				if (eard_max_pstate >= frequency_get_num_pstates()) Usage(argv[0]);
+                if (eard_max_pstate < 0) Usage(argv[0]);
+                if (eard_max_pstate >= frequency_get_num_pstates()) Usage(argv[0]);
 
-				ear_node_freq = frequency_pstate_to_freq(eard_max_pstate);
-				eard_max_freq = ear_node_freq;
-				verbose(VCONF, "Default max frequency defined to %lu", eard_max_freq);
-				// IMC frequency
-				verbose(VCONF, "Initializing IMCfreq metrics API ");
-				imcfreq_load(&node_desc, NO_EARD);
-				state_assert(s, imcfreq_init(no_ctx), _exit(0));
+                ear_node_freq = frequency_pstate_to_freq(eard_max_pstate);
+                eard_max_freq = ear_node_freq;
+                verbose(VCONF, "Default max frequency defined to %lu", eard_max_freq);
+                // IMC frequency
+                verbose(VCONF, "Initializing IMCfreq metrics API ");
+                imcfreq_load(&node_desc, NO_EARD);
+                state_assert(s, imcfreq_init(no_ctx), _exit(0));
 
                 // Services
                 services_init(&node_desc, my_node_conf);
 
 #if EARD_LOCK
-				eard_lock(ear_tmp);
+                eard_lock(ear_tmp);
 #endif
-				// At this point, only one daemon is running
-				// PAST: we had here a frequency set
-				verbose(VEARD_INIT,"Initializing RAPL counters");
-				// We initialize rapl counters
-				if (init_rapl_msr(fd_rapl)<0){ 
+                // At this point, only one daemon is running
+                // PAST: we had here a frequency set
+                verbose(VEARD_INIT,"Initializing RAPL counters");
+                // We initialize rapl counters
+                if (init_rapl_msr(fd_rapl)<0){ 
                     error("Error initializing rapl");
                     error_rapl=1;
-				}
-				if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
-					error("Reading CPU TDPs");
-					error_rapl=1;
-				}
-				if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
-					error("Reading DRAM TDPs");
-					error_rapl=1;
-				}
-				verbose(VEARD_INIT,"Initialzing energy plugin");
-				// We initilize energy_node
-				debug("Initializing energy in main EARD thread");
+                }
+                if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
+                    error("Reading CPU TDPs");
+                    error_rapl=1;
+                }
+                if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
+                    error("Reading DRAM TDPs");
+                    error_rapl=1;
+                }
+                verbose(VEARD_INIT,"Initialzing energy plugin");
+                // We initilize energy_node
+                debug("Initializing energy in main EARD thread");
 
-				if (state_fail(energy_init(&my_cluster_conf, &eard_handler_energy))) {
-								error("While initializing energy plugin: %s\n", state_msg);
-								error_energy=1;
-				}
-				if (state_fail(s = init_power_monitoring(&handler_energy, &node_desc))) {
-								error("While initializing power monitor: %s\n", state_msg);
-								_exit(0);	
-				}
+                if (state_fail(energy_init(&my_cluster_conf, &eard_handler_energy))) {
+                    error("While initializing energy plugin: %s\n", state_msg);
+                    error_energy=1;
+                }
+                if (state_fail(s = init_power_monitoring(&handler_energy, &node_desc))) {
+                    error("While initializing power monitor: %s\n", state_msg);
+                    _exit(0);	
+                }
 
-				verbose(VEARD_INIT,"Connecting with report plugin");
-				/* This must be replaced by the report_eard option in eard */
-				if (state_fail(report_load(my_cluster_conf.install.dir_plug,my_cluster_conf.eard.plugins))){
-					report_create_id(&rid, -1, -1, -1);
-				}else{
-					report_create_id(&rid, 0, 0, 0);
-				}
-				report_init(&rid, &my_cluster_conf);
+                verbose(VEARD_INIT,"Connecting with report plugin");
+                /* This must be replaced by the report_eard option in eard */
+                if (state_fail(report_load(my_cluster_conf.install.dir_plug,my_cluster_conf.eard.plugins))){
+                    report_create_id(&rid, -1, -1, -1);
+                }else{
+                    report_create_id(&rid, 0, 0, 0);
+                }
+                report_init(&rid, &my_cluster_conf);
 
-				report_eard_init_error();
-				verbose(VEARD_INIT,"Creating EARD threads");
-				verbose(VEARD_INIT,"Creating power  monitor thread");
+                report_eard_init_error();
+                verbose(VEARD_INIT,"Creating EARD threads");
+                verbose(VEARD_INIT,"Creating power  monitor thread");
 #if POWERMON_THREAD
-				if ((ret=pthread_create(&power_mon_th, NULL, eard_power_monitoring, NULL))){
-								errno=ret;
-								error("error creating power_monitoring thread %s\n",strerror(errno));
-								log_report_eard_init_error(&rid,PM_CREATION_ERROR,ret);
-				}
+                if ((ret=pthread_create(&power_mon_th, NULL, eard_power_monitoring, NULL))){
+                    errno=ret;
+                    error("error creating power_monitoring thread %s\n",strerror(errno));
+                    log_report_eard_init_error(&rid,PM_CREATION_ERROR,ret);
+                }
 #endif
-				verbose(VEARD_INIT,"Creating the remote connections server");
+                verbose(VEARD_INIT,"Creating the remote connections server");
 #if EXTERNAL_COMMANDS_THREAD
-				if ((ret=pthread_create(&dyn_conf_th, NULL, eard_dynamic_configuration, (void *)ear_tmp))){
-								error("error creating dynamic_configuration thread \n");
-								log_report_eard_init_error(&rid,DYN_CREATION_ERROR,ret);
-				}
+                if ((ret=pthread_create(&dyn_conf_th, NULL, eard_dynamic_configuration, (void *)ear_tmp))){
+                    error("error creating dynamic_configuration thread \n");
+                    log_report_eard_init_error(&rid,DYN_CREATION_ERROR,ret);
+                }
 #endif
-				verbose(VEARD_INIT,"Creating APP-API thread");
+                verbose(VEARD_INIT,"Creating APP-API thread");
 #if APP_API_THREAD
-				if ((ret=pthread_create(&app_eard_api_th,NULL,eard_non_earl_api_service,NULL))){
-								error("error creating server thread for non-earl api\n");
-								log_report_eard_init_error(&rid,APP_API_CREATION_ERROR,ret);
-				}
+                if ((ret=pthread_create(&app_eard_api_th,NULL,eard_non_earl_api_service,NULL))){
+                    error("error creating server thread for non-earl api\n");
+                    log_report_eard_init_error(&rid,APP_API_CREATION_ERROR,ret);
+                }
 #endif
 
 
-				verbose(VEARD_INIT,"EARD initialized succesfully");
-				/* This function never ends, EARD exits with SIGTERM o SIGINT */
-				eard_local_api();
-				//eard is closed by SIGTERM signal, we should not reach this point
-				verbose(VCONF, "END EARD\n");
-				eard_close_comm(CLOSE_EARD,CLOSE_EARD);
-				eard_exit(0);
-				return 0;
+                verbose(VEARD_INIT,"EARD initialized succesfully");
+                /* This function never ends, EARD exits with SIGTERM o SIGINT */
+                eard_local_api();
+                //eard is closed by SIGTERM signal, we should not reach this point
+                verbose(VCONF, "END EARD\n");
+                eard_close_comm(CLOSE_EARD,CLOSE_EARD);
+                eard_exit(0);
+                return 0;
 }

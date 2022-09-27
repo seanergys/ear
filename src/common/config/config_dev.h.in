@@ -43,6 +43,7 @@
  *  *  * 0 except for debug purposes */
 #define EXTERNAL_COMMANDS_THREAD        1
 
+#define USE_LEARNING_APPS 1
 
 /* For EAR validation */
 //#define FAKE_ERROR_USE_DUMMY 1

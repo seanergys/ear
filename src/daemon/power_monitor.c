@@ -32,8 +32,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <common/colors.h>
+#include <sys/wait.h>
+
 
 #include <common/config.h>
+// #include <common/config/config_sched.h>
 #include <common/system/sockets.h>
 #include <common/system/folder.h>
 #include <common/messaging/msg_conf.h>
@@ -117,6 +120,54 @@ static ulong  last_node_power     = 0;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
+
+/***************** Job verification ***********************/
+static int is_running(char * status_text)
+{
+  if (strlen(status_text) == 0) return 0;
+  if (strstr(status_text, "COMPLETED") != NULL) return 0;
+  if (strstr(status_text, "FAILED")    != NULL) return 0;
+  if (strstr(status_text, "EXITED")    != NULL) return 0;
+  if (strstr(status_text, "TIMEOUT")   != NULL) return 0;
+  if (strstr(status_text, "CANCELLED") != NULL) return 0;
+  return 1;
+}
+
+static int read_word(int fd, char * buff, int limit)
+{
+  int t = 0, r = 0;
+  while(((r = read(fd, &buff[t], (limit-t))) > 0) && (t < limit)){
+    t += r;
+  }
+  return t;
+}
+
+
+static int is_job_running(char *tmp,int jobid)
+{
+  /* sacct -j 1512221.4294967291 -o state -n*/
+  char path_file[GENERIC_NAME], pid_str[128], status[128];
+  int fd, size;
+
+  sprintf(path_file,"%s/jobid_status_file", tmp);
+  fd = open(path_file, O_RDWR|O_CREAT|O_TRUNC,S_IWUSR|S_IRUSR);
+  pid_t status_pid = fork();
+  if (status_pid == 0 ){
+    dup2(fd,1);
+    sprintf(pid_str,"%d.batch", jobid);
+    debug("job id: %d", jobid);
+    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) error( "Error execlp (%s)", strerror(errno)); // perror ("error execlp");
+    exit(1);
+   }
+   if (waitpid(status_pid,  NULL, 0) < 0 ) error("Error waitpid (%s)", strerror(errno));
+   if (lseek(fd, 0 , SEEK_SET) < 0 ) error("Error lseek (%s)", strerror(errno));
+   size = read_word(fd, status, 128);
+   status[size] = '\0';
+   return is_running(status);
+
+}
+
+
 /***************** JOBS in NODE ***************************/
 void init_jobs_in_node()
 {
@@ -193,7 +244,7 @@ void verbose_jobs_in_node(uint vl)
 }
 
 /****************** CONTEXT MANAGEMENT ********************/
-#define NULL_SID 4294967294
+//#define NULL_SID 4294967294
 powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 int max_context_created = 0;
 int num_contexts = 0;
@@ -1034,8 +1085,26 @@ void powermon_new_task(new_task_req_t *newtask)
  *
  */
 
-/* This functiono is called by dynamic_configuration thread when a new_job command arrives */
+/* This function is called to validate the jobs in the list are still alive */
+static void check_status_of_jobs(job_id current)
+{
+  powermon_app_t *pmapp; 
+  for (uint cc = 1; cc <= max_context_created; cc++) {
+    if (current_ear_app[cc] != NULL) {
+      pmapp = current_ear_app[cc];
+      verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
+      /* No need to check the new one :) */
+      if (pmapp->app.job.id != current){
+        if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
+          verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
+        }
+      }
+    } 
+  }
+}
 
+
+/* This function is called by dynamic_configuration thread when a new_job command arrives */
 void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID, uint from_mpi, uint is_job) {
     int i;
     int ccontext;
@@ -1052,6 +1121,7 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
     policy_conf_t *my_policy;
     ulong f;
     uint user_type;
+    if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
     verbose(VJOBPMON , "*******************");
     verbose(VJOBPMON, "%spowermon_new_job (%lu,%lu)%s", COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
     if (powermon_is_idle()) powercap_idle_to_run();
@@ -1423,7 +1493,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 //
 //
 
-#define VERBOSE_POWERMON 0
+#define VERBOSE_POWERMON 1
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
     ulong jid, mpi,sid;
     ulong time_consumed;
