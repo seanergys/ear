@@ -95,6 +95,16 @@ state_t hsmp_scan(topology_t *tp)
 		}
 		mail = &zen2_mailbox;
 		// TODO: test function
+        uint args[2] = {  68, -1 };
+        uint reps[2] = {   0, -1 };
+		
+        if (state_fail(s = hsmp_send(0, 0x01, args, reps))) {
+            unlock_msg(s, "HSMP not enabled");
+        }
+        // Version checking
+        if (reps[0] != 69) {
+            unlock_msg(s, "HSMP not enabled");
+        }
 	}
 	return unlock_msg(EAR_SUCCESS, "");
 }
