@@ -60,14 +60,23 @@ static ushort zen2_pci_ids[2]   = { 0x1480, 0x00 };
 static ushort zen2_vendor       = 0x1022; // AMD
 static uint   zen2_nbios_count  = 4;
 //
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lock  = PTHREAD_MUTEX_INITIALIZER;
 static mailbox_t *mail;
 static uint       sockets_count;
 static uint       pcis_count;
 static pci_t     *pcis;
 
+static state_t unlock_msg0(state_t s, char *msg)
+{
+    debug("Exitting because: %s", msg);
+	pthread_mutex_unlock(&lock0);
+	return_msg(s, msg);
+}
+
 static state_t unlock_msg(state_t s, char *msg)
 {
+    debug("Exitting because: %s", msg);
 	pthread_mutex_unlock(&lock);
 	return_msg(s, msg);
 }
@@ -79,24 +88,34 @@ state_t hsmp_scan(topology_t *tp)
 	if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-
-	while (pthread_mutex_trylock(&lock));
+    debug("Zen detected");
+	while (pthread_mutex_trylock(&lock0));
 	if (pcis != NULL) {
-		return unlock_msg(EAR_SUCCESS, "");
+		return unlock_msg0(EAR_SUCCESS, "");
 	}
 	sockets_count = tp->socket_count;
 	// By now just ZEN2 and greater
 	if (tp->family >= FAMILY_ZEN) {
 		if (state_fail(s = pci_scan(zen2_vendor, zen2_pci_ids, zen2_pci_dfs, O_RDWR, &pcis, &pcis_count))) {
-			return unlock_msg(s, state_msg);
+			return unlock_msg0(s, state_msg);
 		}
 		if (pcis_count != (sockets_count*zen2_nbios_count)) {
-			return unlock_msg(EAR_ERROR, "Not enough NBIO devices detected");
+			return unlock_msg0(EAR_ERROR, "Not enough NBIO devices detected");
 		}
 		mail = &zen2_mailbox;
 		// TODO: test function
+        uint args[2] = {  68, -1 };
+        uint reps[2] = {   0, -1 };
+		
+        if (state_fail(s = hsmp_send(0, 0x01, args, reps))) {
+            return unlock_msg0(s, "HSMP not enabled");
+        }
+        // Version checking
+        if (reps[0] != 69) {
+            return unlock_msg0(EAR_ERROR, "HSMP not enabled");
+        }
 	}
-	return unlock_msg(EAR_SUCCESS, "");
+	return unlock_msg0(EAR_SUCCESS, "OK");
 }
 
 state_t hsmp_close()
@@ -108,6 +127,7 @@ state_t hsmp_close()
 static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 {
 	state_t s;
+    debug("smn_write");
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
 		debug("pci_write returned: %s (%d)", state_msg, s);
 		return s;
@@ -124,6 +144,7 @@ static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 static state_t smn_read(pci_t *pci, mailopt_t *opt, uint *data)
 {
 	state_t s;
+    debug("smn_read");
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
 		debug("pci_write returned: %s (%d)", state_msg, s);
 		return s;
@@ -199,7 +220,7 @@ retry:
 		}
 	}
 
-	return unlock_msg(EAR_SUCCESS, "");
+	return unlock_msg(EAR_SUCCESS, "OK");
 }
 
 #if TEST

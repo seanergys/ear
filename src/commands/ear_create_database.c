@@ -388,6 +388,7 @@ void create_tables(void *connection)
 	run_query(connection, query);
 
 
+#if USE_LEARNING_APPS
 	sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_applications ("
 			"job_id INT unsigned NOT NULL, "
 			"step_id INT unsigned NOT NULL, "
@@ -415,15 +416,6 @@ void create_tables(void *connection)
 			"user_group VARCHAR(256), "
 			"e_tag VARCHAR(256), "
 			"PRIMARY KEY(id, step_id))");
-	run_query(connection, query);
-
-	sprintf(query, "CREATE TABLE IF NOT EXISTS Periodic_aggregations ("
-			"id INT unsigned NOT NULL AUTO_INCREMENT, "
-			"start_time INT, "
-			"end_time INT, "
-			"DC_energy INT unsigned, "
-			"eardbd_host VARCHAR(64), "
-			"PRIMARY KEY(id))");
 	run_query(connection, query);
 
 	if (signature_detail)
@@ -480,6 +472,18 @@ void create_tables(void *connection)
 				"max_GPU_sig_id INT unsigned, "
 #endif
 				"PRIMARY KEY (id))");
+	run_query(connection, query);
+
+#endif
+
+	sprintf(query, "CREATE TABLE IF NOT EXISTS Periodic_aggregations ("
+			"id INT unsigned NOT NULL AUTO_INCREMENT, "
+			"start_time INT, "
+			"end_time INT, "
+			"DC_energy INT unsigned, "
+			"eardbd_host VARCHAR(64), "
+			"PRIMARY KEY(id))");
+
 
 	run_query(connection, query);
 
@@ -668,6 +672,8 @@ void create_tables(void *connection)
 	run_query(connection, query);
 
 
+#if USE_LEARNING_APPS
+
 	sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_applications ("
 			"job_id INT  NOT NULL, "
 			"step_id INT  NOT NULL, "
@@ -695,15 +701,6 @@ void create_tables(void *connection)
 			"user_group VARCHAR(256), "
 			"e_tag VARCHAR(256), "
 			"PRIMARY KEY(id, step_id))");
-	run_query(connection, query);
-
-	sprintf(query, "CREATE TABLE IF NOT EXISTS Periodic_aggregations ("
-			"id SERIAL NOT NULL, "
-			"start_time INT, "
-			"end_time INT, "
-			"DC_energy INT , "
-			"eardbd_host VARCHAR(64), "
-			"PRIMARY KEY(id))");
 	run_query(connection, query);
 
 	if (signature_detail)
@@ -754,6 +751,15 @@ void create_tables(void *connection)
 				"max_GPU_sig_id INT, "
 #endif
 				"PRIMARY KEY (id))");
+	run_query(connection, query);
+#endif
+	sprintf(query, "CREATE TABLE IF NOT EXISTS Periodic_aggregations ("
+			"id SERIAL NOT NULL, "
+			"start_time INT, "
+			"end_time INT, "
+			"DC_energy INT , "
+			"eardbd_host VARCHAR(64), "
+			"PRIMARY KEY(id))");
 
 	run_query(connection, query);
 
