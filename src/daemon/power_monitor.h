@@ -42,6 +42,7 @@
 
 typedef struct powermon_app {
     application_t    app;
+	pid_t            master_pid;
     uint             job_created;
     uint             is_job;
 	char             state;

@@ -287,9 +287,27 @@ void print_contexts_status() {
 }
 #endif
 
+int mark_contexts_to_finish_by_pid() {
+  int i = 0, found_contexts = 0;
+  char pid_file[SHORT_NAME];
+  struct stat tmp;
+  debug("marking_contexts_to_finish by pid");
+  for (i = 0; i <= max_context_created; i++) {
+    if (current_ear_app[i] != NULL) {
+		if (current_ear_app[i]->master_pid == 0) continue;
+		sprintf(pid_file, "/proc/%d", current_ear_app[i]->master_pid);
+		if (stat(pid_file, &tmp)) {
+			current_ear_app[i]->state = APP_FINISHED;
+			found_contexts++;
+		}
+    } 
+  }
+  return found_contexts;
+}
+
 int mark_contexts_to_finish(job_id id, job_id step_id) {
   int i = 0, found_contexts = 0;
-  if (step_id != BATCH_STEP) return; //only batch steps need to check this
+  if (step_id != BATCH_STEP) return 0; //only batch steps need to check this
   debug("marking_contexts_to_finish %lu %lu", id, step_id);
   for (i = 0; i <= max_context_created; i++) {
     if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id)) {
@@ -1114,6 +1132,7 @@ void powermon_new_task(new_task_req_t *newtask)
         return;
     }
     pmapp = current_ear_app[cc];
+	if (pmapp->master_pid == 0) pmapp->master_pid = newtask->pid;
     verbose(VJOBPMON+1, "New task for %lu/%lu PID = %d num_cpus %u", newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
     pmapp->plug_num_cpus += newtask->num_cpus;
     aggregate_cpus_to_mask(&pmapp->plug_mask, &newtask->mask);		

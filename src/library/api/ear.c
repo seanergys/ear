@@ -45,6 +45,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <semaphore.h>
 
 
@@ -919,7 +920,7 @@ void ear_lib_sig_handler(int s)
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
         /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
         if (cancelled || sig_shared_region[my_node_id].exited) return;
-        if (gettid() != main_pid) return;
+        if (syscall(SYS_gettid) != main_pid) return;
 
 				cancelled = 1;
 				ear_finalize(EAR_CANCELLED);
@@ -954,7 +955,7 @@ void ear_init()
         timestamp_getfast(&start_eard_init);
         #endif
 
-        main_pid = gettid();
+        main_pid = syscall(SYS_gettid);
 
 
 				if (ear_lib_initialized){
