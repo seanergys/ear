@@ -165,7 +165,7 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
     char *token;
     char *start;
     char *next_token;
-	int i;
+	int i, j;
 
     strclean(nodelist, '\n');
     start = strtok_r(nodelist, "[", &buffer_ptr);
@@ -213,6 +213,7 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
             char *second_token = strtok_r(NULL, "-", &second_ptr);
 			int r_start = atoi(first_token);
 			int r_end = atoi(second_token);
+			int r_len = ear_min(strlen(first_token), strlen(second_token));
 #define MAX_RANGE 30
 			int curr_start = r_start;
 			int curr_end = ear_min(r_end, r_start+MAX_RANGE);
@@ -231,6 +232,12 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
             	island->ranges[island->num_ranges+range_count+i].start = curr_start;
             	island->ranges[island->num_ranges+range_count+i].end = curr_end;
 
+				//check if both tokens contain 0s at the beginning and set them to the prefix if they do
+				for (j = 0; j < r_len; j++) { 
+					if ((first_token[j] == second_token[j]) && (first_token[j]  == '0')) { 
+                		strcat(island->ranges[island->num_ranges+range_count+i].prefix, "0");
+					} else break;
+				}
 
 
 				//add 0s to the prefix if needed
