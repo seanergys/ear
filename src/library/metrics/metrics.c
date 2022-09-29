@@ -86,6 +86,8 @@
 // extern configuration from the main ear library
 extern cluster_conf_t cconf;
 
+extern ear_classify_t phases_limits; // Get from ear.c
+
 extern int         dispose;
 // Hardware
 static double      hw_cache_line_size;
@@ -1160,6 +1162,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	double iogb = (double) metrics_io_diff[io_app_loop_idx].rchar / (double) (1024*1024) + (double) metrics_io_diff[io_app_loop_idx].wchar/(double)(1024*1024);
 
 	metrics->IO_MBS = iogb/time_s;
+    if (metrics->IO_MBS > phases_limits.io_th) {
+        verbose(1," %s.[%d] With high IO activity %.2lf", node_name, my_node_id, metrics->IO_MBS);
+    }
 
 	if (master) {
 		sig_ext->max_mpi = 0;
@@ -1248,7 +1253,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	}
 
 	/* Copying my info in the shared signature */
-	from_sig_to_mini(&sig_shared_region[my_node_id].sig,metrics);
+	ssig_from_signature(&sig_shared_region[my_node_id].sig, metrics);
 
 	/* If I'm the master, I have to copy in the special section */
 	if (master){

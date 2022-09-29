@@ -239,31 +239,42 @@ void signature_clean_before_db(signature_t *sig, double pwr_limit)
 #endif
 }
 
-
-void acum_ssig_metrics(ssig_t *avg_sig,ssig_t *s)
+state_t ssig_accumulate(ssig_t *dst_ssig, ssig_t *src_ssig)
 {
-    int i;
-    avg_sig->time				+= s->time;
-    avg_sig->CPI				+= s->CPI;
-    avg_sig->avg_f			+= s->avg_f;
-    avg_sig->def_f			+= s->def_f;
-    avg_sig->instructions			+= s->instructions;
-    avg_sig->cycles     += s->cycles;
-    avg_sig->L3_misses  += s->L3_misses;
-    avg_sig->Gflops			+= s->Gflops;
-    for (i=0;i<FLOPS_EVENTS;i++) avg_sig->FLOPS[i] += s->FLOPS[i];
+    if (dst_ssig == NULL || src_ssig == NULL) {
+        return EAR_ERROR;
+    }
+
+    dst_ssig->time         += src_ssig->time;
+    dst_ssig->CPI          += src_ssig->CPI;
+    dst_ssig->avg_f        += src_ssig->avg_f;
+    dst_ssig->def_f        += src_ssig->def_f;
+    dst_ssig->instructions += src_ssig->instructions;
+    dst_ssig->cycles       += src_ssig->cycles;
+    dst_ssig->L3_misses    += src_ssig->L3_misses;
+    dst_ssig->Gflops       += src_ssig->Gflops;
+    dst_ssig->IO_MBS       += src_ssig->IO_MBS;
+
+    for (int i = 0; i < FLOPS_EVENTS; i++) {
+        dst_ssig->FLOPS[i] += src_ssig->FLOPS[i];
+    }
+
 #if USE_GPUS
-    avg_sig->gpu_sig.num_gpus = s->gpu_sig.num_gpus;
-    for (i=0;i<MAX_GPUS_SUPPORTED;i++){
-        avg_sig->gpu_sig.gpu_data[i].GPU_power += s->gpu_sig.gpu_data[i].GPU_power;
-        avg_sig->gpu_sig.gpu_data[i].GPU_freq += s->gpu_sig.gpu_data[i].GPU_freq;
-        avg_sig->gpu_sig.gpu_data[i].GPU_mem_freq += s->gpu_sig.gpu_data[i].GPU_mem_freq;
-        avg_sig->gpu_sig.gpu_data[i].GPU_util += s->gpu_sig.gpu_data[i].GPU_util;
-        avg_sig->gpu_sig.gpu_data[i].GPU_mem_util += s->gpu_sig.gpu_data[i].GPU_mem_util;
+    dst_ssig->gpu_sig.num_gpus = src_ssig->gpu_sig.num_gpus;
+
+    for (int i = 0; i < MAX_GPUS_SUPPORTED; i++) {
+        dst_ssig->gpu_sig.gpu_data[i].GPU_power    += src_ssig->gpu_sig.gpu_data[i].GPU_power;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_freq     += src_ssig->gpu_sig.gpu_data[i].GPU_freq;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_mem_freq += src_ssig->gpu_sig.gpu_data[i].GPU_mem_freq;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_util     += src_ssig->gpu_sig.gpu_data[i].GPU_util;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_mem_util += src_ssig->gpu_sig.gpu_data[i].GPU_mem_util;
     }
 #endif
+
+    return EAR_SUCCESS;
 }
-void set_global_metrics(ssig_t *avg_sig,ssig_t *s)
+
+void ssig_set_node_metrics(ssig_t *avg_sig, ssig_t *s)
 {
     avg_sig->GBS=s->GBS;
     avg_sig->TPI=s->TPI;
@@ -273,30 +284,33 @@ void set_global_metrics(ssig_t *avg_sig,ssig_t *s)
     avg_sig->avg_f=0;
     avg_sig->def_f=0;
     avg_sig->Gflops=0;
-    memset(avg_sig->FLOPS,0,sizeof(ull)*FLOPS_EVENTS);
+    memset(avg_sig->FLOPS, 0, sizeof(ull) * FLOPS_EVENTS);
 }
 
-void compute_avg_node_sig(ssig_t *avg_sig,int n)
-{ 
-    double t,cpi;
-    unsigned long avg_f,def_f;
-    int i;
-    ull my_flops[FLOPS_EVENTS];
-    t					=avg_sig->time/n;
-    cpi				=avg_sig->CPI/n;
-    avg_f			=avg_sig->avg_f/n;
-    def_f			=avg_sig->def_f/n;
-    avg_sig->time = t;
-    avg_sig->CPI	= cpi;
-    avg_sig->avg_f 			= avg_f;
-    avg_sig->def_f			= def_f;
-    avg_sig->instructions = avg_sig->instructions/n;
-    avg_sig->cycles       = avg_sig->cycles/n;
-    avg_sig->L3_misses    = avg_sig->L3_misses/n;
-    for (i=0;i<FLOPS_EVENTS;i++) {
-        my_flops[i] = avg_sig->FLOPS[i]/n;
-        avg_sig->FLOPS[i] = my_flops[i];
+state_t ssig_compute_avg_node(ssig_t *ssig, int n)
+{
+    if (ssig == NULL || n <= 0) {
+        return EAR_ERROR;
     }
+
+    ssig->time /= n;
+
+    ssig->cycles /= n;
+    ssig->instructions /= n;
+    ssig->CPI /= n;
+
+    ssig->avg_f /= n;
+    ssig->def_f	/= n;
+
+    ssig->L3_misses /= n;
+
+    ssig->IO_MBS /= n;
+
+    for (int i = 0; i < FLOPS_EVENTS; i++) {
+        ssig->FLOPS[i] /= n;
+    }
+
+    return EAR_SUCCESS;
 }
 
 
@@ -334,63 +348,90 @@ void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
 #endif
 }
 
-void from_minis_to_sig(signature_t *s,ssig_t *minis)
+state_t signature_from_ssig(signature_t *dst_sig, ssig_t *src_ssig)
 {
-    //signature_init(s);
-    s->DC_power   = (double)minis->DC_power;
-    s->DRAM_power = (double)minis->DRAM_power;
-    s->PCK_power  = (double)minis->PCK_power;
-    s->GBS        = (double)minis->GBS;
-    s->TPI        = (double)minis->TPI;
-    s->CPI        = (double)minis->CPI;
-    s->Gflops     = (double)minis->Gflops;
-    s->time       = (double)minis->time;
-    memcpy(s->FLOPS,minis->FLOPS,sizeof(ull)*FLOPS_EVENTS);
-    s->instructions = minis->instructions;
-    s->cycles = minis->cycles;
-    s->L1_misses = minis->L1_misses;
-    s->L2_misses = minis->L2_misses;
-    s->L3_misses = minis->L3_misses;
-    s->avg_f=minis->avg_f;
-    s->def_f=minis->def_f;
+    if (dst_sig == NULL || src_ssig == NULL) {
+        return EAR_ERROR;
+    }
+
+    dst_sig->DC_power   = (double) src_ssig->DC_power;
+    dst_sig->DRAM_power = (double) src_ssig->DRAM_power;
+    dst_sig->PCK_power  = (double) src_ssig->PCK_power;
+
+    dst_sig->GBS        = (double) src_ssig->GBS;
+    dst_sig->TPI        = (double) src_ssig->TPI;
+
+    dst_sig->IO_MBS     = (double) src_ssig->IO_MBS;
+
+    dst_sig->L1_misses = src_ssig->L1_misses;
+    dst_sig->L2_misses = src_ssig->L2_misses;
+    dst_sig->L3_misses = src_ssig->L3_misses;
+
+    dst_sig->instructions = src_ssig->instructions;
+    dst_sig->cycles       = src_ssig->cycles;
+
+    dst_sig->CPI        = (double) src_ssig->CPI;
+
+    dst_sig->Gflops     = (double) src_ssig->Gflops;
+
+    dst_sig->time       = (double) src_ssig->time;
+
+    dst_sig->avg_f = src_ssig->avg_f;
+    dst_sig->def_f = src_ssig->def_f;
+
+    memcpy(dst_sig->FLOPS, src_ssig->FLOPS, sizeof(ull) * FLOPS_EVENTS);
+
 #if USE_GPUS
-    memcpy(&s->gpu_sig,&minis->gpu_sig,sizeof(gpu_signature_t));
+    memcpy(&dst_sig->gpu_sig, &src_ssig->gpu_sig, sizeof(gpu_signature_t));
 #endif
 
+    return EAR_SUCCESS;
 }
 
 
-void from_sig_to_mini(ssig_t *minis,signature_t *s)
+state_t ssig_from_signature(ssig_t *dst_ssig, signature_t *src_sig)
 {
-    minis->DC_power	= (float)s->DC_power;
-    minis->DRAM_power	= (float)s->DRAM_power;
-    minis->PCK_power	= (float)s->PCK_power;
-    minis->GBS			= (float)s->GBS;
-    minis->TPI			= (float)s->TPI;
-    minis->CPI			= (float)s->CPI;
-    minis->Gflops		= (float)s->Gflops;
-    minis->time			= (float)s->time;
-    memcpy(minis->FLOPS,s->FLOPS,sizeof(ull)*FLOPS_EVENTS);
-    minis->instructions = s->instructions;
-    minis->cycles 	= s->cycles;
-    minis->L1_misses = s->L1_misses;
-    minis->L2_misses = s->L2_misses;
-    minis->L3_misses = s->L3_misses;
-    minis->avg_f		= s->avg_f;
-    minis->def_f		= s->def_f;
+    if (dst_ssig == NULL || src_sig == NULL) {
+        return EAR_ERROR;
+    }
+
+    dst_ssig->DC_power	  = (float) src_sig->DC_power;
+    dst_ssig->DRAM_power = (float) src_sig->DRAM_power;
+    dst_ssig->PCK_power  = (float) src_sig->PCK_power;
+    dst_ssig->GBS        = (float) src_sig->GBS;
+    dst_ssig->TPI        = (float) src_sig->TPI;
+    dst_ssig->CPI        = (float) src_sig->CPI;
+    dst_ssig->Gflops     = (float) src_sig->Gflops;
+    dst_ssig->time	      = (float) src_sig->time;
+    dst_ssig->IO_MBS  = (float) src_sig->IO_MBS;
+
+    dst_ssig->instructions = src_sig->instructions;
+    dst_ssig->cycles       = src_sig->cycles;
+    dst_ssig->L1_misses    = src_sig->L1_misses;
+    dst_ssig->L2_misses    = src_sig->L2_misses;
+    dst_ssig->L3_misses    = src_sig->L3_misses;
+    dst_ssig->avg_f		= src_sig->avg_f;
+    dst_ssig->def_f		= src_sig->def_f;
+
+    memcpy(dst_ssig->FLOPS, src_sig->FLOPS, sizeof(ull) * FLOPS_EVENTS);
+
 #if USE_GPUS
-    memcpy(&minis->gpu_sig,&s->gpu_sig,sizeof(gpu_signature_t));
+    memcpy(&dst_ssig->gpu_sig,&src_sig->gpu_sig,sizeof(gpu_signature_t));
 #endif
+
+    return EAR_SUCCESS;
+
 }
+
 void copy_mini_sig(ssig_t *dst,ssig_t *src)
 {
     memcpy(dst,src,sizeof(ssig_t));
 }
 
-void minis_to_str(ssig_t *s,char *b)
+void ssig_tostr(ssig_t *ssig, char *dst_str, size_t n)
 {
-    sprintf(b,"[power %.2f GBs %.2f CPI %.3f GFlops %.2f time %.3f avgf %lu deff %lu]",s->DC_power,s->GBS,s->CPI,s->Gflops,s->time,
-            s->avg_f,s->def_f);
+    snprintf(dst_str, n, "[dc power %.2f GB/s %.2f CPI %.3f GFlop/s %.2f I/O %.2f time %.3f avgf %lu deff %lu]",
+            ssig->DC_power, ssig->GBS, ssig->CPI, ssig->Gflops, ssig->IO_MBS, ssig->time, ssig->avg_f, ssig->def_f);
 }
 
 /* New functions for GPU support */

@@ -466,7 +466,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
                 debug("Process %d: avg. cpufreq %lu num cpus %lu", i, process_avgcpuf, cpus_cnt_ret);
 
-                from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                signature_from_ssig(my_app, &sig_shared_region[i].sig);
 		double ltpi, lgbs, lpower;
 
 		ltpi = my_app->TPI;
@@ -1025,42 +1025,52 @@ state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 }
 
 
-state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {
     signature_t lsig;
     uint io, busy;
     char sig_buff[256];
     if (c == NULL) return EAR_ERROR;
 
-    verbose_master(1, "%sCPU IO settings%s", COL_BLU, COL_CLR);
+    const uint min_ener_io_veb_lvl = 1; // Used to control the verbose level in this function
+
+    verbose_master(min_ener_io_veb_lvl, "%sMIN ENERGY%s CPU I/O settings", COL_BLU, COL_CLR);
 
     cpu_ready = EAR_POLICY_READY;
 
     for (uint i = 0; i < num_processes; i++) {
-    #if 0
-        freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-    		/* We copy in shared  memory to be used later in MPI init/end if needed */
-				sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
-    #endif
-      freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
-      from_minis_to_sig(&lsig, &sig_shared_region[i].sig);
-      is_io_bound(&lsig, lib_shared_region->num_cpus, &io);
-      if (io){
-          if (me_top.vendor == VENDOR_INTEL) freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-          minis_to_str(&sig_shared_region[i].sig, sig_buff);
-          verbose_master(1,"%s.[%d] io config %s", node_name, i, sig_buff);
-      }else{
-          is_process_busy_waiting(&sig_shared_region[i].sig, &busy);
-          if (busy){
-            minis_to_str(&sig_shared_region[i].sig, sig_buff);
-            verbose_master(1,"%s.[%d] busy waiting in io config %s", node_name, i, sig_buff);
-            freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-          }
-      }
+        freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
 
+        signature_t local_sig;
+        signature_from_ssig(&local_sig, &sig_shared_region[i].sig);
+
+        uint io_bound;
+        is_io_bound(&local_sig, sig_shared_region[i].num_cpus, &io_bound);
+
+        uint busy_waiting;
+
+        if (!io_bound) {
+            // TODO: Why?
+            // is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting); Oriol
+            is_process_busy_waiting(&sig_shared_region[i].sig, &busy_waiting); // Julita
+            if (busy_waiting) {
+                freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+            }
+        } else if (me_top.vendor == VENDOR_INTEL) {
+             freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+        }
+
+        char ssig_buff[256];
+        ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
+
+        verbose_master(min_ener_io_veb_lvl, "%s.[%d] [I/O config: %u, I/O busy waiting config: %u] %s",
+                node_name, i, io_bound, busy_waiting, ssig_buff);
+        
+        /* We copy in shared memory to be used later in MPI init/end if needed. */
+	    sig_shared_region[i].new_freq = freqs->cpu_freq[i];
     }
-    memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
 
+    memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
 
     if (dyn_unc) {
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++) {
@@ -1083,6 +1093,7 @@ state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
+<<<<<<< HEAD
     signature_t lsig;
     char sig_buff[256];
     uint busy;
@@ -1106,6 +1117,39 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 			}
 
 		}
+=======
+    if (c == NULL) {
+        return EAR_ERROR;
+    }
+
+    const uint min_ener_bw_veb_lvl = 1; // Used to control the verbose level in this function
+
+    verbose_master(min_ener_bw_veb_lvl, "%sMIN ENERGY%s CPU Busy waiting settings", COL_BLU, COL_CLR);
+
+    cpu_ready = EAR_POLICY_READY;
+
+    for (uint i = 0; i < num_processes; i++) { 
+
+        signature_t local_sig;
+        signature_from_ssig(&local_sig, &sig_shared_region[i].sig);
+
+        uint busy_waiting;
+        is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting);
+        if (busy_waiting) {
+            char ssig_buff[256];
+            ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
+            verbose_master(min_ener_bw_veb_lvl, "%s.[%d] Busy waiting config %s", node_name, i, ssig_buff);
+
+            freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+        } else {
+            freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
+        }
+        
+
+        /* We copy in shared  memory to be used later in MPI init/end if needed */
+        sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
+    }
+>>>>>>> new_io_bw_config
     copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){

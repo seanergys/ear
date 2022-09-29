@@ -123,7 +123,7 @@ state_t rapl_init(ctx_t *c)
 	for (i = 0; i < tp.cpu_count; ++i) {
 		s = msr_open(tp.cpus[i].id, MSR_RD);
 	}
-	if (s = msr_read(tp.cpus[0].id, &result, sizeof(result), pu_addr[0])) {
+	if ((s = msr_read(tp.cpus[0].id, &result, sizeof(result), pu_addr[0]))) {
 		return s;
 	}
 	// Take a look to Intel's RAPL test
@@ -147,25 +147,41 @@ state_t rapl_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t rapl_read(ctx_t *c, rapl_t *r)
 {
-    state_t s;
+    // We avoid -Wunused-but-set-variable
+    // state_t s;
+
 	int i, t;
 	for (i = 0; i < tp.cpu_count; ++i) {
+
 		// PACK
 		for (t = 0; t < es_pack_count; ++t) {
-			s = msr_read(tp.cpus[i].id, &r[i].pack, sizeof(ullong), es_pack_addr[t]);
+
+            // We avoid -Wunused-but-set-variable
+			// s = msr_read(tp.cpus[i].id, &r[i].pack, sizeof(ullong), es_pack_addr[t]);
+			msr_read(tp.cpus[i].id, &r[i].pack, sizeof(ullong), es_pack_addr[t]);
+
 			r[i].pack &= 0xffffffff;
 		}
+
 		// DRAM
 		for (t = 0; t < es_dram_count; ++t) {
-			s = msr_read(tp.cpus[i].id, &r[i].dram, sizeof(ullong), es_dram_addr[t]);
+
+            // We avoid -Wunused-but-set-variable
+			// s = msr_read(tp.cpus[i].id, &r[i].dram, sizeof(ullong), es_dram_addr[t]);
+			msr_read(tp.cpus[i].id, &r[i].dram, sizeof(ullong), es_dram_addr[t]);
+
 			r[i].dram &= 0xffffffff;
 		}
 		// CORE
 		for (t = 0; t < es_core_count; ++t) {
-			s = msr_read(tp.cpus[i].id, &r[i].core, sizeof(ullong), es_core_addr[t]);
+            // We avoid -Wunused-but-set-variable
+			// s = msr_read(tp.cpus[i].id, &r[i].core, sizeof(ullong), es_core_addr[t]);
+			msr_read(tp.cpus[i].id, &r[i].core, sizeof(ullong), es_core_addr[t]);
+
 			r[i].core &= 0xffffffff;
 		}
 	}
+
 	return EAR_SUCCESS;
 }
 

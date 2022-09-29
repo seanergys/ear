@@ -474,16 +474,17 @@ void print_stack()
 
 void *get_stack(int lv)
 {
-  void *array[10];
-  int size = backtrace (array, ear_min(lv+1,10));
-  #if VERBOSE_MPI_OPT
-  char **strings;
-  strings = backtrace_symbols (array, size);
-  verbose(0,"Looking for symbol %s", strings[lv]);
-  free (strings);
-  #endif
-  return array[lv];
+    void *array[10];
+#if VERBOSE_MPI_OPT
+    int size = backtrace (array, ear_min(lv+1,10));
+    char **strings;
+    strings = backtrace_symbols (array, size);
+    verbose(0,"Looking for symbol %s", strings[lv]);
+    free (strings);
+#endif
+    return array[lv];
 }
+
 static void print_mpi_optimized(char *msg, uint index)
 {
 

@@ -221,28 +221,37 @@ void fill_event(ear_event_t *ev, uint event, ulong value);
  * \param pstate_cnt[out] The number of pstate available in \p pstate_lst.
  */
 static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint *pstate_cnt);
-/** Maps the list of CPU frequencies mapped per process, to a list of CPU frequencies mapped per core. Returns an EAR_ERROR if some argument is invalid.
+
+/** Maps the list of CPU frequencies mapped per process, to a list of CPU frequencies mapped per core.
+ * Returns an EAR_ERROR if some argument is invalid.
  * \param[in]  process_cpu_freqs_khz A list of frequencies indexed per local (node-level) rank.
  * \param[in]  process_cnt           The number of elements in \p process_cpu_freqs_khz.
  * \param[out] core_cpu_freqs_khz    A list of frequencies indexed per core.
  * \param[in]  cpu_cnt               The number of cores which is expected to be in core_cpu_freqs_khz.
- * \param[out] cpu_freq_max          If a non-NULL address is passed, the argument is filled with the maximum CPU freq. found in \process_cpu_freqs_khz.
- * \param[out] cpu_freq_min          If a non-NULL address is passed, the argument is filled with the minimum CPU freq. found in \process_cpu_freqs_khz.
+ * \param[out] cpu_freq_max          If a non-NULL address is passed, the argument is filled with the maximum
+ * CPU freq. found in \process_cpu_freqs_khz.
+ * \param[out] cpu_freq_min          If a non-NULL address is passed, the argument is filled with the minimum
+ * CPU freq. found in \process_cpu_freqs_khz.
  */
 static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz,
         int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min, int process_id);
+
 /** This function returns whether the CPU frequency selected by the policy itself must be selected.
  * The result depends on current Powercap status.
  */
 static uint must_set_policy_cpufreq(pc_app_info_t *pcdata, settings_conf_t *settings_conf);
+
 /** Calls the different methods for applying the frequency selection for the domains compatible with the
  * current loaded policy. It only works if master process (node-level) called the function. */
 static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id);
+
 static state_t policy_master_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id);
+
 /** Returns the mean of the frequency list \p freq_list with size \p n. */
 static ulong compute_avg_freq(ulong *freq_list, int n);
+
 /** Sets the CPU frequency according to what was selected by the policy plugin.
  * \param[in] c The current policy context.
  * \param[in] my_sig The signature used by the policy plugin. Not used.
@@ -251,12 +260,16 @@ static ulong compute_avg_freq(ulong *freq_list, int n);
  * \param[out] avg_freq After the function, this adress will contain the average CPU freq. selected. */
 static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         node_freqs_t *freqs, node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id);
-/** Verboses the policy context \p policy_ctx if the verbosity level of the job is equal or higher than \p verb_lvl. */
+
+/** Verboses the policy context \p policy_ctx if the verbosity level of the job is equal or higher than
+ * \p verb_lvl. */
 static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx);
-/** Verboses the list of frequencies \p core_cpu_freqs_khz, assuming that is given as the per CPU frequency list, for a
- * total number of \p cpu_cnt CPU/processors. Use \p verb_lvl to specify the verbosity level required by the job
- * to print the information. */
+
+/** Verboses the list of frequencies \p core_cpu_freqs_khz, assuming that is given as the per CPU frequency
+ * list, for a total number of \p cpu_cnt CPU/processors. Use \p verb_lvl to specify the verbosity level
+ * required by the job to print the information. */
 static void verbose_freq_per_core(int verb_lvl, ulong **core_cpu_freqs_khz, int cpu_cnt);
+
 static uint total_mpi_optimized =  0;
 
 /**** Auxiliary functions ***/
@@ -821,7 +834,6 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     signature_t node_sig;
     uint busy, iobound, mpibound, earl_phase_classification;
     uint jobs_in_node;
-    double max_mpi = 0, min_mpi = 100;
 
     polctx_t *c = &my_pol_ctx;
 
@@ -831,7 +843,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
-    #if MPI_OPTIMIZED
+#if MPI_OPTIMIZED
+    double max_mpi = 0, min_mpi = 100;
     if (ear_mpi_opt && is_mpi_enabled()){
       for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
         max_mpi = ear_max(max_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
@@ -841,7 +854,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
       low_mpi_ref = ear_max(low_mpi_ref, 10);
       verbose(0,"[%d] low_mpi %.2f", my_node_id, low_mpi_ref);
     }
-    #endif
+#endif
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
@@ -908,7 +921,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
       /* CPU-GPU Code */
       if (earl_phase_classification == APP_CPU_GPU){
             //verbose_master(POLICY_PHASES,"%sCPU-GPU application%s", COL_BLU,COL_CLR);
-            verbose_master(0,"%sCPU-GPU application%s", COL_BLU,COL_CLR);
+            verbose_master(1, "%sCPU-GPU application%s (%s)", COL_BLU, COL_CLR, node_name);
             st = policy_cpu_gpu_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
             *freq_set = avg_nf.cpu_freq[0];
             if (is_all_ready()){
@@ -925,7 +938,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
         if (earl_phase_classification == APP_IO_BOUND) {
           #if 0
             if (busy == BUSY_WAITING) {
-                verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration", COL_BLU, COL_CLR);
+                verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration (%s)", COL_BLU, COL_CLR, node_name);
                 // TODO Below function always returns EAR_SUCCESS
                 st = policy_io_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
                 // TODO: GPU ?
@@ -984,8 +997,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                 || (earl_phase_classification == APP_MPI_BOUND)) {
             /* Are we in a busy waiting phase ? */
             if (busy == BUSY_WAITING) {
-                verbose_master(POLICY_PHASES, "%sPOLICY%s CPU Busy waiting configuration",
-                        COL_BLU, COL_CLR);
+                verbose_master(POLICY_PHASES, "%sPOLICY%s CPU Busy waiting configuration (%s)",
+                        COL_BLU, COL_CLR, node_name);
 
                 st = policy_busy_waiting_configuration(c, my_sig, freqs,
                         &freqs_domain, &avg_nf);
