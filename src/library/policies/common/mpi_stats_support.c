@@ -472,6 +472,7 @@ void print_stack()
 
 }
 
+#if 0
 void *get_stack(int lv)
 {
     void *array[10];
@@ -484,6 +485,7 @@ void *get_stack(int lv)
 #endif
     return array[lv];
 }
+#endif
 
 static void print_mpi_optimized(char *msg, uint index)
 {
