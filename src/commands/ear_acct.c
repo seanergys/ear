@@ -744,30 +744,12 @@ void add_int_list_filter(char *query, char *addition, char *value)
 
 void print_event_type(int type)
 {
-	switch(type)
-	{
-		case ENERGY_POLICY_NEW_FREQ:
-			printf("%15s ", "NEW FREQ");
-			break;
-		case GLOBAL_ENERGY_POLICY:
-			printf("%15s ", "GLOBAL POLICY");
-			break;
-		case ENERGY_POLICY_FAILS:
-			printf("%15s ", "POLICY FAILS");
-			break;
-		case DYNAIS_OFF:
-			printf("%15s ", "DYNAIS OFF");
-			break;
-		case ENERGY_SAVING:
-			printf("%15s ", "ENERGY SAV.");
-      break;
-		default:
-			if (verbose)
-				printf("%12s(%d) ","UNKNOWN", type);
-			else
-				printf("%15s ", "UNKNOWN CODE");
-			break;
-	}
+  char str[64];
+  ear_event_t aux;
+  aux.event = type;
+  event_type_to_str(&aux, str, sizeof(str));
+	printf("%15s ", str);
+
 }
 
 #if DB_MYSQL
