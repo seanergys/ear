@@ -604,7 +604,7 @@ void compute_pow(PGconn *connection, int start_time, int end_time, unsigned long
 
 }
 #endif
-
+/*
 void event_type_to_str(int type, char *buff, size_t size)
 {
     switch(type)
@@ -662,11 +662,14 @@ void event_type_to_str(int type, char *buff, size_t size)
             break;
     }
 }
+*/
 /* EARD runtime events */
 void print_event_type(int type)
 {
+    ear_event_t ev;
+    ev.event = type;
     char buff[15];
-    event_type_to_str(type, buff, 15);
+    event_type_to_str(&ev, buff, 15);
     printf("%15s ", buff);
 }
 

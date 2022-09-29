@@ -32,6 +32,7 @@
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/cpufreq/cpufreq.h>
+#include <report/report.h>
 #include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
@@ -57,6 +58,31 @@
 #define POLICY_INFO   2
 #define POLICY_PHASES 2
 #define POLICY_GPU    2
+
+
+static ear_event_t curr_policy_event;
+extern uint report_earl_events;
+extern report_id_t rep_id;
+
+#define REPORT_PHASE(phase) \
+  if (report_earl_events){ \
+    fill_event(&curr_policy_event, EARL_PHASE, phase); \
+    report_events(&rep_id, &curr_policy_event, 1); \
+  }
+
+
+#define REPORT_OPT_ACCURACY(phase) \
+  if (report_earl_events){ \
+    fill_event(&curr_policy_event, EARL_OPT_ACCURACY, phase); \
+    report_events(&rep_id, &curr_policy_event, 1); \
+  }
+
+#define REPORT_SAVING(type, value) \
+  if (report_earl_events){ \
+    fill_event(&curr_policy_event, type, value); \
+    report_events(&rep_id, &curr_policy_event, 1); \
+  }
+
 
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
@@ -185,6 +211,9 @@ static const uint   *gpuf_pol_list_items;
 static uint first_print = 1;
 static uint first_policy_try = 1;
 
+void fill_common_event(ear_event_t *ev);
+void fill_event(ear_event_t *ev, uint event, ulong value);
+
 /** Reads information about some management API and stores the pstate list
  * and devices count information to the output arguments. Pure function.
  * \param api_id[in]      The API id of the mgt API you want to get the information, e.g., MGT_CPUFREQ.
@@ -265,6 +294,7 @@ static ulong calls_cpufreq = 0;
 /* This function confgures freqs for apps consuming lot GPU */
 state_t policy_cpu_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
+    REPORT_PHASE(APP_CPU_GPU);
     if (polsyms_fun.cpu_gpu_settings != NULL){
         polsyms_fun.cpu_gpu_settings(c,my_sig,freqs);
     }
@@ -275,16 +305,20 @@ state_t policy_cpu_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs
 /* This function confgures freqs based on IO criteria */
 state_t policy_io_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
+    REPORT_PHASE(APP_IO_BOUND);
     if (polsyms_fun.io_settings != NULL){
         polsyms_fun.io_settings(c,my_sig,freqs);
     }
     return EAR_SUCCESS;
 }
 
+
+
 /* This function sets again default frequencies after a setting modification */
 state_t policy_restore_comp_configuration(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq)
 {
+    REPORT_PHASE(APP_COMP_BOUND);
     if (polsyms_fun.restore_settings != NULL) {
         polsyms_fun.restore_settings(c,my_sig,freqs);
         return policy_master_freq_selection(c,my_sig,freqs,dom,avg_freq, ALL_PROCESSES);
@@ -294,6 +328,7 @@ state_t policy_restore_comp_configuration(polctx_t *c, signature_t *my_sig, node
 }
 state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
+    REPORT_PHASE(APP_BUSY_WAITING);    
     if (polsyms_fun.busy_wait_settings != NULL){
         polsyms_fun.busy_wait_settings(c,my_sig,freqs);
     }
@@ -552,6 +587,9 @@ state_t policy_init()
         // Powercap (?)
         pc_support_init(c);
     }
+    fill_common_event(&curr_policy_event);
+    REPORT_OPT_ACCURACY(OPT_NOT_READY);
+
 
 
     /* We have migrated frequency set from eard to earl */
@@ -834,7 +872,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     if (curr_gpu_state & _GPU_Idle) {
         verbose_master(POLICY_GPU, "%sGPU idle phase%s", COL_BLU, COL_CLR);
     }
-
+    #if 0
 		/* Busy waiting is critical , we must verify all the processes are waiting */
 		uint all_processes_busy = 1;
 		if (busy){
@@ -846,21 +884,21 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 		}
 		/* If not all processes are busy waiting we don't apply special settings */
 		if (!all_processes_busy) busy = 0;
-
+    #endif
     /* Applications gpu bound cannot be applied as CPU-GPU */
-    if ((curr_gpu_state & _GPU_Bound) && busy != BUSY_WAITING){
+    if ((curr_gpu_state & _GPU_Bound) && (busy != BUSY_WAITING)){
       earl_phase_classification = APP_CPU_GPU;
     }
 
     //  NEW CLASSIFY
     verbose_master(POLICY_PHASES, "------------- EARL phase classification ------------\n"
             "I/O (3) vs. MPI (2): %u\n"
-            "Busy Waiting %u,%u / I/O bound %u / MPI bound %u / Using phases %u\n"
+            "Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u\n"
             "cpi_busy %.2f gbs_busy %.2f gflops_busy %.2f\n"
             "cpi_cpu_bound %.2f gbs_cpu_bound %.2f\n"
             "cpi_mem_bound %.2f gbs_mem_bound %.2f\n"
             "----------------------------------------------------",
-            earl_phase_classification, busy, all_processes_busy, iobound, mpibound, use_earl_phases,
+            earl_phase_classification, busy, iobound, mpibound, use_earl_phases,
             phases_limits.cpi_busy_waiting, phases_limits.gbs_busy_waiting, phases_limits.gflops_busy_waiting,
             phases_limits.cpi_cpu_bound, phases_limits.gbs_cpu_bound,
             phases_limits.cpi_mem_bound, phases_limits.gbs_mem_bound);
@@ -885,6 +923,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND) {
+          #if 0
             if (busy == BUSY_WAITING) {
                 verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration", COL_BLU, COL_CLR);
                 // TODO Below function always returns EAR_SUCCESS
@@ -922,6 +961,23 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                 verbose_master(POLICY_PHASES,"%sPOLICY%s IO -> COMP", COL_BLU, COL_CLR);
                 earl_phase_classification = APP_COMP_BOUND;
             }
+            #endif
+                verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration", COL_BLU, COL_CLR);
+                // TODO Below function always returns EAR_SUCCESS
+                st = policy_io_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
+                // TODO: GPU ?
+                *freq_set = avg_nf.cpu_freq[0];
+                if (is_all_ready()) {
+                    last_earl_phase_classification = earl_phase_classification;
+                    last_gpu_state = curr_gpu_state;
+                    policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
+                    *ready = EAR_POLICY_READY;
+                    clean_signatures(lib_shared_region, sig_shared_region);
+
+                    *ready = EAR_POLICY_READY;
+
+                    return EAR_SUCCESS;
+                }
         }
         /* Restore configuration to COMP or MPI if needed */
         if ((earl_phase_classification == APP_COMP_BOUND)
@@ -1113,6 +1169,11 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	sig_ext->saving   = esaving * sig_ext->elapsed;
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
 	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
+
+  REPORT_SAVING(ENERGY_SAVING , (ulong)esaving);
+  REPORT_SAVING(POWER_SAVING , (ulong)psaving);
+  //REPORT_SAVING(PERF_PENALTY , (ulong)tpenalty);
+
 }
 
 
@@ -1160,6 +1221,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 
         ret = polsyms_fun.ok(c, curr, prev, ok);
         if (*ok == 0) {
+            REPORT_OPT_ACCURACY(OPT_NOT_OK);
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
         }
@@ -1240,10 +1302,12 @@ state_t policy_new_iteration(signature_t *sig)
             /* We must reset the configuration */
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
-
+            REPORT_OPT_ACCURACY(OPT_TRY_AGAIN);
             return EAR_ERROR;
         }
     }
+    /* IF APP_IO_BOUND, compute IO */
+    /* IF APP_BUSY_WAITING, compute CPI */
 
 #if USE_GPUS
     if (last_gpu_state & _GPU_Idle) {
@@ -1254,6 +1318,7 @@ state_t policy_new_iteration(signature_t *sig)
         for (int i = 0; i < sig->gpu_sig.num_gpus; i++){
             if (sig->gpu_sig.gpu_data[i].GPU_util > 0){
                 last_gpu_state = _GPU_Comp;
+                REPORT_OPT_ACCURACY(OPT_TRY_AGAIN);
                 return EAR_ERROR;
             }
         }
