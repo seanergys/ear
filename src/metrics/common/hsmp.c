@@ -104,15 +104,15 @@ state_t hsmp_scan(topology_t *tp)
 		}
 		mail = &zen2_mailbox;
 		// TODO: test function
-        uint args[2] = {  68, -1 };
-        uint reps[2] = {   0, -1 };
+        uint args[2] = { 68, -1 };
+        uint reps[2] = {  0, -1 };
 		
         if (state_fail(s = hsmp_send(0, 0x01, args, reps))) {
             return unlock_msg0(s, "HSMP not enabled");
         }
-        // Version checking
+        // Ping checking
         if (reps[0] != 69) {
-            return unlock_msg0(EAR_ERROR, "HSMP not enabled");
+            return unlock_msg0(EAR_ERROR, "HSMP not enabled (incorrect ping value)");
         }
 	}
 	return unlock_msg0(EAR_SUCCESS, "OK");
@@ -127,7 +127,7 @@ state_t hsmp_close()
 static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 {
 	state_t s;
-    debug("smn_write");
+    //debug("smn_write");
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
 		debug("pci_write returned: %s (%d)", state_msg, s);
 		return s;
@@ -144,7 +144,7 @@ static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 static state_t smn_read(pci_t *pci, mailopt_t *opt, uint *data)
 {
 	state_t s;
-    debug("smn_read");
+    //debug("smn_read");
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
 		debug("pci_write returned: %s (%d)", state_msg, s);
 		return s;

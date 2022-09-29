@@ -40,6 +40,8 @@ state_t mgt_cpufreq_dummy_set_current_list(ctx_t *c, uint *pstate_index);
 
 state_t mgt_cpufreq_dummy_set_current(ctx_t *c, uint pstate_index, int cpu);
 
+state_t mgt_cpufreq_dummy_reset(ctx_t *c);
+
 // Governors
 state_t mgt_cpufreq_dummy_governor_get(ctx_t *c, uint *governor);
 

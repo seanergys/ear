@@ -66,15 +66,16 @@ static int keeper_read_line(int fd, char *id, char *value)
 static void keeper_open()
 {
     char path[256];
+    char *tmp;
 
     // Open file if not previously opened
-    if (getenv("EAR_TMP") == NULL) {
-        return;
+    if ((tmp = getenv("EAR_TMP")) == NULL) {
+        tmp = "/tmp";
     }
     if (fd >= 0) {
         return;
     }
-    sprintf(path, "%s/ear-dyn.conf", getenv("EAR_TMP"));
+    sprintf(path, "%s/ear-dyn.conf", tmp);
     debug("Opening %s", path);
     if ((fd = open(path, O_RDWR | O_CREAT, F_UR | F_UW | F_GR | F_OR)) < 0) {
         debug("Failed: %s", strerror(errno));
@@ -90,7 +91,7 @@ static void keeper_open()
 #if SHOW_DEBUGS
     int i = 0;
     while(i < lines_count) {
-        printf("Read %s=%s\n", ids[i], values[i]);
+        debug("Read %s = '%s'", ids[i], values[i]);
         ++i;
     }
 #endif
@@ -216,7 +217,7 @@ KEEPER_LOAD(   text,   char *, strcpy(value, values[i]));
 KEEPER_LOAD(  int32,    int *, *value = atoi(values[i]));
 KEEPER_LOAD(  int64,  llong *, *value = atoll(values[i]));
 KEEPER_LOAD( uint32,   uint *, *value = (uint) atoi(values[i]));
-KEEPER_LOAD( uint64, ullong *, *value = (ullong) atoll(values[i]));
+KEEPER_LOAD( uint64, ullong *, *value = strtoull(values[i], NULL, 10));
 KEEPER_LOAD(float32,  float *, *value = (float) atof(values[i]));
 KEEPER_LOAD(float64, double *, *value = atof(values[i]));
 

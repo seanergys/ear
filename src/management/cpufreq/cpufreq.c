@@ -160,6 +160,11 @@ state_t mgt_cpufreq_set_current(ctx_t *c, uint pstate_index, int cpu)
 	preturn (ops.set_current, c, pstate_index, cpu);
 }
 
+state_t mgt_cpufreq_reset(ctx_t *c)
+{
+	preturn (ops.reset, c);
+}
+
 /** Governors */
 state_t mgt_cpufreq_governor_get(ctx_t *c, uint *governor)
 {
