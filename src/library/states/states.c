@@ -713,6 +713,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* We must evaluate policy decissions */
             signatures_stables++;
 
+            if (signatures_different(&loop_signature, &policy_sel_signature, 0.2)){
+              /* Reset */
+              verbose_master(2," EARL state reset becuase signatures are different");
+              policy_set_default_freq(&loop_signature);
+              EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+              break;
+            }
+
             if (sig_ready[def_pstate] == 0){
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
@@ -722,10 +730,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 return;
             }
 
+
             policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
 
-			/* Accumulate Energy savings */
-			accumulate_energy_savings(&loop_signature, &application.signature);
+			      /* Accumulate Energy savings */
+			      accumulate_energy_savings(&loop_signature, &application.signature);
 
             {
                 char *ok_clr = COL_GRE;

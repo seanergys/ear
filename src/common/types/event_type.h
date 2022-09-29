@@ -37,9 +37,9 @@ typedef struct ear_event {
 #define GLOBAL_ENERGY_POLICY  1
 #define ENERGY_POLICY_FAILS   2
 #define DYNAIS_OFF        3
-#define ENERGY_SAVING     4
-#define POWER_SAVING      5
-#define PERF_PENALTY      6
+#define ENERGY_SAVING     9
+#define POWER_SAVING      10
+#define PERF_PENALTY      11
 
 #define EARL_STATE              4
 #define EARL_PHASE              5

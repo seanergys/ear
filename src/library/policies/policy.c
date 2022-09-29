@@ -77,6 +77,12 @@ extern report_id_t rep_id;
     report_events(&rep_id, &curr_policy_event, 1); \
   }
 
+#define REPORT_SAVING(type, value) \
+  if (report_earl_events){ \
+    fill_event(&curr_policy_event, type, value); \
+    report_events(&rep_id, &curr_policy_event, 1); \
+  }
+
 
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
@@ -1163,6 +1169,11 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	sig_ext->saving   = esaving * sig_ext->elapsed;
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
 	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
+
+  REPORT_SAVING(ENERGY_SAVING , (ulong)esaving);
+  REPORT_SAVING(POWER_SAVING , (ulong)psaving);
+  //REPORT_SAVING(PERF_PENALTY , (ulong)tpenalty);
+
 }
 
 
@@ -1295,6 +1306,8 @@ state_t policy_new_iteration(signature_t *sig)
             return EAR_ERROR;
         }
     }
+    /* IF APP_IO_BOUND, compute IO */
+    /* IF APP_BUSY_WAITING, compute CPI */
 
 #if USE_GPUS
     if (last_gpu_state & _GPU_Idle) {

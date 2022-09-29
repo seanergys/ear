@@ -1004,7 +1004,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
         error("powermon_mpi_init: NULL appID");
         return;
     }
-    verbose(VJOBPMON + 1, "powermon_mpi_init job_id %lu step_id %lu (is_mpi %u)", appID->job.id, appID->job.step_id,
+    verbose(VJOBPMON , "powermon_mpi_init job_id %lu step_id %lu (is_mpi %u)", appID->job.id, appID->job.step_id,
             appID->is_mpi);
     cc = find_context_for_job(jid, sid);
     if (cc < 0){
