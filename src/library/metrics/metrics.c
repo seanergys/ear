@@ -17,7 +17,8 @@
 
 #define _GNU_SOURCE
 
-//#define SHOW_DEBUGS            1
+// #define SHOW_DEBUGS            1
+
 #define INFO_METRICS           2
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -434,21 +435,10 @@ static void metrics_static_init(topology_t *tp)
                 &mgt_imcfreq.avail_count));
 
 #if USE_GPUS
-    sa(mgt_gpu_freq_list(no_ctx, (const ulong ***) &mgt_gpu.avail_list, (const uint **) &mgt_gpu.avail_count));
-
-    if (VERB_ON(2) && master && mgt_gpu.ok) {
-
-        char gpu_buff[512];
-
-        if (state_fail(gpus_avail_freqs_tostr(mgt_gpu.devs_count, (const ulong **) mgt_gpu.avail_list, (const uint *) mgt_gpu.avail_count,
-                        gpu_buff, sizeof gpu_buff))) {
-
-            verbose(2, "%sWARNING%sGPU available freqs could not be printed: %s", COL_RED, COL_CLR, state_msg);
-
-        } else {
-            verbose(2, "MGT_GPU available list of frequencies:\n%s", gpu_buff);
-        }
-    }
+    sa(mgt_gpu_freq_list(no_ctx,
+                (const ulong ***) &mgt_gpu.avail_list,
+                (const uint **) &mgt_gpu.avail_count));
+    
 #endif // USE_GPUS
 
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
@@ -473,11 +463,11 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_gpu.api    , "MET_GPU    : ");
 #endif // USE_GPUS
     }
-		#if !SINGLE_CONNECTION
-		if (VERB_ON(2)){
-			apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
-		}
-		#endif
+#if !SINGLE_CONNECTION
+    if (VERB_ON(2)){
+        apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
+    }
+#endif
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);
@@ -900,7 +890,7 @@ static int metrics_partial_stop(uint where)
 	energy_data_to_str(start_energy_str,metrics_ipmi[LOO]);
 	energy_data_to_str(stop_energy_str,aux_energy_stop);
 	debug("start energy str %s", start_energy_str);
-	debug("end energy str %s", end_energy_str);
+	debug("end energy str %s", stop_energy_str);
 
 	/* If EARD is present, we wait until the power is computed */
 	if ((where==SIG_END) && (c_energy==0) && (master)) {
@@ -953,8 +943,9 @@ static int metrics_partial_stop(uint where)
 	if (master) {
 		if (c_power < system_conf->max_sig_power) {
 			acum_ipmi[LOO] = c_energy;
-		}else{
-			verbose_master(2, "Computed power was not correct (%lf) reducing it to %lf\n",c_power,system_conf->min_sig_power);
+		} else {
+			verbose_master(2, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
+                    COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
 			acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
 		}
 		acum_ipmi[APP] += acum_ipmi[LOO];

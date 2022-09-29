@@ -1093,31 +1093,6 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
 
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-<<<<<<< HEAD
-    signature_t lsig;
-    char sig_buff[256];
-    uint busy;
-
-    if (c == NULL) return EAR_ERROR;
-    verbose_master(1, "%sCPU busy waiting settings%s", COL_BLU, COL_CLR);
-    cpu_ready = EAR_POLICY_READY;
-    for (uint i=0;i<num_processes;i++){ 
-    #if 0
-			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-    	/* We copy in shared  memory to be used later in MPI init/end if needed */
-			sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
-    #endif
-      is_process_busy_waiting(&sig_shared_region[i].sig, &busy);
-			if (busy){
-				minis_to_str(&sig_shared_region[i].sig, sig_buff);
-				verbose_master(1,"%s.[%d] busy waiting config %s", node_name, i, sig_buff);
-				freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-			}else{
-				freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
-			}
-
-		}
-=======
     if (c == NULL) {
         return EAR_ERROR;
     }
@@ -1134,7 +1109,8 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
         signature_from_ssig(&local_sig, &sig_shared_region[i].sig);
 
         uint busy_waiting;
-        is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting);
+        // is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting);
+        is_process_busy_waiting(&sig_shared_region[i].sig, &busy_waiting);
         if (busy_waiting) {
             char ssig_buff[256];
             ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
@@ -1149,7 +1125,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
         /* We copy in shared  memory to be used later in MPI init/end if needed */
         sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
     }
->>>>>>> new_io_bw_config
+
     copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
