@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
@@ -268,7 +268,7 @@ static state_t shuffle_in(ulong *user_list, ulong *root_list, state_t s)
 
 state_t mgt_gpu_eard_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
-    #ifdef RPCs
+    #ifdef RPCS
     ulong aux[128]; // khz
 	return shuffle_in(khz, aux, eard_rpc(RPC_FREQ_CURRENT, NULL, 0, (char *) aux, root_devs_count*sizeof(ulong)));
     #else
