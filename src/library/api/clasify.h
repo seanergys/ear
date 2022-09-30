@@ -53,7 +53,7 @@ typedef enum {
 } gpu_state_t;
 
 
-typedef struct ear_classify{
+typedef struct ear_classify {
   float cpi_cpu_bound ;
   float gbs_cpu_bound;
   float cpi_busy_waiting;
@@ -64,7 +64,7 @@ typedef struct ear_classify{
   float cpi_mem_bound;
   float gbs_mem_bound;
   float mpi_bound;
-}ear_classify_t;
+} ear_classify_t;
 
 #define NODE    0
 #define PROCESS 1
@@ -78,7 +78,6 @@ void get_classify_limits(ear_classify_t *limits);
 /* Classify the app in APP_COMP_BOUND, APP_IO_BOUND or APP_MPI_BOUND . To review */
 state_t classify(uint iobound, uint mibound, uint *app_state);
 
-
 /* Checks based on CPI, GBs and GFlops, per Node but normalized */
 state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy);
 
@@ -90,9 +89,8 @@ state_t is_process_busy_waiting(ssig_t *sig, uint *busy);
 state_t is_cpu_bound(signature_t *sig,uint num_cpus, uint *cbound);
 /* Check CPI and GBS, per node */
 state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound);
-
 /* Based on signature IO_MBS */
-state_t is_io_bound(signature_t *sig,uint num_cpus, uint *iobound);
+state_t is_io_bound(signature_t *sig, uint num_cpus, uint *iobound);
 /* Based on perc_MPI */
 state_t is_network_bound(signature_t *sig, uint num_cpus, uint *mpibound);
 /* Checks the per-process GBs */

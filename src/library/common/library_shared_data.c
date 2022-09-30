@@ -261,7 +261,7 @@ void compute_avg_sh_signatures(int size,int max,int *ppn,shsignature_t *my_sh_si
 	signature_init(&totals);
   for (i=0;i<size;i++){
     for (j=0;j<ear_min(max,ppn[i]);j++){
-			from_minis_to_sig(&avgs,&my_sh_sig[i*max+j].sig);
+			signature_from_ssig(&avgs,&my_sh_sig[i*max+j].sig);
 			acum_sig_metrics(&totals,&avgs);
 			nums++;
    	}
@@ -577,23 +577,23 @@ int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *
 }
 
 
-void compute_per_node_avg_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *my_node_sig)
+void compute_per_node_avg_sig_info(lib_shared_data_t *data, shsignature_t *sig, shsignature_t *my_node_sig)
 {
 	int i;
-	//debug("compute_per_node_sig_info");
-	compute_per_node_avg_mpi_info(data,sig,&my_node_sig->mpi_info);
+
+	compute_per_node_avg_mpi_info(data, sig, &my_node_sig->mpi_info);
+
 	ssig_t avg_node;
-	//print_shared_signatures(data,sig);
-	set_global_metrics(&avg_node,&sig[0].sig);
-	for (i=0;i<data->num_processes;i++){
-		acum_ssig_metrics(&avg_node,&sig[i].sig);
+
+	ssig_set_node_metrics(&avg_node, &sig[0].sig); // We first set DC, GBs and TPI
+
+	for (i = 0; i < data->num_processes; i++) {
+		ssig_accumulate(&avg_node, &sig[i].sig);
 	}
-	compute_avg_node_sig(&avg_node,data->num_processes);
-	copy_mini_sig(&my_node_sig->sig,&avg_node);
-	#if 0
-	fprintf(stderr,"AVG per node sig (using rank %d) \n",my_node_sig->mpi_info.rank);
-	print_sh_signature(my_node_sig);	
-	#endif
+
+	ssig_compute_avg_node(&avg_node, data->num_processes);
+
+	copy_mini_sig(&my_node_sig->sig, &avg_node);
 }
 
 

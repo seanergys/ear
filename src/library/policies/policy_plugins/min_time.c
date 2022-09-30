@@ -447,7 +447,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (freq_per_core) {
-                from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                signature_from_ssig(my_app, &sig_shared_region[i].sig);
                 double ltpi, lgbs, lpower;
 
                 ltpi = my_app->TPI;

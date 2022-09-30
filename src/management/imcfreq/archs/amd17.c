@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <metrics/common/hsmp.h>
 #include <management/imcfreq/archs/amd17.h>

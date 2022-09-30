@@ -44,7 +44,7 @@ typedef struct gpu_app{
 typedef struct gpu_signature{
     int num_gpus;
     gpu_app_t gpu_data[MAX_GPUS_SUPPORTED];
-}gpu_signature_t;
+} gpu_signature_t;
 
 
 typedef struct mini_sig
@@ -66,6 +66,7 @@ typedef struct mini_sig
     ulong avg_f;
     ulong def_f;
     io_data_t iod;
+    float IO_MBS;
 #if USE_GPUS
     gpu_signature_t gpu_sig;
 #endif
@@ -75,7 +76,7 @@ typedef struct mini_sig
   ull   accum_mem_access;
   ulong accum_avg_f;
   double valid_time;
-}ssig_t;
+} ssig_t;
 
 
 typedef struct signature
@@ -129,21 +130,33 @@ void read_signature_fd_binary(int fd, signature_t *sig);
 void signature_to_str(signature_t *sig, char *msg, size_t limit);
 
 void acum_sig_metrics(signature_t *dst,signature_t *src);
-void acum_ssig_metrics(ssig_t *avg_sig,ssig_t *s);
+
+/** Accumulate metrics values from \p src_sig to \p dst_sig.
+ * If some of the input arguments are NULL, returns EAR_ERROR. */
+state_t ssig_accumulate(ssig_t *dst_ssig, ssig_t *src_ssig);
 void compute_avg_sig(signature_t *dst,signature_t *src,int nums);
-void compute_avg_node_sig(ssig_t *avg_sig,int n);
+/** Modifies \p ssig in a way that all its metrics are averaged by \p n,
+ * which must be a positive (non-zero) integer.
+ * \todo: Maybe this function should be in another level (e.g., Library).
+ * What is "n" from the point of view of a ssig_t? */
+state_t ssig_compute_avg_node(ssig_t *ssig, int n);
 void adapt_signature_to_node(signature_t *dest,signature_t *src,float ratio_PPN);
 void signature_print_simple_fd(int fd, signature_t *sig);
-
-void from_sig_to_mini(ssig_t *minis,signature_t *s);
-void from_minis_to_sig(signature_t *s,ssig_t *minis);
+/** Fills data from the signature \p src_sig to the mini signature \p dst_ssig. */
+state_t ssig_from_signature(ssig_t *dst_ssig, signature_t *src_sig);
+/** Fills data from the mini signature \p src_ssig to the signature \p dst_sig. */
+state_t signature_from_ssig(signature_t *dst_sig, ssig_t *src_ssig);
 void copy_mini_sig(ssig_t *dst,ssig_t *src);
-void minis_to_str(ssig_t *s,char *b);
+/** Transforms \p ssig data to a readable format. The result is stored at \p dst_str, which must have
+ * allocated at least \p n bytes. */
+void ssig_tostr(ssig_t *ssig, char *dst_str, size_t n);
 
 double sig_total_gpu_power(signature_t *s);
 double sig_node_power(signature_t *s);
 int sig_gpus_used(signature_t *s);
 
-void set_global_metrics(ssig_t *avg_sig, ssig_t *s);
+/** Copies node metrics (i.e., GBS, TPI, DC Node Power) from \p src_ssig
+ * to \p dst_ssig. The rest of metrics of the destination are initialised to 0. */
+void ssig_set_node_metrics(ssig_t *dst_ssig, ssig_t *src_ssig);
 
 #endif
