@@ -60,8 +60,14 @@ void gpu_nvml_load(gpu_ops_t *ops)
 static state_t static_init()
 {
 	state_t s = EAR_SUCCESS;
+    int i;
+
 	// Allocation
 	pool = calloc(devs_count, sizeof(gpu_t));
+    // Pool at 0 is not incorrect
+	for (i = 0; i < devs_count; ++i) {
+        pool[i].correct = 1;
+    }
 	// Initializing monitoring thread suscription.
 	sus = suscription();
 	sus->call_main  = gpu_nvml_pool;
@@ -139,6 +145,7 @@ static int static_read(int i, gpu_t *metric)
 	metric->energy_j = 0;
 	metric->power_w  = (double) power_mw;
 	metric->working  = proc_count > 0;
+    // In the future we have to check if there is any error in any returned status.
 	metric->correct  = 1;
 
 	return 1;
