@@ -42,6 +42,7 @@
 #include <common/hardware/hardware_info.h>
 #include <common/output/verbose.h>
 #include <common/system/time.h>
+#include <common/system/execute.h>
 #include <common/config/config_dev.h>
 
 #include <library/common/library_shared_data.h>
@@ -452,38 +453,6 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 }
 
 
-void print_stack()
-{
-  void *array[10];
-  char **strings;
-  int size, i;
-
-  size = backtrace (array, 10);
-  strings = backtrace_symbols (array, size);
-  if (strings != NULL)
-  {
-
-    printf ("Obtained %d stack frames.\n", size);
-    for (i = 0; i < ear_min(4,size); i++)
-      printf ("%s - from backtrace %p\n", strings[i], array[i]);
-  }
-
-  free (strings);
-
-}
-
-void *get_stack(int lv)
-{
-  void *array[10];
-  int size = backtrace (array, ear_min(lv+1,10));
-  #if VERBOSE_MPI_OPT
-  char **strings;
-  strings = backtrace_symbols (array, size);
-  verbose(0,"Looking for symbol %s", strings[lv]);
-  free (strings);
-  #endif
-  return array[lv];
-}
 static void print_mpi_optimized(char *msg, uint index)
 {
 
@@ -629,7 +598,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     //print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
                     #endif
                     num_mpi_to_optimize++;
-                    //print_stack();
+                    //print_stack(verb_channel);
                    }
                 }
              }

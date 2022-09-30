@@ -333,6 +333,10 @@ void signal_handler(int sig)
 				if (sig == SIGPIPE) { verbose(VCONF, "signal SIGPIPE received. Application terminated abnormally"); }
 				if (sig == SIGTERM) { verbose(VCONF, "signal SIGTERM received. Finishing"); }
 				if (sig == SIGINT) { verbose(VCONF, "signal SIGINT received. Finishing"); }
+        if (sig == SIGSEGV){
+          verbose(VCONF,"signal SIGSEGV received in main EARD thread. Stack.....");
+          print_stack(verb_channel);
+        }
 				if (sig == SIGHUP) {
 								verbose(VCONF, "signal SIGHUP received. Reloading EAR conf");
 								signal_sighup = 1;
@@ -401,6 +405,7 @@ void signal_catcher()
 				sigdelset(&eard_mask, SIGINT);
 				sigdelset(&eard_mask, SIGHUP);
 				sigdelset(&eard_mask, SIGUSR2);
+				sigdelset(&eard_mask, SIGSEGV);
 				//sigprocmask(SIG_SETMASK,&eard_mask,NULL);
 				pthread_sigmask(SIG_SETMASK, &eard_mask, NULL);
 
@@ -429,6 +434,10 @@ void signal_catcher()
 								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
 				}
 				signal = SIGUSR2;
+				if (sigaction(signal, &action, NULL) < 0) {
+								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
+				}
+				signal = SIGSEGV;
 				if (sigaction(signal, &action, NULL) < 0) {
 								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
 				}

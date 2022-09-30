@@ -31,6 +31,8 @@
 #define APP_BUSY_WAITING	4
 #define APP_CPU_GPU       5
 
+#define EARL_MAX_PHASES   6
+
 #define DYNAIS_GUIDED 0
 #define TIME_GUIDED	  1
 

@@ -40,6 +40,7 @@
 #include <common/system/sockets.h>
 #include <common/system/folder.h>
 #include <common/messaging/msg_conf.h>
+#include <common/system/execute.h>
 
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
@@ -485,6 +486,10 @@ powermon_app_t *get_powermon_app() {
 
 static void PM_my_sigusr1(int signun) {
 	verbose(VNODEPMON, " thread %u receives sigusr1", (uint) pthread_self());
+  if (signun == SIGSEGV){ 
+    verbose(VNODEPMON, "Powermon receives SIGSEGV. Stack......");
+    print_stack(verb_channel);
+  }
   powercap_end();
 
 	pthread_exit(0);
@@ -502,6 +507,8 @@ static void PM_set_sigusr1() {
 	sa.sa_flags = 0;
 	if (sigaction(SIGUSR1, &sa, NULL) < 0)
 		error(" doing sigaction of signal s=%d, %s", SIGUSR1, strerror(errno));
+	if (sigaction(SIGSEGV, &sa, NULL) < 0)
+		error(" doing sigaction of signal s=%d, %s", SIGSEGV, strerror(errno));
 
 }
 
@@ -1088,6 +1095,7 @@ void powermon_new_task(new_task_req_t *newtask)
 /* This function is called to validate the jobs in the list are still alive */
 static void check_status_of_jobs(job_id current)
 {
+  return;
   powermon_app_t *pmapp; 
   for (uint cc = 1; cc <= max_context_created; cc++) {
     if (current_ear_app[cc] != NULL) {
@@ -1266,7 +1274,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     verbose(VJOBPMON+1,"Cleaning job from node_mgr");
     nodemgr_clean_job(jid, sid);
     clean_job_area(ID);
-    verbose(VJOBPMON+1 , "*******************");
+    verbose(VJOBPMON , "*******************");
     service_close_by_id(jid,sid);
 
 }
