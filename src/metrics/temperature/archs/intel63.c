@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -77,8 +77,11 @@ state_t temp_intel63_init(ctx_t *c)
 		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), MSR_TEMPERATURE_TARGET))) {
 			return s;
 		}
-        debug("MSR_TEMPERATURE_TARGET of CPU%d bits: 0x%llx", tp.cpus[i].id, data); 
-		throt[i] = (data >> 16);
+        debug("MSR_TEMPERATURE_TARGET of CPU%d bits: 0x%llx", tp.cpus[i].id, data);
+        // In the future we might have problems. Because 23:16 is temperature target (8 bits).
+        // But target offset is 29:24 (6 bits). And the PROCHOT is target + offset, but by now
+        // we always have found the offset is 0 (lucky).
+		throt[i] = (data >> 16) & 0xFF;
 	}
 	//
 	return EAR_SUCCESS;
@@ -124,8 +127,9 @@ state_t temp_intel63_read(ctx_t *c, llong *temp, llong *average)
 		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), IA32_PKG_THERM_STATUS))) {
 			return s;
 		}
-        debug("IA_PKG_THERM_STATUS of CPU%d bits: 0x%llx", tp.cpus[i].id, data); 
-		aux1  = throt[i] - ((data >> 16) & 0xff);
+        debug("IA_PKG_THERM_STATUS of CPU%d bits: 0x%llx", tp.cpus[i].id, data);
+        // Data is from bits 22:16, then there are 7 bits
+		aux1  = throt[i] - ((data >> 16) & 0x7F);
 		aux2 += aux1;
 		if (temp != NULL) {
 			temp[i] = aux1;
