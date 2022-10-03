@@ -88,6 +88,17 @@ extern ulong            eard_max_freq;
 static gpu_devs_t      *gpu_devs;
 extern gpu_t           *eard_read_gpu;
 extern char             gpu_str[256];
+
+static uint          mgpu_dev_count;
+static const ulong **mgpu_ps_ava;
+static const uint   *mgpu_ps_ava_count;
+static ulong        *mgpu_ps_cur;
+static ulong        *mgpu_ps_def;
+static ulong        *mgpu_ps_max;
+static ulong        *mgpu_pow_cur;
+static ulong        *mgpu_pow_def;
+static ulong        *mgpu_pow_max;
+static ulong        *mgpu_pow_min;
 #endif
 extern int              num_uncore_counters; // Me extraña que esto funcione.
 static ulong            node_energy_datasize;
@@ -183,11 +194,24 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     #if USE_GPUS
 	sf(mgt_gpu_count_devices(no_ctx, &mg.devs_count));
     sf(    gpu_count_devices(no_ctx, &ug.devs_count));
-    #endif
-    
-    #if USE_GPUS
 	sf(mgt_gpu_get_devices(no_ctx, &gpu_devs, NULL));
+
+  sf(mgt_gpu_data_alloc(&mgpu_ps_cur));
+	sf(mgt_gpu_data_alloc(&mgpu_ps_def));
+	sf(mgt_gpu_data_alloc(&mgpu_ps_max));
+	sf(mgt_gpu_data_alloc(&mgpu_pow_cur));
+	sf(mgt_gpu_data_alloc(&mgpu_pow_def));
+	sf(mgt_gpu_data_alloc(&mgpu_pow_max));
+	sf(mgt_gpu_data_alloc(&mgpu_pow_min));
+
+	sf(mgt_gpu_freq_list(no_ctx, &mgpu_ps_ava, &mgpu_ps_ava_count));
+	sf(mgt_gpu_freq_limit_get_default(no_ctx, mgpu_ps_def));
+	sf(mgt_gpu_freq_limit_get_max    (no_ctx, mgpu_ps_max));
+	sf(mgt_gpu_power_cap_get_default (no_ctx, mgpu_pow_def));
+	sf(mgt_gpu_power_cap_get_rank    (no_ctx, mgpu_pow_max, mgpu_pow_min));
+
     #endif
+
 	
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
@@ -746,6 +770,126 @@ void eard_close_comm(int req_fd,int ack_fd)
     }
 }
 
+int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
+{
+	uint call = head->req_service;
+	state_t s = EAR_SUCCESS;
+	char *data = NULL;
+	size_t size = 0;
+	uint aux_int;
+	int i;
+
+	switch (call) {
+	case RPC_MGT_GPU_GET_API:
+		data = (char *) &mg.api;
+		size = sizeof(uint);
+	break;
+	case RPC_MGT_GPU_COUNT_DEVICES:
+		data = (char *) &mgpu_dev_count;
+		size = sizeof(uint);
+	break;
+	case RPC_MGT_GPU_GET_FREQ_LIMIT_DEFAULT:
+		data = (char *) mgpu_ps_def;
+		size = sizeof(ulong)*mgpu_dev_count;
+	break;
+	case RPC_MGT_GPU_GET_FREQ_LIMIT_MAX:
+		data = (char *) mgpu_ps_max;
+		size = sizeof(ulong)*mgpu_dev_count;
+	break;
+	case RPC_MGT_GPU_GET_FREQ_LIMIT_CURRENT:
+		if (state_fail (s = mgt_gpu_freq_limit_get_current(no_ctx, mgpu_ps_cur)) ){
+	        serror("Could not get current GPU frequency limit");
+		}
+		data = (char *) mgpu_ps_cur;
+		size = sizeof(ulong)*mgpu_dev_count;
+	break;
+	case RPC_MGT_GPU_GET_FREQS_AVAILABLE:
+		serial_clean(&wb);
+		serial_add_elem(&wb, (char *) mgpu_ps_ava_count, sizeof(uint)*mgpu_dev_count);
+		for (i = 0; i < mgpu_dev_count; ++i) {
+				serial_add_elem(&wb, (char *) mgpu_ps_ava[i], sizeof(ulong)*mgpu_ps_ava_count[i]);
+		}
+		size = serial_size(&wb);
+		data = wb.data;
+	break;
+	case RPC_MGT_GPU_RESET_FREQ_LIMIT:
+		s = mgt_gpu_freq_limit_reset(no_ctx);
+	break;
+	case RPC_MGT_GPU_SET_FREQ_LIMIT:
+		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_ps_cur, head->size, 0)) ){
+			serror(Rpcerr.pending);
+		}
+		if (state_ok(s)) {
+			if (state_fail(s = mgt_gpu_freq_limit_set(no_ctx, mgpu_ps_cur)) ){
+				serror("Error when setting a GPU frequency limit");
+			}
+		}
+	break;
+	case RPC_MGT_GPU_GET_POWER_CAP_DEFAULT:
+		data = (char *) mgpu_pow_def;
+		size = sizeof(ulong)*mgpu_dev_count;
+	break;
+	case RPC_MGT_GPU_GET_POWER_CAP_MAX:
+		serial_clean(&wb);
+		serial_add_elem(&wb, (char *) mgpu_pow_max, sizeof(ulong)*mgpu_dev_count);
+		serial_add_elem(&wb, (char *) mgpu_pow_min, sizeof(ulong)*mgpu_dev_count);
+		size = serial_size(&wb);
+		data = wb.data;
+	break;
+	case RPC_MGT_GPU_GET_POWER_CAP_CURRENT:
+		if (state_fail (s = mgt_gpu_power_cap_get_current(no_ctx, mgpu_pow_cur)) ){
+	        serror("Could not get current GPU power limit");
+		}
+		data = (char *) mgpu_pow_cur;
+		size = sizeof(ulong)*mgpu_dev_count;
+	break;
+	case RPC_MGT_GPU_RESET_POWER_CAP:
+		s = mgt_gpu_power_cap_reset(no_ctx);
+	break;
+	case RPC_MGT_GPU_SET_POWER_CAP:
+        if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_pow_cur, head->size, 0))) {
+            serror(Rpcerr.pending);
+        }
+        if (state_ok(s)) {
+            if (state_fail(s = mgt_gpu_power_cap_set(no_ctx, mgpu_pow_cur))) {
+                serror("Error when setting a GPU power cap");
+            }
+        }
+	break;
+	case RPC_MET_GPU_GET_API:
+		data = (char *) &ug.api;
+		size = sizeof(uint);
+	break;
+	case RPC_MET_GPU_COUNT_DEVICES:
+		data = (char *) &ug.devs_count;
+		size = sizeof(uint);
+	break;
+	case RPC_MET_GPU_GET_METRICS:
+		if (state_fail(gpu_read(no_ctx, eard_read_gpu)) ){
+			serror("Could not get management GPU metrics");
+		}
+		data = (char *) eard_read_gpu;
+		size = sizeof(gpu_t) * ug.devs_count;
+	break;
+	case RPC_MET_GPU_GET_METRICS_RAW:
+		if (state_fail(gpu_read_raw(no_ctx, eard_read_gpu)) ){
+			serror("Could not get management GPU metrics");
+		}
+		data = (char *) eard_read_gpu;
+		size = sizeof(gpu_t) * ug.devs_count;
+	break;
+	default:
+		return 0;
+	}
+	// Always answering
+	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) ){
+		return 0;
+	}
+	return 1;
+}
+
+
+
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     unsigned long ack = 0;
@@ -781,7 +925,6 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
                         write(ack_fd,&ack,sizeof(ack));
                         break;
 	  default:
-			error("Invalid GPU command");
       return 0;
   }
 #else
@@ -1072,6 +1215,9 @@ void service_select(int req_fd, int ack_fd)
     }
     if (eard_gpu(local_req,req_fd,ack_fd)){
         return;
+    }
+    if (service_gpu(local_req, req_fd, ack_fd)){
+      return;
     }
 	
 	error("Problem with request '%lu', answering error", local_req->req_service);

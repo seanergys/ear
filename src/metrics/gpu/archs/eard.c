@@ -16,6 +16,7 @@
 */
 
 // #define SHOW_DEBUGS 1
+#define RPCS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -56,12 +57,12 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
     if (apis_loaded(ops)){
         return;
     }
-    apis_put(ops->get_api,       gpu_eard_get_api);
     apis_put(ops->init,          gpu_eard_init);
+    apis_put(ops->get_api,       gpu_eard_get_api);
     apis_put(ops->dispose,       gpu_eard_dispose);
     apis_put(ops->count_devices, gpu_eard_count_devices);
-    apis_put(ops->read,          gpu_eard_read);
-    apis_put(ops->read_raw,      gpu_eard_read_raw);
+    apis_set(ops->read,          gpu_eard_read);
+    apis_set(ops->read_raw,      gpu_eard_read_raw);
 }
 
 void gpu_eard_get_api(uint *api)
@@ -95,6 +96,7 @@ state_t gpu_eard_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t gpu_eard_read(ctx_t *c, gpu_t *data)
 {
+  debug("gpu_eard_read");
     #ifdef RPCS
 	size_t size = ((size_t) devs_count)*sizeof(gpu_t);
 	return eard_rpc(RPC_MET_GPU_GET_METRICS, NULL, 0, (char *) data, size);

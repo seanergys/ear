@@ -17,6 +17,8 @@
 
 #define SHOW_DEBUGS 1
 
+//#define RPCS 1
+
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
 #include <management/gpu/archs/eard.h>
@@ -133,7 +135,7 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
     apis_put(ops->power_cap_get_rank    , mgt_gpu_eard_power_cap_get_rank);
     // Commands (put if empty)
     apis_put(ops->freq_limit_reset      , mgt_gpu_eard_freq_limit_reset);
-    apis_put(ops->freq_limit_set        , mgt_gpu_eard_freq_limit_set);
+    apis_set(ops->freq_limit_set        , mgt_gpu_eard_freq_limit_set);
     apis_put(ops->freq_list             , mgt_gpu_eard_freq_list);
     apis_put(ops->power_cap_reset       , mgt_gpu_eard_power_cap_reset);
     apis_put(ops->power_cap_set         , mgt_gpu_eard_power_cap_set);
@@ -291,7 +293,7 @@ state_t mgt_gpu_eard_freq_limit_get_max(ctx_t *c, ulong *khz)
 
 state_t mgt_gpu_eard_freq_limit_reset(ctx_t *c)
 {
-    #ifdef RPCs
+    #ifdef RPCS
 	return eard_rpc(RPC_FREQ_RESET, NULL, 0, NULL, 0);
     #else
     return EAR_SUCCESS;
@@ -320,9 +322,10 @@ static char *shuffle_out(ulong *user_list, ulong *root_list)
 state_t mgt_gpu_eard_freq_limit_set(ctx_t *c, ulong *khz)
 {
     ulong aux[128];
-    #ifdef RPCs
+    #ifdef RPCS
     return eard_rpc(RPC_FREQ_SET, shuffle_out(khz, aux), root_devs_count*sizeof(ulong), NULL, 0);
     #else
+    debug("eards_gpu_set_freq");
     return eards_gpu_set_freq(root_devs_count, (ulong *) shuffle_out(khz, aux));
     #endif
 }
@@ -345,7 +348,7 @@ state_t mgt_gpu_eard_freq_list(ctx_t *c, const ulong ***list_khz, const uint **l
 
 state_t mgt_gpu_eard_power_cap_get_current(ctx_t *c, ulong *watts)
 {
-    #ifdef RPCs
+    #ifdef RPCS
     ulong aux[128];
 	return shuffle_in(watts, aux, eard_rpc(RPC_POWER_CURRENT, NULL, 0, (char *) aux, root_devs_count*sizeof(ulong)));
     #else
@@ -369,7 +372,7 @@ state_t mgt_gpu_eard_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts
 
 state_t mgt_gpu_eard_power_cap_reset(ctx_t *c)
 {
-    #ifdef RPCs
+    #ifdef RPCS
 	return eard_rpc(RPC_POWER_RESET, NULL, 0, NULL, 0);
     #else
     return EAR_SUCCESS;
@@ -378,7 +381,7 @@ state_t mgt_gpu_eard_power_cap_reset(ctx_t *c)
 
 state_t mgt_gpu_eard_power_cap_set(ctx_t *c, ulong *watts)
 {
-    #ifdef RPCs
+    #ifdef RPCS
     ulong aux[128];
 	return eard_rpc(RPC_POWER_SET, shuffle_out(watts, aux), root_devs_count*sizeof(ulong), NULL, 0);
     #else
