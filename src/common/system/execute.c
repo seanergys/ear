@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <execinfo.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -55,5 +56,36 @@ __attribute__ ((used))int execute(char *cmd)
 				return EAR_ERROR;
   }
 	return EAR_SUCCESS;
+}
+
+
+void print_stack(int fd)
+{
+  void *array[10];
+  char **strings;
+  int size, i;
+
+  size = backtrace (array, 10);
+  strings = backtrace_symbols (array, size);
+  if (strings != NULL)
+  {
+
+    dprintf(fd, "Obtained %d stack frames.\n", size);
+    for (i = 0; i < size; i++)
+      dprintf (fd, "%s - from backtrace %p\n", strings[i], array[i]);
+  }
+
+  free (strings);
+
+}
+
+void *get_stack(int lv)
+{
+  void *array[10];
+  int size = backtrace (array, ((lv+1 > 10) ? 10 : lv+1));
+  char **strings;
+  strings = backtrace_symbols (array, size);
+  free (strings);
+  return array[lv];
 }
 

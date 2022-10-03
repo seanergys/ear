@@ -447,7 +447,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (freq_per_core) {
-                from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                signature_from_ssig(my_app, &sig_shared_region[i].sig);
                 double ltpi, lgbs, lpower;
 
                 ltpi = my_app->TPI;
@@ -554,7 +554,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound) {
                 //if (sig->GBS <= GBS_BUSY_WAITING){
-                if (low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus)){
+                uint lowm;
+                low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &lowm);
+                if (lowm){
                     debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;

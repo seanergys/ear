@@ -22,17 +22,24 @@
 #include <common/types/application.h>
 #include <library/common/library_shared_data.h>
 #include <metrics/io/io.h>
+#include <library/api/clasify.h>
+
+/* For each phase */
+typedef struct phase_info{
+  float elapsed;
+}phase_info_t;
 
 typedef struct sig_ext {
     io_data_t iod;
     mpi_information_t *mpi_stats;
     mpi_calls_types_t *mpi_types;
-	float max_mpi, min_mpi;
-	float elapsed;
-	float telapsed;
-	float saving;
-	float psaving;
-	float tpenalty;
+	float             max_mpi, min_mpi;
+	float             elapsed;
+	float             telapsed;
+	float             saving;
+	float             psaving;
+	float             tpenalty;
+  phase_info_t      earl_phase[EARL_MAX_PHASES];
 } sig_ext_t;
 
 #define MGT_CPUFREQ 1

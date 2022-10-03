@@ -47,6 +47,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <semaphore.h>
+#include <sys/syscall.h>
 
 
 #include <common/config.h>
@@ -101,6 +102,7 @@
 #include <library/policies/common/mpi_stats_support.h>
 
 
+
 void ear_finalize(int exit_status);
 static uint cancelled = 0;
 
@@ -146,6 +148,10 @@ static short ear_status = NO_LOOP;
 
 
 static pid_t main_pid;
+
+uint report_earl_events = 0;
+static char *creport_earl_events;
+
 
 /* in us */
 // These variables are shared
@@ -283,7 +289,7 @@ void notify_eard_connection(int status)
 												debug("Number of nodes expected %d\n",masters_info.my_master_size);
 								}
 #if MPI
-								verbose_master(2,"Node %s .Synchronizing with other masters. Status=%d. Waiting for %d masters",node_name,status, masters_info.my_master_size);
+								verbose_master(2, "[%s] Synchronizing with other masters. Status: %d. Waiting for %d masters", node_name, status, masters_info.my_master_size);
 								masters_connected=0;
 								if (synchronize_masters){
 												PMPI_Allgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm);
@@ -381,23 +387,28 @@ void create_shared_regions()
     error("Creating sempahore %s (%s)", sem_file, strerror(errno));
   }
 
-
 	/* This section allocates shared memory for processes in same node */
-	verbose(2,"%s:Master creating shared regions for node synchro PID=%d",node_name, getpid());
+    pid_t master_pid = getpid();
+	verbose(2, "[%s] Master (PID: %d) creating shared regions for node synchronisation...",
+            node_name, master_pid);
+
   xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
   }
 
-	/********************* We have two shared regions, one for the node and other for all the processes in the app *****************/
-	/******************************* Depending on how EAR is compiled, only one signature per node is sent *************************/
+  /* ****************************************************************************************
+   * We have two shared regions, one for the node and other for all the processes in the app.
+   * Depending on how EAR is compiled, only one signature per node is sent.
+   * ************************************************************************************* */
+
   /*****************************************/
   /* Attaching/Create to lib_shared region */
   /*****************************************/
 
-	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path)!=EAR_SUCCESS){
+	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path) != EAR_SUCCESS) {
 		error("Getting the lib_shared_region_path");
-	}else{
+	} else {
 		lib_shared_region=create_lib_shared_data_area(lib_shared_region_path);
 		if (lib_shared_region==NULL){
 			error("Creating the lib_shared_data region");
@@ -427,25 +438,34 @@ void create_shared_regions()
 				}
 #endif
 #endif
-	//print_lib_shared_data(lib_shared_region);
+
 	/* This region is for processes in the same node */
+
   /************************************************/
   /* Attaching/Create to shared_signatures region */
   /************************************************/
-	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS){
-    error("Getting the shsignature_region_path	");
-	}else{
-		debug("Master node creating the signatures with %d processes",lib_shared_region->num_processes);
-		sig_shared_region=create_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes);
+	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS) {
+    error("Getting the shsignature_region_path");
+	} else {
+
+		debug("Master node creating the signatures with %d processes", lib_shared_region->num_processes);
+
+		sig_shared_region = create_shared_signatures_area(shsignature_region_path,
+                lib_shared_region->num_processes);
+
 		if (sig_shared_region==NULL){
 			error("NULL pointer returned in create_shared_signatures_area");
 		}
 	}
-	verbose_master(2,"Shared region for shared signatures created for %d processes", lib_shared_region->num_processes);
+
+	verbose_master(2, "Shared region for shared signatures created for %d processes",
+            lib_shared_region->num_processes);
+
 	sig_shared_region[my_node_id].master = 1;
-	sig_shared_region[my_node_id].pid = getpid();
+	sig_shared_region[my_node_id].pid = master_pid;
 	sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
 	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
+
 #if ONLY_MASTER == 0
 #if MPI
 				if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
@@ -470,7 +490,8 @@ void create_shared_regions()
 								if (masters_info.ppn[i] > masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
 								if (masters_info.my_master_rank == 0) verbose_master(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
 				}
-				verbose_master(2,"max number of ppn is %d",masters_info.max_ppn);
+
+				verbose_master(2,"max number of ppn is %d", masters_info.max_ppn);
 				/* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
 				if (sh_sig_per_node && sh_sig_per_proces){
 								error("Signatures can only be shared with node OR process granularity,not both, default node");
@@ -985,9 +1006,11 @@ void ear_init()
 
 				gethostname(node_name, sizeof(node_name));
 				strtok(node_name, ".");
-				// Fundamental data
-				debug("Running in %s process=%d",node_name,getpid());
 
+				// Fundamental data
+
+                pid_t my_pid = getpid();
+				debug("Running in %s process = %d", node_name, my_pid);
 
 				tmp=get_ear_tmp();
 				folder_t tmp_test;
@@ -1032,8 +1055,10 @@ void ear_init()
 				if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
 								unlink(lib_shared_region_path);
 				}
-				if (is_already_connected(my_job_id,my_step_id,getpid())){
-								verbose_master(VEAR_INIT, "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n", COL_RED, COL_CLR, my_job_id, my_step_id, getpid());
+				if (is_already_connected(my_job_id, my_step_id, my_pid)) {
+								verbose_master(VEAR_INIT,
+                                        "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",
+                                        COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
 								return;
 				}
 				// Getting if the local process is the master or not
@@ -1041,13 +1066,12 @@ void ear_init()
 				my_id = get_local_id(node_name);
 
 
-				if (my_id == 0){ 
-					verbose(2, "I'm the master %d %s", getpid(), node_name);
-				}else{ 
-					verbose(3, "I'm NOT the master %d", getpid());
-				}
+                int i_am_master = my_id == 0;
+                int verb_pid_lvl = i_am_master ? 2 : 3;
+                verbose(verb_pid_lvl, "%sEAR INIT%s [PID: %d] [MASTER: %d] [NODE: %s]",
+                        COL_BLU, COL_CLR, my_pid, i_am_master, node_name);
 
-				debug("attach to master %d",my_id);
+				debug("attach to master %d", my_id);
 
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
@@ -1195,7 +1219,7 @@ void ear_init()
                     if (ret == EAR_SUCCESS) {
                         debug("%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
                         notify_eard_connection(1);
-                        mark_as_eard_connected(my_job_id, my_step_id, getpid());
+                        mark_as_eard_connected(my_job_id, my_step_id, my_pid);
                     } else {
                         eard_ok = 0;
                         notify_eard_connection(0);
@@ -1212,7 +1236,7 @@ void ear_init()
                         col = COL_GRE;
                     }
                     verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
-                            col, my_node_id, getpid(), ear_my_rank, node_name, COL_CLR);
+                            col, my_node_id, my_pid, ear_my_rank, node_name, COL_CLR);
 
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, ear_my_rank);
@@ -1236,7 +1260,7 @@ void ear_init()
 
                         if (!my_id) {
                             notify_eard_connection(1);
-                            mark_as_eard_connected(my_job_id, my_step_id, getpid());
+                            mark_as_eard_connected(my_job_id, my_step_id, my_pid);
                         }
 
                     } else {
@@ -1418,7 +1442,7 @@ void ear_init()
 
 								}
 				}
-				if (is_affinity_set(&arch_desc.top,getpid(),&ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
+				if (is_affinity_set(&arch_desc.top, my_pid, &ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
 								error("Checking the affinity mask");
                 }else{
                     /* Copy mask in shared memory */
@@ -1508,6 +1532,9 @@ void ear_init()
 												verbose_master(1,"Error in reports API initialization ");
 								}
 				// }
+        creport_earl_events = getenv(FLAG_REPORT_EARL_EVENTS);
+        if (creport_earl_events != NULL) report_earl_events = atoi(creport_earl_events);
+        if (report_earl_events) verbose_master(1," EARL events reported to DB %s", (report_earl_events?"enabled":"disabled"));
 
 				// States
 				states_begin_job(my_id,  ear_app_name);
@@ -2126,7 +2153,7 @@ state_t earl_periodic_actions(void *no_arg)
 
 				if (ear_whole_app) return EAR_SUCCESS;
 
-        if (cancelled || sig_shared_region[my_node_id].exited) return;
+        if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
 
 				ear_iterations += ITERS_PER_PERIOD;

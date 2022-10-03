@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -158,6 +158,11 @@ state_t mgt_cpufreq_set_current_list(ctx_t *c, uint *pstate_index)
 state_t mgt_cpufreq_set_current(ctx_t *c, uint pstate_index, int cpu)
 {
 	preturn (ops.set_current, c, pstate_index, cpu);
+}
+
+state_t mgt_cpufreq_reset(ctx_t *c)
+{
+	preturn (ops.reset, c);
 }
 
 /** Governors */

@@ -28,7 +28,7 @@
 
 
 
-
+#if 0
 /* EARD Init events */
 
 #define PM_CREATION_ERROR       100
@@ -63,7 +63,7 @@
 #define EARD_RT_ERRORS  6
 #define FIRST_RT_ERROR  300
 
-
+#endif
 
 
 

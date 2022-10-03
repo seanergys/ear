@@ -38,6 +38,7 @@
 #include <common/types/job.h>
 #include <daemon/log_eard.h>
 #include <common/system/symplug.h>
+#include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/messaging/msg_conf.h>
 #include <common/messaging/msg_internals.h>
@@ -139,6 +140,10 @@ ulong lower_valid_freq(ulong f, uint p_states, ulong *f_list) {
 
 static void DC_my_sigusr1(int signun) {
     verbose(VCONF, "thread %u receives sigusr1", (uint) pthread_self());
+    if (signun == SIGSEGV){
+      verbose(0, "Remote API server thread receives SIGSEGV. Stack....");
+      print_stack(verb_channel);
+    }
     close_server_socket(eards_remote_socket);
     pthread_exit(0);
 }
@@ -155,6 +160,8 @@ static void DC_set_sigusr1() {
     sa.sa_flags = 0;
     if (sigaction(SIGUSR1, &sa, NULL) < 0)
         error(" doing sigaction of signal s=%d, %s\n", SIGUSR1, strerror(errno));
+    if (sigaction(SIGSEGV, &sa, NULL) < 0)
+        error(" doing sigaction of signal s=%d, %s\n", SIGSEGV, strerror(errno));
 
 }
 

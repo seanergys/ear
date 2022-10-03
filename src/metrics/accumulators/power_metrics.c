@@ -101,7 +101,7 @@ static int pm_node_dc_energy(ehandler_t *my_eh, node_data_t *dc)
 
 static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 {
-	int status_enode,i;
+	int status_enode;
 	state_t s;
 	
 	if ((pm_already_connected) && (pm_connected_status==EAR_SUCCESS))
