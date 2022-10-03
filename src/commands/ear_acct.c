@@ -742,46 +742,50 @@ void add_int_list_filter(char *query, char *addition, char *value)
 	query_filters ++;
 }
 
-void print_event_type(int type)
+void print_event_type(int type, int fd)
 {
-  char str[64];
-  ear_event_t aux;
-  aux.event = type;
-  event_type_to_str(&aux, str, sizeof(str));
-	printf("%15s ", str);
+    char str[64];
+    ear_event_t aux;
+    aux.event = type;
+    event_type_to_str(&aux, str, sizeof(str));
+    dprintf(fd, "%15s ", str);
 
 }
 
 #if DB_MYSQL
-void mysql_print_events(MYSQL_RES *result)
+void mysql_print_events(MYSQL_RES *result, int fd)
 {
+    if (fd <  0) {
+        fd = 1; // The standard output
+    }
 
 	int i;
 	int num_fields = mysql_num_fields(result);
 
 	MYSQL_ROW row;
 	int has_records = 0;
-	while ((row = mysql_fetch_row(result))!= NULL) 
-	{ 
+	while ((row = mysql_fetch_row(result)) != NULL) 
+	{
 		if (!has_records)
 		{
-			printf("%12s %20s %15s %8s %8s %20s %12s\n",
-					"Event ID", "Timestamp", "Event type", "Job id", "Step id", "Value", "node_id");
+			dprintf(fd, "%12s %20s %15s %8s %8s %20s %12s\n",
+					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
 			has_records = 1;
 		}
+
 		for(i = 0; i < num_fields; i++) {
 			if (i == 2)
-				print_event_type(atoi(row[i]));  
+				print_event_type(atoi(row[i]), fd);  
 			else if (i == 1)
-				printf("%20s ", row[i] ? row[i] : "NULL");
+				dprintf(fd, "%20s ", row[i] ? row[i] : "NULL");
 			else if (i == 4 || i == 3)
-				printf("%8s ", row[i] ? row[i] : "NULL");
+				dprintf(fd, "%8s ", row[i] ? row[i] : "NULL");
 			else if (i == 5){
-				printf("%20s ", row[i] ? row[i] : "NULL");
+				dprintf(fd, "%20s ", row[i] ? row[i] : "NULL");
 			}else
-				printf("%12s ", row[i] ? row[i] : "NULL");
+				dprintf(fd, "%12s ", row[i] ? row[i] : "NULL");
 		}
-		printf("\n");
+		dprintf(fd, "\n");
 	}
 	if (!has_records)
 	{
@@ -790,8 +794,12 @@ void mysql_print_events(MYSQL_RES *result)
 
 }
 #elif DB_PSQL
-void postgresql_print_events(PGresult *res)
+void postgresql_print_events(PGresult *res, int fd)
 {
+    if (fd < 0) {
+        fd = 1; // Standard output
+    }
+
 	int i, j, num_fields, has_records = 0;
 	num_fields = PQnfields(res);
 
@@ -799,31 +807,40 @@ void postgresql_print_events(PGresult *res)
 	{
 		if (!has_records)
 		{
-			printf("%12s %22s %15s %8s %8s %20s %12s\n",
-					"Event ID", "Timestamp", "Event type", "Job id", "Step id", "Value", "node_id");
+			dprintf(fd, "%12s %22s %15s %8s %8s %20s %12s\n",
+					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
 			has_records = 1;
 		}
+
 		for (j = 0; j < num_fields; j++) {
 			if (j == 2)
-				print_event_type(atoi(PQgetvalue(res, i, j)));
+				print_event_type(atoi(PQgetvalue(res, i, j)), fd);
 			else if (i == 1)
-				printf("%22s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+				dprintf(fd, "%22s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
 			else if (i == 4 || i == 3)
-				printf("%8s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+				dprintf(fd, "%8s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
 			else if (i == 5)
-				printf("%20s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+				dprintf(fd, "%20s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
 			else
-				printf("%12s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+				dprintf(fd, "%12s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
 		}
-		printf("\n");
+
+		dprintf(fd, "\n");
+	}
+
+	if (!has_records)
+	{
+		printf("There are no events with the specified properties.\n\n");
 	}
 }
 #endif
 
 #if DB_MYSQL
 #define EVENTS_QUERY "SELECT id, FROM_UNIXTIME(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
+#define EVENTS_QUERY_RAW "SELECT id, timestamp, event_type, job_id, step_id, freq, node_id FROM Events"
 #elif DB_PSQL
 #define EVENTS_QUERY "SELECT id, to_timestamp(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
+#define EVENTS_QUERY_RAW "SELECT id, timestamp, event_type, job_id, step_id, freq, node_id FROM Events"
 #endif
 
 void read_events(char *user, query_adds_t *q_a) 
@@ -843,7 +860,16 @@ void read_events(char *user, query_adds_t *q_a)
 	init_db_helper(&my_conf.database);
 
 
-	strcpy(query, EVENTS_QUERY);
+    int fd = -1;
+    if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
+        fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+    }
+
+    if (fd > 0) {
+        strcpy(query, EVENTS_QUERY_RAW);
+    } else {
+	    strcpy(query, EVENTS_QUERY);
+    }
 
 	add_int_comp_filter(query, "event_type", 100, 0);
 	if (q_a->job_id >= 0)
@@ -881,9 +907,9 @@ void read_events(char *user, query_adds_t *q_a)
 	}
 
 #if DB_MYSQL
-	mysql_print_events(result);
+	mysql_print_events(result, fd);
 #elif DB_PSQL
-	postgresql_print_events(result);
+	postgresql_print_events(result, fd);
 #endif
 }
 
