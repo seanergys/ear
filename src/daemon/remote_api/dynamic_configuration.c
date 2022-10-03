@@ -56,7 +56,7 @@
 #include <daemon/shared_configuration.h>
 #include <report/report.h>
 
-#define SLURM_FAKE_ERROR 1
+//#define SLURM_FAKE_ERROR 1
 
 /* Defined in eard.c */
 extern report_id_t rid;
