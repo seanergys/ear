@@ -79,7 +79,7 @@ typedef struct mgt_gpu_ops_s {
 	state_t (*power_cap_get_default)  (ctx_t *c, ulong *watt_list);
 	state_t (*power_cap_get_rank)     (ctx_t *c, ulong *watt_list_min, ulong *watt_list_max);
 	state_t (*power_cap_reset)        (ctx_t *c);
-	state_t (*poer_cap_set)          (ctx_t *c, ulong *watt_list);
+	state_t (*power_cap_set)          (ctx_t *c, ulong *watt_list);
 } mgt_gpu_ops_t;
 
 // Discovers the low level API. Returns function pointers, but is not required.

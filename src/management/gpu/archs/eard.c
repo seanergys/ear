@@ -156,6 +156,8 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
             }
         }
     }}
+
+    return EAR_SUCCESS;
 }
 
 void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
