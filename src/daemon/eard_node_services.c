@@ -196,7 +196,7 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    gpu_count_devices(no_ctx, &ug.devs_count));
 	sf(mgt_gpu_get_devices(no_ctx, &gpu_devs, NULL));
 
-  sf(mgt_gpu_data_alloc(&mgpu_ps_cur));
+    sf(mgt_gpu_data_alloc(&mgpu_ps_cur));
 	sf(mgt_gpu_data_alloc(&mgpu_ps_def));
 	sf(mgt_gpu_data_alloc(&mgpu_ps_max));
 	sf(mgt_gpu_data_alloc(&mgpu_pow_cur));
@@ -209,10 +209,8 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
 	sf(mgt_gpu_freq_limit_get_max    (no_ctx, mgpu_ps_max));
 	sf(mgt_gpu_power_cap_get_default (no_ctx, mgpu_pow_def));
 	sf(mgt_gpu_power_cap_get_rank    (no_ctx, mgpu_pow_max, mgpu_pow_min));
-
     #endif
 
-	
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
     
@@ -784,9 +782,12 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 		data = (char *) &mg.api;
 		size = sizeof(uint);
 	break;
-	case RPC_MGT_GPU_COUNT_DEVICES:
-		data = (char *) &mgpu_dev_count;
-		size = sizeof(uint);
+	case RPC_MGT_GPU_GET_DEVICES:
+        serial_clean(&wb);
+        serial_add_elem(&wb, (char *) &mgpu_dev_count, sizeof(uint));
+        serial_add_elem(&wb, (char *) gpu_devs, sizeof(gpu_devs_t)*mgpu_dev_count);
+        size = serial_size(&wb);
+        data = wb.data;
 	break;
 	case RPC_MGT_GPU_GET_FREQ_LIMIT_DEFAULT:
 		data = (char *) mgpu_ps_def;
