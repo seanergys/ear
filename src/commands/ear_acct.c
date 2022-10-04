@@ -31,6 +31,7 @@
 #include <common/types/version.h>
 #include <common/types/application.h>
 #include <common/types/log.h>
+#include <common/types/event_type.h>
 
 #if USE_DB
 #include <common/states.h>
@@ -749,7 +750,6 @@ void print_event_type(int type, int fd)
     aux.event = type;
     event_type_to_str(&aux, str, sizeof(str));
     dprintf(fd, "%15s ", str);
-
 }
 
 #if DB_MYSQL
@@ -773,17 +773,37 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 			has_records = 1;
 		}
 
+        int possible_negative = 0; // This variable check if the event value can be negative.
 		for(i = 0; i < num_fields; i++) {
-			if (i == 2)
+			if (i == 2) {
 				print_event_type(atoi(row[i]), fd);  
+
+                int event_type_int = strtol(row[i], NULL, 10);
+
+                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
+                    possible_negative = 1;
+                }
+            }
 			else if (i == 1)
 				dprintf(fd, "%20s ", row[i] ? row[i] : "NULL");
 			else if (i == 4 || i == 3)
 				dprintf(fd, "%8s ", row[i] ? row[i] : "NULL");
-			else if (i == 5){
-				dprintf(fd, "%20s ", row[i] ? row[i] : "NULL");
-			}else
+			else if (i == 5) {
+
+                if (row[i] != NULL) {
+
+                    if (possible_negative) {
+                        long int value = atoi(row[i]);
+                        dprintf(fd, "%20ld ", *(long *) &value);
+                    } else {
+                        dprintf(fd, "%20s ", row[i]);
+                    } // Column 2 not possible negative
+                } else {
+                        dprintf(fd, "%20s ", "NULL");
+                } // Column 2 NULL
+			} else {
 				dprintf(fd, "%12s ", row[i] ? row[i] : "NULL");
+            } // Column 0
 		}
 		dprintf(fd, "\n");
 	}

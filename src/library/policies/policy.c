@@ -212,7 +212,7 @@ static uint first_print = 1;
 static uint first_policy_try = 1;
 
 void fill_common_event(ear_event_t *ev);
-void fill_event(ear_event_t *ev, uint event, ulong value);
+void fill_event(ear_event_t *ev, uint event, llong value);
 
 /** Reads information about some management API and stores the pstate list
  * and devices count information to the output arguments. Pure function.
@@ -1184,8 +1184,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
 	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
 
-  REPORT_SAVING(ENERGY_SAVING , (ulong)esaving);
-  REPORT_SAVING(POWER_SAVING , (ulong)psaving);
+    REPORT_SAVING(ENERGY_SAVING, (llong) esaving);
+    REPORT_SAVING(POWER_SAVING,  (llong) psaving);
   //REPORT_SAVING(PERF_PENALTY , (ulong)tpenalty);
 
 }

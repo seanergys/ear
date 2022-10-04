@@ -65,25 +65,17 @@
 
 #endif
 
-
-
-
-/** Creates the log file and starts it with the current time. If it can't
- *   create the file it reports it to stderr */
+/** Creates the log file and starts it with the current time.
+ * If it can't create the file it reports it to stderr. */
 void init_eard_rt_log();
-
-
 
 /** Sets the minimum interval between two runtime errors to avoid saturating the DB */
 void log_report_eard_min_interval(uint secs);
 /** Reports a RT error from EARD */
-void log_report_eard_rt_error(report_id_t *rid,job_id job,job_id sid,uint eventid,ulong value);
+void log_report_eard_rt_error(report_id_t *rid, job_id job, job_id sid, uint eventid, llong value);
 /* Reports and error when initializing EARD */
-void log_report_eard_init_error(report_id_t *rid,uint eventid,ulong value);
+void log_report_eard_init_error(report_id_t *rid, uint eventid, llong value);
 /* Reports powercap events from EARD */
-void log_report_eard_powercap_event(report_id_t *rid,job_id job,job_id sid,uint eventid,ulong value);
+void log_report_eard_powercap_event(report_id_t *rid, job_id job, job_id sid, uint eventid, llong value);
 
-void log_report_eard_powercap_event(report_id_t *rid,job_id job,job_id sid,uint eventid,ulong value);
-
-
-#endif
+#endif // _EARD_LOG_H
