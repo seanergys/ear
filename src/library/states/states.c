@@ -171,7 +171,7 @@ void fill_common_event(ear_event_t *ev)
 	strcpy(ev->node_id, application.node_id);
 }
 
-void fill_event(ear_event_t *ev, uint event, ulong value)
+void fill_event(ear_event_t *ev, uint event, llong value)
 {
   ev->event = event;
   ev->freq  = value;

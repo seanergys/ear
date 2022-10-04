@@ -1311,7 +1311,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
 		app_energy_saving.event = ENERGY_SAVING;
 		/* We will use freq for the energy saving */
-		app_energy_saving.freq = (ulong)(avg_esaving * 10);
+		app_energy_saving.freq = (llong)(avg_esaving * 100);
 		report_events(&rep_id, &app_energy_saving, 1);
 
 #if 0

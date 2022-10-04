@@ -1682,17 +1682,17 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
             || (last_pmon->avg_dc > my_node_conf->max_error_power))
     {
         syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,last_pmon->avg_dc);
-        log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,last_pmon->avg_dc);
+        log_report_eard_rt_error(&rid, jid, sid, DC_POWER_ERROR, (llong) last_pmon->avg_dc);
     }
     if (current_sample.temp > my_node_conf->max_temp){
         syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %lu degress (max %lu)\n",nodename,current_sample.temp,my_node_conf->max_temp);
-        log_report_eard_rt_error(&rid,jid,sid,TEMP_ERROR,current_sample.temp);
+        log_report_eard_rt_error(&rid, jid, sid, TEMP_ERROR, (llong) current_sample.temp);
     }
     if ((rapl_dram + rapl_pck) == 0) {
         log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,0);
     }
     if ((current_sample.avg_f == 0) || ((current_sample.avg_f > frequency_get_nominal_freq()) && (mpi))){
-        log_report_eard_rt_error(&rid,jid,sid,FREQ_ERROR,current_sample.avg_f);
+        log_report_eard_rt_error(&rid, jid, sid, FREQ_ERROR, (llong) current_sample.avg_f);
     }
 #endif
 
@@ -1710,11 +1710,11 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
     }
 
     /* report periodic metric */
-    if (report){	
+    if (report) {
         report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
-        last_power_reported = corrected_power;
+        last_power_reported      = corrected_power;
     }
-    last_node_power     = last_pmon->avg_dc;
+    last_node_power              = last_pmon->avg_dc;
 
     return;
 }
@@ -2066,7 +2066,7 @@ void print_powermon_app(powermon_app_t *app)
     print_energy_data(&app->energy_init);
 }
 
-void powermon_report_event(uint event_type, ulong value) 
+void powermon_report_event(uint event_type, llong value) 
 {
     int jid, sid;
     int cc = max_context_created;

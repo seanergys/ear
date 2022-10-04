@@ -212,7 +212,7 @@ static uint first_print = 1;
 static uint first_policy_try = 1;
 
 void fill_common_event(ear_event_t *ev);
-void fill_event(ear_event_t *ev, uint event, ulong value);
+void fill_event(ear_event_t *ev, uint event, llong value);
 
 /** Reads information about some management API and stores the pstate list
  * and devices count information to the output arguments. Pure function.
@@ -918,6 +918,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
 
     if (use_earl_phases) {
+        REPORT_OPT_ACCURACY(OPT_OK);
       /* CPU-GPU Code */
       if (earl_phase_classification == APP_CPU_GPU){
             //verbose_master(POLICY_PHASES,"%sCPU-GPU application%s", COL_BLU,COL_CLR);
@@ -1151,7 +1152,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	
 	sig_ext_t *sig_ext = curr->sig_ext;
 
-	if ((prev->Gflops == 0) || (curr->Gflops == 0)){
+	if ((prev->Gflops == 0) || (curr->Gflops == 0)) {
 		esaving = 0;
 		return;
 	}
@@ -1173,7 +1174,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 // #endif
 
 	esaving  = ((performance_curr - performance_prev) / performance_prev) * 100;
-	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) *100;
+	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) * 100;
 	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
 
 	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f",
@@ -1183,8 +1184,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
 	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
 
-  REPORT_SAVING(ENERGY_SAVING , (ulong)esaving);
-  REPORT_SAVING(POWER_SAVING , (ulong)psaving);
+    REPORT_SAVING(ENERGY_SAVING, (llong) esaving);
+    REPORT_SAVING(POWER_SAVING,  (llong) psaving);
   //REPORT_SAVING(PERF_PENALTY , (ulong)tpenalty);
 
 }
