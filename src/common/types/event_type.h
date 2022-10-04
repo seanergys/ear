@@ -27,8 +27,8 @@ typedef struct ear_event {
 	job_id jid;
     job_id step_id;
 	char node_id[GENERIC_NAME];
-	uint event;
-	long freq; // The event value. TODO: The attribute name must be changed in future versions.
+	uint event;       /*!< The event type. */
+	long freq;        /*!< The event value. TODO: The attribute name must be changed in future versions. */
 	time_t timestamp;
 } ear_event_t;
 
@@ -97,7 +97,8 @@ typedef struct ear_event {
 /**@}*/
 
 /** \name Events types names.
- * This group of macros define the display text when printing */
+ * This group of macros define the display text when printing the event type. */
+/**@{*/
 #define ENERGY_POLICY_NEW_FREQ_TXT "new_frequency"
 #define GLOBAL_ENERGY_POLICY_TXT   "cluster_policy"
 #define ENERGY_POLICY_FAILS_TXT    "policy_error"
@@ -107,13 +108,20 @@ typedef struct ear_event {
 #define EARL_POLICY_PHASE_TXT 	   "policy_phase"
 #define EARL_MPI_LOAD_BALANCE_TXT  "mpi_load_balance"
 #define EARL_OPT_ACCURACY_TXT      "optim_accuracy"
+#define ENERGY_SAVING_TXT          "energy_saving"
+#define POWER_SAVING_TXT           "power_saving"
+#define PERF_PENALTY_TXT           "performance_penalty"
 
 #define OPT_NOT_READY_TXT         "optim_not_ready"
 #define OPT_OK_TXT                "optim_ok"
 #define OPT_NOT_OK_TXT            "optim_not_ok"
 #define OPT_TRY_AGAIN_TXT         "optim_try_again"
+/**@}*/
 
+/** Writes the displaying name of the type of the event pointed by \p ev to \p str,
+ * which must point to an array of at most \p max bytes. If the event type is not recognized, it writes
+ * "unknown(event_type)", where event_type is the type of the event passed as argument. */
 void event_type_to_str(ear_event_t *ev, char *str, size_t max);
+/** \todo */
 void event_value_to_str(ear_event_t *ev, char *str, size_t max);
-
 #endif
