@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <time.h>
 #include <stdio.h>
@@ -36,7 +36,7 @@
 
 
 #include <common/config.h>
-// #include <common/config/config_sched.h>
+#include <common/config/config_sched.h>
 #include <common/system/sockets.h>
 #include <common/system/folder.h>
 #include <common/messaging/msg_conf.h>
@@ -267,6 +267,66 @@ int find_empty_context() {
     } else i++;
   }
   return pos;
+}
+
+#if SHOW_DEBUGS
+void debug_powermon_app(powermon_app_t *app)
+{
+	debug("jid %lu sid %lu created %u is_job %u state %d sig_reported %d exclusive %d",
+			app->app.job.id, app->app.job.step_id, app->job_created, app->is_job, app->state,
+			app->sig_reported, app->exclusive);
+}
+
+void print_contexts_status() {
+	int i;
+	for (i = 0; i <= max_context_created; i++) {
+		if ((current_ear_app[i] != NULL)) {
+			debug("app in position %d", i);
+			debug_powermon_app(current_ear_app[i]);
+		}
+	}
+}
+#endif
+
+int mark_contexts_to_finish_by_pid() {
+  int i = 0, found_contexts = 0;
+  char pid_file[SHORT_NAME];
+  struct stat tmp;
+  debug("marking_contexts_to_finish by pid");
+  for (i = 0; i <= max_context_created; i++) {
+    if (current_ear_app[i] != NULL) {
+		if (current_ear_app[i]->master_pid == 0) continue;
+		sprintf(pid_file, "/proc/%d", current_ear_app[i]->master_pid);
+		if (stat(pid_file, &tmp)) {
+			current_ear_app[i]->state = APP_FINISHED;
+			found_contexts++;
+		}
+    } 
+  }
+  return found_contexts;
+}
+
+int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
+  int i = 0, found_contexts = 0;
+  if (step_id != BATCH_STEP) return 0; //only batch steps need to check this
+  debug("marking_contexts_to_finish %lu %lu", id, step_id);
+  for (i = 0; i <= max_context_created; i++) {
+    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id)) {
+		current_ear_app[i]->state = APP_FINISHED;
+		found_contexts++;
+    } 
+  }
+  return found_contexts;
+}
+
+void finish_pending_contexts(ehandler_t *eh)
+{
+	int i;
+  for (i = 0; i <= max_context_created; i++) {
+    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->state == APP_FINISHED)) {
+		powermon_end_job(eh, current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id, 0);
+    } 
+  }
 }
 
 int find_context_for_job(job_id id, job_id sid) {
@@ -1079,6 +1139,7 @@ void powermon_new_task(new_task_req_t *newtask)
         return;
     }
     pmapp = current_ear_app[cc];
+	if (pmapp->master_pid == 0) pmapp->master_pid = newtask->pid;
     verbose(VJOBPMON+1, "New task for %lu/%lu PID = %d num_cpus %u", newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
     pmapp->plug_num_cpus += newtask->num_cpus;
     aggregate_cpus_to_mask(&pmapp->plug_mask, &newtask->mask);		
@@ -1276,6 +1337,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     clean_job_area(ID);
     verbose(VJOBPMON , "*******************");
     service_close_by_id(jid,sid);
+
 
 }
 
@@ -1620,17 +1682,17 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
             || (last_pmon->avg_dc > my_node_conf->max_error_power))
     {
         syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,last_pmon->avg_dc);
-        log_report_eard_rt_error(&rid,jid,sid,DC_POWER_ERROR,last_pmon->avg_dc);
+        log_report_eard_rt_error(&rid, jid, sid, DC_POWER_ERROR, (llong) last_pmon->avg_dc);
     }
     if (current_sample.temp > my_node_conf->max_temp){
         syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %lu degress (max %lu)\n",nodename,current_sample.temp,my_node_conf->max_temp);
-        log_report_eard_rt_error(&rid,jid,sid,TEMP_ERROR,current_sample.temp);
+        log_report_eard_rt_error(&rid, jid, sid, TEMP_ERROR, (llong) current_sample.temp);
     }
     if ((rapl_dram + rapl_pck) == 0) {
         log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,0);
     }
     if ((current_sample.avg_f == 0) || ((current_sample.avg_f > frequency_get_nominal_freq()) && (mpi))){
-        log_report_eard_rt_error(&rid,jid,sid,FREQ_ERROR,current_sample.avg_f);
+        log_report_eard_rt_error(&rid, jid, sid, FREQ_ERROR, (llong) current_sample.avg_f);
     }
 #endif
 
@@ -1648,11 +1710,11 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
     }
 
     /* report periodic metric */
-    if (report){	
+    if (report) {
         report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
-        last_power_reported = corrected_power;
+        last_power_reported      = corrected_power;
     }
-    last_node_power     = last_pmon->avg_dc;
+    last_node_power              = last_pmon->avg_dc;
 
     return;
 }
@@ -2004,7 +2066,7 @@ void print_powermon_app(powermon_app_t *app)
     print_energy_data(&app->energy_init);
 }
 
-void powermon_report_event(uint event_type, ulong value) 
+void powermon_report_event(uint event_type, llong value) 
 {
     int jid, sid;
     int cc = max_context_created;

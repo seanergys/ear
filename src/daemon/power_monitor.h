@@ -37,10 +37,15 @@
 
 #define MAX_NESTED_LEVELS 16384
 
+#define APP_DEFAULT  0
+#define APP_FINISHED 1
+
 typedef struct powermon_app {
     application_t    app;
+	pid_t            master_pid;
     uint             job_created;
     uint             is_job;
+	char             state;
     uint             plug_num_cpus;
     cpu_set_t        plug_mask;
     uint             earl_num_cpus;
@@ -142,6 +147,9 @@ int powermon_get_num_applications(int only_master);
 void powermon_get_app_status(app_status_t *my_status, int num_apps, int only_master);
 void powermon_new_configuration();
 
+int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id);
+int mark_contexts_to_finish_by_pid();
+void finish_pending_contexts(ehandler_t *eh);
 
 uint node_energy_lock(uint *tries);
 void node_energy_unlock();
@@ -151,7 +159,7 @@ uint powermon_current_power();
 uint powermon_get_powercap_def();
 uint powermon_get_max_powercap_def();
 
-void powermon_report_event(uint event_type, ulong value);
+void powermon_report_event(uint event_type, llong value);
 
 uint is_job_in_node(job_id id, job_context_t **jc);
 
