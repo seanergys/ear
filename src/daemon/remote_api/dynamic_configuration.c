@@ -840,7 +840,7 @@ state_t process_remote_requests(int clientfd) {
         case EAR_RC_END_JOB_LIST:
             powermon_end_job(&my_eh_rapi, command.my_req.end_job.jid, command.my_req.end_job.sid, req == EAR_RC_END_JOB_LIST);
 			// mark any pending context for that job if it's an SBATCH
-		    num_contexts = mark_contexts_to_finish(command.my_req.end_job.jid, command.my_req.end_job.sid);
+		    num_contexts = mark_contexts_to_finish_by_jobid(command.my_req.end_job.jid, command.my_req.end_job.sid);
 			//do the end_jobs for the marked jobs
 			if (num_contexts) finish_pending_contexts(&my_eh_rapi);
 #if SHOW_DEBUGS

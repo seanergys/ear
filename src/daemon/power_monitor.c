@@ -306,7 +306,7 @@ int mark_contexts_to_finish_by_pid() {
   return found_contexts;
 }
 
-int mark_contexts_to_finish(job_id id, job_id step_id) {
+int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
   int i = 0, found_contexts = 0;
   if (step_id != BATCH_STEP) return 0; //only batch steps need to check this
   debug("marking_contexts_to_finish %lu %lu", id, step_id);

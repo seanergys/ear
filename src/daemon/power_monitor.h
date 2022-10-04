@@ -147,6 +147,9 @@ int powermon_get_num_applications(int only_master);
 void powermon_get_app_status(app_status_t *my_status, int num_apps, int only_master);
 void powermon_new_configuration();
 
+int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id);
+int mark_contexts_to_finish_by_pid();
+void finish_pending_contexts(ehandler_t *eh);
 
 uint node_energy_lock(uint *tries);
 void node_energy_unlock();
