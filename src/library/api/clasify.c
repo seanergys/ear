@@ -60,6 +60,20 @@ void get_classify_limits(ear_classify_t *limits)
 }
 
 
+
+char * phase_to_str(uint phase)
+{
+  switch (phase){
+    case APP_COMP_BOUND   : return "APP_COMP_BOUND";
+    case APP_MPI_BOUND    :  return "APP_MPI_BOUND";
+    case APP_IO_BOUND     :  return "APP_IO_BOUND";
+    case APP_BUSY_WAITING : return "APP_BUSY_WAITING";
+    case APP_CPU_GPU      : return "APP_CPU_GPU";
+  }
+  return "NOT_PHASE";
+}
+
+
 state_t classify_init(topology_t *tp_in)
 {
   switch (tp_in->vendor){

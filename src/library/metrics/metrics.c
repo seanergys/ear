@@ -1321,6 +1321,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #endif
 	}
 
+  /* Phases summary */
+  if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && (sig_ext != NULL)){
+    ullong ms_total = 0;
+    for (uint ph = 0; ph < EARL_MAX_PHASES; ph ++) ms_total += sig_ext->earl_phase[ph].elapsed;
+    for (uint ph = 0; ph < EARL_MAX_PHASES; ph ++){
+      if (sig_ext->earl_phase[ph].elapsed){
+        verbose_master(2, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
+      }
+    }
+  }
+
 	if (sign_app_loop_idx == APP) {
 		sig_shared_region[my_node_id].exited = 1;
 	}
@@ -1879,9 +1890,11 @@ extern gpu_state_t last_gpu_state;
 
 state_t metrics_new_iteration(signature_t *sig)
 {
+    
     if (!(master)) {
         return EAR_ERROR;
     }
+
 
 	/* FLOPS are used to determine the CPU BUSY waiting */
 	uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
@@ -1903,6 +1916,27 @@ state_t metrics_new_iteration(signature_t *sig)
 		}
 
 		last_elap_sec = elap_sec;
+
+
+    /* We should check is we are still on a IO phase */
+    if (last_phase_io_bnd){
+        double iogb;
+    		metrics_compute_total_io(&metrics_io_end[LOO_NODE]);
+			  io_diff(&metrics_io_diff[LOO_NODE], &metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
+        iogb = (double) metrics_io_diff[LOO_NODE].rchar / (double) (1024*1024) + (double) metrics_io_diff[LOO_NODE].wchar/(double)(1024*1024);
+	      sig->IO_MBS = iogb/elap_sec;
+        verbose_master(2, "IO phase and current IO rate %.2lf (IO? %u)", sig->IO_MBS, sig->IO_MBS > phases_limits.io_th);
+        return EAR_SUCCESS;
+    }    
+
+    /* We should check the CPI */
+    if (last_phase_bw){
+      cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
+      sig->CPI = cpi_avrg[LOO];
+      verbose_master(2, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
+      return EAR_SUCCESS;
+    }    
+
 
 		// FLOPs
 		flops_read_diff(no_ctx, &flops_read2[LOO],

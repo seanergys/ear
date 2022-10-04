@@ -26,7 +26,7 @@
 
 /* For each phase */
 typedef struct phase_info{
-  float elapsed;
+  ullong elapsed;
 }phase_info_t;
 
 typedef struct sig_ext {

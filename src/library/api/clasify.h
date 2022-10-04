@@ -95,6 +95,8 @@ state_t is_io_bound(signature_t *sig, uint num_cpus, uint *iobound);
 state_t is_network_bound(signature_t *sig, uint num_cpus, uint *mpibound);
 /* Checks the per-process GBs */
 state_t low_mem_activity(signature_t *sig,uint num_cpus , uint *lowm);
+/* Returns the text associated with the phase */
+char * phase_to_str(uint phase);
 
 
 state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided);

@@ -177,6 +177,10 @@ int gpu_ready = EAR_POLICY_NO_STATE;
 gpu_state_t curr_gpu_state;
 gpu_state_t last_gpu_state = _GPU_Comp;             // Initial GPU state as Computation
 
+
+static uint fake_io_phase = 0;
+static uint fake_bw_phase = 0;
+
 const int   polsyms_n = 18;
 const char *polsyms_nam[] = {
     "policy_init",
@@ -304,6 +308,35 @@ static ulong total_cpufreq_cost_us = 0;
 static ulong calls_cpufreq = 0;
 #endif
 
+static timestamp init_last_phase;
+
+static void verbose_time_in_phases(signature_t *sig)
+{
+  sig_ext_t *se = (sig_ext_t *)sig->sig_ext;
+  if (se != NULL){
+    verbose_master(2, "............Phases");
+    for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+      if (se->earl_phase[ph].elapsed){ 
+        verbose_master(2, "Phase[%s] elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
+      }
+    }
+    verbose_master(2, "............END-Phases");
+  }
+}
+
+static void policy_new_phase(uint phase, signature_t *sig)
+{
+  timestamp currt;
+  sig_ext_t *se = (sig_ext_t *)sig->sig_ext;
+  verbose_master(2, "policy_new_phase summary computation %u", phase);
+  if (se != NULL){
+    timestamp_getfast(&currt);
+    se->earl_phase[phase].elapsed = timestamp_diff(&currt, &init_last_phase, TIME_USECS);
+    memcpy(&init_last_phase, &currt, sizeof(timestamp));
+    verbose_time_in_phases(sig);
+  }
+}
+
 /* This function confgures freqs for apps consuming lot GPU */
 state_t policy_cpu_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
@@ -413,6 +446,8 @@ state_t policy_init()
     char *cuse_energy_models   = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_USE_ENERGY_MODELS) : NULL; // Use energy models
     char *cmin_cpufreq         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
     char *cear_mpi_opt         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
+    char *cfake_io_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IO_FAKE_PHASE)     : NULL;
+    char *cfake_bw_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_BW_FAKE_PHASE)     : NULL;
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -421,6 +456,9 @@ state_t policy_init()
     } else {
         verbose_master(POLICY_INFO, "%sERROR%s GPU library init.", COL_RED, COL_CLR);
     }
+
+    /* To compute time consumed in each phase */
+    timestamp_getfast(&init_last_phase);
 
     // Here it is a good place to print policy context:
     verbose_policy_ctx(POLICY_INFO, c);
@@ -442,6 +480,11 @@ state_t policy_init()
         use_energy_models = atoi(cuse_energy_models);
     }
     verbose_master(POLICY_INFO, "%sPOLICY%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
+
+    if (cfake_io_phase != NULL) fake_io_phase = atoi(cfake_io_phase);
+    if (cfake_bw_phase != NULL) fake_bw_phase = atoi(cfake_bw_phase);
+
+    verbose_master(2, "Fake IO %u fake BW %u", fake_io_phase, fake_bw_phase);
 
     /* conf_dyn_unc is based on the configuration.
      * dyn_unc is modified at runtime depending of number of jobs running. */   
@@ -925,6 +968,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
             st = policy_cpu_gpu_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
             *freq_set = avg_nf.cpu_freq[0];
             if (is_all_ready()){
+                  policy_new_phase(last_earl_phase_classification, my_sig);
                   last_earl_phase_classification = earl_phase_classification;
                   last_gpu_state = curr_gpu_state;
                   policy_master_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
@@ -936,51 +980,13 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
         /* IO Use case */
         if (earl_phase_classification == APP_IO_BOUND) {
-          #if 0
-            if (busy == BUSY_WAITING) {
-                verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration (%s)", COL_BLU, COL_CLR, node_name);
-                // TODO Below function always returns EAR_SUCCESS
-                st = policy_io_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
-                // TODO: GPU ?
-                *freq_set = avg_nf.cpu_freq[0];
-                if (is_all_ready()) {
-                    last_earl_phase_classification = earl_phase_classification;
-                    last_gpu_state = curr_gpu_state;
-                    policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
-                    *ready = EAR_POLICY_READY;
-                    clean_signatures(lib_shared_region, sig_shared_region);
-
-                    *ready = EAR_POLICY_READY;
-
-                    return EAR_SUCCESS;
-                }
-            } else if (last_earl_phase_classification == APP_IO_BOUND) {
-                st = policy_restore_comp_configuration(c, my_sig, freqs, &freqs_domain, &avg_nf);
-
-                last_earl_phase_classification = APP_COMP_BOUND;
-                last_gpu_state = curr_gpu_state;
-
-                *ready = EAR_POLICY_CONTINUE;
-
-                *freq_set = avg_nf.cpu_freq[0];
-                clean_signatures(lib_shared_region,sig_shared_region);
-
-                verbose_master(POLICY_PHASES,
-                        "%sPOLICY%s I/O and not busy waiting: COMP-MPI configuration",
-                        COL_BLU, COL_CLR);
-
-                return EAR_SUCCESS;
-            } else {
-                verbose_master(POLICY_PHASES,"%sPOLICY%s IO -> COMP", COL_BLU, COL_CLR);
-                earl_phase_classification = APP_COMP_BOUND;
-            }
-            #endif
                 verbose_master(POLICY_PHASES,"%sPOLICY%s I/O configuration", COL_BLU, COL_CLR);
                 // TODO Below function always returns EAR_SUCCESS
                 st = policy_io_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
                 // TODO: GPU ?
                 *freq_set = avg_nf.cpu_freq[0];
                 if (is_all_ready()) {
+                    policy_new_phase(last_earl_phase_classification, my_sig);
                     last_earl_phase_classification = earl_phase_classification;
                     last_gpu_state = curr_gpu_state;
                     policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
@@ -1009,6 +1015,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                     policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
 
                     last_gpu_state = curr_gpu_state;
+
+                    policy_new_phase(last_earl_phase_classification, my_sig);
                     last_earl_phase_classification = APP_BUSY_WAITING;
 
                     clean_signatures(lib_shared_region,sig_shared_region);
@@ -1031,7 +1039,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                         &freqs_domain, &avg_nf);
 
                 *freq_set = avg_nf.cpu_freq[0];
-
+            
+                policy_new_phase(last_earl_phase_classification, my_sig);
                 last_earl_phase_classification = earl_phase_classification;
                 last_gpu_state = curr_gpu_state;
 
@@ -1048,8 +1057,12 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     verbose_master(POLICY_PHASES,
             "%sPOLICY%s COMP or MPI bound and not busy waiting: Applying node policy...",
             COL_BLU, COL_CLR);
-
+    policy_new_phase(last_earl_phase_classification, my_sig);
     last_earl_phase_classification     = earl_phase_classification;
+
+    if (fake_io_phase)                 last_earl_phase_classification = APP_IO_BOUND;
+    if (fake_bw_phase)                 last_earl_phase_classification = APP_BUSY_WAITING;
+
     last_gpu_state = curr_gpu_state;
 
     if (polsyms_fun.node_policy_apply) {
@@ -1235,6 +1248,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
         ret = polsyms_fun.ok(c, curr, prev, ok);
         if (*ok == 0) {
             REPORT_OPT_ACCURACY(OPT_NOT_OK);
+            policy_new_phase(last_earl_phase_classification, curr);
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
         }
@@ -1254,6 +1268,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
         compute_energy_savings(curr, prev);
         if (sig_ext->saving < 0) *ok = 0;
     }
+
     return EAR_SUCCESS;
 }
 
@@ -1308,19 +1323,26 @@ state_t policy_new_iteration(signature_t *sig)
     /* Check cpu idle or gpu idle */
     uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
     uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
+    uint restore = 0;
     if (last_phase_io_bnd || last_phase_bw) {
-        verbose_master(POLICY_INFO + 1, "%sPOLICY%s Validating CPU phase: (GFlop/s) %lf - (B.W. min) %lf",
-                COL_BLU, COL_CLR, sig->Gflops, phases_limits.gflops_busy_waiting);
-        if (sig->Gflops > phases_limits.gflops_busy_waiting) {
+        verbose_master(POLICY_INFO , "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
+                COL_BLU, COL_CLR, sig->Gflops, sig->IO_MBS, sig->CPI );
+
+
+        if (last_phase_io_bnd && (sig->IO_MBS < phases_limits.io_th))         restore = 1; 
+        if (last_phase_bw     && (sig->CPI > phases_limits.cpi_busy_waiting)) restore = 1;
+        if (sig->Gflops > phases_limits.gflops_busy_waiting)                  restore = 1;
+
+        if (restore){
+            verbose_master(POLICY_INFO, "Phase has changed, restoring");
             /* We must reset the configuration */
+            policy_new_phase(last_earl_phase_classification, sig);
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
             REPORT_OPT_ACCURACY(OPT_TRY_AGAIN);
             return EAR_ERROR;
         }
     }
-    /* IF APP_IO_BOUND, compute IO */
-    /* IF APP_BUSY_WAITING, compute CPI */
 
 #if USE_GPUS
     if (last_gpu_state & _GPU_Idle) {
