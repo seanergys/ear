@@ -48,6 +48,9 @@ typedef struct ear_event {
 #define ENERGY_SAVING           9
 #define POWER_SAVING            10
 #define PERF_PENALTY            11
+#define ENERGY_SAVING_AVG       12
+#define POWER_SAVING_AVG        13
+#define PERF_PENALTY_AVG        14
 
 /** EARD Init events. */
 #define PM_CREATION_ERROR       100

@@ -207,6 +207,10 @@ static uint eard;
 static ear_event_t app_energy_saving;
 extern report_id_t rep_id;
 
+
+extern uint last_earl_phase_classification;
+extern timestamp init_last_phase;
+
 #if 0
 static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length);
 #endif
@@ -1309,14 +1313,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
 		float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
 		verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
-		app_energy_saving.event = ENERGY_SAVING;
+		
+    app_energy_saving.event = ENERGY_SAVING_AVG;
 		/* We will use freq for the energy saving */
-		app_energy_saving.freq = (llong)(avg_esaving * 100);
+		app_energy_saving.freq = (llong)avg_esaving;
 		report_events(&rep_id, &app_energy_saving, 1);
 
+		app_energy_saving.event = POWER_SAVING_AVG;
+		app_energy_saving.freq = (llong)avg_psaving;
+		report_events(&rep_id, &app_energy_saving, 1);
 #if 0
 		/* Not yet reported */
-		app_energy_saving.event = POWER_SAVING;
 		app_energy_saving.event = PERF_PENALTY;
 #endif
 	}
@@ -1324,6 +1331,12 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
   /* Phases summary */
   if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && (sig_ext != NULL)){
     ullong ms_total = 0;
+    timestamp currt;
+
+    /* Remaining time since last change */
+    timestamp_getfast(&currt);
+    sig_ext->earl_phase[last_earl_phase_classification].elapsed += timestamp_diff(&currt, &init_last_phase, TIME_USECS);
+
     for (uint ph = 0; ph < EARL_MAX_PHASES; ph ++) ms_total += sig_ext->earl_phase[ph].elapsed;
     for (uint ph = 0; ph < EARL_MAX_PHASES; ph ++){
       if (sig_ext->earl_phase[ph].elapsed){

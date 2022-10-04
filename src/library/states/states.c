@@ -533,8 +533,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             // Both loop_signature and lib_shared_region->job_signature have the same data:
 	          compute_per_process_and_job_metrics(&loop_signature);
 
-            /* Accumulate statistics of savings */
-            accumulate_phases_summary(&loop_signature, &application.signature);
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -579,6 +577,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
              * norm_signature is the local process signature,
              * the policy will compute the average if needed */
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
+
+            /* Accumulate statistics of savings */
+            accumulate_phases_summary(&loop_signature, &application.signature);
 
             /* TODO: For no masters, ready will be 0, pending. */
             EAR_POLICY_STATE = ready;

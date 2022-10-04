@@ -308,7 +308,7 @@ static ulong total_cpufreq_cost_us = 0;
 static ulong calls_cpufreq = 0;
 #endif
 
-static timestamp init_last_phase;
+timestamp init_last_phase;
 
 static void verbose_time_in_phases(signature_t *sig)
 {
@@ -330,6 +330,9 @@ static void policy_new_phase(uint phase, signature_t *sig)
   sig_ext_t *se = (sig_ext_t *)sig->sig_ext;
   verbose_master(2, "policy_new_phase summary computation %u", phase);
   if (se != NULL){
+
+    for (uint ph = 0; ph < EARL_MAX_PHASES; ph++) se->earl_phase[ph].elapsed = 0;
+
     timestamp_getfast(&currt);
     se->earl_phase[phase].elapsed = timestamp_diff(&currt, &init_last_phase, TIME_USECS);
     memcpy(&init_last_phase, &currt, sizeof(timestamp));

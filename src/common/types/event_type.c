@@ -38,6 +38,9 @@ void event_type_to_str(ear_event_t *ev, char *str, size_t max)
         case ENERGY_SAVING         : strncpy(str, stringize(ENERGY_SAVING), max); break;
         case POWER_SAVING          : strncpy(str, stringize(POWER_SAVING), max); break;
         case PERF_PENALTY          : strncpy(str, stringize(PERF_PENALTY), max); break;
+        case ENERGY_SAVING_AVG     : strncpy(str, stringize(ENERGY_SAVING_AVG), max); break;
+        case POWER_SAVING_AVG      : strncpy(str, stringize(POWER_SAVING_AVG), max); break;
+        case PERF_PENALTY_AVG      : strncpy(str, stringize(PERF_PENALTY_AVG), max); break;
                                      // EARD events
         case DC_POWER_ERROR: strncpy(str, "DC_POW_ERROR", max); break;
         case TEMP_ERROR: strncpy(str, "TEMP_ERROR", max); break;
