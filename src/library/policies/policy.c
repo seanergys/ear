@@ -154,6 +154,8 @@ static ulong init_def_cpufreq_khz;
 static uint is_monitoring = 0;
 //  NEW CLASSIFY
 extern ear_classify_t phases_limits;
+uint policy_cpu_bound = 0;
+uint policy_mem_bound = 0;
 
 int my_globalrank;
 
@@ -308,7 +310,7 @@ static ulong total_cpufreq_cost_us = 0;
 static ulong calls_cpufreq = 0;
 #endif
 
-timestamp init_last_phase;
+timestamp init_last_phase, init_last_comp;
 
 static void verbose_time_in_phases(signature_t *sig)
 {
@@ -328,13 +330,23 @@ static void policy_new_phase(uint phase, signature_t *sig)
 {
   timestamp currt;
   sig_ext_t *se = (sig_ext_t *)sig->sig_ext;
-  verbose_master(2, "policy_new_phase summary computation %u", phase);
+  verbose_master(2, "policy_new_phase summary computation %s (%u/%u)",phase_to_str(phase), policy_cpu_bound, policy_mem_bound );
   if (se != NULL){
 
     for (uint ph = 0; ph < EARL_MAX_PHASES; ph++) se->earl_phase[ph].elapsed = 0;
 
     timestamp_getfast(&currt);
     se->earl_phase[phase].elapsed = timestamp_diff(&currt, &init_last_phase, TIME_USECS);
+
+    /* For COMP_BOUND we compute if CPU or MEM (or mix) */
+    if (phase == APP_COMP_BOUND){
+      ullong elapsed_comp = timestamp_diff(&currt, &init_last_comp, TIME_USECS);
+      /* policy_cpu_bound and policy_mem_bound are updated only in the APP_COMP_PHASE */
+      verbose_master(2, "COMP_PHASE: cpu %u mem %u mix %u", policy_cpu_bound, policy_mem_bound , !policy_cpu_bound && !policy_mem_bound);
+      if (policy_cpu_bound)      se->earl_phase[APP_COMP_CPU].elapsed = elapsed_comp;
+      else if (policy_mem_bound) se->earl_phase[APP_COMP_MEM].elapsed = elapsed_comp;
+      else                            se->earl_phase[APP_COMP_MIX].elapsed = elapsed_comp;  
+    }
     memcpy(&init_last_phase, &currt, sizeof(timestamp));
     verbose_time_in_phases(sig);
   }
@@ -462,6 +474,7 @@ state_t policy_init()
 
     /* To compute time consumed in each phase */
     timestamp_getfast(&init_last_phase);
+    memcpy(&init_last_comp, &init_last_phase, sizeof(timestamp));
 
     // Here it is a good place to print policy context:
     verbose_policy_ctx(POLICY_INFO, c);
@@ -926,24 +939,13 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     is_io_bound(     &lib_shared_region->job_signature, lib_shared_region->num_cpus, &iobound);
     classify(iobound, mpibound, &earl_phase_classification);
 
+
+
     is_cpu_busy_waiting(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &busy);
     gpu_activity_state(&lib_shared_region->job_signature, &curr_gpu_state); // GPU phase classification
     if (curr_gpu_state & _GPU_Idle) {
         verbose_master(POLICY_GPU, "%sGPU idle phase%s", COL_BLU, COL_CLR);
     }
-    #if 0
-		/* Busy waiting is critical , we must verify all the processes are waiting */
-		uint all_processes_busy = 1;
-		if (busy){
-			uint cp = 0;
-			while ((cp < lib_shared_region->num_processes) && all_processes_busy){
-				all_processes_busy = all_processes_busy && is_process_busy_waiting(&sig_shared_region[cp].sig);
-				cp++;
-			}
-		}
-		/* If not all processes are busy waiting we don't apply special settings */
-		if (!all_processes_busy) busy = 0;
-    #endif
     /* Applications gpu bound cannot be applied as CPU-GPU */
     if ((curr_gpu_state & _GPU_Bound) && (busy != BUSY_WAITING)){
       earl_phase_classification = APP_CPU_GPU;
@@ -1048,6 +1050,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                 last_earl_phase_classification = earl_phase_classification;
                 last_gpu_state = curr_gpu_state;
 
+                if (earl_phase_classification == APP_COMP_BOUND) timestamp_getfast(&init_last_comp);
+
                 clean_signatures(lib_shared_region, sig_shared_region);
 
                 *ready = EAR_POLICY_CONTINUE;
@@ -1062,7 +1066,11 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
             "%sPOLICY%s COMP or MPI bound and not busy waiting: Applying node policy...",
             COL_BLU, COL_CLR);
     policy_new_phase(last_earl_phase_classification, my_sig);
+
     last_earl_phase_classification     = earl_phase_classification;
+    if (earl_phase_classification == APP_COMP_BOUND) timestamp_getfast(&init_last_comp);
+    is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &policy_cpu_bound);
+    is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &policy_mem_bound);
 
     if (fake_io_phase)                 last_earl_phase_classification = APP_IO_BOUND;
     if (fake_bw_phase)                 last_earl_phase_classification = APP_BUSY_WAITING;
@@ -1255,6 +1263,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
             policy_new_phase(last_earl_phase_classification, curr);
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
+            timestamp_getfast(&init_last_comp);
         }
 
         /* And then we mark as not ready */
@@ -1343,6 +1352,7 @@ state_t policy_new_iteration(signature_t *sig)
             policy_new_phase(last_earl_phase_classification, sig);
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
+            timestamp_getfast(&init_last_comp);
             REPORT_OPT_ACCURACY(OPT_TRY_AGAIN);
             return EAR_ERROR;
         }

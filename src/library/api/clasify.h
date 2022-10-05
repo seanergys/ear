@@ -30,8 +30,12 @@
 #define APP_IO_BOUND		  3
 #define APP_BUSY_WAITING	4
 #define APP_CPU_GPU       5
+#define APP_COMP_CPU      6
+#define APP_COMP_MEM      7
+#define APP_COMP_MIX       8
 
-#define EARL_MAX_PHASES   6
+#define EARL_MAX_PHASES   9
+#define EARL_BASIC_PHASES 6
 
 #define DYNAIS_GUIDED 0
 #define TIME_GUIDED	  1

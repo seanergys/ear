@@ -209,7 +209,9 @@ extern report_id_t rep_id;
 
 
 extern uint last_earl_phase_classification;
-extern timestamp init_last_phase;
+extern timestamp init_last_phase, init_last_comp;
+extern uint policy_cpu_bound ;
+extern uint policy_mem_bound ;
 
 #if 0
 static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length);
@@ -1337,8 +1339,23 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     timestamp_getfast(&currt);
     sig_ext->earl_phase[last_earl_phase_classification].elapsed += timestamp_diff(&currt, &init_last_phase, TIME_USECS);
 
-    for (uint ph = 0; ph < EARL_MAX_PHASES; ph ++) ms_total += sig_ext->earl_phase[ph].elapsed;
-    for (uint ph = 0; ph < EARL_MAX_PHASES; ph ++){
+    /* For COMP_BOUND we compute if CPU or MEM (or mix) */
+    if (last_earl_phase_classification == APP_COMP_BOUND){
+        ullong elapsed_comp = timestamp_diff(&currt, &init_last_comp, TIME_USECS);
+        /* policy_cpu_bound and policy_mem_bound are updated only in the APP_COMP_PHASE */
+        if (policy_cpu_bound)      sig_ext->earl_phase[APP_COMP_CPU].elapsed += elapsed_comp;
+        else if (policy_mem_bound) sig_ext->earl_phase[APP_COMP_MEM].elapsed += elapsed_comp;
+        else                            sig_ext->earl_phase[APP_COMP_MIX].elapsed += elapsed_comp;
+    }
+
+
+    for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++) ms_total += sig_ext->earl_phase[ph].elapsed;
+    for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++){
+      if (sig_ext->earl_phase[ph].elapsed){
+        verbose_master(2, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
+      }
+    }
+    for (uint ph = EARL_BASIC_PHASES; ph < EARL_MAX_PHASES; ph++){
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(2, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
       }
@@ -2002,31 +2019,3 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 	}
 }
 
-#if 0
-static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length)
-{
-    int already = 0;
-    int printed;
-
-    uint i = 0;
-    for (i = 0; i < gpu_cnt && buff_length > 0; i++) {
-        printed = snprintf(&buffer[already], buff_length, "GPU%d\n-----\n", i);
-        buff_length -= printed;
-        already += printed;
-        uint j = 0;
-        uint list_len = freq_list_lens[i];
-        for (j = 0; j < list_len && buff_length > 0; j++) {
-            printed = snprintf(&buffer[already], buff_length, "%lu kHz\n", freq_lists[i][j]);
-            buff_length -= printed;
-            already += printed;
-        }
-        if (j < list_len && buff_length <= 0) {
-            return_msg(EAR_ERROR, "Insufficient buffer length.");
-        }
-    }
-    if (i < gpu_cnt && buff_length <= 0) {
-        return_msg(EAR_ERROR, "Insufficient buffer length.");
-    }
-    return EAR_SUCCESS;
-}
-#endif

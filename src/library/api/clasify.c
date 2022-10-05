@@ -64,11 +64,14 @@ void get_classify_limits(ear_classify_t *limits)
 char * phase_to_str(uint phase)
 {
   switch (phase){
-    case APP_COMP_BOUND   : return "APP_COMP_BOUND";
-    case APP_MPI_BOUND    :  return "APP_MPI_BOUND";
-    case APP_IO_BOUND     :  return "APP_IO_BOUND";
-    case APP_BUSY_WAITING : return "APP_BUSY_WAITING";
-    case APP_CPU_GPU      : return "APP_CPU_GPU";
+    case APP_COMP_BOUND   : return "COMP_BOUND";
+    case APP_MPI_BOUND    :  return "MPI_BOUND";
+    case APP_IO_BOUND     :  return "IO_BOUND";
+    case APP_BUSY_WAITING : return "CPU_BUSY_WAITING";
+    case APP_CPU_GPU      : return "CPU_GPU_COMP";
+    case APP_COMP_CPU    : return "CPU_BOUND";
+    case APP_COMP_MEM    : return "MEM_BOUND";
+    case APP_COMP_MIX    : return "MIX_COMP";
   }
   return "NOT_PHASE";
 }

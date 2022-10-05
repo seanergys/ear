@@ -106,6 +106,9 @@ extern uint try_turbo_enabled;
 extern uint use_energy_models;
 extern uint ear_mpi_opt;
 
+extern uint policy_cpu_bound;
+extern uint policy_mem_bound;
+
 static uint network_use_imc = 1; /*!< This variable controls the UFS when the application is communication intensive , set to 1 means UFS will not be applied. */
 
 #define SELECT_CPUFREQ 		100
@@ -425,8 +428,11 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
 	/* Classification */
         //  NEW CLASSIFY
-        is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
-        is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
+        //is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
+        //is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
+        /* Computed in policy */
+        cbound = policy_cpu_bound;
+        mbound = policy_mem_bound;
 
         verbose_master(2, "App CPU bound %u memory bound %u", cbound, mbound);
 
@@ -509,7 +515,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     local_penalty = base_penalty + EXTRA_TH * (my_node_mpi_calls[i].perc_mpi
                             - my_node_mpi_calls[min_mpi].perc_mpi) / 10.0;
                 }
-                verbose_master(2, "Penalty %.2f", local_penalty);
             }
             if (use_energy_models) {
                 /* If energy models are availables, we use them for CPU frequency selection */
