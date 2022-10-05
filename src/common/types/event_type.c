@@ -18,21 +18,18 @@
 #include <stdio.h>
 #include <common/types/event_type.h>
 
-#define stringize(s) #s // This is the same as hardcoding the string literal of the macro, done at line 42
-
 void event_type_to_str(ear_event_t *ev, char *str, size_t max)
 {
-    uint type;
     if ((ev == NULL) || (str == NULL)) return;
-    type = ev->event;
-    switch (type) {
-        case ENERGY_POLICY_NEW_FREQ: strncpy(str, ENERGY_POLICY_NEW_FREQ_TXT, max);break;
-        case GLOBAL_ENERGY_POLICY  : strncpy(str, GLOBAL_ENERGY_POLICY_TXT, max);break;
-        case ENERGY_POLICY_FAILS   : strncpy(str, ENERGY_POLICY_FAILS_TXT, max);break;
-        case DYNAIS_OFF            : strncpy(str, DYNAIS_OFF_TXT, max);break;
-        case EARL_STATE            : strncpy(str, EARL_STATE_TXT, max);break;
-        case EARL_PHASE            : strncpy(str, EARL_PHASE_TXT, max);break;
-        case EARL_POLICY_PHASE     : strncpy(str, EARL_POLICY_PHASE_TXT, max);break;
+
+    switch (ev->event) {
+        case ENERGY_POLICY_NEW_FREQ: strncpy(str, ENERGY_POLICY_NEW_FREQ_TXT, max); break;
+        case GLOBAL_ENERGY_POLICY  : strncpy(str, GLOBAL_ENERGY_POLICY_TXT, max); break;
+        case ENERGY_POLICY_FAILS   : strncpy(str, ENERGY_POLICY_FAILS_TXT, max); break;
+        case DYNAIS_OFF            : strncpy(str, DYNAIS_OFF_TXT, max); break;
+        case EARL_STATE            : strncpy(str, EARL_STATE_TXT, max); break;
+        case EARL_PHASE            : strncpy(str, EARL_PHASE_TXT, max); break;
+        case EARL_POLICY_PHASE     : strncpy(str, EARL_POLICY_PHASE_TXT, max); break;
         case EARL_MPI_LOAD_BALANCE : strncpy(str, EARL_MPI_LOAD_BALANCE_TXT, max); break;
         case EARL_OPT_ACCURACY     : strncpy(str, EARL_OPT_ACCURACY_TXT, max); break;
         case ENERGY_SAVING         : strncpy(str, stringize(ENERGY_SAVING), max); break;
@@ -41,7 +38,6 @@ void event_type_to_str(ear_event_t *ev, char *str, size_t max)
         case ENERGY_SAVING_AVG     : strncpy(str, stringize(ENERGY_SAVING_AVG), max); break;
         case POWER_SAVING_AVG      : strncpy(str, stringize(POWER_SAVING_AVG), max); break;
         case PERF_PENALTY_AVG      : strncpy(str, stringize(PERF_PENALTY_AVG), max); break;
-                                     // EARD events
         case DC_POWER_ERROR: strncpy(str, "DC_POW_ERROR", max); break;
         case TEMP_ERROR: strncpy(str, "TEMP_ERROR", max); break;
         case FREQ_ERROR: strncpy(str, "FREQ_ERROR", max); break;
@@ -59,21 +55,22 @@ void event_type_to_str(ear_event_t *ev, char *str, size_t max)
         case NODE_POWERCAP: strncpy(str, "NODE_POWERCAP", max); break;
         case POWER_UNLIMITED: strncpy(str, "POWER_UNLIMITED", max); break;
 
-        default: snprintf(str, max, "unknown(%u)", type);
+        default: snprintf(str, max, "unknown(%u)", ev->event);
     }
 }
 
 void event_value_to_str(ear_event_t *ev, char *str, size_t max)
 {
     if ((ev == NULL) || (str == NULL)) return;
-    if (ev->event == EARL_OPT_ACCURACY){
-        switch (ev->freq){
+
+    if (ev->event == EARL_OPT_ACCURACY) {
+        switch (ev->freq) {
             case OPT_NOT_READY  : strncpy(str, OPT_NOT_READY_TXT, max); break;
             case OPT_OK         : strncpy(str, OPT_OK_TXT, max); break;
             case OPT_NOT_OK     : strncpy(str, OPT_NOT_OK_TXT, max); break;
             case OPT_TRY_AGAIN  : strncpy(str, OPT_TRY_AGAIN_TXT, max); break;
         }
-    }else{
+    } else {
         snprintf(str, max,  "%lu", ev->freq);
     }
 }

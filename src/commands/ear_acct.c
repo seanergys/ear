@@ -773,12 +773,12 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 			has_records = 1;
 		}
 
-        int possible_negative = 0; // This variable check if the event value can be negative.
+        int possible_negative = 0; // This variable checks whether the event value can be negative.
 		for(i = 0; i < num_fields; i++) {
 			if (i == 2) {
-				print_event_type(atoi(row[i]), fd);  
-
                 int event_type_int = strtol(row[i], NULL, 10);
+
+				print_event_type(event_type_int, fd);  
 
                 if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
                     possible_negative = 1;
@@ -797,10 +797,10 @@ void mysql_print_events(MYSQL_RES *result, int fd)
                         dprintf(fd, "%20ld ", *(long *) &value);
                     } else {
                         dprintf(fd, "%20s ", row[i]);
-                    } // Column 2 not possible negative
+                    } // Column 5 not possible negative
                 } else {
                         dprintf(fd, "%20s ", "NULL");
-                } // Column 2 NULL
+                } // Column 5 NULL
 			} else {
 				dprintf(fd, "%12s ", row[i] ? row[i] : "NULL");
             } // Column 0
@@ -811,7 +811,6 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 	{
 		printf("There are no events with the specified properties.\n\n");
 	}
-
 }
 #elif DB_PSQL
 void postgresql_print_events(PGresult *res, int fd)
@@ -823,6 +822,7 @@ void postgresql_print_events(PGresult *res, int fd)
 	int i, j, num_fields, has_records = 0;
 	num_fields = PQnfields(res);
 
+    int possible_negative = 0; // This variable checks whether the event value can be negative.
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		if (!has_records)
@@ -833,14 +833,34 @@ void postgresql_print_events(PGresult *res, int fd)
 		}
 
 		for (j = 0; j < num_fields; j++) {
-			if (j == 2)
-				print_event_type(atoi(PQgetvalue(res, i, j)), fd);
+			if (j == 2) {
+                int event_type_int = strtol(PQgetvalue(res, i, j), NULL, 10);
+
+				print_event_type(event_type_int, fd);
+
+                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
+                    possible_negative = 1;
+                }
+            }
 			else if (i == 1)
 				dprintf(fd, "%22s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
 			else if (i == 4 || i == 3)
 				dprintf(fd, "%8s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
-			else if (i == 5)
-				dprintf(fd, "%20s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+			else if (i == 5) {
+
+                if (PQgetvalue(res, i, j) != NULL) {
+
+                    if (possible_negative) {
+                        long int value = atoi(PQgetvalue(res, i, j));
+                        dprintf(fd, "%20ld ", *(long *) &value);
+                    } else {
+                        dprintf(fd, "%20s ", PQgetvalue(res, i, j));
+                    } // Column 5 not possible negative
+                } else {
+                        dprintf(fd, "%20s ", "NULL");
+                } // Column 5 NULL
+
+            }
 			else
 				dprintf(fd, "%12s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
 		}
