@@ -207,6 +207,12 @@ static uint eard;
 static ear_event_t app_energy_saving;
 extern report_id_t rep_id;
 
+
+extern uint last_earl_phase_classification;
+extern timestamp init_last_phase, init_last_comp;
+extern uint policy_cpu_bound ;
+extern uint policy_mem_bound ;
+
 #if 0
 static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length);
 #endif
@@ -1309,17 +1315,52 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
 		float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
 		verbose_master(2, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
-		app_energy_saving.event = ENERGY_SAVING;
+		
+    app_energy_saving.event = ENERGY_SAVING_AVG;
 		/* We will use freq for the energy saving */
-		app_energy_saving.freq = (ulong)(avg_esaving * 10);
+		app_energy_saving.freq = (llong)avg_esaving;
 		report_events(&rep_id, &app_energy_saving, 1);
 
+		app_energy_saving.event = POWER_SAVING_AVG;
+		app_energy_saving.freq = (llong)avg_psaving;
+		report_events(&rep_id, &app_energy_saving, 1);
 #if 0
 		/* Not yet reported */
-		app_energy_saving.event = POWER_SAVING;
 		app_energy_saving.event = PERF_PENALTY;
 #endif
 	}
+
+  /* Phases summary */
+  if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && (sig_ext != NULL)){
+    ullong ms_total = 0;
+    timestamp currt;
+
+    /* Remaining time since last change */
+    timestamp_getfast(&currt);
+    sig_ext->earl_phase[last_earl_phase_classification].elapsed += timestamp_diff(&currt, &init_last_phase, TIME_USECS);
+
+    /* For COMP_BOUND we compute if CPU or MEM (or mix) */
+    if (last_earl_phase_classification == APP_COMP_BOUND){
+        ullong elapsed_comp = timestamp_diff(&currt, &init_last_comp, TIME_USECS);
+        /* policy_cpu_bound and policy_mem_bound are updated only in the APP_COMP_PHASE */
+        if (policy_cpu_bound)      sig_ext->earl_phase[APP_COMP_CPU].elapsed += elapsed_comp;
+        else if (policy_mem_bound) sig_ext->earl_phase[APP_COMP_MEM].elapsed += elapsed_comp;
+        else                            sig_ext->earl_phase[APP_COMP_MIX].elapsed += elapsed_comp;
+    }
+
+
+    for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++) ms_total += sig_ext->earl_phase[ph].elapsed;
+    for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++){
+      if (sig_ext->earl_phase[ph].elapsed){
+        verbose_master(2, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
+      }
+    }
+    for (uint ph = EARL_BASIC_PHASES; ph < EARL_MAX_PHASES; ph++){
+      if (sig_ext->earl_phase[ph].elapsed){
+        verbose_master(2, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
+      }
+    }
+  }
 
 	if (sign_app_loop_idx == APP) {
 		sig_shared_region[my_node_id].exited = 1;
@@ -1879,9 +1920,11 @@ extern gpu_state_t last_gpu_state;
 
 state_t metrics_new_iteration(signature_t *sig)
 {
+    
     if (!(master)) {
         return EAR_ERROR;
     }
+
 
 	/* FLOPS are used to determine the CPU BUSY waiting */
 	uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
@@ -1903,6 +1946,27 @@ state_t metrics_new_iteration(signature_t *sig)
 		}
 
 		last_elap_sec = elap_sec;
+
+
+    /* We should check is we are still on a IO phase */
+    if (last_phase_io_bnd){
+        double iogb;
+    		metrics_compute_total_io(&metrics_io_end[LOO_NODE]);
+			  io_diff(&metrics_io_diff[LOO_NODE], &metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
+        iogb = (double) metrics_io_diff[LOO_NODE].rchar / (double) (1024*1024) + (double) metrics_io_diff[LOO_NODE].wchar/(double)(1024*1024);
+	      sig->IO_MBS = iogb/elap_sec;
+        verbose_master(2, "IO phase and current IO rate %.2lf (IO? %u)", sig->IO_MBS, sig->IO_MBS > phases_limits.io_th);
+        return EAR_SUCCESS;
+    }    
+
+    /* We should check the CPI */
+    if (last_phase_bw){
+      cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
+      sig->CPI = cpi_avrg[LOO];
+      verbose_master(2, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
+      return EAR_SUCCESS;
+    }    
+
 
 		// FLOPs
 		flops_read_diff(no_ctx, &flops_read2[LOO],
@@ -1955,31 +2019,3 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 	}
 }
 
-#if 0
-static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length)
-{
-    int already = 0;
-    int printed;
-
-    uint i = 0;
-    for (i = 0; i < gpu_cnt && buff_length > 0; i++) {
-        printed = snprintf(&buffer[already], buff_length, "GPU%d\n-----\n", i);
-        buff_length -= printed;
-        already += printed;
-        uint j = 0;
-        uint list_len = freq_list_lens[i];
-        for (j = 0; j < list_len && buff_length > 0; j++) {
-            printed = snprintf(&buffer[already], buff_length, "%lu kHz\n", freq_lists[i][j]);
-            buff_length -= printed;
-            already += printed;
-        }
-        if (j < list_len && buff_length <= 0) {
-            return_msg(EAR_ERROR, "Insufficient buffer length.");
-        }
-    }
-    if (i < gpu_cnt && buff_length <= 0) {
-        return_msg(EAR_ERROR, "Insufficient buffer length.");
-    }
-    return EAR_SUCCESS;
-}
-#endif

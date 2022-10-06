@@ -30,8 +30,12 @@
 #define APP_IO_BOUND		  3
 #define APP_BUSY_WAITING	4
 #define APP_CPU_GPU       5
+#define APP_COMP_CPU      6
+#define APP_COMP_MEM      7
+#define APP_COMP_MIX       8
 
-#define EARL_MAX_PHASES   6
+#define EARL_MAX_PHASES   9
+#define EARL_BASIC_PHASES 6
 
 #define DYNAIS_GUIDED 0
 #define TIME_GUIDED	  1
@@ -95,6 +99,8 @@ state_t is_io_bound(signature_t *sig, uint num_cpus, uint *iobound);
 state_t is_network_bound(signature_t *sig, uint num_cpus, uint *mpibound);
 /* Checks the per-process GBs */
 state_t low_mem_activity(signature_t *sig,uint num_cpus , uint *lowm);
+/* Returns the text associated with the phase */
+char * phase_to_str(uint phase);
 
 
 state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided);

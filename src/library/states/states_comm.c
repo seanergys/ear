@@ -238,8 +238,8 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         strcpy(gpu_buff," ");
         if (GPU_UTIL) {
-            snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(Used GPUS %lu GPU_power %.2lfW "
-                    "GPU_freq %.2fGHz GPU_util %lu)", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL);
+            snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(Used GPUS %lu GPU_power %.2lfW (avg) "
+                    "GPU_freq %.2fGHz (avg) GPU_util %lu (avg))", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL);
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);

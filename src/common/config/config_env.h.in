@@ -111,6 +111,9 @@
 #define FLAG_MIN_USEC_MPI            SCHED_PREFIX "EAR_MIN_USEC_MPI_OPT"   // Minimum time to apply MPI optimization
 
 
+#define FLAG_IO_FAKE_PHASE           "EARL_IO_FAKE_PHASE"
+#define FLAG_BW_FAKE_PHASE           "EARL_BW_FAKE_PHASE"
+
 
 #define FLAG_DISABLE_CNTD            SCHED_PREFIX "EAR_DISABLE_CNTD"       // disables automatic CNTD loadin
 

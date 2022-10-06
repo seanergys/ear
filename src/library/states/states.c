@@ -157,6 +157,7 @@ static void restart_period_time_init(llong *time_init);
 static void report_loop_signature(uint iterations, loop_t *my_loop);
 
 static void accumulate_energy_savings(signature_t *loops, signature_t *apps);
+static void accumulate_phases_summary(signature_t *loops, signature_t *apps);
 
 
 static ear_event_t curr_state_event;
@@ -171,7 +172,7 @@ void fill_common_event(ear_event_t *ev)
 	strcpy(ev->node_id, application.node_id);
 }
 
-void fill_event(ear_event_t *ev, uint event, ulong value)
+void fill_event(ear_event_t *ev, uint event, llong value)
 {
   ev->event = event;
   ev->freq  = value;
@@ -340,8 +341,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
     sig_shared_region[my_node_id].iterations++;
     signature_t check_signature;
-    if (state_ok(metrics_new_iteration(&check_signature))) {
-        if (state_fail(policy_new_iteration(&check_signature))) {
+    if (state_ok(metrics_new_iteration(&loop_signature))) {
+        if (state_fail(policy_new_iteration(&loop_signature))) {
+
+            /* Accumulate statistics of savings */
+            accumulate_phases_summary(&loop_signature, &application.signature);
+
             verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
             policy_set_default_freq(NULL);
             // comp_N_begin = metrics_time();
@@ -528,6 +533,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             // Both loop_signature and lib_shared_region->job_signature have the same data:
 	          compute_per_process_and_job_metrics(&loop_signature);
 
+
             /* Included for dynais test */
 #if SHOW_DEBUGS
             if (loop_with_signature == 0) {
@@ -555,7 +561,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             sig_ready[curr_pstate] = 1;
 
 
-			/* ******************* MOVED **********************
+			      /* ******************* MOVED **********************
              * Now we compute the JOB signature for reporting. */
             if (master) {
                 metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
@@ -571,6 +577,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
              * norm_signature is the local process signature,
              * the policy will compute the average if needed */
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
+
+            /* Accumulate statistics of savings */
+            accumulate_phases_summary(&loop_signature, &application.signature);
 
             /* TODO: For no masters, ready will be 0, pending. */
             EAR_POLICY_STATE = ready;
@@ -735,6 +744,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 			      /* Accumulate Energy savings */
 			      accumulate_energy_savings(&loop_signature, &application.signature);
+
 
             {
                 char *ok_clr = COL_GRE;
@@ -938,6 +948,22 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
     }
 
     signature_reported = 1;
+}
+
+static void accumulate_phases_summary(signature_t *loops, signature_t *apps)
+{
+  sig_ext_t *se       = (sig_ext_t *)apps->sig_ext;
+  sig_ext_t *se_loop  = (sig_ext_t *)loops->sig_ext;
+
+  if (se == NULL)       return;
+  if (se_loop == NULL)  return;
+
+  for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+    se->earl_phase[ph].elapsed += se_loop->earl_phase[ph].elapsed; 
+    if (se->earl_phase[ph].elapsed || se_loop->earl_phase[ph].elapsed){
+      verbose_master(2, "Phase[%s] accumulated elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
+    }
+  }
 }
 
 static void accumulate_energy_savings(signature_t *loops, signature_t *apps)

@@ -94,6 +94,8 @@ extern uint use_turbo_for_cp;
 static uint network_use_imc = 0;
 extern uint try_turbo_enabled;
 extern uint use_energy_models;
+extern uint policy_cpu_bound;
+extern uint policy_mem_bound;
 
 #define SELECT_CPUFREQ      100
 #define SELECT_IMCFREQ      101
@@ -420,8 +422,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
         //  NEW CLASSIFY
-        is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
-        is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
+        //is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
+        //is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
+
+        /* Computd in policy */
+        cbound = policy_cpu_bound;
+        mbound = policy_mem_bound;
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
@@ -469,7 +475,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 local_eff_gain = base_eff_gain * (1 - factor);
             }
             if (use_energy_models) {
-                verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
+                //verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
                 compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
                 best_pstate = frequency_closest_pstate(best_freq);
                 verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);

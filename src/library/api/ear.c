@@ -940,6 +940,9 @@ void ear_lib_sig_handler(int s)
 {
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
         /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
+
+        if (s == SIGSEGV) print_stack(verb_channel);
+
         if (cancelled || sig_shared_region[my_node_id].exited) return;
         if (syscall(SYS_gettid) != main_pid) return;
 
@@ -1499,9 +1502,10 @@ void ear_init()
 				strcpy(application.job.app_id, ear_app_name);
 
 				// Passing the frequency in KHz to MHz
-				application.signature.def_f = application.job.def_f = EAR_default_frequency;
-				application.job.procs = my_size;
-				application.job.th =system_conf->settings[0];
+				application.signature.def_f   = application.job.def_f = EAR_default_frequency;
+				application.job.procs         = my_size;
+				application.job.th            = system_conf->settings[0];
+        application.signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 
 
 				// Copying static application info into the loop info
