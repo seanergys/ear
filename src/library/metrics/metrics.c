@@ -1659,13 +1659,8 @@ static state_t metrics_compute_total_io(io_data_t *total)
 
             ctx_t local_io_ctx;
 
-            if (state_fail(io_init(&local_io_ctx, sig_shared_region[i].pid))) {
+            if (state_ok(io_init(&local_io_ctx, sig_shared_region[i].pid))) {
 
-                debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
-
-                return_msg(EAR_ERROR, "I/O could not be read for some process.");
-
-            } else {
                 io_data_t io;
                 io_read(&local_io_ctx, &io);
 
@@ -1678,6 +1673,10 @@ static state_t metrics_compute_total_io(io_data_t *total)
                 total->cancelled   += io.cancelled;
 
                 io_dispose(&local_io_ctx);
+            } else {
+                debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
+
+                return_msg(EAR_ERROR, "I/O could not be read for some process.");
             }
         }
 
@@ -1926,7 +1925,6 @@ state_t metrics_new_iteration(signature_t *sig)
     }
 
 
-	/* FLOPS are used to determine the CPU BUSY waiting */
 	uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
 	uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
 	if (last_phase_io_bnd || last_phase_bw)
@@ -1934,6 +1932,7 @@ state_t metrics_new_iteration(signature_t *sig)
 		llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 		llong elap_sec = f_time / 1000000;
 
+        // TODO: We changed the approach, so this message should change.
 		debug("--- Computing flops because of application phase ---\n"
 				"%-26s: %d\n%-26s: %d\n"
 				"%-26s: %lld\n%-26s: %lld\n"
@@ -1949,15 +1948,18 @@ state_t metrics_new_iteration(signature_t *sig)
 
 
     /* We should check is we are still on a IO phase */
-    if (last_phase_io_bnd){
-        double iogb;
-    		metrics_compute_total_io(&metrics_io_end[LOO_NODE]);
-			  io_diff(&metrics_io_diff[LOO_NODE], &metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
-        iogb = (double) metrics_io_diff[LOO_NODE].rchar / (double) (1024*1024) + (double) metrics_io_diff[LOO_NODE].wchar/(double)(1024*1024);
-	      sig->IO_MBS = iogb/elap_sec;
-        verbose_master(2, "IO phase and current IO rate %.2lf (IO? %u)", sig->IO_MBS, sig->IO_MBS > phases_limits.io_th);
-        return EAR_SUCCESS;
-    }    
+        if (last_phase_io_bnd){
+            double iogb;
+            metrics_compute_total_io(&metrics_io_end[LOO_NODE]);
+            io_diff(&metrics_io_diff[LOO_NODE], &metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
+            iogb = (double) metrics_io_diff[LOO_NODE].rchar / (double) (1024 * 1024) +
+                (double) metrics_io_diff[LOO_NODE].wchar / (double) (1024 * 1024);
+
+            sig->IO_MBS = iogb/elap_sec;
+
+            verbose_master(2, "IO phase and current IO rate %.2lf (IO? %u)", sig->IO_MBS, sig->IO_MBS > phases_limits.io_th);
+            return EAR_SUCCESS;
+        }    
 
     /* We should check the CPI */
     if (last_phase_bw){
@@ -1968,7 +1970,8 @@ state_t metrics_new_iteration(signature_t *sig)
     }    
 
 
-		// FLOPs
+	    /* FLOPS are used to determine the CPU BUSY waiting
+         *  WARNING: Currently below code won't be executed never. */
 		flops_read_diff(no_ctx, &flops_read2[LOO],
 				&flops_read1[LOO], &flops_diff[LOO], &sig->Gflops);
 		flops_help_toold(&flops_diff[LOO], sig->FLOPS);
