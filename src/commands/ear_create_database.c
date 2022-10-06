@@ -213,7 +213,7 @@ void create_tables(void *connection)
 			"job_id INT unsigned NOT NULL, "
 			"step_id INT unsigned NOT NULL, "
 			"node_id VARCHAR(64), "
-			"signature_id INT unsigned, "
+			"signature_id BIGINT unsigned, "
 			"power_signature_id INT unsigned, "
 			"PRIMARY KEY(job_id, step_id, node_id))");
 	run_query(connection, query);
@@ -226,7 +226,7 @@ void create_tables(void *connection)
 			"step_id INT unsigned NOT NULL, "
 			"node_id VARCHAR(64), "
 			"total_iterations INT unsigned, "
-			"signature_id INT unsigned)");
+			"signature_id BIGINT unsigned)");
 	run_query(connection, query);
 
 	sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
@@ -251,7 +251,7 @@ void create_tables(void *connection)
 
 	if (signature_detail)
 		sprintf(query, "CREATE TABLE IF NOT EXISTS Signatures ("
-				"id INT unsigned NOT NULL AUTO_INCREMENT, "
+				"id BIGINT unsigned NOT NULL AUTO_INCREMENT, "
 				"DC_power FLOAT, "
 				"DRAM_power FLOAT, "
 				"PCK_power FLOAT, "
@@ -283,7 +283,7 @@ void create_tables(void *connection)
 				"PRIMARY KEY (id))");
 	else
 		sprintf(query, "CREATE TABLE IF NOT EXISTS Signatures ("
-				"id INT unsigned NOT NULL AUTO_INCREMENT, "
+				"id BIGINT unsigned NOT NULL AUTO_INCREMENT, "
 				"DC_power FLOAT, "
 				"DRAM_power FLOAT, "
 				"PCK_power FLOAT, "
@@ -393,7 +393,7 @@ void create_tables(void *connection)
 			"job_id INT unsigned NOT NULL, "
 			"step_id INT unsigned NOT NULL, "
 			"node_id VARCHAR(64), "
-			"signature_id INT unsigned, "
+			"signature_id BIGINT unsigned, "
 			"power_signature_id INT unsigned, "
 			"PRIMARY KEY(job_id, step_id, node_id))");
 	run_query(connection, query);
@@ -498,7 +498,7 @@ void create_tables(void *connection)
 			"job_id INT  NOT NULL, "
 			"step_id INT  NOT NULL, "
 			"node_id VARCHAR(64), "
-			"signature_id INT , "
+			"signature_id BIGINT , "
 			"power_signature_id INT , "
 			"PRIMARY KEY(job_id, step_id, node_id))");
 	run_query(connection, query);
@@ -511,7 +511,7 @@ void create_tables(void *connection)
 			"step_id INT  NOT NULL, "
 			"node_id VARCHAR(64), "
 			"total_iterations INT , "
-			"signature_id INT )");
+			"signature_id BIGINT )");
 	run_query(connection, query);
 
 	sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
@@ -678,7 +678,7 @@ void create_tables(void *connection)
 			"job_id INT  NOT NULL, "
 			"step_id INT  NOT NULL, "
 			"node_id VARCHAR(64), "
-			"signature_id INT , "
+			"signature_id BIGINT , "
 			"power_signature_id INT , "
 			"PRIMARY KEY(job_id, step_id, node_id))");
 	run_query(connection, query);
