@@ -1407,12 +1407,11 @@ int metrics_init(topology_t *topo)
 		return_msg(EAR_ERROR, "Loading energy plugin");
 	}
 
-	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
-		verbose_master(2,"Warning: IO data not available");
+	if (state_ok(io_init(&ctx_io, getpid()))) {
+        verbose_master(INFO_METRICS, "%sMETRICS%s I/O data initialized.", COL_BLU, COL_CLR);
 	} else {
-		verbose_master(INFO_METRICS,"IO data initialized");
-	}
-
+        verbose_master(INFO_METRICS, "%sWARNING%s I/O data not available.", COL_YLW, COL_CLR);
+    }
 
 	// Allocating data for energy node metrics
 	// node_energy_datasize=eards_node_energy_data_size();
