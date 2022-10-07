@@ -16,6 +16,7 @@
 */
 
 #define SHOW_DEBUGS 1
+#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
@@ -48,12 +49,14 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
     wide_buffer_t b;
     uint eard_api;
     state_t s;
+    int i;
 
     if (state_fail(s = eard_rpc(RPC_MGT_GPU_GET_API, NULL, 0, (char *) &eard_api, sizeof(int)))) {
         return s;
     }
     debug("Received API %u", eard_api);
-    if (eard_api == API_NONE || eard_api == API_DUMMY) {
+    //if (eard_api == API_NONE || eard_api == API_DUMMY) {
+    if (eard_api == API_NONE) {
         debug("EARD (daemon) has loaded DUMMY/NONE API");
         return EAR_ERROR;
     }
@@ -66,7 +69,7 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
         debug("There are no GPUs");
         return EAR_ERROR;
     }
-
+    root_devs = (gpu_devs_t *) serial_copy_elem(&b, NULL, NULL); 
     user_devs_count = root_devs_count;
     // If there is an already loaded API
     if (ops->get_devices != NULL) {
@@ -76,13 +79,18 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
         user_devs = calloc(user_devs_count, sizeof(gpu_devs_t));
         memcpy(user_devs, root_devs, user_devs_count*sizeof(gpu_devs_t));
     }
+    #if FAKE_GPUS
+    user_devs_count = 2;
+    user_devs[0].serial = user_devs[0].index = 1;
+    user_devs[1].serial = user_devs[1].index = 2;
+    #endif
     #ifdef SHOW_DEBUGS
     debug("Global GPUs:");
-    for (int i = 0; i < root_devs_count; ++i) {
+    for (i = 0; i < root_devs_count; ++i) {
         debug("GPU%d: %u_%llu", i, root_devs[i].index, root_devs[i].serial);
     }
     debug("Reservation GPUs:");
-    for (int i = 0; i < user_devs_count; ++i) {
+    for (i = 0; i < user_devs_count; ++i) {
         debug("GPU%d: %u_%llu", i, user_devs[i].index, user_devs[i].serial);
     }
     #endif
@@ -91,7 +99,7 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
      * Second part
      */
     uint cn = root_devs_count;
-    uint i, j, k;
+    uint j, k;
 
     root_freq_default    = calloc(root_devs_count, sizeof(ulong));
     root_freq_max        = calloc(root_devs_count, sizeof(ulong));
@@ -114,19 +122,20 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
     if (state_fail(s = eard_rpc(RPC_MGT_GPU_GET_FREQ_LIMIT_MAX, NULL, 0, (char *) root_freq_max, cn*sizeof(ulong)))) {
         return s;
     }
-    if (state_fail(s = eard_rpc(RPC_MGT_GPU_GET_POWER_CAP_DEFAULT, NULL, 0, (char *) root_power_default, cn*sizeof(ulong)))) {
-        return s;
-    }
     // Freqs processing
     if (state_fail(s = eard_rpc_buffered(RPC_MGT_GPU_GET_FREQS_AVAILABLE, NULL, 0, (char **) &b, NULL))) {
+        debug("Error during RPC: %s", state_msg);
         return s;
     }
-    debug("Received %lu bytes from EARD", serial_size(&b));
     // Copying sizes
     serial_copy_elem(&b, (char *) root_freqs_count, NULL);
     // Copying frequencies
     for (i = 0; i < root_devs_count; ++i) {
         root_freqs_available[i] = (ulong *) serial_copy_elem(&b, NULL, NULL);
+    }
+    // Power
+    if (state_fail(s = eard_rpc(RPC_MGT_GPU_GET_POWER_CAP_DEFAULT, NULL, 0, (char *) root_power_default, cn*sizeof(ulong)))) {
+        return s;
     }
     // Max min processing
     if (state_fail(s = eard_rpc_buffered(RPC_MGT_GPU_GET_POWER_CAP_MAX, NULL, 0, (char **) &b, NULL))) {
@@ -134,25 +143,27 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
     }
     serial_copy_elem(&b, (char *) root_power_max, NULL);
     serial_copy_elem(&b, (char *) root_power_min, NULL);
-    // Debugging
-    for (i = 0; i < root_devs_count; ++i) {
-        debug("GPU%u: default/max freq. limits %lu/%lu, default/min/max power cap %lu/%lu/%lu",
-              i, root_freq_default[i], root_freq_max[i], root_power_default[i], root_power_max[i], root_power_min[i]);
-    }
     // Static shuffle
     for (i = 0; i < root_devs_count; ++i) {
     for (j = 0; j < user_devs_count; ++j) {
         if (root_devs[i].serial == user_devs[j].serial) {
+            user_freqs_count[j]     = root_freqs_count[i];
+            user_freqs_available[j] = calloc(root_freqs_count[i], sizeof(ulong));
             user_freq_default[j]    = root_freq_default[i];
             user_freq_max[j]        = root_freq_max[i];
-            user_freqs_available[j] = calloc(root_freqs_count[i], sizeof(ulong));
-            user_freqs_count[j]     = root_freqs_count[i];
             user_power_default[j]   = root_power_default[i];
             user_power_max[j]       = root_power_max[i];
             user_power_min[j]       = root_power_min[i];
 
+            debug("D%d (root %d_%llu): #%u freqs, %lu KHz default, %lu KHz max, %lu W default, %lu-%lu W max-min",
+                j, user_devs[j].index, user_devs[j].serial,
+                user_freqs_count[j], user_freq_default[j], user_freq_max[j],
+                user_power_default[j], user_power_max[j], user_power_min[j]);
+
+            // Copying all the frequencies
             for (k = 0; k < root_freqs_count[i]; ++k) {
                 user_freqs_available[j][k] = root_freqs_available[i][k];
+                debug("--> %lu KHz", user_freqs_available[j][k]);
             }
         }
     }}
@@ -225,13 +236,20 @@ state_t mgt_gpu_eard_count_devices(ctx_t *c, uint *dev_count)
 
 static state_t shuffle_in(ulong *user_list, ulong *root_list, state_t s)
 {
-    int i, j;
+    int i, j, f;
     memset(user_list, 0, user_devs_count*sizeof(ulong));
-    for (i = 0; i < root_devs_count; ++i) {
-        for (j = 0; j < user_devs_count; ++j) {
+    for (i = f = 0; i < root_devs_count; ++i, f = 0) {
+        // f of found
+        for (j = 0; j < user_devs_count && !f; ++j) {
             if (root_devs[i].serial == user_devs[j].serial) {
                 user_list[j] = root_list[i];
+                f = 1;
             }
+        }
+        if (f) {
+            debug("Received D%d: %lu", i, root_list[i]);
+        } else {
+            debug("Received D%d: %lu (ignored)", i, root_list[i]);
         }
     }
     return s;
@@ -262,19 +280,25 @@ state_t mgt_gpu_eard_freq_limit_reset(ctx_t *c)
 
 static char *shuffle_out(ulong *user_list, ulong *root_list)
 {
-    int i, j;
+    int i, j, f;
 
     if (root_devs_count == user_devs_count) {
         return (char *) user_list;
     }
     memset(root_list, 0, root_devs_count*sizeof(ulong));
-    for (i = 0; i < root_devs_count; ++i) {
-        for (j = 0; j < user_devs_count; ++j) {
+    for (i = f = 0; i < root_devs_count; ++i, f = 0) {
+        // f of found
+        for (j = 0; j < user_devs_count && !f; ++j) {
             if (root_devs[i].serial == user_devs[j].serial) {
                 root_list[i] = user_list[j];
+                f = 1;
             }
         }
-        debug("Leaving FREQ%d: %lu KHz", i, root_list[i]);
+        if (f) {
+            debug("Sending D%d: %lu", i, root_list[i]);
+        } else {
+            debug("Sending D%d: %lu (added by shuffle)", i, root_list[i]);
+        }
     }
     return (char *) root_list;
 }

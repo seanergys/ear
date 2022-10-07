@@ -85,20 +85,8 @@ extern char             nodename[MAX_PATH_SIZE];
 extern int              eard_must_exit;
 extern ulong            eard_max_freq;
 #if USE_GPUS
-static gpu_devs_t      *gpu_devs;
 extern gpu_t           *eard_read_gpu;
 extern char             gpu_str[256];
-
-static uint          mgpu_dev_count;
-static const ulong **mgpu_ps_ava;
-static const uint   *mgpu_ps_ava_count;
-static ulong        *mgpu_ps_cur;
-static ulong        *mgpu_ps_def;
-static ulong        *mgpu_ps_max;
-static ulong        *mgpu_pow_cur;
-static ulong        *mgpu_pow_def;
-static ulong        *mgpu_pow_max;
-static ulong        *mgpu_pow_min;
 #endif
 extern int              num_uncore_counters; // Me extraña que esto funcione.
 static ulong            node_energy_datasize;
@@ -125,10 +113,7 @@ static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
-#if USE_GPUS
-static metrics_t     mg;
 static metrics_t     ug;
-#endif
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -172,7 +157,6 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
          bwidth_get_api((uint *) &ub.api);
 
     #if USE_GPUS
-    mgt_gpu_get_api((uint *) &mg.api);
         gpu_get_api((uint *) &ug.api);
     #endif
     
@@ -181,7 +165,6 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(     bwidth_init(no_ctx));
 	
     #if USE_GPUS
-    sf(mgt_gpu_init(no_ctx));
     sf(    gpu_init(no_ctx));
     #endif
 
@@ -192,28 +175,11 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(     bwidth_count_devices(no_ctx, &ub.devs_count));
 
     #if USE_GPUS
-	sf(mgt_gpu_count_devices(no_ctx, &mg.devs_count));
     sf(    gpu_count_devices(no_ctx, &ug.devs_count));
-	sf(mgt_gpu_get_devices(no_ctx, &gpu_devs, NULL));
-
-    sf(mgt_gpu_data_alloc(&mgpu_ps_cur));
-	sf(mgt_gpu_data_alloc(&mgpu_ps_def));
-	sf(mgt_gpu_data_alloc(&mgpu_ps_max));
-	sf(mgt_gpu_data_alloc(&mgpu_pow_cur));
-	sf(mgt_gpu_data_alloc(&mgpu_pow_def));
-	sf(mgt_gpu_data_alloc(&mgpu_pow_max));
-	sf(mgt_gpu_data_alloc(&mgpu_pow_min));
-
-	sf(mgt_gpu_freq_list(no_ctx, &mgpu_ps_ava, &mgpu_ps_ava_count));
-	sf(mgt_gpu_freq_limit_get_default(no_ctx, mgpu_ps_def));
-	sf(mgt_gpu_freq_limit_get_max    (no_ctx, mgpu_ps_max));
-	sf(mgt_gpu_power_cap_get_default (no_ctx, mgpu_pow_def));
-	sf(mgt_gpu_power_cap_get_rank    (no_ctx, mgpu_pow_max, mgpu_pow_min));
     #endif
 
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
-    
 
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
@@ -774,88 +740,8 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	state_t s = EAR_SUCCESS;
 	char *data = NULL;
 	size_t size = 0;
-	uint aux_int;
-	int i;
 
 	switch (call) {
-	case RPC_MGT_GPU_GET_API:
-		data = (char *) &mg.api;
-		size = sizeof(uint);
-	break;
-	case RPC_MGT_GPU_GET_DEVICES:
-        serial_clean(&wb);
-        serial_add_elem(&wb, (char *) &mgpu_dev_count, sizeof(uint));
-        serial_add_elem(&wb, (char *) gpu_devs, sizeof(gpu_devs_t)*mgpu_dev_count);
-        size = serial_size(&wb);
-        data = wb.data;
-	break;
-	case RPC_MGT_GPU_GET_FREQ_LIMIT_DEFAULT:
-		data = (char *) mgpu_ps_def;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_FREQ_LIMIT_MAX:
-		data = (char *) mgpu_ps_max;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_FREQ_LIMIT_CURRENT:
-		if (state_fail (s = mgt_gpu_freq_limit_get_current(no_ctx, mgpu_ps_cur)) ){
-	        serror("Could not get current GPU frequency limit");
-		}
-		data = (char *) mgpu_ps_cur;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_FREQS_AVAILABLE:
-		serial_clean(&wb);
-		serial_add_elem(&wb, (char *) mgpu_ps_ava_count, sizeof(uint)*mgpu_dev_count);
-		for (i = 0; i < mgpu_dev_count; ++i) {
-				serial_add_elem(&wb, (char *) mgpu_ps_ava[i], sizeof(ulong)*mgpu_ps_ava_count[i]);
-		}
-		size = serial_size(&wb);
-		data = wb.data;
-	break;
-	case RPC_MGT_GPU_RESET_FREQ_LIMIT:
-		s = mgt_gpu_freq_limit_reset(no_ctx);
-	break;
-	case RPC_MGT_GPU_SET_FREQ_LIMIT:
-		if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_ps_cur, head->size, 0)) ){
-			serror(Rpcerr.pending);
-		}
-		if (state_ok(s)) {
-			if (state_fail(s = mgt_gpu_freq_limit_set(no_ctx, mgpu_ps_cur)) ){
-				serror("Error when setting a GPU frequency limit");
-			}
-		}
-	break;
-	case RPC_MGT_GPU_GET_POWER_CAP_DEFAULT:
-		data = (char *) mgpu_pow_def;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_GET_POWER_CAP_MAX:
-		serial_clean(&wb);
-		serial_add_elem(&wb, (char *) mgpu_pow_max, sizeof(ulong)*mgpu_dev_count);
-		serial_add_elem(&wb, (char *) mgpu_pow_min, sizeof(ulong)*mgpu_dev_count);
-		size = serial_size(&wb);
-		data = wb.data;
-	break;
-	case RPC_MGT_GPU_GET_POWER_CAP_CURRENT:
-		if (state_fail (s = mgt_gpu_power_cap_get_current(no_ctx, mgpu_pow_cur)) ){
-	        serror("Could not get current GPU power limit");
-		}
-		data = (char *) mgpu_pow_cur;
-		size = sizeof(ulong)*mgpu_dev_count;
-	break;
-	case RPC_MGT_GPU_RESET_POWER_CAP:
-		s = mgt_gpu_power_cap_reset(no_ctx);
-	break;
-	case RPC_MGT_GPU_SET_POWER_CAP:
-        if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_pow_cur, head->size, 0))) {
-            serror(Rpcerr.pending);
-        }
-        if (state_ok(s)) {
-            if (state_fail(s = mgt_gpu_power_cap_set(no_ctx, mgpu_pow_cur))) {
-                serror("Error when setting a GPU power cap");
-            }
-        }
 	break;
 	case RPC_MET_GPU_GET_API:
 		data = (char *) &ug.api;
@@ -889,8 +775,6 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	return 1;
 }
 
-
-
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     unsigned long ack = 0;
@@ -907,7 +791,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			break;
 		case GPU_GET_INFO:
 			debug("GPU_GET_INFO %d", mg.devs_count);
-			write(ack_fd, gpu_devs, sizeof(gpu_devs_t)*mg.devs_count);
+			//write(ack_fd, gpu_devs, sizeof(gpu_devs_t)*mg.devs_count);
 			break;
 		case GPU_DATA_READ:
 			gpu_read(no_ctx,eard_read_gpu);
@@ -921,10 +805,10 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			ack=EAR_SUCCESS;
 			write(ack_fd,&ack,sizeof(ack));
 			break;
-                case GPU_SUPPORTED:
-                        ack = 1;
-                        write(ack_fd,&ack,sizeof(ack));
-                        break;
+        case GPU_SUPPORTED:
+            ack = 1;
+            write(ack_fd,&ack,sizeof(ack));
+            break;
 	  default:
       return 0;
   }
