@@ -722,53 +722,56 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* We must evaluate policy decissions */
             signatures_stables++;
 
-            if (signatures_different(&loop_signature, &policy_sel_signature, 0.2)){
+            if (signatures_different(&loop_signature, &policy_sel_signature, 0.2)) {
+
               /* Reset */
-              verbose_master(2," EARL state reset becuase signatures are different");
               policy_set_default_freq(&loop_signature);
               EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+
+              if (VERB_ON(2)) {
+
+                char sigs_metrics_buff[128]; // This buffer is used to show differences in signatures.
+
+                snprintf(sigs_metrics_buff, sizeof(sigs_metrics_buff),
+                    "(CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy (%.2lf/%.2lf/%.2lf)",
+                    loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
+                    policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
+
+                verbose_master(0, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
+                    COL_YLW, COL_CLR, sigs_metrics_buff);
+              }
+
               break;
             }
 
-            if (sig_ready[def_pstate] == 0){
+            if (sig_ready[def_pstate] == 0) {
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
-                if (sig_ready[curr_pstate] == 0){
+                if (sig_ready[curr_pstate] == 0) {
                     sig_ready[curr_pstate] = 1;
                 }
                 return;
             }
 
-
-            policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
-
 			      /* Accumulate Energy savings */
 			      accumulate_energy_savings(&loop_signature, &application.signature);
 
+            /* The policy evaluates following it's own criteria. */
+            policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
 
-            {
-                char *ok_clr = COL_GRE;
-                if (pol_ok) {
-                    /* When collecting traces, we maintain the period */
-                    if ((master) && (traces_are_on() == 0)) {
-                        perf_count_period = perf_count_period * 2;
-                    }
-                    tries_current_loop = 0;
-                } else {
-                    /* Reset */
-                    policy_set_default_freq(&loop_signature);
-                    EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-                    ok_clr = COL_RED;
-                }
-
-
-                verbose_master(2, "%sPOLICY OK%s (CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy_selected (%.2lf/%.2lf/%.2lf)",
-                        ok_clr,COL_CLR,
-                        loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
-                        policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
-            }
             if (pol_ok) {
+                /* When collecting traces, we maintain the period */
+                if ((master) && (traces_are_on() == 0)) {
+                    perf_count_period = perf_count_period * 2;
+                }
+                tries_current_loop = 0;
+
                 return;
+
+            } else {
+                /* Reset */
+                policy_set_default_freq(&loop_signature);
+                EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
 
             // We can give the library a second change in case we are at def freq
