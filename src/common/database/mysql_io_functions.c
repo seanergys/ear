@@ -106,7 +106,7 @@
 
 #define PERIODIC_AGGREGATION_MYSQL_QUERY "INSERT INTO Periodic_aggregations (DC_energy, start_time, end_time, eardbd_host) VALUES (?, ?, ?, ?)"
 
-#define EAR_EVENT_MYSQL_QUERY         "INSERT INTO Events (timestamp, event_type, job_id, step_id, freq, node_id) VALUES (?, ?, ?, ?, ?, ?)"
+#define EAR_EVENT_MYSQL_QUERY         "INSERT INTO Events (timestamp, event_type, job_id, step_id, value, node_id) VALUES (?, ?, ?, ?, ?, ?)"
 
 #if EXP_EARGM
 #define EAR_WARNING_MYSQL_QUERY "INSERT INTO Global_energy2 (energy_percent, warning_level, inc_th, p_state, GlobEnergyConsumedT1, "\
