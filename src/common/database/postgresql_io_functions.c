@@ -98,7 +98,7 @@
 #define PERIODIC_METRIC_QUERY_SIMPLE    "INSERT INTO Periodic_metrics (start_time, end_time, DC_energy, node_id, job_id, step_id) "\
                                         "VALUES "
 
-#define EAR_EVENT_PSQL_QUERY         "INSERT INTO Events (timestamp, event_type, job_id, step_id, freq, node_id) VALUES "
+#define EAR_EVENT_PSQL_QUERY         "INSERT INTO Events (timestamp, event_type, job_id, step_id, value, node_id) VALUES "
 
 #define PERIODIC_AGGREGATION_PSQL_QUERY "INSERT INTO Periodic_aggregations (DC_energy, start_time, end_time, eardbd_host) VALUES "
 
