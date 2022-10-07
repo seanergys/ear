@@ -828,7 +828,9 @@ static void metrics_global_stop()
 	}
 
 	// New metrics
-	bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], NULL, NULL, NULL);
+
+	bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], NULL, &bwidth_cas[APP], NULL);
+  if (master) lib_shared_region->cas_counters = bwidth_cas[APP];
 	flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
 	cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
 	cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
@@ -1115,7 +1117,8 @@ static int metrics_partial_stop(uint where)
 		debug("energy CPU: %llu", metrics_rapl[LOO][i]);
 	}
 	// New metrics
-	bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], NULL, NULL);
+	bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], &bwidth_cas[LOO], NULL);
+  if (master) lib_shared_region->cas_counters = bwidth_cas[LOO];
 	flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
 	cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
 	cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
@@ -1123,7 +1126,6 @@ static int metrics_partial_stop(uint where)
 	// New accumulations: by now these application metrics are taken accumulating loop values.
 	// Not sure if required this way in the future, is just because if there are too long apps
 	// that could overflow these metric counters.
-	bwidth_data_accum(bwidth_diff[APP], bwidth_diff[LOO], NULL, NULL);
 	flops_data_accum(&flops_diff[APP], &flops_diff[LOO], NULL);
 
 	return EAR_SUCCESS;
@@ -1144,6 +1146,8 @@ void copy_node_data(signature_t *dest,signature_t *src)
 	dest->PCK_power	=	src->PCK_power;
 	dest->avg_f			= src->avg_f;
 	dest->avg_imc_f = src->avg_imc_f;
+  dest->GBS       = src->GBS;
+  dest->TPI       = src->TPI;
 #if USE_GPUS
 	memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
 #endif
@@ -1203,10 +1207,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	/* TPI and Memory bandwith */
 	if (master) {
-		bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[sign_app_loop_idx], &metrics->GBS);
-		lib_shared_region->cas_counters = (double) bwidth_cas[sign_app_loop_idx];
+		bwidth_data_accum(bwidth_diff[APP], bwidth_diff[LOO], NULL, NULL);
 	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
 			metrics->instructions);
+	  metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
 	} else {
 		bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
 		metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -112,7 +112,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
 	signature_t *lsig;
 
-	double my_job_GBS, my_job_DRAM_power;
+	double my_job_GBS, my_job_DRAM_power, my_job_TPI;
 
 	uint used_cpus = 0;
 
@@ -176,6 +176,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 	uint lp           = 0;
 	uint cj           = 0;
 	my_job_GBS        = 0;
+	my_job_TPI        = 0;
 	my_job_DRAM_power = 0;
 
     for (uint j = 0; j < node_process; j ++) {
@@ -187,22 +188,26 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
             gbs[j] = lsig->GBS * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+            tpi[j] = lsig->TPI * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
             dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
         }
         if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
             my_job_GBS        += gbs[j];
             my_job_DRAM_power += dram_power[j];
+            my_job_TPI        += tpi[j];
             sig[lp].sig.GBS = gbs[j];	
             sig[lp].sig.DRAM_power = dram_power[j];	
+            sig[lp].sig.TPI = tpi[j];
             debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
             lp++;
         }
     }
 	data->job_signature.GBS = my_job_GBS;
+	data->job_signature.TPI = my_job_TPI;
 	data->job_signature.DRAM_power = my_job_DRAM_power;
 
 
-	debug("My job[%d] GB/s is %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.DRAM_power);
+	debug("My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power);
 
 
 	/* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
