@@ -43,6 +43,7 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 {
 	cpu_count = arch->top.cpu_count;
   cache_line_size = arch->top.cache_line_size;
+  arch_model_loaded = 1;
 	return EAR_SUCCESS;
 }
 
@@ -102,6 +103,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     float total_gflops = 0.0;
 
     ull  node_L3 = 0;
+
+    verbose(2, "CPU power model gflops ...............");
 
     for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
         /* Power condition is to do only in case the signature is ready */
@@ -165,7 +168,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     data->job_signature.TPI = my_job_TPI;
     data->job_signature.DRAM_power = my_job_DRAM_power;
 
-    debug("My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power);
+    verbose(2, "My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power);
 
     /* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 
