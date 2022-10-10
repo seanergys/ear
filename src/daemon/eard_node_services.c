@@ -144,9 +144,7 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
         cpufreq_load(tp, NO_EARD);
         imcfreq_load(tp, NO_EARD);
          bwidth_load(tp, NO_EARD);
-
 	#if USE_GPUS
-    mgt_gpu_load(NO_EARD);
         gpu_load(NO_EARD);
     #endif
 
@@ -155,7 +153,6 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
         cpufreq_get_api((uint *) &uc.api);
         imcfreq_get_api((uint *) &ui.api);
          bwidth_get_api((uint *) &ub.api);
-
     #if USE_GPUS
         gpu_get_api((uint *) &ug.api);
     #endif
@@ -163,7 +160,6 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    cpufreq_init(no_ctx));
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
-	
     #if USE_GPUS
     sf(    gpu_init(no_ctx));
     #endif
@@ -173,9 +169,8 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    cpufreq_count_devices(no_ctx, &uc.devs_count));
     sf(    imcfreq_count_devices(no_ctx, &ui.devs_count));
     sf(     bwidth_count_devices(no_ctx, &ub.devs_count));
-
     #if USE_GPUS
-    sf(    gpu_count_devices(no_ctx, &ug.devs_count));
+    sf(gpu_get_devices(no_ctx, (gpu_devs_t **) &ug.avail_list, &ug.devs_count));
     #endif
 
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
@@ -186,7 +181,6 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
     sf(     bwidth_data_alloc((bwidth_t  **) &ub.current_list));
-    
     #if USE_GPUS
 	sf(gpu_data_alloc(&eard_read_gpu));
     #endif
@@ -746,6 +740,13 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	case RPC_MET_GPU_GET_API:
 		data = (char *) &ug.api;
 		size = sizeof(uint);
+	break;
+	case RPC_MET_GPU_GET_DEVICES:
+        serial_clean(&wb);
+        serial_add_elem(&wb, (char *) &ug.devs_count, sizeof(uint));
+        serial_add_elem(&wb, (char *) ug.avail_list, sizeof(gpu_devs_t)*ug.devs_count);
+        size = serial_size(&wb);
+        data = serial_data(&wb);
 	break;
 	case RPC_MET_GPU_COUNT_DEVICES:
 		data = (char *) &ug.devs_count;

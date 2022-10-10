@@ -15,22 +15,25 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
-#define RPCS 1
+#define SHOW_DEBUGS 1
+#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
-#include <metrics/gpu/archs/eard.h>
+#include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api_rpc.h>
+#include <metrics/gpu/archs/eard.h>
 
-static uint devs_count;
+static uint        root_devs_count;
+static uint        user_devs_count;
+static gpu_devs_t *root_devs;
+static gpu_devs_t *user_devs;
 
 void gpu_eard_load(gpu_ops_t *ops, int eard)
 {
+    wide_buffer_t b;
 	uint eard_api;
-    #ifdef RPCS
 	state_t s;
-    #endif
 
 	if (!eard) {
 		debug("EARD (daemon) not required");
@@ -41,18 +44,51 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
         return;
 	}
     debug("EARD (daemon) is connected");
-    #ifdef RPCS
 	if (state_fail(s = eard_rpc(RPC_MET_GPU_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
 		debug("Received: %s", state_msg)
         return;
 	}
-    #else
-    eards_gpu_model(&eard_api);
-    #endif
 	if (eard_api == API_NONE || eard_api == API_DUMMY) {
 		debug("EARD (daemon) has loaded DUMMY/NONE API");
         return;
 	}
+    // Get a list of devices in root space
+    if (state_fail(s = eard_rpc_buffered(RPC_MGT_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
+        return;
+    }
+    serial_copy_elem(&b, (char *) &root_devs_count, NULL);
+    debug("Received from EARD %u GPUs", root_devs_count);
+    if (root_devs_count == 0) {
+        debug("There are no GPUs");
+        return;
+    }
+    root_devs = (gpu_devs_t *) serial_copy_elem(&b, NULL, NULL);
+    user_devs_count = root_devs_count;
+    // Get a list of devices in user space
+    if (ops->get_devices != NULL) {
+        ops->get_devices(NULL, &user_devs, &user_devs_count);
+    } else {
+        // If not, just copy root devices
+        user_devs = calloc(user_devs_count, sizeof(gpu_devs_t));
+        memcpy(user_devs, root_devs, user_devs_count*sizeof(gpu_devs_t));
+    }
+    #if FAKE_GPUS
+    user_devs_count = 2;
+    user_devs[0].serial = root_devs[0].serial;
+    user_devs[1].serial = root_devs[3].serial;
+    user_devs[0].index = root_devs[0].index;
+    user_devs[1].index = root_devs[3].index;
+    #endif
+    #if SHOW_DEBUGS
+    int i;
+
+    for (i = 0; i < root_devs_count; ++i) {
+        debug("root D%d: %d_%llu", i, root_devs[i].index, root_devs[i].serial);
+    }
+    for (i = 0; i < user_devs_count; ++i) {
+        debug("user D%d: %d_%llu", i, user_devs[i].index, user_devs[i].serial);
+    }
+    #endif
     // If something already loaded
     if (apis_loaded(ops)){
         return;
@@ -72,15 +108,7 @@ void gpu_eard_get_api(uint *api)
 
 state_t gpu_eard_init(ctx_t *c)
 {
-    #ifdef RPCS
-	state_t s;
-	if (state_fail(s = eard_rpc(RPC_MET_GPU_COUNT_DEVICES, NULL, 0, (char *) &devs_count, sizeof(uint)))) {
-		return s;
-	}
 	return EAR_SUCCESS;
-    #else
-    return (state_t) eards_gpu_dev_count(&devs_count);
-    #endif
 }
 
 state_t gpu_eard_dispose(ctx_t *c)
@@ -90,28 +118,43 @@ state_t gpu_eard_dispose(ctx_t *c)
 
 state_t gpu_eard_count_devices(ctx_t *c, uint *devs_count_in)
 {
-	*devs_count_in = (uint) devs_count;
+	*devs_count_in = (uint) user_devs_count;
 	return EAR_SUCCESS;
+}
+
+static state_t static_read(uint call, gpu_t *data)
+{
+	size_t size = ((size_t) root_devs_count)*sizeof(gpu_t);
+    gpu_t root_data[128];
+    int u, r, f;
+    state_t s;
+    
+    memset((char *) root_data, 0, size); 
+	if (state_fail(s = eard_rpc(call, NULL, 0, (char *) root_data, size))) {
+        return s;
+    }
+    for (r = f = 0; r < root_devs_count; ++r, f = 0) {
+        for (u = 0; u < user_devs_count; ++u) {
+            if (user_devs[u].serial == root_devs[r].serial) {
+                data[u] = root_data[r];
+                f = 1;
+            }
+        }
+        if (f) {
+            debug("Received D%d", r);
+        } else {
+            debug("Received D%d (ignored)", r);
+        }
+    }
+    return EAR_SUCCESS;
 }
 
 state_t gpu_eard_read(ctx_t *c, gpu_t *data)
 {
-  debug("gpu_eard_read");
-    #ifdef RPCS
-	size_t size = ((size_t) devs_count)*sizeof(gpu_t);
-	return eard_rpc(RPC_MET_GPU_GET_METRICS, NULL, 0, (char *) data, size);
-    #else
-    return (state_t) eards_gpu_data_read(data, devs_count);
-    #endif
+    return static_read(RPC_MET_GPU_GET_METRICS, data);
 }
 
 state_t gpu_eard_read_raw(ctx_t *c, gpu_t *data)
 {
-	size_t size = ((size_t) devs_count)*sizeof(gpu_t);
-    #ifdef RPCS
-	return eard_rpc(RPC_MET_GPU_GET_METRICS_RAW, NULL, 0, (char *) data, size);
-    #else
-    memset(data, 0, size);
-    return EAR_SUCCESS;
-    #endif
+    return static_read(RPC_MET_GPU_GET_METRICS_RAW, data);
 }

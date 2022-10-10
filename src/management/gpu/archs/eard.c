@@ -55,8 +55,7 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
         return s;
     }
     debug("Received API %u", eard_api);
-    //if (eard_api == API_NONE || eard_api == API_DUMMY) {
-    if (eard_api == API_NONE) {
+    if (eard_api == API_NONE || eard_api == API_DUMMY) {
         debug("EARD (daemon) has loaded DUMMY/NONE API");
         return EAR_ERROR;
     }

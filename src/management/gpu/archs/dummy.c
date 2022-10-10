@@ -59,7 +59,11 @@ void mgt_gpu_dummy_load(mgt_gpu_ops_t *ops)
 
 void mgt_gpu_dummy_get_api(uint *api)
 {
+    #if FAKE_GPUS
+    *api = API_FAKE;
+    #else
     *api = API_DUMMY;
+    #endif
 }
 
 state_t mgt_gpu_dummy_init(ctx_t *c)
@@ -116,7 +120,7 @@ state_t mgt_gpu_dummy_count_devices(ctx_t *c, uint *devs_count)
 {
 	if (devs_count != NULL) {
         #if FAKE_GPUS
-        *devs_count = 4;
+        *devs_count = FAKE_N;
         #else
 		*devs_count = 1;
         #endif

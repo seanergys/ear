@@ -51,6 +51,7 @@ void gpu_nvml_load(gpu_ops_t *ops)
     apis_set(ops->get_api,       gpu_nvml_get_api);
     apis_set(ops->init,          gpu_nvml_init);
     apis_set(ops->dispose,       gpu_nvml_dispose);
+    apis_set(ops->get_devices,   gpu_nvml_get_devices);
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_set(ops->read,          gpu_nvml_read);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
@@ -96,6 +97,28 @@ state_t gpu_nvml_init(ctx_t *c)
 state_t gpu_nvml_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
+}
+
+state_t gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
+{
+    char serial[32];
+    nvmlReturn_t r;
+    int i;
+
+    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
+    //
+    for (i = 0; i < devs_count; ++i) {
+        if ((r = nvml.GetSerial(devs[i], serial, 32)) != NVML_SUCCESS) {
+            return_msg(EAR_ERROR, nvml.ErrorString(r));
+        }
+        (*devs_in)[i].serial = (ullong) atoll(serial);
+        (*devs_in)[i].index  = i;
+    }
+    if (devs_count_in != NULL) {
+        *devs_count_in = devs_count;
+    }
+
+    return EAR_SUCCESS;
 }
 
 state_t gpu_nvml_count_devices(ctx_t *c, uint *devs_count_in)

@@ -22,6 +22,7 @@
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/system/time.h>
+#include <metrics/gpu/gpu.h>
 
 // The API
 //
@@ -55,11 +56,6 @@
 #define FREQ_TOP	0
 #define FREQ_BOTTOM	1
 // APIs
-
-typedef struct gpu_devs_s {
-    ullong serial;
-    uint index;
-} gpu_devs_t;
 
 typedef struct mgt_gpu_ops_s {
 

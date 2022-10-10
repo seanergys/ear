@@ -398,10 +398,10 @@ state_t mgt_gpu_nvml_freq_limit_set(ctx_t *c, ulong *khz)
 	int i;
 	debug("nvml_clock_limit_set devices %d",devs_count);
 	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
-		if (khz[i] > 0){
-		  if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
-			  e = s;
-		  }
+        if (khz[i] > 0){
+            if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
+                e = s;
+            }
 		}
 	}
 	return e;

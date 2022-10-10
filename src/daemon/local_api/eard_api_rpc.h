@@ -69,6 +69,7 @@
 #define RPC_MET_IMCFREQ_COUNT_DEVICES      1082
 #define RPC_MET_IMCFREQ_GET_CURRENT        1083
 #define RPC_MET_GPU_GET_API                1101
+#define RPC_MET_GPU_GET_DEVICES            1105
 #define RPC_MET_GPU_COUNT_DEVICES          1102
 #define RPC_MET_GPU_GET_METRICS            1103
 #define RPC_MET_GPU_GET_METRICS_RAW        1104

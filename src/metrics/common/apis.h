@@ -40,6 +40,7 @@
 #define API_ONEAPI      12
 #define API_RAPL 		13
 #define API_ISST        14
+#define API_FAKE        15
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
