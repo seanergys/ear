@@ -1855,6 +1855,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	int i;
 	double valid_period;
 	ullong L1, L2, L3;
+  ullong accesses = 0;
 
 	se = (sig_ext_t *)master->sig_ext;
 	signature_copy(ns,master);
@@ -1904,9 +1905,11 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 			ns->GBS        += sig_shared_region[lp].sig.accum_mem_access / (valid_period * B_TO_GB);
 			ns->avg_f      += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
 			tcpus          += sig_shared_region[lp].num_cpus;
+      accesses       += sig_shared_region[lp].sig.accum_mem_access;
 			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
 		}
 		ns->avg_f /= tcpus;
+    ns->TPI    = accesses / inst;
 		verbose_master(2,"AVG  %lu", ns->avg_f);
 	}
 	signature_copy(&lib_shared_region->node_signature,ns);

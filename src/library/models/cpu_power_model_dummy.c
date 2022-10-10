@@ -82,7 +82,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	memset(power_estimations,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(dram_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
-  memset(inst, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+  memset(inst, 0, sizeof(ullong)*MAX_CPUS_SUPPORTED);
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
