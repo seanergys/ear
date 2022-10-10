@@ -35,7 +35,7 @@ void usage(char *name)
     printf("\n");
     printf("Usage: %s\t [options].\t At least a job id is required.\n", name);
     printf("Available options:\n"\
-            "\t-j [job_id.step_id] \t Specifies which job_ids will be deleted from the learning phase. Only available for specific nodes.\n"\
+            "\t-j [job_id.step_id] \t Specifies which jobs to retrieve.\n"\
             "\t-t [LOOPS|APP] \t Specifies from where the signatures will be retrieved. (default: APP).\n"\
             "\t-h\t\t\t Shows this message.\n");
     printf("\n");
@@ -127,16 +127,20 @@ int main(int argc,char *argv[])
 	char query[512];
 	char tmp[64];
 	strcpy(tmp, "");
-	if (step_id >= 0)
-		sprintf(tmp, "AND Jobs.step_id = %d ", step_id);
 
-	if (type == LOOPS)
+	if (type == LOOPS) {
+		if (step_id >= 0)
+			sprintf(tmp, "AND step_id = %d ", step_id);
 		sprintf(query, LOOP_QUERY, job_id, tmp);
-	else
+	}
+	else {
+		if (step_id >= 0)
+			sprintf(tmp, "AND Jobs.step_id = %d ", step_id);
 	    sprintf(query, APPS_QUERY, job_id, tmp);
+	}
     //printf("running query %s\n", query);
 
-	printf("%10s %10s %10s %10s %10s %10s %10s\n", "Job", "Step", "CPI", "GBS", "TPI", "FLOPS", "Power");
+	printf("%10s %10s %10s %10s %10s %10s %10s\n", "Job", "Step", "CPI", "GBS", "TPI", "Power", "Gflops");
 	db_run_query_string_results(query, &results, &num_cols, &num_rows);
 	for (i = 0; i < num_rows; i++) {
 		for (j = 0; j < num_cols; j++) {
