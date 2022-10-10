@@ -257,7 +257,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         l2_sec = l2_miss/(TIME * 1024*1024*1024);
         l3_sec = l3_miss/(TIME * 1024*1024*1024);
 
-        verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f",l1_sec,l2_sec,l3_sec);
+        verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f TPI %.2lf ",l1_sec,l2_sec,l3_sec, sig->signature.TPI);
 
         uint n_mpi_calls = (per_proc_verb_file) ? sig_shared_region[my_node_id].mpi_info.total_mpi_calls : total_mpi;
 

@@ -82,7 +82,17 @@ typedef struct metrics_gpus_s {
     uint *avail_count;
     void *current_list;
 } metrics_gpus_t;
-#endif // USE_GPUS
+#endif
+
+typedef struct metrics_multi{
+    uint  api;
+    uint  ok;
+    uint  dev_count;
+    uint  *dev_list;
+    void *avail_list;
+    uint avail_count;
+    void *current_list;
+}metrics_multi_t;
 
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \

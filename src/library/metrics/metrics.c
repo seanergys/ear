@@ -194,6 +194,7 @@ static metrics_t   met_energy;
 static metrics_t   met_flops;
 static metrics_t   met_cache;
 static metrics_t   met_cpi;
+static metrics_multi_t   mgt_cpuprio;
 #if USE_GPUS
 static metrics_gpus_t mgt_gpu;
 static metrics_gpus_t met_gpu;
@@ -363,6 +364,8 @@ static void metrics_static_init(topology_t *tp)
     sa(      flops_load(tp, eard));
     sa(      cache_load(tp, eard));
     sa(        cpi_load(tp, eard));
+    sa(mgt_cpuprio_load(tp, eard));
+
 #if USE_GPUS
         gpu_load(eard);
     mgt_gpu_load(eard);
@@ -385,6 +388,7 @@ static void metrics_static_init(topology_t *tp)
     sa(      flops_get_api(&met_flops.api  ));
     sa(      cache_get_api(&met_cache.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
+    sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
 #if USE_GPUS
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
@@ -400,6 +404,10 @@ static void metrics_static_init(topology_t *tp)
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
+    if (!mgt_cpufreq_prio_is_enabled()){
+      sa(mgt_cpufreq_prio_enable());
+    }
+    mgt_cpuprio.ok = ((mgt_cpuprio.api > API_DUMMY) && mgt_cpufreq_prio_is_enabled());
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
     met_gpu.ok     = (met_gpu.api     > API_DUMMY);
@@ -416,6 +424,7 @@ static void metrics_static_init(topology_t *tp)
     sa(      flops_init(no_ctx));
     sa(      cache_init(no_ctx));
     sa(        cpi_init(no_ctx));
+    sa(mgt_cpuprio_init());
 #if USE_GPUS
     sa(    mgt_gpu_init(no_ctx));
     sa(        gpu_init(no_ctx));
@@ -443,6 +452,38 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list,
                 &mgt_imcfreq.avail_count));
 
+    sa(mgt_cpuprio_data_alloc((cpuprio_t **)&mgt_cpuprio.avail_list, (uint **)&mgt_cpuprio.dev_list));
+    /* List of priorities */
+    sa(mgt_cpuprio_get_available_list((cpuprio_t *)mgt_cpuprio.avail_list));
+    /* List of devices */
+    sa(mgt_cpuprio_get_current_list((uint *)mgt_cpuprio.dev_list));
+
+    sa(mgt_cpuprio_data_count((uint *)&mgt_cpuprio.avail_count, (uint *)&mgt_cpuprio.dev_count)); 
+    verbose_master(2, "CPUPRIO (OK ? %u): There are %u priorities and %u devices", mgt_cpuprio.ok, mgt_cpuprio.avail_count, mgt_cpuprio.dev_count);
+    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+    verbose_master(2, "CPUPRIO list of priorities \n %s", buffer);
+
+    /* BEGIN TEST */
+    for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
+    {
+      mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
+    }
+    sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
+    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+    verbose_master(2, "CPUPRIO list of priorities \n %s", buffer);
+
+    /* RESTORE */
+    for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
+    {
+      mgt_cpuprio.dev_list[dev_id] = 0;
+    }
+    sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
+    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+    verbose_master(2, "CPUPRIO list of priorities \n %s", buffer);
+
+    /* END TEST */
+    
+
 #if USE_GPUS
     sa(mgt_gpu_freq_list(no_ctx,
                 (const ulong ***) &mgt_gpu.avail_list,
@@ -468,6 +509,7 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_flops.api  , "MET_FLOPS  : ");
         apis_print(met_cache.api  , "MET_CACHE  : ");
         apis_print(met_cpi.api    , "MET_CPI    : ");
+        apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
 #if USE_GPUS
         apis_print(met_gpu.api    , "MET_GPU    : ");
 #endif // USE_GPUS
@@ -520,6 +562,10 @@ static void metrics_static_init(topology_t *tp)
 
 void metrics_static_dispose()
 {
+  if (mgt_cpufreq_prio_is_enabled()){
+    mgt_cpufreq_prio_disable();
+  }
+
 }
 
 // Legacy code
@@ -1158,15 +1204,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	/* TPI and Memory bandwith */
 	if (master) {
 		bwidth_data_accum(bwidth_diff[APP], NULL, &bwidth_cas[sign_app_loop_idx], &metrics->GBS);
-		verbose_master(INFO_METRICS + 1, "%sCOMPUTE SIGNATURE DATA%s GBS[%d]: %0.2lf", COL_BLU, COL_CLR, sign_app_loop_idx, metrics->GBS);
 		lib_shared_region->cas_counters = (double) bwidth_cas[sign_app_loop_idx];
+	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
+			metrics->instructions);
 	} else {
 		bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
 		metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
+    /* TPI normalized by total instructions */
+	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
+			metrics->instructions);
 	}
 
-	metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
-			metrics->instructions);
 
 	/* Per process IO data */
 	io_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
@@ -1407,12 +1455,11 @@ int metrics_init(topology_t *topo)
 		return_msg(EAR_ERROR, "Loading energy plugin");
 	}
 
-	if (io_init(&ctx_io,getpid()) != EAR_SUCCESS){
-		verbose_master(2,"Warning: IO data not available");
+	if (state_ok(io_init(&ctx_io, getpid()))) {
+        verbose_master(INFO_METRICS, "%sMETRICS%s I/O data initialized.", COL_BLU, COL_CLR);
 	} else {
-		verbose_master(INFO_METRICS,"IO data initialized");
-	}
-
+        verbose_master(INFO_METRICS, "%sWARNING%s I/O data not available.", COL_YLW, COL_CLR);
+    }
 
 	// Allocating data for energy node metrics
 	// node_energy_datasize=eards_node_energy_data_size();
