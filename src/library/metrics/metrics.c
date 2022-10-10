@@ -1848,7 +1848,7 @@ long long metrics_usecs_diff(long long end, long long init)
 
 void metrics_app_node_signature(signature_t *master,signature_t *ns)
 {
-	ullong inst;
+	ullong inst, max_inst = 0;
 	ullong cycles;
 	ullong FLOPS[FLOPS_EVENTS];
 	sig_ext_t *se;
@@ -1899,6 +1899,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	if (master){
 		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 			valid_period    = sig_shared_region[lp].sig.valid_time;
+      max_inst        = ear_max(max_inst, sig_shared_region[lp].sig.instructions);
 			ns->DC_power   += sig_shared_region[lp].sig.accum_energy / valid_period;
 			ns->DRAM_power += sig_shared_region[lp].sig.accum_dram_energy / valid_period;
 			ns->PCK_power  += sig_shared_region[lp].sig.accum_pack_energy / valid_period;
@@ -1906,11 +1907,12 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 			ns->avg_f      += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
 			tcpus          += sig_shared_region[lp].num_cpus;
       accesses       += sig_shared_region[lp].sig.accum_mem_access;
-			verbose_master(2," p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
+			debug(" p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
 		}
-		ns->avg_f /= tcpus;
-    ns->TPI    = accesses / inst;
-		verbose_master(2,"AVG  %lu", ns->avg_f);
+		ns->avg_f /= (double)tcpus;
+    ns->TPI    = (double)accesses / (double)max_inst;
+    /* TPI should be computed based on total instructions */
+		verbose_master(2,"AVG  %lu TPI %.2lf (accesses %llu, inst %llu) ", ns->avg_f, ns->TPI, accesses, inst);
 	}
 	signature_copy(&lib_shared_region->node_signature,ns);
 

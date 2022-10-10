@@ -755,6 +755,7 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 {
     uint p;
     double time_s;
+    verbose(2, "accum_estimations");
     for (p = 0; p < data->num_processes; p++) {
         time_s = sig_shared_region[p].period;
 

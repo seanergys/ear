@@ -118,6 +118,7 @@ src/common/config/config_env.h
 *remove_learning
 *traces_to_paraver
 *erun
+*metrics_show
 
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
