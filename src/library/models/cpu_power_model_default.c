@@ -184,19 +184,19 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     for (uint j = 0; j < node_process; j ++) {
         /* GBs is per-node, we can use our own GBs */
         if (node_L3) {
-            float mem_ratio = (double)L3[j]/(double)node_L3;
+            float mem_ratio = (float)L3[j]/(float)node_L3;
             gbs[j]        = mem_ratio * lsig->GBS;
             dram_power[j] = mem_ratio * lsig->DRAM_power;
             tpi[j]        = (mem_ratio * data->cas_counters * cache_line_size) / inst[j];
-            verbose(2, "case 1[%d]: Ratio %.3f cas %llu inst %llu", j, mem_ratio, data->cas_counters, inst[j]);
+            debug("case 1[%d]: Ratio %.3f cas %llu inst %llu", j, mem_ratio, data->cas_counters, inst[j]);
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
-            float mem_ratio = (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+            float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
             gbs[j] = lsig->GBS * mem_ratio;
             tpi[j] = lsig->TPI * mem_ratio;
             dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
-            verbose(2, "case 2[%d]: Ratio %.3f Node TPI %.2lf", j, mem_ratio, lsig->TPI);
+            debug("case 2[%d]: Ratio %.3f Node TPI %.2lf", j, mem_ratio, lsig->TPI);
         }
         if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
             my_job_GBS        += gbs[j];

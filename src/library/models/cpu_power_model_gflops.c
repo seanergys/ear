@@ -133,14 +133,14 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     for (uint j = 0; j < node_process; j++){
         /* GBs is per-node, we can use our own GBs */
         if (node_L3) {
-            float mem_ratio = (double)L3[j]/(double)node_L3;
+            float mem_ratio = (float)L3[j]/(float)node_L3;
             gbs[j]        = mem_ratio * lsig->GBS;
             dram_power[j] = mem_ratio * lsig->DRAM_power;
             tpi[j]        = (mem_ratio * data->cas_counters * cache_line_size) / inst[j];
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
-            float mem_ratio = (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+            float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
             gbs[j]        = lsig->GBS * mem_ratio;
             dram_power[j] = (gbs[j] / lsig->GBS) * lsig->DRAM_power;
             tpi[j]        = lsig->TPI * mem_ratio;
