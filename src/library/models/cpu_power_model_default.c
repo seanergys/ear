@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -39,6 +39,7 @@
 static intel_skl_t my_node_coeffs;
 static uint arch_model_loaded = 0;
 static uint cpu_count;
+static uint cache_line_size;
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
 {
@@ -70,6 +71,7 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 	cpu_count = arch->top.cpu_count;
 
 	arch_model_loaded = 1;	
+  cache_line_size = arch->top.cache_line_size;
 	
 	return EAR_SUCCESS;
 }
@@ -103,6 +105,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 	double vpi[MAX_CPUS_SUPPORTED];
 
 	ulong  f[MAX_CPUS_SUPPORTED];
+  ullong inst[MAX_CPUS_SUPPORTED];
 	ull    L3[MAX_CPUS_SUPPORTED];
 	uint   job_in_process[MAX_CPUS_SUPPORTED];
 
@@ -128,6 +131,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 	memset(power_estimations,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(dram_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
+  memset(inst, 0, sizeof(ulong)*MAX_CPUS_SUPPORTED);
 
 	if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
 	
@@ -150,11 +154,9 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
                     job_in_process[node_process] = j;
 
                     L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
+                    inst[node_process]           = nmgr[j].shsig[lp].sig.instructions;
 
                     ipc[node_process]            = 1 / nmgr[j].shsig[lp].sig.CPI;
-
-                    tpi[node_process]            = (double) L3[node_process]
-                        / (double) nmgr[j].shsig[lp].sig.instructions;
 
                     avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F]/WEIGHT_256F
                         + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D]/WEIGHT_256D
@@ -182,14 +184,19 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     for (uint j = 0; j < node_process; j ++) {
         /* GBs is per-node, we can use our own GBs */
         if (node_L3) {
-            gbs[j]        = ((double) L3[j] / (double) node_L3) * lsig->GBS;
-            dram_power[j] = ((double) L3[j] / (double) node_L3) * lsig->DRAM_power;
+            float mem_ratio = (double)L3[j]/(double)node_L3;
+            gbs[j]        = mem_ratio * lsig->GBS;
+            dram_power[j] = mem_ratio * lsig->DRAM_power;
+            tpi[j]        = (mem_ratio * data->cas_counters * cache_line_size) / inst[j];
+            verbose(2, "case 1[%d]: Ratio %.3f cas %llu inst %llu", j, mem_ratio, data->cas_counters, inst[j]);
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
-            gbs[j] = lsig->GBS * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
-            tpi[j] = lsig->TPI * (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+            float mem_ratio = (nmgr[cj].libsh->num_cpus/used_cpus)/nmgr[cj].libsh->num_processes;
+            gbs[j] = lsig->GBS * mem_ratio;
+            tpi[j] = lsig->TPI * mem_ratio;
             dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
+            verbose(2, "case 2[%d]: Ratio %.3f Node TPI %.2lf", j, mem_ratio, lsig->TPI);
         }
         if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
             my_job_GBS        += gbs[j];
@@ -198,7 +205,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             sig[lp].sig.GBS = gbs[j];	
             sig[lp].sig.DRAM_power = dram_power[j];	
             sig[lp].sig.TPI = tpi[j];
-            debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
+            debug("Process %d/%d GBS %.2lf TPI %.2lf", job_in_process[j], lp, sig[lp].sig.GBS, sig[lp].sig.TPI);
             lp++;
         }
     }

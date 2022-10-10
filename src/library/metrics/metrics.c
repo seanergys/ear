@@ -1218,6 +1218,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
 			metrics->instructions);
 	}
+  verbose_master(2, "GBGS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 
 
 	/* Per process IO data */

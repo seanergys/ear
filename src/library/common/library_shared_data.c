@@ -54,6 +54,7 @@ extern char lib_shared_region_path_jobs[GENERIC_NAME];
 extern char sig_shared_region_path_jobs[GENERIC_NAME];
 static int fd_conf,fd_signatures;
 extern uint exclusive;
+extern uint fake_force_shared_node;
 
 int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
 {
@@ -99,7 +100,7 @@ void lib_shared_data_area_dispose(char * path)
 
 void print_lib_shared_data(lib_shared_data_t *sh_data)
 {
-	fprintf(stderr,"sh_data num_processes %d signatures %d cas_counters %lf\n",sh_data->num_processes,sh_data->num_signatures,sh_data->cas_counters);
+	fprintf(stderr,"sh_data num_processes %d signatures %d cas_counters %llu\n",sh_data->num_processes,sh_data->num_signatures,sh_data->cas_counters);
 
 }
 
@@ -720,6 +721,7 @@ void update_earl_node_mgr_info()
     uint current_jobs_in_node = 0;
     nodemgr_get_num_jobs_attached(&current_jobs_in_node);
     exclusive = exclusive && (current_jobs_in_node == 1);
+    if (fake_force_shared_node) exclusive = 0;
 }
 
 void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmgr_earl)
@@ -776,5 +778,9 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
 	cpu_power_model_project(data, sig, nmgr);
+  for (uint p = 0; p < data->num_processes; p++){
+    verbose_master(2, "LP[%d] Power %.2lf GB/s %.2lf TPI %.2lf", p, 
+      sig_shared_region[p].sig.DC_power, sig_shared_region[p].sig.GBS, sig_shared_region[p].sig.TPI);
+  }
 	return;
 }

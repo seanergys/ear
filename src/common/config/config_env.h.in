@@ -113,6 +113,7 @@
 
 #define FLAG_IO_FAKE_PHASE           "EARL_IO_FAKE_PHASE"
 #define FLAG_BW_FAKE_PHASE           "EARL_BW_FAKE_PHASE"
+#define FLAG_FORCE_SHARED_NODE       "EARL_FORCE_SHARED_NODE"
 
 
 #define FLAG_DISABLE_CNTD            SCHED_PREFIX "EAR_DISABLE_CNTD"       // disables automatic CNTD loadin

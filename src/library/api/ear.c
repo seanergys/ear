@@ -961,6 +961,7 @@ void ear_lib_sig_handler(int s)
 /*****************************************************************************************************************************************************/
 
 //#define START_END_OVH 1
+uint fake_force_shared_node = 0;
 void ear_init()
 {
 				char *summary_pathname;
@@ -970,8 +971,10 @@ void ear_init()
 				int fd_dummy = -1;
 
 				uint fake_eard_error = 0;
-				char *cfake_eard_error = getenv(FAKE_EARD_ERROR);
+				char *cfake_eard_error        = getenv(FAKE_EARD_ERROR);
+        char *cfake_force_shared_node = getenv(FLAG_FORCE_SHARED_NODE);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
+        if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
 
         #if START_END_OVH
         ullong elap_eard_init;
