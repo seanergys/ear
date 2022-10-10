@@ -560,7 +560,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			apps[i-1].job.app_id[16] = '\0';
 		}
 
-		if (apps[i-1].is_mpi && (apps[i-1].signature.avg_f > 0))
+		if (apps[i-1].is_mpi && (apps[i-1].signature.avg_f > 0) && !all_mpi)
 		{
 			gflops_watt /= avg_power;
 			avg_frequency /= current_apps;
