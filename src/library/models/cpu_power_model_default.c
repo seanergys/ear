@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -41,37 +41,41 @@ static uint arch_model_loaded = 0;
 static uint cpu_count;
 static uint cache_line_size;
 
-state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
+state_t cpu_power_model_init_arch(settings_conf_t *libconf,
+        conf_install_t *conf, architecture_t *arch)
 {
 	int fd, ret;
+
 	debug("cpu_power_models_init_arch. Using tag %s etc %s", libconf->tag, conf->dir_conf);
+
 	char model_path[MAX_PATH_SIZE];
-	xsnprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,libconf->island, libconf->tag);
+	xsnprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s",
+            conf->dir_conf, libconf->island, libconf->tag);
+
 	debug("cpu_power_models_init_arch coeffs path %s", model_path);
 
-	#if 0
-	my_node_coeffs.ipc 		= IPC_COEFF;
-	my_node_coeffs.gbs 		=	GBS_COEFF;
-	my_node_coeffs.vpi 		=	VPI_COEFF;
-	my_node_coeffs.f   		=	F_COEFF;
-	my_node_coeffs.inter 	=	INTERCEPT;
-	#endif
 	fd = open(model_path, O_RDONLY);
-	if (fd < 0){ 
+	if (fd < 0) {
 		debug("Error opening cpu model file %s", strerror(errno));
 		return EAR_ERROR;
 	}
-	if ((ret = read(fd, &my_node_coeffs, sizeof(intel_skl_t))) != sizeof(intel_skl_t)){
-		if (ret < 0){ 	debug("Error reading cpu model data %s", strerror(errno));}
-		else{ 					debug("Error reading cpu model data %d bytes expected %lu", ret, sizeof(intel_skl_t));}
+
+	if ((ret = read(fd, &my_node_coeffs, sizeof(intel_skl_t))) != sizeof(intel_skl_t)) {
+		if (ret < 0) {
+            debug("Error reading cpu model data %s", strerror(errno));
+        }
+		else {
+            debug("Error reading cpu model data %d bytes expected %lu", ret, sizeof(intel_skl_t));
+        }
 		close(fd);
 		return EAR_ERROR;
 	}
+
 	close(fd);
 	cpu_count = arch->top.cpu_count;
 
 	arch_model_loaded = 1;	
-  cache_line_size = arch->top.cache_line_size;
+    cache_line_size = arch->top.cache_line_size;
 	
 	return EAR_SUCCESS;
 }
@@ -137,7 +141,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
 	if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
 	
-	/* compute_job_node_XXX compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
+	/* compute_job_node_XXX compute the metrics only for the calling job. It is
+   * needed to iterate over the jobs to have per node. */
 	
     for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
         /* Power condition is to do only in case the signature is ready */
@@ -165,7 +170,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
                         + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F]/WEIGHT_512F
                         + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D]/WEIGHT_512D;
 
-                    vpi[node_process] = (double) avx / (double) nmgr[j].shsig[lp].sig.instructions;
+                    vpi[node_process] = (double) avx /
+                      (double) nmgr[j].shsig[lp].sig.instructions;
 
                     f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
 
@@ -192,7 +198,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             tpi[j]        = (mem_ratio * data->cas_counters * cache_line_size) / inst[j];
             debug("case 1[%d]: Ratio %.3f cas %llu inst %llu", j, mem_ratio, data->cas_counters, inst[j]);
         } else {
-            /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
+            /* If there is no cache misses, we distribute the GBs proportionally
+             * to the number of cpus, naive approach. */
             cj = job_in_process[j];
             float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
             gbs[j] = lsig->GBS * mem_ratio;

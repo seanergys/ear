@@ -776,7 +776,8 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
     }
 }
 
-void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr)
+void estimate_power_and_gbs(lib_shared_data_t *data,
+        shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
 	cpu_power_model_project(data, sig, nmgr);
   #if SHOW_DEBUGS
