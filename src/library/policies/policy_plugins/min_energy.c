@@ -874,15 +874,18 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *last_sig, int
     return int_policy_ok(curr_sig,last_sig,ok);
 }
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set,signature_t * s)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t * s)
 {
-    if (c!=NULL){
-        node_freqs_copy(freq_set,&min_energy_def_freqs);
+    if (c != NULL) {
+        node_freqs_copy(freq_set, &min_energy_def_freqs);
+        // WARNING: A function designed as a getter calls a function designed as a setter.
         if ((gpus.restore_settings != NULL) && (s != NULL)) {
-            gpus.restore_settings(c,s,freq_set);
+            gpus.restore_settings(c, s, freq_set);
         }
+    } else {
+        return EAR_ERROR;
+    }
 
-    } else return EAR_ERROR;
     return EAR_SUCCESS;
 }
 
@@ -1152,14 +1155,18 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-    if (c == NULL) return EAR_ERROR;
-    node_freqs_copy(freqs, &min_energy_def_freqs);
-    if (gpus.restore_settings != NULL){
-        gpus.restore_settings(c,my_sig,freqs);
-    }
-    node_freqs_copy(&last_nodefreq_sel,freqs);
+    if (c != NULL) {
+        node_freqs_copy(freqs, &min_energy_def_freqs);
+        node_freqs_copy(&last_nodefreq_sel,freqs);
 
-    return EAR_SUCCESS;
+        if (gpus.restore_settings != NULL){
+            gpus.restore_settings(c,my_sig,freqs);
+        }
+
+        return EAR_SUCCESS;
+    } else {
+        return EAR_ERROR;
+    }
 }
 
 state_t policy_new_iteration(polctx_t *c,signature_t *sig)

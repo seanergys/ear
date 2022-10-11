@@ -1146,21 +1146,26 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
     return EAR_SUCCESS;
 }
 
-/* This function sets the default freq (only CPU) */
+/* This function sets the default freq for both (CPU and GPU policies). */
 state_t policy_set_default_freq(signature_t *sig)
 {
-    polctx_t *c=&my_pol_ctx;
-    state_t st;
     signature_t s;
+
     if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
+
 #if USE_GPUS
-    s.gpu_sig.num_gpus = c->num_gpus;
+    s.gpu_sig.num_gpus = my_pol_ctx.num_gpus;
 #endif
-    if (polsyms_fun.get_default_freq != NULL){
-        st = polsyms_fun.get_default_freq(c,&nf,sig);
-        policy_master_freq_selection(c,&s,&nf,&freqs_domain , &avg_nf, ALL_PROCESSES);
-        return st;
-    }else {
+
+    if (polsyms_fun.restore_settings != NULL) {
+
+        state_t st = polsyms_fun.restore_settings(&my_pol_ctx, sig, &nf);
+        if (state_ok(st)) {
+            return policy_master_freq_selection(&my_pol_ctx, &s, &nf, &freqs_domain, &avg_nf, ALL_PROCESSES);
+        } else {
+            return st;
+        }
+    } else {
         return EAR_ERROR;
     }
 }

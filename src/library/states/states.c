@@ -344,21 +344,33 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 
+            verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
+
             /* Accumulate statistics of savings */
             accumulate_phases_summary(&loop_signature, &application.signature);
 
-            verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
             policy_set_default_freq(NULL);
-            // comp_N_begin = metrics_time();
+
             restart_period_time_init(&comp_N_begin);
+
             EAR_STATE = FIRST_ITERATION;
-            if (report_earl_events){
+
+            if (report_earl_events) {
+                // We can report two events at once.
+                ear_event_t aux_events[2];
+                aux_events[0] = curr_state_event;
+
+                fill_common_event(&aux_events[1]);
+                fill_event(&aux_events[1], EARL_STATE, EAR_STATE);
+
+                report_events(&rep_id, aux_events, 2);
+#if 0
 						  fill_event(&curr_state_event, EARL_OPT_ACCURACY, OPT_TRY_AGAIN);
 						  report_events(&rep_id, &curr_state_event, 1);
               fill_event(&curr_state_event, EARL_STATE, FIRST_ITERATION);
 						  report_events(&rep_id, &curr_state_event, 1);
+#endif
 					  }
-
             return;
         }
     }
@@ -377,19 +389,21 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             traces_reconfiguration(ear_my_rank, my_id);
 
-            resched_conf->force_rescheduling=0;
+            resched_conf->force_rescheduling = 0;
 
             verbose_master(2, "--- [EAR] Re-scheduling forced by EARD ---\n%-20s: %u\n%-20s: %lu\n%-20s: %lu\n%-20s: %lf\n",
                     "Curr. state", EAR_STATE, "Max CPUfreq", system_conf->max_freq, "Def. CPUfreq",
                     system_conf->def_freq, "Policy th", system_conf->settings[0]);
 
-
-            // comp_N_begin = metrics_time();
             restart_period_time_init(&comp_N_begin);
 
             EAR_STATE = SIGNATURE_HAS_CHANGED;
-            verbose_master(2,"New state by reschedduling: %u", EAR_STATE);
             state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
+
+            if (report_earl_events) {
+                fill_event(&curr_state_event, EARL_STATE, EAR_STATE);
+                report_events(&rep_id, &curr_state_event, 1);
+            }
 
             tries_current_loop_same_freq = 0;
             tries_current_loop           = 0;
@@ -428,9 +442,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
             if (comp_N_time == 0) comp_N_time = 1;
-            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
+                    &perf_count_period, &perf_count_period_10p);
 
-            /* Once min iterations are computed for performance accuracy we start computing application signature */
+            /* Once min iterations are computed for performance accuracy we start
+             * computing application signature. */
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 
             state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
