@@ -16,7 +16,7 @@
 */
 
 #define SHOW_DEBUGS 1
-#define FAKE_GPUS   1
+#define FAKE_GPUS   0
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -73,11 +73,11 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
         memcpy(user_devs, root_devs, user_devs_count*sizeof(gpu_devs_t));
     }
     #if FAKE_GPUS
-    user_devs_count = 2;
+    user_devs_count = 1;
     user_devs[0].serial = root_devs[0].serial;
-    user_devs[1].serial = root_devs[3].serial;
+    //user_devs[1].serial = root_devs[3].serial;
     user_devs[0].index = root_devs[0].index;
-    user_devs[1].index = root_devs[3].index;
+    //user_devs[1].index = root_devs[3].index;
     #endif
     #if SHOW_DEBUGS
     int i;

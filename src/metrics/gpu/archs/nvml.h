@@ -20,7 +20,7 @@
 
 #include <metrics/gpu/gpu.h>
 
-void gpu_nvml_load(gpu_ops_t *ops);
+void gpu_nvml_load(gpu_ops_t *ops, int eard);
 
 void gpu_nvml_get_api(uint *api);
 

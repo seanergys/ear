@@ -40,7 +40,7 @@ void gpu_load(int eard)
     }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(&ops);
+    gpu_nvml_load(&ops, eard);
     gpu_oneapi_load(&ops);
     gpu_eard_load(&ops, eard);
     gpu_dummy_load(&ops);

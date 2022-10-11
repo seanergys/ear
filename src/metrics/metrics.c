@@ -164,8 +164,8 @@ int init()
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 1000;
-	sus->time_burst    = 1000;
+	sus->time_relax    = 4000;
+	sus->time_burst    = 4000;
 	sa(sus->suscribe(sus));
 
 	return 0;

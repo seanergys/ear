@@ -37,8 +37,18 @@ static suscription_t *sus;
 static uint           devs_count;
 static gpu_t         *pool;
 
-void gpu_nvml_load(gpu_ops_t *ops)
+void gpu_nvml_load(gpu_ops_t *ops, int eard)
 {
+    // If EARD we are not interested in pooling the data
+    if (eard) {
+        return;
+    }
+#if 0
+    // Avoiding non master processes trying to pool
+    if (!user_is_root()) {
+        return;
+    }
+#endif
     // The locking and duplicate control is at higher level
     if (state_fail(nvml_open(&nvml))) {
         debug("nvml_open failed: %s", state_msg);
