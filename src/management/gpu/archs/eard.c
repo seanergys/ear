@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define FAKE_GPUS   1
+//#define SHOW_DEBUGS 1
+//#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
@@ -79,9 +79,7 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
         memcpy(user_devs, root_devs, user_devs_count*sizeof(gpu_devs_t));
     }
     #if FAKE_GPUS
-    user_devs_count = 2;
-    user_devs[0].serial = user_devs[0].index = 1;
-    user_devs[1].serial = user_devs[1].index = 2;
+    user_devs_count = 1;
     #endif
     #ifdef SHOW_DEBUGS
     debug("Global GPUs:");
@@ -263,6 +261,12 @@ state_t mgt_gpu_eard_freq_limit_get_current(ctx_t *c, ulong *khz)
 state_t mgt_gpu_eard_freq_limit_get_default(ctx_t *c, ulong *khz)
 {
     memcpy(khz, user_freq_default, user_devs_count*sizeof(ulong));
+    #if SHOW_DEBUGS
+    int u;
+    for (u = 0; u < user_devs_count; ++u) {
+        debug("D%d default: %lu KHz", u, khz[u]);
+    }
+    #endif
     return EAR_SUCCESS;
 }
 
@@ -282,8 +286,11 @@ static char *shuffle_out(ulong *user_list, ulong *root_list)
     int i, j, f;
 
     if (root_devs_count == user_devs_count) {
+        debug("Root and user are equal, sending the same list");
         return (char *) user_list;
     }
+    // Sending 0 is OK, NVML and ONEAPI APIs control when
+    // receiving 0, and do nothing.
     memset(root_list, 0, root_devs_count*sizeof(ulong));
     for (i = f = 0; i < root_devs_count; ++i, f = 0) {
         // f of found
@@ -305,6 +312,7 @@ static char *shuffle_out(ulong *user_list, ulong *root_list)
 state_t mgt_gpu_eard_freq_limit_set(ctx_t *c, ulong *khz)
 {
     ulong aux[128];
+    debug("mgt_gpu_eard_freq_limit_set");
     return eard_rpc(RPC_MGT_GPU_SET_FREQ_LIMIT, shuffle_out(khz, aux), root_devs_count*sizeof(ulong), NULL, 0);
 }
 

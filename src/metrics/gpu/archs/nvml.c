@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -36,19 +36,15 @@ static nvmlDevice_t  *devs;
 static suscription_t *sus;
 static uint           devs_count;
 static gpu_t         *pool;
+static uint           ok_pool;
 
 void gpu_nvml_load(gpu_ops_t *ops, int eard)
 {
-    // If EARD we are not interested in pooling the data
-    if (eard) {
-        return;
-    }
-#if 0
-    // Avoiding non master processes trying to pool
-    if (!user_is_root()) {
-        return;
-    }
-#endif
+    // If EARD is demanded we do not want pooling.
+    // If EARD is not demanded but NVML is unprivileged
+    // means that this function is called by the library.
+    ok_pool = (eard == 0) && (nvml_is_privileged() == 1);
+    debug("Pooling %d", ok_pool);
     // The locking and duplicate control is at higher level
     if (state_fail(nvml_open(&nvml))) {
         debug("nvml_open failed: %s", state_msg);
@@ -63,7 +59,7 @@ void gpu_nvml_load(gpu_ops_t *ops, int eard)
     apis_set(ops->dispose,       gpu_nvml_dispose);
     apis_set(ops->get_devices,   gpu_nvml_get_devices);
     apis_set(ops->count_devices, gpu_nvml_count_devices);
-    apis_set(ops->read,          gpu_nvml_read);
+    apis_pin(ops->read,          gpu_nvml_read, ok_pool);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
     debug("Loaded NVML");
 }
@@ -71,14 +67,18 @@ void gpu_nvml_load(gpu_ops_t *ops, int eard)
 static state_t static_init()
 {
 	state_t s = EAR_SUCCESS;
+	timestamp_t time;
     int i;
 
 	// Allocation
 	pool = calloc(devs_count, sizeof(gpu_t));
-    // Pool at 0 is not incorrect
+    // Initializing pool (pool at 0 is not incorrect)
+	timestamp_getfast(&time);
 	for (i = 0; i < devs_count; ++i) {
+		pool[i].time    = time;
         pool[i].correct = 1;
     }
+    if (ok_pool) {
 	// Initializing monitoring thread suscription.
 	sus = suscription();
 	sus->call_main  = gpu_nvml_pool;
@@ -90,6 +90,7 @@ static state_t static_init()
 		monitor_unregister(sus);
 		free(pool);
 	}
+    } // ok_pool
 	return s;
 }
 
@@ -160,13 +161,19 @@ static int static_read(int i, gpu_t *metric)
 	uint freq_mem_mhz;
 	uint temp_gpu;
 	uint power_mw;
-	// Getting the metrics by calling NVML (no MEM temp)
+	// Getting the metrics by calling NVML (no MEM temp). It can be 
+	// passed 1, 2, 20 seconds, and so on... And the NVML calls will
+	// return the same values. It is supposed to return the values
+	// of the last second. But there is no problem because its is
+	// divided by the number of samples. 
 	s = nvml.GetPowerUsage(devs[i], &power_mw);
 	s = nvml.GetClocks(devs[i], NVML_CLOCK_MEM, &freq_mem_mhz);
 	s = nvml.GetClocks(devs[i], NVML_CLOCK_SM , &freq_gpu_mhz);
 	s = nvml.GetTemp(devs[i], NVML_TEMPERATURE_GPU, &temp_gpu);
 	s = nvml.GetUtil(devs[i], &util);
 	s = nvml.GetProcs(devs[i], &proc_count, procs);
+    debug("D%d returned: %u W, %u MHz, %u º",
+        i, power_mw / 1000, freq_gpu_mhz, temp_gpu);
 	// Pooling the data (time is not set here)
 	metric->samples  = 1;
 	metric->freq_mem = (ulong) freq_mem_mhz * 1000LU;
@@ -191,6 +198,7 @@ state_t gpu_nvml_pool(void *p)
 	int working;
 	int i;
 
+    debug("Pooling");
 	//
 	working = 0;
 	// Lock
@@ -219,7 +227,8 @@ state_t gpu_nvml_pool(void *p)
 	}
 	// Lock
 	pthread_mutex_unlock(&lock);
-		
+	
+    #if 0	
 	if (working  > 0 && !monitor_is_bursting(sus)) {
 		debug("bursting");
 		monitor_burst(sus);
@@ -228,12 +237,15 @@ state_t gpu_nvml_pool(void *p)
 		debug("relaxing");
 		monitor_relax(sus);
 	}
+    #endif
 
 	return EAR_SUCCESS;
 }
 
 state_t gpu_nvml_read(ctx_t *c, gpu_t *data)
 {
+    // Updating pool
+    gpu_nvml_pool(NULL);
 	while (pthread_mutex_trylock(&lock));
 	memcpy(data, pool, devs_count * sizeof(gpu_t));
 	pthread_mutex_unlock(&lock);

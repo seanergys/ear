@@ -15,11 +15,14 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
-#include <management/management.h>
+#include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api_rpc.h>
+#include <management/management.h>
 
 #define sa(f) \
     if (state_fail(f)) { \
@@ -212,7 +215,7 @@ int management_rpcs_gpu(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
             serror(Rpcerr.pending);
         }
         if (state_ok(ret_s)) {
-            if (state_fail(ret_s = mgt_gpu_freq_limit_set(no_ctx, m.gpu.list2)) ){
+            if (state_fail(ret_s = mgt_gpu_freq_limit_set(no_ctx, (ulong *) m.gpu.list2)) ){
                 serror("Error when setting a GPU frequency limit");
             }
         }
@@ -241,21 +244,19 @@ int management_rpcs_gpu(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
         ret_data = (char *) m.gpu.list2;
         ret_size = sizeof(ulong)*m.gpu.devs_count;
     break;
-    #if 0
     case RPC_MGT_GPU_RESET_POWER_CAP:
-        s = mgt_gpu_power_cap_reset(no_ctx);
+        ret_s = mgt_gpu_power_cap_reset(no_ctx);
     break;
     case RPC_MGT_GPU_SET_POWER_CAP:
-        if (state_fail(s = eard_rpc_read_pending(req_fd, (char *) mgpu_pow_cur, head->size, 0))) {
+        if (state_fail(ret_s = eard_rpc_read_pending(fd_req, (char *) m.gpu.list2, rpc_size, 0))) {
             serror(Rpcerr.pending);
         }
-        if (state_ok(s)) {
-            if (state_fail(s = mgt_gpu_power_cap_set(no_ctx, mgpu_pow_cur))) {
+        if (state_ok(ret_s)) {
+            if (state_fail(ret_s = mgt_gpu_power_cap_set(no_ctx, (ulong *) m.gpu.list2))) {
                 serror("Error when setting a GPU power cap");
             }
         }
     break;
-    #endif
     default:
         return 0;
     }
@@ -268,6 +269,7 @@ int management_rpcs_gpu(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
 
 int management_rpcs(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
 {
+    debug("Received RPC %u, of %lu pending size", rpc_id, rpc_size);
     if (management_rpcs_cpuprio(rpc_id, rpc_size, fd_req, fd_ack)) {
         return 1;
     } 
@@ -293,10 +295,18 @@ int main(int argc, char *argv[])
 
     management_init(&tp, eard);
 
-    ulong array[4] = { 100, 100, 100, 100 };
+    ulong array[4] = { 240000, 240000, 100, 100 };
     mgt_gpu_freq_limit_set(no_ctx, array);
     
     mgt_gpu_freq_limit_get_current(no_ctx, array);
+
+    mgt_gpu_freq_limit_get_default(no_ctx, array);
+    
+    mgt_gpu_freq_limit_set(no_ctx, array);
+    
+    mgt_gpu_freq_limit_get_current(no_ctx, array);
+    
+    mgt_gpu_freq_limit_get_max(no_ctx, array);
 
     sleep(100);
  

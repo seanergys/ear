@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define FAKE_GPUS   0
+//#define SHOW_DEBUGS 1
+//#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -74,10 +74,6 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
     }
     #if FAKE_GPUS
     user_devs_count = 1;
-    user_devs[0].serial = root_devs[0].serial;
-    //user_devs[1].serial = root_devs[3].serial;
-    user_devs[0].index = root_devs[0].index;
-    //user_devs[1].index = root_devs[3].index;
     #endif
     #if SHOW_DEBUGS
     int i;
@@ -90,15 +86,13 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
     }
     #endif
     // If something already loaded
-    if (apis_loaded(ops)){
-        return;
-    }
     apis_put(ops->init,          gpu_eard_init);
     apis_put(ops->get_api,       gpu_eard_get_api);
     apis_put(ops->dispose,       gpu_eard_dispose);
     apis_put(ops->count_devices, gpu_eard_count_devices);
     apis_set(ops->read,          gpu_eard_read);
     apis_set(ops->read_raw,      gpu_eard_read_raw);
+    debug("Loaded metrics/gpu/EARD");
 }
 
 void gpu_eard_get_api(uint *api)
@@ -151,7 +145,13 @@ static state_t static_read(uint call, gpu_t *data)
 
 state_t gpu_eard_read(ctx_t *c, gpu_t *data)
 {
+    #if SHOW_DEBUGS
+    state_t s = static_read(RPC_MET_GPU_GET_METRICS, data);
+    gpu_data_print(data, debug_channel);
+    return s;
+    #else
     return static_read(RPC_MET_GPU_GET_METRICS, data);
+    #endif
 }
 
 state_t gpu_eard_read_raw(ctx_t *c, gpu_t *data)

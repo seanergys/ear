@@ -15,8 +15,8 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define FAKE_GPUS   1
+//#define SHOW_DEBUGS 1
+//#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -180,6 +180,7 @@ state_t mgt_gpu_dummy_freq_limit_reset(ctx_t *c)
 
 state_t mgt_gpu_dummy_freq_limit_set(ctx_t *c, ulong *khz)
 {
+    debug("mgt_gpu_dummy_freq_limit_set");
     #if FAKE_GPUS
     int i, j;
 
@@ -271,6 +272,7 @@ state_t mgt_gpu_dummy_power_cap_reset(ctx_t *c)
 
 state_t mgt_gpu_dummy_power_cap_set(ctx_t *c, ulong *watts)
 {
+    debug("mgt_gpu_dummy_power_cap_set");
 	if (watts != NULL) {
 		watts[0] = 0;
 	}

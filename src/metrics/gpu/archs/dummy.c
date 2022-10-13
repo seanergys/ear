@@ -15,8 +15,8 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define FAKE_GPUS   0
+//#define SHOW_DEBUGS 1
+//#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/output/debug.h>

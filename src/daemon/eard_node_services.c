@@ -1002,7 +1002,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
   verbose(VEARD_LAPI, "New request. new connection %d", req_fd == global_req_fd);
 	// Reading the header.
 	if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
-		error("when reading the RPC header: expected %lu bytes and received %lu", sizeof(eard_head_t), size);
+		error("when reading the RPC header %d: expected %lu bytes and received %lu", req->req_service, sizeof(eard_head_t), size);
 		return EAR_ERROR;
 	}
 	// Reading the union part
