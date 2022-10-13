@@ -87,8 +87,8 @@ void print_cluster_conf(cluster_conf_t *conf)
     }
     else
     {
-    	verbosen(VCCONF, "\nGLOBALS\n--->Verbose: %u\n--->Default_policy: %s\n--->Min_time_perf_acc: %u\n",
-	    		conf->verbose, conf->power_policies[conf->default_policy].name, conf->min_time_perf_acc);
+    	verbosen(VCCONF, "\nGLOBALS\n--->Verbose: %u\n--->Default_policy: %s (id %d)\n--->Min_time_perf_acc: %u\n",
+	    		conf->verbose, conf->power_policies[conf->default_policy].name, conf->default_policy, conf->min_time_perf_acc);
     }
 
 	int i;
