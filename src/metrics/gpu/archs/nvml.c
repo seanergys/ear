@@ -182,8 +182,8 @@ static int static_read(int i, gpu_t *metric)
 	metric->util_gpu = (ulong) util.gpu;
 	metric->temp_gpu = (ulong) temp_gpu;
 	metric->temp_mem = 0;
+	metric->power_w  = ((double) power_mw) / 1000.0;
 	metric->energy_j = 0;
-	metric->power_w  = (double) power_mw;
 	metric->working  = proc_count > 0;
     // In the future we have to check if there is any error in any returned status.
 	metric->correct  = 1;
@@ -194,6 +194,7 @@ static int static_read(int i, gpu_t *metric)
 state_t gpu_nvml_pool(void *p)
 {
 	timestamp_t time;
+    double time_diff;
 	gpu_t metric;
 	int working;
 	int i;
@@ -203,7 +204,10 @@ state_t gpu_nvml_pool(void *p)
 	working = 0;
 	// Lock
 	while (pthread_mutex_trylock(&lock));
+    // Time operations
 	timestamp_getfast(&time);
+    time_diff = (double) timestamp_diff(&time, &pool[0].time, TIME_USECS);
+    time_diff = time_diff / 1000000.0;
 	//
 	for (i = 0; i < devs_count; ++i) {
 		if (!static_read(i, &metric)) {
@@ -218,8 +222,8 @@ state_t gpu_nvml_pool(void *p)
 		pool[i].util_gpu += metric.util_gpu;
 		pool[i].temp_gpu += metric.temp_gpu;
 		pool[i].temp_mem += metric.temp_mem;
-		pool[i].energy_j  = metric.energy_j;
 		pool[i].power_w  += metric.power_w;
+		pool[i].energy_j += metric.power_w * time_diff;
 		pool[i].working   = metric.working;
 		pool[i].correct   = metric.correct;
 		// Burst or not
