@@ -734,7 +734,7 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	state_t s = EAR_SUCCESS;
 	char *data = NULL;
 	size_t size = 0;
-
+	#if USE_GPUS
 	switch (call) {
 	break;
 	case RPC_MET_GPU_GET_API:
@@ -773,7 +773,11 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) ){
 		return 0;
 	}
+
 	return 1;
+	#else
+	return 0;
+	#endif
 }
 
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
@@ -791,8 +795,8 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			write(ack_fd, &ug.devs_count, sizeof(ug.devs_count));
 			break;
 		case GPU_GET_INFO:
-			debug("GPU_GET_INFO %d", mg.devs_count);
-			//write(ack_fd, gpu_devs, sizeof(gpu_devs_t)*mg.devs_count);
+			debug("GPU_GET_INFO %d", ug.devs_count);
+			write(ack_fd, (char *)ug.avail_list, sizeof(gpu_devs_t)*ug.devs_count);
 			break;
 		case GPU_DATA_READ:
 			gpu_read(no_ctx,eard_read_gpu);
