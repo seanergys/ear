@@ -85,7 +85,6 @@ extern char             nodename[MAX_PATH_SIZE];
 extern int              eard_must_exit;
 extern ulong            eard_max_freq;
 #if USE_GPUS
-static gpu_devs_t      *gpu_devs;
 extern gpu_t           *eard_read_gpu;
 extern char             gpu_str[256];
 #endif
@@ -114,10 +113,7 @@ static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
-#if USE_GPUS
-static metrics_t     mg;
 static metrics_t     ug;
-#endif
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -148,9 +144,7 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
         cpufreq_load(tp, NO_EARD);
         imcfreq_load(tp, NO_EARD);
          bwidth_load(tp, NO_EARD);
-
 	#if USE_GPUS
-    mgt_gpu_load(NO_EARD);
         gpu_load(NO_EARD);
     #endif
 
@@ -159,18 +153,14 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
         cpufreq_get_api((uint *) &uc.api);
         imcfreq_get_api((uint *) &ui.api);
          bwidth_get_api((uint *) &ub.api);
-
     #if USE_GPUS
-    mgt_gpu_get_api((uint *) &mg.api);
         gpu_get_api((uint *) &ug.api);
     #endif
     
     sf(    cpufreq_init(no_ctx));
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
-	
     #if USE_GPUS
-    sf(mgt_gpu_init(no_ctx));
     sf(    gpu_init(no_ctx));
     #endif
 
@@ -179,26 +169,18 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    cpufreq_count_devices(no_ctx, &uc.devs_count));
     sf(    imcfreq_count_devices(no_ctx, &ui.devs_count));
     sf(     bwidth_count_devices(no_ctx, &ub.devs_count));
+    #if USE_GPUS
+    sf(gpu_get_devices(no_ctx, (gpu_devs_t **) &ug.avail_list, &ug.devs_count));
+    #endif
 
-    #if USE_GPUS
-	sf(mgt_gpu_count_devices(no_ctx, &mg.devs_count));
-    sf(    gpu_count_devices(no_ctx, &ug.devs_count));
-    #endif
-    
-    #if USE_GPUS
-	sf(mgt_gpu_get_devices(no_ctx, &gpu_devs, NULL));
-    #endif
-	
     sf(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mc.avail_list, &mc.avail_count));
 	sf(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mi.avail_list, &mi.avail_count));
-    
 
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mc.current_list, (uint **) &mc.set_list));
     sf(mgt_cpufreq_data_alloc((pstate_t  **) &mi.current_list, (uint **) &mi.set_list));
     sf(    cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(    imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
     sf(     bwidth_data_alloc((bwidth_t  **) &ub.current_list));
-    
     #if USE_GPUS
 	sf(gpu_data_alloc(&eard_read_gpu));
     #endif
@@ -746,6 +728,54 @@ void eard_close_comm(int req_fd,int ack_fd)
     }
 }
 
+int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
+{
+	uint call = head->req_service;
+	state_t s = EAR_SUCCESS;
+	char *data = NULL;
+	size_t size = 0;
+
+	switch (call) {
+	break;
+	case RPC_MET_GPU_GET_API:
+		data = (char *) &ug.api;
+		size = sizeof(uint);
+	break;
+	case RPC_MET_GPU_GET_DEVICES:
+        serial_clean(&wb);
+        serial_add_elem(&wb, (char *) &ug.devs_count, sizeof(uint));
+        serial_add_elem(&wb, (char *) ug.avail_list, sizeof(gpu_devs_t)*ug.devs_count);
+        size = serial_size(&wb);
+        data = serial_data(&wb);
+	break;
+	case RPC_MET_GPU_COUNT_DEVICES:
+		data = (char *) &ug.devs_count;
+		size = sizeof(uint);
+	break;
+	case RPC_MET_GPU_GET_METRICS:
+		if (state_fail(gpu_read(no_ctx, eard_read_gpu)) ){
+			serror("Could not get management GPU metrics");
+		}
+		data = (char *) eard_read_gpu;
+		size = sizeof(gpu_t) * ug.devs_count;
+	break;
+	case RPC_MET_GPU_GET_METRICS_RAW:
+		if (state_fail(gpu_read_raw(no_ctx, eard_read_gpu)) ){
+			serror("Could not get management GPU metrics");
+		}
+		data = (char *) eard_read_gpu;
+		size = sizeof(gpu_t) * ug.devs_count;
+	break;
+	default:
+		return 0;
+	}
+	// Always answering
+	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) ){
+		return 0;
+	}
+	return 1;
+}
+
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     unsigned long ack = 0;
@@ -762,7 +792,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			break;
 		case GPU_GET_INFO:
 			debug("GPU_GET_INFO %d", mg.devs_count);
-			write(ack_fd, gpu_devs, sizeof(gpu_devs_t)*mg.devs_count);
+			//write(ack_fd, gpu_devs, sizeof(gpu_devs_t)*mg.devs_count);
 			break;
 		case GPU_DATA_READ:
 			gpu_read(no_ctx,eard_read_gpu);
@@ -776,12 +806,11 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			ack=EAR_SUCCESS;
 			write(ack_fd,&ack,sizeof(ack));
 			break;
-                case GPU_SUPPORTED:
-                        ack = 1;
-                        write(ack_fd,&ack,sizeof(ack));
-                        break;
+        case GPU_SUPPORTED:
+            ack = 1;
+            write(ack_fd,&ack,sizeof(ack));
+            break;
 	  default:
-			error("Invalid GPU command");
       return 0;
   }
 #else
@@ -973,7 +1002,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
   verbose(VEARD_LAPI, "New request. new connection %d", req_fd == global_req_fd);
 	// Reading the header.
 	if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
-		error("when reading the RPC header: expected %lu bytes and received %lu", sizeof(eard_head_t), size);
+		error("when reading the RPC header %ld: expected %lu bytes and received %lu", req->req_service, sizeof(eard_head_t), size);
 		return EAR_ERROR;
 	}
 	// Reading the union part
@@ -1072,6 +1101,9 @@ void service_select(int req_fd, int ack_fd)
     }
     if (eard_gpu(local_req,req_fd,ack_fd)){
         return;
+    }
+    if (service_gpu(local_req, req_fd, ack_fd)){
+      return;
     }
 	
 	error("Problem with request '%lu', answering error", local_req->req_service);

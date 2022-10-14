@@ -194,7 +194,7 @@ static state_t static_init(ctx_t *c)
 					debug("D%d new max: %d MHz", d, aux_gpu[g]);
 					clock_max[d] = (ulong) aux_gpu[g];
 				} else {
-					//debug("D%d: %d", d, aux_gpu[g]);
+					debug("D%d: %d MHz", d, aux_gpu[g]);
 				}
 			}
 		}
@@ -321,6 +321,7 @@ state_t mgt_gpu_nvml_freq_limit_get_max(ctx_t *c, ulong *khz)
 	int i;
 	for (i = 0; i < devs_count; ++i) {
 		khz[i] = clock_max[i];
+        debug("D%d max: %lu KHz", i, khz[i]);
 	}
 	return EAR_SUCCESS;
 }
@@ -398,10 +399,10 @@ state_t mgt_gpu_nvml_freq_limit_set(ctx_t *c, ulong *khz)
 	int i;
 	debug("nvml_clock_limit_set devices %d",devs_count);
 	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
-		if (khz[i] > 0){
-		  if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
-			  e = s;
-		  }
+        if (khz[i] > 0){
+            if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
+                e = s;
+            }
 		}
 	}
 	return e;

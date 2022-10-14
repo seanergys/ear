@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,7 +155,7 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 	state_t       s;
 	uint          i;
 
-	if (state_fail(s = mgt_gpu_freq_list(c, &freqs_alldevs, &freqs_alldevs_count))) {
+	if (state_fail(s = mgt_gpu_freq_get_available(c, &freqs_alldevs, &freqs_alldevs_count))) {
 		return s;
 	}
 	// Indexing
@@ -192,7 +192,7 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 	return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
+state_t mgt_gpu_freq_get_available(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
 	preturn (ops.freq_list, c, list_khz, list_len);
 }
