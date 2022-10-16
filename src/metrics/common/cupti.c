@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,15 +27,22 @@
 #define HACK_CUDA_FILE  "HACK_CUDA_FILE"
 #define HACK_CUPTI_FILE "HACK_CUPTI_FILE"
 
+#if 0
 #ifndef ZERO_BASE
 #define CUPTI_PATH   ""
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
+#endif
+
+/* Check */
+
+#define CUPTI_PATH   CUPTI_BASE
 #define CUPTI_N      18
 #define CUDA_N       4
 #define CUDA_LIB     "libcuda.so"
 #define CUPTI_LIB    "libcupti.so"
+#define CUPTI_STATIC_LIB "libcupti_static.a"
 
 static const char *cuda_names[] = {
     "cuInit",
@@ -80,7 +87,10 @@ static state_t static_open_cuda()
     }
 
     //open_test_cuda(NULL);
+    /* Check: Do we need CUDA here ? */
     open_test_cuda(getenv(HACK_CUDA_FILE));
+
+    open_test_cuda(getenv(CUDA_BASE CUDA_LIB));
 
     return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
 }
@@ -93,6 +103,7 @@ static state_t static_open_cupti()
         return EAR_SUCCESS; \
     }
     #define open_test(path) \
+    _open_test(path CUPTI_STATIC_LIB);\
     _open_test(path CUPTI_LIB); \
     _open_test(path CUPTI_LIB ".1");
 
@@ -112,6 +123,7 @@ static state_t static_open_cupti()
 static state_t static_open()
 {
     state_t s;
+    /* Check */
     if (state_fail(s = static_open_cuda())) {
         return s;
     }
@@ -127,6 +139,8 @@ static state_t static_init()
 {
     CUresult s;
     char *str;
+
+
 
     if ((s = cu.Init(0)) != CUDA_SUCCESS) {
         cu.GetErrorString(s, (const char **) &str);
@@ -154,6 +168,7 @@ state_t cupti_open(cupti_t *cupti_in, cuda_t *cu_in)
         goto fini;
     }
     if (state_ok(s = static_open())) {
+        debug("CUPTI lib opened");
         if (state_ok(s = static_init())) {
             ok = 1;
         }

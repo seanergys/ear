@@ -58,7 +58,7 @@
 
 #if USE_GPUS
 #include <metrics/gpu/gpu.h>
-#define USE_CUPTI 0
+#define USE_CUPTI 1
 #if USE_CUPTI
 #include <metrics/gpu/gpuproc.h>
 #endif
@@ -209,6 +209,7 @@ static metrics_gpus_t proc_gpu;
 static gpuproc_t     *proc_gpu_data_init[2];
 static gpuproc_t     *proc_gpu_data_end[2];
 static gpuproc_t     *proc_gpu_data_diff[2];
+static char gpu_proc_buffer[256];
 #endif
 #endif // USE_GPUS
 
@@ -696,6 +697,14 @@ static void metrics_global_start()
             verbose_master(2, "%sWarning%s Node total I/O could not be read (%s)." , COL_RED, COL_CLR, state_msg);
         }
 	}
+  #if USE_CUPTI
+  if (state_fail(gpuproc_read(no_ctx, proc_gpu_data_init[APP]))){
+    verbose(2, "gpuproc_read failed");
+  }
+  /* We will copy in partial start */
+  gpuproc_data_copy(proc_gpu_data_end[LOO], proc_gpu_data_init[APP]);
+  #endif
+
 
 	/* Per process IO data */
 	if (io_read(&ctx_io, &metrics_io_init[APP]) != EAR_SUCCESS){
@@ -1164,6 +1173,12 @@ static int metrics_partial_stop(uint where)
 	cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
 	cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
 
+  #if USE_CUPTI
+  if (state_fail(gpuproc_read_diff(no_ctx, proc_gpu_data_end[LOO], proc_gpu_data_init[LOO], proc_gpu_data_diff[LOO]))){
+    verbose(2, "gpuproc_read failed");
+  }
+  #endif
+
 	// New accumulations: by now these application metrics are taken accumulating loop values.
 	// Not sure if required this way in the future, is just because if there are too long apps
 	// that could overflow these metric counters.
@@ -1260,6 +1275,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			metrics->instructions);
 	}
   verbose_master(2, "GBGS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
+
+  #if USE_CUPTI
+  if (sign_app_loop_idx == LOO){
+    gpuproc_data_tostr(proc_gpu_data_diff[LOO], gpu_proc_buffer, sizeof(gpu_proc_buffer));
+    verbose_master(2, "GPU PROC data for master: %s", gpu_proc_buffer);
+  }
+  #endif
 
 
 	/* Per process IO data */
