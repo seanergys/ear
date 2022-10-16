@@ -154,16 +154,19 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
                 best_freq=freq_ref;
                 best_pstate=i;
                 time_current = time_proj;
-                i--;
+                //i--;
             }
+            #if 0
             else
             {
                 try_next = 0;
             }
+            #endif
         } // Projections available
         else{
             try_next=0;
         }
+        i--;
     }
     /* Controlar la freq por power cap, si capado poner GREEDY, gestionar req-f */
     if (best_freq<def_freq) best_freq=def_freq;

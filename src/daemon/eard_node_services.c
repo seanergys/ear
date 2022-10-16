@@ -812,6 +812,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 			break;
         case GPU_SUPPORTED:
             ack = 1;
+            verbose(0,"GPU_SUPPORTED check");
             write(ack_fd,&ack,sizeof(ack));
             break;
 	  default:
@@ -830,6 +831,7 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
             break;
         case GPU_SUPPORTED:
             ack = 0;
+            verbose(0,"GPU_NOT_SUPPORTED check");
             write(ack_fd,&ack,sizeof(ack));
             return 1;
             break;
