@@ -56,6 +56,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/imcfreq/archs/intel63.o \
 	$(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
+    $(SRCDIR)/metrics/gpu/gpuproc.o \
     $(SRCDIR)/metrics/gpu/archs/cupti.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
     $(SRCDIR)/metrics/gpu/archs/eard.o \
