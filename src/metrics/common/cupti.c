@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,7 +27,7 @@
 #define HACK_CUDA_FILE  "HACK_CUDA_FILE"
 #define HACK_CUPTI_FILE "HACK_CUPTI_FILE"
 
-#ifndef ZERO_BASE
+#ifndef CUDA_BASE
 #define CUPTI_PATH   ""
 #else
 #define CUPTI_PATH   CUPTI_BASE
