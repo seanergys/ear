@@ -85,7 +85,6 @@ extern char             nodename[MAX_PATH_SIZE];
 extern int              eard_must_exit;
 extern ulong            eard_max_freq;
 #if USE_GPUS
-extern gpu_t           *eard_read_gpu;
 extern char             gpu_str[256];
 #endif
 extern int              num_uncore_counters; // Me extraña que esto funcione.
@@ -99,6 +98,7 @@ static int              global_req_fd;
 static char             ear_commreq_global[MAX_PATH_SIZE * 2];
 static ulong            energy_freq;
 static int              RAPL_counting = 0;
+static gpu_t           *eard_read_gpu;
 /* This var is used in all the eard services, no thread-safe */
 static struct daemon_req req;
 /* FDs for local connections */
@@ -734,6 +734,7 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	state_t s = EAR_SUCCESS;
 	char *data = NULL;
 	size_t size = 0;
+    uint u1;
 
 	switch (call) {
 	break;
@@ -766,6 +767,11 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 		data = (char *) eard_read_gpu;
 		size = sizeof(gpu_t) * ug.devs_count;
 	break;
+    case RPC_MET_GPU_IS_SUPPORTED:
+        u1   = (uint) gpu_is_supported();
+        data = (char *) &u1;
+        size = sizeof(uint);
+    break;
 	default:
 		return 0;
 	}

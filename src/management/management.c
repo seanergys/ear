@@ -257,6 +257,11 @@ int management_rpcs_gpu(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
             }
         }
     break;
+    case RPC_MGT_GPU_IS_SUPPORTED:
+        u1       = (uint) mgt_gpu_is_supported();
+        ret_data = (char *) &u1;
+        ret_size = sizeof(int);
+    break;
     default:
         return 0;
     }
@@ -294,7 +299,9 @@ int main(int argc, char *argv[])
     topology_init(&tp);
 
     management_init(&tp, eard);
-
+    
+    mgt_gpu_is_supported();
+    #if 0
     ulong array[4] = { 240000, 240000, 100, 100 };
     mgt_gpu_freq_limit_set(no_ctx, array);
     
@@ -307,6 +314,10 @@ int main(int argc, char *argv[])
     mgt_gpu_freq_limit_get_current(no_ctx, array);
     
     mgt_gpu_freq_limit_get_max(no_ctx, array);
+    #endif
+    sleep(5);
+    
+    mgt_gpu_is_supported();
 
     sleep(100);
  

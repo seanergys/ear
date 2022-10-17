@@ -130,4 +130,6 @@ void gpu_data_print(gpu_t *data, int fd);
 // Copies the printing string in a char buffer.
 void gpu_data_tostr(gpu_t *data, char *buffer, int length);
 
+int gpu_is_supported();
+
 #endif

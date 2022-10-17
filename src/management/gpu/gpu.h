@@ -143,4 +143,6 @@ state_t mgt_gpu_data_free(ulong **list);
 
 state_t mgt_gpu_data_null(ulong *list);
 
+int mgt_gpu_is_supported();
+
 #endif
