@@ -19,14 +19,15 @@
 //#define FAKE_GPUS   1
 
 #include <stdlib.h>
+#include <common/config/config_install.h>
 #include <common/output/debug.h>
 #include <common/utils/serial_buffer.h>
 #include <common/config/config_install.h>
 #include <daemon/local_api/eard_api_rpc.h>
 #include <metrics/gpu/archs/eard.h>
 
-static uint        root_devs_count;
-static uint        user_devs_count;
+static uint        root_devs_count = 0;
+static uint        user_devs_count = 0;
 static gpu_devs_t *root_devs;
 static gpu_devs_t *user_devs;
 
@@ -57,6 +58,7 @@ void gpu_eard_load(gpu_ops_t *ops, int eard)
     if (state_fail(s = eard_rpc_buffered(RPC_MGT_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
         return;
     }
+    /* Check : Esto es posible ? */
     serial_copy_elem(&b, (char *) &root_devs_count, NULL);
     debug("Received from EARD %u GPUs", root_devs_count);
     if (root_devs_count == 0) {
@@ -120,7 +122,7 @@ state_t gpu_eard_count_devices(ctx_t *c, uint *devs_count_in)
 static state_t static_read(uint call, gpu_t *data)
 {
 	size_t size = ((size_t) root_devs_count)*sizeof(gpu_t);
-    gpu_t root_data[128];
+    gpu_t root_data[MAX_GPUS_SUPPORTED];
     int u, r, f;
     state_t s;
     
@@ -160,8 +162,6 @@ state_t gpu_eard_read_raw(ctx_t *c, gpu_t *data)
     return static_read(RPC_MET_GPU_GET_METRICS_RAW, data);
 }
 
-#define USE_GPUSX 0
-
 int gpu_eard_is_supported()
 {
     static int supported = 0;
@@ -171,10 +171,10 @@ int gpu_eard_is_supported()
     if (!called) {
         if (state_fail(eard_rpc(RPC_MET_GPU_IS_SUPPORTED, NULL, 0, (char *) &supported, sizeof(int)))) {
             debug("Failed to retrieve if GPUs are supported, getting config value");
-            supported = USE_GPUSX;
+            supported = USE_GPUS;
         }
         called = 1;
     }
-    debug("GPUs supported: %d (USE_GPUS %d)", supported, USE_GPUSX);
+    debug("GPUs supported: %d (USE_GPUS %d)", supported, USE_GPUS);
     return supported;
 }
