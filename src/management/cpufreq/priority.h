@@ -27,6 +27,10 @@
 // PRIORITY is a subsystem of CPUFREQ. It can take the control over the
 // frequency by using the enable function. Also, you can set the maximum
 // and minimum frequency per priority.
+//
+// | Arch.     | Scope                                                            |
+// |-----------|------------------------------------------------------------------|
+// | Ice Lake  | Core, a change in a specific thread affects also to its sibling. |
 
 #define PRIO_FREQ_MAX      ISST_MAX_FREQ // Max boosted frequency
 #define PRIO_FREQ_MAX_NB  (PRIO_FREQ_MAX-1) // Max non-boosted frequency
@@ -74,17 +78,17 @@ state_t mgt_cpufreq_prio_disable();
 int mgt_cpufreq_prio_is_enabled();
 /* Returns the list of priorities, ej: in intel CLOS0 to CLOS3. Its sorted from high priority to low. */
 state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list);
-/* */
+/* Edit priorities. By now just the min-max frequency fields of the cpuprio_t are modified. */
 state_t mgt_cpufreq_prio_set_available_list(cpuprio_t *prio_list);
-/* Returns the list of */
+/* Returns the list of the current CPU priorities, in index format (0 for CLOS0, 1 for CLOS1, and so on). */
 state_t mgt_cpufreq_prio_get_current_list(uint *list_idx);
-
+/* Changes CPUs priorities using a list of indexes. You can also use SAME_PRIO to avoid changes. */
 state_t mgt_cpufreq_prio_set_current_list(uint *list_idx);
-
+/* Sets a CPU to a specific priority CLOS. You can use also all_cpus. */
 state_t mgt_cpufreq_prio_set_current(uint idx, int cpu);
-/* */
+/* Gets the number of priorities (ex: CLOS0 to CLOS3), and number of devices (CPUs in this case). */
 void mgt_cpufreq_prio_data_count(uint *prio_count, uint *devs_count);
-/* */
+/* Allocating lists. */
 void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list);
     
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd);

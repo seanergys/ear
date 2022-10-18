@@ -349,7 +349,8 @@ static state_t clos_get(clos_t *clos)
         UINT_TO_CLOS(answers[c], clos[c]);
     }
     #if SHOW_DEBUGS
-    clos_print(clos, verb_channel);
+    debug("CLOS GET:");
+    clos_print(clos, debug_channel);
     #endif
     return EAR_SUCCESS; 
 }
@@ -367,6 +368,7 @@ static state_t clos_set(clos_t *clos)
         }
     }
     #if SHOW_DEBUGS
+    debug("CLOS SET:");
     clos_get(clos);
     #endif
     return EAR_SUCCESS; 
@@ -396,6 +398,7 @@ static state_t assoc_get(uint *clos)
         clos[cpu] = (clos[cpu] >> 16) & 0x03;
     }
     #if SHOW_DEBUGS
+    debug("ASSOC GET:"); 
     assoc_print(clos);
     #endif
 
@@ -412,11 +415,17 @@ static state_t assoc_set(uint *clos)
 {
     cmds_mmio_t cmds = { 0 };
     int cpu;
-   
     for (cpu = 0; cpu < cpus_count; ++cpu) {
-        commands_mmio_fill(&cmds, cpu, CP_SET_ASSOC(punit_cpus[cpu], clos[cpu]), NULL, cpu == (cpus_count - 1));
+        if (clos[cpu] != ISST_SAME_PRIO) {
+            commands_mmio_fill(&cmds, cpu, CP_SET_ASSOC(punit_cpus[cpu], clos[cpu]), NULL, cpu == (cpus_count - 1));
+        }
+    }
+    // SAME_PRIO avoided sending flag. If there are pending commands, its time to send.
+    if (cmds.req_count > 0) {
+        commands_mmio_send(&cmds, NULL);
     }
     #if SHOW_DEBUGS
+    debug("ASSOC SET:"); 
     assoc_get(clos);
     #endif
     

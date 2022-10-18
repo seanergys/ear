@@ -173,36 +173,21 @@ int main(int argc, char *argv[])
         serror("mgt_cpufreq_prio_get_current_list");
     }
     mgt_cpufreq_prio_data_print(prios, devs, 0);
-    #if 1
-    printf("IS ENABLED %d\n", mgt_cpufreq_prio_is_enabled());   
-    mgt_cpufreq_prio_enable();
-    printf("IS ENABLED %d\n", mgt_cpufreq_prio_is_enabled());   
-    //mgt_cpufreq_prio_disable();
-    //printf("IS ENABLED %d\n", mgt_cpufreq_prio_is_enabled());   
-    #endif
-    #if 0
-    #define FFF 800000;
-    prios[0].min_khz = FFF;
-    prios[1].min_khz = FFF;
-    prios[2].min_khz = FFF;
-    prios[3].min_khz = FFF;
     
-    if (state_fail(s = mgt_cpufreq_prio_set_available_list(prios))) {
-        serror("mgt_cpufreq_prio_get_current_list");
-    }
-    if (state_fail(s = mgt_cpufreq_prio_get_available_list(prios))) {
-        serror("mgt_cpufreq_prio_get_available_list");
+    #if 0 
+    if (state_fail(s = mgt_cpufreq_prio_set_current(0, all_cpus))) {
+        serror("mgt_cpufreq_prio_set_current");
     }
     #endif
-    #if 1
-    if (state_fail(s = mgt_cpufreq_prio_set_current(3, all_cpus))) {
+    devs[ 0] = devs[ 1] = devs[ 2] = devs[ 3] = 0;
+    devs[64] = devs[65] = devs[66] = devs[67] = 0;
+    if (state_fail(s = mgt_cpufreq_prio_set_current_list(devs))) {
         serror("mgt_cpufreq_prio_set_current");
     }
     if (state_fail(s = mgt_cpufreq_prio_get_current_list(devs))) {
         serror("mgt_cpufreq_prio_get_current_list");
     }
-    #endif
-    mgt_cpufreq_prio_data_print(prios, devs, 0);
+    mgt_cpufreq_prio_data_print(NULL, devs, 0);
     
     mgt_cpufreq_prio_dispose();
  
