@@ -127,7 +127,9 @@ int management_rpcs_cpuprio(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack
         }
     break;
     case RPC_MGT_PRIO_GET_CURRENT:
-        ret_s = mgt_cpuprio_get_available_list(m.cpuprio.list2);
+        ret_s    = mgt_cpuprio_get_current_list((uint *) m.cpuprio.list2);
+        ret_data = (char *) m.cpuprio.list2;
+        ret_size = sizeof(uint) * m.cpuprio.list2_count;
     break;
     case RPC_MGT_PRIO_SET_CURRENT_LIST:
         if (state_fail(ret_s = eard_rpc_read_pending(fd_req, m.cpuprio.list2, rpc_size, 0))) {
