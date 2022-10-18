@@ -278,8 +278,16 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
 
 #if USE_GPUS
     for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
-        if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)) return 1;
-        if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)) return 1;
+        //if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)){ 
+        if (abs((int)s1->gpu_sig.gpu_data[i].GPU_util - (int) s2->gpu_sig.gpu_data[i].GPU_util) > 10){
+          verbose_master(2, "GPU util[%d] %lu/%lu", i, s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util);
+          return 1;
+        }
+        //if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)){ 
+        if (abs((int)s1->gpu_sig.gpu_data[i].GPU_mem_util - (int)s2->gpu_sig.gpu_data[i].GPU_mem_util) > 10){
+           verbose_master(2, "GPU mem util[%d] %lu/%lu", i, s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util);
+           return 1;
+        }
     }
 #endif
     return 0;

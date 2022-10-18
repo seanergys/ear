@@ -28,7 +28,10 @@
 
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/metrics/gpu.h>
+//#include <library/metrics/gpu.h>
+#include <management/gpu/gpu.h>
+#include <metrics/gpu/gpu.h>
+#include <library/metrics/metrics.h>
 #include <library/api/clasify.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
@@ -69,7 +72,7 @@ state_t policy_init(polctx_t *c)
     if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
         g_freq=atol(gpu_freq);
     }
-    gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
+    //gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
     gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
     gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
