@@ -412,9 +412,14 @@ static state_t assoc_set(uint *clos)
 {
     cmds_mmio_t cmds = { 0 };
     int cpu;
-   
     for (cpu = 0; cpu < cpus_count; ++cpu) {
-        commands_mmio_fill(&cmds, cpu, CP_SET_ASSOC(punit_cpus[cpu], clos[cpu]), NULL, cpu == (cpus_count - 1));
+        if (clos[cpu] != ISST_SAME_PRIO) {
+            commands_mmio_fill(&cmds, cpu, CP_SET_ASSOC(punit_cpus[cpu], clos[cpu]), NULL, cpu == (cpus_count - 1));
+        }
+    }
+    // SAME_PRIO avoided sending flag. If there are pending commands, its time to send.
+    if (cmds->req_count > 0) {
+        commands_mmio_send(&cmds);
     }
     #if SHOW_DEBUGS
     assoc_get(clos);
