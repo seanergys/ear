@@ -57,6 +57,7 @@
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
 
 #if USE_GPUS
+#define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #include <metrics/gpu/gpu.h>
 #define USE_CUPTI 1
 #if USE_CUPTI
@@ -204,6 +205,7 @@ static metrics_multi_t   mgt_cpuprio;
 static metrics_gpus_t mgt_gpu;
 static metrics_gpus_t met_gpu;
 #if USE_CUPTI
+static uint read_cupti_metrics = 0;
 static metrics_gpus_t proc_gpu;
 /* 0 for LOOP, 1 for APP */
 static gpuproc_t     *proc_gpu_data_init[2];
@@ -357,6 +359,7 @@ static void metrics_configuration(topology_t *tp)
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
+    char *cuse_cupti;
 
     #define sa(function) \
         function;
@@ -384,7 +387,12 @@ static void metrics_static_init(topology_t *tp)
     mgt_gpu_load(eard);
 #if USE_CUPTI
     /* We will get per-process cupti metrics */
-    gpuproc_load(1);
+    cuse_cupti = getenv(EAR_USE_CUPTI);
+    if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
+    verbose_master(2, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
+    if (read_cupti_metrics){
+      gpuproc_load(1);
+    }
 #endif
 #endif // USE_GPUS
     debug("metics_load ready");
@@ -410,7 +418,9 @@ static void metrics_static_init(topology_t *tp)
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
     #if USE_CUPTI
-    gpuproc_get_api(&proc_gpu.api);
+    if (read_cupti_metrics){
+      gpuproc_get_api(&proc_gpu.api);
+    }
     #endif
 #endif // USE_GPUS
 
@@ -432,7 +442,9 @@ static void metrics_static_init(topology_t *tp)
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
     met_gpu.ok     = (met_gpu.api     > API_DUMMY);
     #if USE_CUPTI
-    proc_gpu.ok    = (proc_gpu.api    > API_DUMMY);
+    if (read_cupti_metrics){
+      proc_gpu.ok    = (proc_gpu.api    > API_DUMMY);
+    }
     #endif
 #endif // USE_GPUS
 	debug("metrics_api ready");
@@ -452,7 +464,9 @@ static void metrics_static_init(topology_t *tp)
     sa(    mgt_gpu_init(no_ctx));
     sa(        gpu_init(no_ctx));
     #if USE_CUPTI
-    sa(    gpuproc_init(no_ctx));
+    if (read_cupti_metrics){
+      sa(    gpuproc_init(no_ctx));
+    }
     #endif
 #endif // USE_GPUS
 	debug("metrics_init ready");
@@ -468,8 +482,10 @@ static void metrics_static_init(topology_t *tp)
     sa(    mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count    ));
     sa(        gpu_count_devices(no_ctx, &met_gpu.devs_count    ));
     #if USE_CUPTI
-    sa(    gpuproc_count_devices(no_ctx, &proc_gpu.devs_count   ));
-    verbose_master(2, "CUPTI devices %u", proc_gpu.devs_count);
+    if (read_cupti_metrics){
+      sa(    gpuproc_count_devices(no_ctx, &proc_gpu.devs_count   ));
+      verbose_master(2, "CUPTI devices %u", proc_gpu.devs_count);
+    }
     #endif
 #endif // USE_GPUS
     debug("metrics_count_device ready\n mgt cpufreq %u\nmgt imcfreq %u\n  mgt gpu %u\n    cpufreq %u\n    imcfreq %u\n     bwidth %u\n        gpu %u",
@@ -532,7 +548,9 @@ static void metrics_static_init(topology_t *tp)
 #if USE_GPUS
         apis_print(mgt_gpu.api    , "MGT_GPU    : ");
         #if USE_CUPTI
-        apis_print(proc_gpu.api   , "PROC_GPU    : ");
+        if (read_cupti_metrics){
+          apis_print(proc_gpu.api   , "PROC_GPU    : ");
+        }
         #endif
 #endif // USE_GPUS
         apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
@@ -580,13 +598,15 @@ static void metrics_static_init(topology_t *tp)
     gpu_data_alloc(&gpu_metrics_busy);
     gpu_data_alloc(&gpu_metrics_busy_diff);
     #if USE_CUPTI
-    gpuproc_data_alloc(&proc_gpu_data_init[LOO]);
-    gpuproc_data_alloc(&proc_gpu_data_init[APP]);
-    gpuproc_data_alloc(&proc_gpu_data_end[LOO]);
-    gpuproc_data_alloc(&proc_gpu_data_end[APP]);
-    gpuproc_data_alloc(&proc_gpu_data_end[LOO]);
-    gpuproc_data_alloc(&proc_gpu_data_end[APP]);
-    verbose_master(2, "PROC_GPU data allocated");
+    if (read_cupti_metrics){
+      gpuproc_data_alloc(&proc_gpu_data_init[LOO]);
+      gpuproc_data_alloc(&proc_gpu_data_init[APP]);
+      gpuproc_data_alloc(&proc_gpu_data_end[LOO]);
+      gpuproc_data_alloc(&proc_gpu_data_end[APP]);
+      gpuproc_data_alloc(&proc_gpu_data_diff[LOO]);
+      gpuproc_data_alloc(&proc_gpu_data_diff[APP]);
+      verbose_master(2, "PROC_GPU data allocated");
+    }
     #endif
 #endif // USE_GPUS
 
@@ -698,11 +718,13 @@ static void metrics_global_start()
         }
 	}
   #if USE_CUPTI
-  if (state_fail(gpuproc_read(no_ctx, proc_gpu_data_init[APP]))){
-    verbose(2, "gpuproc_read failed");
+  if (read_cupti_metrics){
+    if (state_fail(gpuproc_read(no_ctx, proc_gpu_data_init[APP]))){
+      verbose(2, "gpuproc_read failed");
+    }
+    /* We will copy in partial start */
+    gpuproc_data_copy(proc_gpu_data_end[LOO], proc_gpu_data_init[APP]);
   }
-  /* We will copy in partial start */
-  gpuproc_data_copy(proc_gpu_data_end[LOO], proc_gpu_data_init[APP]);
   #endif
 
 
@@ -884,6 +906,16 @@ static void metrics_global_stop()
 	flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
 	cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
 	cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
+
+  #if USE_CUPTI
+  if (read_cupti_metrics){
+    if (state_fail(gpuproc_read_diff(no_ctx, proc_gpu_data_end[APP], proc_gpu_data_init[APP], proc_gpu_data_diff[APP]))){
+     verbose(2, "gpuproc_read_diff global stop failed");
+    }
+    gpuproc_data_tostr(proc_gpu_data_diff[APP], gpu_proc_buffer, sizeof(gpu_proc_buffer));
+    verbose(2, "GPU_PROC APP DATA for [%d][%d] : %s", masters_info.my_master_rank, my_node_id, gpu_proc_buffer);
+  }
+  #endif
 }
 
 static void metrics_partial_start()
@@ -943,6 +975,11 @@ static void metrics_partial_start()
            }
            */
         debug("gpu_copy in partial start");
+        #if USE_CUPTI
+        if (read_cupti_metrics){
+          gpuproc_data_copy(proc_gpu_data_init[LOO], proc_gpu_data_end[LOO]);
+        }
+        #endif
 #endif // USE_GPUS
 
     } // master_rank
@@ -1174,8 +1211,12 @@ static int metrics_partial_stop(uint where)
 	cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
 
   #if USE_CUPTI
-  if (state_fail(gpuproc_read_diff(no_ctx, proc_gpu_data_end[LOO], proc_gpu_data_init[LOO], proc_gpu_data_diff[LOO]))){
-    verbose(2, "gpuproc_read failed");
+  if (read_cupti_metrics){
+    if (state_fail(gpuproc_read_diff(no_ctx, proc_gpu_data_end[LOO], proc_gpu_data_init[LOO], proc_gpu_data_diff[LOO]))){
+     verbose(2, "gpuproc_read_diff failed");
+    }
+    gpuproc_data_tostr(proc_gpu_data_diff[LOO], gpu_proc_buffer, sizeof(gpu_proc_buffer));
+    verbose(2, "GPU_PROC LOOP DATA for [%d][%d] : %s", masters_info.my_master_rank, my_node_id, gpu_proc_buffer);
   }
   #endif
 
@@ -1277,8 +1318,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
   verbose_master(2, "GBGS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 
   #if USE_CUPTI
-  if (sign_app_loop_idx == LOO){
-    gpuproc_data_tostr(proc_gpu_data_diff[LOO], gpu_proc_buffer, sizeof(gpu_proc_buffer));
+  if (read_cupti_metrics){
+    gpuproc_data_tostr(proc_gpu_data_diff[sign_app_loop_idx], gpu_proc_buffer, sizeof(gpu_proc_buffer));
     verbose_master(2, "GPU PROC data for master: %s", gpu_proc_buffer);
   }
   #endif

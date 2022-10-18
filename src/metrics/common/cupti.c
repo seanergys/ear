@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -90,7 +90,8 @@ static state_t static_open_cuda()
     /* Check: Do we need CUDA here ? */
     open_test_cuda(getenv(HACK_CUDA_FILE));
 
-    open_test_cuda(getenv(CUDA_BASE CUDA_LIB));
+    open_test_cuda(CUDA_BASE CUDA_LIB);
+    open_test_cuda("/usr/lib64/" CUDA_LIB);
 
     return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
 }
@@ -103,7 +104,6 @@ static state_t static_open_cupti()
         return EAR_SUCCESS; \
     }
     #define open_test(path) \
-    _open_test(path CUPTI_STATIC_LIB);\
     _open_test(path CUPTI_LIB); \
     _open_test(path CUPTI_LIB ".1");
 
