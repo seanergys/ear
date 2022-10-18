@@ -418,8 +418,8 @@ static state_t assoc_set(uint *clos)
         }
     }
     // SAME_PRIO avoided sending flag. If there are pending commands, its time to send.
-    if (cmds->req_count > 0) {
-        commands_mmio_send(&cmds);
+    if (cmds.req_count > 0) {
+        commands_mmio_send(&cmds, NULL);
     }
     #if SHOW_DEBUGS
     assoc_get(clos);
