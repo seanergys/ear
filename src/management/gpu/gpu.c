@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -249,4 +249,9 @@ state_t mgt_gpu_data_null(ulong *data)
     }
     memset(data, 0, devs_count * sizeof(ulong));
     return EAR_SUCCESS;
+}
+
+int mgt_gpu_is_supported()
+{
+    return mgt_gpu_eard_is_supported();
 }

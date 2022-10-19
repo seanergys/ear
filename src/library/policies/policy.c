@@ -166,10 +166,13 @@ polctx_t my_pol_ctx;
 
 uint total_mpi = 0;
 
-node_freqs_t nf;     /*!< Nominal frequency  */
+node_freqs_t nf;     /*!< Nominal frequency */
 node_freqs_t avg_nf;
 node_freqs_t last_nf;
 static node_freqs_t per_process_node_freq;
+
+static ulong max_freq_per_socket[MAX_SOCKETS_SUPPORTED];
+static uint  cpu_must_be_normalized[MAX_CPUS_SUPPORTED];
 
 uint last_earl_phase_classification = APP_COMP_BOUND;
 
@@ -178,7 +181,6 @@ int gpu_ready = EAR_POLICY_NO_STATE;
 
 gpu_state_t curr_gpu_state;
 gpu_state_t last_gpu_state = _GPU_Comp;             // Initial GPU state as Computation
-
 
 static uint fake_io_phase = 0;
 static uint fake_bw_phase = 0;
@@ -1266,8 +1268,11 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
             timestamp_getfast(&init_last_comp);
         }
 
+        #if 0
+        /* Migrated to states */
         /* And then we mark as not ready */
         clean_signatures(lib_shared_region,sig_shared_region);
+        #endif
 
         // TODO By now, retg is not used since its definition
         if ((ret != EAR_SUCCESS) || (retg != EAR_SUCCESS)) {
@@ -1510,10 +1515,13 @@ static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint
     return_msg(EAR_ERROR, "The requested API has not filled the avail_list field.");
 }
 
-static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz, int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min, int proc_id)
+static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz,
+        int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min, int proc_id)
 {
     int init_rank, end_rank;
+#if 0
     uint cpus_affected = 0;
+#endif
     if (proc_id == ALL_PROCESSES){
       init_rank = 0;
       end_rank = process_cnt;
@@ -1536,11 +1544,18 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
     int verb_lvl = POLICY_INFO;
 
-    verbose_master(verb_lvl, "Mapping frequencies from %d processes to %d CPUs...", process_cnt, cpu_cnt);
-
     if (first_print) {
         verb_lvl = 1;
         first_print = 0;
+    }
+
+    verbose_master(verb_lvl, "Mapping frequencies from %d processes to %d CPUs...", process_cnt, cpu_cnt);
+
+    memset(cpu_must_be_normalized, 0, MAX_CPUS_SUPPORTED * sizeof(uint));
+
+    /* For AMD we compute the max per socket */
+    if (arch_desc.top.vendor == VENDOR_AMD) {
+        memset(max_freq_per_socket, 0, MAX_SOCKETS_SUPPORTED * sizeof(ulong));
     }
 
     for (int proc_lrank = init_rank; proc_lrank < end_rank; proc_lrank++)
@@ -1555,7 +1570,6 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         // The frequency is filtered by the minimum permitted in the EAR configuration
         ulong cpu_freq_khz = ear_max(process_cpu_freqs_khz[proc_lrank], (ulong) min_cpufreq);
 				process_cpu_freqs_khz[proc_lrank] = cpu_freq_khz;
-
 
         /* Compute the maximum and minimum if required */
         if (cpu_freq_max != NULL) {
@@ -1580,18 +1594,44 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
                     verbosen_master(verb_lvl + 1, " %d", cpu_idx);
                 }
                 (*core_cpu_freqs_khz)[cpu_idx] = cpu_freq_khz;
+
+                max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_id] =
+                    ear_max(max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_id],
+                            cpu_freq_khz);
+
+                cpu_must_be_normalized[cpu_idx] = 1;
+#if 0
                 cpus_affected++;
+#endif
             }
         }
         if (verb) {
             verbosen_master(verb_lvl,"\n");
         }
     }
-		#if 0
-    if (proc_id >= 0){
-      verbose(2,"[%d] Changing CPU freq for %d cpus", proc_id, cpus_affected);
+    if (arch_desc.top.vendor == VENDOR_AMD) {
+
+        for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
+
+          // The maximum CPU freq. for the socket which the CPU belongs to.
+          ulong max_cpufreq = max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_id];
+
+          if (cpu_must_be_normalized[cpu_idx] &&
+              (*core_cpu_freqs_khz)[cpu_idx] != max_cpufreq) {
+
+            (*core_cpu_freqs_khz)[cpu_idx] = max_cpufreq;
+
+            verbose_master(verb_lvl,
+                "Increasing the CPU %d freq. to %lu because it's on AMD node at socket %d.",
+                cpu_idx, max_cpufreq, arch_desc.top.cpus[cpu_idx].socket_id);
+          }
+        }
     }
-		#endif
+#if 0
+    if (proc_id >= 0){
+        verbose(2,"[%d] Changing CPU freq for %d cpus", proc_id, cpus_affected);
+    }
+#endif
 
     return EAR_SUCCESS;
 }
@@ -1665,7 +1705,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
     if (dom->cpu == POL_GRAIN_CORE) sprintf(pol_grain_str, "GRAIN_CORE");
     else                            sprintf(pol_grain_str, "GRAIN_NODE");
 
-    verbose_master(2, "%-12s: %s\n%-12s: %d", "Policy level",
+    verbose_master(3, "%-12s: %s\n%-12s: %d", "Policy level",
             pol_grain_str, "Affinity", ear_affinity_is_set);
 
     ulong max_cpufreq_sel_khz = 0 , min_cpufreq_sel_khz = 1000000000;
@@ -1677,7 +1717,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         from_proc_to_core(freq_set, lib_shared_region->num_processes, &freq_per_core,
                 arch_desc.top.cpu_count, &max_cpufreq_sel_khz, &min_cpufreq_sel_khz, process_id);
     } else {
-        if (process_id == ALL_PROCESSES){
+        if (process_id == ALL_PROCESSES) {
         debug("Setting same freq in all node %lu", freq_set[0]);
 
         for (i = 1; i < MAX_CPUS_SUPPORTED; i++) {

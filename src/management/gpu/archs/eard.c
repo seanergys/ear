@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <common/utils/serial_buffer.h>
+#include <common/config/config_install.h>
 #include <management/gpu/archs/eard.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
@@ -360,4 +361,21 @@ state_t mgt_gpu_eard_power_cap_set(ctx_t *c, ulong *watts)
 {
     ulong aux[128];
 	return eard_rpc(RPC_MGT_GPU_SET_POWER_CAP, shuffle_out(watts, aux), root_devs_count*sizeof(ulong), NULL, 0);
+}
+
+int mgt_gpu_eard_is_supported()
+{
+    static int supported = 0;
+    static int called = 0;
+    // This is an independent function. It works always, with independence of the load
+    // of the EARD GPU API, although is using RPCs to the EAR Daemon.
+    if (!called) {
+        if (state_fail(eard_rpc(RPC_MGT_GPU_IS_SUPPORTED, NULL, 0, (char *) &supported, sizeof(int)))) {
+            debug("Failed to retrieve if GPUs are supported, getting config value");
+            supported = USE_GPUS;
+        }
+        called = 1;
+    }
+    debug("GPUs supported: %d (USE_GPUS %d)", supported, USE_GPUS);
+    return supported;
 }

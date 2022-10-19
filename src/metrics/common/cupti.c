@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,12 +27,10 @@
 #define HACK_CUDA_FILE  "HACK_CUDA_FILE"
 #define HACK_CUPTI_FILE "HACK_CUPTI_FILE"
 
-#if 0
-#ifndef ZERO_BASE
+#ifndef CUPTI_BASE
 #define CUPTI_PATH   ""
 #else
 #define CUPTI_PATH   CUPTI_BASE
-#endif
 #endif
 
 /* Check */
@@ -80,15 +78,18 @@ static uint            ok;
 
 static state_t static_open_cuda()
 {
-    #define open_test_cuda(path) \
+    #define _open_test_cuda(path) \
     debug("Openning %s", (char *) path); \
     if (state_ok(plug_open(path, (void **) &cu, cuda_names, CUDA_N, RTLD_NOW | RTLD_LOCAL))) { \
         return EAR_SUCCESS; \
     }
+    #define open_test_cuda(path) \
+    _open_test_cuda(path CUDA_LIB); \
+    _open_test_cuda(path CUDA_LIB ".1");
 
-    //open_test_cuda(NULL);
-    /* Check: Do we need CUDA here ? */
-    open_test_cuda(getenv(HACK_CUDA_FILE));
+    _open_test_cuda(NULL);
+    _open_test_cuda(getenv(HACK_CUDA_FILE));
+    open_test_cuda("/usr/lib64/");
 
     open_test_cuda(CUDA_BASE CUDA_LIB);
     open_test_cuda("/usr/lib64/" CUDA_LIB);

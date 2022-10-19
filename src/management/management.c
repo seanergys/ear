@@ -127,7 +127,9 @@ int management_rpcs_cpuprio(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack
         }
     break;
     case RPC_MGT_PRIO_GET_CURRENT:
-        ret_s = mgt_cpuprio_get_available_list(m.cpuprio.list2);
+        ret_s    = mgt_cpuprio_get_current_list((uint *) m.cpuprio.list2);
+        ret_data = (char *) m.cpuprio.list2;
+        ret_size = sizeof(uint) * m.cpuprio.list2_count;
     break;
     case RPC_MGT_PRIO_SET_CURRENT_LIST:
         if (state_fail(ret_s = eard_rpc_read_pending(fd_req, m.cpuprio.list2, rpc_size, 0))) {
@@ -257,6 +259,11 @@ int management_rpcs_gpu(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
             }
         }
     break;
+    case RPC_MGT_GPU_IS_SUPPORTED:
+        u1       = (uint) mgt_gpu_is_supported();
+        ret_data = (char *) &u1;
+        ret_size = sizeof(int);
+    break;
     default:
         return 0;
     }
@@ -294,7 +301,9 @@ int main(int argc, char *argv[])
     topology_init(&tp);
 
     management_init(&tp, eard);
-
+    
+    mgt_gpu_is_supported();
+    #if 0
     ulong array[4] = { 240000, 240000, 100, 100 };
     mgt_gpu_freq_limit_set(no_ctx, array);
     
@@ -307,6 +316,10 @@ int main(int argc, char *argv[])
     mgt_gpu_freq_limit_get_current(no_ctx, array);
     
     mgt_gpu_freq_limit_get_max(no_ctx, array);
+    #endif
+    sleep(5);
+    
+    mgt_gpu_is_supported();
 
     sleep(100);
  

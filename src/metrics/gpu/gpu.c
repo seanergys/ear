@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -264,4 +264,9 @@ void gpu_data_tostr(gpu_t *data, char *buffer, int length)
 		length = length - s;
 		accuml = accuml + s;
 	}
+}
+
+int gpu_is_supported()
+{
+    return gpu_eard_is_supported();
 }

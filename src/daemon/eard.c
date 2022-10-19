@@ -89,7 +89,6 @@ ulong *frequencies;
 /* END Shared memory regions */
 
 #if USE_GPUS
-gpu_t *eard_read_gpu;
 uint eard_num_gpus;
 uint eard_gpu_model;
 char gpu_str[256];

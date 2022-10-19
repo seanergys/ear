@@ -397,7 +397,6 @@ static void metrics_static_init(topology_t *tp)
 #endif // USE_GPUS
     debug("metics_load ready");
 
-    // This extinguishable
 #if SINGLE_CONNECTION
     frequency_init(eard);
 #else
@@ -681,12 +680,16 @@ static void metrics_global_start()
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read1[APP]))) {
             debug("CPUFreq data read in global_start");
         }
+        /* To be used in partial_start */
+        cpufreq_data_copy(cpufreq_read2[LOO], cpufreq_read1[APP]);
 		/* Reads IMC data */
 		if (mgt_imcfreq.ok){
 		    debug("imcfreq_read");
 		    if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read1[APP]))){
 			    debug("IMCFreq data read in global_start");
 		    }
+        /* To be used in partial_start */
+        imcfreq_data_copy(imcfreq_read2[LOO], imcfreq_read1[APP]);
 		}
 
 #if USE_GPUS
@@ -715,7 +718,9 @@ static void metrics_global_start()
 		/* Only the master computes per node I/O metrics */
 		if (state_fail(metrics_compute_total_io(&metrics_io_init[APP_NODE]))) {
             verbose_master(2, "%sWarning%s Node total I/O could not be read (%s)." , COL_RED, COL_CLR, state_msg);
-        }
+    }
+    /* To be used in partial_start */
+    io_copy(&metrics_io_end[LOO_NODE], &metrics_io_init[APP_NODE]);
 	}
   #if USE_CUPTI
   if (read_cupti_metrics){
@@ -732,6 +737,7 @@ static void metrics_global_start()
 	if (io_read(&ctx_io, &metrics_io_init[APP]) != EAR_SUCCESS){
 		verbose_master(2,"Warning: IO data not available");
 	}
+  io_copy(&metrics_io_end[LOO], &metrics_io_init[APP]);
 
 	// New metrics
 	/* Energy */
@@ -744,18 +750,27 @@ static void metrics_global_start()
 	/* RAPL energy metrics */
 	energy_cpu_read(no_ctx, aux_rapl);
 	debug("energy_cpu_read ready");
+  /* No need to copy aux_rapl in other metric for partial_start */
 
 	bwidth_read(no_ctx, bwidth_read1[APP]);
 	debug("bwidth_read ready");
+  /* To be used in partial_start */
+  bwidth_data_copy(bwidth_read2[LOO], bwidth_read1[APP]);
 
 	flops_read(no_ctx, &flops_read1[APP]);
 	debug("flops_read ready");
+  /* To be used in partial_start */
+  flops_data_copy(&flops_read2[LOO], &flops_read1[APP]);
 	
 	cache_read(no_ctx, &cache_read1[APP]);
 	debug("cache_read ready");
+  /* To be used in partial_start */
+  cache_data_copy(&cache_read2[LOO], &cache_read1[APP]);
 
 	cpi_read(no_ctx,   &cpi_read1[APP]);
 	debug("cpi_read ready");
+  /* To be used in partial_start */
+  cpi_data_copy(&cpi_read2[LOO], &cpi_read1[APP]);
 
 }
 
@@ -920,6 +935,33 @@ static void metrics_global_stop()
 
 static void metrics_partial_start()
 {
+
+  #if 0
+	if (state_fail(io_read(&ctx_io, &metrics_io_init[LOO]))){
+		verbose_master(2, "%sWarning%s I/O data not available.", COL_RED, COL_CLR);
+	}
+	if (master) {
+		if (state_fail(cpufreq_read(no_ctx, cpufreq_read1[LOO]))) {
+			verbose_master(2, "%sError%s Reading loop's CPUFreq data.", COL_RED, COL_CLR);
+		}
+			if (state_fail(imcfreq_read(no_ctx,imcfreq_read1[LOO]))){
+				verbose_master(2, "%sError%s Reading loop's IMCFreq data.", COL_RED, COL_CLR);
+			}
+		if (state_fail(metrics_compute_total_io(&metrics_io_init[LOO_NODE]))) {
+
+			verbose_master(2, "%sWarning%s Node total I/O could not be"
+					" read (%s)." , COL_RED, COL_CLR, state_msg);
+		}
+    }
+	for (int i = 0; i < rapl_elements; i++) {
+		last_rapl[i] = aux_rapl[i];
+	}
+	bwidth_read(no_ctx, bwidth_read1[LOO]);
+	flops_read(no_ctx, &flops_read1[LOO]);
+	cache_read(no_ctx, &cache_read1[LOO]);
+	cpi_read(no_ctx,   &cpi_read1[LOO]);
+  #endif
+
 	debug("metrics_partial_start starts %p %p %lu",
 			metrics_ipmi[LOO], aux_energy, node_energy_datasize);
 
@@ -933,33 +975,23 @@ static void metrics_partial_start()
 
 	/* Per-process IO data */
 	debug("starting IO for process");
-	if (state_fail(io_read(&ctx_io, &metrics_io_init[LOO]))){
-		verbose_master(2, "%sWarning%s I/O data not available.", COL_RED, COL_CLR);
-	}
+  io_copy(&metrics_io_init[LOO], &metrics_io_end[LOO]);
 	debug("IO read done");
 
 	/* These data is measured only by the master */
 	if (master) {
 		/* Avg CPU freq */
-		if (state_fail(cpufreq_read(no_ctx, cpufreq_read1[LOO]))) {
-			verbose_master(2, "%sError%s Reading loop's CPUFreq data.", COL_RED, COL_CLR);
-		}
+    cpufreq_data_copy(cpufreq_read1[LOO], cpufreq_read2[LOO]);
 		debug("cpufreq_read ");
 
 		/* Avg IMC freq */
 		if (mgt_imcfreq.ok){
 			/* Reads the IMC */
-			if (state_fail(imcfreq_read(no_ctx,imcfreq_read1[LOO]))){
-				verbose_master(2, "%sError%s Reading loop's IMCFreq data.", COL_RED, COL_CLR);
-			}
+      imcfreq_data_copy(imcfreq_read1[LOO], imcfreq_read2[LOO]);
 		}
 
 		/* Per NODE IO data */
-		if (state_fail(metrics_compute_total_io(&metrics_io_init[LOO_NODE]))) {
-
-			verbose_master(2, "%sWarning%s Node total I/O could not be"
-					" read (%s)." , COL_RED, COL_CLR, state_msg);
-		}
+    io_copy(&metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
 
 #if USE_GPUS
         /* GPUS */
@@ -985,16 +1017,14 @@ static void metrics_partial_start()
     } // master_rank
 
 	/* Energy RAPL */
-	for (int i = 0; i < rapl_elements; i++) {
-		last_rapl[i] = aux_rapl[i];
-	}
+  energy_cpu_data_copy(no_ctx, last_rapl, aux_rapl);
 	debug("RAPL copied");
 
 	// New metrics
-	bwidth_read(no_ctx, bwidth_read1[LOO]);
-	flops_read(no_ctx, &flops_read1[LOO]);
-	cache_read(no_ctx, &cache_read1[LOO]);
-	cpi_read(no_ctx,   &cpi_read1[LOO]);
+  bwidth_data_copy(bwidth_read1[LOO], bwidth_read2[LOO]);
+  flops_data_copy(&flops_read1[LOO], &flops_read2[LOO]);
+  cache_data_copy(&cache_read1[LOO], &cache_read2[LOO]);
+  cpi_data_copy(&cpi_read1[LOO], &cpi_read2[LOO]);
 
 	debug("partial_start ends");
 }
@@ -2093,13 +2123,6 @@ state_t metrics_new_iteration(signature_t *sig)
 		llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 		llong elap_sec = f_time / 1000000;
 
-        // TODO: We changed the approach, so this message should change.
-		debug("--- Computing flops because of application phase ---\n"
-				"%-26s: %d\n%-26s: %d\n"
-				"%-26s: %lld\n%-26s: %lld\n"
-				"----------------------------------------------------",
-				"IO", last_phase_io_bnd, "Busy waiting", last_phase_bw,
-				"Time elapsed", elap_sec, "Last elapsed", last_elap_sec);
 
 		if (elap_sec <= last_elap_sec) {
 			return EAR_ERROR;
@@ -2129,6 +2152,13 @@ state_t metrics_new_iteration(signature_t *sig)
       verbose_master(2, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
       return EAR_SUCCESS;
     }    
+        // TODO: We changed the approach, so this message should change.
+		debug("--- Computing flops because of application phase ---\n"
+				"%-26s: %d\n%-26s: %d\n"
+				"%-26s: %lld\n%-26s: %lld\n"
+				"----------------------------------------------------",
+				"IO", last_phase_io_bnd, "Busy waiting", last_phase_bw,
+				"Time elapsed", elap_sec, "Last elapsed", last_elap_sec);
 
 
 	    /* FLOPS are used to determine the CPU BUSY waiting

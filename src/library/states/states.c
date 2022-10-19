@@ -727,6 +727,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
               verbose_master(2," EARL state reset becuase signatures are different");
               policy_set_default_freq(&loop_signature);
               EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+              /* And then we mark as not ready */
+              clean_signatures(lib_shared_region,sig_shared_region);
+
               break;
             }
 
@@ -736,6 +739,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 if (sig_ready[curr_pstate] == 0){
                     sig_ready[curr_pstate] = 1;
                 }
+                /* And then we mark as not ready */
+                clean_signatures(lib_shared_region,sig_shared_region);
                 return;
             }
 
@@ -768,12 +773,16 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                         policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
             }
             if (pol_ok) {
+                /* And then we mark as not ready */
+                clean_signatures(lib_shared_region,sig_shared_region);
                 return;
             }
 
             // We can give the library a second change in case we are at def freq
             if ((tries_current_loop < policy_max_tries_cnt && curr_pstate == def_pstate) || !dynais_used) {
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
+                /* And then we mark as not ready */
+                clean_signatures(lib_shared_region,sig_shared_region);
                 break;
             }
 
@@ -786,6 +795,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     log_report_max_tries(application.job.id,application.job.step_id, application.job.def_f);
                     traces_frequency(ear_my_rank, my_id, policy_cpufreq_khz);
                 }
+                /* And then we mark as not ready */
+                clean_signatures(lib_shared_region,sig_shared_region);
                 break;
             }
 
@@ -802,6 +813,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             } else {
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
+            /* And then we mark as not ready */
+            clean_signatures(lib_shared_region,sig_shared_region);
 
             break; // SIGNATURE_STABLE
 
