@@ -1290,9 +1290,12 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
         }
         verbose(2, "%sPOLICY OK%s Decided by the policy plug-in.", ok_color, COL_CLR);
 
+#if 0
+        /* Migrated to states */
         /* And then we mark as not ready */
         verbose(3, "%sPOLICY OK%s Cleaning signatures...", COL_BLU, COL_CLR);
         clean_signatures(lib_shared_region,sig_shared_region);
+#endif
 
         // TODO By now, retg is not used since its definition
         if ((ret != EAR_SUCCESS) || (retg != EAR_SUCCESS)) {
