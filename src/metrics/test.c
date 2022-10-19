@@ -15,11 +15,13 @@
 * and COPYING.EPL files.
 */
 
+#include <stdio.h>
 #include <stdlib.h>
-#include <metrics/metrics.h>
+#include <metrics/test.h>
 #include <common/utils/stress.h>
 #include <common/utils/overhead.h>
 #include <common/output/verbose.h>
+#include <common/system/monitor.h>
 
 #define sa(f) \
 	if (state_fail(f)) { \
@@ -32,7 +34,7 @@
 
 static metrics_apis_t m;
 
-state_t metrics_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
+state_t metrics_init(topology_t *tp, uint eard)
 {
 	cpufreq_load(tp, eard);
 	imcfreq_load(tp, eard);
@@ -40,7 +42,7 @@ state_t metrics_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
       cache_load(tp, eard);
       flops_load(tp, eard);
        temp_load(tp      );
-       rapl_load(tp      );
+       //rapl_load(tp      );
         cpi_load(tp, eard);
 	    gpu_load(    eard);
 
@@ -50,7 +52,7 @@ state_t metrics_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
       cache_get_api(&m.cch.api);
       flops_get_api(&m.flp.api);
        temp_get_api(&m.tmp.api);
-       rapl_get_api(&m.rap.api);
+       //rapl_get_api(&m.rap.api);
         cpi_get_api(&m.cpi.api);
 	    gpu_get_api(&m.gpu.api);
 
@@ -60,7 +62,7 @@ state_t metrics_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
     sa(  cache_init(&m.cch.c));
     sa(  flops_init(&m.flp.c));
     sa(   temp_init(&m.tmp.c));
-    sa(   rapl_init(&m.rap.c));
+    //sa(   rapl_init(&m.rap.c));
     sa(    cpi_init(&m.cpi.c));
 	sa(    gpu_init(&m.gpu.c));
 	// Count (cache, flops and cpi does not have yet)
@@ -68,23 +70,28 @@ state_t metrics_init(topology_t *tp, uint eard, metrics_apis_t **m_in)
 	sa(imcfreq_count_devices(&m.imc.c, &m.imc.devs_count));
     sa( bwidth_count_devices(&m.ram.c, &m.ram.devs_count));
     sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count));
-    sa(   rapl_count_devices(&m.rap.c, &m.rap.devs_count));
+    //sa(   rapl_count_devices(&m.rap.c, &m.rap.devs_count));
     sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count));
 
-    apis_print(m.cpu.api, "MET_CPUFREQ: ");
-    apis_print(m.imc.api, "MET_IMCFREQ: ");
-    apis_print(m.ram.api, "MET_BWIDTH : ");
-    apis_print(m.cch.api, "MET_CACHE  : ");
-    apis_print(m.flp.api, "MET_FLOPS  : ");
-    apis_print(m.tmp.api, "MET_TEMP   : ");
-    apis_print(m.rap.api, "MET_RAPL   : ");
-    apis_print(m.cpi.api, "MET_CPI    : ");
-    apis_print(m.gpu.api, "MET_GPU    : ");
-    printline();
-
-	if (m_in != NULL) {
-		*m_in = &m;
-	}
+    apis_tostr(m.cpu.api, m.cpu.api_str, 32);
+    apis_tostr(m.imc.api, m.imc.api_str, 32);
+    apis_tostr(m.ram.api, m.ram.api_str, 32);
+    apis_tostr(m.cch.api, m.cch.api_str, 32);
+    apis_tostr(m.flp.api, m.flp.api_str, 32);
+    apis_tostr(m.tmp.api, m.tmp.api_str, 32);
+    //apis_tostr(m.rap.api, m.rap.api_str, 32);
+    apis_tostr(m.cpi.api, m.cpi.api_str, 32);
+    apis_tostr(m.gpu.api, m.gpu.api_str, 32);
+   
+    sprintf(m.cpu.granul_str, "threads");
+    sprintf(m.imc.granul_str, "sockets");
+    sprintf(m.ram.granul_str, "sockets");
+    sprintf(m.cch.granul_str, "process");
+    sprintf(m.flp.granul_str, "process");
+    sprintf(m.tmp.granul_str, "sockets");
+    sprintf(m.cpi.granul_str, "process");
+    sprintf(m.gpu.granul_str, "gpus");
+ 
 	return EAR_SUCCESS;
 }
 
@@ -97,18 +104,11 @@ state_t metrics_read(metrics_read_t *mr)
     sa( bwidth_read(&m.ram.c,  mr->ram));
     sa(  cache_read(&m.cch.c, &mr->cch));
     sa(  flops_read(&m.flp.c, &mr->flp));
-    sa(   rapl_read(&m.rap.c,  mr->rap));
+    //sa(   rapl_read(&m.rap.c,  mr->rap));
     sa(    cpi_read(&m.cpi.c, &mr->cpi));
     sa(    gpu_read(&m.gpu.c,  mr->gpu));
 
     return EAR_SUCCESS;
-}
-
-state_t metrics_apis_print()
-{
-
-
-	return EAR_SUCCESS;
 }
 
 state_t metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
@@ -120,7 +120,7 @@ state_t metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
     sa( bwidth_read_diff(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg));
     sa(  cache_read_diff(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg));
     sa(  flops_read_diff(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg));
-    sa(   rapl_read_diff(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
+    //sa(   rapl_read_diff(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
     sa(    cpi_read_diff(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg));
 	sa(    gpu_read_diff(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                ));
 
@@ -137,7 +137,7 @@ state_t metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
     sa(  cache_read_copy(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg));
     sa(  flops_read_copy(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg));
     sa(   temp_read     (&m.tmp.c,                              mrD->tmp_diff, &mrD->tmp_avrg));
-    sa(   rapl_read_copy(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
+    //sa(   rapl_read_copy(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
     sa(    cpi_read_copy(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg));
 	sa(    gpu_read_copy(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                ));
 
@@ -148,27 +148,26 @@ state_t metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
 state_t metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD)
 {
     // Read 1
-    sa(cpufreq_data_alloc(&mr->cpu1, empty));
-    sa(imcfreq_data_alloc(&mr->imc1, empty));
-    sa( bwidth_data_alloc(&mr->ram1));
-    sa(   rapl_data_alloc(&mr->rap1));
-    sa(    gpu_data_alloc(&mr->gpu1));
+    sa(cpufreq_data_alloc(&mr1->cpu, empty));
+    sa(imcfreq_data_alloc(&mr1->imc, empty));
+    sa( bwidth_data_alloc(&mr1->ram));
+    //sa(   rapl_data_alloc(&mr1->rap));
+    sa(    gpu_data_alloc(&mr1->gpu));
     // Read 2
-    sa(cpufreq_data_alloc(&mr->cpu2, empty));
-    sa(imcfreq_data_alloc(&mr->imc2, empty));
-    sa( bwidth_data_alloc(&mr->ram2));
-    sa(   rapl_data_alloc(&mr->rap2));
-    sa(    gpu_data_alloc(&mr->gpu2));
+    sa(cpufreq_data_alloc(&mr2->cpu, empty));
+    sa(imcfreq_data_alloc(&mr2->imc, empty));
+    sa( bwidth_data_alloc(&mr2->ram));
+    //sa(   rapl_data_alloc(&mr2->rap));
+    sa(    gpu_data_alloc(&mr2->gpu));
     // Diff
-    sa(cpufreq_data_alloc(empty, &md->cpu_diff));
-    sa(imcfreq_data_alloc(empty, &md->imc_diff));
-    sa(   temp_data_alloc(&md->tmp_diff));
-    sa(   rapl_data_alloc(&md->rap_diff));
-    sa(    gpu_data_alloc(&md->gpu_diff));
+    sa(cpufreq_data_alloc(empty, &mrD->cpu_diff));
+    sa(imcfreq_data_alloc(empty, &mrD->imc_diff));
+    sa(   temp_data_alloc(&mrD->tmp_diff));
+    //sa(   rapl_data_alloc(&mrD->rap_diff));
+    sa(    gpu_data_alloc(&mrD->gpu_diff));
     // Data registers
-    dreg_init(&md->imc_dreg, sizeof(ullong)*2);
-    dreg_init(&md->tmp_dreg, sizeof(ullong)*2);
-    dreg_init(&md->rap_dreg, sizeof(rapl_t)*2);
+    dreg_init(&mrD->imc_dreg, sizeof(ullong)*2);
+    dreg_init(&mrD->tmp_dreg, sizeof(ullong)*2);
 
     return EAR_SUCCESS;
 }
@@ -181,17 +180,17 @@ state_t metrics_diff_print(metrics_diff_t *mrD)
 
     dreg_add(&mrD->imc_dreg, mrD->imc_diff);
     dreg_add(&mrD->tmp_dreg, mrD->tmp_diff);
-    dreg_add(&mrD->rap_dreg, mrD->rap_diff);
+    //dreg_add(&mrD->rap_dreg, mrD->rap_diff);
 
     // Printing data registers
     dreg_print(&mrD->imc_dreg, DREG_STYLE_CSV, "!*llu", verb_channel); 
     dreg_print(&mrD->tmp_dreg, DREG_STYLE_CSV, "!*llu", verb_channel); 
-    dreg_print(&mrD->rap_dreg, DREG_STYLE_CSV, "!llu|llu|-llu|llu|llu|-llu", verb_channel); 
+    //dreg_print(&mrD->rap_dreg, DREG_STYLE_CSV, "!llu|llu|-llu|llu|llu|-llu", verb_channel); 
 
 	return EAR_SUCCESS;
 }
 
-#if TEST
+#if 0
 #include <stdio.h>
 #include <unistd.h>
 #include <common/system/monitor.h>
@@ -199,10 +198,6 @@ state_t metrics_diff_print(metrics_diff_t *mrD)
 #include <daemon/local_api/eard_api_rpc.h>
 
 static metrics_apis_t *mets;
-static metrics_read_t mr1;
-static metrics_read_t mr2;
-static metrics_diff_t mrD;
-static topology_t tp;
 static int print;
 
 state_t monitor_apis_init(void *whatever)
@@ -213,7 +208,7 @@ state_t monitor_apis_init(void *whatever)
 	
 	// Metrics
 	sa(metrics_apis_init(&tp, EARD, &mets));
-	sa(metrics_apis_print());
+	sa(metrics_apis_tostr());
 	
 	sa(metrics_read_alloc(&mr1));
 	sa(metrics_read_alloc(&mr2));
@@ -237,15 +232,6 @@ state_t monitor_apis_update(void *whatever)
 int init()
 {
     print = 1;
-
-	// Monitoring   
-	sa(monitor_init());
-	suscription_t *sus = suscription();
-	sus->call_init     = monitor_apis_init; 
-	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 1000;
-	sus->time_burst    = 1000;
-	sa(sus->suscribe(sus));
 
 	return 0;
 }
@@ -282,3 +268,70 @@ int main(int argc, char *argv[])
 	return 0;
 }
 #endif
+
+static topology_t     tp;
+static metrics_read_t mr1;
+static metrics_read_t mr2;
+static metrics_diff_t mrD;
+
+static void printf_clear()
+{
+    system("clear");
+}
+
+static state_t monitor_apis_init(void *whatever)
+{
+	topology_init(&tp);
+
+	metrics_init(&tp, EARD);
+
+    metrics_data_alloc(&mr1, &mr2, &mrD);
+
+    metrics_read(&mr1);
+	
+	return EAR_SUCCESS;
+}
+
+static state_t monitor_apis_update(void *whatever)
+{
+    metrics_read_copy(&mr2, &mr1, &mrD);
+
+    printf_clear();
+  
+    tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
+    tprintf("API||Internal||#Devs||Granularity");
+    tprintf("---||--------||-----||-----------");
+ 
+    tprintf("CPUFREQ||%s||%u||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.granul_str);
+    tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.granul_str);
+    tprintf("BWIDTH ||%s||%u||%s", m.ram.api_str, m.ram.devs_count, m.ram.granul_str);
+    tprintf("FLOPS  ||%s||%u||%s", m.flp.api_str, m.cpu.devs_count, m.flp.granul_str);
+    tprintf("CACHE  ||%s||%u||%s", m.cch.api_str, m.cch.devs_count, m.cch.granul_str);
+    tprintf("TEMP   ||%s||%u||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.granul_str);
+    tprintf("CPI    ||%s||%u||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.granul_str);
+    tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.granul_str);
+    printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n");
+    cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel);
+    printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n");
+    imcfreq_data_print( mrD.imc_diff, &mrD.imc_avrg, verb_channel);
+    printf("—— temp ———————————————————————————————————————————————————————————————————————\n");
+       temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel);
+
+    return EAR_SUCCESS;
+}
+
+int main(int argc, char *argv[])
+{
+	// Monitoring   
+	sa(monitor_init());
+	suscription_t *sus = suscription();
+	sus->call_init     = monitor_apis_init; 
+	sus->call_main     = monitor_apis_update;
+	sus->time_relax    = 2000;
+	sus->time_burst    = 2000;
+	sa(sus->suscribe(sus));   
+
+    sleep(100);
+
+    return 0;
+}

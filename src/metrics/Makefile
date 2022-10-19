@@ -76,11 +76,16 @@ mets_OBJS = \
 
 all: all.components $(stat_BINS) $(dyna_BINS)
 
+post: test 
+
 libmetrics.a: $(mets_OBJS)
 	$(AR) rvs $@ $(mets_OBJS)
 
 libmetrics.so: $(mets_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(mets_OBJS)
+
+test: test.c
+	$(CC) -I $(SRCDIR) -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 
@@ -90,7 +95,8 @@ devel.install: devel.install.components;
 
 %.install: %.install.components;
 
-clean: clean.components rclean;
+clean: clean.components rclean
+	rm -f test
 
 ######## SUBFOLDERS
 
