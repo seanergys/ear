@@ -189,6 +189,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             float mem_ratio = (float)L3[j]/(float)node_L3;
             gbs[j]        = mem_ratio * lsig->GBS;
             dram_power[j] = mem_ratio * lsig->DRAM_power;
+            /* TPI should be total accesses / total instructions, we are computing in this
+             * way for compatibility */
             tpi[j]        = (mem_ratio * data->cas_counters * cache_line_size) / inst[j];
             debug("case 1[%d]: Ratio %.3f cas %llu inst %llu", j, mem_ratio, data->cas_counters, inst[j]);
         } else {
