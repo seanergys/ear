@@ -44,6 +44,7 @@
 #define VAR_OPT_THRA "EAR_POWER_POLICY_TH"
 #define VAR_OPT_THRB "EAR_PERFORMANCE_PENALTY"
 #define VAR_OPT_THRC "EAR_MIN_PERFORMANCE_EFFICIENCY_GAIN"
+/**@}*/
 
 /**
  * @defgroup EAR_PATHS EAR installation
@@ -141,6 +142,7 @@
  * They affect features under development.
  * @{
  */
+/** @}  */
 
 /**
  * @defgroup VERBOSE Verbose effects
@@ -155,6 +157,7 @@
 #define FLAG_APP_MGR_POLICIES	       SCHED_PREFIX "EAR_APP_MGR_POLICIES"
 #define FLAG_GET_MPI_STATS           SCHED_PREFIX "EAR_GET_MPI_STATS"
 #define FLAG_REPORT_EARL_EVENTS      SCHED_PREFIX "REPORT_EARL_EVENTS" // Generates extra events during the execution of the EARL
+/** @} */
 
 
 
@@ -178,5 +181,4 @@
 #define SCHED_TRY_TURBO              "SLURM_TRY_TURBO"                     // TODO: Deprectated.
 #define SCHED_LOAD_BALANCE_TH        "SLURM_LOAD_BALANCE_TH"               // TODO: Deprectated.
 
-/** @}  */
 #endif //CONFIG_ENVIRONMENT_H

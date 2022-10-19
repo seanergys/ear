@@ -61,6 +61,7 @@
                           // instead of the deprecated frequency API.
 #define VERBOSE_WARN    2 // Verbose level for warning messages.
 #define VERB_SAV_PEN    3 // Verbose level for saving and penalty estimation.
+#define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
 #if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
 #endif
@@ -344,21 +345,33 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 
+            verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
+
             /* Accumulate statistics of savings */
             accumulate_phases_summary(&loop_signature, &application.signature);
 
-            verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
             policy_set_default_freq(NULL);
-            // comp_N_begin = metrics_time();
+
             restart_period_time_init(&comp_N_begin);
+
             EAR_STATE = FIRST_ITERATION;
-            if (report_earl_events){
+
+            if (report_earl_events) {
+                // We can report two events at once.
+                ear_event_t aux_events[2];
+                aux_events[0] = curr_state_event;
+
+                fill_common_event(&aux_events[1]);
+                fill_event(&aux_events[1], EARL_STATE, EAR_STATE);
+
+                report_events(&rep_id, aux_events, 2);
+#if 0
 						  fill_event(&curr_state_event, EARL_OPT_ACCURACY, OPT_TRY_AGAIN);
 						  report_events(&rep_id, &curr_state_event, 1);
               fill_event(&curr_state_event, EARL_STATE, FIRST_ITERATION);
 						  report_events(&rep_id, &curr_state_event, 1);
+#endif
 					  }
-
             return;
         }
     }
@@ -377,19 +390,21 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             traces_reconfiguration(ear_my_rank, my_id);
 
-            resched_conf->force_rescheduling=0;
+            resched_conf->force_rescheduling = 0;
 
             verbose_master(2, "--- [EAR] Re-scheduling forced by EARD ---\n%-20s: %u\n%-20s: %lu\n%-20s: %lu\n%-20s: %lf\n",
                     "Curr. state", EAR_STATE, "Max CPUfreq", system_conf->max_freq, "Def. CPUfreq",
                     system_conf->def_freq, "Policy th", system_conf->settings[0]);
 
-
-            // comp_N_begin = metrics_time();
             restart_period_time_init(&comp_N_begin);
 
             EAR_STATE = SIGNATURE_HAS_CHANGED;
-            verbose_master(2,"New state by reschedduling: %u", EAR_STATE);
             state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
+
+            if (report_earl_events) {
+                fill_event(&curr_state_event, EARL_STATE, EAR_STATE);
+                report_events(&rep_id, &curr_state_event, 1);
+            }
 
             tries_current_loop_same_freq = 0;
             tries_current_loop           = 0;
@@ -428,9 +443,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
             if (comp_N_time == 0) comp_N_time = 1;
-            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
+                    &perf_count_period, &perf_count_period_10p);
 
-            /* Once min iterations are computed for performance accuracy we start computing application signature */
+            /* Once min iterations are computed for performance accuracy we start
+             * computing application signature. */
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 
             state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_id, EAR_STATE);
@@ -520,7 +537,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 			/* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
-
             if (result == EAR_NOT_READY)
             {
                 if (!lib_shared_region->master_ready) {
@@ -529,10 +545,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 return;
             }
 
-
             // Both loop_signature and lib_shared_region->job_signature have the same data:
-	          compute_per_process_and_job_metrics(&loop_signature);
+            compute_per_process_and_job_metrics(&loop_signature);
+            if (VERB_ON(VERB_SIGN_TRACK) && master) {
+                char sig_to_vrb[128];
+                signature_to_str(&loop_signature, sig_to_vrb, sizeof(sig_to_vrb));
 
+                verbose(0, "Signature after CPU power model projection: %s", sig_to_vrb);
+            }
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -560,13 +580,16 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             sig_ready[curr_pstate] = 1;
 
-
-			      /* ******************* MOVED **********************
+            /* ******************* MOVED **********************
              * Now we compute the JOB signature for reporting. */
             if (master) {
-                metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
-                signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
+                // curr_loop.signature <- lib_shared_region->job_signature
+                metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature);
+
+                // lib_shared_region->job_signature <- curr_loop.signature
+                signature_copy(&lib_shared_region->job_signature, &curr_loop.signature);
             }
+
             /* This function takes into account if we are using or not the whole node. */
             signature_t norm_signature;
             adapt_signature_to_node(&norm_signature, &lib_shared_region->job_signature, ratio_PPN);
@@ -575,7 +598,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
-             * the policy will compute the average if needed */
+             * the policy will compute the average if needed. */
+            if (VERB_ON(VERB_SIGN_TRACK) && master) {
+
+                char sig_to_vrb[128];
+                signature_to_str(&norm_signature, sig_to_vrb, sizeof(sig_to_vrb));
+
+                verbose(0, "Signature %s will be passed to the policy.", sig_to_vrb);
+            }
+
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
 
             /* Accumulate statistics of savings */
@@ -722,21 +753,34 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* We must evaluate policy decissions */
             signatures_stables++;
 
-            if (signatures_different(&loop_signature, &policy_sel_signature, 0.2)){
+            if (signatures_different(&loop_signature, &policy_sel_signature, 0.2)) {
+
               /* Reset */
-              verbose_master(2," EARL state reset becuase signatures are different");
               policy_set_default_freq(&loop_signature);
               EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
               /* And then we mark as not ready */
               if (master) clean_signatures(lib_shared_region,sig_shared_region);
 
+              if (VERB_ON(2)) {
+
+                char sigs_metrics_buff[128]; // This buffer is used to show differences in signatures.
+
+                snprintf(sigs_metrics_buff, sizeof(sigs_metrics_buff),
+                    "(CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy (%.2lf/%.2lf/%.2lf)",
+                    loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
+                    policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
+
+                verbose_master(0, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
+                    COL_YLW, COL_CLR, sigs_metrics_buff);
+              }
+
               break;
             }
 
-            if (sig_ready[def_pstate] == 0){
+            if (sig_ready[def_pstate] == 0) {
                 verbose_master(2,"Signature at default freq not available, assuming policy ok");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
-                if (sig_ready[curr_pstate] == 0){
+                if (sig_ready[curr_pstate] == 0) {
                     sig_ready[curr_pstate] = 1;
                 }
                 /* And then we mark as not ready */
@@ -744,42 +788,33 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 return;
             }
 
-
-            policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
-
 			      /* Accumulate Energy savings */
 			      accumulate_energy_savings(&loop_signature, &application.signature);
 
+            /* The policy evaluates following it's own criteria. */
+            policy_ok(&loop_signature, &policy_sel_signature, &pol_ok);
 
-            {
-                char *ok_clr = COL_GRE;
-                if (pol_ok) {
-                    /* When collecting traces, we maintain the period */
-                    if ((master) && (traces_are_on() == 0)) {
-                        perf_count_period = perf_count_period * 2;
-                    }
-                    tries_current_loop = 0;
-                } else {
-                    /* Reset */
-                    policy_set_default_freq(&loop_signature);
-                    EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-                    ok_clr = COL_RED;
-                }
-
-
-                verbose_master(2, "%sPOLICY OK%s (CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy_selected (%.2lf/%.2lf/%.2lf)",
-                        ok_clr,COL_CLR,
-                        loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
-                        policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
-            }
             if (pol_ok) {
+                /* When collecting traces, we maintain the period */
+                if ((master) && (traces_are_on() == 0)) {
+                    perf_count_period = perf_count_period * 2;
+                }
+                tries_current_loop = 0;
+
                 /* And then we mark as not ready */
-               if (master)  clean_signatures(lib_shared_region,sig_shared_region);
+                if (master)  clean_signatures(lib_shared_region,sig_shared_region);
+
                 return;
+
+            } else {
+                /* Reset */
+                policy_set_default_freq(&loop_signature);
+                EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
             }
 
             // We can give the library a second change in case we are at def freq
             if ((tries_current_loop < policy_max_tries_cnt && curr_pstate == def_pstate) || !dynais_used) {
+
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
                 /* And then we mark as not ready */
                 if (master) clean_signatures(lib_shared_region,sig_shared_region);
@@ -797,6 +832,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     /* And then we mark as not ready */
                     clean_signatures(lib_shared_region,sig_shared_region);
                 }
+
+                /* And then we mark as not ready */
+                clean_signatures(lib_shared_region, sig_shared_region);
+
                 break;
             }
 
@@ -815,6 +854,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
             /* And then we mark as not ready */
             if (master) clean_signatures(lib_shared_region,sig_shared_region);
+
+            /* And then we mark as not ready */
+            clean_signatures(lib_shared_region, sig_shared_region);
 
             break; // SIGNATURE_STABLE
 
