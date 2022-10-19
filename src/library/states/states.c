@@ -536,7 +536,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 			/* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
-
             if (result == EAR_NOT_READY)
             {
                 if (!lib_shared_region->master_ready) {
@@ -545,9 +544,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 return;
             }
 
-
             // Both loop_signature and lib_shared_region->job_signature have the same data:
-	          compute_per_process_and_job_metrics(&loop_signature);
+            compute_per_process_and_job_metrics(&loop_signature);
+            if (VERB_ON(2) && master) {
+                verbose(2, "Signature after compute_per_process_and_job_metrics: ");
+                signature_print_simple_fd(verb_channel, &loop_signature);
+                verbose(2, "\n");
+            }
 
 
             /* Included for dynais test */
@@ -576,13 +579,16 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             sig_ready[curr_pstate] = 1;
 
-
-			      /* ******************* MOVED **********************
+            /* ******************* MOVED **********************
              * Now we compute the JOB signature for reporting. */
             if (master) {
-                metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature); // curr_loop.signature <- lib_shared_region->job_signature
-                signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
+                // curr_loop.signature <- lib_shared_region->job_signature
+                metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature);
+
+                // lib_shared_region->job_signature <- curr_loop.signature
+                signature_copy(&lib_shared_region->job_signature, &curr_loop.signature);
             }
+
             /* This function takes into account if we are using or not the whole node. */
             signature_t norm_signature;
             adapt_signature_to_node(&norm_signature, &lib_shared_region->job_signature, ratio_PPN);
@@ -591,7 +597,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
-             * the policy will compute the average if needed */
+             * the policy will compute the average if needed. */
+            if (VERB_ON(2) && master) {
+                verbose(2, "Signature passed to policy: ");
+                signature_print_simple_fd(verb_channel, &norm_signature);
+                verbose(2, "\n");
+            }
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
 
             /* Accumulate statistics of savings */

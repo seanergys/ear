@@ -1215,7 +1215,7 @@ void ear_init()
                     }
 
                     // Checking GPU support compatibility with EARD
-                    uint eard_supports_gpu = eards_gpu_support();
+                    uint eard_supports_gpu = gpu_is_supported(); // eards_gpu_support();
                     if (lib_supports_gpu != eard_supports_gpu) {
                         verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Check your EAR installation.",
                                 COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);
