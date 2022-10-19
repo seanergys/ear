@@ -36,7 +36,6 @@
 typedef struct apis_info_s {
 	ctx_t c;
 	uint api;
-	uint working;
 	uint granularity;
 	uint devs_count;
 } apis_info_t;
@@ -88,15 +87,7 @@ typedef struct metrics_diff_s {
 	gpu_t  *gpu_diff;
 } metrics_diff_t;
 
-state_t metrics_apis_init(topology_t *tp, uint eard, metrics_apis_t **m);
-
-state_t metrics_apis_dispose();
-
-state_t metrics_apis_print();
-
-state_t metrics_read_alloc(metrics_read_t *mr);
-
-state_t metrics_read_free(metrics_read_t *mr);
+state_t metrics_init(topology_t *tp, uint eard, metrics_apis_t **m);
 
 state_t metrics_read(metrics_read_t *mr);
 
@@ -104,12 +95,8 @@ state_t metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
 
 state_t metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
-state_t metrics_diff_alloc(metrics_diff_t *md);
+state_t metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD);
 
-state_t metrics_diff_free(metrics_read_t *md);
+state_t metrics_data_print(metrics_diff_t *mrD);
 
-state_t metrics_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
-
-state_t metrics_diff_print(metrics_diff_t *mrD);
-
-#endif //METRICS_H
+#endif //TEST_H
