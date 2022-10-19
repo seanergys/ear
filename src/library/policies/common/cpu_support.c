@@ -233,6 +233,12 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
                 COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
         return 0;
     }
+
+#if FAKE_SIGNATURES_DIFFERENT
+        verbose_master(2, "Signatures different fakely forced.");
+        return 1;
+#endif
+
 	/* If one of them is doing some computation, we check. */
     if ((s1->GBS > phases_limits.gbs_busy_waiting) || (s2->GBS > phases_limits.gbs_busy_waiting)){
 				/* If the CPI is different we check if the classification is also different */
@@ -280,7 +286,7 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
 
 
 #if USE_GPUS
-    for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
+    for (int i = 0; i< s1->gpu_sig.num_gpus; i ++){
         //if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)){ 
         if (abs((int)s1->gpu_sig.gpu_data[i].GPU_util - (int) s2->gpu_sig.gpu_data[i].GPU_util) > 10){
           verbose_master(2, "GPU util[%d] %lu/%lu", i, s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util);

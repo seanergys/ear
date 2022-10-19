@@ -1409,7 +1409,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             char sig_to_vrb[128];
 			// signature_print_simple_fd(verb_channel, metrics);
             signature_to_str(metrics, sig_to_vrb, sizeof(sig_to_vrb));
-			verbose(2, "Signature computed: %s", sig_to_vrb);
+			verbose(0, "Signature computed: %s", sig_to_vrb);
 		}
 	}
 

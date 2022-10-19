@@ -61,6 +61,7 @@
                           // instead of the deprecated frequency API.
 #define VERBOSE_WARN    2 // Verbose level for warning messages.
 #define VERB_SAV_PEN    3 // Verbose level for saving and penalty estimation.
+#define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
 #if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
 #endif
@@ -546,12 +547,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             // Both loop_signature and lib_shared_region->job_signature have the same data:
             compute_per_process_and_job_metrics(&loop_signature);
-            if (VERB_ON(2) && master) {
-                verbose(2, "Signature after compute_per_process_and_job_metrics: ");
-                signature_print_simple_fd(verb_channel, &loop_signature);
-                verbose(2, "\n");
-            }
+            if (VERB_ON(VERB_SIGN_TRACK) && master) {
+                char sig_to_vrb[128];
+                signature_to_str(&loop_signature, sig_to_vrb, sizeof(sig_to_vrb));
 
+                verbose(0, "Signature after CPU power model projection: %s", sig_to_vrb);
+            }
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -598,11 +599,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
              * the policy will compute the average if needed. */
-            if (VERB_ON(2) && master) {
-                verbose(2, "Signature passed to policy: ");
-                signature_print_simple_fd(verb_channel, &norm_signature);
-                verbose(2, "\n");
+            if (VERB_ON(VERB_SIGN_TRACK) && master) {
+
+                char sig_to_vrb[128];
+                signature_to_str(&norm_signature, sig_to_vrb, sizeof(sig_to_vrb));
+
+                verbose(0, "Signature %s will be passed to the policy.", sig_to_vrb);
             }
+
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
 
             /* Accumulate statistics of savings */
