@@ -341,7 +341,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /***************************************************************************************************/
 
     sig_shared_region[my_node_id].iterations++;
-    signature_t check_signature;
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 

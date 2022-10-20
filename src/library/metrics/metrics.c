@@ -1349,10 +1349,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
 		metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
     /* TPI normalized by total instructions */
-	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
-			metrics->instructions);
+	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
 	}
-  verbose_master(TPI_DEBUG, "GBGS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
+  verbose_master(TPI_DEBUG, "GBS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 
   #if USE_CUPTI
   if (read_cupti_metrics){
@@ -1360,15 +1359,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     verbose_master(VERBOSE_CUPTI, "GPU PROC data for master: %s", gpu_proc_buffer);
   }
   #endif
-
-    } else {
-        bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
-
-        metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
-
-        /* TPI normalized by total (local) instructions */
-        metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
-    }
 
 	/* Per process IO data */
 	io_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
