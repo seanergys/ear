@@ -1273,7 +1273,7 @@ ull metrics_vec_inst(signature_t *metrics)
 	return fops;
 }
 
-void copy_node_data(signature_t *dest,signature_t *src)
+void copy_node_data(signature_t *dest, signature_t *src)
 {
 	dest->DC_power	=	src->DC_power;
 	dest->DRAM_power=	src->DRAM_power;
@@ -1342,17 +1342,16 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	/* TPI and Memory bandwith */
 	if (master) {
 		bwidth_data_accum(bwidth_diff[APP], bwidth_diff[LOO], NULL, NULL);
-	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
-			metrics->instructions);
+
+	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
 	  metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
 	} else {
 		bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
 		metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
     /* TPI normalized by total instructions */
-	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx],
-			metrics->instructions);
+	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
 	}
-  verbose_master(TPI_DEBUG, "GBGS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
+  verbose_master(TPI_DEBUG, "GBS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 
   #if USE_CUPTI
   if (read_cupti_metrics){
@@ -1360,7 +1359,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     verbose_master(VERBOSE_CUPTI, "GPU PROC data for master: %s", gpu_proc_buffer);
   }
   #endif
-
 
 	/* Per process IO data */
 	io_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
@@ -1379,7 +1377,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 	}
 
-	double iogb = (double) metrics_io_diff[io_app_loop_idx].rchar / (double) (1024*1024) + (double) metrics_io_diff[io_app_loop_idx].wchar/(double)(1024*1024);
+	double iogb = (double) metrics_io_diff[io_app_loop_idx].rchar / (double) (1024 * 1024) +
+    (double) metrics_io_diff[io_app_loop_idx].wchar / (double) (1024 * 1024);
 
 	metrics->IO_MBS = iogb/time_s;
     #if 0
@@ -1396,21 +1395,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		if (is_mpi_enabled()) {
 			double mpi_time_perc = 0.0;
 			for (int i = 0; i < lib_shared_region->num_processes; i++) {
+
 				ullong mpi_time_usecs = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].mpi_time;
 				ullong exec_time_usecs = ear_max(((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].exec_time, 1);
 
-#if 0
-				double local_mpi_time_perc;
-				double local_mpi_time_perc_test = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].perc_mpi;
-				if ((metrics_mpi_info[sign_app_loop_idx])[i].mpi_time > 0) {
-					local_mpi_time_perc = (double) (mpi_time_usecs * 100.0 / exec_time_usecs);
-				}
-				else {
-					local_mpi_time_perc = 0;
-				}
-#endif
-				// The percentage of time spent in MPI calls is computed on
-				// metrics_[partial|global]_stop, so we can avoid the above code.
+				// The percentage of time spent in MPI calls is computed on metrics_[partial|global]_stop.
 				double local_mpi_time_perc = ((mpi_information_t *) metrics_mpi_info[sign_app_loop_idx])[i].perc_mpi;
 
 				sig_shared_region[i].mpi_info.perc_mpi = local_mpi_time_perc;
@@ -1426,6 +1415,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			}
 
 			metrics->perc_MPI = mpi_time_perc / lib_shared_region->num_processes;
+
 		} else { // MPI not enabled
 			metrics->perc_MPI = 0.0;
 		}
@@ -1451,8 +1441,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		metrics->PCK_power   = energy_cpu_compute_power(metrics->PCK_power, time_s);
 		metrics->DRAM_power  = energy_cpu_compute_power(metrics->DRAM_power, time_s);
 		metrics->EDP = time_s * time_s * metrics->DC_power;
-		debug("computing dram power %.2lf", metrics->DRAM_power);
-		debug("computing pck power %.2lf", metrics->PCK_power);
+
+		debug("computed dram power %.2lf", metrics->DRAM_power);
+		debug("computed pck power %.2lf", metrics->PCK_power);
 
 #if USE_GPUS
         /* GPUS */
@@ -1468,51 +1459,55 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
             metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
             metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
-        }	
+        }
 #endif
 
 	} else {
-		copy_node_data(metrics,&lib_shared_region->node_signature);
+        // Copies DC, DRAM, PCK, avg_f, avg_imc_f, GBS and TPI
+		copy_node_data(metrics, &lib_shared_region->node_signature);
 	}
 
 	/* Copying my info in the shared signature */
 	ssig_from_signature(&sig_shared_region[my_node_id].sig, metrics);
 
 	/* If I'm the master, I have to copy in the special section */
-	if (master){
-		signature_copy(&lib_shared_region->node_signature,metrics);
-		signature_copy(&lib_shared_region->job_signature,metrics);
+	if (master) {
+		signature_copy(&lib_shared_region->node_signature, metrics);
+		signature_copy(&lib_shared_region->job_signature, metrics);
 
 		if (VERB_ON(2)) {
-			signature_print_simple_fd(2, metrics);
-			verbose_master(2," ");
+            char sig_to_vrb[128];
+			// signature_print_simple_fd(verb_channel, metrics);
+            signature_to_str(metrics, sig_to_vrb, sizeof(sig_to_vrb));
+			verbose(0, "Signature computed: %s", sig_to_vrb);
 		}
 	}
 
-	sig_shared_region[my_node_id].period = time_s;
-
+	sig_shared_region[my_node_id].period = time_s; // TODO: We can ommit this attribute because the shared signature has this metric.
 
 	update_earl_node_mgr_info();
 
 	debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
-	signature_ready(&sig_shared_region[my_node_id],0);
+	signature_ready(&sig_shared_region[my_node_id], 0);
 
-	verbose_master(INFO_METRICS + 1,
-			"End compute signature for (l. rank) %d. Period %lf secs",
-			my_node_id, sig_shared_region[my_node_id].period);
+    verbose_master(INFO_METRICS + 1,
+            "End compute signature for (l. rank) %d. Period %lf secs",
+            my_node_id, sig_shared_region[my_node_id].period);
 
 	if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) {
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
 
 	/* Compute and print the total savings */
-	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed){
+	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
+
 		float avg_esaving = sig_ext->saving / sig_ext->telapsed;
 		float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
 		float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
 		verbose_master(ENERGY_EFF_VERB, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
 		
     app_energy_saving.event = ENERGY_SAVING_AVG;
+
 		/* We will use freq for the energy saving */
 		app_energy_saving.freq = (llong)avg_esaving;
 		report_events(&rep_id, &app_energy_saving, 1);
@@ -1527,7 +1522,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	}
 
   /* Phases summary */
-  if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && (sig_ext != NULL)){
+  if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && (sig_ext != NULL)) {
     ullong ms_total = 0;
     timestamp currt;
 
@@ -1543,7 +1538,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         else if (policy_mem_bound) sig_ext->earl_phase[APP_COMP_MEM].elapsed += elapsed_comp;
         else                            sig_ext->earl_phase[APP_COMP_MIX].elapsed += elapsed_comp;
     }
-
 
     for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++) ms_total += sig_ext->earl_phase[ph].elapsed;
     for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++){
@@ -2221,4 +2215,3 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 		signature_copy(dest, &lib_shared_region->job_signature);
 	}
 }
-

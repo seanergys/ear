@@ -83,7 +83,6 @@ extern report_id_t rep_id;
     report_events(&rep_id, &curr_policy_event, 1); \
   }
 
-
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
 
@@ -957,13 +956,13 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     //  NEW CLASSIFY
     verbose_master(POLICY_PHASES, "------------- EARL phase classification ------------\n"
-            "I/O (3) vs. MPI (2): %u\n"
+            "%s\n"
             "Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u\n"
             "cpi_busy %.2f gbs_busy %.2f gflops_busy %.2f\n"
             "cpi_cpu_bound %.2f gbs_cpu_bound %.2f\n"
             "cpi_mem_bound %.2f gbs_mem_bound %.2f\n"
             "----------------------------------------------------",
-            earl_phase_classification, busy, iobound, mpibound, use_earl_phases,
+            phase_to_str(earl_phase_classification), busy, iobound, mpibound, use_earl_phases,
             phases_limits.cpi_busy_waiting, phases_limits.gbs_busy_waiting, phases_limits.gflops_busy_waiting,
             phases_limits.cpi_cpu_bound, phases_limits.gbs_cpu_bound,
             phases_limits.cpi_mem_bound, phases_limits.gbs_mem_bound);
@@ -1149,21 +1148,26 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
     return EAR_SUCCESS;
 }
 
-/* This function sets the default freq (only CPU) */
+/* This function sets the default freq for both (CPU and GPU policies). */
 state_t policy_set_default_freq(signature_t *sig)
 {
-    polctx_t *c=&my_pol_ctx;
-    state_t st;
     signature_t s;
+
     if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
+
 #if USE_GPUS
-    s.gpu_sig.num_gpus = c->num_gpus;
+    s.gpu_sig.num_gpus = my_pol_ctx.num_gpus;
 #endif
-    if (polsyms_fun.get_default_freq != NULL){
-        st = polsyms_fun.get_default_freq(c,&nf,sig);
-        policy_master_freq_selection(c,&s,&nf,&freqs_domain , &avg_nf, ALL_PROCESSES);
-        return st;
-    }else {
+
+    if (polsyms_fun.restore_settings != NULL) {
+
+        state_t st = polsyms_fun.restore_settings(&my_pol_ctx, sig, &nf);
+        if (state_ok(st)) {
+            return policy_master_freq_selection(&my_pol_ctx, &s, &nf, &freqs_domain, &avg_nf, ALL_PROCESSES);
+        } else {
+            return st;
+        }
+    } else {
         return EAR_ERROR;
     }
 }
@@ -1229,6 +1233,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 
     if (curr == NULL || prev == NULL) {
         *ok = 1;
+        // TODO: Should we report OPT_OK event value?
         return_msg(EAR_ERROR, Generr.input_null);
     }
 
@@ -1243,51 +1248,88 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
     /* Update node info */
     /* update_earl_node_mgr_info(); */
     nodemgr_get_num_jobs_attached(&jobs_in_node);
-    verbose_master(2,"There are %u jobs in the node", jobs_in_node);
-    if (jobs_in_node > 1){ 
+
+    // By now, only the master will reach this instruction.
+    verbose(2, "%sPOLICY OK%s There are %u jobs in the node", COL_BLU, COL_CLR, jobs_in_node);
+
+    if (jobs_in_node > 1) {
       verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
     }
     /* End update */
 
     /* estimate_power_and_gbs(curr,lib_shared_region,sig_shared_region, node_mgr_job_info, &new_sig, PER_JOB , -1); */
-    verbose_master(2, "Job's GB/s: %.2lf - Job's Power: %.2lf", curr->GBS, curr->DC_power);
+    verbose(3, "Job's GB/s: %.2lf - Job's Power: %.2lf", curr->GBS, curr->DC_power);
 
     if (polsyms_fun.ok != NULL) {
         /* We wait for node signature computation */
         if (!are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready)) {
             *ok = 1;
+
+            REPORT_OPT_ACCURACY(OPT_OK);
+            
+            verbose(2, "%sPOLICY OK%s Not all signatures are ready.", COL_GRE, COL_CLR);
+
             return EAR_SUCCESS;
         }
 
         pc_support_compute_next_state(c, &my_pol_ctx.app->pc_opt, curr);
 
         ret = polsyms_fun.ok(c, curr, prev, ok);
+
+        char *ok_color = COL_GRE;
+
         if (*ok == 0) {
-            REPORT_OPT_ACCURACY(OPT_NOT_OK);
+            // REPORT_OPT_ACCURACY(OPT_NOT_OK);
+
             policy_new_phase(last_earl_phase_classification, curr);
+
             last_earl_phase_classification = APP_COMP_BOUND;
             last_gpu_state = _GPU_Comp;
-            timestamp_getfast(&init_last_comp);
-        }
 
-        #if 0
+            timestamp_getfast(&init_last_comp);
+
+            ok_color = COL_RED;
+        }
+        verbose(2, "%sPOLICY OK%s Decided by the policy plug-in.", ok_color, COL_CLR);
+
+#if 0
         /* Migrated to states */
         /* And then we mark as not ready */
+        verbose(3, "%sPOLICY OK%s Cleaning signatures...", COL_BLU, COL_CLR);
         clean_signatures(lib_shared_region,sig_shared_region);
-        #endif
+#endif
 
         // TODO By now, retg is not used since its definition
         if ((ret != EAR_SUCCESS) || (retg != EAR_SUCCESS)) {
+
+            uint opt_acc_val = (*ok) ? OPT_OK : OPT_NOT_OK;
+            REPORT_OPT_ACCURACY(opt_acc_val);
+
             return EAR_ERROR;
         }
     } else {
-        *ok=1;
+
+        *ok = 1;
+
+        verbose(2, "%sPOLICY OK%s The policy plug-in does not implement this method.", COL_GRE, COL_CLR);
     }
+
     /* If signatures are ok, not different phase, we compute the energy savings estimations */
-    if (!is_monitoring && *ok){
+    if (!is_monitoring && *ok) {
+
         compute_energy_savings(curr, prev);
-        if (sig_ext->saving < 0) *ok = 0;
+
+        if (sig_ext->saving < 0) {
+
+          *ok = 0;
+
+          verbose(2, "%sPOLICY OK%s We are not saving energy.", COL_RED, COL_CLR);
+        }
     }
+
+    // We finally report the OPT_ACCURACY
+    uint opt_acc_val = (*ok) ? OPT_OK : OPT_NOT_OK;
+    REPORT_OPT_ACCURACY(opt_acc_val);
 
     return EAR_SUCCESS;
 }

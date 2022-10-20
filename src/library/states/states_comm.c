@@ -270,16 +270,16 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
 void state_report_traces(int master_rank, int my_rank,int lid, loop_t *lsig,ulong freq,ulong status)
 {
-    if (master_rank >= 0 && traces_are_on()){
+    if (master_rank >= 0 && traces_are_on()) {
         traces_new_signature(my_rank, lid, &lsig->signature);
         if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
-        traces_policy_state(my_rank, lid,status);
+        traces_policy_state(my_rank, lid, status);
     }
 }
 
-void state_report_traces_state(int master_rank, int my_rank,int lid,ulong status)
+void state_report_traces_state(int master_rank, int my_rank, int lid, ulong status)
 {
-    if (master_rank >= 0 && traces_are_on()) traces_policy_state(my_rank, lid,status);
+    if (master_rank >= 0 && traces_are_on()) traces_policy_state(my_rank, lid, status);
 }
 
 /* Auxiliary functions */

@@ -142,8 +142,8 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
     if (c == NULL) return EAR_ERROR;
 
 #if USE_GPUS
-    verbose_master(2,"Restaurando GPU freqs: restore settings");
-    for (i=0;i<my_sig->gpu_sig.num_gpus;i++){
+    verbose_master(2, "Restoring GPU freqs: restore settings");
+    for (i=0;i<my_sig->gpu_sig.num_gpus;i++) {
         util = my_sig->gpu_sig.gpu_data[i].GPU_util;
         tutil += util;
         if (util == 0){
