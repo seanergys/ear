@@ -832,9 +832,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     clean_signatures(lib_shared_region,sig_shared_region);
                 }
 
-                /* And then we mark as not ready */
-                clean_signatures(lib_shared_region, sig_shared_region);
-
                 break;
             }
 
@@ -853,9 +850,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
             /* And then we mark as not ready */
             if (master) clean_signatures(lib_shared_region,sig_shared_region);
-
-            /* And then we mark as not ready */
-            clean_signatures(lib_shared_region, sig_shared_region);
 
             break; // SIGNATURE_STABLE
 
