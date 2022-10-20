@@ -122,6 +122,86 @@ dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
 
+static uint *powermon_restore_cpufreq_list;
+
+/*************** To recover hardware settings **************/
+//#define POWERMON_RESTORE 1
+static void set_default_powermon_init()
+{
+  #if POWERMON_RESTORE
+  /* IMC freq */
+  verbose(VCONF, "Restoring IMC freq");
+  if (node_desc.vendor == VENDOR_INTEL){
+    mgt_imcfreq_set_auto(no_ctx);
+  }else if (node_desc.vendor == VENDOR_AMD){
+    mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+  }
+  #endif
+}
+
+/* from eard_node_services */
+extern metrics_t     mc;
+
+
+static void set_default_powermon_end(powermon_app_t *app, uint idle)
+{
+  #if POWERMON_RESTORE
+  /* End job but not idle */
+  if (!idle){
+    
+  }
+
+  /* Going to idle */
+  /* CPU freq */
+  if (idle) mgt_cpufreq_reset(no_ctx);
+
+  /* Idle governor */
+  char *cgov = app->governor.name;
+  if (strcmp(my_node_conf->idle_governor, "default") != 0){
+    cgov = my_node_conf->idle_governor;
+  }
+  uint gov;
+
+  verbose(VCONF, "Restoring to %s governor", cgov);
+  governor_toint(cgov, &gov);
+  if (idle){
+    mgt_cpufreq_governor_set(no_ctx, gov);
+  }else{
+    mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+    uint rest_pstate;
+    mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+    verbose(VCONF, "Restoring to CPU freq %.2f GHz pstate %u", (float)app->current_freq/1000000, rest_pstate);
+    fill_cpufreq_list(&app->plug_mask, mc.devs_count, rest_pstate, ps_nothing, powermon_restore_cpufreq_list);
+    mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+  }
+
+
+#if USE_GPUS
+  /* GPUs */
+  if (idle){ /* EARD is not aware of the GPUs used */
+    if (my_node_conf->gpu_def_freq > 0){
+      verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)my_node_conf->gpu_def_freq/1000000);
+      gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
+    }
+  }
+#endif
+  if (idle){
+    /* IMC freq : It's already done at init, but it's included here for simplicity*/
+    verbose(VCONF, "Restoring IMC freq");
+    if (node_desc.vendor == VENDOR_INTEL){
+      mgt_imcfreq_set_auto(no_ctx);
+    }else if (node_desc.vendor == VENDOR_AMD){
+      mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+    }
+  }
+  #endif
+
+}
+/***********************************************************/
+
+
+
+
 /***************** Job verification ***********************/
 static int is_running(char * status_text)
 {
@@ -1191,6 +1271,11 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
     ulong f;
     uint user_type;
     if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
+
+    /* Resets IMC */
+    set_default_powermon_init();
+
+
     verbose(VJOBPMON , "*******************");
     verbose(VJOBPMON, "%spowermon_new_job (%lu,%lu)%s", COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
     if (powermon_is_idle()) powercap_idle_to_run();
@@ -1306,10 +1391,10 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     set_null_loop(&pmapp->last_loop);
     //save_eard_conf(&eard_dyn_conf);
 
+#if 0
     /* Restore Frequency and Governor: PENDING. We must restore GPU? We must do using the affinity mask*/
     verbose(VJOBPMON, "restoring governor %s", pmapp->governor.name);
     set_governor(&pmapp->governor);
-#if 0
     if (strcmp(pmapp->governor.name, "userspace") == 0) {
         frequency_set_all_cpus(pmapp->current_freq);
     }
@@ -1329,9 +1414,12 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     if (powermon_is_idle()) { 
         powercap_run_to_idle();
-        if (strcmp(my_node_conf->idle_governor, "default") != 0){
-        }
-    }
+
+        /* summary is a copy of the last context */
+        set_default_powermon_end(&summary, 1);
+
+    }else set_default_powermon_end(&summary, 0);
+
     verbose(VJOBPMON+1,"Cleaning job from node_mgr");
     nodemgr_clean_job(jid, sid);
     clean_job_area(ID);
@@ -1905,6 +1993,8 @@ void *eard_power_monitoring(void *noinfo)
 
     powermon_freq_list   = frequency_get_freq_rank_list();
     powermon_num_pstates = frequency_get_num_pstates();
+
+    powermon_restore_cpufreq_list = calloc(mc.devs_count, sizeof(uint));
 
 #if USE_GPUS
     if (gpu_mgr_init() != EAR_SUCCESS){

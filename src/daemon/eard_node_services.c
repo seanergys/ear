@@ -61,6 +61,9 @@
 #define ACK_LOCAL_FD            1
 #define NUM_LOCAL_FDS           2
 
+
+void set_default_management_init();
+
 typedef struct local_connection{
 	ulong jid,sid,lid,anonymous;
 	int fds[NUM_LOCAL_FDS];
@@ -108,7 +111,7 @@ static uint             num_local_con=0;
 static char          big_chunk1[16384];
 static char          big_chunk2[16384];
 static wide_buffer_t wb;
-static metrics_t     mc;
+       metrics_t     mc;
 static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
@@ -160,6 +163,9 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(    cpufreq_init(no_ctx));
     sf(    imcfreq_init(no_ctx));
     sf(     bwidth_init(no_ctx));
+
+    set_default_management_init();
+
     #if USE_GPUS
     sf(    gpu_init(no_ctx));
     #endif

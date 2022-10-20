@@ -601,9 +601,11 @@ state_t policy_init()
     policy_last_local_signature.gpu_sig.num_gpus  = metrics_gpus_get(MET_GPU)->devs_count;
     policy_last_global_signature.gpu_sig.num_gpus = policy_last_local_signature.gpu_sig.num_gpus;
 #endif
+    #if 0
     if (arch_desc.top.vendor == VENDOR_AMD) {
         enable_load_balance = 0;
     }
+    #endif
 
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_ENABLE_LOAD_BALANCE will be removed, in the next release.
