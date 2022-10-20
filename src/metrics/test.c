@@ -72,6 +72,8 @@ state_t metrics_init(topology_t *tp, uint eard)
     sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count));
     //sa(   rapl_count_devices(&m.rap.c, &m.rap.devs_count));
     sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count));
+    // Getting granularity (or scope)
+    bwidth_get_granularity(no_ctx, &m.ram.gran);
 
     apis_tostr(m.cpu.api, m.cpu.api_str, 32);
     apis_tostr(m.imc.api, m.imc.api_str, 32);
@@ -82,15 +84,16 @@ state_t metrics_init(topology_t *tp, uint eard)
     //apis_tostr(m.rap.api, m.rap.api_str, 32);
     apis_tostr(m.cpi.api, m.cpi.api_str, 32);
     apis_tostr(m.gpu.api, m.gpu.api_str, 32);
+    
+    granularity_tostr(m.ram.gran, m.ram.gran_str, 32);
    
-    sprintf(m.cpu.granul_str, "threads");
-    sprintf(m.imc.granul_str, "sockets");
-    sprintf(m.ram.granul_str, "sockets");
-    sprintf(m.cch.granul_str, "process");
-    sprintf(m.flp.granul_str, "process");
-    sprintf(m.tmp.granul_str, "sockets");
-    sprintf(m.cpi.granul_str, "process");
-    sprintf(m.gpu.granul_str, "gpus");
+    sprintf(m.cpu.gran_str, "threads");
+    sprintf(m.imc.gran_str, "sockets");
+    sprintf(m.cch.gran_str, "process");
+    sprintf(m.flp.gran_str, "process");
+    sprintf(m.tmp.gran_str, "sockets");
+    sprintf(m.cpi.gran_str, "process");
+    sprintf(m.gpu.gran_str, "gpus");
  
 	return EAR_SUCCESS;
 }
@@ -197,61 +200,6 @@ state_t metrics_diff_print(metrics_diff_t *mrD)
 #include <management/management.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
-static metrics_apis_t *mets;
-static int print;
-
-state_t monitor_apis_init(void *whatever)
-{
-	sa(topology_init(&tp));
-
-	//eards_connection();
-	
-	// Metrics
-	sa(metrics_apis_init(&tp, EARD, &mets));
-	sa(metrics_apis_tostr());
-	
-	sa(metrics_read_alloc(&mr1));
-	sa(metrics_read_alloc(&mr2));
-	sa(metrics_diff_alloc(&mrD));
-	sa(metrics_read(&mr1));
-	
-	return EAR_SUCCESS;
-}
-
-state_t monitor_apis_update(void *whatever)
-{
-	if (print) {
-		sa(metrics_read_copy(&mr2, &mr1, &mrD));
-		sa(metrics_diff_print(&mrD));
-        printline();
-	}
-
-	return EAR_SUCCESS;
-} 
-
-int init()
-{
-    print = 1;
-
-	return 0;
-}
-
-int is(char *buf, char *string)
-{
-    return strcmp(buf, string) == 0;
-}
-
-int main(int argc, char *argv[])
-{
-	char cmnd[SZ_PATH];
-
-	while(1)
-    {
-    printline();
-    scanf("%s", cmnd);
-
-    if (is(cmnd, "connect")) {
-        eards_connection();
     } else if (is(cmnd, "disconnect")) {
         eards_disconnect();
     } else if (is(cmnd, "init")) {
@@ -302,19 +250,21 @@ static state_t monitor_apis_update(void *whatever)
     tprintf("API||Internal||#Devs||Granularity");
     tprintf("---||--------||-----||-----------");
  
-    tprintf("CPUFREQ||%s||%u||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.granul_str);
-    tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.granul_str);
-    tprintf("BWIDTH ||%s||%u||%s", m.ram.api_str, m.ram.devs_count, m.ram.granul_str);
-    tprintf("FLOPS  ||%s||%u||%s", m.flp.api_str, m.cpu.devs_count, m.flp.granul_str);
-    tprintf("CACHE  ||%s||%u||%s", m.cch.api_str, m.cch.devs_count, m.cch.granul_str);
-    tprintf("TEMP   ||%s||%u||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.granul_str);
-    tprintf("CPI    ||%s||%u||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.granul_str);
-    tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.granul_str);
+    tprintf("CPUFREQ||%s||%u||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str);
+    tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str);
+    tprintf("BWIDTH ||%s||%u||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str);
+    tprintf("FLOPS  ||%s||%u||%s", m.flp.api_str, m.cpu.devs_count, m.flp.gran_str);
+    tprintf("CACHE  ||%s||%u||%s", m.cch.api_str, m.cch.devs_count, m.cch.gran_str);
+    tprintf("TEMP   ||%s||%u||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str);
+    tprintf("CPI    ||%s||%u||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str);
+    tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str);
     printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n");
     cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel);
     printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n");
     imcfreq_data_print( mrD.imc_diff, &mrD.imc_avrg, verb_channel);
-    printf("—— temp ———————————————————————————————————————————————————————————————————————\n");
+    printf("—— bandwidth ——————————————————————————————————————————————————————————————————\n");
+     bwidth_data_print( mrD.ram_diff,  mrD.ram_avrg, verb_channel);
+    printf("—— temperature ————————————————————————————————————————————————————————————————\n");
        temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel);
 
     return EAR_SUCCESS;
@@ -322,6 +272,8 @@ static state_t monitor_apis_update(void *whatever)
 
 int main(int argc, char *argv[])
 {
+    //eards_connection();
+
 	// Monitoring   
 	sa(monitor_init());
 	suscription_t *sus = suscription();

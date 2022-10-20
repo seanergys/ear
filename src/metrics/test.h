@@ -37,8 +37,8 @@ typedef struct apis_info_s {
 	ctx_t c;
 	uint api;
     char api_str[32];
-	uint granul;
-	char granul_str[32];
+	uint gran;
+	char gran_str[32];
 	uint devs_count;
 } apis_info_t;
 
