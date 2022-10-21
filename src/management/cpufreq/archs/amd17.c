@@ -755,9 +755,15 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *_c, uint pstate_index, int cpu)
 	}
 	// Step 2 (all CPUs to PX)
 	for (c = 0; c < tp.cpu_count; ++c) {
-		if (state_fail(s1 = set_pstate(c, pstate_index, 0, 1))) {
-			s2 = s1;
-		}
+    	if (pstate_index == 0 && pss_nominal) {
+		    if (state_fail(s1 = set_pstate0(c))) {
+			    s2 = s1;
+		    }
+        } else {
+		    if (state_fail(s1 = set_pstate(c, pstate_index, 0, 1))) {
+			    s2 = s1;
+		    }
+        }
 	}
 	return s2;
 }
