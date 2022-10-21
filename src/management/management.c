@@ -290,37 +290,16 @@ int management_rpcs(uint rpc_id, size_t rpc_size, int fd_req, int fd_ack)
 int main(int argc, char *argv[])
 {
     topology_t tp;
-    int eard = 0;
 
-    eards_connection();
-
-    if (argc > 1) {
-        eard = atoi(argv[1]);
-    }
-   
     topology_init(&tp);
 
-    management_init(&tp, eard);
-    
-    mgt_gpu_is_supported();
-    #if 0
-    ulong array[4] = { 240000, 240000, 100, 100 };
-    mgt_gpu_freq_limit_set(no_ctx, array);
-    
-    mgt_gpu_freq_limit_get_current(no_ctx, array);
+    management_init(&tp, 0);
 
-    mgt_gpu_freq_limit_get_default(no_ctx, array);
+    mgt_cpufreq_set_current(no_ctx, (uint) atoi(argv[1]), all_cpus);
+   
+    uint list[512] = { 0 }; 
+    //mgt_cpufreq_set_current_list(no_ctx, list);
     
-    mgt_gpu_freq_limit_set(no_ctx, array);
-    
-    mgt_gpu_freq_limit_get_current(no_ctx, array);
-    
-    mgt_gpu_freq_limit_get_max(no_ctx, array);
-    #endif
-    sleep(5);
-    
-    mgt_gpu_is_supported();
-
     sleep(100);
  
     return 0;

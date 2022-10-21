@@ -42,7 +42,7 @@ state_t metrics_init(topology_t *tp, uint eard)
       cache_load(tp, eard);
       flops_load(tp, eard);
        temp_load(tp      );
-       //rapl_load(tp      );
+       rapl_load(tp      );
         cpi_load(tp, eard);
 	    gpu_load(    eard);
 
@@ -52,7 +52,7 @@ state_t metrics_init(topology_t *tp, uint eard)
       cache_get_api(&m.cch.api);
       flops_get_api(&m.flp.api);
        temp_get_api(&m.tmp.api);
-       //rapl_get_api(&m.rap.api);
+       rapl_get_api(&m.rap.api);
         cpi_get_api(&m.cpi.api);
 	    gpu_get_api(&m.gpu.api);
 
@@ -62,7 +62,7 @@ state_t metrics_init(topology_t *tp, uint eard)
     sa(  cache_init(&m.cch.c));
     sa(  flops_init(&m.flp.c));
     sa(   temp_init(&m.tmp.c));
-    //sa(   rapl_init(&m.rap.c));
+    sa(   rapl_init(&m.rap.c));
     sa(    cpi_init(&m.cpi.c));
 	sa(    gpu_init(&m.gpu.c));
 	// Count (cache, flops and cpi does not have yet)
@@ -70,7 +70,7 @@ state_t metrics_init(topology_t *tp, uint eard)
 	sa(imcfreq_count_devices(&m.imc.c, &m.imc.devs_count));
     sa( bwidth_count_devices(&m.ram.c, &m.ram.devs_count));
     sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count));
-    //sa(   rapl_count_devices(&m.rap.c, &m.rap.devs_count));
+    sa(   rapl_count_devices(&m.rap.c, &m.rap.devs_count));
     sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count));
     // Getting granularity (or scope)
     bwidth_get_granularity(no_ctx, &m.ram.gran);
@@ -81,7 +81,7 @@ state_t metrics_init(topology_t *tp, uint eard)
     apis_tostr(m.cch.api, m.cch.api_str, 32);
     apis_tostr(m.flp.api, m.flp.api_str, 32);
     apis_tostr(m.tmp.api, m.tmp.api_str, 32);
-    //apis_tostr(m.rap.api, m.rap.api_str, 32);
+    apis_tostr(m.rap.api, m.rap.api_str, 32);
     apis_tostr(m.cpi.api, m.cpi.api_str, 32);
     apis_tostr(m.gpu.api, m.gpu.api_str, 32);
     
@@ -92,6 +92,7 @@ state_t metrics_init(topology_t *tp, uint eard)
     sprintf(m.cch.gran_str, "process");
     sprintf(m.flp.gran_str, "process");
     sprintf(m.tmp.gran_str, "sockets");
+    sprintf(m.rap.gran_str, "sockets");
     sprintf(m.cpi.gran_str, "process");
     sprintf(m.gpu.gran_str, "gpus");
  
@@ -107,7 +108,7 @@ state_t metrics_read(metrics_read_t *mr)
     sa( bwidth_read(&m.ram.c,  mr->ram));
     sa(  cache_read(&m.cch.c, &mr->cch));
     sa(  flops_read(&m.flp.c, &mr->flp));
-    //sa(   rapl_read(&m.rap.c,  mr->rap));
+    sa(   rapl_read(&m.rap.c,  mr->rap));
     sa(    cpi_read(&m.cpi.c, &mr->cpi));
     sa(    gpu_read(&m.gpu.c,  mr->gpu));
 
@@ -123,7 +124,7 @@ state_t metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
     sa( bwidth_read_diff(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg));
     sa(  cache_read_diff(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg));
     sa(  flops_read_diff(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg));
-    //sa(   rapl_read_diff(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
+    sa(   rapl_read_diff(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
     sa(    cpi_read_diff(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg));
 	sa(    gpu_read_diff(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                ));
 
@@ -140,7 +141,7 @@ state_t metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff
     sa(  cache_read_copy(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg));
     sa(  flops_read_copy(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg));
     sa(   temp_read     (&m.tmp.c,                              mrD->tmp_diff, &mrD->tmp_avrg));
-    //sa(   rapl_read_copy(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
+    sa(   rapl_read_copy(&m.rap.c,  mr2->rap,  mr1->rap,        mrD->rap_diff                ));
     sa(    cpi_read_copy(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg));
 	sa(    gpu_read_copy(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                ));
 
@@ -154,43 +155,26 @@ state_t metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_dif
     sa(cpufreq_data_alloc(&mr1->cpu, empty));
     sa(imcfreq_data_alloc(&mr1->imc, empty));
     sa( bwidth_data_alloc(&mr1->ram));
-    //sa(   rapl_data_alloc(&mr1->rap));
+    sa(   rapl_data_alloc(&mr1->rap));
     sa(    gpu_data_alloc(&mr1->gpu));
     // Read 2
     sa(cpufreq_data_alloc(&mr2->cpu, empty));
     sa(imcfreq_data_alloc(&mr2->imc, empty));
     sa( bwidth_data_alloc(&mr2->ram));
-    //sa(   rapl_data_alloc(&mr2->rap));
+    sa(   rapl_data_alloc(&mr2->rap));
     sa(    gpu_data_alloc(&mr2->gpu));
     // Diff
     sa(cpufreq_data_alloc(empty, &mrD->cpu_diff));
     sa(imcfreq_data_alloc(empty, &mrD->imc_diff));
     sa(   temp_data_alloc(&mrD->tmp_diff));
-    //sa(   rapl_data_alloc(&mrD->rap_diff));
+    sa(   rapl_data_alloc(&mrD->rap_diff));
     sa(    gpu_data_alloc(&mrD->gpu_diff));
     // Data registers
     dreg_init(&mrD->imc_dreg, sizeof(ullong)*2);
     dreg_init(&mrD->tmp_dreg, sizeof(ullong)*2);
+    dreg_init(&mrD->rap_dreg, sizeof(rapl_t)*2);
 
     return EAR_SUCCESS;
-}
-
-state_t metrics_diff_print(metrics_diff_t *mrD)
-{
-	cpufreq_data_print( mrD->cpu_diff, mrD->cpu_avrg, verb_channel);
-	imcfreq_data_print( mrD->imc_diff,&mrD->imc_avrg, verb_channel);
-       temp_data_print( mrD->tmp_diff, mrD->tmp_avrg, verb_channel);
-
-    dreg_add(&mrD->imc_dreg, mrD->imc_diff);
-    dreg_add(&mrD->tmp_dreg, mrD->tmp_diff);
-    //dreg_add(&mrD->rap_dreg, mrD->rap_diff);
-
-    // Printing data registers
-    dreg_print(&mrD->imc_dreg, DREG_STYLE_CSV, "!*llu", verb_channel); 
-    dreg_print(&mrD->tmp_dreg, DREG_STYLE_CSV, "!*llu", verb_channel); 
-    //dreg_print(&mrD->rap_dreg, DREG_STYLE_CSV, "!llu|llu|-llu|llu|llu|-llu", verb_channel); 
-
-	return EAR_SUCCESS;
 }
 
 #if 0
@@ -266,6 +250,11 @@ static state_t monitor_apis_update(void *whatever)
      bwidth_data_print( mrD.ram_diff,  mrD.ram_avrg, verb_channel);
     printf("—— temperature ————————————————————————————————————————————————————————————————\n");
        temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel);
+    printf("—— rapl        ————————————————————————————————————————————————————————————————\n");
+       rapl_data_print( mrD.rap_diff,                verb_channel);
+    
+    dreg_add  (&mrD.rap_dreg, mrD.rap_diff);
+    dreg_print(&mrD.rap_dreg, DREG_STYLE_CSV, "!llu|-llu|-llu|llu|-llu|-llu", verb_channel);
 
     return EAR_SUCCESS;
 }

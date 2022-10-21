@@ -112,6 +112,7 @@ clean: clean.components rclean
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
+	@ $(MAKE) -C 'rapl'         $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'energy_cpu'   $* || exit

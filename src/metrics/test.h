@@ -25,7 +25,7 @@
 #include <common/utils/data_register.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/cpi/cpi.h>
-//#include <metrics/rapl/rapl.h>
+#include <metrics/rapl/rapl.h>
 #include <metrics/flops/flops.h>
 #include <metrics/cache/cache.h>
 #include <metrics/cpufreq/cpufreq.h>
@@ -49,7 +49,7 @@ typedef struct metrics_apis_s {
     apis_info_t cch; // cache
     apis_info_t flp; // flops
     apis_info_t tmp; // temp
-    //apis_info_t rap; // rapl
+    apis_info_t rap; // rapl
     apis_info_t cpi; // cpi
 	apis_info_t gpu; // gpu
 } metrics_apis_t;
@@ -61,7 +61,7 @@ typedef struct metrics_read_s {
     bwidth_t   *ram;
     cache_t     cch;
     flops_t     flp;
-    //rapl_t     *rap;
+    rapl_t     *rap;
     cpi_t       cpi;
 	gpu_t      *gpu;
 } metrics_read_t;
@@ -82,8 +82,8 @@ typedef struct metrics_diff_s {
     llong  *tmp_diff;
     llong   tmp_avrg;
     dreg_t  tmp_dreg;
-    //rapl_t *rap_diff;
-    //dreg_t  rap_dreg;
+    rapl_t *rap_diff;
+    dreg_t  rap_dreg;
     cpi_t   cpi_diff;
     double  cpi_avrg; // GPI
 	gpu_t  *gpu_diff;

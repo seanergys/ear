@@ -224,14 +224,11 @@ retry:
 }
 
 #if TEST
-int main(int argc, char *arg[])
+int main(int argc, char *argv[])
 {
-	uint args0[1] = { -1 };
-	uint reps0[1] = { -1 };
-	uint args1[2] = {  0, -1 };
-	uint reps1[2] = {  0, -1 };
-	uint args2[3] = {  0, 0, -1 };
-	uint reps2[3] = {  0, 0, -1 };
+	uint args[2] = {  0, -1 };
+	uint reps[2] = { -1, -1 };
+    int cpu = atoi(argv[1]);
 
 	state_t s;
 
@@ -243,79 +240,10 @@ int main(int argc, char *arg[])
 		serror("Failed during HSMP open");
 		return 0;
 	}
-
-	printf("-------------------------------------------------------------------------------\n");
-	// Testing sockets
-	args1[0] = 68;
-	reps1[0] = 0;
-
-	if (state_fail(s = hsmp_send(0, 0x01, args1, reps1))) {
-		serror("Failed during HSMP test");
-		return 0;
-	}
-	printf("Ping0 returned %d\n", reps1[0]);
-	printf("-------------------------------------------------------------------------------\n");
-	
-	// Getting firmware version
-	reps1[0] = 0;
-	
-	hsmp_send(0, 0x02, args0, reps1);
-	printf("Firmware returned %d\n", reps1[0]);
-	printf("-------------------------------------------------------------------------------\n");
-	
-	// Getting interface version
-	reps1[0] = 0;
-	
-	hsmp_send(0, 0x03, args0, reps1);
-	printf("Interface returned %d\n", reps1[0]);
-	printf("-------------------------------------------------------------------------------\n");
-	
-	// Asking frequency
-	reps2[0] = 0;
-	reps2[0] = 0;
-		
-	hsmp_send(0, 0x0f, args0, reps2);
-	printf("Frequency get returned %d/%d\n", reps2[0], reps2[1]);
-	printf("-------------------------------------------------------------------------------\n");
-	
-	// Setting frequency
-	args1[0] = 0;
-		
-	hsmp_send(0, 0x0d, args1, reps0);
-	printf("Frequency set returned nothing\n", reps2[0], reps2[1]);
-	printf("-------------------------------------------------------------------------------\n");
-	
-	// Asking frequency
-	reps2[0] = 0;
-	reps2[0] = 0;
-		
-	hsmp_send(0, 0x0f, args0, reps2);
-	printf("Frequency get returned %d/%d\n", reps2[0], reps2[1]);
-	printf("-------------------------------------------------------------------------------\n");
-
-	#if 0	
-	// Enabling ABP
-	hsmp_send(0, 0x0e, args0, reps0);
-	printf("0x0e answered\n");
-
-	ullong freqs[4];
-	memset(freqs, 0, sizeof(ullong)*4);
-
-	uint i;
-	uint j;
-	for (i = j = 0; i < 4; ++i, ++j) {
-		args1[0] = i;
-		hsmp_send(0, 0x0d, args1, reps0);
-		hsmp_send(0, 0x0f, args0, reps2);
-		if (i > 0 && reps2[0] == (uint) freqs[i-1]) {
-			--i;
-		} else {
-			printf("PS%d: answered %u/%u (%u intents)\n", i, reps2[0], reps2[1], j);
-			freqs[i] = (ullong) reps2[0];
-			j = 0;
-		}
-	}
-	#endif
+    
+    //args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | ((uint) atoi(argv[2]));
+    args[0] = (uint) atoi(argv[2]);
+    hsmp_send(tp.cpus[cpu].socket_id, 0x09, args, reps);
 
 	return 0;
 }
