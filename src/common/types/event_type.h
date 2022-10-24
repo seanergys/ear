@@ -52,6 +52,8 @@ typedef struct ear_event {
 #define POWER_SAVING_AVG        13
 #define PERF_PENALTY_AVG        14
 
+#define PHASE_SUMMARY_BASE      20
+
 /** EARD Init events. */
 #define PM_CREATION_ERROR       100
 #define APP_API_CREATION_ERROR  101

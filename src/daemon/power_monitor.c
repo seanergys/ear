@@ -153,7 +153,6 @@ static void set_default_powermon_init(powermon_app_t *app)
     governor_toint(cgov, &gov);
     mgt_cpufreq_governor_set_mask(no_ctx, gov, app->policy_mask);
 
-    uint app_pstate;
     mgt_cpufreq_get_index(no_ctx, app->policy_freq, &app_pstate, 1);
     verbose(VCONF, "Setting CPU freq %.2f GHz pstate %u", (float)app->policy_freq/1000000, app_pstate);
     fill_cpufreq_list(&app->policy_mask, mc.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
@@ -204,7 +203,6 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
     mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
   }
 
-
 #if USE_GPUS
   /* GPUs */
   if (idle && my_node_conf->gpu_def_freq){ /* EARD is not aware of the GPUs used */
@@ -215,7 +213,6 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
     gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
   }
 #endif
-  }
   if (idle){
     /* IMC freq : It's already done at init, but it's included here for simplicity*/
     verbose(VCONF, "Restoring IMC freq");

@@ -227,6 +227,7 @@ static uint eard;
 
 /* Energy saving app event */
 static ear_event_t app_energy_saving;
+static ear_event_t app_phase_summary;
 extern report_id_t rep_id;
 
 
@@ -678,8 +679,11 @@ static void metrics_global_start()
     // Init energy savings fields
 	app_energy_saving.jid     = application.job.id;
 	app_energy_saving.step_id = application.job.step_id;
+  app_phase_summary.jid     = application.job.id;
+  app_phase_summary.step_id = application.job.step_id;
 
 	strcpy(app_energy_saving.node_id, application.node_id);
+	strcpy(app_phase_summary.node_id, application.node_id);
 
 	if (master)
 	{
@@ -1543,11 +1547,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     for (uint ph = 0; ph < EARL_BASIC_PHASES; ph ++){
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(PHASES_SUMMARY_VERB, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
+        app_phase_summary.event = PHASE_SUMMARY_BASE + ph;
+        app_phase_summary.freq  = sig_ext->earl_phase[ph].elapsed;
+        report_events(&rep_id, &app_phase_summary, 1);
       }
     }
     for (uint ph = EARL_BASIC_PHASES; ph < EARL_MAX_PHASES; ph++){
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(PHASES_SUMMARY_VERB, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
+        app_phase_summary.event = PHASE_SUMMARY_BASE + ph;
+        app_phase_summary.freq  = sig_ext->earl_phase[ph].elapsed;
+        report_events(&rep_id, &app_phase_summary, 1);
       }
     }
   }
