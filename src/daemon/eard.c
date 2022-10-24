@@ -138,7 +138,7 @@ int fd_rapl[MAX_PACKAGES];
 double rapl_pck_tdps[MAX_PACKAGES];
 double rapl_dram_tdps[MAX_PACKAGES];
 
-//#define EARD_RESTORE 1
+#define EARD_RESTORE 1
 
 /*************** To recover hardware settings **************/
 
@@ -162,7 +162,11 @@ static void set_default_management_exit()
   /* CPU freq */
   mgt_cpufreq_reset(no_ctx);
   /* IMC freq */
-  mgt_imcfreq_set_auto(no_ctx);
+  if (node_desc.vendor == VENDOR_INTEL){
+    mgt_imcfreq_set_auto(no_ctx);
+  }else if (node_desc.vendor == VENDOR_AMD){
+    mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+  }
   #endif
 
 }

@@ -125,8 +125,13 @@ cpu_set_t in_jobs_mask;
 static uint *powermon_restore_cpufreq_list;
 
 /*************** To recover hardware settings **************/
-//#define POWERMON_RESTORE 1
-static void set_default_powermon_init()
+#define POWERMON_RESTORE 1
+// app is the new job
+
+/* from eard_node_services */
+extern metrics_t     mc;
+extern metrics_t     ug;
+static void set_default_powermon_init(powermon_app_t *app)
 {
   #if POWERMON_RESTORE
   /* IMC freq */
@@ -136,20 +141,41 @@ static void set_default_powermon_init()
   }else if (node_desc.vendor == VENDOR_AMD){
     mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
   }
+
+  /* If policy_freq is zero, we don't have to change the current configuration */
+  if (app->policy_freq){
+
+    /* CPU freq and governor */
+    char *cgov="userspace";
+    uint gov, app_pstate;
+
+    verbose(VCONF, "Setting %s governor", cgov);
+    governor_toint(cgov, &gov);
+    mgt_cpufreq_governor_set_mask(no_ctx, gov, app->policy_mask);
+
+    uint app_pstate;
+    mgt_cpufreq_get_index(no_ctx, app->policy_freq, &app_pstate, 1);
+    verbose(VCONF, "Setting CPU freq %.2f GHz pstate %u", (float)app->policy_freq/1000000, app_pstate);
+    fill_cpufreq_list(&app->policy_mask, mc.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
+    mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+
+
+    /* GPU freq */
+    #if USE_GPUS
+    if (my_node_conf->gpu_def_freq > 0){
+        verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)my_node_conf->gpu_def_freq/1000000);
+        gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
+    }
+    #endif
+  }
   #endif
 }
 
-/* from eard_node_services */
-extern metrics_t     mc;
 
-
+// app is the finishing app
 static void set_default_powermon_end(powermon_app_t *app, uint idle)
 {
   #if POWERMON_RESTORE
-  /* End job but not idle */
-  if (!idle){
-    
-  }
 
   /* Going to idle */
   /* CPU freq */
@@ -166,8 +192,11 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
   governor_toint(cgov, &gov);
   if (idle){
     mgt_cpufreq_governor_set(no_ctx, gov);
-  }else{
+  }else if (app->policy_freq){
     mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+  }
+
+  if (app->policy_freq){
     uint rest_pstate;
     mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
     verbose(VCONF, "Restoring to CPU freq %.2f GHz pstate %u", (float)app->current_freq/1000000, rest_pstate);
@@ -178,13 +207,15 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
 #if USE_GPUS
   /* GPUs */
-  if (idle){ /* EARD is not aware of the GPUs used */
-    if (my_node_conf->gpu_def_freq > 0){
-      verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)my_node_conf->gpu_def_freq/1000000);
-      gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
-    }
+  if (idle && my_node_conf->gpu_def_freq){ /* EARD is not aware of the GPUs used */
+    ulong idle_gpu_freq;
+    /* We assume all the gpus are the same */
+    gpu_mgr_get_min(0, &idle_gpu_freq);
+    verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+    gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
   }
 #endif
+  }
   if (idle){
     /* IMC freq : It's already done at init, but it's included here for simplicity*/
     verbose(VCONF, "Restoring IMC freq");
@@ -968,7 +999,7 @@ void report_powermon_app(powermon_app_t *app) {
 
 policy_conf_t per_job_conf;
 
-policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, application_t *appID) {
+policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type, energy_tag_t *my_tag, application_t *appID) {
     policy_conf_t *my_policy;
     int p_id;
     if (appID == NULL) {
@@ -1079,13 +1110,13 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
             break;
     }
     if ((!appID->is_mpi) && (!my_cluster_conf.eard.force_frequencies)){
-        my_policy->p_state=frequency_closest_pstate(frequency_get_cpu_freq(0));
+        pmapp->policy_freq = 0;
+        my_policy->p_state = frequency_closest_pstate(frequency_get_cpu_freq(0));
         verbose(VJOBPMON,"Application is not using ear and force_frequencies=off, frequencies are not changed pstate=%u",my_policy->p_state);
 
     }else{
         /* We have to force the frequency */
         ulong f;
-        frequency_set_userspace_governor_all_cpus();
         f = frequency_pstate_to_freq(my_policy->p_state);
         cpu_set_t not_in_jobs_mask;
         powermon_update_node_mask(&in_jobs_mask);
@@ -1093,10 +1124,17 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
         uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
         uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
 
+        /* New, to be used in new function */
+        pmapp->policy_freq = f;
+        pmapp->policy_mask = not_in_jobs_mask;
+
+
+        #if !POWERMON_RESTORE
+        frequency_set_userspace_governor_all_cpus();
         /* Setting the default CPU freq for the new job */
         frequency_set_with_mask(&not_in_jobs_mask, f);
         verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)", my_policy->p_state, cpus_free, cpus_used);
-
+        /* Moved to powermon_init mgw configuration */
         /* Setting the default IMC freq by default in all the sockets */
         if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
             verbose(VJOBPMON, "Error when setting IMCFREQ by default");
@@ -1109,6 +1147,7 @@ policy_conf_t *configure_context(uint user_type, energy_tag_t *my_tag, applicati
             verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
         }
 #endif
+        #endif
     }
     appID->is_mpi = 0;
     debug("context configured");
@@ -1272,8 +1311,6 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
     uint user_type;
     if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
 
-    /* Resets IMC */
-    set_default_powermon_init();
 
 
     verbose(VJOBPMON , "*******************");
@@ -1307,7 +1344,10 @@ void powermon_new_job(powermon_app_t *pmapp,ehandler_t *eh, application_t *appID
     if (my_tag != NULL) print_energy_tag(my_tag);
     /* Given a user type, application, and energy_tag, my_policy is the cofiguration for this user and application */
     /* This function sets CPU frequency and GPu frequency */
-    my_policy = configure_context(user_type, my_tag, appID);
+    my_policy = configure_context(pmapp, user_type, my_tag, appID);
+
+    set_default_powermon_init(pmapp);
+
     verbose(VJOBPMON,"Node configuration for policy %u p_state %d th %lf is_mpi %d",my_policy->policy,my_policy->p_state,my_policy->settings[0], appID->is_mpi);
     /* Updating info in shared memory region */
     f = frequency_pstate_to_freq(my_policy->p_state);
@@ -1391,19 +1431,13 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     set_null_loop(&pmapp->last_loop);
     //save_eard_conf(&eard_dyn_conf);
 
-#if 0
+#if !POWERMON_RESTORE
     /* Restore Frequency and Governor: PENDING. We must restore GPU? We must do using the affinity mask*/
     verbose(VJOBPMON, "restoring governor %s", pmapp->governor.name);
     set_governor(&pmapp->governor);
     if (strcmp(pmapp->governor.name, "userspace") == 0) {
         frequency_set_all_cpus(pmapp->current_freq);
     }
-    /* How to do that for GPUS */
-#if USE_GPUS
-    if (my_node_conf->gpu_def_freq > 0){
-        gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
-    }
-#endif
 #endif
 
     //reset_shared_memory();

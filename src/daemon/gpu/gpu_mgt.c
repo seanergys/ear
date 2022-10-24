@@ -30,6 +30,7 @@
 static uint num_dev;
 static ulong *def_khz,*max_khz,*current_khz;
 static ulong *def_w,*max_w,*current_w,*min_w;
+static metrics_gpus_t mgt_gpu;
 extern my_node_conf_t *my_node_conf;
 state_t gpu_mgr_init()
 {
@@ -101,6 +102,12 @@ state_t gpu_mgr_init()
 	if (my_node_conf->gpu_def_freq == 0){
 		my_node_conf->gpu_def_freq = max_khz[0];
 	}
+  ret = mgt_gpu_freq_list(no_ctx, (const ulong ***) &mgt_gpu.avail_list, (const uint **) &mgt_gpu.avail_count);
+  if (ret != EAR_SUCCESS){
+    debug("mgt_gpu_freq_list");
+    return ret;
+  }
+
 	return EAR_SUCCESS;
 }
 
@@ -138,4 +145,18 @@ uint    gpu_mgr_num_gpus()
 	return num_dev;
 }
 
+state_t gpu_mgr_get_min(uint gpu, ulong *gfreq)
+{
+  if (gpu > num_dev) return EAR_ERROR;
+  ulong *list = mgt_gpu.avail_list[gpu];
+  *gfreq = list[mgt_gpu.avail_count[gpu] - 1];
+  return EAR_SUCCESS;
+}
+
+state_t gpu_mgr_get_max(uint gpu, ulong *gfreq)
+{
+  if (gpu > num_dev) return EAR_ERROR;
+  *gfreq = max_khz[gpu];
+  return EAR_SUCCESS;
+}
 

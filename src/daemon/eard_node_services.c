@@ -116,7 +116,7 @@ static metrics_t     mi;
 static metrics_t     uc;
 static metrics_t     ui;
 static metrics_t     ub;
-static metrics_t     ug;
+       metrics_t     ug;
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
