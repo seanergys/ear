@@ -32,10 +32,14 @@
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
+#ifndef CUDA_BASE
+#define CUDA_PATH    ""
+#else
+#define CUDA_PATH    CUDA_BASE
+#endif
 
 /* Check */
 
-#define CUPTI_PATH   CUPTI_BASE
 #define CUPTI_N      18
 #define CUDA_N       4
 #define CUDA_LIB     "libcuda.so"
@@ -91,7 +95,7 @@ static state_t static_open_cuda()
     _open_test_cuda(getenv(HACK_CUDA_FILE));
     open_test_cuda("/usr/lib64/");
 
-    open_test_cuda(CUDA_BASE CUDA_LIB);
+    open_test_cuda(CUDA_PATH CUDA_LIB);
     open_test_cuda("/usr/lib64/" CUDA_LIB);
 
     return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
