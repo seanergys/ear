@@ -32,6 +32,18 @@ typedef struct ear_event {
 	time_t timestamp;
 } ear_event_t;
 
+
+/* Should we move to a phases.h? */
+#define APP_COMP_BOUND    1
+#define APP_MPI_BOUND     2
+#define APP_IO_BOUND      3
+#define APP_BUSY_WAITING  4
+#define APP_CPU_GPU       5
+#define APP_COMP_CPU      6
+#define APP_COMP_MEM      7
+#define APP_COMP_MIX       8
+
+
 /** \name Event types
  * This group of macros define the different EAR Events types. */
 /**@{*/

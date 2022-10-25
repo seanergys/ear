@@ -914,7 +914,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
       }
       low_mpi_ref = min_mpi + ((max_mpi - min_mpi)/2);
       low_mpi_ref = ear_max(low_mpi_ref, 10);
-      verbose(0,"[%d] low_mpi %.2f", my_node_id, low_mpi_ref);
+      //verbose(0,"[%d] low_mpi %.2f", my_node_id, low_mpi_ref);
     }
 #endif
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
@@ -955,6 +955,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     }
 
     //  NEW CLASSIFY
+    #if 0
     verbose_master(POLICY_PHASES, "------------- EARL phase classification ------------\n"
             "%s\n"
             "Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u\n"
@@ -966,6 +967,9 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
             phases_limits.cpi_busy_waiting, phases_limits.gbs_busy_waiting, phases_limits.gflops_busy_waiting,
             phases_limits.cpi_cpu_bound, phases_limits.gbs_cpu_bound,
             phases_limits.cpi_mem_bound, phases_limits.gbs_mem_bound);
+    #endif
+    verbose_master(POLICY_PHASES, "EARL phase %s: Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u",
+        phase_to_str(earl_phase_classification), busy, iobound, mpibound, use_earl_phases);
 
 
     if (use_earl_phases) {

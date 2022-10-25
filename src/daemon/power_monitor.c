@@ -133,6 +133,13 @@ extern metrics_t     mc;
 extern metrics_t     ug;
 static void set_default_powermon_init(powermon_app_t *app)
 {
+
+  /* IMC freq must be set to default conf. EAR can change in eUFS is ON */
+  /* CPUfreq must be changed only if policy_freq is set , otherwise EARD is 
+   * not "forcing freqs " */
+  /* GPU freq should be improved, for now, we set the default freq to all the 
+   * GPUS */
+
   #if POWERMON_RESTORE
   /* IMC freq */
   verbose(VCONF, "Restoring IMC freq");
@@ -176,31 +183,62 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 {
   #if POWERMON_RESTORE
 
+  /* Two scenarios are possible for CPU freq:
+   * 1) End job: Set idle gov and freq
+   * 2) No end job : if prev set --> restore
+   */
+
+  uint change_gov = 0;
+  uint rest_pstate;
+
   /* Going to idle */
   /* CPU freq */
   if (idle) mgt_cpufreq_reset(no_ctx);
 
   /* Idle governor */
   char *cgov = app->governor.name;
-  if (strcmp(my_node_conf->idle_governor, "default") != 0){
-    cgov = my_node_conf->idle_governor;
-  }
   uint gov;
+  if (app->is_job){ /* End job */
+    if (strcmp(my_node_conf->idle_governor, "default") != 0){
+      cgov        = my_node_conf->idle_governor;
+      rest_pstate = ear_max(my_node_conf->idle_pstate, mc.avail_count -1 );
+    }else{
+      mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+    }
+    /* Governor */
+    governor_toint(cgov, &gov);
+    if (idle){
+      verbose(VCONF, "Restoring to idle %s governor", cgov);
+      mgt_cpufreq_governor_set(no_ctx, gov);
+    }else{
+      verbose(VCONF, "Restoring to end_job %s governor", cgov);
+      mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+    }
+    /* CPU freq */
 
-  verbose(VCONF, "Restoring to %s governor", cgov);
-  governor_toint(cgov, &gov);
-  if (idle){
-    mgt_cpufreq_governor_set(no_ctx, gov);
+    if (strcmp(cgov, "userspace") == 0) change_gov = 1;
   }else if (app->policy_freq){
+    /* Governor */
+    governor_toint(cgov, &gov);
+    verbose(VCONF, "Restoring to %s governor (no end_job)", cgov);
     mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+
+    /* CPU freq */
+    if (strcmp(cgov, "userspace") == 0) change_gov = 1;
+    mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+
   }
 
-  if (app->policy_freq){
-    uint rest_pstate;
-    mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
-    verbose(VCONF, "Restoring to CPU freq %.2f GHz pstate %u", (float)app->current_freq/1000000, rest_pstate);
-    fill_cpufreq_list(&app->plug_mask, mc.devs_count, rest_pstate, ps_nothing, powermon_restore_cpufreq_list);
-    mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+
+  if (change_gov){
+    if (idle){
+      verbose(VCONF, "Restoring to CPU pstate %u all_cpus", rest_pstate);
+      mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
+    }else{
+      verbose(VCONF, "Restoring to CPU pstate %u with mask", rest_pstate);
+      fill_cpufreq_list(&app->plug_mask, mc.devs_count, rest_pstate, ps_nothing, powermon_restore_cpufreq_list);
+      mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+    }
   }
 
 #if USE_GPUS
