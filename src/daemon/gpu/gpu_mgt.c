@@ -21,6 +21,7 @@
 #include <common/config.h>
 #include <common/states.h>
 
+#if USE_GPUS
 #include <management/gpu/gpu.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
@@ -159,4 +160,4 @@ state_t gpu_mgr_get_max(uint gpu, ulong *gfreq)
   *gfreq = max_khz[gpu];
   return EAR_SUCCESS;
 }
-
+#endif
