@@ -144,8 +144,13 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
             freq_ref = frequency_pstate_to_freq(i);
             freq_gain = min_eff_gain * (double)(freq_ref - best_freq) / (double)best_freq;
             perf_gain = (time_current - time_proj) / time_current;
+            if (min_eff_gain < 0.5){
+            verbose_master(2, "%lu to %d time %lf proj time %lf freq gain %lf perf_gain %lf", curr_pstate, i, my_app->time, time_proj,
+                    freq_gain,perf_gain);
+            }else{
             verbose_master(3, "%lu to %d time %lf proj time %lf freq gain %lf perf_gain %lf", curr_pstate, i, my_app->time, time_proj,
                     freq_gain,perf_gain);
+            }
             // OK
             if (perf_gain>=freq_gain)
             {

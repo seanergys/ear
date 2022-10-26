@@ -87,4 +87,14 @@ state_t already_optimized(mpi_call call_type, p2i buf, p2i dest);
 void *get_stack(int lv);
 void print_stack();
 
+/** Copies MPI metrics from \p src to \p dst.
+ * If `src` is a NULL pointer, `dst` is filled with the MPI metrics of the `i`-th process
+ * (local rank) stored in the shared region.
+ * If `i` is negative, `dst` is filled with the MPI metrics of the current process (my_node_id). */
+state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i);
+state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
+state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
+        mpi_calls_types_t *last);
+state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init);
+
 #endif // MPI_SUPPORT_H

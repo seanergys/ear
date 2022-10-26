@@ -80,6 +80,8 @@
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
 
+#include <library/policies/common/mpi_stats_support.h>
+
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/app_mgt.h>
@@ -107,6 +109,9 @@ void ear_finalize(int exit_status);
 static uint cancelled = 0;
 
 
+
+#define MASTER_ID masters_info.my_master_rank
+
 extern const char *__progname;
 static uint ear_lib_initialized=0;
 
@@ -129,6 +134,8 @@ static int my_id = 1;
 static int my_size;
 static int num_nodes;
 static int ppnode;
+
+extern uint ear_mpi_opt;
 
 /* To be used by report plugins */
 report_id_t rep_id;
@@ -1552,6 +1559,7 @@ void ear_init()
 				fflush(stderr);
 
 				// Tracing init
+        #if SINGLE_CONNECTION
                 if (masters_info.my_master_rank>=0) {
                     traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
                             my_id, num_nodes, my_size, ppnode);
@@ -1562,6 +1570,16 @@ void ear_init()
 
                     traces_mpi_init();
                 }
+                #else
+                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
+                            my_node_id, num_nodes, my_size, ppnode);
+
+                    traces_start();
+                    traces_frequency(ear_my_rank, my_node_id, EAR_default_frequency);
+                    traces_stop();
+
+
+                #endif
 
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {
@@ -1604,6 +1622,11 @@ void ear_init()
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
 				earl_monitor->time_relax = BASIC_PERIOD*10;
+        #if MPI_OPTIMIZED
+        if (is_mpi_enabled() && ear_mpi_opt){
+				  earl_monitor->time_relax = BASIC_PERIOD/4;
+        }
+        #endif
 				earl_monitor->time_burst = BASIC_PERIOD;
 				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
@@ -1691,6 +1714,7 @@ void ear_finalize(int exit_status)
 				}
 #endif
 
+        #if SINGLE_CONNECTION
 				if (masters_info.my_master_rank>=0){
 								verbose_master(2,"Stopping periodic earl thread");	
 								verbose_master(2,"Stopping tracing");
@@ -1699,6 +1723,11 @@ void ear_finalize(int exit_status)
 
 								traces_mpi_end();
 				}
+        #else
+        traces_stop();
+        traces_end(ear_my_rank, my_node_id, 0);
+        traces_mpi_end();
+        #endif
 				monitor_unregister(earl_monitor);
 				monitor_dispose();
 				debug("%d: monitor_disposed", my_node_id);
@@ -1836,7 +1865,10 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                         ear_periodic_mode = PERIODIC_MODE_ON;
                                         assert(dynais_timeout > 0);
                                         mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
-                                        if (masters_info.my_master_rank >= 0) traces_start();
+                                        #if SINGLE_CONNECTION
+                                        if (masters_info.my_master_rank >= 0)
+                                        #endif
+                                        traces_start();
                                         verbose_master(3, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
                                                 time_from_mpi_init,mpi_calls_in_period,ear_status);
                                         ear_iterations = 0;
@@ -1927,7 +1959,10 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 																}
 
 																loop_with_signature=0;
-																if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
+                                #if SINGLE_CONNECTION
+																if (masters_info.my_master_rank>=0)
+                                #endif
+                                traces_end_period(ear_my_rank, my_node_id);
 																states_end_period(ear_iterations);
 																ear_iterations=0;
 																mpi_calls_per_loop=1;
@@ -1943,8 +1978,10 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 																				//debug("new iteration detected for level %u, event %lu, size %u and iterations %u",
 																				//		  ear_loop_level, ear_event_l, ear_loop_size, ear_iterations);
 																}
-
-																if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, ear_event_l, ear_loop_size, ear_iterations);
+                                #if SINGLE_CONNECTION
+																if (masters_info.my_master_rank>=0) 
+                                #endif
+                                traces_new_n_iter(ear_my_rank, my_node_id, ear_event_l, ear_loop_size, ear_iterations);
 																states_new_iteration(my_id, ear_loop_size, ear_iterations, ear_loop_level, ear_event_l, mpi_calls_per_loop,1);
 																mpi_calls_per_loop=1;
 																break;
@@ -1954,7 +1991,10 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 																				//debug("loop ends with %d iterations detected", ear_iterations);
 																}
 																loop_with_signature=0;
-																if (masters_info.my_master_rank>=0)  traces_end_period(ear_my_rank, my_id);
+                                #if SINGLE_CONNECTION
+																if (masters_info.my_master_rank>=0)  
+                                #endif
+                                traces_end_period(ear_my_rank, my_node_id);
 																states_end_period(ear_iterations);
 																ear_iterations=0;
 																in_loop=0;
@@ -2015,8 +2055,10 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 																				//debug("new iteration detected for level %hu, event %lu, size %u and iterations %u",
 																				//ear_level, ear_event_l, ear_loop_size, ear_iterations);
 																}
-
-																if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, ear_event_l, ear_loop_size, ear_iterations);
+                                #if SINGLE_CONNECTION
+																if (masters_info.my_master_rank>=0)
+                                #endif
+                                traces_new_n_iter(ear_my_rank, my_node_id, ear_event_l, ear_loop_size, ear_iterations);
 																states_new_iteration(my_id, ear_loop_size, ear_iterations, (uint)ear_level, ear_event_l, mpi_calls_per_loop,1);
 																mpi_calls_per_loop=1;
 																break;
@@ -2054,7 +2096,10 @@ unsigned long ear_new_loop()
 																				debug("loop ends with %d iterations detected", ear_iterations);
 																}
 																loop_with_signature=0;
-																if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
+                                #if SINGLE_CONNECTION
+																if (masters_info.my_master_rank>=0) 
+                                #endif
+                                traces_end_period(ear_my_rank, my_node_id);
 																states_end_period(ear_iterations);
 																ear_iterations=0;
 																mpi_calls_per_loop=1;
@@ -2081,7 +2126,10 @@ void ear_end_loop(unsigned long loop_id)
 																				}
 																				loop_with_signature=0;
 																				states_end_period(ear_iterations);
-																				if (masters_info.my_master_rank>=0) traces_end_period(ear_my_rank, my_id);
+                                        #if SINGLE_CONNECTION
+																				if (masters_info.my_master_rank>=0) 
+                                        #endif
+                                        traces_end_period(ear_my_rank, my_node_id);
 																				ear_iterations=0;
 																				in_loop=0;
 																				mpi_calls_per_loop=0;
@@ -2111,7 +2159,10 @@ void ear_new_iteration(unsigned long loop_id)
 																				//debug("new iteration detected for level %u, event %lu, size %u and iterations %u",
 																				//1, loop_id,1, ear_iterations);
 																}
-																if (masters_info.my_master_rank>=0) traces_new_n_iter(ear_my_rank, my_id, loop_id, 1, ear_iterations);
+                                #if SINGLE_CONNECTION
+																if (masters_info.my_master_rank>=0) 
+                                #endif
+                                traces_new_n_iter(ear_my_rank, my_node_id, loop_id, 1, ear_iterations);
 																states_new_iteration(my_id, 1, ear_iterations, 1, loop_id, mpi_calls_per_loop,1);
 																mpi_calls_per_loop=1;
 																break;
@@ -2130,6 +2181,9 @@ static timestamp_t periodic_time;
 static ulong last_check = 0;
 static uint first_exec_monitor = 1;
 
+/* 0 = init, 1 = end, 2= diff */
+static mpi_information_t my_mpi_stats[3];
+static mpi_calls_types_t my_mpi_types[3];
 state_t earl_periodic_actions_init(void *no_arg)
 {
 				verbose_master(2,"RANK %d EARL periodic thread ON",ear_my_rank);
@@ -2138,12 +2192,21 @@ state_t earl_periodic_actions_init(void *no_arg)
 				last_mpis = 0;
 				if (!is_mpi_enabled()){
 								ear_periodic_mode = PERIODIC_MODE_ON;
-								if (masters_info.my_master_rank>=0) traces_start();
+                #if SINGLE_CONNECTION
+								if (masters_info.my_master_rank>=0) 
+                #endif
+                traces_start();
 								ear_iterations = 0;
 								states_begin_period(my_id, 1, (ulong) lib_period,1);
 								mpi_calls_in_period = lib_period;
 								if (!ear_whole_app) states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
 				}
+        #if MPI_OPTIMIZED
+        if (is_mpi_enabled() && ear_mpi_opt){
+          memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
+          memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
+        }
+        #endif
 
 				return EAR_SUCCESS;
 }
@@ -2167,6 +2230,28 @@ state_t earl_periodic_actions(void *no_arg)
 				timestamp_getfast(&curr_periodic_time);
 				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+
+        
+        #if MPI_OPTIMIZED
+        if (is_mpi_enabled() && ear_mpi_opt){
+          /* Read */
+          mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
+          mpi_call_get_types(&my_mpi_types[1], NULL, -1);
+          /* Diff */
+          mpi_call_diff(     &my_mpi_stats[2], &my_mpi_stats[1], &my_mpi_stats[0]);
+          my_mpi_stats[2].perc_mpi = (double) my_mpi_stats[2].mpi_time * 100.0 / (double) my_mpi_stats[2].exec_time;
+          mpi_call_types_diff(&my_mpi_types[2], &my_mpi_types[1], &my_mpi_types[0]);
+          /* Copy */
+          memcpy(&my_mpi_stats[0], &my_mpi_stats[1], sizeof(mpi_information_t));
+          memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
+          #if 0
+          verbose(2, " PROC[%d][%d] - %lu perc_mpi %.2lf perc_sync %.2f perc_block %.2f time bettween sync %.2f Sync %lu Block %lu", MASTER_ID, my_node_id, period_elapsed, my_mpi_stats[2].perc_mpi,
+          (float)my_mpi_types[2].mpi_sync_call_time/(float)my_mpi_types[2].exec_time, (float)my_mpi_types[2].mpi_block_call_time/(float)my_mpi_types[2].exec_time, 
+          (float)my_mpi_types[2].exec_time/(float)my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_block_call_cnt);
+          #endif
+
+        }
+        #endif
         
 
 				debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",my_node_id, period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
@@ -2194,8 +2279,10 @@ state_t earl_periodic_actions(void *no_arg)
 								if (new_ear_guided != DYNAIS_GUIDED){
 												ear_periodic_mode = PERIODIC_MODE_ON;
 												if (ear_guided != new_ear_guided){ 
-																monitor_burst(earl_monitor);
-																debug("[%d]: Dynais guided --> time guided at time %lu",
+                                if (earl_monitor->time_burst < earl_monitor->time_relax){
+																  monitor_burst(earl_monitor);
+                                }
+																verbose(2,"[%d]: Dynais guided --> time guided at time %lu",
 																								my_node_id, period_elapsed);
 																mpi_calls_in_period = lib_period;
 																states_begin_period(my_id, 1, (ulong) lib_period,1);

@@ -115,13 +115,6 @@ static uint index_last_optimized, last_optimized = 0;
 
 static state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i);
 
-/** Copies MPI metrics from \p src to \p dst.
- * If `src` is a NULL pointer, `dst` is filled with the MPI metrics of the `i`-th process
- * (local rank) stored in the shared region.
- * If `i` is negative, `dst` is filled with the MPI metrics of the current process (my_node_id). */
-static state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i);
-
-static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
 
 static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i);
 /*  Computes the the max and min process with perc mpi calls from percs_mpi */
@@ -636,7 +629,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     return EAR_SUCCESS;
 }
 
-static state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i)
+state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i)
 {
 
     if (dst == NULL) return EAR_ERROR;
@@ -660,7 +653,7 @@ static void mpi_call_copy(mpi_information_t *dst, mpi_information_t * src)
 }
 */
 
-static state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init)
+state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init)
 {
     diff->total_mpi_calls = end->total_mpi_calls - init->total_mpi_calls;
     diff->exec_time       = end->exec_time - init->exec_time;
@@ -695,7 +688,7 @@ static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *la
     return EAR_SUCCESS;
 }
 
-static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i)
+state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i)
 {
     mpi_information_t *src_stat;
     mpi_calls_types_t *src_types;
@@ -723,7 +716,7 @@ static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, i
     return EAR_SUCCESS;
 }
 
-static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
+state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
         mpi_calls_types_t *last)
 {
 

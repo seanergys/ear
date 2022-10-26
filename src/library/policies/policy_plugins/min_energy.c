@@ -526,13 +526,11 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3,"Time ref %lf Power ref %lf Freq ref %lu",time_ref,power_ref,best_freq);
                 compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
                         local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
-                #if 0
                 if (freq_per_core){
                   verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
                   sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
                   my_node_mpi_calls[i].perc_mpi, local_penalty);
                 }
-                #endif
             } else {
                 // If application is compute bound, we don't reduce CPU freq
                 if (cbound) {

@@ -48,6 +48,10 @@
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/generic.h>
 
+#define MASTER (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
+
+
 /*  IMC management */
 extern uint dyn_unc;
 extern double imc_extra_th;
@@ -465,9 +469,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf",
                         my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
-
+                #if 0
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];
+                #endif
+                double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
+                            percs_mpi[max_mpi], percs_mpi[i])) * critical_path[i];
                 if (factor < 0.01) {
                     factor = 0.0;
                 }
@@ -480,6 +487,11 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
                 compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate,
                         best_pstate, best_freq, def_freq, &new_freq[i]);
+                if (freq_per_core){
+                  verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
+                  sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
+                  my_node_mpi_calls[i].perc_mpi, local_eff_gain);
+                }
                 if (use_turbo_for_cp) {
                     debug("Try to boost: freq per core ? %u already using turbo ? %u min_mpi ? %u",
                             freq_per_core, c->use_turbo, min_mpi);
