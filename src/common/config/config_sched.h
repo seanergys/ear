@@ -18,6 +18,8 @@
 #ifndef CONFIG_SCHED_H
 #define CONFIG_SCHED_H
 
+#include <common/config/config_install.h>
+
 
 /**
  * Different variables per scheduling manager
