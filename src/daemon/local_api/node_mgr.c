@@ -35,7 +35,7 @@ static int fd_node_mgr_lck = -1;
 static int fd_node_mgr_info = -1;
 static ear_njob_t *node_jobs_list = NULL;
 
-#define MAX_LOCK_TRIES (MAX_SOCKET_COMM_TRIES*100)
+#define MAX_LOCK_TRIES (MAX_SOCKET_COMM_TRIES*10)
 
 /** Initialices the lock file and attaches the shared memory region. nodelist is internally allocated. Must be used by earl */
 state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )

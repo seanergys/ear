@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <common/output/error.h>
 #include <common/output/debug.h>
 #include <common/output/output_conf.h>

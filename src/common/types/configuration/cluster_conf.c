@@ -176,9 +176,9 @@ int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
             int total_ips = range.end-range.start + 1;
             int it = 0;
             sec_aux_ips = calloc(total_ips, sizeof(int));
-            for (k = range.start; k <= range.end ; k++)
+            for (k = range.start; k <= range.end; k++)
             {
-                if (k < 10 && range.end > 10)
+                if (is_smaller_unit(k, range.end))
                     sprintf(aux_name, "%s0%u", range.prefix, k);
                 else
                     sprintf(aux_name, "%s%u", range.prefix, k);
@@ -413,6 +413,10 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
                 {
                     if (!strcmp(my_conf->power_policies[i].name, n->policies[j].name)) //two policies are the same if they are have the same name, so we replace them
                     {
+						if (i == my_conf->default_policy) {
+							printf("Found default policy and changing it!");
+							my_conf->default_policy = j; //if the default policy is the one we are replacing, change the pointer
+						}
                         memcpy(&n->policies[j], &my_conf->power_policies[i], sizeof(policy_conf_t));
                         found = 1;
                         break;
@@ -430,6 +434,10 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 
         }
     }
+	for (i = 0; i < my_conf->num_policies; i++) { //check for the default policy, change the id if we find it
+		if (!strcmp(my_conf->power_policies[my_conf->default_policy].name, n->policies[i].name))
+			my_conf->default_policy = n->policies[i].policy;
+	}
     /* Automatic computation of powercap */
     /* If node powercap is -1, and there is a global powercap, power is equally distributed */
     if (n->powercap == DEF_POWER_CAP){
@@ -638,7 +646,7 @@ void set_default_tag_values(tag_t *tag)
     strcpy(tag->energy_plugin, "");
     strcpy(tag->powercap_plugin, "");
     strcpy(tag->powercap_gpu_plugin, "");
-    strcpy(tag->idle_governor, "ondemand");
+    strcpy(tag->idle_governor, "default");
 }
 
 

@@ -40,6 +40,7 @@
 #define API_ONEAPI      12
 #define API_RAPL 		13
 #define API_ISST        14
+#define API_FAKE        15
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
@@ -82,7 +83,17 @@ typedef struct metrics_gpus_s {
     uint *avail_count;
     void *current_list;
 } metrics_gpus_t;
-#endif // USE_GPUS
+#endif
+
+typedef struct metrics_multi{
+    uint  api;
+    uint  ok;
+    uint  dev_count;
+    uint  *dev_list;
+    void *avail_list;
+    uint avail_count;
+    void *current_list;
+}metrics_multi_t;
 
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \

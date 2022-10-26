@@ -45,6 +45,11 @@
 //		gpu_data_diff(data2, data1, data_diff);
 //		gpu_dispose(&context);
 
+typedef struct gpu_devs_s {
+    ullong serial;
+    uint index;
+} gpu_devs_t;
+
 typedef struct gpu_s
 {
 	timestamp_t time;
@@ -63,12 +68,13 @@ typedef struct gpu_s
 
 typedef struct gpu_ops_s
 {
-    void    (*get_api)    (uint *api);
-    state_t (*init)       (ctx_t *c);
-    state_t (*dispose)    (ctx_t *c);
+    void    (*get_api)     (uint *api);
+    state_t (*init)        (ctx_t *c);
+    state_t (*dispose)     (ctx_t *c);
+    state_t (*get_devices) (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
-    state_t (*read)       (ctx_t *c, gpu_t *data);
-    state_t (*read_raw)   (ctx_t *c, gpu_t *data);
+    state_t (*read)        (ctx_t *c, gpu_t *data);
+    state_t (*read_raw)    (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
 
 // Discovers the low level API.
@@ -80,6 +86,9 @@ void gpu_get_api(uint *api);
 state_t gpu_init(ctx_t *c);
 
 state_t gpu_dispose(ctx_t *c);
+
+// Information about devices
+state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
 
 // Counts the number of GPUs (devices) in the node.
 state_t gpu_count_devices(ctx_t *c, uint *dev_count);
@@ -120,5 +129,7 @@ void gpu_data_print(gpu_t *data, int fd);
 
 // Copies the printing string in a char buffer.
 void gpu_data_tostr(gpu_t *data, char *buffer, int length);
+
+int gpu_is_supported();
 
 #endif

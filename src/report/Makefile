@@ -1,4 +1,4 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS)
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) $(DB_CFLAGS)
 
 ######## FILES
 
@@ -13,7 +13,6 @@ repo_BINS = \
     csv_ts.so \
     heroes.so \
     dummy.so \
-    cassandra.so \
 		dcdb.so \
     mpitrace.so
 ifeq ($(FEAT_DB_PSQL),1)
@@ -23,6 +22,10 @@ endif
 ifeq ($(FEAT_DB_MYSQL),1)
 repo_BINS += \
 	mysql.so 
+endif
+ifeq ($(FEAT_DB_CASSANDRA),1)
+repo_BINS += \
+	cassandra.so 
 endif
 
 

@@ -189,6 +189,8 @@ state_t mgt_cpufreq_linux_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
 static state_t static_dispose(ctx_t *c, state_t s, char *msg)
 {
 	int cpu;
+
+    if (f == NULL) return_msg(s, msg);
 	
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (f->fds_freq != NULL && f->fds_freq[cpu] >= 0) {

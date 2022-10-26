@@ -60,17 +60,31 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
 {
 	int i;
 	char tmp_query[512];
+#if USE_GPUS
 	const char *base_query = "INSERT INTO EAR_test.periodic_metrics (start_time, end_time, "\
 							  "dc_energy, node_id, job_id, step_id, avg_f, "\
 							  "temp, dram_energy, pck_energy, gpu_energy) "\
 							  "VALUES (%d, %d, %d, '%s', %d, %d, %d, %d, %d, %d, %d) ";
+#else
+	const char *base_query = "INSERT INTO EAR_test.periodic_metrics (start_time, end_time, "\
+							  "dc_energy, node_id, job_id, step_id, avg_f, "\
+							  "temp, dram_energy, pck_energy, gpu_energy) "\
+							  "VALUES (%d, %d, %d, '%s', %d, %d, %d, %d, %d, %d) ";
+#endif
 	for (i = 0; i < count; i++)
 	{
 		//format the query
+#if USE_GPUS
 		sprintf(tmp_query, base_query, mets[i].start_time, mets[i].end_time, mets[i].DC_energy, 
 									mets[i].node_id, mets[i].job_id, mets[i].step_id, 
 									mets[i].avg_f, mets[i].temp, mets[i].DRAM_energy,
 									mets[i].PCK_energy, mets[i].GPU_energy);
+#else
+		sprintf(tmp_query, base_query, mets[i].start_time, mets[i].end_time, mets[i].DC_energy, 
+									mets[i].node_id, mets[i].job_id, mets[i].step_id, 
+									mets[i].avg_f, mets[i].temp, mets[i].DRAM_energy,
+									mets[i].PCK_energy);
+#endif
 		verbose(0, "inserting query: %s\n\n", tmp_query);
 
 		//create local structures and run the query

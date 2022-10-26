@@ -61,6 +61,18 @@ int list_cpus_in_mask(cpu_set_t *my_mask, uint n_cpus, uint *cpu_list)
 
 }
 
+void fill_cpufreq_list(cpu_set_t *my_mask, uint n_cpus, uint value, uint no_value, uint *cpu_list)
+{
+  if (my_mask == NULL || cpu_list == NULL || n_cpus < 1) return;
+  for (uint c = 0; c < n_cpus; c++) {
+    if (CPU_ISSET(c, my_mask)) {
+      cpu_list[c] = value;
+    }else{
+      cpu_list[c] = no_value;
+    }
+  }
+}
+
 void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src)
 {
     for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){

@@ -31,6 +31,16 @@
 
 //#define __OLD__CONF__
 
+//checks if small is one number shorter
+int is_smaller_unit(int small, int big)
+{
+	while (small) {
+		small /= 10;
+		big /= 10;
+	}
+	return big; //big will be > 0 if it's a bigger unit
+}
+
 char range_conf_contains_node(node_conf_t *node, char *nodename)
 {
     char aux_name[256];
@@ -49,9 +59,9 @@ char range_conf_contains_node(node_conf_t *node, char *nodename)
             if (!strcmp(aux_name, nodename)) return 1;
             else continue;
         }
-        for (j = node->range[i].end; j >= node->range[i].start && j > 0; j--)
+        for (j = node->range[i].end; j >= node->range[i].start && j >= 0; j--)
         {
-            if (j < 10 && node->range[i].end > 10)
+            if (is_smaller_unit(j, node->range[i].end))
                 sprintf(aux_name, "%s0%u", node->range[i].prefix, j);
             else
                 sprintf(aux_name, "%s%u", node->range[i].prefix, j);
@@ -80,9 +90,9 @@ char island_range_conf_contains_node(node_island_t *node, char *nodename)
             if (!strcmp(aux_name, nodename)) return i;
             else continue;
         }
-        for (j = node->ranges[i].end; j >= node->ranges[i].start && j > 0; j--)
+        for (j = node->ranges[i].end; j >= node->ranges[i].start && j >= 0; j--)
         {
-            if (j < 10 && node->ranges[i].end > 10)
+            if (is_smaller_unit(j, node->ranges[i].end))
                 sprintf(aux_name, "%s0%u", node->ranges[i].prefix, j);
             else
                 sprintf(aux_name, "%s%u", node->ranges[i].prefix, j);

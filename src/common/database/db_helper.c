@@ -1492,6 +1492,7 @@ int db_read_applications(application_t **apps,uint is_learning, int max_apps, ch
         verbose(VDBH, "ERROR: querying less than 1 app is not possible (%d requested).\n", max_apps);
         return EAR_ERROR;
     }
+	is_learning &= USE_LEARNING_APPS;
 
     char query[512];
     if (is_learning && node_name != NULL)
@@ -1649,6 +1650,7 @@ ulong get_num_applications(char is_learning, char *node_name)
     ulong ret = 0;
     char query[256];
 
+	is_learning &= USE_LEARNING_APPS;
     if (is_learning && node_name != NULL)
         sprintf(query, LEARNING_APPS_QUERY, node_name);
     else if (!is_learning && node_name != NULL)

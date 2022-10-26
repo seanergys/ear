@@ -25,7 +25,7 @@ nvml.o: nvml.c nvml.h
 	$(CC) $(CFLAGS) $(CUDA_CFLAGS) -c $<
 
 cupti.o: cupti.c cupti.h
-	$(CC) $(CFLAGS) $(CUDA_CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(CUDA_CFLAGS) $(CUPTI_CFLAGS) -c $<
 
 likwid.o: likwid.c likwid.h
 	$(CC) $(CFLAGS) $(LIKWID_CFLAGS) -c $<

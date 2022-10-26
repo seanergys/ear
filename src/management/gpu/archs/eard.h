@@ -54,4 +54,6 @@ state_t mgt_gpu_eard_power_cap_reset(ctx_t *c);
 
 state_t mgt_gpu_eard_power_cap_set(ctx_t *c, ulong *watts);
 
+int mgt_gpu_eard_is_supported();
+
 #endif

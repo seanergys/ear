@@ -28,7 +28,7 @@ state_t gpu_dummy_init(ctx_t *c);
 
 state_t gpu_dummy_dispose(ctx_t *c);
 
-//state_t gpu_dummy_get_devices(ctx_t *c, const gpu_devs_t **devs, uint *devs_count);
+state_t gpu_dummy_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
 
 state_t gpu_dummy_count_devices(ctx_t *c, uint *dev_count);
 

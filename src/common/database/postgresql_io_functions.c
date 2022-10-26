@@ -98,7 +98,7 @@
 #define PERIODIC_METRIC_QUERY_SIMPLE    "INSERT INTO Periodic_metrics (start_time, end_time, DC_energy, node_id, job_id, step_id) "\
                                         "VALUES "
 
-#define EAR_EVENT_PSQL_QUERY         "INSERT INTO Events (timestamp, event_type, job_id, step_id, freq, node_id) VALUES "
+#define EAR_EVENT_PSQL_QUERY         "INSERT INTO Events (timestamp, event_type, job_id, step_id, value, node_id) VALUES "
 
 #define PERIODIC_AGGREGATION_PSQL_QUERY "INSERT INTO Periodic_aggregations (DC_energy, start_time, end_time, eardbd_host) VALUES "
 
@@ -628,6 +628,7 @@ int postgresql_retrieve_signatures(PGconn *connection, char *query, signature_t 
 
 int postgresql_retrieve_applications(PGconn *connection, char *query, application_t **apps, char is_learning)
 {
+	is_learning &= USE_LEARNING_APPS;
 
     int i, num_rows, job_id, step_id, sig_id, pow_sig_id;
     char job_query[256], pow_sig_query[256], sig_query[256];
@@ -867,7 +868,7 @@ int postgresql_batch_insert_ear_events(PGconn *connection, ear_event_t *events, 
         param_lengths[2  + offset] = sizeof(int);
         param_lengths[3  + offset] = sizeof(int);
         param_lengths[4  + offset] = sizeof(int);
-        param_lengths[5  + offset] = sizeof(events[i].node_id);
+        param_lengths[5  + offset] = strlen(events[i].node_id);
 
         /* Parameter formats, 1 is binary 0 is string */
         for (j = 0; j < EAR_EVENTS_ARGS; j++)
@@ -965,7 +966,7 @@ int postgresql_batch_insert_gm_warnings(PGconn *connection, gm_warning_t *warns,
         param_lengths[6  + offset] = sizeof(int);
         param_lengths[7  + offset] = sizeof(int);
         param_lengths[8  + offset] = sizeof(int);
-        param_lengths[9  + offset] = sizeof(warns[i].policy);
+        param_lengths[9  + offset] = strlen(warns[i].policy);
 
         /* Parameter formats, 1 is binary 0 is string */
         for (j = 0; j < 10; j++)
@@ -1051,7 +1052,7 @@ int postgresql_batch_insert_periodic_aggregations(PGconn *connection, periodic_a
         param_lengths[0  + offset] = sizeof(int);
         param_lengths[1  + offset] = sizeof(int);
         param_lengths[2  + offset] = sizeof(int);
-        param_lengths[3  + offset] = sizeof(per_aggs[i].eardbd_host);
+        param_lengths[3  + offset] = strlen(per_aggs[i].eardbd_host);
 
         /* Parameter formats, 1 is binary 0 is string */
         for (j = 0; j < PERIODIC_AGGREGATION_ARGS; j++)
@@ -1149,7 +1150,7 @@ int postgresql_batch_insert_periodic_metrics(PGconn *connection, periodic_metric
         param_lengths[0  + offset] = sizeof(int);
         param_lengths[1  + offset] = sizeof(int);
         param_lengths[2  + offset] = sizeof(int);
-        param_lengths[3  + offset] = sizeof(per_mets[i].node_id);
+        param_lengths[3  + offset] = strlen(per_mets[i].node_id);
         param_lengths[4  + offset] = sizeof(int);
         param_lengths[5  + offset] = sizeof(int);
         if (node_detail)
@@ -1395,6 +1396,7 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
     if (num_sigs < 0 || sigs == NULL)
         return EAR_ERROR;
 
+	is_learning &= USE_LEARNING_APPS;
     char **param_values;
     int i, j, offset, *param_lengths, *param_formats;
     char *query;
@@ -1617,7 +1619,7 @@ int postgresql_batch_insert_jobs(PGconn *connection, application_t *apps, int nu
     query = calloc((strlen(JOB_PSQL_QUERY)+(num_jobs*JOB_ARGS*10)+strlen("ON CONFLICT DO NOTHING")), sizeof(char));
 
     strcpy(query, JOB_PSQL_QUERY);
-    if (apps[0].is_learning)
+    if (apps[0].is_learning &= USE_LEARNING_APPS)
     {
         strcpy(lock_query, LOCK_LEARNING_JOBS_PSQL_QUERY);
         strcpy(insert_query, INSERT_NEW_LEARNING_JOBS);
@@ -1668,20 +1670,20 @@ int postgresql_batch_insert_jobs(PGconn *connection, application_t *apps, int nu
         /* Parameter sizes */
         param_lengths[0  + offset] = sizeof(int);
         param_lengths[1  + offset] = sizeof(int);
-        param_lengths[2  + offset] = sizeof apps[i].job.user_id;
-        param_lengths[3  + offset] = sizeof apps[i].job.app_id;
+        param_lengths[2  + offset] = strlen(apps[i].job.user_id);
+        param_lengths[3  + offset] = strlen(apps[i].job.app_id);
         param_lengths[4  + offset] = sizeof(int);
         param_lengths[5  + offset] = sizeof(int);
         param_lengths[6  + offset] = sizeof(int);
         param_lengths[7  + offset] = sizeof(int);
-        param_lengths[8  + offset] = sizeof apps[i].job.policy;
-        param_lengths[9  + offset] = sizeof apps[i].job.th;
+        param_lengths[8  + offset] = strlen(apps[i].job.policy);
+        param_lengths[9  + offset] = sizeof(apps[i].job.th);
         param_lengths[10 + offset] = sizeof(int);
         param_lengths[11 + offset] = sizeof(short);
         param_lengths[12 + offset] = sizeof(int);
-        param_lengths[13 + offset] = sizeof apps[i].job.user_acc;
-        param_lengths[14 + offset] = sizeof apps[i].job.group_id;
-        param_lengths[15 + offset] = sizeof apps[i].job.energy_tag;
+        param_lengths[13 + offset] = strlen(apps[i].job.user_acc);
+        param_lengths[14 + offset] = strlen(apps[i].job.group_id);
+        param_lengths[15 + offset] = strlen(apps[i].job.energy_tag);
 
         /* Parameter formats, 1 is binary 0 is string */
         param_formats[0  + offset] = 1;
@@ -1876,7 +1878,7 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
     signature_t *sigs;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
-    char is_learning = apps[0].is_learning; 
+    char is_learning = apps[0].is_learning &= USE_LEARNING_APPS; 
     char is_mpi      = apps[0].is_mpi; 
 
     /* Memory allocation */
@@ -2014,7 +2016,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
     int i, j, offset, pow_sig_id, *param_lengths, *param_formats, *sig_ids, *pow_sig_ids;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
-    char is_learning = apps[0].is_learning; 
+    char is_learning = apps[0].is_learning &= USE_LEARNING_APPS; 
 
     /* Memory allocation */
     pow_sigs = calloc(num_apps, sizeof(power_signature_t));

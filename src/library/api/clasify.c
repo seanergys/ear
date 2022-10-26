@@ -60,6 +60,23 @@ void get_classify_limits(ear_classify_t *limits)
 }
 
 
+
+char * phase_to_str(uint phase)
+{
+  switch (phase){
+    case APP_COMP_BOUND   : return "COMP_BOUND";
+    case APP_MPI_BOUND    :  return "MPI_BOUND";
+    case APP_IO_BOUND     :  return "IO_BOUND";
+    case APP_BUSY_WAITING : return "CPU_BUSY_WAITING";
+    case APP_CPU_GPU      : return "CPU_GPU_COMP";
+    case APP_COMP_CPU    : return "CPU_BOUND";
+    case APP_COMP_MEM    : return "MEM_BOUND";
+    case APP_COMP_MIX    : return "MIX_COMP";
+  }
+  return "NOT_PHASE";
+}
+
+
 state_t classify_init(topology_t *tp_in)
 {
   switch (tp_in->vendor){
@@ -132,12 +149,15 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     return EAR_SUCCESS;
 }
 
-uint is_process_busy_waiting(ssig_t *sig)
+state_t is_process_busy_waiting(ssig_t *sig, uint *busy)
 {
+  if (busy == NULL) return EAR_ERROR;
 	uint c1 = (sig->CPI    < CPI_BUSY_WAITING);
 	uint c2 = (sig->GBS    < GBS_BUSY_WAITING);
 	uint c3 = (sig->Gflops < GFLOPS_BUSY_WAITING);
-	return c1 && c2 && c3;
+
+	*busy = c1 && c2 && c3;
+  return EAR_SUCCESS;
 }
 
 state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
@@ -195,10 +215,12 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
 	return EAR_SUCCESS;
 }
 
-uint    low_mem_activity(signature_t *sig,uint num_cpus)
+state_t    low_mem_activity(signature_t *sig,uint num_cpus, uint *lowm)
 {
+  if (lowm == NULL) return EAR_ERROR;
   float per_proc_gbs = sig->GBS / num_cpus;
-  return (per_proc_gbs < GBS_BUSY_WAITING);
+  *lowm = (per_proc_gbs < GBS_BUSY_WAITING);
+  return EAR_SUCCESS;
 
 }
 

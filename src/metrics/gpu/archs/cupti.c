@@ -31,6 +31,9 @@
 #define GRP_N        8  // Events in a group
 #define DEV_N        8  // Supported devices
 
+
+#define DEFAULT_CUPTI_METRIC "ipc"
+
 typedef struct CUextra_s {
     CUpti_EventID          events_ids[GRP_N];
     ullong                 events_counters[GRP_N];
@@ -115,9 +118,11 @@ static int enum_metric()
 void gpu_cupti_load(gpuproc_ops_t *ops)
 {
     if ((root.metric_name = getenv("CUPTI_METRIC")) == NULL) {
-        debug("CUPTI_METRIC environent variable doesn't found");
-        return;
+        debug("CUPTI_METRIC environent variable doesn't found using default %s", DEFAULT_CUPTI_METRIC);
+        root.metric_name = malloc(strlen(DEFAULT_CUPTI_METRIC) +1 );
+        strcpy(root.metric_name, DEFAULT_CUPTI_METRIC);
     }
+    debug("Using CUPTI metric %s", root.metric_name);
     root.metric_num = enum_metric();
     //
     if (state_fail(cupti_open(&cupti, &cu))) {

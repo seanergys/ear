@@ -1,4 +1,4 @@
-CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) $(CONSTANTS) -Wall 
+CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) $(CONSTANTS) -Wall $(DB_CFLAGS)
 LDFLAGS = $(DB_LDFLAGS) -lm -pthread -ldl -rdynamic 
 
 ######## INSTALLATION
@@ -59,7 +59,7 @@ eard: eard.c $(eard_OBJS)
 
 
 power_monitor.o: power_monitor.c power_monitor.h 
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $<  $(SLURM_CFLAGS)
 
 node_metrics.o:node_metrics.c node_metrics.h
 	$(CC) $(CFLAGS) -c $<

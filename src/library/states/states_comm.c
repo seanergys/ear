@@ -238,8 +238,8 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         strcpy(gpu_buff," ");
         if (GPU_UTIL) {
-            snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(Used GPUS %lu GPU_power %.2lfW "
-                    "GPU_freq %.2fGHz GPU_util %lu)", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL);
+            snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(Used GPUS %lu GPU_power %.2lfW (avg) "
+                    "GPU_freq %.2fGHz (avg) GPU_util %lu (avg))", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL);
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);
@@ -257,7 +257,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         l2_sec = l2_miss/(TIME * 1024*1024*1024);
         l3_sec = l3_miss/(TIME * 1024*1024*1024);
 
-        verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f",l1_sec,l2_sec,l3_sec);
+        verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f TPI %.2lf ",l1_sec,l2_sec,l3_sec, sig->signature.TPI);
 
         uint n_mpi_calls = (per_proc_verb_file) ? sig_shared_region[my_node_id].mpi_info.total_mpi_calls : total_mpi;
 
@@ -270,16 +270,16 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
 void state_report_traces(int master_rank, int my_rank,int lid, loop_t *lsig,ulong freq,ulong status)
 {
-    if (master_rank >= 0 && traces_are_on()){
+    if (master_rank >= 0 && traces_are_on()) {
         traces_new_signature(my_rank, lid, &lsig->signature);
         if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
-        traces_policy_state(my_rank, lid,status);
+        traces_policy_state(my_rank, lid, status);
     }
 }
 
-void state_report_traces_state(int master_rank, int my_rank,int lid,ulong status)
+void state_report_traces_state(int master_rank, int my_rank, int lid, ulong status)
 {
-    if (master_rank >= 0 && traces_are_on()) traces_policy_state(my_rank, lid,status);
+    if (master_rank >= 0 && traces_are_on()) traces_policy_state(my_rank, lid, status);
 }
 
 /* Auxiliary functions */

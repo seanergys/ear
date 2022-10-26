@@ -23,6 +23,7 @@
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
+#include <common/utils/keeper.h>
 #include <management/cpufreq/archs/amd17.h>
 #include <metrics/common/apis.h>
 #include <metrics/common/hsmp.h>
@@ -126,6 +127,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	apis_put(ops->get_index,          mgt_cpufreq_amd17_get_index);
     apis_pin(ops->set_current_list,   mgt_cpufreq_amd17_set_current_list, cond1);
     apis_pin(ops->set_current,        mgt_cpufreq_amd17_set_current, cond1);
+    apis_pin(ops->reset,              mgt_cpufreq_amd17_reset, cond1);
 	apis_put(ops->get_governor,       mgt_cpufreq_amd17_governor_get);
 	apis_put(ops->get_governor_list,  mgt_cpufreq_amd17_governor_get_list);
 	apis_pin(ops->set_governor,       mgt_cpufreq_amd17_governor_set, cond2);
@@ -349,10 +351,22 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 		if (state_fail(s = msr_read(0, &regs[i], sizeof(ullong), REG_P0+((ullong) i)))) {
 			return static_dispose(tp.cpu_count, s, state_msg);
 		}
+        debug("Read P%d register: %llu", i, regs[i]);
 		if (getbits64(regs[i], 63, 63) == 1LLU) {
 			data = regs[i];
 		}
 	}
+    // Keeper will keep any messed configuration
+    if (!keeper_load_uint64("Amd17PstateReg0", &regs[0])) {
+        keeper_save_uint64("Amd17PstateReg0", regs[0]);
+    } else{
+        debug("Read P0 from keeper: %llu", regs[0]);
+    }
+    if (!keeper_load_uint64("Amd17PstateReg1", &regs[1])) {
+        keeper_save_uint64("Amd17PstateReg1", regs[1]);
+    } else{
+        debug("Read P1 from keeper: %llu", regs[1]);
+    }
 	#if SHOW_DEBUGS
 	print_registers();
 	#endif
@@ -741,11 +755,27 @@ state_t mgt_cpufreq_amd17_set_current(ctx_t *_c, uint pstate_index, int cpu)
 	}
 	// Step 2 (all CPUs to PX)
 	for (c = 0; c < tp.cpu_count; ++c) {
-		if (state_fail(s1 = set_pstate(c, pstate_index, 0, 1))) {
-			s2 = s1;
-		}
+    	if (pstate_index == 0 && pss_nominal) {
+		    if (state_fail(s1 = set_pstate0(c))) {
+			    s2 = s1;
+		    }
+        } else {
+		    if (state_fail(s1 = set_pstate(c, pstate_index, 0, 1))) {
+			    s2 = s1;
+		    }
+        }
 	}
 	return s2;
+}
+
+state_t mgt_cpufreq_amd17_reset(ctx_t *c)
+{
+    int cpu;
+    for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+        msr_write(cpu, &regs[0], sizeof(ullong), REG_P0);
+        msr_write(cpu, &regs[1], sizeof(ullong), REG_P1);
+    }
+    return EAR_SUCCESS;
 }
 
 // Governors

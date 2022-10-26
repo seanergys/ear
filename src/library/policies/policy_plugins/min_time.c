@@ -15,7 +15,6 @@
  * and COPYING.EPL files.
  */
 
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -94,6 +93,8 @@ extern uint use_turbo_for_cp;
 static uint network_use_imc = 0;
 extern uint try_turbo_enabled;
 extern uint use_energy_models;
+extern uint policy_cpu_bound;
+extern uint policy_mem_bound;
 
 #define SELECT_CPUFREQ      100
 #define SELECT_IMCFREQ      101
@@ -420,8 +421,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         last_cpu_pstate = curr_pstate;
         last_imc_pstate = curr_imc_pstate;
         //  NEW CLASSIFY
-        is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
-        is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
+        //is_cpu_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &cbound);
+        //is_mem_bound(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &mbound);
+
+        /* Computd in policy */
+        cbound = policy_cpu_bound;
+        mbound = policy_mem_bound;
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
@@ -447,7 +452,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             verbose_master(3, "Processing proc %d / freq per core %d", i, freq_per_core);
             local_eff_gain = base_eff_gain;
             if (freq_per_core) {
-                from_minis_to_sig(my_app, &sig_shared_region[i].sig);
+                signature_from_ssig(my_app, &sig_shared_region[i].sig);
                 double ltpi, lgbs, lpower;
 
                 ltpi = my_app->TPI;
@@ -469,7 +474,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 local_eff_gain = base_eff_gain * (1 - factor);
             }
             if (use_energy_models) {
-                verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
+                //verbose_master(2, "Local efficiency gain for process %d: %lf", i, local_eff_gain);
                 compute_reference(c, my_app, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
                 best_pstate = frequency_closest_pstate(best_freq);
                 verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
@@ -554,7 +559,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound) {
                 //if (sig->GBS <= GBS_BUSY_WAITING){
-                if (low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus)){
+                uint lowm;
+                low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &lowm);
+                if (lowm){
                     debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
@@ -773,9 +780,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
 static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *ok)
 {
-
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
-    *ok=1;
+    *ok = 1;
 
     sig_ext_t *se           = (sig_ext_t *) curr_sig->sig_ext;
     my_node_mpi_calls       = se->mpi_stats;
@@ -787,13 +793,6 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 
         uint unbalance;
-#if 0
-        double lb_eff;
-        mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, &lb_eff, &unbalance);
-
-        debug("%sNode Load Balance Efficiency%s LB_TH %lf LB_EFF %lf unbalance ? %u",
-                COL_MGT, COL_CLR, LB_TH, lb_eff, unbalance);
-#endif
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
@@ -828,25 +827,27 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
                     mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean,
                             last_mpi_stats_perc_mpi_median, last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
-                    /*  This code has not been encapsulated because is (by now) only for verbose purposes */
                     double similarity;
-                    mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-                    verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
-                    /* *************************************************************************** */
+                    if (VERB_ON(3)) {
+                        /* This code has not been encapsulated because is (by now) only for verbose purposes */
+                        mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                        verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+                        /* *************************************************************************** */
+                    }
 
                     uint mpi_changed;
                     mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
                             num_processes, &similarity, &mpi_changed);
 
-                    if (mpi_changed){
+                    if (mpi_changed) {
+                        verbose_master(2, "%sMPI stats changed. Starting again%s",
+                                COL_RED, COL_CLR);
                         *ok = 0;
                     }
 
                 } else if (*ok) {
                     first_time_unbalanced = 0;
                 }
-
-                verbose_master(3, "Copying data...");
 
                 /*  Save current stats and critical path to be used later */
                 memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
@@ -873,7 +874,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         if (signatures_different(last_sig, curr_sig, 0.2)) {
             verbose_master(2, "%sSignature is too different from the one used for CPU freq, starting again.%s",
                     COL_RED, COL_CLR);
-            *ok=0;
+            *ok = 0;
         }
     }
 

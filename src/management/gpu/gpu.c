@@ -155,7 +155,7 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 	state_t       s;
 	uint          i;
 
-	if (state_fail(s = mgt_gpu_freq_list(c, &freqs_alldevs, &freqs_alldevs_count))) {
+	if (state_fail(s = mgt_gpu_freq_get_available(c, &freqs_alldevs, &freqs_alldevs_count))) {
 		return s;
 	}
 	// Indexing
@@ -192,7 +192,7 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 	return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len)
+state_t mgt_gpu_freq_get_available(ctx_t *c, const ulong ***list_khz, const uint **list_len)
 {
 	preturn (ops.freq_list, c, list_khz, list_len);
 }
@@ -249,4 +249,9 @@ state_t mgt_gpu_data_null(ulong *data)
     }
     memset(data, 0, devs_count * sizeof(ulong));
     return EAR_SUCCESS;
+}
+
+int mgt_gpu_is_supported()
+{
+    return mgt_gpu_eard_is_supported();
 }

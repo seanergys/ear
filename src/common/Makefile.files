@@ -21,6 +21,7 @@ libc_OBJS = \
     $(SRCDIR)/common/system/fd_sets.o \
     $(SRCDIR)/common/types/loop.o \
     $(SRCDIR)/common/types/log.o \
+    $(SRCDIR)/common/types/event_type.o \
     $(SRCDIR)/common/types/periodic_metric.o \
     $(SRCDIR)/common/types/application.o \
     $(SRCDIR)/common/types/configuration/cluster_conf_db.o \
