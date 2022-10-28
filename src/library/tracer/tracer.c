@@ -63,11 +63,12 @@ typedef struct traces_symbols {
     void (*traces_mpi_init)();
     void (*traces_mpi_call)(int global_rank, int local_rank, ulong ev, ulong a1, ulong a2, ulong a3);
     void (*traces_mpi_end)();
+    void (*traces_generic_event)(int global_rank, int local_rank, int event, int value);
 } trace_sym_t;
 
 static trace_sym_t trace_syms_fun;
 static int trace_plugin=0;
-const int       trace_syms_n = 19;
+const int       trace_syms_n = 20;
 
 const char     *trace_syms_nam[] = {
     "traces_init",
@@ -88,7 +89,8 @@ const char     *trace_syms_nam[] = {
     "traces_are_on",
     "traces_mpi_init",
     "traces_mpi_call",
-    "traces_mpi_end"
+    "traces_mpi_end",
+    "traces_generic_event"
 };
 
 /*
@@ -337,6 +339,15 @@ void traces_mpi_end()
         trace_syms_fun.traces_mpi_end();
     }
     return;
+}
+
+void traces_generic_event(int global_rank, int local_rank, int event, int value)
+{
+  debug("traces_generic_event");
+  if (trace_plugin && trace_syms_fun.traces_generic_event != NULL){
+    trace_syms_fun.traces_generic_event(global_rank, local_rank, event, value);
+  }
+  return;
 }
 
 #endif

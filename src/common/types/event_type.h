@@ -65,6 +65,7 @@ typedef struct ear_event {
 #define PERF_PENALTY_AVG        14
 
 #define PHASE_SUMMARY_BASE      20
+#define PERC_MPI                30
 
 /** EARD Init events. */
 #define PM_CREATION_ERROR       100

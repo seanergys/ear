@@ -1561,7 +1561,7 @@ void ear_init()
 				// Tracing init
         #if SINGLE_CONNECTION
                 if (masters_info.my_master_rank>=0) {
-                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
+                    traces_init(system_conf, application.job.app_id, ear_my_rank,
                             my_id, num_nodes, my_size, ppnode);
 
                     traces_start();
@@ -1571,7 +1571,7 @@ void ear_init()
                     traces_mpi_init();
                 }
                 #else
-                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
+                    traces_init(system_conf, application.job.app_id, ear_my_rank,
                             my_node_id, num_nodes, my_size, ppnode);
 
                     traces_start();
@@ -1623,7 +1623,8 @@ void ear_init()
 				earl_monitor->call_main = earl_periodic_actions;
 				earl_monitor->time_relax = BASIC_PERIOD*10;
         #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt){
+        //if (is_mpi_enabled() && ear_mpi_opt){
+        if (is_mpi_enabled()){
 				  earl_monitor->time_relax = BASIC_PERIOD/4;
         }
         #endif
@@ -2233,7 +2234,8 @@ state_t earl_periodic_actions(void *no_arg)
 
         
         #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt){
+        //if (is_mpi_enabled() && ear_mpi_opt){
+        if (is_mpi_enabled()){
           /* Read */
           mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
           mpi_call_get_types(&my_mpi_types[1], NULL, -1);
@@ -2249,6 +2251,13 @@ state_t earl_periodic_actions(void *no_arg)
           (float)my_mpi_types[2].mpi_sync_call_time/(float)my_mpi_types[2].exec_time, (float)my_mpi_types[2].mpi_block_call_time/(float)my_mpi_types[2].exec_time, 
           (float)my_mpi_types[2].exec_time/(float)my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_block_call_cnt);
           #endif
+          #if SINGLE_CONNECTION
+          if ((MASTER_ID >= 0) && traces_are_on()){
+          #else
+          if (traces_are_on()){
+          #endif
+            traces_generic_event(ear_my_rank, my_node_id , PERC_MPI, (ullong)my_mpi_stats[2].perc_mpi * 100);
+          }
 
         }
         #endif

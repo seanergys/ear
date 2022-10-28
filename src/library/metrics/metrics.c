@@ -631,9 +631,15 @@ static void metrics_static_init(topology_t *tp)
 
 void metrics_static_dispose()
 {
+  /* Set default CPU prio */
   if (mgt_cpufreq_prio_is_enabled()){
     mgt_cpufreq_prio_disable();
   }
+  /* Set default CPU freq */
+  /* Set default IMC freq, already set in global stop */
+  #if USE_GPUS
+  /* Set default GPU freq */
+  #endif
 
 }
 
