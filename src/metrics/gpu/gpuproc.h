@@ -44,8 +44,8 @@ typedef struct gpuproc_ops_s
     state_t (*dispose)       (ctx_t *c);
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
     state_t (*read)          (ctx_t *c, gpuproc_t *data);
-    state_t (*read_pause)    (ctx_t *c);
-    state_t (*read_resume)   (ctx_t *c);
+    state_t (*enable)        (ctx_t *c);
+    state_t (*disable)       (ctx_t *c);
 } gpuproc_ops_t;
 
 // Discovers the low level API.
@@ -71,10 +71,10 @@ state_t gpuproc_read_diff(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_
 state_t gpuproc_read_copy(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff);
 
 // 
-state_t gpuproc_read_pause(ctx_t *c);
+state_t gpuproc_enable(ctx_t *c);
 
 //
-state_t gpuproc_read_resume(ctx_t *c);
+state_t gpuproc_disable(ctx_t *c);
 
 /** Helpers */
 // Substracts the elements of the gpuproc_t array (data_diff = data2 - data1).

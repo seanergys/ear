@@ -23,7 +23,7 @@ static int update(void *x)
     }
     #endif
     if (updated == 4) {
-        gpuproc_read_pause(no_ctx);
+        //gpuproc_disable(no_ctx);
     }
     updated++;
     debug("LEAVING PROC %u", getpid());

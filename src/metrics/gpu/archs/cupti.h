@@ -34,8 +34,8 @@ state_t gpu_cupti_pool(void *p);
 
 state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data);
 
-state_t gpu_cupti_read_pause(ctx_t *c);
+state_t gpu_cupti_enable(ctx_t *c);
 
-state_t gpu_cupti_read_resume(ctx_t *c);
+state_t gpu_cupti_disable(ctx_t *c);
 
 #endif //METRICS_GPU_CUPTI_H

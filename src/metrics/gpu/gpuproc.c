@@ -103,14 +103,14 @@ state_t gpuproc_read_copy(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_
 	return gpuproc_data_copy(data1, data2);
 }
 
-state_t gpuproc_read_pause(ctx_t *c)
+state_t gpuproc_enable(ctx_t *c)
 {
-    return ops.read_pause(c);
+    return ops.enable(c);
 }
 
-state_t gpuproc_read_resume(ctx_t *c)
+state_t gpuproc_disable(ctx_t *c)
 {
-    return ops.read_resume(c);
+    return ops.disable(c);
 }
 
 static void static_data_diff(gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *dataD, int i)

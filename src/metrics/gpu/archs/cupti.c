@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -162,8 +162,8 @@ void gpu_cupti_load(gpuproc_ops_t *ops)
     apis_set(ops->dispose,       gpu_cupti_dispose);
     apis_set(ops->count_devices, gpu_cupti_count_devices);
     apis_set(ops->read,          gpu_cupti_read);
-    apis_set(ops->read_pause,    gpu_cupti_read_pause);
-    apis_set(ops->read_resume,   gpu_cupti_read_resume);
+    apis_set(ops->enable,        gpu_cupti_enable);
+    apis_set(ops->disable,       gpu_cupti_disable);
 
     debug("Loaded CUPTI (%d devices)", root.devs_count);
 }
@@ -222,15 +222,15 @@ state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data)
     return EAR_SUCCESS;
 }
 
-state_t gpu_cupti_read_pause(ctx_t *c)
+state_t gpu_cupti_enable(ctx_t *c)
 {
-    root.set_pause = 1;
+    root.set_resume = 1;
     return EAR_SUCCESS;
 }
 
-state_t gpu_cupti_read_resume(ctx_t *c)
+state_t gpu_cupti_disable(ctx_t *c)
 {
-    root.set_resume = 1;
+    root.set_pause = 1;
     return EAR_SUCCESS;
 }
 
@@ -423,8 +423,8 @@ static int low_assoc_create(CUassoc *m, char *metric_name)
 static void low_assoc_clean(CUassoc *a)
 {
     // It has just 1 pass, so it is enough
-    cupti.EventGroupSetsDestroy(a->events_passes);
-//    cupti.EventGroupSetsDestroy(a->events_bag);
+//    cupti.EventGroupSetsDestroy(a->events_passes);
+    cupti.EventGroupSetsDestroy(a->events_bag);
     // Cleaning
     memset(a, 0, sizeof(CUassoc));
 }
