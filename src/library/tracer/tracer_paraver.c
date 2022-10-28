@@ -74,8 +74,10 @@ static pthread_mutex_t trace_event_lock = PTHREAD_MUTEX_INITIALIZER;
 #define TRA_AVGFRQ EV_AVG_CPUFREQ_KHZ
 #define TRA_PCK_POWER  EV_PCK_POWER_W
 #define TRA_DRAM_POWER EV_DRAM_POWER_W
-#define TRA_IO     EV_IO_MBS
-#define TRA_GFLOPS EV_GFLOPS
+#define TRA_IO          EV_IO_MBS
+#define TRA_GFLOPS      EV_GFLOPS
+#define TRA_JOB_POWER   JOB_POWER
+#define TRA_NODE_POWER  NODE_POWER
 
 
 
@@ -240,6 +242,10 @@ static void config_file_create(char *pathname, char* hostname)
     sprintf(buffer1, "EVENT_TYPE\n0\t%d\tIO_MBS\n\n",TRA_IO);
     write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t%d\tGFLOPS\n\n",TRA_GFLOPS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tJOB_POWER\n\n",TRA_JOB_POWER);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tNODE_POWER\n\n",TRA_NODE_POWER);
     write_unused(file_pcf, buffer1, strlen(buffer1));
 
 

@@ -73,6 +73,9 @@ typedef struct ear_event {
 #define TIME_BLOCK_CALLS        35
 #define TIME_MAX_BLOCK          36
 
+#define JOB_POWER               40
+#define NODE_POWER              41
+
 /** EARD Init events. */
 #define PM_CREATION_ERROR       100
 #define APP_API_CREATION_ERROR  101

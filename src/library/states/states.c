@@ -597,18 +597,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* ******************* MOVED **********************
              * Now we compute the JOB signature for reporting. */
-            copy_loop(&tracer_loop, &curr_loop);
             if (master) {
                 // curr_loop.signature <- lib_shared_region->job_signature
                 metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature);
 
                 // lib_shared_region->job_signature <- curr_loop.signature
                 signature_copy(&lib_shared_region->job_signature, &curr_loop.signature);
-                signature_copy(&tracer_loop.signature, &curr_loop.signature);
-            }else{
-              signature_from_ssig(&tracer_loop.signature, &sig_shared_region[my_node_id].sig);
             }
-            tracer_loop.signature.def_f = sig_shared_region[my_node_id].new_freq;
 
             /* This function takes into account if we are using or not the whole node. */
             signature_t norm_signature;
@@ -673,7 +668,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             /* VERBOSE */
-            //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_node_id, &tracer_loop, tracer_loop.signature.def_f, EAR_STATE); // tracer plugin
+            if (master){
+              traces_generic_event(ear_my_rank, my_node_id, JOB_POWER, (ullong)lib_shared_region->job_signature.DC_power*1000);
+              traces_generic_event(ear_my_rank, my_node_id, NODE_POWER, (ullong)lib_shared_region->node_signature.DC_power*1000);
+            }
+
 
             // The reported signature will show whether the Library is using DynAIS
             if (dynais_used) {
@@ -742,16 +741,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
 			/* This function accumulates per procecss metrics in curr_loop.signature,
              * so curr_loop.signature is the job signature */
-            copy_loop(&tracer_loop, &curr_loop);
             if (master) {
                 metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature);
                 signature_copy(&loop_signature, &curr_loop.signature); // loop_signature <- curr_loop.signature
                 signature_copy(&lib_shared_region->job_signature, &curr_loop.signature); // lib_shared_region->job_signature <- curr_loop.signature
-                signature_copy(&tracer_loop.signature, &curr_loop.signature);
-            }else{
-              signature_from_ssig(&tracer_loop.signature, &sig_shared_region[my_node_id].sig);
             }
-            tracer_loop.signature.def_f = sig_shared_region[my_node_id].new_freq;
+            if (master){
+              traces_generic_event(ear_my_rank, my_node_id, JOB_POWER, (ullong)lib_shared_region->job_signature.DC_power*1000);
+              traces_generic_event(ear_my_rank, my_node_id, NODE_POWER, (ullong)lib_shared_region->node_signature.DC_power*1000);
+            }
 
 
             timestamp_getfast(&time_last_signature);
@@ -767,7 +765,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             } else {
                 sprintf(use_case, "P-Stable");
             }
-            //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_node_id, &tracer_loop, tracer_loop.signature.def_f, EAR_STATE);
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
             /* END VERBOSE */
 
