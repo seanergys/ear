@@ -105,6 +105,7 @@ static int          policy_max_tries_cnt;                        // The maximum 
 static ulong        policy_cpufreq_khz;
 static signature_t  policy_sel_signature;                        // Stores the signature used by
 static loop_t       tracer_loop;
+static signature_t  tracer_signature;
                                                                  // the last policy application
                                                                  // which returned EAR_POLICY_READY
 
@@ -344,6 +345,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
+
+
+    if (traces_are_on()){
+      signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
+      tracer_signature.def_f = sig_shared_region[my_node_id].new_freq;
+      traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
+    }
+
 
     sig_shared_region[my_node_id].iterations++;
     if (state_ok(metrics_new_iteration(&loop_signature))) {
@@ -599,6 +608,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }else{
               signature_from_ssig(&tracer_loop.signature, &sig_shared_region[my_node_id].sig);
             }
+            tracer_loop.signature.def_f = sig_shared_region[my_node_id].new_freq;
 
             /* This function takes into account if we are using or not the whole node. */
             signature_t norm_signature;
@@ -663,7 +673,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             /* VERBOSE */
-            state_report_traces(masters_info.my_master_rank, ear_my_rank, my_node_id, &tracer_loop, policy_cpufreq_khz, EAR_STATE); // tracer plugin
+            //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_node_id, &tracer_loop, tracer_loop.signature.def_f, EAR_STATE); // tracer plugin
 
             // The reported signature will show whether the Library is using DynAIS
             if (dynais_used) {
@@ -757,7 +767,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             } else {
                 sprintf(use_case, "P-Stable");
             }
-            state_report_traces(masters_info.my_master_rank, ear_my_rank, my_node_id, &tracer_loop, prev_cpufreq_khz, EAR_STATE);
+            //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_node_id, &tracer_loop, tracer_loop.signature.def_f, EAR_STATE);
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
             /* END VERBOSE */
 
@@ -844,7 +854,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 policy_cpufreq_khz = node_freqs.cpu_freq[0];
                 if (master) {
                     log_report_max_tries(application.job.id,application.job.step_id, application.job.def_f);
-                    traces_frequency(ear_my_rank, my_id, policy_cpufreq_khz);
+                    // traces_frequency(ear_my_rank, my_id, policy_cpufreq_khz);
                     /* And then we mark as not ready */
                     clean_signatures(lib_shared_region,sig_shared_region);
                 }
@@ -890,8 +900,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 /* VERBOSE */
                 signature_copy(&curr_loop.signature, &loop_signature); // curr_loop.signature <- loop_signature
 
-                state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id,
-                        &curr_loop, prev_cpufreq_khz,EAR_STATE);
+                //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id,
+                 //       &curr_loop, prev_cpufreq_khz,EAR_STATE);
 
                 state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures,
                         ear_app_name, application.node_id, iterations, prev_cpufreq_khz, 0, "D-PE");

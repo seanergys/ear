@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <common/sizes.h>
 #include <common/config.h>
 #include <common/config/config_env.h>
@@ -31,10 +32,13 @@
 #include <common/system/time.h>
 #include <common/output/verbose.h>
 #include <common/types/signature.h>
+#include <common/types/event_type.h>
+#include <common/system/lock.h>
 //#include <library/metrics/metrics.h>
 #include <library/tracer/tracer_paraver.h>
 
 #ifdef EAR_GUI
+static pthread_mutex_t trace_event_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #define USE_TRACER_COMP
 #ifdef USE_TRACER_COMP
@@ -67,6 +71,14 @@
 #define TRA_REC		60018
 #define TRA_ENE		60013
 #define TRA_VPI		60017
+#define TRA_AVGFRQ EV_AVG_CPUFREQ_KHZ
+#define TRA_PCK_POWER  EV_PCK_POWER_W
+#define TRA_DRAM_POWER EV_DRAM_POWER_W
+#define TRA_IO     EV_IO_MBS
+#define TRA_GFLOPS EV_GFLOPS
+
+
+
 
 static char buffer1[SZ_BUFFER];
 static char buffer2[SZ_BUFFER];
@@ -217,8 +229,35 @@ static void config_file_create(char *pathname, char* hostname)
     write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60018\tRECONFIGURATION\n\n");
     write_unused(file_pcf, buffer1, strlen(buffer1));
-    sprintf(buffer1, "EVENT_TYPE\n0\t60019\tAVG_FREQ\n\n");
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tPERC_MPI\n\n",PERC_MPI);
     write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tAVG_CPUFREQ\n\n",TRA_AVGFRQ);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tPCK_POWER\n\n",TRA_PCK_POWER);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tDRAM_POWER\n\n",TRA_DRAM_POWER);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tIO_MBS\n\n",TRA_IO);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tGFLOPS\n\n",TRA_GFLOPS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+
+
+
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tMPI_CALLS\n\n",MPI_CALLS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tMPI_SYNC_CALLS\n\n",MPI_SYNC_CALLS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tMPI_BLOCK_CALLS\n\n",MPI_BLOCK_CALLS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tTIME_SYNC_CALLS\n\n",TIME_SYNC_CALLS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tTIME_BLOCK_CALLS\n\n",TIME_BLOCK_CALLS);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tTIME_MAX_BLOCK\n\n",TIME_MAX_BLOCK);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+
+
 
     close(file_pcf);
 }
@@ -316,6 +355,7 @@ static void trace_file_write_in_file()
 {
     int i;
     int events,pendings=num_events,ready=0;
+
     if (trace_fin) debug("End trace pendings %d",pendings);
     while(pendings>0){
         if (pendings<EVENTS_IN_BUFFER) events=pendings;
@@ -341,6 +381,10 @@ static void trace_file_write_in_file()
 
 static void trace_file_write(int event, ullong value)
 {
+    state_t s;
+	  if (state_fail(s = ear_trylock(&trace_event_lock))) {
+		  return ;
+	  }
     if (num_events==PARAVER_EVENTS){
         trace_file_write_in_file();
     }
@@ -349,10 +393,15 @@ static void trace_file_write(int event, ullong value)
     events_list[num_events].event=event;
     events_list[num_events].value=value;
     num_events++;
+    ear_unlock(&trace_event_lock);
 
 }
 static void trace_file_write_simple_event(int event)
 {
+    state_t s;
+	  if (state_fail(s = ear_trylock(&trace_event_lock))) {
+		  return ;
+	  }
     if (num_events==PARAVER_EVENTS-2){
         trace_file_write_in_file();
     }
@@ -365,6 +414,7 @@ static void trace_file_write_simple_event(int event)
     events_list[num_events].event=event;
     events_list[num_events].value=0;
     num_events++;
+    ear_unlock(&trace_event_lock);
 
 }
 
@@ -503,23 +553,33 @@ void traces_new_signature(int global_rank, int local_rank, signature_t *sig)
     ullong lgbs;
     ullong lpow;
     ullong lvpi;
+    ullong lfreq;
+    ullong lavgf, lpck, ldram, lio, lgflops;
 
     if (!enabled || !working) {
         return;
     }
-    seconds=sig->time;
-    cpi=sig->CPI;
-    tpi=sig->TPI;
-    gbs=sig->GBS;
-    power=sig->DC_power;
-    vpi=(double)(sig->FLOPS[3]/16+sig->FLOPS[7]/8)/(double)sig->instructions;
+    if (sig->time == 0) return;
+    seconds = sig->time;
+    cpi   = sig->CPI;
+    tpi   = sig->TPI;
+    gbs   = sig->GBS;
+    power = sig->DC_power;
+    vpi   = (double)(sig->FLOPS[3]/16+sig->FLOPS[7]/8)/(double)sig->instructions;
+    lfreq = (ullong)sig->def_f;
+    lavgf = (ullong)sig->avg_f;
 
     lsec = (ullong) (seconds * 1000000.0);
     lcpi = (ullong) (cpi * 1000.0);
     ltpi = (ullong) (tpi * 1000.0);
     lgbs = (ullong) (gbs * 1000.0);
-    lpow = (ullong) (power);
+    lpow = (ullong) (power * 1000);
     lvpi = (ullong) (vpi * 1000.0);
+    lpck = (ullong) (sig->PCK_power * 1000);
+    ldram = (ullong) (sig->DRAM_power * 1000);
+    lio   = (ullong) (sig->IO_MBS * 1000);
+    lgflops = (ullong) (sig->Gflops * 1000);
+
 
     trace_file_write(TRA_TIM, lsec);
     trace_file_write(TRA_CPI, lcpi);
@@ -527,6 +587,12 @@ void traces_new_signature(int global_rank, int local_rank, signature_t *sig)
     trace_file_write(TRA_GBS, lgbs);
     trace_file_write(TRA_POW, lpow);
     trace_file_write(TRA_VPI, lvpi);
+    trace_file_write(TRA_FRQ, lfreq);
+    trace_file_write(TRA_AVGFRQ, lavgf);
+    trace_file_write(TRA_PCK_POWER, lpck);
+    trace_file_write(TRA_DRAM_POWER, ldram);
+    trace_file_write(TRA_IO, lio);
+    trace_file_write(TRA_GFLOPS, lgflops);
 }
 
 // ear_states.c

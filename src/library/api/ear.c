@@ -1623,8 +1623,10 @@ void ear_init()
 				earl_monitor->call_main = earl_periodic_actions;
 				earl_monitor->time_relax = BASIC_PERIOD*10;
         #if MPI_OPTIMIZED
-        //if (is_mpi_enabled() && ear_mpi_opt){
-        if (is_mpi_enabled()){
+        if (is_mpi_enabled() && ear_mpi_opt){
+				  earl_monitor->time_relax = BASIC_PERIOD/4;
+        }
+        if (is_mpi_enabled() && traces_are_on()){
 				  earl_monitor->time_relax = BASIC_PERIOD/4;
         }
         #endif
@@ -2234,8 +2236,7 @@ state_t earl_periodic_actions(void *no_arg)
 
         
         #if MPI_OPTIMIZED
-        //if (is_mpi_enabled() && ear_mpi_opt){
-        if (is_mpi_enabled()){
+        if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())){
           /* Read */
           mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
           mpi_call_get_types(&my_mpi_types[1], NULL, -1);
@@ -2257,6 +2258,12 @@ state_t earl_periodic_actions(void *no_arg)
           if (traces_are_on()){
           #endif
             traces_generic_event(ear_my_rank, my_node_id , PERC_MPI, (ullong)my_mpi_stats[2].perc_mpi * 100);
+            traces_generic_event(ear_my_rank, my_node_id , MPI_CALLS, (ullong)my_mpi_types[2].mpi_call_cnt);
+            traces_generic_event(ear_my_rank, my_node_id , MPI_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_cnt);
+            traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
+            traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
+            traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
+            traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong)my_mpi_types[2].max_sync_block);
           }
 
         }

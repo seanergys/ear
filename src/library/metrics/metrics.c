@@ -660,6 +660,16 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 	*avgf = total/total_cpus;
 }
 
+static void cpufreq_process_avgcpufreq(uint proc, ulong *nodecpuf, ulong *avgf)
+{
+  cpu_set_t m;
+  ulong lavg = 0, lcpus = 0;
+
+  m = sig_shared_region[proc].cpu_mask;
+  pstate_freqtoavg(m, nodecpuf, met_cpufreq.devs_count, &lavg, &lcpus);
+  *avgf = lavg;
+}
+
 void set_null_dc_energy(edata_t e)
 {
     memset((void *)e,0,node_energy_datasize);
@@ -1477,8 +1487,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		copy_node_data(metrics, &lib_shared_region->node_signature);
 	}
 
+
 	/* Copying my info in the shared signature */
 	ssig_from_signature(&sig_shared_region[my_node_id].sig, metrics);
+  /* Computing avg_cpufreq in shared sig (new) */
+  cpufreq_process_avgcpufreq(my_node_id, lib_shared_region->avg_cpufreq, &sig_shared_region[my_node_id].sig.avg_f);
 
 	/* If I'm the master, I have to copy in the special section */
 	if (master) {

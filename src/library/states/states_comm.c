@@ -273,13 +273,13 @@ void state_report_traces(int master_rank, int my_rank,int lid, loop_t *lsig,ulon
     #if SINGLE_CONNECTION
     if (master_rank >= 0 && traces_are_on()) {
         traces_new_signature(my_rank, lid, &lsig->signature);
-        if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
+        //if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
         traces_policy_state(my_rank, lid, status);
     }
     #else
     if (traces_are_on()){
         traces_new_signature(my_rank, lid, &lsig->signature);
-        if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
+        //if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
         traces_policy_state(my_rank, lid, status);
       
     }
