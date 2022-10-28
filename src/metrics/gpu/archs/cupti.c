@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -68,7 +68,9 @@ typedef struct CUroot_s {
     uint                   devs_count;
     uint                   already_initialized;
     uint                   already_protected;
-    uint                   already_stopped;
+    uint                   already_paused;
+    uint                   set_resume;
+    uint                   set_pause;
 } CUroot;
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -98,6 +100,7 @@ static suscription_t  *sus;
     } while (0)
 #define cci(call) cc(call, return 0;)
 #define ccv(call) cc(call, return  ;)
+#define ccn(call) cc(call,         ;)
 
 static uint aux_listtoar(const char *list, char matrix[][128], uint *rows_count)
 {
@@ -157,8 +160,10 @@ void gpu_cupti_load(gpuproc_ops_t *ops)
     apis_set(ops->get_api,       gpu_cupti_get_api);
     apis_set(ops->init,          gpu_cupti_init);
     apis_set(ops->dispose,       gpu_cupti_dispose);
-    apis_set(ops->read,          gpu_cupti_read);
     apis_set(ops->count_devices, gpu_cupti_count_devices);
+    apis_set(ops->read,          gpu_cupti_read);
+    apis_set(ops->read_pause,    gpu_cupti_read_pause);
+    apis_set(ops->read_resume,   gpu_cupti_read_resume);
 
     debug("Loaded CUPTI (%d devices)", root.devs_count);
 }
@@ -214,6 +219,18 @@ state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data)
     while (pthread_mutex_trylock(&lock));
     memcpy(data, pool, root.devs_count * sizeof(gpuproc_t));
     pthread_mutex_unlock(&lock);
+    return EAR_SUCCESS;
+}
+
+state_t gpu_cupti_read_pause(ctx_t *c)
+{
+    root.set_pause = 1;
+    return EAR_SUCCESS;
+}
+
+state_t gpu_cupti_read_resume(ctx_t *c)
+{
+    root.set_resume = 1;
     return EAR_SUCCESS;
 }
 
@@ -292,6 +309,7 @@ static int low_assoc_print(CUassoc *m)
     cci(cupti.MetricGetNumEvents(m->metric_id, &events_count));
 
     debug("-- [CUPTI] ----------------------");
+    debug("device : %d",    m->device);
     debug("context: %p",   m->context);
     debug("met. id: 0x%X", m->metric_id);
     debug("#passes: %d",   m->events_bag->numSets);
@@ -303,6 +321,7 @@ static int low_assoc_print(CUassoc *m)
         debug("#groups: %d", set->numEventGroups);
         // Groups
         for (g = 0; g < m->events_bag->sets[p].numEventGroups; ++g) {
+            debug("-- [GROUP %d (%p)] -----------", g, set->eventGroups[g]);
             CUpti_EventGroup* group = set->eventGroups[g];
             //
             size = sizeof(events_count);
@@ -324,28 +343,6 @@ static int low_assoc_print(CUassoc *m)
     }
 #endif
     return 1;
-}
-
-static void low_assoc_enable()
-{
-    int d, m, g;
-    root.already_stopped = 0;
-    for (d = 0; d < DEV_N; ++d) {
-        for (m = 0; m < MET_N; ++m) {
-            for (g = 0; g < assocs[d][m].events_groups_count; ++g) {
-                cupti.EventGroupEnable(assocs[d][m].events_groups[g]);
-    }}}
-}
-
-static void low_assoc_disable(CUassoc *a)
-{
-    int d, m, g;
-    root.already_stopped = 1;
-    for (d = 0; d < DEV_N; ++d) {
-        for (m = 0; m < MET_N; ++m) {
-            for (g = 0; g < assocs[d][m].events_groups_count; ++g) {
-                cupti.EventGroupDisable(assocs[d][m].events_groups[g]);
-    }}}
 }
 
 static int low_assoc_fill(CUassoc *m)
@@ -378,8 +375,9 @@ static int low_assoc_fill(CUassoc *m)
         //size = sizeof(m->events_groupsD[g].tins_count);
         //cci(cupti.DeviceGetEventDomainAttribute(metricData->device, groupDomain, CUPTI_EVENT_DOMAIN_ATTR_TOTAL_INSTANCE_COUNT, &m->events_groupsD[g].tins_count));
         // Enabling all domains
-        //cci(cupti.EventGroupSetAttribute(m->events_groups[g], CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES, sizeof(aux), &aux));
+        cci(cupti.EventGroupSetAttribute(m->events_groups[g], CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES, sizeof(aux), &aux));
         // Enabling metric
+        debug("Enabling group %p", m->events_groups[g]);
         cci(cupti.EventGroupEnable(m->events_groups[g]));
 
         for (e = 0; e < m->events_groupsD[g].evs_count; ++e) {
@@ -397,7 +395,7 @@ static int low_assoc_fill(CUassoc *m)
 
 static int low_assoc_create(CUassoc *m, char *metric_name)
 {
-    debug("Getting id from name '%s'", metric_name);
+    debug("Creating metric from name '%s'", metric_name);
     cci(cupti.SetEventCollectionMode(m->context, CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS));
     cci(cupti.MetricGetIdFromName(m->device, metric_name, &m->metric_id));
     // When returned by cuptiMetricCreateEventGroupSets, indicates the number
@@ -425,7 +423,8 @@ static int low_assoc_create(CUassoc *m, char *metric_name)
 static void low_assoc_clean(CUassoc *a)
 {
     // It has just 1 pass, so it is enough
-    cupti.EventGroupSetsDestroy(a->events_bag);
+    cupti.EventGroupSetsDestroy(a->events_passes);
+//    cupti.EventGroupSetsDestroy(a->events_bag);
     // Cleaning
     memset(a, 0, sizeof(CUassoc));
 }
@@ -460,6 +459,9 @@ static void low_assoc_add(CUcontext context, CUdevice device)
 {
     uint i;
     //debug("Adding context %p for device %d", context, device);
+    if (root.already_paused) {
+        return;
+    }
     if (assocs[device][0].context == context) {
         return;
     }
@@ -513,27 +515,41 @@ static state_t low_pool(void *p)
     uint d, m, g;
 
     debug("Pooling...");
-    if (root.already_stopped) {
+    if (root.already_paused) {
         return EAR_SUCCESS;
     }
     for (d = 0; d < DEV_N; ++d) {
         for (m = 0; m < MET_N; ++m) {
             assoc = &assocs[d][m];
-            if (assoc->already_added && !assoc->already_created && !assoc->already_banned) {
+            if (assoc->already_added && !assoc->already_created) {
                 if (!low_assoc_create(assoc, metrics[m].name)) {
                     low_assoc_clean(assoc);
-                    //low_assoc_ban(assoc);
                 }
             }
-            if (assoc->already_created && !assoc->already_banned) {
+            if (assoc->already_created) {
                 for (g = 0; g < assoc->events_groups_count; ++g) {
+                    if (root.set_pause) {
+                        debug("IN cupti.EventGroupDisable %p", assoc->events_groups[g]);
+                        ccn(cupti.EventGroupDisable(assoc->events_groups[g]));
+                        debug("OUT cupti.EventGroupDisable %p", assoc->events_groups[g]);
+                        continue;
+                    }
                     if (!low_assoc_read(assoc, &metrics[m], g)) {
                         low_assoc_clean(assoc);
-                        //low_assoc_ban(assoc);
                     }
                 }
             }
         }
+    }
+    if (root.set_pause) {
+        debug("Paused");
+        root.already_paused = 1;
+        root.set_pause      = 0;
+    }
+    if (root.set_resume) {
+        debug("Resumed");
+        root.already_paused = 0;
+        root.set_resume     = 0;
     }
     return EAR_SUCCESS;
 }

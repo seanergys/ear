@@ -32,7 +32,7 @@
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
-#define CUPTI_N      19
+#define CUPTI_N      20
 #define CUDA_N       4
 #define CUDA_LIB     "libcuda.so"
 #define CUPTI_LIB    "libcupti.so"
@@ -59,6 +59,7 @@ static const char *cupti_names[] = {
     "cuptiEventGroupGetAttribute",
     "cuptiEventGroupEnable",
     "cuptiEventGroupDisable",
+    "cuptiEventGroupSetDisable",
     "cuptiEventGroupReadAllEvents",
     "cuptiEventGetAttribute",
     "cuptiEventGroupAddEvent",
