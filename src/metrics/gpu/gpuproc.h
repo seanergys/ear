@@ -70,10 +70,10 @@ state_t gpuproc_read_diff(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_
 // Performs a gpuproc_read() over data2, a gpuproc_data_diff() and copies data2 in data1.
 state_t gpuproc_read_copy(ctx_t *c, gpuproc_t *data2, gpuproc_t *data1, gpuproc_t *data_diff);
 
-// 
+// Enables or starts GPU metrics gathering (its enabled by default after the init)
 state_t gpuproc_enable(ctx_t *c);
 
-//
+// Disables or stops GPU metrics gathering
 state_t gpuproc_disable(ctx_t *c);
 
 /** Helpers */
