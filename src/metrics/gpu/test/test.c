@@ -17,13 +17,11 @@ static int update(void *x)
 
     gpuproc_data_print(dataD, fderr);
 
-    #if 0
-    if ((updated % 8) == 0) {
-        gpuproc_read_resume(no_ctx);
-    }
-    #endif
     if (updated == 4) {
-        //gpuproc_disable(no_ctx);
+        gpuproc_disable(no_ctx);
+    }
+    if (updated == 8) {
+        gpuproc_enable(no_ctx);
     }
     updated++;
     debug("LEAVING PROC %u", getpid());

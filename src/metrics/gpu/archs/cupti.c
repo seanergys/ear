@@ -225,6 +225,7 @@ state_t gpu_cupti_read(ctx_t *c, gpuproc_t *data)
 state_t gpu_cupti_enable(ctx_t *c)
 {
     root.set_resume = 1;
+    root.already_paused = 0;
     return EAR_SUCCESS;
 }
 
@@ -514,7 +515,7 @@ static state_t low_pool(void *p)
     CUassoc *assoc;
     uint d, m, g;
 
-    debug("Pooling...");
+    debug("Pooling... (paused %d)", root.already_paused);
     if (root.already_paused) {
         return EAR_SUCCESS;
     }
@@ -534,6 +535,12 @@ static state_t low_pool(void *p)
                         debug("OUT cupti.EventGroupDisable %p", assoc->events_groups[g]);
                         continue;
                     }
+                    if (root.set_resume) {
+                        debug("IN cupti.EventGroupEnable %p", assoc->events_groups[g]);
+                        ccn(cupti.EventGroupEnable(assoc->events_groups[g]));
+                        debug("OUT cupti.EventGroupEnable %p", assoc->events_groups[g]);
+                        continue;
+                    }
                     if (!low_assoc_read(assoc, &metrics[m], g)) {
                         low_assoc_clean(assoc);
                     }
@@ -544,12 +551,11 @@ static state_t low_pool(void *p)
     if (root.set_pause) {
         debug("Paused");
         root.already_paused = 1;
-        root.set_pause      = 0;
+        root.set_pause = 0;
     }
     if (root.set_resume) {
         debug("Resumed");
-        root.already_paused = 0;
-        root.set_resume     = 0;
+        root.set_resume = 0;
     }
     return EAR_SUCCESS;
 }
