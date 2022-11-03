@@ -22,9 +22,9 @@
 #include <common/output/verbose.h>
 #include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api_rpc.h>
-#include <management/management.h>
+#include <management/test.h>
 
-static management_apis_t m;
+static manages_apis_t m;
 
 #define sa(f) \
 	if (state_fail(f)) { \
@@ -41,7 +41,7 @@ static management_apis_t m;
 #define fgpu(f)
 #endif
 
-void management_init(topology_t *tp, int eard, const management_apis_t **m)
+void management_init(topology_t *tp, int eard, manages_apis_t **man)
 {
     frun(mgt_cpufreq_load(tp, eard      ));
     frun(mgt_cpuprio_load(tp, eard      ));
@@ -59,7 +59,7 @@ void management_init(topology_t *tp, int eard, const management_apis_t **m)
     fgpu(sn(    mgt_gpu_init(no_ctx)));
 
     frun(sa(mgt_cpufreq_count_devices(no_ctx, &m.cpu.devs_count)));
-    frun(sa(mgt_cpuprio_count_devices(no_ctx, &m.pri.devs_count)));
+    frun(sn(mgt_cpuprio_count_devices(no_ctx, &m.pri.devs_count)));
     frun(sa(mgt_imcfreq_count_devices(no_ctx, &m.imc.devs_count)));
     fgpu(sa(    mgt_gpu_count_devices(no_ctx, &m.gpu.devs_count)));
 
@@ -84,6 +84,10 @@ void management_init(topology_t *tp, int eard, const management_apis_t **m)
     //frun(sn(mgt_cpufreq_data_count(&m.cpu.list1_count, &m.cpu.list2_count)));
     frun(sn(mgt_cpuprio_data_count(&m.pri.list1_count, &m.pri.list2_count)));
     //frun(sn(mgt_imcfreq_data_count(&m.imc.list1_count, &m.imc.list2_count)));
+    //
+    if (man != NULL) {    
+        *man = &m;
+    }
 }
 
 #if TEST

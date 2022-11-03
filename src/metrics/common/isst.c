@@ -705,7 +705,9 @@ state_t isst_reset()
 
 state_t isst_clos_count(uint *count)
 {
-    *count = CLOS_COUNT;
+    if (count != NULL) {
+        *count = CLOS_COUNT;
+    }
     return EAR_SUCCESS;
 }
 
@@ -727,7 +729,9 @@ state_t isst_clos_set_list(clos_t *clos_list)
 
 state_t isst_assoc_count(uint *count)
 {
-    *count = cpus_count;
+    if (count != NULL) {
+        *count = cpus_count;
+    }
     return EAR_SUCCESS;
 }
 

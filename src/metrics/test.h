@@ -18,7 +18,7 @@
 #ifndef METRICS_H
 #define METRICS_H
 
-#include <commmon/states.h>
+#include <common/states.h>
 #include <common/plugins.h>
 #include <common/types/generic.h>
 #include <common/hardware/topology.h>

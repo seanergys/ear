@@ -101,7 +101,6 @@ static int              global_req_fd;
 static char             ear_commreq_global[MAX_PATH_SIZE * 2];
 static ulong            energy_freq;
 static int              RAPL_counting = 0;
-static gpu_t           *eard_read_gpu;
 /* This var is used in all the eard services, no thread-safe */
 static struct daemon_req req;
 /* FDs for local connections */
@@ -109,15 +108,18 @@ static afd_set_t        rfds_basic;
 static local_connection_t *eard_local_conn;
 static uint             num_local_con=0;
 // New grounds
-static char            big_chunk1[16384];
-static char            big_chunk2[16384];
-static wide_buffer_t   wb;
-static manages_apis_t *man;
-static metrics_apis_t *met;
-static metrics_t       uc;
-static metrics_t       ui;
-static metrics_t       ub;
-static metrics_t       ug;
+static char             big_chunk1[16384];
+static char             big_chunk2[16384];
+static wide_buffer_t    wb;
+       manages_apis_t  *man;
+       metrics_apis_t  *met;
+static metrics_t        uc;
+static metrics_t        ui;
+static metrics_t        ub;
+#if USE_GPUS
+static metrics_t        ug;
+static gpu_t           *eard_read_gpu;
+#endif
 
 #define sf(function) \
 	if (state_fail(s = function)) { \
@@ -334,7 +336,7 @@ int services_mgt_cpuprio(eard_head_t *head, int fd_req, int fd_ack)
         }
     break;
     case RPC_MGT_PRIO_SET_CURRENT:
-        if (state_fail(ret_s = eard_rpc_read_pending(fd_req, cbuffer, rpc_size, 0))) {
+        if (state_fail(ret_s = eard_rpc_read_pending(fd_req, big_chunk1, rpc_size, 0))) {
             serror(Rpcerr.pending);
         } else {
             ret_s = mgt_cpuprio_set_current(ibuffer[0], (int) ibuffer[1]);
@@ -925,13 +927,13 @@ void eard_close_comm(int req_fd,int ack_fd)
 
 int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
+	#if USE_GPUS
 	uint call = head->req_service;
 	state_t s = EAR_SUCCESS;
 	char *data = NULL;
 	size_t size = 0;
     uint u1;
 
-	#if USE_GPUS
 	switch (call) {
 	break;
 	case RPC_MET_GPU_GET_API:
@@ -1279,9 +1281,6 @@ void service_select(int req_fd, int ack_fd)
         return;
     }
     // New management
-    if (management_rpcs(local_req->req_service, local_req->size, req_fd, ack_fd)) {
-        return;
-    }
     if(services_mgt_cpufreq(local_req, req_fd, ack_fd)) {
         return;
     }

@@ -31,7 +31,7 @@ typedef struct manages_apis_s {
     apis_info_t gpu; // gpu
 } manages_apis_t;
 
-void management_init(topology_t *tp, int eard, const manages_apis_t **m);
+void management_init(topology_t *tp, int eard, manages_apis_t **m);
 
 void management_data_print();
 

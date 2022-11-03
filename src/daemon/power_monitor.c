@@ -50,7 +50,7 @@
 #include <metrics/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
-#include <management/cpufreq/frequency.h>
+#include <management/test.h>
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/node_metrics.h>
@@ -133,8 +133,9 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
 // app is the new job
 
 /* from eard_node_services */
-extern metrics_t     mc;
-extern metrics_t     ug;
+extern manages_apis_t *man;
+extern metrics_apis_t *met;
+
 static void set_default_powermon_init(powermon_app_t *app)
 {
 
@@ -172,7 +173,7 @@ static void set_default_powermon_init(powermon_app_t *app)
         mgt_cpufreq_governor_set_mask(no_ctx, gov, app->policy_mask);
 
         /* CPU freq. */
-        fill_cpufreq_list(&app->policy_mask, mc.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
+        fill_cpufreq_list(&app->policy_mask, man->cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
         mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
 #endif
 
@@ -214,7 +215,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
         /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
         cgov        = my_node_conf->idle_governor;
-        rest_pstate = ear_max(my_node_conf->idle_pstate, mc.avail_count - 1);
+        rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
 
       } else {
         /* We'll restore the P-State we found before job had started. */
@@ -277,9 +278,9 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
       } else {
 
         verbose(VCONF, "Restoring to CPU pstate %u with mask", rest_pstate);
-        verbose_affinity_mask(&app->plug_mask, mc.devs_count);
+        verbose_affinity_mask(&app->plug_mask, man->cpu.devs_count);
 
-        fill_cpufreq_list(&app->plug_mask, mc.devs_count, rest_pstate, ps_nothing, powermon_restore_cpufreq_list);
+        fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate, ps_nothing, powermon_restore_cpufreq_list);
 
         mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
       }
@@ -1402,14 +1403,14 @@ void powermon_new_task(new_task_req_t *newtask)
 
         verbose(VCONF + 1, "Setting governor `%s` governor, CPU freq %.2f GHz and pstate %u",
                 cgov, (float) pmapp->policy_freq / 1000000, app_pstate);
-        verbose_affinity_mask(&newtask->mask, mc.devs_count);
+        verbose_affinity_mask(&newtask->mask, man->cpu.devs_count);
 
         /* Governor */
         governor_toint(cgov, &gov);
         mgt_cpufreq_governor_set_mask(no_ctx, gov, newtask->mask);
 
         /* CPU freq. */
-        fill_cpufreq_list(&newtask->mask, mc.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
+        fill_cpufreq_list(&newtask->mask, man->cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
         mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
 
         /* ********************* */
@@ -2182,7 +2183,7 @@ void *eard_power_monitoring(void *noinfo)
     powermon_freq_list   = frequency_get_freq_rank_list();
     powermon_num_pstates = frequency_get_num_pstates();
 
-    powermon_restore_cpufreq_list = calloc(mc.devs_count, sizeof(uint));
+    powermon_restore_cpufreq_list = calloc(man->cpu.devs_count, sizeof(uint));
 
 #if USE_GPUS
     if (gpu_mgr_init() != EAR_SUCCESS){
@@ -2382,20 +2383,20 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
 
         sprintf(powermon_app->governor.name, "%s", Goverstr.other);
 
-        uint *governor_list = (uint *) malloc(mc.devs_count * sizeof(uint));
+        uint *governor_list = (uint *) malloc(man->cpu.devs_count * sizeof(uint));
         if (governor_list) {
             if (state_ok(mgt_cpufreq_governor_get_list(no_ctx, governor_list))) {
 
                 int i = 0;
-                while (i < mc.devs_count && !CPU_ISSET(i, mask)) {
+                while (i < man->cpu.devs_count && !CPU_ISSET(i, mask)) {
                     i++;
                 }
 
-                if (i < mc.devs_count) {
+                if (i < man->cpu.devs_count) {
                     mgt_governor_tostr(governor_list[i], powermon_app->governor.name);
 
                     powermon_app->governor.max_f = frequency_pstate_to_freq(0);
-                    powermon_app->governor.min_f = frequency_pstate_to_freq(mc.avail_count - 1);
+                    powermon_app->governor.min_f = frequency_pstate_to_freq(man->cpu.list1_count - 1);
 
                 } else {
                     verbose(VCONF, "%sWARNING%s No CPU found in mask.", COL_YLW, COL_CLR);
