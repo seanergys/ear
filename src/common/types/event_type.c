@@ -38,6 +38,16 @@ void event_type_to_str(ear_event_t *ev, char *str, size_t max)
         case ENERGY_SAVING_AVG     : strncpy(str, "ENERGY_SAVING_AVG", max); break;
         case POWER_SAVING_AVG      : strncpy(str, "POWER_SAVING_AVG", max); break;
         case PERF_PENALTY_AVG      : strncpy(str, "PERF_PENALTY_AVG", max); break;
+        case PHASE_SUMMARY_BASE+APP_COMP_BOUND  : strncpy(str, "COMP_PHASE", max); break;
+        case PHASE_SUMMARY_BASE+APP_MPI_BOUND   : strncpy(str, "MPI_PHASE", max); break;
+        case PHASE_SUMMARY_BASE+APP_IO_BOUND    : strncpy(str, "IO_PHASE", max);break;
+        case PHASE_SUMMARY_BASE+APP_BUSY_WAITING: strncpy(str, "CPU_BUSY_WAITING", max); break;
+        case PHASE_SUMMARY_BASE+APP_CPU_GPU     : strncpy(str, "CPU-GPU_PHASE", max); break;
+        case PHASE_SUMMARY_BASE+APP_COMP_CPU    : strncpy(str, "CPU_BOUND", max); break;
+        case PHASE_SUMMARY_BASE+APP_COMP_MEM    : strncpy(str, "MEM_BOUND", max); break;
+        case PHASE_SUMMARY_BASE+APP_COMP_MIX    : strncpy(str, "MIX_COMP",  max); break;
+
+        /* EARD events */
         case DC_POWER_ERROR        : strncpy(str, "DC_POW_ERROR", max); break;
         case TEMP_ERROR           : strncpy(str, "TEMP_ERROR", max); break;
         case FREQ_ERROR           : strncpy(str, "FREQ_ERROR", max); break;

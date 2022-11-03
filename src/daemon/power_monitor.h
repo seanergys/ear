@@ -48,11 +48,13 @@ typedef struct powermon_app {
 	char             state;
     uint             plug_num_cpus;
     cpu_set_t        plug_mask;
+    cpu_set_t        policy_mask;
     uint             earl_num_cpus;
     uint             local_ids;
     energy_data_t    energy_init;
     governor_t       governor;
     ulong            current_freq;
+    ulong            policy_freq;
     int              sig_reported;
     settings_conf_t *settings;
     resched_t       *resched;

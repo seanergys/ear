@@ -755,7 +755,7 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 {
     uint p;
     double time_s;
-    verbose(2, "accum_estimations");
+   debug("accum_estimations");
     for (p = 0; p < data->num_processes; p++) {
         time_s = sig_shared_region[p].period;
 
@@ -778,12 +778,12 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 
 void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
-	cpu_power_model_project(data, sig, nmgr);
-  #if SHOW_DEBUGS
-  for (uint p = 0; p < data->num_processes; p++){
-    debug("LP[%d] Power %.2lf GB/s %.2lf TPI %.2lf", p, 
-      sig_shared_region[p].sig.DC_power, sig_shared_region[p].sig.GBS, sig_shared_region[p].sig.TPI);
-  }
-  #endif
-	return;
+    cpu_power_model_project(data, sig, nmgr);
+#if SHOW_DEBUGS
+    for (uint p = 0; p < data->num_processes; p++) {
+        debug("LP[%d] Power %.2lf GB/s %.2lf TPI %.2lf", p, 
+                sig_shared_region[p].sig.DC_power, sig_shared_region[p].sig.GBS, sig_shared_region[p].sig.TPI);
+    }
+#endif
+    return;
 }

@@ -23,8 +23,8 @@ COMPONENTS += database_cache
 all: all.components
 
 post:
-    @ $(MAKE) -C 'metrics'    $@ || exit
-    @ $(MAKE) -C 'management' $@ || exit
+	@ $(MAKE) -C 'metrics'    $@ || exit
+	@ $(MAKE) -C 'management' $@ || exit
 
 install: install.components
 

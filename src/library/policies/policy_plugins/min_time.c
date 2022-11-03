@@ -15,7 +15,6 @@
  * and COPYING.EPL files.
  */
 
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -781,9 +780,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
 static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *ok)
 {
-
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
-    *ok=1;
+    *ok = 1;
 
     sig_ext_t *se           = (sig_ext_t *) curr_sig->sig_ext;
     my_node_mpi_calls       = se->mpi_stats;
@@ -795,13 +793,6 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 
         uint unbalance;
-#if 0
-        double lb_eff;
-        mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, &lb_eff, &unbalance);
-
-        debug("%sNode Load Balance Efficiency%s LB_TH %lf LB_EFF %lf unbalance ? %u",
-                COL_MGT, COL_CLR, LB_TH, lb_eff, unbalance);
-#endif
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
@@ -836,25 +827,27 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
                     mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes, last_mpi_stats_perc_mpi_mean,
                             last_mpi_stats_perc_mpi_median, last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
-                    /*  This code has not been encapsulated because is (by now) only for verbose purposes */
                     double similarity;
-                    mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-                    verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
-                    /* *************************************************************************** */
+                    if (VERB_ON(3)) {
+                        /* This code has not been encapsulated because is (by now) only for verbose purposes */
+                        mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                        verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
+                        /* *************************************************************************** */
+                    }
 
                     uint mpi_changed;
                     mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
                             num_processes, &similarity, &mpi_changed);
 
-                    if (mpi_changed){
+                    if (mpi_changed) {
+                        verbose_master(2, "%sMPI stats changed. Starting again%s",
+                                COL_RED, COL_CLR);
                         *ok = 0;
                     }
 
                 } else if (*ok) {
                     first_time_unbalanced = 0;
                 }
-
-                verbose_master(3, "Copying data...");
 
                 /*  Save current stats and critical path to be used later */
                 memcpy(last_percs_mpi, percs_mpi, sizeof(double) * num_processes);
@@ -881,7 +874,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         if (signatures_different(last_sig, curr_sig, 0.2)) {
             verbose_master(2, "%sSignature is too different from the one used for CPU freq, starting again.%s",
                     COL_RED, COL_CLR);
-            *ok=0;
+            *ok = 0;
         }
     }
 

@@ -23,16 +23,9 @@
 #include <common/config.h>
 #include <common/hardware/topology.h>
 #include <common/types/signature.h>
+#include <common/types/event_type.h>
 
 
-#define APP_COMP_BOUND   	1
-#define APP_MPI_BOUND   	2
-#define APP_IO_BOUND		  3
-#define APP_BUSY_WAITING	4
-#define APP_CPU_GPU       5
-#define APP_COMP_CPU      6
-#define APP_COMP_MEM      7
-#define APP_COMP_MIX       8
 
 #define EARL_MAX_PHASES   9
 #define EARL_BASIC_PHASES 6

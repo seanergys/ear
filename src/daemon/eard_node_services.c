@@ -33,7 +33,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
-#include <management/management.h>
+#include <management/test.h>
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -60,6 +60,9 @@
 #define REQ_LOCAL_FD            0
 #define ACK_LOCAL_FD            1
 #define NUM_LOCAL_FDS           2
+
+
+void set_default_management_init();
 
 typedef struct local_connection{
 	ulong jid,sid,lid,anonymous;
@@ -109,7 +112,7 @@ static uint             num_local_con=0;
 static char            big_chunk1[16384];
 static char            big_chunk2[16384];
 static wide_buffer_t   wb;
-static manages_apis_t *man;
+static manages_apis_t *m;
 static metrics_apis_t *met;
 static metrics_t       uc;
 static metrics_t       ui;
@@ -139,9 +142,10 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     #if USE_GPUS
         gpu_get_api((uint *) &ug.api);
     #endif
-    sf(cpufreq_init(no_ctx));
-    sf(imcfreq_init(no_ctx));
-    sf( bwidth_init(no_ctx));
+    sf(    cpufreq_init(no_ctx));
+    sf(    imcfreq_init(no_ctx));
+    sf(     bwidth_init(no_ctx));
+
     #if USE_GPUS
     sf(    gpu_init(no_ctx));
     #endif
@@ -159,6 +163,8 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     #endif
 
 	serial_alloc(&wb, SIZE_8KB);
+    // Resetting values
+    set_default_management_init();
 }
 
 void services_dispose()

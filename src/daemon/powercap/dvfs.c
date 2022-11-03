@@ -306,7 +306,7 @@ state_t dvfs_pc_thread_main(void *p)
         //vector_print_pstates(c_pstate, node_size);
         //print_frequencies(node_size,c_req_f);
         //vector_print_pstates(t_pstate, node_size);
-        verbose(VEARD_PC,"%sCurrent freq freq0 %lu freqn %lu%s", COL_RED, c_freq[0], c_freq[node_size-1],COL_CLR);
+        verbose(VEARD_PC+1,"%sCurrent freq freq0 %lu freqn %lu%s", COL_RED, c_freq[0], c_freq[node_size-1],COL_CLR);
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
         }
@@ -331,7 +331,7 @@ state_t dvfs_pc_thread_main(void *p)
         frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
         //print_frequencies(node_size, c_freq);
         frequency_set_with_list(node_size,c_freq);
-        verbose(VEARD_PC,"%spower above limit. Curr %.2f Limit %.2f, setting freq0 %lu freqm %lu%s", COL_RED, power_rapl, my_limit, c_freq[0], c_freq[node_size-1], COL_CLR);
+        verbose(VEARD_PC+1,"%spower above limit. Curr %.2f Limit %.2f, setting freq0 %lu freqm %lu%s", COL_RED, power_rapl, my_limit, c_freq[0], c_freq[node_size-1], COL_CLR);
 
     }else{ /* We are below the PC */
         if (is_null_f(c_req_f)) {

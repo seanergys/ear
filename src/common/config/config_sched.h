@@ -18,16 +18,15 @@
 #ifndef CONFIG_SCHED_H
 #define CONFIG_SCHED_H
 
-
 /**
- * Different variables per scheduling manager
+ * Different variables per scheduling manager.
  */
+
 #if SCHED_SLURM
 #include <slurm/slurm.h>
 #define BATCH_STEP SLURM_BATCH_SCRIPT
 #else
-#define BATCH_STEP                   -2
+#define BATCH_STEP -2
 #endif
 
-/** @}  */
 #endif //CONFIG_SCHED_H

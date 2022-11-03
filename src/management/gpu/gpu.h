@@ -78,10 +78,6 @@ typedef struct mgt_gpu_ops_s {
 	state_t (*power_cap_set)          (ctx_t *c, ulong *watt_list);
 } mgt_gpu_ops_t;
 
-// Renamed functions
-#define mgt_gpu_freq_list          mgt_gpu_freq_get_available
-#define mgt_gpu_count_devices(n,c) mgt_gpu_get_devices(n, NULL, c);
-
 // Discovers the low level API. Returns function pointers, but is not required.
 void mgt_gpu_load(int eard);
 
@@ -145,5 +141,8 @@ state_t mgt_gpu_data_free(ulong **list);
 state_t mgt_gpu_data_null(ulong *list);
 
 int mgt_gpu_is_supported();
+
+// Renamed functions
+#define mgt_gpu_freq_list mgt_gpu_freq_get_available
 
 #endif

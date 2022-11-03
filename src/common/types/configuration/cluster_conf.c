@@ -646,7 +646,7 @@ void set_default_tag_values(tag_t *tag)
     strcpy(tag->energy_plugin, "");
     strcpy(tag->powercap_plugin, "");
     strcpy(tag->powercap_gpu_plugin, "");
-    strcpy(tag->idle_governor, "ondemand");
+    strcpy(tag->idle_governor, "default");
 }
 
 

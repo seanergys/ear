@@ -138,6 +138,41 @@ int fd_rapl[MAX_PACKAGES];
 double rapl_pck_tdps[MAX_PACKAGES];
 double rapl_dram_tdps[MAX_PACKAGES];
 
+#define EARD_RESTORE 1
+
+/*************** To recover hardware settings **************/
+
+void set_default_management_init()
+{
+  #if EARD_RESTORE
+  /* CPU freq */
+  mgt_cpufreq_reset(no_ctx);
+  /* IMC freq */
+  if (node_desc.vendor == VENDOR_INTEL){
+    mgt_imcfreq_set_auto(no_ctx);
+  }else if (node_desc.vendor == VENDOR_AMD){
+    mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+  }
+  #endif
+}
+
+static void set_default_management_exit()
+{
+  #if EARD_RESTORE
+  /* CPU freq */
+  mgt_cpufreq_reset(no_ctx);
+  /* IMC freq */
+  if (node_desc.vendor == VENDOR_INTEL){
+    mgt_imcfreq_set_auto(no_ctx);
+  }else if (node_desc.vendor == VENDOR_AMD){
+    mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+  }
+  #endif
+
+}
+/**********************************************************/
+
+
 /* EARD init errors control */
 static uint error_rapl=0;
 static uint error_energy=0;
@@ -274,6 +309,10 @@ void eard_exit(uint restart)
 				//print_rapl_metrics();
 				// Recovering old frequency and governor configurations.
 				verbose(VCONF, "frequency_dispose");
+
+        /* Sets to default CPU freq and IMC freq */
+        set_default_management_exit();
+
 				frequency_dispose();
 				powercap_end();
 				verbose(VCONF, "Releasing node resources");
@@ -635,6 +674,9 @@ int main(int argc, char *argv[])
 				if (argc > 2) {
 								Usage(argv[0]);
 				}
+
+
+
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
 				create_log("/tmp", "eard_journal", fd_my_log);
 

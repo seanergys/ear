@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 // #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
@@ -55,6 +54,9 @@ extern unsigned long ext_def_freq;
 #else
 #define FREQ_DEF(f) f
 #endif
+
+#define MASTER (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
 
 /* IMC management */
 extern uint dyn_unc;
@@ -505,7 +507,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                         continue;
                     } else {
 						/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
-                        local_penalty = base_penalty / 2;
+                        local_penalty = base_penalty / 2;;
                     }
                 } else if (critical_path[i] == 2) {
                     /* Lot of MPI: Not used */
@@ -524,6 +526,13 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3,"Time ref %lf Power ref %lf Freq ref %lu",time_ref,power_ref,best_freq);
                 compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
                         local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
+                #if 0
+                if (freq_per_core){
+                  verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
+                  sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
+                  my_node_mpi_calls[i].perc_mpi, local_penalty);
+                }
+                #endif
             } else {
                 // If application is compute bound, we don't reduce CPU freq
                 if (cbound) {
@@ -746,9 +755,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     return EAR_SUCCESS;
 }
 
-static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok)
+static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *ok)
 {
-
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
     *ok = 1;
 
@@ -757,7 +765,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     my_node_mpi_types_calls = se->mpi_types;
 
     /*  Check for load balance data */
-    if (is_mpi_enabled() && enable_load_balance && use_energy_models){
+    if (is_mpi_enabled() && enable_load_balance && use_energy_models) {
 
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 
@@ -779,7 +787,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
                 } else {
                     verbose_master(2, "%sApplication becomes unbalanced%s", COL_RED, COL_CLR);
                     signature_is_unbalance = 1;
-                    *ok=0;
+                    *ok = 0;
                 }
             }
             for (uint i = 0; i < lib_shared_region->num_processes; i++){
@@ -787,7 +795,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
                 sig_shared_region[i].perc_MPI      = 0;
             }
 
-            if (unbalance){
+            if (unbalance) {
                 /* These variables are global to the policy */
                 freq_per_core = 1;
                 nump = num_processes;
@@ -799,27 +807,32 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
 
                 /* We check if policy ok because if it is 0, it means that app became unbalanced from balanced
                  * state and we don't need to check variation between policy iterations  */
-                if (!first_time && *ok==1){
+                if (!first_time && *ok == 1) {
 
                     mpi_support_verbose_perc_mpi_stats(2, last_percs_mpi, num_processes,
                             last_mpi_stats_perc_mpi_mean, last_mpi_stats_perc_mpi_median,
                             last_mpi_stats_perc_mpi_sd, last_mpi_stats_perc_mpi_mag);
 
-                    /*  This code has not been encapsulated because is by (now) only for verbose purposes */
                     double similarity;
-                    mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
-                    verbose_master(2, "(Orientation) Similarity between last and current: %lf", similarity);
-                    /* *************************************************************************** */
+
+                    if (VERB_ON(3)) {
+                        /*  This code has not been encapsulated because is (by now) only for verbose purposes */
+                        mpi_stats_evaluate_similarity(percs_mpi, last_percs_mpi, num_processes, &similarity);
+                        verbose_master(3, "(Orientation) Similarity between last and current: %lf", similarity);
+                        /* *************************************************************************** */
+                    }
 
                     uint mpi_changed;
                     mpi_support_mpi_changed(mag, last_mpi_stats_perc_mpi_mag, critical_path, last_critical_path,
                             num_processes, &similarity, &mpi_changed);
 
-                    if (mpi_changed){
+                    if (mpi_changed) {
+                        verbose_master(2, "%sMPI stats changed. Starting again%s",
+                                COL_RED, COL_CLR);
                         *ok = 0;
                     }
 
-                }else if (*ok){
+                } else if (*ok) {
                     first_time = 0;
                 }
 
@@ -852,36 +865,37 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     if (*ok == 1) {
         /*  If signature has changed, we must start again */
         if (signatures_different(last_sig, curr_sig, 0.2)) {
-            verbose_master(2, "%sSignature is too different from the one used for CPU freq. starting again%s",
+            verbose_master(2, "%sSignature is too different from the one used for CPU freq. Starting again%s",
                     COL_RED, COL_CLR);
             *ok = 0;
         }
     }
-    if (*ok == 0){
+    if (*ok == 0) {
         first_time = 1;
     }
 
     return EAR_SUCCESS;
 }
 
-state_t policy_ok(polctx_t *c,signature_t *curr_sig,signature_t *last_sig,int *ok)
+state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *last_sig, int *ok)
 {
-    state_t st;
     *ok = 0;
     if ((c==NULL) || (curr_sig==NULL) || (last_sig==NULL)) return EAR_ERROR;
-    st = int_policy_ok(curr_sig,last_sig,ok);
-    return st;
+    return int_policy_ok(curr_sig,last_sig,ok);
 }
 
-state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set,signature_t * s)
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t * s)
 {
-    if (c!=NULL){
-        node_freqs_copy(freq_set,&min_energy_def_freqs);
+    if (c != NULL) {
+        node_freqs_copy(freq_set, &min_energy_def_freqs);
+        // WARNING: A function designed as a getter calls a function designed as a setter.
         if ((gpus.restore_settings != NULL) && (s != NULL)) {
-            gpus.restore_settings(c,s,freq_set);
+            gpus.restore_settings(c, s, freq_set);
         }
+    } else {
+        return EAR_ERROR;
+    }
 
-    } else return EAR_ERROR;
     return EAR_SUCCESS;
 }
 
@@ -1151,14 +1165,18 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-    if (c == NULL) return EAR_ERROR;
-    node_freqs_copy(freqs, &min_energy_def_freqs);
-    if (gpus.restore_settings != NULL){
-        gpus.restore_settings(c,my_sig,freqs);
-    }
-    node_freqs_copy(&last_nodefreq_sel,freqs);
+    if (c != NULL) {
+        node_freqs_copy(freqs, &min_energy_def_freqs);
+        node_freqs_copy(&last_nodefreq_sel,freqs);
 
-    return EAR_SUCCESS;
+        if (gpus.restore_settings != NULL){
+            gpus.restore_settings(c,my_sig,freqs);
+        }
+
+        return EAR_SUCCESS;
+    } else {
+        return EAR_ERROR;
+    }
 }
 
 state_t policy_new_iteration(polctx_t *c,signature_t *sig)

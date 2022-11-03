@@ -20,7 +20,7 @@
 
 #include <metrics/test.h>
 #include <management/cpufreq/cpufreq.h>
-#include <management/cpufreq/cpuprio.h>
+#include <management/cpufreq/priority.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/gpu/gpu.h>
 
