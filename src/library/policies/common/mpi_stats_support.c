@@ -76,7 +76,7 @@ static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 extern uint ear_mpi_opt;
 
-#define MAX_MPI_TO_OPT 10
+#define MAX_MPI_TO_OPT 50
 #define DEF_MIN_USEC_MPI   50000
 
 static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
@@ -85,6 +85,7 @@ typedef struct ear_calls{
   p2i last_buf; 
   p2i last_dest;
   ulong elap;
+  uint  cnt;
   }ear_calls_t;
 static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
 static uint num_mpi_to_optimize = 0;
@@ -107,7 +108,7 @@ static ullong comp_insts;
 
 float LB_TH = EAR_LB_TH;
 static float critical_path_th   = 1;
-
+ulong local_max_sync_block = 0;
 
 // src/library/api/ear_mpi.c
 extern p2i last_buf, last_dest;
@@ -187,7 +188,8 @@ state_t mpi_app_init(polctx_t *c)
             mpi_stats.rank = 0;
         }
 
-        timestamp_getfast(&start_no_mpi);
+        //timestamp_getfast(&start_no_mpi);
+        timestamp_getprecise(&start_no_mpi);
 
 #if COMP_CPI
         cpi_read(no_ctx, &cpi_1);
@@ -250,16 +252,15 @@ state_t mpi_app_end(polctx_t *c)
 
     for (int i = 0; i < N_CALL_TYPES; i++) {
       if (mpi_call_count[i]){
-        if ((mpi_call_time[i] / mpi_call_count[i]) > 200000){
-          verbose(0, "[%d] CALL %d Time %llu instances %d", my_node_id, i , mpi_call_time[i], mpi_call_count[i]);
-        }
+          verbose(0, "[%d] CALL %d Time %llu instances %d avg %lf", my_node_id, i , mpi_call_time[i], mpi_call_count[i], (double)mpi_call_time[i]/(double)mpi_call_count[i]);
       }
     }
     #endif
 
 
     /* Global statistics */
-    timestamp_getfast(&end);
+    //timestamp_getfast(&end);
+    timestamp_getprecise(&end);
     elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
     mpi_stats.exec_time += elap;
 
@@ -412,7 +413,8 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
     if (is_mpi_enabled()) {
 
         // Init the MPI call timer
-        timestamp_getfast(&pol_time_init);
+        //timestamp_getfast(&pol_time_init);
+        timestamp_getprecise(&pol_time_init);
         in_mpi_call = 1;
 
         // Get the time not been in MPI
@@ -510,7 +512,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     if (is_mpi_enabled() && in_mpi_call) {
         
 
-        timestamp_getfast(&end);
+        //timestamp_getfast(&end);
+        timestamp_getprecise(&end);
         elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
         in_mpi_call = 0;
 
@@ -537,7 +540,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
             total_mpi_time_blocking += (ulong) elap;
 
 
-            max_sync_block = ear_max(max_sync_block, (ulong)elap);
+            max_sync_block       = ear_max(max_sync_block, (ulong)elap);
+            local_max_sync_block = ear_max(local_max_sync_block, (ulong)elap);
 
             // Get which type of blocking call is
             nbcall_type = (mpi_call) remove_blocking(call_type);
@@ -566,9 +570,11 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
             if (ear_mpi_opt){
             if (last_optimized){
               list_mpi_to_optimize[index_last_optimized].elap += (ulong)elap;
+              list_mpi_to_optimize[index_last_optimized].cnt++;
               if ((ulong)elap < ear_min_usec_for_mpi_opt){ 
                     list_mpi_to_optimize[index_last_optimized].elap = (ulong)elap;
                     list_mpi_to_optimize[index_last_optimized].call = (mpi_call)0;
+                    list_mpi_to_optimize[index_last_optimized].cnt  = 0;
                     #if VERBOSE_MPI_OPT
                     //print_mpi_optimized("Removing symbol ", index_last_optimized);
                     #endif
@@ -586,6 +592,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     list_mpi_to_optimize[num_mpi_to_optimize].last_buf   = last_buf;
                     list_mpi_to_optimize[num_mpi_to_optimize].last_dest  = last_dest;
                     list_mpi_to_optimize[num_mpi_to_optimize].elap       = (ulong)elap;
+                    list_mpi_to_optimize[num_mpi_to_optimize].cnt        = 1;
      
                     #if VERBOSE_MPI_OPT
                     //print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
@@ -625,7 +632,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 #endif
     }
 #endif // PER_MPI_STATS
-    timestamp_getfast(&start_no_mpi);
+    //timestamp_getfast(&start_no_mpi);
+    timestamp_getprecise(&start_no_mpi);
     return EAR_SUCCESS;
 }
 
@@ -1104,7 +1112,7 @@ state_t already_optimized(mpi_call call_type, p2i buf, p2i dest)
   
 }
 
-state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest)
+state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed)
 {
   #if MPI_OPTIMIZED
   last_optimized = 0;
@@ -1115,6 +1123,7 @@ state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest)
     && (list_mpi_to_optimize[i].last_dest == dest)){
       last_optimized = 1;
       index_last_optimized = i;
+      *elapsed = list_mpi_to_optimize[i].elap / list_mpi_to_optimize[i].cnt;
       return EAR_SUCCESS;
     }
   }

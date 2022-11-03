@@ -347,7 +347,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /***************************************************************************************************/
 
 
-    if (traces_are_on()){
+    if (traces_are_on() && ((sig_shared_region[my_node_id].iterations %5 ) == 0)){
       signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
       tracer_signature.def_f = sig_shared_region[my_node_id].new_freq;
       traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
@@ -672,6 +672,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
               traces_generic_event(ear_my_rank, my_node_id, JOB_POWER, (ullong)lib_shared_region->job_signature.DC_power*1000);
               traces_generic_event(ear_my_rank, my_node_id, NODE_POWER, (ullong)lib_shared_region->node_signature.DC_power*1000);
             }
+            if (traces_are_on()){
+              signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
+              tracer_signature.def_f = sig_shared_region[my_node_id].new_freq;
+              traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
+            }
 
 
             // The reported signature will show whether the Library is using DynAIS
@@ -749,6 +754,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             if (master){
               traces_generic_event(ear_my_rank, my_node_id, JOB_POWER, (ullong)lib_shared_region->job_signature.DC_power*1000);
               traces_generic_event(ear_my_rank, my_node_id, NODE_POWER, (ullong)lib_shared_region->node_signature.DC_power*1000);
+            }
+            if (traces_are_on()){
+              signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
+              tracer_signature.def_f = sig_shared_region[my_node_id].new_freq;
+              traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
             }
 
 

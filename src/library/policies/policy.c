@@ -47,6 +47,8 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
 #include <library/loader/module_cuda.h>
+#include <library/tracer/tracer.h>
+#include <library/tracer/tracer_paraver_comp.h>
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/powercap/powercap_status_conf.h>
@@ -1458,8 +1460,6 @@ state_t policy_mpi_init(mpi_call call_type)
       st = polsyms_fun.mpi_init(c, call_type,&per_process_node_freq , &process_id);
       if (process_id != NO_PROCESS){
         total_mpi_optimized++;
-				if (process_id == ALL_PROCESSES){
-				}
         if (state_fail( policy_freq_selection(c, &aux_per_process, &per_process_node_freq, 
         &per_process_dom, NULL, process_id))){
           verbose(2, "CPU freq failure in policy_mpi_init");
@@ -1578,7 +1578,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
       end_rank  = proc_id +1;
     }
     if (proc_id >= 0){
-      verbose(2, "from_proc_to_core  [%d] Freq %.2f", proc_id, (float)process_cpu_freqs_khz[proc_id]/(float)1000000.0);
+      verbose(3, "from_proc_to_core  [%d] Freq %.2f", proc_id, (float)process_cpu_freqs_khz[proc_id]/(float)1000000.0);
     }
 		if (proc_id == ALL_PROCESSES && (masters_info.my_master_rank < 0)){
 			verbose(2, "Not master setting CPUfreq for ALL (%.2f)", (float)process_cpu_freqs_khz[0]/(float)1000000.0);
@@ -1597,7 +1597,9 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         first_print = 0;
     }
 
-    verbose_master(verb_lvl, "Mapping frequencies from %d processes to %d CPUs...", process_cnt, cpu_cnt);
+    if (proc_id == ALL_PROCESSES){ 
+      verbose_master(verb_lvl, "Mapping frequencies from %d processes to %d CPUs...", process_cnt, cpu_cnt);
+    }
 
     memset(cpu_must_be_normalized, 0, MAX_CPUS_SUPPORTED * sizeof(uint));
 
@@ -1629,7 +1631,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
         uint verb = (cpu_freq_khz != init_def_cpufreq_khz); // Verbose only when the frequency to set is
                                                             // different from the initial
-        if (verb) {
+        if (verb && (proc_id == ALL_PROCESSES)) {
             verbosen_master(verb_lvl, "Process %d: %lu kHz", proc_lrank, cpu_freq_khz);
             verbosen_master(verb_lvl + 1, " -> CPUs:")
         }
@@ -1808,7 +1810,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
 	// POWER_CAP_UNLIMITED is equal to 1, so the CPU freq is set if powercap is 0 (disabled) or unlimited (1)
 	  
     if (must_set_policy_cpufreq(pc_app_info_data, system_conf)) {
-       if (masters_info.my_master_rank >=0 ){
+       if ((masters_info.my_master_rank >=0) && (process_id == ALL_PROCESSES) ){
         verbose(POLICY_INFO, "%sPOLICY%s Setting a CPU frequency (kHz) range of "
                 "[%lu, %lu] GHz...", COL_BLU, COL_CLR, min_cpufreq_sel_khz, max_cpufreq_sel_khz);
        }
@@ -1821,7 +1823,9 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
        #endif
         
 
-        if (do_change) frequency_set_with_list(0, freq_per_core); // Setting the selected CPU frequency
+        if (do_change){ 
+          frequency_set_with_list(0, freq_per_core); // Setting the selected CPU frequency
+        }
 				#if 0
 				if ((process_id != ALL_PROCESSES) && do_change) node_freqs_copy(&last_nf, freqs);
 				#endif

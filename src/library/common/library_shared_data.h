@@ -106,7 +106,7 @@ typedef struct shsignature {
     int               affinity;
     uint              unbalanced;
     float             perc_MPI;
-    // ulong             policy_freq;
+    ulong             mpi_freq;
 	double            period;
 } shsignature_t;
 

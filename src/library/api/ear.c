@@ -948,7 +948,11 @@ void ear_lib_sig_handler(int s)
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
         /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
 
-        if (s == SIGSEGV) print_stack(verb_channel);
+
+        if (s == SIGSEGV){ 
+          verbose(0, "%d: EAR finalized by signal SIGSEGV", getpid());
+          print_stack(verb_channel);
+        }
 
         if (cancelled || sig_shared_region[my_node_id].exited) return;
         if (syscall(SYS_gettid) != main_pid) return;
@@ -2215,6 +2219,7 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 
 extern timestamp_t time_last_signature;
+extern ulong local_max_sync_block;
 
 state_t earl_periodic_actions(void *no_arg)
 {
@@ -2263,7 +2268,8 @@ state_t earl_periodic_actions(void *no_arg)
             traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
             traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
             traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
-            traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong)my_mpi_types[2].max_sync_block);
+            traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong)local_max_sync_block);
+            local_max_sync_block = 0;
           }
 
         }
@@ -2298,7 +2304,7 @@ state_t earl_periodic_actions(void *no_arg)
                                 if (earl_monitor->time_burst < earl_monitor->time_relax){
 																  monitor_burst(earl_monitor);
                                 }
-																verbose(2,"[%d]: Dynais guided --> time guided at time %lu",
+																verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
 																								my_node_id, period_elapsed);
 																mpi_calls_in_period = lib_period;
 																states_begin_period(my_id, 1, (ulong) lib_period,1);

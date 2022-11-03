@@ -217,7 +217,8 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
                 /* Check conditions */
                 if ((sig_shared_region[my_node_id].mpi_info.perc_mpi > low_mpi_ref) && (nbcall_type == WAIT)){  
                     state_t st;
-                    st = must_be_optimized(nbcall_type, last_buf, last_dest);
+                    ulong mpi_elapsed;
+                    st = must_be_optimized(nbcall_type, last_buf, last_dest, &mpi_elapsed);
                     if (st == EAR_SUCCESS){
                         /* We should select a low freq. The list of freqs is in metrics_get(MGT_CPUFREQ)->avail_list  */
                         pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;

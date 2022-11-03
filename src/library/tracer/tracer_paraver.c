@@ -40,45 +40,6 @@
 #ifdef EAR_GUI
 static pthread_mutex_t trace_event_lock = PTHREAD_MUTEX_INITIALIZER;
 
-#define USE_TRACER_COMP
-#ifdef USE_TRACER_COMP
-
-#define TRA_CPI   EV_CPI
-#define TRA_TPI   EV_TPI
-#define TRA_GBS   EV_MEM_GBS
-#define TRA_POW   EV_DC_NODE_POWER_W
-#define TRA_FRQ   EV_DEF_FREQ_KHZ
-
-#else
-
-#define TRA_CPI		60005
-#define TRA_TPI		60006
-#define TRA_GBS		60007
-#define TRA_POW		60008
-#define TRA_FRQ		60012
-#endif
-
-#define TRA_ID    60001
-#define TRA_LEN   60002
-#define TRA_ITS		60003
-#define TRA_TIM		60004
-#define TRA_PTI		60009
-#define TRA_PCP		60010
-#define TRA_PPO		60011
-#define TRA_DYN		60014
-#define TRA_STA		60015
-#define TRA_MOD		60016
-#define TRA_REC		60018
-#define TRA_ENE		60013
-#define TRA_VPI		60017
-#define TRA_AVGFRQ EV_AVG_CPUFREQ_KHZ
-#define TRA_PCK_POWER  EV_PCK_POWER_W
-#define TRA_DRAM_POWER EV_DRAM_POWER_W
-#define TRA_IO          EV_IO_MBS
-#define TRA_GFLOPS      EV_GFLOPS
-#define TRA_JOB_POWER   JOB_POWER
-#define TRA_NODE_POWER  NODE_POWER
-
 
 
 
