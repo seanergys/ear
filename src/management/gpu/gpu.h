@@ -78,6 +78,10 @@ typedef struct mgt_gpu_ops_s {
 	state_t (*power_cap_set)          (ctx_t *c, ulong *watt_list);
 } mgt_gpu_ops_t;
 
+// Renamed functions
+#define mgt_gpu_freq_list          mgt_gpu_freq_get_available
+#define mgt_gpu_count_devices(n,c) mgt_gpu_get_devices(n, NULL, c);
+
 // Discovers the low level API. Returns function pointers, but is not required.
 void mgt_gpu_load(int eard);
 
@@ -117,9 +121,6 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 
 // Gets a list of clocks and list length per device.
 state_t mgt_gpu_freq_get_available(ctx_t *c, const ulong ***freq_list, const uint **len_list);
-
-// This function is renamed
-#define mgt_gpu_freq_list mgt_gpu_freq_get_available
 
 // Gets the current power cap for each GPU in the node.
 state_t mgt_gpu_power_cap_get_current(ctx_t *c, ulong *watt_list);

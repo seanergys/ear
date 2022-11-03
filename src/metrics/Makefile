@@ -76,7 +76,7 @@ mets_OBJS = \
 
 all: all.components $(stat_BINS) $(dyna_BINS)
 
-post: test 
+post: test
 	@ $(MAKE) -C 'gpu' post || exit
 
 libmetrics.a: $(mets_OBJS)

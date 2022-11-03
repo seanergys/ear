@@ -35,11 +35,17 @@
 
 typedef struct apis_info_s {
 	ctx_t c;
-	uint api;
-    char api_str[32];
-	uint gran;
-	char gran_str[32];
-	uint devs_count;
+	uint  api;
+    char  api_str[32];
+	uint  gran; // Granularity
+	char  gran_str[32];
+	uint  devs_count;
+    void *list1;
+    void *list2;
+    void *list3;
+    uint  list1_count;
+    uint  list2_count;
+    uint  list3_count;
 } apis_info_t;
 
 typedef struct metrics_apis_s {
@@ -89,16 +95,16 @@ typedef struct metrics_diff_s {
 	gpu_t  *gpu_diff;
 } metrics_diff_t;
 
-state_t metrics_init(topology_t *tp, uint eard);
+void metrics_init(topology_t *tp, int eard);
 
-state_t metrics_read(metrics_read_t *mr);
+void metrics_read(metrics_read_t *mr);
 
-state_t metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
+void metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
-state_t metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
+void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
-state_t metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD);
+void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD);
 
-state_t metrics_data_print(metrics_diff_t *mrD);
+void metrics_data_print(metrics_diff_t *mrD);
 
 #endif //TEST_H

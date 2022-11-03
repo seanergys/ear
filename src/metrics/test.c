@@ -177,48 +177,20 @@ state_t metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_dif
     return EAR_SUCCESS;
 }
 
-#if 0
-#include <stdio.h>
-#include <unistd.h>
-#include <common/system/monitor.h>
-#include <management/management.h>
-#include <daemon/local_api/eard_api_rpc.h>
-
-    } else if (is(cmnd, "disconnect")) {
-        eards_disconnect();
-    } else if (is(cmnd, "init")) {
-        init();
-    } else if (is(cmnd, "dispose")) {
-        metrics_apis_dispose();
-    } else if (is(cmnd, "oh")) {
-       overhead_report(); 
-    }
-	outif:
-	;
-	}
-
-	return 0;
-}
-#endif
-
+#if TEST
 static topology_t     tp;
 static metrics_read_t mr1;
 static metrics_read_t mr2;
 static metrics_diff_t mrD;
 
-static void printf_clear()
-{
-    system("clear");
-}
-
 static state_t monitor_apis_init(void *whatever)
 {
 	topology_init(&tp);
-
+    //
 	metrics_init(&tp, EARD);
-
+    //
     metrics_data_alloc(&mr1, &mr2, &mrD);
-
+    //
     metrics_read(&mr1);
 	
 	return EAR_SUCCESS;
@@ -228,12 +200,13 @@ static state_t monitor_apis_update(void *whatever)
 {
     metrics_read_copy(&mr2, &mr1, &mrD);
 
-    printf_clear();
-  
+    // Printf clear
+    system("clear");
+
     tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
     tprintf("API||Internal||#Devs||Granularity");
     tprintf("---||--------||-----||-----------");
- 
+
     tprintf("CPUFREQ||%s||%u||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str);
     tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str);
     tprintf("BWIDTH ||%s||%u||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str);
@@ -250,7 +223,7 @@ static state_t monitor_apis_update(void *whatever)
      bwidth_data_print( mrD.ram_diff,  mrD.ram_avrg, verb_channel);
     printf("—— temperature ————————————————————————————————————————————————————————————————\n");
        temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel);
-    printf("—— rapl        ————————————————————————————————————————————————————————————————\n");
+    printf("—— rapl ———————————————————————————————————————————————————————————————————————\n");
        rapl_data_print( mrD.rap_diff,                verb_channel);
     
     dreg_add  (&mrD.rap_dreg, mrD.rap_diff);
@@ -270,9 +243,10 @@ int main(int argc, char *argv[])
 	sus->call_main     = monitor_apis_update;
 	sus->time_relax    = 2000;
 	sus->time_burst    = 2000;
-	sa(sus->suscribe(sus));   
+	sa(sus->suscribe(sus));
 
     sleep(100);
 
     return 0;
 }
+#endif
