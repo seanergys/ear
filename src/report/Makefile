@@ -23,6 +23,10 @@ ifeq ($(FEAT_DB_MYSQL),1)
 repo_BINS += \
 	mysql.so 
 endif
+ifeq ($(FEAT_DB_CASSANDRA),1)
+repo_BINS += \
+	cassandra.so 
+endif
 
 
 ######## RULES
@@ -38,7 +42,6 @@ all: $(repo_OBJS) $(repo_BINS)
 dcdb.so:dcdb.o
 	$(CC) $(CFLAGS) -shared -o dcdb.so dcdb.o -lrt $(LDFLAGS)
 
-
 eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
 
@@ -46,12 +49,15 @@ eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
 
 mysql.so: mysql.c $(repo_DEPS)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS)
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) 
 
 psql.so: psql.c $(repo_DEPS)
 	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS)
 
+cassandra.so: cassandra.c $(repo_DEPS)
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ -L/usr/lib64 -lcassandra
 
+#$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) -l:/home/xlalonso/downloads/cpp-driver/build/libcassandra.so
 ######## SUBFOLDERS
 
 %.components: ;

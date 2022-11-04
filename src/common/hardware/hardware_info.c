@@ -16,6 +16,7 @@
 */
 
 #define _GNU_SOURCE
+
 #include <time.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -23,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sched.h>
+
 #include <common/config.h>
 #include <common/hardware/topology.h>
 #include <common/hardware/hardware_info.h>
@@ -37,7 +39,6 @@ uint num_cpus_in_mask(cpu_set_t *my_mask)
         if (CPU_ISSET(c, my_mask)) lcpus++;
     }
     return lcpus;
-
 }
 
 int list_cpus_in_mask(cpu_set_t *my_mask, uint n_cpus, uint *cpu_list)
@@ -75,10 +76,9 @@ void fill_cpufreq_list(cpu_set_t *my_mask, uint n_cpus, uint value, uint no_valu
 
 void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src)
 {
-    for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
+    for (uint c = 0; c < MAX_CPUS_SUPPORTED; c++) {
       if (CPU_ISSET(c, src)) CPU_SET(c, dst);
   }
-
 }
 
 void remove_cpus_from_mask(cpu_set_t *dst, cpu_set_t *src)
