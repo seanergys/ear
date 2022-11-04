@@ -86,7 +86,7 @@ libmetrics.so: $(mets_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(mets_OBJS)
 
 test: test.c
-	$(CC) -I $(SRCDIR) -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
+	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 

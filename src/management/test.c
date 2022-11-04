@@ -20,8 +20,9 @@
 #include <stdlib.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
-#include <common/utils/serial_buffer.h>
-#include <daemon/local_api/eard_api_rpc.h>
+#include <common/system/monitor.h>
+#include <common/config/config_install.h>
+#include <daemon/local_api/eard_api.h>
 #include <management/test.h>
 
 static manages_apis_t m;
@@ -84,7 +85,17 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
     //frun(sn(mgt_cpufreq_data_count(&m.cpu.list1_count, &m.cpu.list2_count)));
     frun(sn(mgt_cpuprio_data_count(&m.pri.list1_count, &m.pri.list2_count)));
     //frun(sn(mgt_imcfreq_data_count(&m.imc.list1_count, &m.imc.list2_count)));
-    //
+    // Apis to string
+    frun(apis_tostr(m.cpu.api, m.cpu.api_str, 32));
+    frun(apis_tostr(m.pri.api, m.pri.api_str, 32));
+    frun(apis_tostr(m.imc.api, m.imc.api_str, 32));
+    fgpu(apis_tostr(m.gpu.api, m.gpu.api_str, 32));
+    // Granularities
+    frun(sprintf(m.cpu.gran_str, "threads"));
+    frun(sprintf(m.pri.gran_str, "threads"));
+    frun(sprintf(m.imc.gran_str, "sockets"));
+    fgpu(sprintf(m.gpu.gran_str, "gpus"));
+
     if (man != NULL) {    
         *man = &m;
     }
@@ -113,11 +124,23 @@ static state_t monitor_apis_update(void *whatever)
     frun(tprintf("CPUPRIO||%s||%u||%s", m.pri.api_str, m.pri.devs_count, m.pri.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
     fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
+    
+    frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
+    frun(mgt_cpufreq_data_print(m.cpu.list1, m.cpu.list1_count, verb_channel));
+    frun(printf("—— cpuprio ————————————————————————————————————————————————————————————————————\n"));
+    frun(mgt_cpuprio_data_print(m.pri.list1, m.pri.list2, verb_channel));
+    frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
+    frun(mgt_imcfreq_data_print(m.imc.list1, m.imc.list1_count, verb_channel));
+    fgpu(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
 }
 
 int main(int argc, char *argv[])
 {
-    //eards_connection();
+    if (argc > 1) {
+        if (atoi(argv[1])) {
+            eards_connection();
+        }
+    }
 
 	// Monitoring
 	sa(monitor_init());

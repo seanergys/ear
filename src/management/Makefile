@@ -43,7 +43,7 @@ libmgt.a: Makefile $(root_OBJS)
 	$(AR) rvs $@ $(root_OBJS)
 
 test: test.c
-	$(CC) -I $(SRCDIR) -fPIC -o $@ $^ libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
+	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 

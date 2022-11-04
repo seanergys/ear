@@ -112,6 +112,7 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
 #define mgt_cpuprio_set_current        mgt_cpufreq_prio_set_current
 #define mgt_cpuprio_data_count         mgt_cpufreq_prio_data_count
 #define mgt_cpuprio_data_alloc         mgt_cpufreq_prio_data_alloc
+#define mgt_cpuprio_data_print         mgt_cpufreq_prio_data_print
 #define mgt_cpuprio_data_tostr         mgt_cpufreq_prio_data_tostr 
 
 #endif //MANAGEMENT_PRIORITY_H

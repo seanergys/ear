@@ -1280,7 +1280,6 @@ void service_select(int req_fd, int ack_fd)
     if (services_misc(local_req, req_fd, ack_fd)) {
         return;
     }
-    // New management
     if(services_mgt_cpufreq(local_req, req_fd, ack_fd)) {
         return;
     }
@@ -1316,7 +1315,7 @@ void service_select(int req_fd, int ack_fd)
         return;
     }
     if (service_gpu(local_req, req_fd, ack_fd)){
-      return;
+        return;
     }
 	
 	error("Problem with request '%lu', answering error", local_req->req_service);
