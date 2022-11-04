@@ -431,14 +431,17 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
     char    *ret_data = NULL;
     size_t   ret_size = 0;
     uint     u1;
+    #if USE_GPUS
     ulong  **p1;
     uint    *p2;
+    #endif
 
     switch (rpc_id) {
     case RPC_MGT_GPU_GET_API:
         ret_data = (char *) &man->gpu.api;
         ret_size = sizeof(uint);
     break;
+    #if USE_GPUS
     case RPC_MGT_GPU_GET_DEVICES:
         serial_clean(&wb);
         serial_add_elem(&wb, (char *) &man->gpu.devs_count, sizeof(uint));
@@ -529,6 +532,7 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
             }
         }
     break;
+    #endif
     case RPC_MGT_GPU_IS_SUPPORTED:
         u1       = (uint) mgt_gpu_is_supported();
         ret_data = (char *) &u1;
@@ -927,7 +931,6 @@ void eard_close_comm(int req_fd,int ack_fd)
 
 int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
-	#if USE_GPUS
 	uint call = head->req_service;
 	state_t s = EAR_SUCCESS;
 	char *data = NULL;
@@ -935,11 +938,11 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
     uint u1;
 
 	switch (call) {
-	break;
 	case RPC_MET_GPU_GET_API:
 		data = (char *) &ug.api;
 		size = sizeof(uint);
 	break;
+	#if USE_GPUS
 	case RPC_MET_GPU_GET_DEVICES:
         serial_clean(&wb);
         serial_add_elem(&wb, (char *) &ug.devs_count, sizeof(uint));
@@ -965,6 +968,7 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 		data = (char *) eard_read_gpu;
 		size = sizeof(gpu_t) * ug.devs_count;
 	break;
+	#endif
     case RPC_MET_GPU_IS_SUPPORTED:
         u1   = (uint) gpu_is_supported();
         data = (char *) &u1;
@@ -977,11 +981,7 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 	if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) ){
 		return 0;
 	}
-
 	return 1;
-	#else
-	return 0;
-	#endif
 }
 
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)

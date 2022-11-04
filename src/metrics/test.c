@@ -77,7 +77,7 @@ void metrics_init(topology_t *tp, int eard)
     frun(sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count)));
     fgpu(sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count)));
     // Getting granularity (or scope)
-    frun(bwidth_get_granularity(no_ctx, &m.ram.gran);
+    frun(bwidth_get_granularity(no_ctx, &m.ram.gran));
 
     frun(apis_tostr(m.cpu.api, m.cpu.api_str, 32));
     frun(apis_tostr(m.imc.api, m.imc.api_str, 32));
@@ -229,4 +229,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-#endifs
+#endif
