@@ -149,14 +149,14 @@ state_t mpi_app_init(polctx_t *c)
 
     if (c != NULL) {
         if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
-            LB_TH = (float)atoi(clb_th);
+            LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
         } else if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
             // TODO: This check is for the transition to the new environment variables.
-            // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
+            // It will be removed when SCHED_LOAD_BALANCE_TH will be removed, in the next release.
             verbose(VAR_DEPRECATED, "%sWARNING%s %s will be removed on the next EAR release. "
                     "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_LOAD_BALANCE_TH, FLAG_LOAD_BALANCE_TH);
-            LB_TH = (float)atoi(clb_th);
+            LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
         }
         verbose_master(MPI_STATS_VERB_LVL, "Load Balance threshold: %.1f. Critical path proximity %.1f", LB_TH, critical_path_th);
 
