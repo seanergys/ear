@@ -576,7 +576,7 @@ static state_t init()
 {
     struct isst_if_platform_info info = { 0 };
     state_t s;
-    int aux;
+    uint aux;
 
     // Revealing the first information about ISST system.
     if (ioctl(driver_fd, ISST_IF_INFO_CMD, &info) == -1) {

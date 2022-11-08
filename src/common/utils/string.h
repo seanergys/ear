@@ -46,6 +46,6 @@ int appenv(const char *var, const char *string);
 // Given a string and a separator, allocates the space and returns the number of elements
 char **strtoa(const char *string, char separator, char ***rows, uint *rows_count);
 // Strtoa allocated values free
-char **strtoa_free(char **rows);
+void strtoa_free(char **rows);
 
 #endif
