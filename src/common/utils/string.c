@@ -98,7 +98,7 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     return prows;
 }
 
-char **strtoa_free(char **rows)
+void strtoa_free(char **rows)
 {
     free(rows[0]);
     free(rows);

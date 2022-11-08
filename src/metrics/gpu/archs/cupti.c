@@ -489,7 +489,9 @@ static void low_callback(void *user_data, CUpti_CallbackDomain domain, CUpti_Cal
     }
     if (id == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel) {
         if (enter) {
-            ccv(cuda.CtxGetDevice(&device));
+            if (cuda.CtxGetDevice(&device) != CUDA_SUCCESS) {
+                return;
+            }
             low_assoc_add(data->context, device);
         }
     }
