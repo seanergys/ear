@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <common/types.h>
 
 #define unused(var) \
 	(void)(var)
@@ -36,10 +37,15 @@
 #define xstrncat(dst, src, size) \
 	strncat(dst, src, xsnsize(size));
 
+// The xs functions and macros are used to avoid compile warnings.
 size_t xsnsize(size_t size);
 
 char *xsnbuffer(char *buffer);
-
+// Appends a string to the environment variable 'var'.
 int appenv(const char *var, const char *string);
+// Given a string and a separator, allocates the space and returns the number of elements
+char **strtoa(const char *string, char separator, char ***rows, uint *rows_count);
+// Strtoa allocated values free
+char **strtoa_free(char **rows);
 
 #endif
