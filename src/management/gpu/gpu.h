@@ -118,9 +118,6 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 // Gets a list of clocks and list length per device.
 state_t mgt_gpu_freq_get_available(ctx_t *c, const ulong ***freq_list, const uint **len_list);
 
-// This function is renamed
-#define mgt_gpu_freq_list mgt_gpu_freq_get_available
-
 // Gets the current power cap for each GPU in the node.
 state_t mgt_gpu_power_cap_get_current(ctx_t *c, ulong *watt_list);
 
@@ -144,5 +141,8 @@ state_t mgt_gpu_data_free(ulong **list);
 state_t mgt_gpu_data_null(ulong *list);
 
 int mgt_gpu_is_supported();
+
+// Renamed functions
+#define mgt_gpu_freq_list mgt_gpu_freq_get_available
 
 #endif

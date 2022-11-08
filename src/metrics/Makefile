@@ -76,11 +76,17 @@ mets_OBJS = \
 
 all: all.components $(stat_BINS) $(dyna_BINS)
 
+post: test
+	@ $(MAKE) -C 'gpu' post || exit
+
 libmetrics.a: $(mets_OBJS)
 	$(AR) rvs $@ $(mets_OBJS)
 
 libmetrics.so: $(mets_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(mets_OBJS)
+
+test: test.c
+	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 
@@ -90,7 +96,8 @@ devel.install: devel.install.components;
 
 %.install: %.install.components;
 
-clean: clean.components rclean;
+clean: clean.components rclean
+	rm -f test
 
 ######## SUBFOLDERS
 
@@ -106,8 +113,8 @@ clean: clean.components rclean;
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
-	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'rapl'         $* || exit
+	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'energy_cpu'   $* || exit
 

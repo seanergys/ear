@@ -17,8 +17,12 @@ all: $(gpu_BINS) all.components
 
 %.components:
 	@ $(MAKE) -C 'archs' $* || exit
+	@ $(MAKE) -C 'test'  $* || exit
 
 ######## OPTIONS
+
+post:
+	@ $(MAKE) -C 'test' $@ || exit
 
 install: install.components
 

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <fcntl.h>
@@ -121,7 +121,10 @@ state_t rapl_init(ctx_t *c)
 		return EAR_SUCCESS;
 	}
 	for (i = 0; i < tp.cpu_count; ++i) {
-		s = msr_open(tp.cpus[i].id, MSR_RD);
+		if (state_fail(s = msr_open(tp.cpus[i].id, MSR_RD))) {
+            debug("msr_open: %s", state_msg);
+            return s;
+        }
 	}
 	if ((s = msr_read(tp.cpus[0].id, &result, sizeof(result), pu_addr[0]))) {
 		return s;
@@ -241,4 +244,9 @@ state_t rapl_data_diff(rapl_t *r2, rapl_t *r1, rapl_t *rD)
 
 void rapl_data_print(rapl_t *rD, int fd)
 {
+	int i;
+	for (i = 0; i < tp.cpu_count; ++i) {
+        dprintf(fd, "%llu\t", rD[i].pack);
+    }
+    dprintf(fd, "(W)\n");
 }

@@ -32,19 +32,10 @@
 #else
 #define CUPTI_PATH   CUPTI_BASE
 #endif
-#ifndef CUDA_BASE
-#define CUDA_PATH    ""
-#else
-#define CUDA_PATH    CUDA_BASE
-#endif
-
-/* Check */
-
-#define CUPTI_N      18
+#define CUPTI_N      20
 #define CUDA_N       4
 #define CUDA_LIB     "libcuda.so"
 #define CUPTI_LIB    "libcupti.so"
-#define CUPTI_STATIC_LIB "libcupti_static.a"
 
 static const char *cuda_names[] = {
     "cuInit",
@@ -67,6 +58,8 @@ static const char *cupti_names[] = {
     "cuptiEventGroupSetAttribute",
     "cuptiEventGroupGetAttribute",
     "cuptiEventGroupEnable",
+    "cuptiEventGroupDisable",
+    "cuptiEventGroupSetDisable",
     "cuptiEventGroupReadAllEvents",
     "cuptiEventGetAttribute",
     "cuptiEventGroupAddEvent",
@@ -94,9 +87,6 @@ static state_t static_open_cuda()
     _open_test_cuda(NULL);
     _open_test_cuda(getenv(HACK_CUDA_FILE));
     open_test_cuda("/usr/lib64/");
-
-    open_test_cuda(CUDA_PATH CUDA_LIB);
-    open_test_cuda("/usr/lib64/" CUDA_LIB);
 
     return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
 }
@@ -128,7 +118,6 @@ static state_t static_open_cupti()
 static state_t static_open()
 {
     state_t s;
-    /* Check */
     if (state_fail(s = static_open_cuda())) {
         return s;
     }
@@ -144,8 +133,6 @@ static state_t static_init()
 {
     CUresult s;
     char *str;
-
-
 
     if ((s = cu.Init(0)) != CUDA_SUCCESS) {
         cu.GetErrorString(s, (const char **) &str);
@@ -173,7 +160,6 @@ state_t cupti_open(cupti_t *cupti_in, cuda_t *cu_in)
         goto fini;
     }
     if (state_ok(s = static_open())) {
-        debug("CUPTI lib opened");
         if (state_ok(s = static_init())) {
             ok = 1;
         }
