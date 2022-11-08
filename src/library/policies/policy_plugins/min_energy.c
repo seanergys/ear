@@ -286,7 +286,7 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-    verbose(2,"[%d] Total nsecs delayed %u. Wait but not opt %u", my_node_id, total_nsecs_delayed, wait_not_opt);
+    verbose(0, "[%d] Total nsecs delayed %u. Wait but not opt %u", my_node_id, total_nsecs_delayed, wait_not_opt);
     if (c != NULL) {
         return mpi_app_end(c);
     }
@@ -502,8 +502,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 		lgbs = my_app->GBS;
 		lpower = my_app->DC_power;
                 
-		my_app->GBS 		 = lgbs * lib_shared_region->num_processes;
-		my_app->DC_power = lpower * lib_shared_region->num_processes;
+		my_app->GBS 		 = lgbs * num_processes;
+		my_app->DC_power = lpower * num_processes;
 								
 
 	        /* Critical path is computed in int_policy_ok */
@@ -593,19 +593,22 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
-        if (freq_per_core && (delay_change_freq_policy != NULL)){
-          for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){ 
-            verbose_master(2, "MPI freq selected for process %d is %lu", lp, new_freq[lp]);
-            sig_shared_region[lp].mpi_freq = new_freq[lp];
-          }
-          new_freq[0] = max_cpufreq_sel;
-          freq_per_core = 0;
-          verbose_master(2, "Application CPU freq selected %lu", new_freq[0]);
-        }else if (freq_per_core){
-          for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) sig_shared_region[lp].mpi_freq = new_freq[lp];
+
+        if (freq_per_core) {
+
+            for (uint lp = 0 ; lp < num_processes; lp++){ 
+                verbose_master(2, "MPI freq selected for process %d is %lu", lp, new_freq[lp]);
+                sig_shared_region[lp].mpi_freq = new_freq[lp];
+            }
+
+            if (delay_change_freq_policy != NULL) {
+                new_freq[0] = max_cpufreq_sel;
+                freq_per_core = 0;
+                verbose_master(2, "Application CPU freq selected %lu", new_freq[0]);
+            }
         }
 
-				/* If we use the same CPU freq for all cores, we set for all processes */
+        /* If we use the same CPU freq for all cores, we set for all processes */
         if (!freq_per_core) {
             set_all_cores(new_freq, num_processes, new_freq[0]);
         }
@@ -619,7 +622,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         copy_cpufreq_sel(last_nodefreq_sel.cpu_freq,new_freq,sizeof(ulong)*num_processes);
         /* We copy in shared  memory to be used later in MPI init/end if needed */
-        for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) sig_shared_region[lp].new_freq = new_freq[lp];
+        for (uint lp = 0 ; lp < num_processes; lp++) sig_shared_region[lp].new_freq = new_freq[lp];
 
         /* We will use this signature to detect changes in the sig compared when the one used to compute the CPU freq */
         verbose_master(3,"Updating cpufreq_signature");
@@ -700,7 +703,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 /* if we are using `no_models` policy, it tells us whether is ready */
                 if (use_energy_models || *ready == EAR_POLICY_READY){
                     uint i = 0;
-                    while((i<num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
+                    while((i < num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
                     // TODO: why we check here for cbound?
                     if ((i < num_processes) || (cbound)){
                         min_energy_state = COMP_IMCREF;
@@ -820,7 +823,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
                     *ok = 0;
                 }
             }
-            for (uint i = 0; i < lib_shared_region->num_processes; i++){
+            for (uint i = 0; i < num_processes; i++){
                 sig_shared_region[i].unbalanced    = 0;
                 sig_shared_region[i].perc_MPI      = 0;
             }
@@ -875,9 +878,9 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
                 last_mpi_stats_perc_mpi_median = median;
                 
                 /* This is critical path for each process */
-                for (uint i = 0; i < lib_shared_region->num_processes; i++){
+                for (uint i = 0; i < num_processes; i++) {
                   sig_shared_region[i].perc_MPI       = percs_mpi[i];
-                  sig_shared_region[i].unbalanced     = (critical_path[i]? 0: 1 );
+                  sig_shared_region[i].unbalanced     = (critical_path[i] ? 0 : 1 );
                 }
             } else{
                 nump = 1;
@@ -967,13 +970,15 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
     resume_cpufreq = 0;
     pstate_t *sel_pstate, *pstate_list;
     uint currindex;
-    if (c != NULL){ 
+    if (c != NULL){
         st = mpi_call_init(c,call_type);
 
 #if MPI_OPTIMIZED
         if (!metrics_get(MGT_CPUFREQ)->ok) return EAR_SUCCESS;
+
         if (ear_mpi_opt && is_mpi_blocking(call_type) 
-        && (lib_shared_region->num_processes > 1) ){
+            && (lib_shared_region->num_processes > 1) ){
+
             uint last = 0;
             mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
             /* Barriers (etc) */
@@ -1005,40 +1010,41 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
                     total_barriers_suspend++;
                 }
             }
-                //verbose(0, "[%d] checking optimizations perc MPI %.2f", my_node_id, sig_shared_region[my_node_id].mpi_info.perc_mpi);
-                /* Check conditions */
-            //if (sig_shared_region[my_node_id].unbalanced && (nbcall_type == WAIT) && OPT_WAIT && 
-            if (sig_shared_region[my_node_id].unbalanced && 
-                (sig_shared_region[my_node_id].new_freq > sig_shared_region[my_node_id].mpi_freq)){  
-                    state_t st;
-                    uint nsecs_delay = 0;
-                    mpi_opt_timer.tv_sec = 0;
-                    ulong call_elapsed;
-                    st = must_be_optimized(nbcall_type, last_buf, last_dest, &call_elapsed);
-                    if (st == EAR_SUCCESS){
-                        /* We should select a low freq. The list of freqs is in metrics_get(MGT_CPUFREQ)->avail_list  */
-                        #if 0
-                        pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
-                        mgt_cpufreq_get_index(no_ctx,sig_shared_region[my_node_id].mpi_freq, &currindex , 1);
-                        sel_pstate = &pstate_list[currindex];
+            //verbose(0, "[%d] checking optimizations perc MPI %.2f", my_node_id, sig_shared_region[my_node_id].mpi_info.perc_mpi);
+            /* Check conditions */
+            // if (sig_shared_region[my_node_id].unbalanced && (nbcall_type == WAIT) && OPT_WAIT && 
+            if (sig_shared_region[my_node_id].unbalanced
+                && sig_shared_region[my_node_id].new_freq > sig_shared_region[my_node_id].mpi_freq) {  
 
-                        //sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count-1];
-                        //sel_pstate = &pstate_list[3];
-                        freqs->cpu_freq[my_node_id] = sel_pstate->khz;
-                        #endif
-                        if (use_nanosleep == NULL){
-                          freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].mpi_freq;
-                          *process_id = my_node_id;
-                          resume_cpufreq = 1;
-                        }else{
-                          //nsecs_delay = (uint)(sig_shared_region[my_node_id].new_freq - sig_shared_region[my_node_id].mpi_freq)/100000;
-                          mpi_opt_timer.tv_nsec = (call_elapsed * 1000)/2;
-                          nsecs_delay = mpi_opt_timer.tv_nsec;
-                          nanosleep(&mpi_opt_timer, NULL);
-                          total_nsecs_delayed += nsecs_delay;
-                        }
-                    }else wait_not_opt ++;
-             }
+                state_t st;
+                uint nsecs_delay = 0;
+                mpi_opt_timer.tv_sec = 0;
+                ulong call_elapsed;
+                st = must_be_optimized(nbcall_type, last_buf, last_dest, &call_elapsed);
+                if (st == EAR_SUCCESS){
+                    /* We should select a low freq. The list of freqs is in metrics_get(MGT_CPUFREQ)->avail_list  */
+#if 0
+                    pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
+                    mgt_cpufreq_get_index(no_ctx,sig_shared_region[my_node_id].mpi_freq, &currindex , 1);
+                    sel_pstate = &pstate_list[currindex];
+
+                    //sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count-1];
+                    //sel_pstate = &pstate_list[3];
+                    freqs->cpu_freq[my_node_id] = sel_pstate->khz;
+#endif
+                    if (use_nanosleep == NULL){
+                        freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].mpi_freq;
+                        *process_id = my_node_id;
+                        resume_cpufreq = 1;
+                    }else{
+                        //nsecs_delay = (uint)(sig_shared_region[my_node_id].new_freq - sig_shared_region[my_node_id].mpi_freq)/100000;
+                        mpi_opt_timer.tv_nsec = (call_elapsed * 1000)/2;
+                        nsecs_delay = mpi_opt_timer.tv_nsec;
+                        total_nsecs_delayed += nsecs_delay;
+                        nanosleep(&mpi_opt_timer, NULL);
+                    }
+                } else wait_not_opt ++;
+            }
         }
 #endif
         return st;
@@ -1048,7 +1054,6 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
     if (c != NULL) return mpi_call_init(c,call_type);
 #endif
     return EAR_SUCCESS;
-
 }
 
 state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *process_id)
@@ -1067,7 +1072,6 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int 
       return mpi_call_end(c,call_type);
     }
     else return EAR_ERROR;
-
 }
 
 state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
