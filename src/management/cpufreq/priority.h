@@ -70,6 +70,7 @@ void mgt_cpufreq_prio_get_api(uint *api);
 state_t mgt_cpufreq_prio_init();
 
 state_t mgt_cpufreq_prio_dispose();
+
 /* Enables the PRIORITY subsystem, taking the control of the frequency. */
 state_t mgt_cpufreq_prio_enable();
 
@@ -100,6 +101,7 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
 #define mgt_cpuprio_init               mgt_cpufreq_prio_init
 #define mgt_cpuprio_dispose            mgt_cpufreq_prio_dispose
 #define mgt_cpuprio_get_api            mgt_cpufreq_prio_get_api
+#define mgt_cpuprio_count_devices(c,n) mgt_cpufreq_prio_data_count(NULL,n)
 #define mgt_cpuprio_enable             mgt_cpufreq_prio_enable
 #define mgt_cpuprio_disable            mgt_cpufreq_prio_disable
 #define mgt_cpuprio_is_enabled         mgt_cpufreq_prio_is_enabled
@@ -110,6 +112,7 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
 #define mgt_cpuprio_set_current        mgt_cpufreq_prio_set_current
 #define mgt_cpuprio_data_count         mgt_cpufreq_prio_data_count
 #define mgt_cpuprio_data_alloc         mgt_cpufreq_prio_data_alloc
+#define mgt_cpuprio_data_print         mgt_cpufreq_prio_data_print
 #define mgt_cpuprio_data_tostr         mgt_cpufreq_prio_data_tostr 
 
 #endif //MANAGEMENT_PRIORITY_H

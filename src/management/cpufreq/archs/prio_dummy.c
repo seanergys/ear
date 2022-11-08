@@ -124,6 +124,6 @@ state_t mgt_prio_dummy_set_current(uint idx, int cpu)
 
 void mgt_prio_dummy_data_count(uint *prios_count, uint *idxs_count)
 {
-    *prios_count = N_PRIOS;
-    *idxs_count = cpus_count;
+    if (prios_count != NULL)  *prios_count = N_PRIOS;
+    if (idxs_count  != NULL)  *idxs_count  = cpus_count;
 }

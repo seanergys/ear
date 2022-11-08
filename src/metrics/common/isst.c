@@ -139,6 +139,7 @@ typedef struct envals_s {
     uint    tf_enabled;
     uint    bf_enabled;
     clos_t  clos[CLOS_COUNT];
+    uint   *assocs;
 } envals_t;
 
 static char      *strtype[2]  = { "proportional", "ordered" };
@@ -575,6 +576,7 @@ static state_t init()
 {
     struct isst_if_platform_info info = { 0 };
     state_t s;
+    int aux;
 
     // Revealing the first information about ISST system.
     if (ioctl(driver_fd, ISST_IF_INFO_CMD, &info) == -1) {
@@ -598,7 +600,24 @@ static state_t init()
         return s;
     }
     // Saving initial CLOS
-    return clos_get(ev.clos);
+    if (state_fail(s = clos_get(ev.clos))) {
+        return s;
+    }
+    // Saving initial ASSOCs
+    if (!keeper_load_auint32("IsstAssocs", &ev.assocs, &aux)) {
+        ev.assocs = calloc(cpus_count, sizeof(uint));
+        if (state_fail(s = assoc_get(ev.assocs))) {
+            return s;
+        }
+        keeper_save_auint32("IsstAssocs", ev.assocs, cpus_count);
+    } else {
+        #if SHOW_DEBUGS
+        debug("ASSOC READ FROM KEEPER:"); 
+        assoc_print(ev.assocs);
+        #endif
+    }
+
+    return EAR_SUCCESS;
 }
 
 state_t isst_init(topology_t *_tp)
@@ -637,7 +656,7 @@ static state_t reset()
             return s;
         }
     }
-    return EAR_SUCCESS;
+    return assoc_set(ev.assocs);
 }
 
 state_t isst_dispose()
@@ -705,7 +724,9 @@ state_t isst_reset()
 
 state_t isst_clos_count(uint *count)
 {
-    *count = CLOS_COUNT;
+    if (count != NULL) {
+        *count = CLOS_COUNT;
+    }
     return EAR_SUCCESS;
 }
 
@@ -727,7 +748,9 @@ state_t isst_clos_set_list(clos_t *clos_list)
 
 state_t isst_assoc_count(uint *count)
 {
-    *count = cpus_count;
+    if (count != NULL) {
+        *count = cpus_count;
+    }
     return EAR_SUCCESS;
 }
 

@@ -24,6 +24,7 @@
 #include <management/gpu/archs/eard.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
+static int         eard;
 // Received by EAR
 static uint        root_devs_count;
 static ulong      *root_freq_default;
@@ -169,8 +170,9 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
     return EAR_SUCCESS;
 }
 
-void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int eard)
+void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int _eard)
 {
+    eard = _eard;
     if (!eard) {
         debug("EARD (daemon) not required");
         return;
@@ -365,10 +367,13 @@ state_t mgt_gpu_eard_power_cap_set(ctx_t *c, ulong *watts)
 
 int mgt_gpu_eard_is_supported()
 {
-    static int supported = 0;
+    static int supported = USE_GPUS;
     static int called = 0;
     // This is an independent function. It works always, with independence of the load
     // of the EARD GPU API, although is using RPCs to the EAR Daemon.
+    if (!eard || !eards_connected()) {
+        return supported;
+    }
     if (!called) {
         if (state_fail(eard_rpc(RPC_MGT_GPU_IS_SUPPORTED, NULL, 0, (char *) &supported, sizeof(int)))) {
             debug("Failed to retrieve if GPUs are supported, getting config value");
