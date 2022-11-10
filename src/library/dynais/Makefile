@@ -4,14 +4,15 @@ CFLAGS_AVX512 = $(CFLAGS) -march=skylake-avx512
 
 ######## FILES
 
-OBJS = dynais.o \
-       avx2/dynais.o \
-       avx2/dynais_core_0.o \
-       avx2/dynais_core_n.o
-DEPS = dynais.o \
-       avx2/dynais.o \
-       avx2/dynais_core.o
+OBJS = dynais.o
+DEPS = dynais.o
 
+ifeq ($(ARCH), X86)
+OBJS += avx2/dynais.o \
+        avx2/dynais_core_0.o \
+        avx2/dynais_core_n.o
+DEPS += avx2/dynais.o \
+        avx2/dynais_core.o
 ifeq ($(FEAT_AVX512), 1)
 OBJS += avx512/dynais.o \
         avx512/dynais_core_0.o \
@@ -19,6 +20,7 @@ OBJS += avx512/dynais.o \
 DEPS += avx512/dynais.o \
         avx512/dynais_core.o
 DEFI  = -DFEAT_AVX512=1
+endif
 endif
 
 ######## RULES

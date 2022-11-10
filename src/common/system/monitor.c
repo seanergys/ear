@@ -37,7 +37,7 @@ typedef struct wait_s {
 	int burst;
 } wait_t;
 
-typedef struct register_s
+typedef struct regmon_s
 {
 	suscription_t suscription;
 	wait_t wait_units;
@@ -48,9 +48,9 @@ typedef struct register_s
 	int	aligned;
 	int	ok_init;
 	int	ok_main;
-} register_t;
+} regmon_t;
 
-static register_t queue[N_QUEUE];
+static regmon_t queue[N_QUEUE];
 static uint       queue_last;
 
 static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
@@ -83,7 +83,7 @@ static void monitor_sleep(int wait_units, int *pass_units, int *alignment)
 	debug("waited %d units (alignment %d)", *pass_units, *alignment);
 }
 
-static void monitor_time_calc(register_t *reg, int *wait_units, int pass_units, int alignment)
+static void monitor_time_calc(regmon_t *reg, int *wait_units, int pass_units, int alignment)
 {
 	int _bursted = reg->bursted;
 	int wait_required;
@@ -135,7 +135,7 @@ static void _monitor_init()
 
 static void *ear_internal_monitor(void *p)
 {
-	register_t *reg;
+	regmon_t *reg;
 	suscription_t *sus;
 	int wait_units = 0;
 	int pass_units = 0;
@@ -284,7 +284,7 @@ state_t monitor_unregister(suscription_t *s)
 	if (s->id  < 0         ) return_msg(EAR_BAD_ARGUMENT, "incorrect suscription index");
 
 	while (pthread_mutex_trylock(&lock[s->id]));
-	memset(&queue[s->id], 0, sizeof(register_t));
+	memset(&queue[s->id], 0, sizeof(regmon_t));
 	pthread_mutex_unlock(&lock[s->id]);
 
 	return EAR_SUCCESS;

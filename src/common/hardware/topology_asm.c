@@ -16,6 +16,7 @@
 */
 
 #include <common/hardware/cpuid.h>
+#include <common/hardware/defines.h>
 #include <common/hardware/topology_asm.h>
 
 static void topology_getid_x86(topology_t *topo)

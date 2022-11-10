@@ -18,7 +18,7 @@
 #ifndef HARDWARE_DEFINES_H
 #define HARDWARE_DEFINES_H
 
-#if defined(__aarch64__) || defined(_M_ARM64)
+#if defined(ARCH_ARM) || defined(ARCH_ARM64)
 #define __ARCH_ARM   1
 #define __ARCH_ARM64 1
 #else

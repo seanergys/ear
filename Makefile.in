@@ -12,8 +12,7 @@
 ########################################################################################################
 
 # Architectures
-ARCH_X86           = @ARCH_X86@
-ARCH_ARM           = @ARCH_ARM@
+ARCH               = @ARCH@
 # Features
 FEAT_MPI_API       = @FEAT_MPI_API@
 FEAT_AVX512        = @FEAT_AVX512@

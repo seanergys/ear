@@ -1,5 +1,4 @@
-export ARCH_X86
-export ARCH_ARM
+export ARCH
 export FEAT_MPI_API
 export FEAT_AVX512
 export FEAT_RESEARCH

@@ -19,12 +19,14 @@
 
 void cpuid_native(uint *eax, uint *ebx, uint *ecx, uint *edx)
 {
+        #if __ARCH_X86
 	asm volatile("cpuid"
 	: "=a" (*eax),
 	  "=b" (*ebx),
 	  "=c" (*ecx),
 	  "=d" (*edx)
 	: "0"  (*eax), "2" (*ecx));
+	#endif
 }
 
 uint cpuid_getbits(uint reg, int left_bit, int right_bit)

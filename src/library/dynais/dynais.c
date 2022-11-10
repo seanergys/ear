@@ -46,15 +46,22 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <immintrin.h>
+#include <common/hardware/defines.h>
 #include <library/dynais/dynais.h>
 #include <library/dynais/avx2/dynais.h>
+#if __ARCH_X8664
+#include <immintrin.h>
+#endif
 #ifdef FEAT_AVX512
 #include <library/dynais/avx512/dynais.h>
 #endif
 
 static int type;
-static uint dynais_initialized = 0;
+
+static int dynais_dummy(uint sample, uint *size, uint *level)
+{
+	return NO_LOOP;
+}
 
 static int dynais_intel_switch(int model)
 {
@@ -64,12 +71,10 @@ static int dynais_intel_switch(int model)
 		case MODEL_BROADWELL_X:
 		case MODEL_SKYLAKE_X:
 		case MODEL_ICELAKE_X:
-		//case MODEL_CASCADE_LAKE_X:
-		//case MODEL_COOPER_LAKE_X:
-			return 512;
+			return DYNAIS_TYPE_AVX512;
 	}
 	#endif
-	return 2;
+	return DYNAIS_TYPE_AVX2;
 }
 
 dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
@@ -77,30 +82,36 @@ dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 	if (tp->vendor == VENDOR_INTEL) {
 		type = dynais_intel_switch(tp->model);
 	} else {
-		type = 2;
+		#if __ARCH_X8664
+		type = DYNAIS_TYPE_AVX2;
+		#else
+		type = DYNAIS_TYPE_DUMMY;
+		#endif
 	}
-  dynais_initialized = 1;
-	if (type == 512) {
+	if (type == DYNAIS_TYPE_AVX512) {
 		debug("selected DynAIS for AVX-512");
 		#ifdef FEAT_AVX512
 		return avx512_dynais_init((ushort) window, (ushort) levels);
 		#endif
 	}
-	debug("selected DynAIS for AVX-2");
-	return avx2_dynais_init(window, levels);
+	if (type == DYNAIS_TYPE_AVX2) {
+		debug("selected DynAIS for AVX-2");
+		return avx2_dynais_init(window, levels);
+	}
+	debug("selected DynAIS DUMMY");
+	return dynais_dummy;
 }
 
 void dynais_dispose()
 {
-  if (!dynais_initialized) return;
-  dynais_initialized = 0;
-
-	if (type == 512) {
+	if (type == DYNAIS_TYPE_AVX512) {
 		#ifdef FEAT_AVX512
 		avx512_dynais_dispose();
 		#endif
-	} else if (type == 2) {
+	} else if (type == DYNAIS_TYPE_AVX2) {
+		#if __ARCH_X8664
 		avx2_dynais_dispose();
+		#endif
 	}
 }
 
@@ -111,7 +122,11 @@ int dynais_build_type()
 
 uint dynais_sample_convert(ulong sample)
 {
+	#if __ARCH_x8664
 	uint *p = (uint *) &sample;
 	p[0] = _mm_crc32_u32(p[0], p[1]);
 	return (uint) p[0];
+	#else
+	return 0;
+	#endif
 }

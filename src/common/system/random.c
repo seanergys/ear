@@ -18,7 +18,11 @@
 #include <time.h>
 #include <stdlib.h>
 #include <common/output/debug.h>
+#include <common/system/random.h>
+#include <common/hardware/defines.h>
+#if __ARCH_X8664
 #include <immintrin.h>
+#endif
 
 uint random_get()
 {
@@ -26,10 +30,11 @@ uint random_get()
 	unsigned int v;
 
 	// It is supported in AMD architectures too
+        #if __ARCH_X8664
+	// It is supported in AMD architectures too
 	i = _rdrand32_step(&v);
-	
-	if (i == 0)
-	{
+	#endif
+	if (i == 0) {
 		debug("hardware did not generate a random number");
 		clock_t c = clock();
 		v = (unsigned int) c;

@@ -16,9 +16,12 @@
 */
 
 #include <stdlib.h>
-#include <immintrin.h>
 #include <common/output/error.h>
 #include <common/utils/stress.h>
+#include <common/hardware/defines.h>
+#if __ARCH_X8664
+#include <immintrin.h>
+#endif
 
 static char *mem1;
 static char *mem2;
@@ -33,8 +36,13 @@ static void alloc_align(void **memptr, size_t alignment, size_t size)
 void stress_alloc()
 {
     #define N 32*1024*1024 //32 MiB
+    #if __ARCH_X8664
     alloc_align((void **) &mem1, sizeof(__m256i), N);
     alloc_align((void **) &mem2, sizeof(__m256i), N);
+    #else
+    alloc_align((void **) &mem1, 32, N);
+    alloc_align((void **) &mem2, 32, N);
+    #endif
 }
 
 void stress_free()
@@ -49,14 +57,14 @@ void stress_bandwidth(ullong seconds)
     int *pmem2 = (int *) mem2;
     int pN = N / sizeof(int);
     timestamp_t now;
-    __m256i reg;
     int n;
 
     // Computing time
     timestamp_getfast(&now);
     do {
         for (n = 0; n < pN; n+=32) {
-            reg = _mm256_set1_epi32(n);
+            #if __ARCH_X8664
+            __m256i reg = _mm256_set1_epi32(n);
             _mm256_store_si256((__m256i *) &pmem1[n+ 0], reg);
             _mm256_store_si256((__m256i *) &pmem2[n+ 0], reg);
             _mm256_store_si256((__m256i *) &pmem1[n+ 8], reg);
@@ -65,6 +73,9 @@ void stress_bandwidth(ullong seconds)
             _mm256_store_si256((__m256i *) &pmem2[n+16], reg);
             _mm256_store_si256((__m256i *) &pmem1[n+24], reg);
             _mm256_store_si256((__m256i *) &pmem2[n+24], reg);
+	    #else
+	    //TODO: memcpy(pmem2, pmem1, size);
+	    #endif
         }
     } while (timestamp_diffnow(&now, TIME_SECS) < seconds);
 }

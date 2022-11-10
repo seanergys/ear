@@ -1,11 +1,11 @@
 include ./Makefile.files
 
 # If USER_TEST is set to 1, any user can execute the hacks with the library
-CFLAGS = -fPIC -I$(SRCDIR) $(CONSTANTS) -O2 -DUSER_TEST=0
+CFLAGS = -fPIC -I$(SRCDIR) $(CONSTANTS) -O2 -DUSER_TEST=0 -DARCH_X86=$(ARCH_X86) -DARCH_ARM=$(ARCH_ARM)
 
 # Use POP model to compute Load Balance efficiency
 ifeq ($(FEAT_RESEARCH), 1)
-	CFLAGS += -DNEW_LB_EFF=1
+CFLAGS += -DNEW_LB_EFF=1
 endif
 
 ######## FILES
