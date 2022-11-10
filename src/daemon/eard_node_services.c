@@ -116,8 +116,8 @@ static wide_buffer_t    wb;
 static metrics_t        uc;
 static metrics_t        ui;
 static metrics_t        ub;
-#if USE_GPUS
 static metrics_t        ug;
+#if USE_GPUS
 static gpu_t           *eard_read_gpu;
 #endif
 
