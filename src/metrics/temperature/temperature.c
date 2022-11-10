@@ -135,12 +135,11 @@ void temp_data_print(llong *list, llong avrg, int fd)
 
 void temp_data_tostr(llong *list, llong avrg, char *buffer, int length)
 {
-    ullong a;
+    ullong a = 0;
     int i;
 
-    a = sprintf(&buffer[0], "TEMP:");
     for (i = 0; i < devs_count; ++i) {
-        a += sprintf(&buffer[a], " %lld", list[i]);
+        a += sprintf(&buffer[a], "%lld\t", list[i]);
     }
-    sprintf(&buffer[a], ", avg %lld\n", avrg);
+    sprintf(&buffer[a], "avg %lld (Celsius)\n", avrg);
 }

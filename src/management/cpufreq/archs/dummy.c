@@ -48,6 +48,7 @@ state_t mgt_cpufreq_dummy_load(topology_t *tp_in, mgt_ps_ops_t *ops)
 	apis_put(ops->get_index,          mgt_cpufreq_dummy_get_index);
 	apis_put(ops->set_current_list,   mgt_cpufreq_dummy_set_current_list);
 	apis_put(ops->set_current,        mgt_cpufreq_dummy_set_current);
+	apis_put(ops->reset,              mgt_cpufreq_dummy_reset);
     apis_put(ops->get_governor,       mgt_cpufreq_dummy_governor_get);
     apis_put(ops->get_governor_list,  mgt_cpufreq_dummy_governor_get_list);
 	apis_put(ops->set_governor,       mgt_cpufreq_dummy_governor_set);
@@ -112,6 +113,12 @@ state_t mgt_cpufreq_dummy_set_current_list(ctx_t *c, uint *pstate_index)
 state_t mgt_cpufreq_dummy_set_current(ctx_t *c, uint pstate_index, int cpu)
 {
 	debug("mgt_cpufreq_dummy_set_current");
+	return EAR_SUCCESS;
+}
+
+state_t mgt_cpufreq_dummy_reset(ctx_t *c)
+{
+	debug("mgt_cpufreq_dummy_reset");
 	return EAR_SUCCESS;
 }
 

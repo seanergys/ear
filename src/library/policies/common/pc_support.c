@@ -30,6 +30,8 @@
 #include <daemon/powercap/powercap_status.h>
 
 #include <management/cpufreq/frequency.h>
+#include <management/gpu/gpu.h>
+
 
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>

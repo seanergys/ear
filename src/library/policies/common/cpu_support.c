@@ -46,6 +46,7 @@
 
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
+extern ear_classify_t phases_limits;
 
 state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong *def_freq,ulong *freq_ref,double *time_ref,
         double *power_ref)
@@ -153,16 +154,19 @@ state_t compute_cpu_freq_min_time(signature_t *my_app, int min_pstate, double ti
                 best_freq=freq_ref;
                 best_pstate=i;
                 time_current = time_proj;
-                i--;
+                //i--;
             }
+            #if 0
             else
             {
                 try_next = 0;
             }
+            #endif
         } // Projections available
         else{
             try_next=0;
         }
+        i--;
     }
     /* Controlar la freq por power cap, si capado poner GREEDY, gestionar req-f */
     if (best_freq<def_freq) best_freq=def_freq;
@@ -188,7 +192,7 @@ uint cpu_supp_try_boost_cpu_freq(int nproc, uint *critical_path, ulong *freqs, i
 
 int signatures_different(signature_t *s1, signature_t *s2,float p)
 {
-    uint i;
+    #if 0
     if (s1->CPI == 0 || s2->CPI == 0 || s1->GBS == 0 || s2->GBS == 0){
         verbose_master(2, "%sWARNING%s some signature have a 0 value CPI (%.2lfvs%.2lf) GBS (%.2lfvs%.2lf)",
                 COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
@@ -222,11 +226,77 @@ int signatures_different(signature_t *s1, signature_t *s2,float p)
                     s1->GBS,s2->GBS, s1_mbound, s2_mbound);
         }
     }
+    #endif
+
+        if (s1->CPI == 0 || s2->CPI == 0 || s1->GBS == 0 || s2->GBS == 0) {
+        verbose_master(2, "%sWARNING%s some signature have a 0 value CPI (%.2lfvs%.2lf) GBS (%.2lfvs%.2lf)",
+                COL_RED, COL_CLR, s1->CPI, s2->CPI, s1->GBS, s2->GBS);
+        return 0;
+    }
+
+#if FAKE_SIGNATURES_DIFFERENT
+        verbose_master(2, "Signatures different fakely forced.");
+        return 1;
+#endif
+
+	/* If one of them is doing some computation, we check. */
+    if ((s1->GBS > phases_limits.gbs_busy_waiting) || (s2->GBS > phases_limits.gbs_busy_waiting)){
+				/* If the CPI is different we check if the classification is also different */
+        if (!equal_with_th(s1->CPI, s2->CPI, p)) {
+            uint s1_cbound, s2_cbound;
+            is_cpu_bound(s1, lib_shared_region->num_cpus, &s1_cbound);
+            is_cpu_bound(s2, lib_shared_region->num_cpus, &s2_cbound);
+            if (s1_cbound != s2_cbound) {
+                verbose_master(2, "CPI (%.2lfvs%.2lf) and cpu bound phase changed from %u to %u",
+                        s1->CPI, s2->CPI, s1_cbound, s2_cbound);
+                return 1;
+            }
+            verbose_master(2, "CPIs different (%.2lfvs%.2lf) but same cpu behaviour (%uvs%u)",
+                    s1->CPI, s2->CPI, s1_cbound, s2_cbound);
+        }
+				/* If Mem. Band is different, we double check */
+				/* Compare if one is GBS_BUSY_WAITING and not the other */
+        uint s1_mbound, s2_mbound;
+				s1_mbound  = s1->GBS < phases_limits.gbs_busy_waiting;
+				s2_mbound  = s2->GBS < phases_limits.gbs_busy_waiting;
+
+				if (s1_mbound != s2_mbound) {
+					verbose_master(2, "One signature has memory bandwidth below busy waiting threshold (%f GB/s) %f/%f",
+              phases_limits.gbs_busy_waiting, s1->GBS, s2->GBS);
+
+					return 1;
+				}
+
+				/* If one is MEM bound and not the other they are not the same */
+        is_mem_bound(s1, lib_shared_region->num_cpus, &s1_mbound); /* Node */
+        is_mem_bound(s2, lib_shared_region->num_cpus, &s2_mbound);
+        if (s1_mbound != s2_mbound) {
+						verbose_master(2, "One signature is memory bound (GB/s) %f/%f (CPI) %f/%f",
+                s1->GBS, s2->GBS, s1->CPI, s2->CPI);
+            return 1;
+        }
+
+				/* Compare the absolute value */
+        if (abs((int) s1->GBS - (int) s2->GBS) > MAX_GBS_DIFF) {
+						verbose_master(2, "Memory bandwidth differ more far than %d GB/s: %f/%f",
+                MAX_GBS_DIFF, s1->GBS, s2->GBS);
+            return 1;
+        }
+    }
+
 
 #if USE_GPUS
-    for (i = 0; i< s1->gpu_sig.num_gpus; i ++){
-        if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)) return 1;
-        if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)) return 1;
+    for (int i = 0; i< s1->gpu_sig.num_gpus; i ++){
+        //if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util,p)){ 
+        if (abs((int)s1->gpu_sig.gpu_data[i].GPU_util - (int) s2->gpu_sig.gpu_data[i].GPU_util) > 10){
+          verbose_master(2, "GPU util[%d] %lu/%lu", i, s1->gpu_sig.gpu_data[i].GPU_util, s2->gpu_sig.gpu_data[i].GPU_util);
+          return 1;
+        }
+        //if (!equal_with_th_ul(s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util,p)){ 
+        if (abs((int)s1->gpu_sig.gpu_data[i].GPU_mem_util - (int)s2->gpu_sig.gpu_data[i].GPU_mem_util) > 10){
+           verbose_master(2, "GPU mem util[%d] %lu/%lu", i, s1->gpu_sig.gpu_data[i].GPU_mem_util, s2->gpu_sig.gpu_data[i].GPU_mem_util);
+           return 1;
+        }
     }
 #endif
     return 0;

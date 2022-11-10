@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <metrics/common/apis.h>
 #include <common/output/debug.h>
@@ -52,5 +52,29 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_CUPTI   ) { snprintf(buffer, size, "CUPTI"   ); }
     else if (api == API_ONEAPI  ) { snprintf(buffer, size, "ONEAPI"  ); }
     else if (api == API_ISST    ) { snprintf(buffer, size, "INTELSST"); }
+    else if (api == API_FAKE    ) { snprintf(buffer, size, "FAKE"    ); }
     else if (api == API_CPUMODEL) { snprintf(buffer, size, "CPUMODEL"); }
+}
+
+void granularity_print(uint granularity, char *prefix)
+{
+    char buffer[128];
+    granularity_tostr(granularity, buffer, 128);
+    verbose(0, "%s%s", prefix, buffer);
+}
+
+void granularity_tostr(uint granularity, char *buffer, size_t size)
+{
+    if      (granularity == GRANULARITY_NONE    ) { snprintf(buffer, size, "none"    ); }
+    else if (granularity == GRANULARITY_DUMMY   ) { snprintf(buffer, size, "dummy"   ); }
+    else if (granularity == GRANULARITY_PROCESS ) { snprintf(buffer, size, "process" ); }
+    else if (granularity == GRANULARITY_THREAD  ) { snprintf(buffer, size, "thread"  ); }
+    else if (granularity == GRANULARITY_CORE    ) { snprintf(buffer, size, "core"    ); }
+    else if (granularity == GRANULARITY_CCX     ) { snprintf(buffer, size, "ccx"     ); }
+    else if (granularity == GRANULARITY_CCD     ) { snprintf(buffer, size, "ccd"     ); }
+    else if (granularity == GRANULARITY_L3_SLICE) { snprintf(buffer, size, "l3 slice"); }
+    else if (granularity == GRANULARITY_IMC     ) { snprintf(buffer, size, "imc"     ); }
+    else if (granularity == GRANULARITY_SOCKET  ) { snprintf(buffer, size, "socket"  ); }
+    else if (granularity == GRANULARITY_NODE    ) { snprintf(buffer, size, "node"    ); }
+    else if (granularity == GRANULARITY_NODE    ) { snprintf(buffer, size, "node"    ); }
 }

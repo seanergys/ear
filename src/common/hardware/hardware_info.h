@@ -71,5 +71,8 @@ state_t add_affinity(topology_t *topo, cpu_set_t *dest,cpu_set_t *src);
  * This function just wraps CPU_ISSET macro. */
 int cpu_isset(int cpu, cpu_set_t *mask);
 
+/* Fill cpu_list with value when cpu is set in my_mask and no_value when it's not */
+void fill_cpufreq_list(cpu_set_t *my_mask, uint n_cpus, uint value, uint no_value, uint *cpu_list);
+
 
 #endif

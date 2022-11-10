@@ -118,9 +118,12 @@ src/common/config/config_env.h
 *remove_learning
 *traces_to_paraver
 *erun
+*metrics_show
 
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
+src/management/test
+src/metrics/test
 src/tools/coefficients_comparison
 src/tools/coeffs_compare
 src/tools/coeffs_comparison
@@ -149,4 +152,5 @@ src/tools/get_active_nodes*
 src/tools/learning_validate*
 src/tools/ear_events*
 src/tools/ear_conf
+src/tools/metrics_show
 src/commands/ear-info

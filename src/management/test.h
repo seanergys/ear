@@ -15,17 +15,24 @@
 * and COPYING.EPL files.
 */
 
-#ifndef METRICS_STALLS_H
-#define METRICS_STALLS_H
+#ifndef TEST_H
+#define TEST_H
 
-int init_stall_metrics();
+#include <metrics/test.h>
+#include <management/cpufreq/cpufreq.h>
+#include <management/cpufreq/priority.h>
+#include <management/imcfreq/imcfreq.h>
+#include <management/gpu/gpu.h>
 
-void reset_stall_metrics();
+typedef struct manages_apis_s {
+    apis_info_t cpu; // cpufreq
+    apis_info_t pri; // cpuprio
+    apis_info_t imc; // imcfreq
+    apis_info_t gpu; // gpu
+} manages_apis_t;
 
-void start_stall_metrics();
+void management_init(topology_t *tp, int eard, manages_apis_t **m);
 
-void stop_stall_metrics(long long *stall_cycles);
+void management_data_print();
 
-void get_stall_metrics(long long *total_stall_cycles);
-
-#endif //METRICS_STALLS_H
+#endif //TEST_H

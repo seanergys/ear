@@ -40,22 +40,24 @@
 #define API_ONEAPI      12
 #define API_RAPL 		13
 #define API_ISST        14
-#define API_CPUMODEL	15
+#define API_FAKE        15
+#define API_CPUMODEL	  16
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
 #define no_ctx           NULL
 //
 #define GRANULARITY_NONE       0
-#define GRANULARITY_PROCESS    1
-#define GRANULARITY_THREAD     2
-#define GRANULARITY_CORE       3
-#define GRANULARITY_CCX        4
-#define GRANULARITY_CCD        5
-#define GRANULARITY_L3_SLICE   6
-#define GRANULARITY_IMC        7
-#define GRANULARITY_SOCKET     8
-#define GRANULARITY_NODE       9
+#define GRANULARITY_DUMMY      1
+#define GRANULARITY_PROCESS    2
+#define GRANULARITY_THREAD     3
+#define GRANULARITY_CORE       4
+#define GRANULARITY_CCX        5
+#define GRANULARITY_CCD        6
+#define GRANULARITY_L3_SLICE   7
+#define GRANULARITY_IMC        8
+#define GRANULARITY_SOCKET     9
+#define GRANULARITY_NODE       10
 
 typedef struct ctx_s {
     void *context;
@@ -83,7 +85,17 @@ typedef struct metrics_gpus_s {
     uint *avail_count;
     void *current_list;
 } metrics_gpus_t;
-#endif // USE_GPUS
+#endif
+
+typedef struct metrics_multi{
+    uint  api;
+    uint  ok;
+    uint  dev_count;
+    uint  *dev_list;
+    void *avail_list;
+    uint avail_count;
+    void *current_list;
+}metrics_multi_t;
 
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
@@ -131,6 +143,10 @@ void apis_append(void *op[], void *func);
 void apis_print(uint api, char *prefix);
 
 void apis_tostr(uint api, char *buffer, size_t size);
+
+void granularity_print(uint granularity, char *prefix);
+
+void granularity_tostr(uint granularity, char *buffer, size_t size);
 
 /* Obsolete, remove it. */
 #define replace_ops(p1, p2) \

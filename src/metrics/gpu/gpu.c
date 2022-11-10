@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -40,7 +40,7 @@ void gpu_load(int eard)
     }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(&ops);
+    gpu_nvml_load(&ops, eard);
     gpu_oneapi_load(&ops);
     gpu_eard_load(&ops, eard);
     gpu_dummy_load(&ops);
@@ -68,6 +68,11 @@ state_t gpu_init(ctx_t *c)
 state_t gpu_dispose(ctx_t *c)
 {
     preturn(ops.dispose, c);
+}
+
+state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
+{
+    preturn (ops.get_devices, c, devs, devs_count);
 }
 
 state_t gpu_count_devices(ctx_t *c, uint *devs_count)
@@ -129,8 +134,8 @@ static void static_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff, int i
 	d3->util_mem = (d2->util_mem - d1->util_mem) / d3->samples;
 	d3->temp_gpu = (d2->temp_gpu - d1->temp_gpu) / d3->samples;
 	d3->temp_mem = (d2->temp_mem - d1->temp_mem) / d3->samples;
-	d3->power_w  = (d2->power_w  - d1->power_w ) / (d3->samples * 1000);
-	d3->energy_j = (d3->power_w) * time_f;
+	d3->power_w  = (d2->power_w  - d1->power_w ) / d3->samples;
+	d3->energy_j = (d2->energy_j - d1->energy_j);
 	d3->working  = (d2->working);
 	d3->correct  = 1;
 
@@ -259,4 +264,9 @@ void gpu_data_tostr(gpu_t *data, char *buffer, int length)
 		length = length - s;
 		accuml = accuml + s;
 	}
+}
+
+int gpu_is_supported()
+{
+    return gpu_eard_is_supported();
 }

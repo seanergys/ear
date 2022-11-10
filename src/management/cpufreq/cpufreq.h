@@ -90,6 +90,7 @@ typedef struct mgt_ps_ops_s
 	state_t (*get_index)            (ctx_t *c, ullong freq_khz, uint *pstate_index, uint closest);
 	state_t (*set_current_list)     (ctx_t *c, uint *pstate_index);
 	state_t (*set_current)          (ctx_t *c, uint pstate_index, int cpu);
+    state_t (*reset)                (ctx_t *c);
 	state_t (*get_governor)         (ctx_t *c, uint *governor);
 	state_t (*get_governor_list)    (ctx_t *c, uint *governor);
 	state_t (*set_governor)         (ctx_t *c, uint governor);
@@ -129,18 +130,26 @@ state_t mgt_cpufreq_set_current_list(ctx_t *c, uint *pstate_index);
 /** Set a P_STATE in specified CPU. Accepts 'all_cpus' to set that P_STATE in all CPUs. */
 state_t mgt_cpufreq_set_current(ctx_t *c, uint pstate_index, int cpu);
 
+/** Resets to the default configuration. */
+state_t mgt_cpufreq_reset(ctx_t *c);
+
 // Governor subsystem
 #define mgt_cpufreq_get_governor(c, g) mgt_cpufreq_governor_get(c, g)
 #define mgt_cpufreq_set_governor(c, g) mgt_cpufreq_governor_set(c, g)
 
+/** Gets the current governor id (specifically CPU0 governor). */
 state_t mgt_cpufreq_governor_get(ctx_t *c, uint *governor);
 
+/** Gets the current governor for each GPU. */
 state_t mgt_cpufreq_governor_get_list(ctx_t *c, uint *governor);
 
+/** Sets a governor to all CPUs. */
 state_t mgt_cpufreq_governor_set(ctx_t *c, uint governor);
 
+/** Sets a governor to the CPUs whose bit in the mask is 1. */
 state_t mgt_cpufreq_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
 
+/** Sets a governor to the CPUs given a list of governors id. */
 state_t mgt_cpufreq_governor_set_list(ctx_t *c, uint *governor);
 
 /** Allocates a list of current P_STATE per CPU (devices). */

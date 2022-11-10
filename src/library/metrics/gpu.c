@@ -15,7 +15,9 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
+
+#if 0
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <library/metrics/gpu.h>
@@ -212,4 +214,4 @@ uint gpu_lib_gpus_supported()
   return 0;
 }
 
-
+#endif

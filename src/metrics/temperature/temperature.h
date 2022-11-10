@@ -47,11 +47,10 @@ void temp_get_api(uint *api);
 state_t temp_init(ctx_t *c);
 
 state_t temp_dispose(ctx_t *c);
-/** It returns the number of sockets. */
-state_t temp_count_devices(ctx_t *c, uint *count);
-/** Requires a llong array of a length of total node sockets. */
+/** It returns the number of devices (normally sockets). */
+state_t temp_count_devices(ctx_t *c, uint *devs_count);
+/** Reads the last temperature value and the average per device. */
 state_t temp_read(ctx_t *c, llong *temp_list, llong *average);
-
 // Data
 state_t temp_data_alloc(llong **temp_list);
 

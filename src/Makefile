@@ -18,12 +18,13 @@ COMPONENTS += database_cache
 
 ######## RULES
 
-.PHONY: check
+.PHONY:
 
 all: all.components
 
-check:
-	@ $(MAKE) -C tests check
+post:
+	@ $(MAKE) -C 'metrics'    $@ || exit
+	@ $(MAKE) -C 'management' $@ || exit
 
 install: install.components
 

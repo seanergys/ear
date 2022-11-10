@@ -42,7 +42,7 @@ state_t mgt_gpu_dummy_freq_limit_reset(ctx_t *c);
 
 state_t mgt_gpu_dummy_freq_limit_set(ctx_t *c, ulong *khz);
 
-state_t mgt_gpu_dummy_freq_list(ctx_t *c, const ulong ***list_khz, const uint **list_len);
+state_t mgt_gpu_dummy_freq_get_available(ctx_t *c, const ulong ***list_khz, const uint **list_len);
 
 state_t mgt_gpu_dummy_power_cap_get_current(ctx_t *c, ulong *watts);
 

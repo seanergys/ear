@@ -26,6 +26,7 @@
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static topology_t tp;
+static llong *throt;
 
 #define IA32_THERM_STATUS               0x19C
 #define IA32_PKG_THERM_STATUS           0x1B1
@@ -34,6 +35,9 @@ static topology_t tp;
 state_t temp_intel63_status(topology_t *_tp)
 {
 	state_t s = EAR_SUCCESS;
+    ullong data;
+    int i;
+
 	if (_tp->vendor != VENDOR_INTEL || _tp->model < MODEL_HASWELL_X) {
 		return EAR_ERROR;
 	}
@@ -44,64 +48,55 @@ state_t temp_intel63_status(topology_t *_tp)
         }
 		s = topology_select(_tp, &tp, TPSelect.socket, TPGroup.merge, 0);
 	}
+    // New bits
+	for (i = 0; i < tp.cpu_count; ++i) {
+		if (state_fail(s = msr_open(tp.cpus[i].id, MSR_RD))) {
+			return s;
+		}
+		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(ullong), IA32_THERM_STATUS))) {
+			return s;
+		}
+        debug("IA32_THERM_STATUS of CPU%d bits: 0x%llx", tp.cpus[i].id, data);
+    }
 	pthread_mutex_unlock(&lock);
 	return s;
 }
 
 state_t temp_intel63_init(ctx_t *c)
 {
-	llong *throt;
 	llong data;
 	state_t s;
 	int i;
 
 	//
-	if (c == NULL) {
-        return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
-    }
-	if ((c->context = calloc(tp.cpu_count, sizeof(ullong))) == NULL) {
+	if ((throt = calloc(tp.cpu_count, sizeof(ullong))) == NULL) {
         return_msg(EAR_ERROR, strerror(errno));
     }
 	//
-	throt = (llong *) c->context;
 	for (i = 0; i < tp.cpu_count; ++i) {
-		debug("accessing to CPU %d", tp.cpus[i].id);
-		if (state_fail(s = msr_open(tp.cpus[i].id, MSR_RD))) {
-			return s;
-		}
 		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), MSR_TEMPERATURE_TARGET))) {
 			return s;
 		}
-		throt[i] = (data >> 16);
+        debug("MSR_TEMPERATURE_TARGET of CPU%d bits: 0x%llx", tp.cpus[i].id, data);
+        // In the future we might have problems. Because 23:16 is temperature target (8 bits).
+        // But target offset is 29:24 (6 bits). And the PROCHOT is target + offset, but by now
+        // we always have found the offset is 0 (lucky).
+		throt[i] = (data >> 16) & 0xFF;
 	}
 	//
-	return EAR_SUCCESS;
-}
-
-static state_t get_context(ctx_t *c, llong **h)
-{
-	if (c == NULL || c->context == NULL) {
-		return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
-	}
-	*h = (llong *) c->context;
 	return EAR_SUCCESS;
 }
 
 state_t temp_intel63_dispose(ctx_t *c)
 {
-	llong *throt;
 	state_t s;
 	int i;
 
-	if (state_fail(s = get_context(c, &throt))) {
-		return s;
-	}
 	for (i = 0; i < tp.cpu_count; ++i) {
 		if (state_fail(s = msr_close(tp.cpus[i].id))) {
 			return s;
 		}
 	}
-	c->context = NULL;
 	free(throt);
 	return EAR_SUCCESS;
 }
@@ -109,12 +104,9 @@ state_t temp_intel63_dispose(ctx_t *c)
 // Data
 state_t temp_intel63_count_devices(ctx_t *c, uint *count)
 {
-	llong *throt;
 	state_t s;
-	if (state_fail(s = get_context(c, &throt))) {
-		return s;
-	}
-	if (count != NULL) {
+	
+    if (count != NULL) {
 		*count = tp.cpu_count;
 	}
 	return EAR_SUCCESS;
@@ -124,26 +116,20 @@ state_t temp_intel63_count_devices(ctx_t *c, uint *count)
 state_t temp_intel63_read(ctx_t *c, llong *temp, llong *average)
 {
 	llong aux1, aux2;
-	llong *throt;
 	llong data;
 	state_t s;
 	int i;
 
-    debug("1");
-	if (state_fail(s = get_context(c, &throt))) {
-		return s;
-	}
-    debug("2");
 	for (i = 0, aux1 = aux2 = 0; i < tp.cpu_count && temp != NULL; ++i) {
         temp[i] = 0;
     }
 	for (i = 0; i < tp.cpu_count; ++i) {
-		debug("Accessing to cpu %d ID=%d", i, tp.cpus[i].id);
 		if (state_fail(s = msr_read(tp.cpus[i].id, &data, sizeof(llong), IA32_PKG_THERM_STATUS))) {
 			return s;
 		}
-        debug("Returned %lld", data);
-		aux1  = throt[i] - ((data >> 16) & 0xff);
+        debug("IA_PKG_THERM_STATUS of CPU%d bits: 0x%llx", tp.cpus[i].id, data);
+        // Data is from bits 22:16, then there are 7 bits
+		aux1  = throt[i] - ((data >> 16) & 0x7F);
 		aux2 += aux1;
 		if (temp != NULL) {
 			temp[i] = aux1;

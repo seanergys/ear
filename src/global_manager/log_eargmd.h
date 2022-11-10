@@ -18,9 +18,6 @@
 #ifndef _LOG_EARGM_
 #define _LOG_EARGM_
 
-#define CLUSTER_POWER   600
-#define NODE_POWERCAP   601
-#define POWER_UNLIMITED 602
 
 #endif
 

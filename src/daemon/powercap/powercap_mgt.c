@@ -740,7 +740,7 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
             pmapp = current_ear_app[cc];
             /* For each app, we must merge CPUfreq and GPUfreq requested */
 #ifndef SYN_TEST
-            if (domain == DOMAIN_CPU){ 
+            if (domain == DOMAIN_CPU) {
                 //memcpy(f,pc_app_info_data->req_f,sizeof(ulong)*MAX_CPUS_SUPPORTED);
                 cpu_set_t m;
                 pos_job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);

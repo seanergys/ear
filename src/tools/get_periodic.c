@@ -59,9 +59,11 @@ void prepare_query(char *query, char *BASE_QUERY, char *job_ids, char *job_id, c
 
 void print_header(int fd, char ***values, int columns, int rows)
 {
+	dprintf(fd, "%s", values[0][0]);
+
 	int i;
-	for (i = 0; i < rows; i++) {
-		dprintf(fd, "%s;", values[i][0]);
+	for (i = 1; i < rows; i++) {
+		dprintf(fd, ";%s", values[i][0]);
 	}
 	dprintf(fd, "\n");
 }
@@ -70,8 +72,9 @@ void print_values(int fd, char ***values, int columns, int rows)
 {
 	int i, j;
 	for (i = 0; i < rows; i++) {
-		for (j = 0; j < columns; j++) {
-			dprintf(fd, "%s;", values[i][j]);
+			dprintf(fd, "%s", values[i][0]);
+		for (j = 1; j < columns; j++) {
+			dprintf(fd, ";%s", values[i][j]);
 		}
 		dprintf(fd, "\n");
 	}

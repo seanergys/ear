@@ -81,8 +81,8 @@ all:
 
 full: clean all 
 
-check:
-	@ $(MAKE) -C 'src' check
+post:
+	@ $(MAKE) -C 'src' post
 
 install:
 	@ $(MAKE) -C 'etc' install || exit

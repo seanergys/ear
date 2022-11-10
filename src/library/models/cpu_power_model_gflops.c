@@ -36,12 +36,14 @@
 
 
 static uint arch_model_loaded = 0;
-static uint cpu_count;
+static uint cpu_count, cache_line_size;
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf,
         architecture_t *arch)
 {
 	cpu_count = arch->top.cpu_count;
+  cache_line_size = arch->top.cache_line_size;
+  arch_model_loaded = 1;
 	return EAR_SUCCESS;
 }
 
@@ -61,7 +63,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     double job_power_ratio;
     double dram_power[MAX_CPUS_SUPPORTED];
      
-    double my_job_GBS, my_job_DRAM_power;
+    double my_job_GBS, my_job_DRAM_power, my_job_TPI;
 
     uint used_cpus = 0;
 
@@ -77,6 +79,9 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     double gbs[MAX_CPUS_SUPPORTED];
     memset(gbs, 0, sizeof(double) * MAX_CPUS_SUPPORTED);
 
+    double tpi[MAX_CPUS_SUPPORTED];
+    memset(tpi, 0, sizeof(double) * MAX_CPUS_SUPPORTED);
+
     ull L3[MAX_CPUS_SUPPORTED];
     memset(L3, 0, sizeof(ull) * MAX_CPUS_SUPPORTED);
 
@@ -86,6 +91,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     float  gflops[MAX_CPUS_SUPPORTED];
     memset(gflops, 0, sizeof(float) * MAX_CPUS_SUPPORTED);
 
+    ullong inst[MAX_CPUS_SUPPORTED];
+    memset(inst, 0, sizeof(ullong)*MAX_CPUS_SUPPORTED);
+
+    
+
     /* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
     uint job_in_process[MAX_CPUS_SUPPORTED];
     uint node_process = 0;
@@ -93,6 +103,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     float total_gflops = 0.0;
 
     ull  node_L3 = 0;
+
+    verbose(2, "CPU power model gflops ...............");
 
     for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
         /* Power condition is to do only in case the signature is ready */
@@ -104,6 +116,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
                 if (nmgr[j].shsig[lp].sig.DC_power > 0) {
                     job_in_process[node_process] = j;
                     L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
+                    inst[node_process]           = nmgr[j].shsig[lp].sig.instructions;
                     gflops[node_process]         = nmgr[j].shsig[lp].sig.Gflops;
                     total_gflops                += gflops[node_process];
                     node_L3                     += L3[node_process];
@@ -116,26 +129,33 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     uint lp = 0;
     uint cj = 0;
     my_job_GBS = 0;
+    my_job_TPI = 0;
     my_job_DRAM_power = 0;
 
     /* DRAM power and GBS computation **/
     for (uint j = 0; j < node_process; j++){
         /* GBs is per-node, we can use our own GBs */
         if (node_L3) {
-            gbs[j] = ((double) L3[j] / (double) node_L3) * lsig->GBS;
-            dram_power[j] = ((double) L3[j] / (double) node_L3) * lsig->DRAM_power;
+            float mem_ratio = (float)L3[j]/(float)node_L3;
+            gbs[j]        = mem_ratio * lsig->GBS;
+            dram_power[j] = mem_ratio * lsig->DRAM_power;
+            tpi[j]        = (mem_ratio * data->cas_counters * cache_line_size) / inst[j];
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
-            gbs[j] = lsig->GBS * (nmgr[cj].libsh->num_cpus / used_cpus) / nmgr[cj].libsh->num_processes;
+            float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
+            gbs[j]        = lsig->GBS * mem_ratio;
             dram_power[j] = (gbs[j] / lsig->GBS) * lsig->DRAM_power;
+            tpi[j]        = lsig->TPI * mem_ratio;
         }
 
         if ((L3[j] || gbs[j]) && (job_in_process[j] == node_mgr_index)) {
             my_job_GBS        += gbs[j];
             my_job_DRAM_power += dram_power[j];
+            my_job_TPI        += tpi[j];
 
             sig[lp].sig.GBS = gbs[j];	
+            sig[lp].sig.TPI = tpi[j];	
             sig[lp].sig.DRAM_power = dram_power[j];	
 
             debug("Process %d/%d GBS %lf", job_in_process[j], lp, sig[lp].sig.GBS);
@@ -145,9 +165,10 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     }
 
     data->job_signature.GBS = my_job_GBS;
+    data->job_signature.TPI = my_job_TPI;
     data->job_signature.DRAM_power = my_job_DRAM_power;
 
-    debug("My job[%d] GB/s is %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.DRAM_power);
+    verbose(2, "My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power);
 
     /* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 

@@ -20,6 +20,10 @@
 
 #include <common/types/types.h>
 
+// This is a memory register. You can add values and these values will
+// be saved in a buffer. Later you can print these big array of values
+// in a customized style.
+
 typedef struct dreg_s {
     char  *buffer;
     uint   rows;

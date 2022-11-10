@@ -38,6 +38,7 @@
 #include <common/types/job.h>
 #include <daemon/log_eard.h>
 #include <common/system/symplug.h>
+#include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/messaging/msg_conf.h>
 #include <common/messaging/msg_internals.h>
@@ -54,6 +55,8 @@
 #include <daemon/powercap/powercap.h>
 #include <daemon/shared_configuration.h>
 #include <report/report.h>
+
+//#define SLURM_FAKE_ERROR 1
 
 /* Defined in eard.c */
 extern report_id_t rid;
@@ -137,6 +140,10 @@ ulong lower_valid_freq(ulong f, uint p_states, ulong *f_list) {
 
 static void DC_my_sigusr1(int signun) {
     verbose(VCONF, "thread %u receives sigusr1", (uint) pthread_self());
+    if (signun == SIGSEGV){
+      verbose(0, "Remote API server thread receives SIGSEGV. Stack....");
+      print_stack(verb_channel);
+    }
     close_server_socket(eards_remote_socket);
     pthread_exit(0);
 }
@@ -153,6 +160,8 @@ static void DC_set_sigusr1() {
     sa.sa_flags = 0;
     if (sigaction(SIGUSR1, &sa, NULL) < 0)
         error(" doing sigaction of signal s=%d, %s\n", SIGUSR1, strerror(errno));
+    if (sigaction(SIGSEGV, &sa, NULL) < 0)
+        error(" doing sigaction of signal s=%d, %s\n", SIGSEGV, strerror(errno));
 
 }
 
@@ -791,6 +800,7 @@ state_t process_remote_requests(int clientfd) {
     request_t command;
     uint req;
     long ack = EAR_SUCCESS;
+	int num_contexts = 0;
     verbose(VRAPI, "connection received");
     memset(&command,0,sizeof(request_t));
     command.req = NO_COMMAND;
@@ -814,12 +824,28 @@ state_t process_remote_requests(int clientfd) {
             verbose(VRAPI, "*******************************************");
             verbose(VRAPI, "new_job command received %lu", command.my_req.new_job.job.id);
             application_t req_app;
+			// check pending contexts by looking at their pids (if they no longer exists we finish the jobs)
+			num_contexts = mark_contexts_to_finish_by_pid();
+			//do the end_jobs for the marked jobs
+			if (num_contexts) finish_pending_contexts(&my_eh_rapi);
+
+			//begin the new_job
             adap_new_job_req_to_app(&req_app,&command.my_req.new_job);
             powermon_new_job(NULL, &my_eh_rapi, &req_app, 0, req == EAR_RC_NEW_JOB_LIST);
             break;
         case EAR_RC_END_JOB:
+#if SLURM_FAKE_ERROR
+			break;
+#endif
         case EAR_RC_END_JOB_LIST:
             powermon_end_job(&my_eh_rapi, command.my_req.end_job.jid, command.my_req.end_job.sid, req == EAR_RC_END_JOB_LIST);
+			// mark any pending context for that job if it's an SBATCH
+		    num_contexts = mark_contexts_to_finish_by_jobid(command.my_req.end_job.jid, command.my_req.end_job.sid);
+			//do the end_jobs for the marked jobs
+			if (num_contexts) finish_pending_contexts(&my_eh_rapi);
+#if SHOW_DEBUGS
+			print_contexts_status();
+#endif
             verbose(VRAPI, "end_job command received %lu", command.my_req.end_job.jid);
             verbose(VRAPI, "*******************************************");
             break;

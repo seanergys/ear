@@ -54,6 +54,7 @@ extern char lib_shared_region_path_jobs[GENERIC_NAME];
 extern char sig_shared_region_path_jobs[GENERIC_NAME];
 static int fd_conf,fd_signatures;
 extern uint exclusive;
+extern uint fake_force_shared_node;
 
 int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
 {
@@ -99,7 +100,7 @@ void lib_shared_data_area_dispose(char * path)
 
 void print_lib_shared_data(lib_shared_data_t *sh_data)
 {
-	fprintf(stderr,"sh_data num_processes %d signatures %d cas_counters %lf\n",sh_data->num_processes,sh_data->num_signatures,sh_data->cas_counters);
+	fprintf(stderr,"sh_data num_processes %d signatures %d cas_counters %llu\n",sh_data->num_processes,sh_data->num_signatures,sh_data->cas_counters);
 
 }
 
@@ -263,7 +264,7 @@ void compute_avg_sh_signatures(int size,int max,int *ppn,shsignature_t *my_sh_si
 	signature_init(&totals);
   for (i=0;i<size;i++){
     for (j=0;j<ear_min(max,ppn[i]);j++){
-			from_minis_to_sig(&avgs,&my_sh_sig[i*max+j].sig);
+			signature_from_ssig(&avgs,&my_sh_sig[i*max+j].sig);
 			acum_sig_metrics(&totals,&avgs);
 			nums++;
    	}
@@ -579,23 +580,23 @@ int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *
 }
 
 
-void compute_per_node_avg_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *my_node_sig)
+void compute_per_node_avg_sig_info(lib_shared_data_t *data, shsignature_t *sig, shsignature_t *my_node_sig)
 {
 	int i;
-	//debug("compute_per_node_sig_info");
-	compute_per_node_avg_mpi_info(data,sig,&my_node_sig->mpi_info);
+
+	compute_per_node_avg_mpi_info(data, sig, &my_node_sig->mpi_info);
+
 	ssig_t avg_node;
-	//print_shared_signatures(data,sig);
-	set_global_metrics(&avg_node,&sig[0].sig);
-	for (i=0;i<data->num_processes;i++){
-		acum_ssig_metrics(&avg_node,&sig[i].sig);
+
+	ssig_set_node_metrics(&avg_node, &sig[0].sig); // We first set DC, GBs and TPI
+
+	for (i = 0; i < data->num_processes; i++) {
+		ssig_accumulate(&avg_node, &sig[i].sig);
 	}
-	compute_avg_node_sig(&avg_node,data->num_processes);
-	copy_mini_sig(&my_node_sig->sig,&avg_node);
-	#if 0
-	fprintf(stderr,"AVG per node sig (using rank %d) \n",my_node_sig->mpi_info.rank);
-	print_sh_signature(my_node_sig);	
-	#endif
+
+	ssig_compute_avg_node(&avg_node, data->num_processes);
+
+	copy_mini_sig(&my_node_sig->sig, &avg_node);
 }
 
 
@@ -722,6 +723,7 @@ void update_earl_node_mgr_info()
     uint current_jobs_in_node = 0;
     nodemgr_get_num_jobs_attached(&current_jobs_in_node);
     exclusive = exclusive && (current_jobs_in_node == 1);
+    if (fake_force_shared_node) exclusive = 0;
 }
 
 void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmgr_earl)
@@ -755,6 +757,7 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 {
     uint p;
     double time_s;
+   debug("accum_estimations");
     for (p = 0; p < data->num_processes; p++) {
         time_s = sig_shared_region[p].period;
 
@@ -777,6 +780,12 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 
 void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
-	cpu_power_model_project(data, sig, nmgr);
-	return;
+    cpu_power_model_project(data, sig, nmgr);
+#if SHOW_DEBUGS
+    for (uint p = 0; p < data->num_processes; p++) {
+        debug("LP[%d] Power %.2lf GB/s %.2lf TPI %.2lf", p, 
+                sig_shared_region[p].sig.DC_power, sig_shared_region[p].sig.GBS, sig_shared_region[p].sig.TPI);
+    }
+#endif
+    return;
 }

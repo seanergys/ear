@@ -177,9 +177,6 @@ int nvml_is_privileged()
     if ((r = nvml.GetAPIRestriction(devs[d], NVML_APP_CLOCKS_PERMISSIONS, &e)) != NVML_SUCCESS) {}
     if ((r = nvml.GetAPIRestriction(devs[d], NVML_BOOSTED_CLOCKS_PERMISSIONS, &e)) != NVML_SUCCESS) {}
     #endif
-    if (!ok) {
-        return 0;
-    }
     // Provisional
     return (getuid() == 0);
 }

@@ -34,4 +34,6 @@ state_t gpu_eard_read(ctx_t *c, gpu_t *data);
 
 state_t gpu_eard_read_raw(ctx_t *c, gpu_t *data);
 
+int gpu_eard_is_supported();
+
 #endif

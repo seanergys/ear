@@ -3,7 +3,7 @@ CC_FLAGS += $(CONSTANTS)
 
 ######## FILES
 
-root_BINS = management.o libmgt.a
+root_BINS = test.o libmgt.a
 
 root_OBJS = \
     $(SRCDIR)/management/cpufreq/cpufreq.o \
@@ -28,17 +28,22 @@ root_OBJS = \
     $(SRCDIR)/management/gpu/archs/dummy.o \
     $(SRCDIR)/management/gpu/archs/nvml.o \
     $(SRCDIR)/management/gpu/archs/oneapi.o \
-    $(SRCDIR)/management/management.o
+    $(SRCDIR)/management/test.o
 
 ######## RULES
 
 all: all.components $(root_BINS)
+
+post: test
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
 libmgt.a: Makefile $(root_OBJS)
 	$(AR) rvs $@ $(root_OBJS)
+
+test: test.c
+	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 

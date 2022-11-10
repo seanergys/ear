@@ -139,6 +139,7 @@ typedef struct envals_s {
     uint    tf_enabled;
     uint    bf_enabled;
     clos_t  clos[CLOS_COUNT];
+    uint   *assocs;
 } envals_t;
 
 static char      *strtype[2]  = { "proportional", "ordered" };
@@ -349,7 +350,8 @@ static state_t clos_get(clos_t *clos)
         UINT_TO_CLOS(answers[c], clos[c]);
     }
     #if SHOW_DEBUGS
-    clos_print(clos, verb_channel);
+    debug("CLOS GET:");
+    clos_print(clos, debug_channel);
     #endif
     return EAR_SUCCESS; 
 }
@@ -367,6 +369,7 @@ static state_t clos_set(clos_t *clos)
         }
     }
     #if SHOW_DEBUGS
+    debug("CLOS SET:");
     clos_get(clos);
     #endif
     return EAR_SUCCESS; 
@@ -396,6 +399,7 @@ static state_t assoc_get(uint *clos)
         clos[cpu] = (clos[cpu] >> 16) & 0x03;
     }
     #if SHOW_DEBUGS
+    debug("ASSOC GET:"); 
     assoc_print(clos);
     #endif
 
@@ -412,11 +416,17 @@ static state_t assoc_set(uint *clos)
 {
     cmds_mmio_t cmds = { 0 };
     int cpu;
-   
     for (cpu = 0; cpu < cpus_count; ++cpu) {
-        commands_mmio_fill(&cmds, cpu, CP_SET_ASSOC(punit_cpus[cpu], clos[cpu]), NULL, cpu == (cpus_count - 1));
+        if (clos[cpu] != ISST_SAME_PRIO) {
+            commands_mmio_fill(&cmds, cpu, CP_SET_ASSOC(punit_cpus[cpu], clos[cpu]), NULL, cpu == (cpus_count - 1));
+        }
+    }
+    // SAME_PRIO avoided sending flag. If there are pending commands, its time to send.
+    if (cmds.req_count > 0) {
+        commands_mmio_send(&cmds, NULL);
     }
     #if SHOW_DEBUGS
+    debug("ASSOC SET:"); 
     assoc_get(clos);
     #endif
     
@@ -566,6 +576,7 @@ static state_t init()
 {
     struct isst_if_platform_info info = { 0 };
     state_t s;
+    uint aux;
 
     // Revealing the first information about ISST system.
     if (ioctl(driver_fd, ISST_IF_INFO_CMD, &info) == -1) {
@@ -589,7 +600,24 @@ static state_t init()
         return s;
     }
     // Saving initial CLOS
-    return clos_get(ev.clos);
+    if (state_fail(s = clos_get(ev.clos))) {
+        return s;
+    }
+    // Saving initial ASSOCs
+    if (!keeper_load_auint32("IsstAssocs", &ev.assocs, &aux)) {
+        ev.assocs = calloc(cpus_count, sizeof(uint));
+        if (state_fail(s = assoc_get(ev.assocs))) {
+            return s;
+        }
+        keeper_save_auint32("IsstAssocs", ev.assocs, cpus_count);
+    } else {
+        #if SHOW_DEBUGS
+        debug("ASSOC READ FROM KEEPER:"); 
+        assoc_print(ev.assocs);
+        #endif
+    }
+
+    return EAR_SUCCESS;
 }
 
 state_t isst_init(topology_t *_tp)
@@ -628,7 +656,7 @@ static state_t reset()
             return s;
         }
     }
-    return EAR_SUCCESS;
+    return assoc_set(ev.assocs);
 }
 
 state_t isst_dispose()
@@ -696,7 +724,9 @@ state_t isst_reset()
 
 state_t isst_clos_count(uint *count)
 {
-    *count = CLOS_COUNT;
+    if (count != NULL) {
+        *count = CLOS_COUNT;
+    }
     return EAR_SUCCESS;
 }
 
@@ -718,7 +748,9 @@ state_t isst_clos_set_list(clos_t *clos_list)
 
 state_t isst_assoc_count(uint *count)
 {
-    *count = cpus_count;
+    if (count != NULL) {
+        *count = cpus_count;
+    }
     return EAR_SUCCESS;
 }
 

@@ -24,14 +24,6 @@
 #include <common/types/job.h>
 #include <common/types/event_type.h>
 
-#define ENERGY_POLICY_NEW_FREQ	0
-#define GLOBAL_ENERGY_POLICY	1
-#define ENERGY_POLICY_FAILS		2
-#define DYNAIS_OFF				3
-#define ENERGY_SAVING     4
-#define POWER_SAVING      5
-#define PERF_PENALTY      6
-
 
 
 
