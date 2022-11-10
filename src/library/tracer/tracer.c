@@ -38,13 +38,16 @@
 
 /** \struct Defines the tracer API symbols. Your tracer plugins should implement some of the below functions to work. */ 
 typedef struct traces_symbols {
+
     /** Executed at application start.
      * @param app The Job name.
      * @param global_rank The global MPI rank of the calling process.
      * @param local_rank The node local MPI rank of the calling process.
      * @param nodes The number of nodes of the current job.
-     * @param mpis The number of MPI processes on the current node. */
+     * @param mpis The number of MPI processes on the current node.
+     * @param ppn The number of MPI processes on the current node. */
     void (*traces_init) (char *app, int global_rank, int local_rank, int nodes, int mpis, int ppn);
+
     void (*traces_end)(int global_rank,int local_rank, unsigned long int total_ener);
     void (*traces_start)();
     void (*traces_stop)();
@@ -156,7 +159,6 @@ void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_ra
         }
     }
     verbose(1, "Tracer plugin '%s%s%s' has been loaded with EAR.", COL_GRE, traces_plugin, COL_CLR);
-
 
     /*
        int ret = symplug_open(traces_plugin, (void **) &trace_syms_fun, trace_syms_nam, trace_syms_n);

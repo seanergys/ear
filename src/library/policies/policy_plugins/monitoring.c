@@ -52,6 +52,7 @@ extern sem_t *lib_shared_lock_sem;
 extern uint ear_mpi_opt;
 
 static polsym_t gpus;
+
 state_t policy_init(polctx_t *c)
 {
     if (is_mpi_enabled()) {
@@ -79,18 +80,19 @@ state_t policy_init(polctx_t *c)
         }
     }
 #endif
+
 	return EAR_SUCCESS;
 }
 
 state_t policy_end(polctx_t *c)
 {
-  if (ear_mpi_opt){
-    verbose(0,"[%d] Barriers %d Suspend %d resume %d", my_node_id, total_barriers, total_barriers_suspend, total_barriers_resume);
-  }
-	if (c != NULL) {
+    if (ear_mpi_opt){
+        verbose(0,"[%d] Barriers %d Suspend %d resume %d", my_node_id, total_barriers, total_barriers_suspend, total_barriers_resume);
+    }
+    if (c != NULL) {
         return mpi_app_end(c);
     }
-	return EAR_ERROR;
+    return EAR_ERROR;
 }
 
 state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
@@ -165,13 +167,12 @@ extern double low_mpi_ref;
 
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-#if 0
+#if 1
     if (c != NULL) {
         return mpi_call_init(c, call_type);
     }
     return EAR_ERROR;
-#endif
-
+#else
     state_t st;
 #if !SINGLE_CONNECTION
     resume_cpufreq = 0;
@@ -241,17 +242,17 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
     if (c != NULL) return mpi_call_init(c,call_type);
 #endif
     return EAR_SUCCESS;
-
+#endif
 }
 
 state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-#if 0
+#if 1
 	if (c != NULL) {
         return mpi_call_end(c,call_type);
     }
 	return EAR_ERROR;
-#endif
+#else
     if (c != NULL){ 
       #if !SINGLE_CONNECTION 
       if (ear_mpi_opt ){
@@ -266,7 +267,7 @@ state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int
       return mpi_call_end(c,call_type);
     }
     else return EAR_ERROR;
-
+#endif
 }
 
 state_t policy_new_iteration(polctx_t *c, signature_t *sig)

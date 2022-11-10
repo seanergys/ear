@@ -162,8 +162,9 @@ static topology_t me_top;
 
 static char *delay_change_freq_policy = NULL;
 static char *use_nanosleep = NULL;
-static uint total_nsecs_delayed = 0;
-static uint wait_not_opt = 0;
+static uint total_nsecs_delayed;
+static uint mpi_freq_applied_cnt;
+static uint unbalanced_not_opt = 0;
 
 state_t policy_init(polctx_t *c)
 {
@@ -219,8 +220,8 @@ state_t policy_init(polctx_t *c)
     delay_change_freq_policy = getenv("EAR_DELAY_CPUFREQ");
     use_nanosleep            = getenv("EAR_USE_NANOSLEEP");
 
-    if (delay_change_freq_policy != NULL) verbose_master(2, "CPU freq changed delayed to mpi_init/mpi_end");
-    if (use_nanosleep != NULL)            verbose_master(2, "EAR will use nanosleep to reduce the AVG cpu freq");
+    if (delay_change_freq_policy != NULL) verbose_master(0, "CPU freq changed delayed to mpi_init/mpi_end");
+    if (use_nanosleep != NULL)            verbose_master(0, "EAR will use nanosleep to reduce the AVG cpu freq");
 
     my_app          = calloc(1, sizeof(signature_t));
     my_app->sig_ext =  (void *) calloc(1, sizeof(sig_ext_t));
@@ -286,7 +287,17 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-    verbose(0, "[%d] Total nsecs delayed %u. Wait but not opt %u", my_node_id, total_nsecs_delayed, wait_not_opt);
+    /* Summary of optimization */
+
+    const uint verb_lvl = 0;
+
+    if (VERB_ON(verb_lvl)
+        && (unbalanced_not_opt != 0 || mpi_freq_applied_cnt != 0 || total_nsecs_delayed != 0)) {
+
+        verbose(0, "L. rank MPI freq. applied count Time delayed (ns) Unabalanced but not opt\n------- ----------------------- ----------------- -----------------------%7d %23u %17u %23u",
+                my_node_id, mpi_freq_applied_cnt, total_nsecs_delayed, unbalanced_not_opt);
+    }
+
     if (c != NULL) {
         return mpi_app_end(c);
     }
@@ -596,7 +607,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         if (freq_per_core) {
 
-            for (uint lp = 0 ; lp < num_processes; lp++){ 
+            for (uint lp = 0 ; lp < num_processes; lp++) {
                 verbose_master(2, "MPI freq selected for process %d is %lu", lp, new_freq[lp]);
                 sig_shared_region[lp].mpi_freq = new_freq[lp];
             }
@@ -942,9 +953,9 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
-    domain->cpu = POL_GRAIN_CORE;
-    if (dyn_unc) domain->mem = POL_GRAIN_NODE;
-    else         domain->mem = POL_NOT_SUPPORTED;
+    domain->cpu                  = POL_GRAIN_CORE;
+    if (dyn_unc) domain->mem     = POL_GRAIN_NODE;
+    else         domain->mem     = POL_NOT_SUPPORTED;
 
 #if USE_GPUS
     if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
@@ -976,8 +987,8 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
 #if MPI_OPTIMIZED
         if (!metrics_get(MGT_CPUFREQ)->ok) return EAR_SUCCESS;
 
-        if (ear_mpi_opt && is_mpi_blocking(call_type) 
-            && (lib_shared_region->num_processes > 1) ){
+        if (ear_mpi_opt && is_mpi_blocking(call_type)
+            && (lib_shared_region->num_processes > 1)) {
 
             uint last = 0;
             mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
@@ -1001,7 +1012,7 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
                     }
                     *process_id = ALL_PROCESSES;
                     total_barriers_resume++;
-                }else{
+                } else {
                     pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
                     sel_pstate = &pstate_list[metrics_get(MGT_CPUFREQ)->avail_count-1];
                     //sel_pstate = &pstate_list[3];
@@ -1014,14 +1025,14 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
             /* Check conditions */
             // if (sig_shared_region[my_node_id].unbalanced && (nbcall_type == WAIT) && OPT_WAIT && 
             if (sig_shared_region[my_node_id].unbalanced
-                && sig_shared_region[my_node_id].new_freq > sig_shared_region[my_node_id].mpi_freq) {  
+                && sig_shared_region[my_node_id].new_freq > sig_shared_region[my_node_id].mpi_freq) {
 
                 state_t st;
                 uint nsecs_delay = 0;
                 mpi_opt_timer.tv_sec = 0;
                 ulong call_elapsed;
                 st = must_be_optimized(nbcall_type, last_buf, last_dest, &call_elapsed);
-                if (st == EAR_SUCCESS){
+                if (st == EAR_SUCCESS) {
                     /* We should select a low freq. The list of freqs is in metrics_get(MGT_CPUFREQ)->avail_list  */
 #if 0
                     pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
@@ -1032,23 +1043,27 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
                     //sel_pstate = &pstate_list[3];
                     freqs->cpu_freq[my_node_id] = sel_pstate->khz;
 #endif
-                    if (use_nanosleep == NULL){
+                    if (use_nanosleep == NULL) {
+
                         freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].mpi_freq;
-                        *process_id = my_node_id;
+
                         resume_cpufreq = 1;
-                    }else{
+
+                        *process_id = my_node_id;
+
+                        mpi_freq_applied_cnt++;
+                    } else {
                         //nsecs_delay = (uint)(sig_shared_region[my_node_id].new_freq - sig_shared_region[my_node_id].mpi_freq)/100000;
                         mpi_opt_timer.tv_nsec = (call_elapsed * 1000)/2;
                         nsecs_delay = mpi_opt_timer.tv_nsec;
                         total_nsecs_delayed += nsecs_delay;
                         nanosleep(&mpi_opt_timer, NULL);
                     }
-                } else wait_not_opt ++;
+                } else unbalanced_not_opt ++;
             }
         }
 #endif
         return st;
-
     } else return EAR_ERROR;
 #else
     if (c != NULL) return mpi_call_init(c,call_type);

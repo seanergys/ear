@@ -2223,123 +2223,124 @@ extern ulong local_max_sync_block;
 
 state_t earl_periodic_actions(void *no_arg)
 {
-				uint mpi_period;
-				float mpi_in_period;
-				ulong period_elapsed, last_signature_elapsed;
-				timestamp_t curr_periodic_time;
-				uint new_ear_guided = ear_guided;
+    uint mpi_period;
+    float mpi_in_period;
+    ulong period_elapsed, last_signature_elapsed;
+    timestamp_t curr_periodic_time;
+    uint new_ear_guided = ear_guided;
 
-				if (ear_whole_app) return EAR_SUCCESS;
+    if (ear_whole_app) return EAR_SUCCESS;
 
-        if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
+    if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
+    ear_iterations += ITERS_PER_PERIOD;
+    timestamp_getfast(&curr_periodic_time);
+    period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
+    last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
-				ear_iterations += ITERS_PER_PERIOD;
-				timestamp_getfast(&curr_periodic_time);
-				period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
-    		last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+#if MPI_OPTIMIZED
+    if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())){
+        /* Read */
+        mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
+        mpi_call_get_types(&my_mpi_types[1], NULL, -1);
+        /* Diff */
+        mpi_call_diff(     &my_mpi_stats[2], &my_mpi_stats[1], &my_mpi_stats[0]);
+        my_mpi_stats[2].perc_mpi = (double) my_mpi_stats[2].mpi_time * 100.0 / (double) my_mpi_stats[2].exec_time;
+        mpi_call_types_diff(&my_mpi_types[2], &my_mpi_types[1], &my_mpi_types[0]);
+        /* Copy */
+        memcpy(&my_mpi_stats[0], &my_mpi_stats[1], sizeof(mpi_information_t));
+        memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
 
-        
-        #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())){
-          /* Read */
-          mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
-          mpi_call_get_types(&my_mpi_types[1], NULL, -1);
-          /* Diff */
-          mpi_call_diff(     &my_mpi_stats[2], &my_mpi_stats[1], &my_mpi_stats[0]);
-          my_mpi_stats[2].perc_mpi = (double) my_mpi_stats[2].mpi_time * 100.0 / (double) my_mpi_stats[2].exec_time;
-          mpi_call_types_diff(&my_mpi_types[2], &my_mpi_types[1], &my_mpi_types[0]);
-          /* Copy */
-          memcpy(&my_mpi_stats[0], &my_mpi_stats[1], sizeof(mpi_information_t));
-          memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
-          #if 0
-          verbose(2, " PROC[%d][%d] - %lu perc_mpi %.2lf perc_sync %.2f perc_block %.2f time bettween sync %.2f Sync %lu Block %lu", MASTER_ID, my_node_id, period_elapsed, my_mpi_stats[2].perc_mpi,
-          (float)my_mpi_types[2].mpi_sync_call_time/(float)my_mpi_types[2].exec_time, (float)my_mpi_types[2].mpi_block_call_time/(float)my_mpi_types[2].exec_time, 
-          (float)my_mpi_types[2].exec_time/(float)my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_block_call_cnt);
-          #endif
-          #if SINGLE_CONNECTION
-          if ((MASTER_ID >= 0) && traces_are_on()){
-          #else
-          if (traces_are_on()){
-          #endif
-            traces_generic_event(ear_my_rank, my_node_id , PERC_MPI, (ullong)my_mpi_stats[2].perc_mpi * 100);
-            traces_generic_event(ear_my_rank, my_node_id , MPI_CALLS, (ullong)my_mpi_types[2].mpi_call_cnt);
-            traces_generic_event(ear_my_rank, my_node_id , MPI_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_cnt);
-            traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
-            traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
-            traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
-            traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong)local_max_sync_block);
-            local_max_sync_block = 0;
-          }
+#if 0
+        verbose(2, " PROC[%d][%d] - %lu perc_mpi %.2lf perc_sync %.2f perc_block %.2f time bettween sync %.2f Sync %lu Block %lu", MASTER_ID, my_node_id, period_elapsed, my_mpi_stats[2].perc_mpi,
+                (float)my_mpi_types[2].mpi_sync_call_time/(float)my_mpi_types[2].exec_time, (float)my_mpi_types[2].mpi_block_call_time/(float)my_mpi_types[2].exec_time, 
+                (float)my_mpi_types[2].exec_time/(float)my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_sync_call_cnt, my_mpi_types[2].mpi_block_call_cnt);
+#endif
+
+#if SINGLE_CONNECTION
+        if ((MASTER_ID >= 0) && traces_are_on()){
+#else
+        if (traces_are_on()){
+#endif
+                traces_generic_event(ear_my_rank, my_node_id , PERC_MPI, (ullong)my_mpi_stats[2].perc_mpi * 100);
+                traces_generic_event(ear_my_rank, my_node_id , MPI_CALLS, (ullong)my_mpi_types[2].mpi_call_cnt);
+                traces_generic_event(ear_my_rank, my_node_id , MPI_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_cnt);
+                traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
+                traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
+                traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
+                traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong)local_max_sync_block);
+                local_max_sync_block = 0;
+            }
 
         }
-        #endif
-        
+#endif
 
-				debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",my_node_id, period_elapsed,first_exec_monitor,ear_iterations,is_mpi_enabled(),ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
-				if (first_exec_monitor){
-								first_exec_monitor = 0;
-								return EAR_SUCCESS;
-				}
-				if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
-								if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
-								states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
-				}
-				seconds = period_elapsed - last_check;
-				if (seconds >= 5){ 
-								last_check = period_elapsed;
-								/* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
-								mpi_period = total_mpi_calls - last_mpis;
-								last_mpis = total_mpi_calls;	
-								if (mpi_period) mpi_in_period = (float)mpi_period/(float)seconds;
-								else mpi_in_period = 0;
-								/* IO metrics are now computed in metrics.c as part of the signature */
-								if (must_switch_to_time_guide(mpi_in_period, last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
-												verbose_master(2,"Error estimating dynais/time guided");
-								}
-								debug("%d:Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);
-								if (new_ear_guided != DYNAIS_GUIDED){
-												ear_periodic_mode = PERIODIC_MODE_ON;
-												if (ear_guided != new_ear_guided){ 
-                                if (earl_monitor->time_burst < earl_monitor->time_relax){
-																  monitor_burst(earl_monitor);
-                                }
-																verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
-																								my_node_id, period_elapsed);
-																mpi_calls_in_period = lib_period;
-																states_begin_period(my_id, 1, (ulong) lib_period,1);
-												}
-								}
-								ear_guided = new_ear_guided;
-				}
-				return EAR_SUCCESS;
-}
+        debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
+
+        if (first_exec_monitor){
+            first_exec_monitor = 0;
+            return EAR_SUCCESS;
+        }
+
+        if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)){
+            if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+            states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
+        }
+
+        seconds = period_elapsed - last_check;
+        if (seconds >= 5){ 
+            last_check = period_elapsed;
+            /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
+            mpi_period = total_mpi_calls - last_mpis;
+            last_mpis = total_mpi_calls;	
+            if (mpi_period) mpi_in_period = (float)mpi_period/(float)seconds;
+            else mpi_in_period = 0;
+            /* IO metrics are now computed in metrics.c as part of the signature */
+            if (must_switch_to_time_guide(mpi_in_period, last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
+                verbose_master(2,"Error estimating dynais/time guided");
+            }
+            debug("%d:Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);
+            if (new_ear_guided != DYNAIS_GUIDED){
+                ear_periodic_mode = PERIODIC_MODE_ON;
+                if (ear_guided != new_ear_guided){ 
+                    if (earl_monitor->time_burst < earl_monitor->time_relax){
+                        monitor_burst(earl_monitor);
+                    }
+                    verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
+                            my_node_id, period_elapsed);
+                    mpi_calls_in_period = lib_period;
+                    states_begin_period(my_id, 1, (ulong) lib_period,1);
+                }
+            }
+            ear_guided = new_ear_guided;
+        }
+        return EAR_SUCCESS;
+    }
 
 
-/************** Constructor & Destructor for NOt MPI versions **************/
+    /************** Constructor & Destructor for NOt MPI versions **************/
 #if !MPI 
-void ear_constructor()
-{
-				debug("Calling ear_init in ear_constructor %d",getpid());
-				ear_init();
-}
-void ear_destructor()
-{
-				debug("Calling ear_finalize in ear_destructor %d",getpid());
+    void ear_constructor()
+    {
+        debug("Calling ear_init in ear_constructor %d",getpid());
+        ear_init();
+    }
+    void ear_destructor()
+    {
+        debug("Calling ear_finalize in ear_destructor %d",getpid());
 #if ONLY_MASTER
-				if (my_id) {
-								return;
-				}
+        if (my_id) {
+            return;
+        }
 #endif
-				ear_finalize(EAR_SUCCESS);
-}
+        ear_finalize(EAR_SUCCESS);
+    }
 #else
-void ear_constructor()
-{
-}
-void ear_destructor()
-{
-}
+    void ear_constructor()
+    {
+    }
+    void ear_destructor()
+    {
+    }
 #endif
-
-

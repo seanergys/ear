@@ -250,12 +250,11 @@ state_t mpi_app_end(polctx_t *c)
     #if NEW_MPI_STATS
 
     for (int i = 0; i < N_CALL_TYPES; i++) {
-      if (mpi_call_count[i]){
+      if (mpi_call_count[i]) {
           verbose(0, "[%d] CALL %d Time %llu instances %d avg %lf", my_node_id, i , mpi_call_time[i], mpi_call_count[i], (double)mpi_call_time[i]/(double)mpi_call_count[i]);
       }
     }
     #endif
-
 
     /* Global statistics */
     //timestamp_getfast(&end);
@@ -1095,7 +1094,6 @@ state_t is_blocking_busy_waiting(uint *block_type)
 
 
 /* Support form MPI optimization */
-
 state_t already_optimized(mpi_call call_type, p2i buf, p2i dest)
 {
 #if MPI_OPTIMIZED
