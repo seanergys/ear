@@ -20,13 +20,18 @@
 
 #include <common/config/config_install.h>
 
-
 /**
- * Different variables per scheduling manager
+ * Different variables per scheduling manager.
  */
+
 #if SCHED_SLURM
 #include <slurm/slurm.h>
 #define BATCH_STEP SLURM_BATCH_SCRIPT
+
+#elif !SCHED_PBS && !SCHED_OAR
+
+#define BATCH_STEP -2
+
 #endif
 
 #if SCHED_PBS
@@ -38,5 +43,4 @@
 #endif
 
 
-/** @}  */
 #endif //CONFIG_SCHED_H

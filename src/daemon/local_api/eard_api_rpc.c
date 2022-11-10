@@ -151,33 +151,37 @@ static int rpc_is_connected()
 
 static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, size_t *recv_size, size_t expc_size)
 {
-	state_t s;
-	if (!rpc_is_connected()) {
+    state_t s;
+    if (!rpc_is_connected()) {
         return_msg(EAR_ERROR, "EARD disconnected");
     }
-	// Testing data dissonances
-	if (state_fail(s = data_check(data, size))) {
-		return s;
-	}
+    // Testing data dissonances
+    if (state_fail(s = data_check(data, size))) {
+        return s;
+    }
     if (state_fail(s = ear_trylock(&lock_rpc))) {
         return s;
     }
-	// Sending header+data
-	if (state_fail(s = eard_send(ear_fd_req, call, EAR_SUCCESS, data, size, NULL))) {
-		return_unlock(s, &lock_rpc);
-	}
-	// Receiving the data and returning the RPC state
+    // Sending header+data
+    if (state_fail(s = eard_send(ear_fd_req, call, EAR_SUCCESS, data, size, NULL))) {
+        return_unlock(s, &lock_rpc);
+    }
+    // Receiving the data and returning the RPC state
 	#if SYNC_SET_RPC
-	if (expc_size == UINT_MAX) expc_size = 0;
-  s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+    if (expc_size == UINT_MAX) {
+        expc_size = 0;
+    }
+    s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
 	#else
 	s = EAR_SUCCESS;
-	if (expc_size){
-		if (expc_size == UINT_MAX) expc_size = 0;
-  	s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
-	}
-	#endif
-	return_unlock(s, &lock_rpc);
+    if (expc_size) {
+		if (expc_size == UINT_MAX) {
+            expc_size = 0;
+        }
+        s = eard_recv(ear_fd_ack, call, recv_data, recv_size, expc_size);
+    }
+    #endif
+    return_unlock(s, &lock_rpc);
 }
 
 state_t eard_rpc(uint call, char *data, size_t size, char *recv_data, size_t expc_size)
@@ -203,23 +207,23 @@ state_t eard_rpc_buffered(uint call, char *data, size_t size, char **buffer, siz
 
 state_t eard_rpc_answer(int fd, uint call, state_t s, char *data, size_t size, char *error)
 {
-	state_t s2;
-	// Testing data dissonances
-	if (state_fail(s2 = data_check(data, size))) {
-		return s2;
-	}
+    state_t s2;
+    // Testing data dissonances
+    if (state_fail(s2 = data_check(data, size))) {
+    	return s2;
+    }
     if (state_fail(s2 = ear_trylock(&lock_rpc))) {
         return s2;
     }
-	#if SYNC_SET_RPC
+    #if SYNC_SET_RPC
     s2 = eard_send(fd, call, s, data, size, error);
-  #else
-		s2 = EAR_SUCCESS;
-		if (size){
-    	s2 = eard_send(fd, call, s, data, size, error);
-		}
- 	#endif
-	return_unlock(s2, &lock_rpc);
+    #else
+    s2 = EAR_SUCCESS;
+    if (size) {
+        s2 = eard_send(fd, call, s, data, size, error);
+    }
+    #endif
+    return_unlock(s2, &lock_rpc);
 }
 
 static state_t protected_read(int fd, char *buffer, int size, uint wait_mode)

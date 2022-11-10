@@ -186,17 +186,13 @@ void imcfreq_dummy_data_tostr(ulong *freq_list, ulong *average, char *buffer, si
     int accum = 0;
     int i;
 
-    accum += sprintf(buffer, "IMC:");
     for (i = 0; freq_list != NULL && i < devs_count; ++i) {
         freq_ghz = ((double) freq_list[i]) / 1000000.0;
-        accum += sprintf(&buffer[accum], " %0.1lf", freq_ghz);
-    }
-    if (freq_list != NULL) {
-        accum += sprintf(&buffer[accum], ",");
+        accum += sprintf(&buffer[accum], "%0.1lf\t", freq_ghz);
     }
     if (average != NULL) {
         freq_ghz = ((double) *average) / 1000000.0;
-        accum += sprintf(&buffer[accum], " avg %0.2lf", freq_ghz);
+        accum += sprintf(&buffer[accum], "avg %0.2lf ", freq_ghz);
     }
-    sprintf(&buffer[accum], " (GHz)\n");
+    sprintf(&buffer[accum], "(GHz)\n");
 }

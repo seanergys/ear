@@ -122,6 +122,8 @@ src/common/config/config_env.h
 
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
+src/management/test
+src/metrics/test
 src/tools/coefficients_comparison
 src/tools/coeffs_compare
 src/tools/coeffs_comparison

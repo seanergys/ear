@@ -51,10 +51,10 @@ unlock_load:
 
 void mgt_gpu_get_api(uint *api)
 {
+    *api = API_NONE;
     if (ops.get_api != NULL) {
         return ops.get_api(api);
     }
-    *api = API_NONE;
 }
 
 __attribute__((used)) state_t mgt_gpu_init(ctx_t *c)

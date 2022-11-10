@@ -47,15 +47,16 @@
 #define no_ctx           NULL
 //
 #define GRANULARITY_NONE       0
-#define GRANULARITY_PROCESS    1
-#define GRANULARITY_THREAD     2
-#define GRANULARITY_CORE       3
-#define GRANULARITY_CCX        4
-#define GRANULARITY_CCD        5
-#define GRANULARITY_L3_SLICE   6
-#define GRANULARITY_IMC        7
-#define GRANULARITY_SOCKET     8
-#define GRANULARITY_NODE       9
+#define GRANULARITY_DUMMY      1
+#define GRANULARITY_PROCESS    2
+#define GRANULARITY_THREAD     3
+#define GRANULARITY_CORE       4
+#define GRANULARITY_CCX        5
+#define GRANULARITY_CCD        6
+#define GRANULARITY_L3_SLICE   7
+#define GRANULARITY_IMC        8
+#define GRANULARITY_SOCKET     9
+#define GRANULARITY_NODE       10
 
 typedef struct ctx_s {
     void *context;
@@ -141,6 +142,10 @@ void apis_append(void *op[], void *func);
 void apis_print(uint api, char *prefix);
 
 void apis_tostr(uint api, char *buffer, size_t size);
+
+void granularity_print(uint granularity, char *prefix);
+
+void granularity_tostr(uint granularity, char *buffer, size_t size);
 
 /* Obsolete, remove it. */
 #define replace_ops(p1, p2) \

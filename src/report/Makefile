@@ -35,6 +35,10 @@ ifeq ($(FEAT_DB_MYSQL),1)
 repo_BINS += \
 	mysql.so 
 endif
+ifeq ($(FEAT_DB_CASSANDRA),1)
+repo_BINS += \
+	cassandra.so 
+endif
 
 ifeq ($(FEAT_EXAMON),1)
 repo_BINS += \
@@ -56,7 +60,6 @@ all: $(repo_OBJS) $(repo_BINS)
 dcdb.so:dcdb.o
 	$(CC) $(CFLAGS) -shared -o dcdb.so dcdb.o -lrt $(LDFLAGS)
 
-
 eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
 
@@ -75,7 +78,10 @@ examon.so: examon.c
 endif
 
 
+cassandra.so: cassandra.c $(repo_DEPS)
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ -L/usr/lib64 -lcassandra
 
+#$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) -l:/home/xlalonso/downloads/cpp-driver/build/libcassandra.so
 ######## SUBFOLDERS
 
 %.components: ;

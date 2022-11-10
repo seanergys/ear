@@ -39,7 +39,6 @@ state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
         }
     }
     if (counter == 0) {
-        dlclose(handle);
         return_msg(EAR_ERROR, "No symbols loaded");
     }
 
