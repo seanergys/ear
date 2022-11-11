@@ -1473,7 +1473,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
             metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
             metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
-			      total_gpu_power + = metrics->gpu_sig.gpu_data[p].GPU_power;
+			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
 #endif
 		#if EARL_LIGHT

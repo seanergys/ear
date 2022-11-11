@@ -57,6 +57,9 @@ psql.so: psql.c $(repo_DEPS)
 cassandra.so: cassandra.c $(repo_DEPS)
 	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ -L/usr/lib64 -lcassandra
 
+heroes.so: heroes.c $(repo_DEPS)
+	$(CC) $(CFLAGS)  -shared -o $@ $^ -L/usr/lib64 
+
 #$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) -l:/home/xlalonso/downloads/cpp-driver/build/libcassandra.so
 ######## SUBFOLDERS
 
