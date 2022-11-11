@@ -22,6 +22,7 @@ FEAT_GPU_OPT       = 0
 FEAT_AMD_OSCPUFREQ = 0
 FEAT_DB_MYSQL      = @FEAT_DB_MYSQL@
 FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
+FEAT_DB_CASSANDRA  = 0
 # Compilers
 CC                 = @CC@
 CC_FLAGS           = @CC_FLAGS@
