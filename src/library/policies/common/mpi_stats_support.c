@@ -16,11 +16,6 @@
 */
 
 // #define SHOW_DEBUGS 1
-#if MPI_OPTIMIZED
-#define VERBOSE_MPI_OPT 1
-#else
-#define VERBOSE_MPI_OPT 0
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,10 +61,23 @@
 #define MPI_STATS_VERB_LVL 0
 #define VAR_DEPRECATED     1
 
-#define PER_MPI_STATS 1 // Used for testing overhead
+#if MPI_OPTIMIZED
+#define VERBOSE_MPI_OPT 1
+#else
+#define VERBOSE_MPI_OPT 0
+#endif
+
+// TODO: Below macros should be defined at config_def or config_dev
+#define PER_MPI_STATS       1       // Used for testing overhead.
+#define MAX_MPI_TO_OPT      50      // Max number of calls to try to optimize
+#define DEF_MIN_USEC_MPI    50000   // Default minimum time of a call to try to optimize
+
+static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
 
 static timestamp pol_time_init, start_no_mpi;
+
 static mpi_information_t mpi_stats;
+
 static ulong total_mpi_time_sync        = 0;
 static ulong total_mpi_time_collectives = 0;
 static ulong total_mpi_time_blocking    = 0;
@@ -79,22 +87,19 @@ static ulong total_synchronizations     = 0;
 static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
-extern uint ear_mpi_opt;
 
-#define MAX_MPI_TO_OPT 50
-#define DEF_MIN_USEC_MPI   50000
+extern uint ear_mpi_opt; // Whether this module must to try to optimize some MPI calls.
 
-static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
-typedef struct ear_calls{
-  mpi_call call;
-  p2i last_buf;
-  p2i last_dest;
-  ulong elap;
-  uint  cnt;
-  }ear_calls_t;
+typedef struct ear_calls {
+    mpi_call call;
+    p2i last_buf;
+    p2i last_dest;
+    ulong elap;
+    uint  cnt;
+} ear_calls_t;
+
 static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
 static uint num_mpi_to_optimize = 0;
-
 
 #if NEW_MPI_STATS
 /* Statistics of all call types */
@@ -102,7 +107,7 @@ static uint   mpi_call_count[N_CALL_TYPES];
 static ullong mpi_call_time[N_CALL_TYPES];
 #endif // NEW_MPI_STATS
 
-#if COMP_CPI
+#if COMP_CPI // A very research field: using the computational CPI of processes.
 static cpi_t cpi_1;
 static cpi_t cpi_2;
 static cpi_t cpi_diff;
@@ -112,29 +117,39 @@ static ullong comp_insts;
 #endif
 
 float LB_TH = EAR_LB_TH;
+
 static float critical_path_th   = 1;
+
 ulong local_max_sync_block = 0;
 
 // src/library/api/ear_mpi.c
 extern p2i last_buf, last_dest;
+
 static uint index_last_optimized, last_optimized = 0;
 
-static state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i);
-
+static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *last, int i);
 
 static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i);
+
 /*  Computes the the max and min process with perc mpi calls from percs_mpi */
 static state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls, int *max, int *min);
+
 /**  Computes basic statistics of percs_mpi */
-static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs, double *mean,
-        double *sd, double *mag);
-static state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump,
-        double *percs_mpi);
+static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs,
+                                                double *mean, double *sd, double *mag);
+
+static state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls,
+                                            int nump, double *percs_mpi);
+
 static state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp,
-        size_t size, double *sim);
-static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, double *mean,
-        double *sd, double *mag);
+                                           size_t size, double *sim);
+
+static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi,
+                                              double *mean, double *sd, double *mag);
+
 static state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
+
+static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn);
 
 state_t mpi_app_init(polctx_t *c)
 {
@@ -201,33 +216,6 @@ state_t mpi_app_init(polctx_t *c)
 
 }
 
-static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)
-{
-    if (sprintf(mpi_stats_fn, "%s.ear_mpi_stats.", prefix) < 0) {
-        verbose(MPI_STATS_VERB_LVL + 1, "%sWARNING%s Writing <prefix>%s.ear_mpi_stats.", COL_RED, COL_CLR, prefix);
-        return EAR_ERROR;
-    }
-    if (sprintf(mpi_calls_stats_fn, "%s.ear_mpi_calls_stats.", prefix) < 0) {
-        verbose(MPI_STATS_VERB_LVL + 1, "%sWARNING%s Writing <prefix>%s.ear_mpi_calls_stats.", COL_RED, COL_CLR, prefix);
-        return EAR_ERROR;
-    }
-
-    char nodename[GENERIC_NAME];
-    if (gethostname(nodename, sizeof(nodename)) < 0) {
-        verbose(MPI_STATS_VERB_LVL + 1, "%sWARNING%s Nodename could not be read: %d", COL_RED, COL_CLR, errno);
-    }
-
-    strcat(mpi_stats_fn, nodename);
-    strcat(mpi_calls_stats_fn, nodename);
-
-    char suffix[GENERIC_NAME] = ".csv";
-
-    strcat(mpi_stats_fn, suffix);
-    strcat(mpi_calls_stats_fn, suffix);
-
-    return EAR_SUCCESS;
-}
-
 state_t mpi_app_end(polctx_t *c)
 {
     timestamp end;
@@ -237,7 +225,7 @@ state_t mpi_app_end(polctx_t *c)
     char mpi_stats_per_call_filename[256];
 
 
-    #if VERBOSE_MPI_OPT
+#if VERBOSE_MPI_OPT
     if (num_mpi_to_optimize){
       for (uint mo = 0; mo < num_mpi_to_optimize; mo++){
         verbose(0, "MPI_OPTIMI[%u-%u de %u] call %lu buff %lu dest %lu elap %lu",
@@ -246,15 +234,15 @@ state_t mpi_app_end(polctx_t *c)
                 list_mpi_to_optimize[mo].elap);
       }
     }
-    #endif
-    #if NEW_MPI_STATS
+#endif
 
+#if NEW_MPI_STATS
     for (int i = 0; i < N_CALL_TYPES; i++) {
       if (mpi_call_count[i]) {
           verbose(0, "[%d] CALL %d Time %llu instances %d avg %lf", my_node_id, i , mpi_call_time[i], mpi_call_count[i], (double)mpi_call_time[i]/(double)mpi_call_count[i]);
       }
     }
-    #endif
+#endif
 
     /* Global statistics */
     //timestamp_getfast(&end);
@@ -394,17 +382,19 @@ state_t mpi_app_end(polctx_t *c)
             }
         }
     }
+
 #if COMP_CPI
+
     cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
     comp_cycles += cpi_diff.cycles;
     comp_insts += cpi_diff.instructions;
-    // sig_shared_region[my_node_id].comp_cycles = comp_cycles;
-    // sig_shared_region[my_node_id].comp_insts = comp_insts;
+
     verbose(0, "Comp. CPI (%u): %lf", my_node_id, (double) comp_cycles / (double) comp_insts);
 #endif
+
     return EAR_SUCCESS;
 }
-static uint in_mpi_call = 0;
+
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
 #if PER_MPI_STATS
@@ -448,7 +438,6 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 
 static void print_mpi_optimized(char *msg, uint index)
 {
-
 #if VERBOSE_MPI_OPT
                     verbose(0,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
                       my_node_id, index,\
@@ -1127,4 +1116,31 @@ state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed)
   }
   #endif
   return EAR_ERROR;
+}
+
+static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)
+{
+    if (sprintf(mpi_stats_fn, "%s.ear_mpi_stats.", prefix) < 0) {
+        verbose(MPI_STATS_VERB_LVL + 1, "%sWARNING%s Writing <prefix>%s.ear_mpi_stats.", COL_RED, COL_CLR, prefix);
+        return EAR_ERROR;
+    }
+    if (sprintf(mpi_calls_stats_fn, "%s.ear_mpi_calls_stats.", prefix) < 0) {
+        verbose(MPI_STATS_VERB_LVL + 1, "%sWARNING%s Writing <prefix>%s.ear_mpi_calls_stats.", COL_RED, COL_CLR, prefix);
+        return EAR_ERROR;
+    }
+
+    char nodename[GENERIC_NAME];
+    if (gethostname(nodename, sizeof(nodename)) < 0) {
+        verbose(MPI_STATS_VERB_LVL + 1, "%sWARNING%s Nodename could not be read: %d", COL_RED, COL_CLR, errno);
+    }
+
+    strcat(mpi_stats_fn, nodename);
+    strcat(mpi_calls_stats_fn, nodename);
+
+    char suffix[GENERIC_NAME] = ".csv";
+
+    strcat(mpi_stats_fn, suffix);
+    strcat(mpi_calls_stats_fn, suffix);
+
+    return EAR_SUCCESS;
 }

@@ -139,7 +139,7 @@ mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the 
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
-static uint        gpu_loop_stopped     = 0;
+// static uint        gpu_loop_stopped     = 0;
        char        gpu_str[256];
 #endif // USE_GPUS
 

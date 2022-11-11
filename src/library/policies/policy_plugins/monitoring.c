@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -42,6 +41,9 @@
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
+#define MON_ERROR_LVL 2
+#define MON_INFO_LVL  3
+
 extern uint cpu_ready, gpu_ready;
 
 extern int lib_shared_lock_fd;
@@ -59,19 +61,18 @@ state_t policy_init(polctx_t *c)
         mpi_app_init(c);
     }
 
-
 #if USE_GPUS
     if (masters_info.my_master_rank >= 0) {
         if (policy_gpu_init_ctx(c) != EAR_SUCCESS) {
-            verbose(2, "%sError%s Loading GPU context.", COL_RED, COL_CLR);
+            verbose(MON_ERROR_LVL, "%sError%s Loading GPU context.", COL_RED, COL_CLR);
         }
-        verbose(2, "RANK %d GPU init", masters_info.my_master_rank);
+        verbose(MON_INFO_LVL, "RANK %d GPU init", masters_info.my_master_rank);
 
         if (c->num_gpus) {
-            verbose(2, "RANK %d GPUs %d", masters_info.my_master_rank, c->num_gpus);
+            verbose(MON_INFO_LVL, "RANK %d GPUs %d", masters_info.my_master_rank, c->num_gpus);
 
             if (policy_gpu_load(c->app, &gpus) != EAR_SUCCESS) {
-                verbose(2, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
+                verbose(MON_ERROR_LVL, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
             }
 
             if (gpus.init != NULL) {
@@ -86,29 +87,35 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-    if (ear_mpi_opt){
+#if 0
+    if (ear_mpi_opt) {
         verbose(0,"[%d] Barriers %d Suspend %d resume %d", my_node_id, total_barriers, total_barriers_suspend, total_barriers_resume);
     }
+#endif
+
     if (c != NULL) {
         return mpi_app_end(c);
     }
+
     return EAR_ERROR;
 }
 
 state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
 {
     ulong *new_freq = freqs->cpu_freq;
-    *new_freq= DEF_FREQ(c->app->def_freq);
-    for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
-      sig_shared_region[lp].new_freq = new_freq[0];
+    *new_freq = DEF_FREQ(c->app->def_freq);
+
+    for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {
+      sig_shared_region[i].new_freq = new_freq[0];
     }
 
-    cpu_ready = EAR_POLICY_READY; // TODO: This variable is not used.
-
+    // TODO: Should the below code be inside USE_GPUS?
     if (gpus.node_policy_apply != NULL) {
         /* Basic support for GPUS */
         gpus.node_policy_apply(c, my_sig, freqs, (int *) &gpu_ready);
     }
+
+    cpu_ready = EAR_POLICY_READY; // TODO: This variable is not used.
     *ready = EAR_POLICY_READY;
 
     return EAR_SUCCESS;
@@ -125,12 +132,15 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *prev_sig, int
 
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t *s)
 {
-    // TODO: The behaviour is the same done by policy.c by default when a plugin does not have this symbol.
+    // TODO: The behaviour is the same done by policy.c
+    // by default when a plugin does not have this symbol.
+
 	freq_set->cpu_freq[0] = DEF_FREQ(c->app->def_freq);
+
 #if USE_GPUS
-  if (gpus.get_default_freq != NULL){
-    gpus.get_default_freq(c, freq_set, s);
-  }
+    if (gpus.get_default_freq != NULL) {
+        gpus.get_default_freq(c, freq_set, s);
+    }
 #endif
 
 	return EAR_SUCCESS;
@@ -158,6 +168,7 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 #endif
 
     domain->gpumem  = POL_NOT_SUPPORTED;
+
     return EAR_SUCCESS;
 }
 
@@ -268,9 +279,4 @@ state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int
     }
     else return EAR_ERROR;
 #endif
-}
-
-state_t policy_new_iteration(polctx_t *c, signature_t *sig)
-{
-	return EAR_SUCCESS;
 }

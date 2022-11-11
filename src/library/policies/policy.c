@@ -453,7 +453,6 @@ state_t policy_init()
 {
     polctx_t *c = &my_pol_ctx;
 
-
     char *cdyn_unc             = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_SET_IMCFREQ)       : NULL; // eUFS
     char *cimc_extra_th        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IMC_TH)            : NULL; // eUFS threshold
     char *cexclusive_mode      = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EXCLUSIVE_MODE)    : NULL; // Job has the node exclusive
@@ -1431,6 +1430,7 @@ state_t policy_new_iteration(signature_t *sig)
         }
     }
 #endif
+
     state_t st = EAR_SUCCESS;
     if (polsyms_fun.new_iter != NULL) {
         st = polsyms_fun.new_iter(&my_pol_ctx, sig);
