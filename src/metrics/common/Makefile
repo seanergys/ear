@@ -30,6 +30,9 @@ cupti.o: cupti.c cupti.h
 likwid.o: likwid.c likwid.h
 	$(CC) $(CFLAGS) $(LIKWID_CFLAGS) -c $<
 
+rsmi.o: rsmi.c rsmi.h
+	$(CC) $(CFLAGS) $(RSMI_CFLAGS) -c $<
+
 oneapi.o: oneapi.c oneapi.h
 	$(CC) $(CFLAGS) $(ONEAPI_CFLAGS) -c $<
 
