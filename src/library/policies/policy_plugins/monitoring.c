@@ -47,9 +47,9 @@
 extern uint cpu_ready, gpu_ready;
 
 extern int lib_shared_lock_fd;
-static uint total_barriers = 0;
-static uint total_barriers_resume = 0;
-static uint total_barriers_suspend = 0;
+// static uint total_barriers = 0;
+// static uint total_barriers_resume = 0;
+// static uint total_barriers_suspend = 0;
 extern sem_t *lib_shared_lock_sem;
 extern uint ear_mpi_opt;
 
@@ -172,7 +172,7 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
     return EAR_SUCCESS;
 }
 
-static uint resume_cpufreq = 0;
+// static uint resume_cpufreq = 0;
 extern p2i last_buf, last_dest;
 extern double low_mpi_ref;
 

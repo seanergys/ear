@@ -441,18 +441,19 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
     return EAR_SUCCESS;
 }
 
-
+/*
+#if VERBOSE_MPI_OPT
 static void print_mpi_optimized(char *msg, uint index)
 {
-#if VERBOSE_MPI_OPT
-                    verbose(0,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
-                      my_node_id, index,\
-                      (ulong) list_mpi_to_optimize[index].call, \
-                      (ulong) list_mpi_to_optimize[index].last_buf,\
-                      (ulong) list_mpi_to_optimize[index].last_dest, \
-                      list_mpi_to_optimize[index].elap);
-#endif
+verbose(0,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
+my_node_id, index,\
+(ulong) list_mpi_to_optimize[index].call, \
+(ulong) list_mpi_to_optimize[index].last_buf,\
+(ulong) list_mpi_to_optimize[index].last_dest, \
+list_mpi_to_optimize[index].elap);
 }
+#endif
+*/
 
 uint is_blocking_collective(mpi_call call)
 {
@@ -570,7 +571,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                         list_mpi_to_optimize[index_last_optimized].call = (mpi_call)0;
                         list_mpi_to_optimize[index_last_optimized].cnt  = 0;
 #if VERBOSE_MPI_OPT
-                        //print_mpi_optimized("Removing symbol ", index_last_optimized);
+                        // print_mpi_optimized("Removing symbol ", index_last_optimized);
 #endif
                     }
                 }else{

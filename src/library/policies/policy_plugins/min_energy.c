@@ -342,9 +342,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     ulong def_pstate, def_freq;
     ulong prev_pstate;
 
-    double sig_vpi, node_sig_vpi, max_vpi, lvpi; // master, node, max, local
-    uint local_process_with_high_vpi;
-
     uint cbound, mbound;
 
     uint curr_imc_pstate;
@@ -507,9 +504,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 debug("Process %d: avg. cpufreq %lu num cpus %lu", i, process_avgcpuf, cpus_cnt_ret);
 
                 signature_from_ssig(my_app, &sig_shared_region[i].sig);
-		double ltpi, lgbs, lpower;
+		double lgbs, lpower;
 
-		ltpi = my_app->TPI;
 		lgbs = my_app->GBS;
 		lpower = my_app->DC_power;
                 
@@ -980,7 +976,9 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
 #if !SINGLE_CONNECTION
     resume_cpufreq = 0;
     pstate_t *sel_pstate, *pstate_list;
+#if 0
     uint currindex;
+#endif
     if (c != NULL){
         st = mpi_call_init(c,call_type);
 
@@ -1122,9 +1120,6 @@ state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
 state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {
-    signature_t lsig;
-    uint io, busy;
-    char sig_buff[256];
     if (c == NULL) return EAR_ERROR;
 
     const uint min_ener_io_veb_lvl = 1; // Used to control the verbose level in this function

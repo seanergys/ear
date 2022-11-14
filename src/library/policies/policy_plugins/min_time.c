@@ -311,11 +311,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     ulong curr_freq;
     ulong curr_pstate, def_freq, def_pstate;
 
-    double sig_vpi, node_sig_vpi, max_vpi, lvpi; // master, node, max, local
-    uint local_process_with_high_vpi;
     sig_ext_t *se;
 
-    uint cbound, mbound, turbo_set = 0;
+    uint cbound, turbo_set = 0; // , mbound
 
     ulong curr_imc_freq;
     uint eUFS = dyn_unc;
@@ -430,7 +428,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         /* Computd in policy */
         cbound = policy_cpu_bound;
-        mbound = policy_mem_bound;
+        // mbound = policy_mem_bound; - not used.
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection

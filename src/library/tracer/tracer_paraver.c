@@ -246,8 +246,8 @@ static void trace_file_open(char *pathname, char *hostname)
 static void trace_file_init(int n_nodes)
 {
     char *buffer = buffer1;
-    char *b;
-    int i, j;
+    // char *b;
+    // int i, j;
 
     time_t curr_time;
     struct tm *current_t;
@@ -267,14 +267,20 @@ static void trace_file_init(int n_nodes)
     if (my_trace_rank==1)
     {
         /* Valid for 1 node */
+
         //i = sprintf(buffer, "#Paraver (%s):%020llu:%d(", s, (unsigned long long) 0, n_nodes);
-        i = sprintf(buffer, "#Paraver (%s):%020llu:%d(%d):1:%d:(", s, (unsigned long long) 0, 1,my_num_ranks,my_num_ranks);
+
+        // i = sprintf(buffer, "#Paraver (%s):%020llu:%d(%d):1:%d:(", s, (unsigned long long) 0, 1,my_num_ranks,my_num_ranks);
+
+        sprintf(buffer, "#Paraver (%s):%020llu:%d(%d):1:%d:(", s, (unsigned long long) 0, 1,my_num_ranks,my_num_ranks);
+
         edit_time_header = 31;
 
-        for (uint i = 0; i < my_num_ranks-1; i++){
-          sprintf(short_b, "1:1,");
-          strcat(buffer, short_b);
+        for (uint i = 0; i < my_num_ranks - 1; i++) {
+            sprintf(short_b, "1:1,");
+            strcat(buffer, short_b);
         }
+
         sprintf(short_b, "1:1)\n");
         strcat(buffer, short_b);
 
@@ -307,7 +313,10 @@ static void trace_file_init(int n_nodes)
         write_unused(file_prv, buffer, strlen(buffer));
     }
     // 1:cpu:app:task:thread:b_time:e_time:state
-    i = sprintf(buffer, "1:%d:1:%d:1:0:", my_trace_rank, my_trace_rank);
+    // i = sprintf(buffer, "1:%d:1:%d:1:0:", my_trace_rank, my_trace_rank);
+
+    sprintf(buffer, "1:%d:1:%d:1:0:", my_trace_rank, my_trace_rank);
+
     write_unused(file_prv, buffer, strlen(buffer));
 
     //

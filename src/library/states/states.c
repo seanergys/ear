@@ -104,7 +104,6 @@ static int          policy_max_tries_cnt;                        // The maximum 
                                                                  // frequency.
 static ulong        policy_cpufreq_khz;
 static signature_t  policy_sel_signature;                        // Stores the signature used by
-static loop_t       tracer_loop;
 static signature_t  tracer_signature;
                                                                  // the last policy application
                                                                  // which returned EAR_POLICY_READY
