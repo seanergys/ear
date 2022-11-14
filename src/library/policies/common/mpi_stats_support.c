@@ -31,7 +31,6 @@
 
 #include <assert.h>
 
-//#define COMP_CPI 1
 #include <metrics/cpi/cpi.h>
 
 #include <management/cpufreq/cpufreq.h>
@@ -57,9 +56,14 @@
 #include <report/report.h>
 
 /* Verbose levels */
-#define LB_VERB_LVL        3
-#define MPI_STATS_VERB_LVL 0
-#define VAR_DEPRECATED     1
+#define DEBUG_LVL          0
+#define ERROR_LVL          1
+#define WARN_LVL           2
+#define INFO_LVL           WARN_LVL
+
+#define LB_VERB_LVL        INFO_LVL
+#define MPI_STATS_VERB_LVL DEBUG_LVL
+#define VAR_DEPRECATED     WARN_LVL - 1 // It's a warning, but more prioritary
 
 #if MPI_OPTIMIZED
 #define VERBOSE_MPI_OPT 1
@@ -100,6 +104,7 @@ typedef struct ear_calls {
 
 static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
 static uint num_mpi_to_optimize = 0;
+static int in_mpi_call;
 
 #if NEW_MPI_STATS
 /* Statistics of all call types */
@@ -153,16 +158,17 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 
 state_t mpi_app_init(polctx_t *c)
 {
-    char * clb_th;
-    #if MPI_OPTIMIZED
-    char * cear_min_usec_for_mpi_opt = getenv(FLAG_MIN_USEC_MPI);
+#if MPI_OPTIMIZED
+    char * cear_min_usec_for_mpi_opt = getenv(FLAG_MIN_USEC_MPI); // Modifies the minimum time a call must spend in order to be a candidate to be optimized.
 
-    if (cear_min_usec_for_mpi_opt != NULL) ear_min_usec_for_mpi_opt = (ulong)atoi(cear_min_usec_for_mpi_opt);
-    verbose_master(2, "Using %lu usecs for min time for MPI optimization", ear_min_usec_for_mpi_opt);
-    #endif
-
+    if (cear_min_usec_for_mpi_opt != NULL) ear_min_usec_for_mpi_opt = (ulong) atoi(cear_min_usec_for_mpi_opt);
+    verbose_master(2, "Minimum MPI call time to be optimized: %lu us", ear_min_usec_for_mpi_opt);
+#endif
 
     if (c != NULL) {
+
+        char *clb_th; // Modifies the default Load Balance efficiency threshold.
+
         if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
             LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
         } else if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
