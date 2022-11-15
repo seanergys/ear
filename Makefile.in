@@ -22,7 +22,6 @@ FEAT_GPU_OPT       = 0
 FEAT_AMD_OSCPUFREQ = 0
 FEAT_DB_MYSQL      = @FEAT_DB_MYSQL@
 FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
-FEAT_EARL_LIGHT    = 1
 FEAT_EXAMON        = 0
 FEAT_DB_CASSANDRA  = 0
 # Compilers
@@ -30,10 +29,6 @@ CC                 = @CC@
 CC_FLAGS           = @CC_FLAGS@
 MPICC              = @MPICC@
 MPICC_FLAGS        = @MPICC_FLAGS@
-ifeq ($(FEAT_EARL_LIGHT), 1)
-CC_FLAGS += -DEARL_LIGHT=1
-MPICC_FLAGS += -DEARL_LIGHT=1
-endif
 # Includes
 MPI_BASE           = @MPI_DIR@
 MPI_CFLAGS         = @MPI_CPPFLAGS@
