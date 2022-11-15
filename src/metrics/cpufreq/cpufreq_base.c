@@ -17,11 +17,11 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <common/hardware/cpuid.h>
+#include <common/hardware/bithack.h>
 #include <common/hardware/topology.h>
 #include <metrics/common/msr.h>
 #include <metrics/cpufreq/cpufreq_base.h>
-#include <common/hardware/ear_cpuid.h>
-#include <common/hardware/bithack.h>
 
 #define ZEN_REG_P0     0xc0010064
 #define ZEN_REG_HWCONF 0xc0010015

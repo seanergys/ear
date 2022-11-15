@@ -98,7 +98,7 @@ state_t energy_cpu_util_read(ctx_t *c, ullong *values)
 	ratio = (float)min/cpu_util_topo.cpu_count;
 	
 	debug("Ratio %f", ratio);
-	float CPU_Power = (cpu_util_topo.TDP_cpu * socket_count) * ear_min(1.0, ratio);
+	float CPU_Power = (cpu_util_topo.tdp * socket_count) * ear_min(1.0, ratio);
 	
 	ullong CPU_energy = CPU_Power * elapsed * CPU_UTIL_ENERGY_UNITS;
 

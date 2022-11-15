@@ -19,7 +19,7 @@
 
 #include <stdlib.h>
 #include <common/output/debug.h>
-#include <common/hardware/ear_cpuid.h>
+#include <common/hardware/cpuid.h>
 #include <common/hardware/bithack.h>
 #include <management/cpufreq/archs/default.h>
 

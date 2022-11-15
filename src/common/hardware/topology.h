@@ -18,7 +18,7 @@
 #ifndef COMMON_HARDWARE_TOPOLOGY_H_
 #define COMMON_HARDWARE_TOPOLOGY_H_
 
-#include <cpuid.h>
+#include <common/states.h>
 #include <common/types/generic.h>
 
 // https://en.wikichip.org/wiki/intel/cpuid
@@ -45,20 +45,6 @@
 #define VENDOR_AMD					1
 #define VENDOR_ARM                  2
 
-
-#define DEF_BOARDWELL_TDP 	100
-#define DEF_SKYLAKE_TDP		150
-#define DEF_ICELAKE_TDP		175
-#define DEF_ZEN_TDP		150
-#define DEF_ZEN3_TDP		200
-
-
-
-#define Intel_Xeon_Platinum_8175M 	0x50654
-#define Intel_Xeon_E5_2686_V4 		0x406F1
-
-#include <common/states.h>
-
 struct tp_select_s
 {
 	int core;
@@ -83,8 +69,7 @@ struct tp_group_s
 	.merge = 2,
 };
 
-typedef struct core_s
-{
+typedef struct core_s {
 	int id;
 	int apicid;
 	int is_thread;      // If is the second thread in a core.
@@ -93,29 +78,26 @@ typedef struct core_s
 	int socket_id;
 } core_t;
 
-typedef struct topology_s
-{
-	core_t *cpus;       // Take a look to core_t structure.
-	int cpu_count;      // Total CPUs including threads.
-	int core_count;     // Total cores (not counting threads).
-	int socket_count;   //
-	int threads_per_core; // Number or threads per core (not the whole system).
-	int smt_enabled;    // Multithreading enabled = 1, disabled = 0.
-	int l3_count;       // Chunks of L3 in the system.
-	int cache_line_size; //
-	int vendor;         // Take a look to top defines.
-	int family;         // Take a look to top defines.
-	int model;          // Take a look to top defines.
-	int stepping;
-	int gpr_count;		// Number of general purpose registers.
-	int gpr_bits;		// General purpose registers bit width.
-	int nmi_watchdog;	// NMI watdog enabled.
-    int apicids_found;  // List of CPUs ApicId's found.
-    int initialized;    // 1 if the topology is initialized
-	ulong cpu_freq;
-	uint  TDP_cpu;
-	int   eax;
-	char brand[384];
+typedef struct topology_s {
+	core_t *cpus;         // Take a look to core_t structure.
+	int   cpu_count;      // Total CPUs including threads.
+	int   core_count;     // Total cores (not counting threads).
+	int   socket_count;   //
+	int   threads_per_core; // Number or threads per core (not the whole system).
+	int   smt_enabled;    // Multithreading enabled = 1, disabled = 0.
+	int   l3_count;       // Chunks of L3 in the system.
+	int   cache_line_size;
+	int   vendor;         // Take a look to top defines.
+	int   family;         // Take a look to top defines.
+	int   model;          // Take a look to top defines.
+    char  brand[48];
+	int   gpr_count;      // Number of general purpose registers.
+	int   gpr_bits;       // General purpose registers bit width.
+	int   nmi_watchdog;	  // NMI watdog enabled.
+    int   apicids_found;  // List of CPUs ApicId's found.
+    int   initialized;    // 1 if the topology is initialized
+    ulong base_freq;      // Nominal CPU clock, in KHz
+    int   tdp;
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);
@@ -129,7 +111,7 @@ state_t topology_close(topology_t *topo);
 state_t topology_print(topology_t *topo, int fd);
 
 state_t topology_tostr(topology_t *topo, char *buffer, size_t n);
-
+// This function won't be public, use topo.base_freq value instead.
 state_t topology_freq_getbase(uint cpu, ulong *freq_base);
 
 #endif

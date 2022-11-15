@@ -24,7 +24,7 @@
 #include <common/states.h>
 #include <common/system/file.h>
 #include <common/types/generic.h>
-#include <common/hardware/ear_cpuid.h>
+#include <common/hardware/cpuid.h>
 #include <common/hardware/topology.h>
 
 /** Returns the number of packages detected*/

@@ -15,7 +15,6 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,11 +24,8 @@
 #include <common/system/file.h>
 #include <common/output/debug.h>
 #include <common/hardware/topology_asm.h>
-#include <common/config/config_env.h>
 
 static topology_t topo_static;
-static char *flag_cpu_tdp;
-static uint custom_cpu_tdp = 0;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val)
 {
@@ -194,91 +190,17 @@ static void topology_watchdog(topology_t *topo)
 		close(fd);
 	}
 }
-static state_t get_brand(topology_t *topo)
-{
-    uint32_t brand[12];
-    strcpy(topo->brand, "UNKNOW");
 
-    if (!__get_cpuid_max(0x80000004, NULL)) {
-        return EAR_ERROR;
-    }
-
-    __get_cpuid(0x80000002, brand+0x0, brand+0x1, brand+0x2, brand+0x3);
-    __get_cpuid(0x80000003, brand+0x4, brand+0x5, brand+0x6, brand+0x7);
-    __get_cpuid(0x80000004, brand+0x8, brand+0x9, brand+0xa, brand+0xb);
-    debug("Brand: %s", brand);
-    strcpy(topo->brand, (char *)brand);	
-    return EAR_SUCCESS;
-}
-
-
-static uint TPD_BROADWELL_X(topology_t *topo)
+static void topology_cpuinfo(topology_t *topo)
 {
-	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_BOARDWELL_TDP;
-	if (strstr(topo->brand,"E5-2686 v4") != NULL) return 145;
-	return custom_cpu_tdp;
-	
-}
-static uint TDP_SKYLAKE_X(topology_t *topo)
-{
-	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_SKYLAKE_TDP;
-	if (strstr(topo->brand,"Platinum 8175M") != NULL) return 125;
-	return custom_cpu_tdp;
-}
-static uint TDP_ICELAKE_X(topology_t *topo)
-{
-	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_ICELAKE_TDP;
-	return custom_cpu_tdp;
-}
-static uint TDP_ZEN(topology_t *topo)
-{
-	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_ZEN_TDP;
-	return custom_cpu_tdp;
-}
-static uint TDP_ZEN3(topology_t *topo)
-{
-	if (!custom_cpu_tdp) custom_cpu_tdp = DEF_ZEN3_TDP;
-	return custom_cpu_tdp;
-}
-
-static uint get_TDP(topology_t *topo)
-{
-	flag_cpu_tdp = getenv(FLAG_CPU_TDP);
-	if (flag_cpu_tdp != NULL){ 
-		custom_cpu_tdp = (uint)atoi(flag_cpu_tdp);
-	}
-	switch (topo->vendor){
-		case VENDOR_INTEL:
-			switch(topo->model){
-				case MODEL_BROADWELL_X:
-					return TPD_BROADWELL_X(topo);
-				case MODEL_SKYLAKE_X:
-					return TDP_SKYLAKE_X(topo);
-				case MODEL_ICELAKE_X:
-					return TDP_ICELAKE_X(topo);
-			}
-			break;
-		case VENDOR_AMD:
-			switch (topo->family){
-				case FAMILY_ZEN:
-					return TDP_ZEN(topo);
-				case FAMILY_ZEN3:
-					return TDP_ZEN3(topo);
-			}
-			break;
-		case VENDOR_ARM:
-			break;
-		default: return 200;
-	}
-	return 200;
-}
-
-static void topology_apicid(topology_t *topo)
-{
+    char *taux = NULL;
     char *twop = NULL;
     char *line = NULL;
     size_t len = 0;
     int cpu    = 0;
+
+    // If not found 1GHz
+    topo->base_freq = 1000000;
 
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     while(getline(&line, &len, cpuinfo) != -1) {
@@ -290,26 +212,23 @@ static void topology_apicid(topology_t *topo)
                 topo->cpus[cpu].apicid = atoi(twop);
                 ++cpu;
             }
-         }
-         if (strncmp(line,"model name", 10) == 0){
-                char *GHz_str ;
-                if ((twop = strchr(line, '@')) != NULL) {
-                        twop++;
-                        while (*twop == ' ') twop++;
-                        GHz_str = twop;
-                        while (*twop != 'G') twop++;
-                        *twop = '\0';
-                        topo->cpu_freq = atof(GHz_str)*1000000;
-                }
-         }
-
+        }
+        if (strncmp(line,"model name", 10) == 0){
+            if ((twop = strchr(line, '@')) != NULL) {
+                twop++;
+                while (*twop == ' ') twop++;
+                taux = twop;
+                while (*twop != 'G') twop++;
+                *twop = '\0';
+                // Converted to KHz
+                topo->base_freq = atof(taux)*1000000;
+            }
+        }
     }
     topo->apicids_found = (cpu == topo->cpu_count);
     fclose(cpuinfo);
     free(line);
 }
-
-
 
 static int is_online(const char *path)
 {
@@ -331,8 +250,9 @@ state_t topology_init(topology_t *topo)
 	char path[SZ_NAME_LARGE];
 	int i, j;
 
-	if (topo_static.cpu_count != 0) {
+	if (topo_static.initialized) {
 		topology_copy(topo, &topo_static);
+        return EAR_SUCCESS;
 	}
 
 	topo->cpu_count        = 0;
@@ -342,11 +262,11 @@ state_t topology_init(topology_t *topo)
 	topo->cache_line_size  = 0;
 	topo->smt_enabled      = 0;
 	topo->l3_count         = 0;
-    	topo->initialized      = 1;
+    topo->initialized      = 1;
 
 	/* First characteristics */
-	topology_getid(topo);
-
+	topology_asm_getid(topo);
+	topology_asm_getbrand(topo);
 
 	/* Number of CPUs */
 	do {
@@ -381,11 +301,12 @@ state_t topology_init(topology_t *topo)
 		//}
 	}
 
-    topology_apicid(topo);
-	topology_watchdog(topo);
+    // TDP definition (to avoid redundancy)
+    void topology_tdp(topology_t *topo);
 
-	get_brand(topo);
-	topo->TDP_cpu = get_TDP(topo);
+    topology_cpuinfo(topo);
+	topology_watchdog(topo);
+    topology_tdp(topo);
 
 	topology_copy(&topo_static, topo);
 
@@ -414,14 +335,12 @@ state_t topology_close(topology_t *topo)
     	"l3_count         : %d\n" \
 		"vendor           : %d\n" \
 		"family           : %d\n" \
-		"model            : %x\n" \
-		"stepping         : %x\n" \
+        "brand            : %s\n" \
 		"gpr_count        : %d\n" \
 		"gpr_bits         : %d\n" \
 		"nmi_watchdog     : %d\n" \
-		"cpu_freq         : %lu\n" \
-		"brand            : %s\n" \
-		"TDP              : %d\n" \
+		"base_freq        : %lu\n" \
+		"tdp              : %d\n" \
 	, \
 		topo->cpu_count, \
 		topo->socket_count, \
@@ -430,14 +349,12 @@ state_t topology_close(topology_t *topo)
 		topo->l3_count, \
 		topo->vendor, \
 		topo->family, \
-		topo->model, \
-		topo->stepping, \
+		topo->brand, \
 		topo->gpr_count, \
 		topo->gpr_bits, \
 		topo->nmi_watchdog, \
-		topo->cpu_freq, \
-		topo->brand, \
-		topo->TDP_cpu);
+		topo->base_freq, \
+		topo->tdp);
 
 state_t topology_print(topology_t *topo, int fd)
 {
@@ -475,17 +392,10 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 {
 	char path[1024];
 	int fd;
-	*freq_base = 0;
 
 	sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
-	if ((fd = open(path, O_RDONLY)) < 0)
-	{
-		#if EARL_LIGHT
-		if (*freq_base == 0) *freq_base = topo_static.cpu_freq;
-		return EAR_SUCCESS;
-		#else
-		*freq_base = 1000000LU;
-		#endif
+	if ((fd = open(path, O_RDONLY)) < 0) {
+		*freq_base = topo_static.base_freq;
     	return EAR_ERROR;
 	}
 
@@ -498,32 +408,17 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 	} else {
 		*freq_base = f0;
 	}
-
 	close(fd);
-	if (*freq_base == 0) *freq_base = topo_static.cpu_freq;
-
-	debug("FREQ base detected in topology %lu", *freq_base);
 
 	return EAR_SUCCESS;
 }
 
-//#define TOPO_TEST 1
-#ifdef TOPO_TEST
-int main(int *argc, char *argv[])
+#if TEST
+int main(int argc, char *argv[])
 {
-        topology_t t;
-        ulong f = 0;
-        uint boost;
-        topology_init(&t);
-        if (t.cpu_freq == 0){
-                topology_freq_getbase(0, &f);
-                if (f == 0) cpufreq_get_base(&t, &f);
-                if (f != 0 ) t.cpu_freq = f;
-        }
-        topology_print(&t, 1);
-        cpufreq_get_boost_enabled(&t, &boost);
-        fprintf(stdout, "Boost %u\n", boost);
-
+    topology_t tp;
+    topology_init(&tp);
+    topology_print(&tp, verb_channel);
+    return 0;
 }
 #endif
-

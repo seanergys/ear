@@ -71,7 +71,6 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		api = API_EARD;
 		debug("selected eard energy_cpu (api %u)", api);
 	} 
-	#if EARL_LIGHT
 	else if (state_ok(energy_cpu_util_load(tp))) {
 		ops.init          = energy_cpu_util_init;
 		ops.dispose       = energy_cpu_util_dispose;
@@ -80,7 +79,6 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		api = API_CPUMODEL;
 		debug("selected dummy energy_cpu (api %u)", api);
 	} 
-	#endif
 	else if (state_ok(energy_cpu_dummy_load(tp))) {
 		ops.init          = energy_cpu_dummy_init;
 		ops.dispose       = energy_cpu_dummy_dispose;

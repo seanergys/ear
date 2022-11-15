@@ -31,12 +31,7 @@ state_t mgt_cpufreq_dummy_load(topology_t *tp_in, mgt_ps_ops_t *ops)
 	// Base freq
 	topology_freq_getbase(0, (ulong *) &base_freq);
 	if (base_freq == 0LLU) {
-	#if EARL_LIGHT
-		base_freq = tp_in->cpu_freq;
-		debug("Using base_freq %lu", base_freq);
-	#else
-		base_freq = 1000000LLU;
-	#endif
+		base_freq = tp_in->base_freq;
 	}
 	//
 	apis_put(ops->init,               mgt_cpufreq_dummy_init);
