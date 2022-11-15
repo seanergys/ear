@@ -8,6 +8,7 @@ export FEAT_AMD_OSCPUFREQ
 export FEAT_DB_MYSQL
 export FEAT_DB_PSQL    
 export FEAT_EARL_LIGHT    
+export FEAT_EXAMON
 export CC
 export CC_FLAGS
 export MPICC
@@ -34,6 +35,7 @@ export LIKWID_CFLAGS
 export FREEIPMI_BASE
 export FREEIPMI_CFLAGS
 export FREEIPMI_LDFLAGS
+export COUNTDOWN_BASE
 export ROOTDIR
 export SRCDIR
 export DESTDIR
