@@ -31,23 +31,43 @@
 #define RSMI_PATH RSMI_BASE
 #endif
 #define RSMI_LIB  "librocm_smi64.so"
-#define RSMI_N    8
+#define RSMI_N    17
 
 #define ccv(f) \
     if (f != RSMI_STATUS_SUCCESS) { \
         debug(#f ": error"); \
     }
 
+// https://docs.amd.com/bundle/rocm_smi_lib.5.0/page/globals_func.html
 static const char *rsmi_names[] = {
     "rsmi_init",
     "rsmi_num_monitor_devices",
-    "rsmi_dev_power_ave_get",
+    "rsmi_dev_serial_number_get",
     "rsmi_dev_energy_count_get",
+    "rsmi_dev_power_ave_get",
+    "rsmi_dev_power_cap_set"
     "rsmi_dev_temp_metric_get",
-    "rsmi_utilization_count_get",
     "rsmi_dev_gpu_clk_freq_get",
+    "rsmi_dev_clk_range_set",
+    "rsmi_utilization_count_get",
+    "rsmi_dev_busy_percent_get",
+    "rsmi_dev_memory_busy_percent_get",
+    "rsmi_dev_memory_total_get",
+    "rsmi_dev_memory_usage_get",
     "rsmi_dev_pci_bandwidth_get",
+    "rsmi_compute_process_info_get",
+    "rsmi_compute_process_gpus_get",
 };
+
+// Nomenclatures:
+// SYS  -> system (GPU, i think stream processors)
+// DF   -> data fabric
+// DCEF -> display controller engine
+// SOC  -> system on a chip
+// MEM  -> memory
+// sclk -> system clock
+// mclk -> memory clock
+// fclk -> ¿df clock? It seems
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static rsmi_t          rsmi;
@@ -157,7 +177,8 @@ state_t rsmi_close()
 
 int rsmi_is_privileged()
 {
-    return 1;
+    // Provisional
+    return (getuid() == 0);
 }
 
 int main(int argc, char *argv[])
