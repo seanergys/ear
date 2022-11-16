@@ -542,9 +542,14 @@ state_t policy_init()
         imc_extra_th = atof(cimc_extra_th);
     }
 
-    // Calling policy plugin init
+    // Calling policy plug-in init
     if (polsyms_fun.init != NULL) {
+
         ret = polsyms_fun.init(c);
+
+        if (state_fail(ret)) {
+            verbose_master(POLICY_INFO, "%sERROR%s Policy init: %s", COL_RED, COL_CLR, state_msg);
+        }
     }
 
     // Read policy configuration
@@ -625,16 +630,21 @@ state_t policy_init()
             COL_BLU, COL_CLR, use_turbo_for_cp);
 
     try_turbo_enabled = c->use_turbo;
+
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_TRY_TURBO will be removed, in the next release.
+
     if (ctry_turbo_enabled == NULL) {
+
         ctry_turbo_enabled = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_TRY_TURBO) : NULL;
+
         if (ctry_turbo_enabled != NULL) {
             verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
                     "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_TRY_TURBO, FLAG_TRY_TURBO);
         }
     }
+
     if (ctry_turbo_enabled != NULL) try_turbo_enabled = atoi(ctry_turbo_enabled);
     verbose_master(POLICY_INFO, "%sPOLICY%s Turbo for cbound app in the node: %u",
             COL_BLU, COL_CLR, try_turbo_enabled);
@@ -655,7 +665,7 @@ state_t policy_init()
     }
 #endif
 
-    if (policy_show_domain(&freqs_domain) == EAR_ERROR){
+    if (policy_show_domain(&freqs_domain) == EAR_ERROR) {
         verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
     }
 
@@ -663,10 +673,9 @@ state_t policy_init()
         // Powercap (?)
         pc_support_init(c);
     }
+
     fill_common_event(&curr_policy_event);
     REPORT_OPT_ACCURACY(OPT_NOT_READY);
-
-
 
     /* We have migrated frequency set from eard to earl */
     policy_get_default_freq(&nf);
@@ -1112,6 +1121,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     } else {
         if (c != NULL) {
             *freq_set = DEF_FREQ(c->app->def_freq);
+            cpu_ready = EAR_POLICY_READY;
         }
     }
 
@@ -1144,7 +1154,7 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
     if (polsyms_fun.get_default_freq != NULL) {
         return polsyms_fun.get_default_freq(&my_pol_ctx, freq_set, NULL);
     } else {
-        verbose(POLICY_INFO, "%sWARNING%s The policy plugin has no symbol for setting the default frequency.",
+        verbose(POLICY_INFO + 1, "%sWARNING%s The policy plug-in has no symbol for getting the default frequency.",
                 COL_RED, COL_CLR);
     }
 
@@ -1448,28 +1458,35 @@ static node_freq_domain_t per_process_dom = {
   .gpu = POL_NOT_SUPPORTED,
   .gpumem = POL_NOT_SUPPORTED};
 
-#define POLICY_MPI_OPT 1
+#define POLICY_MPI_OPT 1 // TODO: This variable should be at config_dev.h
+
 state_t policy_mpi_init(mpi_call call_type)
 {
     int process_id = NO_PROCESS;
+
     state_t st;
-    polctx_t *c=&my_pol_ctx;
-    total_mpi ++;
-    #if POLICY_MPI_OPT
-    if (polsyms_fun.mpi_init !=  NULL){
-      st = polsyms_fun.mpi_init(c, call_type,&per_process_node_freq , &process_id);
-      if (process_id != NO_PROCESS){
-        total_mpi_optimized++;
-        if (state_fail( policy_freq_selection(c, &aux_per_process, &per_process_node_freq, 
-        &per_process_dom, NULL, process_id))){
-          verbose(2, "CPU freq failure in policy_mpi_init");
+
+    polctx_t *c = &my_pol_ctx;
+
+    total_mpi++;
+
+#if POLICY_MPI_OPT
+    if (polsyms_fun.mpi_init != NULL) {
+
+        st = polsyms_fun.mpi_init(c, call_type, &per_process_node_freq, &process_id);
+
+        if (process_id != NO_PROCESS){
+            total_mpi_optimized++;
+            if (state_fail(policy_freq_selection(c, &aux_per_process, &per_process_node_freq, 
+                            &per_process_dom, NULL, process_id))){
+                verbose(2, "CPU freq failure in policy_mpi_init");
+            }
         }
-      }
-      return st;
-    }else return EAR_SUCCESS;
-    #else
+        return st;
+    } else return EAR_SUCCESS;
+#else
     return EAR_SUCCESS;
-    #endif
+#endif
 }
 
 /* This function is executed after each mpi call: Warning! it could introduce a lot of overhead. */

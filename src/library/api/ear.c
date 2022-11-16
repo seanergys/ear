@@ -1482,15 +1482,25 @@ void ear_init()
 				print_arch_desc(&arch_desc);
 #endif
 
-				init_power_models(system_conf->user_type,&system_conf->installation,&arch_desc);
-				init_power_policy(system_conf, resched_conf);
-				verbose_master(VEAR_INIT,"Policies and models initialized");	
+				init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
+
+				if (state_ok(init_power_policy(system_conf, resched_conf))) {
+
+				    verbose_master(VEAR_INIT, "Policies and models initialized.");
+
+                } else {
+
+				    verbose_master(VEAR_INIT, "%sWARNING%s An error ocurred initializing the power policy.",
+                                   COL_YLW, COL_CLR);	
+                }
+
 
 				if (cpu_power_model_load(system_conf, &arch_desc, API_NONE) == EAR_SUCCESS){
-								verbose_master(VEAR_INIT, "CPU power models loaded");
+								verbose_master(VEAR_INIT, "CPU power models loaded.");
 				}
+
 				if (cpu_power_model_init() == EAR_SUCCESS){
-								verbose_master(VEAR_INIT, "CPU power model initialized");
+								verbose_master(VEAR_INIT, "CPU power model initialized.");
 				}
 
 
@@ -1587,7 +1597,7 @@ void ear_init()
 
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {
-								verbose_master(1, "EAR initialized successfully ");
+								verbose_master(1, "EAR initialized successfully.");
 				}
 				/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
 				/* Computes the total number of cpus for this job */

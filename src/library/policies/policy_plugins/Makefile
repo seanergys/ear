@@ -7,7 +7,8 @@ endif
 poli_BINS = \
     min_energy.so \
     min_time.so  \
-    monitoring.so
+    monitoring.so \
+	ear_nanosleep.so
 
 ifdef CUDA_BASE
 poli_BINS += \

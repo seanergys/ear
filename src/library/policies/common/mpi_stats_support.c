@@ -64,19 +64,22 @@
 #define LB_VERB_LVL        INFO_LVL
 #define MPI_STATS_VERB_LVL DEBUG_LVL
 #define VAR_DEPRECATED     WARN_LVL - 1 // It's a warning, but more prioritary
+                                        //
+#define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
+                             // You can disable it for overhead testing.
 
 #if MPI_OPTIMIZED
 #define VERBOSE_MPI_OPT 1
-#else
-#define VERBOSE_MPI_OPT 0
-#endif
 
 // TODO: Below macros should be defined at config_def or config_dev
-#define PER_MPI_STATS       1       // Used for testing overhead.
 #define MAX_MPI_TO_OPT      50      // Max number of calls to try to optimize
 #define DEF_MIN_USEC_MPI    50000   // Default minimum time of a call to try to optimize
 
 static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
+
+#else
+#define VERBOSE_MPI_OPT 0
+#endif
 
 static timestamp pol_time_init, start_no_mpi;
 
@@ -92,6 +95,8 @@ static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
 
+static int in_mpi_call;
+
 extern uint ear_mpi_opt; // Whether this module must to try to optimize some MPI calls.
 
 typedef struct ear_calls {
@@ -102,9 +107,10 @@ typedef struct ear_calls {
     uint  cnt;
 } ear_calls_t;
 
+#if MPI_OPTIMIZED
 static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
 static uint num_mpi_to_optimize = 0;
-static int in_mpi_call;
+#endif
 
 #if NEW_MPI_STATS
 /* Statistics of all call types */
@@ -172,20 +178,22 @@ state_t mpi_app_init(polctx_t *c)
         if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
             LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
         } else if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+
             // TODO: This check is for the transition to the new environment variables.
             // It will be removed when SCHED_LOAD_BALANCE_TH will be removed, in the next release.
             verbose(VAR_DEPRECATED, "%sWARNING%s %s will be removed on the next EAR release. "
                     "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_LOAD_BALANCE_TH, FLAG_LOAD_BALANCE_TH);
+
             LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
         }
+
         verbose_master(MPI_STATS_VERB_LVL, "Load Balance threshold: %.1f. Critical path proximity %.1f", LB_TH, critical_path_th);
 
         sig_shared_region[my_node_id].mpi_info.mpi_time=0;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls=0;
         sig_shared_region[my_node_id].mpi_info.exec_time=0;
         sig_shared_region[my_node_id].mpi_info.perc_mpi=0;
-
 
         sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt = 0;
         sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_cnt = 0;
@@ -219,7 +227,6 @@ state_t mpi_app_init(polctx_t *c)
     }
 
     return EAR_SUCCESS;
-
 }
 
 state_t mpi_app_end(polctx_t *c)
@@ -230,10 +237,13 @@ state_t mpi_app_end(polctx_t *c)
     char mpi_stats_filename[256];
     char mpi_stats_per_call_filename[256];
 
-
 #if VERBOSE_MPI_OPT
-    if (num_mpi_to_optimize){
-      for (uint mo = 0; mo < num_mpi_to_optimize; mo++){
+    // VERBOSE_MPI_OPT == 1 implies that MPI_OPTIMIZED == 1.
+    // Therefore num_mpi_to_optimize is already defined.
+    if (num_mpi_to_optimize) {
+
+      for (uint mo = 0; mo < num_mpi_to_optimize; mo++) {
+
         verbose(0, "MPI_OPTIMI[%u-%u de %u] call %lu buff %lu dest %lu elap %lu",
                 my_node_id, mo, num_mpi_to_optimize, (ulong) list_mpi_to_optimize[mo].call,
                 (ulong) list_mpi_to_optimize[mo].last_buf, (ulong) list_mpi_to_optimize[mo].last_dest,
@@ -243,16 +253,24 @@ state_t mpi_app_end(polctx_t *c)
 #endif
 
 #if NEW_MPI_STATS
-    for (int i = 0; i < N_CALL_TYPES; i++) {
-      if (mpi_call_count[i]) {
-          verbose(0, "[%d] CALL %d Time %llu instances %d avg %lf", my_node_id, i , mpi_call_time[i], mpi_call_count[i], (double)mpi_call_time[i]/(double)mpi_call_count[i]);
-      }
+    if (VERB_ON(INFO_LVL + 1)) {
+
+        for (int i = 0; i < N_CALL_TYPES; i++) {
+
+            if (mpi_call_count[i]) {
+
+                verbose(INFO_LVL + 1, "[%d] CALL %d Time %llu instances %d avg %lf",
+                        my_node_id, i, mpi_call_time[i], mpi_call_count[i],
+                        (double) mpi_call_time[i] / (double) mpi_call_count[i]);
+            }
+        }
     }
 #endif
 
     /* Global statistics */
     //timestamp_getfast(&end);
     timestamp_getprecise(&end);
+
     elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
     mpi_stats.exec_time += elap;
 
@@ -268,6 +286,7 @@ state_t mpi_app_end(polctx_t *c)
                     COL_RED, COL_CLR, SCHED_GET_EAR_STATS, FLAG_GET_MPI_STATS);
             }
         }
+
         if (stats) {
 
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
@@ -280,7 +299,7 @@ state_t mpi_app_end(polctx_t *c)
                     mpi_stats_filename, mpi_stats_per_call_filename);
 
             // Open mpi_stats_filename to store per process global MPI stats
-            fd=open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
+            fd = open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
             char mpi_stats_buff[512];
             char mpi_stats_buff_aux[64];
@@ -403,19 +422,23 @@ state_t mpi_app_end(polctx_t *c)
 
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
-#if PER_MPI_STATS
+#if PER_MPI_CALL_STATS
     if (is_mpi_enabled()) {
 
         // Init the MPI call timer
         //timestamp_getfast(&pol_time_init);
         timestamp_getprecise(&pol_time_init);
-        in_mpi_call = 1;
 
         // Get the time not been in MPI
         ullong time_no_mpi = timestamp_diff(&pol_time_init, &start_no_mpi, TIME_USECS);
 
         // Accumulate
         mpi_stats.exec_time += time_no_mpi;
+
+        // Update
+        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
+
+        in_mpi_call = 1;
 
 #if COMP_CPI
     cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
@@ -425,10 +448,6 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
     // sig_shared_region[my_node_id].comp_insts = comp_insts;
 #endif // COMP_CPI
 
-        // Update
-        // sig_shared_region[my_node_id].mpi_info.exec_time += time_no_mpi;
-        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
-
 #if SHOW_DEBUGS
         if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0) {
             debug("P[%d] (sec %ld nsec %ld) - (sec %ld nsec %ld) %llu not_mpi_elap",
@@ -436,8 +455,9 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec, time_no_mpi);
         }
 #endif // SHOW_DEBUGS
+
     }
-#endif // PER_MPI_STATS
+#endif // PER_MPI_CALL_STATS
     return EAR_SUCCESS;
 }
 
@@ -455,34 +475,41 @@ list_mpi_to_optimize[index].elap);
 #endif
 */
 
+/*
 uint is_blocking_collective(mpi_call call)
 {
     //return (is_bbarrier(call) || is_bgather(call));
     return (is_bbarrier(call));
 }
-
+*/
 
 uint is_bbarrier(mpi_call call)
 {
     if (is_mpi_blocking(call)) {
-        mpi_call nbcall_type;
-        nbcall_type = (mpi_call) remove_blocking(call);
+
+        mpi_call nbcall_type = (mpi_call) remove_blocking(call);
+
         return (is_barrier(nbcall_type));
-        //return (is_synchronization(nbcall_type));
+
+        // return (is_synchronization(nbcall_type));
     }
+
     return 0;
 }
 
 uint is_bgather(mpi_call call)
 {
     if (is_mpi_blocking(call)) {
-        mpi_call nbcall_type;
-        nbcall_type = (mpi_call) remove_blocking(call);
+
+        mpi_call nbcall_type = (mpi_call) remove_blocking(call);
+
         return is_gather(nbcall_type);
     }
+
     return 0;
 }
 
+/*
 uint is_bwait(mpi_call call)
 {
   if (is_mpi_blocking(call)) {
@@ -492,24 +519,25 @@ uint is_bwait(mpi_call call)
   }
   return 0;
 }
-
+*/
 
 state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
-    timestamp_t end;
-    mpi_call nbcall_type;
-    ullong elap = 0;
-#if PER_MPI_STATS
-
+#if PER_MPI_CALL_STATS
     if (is_mpi_enabled() && in_mpi_call) {
 
-        //timestamp_getfast(&end);
+        timestamp_t end;
+        mpi_call nbcall_type;
+        ullong elap = 0;
+
+        // timestamp_getfast(&end);
+
         timestamp_getprecise(&end);
+
         elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
         in_mpi_call = 0;
 
-
-                /* Global statistics */
+        /* Global statistics */
         mpi_stats.mpi_time  += elap;
         mpi_stats.exec_time += elap;
         mpi_stats.total_mpi_calls++;
@@ -518,14 +546,11 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
-
-
         debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
 
-        #if MPI_STATS
-
+#if MPI_STATS
         // Only collect stats for blocking calls
-        if (is_mpi_blocking(call_type) ) {
+        if (is_mpi_blocking(call_type)) {
 
             total_blocking_calls++;
             total_mpi_time_blocking += (ulong) elap;
@@ -536,8 +561,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 
             // Get which type of blocking call is
             nbcall_type = (mpi_call) remove_blocking(call_type);
-#if NEW_MPI_STATS
 
+#if NEW_MPI_STATS
             mpi_call_count[BLOCKING]++;
             mpi_call_time[BLOCKING] += elap;
 
@@ -545,8 +570,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
             mpi_call_time[nbcall_type] += elap;
 
             assert(mpi_call_count[nbcall_type] != 0);
-
 #endif // NEW_MPI_STATS
+
             if (is_collective(nbcall_type)) {
                 // Collective
                 total_collectives++;
@@ -560,6 +585,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 total_sync_block++;
                 time_sync_block += (ulong)elap;
             }
+
             /* We check if the call must be on the list */
 #if MPI_OPTIMIZED
             if (ear_mpi_opt) {
@@ -577,31 +603,34 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 }else{
                     /* Otherwise, we check if we should add it */
 #define FIRST_NO_EAR_SYMBOL 4
-                    if (((ulong)elap > ear_min_usec_for_mpi_opt) && (num_mpi_to_optimize < MAX_MPI_TO_OPT)){
+                    if ((ulong) elap > ear_min_usec_for_mpi_opt
+                        && num_mpi_to_optimize < MAX_MPI_TO_OPT) {
                         if (already_optimized(nbcall_type, last_buf, last_dest) == EAR_ERROR) {
 
                             list_mpi_to_optimize[num_mpi_to_optimize].call       = nbcall_type;
+
 #if 0
                             list_mpi_to_optimize[num_mpi_to_optimize].last_buf  = (p2i)get_stack(FIRST_NO_EAR_SYMBOL);
                             list_mpi_to_optimize[num_mpi_to_optimize].last_dest = (p2i)0;
 #endif
+
                             list_mpi_to_optimize[num_mpi_to_optimize].last_buf   = last_buf;
                             list_mpi_to_optimize[num_mpi_to_optimize].last_dest  = last_dest;
                             list_mpi_to_optimize[num_mpi_to_optimize].elap       = (ulong)elap;
                             list_mpi_to_optimize[num_mpi_to_optimize].cnt        = 1;
 
 #if VERBOSE_MPI_OPT
-                            //print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
+                            // print_mpi_optimized("Adding mpi call to optimize ", num_mpi_to_optimize);
 #endif
                             num_mpi_to_optimize++;
-                            //print_stack(verb_channel);
+                            // print_stack(verb_channel);
                         }
                     }
                 }
+
                 last_optimized = 0;
             }
 #endif // MPI_OPTIMIZED
-
         }
 
         sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt      = total_synchronizations;
@@ -627,16 +656,18 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         cpi_read(no_ctx, &cpi_1);
 #endif
     }
-#endif // PER_MPI_STATS
-    //timestamp_getfast(&start_no_mpi);
+#endif // PER_MPI_CALL_STATS
+
+    // timestamp_getfast(&start_no_mpi);
     timestamp_getprecise(&start_no_mpi);
+
     return EAR_SUCCESS;
 }
 
 state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i)
 {
-
     if (dst == NULL) return EAR_ERROR;
+
     if (src == NULL) {
         if (i < 0) {
             src = &sig_shared_region[my_node_id].mpi_info;
@@ -646,16 +677,9 @@ state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int 
         }
     }
     memcpy(dst, src, sizeof(mpi_information_t));
+
     return EAR_SUCCESS;
 }
-
-/*
-static void mpi_call_copy(mpi_information_t *dst, mpi_information_t * src)
-{
-    if ((dst == NULL) || (src == NULL)) return;
-    memcpy(dst, src, sizeof(mpi_information_t));
-}
-*/
 
 state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init)
 {
@@ -724,7 +748,7 @@ state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current
         mpi_calls_types_t *last)
 {
 
-    #if MPI_STATS
+#if MPI_STATS
     diff->mpi_call_cnt         = current->mpi_call_cnt - last->mpi_call_cnt;
     diff->mpi_time             = current->mpi_time - last->mpi_time;
     diff->exec_time            = current->exec_time - last->exec_time;
@@ -737,9 +761,9 @@ state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current
     diff->sync_block           = current->sync_block - last->sync_block;
     diff->time_sync_block      = current->time_sync_block - last->time_sync_block;
     diff->max_sync_block       = ear_max(current->max_sync_block , last->max_sync_block);
-    #else
+#else
     memset(diff, 0, sizeof(mpi_calls_types_t));
-    #endif
+#endif
 
     return EAR_SUCCESS;
 }
@@ -1088,7 +1112,6 @@ state_t is_blocking_busy_waiting(uint *block_type)
     return EAR_SUCCESS;
 }
 
-
 /* Support form MPI optimization */
 state_t already_optimized(mpi_call call_type, p2i buf, p2i dest)
 {
@@ -1108,21 +1131,27 @@ state_t already_optimized(mpi_call call_type, p2i buf, p2i dest)
 
 state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed)
 {
-  #if MPI_OPTIMIZED
-  last_optimized = 0;
-  if (!num_mpi_to_optimize) return EAR_ERROR;
-  for (uint i = 0; i < num_mpi_to_optimize; i++){
-    if ((list_mpi_to_optimize[i].call == call_type)
-    && (list_mpi_to_optimize[i].last_buf  ==  buf)
-    && (list_mpi_to_optimize[i].last_dest == dest)){
-      last_optimized = 1;
-      index_last_optimized = i;
-      *elapsed = list_mpi_to_optimize[i].elap / list_mpi_to_optimize[i].cnt;
-      return EAR_SUCCESS;
+#if MPI_OPTIMIZED
+    last_optimized = 0;
+
+    if (!num_mpi_to_optimize) return EAR_ERROR;
+
+    for (uint i = 0; i < num_mpi_to_optimize; i++) {
+        if (list_mpi_to_optimize[i].call == call_type
+            && list_mpi_to_optimize[i].last_buf  ==  buf
+            && list_mpi_to_optimize[i].last_dest == dest) {
+
+            last_optimized = 1;
+
+            index_last_optimized = i;
+
+            *elapsed = list_mpi_to_optimize[i].elap / list_mpi_to_optimize[i].cnt;
+
+            return EAR_SUCCESS;
+        }
     }
-  }
-  #endif
-  return EAR_ERROR;
+#endif
+    return EAR_ERROR;
 }
 
 static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)

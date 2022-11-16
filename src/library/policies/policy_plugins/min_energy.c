@@ -294,7 +294,7 @@ state_t policy_end(polctx_t *c)
     if (VERB_ON(verb_lvl)
         && (unbalanced_not_opt != 0 || mpi_freq_applied_cnt != 0 || total_nsecs_delayed != 0)) {
 
-        verbose(0, "L. rank MPI freq. applied count Time delayed (ns) Unabalanced but not opt\n------- ----------------------- ----------------- -----------------------%7d %23u %17u %23u",
+        verbose(0, "L. rank MPI freq. applied count Time delayed (ns) Unabalanced but not opt\n------- ----------------------- ----------------- -----------------------\n%7d %23u %17u %23u",
                 my_node_id, mpi_freq_applied_cnt, total_nsecs_delayed, unbalanced_not_opt);
     }
 
@@ -946,7 +946,6 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 }
 
 
-
 state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 {
     domain->cpu                  = POL_GRAIN_CORE;
@@ -1070,7 +1069,7 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
 }
 
 state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *process_id)
-{ 
+{
       if (c != NULL){
       #if !SINGLE_CONNECTION
       if (ear_mpi_opt ){
