@@ -158,5 +158,12 @@
 #define NUM_PROPS     3
 
 
+/** Specifies the maximum number of nodes a communication range can have. Propagations always
+ * occur within a range, and the depth of propagations is calculated by taking 
+ * sum = NUM_PROPS + NUM_PROPS² + ... + NUM_PROPS^n
+ * and getting the number of elements that constitue the sum such as the minimum sum >= MAX_RANGE.
+ * Ex: MAX_RANGE 30 and NUM_PROPS 3 -> sum = 3 + 9 + 27 -> depth of propagation = 3 */
+#define MAX_RANGE 30
+
 #endif //EAR_CONFIG_DEF_H
 
