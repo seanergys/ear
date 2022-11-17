@@ -5,7 +5,8 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 temp_OBJS = \
     msr.o \
     eard.o \
-	dummy.o
+	cpu_util.o \
+	dummy.o 
 
 ######## RULES
 

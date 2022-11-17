@@ -1,6 +1,6 @@
 # If USER_TEST is set to 1, any user can execute the hacks with the library.
 # TODO: EARL_LIGHT option
-CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DEARL_LIGHT=0 -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -Wall -fPIC -O2 -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 ifeq ($(FEAT_MPI_API), 0)
@@ -17,9 +17,18 @@ endif
 ifeq ($(FEAT_RESEARCH), 1)
 	CFLAGS += -DNEW_LB_EFF=1 -DMPI_STATS=1 -DNEW_MPI_STATS=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=1
 	CFLAGS += -DEAR_DEF_TIME_GUIDED=0
+	FEAT_EARL_LIGHT = 1
 else
 	CFLAGS += -DSINGLE_CONNECTION=1 -DMPI_OPTIMIZED=0 -DMPI_STATS=0 -DEAR_DEF_TIME_GUIDED=0
+	FEAT_EARL_LIGHT = 0
 endif
+
+ifeq ($(FEAT_EARL_LIGHT), 1)
+CFLAGS += -DEARL_LIGHT=1
+else
+CFLAGS += -DEARL_LIGHT=0
+endif
+
 
 # export LIBCC
 # export LIBCC_FLAGS

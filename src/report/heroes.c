@@ -29,6 +29,8 @@
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <report/report.h>
+#include <library/api/clasify.h>
+#include <library/metrics/metrics.h>
 
 
 static char *csv_log_file_env;
@@ -65,6 +67,8 @@ static uint must_report;
 
 static char * extra_header="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;";
 static char * extra_header_app="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;MAX_POWER_W;";
+static char phases_headers[1024];
+static char app_header[2048];
 
 static char *heroes_wrf_id = NULL;
 static char *heroes_her_id = NULL;
@@ -82,17 +86,23 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     strtok(nodename, ".");
 
     csv_log_file_env = getenv(VAR_OPT_USDB);
+    
     /* Loop filename is automatically generated */
     if (csv_log_file_env != NULL){
+	debug("Using PATH :%s", csv_log_file_env);
 				if (file_is_directory(csv_log_file_env) || (csv_log_file_env[strlen(csv_log_file_env) - 1] == '/')){ 
 					debug("%s is directory", csv_log_file_env);
-					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/%s.heroes",csv_log_file_env,nodename);
+					//xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/%s.heroes",csv_log_file_env,nodename);
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/heroes",csv_log_file_env);
 				} else{ 
 					debug("%s is NOT a directory", csv_log_file_env);
-					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
+					//xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.heroes",csv_log_file_env);
 				}
     }else{
-        xsnprintf(csv_log_file,sizeof(csv_log_file),"./%s.heroes",nodename);
+	debug("PATH not specified using default");
+        //xsnprintf(csv_log_file,sizeof(csv_log_file),"./%s.heroes",nodename);
+        xsnprintf(csv_log_file,sizeof(csv_log_file),"./heroes");
     }
     xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
     xstrncat(csv_log_file,".csv",sizeof(csv_log_file));
@@ -124,6 +134,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 {
     int i;
     debug("heroes report_applications");
+    sig_ext_t *sigex;
 		if (!must_report) return EAR_SUCCESS;
     if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
     if (!file_app_created && !file_is_regular(csv_log_file)){
@@ -133,7 +144,15 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
       for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, apps[l].signature.gpu_sig.num_gpus);
 			debug("Using %d GPUS", num_gpus);
 #endif
-      create_app_header(extra_header_app, csv_log_file, num_gpus, 1, 1);
+
+      strcpy(app_header, extra_header);
+      /* Headers for phases */
+      for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+        strcat(app_header, phase_to_str(ph));
+        strcat(app_header, ";");
+      }
+
+      create_app_header(app_header, csv_log_file, num_gpus, 1, 1);
       file_app_created = 1;
 			fd_app = open(csv_log_file, O_WRONLY|O_APPEND);
     }
@@ -143,6 +162,12 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
     for (i=0;i<count;i++){
         if (fd_app >= 0){
           dprintf(fd_app, "%s%.2lf;", heroes_ids,apps[i].power_sig.max_DC_power);
+          if (apps[i].signature.sig_ext){
+            sigex = (sig_ext_t *) apps[i].signature.sig_ext;
+            for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+              dprintf(fd_app, "%llu;", sigex->earl_phase[ph].elapsed);
+            }
+          }
         }
         append_application_text_file(csv_log_file,&apps[i],1, 0, 1);
     }

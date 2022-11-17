@@ -38,8 +38,9 @@
 // Scheduler
 #define SCHED_SLURM         @FEAT_SCHED_SLURM@
 #define SCHED_PBS           @FEAT_SCHED_PBS@
+#define SCHED_OAR           @FEAT_SCHED_OAR@
 #define SCHED_IS(sched)     (sched)
-#define USE_SCHED           SCHED_SLURM || SCHED_PBS
+#define USE_SCHED           SCHED_SLURM || SCHED_PBS || SCHED_OAR
 
 // Others
 #define RELEASE             "@PACKAGE_VERSION@"

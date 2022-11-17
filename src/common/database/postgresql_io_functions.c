@@ -630,7 +630,7 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
 {
 	is_learning &= USE_LEARNING_APPS;
 
-    int i, num_rows, job_id, step_id, sig_id, pow_sig_id;
+    long long i, num_rows, job_id, step_id, sig_id, pow_sig_id;
     char job_query[256], pow_sig_query[256], sig_query[256];
     job_t *job_aux;
     application_t *apps_aux;
@@ -669,9 +669,9 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
 
         /* JOB RETRIEVAL */
         if (is_learning)
-            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id = %d AND step_id = %d", job_id, step_id);
+            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id = %lld AND step_id = %lld", job_id, step_id);
         else
-            sprintf(job_query, "SELECT * FROM Jobs WHERE id = %d AND step_id = %d", job_id, step_id);
+            sprintf(job_query, "SELECT * FROM Jobs WHERE id = %lld AND step_id = %lld", job_id, step_id);
 
         if (postgresql_retrieve_jobs(connection, job_query, &job_aux) < 1)
         {
@@ -684,7 +684,7 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
         }
 
         /* POWER SIGNATURE RETRIEVAL */
-        sprintf(pow_sig_query, "SELECT * FROM Power_signatures WHERE id = %d", pow_sig_id);
+        sprintf(pow_sig_query, "SELECT * FROM Power_signatures WHERE id = %lld", pow_sig_id);
 
         if (postgresql_retrieve_power_signatures(connection, pow_sig_query, &pow_sig_aux) < 1)
         {
@@ -700,9 +700,9 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
         if (sig_id > 0)
         {
             if (is_learning)
-                sprintf(sig_query, "SELECT * FROM Learning_signatures WHERE id = %d", sig_id);
+                sprintf(sig_query, "SELECT * FROM Learning_signatures WHERE id = %lld", sig_id);
             else
-                sprintf(sig_query, "SELECT * FROM Signatures WHERE id = %d", sig_id);
+                sprintf(sig_query, "SELECT * FROM Signatures WHERE id = %lld", sig_id);
 
 
             if (postgresql_retrieve_signatures(connection, sig_query, &sig_aux) < 1)
@@ -728,7 +728,7 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
 int postgresql_retrieve_loops(PGconn *connection, char *query, loop_t **loops)
 {
 
-    int i, num_rows, sig_id;
+    long long i, num_rows, sig_id;
     char sig_query[256];
     loop_t *loops_aux;
     signature_t *sig_aux;
@@ -769,7 +769,7 @@ int postgresql_retrieve_loops(PGconn *connection, char *query, loop_t **loops)
         /* SIGNATURE RETRIEVAL */
         if (sig_id > 0)
         {
-            sprintf(sig_query, "SELECT * FROM Signatures WHERE id = %d", sig_id);
+            sprintf(sig_query, "SELECT * FROM Signatures WHERE id = %lld", sig_id);
 
             if (postgresql_retrieve_signatures(connection, sig_query, &sig_aux) < 1)
             {
@@ -1393,8 +1393,9 @@ int postgresql_insert_gpu_signature(PGconn *connection, signature_t *sig)
 
 int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, char is_learning,  int num_sigs)
 {
-    if (num_sigs < 0 || sigs == NULL)
+    if (num_sigs < 0 || sigs == NULL) {
         return EAR_ERROR;
+	}
 
 	is_learning &= USE_LEARNING_APPS;
     char **param_values;
@@ -1411,7 +1412,7 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
     query = calloc((strlen(SIGNATURE_QUERY_FULL)+(num_sigs*sig_args*10)+strlen("ON CONFLICT DO NOTHING")), sizeof(char));
 #if USE_GPUS
 
-    int starter_gpu_sig_id, num_gpu_sigs = 0, *gpu_sig_ids, current_gpu_sig_id = 0;
+    long long starter_gpu_sig_id, num_gpu_sigs = 0, *gpu_sig_ids, current_gpu_sig_id = 0;
     /* Insert gpu signatures */
     starter_gpu_sig_id = postgresql_batch_insert_gpu_signatures(connection, sigs, num_sigs);
     if (starter_gpu_sig_id != EAR_SUCCESS)
@@ -1762,7 +1763,8 @@ int postgresql_batch_insert_loops(PGconn *connection, loop_t *loops, int num_loo
         return EAR_ERROR;
 
     char **param_values;
-    int i, j, offset, sig_id, *param_lengths, *param_formats, *sig_ids;
+    int i, j, offset, *param_lengths, *param_formats;
+	long long sig_id, *sig_ids;
     signature_t *sigs;
     char *query, arg_number[16];
 
@@ -1770,7 +1772,7 @@ int postgresql_batch_insert_loops(PGconn *connection, loop_t *loops, int num_loo
 
     /* Memory allocation */
     sigs = calloc(num_loops, sizeof(signature_t));
-    sig_ids = calloc(num_loops, sizeof(int));
+    sig_ids = calloc(num_loops, sizeof(long long));
     param_values = calloc(LOOP_ARGS*num_loops, sizeof(char *));
     param_lengths = calloc(LOOP_ARGS*num_loops, sizeof(int));
     param_formats = calloc(LOOP_ARGS*num_loops, sizeof(int));
@@ -1874,7 +1876,8 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
         return EAR_ERROR;
 
     char **param_values;
-    int i, j, offset, pow_sig_id, sig_id, *param_lengths, *param_formats, *sig_ids, *pow_sig_ids;
+    int i, j, offset, *param_lengths, *param_formats;
+	long long sig_id, pow_sig_id, *sig_ids, *pow_sig_ids;
     signature_t *sigs;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
@@ -1884,8 +1887,8 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
     /* Memory allocation */
     sigs = calloc(num_apps, sizeof(signature_t));
     pow_sigs = calloc(num_apps, sizeof(power_signature_t));
-    sig_ids = calloc(num_apps, sizeof(int));
-    pow_sig_ids = calloc(num_apps, sizeof(int));
+    sig_ids = calloc(num_apps, sizeof(long long));
+    pow_sig_ids = calloc(num_apps, sizeof(long long));
     param_values = calloc(APPLICATION_ARGS*num_apps, sizeof(char *));
     param_lengths = calloc(APPLICATION_ARGS*num_apps, sizeof(int));
     param_formats = calloc(APPLICATION_ARGS*num_apps, sizeof(int));
@@ -1925,7 +1928,7 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
         }
     }
     if ((pow_sig_id = postgresql_get_current_autoincrement_val(connection, "power_signatures")) < 1)
-        verbose(VMYSQL, "Unknown error while retrieving power signature id (%d)\n", pow_sig_id);
+        verbose(VMYSQL, "Unknown error while retrieving power signature id (%lld)\n", pow_sig_id);
 
     for (i = 0; i < num_apps; i++)
     {
@@ -2013,14 +2016,15 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
         return EAR_ERROR;
 
     char **param_values;
-    int i, j, offset, pow_sig_id, *param_lengths, *param_formats, *sig_ids, *pow_sig_ids;
+    int i, j, offset, *param_lengths, *param_formats;
+	long long pow_sig_id, *pow_sig_ids;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
     char is_learning = apps[0].is_learning &= USE_LEARNING_APPS; 
 
     /* Memory allocation */
     pow_sigs = calloc(num_apps, sizeof(power_signature_t));
-    pow_sig_ids = calloc(num_apps, sizeof(int));
+    pow_sig_ids = calloc(num_apps, sizeof(long long));
     param_values = calloc(APPLICATION_ARGS*num_apps, sizeof(char *));
     param_lengths = calloc(APPLICATION_ARGS*num_apps, sizeof(int));
     param_formats = calloc(APPLICATION_ARGS*num_apps, sizeof(int));
@@ -2040,7 +2044,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
 
 
     if ((pow_sig_id = postgresql_get_current_autoincrement_val(connection, "power_signatures")) < 1)
-        verbose(VMYSQL, "Unknown error while retrieving power signature id (%d)\n", pow_sig_id);
+        verbose(VMYSQL, "Unknown error while retrieving power signature id (%lld)\n", pow_sig_id);
 
     for (i = 0; i < num_apps; i++)
         pow_sig_ids[num_apps - 1 - i] = htonl(pow_sig_id - i);
@@ -2076,7 +2080,7 @@ int postgresql_batch_insert_applications_no_mpi(PGconn *connection, application_
         param_lengths[0  + offset] = sizeof(int);
         param_lengths[1  + offset] = sizeof(int);
         param_lengths[2  + offset] = strlen(apps[i].node_id);
-        param_lengths[3  + offset] = sizeof(sig_ids[i]);
+        param_lengths[3  + offset] = sizeof(long long);
         param_lengths[4  + offset] = sizeof(pow_sig_ids[i]);
 
         /* Parameter formats, 1 is binary 0 is string */

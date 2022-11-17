@@ -16,8 +16,8 @@
 */
 
 
-#ifndef METRICS_ENERGY_CPU_MSR_H
-#define METRICS_ENERGY_CPY_MSR_H
+#ifndef METRICS_ENERGY_CPU_DUMMY_H
+#define METRICS_ENERGY_CPU_DUMMY_H
 
 #include <fcntl.h>
 #include <unistd.h>

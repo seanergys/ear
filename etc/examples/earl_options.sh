@@ -21,7 +21,7 @@ export SLURM_HACK_LIBRARY_FILE=
 export SLURM_HACK_NVML_FILE=
 # Forces the loader lo load a non-std mpi version. For example, setting to 
 # "dummy" will load libear.dummy.so
-export SLRURM_HACK_MPI_VERSION=
+export SLURM_HACK_MPI_VERSION=
 
 # EAR library Plugins
 # Path to the .so file with the energy plugin

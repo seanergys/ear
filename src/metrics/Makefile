@@ -70,6 +70,7 @@ mets_OBJS = \
 	$(SRCDIR)/metrics/energy_cpu/archs/msr.o \
 	$(SRCDIR)/metrics/energy_cpu/archs/eard.o \
 	$(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
+	$(SRCDIR)/metrics/energy_cpu/archs/cpu_util.o \
     $(SRCDIR)/metrics/io/io.o
 
 ######## RULES
