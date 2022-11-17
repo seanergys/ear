@@ -1366,8 +1366,8 @@ state_t policy_max_tries(int *intents)
 state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
-    if (ear_mpi_opt){
-      verbose(1, "[%d] Total number of MPI call with optimization %u",my_node_id,  total_mpi_optimized);
+    if (ear_mpi_opt) {
+      verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id,  total_mpi_optimized);
     }
 	
 		#if DEBUG_CPUFREQ_COST
@@ -1460,6 +1460,7 @@ static node_freq_domain_t per_process_dom = {
 
 #define POLICY_MPI_OPT 1 // TODO: This variable should be at config_dev.h
 
+
 state_t policy_mpi_init(mpi_call call_type)
 {
     int process_id = NO_PROCESS;
@@ -1473,42 +1474,64 @@ state_t policy_mpi_init(mpi_call call_type)
 #if POLICY_MPI_OPT
     if (polsyms_fun.mpi_init != NULL) {
 
-        st = polsyms_fun.mpi_init(c, call_type, &per_process_node_freq, &process_id);
+        if (state_ok(polsyms_fun.mpi_init(c, call_type, &per_process_node_freq, &process_id))) {
 
-        if (process_id != NO_PROCESS){
-            total_mpi_optimized++;
-            if (state_fail(policy_freq_selection(c, &aux_per_process, &per_process_node_freq, 
-                            &per_process_dom, NULL, process_id))){
-                verbose(2, "CPU freq failure in policy_mpi_init");
+            if (process_id != NO_PROCESS) {
+
+                total_mpi_optimized++;
+
+                if (state_fail(policy_freq_selection(c, &aux_per_process,
+                               &per_process_node_freq,  &per_process_dom, NULL, process_id))) {
+
+                    verbose(2, "%sERROR%s CPU freq. selection failure at MPI call init.",
+                            COL_RED, COL_CLR);
+
+                    return EAR_ERROR;
+
+                }
+            }
+        } else {
+            verbose(2, "%sERROR%s At MPI call init: %s", COL_RED, COL_CLR, state_msg);
+        }
+    } else {
+        return EAR_SUCCESS;
+    }
+#endif
+    return EAR_SUCCESS;
+}
+
+
+/* This function is executed after each mpi call:
+ * Warning! it could introduce a lot of overhead. */
+state_t policy_mpi_end(mpi_call call_type)
+{
+    int process_id = NO_PROCESS;
+
+    state_t st;
+
+    polctx_t *c=&my_pol_ctx;
+
+#if POLICY_MPI_OPT
+    if (polsyms_fun.mpi_end != NULL) {
+
+        st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);
+        if (state_fail(st)) {
+            verbose(0, "%sERROR%s at policy MPI call end: %s", COL_RED, COL_CLR, state_msg);
+        }
+
+        if (process_id != NO_PROCESS) {
+            if (state_fail(policy_freq_selection(c, &aux_per_process, 
+                            &per_process_node_freq, &per_process_dom, NULL, process_id))){
+
+                verbose(2, "CPU freq failure in policy_mpi_end");
             }
         }
+
         return st;
     } else return EAR_SUCCESS;
 #else
     return EAR_SUCCESS;
 #endif
-}
-
-/* This function is executed after each mpi call: Warning! it could introduce a lot of overhead. */
-state_t policy_mpi_end(mpi_call call_type)
-{
-    int process_id = NO_PROCESS;
-    state_t st;
-    polctx_t *c=&my_pol_ctx;
-    #if POLICY_MPI_OPT
-    if (polsyms_fun.mpi_end != NULL){
-      st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);
-      if (process_id != NO_PROCESS){
-        if (state_fail(policy_freq_selection(c, &aux_per_process, 
-        &per_process_node_freq, &per_process_dom, NULL, process_id))){
-          verbose(2, "CPU freq failure in policy_mpi_end");
-        }
-      }
-      return st;
-    }else return EAR_SUCCESS;
-    #else
-    return EAR_SUCCESS;
-    #endif
 }
 
 /** GLOBAL EVENTS */
@@ -1757,6 +1780,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         node_freqs_t *freqs, node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id)
 {
     ulong *freq_set = freqs->cpu_freq;
+
     int i;
     char pol_grain_str[16];
 
@@ -1775,7 +1799,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
     verbose_master(3, "%-12s: %s\n%-12s: %d", "Policy level",
             pol_grain_str, "Affinity", ear_affinity_is_set);
 
-    ulong max_cpufreq_sel_khz = 0 , min_cpufreq_sel_khz = 1000000000;
+    ulong max_cpufreq_sel_khz = 0, min_cpufreq_sel_khz = 1000000000;
     memset(freq_per_core, 0, sizeof(ulong) * MAX_CPUS_SUPPORTED);
 
     // Assumption: If affinity is set for master, it
@@ -1785,20 +1809,20 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
                 arch_desc.top.cpu_count, &max_cpufreq_sel_khz, &min_cpufreq_sel_khz, process_id);
     } else {
         if (process_id == ALL_PROCESSES) {
-        debug("Setting same freq in all node %lu", freq_set[0]);
+            debug("Setting same freq in all node %lu", freq_set[0]);
 
-        for (i = 1; i < MAX_CPUS_SUPPORTED; i++) {
-            freq_set[i] = freq_set[0];
-        }
-
-        if (ear_affinity_is_set) {
-            from_proc_to_core(freq_set, lib_shared_region->num_processes, &freq_per_core,
-                    arch_desc.top.cpu_count, &max_cpufreq_sel_khz, &min_cpufreq_sel_khz, process_id);
-        } else {
-            for (i = 0; i < MAX_CPUS_SUPPORTED; i++) {
-                freq_per_core[i] = freq_set[0];
+            for (i = 1; i < MAX_CPUS_SUPPORTED; i++) {
+                freq_set[i] = freq_set[0];
             }
-        }
+
+            if (ear_affinity_is_set) {
+                from_proc_to_core(freq_set, lib_shared_region->num_processes, &freq_per_core,
+                        arch_desc.top.cpu_count, &max_cpufreq_sel_khz, &min_cpufreq_sel_khz, process_id);
+            } else {
+                for (i = 0; i < MAX_CPUS_SUPPORTED; i++) {
+                    freq_per_core[i] = freq_set[0];
+                }
+            }
         }
     }
 		#if 0
@@ -1994,25 +2018,25 @@ static state_t policy_master_freq_selection(polctx_t *c, signature_t *my_sig, no
 static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id)
 {
-    #if SINGLE_CONNECTION
+#if SINGLE_CONNECTION
     if (masters_info.my_master_rank < 0 ) {
         return EAR_SUCCESS;
     }
-    #endif
+#endif
 
     if (dom->cpu != POL_NOT_SUPPORTED) {
         policy_cpu_freq_selection(c, my_sig, freqs, dom, avg_freq, process_id);
     }
     if (process_id == ALL_PROCESSES){
-      if (dom->mem != POL_NOT_SUPPORTED) {
-          policy_mem_freq_selection(c, my_sig, freqs, dom, avg_freq);
-      }
-      if (dom->gpu != POL_NOT_SUPPORTED) {
-          policy_gpu_freq_selection(c, my_sig, freqs, dom, avg_freq);
-      }
-      if (dom->gpumem != POL_NOT_SUPPORTED) {
-          policy_gpu_mem_freq_selection(c, my_sig, freqs, dom, avg_freq);
-      }
+        if (dom->mem != POL_NOT_SUPPORTED) {
+            policy_mem_freq_selection(c, my_sig, freqs, dom, avg_freq);
+        }
+        if (dom->gpu != POL_NOT_SUPPORTED) {
+            policy_gpu_freq_selection(c, my_sig, freqs, dom, avg_freq);
+        }
+        if (dom->gpumem != POL_NOT_SUPPORTED) {
+            policy_gpu_mem_freq_selection(c, my_sig, freqs, dom, avg_freq);
+        }
     }
 
     return EAR_SUCCESS;

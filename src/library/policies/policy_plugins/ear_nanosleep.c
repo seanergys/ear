@@ -23,12 +23,11 @@
 #define DEBUG_LVL 0
 #define INFO_LVL  DEBUG_LVL
 
+#define NANOSLEEP 0 // controls whether to use nanosleep vs usleep
+
 static uint policy_loaded;
 static uint optimize_call;
-static ullong total_nsecs_sleeping;
-
-// static node_freqs_t def_freqs;
-
+static ulong sleep_time_ns = 3000000; // 3ms
 
 state_t policy_init(polctx_t *c)
 {
@@ -46,7 +45,12 @@ state_t policy_init(polctx_t *c)
 
                 optimize_call = 1;
 
-                verbose(INFO_LVL, "MPI rank %d will be optimized on MPI blocking calls.", ear_my_rank);
+                char *sleep_time_ns_env = getenv("SLURM_EAR_SLEEP_TIME_NS");
+                if (sleep_time_ns_env) {
+                    sleep_time_ns = (ulong) strtol(sleep_time_ns_env, (char **)NULL, 10);
+                }
+
+                verbose(INFO_LVL, "MPI rank %d will be optimized on MPI blocking calls.\nSleep time (ns): %lu", ear_my_rank, sleep_time_ns);
             } else {
                 verbose(INFO_LVL, "MPI rank %d won't be optimized on MPI blocking calls.", ear_my_rank);
             }
@@ -55,19 +59,6 @@ state_t policy_init(polctx_t *c)
         }
 
         return EAR_SUCCESS;
-
-        /* Configuring default freqs
-        node_freqs_alloc(&def_freqs);
-
-        for (int i = 0; i < c->num_processes; i++) {
-            def_freqs.cpu_freq[i] = *(c->ear_frequency);
-        }
-
-        for (int i = 0; i < c->imc_devs_cnt; sid++) {
-            def_freqs.imc_freq[i*IMC_VAL+IMC_MAX] = imc_min_pstate[sid];
-            def_freqs.imc_freq[i*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
-        }
-        */
 
     } else if (!c) {
         return_msg(EAR_ERROR, Generr.input_null);
@@ -80,33 +71,12 @@ state_t policy_init(polctx_t *c)
 state_t policy_end(polctx_t *c)
 {
     if (c != NULL) {
-        if (optimize_call) {
-            verbose(INFO_LVL, "Total time sleeping (ns): %llu", total_nsecs_sleeping);
-        }
         return mpi_app_end(c);
     } else {
         return_msg(EAR_ERROR, Generr.input_null);
     }
 }
 
-#if 0
-state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
-{
-    if (domain) {
-        domain->cpu    = POL_GRAIN_CORE;
-        domain->mem    = POL_NOT_SUPPORTED;
-
-        domain->gpu    = POL_NOT_SUPPORTED;
-
-        domain->gpumem = POL_NOT_SUPPORTED;
-
-        return EAR_SUCCESS;
-    } else {
-        return_msg(EAR_ERROR, Generr.input_null);
-    }
-
-}
-#endif
 
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
@@ -119,12 +89,13 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
 
             if (optimize_call && is_mpi_blocking(call_type)) {
 
-                // struct timespec mpi_opt_timer = {.tv_nsec = 4000000}; // 4 ms
-                                                                      //
-                total_nsecs_sleeping += 3000000;
+#if NANOSLEEP
+                struct timespec mpi_opt_timer = {.tv_nsec = sleep_time_ns};
 
-                // nanosleep(&mpi_opt_timer, NULL);
-                usleep(3000);
+                nanosleep(&mpi_opt_timer, NULL);
+#else
+                usleep(sleep_time_ns / 1000);
+#endif
             }
 
         } else {
