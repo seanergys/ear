@@ -27,7 +27,7 @@ endif
 
 ######## FILES
 
-comm_OBJS = $(SRCDIR)/common/libcommon.a -lm
+comm_OBJS = $(SRCDIR)/common/libcommon.a 
 
 rapi_OBJS = \
     $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
@@ -40,10 +40,10 @@ rapi_OBJS = \
 all: $(com1_BINS) $(com2_BINS)
 
 eacct: ear_acct.c $(comm_OBJS)
-	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 econtrol: ear_control.c $(rapi_OBJS) $(comm_OBJS)
-	$(CCC) $(SLURM_CFLAGS)  -o $@ $< $(rapi_OBJS) $(comm_OBJS)
+	$(CCC) $(SLURM_CFLAGS)  -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
 
 ear-info: ear-info.c $(comm_OBJS)
 	$(CCC) ${CFLAGS} -o $@ $< $(comm_OBJS)

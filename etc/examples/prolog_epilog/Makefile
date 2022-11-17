@@ -1,6 +1,8 @@
 SRC = /home/xjcorbalan/gitlab/regale/ear/src
-BINARIES = ejob
+CC = icc
+CFLAGS =
 
+BINARIES = ejob 
 
 plug_OBJS = \
         $(SRC)/daemon/remote_api/eard_rapi.o \
@@ -10,7 +12,7 @@ plug_OBJS = \
 all: $(BINARIES)
 
 ejob:ejob.c $(SRC)/daemon/remote_api/eard_rapi.h $(SRC)/daemon/remote_api/eard_rapi.o $(SRC)/common/libcommon.a
-	icc -o ejob ejob.c -I$(SRC) $(plug_OBJS)
+	$(CC) $(CFLAGS) -o ejob ejob.c -I$(SRC) $(plug_OBJS)
 
 clean:
 	rm -rf $(BINARIES)

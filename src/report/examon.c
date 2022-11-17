@@ -160,14 +160,18 @@ state_t report_periodic_metrics(report_id_t *id,periodic_metric_t *metric, uint 
 		sysd_.DC_energy = metric->DC_energy;
 		sysd_.DRAM_energy = metric->DRAM_energy;
 		sysd_.PCK_energy = metric->PCK_energy;
+#if USE_GPUS
 		sysd_.GPU_energy = metric->GPU_energy;
+#endif
 		sysd_.node_id = metric->node_id;
 
 	
 		sysd_.avg_DC_power = sysd_.DC_energy / (sysd_.end_time - sysd_.start_time);
 		sysd_.avg_DRAM_power = sysd_.DRAM_energy / (sysd_.end_time - sysd_.start_time);
 		sysd_.avg_PCK_power = sysd_.PCK_energy / (sysd_.end_time - sysd_.start_time);
+#if USE_GPUS
 		sysd_.avg_GPU_power = sysd_.GPU_energy / (sysd_.end_time - sysd_.start_time);
+#endif
 		sprintf(sysd_.tmpstr, "%.3ld", (sysd_.start_time + sysd_.end_time) / 2);
 		
 		if (sysd_.job_id > 0){
@@ -182,7 +186,9 @@ state_t report_periodic_metrics(report_id_t *id,periodic_metric_t *metric, uint 
 		PUB_METRIC("AVG_DC_POWER_W", sysd_.avg_DC_power, "%lu;%s");
 		PUB_METRIC("AVG_DRAM_POWER_W", sysd_.avg_DRAM_power, "%lu;%s");
 		PUB_METRIC("AVG_PCK_POWER_W", sysd_.avg_PCK_power, "%lu;%s");
+#if USE_GPUS
 		PUB_METRIC("AVG_GPU_POWER_W", sysd_.avg_GPU_power, "%lu;%s");
+#endif
 		
 		
 		debug("publishing");
