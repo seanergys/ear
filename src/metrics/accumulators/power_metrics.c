@@ -362,7 +362,10 @@ void print_energy_data(energy_data_t *e)
 
 void print_power(power_data_t *my_power,uint show_date,int out)
 {
-	double dram_power = 0, pack_power = 0, gpu_power = 0;
+	double dram_power = 0, pack_power = 0;
+  #if USE_GPUS
+  double gpu_power = 0;
+  #endif
 	struct tm *current_t;
 	char s[64];
 	int fd;
@@ -402,10 +405,14 @@ void print_power(power_data_t *my_power,uint show_date,int out)
 
 void report_periodic_power(int fd, power_data_t *my_power)
 {
-	char s[64], spdram[256], spcpu[256], s1dram[64], s1cpu[64], spgpu[256], s1gpu[64];
-	double dram_power = 0, pack_power = 0, gpu_power = 0;
+	char s[64], spdram[256], spcpu[256], s1dram[64], s1cpu[64];
+	double dram_power = 0, pack_power = 0;
 	struct tm *current_t;
 	int p;
+  #if USE_GPUS
+  char spgpu[256], s1gpu[64];
+  double gpu_power = 0;
+  #endif
 
 	dram_power = accum_dram_power(my_power);
 	pack_power = accum_cpu_power(my_power);
