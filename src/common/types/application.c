@@ -182,50 +182,6 @@ int append_application_text_file(char *path, application_t *app, char is_extende
 {
     //lacking: NODENAME(node_id in loop_t), not linked to any loop
     int fd;
-    #if 0
-    char HEADER[1024] = "NODE_ID;JOB_ID;STEP_ID;USER_ID;GROUP_ID;APP_ID;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
-                        "AVG.CPUFREQ;AVG.IMCFREQ;DEF.FREQ;TIME;CPI;TPI;GBS;IO_MBS;P.MPI;DC-NODE-POWER;DRAM-POWER;"\
-                        "PCK-POWER;CYCLES;INSTRUCTIONS;GFLOPS";
-    if (is_extended) {
-        char *ext_header = ";L1_MISSES;L2_MISSES;L3_MISSES;SP_SINGLE;SP_128;SP_256;SP_512;DP_SINGLE;"\
-                           "DP_128;DP_256;DP_512";
-        xstrncat(HEADER, ext_header, strlen(ext_header));
-    }
-
-#if USE_GPUS
-    int num_gpus = app->signature.gpu_sig.num_gpus;
-    for (int i = 0; i < num_gpus; i++){
-        char gpu_hdr[128];
-        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER;GPU%d_FREQ;GPU%d_MEM_FREQ;GPU%d_UTIL;GPU%d_MEM_UTIL",
-                i+1, i+1, i+1, i+1, i+1);
-        xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
-    }
-#endif
-
-
-    if (path == NULL) {
-        return EAR_ERROR;
-    }
-
-    fd = open(path, O_WRONLY | O_APPEND);
-
-    if (fd < 0)
-    {
-        if (errno == ENOENT)
-        {
-            fd = open(path, OPTIONS, PERMISSION);
-
-            // Write header
-            if (fd >= 0) {
-                ret = dprintf(fd, "%s\n", HEADER);
-            }
-        }
-    }
-
-    if (fd < 0) {
-        return EAR_ERROR;
-    }
-		#endif
 		uint num_gpus = 0;
 #if USE_GPUS
 		num_gpus = app->signature.gpu_sig.num_gpus;

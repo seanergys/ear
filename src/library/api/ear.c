@@ -969,6 +969,7 @@ void ear_init()
 				state_t st;
 				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
+	topology_t earl_topo;
 
 				uint fake_eard_error = 0;
 				char *cfake_eard_error        = getenv(FAKE_EARD_ERROR);
@@ -981,6 +982,10 @@ void ear_init()
         timestamp start_eard_init, end_eard_init;
         timestamp_getfast(&start_eard_init);
         #endif
+	topology_init(&earl_topo);
+	#if EARL_LIGHT
+	topology_print(&earl_topo, 1);
+	#endif
 
         main_pid = syscall(SYS_gettid);
 

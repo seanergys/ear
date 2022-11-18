@@ -15,6 +15,9 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
+#include <common/output/debug.h>
 #include <common/hardware/cpuid.h>
 
 void cpuid_native(uint *eax, uint *ebx, uint *ecx, uint *edx)
@@ -38,9 +41,13 @@ uint cpuid_getbits(uint reg, int left_bit, int right_bit)
 
 uint cpuid_isleaf(uint leaf)
 {
+    uint aux = 0x80000000;
 	cpuid_regs_t r;
 
-	CPUID(r,0,0);
+    if (leaf < aux) {
+        aux = 0;
+    }
+	CPUID(r,aux,0);
 	// If max leafs are less
 	if (r.eax < leaf) {
 		return 0;

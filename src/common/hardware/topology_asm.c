@@ -15,6 +15,9 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
+#include <common/output/debug.h>
 #include <common/hardware/cpuid.h>
 #include <common/hardware/defines.h>
 #include <common/hardware/topology_asm.h>
@@ -105,11 +108,47 @@ static void topology_getid_arm64(topology_t *topo)
     topo->cache_line_size = 64; // 64 bytes
 }
 
-void topology_getid(topology_t *topo)
+void topology_asm_getid(topology_t *topo)
 {
     #if __ARCH_ARM
     return topology_getid_arm64(topo);
     #else
     return topology_getid_x86(topo);
+    #endif
+}
+
+static void topology_getbrand_x86(topology_t *topo)
+{
+    cpuid_regs_t r2, r3, r4;
+    uint brand[12];
+        
+    strcpy(topo->brand, "UNKNOWN");
+    if (!cpuid_isleaf(0x80000004)) {
+        return;
+    }
+    CPUID(r2,0x80000002,0);
+    CPUID(r3,0x80000003,0);
+    CPUID(r4,0x80000004,0);
+    brand[ 0] = r2.eax;
+    brand[ 1] = r2.ebx;
+    brand[ 2] = r2.ecx;
+    brand[ 3] = r2.edx;
+    brand[ 4] = r3.eax;
+    brand[ 5] = r3.ebx;
+    brand[ 6] = r3.ecx;
+    brand[ 7] = r3.edx;
+    brand[ 8] = r4.eax;
+    brand[ 9] = r4.ebx;
+    brand[10] = r4.ecx;
+    brand[11] = r4.edx;
+
+    strcpy(topo->brand, (char *) brand);	
+    debug("Brand: %s", topo->brand);
+}
+
+void topology_asm_getbrand(topology_t *topo)
+{
+    #if __ARCH_X86
+    topology_getbrand_x86(topo);
     #endif
 }

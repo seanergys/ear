@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <stdlib.h>
 #include <common/plugins.h>
 #include <common/system/lock.h>
@@ -23,6 +23,7 @@
 #include <metrics/energy_cpu/archs/msr.h>
 #include <metrics/energy_cpu/archs/eard.h>
 #include <metrics/energy_cpu/archs/dummy.h>
+#include <metrics/energy_cpu/archs/cpu_util.h>
 #include <metrics/energy_cpu/energy_cpu.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -69,7 +70,16 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ops.count_devices = energy_cpu_eard_count_devices;
 		api = API_EARD;
 		debug("selected eard energy_cpu (api %u)", api);
-	} else if (state_ok(energy_cpu_dummy_load(tp))) {
+	} 
+	else if (state_ok(energy_cpu_util_load(tp))) {
+		ops.init          = energy_cpu_util_init;
+		ops.dispose       = energy_cpu_util_dispose;
+		ops.read          = energy_cpu_util_read;
+		ops.count_devices = energy_cpu_util_count_devices;
+		api = API_CPUMODEL;
+		debug("selected dummy energy_cpu (api %u)", api);
+	} 
+	else if (state_ok(energy_cpu_dummy_load(tp))) {
 		ops.init          = energy_cpu_dummy_init;
 		ops.dispose       = energy_cpu_dummy_dispose;
 		ops.read          = energy_cpu_dummy_read;

@@ -903,6 +903,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     state_t st = EAR_ERROR;
 
+    verbose_master(POLICY_PHASES, "EAR policy....");
+
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
 #if MPI_OPTIMIZED
@@ -918,6 +920,11 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     }
 #endif
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
+	#if EARL_LIGHT
+	if (masters_info.my_master_rank >= 0) {
+		clean_signatures(lib_shared_region, sig_shared_region);
+	}
+	#endif
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
     }

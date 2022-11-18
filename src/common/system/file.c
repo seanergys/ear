@@ -17,6 +17,9 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,7 +97,9 @@ int file_is_regular(const char *path)
 
 int file_is_directory(const char *path)
 {
-	return 0;
+	struct stat buff;
+	if (stat(path, &buff) < 0 ) return 0;
+	return S_ISDIR(buff.st_mode);
 }
 
 ssize_t ear_file_size(char *path)
