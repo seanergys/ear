@@ -53,6 +53,7 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_ONEAPI  ) { snprintf(buffer, size, "ONEAPI"  ); }
     else if (api == API_ISST    ) { snprintf(buffer, size, "INTELSST"); }
     else if (api == API_FAKE    ) { snprintf(buffer, size, "FAKE"    ); }
+    else if (api == API_RSMI    ) { snprintf(buffer, size, "RSMI"    ); }
 }
 
 void granularity_print(uint granularity, char *prefix)
@@ -74,6 +75,5 @@ void granularity_tostr(uint granularity, char *buffer, size_t size)
     else if (granularity == GRANULARITY_L3_SLICE) { snprintf(buffer, size, "l3 slice"); }
     else if (granularity == GRANULARITY_IMC     ) { snprintf(buffer, size, "imc"     ); }
     else if (granularity == GRANULARITY_SOCKET  ) { snprintf(buffer, size, "socket"  ); }
-    else if (granularity == GRANULARITY_NODE    ) { snprintf(buffer, size, "node"    ); }
     else if (granularity == GRANULARITY_NODE    ) { snprintf(buffer, size, "node"    ); }
 }

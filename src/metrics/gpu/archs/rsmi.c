@@ -17,6 +17,8 @@
 
 #define SHOW_DEBUGS 1
 
+#include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <metrics/common/rsmi.h>
@@ -36,9 +38,14 @@ void gpu_rsmi_load(gpu_ops_t *ops, int eard)
     // If EARD is not demanded but RSMI is unprivileged
     // means that this function is called by the library.
     ok_pool = (eard == 0) && (rsmi_is_privileged() == 1);
+    ok_pool = 1;
     debug("Pooling %d", ok_pool);
     if (state_fail(rsmi_open(&rsmi))) {
         debug("rsmi_open failed: %s", state_msg);
+        return;
+    }
+    if (rsmi_fail(rsmi.devs_count(&devs_count))) {
+        debug("rsmi.devs_count failed");
         return;
     }
     apis_set(ops->get_api,       gpu_rsmi_get_api);
@@ -65,6 +72,7 @@ state_t gpu_rsmi_init(ctx_t *c)
     if (init) {
         return s;
     }
+    debug("Initialized");
     init = 1;
     // Allocation
     pool = calloc(devs_count, sizeof(gpu_t));
@@ -131,14 +139,39 @@ state_t gpu_rsmi_count_devices(ctx_t *c, uint *devs_count_in)
     return EAR_SUCCESS;
 }
 
+static int is_working(int i)
+{
+    rsmi_process_info_t processes[32];
+    uint                processes_count = 32;
+    uint                devices[32];
+    uint                devices_count = 32;
+    int                 p, d;
+
+    // Getting the list of total processes
+    rsmi.get_procs(processes, &processes_count);
+    // Iterating over processes
+    for (p = 0; p < processes_count; ++p) {
+        // Getting list of devices used by the process p
+        rsmi.get_procs_devs(processes[p].process_id, devices, &devices_count);
+        // Iterating over devices
+        for (d = 0; d < devices_count; ++d) {
+            if (devices[d] == i) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 static int static_read(int i, gpu_t *metric)
 {
     rsmi_freqs_t gpu_hz;
     rsmi_freqs_t mem_hz;
     ullong power_uw = 0;
     ullong temp_mc = 0;
+    uint gpu_util;
+    uint mem_util;
     rsmi_status_t s;
-    int d;
 
     // Cleaning
     memset(metric, 0, sizeof(gpu_t));
@@ -147,27 +180,32 @@ static int static_read(int i, gpu_t *metric)
     s = rsmi.get_temperature(i, RSMI_TEMP_TYPE_EDGE, RSMI_TEMP_CURRENT, &temp_mc);
     s = rsmi.get_clock(i, RSMI_CLK_TYPE_SYS, &gpu_hz);
     s = rsmi.get_clock(i, RSMI_CLK_TYPE_MEM, &mem_hz);
-    #if SHOW_DEBUGS
-    debug("D%d GPU temp  : %llu mC", temp_mc)
-    debug("D%d GPU power : %llu uW", power_uw)
-    debug("D%d GPU clocks: %d supported, %d current", i, f, gpu_hz.num_supported, gpu_hz.current);
-    debug("D%d MEM clocks: %d supported, %d current", i, f, mem_hz.num_supported, mem_hz.current);
-    for (f = 0; f < gpu_hz.num_supported; ++f) debug("D%d GPU F%d: %llu", i, f, gpu_hz.frequency[f]);
-    for (f = 0; f < mem_hz.num_supported; ++f) debug("D%d MEM F%d: %llu", i, f, mem_hz.frequency[f]);
+    s = rsmi.get_busy_gpu(i, &gpu_util);
+    s = rsmi.get_busy_mem(i, &mem_util);
+    #if 0
+    int f;
+    debug("D%d GPU temp  : %llu mC", i, temp_mc)
+    debug("D%d GPU power : %llu uW", i, power_uw)
+    debug("D%d GPU clocks: %d supported, %d current", i, gpu_hz.num_supported, gpu_hz.current);
+    debug("D%d MEM clocks: %d supported, %d current", i, mem_hz.num_supported, mem_hz.current);
+    for (f = 0; f < gpu_hz.num_supported; ++f) debug("D%d GPU F%d: %lu", i, f, gpu_hz.frequency[f]);
+    for (f = 0; f < mem_hz.num_supported; ++f) debug("D%d MEM F%d: %lu", i, f, mem_hz.frequency[f]);
     #endif
     // Pooling the data (time is not set here)
     metric->samples  = 1;
     metric->freq_mem = ((ulong) mem_hz.frequency[mem_hz.current]) / 1000LU;
     metric->freq_gpu = ((ulong) gpu_hz.frequency[gpu_hz.current]) / 1000LU;
-    metric->util_mem = 0;
-    metric->util_gpu = 0;
+    metric->util_mem = (ulong) mem_util;
+    metric->util_gpu = (ulong) gpu_util;
     metric->temp_gpu = (ulong) temp_mc / 1000LU;
     metric->temp_mem = 0;
     metric->power_w  = ((double) power_uw) / 1000000.0;
     metric->energy_j = 0;
-    metric->working  = proc_count > 0;
+    metric->working  = is_working(i);
     // In the future we have to check if there is any error in any returned status.
     metric->correct  = 1;
+    //
+    unused(s);
 
     return 1;
 }
@@ -219,7 +257,7 @@ state_t gpu_rsmi_pool(void *p)
 state_t gpu_rsmi_read(ctx_t *c, gpu_t *data)
 {
     // Updating pool
-    gpu_nvml_pool(NULL);
+    gpu_rsmi_pool(NULL);
     while (pthread_mutex_trylock(&lock));
     memcpy(data, pool, devs_count * sizeof(gpu_t));
     pthread_mutex_unlock(&lock);

@@ -31,7 +31,7 @@
 #define RSMI_PATH RSMI_BASE
 #endif
 #define RSMI_LIB  "librocm_smi64.so"
-#define RSMI_N    17
+#define RSMI_N    21
 
 #define ccv(f) \
     if (f != RSMI_STATUS_SUCCESS) { \
@@ -45,9 +45,13 @@ static const char *rsmi_names[] = {
     "rsmi_dev_serial_number_get",
     "rsmi_dev_energy_count_get",
     "rsmi_dev_power_ave_get",
-    "rsmi_dev_power_cap_set"
+    "rsmi_dev_power_cap_get",
+    "rsmi_dev_power_cap_default_get",
+    "rsmi_dev_clk_range_set",
+    "rsmi_dev_power_cap_set",
     "rsmi_dev_temp_metric_get",
     "rsmi_dev_gpu_clk_freq_get",
+    "rsmi_dev_od_clk_info_set",
     "rsmi_dev_clk_range_set",
     "rsmi_utilization_count_get",
     "rsmi_dev_busy_percent_get",
@@ -123,6 +127,9 @@ static void library_destroy()
 
 state_t rsmi_open(rsmi_t *rsmi_in)
 {
+    #ifndef RSMI_BASE
+    return EAR_ERROR;
+    #endif
     state_t s = EAR_SUCCESS;
     while (pthread_mutex_trylock(&lock));
     if (ok) {
@@ -140,7 +147,7 @@ state_t rsmi_open(rsmi_t *rsmi_in)
     if (ok && rsmi_in != NULL) {
         memcpy(rsmi_in, &rsmi, sizeof(rsmi_t));
     }
-    #if 1
+    #if 0
     rsmi_util_t util[1024];
     rsmi_freqs_t freqs;
     ullong ullong1;
@@ -181,8 +188,10 @@ int rsmi_is_privileged()
     return (getuid() == 0);
 }
 
+#if 0
 int main(int argc, char *argv[])
 {
     rsmi_open(NULL);
     return 0;
 }
+#endif
