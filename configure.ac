@@ -9,10 +9,11 @@ m4_include([m4/ac_oneapi.m4])
 m4_include([m4/ac_pgsql.m4])
 m4_include([m4/ac_mysql.m4])
 m4_include([m4/ac_slurm.m4])
-m4_include([m4/ac_cuda.m4])
 m4_include([m4/ac_cupti.m4])
+m4_include([m4/ac_cuda.m4])
+m4_include([m4/ac_rsmi.m4])
 m4_include([m4/ac_pbs.m4])
-m4_include([m4/x_ac_oar.m4])
+m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
 
 # INIT
@@ -40,12 +41,13 @@ AX_BEFORE_FEATURES
 
 X_AC_CUDA
 X_AC_CUPTI
+X_AC_RSMI
+X_AC_ONEAPI
+X_AC_LIKWID
 X_AC_FREEIPMI
 X_AC_GSL
-X_AC_LIKWID
 X_AC_PGSQL
 X_AC_MYSQL
-X_AC_ONEAPI
 X_AC_SLURM
 X_AC_OAR
 X_AC_PBS
