@@ -350,7 +350,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
         sig_id = mysql_batch_insert_signatures(connection, cont, is_learning, num_apps);
 
         if (sig_id < 0)
-            verbose(VMYSQL,"Unknown error when writing signature to database. (%d)\n",sig_id);
+            verbose(VMYSQL,"Unknown error when writing signature to database. (%lld)\n",sig_id);
 
         for (i = 0; i < num_apps; i++)
             sigs_ids[i] = sig_id + i*autoincrement_offset;
@@ -720,9 +720,9 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
         if (is_mpi)
         {
             if (is_learning)
-                sprintf(sig_query, "SELECT * FROM Learning_signatures WHERE id=%ld", sig_id);
+                sprintf(sig_query, "SELECT * FROM Learning_signatures WHERE id=%lld", sig_id);
             else
-                sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%ld", sig_id);
+                sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
             int num_sigs = mysql_retrieve_signatures(connection, sig_query, &sig_aux);
             if (num_sigs > 0) {
                 signature_copy(&app_aux->signature, sig_aux);
@@ -938,7 +938,7 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     status = mysql_stmt_fetch(statement);
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
-        sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lu", sig_id);
+        sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
         mysql_retrieve_signatures(connection, sig_query, &sig_aux);
 
         if (sig_aux != NULL) { //to prevent it from crashing
