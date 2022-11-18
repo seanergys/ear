@@ -22,6 +22,7 @@
 #include <termios.h>
 #include <mysql/mysql.h>
 #include <common/config.h>
+#include <common/types/version.h>
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -69,14 +70,6 @@ int query_filters = 0;
 
 #define CLEANUP_JOBS "DELETE Jobs from Jobs "
 
-
-void print_version()
-{
-	char msg[256];
-	sprintf(msg, "EAR version %s\n", RELEASE);
-	printf(msg);
-	exit(0);
-}
 
 void usage(char *app)
 {

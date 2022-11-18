@@ -315,8 +315,8 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
     //job only needs to be inserted once
     mysql_batch_insert_jobs(connection, app, num_apps);
     
-    int pow_sig_id = 0;
-    int sig_id = 0;
+    long long pow_sig_id = 0;
+    long long sig_id = 0;
     long long *pow_sigs_ids = xcalloc(num_apps, sizeof(long long));
     long long *sigs_ids = xcalloc(num_apps, sizeof(long long));
     
@@ -350,7 +350,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
         sig_id = mysql_batch_insert_signatures(connection, cont, is_learning, num_apps);
 
         if (sig_id < 0)
-            verbose(VMYSQL,"Unknown error when writing signature to database. (%d)\n",sig_id);
+            verbose(VMYSQL,"Unknown error when writing signature to database. (%lld)\n",sig_id);
 
         for (i = 0; i < num_apps; i++)
             sigs_ids[i] = sig_id + i*autoincrement_offset;
@@ -570,7 +570,7 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
 
     //job only needs to be inserted once
     mysql_batch_insert_jobs(connection, app, num_apps);
-    int pow_sig_id = 0;
+    long long pow_sig_id = 0;
     long long *pow_sigs_ids = xcalloc(num_apps, sizeof(long long));
 
     //inserting all powersignatures (always present)
@@ -638,7 +638,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     if (mysql_stmt_prepare(statement, query, strlen(query))) return mysql_statement_error(statement);
     MYSQL_BIND bind[5];
     unsigned long job_id, step_id, pow_sig_id;
-    long sig_id = 0; 
+    long long sig_id = 0; 
     int num_apps;
     memset(bind, 0, sizeof(bind));
 
@@ -720,9 +720,9 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
         if (is_mpi)
         {
             if (is_learning)
-                sprintf(sig_query, "SELECT * FROM Learning_signatures WHERE id=%ld", sig_id);
+                sprintf(sig_query, "SELECT * FROM Learning_signatures WHERE id=%lld", sig_id);
             else
-                sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%ld", sig_id);
+                sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
             int num_sigs = mysql_retrieve_signatures(connection, sig_query, &sig_aux);
             if (num_sigs > 0) {
                 signature_copy(&app_aux->signature, sig_aux);
@@ -802,7 +802,7 @@ int mysql_batch_insert_loops(MYSQL *connection, loop_t *loop, int num_loops)
     signature_container_t cont;
     cont.type = EAR_TYPE_LOOP;
     cont.loop = loop;
-    int sig_id = mysql_batch_insert_signatures(connection, cont, 0, num_loops);
+    long long sig_id = mysql_batch_insert_signatures(connection, cont, 0, num_loops);
 
     if (sig_id < 0){
         verbose(VMYSQL,"Error inserting N=%d loops signatures\n",num_loops);
@@ -877,7 +877,7 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     }
 
     MYSQL_BIND bind[8];
-    unsigned long sig_id;
+    long long sig_id;
     memset(bind, 0, sizeof(bind));
 
 
@@ -938,7 +938,7 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     status = mysql_stmt_fetch(statement);
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
-        sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lu", sig_id);
+        sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
         mysql_retrieve_signatures(connection, sig_query, &sig_aux);
 
         if (sig_aux != NULL) { //to prevent it from crashing

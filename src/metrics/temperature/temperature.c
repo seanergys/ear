@@ -103,7 +103,6 @@ state_t temp_read(ctx_t *c, llong *temp, llong *average)
 // Data
 state_t temp_data_alloc(llong **temp)
 {
-	state_t s;
 	if ((*temp = (llong *) calloc(devs_count, sizeof(llong))) == NULL) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
@@ -112,7 +111,6 @@ state_t temp_data_alloc(llong **temp)
 
 state_t temp_data_copy(llong *temp2, llong *temp1)
 {
-	state_t s;
 	if (memcpy((void *) temp2, (const void *) temp1, sizeof(llong)*devs_count) != temp2) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
