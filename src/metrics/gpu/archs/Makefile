@@ -7,7 +7,8 @@ gpu_OBJS = \
     dummy.o \
     eard.o \
     nvml.o \
-    oneapi.o
+    oneapi.o \
+    rsmi.o
 
 ######## RULES
 
@@ -21,6 +22,9 @@ cupti.o: cupti.c cupti.h
 
 oneapi.o: oneapi.c oneapi.h
 	$(CC) $(CFLAGS) $(ONEAPI_CFLAGS) -c $<
+
+rsmi.o: rsmi.c rsmi.h
+	$(CC) $(CFLAGS) $(RSMI_CFLAGS) -c $<
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<

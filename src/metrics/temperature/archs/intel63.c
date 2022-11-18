@@ -104,8 +104,6 @@ state_t temp_intel63_dispose(ctx_t *c)
 // Data
 state_t temp_intel63_count_devices(ctx_t *c, uint *count)
 {
-	state_t s;
-	
     if (count != NULL) {
 		*count = tp.cpu_count;
 	}

@@ -71,10 +71,10 @@ static int dynais_intel_switch(int model)
 		case MODEL_BROADWELL_X:
 		case MODEL_SKYLAKE_X:
 		case MODEL_ICELAKE_X:
-			return DYNAIS_TYPE_AVX512;
+			return 512;
 	}
 	#endif
-	return DYNAIS_TYPE_AVX2;
+	return 2;
 }
 
 dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
@@ -83,18 +83,18 @@ dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 		type = dynais_intel_switch(tp->model);
 	} else {
 		#if __ARCH_X8664
-		type = DYNAIS_TYPE_AVX2;
+		type = 2;
 		#else
-		type = DYNAIS_TYPE_DUMMY;
+		type = 1;
 		#endif
 	}
-	if (type == DYNAIS_TYPE_AVX512) {
+	if (type == 512) {
 		debug("selected DynAIS for AVX-512");
 		#ifdef FEAT_AVX512
 		return avx512_dynais_init((ushort) window, (ushort) levels);
 		#endif
 	}
-	if (type == DYNAIS_TYPE_AVX2) {
+	if (type == 2) {
 		debug("selected DynAIS for AVX-2");
 		return avx2_dynais_init(window, levels);
 	}
@@ -104,11 +104,11 @@ dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 
 void dynais_dispose()
 {
-	if (type == DYNAIS_TYPE_AVX512) {
+	if (type == 512) {
 		#ifdef FEAT_AVX512
 		avx512_dynais_dispose();
 		#endif
-	} else if (type == DYNAIS_TYPE_AVX2) {
+	} else if (type == 2) {
 		#if __ARCH_X8664
 		avx2_dynais_dispose();
 		#endif

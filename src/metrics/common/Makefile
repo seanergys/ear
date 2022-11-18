@@ -15,7 +15,8 @@ comm_OBJS = \
     omsr.o \
     oneapi.o \
     pci.o \
-    perf.o
+    perf.o \
+    rsmi.o
 
 ######## RULES
 

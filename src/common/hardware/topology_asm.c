@@ -101,7 +101,7 @@ static void topology_getid_x86(topology_t *topo)
     }
 }
 
-static void topology_getid_arm64(topology_t *topo)
+__attribute__ ((unused)) static void topology_getid_arm64(topology_t *topo)
 {
     topo->vendor          = VENDOR_ARM;
     topo->model           = MODEL_A8;

@@ -28,6 +28,7 @@ root_OBJS = \
     $(SRCDIR)/management/gpu/archs/dummy.o \
     $(SRCDIR)/management/gpu/archs/nvml.o \
     $(SRCDIR)/management/gpu/archs/oneapi.o \
+    $(SRCDIR)/management/gpu/archs/rsmi.o \
     $(SRCDIR)/management/test.o
 
 ######## RULES
