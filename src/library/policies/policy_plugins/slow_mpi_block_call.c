@@ -34,11 +34,15 @@ static uint resume_cpufreq;
 static ulong resume_cpufreq_khz;
 static ullong mpi_freq_khz;
 
+static node_freqs_t def_freqs;
+
 state_t policy_init(polctx_t *c)
 {
     const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
 
     if (c != NULL && !policy_loaded && mgt_cpufreq->ok) {
+
+        node_freqs_alloc(&def_freqs);
 
         if (is_mpi_enabled()) {
 

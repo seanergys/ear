@@ -681,14 +681,14 @@ state_t policy_init()
     policy_get_default_freq(&nf);
 
     if (masters_info.my_master_rank >= 0) {
-      for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
+      for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) {
         sig_shared_region[lp].unbalanced = 0;
         sig_shared_region[lp].new_freq = nf.cpu_freq[0];
       }
     }
 
-    /* What do we need at this point in  the signature ? */
-    policy_master_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain,&avg_nf, ALL_PROCESSES);
+    /* What do we need at this point in the signature ? */
+    policy_master_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain, &avg_nf, ALL_PROCESSES);
 
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
@@ -1160,10 +1160,9 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
 
     if (polsyms_fun.get_default_freq != NULL) {
         return polsyms_fun.get_default_freq(&my_pol_ctx, freq_set, NULL);
-    } else {
-        verbose(POLICY_INFO + 1, "%sWARNING%s The policy plug-in has no symbol for getting the default frequency.",
-                COL_RED, COL_CLR);
     }
+    verbose(POLICY_INFO + 1, "%sWARNING%s The policy plug-in has no symbol for getting the default frequency.",
+            COL_RED, COL_CLR);
 
     freq_set->cpu_freq[0] = DEF_FREQ(my_pol_ctx.app->def_freq);
 
@@ -1644,7 +1643,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         first_print = 0;
     }
 
-    if (proc_id == ALL_PROCESSES){ 
+    if (proc_id == ALL_PROCESSES){
       verbose_master(verb_lvl, "Mapping frequencies from %d processes to %d CPUs...", process_cnt, cpu_cnt);
     }
 

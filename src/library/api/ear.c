@@ -1044,10 +1044,11 @@ void ear_init()
 				}
 
 
-				if (ext_def_freq_str!=NULL){
-								ext_def_freq=(unsigned long)atol(ext_def_freq_str);
-								verbose_master(VEAR_INIT,"Using externally defined default freq %lu",ext_def_freq);
-				}
+                // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
+                if (ext_def_freq_str) {
+                    ext_def_freq = (ulong) atol(ext_def_freq_str);
+                    verbose_master(VEAR_INIT, "%sWARNING%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
+                }
 
 
 				verb_level = get_ear_verbose();
