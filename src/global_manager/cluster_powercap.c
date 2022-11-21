@@ -327,6 +327,7 @@ void cluster_only_powercap()
          * For homogeneous clusters we can simply divide the current power between the number of active nodes. */
         if (max_num_nodes > 0) {
             //if (risk == 0) cluster_set_powerlimit_all_nodes(current_cluster_powercap/max_num_nodes, &my_cluster_conf); 
+            //if (risk == 0) ear_set_powerlimit(&my_cluster_conf, current_cluster_powercap/max_num_nodes, nodes, num_eargm_nodes);; 
             if (risk == 0) ear_set_powerlimit(&my_cluster_conf, UINT_MAX, nodes, num_eargm_nodes); 
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %u", current_cluster_powercap/max_num_nodes);
 						eargm_report_event(NODE_POWERCAP, (ulong)current_cluster_powercap/max_num_nodes);
