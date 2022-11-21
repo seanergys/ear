@@ -377,7 +377,6 @@ state_t policy_io_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *f
 }
 
 
-
 /* This function sets again default frequencies after a setting modification */
 state_t policy_restore_comp_configuration(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq)
@@ -390,6 +389,8 @@ state_t policy_restore_comp_configuration(polctx_t *c, signature_t *my_sig, node
         return EAR_SUCCESS;
     }
 }
+
+
 state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs,node_freq_domain_t *dom,node_freqs_t *avg_freq)
 {
     REPORT_PHASE(APP_BUSY_WAITING);    
@@ -1161,10 +1162,18 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
     if (polsyms_fun.get_default_freq != NULL) {
         return polsyms_fun.get_default_freq(&my_pol_ctx, freq_set, NULL);
     }
-    verbose(POLICY_INFO + 1, "%sWARNING%s The policy plug-in has no symbol for getting the default frequency.",
-            COL_RED, COL_CLR);
 
-    freq_set->cpu_freq[0] = DEF_FREQ(my_pol_ctx.app->def_freq);
+    verbose(POLICY_INFO + 1, "%sWARNING%s The policy plug-in has no symbol for getting the default frequency. Default frequency is %lu",
+            COL_RED, COL_CLR, DEF_FREQ(my_pol_ctx.app->def_freq));
+
+    // Below code overwrites the approach where only the index 0 of the destination array was filled.
+    // A conflict appeared for a plug-in with fine-grain cpu domain but not get_default_freq implementation.
+
+    // TODO: As the logic of this function is always the same,
+    // it would be preferably if we avoid iterating all times we enter into this function.
+    for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
+        freq_set->cpu_freq[i] = DEF_FREQ(my_pol_ctx.app->def_freq);
+    }
 
     return EAR_SUCCESS;
 }
@@ -1870,7 +1879,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
        #endif
         
 
-        if (do_change){ 
+        if (do_change){
           frequency_set_with_list(0, freq_per_core); // Setting the selected CPU frequency
         }
 				#if 0

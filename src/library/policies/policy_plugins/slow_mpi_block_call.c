@@ -17,6 +17,8 @@
 
 #include <library/policies/policy_ctx.h>
 #include <library/policies/common/mpi_stats_support.h>
+#include <library/policies/common/imc_policy_support.h>
+#include <library/policies/common/cpu_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/metrics/metrics.h>
@@ -36,13 +38,27 @@ static ullong mpi_freq_khz;
 
 static node_freqs_t def_freqs;
 
+extern uint *imc_max_pstate;
+extern uint *imc_min_pstate;
+extern uint imc_devices;
+
 state_t policy_init(polctx_t *c)
 {
     const metrics_t *mgt_cpufreq = metrics_get(MGT_CPUFREQ);
 
     if (c != NULL && !policy_loaded && mgt_cpufreq->ok) {
 
+        /* Configuring default freqs */
         node_freqs_alloc(&def_freqs);
+
+        for (int i = 0; i < lib_shared_region->num_processes; i++) {
+            def_freqs.cpu_freq[i] = *(c->ear_frequency);
+        }
+
+        for (int i = 0; i < imc_devices; i++) {
+            def_freqs.imc_freq[i*IMC_VAL+IMC_MAX] = imc_min_pstate[i];
+            def_freqs.imc_freq[i*IMC_VAL+IMC_MIN] = imc_max_pstate[i];
+        }
 
         if (is_mpi_enabled()) {
 
@@ -50,7 +66,9 @@ state_t policy_init(polctx_t *c)
 
             uint block_type;
             is_blocking_busy_waiting(&block_type);
-            verbose_master(INFO_LVL, "Busy waiting MPI: %u", block_type == BUSY_WAITING_BLOCK);
+
+            verbose_master(INFO_LVL, "Busy waiting MPI: %u",
+                           block_type == BUSY_WAITING_BLOCK);
 
             if (ear_my_rank % 4) {
 
@@ -177,6 +195,17 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
         domain->gpu    = POL_NOT_SUPPORTED;
         domain->gpumem = POL_NOT_SUPPORTED;
 
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
+}
+
+state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t *s)
+{
+    if (freq_set) {
+        node_freqs_copy(freq_set, &def_freqs);
     } else {
         return_msg(EAR_ERROR, Generr.input_null);
     }
