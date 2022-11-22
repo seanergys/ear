@@ -118,7 +118,7 @@ int mysql_insert_signature(MYSQL *connection, signature_t *sig, char is_learning
 /** Given a MYSQL connection and an array of applications, inserts said application's
 *   signatures into the database. Returns the first signature's database id on 
 *   success, and either EAR_MYSQL_ERROR or EAR_MYSQL_STMT_ERROR on error.*/
-int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont, char is_learning, int num_sigs);
+long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont, char is_learning, int num_sigs);
 
 /** Given a MYSQL connection and a valid MYSQL query, stores in sigs the 
 *   signatures found in the database corresponding to the query. Returns the 
@@ -181,7 +181,7 @@ int mysql_batch_insert_avg_signatures(MYSQL *connection, application_t *app, int
 /** Given a MYSQL connection and an array of applications or loops, inserts said application's
 *   signatures into the database. Returns the first signature's database id on 
 *   success, and either EAR_MYSQL_ERROR or EAR_MYSQL_STMT_ERROR on error.*/
-int mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_container_t cont, int num_sigs);
+long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_container_t cont, int num_sigs);
 
 /** Given a MYSQL connection and a query, retrieves the gpu signatures corresponding to that query */
 int mysql_retrieve_gpu_signatures(MYSQL *connection, char *query, gpu_signature_t *gpu_sig);
