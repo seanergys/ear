@@ -502,7 +502,7 @@ state_t policy_init()
     if (cfake_bw_phase != NULL) fake_bw_phase = atoi(cfake_bw_phase);
 
     if (fake_io_phase || fake_bw_phase) {
-        verbose_master(0, "%sWARNING%s Using FAKE I/O phase: %u FAKE BW phase: %u", fake_io_phase, fake_bw_phase);
+        verbose_master(0, "%sWARNING%s Using FAKE I/O phase: %u FAKE BW phase: %u", COL_RED, COL_CLR, fake_io_phase, fake_bw_phase);
     }
 
     /* conf_dyn_unc is based on the configuration.
