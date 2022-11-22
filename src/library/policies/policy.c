@@ -501,7 +501,9 @@ state_t policy_init()
     if (cfake_io_phase != NULL) fake_io_phase = atoi(cfake_io_phase);
     if (cfake_bw_phase != NULL) fake_bw_phase = atoi(cfake_bw_phase);
 
-    verbose_master(2, "Fake IO %u fake BW %u", fake_io_phase, fake_bw_phase);
+    if (fake_io_phase || fake_bw_phase) {
+        verbose_master(0, "%sWARNING%s Using FAKE I/O phase: %u FAKE BW phase: %u", fake_io_phase, fake_bw_phase);
+    }
 
     /* conf_dyn_unc is based on the configuration.
      * dyn_unc is modified at runtime depending of number of jobs running. */   
@@ -617,6 +619,7 @@ state_t policy_init()
         }
     }
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
+
     verbose_master(POLICY_INFO, "%sPOLICY%s Load balance: %u", COL_BLU, COL_CLR, enable_load_balance);
 
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
@@ -664,8 +667,6 @@ state_t policy_init()
     }
     fill_common_event(&curr_policy_event);
     REPORT_OPT_ACCURACY(OPT_NOT_READY);
-
-
 
     /* We have migrated frequency set from eard to earl */
     policy_get_default_freq(&nf);
@@ -2006,12 +2007,13 @@ static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freq
 
 static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx)
 {
+    // TODO: Improve the function body to minimize the number of I/O operations.
     if (verb_level >= verb_lvl) {
         verbose_master(verb_lvl, "\n%*s%s%*s", 1, "", "--- EAR policy context ---", 1, "");
 
         verbose_master(verb_lvl, "%-18s: %u",  "user_type",          policy_ctx->app->user_type);
         verbose_master(verb_lvl, "%-18s: %s",  "policy_name",        policy_ctx->app->policy_name);
-        verbose_master(verb_lvl, "%-18s: %lf", "setting 0",          policy_ctx->app->settings[0]);
+        verbose_master(verb_lvl, "%-18s: %lf", "policy th",          policy_ctx->app->settings[0]);
         verbose_master(verb_lvl, "%-18s: %lu", "def_freq",           DEF_FREQ(policy_ctx->app->def_freq));
         verbose_master(verb_lvl, "%-18s: %u",  "def_pstate",         policy_ctx->app->def_p_state);
         verbose_master(verb_lvl, "%-18s: %d",  "reconfigure",        policy_ctx->reconfigure->force_rescheduling);

@@ -19,7 +19,6 @@
 
 // #define SHOW_DEBUGS            1
 
-
 #define INFO_METRICS           2
 #define IO_VERB                3
 #define SET_DYN_UNC_BY_DEFAULT 1
@@ -29,7 +28,7 @@
 #define PHASES_SUMMARY_VERB    2
 #define CPUPRIO_VERB           2
 #define ERROR_VERB             2
-#define TPI_DEBUG              2
+#define TPI_DEBUG              4
 #define ENERGY_EFF_VERB        2
 
 #if !SHOW_DEBUGS
@@ -713,7 +712,7 @@ static void metrics_global_start()
 
                 if (VERB_ON(GPU_VERB + 1)) {
                     gpu_data_tostr(gpu_metrics_read1[APP], gpu_str, sizeof(gpu_str));
-                    verbose(GPU_VERB + 1, "Initial global GPU data\n---------------\n%s", gpu_str);
+                    verbose(GPU_VERB + 1, "Initial global GPU data\n-----------------------\n%s", gpu_str);
                 }
 
             } else {
