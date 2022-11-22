@@ -1269,7 +1269,7 @@ state_t service_answer_old(int req_fd, int ack_fd, char *data, size_t size)
 void service_select(int req_fd, int ack_fd)
 { 
 	eard_head_t *local_req = (eard_head_t *) &req;
-
+    
 	// Hanging up
 	if (state_fail(service_listen(req_fd, ack_fd, &req))) {
 		verbose(VEARD_LAPI_DEBUG,"Closing local service");

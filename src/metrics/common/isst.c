@@ -142,7 +142,7 @@ typedef struct envals_s {
     uint   *assocs;
 } envals_t;
 
-static char      *strtype[2]  = { "proportional", "ordered" };
+__attribute__((unused)) static char *strtype[2]  = { "proportional", "ordered" };
 static char      *strprio[2]  = { "high", "low" };
 static char      *driver_path = "/dev/isst_interface";
 static int        driver_fd   = -1;
@@ -311,7 +311,7 @@ static state_t commands_mbox_send_single(uint cpu, uint cmd1, uint cmd2, uint pa
  *
  */
 
-static void clos_print(clos_t *clos, int fd)
+__attribute__((unused)) static void clos_print(clos_t *clos, int fd)
 {
     int c;
 
@@ -375,7 +375,7 @@ static state_t clos_set(clos_t *clos)
     return EAR_SUCCESS; 
 }
 
-static void assoc_print(uint *clos)
+__attribute__((unused)) static void assoc_print(uint *clos)
 {
     int cpu;
     for (cpu = 0; cpu < cpus_count; ++cpu) {
