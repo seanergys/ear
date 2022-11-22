@@ -109,6 +109,8 @@ static state_t monitor_apis_init(void *whatever)
     topology_init(&tp);
 
     management_init(&tp, EARD, NULL);
+
+    return EAR_SUCCESS;
 }
 
 static state_t monitor_apis_update(void *whatever)
@@ -132,6 +134,8 @@ static state_t monitor_apis_update(void *whatever)
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
     frun(mgt_imcfreq_data_print(m.imc.list1, m.imc.list1_count, verb_channel));
     fgpu(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
+    
+    return EAR_SUCCESS;
 }
 
 int main(int argc, char *argv[])

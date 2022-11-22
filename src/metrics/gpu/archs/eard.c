@@ -57,7 +57,7 @@ void gpu_eard_load(gpu_ops_t *ops, int _eard)
         return;
 	}
     // Get a list of devices in root space
-    if (state_fail(s = eard_rpc_buffered(RPC_MGT_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
+    if (state_fail(s = eard_rpc_buffered(RPC_MET_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
         return;
     }
     /* Check : Esto es posible ? */
