@@ -56,6 +56,7 @@
 #include <library/policies/common/cpu_support.h>
 #include <library/states/states_comm.h>
 #include <library/states/states.h>
+#include <library/api/clasify.h>
 
 #define NEW_CPUFREQ_API 1 // Enables the usage of the new metrics API,
                           // instead of the deprecated frequency API.
@@ -88,6 +89,7 @@ static llong comp_N_time;
 // TODO: usage
 static uint begin_iter;
 static uint N_iter;
+extern uint ear_guided;
 
 // TODO: usage
 static uint tries_current_loop           = 0;
@@ -658,7 +660,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             if (dynais_used) {
                 sprintf(use_case, "D");
             } else {
-                sprintf(use_case, "P");
+                sprintf(use_case, "P.%s",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
 
             // Verbose loop signature
@@ -738,7 +740,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             if (dynais_used) {
                 sprintf(use_case, "D-Stable");
             } else {
-                sprintf(use_case, "P-Stable");
+                sprintf(use_case, "P.%s-Stable",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
             state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id, &curr_loop, prev_cpufreq_khz, EAR_STATE);
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
