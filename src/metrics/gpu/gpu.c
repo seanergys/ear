@@ -113,14 +113,14 @@ static void static_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff, int i
 	gpu_t *d3 = &data_diff[i];
 	gpu_t *d2 = &data2[i];
 	gpu_t *d1 = &data1[i];
-	ullong time_i;
+	//ullong time_i;
 	//double time_f;
 
 	if (d2->correct != 1 || d1->correct != 1) {
 		return;
 	}
 	// Computing time
-	time_i = timestamp_diff(&d2->time, &d1->time, TIME_USECS);
+	//time_i = timestamp_diff(&d2->time, &d1->time, TIME_USECS);
 	//time_f = ((double) time_i) / 1000000.0;
 	// Averages
 	if ((d3->samples = d2->samples - d1->samples) == 0) {

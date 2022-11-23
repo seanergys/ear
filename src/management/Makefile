@@ -53,7 +53,8 @@ devel.install: ;
 
 %.install: ;
 
-clean: clean.components stat.gclean;
+clean: clean.components stat.gclean
+	rm -f test
 
 depend: depend.components
 
