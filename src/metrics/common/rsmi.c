@@ -10,12 +10,12 @@
 * BSC Contact   mailto:ear-support@bsc.es
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
-* This file is licensed under both the BSD-3 license for individual/non-commercial
+* This file is licen    sed under both the BSD-3 license for individual/non-commercial
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
-
-#define SHOW_DEBUGS 1
+open
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>

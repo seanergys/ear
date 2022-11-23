@@ -27,6 +27,8 @@ export CUDA_BASE
 export CUDA_CFLAGS
 export CUPTI_BASE
 export CUPTI_CFLAGS
+export RSMI_BASE
+export RSMI_CFLAGS
 export ONEAPI_BASE
 export ONEAPI_CFLAGS
 export LIKWID_BASE
