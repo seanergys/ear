@@ -31,6 +31,10 @@
 #define TPI_DEBUG              4
 #define ENERGY_EFF_VERB        2
 
+
+#define DEF_USE_CPUPRIO        1
+#define DEF_READ_CUPTI_METRICS 0
+
 #if !SHOW_DEBUGS
 #define NDEBUG // Disable asserts
 #endif
@@ -206,11 +210,14 @@ static metrics_t   met_flops;
 static metrics_t   met_cache;
 static metrics_t   met_cpi;
 static metrics_multi_t   mgt_cpuprio;
+
+static uint        use_cpuprio = DEF_USE_CPUPRIO;
+#define EAR_USE_CPUPRIO "EAR_USE_CPUPRIO"
 #if USE_GPUS
 static metrics_gpus_t mgt_gpu;
 static metrics_gpus_t met_gpu;
 #if USE_CUPTI
-static uint read_cupti_metrics = 0;
+static uint read_cupti_metrics = DEF_READ_CUPTI_METRICS;
 static metrics_gpus_t proc_gpu;
 /* 0 for LOOP, 1 for APP */
 static gpuproc_t     *proc_gpu_data_init[2];
@@ -362,10 +369,24 @@ static void metrics_configuration(topology_t *tp)
 	}
 }
 
+static void read_metrics_options()
+{
+#if USE_CUPTI
+    char *cuse_cupti;
+    /* We will get per-process cupti metrics */
+    cuse_cupti = getenv(EAR_USE_CUPTI);
+    if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
+    verbose_master(VERBOSE_CUPTI, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
+#endif
+    char *cuse_cpuprio = getenv(EAR_USE_CPUPRIO);
+    if (cuse_cpuprio != NULL) use_cpuprio = atoi(cuse_cpuprio);
+    verbose_master(2, "CPUPRIO utilization %s", (use_cpuprio?"Enabled":"Disabled"));
+
+}
+
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
-    char *cuse_cupti;
 
     #define sa(function) \
         function;
@@ -392,10 +413,6 @@ static void metrics_static_init(topology_t *tp)
         gpu_load(eard);
     mgt_gpu_load(eard);
 #if USE_CUPTI
-    /* We will get per-process cupti metrics */
-    cuse_cupti = getenv(EAR_USE_CUPTI);
-    if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
-    verbose_master(VERBOSE_CUPTI, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
     if (read_cupti_metrics){
       gpuproc_load(1);
     }
@@ -516,22 +533,24 @@ static void metrics_static_init(topology_t *tp)
 
     /* BEGIN TEST */
     #if CPUPRIO_TEST
-    for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-    {
-      mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
+    if (use_cpuprio){
+      for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
+      {
+        mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
+      }
+      sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
+      mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+      verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+  
+      /* RESTORE */
+      for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
+      {
+        mgt_cpuprio.dev_list[dev_id] = 0;
+      }
+      sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
+      mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+      verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
     }
-    sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-    verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
-
-    /* RESTORE */
-    for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-    {
-      mgt_cpuprio.dev_list[dev_id] = 0;
-    }
-    sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-    verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
     #endif
     /* END TEST */
     
@@ -630,9 +649,11 @@ static void metrics_static_init(topology_t *tp)
 
 void metrics_static_dispose()
 {
+  #if 0
   if (mgt_cpufreq_prio_is_enabled()){
     mgt_cpufreq_prio_disable();
   }
+  #endif
 
 }
 
@@ -1595,6 +1616,9 @@ int metrics_init(topology_t *topo)
 	state_t st;
 	state_t s;
 	int i;
+
+  /* Env. vars configuring metrics */
+  read_metrics_options();
 
 	metrics_static_init(topo);
 	assert(master >= 0); // Debug if master was well initialized at metrics_static_init
