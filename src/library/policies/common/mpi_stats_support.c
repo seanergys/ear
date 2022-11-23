@@ -149,7 +149,7 @@ static state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls, in
 static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs,
                                                 double *mean, double *sd, double *mag);
 
-static state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls,
+static state_t mpi_stats_get_only_percs_mpi(const mpi_information_t *node_mpi_calls,
                                             int nump, double *percs_mpi);
 
 static state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp,
@@ -883,10 +883,11 @@ static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs
     return EAR_SUCCESS;
 }
 
+#if SHARED_MPI_SUMMARY
 /* This function sets the values to be shared with other nodes */
 static mpi_summary_t my_mpi_summary;
 
-state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, int num_procs,
+state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, const double *percs_mpi, int num_procs,
         double mean, double sd, double mag)
 {
     double max, min;
@@ -904,19 +905,23 @@ state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, double *percs_mpi, i
     mpisumm->mag  = (float) mag;
     return EAR_SUCCESS;
 }
+#endif // SHARED_MPI_SUMMARY
 
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs,
+state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num_procs,
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb)
 {
     /* Get only the percentage time spent in MPI blocking calls. */
     state_t ret;
+
     // Get only perc_mpi info.
     ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok
 
     // Compute statistics for determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
 
+#if SHARED_MPI_SUMMARY
     mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
+#endif
 
 #if NODE_LB
 #if NEW_LB_EFF
@@ -1024,10 +1029,9 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
     return EAR_SUCCESS;
 }
 
-static state_t mpi_stats_get_only_percs_mpi(mpi_information_t *node_mpi_calls, int nump,
-        double *percs_mpi)
+static state_t mpi_stats_get_only_percs_mpi(const mpi_information_t *node_mpi_calls, int nump, double *percs_mpi)
 {
-    mpi_information_t **mpi_calls = calloc(nump, sizeof(mpi_information_t*));
+    const mpi_information_t **mpi_calls = (const mpi_information_t **) malloc(nump * sizeof(mpi_information_t*));
 
     for (int i = 0; i < nump; i++) {
         mpi_calls[i] = &node_mpi_calls[i];
@@ -1173,7 +1177,7 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
     strcat(mpi_stats_fn, nodename);
     strcat(mpi_calls_stats_fn, nodename);
 
-    char suffix[GENERIC_NAME] = ".csv";
+    char suffix[] = ".csv";
 
     strcat(mpi_stats_fn, suffix);
     strcat(mpi_calls_stats_fn, suffix);

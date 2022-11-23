@@ -61,7 +61,7 @@ state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int 
 
 /** Based on perc. of mpi calls for each of \p num_procs passed, compute basic statistics
  * (therefore stores their results) and determines whether the application is load balanced. */
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs,
+state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num_procs,
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb);
 /** This function sets the critical path and also stores max and min perc_mpi processes. */
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs,
