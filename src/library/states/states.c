@@ -740,7 +740,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             if (dynais_used) {
                 sprintf(use_case, "D-Stable");
             } else {
-                sprintf(use_case, "P-Stable");
+                sprintf(use_case, "P.%s-Stable",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
             state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id, &curr_loop, prev_cpufreq_khz, EAR_STATE);
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
