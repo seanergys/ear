@@ -33,13 +33,21 @@
 
 uint num_cpus_in_mask(cpu_set_t *my_mask)
 {
+    /*
     uint c, lcpus = 0;
 
     for (c = 0; c < MAX_CPUS_SUPPORTED; c++){
         if (CPU_ISSET(c, my_mask)) lcpus++;
     }
     return lcpus;
+    */
+    if (my_mask) {
+        return CPU_COUNT(my_mask);
+    } else {
+        return (uint) -1;
+    }
 }
+
 
 int list_cpus_in_mask(cpu_set_t *my_mask, uint n_cpus, uint *cpu_list)
 {
@@ -62,6 +70,7 @@ int list_cpus_in_mask(cpu_set_t *my_mask, uint n_cpus, uint *cpu_list)
 
 }
 
+
 void fill_cpufreq_list(cpu_set_t *my_mask, uint n_cpus, uint value, uint no_value, uint *cpu_list)
 {
   if (my_mask == NULL || cpu_list == NULL || n_cpus < 1) return;
@@ -74,12 +83,14 @@ void fill_cpufreq_list(cpu_set_t *my_mask, uint n_cpus, uint value, uint no_valu
   }
 }
 
+
 void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src)
 {
     for (uint c = 0; c < MAX_CPUS_SUPPORTED; c++) {
       if (CPU_ISSET(c, src)) CPU_SET(c, dst);
   }
 }
+
 
 void remove_cpus_from_mask(cpu_set_t *dst, cpu_set_t *src)
 {
@@ -104,8 +115,8 @@ void cpus_not_in_mask(cpu_set_t *dst, cpu_set_t *src)
 void print_affinity_mask(topology_t *topo) 
 {
     cpu_set_t mask;
-		int i;
-		CPU_ZERO(&mask);
+    int i;
+    CPU_ZERO(&mask);
     if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) return;
     fprintf(stderr,"sched_getaffinity = ");
     for (i = 0; i < topo->cpu_count; i++) {
@@ -114,30 +125,33 @@ void print_affinity_mask(topology_t *topo)
     fprintf(stderr,"\n");
 }
 
-state_t print_this_affinity_mask(cpu_set_t *mask)
+
+state_t verbose_affinity_mask(int verb_lvl, cpu_set_t *mask, uint cpus)
 {
-    if (mask == NULL) return EAR_ERROR;
-    fprintf(stderr,"mask affinity = ");
-    for (int i = 0; i < MAX_CPUS_SUPPORTED; i++) {
-        fprintf(stderr,"CPU[%d]=%d ", i,CPU_ISSET(i, mask));
+    if (mask) {
+
+        if (VERB_ON(verb_lvl)) {
+
+            verbosen(0, "mask affinity (n-1..0) =");
+
+            for (int i = cpus-1; i >= 0; i -= 4) {
+                verbosen(0, " %d%d%d%d", CPU_ISSET(i, mask), CPU_ISSET(i-1, mask),
+                        CPU_ISSET(i-2, mask), CPU_ISSET(i-3, mask));
+            }
+
+            verbosen(0, "\n");
+
+        }
+
+
+    } else {
+        return EAR_ERROR;
     }
-    fprintf(stderr,"\n");
     return EAR_SUCCESS;
 }
 
-state_t verbose_affinity_mask(cpu_set_t *mask, uint cpus)
-{
-    if (mask == NULL) return EAR_ERROR;
-    verbosen(0,"mask affinity = ");
-    for (int i = 0; i < cpus; i++) {
-        verbosen(0,"CPU[%d]=%d ", i,CPU_ISSET(i, mask));
-    }
-    verbosen(0,"\n");
-    return EAR_SUCCESS;
-}
 
-
-state_t is_affinity_set(topology_t *topo,int pid,int *is_set,cpu_set_t *my_mask)
+state_t is_affinity_set(topology_t *topo,int pid,int *is_set, cpu_set_t *my_mask)
 {
 	cpu_set_t mask;
 	*is_set=0;
