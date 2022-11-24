@@ -358,6 +358,7 @@ void cluster_only_powercap()
 		free(my_cluster_power_status);
 }
 
+
 void *eargm_powercap_th(void *noarg)
 {
     if (pthread_setname_np(pthread_self(), "cluster_powercap")!=0) error("Setting name forcluster_powercap thread %s", strerror(errno));
@@ -371,14 +372,18 @@ void *eargm_powercap_th(void *noarg)
             check_pending_processes();
         }
         if (cluster_power_limited()){
-            if (powercap_unlimited) {
-                cluster_only_powercap();
-            }
-            else if (my_cluster_conf.eargm.powercap_mode){
-                    cluster_check_powercap();
-            } else {
-                    cluster_power_monitor();
-            }
+			switch(my_cluster_conf.eargm.powercap_mode) {
+				case SOFT_POWERCAP:
+					cluster_only_powercap();
+					break;
+				case HARD_POWERCAP:
+					cluster_check_powercap();
+					break;
+				case MONITOR:
+				default:
+					cluster_power_monitor();
+					break;
+			}
         }
 
     }
