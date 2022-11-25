@@ -110,8 +110,7 @@ void strtoa_free(char **list)
 void *strtoat(const char *string, char separator, void **list, uint *list_count, int id_type)
 {
     char **alist = strtoa(string, separator, NULL, list_count);
-    void *plist;
-    size_t size;
+    void *plist = NULL;
     int i;
 
     if (alist == NULL) {
