@@ -876,10 +876,10 @@ void postgresql_print_events(PGresult *res, int fd)
 #endif
 
 #if DB_MYSQL
-#define EVENTS_QUERY "SELECT id, FROM_UNIXTIME(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
+#define EVENTS_QUERY "SELECT id, FROM_UNIXTIME(timestamp), event_type, job_id, step_id, value, node_id FROM Events"
 #define EVENTS_QUERY_RAW "SELECT id, timestamp, event_type, job_id, step_id, value, node_id FROM Events"
 #elif DB_PSQL
-#define EVENTS_QUERY "SELECT id, to_timestamp(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
+#define EVENTS_QUERY "SELECT id, to_timestamp(timestamp), event_type, job_id, step_id, value, node_id FROM Events"
 #define EVENTS_QUERY_RAW "SELECT id, timestamp, event_type, job_id, step_id, value, node_id FROM Events"
 #endif
 
