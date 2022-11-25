@@ -104,11 +104,10 @@ void remove_cpus_from_mask(cpu_set_t *dst, cpu_set_t *src)
 /* Sets in dst CPUs not in src */
 void cpus_not_in_mask(cpu_set_t *dst, cpu_set_t *src)
 {
-	CPU_ZERO(dst);
-  for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
-      if (!CPU_ISSET(c, src)) CPU_SET(c, dst);
-  }
-
+    CPU_ZERO(dst);
+    for (uint c=0; c < MAX_CPUS_SUPPORTED; c++){
+        if (!CPU_ISSET(c, src)) CPU_SET(c, dst);
+    }
 }
 
 

@@ -708,6 +708,7 @@ int plug_deserialize_task(spank_t sp, plug_serialization_t *sd)
     sd->job.task.sid = sd->job.app.job.step_id;
     sd->job.task.pid = getpid();
     
+    // Below code doesn't work unless the SLURM user has explicitey set the number of CPUs per task.
 	spank_get_item(sp, S_STEP_CPUS_PER_TASK, (int *)&sd->job.task.num_cpus);
 
     #if !ERUN

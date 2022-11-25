@@ -39,37 +39,37 @@
 #define APP_FINISHED 1
 
 typedef struct powermon_app {
-    application_t     app;
-	pid_t             master_pid;
+    application_t     app; //
+    pid_t             master_pid; // ?
     uint              job_created;
-    uint              is_job;
-	char              state;
-    uint              plug_num_cpus;
-    cpu_set_t         plug_mask;
-    cpu_set_t         policy_mask;
-    uint              earl_num_cpus;
-    uint              local_ids;
+    uint              is_job; // batch job ?
+    char              state;
+    uint              plug_num_cpus; // Number of CPUs from external (batch sched. plug-in)
+    cpu_set_t         plug_mask; // Job's mask
+    // cpu_set_t         policy_mask; // ?
+    uint              earl_num_cpus; // ?
+    uint              local_ids; // ?
     energy_data_t     energy_init;
-    governor_t        governor;
-    ulong             current_freq;
-    ulong             policy_freq;
-    int               sig_reported;
-    settings_conf_t  *settings;
-    resched_t        *resched;
-    app_mgt_t        *app_info;
-    pc_app_info_t    *pc_app_info;
-    cpufreq_t        *freq_job1;
-    ulong            *freq_diff;
-    loop_t            last_loop;
-    uint              exclusive;
-    accum_power_sig_t accum_ps;
-    uint             *prio_idx_list;
+    governor_t        governor; // Job's CPUs governor before job beginning.
+    ulong             current_freq; // ?
+    ulong             policy_freq; // ?
+    int               sig_reported; // ?
+    settings_conf_t  *settings; //
+    resched_t        *resched; //
+    app_mgt_t        *app_info; //
+    pc_app_info_t    *pc_app_info; //
+    cpufreq_t        *freq_job1; // 
+    ulong            *freq_diff; //
+    loop_t            last_loop; //
+    uint              exclusive; //
+    accum_power_sig_t accum_ps; //
+    uint             *prio_idx_list; // List of CPU priorities before job beginning.
 } powermon_app_t;
 
 typedef struct job_context {
-	job_id id;
-	uint   numc;
-	uint   num_cpus;
+    job_id id;
+    uint   num_ctx;
+    uint   num_cpus;
 } job_context_t;
 
 /** Periodically monitors the node power monitoring.
@@ -78,18 +78,18 @@ void *eard_power_monitoring(void *noinfo);
 
 
 /** It must be called when EARLib contacts with EARD. */
-void powermon_mpi_init(ehandler_t *eh,application_t *j);
+void powermon_mpi_init(ehandler_t *eh, application_t *j);
 
 
 /** It must be called when EARLib disconnects from EARD. */
-void powermon_mpi_finalize(ehandler_t *eh,ulong jid,ulong sid);
+void powermon_mpi_finalize(ehandler_t *eh, ulong jid, ulong sid);
 
 
 /** \brief Called when a new job starts.
  * This function is called by the dynamic_configuration thread when a new_job command arrives.
  * It also is called by EARD when application passes through MPI_Init.
  * \param pmapp The power monitor application handler that will be filled with the information regarding to
- * the context of the current application/job. */
+ * the context it will belong to. */
 void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *j, uint from_mpi, uint is_job);
 
 
