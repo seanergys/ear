@@ -145,9 +145,9 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 			debug("Using %d GPUS", num_gpus);
 #endif
 
-      strcpy(app_header, extra_header);
+      strcpy(app_header, extra_header_app);
       /* Headers for phases */
-      for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+      for (uint ph = 1; ph < EARL_MAX_PHASES; ph++){
         strcat(app_header, phase_to_str(ph));
         strcat(app_header, ";");
       }
@@ -164,7 +164,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
           dprintf(fd_app, "%s%.2lf;", heroes_ids,apps[i].power_sig.max_DC_power);
           if (apps[i].signature.sig_ext){
             sigex = (sig_ext_t *) apps[i].signature.sig_ext;
-            for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+            for (uint ph = 1; ph < EARL_MAX_PHASES; ph++){
               dprintf(fd_app, "%llu;", sigex->earl_phase[ph].elapsed);
             }
           }
