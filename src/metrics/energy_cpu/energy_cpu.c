@@ -77,7 +77,7 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ops.read          = energy_cpu_util_read;
 		ops.count_devices = energy_cpu_util_count_devices;
 		api = API_CPUMODEL;
-		debug("selected dummy energy_cpu (api %u)", api);
+		debug("selected CPUMODEL energy_cpu (api %u)", api);
 	} 
 	else if (state_ok(energy_cpu_dummy_load(tp))) {
 		ops.init          = energy_cpu_dummy_init;

@@ -45,6 +45,7 @@ state_t energy_cpu_util_load(topology_t *topo)
 		}
 	}
 	topology_copy(&cpu_util_topo , topo);
+  debug("TDP %d", cpu_util_topo.tdp);
 	last_energy_reported = (ullong *)calloc(socket_count * NUM_EV, sizeof(ullong));
 	return EAR_SUCCESS;
 }
