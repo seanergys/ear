@@ -66,6 +66,7 @@ powercap_opt_t cluster_options;
 extern uint policy;
 extern char **nodes;
 extern int num_eargm_nodes;
+extern char host[GENERIC_NAME];
 static uint must_send_pc_options;
 static ulong current_extra_power; 
 static uint total_free;
@@ -80,7 +81,7 @@ void eargm_report_event(uint event_type, ulong value)
     event.timestamp = time(NULL);
     event.jid 			= 0;
     event.step_id		= 0;
-    strcpy(event.node_id,"eargm");
+    sprintf(event.node_id, "eargm-%s", host);
     event.event     = event_type;
     event.freq      = value;
     db_insert_ear_event(&event);
@@ -598,6 +599,7 @@ void cluster_check_powercap()
     }
     memset(&cluster_options,0,sizeof(powercap_opt_t));
     must_send_pc_options=0;
+	eargm_report_event(CLUSTER_POWER, (ulong)my_cluster_power_status->current_power);
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);
     if (powercap_reallocation(my_cluster_power_status, &cluster_options) == 0){

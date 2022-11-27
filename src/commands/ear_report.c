@@ -108,6 +108,9 @@
 #define ALL_ISLANDS "SELECT SUM(DC_energy), eardbd_host FROM Periodic_aggregations WHERE start_time >= %d "\
                     " AND end_time <= %d GROUP BY eardbd_host"
 
+#define ISLANDS_RAW "SELECT DC_energy, eardbd_host, start_time, end_time, DC_energy/(end_time-start_time) FROM "\
+					"Periodic_aggregations WHERE start_time >= %d AND end_time <= %d"
+
 #define ALL_TAGS    "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.e_tag FROM " \
                     "Power_signatures INNER JOIN Applications ON id=Applications.power_signature_id " \
                     "INNER JOIN Jobs ON job_id = Jobs.id AND Applications.step_id = Jobs.step_id " \
@@ -146,6 +149,7 @@ void usage(char *app)
         "\t-u user_name |all \t requests the energy consumed by a user in the selected period of time. Default: none (all users computed). \n\t\t\t\t\t 'all' option shows all users individually, not aggregated.\n"
         "\t-t energy_tag|all \t requests the energy consumed by energy tag in the selected period of time. Default: none (all tags computed). \n\t\t\t\t\t 'all' option shows all tags individually, not aggregated.\n"
         "\t-i eardbd_name|all\t indicates from which eardbd (island) the energy will be computed. Default: none (all islands computed) \n\t\t\t\t\t 'all' option shows all eardbds individually, not aggregated.\n"
+        "\t\t-d                 expands the results of -i to individual records. If an island is not specified, it prints all of them.\n"
         "\t-g                \t shows the contents of EAR's database Global_energy table. The default option will show the records for the two previous T2 periods of EARGM.\n\t\t\t\t\t This option can only be modified with -s, not -e\n"
         "\t-x                \t shows the daemon events from -s to -e. If no time frame is specified, it shows the last 20 events. \n"
         "\t-v                \t shows current EAR version. \n"
@@ -742,9 +746,9 @@ void postgresql_print_events(PGresult *res)
 #endif
 
 #if DB_MYSQL
-#define EVENTS_QUERY "SELECT id, FROM_UNIXTIME(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
+#define EVENTS_QUERY "SELECT id, FROM_UNIXTIME(timestamp), event_type, job_id, step_id, value, node_id FROM Events"
 #elif DB_PSQL
-#define EVENTS_QUERY "SELECT id, to_timestamp(timestamp), event_type, job_id, step_id, freq, node_id FROM Events"
+#define EVENTS_QUERY "SELECT id, to_timestamp(timestamp), event_type, job_id, step_id, value, node_id FROM Events"
 #endif
 
 void read_events(int start_time, int end_time, cluster_conf_t *my_conf) 
@@ -913,6 +917,8 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 #endif
         } else if (!strcmp(inc_query, ALL_ISLANDS)) {
             printf( "%15s %15s\n", "Energy (J)", "EARDBD");
+        } else if (!strcmp(inc_query, ISLANDS_RAW)) {
+            printf( "%15s %15s %15s %15s %15s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power");
         } else if (global_end_time > 0) {
 #if USE_GPUS
             printf( "%15s %15s %15s %15s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power");
@@ -1039,6 +1045,8 @@ void print_all(PGconn *connection, int start_time, int end_time, char *inc_query
             printf( "%15s %15s\n", "Energy (J)", "Energy tag");
         } else if (!strcmp(inc_query, ALL_ISLANDS)) {
             printf( "%15s %15s\n", "Energy (J)", "EARDBD");
+        } else if (!strcmp(inc_query, ISLANDS_RAW)) {
+            printf( "%15s %15s %15s %15s %15s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power");
         } else if (global_end_time > 0) {
                 printf( "%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
             all_nodes = 1;
@@ -1078,6 +1086,7 @@ int main(int argc,char *argv[])
     char all_eardbds = 0;
     char report_events = 0;
     char global_energy = 0;
+    char islands_expanded = 0;
     struct tm tinfo = {0};
 
     if (get_ear_conf_path(path_name) == EAR_ERROR)
@@ -1143,6 +1152,7 @@ int main(int argc,char *argv[])
 		{"verbose",       no_argument, 0, 'b'},
 		{"global-energy", no_argument, 0, 'g'},
 		{"events",        no_argument, 0, 'x'},
+		{"expanded",      no_argument, 0, 'd'},
 		{"nodes",      required_argument, 0, 'n'},
 		{"users",      required_argument, 0, 'u'},
 		{"etags",      required_argument, 0, 't'},
@@ -1152,7 +1162,7 @@ int main(int argc,char *argv[])
 	};
 	while (1)
 	{
-		c = getopt_long(argc, argv, "t:vhbn:u:s:e:i:gx", long_options, &option_idx);
+		c = getopt_long(argc, argv, "t:vhdbn:u:s:e:i:gx", long_options, &option_idx);
 
 		if (c == -1) break;
 
@@ -1175,8 +1185,13 @@ int main(int argc,char *argv[])
 				break;
 			case 'i':
 				eardbd_host = optarg;
+				all_eardbds = 0; //reset it in case -d was specified before
 				if (!strcmp(eardbd_host, "all"))
 					all_eardbds=1;
+				break;
+			case 'd':
+				islands_expanded = 1;
+				if (eardbd_host == NULL) all_eardbds=1;
 				break;
 			case 'u':
 				user_name = optarg;
@@ -1279,7 +1294,8 @@ int main(int argc,char *argv[])
 	else if (all_eardbds)
 	{
 		compute_pow(connection, start_time, end_time, 0);
-		print_all(connection, start_time, end_time, ALL_ISLANDS, PER_METRIC_TYPE);
+		if (!islands_expanded) print_all(connection, start_time, end_time, ALL_ISLANDS, PER_METRIC_TYPE);
+		else print_all(connection, start_time, end_time, ISLANDS_RAW, PER_METRIC_TYPE);
 	}
 	else if (global_energy)
 	{
