@@ -25,6 +25,7 @@
 
 /** @config_env.h */
 
+
 /**
  * @defgroup PLUGIN_VARIABLES Plugin Variables
  * These variables are used by the plugin to configure the EAR environment.
@@ -46,6 +47,7 @@
 #define VAR_OPT_THRC "EAR_MIN_PERFORMANCE_EFFICIENCY_GAIN"
 /**@}*/
 
+
 /**
  * @defgroup EAR_PATHS EAR installation
  * EAR paths and names.
@@ -55,6 +57,7 @@
 #define REL_NAME_LIBR "libear"
 #define REL_PATH_LOAD "lib/libearld.so"
 /** @} */
+
 
 /**
  * @defgroup HACK Hack variables.
@@ -78,6 +81,7 @@
 #define HACK_EARL_INSTALL_PATH       SCHED_PREFIX "HACK_EARL_INSTALL_PATH"  // This variable HACKS all the library environment, simplifies the utilization of a privatized environment.
 #define HACK_PROCS_VERB_FILES        SCHED_PREFIX "HACK_PROCS_VERB_FILES"   // This variable makes all processes having a log verbose file each one.
 /** @} */
+
 
 /**
  * @defgroup OTHER Other
@@ -138,13 +142,16 @@
 #define NULL_ACCOUNT                 "NO_SLURM_ACCOUNT"
 /** @} */
 
+
 /**
  * @defgroup DEVELOPMENT Under development
  * These variables controls the behaviour for new infrastructure.
  * They affect features under development.
  * @{
  */
-/** @}  */
+#define CPUPRIO_LIST    SCHED_PREFIX "EAR_CPUPRIO_LIST" // A list of priorities for each CPU.
+/** @} */
+
 
 /**
  * @defgroup VERBOSE Verbose effects
@@ -163,15 +170,15 @@
 /** @} */
 
 
-
 /**
- * Deprecated variables 
+ * @defgroup DEPRECATED Deprecated variables
  * Users will be warned and these variables will be removed in future versions.
- * */
+ * @{
+ */
 #define SCHED_LOADER_LOAD_NO_MPI_LIB "SLURM_LOADER_APPLICATION"            // TODO: Deprectated. This variable is maintaned here in order to avoid errors in users' scripts.
 #define SCHED_LOAD_MPI_VERSION       "SLURM_LOAD_MPI_VERSION"              // TODO: Deprectated. This variable is maintaned here in order to avoid errors in users' scripts.
 #define SCHED_USE_ENERGY_MODELS      "SLURM_USE_ENERGY_MODELS"             // TODO: Deprecated.
-#define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"                     // TODO: Deprecated.
+#define SCHED_GET_EAR_STATS          "SLURM_GET_EAR_STATS"                 // TODO: Deprecated.
 #define SCHED_MAX_IMC_FREQ           "SLURM_MAX_IMC_FREQ"                  // TODO: Deprectated. This variable is maintaned here in order to avoid errors in users' scripts.
 #define SCHED_MIN_IMC_FREQ           "SLURM_MIN_IMC_FREQ"                  // TODO: Deprectated. This variable is maintaned here in order to avoid errors in users' scripts.
 #define SCHED_SET_IMC_FREQ           "SLURM_SET_IMC_FREQ"                  // TODO: Deprectated. This variable is maintaned here in order to avoid errors in users' scripts.
@@ -183,5 +190,6 @@
 #define SCHED_NETWORK_USE_IMC        "SLURM_NETWORK_USE_IMC"               // TODO: Deprectated.
 #define SCHED_TRY_TURBO              "SLURM_TRY_TURBO"                     // TODO: Deprectated.
 #define SCHED_LOAD_BALANCE_TH        "SLURM_LOAD_BALANCE_TH"               // TODO: Deprectated.
+/** @} */
 
 #endif //CONFIG_ENVIRONMENT_H

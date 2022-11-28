@@ -926,7 +926,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 }
 
 
-void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
+void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 {
     power_data_t app_power;
     state_t s;
@@ -946,8 +946,11 @@ void job_end_powermon_app(powermon_app_t *pmapp,ehandler_t *ceh)
     elapsed = difftime(pmapp->app.job.end_time, pmapp->app.job.start_time);
     read_enegy_data(ceh, &c_energy);
     compute_power(&pmapp->energy_init, &c_energy, &app_power);
-    if (pmapp->exclusive){
-        verbose(VJOBPMON, "Computing power signature. Job executed in exclusive mode");
+    if (pmapp->exclusive) {
+
+        verbose(VJOBPMON, "[%lu/%lu] Computing power signature. Job executed in exclusive mode",
+                pmapp->app.job.id, pmapp->app.job.step_id);
+
         pmapp->app.power_sig.DC_power = accum_node_power(&app_power);
 
         /* Filter */
@@ -1417,8 +1420,8 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
 
-    verbose(VJOBPMON , "*******************");
-    verbose(VJOBPMON, "%spowermon_new_job (%lu,%lu)%s", COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
+    verbose(VJOBPMON, "%s--- powermon_new_job (%lu,%lu) ---%s",
+            COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
 
     if (powermon_is_idle()) powercap_idle_to_run();
 
@@ -1889,7 +1892,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
 #define VERBOSE_POWERMON 1
 void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *pmon_info, uint report) {
-    ulong jid, mpi,sid;
+    ulong jid, mpi, sid;
     ulong time_consumed;
     double maxpower, minpower, rapl_dram, rapl_pck, corrected_power,pckp,dramp, gpup, gpu_power, node_dom_power;
     powermon_app_t *pmapp;
@@ -1897,7 +1900,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
     /* last_pmon is the last short power monitor period info. pmon_info can be larger. Use last_pmon  for fine grain power metrics*/
 
-    pmapp 		= current_ear_app[max_context_created];
+    pmapp 	  = current_ear_app[max_context_created];
     jid       = pmapp->app.job.id;
     sid       = pmapp->app.job.step_id;
     mpi       = pmapp->app.is_mpi;
@@ -1996,14 +1999,12 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
     /* To be usd by status */
     copy_node_metrics(&my_nm_id, &last_nm, nm);
 
-
-
     /* Error control */
 #if SYSLOG_MSG
-    if ((last_pmon->avg_dc == 0) 
-            || (last_pmon->avg_dc < my_node_conf->min_sig_power) 
-            || (last_pmon->avg_dc > my_node_conf->max_sig_power) 
-            || (last_pmon->avg_dc > my_node_conf->max_error_power))
+    if ((last_pmon->avg_dc == 0)  ||
+        (last_pmon->avg_dc < my_node_conf->min_sig_power) ||
+        (last_pmon->avg_dc > my_node_conf->max_sig_power) ||
+        (last_pmon->avg_dc > my_node_conf->max_error_power))
     {
         syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %.2lf as avg power in last period\n",nodename,last_pmon->avg_dc);
         log_report_eard_rt_error(&rid, jid, sid, DC_POWER_ERROR, (llong) last_pmon->avg_dc);
@@ -2114,10 +2115,14 @@ void powermon_mpi_signature(application_t *app) {
     pmapp->app.job.def_f = app->job.def_f;
     pmapp->app.job.th = app->job.th;
     pmapp->app.job.procs = app->job.procs;
+
     strcpy(pmapp->app.job.policy, app->job.policy);
     strcpy(pmapp->app.job.app_id, app->job.app_id);
+
     pmapp->sig_reported = 1;
-    verbose(VJOBPMON,"MPI signature reported for context %d,freq = %lu",cc,pmapp->app.signature.avg_f);
+
+    verbose(VJOBPMON, "MPI signature reported for context %d (%lu/%lu), avg. freq (kHz) = %lu",
+            cc, app->job.id, app->job.step_id, pmapp->app.signature.avg_f);
 
     save_eard_conf(&eard_dyn_conf);
 }
@@ -2431,7 +2436,6 @@ uint powermon_get_max_powercap_def()
 
 static void set_default_powermon_init(powermon_app_t *app)
 {
-
     /* IMC freq must be set to default conf. EAR can change in eUFS is ON */
     /* CPUfreq must be changed only if policy_freq is set , otherwise EARD is 
      * not "forcing freqs " */
@@ -2447,31 +2451,10 @@ static void set_default_powermon_init(powermon_app_t *app)
         mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
 
-    /* If policy_freq is zero, we don't have to change the current configuration */
+    /* If policy_freq is zero, we don't need to change the current configuration */
     if (app->policy_freq) {
-#if 0
-
-        /* CPU freq and governor */
-        char *cgov = "userspace";
-        uint gov, app_pstate;
-
-        mgt_cpufreq_get_index(no_ctx, app->policy_freq, &app_pstate, 1);
-
-        verbose(VCONF + 1, "Setting governor `%s` governor, CPU freq %.2f GHz and pstate %u",
-                cgov, (float) app->policy_freq / 1000000, app_pstate);
-        verbose_affinity_mask(&app->policy_mask, 48);
-
-        /* Governor */
-        governor_toint(cgov, &gov);
-        mgt_cpufreq_governor_set_mask(no_ctx, gov, app->policy_mask);
-
-        /* CPU freq. */
-        fill_cpufreq_list(&app->policy_mask, man->cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
-        mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
-#endif
-
-        /* GPU freq */
 #if USE_GPUS
+        /* GPU freq. */
         if (my_node_conf->gpu_def_freq > 0) {
             verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float) my_node_conf->gpu_def_freq / 1000000);
             gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
@@ -2526,8 +2509,9 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
       } else {
 
-        verbose(VCONF, "(End job) Restoring to governor `%s` the CPUs in the job's mask...", cgov);
-        verbose_affinity_mask(VCONF + 1, &app->plug_mask, 48);
+        verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
+                app->app.job.id, app->app.job.step_id, cgov);
+        verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
         mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
       }
@@ -2544,8 +2528,9 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
       governor_toint(cgov, &gov);
 
-      verbose(VCONF, "Restoring to governor `%s` the CPUs in the mask...", cgov);
-      verbose_affinity_mask(VCONF + 1, &app->plug_mask, 48);
+      verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
+              app->app.job.id, app->app.job.step_id, cgov);
+      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
       mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
 
@@ -2569,10 +2554,12 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
       } else {
 
-        verbose(VCONF, "Restoring to CPU pstate %u with mask", rest_pstate);
+        verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
+                app->app.job.id, app->app.job.step_id, rest_pstate);
         verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
-        fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate, ps_nothing, powermon_restore_cpufreq_list);
+        fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
+                          ps_nothing, powermon_restore_cpufreq_list);
 
         mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
       }
@@ -2592,7 +2579,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
         if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
             error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
         }
-        
+
         if (idle) {
             verbose(VPMON_DEBUG, "Disabling priority system...");
             if (state_fail(mgt_cpuprio_disable())) {
