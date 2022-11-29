@@ -159,6 +159,7 @@
 #define FLAG_APP_MGR_POLICIES	       SCHED_PREFIX "EAR_APP_MGR_POLICIES"
 #define FLAG_GET_MPI_STATS           SCHED_PREFIX "EAR_GET_MPI_STATS"
 #define FLAG_REPORT_EARL_EVENTS      SCHED_PREFIX "REPORT_EARL_EVENTS" // Generates extra events during the execution of the EARL
+#define FLAG_REPORT_EARL_LOOPS       SCHED_PREFIX "REPORT_EARL_LOOPS"
 /** @} */
 
 

@@ -111,13 +111,28 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 {
 				char *dummy_ser_cc,  *local_dummy_ser_cc;
 				size_t dummy_ser_cc_size;
+        state_t cc_read_result, check_cc = 1;
 				if (gethostname(nodename, sizeof(nodename)) < 0) {
         				verbose_master(0, "Error getting node name (%s)", strerror(errno));
         			}
         			strtok(nodename, ".");
 
 				/* Init dummy_cc */
-				if (get_ear_conf_path(path) != EAR_ERROR){
+
+        #ifdef FAKE_EAR_NOT_INSTALLED 
+        #if FAKE_EAR_NOT_INSTALLED
+        check_cc = 0;
+        #endif
+        #endif
+
+        if (check_cc){
+          cc_read_result = get_ear_conf_path(path);
+        }else{
+          verbose_master(0," FAKE_EAR_NOT_INSTALLED when creating cluster conf");
+          cc_read_result = EAR_ERROR;
+        }
+
+				if (cc_read_result != EAR_ERROR){
 					verbose_master(2, "Reading cluster_conf");
 					read_cluster_conf(path, &dummy_cc);
 				}else{

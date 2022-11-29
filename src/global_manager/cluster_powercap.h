@@ -22,6 +22,10 @@
 #define POWER_TYPE 0
 #define ENERGY_TYPE 1
 
+#define MONITOR       0
+#define HARD_POWERCAP 1
+#define SOFT_POWERCAP 2
+
 typedef struct shared_powercap_data {
     ulong status;
     ulong def_power;        // default power for this eargm

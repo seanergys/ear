@@ -16,6 +16,8 @@
 */
 
 #define _GNU_SOURCE
+#define FAKE_POWER_READING  0
+#define FAKE_ENERGY_READING 0
 
 // #define SHOW_DEBUGS            1
 
@@ -230,6 +232,9 @@ static char gpu_proc_buffer[256];
 /* New status */
 static int  master = -1;
 static uint eard;
+
+static double dc_power_ratio;
+static uint   dc_power_ratio_instances  = 0;
 
 /* Energy saving app event */
 static ear_event_t app_energy_saving;
@@ -1077,6 +1082,7 @@ static void metrics_partial_start()
 extern uint ear_iterations;
 extern int ear_guided;
 
+static  uint    estimate_power = 0;
 static int metrics_partial_stop(uint where)
 {
 	ulong c_energy;
@@ -1125,6 +1131,12 @@ static int metrics_partial_stop(uint where)
 	debug("start energy str %s", start_energy_str);
 	debug("end energy str %s", stop_energy_str);
 
+  #if FAKE_ENERGY_READING
+  c_energy = 0;
+  verbose_master(0,"FAKE_ENERGY_READING used ");
+  #endif
+
+
 
 	/* If EARD is present, we wait until the power is computed */
 	if ((where==SIG_END) && (c_energy==0) && (master)) {
@@ -1142,6 +1154,11 @@ static int metrics_partial_stop(uint where)
 	/* energy is computed in node_energy_units and time in usecs */
 	c_power=(float)(c_energy*(1000000.0/(double)node_energy_units))/(float)c_time;
 
+  #if FAKE_POWER_READING
+  c_power = 1000000;
+  verbose_master(0,"FAKE_POWER_READING used");
+  #endif
+
 	if (master) {
 		if (dispose && ((c_power<0) || (c_power>system_conf->max_sig_power))){
 			debug("dispose and c_power %lf\n",c_power);
@@ -1158,6 +1175,7 @@ static int metrics_partial_stop(uint where)
 	/* TODO: This commment can not be above GPU code: This is new to avoid cases where uncore gets frozen */
 
 	if (master) {
+        double gpu_power = 0.0;
 #if USE_GPUS
         if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[LOO]))) {
 
@@ -1185,12 +1203,15 @@ static int metrics_partial_stop(uint where)
     if (master) {
 		if (c_power < system_conf->max_sig_power) {
 			acum_ipmi[LOO] = c_energy;
+
 		} else {
 			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
                     COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
-			acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
+			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
+      estimate_power = 1;
 		}
-		acum_ipmi[APP] += acum_ipmi[LOO];
+    /* Delay this accumulation to the job power computation */ 
+		 //acum_ipmi[APP] += acum_ipmi[LOO];
 	}
 	/* Per process IO data */
 	if (io_read(&ctx_io, &metrics_io_end[LOO]) != EAR_SUCCESS){
@@ -1265,8 +1286,10 @@ static int metrics_partial_stop(uint where)
 		energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
 	
 		// Manual RAPL accumulation
+    ullong total_RAPL_energy = 0;
 		for (int i = 0; i < rapl_elements; i++) {
 			metrics_rapl[APP][i] += metrics_rapl[LOO][i];
+      total_RAPL_energy += metrics_rapl[LOO][i];
 			debug("energy CPU: %llu", metrics_rapl[LOO][i]);
 		}
 
@@ -1461,7 +1484,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 		/* Power: Node, DRAM, PCK */
 		metrics->DC_power = 0;
-		if (acum_ipmi[sign_app_loop_idx]){
+		if (!estimate_power && acum_ipmi[sign_app_loop_idx]){
 			metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
 		}
 
@@ -1506,12 +1529,27 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
 #endif
+    if (!estimate_power){
+      dc_power_ratio += metrics->DC_power / (total_gpu_power + metrics->DRAM_power + metrics->PCK_power);
+      dc_power_ratio_instances++;
+    }
 		#if EARL_LIGHT
 		if (metrics->DC_power == 0){
 			metrics->DC_power = total_gpu_power + metrics->DRAM_power + metrics->PCK_power;
-			verbose_master(1,"Estimated power %lf", metrics->DC_power);
+			verbose_master(1,"Estimated power %.2lf", metrics->DC_power);
 		}
-		#endif
+		#else
+    if (estimate_power){
+      double current_ratio;
+      if (dc_power_ratio_instances && dc_power_ratio){
+        current_ratio = dc_power_ratio / (double)dc_power_ratio_instances;
+      }else current_ratio = 1.0;
+      metrics->DC_power = (total_gpu_power + metrics->DRAM_power + metrics->PCK_power) * current_ratio;
+      verbose_master(1,"Warning: Estimated power %.2lf W (DC vs CPU+GPU %.2lf)", metrics->DC_power, current_ratio);
+      if (sign_app_loop_idx == LOO) acum_ipmi[sign_app_loop_idx] = metrics->DC_power * time_s * node_energy_units;
+      estimate_power = 0;
+    }
+    #endif
 
 	} else {
         // Copies DC, DRAM, PCK, avg_f, avg_imc_f, GBS and TPI
@@ -2169,6 +2207,9 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 	dst->L1_misses = L1;
 	dst->L2_misses = L2;
 	dst->L3_misses = L3;
+
+  acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
+  verbose_master(2,"Accumulating %.2lf W to the application for %.2lf sec", master->DC_power, se->elapsed);
 }
 
 extern uint last_earl_phase_classification;

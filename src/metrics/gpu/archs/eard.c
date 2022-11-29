@@ -171,6 +171,9 @@ int gpu_eard_is_supported()
     // This is an independent function. It works always, with independence of the load
     // of the EARD GPU API, although is using RPCs to the EAR Daemon.
     if (!eard || !eards_connected()) {
+        #if FAKE_EAR_NOT_INSTALLED
+        verbose(0," FAKE_EAR_NOT_INSTALLED supported %u", supported);
+        #endif
         return supported;
     }
     if (!called) {

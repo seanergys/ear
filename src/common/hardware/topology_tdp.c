@@ -45,7 +45,7 @@ void topology_tdp(topology_t *topo)
 
     // TDP custom
     if (getenv("EAR_CPU_TDP") != NULL) {
-        topo->tdp = (uint) atoi("EAR_CPU_TDP");
+        topo->tdp = (uint) atoi(getenv("EAR_CPU_TDP"));
         return;
     }
     // TDP specific
