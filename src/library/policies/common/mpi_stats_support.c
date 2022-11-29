@@ -79,7 +79,7 @@ static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
 
 #else
 #define VERBOSE_MPI_OPT 0
-#endif
+#endif // MPI_OPTIMIZED
 
 static timestamp pol_time_init, start_no_mpi;
 
@@ -117,15 +117,6 @@ static uint num_mpi_to_optimize = 0;
 static uint   mpi_call_count[N_CALL_TYPES];
 static ullong mpi_call_time[N_CALL_TYPES];
 #endif // NEW_MPI_STATS
-
-#if COMP_CPI // A very research field: using the computational CPI of processes.
-static cpi_t cpi_1;
-static cpi_t cpi_2;
-static cpi_t cpi_diff;
-static double comp_cpi;
-static ullong comp_cycles;
-static ullong comp_insts;
-#endif
 
 float LB_TH = EAR_LB_TH;
 
@@ -165,7 +156,7 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 state_t mpi_app_init(polctx_t *c)
 {
 #if MPI_OPTIMIZED
-    char * cear_min_usec_for_mpi_opt = getenv(FLAG_MIN_USEC_MPI); // Modifies the minimum time a call must spend in order to be a candidate to be optimized.
+    char *cear_min_usec_for_mpi_opt = getenv(FLAG_MIN_USEC_MPI); // Modifies the minimum time a call must spend in order to be a candidate to be optimized.
 
     if (cear_min_usec_for_mpi_opt != NULL) ear_min_usec_for_mpi_opt = (ulong) atoi(cear_min_usec_for_mpi_opt);
     verbose_master(2, "Minimum MPI call time to be optimized: %lu us", ear_min_usec_for_mpi_opt);
@@ -217,10 +208,6 @@ state_t mpi_app_init(polctx_t *c)
 
         //timestamp_getfast(&start_no_mpi);
         timestamp_getprecise(&start_no_mpi);
-
-#if COMP_CPI
-        cpi_read(no_ctx, &cpi_1);
-#endif
 
     } else {
         return EAR_ERROR;
@@ -408,15 +395,6 @@ state_t mpi_app_end(polctx_t *c)
         }
     }
 
-#if COMP_CPI
-
-    cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
-    comp_cycles += cpi_diff.cycles;
-    comp_insts += cpi_diff.instructions;
-
-    verbose(0, "Comp. CPI (%u): %lf", my_node_id, (double) comp_cycles / (double) comp_insts);
-#endif
-
     return EAR_SUCCESS;
 }
 
@@ -440,14 +418,6 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 
         in_mpi_call = 1;
 
-#if COMP_CPI
-    cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
-    comp_cycles += cpi_diff.cycles;
-    comp_insts += cpi_diff.instructions;
-    // sig_shared_region[my_node_id].comp_cycles = comp_cycles;
-    // sig_shared_region[my_node_id].comp_insts = comp_insts;
-#endif // COMP_CPI
-
 #if SHOW_DEBUGS
         if ((sig_shared_region[my_node_id].mpi_info.total_mpi_calls % 100) == 0) {
             debug("P[%d] (sec %ld nsec %ld) - (sec %ld nsec %ld) %llu not_mpi_elap",
@@ -461,27 +431,6 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
     return EAR_SUCCESS;
 }
 
-/*
-#if VERBOSE_MPI_OPT
-static void print_mpi_optimized(char *msg, uint index)
-{
-verbose(0,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
-my_node_id, index,\
-(ulong) list_mpi_to_optimize[index].call, \
-(ulong) list_mpi_to_optimize[index].last_buf,\
-(ulong) list_mpi_to_optimize[index].last_dest, \
-list_mpi_to_optimize[index].elap);
-}
-#endif
-*/
-
-/*
-uint is_blocking_collective(mpi_call call)
-{
-    //return (is_bbarrier(call) || is_bgather(call));
-    return (is_bbarrier(call));
-}
-*/
 
 uint is_bbarrier(mpi_call call)
 {
@@ -652,9 +601,6 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
         }
 #endif // SHOW_DEBUGS
-#if COMP_CPI
-        cpi_read(no_ctx, &cpi_1);
-#endif
     }
 #endif // PER_MPI_CALL_STATS
 
@@ -887,8 +833,8 @@ static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs
 /* This function sets the values to be shared with other nodes */
 static mpi_summary_t my_mpi_summary;
 
-state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, const double *percs_mpi, int num_procs,
-        double mean, double sd, double mag)
+static state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, const double *percs_mpi, 
+                                           int num_procs, double mean, double sd, double mag)
 {
     double max, min;
     max = 0.0;
@@ -1116,6 +1062,7 @@ state_t is_blocking_busy_waiting(uint *block_type)
     return EAR_SUCCESS;
 }
 
+
 /* Support form MPI optimization */
 state_t already_optimized(mpi_call call_type, p2i buf, p2i dest)
 {
@@ -1130,12 +1077,11 @@ state_t already_optimized(mpi_call call_type, p2i buf, p2i dest)
     return EAR_ERROR;
 #endif
     return EAR_SUCCESS;
-
 }
 
+#if MPI_OPTIMIZED
 state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed)
 {
-#if MPI_OPTIMIZED
     last_optimized = 0;
 
     if (!num_mpi_to_optimize) return EAR_ERROR;
@@ -1154,9 +1100,10 @@ state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed)
             return EAR_SUCCESS;
         }
     }
-#endif
     return EAR_ERROR;
 }
+#endif
+
 
 static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)
 {

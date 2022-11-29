@@ -82,7 +82,9 @@ state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_per
 float compute_mpi_in_period(mpi_information_t *mc);
 
 
+#if MPI_OPTIMIZED
 state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed);
+#endif
 state_t already_optimized(mpi_call call_type, p2i buf, p2i dest);
 void *get_stack(int lv);
 void print_stack();

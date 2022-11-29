@@ -38,6 +38,7 @@
 #include <common/system/shared_areas.h>
 #include <daemon/local_api/node_mgr.h>
 
+#if SHARED_MPI_SUMMARY
 typedef struct mpi_summary {
     float max;
     float min;
@@ -45,6 +46,7 @@ typedef struct mpi_summary {
     float mean;
     float mag;
 } mpi_summary_t;
+#endif
 
 typedef struct mpi_information {
     uint        total_mpi_calls;
@@ -84,7 +86,9 @@ typedef struct lib_shared_data {
     cpu_set_t   node_mask;
     ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     uint        node_mgr_index;
+#if MPI_OPTIMIZED
 		uint        processes_in_barrier;
+#endif
 		uint        reduced_in_barrier;
 } lib_shared_data_t;
 

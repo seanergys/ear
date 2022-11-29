@@ -135,7 +135,9 @@ static int my_size;
 static int num_nodes;
 static int ppnode;
 
+#if MPI_OPTIMIZED
 extern uint ear_mpi_opt;
+#endif
 
 /* To be used by report plugins */
 report_id_t rep_id;
@@ -277,9 +279,6 @@ void notify_eard_connection(int status)
 {
 				char *buffer_send;
 				char *buffer_recv;
-#if MPI
-				int i;
-#endif
 				if (masters_comm_created){
 								buffer_send = calloc(    1, sizeof(char));
 								buffer_recv = calloc(masters_info.my_master_size, sizeof(char));
@@ -300,7 +299,7 @@ void notify_eard_connection(int status)
 								masters_connected=0;
 								if (synchronize_masters){
 												PMPI_Allgather(buffer_send, 1, MPI_BYTE, buffer_recv, 1, MPI_BYTE, masters_info.masters_comm);
-												for (i = 0; i < masters_info.my_master_size; ++i)
+												for (int i = 0; i < masters_info.my_master_size; ++i)
 												{       
 																masters_connected+=(int)buffer_recv[i];
 												}
@@ -534,10 +533,10 @@ void create_shared_regions()
 				}else{
 								debug("%lu Bytes allocated for masters_info my_mpi_info",per_node_elements*sizeof(shsignature_t));
 				}
-#if NODE_LB
-				masters_info.nodes_mpi_summary = (mpi_summary_t *)calloc(masters_info.my_master_size,sizeof(mpi_summary_t));
-				if (masters_info.nodes_mpi_summary == NULL){
-								error("Allocating memory for MPI summary shared info");
+#if SHARED_MPI_SUMMARY
+				masters_info.nodes_mpi_summary = (mpi_summary_t *) calloc(masters_info.my_master_size,sizeof(mpi_summary_t));
+				if (masters_info.nodes_mpi_summary == NULL) {
+                    error("Allocating memory for MPI summary shared info");
 				}
 #endif
 				/********************************/
@@ -2216,9 +2215,11 @@ static timestamp_t periodic_time;
 static ulong last_check = 0;
 static uint first_exec_monitor = 1;
 
+#if MPI_OPTIMIZED
 /* 0 = init, 1 = end, 2= diff */
 static mpi_information_t my_mpi_stats[3];
 static mpi_calls_types_t my_mpi_types[3];
+#endif
 state_t earl_periodic_actions_init(void *no_arg)
 {
 				verbose_master(2,"RANK %d EARL periodic thread ON",ear_my_rank);

@@ -88,6 +88,8 @@ extern report_id_t rep_id;
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
 
+#define POLICY_MPI_OPT 1
+
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) (!ext_def_freq?f:ext_def_freq)
@@ -165,12 +167,18 @@ signature_t policy_last_global_signature;
 
 polctx_t my_pol_ctx;
 
-uint total_mpi = 0;
+uint total_mpi = 0; // This variable only counts the number of MPI calls and it's only used
+                    // at state_comm::verbose_signature. It only is useful when only the master verboses,
+                    // so it's value only shows master info while that signature verbose message tries to
+                    // show per-node info.
 
 node_freqs_t nf;     /*!< Nominal frequency */
 node_freqs_t avg_nf;
 node_freqs_t last_nf;
+
+#if POLICY_MPI_OPT
 static node_freqs_t per_process_node_freq;
+#endif
 
 static ulong max_freq_per_socket[MAX_SOCKETS_SUPPORTED];
 static uint  cpu_must_be_normalized[MAX_CPUS_SUPPORTED];
@@ -526,7 +534,7 @@ state_t policy_init()
 
     if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
 
-    if (ear_mpi_opt){
+    if (ear_mpi_opt) {
       verbose_master(2, "MPI optimization enabled");
     }
 
@@ -600,8 +608,10 @@ state_t policy_init()
     node_freqs_alloc(&nf);
     node_freqs_alloc(&avg_nf);
     node_freqs_alloc(&last_nf);
+#if POLICY_MPI_OPT
     /* This is to be used in mpi_calls */
     node_freqs_alloc(&per_process_node_freq);
+#endif
     freq_per_core = calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
@@ -903,8 +913,7 @@ static int is_try_again()
 
 /* This is the main function for frequency selection at node level */
 /* my_sig is an input and freq_set and ready are output values */
-/* The CPU freq and GPu freq are set in this function, so freq_set is just a reference for the CPU freq selected */
-double low_mpi_ref = 100;
+/* The CPU and GPU freqs are set in this function, so freq_set is just a reference for the CPU freq selected */
 state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 {
     signature_t node_sig;
@@ -921,24 +930,13 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     cpu_ready = EAR_POLICY_NO_STATE;
     gpu_ready = EAR_POLICY_NO_STATE;
-#if MPI_OPTIMIZED
-    double max_mpi = 0, min_mpi = 100;
-    if (ear_mpi_opt && is_mpi_enabled()){
-      for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++){
-        max_mpi = ear_max(max_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
-        min_mpi = ear_min(min_mpi, sig_shared_region[lp].mpi_info.perc_mpi);
-      }
-      low_mpi_ref = min_mpi + ((max_mpi - min_mpi)/2);
-      low_mpi_ref = ear_max(low_mpi_ref, 10);
-      //verbose(0,"[%d] low_mpi %.2f", my_node_id, low_mpi_ref);
-    }
-#endif
+
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
-	#if EARL_LIGHT
-	if (masters_info.my_master_rank >= 0) {
+#if EARL_LIGHT
+        if (masters_info.my_master_rank >= 0) {
 		clean_signatures(lib_shared_region, sig_shared_region);
 	}
-	#endif
+#endif
         *ready = EAR_POLICY_CONTINUE;
         return EAR_SUCCESS;
     }
@@ -976,19 +974,6 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
     }
 
     //  NEW CLASSIFY
-    #if 0
-    verbose_master(POLICY_PHASES, "------------- EARL phase classification ------------\n"
-            "%s\n"
-            "Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u\n"
-            "cpi_busy %.2f gbs_busy %.2f gflops_busy %.2f\n"
-            "cpi_cpu_bound %.2f gbs_cpu_bound %.2f\n"
-            "cpi_mem_bound %.2f gbs_mem_bound %.2f\n"
-            "----------------------------------------------------",
-            phase_to_str(earl_phase_classification), busy, iobound, mpibound, use_earl_phases,
-            phases_limits.cpi_busy_waiting, phases_limits.gbs_busy_waiting, phases_limits.gflops_busy_waiting,
-            phases_limits.cpi_cpu_bound, phases_limits.gbs_cpu_bound,
-            phases_limits.cpi_mem_bound, phases_limits.gbs_mem_bound);
-    #endif
     verbose_master(POLICY_PHASES, "EARL phase %s: Busy Waiting %u / I/O bound %u / MPI bound %u / Using phases %u",
         phase_to_str(earl_phase_classification), busy, iobound, mpibound, use_earl_phases);
 
@@ -1476,7 +1461,6 @@ static node_freq_domain_t per_process_dom = {
   .gpu = POL_NOT_SUPPORTED,
   .gpumem = POL_NOT_SUPPORTED};
 
-#define POLICY_MPI_OPT 1 // TODO: This variable should be at config_dev.h
 
 
 state_t policy_mpi_init(mpi_call call_type)
