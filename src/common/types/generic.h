@@ -24,13 +24,14 @@
 
 typedef const char          cchar;
 typedef unsigned char		uchar;
+typedef   signed char       byte;
+typedef unsigned char       ubyte;
 typedef unsigned long long	ull;
 typedef unsigned long long	ullong;
 typedef   signed long long	llong;
 typedef unsigned long		ulong;
 typedef unsigned short		ushort;
 typedef unsigned int		uint;
-typedef     long double		ldouble;
 typedef unsigned long long  addr_t;
 
 // Not generic

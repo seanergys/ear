@@ -89,6 +89,27 @@ state_t mgt_cpufreq_prio_set_available_list(cpuprio_t *prio_list)
     return ops.set_available_list(prio_list);
 }
 
+state_t mgt_cpufreq_prio_set_available_list_by_freqs(ullong *max_khz, ullong *min_khz)
+{
+    static cpuprio_t *prios = NULL;
+    static uint prios_count = 0;
+    state_t s;
+    int i;
+
+    if (prios == NULL) {
+        mgt_cpufreq_prio_data_alloc(&prios, NULL);
+        mgt_cpufreq_prio_data_count(&prios_count, NULL);
+    }
+    if (state_fail(s = mgt_cpufreq_prio_get_available_list(&prios))) {
+        return s;
+    }
+    for (i = 0; i < prios_count; ++i) {
+        if (max_khz != NULL) { prios[i].max_khz = max_khz[i]; }
+        if (min_khz != NULL) { prios[i].min_khz = min_khz[i]; }
+    }
+    return mgt_cpufreq_prio_set_available_list(prios);
+}
+
 state_t mgt_cpufreq_prio_get_current_list(uint *idx_list)
 {
     return ops.get_current_list(idx_list);
