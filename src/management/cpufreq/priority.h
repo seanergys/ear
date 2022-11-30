@@ -81,8 +81,8 @@ int mgt_cpufreq_prio_is_enabled();
 state_t mgt_cpufreq_prio_get_available_list(cpuprio_t *prio_list);
 /* Edit priorities. By now just the min-max frequency fields of the cpuprio_t are modified. */
 state_t mgt_cpufreq_prio_set_available_list(cpuprio_t *prio_list);
-/*  */
-state_t mgt_cpufreq_prio_set_available_list_by_freqs(ullong *max_freqs, ullong *min_freqs);
+/* Sets the maximum and minimum frequency of the prio list. */
+state_t mgt_cpufreq_prio_set_available_list_by_freqs(ullong *max_khz, ullong *min_khz);
 /* Returns the list of the current CPU priorities, in index format (0 for CLOS0, 1 for CLOS1, and so on). */
 state_t mgt_cpufreq_prio_get_current_list(uint *list_idx);
 /* Changes CPUs priorities using a list of indexes. You can also use SAME_PRIO to avoid changes. */

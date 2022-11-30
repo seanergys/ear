@@ -100,7 +100,7 @@ state_t mgt_cpufreq_prio_set_available_list_by_freqs(ullong *max_khz, ullong *mi
         mgt_cpufreq_prio_data_alloc(&prios, NULL);
         mgt_cpufreq_prio_data_count(&prios_count, NULL);
     }
-    if (state_fail(s = mgt_cpufreq_prio_get_available_list(&prios))) {
+    if (state_fail(s = mgt_cpufreq_prio_get_available_list(prios))) {
         return s;
     }
     for (i = 0; i < prios_count; ++i) {
