@@ -99,6 +99,8 @@ static int in_mpi_call;
 
 extern uint ear_mpi_opt; // Whether this module must to try to optimize some MPI calls.
 
+
+#if MPI_OPTIMIZED
 typedef struct ear_calls {
     mpi_call call;
     p2i last_buf;
@@ -107,9 +109,10 @@ typedef struct ear_calls {
     uint  cnt;
 } ear_calls_t;
 
-#if MPI_OPTIMIZED
 static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
 static uint num_mpi_to_optimize = 0;
+
+extern p2i last_buf, last_dest; // Defined at src/library/api/ear_mpi.c
 #endif
 
 #if NEW_MPI_STATS
@@ -124,8 +127,7 @@ static float critical_path_th   = 1;
 
 ulong local_max_sync_block = 0;
 
-// src/library/api/ear_mpi.c
-extern p2i last_buf, last_dest;
+
 
 static uint index_last_optimized, last_optimized = 0;
 
@@ -137,11 +139,7 @@ static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types
 static state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls, int *max, int *min);
 
 /**  Computes basic statistics of percs_mpi */
-static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs,
-                                                double *mean, double *sd, double *mag);
-
-static state_t mpi_stats_get_only_percs_mpi(const mpi_information_t *node_mpi_calls,
-                                            int nump, double *percs_mpi);
+static state_t mpi_stats_get_only_percs_mpi(const mpi_information_t *node_mpi_calls, int nump, double *percs_mpi);
 
 static state_t mpi_stats_evaluate_sim_uint(uint *current_cp, uint *last_cp,
                                            size_t size, double *sim);
@@ -741,8 +739,8 @@ float compute_mpi_in_period(mpi_information_t *mc)
 
 void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 {
-    char perc_sync_time[16], perc_collec_time[16], perc_block_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
     #if MPI_STATS
+    char perc_sync_time[16], perc_collec_time[16], perc_block_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
     if (verb_lvl >= VERB_GET_LV()){
 
     if (t->exec_time == 0) {
@@ -819,15 +817,6 @@ static state_t mpi_support_perc_mpi_max_min(int nump, double *percs_mpi, int *ma
     return EAR_SUCCESS;
 }
 
-static state_t mpi_support_compute_mpi_lb_stats(double *percs_mpi, int num_procs,
-        double *mean, double *sd, double *mag) {
-
-    /*  Compute mean, standard deviation and magnitude of percs_mpi vector */
-    mpi_stats_evaluate_mean_sd_mag(num_procs, percs_mpi, mean,
-            sd, mag);
-
-    return EAR_SUCCESS;
-}
 
 #if SHARED_MPI_SUMMARY
 /* This function sets the values to be shared with other nodes */
@@ -853,6 +842,7 @@ static state_t mpi_support_set_mpi_summary(mpi_summary_t *mpisumm, const double 
 }
 #endif // SHARED_MPI_SUMMARY
 
+
 state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num_procs,
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb)
 {
@@ -862,15 +852,14 @@ state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num
     // Get only perc_mpi info.
     ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok
 
-    // Compute statistics to determinate whether application is load balanced.
-    mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
+    /*  Compute mean, standard deviation and magnitude of percs_mpi vector */
+    mpi_stats_evaluate_mean_sd_mag(num_procs, percs_mpi, mean, sd, mag);
 
 #if SHARED_MPI_SUMMARY
     mpi_support_set_mpi_summary(&my_mpi_summary, percs_mpi, num_procs, *mean, *sd, *mag);
 #endif
 
 #if NODE_LB
-#if NEW_LB_EFF
     ullong max_tcomp = node_mpi_calls[0].exec_time - node_mpi_calls[0].mpi_time;
     double avg_tcomp = (double) max_tcomp;
 
@@ -891,9 +880,6 @@ state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num
             COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH);
 
     *lb = (lb_eff < LB_TH);
-#else
-    *lb = (*sd > LB_TH);
-#endif // NEW_LB_EFF
 #else
     *lb = 0;
 #endif // NODE_LB
@@ -978,6 +964,17 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
 
 static state_t mpi_stats_get_only_percs_mpi(const mpi_information_t *node_mpi_calls, int nump, double *percs_mpi)
 {
+    double perc_mpi_check = 0; // Used ONLY for checking if perc_mpi > 0
+    for (int i = 0; i < nump; i++) {
+        percs_mpi[i] = node_mpi_calls[i].perc_mpi;
+        perc_mpi_check += percs_mpi[i];
+    }
+    
+    if (!perc_mpi_check) {
+        return EAR_WARNING;
+    }
+    return EAR_SUCCESS;
+#if 0
     const mpi_information_t **mpi_calls = (const mpi_information_t **) malloc(nump * sizeof(mpi_information_t*));
 
     for (int i = 0; i < nump; i++) {
@@ -997,7 +994,7 @@ static state_t mpi_stats_get_only_percs_mpi(const mpi_information_t *node_mpi_ca
     if (perc_mpi_check == 0) {
         return EAR_WARNING;
     }
-
+#endif
     return EAR_SUCCESS;
 }
 

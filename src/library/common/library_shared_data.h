@@ -253,7 +253,6 @@ int my_shsig_id();
 int shsig_id(int node,int rank);
 
 void* mpi_info_get_perc_mpi(void *mpi_inf);
-void* mpi_info_get_tcomp(void *mpi_inf);
 
 /* Node mgr earl support functions */
 void init_earl_node_mgr_info();

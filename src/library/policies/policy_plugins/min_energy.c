@@ -976,10 +976,9 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 
 static uint resume_cpufreq = 0;
 
-extern p2i last_buf, last_dest;
-
 
 #if MPI_OPTIMIZED
+extern p2i last_buf, last_dest;
 static struct timespec mpi_opt_timer;
 
 #define OPT_BARRIER 0
