@@ -862,7 +862,7 @@ state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num
     // Get only perc_mpi info.
     ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok
 
-    // Compute statistics for determinate whether application is load balanced.
+    // Compute statistics to determinate whether application is load balanced.
     mpi_support_compute_mpi_lb_stats(percs_mpi, num_procs, mean, sd, mag);
 
 #if SHARED_MPI_SUMMARY
@@ -905,6 +905,7 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
         double *median, int *max_mpi, int *min_mpi)
 {
     uint total_cp = 0;
+
     /* Computes max and min perc_mpi processes */
     mpi_support_perc_mpi_max_min(num_procs, percs_mpi, max_mpi, min_mpi);
 

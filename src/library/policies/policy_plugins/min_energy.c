@@ -538,9 +538,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 							/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
                             new_freq[i] = ear_min(eff_p_cpuf, frequency_pstate_to_freq(1));
                         }
-                        verbose_master(2,
-                                "CPU freq for CP process %d is %lu (!MBOUND use_turbo %u MIN_MPI %u)",
-                                i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi]);
+                        verbose_master(2, "CPU freq for CP process %d is %lu (!MBOUND use_turbo %u MIN_MPI %u)",
+                                       i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi]);
                         continue;
                     } else {
 						/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
@@ -804,6 +803,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     return EAR_SUCCESS;
 }
 
+
 static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *ok)
 {
     debug("%spolicy ok evaluation%s", COL_YLW, COL_CLR);
@@ -906,7 +906,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
             nump = 1;
             freq_per_core = 0;
         }
-    } else{
+    } else {
         nump = 1;
         freq_per_core = 0;
     }
@@ -925,6 +925,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
 
     return EAR_SUCCESS;
 }
+
 
 state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *last_sig, int *ok)
 {
