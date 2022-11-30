@@ -26,130 +26,88 @@
 #include <common/system/folder.h>
 #include <metrics/common/pci.h>
 
-// Total of 65.536 bytes
-#define N_BUSES     256
-#define N_DEVICES   32
-#define N_FUNCTIONS 8
-#define N_DFS       256
-#define N_PCIS      65536
-#define N_ALLOCS    32 // Allocated PCIs (is hardcoded avoid multiple scannings)
-// 65.536 * (64 + 2 + 2 + 1) = 4.259.840 bytes (4MB)
-static struct aux_dfs_s {
-    char    path[64];
-    ushort  vendor;
-    ushort  id;
-    ubyte   exists;
-} aux_dfs[N_PCIS];
-
-static struct aux_buses_s {
-    ubyte exists;
-} aux_buses[N_BUSES];
-
-static uint traveled;
-
 static char *strdfs(uint dfs, char *string)
 {
-    uint device = dfs / 8;
-    uint function = dfs % 8;
-    sprintf(string, "%.2x.%u", device, function);
-    return string;
+	uint device = dfs / 8;
+	uint function = dfs % 8;
+	sprintf(string, "%.2x.%u", device, function);
+	return string;
 }
 
-static void pci_travel()
+state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pcis, uint *pcis_count)
 {
+    char path[SZ_PATH];
     folder_t folder;
-    int fds_count = 0;
-    char path[64];
+    int b, d, i, fd;
+    ushort rid, vid;
+    uint ids_count;
+    uint dfs_count;
     char aux[8];
-    int b, d, f;
-    int fd;
 
-    for (b = 0; b < N_BUSES; ++b)
-    {
+    // Counting
+    *pcis_count = 0;
+    for (ids_count = i = 0; ids[i] != 0x00; ++i) {
+        ids_count++;
+    }
+    for (dfs_count = i = 0; dfs != NULL && dfs[i] != NULL; ++i) {
+        dfs_count++;
+    }
+    if (dfs_count == 0) {
+        dfs_count = 32 * 8;
+    }
+    *pcis = calloc(32, sizeof(pci_t));
+    // Travelling
+    for (b = 0; b < 256; ++b) {
         sprintf(path, "/proc/bus/pci/%.2x", b);
         // Discarding bus
         if (state_fail(folder_open(&folder, path))) {
-            fds_count += N_DFS;
             continue;
         }
         folder_close(&folder);
-        // OK, bus exists
-        aux_buses[b].exists = 1;
-        // Let's travel into DXF (devices X functions)
-        for (d = 0; d < N_DEVICES; ++d) {
-        for (f = 0; f < N_FUNCTIONS; ++f)
-        {
-            sprintf(aux_dfs[fds_count].path, "%s/%.2x.%u", path, d, f);
-            //
+        // Entering bus 
+        for (d = 0; d < dfs_count; ++d) {
+            // Opening a PCI device
+            if (dfs != NULL) {
+                //sprintf(path, "/sys/bus/pci/devices/0000:%.2x:%s/config", b, dfs[d]);
+                sprintf(path, "/proc/bus/pci/%.2x/%s", b, dfs[d]);
+            } else {
+                //sprintf(path, "/sys/bus/pci/devices/0000:%.2x:%s/config", b, strdfs(d, aux));
+                sprintf(path, "/proc/bus/pci/%.2x/%s", b, strdfs(d, aux));
+            }
             debug("Trying to open PCI %s", path);
-            if ((fd = open(aux_dfs[fds_count].path, mode)) < 0) {
+            if ((fd = open(path, mode)) < 0) {
                 if (errno == EACCES) {
                     debug("Exists '%s', but no permissions", path);
                 } else {
                     debug("Exists '%s', but error %s", path, strerror(errno));
                 }
-                fds_count += 1;
                 continue;
             }
-            aux_dfs[fds_count].exists = 1;
-            aux_dfs[fds_count].index  = (d * N_FUNCTIONS) + f;
-            // Reading vendor and device id
-            pread(fd, &aux_dfs[fds_count].vendor, sizeof(ushort), 0);
-            pread(fd, &aux_dfs[fds_count].id,     sizeof(ushort), 2);
-            // 1 by 1
-            fds_count += 1;
-            close(fd);
-        }} //DXF
-    }
-}
-
-static state_t pci_scan_all()
-{
-    return EAR_SUCCESS;
-}
-
-static state_t pci_scan_dfs(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pcis, uint *pcis_count)
-{
-    uint ids_count = 0;
-    uint dfs_count = 0;
-    int b, d, f, i, fd;
-    uint idx_dfs[N_DFS];
-
-    if (!traveled) {
-        pci_travel();
-        traveled = 1;
-    }
-    // Allocating memory
-    *pcis = calloc(N_ALLOCS, sizeof(pci_t));
-    *pcis_count = 0;
-    // Counting IDs
-    for (i = 0; ids[i] != 0x00; ++i) {
-        ids_count++;
-    }
-    // Counting DFS
-    for (i = 0; dfs[i] != NULL; ++i) {
-        dfs_count++;
-    }
-    // Converting DFs in indexes
-
-    // Travelling again
-    for (b = 0; b < N_BUSES; ++b) {
-        if (!aux_buses[b].exists) {
-            fds_count += N_DFS;
-            continue;
-        }
-        for (d = 0; d < dfs_count; ++d) {
-            if (aux_dfs[idx_dfs[d]].vendor != vendor) {
+            // Taking and comparing vendor
+            pread(fd, &vid, sizeof(vid), 0);
+            if (vid != vendor) {
                 continue;
             }
+            // Taking id
+            pread(fd, &rid, sizeof(rid), 2);
+            // Looking for IDs
             for (i = 0; i < ids_count; ++i) {
-                if (aux_dfs[idx_dfs[d]].id == ids[i]) {
+                if (rid == ids[i]) {
                     break;
                 }
             }
-        }
-        fds_count += N_DFS;
-    }
+            //
+            if (i < ids_count) {
+                debug("Found PCI '%s' for vendor %xh and id %xh (fd %d)",
+                    path, (uint) vendor, (uint) rid, fd);
+                strcpy((*pcis)[*pcis_count].path, path);
+                (*pcis)[*pcis_count].mode = mode;
+                (*pcis)[*pcis_count].fd   = fd;
+                *pcis_count += 1;
+            } else {
+                close(fd);
+            }
+        }}
     if (*pcis_count == 0) {
         return_msg(EAR_ERROR, "No PCIs found");
     }
