@@ -64,6 +64,7 @@ typedef struct powermon_app {
     uint              exclusive; //
     accum_power_sig_t accum_ps; //
     uint             *prio_idx_list; // List of CPU priorities before job beginning.
+    pthread_mutex_t   powermon_app_mutex;
 } powermon_app_t;
 
 typedef struct job_context {

@@ -60,18 +60,22 @@
 #include <daemon/gpu/gpu_mgt.h>
 #endif
 
-
 #define MIN_INTERVAL_RT_ERROR 3600
-
 
 #if APP_API_THREAD
 pthread_t app_eard_api_th;
 #endif
 
-
-
+#if POWERMON_THREAD
 pthread_t power_mon_th; // It is pending to see whether it works with threads
+#endif
+
+#if EXTERNAL_COMMANDS_THREAD
 pthread_t dyn_conf_th;
+#endif
+
+pthread_barrier_t setup_barrier;
+
 int num_nodes_cluster=0;
 cluster_conf_t my_cluster_conf;
 char *ser_cluster_conf;
@@ -903,24 +907,35 @@ int main(int argc, char *argv[])
                 report_init(&rid, &my_cluster_conf);
 
                 report_eard_init_error();
+
+                uint thread_setup_count = POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD + APP_API_THREAD;
+                pthread_barrier_init(&setup_barrier, NULL, thread_setup_count);
+
                 verbose(VEARD_INIT,"Creating EARD threads");
                 verbose(VEARD_INIT,"Creating power  monitor thread");
 #if POWERMON_THREAD
+
                 if ((ret=pthread_create(&power_mon_th, NULL, eard_power_monitoring, NULL))){
                     errno=ret;
                     error("error creating power_monitoring thread %s\n",strerror(errno));
                     log_report_eard_init_error(&rid,PM_CREATION_ERROR,ret);
                 }
 #endif
+
                 verbose(VEARD_INIT,"Creating the remote connections server");
+
 #if EXTERNAL_COMMANDS_THREAD
+
                 if ((ret=pthread_create(&dyn_conf_th, NULL, eard_dynamic_configuration, (void *)ear_tmp))){
                     error("error creating dynamic_configuration thread \n");
                     log_report_eard_init_error(&rid,DYN_CREATION_ERROR,ret);
                 }
 #endif
+
                 verbose(VEARD_INIT,"Creating APP-API thread");
+
 #if APP_API_THREAD
+
                 if ((ret=pthread_create(&app_eard_api_th,NULL,eard_non_earl_api_service,NULL))){
                     error("error creating server thread for non-earl api\n");
                     log_report_eard_init_error(&rid,APP_API_CREATION_ERROR,ret);

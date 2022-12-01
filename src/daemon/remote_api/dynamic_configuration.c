@@ -46,7 +46,6 @@
 
 #include <management/cpufreq/frequency.h>
 
-
 #include <daemon/remote_api/eard_rapi.h>
 #include <daemon/remote_api/eard_server_api.h>
 #include <daemon/remote_api/dyn_conf_theading.h>
@@ -57,6 +56,8 @@
 #include <report/report.h>
 
 //#define SLURM_FAKE_ERROR 1
+
+extern pthread_barrier_t setup_barrier;
 
 /* Defined in eard.c */
 extern report_id_t rid;
@@ -1005,6 +1006,8 @@ void *eard_dynamic_configuration(void *tmp)
     /** IP init for powercap_status */
     if (init_ips_ready > 0) my_ip = ips[self_id];
     else my_ip = 0;
+
+    pthread_barrier_wait(&setup_barrier);
 
     /*
      *	MAIN LOOP

@@ -43,6 +43,8 @@
 
 #define close_app_connection()
 
+extern pthread_barrier_t setup_barrier;
+
 static char app_to_eard[MAX_PATH_SIZE];
 static char *TH_NAME="No-EARL_API";
 
@@ -507,41 +509,44 @@ void app_api_process_request(int fd_in)
 
 void *eard_non_earl_api_service(void *noinfo)
 {
-	int numfds_ready;
-	int i;
+    int numfds_ready;
+    int i;
 
-	app_api_set_sigterm();
+    app_api_set_sigterm();
 
-	if (pthread_setname_np(pthread_self(),TH_NAME)) {
-		error("Setting name for %s thread %s",TH_NAME,strerror(errno));
-	}
+    if (pthread_setname_np(pthread_self(),TH_NAME)) {
+        error("Setting name for %s thread %s", TH_NAME, strerror(errno));
+    }
 
-	/* Create connections */
-	if (create_app_connection(my_cluster_conf.install.dir_temp)!= EAR_SUCCESS){
-		error("Error creating files for non-EARL requests\n");
-		pthread_exit(0);
-	}
+    /* Create connections */
+    if (create_app_connection(my_cluster_conf.install.dir_temp) != EAR_SUCCESS) {
+        error("Error creating files for non-EARL requests\n");
+        pthread_exit(0);
+    }
 
-	if (energy_init(&my_cluster_conf, &my_eh_app_api) != EAR_SUCCESS){
-		error("Error initializing energy_init in No-EARL_API thread");
-		pthread_exit(0);
-	}
+    if (energy_init(&my_cluster_conf, &my_eh_app_api) != EAR_SUCCESS) {
+        error("Error initializing energy_init in No-EARL_API thread");
+        pthread_exit(0);
+    }
 
-	energy_datasize(&my_eh_app_api,&node_energy_datasize);
-	if (node_energy_datasize!=sizeof(unsigned long)){
-		error("Application api for energy readings not yet supported,exiting thread for app api");
-  	energy_dispose(&my_eh_app_api);
-  	pthread_exit(0);
-	}
+    energy_datasize(&my_eh_app_api, &node_energy_datasize);
+    if (node_energy_datasize != sizeof(unsigned long)) {
+        error("Application api for energy readings not yet supported,exiting thread for app api");
+        energy_dispose(&my_eh_app_api);
+        pthread_exit(0);
+    }
 
-	AFD_ZERO(&rfds_basic);
-	AFD_SET(fd_app_to_eard, &rfds_basic);
-	/* fd_eard_to_app is created the last */
+    AFD_ZERO(&rfds_basic);
+    AFD_SET(fd_app_to_eard, &rfds_basic);
+    /* fd_eard_to_app is created the last */
 
-	/* Wait for messages */
-	verbose(VAPP_API,"Waiting for non-earl requestst\n");
+    pthread_barrier_wait(&setup_barrier);
+
+    /* Wait for messages */
+    verbose(VAPP_API,"Waiting for non-earl requestst\n");
+
     while ((eard_must_exit==0) && (numfds_ready=aselectv(&rfds_basic, NULL))>=0){
-		verbose(VAPP_API,"New APP_API connections");
+        verbose(VAPP_API,"New APP_API connections");
         for (i = rfds_basic.fd_min; numfds_ready > 0 && i <= rfds_basic.fd_max; i++){
             if (AFD_ISSET(i, &rfds_basic)){
                 if (i==fd_app_to_eard){
@@ -551,11 +556,11 @@ void *eard_non_earl_api_service(void *noinfo)
                 }
             }
         }
-	}
-	/* Close and remove files , never reached if thread is killed */
-	energy_dispose(&my_eh_app_api);
-	dispose_app_connection();
-	pthread_exit(0);
+    }
+    /* Close and remove files , never reached if thread is killed */
+    energy_dispose(&my_eh_app_api);
+    dispose_app_connection();
+    pthread_exit(0);
 }
 
 
