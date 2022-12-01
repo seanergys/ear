@@ -314,7 +314,7 @@ void verbose_application_data(uint vl, application_t *app)
 
     char job_info_txt[1024]; // app / user / account / job.step
     snprintf(job_info_txt, sizeof(job_info_txt),
-            "%*s--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
+            "%*s --- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
             "%*s Processes %lu\n%*s Start time %s End time %s\n%*sStart MPI %s End MPI %s\n"
             "%*s (power sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz\n"
             "%*s             DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n"
@@ -330,10 +330,10 @@ void verbose_application_data(uint vl, application_t *app)
     if (app->is_mpi) {
         snprintf(mpi_info_txt, sizeof(mpi_info_txt),
                 "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n"
-                "%*s       Avg. mpi_time/exec_time %.1lf %%\n\n"
-                "%*s       tasks: %lu\n\n"
-                "%*s       CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
-                "%*s       DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
+                "%*s           Avg. mpi_time/exec_time %.1lf %%\n\n"
+                "%*s           tasks: %lu\n\n"
+                "%*s           CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
+                "%*s           DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
                 app->signature.time, def_f, avg_f, avg_imc_f,
                 padding, "", app->signature.perc_MPI,
                 padding, "", app->job.procs,
