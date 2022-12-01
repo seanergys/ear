@@ -26,17 +26,6 @@
 #include <common/system/folder.h>
 #include <metrics/common/pci.h>
 
-#define N_BUSES     256
-#define N_DEVICES   32
-#define N_FUNCTIONS 8
-#define N_DFS       256
-#define N_PCIS      65536
-
-static struct aux_buses_s {
-    uint checked;
-    uint exists;
-} aux_buses[N_BUSES];
-
 static char *strdfs(uint dfs, char *string)
 {
 	uint device = dfs / 8;
@@ -69,22 +58,12 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
     *pcis = calloc(32, sizeof(pci_t));
     // Travelling
     for (b = 0; b < 256; ++b) {
-        // Checking the bus b
-        if (!aux_buses[b].checked) {
-            // Now its checked
-            aux_buses[b].checked = 1;
-            aux_buses[b].exists  = 0;
-            sprintf(path, "/proc/bus/pci/%.2x", b);
-            // Discarding bus
-            if (state_ok(folder_open(&folder, path))) {
-                folder_close(&folder);
-                // Ok, the bus exists
-                aux_buses[b].exists = 1;
-            }
-        }
-        if (!aux_buses[b].exists) {
+        sprintf(path, "/proc/bus/pci/%.2x", b);
+        // Discarding bus
+        if (state_fail(folder_open(&folder, path))) {
             continue;
         }
+        folder_close(&folder);
         // Entering bus 
         for (d = 0; d < dfs_count; ++d) {
             // Opening a PCI device
