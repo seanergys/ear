@@ -453,7 +453,6 @@ int dyncon_set_policy(new_policy_cont_t *p)
 void dyncon_get_app_status(int fd, request_t *command) 
 {
     app_status_t *status;
-    long int ack;
     int local_status;
     local_status = powermon_get_num_applications(command->req == EAR_RC_APP_MASTER_STATUS);
     verbose(VRAPI,"We have %d local apps in app_status",local_status);
@@ -494,7 +493,6 @@ void dyncon_get_app_status(int fd, request_t *command)
 /* This function will propagate the status command and will return the list of node failures */
 void dyncon_get_status(int fd, request_t *command) {
     status_t *status;
-    long int ack;
     int num_status = propagate_status(command, my_cluster_conf.eard.port, &status);
     unsigned long return_status = num_status;
     debug("return_status %lu status=%p",return_status,status);
@@ -607,7 +605,6 @@ void dyncon_release_idle_power(int fd, request_t *command)
 {
     pc_release_data_t rel_data;
     int return_status;
-    long int ack;
 
     debug("propagating release_idle_power");
     return_status = propagate_release_idle(command, my_cluster_conf.eard.port, (pc_release_data_t *)&rel_data);
@@ -656,7 +653,6 @@ void dyncon_get_powerstatus(int fd, request_t *command)
     powercap_status_t *status;
     pmgt_status_t p_status;
     int return_status;
-    long int ack;
     char *status_data;
     return_status = propagate_powercap_status(command, my_cluster_conf.eard.port, (powercap_status_t **)&status_data);
     status = mem_alloc_powercap_status(status_data);
@@ -686,7 +682,6 @@ void dyncon_get_power(int fd, request_t *command)
     power_check_t *power;
     uint64_t curr_power = 0;
     int return_status;
-    long int ack;
     return_status = propagate_get_power(command, my_cluster_conf.eard.port, (power_check_t **)&power);
 
     if (return_status < 1) 
