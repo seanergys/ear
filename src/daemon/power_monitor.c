@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <common/colors.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 
 #include <common/config.h>
 #include <common/config/config_sched.h>
@@ -590,6 +591,16 @@ int new_context(job_id id, job_id sid, int *cc)
         return EAR_ERROR;
     }
 
+    int err_num;
+    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex, NULL))) {
+        error("Initializing mutex for context %d (%lu/%lu): %s", ccontext, id, sid, strerror(err_num));
+    }
+
+    if (state_fail(ear_trylock(&current_ear_app[ccontext]->powermon_app_mutex))) {
+        error("Locking new context");
+        return EAR_ERROR;
+    }
+
     if (ccontext > max_context_created ) max_context_created = ccontext;
 
     alloc_energy_data(&current_ear_app[ccontext]->energy_init);
@@ -609,6 +620,7 @@ int new_context(job_id id, job_id sid, int *cc)
     current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path);
     if (current_ear_app[ccontext]->settings == NULL) {
         error("Error creating shared memory between EARD & EARL for (%lu,%lu)",id,sid);
+        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
         return EAR_ERROR;
     }
 
@@ -622,6 +634,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     if (current_ear_app[ccontext]->resched == NULL) {
         error("Error creating resched shared memory between EARD & EARL for (%lu,%lu)",id,sid);
+        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
         return EAR_ERROR;
     }
 
@@ -639,6 +652,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     if (current_ear_app[ccontext]->app_info == NULL) {
         error("Error creating shared memory between EARD & EARL for app_mgt (%lu,%lu)",id,sid);
+        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
         return EAR_ERROR;
     }
 
@@ -651,6 +665,7 @@ int new_context(job_id id, job_id sid, int *cc)
     current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path);
     if (current_ear_app[ccontext]->pc_app_info == NULL){
         error("Error creating shared memory between EARD & EARL for pc_app_infoi (%lu,%lu)",id,sid);
+        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
         return EAR_ERROR;
     }
 
@@ -673,15 +688,13 @@ int new_context(job_id id, job_id sid, int *cc)
     /* Default value for pc_app_info
      * ???????????????????????????? */
 
-    int err_num;
-    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex, NULL))) {
-        error("Initializing mutex for context %d (%lu/%lu): %s", ccontext, id, sid, strerror(err_num));
-    }
 
     debug("Context created for (%lu,%lu), num_contexts %d max_context_created %d",
           id,sid,num_contexts+1,max_context_created);
 
     num_contexts++;
+
+    ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
 
     return EAR_SUCCESS;
 }
@@ -1450,31 +1463,37 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
     }
 
     pmapp = current_ear_app[cc];
+if (pmapp) {
+        state_t lock_st;
+        if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+            error("Locking context %lu/%lu updating the number of local ids: %s",
+                  pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
+            return;
+        }
 
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu updating the number of local ids: %s",
-              pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-        return;
-    }
+        pmapp->local_ids++;
 
-    pmapp->local_ids++;
+        debug("powermon_mpi_init for %lu/%lu Total local connections %d",
+              pmapp->app.job.id, pmapp->app.job.step_id, pmapp->local_ids);
 
-    debug("powermon_mpi_init for %lu/%lu Total local connections %d",
-          pmapp->app.job.id, pmapp->app.job.step_id, pmapp->local_ids);
+        /* The job was already connected, this is only a new local connection */
+        if (pmapp->local_ids > 1) {
+            ear_unlock(&pmapp->powermon_app_mutex);
+            return;
+        }
 
-    /* The job was already connected, this is only a new local connection */
-    if (pmapp->local_ids > 1) {
+        // MPI_init: It only changes mpi_init time, we don't need to acquire the lock
+        start_mpi(&pmapp->app.job);
+        pmapp->app.is_mpi = 1;
+
+        verbose(VJOBPMON , "powermon_mpi_init FINALIZE job_id %lu step_id %lu (is_mpi %u)",
+                appID->job.id, appID->job.step_id, appID->is_mpi);
+
         ear_unlock(&pmapp->powermon_app_mutex);
-        return;
+        // save_eard_conf(&eard_dyn_conf);
+    } else {
+        error("powermon_mpi_init: Context is NULL");
     }
-
-    // MPI_init: It only changes mpi_init time, we don't need to acquire the lock
-    start_mpi(&pmapp->app.job);
-    pmapp->app.is_mpi = 1;
-
-    ear_unlock(&pmapp->powermon_app_mutex);
-    // save_eard_conf(&eard_dyn_conf);
 }
 
 
@@ -1566,15 +1585,17 @@ void powermon_new_task(new_task_req_t *newtask)
                                                          // multiple masks share CPUs.
 
 
-    verbose(VJOBPMON + 1, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
+    verbose(VJOBPMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
 
     if (pmapp->app.job.step_id != (job_id) BATCH_STEP && pmapp->policy_freq) { // "As EARD can force the CPU frequency"
 
         /* Storing current governor (The previous governor of the powermon
          * app will be the current governor of the first CPU of the last task arrived) */
-        store_current_task_governor(pmapp, &newtask->mask);
+        if (state_fail(store_current_task_governor(pmapp, &newtask->mask))) {
+            error("Storing task (PID %d) governor: %s", newtask->pid, state_msg);
+        }
 
-        /* CPU freq and governor */
+        // CPU freq and governor
 
         char *cgov="userspace";
         uint gov, app_pstate;
@@ -1586,15 +1607,16 @@ void powermon_new_task(new_task_req_t *newtask)
 
         verbose_affinity_mask(VCONF + 2, &newtask->mask, man->cpu.devs_count);
 
-        /* Governor */
+        // Governor 
         governor_toint(cgov, &gov);
         mgt_cpufreq_governor_set_mask(no_ctx, gov, newtask->mask);
+        
 
         /* CPU freq. */
         fill_cpufreq_list(&newtask->mask, man->cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
         mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
 
-        /* ********************* */
+        /* *********************/
     }
 
     ear_unlock(&pmapp->powermon_app_mutex);
@@ -2030,6 +2052,8 @@ void powermon_reload_conf() {
 // TODO: Thread-save here.
 void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 {
+    verbose(VEARD_NMGR, "--- Updating power monitor apps Power ---");
+
     powermon_app_t *pmapp;
     ulong lcpus, tcpus = 0;
     float cpu_ratio;
@@ -2044,8 +2068,6 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
     num_jobs = num_jobs_in_node();
     if (num_jobs == 0) return;
-
-    verbose(VEARD_NMGR, "--- Updating power monitor apps Power ---");
 
     /* Set to 0 the num_cpus per job, we will compute again.
      * Oriol: Why we can't know the correct number of CPUs from the beginning? */
@@ -2070,10 +2092,10 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
             int job_in_node = is_job_in_node(pmapp->app.job.id, &alloc);
 
             if (pmapp->app.is_mpi) {
-                /* is_mpi: = step + EARL */
-                pmapp->earl_num_cpus = num_cpus_in_mask(&pmapp->app_info->node_mask);
-            } else if (!pmapp->is_job || /* else, !is_job = step without EARL */
-                       (pmapp->is_job && /* else, is_job and 1 context = srun without sbatch */
+                // * is_mpi: = step + EARL *
+                pmapp->earl_num_cpus = num_cpus_in_mask(&pmapp->plug_mask);
+            } else if (!pmapp->is_job || // * else, !is_job = step without EARL *
+                       (pmapp->is_job && // * else, is_job and 1 context = srun without sbatch *
                         job_in_node &&
                         alloc->num_ctx == 1)) {
                 pmapp->earl_num_cpus  = ear_min(num_cpus_in_mask(&pmapp->plug_mask), pmapp->plug_num_cpus);
@@ -2137,13 +2159,16 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
             pmapp->accum_ps.DRAM_energy += accum_dram_power(last_pmon) * cpu_ratio * time_consumed;
             pmapp->accum_ps.PCK_energy 	+= accum_cpu_power(last_pmon)  * cpu_ratio * time_consumed;
 
+
             if (pmapp->app.is_mpi) {
-                pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask(&my_nm_id, nm, pmapp->app_info->node_mask) *
+                pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask(&my_nm_id, nm, pmapp->plug_mask) *
                                          time_consumed;
             } else {
+
                 pmapp->accum_ps.avg_f += get_nm_cpufreq_with_mask(&my_nm_id, nm, pmapp->plug_mask) *
                                          time_consumed;
             }
+
 
             pmapp->accum_ps.max = ear_max(pmapp->accum_ps.max, my_dc_power);
 
@@ -2475,7 +2500,7 @@ void *eard_power_monitoring(void *noinfo)
     PM_set_sigusr1();
     form_database_paths();
 
-    verbose(VJOBPMON, "Power monitoring thread UP");
+    verbose(VJOBPMON, "[%ld] Power monitoring thread UP", syscall(SYS_gettid));
 
     init_contexts();
     powermon_create_idle_context();

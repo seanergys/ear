@@ -32,6 +32,7 @@
 #include <netinet/ip.h>
 #include <linux/limits.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -795,6 +796,9 @@ state_t process_remote_requests(int clientfd) {
     memset(&command,0,sizeof(request_t));
     command.req = NO_COMMAND;
     req = (int) read_command(clientfd, &command);
+
+    debug("Process remote request %d", req);
+
     if (req == EAR_SOCK_DISCONNECTED) return req;
     /* New job and end job are different */
     /* Is it necesary */
@@ -806,6 +810,7 @@ state_t process_remote_requests(int clientfd) {
     }
 
     send_answer(clientfd, &ack); //send ack BEFORE processing the message to avoid delays
+
     verbose(VRAPI,"New command accepted");
     new_command_received(&command);
 
@@ -959,7 +964,7 @@ void *eard_dynamic_configuration(void *tmp)
     my_tmp = (char *) tmp;
     int ret;
 
-    verbose(VRAPI, "RemoteAPI thread UP");
+    verbose(VRAPI, "[%ld] RemoteAPI thread UP", syscall(SYS_gettid));
 
     DC_set_sigusr1();
 
