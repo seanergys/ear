@@ -119,6 +119,7 @@ static uint        node_energy_units;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static int         num_packs = 0;
 static ull        *metrics_rapl[2];  // nJ (vec)
+static ull        *metrics_rapl_fine_monitor_start, *metrics_rapl_fine_monitor_end, *metrics_rapl_fine_monitor_diff;
 static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
 static uint        rapl_size;
@@ -2319,4 +2320,45 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 		accum_estimations(lib_shared_region, sig_shared_region);
 		signature_copy(dest, &lib_shared_region->job_signature);
 	}
+}
+
+static int fd_csv_cpu;
+void metrics_start_cpupower()
+{
+  if (master){
+    char filename[256];
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_diff, &rapl_size);
+    energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_start);
+    snprintf(filename, sizeof(filename), "csv_cpu_power.%lu.%lu.%s.csv", application.job.id, application.job.step_id, application.node_id);
+    fd_csv_cpu = open(filename, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+    if (fd_csv_cpu < 0 ){
+      verbose_master(0,"Error opening csv_cpu_power.csv file (%s)", strerror(errno));
+      fd_csv_cpu = verb_channel;
+    }
+  }
+}
+void metrics_read_cpupower()
+{
+  if (master){
+    char buffer[64], csv_str[256];
+    double total = 0, curr ;
+    energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_end);
+    energy_cpu_data_diff(no_ctx,  metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
+    energy_cpu_data_copy(no_ctx,  metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
+
+    sprintf(csv_str,"%lld;",timestamp_getconvert(TIME_USECS));
+    for (int p = 0; p < (num_packs*2) -1 ; p++) {
+      curr = (double)metrics_rapl_fine_monitor_diff[p]/200000000.0;
+      snprintf(buffer, sizeof(buffer), "%.2lf;", curr);
+      total += curr;
+      strcat( csv_str, buffer);
+    }
+    curr = (double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1]/200000000.0;
+    total += curr;
+    snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
+    strcat( csv_str, buffer);
+    write(fd_csv_cpu, csv_str, strlen(csv_str));
+  }
 }

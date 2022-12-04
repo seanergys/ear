@@ -1653,16 +1653,18 @@ void ear_init()
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
 				earl_monitor->time_relax = BASIC_PERIOD*10;
-        #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt){
-				  earl_monitor->time_relax = BASIC_PERIOD/4;
-        }
-        if (is_mpi_enabled() && traces_are_on()){
-				  earl_monitor->time_relax = BASIC_PERIOD/4;
-        }
-        #endif
 				earl_monitor->time_burst = BASIC_PERIOD;
 				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
+        #if MPI_OPTIMIZED
+        if (is_mpi_enabled() && ear_mpi_opt){
+				  earl_monitor->time_relax = BASIC_PERIOD/5;
+          earl_monitor->time_burst = BASIC_PERIOD/5;
+        }
+        if (is_mpi_enabled() && traces_are_on()){
+				  earl_monitor->time_relax = BASIC_PERIOD/5;
+          earl_monitor->time_burst = BASIC_PERIOD/5;
+        }
+        #endif
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
 
@@ -2241,6 +2243,7 @@ state_t earl_periodic_actions_init(void *no_arg)
         if (is_mpi_enabled() && ear_mpi_opt){
           memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
           memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
+          metrics_start_cpupower();
         }
         #endif
 
@@ -2279,6 +2282,8 @@ state_t earl_periodic_actions(void *no_arg)
         /* Copy */
         memcpy(&my_mpi_stats[0], &my_mpi_stats[1], sizeof(mpi_information_t));
         memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
+
+        metrics_read_cpupower();
 
 #if 0
         verbose(2, " PROC[%d][%d] - %lu perc_mpi %.2lf perc_sync %.2f perc_block %.2f time bettween sync %.2f Sync %lu Block %lu", MASTER_ID, my_node_id, period_elapsed, my_mpi_stats[2].perc_mpi,

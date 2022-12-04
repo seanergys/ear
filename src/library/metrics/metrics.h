@@ -95,4 +95,8 @@ void compute_per_process_and_job_metrics(signature_t *sig);
 /* Computes metrics per-iteration, very lightweight */
 state_t metrics_new_iteration(signature_t *sig);
 
+
+void metrics_start_cpupower();
+void metrics_read_cpupower();
+
 #endif //EAR_EAR_METRICS_H
