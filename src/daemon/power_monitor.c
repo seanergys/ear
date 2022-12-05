@@ -2574,6 +2574,7 @@ void *eard_power_monitoring(void *noinfo)
     /* MAIN LOOP */
     debug("Starting power monitoring loop, reporting metrics every %d seconds", f_monitoring);
 
+    verbose(VNODEPMON, "Power monitor thread set up. Waiting for other threads...");
     pthread_barrier_wait(&setup_barrier);
 
     while (!eard_must_exit) {

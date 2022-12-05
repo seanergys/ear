@@ -74,7 +74,9 @@ pthread_t power_mon_th; // It is pending to see whether it works with threads
 pthread_t dyn_conf_th;
 #endif
 
-pthread_barrier_t setup_barrier;
+pthread_barrier_t setup_barrier; // This barrier is for set-up synchronization
+                                 // between power monitor, dynamic configuration and
+                                 // "main" threads.
 
 int num_nodes_cluster=0;
 cluster_conf_t my_cluster_conf;
@@ -908,7 +910,7 @@ int main(int argc, char *argv[])
 
                 report_eard_init_error();
 
-                uint thread_setup_count = POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD + APP_API_THREAD;
+                uint thread_setup_count = 1 + POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD; // eard + power mon + dyn conf
                 pthread_barrier_init(&setup_barrier, NULL, thread_setup_count);
 
                 verbose(VEARD_INIT,"Creating EARD threads");
