@@ -67,7 +67,6 @@ static uint must_report;
 
 static char * extra_header="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;";
 static char * extra_header_app="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;MAX_POWER_W;";
-static char phases_headers[1024];
 static char app_header[2048];
 
 static char *heroes_wrf_id = NULL;

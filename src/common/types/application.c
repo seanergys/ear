@@ -285,44 +285,144 @@ void verbose_gpu_app(uint vl,application_t *myapp)
 
 void verbose_application_data(uint vl, application_t *app)
 {
-    float avg_f = ((double) app->signature.avg_f) / 1000000.0;
+    /* Convert values to GHz */
+    float avg_f     = ((double) app->signature.avg_f)     / 1000000.0;
     float avg_imc_f = ((double) app->signature.avg_imc_f) / 1000000.0;
-    float def_f = ((double) app->job.def_f) / 1000000.0;
+    float def_f     = ((double) app->job.def_f)           / 1000000.0;
+
     float pavg_f = ((double) app->power_sig.avg_f) / 1000000.0;
     float pdef_f = ((double) app->power_sig.def_f) / 1000000.0;
-    char st[64],et[64];
+
+    char st[64], et[64];
     char stmpi[64],etmpi[64];
+
     struct tm *tmp;
     tmp=localtime(&app->job.start_time);
     strftime(st, sizeof(st), "%c", tmp);
+
     tmp=localtime(&app->job.end_time);
     strftime(et, sizeof(et), "%c", tmp);
+
     tmp=localtime(&app->job.start_mpi_time);
     strftime(stmpi, sizeof(stmpi), "%c", tmp);
+
     tmp=localtime(&app->job.end_mpi_time);
     strftime(etmpi, sizeof(etmpi), "%c", tmp);
 
+    /* Formatting the message */
 
-    verbose(vl,"----------------------------------- Application Summary [%s] --\n",app->node_id);
-    verbose(vl,"-- App id: %s, user id: %s, job id: %lu.%lu", app->job.app_id, app->job.user_id, app->job.id,app->job.step_id);
-    verbose(vl,"   procs: %lu  acc %s\n", app->job.procs,app->job.user_acc);
-    verbose(vl,"   start time %s end time %s start mpi %s end mpi %s\n",st,et,stmpi,etmpi);
-    verbose(vl,"-- power_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz) ", app->power_sig.time, pdef_f, pavg_f);
-    verbose(vl,"DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n", app->power_sig.DC_power, app->power_sig.DRAM_power,
-            app->power_sig.PCK_power);
-    verbose(vl,"\tmax_DC_power/min_DC_power: %0.3lf/%0.3lf (W)\n",app->power_sig.max_DC_power,app->power_sig.min_DC_power);
-    if (app->is_mpi){
-
-        verbose(vl,"-- mpi_sig: E. time: %0.3lf (s), nom freq: %0.2f (MHz), avg freq: %0.2f (MHz), avg imc freq: %0.2f (MHz) ", app->signature.time, def_f, avg_f, avg_imc_f);
-        verbose(vl,"\tAvg mpi_time/exec_time %.1lf %%\n",app->signature.perc_MPI);
-        verbose(vl,"   procs: %lu (s)\n", app->job.procs);
-        verbose(vl,"\tCPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)", app->signature.CPI, app->signature.TPI,
-                app->signature.GBS, app->signature.Gflops,app->signature.IO_MBS);
-        verbose(vl,"  DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n", app->signature.DC_power, app->signature.DRAM_power,
-                app->signature.PCK_power);
+    char job_info_txt[1024]; // app / user / account / job.step
+    int ret = snprintf(job_info_txt, sizeof(job_info_txt),
+                       "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
+                       "Processes: %lu\n"
+                       "Start time: %s End time: %s\n"
+                       "Start MPI : %s End MPI :  %s\n\n"
+                       "(Power sign.) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz\n"
+                       "              DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n"
+                       "              Max/Min DC Power (W): %0.3lf/%0.3lf\n\n",
+                       app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id,
+                       app->job.procs,
+                       st, et,
+                       stmpi, etmpi,
+                       app->power_sig.time, pdef_f, pavg_f,
+                       app->power_sig.DC_power, app->power_sig.DRAM_power, app->power_sig.PCK_power,
+                       app->power_sig.max_DC_power,app->power_sig.min_DC_power);
+    if (ret < 0) {
+        verbose(vl, "%sERROR%s Formatting application summary.", COL_RED, COL_CLR);
+    } else if (ret >= sizeof(job_info_txt)) {
+        verbose(vl, "%sWARNING%s The application summary message was truncated. Required size: %d", COL_YLW, COL_CLR, ret);
     }
-    verbose_gpu_app(vl,app);
-    verbose(vl,"-----------------------------------------------------------------------------------------------\n");
+
+
+    if (app->is_mpi) {
+
+        char mpi_info_txt[512]; // signature details
+
+        snprintf(mpi_info_txt, sizeof(mpi_info_txt),
+                "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n"
+                "          Avg. mpi_time/exec_time %.1lf %%\n\n"
+                "          tasks: %lu\n\n"
+                "          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
+                "          DC/DRAM/PCK power (W): %0.3lf/%0.3lf/%0.3lf GFlops/Watt %.3lf\n\n",
+                app->signature.time, def_f, avg_f, avg_imc_f,
+                app->signature.perc_MPI,
+                app->job.procs,
+                app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS,
+                app->signature.DC_power, app->signature.DRAM_power, app->signature.PCK_power, app->signature.Gflops/app->signature.DC_power);
+
+        size_t remain_job_buff_len = sizeof(job_info_txt) - strlen(job_info_txt) - 1;
+        strncat(job_info_txt, mpi_info_txt, remain_job_buff_len);
+    }
+
+    /* Encapsulate the message in a beautiful way */
+
+    char app_summ_hdr_txt[512];
+    snprintf(app_summ_hdr_txt, sizeof(app_summ_hdr_txt), " Application Summary [%s] ", app->node_id);
+
+    size_t max_str_len = 90;
+    int app_summ_hdr_dec_len = (int) ((max_str_len - strlen(app_summ_hdr_txt)) / 2); // Compute the length of the decorator, e.g. "---"
+    char *app_summ_hdr_dec_txt = malloc(app_summ_hdr_dec_len + 1);
+
+    memset(app_summ_hdr_dec_txt, '-', app_summ_hdr_dec_len);
+    app_summ_hdr_dec_txt[app_summ_hdr_dec_len] = '\0';
+
+    /* Build a beautiful footer */
+
+    int app_summ_ftr_dec_len = (int)(strlen(app_summ_hdr_txt) + app_summ_hdr_dec_len * 2); // Length of the decorator
+    char *app_summ_ftr_dec = malloc(app_summ_ftr_dec_len + 1);
+
+    memset(app_summ_ftr_dec, '-', app_summ_ftr_dec_len);
+    app_summ_ftr_dec[app_summ_ftr_dec_len] = '\0';
+
+    /* Verbose the summary */
+
+    /*
+    if (app->is_mpi) {
+        verbose(vl, "%s", mpi_info_txt); // signature details
+    }
+    */
+
+    // verbose_gpu_app(vl, app); // This method outputs GPU summary
+
+#if USE_GPUS
+    char *gpu_sig_buff = (char *) malloc(512 * sizeof(char));
+
+    signature_t *app_sig = &app->signature;
+
+    if (gpu_sig_buff && app_sig->gpu_sig.num_gpus) {
+
+        size_t remain_gpusig_buff_len = 512;
+
+        gpu_app_t *mys;
+
+        for (int gpui = 0; gpui < app_sig->gpu_sig.num_gpus; gpui++) {
+
+            mys = &app_sig->gpu_sig.gpu_data[gpui];
+
+            char gpu_i_sig_buff[128];
+            snprintf(gpu_i_sig_buff, sizeof(gpu_i_sig_buff),
+                    "GPU%u [Power %.2lf freq %lu mem_freq %lu util %lu mem_util %lu]\n",
+                    gpui, mys->GPU_power, mys->GPU_freq, mys->GPU_mem_freq, mys->GPU_util, mys->GPU_mem_util);
+
+            remain_gpusig_buff_len -= (strlen(gpu_i_sig_buff) - 1);
+            strncat(gpu_sig_buff, gpu_i_sig_buff, remain_gpusig_buff_len);
+            
+        }
+        verbose(vl, "\n%s%s%s\n%s\n%s\n%s",
+                app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt,
+                gpu_sig_buff, app_summ_ftr_dec); // header + job info + gpu info + footer
+        free(gpu_sig_buff);
+    } else {
+        verbose(vl, "\n%s%s%s\n%s\n%s",
+                app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt, app_summ_ftr_dec); // header + job info + footer
+    }
+#else
+    verbose(vl, "\n%s%s%s\n%s\n%s",
+            app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt, app_summ_ftr_dec); // header + job info + footer
+#endif
+
+    free(app_summ_hdr_dec_txt);
+    free(app_summ_ftr_dec);
 }
 
 void report_application_data(application_t *app)
@@ -342,7 +442,8 @@ void report_mpi_application_data(application_t *app)
 
     char job_info_txt[1024]; // app / user / account / job.step
 
-    snprintf(job_info_txt, sizeof(job_info_txt), "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n",
+    snprintf(job_info_txt, sizeof(job_info_txt),
+             "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n",
              app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id);
 
     char mpi_info_txt[512]; // signature details

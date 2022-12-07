@@ -34,7 +34,7 @@
 #define ENERGY_EFF_VERB        2
 
 
-#define DEF_USE_CPUPRIO        1
+#define DEF_USE_CPUPRIO        0
 #define DEF_READ_CUPTI_METRICS 0
 
 #if !SHOW_DEBUGS
@@ -145,7 +145,6 @@ mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the 
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
-// static uint        gpu_loop_stopped     = 0;
        char        gpu_str[256];
 #endif // USE_GPUS
 
@@ -203,15 +202,15 @@ static gpu_t      *gpu_metrics_busy_diff;
 #endif // USE_GPUS
 
 /* New metrics */
-static metrics_t   mgt_cpufreq;
-static metrics_t   mgt_imcfreq;
-static metrics_t   met_cpufreq;
-static metrics_t   met_imcfreq;
-static metrics_t   met_bwidth;
-static metrics_t   met_energy;
-static metrics_t   met_flops;
-static metrics_t   met_cache;
-static metrics_t   met_cpi;
+static metrics_t         mgt_cpufreq;
+static metrics_t         mgt_imcfreq;
+static metrics_t         met_cpufreq;
+static metrics_t         met_imcfreq;
+static metrics_t         met_bwidth;
+static metrics_t         met_energy;
+static metrics_t         met_flops;
+static metrics_t         met_cache;
+static metrics_t         met_cpi;
 static metrics_multi_t   mgt_cpuprio;
 
 static uint        use_cpuprio = DEF_USE_CPUPRIO;
@@ -255,6 +254,19 @@ static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, co
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
 
+/** This function is called before any API initialization. It's used to read envorironment
+ * variables that enable/disable the load of some APIs. By now, these are CUPTI and CPUPRIO. */
+static void read_metrics_options();
+
+
+/** Loads the energy plug-in. */
+static state_t energy_lib_init(settings_conf_t *conf);
+
+
+/** Private function to perfom last operations before returning from dispose call. */
+static void metrics_static_dispose();
+
+
 node_freq_domain_t earl_default_domains = {
 	.cpu 	= POL_DEFAULT,
 	.mem 	= POL_DEFAULT,
@@ -289,40 +301,6 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
 }
 #endif // USE_GPUS
 
-static char energy_objc[SZ_PATH];
-
-state_t energy_lib_init(settings_conf_t *conf)
-{
-
-    state_t ret;
-
-	char my_plug_path[512];
-	if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
-					getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
-		return_msg(EAR_ERROR, "Plugins path can not be built.");
-	}
-
-	char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
-
-	// If hack, then the energy plugin is a path, otherwise is a shared object file.
-	if (hack_energy_plugin_path != NULL) {
-		debug("Using a hack energy plugin path");
-		strcpy(energy_objc, hack_energy_plugin_path);
-	} else if (conf->installation.obj_ener != NULL) {
-		debug("Using the configured energy plugin shared object file");
-		sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
-	} else {
-		return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
-	}
-
-  /* master is defined in metrics_static_init */
-	int eard = (master);
-
-	ret = energy_node_load(energy_objc, eard);
-	//TODO: if ret fails, generate dummy path and load that one
-	return ret;
-
-}
 
 static void metrics_configuration(topology_t *tp)
 {
@@ -375,20 +353,6 @@ static void metrics_configuration(topology_t *tp)
 	}
 }
 
-static void read_metrics_options()
-{
-#if USE_CUPTI
-    char *cuse_cupti;
-    /* We will get per-process cupti metrics */
-    cuse_cupti = getenv(EAR_USE_CUPTI);
-    if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
-    verbose_master(VERBOSE_CUPTI, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
-#endif
-    char *cuse_cpuprio = getenv(EAR_USE_CPUPRIO);
-    if (cuse_cpuprio != NULL) use_cpuprio = atoi(cuse_cpuprio);
-    verbose_master(2, "CPUPRIO utilization %s", (use_cpuprio?"Enabled":"Disabled"));
-
-}
 
 static void metrics_static_init(topology_t *tp)
 {
@@ -462,9 +426,11 @@ static void metrics_static_init(topology_t *tp)
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
+#if 0
     if (!mgt_cpufreq_prio_is_enabled()){
       sa(mgt_cpufreq_prio_enable());
     }
+#endif
     mgt_cpuprio.ok = ((mgt_cpuprio.api > API_DUMMY) && mgt_cpufreq_prio_is_enabled());
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
@@ -538,34 +504,34 @@ static void metrics_static_init(topology_t *tp)
     verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
 
     /* BEGIN TEST */
-    #if CPUPRIO_TEST
+#if CPUPRIO_TEST
     if (use_cpuprio){
-      for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-      {
-        mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
-      }
-      sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-      mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-      verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
-  
-      /* RESTORE */
-      for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-      {
-        mgt_cpuprio.dev_list[dev_id] = 0;
-      }
-      sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-      mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-      verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+        for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
+        {
+            mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
+        }
+        sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
+        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+        verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+
+        /* RESTORE */
+        for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
+        {
+            mgt_cpuprio.dev_list[dev_id] = 0;
+        }
+        sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
+        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
+        verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
     }
-    #endif
+#endif
     /* END TEST */
-    
+
 
 #if USE_GPUS
     sa(mgt_gpu_freq_list(no_ctx,
                 (const ulong ***) &mgt_gpu.avail_list,
                 (const uint **) &mgt_gpu.avail_count));
-    
+
 #endif // USE_GPUS
 
     pstate_tostr(mgt_cpufreq.avail_list, mgt_cpufreq.avail_count, buffer, SZ_BUFFER_EXTRA);
@@ -650,18 +616,9 @@ static void metrics_static_init(topology_t *tp)
 
     debug("metrics_allocation ready");
 
-    metrics_configuration(tp);
+    metrics_configuration(tp); // Check the status of loaded APIs
 }
 
-void metrics_static_dispose()
-{
-  #if 0
-  if (mgt_cpufreq_prio_is_enabled()){
-    mgt_cpufreq_prio_disable();
-  }
-  #endif
-
-}
 
 // Legacy code
 static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
@@ -1176,7 +1133,6 @@ static int metrics_partial_stop(uint where)
 	/* TODO: This commment can not be above GPU code: This is new to avoid cases where uncore gets frozen */
 
 	if (master) {
-        double gpu_power = 0.0;
 #if USE_GPUS
         if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[LOO]))) {
 
@@ -1325,6 +1281,7 @@ static int metrics_partial_stop(uint where)
 	return EAR_SUCCESS;
 }
 
+
 ull metrics_vec_inst(signature_t *metrics)
 {
 	ullong fops = 0LLU;
@@ -1332,6 +1289,7 @@ ull metrics_vec_inst(signature_t *metrics)
 	if (metrics->FLOPS[INDEX_512D] > 0) fops += metrics->FLOPS[INDEX_512D] / WEIGHT_512D;
 	return fops;
 }
+
 
 void copy_node_data(signature_t *dest, signature_t *src)
 {
@@ -1669,8 +1627,7 @@ int metrics_init(topology_t *topo)
 	state_t s;
 	int i;
 
-  /* Env. vars configuring metrics */
-  read_metrics_options();
+    read_metrics_options(); // Read env. vars configuring metrics
 
 	metrics_static_init(topo);
 	assert(master >= 0); // Debug if master was well initialized at metrics_static_init
@@ -1828,11 +1785,13 @@ int metrics_init(topology_t *topo)
 	return EAR_SUCCESS;
 }
 
+
 #define MAX_SYNCHO_TIME 100
 #define METRICS_OVH 0
 #if METRICS_OVH
 static ulong total_metrics_ovh = 0;
 #endif
+
 
 void metrics_dispose(signature_t *metrics, ulong procs)
 {
@@ -1931,53 +1890,13 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	debug("Metrics_dispose_end %d", my_node_id);
 }
 
+
 void metrics_compute_signature_begin()
 {
 	metrics_partial_stop(SIG_BEGIN);
 	metrics_partial_start();
 }
 
-/** Compute the total node I/O data. */
-static state_t metrics_compute_total_io(io_data_t *total)
-{
-    if (total != NULL) {
-
-        memset((char *) total, 0, sizeof(io_data_t));
-
-        debug("Reading IO node data - #processes: %d", lib_shared_region->num_processes);
-
-        for (int i = 0; i < lib_shared_region->num_processes; i++) {
-
-            ctx_t local_io_ctx;
-
-            if (state_ok(io_init(&local_io_ctx, sig_shared_region[i].pid))) {
-
-                io_data_t io;
-                io_read(&local_io_ctx, &io);
-
-                total->rchar       += io.rchar;
-                total->wchar       += io.wchar;
-                total->syscr       += io.syscr;
-                total->syscw       += io.syscw;
-                total->read_bytes  += io.read_bytes;
-                total->write_bytes += io.write_bytes;
-                total->cancelled   += io.cancelled;
-
-                io_dispose(&local_io_ctx);
-            } else {
-                debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
-
-                return_msg(EAR_ERROR, "I/O could not be read for some process.");
-            }
-        }
-
-        debug("Node IO data ready - master: %d", masters_info.my_master_rank);
-
-        return EAR_SUCCESS;
-    } else {
-		return_msg(EAR_ERROR, Generr.input_null);
-    }
-}
 
 int time_ready_signature(ulong min_time_us)
 {
@@ -1988,10 +1907,10 @@ int time_ready_signature(ulong min_time_us)
 	return 1;
 }
 
+
 /**********************************************************************************************
  ******************* This function checks if data is ready to be shared ***********************
  **********************************************************************************************/
-
 state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		ulong min_time_us, ulong procs)
 {
@@ -2071,6 +1990,7 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 	return EAR_SUCCESS;
 }
 
+
 long long metrics_usecs_diff(long long end, long long init)
 {
 	long long to_max;
@@ -2084,6 +2004,7 @@ long long metrics_usecs_diff(long long end, long long init)
 
 	return (end - init);
 }
+
 
 void metrics_app_node_signature(signature_t *master,signature_t *ns)
 {
@@ -2322,10 +2243,11 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 	}
 }
 
+
 static int fd_csv_cpu;
 void metrics_start_cpupower()
 {
-  if (master){
+  if (master) {
     char filename[256];
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
@@ -2339,26 +2261,164 @@ void metrics_start_cpupower()
     }
   }
 }
+
+
 void metrics_read_cpupower()
 {
-  if (master){
+  if (master) {
+
     char buffer[64], csv_str[256];
     double total = 0, curr ;
+
     energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_end);
-    energy_cpu_data_diff(no_ctx,  metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
-    energy_cpu_data_copy(no_ctx,  metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
+    energy_cpu_data_diff(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
+    energy_cpu_data_copy(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
 
     sprintf(csv_str,"%lld;",timestamp_getconvert(TIME_USECS));
+
     for (int p = 0; p < (num_packs*2) -1 ; p++) {
       curr = (double)metrics_rapl_fine_monitor_diff[p]/200000000.0;
       snprintf(buffer, sizeof(buffer), "%.2lf;", curr);
       total += curr;
       strcat( csv_str, buffer);
     }
+
     curr = (double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1]/200000000.0;
     total += curr;
     snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
-    strcat( csv_str, buffer);
+
+    strcat(csv_str, buffer);
+
     write(fd_csv_cpu, csv_str, strlen(csv_str));
   }
+}
+
+
+/** Compute the total node I/O data. */
+static state_t metrics_compute_total_io(io_data_t *total)
+{
+    if (total != NULL) {
+
+        memset((char *) total, 0, sizeof(io_data_t));
+
+        debug("Reading IO node data - #processes: %d", lib_shared_region->num_processes);
+
+        for (int i = 0; i < lib_shared_region->num_processes; i++) {
+
+            ctx_t local_io_ctx;
+
+            if (state_ok(io_init(&local_io_ctx, sig_shared_region[i].pid))) {
+
+                io_data_t io;
+                io_read(&local_io_ctx, &io);
+
+                total->rchar       += io.rchar;
+                total->wchar       += io.wchar;
+                total->syscr       += io.syscr;
+                total->syscw       += io.syscw;
+                total->read_bytes  += io.read_bytes;
+                total->write_bytes += io.write_bytes;
+                total->cancelled   += io.cancelled;
+
+                io_dispose(&local_io_ctx);
+            } else {
+                debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
+
+                return_msg(EAR_ERROR, "I/O could not be read for some process.");
+            }
+        }
+
+        debug("Node IO data ready - master: %d", masters_info.my_master_rank);
+
+        return EAR_SUCCESS;
+    } else {
+		return_msg(EAR_ERROR, Generr.input_null);
+    }
+}
+
+
+/* Update the description of this function (at the top) if you modify it. */
+static void read_metrics_options()
+{
+#if USE_CUPTI
+    char *cuse_cupti;
+    /* We will get per-process cupti metrics */
+    cuse_cupti = getenv(EAR_USE_CUPTI);
+    if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
+    verbose_master(VERBOSE_CUPTI, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
+#endif
+    char *cuse_cpuprio = getenv(EAR_USE_CPUPRIO);
+    if (cuse_cpuprio != NULL) use_cpuprio = atoi(cuse_cpuprio);
+    verbose_master(2, "CPUPRIO utilization %s", (use_cpuprio? "Enabled" : "Disabled"));
+
+    if (use_cpuprio) {
+        uint cpuprio_list_count;
+        uint *cpuprio_list;
+
+        if ((cpuprio_list = (uint *) envtoat(CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
+            if (VERB_ON(2)) {
+
+                verbosen_master(0, "CPUPRIO list read:");
+
+                int i;
+                for (i = 0; i < cpuprio_list_count - 1; i++) {
+                    verbosen_master(0, " %u", cpuprio_list[i]);
+                }
+
+                verbose_master(0, " %u", cpuprio_list[i]);
+            }
+        }
+    }
+
+}
+
+
+static state_t energy_lib_init(settings_conf_t *conf)
+{
+    state_t ret;
+
+    char my_plug_path[512];
+    if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
+                    getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
+        return_msg(EAR_ERROR, "Plugins path can not be built.");
+    }
+
+    char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
+
+    char energy_objc[SZ_PATH];
+
+    // If hack, then the energy plugin is a path, otherwise is a shared object file.
+    if (hack_energy_plugin_path != NULL) {
+
+        debug("Using a hack energy plugin path");
+
+        strcpy(energy_objc, hack_energy_plugin_path);
+
+    } else if (conf->installation.obj_ener != NULL) {
+
+        debug("Using the configured energy plugin shared object file");
+
+        sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
+
+    } else {
+        return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
+    }
+
+    /* master is defined in metrics_static_init */
+    int eard = (master);
+
+    ret = energy_node_load(energy_objc, eard);
+
+    // TODO: if ret fails, generate dummy path and load that one
+    return ret;
+}
+
+
+static void metrics_static_dispose()
+{
+#if 0
+    if (mgt_cpufreq_prio_is_enabled()){
+        mgt_cpufreq_prio_disable();
+    }
+#endif
 }

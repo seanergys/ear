@@ -44,7 +44,7 @@ int remote_connected=0;
 int eards_sfd=-1;
 
 // 2000 and 65535
-#define DAEMON_EXTERNAL_CONNEXIONS 10
+#define DAEMON_EXTERNAL_CONNEXIONS 256
 
 
 int _read(int fd, void *data, size_t ssize)

@@ -38,7 +38,7 @@ int file_lock(int fd)
 	}else return -1;
 }
 
-int file_lock_timeout(int fd, uint timeout)
+int file_lock_timeout(int fd, ulong timeout)
 {
 	uint tries = 0;
   while((file_lock(fd) < 0 ) && (tries < timeout)) tries++;
