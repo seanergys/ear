@@ -74,6 +74,7 @@ static uint total_free;
 
 void check_powercap_actions(uint cluster_powercap);
 void write_shared_data(ulong current_power, ulong freeable_power, ulong requested);
+
 void eargm_report_event(uint event_type, ulong value)
 {
     ear_event_t event;
@@ -81,7 +82,9 @@ void eargm_report_event(uint event_type, ulong value)
     event.timestamp = time(NULL);
     event.jid 			= 0;
     event.step_id		= 0;
-    sprintf(event.node_id, "eargm-%s", host);
+
+    snprintf(event.node_id, sizeof(event.node_id), "eargm-%s", host);
+
     event.event     = event_type;
     event.freq      = value;
     db_insert_ear_event(&event);

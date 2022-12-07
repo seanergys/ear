@@ -29,7 +29,6 @@
 #include <common/system/loadavg.h>
 
 static uint socket_count, cpu_count;
-static ulong   freq_base;
 static topology_t cpu_util_topo;
 static timestamp last;
 static ullong *last_energy_reported;
@@ -105,12 +104,16 @@ state_t energy_cpu_util_read(ctx_t *c, ullong *values)
 
 	debug("Estimated power %f energy %llu elapsed %lu ratio %f", CPU_Power, CPU_energy, elapsed, ratio);
 
+#if SHOW_DEBUGS
 	ulong utime_usec, stime_usec;
 	utime_usec = my_usage.ru_utime.tv_sec*1000000 + my_usage.ru_utime.tv_usec;
 	stime_usec = my_usage.ru_stime.tv_sec*1000000 + my_usage.ru_stime.tv_usec;
 
-	debug("Usage %%User time %f page faults %ld BI %ld BO %ld Total IPC %ld", (float)(utime_usec) / (float) (stime_usec + utime_usec),\
-	my_usage.ru_minflt + my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock, my_usage.ru_msgsnd + my_usage.ru_msgrcv); 
+	debug("Usage %%User time %f page faults %ld BI %ld BO %ld Total IPC %ld",
+            (float) (utime_usec) / (float) (stime_usec + utime_usec),
+            my_usage.ru_minflt + my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock,
+            my_usage.ru_msgsnd + my_usage.ru_msgrcv); 
+#endif
 
 	/* DRAM is 0 */
 	for (uint s = 0; s < socket_count; s++){

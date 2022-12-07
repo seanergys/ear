@@ -124,7 +124,7 @@ state_t rapl_msr_init(ctx_t *c)
 		s = msr_open(tp.cpus[i].id, MSR_RD);
 		if (s) debug("error opening cpu %d", i);
 	}
-	if (s = msr_read(tp.cpus[0].id, &result, sizeof(result), *pu_addr)) {
+	if ((s = msr_read(tp.cpus[0].id, &result, sizeof(result), *pu_addr))) {
 		return s;
 	}
 	// Take a look to Intel's RAPL test
@@ -155,22 +155,23 @@ state_t rapl_msr_count_devices(ctx_t *c, uint *devs_count_in)
 	return EAR_SUCCESS;
 }
 
+/** \todo msr_read function return values are not handled.  */
 state_t rapl_msr_read(ctx_t *c, ullong *values)
 {
-	int i, t, s;
+	int i, t;
 	debug("entering cpu_read");
 	for (i = 0; i < tp.cpu_count; i++) {
 		debug("reading cpu %d", i);
 		// PACK
 		for (t = 0; t < es_pack_count; t++) { //this for loop is a glorified if statement, inherited from previous code
-			s = msr_read(tp.cpus[i].id, &values[tp.cpu_count+i], sizeof(ullong), es_pack_addr[t]);
+			msr_read(tp.cpus[i].id, &values[tp.cpu_count+i], sizeof(ullong), es_pack_addr[t]);
 			values[tp.cpu_count + i] &= 0xffffffff;
 			values[tp.cpu_count + i] *= es_pack_units ; //transform to proper units
 			debug("read value %llu from PKG", values[tp.cpu_count + i]);
 		}
 		// DRAM
 		for (t = 0; t < es_dram_count; t++) {
-			s = msr_read(tp.cpus[i].id, &values[i], sizeof(ullong), es_dram_addr[t]);
+			msr_read(tp.cpus[i].id, &values[i], sizeof(ullong), es_dram_addr[t]);
 			values[i] &= 0xffffffff;
 			values[i] *= es_dram_units; 
 			debug("read value %llu from DRAM", values[i]);

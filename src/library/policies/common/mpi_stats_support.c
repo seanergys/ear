@@ -71,23 +71,22 @@ static ulong total_mpi_time_blocking    = 0;
 static ulong total_blocking_calls       = 0;
 static ulong total_collectives          = 0;
 static ulong total_synchronizations     = 0;
+#if MPI_STATS
 static ulong total_sync_block           = 0;
 static ulong time_sync_block            = 0;
 static ulong max_sync_block             = 0;
+#endif
 extern uint ear_mpi_opt;
 
 #define MAX_MPI_TO_OPT 10
 #define DEF_MIN_USEC_MPI   50000
 
-static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
 typedef struct ear_calls{
   mpi_call call;
   p2i last_buf; 
   p2i last_dest;
   ulong elap;
   }ear_calls_t;
-static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
-static uint num_mpi_to_optimize = 0;
 
 
 #if NEW_MPI_STATS
@@ -111,7 +110,12 @@ static float critical_path_th   = 1;
 
 // src/library/api/ear_mpi.c
 extern p2i last_buf, last_dest;
+#if MPI_OPTIMIZED
 static uint index_last_optimized, last_optimized = 0;
+static uint num_mpi_to_optimize = 0;
+static ear_calls_t list_mpi_to_optimize[MAX_MPI_TO_OPT];
+static ulong ear_min_usec_for_mpi_opt = DEF_MIN_USEC_MPI;
+#endif
 
 static state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *last,int i);
 
@@ -121,9 +125,11 @@ static state_t mpi_call_read_diff(mpi_information_t *diff,mpi_information_t *las
  * If `i` is negative, `dst` is filled with the MPI metrics of the current process (my_node_id). */
 static state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i);
 
-static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
 
+#if MPI_STATS
+static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
 static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i);
+#endif
 /*  Computes the the max and min process with perc mpi calls from percs_mpi */
 static state_t mpi_support_perc_mpi_max_min(int nump, double *node_mpi_calls, int *max, int *min);
 /**  Computes basic statistics of percs_mpi */
@@ -453,18 +459,17 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 }
 
 
+#if VERBOSE_MPI_OPT
 static void print_mpi_optimized(char *msg, uint index)
 {
-
-#if VERBOSE_MPI_OPT
                     verbose(2,"%s  MPI_OPTIMI[%u-%u] call %lu buff %lu dest %lu elap %lu", msg,\
                       my_node_id, index,\
                       (ulong) list_mpi_to_optimize[index].call, \
                       (ulong) list_mpi_to_optimize[index].last_buf,\
                       (ulong) list_mpi_to_optimize[index].last_dest, \
                       list_mpi_to_optimize[index].elap);
-#endif
 }
+#endif
 
 uint is_blocking_collective(mpi_call call)
 {
@@ -510,7 +515,6 @@ uint is_bwait(mpi_call call)
 state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
     timestamp_t end;
-    mpi_call nbcall_type;
     ullong elap = 0;
 #if PER_MPI_STATS
 
@@ -536,6 +540,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
 
         #if MPI_STATS
+        mpi_call nbcall_type;
 
         // Only collect stats for blocking calls
         if (is_mpi_blocking(call_type) ) {
@@ -695,6 +700,8 @@ static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *la
     return EAR_SUCCESS;
 }
 
+
+#if MPI_STATS
 static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i)
 {
     mpi_information_t *src_stat;
@@ -723,11 +730,11 @@ static state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, i
     return EAR_SUCCESS;
 }
 
+
 static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
         mpi_calls_types_t *last)
 {
 
-    #if MPI_STATS
     diff->mpi_call_cnt         = current->mpi_call_cnt - last->mpi_call_cnt;
     diff->mpi_time             = current->mpi_time - last->mpi_time;
     diff->exec_time            = current->exec_time - last->exec_time;
@@ -740,12 +747,10 @@ static state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *
     diff->sync_block           = current->sync_block - last->sync_block;
     diff->time_sync_block      = current->time_sync_block - last->time_sync_block;
     diff->max_sync_block       = ear_max(current->max_sync_block , last->max_sync_block);
-    #else
-    memset(diff, 0, sizeof(mpi_calls_types_t));
-    #endif
 
     return EAR_SUCCESS;
 }
+
 
 static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i)
 {
@@ -757,6 +762,8 @@ static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types
     memcpy(last, &current, sizeof(mpi_calls_types_t));
     return EAR_SUCCESS;
 }
+#endif // MPI_STATS
+
 
 void verbose_mpi_data(int verb_lvl, mpi_information_t *mc)
 {
@@ -774,8 +781,8 @@ float compute_mpi_in_period(mpi_information_t *mc)
 
 void verbose_mpi_calls_types(int verb_lvl, mpi_calls_types_t *t)
 {
-    char perc_sync_time[16], perc_collec_time[16], perc_block_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
     #if MPI_STATS
+    char perc_sync_time[16], perc_collec_time[16], perc_block_time[16], mpi_calls_per_sec[16], perc_mpi_time[16];
     if (verb_lvl >= VERB_GET_LV()){
 
     if (t->exec_time == 0) {
@@ -825,13 +832,12 @@ state_t read_diff_node_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
 state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *sig,
         mpi_calls_types_t *node_mpi_calls, mpi_calls_types_t *last_node)
 {
-    int i = 0;
     #if MPI_STATS
 
     if ((data == NULL) || (sig == NULL) || (node_mpi_calls == NULL) || (last_node == NULL)) {
         return EAR_ERROR;
     }
-    for (i=0;i<data->num_processes;i++) {
+    for (int i=0;i<data->num_processes;i++) {
         mpi_call_types_read_diff(&node_mpi_calls[i], &last_node[i], i);
     }
     #endif

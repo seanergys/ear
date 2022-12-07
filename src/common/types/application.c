@@ -310,24 +310,28 @@ void verbose_application_data(uint vl, application_t *app)
     strftime(etmpi, sizeof(etmpi), "%c", tmp);
 
     /* Formatting the message */
-    int padding = strlen(st) + 2;
 
     char job_info_txt[1024]; // app / user / account / job.step
-    snprintf(job_info_txt, sizeof(job_info_txt),
-            "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
-            "Processes: %lu\n"
-            "Start time: %s End time: %s\n"
-            "Start MPI : %s End MPI :  %s\n\n"
-            "(Power sign.) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz\n"
-            "              DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n"
-            "              Max/Min DC Power (W): %0.3lf/%0.3lf\n\n",
-            app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id,
-            app->job.procs,
-            st, et,
-            stmpi, etmpi,
-            app->power_sig.time, pdef_f, pavg_f,
-            app->power_sig.DC_power, app->power_sig.DRAM_power, app->power_sig.PCK_power,
-            app->power_sig.max_DC_power,app->power_sig.min_DC_power);
+    int ret = snprintf(job_info_txt, sizeof(job_info_txt),
+                       "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
+                       "Processes: %lu\n"
+                       "Start time: %s End time: %s\n"
+                       "Start MPI : %s End MPI :  %s\n\n"
+                       "(Power sign.) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz\n"
+                       "              DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n"
+                       "              Max/Min DC Power (W): %0.3lf/%0.3lf\n\n",
+                       app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id,
+                       app->job.procs,
+                       st, et,
+                       stmpi, etmpi,
+                       app->power_sig.time, pdef_f, pavg_f,
+                       app->power_sig.DC_power, app->power_sig.DRAM_power, app->power_sig.PCK_power,
+                       app->power_sig.max_DC_power,app->power_sig.min_DC_power);
+    if (ret < 0) {
+        verbose(vl, "%sERROR%s Formatting application summary.", COL_RED, COL_CLR);
+    } else if (ret >= sizeof(job_info_txt)) {
+        verbose(vl, "%sWARNING%s The application summary message was truncated. Required size: %d", COL_YLW, COL_CLR, ret);
+    }
 
 
     if (app->is_mpi) {
@@ -371,7 +375,6 @@ void verbose_application_data(uint vl, application_t *app)
     app_summ_ftr_dec[app_summ_ftr_dec_len] = '\0';
 
     /* Verbose the summary */
-
 
     /*
     if (app->is_mpi) {
