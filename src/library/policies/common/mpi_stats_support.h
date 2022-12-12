@@ -22,10 +22,6 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
 
-extern float LB_TH;
-
-#define MIN_PERC_MPI_OPT 0.15
-
 /** Called on MPI_Init */
 state_t mpi_app_init(polctx_t *c);
 /** Called on MPI_Finalize */

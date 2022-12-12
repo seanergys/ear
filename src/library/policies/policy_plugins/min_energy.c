@@ -108,9 +108,9 @@ extern uint enable_load_balance;
 extern uint use_turbo_for_cp;
 extern uint try_turbo_enabled;
 extern uint use_energy_models;
-extern uint ear_mpi_opt;
 
 #if MPI_OPTIMIZED
+extern uint ear_mpi_opt;
 static uint total_barriers = 0;
 static uint total_barriers_resume = 0;
 static uint total_barriers_suspend = 0;
@@ -822,10 +822,6 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
-            debug("%sNode load unbalance%s: LB_TH %.2lf mean %.2lf"
-                    " standard deviation %.2lf magnitude %.2lf unbalance ? %u",
-                    COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
-
             /* This function sends mpi_summary to other nodes */
             //chech_node_mpi_summary();
             /*  Check whether application has changed from unbalanced to balanced and viceversa */
@@ -1083,7 +1079,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
 state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
     if (c != NULL) {
-#if !SINGLE_CONNECTION
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
         if (ear_mpi_opt) {
             if (resume_cpufreq) {
                 resume_cpufreq = 0;

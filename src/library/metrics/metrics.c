@@ -476,7 +476,7 @@ static void metrics_static_init(topology_t *tp)
     sa(    mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count    ));
     sa(        gpu_count_devices(no_ctx, &met_gpu.devs_count    ));
     #if USE_CUPTI
-    if (read_cupti_metrics){
+    if (read_cupti_metrics) {
       sa(    gpuproc_count_devices(no_ctx, &proc_gpu.devs_count   ));
       verbose_master(VERBOSE_CUPTI, "CUPTI devices %u", proc_gpu.devs_count);
     }
@@ -2243,6 +2243,7 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 }
 
 
+#if MPI_OPTIMIZED
 static int fd_csv_cpu;
 void metrics_start_cpupower()
 {
@@ -2260,7 +2261,6 @@ void metrics_start_cpupower()
     }
   }
 }
-
 
 void metrics_read_cpupower()
 {
@@ -2291,7 +2291,7 @@ void metrics_read_cpupower()
     write(fd_csv_cpu, csv_str, strlen(csv_str));
   }
 }
-
+#endif // MPI_OPTIMIZED
 
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total)
@@ -2354,21 +2354,20 @@ static void read_metrics_options()
         uint cpuprio_list_count;
         uint *cpuprio_list;
 
-        if ((cpuprio_list = (uint *) envtoat(CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
+        if ((cpuprio_list = (uint *) envtoat(FLAG_CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
             if (VERB_ON(2)) {
 
-                verbosen_master(0, "CPUPRIO list read:");
+                verbosen_master(1, "CPUPRIO list read:");
 
                 int i;
                 for (i = 0; i < cpuprio_list_count - 1; i++) {
-                    verbosen_master(0, " %u", cpuprio_list[i]);
+                    verbosen_master(1, " %u", cpuprio_list[i]);
                 }
 
-                verbose_master(0, " %u", cpuprio_list[i]);
+                verbose_master(1, " %u", cpuprio_list[i]);
             }
         }
     }
-
 }
 
 

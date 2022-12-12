@@ -88,7 +88,8 @@ extern report_id_t rep_id;
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
 
-#define POLICY_MPI_OPT 1
+#define POLICY_MPI_OPT 1 // Enables doing stuff at MPI call level.
+                         // Useful for fast overhead testing.
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -96,8 +97,6 @@ extern unsigned long ext_def_freq;
 #else
 #define DEF_FREQ(f) f
 #endif
-
-// TODO remove after reinstalling on Lenox
 
 extern masters_info_t masters_info;
 
@@ -143,8 +142,10 @@ static ullong min_cpufreq  = 0; // CPu freq. selection works with khz
 static ullong min_imcfreq  = 0;
 uint   max_policy_imcfreq_ps = ps_nothing; // IMC freq. selection works with pstates
 
+#if MPI_OPTIMIZED
 /* MPI optimization */
 uint ear_mpi_opt = 0;
+#endif
 
 static pstate_t *cpu_pstate_lst; /*!< The list of available CPU pstates in the current system.*/
 static uint      cpu_pstate_cnt;
@@ -471,9 +472,11 @@ state_t policy_init()
     char *ctry_turbo_enabled   = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TRY_TURBO)         : NULL; // Boost turbo if policy sets max cpufreq
     char *cuse_energy_models   = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_USE_ENERGY_MODELS) : NULL; // Use energy models
     char *cmin_cpufreq         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
-    char *cear_mpi_opt         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
     char *cfake_io_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IO_FAKE_PHASE)     : NULL;
     char *cfake_bw_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_BW_FAKE_PHASE)     : NULL;
+#if MPI_OPTIMIZED
+    char *cear_mpi_opt         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
+#endif
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -532,11 +535,13 @@ state_t policy_init()
     }
     dyn_unc = conf_dyn_unc;
 
+#if MPI_OPTIMIZED
     if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
 
     if (ear_mpi_opt) {
-      verbose_master(2, "MPI optimization enabled");
+      verbose_master(2, "MPI optimization enabled.");
     }
+#endif
 
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_IMC_EXTRA_TH will be removed, in the next release.
@@ -1365,21 +1370,27 @@ state_t policy_max_tries(int *intents)
     }
 }
 
+
 /* This function is executed at application end */
 state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
+
+#if MPI_OPTIMIZED
     if (ear_mpi_opt) {
-      verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id,  total_mpi_optimized);
+        verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id,  total_mpi_optimized);
     }
-	
-		#if DEBUG_CPUFREQ_COST
-		verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f", total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
-		#endif
+#endif
+
+#if DEBUG_CPUFREQ_COST
+    verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f", total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
+#endif
 
     preturn(polsyms_fun.end, c);
 
 }
+
+
 /** LOOPS */
 /* This function is executed  at loop init or period init */
 state_t policy_loop_init(loop_id_t *loop_id)
@@ -1465,15 +1476,13 @@ static node_freq_domain_t per_process_dom = {
 
 state_t policy_mpi_init(mpi_call call_type)
 {
+#if POLICY_MPI_OPT
     int process_id = NO_PROCESS;
-
-    state_t st;
 
     polctx_t *c = &my_pol_ctx;
 
     total_mpi++;
 
-#if POLICY_MPI_OPT
     if (polsyms_fun.mpi_init != NULL) {
 
         if (state_ok(polsyms_fun.mpi_init(c, call_type, &per_process_node_freq, &process_id))) {
@@ -1507,13 +1516,12 @@ state_t policy_mpi_init(mpi_call call_type)
  * Warning! it could introduce a lot of overhead. */
 state_t policy_mpi_end(mpi_call call_type)
 {
+#if POLICY_MPI_OPT
     int process_id = NO_PROCESS;
 
     state_t st;
 
-    polctx_t *c=&my_pol_ctx;
-
-#if POLICY_MPI_OPT
+    polctx_t *c = &my_pol_ctx;
     if (polsyms_fun.mpi_end != NULL) {
 
         st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);

@@ -1710,10 +1710,12 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
         else if (cont.type == EAR_TYPE_LOOP)
             gpu_sig = &cont.loop[i].signature.gpu_sig;
 
-        if (gpu_sig->num_gpus > MAX_GPUS_SUPPORTED)
-            warning("current GPU signature has more GPUs than supported");
+        if (gpu_sig) {
+            if (gpu_sig->num_gpus > MAX_GPUS_SUPPORTED)
+                warning("current GPU signature has more GPUs than supported");
 
-        num_gpu_sigs += ear_min(gpu_sig->num_gpus, MAX_GPUS_SUPPORTED);
+            num_gpu_sigs += ear_min(gpu_sig->num_gpus, MAX_GPUS_SUPPORTED);
+        }
     }
 
     verbose(VMYSQL + 1, "total number of gpu_sigs: %d", num_gpu_sigs);

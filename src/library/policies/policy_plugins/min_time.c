@@ -810,9 +810,6 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
-            debug("%sNode load unbalance%s: LB_TH %lf mean %lf"
-                    " standard deviation %lf magnitude %lf unbalance ? %u",
-                    COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
             /*  Check whether application has changed from unbalanced to balanced and viceversa */
             if (unbalance != signature_is_unbalance) {
                 if (!unbalance) {

@@ -1463,7 +1463,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
     }
 
     pmapp = current_ear_app[cc];
-if (pmapp) {
+    if (pmapp) {
         state_t lock_st;
         if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
             error("Locking context %lu/%lu updating the number of local ids: %s",

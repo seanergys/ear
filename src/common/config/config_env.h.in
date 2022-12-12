@@ -149,7 +149,7 @@
  * They affect features under development.
  * @{
  */
-#define CPUPRIO_LIST    SCHED_PREFIX "EAR_CPUPRIO_LIST" // A list of priorities for each CPU.
+#define FLAG_CPUPRIO_LIST    SCHED_PREFIX "EAR_CPUPRIO_LIST" // A list of priorities for each CPU.
 /** @} */
 
 
