@@ -60,7 +60,7 @@ int main(int argc,char *argv[])
     char job_ids[256] = "";
 	int job_id = -1, step_id = -1;
     int opt, i, j;
-	char all_nodes = 1;
+	// char all_nodes = 1;
 	char type = APPS;
 	char *token;
 	
@@ -71,8 +71,11 @@ int main(int argc,char *argv[])
     while ((opt = getopt(argc, argv, "n:j:t:h")) != -1) {
         switch (opt) {
             case 'n':
+                /*
                 if (!strcmp(optarg, "all")) all_nodes = 1;
                 else strcpy(node_name, optarg);
+                */
+                strcpy(node_name, optarg);
                 break;
             case 'j':
                 strcpy(job_ids, optarg);

@@ -144,7 +144,6 @@ mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the 
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
-static uint        gpu_loop_stopped     = 0;
        char        gpu_str[256];
 #endif // USE_GPUS
 
@@ -1123,7 +1122,6 @@ static int metrics_partial_stop(uint where)
 	/* TODO: This commment can not be above GPU code: This is new to avoid cases where uncore gets frozen */
 
 	if (master) {
-        double gpu_power = 0.0;
 #if USE_GPUS
         if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[LOO]))) {
 

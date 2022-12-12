@@ -310,9 +310,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     ulong def_pstate, def_freq;
     ulong prev_pstate;
 
-    double sig_vpi, node_sig_vpi, max_vpi, lvpi; // master, node, max, local
-    uint local_process_with_high_vpi;
-
     uint cbound, mbound;
 
     uint curr_imc_pstate;
@@ -475,9 +472,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 debug("Process %d: avg. cpufreq %lu num cpus %lu", i, process_avgcpuf, cpus_cnt_ret);
 
                 signature_from_ssig(my_app, &sig_shared_region[i].sig);
-		double ltpi, lgbs, lpower;
+		double lgbs, lpower;
 
-		ltpi = my_app->TPI;
 		lgbs = my_app->GBS;
 		lpower = my_app->DC_power;
                 
@@ -929,14 +925,14 @@ static uint resume_cpufreq = 0;
 extern p2i last_buf, last_dest;
 state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int *per_process)
 {
+#if !SINGLE_CONNECTION
     state_t st;
-    #if !SINGLE_CONNECTION
     resume_cpufreq = 0;
     pstate_t *sel_pstate, *pstate_list;
     uint currindex;
     if (c != NULL){ 
       st = mpi_call_init(c,call_type);
-      #if MPI_OPTIMIZED
+#if MPI_OPTIMIZED
       if (ear_mpi_opt){
 			uint last = 0;
       /* Barriers (etc) */
@@ -988,13 +984,13 @@ state_t policy_mpi_init(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int
       }
       }
 			}
-      #endif
+#endif
       return st;
 
     } else return EAR_ERROR;
-    #else
+#else // SINGLE_CONNECTION
     if (c != NULL) return mpi_call_init(c,call_type);
-    #endif
+#endif
     return EAR_SUCCESS;
 }
 

@@ -43,8 +43,6 @@
 
 #define close_app_connection()
 
-extern pthread_barrier_t setup_barrier;
-
 static char app_to_eard[MAX_PATH_SIZE];
 static char *TH_NAME="No-EARL_API";
 
@@ -539,8 +537,6 @@ void *eard_non_earl_api_service(void *noinfo)
     AFD_ZERO(&rfds_basic);
     AFD_SET(fd_app_to_eard, &rfds_basic);
     /* fd_eard_to_app is created the last */
-
-    pthread_barrier_wait(&setup_barrier);
 
     /* Wait for messages */
     verbose(VAPP_API,"Waiting for non-earl requestst\n");

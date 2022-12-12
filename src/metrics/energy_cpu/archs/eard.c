@@ -27,9 +27,6 @@ topology_t tp;
 
 state_t energy_cpu_eard_load(topology_t *tp_in, uint eard)
 {
-	uint eard_api;
-	state_t s;
-
 	debug("entering eard_load with eard_required %u", eard);
 	if (!eard) {
 		return_msg(EAR_ERROR, "EARD (daemon) not required");
@@ -38,8 +35,12 @@ state_t energy_cpu_eard_load(topology_t *tp_in, uint eard)
 		return_msg(EAR_ERROR, "EARD (daemon) not connected");
 	}
 
-	s = eards_get_data_size_rapl(); // to internally store the rapl_size in the local_api
-	debug("eards_get_data_size returns %u", s);
+	state_t s = eards_get_data_size_rapl(); // to internally store the rapl_size in the local_api
+
+    if (state_fail(s)) {
+	    debug("eards_get_data_size returns %u", s);
+    }
+
 	memcpy(&tp, tp_in, sizeof(topology_t));
 
 	return EAR_SUCCESS;

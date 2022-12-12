@@ -1007,6 +1007,7 @@ void *eard_dynamic_configuration(void *tmp)
     if (init_ips_ready > 0) my_ip = ips[self_id];
     else my_ip = 0;
 
+    verbose(VRAPI, "Dynamic configuration thread set up. Waiting for other threads...");
     pthread_barrier_wait(&setup_barrier);
 
     /*

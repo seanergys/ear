@@ -87,6 +87,7 @@ extern char             ear_tmp[MAX_PATH_SIZE];
 extern char             nodename[MAX_PATH_SIZE];
 extern int              eard_must_exit;
 extern ulong            eard_max_freq;
+extern pthread_barrier_t setup_barrier;
 #if USE_GPUS
 extern char             gpu_str[256];
 #endif
@@ -1374,10 +1375,14 @@ state_t eard_local_api()
     create_global_connector(ear_tmp, nodename);
 
 	verbose(VEARD_LAPI, "Communicator for %s ON", nodename);
+
 	// we wait until EAR daemon receives a request
 	// We support requests realted to frequency and to uncore counters
 	// rapl support is pending to be supported
 	// EAR daemon main loop
+
+    verbose(VEARD_LAPI, "EARD local API set up. Waiting for other threads...");
+    pthread_barrier_wait(&setup_barrier);
 
 	/*
 	*

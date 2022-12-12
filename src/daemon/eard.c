@@ -39,6 +39,7 @@
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <metrics/common/msr.h>
+#include <metrics/common/hsmp.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
 #include <metrics/energy/energy_node.h>
@@ -74,7 +75,9 @@ pthread_t power_mon_th; // It is pending to see whether it works with threads
 pthread_t dyn_conf_th;
 #endif
 
-pthread_barrier_t setup_barrier;
+pthread_barrier_t setup_barrier; // This barrier is for set-up synchronization
+                                 // between power monitor, dynamic configuration and
+                                 // "main" threads.
 
 int num_nodes_cluster=0;
 cluster_conf_t my_cluster_conf;
@@ -177,6 +180,7 @@ static void set_default_management_exit()
 /**********************************************************/
 
 
+
 /* EARD init errors control */
 static uint error_rapl=0;
 static uint error_energy=0;
@@ -250,6 +254,36 @@ void init_frequency_list()
 				for (i = 0; i < ps; i++) {
 								verbose(VEARD_INIT, "shared_frequencies[%d]=%lu", i, shared_frequencies[i]);
 				}
+}
+
+void init_tdps()
+{
+  if (node_desc.vendor == VENDOR_INTEL){
+	if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
+       error("Reading CPU TDPs");
+       error_rapl=1;
+    }
+    if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
+       error("Reading DRAM TDPs");
+       error_rapl=1;
+    }
+  } else if (node_desc.vendor == VENDOR_AMD){
+	  if (!hsmp_scan(&node_desc)) {
+		error("Reading CPU TDPs");
+		error_rapl = 1;
+		return;
+	  }
+	  uint args[1] = { -1 };
+	  uint reps[2] = {  0, -1 };
+
+	  if (!hsmp_send(0, 0x07, args, reps)) { // get max_power_limit which is the TDP
+		  error("Reading CPU TDPs");
+		  error_rapl = 1;
+		  return;
+	  }
+
+	  rapl_pck_tdps[0] = reps[0];
+  }
 }
 
 void set_verbose_variables() {
@@ -876,14 +910,7 @@ int main(int argc, char *argv[])
                     error("Error initializing rapl");
                     error_rapl=1;
                 }
-                if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
-                    error("Reading CPU TDPs");
-                    error_rapl=1;
-                }
-                if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
-                    error("Reading DRAM TDPs");
-                    error_rapl=1;
-                }
+				init_tdps();
                 verbose(VEARD_INIT,"Initialzing energy plugin");
                 // We initilize energy_node
                 debug("Initializing energy in main EARD thread");
@@ -908,7 +935,7 @@ int main(int argc, char *argv[])
 
                 report_eard_init_error();
 
-                uint thread_setup_count = POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD + APP_API_THREAD;
+                uint thread_setup_count = 1 + POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD; // eard + power mon + dyn conf
                 pthread_barrier_init(&setup_barrier, NULL, thread_setup_count);
 
                 verbose(VEARD_INIT,"Creating EARD threads");
