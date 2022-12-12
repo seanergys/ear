@@ -1659,10 +1659,12 @@ void ear_init()
         if (is_mpi_enabled() && ear_mpi_opt) {
 				  earl_monitor->time_relax = BASIC_PERIOD/5;
           earl_monitor->time_burst = BASIC_PERIOD/5;
+          ITERS_PER_PERIOD = 5; // 1 app iteration every 5 monitor iterations
         }
         if (is_mpi_enabled() && traces_are_on()) {
 				  earl_monitor->time_relax = BASIC_PERIOD/5;
           earl_monitor->time_burst = BASIC_PERIOD/5;
+          ITERS_PER_PERIOD = 5; // 1 app iteration every 5 monitor iterations
         }
         #endif
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
