@@ -74,6 +74,7 @@ static uint total_free;
 
 void check_powercap_actions(uint cluster_powercap);
 void write_shared_data(ulong current_power, ulong freeable_power, ulong requested);
+
 void eargm_report_event(uint event_type, ulong value)
 {
     ear_event_t event;
@@ -81,7 +82,14 @@ void eargm_report_event(uint event_type, ulong value)
     event.timestamp = time(NULL);
     event.jid 			= 0;
     event.step_id		= 0;
-    sprintf(event.node_id, "eargm-%s", host);
+
+    int ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s", host);
+    if (ret < 0) {
+        verbose(VGM_PC, "%sERROR%s Writing the hostname to the event.", COL_RED, COL_CLR);
+    } else if (ret >= sizeof(event.node_id)) {
+        verbose(VGM_PC, "%sWARNING%s The node id field of the event was truncated. Required size: %d", COL_YLW, COL_CLR, ret);
+    }
+
     event.event     = event_type;
     event.freq      = value;
     db_insert_ear_event(&event);

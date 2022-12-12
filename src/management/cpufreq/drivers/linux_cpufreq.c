@@ -56,7 +56,7 @@ static state_t read_word(int fd, char *word, int reset_position)
 	char c;
 	if (reset_position) {
 		if(lseek(fd, 0, SEEK_SET) < 0) {
-			return_msg(EAR_ERROR, strerror(errno));
+            return_print(EAR_ERROR, "while trying to read cpufreq file (%s)", strerror(errno));
 		}
 	}
 	// Does not read ' ' nor '\n'
@@ -67,7 +67,8 @@ static state_t read_word(int fd, char *word, int reset_position)
 	word[i] = '\0';
 	debug("read the word '%s'", word);
 	if (i == 0) {
-		return_msg(EAR_ERROR, strerror(errno));
+        return_print(EAR_ERROR, "while reading '%s' in cpufreq file (%s)",
+             word, strerror(errno));
 	}
 	return EAR_SUCCESS;
 }
@@ -88,7 +89,8 @@ static state_t write_word(int fd, char *word, int s, int line_break)
 		p = s - i;
 	}
 	if (r == -1) {
-		return_msg(EAR_ERROR, strerror(errno));
+        return_print(EAR_ERROR, "while writing '%s' in cpufreq file (%s)",
+             word, strerror(errno));
 	}
 	return EAR_SUCCESS;
 }
