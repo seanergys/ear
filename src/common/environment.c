@@ -549,3 +549,24 @@ state_t read_config(uint *var, const char *config_var){
     *var = (uint)atoi(config_var);
     return EAR_SUCCESS;
 }
+
+char *ear_getenv(const char *name)
+{
+    static char *pfx[] = { "EAR_", "SCHED_", "SLURM_", "OAR_", "PBS_" };
+    static int pfx_n = 5;
+    char buffer[32];
+    char *var;
+    int i;
+
+    for (i = 0; i < pfx_n; ++i) {
+        // clean and concat
+        buffer[0] = '\0';
+        strcat(buffer, pfx[i]);
+        strcat(buffer, name);
+        debug("%s", buffer);
+        if ((var = getenv((const char *) buffer)) != NULL) {
+            return var;
+        }
+    }
+    return NULL;
+}
