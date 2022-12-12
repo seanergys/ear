@@ -335,7 +335,7 @@ state_t topology_close(topology_t *topo)
     	"l3_count         : %d\n" \
 		"vendor           : %d\n" \
 		"family           : %d\n" \
-        "brand            : %s\n" \
+        "brand            : '%s'\n" \
 		"gpr_count        : %d\n" \
 		"gpr_bits         : %d\n" \
 		"nmi_watchdog     : %d\n" \
