@@ -148,8 +148,6 @@ void ear_print_lib_environment();
 /** Returns the number of processes per node. */
 int get_total_resources();
 
-
-
 void set_ear_power_policy(int pid);
 void set_ear_power_policy_th(double th);
 void set_ear_p_state(ulong pstate);
@@ -158,11 +156,9 @@ void set_ear_dynais_levels(int levels);
 void set_ear_dynais_window_size(int size);
 void set_ear_learning(int learning);
 
-
 state_t read_config_env(char **var, const char* sched_env_var);
 state_t read_config(uint *var, const char *config_var);
 
+char *ear_getenv(const char *name);
 
-
-#else
 #endif
