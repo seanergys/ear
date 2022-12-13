@@ -349,6 +349,7 @@ size_t get_command_size(request_t *command, char **data_to_send)
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
         case EARGM_INC_PC:
+        case EARGM_SET_PC:
         case EARGM_RED_PC:
         case EARGM_RESET_PC:
             size += sizeof(eargm_req_t);

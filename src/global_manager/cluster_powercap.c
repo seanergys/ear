@@ -401,6 +401,24 @@ void cluster_powercap_reset_pc()
     current_extra_power = 0;
 }
 
+void cluster_powercap_set_pc(uint limit)
+{
+    verbose(VGM_PC, "Setting cluster powercap to %u", limit);
+
+	current_cluster_powercap = limit;
+
+	if (default_cluster_powercap < current_cluster_powercap)
+		current_extra_power = current_cluster_powercap - default_cluster_powercap;
+	else
+		current_extra_power = 0;
+#if 0
+    pthread_mutex_lock(&ext_mutex);
+    ext_powercap_data.current_powercap = current_cluster_powercap;
+    pthread_mutex_unlock(&ext_mutex);
+#endif
+
+}
+
 void cluster_powercap_red_pc(uint red)
 {
     verbose(VGM_PC, "Reducing cluster powercap by %u (from %u to %u)", red, current_cluster_powercap, current_cluster_powercap-red);
