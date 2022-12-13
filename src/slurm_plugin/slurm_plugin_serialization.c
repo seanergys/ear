@@ -499,8 +499,8 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	}
 
     // Job/step
-    sd->job.app.job.step_id = NO_VAL;
-    sd->job.app.job.id      = NO_VAL;
+    sd->job.app.job.step_id = (ulong) BATCH_STEP;
+    sd->job.app.job.id      = (ulong) BATCH_STEP;
 	
     if (spank_get_item (sp, S_JOB_ID, (int *) &s1) == ESPANK_SUCCESS) {
         sd->job.app.job.id = (ulong) s1;

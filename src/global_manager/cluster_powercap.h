@@ -53,5 +53,6 @@ void cluster_power_monitor();
 
 void cluster_powercap_red_pc(uint red);
 void cluster_powercap_inc_pc(uint inc);
+void cluster_powercap_set_pc(uint limit);
 void cluster_powercap_reset_pc();
 #endif

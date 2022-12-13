@@ -33,6 +33,7 @@ rapi_OBJS = \
     $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
     $(SRCDIR)/daemon/remote_api/eard_rapi.o \
     $(SRCDIR)/common/messaging/msg_internals.o \
+    $(SRCDIR)/global_manager/eargm_rapi.o \
     $(SRCDIR)/database_cache/eardbd_api.o
 
 ######## RULES
