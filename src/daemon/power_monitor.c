@@ -2781,146 +2781,146 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 {
 #if POWERMON_RESTORE
 
-  /* Two scenarios are possible for CPU freq:
-   * 1) End job: Set idle gov and freq
-   * 2) No end job : if prev set --> restore
-   */
+    /* Two scenarios are possible for CPU freq:
+     * 1) End job: Set idle gov and freq
+     * 2) No end job : if prev set --> restore
+     */
 
-  uint change_gov = 0;
-  uint rest_pstate;
+    uint change_gov = 0;
+    uint rest_pstate;
 
-  /* Going to idle: Reset CPU freq. */
-  if (idle) mgt_cpufreq_reset(no_ctx);
+    /* Going to idle: Reset CPU freq. */
+    if (idle) mgt_cpufreq_reset(no_ctx);
 
-  char *cgov = app->governor.name; // Governor before job had started.
-  uint gov;
+    char *cgov = app->governor.name; // Governor before job had started.
+    uint gov;
 
-  if (app->app.job.step_id != (job_id) BATCH_STEP) {
-    if (app->is_job) { // End of a job
+    if (app->app.job.step_id != (job_id) BATCH_STEP) {
+        if (app->is_job) { // End of a job
 
-      if (strcmp(my_node_conf->idle_governor, "default") != 0) {
+            if (strcmp(my_node_conf->idle_governor, "default") != 0) {
 
-        /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
-        cgov        = my_node_conf->idle_governor;
-        rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
+                /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
+                cgov        = my_node_conf->idle_governor;
+                rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
 
-      } else {
-        /* We'll restore the P-State we found before job had started. */
-        mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
-      }
+            } else {
+                /* We'll restore the P-State we found before job had started. */
+                mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+            }
 
-      /* --- Setting governor --- */
+            /* --- Setting governor --- */
 
-      governor_toint(cgov, &gov);
+            governor_toint(cgov, &gov);
 
-      if (idle) {
+            if (idle) {
 
-        verbose(VCONF, "(Idle) Restoring all the node CPUs to governor `%s`...", cgov);
+                verbose(VCONF, "(Idle) Restoring all the node CPUs to governor `%s`...", cgov);
 
-        mgt_cpufreq_governor_set(no_ctx, gov);
+                mgt_cpufreq_governor_set(no_ctx, gov);
 
-      } else {
+            } else {
 
-        verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
-                app->app.job.id, app->app.job.step_id, cgov);
-        verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+                verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
+                        app->app.job.id, app->app.job.step_id, cgov);
+                verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
-        mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
-      }
+                mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+            }
 
-      if (strcmp(cgov, "userspace") == 0) {
-        change_gov = 1;
-      }
+            if (strcmp(cgov, "userspace") == 0) {
+                change_gov = 1;
+            }
 
-      /* ------------------------ */
+            /* ------------------------ */
 
-    } else if (app->policy_freq) { // Not the end of a job but EARD set a frequency
+        } else if (app->policy_freq) { // Not the end of a job but EARD set a frequency
 
-      /* --- Setting governor --- */
+            /* --- Setting governor --- */
 
-      governor_toint(cgov, &gov);
+            governor_toint(cgov, &gov);
 
-      verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
-              app->app.job.id, app->app.job.step_id, cgov);
-      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+            verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
+                    app->app.job.id, app->app.job.step_id, cgov);
+            verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
-      mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+            mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
 
-      if (strcmp(cgov, "userspace") == 0) change_gov = 1;
+            if (strcmp(cgov, "userspace") == 0) change_gov = 1;
 
-      /* ------------------------ */
+            /* ------------------------ */
 
-      /* We'll restore the P-State we found before job had started. */
-      mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+            /* We'll restore the P-State we found before job had started. */
+            mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
 
-    }
-
-    /* If the governor restored is `userspace`, we must manually set a CPU freq. */
-    if (change_gov) {
-
-      if (idle) {
-
-        verbose(VCONF, "(Idle) Restoring to all CPUs pstate %u all_cpus", rest_pstate);
-
-        mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
-
-      } else {
-
-        verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
-                app->app.job.id, app->app.job.step_id, rest_pstate);
-        verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
-
-        fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
-                          ps_nothing, powermon_restore_cpufreq_list);
-
-        mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
-      }
-    }
-
-    /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
-    if (mgt_cpuprio_is_enabled()) {
-        for (int i = 0; i < man->pri.devs_count; i++) {
-            // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
-            app->prio_idx_list[i] = (CPU_ISSET(i, &app->plug_mask)) ? app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
         }
 
-        if (VERB_ON(VPMON_DEBUG)) {
-            verbose(VPMON_DEBUG, "Restoring priority list...");
-            mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, app->prio_idx_list, verb_channel);    
-        }
-        if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
-            error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
+        /* If the governor restored is `userspace`, we must manually set a CPU freq. */
+        if (change_gov) {
+
+            if (idle) {
+
+                verbose(VCONF, "(Idle) Restoring to all CPUs pstate %u all_cpus", rest_pstate);
+
+                mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
+
+            } else {
+
+                verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
+                        app->app.job.id, app->app.job.step_id, rest_pstate);
+                verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+
+                fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
+                        ps_nothing, powermon_restore_cpufreq_list);
+
+                mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+            }
         }
 
-        if (idle) {
-            verbose(VPMON_DEBUG, "Disabling priority system...");
-            if (state_fail(mgt_cpuprio_disable())) {
-                error("Disabling priority system.");
+        /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
+        if (mgt_cpuprio_is_enabled()) {
+            for (int i = 0; i < man->pri.devs_count; i++) {
+                // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
+                app->prio_idx_list[i] = (CPU_ISSET(i, &app->plug_mask)) ? app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
+            }
+
+            if (VERB_ON(VPMON_DEBUG)) {
+                verbose(VPMON_DEBUG, "Restoring priority list...");
+                mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, app->prio_idx_list, verb_channel);    
+            }
+            if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
+                error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
+            }
+
+            if (idle) {
+                verbose(VPMON_DEBUG, "Disabling priority system...");
+                if (state_fail(mgt_cpuprio_disable())) {
+                    error("Disabling priority system.");
+                }
             }
         }
     }
-  }
 
 #if USE_GPUS
-  /* GPUs */
-  if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
-    ulong idle_gpu_freq;
-    /* We assume all the gpus are the same */
-    gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
-    gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
-  }
+    /* GPUs */
+    if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+        ulong idle_gpu_freq;
+        /* We assume all the gpus are the same */
+        gpu_mgr_get_min(0, &idle_gpu_freq);
+        verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+        gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+    }
 #endif
 
-  if (idle) {
-    /* IMC freq : It's already done at init, but it's included here for simplicity*/
-    verbose(VCONF, "Restoring IMC freq");
-    if (node_desc.vendor == VENDOR_INTEL) {
-      mgt_imcfreq_set_auto(no_ctx);
-    } else if (node_desc.vendor == VENDOR_AMD) {
-      mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+    if (idle) {
+        /* IMC freq : It's already done at init, but it's included here for simplicity*/
+        verbose(VCONF, "Restoring IMC freq");
+        if (node_desc.vendor == VENDOR_INTEL) {
+            mgt_imcfreq_set_auto(no_ctx);
+        } else if (node_desc.vendor == VENDOR_AMD) {
+            mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+        }
     }
-  }
 #endif
 }
 
