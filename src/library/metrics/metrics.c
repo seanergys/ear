@@ -1739,18 +1739,18 @@ int metrics_init(topology_t *topo)
 			imc_curr_min_pstate = imc_min_pstate[0];	
 
 			// Verbose a resume
-			if (verb_level >= INFO_METRICS) {
-				verbose_master(INFO_METRICS, "\n           --- IMC info ---\n            #devices: %u", mgt_imcfreq.devs_count);
+			if (verb_level >= INFO_METRICS + 1) {
+				verbose_master(INFO_METRICS + 1, "\n           --- IMC info ---\n            #devices: %u", mgt_imcfreq.devs_count);
 
 				if (cimc_max_khz != NULL) {
-					verbose_master(INFO_METRICS, "              Maximum: %s kHz", cimc_max_khz);
+					verbose_master(INFO_METRICS + 1, "              Maximum: %s kHz", cimc_max_khz);
 				}
 
 				if (cimc_min_khz != NULL) {
-					verbose_master(INFO_METRICS, "             Minimum: %s kHz", cimc_min_khz);
+					verbose_master(INFO_METRICS + 1, "             Minimum: %s kHz", cimc_min_khz);
 				}
 
-				verbose_master(INFO_METRICS, "Init (max/min) (kHz): %.2f/%.2f\n           ----------------\n",
+				verbose_master(INFO_METRICS + 1, "Init (max/min) (kHz): %.2f/%.2f\n           ----------------\n",
 						(float) imc_pstates[imc_min_pstate[0]].khz, (float) imc_pstates[imc_max_pstate[0]].khz);
 			}
 
@@ -1758,7 +1758,6 @@ int metrics_init(topology_t *topo)
 			verbose_master(ERROR_VERB, "%sMETRICS%s IMCFREQ not supported.", COL_BLU, COL_CLR);
 		} // IMC
 	}
-
 
 #if USE_GPUS
     fflush(stderr);	
