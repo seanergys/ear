@@ -1333,18 +1333,8 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
 
     if ((!appID->is_mpi) && (!my_cluster_conf.eard.force_frequencies)) {
 
-        /*
-        state_t lock_st;
-        if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-            error("Locking context %lu/%lu configuring context: %s",
-                  pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-            return;
-        }
-        */
 
         pmapp->policy_freq = 0;
-
-        // ear_unlock(&pmapp->powermon_app_mutex);
 
         my_policy->p_state = frequency_closest_pstate(frequency_get_cpu_freq(0));
 
@@ -1352,29 +1342,21 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
 
     } else {
         /* We have to force the frequency */
-        ulong f;
-        f = frequency_pstate_to_freq(my_policy->p_state);
+        ulong f = frequency_pstate_to_freq(my_policy->p_state);
+
+#if !POWERMON_RESTORE
         cpu_set_t not_in_jobs_mask;
         powermon_update_node_mask(&in_jobs_mask);
+
         cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
 
         uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
         uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
         verbose(VCONF, "CPUs used %u. CPUs free %u", cpus_used, cpus_free);
-
-        /*
-        state_t lock_st;
-        if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-            error("Locking context %lu/%lu configuring context: %s",
-                  pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-            return;
-        }
-        */
+#endif
 
         /* New, to be used in new function */
         pmapp->policy_freq = f;
-
-        // ear_unlock(&pmapp->powermon_app_mutex);
 
 #if !POWERMON_RESTORE
         frequency_set_userspace_governor_all_cpus();

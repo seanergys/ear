@@ -119,7 +119,9 @@ static uint        node_energy_units;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static int         num_packs = 0;
 static ull        *metrics_rapl[2];  // nJ (vec)
+#if MPI_OPTIMIZED
 static ull        *metrics_rapl_fine_monitor_start, *metrics_rapl_fine_monitor_end, *metrics_rapl_fine_monitor_diff;
+#endif
 static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
 static uint        rapl_size;
@@ -247,9 +249,6 @@ extern timestamp init_last_phase, init_last_comp;
 extern uint policy_cpu_bound ;
 extern uint policy_mem_bound ;
 
-#if 0
-static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length);
-#endif
 
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);

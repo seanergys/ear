@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #define VEARD_LAPI_DEBUG 2
 #include <string.h>
 #include <signal.h>
@@ -1414,6 +1414,7 @@ state_t eard_local_api()
                     if (AFD_ISSET(i, &rfds_basic)) {
                         if (i == global_req_fd) {
                             /* New connection */
+                            ack_fd = 0;
                         } else {
                             /* We need to find the local req and ack fds */
                             ack_fd = get_local_connection_ack(eard_local_conn, i);
@@ -1421,6 +1422,7 @@ state_t eard_local_api()
                         if (ack_fd >= 0) {
                             service_select(i, ack_fd);
                         } else {
+                            error("at eard_node_services: ack_fd is %d. This shouldn't happen.", ack_fd);
                             _exit(0);
                         }
                     }    // IF AFD_ISSET

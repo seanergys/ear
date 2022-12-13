@@ -970,7 +970,9 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
     return EAR_SUCCESS;
 }
 
-static uint resume_cpufreq = 0;
+#if !SINGLE_CONNECTION || MPI_OPTIMIZED
+static uint resume_cpufreq;
+#endif
 
 
 #if MPI_OPTIMIZED
@@ -983,12 +985,10 @@ static struct timespec mpi_opt_timer;
 
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-    state_t st;
-
 #if !SINGLE_CONNECTION
     resume_cpufreq = 0;
     if (c != NULL) {
-        st = mpi_call_init(c,call_type);
+        state_t st = mpi_call_init(c,call_type);
 
 #if MPI_OPTIMIZED
         pstate_t *sel_pstate, *pstate_list;
