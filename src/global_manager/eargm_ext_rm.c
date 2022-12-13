@@ -117,6 +117,10 @@ void process_remote_requests(int clientfd)
             cluster_powercap_reset_pc();
             debug("received eargm powercap reset");
             break;
+		case EARGM_SET_PC:
+			debug("received eargm powercap set");
+			cluster_powercap_set_pc(command.my_req.eargm_data.pc_change);
+			break;
         default:
             error("Invalid remote command");
     }  

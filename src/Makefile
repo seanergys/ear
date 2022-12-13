@@ -7,9 +7,9 @@ COMPONENTS = \
     management\
     daemon \
     library \
-    commands \
     tools \
     global_manager \
+    commands \
     slurm_plugin
 
 #ifdef DB_BASE
