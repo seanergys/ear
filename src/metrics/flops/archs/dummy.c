@@ -23,6 +23,7 @@
 #include <metrics/common/perf.h>
 #include <metrics/flops/archs/dummy.h>
 
+// CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512SP, 512DP
 static ullong weights[8] = { 1, 1, 4, 2, 8, 4, 16, 8 };
 
 state_t flops_dummy_load(topology_t *tp, flops_ops_t *ops)
