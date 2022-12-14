@@ -22,12 +22,12 @@
 #include <metrics/common/perf.h>
 #include <metrics/flops/archs/perf.h>
 
-static ullong hwell_evs[8]  = { 0x02c7, 0x01c7, 0x08c7, 0x04c7, 0x20c7, 0x10c7, 0x80c7, 0x40c7 };
-static ullong zen_evs[8]    = { 0xff03 }; // Old event: 0x04cb
 static ullong fx1000_evs[3] = { 0x0074, 0x80c2, 0x80c4, 0x80c6 }; // 128SP, 512HP, 512SP, 512DP
-static perf_t perfs[8];
-static uint   levels[8];
+static ullong hwell_evs[8]  = { 0x02c7, 0x01c7, 0x08c7, 0x04c7, 0x20c7, 0x10c7, 0x80c7, 0x40c7 };
+static ullong zen_evs[1]    = { 0xff03 }; // Old event: 0x04cb
 static ullong divisors[8];
+static uint   levels[8];
+static perf_t perfs[8];
 static uint   counter;
 static uint   started;
 
@@ -44,7 +44,7 @@ void set_flops(ullong event, uint type, uint level, ullong divisor)
 	counter++;
 }
 
-state_t flops_perf_load(topology_t *tp, flops_ops_t *ops)
+void flops_perf_load(topology_t *tp, flops_ops_t *ops)
 {
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
 		set_flops(hwell_evs[0], PERF_TYPE_RAW, 1, 1);
@@ -67,16 +67,27 @@ state_t flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(fx1000_evs[1], PERF_TYPE_RAW, 7, 4); // match with the tests
         set_flops(fx1000_evs[2], PERF_TYPE_RAW, 8, 2); // iterations.
     } else {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
+		debug(Generr.api_incompatible);
+        return;
 	}
     if (!counter) {
-        return EAR_ERROR;
+        return;
     }
-	replace_ops(ops->init,    flops_perf_init);
-	replace_ops(ops->dispose, flops_perf_dispose);
-	replace_ops(ops->read,    flops_perf_read);
+    replace_ops(ops->get_api,         flops_perf_get_api);
+    replace_ops(ops->get_granularity, flops_perf_get_granularity);
+    replace_ops(ops->init,            flops_perf_init);
+	replace_ops(ops->dispose,         flops_perf_dispose);
+	replace_ops(ops->read,            flops_perf_read);
+}
 
-	return EAR_SUCCESS;
+void flops_perf_get_api(uint *api)
+{
+    *api = API_PERF;
+}
+
+void flops_perf_get_granularity(uint *granularity)
+{
+    *granularity = GRANULARITY_PROCESS;
 }
 
 state_t flops_perf_init(ctx_t *c)
@@ -106,9 +117,9 @@ state_t flops_perf_read(ctx_t *c, flops_t *fl)
 	timestamp_get(&fl->time);
 	for (i = 0; i < counter; ++i) {
 		value = 0LU;
-		perf_read(&perfs[i], (long long *)&value);
+		perf_read(&perfs[i], (long long *) &value);
 		debug("values[%d]: %lu", i, value);
-		p[levels[i]-1] = value / divisor;
+		p[levels[i]-1] = value / divisors[levels[i]-1];
 	}
 	return EAR_SUCCESS;
 }
