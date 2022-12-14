@@ -54,7 +54,6 @@ static state_t static_open(char *path, void *calls[], const char *names[], uint 
         return_msg(EAR_ERROR, strerror(errno));
     }
     if ((handle = dlopen(path, flags)) == NULL) {
-        debug("dlopen fails %s", dlerror());
         return_msg(EAR_ERROR, dlerror());
     }
     debug("dlopen ok");

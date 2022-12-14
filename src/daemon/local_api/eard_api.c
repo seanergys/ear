@@ -191,6 +191,9 @@ uint warning_api(int return_value, int expected, char *msg)
 
 int eards_connected()
 {
+  #if FAKE_EAR_NOT_INSTALLED
+  return 0;
+  #endif
 	return app_connected;
 }
 
@@ -215,6 +218,10 @@ int eards_connect(application_t *my_app, ulong lid)
   int my_id;
   int ret1;
   if (app_connected) return EAR_SUCCESS;
+
+  #if FAKE_EAR_NOT_INSTALLED
+  return_print(EAR_ERROR, "FAKE_EAR_NOT_INSTALLED applied");
+  #endif
 
   // These files connect EAR with EAR_COMM
   ear_tmp=getenv("EAR_TMP");

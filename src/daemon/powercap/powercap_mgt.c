@@ -750,7 +750,7 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
                 } else if (!pmapp->is_job) { //job step without EARL
                     debug("Using plugin mask (step without EARL)");
                     m = pmapp->plug_mask;
-                } else if (pmapp->is_job && pos_job_in_node && alloc->numc == 1) { //srun without an sbatch
+                } else if (pmapp->is_job && pos_job_in_node && alloc->num_ctx == 1) { //srun without an sbatch
                     debug("Using plugin mask (step without EARL neither sbatch)");
                     m = pmapp->plug_mask;
                 } else { //sbatch with other steps inside

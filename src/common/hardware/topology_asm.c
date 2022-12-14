@@ -22,7 +22,7 @@
 #include <common/hardware/defines.h>
 #include <common/hardware/topology_asm.h>
 
-static void topology_getid_x86(topology_t *topo)
+__attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 {
     cpuid_regs_t r;
     int buffer[4];
@@ -101,7 +101,7 @@ static void topology_getid_x86(topology_t *topo)
     }
 }
 
-__attribute__ ((unused)) static void topology_getid_arm64(topology_t *topo)
+__attribute__((unused)) static void topology_getid_arm64(topology_t *topo)
 {
     topo->vendor          = VENDOR_ARM;
     topo->model           = MODEL_A8;

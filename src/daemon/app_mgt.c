@@ -27,17 +27,24 @@ void app_mgt_new_job(app_mgt_t *a)
 	if (a==NULL) return;
 	memset(a,0,sizeof(app_mgt_t));
 }
+
+
 void app_mgt_end_job(app_mgt_t *a)
 {
 	if (a==NULL) return;
 	memset(a,0,sizeof(app_mgt_t));
 }
+
+
 void print_app_mgt_data(app_mgt_t *a)
 {
 	if (a==NULL) return;
 
-	verbose(VEARD_NMGR,"App_info:master_rank %u ppn %u nodes %u total_processes %u max_ppn %u",a->master_rank,a->ppn,a->nodes,a->total_processes,a->max_ppn);
+	verbose(VEARD_NMGR,"App_info: master_rank %u ppn %u nodes %u total_processes %u max_ppn %u",
+            a->master_rank,a->ppn,a->nodes,a->total_processes,a->max_ppn);
 }
+
+
 uint is_app_master(app_mgt_t *a)
 {
 	if (a==NULL) return 0;

@@ -22,6 +22,10 @@
 #define POWER_TYPE 0
 #define ENERGY_TYPE 1
 
+#define MONITOR       0
+#define HARD_POWERCAP 1
+#define SOFT_POWERCAP 2
+
 typedef struct shared_powercap_data {
     ulong status;
     ulong def_power;        // default power for this eargm
@@ -49,5 +53,6 @@ void cluster_power_monitor();
 
 void cluster_powercap_red_pc(uint red);
 void cluster_powercap_inc_pc(uint inc);
+void cluster_powercap_set_pc(uint limit);
 void cluster_powercap_reset_pc();
 #endif

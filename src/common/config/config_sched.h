@@ -26,20 +26,17 @@
 
 #if SCHED_SLURM
 #include <slurm/slurm.h>
-#define BATCH_STEP SLURM_BATCH_SCRIPT
-
+#define BATCH_STEP    ((int) SLURM_BATCH_SCRIPT)
 #elif !SCHED_PBS && !SCHED_OAR
-
-#define BATCH_STEP -2
-
+#define BATCH_STEP    -2
 #endif
 
 #if SCHED_PBS
-#define BATCH_STEP 0
+#define BATCH_STEP     0
 #endif
 
 #if SCHED_OAR
-#define BATCH_STEP 0
+#define BATCH_STEP     0
 #endif
 
 

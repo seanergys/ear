@@ -77,7 +77,7 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ops.read          = energy_cpu_util_read;
 		ops.count_devices = energy_cpu_util_count_devices;
 		api = API_CPUMODEL;
-		debug("selected dummy energy_cpu (api %u)", api);
+		debug("selected CPUMODEL energy_cpu (api %u)", api);
 	} 
 	else if (state_ok(energy_cpu_dummy_load(tp))) {
 		ops.init          = energy_cpu_dummy_init;
@@ -138,7 +138,6 @@ state_t energy_cpu_count_devices(ctx_t *c, uint *count)
 // Data
 state_t energy_cpu_data_alloc(ctx_t *c, ullong **values, uint *rapl_count)
 {
-	state_t s;
 	if (values == NULL) {
 		return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
 	}
@@ -153,7 +152,6 @@ state_t energy_cpu_data_alloc(ctx_t *c, ullong **values, uint *rapl_count)
 
 state_t energy_cpu_data_copy(ctx_t *c, ullong *dest, ullong *source)
 {
-	state_t s;
 	if (dest == NULL || source == NULL) {
 		return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
 	}
@@ -199,7 +197,7 @@ state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 {
 	char buffer[512];
 	strcpy(str, "energy_cpu (");
-	int i, s;
+	int i;
 
 	for (i = 0; i < socket_count; i++)
 	{

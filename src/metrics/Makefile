@@ -1,5 +1,5 @@
 CC_FLAGS += $(CONSTANTS)
-CFLAGS = $(CC_FLAGS) -fPIC -shared -O2 -Wextra 
+CFLAGS = $(CC_FLAGS) -fPIC -shared -Wextra 
 
 ######## INSTALLATION
 

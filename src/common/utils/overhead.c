@@ -93,7 +93,7 @@ void overhead_report(int print_header)
         overhead_print_header();
     }
     // Formatting again by the case
-    tprintf_init(fderr, STR_MODE_DEF, "10 14 14 14 14 32");
+    tprintf_init(verb_channel, STR_MODE_DEF, "10 14 14 14 14 32");
 
     for(id = 0; id < queue_last; ++id)
     {
@@ -114,7 +114,7 @@ void overhead_report(int print_header)
 
 void overhead_print_header()
 {
-    tprintf_init(fderr, STR_MODE_DEF, "10 14 14 14 14 32");
+    tprintf_init(verb_channel, STR_MODE_DEF, "10 14 14 14 14 32");
     tprintf("#calls||time accum||time/#calls||%%cpu time||%%wall time||description");
     tprintf("------||----------||-----------||---------||----------||-----------");
 }
