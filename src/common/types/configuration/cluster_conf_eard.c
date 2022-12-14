@@ -103,8 +103,12 @@ state_t EARD_parse_token(eard_conf_t *conf,char *token)
     {
         token = strtok(NULL, "=");
         strclean(token, '\n');
-        strncpy(conf->plugins, token, sizeof(conf->plugins));
-        found = EAR_SUCCESS;
+        if (strlen(token) < sizeof(conf->plugins)) {
+            strncpy(conf->plugins, token, sizeof(conf->plugins) - 1);
+            found = EAR_SUCCESS;
+        } else {
+            found = EAR_WARNING;
+        }
     }
 
 

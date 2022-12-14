@@ -1,7 +1,7 @@
 include ./Makefile.files
 
 # If USER_TEST is set to 1, any user can execute the hacks with the library
-CFLAGS = -fPIC -I$(SRCDIR) $(CONSTANTS) -DUSER_TEST=0
+CFLAGS = -O2 -fPIC -I$(SRCDIR) $(CONSTANTS) -DUSER_TEST=0
 
 ######## FILES
 

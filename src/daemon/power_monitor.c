@@ -1201,7 +1201,7 @@ policy_conf_t per_job_conf;
 policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
                                  energy_tag_t *my_tag, application_t *appID)
 {
-    policy_conf_t *my_policy;
+    policy_conf_t *my_policy = NULL;
 
     if (appID == NULL) {
         error("configure_context: NULL application provided, setting default values");
@@ -2042,7 +2042,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
     ulong num_jobs;
     ulong time_consumed;
     double my_dc_power;
-    job_context_t *alloc;
+    job_context_t *alloc = NULL;
 
     time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
 
