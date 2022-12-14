@@ -42,6 +42,12 @@
 #include <metrics/energy/node/energy_node.h>
 #include <common/system/monitor.h>
 
+/* For error control */
+#define MAX_TIMES_POWER_SUPPORTED 10
+#define VPOWER_ERROR 0
+static        unsigned int     inm_power_last_power_measurement = 0;
+
+
 
 static pthread_mutex_t ompi_lock = PTHREAD_MUTEX_INITIALIZER;
 static suscription_t *inm_power_sus;
@@ -293,6 +299,18 @@ Byte 17:20 – Statistics Reporting Period (the timeframe in seconds, over which
 	cpower->avg_power=(ulong)avg_power;
 	cpower->timeframe=(ulong)timeframe;
 	cpower->timestamp=(ulong)timestamp;
+
+  /* For error control */
+  if (cpower->current_power > cpower->max_power){
+      verbose(VPOWER_ERROR, "enery_inm_power: New max power reading current:%u max %u", cpower->current_power, cpower->max_power);
+  }
+  if ((cpower->current_power < (cpower->max_power * MAX_TIMES_POWER_SUPPORTED)) && ( cpower->current_power > 0)){
+      inm_power_last_power_measurement = cpower->current_power;
+  }else{
+      verbose(VPOWER_ERROR, "enery_inm_power:warning, invalid power detected. current %u, corrected to last valid power %u", cpower->current_power, inm_power_last_power_measurement);
+       cpower->current_power = inm_power_last_power_measurement;
+  }
+
 	
 	return EAR_SUCCESS;
 }
