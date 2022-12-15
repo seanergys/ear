@@ -226,7 +226,7 @@ static void topology_cpuinfo(topology_t *topo)
                 ++cpu;
             }
         }
-        if (strncmp(line, "flags", 5) == 0) {
+        if ((strncmp(line, "flags", 5) == 0) && !topo->avx512) {
             if ((col = strchr(line, ':')) != NULL) {
                 ++col;
                 ++col;
