@@ -2255,7 +2255,9 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 
 extern timestamp_t time_last_signature;
+#if MPI_OPTIMIZED
 extern ulong local_max_sync_block;
+#endif
 
 state_t earl_periodic_actions(void *no_arg)
 {
@@ -2300,7 +2302,7 @@ state_t earl_periodic_actions(void *no_arg)
                 traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
                 traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
                 traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong)local_max_sync_block);
+                traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong) local_max_sync_block);
                 local_max_sync_block = 0;
             }
         }

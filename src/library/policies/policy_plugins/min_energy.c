@@ -930,6 +930,7 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *last_sig, int
     return int_policy_ok(curr_sig,last_sig,ok);
 }
 
+
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t * s)
 {
     if (c != NULL) {
@@ -944,6 +945,7 @@ state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t
 
     return EAR_SUCCESS;
 }
+
 
 state_t policy_max_tries(polctx_t *c,int *intents)
 {
@@ -970,11 +972,9 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
     return EAR_SUCCESS;
 }
 
+
 #if !SINGLE_CONNECTION || MPI_OPTIMIZED
 static uint resume_cpufreq;
-#endif
-
-
 #if MPI_OPTIMIZED
 extern p2i last_buf, last_dest;
 static struct timespec mpi_opt_timer;
@@ -982,6 +982,8 @@ static struct timespec mpi_opt_timer;
 #define OPT_BARRIER 0
 #define OPT_WAIT    1
 #endif
+#endif
+
 
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
@@ -1094,6 +1096,7 @@ state_t policy_mpi_end(polctx_t *c,mpi_call call_type, node_freqs_t *freqs, int 
     else return EAR_ERROR;
 }
 
+
 state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) return EAR_ERROR;
@@ -1188,6 +1191,7 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
     return EAR_SUCCESS;
 }
 
+
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c == NULL) {
@@ -1241,6 +1245,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
     return EAR_SUCCESS;
 }
 
+
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
     if (c != NULL) {
@@ -1257,6 +1262,7 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
     }
 }
 
+
 state_t policy_new_iteration(polctx_t *c,signature_t *sig)
 {
     if (gpus.new_iter != NULL){
@@ -1265,6 +1271,7 @@ state_t policy_new_iteration(polctx_t *c,signature_t *sig)
     }
     return EAR_SUCCESS;
 }
+
 
 static state_t policy_no_models_go_next_me(int curr_pstate,int *ready,node_freqs_t *freqs,unsigned long num_pstates)
 {
@@ -1280,6 +1287,7 @@ static state_t policy_no_models_go_next_me(int curr_pstate,int *ready,node_freqs
     *best_freq=frequency_pstate_to_freq(next_pstate);
     return EAR_SUCCESS;
 }
+
 
 static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signature_t *prev_sig, double time_ref,
         double cpi_ref, double gbs_ref, double penalty_th)
