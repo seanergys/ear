@@ -53,7 +53,8 @@
 
 #define DVFS_PERIOD 0.5
 #define DVFS_BURST_DURATION 1000
-#define DVFS_RELAX_DURATION 60000
+#define DVFS_RELAX_DURATION 1000
+//#define DVFS_RELAX_DURATION 60000
 
 #define MAX_DVFS_TRIES 3
 
@@ -281,8 +282,9 @@ state_t dvfs_pc_thread_main(void *p)
     /* Copy init=end */
 	energy_cpu_data_copy(NULL, values_rapl_init, values_rapl_end);
 
-    if ((current_dvfs_pc <= POWER_CAP_UNLIMITED) || (c_status != PC_STATUS_RUN)){
-        debug("powercap unlimited or status != PC_STATUS_RUN");
+    //if ((current_dvfs_pc <= POWER_CAP_UNLIMITED) || (c_status != PC_STATUS_RUN)){
+    if (current_dvfs_pc <= POWER_CAP_UNLIMITED){
+        debug("powercap unlimited");
         return EAR_SUCCESS;
     }   
 
