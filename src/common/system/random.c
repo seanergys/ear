@@ -20,7 +20,7 @@
 #include <common/output/debug.h>
 #include <common/system/random.h>
 #include <common/hardware/defines.h>
-#if __ARCH_X8664
+#if __ARCH_X86
 #include <immintrin.h>
 #endif
 
@@ -30,7 +30,7 @@ uint random_get()
 	unsigned int v;
 
 	// It is supported in AMD architectures too
-        #if __ARCH_X8664
+        #if __ARCH_X86
 	// It is supported in AMD architectures too
 	i = _rdrand32_step(&v);
 	#endif

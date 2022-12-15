@@ -46,16 +46,23 @@
 //  ---------------------------------------------------------------------------|
 //
 
-// Old style, deprecated
+// Old style, deprecated and extinguish as soon as possible
 #define FLOPS_EVENTS 8
 #define INDEX_256F   2
 #define INDEX_256D   6
 #define INDEX_512F   3
 #define INDEX_512D   7
+#ifdef __ARCH_ARM
+#define WEIGHT_256F  1
+#define WEIGHT_256D  1
+#define WEIGHT_512F  1
+#define WEIGHT_512D  1
+#else
 #define WEIGHT_256F  8
 #define WEIGHT_256D  4
 #define WEIGHT_512F 16
 #define WEIGHT_512D  8
+#endif
 
 typedef struct flops_s {
 	ullong f64;
@@ -64,8 +71,9 @@ typedef struct flops_s {
 	ullong d128;
 	ullong f256;
 	ullong d256;
-	ullong f512;
-	ullong d512;
+    ullong h512; // 512 field is also used as MAX VECTOR LENGTH flops,
+	ullong f512; // i.e. the ARM's SVE. But in the future maybe a
+	ullong d512; // union could be
     union {
         timestamp_t time;
         double secs;
@@ -75,6 +83,7 @@ typedef struct flops_s {
 typedef struct flops_ops_s {
     void    (*get_api)         (uint *api);
     void    (*get_granularity) (uint *granularity);
+    void    (*get_weights)     (ullong **weights);
 	state_t (*init)            (ctx_t *c);
 	state_t (*dispose)         (ctx_t *c);
 	state_t (*read)            (ctx_t *c, flops_t *fl);

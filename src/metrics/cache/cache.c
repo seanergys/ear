@@ -110,18 +110,14 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     //
     caD->l1d_misses = overflow_zeros_u64(ca2->l1d_misses, ca1->l1d_misses);
     caD->l2_misses  = overflow_zeros_u64(ca2->l2_misses , ca1->l2_misses );
-    caD->l3r_misses = overflow_zeros_u64(ca2->l3r_misses, ca1->l3r_misses);
-    caD->l3w_misses = overflow_zeros_u64(ca2->l3w_misses, ca1->l3w_misses);
-    caD->l3_misses  = overflow_zeros_u64(ca2->l3_misses , ca1->l3_misses );
-    caD->l4_misses  = overflow_zeros_u64(ca2->l4_misses , ca1->l4_misses );
     caD->llr_misses = overflow_zeros_u64(ca2->llr_misses, ca1->llr_misses);
     caD->llw_misses = overflow_zeros_u64(ca2->llw_misses, ca1->llw_misses);
     caD->ll_misses  = overflow_zeros_u64(ca2->ll_misses , ca1->ll_misses );
     debug("Total L1D misses: %lld", caD->l1d_misses);
-    debug("Total L2 misses : %lld", caD->l2_misses);
-    debug("Total L3 misses : %lld", caD->l3_misses);
-    debug("Total L4 misses : %lld", caD->l4_misses);
-    debug("Total LL misses : %lld", caD->ll_misses);
+    debug("Total L2  misses: %lld", caD->l2_misses);
+    debug("Total LLR misses: %lld", caD->l3_misses);
+    debug("Total LLD misses: %lld", caD->l4_misses);
+    debug("Total LL  misses: %lld", caD->ll_misses);
     cas = (double) caD->ll_misses;
     cas = (cas / secs);
     cas = (cas * line_size);

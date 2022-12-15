@@ -42,13 +42,18 @@ typedef struct cache_s {
 	timestamp_t time;
 	ullong l1d_misses;
 	ullong l2_misses;
-    ullong l3r_misses;
-    ullong l3w_misses;
-    ullong l3_misses;
-    ullong l4_misses; //rare, but exists
-    ullong llr_misses;
-    ullong llw_misses;
-    ullong ll_misses; //use this to extrapole other metrics like bandwidth
+    union {
+        ullong l3r_misses;
+        ullong llr_misses;
+    };
+    union {
+        ullong l3w_misses;
+        ullong llw_misses;
+    }
+    union {
+        ullong l3_misses;
+        ullong ll_misses;
+    }
 } cache_t;
 
 typedef struct coche_ops_s {

@@ -22,11 +22,12 @@
 
 void flops_dummy_load(topology_t *tp, flops_ops_t *ops)
 {
-    replace_ops(ops->get_api,         flops_dummy_get_api);
-    replace_ops(ops->get_granularity, flops_dummy_get_granularity);
-	replace_ops(ops->init,            flops_dummy_init);
-	replace_ops(ops->dispose,         flops_dummy_dispose);
-	replace_ops(ops->read,            flops_dummy_read);
+    apis_put(ops->get_api,         flops_dummy_get_api);
+    apis_put(ops->get_granularity, flops_dummy_get_granularity);
+    apis_put(ops->get_weights,     flops_dummy_get_weights);
+    apis_put(ops->init,            flops_dummy_init);
+    apis_put(ops->dispose,         flops_dummy_dispose);
+    apis_put(ops->read,            flops_dummy_read);
 }
 
 void flops_dummy_get_api(uint *api)
@@ -37,6 +38,12 @@ void flops_dummy_get_api(uint *api)
 void flops_dummy_get_granularity(uint *granularity)
 {
     *granularity = GRANULARITY_DUMMY;
+}
+
+void flops_dummy_get_weights(uint **weights_in)
+{
+    static ullong weights[9] { 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+    *weights_in = weights;
 }
 
 state_t flops_dummy_init(ctx_t *c)

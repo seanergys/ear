@@ -26,6 +26,8 @@ void flops_dummy_get_api(uint *api);
 
 void flops_dummy_get_granularity(uint *granularity);
 
+void flops_dummy_get_weights(uint **weights);
+
 state_t flops_dummy_init(ctx_t *c);
 
 state_t flops_dummy_dispose(ctx_t *c);

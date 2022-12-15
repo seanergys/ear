@@ -28,8 +28,8 @@
 #define HW_OP_WRITE   PERF_COUNT_HW_CACHE_OP_WRITE
 #define HW_RES_MISS   PERF_COUNT_HW_CACHE_RESULT_MISS
 
-// 0   1  2   3   4  5  6   7   8
-// L1D L2 L3R L3W L3 L4 LLR LLW LL
+// 0   1  2   3   4
+// L1D L2 LLR LLW LL
 // It seems that you can't mix OP_READ and OP_WRITE.
 static ullong gen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong gen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
@@ -66,18 +66,18 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
 		set_cache(hwell_l1d_ev, PERF_TYPE_HW_CACHE, 0);
 		set_cache(hwell_l2_ev , PERF_TYPE_RAW     , 1);
-		set_cache(hwell_llr_ev, PERF_TYPE_HW_CACHE, 6);
-        set_cache(hwell_llw_ev, PERF_TYPE_HW_CACHE, 7);
+		set_cache(hwell_llr_ev, PERF_TYPE_HW_CACHE, 2);
+        set_cache(hwell_llw_ev, PERF_TYPE_HW_CACHE, 3);
 	}
 	else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
 		set_cache(zen_l1d_ev, PERF_TYPE_HW_CACHE, 0);
-		set_cache(zen_llr_ev, PERF_TYPE_HW_CACHE, 6);
-        set_cache(zen_llw_ev, PERF_TYPE_HW_CACHE, 7);
+		set_cache(zen_llr_ev, PERF_TYPE_HW_CACHE, 2);
+        set_cache(zen_llw_ev, PERF_TYPE_HW_CACHE, 3);
 	}
     else if (tp->vendor == VENDOR_ARM) {
         set_cache(arm_l1d_ev, PERF_TYPE_HW_CACHE, 0);
-        set_cache(arm_llr_ev, PERF_TYPE_HW_CACHE, 6);
-        set_cache(arm_llw_ev, PERF_TYPE_HW_CACHE, 7);
+        set_cache(arm_llr_ev, PERF_TYPE_HW_CACHE, 2);
+        set_cache(arm_llw_ev, PERF_TYPE_HW_CACHE, 3);
     }
 	else {
 		debug(Generr.api_incompatible);
@@ -87,11 +87,11 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         debug(Generr.api_incompatible);
         return;
     }
-    replace_ops(ops->get_api,         cache_perf_get_api);
-    replace_ops(ops->get_granularity, cache_perf_get_granularity);
-    replace_ops(ops->init,            cache_perf_init);
-	replace_ops(ops->dispose,         cache_perf_dispose);
-	replace_ops(ops->read,            cache_perf_read);
+    apis_put(ops->get_api,         cache_perf_get_api);
+    apis_put(ops->get_granularity, cache_perf_get_granularity);
+    apis_put(ops->init,            cache_perf_init);
+    apis_put(ops->dispose,         cache_perf_dispose);
+    apis_put(ops->read,            cache_perf_read);
     debug("Loaded PERF")
 }
 
@@ -131,15 +131,14 @@ state_t cache_perf_read(ctx_t *c, cache_t *ca)
 		return s;
 	}
 	timestamp_get(&ca->time);
-	for (i = 0; i < counter; ++i) { p[levels[i]] = values[i]; }
-    if (ca->l3_misses == 0) ca->l3_misses = ca->l3r_misses + ca->l3w_misses;
-    if (ca->ll_misses == 0) ca->ll_misses = ca->llr_misses + ca->llw_misses;
+	for (i = 0; i < counter; ++i) {
+        p[levels[i]] = values[i];
+    }
+    if (ca->ll_misses == 0) {
+        ca->ll_misses = ca->llr_misses + ca->llw_misses;
+    }
     debug("total L1D misses: %llu", ca->l1d_misses);
 	debug("total L2  misses: %llu", ca->l2_misses );
-    debug("total L3R misses: %llu", ca->l3r_misses);
-    debug("total L3W misses: %llu", ca->l3w_misses);
-    debug("total L3  misses: %llu", ca->l3_misses );
-    debug("total L4  misses: %llu", ca->l4_misses );
     debug("total LLR misses: %llu", ca->llr_misses);
     debug("total LLW misses: %llu", ca->llw_misses);
     debug("total LL  misses: %llu", ca->ll_misses );

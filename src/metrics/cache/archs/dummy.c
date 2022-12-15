@@ -22,11 +22,11 @@
 
 void cache_dummy_load(topology_t *tp, cache_ops_t *ops)
 {
-    replace_ops(ops->get_api,         cache_dummy_get_api);
-    replace_ops(ops->get_granularity, cache_dummy_get_granularity);
-	replace_ops(ops->init,            cache_dummy_init);
-	replace_ops(ops->dispose,         cache_dummy_dispose);
-	replace_ops(ops->read,            cache_dummy_read);
+    apis_put(ops->get_api,         cache_dummy_get_api);
+    apis_put(ops->get_granularity, cache_dummy_get_granularity);
+    apis_put(ops->init,            cache_dummy_init);
+    apis_put(ops->dispose,         cache_dummy_dispose);
+    apis_put(ops->read,            cache_dummy_read);
 }
 
 void cache_dummy_get_api(uint *api)

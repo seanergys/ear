@@ -27,8 +27,9 @@
 #include <metrics/flops/archs/perf.h>
 #include <metrics/flops/archs/dummy.h>
 
-// CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512SP, 512DP
-static ullong weights[8] = { 1, 1, 4, 2, 8, 4, 16, 8 };
+// 0       1       2      3      4      5      6      7      8
+// CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512HP, 512SP, 512DP
+static ullong *weights;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static flops_ops_t ops;
 static uint load;
@@ -63,6 +64,7 @@ state_t flops_init(ctx_t *c)
 {
 	while (pthread_mutex_trylock(&lock));
 	state_t s = ops.init(c);
+    ops.get_weights(&weights);
 	pthread_mutex_unlock(&lock);
 	return s;
 }
@@ -106,8 +108,9 @@ static double compute_gflops(flops_t *fl)
     aux += (double) (fl->d128 * weights[3]);
     aux += (double) (fl->f256 * weights[4]);
     aux += (double) (fl->d256 * weights[5]);
-    aux += (double) (fl->f512 * weights[6]);
-    aux += (double) (fl->d512 * weights[7]);
+    aux += (double) (fl->h512 * weights[6]);
+    aux += (double) (fl->f512 * weights[7]);
+    aux += (double) (fl->d512 * weights[8]);
     aux = (aux / fl->secs);
     aux = (aux / B_TO_GB);
     debug("Total GFLOPS: %0.2lf", aux);
@@ -139,6 +142,7 @@ void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     flA.d128 = overflow_zeros_u64(fl2->d128, fl1->d128);
     flA.f256 = overflow_zeros_u64(fl2->f256, fl1->f256);
     flA.d256 = overflow_zeros_u64(fl2->d256, fl1->d256);
+    flA.h512 = overflow_zeros_u64(fl2->h512, fl1->h512);
     flA.f512 = overflow_zeros_u64(fl2->f512, fl1->f512);
     flA.d512 = overflow_zeros_u64(fl2->d512, fl1->d512);
 #if 0
@@ -148,6 +152,7 @@ void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 	debug("Total d128 insts: %llu", flA.d128);
 	debug("Total f256 insts: %llu", flA.f256);
 	debug("Total d256 insts: %llu", flA.d256);
+	debug("Total h512 insts: %llu", flA.h512);
 	debug("Total f512 insts: %llu", flA.f512);
 	debug("Total d512 insts: %llu", flA.d512);
 #endif
@@ -169,6 +174,7 @@ void flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
         flA->d128 += flD->d128;
         flA->f256 += flD->f256;
         flA->d256 += flD->d256;
+        flA->h512 += flD->h512;
         flA->f512 += flD->f512;
         flA->d512 += flD->d512;
         flA->secs += flD->secs;
@@ -195,10 +201,10 @@ void flops_data_print(flops_t *flD, double gfs, int fd)
 void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length)
 {
     int added = 0;
-    added += sprintf(&buffer[added], "Total  64 insts f-d: %llu %llu\n", flD->f64 , flD->d64);
-    added += sprintf(&buffer[added], "Total 128 insts f-d: %llu %llu\n", flD->f128, flD->d128);
-    added += sprintf(&buffer[added], "Total 256 insts f-d: %llu %llu\n", flD->f256, flD->d256);
-    added += sprintf(&buffer[added], "Total 512 insts f-d: %llu %llu\n", flD->f512, flD->d512);
+    added += sprintf(&buffer[added], "Total  64 insts h-f-d: %llu %llu %llu\n", 0LLU, flD->f64 , flD->d64);
+    added += sprintf(&buffer[added], "Total 128 insts h-f-d: %llu %llu %llu\n", 0LLU, flD->f128, flD->d128);
+    added += sprintf(&buffer[added], "Total 256 insts h-f-d: %llu %llu %llu\n", 0LLU, flD->f256, flD->d256);
+    added += sprintf(&buffer[added], "Total 512 insts h-f-d: %llu %llu %llu\n", flD->h512, flD->f512, flD->d512);
     added += sprintf(&buffer[added], "Total GFLOPS: %0.2lf\n", gfs);
     return EAR_SUCCESS;
 }
@@ -211,8 +217,9 @@ ullong *flops_help_toold(flops_t *flD, ullong *flops)
     flops[5] = (flD->d128 * weights[3]);
     flops[2] = (flD->f256 * weights[4]);
     flops[6] = (flD->d256 * weights[5]);
-    flops[3] = (flD->f512 * weights[6]);
-    flops[7] = (flD->d512 * weights[7]);
+    //flops[x] = (flD->h512 * weights[6]); it doesn't exists
+    flops[3] = (flD->f512 * weights[7]);
+    flops[7] = (flD->d512 * weights[8]);
     compute_gflops(flD);
     return flops;
 }

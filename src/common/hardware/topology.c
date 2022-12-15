@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <asm/sigcontext.h>
 #include <common/sizes.h>
 #include <common/states.h>
 #include <common/system/file.h>
@@ -173,6 +174,18 @@ state_t topology_copy(topology_t *dst, topology_t *src)
 	return EAR_SUCCESS;
 }
 
+static void topology_simd(topology_t *topo)
+{
+    if (topo->vendor == VENDOR_ARM) {
+        #ifdef __SVE_VQ_MAX
+        topo->sve_bits = __SVE_VQ_MAX;
+        topo->sve = (topo->sve_bits > 0);
+        #else
+        topo->sve = 0;
+        #endif
+    }
+}
+
 static void topology_watchdog(topology_t *topo)
 {
 	char path[SZ_NAME_LARGE];
@@ -193,9 +206,9 @@ static void topology_watchdog(topology_t *topo)
 
 static void topology_cpuinfo(topology_t *topo)
 {
-    char *taux = NULL;
-    char *twop = NULL;
     char *line = NULL;
+    char *col  = NULL; //column
+    char *aux  = NULL;
     size_t len = 0;
     int cpu    = 0;
 
@@ -205,23 +218,30 @@ static void topology_cpuinfo(topology_t *topo)
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     while(getline(&line, &len, cpuinfo) != -1) {
         if (strncmp(line, "apicid", 6) == 0) {
-            if ((twop = strchr(line, ':')) != NULL) {
-                ++twop;
-                ++twop;
+            if ((col = strchr(line, ':')) != NULL) {
+                ++col;
+                ++col;
                 // Now points to the number
-                topo->cpus[cpu].apicid = atoi(twop);
+                topo->cpus[cpu].apicid = atoi(col);
                 ++cpu;
             }
         }
+        if (strncmp(line, "flags", 5) == 0) {
+            if ((col = strchr(line, ':')) != NULL) {
+                ++col;
+                ++col;
+                topo->avx512 = (strstr(col, "avx512f") != NULL);
+            }
+        }
         if (strncmp(line,"model name", 10) == 0){
-            if ((twop = strchr(line, '@')) != NULL) {
-                twop++;
-                while (*twop == ' ') twop++;
-                taux = twop;
-                while (*twop != 'G') twop++;
-                *twop = '\0';
+            if ((col = strchr(line, '@')) != NULL) {
+                col++;
+                while (*col == ' ') col++;
+                aux = col;
+                while (*col != 'G') col++;
+                *col = '\0';
                 // Converted to KHz
-                topo->base_freq = atof(taux)*1000000;
+                topo->base_freq = atof(aux)*1000000;
             }
         }
     }
@@ -264,9 +284,8 @@ state_t topology_init(topology_t *topo)
 	topo->l3_count         = 0;
     topo->initialized      = 1;
 
-	/* First characteristics */
-	topology_asm_getid(topo);
-	topology_asm_getbrand(topo);
+	/* First assembly characteristics */
+	topology_asm(topo);
 
 	/* Number of CPUs */
 	do {
@@ -306,6 +325,7 @@ state_t topology_init(topology_t *topo)
 
     topology_cpuinfo(topo);
 	topology_watchdog(topo);
+    topology_simd(topo);
     topology_tdp(topo);
 
 	topology_copy(&topo_static, topo);
@@ -315,14 +335,6 @@ state_t topology_init(topology_t *topo)
 
 state_t topology_close(topology_t *topo)
 {
-	return EAR_SUCCESS;
-
-	if (topo == NULL) {
-		return EAR_ERROR;
-	}
-	
-	free(topo->cpus);
-	memset(topo, 0, sizeof(topology_t));
 	return EAR_SUCCESS;
 }
 
@@ -340,6 +352,9 @@ state_t topology_close(topology_t *topo)
 		"gpr_bits         : %d\n" \
 		"nmi_watchdog     : %d\n" \
 		"base_freq        : %lu\n" \
+		"avx512           : %d\n" \
+		"sve              : %d\n" \
+		"sve_bits         : %d\n" \
 		"tdp              : %d\n" \
 	, \
 		topo->cpu_count, \
@@ -354,6 +369,9 @@ state_t topology_close(topology_t *topo)
 		topo->gpr_bits, \
 		topo->nmi_watchdog, \
 		topo->base_freq, \
+		topo->avx512, \
+		topo->sve, \
+		topo->sve_bits, \
 		topo->tdp);
 
 state_t topology_print(topology_t *topo, int fd)
@@ -398,7 +416,6 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 		*freq_base = topo_static.base_freq;
     	return EAR_ERROR;
 	}
-
 	ulong f0 = read_freq(fd);
 	ulong f1 = read_freq(fd);
 	ulong fx = f0 - f1;
