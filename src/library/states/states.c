@@ -131,7 +131,6 @@ static float        MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maxim
        uint         signature_reported           = 0;
 
 extern uint check_periodic_mode;
-static uint earl_report_loops = 1;
 
 /** Returns whether \p cpi_a and \p cpi_b and \p gbs_a \p gbs_b are
  * equal, respectively, with a maximum difference of \p eq_thresh permitted. */
@@ -196,8 +195,6 @@ void states_begin_job(int my_id, char *app_name)
     }
 
     node_freqs_alloc(&node_freqs);
-    char * cearl_report_loops = getenv(FLAG_REPORT_EARL_LOOPS);
-    if (cearl_report_loops != NULL) earl_report_loops = atoi(cearl_report_loops);
 
 
     // The number of available pstates
@@ -315,7 +312,7 @@ void states_end_period(uint iterations)
         curr_loop.total_iterations = iterations;
 #endif
         if (system_conf->report_loops) {
-            if (master && earl_report_loops) {
+            if (master ) {
                 clean_db_loop(&curr_loop, system_conf->max_sig_power);
                 if (report_loops(&rep_id, &curr_loop,1) != EAR_SUCCESS){
                     verbose_master(0,"Error reporting loop");
@@ -662,9 +659,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             // The reported signature will show whether the Library is using DynAIS
             if (dynais_used) {
-                sprintf(use_case, "D");
+                sprintf(use_case, "+D");
             } else {
-                sprintf(use_case, "P.%s",((ear_guided == TIME_GUIDED)?"T":"D"));
+                sprintf(use_case, "+P.%s",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
 
             // Verbose loop signature
@@ -742,9 +739,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* VERBOSE */
             if (dynais_used) {
-                sprintf(use_case, "D-Stable");
+                sprintf(use_case, "+D-Stable");
             } else {
-                sprintf(use_case, "P.%s-Stable",((ear_guided == TIME_GUIDED)?"T":"D"));
+                sprintf(use_case, "+P.%s-Stable",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
             state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id, &curr_loop, prev_cpufreq_khz, EAR_STATE);
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
@@ -990,7 +987,7 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
     my_loop->total_iterations = iterations;
 #endif
 
-    if (master && earl_report_loops) {
+    if (master ) {
 
         clean_db_loop(my_loop, system_conf->max_sig_power);
 

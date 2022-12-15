@@ -126,6 +126,7 @@ static llong       aux_time;
 static edata_t     aux_energy = NULL;
 static edata_t     metrics_ipmi[2] = { NULL, NULL};  // mJ
 static ulong       acum_ipmi[2];
+static double      total_acum_time = 0;
 static edata_t     aux_energy_stop = NULL;
 static llong       metrics_usecs[2]; // uS
 
@@ -1107,7 +1108,8 @@ static int metrics_partial_stop(uint where)
   #endif
 
 	if (master) {
-		if (dispose && ((c_power<0) || (c_power>system_conf->max_sig_power))){
+    /* Error is manage later in this function */
+		if (dispose && ((c_power<=0) || (c_power>system_conf->max_sig_power))){
 			debug("dispose and c_power %lf\n",c_power);
 			debug("power %f energy %lu time %llu\n",c_power,c_energy,c_time);
 		}
@@ -1147,16 +1149,18 @@ static int metrics_partial_stop(uint where)
     aux_time=aux_time_stop;
 
     if (master) {
-		if (c_power < system_conf->max_sig_power) {
+		if ((c_power > system_conf->min_sig_power) && (c_power < system_conf->max_sig_power)) {
 			acum_ipmi[LOO] = c_energy;
 
 		} else {
+      /* If there is an error, power is computed based on power from CPu+GPU. Computed in 
+       * compute_signature_data */
 			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
                     COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
 			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
       estimate_power = 1;
 		}
-    /* Delay this accumulation to the job power computation */ 
+    /* Power error control: Delay this accumulation to the job power computation */ 
 		 //acum_ipmi[APP] += acum_ipmi[LOO];
 	}
 	/* Per process IO data */
@@ -1431,10 +1435,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
 		/* Power: Node, DRAM, PCK */
-		metrics->DC_power = 0;
-		if (!estimate_power && acum_ipmi[sign_app_loop_idx]){
+    /* If power is not estimated, we computed here, later otherwise */
+    metrics->DC_power = 0;
+    /* Loop power */
+		if (!estimate_power && acum_ipmi[sign_app_loop_idx] && (sign_app_loop_idx == LOO)){
 			metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
 		}
+    /* App power */
+    if (!estimate_power && acum_ipmi[sign_app_loop_idx] && (sign_app_loop_idx == APP)){
+			metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (total_acum_time * node_energy_units);
+    }
+
 
 		/* DRAM and PCK PENDING for Njobs */
 		metrics->PCK_power=0;
@@ -1478,6 +1489,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         }
 #endif
     if (!estimate_power){
+      /* Power error control: computing the ratio */
       dc_power_ratio += metrics->DC_power / (total_gpu_power + metrics->DRAM_power + metrics->PCK_power);
       dc_power_ratio_instances++;
     }
@@ -1488,6 +1500,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 		#else
     if (estimate_power){
+      /* Power error control: There was an error on power computation and we use an estimation */
       double current_ratio;
       if (dc_power_ratio_instances && dc_power_ratio){
         current_ratio = dc_power_ratio / (double)dc_power_ratio_instances;
@@ -1498,6 +1511,16 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       estimate_power = 0;
     }
     #endif
+
+
+    /* Power error control: We don't accumulate if we are computing application metrics, not loop  metrics */
+    if (!lib_shared_region->global_stop_ready){
+      //acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
+      acum_ipmi[APP] += acum_ipmi[LOO];
+      total_acum_time += time_s;
+      verbose_master(2,"Accumulating %.2lu J to the application. Total energy %lu J acum_time %.2lf sec", acum_ipmi[LOO], acum_ipmi[APP] , total_acum_time);
+    }
+
 
 	} else {
         // Copies DC, DRAM, PCK, avg_f, avg_imc_f, GBS and TPI
@@ -2115,8 +2138,6 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 	dst->L2_misses = L2;
 	dst->L3_misses = L3;
 
-  acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
-  verbose_master(2,"Accumulating %.2lf W to the application for %.2lf sec", master->DC_power, se->elapsed);
 }
 
 extern uint last_earl_phase_classification;
@@ -2290,7 +2311,7 @@ static void read_metrics_options()
         uint cpuprio_list_count;
         uint *cpuprio_list;
 
-        if ((cpuprio_list = (uint *) envtoat(CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
+        if ((cpuprio_list = (uint *) envtoat(FLAG_CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
             if (VERB_ON(2)) {
 
                 verbosen_master(0, "CPUPRIO list read:");

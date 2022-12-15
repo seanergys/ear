@@ -174,6 +174,7 @@ static ulong max_freq_per_socket[MAX_SOCKETS_SUPPORTED];
 static uint  cpu_must_be_normalized[MAX_CPUS_SUPPORTED];
 
 uint last_earl_phase_classification = APP_COMP_BOUND;
+static uint ignore_affinity_mask = 0;
 
 int cpu_ready = EAR_POLICY_NO_STATE;
 int gpu_ready = EAR_POLICY_NO_STATE;
@@ -464,6 +465,7 @@ state_t policy_init()
     char *cear_mpi_opt         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
     char *cfake_io_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IO_FAKE_PHASE)     : NULL;
     char *cfake_bw_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_BW_FAKE_PHASE)     : NULL;
+    char *cignore_affinity_mask   = getenv(FLAG_NO_AFFINITY_MASK);
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -619,6 +621,16 @@ state_t policy_init()
         }
     }
     if (cenable_load_balance != NULL) enable_load_balance = atoi(cenable_load_balance);
+    /* EAR relies on the affinity mask, some special use cases (Seissol) modifies at runtime
+     * the mask. Since EAR reads the mask during the initializacion, we offer this option
+     * to switch off the utilization of the mask
+     */
+    if (cignore_affinity_mask != NULL){
+      enable_load_balance = 0;
+      ignore_affinity_mask = 1;
+      verbose_master(POLICY_INFO,"%sPOLICY%s Affinity mask explicitly ignored. load balance off", COL_BLU, COL_CLR);
+    }
+
 
     verbose_master(POLICY_INFO, "%sPOLICY%s Load balance: %u", COL_BLU, COL_CLR, enable_load_balance);
 
@@ -1613,6 +1625,18 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
     if (arch_desc.top.vendor == VENDOR_AMD) {
         memset(max_freq_per_socket, 0, MAX_SOCKETS_SUPPORTED * sizeof(ulong));
     }
+    /* This is a special use case, ignoring the mask. Using freq from proc 0 to all the CPUs */
+		if (ignore_affinity_mask){
+          // The frequency is filtered by the minimum permitted in the EAR configuration
+          ulong cpu_freq_khz = ear_max(process_cpu_freqs_khz[0], (ulong) min_cpufreq);
+          debug("Warning: Ignoring the affinity mask. Using %lu in all the cores ", cpu_freq_khz);
+			    for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) (*core_cpu_freqs_khz)[cpu_idx] = cpu_freq_khz;
+          if (cpu_freq_max != NULL) *cpu_freq_max = cpu_freq_khz;
+          if (cpu_freq_min != NULL) *cpu_freq_min = cpu_freq_khz;
+			    return EAR_SUCCESS;
+		}
+
+    /* This is the default use case */
 
     for (int proc_lrank = init_rank; proc_lrank < end_rank; proc_lrank++)
     {
@@ -1642,6 +1666,8 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
             verbosen_master(verb_lvl + 1, " -> CPUs:")
         }
 
+
+        /* This is the default use case. EAR uses the CPU affinity mask */
         cpu_set_t process_mask = sig_shared_region[proc_lrank].cpu_mask;
 
         for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
