@@ -52,7 +52,7 @@ static void debug_loop_signature(char *title, signature_t *loop);
 #endif
 
 void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname, char *nname,
-        int iterations, ulong prevf, ulong new_freq, char *mode)
+        int iterations, ulong prevf, ulong new_freq, char *user_mode)
 {
     double CPI, GBS, POWER, TIME, VPI, FLOPS;
     float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0;
@@ -61,11 +61,16 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     ulong GPU_UTIL = 0, GPU_FREQ = 0, gpu_used_cnt=0;
     ulong elapsed;
     timestamp end;
+    char mode[32];
 #if 0
     sig_ext_t *se = (sig_ext_t *)sig->signature.sig_ext;
 #endif
 
     if (VERB_GET_LV() == 0) return;
+    sprintf(mode,"");
+    if (VERB_GET_LV() >= 2){
+      strcpy(mode, user_mode);
+    }
 
     timestamp_getfast(&end);
     elapsed=timestamp_diff(&end, &ear_application_time_init, TIME_SECS);

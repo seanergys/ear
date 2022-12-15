@@ -27,6 +27,7 @@
 #include <common/output/verbose.h>
 #include <common/types/configuration/policy_conf.h>
 #include <common/types/configuration/node_conf.h>
+#include <common/types/configuration/cluster_conf_tag.h>
 
 
 //#define __OLD__CONF__
@@ -164,6 +165,7 @@ void print_node_conf(node_conf_t *my_node_conf)
 void print_my_node_conf(my_node_conf_t *my_node_conf)
 {
     int i;
+    char buffer[64];
     if (my_node_conf!=NULL){
         verbose(VCCONF,"My node: cpus %u max_pstate %lu island %u ip %s tag %s",
                 my_node_conf->cpus, my_node_conf->max_pstate,
@@ -190,14 +192,19 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
         for (i=0;i<my_node_conf->num_policies;i++){
             print_policy_conf(&my_node_conf->policies[i]);
         }
-	      verbose(VCCONF, "max_sig_power %.0lf min_sig_power %.0lf error_power %.0lf\nmax_temp %lu powercap"
-            " %ld max_powercap %ld powercap_type %d\ngpu_def_freq %lu / cpu_max_pstate %d / imc_max_pstate %d\n",
+	      verbose(VCCONF, "max_sig_power %.0lf min_sig_power %.0lf error_power %.0lf\nmax_temp %lu "
+            " powercap_type %d\ngpu_def_freq %lu / cpu_max_pstate %d / imc_max_pstate %d\n",
             my_node_conf->max_sig_power, my_node_conf->min_sig_power,
-            my_node_conf->max_error_power, my_node_conf->max_temp, my_node_conf->powercap,
-            my_node_conf->max_powercap, my_node_conf->powercap_type,
+            my_node_conf->max_error_power, my_node_conf->max_temp,
+            my_node_conf->powercap_type,
             my_node_conf->gpu_def_freq, my_node_conf->cpu_max_pstate, my_node_conf->imc_max_pstate);
 	      verbose(VCCONF, "imc_max_freq %lu imc_min_freq %lu", my_node_conf->imc_max_freq, my_node_conf->imc_min_freq);
         verbose(VCCONF, "Governor used in the IDLE %s pstate %d", my_node_conf->idle_governor, my_node_conf->idle_pstate);
+        power2str((ulong)my_node_conf->powercap, buffer);
+        verbosen(VCCONF, "powercap %s ",buffer);
+        power2str((ulong)my_node_conf->max_powercap, buffer);
+        verbose(VCCONF, "max_powercap %s ",buffer);
+
     }
 }
 
