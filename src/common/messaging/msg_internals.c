@@ -1217,7 +1217,6 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
 request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_conf, void **data)
 {
     int i, j, k, rc, total_ranges, final_size = 0, default_type = EAR_ERROR, num_sfds = 0, offset_send = 0, offset_read = 0;
-    int last_i_send, last_j_send, last_i_read, last_j_read;
     int **ips, *ip_counts, *sfds;
     struct sockaddr_in temp;
     request_header_t head;
@@ -1233,8 +1232,10 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
     int iters = num_sfds/MAX_CALLER_CONNECTIONS;
     if (num_sfds%MAX_CALLER_CONNECTIONS) iters += 1; //to prevent ranges of < MAX_CALLER_CONNECTIONS to not be sent, as well as 
                                                     //avoiding the remainder ranges to not be contacted
-    last_i_send = last_j_send = 0;
-    last_i_read = last_j_read = 0;
+    int last_i_send = 0;
+    int last_j_send = 0;
+    int last_i_read = 0;
+    int last_j_read = 0;
 
     debug("number of outer iterations %d (each of <= %d connections)", iters, MAX_CALLER_CONNECTIONS);
 

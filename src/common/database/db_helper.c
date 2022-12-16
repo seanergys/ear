@@ -155,7 +155,7 @@ void init_db_helper(db_conf_t *conf)
 float run_query_float_result(char *query)
 {
     MYSQL_RES *result = db_run_query_result(query);
-    float num_indexes;
+    float num_indexes = 0;
     if (result == NULL) {
         verbose(VDBH, "Error while retrieving result");
         return EAR_ERROR;
@@ -179,7 +179,7 @@ float run_query_float_result(char *query)
 int run_query_int_result(char *query)
 {
     MYSQL_RES *result = db_run_query_result(query);
-    int num_indexes;
+    int num_indexes = 0;
     if (result == NULL) {
         verbose(VDBH, "Error while retrieving result");
         return EAR_ERROR;

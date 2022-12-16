@@ -78,10 +78,14 @@ state_t EARLIB_parse_token(earlib_conf_t *conf,char *token)
     }
     else if (!strcmp(token, "EARLREPORTPLUGINS"))
     {
-        found = EAR_SUCCESS;
         token = strtok(NULL, "=");
         strclean(token, '\n');
-        strncpy(conf->plugins, token, sizeof(conf->plugins));
+        if (strlen(token) < sizeof(conf->plugins)) {
+            strncpy(conf->plugins, token, sizeof(conf->plugins) - 1);
+            found = EAR_SUCCESS;
+        } else {
+            found = EAR_WARNING;
+        }
     }
 
 

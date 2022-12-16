@@ -119,6 +119,9 @@ static uint        node_energy_units;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static int         num_packs = 0;
 static ull        *metrics_rapl[2];  // nJ (vec)
+#if MPI_OPTIMIZED
+static ull        *metrics_rapl_fine_monitor_start, *metrics_rapl_fine_monitor_end, *metrics_rapl_fine_monitor_diff;
+#endif
 static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
 static uint        rapl_size;
@@ -247,9 +250,6 @@ extern timestamp init_last_phase, init_last_comp;
 extern uint policy_cpu_bound ;
 extern uint policy_mem_bound ;
 
-#if 0
-static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length);
-#endif
 
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
@@ -476,7 +476,7 @@ static void metrics_static_init(topology_t *tp)
     sa(    mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count    ));
     sa(        gpu_count_devices(no_ctx, &met_gpu.devs_count    ));
     #if USE_CUPTI
-    if (read_cupti_metrics){
+    if (read_cupti_metrics) {
       sa(    gpuproc_count_devices(no_ctx, &proc_gpu.devs_count   ));
       verbose_master(VERBOSE_CUPTI, "CUPTI devices %u", proc_gpu.devs_count);
     }
@@ -635,6 +635,16 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 		total_cpus += lcpus;
 	}
 	*avgf = total/total_cpus;
+}
+
+static void cpufreq_process_avgcpufreq(uint proc, ulong *nodecpuf, ulong *avgf)
+{
+  cpu_set_t m;
+  ulong lavg = 0, lcpus = 0;
+
+  m = sig_shared_region[proc].cpu_mask;
+  pstate_freqtoavg(m, nodecpuf, met_cpufreq.devs_count, &lavg, &lcpus);
+  *avgf = lavg;
 }
 
 void set_null_dc_energy(edata_t e)
@@ -1527,8 +1537,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		copy_node_data(metrics, &lib_shared_region->node_signature);
 	}
 
+
 	/* Copying my info in the shared signature */
 	ssig_from_signature(&sig_shared_region[my_node_id].sig, metrics);
+  /* Computing avg_cpufreq in shared sig (new) */
+  cpufreq_process_avgcpufreq(my_node_id, lib_shared_region->avg_cpufreq, &sig_shared_region[my_node_id].sig.avg_f);
 
 	/* If I'm the master, I have to copy in the special section */
 	if (master) {
@@ -2250,6 +2263,56 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 }
 
 
+#if MPI_OPTIMIZED
+static int fd_csv_cpu;
+void metrics_start_cpupower()
+{
+  if (master) {
+    char filename[256];
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_diff, &rapl_size);
+    energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_start);
+    snprintf(filename, sizeof(filename), "csv_cpu_power.%lu.%lu.%s.csv", application.job.id, application.job.step_id, application.node_id);
+    fd_csv_cpu = open(filename, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+    if (fd_csv_cpu < 0 ){
+      verbose_master(0,"Error opening csv_cpu_power.csv file (%s)", strerror(errno));
+      fd_csv_cpu = verb_channel;
+    }
+  }
+}
+
+void metrics_read_cpupower()
+{
+  if (master) {
+
+    char buffer[64], csv_str[256];
+    double total = 0, curr ;
+
+    energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_end);
+    energy_cpu_data_diff(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
+    energy_cpu_data_copy(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
+
+    sprintf(csv_str,"%lld;",timestamp_getconvert(TIME_USECS));
+
+    for (int p = 0; p < (num_packs*2) -1 ; p++) {
+      curr = (double)metrics_rapl_fine_monitor_diff[p]/200000000.0;
+      snprintf(buffer, sizeof(buffer), "%.2lf;", curr);
+      total += curr;
+      strcat( csv_str, buffer);
+    }
+
+    curr = (double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1]/200000000.0;
+    total += curr;
+    snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
+
+    strcat(csv_str, buffer);
+
+    write(fd_csv_cpu, csv_str, strlen(csv_str));
+  }
+}
+#endif // MPI_OPTIMIZED
+
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total)
 {
@@ -2314,18 +2377,17 @@ static void read_metrics_options()
         if ((cpuprio_list = (uint *) envtoat(FLAG_CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
             if (VERB_ON(2)) {
 
-                verbosen_master(0, "CPUPRIO list read:");
+                verbosen_master(1, "CPUPRIO list read:");
 
                 int i;
                 for (i = 0; i < cpuprio_list_count - 1; i++) {
-                    verbosen_master(0, " %u", cpuprio_list[i]);
+                    verbosen_master(1, " %u", cpuprio_list[i]);
                 }
 
-                verbose_master(0, " %u", cpuprio_list[i]);
+                verbose_master(1, " %u", cpuprio_list[i]);
             }
         }
     }
-
 }
 
 

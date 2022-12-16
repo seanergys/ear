@@ -59,6 +59,7 @@ int traces_are_on();
 void traces_mpi_init();
 void traces_mpi_call(int global_rank, int local_rank, ulong ev, ulong a1, ulong a2, ulong a3);
 void traces_mpi_end();
+void traces_generic_event(int global_rank, int local_rank, int event, int value);
 
 #else
 
@@ -81,6 +82,7 @@ void traces_mpi_end();
 #define traces_mpi_init();
 #define traces_mpi_call(g,l,e,a1,a2,a3);
 #define traces_mpi_end();
+#define traces_generic_event(g, l, e, v)
 
 #endif // EAR_GUI
 

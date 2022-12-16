@@ -48,6 +48,10 @@
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/generic.h>
 
+#define MASTER (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
+
+
 /*  IMC management */
 extern uint dyn_unc;
 extern double imc_extra_th;
@@ -307,11 +311,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     ulong curr_freq;
     ulong curr_pstate, def_freq, def_pstate;
 
-    double sig_vpi, node_sig_vpi, max_vpi, lvpi; // master, node, max, local
-    uint local_process_with_high_vpi;
     sig_ext_t *se;
 
-    uint cbound, mbound, turbo_set = 0;
+    uint cbound, turbo_set = 0; // , mbound
 
     ulong curr_imc_freq;
     uint eUFS = dyn_unc;
@@ -426,7 +428,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         /* Computd in policy */
         cbound = policy_cpu_bound;
-        mbound = policy_mem_bound;
+        // mbound = policy_mem_bound; - not used.
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
@@ -465,9 +467,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf",
                         my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
-
+                #if 0
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];
+                #endif
+                double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
+                            percs_mpi[max_mpi], percs_mpi[i])) * critical_path[i];
                 if (factor < 0.01) {
                     factor = 0.0;
                 }
@@ -480,6 +485,15 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
                 compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate,
                         best_pstate, best_freq, def_freq, &new_freq[i]);
+                if (critical_path[i]){
+                  new_freq[i] = frequency_pstate_to_freq(min_pstate);
+                }
+                  
+                if (freq_per_core){
+                  verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
+                  sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
+                  my_node_mpi_calls[i].perc_mpi, local_eff_gain);
+                }
                 if (use_turbo_for_cp) {
                     debug("Try to boost: freq per core ? %u already using turbo ? %u min_mpi ? %u",
                             freq_per_core, c->use_turbo, min_mpi);
@@ -796,9 +810,6 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
-            debug("%sNode load unbalance%s: LB_TH %lf mean %lf"
-                    " standard deviation %lf magnitude %lf unbalance ? %u",
-                    COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
             /*  Check whether application has changed from unbalanced to balanced and viceversa */
             if (unbalance != signature_is_unbalance) {
                 if (!unbalance) {
