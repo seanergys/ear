@@ -132,6 +132,7 @@ void copy_my_node_conf(my_node_conf_t *dest,my_node_conf_t *src);
 
 /** prints in the stderr the node configuration */
 void print_node_conf(node_conf_t *node_conf);
+void report_my_node_conf(my_node_conf_t *my_node_conf);
 
 /** prints in the stderr the specific node configuration */
 void print_my_node_conf(my_node_conf_t *my_node_conf);

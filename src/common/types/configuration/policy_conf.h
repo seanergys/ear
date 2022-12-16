@@ -59,6 +59,7 @@ void copy_policy_conf(policy_conf_t *dest,policy_conf_t *src);
 
 /** prints in the stdout policy configuration */
 void print_policy_conf(policy_conf_t *p);
+void report_policy_conf(policy_conf_t *p);
 
 /** Sets all pointers to NULL and all values to their default*/
 void init_policy_conf(policy_conf_t *p);
