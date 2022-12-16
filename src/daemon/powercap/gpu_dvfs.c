@@ -208,7 +208,8 @@ state_t gpu_dvfs_pc_thread_main(void *p)
     }
 
     gpu_dvfs_greedy = 0;
-    if ((current_gpu_pc <= 1) || (c_status != PC_STATUS_RUN)){
+    //if ((current_gpu_pc <= 1) || (c_status != PC_STATUS_RUN)){
+    if (current_gpu_pc <= 1){
         return EAR_SUCCESS;
     }
 

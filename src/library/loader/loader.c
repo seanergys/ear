@@ -77,7 +77,7 @@ int must_load()
 
 int load_no_official()
 {
-    char *app_to_load=getenv(FLAG_LOADER_APPLICATION);
+    char *app_to_load = getenv(FLAG_LOADER_APPLICATION);
     if (app_to_load == NULL) {
         // TODO: This check is for the transition to the new environment variables.
         // It will be removed when SCHED_LOADER_LOAD_NO_MPI_LIB will be removed, in the next release.
@@ -90,7 +90,7 @@ int load_no_official()
             return 0;
         }
     }
-    if (strstr(program_invocation_name,app_to_load) == NULL) return 0;
+    if (strstr(program_invocation_name, app_to_load) == NULL) return 0;
     return 1;
 }
 
@@ -142,7 +142,7 @@ void  __attribute__ ((constructor)) loader()
         if (_loaded) return;
 
         if (load_no_official()) {
-            verbose(2,"Tring default module");
+            verbose(2, "Tring default module");
             _loaded = module_constructor(path_lib_so,libhack);
         }
     }

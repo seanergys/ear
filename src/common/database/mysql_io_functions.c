@@ -1179,7 +1179,6 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
     MYSQL_STMT *statement = mysql_stmt_init(connection);
 
     if (!statement) return EAR_MYSQL_ERROR;
-    signature_t *signature;
     char *query, *params;
     int i, j, num_params;
 
@@ -1222,7 +1221,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
         strcat(query, params);
 
 #if USE_GPUS
-    long int *gpu_sig_ids, current_gpu_sig_id = 0, starter_gpu_sig_id;
+    long int *gpu_sig_ids = NULL, current_gpu_sig_id = 0, starter_gpu_sig_id;
     starter_gpu_sig_id = mysql_batch_insert_gpu_signatures(connection, cont, num_sigs);
     if (starter_gpu_sig_id >= 0)
     {
@@ -1233,6 +1232,10 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
                 gpu_sig = &cont.app[i].signature.gpu_sig;
             else if (cont.type == EAR_TYPE_LOOP)
                 gpu_sig = &cont.loop[i].signature.gpu_sig;
+            else {
+                warning("container type unrecognized");
+                continue;
+            }
 
             current_gpu_sig_id += gpu_sig->num_gpus;
         }
@@ -1288,6 +1291,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
             bind[offset+j].is_unsigned = 1;
         }
 
+        signature_t *signature = NULL;
 
         //storage variables assignation
         if (cont.type == EAR_TYPE_APPLICATION)
@@ -1297,6 +1301,8 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
         else if (cont.type == EAR_TYPE_LOOP)
         {
             signature = &cont.loop[i].signature;
+        } else {
+            continue;
         }
 
         bind[0+offset].buffer = (char *)&signature->DC_power;
@@ -1326,7 +1332,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
             bind[22+offset].buffer = (char *)&signature->avg_imc_f;
             bind[23+offset].buffer = (char *)&signature->def_f;
 #if USE_GPUS
-            if (signature->gpu_sig.num_gpus > 0 && starter_gpu_sig_id >= 0) //if there are gpu signatures and no error occured
+            if (signature->gpu_sig.num_gpus > 0 && starter_gpu_sig_id >= 0) // if there are gpu signatures and no error occured
             {
                 bind[24+offset].buffer = (char *)&gpu_sig_ids[current_gpu_sig_id];
 
@@ -1702,18 +1708,25 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
 
     gpu_signature_t *gpu_sig;
 
-    //GPU_signature total counts might be different of the number of signatures
+    // GPU_signature total counts might be different of the number of signatures
     for (i = 0; i < num_sigs; i++)
     {
+
         if (cont.type == EAR_TYPE_APPLICATION)
             gpu_sig = &cont.app[i].signature.gpu_sig;
         else if (cont.type == EAR_TYPE_LOOP)
             gpu_sig = &cont.loop[i].signature.gpu_sig;
+        else {
+            warning("Container type isn't an application nor a loop.");
+            continue;
+        }
 
-        if (gpu_sig->num_gpus > MAX_GPUS_SUPPORTED)
-            warning("current GPU signature has more GPUs than supported");
+        if (gpu_sig) {
+            if (gpu_sig->num_gpus > MAX_GPUS_SUPPORTED)
+                warning("current GPU signature has more GPUs than supported");
 
-        num_gpu_sigs += ear_min(gpu_sig->num_gpus, MAX_GPUS_SUPPORTED);
+            num_gpu_sigs += ear_min(gpu_sig->num_gpus, MAX_GPUS_SUPPORTED);
+        }
     }
 
     verbose(VMYSQL + 1, "total number of gpu_sigs: %d", num_gpu_sigs);
@@ -1738,12 +1751,17 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
 
     MYSQL_BIND *bind = xcalloc(num_gpu_sigs*GPU_SIGNATURE_ARGS, sizeof(MYSQL_BIND));
 
-    for (i = 0; i < num_sigs;  i++)
+    for (i = 0; i < num_sigs; i++)
     {
+
         if (cont.type == EAR_TYPE_APPLICATION)
             gpu_sig = &cont.app[i].signature.gpu_sig;
         else if (cont.type == EAR_TYPE_LOOP)
             gpu_sig = &cont.loop[i].signature.gpu_sig;
+        else {
+            warning("Container type isn't an application nor a loop.");
+            continue;
+        }
 
         for (j = 0; j < gpu_sig->num_gpus; j++)
         {
@@ -1765,7 +1783,6 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
 
             offset += GPU_SIGNATURE_ARGS;
         }
-
     }
 
     if (offset/GPU_SIGNATURE_ARGS < num_gpu_sigs) { verbose(VMYSQL, "Assigned less signatures than allocated"); }

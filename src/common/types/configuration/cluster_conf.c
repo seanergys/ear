@@ -711,7 +711,7 @@ int get_node_server_mirror(cluster_conf_t *conf, const char *hostname, char *mir
     char *p;
 
     //
-    strncpy(hostalias, hostname, SZ_NAME_MEDIUM);
+    strncpy(hostalias, hostname, SZ_NAME_MEDIUM - 1);
     found_both   = 0;
     found_server = 0;
     found_mirror = 0;

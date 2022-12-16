@@ -33,12 +33,17 @@ void after_init()
 	ear_init();
 }
 
+#if MPI_OPTIMIZED
 p2i last_buf, last_dest;
+#endif
+
 void before_mpi(mpi_call call_type, p2i buf, p2i dest)
 {
 	debug("before_mpi");
+#if MPI_OPTIMIZED
         last_buf  = buf;
         last_dest = dest;
+#endif
 	policy_mpi_init(call_type);
 	ear_mpi_call(call_type,buf,dest);
 }

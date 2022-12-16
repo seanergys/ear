@@ -37,6 +37,8 @@
 #include <common/types/generic.h>
 #include <common/types/signature.h>
 
+#include <library/tracer/tracer_paraver_comp.h>
+
 #define MIN_FREQ_FOR_SAMPLING 500000
 
 #ifdef EAR_GUI
