@@ -64,9 +64,12 @@
 #define LB_VERB_LVL        INFO_LVL
 #define MPI_STATS_VERB_LVL INFO_LVL
 #define VAR_DEPRECATED     WARN_LVL - 1 // It's a warning, but more prioritary
-                                        //
+
 #define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
                              // You can disable it for overhead testing.
+
+#define MPI_STATS          1 // This macro enables the collection of MPI statistics.
+                             // A test was done in order to probe that no overhead was introduced.
 
 static timestamp pol_time_init, start_no_mpi;
 
@@ -80,6 +83,7 @@ static ulong total_blocking_calls       = 0;
 static ulong total_collectives          = 0;
 static ulong total_synchronizations     = 0;
 static ulong max_sync_block             = 0;
+
 /* Statistics of all call types */
 static uint   mpi_call_count[N_CALL_TYPES];
 static ullong mpi_call_time[N_CALL_TYPES];
