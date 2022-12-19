@@ -15,12 +15,16 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
+#include <math.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <metrics/common/msr.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
+#include <common/math_operations.h>
+#include <metrics/imcfreq/archs/intel63.h>
 #include <management/imcfreq/archs/intel63.h>
 
 // TODO
@@ -57,7 +61,66 @@ static state_t intel63_read(uint cpu, ullong *max, ullong *min)
 	return EAR_SUCCESS;
 }
 
-static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
+static void magic_spin(ullong ms)
+{
+    timestamp_t time;
+    timestamp_getfast(&time);
+    while(timestamp_diffnow(&time, TIME_MSECS) < ms);
+}
+
+static void *dynamic_detection_thread(void *arg)
+{
+    ullong freq2u, freq1u;
+    double freq2d;
+    state_t s;
+    
+    *((ullong *) arg) = 0;
+    // Reading content
+    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq1u))) {
+        return NULL;
+    }
+//    magic_spin(999LLU);
+    magic_spin(499LLU);
+    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq2u))) {
+        return NULL;
+    }
+    // Round to ceil
+    freq2u = overflow_magic_u64(freq2u, freq1u, MAXBITS48);
+    freq2u = freq2u * 2;
+    // KHz to HHz
+    freq2d = ceil(((double) freq2u) / ((double) 1E8)) * ((double) 1E5);
+    freq2u = (ullong) freq2d;
+    // Returning the data
+    *((ullong *) arg) = freq2u;
+ 
+    return NULL;
+}
+
+static state_t dynamic_detection()
+{
+    pthread_t thread1;
+    pthread_t thread2;
+    ullong freq1;
+    ullong freq2;
+    ullong freq3;
+    state_t s;    
+
+    // Opening MSR
+    if (state_fail(s = imcfreq_intel63_aux_enable_cpu(0))) {
+        return s;
+    }
+    // Creating threads
+    pthread_create(&thread1, NULL, dynamic_detection_thread, (void *) &freq1);
+    pthread_create(&thread2, NULL, dynamic_detection_thread, (void *) &freq2);
+    dynamic_detection_thread((void *) &freq3);
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+    
+    debug("Detected max IMC frequency: %llu %llu %llu KHz", freq1, freq2, freq3);
+    return EAR_SUCCESS;
+}
+
+static state_t mgt_imcfreq_intel63_build_list(topology_t *tp, int eard, my_node_conf_t *conf)
 {
 	ullong aux = 0;
 	state_t s;
@@ -95,9 +158,14 @@ static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
     }
     #if SHOW_DEBUGS
     else {
-        debug("Loaded ImcFreqMin %llu", min_khz);
+        debug("Keeper read ImcFreqMin %llu", min_khz);
     }
     #endif
+    // [3] Dynamic detection
+    if (state_fail(s = dynamic_detection())) {
+        debug("dynamic_detection() returned: %s", state_msg);
+    }
+    #if 0
     // [3] Replace by the data in the conf
     if (conf != NULL) {
         debug("conf->imc_max_freq %lu", conf->imc_max_freq);
@@ -109,6 +177,7 @@ static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
             min_khz = (ullong) conf->imc_min_freq;
         }
     }
+    #endif
     // [4] We can't build a list with 0s
     if (max_khz < 1000000LLU || min_khz == 0LLU) {
         return_msg(EAR_ERROR, "Can't build a frequency list");
@@ -134,7 +203,7 @@ static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, my_node_conf_t *conf)
+state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int eard, my_node_conf_t *conf)
 {
 	state_t s;
 	if (max_khz != 0) {
@@ -149,7 +218,7 @@ state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, my_node
 	if (state_fail(s = topology_select(tp, &tp_static, TPSelect.socket, TPGroup.merge, 0))) {
 		return s;
 	}
-	if (state_fail(s = mgt_imcfreq_intel63_build_list(conf))) {
+	if (state_fail(s = mgt_imcfreq_intel63_build_list(tp, eard, conf))) {
 		return s;
 	}
 	replace_ops(ops->init,               mgt_imcfreq_intel63_init);
