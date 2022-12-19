@@ -41,7 +41,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/gpu.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/imc_policy_support.h>

@@ -36,7 +36,6 @@
 #include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
-#include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/policy.h>
 #include <library/policies/common/imc_policy_support.h>

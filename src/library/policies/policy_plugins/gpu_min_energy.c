@@ -28,7 +28,6 @@
 
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-//#include <library/metrics/gpu.h>
 #include <management/gpu/gpu.h>
 #include <metrics/gpu/gpu.h>
 #include <library/metrics/metrics.h>

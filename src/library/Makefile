@@ -88,7 +88,6 @@ core_OBJS = \
     tracer/tracer.o \
     dynais/dynais.a 
 
-#metrics/gpu.o \
 
 ifeq ($(FEAT_MPI_API), 1)
 mpix_OBJS = \
