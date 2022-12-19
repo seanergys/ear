@@ -226,7 +226,8 @@ typedef struct power_check {
 #define EARGM_STATUS    803
 #define EARGM_INC_PC    804
 #define EARGM_RED_PC    805
-#define EARGM_RESET_PC  806
+#define EARGM_SET_PC    806
+#define EARGM_RESET_PC  807
 
 
 /******************* IMPORTANT ***********************/

@@ -22,7 +22,7 @@
 #include <common/hardware/defines.h>
 #include <common/hardware/topology_asm.h>
 
-static void topology_getid_x86(topology_t *topo)
+__attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 {
     cpuid_regs_t r;
     int buffer[4];
@@ -101,14 +101,14 @@ static void topology_getid_x86(topology_t *topo)
     }
 }
 
-__attribute__ ((unused)) static void topology_getid_arm64(topology_t *topo)
+__attribute__((unused)) static void topology_getid_arm64(topology_t *topo)
 {
     topo->vendor          = VENDOR_ARM;
     topo->model           = MODEL_A8;
     topo->cache_line_size = 64; // 64 bytes
 }
 
-void topology_asm_getid(topology_t *topo)
+static void topology_asm_getid(topology_t *topo)
 {
     #if __ARCH_ARM
     return topology_getid_arm64(topo);
@@ -146,9 +146,15 @@ static void topology_getbrand_x86(topology_t *topo)
     debug("Brand: %s", topo->brand);
 }
 
-void topology_asm_getbrand(topology_t *topo)
+static void topology_asm_getbrand(topology_t *topo)
 {
     #if __ARCH_X86
     topology_getbrand_x86(topo);
     #endif
+}
+
+void topology_asm(topology_t *topo)
+{
+    topology_asm_getid(topo);
+    topology_asm_getbrand(topo);
 }

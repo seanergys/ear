@@ -49,7 +49,7 @@
 #include <common/hardware/defines.h>
 #include <library/dynais/dynais.h>
 #include <library/dynais/avx2/dynais.h>
-#if __ARCH_X8664
+#if __ARCH_X86
 #include <immintrin.h>
 #endif
 #ifdef FEAT_AVX512
@@ -82,7 +82,7 @@ dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 	if (tp->vendor == VENDOR_INTEL) {
 		type = dynais_intel_switch(tp->model);
 	} else {
-		#if __ARCH_X8664
+		#if __ARCH_X86
 		type = 2;
 		#else
 		type = 1;
@@ -109,7 +109,7 @@ void dynais_dispose()
 		avx512_dynais_dispose();
 		#endif
 	} else if (type == 2) {
-		#if __ARCH_X8664
+		#if __ARCH_X86
 		avx2_dynais_dispose();
 		#endif
 	}

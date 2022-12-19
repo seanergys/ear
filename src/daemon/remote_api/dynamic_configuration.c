@@ -32,6 +32,7 @@
 #include <netinet/ip.h>
 #include <linux/limits.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -46,7 +47,6 @@
 
 #include <management/cpufreq/frequency.h>
 
-
 #include <daemon/remote_api/eard_rapi.h>
 #include <daemon/remote_api/eard_server_api.h>
 #include <daemon/remote_api/dyn_conf_theading.h>
@@ -57,6 +57,8 @@
 #include <report/report.h>
 
 //#define SLURM_FAKE_ERROR 1
+
+extern pthread_barrier_t setup_barrier;
 
 /* Defined in eard.c */
 extern report_id_t rid;
@@ -452,8 +454,6 @@ int dyncon_set_policy(new_policy_cont_t *p)
 void dyncon_get_app_status(int fd, request_t *command) 
 {
     app_status_t *status;
-    long int ack;
-    send_answer(fd, &ack); //send ack before propagating
     int local_status;
     local_status = powermon_get_num_applications(command->req == EAR_RC_APP_MASTER_STATUS);
     verbose(VRAPI,"We have %d local apps in app_status",local_status);
@@ -494,8 +494,6 @@ void dyncon_get_app_status(int fd, request_t *command)
 /* This function will propagate the status command and will return the list of node failures */
 void dyncon_get_status(int fd, request_t *command) {
     status_t *status;
-    long int ack;
-    send_answer(fd, &ack); //send ack before propagating
     int num_status = propagate_status(command, my_cluster_conf.eard.port, &status);
     unsigned long return_status = num_status;
     debug("return_status %lu status=%p",return_status,status);
@@ -608,9 +606,6 @@ void dyncon_release_idle_power(int fd, request_t *command)
 {
     pc_release_data_t rel_data;
     int return_status;
-    long int ack;
-
-    send_answer(fd, &ack);
 
     debug("propagating release_idle_power");
     return_status = propagate_release_idle(command, my_cluster_conf.eard.port, (pc_release_data_t *)&rel_data);
@@ -659,8 +654,6 @@ void dyncon_get_powerstatus(int fd, request_t *command)
     powercap_status_t *status;
     pmgt_status_t p_status;
     int return_status;
-    long int ack;
-    send_answer(fd, &ack);
     char *status_data;
     return_status = propagate_powercap_status(command, my_cluster_conf.eard.port, (powercap_status_t **)&status_data);
     status = mem_alloc_powercap_status(status_data);
@@ -690,8 +683,6 @@ void dyncon_get_power(int fd, request_t *command)
     power_check_t *power;
     uint64_t curr_power = 0;
     int return_status;
-    long int ack;
-    send_answer(fd, &ack);
     return_status = propagate_get_power(command, my_cluster_conf.eard.port, (power_check_t **)&power);
 
     if (return_status < 1) 
@@ -805,6 +796,9 @@ state_t process_remote_requests(int clientfd) {
     memset(&command,0,sizeof(request_t));
     command.req = NO_COMMAND;
     req = (int) read_command(clientfd, &command);
+
+    debug("Process remote request %d", req);
+
     if (req == EAR_SOCK_DISCONNECTED) return req;
     /* New job and end job are different */
     /* Is it necesary */
@@ -814,6 +808,8 @@ state_t process_remote_requests(int clientfd) {
             send_answer(clientfd, &ack);
             return EAR_SUCCESS;
     }
+
+    send_answer(clientfd, &ack); //send ack BEFORE processing the message to avoid delays
 
     verbose(VRAPI,"New command accepted");
     new_command_received(&command);
@@ -935,7 +931,6 @@ state_t process_remote_requests(int clientfd) {
             error("Invalid remote command %d\n",req);
             req = NO_COMMAND;
     }
-    send_answer(clientfd, &ack);
     if (req != EAR_RC_PING && req != NO_COMMAND && node_found != EAR_ERROR)
     {
         verbose(VRAPI + 1, "command=%d propagated distance=%d", req, command.node_dist);
@@ -969,7 +964,7 @@ void *eard_dynamic_configuration(void *tmp)
     my_tmp = (char *) tmp;
     int ret;
 
-    verbose(VRAPI, "RemoteAPI thread UP");
+    verbose(VRAPI, "[%ld] RemoteAPI thread UP", syscall(SYS_gettid));
 
     DC_set_sigusr1();
 
@@ -1011,6 +1006,9 @@ void *eard_dynamic_configuration(void *tmp)
     /** IP init for powercap_status */
     if (init_ips_ready > 0) my_ip = ips[self_id];
     else my_ip = 0;
+
+    verbose(VRAPI, "Dynamic configuration thread set up. Waiting for other threads...");
+    pthread_barrier_wait(&setup_barrier);
 
     /*
      *	MAIN LOOP

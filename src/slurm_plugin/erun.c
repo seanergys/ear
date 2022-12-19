@@ -384,11 +384,13 @@ int main(int argc, char *argv[])
 
 	// Simulating the single pipeline, take the lock.master
 	if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
-		plug_verbose(_sp, 2, "got the lock file");
+		plug_verbose(_sp, 2, "subject '%d' is erun master? '%d' (got the lock file)",
+            getpid(), sd.erun.is_master);
 		// Take the lock.job and read its old step id
 		sd.erun.step_id = lock_job(path_tmp, sd.erun.job_id, sd.erun.step_id);
 	} else {
-		plug_verbose(_sp, 4, "missed the lock file, spinlock");
+		plug_verbose(_sp, 3, "subject '%d' is erun master? '%d' (missed the lock file and then spinlock)",
+            getpid(), sd.erun.is_master);
 		// plug_verbosity_silence(_sp);
 		// Spinlock over lock.step
 		sd.erun.step_id = spinlock_step(path_tmp, sd.erun.job_id, sd.erun.step_id);

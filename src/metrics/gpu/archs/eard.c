@@ -57,7 +57,7 @@ void gpu_eard_load(gpu_ops_t *ops, int _eard)
         return;
 	}
     // Get a list of devices in root space
-    if (state_fail(s = eard_rpc_buffered(RPC_MGT_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
+    if (state_fail(s = eard_rpc_buffered(RPC_MET_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
         return;
     }
     /* Check : Esto es posible ? */
@@ -171,6 +171,9 @@ int gpu_eard_is_supported()
     // This is an independent function. It works always, with independence of the load
     // of the EARD GPU API, although is using RPCs to the EAR Daemon.
     if (!eard || !eards_connected()) {
+        #if FAKE_EAR_NOT_INSTALLED
+        verbose(0," FAKE_EAR_NOT_INSTALLED supported %u", supported);
+        #endif
         return supported;
     }
     if (!called) {

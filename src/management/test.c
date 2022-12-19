@@ -109,12 +109,14 @@ static state_t monitor_apis_init(void *whatever)
     topology_init(&tp);
 
     management_init(&tp, EARD, NULL);
+
+    return EAR_SUCCESS;
 }
 
 static state_t monitor_apis_update(void *whatever)
 {
     // Printf clear
-    //system("clear");
+    system("clear");
 
     tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
     tprintf("API||Internal||#Devs||Granularity");
@@ -124,10 +126,7 @@ static state_t monitor_apis_update(void *whatever)
     frun(tprintf("CPUPRIO||%s||%u||%s", m.pri.api_str, m.pri.devs_count, m.pri.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
     fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
-    
-    //
-    fgpu(sa(mgt_gpu_freq_limit_get_current(no_ctx, m.gpu.list2)));
-    
+
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
     frun(mgt_cpufreq_data_print(m.cpu.list1, m.cpu.list1_count, verb_channel));
     frun(printf("—— cpuprio ————————————————————————————————————————————————————————————————————\n"));
@@ -135,9 +134,8 @@ static state_t monitor_apis_update(void *whatever)
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
     frun(mgt_imcfreq_data_print(m.imc.list1, m.imc.list1_count, verb_channel));
     fgpu(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
-    for (int d = 0; d < m.gpu.devs_count; ++d) {
-        printf("freq %lu khz\n", ((ulong *) (m.gpu.list2))[d]);
-    }
+
+    return EAR_SUCCESS;
 }
 
 int main(int argc, char *argv[])

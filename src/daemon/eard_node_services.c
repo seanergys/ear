@@ -87,6 +87,7 @@ extern char             ear_tmp[MAX_PATH_SIZE];
 extern char             nodename[MAX_PATH_SIZE];
 extern int              eard_must_exit;
 extern ulong            eard_max_freq;
+extern pthread_barrier_t setup_barrier;
 #if USE_GPUS
 extern char             gpu_str[256];
 #endif
@@ -1269,7 +1270,7 @@ state_t service_answer_old(int req_fd, int ack_fd, char *data, size_t size)
 void service_select(int req_fd, int ack_fd)
 { 
 	eard_head_t *local_req = (eard_head_t *) &req;
-
+    
 	// Hanging up
 	if (state_fail(service_listen(req_fd, ack_fd, &req))) {
 		verbose(VEARD_LAPI_DEBUG,"Closing local service");
@@ -1374,10 +1375,14 @@ state_t eard_local_api()
     create_global_connector(ear_tmp, nodename);
 
 	verbose(VEARD_LAPI, "Communicator for %s ON", nodename);
+
 	// we wait until EAR daemon receives a request
 	// We support requests realted to frequency and to uncore counters
 	// rapl support is pending to be supported
 	// EAR daemon main loop
+
+    verbose(VEARD_LAPI, "EARD local API set up. Waiting for other threads...");
+    pthread_barrier_wait(&setup_barrier);
 
 	/*
 	*
@@ -1409,6 +1414,7 @@ state_t eard_local_api()
                     if (AFD_ISSET(i, &rfds_basic)) {
                         if (i == global_req_fd) {
                             /* New connection */
+                            ack_fd = 0;
                         } else {
                             /* We need to find the local req and ack fds */
                             ack_fd = get_local_connection_ack(eard_local_conn, i);
@@ -1416,6 +1422,7 @@ state_t eard_local_api()
                         if (ack_fd >= 0) {
                             service_select(i, ack_fd);
                         } else {
+                            error("at eard_node_service: ack_fd is %d. This shouldn't happen.", ack_fd);
                             _exit(0);
                         }
                     }    // IF AFD_ISSET

@@ -123,7 +123,7 @@ uint in_action=0;
 double perc_energy,perc_time,perc_power;
 double avg_power_t2,avg_power_t1;
 static int fd_my_log=2;
-static char host[GENERIC_NAME];
+char host[GENERIC_NAME];
 
 
 void create_tmp(char *tmp_dir) {

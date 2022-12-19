@@ -8,10 +8,10 @@ static gpuproc_t *data1;
 static gpuproc_t *data2;
 static gpuproc_t *dataD;
 
-static int update(void *x)
+static state_t update(void *x)
 {
     static uint updated = 0;
-    debug("UPDATE PROC %u", getpid());
+    debug("update proc %u", getpid());
 
     gpuproc_read_diff(no_ctx, data2, data1, dataD); 
 
@@ -24,7 +24,9 @@ static int update(void *x)
         gpuproc_enable(no_ctx);
     }
     updated++;
-    debug("LEAVING PROC %u", getpid());
+    debug("leaving proc %u", getpid());
+
+    return EAR_SUCCESS;
 }
 
 void __main(int argc, char **argv, char **envp)

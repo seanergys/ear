@@ -44,9 +44,9 @@ void end_job(job_t *job)
 
 void start_mpi(job_t *job)
 {
-		time_t j_time;
+    time_t j_time;
     j_time=time(NULL);
-		job->start_mpi_time=j_time;
+    job->start_mpi_time=j_time;
 }
 
 void end_mpi(job_t *job)

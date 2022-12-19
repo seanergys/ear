@@ -21,6 +21,7 @@
 #ifndef ERUN
 #include <slurm/slurm.h>
 #include <slurm/spank.h>
+#include <common/config/config_sched.h>
 #else
 #endif
 
@@ -28,10 +29,10 @@
  * Defines
  */
 
-#define ESPANK_STOP     -1
+#define ESPANK_STOP -1
 
 #ifdef ERUN
-#define NO_VAL (0xfffffffe)
+#define BATCH_STEP -2
 #endif
 
 #ifndef ERUN

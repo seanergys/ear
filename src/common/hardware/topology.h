@@ -20,6 +20,7 @@
 
 #include <common/states.h>
 #include <common/types/generic.h>
+#include <common/hardware/defines.h>
 
 // https://en.wikichip.org/wiki/intel/cpuid
 // arch/x86/include/asm/intel-family.h
@@ -97,6 +98,9 @@ typedef struct topology_s {
     int   apicids_found;  // List of CPUs ApicId's found.
     int   initialized;    // 1 if the topology is initialized
     ulong base_freq;      // Nominal CPU clock, in KHz
+    int   avx512;         // 1 if AVX-512 is enabled
+    int   sve;            // 1 if ARM-SVE is enabled
+    int   sve_bits;       // Counts the ARM-SVE vector bits
     int   tdp;
 } topology_t;
 

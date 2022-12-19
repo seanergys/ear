@@ -88,7 +88,7 @@ state_t bwidth_intel106_load(topology_t *tp, bwidth_ops_t *ops)
 {
 	state_t s;
 	// If AMD or model previous to Intel Haswell
-	if (tp->vendor == VENDOR_AMD || tp->model < MODEL_ICELAKE_X) {
+	if (tp->vendor == VENDOR_AMD || tp->model != MODEL_ICELAKE_X) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 	debug("detected Intel ICE LAKE");

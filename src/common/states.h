@@ -55,7 +55,7 @@ int state_no    __attribute__((weak));
 	(state1 == state2)
 
 #define serror(str) \
-  error("%s: %s (%d)", str, state_msg, state_no);
+    error("%s: %s (%d)", str, state_msg, state_no);
 
 #define sserror(format, ...) \
 	error(format ": %s (%d)", __VA_ARGS__, state_msg, state_no);

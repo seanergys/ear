@@ -19,7 +19,7 @@
 #include <common/output/error.h>
 #include <common/utils/stress.h>
 #include <common/hardware/defines.h>
-#if __ARCH_X8664
+#if __ARCH_X86
 #include <immintrin.h>
 #endif
 
@@ -36,7 +36,7 @@ static void alloc_align(void **memptr, size_t alignment, size_t size)
 void stress_alloc()
 {
     #define N 32*1024*1024 //32 MiB
-    #if __ARCH_X8664
+    #if __ARCH_X86
     alloc_align((void **) &mem1, sizeof(__m256i), N);
     alloc_align((void **) &mem2, sizeof(__m256i), N);
     #else
@@ -63,7 +63,7 @@ void stress_bandwidth(ullong seconds)
     timestamp_getfast(&now);
     do {
         for (n = 0; n < pN; n+=32) {
-            #if __ARCH_X8664
+            #if __ARCH_X86
             __m256i reg = _mm256_set1_epi32(n);
             _mm256_store_si256((__m256i *) &pmem1[n+ 0], reg);
             _mm256_store_si256((__m256i *) &pmem2[n+ 0], reg);

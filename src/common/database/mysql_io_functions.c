@@ -1173,7 +1173,7 @@ int mysql_batch_insert_avg_signatures(MYSQL *connection, application_t *app, int
 }
 
 //returns id of the first inserted signature
-int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont, char is_learning, int num_sigs)
+long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont, char is_learning, int num_sigs)
 {
 	is_learning &= USE_LEARNING_APPS;
     MYSQL_STMT *statement = mysql_stmt_init(connection);
@@ -1388,7 +1388,7 @@ int mysql_batch_insert_signatures(MYSQL *connection, signature_container_t cont,
         return mysql_statement_error(statement);
     }
 
-    int id = mysql_stmt_insert_id(statement);
+    long long id = mysql_stmt_insert_id(statement);
 
     long long affected_rows = mysql_stmt_affected_rows(statement);
 
@@ -1692,7 +1692,7 @@ int mysql_batch_insert_power_signatures(MYSQL *connection, application_t *pow_si
 }
 
 #if USE_GPUS
-int mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_container_t cont, int num_sigs)
+long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_container_t cont, int num_sigs)
 {
     int i, j, k;
     int offset = 0, num_gpu_sigs = 0;
@@ -1785,7 +1785,7 @@ int mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_container_t c
         return mysql_statement_error(statement);
     }
 
-    int id = mysql_stmt_insert_id(statement);
+    long long id = mysql_stmt_insert_id(statement);
 
     long long affected_rows = mysql_stmt_affected_rows(statement);
 
@@ -2004,6 +2004,7 @@ int mysql_insert_periodic_metric(MYSQL *connection, periodic_metric_t *per_met)
 {
     return mysql_batch_insert_periodic_metrics(connection, per_met, 1);
 }
+
 int mysql_batch_insert_periodic_metrics(MYSQL *connection, periodic_metric_t *per_mets, int num_mets)
 {
     MYSQL_STMT *statement = mysql_stmt_init(connection);

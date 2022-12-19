@@ -16,6 +16,7 @@ ARCH               = @ARCH@
 # Features
 FEAT_MPI_API       = @FEAT_MPI_API@
 FEAT_AVX512        = @FEAT_AVX512@
+FEAT_SVE           = @FEAT_SVE@
 FEAT_RESEARCH      = 0
 FEAT_GPU_OPT       = 0
 FEAT_AMD_OSCPUFREQ = 0

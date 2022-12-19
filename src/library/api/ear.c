@@ -1108,6 +1108,9 @@ void ear_init()
 
 				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
 				get_resched_path(get_ear_tmp(),ID, resched_conf_path);
+        #if FAKE_EAR_NOT_INSTALLED
+        uint first_dummy = 1;
+        #endif
 				do{
 	
 					debug("system_conf_path  = %s",system_conf_path);
@@ -1115,6 +1118,15 @@ void ear_init()
 	
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
+
+          #if FAKE_EAR_NOT_INSTALLED
+          if (first_dummy){
+            system_conf  = NULL;
+            resched_conf = NULL;
+            verbose_master(0, "FAKE_EAR_NOT_INSTALLED in shared areas");
+            first_dummy = 0;
+          }
+          #endif
 
 					/* If I'm the master, I will create the dummy regions */
 					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
@@ -1258,7 +1270,7 @@ void ear_init()
                     }
 
                     // Checking GPU support compatibility with EARD
-                    uint eard_supports_gpu = eards_gpu_support();
+                    uint eard_supports_gpu = gpu_is_supported();
                     if (lib_supports_gpu != eard_supports_gpu) {
                         verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Please, inform to your system admin about this issue.",
                                 COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);

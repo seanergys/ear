@@ -44,7 +44,6 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 	if (!eards_connected()) return EAR_ERROR;
 	if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
 	for (i=0;i<count;i++){
-    apps[i].signature.sig_ext = 0;
 		eards_write_app_signature(&apps[i]);
 	}
 	return EAR_SUCCESS;
@@ -65,7 +64,6 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
         signature_to_str(&loops[i].signature, sig_bufg, sizeof(sig_bufg));
         verbose(0,"Loop_reported: %s", sig_bufg);
 #endif
-        loops[i].signature.sig_ext = 0;
         eards_write_loop_signature(&loops[i]);
     }
     return EAR_SUCCESS;
