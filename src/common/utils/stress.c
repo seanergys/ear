@@ -51,7 +51,7 @@ void stress_free()
     free(mem2);
 }
 
-void stress_bandwidth(ullong seconds)
+void stress_bandwidth(ullong ms)
 {
     int *pmem1 = (int *) mem1;
     int *pmem2 = (int *) mem2;
@@ -77,5 +77,12 @@ void stress_bandwidth(ullong seconds)
 	    //TODO: memcpy(pmem2, pmem1, size);
 	    #endif
         }
-    } while (timestamp_diffnow(&now, TIME_SECS) < seconds);
+    } while (timestamp_diffnow(&now, TIME_MSECS) < ms);
+}
+
+static void stress_spin(ullong ms)
+{
+    timestamp_t time;
+    timestamp_getfast(&time);
+    while(timestamp_diffnow(&time, TIME_MSECS) < ms);
 }

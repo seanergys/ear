@@ -23,6 +23,7 @@
 #include <metrics/common/msr.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
+#include <common/utils/stress.h>
 #include <common/math_operations.h>
 #include <metrics/imcfreq/archs/intel63.h>
 #include <management/imcfreq/archs/intel63.h>
@@ -37,6 +38,7 @@ static topology_t tp_static;
 static pstate_t  *available_copy;
 static pstate_t  *available_list;
 static uint       available_count;
+static ullong     max_khz_dyn;
 static ullong     max_khz;
 static ullong     min_khz;
 
@@ -61,63 +63,67 @@ static state_t intel63_read(uint cpu, ullong *max, ullong *min)
 	return EAR_SUCCESS;
 }
 
-static void magic_spin(ullong ms)
+static void *calculate_frequency(void *arg)
 {
-    timestamp_t time;
-    timestamp_getfast(&time);
-    while(timestamp_diffnow(&time, TIME_MSECS) < ms);
-}
-
-static void *dynamic_detection_thread(void *arg)
-{
-    ullong freq2u, freq1u;
-    double freq2d;
+    ullong freq2, freq1;
     state_t s;
     
     *((ullong *) arg) = 0;
     // Reading content
-    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq1u))) {
+    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq1))) {
         return NULL;
     }
-//    magic_spin(999LLU);
-    magic_spin(499LLU);
-    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq2u))) {
+    // Spinning during 0,5 seconds
+    stress_spin(499LLU);
+    // Reading the content again
+    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq2))) {
         return NULL;
     }
-    // Round to ceil
-    freq2u = overflow_magic_u64(freq2u, freq1u, MAXBITS48);
-    freq2u = freq2u * 2;
-    // KHz to HHz
-    freq2d = ceil(((double) freq2u) / ((double) 1E8)) * ((double) 1E5);
-    freq2u = (ullong) freq2d;
+    // Mult per 2 to convert 0,5 seconds to 1,0 seconds
+    freq2u = overflow_magic_u64(freq2u, freq1u, MAXBITS48) * 2LLU;
+    freq2u = ceil_magic(freq2u, 9) / (ullong) 1E3;
     // Returning the data
     *((ullong *) arg) = freq2u;
  
     return NULL;
 }
 
-static state_t dynamic_detection()
+static state_t dynamic_detection(ullong *freq_khz)
 {
     pthread_t thread1;
     pthread_t thread2;
     ullong freq1;
     ullong freq2;
     ullong freq3;
-    state_t s;    
+    state_t s;
+    int err;
 
     // Opening MSR
     if (state_fail(s = imcfreq_intel63_aux_enable_cpu(0))) {
         return s;
     }
     // Creating threads
-    pthread_create(&thread1, NULL, dynamic_detection_thread, (void *) &freq1);
-    pthread_create(&thread2, NULL, dynamic_detection_thread, (void *) &freq2);
-    dynamic_detection_thread((void *) &freq3);
+    if ((err = pthread_create(&thread1, NULL, calculate_frequency, (void *) &freq1)) != 0) {
+        return_msg(EAR_ERROR, strerror(err));
+    }
+    if ((err = pthread_create(&thread2, NULL, calculate_frequency, (void *) &freq2)) != 0) {
+        return_msg(EAR_ERROR, strerror(err));
+    }
+    calculate_frequency((void *) &freq3);
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
-    
+    // Selecting a frequency among the 3 detected frequencies
+    if ((freq1 == freq2 || freq1 == freq3) && freq1 != 0LLU) {
+        freq_khz = freq1;
+    } else if (freq2 == freq3 && freq2 != 0LLU) {
+        freq_khz = freq2;
+    } else if (freq3 != 0LLU) {
+        freq_khz = freq3;
+    } else {
+        s = EAR_ERROR;
+    }
     debug("Detected max IMC frequency: %llu %llu %llu KHz", freq1, freq2, freq3);
-    return EAR_SUCCESS;
+    return s;
 }
 
 static state_t mgt_imcfreq_intel63_build_list(topology_t *tp, int eard, my_node_conf_t *conf)
@@ -143,30 +149,31 @@ static state_t mgt_imcfreq_intel63_build_list(topology_t *tp, int eard, my_node_
             keeper_save_uint64("ImcFreqMax", max_khz);
             debug("Keeper saved ImcFreqMax %llu", max_khz);
         }
-    }
-    #if SHOW_DEBUGS
-    else {
+    } else {
         debug("Keeper read ImcFreqMax %llu", max_khz);
     }
-    #endif
     // [2.2] Saving what found in MIN FREQ
     if (!keeper_load_uint64("ImcFreqMin", &min_khz)) {
         if (min_khz > 0) {
             keeper_save_uint64("ImcFreqMin", min_khz);
             debug("Saved ImcFreqMin %llu", min_khz);
         }
-    }
-    #if SHOW_DEBUGS
-    else {
+    } else {
         debug("Keeper read ImcFreqMin %llu", min_khz);
     }
-    #endif
-    // [3] Dynamic detection
-    if (state_fail(s = dynamic_detection())) {
-        debug("dynamic_detection() returned: %s", state_msg);
+    // [2.3] Saving what found in MAX FREQ DYN
+    if (!keeper_load_uint64("ImcFreqMaxDyn", &max_khz_dyn)) {
+        if (state_fail(s = dynamic_detection(&max_khz_dyn))) {
+            debug("dynamic_detection() returned: %s", state_msg);
+        } else {
+            debug("Dynamic detection found: %llu KHz (and saved)", max_khz_dyn);
+            keeper_save_uint64("ImcFreqMaxDyn", max_khz_dyn);
+        }
+    } else {
+        debug("Keeper read ImcFreqMaxDyn %llu", max_khz_dyn);
     }
+    // [3] Replace by the data in the conf (obsolete)
     #if 0
-    // [3] Replace by the data in the conf
     if (conf != NULL) {
         debug("conf->imc_max_freq %lu", conf->imc_max_freq);
         debug("conf->imc_min_freq %lu", conf->imc_min_freq);
