@@ -125,7 +125,7 @@ void print_affinity_mask(topology_t *topo)
 }
 
 
-state_t verbose_affinity_mask(int verb_lvl, cpu_set_t *mask, uint cpus)
+state_t verbose_affinity_mask(int verb_lvl, const cpu_set_t *mask, uint cpus)
 {
     if (mask) {
 

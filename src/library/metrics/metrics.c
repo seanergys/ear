@@ -33,9 +33,7 @@
 #define TPI_DEBUG              4
 #define ENERGY_EFF_VERB        2
 
-#define DEF_USE_CPUPRIO        0
 #define DEF_READ_CUPTI_METRICS 0
-#define EAR_USE_CPUPRIO "EAR_USE_CPUPRIO"
 
 #if !SHOW_DEBUGS
 #define NDEBUG // Disable asserts
@@ -204,6 +202,7 @@ static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
 #endif // USE_GPUS
 
+
 /* New metrics */
 static metrics_t         mgt_cpufreq;
 static metrics_t         mgt_imcfreq;
@@ -214,12 +213,8 @@ static metrics_t         met_energy;
 static metrics_t         met_flops;
 static metrics_t         met_cache;
 static metrics_t         met_cpi;
-static metrics_multi_t   mgt_cpuprio;
+static metrics_t         mgt_cpuprio;
 
-
-static uint  use_cpuprio = DEF_USE_CPUPRIO; // Enables the usage of proiority system
-static uint  user_cpuprio_list_count;       // Count of user-prvided priority list
-static uint *user_cpuprio_list;             // User-provided list of priorities.
 
 #if USE_GPUS
 static metrics_gpus_t mgt_gpu;
@@ -257,8 +252,9 @@ extern uint policy_mem_bound ;
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
 
+
 /** This function is called before any API initialization. It's used to read envorironment
- * variables that enable/disable the load of some APIs. By now, these are CUPTI and CPUPRIO. */
+ * variables that enable/disable the load of some APIs. By now, these are CUPTI. */
 static void read_metrics_options();
 
 
@@ -268,19 +264,6 @@ static state_t energy_lib_init(settings_conf_t *conf);
 
 /** Private function to perfom last operations before returning from dispose call. */
 static void metrics_static_dispose();
-
-
-/** This function sets the priority list \p src_prio_list to \p dst_prio_list. The \p mask is used to map
- * which index of \p dst_prio_list corresponds to the i-th value of \p src_prio_list, i.e., the index of the
- * i-th cpu set in \p mask sets the index of \p dst_prio_list that must be filled with the i-th value of
- * \p src_prio_list. Positions of \p dst_prio_list not corresponding to any cpu set in \p mask, are filled
- * with the PRIO_SAME value. */
-static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, const uint *src_prio_list,
-                                 uint src_prio_list_count, const cpu_set_t *mask);
-
-
-/** This function sets the priority 0 to \p prio_list to those positions indicated by \p mask. */
-static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_count, const cpu_set_t *mask);
 
 
 node_freq_domain_t earl_default_domains = {
@@ -302,6 +285,7 @@ const metrics_t *metrics_get(uint api)
         case MET_FLOPS:   return &met_flops;
         case MET_CACHE:   return &met_cache;
         case MET_CPI:     return &met_cpi;
+        case API_ISST:    return &mgt_cpuprio;
         default: return NULL;
     }
 }
@@ -445,13 +429,7 @@ static void metrics_static_init(topology_t *tp)
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
 
-    if (use_cpuprio) {
-        if (!mgt_cpufreq_prio_is_enabled()) {
-          sa(mgt_cpufreq_prio_enable());
-        }
-    }
-
-    mgt_cpuprio.ok = ((mgt_cpuprio.api > API_DUMMY) && mgt_cpufreq_prio_is_enabled());
+    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
 
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
@@ -516,34 +494,23 @@ static void metrics_static_init(topology_t *tp)
                 &mgt_imcfreq.avail_count));
 
     // Allocation is needed before requesting available and devices list
-    sa(mgt_cpuprio_data_alloc((cpuprio_t **)&mgt_cpuprio.avail_list, (uint **)&mgt_cpuprio.dev_list));
+    sa(mgt_cpuprio_data_alloc((cpuprio_t **) &mgt_cpuprio.avail_list, (uint **) &mgt_cpuprio.current_list));
 
     /* List of priorities */
-    sa(mgt_cpuprio_get_available_list((cpuprio_t *)mgt_cpuprio.avail_list));
+    sa(mgt_cpuprio_get_available_list((cpuprio_t *) mgt_cpuprio.avail_list));
 
     /* List of devices */
-    sa(mgt_cpuprio_get_current_list((uint *)mgt_cpuprio.dev_list));
+    sa(mgt_cpuprio_get_current_list((uint *) mgt_cpuprio.current_list));
 
-    sa(mgt_cpuprio_data_count((uint *)&mgt_cpuprio.avail_count, (uint *)&mgt_cpuprio.dev_count)); 
+    sa(mgt_cpuprio_data_count((uint *) &mgt_cpuprio.avail_count, (uint *) &mgt_cpuprio.devs_count)); 
 
     if (VERB_ON(CPUPRIO_VERB)) {
-        verbose_master(CPUPRIO_VERB, "CPUPRIO (OK ? %u): There are %u priorities and %u devices.", mgt_cpuprio.ok, mgt_cpuprio.avail_count, mgt_cpuprio.dev_count);
+        verbose_master(CPUPRIO_VERB, "[CPUPRIO] %s / %u priorities / %u devices.",
+                       mgt_cpuprio.ok ? "OK" : "DUMMY", mgt_cpuprio.avail_count, mgt_cpuprio.devs_count);
 
-        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-        verbose_master(CPUPRIO_VERB, "CPUPRIO list of available priorities \n %s", buffer);
-    }
-
-    // Set user-provided list of priorities
-    if (use_cpuprio) {
-
-        state_t ret = set_priority_list(mgt_cpuprio.dev_list, mgt_cpuprio.dev_count,
-                                                  (const uint *) user_cpuprio_list, user_cpuprio_list_count,
-                                                  (const cpu_set_t*) &lib_shared_region->node_mask);
-        if (state_ok(ret)) {
-            sa(mgt_cpufreq_prio_set_current_list((uint *) mgt_cpuprio.dev_list));
-        } else {
-            verbose_master(CPUPRIO_VERB, "%sERROR%s setting priority list: %s", COL_RED, COL_CLR, state_msg);
-        }
+        mgt_cpuprio_data_tostr((cpuprio_t *) mgt_cpuprio.avail_list, (uint *) mgt_cpuprio.current_list,
+                               buffer, SZ_BUFFER_EXTRA);
+        verbose_master(CPUPRIO_VERB, "CPUPRIO list of available priorities\n %s", buffer);
     }
 
 #if USE_GPUS
@@ -2385,32 +2352,6 @@ static void read_metrics_options()
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
     verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif
-
-    char *cuse_cpuprio = getenv(EAR_USE_CPUPRIO);
-    if (cuse_cpuprio != NULL) {
-        use_cpuprio = atoi(cuse_cpuprio);
-    }
-    verbose_master(CPUPRIO_VERB, "CPUPRIO utilization: %s", (use_cpuprio ? "Enabled" : "Disabled"));
-
-    if (use_cpuprio) {
-
-
-        if ((user_cpuprio_list = (uint *) envtoat(FLAG_CPUPRIO_LIST, NULL, &user_cpuprio_list_count, ID_UINT)) != NULL)
-        {
-            if (VERB_ON(CPUPRIO_VERB))
-            {
-                verbosen_master(0, "CPUPRIO list read:");
-
-                int i;
-                for (i = 0; i < user_cpuprio_list_count - 1; i++)
-                {
-                    verbosen_master(0, " %u", user_cpuprio_list[i]);
-                }
-
-                verbose_master(0, " %u", user_cpuprio_list[i]);
-            }
-        }
-    }
 }
 
 
@@ -2458,70 +2399,4 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
 static void metrics_static_dispose()
 {
-    if (mgt_cpuprio.ok)
-    {
-        verbose_master(CPUPRIO_VERB, "Resetting priority list...")
-        if (state_ok(reset_priority_list_with_mask(mgt_cpuprio.dev_list, mgt_cpuprio.dev_count, &lib_shared_region->node_mask)))
-        {
-            if (VERB_ON(CPUPRIO_VERB))
-            {
-                char buffer[SZ_BUFFER_EXTRA];
-                mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-
-                verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
-            }
-            sa(mgt_cpufreq_prio_set_current_list((uint *) mgt_cpuprio.dev_list));
-        } else
-        {
-            verbose_master(CPUPRIO_VERB, "%sERROR%s Resetting priority list: %s", COL_RED, COL_CLR, state_msg);
-        }
-    }
-}
-
-
-static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, const uint *src_prio_list,
-                                 uint src_prio_list_count, const cpu_set_t *mask)
-{
-    if (dst_prio_list && src_prio_list && mask) {
-
-        int prio_list_idx = 0; // i-th src_prio_list value
-        int dev_idx = 0;       // i-th dst_prio_list value
-
-        // We iterate at most min(src, dst)
-        for (dev_idx = 0; dev_idx < dst_prio_list_count && prio_list_idx < src_prio_list_count; dev_idx++)
-        {
-            dst_prio_list[dev_idx] = CPU_ISSET(dev_idx, mask) ? src_prio_list[prio_list_idx++] : PRIO_SAME;
-        }
-
-        // If there are remaining indexes of dst not set, we set the idle priority
-        while (dev_idx < dst_prio_list_count)
-        {
-           dst_prio_list[dev_idx++] = PRIO_SAME;
-        }
-
-    } else {
-        return_msg(EAR_ERROR, Generr.input_null);
-    }
-
-    return EAR_SUCCESS;
-}
-
-
-static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_count, const cpu_set_t *mask)
-{
-    if (prio_list && mask)
-    {
-        if (prio_list_count) {
-            for (int i = 0; i < prio_list_count; i++)
-            {
-                prio_list[i] = CPU_ISSET(i, mask) ? 0 : PRIO_SAME;
-            }
-        } else {
-            return_msg(EAR_ERROR, Generr.arg_outbounds);
-        }
-    } else {
-        return_msg(EAR_ERROR, Generr.input_null);
-    }
-
-    return EAR_SUCCESS;
 }

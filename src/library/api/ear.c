@@ -1498,6 +1498,26 @@ void ear_init()
 #ifdef SHOW_DEBUGS
 				print_arch_desc(&arch_desc);
 #endif
+				/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
+				/* Computes the total number of cpus for this job */
+
+				if (masters_info.my_master_rank >= 0 ) {
+								cpu_set_t jmask;
+								debug("Waiting for processes to fill shared signatures");
+
+								/* Synchro : Wait the PID is set by all the processes*/
+								while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
+								debug("Computing number of cpus per job and node mask ");
+								compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+								aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
+								/* lib_shared_region is shared by all the processes in the same node */
+								lib_shared_region->node_mask = jmask;
+								/* node_mgr_data is shared with the eard */
+								node_mgr_data[node_mgr_index].node_mask = jmask;	
+								/* app_mgt_info is shared with the eard through the powermon_app_t */
+								app_mgt_info->node_mask = jmask;	
+								debug("Node mask computed in");
+				}
 
 				init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
 
@@ -1615,26 +1635,6 @@ void ear_init()
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {
 								verbose_master(1, "EAR initialized successfully.");
-				}
-				/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
-				/* Computes the total number of cpus for this job */
-
-				if (masters_info.my_master_rank >= 0 ){
-								cpu_set_t jmask;
-								debug("Waiting for processes to fill shared signatures");
-
-								/* Synchro : Wait the PID is set by all the processes*/
-								while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
-								debug("Computing number of cpus per job and node mask ");
-								compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
-								aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
-								/* lib_shared_region is shared by all the processes in the same node */
-								lib_shared_region->node_mask = jmask;
-								/* node_mgr_data is shared with the eard */
-								node_mgr_data[node_mgr_index].node_mask = jmask;	
-								/* app_mgt_info is shared with the eard through the powermon_app_t */
-								app_mgt_info->node_mask = jmask;	
-								debug("Node mask computed in");
 				}
 
 				/* SIGTERM action for job cancellation */

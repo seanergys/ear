@@ -59,7 +59,7 @@ void print_affinity_mask(topology_t *topo);
 
 /** If the verbose level is greather or equal than \p verb_lvl, prints the affinity
  * mask stored at \p mask. CPUs from \p cpus - 1 to 0 will be printed. */
-state_t verbose_affinity_mask(int verb_lvl, cpu_set_t *mask, uint cpus);
+state_t verbose_affinity_mask(int verb_lvl, const cpu_set_t *mask, uint cpus);
 
 
 /** Checks if process with pid=pid has some cpu forbiden to run , then is_set is set to 1 */
