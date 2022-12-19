@@ -50,6 +50,14 @@
 #define MASTER (masters_info.my_master_rank >= 0)
 #define MASTER_ID masters_info.my_master_rank
 
+#ifdef EARL_RESEARCH
+extern unsigned long ext_def_freq;
+#define FREQ_DEF(f) (!ext_def_freq?f:ext_def_freq)
+#else
+#define FREQ_DEF(f) f
+#endif
+
+
 
 /*  IMC management */
 extern uint dyn_unc;
@@ -989,8 +997,13 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
     }
 
 #if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
+    if (gpus.io_settings != NULL){
+      return gpus.io_settings(c, my_sig, freqs);
+    }else{
+      gpu_ready = EAR_POLICY_READY;
+    }
     return EAR_SUCCESS;
+
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -1024,8 +1037,13 @@ state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t
     }
 
 #if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
+    if (gpus.busy_wait_settings != NULL){
+      return gpus.busy_wait_settings(c, my_sig, freqs);
+    }else{
+      gpu_ready = EAR_POLICY_READY;
+    }
     return EAR_SUCCESS;
+
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -1033,6 +1051,41 @@ state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t
 
     return EAR_SUCCESS;
 }
+
+state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+    if (c == NULL) return EAR_ERROR;
+    verbose_master(2,"%sCPU-GPU  phase%s",COL_BLU,COL_CLR);
+    cpu_ready = EAR_POLICY_READY;
+    ulong def_freq = FREQ_DEF(c->app->def_freq);
+    uint def_pstate = frequency_closest_pstate(def_freq);
+    for (uint i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(def_pstate);
+    memcpy(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,MAX_CPUS_SUPPORTED*sizeof(ulong));
+    if (dyn_unc){
+        for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+            freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_pstate[sock_id];
+            freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_pstate[sock_id];
+        }
+        memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
+    }
+#if USE_GPUS
+    if (gpus.cpu_gpu_settings != NULL){
+      return gpus.cpu_gpu_settings(c, my_sig, freqs);
+    }else{
+      /* GPU mem is pending */
+      for (uint i = 0; i < c->num_gpus; i++) {
+          freqs->gpu_freq[i] = min_time_def_freqs.gpu_freq[i];
+      }
+      gpu_ready = EAR_POLICY_READY;
+    }
+    return EAR_SUCCESS;
+#else
+    gpu_ready = EAR_POLICY_READY;
+#endif
+
+    return EAR_SUCCESS;
+}
+
 
 state_t policy_restore_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {

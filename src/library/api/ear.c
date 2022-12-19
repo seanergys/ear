@@ -993,9 +993,7 @@ void ear_init()
         timestamp_getfast(&start_eard_init);
         #endif
 	topology_init(&earl_topo);
-	#if EARL_LIGHT
 	topology_print(&earl_topo, 1);
-	#endif
 
         main_pid = syscall(SYS_gettid);
 

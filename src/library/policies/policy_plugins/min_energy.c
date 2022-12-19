@@ -871,11 +871,15 @@ state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
         memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
     }
 #if USE_GPUS
-    /* GPU mem is pending */
-    for (uint i = 0; i < c->num_gpus; i++) {
-        freqs->gpu_freq[i] = min_energy_def_freqs.gpu_freq[i];
+    if (gpus.cpu_gpu_settings != NULL){
+      return gpus.cpu_gpu_settings(c, my_sig, freqs);
+    }else{
+      /* GPU mem is pending */
+      for (uint i = 0; i < c->num_gpus; i++) {
+          freqs->gpu_freq[i] = min_energy_def_freqs.gpu_freq[i];
+      }
+      gpu_ready = EAR_POLICY_READY;
     }
-    gpu_ready = EAR_POLICY_READY;
     return EAR_SUCCESS;
 #else
     gpu_ready = EAR_POLICY_READY;
@@ -938,7 +942,11 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
     }
 
 #if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
+    if (gpus.io_settings != NULL){
+      return gpus.io_settings(c, my_sig, freqs);
+    }else{
+      gpu_ready = EAR_POLICY_READY;
+    }
     return EAR_SUCCESS;
 #else
     gpu_ready = EAR_POLICY_READY;
@@ -994,7 +1002,11 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
         memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
     }
 #if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
+    if (gpus.busy_wait_settings != NULL){
+      return gpus.busy_wait_settings(c, my_sig, freqs);
+    }else{
+      gpu_ready = EAR_POLICY_READY;
+    }
     return EAR_SUCCESS;
 #else
     gpu_ready = EAR_POLICY_READY;
@@ -1011,7 +1023,7 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
         node_freqs_copy(&last_nodefreq_sel,freqs);
 
         if (gpus.restore_settings != NULL){
-            gpus.restore_settings(c,my_sig,freqs);
+            return gpus.restore_settings(c,my_sig,freqs);
         }
 
         return EAR_SUCCESS;

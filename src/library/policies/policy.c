@@ -61,6 +61,11 @@
 #define POLICY_GPU    2
 
 
+/* Must be migrated to config_env */
+#define GPU_ENABLE_OPT "EAR_GPU_ENABLE_OPT"
+
+
+
 static ear_event_t curr_policy_event;
 extern uint report_earl_events;
 extern report_id_t rep_id;
@@ -145,6 +150,9 @@ uint   max_policy_imcfreq_ps = ps_nothing; // IMC freq. selection works with pst
 /* MPI optimization */
 uint ear_mpi_opt = 0;
 #endif
+uint gpu_optimize = 0;
+
+
 
 static pstate_t *cpu_pstate_lst; /*!< The list of available CPU pstates in the current system.*/
 static uint      cpu_pstate_cnt;
@@ -478,6 +486,13 @@ state_t policy_init()
     char *cear_mpi_opt         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
 #endif
     char *cignore_affinity_mask   = getenv(FLAG_NO_AFFINITY_MASK);
+
+    char *cgpu_optimize = getenv(GPU_ENABLE_OPT);
+    if (cgpu_optimize != NULL) gpu_optimize = atoi(cgpu_optimize);
+    verbose_master(POLICY_INFO, "%sPOLICY%s GPU optimization during GPU comp %s", COL_BLU, COL_CLR, (gpu_optimize? "Enabled":"Disabled"));
+
+
+
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -1004,15 +1019,20 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
             verbose_master(1, "%sCPU-GPU application%s (%s)", COL_BLU, COL_CLR, node_name);
             st = policy_cpu_gpu_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf);
             *freq_set = avg_nf.cpu_freq[0];
+            policy_new_phase(last_earl_phase_classification, my_sig);
+            last_earl_phase_classification = earl_phase_classification;
+            last_gpu_state = curr_gpu_state;
+            policy_master_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
+            clean_signatures(lib_shared_region,sig_shared_region);
+
             if (is_all_ready()){
-                  policy_new_phase(last_earl_phase_classification, my_sig);
-                  last_earl_phase_classification = earl_phase_classification;
-                  last_gpu_state = curr_gpu_state;
-                  policy_master_freq_selection(c,my_sig,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
-                  *ready = EAR_POLICY_READY;
-                  clean_signatures(lib_shared_region,sig_shared_region);
-                  return EAR_SUCCESS;
+              *ready = EAR_POLICY_READY;
+            }else{
+              *ready = EAR_POLICY_CONTINUE;
             }
+            return EAR_SUCCESS;
+
+
       }
 
         /* IO Use case */
@@ -1022,18 +1042,18 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
                 st = policy_io_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf);
                 // TODO: GPU ?
                 *freq_set = avg_nf.cpu_freq[0];
-                if (is_all_ready()) {
-                    policy_new_phase(last_earl_phase_classification, my_sig);
-                    last_earl_phase_classification = earl_phase_classification;
-                    last_gpu_state = curr_gpu_state;
-                    policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
-                    *ready = EAR_POLICY_READY;
-                    clean_signatures(lib_shared_region, sig_shared_region);
+                policy_new_phase(last_earl_phase_classification, my_sig);
+                last_earl_phase_classification = earl_phase_classification;
+                last_gpu_state = curr_gpu_state;
+                policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
+                clean_signatures(lib_shared_region, sig_shared_region);
 
-                    *ready = EAR_POLICY_READY;
-
-                    return EAR_SUCCESS;
+                if (is_all_ready()){
+                  *ready = EAR_POLICY_READY;
+                }else{
+                  *ready = EAR_POLICY_CONTINUE;
                 }
+                return EAR_SUCCESS;
         }
         /* Restore configuration to COMP or MPI if needed */
         if ((earl_phase_classification == APP_COMP_BOUND)
@@ -1048,20 +1068,19 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
                 *freq_set = avg_nf.cpu_freq[0];
 
+                policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
+                last_gpu_state = curr_gpu_state;
+                policy_new_phase(last_earl_phase_classification, my_sig);
+                last_earl_phase_classification = APP_BUSY_WAITING;
+                clean_signatures(lib_shared_region,sig_shared_region);
+
                 if (is_all_ready()) {
-                    policy_master_freq_selection(c, my_sig, freqs, &freqs_domain, &avg_nf, ALL_PROCESSES);
-
-                    last_gpu_state = curr_gpu_state;
-
-                    policy_new_phase(last_earl_phase_classification, my_sig);
-                    last_earl_phase_classification = APP_BUSY_WAITING;
-
-                    clean_signatures(lib_shared_region,sig_shared_region);
-
                     *ready = EAR_POLICY_READY;
-
-                    return EAR_SUCCESS;
+                } else {
+                    *ready = EAR_POLICY_CONTINUE;
                 }
+
+                return EAR_SUCCESS;
             }
 
             /* If not, we should restore to default settings */
