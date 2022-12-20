@@ -200,6 +200,12 @@ static int is_job_running(char *tmp, int jobid)
   return is_running(status);
 }
 
+
+/* This function is called to validate the jobs in the list that are still alive.
+ * Only usable in SLURM systems. Deactivated for now. */
+static void check_status_of_jobs(job_id current);
+
+
 /***************** JOBS in NODE ***************************/
 
 
@@ -340,79 +346,84 @@ void print_contexts_status() {
 #endif
 
 
-int mark_contexts_to_finish_by_pid() {
-  int i = 0, found_contexts = 0;
-  char pid_file[SHORT_NAME];
-  struct stat tmp;
+int mark_contexts_to_finish_by_pid()
+{
+    int i = 0, found_contexts = 0;
+    char pid_file[SHORT_NAME];
+    struct stat tmp;
 
-  debug("marking_contexts_to_finish by pid");
+    debug("marking_contexts_to_finish by pid");
 
-  for (i = 0; i <= max_context_created; i++) {
-    if (current_ear_app[i] != NULL) {
-		if (current_ear_app[i]->master_pid == 0) continue;
+    for (i = 0; i <= max_context_created; i++) {
 
-		sprintf(pid_file, "/proc/%d", current_ear_app[i]->master_pid);
+        if (current_ear_app[i] != NULL) {
 
-		if (stat(pid_file, &tmp)) {
+            if (current_ear_app[i]->master_pid == 0) continue;
 
-            /*
-            state_t lock_st;
-            if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
-                error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
-                return found_contexts;
+            sprintf(pid_file, "/proc/%d", current_ear_app[i]->master_pid);
+
+            if (stat(pid_file, &tmp)) {
+
+                state_t lock_st;
+                if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
+                    error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
+                    return found_contexts;
+                }
+
+                current_ear_app[i]->state = APP_FINISHED;
+
+                ear_unlock(&current_ear_app[i]->powermon_app_mutex);
+
+                found_contexts++;
             }
-            */
-			current_ear_app[i]->state = APP_FINISHED; // TODO: Thread-save here?
-
-            // ear_unlock(&current_ear_app[i]->powermon_app_mutex);
-
-			found_contexts++;
-		}
+        }
     }
-  }
 
-  return found_contexts;
+    return found_contexts;
 }
 
 
 int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
 
-  if (step_id != BATCH_STEP) return 0; // only batch steps need to check this
+    if (step_id != BATCH_STEP) return 0; // only batch steps need to check this
 
-  int i = 0, found_contexts = 0;
+    int i = 0, found_contexts = 0;
 
-  debug("marking_contexts_to_finish %lu %lu", id, step_id);
+    debug("marking_contexts_to_finish %lu %lu", id, step_id);
 
-  for (i = 0; i <= max_context_created; i++) {
+    for (i = 0; i <= max_context_created; i++) {
 
-    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id)) {
+        if (current_ear_app[i] != NULL)
+        {
+            state_t lock_st;
+            if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
+                error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
+                return found_contexts;
+            }
 
-        /*
-        state_t lock_st;
-        if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
-            error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
-            return found_contexts;
+            if (current_ear_app[i]->app.job.id == id)
+            {
+                current_ear_app[i]->state = APP_FINISHED;
+
+                found_contexts++;
+            }
+
+            ear_unlock(&current_ear_app[i]->powermon_app_mutex);
         }
-        */
-
-		current_ear_app[i]->state = APP_FINISHED; // TODO: Thread-save here?
-
-        // ear_unlock(&current_ear_app[i]->powermon_app_mutex);
-
-		found_contexts++;
     }
-  }
 
-  return found_contexts;
+    return found_contexts;
 }
 
 
 void finish_pending_contexts(ehandler_t *eh)
 {
-    int i;
-    for (i = 0; i <= max_context_created; i++) {
-        if ((current_ear_app[i] != NULL) && (current_ear_app[i]->state == APP_FINISHED)) {
-            verbose(VJOBPMON, "Finishing the %lu/%lu context...", current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id);
+    for (int i = 0; i <= max_context_created; i++) {
+        if ((current_ear_app[i] != NULL) && (current_ear_app[i]->state == APP_FINISHED))
+        {
+            verbose(VJOBPMON, "Finishing the %lu/%lu context...",
+                    current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id);
+
             powermon_end_job(eh, current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id, 0);
         } 
     }
@@ -420,20 +431,20 @@ void finish_pending_contexts(ehandler_t *eh)
 
 
 int find_context_for_job(job_id id, job_id sid) {
-  int i = 0, pos = -1;
-  debug("find_context_for_job %lu %lu", id, sid);
-  while ((i <= max_context_created) && (pos < 0)) {
-    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id) &&
-      (current_ear_app[i]->app.job.step_id == sid)) {
-      pos = i;
-    } else i++;
-  }
-  if (pos >= 0) {
-    debug("find_context_for_job %lu,%lu found at pos %d", id, sid, pos);
-  } else {
-    debug("find_context_for_job %lu,%lu not found", id, sid);
-  }
-  return pos;
+    int i = 0, pos = -1;
+    debug("find_context_for_job %lu %lu", id, sid);
+    while ((i <= max_context_created) && (pos < 0)) {
+        if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id) &&
+                (current_ear_app[i]->app.job.step_id == sid)) {
+            pos = i;
+        } else i++;
+    }
+    if (pos >= 0) {
+        debug("find_context_for_job %lu,%lu found at pos %d", id, sid, pos);
+    } else {
+        debug("find_context_for_job %lu,%lu not found", id, sid);
+    }
+    return pos;
 }
 
 
@@ -701,6 +712,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
 /****************** END CONTEXT MANAGEMENT ********************/
 
+
 void create_job_area(uint ID)
 {
 	int ret;
@@ -865,7 +877,7 @@ void powermon_new_configuration()
                 pmapp->resched->force_rescheduling = 1; // TODO: Thread-save here.
             }
 
-            ear_unlock(&pmapp->powermon_app_mutex);
+            // ear_unlock(&pmapp->powermon_app_mutex);
         }
     }
 }
@@ -1612,26 +1624,6 @@ void powermon_new_task(new_task_req_t *newtask)
  */
 
 
-/* This function is called to validate the jobs in the list that are still alive. */
-static void check_status_of_jobs(job_id current)
-{
-    return; // ??
-    powermon_app_t *pmapp; 
-    for (uint cc = 1; cc <= max_context_created; cc++) {
-        if (current_ear_app[cc] != NULL) {
-            pmapp = current_ear_app[cc];
-            verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
-            /* No need to check the new one :) */
-            if (pmapp->app.job.id != current){
-                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
-                    verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
-                }
-            }
-        }
-    }
-}
-
-
 /* This function is called by dynamic_configuration thread when a new_job command arrives.
  * More info in the header file.
  * TODO: Thread-save here. */
@@ -1830,8 +1822,6 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     /* We set ccontex to the specific one */
     verbose(VJOBPMON_BASIC, "%spowermon end job (%lu, %lu)%s",COL_BLU, pmapp->app.job.id, pmapp->app.job.step_id,COL_CLR);
 
-    // while (pthread_mutex_trylock(&app_lock)); // TODO: Remove
-
     uint ID = create_ID(jid, sid);
 
     job_end_powermon_app(pmapp, eh);
@@ -1869,13 +1859,16 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     end_context(curr_ctx);
 
-    if (powermon_is_idle()) { 
-        powercap_run_to_idle();
+    if (summary.state != APP_FINISHED)
+    {
+        if (powermon_is_idle()) { 
+            powercap_run_to_idle();
 
-        /* summary is a copy of the last context */
-        set_default_powermon_end(&summary, 1);
+            /* summary is a copy of the last context */
+            set_default_powermon_end(&summary, 1);
 
-    } else set_default_powermon_end(&summary, 0);
+        } else set_default_powermon_end(&summary, 0);
+    }
 
     verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
 
@@ -2724,7 +2717,22 @@ void powermon_report_event(uint event_type, llong value)
 
 uint powermon_is_idle()
 {
-    return (max_context_created == 0); // if only the idle context exists
+    int contexts_created = 0;
+    int contexts_created_finished = 0;
+
+    for (int i = 0; i <= max_context_created; i++)
+    {
+        powermon_app_t *pmapp = current_ear_app[i];
+        if (pmapp)
+        {
+            contexts_created++;
+            if (pmapp->state == APP_FINISHED)
+            {
+                contexts_created_finished++;
+            }
+        }
+    }
+    return (!max_context_created || contexts_created_finished == contexts_created);
 }
 
 
@@ -2963,5 +2971,26 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
         return EAR_SUCCESS;
     } else {
         return_msg(EAR_ERROR, Generr.input_null);
+    }
+}
+
+
+/* This function is called to validate the jobs in the list that are still alive.
+ * Only usable in SLURM systems. */
+static void check_status_of_jobs(job_id current)
+{
+    return; // We deactivate this function because it was designed to make hard testing.
+    powermon_app_t *pmapp; 
+    for (uint cc = 1; cc <= max_context_created; cc++) {
+        if (current_ear_app[cc] != NULL) {
+            pmapp = current_ear_app[cc];
+            verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
+            /* No need to check the new one :) */
+            if (pmapp->app.job.id != current){
+                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
+                    verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
+                }
+            }
+        }
     }
 }
