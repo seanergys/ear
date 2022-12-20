@@ -229,11 +229,11 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #endif
 
         debug("%swriting app info%s", COL_YLW, COL_CLR);
-        verbose(2, "EAR+%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
+        verbose(2, "EAR%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
                 mode, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
 
         debug("%swriting nname at elapsed%s", COL_YLW, COL_CLR)
-        verbosen(1, "EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
+        verbosen(1, "EAR%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
                 mode, aname, PFREQ, nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
