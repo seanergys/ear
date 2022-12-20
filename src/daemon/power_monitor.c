@@ -1569,7 +1569,7 @@ void powermon_new_task(new_task_req_t *newtask)
 
     verbose(VJOBPMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
 
-    if (pmapp->app.job.step_id != (job_id) BATCH_STEP && pmapp->policy_freq) { // "As EARD can force the CPU frequency"
+    if (/* pmapp->app.job.step_id != (job_id) BATCH_STEP && */ pmapp->policy_freq) { // "As EARD can force the CPU frequency"
 
         /* Storing current governor (The previous governor of the powermon
          * app will be the current governor of the first CPU of the last task arrived) */
@@ -2795,7 +2795,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
     char *cgov = app->governor.name; // Governor before job had started.
     uint gov;
 
-    if (app->app.job.step_id != (job_id) BATCH_STEP) {
+    // if (app->app.job.step_id != (job_id) BATCH_STEP) {
         if (app->is_job) { // End of a job
 
             if (strcmp(my_node_conf->idle_governor, "default") != 0) {
@@ -2899,7 +2899,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
                 }
             }
         }
-    }
+    // }
 
 #if USE_GPUS
     /* GPUs */
