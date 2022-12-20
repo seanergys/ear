@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #define VEARD_LAPI_DEBUG 2
 #include <string.h>
 #include <signal.h>

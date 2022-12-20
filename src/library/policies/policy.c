@@ -62,7 +62,6 @@
 #define POLICY_GPU    2
 
 #define DEF_USE_CPUPRIO 0
-#define EAR_USE_CPUPRIO "EAR_USE_CPUPRIO"
 
 
 static ear_event_t curr_policy_event;
@@ -334,6 +333,7 @@ void fill_cpus_out_of_cgroup(uint exc)
     cpu_cnt = arch_desc.top.cpu_count;
     for (cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++){
         if (freq_per_core[cpu_idx] == 0){
+            debug("Reducing frequency of CPU %d", cpu_idx);
             freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
         }
     }
@@ -503,7 +503,7 @@ state_t policy_init()
 #endif
     char *cignore_affinity_mask = getenv(FLAG_NO_AFFINITY_MASK);
 
-    char *cuse_cpuprio          = getenv(EAR_USE_CPUPRIO);
+    char *cuse_cpuprio          = getenv(FLAG_USE_PRIO);
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -559,7 +559,7 @@ state_t policy_init()
 
     if (masters_info.my_master_rank >= 0 && use_cpuprio) {
 
-        if ((user_cpuprio_list = (uint *) envtoat(FLAG_CPUPRIO_LIST, NULL, &user_cpuprio_list_count, ID_UINT)) != NULL)
+        if ((user_cpuprio_list = (uint *) envtoat(FLAG_PRIO_CPUS, NULL, &user_cpuprio_list_count, ID_UINT)) != NULL)
         {
             if (VERB_ON(POLICY_INFO))
             {
@@ -633,39 +633,16 @@ state_t policy_init()
     }
 
     // Read policy configuration
-    if (cexclusive_mode == NULL) {
-        // TODO: This check is for the transition to the new environment variables.
-        // It will be removed when SCHED_EXCLUSIVE_MODE will be removed, in the next release.
-        cexclusive_mode = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_EXCLUSIVE_MODE) : NULL;
-        if (cexclusive_mode != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_EXCLUSIVE_MODE, FLAG_EXCLUSIVE_MODE);
-        }
-    }
     if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
-    verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u", COL_BLU, COL_CLR, exclusive_mode);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u",
+                   COL_BLU, COL_CLR, exclusive_mode);
 
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
 
-    // TODO: This check is for the transition to the new environment variables.
-    // It will be removed when SCHED_MIN_CPUFREQ will be removed, in the next release.
-    if (cmin_cpufreq == NULL) {
-        cmin_cpufreq = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_MIN_CPUFREQ) : NULL;
-        if (cmin_cpufreq != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_MIN_CPUFREQ, FLAG_MIN_CPUFREQ);
-        }
-    }
     if (cmin_cpufreq != NULL) {
         min_cpufreq = (ulong) atoi(cmin_cpufreq);
     }
-		if (cmin_cpufreq == NULL){ verbose_master(POLICY_INFO, "%s = NULL", FLAG_MIN_CPUFREQ );
-		}else{ 
-			verbose_master(POLICY_INFO, "%s = %s", FLAG_MIN_CPUFREQ, cmin_cpufreq);
-		}
     verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
             " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
@@ -1737,7 +1714,6 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 		if (proc_id == ALL_PROCESSES && (masters_info.my_master_rank < 0)){
 			verbose(2, "Not master setting CPUfreq for ALL (%.2f)", (float)process_cpu_freqs_khz[0]/(float)1000000.0);
 		}
-    debug("from_proc_to_core");
     if (process_cpu_freqs_khz == NULL || process_cnt < 0 || core_cpu_freqs_khz == NULL
             || *core_cpu_freqs_khz == NULL || cpu_cnt < 0) {
         debug("ERROR: invalid arguments");
@@ -1779,7 +1755,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 #if SHOW_DEBUGS
         if (process_cpu_freqs_khz[proc_lrank] < (ulong) min_cpufreq) {
             debug("The selected frequency (%lu) for process %d is lower than the minimum"
-                    " permitted (%lu). Filtering...", process_cpu_freqs_khz[proc_lrank], proc_lrank, min_cpufreq);
+                    " permitted (%lu). Filtering...", process_cpu_freqs_khz[proc_lrank], proc_lrank, (ulong) min_cpufreq);
         }
 #endif // SHOW_DEBUGS
 
@@ -1953,13 +1929,8 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
             }
         }
     }
-		#if 0
-    if (process_id != ALL_PROCESSES){
-      verbose(1, "[%u] Setting CPU freq %.2f for process process_id %d ", my_node_id, (float)freq_set[process_id]/(float)1000000.0, process_id);
-    }
-		#endif
 
-    if ((dom->cpu == POL_GRAIN_CORE) && (process_id == ALL_PROCESSES)){
+    if ((dom->cpu == POL_GRAIN_CORE) && (process_id == ALL_PROCESSES)) {
         fill_cpus_out_of_cgroup(exclusive_mode);
     }
 
@@ -2205,22 +2176,12 @@ static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, 
         // We iterate at most min(src, dst)
         for (dev_idx = 0; dev_idx < dst_prio_list_count && prio_list_idx < src_prio_list_count; dev_idx++)
         {
-#if 0
-            if (CPU_ISSET(dev_idx, mask))
-            {
-                dst_prio_list[dev_idx] = src_prio_list[prio_list_idx++];
-            } else
-            {
-                dst_prio_list[dev_idx] = PRIO_SAME;
-            }
-#endif
             dst_prio_list[dev_idx] = CPU_ISSET(dev_idx, mask) ? src_prio_list[prio_list_idx++] : PRIO_SAME;
         }
 
         // If there are remaining indexes of dst not set, we set the idle priority
         while (dev_idx < dst_prio_list_count)
         {
-            verbose_master(0, "Setting to PRIO_SAME CPU %u of %u", dev_idx, dst_prio_list_count);
             dst_prio_list[dev_idx++] = PRIO_SAME;
         }
 

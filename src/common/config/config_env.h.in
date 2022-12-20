@@ -115,12 +115,15 @@
 #define FLAG_MPI_OPT                 SCHED_PREFIX "EAR_MPI_OPTIMIZATION"   // Enables/Disables MPI optimization when supported by policies
 #define FLAG_MIN_USEC_MPI            SCHED_PREFIX "EAR_MIN_USEC_MPI_OPT"   // Minimum time to apply MPI optimization
 
-#define FLAG_NO_AFFINITY_MASK        SCHED_PREFIX "EAR_NO_AFFINITY_MASK"         // Prevents EARL from using the affinity mask. Only for special use cases
-#define FLAG_REPORT_LOOPS            SCHED_PREFIX "EAR_REPORT_LOOPS"                 // Reports or not report EAR library loops
+#define FLAG_NO_AFFINITY_MASK        SCHED_PREFIX "EAR_NO_AFFINITY_MASK"   // Prevents EARL from using the affinity mask. Only for special use cases
+#define FLAG_REPORT_LOOPS            SCHED_PREFIX "EAR_REPORT_LOOPS"       // Reports or not report EAR library loops
+
+#define FLAG_USE_PRIO                SCHED_PREFIX "EAR_USE_PRIO"           // Enables CPU priority system.
+#define FLAG_PRIO_CPUS               SCHED_PREFIX "EAR_PRIO_CPUS"          // A list of priorities for each CPU.
 
 
 /* Hardware info */
-#define FLAG_CPU_TDP		     SCHED_PREFIX "EAR_CPU_TDP"            // CPU TPD for models not yet supported
+#define FLAG_CPU_TDP		     SCHED_PREFIX "EAR_CPU_TDP"                // CPU TPD for models not yet supported
 
 #define FLAG_IO_FAKE_PHASE           "EARL_IO_FAKE_PHASE"
 #define FLAG_BW_FAKE_PHASE           "EARL_BW_FAKE_PHASE"
@@ -153,7 +156,6 @@
  * They affect features under development.
  * @{
  */
-#define FLAG_CPUPRIO_LIST    SCHED_PREFIX "EAR_CPUPRIO_LIST" // A list of priorities for each CPU.
 /** @} */
 
 

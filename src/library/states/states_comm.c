@@ -67,7 +67,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #endif
 
     if (VERB_GET_LV() == 0) return;
-    sprintf(mode,"");
+    sprintf(mode, "%s", "");
     if (VERB_GET_LV() >= 2){
       strcpy(mode, user_mode);
     }
