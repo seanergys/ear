@@ -29,6 +29,7 @@
 #include <common/system/symplug.h>
 #include <common/environment.h>
 #include <common/types/generic.h>
+#include <common/hardware/hardware_info.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/cpufreq/cpufreq.h>
@@ -60,6 +61,8 @@
 #define POLICY_PHASES 2
 #define POLICY_GPU    2
 
+#define DEF_USE_CPUPRIO 0
+
 
 /* Must be migrated to config_env */
 #define GPU_ENABLE_OPT "EAR_GPU_ENABLE_OPT"
@@ -69,6 +72,7 @@
 static ear_event_t curr_policy_event;
 extern uint report_earl_events;
 extern report_id_t rep_id;
+
 
 #define REPORT_PHASE(phase) \
   if (report_earl_events){ \
@@ -237,6 +241,11 @@ static const uint   *gpuf_pol_list_items;
 static uint first_print = 1;
 static uint first_policy_try = 1;
 
+
+static uint  use_cpuprio = DEF_USE_CPUPRIO; // Enables the usage of proiority system
+static uint  user_cpuprio_list_count;       // Count of user-prvided priority list
+static uint *user_cpuprio_list;             // User-provided list of priorities.
+
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
 
@@ -296,6 +305,20 @@ static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx);
  * required by the job to print the information. */
 static void verbose_freq_per_core(int verb_lvl, ulong **core_cpu_freqs_khz, int cpu_cnt);
 
+
+/** This function sets the priority list \p src_prio_list to \p dst_prio_list. The \p mask is used to map
+ * which index of \p dst_prio_list corresponds to the i-th value of \p src_prio_list, i.e., the index of the
+ * i-th cpu set in \p mask sets the index of \p dst_prio_list that must be filled with the i-th value of
+ * \p src_prio_list. Positions of \p dst_prio_list not corresponding to any cpu set in \p mask, are filled
+ * with the PRIO_SAME value. */
+static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, const uint *src_prio_list,
+                                 uint src_prio_list_count, const cpu_set_t *mask);
+
+
+/** This function sets the priority 0 to \p prio_list to those positions indicated by \p mask. */
+static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_count, const cpu_set_t *mask);
+
+
 static uint total_mpi_optimized =  0;
 
 /**** Auxiliary functions ***/
@@ -318,6 +341,7 @@ void fill_cpus_out_of_cgroup(uint exc)
     cpu_cnt = arch_desc.top.cpu_count;
     for (cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++){
         if (freq_per_core[cpu_idx] == 0){
+            debug("Reducing frequency of CPU %d", cpu_idx);
             freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
         }
     }
@@ -471,21 +495,23 @@ state_t policy_init()
 {
     polctx_t *c = &my_pol_ctx;
 
-    char *cdyn_unc             = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_SET_IMCFREQ)       : NULL; // eUFS
-    char *cimc_extra_th        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IMC_TH)            : NULL; // eUFS threshold
-    char *cexclusive_mode      = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EXCLUSIVE_MODE)    : NULL; // Job has the node exclusive
-    char *cuse_earl_phases     = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EARL_PHASES)       : NULL; // Detect application phases
-    char *cenable_load_balance = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_LOAD_BALANCE)      : NULL; // Load balance efficiency
-    char *cuse_turbo_for_cp    = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TURBO_CP)          : NULL; // Boost critical path processes
-    char *ctry_turbo_enabled   = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TRY_TURBO)         : NULL; // Boost turbo if policy sets max cpufreq
-    char *cuse_energy_models   = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_USE_ENERGY_MODELS) : NULL; // Use energy models
-    char *cmin_cpufreq         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
-    char *cfake_io_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IO_FAKE_PHASE)     : NULL;
-    char *cfake_bw_phase       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_BW_FAKE_PHASE)     : NULL;
+    char *cdyn_unc              = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_SET_IMCFREQ)       : NULL; // eUFS
+    char *cimc_extra_th         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IMC_TH)            : NULL; // eUFS threshold
+    char *cexclusive_mode       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EXCLUSIVE_MODE)    : NULL; // Job has the node exclusive
+    char *cuse_earl_phases      = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EARL_PHASES)       : NULL; // Detect application phases
+    char *cenable_load_balance  = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_LOAD_BALANCE)      : NULL; // Load balance efficiency
+    char *cuse_turbo_for_cp     = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TURBO_CP)          : NULL; // Boost critical path processes
+    char *ctry_turbo_enabled    = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TRY_TURBO)         : NULL; // Boost turbo if policy sets max cpufreq
+    char *cuse_energy_models    = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_USE_ENERGY_MODELS) : NULL; // Use energy models
+    char *cmin_cpufreq          = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
+    char *cfake_io_phase        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IO_FAKE_PHASE)     : NULL;
+    char *cfake_bw_phase        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_BW_FAKE_PHASE)     : NULL;
 #if MPI_OPTIMIZED
-    char *cear_mpi_opt         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
+    char *cear_mpi_opt          = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
 #endif
-    char *cignore_affinity_mask   = getenv(FLAG_NO_AFFINITY_MASK);
+    char *cignore_affinity_mask = getenv(FLAG_NO_AFFINITY_MASK);
+
+    char *cuse_cpuprio          = getenv(FLAG_USE_PRIO);
 
     char *cgpu_optimize = getenv(GPU_ENABLE_OPT);
     if (cgpu_optimize != NULL) gpu_optimize = atoi(cgpu_optimize);
@@ -509,17 +535,6 @@ state_t policy_init()
     // Here it is a good place to print policy context:
     verbose_policy_ctx(POLICY_INFO, c);
 
-    // TODO: This check is for the transition to the new environment variables.
-    // It will be removed when SCHED_USE_ENERGY_MODELS will be removed, in the next release.
-    if (cuse_energy_models == NULL) {
-        cuse_energy_models = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_USE_ENERGY_MODELS) : NULL;
-        if (cuse_energy_models != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_USE_ENERGY_MODELS, FLAG_USE_ENERGY_MODELS);
-        }
-    }
-
     /* We read FLAG_USE_ENERGY_MODELS before calling to polsyms_fun.init() because this function
      * may needs `use_energy_models` to configure itself. */
     if (cuse_energy_models != NULL) {
@@ -531,21 +546,10 @@ state_t policy_init()
     if (cfake_bw_phase != NULL) fake_bw_phase = atoi(cfake_bw_phase);
 
     if (fake_io_phase || fake_bw_phase) {
-        verbose_master(0, "%sWARNING%s Using FAKE I/O phase: %u FAKE BW phase: %u", COL_RED, COL_CLR, fake_io_phase, fake_bw_phase);
+        verbose_master(0, "%sWARNING%s Using FAKE I/O phase: %u FAKE BW phase: %u",
+                       COL_RED, COL_CLR, fake_io_phase, fake_bw_phase);
     }
 
-    /* conf_dyn_unc is based on the configuration.
-     * dyn_unc is modified at runtime depending of number of jobs running. */   
-    if (cdyn_unc == NULL) {
-        // TODO: This check is for the transition to the new environment variables.
-        // It will be removed when SCHED_SET_IMC_FREQ will be removed, in the next release.
-        cdyn_unc = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_SET_IMC_FREQ) : NULL;
-        if (cdyn_unc != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_SET_IMC_FREQ, FLAG_SET_IMCFREQ);
-        }
-    }
     if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok) {
         conf_dyn_unc = atoi(cdyn_unc);
     }
@@ -559,19 +563,78 @@ state_t policy_init()
     }
 #endif
 
-    // TODO: This check is for the transition to the new environment variables.
-    // It will be removed when SCHED_IMC_EXTRA_TH will be removed, in the next release.
-    if (cimc_extra_th == NULL) {
-        cimc_extra_th = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_IMC_EXTRA_TH) : NULL;
-        if (cimc_extra_th != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_IMC_EXTRA_TH, FLAG_IMC_TH);
-        }
-    }
-
     if (cimc_extra_th != NULL) {
         imc_extra_th = atof(cimc_extra_th);
+    }
+
+    if (cuse_cpuprio != NULL) {
+        use_cpuprio = atoi(cuse_cpuprio);
+    }
+    verbose_master(POLICY_INFO, "CPUPRIO utilization: %s", (use_cpuprio ? "Enabled" : "Disabled"));
+
+    if (masters_info.my_master_rank >= 0 && use_cpuprio) {
+
+        if ((user_cpuprio_list = (uint *) envtoat(FLAG_PRIO_CPUS, NULL, &user_cpuprio_list_count, ID_UINT)) != NULL)
+        {
+            if (VERB_ON(POLICY_INFO))
+            {
+                verbosen_master(0, "CPUPRIO list read:");
+
+                int i;
+                for (i = 0; i < user_cpuprio_list_count - 1; i++)
+                {
+                    verbosen_master(0, " %u", user_cpuprio_list[i]);
+                }
+
+                verbose_master(0, " %u", user_cpuprio_list[i]);
+            }
+
+            // Set user-provided list of priorities
+
+            const metrics_t *cpuprio_api = metrics_get(API_ISST);
+            if (cpuprio_api)
+            {
+                state_t ret = set_priority_list((uint *) cpuprio_api->current_list, cpuprio_api->devs_count,
+                                                (const uint *) user_cpuprio_list, user_cpuprio_list_count,
+                                                (const cpu_set_t*) &lib_shared_region->node_mask);
+
+                if (state_ok(ret))
+                {
+                    if (VERB_ON(POLICY_INFO))
+                    {
+                        verbose_master(POLICY_INFO, "Setting user-provided CPU priorities...");
+                        mgt_cpufreq_prio_data_print((cpuprio_t *) cpuprio_api->avail_list,
+                                (uint *) cpuprio_api->current_list, verb_channel);
+                    }
+
+                    if (!mgt_cpufreq_prio_is_enabled())
+                    {
+                        // We enable priority system in the case it is not yet created.
+                        if (state_fail(mgt_cpufreq_prio_enable()))
+                        {
+                            use_cpuprio = 0;
+                            verbose_master(POLICY_INFO, "%sWARNING%s CPU PRIO was not enabled.", COL_YLW, COL_CLR);
+                        }
+                    }
+
+                    if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
+                    {
+                        use_cpuprio = 0;
+                        verbose_master(POLICY_INFO, "%sERROR%s Setting CPU PRIO list.", COL_RED, COL_CLR);
+                    }
+
+                } else {
+                    verbose_master(POLICY_INFO, "%sERROR%s setting priority list: %s",
+                            COL_RED, COL_CLR, state_msg);
+                }
+            } else {
+                // If we don't have an API, we won't set any priority configuration.
+                use_cpuprio = 0;
+            }
+        } else {
+            // If the user didn't set this flag, it is not needed get cpuprio enabled.
+            use_cpuprio = 0;
+        }
     }
 
     // Calling policy plug-in init
@@ -585,39 +648,16 @@ state_t policy_init()
     }
 
     // Read policy configuration
-    if (cexclusive_mode == NULL) {
-        // TODO: This check is for the transition to the new environment variables.
-        // It will be removed when SCHED_EXCLUSIVE_MODE will be removed, in the next release.
-        cexclusive_mode = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_EXCLUSIVE_MODE) : NULL;
-        if (cexclusive_mode != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_EXCLUSIVE_MODE, FLAG_EXCLUSIVE_MODE);
-        }
-    }
     if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
-    verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u", COL_BLU, COL_CLR, exclusive_mode);
+    verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u",
+                   COL_BLU, COL_CLR, exclusive_mode);
 
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
 
-    // TODO: This check is for the transition to the new environment variables.
-    // It will be removed when SCHED_MIN_CPUFREQ will be removed, in the next release.
-    if (cmin_cpufreq == NULL) {
-        cmin_cpufreq = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_MIN_CPUFREQ) : NULL;
-        if (cmin_cpufreq != NULL) {
-            verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_MIN_CPUFREQ, FLAG_MIN_CPUFREQ);
-        }
-    }
     if (cmin_cpufreq != NULL) {
         min_cpufreq = (ulong) atoi(cmin_cpufreq);
     }
-		if (cmin_cpufreq == NULL){ verbose_master(POLICY_INFO, "%s = NULL", FLAG_MIN_CPUFREQ );
-		}else{ 
-			verbose_master(POLICY_INFO, "%s = %s", FLAG_MIN_CPUFREQ, cmin_cpufreq);
-		}
     verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
             " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
@@ -1415,11 +1455,39 @@ state_t policy_end()
 #endif
 
 #if DEBUG_CPUFREQ_COST
-    verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f", total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
+    verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f",
+                   total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
 #endif
 
-    preturn(polsyms_fun.end, c);
+    const metrics_t *cpuprio_api = metrics_get(API_ISST);
+    if (masters_info.my_master_rank >= 0 && cpuprio_api)
+    {
+        if (cpuprio_api->ok && use_cpuprio && mgt_cpufreq_prio_is_enabled())
+        {
+            verbose_master(POLICY_INFO, "Resetting priority list...");
+            if (state_ok(reset_priority_list_with_mask((uint *) cpuprio_api->current_list,
+                         cpuprio_api->devs_count, &lib_shared_region->node_mask)))
+            {
+                if (VERB_ON(POLICY_INFO))
+                {
+                    char buffer[SZ_BUFFER_EXTRA];
+                    mgt_cpuprio_data_tostr((cpuprio_t *) cpuprio_api->avail_list,
+                                           (uint *) cpuprio_api->current_list, buffer, SZ_BUFFER_EXTRA);
 
+                    verbose_master(POLICY_INFO, "CPUPRIO list of priorities \n %s", buffer);
+                }
+                if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
+                {
+                    verbose_master(POLICY_INFO, "%sERROR%s Setting CPU PRIO list.", COL_RED, COL_CLR);
+                }
+            } else {
+                verbose_master(POLICY_INFO, "%sERROR%s Resetting priority list: %s",
+                               COL_RED, COL_CLR, state_msg);
+            }
+        }
+    }
+
+    preturn(polsyms_fun.end, c);
 }
 
 
@@ -1665,7 +1733,6 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 		if (proc_id == ALL_PROCESSES && (masters_info.my_master_rank < 0)){
 			verbose(2, "Not master setting CPUfreq for ALL (%.2f)", (float)process_cpu_freqs_khz[0]/(float)1000000.0);
 		}
-    debug("from_proc_to_core");
     if (process_cpu_freqs_khz == NULL || process_cnt < 0 || core_cpu_freqs_khz == NULL
             || *core_cpu_freqs_khz == NULL || cpu_cnt < 0) {
         debug("ERROR: invalid arguments");
@@ -1707,7 +1774,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 #if SHOW_DEBUGS
         if (process_cpu_freqs_khz[proc_lrank] < (ulong) min_cpufreq) {
             debug("The selected frequency (%lu) for process %d is lower than the minimum"
-                    " permitted (%lu). Filtering...", process_cpu_freqs_khz[proc_lrank], proc_lrank, min_cpufreq);
+                    " permitted (%lu). Filtering...", process_cpu_freqs_khz[proc_lrank], proc_lrank, (ulong) min_cpufreq);
         }
 #endif // SHOW_DEBUGS
 
@@ -1881,13 +1948,8 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
             }
         }
     }
-		#if 0
-    if (process_id != ALL_PROCESSES){
-      verbose(1, "[%u] Setting CPU freq %.2f for process process_id %d ", my_node_id, (float)freq_set[process_id]/(float)1000000.0, process_id);
-    }
-		#endif
 
-    if ((dom->cpu == POL_GRAIN_CORE) && (process_id == ALL_PROCESSES)){
+    if ((dom->cpu == POL_GRAIN_CORE) && (process_id == ALL_PROCESSES)) {
         fill_cpus_out_of_cgroup(exclusive_mode);
     }
 
@@ -2119,4 +2181,52 @@ static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx)
 
         verbose_master(verb_lvl, "%*s%s%*s\n", 1, "", "--------------------------", 1, "");
     }
+}
+
+
+static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, const uint *src_prio_list,
+                                 uint src_prio_list_count, const cpu_set_t *mask)
+{
+    if (dst_prio_list && src_prio_list && mask) {
+
+        int prio_list_idx = 0; // i-th src_prio_list value
+        int dev_idx = 0;       // i-th dst_prio_list value
+
+        // We iterate at most min(src, dst)
+        for (dev_idx = 0; dev_idx < dst_prio_list_count && prio_list_idx < src_prio_list_count; dev_idx++)
+        {
+            dst_prio_list[dev_idx] = CPU_ISSET(dev_idx, mask) ? src_prio_list[prio_list_idx++] : PRIO_SAME;
+        }
+
+        // If there are remaining indexes of dst not set, we set the idle priority
+        while (dev_idx < dst_prio_list_count)
+        {
+            dst_prio_list[dev_idx++] = PRIO_SAME;
+        }
+
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_count, const cpu_set_t *mask)
+{
+    if (prio_list && mask)
+    {
+        if (prio_list_count) {
+            for (int i = 0; i < prio_list_count; i++)
+            {
+                prio_list[i] = CPU_ISSET(i, mask) ? 0 : PRIO_SAME;
+            }
+        } else {
+            return_msg(EAR_ERROR, Generr.arg_outbounds);
+        }
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
 }

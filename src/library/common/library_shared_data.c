@@ -137,15 +137,18 @@ void signature_ready(shsignature_t *sig,int cur_state)
 	sig->app_state = cur_state;
 }
 
+
 int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig)
 {
-	int i,total=0;
-  for (i=0;i<data->num_processes;i++){
-    total += (sig[i].pid > 0 );
-  }
-  return (total == data->num_processes);
+    int total = 0;
+    for (int i = 0; i < data->num_processes; i++) {
+        total += (sig[i].pid > 0 );
+    }
 
+    return (total == data->num_processes);
 }
+
+
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m)
 {
 	CPU_ZERO(m);

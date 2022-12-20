@@ -33,8 +33,6 @@
 #define TPI_DEBUG              4
 #define ENERGY_EFF_VERB        2
 
-
-#define DEF_USE_CPUPRIO        0
 #define DEF_READ_CUPTI_METRICS 0
 
 #if !SHOW_DEBUGS
@@ -204,6 +202,7 @@ static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
 #endif // USE_GPUS
 
+
 /* New metrics */
 static metrics_t         mgt_cpufreq;
 static metrics_t         mgt_imcfreq;
@@ -214,10 +213,9 @@ static metrics_t         met_energy;
 static metrics_t         met_flops;
 static metrics_t         met_cache;
 static metrics_t         met_cpi;
-static metrics_multi_t   mgt_cpuprio;
+static metrics_t         mgt_cpuprio;
 
-static uint        use_cpuprio = DEF_USE_CPUPRIO;
-#define EAR_USE_CPUPRIO "EAR_USE_CPUPRIO"
+
 #if USE_GPUS
 static metrics_gpus_t mgt_gpu;
 static metrics_gpus_t met_gpu;
@@ -254,8 +252,9 @@ extern uint policy_mem_bound ;
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
 
+
 /** This function is called before any API initialization. It's used to read envorironment
- * variables that enable/disable the load of some APIs. By now, these are CUPTI and CPUPRIO. */
+ * variables that enable/disable the load of some APIs. By now, these are CUPTI. */
 static void read_metrics_options();
 
 
@@ -286,6 +285,7 @@ const metrics_t *metrics_get(uint api)
         case MET_FLOPS:   return &met_flops;
         case MET_CACHE:   return &met_cache;
         case MET_CPI:     return &met_cpi;
+        case API_ISST:    return &mgt_cpuprio;
         default: return NULL;
     }
 }
@@ -383,7 +383,7 @@ static void metrics_static_init(topology_t *tp)
         gpu_load(eard);
     mgt_gpu_load(eard);
 #if USE_CUPTI
-    if (read_cupti_metrics){
+    if (read_cupti_metrics) {
       gpuproc_load(1);
     }
 #endif
@@ -395,6 +395,7 @@ static void metrics_static_init(topology_t *tp)
 #else
     frequency_init(1);
 #endif
+
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
@@ -406,14 +407,15 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_get_api(&met_cache.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
+
 #if USE_GPUS
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
-    #if USE_CUPTI
-    if (read_cupti_metrics){
-      gpuproc_get_api(&proc_gpu.api);
-    }
-    #endif
+#if USE_CUPTI
+        if (read_cupti_metrics) {
+            gpuproc_get_api(&proc_gpu.api);
+        }
+#endif
 #endif // USE_GPUS
 
     // Working
@@ -426,20 +428,17 @@ static void metrics_static_init(topology_t *tp)
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
-#if 0
-    if (!mgt_cpufreq_prio_is_enabled()){
-      sa(mgt_cpufreq_prio_enable());
-    }
-#endif
-    mgt_cpuprio.ok = ((mgt_cpuprio.api > API_DUMMY) && mgt_cpufreq_prio_is_enabled());
+
+    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
+
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
     met_gpu.ok     = (met_gpu.api     > API_DUMMY);
-    #if USE_CUPTI
+#if USE_CUPTI
     if (read_cupti_metrics){
-      proc_gpu.ok    = (proc_gpu.api    > API_DUMMY);
+        proc_gpu.ok = (proc_gpu.api   > API_DUMMY);
     }
-    #endif
+#endif
 #endif // USE_GPUS
 	debug("metrics_api ready");
 
@@ -454,15 +453,17 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_init(no_ctx));
     sa(        cpi_init(no_ctx));
     sa(mgt_cpuprio_init());
+
 #if USE_GPUS
     sa(    mgt_gpu_init(no_ctx));
     sa(        gpu_init(no_ctx));
-    #if USE_CUPTI
+#if USE_CUPTI
     if (read_cupti_metrics){
-      sa(    gpuproc_init(no_ctx));
+        sa(    gpuproc_init(no_ctx));
     }
-    #endif
+#endif
 #endif // USE_GPUS
+
 	debug("metrics_init ready");
 
     // Count
@@ -492,40 +493,25 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list,
                 &mgt_imcfreq.avail_count));
 
-    sa(mgt_cpuprio_data_alloc((cpuprio_t **)&mgt_cpuprio.avail_list, (uint **)&mgt_cpuprio.dev_list));
+    // Allocation is needed before requesting available and devices list
+    sa(mgt_cpuprio_data_alloc((cpuprio_t **) &mgt_cpuprio.avail_list, (uint **) &mgt_cpuprio.current_list));
+
     /* List of priorities */
-    sa(mgt_cpuprio_get_available_list((cpuprio_t *)mgt_cpuprio.avail_list));
+    sa(mgt_cpuprio_get_available_list((cpuprio_t *) mgt_cpuprio.avail_list));
+
     /* List of devices */
-    sa(mgt_cpuprio_get_current_list((uint *)mgt_cpuprio.dev_list));
+    sa(mgt_cpuprio_get_current_list((uint *) mgt_cpuprio.current_list));
 
-    sa(mgt_cpuprio_data_count((uint *)&mgt_cpuprio.avail_count, (uint *)&mgt_cpuprio.dev_count)); 
-    verbose_master(CPUPRIO_VERB, "CPUPRIO (OK ? %u): There are %u priorities and %u devices", mgt_cpuprio.ok, mgt_cpuprio.avail_count, mgt_cpuprio.dev_count);
-    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-    verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+    sa(mgt_cpuprio_data_count((uint *) &mgt_cpuprio.avail_count, (uint *) &mgt_cpuprio.devs_count)); 
 
-    /* BEGIN TEST */
-#if CPUPRIO_TEST
-    if (use_cpuprio){
-        for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-        {
-            mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
-        }
-        sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-        verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+    if (VERB_ON(CPUPRIO_VERB)) {
+        verbose_master(CPUPRIO_VERB, "[CPUPRIO] %s / %u priorities / %u devices.",
+                       mgt_cpuprio.ok ? "OK" : "DUMMY", mgt_cpuprio.avail_count, mgt_cpuprio.devs_count);
 
-        /* RESTORE */
-        for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-        {
-            mgt_cpuprio.dev_list[dev_id] = 0;
-        }
-        sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-        verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+        mgt_cpuprio_data_tostr((cpuprio_t *) mgt_cpuprio.avail_list, (uint *) mgt_cpuprio.current_list,
+                               buffer, SZ_BUFFER_EXTRA);
+        verbose_master(CPUPRIO_VERB, "CPUPRIO list of available priorities\n %s", buffer);
     }
-#endif
-    /* END TEST */
-
 
 #if USE_GPUS
     sa(mgt_gpu_freq_list(no_ctx,
@@ -2364,31 +2350,10 @@ static void read_metrics_options()
     /* We will get per-process cupti metrics */
     cuse_cupti = getenv(EAR_USE_CUPTI);
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
-    verbose_master(VERBOSE_CUPTI, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
+    verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif
-    char *cuse_cpuprio = getenv(EAR_USE_CPUPRIO);
-    if (cuse_cpuprio != NULL) use_cpuprio = atoi(cuse_cpuprio);
-    verbose_master(2, "CPUPRIO utilization %s", (use_cpuprio? "Enabled" : "Disabled"));
-
-    if (use_cpuprio) {
-        uint cpuprio_list_count;
-        uint *cpuprio_list;
-
-        if ((cpuprio_list = (uint *) envtoat(FLAG_CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
-            if (VERB_ON(2)) {
-
-                verbosen_master(1, "CPUPRIO list read:");
-
-                int i;
-                for (i = 0; i < cpuprio_list_count - 1; i++) {
-                    verbosen_master(1, " %u", cpuprio_list[i]);
-                }
-
-                verbose_master(1, " %u", cpuprio_list[i]);
-            }
-        }
-    }
 }
+
 
 
 static state_t energy_lib_init(settings_conf_t *conf)
@@ -2434,9 +2399,4 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
 static void metrics_static_dispose()
 {
-#if 0
-    if (mgt_cpufreq_prio_is_enabled()){
-        mgt_cpufreq_prio_disable();
-    }
-#endif
 }
