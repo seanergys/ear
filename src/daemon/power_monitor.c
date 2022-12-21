@@ -79,6 +79,7 @@ extern uint report_eard ;
 extern report_id_t rid;
 extern state_t report_connection_status;
 
+
 /** These variables come from eard.c */
 extern topology_t node_desc;
 extern int eard_must_exit;
@@ -94,9 +95,11 @@ extern char nodename[MAX_PATH_SIZE];
 
 extern state_t report_connection_status;
 
+
 /* from eard_node_services */
 extern manages_apis_t *man;
 extern metrics_apis_t *met;
+
 
 state_t s;
 nm_t my_nm_id;
@@ -105,13 +108,16 @@ nm_data_t nm_init, nm_end, nm_diff, last_nm;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
+
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
 
+
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
 static cpufreq_t *freq_job2;
 static uint       freq_count;
+
 
 // This array has 1 entry per job supported
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
@@ -120,6 +126,7 @@ static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
 static energy_data_t c_energy;
+
 
 /* Powercap */
 static energy_data_t e_pmon_begin, e_pmon_end, e_pmon;
@@ -131,10 +138,11 @@ static periodic_metric_t current_sample;
 static double last_power_reported = 0;
 static ulong  last_node_power     = 0;
 
+
 static uint *powermon_restore_cpufreq_list;
 
-/************** RECOVERY HW SETTINGS - Only work under POWERMON_RESTORE *************/
 
+/************** RECOVERY HW SETTINGS - Only work under POWERMON_RESTORE *************/
 
 /** This function is called to restore any setting when the job \p app begins.
  * By now, this function restores the IMC frequency and the GPU frequency of the node.
@@ -206,8 +214,17 @@ static int is_job_running(char *tmp, int jobid)
 static void check_status_of_jobs(job_id current);
 
 
-/***************** JOBS in NODE ***************************/
+/** This function fills attributes governor and current_freq of \p powermon_app with the
+ * current values of CPU 0. The goal is to have an errorless function to be used on cases
+ * we need a simple power monitor use case. */
+static state_t save_global_cpu_settings(powermon_app_t *powermon_app);
 
+
+/** This function restores governor and CPU settings to all CPUs in the node. */
+static state_t restore_global_cpu_settings(powermon_app_t *powermon_app);
+
+
+/***************** JOBS in NODE ***************************/
 
 void init_jobs_in_node()
 {
@@ -2929,11 +2946,10 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
             mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
         }
     }
-#endif
+#endif // POWERMON_RESTORE
 }
 
 
-// TODO: Thread-save here.
 static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set_t *mask)
 {
     if (powermon_app != NULL && mask != NULL) {
@@ -2993,4 +3009,142 @@ static void check_status_of_jobs(job_id current)
             }
         }
     }
+}
+
+
+static state_t save_global_cpu_settings(powermon_app_t *powermon_app)
+{
+    if (powermon_app)
+    {
+        // Saving the governor found at CPU 0
+
+        powermon_app->governor.max_f = 0LU;
+        powermon_app->governor.min_f = 0LU;
+
+        sprintf(powermon_app->governor.name, "%s", Goverstr.other);
+
+        uint governor_id;
+        if (state_ok(mgt_cpufreq_get_governor(no_ctx, &governor_id)))
+        {
+            mgt_governor_tostr(governor_id, powermon_app->governor.name);
+
+            powermon_app->governor.max_f = frequency_pstate_to_freq(0);
+            powermon_app->governor.min_f = frequency_pstate_to_freq(man->cpu.list1_count - 1);
+        }
+
+        // Saving the frequency of CPU 0
+        powermon_app->current_freq = frequency_get_cpu_freq(0);
+    } else
+    {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
+{
+    if (powermon_app)
+    {
+        // Saving the governor found at CPU 0
+
+        uint change_gov = 0;
+        uint rest_pstate;
+
+        /* Going to idle: Reset CPU freq. */
+        if (powermon_is_idle()) mgt_cpufreq_reset(no_ctx);
+
+        char *cgov = powermon_app->governor.name; // Governor before job had started.
+        uint gov_id;
+
+        if (powermon_app->is_job || powermon_app->policy_freq) { 
+            // End of a job or Not the end of a job but EARD set a frequency
+
+            if (powermon_app->is_job && strcmp(my_node_conf->idle_governor, "default") != 0) {
+
+                /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
+                cgov        = my_node_conf->idle_governor;
+                rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
+
+            } else {
+                /* We'll restore the P-State we found before job had started. */
+                mgt_cpufreq_get_index(no_ctx, powermon_app->current_freq, &rest_pstate, 1);
+            }
+
+            /* --- Setting governor --- */
+
+            governor_toint(cgov, &gov_id);
+
+            verbose(VCONF, "Restoring all the node CPUs to governor `%s`...", cgov);
+
+            mgt_cpufreq_governor_set(no_ctx, gov_id);
+
+            if (strcmp(cgov, "userspace") == 0) {
+                change_gov = 1;
+            }
+
+            /* ------------------------ */
+
+        }
+
+        /* If the governor restored is `userspace`, we must manually set a CPU freq. */
+        if (change_gov) {
+
+            verbose(VCONF, "Restoring to all CPUs pstate %u...", rest_pstate);
+
+            mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
+
+        }
+
+        /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
+        if (mgt_cpuprio_is_enabled()) {
+            for (int i = 0; i < man->pri.devs_count; i++) {
+                // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
+                powermon_app->prio_idx_list[i] = (CPU_ISSET(i, &powermon_app->plug_mask)) ? powermon_app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
+            }
+
+            if (VERB_ON(VPMON_DEBUG)) {
+                verbose(VPMON_DEBUG, "Restoring priority list...");
+                mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, powermon_app->prio_idx_list, verb_channel);    
+            }
+
+            if (state_fail(mgt_cpuprio_set_current_list(powermon_app->prio_idx_list))) {
+                error("Restoring the priority list for job %lu/%lu.", powermon_app->app.job.id, powermon_app->app.job.step_id);
+            }
+
+            if (powermon_is_idle()) {
+                verbose(VPMON_DEBUG, "Disabling priority system...");
+                if (state_fail(mgt_cpuprio_disable())) {
+                    error("Disabling priority system.");
+                }
+            }
+        }
+
+#if USE_GPUS
+        /* GPUs */
+        if (powermon_is_idle() && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+            ulong idle_gpu_freq;
+            /* We assume all the gpus are the same */
+            gpu_mgr_get_min(0, &idle_gpu_freq);
+            verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float) idle_gpu_freq / 1000000.0);
+            gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+        }
+#endif
+
+        if (powermon_is_idle()) {
+            /* IMC freq : It's already done at init, but it's included here for simplicity*/
+            verbose(VCONF, "Restoring IMC freq");
+            if (node_desc.vendor == VENDOR_INTEL) {
+                mgt_imcfreq_set_auto(no_ctx);
+            } else if (node_desc.vendor == VENDOR_AMD) {
+                mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+            }
+        }
+    } else
+    {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
 }
