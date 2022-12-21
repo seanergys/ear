@@ -80,7 +80,7 @@ void stress_bandwidth(ullong ms)
     } while (timestamp_diffnow(&now, TIME_MSECS) < ms);
 }
 
-static void stress_spin(ullong ms)
+void stress_spin(ullong ms)
 {
     timestamp_t time;
     timestamp_getfast(&time);

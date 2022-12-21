@@ -28,10 +28,12 @@ state_t bwidth_bypass_load(topology_t *tp, bwidth_ops_t *ops)
 {
 	state_t s;
 	return EAR_ERROR;
+    #if 0 
 	// Pending: test if is something loaded
 	if (state_fail(s = cache_load(tp, NO_EARD))) {
 		return s;
 	}
+    #endif
 	cpus_count = tp->cpu_count;
 	devs_count = 1;
 	// It is shared by all Intel's architecture from Haswell to Skylake

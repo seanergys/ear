@@ -49,11 +49,11 @@ typedef struct cache_s {
     union {
         ullong l3w_misses;
         ullong llw_misses;
-    }
+    };
     union {
         ullong l3_misses;
         ullong ll_misses;
-    }
+    };
 } cache_t;
 
 typedef struct coche_ops_s {

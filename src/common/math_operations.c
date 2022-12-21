@@ -58,7 +58,7 @@ overflow_magic_def(ullong, u64);
 overflow_magic_def(  uint, u32);
 
 #define ceil_magic_def(type, suffix) \
-    type ceil_magic_u64(type value, uint digits) \
+    type ceil_magic_ ##suffix (type value, uint digits) \
     { \
         double divisor = pow(10.0, ((double) digits - 1.0)); \
         return ((type) ceil(((double) value) / divisor) * divisor); \
