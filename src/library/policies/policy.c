@@ -319,6 +319,10 @@ static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, 
 static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_count, const cpu_set_t *mask);
 
 
+/**  */
+static state_t policy_setup_priority(uint *setup_prio_list, uint setup_prio_list_count);
+
+
 static uint total_mpi_optimized =  0;
 
 /**** Auxiliary functions ***/
@@ -511,14 +515,9 @@ state_t policy_init()
 #endif
     char *cignore_affinity_mask = getenv(FLAG_NO_AFFINITY_MASK);
 
-    char *cuse_cpuprio          = getenv(FLAG_USE_PRIO);
-
     char *cgpu_optimize = getenv(GPU_ENABLE_OPT);
     if (cgpu_optimize != NULL) gpu_optimize = atoi(cgpu_optimize);
     verbose_master(POLICY_INFO, "%sPOLICY%s GPU optimization during GPU comp %s", COL_BLU, COL_CLR, (gpu_optimize? "Enabled":"Disabled"));
-
-
-
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -567,15 +566,11 @@ state_t policy_init()
         imc_extra_th = atof(cimc_extra_th);
     }
 
-    if (cuse_cpuprio != NULL) {
-        use_cpuprio = atoi(cuse_cpuprio);
-    }
-    verbose_master(POLICY_INFO, "CPUPRIO utilization: %s", (use_cpuprio ? "Enabled" : "Disabled"));
-
-    if (masters_info.my_master_rank >= 0 && use_cpuprio) {
+    if (masters_info.my_master_rank >= 0) {
 
         if ((user_cpuprio_list = (uint *) envtoat(FLAG_PRIO_CPUS, NULL, &user_cpuprio_list_count, ID_UINT)) != NULL)
         {
+            use_cpuprio = 1;
             if (VERB_ON(POLICY_INFO))
             {
                 verbosen_master(0, "CPUPRIO list read:");
@@ -590,46 +585,11 @@ state_t policy_init()
             }
 
             // Set user-provided list of priorities
-
-            const metrics_t *cpuprio_api = metrics_get(API_ISST);
-            if (cpuprio_api)
+            if (state_fail(policy_setup_priority(user_cpuprio_list, user_cpuprio_list_count)))
             {
-                state_t ret = set_priority_list((uint *) cpuprio_api->current_list, cpuprio_api->devs_count,
-                                                (const uint *) user_cpuprio_list, user_cpuprio_list_count,
-                                                (const cpu_set_t*) &lib_shared_region->node_mask);
-
-                if (state_ok(ret))
-                {
-                    if (VERB_ON(POLICY_INFO))
-                    {
-                        verbose_master(POLICY_INFO, "Setting user-provided CPU priorities...");
-                        mgt_cpufreq_prio_data_print((cpuprio_t *) cpuprio_api->avail_list,
-                                (uint *) cpuprio_api->current_list, verb_channel);
-                    }
-
-                    if (!mgt_cpufreq_prio_is_enabled())
-                    {
-                        // We enable priority system in the case it is not yet created.
-                        if (state_fail(mgt_cpufreq_prio_enable()))
-                        {
-                            use_cpuprio = 0;
-                            verbose_master(POLICY_INFO, "%sWARNING%s CPU PRIO was not enabled.", COL_YLW, COL_CLR);
-                        }
-                    }
-
-                    if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
-                    {
-                        use_cpuprio = 0;
-                        verbose_master(POLICY_INFO, "%sERROR%s Setting CPU PRIO list.", COL_RED, COL_CLR);
-                    }
-
-                } else {
-                    verbose_master(POLICY_INFO, "%sERROR%s setting priority list: %s",
-                            COL_RED, COL_CLR, state_msg);
-                }
-            } else {
-                // If we don't have an API, we won't set any priority configuration.
                 use_cpuprio = 0;
+                verbose(POLICY_INFO, "%sERROR%s Setting up priority list: %s",
+                        COL_RED, COL_CLR, state_msg);
             }
         } else {
             // If the user didn't set this flag, it is not needed get cpuprio enabled.
@@ -2223,6 +2183,59 @@ static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_cou
             }
         } else {
             return_msg(EAR_ERROR, Generr.arg_outbounds);
+        }
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t policy_setup_priority(uint *setup_prio_list, uint setup_prio_list_count)
+{
+    if (setup_prio_list && setup_prio_list_count)
+    {
+        const metrics_t *cpuprio_api = metrics_get(API_ISST);
+        if (cpuprio_api)
+        {
+            state_t ret = set_priority_list((uint *) cpuprio_api->current_list,
+                                            cpuprio_api->devs_count,
+                                            (const uint *) setup_prio_list,
+                                            setup_prio_list_count,
+                                            (const cpu_set_t*) &lib_shared_region->node_mask);
+
+            if (state_ok(ret))
+            {
+                if (VERB_ON(POLICY_INFO))
+                {
+                    verbose_master(POLICY_INFO, "Setting user-provided CPU priorities...");
+                    mgt_cpufreq_prio_data_print((cpuprio_t *) cpuprio_api->avail_list,
+                            (uint *) cpuprio_api->current_list, verb_channel);
+                }
+
+                if (!mgt_cpufreq_prio_is_enabled())
+                {
+                    // We enable priority system in the case it is not yet created.
+                    if (state_fail(mgt_cpufreq_prio_enable()))
+                    {
+                        return_msg(EAR_ERROR, Generr.api_uninitialized);
+                    }
+                }
+
+                if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
+                {
+                    return_msg(EAR_ERROR, "Setting CPU PRIO list.");
+                }
+
+            } else {
+                char err_msg[64];
+                snprintf(err_msg, sizeof(err_msg), "Setting priority list (%s)", state_msg);
+                return_msg(EAR_ERROR, err_msg);
+            }
+        } else {
+            // If we don't have an API, we won't set any priority configuration.
+            return_msg(EAR_ERROR, Generr.api_undefined);
         }
     } else {
         return_msg(EAR_ERROR, Generr.input_null);
