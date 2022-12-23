@@ -99,7 +99,7 @@ AC_DEFUN([X_AC_REDFISH],
     if test -z "$_cv_redfish_dir_root"; then
         echo checking for REDFISH compiler link... no
     else
-        REDFISH_BASE=$_cv_redfish_dir_root
+        REDFISH_DIR=$_cv_redfish_dir_root
         REDFISH_LIBS=$_x_ac_redfish_gcc_libs
         
 		if test "x$_x_ac_redfish_custom" = "xyes"; then
@@ -112,7 +112,7 @@ AC_DEFUN([X_AC_REDFISH],
         echo checking for REDFISH libraries... $REDFISH_LIBS
     fi
 
-    AC_SUBST(REDFISH_BASE)
+    AC_SUBST(REDFISH_DIR)
     AC_SUBST(REDFISH_CFLAGS)
 
     AM_CONDITIONAL(WITH_REDFISH, test -n "$_cv_redfish_dir_root")

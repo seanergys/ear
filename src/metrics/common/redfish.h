@@ -20,16 +20,54 @@
 
 #include <common/types/generic.h>
 
-#define REDTYPE_STR 0
-#define REDTYPE_I32 1
-#define REDTYPE_I64 2
-#define REDTYPE_F32 3
-#define REDTYPE_F64 4
+// How to use Redfish API:
+//
+// 1) Open passing the host, i.e. https://169.254.95.118. The /redfish/v1 is not included. 
+// 2) Use redfish_get() to read the content of the field. Field formats:
+//    - /Chassis: the tipical field, it returns a JSON object. A JSON object just can
+//                be read by the REDTYPE_JSON.
+//    - /Chassis[0]/Power/PowerControl[0]/PowerConsumedWatts: here we are accessing to
+//                the index 0 of an array of objects. The previous Chassis JSON is in
+//                fact an array of other objects and we are accessing to the first.
+//                Later, in PowerControl field we are doing the same. Finally we are
+//                accessing to PowerConsumedWatts which is a value.
+//    - /Chassis[0]/Power/PowerControl[MemberId=1]/PowerConsumedWatts: here we are
+//                doing the same, but selecting the item in the PowerControl array whose
+//                MemberId is 1. You can use this method to select specific indexes by
+//                the Name, Id, Description, etc.
+//    - /Chassis[%d]/Power/PowerControl[MemberId=%d]/PowerConsumedWatts: also you can
+//                use the traditional %d print format to iterate over JSON arrays in both
+//                previously commented methods.
+//
+//    Accesing to multiple array items through %d could be useful to accumulate their
+//    different values. In the redfish_get() function, you can pass an 'accum' variable
+//    to return the accumulated number. But remember to match the type_flag with the
+//    'accum' variable type. Finally the 'content' could be a single variable or an
+//    array, both have to match with the type_flag type. If you are using the '%d' to
+//    get multiple items you have to pass an array argument. There is no way to know
+//    in advance the number of items to return so provide a wide vector.
+//
+// Example (is only an example, your Redfish fields can be different):
+//      if (state_fail(redfish_open("localhost", "user123", "password123"))) {
+//          return 0;
+//      }
+//      if (state_fail(redfish_read("/Chassis[0]/MaxPowerWatts", (void *) int_array, NULL, &count, REDTYPE_INT))) {
+//          return 0;
+//      }
+//
 
-state_t redfish_init(char *host);
+// Type flags:
+#define REDTYPE_JSON   0 // (char *)
+#define REDTYPE_STRING 1 // (char *)
+#define REDTYPE_INT    2 // (int)
+#define REDTYPE_LLONG  3 // (llong)
+#define REDTYPE_DOUBLE 4 // (double)
 
-state_t redfish_read(char *field, void *content, void *accum, uint *count, int type_flag);
+/* Given a host, a username and password initializes redfish data. */
+state_t redfish_open(char *host, char *user, char *pass);
 
+state_t redfish_get(char *field, void *content, void *accum, uint *count, int type_flag);
+/* Count the array items of a field when the returned field is a JSON array. */
 state_t redfish_count_members(char *field, uint *count);
 
 #endif //METRICS_COMMON_REDFISH_H

@@ -15,10 +15,11 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #ifdef REDFISH_BASE
 #include <redfish.h>
+#include <redfishService.h>
 #endif
 
 #include <stdlib.h>
@@ -30,22 +31,34 @@
 typedef const char cchar;
 
 #ifndef REDFISH_BASE
-typedef uint enumeratorAuthentication;
-typedef uint redfishService;
-typedef uint redfishPayload;
+typedef int redfishService;
+typedef int redfishPayload;
+typedef struct enumeratorAuthentication_s {
+    uint authType;
+    union {
+        struct {
+            char* username;
+            char* password;
+        } userPass;
+    } authCodes;
+} enumeratorAuthentication;
+#define REDFISH_AUTH_BASIC 0
 #define REDFISH_PATH ""
 #else
 #define REDFISH_PATH REDFISH_BASE
 #endif
 
-#define REDFISH_N 8
+#define REDFISH_N 11
 
 static struct redfish_s
 {
     redfishService *(*createService)    (cchar *host, cchar *uri, enumeratorAuthentication* auth, uint flags);
     redfishPayload *(*getPayload)       (redfishService* service, cchar *path);
-    char *          (*payloadToString)  (redfishPayload* payload, int prettyPrint);
+    char *          (*payloadToJson)    (redfishPayload* payload, int prettyPrint);
+    char *          (*payloadToString)  (redfishPayload* payload);
     int             (*payloadToInt)     (redfishPayload* payload);
+    llong           (*payloadToLlong)   (redfishPayload* payload);
+    double          (*payloadToDouble)  (redfishPayload* payload, int *isDouble);
     size_t          (*getCollectionSize)(redfishPayload* payload);
     size_t          (*getArraySize)     (redfishPayload* payload);
     void            (*cleanupPayload)   (redfishPayload* payload);
@@ -57,22 +70,26 @@ static const char *redfish_names[] =
     "createServiceEnumerator",
     "getPayloadByPath",
     "payloadToString",
+    "getPayloadStringValue",
     "getPayloadIntValue",
+    "getPayloadLongLongValue",
+    "getPayloadDoubleValue",
     "getCollectionSize",
     "getArraySize",
     "cleanupPayload",
     "cleanupServiceEnumerator",
 };
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static redfishService *service;
-static uint            loaded;
+static pthread_mutex_t          lock = PTHREAD_MUTEX_INITIALIZER;
+static redfishService          *service;
+static enumeratorAuthentication auth;
+static uint                     loaded;
 
 static int load(char *path)
 {
     int flags = RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND;
     debug("loading: %s", path);
-    if (state_fail(plug_load(path, (void **) &redfish, redfish_names, REDFISH_N, flags))) {
+    if (state_fail(plug_open(path, (void **) &redfish, redfish_names, REDFISH_N, flags))) {
         debug("failed while loading %s: %s", path, state_msg);
         return 0;
     }
@@ -88,15 +105,24 @@ static state_t static_load()
     return_msg(EAR_ERROR, "Can't load libredfish.so");
 }
 
-static state_t static_init(char *host)
+static state_t static_init(char *host, char *user, char *pass)
 {
+    enumeratorAuthentication *pauth = NULL;
+
+    if (pass != NULL) {
+        auth.authType = REDFISH_AUTH_BASIC;
+        auth.authCodes.userPass.username = user;
+        auth.authCodes.userPass.password = pass;
+        pauth = &auth;
+    }
     // host, uri, auth, flags
     // uri, if null is /redfish
-    service = redfish.createService(host, NULL, NULL, 1);
+    service = redfish.createService(host, NULL, pauth, 1);
+    
     return EAR_SUCCESS;
 }
 
-state_t redfish_init(char *host)
+state_t redfish_open(char *host, char *user, char *pass)
 {
     state_t s = EAR_SUCCESS;
     #ifndef REDFISH_BASE
@@ -111,7 +137,7 @@ state_t redfish_init(char *host)
     while (pthread_mutex_trylock(&lock));
     if (!loaded) {
         if (state_ok(s = static_load())) {
-            if (state_ok(s = static_init(host))) {
+            if (state_ok(s = static_init(host, user, pass))) {
                 loaded = 1;
             }
         }
@@ -142,25 +168,48 @@ static int count_iterators(char *field)
 
 static state_t read_single(char *field, void *content, void *accum, uint *count, int type_flag)
 {
+    // Gets the content, if repeat, returns the next element
     redfishPayload *payload = redfish.getPayload(service, field);
 
     debug("Looking in field: %s", field);
+    // If no content found, return
     if (payload == NULL) {
         redfish.cleanupPayload(payload);
         return_msg(EAR_ERROR, "No content.");
     }
+    // If counter is not NULL, adding one
     if (count != NULL) {
         *count += 1;
     }
-    if (type_flag == REDTYPE_STR) {
+    // If content is string we don't have interest in accumulate values
+    if (type_flag == REDTYPE_JSON) {
+        #if SHOW_DEBUGS
+        debug("JSON:\n%s", redfish.payloadToJson(payload, 1));
+        #else
         if (content != NULL) {
             char *p = (char *) content;
-            sprintf(p, "%s", redfish.payloadToString(payload, 1));
-            debug("STR: %s", p);
+            char *s = redfish.payloadToJson(payload, 1);
+            if (s != NULL) {
+                sprintf(p, "%s", s);
+            }
         }
+        #endif
+        goto leave;
     }
-    else if (type_flag == REDTYPE_I32) {
-        int v  = redfish.payloadToInt(payload);
+    if (type_flag == REDTYPE_STRING) {
+        if (content != NULL) {
+            char *p = (char *) content;
+            char *s = redfish.payloadToString(payload);
+            if (s != NULL) {
+                sprintf(p, "%s", s);
+            }
+            debug("STR: %s", s);
+        }
+        goto leave;
+    }
+    // If content is a number, we return the conetnt in int format and the cumulative
+    if (type_flag == REDTYPE_INT) {
+        int v = redfish.payloadToInt(payload);
         if (content != NULL) {
             int *p = (int *) content;
             *p = v;
@@ -172,13 +221,41 @@ static state_t read_single(char *field, void *content, void *accum, uint *count,
             debug("I32a: %d", *p);
         }
     }
+    if (type_flag == REDTYPE_LLONG) {
+        llong v = redfish.payloadToLlong(payload);
+        if (content != NULL) {
+            llong *p = (llong *) content;
+            *p = v;
+            debug("I64v: %lld", *p);
+        }
+        if (accum != NULL) {
+            llong *p = (llong *) accum;
+            *p += v;
+            debug("I64a: %lld", *p);
+        }
+    }
+    if (type_flag == REDTYPE_DOUBLE) {
+        int is_double;
+        double v = redfish.payloadToDouble(payload, &is_double);
+        if (content != NULL) {
+            double *p = (double *) content;
+            *p = v;
+            debug("F64v: %lf", *p);
+        }
+        if (accum != NULL) {
+            double *p = (double *) accum;
+            *p += v;
+            debug("F64a: %lf", *p);
+        }
+    }
+leave:
     redfish.cleanupPayload(payload);
     return EAR_SUCCESS;
 }
 
-static state_t read_multiple(char *field, void *content, void *accum, uint *count, int type_flag)
+static state_t read_multiple(char *field, void *array, void *accum, uint *count, int type_flag)
 {
-    char *p = (char *) content;
+    char *p = (char *) array;
     char buffer[4096];
     int c1, c2, i1, i2;
     int bytes = 4;
@@ -187,13 +264,24 @@ static state_t read_multiple(char *field, void *content, void *accum, uint *coun
     if (count != NULL) {
         *count = 0;
     }
+    // Iterator is a '%d' in the field argument. It serves to access to multiple
+    // indexes at the same time and perform an accumulation. We assume if the
+    // field is a type of string, there are no iterators.
+    // This functions is compatible with up to 2 iterators.
+    // 
     // c1: counts the '%d' occurrences
     // c2: counts the number of read values
-    if ((c1 = count_iterators(field)) == 0) {
-        return read_single(field, content, accum, count, type_flag);
-    }
-    if (type_flag == REDTYPE_I64 || type_flag == REDTYPE_F64) {
+ 
+    // Extending the arrays to 64 bits
+    if (type_flag == REDTYPE_LLONG || type_flag == REDTYPE_DOUBLE) {
         bytes = 8;
+    }
+    if (accum != NULL) {
+        memset(accum, 0, (size_t) bytes);
+    }
+    // Asking for string or found 0 iterators
+    if ((c1 = count_iterators(field)) == 0) {
+        return read_single(field, array, accum, count, type_flag);
     }
     // i1: exterior iterator
     // i2: interior iterator
@@ -206,7 +294,8 @@ static state_t read_multiple(char *field, void *content, void *accum, uint *coun
             sprintf(buffer, field, i1);
             s = read_single(buffer, &p[c2*bytes], accum, count, type_flag);
             c2++;
-        } while(state_ok(s));
+        // if index is 0 and fails, maybe it is because the array starts at 1.
+        } while(state_ok(s) || (i1 == 0));
     }
     if (c1 == 2) {
         do {
@@ -217,8 +306,8 @@ static state_t read_multiple(char *field, void *content, void *accum, uint *coun
                 sprintf(buffer, field, i1, i2);
                 s = read_single(buffer, &p[c2*bytes], accum, count, type_flag);
                 c2++;
-            } while(state_ok(s));
-        } while(i2 > 0);
+            } while(state_ok(s) || (i2 == 0));
+        } while((i1 == 0) || i2 > 1);
     }
     if (c2 == 1) {
         return_msg(EAR_ERROR, "Nothing found with that path.")
@@ -244,29 +333,3 @@ state_t redfish_count_members(char *field, uint *count)
     redfish.cleanupPayload(payload);
     return EAR_SUCCESS;
 }
-
-#if 1
-// /opt/rh/devtoolset-7/root/bin/gcc -g -I ../../ -I/hpc/opt/libredfish/include -DREDFISH_BASE=\"/hpc/opt/libredfish\" -o test redfish.c ../libmetrics.a ../../common/libcommon.a -ldl -lpthread
-
-int main (int argc, char *argv[])
-{
-    uint watts[16];
-    uint accum = 0;
-    uint count = 0;
-
-    if (argc <= 2) {
-        debug("insuficient arguments")
-        return 0;
-    }
-    if (state_fail(redfish_init(argv[1]))) {
-        debug("redfish_init failed: %s", state_msg);
-        return 0;
-    }
-    if (state_fail(redfish_read(argv[2], (void *) watts, (void *) &accum, &count, REDTYPE_I32))) {
-        debug("redfish_read failed: %s", state_msg);
-        return 0;
-    }
-
-    return 0;
-}
-#endif
