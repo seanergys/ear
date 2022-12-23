@@ -337,6 +337,10 @@ static state_t set_priority_list(uint *dst_prio_list, uint dst_prio_list_count, 
 static state_t policy_set_prio_with_mask(uint *dst_prio_list, uint dst_prio_list_count, uint priority, const cpu_set_t *mask);
 
 
+/** Sets \p priority on those positions of \p not enabled by \p mask. */
+static state_t policy_set_prio_with_mask_inverted(uint *dst_prio_list, uint dst_prio_list_count, uint priority, const cpu_set_t *mask);
+
+
 /** This function sets the priority 0 to \p prio_list to those positions indicated by \p mask. */
 static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_count, const cpu_set_t *mask);
 
@@ -1415,33 +1419,7 @@ state_t policy_end()
                    total_cpufreq_cost_us, calls_cpufreq, (float)total_cpufreq_cost_us/(float)calls_cpufreq);
 #endif
 
-    const metrics_t *cpuprio_api = metrics_get(API_ISST);
-    if (masters_info.my_master_rank >= 0 && cpuprio_api)
-    {
-        if (cpuprio_api->ok && use_cpuprio && mgt_cpufreq_prio_is_enabled())
-        {
-            verbose_master(POLICY_INFO, "Resetting priority list...");
-            if (state_ok(reset_priority_list_with_mask((uint *) cpuprio_api->current_list,
-                         cpuprio_api->devs_count, &lib_shared_region->node_mask)))
-            {
-                if (VERB_ON(POLICY_INFO))
-                {
-                    char buffer[SZ_BUFFER_EXTRA];
-                    mgt_cpuprio_data_tostr((cpuprio_t *) cpuprio_api->avail_list,
-                                           (uint *) cpuprio_api->current_list, buffer, SZ_BUFFER_EXTRA);
-
-                    verbose_master(POLICY_INFO, "CPUPRIO list of priorities \n %s", buffer);
-                }
-                if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
-                {
-                    verbose_master(POLICY_INFO, "%sERROR%s Setting CPU PRIO list.", COL_RED, COL_CLR);
-                }
-            } else {
-                verbose_master(POLICY_INFO, "%sERROR%s Resetting priority list: %s",
-                               COL_RED, COL_CLR, state_msg);
-            }
-        }
-    }
+    policy_reset_priority();
 
     preturn(polsyms_fun.end, c);
 }
@@ -2156,7 +2134,7 @@ static void policy_setup_priority()
 
         use_cpuprio = 1;
 
-        verbose_cpuprio_list(POLICY_INFO, user_cpuprio_list, user_cpuprio_list_count);
+        verbose_cpuprio_list(POLICY_INFO - 1, user_cpuprio_list, user_cpuprio_list_count);
 
         // Set user-provided list of priorities
         if (state_fail(policy_setup_priority_per_cpu(user_cpuprio_list,
@@ -2169,12 +2147,11 @@ static void policy_setup_priority()
         }
     } else if ((user_cpuprio_list = (uint *) envtoat(FLAG_PRIO_TASKS, NULL, &user_cpuprio_list_count, ID_UINT)) != NULL)
     {
-
         // The user provided a priority list for each task involved in the job.
 
         use_cpuprio = 1;
 
-        verbose_cpuprio_list(POLICY_INFO, user_cpuprio_list, user_cpuprio_list_count);
+        verbose_cpuprio_list(POLICY_INFO - 1, user_cpuprio_list, user_cpuprio_list_count);
 
         if (state_fail(policy_setup_priority_per_task(user_cpuprio_list,
                                                       user_cpuprio_list_count)))
@@ -2254,44 +2231,52 @@ static state_t policy_setup_priority_per_task(uint *setup_prio_list, uint setup_
         {
             for (int i = 0; i < lib_shared_region->num_processes; i++)
             {
+                const cpu_set_t *mask = (const cpu_set_t *) &sig_shared_region[i].cpu_mask;
+
                 int prio_list_idx = sig_shared_region[i].mpi_info.rank;
                 if (prio_list_idx < setup_prio_list_count)
                 {
                     uint prio = setup_prio_list[prio_list_idx];
-                    const cpu_set_t *mask = (const cpu_set_t *) &sig_shared_region[i].cpu_mask;
 
-                    verbose(0, "L. proc %d - rank %d - prio %u", i, prio_list_idx, prio);
-                    verbose_affinity_mask(0, (const cpu_set_t *) &sig_shared_region[i].cpu_mask, cpuprio_api->devs_count);
-
-                    if (state_ok(policy_set_prio_with_mask((uint *) cpuprio_api->current_list, cpuprio_api->devs_count, prio, mask)))
+                    if (state_fail(policy_set_prio_with_mask((uint *) cpuprio_api->current_list, cpuprio_api->devs_count, prio, mask)))
                     {
-                        if (VERB_ON(POLICY_INFO))
-                        {
-                            verbose_master(POLICY_INFO, "Setting user-provided CPU priorities...");
-                            mgt_cpufreq_prio_data_print((cpuprio_t *) cpuprio_api->avail_list,
-                                                        (uint *) cpuprio_api->current_list, verb_channel);
-                        }
-
-                        if (!mgt_cpufreq_prio_is_enabled())
-                        {
-                            // We enable priority system in the case it is not yet created.
-                            if (state_fail(mgt_cpufreq_prio_enable()))
-                            {
-                                return_msg(EAR_ERROR, Generr.api_uninitialized);
-                            }
-                        }
-
-                        if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
-                        {
-                            return_msg(EAR_ERROR, "Setting CPU PRIO list.");
-                        }
-
-                    } else {
+                        char err_msg[64];
+                        snprintf(err_msg, sizeof(err_msg), "Setting priority list for task %d (%s)", prio_list_idx, state_msg);
+                        return_msg(EAR_ERROR, err_msg);
+                    }
+                } else {
+                    // Set PRIO_SAME on CPUs of that rank not indexed by the priority list.
+                    if (state_fail(policy_set_prio_with_mask((uint *) cpuprio_api->current_list, cpuprio_api->devs_count, PRIO_SAME, mask)))
+                    {
                         char err_msg[64];
                         snprintf(err_msg, sizeof(err_msg), "Setting priority list for task %d (%s)", prio_list_idx, state_msg);
                         return_msg(EAR_ERROR, err_msg);
                     }
                 }
+            }
+
+            // Set to PRIO_SAME all CPUs not in node mask
+            policy_set_prio_with_mask_inverted((uint *) cpuprio_api->current_list, cpuprio_api->devs_count, PRIO_SAME, (const cpu_set_t *) &lib_shared_region->node_mask);
+
+            if (VERB_ON(POLICY_INFO - 1))
+            {
+                verbose_master(0, "%sPOLICY%s Setting CPU priorities...", COL_BLU, COL_CLR);
+                mgt_cpufreq_prio_data_print((cpuprio_t *) cpuprio_api->avail_list,
+                                            (uint *) cpuprio_api->current_list, verb_channel);
+            }
+
+            if (!mgt_cpufreq_prio_is_enabled())
+            {
+                // We enable priority system in the case it is not yet enabled.
+                if (state_fail(mgt_cpufreq_prio_enable()))
+                {
+                    return_msg(EAR_ERROR, Generr.api_uninitialized);
+                }
+            }
+
+            if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
+            {
+                return_msg(EAR_ERROR, "Setting CPU PRIO list.");
             }
         } else {
             // If we don't have an API, we won't set any priority configuration.
@@ -2349,6 +2334,57 @@ static state_t policy_set_prio_with_mask(uint *dst_prio_list, uint dst_prio_list
     }
 
     return EAR_SUCCESS;
+}
+
+
+static state_t policy_set_prio_with_mask_inverted(uint *dst_prio_list, uint dst_prio_list_count, uint priority, const cpu_set_t *mask)
+{
+    if (dst_prio_list && mask)
+    {
+        for (int i = 0; i < dst_prio_list_count; i++)
+        {
+            if (!CPU_ISSET(i, mask))
+            {
+                dst_prio_list[i] = priority;
+            }
+        }
+    } else {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t policy_reset_priority()
+{
+    const metrics_t *cpuprio_api = metrics_get(API_ISST);
+    if (masters_info.my_master_rank >= 0 && cpuprio_api)
+    {
+        if (cpuprio_api->ok && use_cpuprio && mgt_cpufreq_prio_is_enabled())
+        {
+            verbose_master(POLICY_INFO - 1, "Resetting priority list...");
+            if (state_ok(reset_priority_list_with_mask((uint *) cpuprio_api->current_list,
+                         cpuprio_api->devs_count, &lib_shared_region->node_mask)))
+            {
+                if (VERB_ON(POLICY_INFO))
+                {
+                    char buffer[SZ_BUFFER_EXTRA];
+                    mgt_cpuprio_data_tostr((cpuprio_t *) cpuprio_api->avail_list,
+                                           (uint *) cpuprio_api->current_list, buffer, SZ_BUFFER_EXTRA);
+
+                    verbose_master(POLICY_INFO, "CPUPRIO list of priorities \n %s", buffer);
+                }
+                if (state_fail(mgt_cpufreq_prio_set_current_list((uint *) cpuprio_api->current_list)))
+                {
+                    verbose_master(POLICY_INFO, "%sERROR%s Setting CPU PRIO list.", COL_RED, COL_CLR);
+                }
+            } else {
+                verbose_master(POLICY_INFO, "%sERROR%s Resetting priority list: %s",
+                               COL_RED, COL_CLR, state_msg);
+            }
+        }
+    }
 }
 
 
