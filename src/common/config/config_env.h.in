@@ -120,6 +120,7 @@
 
 #define FLAG_USE_PRIO                SCHED_PREFIX "EAR_USE_PRIO"           // Enables CPU priority system.
 #define FLAG_PRIO_CPUS               SCHED_PREFIX "EAR_PRIO_CPUS"          // A list of priorities for each CPU.
+#define FLAG_PRIO_TASKS              SCHED_PREFIX "EAR_PRIO_TASKS"         // A list of priorities for each task.
 
 
 /* Hardware info */

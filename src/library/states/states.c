@@ -690,7 +690,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             // Verbose loop signature
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures,
-                    ear_app_name, application.node_id, iterations, prev_cpufreq_khz, policy_cpufreq_khz, use_case);
+                                    ear_app_name, application.node_id, iterations,
+                                    prev_cpufreq_khz, policy_cpufreq_khz, use_case);
 
             break; // EVALUATING_LOCAL_SIGNATURE
 
