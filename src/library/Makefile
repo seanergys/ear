@@ -1,5 +1,5 @@
 # If USER_TEST is set to 1, any user can execute the hacks with the library.
-CFLAGS  = -fPIC -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -fPIC -O0 -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 
@@ -16,17 +16,13 @@ endif
 
 
 ifeq ($(FEAT_RESEARCH), 1)
-	CFLAGS += -DNEW_LB_EFF=1 \
-			  -DMPI_STATS=1 \
-			  -DNEW_MPI_STATS=1 \
+	CFLAGS += -DMPI_OPTIMIZED=1 \
 			  -DSINGLE_CONNECTION=0 \
-			  -DMPI_OPTIMIZED=1 \
 			  -DEAR_DEF_TIME_GUIDED=0
-	FEAT_EARL_LIGHT = 1
+	FEAT_EARL_LIGHT = 0
 else
 	CFLAGS += -DSINGLE_CONNECTION=1 \
 			  -DMPI_OPTIMIZED=0 \
-			  -DMPI_STATS=0 \
 			  -DEAR_DEF_TIME_GUIDED=0
 	FEAT_EARL_LIGHT = 0
 endif
@@ -92,7 +88,6 @@ core_OBJS = \
     tracer/tracer.o \
     dynais/dynais.a 
 
-#metrics/gpu.o \
 
 ifeq ($(FEAT_MPI_API), 1)
 mpix_OBJS = \

@@ -33,8 +33,6 @@
 #define TPI_DEBUG              4
 #define ENERGY_EFF_VERB        2
 
-
-#define DEF_USE_CPUPRIO        0
 #define DEF_READ_CUPTI_METRICS 0
 
 #if !SHOW_DEBUGS
@@ -119,6 +117,9 @@ static uint        node_energy_units;
 /* These vectors have position APP for application granularity and LOO for loop granularity */
 static int         num_packs = 0;
 static ull        *metrics_rapl[2];  // nJ (vec)
+#if MPI_OPTIMIZED
+static ull        *metrics_rapl_fine_monitor_start, *metrics_rapl_fine_monitor_end, *metrics_rapl_fine_monitor_diff;
+#endif
 static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
 static uint        rapl_size;
@@ -126,6 +127,7 @@ static llong       aux_time;
 static edata_t     aux_energy = NULL;
 static edata_t     metrics_ipmi[2] = { NULL, NULL};  // mJ
 static ulong       acum_ipmi[2];
+static double      total_acum_time = 0;
 static edata_t     aux_energy_stop = NULL;
 static llong       metrics_usecs[2]; // uS
 
@@ -200,6 +202,7 @@ static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
 #endif // USE_GPUS
 
+
 /* New metrics */
 static metrics_t         mgt_cpufreq;
 static metrics_t         mgt_imcfreq;
@@ -210,10 +213,9 @@ static metrics_t         met_energy;
 static metrics_t         met_flops;
 static metrics_t         met_cache;
 static metrics_t         met_cpi;
-static metrics_multi_t   mgt_cpuprio;
+static metrics_t         mgt_cpuprio;
 
-static uint        use_cpuprio = DEF_USE_CPUPRIO;
-#define EAR_USE_CPUPRIO "EAR_USE_CPUPRIO"
+
 #if USE_GPUS
 static metrics_gpus_t mgt_gpu;
 static metrics_gpus_t met_gpu;
@@ -246,15 +248,13 @@ extern timestamp init_last_phase, init_last_comp;
 extern uint policy_cpu_bound ;
 extern uint policy_mem_bound ;
 
-#if 0
-static state_t gpus_avail_freqs_tostr(uint gpu_cnt, const ulong **freq_lists, const uint *freq_list_lens, char *buffer, size_t buff_length);
-#endif
 
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total);
 
+
 /** This function is called before any API initialization. It's used to read envorironment
- * variables that enable/disable the load of some APIs. By now, these are CUPTI and CPUPRIO. */
+ * variables that enable/disable the load of some APIs. By now, these are CUPTI. */
 static void read_metrics_options();
 
 
@@ -285,6 +285,7 @@ const metrics_t *metrics_get(uint api)
         case MET_FLOPS:   return &met_flops;
         case MET_CACHE:   return &met_cache;
         case MET_CPI:     return &met_cpi;
+        case API_ISST:    return &mgt_cpuprio;
         default: return NULL;
     }
 }
@@ -382,7 +383,7 @@ static void metrics_static_init(topology_t *tp)
         gpu_load(eard);
     mgt_gpu_load(eard);
 #if USE_CUPTI
-    if (read_cupti_metrics){
+    if (read_cupti_metrics) {
       gpuproc_load(1);
     }
 #endif
@@ -394,6 +395,7 @@ static void metrics_static_init(topology_t *tp)
 #else
     frequency_init(1);
 #endif
+
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
@@ -405,14 +407,15 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_get_api(&met_cache.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
+
 #if USE_GPUS
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
-    #if USE_CUPTI
-    if (read_cupti_metrics){
-      gpuproc_get_api(&proc_gpu.api);
-    }
-    #endif
+#if USE_CUPTI
+        if (read_cupti_metrics) {
+            gpuproc_get_api(&proc_gpu.api);
+        }
+#endif
 #endif // USE_GPUS
 
     // Working
@@ -425,20 +428,17 @@ static void metrics_static_init(topology_t *tp)
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
-#if 0
-    if (!mgt_cpufreq_prio_is_enabled()){
-      sa(mgt_cpufreq_prio_enable());
-    }
-#endif
-    mgt_cpuprio.ok = ((mgt_cpuprio.api > API_DUMMY) && mgt_cpufreq_prio_is_enabled());
+
+    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
+
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
     met_gpu.ok     = (met_gpu.api     > API_DUMMY);
-    #if USE_CUPTI
+#if USE_CUPTI
     if (read_cupti_metrics){
-      proc_gpu.ok    = (proc_gpu.api    > API_DUMMY);
+        proc_gpu.ok = (proc_gpu.api   > API_DUMMY);
     }
-    #endif
+#endif
 #endif // USE_GPUS
 	debug("metrics_api ready");
 
@@ -453,15 +453,17 @@ static void metrics_static_init(topology_t *tp)
     sa(      cache_init(no_ctx));
     sa(        cpi_init(no_ctx));
     sa(mgt_cpuprio_init());
+
 #if USE_GPUS
     sa(    mgt_gpu_init(no_ctx));
     sa(        gpu_init(no_ctx));
-    #if USE_CUPTI
+#if USE_CUPTI
     if (read_cupti_metrics){
-      sa(    gpuproc_init(no_ctx));
+        sa(    gpuproc_init(no_ctx));
     }
-    #endif
+#endif
 #endif // USE_GPUS
+
 	debug("metrics_init ready");
 
     // Count
@@ -475,7 +477,7 @@ static void metrics_static_init(topology_t *tp)
     sa(    mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count    ));
     sa(        gpu_count_devices(no_ctx, &met_gpu.devs_count    ));
     #if USE_CUPTI
-    if (read_cupti_metrics){
+    if (read_cupti_metrics) {
       sa(    gpuproc_count_devices(no_ctx, &proc_gpu.devs_count   ));
       verbose_master(VERBOSE_CUPTI, "CUPTI devices %u", proc_gpu.devs_count);
     }
@@ -491,40 +493,25 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &mgt_imcfreq.avail_list,
                 &mgt_imcfreq.avail_count));
 
-    sa(mgt_cpuprio_data_alloc((cpuprio_t **)&mgt_cpuprio.avail_list, (uint **)&mgt_cpuprio.dev_list));
+    // Allocation is needed before requesting available and devices list
+    sa(mgt_cpuprio_data_alloc((cpuprio_t **) &mgt_cpuprio.avail_list, (uint **) &mgt_cpuprio.current_list));
+
     /* List of priorities */
-    sa(mgt_cpuprio_get_available_list((cpuprio_t *)mgt_cpuprio.avail_list));
+    sa(mgt_cpuprio_get_available_list((cpuprio_t *) mgt_cpuprio.avail_list));
+
     /* List of devices */
-    sa(mgt_cpuprio_get_current_list((uint *)mgt_cpuprio.dev_list));
+    sa(mgt_cpuprio_get_current_list((uint *) mgt_cpuprio.current_list));
 
-    sa(mgt_cpuprio_data_count((uint *)&mgt_cpuprio.avail_count, (uint *)&mgt_cpuprio.dev_count)); 
-    verbose_master(CPUPRIO_VERB, "CPUPRIO (OK ? %u): There are %u priorities and %u devices", mgt_cpuprio.ok, mgt_cpuprio.avail_count, mgt_cpuprio.dev_count);
-    mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-    verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+    sa(mgt_cpuprio_data_count((uint *) &mgt_cpuprio.avail_count, (uint *) &mgt_cpuprio.devs_count)); 
 
-    /* BEGIN TEST */
-#if CPUPRIO_TEST
-    if (use_cpuprio){
-        for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-        {
-            mgt_cpuprio.dev_list[dev_id] = mgt_cpuprio.avail_count - 1;
-        }
-        sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-        verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+    if (VERB_ON(CPUPRIO_VERB)) {
+        verbose_master(CPUPRIO_VERB, "[CPUPRIO] %s / %u priorities / %u devices.",
+                       mgt_cpuprio.ok ? "OK" : "DUMMY", mgt_cpuprio.avail_count, mgt_cpuprio.devs_count);
 
-        /* RESTORE */
-        for (uint dev_id = mgt_cpuprio.dev_count/2 ; dev_id < mgt_cpuprio.dev_count ; dev_id++)
-        {
-            mgt_cpuprio.dev_list[dev_id] = 0;
-        }
-        sa(mgt_cpufreq_prio_set_current_list((uint *)mgt_cpuprio.dev_list));
-        mgt_cpuprio_data_tostr((cpuprio_t *)mgt_cpuprio.avail_list, (uint *)mgt_cpuprio.dev_list, buffer, SZ_BUFFER_EXTRA);
-        verbose_master(CPUPRIO_VERB, "CPUPRIO list of priorities \n %s", buffer);
+        mgt_cpuprio_data_tostr((cpuprio_t *) mgt_cpuprio.avail_list, (uint *) mgt_cpuprio.current_list,
+                               buffer, SZ_BUFFER_EXTRA);
+        verbose_master(CPUPRIO_VERB, "CPUPRIO list of available priorities\n %s", buffer);
     }
-#endif
-    /* END TEST */
-
 
 #if USE_GPUS
     sa(mgt_gpu_freq_list(no_ctx,
@@ -634,6 +621,16 @@ static void cpufreq_my_avgcpufreq(ulong *nodecpuf, ulong *avgf)
 		total_cpus += lcpus;
 	}
 	*avgf = total/total_cpus;
+}
+
+static void cpufreq_process_avgcpufreq(uint proc, ulong *nodecpuf, ulong *avgf)
+{
+  cpu_set_t m;
+  ulong lavg = 0, lcpus = 0;
+
+  m = sig_shared_region[proc].cpu_mask;
+  pstate_freqtoavg(m, nodecpuf, met_cpufreq.devs_count, &lavg, &lcpus);
+  *avgf = lavg;
 }
 
 void set_null_dc_energy(edata_t e)
@@ -1107,7 +1104,8 @@ static int metrics_partial_stop(uint where)
   #endif
 
 	if (master) {
-		if (dispose && ((c_power<0) || (c_power>system_conf->max_sig_power))){
+    /* Error is manage later in this function */
+		if (dispose && ((c_power<=0) || (c_power>system_conf->max_sig_power))){
 			debug("dispose and c_power %lf\n",c_power);
 			debug("power %f energy %lu time %llu\n",c_power,c_energy,c_time);
 		}
@@ -1147,16 +1145,18 @@ static int metrics_partial_stop(uint where)
     aux_time=aux_time_stop;
 
     if (master) {
-		if (c_power < system_conf->max_sig_power) {
+		if ((c_power > system_conf->min_sig_power) && (c_power < system_conf->max_sig_power)) {
 			acum_ipmi[LOO] = c_energy;
 
 		} else {
+      /* If there is an error, power is computed based on power from CPu+GPU. Computed in 
+       * compute_signature_data */
 			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
                     COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
 			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
       estimate_power = 1;
 		}
-    /* Delay this accumulation to the job power computation */ 
+    /* Power error control: Delay this accumulation to the job power computation */ 
 		 //acum_ipmi[APP] += acum_ipmi[LOO];
 	}
 	/* Per process IO data */
@@ -1431,10 +1431,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
 		/* Power: Node, DRAM, PCK */
-		metrics->DC_power = 0;
-		if (!estimate_power && acum_ipmi[sign_app_loop_idx]){
+    /* If power is not estimated, we computed here, later otherwise */
+    metrics->DC_power = 0;
+    /* Loop power */
+		if (!estimate_power && acum_ipmi[sign_app_loop_idx] && (sign_app_loop_idx == LOO)){
 			metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (time_s * node_energy_units);
 		}
+    /* App power */
+    if (!estimate_power && acum_ipmi[sign_app_loop_idx] && (sign_app_loop_idx == APP)){
+			metrics->DC_power = (double) acum_ipmi[sign_app_loop_idx] / (total_acum_time * node_energy_units);
+    }
+
 
 		/* DRAM and PCK PENDING for Njobs */
 		metrics->PCK_power=0;
@@ -1478,6 +1485,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         }
 #endif
     if (!estimate_power){
+      /* Power error control: computing the ratio */
       dc_power_ratio += metrics->DC_power / (total_gpu_power + metrics->DRAM_power + metrics->PCK_power);
       dc_power_ratio_instances++;
     }
@@ -1488,6 +1496,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 		#else
     if (estimate_power){
+      /* Power error control: There was an error on power computation and we use an estimation */
       double current_ratio;
       if (dc_power_ratio_instances && dc_power_ratio){
         current_ratio = dc_power_ratio / (double)dc_power_ratio_instances;
@@ -1499,13 +1508,26 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     }
     #endif
 
+
+    /* Power error control: We don't accumulate if we are computing application metrics, not loop  metrics */
+    if (!lib_shared_region->global_stop_ready){
+      //acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
+      acum_ipmi[APP] += acum_ipmi[LOO];
+      total_acum_time += time_s;
+      verbose_master(2,"Accumulating %.2lu J to the application. Total energy %lu J acum_time %.2lf sec", acum_ipmi[LOO], acum_ipmi[APP] , total_acum_time);
+    }
+
+
 	} else {
         // Copies DC, DRAM, PCK, avg_f, avg_imc_f, GBS and TPI
 		copy_node_data(metrics, &lib_shared_region->node_signature);
 	}
 
+
 	/* Copying my info in the shared signature */
 	ssig_from_signature(&sig_shared_region[my_node_id].sig, metrics);
+  /* Computing avg_cpufreq in shared sig (new) */
+  cpufreq_process_avgcpufreq(my_node_id, lib_shared_region->avg_cpufreq, &sig_shared_region[my_node_id].sig.avg_f);
 
 	/* If I'm the master, I have to copy in the special section */
 	if (master) {
@@ -2115,8 +2137,6 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 	dst->L2_misses = L2;
 	dst->L3_misses = L3;
 
-  acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
-  verbose_master(2,"Accumulating %.2lf W to the application for %.2lf sec", master->DC_power, se->elapsed);
 }
 
 extern uint last_earl_phase_classification;
@@ -2229,6 +2249,56 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 }
 
 
+#if MPI_OPTIMIZED
+static int fd_csv_cpu;
+void metrics_start_cpupower()
+{
+  if (master) {
+    char filename[256];
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
+    energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_diff, &rapl_size);
+    energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_start);
+    snprintf(filename, sizeof(filename), "csv_cpu_power.%lu.%lu.%s.csv", application.job.id, application.job.step_id, application.node_id);
+    fd_csv_cpu = open(filename, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+    if (fd_csv_cpu < 0 ){
+      verbose_master(0,"Error opening csv_cpu_power.csv file (%s)", strerror(errno));
+      fd_csv_cpu = verb_channel;
+    }
+  }
+}
+
+void metrics_read_cpupower()
+{
+  if (master) {
+
+    char buffer[64], csv_str[256];
+    double total = 0, curr ;
+
+    energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_end);
+    energy_cpu_data_diff(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
+    energy_cpu_data_copy(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
+
+    sprintf(csv_str,"%lld;",timestamp_getconvert(TIME_USECS));
+
+    for (int p = 0; p < (num_packs*2) -1 ; p++) {
+      curr = (double)metrics_rapl_fine_monitor_diff[p]/200000000.0;
+      snprintf(buffer, sizeof(buffer), "%.2lf;", curr);
+      total += curr;
+      strcat( csv_str, buffer);
+    }
+
+    curr = (double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1]/200000000.0;
+    total += curr;
+    snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
+
+    strcat(csv_str, buffer);
+
+    write(fd_csv_cpu, csv_str, strlen(csv_str));
+  }
+}
+#endif // MPI_OPTIMIZED
+
 /** Compute the total node I/O data. */
 static state_t metrics_compute_total_io(io_data_t *total)
 {
@@ -2280,32 +2350,10 @@ static void read_metrics_options()
     /* We will get per-process cupti metrics */
     cuse_cupti = getenv(EAR_USE_CUPTI);
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
-    verbose_master(VERBOSE_CUPTI, "CUPTI metrics %s", (read_cupti_metrics?"ENABLED":"DISABLED"));
+    verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif
-    char *cuse_cpuprio = getenv(EAR_USE_CPUPRIO);
-    if (cuse_cpuprio != NULL) use_cpuprio = atoi(cuse_cpuprio);
-    verbose_master(2, "CPUPRIO utilization %s", (use_cpuprio? "Enabled" : "Disabled"));
-
-    if (use_cpuprio) {
-        uint cpuprio_list_count;
-        uint *cpuprio_list;
-
-        if ((cpuprio_list = (uint *) envtoat(CPUPRIO_LIST, NULL, &cpuprio_list_count, ID_UINT)) != NULL) {
-            if (VERB_ON(2)) {
-
-                verbosen_master(0, "CPUPRIO list read:");
-
-                int i;
-                for (i = 0; i < cpuprio_list_count - 1; i++) {
-                    verbosen_master(0, " %u", cpuprio_list[i]);
-                }
-
-                verbose_master(0, " %u", cpuprio_list[i]);
-            }
-        }
-    }
-
 }
+
 
 
 static state_t energy_lib_init(settings_conf_t *conf)
@@ -2351,9 +2399,4 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
 static void metrics_static_dispose()
 {
-#if 0
-    if (mgt_cpufreq_prio_is_enabled()){
-        mgt_cpufreq_prio_disable();
-    }
-#endif
 }

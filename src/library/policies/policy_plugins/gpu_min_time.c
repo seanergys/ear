@@ -28,7 +28,6 @@
 
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-//#include <library/metrics/gpu.h>
 #include <management/gpu/gpu.h>
 #include <metrics/gpu/gpu.h>
 #include <library/metrics/metrics.h>
@@ -54,6 +53,7 @@ static const ulong       **gpuf_list;
 static const uint         *gpuf_list_items;
 static	     ulong        *gfreqs;
 extern       gpu_state_t   last_gpu_state;
+extern       uint          gpu_ready;
 
 state_t policy_init(polctx_t *c)
 {
@@ -147,5 +147,23 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
 #endif
     return EAR_SUCCESS;
+}
+
+state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+  gpu_ready = EAR_POLICY_READY;
+  return EAR_SUCCESS;
+}
+
+state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
+{
+  gpu_ready = EAR_POLICY_READY;
+  return EAR_SUCCESS;
+}
+
+state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+  gpu_ready = EAR_POLICY_READY;
+  return EAR_SUCCESS;
 }
 

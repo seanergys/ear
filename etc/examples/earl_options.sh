@@ -52,6 +52,10 @@ export SLURM_EAR_LOADER_VERBOSE=
 export SLURM_EAR_GET_MPI_STATS=
 # Only for SLURM scheduler: Enables the verbosity of the SLURM plugin. Applies also to erun: 1..4
 export SLURM_COMP_VERBOSE=
+# Generate extra events during the execution of the Library
+export SLURM_REPORT_EARL_EVENTS=
+# Enables (default) the reporting of loop signatures.
+export SLURM_REPORT_EARL_LOOPS=
 
 # Policy options
 # Defines a default CPU frequency (in KHz)
@@ -91,6 +95,8 @@ export SLURM_EAR_TRY_TURBO=
 export SLURM_EAR_USE_ENERGY_MODELS=
 # Enables(1)/Disables(0) the utilization of MPI optimizations
 export SLURM_EAR_MPI_OPTIMIZATION=
+# Sets the minimum CPU frequency (in kHz) policies can set.
+export SLURM_EAR_MIN_CPUFREQ=
 
 
 # Tracing
@@ -99,4 +105,10 @@ export SLURM_EAR_TRACE_PATH=
 # Trace plugin to be used (.so file)
 export SLURM_EAR_TRACE_PLUGIN=
 
-
+# Other
+# Disables automatic Countdown loading
+export SLURM_EAR_DISABLE_CNTD=
+# Set a list of priorities for each CPU.
+export SLURM_EAR_CPUPRIO_LIST=
+# Enables the collection of CUPTI metrics
+export EAR_USE_CUPTI=

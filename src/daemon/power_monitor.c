@@ -79,6 +79,7 @@ extern uint report_eard ;
 extern report_id_t rid;
 extern state_t report_connection_status;
 
+
 /** These variables come from eard.c */
 extern topology_t node_desc;
 extern int eard_must_exit;
@@ -94,9 +95,11 @@ extern char nodename[MAX_PATH_SIZE];
 
 extern state_t report_connection_status;
 
+
 /* from eard_node_services */
 extern manages_apis_t *man;
 extern metrics_apis_t *met;
+
 
 state_t s;
 nm_t my_nm_id;
@@ -105,13 +108,16 @@ nm_data_t nm_init, nm_end, nm_diff, last_nm;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
+
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
 
+
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
 static cpufreq_t *freq_job2;
 static uint       freq_count;
+
 
 // This array has 1 entry per job supported
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
@@ -120,6 +126,7 @@ static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
 static energy_data_t c_energy;
+
 
 /* Powercap */
 static energy_data_t e_pmon_begin, e_pmon_end, e_pmon;
@@ -131,10 +138,11 @@ static periodic_metric_t current_sample;
 static double last_power_reported = 0;
 static ulong  last_node_power     = 0;
 
+
 static uint *powermon_restore_cpufreq_list;
 
-/************** RECOVERY HW SETTINGS - Only work under POWERMON_RESTORE *************/
 
+/************** RECOVERY HW SETTINGS - Only work under POWERMON_RESTORE *************/
 
 /** This function is called to restore any setting when the job \p app begins.
  * By now, this function restores the IMC frequency and the GPU frequency of the node.
@@ -200,8 +208,23 @@ static int is_job_running(char *tmp, int jobid)
   return is_running(status);
 }
 
-/***************** JOBS in NODE ***************************/
 
+/* This function is called to validate the jobs in the list that are still alive.
+ * Only usable in SLURM systems. Deactivated for now. */
+static void check_status_of_jobs(job_id current);
+
+
+/** This function fills attributes governor and current_freq of \p powermon_app with the
+ * current values of CPU 0. The goal is to have an errorless function to be used on cases
+ * we need a simple power monitor use case. */
+static state_t save_global_cpu_settings(powermon_app_t *powermon_app);
+
+
+/** This function restores governor and CPU settings to all CPUs in the node. */
+static state_t restore_global_cpu_settings(powermon_app_t *powermon_app);
+
+
+/***************** JOBS in NODE ***************************/
 
 void init_jobs_in_node()
 {
@@ -340,79 +363,84 @@ void print_contexts_status() {
 #endif
 
 
-int mark_contexts_to_finish_by_pid() {
-  int i = 0, found_contexts = 0;
-  char pid_file[SHORT_NAME];
-  struct stat tmp;
+int mark_contexts_to_finish_by_pid()
+{
+    int i = 0, found_contexts = 0;
+    char pid_file[SHORT_NAME];
+    struct stat tmp;
 
-  debug("marking_contexts_to_finish by pid");
+    debug("marking_contexts_to_finish by pid");
 
-  for (i = 0; i <= max_context_created; i++) {
-    if (current_ear_app[i] != NULL) {
-		if (current_ear_app[i]->master_pid == 0) continue;
+    for (i = 0; i <= max_context_created; i++) {
 
-		sprintf(pid_file, "/proc/%d", current_ear_app[i]->master_pid);
+        if (current_ear_app[i] != NULL) {
 
-		if (stat(pid_file, &tmp)) {
+            if (current_ear_app[i]->master_pid == 0) continue;
 
-            /*
-            state_t lock_st;
-            if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
-                error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
-                return found_contexts;
+            sprintf(pid_file, "/proc/%d", current_ear_app[i]->master_pid);
+
+            if (stat(pid_file, &tmp)) {
+
+                state_t lock_st;
+                if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
+                    error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
+                    return found_contexts;
+                }
+
+                current_ear_app[i]->state = APP_FINISHED;
+
+                ear_unlock(&current_ear_app[i]->powermon_app_mutex);
+
+                found_contexts++;
             }
-            */
-			current_ear_app[i]->state = APP_FINISHED; // TODO: Thread-save here?
-
-            // ear_unlock(&current_ear_app[i]->powermon_app_mutex);
-
-			found_contexts++;
-		}
+        }
     }
-  }
 
-  return found_contexts;
+    return found_contexts;
 }
 
 
 int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
 
-  if (step_id != BATCH_STEP) return 0; // only batch steps need to check this
+    if (step_id != BATCH_STEP) return 0; // only batch steps need to check this
 
-  int i = 0, found_contexts = 0;
+    int i = 0, found_contexts = 0;
 
-  debug("marking_contexts_to_finish %lu %lu", id, step_id);
+    debug("marking_contexts_to_finish %lu %lu", id, step_id);
 
-  for (i = 0; i <= max_context_created; i++) {
+    for (i = 0; i <= max_context_created; i++) {
 
-    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id)) {
+        if (current_ear_app[i] != NULL)
+        {
+            state_t lock_st;
+            if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
+                error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
+                return found_contexts;
+            }
 
-        /*
-        state_t lock_st;
-        if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
-            error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
-            return found_contexts;
+            if (current_ear_app[i]->app.job.id == id)
+            {
+                current_ear_app[i]->state = APP_FINISHED;
+
+                found_contexts++;
+            }
+
+            ear_unlock(&current_ear_app[i]->powermon_app_mutex);
         }
-        */
-
-		current_ear_app[i]->state = APP_FINISHED; // TODO: Thread-save here?
-
-        // ear_unlock(&current_ear_app[i]->powermon_app_mutex);
-
-		found_contexts++;
     }
-  }
 
-  return found_contexts;
+    return found_contexts;
 }
 
 
 void finish_pending_contexts(ehandler_t *eh)
 {
-    int i;
-    for (i = 0; i <= max_context_created; i++) {
-        if ((current_ear_app[i] != NULL) && (current_ear_app[i]->state == APP_FINISHED)) {
-            verbose(VJOBPMON, "Finishing the %lu/%lu context...", current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id);
+    for (int i = 0; i <= max_context_created; i++) {
+        if ((current_ear_app[i] != NULL) && (current_ear_app[i]->state == APP_FINISHED))
+        {
+            verbose(VJOBPMON, "Finishing the %lu/%lu context...",
+                    current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id);
+
             powermon_end_job(eh, current_ear_app[i]->app.job.id, current_ear_app[i]->app.job.step_id, 0);
         } 
     }
@@ -420,20 +448,20 @@ void finish_pending_contexts(ehandler_t *eh)
 
 
 int find_context_for_job(job_id id, job_id sid) {
-  int i = 0, pos = -1;
-  debug("find_context_for_job %lu %lu", id, sid);
-  while ((i <= max_context_created) && (pos < 0)) {
-    if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id) &&
-      (current_ear_app[i]->app.job.step_id == sid)) {
-      pos = i;
-    } else i++;
-  }
-  if (pos >= 0) {
-    debug("find_context_for_job %lu,%lu found at pos %d", id, sid, pos);
-  } else {
-    debug("find_context_for_job %lu,%lu not found", id, sid);
-  }
-  return pos;
+    int i = 0, pos = -1;
+    debug("find_context_for_job %lu %lu", id, sid);
+    while ((i <= max_context_created) && (pos < 0)) {
+        if ((current_ear_app[i] != NULL) && (current_ear_app[i]->app.job.id == id) &&
+                (current_ear_app[i]->app.job.step_id == sid)) {
+            pos = i;
+        } else i++;
+    }
+    if (pos >= 0) {
+        debug("find_context_for_job %lu,%lu found at pos %d", id, sid, pos);
+    } else {
+        debug("find_context_for_job %lu,%lu not found", id, sid);
+    }
+    return pos;
 }
 
 
@@ -701,6 +729,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
 /****************** END CONTEXT MANAGEMENT ********************/
 
+
 void create_job_area(uint ID)
 {
 	int ret;
@@ -865,7 +894,7 @@ void powermon_new_configuration()
                 pmapp->resched->force_rescheduling = 1; // TODO: Thread-save here.
             }
 
-            ear_unlock(&pmapp->powermon_app_mutex);
+            // ear_unlock(&pmapp->powermon_app_mutex);
         }
     }
 }
@@ -1201,7 +1230,7 @@ policy_conf_t per_job_conf;
 policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
                                  energy_tag_t *my_tag, application_t *appID)
 {
-    policy_conf_t *my_policy;
+    policy_conf_t *my_policy = NULL;
 
     if (appID == NULL) {
         error("configure_context: NULL application provided, setting default values");
@@ -1333,18 +1362,8 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
 
     if ((!appID->is_mpi) && (!my_cluster_conf.eard.force_frequencies)) {
 
-        /*
-        state_t lock_st;
-        if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-            error("Locking context %lu/%lu configuring context: %s",
-                  pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-            return;
-        }
-        */
 
         pmapp->policy_freq = 0;
-
-        // ear_unlock(&pmapp->powermon_app_mutex);
 
         my_policy->p_state = frequency_closest_pstate(frequency_get_cpu_freq(0));
 
@@ -1352,29 +1371,21 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
 
     } else {
         /* We have to force the frequency */
-        ulong f;
-        f = frequency_pstate_to_freq(my_policy->p_state);
+        ulong f = frequency_pstate_to_freq(my_policy->p_state);
+
+#if !POWERMON_RESTORE
         cpu_set_t not_in_jobs_mask;
         powermon_update_node_mask(&in_jobs_mask);
+
         cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
 
         uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
         uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
         verbose(VCONF, "CPUs used %u. CPUs free %u", cpus_used, cpus_free);
-
-        /*
-        state_t lock_st;
-        if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-            error("Locking context %lu/%lu configuring context: %s",
-                  pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-            return;
-        }
-        */
+#endif
 
         /* New, to be used in new function */
         pmapp->policy_freq = f;
-
-        // ear_unlock(&pmapp->powermon_app_mutex);
 
 #if !POWERMON_RESTORE
         frequency_set_userspace_governor_all_cpus();
@@ -1463,7 +1474,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
     }
 
     pmapp = current_ear_app[cc];
-if (pmapp) {
+    if (pmapp) {
         state_t lock_st;
         if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
             error("Locking context %lu/%lu updating the number of local ids: %s",
@@ -1587,7 +1598,7 @@ void powermon_new_task(new_task_req_t *newtask)
 
     verbose(VJOBPMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
 
-    if (pmapp->app.job.step_id != (job_id) BATCH_STEP && pmapp->policy_freq) { // "As EARD can force the CPU frequency"
+    if (/* pmapp->app.job.step_id != (job_id) BATCH_STEP && */ pmapp->policy_freq) { // "As EARD can force the CPU frequency"
 
         /* Storing current governor (The previous governor of the powermon
          * app will be the current governor of the first CPU of the last task arrived) */
@@ -1628,26 +1639,6 @@ void powermon_new_task(new_task_req_t *newtask)
  *   JOB PART
  *
  */
-
-
-/* This function is called to validate the jobs in the list that are still alive. */
-static void check_status_of_jobs(job_id current)
-{
-    return; // ??
-    powermon_app_t *pmapp; 
-    for (uint cc = 1; cc <= max_context_created; cc++) {
-        if (current_ear_app[cc] != NULL) {
-            pmapp = current_ear_app[cc];
-            verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
-            /* No need to check the new one :) */
-            if (pmapp->app.job.id != current){
-                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
-                    verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
-                }
-            }
-        }
-    }
-}
 
 
 /* This function is called by dynamic_configuration thread when a new_job command arrives.
@@ -1848,8 +1839,6 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     /* We set ccontex to the specific one */
     verbose(VJOBPMON_BASIC, "%spowermon end job (%lu, %lu)%s",COL_BLU, pmapp->app.job.id, pmapp->app.job.step_id,COL_CLR);
 
-    // while (pthread_mutex_trylock(&app_lock)); // TODO: Remove
-
     uint ID = create_ID(jid, sid);
 
     job_end_powermon_app(pmapp, eh);
@@ -1887,13 +1876,16 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     end_context(curr_ctx);
 
-    if (powermon_is_idle()) { 
-        powercap_run_to_idle();
+    if (summary.state != APP_FINISHED)
+    {
+        if (powermon_is_idle()) { 
+            powercap_run_to_idle();
 
-        /* summary is a copy of the last context */
-        set_default_powermon_end(&summary, 1);
+            /* summary is a copy of the last context */
+            set_default_powermon_end(&summary, 1);
 
-    } else set_default_powermon_end(&summary, 0);
+        } else set_default_powermon_end(&summary, 0);
+    }
 
     verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
 
@@ -2060,7 +2052,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
     ulong num_jobs;
     ulong time_consumed;
     double my_dc_power;
-    job_context_t *alloc;
+    job_context_t *alloc = NULL;
 
     time_consumed = (ulong) difftime(last_pmon->end, last_pmon->begin);
 
@@ -2742,7 +2734,22 @@ void powermon_report_event(uint event_type, llong value)
 
 uint powermon_is_idle()
 {
-    return (max_context_created == 0); // if only the idle context exists
+    int contexts_created = 0;
+    int contexts_created_finished = 0;
+
+    for (int i = 0; i <= max_context_created; i++)
+    {
+        powermon_app_t *pmapp = current_ear_app[i];
+        if (pmapp)
+        {
+            contexts_created++;
+            if (pmapp->state == APP_FINISHED)
+            {
+                contexts_created_finished++;
+            }
+        }
+    }
+    return (!max_context_created || contexts_created_finished == contexts_created);
 }
 
 
@@ -2799,151 +2806,150 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 {
 #if POWERMON_RESTORE
 
-  /* Two scenarios are possible for CPU freq:
-   * 1) End job: Set idle gov and freq
-   * 2) No end job : if prev set --> restore
-   */
+    /* Two scenarios are possible for CPU freq:
+     * 1) End job: Set idle gov and freq
+     * 2) No end job : if prev set --> restore
+     */
 
-  uint change_gov = 0;
-  uint rest_pstate;
+    uint change_gov = 0;
+    uint rest_pstate;
 
-  /* Going to idle: Reset CPU freq. */
-  if (idle) mgt_cpufreq_reset(no_ctx);
+    /* Going to idle: Reset CPU freq. */
+    if (idle) mgt_cpufreq_reset(no_ctx);
 
-  char *cgov = app->governor.name; // Governor before job had started.
-  uint gov;
+    char *cgov = app->governor.name; // Governor before job had started.
+    uint gov;
 
-  if (app->app.job.step_id != (job_id) BATCH_STEP) {
-    if (app->is_job) { // End of a job
+    // if (app->app.job.step_id != (job_id) BATCH_STEP) {
+        if (app->is_job) { // End of a job
 
-      if (strcmp(my_node_conf->idle_governor, "default") != 0) {
+            if (strcmp(my_node_conf->idle_governor, "default") != 0) {
 
-        /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
-        cgov        = my_node_conf->idle_governor;
-        rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
+                /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
+                cgov        = my_node_conf->idle_governor;
+                rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
 
-      } else {
-        /* We'll restore the P-State we found before job had started. */
-        mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
-      }
+            } else {
+                /* We'll restore the P-State we found before job had started. */
+                mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+            }
 
-      /* --- Setting governor --- */
+            /* --- Setting governor --- */
 
-      governor_toint(cgov, &gov);
+            governor_toint(cgov, &gov);
 
-      if (idle) {
+            if (idle) {
 
-        verbose(VCONF, "(Idle) Restoring all the node CPUs to governor `%s`...", cgov);
+                verbose(VCONF, "(Idle) Restoring all the node CPUs to governor `%s`...", cgov);
 
-        mgt_cpufreq_governor_set(no_ctx, gov);
+                mgt_cpufreq_governor_set(no_ctx, gov);
 
-      } else {
+            } else {
 
-        verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
-                app->app.job.id, app->app.job.step_id, cgov);
-        verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+                verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
+                        app->app.job.id, app->app.job.step_id, cgov);
+                verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
-        mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
-      }
+                mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+            }
 
-      if (strcmp(cgov, "userspace") == 0) {
-        change_gov = 1;
-      }
+            if (strcmp(cgov, "userspace") == 0) {
+                change_gov = 1;
+            }
 
-      /* ------------------------ */
+            /* ------------------------ */
 
-    } else if (app->policy_freq) { // Not the end of a job but EARD set a frequency
+        } else if (app->policy_freq) { // Not the end of a job but EARD set a frequency
 
-      /* --- Setting governor --- */
+            /* --- Setting governor --- */
 
-      governor_toint(cgov, &gov);
+            governor_toint(cgov, &gov);
 
-      verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
-              app->app.job.id, app->app.job.step_id, cgov);
-      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+            verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
+                    app->app.job.id, app->app.job.step_id, cgov);
+            verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
 
-      mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+            mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
 
-      if (strcmp(cgov, "userspace") == 0) change_gov = 1;
+            if (strcmp(cgov, "userspace") == 0) change_gov = 1;
 
-      /* ------------------------ */
+            /* ------------------------ */
 
-      /* We'll restore the P-State we found before job had started. */
-      mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+            /* We'll restore the P-State we found before job had started. */
+            mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
 
-    }
-
-    /* If the governor restored is `userspace`, we must manually set a CPU freq. */
-    if (change_gov) {
-
-      if (idle) {
-
-        verbose(VCONF, "(Idle) Restoring to all CPUs pstate %u all_cpus", rest_pstate);
-
-        mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
-
-      } else {
-
-        verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
-                app->app.job.id, app->app.job.step_id, rest_pstate);
-        verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
-
-        fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
-                          ps_nothing, powermon_restore_cpufreq_list);
-
-        mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
-      }
-    }
-
-    /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
-    if (mgt_cpuprio_is_enabled()) {
-        for (int i = 0; i < man->pri.devs_count; i++) {
-            // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
-            app->prio_idx_list[i] = (CPU_ISSET(i, &app->plug_mask)) ? app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
         }
 
-        if (VERB_ON(VPMON_DEBUG)) {
-            verbose(VPMON_DEBUG, "Restoring priority list...");
-            mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, app->prio_idx_list, verb_channel);    
-        }
-        if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
-            error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
-        }
+        /* If the governor restored is `userspace`, we must manually set a CPU freq. */
+        if (change_gov) {
 
-        if (idle) {
-            verbose(VPMON_DEBUG, "Disabling priority system...");
-            if (state_fail(mgt_cpuprio_disable())) {
-                error("Disabling priority system.");
+            if (idle) {
+
+                verbose(VCONF, "(Idle) Restoring to all CPUs pstate %u all_cpus", rest_pstate);
+
+                mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
+
+            } else {
+
+                verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
+                        app->app.job.id, app->app.job.step_id, rest_pstate);
+                verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+
+                fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
+                        ps_nothing, powermon_restore_cpufreq_list);
+
+                mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
             }
         }
-    }
-  }
+
+        /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
+        if (mgt_cpuprio_is_enabled()) {
+            for (int i = 0; i < man->pri.devs_count; i++) {
+                // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
+                app->prio_idx_list[i] = (CPU_ISSET(i, &app->plug_mask)) ? app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
+            }
+
+            if (VERB_ON(VPMON_DEBUG)) {
+                verbose(VPMON_DEBUG, "Restoring priority list...");
+                mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, app->prio_idx_list, verb_channel);    
+            }
+            if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
+                error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
+            }
+
+            if (idle) {
+                verbose(VPMON_DEBUG, "Disabling priority system...");
+                if (state_fail(mgt_cpuprio_disable())) {
+                    error("Disabling priority system.");
+                }
+            }
+        }
+    // }
 
 #if USE_GPUS
-  /* GPUs */
-  if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
-    ulong idle_gpu_freq;
-    /* We assume all the gpus are the same */
-    gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
-    gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
-  }
+    /* GPUs */
+    if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+        ulong idle_gpu_freq;
+        /* We assume all the gpus are the same */
+        gpu_mgr_get_min(0, &idle_gpu_freq);
+        verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+        gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+    }
 #endif
 
-  if (idle) {
-    /* IMC freq : It's already done at init, but it's included here for simplicity*/
-    verbose(VCONF, "Restoring IMC freq");
-    if (node_desc.vendor == VENDOR_INTEL) {
-      mgt_imcfreq_set_auto(no_ctx);
-    } else if (node_desc.vendor == VENDOR_AMD) {
-      mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+    if (idle) {
+        /* IMC freq : It's already done at init, but it's included here for simplicity*/
+        verbose(VCONF, "Restoring IMC freq");
+        if (node_desc.vendor == VENDOR_INTEL) {
+            mgt_imcfreq_set_auto(no_ctx);
+        } else if (node_desc.vendor == VENDOR_AMD) {
+            mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+        }
     }
-  }
-#endif
+#endif // POWERMON_RESTORE
 }
 
 
-// TODO: Thread-save here.
 static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set_t *mask)
 {
     if (powermon_app != NULL && mask != NULL) {
@@ -2982,4 +2988,163 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
     } else {
         return_msg(EAR_ERROR, Generr.input_null);
     }
+}
+
+
+/* This function is called to validate the jobs in the list that are still alive.
+ * Only usable in SLURM systems. */
+static void check_status_of_jobs(job_id current)
+{
+    return; // We deactivate this function because it was designed to make hard testing.
+    powermon_app_t *pmapp; 
+    for (uint cc = 1; cc <= max_context_created; cc++) {
+        if (current_ear_app[cc] != NULL) {
+            pmapp = current_ear_app[cc];
+            verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
+            /* No need to check the new one :) */
+            if (pmapp->app.job.id != current){
+                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
+                    verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
+                }
+            }
+        }
+    }
+}
+
+
+static state_t save_global_cpu_settings(powermon_app_t *powermon_app)
+{
+    if (powermon_app)
+    {
+        // Saving the governor found at CPU 0
+
+        powermon_app->governor.max_f = 0LU;
+        powermon_app->governor.min_f = 0LU;
+
+        sprintf(powermon_app->governor.name, "%s", Goverstr.other);
+
+        uint governor_id;
+        if (state_ok(mgt_cpufreq_get_governor(no_ctx, &governor_id)))
+        {
+            mgt_governor_tostr(governor_id, powermon_app->governor.name);
+
+            powermon_app->governor.max_f = frequency_pstate_to_freq(0);
+            powermon_app->governor.min_f = frequency_pstate_to_freq(man->cpu.list1_count - 1);
+        }
+
+        // Saving the frequency of CPU 0
+        powermon_app->current_freq = frequency_get_cpu_freq(0);
+    } else
+    {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
+{
+    if (powermon_app)
+    {
+        // Saving the governor found at CPU 0
+
+        uint change_gov = 0;
+        uint rest_pstate;
+
+        /* Going to idle: Reset CPU freq. */
+        if (powermon_is_idle()) mgt_cpufreq_reset(no_ctx);
+
+        char *cgov = powermon_app->governor.name; // Governor before job had started.
+        uint gov_id;
+
+        if (powermon_app->is_job || powermon_app->policy_freq) { 
+            // End of a job or Not the end of a job but EARD set a frequency
+
+            if (powermon_app->is_job && strcmp(my_node_conf->idle_governor, "default") != 0) {
+
+                /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
+                cgov        = my_node_conf->idle_governor;
+                rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
+
+            } else {
+                /* We'll restore the P-State we found before job had started. */
+                mgt_cpufreq_get_index(no_ctx, powermon_app->current_freq, &rest_pstate, 1);
+            }
+
+            /* --- Setting governor --- */
+
+            governor_toint(cgov, &gov_id);
+
+            verbose(VCONF, "Restoring all the node CPUs to governor `%s`...", cgov);
+
+            mgt_cpufreq_governor_set(no_ctx, gov_id);
+
+            if (strcmp(cgov, "userspace") == 0) {
+                change_gov = 1;
+            }
+
+            /* ------------------------ */
+
+        }
+
+        /* If the governor restored is `userspace`, we must manually set a CPU freq. */
+        if (change_gov) {
+
+            verbose(VCONF, "Restoring to all CPUs pstate %u...", rest_pstate);
+
+            mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
+
+        }
+
+        /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
+        if (mgt_cpuprio_is_enabled()) {
+            for (int i = 0; i < man->pri.devs_count; i++) {
+                // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
+                powermon_app->prio_idx_list[i] = (CPU_ISSET(i, &powermon_app->plug_mask)) ? powermon_app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
+            }
+
+            if (VERB_ON(VPMON_DEBUG)) {
+                verbose(VPMON_DEBUG, "Restoring priority list...");
+                mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, powermon_app->prio_idx_list, verb_channel);    
+            }
+
+            if (state_fail(mgt_cpuprio_set_current_list(powermon_app->prio_idx_list))) {
+                error("Restoring the priority list for job %lu/%lu.", powermon_app->app.job.id, powermon_app->app.job.step_id);
+            }
+
+            if (powermon_is_idle()) {
+                verbose(VPMON_DEBUG, "Disabling priority system...");
+                if (state_fail(mgt_cpuprio_disable())) {
+                    error("Disabling priority system.");
+                }
+            }
+        }
+
+#if USE_GPUS
+        /* GPUs */
+        if (powermon_is_idle() && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+            ulong idle_gpu_freq;
+            /* We assume all the gpus are the same */
+            gpu_mgr_get_min(0, &idle_gpu_freq);
+            verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float) idle_gpu_freq / 1000000.0);
+            gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+        }
+#endif
+
+        if (powermon_is_idle()) {
+            /* IMC freq : It's already done at init, but it's included here for simplicity*/
+            verbose(VCONF, "Restoring IMC freq");
+            if (node_desc.vendor == VENDOR_INTEL) {
+                mgt_imcfreq_set_auto(no_ctx);
+            } else if (node_desc.vendor == VENDOR_AMD) {
+                mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+            }
+        }
+    } else
+    {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+
+    return EAR_SUCCESS;
 }

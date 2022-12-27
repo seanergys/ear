@@ -4,6 +4,7 @@ m4_include([m4/ax_architectures.m4])
 m4_include([m4/ax_features.m4])
 m4_include([m4/ax_defaults.m4])
 m4_include([m4/ac_freeipmi.m4])
+m4_include([m4/ac_redfish.m4])
 m4_include([m4/ac_likwid.m4])
 m4_include([m4/ac_oneapi.m4])
 m4_include([m4/ac_pgsql.m4])
@@ -48,6 +49,8 @@ X_AC_FREEIPMI
 X_AC_GSL
 X_AC_PGSQL
 X_AC_MYSQL
+X_AC_ONEAPI
+X_AC_REDFISH
 X_AC_SLURM
 X_AC_OAR
 X_AC_PBS

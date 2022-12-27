@@ -25,9 +25,6 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/metrics/metrics.h>
-#if USE_GPUS
-#include <library/metrics/gpu.h>
-#endif
 
 extern const char     *polsyms_nam[];
 state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)

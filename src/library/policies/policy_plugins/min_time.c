@@ -39,7 +39,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/gpu.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/gpu_support.h>
@@ -47,6 +46,18 @@
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/generic.h>
+
+#define MASTER (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
+
+#ifdef EARL_RESEARCH
+extern unsigned long ext_def_freq;
+#define FREQ_DEF(f) (!ext_def_freq?f:ext_def_freq)
+#else
+#define FREQ_DEF(f) f
+#endif
+
+
 
 /*  IMC management */
 extern uint dyn_unc;
@@ -307,11 +318,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     ulong curr_freq;
     ulong curr_pstate, def_freq, def_pstate;
 
-    double sig_vpi, node_sig_vpi, max_vpi, lvpi; // master, node, max, local
-    uint local_process_with_high_vpi;
     sig_ext_t *se;
 
-    uint cbound, mbound, turbo_set = 0;
+    uint cbound, turbo_set = 0; // , mbound
 
     ulong curr_imc_freq;
     uint eUFS = dyn_unc;
@@ -426,7 +435,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         /* Computd in policy */
         cbound = policy_cpu_bound;
-        mbound = policy_mem_bound;
+        // mbound = policy_mem_bound; - not used.
         debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
@@ -465,9 +474,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3,"CPI %.2f TPI %.2lf/%.2lf GBS %.2lf/%.2lf Power %.2lf/%.2lf",
                         my_app->CPI, ltpi, my_app->TPI, lgbs, my_app->GBS, lpower, my_app->DC_power);
 
-
+                #if 0
                 double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
                             percs_mpi[max_mpi], percs_mpi[i])) * cbound * (1 - mbound) * critical_path[i];
+                #endif
+                double factor = ear_math_exp(-5 * ear_math_scale(percs_mpi[min_mpi],
+                            percs_mpi[max_mpi], percs_mpi[i])) * critical_path[i];
                 if (factor < 0.01) {
                     factor = 0.0;
                 }
@@ -480,6 +492,15 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
                 compute_cpu_freq_min_time(my_app, min_pstate, time_ref, local_eff_gain, curr_pstate,
                         best_pstate, best_freq, def_freq, &new_freq[i]);
+                if (critical_path[i]){
+                  new_freq[i] = frequency_pstate_to_freq(min_pstate);
+                }
+                  
+                if (freq_per_core){
+                  verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
+                  sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
+                  my_node_mpi_calls[i].perc_mpi, local_eff_gain);
+                }
                 if (use_turbo_for_cp) {
                     debug("Try to boost: freq per core ? %u already using turbo ? %u min_mpi ? %u",
                             freq_per_core, c->use_turbo, min_mpi);
@@ -796,9 +817,6 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
         double mean, sd, mag;
         if (state_ok(mpi_support_evaluate_lb(my_node_mpi_calls, num_processes, percs_mpi,
                         &mean, &sd, &mag, &unbalance))) {
-            debug("%sNode load unbalance%s: LB_TH %lf mean %lf"
-                    " standard deviation %lf magnitude %lf unbalance ? %u",
-                    COL_MGT, COL_CLR, LB_TH, mean, sd, mag, unbalance);
             /*  Check whether application has changed from unbalanced to balanced and viceversa */
             if (unbalance != signature_is_unbalance) {
                 if (!unbalance) {
@@ -979,8 +997,13 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
     }
 
 #if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
+    if (gpus.io_settings != NULL){
+      return gpus.io_settings(c, my_sig, freqs);
+    }else{
+      gpu_ready = EAR_POLICY_READY;
+    }
     return EAR_SUCCESS;
+
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -1014,8 +1037,13 @@ state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t
     }
 
 #if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
+    if (gpus.busy_wait_settings != NULL){
+      return gpus.busy_wait_settings(c, my_sig, freqs);
+    }else{
+      gpu_ready = EAR_POLICY_READY;
+    }
     return EAR_SUCCESS;
+
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif
@@ -1023,6 +1051,41 @@ state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t
 
     return EAR_SUCCESS;
 }
+
+state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+    if (c == NULL) return EAR_ERROR;
+    verbose_master(2,"%sCPU-GPU  phase%s",COL_BLU,COL_CLR);
+    cpu_ready = EAR_POLICY_READY;
+    ulong def_freq = FREQ_DEF(c->app->def_freq);
+    uint def_pstate = frequency_closest_pstate(def_freq);
+    for (uint i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(def_pstate);
+    memcpy(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,MAX_CPUS_SUPPORTED*sizeof(ulong));
+    if (dyn_unc){
+        for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+            freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_pstate[sock_id];
+            freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_pstate[sock_id];
+        }
+        memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
+    }
+#if USE_GPUS
+    if (gpus.cpu_gpu_settings != NULL){
+      return gpus.cpu_gpu_settings(c, my_sig, freqs);
+    }else{
+      /* GPU mem is pending */
+      for (uint i = 0; i < c->num_gpus; i++) {
+          freqs->gpu_freq[i] = min_time_def_freqs.gpu_freq[i];
+      }
+      gpu_ready = EAR_POLICY_READY;
+    }
+    return EAR_SUCCESS;
+#else
+    gpu_ready = EAR_POLICY_READY;
+#endif
+
+    return EAR_SUCCESS;
+}
+
 
 state_t policy_restore_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {

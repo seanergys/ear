@@ -41,7 +41,7 @@ uint num_cpus_in_mask(cpu_set_t *my_mask)
     }
     return lcpus;
     */
-    if (my_mask) {
+    if (my_mask != NULL) {
         return CPU_COUNT(my_mask);
     } else {
         return (uint) -1;
@@ -125,7 +125,7 @@ void print_affinity_mask(topology_t *topo)
 }
 
 
-state_t verbose_affinity_mask(int verb_lvl, cpu_set_t *mask, uint cpus)
+state_t verbose_affinity_mask(int verb_lvl, const cpu_set_t *mask, uint cpus)
 {
     if (mask) {
 
@@ -150,13 +150,13 @@ state_t verbose_affinity_mask(int verb_lvl, cpu_set_t *mask, uint cpus)
 }
 
 
-state_t is_affinity_set(topology_t *topo,int pid,int *is_set, cpu_set_t *my_mask)
+state_t is_affinity_set(topology_t *topo, int pid, int *is_set, cpu_set_t *my_mask)
 {
 	cpu_set_t mask;
 	*is_set=0;
 	CPU_ZERO(&mask);
 	CPU_ZERO(my_mask);
-	if (sched_getaffinity(pid,sizeof(cpu_set_t), &mask) == -1) return EAR_ERROR;
+	if (sched_getaffinity(pid, sizeof(cpu_set_t), &mask) == -1) return EAR_ERROR;
 	memcpy(my_mask,&mask,sizeof(cpu_set_t));
 	int i;
 	for (i = 0; i < topo->cpu_count; i++) {
@@ -168,7 +168,8 @@ state_t is_affinity_set(topology_t *topo,int pid,int *is_set, cpu_set_t *my_mask
 	return EAR_SUCCESS;
 }
 
-state_t set_affinity(int pid,cpu_set_t *mask)
+
+state_t set_affinity(int pid, cpu_set_t *mask)
 {
 	int ret;
 	ret=sched_setaffinity(pid,sizeof(cpu_set_t),mask);

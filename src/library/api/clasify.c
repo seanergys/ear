@@ -30,6 +30,9 @@
 
 #define INFO_CLASSIFY 3
 
+#define flops_per_sig(s) (s->FLOPS[0] + s->FLOPS[1] + s->FLOPS[2] + s->FLOPS[3] +\
+  s->FLOPS[4] + s->FLOPS[5] + s->FLOPS[6] + s->FLOPS[7])
+
 extern ulong perf_accuracy_min_time;
 extern uint signature_reported;
 
@@ -157,6 +160,12 @@ state_t is_process_busy_waiting(ssig_t *sig, uint *busy)
 	uint c3 = (sig->Gflops < GFLOPS_BUSY_WAITING);
 
 	*busy = c1 && c2 && c3;
+
+  /* This check is new to detect when the code is doing some FOP 
+  * operation. Assumin Busy Waiting is not doint */
+  if (*busy){
+    if (flops_per_sig(sig)) *busy = 0;
+  }
   return EAR_SUCCESS;
 }
 
@@ -175,6 +184,11 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
 
     if (c1 && c2 && c3) {
         *busy = BUSY_WAITING;
+         /* This check is new to detect when the code is doing some FOP 
+          * operation. Assumin Busy Waiting is not doint */
+        if (*busy){
+          if (flops_per_sig(sig)) *busy = 0;
+        }
     }
 
     if (VERB_ON(INFO_CLASSIFY)) {

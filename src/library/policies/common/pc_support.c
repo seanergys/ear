@@ -36,7 +36,6 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/metrics/metrics.h>
-#include <library/metrics/gpu.h>
 #include <library/policies/policy_ctx.h>
 
 extern       pc_app_info_t  *pc_app_info_data;

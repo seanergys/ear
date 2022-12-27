@@ -22,10 +22,6 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
 
-extern float LB_TH;
-
-#define MIN_PERC_MPI_OPT 0.15
-
 /** Called on MPI_Init */
 state_t mpi_app_init(polctx_t *c);
 /** Called on MPI_Finalize */
@@ -61,7 +57,7 @@ state_t mpi_support_verbose_perc_mpi_stats(int verb_lvl, double *percs_mpi, int 
 
 /** Based on perc. of mpi calls for each of \p num_procs passed, compute basic statistics
  * (therefore stores their results) and determines whether the application is load balanced. */
-state_t mpi_support_evaluate_lb(mpi_information_t *node_mpi_calls, int num_procs,
+state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num_procs,
         double *percs_mpi, double *mean, double *sd, double *mag, uint *lb);
 /** This function sets the critical path and also stores max and min perc_mpi processes. */
 state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi, int num_procs,
@@ -82,9 +78,21 @@ state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_per
 float compute_mpi_in_period(mpi_information_t *mc);
 
 
-state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest);
+#if MPI_OPTIMIZED
+state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed);
+#endif
 state_t already_optimized(mpi_call call_type, p2i buf, p2i dest);
 void *get_stack(int lv);
 void print_stack();
+
+/** Copies MPI metrics from \p src to \p dst.
+ * If `src` is a NULL pointer, `dst` is filled with the MPI metrics of the `i`-th process
+ * (local rank) stored in the shared region.
+ * If `i` is negative, `dst` is filled with the MPI metrics of the current process (my_node_id). */
+state_t mpi_call_get_stats(mpi_information_t *dst, mpi_information_t * src, int i);
+state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
+state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
+        mpi_calls_types_t *last);
+state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init);
 
 #endif // MPI_SUPPORT_H

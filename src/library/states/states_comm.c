@@ -52,7 +52,7 @@ static void debug_loop_signature(char *title, signature_t *loop);
 #endif
 
 void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname, char *nname,
-        int iterations, ulong prevf, ulong new_freq, char *mode)
+        int iterations, ulong prevf, ulong new_freq, char *user_mode)
 {
     double CPI, GBS, POWER, TIME, VPI, FLOPS;
     float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0;
@@ -61,11 +61,16 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     ulong GPU_UTIL = 0, GPU_FREQ = 0, gpu_used_cnt=0;
     ulong elapsed;
     timestamp end;
+    char mode[32];
 #if 0
     sig_ext_t *se = (sig_ext_t *)sig->signature.sig_ext;
 #endif
 
     if (VERB_GET_LV() == 0) return;
+    sprintf(mode, "%s", "");
+    if (VERB_GET_LV() >= 2){
+      strcpy(mode, user_mode);
+    }
 
     timestamp_getfast(&end);
     elapsed=timestamp_diff(&end, &ear_application_time_init, TIME_SECS);
@@ -106,14 +111,14 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         } // MPI info
 
         // IMC
-        imcf = (float) sig->signature.avg_imc_f / 1000000.0;
+        imcf = (per_proc_verb_file) ? (float) lib_shared_region->job_signature.avg_imc_f / 1000000.0 : (float) sig->signature.avg_imc_f / 1000000.0;
 
         // CPI
         // If enabled, each process reports its CPI
         CPI = (per_proc_verb_file) ? (double) sig_shared_region[my_node_id].sig.CPI : sig->signature.CPI;
 
         // GB/s
-        GBS = sig->signature.GBS;
+        GBS = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.GBS : sig->signature.GBS;
 
         // I/O MB/s
 #if 0
@@ -134,7 +139,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         IO_MBS = (per_proc_verb_file) ? ((float) io_data->rchar / (float) (1024 * 1024) + (float) io_data->wchar / (float) (1024 * 1024)) / sig_shared_region[my_node_id].period : (float) sig->signature.IO_MBS;
 
         // DC Node Power
-        POWER = sig->signature.DC_power; 
+        POWER = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.DC_power : sig->signature.DC_power;
 
         // Time
         // TODO: What is this time?
@@ -224,11 +229,11 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #endif
 
         debug("%swriting app info%s", COL_YLW, COL_CLR);
-        verbose(2, "EAR+%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
+        verbose(2, "EAR%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
                 mode, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
 
         debug("%swriting nname at elapsed%s", COL_YLW, COL_CLR)
-        verbosen(1, "EAR+%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
+        verbosen(1, "EAR%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
                 mode, aname, PFREQ, nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
@@ -270,16 +275,30 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
 void state_report_traces(int master_rank, int my_rank,int lid, loop_t *lsig,ulong freq,ulong status)
 {
+    #if SINGLE_CONNECTION
     if (master_rank >= 0 && traces_are_on()) {
         traces_new_signature(my_rank, lid, &lsig->signature);
-        if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
+        //if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
         traces_policy_state(my_rank, lid, status);
     }
+    #else
+    if (traces_are_on()){
+        traces_new_signature(my_rank, lid, &lsig->signature);
+        //if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
+        traces_policy_state(my_rank, lid, status);
+      
+    }
+    #endif
 }
 
 void state_report_traces_state(int master_rank, int my_rank, int lid, ulong status)
 {
+    #if SINGLE_CONNECTION
     if (master_rank >= 0 && traces_are_on()) traces_policy_state(my_rank, lid, status);
+    #else
+    if (traces_are_on()) traces_policy_state(my_rank, lid, status);
+    #endif
+
 }
 
 /* Auxiliary functions */

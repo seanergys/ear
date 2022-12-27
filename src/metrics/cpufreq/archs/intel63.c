@@ -52,14 +52,14 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 	topology_copy(&tp, tp_in);
 	// Getting base frequency
 	cpufreq_get_base(&tp, &freq_base);
+	// If it is compatible these functions takes the control
+	replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
+	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
 	// Permissions test
 	if (state_fail(s = msr_test(tp_in, MSR_RD))) {
 		debug("msr_test failed");
 		return EAR_ERROR;
 	}
-	// If it is compatible these functions takes the control
-	replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
-	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
 	//debug("INTEL63 full permissions? %d", can_read);
 	debug("INTEL63 cpufreq ok");
 	// If reading MSR is allowed

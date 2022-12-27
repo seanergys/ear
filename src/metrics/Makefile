@@ -23,6 +23,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
     $(SRCDIR)/metrics/common/rsmi.o \
+    $(SRCDIR)/metrics/common/redfish.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
     $(SRCDIR)/metrics/bandwidth/archs/amd17.o \

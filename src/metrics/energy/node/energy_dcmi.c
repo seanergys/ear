@@ -41,6 +41,12 @@
 #define MAX_LOCK_TRIES  1000000000
 #define MIN_READ_PERIOD 2000       /*!< The minimum period time to for the periodic thread to read the power. */
 
+/* For error control */
+#define MAX_TIMES_POWER_SUPPORTED 10
+#define VPOWER_ERROR 0
+static        unsigned long     dcmi_last_power_measurement = 0;
+
+
 static struct ipmi_intf         dcmi_context_for_pool;
 static        dcmi_power_data_t dcmi_current_power_reading;
 static        dcmi_power_data_t dcmi_last_power_reading;
@@ -404,6 +410,18 @@ state_t dcmi_power_reading(struct ipmi_intf *intf, struct ipmi_data *out,dcmi_po
     cpower->avg_power     = (ulong)avg_power;
     cpower->timeframe     = (ulong)timeframe;
     cpower->timestamp     = (ulong)timestamp;
+
+    /* For error control */
+    if (cpower->current_power > cpower->max_power){
+      verbose(VPOWER_ERROR,"enery_dcmi: New max power reading current:%lu max %lu", cpower->current_power, cpower->max_power);
+    }
+    if ((cpower->current_power < (cpower->max_power * MAX_TIMES_POWER_SUPPORTED)) && ( cpower->current_power > 0)){
+      dcmi_last_power_measurement = cpower->current_power;
+    }else{
+      verbose(VPOWER_ERROR, "enery_dcmi:warning, invalid power detected. current %lu, corrected to last valid power %lu", cpower->current_power, dcmi_last_power_measurement);
+       cpower->current_power = dcmi_last_power_measurement;
+    }
+
 
     return EAR_SUCCESS;
 }

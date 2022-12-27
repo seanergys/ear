@@ -45,8 +45,8 @@
 #define MAX_ERROR_POWER                     1000.0
 #define MAX_TEMP							150
 #define MAX_POWER_CAP					0
-#define DEF_POWER_CAP					1
 #define POWER_CAP_UNLIMITED             1
+#define DEF_POWER_CAP					POWER_CAP_UNLIMITED
 #define POWER_CAP_TYPE				"node"
 
 #define MAX_CPUF_PSTATE 5
@@ -137,11 +137,7 @@
 #define  EAR_USE_PHASES 			1
 #define  EAR_USE_LB           1
 #define  EAR_USE_TURBO_CP     1
-#if NEW_LB_EFF
 #define  EAR_LB_TH						0.8
-#else
-#define  EAR_LB_TH						15.0
-#endif
 
 
 

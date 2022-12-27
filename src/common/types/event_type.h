@@ -65,6 +65,16 @@ typedef struct ear_event {
 #define PERF_PENALTY_AVG        14
 
 #define PHASE_SUMMARY_BASE      20
+#define PERC_MPI                30
+#define MPI_CALLS               31
+#define MPI_SYNC_CALLS          32
+#define MPI_BLOCK_CALLS         33
+#define TIME_SYNC_CALLS         34
+#define TIME_BLOCK_CALLS        35
+#define TIME_MAX_BLOCK          36
+
+#define JOB_POWER               40
+#define NODE_POWER              41
 
 /** EARD Init events. */
 #define PM_CREATION_ERROR       100
