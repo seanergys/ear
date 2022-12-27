@@ -6,11 +6,11 @@ COMPONENTS = \
     metrics \
     management\
     daemon \
-    library \
     tools \
     global_manager \
     commands \
     slurm_plugin
+#    library \
 
 #ifdef DB_BASE
 COMPONENTS += database_cache

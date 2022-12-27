@@ -18,7 +18,8 @@
 #include <unistd.h>
 #include <common/system/time.h>
 #include <common/utils/overhead.h>
-#include <common/string_enhanced.h>
+#include <common/utils/strtable.h>
+#include <common/output/verbose.h>
 
 #define N_QUEUE 256
 

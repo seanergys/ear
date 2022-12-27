@@ -18,6 +18,7 @@
 #ifndef COMMON_STRING_ENHANCED_H
 #define COMMON_STRING_ENHANCED_H
 
+#include <getopt.h>
 #include <common/utils/strtable.h>
 
 /** Cleans the character pointed by 'chr', adding an '\0' in its position. */

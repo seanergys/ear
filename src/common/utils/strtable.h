@@ -56,7 +56,7 @@ typedef struct strtable_s {
 strtable_t tprintf_static __attribute__((weak));
 
 #define tprintf(...) { \
-    snprintf((tprintf_static.buffer_raw)->buffer_raw, STR_SIZE_BUFFER-1, __VA_ARGS__); \
+    snprintf(tprintf_static.buffer_raw, STR_SIZE_BUFFER-1, __VA_ARGS__); \
     tprintf_write(&tprintf_static); \
     }
 
