@@ -34,7 +34,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static flops_ops_t ops;
 static uint load;
 
-state_t flops_load(topology_t *tp, int eard)
+void flops_load(topology_t *tp, int eard)
 {
 	while (pthread_mutex_trylock(&lock));
     if (load) {
@@ -45,7 +45,6 @@ state_t flops_load(topology_t *tp, int eard)
     load = 1;
 out:
 	pthread_mutex_unlock(&lock);
-	return EAR_SUCCESS;
 }
 
 void flops_get_api(uint *api)
@@ -83,19 +82,19 @@ state_t flops_read(ctx_t *c, flops_t *fl)
 state_t flops_read_diff(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 {
 	state_t s;
-	if (state_fail(s = ops.read(c, fl2))) {
-		return s;
+	if (state_ok(s = ops.read(c, fl2))) {
+        flops_data_diff(fl2, fl1, flD, gfs);
 	}
-	return ops.data_diff(fl2, fl1, flD, gfs);
+    return s;
 }
 
 state_t flops_read_copy(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 {
 	state_t s;
-	if (state_fail(s = flops_read_diff(c, fl2, fl1, flD, gfs))) {
-		return s;
+	if (state_ok(s = flops_read_diff(c, fl2, fl1, flD, gfs))) {
+	    flops_data_copy(fl2, fl1);
 	}
-	return ops.data_copy(fl2, fl1);
+    return s;
 }
 
 static double compute_gflops(flops_t *fl)
@@ -131,7 +130,7 @@ void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     }
     // Ms to seconds (for decimals)
     if ((time = timestamp_diff(&fl2->time, &fl1->time, TIME_MSECS)) == 0LLU) {
-        return EAR_SUCCESS;
+        return;
     }
     flA.secs = (double) time;
     flA.secs = flA.secs / 1000.0;
@@ -192,10 +191,8 @@ void flops_data_copy(flops_t *dst, flops_t *src)
 void flops_data_print(flops_t *flD, double gfs, int fd)
 {
     char buffer[SZ_BUFFER];
-    if (state_ok(flops_dummy_data_tostr(flD, gfs, buffer, SZ_BUFFER))) {
-        dprintf(fd, "%s", buffer);
-    }
-    return EAR_SUCCESS;
+    flops_data_tostr(flD, gfs, buffer, SZ_BUFFER);
+    dprintf(fd, "%s", buffer);
 }
 
 void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length)
@@ -206,7 +203,6 @@ void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length)
     added += sprintf(&buffer[added], "Total 256 insts h-f-d: %llu %llu %llu\n", 0LLU, flD->f256, flD->d256);
     added += sprintf(&buffer[added], "Total 512 insts h-f-d: %llu %llu %llu\n", flD->h512, flD->f512, flD->d512);
     added += sprintf(&buffer[added], "Total GFLOPS: %0.2lf\n", gfs);
-    return EAR_SUCCESS;
 }
 
 ullong *flops_help_toold(flops_t *flD, ullong *flops)

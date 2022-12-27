@@ -18,6 +18,7 @@
 //#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/output/debug.h>
+#include <common/math_operations.h>
 #include <metrics/cache/cache.h>
 #include <metrics/cache/archs/perf.h>
 #include <metrics/cache/archs/dummy.h>
@@ -40,7 +41,7 @@ void cache_load(topology_t *tp, int eard)
 	load = 1;
 out:
 	pthread_mutex_unlock(&lock);
-	return EAR_SUCCESS;
+	return;
 }
 
 void cache_get_api(uint *api)
@@ -133,7 +134,7 @@ void cache_data_copy(cache_t *dst, cache_t *src)
 void cache_data_print(cache_t *ca, double gbs, int fd)
 {
     char buffer[SZ_BUFFER];
-    cache_dummy_data_tostr(ca, gbs, buffer, SZ_BUFFER);
+    cache_data_tostr(ca, gbs, buffer, SZ_BUFFER);
     dprintf(fd, "%s", buffer);
 }
 

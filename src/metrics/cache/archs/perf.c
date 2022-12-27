@@ -34,16 +34,16 @@
 static ullong gen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong gen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong gen_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
-static ullong hwell_l1d_ev = gen_l1d_ev;
+static ullong hwell_l1d_ev = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong hwell_l2_ev  = 0x2724;
-static ullong hwell_llr_ev = gen_llr_ev;
-static ullong hwell_llw_ev = gen_llw_ev;
-static ullong zen_l1d_ev   = gen_l1d_ev;
-static ullong zen_llr_ev   = gen_llr_ev;
-static ullong zen_llw_ev   = gen_llw_ev;
-static ullong arm_l1d_ev   = gen_l1d_ev;
-static ullong arm_llr_ev   = gen_llr_ev;
-static ullong arm_llw_ev   = gen_llw_ev;
+static ullong hwell_llr_ev = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong hwell_llw_ev = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+static ullong zen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong zen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong zen_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+static ullong arm_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong arm_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong arm_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
 //
 static perf_t perfs[9];
 static uint levels[9];

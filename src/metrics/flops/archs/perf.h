@@ -26,7 +26,7 @@ void flops_perf_get_api(uint *api);
 
 void flops_perf_get_granularity(uint *granularity);
 
-void flops_perf_get_weights(uint **weights_in);
+void flops_perf_get_weights(ullong **weights_in);
 
 state_t flops_perf_init(ctx_t *c);
 

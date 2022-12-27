@@ -40,9 +40,9 @@ void flops_dummy_get_granularity(uint *granularity)
     *granularity = GRANULARITY_DUMMY;
 }
 
-void flops_dummy_get_weights(uint **weights_in)
+void flops_dummy_get_weights(ullong **weights_in)
 {
-    static ullong weights[9] { 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+    static ullong weights[9] = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
     *weights_in = weights;
 }
 

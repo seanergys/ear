@@ -14,7 +14,7 @@
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
-open
+
 //#define SHOW_DEBUGS 1
 
 #include <stdlib.h>

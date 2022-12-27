@@ -80,10 +80,10 @@ static void *calculate_frequency(void *arg)
         return NULL;
     }
     // Mult per 2 to convert 0,5 seconds to 1,0 seconds
-    freq2u = overflow_magic_u64(freq2u, freq1u, MAXBITS48) * 2LLU;
-    freq2u = ceil_magic(freq2u, 9) / (ullong) 1E3;
+    freq2 = overflow_magic_u64(freq2, freq1, MAXBITS48) * 2LLU;
+    freq2 = ceil_magic_u64(freq2, 9) / (ullong) 1E3;
     // Returning the data
-    *((ullong *) arg) = freq2u;
+    *((ullong *) arg) = freq2;
  
     return NULL;
 }
@@ -114,11 +114,11 @@ static state_t dynamic_detection(ullong *freq_khz)
     pthread_join(thread2, NULL);
     // Selecting a frequency among the 3 detected frequencies
     if ((freq1 == freq2 || freq1 == freq3) && freq1 != 0LLU) {
-        freq_khz = freq1;
+        *freq_khz = freq1;
     } else if (freq2 == freq3 && freq2 != 0LLU) {
-        freq_khz = freq2;
+        *freq_khz = freq2;
     } else if (freq3 != 0LLU) {
-        freq_khz = freq3;
+        *freq_khz = freq3;
     } else {
         s = EAR_ERROR;
     }

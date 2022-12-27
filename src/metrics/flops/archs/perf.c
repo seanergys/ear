@@ -34,7 +34,7 @@ static perf_t perfs[9];
 static uint   counter;
 static uint   started;
 
-void set_flops(ullong event, uint type, uint level, ullong weight, double multiplier)
+void set_flops(ullong event, uint type, uint level, ullong weight, double _multiplier)
 {
 	state_t s;
 
@@ -43,7 +43,7 @@ void set_flops(ullong event, uint type, uint level, ullong weight, double multip
 		return;
 	}
     levels[counter]     = level;
-    multiplier[counter] = multiplier;
+    multiplier[counter] = _multiplier;
     weights[level]      = weight;
 	counter++;
 }
@@ -66,9 +66,9 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
 	}
     else if (tp->vendor == VENDOR_ARM) { // && ARMv8a or greater) {
         // The NEON (128 bit) event has to be tested, so we are just going to SVE.
-        set_flops(arm8a[0], PERF_TYPE_RAW, 6, 1, ((double) topo->sve_bits) / 128.0); // Its is divided to
-        set_flops(arm8a[1], PERF_TYPE_RAW, 7, 1, ((double) topo->sve_bits) / 128.0); // match with the tests
-        set_flops(arm8a[2], PERF_TYPE_RAW, 8, 1, ((double) topo->sve_bits) / 128.0); // iterations.
+        set_flops(arm8a[0], PERF_TYPE_RAW, 6, 1, ((double) tp->sve_bits) / 128.0); // Its is divided to
+        set_flops(arm8a[1], PERF_TYPE_RAW, 7, 1, ((double) tp->sve_bits) / 128.0); // match with the tests
+        set_flops(arm8a[2], PERF_TYPE_RAW, 8, 1, ((double) tp->sve_bits) / 128.0); // iterations.
     } else {
 		debug(Generr.api_incompatible);
         return;
@@ -94,7 +94,7 @@ void flops_perf_get_granularity(uint *granularity)
     *granularity = GRANULARITY_PROCESS;
 }
 
-void flops_perf_get_weights(uint **weights_in)
+void flops_perf_get_weights(ullong **weights_in)
 {
     *weights_in = weights;
 }
