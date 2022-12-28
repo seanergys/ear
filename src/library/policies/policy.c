@@ -246,6 +246,7 @@ static uint  use_cpuprio = DEF_USE_CPUPRIO; // Enables the usage of proiority sy
 
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
+static state_t policy_reset_priority();
 
 /** Reads information about some management API and stores the pstate list
  * and devices count information to the output arguments. Pure function.
@@ -2385,6 +2386,7 @@ static state_t policy_reset_priority()
             }
         }
     }
+    return EAR_SUCCESS;
 }
 
 
