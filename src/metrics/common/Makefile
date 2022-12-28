@@ -15,7 +15,8 @@ comm_OBJS = \
     omsr.o \
     oneapi.o \
     pci.o \
-    perf.o
+    perf.o \
+    redfish.o
 
 ######## RULES
 
@@ -32,6 +33,9 @@ likwid.o: likwid.c likwid.h
 
 oneapi.o: oneapi.c oneapi.h
 	$(CC) $(CFLAGS) $(ONEAPI_CFLAGS) -c $<
+
+redfish.o: redfish.c redfish.h
+	$(CC) $(CFLAGS) $(REDFISH_CFLAGS) -c $<
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<

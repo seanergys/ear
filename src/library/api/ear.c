@@ -1474,48 +1474,86 @@ void ear_init()
 
 								}
 				}
-				if (is_affinity_set(&arch_desc.top, my_pid, &ear_affinity_is_set,&ear_process_mask)!=EAR_SUCCESS){
-								error("Checking the affinity mask");
-                }else{
+#if 0
+                if (is_affinity_set(&arch_desc.top, my_pid, &ear_affinity_is_set, &ear_process_mask) != EAR_SUCCESS)
+                {
+                    error("Checking the affinity mask");
+                }
+                else
+                {
                     /* Copy mask in shared memory */
-                    if (ear_affinity_is_set){ 
+                    if (ear_affinity_is_set) {
                         sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
                         sig_shared_region[my_node_id].affinity = 1;
                         sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
-#if 0
-                        // if (masters_info.my_master_rank>=0){ 
-                        print_affinity_mask(&arch_desc.top);
-                        // }
-#endif
-                    }else{ 
+                    } else { 
                         sig_shared_region[my_node_id].affinity = 0;
                         verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
                     } 
-				}
-
+                }
+#endif
 #ifdef SHOW_DEBUGS
 				print_arch_desc(&arch_desc);
 #endif
-				/* This functions needs to be synchronized (pending), to be done at first node signature computation*/
-				/* Computes the total number of cpus for this job */
+                if (!sched_getaffinity(my_pid, sizeof(cpu_set_t), &ear_process_mask))
+                {
+                    int proc_mask_cpu_count = num_cpus_in_mask(&ear_process_mask);
+                    if (proc_mask_cpu_count > 0)
+                    {
+                        ear_affinity_is_set = 1;
+                        sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
+                        sig_shared_region[my_node_id].num_cpus = proc_mask_cpu_count;
+                    } else {
+                        verbose(1, "%sWARNING%s CPU mask for thread ID %d has no CPUs.",
+                                COL_YLW, COL_CLR, my_pid);
+                    }
 
-				if (masters_info.my_master_rank >= 0 ) {
-								cpu_set_t jmask;
-								debug("Waiting for processes to fill shared signatures");
+                    sig_shared_region[my_node_id].affinity = ear_affinity_is_set;
+                } else {
+                    verbose(1, "%sERROR%s Getting affinity mask for thread ID %d: %s",
+                            COL_RED, COL_CLR, my_pid, strerror(errno));
+                }
 
-								/* Synchro : Wait the PID is set by all the processes*/
-								while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
-								debug("Computing number of cpus per job and node mask ");
-								compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
-								aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
-								/* lib_shared_region is shared by all the processes in the same node */
-								lib_shared_region->node_mask = jmask;
-								/* node_mgr_data is shared with the eard */
-								node_mgr_data[node_mgr_index].node_mask = jmask;	
-								/* app_mgt_info is shared with the eard through the powermon_app_t */
-								app_mgt_info->node_mask = jmask;	
-								debug("Node mask computed in");
-				}
+                sig_shared_region[my_node_id].ready = 1;
+
+                /* This functions needs to be synchronized (pending), to be done at first node
+                 * signature computation. */
+                /* Computes the total number of cpus for this job */
+                if (masters_info.my_master_rank >= 0) {
+                    debug("Waiting for processes to fill shared signatures");
+#if 0
+                    /* Synchro : Wait the PID is set by all the processes. */
+                    while(!all_signatures_initialized(lib_shared_region, sig_shared_region)) usleep(100);
+#endif
+                    /* Synchro: Wait for slaves CPU masks set. */
+                    while (!are_signatures_ready(lib_shared_region, sig_shared_region, NULL)) usleep(100);
+
+                    debug("Computing number of cpus per job and node mask");
+                    compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
+
+                    cpu_set_t jmask;
+                    aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
+
+                    /* lib_shared_region is shared by all the processes in the same node */
+                    lib_shared_region->node_mask = jmask;
+
+                    /* node_mgr_data is shared with the eard */
+                    node_mgr_data[node_mgr_index].node_mask = jmask;	
+
+                    /* app_mgt_info is shared with the eard through the powermon_app_t */
+                    app_mgt_info->node_mask = jmask;
+
+                    debug("Node mask computed in");
+                } else {
+                    // Slaves: wait for master to set up node mask
+                    while (!lib_shared_region->num_cpus) usleep(100);
+                }
+
+                // Master: Resets ready state of shared signatures
+                if (masters_info.my_master_rank >= 0)
+                {
+                    free_node_signatures(lib_shared_region, sig_shared_region);
+                }
 
 				init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
 

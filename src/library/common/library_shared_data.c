@@ -160,23 +160,31 @@ void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_
 
 int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
-    int i,total=0;
-    if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
-    for (i=0; i<data->num_processes; i++){ 
+    int i, total = 0;
+
+    if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0)
+        verbose_master(2, "Memory sync fails %s", strerror(errno));
+
+    for (i=0; i<data->num_processes; i++) {
         total = total + sig[i].ready;
         if (!sig[i].ready) {
             debug(" Process %d not ready",i);
         }
     }
+
     data->num_signatures = total;
+
     return total;
 }
 
 int are_signatures_ready(lib_shared_data_t *data,shsignature_t *sig, uint *num_ready)
 {
     int total = compute_total_signatures_ready(data, sig);
-		*num_ready = total;
-    debug("There are %d signatures ready from %d",data->num_signatures,data->num_processes);
+    if (num_ready)
+    {
+        *num_ready = total;
+    }
+    debug("There are %d signatures ready from %d", data->num_signatures, data->num_processes);
     return(total == data->num_processes);
 }
 
@@ -205,6 +213,7 @@ void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig)
     }
     if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 }
+
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
 {
     int i;

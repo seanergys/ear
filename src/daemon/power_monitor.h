@@ -42,7 +42,7 @@ typedef struct powermon_app {
     application_t     app; //
     pid_t             master_pid; // ?
     uint              job_created;
-    uint              is_job; // batch job ?
+    uint              is_job; //
     char              state;
     uint              plug_num_cpus; // Number of CPUs from external (batch sched. plug-in)
     cpu_set_t         plug_mask; // Job's mask
@@ -195,7 +195,8 @@ uint node_energy_lock(uint *tries);
 void node_energy_unlock();
 
 
-/** Returns whether only the Idle context exists. */
+/** Returns whether only the Idle context exists,
+ * or if all currently created contexts are marked as finished. */
 uint powermon_is_idle();
 
 

@@ -111,14 +111,14 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         } // MPI info
 
         // IMC
-        imcf = (float) sig->signature.avg_imc_f / 1000000.0;
+        imcf = (per_proc_verb_file) ? (float) lib_shared_region->job_signature.avg_imc_f / 1000000.0 : (float) sig->signature.avg_imc_f / 1000000.0;
 
         // CPI
         // If enabled, each process reports its CPI
         CPI = (per_proc_verb_file) ? (double) sig_shared_region[my_node_id].sig.CPI : sig->signature.CPI;
 
         // GB/s
-        GBS = sig->signature.GBS;
+        GBS = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.GBS : sig->signature.GBS;
 
         // I/O MB/s
 #if 0
@@ -139,7 +139,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         IO_MBS = (per_proc_verb_file) ? ((float) io_data->rchar / (float) (1024 * 1024) + (float) io_data->wchar / (float) (1024 * 1024)) / sig_shared_region[my_node_id].period : (float) sig->signature.IO_MBS;
 
         // DC Node Power
-        POWER = sig->signature.DC_power; 
+        POWER = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.DC_power : sig->signature.DC_power;
 
         // Time
         // TODO: What is this time?
