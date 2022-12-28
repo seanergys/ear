@@ -151,19 +151,17 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 
 state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-  gpu_ready = EAR_POLICY_READY;
-  return EAR_SUCCESS;
+  return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
 }
 
 state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {
-  gpu_ready = EAR_POLICY_READY;
-  return EAR_SUCCESS;
+  return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
 }
 
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-  gpu_ready = EAR_POLICY_READY;
-  return EAR_SUCCESS;
+  return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
 }
+
 

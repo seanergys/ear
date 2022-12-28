@@ -64,6 +64,8 @@
 #include <library/metrics/metrics.h>
 #include <library/metrics/energy_node_lib.h>
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
+#include <library/tracer/tracer.h>
+#include <library/tracer/tracer_paraver_comp.h>
 
 #if USE_GPUS
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
@@ -119,6 +121,11 @@ static int         num_packs = 0;
 static ull        *metrics_rapl[2];  // nJ (vec)
 #if MPI_OPTIMIZED
 static ull        *metrics_rapl_fine_monitor_start, *metrics_rapl_fine_monitor_end, *metrics_rapl_fine_monitor_diff;
+
+/* This constant must be migrated to config_env */
+#define EAR_REPORT_POWER_TRACE "EAR_REPORT_POWER_TRACE"
+static uint report_power_trace = 0;
+
 #endif
 static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
@@ -1519,8 +1526,15 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 
 	} else {
-        // Copies DC, DRAM, PCK, avg_f, avg_imc_f, GBS and TPI
-		copy_node_data(metrics, &lib_shared_region->node_signature);
+    // Copies DC, DRAM, PCK, avg_f, avg_imc_f, GBS and TPI
+    // Node metrics are not needed in shared signature, IF we are
+    // collecting traces we don't copy to avoid having node
+    // metrics in per-process data. We maintain is tracing is not
+    // used since GPU metrics are not computed per-process
+    // WARNING: GPU metrics are replicated per-process
+    if (!traces_are_on()){
+		  copy_node_data(metrics, &lib_shared_region->node_signature);
+    }
 	}
 
 
@@ -2251,26 +2265,31 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 
 #if MPI_OPTIMIZED
 static int fd_csv_cpu;
+static uint report_power_id = 0;
 void metrics_start_cpupower()
 {
-  if (master) {
+  if (master && report_power_trace) {
     char filename[256];
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_diff, &rapl_size);
     energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_start);
-    snprintf(filename, sizeof(filename), "csv_cpu_power.%lu.%lu.%s.csv", application.job.id, application.job.step_id, application.node_id);
-    fd_csv_cpu = open(filename, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
-    if (fd_csv_cpu < 0 ){
-      verbose_master(0,"Error opening csv_cpu_power.csv file (%s)", strerror(errno));
-      fd_csv_cpu = verb_channel;
+    if (!traces_are_on()){
+      snprintf(filename, sizeof(filename), "csv_cpu_power.%lu.%lu.%s.csv", application.job.id, application.job.step_id, application.node_id);
+      fd_csv_cpu = open(filename, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+      if (fd_csv_cpu < 0 ){
+        verbose_master(0,"Error opening csv_cpu_power.csv file (%s)", strerror(errno));
+        fd_csv_cpu = verb_channel;
+      }
+    }else{
+      verbose_master(0,"CPU power metrics will be generated in traces");
     }
   }
 }
 
 void metrics_read_cpupower()
 {
-  if (master) {
+  if (master && report_power_trace) {
 
     char buffer[64], csv_str[256];
     double total = 0, curr ;
@@ -2279,22 +2298,36 @@ void metrics_read_cpupower()
     energy_cpu_data_diff(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
     energy_cpu_data_copy(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
 
-    sprintf(csv_str,"%lld;",timestamp_getconvert(TIME_USECS));
+    if (!traces_are_on()){
+      sprintf(csv_str,"%s;%u;%lld;",application.node_id, report_power_id, timestamp_getconvert(TIME_USECS));
+    }
+    report_power_id++;
 
+    ullong lpck = 0, ldram = 0;
     for (int p = 0; p < (num_packs*2) -1 ; p++) {
       curr = (double)metrics_rapl_fine_monitor_diff[p]/200000000.0;
-      snprintf(buffer, sizeof(buffer), "%.2lf;", curr);
+      if (curr < num_packs){
+        ldram += (ullong)curr*1000;
+      }else{
+        lpck  += (ullong)curr*1000;
+      }
+      if (!traces_are_on()){
+        snprintf(buffer, sizeof(buffer), "%.2lf;", curr);
+        strcat( csv_str, buffer);
+      }
       total += curr;
-      strcat( csv_str, buffer);
     }
 
     curr = (double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1]/200000000.0;
     total += curr;
-    snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
-
-    strcat(csv_str, buffer);
-
-    write(fd_csv_cpu, csv_str, strlen(csv_str));
+    if (traces_are_on()){
+        traces_generic_event(ear_my_rank, my_node_id, TRA_PCK_POWER_NODE, lpck);
+        traces_generic_event(ear_my_rank, my_node_id, TRA_DRAM_POWER_NODE, ldram);
+    }else{
+      snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
+      strcat(csv_str, buffer);
+      write(fd_csv_cpu, csv_str, strlen(csv_str));
+    }
   }
 }
 #endif // MPI_OPTIMIZED
@@ -2351,6 +2384,17 @@ static void read_metrics_options()
     cuse_cupti = getenv(EAR_USE_CUPTI);
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
     verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
+#endif
+#if MPI_OPTIMIZED
+    /* this is already read in policy.c but RAPL traces will be generated only if this option is ON */
+    char *cear_mpi_opt          =  getenv(FLAG_MPI_OPT);
+    if (cear_mpi_opt != NULL){
+      uint opt = atoi(cear_mpi_opt);
+      if (opt && (getenv(EAR_REPORT_POWER_TRACE) != NULL)){
+        report_power_trace = atoi(getenv(EAR_REPORT_POWER_TRACE));
+      }
+      verbose_master(0,"RAPL power traces %s", (report_power_trace?"Enabled":"Disabled"));
+    }
 #endif
 }
 
