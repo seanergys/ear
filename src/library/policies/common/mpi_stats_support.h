@@ -22,6 +22,11 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
 
+#if MPI_OPTIMIZED
+#include <common/system/lock.h>
+extern pthread_mutex_t ear_mpi_opt_lock;
+#endif
+
 /** Called on MPI_Init */
 state_t mpi_app_init(polctx_t *c);
 /** Called on MPI_Finalize */
@@ -94,5 +99,29 @@ state_t mpi_call_get_types(mpi_calls_types_t *dst, shsignature_t * src, int i);
 state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current,
         mpi_calls_types_t *last);
 state_t mpi_call_diff(mpi_information_t *diff, mpi_information_t *end, mpi_information_t *init);
+
+
+/* This function marks processes with their timeouts (steps ) */
+void configure_processes_tobe_restored();
+/* Returns true if the process was in a barrier and must be 
+ * restored the CPU freq */
+uint process_must_be_restored();
+/* Marks the process as already restored */
+void process_already_restored();
+/* Decrements in one step the number of pending
+ * steps until the process recovers its CPU freq */
+void process_new_step();
+/* Returns true in the last step */
+uint process_last_step();
+/* Returns true when the Blocking operation is done */
+uint process_block_is_ready();
+/* Marks the ready operation as done */
+void process_block_ready();
+
+void process_set_target_pstate(uint i);
+uint process_get_target_pstate();
+void process_set_curr_mpi_pstate(uint i);
+uint process_get_curr_mpi_pstate();
+uint process_get_num_pstates();
 
 #endif // MPI_SUPPORT_H

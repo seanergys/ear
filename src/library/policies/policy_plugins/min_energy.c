@@ -128,6 +128,10 @@ extern uint policy_mem_bound;
 
 static uint network_use_imc = 1; /*!< This variable controls the UFS when the application is communication intensive , set to 1 means UFS will not be applied. */
 
+#if MPI_OPTIMIZED
+extern sem_t *lib_shared_lock_sem;
+extern uint ear_mpi_opt;
+#endif
 
 /*  Policy/Other */
 static uint min_energy_state = SELECT_CPUFREQ;
@@ -584,6 +588,15 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         // You can fill here the mpi_freq field of the sig_shared_region if you are optimizing
         // the application at MPI call level.
+        for (uint lp = 0; lp < num_processes; lp++){
+          ulong f = new_freq[0];
+          if (freq_per_core){
+            f = new_freq[lp];
+          }
+          sig_shared_region[lp].mpi_freq = f;
+
+        }
+
 
         /* If we use the same CPU freq for all cores, we set for all processes */
         if (!freq_per_core) {
@@ -1204,8 +1217,18 @@ static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signat
 
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can implement optimization at MPI call entry here.
+    uint last = 0;
+    /* CPUfreq mgt is not ok we will not optimize */
+    if (!metrics_get(MGT_CPUFREQ)->ok) return EAR_SUCCESS;
 
+    if (ear_mpi_opt &&
+      (lib_shared_region->num_processes > 1)){
+    
+
+    }
+#endif
     return EAR_SUCCESS;
 }
 
@@ -1218,7 +1241,12 @@ static void policy_end_summary(int verb_lvl)
 
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 {
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can implement optimization at MPI call exit here.
+    if (ear_mpi_opt &&
+      (lib_shared_region->num_processes > 1)){
+    }
+#endif
 
     return EAR_SUCCESS;
 }

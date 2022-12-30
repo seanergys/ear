@@ -44,6 +44,8 @@
 #include <common/system/execute.h>
 #include <common/config/config_dev.h>
 
+#include <common/system/lock.h>
+
 #include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
@@ -99,9 +101,18 @@ static float critical_path_th   = 1;
 
 
 #if MPI_OPTIMIZED
+
+static uint              must_be_restored = 0;
+static uint              num_steps        = 0;
+static uint              num_pstates      = 0;
+static uint              block_ready      = 0;
+static uint              curr_mpi_opt_index = 0;
+static uint              target_mpi_opt_index = 0;
+
 // TODO: Below macros should be defined at config_def or config_dev
 #define MAX_MPI_TO_OPT      50      // Max number of calls to try to optimize
 #define DEF_MIN_USEC_MPI    50000   // Default minimum time of a call to try to optimize
+pthread_mutex_t ear_mpi_opt_lock = PTHREAD_MUTEX_INITIALIZER;
 
 ulong local_max_sync_block = 0;
 
@@ -1094,3 +1105,77 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 
     return EAR_SUCCESS;
 }
+
+/* These functions are used to control peaks of power */
+#define TIMEOUT 4
+void configure_processes_tobe_restored()
+{
+  /* This is a simple test where half of the processes will be reduced */
+  uint tobe_opt = my_node_id % TIMEOUT;
+
+
+  if (tobe_opt){
+    must_be_restored = 1;
+    num_steps        = TIMEOUT - tobe_opt;
+    num_pstates      = TIMEOUT - tobe_opt;
+    block_ready      = 0;
+  }else{
+    must_be_restored = 0;
+  }
+  
+}
+
+uint process_must_be_restored()
+{
+  return must_be_restored;
+}
+
+uint process_block_is_ready()
+{
+  return block_ready;
+}
+
+void process_block_ready()
+{
+  block_ready = 1;
+}
+
+void process_already_restored()
+{
+  must_be_restored = 0;
+}
+
+void process_new_step()
+{
+  if (num_steps) num_steps--;
+}
+
+uint process_last_step()
+{
+  return (num_steps == 0);
+}
+void process_set_target_pstate(uint i)
+{
+  target_mpi_opt_index = i;
+}
+uint process_get_target_pstate()
+{
+  return target_mpi_opt_index;
+}
+
+uint process_get_num_pstates()
+{
+  return num_pstates;
+}
+
+void process_set_curr_mpi_pstate(uint i)
+{
+  curr_mpi_opt_index = i;
+}
+
+uint process_get_curr_mpi_pstate()
+{
+  return curr_mpi_opt_index;
+}
+
+

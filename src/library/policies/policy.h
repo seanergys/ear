@@ -51,9 +51,12 @@ state_t policy_domain_detail(int status, char *buff);
 state_t policy_show_domain(node_freq_domain_t *dom);
 
 state_t policy_force_global_frequency(ulong new_f);
+state_t policy_restore_to_mpi_pstate(uint index);
 
 /**
  * \todo These two functions needs to be reconsidered. */
 state_t policy_configure();
+
+
 
 #endif // EAR_POLICIES_H

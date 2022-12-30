@@ -112,9 +112,11 @@ typedef struct shsignature {
     int               affinity;
     uint              unbalanced;
     float             perc_MPI;
-    ulong             mpi_freq;
 	double            period;
+    /* This field is used for mpi opt */
+    ulong             mpi_freq;
 } shsignature_t;
+
 
 
 typedef struct node_mgr_sh_data {

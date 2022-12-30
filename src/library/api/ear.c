@@ -136,7 +136,8 @@ static int num_nodes;
 static int ppnode;
 
 #if MPI_OPTIMIZED
-extern uint ear_mpi_opt;
+uint ear_mpi_opt;
+sem_t *lib_shared_lock_sem;
 #endif
 
 /* To be used by report plugins */
@@ -222,6 +223,9 @@ uint ear_guided = DYNAIS_GUIDED;
 //static int end_periodic_th=0;
 static uint synchronize_masters = 1;
 static uint ITERS_PER_PERIOD;
+#define RELAX 0
+#define BURST 1
+static uint earl_monitor_mode = RELAX;
 
 static const uint lib_supports_gpu = USE_GPUS; // Library supports GPU
 
@@ -467,9 +471,9 @@ void create_shared_regions()
 	verbose_master(2, "Shared region for shared signatures created for %d processes",
             lib_shared_region->num_processes);
 
-	sig_shared_region[my_node_id].master = 1;
-	sig_shared_region[my_node_id].pid = master_pid;
-	sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
+	sig_shared_region[my_node_id].master            = 1;
+	sig_shared_region[my_node_id].pid               = master_pid;
+	sig_shared_region[my_node_id].mpi_info.rank     = ear_my_rank;
 	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 
 #if ONLY_MASTER == 0
@@ -637,9 +641,9 @@ void attach_shared_regions()
 								}
 				}
 				memset(&sig_shared_region[my_node_id].sig, 0, sizeof(ssig_t));
-				sig_shared_region[my_node_id].master = 0;
-				sig_shared_region[my_node_id].pid = getpid();
-				sig_shared_region[my_node_id].mpi_info.rank = ear_my_rank;
+				sig_shared_region[my_node_id].master            = 0;
+				sig_shared_region[my_node_id].pid               = getpid();
+				sig_shared_region[my_node_id].mpi_info.rank     = ear_my_rank;
 				clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 				/* No masters processes don't allocate memory for data sharing between nodes */	
 
@@ -1688,23 +1692,23 @@ void ear_init()
 				earl_monitor = suscription();
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = BASIC_PERIOD*10;
-				earl_monitor->time_burst = BASIC_PERIOD;
-				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
+				earl_monitor->time_relax = BASIC_PERIOD*10; /* 10 sec */
+				earl_monitor->time_burst = BASIC_PERIOD;    /* 1 sec */
         #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt) {
-				  earl_monitor->time_relax = BASIC_PERIOD/5;
-          earl_monitor->time_burst = BASIC_PERIOD/5;
-          ITERS_PER_PERIOD = 5; // 1 app iteration every 5 monitor iterations
-        }
         if (is_mpi_enabled() && traces_are_on()) {
-				  earl_monitor->time_relax = BASIC_PERIOD/5;
-          earl_monitor->time_burst = BASIC_PERIOD/5;
-          ITERS_PER_PERIOD = 5; // 1 app iteration every 5 monitor iterations
+				  earl_monitor->time_relax = BASIC_PERIOD/5; /* 200 ms */
+          earl_monitor->time_burst = BASIC_PERIOD/5; /* 200 ms */
+        }
+        if (is_mpi_enabled() && ear_mpi_opt) {
+				  earl_monitor->time_relax = BASIC_PERIOD/5;  /* 200 ms */
+          earl_monitor->time_burst = BASIC_PERIOD/10; /* 100 ms */
         }
         #endif
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
+
+        earl_monitor_mode = (monitor_is_bursting(earl_monitor)? BURST: RELAX);
+        ITERS_PER_PERIOD  = (earl_monitor_mode == BURST)? earl_monitor->time_burst*10/1000: earl_monitor->time_relax*10/1000;
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -2302,10 +2306,18 @@ state_t earl_periodic_actions(void *no_arg)
     ulong period_elapsed, last_signature_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
+    uint curr_earl_monitor_mode;
 
     if (ear_whole_app) return EAR_SUCCESS;
 
     if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
+
+    /* We check if we have changed from relax to burst or the opposite */
+    curr_earl_monitor_mode = (monitor_is_bursting(earl_monitor)? BURST: RELAX);
+    if (curr_earl_monitor_mode != curr_earl_monitor_mode){
+      earl_monitor_mode = (monitor_is_bursting(earl_monitor)? BURST: RELAX);
+      ITERS_PER_PERIOD  = (earl_monitor_mode == BURST)? earl_monitor->time_burst*10/1000: earl_monitor->time_relax*10/1000;
+    }
 
     ear_iterations += ITERS_PER_PERIOD;
     timestamp_getfast(&curr_periodic_time);
@@ -2326,6 +2338,38 @@ state_t earl_periodic_actions(void *no_arg)
         memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
 
         metrics_read_cpupower();
+
+        /* This code controls peaks of power */
+
+        if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
+        
+        if (process_must_be_restored() && process_block_is_ready()){
+          verbose(2,"EAR-PP: Process %d must be restored", my_node_id);
+          process_new_step();
+          /* We must restore */
+          if (process_last_step()){
+            /* Restore */
+            policy_restore_to_mpi_pstate(process_get_target_pstate());
+            process_already_restored();
+            verbose(2,"EAR-PP: Process %d going to relax", my_node_id);
+            monitor_relax(earl_monitor);
+          }else{
+          /* If it's not the last step we increase 1 pstate */
+            if (process_get_target_pstate() < process_get_curr_mpi_pstate()){
+              uint new_pstate = process_get_curr_mpi_pstate() - 1;
+              policy_restore_to_mpi_pstate(new_pstate);
+              process_set_curr_mpi_pstate(new_pstate);
+              if (new_pstate == process_get_target_pstate()){
+                verbose(2,"EAR-PP: Warning, Process %d restored with less steps than expected", my_node_id);
+                process_already_restored();
+                monitor_relax(earl_monitor);
+              }
+            }
+          }
+        }
+        
+        ear_unlock(&ear_mpi_opt_lock);
+        }
 
 #if SINGLE_CONNECTION
         if ((MASTER_ID >= 0) && traces_are_on()) {

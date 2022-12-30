@@ -1546,6 +1546,28 @@ state_t policy_mpi_init(mpi_call call_type)
     return EAR_SUCCESS;
 }
 
+state_t policy_restore_to_mpi_pstate(uint index)
+{
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+  polctx_t *c = &my_pol_ctx;
+  ulong f = sig_shared_region[my_node_id].mpi_freq;
+  if (index != process_get_target_pstate()){
+    pstate_t *sel_pstate, *pstate_list;
+    pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
+    sel_pstate = &pstate_list[index];
+    f = sel_pstate->khz;
+  }
+  verbose(2, "restore CPU freq in process %d to %lu", my_node_id, f);
+  per_process_node_freq.cpu_freq[my_node_id] = f;
+  if (state_fail(policy_freq_selection(c, &aux_per_process,
+      &per_process_node_freq,  &per_process_dom, NULL, my_node_id))) {
+      verbose(2, "%sERROR%s CPU freq. restore in MPI opt", COL_RED, COL_CLR);
+      return EAR_ERROR;
+  }
+#endif
+  return EAR_SUCCESS;
+}
+
 
 /* This function is executed after each mpi call:
  * Warning! it could introduce a lot of overhead. */
@@ -2428,3 +2450,5 @@ static void verbose_cpuprio_list(int verb_lvl, uint *cpuprio_list, uint cpuprio_
         }
     }
 }
+
+
