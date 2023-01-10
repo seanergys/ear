@@ -60,10 +60,15 @@ strtable_t tprintf_static __attribute__((weak));
     tprintf_write(&tprintf_static); \
     }
 
-// Obsolete, move to tprintf_create.
+#define tprintf2(table, ...) { \
+    snprintf((table)->buffer_raw, STR_SIZE_BUFFER-1, __VA_ARGS__); \
+    tprintf_write(table); \
+    }
+
+// Obsolete, move to tprintf_init2.
 int tprintf_init(int fd, int mode, char *format);
 
-int tprintf_create(strtable_t *t, int fd, int mode, char *format);
+int tprintf_init2(strtable_t *t, int fd, int mode, char *format);
 
 int tprintf_write(strtable_t *t);
 

@@ -56,10 +56,10 @@ static void tprintf_color_close(char **out)
 
 int tprintf_init(int fd, int mode, char *format)
 {
-    return tprintf_create(&tprintf_static, fd, mode, format);
+    return tprintf_init2(&tprintf_static, fd, mode, format);
 }
 
-int tprintf_create(strtable_t *t, int fd, int mode, char *format)
+int tprintf_init2(strtable_t *t, int fd, int mode, char *format)
 {
     char *tok;
     // There is no room in format buffer
