@@ -15,11 +15,15 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
+#include <math.h>
 #include <common/output/debug.h>
+#include <common/hardware/bithack.h>
 #include <metrics/common/msr.h>
+#include <metrics/common/apis.h>
 #include <management/cpupow/cpupow.h>
+#include <management/cpupow/archs/intel63.h>
 
 #define MSR_RAPL_POWER_UNIT     0x606
 #define MSR_PKG_POWER_LIMIT     0x610
@@ -45,17 +49,20 @@ static double mult_power;
 static double mult_energy;
 static double mult_time;
 
-void mgt_cpupow_intel63_load(topology_t *tp_in)
+void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
 {
     ullong reg = 0;
+    int i;
 
     if (state_fail(msr_test(tp_in, MSR_WR))) {
+        debug("failed msr test: %s", state_msg);
         return;
     }
     if (tp_in->vendor == VENDOR_INTEL && tp_in->model >= MODEL_HASWELL_X) {
     } else if (tp_in->vendor == VENDOR_AMD && tp_in->family >= FAMILY_ZEN) {
     } else {
         // API incompatible
+        debug("api incompatible");
         return;
     }
     topology_select(tp_in, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
@@ -79,11 +86,11 @@ void mgt_cpupow_intel63_load(topology_t *tp_in)
     debug("multiplier energy: %0.3lf", mult_energy);
     debug("multiplier time  : %0.3lf", mult_time);
 
-    apis_put(ops->get_api          , mgt_cpupow_intel63_get_api);
-    apis_put(ops->get_count_devices, mgt_cpupow_intel63_count_devices);
-    apis_put(ops->get_powercap     , mgt_cpupow_intel63_get_powercap);
-    apis_put(ops->set_powercap     , mgt_cpupow_intel63_set_powercap);
-    apis_put(ops->get_tdp          , mgt_cpupow_intel63_get_tdp);
+    apis_put(ops->get_api      , mgt_cpupow_intel63_get_api);
+    apis_put(ops->count_devices, mgt_cpupow_intel63_count_devices);
+    apis_put(ops->get_powercap , mgt_cpupow_intel63_get_powercap);
+    apis_put(ops->set_powercap , mgt_cpupow_intel63_set_powercap);
+    apis_put(ops->get_tdp      , mgt_cpupow_intel63_get_tdp);
 }
 
 void mgt_cpupow_intel63_get_api(uint *api)
@@ -122,6 +129,7 @@ state_t mgt_cpupow_intel63_get_tdp(uint *watts)
         }
         dreg = ((double) getbits64(reg, 14, 0)) * mult_power;
         watts[i] = (uint) dreg;
+        debug("read tdp: %u", watts[i]);
     }
     return EAR_SUCCESS;
 }

@@ -26,13 +26,15 @@ __attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 {
     cpuid_regs_t r;
     int buffer[4];
-
+    
+    debug("GETID X86");
     /* Vendor */
     CPUID(r,0,0);
     buffer[0] = r.ebx;
     buffer[1] = r.edx;
     buffer[2] = r.ecx;
     topo->vendor = !(buffer[0] == GENUINE_INTEL); // Intel
+    debug("VENDOR %u (%u)", topo->vendor, buffer[0]);
 
     /* Family */
     CPUID(r,1,0);
@@ -103,6 +105,7 @@ __attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 
 __attribute__((unused)) static void topology_getid_arm64(topology_t *topo)
 {
+    debug("GETID ARM");
     topo->vendor          = VENDOR_ARM;
     topo->model           = MODEL_A8;
     topo->cache_line_size = 64; // 64 bytes

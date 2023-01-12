@@ -65,6 +65,7 @@ depend-clean: depend-clean.components
 
 %.components:
 	@ $(MAKE) -C 'cpufreq' $* || exit
+	@ $(MAKE) -C 'cpupow'  $* || exit
 	@ $(MAKE) -C 'imcfreq' $* || exit
 	@ $(MAKE) -C 'gpu'     $* || exit
 

@@ -31,13 +31,13 @@ void mgt_cpupow_load(topology_t *tp, int eard)
 	if (loaded) {
 		goto ret;
 	}
+    mgt_cpupow_intel63_load(tp, &ops);
     loaded = 1;
 ret:
-    mgt_cpupow_intel63_load(tp, &ops);
 	pthread_mutex_unlock(&lock);
 }
 
-void mgt_cpupow_get_api(uint *api);
+void mgt_cpupow_get_api(uint *api)
 {
     return ops.get_api(api);
 }
@@ -61,3 +61,17 @@ state_t mgt_cpupow_get_tdp(uint *watts)
 {
     return ops.get_tdp(watts);
 }
+
+#if TEST
+static topology_t tp;
+static uint tdps[2];
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+    topology_print(&tp, verb_channel);
+    mgt_cpupow_load(&tp, 0);
+    mgt_cpupow_get_tdp(tdps);
+    return 0;
+}
+#endif

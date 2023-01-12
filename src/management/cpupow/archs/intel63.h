@@ -20,7 +20,7 @@
 
 #include <management/cpupow/cpupow.h>
 
-void mgt_cpupow_intel63_load(topology_t *tp_in);
+void mgt_cpupow_intel63_load(topology_t *tp, mgt_cpupow_ops_t *ops);
 
 void mgt_cpupow_intel63_get_api(uint *api);
 

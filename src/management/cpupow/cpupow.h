@@ -20,6 +20,7 @@
 
 #include <common/types.h>
 #include <common/states.h>
+#include <common/hardware/topology.h>
 
 // Types
 #define CPUPOW_SOCKET 0
@@ -32,7 +33,7 @@ typedef struct mgt_cpupow_ops_s
     state_t (*count_devices) (int type, uint *devs_count);
     state_t (*get_powercap)  (int type, uint *watts);
     state_t (*set_powercap)  (int type, uint *watts);
-    state_t (*get_tdp)       (int type, uint *watts);
+    state_t (*get_tdp)       (uint *watts);
 } mgt_cpupow_ops_t;
 
 void mgt_cpupow_load(topology_t *tp, int eard);
