@@ -25,8 +25,8 @@
 // Domain/device types
 #define CPUPOW_DOMAINS  3
 #define CPUPOW_SOCKET   0 //PKG
-#define CPUPOW_CORE     1 //PP0
-#define CPUPOW_DRAM     2
+#define CPUPOW_DRAM     1
+#define CPUPOW_CORE     2 //PP0
 //
 #define POWERCAP_DISABLE UINT_MAX
 #define POWERCAP_ENABLE  UINT_MAX-1
@@ -50,7 +50,7 @@ state_t mgt_cpupow_count_devices(int domain, uint *devs_count);
 
 int mgt_cpupow_is_powercap_capable(int domain);
 
-state_t mgt_cpupow_is_powercap_enabled(int domain, uint *enabled);
+state_t mgt_cpupow_is_powercap_enabled(int domain, int *enabled);
 
 state_t mgt_cpupow_get_powercap(int domain, uint *watts);
 
