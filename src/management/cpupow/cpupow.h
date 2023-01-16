@@ -22,31 +22,40 @@
 #include <common/states.h>
 #include <common/hardware/topology.h>
 
-// Types
-#define CPUPOW_SOCKET 0
-#define CPUPOW_CORE   1 //PP0
-#define CPUPOW_DRAM   2
+// Domain/device types
+#define CPUPOW_DOMAINS  3
+#define CPUPOW_SOCKET   0 //PKG
+#define CPUPOW_CORE     1 //PP0
+#define CPUPOW_DRAM     2
+//
+#define POWERCAP_DISABLE UINT_MAX
+#define POWERCAP_ENABLE  UINT_MAX-1
 
 typedef struct mgt_cpupow_ops_s
 {
-    void    (*get_api)       (uint *api);
-    state_t (*count_devices) (int type, uint *devs_count);
-    state_t (*get_powercap)  (int type, uint *watts);
-    state_t (*set_powercap)  (int type, uint *watts);
-    state_t (*get_tdp)       (uint *watts);
+    void    (*get_api)             (uint *api);
+    state_t (*count_devices)       (int domain, uint *devs_count);
+    int     (*is_powercap_capable) (int domain);
+    state_t (*is_powercap_enabled) (int domain, int *enabled);
+    state_t (*get_powercap)        (int domain, uint *watts);
+    state_t (*set_powercap)        (int domain, uint *watts);
+    state_t (*get_tdp)             (int domain, uint *watts);
 } mgt_cpupow_ops_t;
 
 void mgt_cpupow_load(topology_t *tp, int eard);
 
 void mgt_cpupow_get_api(uint *api);
 
-state_t mgt_cpupow_count_devices(int type, uint *devs_count);
+state_t mgt_cpupow_count_devices(int domain, uint *devs_count);
 
-state_t mgt_cpupow_get_powercap(int type, uint *watts);
+int mgt_cpupow_is_powercap_capable(int domain);
 
-state_t mgt_cpupow_set_powercap(int type, uint *watts);
+state_t mgt_cpupow_is_powercap_enabled(int domain, uint *enabled);
 
-/* Socket TDP. */
-state_t mgt_cpupow_get_tdp(uint *watts);
+state_t mgt_cpupow_get_powercap(int domain, uint *watts);
+
+state_t mgt_cpupow_set_powercap(int domain, uint *watts);
+
+state_t mgt_cpupow_get_tdp(int domain, uint *watts);
 
 #endif

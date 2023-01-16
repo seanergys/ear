@@ -42,24 +42,34 @@ void mgt_cpupow_get_api(uint *api)
     return ops.get_api(api);
 }
 
-state_t mgt_cpupow_count_devices(int type, uint *devs_count)
+state_t mgt_cpupow_count_devices(int domain, uint *devs_count)
 {
-    return ops.count_devices(type, devs_count);
+    return ops.count_devices(domain, devs_count);
 }
 
-state_t mgt_cpupow_get_powercap(int type, uint *watts)
+int mgt_cpupow_is_powercap_capable(int domain)
 {
-    return ops.get_powercap(type, watts);
+    return ops.is_powercap_capable(domain);
 }
 
-state_t mgt_cpupow_set_powercap(int type, uint *watts)
+state_t mgt_cpupow_is_powercap_enabled(int domain, uint *enabled)
 {
-    return ops.set_powercap(type, watts);
+    return ops.is_powercap_enabled(domain, enabled);
 }
 
-state_t mgt_cpupow_get_tdp(uint *watts)
+state_t mgt_cpupow_get_powercap(int domain, uint *watts)
 {
-    return ops.get_tdp(watts);
+    return ops.get_powercap(domain, watts);
+}
+
+state_t mgt_cpupow_set_powercap(int domain, uint *watts)
+{
+    return ops.set_powercap(domain, watts);
+}
+
+state_t mgt_cpupow_get_tdp(int domain, uint *watts)
+{
+    return ops.get_tdp(int domain, watts);
 }
 
 #if TEST

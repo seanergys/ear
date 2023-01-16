@@ -24,12 +24,16 @@ void mgt_cpupow_intel63_load(topology_t *tp, mgt_cpupow_ops_t *ops);
 
 void mgt_cpupow_intel63_get_api(uint *api);
 
-state_t mgt_cpupow_intel63_count_devices(int type, uint *devs_count);
+state_t mgt_cpupow_intel63_count_devices(int domain, uint *devs_count);
 
-state_t mgt_cpupow_intel63_get_powercap(int type, uint *watts);
+int mgt_cpupow_intel63_is_powercap_capable(int domain);
 
-state_t mgt_cpupow_intel63_set_powercap(int type, uint *watts);
+state_t mgt_cpupow_intel63_is_powercap_enabled(int domain, uint *enabled);
 
-state_t mgt_cpupow_intel63_get_tdp(uint *watts);
+state_t mgt_cpupow_intel63_get_powercap(int domain, uint *watts);
+
+state_t mgt_cpupow_intel63_set_powercap(int domain, uint *watts);
+
+state_t mgt_cpupow_intel63_get_tdp(int domain, uint *watts);
 
 #endif

@@ -27,68 +27,147 @@
 #include <management/cpupow/cpupow.h>
 #include <management/cpupow/archs/intel63.h>
 
+#define MSR_NO_REG              0x000
 #define MSR_RAPL_POWER_UNIT     0x606
 #define MSR_PKG_POWER_LIMIT     0x610
 #define MSR_PKG_ENERGY_STATUS   0x611
+#define MSR_PKG_POLICY          MSR_NO_REG
 #define MSR_PKG_PERF_STATUS     0x613
 #define MSR_PKG_POWER_INFO      0x614
 #define MSR_DRAM_POWER_LIMIT    0x618
 #define MSR_DRAM_ENERGY_STATUS  0x619
+#define MSR_DRAM_POLICY         MSR_NO_REG
 #define MSR_DRAM_PERF_STATUS    0x61b
 #define MSR_DRAM_POWER_INFO     0x61c
 #define MSR_PP0_POWER_LIMIT     0x638
 #define MSR_PP0_ENERGY_STATUS   0x639
 #define MSR_PP0_POLICY          0x63a
-#define MSR_PP0_PERF_STATUS     0x000
+#define MSR_PP0_PERF_STATUS     MSR_NO_REG
+#define MSR_PP0_POWER_INFO      MSR_NO_REG
 #define MSR_PP1_POWER_LIMIT     0x640
 #define MSR_PP1_ENERGY_STATUS   0x641
 #define MSR_PP1_POLICY          0x642
-#define MSR_PP1_PERF_STATUS     0x000
+#define MSR_PP1_PERF_STATUS     MSR_NO_REG
+#define MSR_PP1_POWER_INFO      MSR_NO_REG
 
 // 7 bits: 2 + 5, this is for a default Time Unit of 1/(2^10) = 0.000977
 #define TIME_WINDOW_1S      0x0a // (2^10)×(1+(0÷4)) * Time Unit (0.000977) = 10 & 0 = 0001010 = 0x0a
 #define TIME_WINDOW_100MS   0x66 // (2^6 )×(1+(3÷4)) * Time unit (0.000977) = 6  & 3 = 1100110 = 0x66
 #define TIME_WINDOW_10MS    0x43 // (2^3 )×(1+(2÷4)) * Time unit (0.000977) = 3  & 2 = 1000011 = 0x36
 
+typedef struct msr_power_limit_s {
+    ullong reg;
+    uint pl1_power;
+    uint pl1_enable;
+    uint pl1_clamp;
+    uint pl1_timey; // time Y
+    uint pl1_timez; // time Z
+    double pl1_timew; // time window
+    uint pl2_power;
+    uint pl2_enable;
+    uint pl2_clamp;
+    uint pl2_timey; // time Y
+    uint pl2_timez; // time Z
+    double pl2_timew; // time window
+    uint lock;
+} msr_power_limit_t;
+
 typedef struct msr_power_info_s {
+    ullong reg;
     uint max_power; //W
     uint min_power; //W
     double max_timew; //time window (uS)
     uint tdp; //W
 } msr_power_info_t;
 
-typedef struct msr_power_unit_s {
-    double mult_power;
-    double mult_energy;
-    double mult_time;
-} msr_power_unit_t;
+static topology_t tp_cores;
+static topology_t tp_sockets;
+static ullong     mult_reg;
+static double     mult_power;
+static double     mult_energy;
+static double     mult_time;
 
-typedef struct msr_power_limit_s {
-    ullong reg;
-    char keep_name[64];
-    uint keep_load;
-    uint pl1_power;
-    uint pl1_enable;
-    uint pl1_clamp;
-    uint pl1_timey;
-    uint pl1_timez;
-    double pl1_time;
-    uint pl2_power;
-    uint pl2_enable;
-    uint pl2_clamp;
-    uint pl2_timey;
-    uint pl2_timez;
-    double pl2_time;
-    uint lock;
-} msr_power_limit_t;
+struct primitive_s {
+    topology_t        *tp;
+    msr_power_limit_t *pl;
+    msr_power_info_t  *pi;
+    off_t              reg_power_limit;
+    off_t              reg_energy_status;
+    off_t              reg_policy;
+    off_t              reg_perf_statusx ;
+    off_t              reg_power_info;
+};
 
-static topology_t         tp_cores;
-static topology_t         tp_sockets;
-static msr_power_info_t  *pi_sock;
-static msr_power_info_t  *pi_dram;
-static msr_power_unit_t  *pu_sock; // its read per socket, but is used in all components
-static msr_power_limit_t *pl_sock;
-static msr_power_limit_t *pl_dram;
+#define PRIM_INIT(tp, rpl, rel, rp, rps, rpi) {	\
+		.tp = #p, \
+		.reg_power_limit = rpl, \
+		.reg_energy_status = rel, \
+		.reg_policy = rp, \
+		.reg_perf_status = rps, \
+		.reg_power_info = rpi \
+	}
+
+static struct primitive_s p[] = {
+    PRIM_INIT(&tp_sockets, MSR_PKG_POWER_LIMIT , MSR_PKG_ENERGY_STATUS , MSR_PKG_POLICY , MSR_PKG_PERF_STATUS , MSR_PKG_POWER_INFO ),
+    PRIM_INIT(&tp_sockets, MSR_DRAM_POWER_LIMIT, MSR_DRAM_ENERGY_STATUS, MSR_DRAM_POLICY, MSR_DRAM_PERF_STATUS, MSR_DRAM_POWER_INFO),
+    PRIM_INIT(&tp_cores  , MSR_PP0_POWER_LIMIT , MSR_PP0_ENERGY_STATUS , MSR_PP0_POLICY , MSR_PP0_PERF_STATUS , MSR_PP0_POWER_INFO ),
+    { NULL, 0, 0, 0 },
+};
+
+static void prim_init(int domain)
+{
+    struct primitive_s *prim = p[domain];
+    int bl = 31;
+    int i;
+
+    // Specificness
+    if (domain == CPUPOW_SOCK) {
+        bl = 63;
+    }
+    // Allocation
+    prim->pi = calloc(prim->tp.cpu_count, sizeof(msr_power_info_t));
+    prim->pl = calloc(prim->tp.cpu_count, sizeof(msr_power_limit_t));
+    for (i = 0; i < prim->tp.cpu_count; ++i) {
+        // MSR_*_POWER_INFO
+        if ((msr_read(prim->cpus[i].id, &prim->pi[i].reg, sizeof(ullong), prim->reg_power_info))) {
+            return;
+        }
+        prim->pi[i].tdp       = (uint) (((double) getbits64(prim->pi[i].reg, 14,  0)) * mult_power);
+        prim->pi[i].min_power = (uint) (((double) getbits64(prim->pi[i].reg, 30, 16)) * mult_power);
+        prim->pi[i].max_power = (uint) (((double) getbits64(prim->pi[i].reg, 46, 32)) * mult_power);
+        prim->pi[i].max_timew =        (((double) getbits64(prim->pi[i].reg, 53, 48)) * mult_time );
+        // MSR_*_POWER_LIMIT
+        if ((msr_read(prim->cpus[i].id, &prim->pl[i].reg, sizeof(ullong), prim->reg_power_limit))) {
+            return;
+        }
+        if (domain != CPUPOW_SOCKET) {
+            prim->pl[i].reg = getbits64(prim->pl[i].reg, 31, 0);
+        }
+        prim->pl[i].lock       = (uint) getbits64(prim->pl[i].reg, bl, bl);
+        prim->pl[i].pl1_enable = (uint) getbits64(prim->pl[i].reg, 15, 15);
+        prim->pl[i].pl2_enable = (uint) getbits64(prim->pl[i].reg, 47, 47);
+        prim->pl[i].pl1_clamp  = (uint) getbits64(prim->pl[i].reg, 16, 16);
+        prim->pl[i].pl2_clamp  = (uint) getbits64(prim->pl[i].reg, 48, 48);
+        prim->pl[i].pl1_timey  = (uint) getbits64(prim->pl[i].reg, 21, 17);
+        prim->pl[i].pl1_timez  = (uint) getbits64(prim->pl[i].reg, 23, 22);
+        prim->pl[i].pl2_timey  = (uint) getbits64(prim->pl[i].reg, 53, 49);
+        prim->pl[i].pl2_timez  = (uint) getbits64(prim->pl[i].reg, 55, 54);
+        prim->pl[i].pl1_power  = (uint) ((double) (getbits64(prim->pl[i].reg, 14,  0) * mult_power));
+        prim->pl[i].pl2_power  = (uint) ((double) (getbits64(prim->pl[i].reg, 46, 32) * mult_power));
+        prim->pl[i].pl1_timew  = (double) (pow(2.0, prim->pl[i].pl1_timey) * (1.0 + ((double) prim->pl[i].pl1_timez)/4.0)) * mult_time;
+        prim->pl[i].pl2_time   = (double) (pow(2.0, prim->pl[i].pl2_timey) * (1.0 + ((double) prim->pl[i].pl2_timez)/4.0)) * mult_time;
+        // Debugging PI
+        debug("pi[%d].tdp      : %3u W [%3llu * %lf]"   , i, prim->pi[i].tdp      , getbits64(prim->pi[i].reg, 14,  0), mult_power);
+        debug("pi[%d].min_power: %3u W [%3llu * %lf]"   , i, prim->pi[i].min_power, getbits64(prim->pi[i].reg, 30, 16), mult_power);
+        debug("pi[%d].max_power: %3u W [%3llu * %lf]"   , i, prim->pi[i].max_power, getbits64(prim->pi[i].reg, 46, 32), mult_power);
+        debug("pi[%d].max_timew: %lf S [%llu * %lf] (?)", i, prim->pi[i].max_timew, getbits64(prim->pi[i].reg, 53, 48), mult_time );
+        // Debugging PL
+        debug("pl[%d].pl1_power: %u W [%u * %0.3lf]", i, prim->pl[i].pl1_power, (uint) getbits64(prim->pl[i].reg, 14,  0), mult_power);
+        debug("pl[%d].pl2_power: %u W [%u * %0.3lf]", i, prim->pl[i].pl2_power, (uint) getbits64(prim->pl[i].reg, 46, 32), mult_power);
+        debug("pl[%d].pl1_time : %2.0lf S [(2^%02u * (1+(%u/4))) * %lf]", i, prim->pl[i].pl1_timew, prim->pl[i].pl1_timey, prim->pl[i].pl1_timez, mult_time);
+        debug("pl[%d].pl2_time : %2.0lf S [(2^%02u * (1+(%u/4))) * %lf]", i, prim->pl[i].pl2_timew, prim->pl[i].pl2_timey, prim->pl[i].pl2_timez, mult_time);
+    }
+}
 
 void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
 {
@@ -115,95 +194,31 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
             return;
         }
     }
-    // Memory allocation
-    pi_sock = calloc(tp_sockets.cpu_count, sizeof (msr_power_info_t));
-    pi_dram = calloc(tp_sockets.cpu_count, sizeof (msr_power_info_t));
-    pu_sock = calloc(tp_sockets.cpu_count, sizeof (msr_power_unit_t));
-    pl_sock = calloc(tp_sockets.cpu_count, sizeof (msr_power_limit_t));
-    pl_dram = calloc(tp_sockets.cpu_count, sizeof (msr_power_limit_t));
     // MSR_RAPL_POWER_UNIT
     for (i = 0; i < tp_sockets.cpu_count; ++i) {
-        if (state_fail(msr_read(tp_sockets.cpus[i].id, &reg, sizeof(ullong), MSR_RAPL_POWER_UNIT))) {
+        if (state_fail(msr_read(tp_sockets.cpus[i].id, &mult_reg, sizeof(ullong), MSR_RAPL_POWER_UNIT))) {
             debug("msr_read: %s", state_msg);
             return;
         }
         // Get the multipliers
-        pu_sock[i].mult_power  = pow(0.5, (double) getbits64(reg,  3,  0));
-        pu_sock[i].mult_energy = pow(0.5, (double) getbits64(reg, 12,  8));
-        pu_sock[i].mult_time   = pow(0.5, (double) getbits64(reg, 19, 16));
-        debug("pu_sock[%d].mult_power : %lf W [1/(2^%u)]", i, pu_sock[i].mult_power , (uint) getbits64(reg,  3,  0));
-        debug("pu_sock[%d].mult_energy: %lf J [1/(2^%u)]", i, pu_sock[i].mult_energy, (uint) getbits64(reg, 12,  8));
-        debug("pu_sock[%d].mult_time  : %lf S [1/(2^%u)]", i, pu_sock[i].mult_time  , (uint) getbits64(reg, 19, 16));
+        mult_power  = pow(0.5, (double) getbits64(reg,  3,  0));
+        mult_energy = pow(0.5, (double) getbits64(reg, 12,  8));
+        mult_time   = pow(0.5, (double) getbits64(reg, 19, 16));
+        debug("pu_sock[%d].mult_power : %lf W [1/(2^%u)]", i, mult_power , (uint) getbits64(mult_reg,  3,  0));
+        debug("pu_sock[%d].mult_energy: %lf J [1/(2^%u)]", i, mult_energy, (uint) getbits64(mult_reg, 12,  8));
+        debug("pu_sock[%d].mult_time  : %lf S [1/(2^%u)]", i, mult_time  , (uint) getbits64(mult_reg, 19, 16));
     }
-    // MSR_PKG_POWER_INFO & MSR_DRAM_POWER_INFO
-    for (i = 0; i < tp_sockets.cpu_count; ++i) {
-        // MSR_PKG_POWER_INFO
-        if ((msr_read(tp_sockets.cpus[i].id, &reg, sizeof(ullong), MSR_PKG_POWER_INFO))) {
-            return;
-        }
-    debug("REG %llu", reg);
-        pi_sock[i].tdp       = (uint) (((double) getbits64(reg, 14,  0)) * pu_sock[i].mult_power);
-        pi_sock[i].min_power = (uint) (((double) getbits64(reg, 30, 16)) * pu_sock[i].mult_power);
-        pi_sock[i].max_power = (uint) (((double) getbits64(reg, 46, 32)) * pu_sock[i].mult_power);
-        pi_sock[i].max_timew =        (((double) getbits64(reg, 53, 48)) * pu_sock[i].mult_time);
-        debug("pi_sock[%d].tdp      : %3u W [%3llu * %lf]"    , i, pi_sock[i].tdp      , getbits64(reg, 14,  0), pu_sock[i].mult_power);
-        debug("pi_sock[%d].min_power: %3u W [%3llu * %lf]"    , i, pi_sock[i].min_power, getbits64(reg, 30, 16), pu_sock[i].mult_power);
-        debug("pi_sock[%d].max_power: %3u W [%3llu * %lf]"    , i, pi_sock[i].max_power, getbits64(reg, 46, 32), pu_sock[i].mult_power);
-        debug("pi_sock[%d].max_timew: %lf S [%llu * %lf] (?)" , i, pi_sock[i].max_timew, getbits64(reg, 53, 48), pu_sock[i].mult_time );
-        // MSR_DRAM_POWER_INFO
-        if ((msr_read(tp_sockets.cpus[i].id, &reg, sizeof(ullong), MSR_DRAM_POWER_INFO))) {
-            return;
-        }
-        pi_dram[i].tdp       = (uint) (((double) getbits64(reg, 14,  0)) * pu_sock[i].mult_power);
-        pi_dram[i].min_power = (uint) (((double) getbits64(reg, 30, 16)) * pu_sock[i].mult_power);
-        pi_dram[i].max_power = (uint) (((double) getbits64(reg, 46, 32)) * pu_sock[i].mult_power);
-        pi_dram[i].max_timew =        (((double) getbits64(reg, 53, 48)) * pu_sock[i].mult_time);
-        debug("pi_dram[%d].tdp      : %2u W [%3llu * %lf]"    , i, pi_dram[i].tdp      , getbits64(reg, 14,  0), pu_sock[i].mult_power);
-        debug("pi_dram[%d].min_power: %2u W [%3llu * %lf]"    , i, pi_dram[i].min_power, getbits64(reg, 30, 16), pu_sock[i].mult_power);
-        debug("pi_dram[%d].max_power: %2u W [%3llu * %lf]"    , i, pi_dram[i].max_power, getbits64(reg, 46, 32), pu_sock[i].mult_power);
-        debug("pi_dram[%d].max_timew: %lf S [%llu * %lf] (?)" , i, pi_dram[i].max_timew, getbits64(reg, 53, 48), pu_sock[i].mult_time );
-    }
-    // MSR_PKG_POWER_LIMIT & MSR_DRAM_POWER_LIMIT
-    for (i = 0; i < tp_sockets.cpu_count; ++i) {
-        // MSR_PKG_POWER_LIMIT
-        if ((msr_read(tp_sockets.cpus[i].id, &pl_sock[i].reg, sizeof(ullong), MSR_PKG_POWER_LIMIT))) {
-            return;
-        }
-        // Keeper
-        sprintf(pl_sock[i].keep_name, "MsrPkgPowerLimit%d", i);
-        if (!(pl_sock[i].keep_load = keeper_load_uint64(pl_sock[i].keep_name, &pl_sock[i].reg))) {
-            keeper_save_uint64(pl_sock[i].keep_name, pl_sock[i].reg);
-        }
-        pl_sock[i].lock       = (uint) getbits64(pl_sock[i].reg, 63, 63);
-        pl_sock[i].pl1_enable = (uint) getbits64(pl_sock[i].reg, 15, 15);
-        pl_sock[i].pl2_enable = (uint) getbits64(pl_sock[i].reg, 47, 47);
-        pl_sock[i].pl1_clamp  = (uint) getbits64(pl_sock[i].reg, 16, 16);
-        pl_sock[i].pl2_clamp  = (uint) getbits64(pl_sock[i].reg, 48, 48);
-        pl_sock[i].pl1_timey  = (uint) getbits64(pl_sock[i].reg, 21, 17);
-        pl_sock[i].pl1_timez  = (uint) getbits64(pl_sock[i].reg, 23, 22);
-        pl_sock[i].pl2_timey  = (uint) getbits64(pl_sock[i].reg, 53, 49);
-        pl_sock[i].pl2_timez  = (uint) getbits64(pl_sock[i].reg, 55, 54);
-        pl_sock[i].pl1_power  = (uint) ((double) (getbits64(pl_sock[i].reg, 14,  0) * pu_sock[i].mult_power));
-        pl_sock[i].pl2_power  = (uint) ((double) (getbits64(pl_sock[i].reg, 46, 32) * pu_sock[i].mult_power));
-        pl_sock[i].pl1_time   = (double) (pow(2.0, pl_sock[i].pl1_timey) * (1.0 + ((double) pl_sock[i].pl1_timez)/4.0)) * pu_sock[i].mult_time;
-        pl_sock[i].pl2_time   = (double) (pow(2.0, pl_sock[i].pl2_timey) * (1.0 + ((double) pl_sock[i].pl2_timez)/4.0)) * pu_sock[i].mult_time;
-        debug("pl_sock[%d].pl1: %u W [%u * %0.3lf]", i, pl_sock[i].pl1_power, (uint) getbits64(pl_sock[i].reg, 14,  0), pu_sock[i].mult_power);
-        debug("pl_sock[%d].pl2: %u W [%u * %0.3lf]", i, pl_sock[i].pl2_power, (uint) getbits64(pl_sock[i].reg, 46, 32), pu_sock[i].mult_power);
-        debug("pl_sock[%d].pl1: %2.0lf S [(2^%02u * (1+(%u/4))) * %lf]", i, pl_sock[i].pl1_time, pl_sock[i].pl1_timey, pl_sock[i].pl1_timez, pu_sock[i].mult_time);
-        debug("pl_sock[%d].pl2: %2.0lf S [(2^%02u * (1+(%u/4))) * %lf]", i, pl_sock[i].pl2_time, pl_sock[i].pl2_timey, pl_sock[i].pl2_timez, pu_sock[i].mult_time);
-        //debug("pl_sock[%d].reg: %d lock", i, pl_sock[i].lock);
-
-        // MSR_DRAM_POWER_LIMIT (later, first better test PCK)
-        if ((msr_read(tp_sockets.cpus[i].id, &pl_dram[i].reg, sizeof(ullong), MSR_DRAM_POWER_LIMIT))) {
-            return;
-        }
-        // PP0 POWER LIMIT is not included because we don't have MSR_PP0_POWER_INFO
-    }
-    apis_put(ops->get_api      , mgt_cpupow_intel63_get_api);
-    apis_put(ops->count_devices, mgt_cpupow_intel63_count_devices);
-    apis_put(ops->get_powercap , mgt_cpupow_intel63_get_powercap);
-    apis_put(ops->set_powercap , mgt_cpupow_intel63_set_powercap);
-    apis_put(ops->get_tdp      , mgt_cpupow_intel63_get_tdp);
+    // PKG and DRAM initializations
+    prim_init(CPUPOW_SOCK);
+    prim_init(CPUPOW_DRAM);
+    //
+    apis_put(ops->get_api            , mgt_cpupow_intel63_get_api);
+    apis_put(ops->count_devices      , mgt_cpupow_intel63_count_devices);
+    apis_put(ops->is_powercap_capable, mgt_cpupow_intel63_is_powercap_capable);
+    apis_put(ops->is_powercap_enabled, mgt_cpupow_intel63_is_powercap_enabled);
+    apis_put(ops->get_powercap       , mgt_cpupow_intel63_get_powercap);
+    apis_put(ops->set_powercap       , mgt_cpupow_intel63_set_powercap);
+    apis_put(ops->get_tdp            , mgt_cpupow_intel63_get_tdp);
 }
 
 void mgt_cpupow_intel63_get_api(uint *api)
@@ -211,17 +226,27 @@ void mgt_cpupow_intel63_get_api(uint *api)
     *api = API_INTEL63;
 }
 
-state_t mgt_cpupow_intel63_count_devices(int type, uint *devs_count)
+state_t mgt_cpupow_intel63_count_devices(int domain, uint *devs_count)
 {
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_get_powercap(int type, uint *watts)
+int mgt_cpupow_intel63_is_powercap_capable(int domain)
+{
+    return 1;
+}
+
+state_t mgt_cpupow_intel63_is_powercap_enabled(int domain, uint *enabled)
 {
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_set_powercap(int type, uint *watts)
+state_t mgt_cpupow_intel63_get_powercap(int domain, uint *watts)
+{
+    return EAR_SUCCESS;
+}
+
+state_t mgt_cpupow_intel63_set_powercap(int domain, uint *watts)
 {
     #if 0
     ullong reg;
@@ -232,14 +257,16 @@ state_t mgt_cpupow_intel63_set_powercap(int type, uint *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_get_tdp(uint *watts)
+state_t mgt_cpupow_intel63_get_tdp(int domain, uint *watts)
 {
+    struct primitive_s *prim = p[domain];
     int i;
+
     // Cleaning
-    memset(watts, 0, sizeof(uint)*tp_sockets.cpu_count);
+    memset(watts, 0, sizeof(uint)*prim->tp.cpu_count);
     // Iterating over sockets
-    for (i = 0; i < tp_sockets.cpu_count; ++i) {
-        watts[i] = pi_sock[i].tdp;
+    for (i = 0; i < prim->tp.cpu_count; ++i) {
+        watts[i] = prim->pi[i].tdp;
         debug("read tdp: %u", watts[i]);
     }
     return EAR_SUCCESS;
