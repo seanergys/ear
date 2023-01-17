@@ -42,9 +42,9 @@ void mgt_cpupow_get_api(uint *api)
     return ops.get_api(api);
 }
 
-state_t mgt_cpupow_count_devices(int domain, uint *devs_count)
+int mgt_cpupow_count_devices(int domain)
 {
-    return ops.count_devices(domain, devs_count);
+    return ops.count_devices(domain);
 }
 
 int mgt_cpupow_is_powercap_capable(int domain)
@@ -52,24 +52,29 @@ int mgt_cpupow_is_powercap_capable(int domain)
     return ops.is_powercap_capable(domain);
 }
 
-state_t mgt_cpupow_is_powercap_enabled(int domain, int *enabled)
+state_t mgt_cpupow_powercap_is_enabled(int domain, int *enabled)
 {
-    return ops.is_powercap_enabled(domain, enabled);
+    return ops.powercap_is_enabled(domain, enabled);
 }
 
-state_t mgt_cpupow_get_powercap(int domain, uint *watts)
+state_t mgt_cpupow_powercap_get(int domain, uint *watts)
 {
-    return ops.get_powercap(domain, watts);
+    return ops.powercap_get(domain, watts);
 }
 
-state_t mgt_cpupow_set_powercap(int domain, uint *watts)
+state_t mgt_cpupow_powercap_set(int domain, uint *watts)
 {
-    return ops.set_powercap(domain, watts);
+    return ops.powercap_set(domain, watts);
 }
 
-state_t mgt_cpupow_get_tdp(int domain, uint *watts)
+state_t mgt_cpupow_powercap_set(int domain)
 {
-    return ops.get_tdp(domain, watts);
+    return ops.powercap_set(domain);
+}
+
+state_t mgt_cpupow_tdp_get(int domain, uint *watts)
+{
+    return ops.tdp_get(domain, watts);
 }
 
 #if TEST
@@ -81,7 +86,7 @@ int main(int argc, char *argv[])
     topology_init(&tp);
     topology_print(&tp, verb_channel);
     mgt_cpupow_load(&tp, 0);
-    mgt_cpupow_get_tdp(CPUPOW_SOCKET, tdps);
+    mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);
     return 0;
 }
 #endif
