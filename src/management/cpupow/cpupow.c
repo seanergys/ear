@@ -67,9 +67,9 @@ state_t mgt_cpupow_powercap_set(int domain, uint *watts)
     return ops.powercap_set(domain, watts);
 }
 
-state_t mgt_cpupow_powercap_set(int domain)
+state_t mgt_cpupow_powercap_reset(int domain)
 {
-    return ops.powercap_set(domain);
+    return ops.powercap_reset(domain);
 }
 
 state_t mgt_cpupow_tdp_get(int domain, uint *watts)
@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
     topology_print(&tp, verb_channel);
     mgt_cpupow_load(&tp, 0);
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);
+    mgt_cpupow_powercap_set(CPUPOW_SOCKET, (uint []) {65, 65 });
     return 0;
 }
 #endif

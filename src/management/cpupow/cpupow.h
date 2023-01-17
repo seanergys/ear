@@ -38,6 +38,7 @@ typedef struct mgt_cpupow_ops_s
     state_t (*powercap_is_enabled) (int domain, int *enabled);
     state_t (*powercap_get)        (int domain, uint *watts);
     state_t (*powercap_set)        (int domain, uint *watts);
+    state_t (*powercap_reset)      (int domain);
     state_t (*tdp_get)             (int domain, uint *watts);
 } mgt_cpupow_ops_t;
 
