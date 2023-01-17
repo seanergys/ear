@@ -1648,7 +1648,7 @@ void ear_init()
 				// Tracing init
         #if SINGLE_CONNECTION
                 if (masters_info.my_master_rank>=0) {
-                    traces_init(system_conf, application.job.app_id, ear_my_rank,
+                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
                             my_id, num_nodes, my_size, ppnode);
 
                     traces_start();

@@ -87,6 +87,7 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
 
 #if USE_GPUS
     int num_gpu = sig->gpu_sig.num_gpus;
+    num_gpu = MAX_GPUS_SUPPORTED;
 		if (single_column && num_gpu) {
 			dprintf(fd, ";");
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lf%c", sig->gpu_sig.gpu_data[j].GPU_power, sep);

@@ -140,7 +140,8 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 			debug("heroes creating app header");
       uint num_gpus = 0;
 #if USE_GPUS
-      for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, apps[l].signature.gpu_sig.num_gpus);
+      //for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, apps[l].signature.gpu_sig.num_gpus);
+      num_gpus = MAX_GPUS_SUPPORTED;
 			debug("Using %d GPUS", num_gpus);
 #endif
 
@@ -188,7 +189,8 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 			debug("heroes creating loop header: GPUS on=%d", USE_GPUS);
     	uint num_gpus = 0;
 #if USE_GPUS
-    	for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, loops[l].signature.gpu_sig.num_gpus);
+    	//for (uint l = 0; l < count; l++) num_gpus = ear_max(num_gpus, loops[l].signature.gpu_sig.num_gpus);
+      num_gpus = MAX_GPUS_SUPPORTED;
 			debug("Using %d GPUS", num_gpus);
 #endif
       create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus, 1);
