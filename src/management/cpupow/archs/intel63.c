@@ -50,10 +50,13 @@
 #define MSR_PP1_PERF_STATUS     MSR_NO_REG
 #define MSR_PP1_POWER_INFO      MSR_NO_REG
 
+// Time Window DRAM/PP0/PP1 -> (2^Y)*(1+(Z/10) * TU -> Y(21:17) & Z(23:22) (Z is F in documents)
+// Time Window PKG          -> (2^Y)*(1+(Z/4)  * TU -> Y(21:17) & Z(23:22)
+
 // 7 bits: 2 + 5, this is for a default Time Unit of 1/(2^10) = 0.000977
-#define TIME_WINDOW_1S      0x0a // (2^10)×(1+(0÷4)) * Time Unit (0.000977) = 10 & 0 = 0001010 = 0x0a
-#define TIME_WINDOW_100MS   0x66 // (2^6 )×(1+(3÷4)) * Time unit (0.000977) = 6  & 3 = 1100110 = 0x66
-#define TIME_WINDOW_10MS    0x43 // (2^3 )×(1+(2÷4)) * Time unit (0.000977) = 3  & 2 = 1000011 = 0x36
+#define TIME_WINDOW_1S      0x0a // (2^10)×(1+(0÷4)) * TU (0.000977) = 10 & 0 = 0001010 = 0x0a
+#define TIME_WINDOW_100MS   0x66 // (2^6 )×(1+(3÷4)) * TU (0.000977) = 6  & 3 = 1100110 = 0x66
+#define TIME_WINDOW_10MS    0x43 // (2^3 )×(1+(2÷4)) * TU (0.000977) = 3  & 2 = 1000011 = 0x43
 
 typedef struct msr_power_limit_s {
     ullong reg;
@@ -90,9 +93,11 @@ static double     mult_time;
 struct primitive_s {
     topology_t        *tp;
     const char        *name;
+    int                enabled;
     msr_power_limit_t *pl;
     off_t              pl_address; // MSR_*_POWER_LIMIT
     int                pl_bit_lock;
+    double             pl_divisor; // Time Window divisor
     const char        *pl_keeper_name;
     off_t              es_address; // MSR_*_ENERGY_STATUS
     off_t              po_address; // MSR_*_POLICY
@@ -101,21 +106,23 @@ struct primitive_s {
     off_t              pi_address; // MSR_*_POWER_INFO
 };
 
-#define PRIM_INIT(_tp, domain, pl_bl, pl_kn) { \
+#define PRIM_INIT(_tp, dom, pl_bl, pl_dv, pl_kn) { \
 	.tp = _tp, \
-    .name = #domain, \
-	.pl_address = MSR_ ## domain ## _POWER_LIMIT, \
+    .name = #dom, \
+    .enabled = 1, \
+	.pl_address = MSR_ ## dom ## _POWER_LIMIT, \
     .pl_bit_lock = pl_bl, \
+    .pl_divisor = pl_dv, \
     .pl_keeper_name = pl_kn, \
-    .es_address = MSR_ ## domain ## _ENERGY_STATUS, \
-	.po_address = MSR_ ## domain ## _POLICY, \
-	.ps_address = MSR_ ## domain ## _PERF_STATUS, \
-	.pi_address = MSR_ ## domain ## _POWER_INFO \
+    .es_address = MSR_ ## dom ## _ENERGY_STATUS, \
+	.po_address = MSR_ ## dom ## _POLICY, \
+	.ps_address = MSR_ ## dom ## _PERF_STATUS, \
+	.pi_address = MSR_ ## dom ## _POWER_INFO \
 }
 
 static struct primitive_s prims[] = {
-    PRIM_INIT(&tp_sockets, PKG, 63, "MsrPkgPowerLimit"),
-    PRIM_INIT(&tp_sockets, DRAM, 31, "MsrDramPowerLimit"),
+    PRIM_INIT(&tp_sockets, PKG, 63, 4.0, "MsrPkgPowerLimit"),
+    PRIM_INIT(&tp_sockets, DRAM, 31, 10.0,"MsrDramPowerLimit"),
     { NULL, 0, 0, 0, 0, 0, 0 },
 };
 
@@ -135,7 +142,7 @@ static int prim_read_power_info(const char *name, off_t address, uint cpu, msr_p
     return 1;
 }
 
-static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *pl, int bl)
+static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *pl, int bl, double div)
 {
     char *enabled[2] = { "enabled", "disabled" };
     pl->lock       = (uint) getbits64(pl->reg, bl, bl);
@@ -149,8 +156,8 @@ static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *
     pl->pl2_timez  = (uint) getbits64(pl->reg, 55, 54);
     pl->pl1_power  = (uint) ((double) (getbits64(pl->reg, 14,  0) * mult_power));
     pl->pl2_power  = (uint) ((double) (getbits64(pl->reg, 46, 32) * mult_power));
-    pl->pl1_timew  = (double) (pow(2.0, pl->pl1_timey) * (1.0 + ((double) pl->pl1_timez)/4.0)) * mult_time;
-    pl->pl2_timew  = (double) (pow(2.0, pl->pl2_timey) * (1.0 + ((double) pl->pl2_timez)/4.0)) * mult_time;
+    pl->pl1_timew  = (double) (pow(2.0, pl->pl1_timey) * (1.0 + ((double) pl->pl1_timez)/div)) * mult_time;
+    pl->pl2_timew  = (double) (pow(2.0, pl->pl2_timey) * (1.0 + ((double) pl->pl2_timez)/div)) * mult_time;
     debug("%s[%d].pl1_power: %6u W [%u * %0.3lf]", name, cpu, pl->pl1_power, (uint) getbits64(pl->reg, 14,  0), mult_power);
     debug("%s[%d].pl2_power: %6u W [%u * %0.3lf]", name, cpu, pl->pl2_power, (uint) getbits64(pl->reg, 46, 32), mult_power);
     debug("%s[%d].pl1_time : %06.3lf S [(2^%02u * (1+(%u/4))) * %lf]", name, cpu, pl->pl1_timew, pl->pl1_timey, pl->pl1_timez, mult_time);
@@ -158,12 +165,12 @@ static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *
     debug("%s[%d].more     : pl1 %s, pl2 %s, lock %d", name, cpu, enabled[pl->pl1_enable], enabled[pl->pl2_enable], pl->lock);
 }
 
-static int prim_read_power_limit(const char *name, off_t address, uint cpu, msr_power_limit_t *pl, int bl)
+static int prim_read_power_limit(const char *name, off_t address, uint cpu, msr_power_limit_t *pl, int bl, double div)
 {
     if ((msr_read(cpu, &pl->reg, sizeof(ullong), address))) {
         return 0;
     }
-    prim_bit_power_limit(name, cpu, pl, bl);
+    prim_bit_power_limit(name, cpu, pl, bl, div);
     return 1;
 }
 
@@ -183,7 +190,7 @@ static int prim_init(int domain)
             return 0;
         }
         // MSR_*_POWER_LIMIT
-        if (!prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &p->pl[i], p->pl_bit_lock)) {
+        if (!prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &p->pl[i], p->pl_bit_lock, p->pl_divisor)) {
             return 0;
         }
         debug("----------------------------------------");
@@ -193,7 +200,7 @@ static int prim_init(int domain)
             keeper_save_uint64(buffer, p->pl[i].reg);
         } else {
             debug("Loaded %s from keeper:", buffer);
-            prim_bit_power_limit(p->name, p->tp->cpus[i].id, &p->pl[i], p->pl_bit_lock);
+            prim_bit_power_limit(p->name, p->tp->cpus[i].id, &p->pl[i], p->pl_bit_lock, p->pl_divisor);
             debug("----------------------------------------");
         }
     }
@@ -209,7 +216,6 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
         return;
     }
     if (tp_in->vendor == VENDOR_INTEL && tp_in->model >= MODEL_HASWELL_X) {
-    } else if (tp_in->vendor == VENDOR_AMD && tp_in->family >= FAMILY_ZEN) {
     } else {
         // API incompatible
         debug("api incompatible");
@@ -265,8 +271,7 @@ int mgt_cpupow_intel63_count_devices(int domain)
 
 int mgt_cpupow_intel63_is_powercap_capable(int domain)
 {
-    // TODO: a method to get the capability of different domains
-    return 1;
+    return prims[domain].enabled;
 }
 
 state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
@@ -311,12 +316,12 @@ state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
 
 state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
 {
-    // TODO: formula to get time window
     struct primitive_s *p = &prims[domain];
     double power;
     ullong reg;
     int i;
 
+    // TODO: formula to compute time window
     for (i = 0; i < p->tp->cpu_count; ++i) {
         // Getting power value
         power = ((double) watts[i]) / mult_power;
