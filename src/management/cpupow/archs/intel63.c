@@ -284,7 +284,7 @@ state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
     memset(0, 0, sizeof(uint)*p->tp->cpu_count);
     //
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &pl, p->pl_bit_lock)) {
+        if (prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &pl, p->pl_bit_lock, p->pl_divisor)) {
             return EAR_ERROR;
         }
         enabled[i] = pl.pl1_enable;
@@ -304,7 +304,7 @@ state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
     }
     //
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &pl, p->pl_bit_lock)) {
+        if (prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &pl, p->pl_bit_lock, p->pl_divisor)) {
             return EAR_ERROR;
         }
         if (pl.pl1_enable) {
