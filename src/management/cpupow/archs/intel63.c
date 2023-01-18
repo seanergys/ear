@@ -16,11 +16,14 @@
 */
 
 #define SHOW_DEBUGS 1
+#define DEBUG_POWER_CONSUMING 1
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
+#include <common/system/monitor.h>
 #include <common/hardware/bithack.h>
 #include <metrics/common/msr.h>
 #include <metrics/common/apis.h>
@@ -50,14 +53,6 @@
 #define MSR_PP1_PERF_STATUS     MSR_NO_REG
 #define MSR_PP1_POWER_INFO      MSR_NO_REG
 
-// Time Window DRAM/PP0/PP1 -> (2^Y)*(1+(Z/10) * TU -> Y(21:17) & Z(23:22) (Z is F in documents)
-// Time Window PKG          -> (2^Y)*(1+(Z/4)  * TU -> Y(21:17) & Z(23:22)
-
-// 7 bits: 2 + 5, this is for a default Time Unit of 1/(2^10) = 0.000977
-#define TIME_WINDOW_1S      0x0a // (2^10)×(1+(0÷4)) * TU (0.000977) = 10 & 0 = 0001010 = 0x0a
-#define TIME_WINDOW_100MS   0x66 // (2^6 )×(1+(3÷4)) * TU (0.000977) = 6  & 3 = 1100110 = 0x66
-#define TIME_WINDOW_10MS    0x43 // (2^3 )×(1+(2÷4)) * TU (0.000977) = 3  & 2 = 1000011 = 0x43
-
 typedef struct msr_power_limit_s {
     ullong reg;
     uint pl1_power; // Power limit #1 (long term)
@@ -72,6 +67,10 @@ typedef struct msr_power_limit_s {
     uint pl2_timey; // time Y
     uint pl2_timez; // time Z
     double pl2_timew; // time window
+    uint time_window_10s;
+    uint time_window_1s;
+    uint time_window_100ms;
+    uint time_window_10ms;
     uint lock;
 } msr_power_limit_t;
 
@@ -93,7 +92,7 @@ static double     mult_time;
 struct primitive_s {
     topology_t        *tp;
     const char        *name;
-    int                enabled;
+    int                capable;
     msr_power_limit_t *pl;
     off_t              pl_address; // MSR_*_POWER_LIMIT
     int                pl_bit_lock;
@@ -109,7 +108,7 @@ struct primitive_s {
 #define PRIM_INIT(_tp, dom, pl_bl, pl_dv, pl_kn) { \
 	.tp = _tp, \
     .name = #dom, \
-    .enabled = 1, \
+    .capable = 1, \
 	.pl_address = MSR_ ## dom ## _POWER_LIMIT, \
     .pl_bit_lock = pl_bl, \
     .pl_divisor = pl_dv, \
@@ -121,14 +120,22 @@ struct primitive_s {
 }
 
 static struct primitive_s prims[] = {
-    PRIM_INIT(&tp_sockets, PKG, 63, 4.0, "MsrPkgPowerLimit"),
-    PRIM_INIT(&tp_sockets, DRAM, 31, 10.0,"MsrDramPowerLimit"),
-    { NULL, 0, 0, 0, 0, 0, 0 },
+    PRIM_INIT(&tp_sockets, PKG,  63,  4.0, "MsrPkgPowerLimit"),
+    PRIM_INIT(&tp_sockets, DRAM, 31, 10.0, "MsrDramPowerLimit"),
+    PRIM_INIT(&tp_cores  , PP0,  31, 10.0, "MsrPp0PowerLimit"),
+    PRIM_INIT(&tp_sockets, PP1,  31, 10.0, "MsrPp1PowerLimit"),
+    { NULL, NULL, 0, NULL, 0, 0, 0, NULL, 0, 0, 0, NULL, 0 },
 };
 
 static int prim_read_power_info(const char *name, off_t address, uint cpu, msr_power_info_t *pi)
 {
     if ((msr_read(cpu, &pi->reg, sizeof(ullong), address))) {
+        debug("Failed while reading MSR_%s_POWER_INFO: %s", name, state_msg)
+        return 0;
+    }
+    // TODO: don't know if this is correct, can be 0 a domain which is capable?
+    if (pi->reg == 0LLU) {
+        debug("Failed while reading MSR_%s_POWER_INFO: the register is empty", name);
         return 0;
     }
     pi->tdp       = (uint) (((double) getbits64(pi->reg, 14,  0)) * mult_power);
@@ -142,9 +149,32 @@ static int prim_read_power_info(const char *name, off_t address, uint cpu, msr_p
     return 1;
 }
 
+static uint prim_window_power_limit(double time_s, double div)
+{
+    double time_nearest = 0;
+    double time_current = 0;
+    uint y_nearest = 0;
+    uint z_nearest = 0;
+    uint y, z;
+    // Time Window DRAM/PP0/PP1 -> (2^Y)*(1+(Z/10) * TU -> Y(21:17) & Z(23:22) (Z is F in documents)
+    // Time Window PKG          -> (2^Y)*(1+(Z/4)  * TU -> Y(21:17) & Z(23:22)
+    for (y = 0; y < 32; ++y) { // Y(21:17) is 5 bits, 31 max integer
+        for (z = 0; z < 4; ++z) { // Z(23:22) 2 bits, 3 max integer
+            time_current = (pow(2.0, ((double) y)) * (1.0 + (((double) z)/div))) * mult_time;
+            // Selecting the nearest time window under time
+            if (time_current <= time_s && time_current > time_nearest) {
+                time_nearest = time_current;
+                y_nearest = y;
+                z_nearest = z;
+            }
+        }
+    }
+    return (uint) (setbits64(0LLU, z_nearest, 6, 5) | setbits64(0LLU, y_nearest, 4, 0));
+}
+
 static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *pl, int bl, double div)
 {
-    char *enabled[2] = { "enabled", "disabled" };
+    char *enabled[2] = { "disabled", "enabled" };
     pl->lock       = (uint) getbits64(pl->reg, bl, bl);
     pl->pl1_enable = (uint) getbits64(pl->reg, 15, 15);
     pl->pl2_enable = (uint) getbits64(pl->reg, 47, 47);
@@ -160,14 +190,27 @@ static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *
     pl->pl2_timew  = (double) (pow(2.0, pl->pl2_timey) * (1.0 + ((double) pl->pl2_timez)/div)) * mult_time;
     debug("%s[%d].pl1_power: %6u W [%u * %0.3lf]", name, cpu, pl->pl1_power, (uint) getbits64(pl->reg, 14,  0), mult_power);
     debug("%s[%d].pl2_power: %6u W [%u * %0.3lf]", name, cpu, pl->pl2_power, (uint) getbits64(pl->reg, 46, 32), mult_power);
-    debug("%s[%d].pl1_time : %06.3lf S [(2^%02u * (1+(%u/4))) * %lf]", name, cpu, pl->pl1_timew, pl->pl1_timey, pl->pl1_timez, mult_time);
-    debug("%s[%d].pl2_time : %06.3lf S [(2^%02u * (1+(%u/4))) * %lf]", name, cpu, pl->pl2_timew, pl->pl2_timey, pl->pl2_timez, mult_time);
-    debug("%s[%d].more     : pl1 %s, pl2 %s, lock %d", name, cpu, enabled[pl->pl1_enable], enabled[pl->pl2_enable], pl->lock);
+    debug("%s[%d].pl1_timew: %06.3lf S [(2^%02u * (1+(%u/4))) * %lf]", name, cpu, pl->pl1_timew, pl->pl1_timey, pl->pl1_timez, mult_time);
+    debug("%s[%d].pl2_timew: %06.3lf S [(2^%02u * (1+(%u/4))) * %lf]", name, cpu, pl->pl2_timew, pl->pl2_timey, pl->pl2_timez, mult_time);
+    debug("%s[%d].more     : pl1 %s, pl2 %s, lock %d (reg 0x%llx)", name, cpu, enabled[pl->pl1_enable], enabled[pl->pl2_enable], pl->lock, pl->reg);
+    // Calculating time window for future use
+    pl->time_window_10ms  = prim_window_power_limit( 0.012, div); // 10 ms (well ~)
+    pl->time_window_100ms = prim_window_power_limit( 0.110, div); // 100 ms
+    pl->time_window_1s    = prim_window_power_limit( 1.000, div); // 1 s
+    pl->time_window_10s   = prim_window_power_limit(10.000, div); // 1 s
+    debug("%s[%d].gen_timew: 0x%x 10ms, 0x%x 100ms, 0x%x 1s, 0x%x 10s",
+          name, cpu, pl->time_window_10ms, pl->time_window_100ms, pl->time_window_1s, pl->time_window_10s);
 }
 
 static int prim_read_power_limit(const char *name, off_t address, uint cpu, msr_power_limit_t *pl, int bl, double div)
 {
     if ((msr_read(cpu, &pl->reg, sizeof(ullong), address))) {
+        debug("Failed while reading MSR_%s_POWER_LIMIT: %s", name, state_msg)
+        return 0;
+    }
+    // TODO: don't know if this is correct, can be 0 a domain which is capable?
+    if (pl->reg == 0LLU) {
+        debug("Failed while reading MSR_%s_POWER_LIMIT: the register is empty", name);
         return 0;
     }
     prim_bit_power_limit(name, cpu, pl, bl, div);
@@ -207,6 +250,32 @@ static int prim_init(int domain)
     return 1;
 }
 
+#if DEBUG_POWER_CONSUMING
+static state_t debug_monitor(void *x)
+{
+    struct primitive_s *p = &prims[CPUPOW_SOCKET];
+    static ullong energy1[2] = { 0, 0 };
+    static ullong energy2[2] = { 0, 0 };
+    double energy;
+    double power;
+    ullong reg;
+    int i;
+
+    for (i = 0; i < p->tp->cpu_count; ++i) {
+        if (msr_read(p->tp->cpus[i].id, &reg, sizeof(ullong), p->es_address)) {
+            debug("msr_read: %s", state_msg);
+        }
+        energy2[i] = getbits64(reg, 31, 0);
+        if (energy1[i] > 0) {
+            energy = ((double) (energy2[i] - energy1[i])) * mult_energy;
+            power  = energy / 2.0; // We know its 2 seconds
+            debug("SOCKET[%u] energy: %lf J, power: %lf W", i, energy, power);
+        }
+        energy1[i] = energy2[i];
+    }
+}
+#endif
+
 void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
 {
     int i;
@@ -236,7 +305,7 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
             debug("msr_read: %s", state_msg);
             return;
         }
-        // Get the multipliers
+        // Get the multipliers (TODO: use multipliers per socket, not global)
         mult_power  = pow(0.5, (double) getbits64(mult_reg,  3,  0));
         mult_energy = pow(0.5, (double) getbits64(mult_reg, 12,  8));
         mult_time   = pow(0.5, (double) getbits64(mult_reg, 19, 16));
@@ -246,8 +315,24 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
         debug("----------------------------------------");
     }
     // PKG and DRAM initializations
-    if (!prim_init(CPUPOW_SOCKET)) return;
-    if (!prim_init(CPUPOW_DRAM)) return;
+    for(i = 0; prims[i].capable; ++i) {
+        if (!prim_init(i)) {
+            prims[i].capable = 0;
+            debug("----------------------------------------");
+        }
+    }
+    if (!prims[CPUPOW_SOCKET].capable) {
+        return;
+    }
+    // Extreme debugging, power monitor
+    #if DEBUG_POWER_CONSUMING
+    suscription_t *sus = suscription();
+    sus->call_main     = debug_monitor;
+    sus->time_relax    = 2000;
+    sus->time_burst    = 2000;
+    sus->suscribe(sus);
+    monitor_init();
+    #endif
     //
     apis_put(ops->get_api            , mgt_cpupow_intel63_get_api);
     apis_put(ops->count_devices      , mgt_cpupow_intel63_count_devices);
@@ -271,7 +356,7 @@ int mgt_cpupow_intel63_count_devices(int domain)
 
 int mgt_cpupow_intel63_is_powercap_capable(int domain)
 {
-    return prims[domain].enabled;
+    return prims[domain].capable;
 }
 
 state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
@@ -281,7 +366,7 @@ state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
     int i;
 
     // Cleaning
-    memset(0, 0, sizeof(uint)*p->tp->cpu_count);
+    memset(enabled, 0, sizeof(uint)*p->tp->cpu_count);
     //
     for (i = 0; i < p->tp->cpu_count; ++i) {
         if (prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &pl, p->pl_bit_lock, p->pl_divisor)) {
@@ -307,7 +392,7 @@ state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
         if (prim_read_power_limit(p->name, p->pl_address, p->tp->cpus[i].id, &pl, p->pl_bit_lock, p->pl_divisor)) {
             return EAR_ERROR;
         }
-        if (pl.pl1_enable) {
+        if (watts != NULL && pl.pl1_enable) {
             watts[i] = pl.pl1_power;
         }
     }
@@ -321,17 +406,29 @@ state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
     ullong reg;
     int i;
 
-    // TODO: formula to compute time window
+    if (!p->capable) {
+        return EAR_ERROR;
+    }
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        // Getting power value
-        power = ((double) watts[i]) / mult_power;
-        // Writing
-        reg = p->pl->reg;
-        reg = setbits64(reg,   (ullong) power, 14,  0); // power limit
-        reg = setbits64(reg,                1, 15, 15); // enable
-        reg = setbits64(reg, TIME_WINDOW_10MS, 23, 17); // time window
-        debug("writting watts %u -> %lf, regs %llu %llu", watts[i], power, p->pl->reg, reg);
-        msr_write(p->tp->cpus[i].id, &reg, sizeof(ullong), p->pl_address);
+        // Getting base register
+        reg = p->pl[i].reg;
+        // If is disabling
+        if (watts[i] == POWERCAP_DISABLE) {
+            // By now we are just using PL#1
+            reg = setbits64(reg, 0, 15, 15); // enable
+            debug("%s%d: disabling PL#1 (0x%llx)", p->name, p->tp->cpus[i].id, reg);
+        } else {
+            // Getting power value understood by RAPL
+            power = ((double) watts[i]) / mult_power;
+            reg   = setbits64(reg,        (ullong) power, 14,  0); // power limit
+            reg   = setbits64(reg,                     1, 15, 15); // enable
+            reg   = setbits64(reg, p->pl->time_window_1s, 23, 17); // time window
+            debug("%s%d: writting watts %u -> %lf, regs %llu %llu",
+                  p->name, p->tp->cpus[i].id, watts[i], power, p->pl->reg, reg);
+        }
+        if (state_fail(msr_write(p->tp->cpus[i].id, &reg, sizeof(ullong), p->pl_address))) {
+            debug("Failed while writing MSR_%s_POWER_LIMIT[%d]: %s", p->name, p->tp->cpus[i].id, state_msg);
+        }
     }
     #if SHOW_DEBUGS
     mgt_cpupow_intel63_powercap_get(domain, NULL); 
@@ -344,6 +441,9 @@ state_t mgt_cpupow_intel63_powercap_reset(int domain)
     struct primitive_s *p = &prims[domain];
     int i;
 
+    if (!p->capable) {
+        return EAR_ERROR;
+    }
     for (i = 0; i < p->tp->cpu_count; ++i) {
         msr_write(p->tp->cpus[i].id, &p->pl->reg, sizeof(ullong), p->pl_address);
     }

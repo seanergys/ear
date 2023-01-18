@@ -78,6 +78,8 @@ state_t mgt_cpupow_tdp_get(int domain, uint *watts)
 }
 
 #if TEST
+#include <stdlib.h>
+
 static topology_t tp;
 static uint tdps[2];
 
@@ -87,7 +89,14 @@ int main(int argc, char *argv[])
     topology_print(&tp, verb_channel);
     mgt_cpupow_load(&tp, 0);
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);
-    mgt_cpupow_powercap_set(CPUPOW_SOCKET, (uint []) {65, 65 });
+    if (argc == 1) {
+        tdps[0] = tdps[1] = POWERCAP_DISABLE;
+        mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
+    } else {
+        tdps[0] = tdps[1] = (uint) atoi(argv[1]);
+        mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
+    }
+    sleep(2000);
     return 0;
 }
 #endif
