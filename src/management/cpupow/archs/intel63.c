@@ -103,6 +103,8 @@ struct primitive_s {
     off_t              ps_address; // MSR_*_PERF_STATUS
     msr_power_info_t  *pi;
     off_t              pi_address; // MSR_*_POWER_INFO
+    timestamp_t        pm_time; // Power Monitor
+    ullong            *pm_energy;
 };
 
 #define PRIM_INIT(_tp, dom, pl_bl, pl_dv, pl_kn) { \
@@ -197,7 +199,7 @@ static void prim_bit_power_limit(const char *name, uint cpu, msr_power_limit_t *
     pl->time_window_10ms  = prim_window_power_limit( 0.012, div); // 10 ms (well ~)
     pl->time_window_100ms = prim_window_power_limit( 0.110, div); // 100 ms
     pl->time_window_1s    = prim_window_power_limit( 1.000, div); // 1 s
-    pl->time_window_10s   = prim_window_power_limit(10.000, div); // 1 s
+    pl->time_window_10s   = prim_window_power_limit(10.000, div); // 10 s
     debug("%s[%d].gen_timew: 0x%x 10ms, 0x%x 100ms, 0x%x 1s, 0x%x 10s",
           name, cpu, pl->time_window_10ms, pl->time_window_100ms, pl->time_window_1s, pl->time_window_10s);
 }
@@ -414,7 +416,7 @@ state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
         reg = p->pl[i].reg;
         // If is disabling
         if (watts[i] == POWERCAP_DISABLE) {
-            // By now we are just using PL#1
+            // By now we are just using PL#1 (TODO: use TDP in power field)
             reg = setbits64(reg, 0, 15, 15); // enable
             debug("%s%d: disabling PL#1 (0x%llx)", p->name, p->tp->cpus[i].id, reg);
         } else {

@@ -2,8 +2,8 @@
 
 COMPONENTS = \
     common \
-    daemon \
     metrics \
+    daemon \
     management \
 #    report \
 #    global_manager \
