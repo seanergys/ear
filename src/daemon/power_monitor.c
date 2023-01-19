@@ -3037,6 +3037,7 @@ static void check_status_of_jobs(job_id current)
 }
 
 
+#if NAIVE_SETTINGS_SAVE
 static state_t save_global_cpu_settings(powermon_app_t *powermon_app)
 {
     if (powermon_app)
@@ -3173,3 +3174,4 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
 
     return EAR_SUCCESS;
 }
+#endif
