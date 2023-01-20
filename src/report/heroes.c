@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -34,9 +35,12 @@
 
 
 static char *csv_log_file_env;
+static char *csv_log_file_env_loops;
 static char csv_loop_log_file[1024];
 static char csv_log_file[1024];
 static char heroes_ids[1024];
+static char path_base[1024];
+static char path_dir_app[1024], path_dir_loops[1024];
 
 static ullong my_time = 0;
 
@@ -56,17 +60,28 @@ static uint must_report;
 #define NULL_PRJ_ID "NO_PRJ_ID"
 #define NULL_ORG_ID "NO_ORG_ID"
 
+/*
+ * HEROES_ORGANIZATION_ID
+ * HEROES_ORGANIZATION_NAME
+ * HEROES_USER_ID
+ * HEROES_TEMPLATE_WORKFLOW_ID
+ * HEROES_INSTANCE_WORKFLOW_ID
+ * HEROES_USER_WORKDIR
+*/
 
-#define HEROES_WRF_ID "HEROES_WRF_ID"
-#define HEROES_HER_ID "HEROES_HER_ID"
-#define HEROES_USR_ID "HEROES_USR_ID"
-#define HEROES_PRJ_ID "HEROES_PRJ_ID"
-#define HEROES_ORG_ID "HEROES_ORG_ID"
+#define HEROES_WRF_ID "HEROES_INSTANCE_WORKFLOW_ID"
+#define HEROES_HER_ID "HEROES_TEMPLATE_WORKFLOW_ID"
+#define HEROES_USR_ID "HEROES_USER_ID"
+#define HEROES_PRJ_ID "HEROES_ORGANIZATION_NAME"
+#define HEROES_ORG_ID "HEROES_ORGANIZATION_ID"
+
+
+#define HEROES_LOGS_PATH "HEROES_LOGS_PATH"
 
 
 
-static char * extra_header="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;";
-static char * extra_header_app="HEROES_WFID;HEROES_JOBID;HEROES_USERID;HEROES_PROJECTID;HEROES_ORGID;MAX_POWER_W;";
+static char * extra_header="HEROES_INSTANCE_WORKFLOW_ID;HEROES_TEMPLATE_WORKFLOW_ID;HEROES_USER_ID;HEROES_ORGANIZATION_NAME;HEROES_ORGANIZATION_ID;";
+static char * extra_header_app="HEROES_INSTANCE_WORKFLOW_ID;HEROES_TEMPLATE_WORKFLOW_ID;HEROES_USER_ID;HEROES_ORGANIZATION_NAME;HEROES_ORGANIZATION_ID;MAX_POWER_W;";
 static char app_header[2048];
 
 static char *heroes_wrf_id = NULL;
@@ -79,32 +94,47 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
     debug("heroes report_init");
     char nodename[128];
+    char *default_heroes_log_path = ".";
+    int ret;
 		if (id->master_rank >= 0 ) must_report = 1;
 		if (!must_report) return EAR_SUCCESS;
     gethostname(nodename, sizeof(nodename));
     strtok(nodename, ".");
 
-    csv_log_file_env = getenv(VAR_OPT_USDB);
+    csv_log_file_env = getenv(HEROES_LOGS_PATH);
+    if (csv_log_file_env == NULL){ 
+      csv_log_file_env = getcwd(path_base, sizeof(path_base));
+    }
     
     /* Loop filename is automatically generated */
     if (csv_log_file_env != NULL){
-	debug("Using PATH :%s", csv_log_file_env);
+	      debug("Using PATH :%s", csv_log_file_env);
 				if (file_is_directory(csv_log_file_env) || (csv_log_file_env[strlen(csv_log_file_env) - 1] == '/')){ 
 					debug("%s is directory", csv_log_file_env);
+          sprintf(path_dir_app,"%s/heroes_app_logs", csv_log_file_env);
+          ret = mkdir(path_dir_app, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+          if ((ret < 0 ) && (errno != EEXIST)){
+            error("Creating heroes app dir (%s) (%s)",path_dir_app, strerror(errno));
+            must_report = 0;
+            return EAR_ERROR;
+          }
+          sprintf(path_dir_loops,"%s/heroes_loop_logs", csv_log_file_env);
+          ret = mkdir(path_dir_loops, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+          if ((ret < 0 ) && (errno != EEXIST)){
+            error("Creating heroes loops dir (%s) (%s)",path_dir_loops, strerror(errno));
+            must_report = 0;
+            return EAR_ERROR;
+          }
 					//xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/%s.heroes",csv_log_file_env,nodename);
-					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/heroes",csv_log_file_env);
-				} else{ 
-					debug("%s is NOT a directory", csv_log_file_env);
-					//xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.%s.heroes",csv_log_file_env,nodename);
-					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s.heroes",csv_log_file_env);
-				}
+					xsnprintf(csv_log_file,sizeof(csv_log_file),"%s/heroes.%d.csv",path_dir_app, id->master_rank);
+          xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s/heroes.loops.%d.csv",path_dir_loops,id->master_rank);
+          debug("csv_log_file %s" , csv_log_file);
+          debug("csv_loop_log_file %s", csv_loop_log_file);
+				} 
     }else{
-	debug("PATH not specified using default");
-        //xsnprintf(csv_log_file,sizeof(csv_log_file),"./%s.heroes",nodename);
-        xsnprintf(csv_log_file,sizeof(csv_log_file),"./heroes");
+      must_report = 0;
+      return EAR_ERROR;
     }
-    xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
-    xstrncat(csv_log_file,".csv",sizeof(csv_log_file));
     my_time = timestamp_getconvert(TIME_SECS);
 
 		/* HEROES specific */
