@@ -154,7 +154,12 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
       used_cpus += nmgr[j].libsh->num_cpus;
 
       for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++) {
-        if (nmgr[j].shsig[lp].sig.DC_power > 0) {
+        //if (nmgr[j].shsig[lp].sig.DC_power > 0) {
+        /* Node metrics are not longer copied in shared signatures to avoid corrupting 
+         * per-process metrics. we use sig.instructions to detect when the first signature
+         * is ready 
+         */
+        if (nmgr[j].shsig[lp].sig.instructions > 0) {
 
           job_in_process[node_process] = j;
 

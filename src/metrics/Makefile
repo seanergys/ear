@@ -9,12 +9,12 @@ dyna_BINS = libmetrics.so
 ######## FILES
 
 mets_OBJS = \
-    $(SRCDIR)/metrics/rapl/archs/intel63.o \
     $(SRCDIR)/metrics/common/apis.o \
     $(SRCDIR)/metrics/common/cupti.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/isst.o \
+    $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
     $(SRCDIR)/metrics/common/pstate.o \
@@ -22,7 +22,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
-    $(SRCDIR)/metrics/common/likwid.o \
+    $(SRCDIR)/metrics/common/redfish.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
     $(SRCDIR)/metrics/bandwidth/archs/amd17.o \

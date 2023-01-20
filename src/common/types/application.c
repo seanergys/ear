@@ -165,7 +165,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
         xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC",
-                i+1, i+1, i+1, i+1, i+1);
+                i, i, i, i, i);
         xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
     }
 #endif
