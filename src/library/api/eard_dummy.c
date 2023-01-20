@@ -157,16 +157,19 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 					create_dummy_island(&dummy_cc);
 					create_dummy_policy(&dummy_cc);
 				}
-				//print_cluster_conf(&dummy_cc);
+				print_cluster_conf(&dummy_cc);
 				
 				verbose_master(2, "Looking for node conf. Nodename %s", nodename);
 				dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
-				if (dummy_node_conf != NULL){
-					print_my_node_conf(dummy_node_conf);
+				if (dummy_node_conf == NULL){
           create_dummy_node_conf(&dummy_cc, nodename);
           dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
-				}
+        }
 				check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
+        if (dummy_node_conf != NULL){
+          print_my_node_conf(dummy_node_conf);
+        }
+
 
 				/* serialization */
 				serialize_cluster_conf(&dummy_cc, &dummy_ser_cc, &dummy_ser_cc_size);
