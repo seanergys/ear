@@ -48,6 +48,7 @@ typedef struct strtable_s {
     char buffer_raw[STR_MAX_BUFFER];
     char buffer_out[STR_MAX_BUFFER];
     unsigned int format[STR_MAX_COLUMNS];
+    unsigned int blocked;
     unsigned int columns;
     unsigned int mode;
     int fd;
@@ -71,5 +72,7 @@ int tprintf_init(int fd, int mode, char *format);
 int tprintf_init2(strtable_t *t, int fd, int mode, char *format);
 
 int tprintf_write(strtable_t *t);
+
+void tprintf_block(strtable_t *t, int block);
 
 #endif

@@ -70,17 +70,17 @@ struct tp_group_s
 	.merge = 2,
 };
 
-typedef struct core_s {
+typedef struct cpu_s {
 	int id;
 	int apicid;
-	int is_thread;      // If is the second thread in a core.
+	int is_thread;      // If is the secondary thread in a core.
 	int l3_id;
 	int sibling_id;     // The thread sibling within a core.
 	int socket_id;
-} core_t;
+} cpu_t;
 
 typedef struct topology_s {
-	core_t *cpus;         // Take a look to core_t structure.
+	cpu_t *cpus;         // Take a look to cpu_t structure.
 	int   cpu_count;      // Total CPUs including threads.
 	int   core_count;     // Total cores (not counting threads).
 	int   socket_count;   //

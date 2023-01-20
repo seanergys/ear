@@ -100,6 +100,9 @@ int tprintf_write(strtable_t *t)
 	int col = 0;
     int i = 0;
 
+    if (t->blocked) {
+        return 0;
+    }
 	if ((len >= STR_SIZE_BUFFER) || (t->columns == 0)) {
 		return -1;
 	}
@@ -160,4 +163,9 @@ int tprintf_write(strtable_t *t)
     dprintf(t->fd, "%s", t->buffer_out);
 
 	return 0;
+}
+
+void tprintf_block(strtable_t *t, int block)
+{
+    t->blocked = block;
 }

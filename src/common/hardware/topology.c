@@ -54,7 +54,7 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 		addr_offset = ((ulong) &t->cpus[0].socket_id) - ((ulong) t->cpus);
 	}
 
-	s->cpus = malloc(t->cpu_count * sizeof(core_t));
+	s->cpus = malloc(t->cpu_count * sizeof(cpu_t));
 
 	for (i = 0, c = 0; i < t->cpu_count; ++i)
 	{		
@@ -70,7 +70,7 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 		}
 	
 		if ((just && j == i) || (!just && *val1 == val)) {
-			memcpy(&s->cpus[c], &t->cpus[i], sizeof(core_t));
+			memcpy(&s->cpus[c], &t->cpus[i], sizeof(cpu_t));
 			c++;
 		}
 	}
@@ -168,9 +168,9 @@ state_t topology_copy(topology_t *dst, topology_t *src)
 {
 	void *p;
 	p = memcpy(dst, src, sizeof(topology_t));
-	p = malloc(sizeof(core_t) * src->cpu_count);
-	p = memcpy(p, src->cpus, sizeof(core_t) * src->cpu_count);
-	dst->cpus = (core_t *) p;
+	p = malloc(sizeof(cpu_t) * src->cpu_count);
+	p = memcpy(p, src->cpus, sizeof(cpu_t) * src->cpu_count);
+	dst->cpus = (cpu_t *) p;
 	return EAR_SUCCESS;
 }
 
@@ -295,7 +295,7 @@ state_t topology_init(topology_t *topo)
 	while(is_online(path));
 	
 	// Travelling through all CPUs
-	topo->cpus = calloc(topo->cpu_count, sizeof(core_t));
+	topo->cpus = calloc(topo->cpu_count, sizeof(cpu_t));
 	
 	for (i = 0; i < topo->cpu_count; ++i) {
 		topology_init_thread(topo, i);
