@@ -340,8 +340,11 @@ int main(int argc, char *argv[])
 
 	// Clean
 	if (_clean) {
-	    plug_verbose(_sp, 0, "cleaning temporal folder");
-		return all_clean(path_tmp);
+        // Cleaning $EAR_TMP/erun folder
+	    plug_verbose(_sp, 0, "cleaning erun folder");
+		all_clean(path_tmp);
+       
+         return 0;
 	}
 
 	// Help
@@ -364,7 +367,7 @@ int main(int argc, char *argv[])
 				//
 				sleep(2);
 				//
-				folder_clean(path_tmp, sd.erun.job_id);
+				folder_clean(sd.erun.job_id);
 			}
 			return 0;	
 		}
@@ -376,7 +379,7 @@ int main(int argc, char *argv[])
 			execute(_argc, _argv);
 			//
 			if (sd.erun.is_master) {	
-				folder_clean(path_tmp, sd.erun.job_id);
+				folder_clean(sd.erun.job_id);
 			}
 			return 0;	
 		}
@@ -386,14 +389,15 @@ int main(int argc, char *argv[])
 	if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
 		plug_verbose(_sp, 2, "subject '%d' is erun master? '%d' (got the lock file)",
             getpid(), sd.erun.is_master);
-		// Take the lock.job and read its old step id
-		sd.erun.step_id = lock_job(path_tmp, sd.erun.job_id, sd.erun.step_id);
+		// Read old step id in master.step.id
+		sd.erun.step_id = master_getstep(sd.erun.job_id, sd.erun.step_id);
 	} else {
 		plug_verbose(_sp, 3, "subject '%d' is erun master? '%d' (missed the lock file and then spinlock)",
             getpid(), sd.erun.is_master);
-		// plug_verbosity_silence(_sp);
-		// Spinlock over lock.step
-		sd.erun.step_id = spinlock_step(path_tmp, sd.erun.job_id, sd.erun.step_id);
+		// Spinlock over lock.slave
+		spinlock_slave(sd.erun.job_id);
+        // Get slave.step.id
+		sd.erun.step_id = slave_getstep(sd.erun.job_id, sd.erun.step_id);
 	}
 
 	// Creating step
@@ -406,7 +410,7 @@ int main(int argc, char *argv[])
 
 	if (sd.erun.is_master) {
 		// Free lock.step
-		unlock_step(path_tmp, sd.erun.job_id, sd.erun.step_id);
+		unlock_slave(sd.erun.job_id, sd.erun.step_id);
 	}
 
 	execute(_argc, _argv);
@@ -421,7 +425,7 @@ int main(int argc, char *argv[])
 	pipeline(_argc, _argv, Context.srun, Action.exit);
 
 	if (sd.erun.is_master) {
-		lock_clean(path_tmp, sd.erun.job_id, sd.erun.step_id);
+		files_clean(sd.erun.job_id, sd.erun.step_id);
 	}
 
 	return 0;
