@@ -2,15 +2,15 @@
 
 COMPONENTS = \
     common \
+    report \
     metrics \
+    management\
     daemon \
-    management \
-#    report \
-#    global_manager \
-#    commands \
-#    slurm_plugin
-#    tools \
-#    library \
+    library \
+    tools \
+    global_manager \
+    commands \
+    slurm_plugin
 
 #ifdef DB_BASE
 COMPONENTS += database_cache

@@ -52,7 +52,7 @@ eard_OBJS += \
 
 ######## RULES
 
-all: all.components all.others
+all: all.components $(eard_BINS) $(oths_BINS) all.others
 
 eard: eard.c $(eard_OBJS)
 	$(CC) $(CFLAGS) $(DB_CFLAGS) -o $@ $< $(eard_OBJS) $(LDFLAGS) -lpthread
