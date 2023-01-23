@@ -291,9 +291,9 @@ static int rapl_init()
         pu[i].mult_power  = pow(0.5, (double) getbits64(pu[i].mult_reg,  3,  0));
         pu[i].mult_energy = pow(0.5, (double) getbits64(pu[i].mult_reg, 12,  8));
         pu[i].mult_time   = pow(0.5, (double) getbits64(pu[i].mult_reg, 19, 16));
-        tprintf3(&t, "RAPL[%d]||mult_power ||%lf||W||1/(2^%u)", i, pu[i].mult_power  , (uint) getbits64(pu[i].mult_reg,  3,  0));
-        tprintf3(&t, "RAPL[%d]||mult_energy||%lf||W||1/(2^%u)", i, pu[i].mult_energy , (uint) getbits64(pu[i].mult_reg, 12,  8));
-        tprintf3(&t, "RAPL[%d]||mult_time  ||%lf||W||1/(2^%u)", i, pu[i].mult_time   , (uint) getbits64(pu[i].mult_reg, 19, 16));
+        tprintf3(&t, "RAPL[%d]||mult_power ||%lf||W||1/(2^%u)", tp_sockets.cpus[i].id, pu[i].mult_power  , (uint) getbits64(pu[i].mult_reg,  3,  0));
+        tprintf3(&t, "RAPL[%d]||mult_energy||%lf||W||1/(2^%u)", tp_sockets.cpus[i].id, pu[i].mult_energy , (uint) getbits64(pu[i].mult_reg, 12,  8));
+        tprintf3(&t, "RAPL[%d]||mult_time  ||%lf||W||1/(2^%u)", tp_sockets.cpus[i].id, pu[i].mult_time   , (uint) getbits64(pu[i].mult_reg, 19, 16));
     }
     return 1;
 }

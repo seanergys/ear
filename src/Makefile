@@ -2,14 +2,14 @@
 
 COMPONENTS = \
     common \
+    report \
     metrics \
+    management\
     daemon \
-    management \
-#    report \
-#    global_manager \
-#    commands \
-#    slurm_plugin
-#    tools \
+    tools \
+    global_manager \
+    commands \
+    slurm_plugin
 #    library \
 
 #ifdef DB_BASE
