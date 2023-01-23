@@ -57,7 +57,7 @@ EARGMEnergyAction=no_action
 #### POWERCAP definition for EARGM: Powercap is still under development. Do not activate
 # Period at which the powercap thread is activated. Meta-EARGM checks the EARGMs it controls every 2*EARGMPowerPeriod
 EARGMPowerPeriod=120
-# 1 means automatic, 0 is only monitoring
+# Powercap mode: 0 is monitoring, 1 is hard powercap, 2 is soft powercap.
 EARGMPowerCapMode=1
 # Admins can specify to automatically execute a command in EARGMPowerCapSuspendAction when total_power >= EARGMPowerLimit*EARGMPowerCapResumeLimit/100
 EARGMPowerCapSuspendLimit=90

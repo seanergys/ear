@@ -824,7 +824,6 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION
     if (c != NULL) {
         state_t st = mpi_call_init(c, call_type);
         policy_mpi_init_optimize(c, call_type, freqs, process_id);
@@ -832,11 +831,6 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
     } else {
         return EAR_ERROR;
     }
-#else // !SINGLE_CONNECTION
-    if (c != NULL) {
-        return mpi_call_init(c, call_type);
-    }
-#endif // SINGLE_CONNECTION
     return EAR_SUCCESS;
 }
 
@@ -845,9 +839,7 @@ state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int
 {
     if (c != NULL)
     {
-#if !SINGLE_CONNECTION
         policy_mpi_end_optimize(freqs, process_id);
-#endif
         return mpi_call_end(c, call_type);
     }
     else return EAR_ERROR;
@@ -1204,7 +1196,9 @@ static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signat
 
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can implement optimization at MPI call entry here.
+#endif
 
     return EAR_SUCCESS;
 }
@@ -1212,13 +1206,17 @@ static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_fr
 
 static void policy_end_summary(int verb_lvl)
 {
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can show a summary of your optimization at MPI call level here.
+#endif
 }
 
 
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 {
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can implement optimization at MPI call exit here.
+#endif
 
     return EAR_SUCCESS;
 }

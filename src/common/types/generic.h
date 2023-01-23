@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <limits.h>
 
+
 typedef const char          cchar;
 typedef unsigned char		uchar;
 typedef   signed char       byte;

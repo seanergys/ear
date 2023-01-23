@@ -95,7 +95,7 @@ static long long metrics_usecs_diff(long long end, long long init)
     return (end - init);
 }
 
-static void row_file_create(char *pathname, char *hostname)
+static void row_file_create(char *pathname, char *hostname, int n_nodes)
 {
     #define write_unused(...) \
         if (write(__VA_ARGS__)) {}
@@ -106,7 +106,11 @@ static void row_file_create(char *pathname, char *hostname)
                 O_WRONLY | O_CREAT | O_TRUNC,
                 S_IRUSR  | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
         if (file_row<0) return;
+        #if SINGLE_CONNECTION
+        sprintf(buffer1,"LEVEL TASK SIZE %d\n",n_nodes);
+        #else
         sprintf(buffer1,"LEVEL TASK SIZE %d\n",my_num_ranks);
+        #endif
         write_unused(file_row, buffer1, strlen(buffer1));
     }else{
         file_row=open(buffer1,
@@ -225,6 +229,10 @@ static void config_file_create(char *pathname, char* hostname)
     write_unused(file_pcf, buffer1, strlen(buffer1));
 
 
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tPCK_POWER_HIGHF\n\n",TRA_PCK_POWER_NODE);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tDRAM_POWER_HIGHF\n\n",TRA_DRAM_POWER_NODE);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
 
     close(file_pcf);
 }
@@ -271,12 +279,22 @@ static void trace_file_init(int n_nodes)
         //i = sprintf(buffer, "#Paraver (%s):%020llu:%d(", s, (unsigned long long) 0, n_nodes);
 
         // i = sprintf(buffer, "#Paraver (%s):%020llu:%d(%d):1:%d:(", s, (unsigned long long) 0, 1,my_num_ranks,my_num_ranks);
+        //
+        // nodes(1,1,1,1,1,1):1:nodes(1:1,1:1,1:1,1:1,1:1,1:1)
 
+        #if SINGLE_CONNECTION
+        sprintf(buffer, "#Paraver (%s):%020llu:%d(%d):1:%d:(", s, (unsigned long long) 0, 1,n_nodes,n_nodes);
+        #else
         sprintf(buffer, "#Paraver (%s):%020llu:%d(%d):1:%d:(", s, (unsigned long long) 0, 1,my_num_ranks,my_num_ranks);
+        #endif
 
         edit_time_header = 31;
 
+        #if SINGLE_CONNECTION
+        for (uint i = 0; i < n_nodes - 1; i++) {
+        #else
         for (uint i = 0; i < my_num_ranks - 1; i++) {
+        #endif
             sprintf(short_b, "1:1,");
             strcat(buffer, short_b);
         }
@@ -453,7 +471,7 @@ void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis,
 
     //
     config_file_create(pathname, hostname);
-    if (my_trace_rank>=1) row_file_create(pathname, hostname);
+    if (my_trace_rank>=1) row_file_create(pathname, hostname, nodes);
 }
 
 // ear_api.c

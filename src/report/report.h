@@ -46,6 +46,7 @@ typedef struct report_id_s
 {
     int   local_rank;  /*!< Process node local rank. */
     int   global_rank; /*!< Process application rank. */
+    int   node_id;     /*!< Node id */
     int   master_rank; /*!< Indicates whether this process is the master on its node.  */
 	pid_t pid;         /*!< The process PID. */
 } report_id_t;

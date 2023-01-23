@@ -82,6 +82,21 @@ static void create_dummy_island(cluster_conf_t *dummycc)
 		
 }
 
+static void create_dummy_node_conf(cluster_conf_t *dummycc, char *nodename)
+{
+  node_island_t *island = &dummycc->islands[dummycc->num_islands - 1];
+  island->ranges = realloc(island->ranges, sizeof(node_range_t)*(island->num_ranges+1));
+  if (island->ranges==NULL){
+    error("NULL pointer in generate_node_ranges");
+    return;
+  }
+  memset(&island->ranges[island->num_ranges], 0, sizeof(node_range_t));
+  sprintf(island->ranges[island->num_ranges].prefix, "%s", nodename);
+  island->ranges[island->num_ranges].start = island->ranges[island->num_ranges].end = -1;
+  island->ranges[island->num_ranges].db_ip = island->ranges[island->num_ranges].sec_ip = 0;
+  island->num_ranges++;
+}
+
 static void create_dummy_policy(cluster_conf_t *dummycc)
 {
 	dummycc->num_policies = 1;
@@ -142,8 +157,19 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 					create_dummy_island(&dummy_cc);
 					create_dummy_policy(&dummy_cc);
 				}
-				//print_cluster_conf(&dummy_cc);
+				print_cluster_conf(&dummy_cc);
 				
+				verbose_master(2, "Looking for node conf. Nodename %s", nodename);
+				dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
+				if (dummy_node_conf == NULL){
+          create_dummy_node_conf(&dummy_cc, nodename);
+          dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
+        }
+				check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
+        if (dummy_node_conf != NULL){
+          print_my_node_conf(dummy_node_conf);
+        }
+
 
 				/* serialization */
 				serialize_cluster_conf(&dummy_cc, &dummy_ser_cc, &dummy_ser_cc_size);
@@ -152,14 +178,6 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 
 				check_null(local_dummy_ser_cc, "Error serializing cluster_conf in path %s", " ");
 
-				verbose_master(2, "Looking for node conf. Nodename %s", nodename);
-				dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
-				check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
-				#if 0
-				if (dummy_node_conf != NULL){
-					print_my_node_conf(dummy_node_conf);
-				}
-				#endif
 
 				verbose_master(2, "Dummy cluster_conf done");
 
