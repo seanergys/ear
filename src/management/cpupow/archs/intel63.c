@@ -287,7 +287,7 @@ static int rapl_init()
         if (state_fail(msr_read(tp_sockets.cpus[i].id, &pu[i].mult_reg, sizeof(ullong), MSR_RAPL_POWER_UNIT))) {
             return 0;
         }
-        // Get the multipliers (TODO: use multipliers per socket, not global)
+        // Get the multipliers
         pu[i].mult_power  = pow(0.5, (double) getbits64(pu[i].mult_reg,  3,  0));
         pu[i].mult_energy = pow(0.5, (double) getbits64(pu[i].mult_reg, 12,  8));
         pu[i].mult_time   = pow(0.5, (double) getbits64(pu[i].mult_reg, 19, 16));
@@ -461,8 +461,8 @@ state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
         } else {
             // Getting power value understood by RAPL
             power = ((double) watts[i]) / pu[p->tp->cpus[i].socket_id].mult_power;
-            reg   = setbits64(reg,       (ullong) power, 14,  0); // power limit
-            reg   = setbits64(reg,                    1, 15, 15); // enable
+            reg   = setbits64(reg,   (ullong) power, 14,  0); // power limit
+            reg   = setbits64(reg,                1, 15, 15); // enable
             reg   = setbits64(reg, p->pl->window_1s, 23, 17); // time window
             debug("%s%d: writting watts %u -> %lf, regs %llu %llu",
                   p->name, p->tp->cpus[i].id, watts[i], power, p->pl->reg, reg);
