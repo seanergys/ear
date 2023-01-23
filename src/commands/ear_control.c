@@ -268,7 +268,7 @@ void usage(char *app)
 			"\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
 			"\n\t\t\t\t\t\t\t--status=node_name retrieves the status of that node individually."\
 			"\n\t--type \t\t[status_type]\t\t->specifies what type of status will be requested: hardware,"\
-			"\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd or power. [default:hardware]"\
+			"\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd, eargm or power. [default:hardware]"\
 			"\n\t--power \t\t\t\t->requests the current power for the cluster. "\
 			"\n\t\t\t\t\t\t\t--power=node_name retrieves the current power of that node individually."\
 			"\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\

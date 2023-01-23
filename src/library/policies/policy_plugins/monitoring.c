@@ -48,6 +48,12 @@ extern uint cpu_ready, gpu_ready;
 
 static polsym_t gpus;
 
+/* These functions are used for mpi optimization */
+static void policy_end_summary(int verb_lvl);
+static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
+static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
+
+
 state_t policy_init(polctx_t *c)
 {
     if (is_mpi_enabled()) {
@@ -168,16 +174,50 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
     if (c != NULL) {
-        return mpi_call_init(c, call_type);
+        state_t st = mpi_call_init(c, call_type);
+        policy_mpi_init_optimize(c, call_type, freqs, process_id);
+        return st;
+    } else {
+        return EAR_ERROR;
     }
-    return EAR_ERROR;
+    return EAR_SUCCESS;
+
 }
 
 
 state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
 	if (c != NULL) {
+        policy_mpi_end_optimize(freqs, process_id);
         return mpi_call_end(c,call_type);
     }
 	return EAR_ERROR;
 }
+
+static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
+{
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+    // You can implement optimization at MPI call entry here.
+#endif
+
+    return EAR_SUCCESS;
+}
+
+
+static void policy_end_summary(int verb_lvl)
+{
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+    // You can show a summary of your optimization at MPI call level here.
+#endif
+}
+
+
+static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
+{
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+    // You can implement optimization at MPI call exit here.
+#endif
+
+    return EAR_SUCCESS;
+}
+

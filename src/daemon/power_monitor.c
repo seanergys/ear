@@ -150,6 +150,7 @@ static uint *powermon_restore_cpufreq_list;
 static void set_default_powermon_init(powermon_app_t *app);
 
 
+#if !NAIVE_SETTINGS_SAVE
 /** This function is called to restore any setting when the job \p app ends.
  * \param idle Indicates whether the node will be idle after the job ends. */
 static void set_default_powermon_end(powermon_app_t *app, uint idle);
@@ -160,6 +161,16 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle);
  * at the memory region pointed by \p powermon_app. Concretaly,
  * it stores current governor of the CPUs in the \p mask. */
 static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set_t *mask);
+#else
+/** This function fills attributes governor and current_freq of \p powermon_app with the
+ * current values of CPU 0. The goal is to have an errorless function to be used on cases
+ * we need a simple power monitor use case. */
+static state_t save_global_cpu_settings(powermon_app_t *powermon_app);
+
+
+/** This function restores governor and CPU settings to all CPUs in the node. */
+static state_t restore_global_cpu_settings(powermon_app_t *powermon_app);
+#endif // NAIVE_SETTINGS_SAVE
 
 
 /***************** Job verification ***********************/
@@ -212,16 +223,6 @@ static int is_job_running(char *tmp, int jobid)
 /* This function is called to validate the jobs in the list that are still alive.
  * Only usable in SLURM systems. Deactivated for now. */
 static void check_status_of_jobs(job_id current);
-
-
-/** This function fills attributes governor and current_freq of \p powermon_app with the
- * current values of CPU 0. The goal is to have an errorless function to be used on cases
- * we need a simple power monitor use case. */
-static state_t save_global_cpu_settings(powermon_app_t *powermon_app);
-
-
-/** This function restores governor and CPU settings to all CPUs in the node. */
-static state_t restore_global_cpu_settings(powermon_app_t *powermon_app);
 
 
 /***************** JOBS in NODE ***************************/
@@ -1600,11 +1601,14 @@ void powermon_new_task(new_task_req_t *newtask)
 
     if (/* pmapp->app.job.step_id != (job_id) BATCH_STEP && */ pmapp->policy_freq) { // "As EARD can force the CPU frequency"
 
+#if !NAIVE_SETTINGS_SAVE // If this macro is enabled, we already saved the governor
+
         /* Storing current governor (The previous governor of the powermon
          * app will be the current governor of the first CPU of the last task arrived) */
         if (state_fail(store_current_task_governor(pmapp, &newtask->mask))) {
             error("Storing task (PID %d) governor: %s", newtask->pid, state_msg);
         }
+#endif // !NAIVE_SETTINGS_SAVE
 
         // CPU freq and governor
 
@@ -1731,6 +1735,10 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
     policy_conf_t *my_policy = configure_context(pmapp, user_type, my_tag, appID); // Sets CPU and GPU frequency.
 
     set_default_powermon_init(pmapp);
+#if NAIVE_SETTINGS_SAVE
+    // We save the governor of CPU 0 to be restored later for all CPUs.
+    save_global_cpu_settings(pmapp);
+#endif
 
     verbose(VJOBPMON, "[Node configuration] policy: %u p_state: %d policy thresh: %lf is_mpi: %d",
             my_policy->policy, my_policy->p_state, my_policy->settings[0], appID->is_mpi);
@@ -1878,13 +1886,22 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     if (summary.state != APP_FINISHED)
     {
-        if (powermon_is_idle()) { 
+        if (powermon_is_idle())
+        { 
             powercap_run_to_idle();
 
+#if !NAIVE_SETTINGS_SAVE
             /* summary is a copy of the last context */
             set_default_powermon_end(&summary, 1);
-
-        } else set_default_powermon_end(&summary, 0);
+#endif
+        } else {
+#if !NAIVE_SETTINGS_SAVE
+            set_default_powermon_end(&summary, 0);
+#endif
+        }
+#if NAIVE_SETTINGS_SAVE
+        restore_global_cpu_settings(&summary);
+#endif
     }
 
     verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
@@ -2802,6 +2819,7 @@ static void set_default_powermon_init(powermon_app_t *app)
 }
 
 
+#if !NAIVE_SETTINGS_SAVE
 static void set_default_powermon_end(powermon_app_t *app, uint idle)
 {
 #if POWERMON_RESTORE
@@ -2948,8 +2966,10 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
     }
 #endif // POWERMON_RESTORE
 }
+#endif // !NAIVE_SETTINGS_SAVE
 
 
+#if !NAIVE_SETTINGS_SAVE
 static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set_t *mask)
 {
     if (powermon_app != NULL && mask != NULL) {
@@ -2989,6 +3009,7 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
         return_msg(EAR_ERROR, Generr.input_null);
     }
 }
+#endif // !NAIVE_SETTINGS_SAVE
 
 
 /* This function is called to validate the jobs in the list that are still alive.
@@ -2997,13 +3018,17 @@ static void check_status_of_jobs(job_id current)
 {
     return; // We deactivate this function because it was designed to make hard testing.
     powermon_app_t *pmapp; 
-    for (uint cc = 1; cc <= max_context_created; cc++) {
-        if (current_ear_app[cc] != NULL) {
+    for (uint cc = 1; cc <= max_context_created; cc++)
+    {
+        if (current_ear_app[cc] != NULL)
+        {
             pmapp = current_ear_app[cc];
             verbose(VJOBPMON_BASIC, "checking app %lu curr job: %lu", pmapp->app.job.id, current);
             /* No need to check the new one :) */
-            if (pmapp->app.job.id != current){
-                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0){
+            if (pmapp->app.job.id != current)
+            {
+                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0)
+                {
                     verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
                 }
             }
@@ -3012,6 +3037,7 @@ static void check_status_of_jobs(job_id current)
 }
 
 
+#if NAIVE_SETTINGS_SAVE
 static state_t save_global_cpu_settings(powermon_app_t *powermon_app)
 {
     if (powermon_app)
@@ -3148,3 +3174,4 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
 
     return EAR_SUCCESS;
 }
+#endif
