@@ -17,14 +17,16 @@
 
 int lock_master(char *path_tmp, int job_id);
 
-int lock_job(char *path_tmp, int job_id, int step_id);
+int master_getstep(int job_id, int step_id);
 
-int unlock_step(char *path_tmp, int job_id, int step_id);
+void unlock_slave(int job_id, int step_id);
 
-int spinlock_step(char *path_tmp, int job_id, int step_id);
+void spinlock_slave(int job_id);
 
-int lock_clean(char *path_tmp, int job_id, int step_id);
+int slave_getstep(int job_id, int step_id);
 
-int folder_clean(char *path_tmp, int job_id);
+void files_clean(int job_id, int step_id);
 
-int all_clean(char *path_tmp);
+void folder_clean(int job_id);
+
+void all_clean(char *path_tmp);

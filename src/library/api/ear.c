@@ -996,8 +996,9 @@ void ear_init()
         timestamp start_eard_init, end_eard_init;
         timestamp_getfast(&start_eard_init);
         #endif
+
 	topology_init(&earl_topo);
-	topology_print(&earl_topo, 1);
+
 
         main_pid = syscall(SYS_gettid);
 
@@ -1058,6 +1059,15 @@ void ear_init()
 								verb_level = atoi(tmp);
 								VERB_SET_LV(verb_level);
 				}
+
+                // We print here the topology in order to do it only at verbose 2
+                if (VERB_ON(2))
+                {
+                    if (masters_info.my_master_rank >= 0)
+                    {
+                        topology_print(&earl_topo, 1);
+                    }
+                }
 
 				set_ear_total_processes(my_size);
         #if FAKE_LEARNING
@@ -1652,7 +1662,7 @@ void ear_init()
 				// Tracing init
         #if SINGLE_CONNECTION
                 if (masters_info.my_master_rank>=0) {
-                    traces_init(system_conf, application.job.app_id, ear_my_rank,
+                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
                             my_id, num_nodes, my_size, ppnode);
 
                     traces_start();

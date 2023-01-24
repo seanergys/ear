@@ -246,7 +246,7 @@ static uint  use_cpuprio = DEF_USE_CPUPRIO; // Enables the usage of proiority sy
 
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
-static state_t policy_reset_priority();
+
 
 /** Reads information about some management API and stores the pstate list
  * and devices count information to the output arguments. Pure function.
@@ -340,6 +340,11 @@ static state_t policy_set_prio_with_mask(uint *dst_prio_list, uint dst_prio_list
 
 /** Sets \p priority on those positions of \p not enabled by \p mask. */
 static state_t policy_set_prio_with_mask_inverted(uint *dst_prio_list, uint dst_prio_list_count, uint priority, const cpu_set_t *mask);
+
+
+/** This function resets priority configuration for CPUs used by the job
+ * in the case priority system is enabled by the user. */
+static state_t policy_reset_priority();
 
 
 /** This function sets the priority 0 to \p prio_list to those positions indicated by \p mask. */
