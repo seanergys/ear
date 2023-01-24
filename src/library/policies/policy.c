@@ -477,6 +477,7 @@ state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_f
     return EAR_SUCCESS;
 }
 
+
 state_t policy_domain_detail(int status, char* buff){
     switch (status){
         case POL_NOT_SUPPORTED:
