@@ -57,9 +57,6 @@ etc/systemd/eard.service
 etc/systemd/eardbd.service
 etc/systemd/eargmd.service
 src/common/config/config_install.h
-src/common/config/config_dev.h
-src/common/config/config_def.h
-src/common/config/config_env.h
 
 # Build Libraries
 *libear.so
