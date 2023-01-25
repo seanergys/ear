@@ -27,7 +27,7 @@
 #include <common/output/verbose.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/hardware/architecture.h>
-
+#include <common/environment.h>
 
 #define freturn(call, ...) \
    { \

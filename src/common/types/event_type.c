@@ -16,6 +16,7 @@
  */
 
 #include <stdio.h>
+#include <common/environment.h>
 #include <common/types/event_type.h>
 
 void event_type_to_str(ear_event_t *ev, char *str, size_t max)

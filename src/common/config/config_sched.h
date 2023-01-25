@@ -18,30 +18,14 @@
 #ifndef COMMON_CONFIG_SCHED_H
 #define COMMON_CONFIG_SCHED_H
 
+// Config install first because by now is defining the SCHED_* macros.
+#include <common/config/config_install.h>
+// Including this because NULL_STEPID
+#include <common/config/config_env.h>
+
 #if SCHED_SLURM
 #include <slurm/slurm.h>
 #endif
-#include <common/config/config_install.h>
-
-// These variables are SLURM named variables. In case we want to use it from
-// different queue managers, we can:
-// 1) Replace a manager exclusive variable by our SLURM named variable inside
-//    the specific plugin for PBS, OAR...
-// 2) Surround these variable definitions by the different #ifs and set the name
-//    depending on the queue manager are you compiling for. This strategy limits
-//    an EAR component compatibility to a specific queue manager.
-//
-// Commented variables are unused and can be removed.
-#define NULL_STEPID             (0xfffffffe)
-#define NULL_ACCOUNT            "NO_SLURM_ACCOUNT"
-#define FLAG_TASK_PID           "TASK_PID"
-#define SCHED_JOB_ID            "JOB_ID"
-#define SCHED_STEP_ID           "STEP_ID"
-#define SCHED_STEPID            "STEPID"                 // Deprecated by SLURM, maintained for backwards compatibility.
-#define SCHED_JOB_ACCOUNT       "JOB_ACCOUNT"
-#define SCHED_NUM_TASKS         "STEP_TASKS_PER_NODE"
-#define SCHED_STEP_NUM_NODES    "STEP_NUM_NODES"
-#define SCHED_IS_ERUN           "IS_ERUN"
 
 #if SCHED_SLURM
 #define BATCH_STEP              ((int) SLURM_BATCH_SCRIPT)
@@ -53,6 +37,10 @@
 
 #if SCHED_OAR
 #define BATCH_STEP              0
+#endif
+
+#if !SCHED_SLURM && !SCHED_PBS && !SCHED_OAR
+#define BATCH_STEP              NULL_STEPID
 #endif
 
 #endif //COMMON_CONFIG_SCHED_H

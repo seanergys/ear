@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <common/system/symplug.h>
+#include <common/config/config_env.h>
 #include <metrics/common/nvml.h>
 
 // Provisional

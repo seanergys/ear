@@ -19,6 +19,29 @@
 #define COMMON_CONFIG_ENV_H
 
 #include <common/config/config_install.h>
+// Because in fact all environment variables depends on ear_getenv().
+#include <common/environment_common.h>
+
+// These variables are SLURM named variables. In case we want to use it from
+// different queue managers, we can:
+// 1) Replace a manager exclusive variable by our SLURM named variable inside
+//    the specific plugin for PBS, OAR...
+// 2) Surround these variable definitions by the different #ifs and set the name
+//    depending on the queue manager are you compiling for. This strategy limits
+//    an EAR component compatibility to a specific queue manager. But in this
+//    case slurm_sched.h would be better place to keep them.
+//
+// Commented variables are unused and can be removed.
+#define NULL_STEPID             (0xfffffffe)
+#define NULL_ACCOUNT            "NO_SLURM_ACCOUNT"
+#define FLAG_TASK_PID           "TASK_PID"
+#define SCHED_JOB_ID            "JOB_ID"
+#define SCHED_STEP_ID           "STEP_ID"
+#define SCHED_STEPID            "STEPID"                 // Deprecated by SLURM, maintained for backwards compatibility.
+#define SCHED_JOB_ACCOUNT       "JOB_ACCOUNT"
+#define SCHED_NUM_TASKS         "STEP_TASKS_PER_NODE"
+#define SCHED_STEP_NUM_NODES    "STEP_NUM_NODES"
+#define SCHED_IS_ERUN           "IS_ERUN"
 
 /**
  * @defgroup PLUGIN_VARIABLES Plugin Variables
@@ -28,7 +51,7 @@
 #define VAR_INS_PATH "EAR_INSTALL_PATH"
 #define VAR_TMP_PATH "EAR_TMP"
 //#define VAR_ETC_PATH "EAR_ETC"
-//#define VAR_APP_NAME "EAR_APP_NAME"
+#define VAR_APP_NAME "EAR_APP_NAME"
 #define VAR_OPT_VERB "EAR_VERBOSE"
 #define VAR_OPT_POLI "EAR_POWER_POLICY"
 #define VAR_OPT_FREQ "EAR_FREQUENCY"

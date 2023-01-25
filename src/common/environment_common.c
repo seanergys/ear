@@ -137,3 +137,23 @@ void ear_print_daemon_environment()
 #endif
 }
 
+// Is here because environment.c is full of things like dlsym().
+char *ear_getenv(const char *name)
+{
+    static char *pfx[] = { "", "SCHED_", "SLURM_", "OAR_", "PBS_"};
+    static int pfx_n = 5;
+    char buffer[32];
+    char *var;
+    int i;
+
+    for (i = 0; i < pfx_n; ++i) {
+        // clean and concat
+        buffer[0] = '\0';
+        strcat(buffer, pfx[i]);
+        strcat(buffer, name);
+        if ((var = getenv((const char *) buffer)) != NULL) {
+            return var;
+        }
+    }
+    return NULL;
+}

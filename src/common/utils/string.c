@@ -22,6 +22,7 @@
 #include <common/sizes.h>
 #include <common/utils/string.h>
 #include <common/output/debug.h>
+#include <common/environment_common.h>
 
 size_t xsnsize(size_t size)
 {
