@@ -257,15 +257,11 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.cpus_nodn.rem);
 	//printenv_agnostic(sp, Var.path_trac.loc);
 	printenv_agnostic(sp, Var.version.loc);
-	//printenv_agnostic(sp, Var.gm_host.loc);
-	//printenv_agnostic(sp, Var.gm_port.loc);
 	printenv_agnostic(sp, Var.gm_secure.loc);
 	printenv_agnostic(sp, Var.user.rem);
 	printenv_agnostic(sp, Var.group.rem);
 	//printenv_agnostic(sp, Var.path_temp.rem);
 	//printenv_agnostic(sp, Var.path_inst.rem);
-	//printenv_agnostic(sp, Var.nodes_allowed.rem);
-	//printenv_agnostic(sp, Var.nodes_excluded.rem);
 	printenv_agnostic(sp, Var.ctx_last.rem);
 	printenv_agnostic(sp, Var.was_sbac.rem);
 	printenv_agnostic(sp, Var.was_srun.rem);
@@ -588,7 +584,7 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	// Cleaning
 	unsetenv_agnostic(sp, Var.user.rem);
 	unsetenv_agnostic(sp, Var.group.rem);
-	
+
 	// Last minute hack, if energy tag is present, disable library
 	if (exenv_agnostic(sp, Var.tag.loc)) {
 		plug_component_setenabled(sp, Component.library, 0);

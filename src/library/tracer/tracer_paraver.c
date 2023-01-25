@@ -432,7 +432,7 @@ void traces_stop()
 
 void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
-    pathname = getenv(FLAG_TRACE_PATH);
+    pathname = ear_getenv(FLAG_TRACE_PATH);
 
     //
     file_prv = -1;

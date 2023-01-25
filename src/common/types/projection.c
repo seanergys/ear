@@ -66,8 +66,8 @@ static state_t models_load(char *obj_path)
 state_t projections_init(uint user_type, conf_install_t *data, architecture_t * arch_desc)
 {
 	char basic_path[SZ_PATH_INCOMPLETE];
-	char *obj_path = getenv(HACK_POWER_MODEL);
-    char *ins_path = getenv(HACK_EARL_INSTALL_PATH);
+	char *obj_path = ear_getenv(HACK_POWER_MODEL);
+    char *ins_path = ear_getenv(HACK_EARL_INSTALL_PATH);
 	char *def_model = "avx512_model.so";
 
 	state_t st;

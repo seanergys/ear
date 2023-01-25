@@ -532,23 +532,23 @@ state_t policy_init()
 {
     polctx_t *c = &my_pol_ctx;
 
-    char *cdyn_unc              = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_SET_IMCFREQ)       : NULL; // eUFS
-    char *cimc_extra_th         = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IMC_TH)            : NULL; // eUFS threshold
-    char *cexclusive_mode       = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EXCLUSIVE_MODE)    : NULL; // Job has the node exclusive
-    char *cuse_earl_phases      = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_EARL_PHASES)       : NULL; // Detect application phases
-    char *cenable_load_balance  = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_LOAD_BALANCE)      : NULL; // Load balance efficiency
-    char *cuse_turbo_for_cp     = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TURBO_CP)          : NULL; // Boost critical path processes
-    char *ctry_turbo_enabled    = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_TRY_TURBO)         : NULL; // Boost turbo if policy sets max cpufreq
-    char *cuse_energy_models    = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_USE_ENERGY_MODELS) : NULL; // Use energy models
-    char *cmin_cpufreq          = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
-    char *cfake_io_phase        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_IO_FAKE_PHASE)     : NULL;
-    char *cfake_bw_phase        = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_BW_FAKE_PHASE)     : NULL;
+    char *cdyn_unc              = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_SET_IMCFREQ)       : NULL; // eUFS
+    char *cimc_extra_th         = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_IMC_TH)            : NULL; // eUFS threshold
+    char *cexclusive_mode       = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_EXCLUSIVE_MODE)    : NULL; // Job has the node exclusive
+    char *cuse_earl_phases      = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_EARL_PHASES)       : NULL; // Detect application phases
+    char *cenable_load_balance  = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_LOAD_BALANCE)      : NULL; // Load balance efficiency
+    char *cuse_turbo_for_cp     = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_TURBO_CP)          : NULL; // Boost critical path processes
+    char *ctry_turbo_enabled    = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_TRY_TURBO)         : NULL; // Boost turbo if policy sets max cpufreq
+    char *cuse_energy_models    = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_USE_ENERGY_MODELS) : NULL; // Use energy models
+    char *cmin_cpufreq          = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
+    char *cfake_io_phase        = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_IO_FAKE_PHASE)     : NULL;
+    char *cfake_bw_phase        = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_BW_FAKE_PHASE)     : NULL;
 #if MPI_OPTIMIZED
-    char *cear_mpi_opt          = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
+    char *cear_mpi_opt          = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
 #endif
-    char *cignore_affinity_mask = getenv(FLAG_NO_AFFINITY_MASK);
+    char *cignore_affinity_mask = ear_getenv(FLAG_NO_AFFINITY_MASK);
 
-    char *cgpu_optimize = getenv(GPU_ENABLE_OPT);
+    char *cgpu_optimize = ear_getenv(GPU_ENABLE_OPT);
     if (cgpu_optimize != NULL) gpu_optimize = atoi(cgpu_optimize);
     verbose_master(POLICY_INFO, "%sPOLICY%s GPU optimization during GPU comp %s", COL_BLU, COL_CLR, (gpu_optimize? "Enabled":"Disabled"));
 
@@ -656,7 +656,7 @@ state_t policy_init()
     // TODO: This check is for the transition to the new environment variables.
     // It will be removed when SCHED_ENABLE_LOAD_BALANCE will be removed, in the next release.
     if (cenable_load_balance == NULL) {
-        cenable_load_balance = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_ENABLE_LOAD_BALANCE) : NULL;
+        cenable_load_balance = (system_conf->user_type == AUTHORIZED) ? ear_getenv(SCHED_ENABLE_LOAD_BALANCE) : NULL;
         if (cenable_load_balance != NULL) {
             verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
                     "Please, change it by %s in your submission scripts.",
@@ -688,7 +688,7 @@ state_t policy_init()
 
     if (ctry_turbo_enabled == NULL) {
 
-        ctry_turbo_enabled = (system_conf->user_type == AUTHORIZED) ? getenv(SCHED_TRY_TURBO) : NULL;
+        ctry_turbo_enabled = (system_conf->user_type == AUTHORIZED) ? ear_getenv(SCHED_TRY_TURBO) : NULL;
 
         if (ctry_turbo_enabled != NULL) {
             verbose(1, "%sWARNING%s %s will be removed on the next EAR release. "
@@ -755,9 +755,9 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     conf_install_t *data = &app_settings->installation;
 
     // This part of code is to decide which policy to load based on default and hacks
-    char *obj_path       = (system_conf->user_type == AUTHORIZED) ? getenv(HACK_POWER_POLICY) : NULL;
-    char *ins_path       = (system_conf->user_type == AUTHORIZED) ? getenv(HACK_EARL_INSTALL_PATH) : NULL; // TODO: this path may be recicled without calling again getenv
-    char *app_mgr_policy = getenv(FLAG_APP_MGR_POLICIES);
+    char *obj_path       = (system_conf->user_type == AUTHORIZED) ? ear_getenv(HACK_POWER_POLICY) : NULL;
+    char *ins_path       = (system_conf->user_type == AUTHORIZED) ? ear_getenv(HACK_EARL_INSTALL_PATH) : NULL; // TODO: this path may be recicled without calling again getenv
+    char *app_mgr_policy = ear_getenv(FLAG_APP_MGR_POLICIES);
 
     char *monitoring = "monitoring";
 

@@ -66,10 +66,9 @@ static int getenv_local(char *var, char *buf, int len)
 	if (var == NULL || buf == NULL) {
 		return 0;
 	}
-	if ((c = getenv(var)) == NULL) {
+	if ((c = ear_getenv(var)) == NULL) {
 		return 0;
 	}
-
 	snprintf(buf, len, "%s", c);
 	return 1;
 }
@@ -207,7 +206,6 @@ int isenv_agnostic(spank_t sp, char *var, char *val)
 int repenv_agnostic(spank_t sp, char *var_old, char *var_new)
 {
 	unsetenv_agnostic(sp, var_new);
-
 	if (plug_context_is(sp, Context.local)) {
 		return repenv_local(var_old, var_new);
 	} else {
@@ -225,7 +223,6 @@ int apenv_agnostic(char *dst, char *src, int dst_capacity)
 	if ((dst == NULL) || (src == NULL) || (strlen(src) == 0)) {
 		return 0;
 	}
-
 	len_dst = strlen(dst);
 	len_src = strlen(src);
 	new_cap = len_dst + len_src + (len_dst > 0) + 1;
@@ -233,9 +230,7 @@ int apenv_agnostic(char *dst, char *src, int dst_capacity)
 	if (new_cap > dst_capacity) {
 		return 0;
 	}
-
-	if (len_dst > 0)
-	{
+	if (len_dst > 0) {
 		strcpy(buffer, dst);
 		pointer = &dst[len_src];
 		strcpy(&pointer[1], buffer);
@@ -244,7 +239,6 @@ int apenv_agnostic(char *dst, char *src, int dst_capacity)
 	} else {
 		strcpy(dst, src);
 	}
-
 	return 1;
 }
 

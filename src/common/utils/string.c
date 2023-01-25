@@ -36,7 +36,7 @@ char *xsnbuffer(char *buffer)
 int appenv(const char *var, const char *string)
 {
 	char buffer[SZ_PATH];
-	char *p = getenv(var);
+	char *p = ear_getenv(var);
 
 	if (p != NULL) {
 		sprintf(buffer, "%s:%s", string, p);
@@ -148,7 +148,7 @@ void *strtoat(const char *string, char separator, void **list, uint *list_count,
 
 char **envtoa(const char *var, char ***list, uint *list_count)
 {
-    return strtoa(getenv(var), ',', list, list_count);
+    return strtoa(ear_getenv(var), ',', list, list_count);
 }
 
 void envtoa_free(char **list)
@@ -158,5 +158,5 @@ void envtoa_free(char **list)
 
 void *envtoat(const char *var, void **list, uint *list_count, int id_type)
 {
-    return strtoat(getenv(var), ',', list, list_count, id_type);
+    return strtoat(ear_getenv(var), ',', list, list_count, id_type);
 }

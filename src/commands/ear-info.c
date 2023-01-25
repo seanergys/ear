@@ -39,20 +39,20 @@ void print_value(char *format, char *env, int def)
 {
   char buff[64];
   sprintf(buff,"%d",def);
-  printf("%40.40s %s\n",format,(getenv(env) == NULL)? buff: getenv(env));
+  printf("%40.40s %s\n",format,(ear_getenv(env) == NULL)? buff: ear_getenv(env));
 }
 
 void print_value_float(char *format, char *env, float def)
 {
   char buff[64];
   sprintf(buff,"%.2f",def);
-  printf("%40.40s %s\n",format,(getenv(env) == NULL)? buff: getenv(env));
+  printf("%40.40s %s\n",format,(ear_getenv(env) == NULL)? buff: ear_getenv(env));
 }
 
 void print_value_str(char *format, char *env, char * def)
 {
   char buff[64];
-  printf("%40.40s %s\n",format,(getenv(env) == NULL)? def: getenv(env));
+  printf("%40.40s %s\n",format,(ear_getenv(env) == NULL)? def: ear_getenv(env));
 }
 
 
@@ -146,7 +146,7 @@ int main(int argc,char *argv[])
 
   printf("\n\nHACK section............................\n");
   char *installp = getenv("EAR_INSTALL_PATH");
-  char *hack = getenv(HACK_EARL_INSTALL_PATH);
+  char *hack = ear_getenv(HACK_EARL_INSTALL_PATH);
   char path_files[256];
   char install[256];
   print_value_str("Install path", HACK_EARL_INSTALL_PATH, installp);

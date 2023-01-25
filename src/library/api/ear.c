@@ -707,7 +707,7 @@ void fill_application_mgt_data(app_mgt_t *a)
 int sched_num_nodes()
 {
 				char *cn;
-				cn = getenv(SCHED_STEP_NUM_NODES);
+				cn = ear_getenv(SCHED_STEP_NUM_NODES);
 				if (cn != NULL) return atoi(cn);
 				else return 1;
 }
@@ -715,7 +715,7 @@ void attach_to_master_set(int master)
 {
 				int color;
 #if MPI
-				char *is_erun = getenv(SCHED_IS_ERUN);
+				char *is_erun = ear_getenv(SCHED_IS_ERUN);
 				int flag = 1;
 #endif
 				//my_master_rank=0;
@@ -828,10 +828,10 @@ static int get_local_id(char *node_name)
 
 static void get_job_identification()
 {
-				char *job_id  = getenv(SCHED_JOB_ID);
-				char *step_id = getenv(SCHED_STEP_ID);
-				char *account_id=getenv(SCHED_JOB_ACCOUNT);
-				char *num_tasks=getenv(SCHED_NUM_TASKS);
+				char *job_id  = ear_getenv(SCHED_JOB_ID);
+				char *step_id = ear_getenv(SCHED_STEP_ID);
+				char *account_id=ear_getenv(SCHED_JOB_ACCOUNT);
+				char *num_tasks=ear_getenv(SCHED_NUM_TASKS);
 
 				if (num_tasks != NULL){
 								debug("%s defined %s",SCHED_NUM_TASKS,num_tasks);
@@ -845,7 +845,7 @@ static void get_job_identification()
 								if (step_id != NULL) {
 												my_step_id=atoi(step_id);
 								} else {
-												step_id = getenv(SCHED_STEPID);
+												step_id = ear_getenv(SCHED_STEPID);
 												if (step_id != NULL) {
 																my_step_id=atoi(step_id);
 												} else {
@@ -904,7 +904,7 @@ void update_configuration()
 				set_ear_coeff_db_pathname(system_conf->lib_info.coefficients_pathname);
 				set_ear_dynais_levels(system_conf->lib_info.dynais_levels);
 				/* Included for dynais tunning */
-				cdynais_window=getenv(HACK_DYNAIS_WINDOW_SIZE);
+				cdynais_window=ear_getenv(HACK_DYNAIS_WINDOW_SIZE);
 				if ((cdynais_window!=NULL) && (system_conf->user_type==AUTHORIZED)){
 								dynais_window=atoi(cdynais_window);
 				}
@@ -977,13 +977,13 @@ void ear_init()
 				char *summary_pathname;
 				char *tmp;
 				state_t st;
-				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
+				char *ext_def_freq_str=ear_getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 	topology_t earl_topo;
 
 				uint fake_eard_error = 0;
 				char *cfake_eard_error        = getenv(FAKE_EARD_ERROR);
-        char *cfake_force_shared_node = getenv(FLAG_FORCE_SHARED_NODE);
+        char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
 
@@ -1051,7 +1051,7 @@ void ear_init()
 
 				verb_level = get_ear_verbose();
 				verb_channel=2;
-				if ((tmp = getenv(HACK_EARL_VERBOSE)) != NULL) {
+				if ((tmp = ear_getenv(HACK_EARL_VERBOSE)) != NULL) {
 								verb_level = atoi(tmp);
 								VERB_SET_LV(verb_level);
 				}
@@ -1352,11 +1352,11 @@ void ear_init()
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
 
 				/* create verbose file for each job */
-				char *verb_path = getenv(FLAG_EARL_VERBOSE_PATH);
+				char *verb_path = ear_getenv(FLAG_EARL_VERBOSE_PATH);
                 if (verb_path != NULL) {
 
                     /* Use a verbose file per process instead of only master */
-                    char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
+                    char *per_proc_v_file = ear_getenv(HACK_PROCS_VERB_FILES);
 
                     if (per_proc_v_file != NULL) {
                         per_proc_verb_file = atoi(per_proc_v_file);
@@ -1622,7 +1622,7 @@ void ear_init()
 				// if (masters_info.my_master_rank >= 0){
 								// Report API
 								char my_plug_path[512];
-								utils_create_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
+								utils_create_plugin_path(my_plug_path, system_conf->installation.dir_plug, ear_getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
 
 								if (summary_pathname == NULL){
 												if (report_load(my_plug_path,system_conf->lib_info.plugins) != EAR_SUCCESS){
@@ -1643,7 +1643,7 @@ void ear_init()
 												verbose_master(1,"Error in reports API initialization ");
 								}
 				// }
-        creport_earl_events = getenv(FLAG_REPORT_EARL_EVENTS);
+        creport_earl_events = ear_getenv(FLAG_REPORT_EARL_EVENTS);
         if (creport_earl_events != NULL) report_earl_events = atoi(creport_earl_events);
         if (report_earl_events) verbose_master(1," EARL events reported to DB %s", (report_earl_events?"enabled":"disabled"));
 

@@ -202,8 +202,8 @@ state_t policy_init(polctx_t *c)
         return EAR_ERROR;
     }
 
-    char *cnetwork_use_imc = getenv(FLAG_NTWRK_IMC);
-    char *cimc_set_by_hw   = getenv(FLAG_LET_HW_IMC);
+    char *cnetwork_use_imc = ear_getenv(FLAG_NTWRK_IMC);
+    char *cimc_set_by_hw   = ear_getenv(FLAG_LET_HW_IMC);
 
     int i, sid = 0;
 
