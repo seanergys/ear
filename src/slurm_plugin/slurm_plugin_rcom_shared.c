@@ -28,10 +28,10 @@ int plug_shared_readservs(spank_t sp, plug_serialization_t *sd)
 
 	get_services_conf_path(sd->pack.path_temp, buffer);
 	servs = attach_services_conf_shared_area(buffer);
-	plug_verbose(sp, 1, "looking for services in '%s'", buffer);
+	plug_verbose(sp, 3, "looking for services in '%s'", buffer);
 
 	if (servs == NULL) {
-		plug_error(sp, "while reading the shared services memory in '%s@%s'", sd->subject.host, buffer);
+		plug_error(sp, "while reading services memory in '%s@%s'", sd->subject.host, buffer);
 		return ESPANK_ERROR;
 	}
 
@@ -53,7 +53,7 @@ int plug_shared_readfreqs(spank_t sp, plug_serialization_t *sd)
 	freqs = attach_frequencies_shared_area(buffer, &n_freqs);
 
 	if (freqs == NULL) {
-		plug_error(sp, "while reading the shared services memory in '%s'", "hostxxx");
+		plug_error(sp, "while reading frequencies memory in node '%s@%s'", sd->subject.host, buffer);
 		return ESPANK_ERROR;
 	}
 
@@ -78,14 +78,6 @@ static int plug_print_settings(spank_t sp, plug_serialization_t *sd)
 	return ESPANK_SUCCESS;
 }
 
-settings_conf_t * attach_settings_conf_shared_area2(char * path, spank_t sp)
-{
-    int fd = 0;
-    settings_conf_t *s = (settings_conf_t *)attach_shared_area(path,sizeof(settings_conf_t),O_RDONLY,&fd,NULL);
-    plug_verbose(sp, 1, "FD %d", fd);
-    return s;
-}
-
 int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_shared_readsetts");
@@ -95,14 +87,11 @@ int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
 	/* This must be done after EARD contact */
 	uint ID = create_ID(sd->job.app.job.id, sd->job.app.job.step_id);
 	get_settings_conf_path(sd->pack.path_temp, ID, buffer);
-//	setts = attach_settings_conf_shared_area2(buffer, sp);
-sleep(1);
 	setts = attach_settings_conf_shared_area(buffer);
-sleep(1);
-	plug_verbose(sp, 1, "looking for settings in '%s' (cid %u, job %u, step %d)", buffer, ID, sd->job.app.job.id, sd->job.app.job.step_id);
+	plug_verbose(sp, 3, "looking for settings in '%s' (cid %u, job %u, step %d)", buffer, ID, sd->job.app.job.id, sd->job.app.job.step_id);
 
 	if (setts == NULL) {
-		plug_error(sp, "while reading the shared settings memory in node '%s@%s'", sd->subject.host, buffer);
+		plug_error(sp, "while reading the settings memory in node '%s@%s'", sd->subject.host, buffer);
 		return ESPANK_ERROR;
 	}
     // It is OK, you can save the returned settings.
