@@ -121,6 +121,7 @@ static int         num_packs = 0;
 static ull        *metrics_rapl[2];  // nJ (vec)
 #if MPI_OPTIMIZED
 static ull        *metrics_rapl_fine_monitor_start, *metrics_rapl_fine_monitor_end, *metrics_rapl_fine_monitor_diff;
+double max_app_power = 0;
 
 /* This constant must be migrated to config_env */
 #define EAR_REPORT_POWER_TRACE "EAR_REPORT_POWER_TRACE"
@@ -1514,6 +1515,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       estimate_power = 0;
     }
     #endif
+    max_app_power = ear_max(max_app_power, metrics->DC_power);
 
 
     /* Power error control: We don't accumulate if we are computing application metrics, not loop  metrics */
@@ -1535,6 +1537,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     if (!traces_are_on()){
 		  copy_node_data(metrics, &lib_shared_region->node_signature);
     }
+    max_app_power = ear_max(lib_shared_region->node_signature.DC_power, max_app_power);
 	}
 
 
@@ -2328,6 +2331,7 @@ void metrics_read_cpupower()
       strcat(csv_str, buffer);
       write(fd_csv_cpu, csv_str, strlen(csv_str));
     }
+    max_app_power = ear_max(max_app_power, total);
   }
 }
 #endif // MPI_OPTIMIZED

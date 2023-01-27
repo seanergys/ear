@@ -136,8 +136,10 @@ static int num_nodes;
 static int ppnode;
 
 #if MPI_OPTIMIZED
-uint ear_mpi_opt;
+uint ear_mpi_opt = 0;
 sem_t *lib_shared_lock_sem;
+uint ear_mpi_opt_num_nodes = 1;
+mpi_opt_policy_t mpi_opt_symbols;
 #endif
 
 /* To be used by report plugins */
@@ -1109,6 +1111,7 @@ void ear_init()
 
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
+        ear_mpi_opt_num_nodes = sched_num_nodes();
 
 				/* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
 				if (synchronize_masters == 0){
@@ -2348,38 +2351,10 @@ state_t earl_periodic_actions(void *no_arg)
         memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
 
         metrics_read_cpupower();
-
-        /* This code controls peaks of power */
-
-        if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
-        
-        if (process_must_be_restored() && process_block_is_ready()){
-          verbose(2,"EAR-PP: Process %d must be restored", my_node_id);
-          process_new_step();
-          /* We must restore */
-          if (process_last_step()){
-            /* Restore */
-            policy_restore_to_mpi_pstate(process_get_target_pstate());
-            process_already_restored();
-            verbose(2,"EAR-PP: Process %d going to relax", my_node_id);
-            monitor_relax(earl_monitor);
-          }else{
-          /* If it's not the last step we increase 1 pstate */
-            if (process_get_target_pstate() < process_get_curr_mpi_pstate()){
-              uint new_pstate = process_get_curr_mpi_pstate() - 1;
-              policy_restore_to_mpi_pstate(new_pstate);
-              process_set_curr_mpi_pstate(new_pstate);
-              if (new_pstate == process_get_target_pstate()){
-                verbose(2,"EAR-PP: Warning, Process %d restored with less steps than expected", my_node_id);
-                process_already_restored();
-                monitor_relax(earl_monitor);
-              }
-            }
-          }
-        }
-        
-        ear_unlock(&ear_mpi_opt_lock);
-        }
+        uint new_pstate;
+        if (mpi_opt_symbols.periodic != NULL)  mpi_opt_symbols.periodic(&new_pstate);
+        /* We change the CPU freq after processing , is that a problem, warning !*/
+        if (new_pstate)  policy_restore_to_mpi_pstate(new_pstate);
 
 #if SINGLE_CONNECTION
         if ((MASTER_ID >= 0) && traces_are_on()) {

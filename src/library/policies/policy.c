@@ -152,7 +152,7 @@ uint   max_policy_imcfreq_ps = ps_nothing; // IMC freq. selection works with pst
 
 #if MPI_OPTIMIZED
 /* MPI optimization */
-uint ear_mpi_opt = 0;
+extern uint ear_mpi_opt;
 #endif
 uint gpu_optimize = 0;
 

@@ -52,6 +52,7 @@ extern suscription_t *earl_monitor;
 static void policy_end_summary(int verb_lvl);
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
+extern mpi_opt_policy_t mpi_opt_symbols;
 
 #endif
 
@@ -69,6 +70,7 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 state_t policy_init(polctx_t *c)
 {
     if (is_mpi_enabled()) {
+        mpi_opt_load(&mpi_opt_symbols);
         mpi_app_init(c);
     }
     for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {
@@ -216,61 +218,11 @@ static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_fr
 {
 #if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can implement optimization at MPI call entry here.
-    uint last = 0;
     /* CPUfreq mgt is not ok we will not optimize */
     if (!metrics_get(MGT_CPUFREQ)->ok) return EAR_SUCCESS;
 
-    if (ear_mpi_opt &&
-      (lib_shared_region->num_processes > 1)){
-
-      mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
-
-      /* Specific optimization for barriers */
-      if (is_barrier(nbcall_type)){
-
-        /* This code controls the last process in the node */
-        sem_wait(lib_shared_lock_sem);
-        if (lib_shared_region->processes_in_barrier == 0) {
-          lib_shared_region->processes_in_barrier = lib_shared_region->num_processes - 1;
-        } else {
-          lib_shared_region->processes_in_barrier--;
-          last = (lib_shared_region->processes_in_barrier == 0);
-        }
-        sem_post(lib_shared_lock_sem);
-
-        if (last){
-          /* Exiting the barrier */
-        }else{
-          /* Entering the barrier */
-        }
-
-        /* Each process is configured independently */
-        if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
-
-        configure_processes_tobe_restored();
-        
-        /* This function returns true when the CPU freq must be modified */
-        if (process_must_be_restored()){
-          pstate_t *sel_pstate, *pstate_list;
-          uint currindex;
-          pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
-          mgt_cpufreq_get_index(no_ctx,sig_shared_region[my_node_id].mpi_freq, &currindex , 1);
-          sel_pstate = &pstate_list[currindex + process_get_num_pstates()];
-
-          process_set_target_pstate(currindex);
-          process_set_curr_mpi_pstate(currindex + process_get_num_pstates());
-          /* Increments in num_pstates pstates */
-          freqs->cpu_freq[my_node_id] = sel_pstate->khz;
-          *process_id = my_node_id;
-          verbose(2,"EAR-PP:Reduce CPU freq in barrier for process %d to CPu freq %lu",
-          my_node_id, sel_pstate->khz);
-        }
-
-        ear_unlock(&ear_mpi_opt_lock);
-        }
-
-      }
-
+    if (mpi_opt_symbols.init_mpi != NULL){
+      return mpi_opt_symbols.init_mpi(c, call_type, freqs, process_id);
     }
 #endif
     return EAR_SUCCESS;
@@ -281,6 +233,7 @@ static void policy_end_summary(int verb_lvl)
 {
     // You can show a summary of your optimization at MPI call level here.
 #if !SINGLE_CONNECTION && MPI_OPTIMIZED
+  if (mpi_opt_symbols.summary != NULL) mpi_opt_symbols.summary(VERB_GET_LV());
 #endif
 }
 
@@ -289,31 +242,9 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 {
 #if !SINGLE_CONNECTION && MPI_OPTIMIZED
     // You can implement optimization at MPI call exit here.
-    if (ear_mpi_opt &&
-      (lib_shared_region->num_processes > 1)){
-      verbose(2, "EAR-PP: END MPI");
-
-      if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
-
-      if (process_must_be_restored()){
-        process_new_step();
-        /* We must restore */
-        if (process_last_step()){
-          /* We restore directly to mpi_freq, could be done incrementally */
-          verbose(2, "EAR-PP:Restore in barrier end CPU freq for proc %d to %lu",
-          my_node_id, sig_shared_region[my_node_id].mpi_freq);
-          *process_id = my_node_id;
-          freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].mpi_freq;
-          process_already_restored();
-        }else{
-          verbose(2, "EAR-PP:Process %d going to burst", my_node_id);
-          monitor_burst(earl_monitor);
-        }
-        process_block_ready();
-      }
-
-      ear_unlock(&ear_mpi_opt_lock);
-      }
+    if  (mpi_opt_symbols.end_mpi != NULL){
+     
+      return mpi_opt_symbols.end_mpi(freqs, process_id);
     }
 #endif
 

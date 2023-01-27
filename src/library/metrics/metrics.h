@@ -21,6 +21,7 @@
 #include <common/hardware/topology.h>
 #include <common/types/application.h>
 #include <library/common/library_shared_data.h>
+#include <metrics/common/apis.h>
 #include <metrics/io/io.h>
 #include <library/api/clasify.h>
 

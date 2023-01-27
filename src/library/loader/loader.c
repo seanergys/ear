@@ -32,6 +32,7 @@
 #include <library/loader/module_default.h>
 #include <common/config/config_env.h>
 #include <common/output/debug.h>
+#include <common/string_enhanced.h>
 
 static int _loaded;
 
@@ -90,8 +91,12 @@ int load_no_official()
             return 0;
         }
     }
-    if (strstr(program_invocation_name, app_to_load) == NULL) return 0;
-    return 1;
+    if (strinlist(app_to_load, ",", program_invocation_name)){
+      verbose(1,"LOADER: %s found in list ", program_invocation_name);
+      return 1;
+    }
+
+    return 0;
 }
 
 int load_no_parallel()

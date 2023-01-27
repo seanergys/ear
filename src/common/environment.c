@@ -552,8 +552,8 @@ state_t read_config(uint *var, const char *config_var){
 
 char *ear_getenv(const char *name)
 {
-    static char *pfx[] = { "EAR_", "SCHED_", "SLURM_", "OAR_", "PBS_" };
-    static int pfx_n = 5;
+    static char *pfx[] = { "EAR_", "SCHED_", "SLURM_", "OAR_", "PBS_" ,""};
+    static int pfx_n = 6;
     char buffer[32];
     char *var;
     int i;

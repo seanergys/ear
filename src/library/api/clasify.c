@@ -27,6 +27,7 @@
 #include <library/api/clasify.h>
 #include <library/states/states_comm.h>
 #include <library/loader/module_cuda.h>
+#include <library/loader/module_mpi.h>
 
 #define INFO_CLASSIFY 3
 
@@ -141,10 +142,21 @@ state_t is_network_bound(signature_t *sig, uint  num_cpus, uint *mpibound)
 	return EAR_SUCCESS;
 }
 
+static uint first_warning_mpi_th = 1;
 state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided)
-{
+{ 
+    /* Changed to force the EARL to use dynais as much as possible */
+    if (!is_mpi_enabled()){
+      *ear_guided = TIME_GUIDED;
+      return EAR_SUCCESS;
+    }
     if (mpisec < MIN_MPI_TH){
-        *ear_guided = TIME_GUIDED;
+      //if (!is_cuda_enabled()) *ear_guided = TIME_GUIDED;
+      if (first_warning_mpi_th) {
+        verbose_master(2,"Warning, going to time guided becuase low number of MPI calls per second");
+        first_warning_mpi_th = 0;
+      }
+      if (!signature_reported) *ear_guided = TIME_GUIDED;
     }
     if (signature_reported && (last_sig_elapsed > ((5*perf_accuracy_min_time)/1000000))){
       *ear_guided = TIME_GUIDED;

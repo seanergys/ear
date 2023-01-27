@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <execinfo.h>
+#include <semaphore.h>
 
 #if !SHOW_DEBUGS
 #define NDEBUG // Disable asserts
@@ -31,18 +32,19 @@
 
 #include <assert.h>
 
-#include <metrics/cpi/cpi.h>
-
-#include <management/cpufreq/cpufreq.h>
 
 #include <common/config.h>
 #include <common/states.h>
+#include <common/environment.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <common/system/execute.h>
 #include <common/config/config_dev.h>
+#include <common/system/monitor.h>
+#include <metrics/cpi/cpi.h>
+#include <management/cpufreq/cpufreq.h>
 
 #include <common/system/lock.h>
 
@@ -54,6 +56,7 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/library_shared_data.h>
 #include <library/common/global_comm.h>
+#include <library/metrics/metrics.h>
 
 #include <report/report.h>
 
@@ -104,10 +107,14 @@ static float critical_path_th   = 1;
 
 static uint              must_be_restored = 0;
 static uint              num_steps        = 0;
+static uint              selected_steps   = 0;
 static uint              num_pstates      = 0;
 static uint              block_ready      = 0;
 static uint              curr_mpi_opt_index = 0;
 static uint              target_mpi_opt_index = 0;
+extern uint              ear_mpi_opt_num_nodes;
+extern sem_t             *lib_shared_lock_sem;
+extern suscription_t     *earl_monitor;
 
 // TODO: Below macros should be defined at config_def or config_dev
 #define MAX_MPI_TO_OPT      50      // Max number of calls to try to optimize
@@ -1107,18 +1114,50 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 }
 
 /* These functions are used to control peaks of power */
-#define TIMEOUT 4
+#define DEF_MAX_TOTAL_POWER       500
+#define DEF_MAX_POWER_PER_UNIT    60
+#define DEF_POWER_PER_PSTATE      20
+#define DEF_IDLE_POWER            100
+
+/* Default values */
+static double MAX_TOTAL_POWER;
+static double MAX_POWER_PER_UNIT;
+static double POWER_PER_PSTATE;
+static double IDLE_POWER;
+
+extern double max_app_power;
 void configure_processes_tobe_restored()
 {
+  double delta_node  = (max_app_power > 0 ? (max_app_power - IDLE_POWER) : 0);
+  double delta_job   = (max_app_power > 0 ? (max_app_power - IDLE_POWER)*ear_mpi_opt_num_nodes : 0 );
+  double steps_per_pstate = MAX_POWER_PER_UNIT/POWER_PER_PSTATE;
   /* This is a simple test where half of the processes will be reduced */
-  uint tobe_opt = my_node_id % TIMEOUT;
+  uint tobe_opt = 0;
 
+
+
+  verbose(2, "EAR-PP[%d] num nodes %d max_app_power %.2lf, delta_node %.2lf delta_job %.2lf ", ear_my_rank, ear_mpi_opt_num_nodes, max_app_power, delta_node, delta_job);
+
+  /* If the application is big OR delta is big enough we apply peak power control */
+  if ((delta_node > MAX_POWER_PER_UNIT) || (delta_job > MAX_TOTAL_POWER)){
+    /* If we exceed the limit per node we must be optimized */
+    if (delta_node > MAX_POWER_PER_UNIT){ 
+      verbose(2, "EAR-PP[%d] node exceeds the limit %.2lf node %.2lf", ear_my_rank, MAX_POWER_PER_UNIT, delta_node);
+      tobe_opt = 1;
+    }else{
+      /* We exceeed the total limit */
+      double delta_per_node = delta_job / ear_mpi_opt_num_nodes;
+      delta_node = ear_max(delta_node, delta_per_node);
+      verbose(2, "EAR-PP[%d] job exceeds the limit %.2lf job %.2lf delta_node %.2lf", ear_my_rank, MAX_TOTAL_POWER, delta_job, delta_node);
+    }
+  }
 
   if (tobe_opt){
     must_be_restored = 1;
-    num_steps        = TIMEOUT - tobe_opt;
-    num_pstates      = TIMEOUT - tobe_opt;
+    num_pstates      = delta_node/POWER_PER_PSTATE;               /* Number of steps to be applied */
+    num_steps        = selected_steps = ear_min(ceil(MAX_POWER_PER_UNIT/POWER_PER_PSTATE),2); /* Number of steps to be applied */
     block_ready      = 0;
+    verbose(2, "EAR-PP[%d] num_steps %u num_pstates %u", ear_my_rank,  num_steps, num_pstates);
   }else{
     must_be_restored = 0;
   }
@@ -1143,6 +1182,11 @@ void process_block_ready()
 void process_already_restored()
 {
   must_be_restored = 0;
+}
+
+void process_reset_steps()
+{
+  num_steps = selected_steps;
 }
 
 void process_new_step()
@@ -1178,4 +1222,188 @@ uint process_get_curr_mpi_pstate()
   return curr_mpi_opt_index;
 }
 
+
+/* ADD here the specific functions for MPI optimzation */
+
+/*
+ * state_t mpi_opt_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
+ * state_t mpi_opt_end_optimize(node_freqs_t *freqs, int *process_id);
+ * void mpi_opt_end_summary(int verb_lvl);
+ * state_t mpi_opt_periodic_action();
+ */
+
+/*
+* PEAK POWER CONTROL
+*/
+state_t peak_power_mpi_opt_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
+{
+
+        uint last = 0;
+        mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
+
+        /* Specific optimization for barriers */
+        if (is_barrier(nbcall_type)){
+
+                /* This code controls the last process in the node */
+                sem_wait(lib_shared_lock_sem);
+                if (lib_shared_region->processes_in_barrier == 0) {
+                        lib_shared_region->processes_in_barrier = lib_shared_region->num_processes - 1;
+                } else {
+                        lib_shared_region->processes_in_barrier--;
+                        last = (lib_shared_region->processes_in_barrier == 0);
+                }
+                sem_post(lib_shared_lock_sem);
+
+                if (last){
+                        /* Exiting the barrier */
+                }else{
+                        /* Entering the barrier */
+                }
+
+                /* Each process is configured independently */
+                if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
+
+                        configure_processes_tobe_restored();
+
+                        /* This function returns true when the CPU freq must be modified */
+                        if (process_must_be_restored()){
+                                pstate_t *sel_pstate, *pstate_list;
+                                uint currindex;
+                                pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
+                                verbose(2,"EAR-PP[%d]: MPI freq is %lu", ear_my_rank, sig_shared_region[my_node_id].mpi_freq);
+                                mgt_cpufreq_get_index(no_ctx,sig_shared_region[my_node_id].mpi_freq, &currindex , 1);
+                                if ((currindex + process_get_num_pstates()) > (metrics_get(MGT_CPUFREQ)->avail_count -1)){
+                                  num_pstates = (metrics_get(MGT_CPUFREQ)->avail_count -1) - currindex;          
+                                }
+                                sel_pstate = &pstate_list[currindex + process_get_num_pstates()];
+
+                                process_set_target_pstate(currindex);
+                                process_set_curr_mpi_pstate(currindex + process_get_num_pstates());
+                                /* Increments in num_pstates pstates */
+                                freqs->cpu_freq[my_node_id] = sel_pstate->khz;
+                                *process_id = my_node_id;
+                                verbose(2,"EAR-PP[%d]:Reduce CPU freq in barrier for process %d to CPu freq %lu",ear_my_rank,
+                                                my_node_id, sel_pstate->khz);
+                        }
+
+                        ear_unlock(&ear_mpi_opt_lock);
+                }
+        }
+        return EAR_SUCCESS;
+}
+state_t peak_power_mpi_opt_end_optimize(node_freqs_t *freqs, int *process_id)
+{
+        verbose(2, "EAR-PP: END MPI");
+
+        if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
+
+                if (process_must_be_restored()){
+#if 0
+                        process_new_step();
+                        /* We must restore */
+                        if (process_last_step()){
+                                process_reset_steps();
+                                /* We restore directly to mpi_freq, could be done incrementally */
+                                verbose(2, "EAR-PP:Restore in barrier end CPU freq for proc %d to %lu",
+                                                my_node_id, sig_shared_region[my_node_id].mpi_freq);
+                                *process_id = my_node_id;
+                                freqs->cpu_freq[my_node_id] = sig_shared_region[my_node_id].mpi_freq;
+                                process_already_restored();
+                        }else{
+                                verbose(2, "EAR-PP:Process %d going to burst", my_node_id);
+                                monitor_burst(earl_monitor);
+                        }
+#endif
+                        monitor_burst(earl_monitor);
+                        process_block_ready();
+                }
+
+                ear_unlock(&ear_mpi_opt_lock);
+        }
+        return EAR_SUCCESS;
+}
+
+void peak_power_mpi_opt_end_summary(int verb_lvl)
+{
+}
+
+state_t peak_power_mpi_opt_periodic_action(uint *to_be_changed_pstate)
+{
+        uint new_pstate = 0;
+        if (state_ok(ear_trylock(&ear_mpi_opt_lock))){
+
+                if (process_must_be_restored() && process_block_is_ready()){
+                        verbose(2,"EAR-PP: Process %d must be restored", my_node_id);
+                        process_new_step();
+#if 0
+                        /* We must restore */
+                        if (process_last_step()){
+                                /* Restore */
+                                policy_restore_to_mpi_pstate(process_get_target_pstate());
+                                process_already_restored();
+                                verbose(2,"EAR-PP: Process %d going to relax", my_node_id);
+                                monitor_relax(earl_monitor);
+                        }else{
+                                /* If it's not the last step we increase 1 pstate */
+                                if (process_get_target_pstate() < process_get_curr_mpi_pstate()){
+                                        uint new_pstate = process_get_curr_mpi_pstate() - 1;
+                                        policy_restore_to_mpi_pstate(new_pstate);
+                                        process_set_curr_mpi_pstate(new_pstate);
+                                        if (new_pstate == process_get_target_pstate()){
+                                                verbose(2,"EAR-PP: Warning, Process %d restored with less steps than expected", my_node_id);
+                                                process_already_restored();
+                                                monitor_relax(earl_monitor);
+                                        }
+                                }
+                        }
+#endif
+                        /* We must increment 1 pstate */
+                        if (process_last_step()){
+                                /* Reset number of steps per pstate */
+                                process_reset_steps();
+                                /* If we are below the target */
+                                if (process_get_target_pstate() < process_get_curr_mpi_pstate()){
+                                        new_pstate = process_get_curr_mpi_pstate() - 1;
+                                        verbose(2,"EAR-PP[%d] incrementing 1 pstate (%d)", ear_my_rank, new_pstate);
+                                        // policy_restore_to_mpi_pstate(new_pstate);
+                                        process_set_curr_mpi_pstate(new_pstate);
+                                        /* We have restored the target */
+                                        if (new_pstate == process_get_target_pstate()){
+                                                process_already_restored();
+                                                monitor_relax(earl_monitor);
+                                        }
+                                }
+                        }
+                }
+
+                ear_unlock(&ear_mpi_opt_lock);
+        }
+        *to_be_changed_pstate = new_pstate;
+        return EAR_SUCCESS;
+}
+
+
+
+state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
+{
+        memset(mpi_opt_func, 0, sizeof(mpi_opt_policy_t));
+#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+        if (ear_mpi_opt && (lib_shared_region->num_processes > 1)){
+                char *cmax_tota_power, *cmax_power_per_unit , *cpower_per_pstate, *cidle_power,*cbig_app;
+                MAX_TOTAL_POWER    = ((cmax_tota_power     = ear_getenv("MAX_TOTAL_POWER"))    != NULL ? atof(cmax_tota_power): DEF_MAX_TOTAL_POWER);
+                MAX_POWER_PER_UNIT = ((cmax_power_per_unit = ear_getenv("MAX_POWER_PER_UNIT")) != NULL ? atof(cmax_power_per_unit) : DEF_MAX_POWER_PER_UNIT);
+                POWER_PER_PSTATE   = ((cpower_per_pstate = ear_getenv("POWER_PER_PSTATE")) != NULL ? atof(cpower_per_pstate) : DEF_POWER_PER_PSTATE);
+                IDLE_POWER         = ((cidle_power       = ear_getenv("IDLE_POWER"))       != NULL ? atof(cidle_power)       : DEF_IDLE_POWER);
+
+                verbose_master(2,"EAR-PP MAX_TOTAL_POWER %.2lf MAX_POWER_PER_UNIT %.2lf POWER_PER_PSTATE %.2lf IDLE_POWER %.2lf",
+                  MAX_TOTAL_POWER, MAX_POWER_PER_UNIT, POWER_PER_PSTATE, IDLE_POWER);
+
+                mpi_opt_func->init_mpi = peak_power_mpi_opt_init_optimize;
+                mpi_opt_func->end_mpi  = peak_power_mpi_opt_end_optimize;
+                mpi_opt_func->summary  = peak_power_mpi_opt_end_summary;
+                mpi_opt_func->periodic = peak_power_mpi_opt_periodic_action;
+        }
+#endif
+        return EAR_SUCCESS;
+}
 
