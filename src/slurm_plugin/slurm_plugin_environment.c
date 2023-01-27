@@ -96,15 +96,12 @@ static int getenv_remote(spank_t sp, char *var, char *buf, int len)
 static int isenv_local(char *var, char *val)
 {
 	char *env;
-
 	if (var == NULL || val == NULL) {
 		return 0;
 	}
-
-	if ((env = getenv(var)) != NULL) {
+	if ((env = ear_getenv(var)) != NULL) {
         return (strcmp(env, val) == 0);
     }
-
     return 0;
 }
 
@@ -124,12 +121,10 @@ static int isenv_remote(spank_t sp, char *var, char *val)
 static int exenv_local(char *var)
 {
 	char *env;
-
 	if (var == NULL) {
 		return 0;
 	}
-
-	env = getenv(var);
+	env = ear_getenv(var);
 	return (env != NULL) && (strlen(env) > 0);
 }
 
@@ -339,7 +334,7 @@ int plug_verbosity_test(spank_t sp, int level)
 {	
 	if (verbosity == -1)
 	{
-		if (getenv_agnostic(sp, Var.comp_verb.cmp, buffer, 8) == 1) {
+		if (getenv_agnostic(sp, Var.plug_verbose.mod, buffer, 8) == 1) {
 			verbosity = atoi(buffer);
 		} else {
 			verbosity = 0;
