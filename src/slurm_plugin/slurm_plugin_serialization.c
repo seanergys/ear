@@ -256,7 +256,7 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.path_usdb.flag);
 	printenv_agnostic(sp, Var.cpus_node_num.own);
 	//printenv_agnostic(sp, Var.path_trac.flag);
-	printenv_agnostic(sp, Var.version.flag);
+//	printenv_agnostic(sp, Var.version.flag);
 	printenv_agnostic(sp, Var.gm_secure.mod);
 	printenv_agnostic(sp, Var.user.info);
 	printenv_agnostic(sp, Var.group.info);

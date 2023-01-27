@@ -107,10 +107,13 @@ struct variables_s {
     varnames_t group;
     varnames_t account;
     varnames_t name_app;
+    varnames_t job_id;
     varnames_t job_node_list;
     varnames_t job_node_count;
+    varnames_t step_id;
     varnames_t step_node_list;
     varnames_t step_node_count;
+    varnames_t local_id;
     varnames_t cpus_node_num;
     varnames_t verbose;
     varnames_t policy;
