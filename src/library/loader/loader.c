@@ -90,6 +90,7 @@ int load_no_official()
             return 0;
         }
     }
+    if (app_to_load == NULL) return 0;
     if (strstr(program_invocation_name, app_to_load) == NULL) return 0;
     return 1;
 }

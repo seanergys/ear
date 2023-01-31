@@ -67,9 +67,13 @@ static double compute_gflops(flops_t *fl)
 	aux += (double) (fl->d256 * weights[5]);
 	aux += (double) (fl->f512 * weights[6]);
 	aux += (double) (fl->d512 * weights[7]);
-	aux = (aux / fl->secs);
-	aux = (aux / B_TO_GB);
+  if (fl->secs > 0){
+	  aux = (aux / fl->secs);
+	  aux = (aux / B_TO_GB);
     debug("Total GFLOPS: %0.2lf", aux);
+  }else{
+      aux = 0;
+  }
 
     return aux;
 }
