@@ -307,7 +307,6 @@ state_t monitor_burst(suscription_t *s)
 		return_msg(EAR_BAD_ARGUMENT, "burst time cant be less than relax time");
 	}
 	queue[s->id].bursted = 1;
-    kill(others_pid, signal);
 	return EAR_SUCCESS;
 }
 

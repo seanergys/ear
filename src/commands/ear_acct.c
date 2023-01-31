@@ -118,6 +118,7 @@ void print_full_apps(application_t *apps, int num_apps)
 {
 	int i;
 	double avg_f, imc, vpi;
+    char is_sbatch;
 
 	printf("%8s-%-4s\t %-10s %-10s %-16s %-5s/%-5s %-10s %-10s %-10s %-10s %-10s %-7s %-5s %-7s",
 			"JOB", "STEP", "NODE ID", "USER ID", "APPLICATION", "AVG-F", "IMC-F", "TIME(s)",
@@ -128,7 +129,6 @@ void print_full_apps(application_t *apps, int num_apps)
 	double gpu_power, gpu_total_power;
 	unsigned long gpu_freq, gpu_util, gpu_mem_util;
 	char tmp[64];
-    char is_sbatch;
 	if (print_gpus) 
 		printf(" %-13s %-6s %-13s ", "G-POW(T/U)", "G-FREQ", "G-UTIL(G/M)");
 #endif

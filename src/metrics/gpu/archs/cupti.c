@@ -23,6 +23,7 @@
 #include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
+#include <common/environment_common.h>
 #include <metrics/common/cupti.h>
 #include <metrics/gpu/archs/cupti.h>
 

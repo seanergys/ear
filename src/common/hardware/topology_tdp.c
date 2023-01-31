@@ -16,6 +16,7 @@
 */
 
 #include <stdlib.h>
+#include <common/environment_common.h>
 #include <common/hardware/topology_tdp.h>
 
 #define tdpb_impl(comp, v, m, t) \

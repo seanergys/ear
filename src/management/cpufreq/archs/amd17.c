@@ -20,10 +20,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <metrics/common/msr.h>
+#include <common/utils/keeper.h>
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
-#include <common/utils/keeper.h>
+#include <common/environment_common.h>
 #include <management/cpufreq/archs/amd17.h>
 #include <metrics/common/apis.h>
 #include <metrics/common/hsmp.h>

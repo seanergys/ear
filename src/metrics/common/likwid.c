@@ -28,6 +28,7 @@
 #include <common/types.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
+#include <common/environment_common.h>
 #include <metrics/common/likwid.h>
 
 // Likwid opens a daemon to read performance counters. But there is a compiling option

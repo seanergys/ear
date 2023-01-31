@@ -18,9 +18,9 @@
 #ifndef COMMON_CONFIG_ENV_H
 #define COMMON_CONFIG_ENV_H
 
+#include <common/environment_common.h>
 #include <common/config/config_install.h>
 // Because in fact all environment variables depends on ear_getenv().
-#include <common/environment_common.h>
 
 // These variables are SLURM named variables. In case we want to use it from
 // different queue managers, we can:
@@ -60,7 +60,7 @@
 #define ENV_FLAG_PATH_USERDB    "EAR_USER_DB_PATHNAME"
 #define ENV_FLAG_PATH_COEFFS    "EAR_COEFF_DB_PATHNAME"
 #define ENV_FLAG_PATH_TRACE     "EAR_TRACE_PATH"
-#define ENV_FLAG_IS_LEARNING    "EAR_LEARNING_PHASE
+#define ENV_FLAG_IS_LEARNING    "EAR_LEARNING_PHASE"
 #define ENV_FLAG_POLICY         "EAR_POWER_POLICY"
 #define ENV_FLAG_POLICY_PENALTY "EAR_PERFORMANCE_PENALTY"
 #define ENV_FLAG_POLICY_GAIN    "EAR_MIN_PERFORMANCE_EFFICIENCY_GAIN"

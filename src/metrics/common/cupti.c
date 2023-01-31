@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
+#include <common/environment_common.h>
 #include <metrics/common/cupti.h>
 
 // Provisional

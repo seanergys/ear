@@ -25,6 +25,7 @@
 #include <common/system/file.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
+#include <common/config/config_env.h>
 
 #define BUFFER_SIZE 2048
 

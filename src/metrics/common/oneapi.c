@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
+#include <common/config/config_env.h>
 #include <metrics/common/oneapi.h>
 
 // Provisional

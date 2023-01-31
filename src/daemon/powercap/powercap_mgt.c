@@ -366,7 +366,7 @@ state_t pmgt_init()
 
     /* DOMAIN_NODE is not cmpatible with CPU+DRAM */
     /* DOMAIN_NODE */
-    char *obj_path = ear_getenv(AMD17_MODE_VIRTUAL);
+    char *obj_path = ear_getenv("EAR_POWERCAP_POLICY_NODE");
     if (obj_path==NULL){
         /* Plugin per domain node defined */
         if (strcmp(DEFAULT_PC_PLUGIN_NAME_NODE,"noplugin")){

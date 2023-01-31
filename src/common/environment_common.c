@@ -21,8 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <common/config/config_env.h>
 
 #define DEFAULT_VERBOSE                 0
 #define DEFAULT_DB_PATHNAME             ".ear_system_db"
