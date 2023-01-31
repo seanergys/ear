@@ -432,7 +432,7 @@ void traces_stop()
 
 void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis, int ppn)
 {
-    pathname = ear_getenv(FLAG_TRACE_PATH);
+    pathname = ear_getenv(ENV_FLAG_PATH_TRACE);
 
     //
     file_prv = -1;
@@ -440,7 +440,7 @@ void traces_init(char *app,int global_rank, int local_rank, int nodes, int mpis,
     file_row = -1;
 
     if (pathname == NULL) {
-        debug("trace path not defined %s, trace disabled", FLAG_TRACE_PATH);
+        debug("trace path not defined %s, trace disabled", ENV_FLAG_PATH_TRACE);
         enabled = 0;
         return;
     }

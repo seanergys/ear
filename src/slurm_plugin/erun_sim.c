@@ -32,17 +32,15 @@ extern int    _argc;
 //
 extern int _sp;
 
-spank_err_t spank_getenv (spank_t spank, const char *var, char *buf, int len)
+spank_err_t spank_getenv(spank_t spank, const char *var, char *buf, int len)
 {
 	char *c;
-
 	if (var == NULL || buf == NULL) {
 		return ESPANK_ERROR;
 	}
-	if ((c = getenv(var)) == NULL) {
+	if ((c = ear_getenv(var)) == NULL) {
 		return ESPANK_ERROR;
 	}
-
 	snprintf(buf, len, "%s", c);
 	return ESPANK_SUCCESS;
 }

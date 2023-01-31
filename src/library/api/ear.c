@@ -706,11 +706,12 @@ void fill_application_mgt_data(app_mgt_t *a)
 
 int sched_num_nodes()
 {
-				char *cn;
-				cn = ear_getenv(SCHED_STEP_NUM_NODES);
-				if (cn != NULL) return atoi(cn);
-				else return 1;
+    char *cn;
+    cn = ear_getenv(SCHED_STEP_NUM_NODES);
+    if (cn != NULL) return atoi(cn);
+    else return 1;
 }
+
 void attach_to_master_set(int master)
 {
 				int color;
@@ -982,7 +983,7 @@ void ear_init()
 	topology_t earl_topo;
 
 				uint fake_eard_error = 0;
-				char *cfake_eard_error        = getenv(FAKE_EARD_ERROR);
+				char *cfake_eard_error = ear_getenv(FAKE_EARD_ERROR);
         char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
@@ -1223,7 +1224,7 @@ void ear_init()
 				if (application.is_learning){
 								verbose_master(VEAR_INIT,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 				}
-				if (getenv("LOGNAME")!=NULL) strcpy(application.job.user_id, getenv("LOGNAME"));
+				if (ear_getenv("LOGNAME")!=NULL) strcpy(application.job.user_id, ear_getenv("LOGNAME"));
 				else strcpy(application.job.user_id,"No userid");
 				debug("User %s",application.job.user_id);
 				strcpy(application.node_id, node_name);
@@ -1736,7 +1737,7 @@ void ear_init()
 void ear_finalize(int exit_status)
 {
 				uint fake_error = 0;
-				char *cfake = getenv(FAKE_PROCESS_ERRROR);
+				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
 
         #if START_END_OVH

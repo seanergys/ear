@@ -1009,15 +1009,15 @@ state_t is_blocking_busy_waiting(uint *block_type)
 {
     char *env;
     *block_type = BUSY_WAITING_BLOCK;
-    if ((env = getenv("I_MPI_WAIT_MODE")) != NULL){
+    if ((env = ear_getenv("I_MPI_WAIT_MODE")) != NULL){
         verbose_master(2,"I_MPI_WAIT_MODE %s",env);
         if (atoi(env) != 0 ) *block_type = YIELD_BLOCK;
     }
-    if ((env = getenv("I_MPI_THREAD_YIELD")) != NULL){
+    if ((env = ear_getenv("I_MPI_THREAD_YIELD")) != NULL){
         verbose_master(2,"I_MPI_THREAD_YIELD %s",env);
         if (atoi(env) != 0 ) *block_type = YIELD_BLOCK;
     }
-    if ((env = getenv("OMPI_MCA_mpi_yield_when_idle")) != NULL){
+    if ((env = ear_getenv("OMPI_MCA_mpi_yield_when_idle")) != NULL){
         verbose_master(2,"OMPI_MCA_mpi_yield_when_idle %s",env);
         if (atoi(env) != 0 ) *block_type = YIELD_BLOCK;
     }

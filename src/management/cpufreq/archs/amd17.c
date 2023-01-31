@@ -106,7 +106,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 			return s;
 		}
 	}
-    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
+    mode_virtual = (ear_getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
     if (!mode_virtual) {
         if (state_fail(s = hsmp_scan(tp_in))) {
             return s;

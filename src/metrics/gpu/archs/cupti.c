@@ -126,7 +126,7 @@ static int aux_metrics_build(CUmetric *metrics)
     char *names;
     int i;
 
-    if ((names = getenv("CUPTI_METRIC")) == NULL) {
+    if ((names = ear_getenv("CUPTI_METRIC")) == NULL) {
         debug("CUPTI_METRIC environent variable doesn't found");
         return 0;
     }

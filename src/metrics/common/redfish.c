@@ -99,7 +99,7 @@ static int load(char *path)
 static state_t static_load()
 {
     state_t s = EAR_SUCCESS;
-    if (load(getenv("HACK_FILE_REDFISH"))) return s;
+    if (load(ear_getenv("HACK_FILE_REDFISH"))) return s;
     if (load(REDFISH_PATH "/lib64/libredfish.so")) return s;
     if (load(REDFISH_PATH "/lib/libredfish.so")) return s;
     return_msg(EAR_ERROR, "Can't load libredfish.so");

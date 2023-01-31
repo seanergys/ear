@@ -2381,7 +2381,7 @@ static void read_metrics_options()
 #if USE_CUPTI
     char *cuse_cupti;
     /* We will get per-process cupti metrics */
-    cuse_cupti = getenv(EAR_USE_CUPTI);
+    cuse_cupti = ear_getenv(EAR_USE_CUPTI);
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
     verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif

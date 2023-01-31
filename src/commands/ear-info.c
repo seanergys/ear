@@ -145,7 +145,7 @@ int main(int argc,char *argv[])
   printf("............................................\n");
 
   printf("\n\nHACK section............................\n");
-  char *installp = getenv("EAR_INSTALL_PATH");
+  char *installp = ear_getenv(ENV_PATH_EAR);
   char *hack = ear_getenv(HACK_EARL_INSTALL_PATH);
   char path_files[256];
   char install[256];

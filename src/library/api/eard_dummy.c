@@ -110,8 +110,8 @@ static void create_dummy_policy(cluster_conf_t *dummycc)
 
 static void create_dummy_conf_paths(cluster_conf_t *dummycc, char *ear_tmp)
 {
-	char *install = getenv("EAR_INSTALL_PATH");
-	char *etc = getenv("EAR_ETC");
+	char *install = ear_getenv(ENV_PATH_EAR);
+	char *etc = ear_getenv(ENV_PATH_ETC);
 	strcpy(dummycc->install.dir_temp, ear_tmp);
 	if (install != NULL)	strcpy(dummycc->install.dir_inst, install);
 	else                    strcpy(dummycc->install.dir_inst, DEFAULT_EAR_INSTALL_PATH); 
@@ -122,66 +122,64 @@ static void create_dummy_conf_paths(cluster_conf_t *dummycc, char *ear_tmp)
 	strcpy(dummycc->install.obj_power_model, "cpu_power_model_dummy.so");
 	strcpy(dummycc->install.obj_ener, DEFAULT_ENERGY_PLUGIN);
 }
+
 state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 {
-				char *dummy_ser_cc,  *local_dummy_ser_cc;
-				size_t dummy_ser_cc_size;
-        state_t cc_read_result, check_cc = 1;
-				if (gethostname(nodename, sizeof(nodename)) < 0) {
-        				verbose_master(0, "Error getting node name (%s)", strerror(errno));
-        			}
-        			strtok(nodename, ".");
+    char *dummy_ser_cc,  *local_dummy_ser_cc;
+    size_t dummy_ser_cc_size;
+    state_t cc_read_result, check_cc = 1;
+    if (gethostname(nodename, sizeof(nodename)) < 0) {
+            verbose_master(0, "Error getting node name (%s)", strerror(errno));
+    }
+    strtok(nodename, ".");
 
-				/* Init dummy_cc */
+    /* Init dummy_cc */
+    #ifdef FAKE_EAR_NOT_INSTALLED
+    #if FAKE_EAR_NOT_INSTALLED
+    check_cc = 0;
+    #endif
+    #endif
 
-        #ifdef FAKE_EAR_NOT_INSTALLED 
-        #if FAKE_EAR_NOT_INSTALLED
-        check_cc = 0;
-        #endif
-        #endif
+    if (check_cc){
+      cc_read_result = get_ear_conf_path(path);
+    }else{
+      verbose_master(0," FAKE_EAR_NOT_INSTALLED when creating cluster conf");
+      cc_read_result = EAR_ERROR;
+    }
 
-        if (check_cc){
-          cc_read_result = get_ear_conf_path(path);
-        }else{
-          verbose_master(0," FAKE_EAR_NOT_INSTALLED when creating cluster conf");
-          cc_read_result = EAR_ERROR;
-        }
+    if (cc_read_result != EAR_ERROR){
+        verbose_master(2, "Reading cluster_conf");
+        read_cluster_conf(path, &dummy_cc);
+    }else{
+        memset(&dummy_cc, 0 , sizeof(cluster_conf_t));
+        set_ear_conf_default(&dummy_cc);
+        create_dummy_conf_paths(&dummy_cc, ear_tmp);
+        create_dummy_island(&dummy_cc);
+        create_dummy_policy(&dummy_cc);
+    }
+    print_cluster_conf(&dummy_cc);
 
-				if (cc_read_result != EAR_ERROR){
-					verbose_master(2, "Reading cluster_conf");
-					read_cluster_conf(path, &dummy_cc);
-				}else{
-					memset(&dummy_cc, 0 , sizeof(cluster_conf_t));
-					set_ear_conf_default(&dummy_cc);
-					create_dummy_conf_paths(&dummy_cc, ear_tmp);
-					create_dummy_island(&dummy_cc);
-					create_dummy_policy(&dummy_cc);
-				}
-				print_cluster_conf(&dummy_cc);
-				
-				verbose_master(2, "Looking for node conf. Nodename %s", nodename);
-				dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
-				if (dummy_node_conf == NULL){
-          create_dummy_node_conf(&dummy_cc, nodename);
-          dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
-        }
-				check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
-        if (dummy_node_conf != NULL){
-          print_my_node_conf(dummy_node_conf);
-        }
+    verbose_master(2, "Looking for node conf. Nodename %s", nodename);
+    dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
 
+    if (dummy_node_conf == NULL){
+        create_dummy_node_conf(&dummy_cc, nodename);
+        dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
+    }
+    check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
+    if (dummy_node_conf != NULL){
+        print_my_node_conf(dummy_node_conf);
+    }
 
-				/* serialization */
-				serialize_cluster_conf(&dummy_cc, &dummy_ser_cc, &dummy_ser_cc_size);
-				get_ser_cluster_conf_path(ear_tmp, path);
-				local_dummy_ser_cc = create_ser_cluster_conf_shared_area(path, dummy_ser_cc, dummy_ser_cc_size);
+    /* serialization */
+    serialize_cluster_conf(&dummy_cc, &dummy_ser_cc, &dummy_ser_cc_size);
+    get_ser_cluster_conf_path(ear_tmp, path);
+    local_dummy_ser_cc = create_ser_cluster_conf_shared_area(path, dummy_ser_cc, dummy_ser_cc_size);
 
-				check_null(local_dummy_ser_cc, "Error serializing cluster_conf in path %s", " ");
+    check_null(local_dummy_ser_cc, "Error serializing cluster_conf in path %s", " ");
+    verbose_master(2, "Dummy cluster_conf done");
 
-
-				verbose_master(2, "Dummy cluster_conf done");
-
-				return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)

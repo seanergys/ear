@@ -73,7 +73,7 @@ static state_t static_open()
         _open_test(path ZE_LIB ".1");
 
     // Looking for level zero library in tipical paths.
-    _open_test(getenv(HACK_ONEAPI_FILE));
+    _open_test(ear_getenv(HACK_ONEAPI_FILE));
     open_test(ZE_PATH "/targets/x86_64-linux/lib/");
     open_test(ZE_PATH "/lib64/");
     open_test(ZE_PATH "/lib/");

@@ -460,7 +460,7 @@ int get_ear_conf_path(char *ear_conf_path)
     char my_path[GENERIC_NAME];
     char *my_etc;
     int fd;
-    my_etc=getenv("EAR_ETC");
+    my_etc=ear_getenv(ENV_PATH_ETC);
     if (my_etc==NULL) return EAR_ERROR;
     sprintf(my_path,"%s/ear/ear.conf",my_etc);
     fd=open(my_path,O_RDONLY);
@@ -478,7 +478,7 @@ int get_eardbd_conf_path(char *ear_conf_path)
     char my_path[GENERIC_NAME];
     char *my_etc;
     int fd;
-    my_etc=getenv("EAR_ETC");
+    my_etc=ear_getenv(ENV_PATH_ETC);
     if (my_etc==NULL) return EAR_ERROR;
     sprintf(my_path,"%s/ear/eardbd.conf",my_etc);
     fd=open(my_path,O_RDONLY);

@@ -85,7 +85,7 @@ static state_t static_open_cuda()
     _open_test_cuda(path CUDA_LIB ".1");
 
     _open_test_cuda(NULL);
-    _open_test_cuda(getenv(HACK_CUDA_FILE));
+    _open_test_cuda(ear_getenv(HACK_CUDA_FILE));
     open_test_cuda("/usr/lib64/");
 
     return_print(EAR_ERROR, "Can not load %s", CUDA_LIB);
@@ -103,7 +103,7 @@ static state_t static_open_cupti()
     _open_test(path CUPTI_LIB ".1");
 
     // Looking for cupti library in tipical paths.
-    _open_test(getenv(HACK_CUPTI_FILE));
+    _open_test(ear_getenv(HACK_CUPTI_FILE));
     open_test(CUPTI_PATH "/targets/x86_64-linux/lib/");
     open_test(CUPTI_PATH "/lib64/");
     open_test(CUPTI_PATH "/lib/");

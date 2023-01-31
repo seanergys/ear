@@ -137,45 +137,45 @@ struct variables_s {
 }
 	Var __attribute__((weak)) =
 {
-.comp_libr       = { .comp = "SLURM_COMP_LIBRARY"                               }, // MOD
-.comp_plug       = { .comp = "SLURM_COMP_PLUGIN"                                }, // MOD
-.plug_verbose    = { .mod  = "SLURM_COMP_VERBOSE"                               }, // MOD (not a component)
-.hack_loader     = { .mod  = HACK_LOADER_FILE,        .ear = ""                 }, // MOD
-.gm_secure       = { .mod  = "SLURM_LOC_GMSC",        .ear = ""                 }, // MOD
-.ctx_last        = { .mod  = "SLURM_ERLAST",          .ear = ""                 }, // MOD
-.was_sbatch      = { .mod  = "SLURM_ERSBAC",          .ear = ""                 }, // MOD
-.was_srun        = { .mod  = "SLURM_ERSRUN",          .ear = ""                 }, // MOD
-.user            = { .info = "SLURM_ERUSER",          .ear = ""                 }, // INFO
-.group           = { .info = "SLURM_ERGRUP",          .ear = ""                 }, // INFO ---------
-.account         = { .own  = "SLURM_JOB_ACCOUNT",     .ear = ""                 }, // OWN
-.name_app        = { .own  = "SLURM_JOB_NAME",        .ear = VAR_APP_NAME       }, // OWN & EAR
-.job_id          = { .own  = "SLURM_JOB_ID",                                    }, // OWN (used in erun)
-.job_node_list   = { .own  = "SLURM_JOB_NODELIST",    .ear = ""                 }, // OWN
-.job_node_count  = { .own  = "SLURM_JOB_NUM_NODES",   .ear = ""                 }, // OWN
-.step_id         = { .own  = "SLURM_STEP_ID"                                    }, // OWN (used in erun)
-.step_node_list  = { .own  = "SLURM_STEP_NODELIST",   .ear = ""                 }, // OWN
-.step_node_count = { .own  = "SLURM_STEP_NUM_NODES",  .ear = ""                 }, // OWN
-.local_id        = { .own  = "SLURM_LOCALID",                                   }, // OWN
-.cpus_node_num   = { .own  = "SLURM_CPUS_ON_NODE"  ,  .ear = ""                 }, // OWN
-.verbose         = { .flag = "SLURM_LOC_VERB",        .ear = VAR_OPT_VERB       }, // FLAG & EAR
-.policy          = { .flag = "SLURM_LOC_POLI",        .ear = VAR_OPT_POLI       }, // FLAG & EAR
-.policy_th       = { .flag = "SLURM_LOC_POTH",        .ear = VAR_OPT_THRA       }, // FLAG & EAR
-.frequency       = { .flag = "SLURM_LOC_FREQ",        .ear = VAR_OPT_FREQ       }, // FLAG & EAR
-.p_state         = { .flag = "SLURM_LOC_PSTA",        .ear = VAR_OPT_PSTA       }, // FLAG & EAR
-.learning        = { .flag = "SLURM_LOC_LERN",        .ear = VAR_OPT_LERN       }, // FLAG & EAR
-.tag             = { .flag = "SLURM_LOC_ETAG",        .ear = VAR_OPT_ETAG       }, // FLAG & EAR
-.path_usdb       = { .flag = "SLURM_LOC_USDB",        .ear = VAR_OPT_USDB       }, // FLAG & EAR
-.path_trac       = { .flag = "SLURM_LOC_TRAC",        .ear = FLAG_TRACE_PATH    }, // FLAG & EAR
-.perf_pen        = {                                  .ear = VAR_OPT_THRB       }, // EAR
-.eff_gain        = {                                  .ear = VAR_OPT_THRC       }, // EAR
-.path_temp       = {                                  .ear = "EAR_TMP"          }, // EAR (from args)
-.path_install    = {                                  .ear = "EAR_INSTALL_PATH" }, // EAR (from args)
-.path_etc        = { .erun = "EAR_ETC",               .ear = "",                }, // (for erun, not passed to EAR)
-.lib_enabled     = { .erun = "EAR_DEFAULT",           .ear = "",                }, // (for erun)
-.task_pid        = {                                  .ear = "TASK_PID"         }, // getpid() why are we redefining?
-.ld_preload      = {                                  .ear = "LD_PRELOAD"       }, // EAR
-.ld_library      = {                                  .ear = "LD_LIBRARY_PATH"  }, // EAR
-.is_erun         = {                                  .ear = SCHED_IS_ERUN      }, // EAR
+.comp_libr       = { .comp = "SLURM_COMP_LIBRARY"                                    }, // MOD
+.comp_plug       = { .comp = "SLURM_COMP_PLUGIN"                                     }, // MOD
+.plug_verbose    = { .mod  = "SLURM_COMP_VERBOSE"                                    }, // MOD (not a component)
+.hack_loader     = { .mod  = HACK_LOADER_FILE,        .ear = ""                      }, // MOD
+.gm_secure       = { .mod  = "SLURM_LOC_GMSC",        .ear = ""                      }, // MOD
+.ctx_last        = { .mod  = "SLURM_ERLAST",          .ear = ""                      }, // MOD
+.was_sbatch      = { .mod  = "SLURM_ERSBAC",          .ear = ""                      }, // MOD
+.was_srun        = { .mod  = "SLURM_ERSRUN",          .ear = ""                      }, // MOD
+.user            = { .info = "SLURM_ERUSER",          .ear = ""                      }, // INFO
+.group           = { .info = "SLURM_ERGRUP",          .ear = ""                      }, // INFO ---------
+.account         = { .own  = "SLURM_JOB_ACCOUNT",     .ear = ""                      }, // OWN
+.name_app        = { .own  = "SLURM_JOB_NAME",        .ear = ENV_APP_NAME            }, // OWN & EAR
+.job_id          = { .own  = "SLURM_JOB_ID",                                         }, // OWN (used in erun)
+.job_node_list   = { .own  = "SLURM_JOB_NODELIST",    .ear = ""                      }, // OWN
+.job_node_count  = { .own  = "SLURM_JOB_NUM_NODES",   .ear = ""                      }, // OWN
+.step_id         = { .own  = "SLURM_STEP_ID"                                         }, // OWN (used in erun)
+.step_node_list  = { .own  = "SLURM_STEP_NODELIST",   .ear = ""                      }, // OWN
+.step_node_count = { .own  = "SLURM_STEP_NUM_NODES",  .ear = ENV_APP_NUM_NODES       }, // OWN & EAR
+.local_id        = { .own  = "SLURM_LOCALID",                                        }, // OWN
+.cpus_node_num   = { .own  = "SLURM_CPUS_ON_NODE"  ,  .ear = ""                      }, // OWN
+.verbose         = { .flag = "SLURM_LOC_VERB",        .ear = ENV_FLAG_VERBOSITY      }, // FLAG & EAR
+.policy          = { .flag = "SLURM_LOC_POLI",        .ear = ENV_FLAG_POLICY         }, // FLAG & EAR
+.policy_th       = { .flag = "SLURM_LOC_POTH",        .ear = ENV_FLAG_POLICY_TH      }, // FLAG & EAR
+.frequency       = { .flag = "SLURM_LOC_FREQ",        .ear = ENV_FLAG_FREQUENCY      }, // FLAG & EAR
+.p_state         = { .flag = "SLURM_LOC_PSTA",        .ear = ENV_FLAG_PSTATE         }, // FLAG & EAR
+.learning        = { .flag = "SLURM_LOC_LERN",        .ear = ENV_FLAG_IS_LEARNING    }, // FLAG & EAR
+.tag             = { .flag = "SLURM_LOC_ETAG",        .ear = ENV_FLAG_ENERGY_TAG     }, // FLAG & EAR
+.path_usdb       = { .flag = "SLURM_LOC_USDB",        .ear = ENV_FLAG_PATH_USERDB    }, // FLAG & EAR
+.path_trac       = { .flag = "SLURM_LOC_TRAC",        .ear = ENV_FLAG_PATH_TRACE     }, // FLAG & EAR
+.perf_pen        = {                                  .ear = ENV_FLAG_POLICY_PENALTY }, // EAR
+.eff_gain        = {                                  .ear = ENV_FLAG_POLICY_GAIN    }, // EAR
+.path_temp       = {                                  .ear = ENV_PATH_TMP            }, // EAR (from args)
+.path_install    = {                                  .ear = ENV_PATH_EAR            }, // EAR (from args)
+.path_etc        = { .erun = "EAR_ETC",               .ear = "",                     }, // (for erun, not passed to EAR)
+.lib_enabled     = { .erun = "EAR_DEFAULT",           .ear = "",                     }, // (for erun)
+.task_pid        = {                                  .ear = "TASK_PID"              }, // getpid() why are we redefining?
+.ld_preload      = {                                  .ear = "LD_PRELOAD"            }, // EAR
+.ld_library      = {                                  .ear = "LD_LIBRARY_PATH"       }, // EAR
+.is_erun         = {                                  .ear = SCHED_IS_ERUN           }, // EAR
 };
 
 /*

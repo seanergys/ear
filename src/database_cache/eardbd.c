@@ -611,10 +611,10 @@ static state_t usage(int argc, char *argv[])
 		mirror_enabled = strinargs(argc, argv, "mirror:", server_host);
 	} else {
 		// Usage by environment
-		server_enabled = (getenv("EARDBD_SERVER") != NULL);
-		mirror_enabled = (getenv("EARDBD_MIRROR") != NULL);
+		server_enabled = (ear_getenv("EARDBD_SERVER") != NULL);
+		mirror_enabled = (ear_getenv("EARDBD_MIRROR") != NULL);
 		if (mirror_enabled) {
-			strcpy(server_host, getenv("EARDBD_MIRROR"));
+			strcpy(server_host, ear_getenv("EARDBD_MIRROR"));
 		}
 	}
 	// Mirror/server processing

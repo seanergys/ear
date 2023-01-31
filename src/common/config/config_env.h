@@ -24,8 +24,11 @@
 
 // These variables are SLURM named variables. In case we want to use it from
 // different queue managers, we can:
+//
 // 1) Replace a manager exclusive variable by our SLURM named variable inside
-//    the specific plugin for PBS, OAR...
+//    the specific plugin for PBS, OAR... In example:
+//          SLURM_STEP_NUM_NODES --- to ---> EAR_NUM_NOES
+//
 // 2) Surround these variable definitions by the different #ifs and set the name
 //    depending on the queue manager are you compiling for. This strategy limits
 //    an EAR component compatibility to a specific queue manager. But in this
@@ -48,20 +51,33 @@
  * These variables are used by the plugin to configure the EAR environment.
  * @{
  */
-#define VAR_INS_PATH "EAR_INSTALL_PATH"
-#define VAR_TMP_PATH "EAR_TMP"
-//#define VAR_ETC_PATH "EAR_ETC"
-#define VAR_APP_NAME "EAR_APP_NAME"
-#define VAR_OPT_VERB "EAR_VERBOSE"
-#define VAR_OPT_POLI "EAR_POWER_POLICY"
-#define VAR_OPT_FREQ "EAR_FREQUENCY"
-#define VAR_OPT_PSTA "EAR_P_STATE"
-#define VAR_OPT_LERN "EAR_LEARNING_PHASE"
-#define VAR_OPT_ETAG "EAR_ENERGY_TAG"
-#define VAR_OPT_USDB "EAR_USER_DB_PATHNAME"
-#define VAR_OPT_THRA "EAR_POWER_POLICY_TH"
-#define VAR_OPT_THRB "EAR_PERFORMANCE_PENALTY"
-#define VAR_OPT_THRC "EAR_MIN_PERFORMANCE_EFFICIENCY_GAIN"
+
+#define ENV_PATH_TMP            "EAR_TMP"
+#define ENV_PATH_ETC            "EAR_ETC"
+#define ENV_PATH_EAR            "EAR_INSTALL_PATH"
+#define ENV_APP_NAME            "EAR_APP_NAME"
+#define ENV_APP_NUM_NODES       "EAR_NUM_NODES"
+#define ENV_FLAG_PATH_USERDB    "EAR_USER_DB_PATHNAME"
+#define ENV_FLAG_PATH_COEFFS    "EAR_COEFF_DB_PATHNAME"
+#define ENV_FLAG_PATH_TRACE     "EAR_TRACE_PATH"
+#define ENV_FLAG_IS_LEARNING    "EAR_LEARNING_PHASE
+#define ENV_FLAG_POLICY         "EAR_POWER_POLICY"
+#define ENV_FLAG_POLICY_PENALTY "EAR_PERFORMANCE_PENALTY"
+#define ENV_FLAG_POLICY_GAIN    "EAR_MIN_PERFORMANCE_EFFICIENCY_GAIN"
+#define ENV_FLAG_POLICY_TH      "EAR_POWER_POLICY_TH"
+#define ENV_FLAG_PSTATE         "EAR_P_STATE"
+#define ENV_FLAG_FREQUENCY      "EAR_FREQUENCY"
+#define ENV_FLAG_VERBOSITY      "EAR_VERBOSE"
+#define ENV_FLAG_ENERGY_TAG     "EAR_ENERGY_TAG"
+
+// Not controlled:
+//   EAR_PERFORMANCE_ACCURACY
+//   EAR_MIN_P_STATE
+//   EAR_DYNAIS_LEVELS
+//   EAR_DYNAIS_WINDOW_SIZE
+//   EAR_POWERCAP_POLICY_NODE
+//   EAR_AFFINITY
+//   EAR_MAX_DYNAIS_OVERHEAD
 /**@}*/
 
 /**
@@ -92,7 +108,6 @@
  * These variables are not HACKS as there is no other way to specify in EAR.
  * @{
  */
-#define FLAG_TRACE_PATH              "EAR_TRACE_PATH"         // Sets the output path of the trace plugin.
 #define FLAG_TRACE_PLUGIN            "EAR_TRACE_PLUGIN"       // Sets the trace plugin in EARL.
 #define FLAG_GPU_DEF_FREQ            "EAR_GPU_DEF_FREQ"       // This var sets a default GPU frequency.
 

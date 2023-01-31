@@ -268,7 +268,7 @@ state_t monitor_register(suscription_t *s)
 	queue[s->id].wait_saves.burst = (s->time_burst / 100);
 
 	debug("registered suscription %d", s->id);
-  debug("aligned %d",  queue[s->id].aligned);
+    debug("aligned %d", queue[s->id].aligned);
 	debug("times relax/burst: %d/%d", queue[s->id].wait_saves.relax, queue[s->id].wait_saves.burst);
 	debug("calls init/main: %p/%p (%d)", s->call_init, s->call_main, queue[s->id].ok_init);
 
@@ -307,6 +307,7 @@ state_t monitor_burst(suscription_t *s)
 		return_msg(EAR_BAD_ARGUMENT, "burst time cant be less than relax time");
 	}
 	queue[s->id].bursted = 1;
+    kill(others_pid, signal);
 	return EAR_SUCCESS;
 }
 
