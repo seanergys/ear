@@ -2403,7 +2403,7 @@ state_t earl_periodic_actions(void *no_arg)
                 ear_periodic_mode = PERIODIC_MODE_ON;
                 if (ear_guided != new_ear_guided){ 
                     if (earl_monitor->time_burst < earl_monitor->time_relax){
-                        monitor_burst(earl_monitor);
+                        monitor_burst(earl_monitor, 0);
                     }
                     verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
                             my_node_id, period_elapsed);

@@ -235,7 +235,7 @@ state_t gpu_nvml_pool(void *p)
     #if 0	
 	if (working  > 0 && !monitor_is_bursting(sus)) {
 		debug("bursting");
-		monitor_burst(sus);
+		monitor_burst(sus, 0);
 	}
 	if (working == 0 &&  monitor_is_bursting(sus)) {
 		debug("relaxing");

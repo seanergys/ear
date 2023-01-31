@@ -91,6 +91,7 @@ int load_no_official()
             return 0;
         }
     }
+    if (app_to_load == NULL) return 0;
     if (strinlist(app_to_load, ",", program_invocation_name)){
       verbose(1,"LOADER: %s found in list ", program_invocation_name);
       return 1;
