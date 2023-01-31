@@ -1496,12 +1496,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       dc_power_ratio += metrics->DC_power / (total_gpu_power + metrics->DRAM_power + metrics->PCK_power);
       dc_power_ratio_instances++;
     }
-		#if EARL_LIGHT
-		if (metrics->DC_power == 0){
-			metrics->DC_power = total_gpu_power + metrics->DRAM_power + metrics->PCK_power;
-			verbose_master(1,"Estimated power %.2lf", metrics->DC_power);
-		}
-		#else
     if (estimate_power){
       /* Power error control: There was an error on power computation and we use an estimation */
       double current_ratio;
@@ -1513,7 +1507,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       if (sign_app_loop_idx == LOO) acum_ipmi[sign_app_loop_idx] = metrics->DC_power * time_s * node_energy_units;
       estimate_power = 0;
     }
-    #endif
 
 
     /* Power error control: We don't accumulate if we are computing application metrics, not loop  metrics */

@@ -137,6 +137,7 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
     return EAR_SUCCESS;
 }
 
+
 int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column)
 {
     char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
@@ -161,7 +162,9 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
     }
 		debug("Creating header with %d GPUS", num_gpus);
 #if USE_GPUS
-		if (single_column) num_gpus = ear_min(num_gpus, 1);
+    // We force here num_gpus in order to be more robust with other formats.
+    num_gpus = MAX_GPUS_SUPPORTED;
+	if (single_column) num_gpus = ear_min(num_gpus, 1);
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
         xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC",

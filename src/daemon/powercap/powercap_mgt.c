@@ -847,7 +847,7 @@ void pmgt_powercap_node_reallocation()
 void pmgt_new_job(pwr_mgt_t *phandler)
 {
 #if USE_GPUS
-    monitor_burst(sus_util_detection);
+    monitor_burst(sus_util_detection, 0);
 #endif
     memcpy(pdomains,pdomains_def,sizeof(float)*NUM_DOMAINS);
     reallocate_power_between_domains();

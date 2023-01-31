@@ -166,15 +166,18 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
           L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
           inst[node_process]           = nmgr[j].shsig[lp].sig.instructions;
 
-          ipc[node_process]            = 1 / nmgr[j].shsig[lp].sig.CPI;
+          if (nmgr[j].shsig[lp].sig.CPI) ipc[node_process]            = 1 / nmgr[j].shsig[lp].sig.CPI;
+          else                           ipc[node_process]            = 1;
 
           avx = nmgr[j].shsig[lp].sig.FLOPS[INDEX_256F]/WEIGHT_256F
             + nmgr[j].shsig[lp].sig.FLOPS[INDEX_256D]/WEIGHT_256D
             + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512F]/WEIGHT_512F
             + nmgr[j].shsig[lp].sig.FLOPS[INDEX_512D]/WEIGHT_512D;
 
-          vpi[node_process] = (double) avx /
+          if (nmgr[j].shsig[lp].sig.instructions){ 
+            vpi[node_process] = (double) avx /
             (double) nmgr[j].shsig[lp].sig.instructions;
+          }else vpi[node_process] = 0;
 
           f[node_process]   = nmgr[j].shsig[lp].sig.avg_f;
 
@@ -205,10 +208,16 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
-            float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
-            gbs[j] = lsig->GBS * mem_ratio;
-            tpi[j] = lsig->TPI * mem_ratio;
-            dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
+            if (used_cpus && nmgr[cj].libsh->num_processes){
+              float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
+              gbs[j] = lsig->GBS * mem_ratio;
+              tpi[j] = lsig->TPI * mem_ratio;
+            }else{
+              gbs[j] = lsig->GBS;
+              tpi[j] = lsig->TPI;
+            }
+            if (lsig->GBS) dram_power[j] = (gbs[j]/lsig->GBS) * lsig->DRAM_power;
+            else           dram_power[j] = lsig->DRAM_power;
             debug("case 2[%d]: Ratio %.3f Node TPI %.2lf", j, mem_ratio, lsig->TPI);
         }
         if ((L3[j] || gbs[j])  && (job_in_process[j] == node_mgr_index)){
@@ -271,7 +280,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
   double GPU_process_power = 0;
   lp = 0;
   for (uint proc =0; proc < node_process; proc++){
-    if ((job_in_process[proc] == node_mgr_index) && (power_estimations[proc] > 0)){ 
+    GPU_process_power = 0;
+    if ((job_in_process[proc] == node_mgr_index) && (power_estimations[proc] > 0) && (total_power_estimated > 0)){ 
       job_power_ratio += power_estimations[proc]/total_power_estimated;
       process_power_ratio[proc] = power_estimations[proc]/total_power_estimated;
       if (GPU_power) GPU_process_power = GPU_power / data->num_processes;
