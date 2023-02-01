@@ -7,9 +7,9 @@ COMPONENTS = \
     management\
     daemon \
     library \
-    tools \
     global_manager \
     commands \
+    tools \
     slurm_plugin
 
 #ifdef DB_BASE
@@ -56,11 +56,13 @@ earplug.install: slurm_plugin.install;
 ######## SUBFOLDERS
 
 %.components:
-	@ for i in $(COMPONENTS); do                     \
+	@ for i in $(COMPONENTS); do                         \
+		if [[ "$(COMPONENT_DISABLE)" != *$$i* ]]; then \
 		echo "===================================="; \
 		echo "= Compiling $$i";                      \
 		echo "===================================="; \
 		$(MAKE) -C $${i} $* || exit;                 \
+		fi \
 	done
 
 ######## DEPENDENCIES
