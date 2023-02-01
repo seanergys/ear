@@ -1158,8 +1158,8 @@ static int metrics_partial_stop(uint where)
 		} else {
       /* If there is an error, power is computed based on power from CPu+GPU. Computed in 
        * compute_signature_data */
-			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
-                    COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
+		 //	verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
+     //               COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
 			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
       estimate_power = 1;
 		}

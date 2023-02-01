@@ -1059,7 +1059,7 @@ void ear_init()
                 // We print here the topology in order to do it only at verbose 2
                 if (VERB_ON(2))
                 {
-                    if (masters_info.my_master_rank >= 0)
+                    if (ear_my_rank == 0)
                     {
                         topology_print(&earl_topo, 1);
                     }
@@ -1430,10 +1430,7 @@ void ear_init()
 				// Initializing DynAIS
 				debug("Dynais init");
 				dynais = dynais_init(&arch_desc.top, get_ear_dynais_window_size(), get_ear_dynais_levels());
-				#if __ARCH_ARM
-				dynais = NULL;
-				#endif
-				if (dynais == NULL){ 
+				if (dynais_build_type() == DYNAIS_NONE){ 
           ear_guided = TIME_GUIDED;
           verbose_master(0, "Switching to time guided becuase dynais is no supported");
         }
@@ -1572,6 +1569,7 @@ void ear_init()
                     free_node_signatures(lib_shared_region, sig_shared_region);
                 }
 
+        verbose_master(2,"Init energy models");
 				init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
 
 				if (state_ok(init_power_policy(system_conf, resched_conf))) {
@@ -1585,6 +1583,7 @@ void ear_init()
                 }
 
 
+        verbose_master(2,"Init CPU power models for node sharing");
 				if (cpu_power_model_load(system_conf, &arch_desc, API_NONE) == EAR_SUCCESS){
 								verbose_master(VEAR_INIT, "CPU power models loaded.");
 				}
@@ -1721,7 +1720,8 @@ void ear_init()
         }
         #endif
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
-				if (is_mpi_enabled()) monitor_relax(earl_monitor);
+				if (ear_guided == DYNAIS_GUIDED) monitor_relax(earl_monitor);
+        else                             monitor_burst(earl_monitor);
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -2285,7 +2285,7 @@ state_t earl_periodic_actions_init(void *no_arg)
     timestamp_getfast(&periodic_time);
     seconds = 0;
     last_mpis = 0;
-    if (!is_mpi_enabled()) {
+    if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
         ear_periodic_mode = PERIODIC_MODE_ON;
 #if SINGLE_CONNECTION
         if (masters_info.my_master_rank>=0) 
@@ -2370,12 +2370,12 @@ state_t earl_periodic_actions(void *no_arg)
         }
 
         if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+            if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u I/P %d",period_elapsed,ear_iterations,lib_period, ITERS_PER_PERIOD);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
         }
 
         seconds = period_elapsed - last_check;
-        if (seconds >= 5) {
+        if (seconds >= 5 && (ear_guided == DYNAIS_GUIDED)) {
             last_check = period_elapsed;
             /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
             mpi_period = total_mpi_calls - last_mpis;
