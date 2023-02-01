@@ -1430,6 +1430,13 @@ void ear_init()
 				// Initializing DynAIS
 				debug("Dynais init");
 				dynais = dynais_init(&arch_desc.top, get_ear_dynais_window_size(), get_ear_dynais_levels());
+				#if __ARCH_ARM
+				dynais = NULL;
+				#endif
+				if (dynais == NULL){ 
+          ear_guided = TIME_GUIDED;
+          verbose_master(0, "Switching to time guided becuase dynais is no supported");
+        }
 				debug("Dynais end");
 
 				arch_desc.max_freq_avx512=system_conf->max_avx512_freq;
