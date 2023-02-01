@@ -1059,7 +1059,10 @@ void ear_init()
                 // We print here the topology in order to do it only at verbose 2
                 if (VERB_ON(2))
                 {
-                    topology_print(&earl_topo, 1);
+                    if (masters_info.my_master_rank >= 0)
+                    {
+                        topology_print(&earl_topo, 1);
+                    }
                 }
 
 				set_ear_total_processes(my_size);

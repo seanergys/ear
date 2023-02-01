@@ -8,12 +8,12 @@ tool_BINS = \
     coeffs_show \
     coeffs_default \
     coeffs_null \
-	get_periodic \
-	metrics_show \
     ear_conf
 ifdef DB_BASE
 tool_BINS += \
     learning_show \
+    get_periodic \
+    metrics_show \
     learning_delete
 endif
 ifdef GSL_BASE
