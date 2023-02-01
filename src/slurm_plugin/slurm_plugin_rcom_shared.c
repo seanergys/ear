@@ -88,7 +88,7 @@ int plug_shared_readsetts(spank_t sp, plug_serialization_t *sd)
 	uint ID = create_ID(sd->job.app.job.id, sd->job.app.job.step_id);
 	get_settings_conf_path(sd->pack.path_temp, ID, buffer);
 	setts = attach_settings_conf_shared_area(buffer);
-	plug_verbose(sp, 3, "looking for settings in '%s' (cid %u, job %u, step %d)", buffer, ID, sd->job.app.job.id, sd->job.app.job.step_id);
+	plug_verbose(sp, 3, "looking for settings in '%s' (cid %u, job %lu, step %lu)", buffer, ID, sd->job.app.job.id, sd->job.app.job.step_id);
 
 	if (setts == NULL) {
 		plug_error(sp, "while reading the settings memory in node '%s@%s'", sd->subject.host, buffer);
