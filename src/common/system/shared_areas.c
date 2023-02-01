@@ -88,14 +88,18 @@ void * attach_shared_area(char *path,int area_size,uint perm,int *shared_fd,int 
 		int fd;
 		strcpy(buff,path);
     fd=open(buff,perm);
+    *shared_fd = fd;
+    char buffout[1024];
     if (fd<0){
-        //error("error attaching to sharing memory (%s)\n",strerror(errno));
+        error("error attaching to sharing memory (%s)\n",strerror(errno));
+        sprintf(buffout, "echo '%s, %s, %d, %u, %d' >> /tmp/PLUGIN", strerror(errno), path, area_size, perm, fd);
+        system(buffout);
         return NULL;
     }
 	if (area_size==0){
 		size=lseek(fd,0,SEEK_END);
 		if (size<0){
-			//error("Error computing shared memory size (%s) ",strerror(errno));
+			error("Error computing shared memory size (%s) ",strerror(errno));
 		}else area_size=size;
 		if (s!=NULL) *s=size;
 	}
@@ -106,7 +110,7 @@ void * attach_shared_area(char *path,int area_size,uint perm,int *shared_fd,int 
 	}
     my_shared_region= mmap(NULL, area_size,flags, MAP_SHARED, fd, 0);
     if ((my_shared_region == MAP_FAILED) || (my_shared_region == NULL)){
-        //error("error attaching to sharing memory (%s)\n",strerror(errno));
+        error("error attaching to sharing memory (%s)\n",strerror(errno));
         close(fd);
         return NULL;
     }

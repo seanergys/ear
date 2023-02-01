@@ -154,7 +154,7 @@ int job(int argc, char *argv[])
     // Setting ERUN reference
     setenv(Var.is_erun.ear, "1", 1);
     // Enabling plugin and ERUN components
-	setenv(Var.comp_plug.cmp, "1", 1);
+	setenv(Var.comp_plug.comp, "1", 1);
 
 	// Clean
 	for (i = 0; i < argc; ++i) {
@@ -230,10 +230,10 @@ int job(int argc, char *argv[])
 	char *nnodes;
 	for (i = 0; i < argc; ++i) {
 		if ((strlen(argv[i]) > 7) && (strncmp("--nodes=", argv[i], 8) == 0)) {
-			setenv("SLURM_NNODES", &argv[i][8], 1);
+			setenv(Var.job_node_count.own, &argv[i][8], 1);
 		}
 	}
-	if ((nnodes = getenv("SLURM_NNODES")) == NULL) {
+	if ((nnodes = getenv(Var.job_node_count.own)) == NULL) {
 		char *size_world = getenv("OMPI_COMM_WORLD_SIZE");
 		char *size_local = getenv("OMPI_COMM_WORLD_LOCAL_SIZE");
 		char nnodes_b[8];
@@ -265,7 +265,7 @@ int job(int argc, char *argv[])
 	print_argv(_argc, _argv);
 	
 	// Going inactive?
-	_inactive = isenv_agnostic(_sp, Var.was_srun.rem, "1");
+	_inactive = isenv_agnostic(_sp, Var.was_srun.mod, "1");
 
 	if (_inactive) {
 		_error = 2;
@@ -311,7 +311,7 @@ static int execute(int argc, char *argv[])
 	{
 		// Setting SLURMs task pid
 		sprintf(buffer, "%d", getpid());
-		setenv(Var.task_pid.rem, buffer, 1);
+		setenv(Var.task_pid.ear, buffer, 1);
 
 		// Executting
 		if (execvp(args[0], args) == -1) {

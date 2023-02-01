@@ -43,7 +43,7 @@ static int valid_range(ulong from,ulong to)
 /* This function loads any information needed by the energy model */
 state_t model_init(char *etc,char *tmp,architecture_t *myarch)
 {
-  char *hack_file = getenv(HACK_EARL_COEFF_FILE);
+  char *hack_file = ear_getenv(HACK_EARL_COEFF_FILE);
   int i, ref;
 
 	debug("Using basic_model\n");

@@ -262,7 +262,7 @@ state_t monitor_register(suscription_t *s)
 	queue[s->id].wait_saves.burst = (s->time_burst / 100);
 
 	debug("registered suscription %d", s->id);
-    debug("aligned %d",  queue[s->id].aligned);
+    debug("aligned %d", queue[s->id].aligned);
 	debug("times relax/burst: %d/%d", queue[s->id].wait_saves.relax, queue[s->id].wait_saves.burst);
 	debug("calls init/main: %p/%p (%d)", s->call_init, s->call_main, queue[s->id].ok_init);
 

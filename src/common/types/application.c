@@ -508,7 +508,7 @@ void mark_as_eard_connected(int jid,int sid,int pid)
     int my_id;	
     char *tmp,con_file[128];
     int fd;
-    tmp=getenv("EAR_TMP");
+    tmp=ear_getenv(ENV_PATH_TMP);
     if (tmp == NULL){
         debug("EAR_TMP not defined in mark_as_eard_connected");
         return;
@@ -525,7 +525,7 @@ uint is_already_connected(int jid,int sid,int pid)
     int my_id;
     int fd;
     char *tmp,con_file[128];;
-    tmp=getenv("EAR_TMP");
+    tmp=ear_getenv(ENV_PATH_TMP);
     if (tmp == NULL){ 
         debug("EAR_TMP not defined in is_already_connected");
         return 0;
@@ -545,7 +545,7 @@ void mark_as_eard_disconnected(int jid,int sid,int pid)
 {
     int my_id;
     char *tmp,con_file[128];
-    tmp=getenv("EAR_TMP");
+    tmp=ear_getenv(ENV_PATH_TMP);
     if (tmp == NULL){ 
         debug("EAR_TMP not defined in mark_as_eard_disconnected");
         return;

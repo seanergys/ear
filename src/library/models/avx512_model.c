@@ -49,7 +49,7 @@ static int valid_range(ulong from,ulong to)
 state_t model_init(char *etc, char *tmp, architecture_t *myarch)
 {
   int i, ref;
-  char * hack_file = getenv(HACK_EARL_COEFF_FILE);
+  char * hack_file = ear_getenv(HACK_EARL_COEFF_FILE);
 
 	debug("Using avx512_model\n");
 	num_pstates=myarch->pstates;

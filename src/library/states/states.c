@@ -189,7 +189,7 @@ void states_begin_job(int my_id, char *app_name)
 {
     master = !my_id;
 
-    char *max_dyn_ov = getenv("EAR_MAX_DYNAIS_OVERHEAD");
+    char *max_dyn_ov = ear_getenv("EAR_MAX_DYNAIS_OVERHEAD");
     if (max_dyn_ov != NULL) {
         MAX_DYNAIS_OVERHEAD_DYN = atof(max_dyn_ov);
         debug("Using dynamic limit for dynais %lf", MAX_DYNAIS_OVERHEAD_DYN);

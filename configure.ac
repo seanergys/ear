@@ -104,9 +104,6 @@ AC_CONFIG_FILES([Makefile
                  etc/systemd/eardbd.service
                  etc/systemd/eargmd.service
                  src/common/config/config_install.h
-                 src/common/config/config_dev.h
-                 src/common/config/config_def.h
-                 src/common/config/config_env.h
                  etc/conf/ear.conf.full.template
                  etc/conf/ear.conf.template
                  etc/rpms/specs/ear.spec])

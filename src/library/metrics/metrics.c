@@ -775,7 +775,7 @@ static void metrics_global_start()
 static void metrics_global_stop()
 {
 	char io_info[256];
-	char *verb_path=getenv(FLAG_EARL_VERBOSE_PATH);
+	char *verb_path=ear_getenv(FLAG_EARL_VERBOSE_PATH);
 	state_t s;
 	int i;
 
@@ -1739,8 +1739,8 @@ int metrics_init(topology_t *topo)
 
 			/* This section checks for explicitly requested IMC freq. range */
 
-			cimc_max_khz = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MAX_IMCFREQ) : NULL; // Max. IMC freq. (kHz)
-			cimc_min_khz = (system_conf->user_type == AUTHORIZED) ? getenv(FLAG_MIN_IMCFREQ) : NULL; // Min. IMC freq. (kHz)
+			cimc_max_khz = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MAX_IMCFREQ) : NULL; // Max. IMC freq. (kHz)
+			cimc_min_khz = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MIN_IMCFREQ) : NULL; // Min. IMC freq. (kHz)
 
 			imc_max_khz = def_imc_max_khz;
 			imc_min_khz = def_imc_min_khz;
@@ -2379,13 +2379,13 @@ static void read_metrics_options()
 #if USE_CUPTI
     char *cuse_cupti;
     /* We will get per-process cupti metrics */
-    cuse_cupti = getenv(EAR_USE_CUPTI);
+    cuse_cupti = ear_getenv(EAR_USE_CUPTI);
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
     verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif
 #if MPI_OPTIMIZED
     /* this is already read in policy.c but RAPL traces will be generated only if this option is ON */
-    char *cear_mpi_opt          =  getenv(FLAG_MPI_OPT);
+    char *cear_mpi_opt          =  ear_getenv(FLAG_MPI_OPT);
     if (cear_mpi_opt != NULL){
       uint opt = atoi(cear_mpi_opt);
       if (opt && (getenv(EAR_REPORT_POWER_TRACE) != NULL)){
@@ -2404,11 +2404,11 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
     char my_plug_path[512];
     if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
-                    getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
+                                            ear_getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
         return_msg(EAR_ERROR, "Plugins path can not be built.");
     }
 
-    char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? getenv(HACK_ENERGY_PLUGIN) : NULL;
+    char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? ear_getenv(HACK_ENERGY_PLUGIN) : NULL;
 
     char energy_objc[SZ_PATH];
 

@@ -101,7 +101,7 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     gethostname(nodename, sizeof(nodename));
     strtok(nodename, ".");
 
-    csv_log_file_env = getenv(HEROES_LOGS_PATH);
+    csv_log_file_env = ear_getenv(HEROES_LOGS_PATH);
     if (csv_log_file_env == NULL){ 
       csv_log_file_env = getcwd(path_base, sizeof(path_base));
     }
@@ -152,11 +152,11 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     my_time = timestamp_getconvert(TIME_SECS);
 
 		/* HEROES specific */
-		heroes_wrf_id = getenv(HEROES_WRF_ID);
-		heroes_her_id = getenv(HEROES_HER_ID);
-		heroes_usr_id = getenv(HEROES_USR_ID);
-		heroes_prj_id = getenv(HEROES_PRJ_ID);
-		heroes_org_id = getenv(HEROES_ORG_ID);
+		heroes_wrf_id = ear_getenv(HEROES_WRF_ID);
+		heroes_her_id = ear_getenv(HEROES_HER_ID);
+		heroes_usr_id = ear_getenv(HEROES_USR_ID);
+		heroes_prj_id = ear_getenv(HEROES_PRJ_ID);
+		heroes_org_id = ear_getenv(HEROES_ORG_ID);
 
 		if (heroes_wrf_id == NULL) heroes_wrf_id = NULL_WRF_ID;
 		if (heroes_her_id == NULL) heroes_her_id = NULL_HER_ID;

@@ -20,10 +20,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <metrics/common/msr.h>
+#include <common/utils/keeper.h>
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
-#include <common/utils/keeper.h>
+#include <common/environment_common.h>
 #include <management/cpufreq/archs/amd17.h>
 #include <metrics/common/apis.h>
 #include <metrics/common/hsmp.h>
@@ -106,7 +107,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 			return s;
 		}
 	}
-    mode_virtual = (getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
+    mode_virtual = (ear_getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
     if (!mode_virtual) {
         if (state_fail(s = hsmp_scan(tp_in))) {
             return s;
