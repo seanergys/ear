@@ -36,16 +36,16 @@ static uint   started;
 
 void set_flops(ullong event, uint type, uint level, ullong weight, double _multiplier)
 {
-	state_t s;
+    state_t s;
 
-	if (state_fail(s = perf_open(&perfs[counter], NULL, 0, type, (ulong) event))) {
-		debug("perf_open returned %d (%s)", s, state_msg);
-		return;
-	}
+    if (state_fail(s = perf_open(&perfs[counter], NULL, 0, type, (ulong) event))) {
+        debug("perf_open returned %d (%s)", s, state_msg);
+        return;
+    }
     levels[counter]     = level;
     multiplier[counter] = _multiplier;
     weights[level]      = weight;
-	counter++;
+    counter++;
 }
 
 void flops_perf_load(topology_t *tp, flops_ops_t *ops)
@@ -118,19 +118,19 @@ state_t flops_perf_dispose(ctx_t *c)
 
 state_t flops_perf_read(ctx_t *c, flops_t *fl)
 {
-	ullong *p = (ullong *) fl;
+    ullong *p = (ullong *) fl;
     double dvalue;
-	ullong value;
-	int i;
+    ullong value;
+    int i;
 
-	memset(fl, 0, sizeof(flops_t));
-	timestamp_get(&fl->time);
-	for (i = 0; i < counter; ++i) {
-		value = 0LU;
-		perf_read(&perfs[i], (long long *) &value);
-		debug("values[%d]: %lu", i, value);
+    memset(fl, 0, sizeof(flops_t));
+    timestamp_get(&fl->time);
+    for (i = 0; i < counter; ++i) {
+        value = 0LU;
+        perf_read(&perfs[i], (long long *) &value);
+        debug("values[%d]: %lu", i, value);
         dvalue = (double) value;
-		p[levels[i]] = (ullong) (dvalue * multiplier[i]);
-	}
-	return EAR_SUCCESS;
+        p[levels[i]] = (ullong) (dvalue * multiplier[i]);
+    }
+    return EAR_SUCCESS;
 }
