@@ -1314,7 +1314,7 @@ state_t peak_power_mpi_opt_end_optimize(node_freqs_t *freqs, int *process_id)
                                 monitor_burst(earl_monitor);
                         }
 #endif
-                        monitor_burst(earl_monitor);
+                        monitor_burst(earl_monitor,0);
                         process_block_ready();
                 }
 

@@ -1508,7 +1508,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       if (sign_app_loop_idx == LOO) acum_ipmi[sign_app_loop_idx] = metrics->DC_power * time_s * node_energy_units;
       estimate_power = 0;
     }
-    #endif
     max_app_power = ear_max(max_app_power, metrics->DC_power);
 
 
