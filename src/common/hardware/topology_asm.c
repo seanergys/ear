@@ -156,8 +156,32 @@ static void topology_asm_getbrand(topology_t *topo)
     #endif
 }
 
+static void topology_asm_getboost_x86(topology_t *topo)
+{
+    if (topo->vendor != VENDOR_INTEL) {
+        return;
+    }
+    cpuid_regs_t regs;
+    // Getting CPUID 16H
+    CPUID(regs, 0x16, 0);
+    // Computing base frequency
+    topo->base_freq = (regs.eax & 0x0000FFFF) * 1000LU;
+    //
+    CPUID(regs, 0x06, 0);
+    //
+    topo->boost_enabled = (ulong) cpuid_getbits(regs.eax, 1, 1);
+}
+
+static void topology_asm_getboost(topology_t *topo)
+{
+    #if __ARCH_X86
+    topology_asm_getboost_86(topo);
+    #endif
+}
+
 void topology_asm(topology_t *topo)
 {
     topology_asm_getid(topo);
     topology_asm_getbrand(topo);
+    topology_asm_getboost(topo);
 }

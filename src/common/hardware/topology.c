@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,11 +131,11 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 	
 	// Getting the socket_id
 	sprintf(path, "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", thread);
-
 	fd = open(path, F_RD);
 	aux1 = 0;
 	aux2 = 0;
 
+        debug("Trying to open '%s', returned fd: %d (%s)", path, fd, strerror(errno));
 	if (fd >= 0) {
 		do {
 			aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
@@ -206,14 +208,15 @@ static void topology_watchdog(topology_t *topo)
 
 static void topology_cpuinfo(topology_t *topo)
 {
-    char *line = NULL;
-    char *col  = NULL; //column
-    char *aux  = NULL;
-    size_t len = 0;
-    int cpu    = 0;
+    ulong base_freq = 0;
+    char *line      = NULL;
+    char *col       = NULL; //column
+    char *aux       = NULL;
+    size_t len      = 0;
+    int cpu         = 0;
 
     // If not found 1GHz
-    topo->base_freq = 1000000;
+    base_freq = 1000000;
 
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     while(getline(&line, &len, cpuinfo) != -1) {
@@ -241,9 +244,13 @@ static void topology_cpuinfo(topology_t *topo)
                 while (*col != 'G') col++;
                 *col = '\0';
                 // Converted to KHz
-                topo->base_freq = atof(aux)*1000000;
+                base_freq = atof(aux)*1000000;
             }
         }
+    }
+    // In case we don't find the base frequency by low level procedures
+    if (topo->base_freq == 0) {
+        topo->base_freq = base_freq;
     }
     topo->apicids_found = (cpu == topo->cpu_count);
     fclose(cpuinfo);
@@ -267,70 +274,96 @@ static int is_online(const char *path)
 
 state_t topology_init(topology_t *topo)
 {
-	char path[SZ_NAME_LARGE];
-	int i, j;
+    char path[SZ_NAME_LARGE];
+    int i, j;
 
-	if (topo_static.initialized) {
-		topology_copy(topo, &topo_static);
+    if (topo_static.initialized) {
+        topology_copy(topo, &topo_static);
         return EAR_SUCCESS;
-	}
-
-	topo->cpu_count        = 0;
-	topo->core_count       = 0;
-	topo->socket_count     = 0;
-	topo->threads_per_core = 1;
-	topo->cache_line_size  = 0;
-	topo->smt_enabled      = 0;
-	topo->l3_count         = 0;
+    }
+    // Initial values
+    topo->cpu_count        = 0;
+    topo->core_count       = 0;
+    topo->socket_count     = 0;
+    topo->threads_per_core = 1;
+    topo->smt_enabled      = 0;
+    topo->l3_count         = 0;
+    topo->vendor           = 0;
+    topo->family           = 0;
+    topo->model            = 0;
+    topo->cache_line_size  = 0;
+    topo->brand[0]         = '\0';
+    topo->sve              = 0;
+    topo->sve_bits         = 0;
+    topo->base_freq        = 0;
+    topo->boost_enabled    = 0;
     topo->initialized      = 1;
 
-	/* First assembly characteristics */
-	topology_asm(topo);
+    /* First assembly characteristics */
+    topology_asm(topo);
 
-	/* Number of CPUs */
-	do {
-		sprintf(path, "/sys/devices/system/cpu/cpu%d/online", topo->cpu_count + 1);
-		topo->cpu_count += 1;
-	}
-	while(is_online(path));
+    /* Number of CPUs */
+    do {
+        sprintf(path, "/sys/devices/system/cpu/cpu%d/online", topo->cpu_count + 1);
+	topo->cpu_count += 1;
+    } while(is_online(path));
 	
-	// Travelling through all CPUs
-	topo->cpus = calloc(topo->cpu_count, sizeof(cpu_t));
+    // Travelling through all CPUs
+    topo->cpus = calloc(topo->cpu_count, sizeof(cpu_t));
 	
-	for (i = 0; i < topo->cpu_count; ++i) {
+    for (i = 0; i < topo->cpu_count; ++i) {
 		topology_init_thread(topo, i);
 
 		topo->core_count += !topo->cpus[i].is_thread;
+#if 0
 		if (topo->cpus[i].socket_id > (topo->socket_count-1)) {
 			topo->socket_count = topo->cpus[i].socket_id + 1;
 		}
+#endif
 		if (topo->cpus[i].is_thread) {
 			topo->threads_per_core = 2;
 			topo->smt_enabled = 1;
 		}
-		// 0 1 2 3
+		// Counting L3 banks
 		for (j = 0; j < i; ++j) {
 			if (topo->cpus[j].l3_id == topo->cpus[i].l3_id) {
 				break;
 			}
 		}
 		topo->l3_count += (j == i);
+                // Counting sockets
+		for (j = 0; j < i; ++j) {
+			if (topo->cpus[j].socket_id == topo->cpus[i].socket_id) {
+				break;
+			}
+		}
+		topo->socket_count += (j == i);
+#if 0
 		//if (topo->cpus[i].l3_id > (topo->l3_count-1)) {
 		//	topo->l3_count = topo->cpus[i].l3_id + 1;
 		//}
-	}
+#endif
+    }
+#if 0
+    // Counting the number of sockets
+    for (i = 0; i < topo->cpu_count; ++i) {
+        for (j = 0; j < i; ++j) {
+        }
+        topo->socket_count = (j < i);
+    }
+#endif
 
     // TDP definition (to avoid redundancy)
     void topology_tdp(topology_t *topo);
 
     topology_cpuinfo(topo);
-	topology_watchdog(topo);
+    topology_watchdog(topo);
     topology_simd(topo);
     topology_tdp(topo);
 
-	topology_copy(&topo_static, topo);
+    topology_copy(&topo_static, topo);
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t topology_close(topology_t *topo)
@@ -339,40 +372,42 @@ state_t topology_close(topology_t *topo)
 }
 
 #define f_print(f, ...) \
-	f (__VA_ARGS__, \
-		"cpu_count        : %d\n" \
-    	"socket_count     : %d\n" \
-		"threads_per_core : %d\n" \
-		"smt_enabled      : %d\n" \
-    	"l3_count         : %d\n" \
-		"vendor           : %d\n" \
-		"family           : %d\n" \
-        "brand            : '%s'\n" \
-		"gpr_count        : %d\n" \
-		"gpr_bits         : %d\n" \
-		"nmi_watchdog     : %d\n" \
-		"base_freq        : %lu\n" \
-		"avx512           : %d\n" \
-		"sve              : %d\n" \
-		"sve_bits         : %d\n" \
-		"tdp              : %d\n" \
-	, \
-		topo->cpu_count, \
-		topo->socket_count, \
-		topo->threads_per_core, \
-		topo->smt_enabled, \
-		topo->l3_count, \
-		topo->vendor, \
-		topo->family, \
-		topo->brand, \
-		topo->gpr_count, \
-		topo->gpr_bits, \
-		topo->nmi_watchdog, \
-		topo->base_freq, \
-		topo->avx512, \
-		topo->sve, \
-		topo->sve_bits, \
-		topo->tdp);
+    f (__VA_ARGS__, \
+    "cpu_count        : %d\n" \
+    "socket_count     : %d\n" \
+    "threads_per_core : %d\n" \
+    "smt_enabled      : %d\n" \
+    "l3_count         : %d\n" \
+    "vendor           : %d\n" \
+    "family           : %d\n" \
+    "brand            : '%s'\n" \
+    "gpr_count        : %d\n" \
+    "gpr_bits         : %d\n" \
+    "nmi_watchdog     : %d\n" \
+    "base_freq        : %lu\n" \
+    "boost_enabled    : %u\n" \
+    "avx512           : %d\n" \
+    "sve              : %d\n" \
+    "sve_bits         : %d\n" \
+    "tdp              : %d\n" \
+    , \
+    topo->cpu_count, \
+    topo->socket_count, \
+    topo->threads_per_core, \
+    topo->smt_enabled, \
+    topo->l3_count, \
+    topo->vendor, \
+    topo->family, \
+    topo->brand, \
+    topo->gpr_count, \
+    topo->gpr_bits, \
+    topo->nmi_watchdog, \
+    topo->base_freq, \
+    topo->boost_enabled, \
+    topo->avx512, \
+    topo->sve, \
+    topo->sve_bits, \
+    topo->tdp);
 
 state_t topology_print(topology_t *topo, int fd)
 {
@@ -408,26 +443,31 @@ static ulong read_freq(int fd)
 
 state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 {
-	char path[1024];
-	int fd;
+    char path[1024];
+    int fd;
 
-	sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
-	if ((fd = open(path, O_RDONLY)) < 0) {
-		*freq_base = topo_static.base_freq;
-    	return EAR_ERROR;
-	}
-	ulong f0 = read_freq(fd);
-	ulong f1 = read_freq(fd);
-	ulong fx = f0 - f1;
+    if (topo_static.base_freq > 0) {
+        *freq_base = topo_static.base_freq;
+        return EAR_SUCCESS;
+    }
+    // Using an alternative method
+    sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
+    if ((fd = open(path, O_RDONLY)) < 0) {
+        *freq_base = topo_static.base_freq;
+        return EAR_ERROR;
+    }
+    ulong f0 = read_freq(fd);
+    ulong f1 = read_freq(fd);
+    ulong fx = f0 - f1;
 
-	if (fx == 1000) {
-		*freq_base = f1;
-	} else {
-		*freq_base = f0;
-	}
-	close(fd);
+    if (fx == 1000) {
+        *freq_base = f1;
+    } else {
+        *freq_base = f0;
+    }
+    close(fd);
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 #if TEST

@@ -80,24 +80,25 @@ typedef struct cpu_s {
 } cpu_t;
 
 typedef struct topology_s {
-	cpu_t *cpus;         // Take a look to cpu_t structure.
-	int   cpu_count;      // Total CPUs including threads.
-	int   core_count;     // Total cores (not counting threads).
-	int   socket_count;   //
-	int   threads_per_core; // Number or threads per core (not the whole system).
-	int   smt_enabled;    // Multithreading enabled = 1, disabled = 0.
-	int   l3_count;       // Chunks of L3 in the system.
-	int   cache_line_size;
-	int   vendor;         // Take a look to top defines.
-	int   family;         // Take a look to top defines.
-	int   model;          // Take a look to top defines.
+    cpu_t *cpus;         // Take a look to cpu_t structure.
+    int   cpu_count;      // Total CPUs including threads.
+    int   core_count;     // Total cores (not counting threads).
+    int   socket_count;   //
+    int   threads_per_core; // Number or threads per core (not the whole system).
+    int   smt_enabled;    // Multithreading enabled = 1, disabled = 0.
+    int   l3_count;       // Chunks of L3 in the system.
+    int   cache_line_size;
+    int   vendor;         // Take a look to top defines.
+    int   family;         // Take a look to top defines.
+    int   model;          // Take a look to top defines.
     char  brand[48];
-	int   gpr_count;      // Number of general purpose registers.
-	int   gpr_bits;       // General purpose registers bit width.
-	int   nmi_watchdog;	  // NMI watdog enabled.
+    int   gpr_count;      // Number of general purpose registers.
+    int   gpr_bits;       // General purpose registers bit width.
+    int   nmi_watchdog;	  // NMI watdog enabled.
     int   apicids_found;  // List of CPUs ApicId's found.
     int   initialized;    // 1 if the topology is initialized
     ulong base_freq;      // Nominal CPU clock, in KHz
+    int   boost_enabled;
     int   avx512;         // 1 if AVX-512 is enabled
     int   sve;            // 1 if ARM-SVE is enabled
     int   sve_bits;       // Counts the ARM-SVE vector bits
