@@ -22,29 +22,31 @@
 #include <common/types/generic.h>
 #include <common/hardware/defines.h>
 
-// https://en.wikichip.org/wiki/intel/cpuid
-// arch/x86/include/asm/intel-family.h
-#define MODEL_UNIDENTIFIED			-1
-#define MODEL_SANDY_BRIDGE_X		45
-#define MODEL_IVY_BRIDGE_X			62
-#define MODEL_HASWELL_X				63 // Also 0x3F (extended 3, model F)
-#define MODEL_BROADWELL_X			79 // Also 0x4F (extended 4, model F)
-#define MODEL_SKYLAKE_X				85 // Also 0x55 (extended 5, model 5)
-#define MODEL_ICELAKE_X             106
-#define MODEL_TIGERLAKE_U           140
-// https://en.wikichip.org/wiki/amd/cpuid
-#define FAMILY_BOBCAT				20
-#define FAMILY_BULLDOZER			21
-#define FAMILY_JAGUAR				22
-#define FAMILY_ZEN					0x17 // Also 23
-#define FAMILY_ZEN3					25
-//
-#define MODEL_A8                    0x01
-#define MODEL_A9                    0x02
+// Topology specifics
+#define TOPO_UNDEFINED         -1
+#define CL_COUNT               (4+1) // Cache levels count, L0 to L4, but 0 doesn't exists
 // Supported vendors
-#define VENDOR_INTEL				0
-#define VENDOR_AMD					1
-#define VENDOR_ARM                  2
+#define VENDOR_UNKNOWN         TOPO_UNDEFINED
+#define VENDOR_INTEL            0
+#define VENDOR_AMD              1
+#define VENDOR_ARM              2
+// INTEL models (https://en.wikichip.org/wiki/intel/cpuid and arch/x86/include/asm/intel-family.h)
+#define MODEL_SANDY_BRIDGE_X    45
+#define MODEL_IVY_BRIDGE_X      62
+#define MODEL_HASWELL_X         63 // Also 0x3F (extended 3, model F)
+#define MODEL_BROADWELL_X       79 // Also 0x4F (extended 4, model F)
+#define MODEL_SKYLAKE_X         85 // Also 0x55 (extended 5, model 5)
+#define MODEL_ICELAKE_X         106
+#define MODEL_TIGERLAKE_U       140
+// AMD models (https://en.wikichip.org/wiki/amd/cpuid)
+#define FAMILY_BOBCAT           20
+#define FAMILY_BULLDOZER        21
+#define FAMILY_JAGUAR           22
+#define FAMILY_ZEN              0x17 // Also 23
+#define FAMILY_ZEN3             25
+// ARM models
+#define MODEL_A8                0x01
+#define MODEL_A9                0x02
 
 struct tp_select_s
 {
@@ -70,13 +72,18 @@ struct tp_group_s
 	.merge = 2,
 };
 
+typedef struct cl_s {
+    int id;
+} cl_t;
+
 typedef struct cpu_s {
-	int id;
-	int apicid;
-	int is_thread;      // If is the secondary thread in a core.
-	int l3_id;
-	int sibling_id;     // The thread sibling within a core.
-	int socket_id;
+    int     id;
+    int     apicid;
+    int     is_thread;      // If is the secondary thread in a core.
+    int     sibling_id;     // The thread sibling within a core.
+    int     core_id;        // Basically, the lesser sibling_id
+    int     socket_id;
+    cl_t l[CL_COUNT];    // Index = level, 0 doesn't exists
 } cpu_t;
 
 typedef struct topology_s {
