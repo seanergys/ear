@@ -175,7 +175,7 @@ static void topology_asm_getboost_x86(topology_t *topo)
 static void topology_asm_getboost(topology_t *topo)
 {
     #if __ARCH_X86
-    topology_asm_getboost_86(topo);
+    topology_asm_getboost_x86(topo);
     #endif
 }
 
