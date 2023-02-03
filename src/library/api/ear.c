@@ -1725,7 +1725,7 @@ void ear_init()
         ITERS_PER_PERIOD  = 1; 
 
         /* For code organization we have a separate subscription for MPI optimization */
-        #if MPI_OPTMIZED
+        #if MPI_OPTIMIZED
         if (is_mpi_enabled() && ear_mpi_opt){
           earl_mpi_opt = suscription();
           earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
