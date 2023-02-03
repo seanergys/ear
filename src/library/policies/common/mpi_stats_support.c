@@ -114,7 +114,7 @@ static uint              curr_mpi_opt_index = 0;
 static uint              target_mpi_opt_index = 0;
 extern uint              ear_mpi_opt_num_nodes;
 extern sem_t             *lib_shared_lock_sem;
-extern suscription_t     *earl_monitor;
+extern suscription_t     *earl_mpi_opt;
 
 // TODO: Below macros should be defined at config_def or config_dev
 #define MAX_MPI_TO_OPT      50      // Max number of calls to try to optimize
@@ -1314,7 +1314,7 @@ state_t peak_power_mpi_opt_end_optimize(node_freqs_t *freqs, int *process_id)
                                 monitor_burst(earl_monitor);
                         }
 #endif
-                        monitor_burst(earl_monitor,0);
+                        monitor_burst(earl_mpi_opt,0);
                         process_block_ready();
                 }
 
@@ -1370,7 +1370,7 @@ state_t peak_power_mpi_opt_periodic_action(uint *to_be_changed_pstate)
                                         /* We have restored the target */
                                         if (new_pstate == process_get_target_pstate()){
                                                 process_already_restored();
-                                                monitor_relax(earl_monitor);
+                                                monitor_relax(earl_mpi_opt);
                                         }
                                 }
                         }

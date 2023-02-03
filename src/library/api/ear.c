@@ -215,6 +215,13 @@ static dynais_call_t dynais;
 suscription_t *earl_monitor;
 state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
+
+#if MPI_OPTIMIZED
+suscription_t *earl_mpi_opt;
+state_t earl_periodic_actions_mpi_opt(void *no_arg);
+state_t earl_periodic_actions_mpi_opt_init(void *no_arg);
+#endif
+
 static ulong seconds = 0;
 
 #if EAR_DEF_TIME_GUIDED
@@ -1706,23 +1713,30 @@ void ear_init()
 				earl_monitor = suscription();
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = BASIC_PERIOD*10; /* 10 sec */
-				earl_monitor->time_burst = BASIC_PERIOD;    /* 1 sec */
-        #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && traces_are_on()) {
-				  earl_monitor->time_relax = BASIC_PERIOD/5; /* 200 ms */
-          earl_monitor->time_burst = BASIC_PERIOD/5; /* 200 ms */
-        }
-        if (is_mpi_enabled() && ear_mpi_opt) {
-				  earl_monitor->time_relax = BASIC_PERIOD/5;  /* 200 ms */
-          earl_monitor->time_burst = BASIC_PERIOD/10; /* 100 ms */
-        }
-        #endif
+				earl_monitor->time_relax = 10000000;   /* 10 sec */
+				earl_monitor->time_burst = 1000000;    /* 1 sec  */
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
+
+        /* If we are an MPI app we check every 10 sec , if not, we check at 1Hz */
 				if (is_mpi_enabled()) monitor_relax(earl_monitor);
+        else                  monitor_burst(earl_monitor, 0);
 
         earl_monitor_mode = (monitor_is_bursting(earl_monitor)? BURST: RELAX);
-        ITERS_PER_PERIOD  = (earl_monitor_mode == BURST)? earl_monitor->time_burst*10/1000: earl_monitor->time_relax*10/1000;
+        ITERS_PER_PERIOD  = 1; 
+
+        /* For code organization we have a separate subscription for MPI optimization */
+        #if MPI_OPTMIZED
+        if (is_mpi_enabled() && ear_mpi_opt){
+          earl_mpi_opt = suscription();
+          earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
+          earl_mpi_opt->call_main = earl_periodic_actions_mpi_opt;
+          earl_mpi_opt->time_relax = 1000000;
+          earl_mpi_opt->time_burst = 200;
+          if (monitor_register(earl_mpi_opt) != EAR_SUCCESS) verbose_master(2,"Monitor for MPI opt register fails! %s",state_msg);
+          monitor_relax(earl_mpi_opt);
+          verbose_master(2,"Monitor for MPI opt created");
+        }
+        #endif
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -2291,19 +2305,12 @@ state_t earl_periodic_actions_init(void *no_arg)
 #if SINGLE_CONNECTION
         if (masters_info.my_master_rank>=0) 
 #endif
-            traces_start();
+        traces_start();
         ear_iterations = 0;
         states_begin_period(my_id, 1, (ulong) lib_period,1);
         mpi_calls_in_period = lib_period;
         if (!ear_whole_app) states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
     }
-#if MPI_OPTIMIZED
-    if (is_mpi_enabled() && ear_mpi_opt){
-        memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
-        memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
-        metrics_start_cpupower();
-    }
-#endif
 
     return EAR_SUCCESS;
 }
@@ -2326,18 +2333,70 @@ state_t earl_periodic_actions(void *no_arg)
 
     if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
-    /* We check if we have changed from relax to burst or the opposite */
-    curr_earl_monitor_mode = (monitor_is_bursting(earl_monitor)? BURST: RELAX);
-    if (curr_earl_monitor_mode != curr_earl_monitor_mode){
-      earl_monitor_mode = (monitor_is_bursting(earl_monitor)? BURST: RELAX);
-      ITERS_PER_PERIOD  = (earl_monitor_mode == BURST)? earl_monitor->time_burst*10/1000: earl_monitor->time_relax*10/1000;
-    }
-
     ear_iterations += ITERS_PER_PERIOD;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
+
+    debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
+
+    if (first_exec_monitor) {
+            first_exec_monitor = 0;
+            return EAR_SUCCESS;
+    }
+
+    if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
+            if (ear_guided == TIME_GUIDED) verbose_master(0,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+            states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
+    }
+
+    seconds = period_elapsed - last_check;
+    if (seconds >= 5) {
+            last_check = period_elapsed;
+            /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
+            mpi_period = total_mpi_calls - last_mpis;
+            last_mpis = total_mpi_calls;	
+            if (mpi_period) mpi_in_period = (float)mpi_period/(float)seconds;
+            else mpi_in_period = 0;
+            /* IO metrics are now computed in metrics.c as part of the signature */
+            if (must_switch_to_time_guide(mpi_in_period, last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
+                verbose_master(2,"Error estimating dynais/time guided");
+            }
+            debug("%d:Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);
+            if (new_ear_guided != DYNAIS_GUIDED){
+                ear_periodic_mode = PERIODIC_MODE_ON;
+                if (ear_guided != new_ear_guided){ 
+                    if (earl_monitor->time_burst < earl_monitor->time_relax){
+                        monitor_burst(earl_monitor, 0);
+                    }
+                    verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
+                            my_node_id, period_elapsed);
+                    mpi_calls_in_period = lib_period;
+                    states_begin_period(my_id, 1, (ulong) lib_period,1);
+               }
+          }
+          ear_guided = new_ear_guided;
+    }
+    return EAR_SUCCESS;
+}
+
+/* PERIODIC Actions for MPI optimization */
+state_t earl_periodic_actions_mpi_opt_init(void *no_arg)
+{
+#if MPI_OPTIMIZED
+    if (is_mpi_enabled() && ear_mpi_opt){
+        memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
+        memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
+        metrics_start_cpupower();
+    }
+#endif
+    return EAR_SUCCESS;
+
+}
+state_t earl_periodic_actions_mpi_opt(void *no_arg)
+{
 #if MPI_OPTIMIZED
     if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())) {
         /* Read */
@@ -2370,52 +2429,14 @@ state_t earl_periodic_actions(void *no_arg)
                 traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
                 traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong) local_max_sync_block);
                 local_max_sync_block = 0;
-            }
         }
+     }
 #endif // MPI_OPTIMIZED
+      return EAR_SUCCESS;
 
-        debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
-              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
-
-        if (first_exec_monitor) {
-            first_exec_monitor = 0;
-            return EAR_SUCCESS;
-        }
-
-        if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) debug("%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
-            states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
-        }
-
-        seconds = period_elapsed - last_check;
-        if (seconds >= 5) {
-            last_check = period_elapsed;
-            /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
-            mpi_period = total_mpi_calls - last_mpis;
-            last_mpis = total_mpi_calls;	
-            if (mpi_period) mpi_in_period = (float)mpi_period/(float)seconds;
-            else mpi_in_period = 0;
-            /* IO metrics are now computed in metrics.c as part of the signature */
-            if (must_switch_to_time_guide(mpi_in_period, last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
-                verbose_master(2,"Error estimating dynais/time guided");
-            }
-            debug("%d:Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);
-            if (new_ear_guided != DYNAIS_GUIDED){
-                ear_periodic_mode = PERIODIC_MODE_ON;
-                if (ear_guided != new_ear_guided){ 
-                    if (earl_monitor->time_burst < earl_monitor->time_relax){
-                        monitor_burst(earl_monitor, 0);
-                    }
-                    verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
-                            my_node_id, period_elapsed);
-                    mpi_calls_in_period = lib_period;
-                    states_begin_period(my_id, 1, (ulong) lib_period,1);
-                }
-            }
-            ear_guided = new_ear_guided;
-        }
-    return EAR_SUCCESS;
 }
+
+
 
 
 /************** Constructor & Destructor for NOt MPI versions **************/

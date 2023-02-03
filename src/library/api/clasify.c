@@ -156,7 +156,7 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
         verbose_master(2,"Warning, going to time guided becuase low number of MPI calls per second");
         first_warning_mpi_th = 0;
       }
-      if (!signature_reported) *ear_guided = TIME_GUIDED;
+      *ear_guided = TIME_GUIDED;
     }
     if (signature_reported && (last_sig_elapsed > ((5*perf_accuracy_min_time)/1000000))){
       *ear_guided = TIME_GUIDED;
