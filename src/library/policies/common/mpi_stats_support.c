@@ -1395,6 +1395,12 @@ state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
                 POWER_PER_PSTATE   = ((cpower_per_pstate = ear_getenv("POWER_PER_PSTATE")) != NULL ? atof(cpower_per_pstate) : DEF_POWER_PER_PSTATE);
                 IDLE_POWER         = ((cidle_power       = ear_getenv("IDLE_POWER"))       != NULL ? atof(cidle_power)       : DEF_IDLE_POWER);
 
+                if (MAX_TOTAL_POWER == 0)     MAX_TOTAL_POWER    = DEF_MAX_TOTAL_POWER;
+                if (MAX_POWER_PER_UNIT == 0)  MAX_POWER_PER_UNIT = DEF_MAX_POWER_PER_UNIT;
+                if (POWER_PER_PSTATE == 0)    POWER_PER_PSTATE   = DEF_POWER_PER_PSTATE;
+                if (IDLE_POWER  == 0)         IDLE_POWER         = DEF_IDLE_POWER;
+
+
                 verbose_master(2,"EAR-PP MAX_TOTAL_POWER %.2lf MAX_POWER_PER_UNIT %.2lf POWER_PER_PSTATE %.2lf IDLE_POWER %.2lf",
                   MAX_TOTAL_POWER, MAX_POWER_PER_UNIT, POWER_PER_PSTATE, IDLE_POWER);
 

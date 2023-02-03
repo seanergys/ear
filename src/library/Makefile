@@ -18,11 +18,9 @@ endif
 ifeq ($(FEAT_RESEARCH), 1)
 	CFLAGS +=  \
 			  -DEAR_DEF_TIME_GUIDED=0
-	FEAT_EARL_LIGHT = 0
 else
 	CFLAGS +=  \
 			  -DEAR_DEF_TIME_GUIDED=0
-	FEAT_EARL_LIGHT = 0
 endif
 
 

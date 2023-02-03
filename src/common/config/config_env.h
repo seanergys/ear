@@ -142,7 +142,7 @@
 #define FLAG_PRIO_TASKS              "EAR_PRIO_TASKS"         // A list of priorities for each task.
 
 /* Hardware info */
-//#define FLAG_CPU_TDP		         "EAR_CPU_TDP"            // CPU TPD for models not yet supported
+#define FLAG_CPU_TDP		             "EAR_CPU_TDP"            // CPU TPD for models not yet supported
 #define FLAG_IO_FAKE_PHASE           "EARL_IO_FAKE_PHASE"
 #define FLAG_BW_FAKE_PHASE           "EARL_BW_FAKE_PHASE"
 #define FLAG_FORCE_SHARED_NODE       "EARL_FORCE_SHARED_NODE"
