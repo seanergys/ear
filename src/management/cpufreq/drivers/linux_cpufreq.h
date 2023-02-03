@@ -15,8 +15,8 @@
 * and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_CPUFREQ_DRIVERS_LINUX_CPUFREQ_H
-#define MANAGEMENT_CPUFREQ_DRIVERS_LINUX_CPUFREQ_H
+#ifndef MANAGEMENT_DRIVERS_ACPI_CPUFREQ_H
+#define MANAGEMENT_DRIVERS_ACPI_CPUFREQ_H
 
 #include <management/cpufreq/cpufreq.h>
 #include <management/cpufreq/governor.h>
@@ -29,33 +29,35 @@
 //	https://www.kernel.org/doc/html/v4.14/admin-guide/pm/cpufreq.html
 
 /* Drivers can load without permissions to set frequency/governor. */
-state_t mgt_cpufreq_linux_load(topology_t *tp, mgt_ps_driver_ops_t *ops);
+state_t mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops);
 
-state_t mgt_cpufreq_linux_init(ctx_t *c);
+state_t mgt_acpi_cpufreq_init(ctx_t *c);
 
-state_t mgt_cpufreq_linux_dispose(ctx_t *c);
+state_t mgt_acpi_cpufreq_dispose(ctx_t *c);
 
-state_t mgt_cpufreq_linux_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count);
+state_t mgt_acpi_cpufreq_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count);
 
-state_t mgt_cpufreq_linux_get_current_list(ctx_t *c, const ullong **freq_list);
+state_t mgt_acpi_cpufreq_get_current_list(ctx_t *c, const ullong **freq_list);
 
-state_t mgt_cpufreq_linux_get_boost(ctx_t *c, uint *boost_enabled);
+state_t mgt_acpi_cpufreq_get_boost(ctx_t *c, uint *boost_enabled);
 
-state_t mgt_cpufreq_linux_set_current_list(ctx_t *c, uint *freq_index);
+state_t mgt_acpi_cpufreq_set_current_list(ctx_t *c, uint *freq_index);
 
 /* Sets a frequency in a specified CPU. Use all_cpus to set that P_STATE in all CPUs. */
-state_t mgt_cpufreq_linux_set_current(ctx_t *c, uint freq_index, int cpu);
+state_t mgt_acpi_cpufreq_set_current(ctx_t *c, uint freq_index, int cpu);
 
 // Governors
-state_t mgt_cpufreq_linux_governor_get(ctx_t *c, uint *governor);
+state_t mgt_acpi_cpufreq_governor_get(ctx_t *c, uint *governor);
 
-state_t mgt_cpufreq_linux_governor_get_list(ctx_t *c, uint *governors);
+state_t mgt_acpi_cpufreq_governor_get_list(ctx_t *c, uint *governors);
 
 /* You can recover the governor (and its frequency) by setting Governor.last and Governor.init. */
-state_t mgt_cpufreq_linux_governor_set(ctx_t *c, uint governor);
+state_t mgt_acpi_cpufreq_governor_set(ctx_t *c, uint governor);
 
-state_t mgt_cpufreq_linux_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
+state_t mgt_acpi_cpufreq_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
 
-state_t mgt_cpufreq_linux_governor_set_list(ctx_t *c, uint *governors);
+state_t mgt_acpi_cpufreq_governor_set_list(ctx_t *c, uint *governors);
 
-#endif //MANAGEMENT_CPUFREQ_DRIVERS_LINUX_CPUFREQ
+int mgt_acpi_cpufreq_governor_is_available(ctx_t *c, uint governor);
+
+#endif //MANAGEMENT_DRIVERS_ACPI_CPUFREQ_H

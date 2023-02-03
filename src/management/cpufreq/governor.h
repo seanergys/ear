@@ -77,7 +77,7 @@ struct goverstr_s {
 #define mgt_governor_is(b, g)          governor_is(b, g)
 
 /* Returns a governor name given a governor id. */
-char *governor_tostr(uint governor, char *buffer);
+state_t governor_tostr(uint governor, char *buffer);
 /* Returns a governor id given a governor name. */
 state_t governor_toint(char *buffer, uint *governor);
 /* Given a governor name and id, returns true if it is the same. */

@@ -15,36 +15,41 @@
 * and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_INTEL_PSTATE_DRIVERS_LINUX_CPUFREQ_H
-#define MANAGEMENT_INTEL_PSTATE_DRIVERS_LINUX_CPUFREQ_H
+#ifndef MANAGEMENT_DRIVERS_INTEL_PSTATE_H
+#define MANAGEMENT_DRIVERS_INTEL_PSTATE_H
 
 #include <management/cpufreq/cpufreq.h>
 #include <management/cpufreq/governor.h>
 
-void mgt_intel_pstate_linux_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops);
+void mgt_intel_pstate_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops);
 
-state_t mgt_intel_pstate_linux_init(ctx_t *c);
+state_t mgt_intel_pstate_init(ctx_t *c);
 
-state_t mgt_intel_pstate_linux_dispose(ctx_t *c);
+state_t mgt_intel_pstate_dispose(ctx_t *c);
 
-state_t mgt_intel_pstate_linux_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count);
+// Resets to initial configuration (keeper maintained)
+state_t mgt_intel_pstate_reset();
 
-state_t mgt_intel_pstate_linux_get_current_list(ctx_t *c, const ullong **freq_list);
+state_t mgt_intel_pstate_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count);
 
-state_t mgt_intel_pstate_linux_get_boost(ctx_t *c, uint *boost_enabled);
+state_t mgt_intel_pstate_get_current_list(ctx_t *c, const ullong **freq_list);
 
-state_t mgt_intel_pstate_linux_set_current_list(ctx_t *c, uint *freqs_index);
+state_t mgt_intel_pstate_get_boost(ctx_t *c, uint *boost_enabled);
 
-state_t mgt_intel_pstate_linux_set_current(ctx_t *c, uint freq_index, int cpu);
+state_t mgt_intel_pstate_set_current_list(ctx_t *c, uint *freqs_index);
 
-state_t mgt_intel_pstate_linux_governor_get(ctx_t *c, uint *governor);
+state_t mgt_intel_pstate_set_current(ctx_t *c, uint freq_index, int cpu);
 
-state_t mgt_intel_pstate_linux_governor_get_list(ctx_t *c, uint *governors);
+state_t mgt_intel_pstate_governor_get(ctx_t *c, uint *governor);
 
-state_t mgt_intel_pstate_linux_governor_set(ctx_t *c, uint governor);
+state_t mgt_intel_pstate_governor_get_list(ctx_t *c, uint *governors);
 
-state_t mgt_intel_pstate_linux_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
+state_t mgt_intel_pstate_governor_set(ctx_t *c, uint governor);
 
-state_t mgt_intel_pstate_linux_governor_set_list(ctx_t *c, uint *governors);
+state_t mgt_intel_pstate_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
 
-#endif //MANAGEMENT_INTEL_PSTATE_DRIVERS_LINUX_CPUFREQ
+state_t mgt_intel_pstate_governor_set_list(ctx_t *c, uint *governors);
+
+int mgt_intel_pstate_governor_is_available(ctx_t *c, uint governor);
+
+#endif //MANAGEMENT_DRIVERS_INTEL_PSTATE_H

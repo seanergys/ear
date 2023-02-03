@@ -117,7 +117,7 @@ static state_t write_multi(int *fds, char *word, int line_break)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_linux_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
+state_t mgt_acpi_cpufreq_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
 {
 	char data[SZ_NAME_SHORT];
 	int found_userspace = 0;
@@ -168,22 +168,25 @@ state_t mgt_cpufreq_linux_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
 		}
 	}
 	// Driver references
-	replace_ops(ops->init,              mgt_cpufreq_linux_init);
-	replace_ops(ops->dispose,           mgt_cpufreq_linux_dispose);
-	replace_ops(ops->get_available_list, mgt_cpufreq_linux_get_available_list);
-	replace_ops(ops->get_current_list,  mgt_cpufreq_linux_get_current_list);
-	replace_ops(ops->get_boost,         mgt_cpufreq_linux_get_boost);
-	replace_ops(ops->get_governor,      mgt_cpufreq_linux_governor_get);
-	replace_ops(ops->get_governor_list, mgt_cpufreq_linux_governor_get_list);
+	replace_ops(ops->init,              mgt_acpi_cpufreq_init);
+	replace_ops(ops->dispose,           mgt_acpi_cpufreq_dispose);
+	replace_ops(ops->get_available_list, mgt_acpi_cpufreq_get_available_list);
+	replace_ops(ops->get_current_list,  mgt_acpi_cpufreq_get_current_list);
+	replace_ops(ops->get_boost,         mgt_acpi_cpufreq_get_boost);
+	replace_ops(ops->get_governor,      mgt_acpi_cpufreq_governor_get);
+	replace_ops(ops->get_governor_list, mgt_acpi_cpufreq_governor_get_list);
+    replace_ops(ops->is_governor_available, mgt_acpi_cpufreq_governor_is_available);
 	if (set_frequency) {
-	replace_ops(ops->set_current_list,  mgt_cpufreq_linux_set_current_list);
-	replace_ops(ops->set_current,       mgt_cpufreq_linux_set_current);
+	replace_ops(ops->set_current_list,  mgt_acpi_cpufreq_set_current_list);
+	replace_ops(ops->set_current,       mgt_acpi_cpufreq_set_current);
 	}
 	if (set_governor) {
-	replace_ops(ops->set_governor,      mgt_cpufreq_linux_governor_set);
-	replace_ops(ops->set_governor_mask, mgt_cpufreq_linux_governor_set_mask);
-	replace_ops(ops->set_governor_list, mgt_cpufreq_linux_governor_set_list);
+	replace_ops(ops->set_governor,      mgt_acpi_cpufreq_governor_set);
+	replace_ops(ops->set_governor_mask, mgt_acpi_cpufreq_governor_set_mask);
+	replace_ops(ops->set_governor_list, mgt_acpi_cpufreq_governor_set_list);
 	}
+
+    debug("Loaded ACPI_CPUFREQ");
 
 	return EAR_SUCCESS;
 }
@@ -213,7 +216,7 @@ static state_t static_dispose(ctx_t *c, state_t s, char *msg)
 	return_msg(s, msg);
 }
 
-static state_t cpufreq_linux_init_frequencies()
+static state_t acpi_cpufreq_init_frequencies()
 {	
 	char data[SZ_NAME_SHORT];
 	ullong aux, khz;
@@ -295,7 +298,7 @@ static state_t cpufreq_linux_init_frequencies()
 	return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_linux_init(ctx_t *c)
+state_t mgt_acpi_cpufreq_init(ctx_t *c)
 {
 	char path[SZ_PATH];
 	int cpu, aux;
@@ -353,7 +356,7 @@ state_t mgt_cpufreq_linux_init(ctx_t *c)
 	strncpy(f->govr_last, f->govr_init, SZ_NAME_SHORT);
 	strncpy(f->freq_last, f->freq_init, SZ_NAME_SHORT);
 	// Detecting available frequencies
-	if (state_fail(s = cpufreq_linux_init_frequencies())) {
+	if (state_fail(s = acpi_cpufreq_init_frequencies())) {
 		return static_dispose(c, s, state_msg);
 	}
 	// Finishing 
@@ -366,27 +369,27 @@ state_t mgt_cpufreq_linux_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_linux_dispose(ctx_t *c)
+state_t mgt_acpi_cpufreq_dispose(ctx_t *c)
 {
 	return static_dispose(c, EAR_SUCCESS, "");
 }
 
 /* Getters */
-state_t mgt_cpufreq_linux_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count)
+state_t mgt_acpi_cpufreq_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count)
 {
-	debug("cpufreq_linux_get_available_list");
+	debug("acpi_cpufreq_get_available_list");
 	if (freq_list  != NULL) *freq_list  = f->freqs_avail;
 	if (freq_count != NULL) *freq_count = f->freqs_count;
 	return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_linux_get_current_list(ctx_t *c, const ullong **freq_list)
+state_t mgt_acpi_cpufreq_get_current_list(ctx_t *c, const ullong **freq_list)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
 	int cpu;
-	debug("cpufreq_linux_get_current_list");
+	debug("acpi_cpufreq_get_current_list");
 	*freq_list = f->freqs_current;
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (state_fail(s1 = read_word(f->fds_freq[cpu], data, 1))) {
@@ -400,7 +403,7 @@ state_t mgt_cpufreq_linux_get_current_list(ctx_t *c, const ullong **freq_list)
 	return s2;
 }
 
-state_t mgt_cpufreq_linux_get_boost(ctx_t *c, uint *boost_enabled)
+state_t mgt_acpi_cpufreq_get_boost(ctx_t *c, uint *boost_enabled)
 {
 	if (boost_enabled != NULL) {
 		*boost_enabled = f->boost_enabled;
@@ -409,13 +412,13 @@ state_t mgt_cpufreq_linux_get_boost(ctx_t *c, uint *boost_enabled)
 }
 
 /** Setters */
-state_t mgt_cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
+state_t mgt_acpi_cpufreq_set_current_list(ctx_t *c, uint *freqs_index)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s2 = EAR_SUCCESS;
 	state_t s1 = EAR_SUCCESS;
 	int cpu;
-	debug("cpufreq_linux_set_current_list");
+	debug("acpi_cpufreq_set_current_list");
 	// Adding a line break
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu)
 	{
@@ -435,7 +438,7 @@ state_t mgt_cpufreq_linux_set_current_list(ctx_t *c, uint *freqs_index)
 	return s2;
 }
 
-state_t mgt_cpufreq_linux_set_current(ctx_t *c, uint freq_index, int cpu)
+state_t mgt_acpi_cpufreq_set_current(ctx_t *c, uint freq_index, int cpu)
 {
 	char data[SZ_NAME_SHORT];
 	
@@ -460,11 +463,11 @@ state_t mgt_cpufreq_linux_set_current(ctx_t *c, uint freq_index, int cpu)
 	return_msg(EAR_ERROR, Generr.cpu_invalid);
 }
 
-state_t mgt_cpufreq_linux_governor_get(ctx_t *c, uint *governor)
+state_t mgt_acpi_cpufreq_governor_get(ctx_t *c, uint *governor)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s = EAR_SUCCESS;
-	debug("cpufreq_linux_get_governor");
+	debug("acpi_cpufreq_get_governor");
 	if (state_fail(s = read_word(f->fds_govr[0], data, 1))) {
 		*governor = Governor.other;
 	} else if (state_fail(s = mgt_governor_toint(data, governor))) {
@@ -472,13 +475,13 @@ state_t mgt_cpufreq_linux_governor_get(ctx_t *c, uint *governor)
 	return s;
 }
 
-state_t mgt_cpufreq_linux_governor_get_list(ctx_t *c, uint *governors)
+state_t mgt_acpi_cpufreq_governor_get_list(ctx_t *c, uint *governors)
 {
 	char data[SZ_NAME_SHORT];
 	state_t s = EAR_SUCCESS;
     int cpu;
 
-	debug("cpufreq_linux_get_governor_list");
+	debug("acpi_cpufreq_get_governor_list");
     for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
         governors[cpu] = Governor.other;     
     	if (state_ok(s = read_word(f->fds_govr[cpu], data, 1))) {
@@ -489,7 +492,7 @@ state_t mgt_cpufreq_linux_governor_get_list(ctx_t *c, uint *governors)
 }
 
 /* You can recover the governor (and its frequency) by setting Governor.last and Governor.init. */
-state_t mgt_cpufreq_linux_governor_set(ctx_t *c, uint governor)
+state_t mgt_acpi_cpufreq_governor_set(ctx_t *c, uint governor)
 {
 	char govr_aux[SZ_NAME_SHORT];
 	char freq_aux[SZ_NAME_SHORT];
@@ -497,7 +500,7 @@ state_t mgt_cpufreq_linux_governor_set(ctx_t *c, uint governor)
 	uint current;
 	state_t s;
 
-	if (state_fail(s = mgt_cpufreq_linux_governor_get(c, &current))) {
+	if (state_fail(s = mgt_acpi_cpufreq_governor_get(c, &current))) {
 		return s;
 	}
 	if (governor == current) {
@@ -534,8 +537,7 @@ state_t mgt_cpufreq_linux_governor_set(ctx_t *c, uint governor)
 	return write_multi(f->fds_freq, freq_aux, 1);
 }
 
-
-state_t mgt_cpufreq_linux_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask)
+state_t mgt_acpi_cpufreq_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask)
 {
     int cpu;
     char buffer[128];
@@ -548,13 +550,22 @@ state_t mgt_cpufreq_linux_governor_set_mask(ctx_t *c, uint governor, cpu_set_t m
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_linux_governor_set_list(ctx_t *c, uint *governors)
+state_t mgt_acpi_cpufreq_governor_set_list(ctx_t *c, uint *governors)
 {
-    int cpu;
     char buffer[128];
+    state_t s;
+    int cpu;
+
     for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-        write_word(f->fds_govr[cpu], governor_tostr(governors[cpu], buffer), strlen(buffer), 1);
+        if (state_fail(s = governor_tostr(governors[cpu], buffer))) {
+            return s;
+        }
+        write_word(f->fds_govr[cpu], buffer, strlen(buffer), 1);
     }
     return EAR_SUCCESS;
 }
 
+int mgt_acpi_cpufreq_governor_is_available(ctx_t *c, uint governor)
+{
+    return 1;
+}

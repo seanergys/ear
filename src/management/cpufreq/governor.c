@@ -18,7 +18,7 @@
 #include <common/plugins.h>
 #include <management/cpufreq/governor.h>
 
-char *governor_tostr(uint governor, char *buffer)
+state_t governor_tostr(uint governor, char *buffer)
 {
 	if (governor == Governor.conservative) {
 		sprintf(buffer, "%s", Goverstr.conservative);
@@ -32,8 +32,9 @@ char *governor_tostr(uint governor, char *buffer)
 		sprintf(buffer, "%s", Goverstr.ondemand);
 	} else {
 		sprintf(buffer, "%s", Goverstr.other);
+        return_msg(EAR_ERROR, "undefined governor");
 	}
-	return buffer;
+    return EAR_SUCCESS;
 }
 
 state_t governor_toint(char *buffer, uint *governor)

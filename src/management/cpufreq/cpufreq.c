@@ -28,6 +28,7 @@
 #include <management/cpufreq/archs/dummy.h>
 #include <management/cpufreq/archs/amd17.h>
 #include <management/cpufreq/archs/default.h>
+#include <management/cpufreq/drivers/intel_pstate.h>
 #include <management/cpufreq/drivers/linux_cpufreq.h>
 
 static pthread_mutex_t     lock = PTHREAD_MUTEX_INITIALIZER;
@@ -46,9 +47,8 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
 	}
 	cpu_count = tp->cpu_count;
 	// Driver API load
-	if (state_ok(mgt_cpufreq_linux_load(tp, &ops_driver))) {
-		debug("Loaded driver LINUX");
-	}
+    mgt_acpi_cpufreq_load(tp, &ops_driver);
+    mgt_intel_pstate_load(tp, &ops_driver);
 	// API load
 	api = API_DUMMY;
 	// AMD17 loads if MSR test is passed and driver can be initialized. But it
