@@ -961,6 +961,19 @@ void ear_lib_sig_handler(int s)
 				ear_finalize(EAR_CANCELLED);
 				exit(0);
 }
+
+static void read_hack_env()
+{
+	char *hack_tmp = ear_getenv(HACK_EAR_TMP);
+	char *hack_etc = ear_getenv(HACK_EAR_ETC);
+	if (hack_tmp != NULL){
+		set_ear_tmp(hack_tmp);
+		setenv("EAR_TMP", hack_tmp, 1);
+	}
+	if (hack_etc != NULL){
+		setenv("EAR_ETC", hack_etc, 1);
+	}
+}
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -994,7 +1007,7 @@ void ear_init()
         timestamp_getfast(&start_eard_init);
         #endif
 
-	topology_init(&earl_topo);
+				topology_init(&earl_topo);
 
 
         main_pid = syscall(SYS_gettid);
@@ -1028,12 +1041,14 @@ void ear_init()
 				gethostname(node_name, sizeof(node_name));
 				strtok(node_name, ".");
 
+				read_hack_env();
+
 				// Fundamental data
 
-                pid_t my_pid = getpid();
+       pid_t my_pid = getpid();
 				debug("Running in %s process = %d", node_name, my_pid);
 
-				tmp=get_ear_tmp();
+				tmp = get_ear_tmp();
 				folder_t tmp_test;
 				if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
 								/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
@@ -1043,12 +1058,13 @@ void ear_init()
 				}
 
 
-                // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
-                if (ext_def_freq_str) {
+       // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
+       if (ext_def_freq_str) {
                     ext_def_freq = (ulong) atol(ext_def_freq_str);
                     verbose_master(VEAR_INIT, "%sWARNING%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
-                }
+       }
 
+			 debug("[%s] Using tmp %s ", node_name, get_ear_tmp());
 
 				verb_level = get_ear_verbose();
 				verb_channel=2;
@@ -1057,14 +1073,14 @@ void ear_init()
 								VERB_SET_LV(verb_level);
 				}
 
-                // We print here the topology in order to do it only at verbose 2
-                if (VERB_ON(2))
-                {
-                    if (masters_info.my_master_rank >= 0)
+        // We print here the topology in order to do it only at verbose 2
+        if (VERB_ON(2))
+        {
+                    if (ear_my_rank == 0)
                     {
                         topology_print(&earl_topo, 1);
                     }
-                }
+        }
 
 				set_ear_total_processes(my_size);
         #if FAKE_LEARNING
@@ -1128,13 +1144,13 @@ void ear_init()
 
 				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
 				get_resched_path(get_ear_tmp(),ID, resched_conf_path);
+				debug("[%s.%d] system_conf_path  = %s",node_name, ear_my_rank, system_conf_path);
+				debug("[%s.%d] resched_conf_path = %s",node_name, ear_my_rank, resched_conf_path);
         #if FAKE_EAR_NOT_INSTALLED
         uint first_dummy = 1;
         #endif
 				do{
 	
-					debug("system_conf_path  = %s",system_conf_path);
-					debug("resched_conf_path = %s",resched_conf_path);
 	
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
@@ -1151,16 +1167,16 @@ void ear_init()
 					/* If I'm the master, I will create the dummy regions */
 					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
 					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id){
-							verbose(2, "Shared memory not present, creating dummy areas");
+							verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
 							create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
 							fd_dummy = file_lock_create(dummy_areas_path);
 					}else if ((system_conf == NULL) && (resched_conf == NULL) && my_id){
 							/* If I'm not the master, I will wait */
 							while(!file_is_regular(dummy_areas_path));
 					}
-				}while((system_conf == NULL) && (resched_conf == NULL));
+				}while((system_conf == NULL) || (resched_conf == NULL));
 
-				debug("system_conf  = %p", system_conf);
+				debug("[%s.%d] system_conf  = %p", node_name, ear_my_rank, system_conf);
 				debug("resched_conf = %p", resched_conf);
 				if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
 				debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
@@ -1239,9 +1255,9 @@ void ear_init()
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
-                if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s",
-                            COL_BLU, ear_my_rank, node_name, COL_CLR);
+        if (!my_id && eard_ok) { // only the master will connect with eard
+                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
+                            COL_BLU, ear_my_rank, node_name, get_ear_tmp(), COL_CLR);
 
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, my_node_id);
@@ -1267,9 +1283,9 @@ void ear_init()
                         eard_ok = 0;
                         notify_eard_connection(0);
                     }
-                }
+       }
 #else
-                if (eard_ok) { // all processes will connect with eard
+       if (eard_ok) { // all processes will connect with eard
 
                     char *col;
 
@@ -1312,9 +1328,9 @@ void ear_init()
                         eard_ok=0;
                         if (!my_id) notify_eard_connection(0);
                     }
-                }
+       }
 #endif
-                /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
+       /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 				debug("Shared region creation section");
 				if (!my_id) {
@@ -1324,7 +1340,7 @@ void ear_init()
 								attach_shared_regions();
 				}
 
-                if (!eard_ok) {
+        if (!eard_ok) {
 
                     /* Dummy areas path is used in case the EARD was not present */
                     if (!my_id && (fd_dummy >= 0)) {
@@ -1340,16 +1356,19 @@ void ear_init()
                     } else {
                         verbose_master(2, "EARD is not running but EARL light version is enabled");
                     }
-                }
+        }
 
 				/* Cluster conf */
 				get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);
+
+        debug("Using ser cconf path %s", ser_cluster_conf_path);
 				ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);
 				debug("Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
 				deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size);
 
 				debug("END Shared region creation section");
 				/* Processes in same node connectes each other*/
+
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
 
 				/* create verbose file for each job */
@@ -1699,9 +1718,9 @@ void ear_init()
 				earl_monitor = suscription();
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = BASIC_PERIOD*10;
-				earl_monitor->time_burst = BASIC_PERIOD;
-				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
+				earl_monitor->time_relax = 1000;
+				earl_monitor->time_burst = 1000;
+				ITERS_PER_PERIOD = 1;
         #if MPI_OPTIMIZED
         if (is_mpi_enabled() && ear_mpi_opt) {
 				  earl_monitor->time_relax = BASIC_PERIOD/5;
@@ -2314,14 +2333,17 @@ state_t earl_periodic_actions(void *no_arg)
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
 
-    if (ear_whole_app) return EAR_SUCCESS;
-
-    if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
     ear_iterations += ITERS_PER_PERIOD;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+
+    debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
+
+    if (ear_whole_app) return EAR_SUCCESS;
+    if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
 #if MPI_OPTIMIZED
     if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())) {
@@ -2355,8 +2377,6 @@ state_t earl_periodic_actions(void *no_arg)
         }
 #endif // MPI_OPTIMIZED
 
-        debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
-              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 
         if (first_exec_monitor) {
             first_exec_monitor = 0;

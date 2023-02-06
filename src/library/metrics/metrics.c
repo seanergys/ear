@@ -1046,8 +1046,10 @@ static int metrics_partial_stop(uint where)
 	debug("metrics_partial_stop %u", my_node_id);
 
     if (!eards_connected() && (master)) {
-        verbose_master(ERROR_VERB, "Disconnecting library because EARD not connected.");
-        if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
+        if (!EARL_LIGHT){ 
+        	verbose_master(ERROR_VERB, "Disconnecting library because EARD not connected.");
+					lib_shared_region->earl_on = 0;
+				}
     }
 
     /* If the signature of the master is not ready, we cannot compute our signature */
@@ -1158,8 +1160,8 @@ static int metrics_partial_stop(uint where)
 		} else {
       /* If there is an error, power is computed based on power from CPu+GPU. Computed in 
        * compute_signature_data */
-			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
-                    COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
+			//verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
+      //              COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
 			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
       estimate_power = 1;
 		}

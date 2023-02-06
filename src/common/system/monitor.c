@@ -211,7 +211,6 @@ state_t monitor_init()
 		}
 	}
 	enabled = 1;
-    printf("PID %u\n", getpid());
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0){
 		return_msg(EAR_ERROR, strerror(m_errno));
