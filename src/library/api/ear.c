@@ -969,9 +969,11 @@ static void read_hack_env()
 	if (hack_tmp != NULL){
 		set_ear_tmp(hack_tmp);
 		setenv("EAR_TMP", hack_tmp, 1);
+		verbose(0,"[%s] Using HACK tmp %s ", node_name, get_ear_tmp());
 	}
 	if (hack_etc != NULL){
 		setenv("EAR_ETC", hack_etc, 1);
+		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
 	}
 }
 /*****************************************************************************************************************************************************/
