@@ -84,7 +84,7 @@ state_t mgt_cpufreq_eard_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_drive
 static state_t static_dispose(ctx_t *c, state_t s, char *msg)
 {
 	if (driver != NULL) {
-		driver->dispose(&driver_c);
+		driver->dispose();
 	}
 	if (available_list != NULL) {
 		free(available_list);
@@ -107,7 +107,7 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
 	}
 	debug("EARD answered with %lu samples in the available list pstate size %u", size / sizeof(pstate_t), sizeof(pstate_t));
 	// Inititializing the driver before (because if doesn't work we can't do anything).
-	if (state_fail(s = driver->init(&driver_c))) {
+	if (state_fail(s = driver->init())) {
 		return static_dispose(c, s, state_msg);
 	}
 	// Filling available P_STATEs
@@ -224,7 +224,7 @@ state_t mgt_cpufreq_eard_set_current(ctx_t *c, uint pstate_index, int cpu)
 state_t mgt_cpufreq_eard_governor_get(ctx_t *c, uint *governor)
 {
 	state_t s;
-	if (state_fail(s = driver->get_governor(&driver_c, governor))) {
+	if (state_fail(s = driver->get_governor(governor))) {
 		if (state_fail(s = eard_rpc(RPC_GET_GOVERNOR, NULL, 0, (char *) governor, sizeof(uint)))) {
 			return s;
 		}

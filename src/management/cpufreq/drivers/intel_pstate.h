@@ -23,33 +23,33 @@
 
 void mgt_intel_pstate_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops);
 
-state_t mgt_intel_pstate_init(ctx_t *c);
+state_t mgt_intel_pstate_init();
 
-state_t mgt_intel_pstate_dispose(ctx_t *c);
+state_t mgt_intel_pstate_dispose();
 
 // Resets to initial configuration (keeper maintained)
 state_t mgt_intel_pstate_reset();
 
-state_t mgt_intel_pstate_get_available_list(ctx_t *c, const ullong **freq_list, uint *freq_count);
+state_t mgt_intel_pstate_get_available_list(const ullong **freq_list, uint *freq_count);
 
-state_t mgt_intel_pstate_get_current_list(ctx_t *c, const ullong **freq_list);
+state_t mgt_intel_pstate_get_current_list(const ullong **freq_list);
 
-state_t mgt_intel_pstate_get_boost(ctx_t *c, uint *boost_enabled);
+state_t mgt_intel_pstate_get_boost(uint *boost_enabled);
 
-state_t mgt_intel_pstate_set_current_list(ctx_t *c, uint *freqs_index);
+state_t mgt_intel_pstate_set_current_list(uint *freqs_index);
 
-state_t mgt_intel_pstate_set_current(ctx_t *c, uint freq_index, int cpu);
+state_t mgt_intel_pstate_set_current(uint freq_index, int cpu);
 
-state_t mgt_intel_pstate_governor_get(ctx_t *c, uint *governor);
+state_t mgt_intel_pstate_governor_get(uint *governor);
 
-state_t mgt_intel_pstate_governor_get_list(ctx_t *c, uint *governors);
+state_t mgt_intel_pstate_governor_get_list(uint *governors);
 
-state_t mgt_intel_pstate_governor_set(ctx_t *c, uint governor);
+state_t mgt_intel_pstate_governor_set(uint governor);
 
-state_t mgt_intel_pstate_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
+state_t mgt_intel_pstate_governor_set_mask(uint governor, cpu_set_t mask);
 
-state_t mgt_intel_pstate_governor_set_list(ctx_t *c, uint *governors);
+state_t mgt_intel_pstate_governor_set_list(uint *governors);
 
-int mgt_intel_pstate_governor_is_available(ctx_t *c, uint governor);
+int mgt_intel_pstate_governor_is_available(uint governor);
 
 #endif //MANAGEMENT_DRIVERS_INTEL_PSTATE_H

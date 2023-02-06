@@ -3,7 +3,7 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 ######## FILES
 
 driv_OBJS = \
-    linux_cpufreq.o \
+    acpi_cpufreq.o \
     intel_pstate.o
 
 ######## RULES
