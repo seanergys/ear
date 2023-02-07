@@ -234,7 +234,6 @@ static uint synchronize_masters = 1;
 static uint ITERS_PER_PERIOD;
 #define RELAX 0
 #define BURST 1
-static uint earl_monitor_mode = RELAX;
 
 static const uint lib_supports_gpu = USE_GPUS; // Library supports GPU
 
@@ -2351,7 +2350,6 @@ state_t earl_periodic_actions(void *no_arg)
     ulong period_elapsed, last_signature_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
-    uint curr_earl_monitor_mode;
 
 
     ear_iterations += ITERS_PER_PERIOD;

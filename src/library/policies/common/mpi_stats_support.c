@@ -1135,7 +1135,6 @@ void configure_processes_tobe_restored()
 {
   double delta_node  = (max_app_power > 0 ? (max_app_power - IDLE_POWER) : 0);
   double delta_job   = (max_app_power > 0 ? (max_app_power - IDLE_POWER)*ear_mpi_opt_num_nodes : 0 );
-  double steps_per_pstate = MAX_POWER_PER_UNIT/POWER_PER_PSTATE;
   /* This is a simple test where half of the processes will be reduced */
   uint tobe_opt = 0;
 
@@ -1246,7 +1245,6 @@ static uint in_barrier = 0;
 state_t peak_power_mpi_opt_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
 
-        uint last = 0;
         mpi_call nbcall_type = (mpi_call) remove_blocking(call_type);
 
         /* Specific optimization for barriers */
@@ -1285,7 +1283,7 @@ state_t peak_power_mpi_opt_init_optimize(polctx_t *c, mpi_call call_type, node_f
                   freqs->cpu_freq[my_node_id] = sel_pstate->khz;
                   *process_id = my_node_id;
                   verbose(2,"EAR-PP[%d]:Reduce CPU freq in barrier for process %d to CPu freq %lu",ear_my_rank,
-                                                my_node_id, sel_pstate->khz);
+                                                my_node_id, (ulong)sel_pstate->khz);
 #if SINGLE_CONNECTION
                   if ((MASTER_ID >= 0) && traces_are_on()) {
 #else
@@ -1376,7 +1374,7 @@ state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
         memset(mpi_opt_func, 0, sizeof(mpi_opt_policy_t));
 #if !SINGLE_CONNECTION && MPI_OPTIMIZED
         if (ear_mpi_opt && (lib_shared_region->num_processes > 1)){
-                char *cmax_tota_power, *cmax_power_per_unit , *cpower_per_pstate, *cidle_power,*cbig_app;
+                char *cmax_tota_power, *cmax_power_per_unit , *cpower_per_pstate, *cidle_power;
                 MAX_TOTAL_POWER    = ((cmax_tota_power     = ear_getenv("MAX_TOTAL_POWER"))    != NULL ? atof(cmax_tota_power): DEF_MAX_TOTAL_POWER);
                 MAX_POWER_PER_UNIT = ((cmax_power_per_unit = ear_getenv("MAX_POWER_PER_UNIT")) != NULL ? atof(cmax_power_per_unit) : DEF_MAX_POWER_PER_UNIT);
                 POWER_PER_PSTATE   = ((cpower_per_pstate = ear_getenv("POWER_PER_PSTATE")) != NULL ? atof(cpower_per_pstate) : DEF_POWER_PER_PSTATE);

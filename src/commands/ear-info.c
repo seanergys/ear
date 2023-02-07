@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <common/config.h>
+#include <common/utils/string.h>
 #include <common/config/config_env.h>
 #include <common/config/config_def.h>
 #include <common/states.h>
@@ -51,7 +52,6 @@ void print_value_float(char *format, char *env, float def)
 
 void print_value_str(char *format, char *env, char * def)
 {
-  char buff[64];
   printf("%40.40s %s\n",format,(ear_getenv(env) == NULL)? def: ear_getenv(env));
 }
 
@@ -120,7 +120,6 @@ int main(int argc,char *argv[])
     report_my_node_conf(my_node_conf);
     printf("............................................\n");
   }
-  char buff[64];
 
   printf("\n\nEnvironment configuration section..............\n");
   print_value("eUFS ", FLAG_SET_IMCFREQ, EAR_eUFS);
@@ -153,19 +152,19 @@ int main(int argc,char *argv[])
   if (hack == NULL) strcpy(install, installp);
   else              strcpy(install, hack); 
 
-  snprintf(path_files, sizeof(path_files), "%s/lib/plugins/policies/%s.so",install, my_node_conf->policies[my_cluster.default_policy].name);
+  xsnprintf(path_files, sizeof(path_files), "%s/lib/plugins/policies/%s.so",install, my_node_conf->policies[my_cluster.default_policy].name);
   print_value_str("Energy optimization policy", HACK_POWER_POLICY, path_files);
   #if USE_GPUS
   #ifdef GPU_OPT 
-  snprintf(path_files, sizeof(path_files), "%s/lib/plugins/policies/gpu_%s.so",install, my_node_conf->policies[my_cluster.default_policy].name);
+  xsnprintf(path_files, sizeof(path_files), "%s/lib/plugins/policies/gpu_%s.so",install, my_node_conf->policies[my_cluster.default_policy].name);
   #else
-  snprintf(path_files, sizeof(path_files), "%s/lib/plugins/policies/gpu_monitoring.so",install);
+  xsnprintf(path_files, sizeof(path_files), "%s/lib/plugins/policies/gpu_monitoring.so",install);
   #endif
   print_value_str("GPU power policy", HACK_GPU_POWER_POLICY, path_files);
   #endif
-  snprintf(path_files, sizeof(path_files), "%s/lib/plugins/models/%s.so",install, my_node_conf->energy_model);
+  xsnprintf(path_files, sizeof(path_files), "%s/lib/plugins/models/%s.so",install, my_node_conf->energy_model);
   print_value_str("CPU power  model", HACK_POWER_MODEL, path_files);
-  snprintf(path_files, sizeof(path_files), "%s/lib/plugins/models/%s",install, "cpu_power_model_default.so");
+  xsnprintf(path_files, sizeof(path_files), "%s/lib/plugins/models/%s",install, "cpu_power_model_default.so");
   print_value_str("CPU shared power  model", HACK_CPU_POWER_MODEL, path_files);
 
 
