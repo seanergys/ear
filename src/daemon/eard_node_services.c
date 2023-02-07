@@ -428,6 +428,7 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
 {
     uint     rpc_id   = head->req_service;
     state_t  ret_s    = EAR_SUCCESS;
+    size_t   rpc_size = head->size;
     char    *ret_data = NULL;
     size_t   ret_size = 0;
     uint     u1;

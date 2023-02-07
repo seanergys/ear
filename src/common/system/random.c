@@ -26,7 +26,7 @@
 
 uint random_get()
 {
-	unsigned int i;
+	unsigned int i = 0;
 	unsigned int v;
 
 	// It is supported in AMD architectures too
