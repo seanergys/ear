@@ -25,8 +25,9 @@
 #include <string.h>
 #include <common/sizes.h>
 #include <common/output/debug.h>
-#include <metrics/cpufreq/cpufreq_base.h>
-#include <management/cpufreq/drivers/linux_cpufreq.h>
+#include <common/utils/keeper.h>
+#include <metrics/common/file.h>
+#include <management/cpufreq/drivers/acpi_cpufreq.h>
 
 #define N_FREQS 128
 
@@ -40,47 +41,47 @@
 static uint    cpu_count;
 static uint    avail_list_count;
 static ullong  avail_list[N_FREQS]; // From 10 GHz to 1 GHz there are 90 items, enough
+static ullong *current_list;
 static uint    boost_enabled;
-static int    *fds_smf; // FD scaling setspeed
 static int    *fds_sgv;
 static int    *fds_sss;
 static ullong  freq_base; // KHz
 static ullong  freq_min = 1000000LLU; // 1GHz
+static uint    governor_last;
 static uint    governor0;
 
-void mgt_acpi_cpufreq_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
+void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
-	char buffer[SZ_PATH];
+	char buffer[PATH_MAX];
 	int found_userspace =  0;
 	int set_frequency   =  1;
 	int set_governor    =  1;
     int fd_sag0         = -1;
     int fd_saf0         = -1;
-    state_t s           = EAR_SUCCESS;
     ullong m            =  0;
     uint i              =  0;
 
     // Files RW
     if (!filemagic_can_read(PATH_SAG0, &fd_sag0)) return;
-    set_frequency = filemagic_can_mwrite(PATH_SSS, &fds_sss, tp->cpu_count);
-    set_governor  = filemagic_can_mwrite(PATH_SGV, &fds_sgv, tp->cpu_count);
-    if (!set_frequency && !filemagic_can_mwread(PATH_SSS, &fds_sss, tp->cpu_count)) return;
-    if (!set_governor  && !filemagic_can_mwread(PATH_SGV, &fds_sgv, tp->cpu_count)) return;
+    set_frequency = filemagic_can_mwrite(PATH_SSS, tp->cpu_count, &fds_sss);
+    set_governor  = filemagic_can_mwrite(PATH_SGV, tp->cpu_count, &fds_sgv);
+    if (!set_frequency && !filemagic_can_mread(PATH_SSS, tp->cpu_count, &fds_sss)) return;
+    if (!set_governor  && !filemagic_can_mread(PATH_SGV, tp->cpu_count, &fds_sgv)) return;
     // Building frequency list
-    if (filemagic_can_read(PATH_SAF0, &fds_saf0)) {
-        while (!found_userspace && filemagic_word_read(fd_sag0, buffer, 0)) {
-            avail_list[i] = (ullong) atoll(data);
+    if (filemagic_can_read(PATH_SAF0, &fd_saf0)) {
+        while (!found_userspace && filemagic_word_read(fd_saf0, buffer, 0)) {
+            avail_list[i] = (ullong) atoll(buffer);
             debug("avail_list%u: %llu", i, avail_list[i]);
             ++i;
         }
-        close(fds_saf0);
+        close(fd_saf0);
     } else {
-        freqs_avail[0] = freq_base;
+        avail_list[0] = freq_base;
         if (boost_enabled) {
-            freqs_avail[0] = freq_base + 1000LLU;
+            avail_list[0] = freq_base + 1000LLU;
             i = 1;
         }
-        while((avail_list[i] = freq_base - (100000LLU*m)) >= 1000000) {
+        while((avail_list[i] = freq_base - (100000LLU*m)) >= freq_min) {
             debug("avail_list%u: %llu", i, avail_list[i]);
             ++m;
             ++i;
@@ -95,15 +96,15 @@ void mgt_acpi_cpufreq_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
 		found_userspace = (strncmp(buffer, "userspace", 9) == 0);
 		debug("read the word '%s' (found userspace? %d)", buffer, found_userspace);
 	}
-	close(fd);
+	close(fd_sag0);
 	if (!found_userspace) {
-		return_msg(EAR_ERROR, "Current driver does not have userspace governor.");
+		return_msg(, "Current driver does not have userspace governor.");
 	}
     // Is boost enabled?
-    if (filemagic_once_read(PATH_BST0, buffer)) {
-        boost_enabled = atoi(data);
-    } else if (filemagic_once_read(PATH_CPB0, buffer)) {
-        boost_enabled = atoi(data);
+    if (filemagic_once_read(PATH_BST0, buffer, sizeof(buffer))) {
+        boost_enabled = atoi(buffer);
+    } else if (filemagic_once_read(PATH_CPB0, buffer, sizeof(buffer))) {
+        boost_enabled = atoi(buffer);
     } else {
         boost_enabled = tp->boost_enabled;
     }
@@ -112,7 +113,7 @@ void mgt_acpi_cpufreq_load(topology_t *tp_in, mgt_ps_driver_ops_t *ops)
     freq_base     = (ullong) tp->base_freq;
     current_list  = calloc(cpu_count, sizeof(ullong));
     //
-    mgt_acpi_cpufreq_governor_get(NULL, &governor0);
+    mgt_acpi_cpufreq_governor_get(&governor0);
     // Saved initial values
     keeper_macro(uint32, "AcpiCpufreqDefaultGovernor", governor0);
     debug("AcpiCpufreqDefaultGovernor: %u", governor0);
@@ -174,7 +175,7 @@ state_t mgt_acpi_cpufreq_get_current_list(const ullong **p)
 			current_list[cpu] = 0LLU;
 			s = EAR_ERROR;
 		} else {
-			freqs_current[cpu] = (ullong) atoll(data);
+			current_list[cpu] = (ullong) atoll(data);
 		}
         debug("current_list%d: %llu", cpu, current_list[cpu]);
 	}
@@ -182,9 +183,9 @@ state_t mgt_acpi_cpufreq_get_current_list(const ullong **p)
 	return s;
 }
 
-state_t mgt_acpi_cpufreq_get_boost(uint *boost_enabled)
+state_t mgt_acpi_cpufreq_get_boost(uint *boost_enabled_in)
 {
-    *boost_enabled = boost_enabled;
+    *boost_enabled_in = boost_enabled;
 	return EAR_SUCCESS;
 }
 
@@ -202,7 +203,7 @@ state_t mgt_acpi_cpufreq_set_current_list(uint *freqs_index)
 		if (freqs_index[cpu] > avail_list_count) {
 			freqs_index[cpu] = avail_list_count-1;
 		}
-		sprintf(data, "%llu", freqs_avail[freqs_index[cpu]]);
+		sprintf(data, "%llu", avail_list[freqs_index[cpu]]);
         debug("set_list%d: %llu", cpu, avail_list[freqs_index[cpu]]);
         if (!filemagic_word_write(fds_sss[cpu], data, strlen(data), 1)) {
             s = EAR_ERROR;
@@ -266,7 +267,7 @@ state_t mgt_acpi_cpufreq_governor_set(uint governor)
 	state_t s;
 
     // If governor is the same
-	if (state_ok(mgt_acpi_cpufreq_governor_get(c, &current))) {
+	if (state_ok(mgt_acpi_cpufreq_governor_get(&current))) {
         if (governor == current) {
             return EAR_SUCCESS;
         }
@@ -293,7 +294,7 @@ state_t mgt_acpi_cpufreq_governor_set_mask(uint governor, cpu_set_t mask)
     }
     for (cpu = 0; cpu < cpu_count; ++cpu) {
         if (CPU_ISSET(cpu, &mask)) {
-            if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 1)) {
+            if (!filemagic_word_write(fds_sgv[cpu], buffer, strlen(buffer), 1)) {
                 s = EAR_ERROR;
             }
         }
@@ -311,7 +312,7 @@ state_t mgt_acpi_cpufreq_governor_set_list(uint *governors)
         if (state_fail(s = mgt_governor_tostr(governors[cpu], buffer))) {
             return s;
         }
-        if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 1)) {
+        if (!filemagic_word_write(fds_sgv[cpu], buffer, strlen(buffer), 1)) {
             return EAR_ERROR;
         }
     }

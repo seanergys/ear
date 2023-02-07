@@ -34,7 +34,6 @@
 #define RPC_SET_GOVERNOR     RPC_MGT_CPUFREQ_SET_GOVERNOR
 
 static uint                 cpu_count;
-static ctx_t                driver_c;
 static mgt_ps_driver_ops_t *driver;
 static pstate_t            *available_list;
 static uint                 available_count;

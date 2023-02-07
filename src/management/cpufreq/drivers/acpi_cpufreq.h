@@ -29,11 +29,13 @@
 //	https://www.kernel.org/doc/html/v4.14/admin-guide/pm/cpufreq.html
 
 /* Drivers can load without permissions to set frequency/governor. */
-state_t mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops);
+void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops);
 
 state_t mgt_acpi_cpufreq_init();
 
 state_t mgt_acpi_cpufreq_dispose();
+
+state_t mgt_acpi_cpufreq_reset();
 
 state_t mgt_acpi_cpufreq_get_available_list(const ullong **freq_list, uint *freq_count);
 

@@ -56,7 +56,6 @@ typedef struct pss_s {
 #define WRITE_BOOST_LIMIT 	0x08  //sets the frequency limit 
 
 static topology_t           tp;
-static ctx_t                driver_c;
 static mgt_ps_driver_ops_t *driver;
 static ullong               regs[MAX_REGISTERS];
 static pss_t                psss[MAX_PSTATES];

@@ -29,7 +29,7 @@
 #include <management/cpufreq/archs/amd17.h>
 #include <management/cpufreq/archs/default.h>
 #include <management/cpufreq/drivers/intel_pstate.h>
-#include <management/cpufreq/drivers/linux_cpufreq.h>
+#include <management/cpufreq/drivers/acpi_cpufreq.h>
 
 static pthread_mutex_t     lock = PTHREAD_MUTEX_INITIALIZER;
 static mgt_ps_driver_ops_t ops_driver;

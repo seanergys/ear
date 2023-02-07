@@ -24,6 +24,8 @@ int filemagic_can_read(char *path, int *fd);
 
 int filemagic_can_write(char *path, int *fd);
 
+int filemagic_can_mread(char *format, int index_count, int **fds);
+
 int filemagic_can_mwrite(char *format, int index_count, int **fds);
 
 int filemagic_word_read(int fd, char *word, int reset_position);

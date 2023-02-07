@@ -15,13 +15,31 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <metrics/common/file.h>
+
+int filemagic_can_read(char *path, int *fd)
+{
+    if (access(path, R_OK) != 0) {
+        return_msg(0, strerror(errno));
+    }
+    if (fd != NULL) {
+        if ((*fd = open(path, O_RDONLY)) < 0) {
+            debug("Opening '%s' failed: %s", path, strerror(errno));
+            return_msg(0, strerror(errno));
+        }
+    }
+    return 1;
+}
 
 int filemagic_can_write(char *path, int *fd)
 {
@@ -38,38 +56,35 @@ int filemagic_can_write(char *path, int *fd)
     return 1;
 }
 
-int filemagic_can_read(char *path, int *fd)
-{
-    if (access(path, R_OK) != 0) {
-        return_msg(0, strerror(errno));
-    }
-    if (fd != NULL) {
-        if ((*fd = open(path, O_RDONLY)) < 0) {
-            debug("Opening '%s' failed: %s", path, strerror(errno));
-            return_msg(0, strerror(errno));
-        }
-    }
-    return 1;
-}
-
-int filemagic_can_mwrite(char *format, int index_count, int **fds)
+static int filemagic_can_msomething(char *format, int index_count, int **fds, int (*can)(char *path, int *fd))
 {
     char buffer[PATH_MAX];
-    int p = *fds;
+    int i;
+
     for (i = 0; i < index_count; ++i) {
         sprintf(buffer, format, i);
-        if (!filemagic_can_write(path, dont_open)) {
+        if (!can(buffer, dont_open)) {
             return 0;
         }
     }
     *fds = calloc(index_count, sizeof(int));
     for (i = 0; i < index_count; ++i) {
         sprintf(buffer, format, i);
-        if (!filemagic_can_write(path, &p[i])) {
+        if (!can(buffer, &((*(fds))[i]))) {
             return 0;
         }
     }
     return 1;
+}
+
+int filemagic_can_mread(char *format, int index_count, int **fds)
+{
+    return filemagic_can_msomething(format, index_count, fds, filemagic_can_read);
+}
+
+int filemagic_can_mwrite(char *format, int index_count, int **fds)
+{
+    return filemagic_can_msomething(format, index_count, fds, filemagic_can_write);
 }
 
 int filemagic_word_read(int fd, char *word, int reset_position)

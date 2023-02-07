@@ -24,7 +24,6 @@
 #include <management/cpufreq/archs/default.h>
 
 static topology_t           tp;
-static ctx_t                driver_c;
 static mgt_ps_driver_ops_t *driver;
 static const ullong        *freqs_available;
 static uint                 freqs_count;
