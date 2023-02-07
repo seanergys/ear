@@ -165,7 +165,7 @@ static int msr_microread(char *buffer, size_t size, off_t offset)
     size_t size_read = 0;
     int fd;
 
-    if (fd = open("/dev/cpu/0/msr", O_RDONLY)) {
+    if ((fd = open("/dev/cpu/0/msr", O_RDONLY)) < 0) {
         return 0;
     }
     while ((size > 0) && ((size_read = read(fd, (void *) &buffer[size_accum], size)) > 0)){
