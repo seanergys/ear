@@ -27,7 +27,7 @@
 #include <library/api/clasify.h>
 #include <library/states/states_comm.h>
 #include <library/loader/module_cuda.h>
-#include <library/loader/module_mpi.h>
+#include <library/api/mpi_support.h>
 
 #define INFO_CLASSIFY 3
 
