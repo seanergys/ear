@@ -2262,10 +2262,12 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 #if MPI_OPTIMIZED
 static int fd_csv_cpu;
 static uint report_power_id = 0;
+static timestamp last_cpupower;
 void metrics_start_cpupower()
 {
   if (master && report_power_trace) {
     char filename[256];
+    timestamp_getfast(&last_cpupower);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_diff, &rapl_size);
@@ -2289,10 +2291,21 @@ void metrics_read_cpupower()
 
     char buffer[64], csv_str[256];
     double total = 0, curr ;
+    timestamp currt;
+    ullong elap;
+    char check[256];
+
+    timestamp_getfast(&currt);
+    elap = timestamp_diff(&currt, &last_cpupower, TIME_MSECS);
+    last_cpupower = currt;
+
+
 
     energy_cpu_read(no_ctx, metrics_rapl_fine_monitor_end);
     energy_cpu_data_diff(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end, metrics_rapl_fine_monitor_diff);
     energy_cpu_data_copy(no_ctx, metrics_rapl_fine_monitor_start, metrics_rapl_fine_monitor_end); 
+    energy_cpu_to_str(NULL, check, metrics_rapl_fine_monitor_diff);
+    //verbose_master(2, "CPUPOW[%s]: elapsed %llu (%s)", application.node_id, elap, check);
 
     if (!traces_are_on()){
       sprintf(csv_str,"%s;%u;%lld;",application.node_id, report_power_id, timestamp_getconvert(TIME_USECS));
@@ -2300,9 +2313,13 @@ void metrics_read_cpupower()
     report_power_id++;
 
     ullong lpck = 0, ldram = 0;
+    // num_packs is socket_count and there are 2 events. DRAM0, DRAM1, PCK0, PCK1 is the
+    // default use case
+    // elap is un MSEC and energy in nanoJoules
+    // ldram and lpck is multiplied to be used by Paraver
     for (int p = 0; p < (num_packs*2) -1 ; p++) {
-      curr = (double)metrics_rapl_fine_monitor_diff[p]/200000000.0;
-      if (curr < num_packs){
+      curr = energy_cpu_compute_power((double)metrics_rapl_fine_monitor_diff[p], (double)elap/1000.0);
+      if (p < num_packs){
         ldram += (ullong)curr*1000;
       }else{
         lpck  += (ullong)curr*1000;
@@ -2313,12 +2330,14 @@ void metrics_read_cpupower()
       }
       total += curr;
     }
-
-    curr = (double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1]/200000000.0;
+    
+    curr = energy_cpu_compute_power((double)metrics_rapl_fine_monitor_diff[(num_packs*2) -1], (double)elap/1000.0);
+    lpck  += (ullong)curr*1000;
     total += curr;
     if (traces_are_on()){
         traces_generic_event(ear_my_rank, my_node_id, TRA_PCK_POWER_NODE, lpck);
         traces_generic_event(ear_my_rank, my_node_id, TRA_DRAM_POWER_NODE, ldram);
+        //verbose_master(2,"Reporting event PCK %llu DRAM %llu", lpck, ldram);
     }else{
       snprintf(buffer, sizeof(buffer), "%.2lf;%.2lf\n", curr, total);
       strcat(csv_str, buffer);

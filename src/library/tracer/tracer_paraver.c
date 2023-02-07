@@ -194,8 +194,6 @@ static void config_file_create(char *pathname, char* hostname)
     write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t60017\tVPI\n\n");
     write_unused(file_pcf, buffer1, strlen(buffer1));
-    sprintf(buffer1, "EVENT_TYPE\n0\t60018\tRECONFIGURATION\n\n");
-    write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t%d\tPERC_MPI\n\n",PERC_MPI);
     write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t%d\tAVG_CPUFREQ\n\n",TRA_AVGFRQ);
@@ -232,6 +230,10 @@ static void config_file_create(char *pathname, char* hostname)
     sprintf(buffer1, "EVENT_TYPE\n0\t%d\tPCK_POWER_HIGHF\n\n",TRA_PCK_POWER_NODE);
     write_unused(file_pcf, buffer1, strlen(buffer1));
     sprintf(buffer1, "EVENT_TYPE\n0\t%d\tDRAM_POWER_HIGHF\n\n",TRA_DRAM_POWER_NODE);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tIN_BARRIER\n\n",TRA_BARRIER);
+    write_unused(file_pcf, buffer1, strlen(buffer1));
+    sprintf(buffer1, "EVENT_TYPE\n0\t%d\tCPUF_RAMP_UP\n\n",TRA_CPUF_RAMP_UP);
     write_unused(file_pcf, buffer1, strlen(buffer1));
 
     close(file_pcf);

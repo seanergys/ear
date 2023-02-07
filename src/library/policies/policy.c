@@ -1562,6 +1562,9 @@ state_t policy_restore_to_mpi_pstate(uint index)
     pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
     sel_pstate = &pstate_list[index];
     f = sel_pstate->khz;
+    if (traces_are_on()){
+      traces_generic_event(ear_my_rank, my_node_id , TRA_CPUF_RAMP_UP, sel_pstate->khz);
+    }
   }
   verbose(2, "restore CPU freq in process %d to %lu", my_node_id, f);
   per_process_node_freq.cpu_freq[my_node_id] = f;

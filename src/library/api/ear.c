@@ -1730,7 +1730,7 @@ void ear_init()
           earl_mpi_opt = suscription();
           earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
           earl_mpi_opt->call_main = earl_periodic_actions_mpi_opt;
-          earl_mpi_opt->time_relax = 1000000;
+          earl_mpi_opt->time_relax = 200;
           earl_mpi_opt->time_burst = 200;
           if (monitor_register(earl_mpi_opt) != EAR_SUCCESS) verbose_master(2,"Monitor for MPI opt register fails! %s",state_msg);
           monitor_relax(earl_mpi_opt);
