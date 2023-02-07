@@ -154,6 +154,9 @@ state_t mgt_cpufreq_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask);
 /** Sets a governor to the CPUs given a list of governors id. */
 state_t mgt_cpufreq_governor_set_list(ctx_t *c, uint *governor);
 
+/** Gets if governor is available to set. */
+int mgt_cpufreq_governor_is_available(ctx_t *c, uint governor);
+
 /** Allocates a list of current P_STATE per CPU (devices). */
 state_t mgt_cpufreq_data_alloc(pstate_t **pstate_list, uint **index_list);
 

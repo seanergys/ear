@@ -191,6 +191,12 @@ state_t mgt_cpufreq_governor_set_list(ctx_t *c, uint *governors)
     preturn (ops.set_governor_list, c, governors);
 }
 
+int mgt_cpufreq_governor_is_available(ctx_t *c, uint governor)
+{
+    return ops_driver.is_governor_available(governor);
+}
+
+
 /** Data */
 state_t mgt_cpufreq_data_alloc(pstate_t **pstate_list, uint **index_list)
 {

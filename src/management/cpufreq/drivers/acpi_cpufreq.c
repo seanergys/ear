@@ -323,3 +323,64 @@ int mgt_acpi_cpufreq_governor_is_available(uint governor)
 {
     return 1;
 }
+
+#if TEST
+static const ullong *frequencies;
+static uint governors[1024];
+static char buffer[128];
+
+int main(int argc, char *argv[])
+{
+    mgt_ps_driver_ops_t ops;
+    topology_t tp;
+
+    // Topology
+    topology_init(&tp);
+    // Management
+    mgt_acpi_cpufreq_load(&tp, &ops);
+
+    mgt_acpi_cpufreq_init();
+
+    if (argc == 1) {
+        return 0;
+    }
+    if (atoi(argv[1]) == 1) {
+        if (state_fail(mgt_acpi_cpufreq_governor_set(Governor.performance))) {
+            debug("mgt_acpi_cpufreq_governor_set: %s", state_msg);
+        }
+    }
+    if (atoi(argv[1]) == 2) {
+        if (state_fail(mgt_acpi_cpufreq_governor_set(Governor.powersave))) {
+            debug("mgt_acpi_cpufreq_governor_set: %s", state_msg);
+        }
+    }
+    if (atoi(argv[1]) == 3) {
+        if (state_fail(mgt_acpi_cpufreq_governor_set(Governor.userspace))) {
+            debug("mgt_acpi_cpufreq_governor_set: %s", state_msg);
+        }
+    }
+    if (atoi(argv[1]) == 4) {
+        if (state_fail(mgt_acpi_cpufreq_governor_get_list(governors))) {
+            debug("mgt_acpi_cpufreq_governor_get_list: %s", state_msg);
+        }
+        mgt_governor_tostr(governors[0], buffer);
+        printf("Governor[0]: %s\n", buffer);
+    }
+    if (atoi(argv[1]) == 11) {
+        if (state_fail(mgt_acpi_cpufreq_set_current(0, all_cpus))) {
+            debug("mgt_acpi_cpufreq_governor_set: %s", state_msg);
+        }
+    }
+    if (atoi(argv[1]) == 12) {
+        if (state_fail(mgt_acpi_cpufreq_set_current(1, all_cpus))) {
+            debug("mgt_acpi_cpufreq_governor_set: %s", state_msg);
+        }
+    }
+    if (atoi(argv[1]) == 13) {
+        if (state_fail(mgt_acpi_cpufreq_get_current_list(&frequencies))) {
+            debug("mgt_acpi_cpufreq_governor_set: %s", state_msg);
+        }
+    }
+    return 0;
+}
+#endif

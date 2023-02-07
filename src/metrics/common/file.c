@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -37,6 +37,7 @@ int filemagic_can_read(char *path, int *fd)
             debug("Opening '%s' failed: %s", path, strerror(errno));
             return_msg(0, strerror(errno));
         }
+        debug("Opened correctly '%s' (fd%d)", path, *fd);
     }
     return 1;
 }
@@ -50,8 +51,8 @@ int filemagic_can_write(char *path, int *fd)
         if ((*fd = open(path, O_RDWR)) < 0) {
             debug("Opening '%s' failed: %s", path, strerror(errno));
             return_msg(0, strerror(errno));
-
         }
+        debug("Opened correctly '%s' (fd%d)", path, *fd);
     }
     return 1;
 }
@@ -102,9 +103,9 @@ int filemagic_word_read(int fd, char *word, int reset_position)
         i++;
     }
     word[i] = '\0';
-    debug("read the word '%s'", word);
+    debug("Read in fd%d the word '%s'", fd, word);
     if (i == 0) {
-        return_print(0, "while reading '%s' in cpufreq file (%s)", word, strerror(errno));
+        return_print(0, "While reading '%s' in cpufreq file (%s)", word, strerror(errno));
     }
     return 1;
 }
@@ -119,21 +120,21 @@ int filemagic_word_write(int fd, char *word, int s, int line_break)
         word[s] = '\0';
     }
     for (i = 0, r = 1, p = s; i < s && r > 0;) {
-        r = pwrite(fd, (void*) &word[i], p, i);
+        r = pwrite(fd, (void *) &word[i], p, i);
         i = i + r;
         p = s - i;
     }
     if (r == -1) {
-        return_print(EAR_ERROR, "while writing '%s' in cpufreq file (%s)", word, strerror(errno));
+        return_print(0, "while writing '%s' in cpufreq file (%s)", word, strerror(errno));
     }
-    return EAR_SUCCESS;
+    return 1;
 }
 
 int filemagic_word_mwrite(int *fds, int fds_count, char *word, int line_break)
 {
-    state_t s = EAR_SUCCESS;
     int len = strlen(word);
-    int i;
+    int s = 1;
+    int i = 0;
     debug("Multiple writing a word '%s'", word);
     // Adding a line break
     if (line_break) {
@@ -141,13 +142,13 @@ int filemagic_word_mwrite(int *fds, int fds_count, char *word, int line_break)
         word[len+1] = '0';
         len++;
     }
-    for (i = 0; i < fds_count && state_ok(s); ++i) {
-        s = filemagic_word_write(fds[i], word, len, 0);
+    for (i = 0; i < fds_count; ++i) {
+        debug("Writting in fd%d", fds[i]);
+        if (!filemagic_word_write(fds[i], word, len, 0)) {
+            s = 0;
+        }
     }
-    if (state_fail(s)) {
-        return s;
-    }
-    return EAR_SUCCESS;
+    return s;
 }
 
 int filemagic_once_read(char *path, char *buffer, int buffer_length)
@@ -167,6 +168,7 @@ int filemagic_once_read(char *path, char *buffer, int buffer_length)
         i += r;
     }
     buffer[i] = '\0';
+    debug("Once read: %s", buffer);
     close(fd);
     return 1;
 }
