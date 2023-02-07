@@ -56,13 +56,13 @@ earplug.install: slurm_plugin.install;
 ######## SUBFOLDERS
 
 %.components:
-	@ for i in $(COMPONENTS); do                         \
-		if [[ "$(COMPONENT_DISABLE)" != *$$i* ]]; then \
-		echo "===================================="; \
-		echo "= Compiling $$i";                      \
-		echo "===================================="; \
-		$(MAKE) -C $${i} $* || exit;                 \
-		fi \
+	@ for i in $(COMPONENTS); do                        \
+		if printf %s\\n "${COMPONENT_DISABLE}" | grep -qFv "$$i"; then \
+		echo "====================================";    \
+		echo "= Compiling $$i";                         \
+		echo "====================================";    \
+		$(MAKE) -C $${i} $* || exit;                    \
+		fi                                              \
 	done
 
 ######## DEPENDENCIES

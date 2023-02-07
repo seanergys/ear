@@ -1,5 +1,5 @@
 CFLAGS        = -fPIC -O3 -I$(SRCDIR)
-CFLAGS_AVX2   = $(CFLAGS) -march=avx2
+CFLAGS_AVX2   = $(CFLAGS) -mavx2
 CFLAGS_AVX512 = $(CFLAGS) -march=skylake-avx512
 
 ######## FILES
@@ -42,7 +42,7 @@ avx2/dynais.o: avx2/dynais.c avx2/dynais.h
 	$(CC) $(CC_FLAGS) $(CFLAGS_AVX2) -o avx2/dynais.o -c $<
 
 dynais.o: dynais.c dynais.h
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(DEFI) -o dynais.o -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) -march=native $(DEFI) -o dynais.o -c $<
 
 dynais.a: $(DEPS)
 	$(AR) rvs $@ $(OBJS)

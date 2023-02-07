@@ -169,7 +169,6 @@ static uint domain_window_power_limit(cchar *name, cchar *keep, uint cpu, double
 
 static void domain_bit_power_limit(cchar *name, cchar *keep, cpu_t *cpu, msr_power_limit_t *pl, int bl, double div)
 {
-    char *enabled[2] = { "disabled", "enabled" };
     double mult_power = pu[cpu->socket_id].mult_power;
     double mult_time  = pu[cpu->socket_id].mult_time;
 

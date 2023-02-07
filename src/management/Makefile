@@ -17,7 +17,8 @@ root_OBJS = \
     $(SRCDIR)/management/cpufreq/archs/prio_dummy.o \
     $(SRCDIR)/management/cpufreq/archs/prio_eard.o \
     $(SRCDIR)/management/cpufreq/archs/prio_isst.o \
-    $(SRCDIR)/management/cpufreq/drivers/linux_cpufreq.o \
+    $(SRCDIR)/management/cpufreq/drivers/acpi_cpufreq.o \
+    $(SRCDIR)/management/cpufreq/drivers/intel_pstate.o \
     $(SRCDIR)/management/imcfreq/imcfreq.o \
     $(SRCDIR)/management/imcfreq/archs/amd17.o \
     $(SRCDIR)/management/imcfreq/archs/dummy.o \

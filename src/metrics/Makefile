@@ -11,6 +11,7 @@ dyna_BINS = libmetrics.so
 mets_OBJS = \
     $(SRCDIR)/metrics/common/apis.o \
     $(SRCDIR)/metrics/common/cupti.o \
+    $(SRCDIR)/metrics/common/file.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/isst.o \
