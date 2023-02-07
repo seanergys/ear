@@ -147,7 +147,7 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 state_t mpi_app_init(polctx_t *c)
 {
 #if MPI_OPTIMIZED
-    char *cear_min_usec_for_mpi_opt = getenv(FLAG_MIN_USEC_MPI); // Modifies the minimum time a call must spend in order to be a candidate to be optimized.
+    char *cear_min_usec_for_mpi_opt = ear_getenv(FLAG_MIN_USEC_MPI); // Modifies the minimum time a call must spend in order to be a candidate to be optimized.
 
     if (cear_min_usec_for_mpi_opt != NULL) ear_min_usec_for_mpi_opt = (ulong) atoi(cear_min_usec_for_mpi_opt);
     verbose_master(2, "Minimum MPI call time to be optimized: %lu us", ear_min_usec_for_mpi_opt);
@@ -157,9 +157,9 @@ state_t mpi_app_init(polctx_t *c)
 
         char *clb_th; // Modifies the default Load Balance efficiency threshold.
 
-        if ((clb_th = getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
+        if ((clb_th = ear_getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
             LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
-        } else if ((clb_th = getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
+        } else if ((clb_th = ear_getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
 
             // TODO: This check is for the transition to the new environment variables.
             // It will be removed when SCHED_LOAD_BALANCE_TH will be removed, in the next release.
@@ -261,7 +261,7 @@ state_t mpi_app_end(polctx_t *c)
     {
         mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
-        char *stats = getenv(FLAG_GET_MPI_STATS);
+        char *stats = ear_getenv(FLAG_GET_MPI_STATS);
 
         if (stats) {
 
@@ -1009,15 +1009,15 @@ state_t is_blocking_busy_waiting(uint *block_type)
 {
     char *env;
     *block_type = BUSY_WAITING_BLOCK;
-    if ((env = getenv("I_MPI_WAIT_MODE")) != NULL){
+    if ((env = ear_getenv("I_MPI_WAIT_MODE")) != NULL){
         verbose_master(2,"I_MPI_WAIT_MODE %s",env);
         if (atoi(env) != 0 ) *block_type = YIELD_BLOCK;
     }
-    if ((env = getenv("I_MPI_THREAD_YIELD")) != NULL){
+    if ((env = ear_getenv("I_MPI_THREAD_YIELD")) != NULL){
         verbose_master(2,"I_MPI_THREAD_YIELD %s",env);
         if (atoi(env) != 0 ) *block_type = YIELD_BLOCK;
     }
-    if ((env = getenv("OMPI_MCA_mpi_yield_when_idle")) != NULL){
+    if ((env = ear_getenv("OMPI_MCA_mpi_yield_when_idle")) != NULL){
         verbose_master(2,"OMPI_MCA_mpi_yield_when_idle %s",env);
         if (atoi(env) != 0 ) *block_type = YIELD_BLOCK;
     }

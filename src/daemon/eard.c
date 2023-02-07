@@ -262,14 +262,17 @@ void init_tdps()
 	if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
        error("Reading CPU TDPs");
        error_rapl=1;
+       rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
     }
     if (read_rapl_dram_tdp(fd_rapl, rapl_dram_tdps) == EAR_ERROR){
        error("Reading DRAM TDPs");
        error_rapl=1;
+          rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
     }
   } else if (node_desc.vendor == VENDOR_AMD){
 	  if (!hsmp_scan(&node_desc)) {
 		error("Reading CPU TDPs");
+        rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
 		error_rapl = 1;
 		return;
 	  }
@@ -278,6 +281,7 @@ void init_tdps()
 
 	  if (!hsmp_send(0, 0x07, args, reps)) { // get max_power_limit which is the TDP
 		  error("Reading CPU TDPs");
+          rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
 		  error_rapl = 1;
 		  return;
 	  }
@@ -317,21 +321,22 @@ void create_tmp(char *tmp_dir) {
  *	Restarts again EARD
  */
 
-void eard_restart() {
-				char *ear_install;
-				char my_bin[MAX_PATH_SIZE];
-				ear_install = getenv("EAR_INSTALL_PATH");
-				if (ear_install == NULL) {
-								error("EAR_INSTALL_PATH is NULL\n");
-								sprintf(my_bin, "eard");
-				} else sprintf(my_bin, "%s/sbin/eard", ear_install);
-				verbose(VCONF, "LD_LIBRARY_PATH=%s\n", getenv("LD_LIBRARY_PATH"));
-				verbose(VCONF, "Restarting to %s p_state=1 ear_tmp=%s verbose=0\n", my_bin, ear_tmp);
-				end_service("eard");
-				// Do we want to maintain verbose level?
-				execlp(my_bin, my_bin, "1", NULL);
-				verbose(VCONF, "Restarting EARD %s\n", strerror(errno));
-				_exit(1);
+void eard_restart()
+{
+    char *ear_install;
+    char my_bin[MAX_PATH_SIZE];
+    ear_install = ear_getenv(ENV_PATH_EAR);
+    if (ear_install == NULL) {
+        error("%s is NULL\n", ENV_PATH_EAR);
+        sprintf(my_bin, "eard");
+    } else sprintf(my_bin, "%s/sbin/eard", ear_install);
+    verbose(VCONF, "LD_LIBRARY_PATH=%s\n", ear_getenv("LD_LIBRARY_PATH"));
+    verbose(VCONF, "Restarting to %s p_state=1 ear_tmp=%s verbose=0\n", my_bin, ear_tmp);
+    end_service("eard");
+    // Do we want to maintain verbose level?
+    execlp(my_bin, my_bin, "1", NULL);
+    verbose(VCONF, "Restarting EARD %s\n", strerror(errno));
+    _exit(1);
 }
 
 /*

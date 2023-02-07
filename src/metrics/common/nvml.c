@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <common/system/symplug.h>
+#include <common/config/config_env.h>
 #include <metrics/common/nvml.h>
 
 // Provisional
@@ -78,7 +79,7 @@ static state_t static_open()
         }
 
     // Looking for nvidia library in tipical paths.
-    open_test(getenv(HACK_NVML_FILE));
+    open_test(ear_getenv(HACK_NVML_FILE));
     open_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so");
     open_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so.1");
     open_test(NVML_PATH "/lib64/libnvidia-ml.so");

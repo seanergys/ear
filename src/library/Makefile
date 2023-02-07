@@ -26,7 +26,9 @@ else
 endif
 
 
-ifeq ($(FEAT_EARL_LIGHT), 1)
+ifeq ($(FEAT_EARL_LIGHT), 1) 
+CFLAGS += -DEARL_LIGHT=1
+else ifeq ($(FEAT_EARL_LITE), 1)
 CFLAGS += -DEARL_LIGHT=1
 else
 CFLAGS += -DEARL_LIGHT=0

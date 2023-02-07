@@ -224,14 +224,14 @@ int eards_connect(application_t *my_app, ulong lid)
   #endif
 
   // These files connect EAR with EAR_COMM
-  ear_tmp=getenv("EAR_TMP");
+  ear_tmp=ear_getenv(ENV_PATH_TMP);
 
   if (ear_tmp == NULL)
   {
-    ear_tmp=getenv("TMP");
+    ear_tmp=ear_getenv("TMP");
 
     if (ear_tmp == NULL) {
-      ear_tmp=getenv("HOME");
+      ear_tmp=ear_getenv("HOME");
     }
   }
 

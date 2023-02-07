@@ -101,13 +101,27 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     gethostname(nodename, sizeof(nodename));
     strtok(nodename, ".");
 
-    csv_log_file_env = getenv(HEROES_LOGS_PATH);
+    csv_log_file_env = ear_getenv(HEROES_LOGS_PATH);
     if (csv_log_file_env == NULL){ 
       csv_log_file_env = getcwd(path_base, sizeof(path_base));
     }
     
     /* Loop filename is automatically generated */
     if (csv_log_file_env != NULL){
+       if (!file_is_directory(csv_log_file_env)){
+          if (file_is_regular(csv_log_file_env)){
+            error("Invalid heroes path.It  must be a directory, not a regular file (%s)", csv_log_file_env);
+            must_report = 0;
+            return EAR_ERROR;
+          }
+          ret = mkdir(csv_log_file_env, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+          if (ret < 0){
+            error("Creating heroes app dir (%s) (%s)",csv_log_file_env, strerror(errno));
+            must_report = 0;
+            return EAR_ERROR;
+          }
+        }
+
 	      debug("Using PATH :%s", csv_log_file_env);
 				if (file_is_directory(csv_log_file_env) || (csv_log_file_env[strlen(csv_log_file_env) - 1] == '/')){ 
 					debug("%s is directory", csv_log_file_env);
@@ -138,11 +152,11 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     my_time = timestamp_getconvert(TIME_SECS);
 
 		/* HEROES specific */
-		heroes_wrf_id = getenv(HEROES_WRF_ID);
-		heroes_her_id = getenv(HEROES_HER_ID);
-		heroes_usr_id = getenv(HEROES_USR_ID);
-		heroes_prj_id = getenv(HEROES_PRJ_ID);
-		heroes_org_id = getenv(HEROES_ORG_ID);
+		heroes_wrf_id = ear_getenv(HEROES_WRF_ID);
+		heroes_her_id = ear_getenv(HEROES_HER_ID);
+		heroes_usr_id = ear_getenv(HEROES_USR_ID);
+		heroes_prj_id = ear_getenv(HEROES_PRJ_ID);
+		heroes_org_id = ear_getenv(HEROES_ORG_ID);
 
 		if (heroes_wrf_id == NULL) heroes_wrf_id = NULL_WRF_ID;
 		if (heroes_her_id == NULL) heroes_her_id = NULL_HER_ID;

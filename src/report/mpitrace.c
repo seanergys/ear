@@ -42,7 +42,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
     gethostname(nodename, sizeof(nodename));
     strtok(nodename, ".");
 
-    char *job_id = getenv(SCHED_JOB_ID);
+    char *job_id = ear_getenv(SCHED_JOB_ID);
     if (job_id == NULL) {
         verbose(3, "%sWARNING%s %s could not be read.", COL_YLW, COL_CLR, SCHED_JOB_ID);
     } else {

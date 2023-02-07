@@ -706,16 +706,17 @@ void fill_application_mgt_data(app_mgt_t *a)
 
 int sched_num_nodes()
 {
-				char *cn;
-				cn = getenv(SCHED_STEP_NUM_NODES);
-				if (cn != NULL) return atoi(cn);
-				else return 1;
+    char *cn;
+    cn = ear_getenv(SCHED_STEP_NUM_NODES);
+    if (cn != NULL) return atoi(cn);
+    else return 1;
 }
+
 void attach_to_master_set(int master)
 {
 				int color;
 #if MPI
-				char *is_erun = getenv(SCHED_IS_ERUN);
+				char *is_erun = ear_getenv(SCHED_IS_ERUN);
 				int flag = 1;
 #endif
 				//my_master_rank=0;
@@ -828,10 +829,10 @@ static int get_local_id(char *node_name)
 
 static void get_job_identification()
 {
-				char *job_id  = getenv(SCHED_JOB_ID);
-				char *step_id = getenv(SCHED_STEP_ID);
-				char *account_id=getenv(SCHED_JOB_ACCOUNT);
-				char *num_tasks=getenv(SCHED_NUM_TASKS);
+				char *job_id  = ear_getenv(SCHED_JOB_ID);
+				char *step_id = ear_getenv(SCHED_STEP_ID);
+				char *account_id=ear_getenv(SCHED_JOB_ACCOUNT);
+				char *num_tasks=ear_getenv(SCHED_NUM_TASKS);
 
 				if (num_tasks != NULL){
 								debug("%s defined %s",SCHED_NUM_TASKS,num_tasks);
@@ -845,7 +846,7 @@ static void get_job_identification()
 								if (step_id != NULL) {
 												my_step_id=atoi(step_id);
 								} else {
-												step_id = getenv(SCHED_STEPID);
+												step_id = ear_getenv(SCHED_STEPID);
 												if (step_id != NULL) {
 																my_step_id=atoi(step_id);
 												} else {
@@ -904,7 +905,7 @@ void update_configuration()
 				set_ear_coeff_db_pathname(system_conf->lib_info.coefficients_pathname);
 				set_ear_dynais_levels(system_conf->lib_info.dynais_levels);
 				/* Included for dynais tunning */
-				cdynais_window=getenv(HACK_DYNAIS_WINDOW_SIZE);
+				cdynais_window=ear_getenv(HACK_DYNAIS_WINDOW_SIZE);
 				if ((cdynais_window!=NULL) && (system_conf->user_type==AUTHORIZED)){
 								dynais_window=atoi(cdynais_window);
 				}
@@ -960,6 +961,21 @@ void ear_lib_sig_handler(int s)
 				ear_finalize(EAR_CANCELLED);
 				exit(0);
 }
+
+static void read_hack_env()
+{
+	char *hack_tmp = ear_getenv(HACK_EAR_TMP);
+	char *hack_etc = ear_getenv(HACK_EAR_ETC);
+	if (hack_tmp != NULL){
+		set_ear_tmp(hack_tmp);
+		setenv("EAR_TMP", hack_tmp, 1);
+		verbose(0,"[%s] Using HACK tmp %s ", node_name, get_ear_tmp());
+	}
+	if (hack_etc != NULL){
+		setenv("EAR_ETC", hack_etc, 1);
+		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
+	}
+}
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -977,13 +993,13 @@ void ear_init()
 				char *summary_pathname;
 				char *tmp;
 				state_t st;
-				char *ext_def_freq_str=getenv(HACK_DEF_FREQ);
+				char *ext_def_freq_str=ear_getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
 	topology_t earl_topo;
 
 				uint fake_eard_error = 0;
-				char *cfake_eard_error        = getenv(FAKE_EARD_ERROR);
-        char *cfake_force_shared_node = getenv(FLAG_FORCE_SHARED_NODE);
+				char *cfake_eard_error = ear_getenv(FAKE_EARD_ERROR);
+        char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
 
@@ -993,7 +1009,7 @@ void ear_init()
         timestamp_getfast(&start_eard_init);
         #endif
 
-	topology_init(&earl_topo);
+				topology_init(&earl_topo);
 
 
         main_pid = syscall(SYS_gettid);
@@ -1027,12 +1043,14 @@ void ear_init()
 				gethostname(node_name, sizeof(node_name));
 				strtok(node_name, ".");
 
+				read_hack_env();
+
 				// Fundamental data
 
-                pid_t my_pid = getpid();
+       pid_t my_pid = getpid();
 				debug("Running in %s process = %d", node_name, my_pid);
 
-				tmp=get_ear_tmp();
+				tmp = get_ear_tmp();
 				folder_t tmp_test;
 				if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
 								/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
@@ -1042,28 +1060,29 @@ void ear_init()
 				}
 
 
-                // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
-                if (ext_def_freq_str) {
+       // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
+       if (ext_def_freq_str) {
                     ext_def_freq = (ulong) atol(ext_def_freq_str);
                     verbose_master(VEAR_INIT, "%sWARNING%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
-                }
+       }
 
+			 debug("[%s] Using tmp %s ", node_name, get_ear_tmp());
 
 				verb_level = get_ear_verbose();
 				verb_channel=2;
-				if ((tmp = getenv(HACK_EARL_VERBOSE)) != NULL) {
+				if ((tmp = ear_getenv(HACK_EARL_VERBOSE)) != NULL) {
 								verb_level = atoi(tmp);
 								VERB_SET_LV(verb_level);
 				}
 
-                // We print here the topology in order to do it only at verbose 2
-                if (VERB_ON(2))
-                {
+        // We print here the topology in order to do it only at verbose 2
+        if (VERB_ON(2))
+        {
                     if (ear_my_rank == 0)
                     {
                         topology_print(&earl_topo, 1);
                     }
-                }
+        }
 
 				set_ear_total_processes(my_size);
         #if FAKE_LEARNING
@@ -1127,13 +1146,13 @@ void ear_init()
 
 				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
 				get_resched_path(get_ear_tmp(),ID, resched_conf_path);
+				debug("[%s.%d] system_conf_path  = %s",node_name, ear_my_rank, system_conf_path);
+				debug("[%s.%d] resched_conf_path = %s",node_name, ear_my_rank, resched_conf_path);
         #if FAKE_EAR_NOT_INSTALLED
         uint first_dummy = 1;
         #endif
 				do{
 	
-					debug("system_conf_path  = %s",system_conf_path);
-					debug("resched_conf_path = %s",resched_conf_path);
 	
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
@@ -1150,16 +1169,16 @@ void ear_init()
 					/* If I'm the master, I will create the dummy regions */
 					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
 					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id){
-							verbose(2, "Shared memory not present, creating dummy areas");
+							verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
 							create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
 							fd_dummy = file_lock_create(dummy_areas_path);
 					}else if ((system_conf == NULL) && (resched_conf == NULL) && my_id){
 							/* If I'm not the master, I will wait */
 							while(!file_is_regular(dummy_areas_path));
 					}
-				}while((system_conf == NULL) && (resched_conf == NULL));
+				}while((system_conf == NULL) || (resched_conf == NULL));
 
-				debug("system_conf  = %p", system_conf);
+				debug("[%s.%d] system_conf  = %p", node_name, ear_my_rank, system_conf);
 				debug("resched_conf = %p", resched_conf);
 				if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
 				debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
@@ -1223,7 +1242,7 @@ void ear_init()
 				if (application.is_learning){
 								verbose_master(VEAR_INIT,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 				}
-				if (getenv("LOGNAME")!=NULL) strcpy(application.job.user_id, getenv("LOGNAME"));
+				if (ear_getenv("LOGNAME")!=NULL) strcpy(application.job.user_id, ear_getenv("LOGNAME"));
 				else strcpy(application.job.user_id,"No userid");
 				debug("User %s",application.job.user_id);
 				strcpy(application.node_id, node_name);
@@ -1238,9 +1257,9 @@ void ear_init()
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
-                if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s%s",
-                            COL_BLU, ear_my_rank, node_name, COL_CLR);
+        if (!my_id && eard_ok) { // only the master will connect with eard
+                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
+                            COL_BLU, ear_my_rank, node_name, get_ear_tmp(), COL_CLR);
 
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, my_node_id);
@@ -1266,9 +1285,9 @@ void ear_init()
                         eard_ok = 0;
                         notify_eard_connection(0);
                     }
-                }
+       }
 #else
-                if (eard_ok) { // all processes will connect with eard
+       if (eard_ok) { // all processes will connect with eard
 
                     char *col;
 
@@ -1311,9 +1330,9 @@ void ear_init()
                         eard_ok=0;
                         if (!my_id) notify_eard_connection(0);
                     }
-                }
+       }
 #endif
-                /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
+       /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 				debug("Shared region creation section");
 				if (!my_id) {
@@ -1323,7 +1342,7 @@ void ear_init()
 								attach_shared_regions();
 				}
 
-                if (!eard_ok) {
+        if (!eard_ok) {
 
                     /* Dummy areas path is used in case the EARD was not present */
                     if (!my_id && (fd_dummy >= 0)) {
@@ -1339,24 +1358,27 @@ void ear_init()
                     } else {
                         verbose_master(2, "EARD is not running but EARL light version is enabled");
                     }
-                }
+        }
 
 				/* Cluster conf */
 				get_ser_cluster_conf_path(get_ear_tmp(), ser_cluster_conf_path);
+
+        debug("Using ser cconf path %s", ser_cluster_conf_path);
 				ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);
 				debug("Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
 				deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size);
 
 				debug("END Shared region creation section");
 				/* Processes in same node connectes each other*/
+
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
 
 				/* create verbose file for each job */
-				char *verb_path = getenv(FLAG_EARL_VERBOSE_PATH);
+				char *verb_path = ear_getenv(FLAG_EARL_VERBOSE_PATH);
                 if (verb_path != NULL) {
 
                     /* Use a verbose file per process instead of only master */
-                    char *per_proc_v_file = getenv(HACK_PROCS_VERB_FILES);
+                    char *per_proc_v_file = ear_getenv(HACK_PROCS_VERB_FILES);
 
                     if (per_proc_v_file != NULL) {
                         per_proc_verb_file = atoi(per_proc_v_file);
@@ -1628,7 +1650,7 @@ void ear_init()
 				// if (masters_info.my_master_rank >= 0){
 								// Report API
 								char my_plug_path[512];
-								utils_create_plugin_path(my_plug_path, system_conf->installation.dir_plug, getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
+								utils_create_plugin_path(my_plug_path, system_conf->installation.dir_plug, ear_getenv(HACK_EARL_INSTALL_PATH), system_conf->user_type);
 
 								if (summary_pathname == NULL){
 												if (report_load(my_plug_path,system_conf->lib_info.plugins) != EAR_SUCCESS){
@@ -1649,7 +1671,7 @@ void ear_init()
 												verbose_master(1,"Error in reports API initialization ");
 								}
 				// }
-        creport_earl_events = getenv(FLAG_REPORT_EARL_EVENTS);
+        creport_earl_events = ear_getenv(FLAG_REPORT_EARL_EVENTS);
         if (creport_earl_events != NULL) report_earl_events = atoi(creport_earl_events);
         if (report_earl_events) verbose_master(1," EARL events reported to DB %s", (report_earl_events?"enabled":"disabled"));
 
@@ -1704,9 +1726,9 @@ void ear_init()
 				earl_monitor = suscription();
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = BASIC_PERIOD*10;
-				earl_monitor->time_burst = BASIC_PERIOD;
-				ITERS_PER_PERIOD = BASIC_PERIOD/1000;
+				earl_monitor->time_relax = 1000;
+				earl_monitor->time_burst = 1000;
+				ITERS_PER_PERIOD = 1;
         #if MPI_OPTIMIZED
         if (is_mpi_enabled() && ear_mpi_opt) {
 				  earl_monitor->time_relax = BASIC_PERIOD/5;
@@ -1721,7 +1743,7 @@ void ear_init()
         #endif
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				if (ear_guided == DYNAIS_GUIDED) monitor_relax(earl_monitor);
-        else                             monitor_burst(earl_monitor);
+        else                             monitor_burst(earl_monitor, 0);
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -1743,7 +1765,7 @@ void ear_init()
 void ear_finalize(int exit_status)
 {
 				uint fake_error = 0;
-				char *cfake = getenv(FAKE_PROCESS_ERRROR);
+				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
 
         #if START_END_OVH
@@ -2320,14 +2342,17 @@ state_t earl_periodic_actions(void *no_arg)
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
 
-    if (ear_whole_app) return EAR_SUCCESS;
-
-    if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
     ear_iterations += ITERS_PER_PERIOD;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+
+    debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
+
+    if (ear_whole_app) return EAR_SUCCESS;
+    if (cancelled || sig_shared_region[my_node_id].exited) return EAR_SUCCESS;
 
 #if MPI_OPTIMIZED
     if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())) {
@@ -2361,8 +2386,6 @@ state_t earl_periodic_actions(void *no_arg)
         }
 #endif // MPI_OPTIMIZED
 
-        debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
-              my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 
         if (first_exec_monitor) {
             first_exec_monitor = 0;
@@ -2391,7 +2414,7 @@ state_t earl_periodic_actions(void *no_arg)
                 ear_periodic_mode = PERIODIC_MODE_ON;
                 if (ear_guided != new_ear_guided){ 
                     if (earl_monitor->time_burst < earl_monitor->time_relax){
-                        monitor_burst(earl_monitor);
+                        monitor_burst(earl_monitor, 0);
                     }
                     verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
                             my_node_id, period_elapsed);
