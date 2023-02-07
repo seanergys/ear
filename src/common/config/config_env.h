@@ -88,6 +88,8 @@
  */
 #define HACK_LIBRARY_FILE            "HACK_LIBRARY_FILE"       // Sets a specific library file.
 #define HACK_LOADER_FILE             "HACK_LOADER_FILE"        // Sets a specific loader file.
+#define HACK_EAR_TMP                 "HACK_EAR_TMP"            // Re-defines EAR_TMP folder
+#define HACK_EAR_ETC                 "HACK_EAR_ETC"            // Re-defines EAR_ETC folder
 #define HACK_NVML_FILE               "HACK_NVML_FILE"          // The GPU API loads a specific NVML library file.
 #define HACK_MPI_VERSION             "HACK_MPI_VERSION"        // Adds a suffix to libear.so (i.e: libear.hello.so).
 #define HACK_ENERGY_PLUGIN           "HACK_ENERGY_PLUGIN"       // This var forces to load a specific energy plugin.

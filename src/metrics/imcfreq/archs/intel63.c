@@ -77,30 +77,34 @@ void imcfreq_intel63_get_api(uint *api, uint *api_intern)
 	}
 }
 
-static state_t imcfreq_intel63_enable()
+state_t imcfreq_intel63_aux_enable_cpu(int cpu)
 {
 	ullong com, com1;
-	state_t s;
-	int cpu;
-
-	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-        // Unfreeze
-        if (state_ok(msr_read(tp.cpus[cpu].id, &com, sizeof(ullong), GLBL_CTL_OFS))) {
-            com = (com | GLBL_CMD_UNF);
-            msr_write(tp.cpus[cpu].id, &com, sizeof(ullong), GLBL_CTL_OFS);
-        }
-		if (state_fail(s = msr_read(tp.cpus[cpu].id, &com, sizeof(ullong), UBOX_CTL_OFS))) {
+    state_t s;
+    // Unfreeze
+	if (state_fail(s = msr_open(cpu, MSR_WR))) {
+		return s;
+	}
+    if (state_ok(msr_read(cpu, &com, sizeof(ullong), GLBL_CTL_OFS))) {
+        com = (com | GLBL_CMD_UNF);
+        msr_write(cpu, &com, sizeof(ullong), GLBL_CTL_OFS);
+    }
+	if (state_fail(s = msr_read(cpu, &com, sizeof(ullong), UBOX_CTL_OFS))) {
+		return s;
+	}
+	com1 = ((com & UBOX_CMD_STA) >> SHIFT);
+	if (!com1) {
+		com = com | UBOX_CMD_STA;
+		if (state_fail(s = msr_write(cpu, &com, sizeof(ullong), UBOX_CTL_OFS))) {
 			return s;
 		}
-		com1 = ((com & UBOX_CMD_STA) >> SHIFT);
-		if (!com1) {
-			com = com | UBOX_CMD_STA;
-			if (state_fail(s = msr_write(tp.cpus[cpu].id, &com, sizeof(ullong), UBOX_CTL_OFS))) {
-				return s;
-			}
-		}
 	}
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
+}
+
+state_t imcfreq_intel63_aux_read_cpu(int cpu, ulong *freq)
+{
+	return msr_read(cpu, freq, sizeof(ulong), UBOX_CTR_OFS);
 }
 
 state_t imcfreq_intel63_init(ctx_t *c)
@@ -114,18 +118,11 @@ state_t imcfreq_intel63_init(ctx_t *c)
 	}	
 	// Opening MSR
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		if (state_fail(s = msr_open(tp.cpus[cpu].id, MSR_WR))) {
-			return s;
-		}
+        if (state_fail(s = imcfreq_intel63_aux_enable_cpu(tp.cpus[cpu].id))) {
+            return s;
+        }
 	}
-	debug("INTEL63 opened MSRs correctly");
-	#if 1
-	// Enabling
-	if (state_fail(s = imcfreq_intel63_enable())) {
-		return s;
-	}
-	#endif
-	debug("INTEL63 MSRs enabled correctly");
+	debug("INTEL63 MSRs opened and enabled correctly");
 	init = 1;
 
 	return EAR_SUCCESS;
@@ -176,7 +173,7 @@ state_t imcfreq_intel63_read(ctx_t *c, imcfreq_t *i)
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		debug("Reading IMC MSR for device %d",tp.cpus[cpu].id);
 		i[cpu].time = i[0].time;
-		if ((s = msr_read(tp.cpus[cpu].id, &i[cpu].freq, sizeof(ulong), UBOX_CTR_OFS)) != EAR_SUCCESS) {
+        if (state_fail(s = imcfreq_intel63_aux_read_cpu(tp.cpus[cpu].id, &i[cpu].freq))) {
 			return s;
 		}
 		debug("Freq for cpu %d is %lu",tp.cpus[cpu].id,i[cpu].freq);

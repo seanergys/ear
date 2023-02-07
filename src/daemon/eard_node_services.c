@@ -427,12 +427,12 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
 {
     uint     rpc_id   = head->req_service;
-    size_t   rpc_size = head->size;
     state_t  ret_s    = EAR_SUCCESS;
     char    *ret_data = NULL;
     size_t   ret_size = 0;
     uint     u1;
     #if USE_GPUS
+    size_t   rpc_size = head->size;
     ulong  **p1;
     uint    *p2;
     #endif

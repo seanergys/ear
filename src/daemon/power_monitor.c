@@ -2977,7 +2977,7 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
         powermon_app->governor.max_f = 0LU;
         powermon_app->governor.min_f = 0LU;
 
-        sprintf(powermon_app->governor.name, "%s", Goverstr.other);
+        sprintf(powermon_app->governor.name, "%s", Goverstr.unknown);
 
         uint *governor_list = (uint *) malloc(man->cpu.devs_count * sizeof(uint));
         if (governor_list) {
@@ -3047,7 +3047,7 @@ static state_t save_global_cpu_settings(powermon_app_t *powermon_app)
         powermon_app->governor.max_f = 0LU;
         powermon_app->governor.min_f = 0LU;
 
-        sprintf(powermon_app->governor.name, "%s", Goverstr.other);
+        sprintf(powermon_app->governor.name, "%s", Goverstr.unknown);
 
         uint governor_id;
         if (state_ok(mgt_cpufreq_get_governor(no_ctx, &governor_id)))

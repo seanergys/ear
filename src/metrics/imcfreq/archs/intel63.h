@@ -29,7 +29,14 @@ state_t imcfreq_intel63_init(ctx_t *c);
 state_t imcfreq_intel63_dispose(ctx_t *c);
 
 state_t imcfreq_intel63_count_devices(ctx_t *c, uint *dev_count);
-/** */
+
 state_t imcfreq_intel63_read(ctx_t *c, imcfreq_t *i);
+
+// Auxiliar functions for other Intel63 APIs
+
+// This funciton opens an MSR.
+state_t imcfreq_intel63_aux_enable_cpu(int cpu);
+// This functions reads a 48 bit register and returns a frequency in KHz.
+state_t imcfreq_intel63_aux_read_cpu(int cpu, ulong *freq);
 
 #endif //METRICS_IMCFREQ_INTEL63_H

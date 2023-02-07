@@ -11,6 +11,7 @@ dyna_BINS = libmetrics.so
 mets_OBJS = \
     $(SRCDIR)/metrics/common/apis.o \
     $(SRCDIR)/metrics/common/cupti.o \
+    $(SRCDIR)/metrics/common/file.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/isst.o \
@@ -22,6 +23,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
+    $(SRCDIR)/metrics/common/rsmi.o \
     $(SRCDIR)/metrics/common/redfish.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
@@ -62,6 +64,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/archs/eard.o \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \
     $(SRCDIR)/metrics/gpu/archs/oneapi.o \
+    $(SRCDIR)/metrics/gpu/archs/rsmi.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
@@ -114,7 +117,6 @@ clean: clean.components rclean
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
-	@ $(MAKE) -C 'rapl'         $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'energy_cpu'   $* || exit

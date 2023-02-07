@@ -26,6 +26,7 @@ repo_BINS = \
     heroes.so \
     dummy.so \
 		dcdb.so \
+		sysfs.so \
     mpitrace.so
 ifeq ($(FEAT_DB_PSQL),1)
 repo_BINS += \

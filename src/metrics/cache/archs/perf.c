@@ -28,29 +28,31 @@
 #define HW_OP_WRITE   PERF_COUNT_HW_CACHE_OP_WRITE
 #define HW_RES_MISS   PERF_COUNT_HW_CACHE_RESULT_MISS
 
+// 0   1  2   3   4
+// L1D L2 LLR LLW LL
 // It seems that you can't mix OP_READ and OP_WRITE.
-static ullong hwell_l1_ev  = HW_CACHE_L1D  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong gen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong gen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong gen_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+static ullong hwell_l1d_ev = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong hwell_l2_ev  = 0x2724;
-static ullong hwell_l3r_ev = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
-static ullong hwell_l3w_ev = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
-static uint   hwell_l1_tp  = PERF_TYPE_HW_CACHE;
-static uint   hwell_l2_tp  = PERF_TYPE_RAW;
-static uint   hwell_l3_tp  = PERF_TYPE_HW_CACHE;
-static ullong zen_l1_ev    = HW_CACHE_L1D | (HW_OP_READ << 8) | (HW_RES_MISS << 16);
-static ullong zen_l3r_ev   = HW_CACHE_LL  | (HW_OP_READ << 8) | (HW_RES_MISS << 16);
-static ullong zen_l3w_ev   = HW_CACHE_LL  | (HW_OP_READ << 8) | (HW_RES_MISS << 16);
-static uint   zen_l1_tp    = PERF_TYPE_HW_CACHE;
-static uint   zen_l3_tp    = PERF_TYPE_HW_CACHE;
+static ullong hwell_llr_ev = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong hwell_llw_ev = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+static ullong zen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong zen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong zen_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+static ullong arm_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong arm_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
+static ullong arm_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
 //
-static perf_t perfs[4];
-static uint levels[4];
+static perf_t perfs[9];
+static uint levels[9];
 static uint counter = 0;
 static uint started;
 
 void set_cache(ullong event, uint type, uint level)
 {
 	state_t s;
-
 	if (state_fail(s = perf_open(&perfs[counter], &perfs[0], 0, type, event))) {
 		debug("perf_open for level %d returned %d (%s)", level, s, state_msg);
 		return;
@@ -59,29 +61,48 @@ void set_cache(ullong event, uint type, uint level)
 	counter++;
 }
 
-state_t cache_perf_load(topology_t *tp, cache_ops_t *ops)
+void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 {
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-		set_cache(hwell_l1_ev, hwell_l1_tp, 1);
-		set_cache(hwell_l2_ev, hwell_l2_tp, 2);
-		set_cache(hwell_l3r_ev, hwell_l3_tp, 3);
-        set_cache(hwell_l3w_ev, hwell_l3_tp, 4);
+		set_cache(hwell_l1d_ev, PERF_TYPE_HW_CACHE, 0);
+		set_cache(hwell_l2_ev , PERF_TYPE_RAW     , 1);
+		set_cache(hwell_llr_ev, PERF_TYPE_HW_CACHE, 2);
+        set_cache(hwell_llw_ev, PERF_TYPE_HW_CACHE, 3);
 	}
 	else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-		set_cache(zen_l1_ev, zen_l1_tp, 1);
-		set_cache(zen_l3r_ev, zen_l3_tp, 3);
-        set_cache(zen_l3w_ev, zen_l3_tp, 4);
+		set_cache(zen_l1d_ev, PERF_TYPE_HW_CACHE, 0);
+		set_cache(zen_llr_ev, PERF_TYPE_HW_CACHE, 2);
+        set_cache(zen_llw_ev, PERF_TYPE_HW_CACHE, 3);
 	}
+    else if (tp->vendor == VENDOR_ARM) {
+        set_cache(arm_l1d_ev, PERF_TYPE_HW_CACHE, 0);
+        set_cache(arm_llr_ev, PERF_TYPE_HW_CACHE, 2);
+        set_cache(arm_llw_ev, PERF_TYPE_HW_CACHE, 3);
+    }
 	else {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
+		debug(Generr.api_incompatible);
+        return;
 	}
     if (!counter) {
-        return_msg(EAR_ERROR, Generr.api_incompatible);
+        debug(Generr.api_incompatible);
+        return;
     }
-	replace_ops(ops->init,    cache_perf_init);
-	replace_ops(ops->dispose, cache_perf_dispose);
-	replace_ops(ops->read,    cache_perf_read);
-	return EAR_SUCCESS;
+    apis_put(ops->get_api,         cache_perf_get_api);
+    apis_put(ops->get_granularity, cache_perf_get_granularity);
+    apis_put(ops->init,            cache_perf_init);
+    apis_put(ops->dispose,         cache_perf_dispose);
+    apis_put(ops->read,            cache_perf_read);
+    debug("Loaded PERF")
+}
+
+void cache_perf_get_api(uint *api)
+{
+    *api = API_PERF;
+}
+
+void cache_perf_get_granularity(uint *granularity)
+{
+    *granularity = GRANULARITY_PROCESS;
 }
 
 state_t cache_perf_init(ctx_t *c)
@@ -100,38 +121,27 @@ state_t cache_perf_dispose(ctx_t *c)
 
 state_t cache_perf_read(ctx_t *c, cache_t *ca)
 {
-	llong values[4];
+    ullong *p = (ullong *) &ca->l1d_misses;
+	llong values[9];
 	state_t s;
 	int i;
 
-	memset(ca, 0, sizeof(cache_t));
-	values[0] = 0LLU;
-	values[1] = 0LLU;
-	values[2] = 0LLU;
-    values[3] = 0LLU;
+    memset(values, 0, sizeof(cache_t));
 	if (state_fail(s = perf_read(&perfs[0], values))) {
 		return s;
 	}
 	timestamp_get(&ca->time);
 	for (i = 0; i < counter; ++i) {
-		if (levels[i] == 1) {
-			ca->l1d_misses = values[i];
-		} else if (levels[i] == 2) {
-			ca->l2_misses = values[i];
-		} else if (levels[i] == 3) {
-			ca->l3r_misses = values[i];
-		} else if (levels[i] == 4) {
-            ca->l3w_misses = values[i];
-        }
-	}
-	debug("values[0]: %lld", values[0]);
-	debug("values[1]: %lld", values[1]);
-    debug("values[2]: %lld", values[2]);
-    debug("values[3]: %lld", values[3]);
-	debug("total L1D misses: %lld", ca->l1d_misses);
-	debug("total L2 misses : %lld", ca->l2_misses);
-    debug("total L3R misses : %lld", ca->l3r_misses);
-    debug("total L3W misses : %lld", ca->l3w_misses);
+        p[levels[i]] = values[i];
+    }
+    if (ca->ll_misses == 0) {
+        ca->ll_misses = ca->llr_misses + ca->llw_misses;
+    }
+    debug("total L1D misses: %llu", ca->l1d_misses);
+	debug("total L2  misses: %llu", ca->l2_misses );
+    debug("total LLR misses: %llu", ca->llr_misses);
+    debug("total LLW misses: %llu", ca->llw_misses);
+    debug("total LL  misses: %llu", ca->ll_misses );
 
 	return EAR_SUCCESS;
 }

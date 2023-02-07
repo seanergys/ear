@@ -139,6 +139,11 @@ static double      total_acum_time = 0;
 static edata_t     aux_energy_stop = NULL;
 static llong       metrics_usecs[2]; // uS
 
+
+static  uint    estimate_power = 0;
+static  uint    estimate_gbs = 0;
+static  uint    estimate_met_cpuf = 0;
+
 /* In the case of IO we will collect per process, per loop,
  * per node, and per-loop node accumulated. */
 static io_data_t   metrics_io_init[4];
@@ -388,7 +393,16 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpuprio_load(tp, eard));
 
 #if USE_GPUS
-        gpu_load(eard);
+		if (!EARL_LIGHT){
+        	gpu_load(eard);
+		}else{
+			/* If master but EARD not connected */
+			if (eard && !eards_connected()){
+					  gpu_load(2);
+			}	else{
+						gpu_load(0);
+			}
+		}
     mgt_gpu_load(eard);
 #if USE_CUPTI
     if (read_cupti_metrics) {
@@ -416,6 +430,9 @@ static void metrics_static_init(topology_t *tp)
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
 
+		if (met_cpufreq.api == API_DUMMY) estimate_met_cpuf = 1;
+		if (met_bwidth.api  == API_DUMMY) estimate_gbs = 1;
+
 #if USE_GPUS
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
@@ -442,6 +459,13 @@ static void metrics_static_init(topology_t *tp)
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
     met_gpu.ok     = (met_gpu.api     > API_DUMMY);
+
+		#if EARL_LIGHT
+		if (mgt_gpu.ok && (mgt_gpu.ok != API_EARD)){
+			verbose_master(2,"Warning, GPU API is %u", met_gpu.api);
+		}
+		#endif
+
 #if USE_CUPTI
     if (read_cupti_metrics){
         proc_gpu.ok = (proc_gpu.api   > API_DUMMY);
@@ -1034,7 +1058,7 @@ static void metrics_partial_start()
 extern uint ear_iterations;
 extern int ear_guided;
 
-static  uint    estimate_power = 0;
+
 static int metrics_partial_stop(uint where)
 {
 	ulong c_energy;
@@ -1047,8 +1071,10 @@ static int metrics_partial_stop(uint where)
 	debug("metrics_partial_stop %u", my_node_id);
 
     if (!eards_connected() && (master)) {
-        verbose_master(ERROR_VERB, "Disconnecting library because EARD not connected.");
-        if (!EARL_LIGHT) lib_shared_region->earl_on = 0;
+        if (!EARL_LIGHT){ 
+        	verbose_master(ERROR_VERB, "Disconnecting library because EARD not connected.");
+					lib_shared_region->earl_on = 0;
+				}
     }
 
     /* If the signature of the master is not ready, we cannot compute our signature */
@@ -1159,8 +1185,8 @@ static int metrics_partial_stop(uint where)
 		} else {
       /* If there is an error, power is computed based on power from CPu+GPU. Computed in 
        * compute_signature_data */
-			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
-                    COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
+			//verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
+      //              COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
 			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
       estimate_power = 1;
 		}
@@ -1300,6 +1326,49 @@ void copy_node_data(signature_t *dest, signature_t *src)
 #if USE_GPUS
 	memcpy(&dest->gpu_sig,&src->gpu_sig,sizeof(gpu_signature_t));
 #endif
+}
+
+
+static void estimate_metrics_not_available(uint sign_app_loop_idx, signature_t *metrics, ulong procs, float gpup)
+{
+		if (!master) {
+			verbose(0,"Warning, estimate metrics and not master task");
+			return;
+		}
+		sig_ext_t *sig_ext ;
+    if (estimate_power){
+      /* Power error control: There was an error on power computation and we use an estimation */
+      double current_ratio;
+      if (dc_power_ratio_instances && dc_power_ratio){
+        current_ratio = dc_power_ratio / (double)dc_power_ratio_instances;
+      }else current_ratio = 1.0;
+      metrics->DC_power = (gpup + metrics->DRAM_power + metrics->PCK_power) * current_ratio;
+      verbose_master(1,"Warning: Estimated power %.2lf W (DC vs CPU+GPU %.2lf)", metrics->DC_power, current_ratio);
+      estimate_power = 0;
+    }
+
+  	sig_ext = metrics->sig_ext;
+		if (estimate_gbs){
+			if (met_cache.ok && metrics->L3_misses){
+				verbose_master(2,"Estimating GB/s based on Cache misses");
+				metrics->GBS = metrics->L3_misses * hw_cache_line_size;
+				metrics->GBS = metrics->GBS/(sig_ext->elapsed*1000000000);
+			}
+		}
+
+		if (estimate_met_cpuf){
+			if (mgt_cpufreq.ok){ 
+				verbose_master(2,"Estimating AVG CPU freq using mgt CPU freq for %u CPUs", met_cpufreq.devs_count);
+				metrics->avg_f = metrics->def_f;
+				verbose_master(2,"Using def_freq %lu as avg_freq", metrics->def_f);
+				for (uint i=0; i< met_cpufreq.devs_count; i ++) cpufreq_avrg[sign_app_loop_idx] = metrics->def_f;
+        // Copy the average CPU freq. in the shared signature
+        memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff,
+                met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
+
+			}
+		}
+
 }
 
 /* This function computes the signature: per loop (global = LOO) or application ( global = APP)
@@ -1497,18 +1566,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       dc_power_ratio += metrics->DC_power / (total_gpu_power + metrics->DRAM_power + metrics->PCK_power);
       dc_power_ratio_instances++;
     }
-    if (estimate_power){
-      /* Power error control: There was an error on power computation and we use an estimation */
-      double current_ratio;
-      if (dc_power_ratio_instances && dc_power_ratio){
-        current_ratio = dc_power_ratio / (double)dc_power_ratio_instances;
-      }else current_ratio = 1.0;
-      metrics->DC_power = (total_gpu_power + metrics->DRAM_power + metrics->PCK_power) * current_ratio;
-      verbose_master(1,"Warning: Estimated power %.2lf W (DC vs CPU+GPU %.2lf)", metrics->DC_power, current_ratio);
-      if (sign_app_loop_idx == LOO) acum_ipmi[sign_app_loop_idx] = metrics->DC_power * time_s * node_energy_units;
-      estimate_power = 0;
-    }
+
+		estimate_metrics_not_available(sign_app_loop_idx, metrics, procs, total_gpu_power);
     max_app_power = ear_max(max_app_power, metrics->DC_power);
+
+    if (sign_app_loop_idx == LOO) acum_ipmi[sign_app_loop_idx] = metrics->DC_power * time_s * node_energy_units;
 
 
     /* Power error control: We don't accumulate if we are computing application metrics, not loop  metrics */

@@ -196,6 +196,8 @@ static state_t monitor_apis_update(void *whatever)
     frun(tprintf("TEMP   ||%s||%u||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str));
     frun(tprintf("CPI    ||%s||%u||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str));
     fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
+    frun(printf("—— cpi ————————————————————————————————————————————————————————————————————————\n"));
+    frun(    cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel));
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
     frun(cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel));
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
@@ -204,6 +206,8 @@ static state_t monitor_apis_update(void *whatever)
     frun( bwidth_data_print( mrD.ram_diff,  mrD.ram_avrg, verb_channel));
     frun(printf("—— temperature ————————————————————————————————————————————————————————————————\n"));
     frun(   temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel));
+    frun(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
+    frun(    gpu_data_print( mrD.gpu_diff,                verb_channel));
     
     return EAR_SUCCESS;
 }
@@ -221,7 +225,7 @@ int main(int argc, char *argv[])
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 2000;
+	sus->time_relax    = 4000;
 	sus->time_burst    = 2000;
 	sa(sus->suscribe(sus));
 

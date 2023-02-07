@@ -20,7 +20,11 @@
 
 #include <metrics/cache/cache.h>
 
-state_t cache_perf_load(topology_t *tp, cache_ops_t *ops);
+void cache_perf_load(topology_t *tp, cache_ops_t *ops);
+
+void cache_perf_get_api(uint *api);
+
+void cache_perf_get_granularity(uint *granularity);
 
 state_t cache_perf_init(ctx_t *c);
 

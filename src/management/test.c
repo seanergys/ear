@@ -126,7 +126,7 @@ static state_t monitor_apis_update(void *whatever)
     frun(tprintf("CPUPRIO||%s||%u||%s", m.pri.api_str, m.pri.devs_count, m.pri.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
     fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
-    
+
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
     frun(mgt_cpufreq_data_print(m.cpu.list1, m.cpu.list1_count, verb_channel));
     frun(printf("—— cpuprio ————————————————————————————————————————————————————————————————————\n"));
@@ -134,7 +134,7 @@ static state_t monitor_apis_update(void *whatever)
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
     frun(mgt_imcfreq_data_print(m.imc.list1, m.imc.list1_count, verb_channel));
     fgpu(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
-    
+
     return EAR_SUCCESS;
 }
 

@@ -58,6 +58,7 @@ static ear_njob_t *dummy_nodemgr;
 void create_dummy_path_lock(char *ear_tmp, uint ID, char *dummy_areas_path, uint size)
 {
 	snprintf(dummy_areas_path, size, "%s/.dummy_areas_lock.%u", ear_tmp, ID);
+	debug("dummy lock file %s", dummy_areas_path);
 }
 
 static void create_dummy_island(cluster_conf_t *dummycc)
@@ -111,7 +112,12 @@ static void create_dummy_policy(cluster_conf_t *dummycc)
 static void create_dummy_conf_paths(cluster_conf_t *dummycc, char *ear_tmp)
 {
 	char *install = ear_getenv(ENV_PATH_EAR);
+	char *hinstall = ear_getenv(HACK_EARL_INSTALL_PATH);
+
 	char *etc = ear_getenv(ENV_PATH_ETC);
+
+	if (hinstall != NULL) install = hinstall;
+
 	strcpy(dummycc->install.dir_temp, ear_tmp);
 	if (install != NULL)	strcpy(dummycc->install.dir_inst, install);
 	else                    strcpy(dummycc->install.dir_inst, DEFAULT_EAR_INSTALL_PATH); 
@@ -174,6 +180,8 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
     /* serialization */
     serialize_cluster_conf(&dummy_cc, &dummy_ser_cc, &dummy_ser_cc_size);
     get_ser_cluster_conf_path(ear_tmp, path);
+
+		debug("Serialized path %s for cconf", path);
     local_dummy_ser_cc = create_ser_cluster_conf_shared_area(path, dummy_ser_cc, dummy_ser_cc_size);
 
     check_null(local_dummy_ser_cc, "Error serializing cluster_conf in path %s", " ");
@@ -196,6 +204,8 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 				check_null(my_policy, "My policy returns NULL for policy %d", dummy_cc.default_policy);
 
 				get_settings_conf_path(ear_tmp, ID, path);
+
+				debug("Creating settings dummy in %s", path);
 				dummy_sett = create_settings_conf_shared_area(path);
 				check_null(dummy_sett, "create_settings_conf_shared_area returns NULL for path %s", path);
 
@@ -242,7 +252,7 @@ state_t eard_dummy_app_mgt(char *ear_tmp, uint ID)
 				app_mgt_t *dummy = create_app_mgt_shared_area(path);
 				check_null(dummy, "Error creating app_mgr in path %s ", path);
 
-				verbose_master(2, "Dummy app_mgt area done");
+				verbose_master(2, "Dummy app_mgt area done path %s", path);
 
 				return EAR_SUCCESS;
 }
@@ -261,7 +271,7 @@ state_t eard_dummy_pc_app_info(char *ear_tmp, uint ID)
 				dummy->gpu_mode = PC_POWER;
 				#endif
 
-				verbose_master(2, "Dummy powercap are done");
+				verbose_master(2, "Dummy powercap are done path %s", path);
 	
 				return EAR_SUCCESS;
 }

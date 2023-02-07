@@ -41,7 +41,8 @@
 #define API_RAPL 		13
 #define API_ISST        14
 #define API_FAKE        15
-#define API_CPUMODEL	  16
+#define API_CPUMODEL    16
+#define API_RSMI        17
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0

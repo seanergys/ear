@@ -31,7 +31,7 @@ typedef struct wait_s {
 	int burst;
 } wait_t;
 
-typedef struct register_s
+typedef struct regmon_s
 {
 	suscription_t suscription;
 	wait_t wait_units;
@@ -42,9 +42,9 @@ typedef struct register_s
 	int	aligned;
 	int	ok_init;
 	int	ok_main;
-} register_t;
+} regmon_t;
 
-static register_t       queue[N_QUEUE];
+static regmon_t       queue[N_QUEUE];
 static uint             queue_last;
 static pthread_t        thread;
 static pthread_mutex_t  lock_gen = PTHREAD_MUTEX_INITIALIZER;
@@ -53,6 +53,7 @@ static uint             enabled = 0;
 static uint             locked = 0;
 struct sigaction        action_burst;
 struct sigaction        action_old;
+
 
 static void monitor_main_sleep(int wait_units, int *pass_units, int *alignment)
 {
@@ -80,7 +81,7 @@ static void monitor_main_sleep(int wait_units, int *pass_units, int *alignment)
 	debug("waited %d units (alignment %d)", *pass_units, *alignment);
 }
 
-static void monitor_main_time_calculation(register_t *reg, int *wait_units, int pass_units, int alignment)
+static void monitor_main_time_calculation(regmon_t *reg, int *wait_units, int pass_units, int alignment)
 {
 	int bursting = reg->bursted;
 	int wait_required;
@@ -129,7 +130,7 @@ static void monitor_main_init()
 
 static void *monitor_main(void *p)
 {
-	register_t    *reg;
+	regmon_t    *reg;
 	suscription_t *sus;
 	int            wait_units = 0;
 	int            pass_units = 0;
@@ -211,7 +212,6 @@ state_t monitor_init()
 		}
 	}
 	enabled = 1;
-    printf("PID %u\n", getpid());
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0){
 		return_msg(EAR_ERROR, strerror(m_errno));
@@ -278,7 +278,7 @@ state_t monitor_unregister(suscription_t *s)
 	if (s->id  < 0         ) return_msg(EAR_BAD_ARGUMENT, "incorrect suscription index");
 
 	while (pthread_mutex_trylock(&lock[s->id]));
-	memset(&queue[s->id], 0, sizeof(register_t));
+	memset(&queue[s->id], 0, sizeof(regmon_t));
 	pthread_mutex_unlock(&lock[s->id]);
 
 	return EAR_SUCCESS;

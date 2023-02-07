@@ -15,12 +15,17 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
+#include <math.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <metrics/common/msr.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
+#include <common/utils/stress.h>
+#include <common/math_operations.h>
+#include <metrics/imcfreq/archs/intel63.h>
 #include <management/imcfreq/archs/intel63.h>
 
 // TODO
@@ -33,6 +38,7 @@ static topology_t tp_static;
 static pstate_t  *available_copy;
 static pstate_t  *available_list;
 static uint       available_count;
+static ullong     max_khz_dyn;
 static ullong     max_khz;
 static ullong     min_khz;
 
@@ -57,7 +63,70 @@ static state_t intel63_read(uint cpu, ullong *max, ullong *min)
 	return EAR_SUCCESS;
 }
 
-static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
+static void *calculate_frequency(void *arg)
+{
+    ullong freq2, freq1;
+    state_t s;
+    
+    *((ullong *) arg) = 0;
+    // Reading content
+    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq1))) {
+        return NULL;
+    }
+    // Spinning during 0,5 seconds
+    stress_spin(499LLU);
+    // Reading the content again
+    if (state_fail(s = imcfreq_intel63_aux_read_cpu(0, (ulong *) &freq2))) {
+        return NULL;
+    }
+    // Mult per 2 to convert 0,5 seconds to 1,0 seconds
+    freq2 = overflow_magic_u64(freq2, freq1, MAXBITS48) * 2LLU;
+    freq2 = ceil_magic_u64(freq2, 9) / (ullong) 1E3;
+    // Returning the data
+    *((ullong *) arg) = freq2;
+ 
+    return NULL;
+}
+
+static state_t dynamic_detection(ullong *freq_khz)
+{
+    pthread_t thread1;
+    pthread_t thread2;
+    ullong freq1;
+    ullong freq2;
+    ullong freq3;
+    state_t s;
+    int err;
+
+    // Opening MSR
+    if (state_fail(s = imcfreq_intel63_aux_enable_cpu(0))) {
+        return s;
+    }
+    // Creating threads
+    if ((err = pthread_create(&thread1, NULL, calculate_frequency, (void *) &freq1)) != 0) {
+        return_msg(EAR_ERROR, strerror(err));
+    }
+    if ((err = pthread_create(&thread2, NULL, calculate_frequency, (void *) &freq2)) != 0) {
+        return_msg(EAR_ERROR, strerror(err));
+    }
+    calculate_frequency((void *) &freq3);
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+    // Selecting a frequency among the 3 detected frequencies
+    if ((freq1 == freq2 || freq1 == freq3) && freq1 != 0LLU) {
+        *freq_khz = freq1;
+    } else if (freq2 == freq3 && freq2 != 0LLU) {
+        *freq_khz = freq2;
+    } else if (freq3 != 0LLU) {
+        *freq_khz = freq3;
+    } else {
+        s = EAR_ERROR;
+    }
+    debug("Detected max IMC frequency: %llu %llu %llu KHz", freq1, freq2, freq3);
+    return s;
+}
+
+static state_t mgt_imcfreq_intel63_build_list(topology_t *tp, int eard, my_node_conf_t *conf)
 {
 	ullong aux = 0;
 	state_t s;
@@ -80,25 +149,31 @@ static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
             keeper_save_uint64("ImcFreqMax", max_khz);
             debug("Keeper saved ImcFreqMax %llu", max_khz);
         }
-    }
-    #if SHOW_DEBUGS
-    else {
+    } else {
         debug("Keeper read ImcFreqMax %llu", max_khz);
     }
-    #endif
     // [2.2] Saving what found in MIN FREQ
     if (!keeper_load_uint64("ImcFreqMin", &min_khz)) {
         if (min_khz > 0) {
             keeper_save_uint64("ImcFreqMin", min_khz);
             debug("Saved ImcFreqMin %llu", min_khz);
         }
+    } else {
+        debug("Keeper read ImcFreqMin %llu", min_khz);
     }
-    #if SHOW_DEBUGS
-    else {
-        debug("Loaded ImcFreqMin %llu", min_khz);
+    // [2.3] Saving what found in MAX FREQ DYN
+    if (!keeper_load_uint64("ImcFreqMaxDyn", &max_khz_dyn)) {
+        if (state_fail(s = dynamic_detection(&max_khz_dyn))) {
+            debug("dynamic_detection() returned: %s", state_msg);
+        } else {
+            debug("Dynamic detection found: %llu KHz (and saved)", max_khz_dyn);
+            keeper_save_uint64("ImcFreqMaxDyn", max_khz_dyn);
+        }
+    } else {
+        debug("Keeper read ImcFreqMaxDyn %llu", max_khz_dyn);
     }
-    #endif
-    // [3] Replace by the data in the conf
+    // [3] Replace by the data in the conf (obsolete)
+    #if 0
     if (conf != NULL) {
         debug("conf->imc_max_freq %lu", conf->imc_max_freq);
         debug("conf->imc_min_freq %lu", conf->imc_min_freq);
@@ -109,6 +184,7 @@ static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
             min_khz = (ullong) conf->imc_min_freq;
         }
     }
+    #endif
     // [4] We can't build a list with 0s
     if (max_khz < 1000000LLU || min_khz == 0LLU) {
         return_msg(EAR_ERROR, "Can't build a frequency list");
@@ -134,7 +210,7 @@ static state_t mgt_imcfreq_intel63_build_list(my_node_conf_t *conf)
 	return EAR_SUCCESS;
 }
 
-state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, my_node_conf_t *conf)
+state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int eard, my_node_conf_t *conf)
 {
 	state_t s;
 	if (max_khz != 0) {
@@ -149,7 +225,7 @@ state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, my_node
 	if (state_fail(s = topology_select(tp, &tp_static, TPSelect.socket, TPGroup.merge, 0))) {
 		return s;
 	}
-	if (state_fail(s = mgt_imcfreq_intel63_build_list(conf))) {
+	if (state_fail(s = mgt_imcfreq_intel63_build_list(tp, eard, conf))) {
 		return s;
 	}
 	replace_ops(ops->init,               mgt_imcfreq_intel63_init);

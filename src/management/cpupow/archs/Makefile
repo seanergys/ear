@@ -1,20 +1,16 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 ######## FILES
 
-flop_OBJS = rapl.o
+freq_OBJS = \
+    intel63.o
 
 ######## RULES
 
-all: all.components
+all: $(freq_OBJS)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
-
-######## SUBFOLDERS
-
-%.components:
-	@ $(MAKE) -C 'archs' $* || exit
 
 ######## OPTIONS
 
@@ -22,7 +18,7 @@ install: ;
 
 %.install: ;
 
-clean: rclean clean.components;
+clean: rclean;
 
 ######## DEPENDENCIES
 

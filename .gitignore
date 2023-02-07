@@ -46,9 +46,14 @@ Makefile.nocpu.icc.impi
 Makefile.gcc*
 Makefile.icc*
 Makefile.ompi*
+deploy*.sh
+install*.sh
+Makefile.cpu.*
+Makefile.gpu.*
 
 # Build files
 etc/module/ear
+etc/module/ear-lite
 etc/conf/ear.conf
 etc/conf/ear.conf.template
 etc/conf/ear.conf.full.template
