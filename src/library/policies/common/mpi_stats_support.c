@@ -129,7 +129,9 @@ pthread_mutex_t ear_mpi_opt_lock = PTHREAD_MUTEX_INITIALIZER;
 ulong local_max_sync_block = 0;
 
 extern uint ear_mpi_opt; // Whether this module must to try to optimize some MPI calls.
+#if MPI
 extern p2i last_buf, last_dest; // Defined at src/library/api/ear_mpi.c
+#endif
 
 typedef struct ear_calls {
     mpi_call call;
@@ -390,7 +392,7 @@ state_t mpi_app_end(polctx_t *c)
 
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
-#if PER_MPI_CALL_STATS
+#if PER_MPI_CALL_STATS && MPI
     if (is_mpi_enabled()) {
 
         // Init the MPI call timer
@@ -455,7 +457,7 @@ uint is_bgather(mpi_call call)
 
 state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
-#if PER_MPI_CALL_STATS
+#if PER_MPI_CALL_STATS && MPI
     if (is_mpi_enabled() && in_mpi_call) {
 
         timestamp_t end;

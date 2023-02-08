@@ -76,7 +76,7 @@ static state_t static_open()
     #define open_test(path) \
         if (state_ok(plug_open(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL))) { \
             return EAR_SUCCESS; \
-        }
+        } 
 
     // Looking for nvidia library in tipical paths.
     open_test(ear_getenv(HACK_NVML_FILE));
