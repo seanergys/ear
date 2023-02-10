@@ -127,7 +127,7 @@ double max_app_power = 0;
 #define EAR_REPORT_POWER_TRACE "EAR_REPORT_POWER_TRACE"
 static uint report_power_trace = 0;
 
-#endif
+#endif // MPI_OPTIMIZED
 static ull        *aux_rapl;         // nJ (vec)
 static ull        *last_rapl;        // nJ (vec)
 static uint        rapl_size;
@@ -1568,7 +1568,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     }
 
 		estimate_metrics_not_available(sign_app_loop_idx, metrics, procs, total_gpu_power);
+#if MPI_OPTIMIZED
     max_app_power = ear_max(max_app_power, metrics->DC_power);
+#endif
 
     if (sign_app_loop_idx == LOO) acum_ipmi[sign_app_loop_idx] = metrics->DC_power * time_s * node_energy_units;
 
@@ -1592,7 +1594,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     if (!traces_are_on()){
 		  copy_node_data(metrics, &lib_shared_region->node_signature);
     }
+#if MPI_OPTIMIZED
     max_app_power = ear_max(lib_shared_region->node_signature.DC_power, max_app_power);
+#endif
 	}
 
 
