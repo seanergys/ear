@@ -58,10 +58,12 @@
 
 static int type;
 
+#if 0
 static int dynais_dummy(uint sample, uint *size, uint *level)
 {
     return NO_LOOP;
 }
+#endif
 
 dynais_call_t dynais_init(topology_t *tp, uint window, uint levels)
 {

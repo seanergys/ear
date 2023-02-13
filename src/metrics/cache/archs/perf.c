@@ -31,9 +31,11 @@
 // 0   1  2   3   4
 // L1D L2 LLR LLW LL
 // It seems that you can't mix OP_READ and OP_WRITE.
+#if 0
 static ullong gen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong gen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong gen_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
+#endif
 static ullong hwell_l1d_ev = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong hwell_l2_ev  = 0x2724;
 static ullong hwell_llr_ev = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);

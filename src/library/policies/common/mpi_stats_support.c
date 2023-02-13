@@ -1126,11 +1126,13 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 #define DEF_POWER_PER_PSTATE      20
 #define DEF_IDLE_POWER            100
 
+#if MPI_OPTIMIZED
 /* Default values */
 static double MAX_TOTAL_POWER;
 static double MAX_POWER_PER_UNIT;
 static double POWER_PER_PSTATE;
 static double IDLE_POWER;
+#endif
 
 extern double max_app_power;
 
@@ -1253,8 +1255,8 @@ uint process_get_curr_mpi_pstate()
 /*
 * PEAK POWER CONTROL
 */
-static uint in_barrier = 0;
 #if !SINGLE_CONNECTION && MPI_OPTIMIZED
+static uint in_barrier = 0;
 state_t peak_power_mpi_opt_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
 
@@ -1396,6 +1398,7 @@ state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
 #if !SINGLE_CONNECTION && MPI_OPTIMIZED
         if (ear_mpi_opt && (lib_shared_region->num_processes > 1)){
                 char *cmax_tota_power, *cmax_power_per_unit , *cpower_per_pstate, *cidle_power;
+#if MPI_OPTIMIZED
                 MAX_TOTAL_POWER    = ((cmax_tota_power     = ear_getenv("MAX_TOTAL_POWER"))    != NULL ? atof(cmax_tota_power): DEF_MAX_TOTAL_POWER);
                 MAX_POWER_PER_UNIT = ((cmax_power_per_unit = ear_getenv("MAX_POWER_PER_UNIT")) != NULL ? atof(cmax_power_per_unit) : DEF_MAX_POWER_PER_UNIT);
                 POWER_PER_PSTATE   = ((cpower_per_pstate = ear_getenv("POWER_PER_PSTATE")) != NULL ? atof(cpower_per_pstate) : DEF_POWER_PER_PSTATE);
@@ -1407,8 +1410,9 @@ state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
                 if (IDLE_POWER  == 0)         IDLE_POWER         = DEF_IDLE_POWER;
 
 
-                verbose_master(2,"EAR-PP MAX_TOTAL_POWER %.2lf MAX_POWER_PER_UNIT %.2lf POWER_PER_PSTATE %.2lf IDLE_POWER %.2lf",
-                  MAX_TOTAL_POWER, MAX_POWER_PER_UNIT, POWER_PER_PSTATE, IDLE_POWER);
+                verbose_master(2, "EAR-PP MAX_TOTAL_POWER %.2lf MAX_POWER_PER_UNIT %.2lf POWER_PER_PSTATE %.2lf IDLE_POWER %.2lf",
+                               MAX_TOTAL_POWER, MAX_POWER_PER_UNIT, POWER_PER_PSTATE, IDLE_POWER);
+#endif // MPI_OPTIMIZED
                 barrier_optimize = 1;
 
                 char *ramp_strategy = ear_getenv("RAMP_UP_STRATEGY");
@@ -1426,7 +1430,7 @@ state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
                   mpi_opt_func->summary  = peak_power_mpi_opt_end_summary;
                   mpi_opt_func->periodic = peak_power_mpi_opt_periodic_action;
                 }
-        }else barrier_optimize = 0;
-#endif
+        } else barrier_optimize = 0;
+#endif // !SINGLE_CONNECTION && MPI_OPTIMIZED
         return EAR_SUCCESS;
 }
