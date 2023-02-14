@@ -70,7 +70,9 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 state_t policy_init(polctx_t *c)
 {
     if (is_mpi_enabled()) {
+#if MPI_OPTIMIZED
         mpi_opt_load(&mpi_opt_symbols);
+#endif
         mpi_app_init(c);
     }
     for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {

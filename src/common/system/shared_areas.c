@@ -89,10 +89,10 @@ void * attach_shared_area(char *path,int area_size,uint perm,int *shared_fd,int 
 		strcpy(buff,path);
     fd=open(buff,perm);
     *shared_fd = fd;
-    char buffout[1024];
     if (fd<0){
 				#if SHOW_DEBUGS
         error("error attaching to sharing memory (%s)\n",strerror(errno));
+        char buffout[1024];
         sprintf(buffout, "echo '%s, %s, %d, %u, %d' >> /tmp/PLUGIN", strerror(errno), path, area_size, perm, fd);
         system(buffout);
 				#endif

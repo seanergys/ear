@@ -1136,7 +1136,9 @@ void ear_init()
 
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
+#if MPI_OPTIMIZED
         ear_mpi_opt_num_nodes = sched_num_nodes();
+#endif
 
 				/* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
 				if (synchronize_masters == 0){

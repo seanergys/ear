@@ -35,7 +35,9 @@
 
 
 static char *csv_log_file_env;
+#if 0
 static char *csv_log_file_env_loops;
+#endif
 static char csv_loop_log_file[1024];
 static char csv_log_file[1024];
 static char heroes_ids[1024];
@@ -94,7 +96,9 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
     debug("heroes report_init");
     char nodename[128];
+#if 0
     char *default_heroes_log_path = ".";
+#endif
     int ret;
 		if (id->master_rank >= 0 ) must_report = 1;
 		if (!must_report) return EAR_SUCCESS;
