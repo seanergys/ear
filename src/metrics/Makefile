@@ -7,7 +7,7 @@ stat_BINS = libmetrics.a
 dyna_BINS = libmetrics.so
 
 ######## FILES
-
+a
 mets_OBJS = \
     $(SRCDIR)/metrics/common/apis.o \
     $(SRCDIR)/metrics/common/cupti.o \
@@ -18,11 +18,12 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
-    $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/msr.o \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
+    $(SRCDIR)/metrics/common/popen.o \
+    $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/rsmi.o \
     $(SRCDIR)/metrics/common/redfish.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
