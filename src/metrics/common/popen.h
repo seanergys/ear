@@ -18,6 +18,8 @@
 #ifndef METRICS_COMMON_POPEN_H
 #define METRICS_COMMON_POPEN_H
 
+#include <common/states.h>
+
 // Use example:
 //  float f1, f2;
 //  popen_t p;
@@ -33,7 +35,14 @@
 //  - a: avoid (pass to next read argument)
 //  - s: return integer
 //  - i: return integer
-//  - f: return float
+//  - d: return double
+//  - D: return double vector
+//
+//  Open options:
+//  - escape_lines: avoids parsing and returning the first N typical header lines.
+//  - one_shot: used when the popen process is closed after the reading and not
+//              kept in the background. Under the hood blocks the read call,
+//              ensuring you have something to read.
 
 typedef struct popen_s {
     char  table[16][16][128];
@@ -46,7 +55,7 @@ typedef struct popen_s {
     int   fd;
 } popen_t;
 
-state_t popen_open(char *command, int escape_lines, popen_t *p);
+state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p);
 
 void popen_close(popen_t *p);
 

@@ -26,8 +26,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <common/states.h>
 #include <common/output/debug.h>
+#include <metrics/common/popen.h>
 
 #define MAX_ROWS          16
 #define MAX_COLS          16
@@ -35,7 +35,7 @@
 
 static char no_string = '\0';
 
-state_t popen_open(char *command, int escape_lines, popen_t *p)
+state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
 {
     // Cleaning
     memset(p, 0, sizeof(popen_t));
@@ -45,7 +45,9 @@ state_t popen_open(char *command, int escape_lines, popen_t *p)
     }
     p->fd = fileno(p->file);
     p->rows_escape = escape_lines;
-    fcntl(p->fd, F_SETFL, O_NONBLOCK);
+    if (!one_shot) {
+        fcntl(p->fd, F_SETFL, O_NONBLOCK);
+    }
     return EAR_SUCCESS;
 }
 
@@ -93,6 +95,8 @@ static void static_parse(popen_t *p, char *buffer)
     p->cols_count = 0;
     p->rows_count = 0;
     p->rows_index = 0;
+    // Cleaning table
+    memset(p->table, 0, sizeof(p->table));
 
     for (c = 0; c < strlen(buffer)+1; ++c) {
         if (buffer[c] == ' ' || buffer[c] == '\t' || buffer[c] == '\n' || buffer[c] == '\0') {
@@ -186,14 +190,28 @@ int popen_read(popen_t *p, const char* f, ...)
                 *i = 0;
             }
         }
-        // If float
-        if (*f == 'f') {
-            float *f = va_arg(args, float *);
+        // If double
+        if (*f == 'd') {
+            double *d = va_arg(args, double *);
             if (was_pending) {
-                *f = atof(p->table[r][c]);
+                *d = atof(p->table[r][c]);
             } else {
-                *f = 0.0f;
+                *d = 0.0;
             }
+        }
+        // If double vector
+        if (*f == 'D') {
+            double *D = va_arg(args, double *);
+            while(c < p->cols_count) {
+                if (was_pending) {
+                    *D = atof(p->table[r][c]);
+                } else {
+                    *D = 0.0;
+                }
+                ++D;
+                ++c;
+            }
+            break;
         }
         ++f;
         ++c;
@@ -227,3 +245,4 @@ int main(int argc, char *argv[])
     }
     return 0;
 }
+#endif
