@@ -15,6 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+#include <stdlib.h>
 #include <metrics/common/popen.h>
 #include <metrics/gpu/archs/dcgmi.h>
 
@@ -24,6 +25,7 @@ static uint gpus_count;
 
 state_t gpu_dcgmi_init(char *events, uint events_count_in)
 {
+    popen_t p;
     state_t s;
     // Getting the number of GPUS
     if (state_fail(s = popen_open("dcgmi discovery -l", 0, 1, &p))) {
@@ -52,7 +54,7 @@ state_t gpu_dcgmi_read(dcgmi_t *d)
     if (state_fail(s = popen_open(command, 2, 1, &p))) {
         return s;
     }
-    while(popen_read(&p, "aiD", &gpu, &aux)) {
+    while(popen_read(&p, "aiD", &gpu, values)) {
         memcpy(d[gpu].values, values, sizeof(double)*events_count);
         debug("GPU%d: %lf\n", gpu, d[gpu].values[0]);
     }
