@@ -235,8 +235,8 @@ int main(int argc, char *argv[])
     float f1, f2;
     popen_t p;
     int gpu;
-    popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, &p);
 
+    popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, &p);
     while (1) {
         while(popen_read(&p, "aiff", &gpu, &f1, &f2)) {
             printf("RETURNED: %d %f %f\n", gpu, f1, f2);
