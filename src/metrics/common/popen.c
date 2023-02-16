@@ -97,7 +97,6 @@ static void static_parse(popen_t *p, char *buffer)
     p->rows_index = 0;
     // Cleaning table
     memset(p->table, 0, sizeof(p->table));
-
     for (c = 0; c < strlen(buffer)+1; ++c) {
         if (buffer[c] == ' ' || buffer[c] == '\t' || buffer[c] == '\n' || buffer[c] == '\0') {
             word_count += (char_count > 0);
@@ -118,6 +117,9 @@ static void static_parse(popen_t *p, char *buffer)
             }
             word_count = 0;
             char_count = 0;
+        }
+        if (p->rows_count >= MAX_ROWS) {
+            break;
         }
     }
     #if SHOW_DEBUGS
