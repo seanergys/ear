@@ -18,11 +18,12 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
-    $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/msr.o \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
+    $(SRCDIR)/metrics/common/popen.o \
+    $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/rsmi.o \
     $(SRCDIR)/metrics/common/redfish.o \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
@@ -56,10 +57,11 @@ mets_OBJS = \
     $(SRCDIR)/metrics/imcfreq/archs/eard.o \
     $(SRCDIR)/metrics/imcfreq/archs/dummy.o \
     $(SRCDIR)/metrics/imcfreq/archs/intel63.o \
-	$(SRCDIR)/metrics/proc/stat.o \
+    $(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
     $(SRCDIR)/metrics/gpu/gpuproc.o \
     $(SRCDIR)/metrics/gpu/archs/cupti.o \
+    $(SRCDIR)/metrics/gpu/archs/dcgmi.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
     $(SRCDIR)/metrics/gpu/archs/eard.o \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \

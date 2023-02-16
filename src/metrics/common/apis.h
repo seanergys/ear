@@ -46,6 +46,7 @@
 // Load EARD API or not
 #define EARD             1
 #define NO_EARD          0
+#define TRY_PRIV        10
 #define no_ctx           NULL
 //
 #define GRANULARITY_NONE       0

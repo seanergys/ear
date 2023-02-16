@@ -42,27 +42,23 @@ AC_DEFUN([X_AC_RSMI],
 		]
 	)
 
-	if test $FEAT_GPUS = 1;
-	then
-		AC_CACHE_CHECK(
-			[for RSMI root directory],
-			[_cv_rsmi_dir_root],
-			[
-				X_AC_RSMI_FIND_ROOT_DIR([])
-			
-				if test -z "$_cv_rsmi_dir_root"; then
-					_x_ac_rsmi_dirs_root="${_ax_ld_dirs_root}"
-					_x_ac_rsmi_custom="yes"
-				
-					X_AC_RSMI_FIND_ROOT_DIR([])
-				fi
-			]
-		)
-	fi
+    AC_CACHE_CHECK(
+        [for RSMI root directory],
+        [_cv_rsmi_dir_root],
+        [
+            X_AC_RSMI_FIND_ROOT_DIR([])
+
+            if test -z "$_cv_rsmi_dir_root"; then
+                _x_ac_rsmi_dirs_root="${_ax_ld_dirs_root}"
+                _x_ac_rsmi_custom="yes"
+
+                X_AC_RSMI_FIND_ROOT_DIR([])
+            fi
+        ]
+    )
 
 	if test -z "$_cv_rsmi_dir_root"; then
 		echo checking for RSMI CFLAGS... no
-		FEAT_GPUS=0
 	else
 		RSMI_DIR=$_cv_rsmi_dir_root
 		RSMI_CFLAGS="-I\$(RSMI_BASE)/include -DRSMI_BASE=\\\"\$(RSMI_BASE)\\\""

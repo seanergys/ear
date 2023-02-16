@@ -128,7 +128,7 @@ char *ear_getenv(const char *name)
 {
     static char *pfx[] = { "", "SCHED_", "SLURM_", "OAR_", "PBS_"};
     static int pfx_n = 5;
-    char buffer[32];
+    char buffer[128];
     char *var;
     int i;
 
