@@ -31,6 +31,10 @@ else
 CFLAGS += -DEARL_LIGHT=0
 endif
 
+ifeq ($(DCGMI), 1)
+CFLAGS += -DDCGMI=1
+endif
+
 
 # export LIBCC
 # export LIBCC_FLAGS

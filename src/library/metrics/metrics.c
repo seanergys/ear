@@ -160,11 +160,13 @@ mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
 
+#if DCGMI
 #define DCGMI_NUM_EVENTS 3
 dcgmi_t     *dcgmi_metrics;
 uint         dcgmi_events[DCGMI_NUM_EVENTS]={fp64_active,fp32_active,dram_active};
 char        dcgmi_events_str[256];
 char        dcgmi_metrics_str[1024];
+#endif
 char        gpu_str[256];
 #endif // USE_GPUS
 
@@ -415,10 +417,13 @@ static void metrics_static_init(topology_t *tp)
       gpuproc_load(1);
     }
 #endif
+  #if DCGMI
+   verbose_master(0,"DCGMI support ON");
    gpu_dcgmi_events_to_str(dcgmi_events, DCGMI_NUM_EVENTS, dcgmi_events_str);
    gpu_dcgmi_init(dcgmi_events_str, DCGMI_NUM_EVENTS);
    gpu_dcgmi_data_alloc(&dcgmi_metrics);
    verbose_master(2, "DCGMI initialized with %u events list=%s", DCGMI_NUM_EVENTS, dcgmi_events_str);
+   #endif
 
 #endif // USE_GPUS
     debug("metics_load ready");
@@ -1487,9 +1492,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->min_mpi = 100;
 
     /* DCGMI */
+    #if DCGMI
     gpu_dcgmi_read(dcgmi_metrics);
     gpu_dcgmi_data_str(dcgmi_metrics, dcgmi_metrics_str);
     verbose_master(2, "DCGMI metrics %s", dcgmi_metrics_str);
+    #endif
 
 		/* MPI statistics */
 		if (is_mpi_enabled()) {
