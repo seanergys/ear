@@ -18,12 +18,14 @@
 #ifndef EXTERNAL_H 
 #define EXTERNAL_H
 
+#include <common/types/types.h>
+
 typedef struct ear_manager {
     int new_mask;
 } ear_mgt_t;
 
 
-int ear_connect(ear_mgt_t *ear);
-int ear_disconnect();
+state_t ear_connect(ear_mgt_t *ear);
+state_t ear_disconnect();
 
 #endif
