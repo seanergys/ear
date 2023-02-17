@@ -5,14 +5,18 @@ CFLAGS = $(CC_FLAGS) -fPIC -I$(SRCDIR) $(CONSTANTS) $(DB_CFLAGS)
 #type_OBJS = $(patsubst %.c, %.o, $(shell find -maxdepth 1 -type f -name '*.c'))
 
 
+ext_LIB = libext.a
 ext_OBJS = $(SRCDIR)/common/external/ear_external.o
 
 ######## RULES
 
-all: $(ext_OBJS)
+all: $(ext_OBJS) $(ext_LIB)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<
+
+libext.a: $(ext_OBJS)
+	$(AR) rvs $@ $(ext_OBJS) 
 
 ######## OPTIONS
 
