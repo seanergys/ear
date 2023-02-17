@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <common/types/types.h>
+#include <common/types/application.h>
 #include <common/system/shared_areas.h>
 #include <common/external/ear_external.h>
 
@@ -27,26 +28,49 @@
 static int fd_resched = -1;
 static char path[256];
 
-int get_resched_path(char *tmp, uint ID, char *path)
+int get_ear_external_path(char *tmp, uint ID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
 	sprintf(path,"%s/%u/.ear_resched",tmp, ID);
 	return EAR_SUCCESS;	
 }
 
+ear_mgt_t *create_ear_external_shared_area(char *path)
+{
+    ear_mgt_t mgt;
+    return (ear_mgt_t *)create_shared_area(path, (char *)&mgt, sizeof(ear_mgt_t), &fd_resched, 1);
+}
+
+ear_mgt_t *attach_ear_external_shared_area(char *path)
+{
+    return (ear_mgt_t *) attach_shared_area(path, sizeof(ear_mgt_t), O_RDWR, &fd_resched, NULL);
+}
+
+void dettach_ear_external_shared_area()
+{
+    dettach_shared_area(fd_resched);
+}
+
+void dipose_ear_external_shared_area(char *path)
+{
+    dispose_shared_area(path, fd_resched);
+}
+
 state_t ear_connect(ear_mgt_t *ear) 
 {
 
-    //create resched area
-    ear_mgt_t mgt;
-    char *tmp = ""; // how do we get the tmp? env_var?
-
     //get the path
+    char *tmp = getenv("EAR_TMP");
+    char *jid = getenv("SLURM_JOB_ID");
+    char *sid = getenv("SLURM_STEP_ID");
+    if ((jid == NULL) || (sid == NULL)) return EAR_ERROR;
     
-    if (get_resched_path(tmp, 0, path) != EAR_SUCCESS) return EAR_ERROR;
+    int jobid = atoi(jid);
+    int stepid = atoi(sid);
+    uint id = create_ID(jobid, stepid); // jobid i stepid es poden treure de la variable d'entorn de slurm
+    if (get_ear_external_path(tmp, id, path) != EAR_SUCCESS) return EAR_ERROR;
 
-    create_shared_area(path, (char *)&mgt, sizeof(ear_mgt_t), &fd_resched, 1);
-    attach_shared_area(path, sizeof(ear_mgt_t), O_RDWR, &fd_resched, NULL);
+    attach_ear_external_shared_area(path);
 
     return EAR_SUCCESS;
 }
@@ -54,10 +78,7 @@ state_t ear_connect(ear_mgt_t *ear)
 
 state_t ear_disconnect()
 {
-    dettach_shared_area(fd_resched);
-
-    //is this necessary??
-    dispose_shared_area(path, fd_resched);
+    dettach_ear_external_shared_area();
 
     return EAR_SUCCESS;
 }
