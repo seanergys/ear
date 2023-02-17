@@ -42,10 +42,29 @@
 +----------------+----------+------------------------------------------------------+
 */
 
-#define fp64_active 1006
-#define fp16_active 1008
-#define fp32_active 1007
-#define dram_active 1005
+/* for now, we don't need a more complex structure since event numbers
+ * are consecutive
+ */
+#define dcgmi_first_event     1001
+/* There are less events, but we wil do it simpler */
+#define dcgmi_num_events      14
+
+#define sm_active             1002
+#define sm_occupancy          1003
+#define tensor_active         1004
+#define fp64_active           1006
+#define fp16_active           1008
+#define tensor_imma_active    1013
+#define tensor_hmma_active    1014
+#define fp32_active           1007
+#define dram_active           1005
+#define pcie_tx_bytes         1009
+#define pcie_rx_bytes         1010
+#define gr_engine_active      1001
+#define nvlink_tx_bytes       1011    
+#define nvlink_rx_bytes       1012
+
+   
 
 typedef struct dcgmi_s {
     double values[15];
@@ -58,5 +77,10 @@ state_t gpu_dcgmi_read(dcgmi_t *d);
 void gpu_dcgmi_data_alloc(dcgmi_t **d);
 void gpu_dcgmi_events_to_str(uint *dcgmi_events, uint num_ev,char * dcgmi_events_str);
 void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str);
+
+/* Accumulates d in accum for elapsed period */
+void gpu_dcgmi_accum_data(dcgmi_t *accum, dcgmi_t *d, double elapsed);
+/* Given an accumulated elpased time, computes the average for each event value and GPU */
+void gpu_dcgmi_data_avg(dcgmi_t *accum, double elapsed);
 
 #endif //METRICS_GPU_DCGMI_H

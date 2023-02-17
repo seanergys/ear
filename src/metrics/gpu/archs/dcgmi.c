@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <metrics/common/popen.h>
@@ -24,7 +24,76 @@
 static char command[1024];
 static uint events_count  = 0;
 static uint gpus_count    = 0;
+static uint *ev_list;
 
+typedef struct dcgmi_ev_conf{
+  char group;
+  uint field;
+  }dcgmi_ev_conf_t;
+ 
+/* These data could be gather running dcgmi profile -l */ 
+/* ordered based on ev number */
+/* From DCGMI doc: A metric from each letter group can be collected without multiplexing. 
+ * A metric from A.1 can be collected with another metric from A.1 without multiplexing. 
+ * A metric from A.1 will be multiplexed with another metric from A.2 or A.3. 
+ * Metrics from different letter groups can be combined for concurrent collection (without multiplexing) */
+
+/*
+ * dcgmi profile -l
+ * +----------------+----------+------------------------------------------------------+
+| Group.Subgroup | Field ID | Field Tag                                            |
++----------------+----------+------------------------------------------------------+
+| A.1            | 1002     | sm_active                                            |
+| A.1            | 1003     | sm_occupancy                                         |
+| A.1            | 1004     | tensor_active                                        |
+| A.1            | 1006     | fp64_active                                          |
+| A.2            | 1008     | fp16_active                                          |
+| A.2            | 1013     | tensor_imma_active                                   |
+| A.2            | 1014     | tensor_hmma_active                                   |
+| A.3            | 1007     | fp32_active                                          |
+| B.0            | 1005     | dram_active                                          |
+| C.0            | 1009     | pcie_tx_bytes                                        |
+| C.0            | 1010     | pcie_rx_bytes                                        |
+| D.0            | 1001     | gr_engine_active                                     |
+| E.0            | 1011     | nvlink_tx_bytes                                      |
+| E.0            | 1012     | nvlink_rx_bytes                                      |
++----------------+----------+------------------------------------------------------+
+*/
+
+
+static dcgmi_ev_conf_t dcgmi_ev_confs[dcgmi_num_events]={
+  {'D',0},
+  {'A',1},
+  {'A',1},
+  {'A',1},
+  {'B',0},
+  {'A',1},
+  {'A',3},
+  {'A',2},
+  {'C',0},
+  {'C',0},
+  {'E',0},
+  {'E',0},
+  {'A',2},
+  {'A',2}
+};
+
+static char *dcgmi_ev_names[dcgmi_num_events]={
+  "gr_engine_active", /* 1001 */
+  "sm_active",
+  "sm_occupancy",
+  "tensor_active",
+  "dram_active",      /* 1005 */
+  "fp64_active",
+  "fp32_active",
+  "fp16_active",
+  "pcie_tx_bytes",
+  "pcie_rx_bytes",    /* 1010 */
+  "nvlink_tx_bytes",
+  "nvlink_rx_bytes",
+  "tensor_imma_active",
+  "tensor_hmma_active" /* 1014 */
+};
 state_t gpu_dcgmi_init(char *events, uint events_count_in)
 {
     popen_t p;
@@ -91,7 +160,7 @@ void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str)
     strcat(d_str, ev_str);
     for (e = 0; e < events_count; e++){
       if (e) strcat(d_str,",");
-      snprintf(ev_str, sizeof(ev_str), "ev[%u] = %lf " , e, d[g].values[e]);
+      snprintf(ev_str, sizeof(ev_str), "ev[%s] = %lf " , dcgmi_ev_names[ev_list[e] - dcgmi_first_event], d[g].values[e]);
       strcat(d_str, ev_str);
     }
   }
@@ -104,12 +173,35 @@ void gpu_dcgmi_events_to_str(uint *dcgmi_events, uint num_ev,char * dcgmi_events
 
   if ((dcgmi_events == NULL) || (dcgmi_events_str == NULL)) return;
 
+  ev_list = dcgmi_events;
+
   dcgmi_events_str[0] = '\0';
   for (i = 0; i < num_ev; i++){
     if (i) strcat(dcgmi_events_str, ",");
     snprintf(ev_str, 64, "%u", dcgmi_events[i]);
     strcat(dcgmi_events_str,ev_str);
   }
+}
+
+void gpu_dcgmi_accum_data(dcgmi_t *accum, dcgmi_t *d, double elapsed)
+{
+  if ((accum == NULL) || (d == NULL) || (events_count == 0) || (gpus_count == 0)) return;
+  for (uint g = 0; g < gpus_count; g++){
+    for (uint e = 0; e < events_count; e++){
+      accum[g].values[e] += d[g].values[e] * elapsed;
+    }
+  }
+}
+
+void gpu_dcgmi_data_avg(dcgmi_t *accum, double elapsed)
+{
+  if ((accum == NULL) || (elapsed == 0) || (events_count == 0) || (gpus_count == 0)) return;
+  for (uint g = 0; g < gpus_count; g++){
+    for (uint e = 0; e < events_count; e++){
+      if (accum[g].values[e]) accum[g].values[e] = accum[g].values[e] / elapsed;
+    }
+  }
+
 }
 
 #if TEST

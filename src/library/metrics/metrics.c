@@ -160,12 +160,14 @@ mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
 
-#if DCGMI
-#define DCGMI_NUM_EVENTS 3
-dcgmi_t     *dcgmi_metrics;
-uint         dcgmi_events[DCGMI_NUM_EVENTS]={fp64_active,fp32_active,dram_active};
-char        dcgmi_events_str[256];
-char        dcgmi_metrics_str[1024];
+#if DCGMI && USE_GPUS
+#define DCGMI_NUM_EVENTS 4
+static dcgmi_t     *dcgmi_metrics;
+static dcgmi_t     *dcgmi_metrics_accum;
+static uint         dcgmi_events[DCGMI_NUM_EVENTS]={fp32_active,dram_active,pcie_tx_bytes,pcie_rx_bytes};
+static char        dcgmi_events_str[256];
+static char        dcgmi_metrics_str[1024];
+static double      dcgmi_elapsed = 0;
 #endif
 char        gpu_str[256];
 #endif // USE_GPUS
@@ -417,11 +419,12 @@ static void metrics_static_init(topology_t *tp)
       gpuproc_load(1);
     }
 #endif
-  #if DCGMI
+  #if DCGMI && USE_GPUS
    verbose_master(0,"DCGMI support ON");
    gpu_dcgmi_events_to_str(dcgmi_events, DCGMI_NUM_EVENTS, dcgmi_events_str);
    gpu_dcgmi_init(dcgmi_events_str, DCGMI_NUM_EVENTS);
    gpu_dcgmi_data_alloc(&dcgmi_metrics);
+   gpu_dcgmi_data_alloc(&dcgmi_metrics_accum);
    verbose_master(2, "DCGMI initialized with %u events list=%s", DCGMI_NUM_EVENTS, dcgmi_events_str);
    #endif
 
@@ -1430,6 +1433,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
 	sig_ext->elapsed = time_s;
 
+
 	/* FLOPS */
 	flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
 	flops_help_toold(&flops_diff[APP], metrics->FLOPS);
@@ -1491,12 +1495,22 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->max_mpi = 0;
 		sig_ext->min_mpi = 100;
 
-    /* DCGMI */
-    #if DCGMI
-    gpu_dcgmi_read(dcgmi_metrics);
-    gpu_dcgmi_data_str(dcgmi_metrics, dcgmi_metrics_str);
-    verbose_master(2, "DCGMI metrics %s", dcgmi_metrics_str);
+    /* DCGMI: read only for master */
+    #if DCGMI && USE_GPUS
+    /* Accumulating */
+    if (sign_app_loop_idx == LOO){ 
+      gpu_dcgmi_read(dcgmi_metrics);
+      dcgmi_elapsed += time_s;
+      gpu_dcgmi_accum_data(dcgmi_metrics_accum, dcgmi_metrics, sig_ext->elapsed);
+      gpu_dcgmi_data_str(dcgmi_metrics, dcgmi_metrics_str);
+      verbose_master(2, "DCGMI loop metrics %s elapsed %.3lf sec (total %.3lf sec)", dcgmi_metrics_str, time_s, dcgmi_elapsed);
+    }else{
+      gpu_dcgmi_data_avg(dcgmi_metrics_accum, dcgmi_elapsed);
+      gpu_dcgmi_data_str(dcgmi_metrics_accum, dcgmi_metrics_str);
+      verbose_master(1, "DCGMI app metrics %s elapsed %.3lf sec", dcgmi_metrics_str, dcgmi_elapsed);
+    }
     #endif
+
 
 		/* MPI statistics */
 		if (is_mpi_enabled()) {
@@ -1656,8 +1670,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
 
+
 	/* Compute and print the total savings */
 	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
+
 
 		float avg_esaving = sig_ext->saving / sig_ext->telapsed;
 		float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
