@@ -57,13 +57,6 @@ void gpu_nvml_load(gpu_ops_t *ops, int eard)
 			else                      ok_pool = 0;
 		} 
 
-    /* Proposal 
-     * EARD     --> ok_pool = 0     (master, EARD up)
-     * NO_EARD  --> ok_pool = 0     (no master)
-     * EARD +  TRY_PRIV    --> ok_pool = 1 (master, EARD not running)
-     * NO_EARD + TRY_PRIV  --> ok_pool = 1 (EARD)
-     */
-
 
     debug("Pooling %d", ok_pool);
     // The locking and duplicate control is at higher level

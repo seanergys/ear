@@ -64,7 +64,8 @@
 #define nvlink_tx_bytes       1011    
 #define nvlink_rx_bytes       1012
 
-   
+#define RATIO 1
+#define ACCUM 0
 
 typedef struct dcgmi_s {
     double values[15];
@@ -76,11 +77,24 @@ state_t gpu_dcgmi_read(dcgmi_t *d);
 
 void gpu_dcgmi_data_alloc(dcgmi_t **d);
 void gpu_dcgmi_events_to_str(uint *dcgmi_events, uint num_ev,char * dcgmi_events_str);
-void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str);
+void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str, uint *ev_list, uint num_ev);
+
+/* This function changes the command to be executed
+ * warning: it is user responsabiity to allocate data with the right number of events
+ * since the API is not taking that into account.
+ */
+void gpu_dcgmi_set_events(char *events, uint events_count_in);
 
 /* Accumulates d in accum for elapsed period */
-void gpu_dcgmi_accum_data(dcgmi_t *accum, dcgmi_t *d, double elapsed);
+void gpu_dcgmi_accum_data(dcgmi_t *accum, dcgmi_t *d, double elapsed, uint *ev_list, uint num_ev);
 /* Given an accumulated elpased time, computes the average for each event value and GPU */
-void gpu_dcgmi_data_avg(dcgmi_t *accum, double elapsed);
-
+void gpu_dcgmi_data_avg(dcgmi_t *accum, double elapsed, uint *ev_list, uint num_ev);
+/* Returns RATIO or ACUM depending on the event. RATIO means is a ratio of activity (percentage?);
+ * ACCUM means is an absolute  value 
+ */
+uint gpu_dcgmi_event_type(uint event);
+/* DCGMI detected GPUs can be different than NVML */
+uint gpu_dcgmi_gpus_detected();
+/* Returns the name of the event */
+char *gpu_dcgmi_event_to_name(uint ev);
 #endif //METRICS_GPU_DCGMI_H

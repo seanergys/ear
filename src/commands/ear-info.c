@@ -111,6 +111,7 @@ int main(int argc,char *argv[])
 
   my_node_conf_t *my_node_conf = NULL;
   if (nodename != NULL){
+    strtok(nodename, ".");
     my_node_conf = get_my_node_conf(&my_cluster, nodename); 
     if (my_node_conf == NULL){
       printf("Error, Node %s not found\n", nodename);
