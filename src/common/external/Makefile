@@ -6,7 +6,10 @@ CFLAGS = $(CC_FLAGS) -fPIC -I$(SRCDIR) $(CONSTANTS) $(DB_CFLAGS)
 
 
 ext_LIB = libext.a
-ext_OBJS = $(SRCDIR)/common/external/ear_external.o
+ext_OBJS = \
+		   $(SRCDIR)/common/external/ear_external.o \
+		   $(SRCDIR)/common/system/shared_areas.o
+		   
 
 ######## RULES
 

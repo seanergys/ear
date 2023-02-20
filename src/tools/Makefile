@@ -8,6 +8,7 @@ tool_BINS = \
     coeffs_show \
     coeffs_default \
     coeffs_null \
+    external_attach \
     ear_conf
 ifdef DB_BASE
 tool_BINS += \
@@ -31,6 +32,9 @@ comm_OBJS = \
 mang_OBJS = \
     $(SRCDIR)/management/libmgt.a \
 	$(SRCDIR)/metrics/libmetrics.a
+
+attach_OBJS = \
+	$(SRCDIR)/common/external/libext.a
 
 ######## RULES
 
@@ -63,6 +67,8 @@ learning_delete: learning_delete.c $(comm_OBJS)
 ear_conf: ear_conf.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
+external_attach: external_attach.c $(comm_OBJS) $(attach_OBJS)
+	$(CCC) -o $@ $< $(comm_OBJS) $(attach_OBJS) $(DB_LDFLAGS)
 ######## OPTIONS
 
 install: tool.ginstall;
