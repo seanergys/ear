@@ -28,16 +28,10 @@
 #define HW_OP_WRITE   PERF_COUNT_HW_CACHE_OP_WRITE
 #define HW_RES_MISS   PERF_COUNT_HW_CACHE_RESULT_MISS
 
-// 0   1  2   3   4
-// L1D L2 LLR LLW LL
 // It seems that you can't mix OP_READ and OP_WRITE.
-#if 0
-static ullong gen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
-static ullong gen_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
-static ullong gen_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
-#endif
 static ullong hwell_l1d_ev = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
-static ullong hwell_l2_ev  = 0x2724;
+static ullong hwell_l2_ev  = 0x2724; // L2_RQSTS.ALL_DEMAND_MISS
+static ullong hwell_ll_ev  = 0x412e; // LLC Misses (architectural)
 static ullong hwell_llr_ev = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong hwell_llw_ev = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
 static ullong zen_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
@@ -47,41 +41,70 @@ static ullong arm_l1d_ev   = HW_CACHE_L1D | (HW_OP_READ  << 8) | (HW_RES_MISS <<
 static ullong arm_llr_ev   = HW_CACHE_LL  | (HW_OP_READ  << 8) | (HW_RES_MISS << 16);
 static ullong arm_llw_ev   = HW_CACHE_LL  | (HW_OP_WRITE << 8) | (HW_RES_MISS << 16);
 //
-static perf_t perfs[9];
-static uint levels[9];
-static uint counter = 0;
-static uint started;
+static topology_t *tp;
+static perf_t      perfs [7]; // Sorted indian line
+static int         offset[7]; // Sorted indian line
+static int         loaded[7]; // Sorted by cache level
+static uint        counter;
+static uint        started;
+static uint        cache_last_level;
 
-void set_cache(ullong event, uint type, uint level)
+int set_cache(uint enable, ullong event, uint type, uint offset_in)
 {
 	state_t s;
+    if (!enable) {
+        return 0;
+    }
 	if (state_fail(s = perf_open(&perfs[counter], &perfs[0], 0, type, event))) {
 		debug("perf_open for level %d returned %d (%s)", level, s, state_msg);
-		return;
+		return 0;
 	}
-	levels[counter] = level;
+    offset[counter] = offset_in;
+    loaded[offset]  = 1;
 	counter++;
+    return 1;
+}
+
+int OFFSET(int level)
+{
+    #define ll  INT_MAX
+    #define llr INT_MAX-1
+    #define llw INT_MAX-2
+    #define lx  INT_MAX-3
+    // Based on cache_t structure:
+    if (level ==   1) return  0;
+    if (level ==   2) return  1;
+    if (level ==   3) return  2;
+    if (level ==   4) return -1;
+    if (level == ll ) return  3;
+    if (level == llr) return  4;
+    if (level == llw) return  5;
+    if (level ==  lx) return offset(cache_last_level);
+    return -1;
 }
 
 void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 {
+    // Saving the last cache level (our lx)
+    cache_last_level = tp->cache_last_level;
+    //
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-		set_cache(hwell_l1d_ev, PERF_TYPE_HW_CACHE, 0);
-		set_cache(hwell_l2_ev , PERF_TYPE_RAW     , 1);
-		set_cache(hwell_llr_ev, PERF_TYPE_HW_CACHE, 2);
-        set_cache(hwell_llw_ev, PERF_TYPE_HW_CACHE, 3);
+		int l1  = set_cache(   1, hwell_l1d_ev, PERF_TYPE_HW_CACHE, OFFSET(  1));
+		int l2  = set_cache(   1, hwell_l2_ev , PERF_TYPE_RAW     , OFFSET(  2));
+		int llr = set_cache(   1, hwell_llr_ev, PERF_TYPE_HW_CACHE, OFFSET(llr));
+        int llw = set_cache( llr, hwell_llw_ev, PERF_TYPE_HW_CACHE, OFFSET(llw));
+        int ll  = set_cache(!llr, hwell_ll_ev , PERF_TYPE_RAW     , OFFSET(ll ));
 	}
 	else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-		set_cache(zen_l1d_ev, PERF_TYPE_HW_CACHE, 0);
-		set_cache(zen_llr_ev, PERF_TYPE_HW_CACHE, 2);
-        set_cache(zen_llw_ev, PERF_TYPE_HW_CACHE, 3);
+		set_cache(1, zen_l1d_ev, PERF_TYPE_HW_CACHE, OFFSET(  1));
+		set_cache(1, zen_llr_ev, PERF_TYPE_HW_CACHE, OFFSET(llr));
+        set_cache(1, zen_llw_ev, PERF_TYPE_HW_CACHE, OFFSET(llw));
 	}
     else if (tp->vendor == VENDOR_ARM) {
-        set_cache(arm_l1d_ev, PERF_TYPE_HW_CACHE, 0);
-        set_cache(arm_llr_ev, PERF_TYPE_HW_CACHE, 2);
-        set_cache(arm_llw_ev, PERF_TYPE_HW_CACHE, 3);
-    }
-	else {
+        set_cache(1, arm_l1d_ev, PERF_TYPE_HW_CACHE, OFFSET(  1));
+        set_cache(1, arm_llr_ev, PERF_TYPE_HW_CACHE, OFFSET(llr));
+        set_cache(1, arm_llw_ev, PERF_TYPE_HW_CACHE, OFFSET(llw));
+    } else {
 		debug(Generr.api_incompatible);
         return;
 	}
@@ -134,16 +157,31 @@ state_t cache_perf_read(ctx_t *c, cache_t *ca)
 	}
 	timestamp_get(&ca->time);
 	for (i = 0; i < counter; ++i) {
-        p[levels[i]] = values[i];
+        p[offset[i]] = values[i];
     }
-    if (ca->ll_misses == 0) {
+    // LL: last level as tag ll
+    // LX: last level as number 4, 3 or 2.
+    int ll_values = loaded[OFFSET(ll)];
+    int lx_values = loaded[OFFSET(lx)];
+    // If not loaded LL but loaded LLR and LLW, then LL then have values
+    if (!loaded[OFFSET(ll)] && loaded[OFFSET(llr)] && loaded[OFFSET(llw)]) {
         ca->ll_misses = ca->llr_misses + ca->llw_misses;
+        ll_values = 1;
+    }
+    // If LL still don't have values, but LX have values
+    if (!ll_values && lx_values) {
+        ca->ll_misses = p[OFFSET(lx)];
+    }
+    // If LX don't have values, but LL have values
+    if (!lx_values && ll_values) {
+        p[OFFSET(lx)] = ca->ll_misses;
     }
     debug("total L1D misses: %llu", ca->l1d_misses);
 	debug("total L2  misses: %llu", ca->l2_misses );
+    debug("total L3  misses: %llu", ca->l3_misses );
+    debug("total LL  misses: %llu", ca->ll_misses );
     debug("total LLR misses: %llu", ca->llr_misses);
     debug("total LLW misses: %llu", ca->llw_misses);
-    debug("total LL  misses: %llu", ca->ll_misses );
 
 	return EAR_SUCCESS;
 }

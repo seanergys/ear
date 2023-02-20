@@ -42,18 +42,10 @@ typedef struct cache_s {
 	timestamp_t time;
 	ullong l1d_misses;
 	ullong l2_misses;
-    union {
-        ullong l3r_misses;
-        ullong llr_misses;
-    };
-    union {
-        ullong l3w_misses;
-        ullong llw_misses;
-    };
-    union {
-        ullong l3_misses;
-        ullong ll_misses;
-    };
+    ullong l3_misses;
+    ullong ll_misses;
+    ullong llr_misses;
+    ullong llw_misses;
 } cache_t;
 
 typedef struct coche_ops_s {

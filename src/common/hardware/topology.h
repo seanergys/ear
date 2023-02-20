@@ -83,7 +83,7 @@ typedef struct cpu_s {
     int     sibling_id;     // The thread sibling within a core.
     int     core_id;        // Basically, the lesser sibling_id
     int     socket_id;
-    cl_t l[CL_COUNT];    // Index = level, 0 doesn't exists
+    cl_t    l[CL_COUNT];    // Index = level, 0 doesn't exists
 } cpu_t;
 
 typedef struct topology_s {
@@ -93,7 +93,10 @@ typedef struct topology_s {
     int   socket_count;   //
     int   threads_per_core; // Number or threads per core (not the whole system).
     int   smt_enabled;    // Multithreading enabled = 1, disabled = 0.
+    int   l2_count;       // Chunks of L3 in the system.
     int   l3_count;       // Chunks of L3 in the system.
+    int   l4_count;       // Chunks of L3 in the system.
+    int   cache_last_level; // Returns the maximum cache level
     int   cache_line_size;
     int   vendor;         // Take a look to top defines.
     int   family;         // Take a look to top defines.
