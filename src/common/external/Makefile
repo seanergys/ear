@@ -20,9 +20,16 @@ libext.a: $(ext_OBJS)
 
 ######## OPTIONS
 
-#install: install.components
+install: 
 
-#%.install: %.install.components;
+%.install: ;
 
-#clean: clean.components rclean;
+clean: rclean;
+
+
+
+######## DEPENDENCIES
+
+include $(SRCDIR)/Makefile.depend
+include $(SRCDIR)/Makefile.extra
 
