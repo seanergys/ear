@@ -104,7 +104,7 @@ mpix_OBJS = \
 endif
 
 ifeq ($(DLB), 1)
-comm_OBJS += \
+comm_OBJS += 
 endif
 
 ######## RULES
