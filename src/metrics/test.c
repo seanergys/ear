@@ -97,6 +97,8 @@ void metrics_init(topology_t *tp, int eard)
     frun(sprintf(m.tmp.gran_str, "sockets"));
     frun(sprintf(m.cpi.gran_str, "process"));
     fgpu(sprintf(m.gpu.gran_str, "gpus"   ));
+
+    stress_alloc();
 }
 
 void metrics_read(metrics_read_t *mr)
@@ -179,8 +181,10 @@ static state_t monitor_apis_init(void *whatever)
 
 static state_t monitor_apis_update(void *whatever)
 {
+    stress_bandwidth(1000);
+    
     metrics_read_copy(&mr2, &mr1, &mrD);
-
+    
     // Printf clear
     system("clear");
 
@@ -198,6 +202,8 @@ static state_t monitor_apis_update(void *whatever)
     fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
     frun(printf("—— cpi ————————————————————————————————————————————————————————————————————————\n"));
     frun(    cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel));
+    frun(printf("—— cache ——————————————————————————————————————————————————————————————————————\n"));
+    frun(  cache_data_print(&mrD.cch_diff,  mrD.cch_avrg, verb_channel));
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
     frun(cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel));
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
@@ -225,8 +231,8 @@ int main(int argc, char *argv[])
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 4000;
-	sus->time_burst    = 2000;
+	sus->time_relax    = 100;
+	sus->time_burst    = 100;
 	sa(sus->suscribe(sus));
 
     sleep(100);

@@ -322,6 +322,7 @@ state_t topology_init(topology_t *topo)
     topo->vendor           = 0;
     topo->family           = 0;
     topo->model            = 0;
+    topo->cache_last_level = 0;
     topo->cache_line_size  = 0;
     topo->brand[0]         = '\0';
     topo->avx512           = 0;
@@ -371,13 +372,13 @@ state_t topology_init(topology_t *topo)
         cache_count(4, topo->l4_count)
     }
     if (topo->l4_count) {
-        cache_last_level = 4;
+        topo->cache_last_level = 4;
     } else if (topo->l3_count) {
-        cache_last_level = 3;
+        topo->cache_last_level = 3;
     } else if (topo->l2_count) {
-        cache_last_level = 2;
+        topo->cache_last_level = 2;
     } else {
-        cache_last_level = 1;
+        topo->cache_last_level = 1;
     }
     // TDP definition (to avoid redundancy)
     void topology_tdp(topology_t *topo);
@@ -403,7 +404,11 @@ state_t topology_close(topology_t *topo)
     "socket_count     : %d\n" \
     "threads_per_core : %d\n" \
     "smt_enabled      : %d\n" \
+    "l2_count         : %d\n" \
     "l3_count         : %d\n" \
+    "l4_count         : %d\n" \
+    "cache_last_level : %d\n" \
+    "cache_line_size  : %d\n" \
     "vendor           : %d\n" \
     "family           : %d\n" \
     "brand            : '%s'\n" \
@@ -421,7 +426,11 @@ state_t topology_close(topology_t *topo)
     topo->socket_count, \
     topo->threads_per_core, \
     topo->smt_enabled, \
+    topo->l2_count, \
     topo->l3_count, \
+    topo->l4_count, \
+    topo->cache_last_level, \
+    topo->cache_line_size, \
     topo->vendor, \
     topo->family, \
     topo->brand, \

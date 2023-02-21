@@ -93,9 +93,9 @@ typedef struct topology_s {
     int   socket_count;   //
     int   threads_per_core; // Number or threads per core (not the whole system).
     int   smt_enabled;    // Multithreading enabled = 1, disabled = 0.
-    int   l2_count;       // Chunks of L3 in the system.
+    int   l2_count;       // Chunks of L2 in the system.
     int   l3_count;       // Chunks of L3 in the system.
-    int   l4_count;       // Chunks of L3 in the system.
+    int   l4_count;       // Chunks of L4 in the system.
     int   cache_last_level; // Returns the maximum cache level
     int   cache_line_size;
     int   vendor;         // Take a look to top defines.
