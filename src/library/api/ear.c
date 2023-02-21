@@ -103,6 +103,11 @@
 #include <library/api/mpi_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
+#if DLB
+#include <common/external/ear_external.h>
+char shexternal_region_path[GENERIC_NAME];
+#endif
+
 
 
 void ear_finalize(int exit_status);
@@ -586,7 +591,11 @@ void create_shared_regions()
 
         #if DLB
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
+        get_ear_external_path(tmp, ID, shexternal_region_path);
+        create_ear_external_shared_area(shexternal_region_path);
+        verbose_master(0, "Created shared region for external libraries!");
         #endif
+
 }
 
 /****************************************************************************************************************************************************************/
