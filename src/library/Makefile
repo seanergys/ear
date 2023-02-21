@@ -69,6 +69,11 @@ comm_OBJS = \
     $(SRCDIR)/daemon/local_api/libeard.a \
     $(SRCDIR)/common/libcommon.a
 
+ifeq ($(DLB), 1)
+comm_OBJS += \
+	$(SRCDIR)/common/external/ear_external.o
+endif
+
 
 core_OBJS = \
     api/ear.o \
@@ -101,10 +106,6 @@ mpix_OBJS = \
     api/mpic.o \
     api/mpif.o \
     common/global_comm.o
-endif
-
-ifeq ($(DLB), 1)
-comm_OBJS += 
 endif
 
 ######## RULES
