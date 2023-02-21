@@ -148,14 +148,14 @@ void print_full_apps(application_t *apps, int num_apps)
 			compute_sig_vpi(&vpi, &apps[i].signature);
 			if (!is_sbatch)
 			{
-				printf("%8lu-%-4lu\t %-10s %-10s %-16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
+				printf("%8lu-%-4lu\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
 						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, imc, apps[i].signature.time, apps[i].signature.DC_power, apps[i].signature.GBS, apps[i].signature.CPI, 
 						apps[i].signature.time * apps[i].signature.DC_power, apps[i].signature.IO_MBS, apps[i].signature.perc_MPI, vpi*100);
 			}
 			else
 			{
-				printf("%8lu-%-4s\t %-10s %-10s %-16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %5.1lf %-7.2lf",
+				printf("%8lu-%-4s\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %5.1lf %-7.2lf",
 						apps[i].job.id, "sb", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, imc, apps[i].signature.time, apps[i].signature.DC_power, apps[i].signature.GBS, apps[i].signature.CPI, 
 						apps[i].signature.time * apps[i].signature.DC_power, apps[i].signature.IO_MBS, apps[i].signature.perc_MPI, vpi*100);
