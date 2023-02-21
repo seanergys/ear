@@ -315,6 +315,9 @@ void notify_eard_connection(int status)
 												{       
 																masters_connected+=(int)buffer_recv[i];
 												}
+                        int master_pid = getpid();
+                        PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , masters_info.masters_comm );
+                        verbose(0,"PID for master is %d", master_pid);
 								}
 #else
 								masters_connected=1;
@@ -580,6 +583,10 @@ void create_shared_regions()
 				}
 				exclusive = (current_jobs_in_node == 1);
 				verbose_jobs_in_node(3,node_mgr_data,node_mgr_job_info);
+
+        #if DLB
+        /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
+        #endif
 }
 
 /****************************************************************************************************************************************************************/

@@ -35,6 +35,10 @@ ifeq ($(DCGMI), 1)
 CFLAGS += -DDCGMI=1
 endif
 
+ifeq ($(DLB), 1)
+CFLAGS += -DLB=1
+endif
+
 
 # export LIBCC
 # export LIBCC_FLAGS
@@ -64,6 +68,7 @@ comm_OBJS = \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/daemon/local_api/libeard.a \
     $(SRCDIR)/common/libcommon.a
+
 
 core_OBJS = \
     api/ear.o \
@@ -96,6 +101,10 @@ mpix_OBJS = \
     api/mpic.o \
     api/mpif.o \
     common/global_comm.o
+endif
+
+ifeq ($(DLB), 1)
+comm_OBJS += \
 endif
 
 ######## RULES
