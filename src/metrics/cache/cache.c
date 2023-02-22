@@ -142,6 +142,6 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
     snprintf(buffer, length,
-         "L1D misses: %llu\nL2 misses : %llu\nL3 misses : %llu (%0.2lf GB/s)\n",
-         ca->l1d_misses, ca->l2_misses, ca->l3_misses, gbs);
+         "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
+         ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
 }
