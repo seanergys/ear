@@ -39,13 +39,12 @@
 //  - Requires root: no
 
 typedef struct cache_s {
-	timestamp_t time;
+    ullong lbw_misses;
 	ullong l1d_misses;
 	ullong l2_misses;
     ullong l3_misses;
     ullong ll_misses;
-    ullong llr_misses;
-    ullong llw_misses;
+    timestamp_t time;
 } cache_t;
 
 typedef struct coche_ops_s {
