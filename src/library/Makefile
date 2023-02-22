@@ -36,7 +36,7 @@ CFLAGS += -DDCGMI=1
 endif
 
 ifeq ($(DLB), 1)
-CFLAGS += -DLB=1
+CFLAGS += -DDLB=1
 endif
 
 

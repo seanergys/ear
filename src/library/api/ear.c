@@ -592,6 +592,7 @@ void create_shared_regions()
 
         #if DLB
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
+#warning Compiling with DLB activated
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
         verbose_master(0, "Created shared region for external libraries!");

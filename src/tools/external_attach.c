@@ -38,12 +38,13 @@ int main(int argc, char *argv[])
     setenv("SLURM_JOB_ID", argv[1], 0);
     setenv("SLURM_STEP_ID", argv[2], 0);
 
-    ear_mgt_t mgt;
-    if (state_fail(ear_connect(&mgt))) {
+    ear_mgt_t *mgt = NULL;
+    if ((mgt = ear_connect()) == NULL) {
         printf("Error connecting with the shared region area\n");
         return 1;
     }
 
+    mgt->new_mask = 1;
     // what here?
     //
     if (state_fail(ear_disconnect())) {
