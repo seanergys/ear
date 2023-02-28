@@ -77,8 +77,8 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     freq_max      = (ullong) atoi(buffer);
     freq_max0     = freq_max;
     current_list  = calloc(cpu_count, sizeof(ullong));
-    // Small patch for ARMs (provisional)
-    if (tp->vendor == VENDOR_ARM) {
+    // If the base frequency is speculative
+    if (tp->base_freq_spec) {
         freq_base = freq_max;
     }
     //

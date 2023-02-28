@@ -24,4 +24,10 @@ ullong mrs_midr();
 
 ullong mrs_cntfrq();
 
+ullong mrs_dfr0();
+
+ullong mrs_pmccntr();
+
+ullong mrs_pmccfiltr();
+
 #endif //COMMON_HARDWARE_MRS_H

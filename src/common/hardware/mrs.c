@@ -32,6 +32,9 @@ type mrs_ ##name () { \
     return var; \
 }
 
-mrs_function(ullong, midr  , MIDR_EL1  );
-mrs_function(ullong, cntfrq, CNTFRQ_EL0);
+mrs_function(ullong, midr     , MIDR_EL1       );
+mrs_function(ullong, cntfrq   , CNTFRQ_EL0     );
+mrs_function(ullong, dfr0     , ID_AA64DFR0_EL1);
+mrs_function(ullong, pmccntr  , PMCCNTR_EL0    );
+mrs_function(ullong, pmccfiltr, PMCCFILTR_EL0  );
 

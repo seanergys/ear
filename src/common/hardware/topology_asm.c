@@ -17,10 +17,12 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <math.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/hardware/mrs.h>
 #include <common/hardware/cpuid.h>
@@ -180,6 +182,7 @@ static int msr_microread(char *buffer, size_t size, off_t offset)
         size = size - size_read;
         size_accum += size_read;
     }
+    close(fd);
     return 1;
 }
 
@@ -223,6 +226,43 @@ static void topology_asm_getboost(topology_t *topo)
     #if __ARCH_X86
     topology_asm_getboost_x86(topo);
     #endif
+}
+
+ullong topology_asm_freqspec()
+{
+    ullong khz = 0LLU;
+    // 40 movs * 10.000 * 10.000 = 4.0 GHz
+    // Getting the timestamp we can approximate the CPU frequency.
+    // The ADD, CMP and BNE are not considered because the CPU seems
+    // to perform a speculative execution, not consuming even one cycle.
+    timestamp_t ts1;
+    #define DO_40(X) \
+    X X X X X X X X X X X X X X X X X X X X \
+    X X X X X X X X X X X X X X X X X X X X
+    timestamp_get(&ts1);
+    #if __ARCH_ARM
+    asm volatile
+    (
+        "mov x0, #0;"
+        "mov x1, #10000;"
+        "mov x2, #10000;"
+        "mul x1, x1, x2;"
+        "Loop:"
+        DO_40("mov x8, x8;") // 40 cycles
+        "add x0, x0, #1;"    // 1 cycle
+        "cmp x0, x1;"        // 1 cycle
+        "bne Loop;"          // 2 cycles
+    );
+    double  ns = (double) timestamp_diffnow(&ts1, TIME_NSECS);
+    double chz = (4000000000.0 / ns) * 10.0; // Passing 3.0 GHz to 30.0 CHz (invent)
+           khz = ((ullong) round(chz)) * 100000LU;
+    #endif
+    // Finally, if is under 4 GHz and over 1 GHz the speculation could
+    // be valid. If not, we set 2 GHz which is a common frequency.
+    if (khz > 4000000 || khz < 1000000) {
+        khz = 1000000;
+    }
+    return khz;
 }
 
 void topology_asm(topology_t *topo)

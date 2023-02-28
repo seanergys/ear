@@ -239,15 +239,12 @@ static void topology_watchdog(topology_t *topo)
 
 static void topology_cpuinfo(topology_t *topo)
 {
-    ulong base_freq = 0;
+    ulong base_freq = TOPO_UNDEFINED;
     char *line      = NULL;
     char *col       = NULL; //column
     char *aux       = NULL;
     size_t len      = 0;
     int cpu         = 0;
-
-    // If not found 1GHz
-    base_freq = 1000000;
 
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     while(getline(&line, &len, cpuinfo) != -1) {
@@ -280,8 +277,11 @@ static void topology_cpuinfo(topology_t *topo)
         }
     }
     // In case we don't find the base frequency by low level procedures
-    if (topo->base_freq == 0) {
-        topo->base_freq = base_freq;
+    if (topo->base_freq == TOPO_UNDEFINED) {
+        if (base_freq == TOPO_UNDEFINED) {
+            topo->base_freq = topology_asm_freqspec();
+            topo->base_freq_spec = 1;
+        }
     }
     topo->apicids_found = (cpu == topo->cpu_count);
     fclose(cpuinfo);
@@ -330,7 +330,8 @@ state_t topology_init(topology_t *topo)
     topo->avx512           = 0;
     topo->sve              = 0;
     topo->sve_bits         = 0;
-    topo->base_freq        = 0;
+    topo->base_freq        = TOPO_UNDEFINED;
+    topo->base_freq_spec   = 0;
     topo->boost_enabled    = 0;
     topo->initialized      = 1;
     // Counting number of CPUs
@@ -413,12 +414,14 @@ state_t topology_close(topology_t *topo)
     "cache_line_size  : %d\n" \
     "vendor           : %d\n" \
     "family           : %d\n" \
+    "model            : 0x%x\n" \
     "brand            : '%s'\n" \
     "gpr_count        : %d\n" \
     "gpr_bits         : %d\n" \
     "nmi_watchdog     : %d\n" \
     "base_freq        : %lu\n" \
-    "boost_enabled    : %u\n" \
+    "base_freq_spec   : %d\n" \
+    "boost_enabled    : %d\n" \
     "avx512           : %d\n" \
     "sve              : %d\n" \
     "sve_bits         : %d\n" \
@@ -435,11 +438,13 @@ state_t topology_close(topology_t *topo)
     topo->cache_line_size, \
     topo->vendor, \
     topo->family, \
+    topo->model, \
     topo->brand, \
     topo->gpr_count, \
     topo->gpr_bits, \
     topo->nmi_watchdog, \
     topo->base_freq, \
+    topo->base_freq_spec, \
     topo->boost_enabled, \
     topo->avx512, \
     topo->sve, \
