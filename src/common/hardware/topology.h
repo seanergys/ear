@@ -113,13 +113,9 @@ typedef struct topology_s {
     int   nmi_watchdog;	  // NMI watdog enabled.
     int   apicids_found;  // List of CPUs ApicId's found.
     int   initialized;    // 1 if the topology is initialized
-    ulong base_freq;      // Nominal CPU clock, in KHz
-    int   base_freq_spec; // 1 means is speculative, not reliable
-    int   boost_enabled;
     int   avx512;         // 1 if AVX-512 is enabled
     int   sve;            // 1 if ARM-SVE is enabled
     int   sve_bits;       // Counts the ARM-SVE vector bits
-    int   tdp;            // Obsolete
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);
@@ -133,7 +129,5 @@ state_t topology_close(topology_t *topo);
 state_t topology_print(topology_t *topo, int fd);
 
 state_t topology_tostr(topology_t *topo, char *buffer, size_t n);
-// This function won't be public, use topo.base_freq value instead.
-state_t topology_freq_getbase(uint cpu, ulong *freq_base);
 
 #endif

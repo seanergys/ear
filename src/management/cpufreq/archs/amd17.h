@@ -22,6 +22,12 @@
 
 // Use this to set this AMD17 interface to virtual mode.
 #define AMD17_MODE_VIRTUAL "HACK_AMD_ZEN_VIRTUAL"
+#define REG_HWCONF		   0xc0010015
+#define REG_LIMITS		   0xc0010061
+#define REG_CONTROL		   0xc0010062
+#define REG_STATUS		   0xc0010063
+#define REG_P0			   0xc0010064
+#define REG_P1			   0xc0010065
 
 // AMD Frequency limitations when using Virtual P_STATEs mode
 //	- Although you can change the frequency by MSR, when doing it, all socket MSR Px register

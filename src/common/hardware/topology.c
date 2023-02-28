@@ -330,9 +330,6 @@ state_t topology_init(topology_t *topo)
     topo->avx512           = 0;
     topo->sve              = 0;
     topo->sve_bits         = 0;
-    topo->base_freq        = TOPO_UNDEFINED;
-    topo->base_freq_spec   = 0;
-    topo->boost_enabled    = 0;
     topo->initialized      = 1;
     // Counting number of CPUs
     do {
@@ -383,13 +380,9 @@ state_t topology_init(topology_t *topo)
     } else {
         topo->cache_last_level = 1;
     }
-    // TDP definition (to avoid redundancy)
-    void topology_tdp(topology_t *topo);
-
     topology_cpuinfo(topo);
     topology_watchdog(topo);
     topology_simd(topo);
-    topology_tdp(topo);
 
     topology_copy(&topo_static, topo);
 
@@ -421,11 +414,9 @@ state_t topology_close(topology_t *topo)
     "nmi_watchdog     : %d\n" \
     "base_freq        : %lu\n" \
     "base_freq_spec   : %d\n" \
-    "boost_enabled    : %d\n" \
     "avx512           : %d\n" \
     "sve              : %d\n" \
     "sve_bits         : %d\n" \
-    "tdp              : %d\n" \
     , \
     topo->cpu_count, \
     topo->socket_count, \
@@ -443,13 +434,9 @@ state_t topology_close(topology_t *topo)
     topo->gpr_count, \
     topo->gpr_bits, \
     topo->nmi_watchdog, \
-    topo->base_freq, \
-    topo->base_freq_spec, \
-    topo->boost_enabled, \
     topo->avx512, \
     topo->sve, \
-    topo->sve_bits, \
-    topo->tdp);
+    topo->sve_bits);
 
 state_t topology_print(topology_t *topo, int fd)
 {
@@ -463,53 +450,6 @@ state_t topology_tostr(topology_t *topo, char *buffer, size_t n)
 	f_print(snprintf, buffer, n);
 
 	return EAR_SUCCESS;
-}
-
-static ulong read_freq(int fd)
-{
-	char freqc[8];
-	ulong freq;
-	int i = 0;
-	char c;
-
-	while((read(fd, &c, sizeof(char)) > 0) && ((c >= '0') && (c <= '9')))
-	{
-		freqc[i] = c;
-    	i++;
-	}
-
-	freqc[i] = '\0';
-	freq = atoi(freqc);
-	return freq;
-}
-
-state_t topology_freq_getbase(uint cpu, ulong *freq_base)
-{
-    char path[1024];
-    int fd;
-
-    if (topo_static.base_freq > 0) {
-        *freq_base = topo_static.base_freq;
-        return EAR_SUCCESS;
-    }
-    // Using an alternative method
-    sprintf(path,"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", cpu);
-    if ((fd = open(path, O_RDONLY)) < 0) {
-        *freq_base = topo_static.base_freq;
-        return EAR_ERROR;
-    }
-    ulong f0 = read_freq(fd);
-    ulong f1 = read_freq(fd);
-    ulong fx = f0 - f1;
-
-    if (fx == 1000) {
-        *freq_base = f1;
-    } else {
-        *freq_base = f0;
-    }
-    close(fd);
-
-    return EAR_SUCCESS;
 }
 
 #if TEST

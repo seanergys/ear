@@ -39,19 +39,11 @@ typedef struct pss_s {
 	ullong cof;
 } pss_t;
 
-#define CPU				0
 #define MAX_PSTATES		128
 #define MAX_REGISTERS	8
-#define REG_HWCONF		0xc0010015
-#define REG_LIMITS		0xc0010061
-#define REG_CONTROL		0xc0010062
-#define REG_STATUS		0xc0010063
-#define REG_P0			0xc0010064
-#define REG_P1			0xc0010065
 
 #define p0_khz(cof) ((cof * 1000LLU) + 1000LLU)
 #define p1_khz(cof) ((cof * 1000LLU))
-
 
 #define READ_BOOST_LIMIT	0x0A  //gets the frequency limit currently enforced or Fmax
 #define WRITE_BOOST_LIMIT 	0x08  //sets the frequency limit 
