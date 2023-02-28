@@ -245,8 +245,10 @@ static void topology_cpuinfo(topology_t *topo)
     size_t len      = 0;
     int cpu         = 0;
 
-    // If not found 1GHz
-    base_freq = 1000000;
+    // If not found 1GHz --> Replaced by a constant DUMMY to
+    // be able to compare in the EARL
+    //base_freq = 1000000;
+    base_freq = DUMMY_BASE_FREQ;
 
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     while(getline(&line, &len, cpuinfo) != -1) {

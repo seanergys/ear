@@ -389,7 +389,20 @@ static void metrics_configuration(topology_t *tp)
 		if (topology_freq_getbase(0, &freq_base) == EAR_SUCCESS){
 			verbose_master(ERROR_VERB, "Frequency detected %lu", freq_base);
 		}
-	}
+	}else{
+      if (tp->base_freq == DUMMY_BASE_FREQ){
+      uint nominal;
+      pstate_t *pst_list;
+      mgt_cpufreq_get_nominal(no_ctx, &nominal);
+      pst_list                    = mgt_cpufreq.avail_list;
+      tp->base_freq               = pst_list[nominal].khz;
+      arch_desc.top.base_freq     = tp->base_freq;
+      verbose_master(ERROR_VERB, "Using base_freq cpufreq_list[%u] = %lu based on MGT cpufreq",nominal, tp->base_freq);
+
+      eard_dummy_replace_base_freq(tp->base_freq);
+    }    
+
+  }
 	if (!mgt_imcfreq.ok){
 		verbose_master(ERROR_VERB, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
 		earl_default_domains.mem = POL_NOT_SUPPORTED;

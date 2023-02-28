@@ -48,6 +48,7 @@
 #define MODEL_A8                0x01
 #define MODEL_A9                0x02
 
+#define DUMMY_BASE_FREQ         100000
 struct tp_select_s
 {
 	int core;
