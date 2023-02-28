@@ -56,7 +56,7 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 		addr_offset = ((ulong) &t->cpus[0].socket_id) - ((ulong) t->cpus);
 	}
 
-	s->cpus = malloc(t->cpu_count * sizeof(cpu_t));
+	s->cpus = calloc(t->cpu_count, sizeof(cpu_t));
 
 	for (i = 0, c = 0; i < t->cpu_count; ++i)
 	{		
@@ -148,30 +148,30 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         debug("Failed while opening '%s': %s", path, strerror(errno));
     }
     // Cleaning caches
-	for (i = 0; i < CL_COUNT; ++i) {
+	for (i = 0; i < TOPO_CL_COUNT; ++i) {
         topo->cpus[thread].l[i].id = TOPO_UNDEFINED;
     }
-	// Getting cache information, iterating by index
-	for (i = 0; i < CL_COUNT; ++i) {
+    // Getting cache information, iterating by index
+    for (i = 0; i < TOPO_CL_COUNT; ++i) {
         sprintf(path, "/sys/devices/system/cpu/cpu%d/cache/index%d/level", thread, i);
-	    aux1 = 0; // Total bytes
-	    aux2 = 0; // Returned bytes
+        aux1 = 0; // Total bytes
+        aux2 = 0; // Returned bytes
         aux3 = 0; // level
         // Getting level
         if ((fd = open(path, O_RDONLY)) >= 0) {
             do {
                 aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
-		        aux1 += aux2;
+                aux1 += aux2;
             } while(aux2 > 0);
             aux3 = atoi(buffer);
-		    close(fd);
+	    close(fd);
         } else {
             //debug("Failed while opening '%s': %s", path, strerror(errno));
             continue;
         }
         sprintf(path, "/sys/devices/system/cpu/cpu%d/cache/index%d/id", thread, i);
-	    aux1 = 0; // Total bytes
-	    aux2 = 0; // Returned bytes
+        aux1 = 0; // Total bytes
+        aux2 = 0; // Returned bytes
         // Getting id
         if ((fd = open(path, O_RDONLY)) >= 0) {
             do {
@@ -318,7 +318,9 @@ state_t topology_init(topology_t *topo)
     topo->socket_count     = 0;
     topo->threads_per_core = 1;
     topo->smt_enabled      = 0;
+    topo->l2_count         = 0;
     topo->l3_count         = 0;
+    topo->l4_count         = 0;
     topo->vendor           = 0;
     topo->family           = 0;
     topo->model            = 0;
@@ -344,7 +346,7 @@ state_t topology_init(topology_t *topo)
     // Travelling through all CPUs
     for (i = 0; i < topo->cpu_count; ++i) {
     	topology_init_thread(topo, i);
-	    // Counting cores
+	// Counting cores
         topo->core_count += !topo->cpus[i].is_thread;
 	    if (topo->cpus[i].is_thread) {
 	        topo->threads_per_core = 2;
@@ -506,9 +508,9 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 }
 
 #if TEST
+static topology_t tp;
 int main(int argc, char *argv[])
 {
-    topology_t tp;
     topology_init(&tp);
     topology_print(&tp, verb_channel);
     return 0;
