@@ -239,7 +239,6 @@ static void topology_watchdog(topology_t *topo)
 
 static void topology_cpuinfo(topology_t *topo)
 {
-    ulong base_freq = TOPO_UNDEFINED;
     char *line      = NULL;
     char *col       = NULL; //column
     char *aux       = NULL;
@@ -263,24 +262,6 @@ static void topology_cpuinfo(topology_t *topo)
                 ++col;
                 topo->avx512 = (strstr(col, "avx512f") != NULL);
             }
-        }
-        if (strncmp(line,"model name", 10) == 0){
-            if ((col = strchr(line, '@')) != NULL) {
-                col++;
-                while (*col == ' ') col++;
-                aux = col;
-                while (*col != 'G') col++;
-                *col = '\0';
-                // Converted to KHz
-                base_freq = atof(aux)*1000000;
-            }
-        }
-    }
-    // In case we don't find the base frequency by low level procedures
-    if (topo->base_freq == TOPO_UNDEFINED) {
-        if (base_freq == TOPO_UNDEFINED) {
-            topo->base_freq = topology_asm_freqspec();
-            topo->base_freq_spec = 1;
         }
     }
     topo->apicids_found = (cpu == topo->cpu_count);
@@ -412,8 +393,6 @@ state_t topology_close(topology_t *topo)
     "gpr_count        : %d\n" \
     "gpr_bits         : %d\n" \
     "nmi_watchdog     : %d\n" \
-    "base_freq        : %lu\n" \
-    "base_freq_spec   : %d\n" \
     "avx512           : %d\n" \
     "sve              : %d\n" \
     "sve_bits         : %d\n" \

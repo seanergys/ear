@@ -16,3 +16,15 @@
 */
 
 #include <management/cpufreq/cpufreq_base.c>
+
+#if TEST
+static topology_t tp;
+static basefreq_t bf;
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+    basefreq_init(&tp, &bf); 
+    return 0;
+}
+#endif
