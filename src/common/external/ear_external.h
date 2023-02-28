@@ -25,11 +25,12 @@ typedef struct ear_manager {
 } ear_mgt_t;
 
 
-state_t ear_connect(ear_mgt_t *ear);
+ear_mgt_t *ear_connect();
 state_t ear_disconnect();
 ear_mgt_t *create_ear_external_shared_area(char *path);
 ear_mgt_t *attach_ear_external_shared_area(char *path);
 void dipose_ear_external_shared_area(char *path);
 void dettach_ear_external_shared_area();
+int get_ear_external_path(char *tmp, uint ID, char *path);
 
 #endif

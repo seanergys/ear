@@ -36,7 +36,7 @@ CFLAGS += -DDCGMI=1
 endif
 
 ifeq ($(DLB), 1)
-CFLAGS += -DLB=1
+CFLAGS += -DDLB=1
 endif
 
 
@@ -68,6 +68,11 @@ comm_OBJS = \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/daemon/local_api/libeard.a \
     $(SRCDIR)/common/libcommon.a
+
+ifeq ($(DLB), 1)
+comm_OBJS += \
+	$(SRCDIR)/common/external/ear_external.o
+endif
 
 
 core_OBJS = \
@@ -101,10 +106,6 @@ mpix_OBJS = \
     api/mpic.o \
     api/mpif.o \
     common/global_comm.o
-endif
-
-ifeq ($(DLB), 1)
-comm_OBJS += 
 endif
 
 ######## RULES

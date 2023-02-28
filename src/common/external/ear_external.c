@@ -56,7 +56,7 @@ void dipose_ear_external_shared_area(char *path)
     dispose_shared_area(path, fd_resched);
 }
 
-state_t ear_connect(ear_mgt_t *ear) 
+ear_mgt_t *ear_connect() 
 {
 
     //get the path
@@ -70,9 +70,7 @@ state_t ear_connect(ear_mgt_t *ear)
     uint id = create_ID(jobid, stepid); // jobid i stepid es poden treure de la variable d'entorn de slurm
     if (get_ear_external_path(tmp, id, path) != EAR_SUCCESS) return EAR_ERROR;
 
-    attach_ear_external_shared_area(path);
-
-    return EAR_SUCCESS;
+    return attach_ear_external_shared_area(path);
 }
 
 
