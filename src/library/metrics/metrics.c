@@ -172,6 +172,7 @@ static char        dcgmi_events_str2[DCGMI_NUM_EVENTS*64];
 static uint        dcgmi_curr_ev_set = 1;
 static char        dcgmi_metrics_str[2048];
 static double      dcgmi_elapsed = 0;
+static uint        dcgmi = 1;
 #endif
 char        gpu_str[256];
 #endif // USE_GPUS
@@ -335,6 +336,8 @@ void report_dcgmi_metrics()
   uint    active[dcgmi_num_events];
   uint index;
   uint gcount = gpu_dcgmi_gpus_detected();
+
+  if (!dcgmi) return;
  
   /* Cleaning */
   memset(&total, 0, sizeof(dcgmi_t));
@@ -462,18 +465,6 @@ static void metrics_static_init(topology_t *tp)
       gpuproc_load(1);
     }
 #endif
-  #if DCGMI && USE_GPUS
-   verbose_master(1,"DCGMI support ON");
-   gpu_dcgmi_events_to_str(dcgmi_events1, DCGMI_NUM_EVENTS, dcgmi_events_str1);
-   gpu_dcgmi_events_to_str(dcgmi_events2, DCGMI_NUM_EVENTS, dcgmi_events_str2);
-   gpu_dcgmi_init(dcgmi_events_str1, DCGMI_NUM_EVENTS);
-   gpu_dcgmi_data_alloc(&dcgmi_metrics1);
-   gpu_dcgmi_data_alloc(&dcgmi_metrics_accum1);
-   verbose_master(2, "DCGMI initialized with %u events list=%s", DCGMI_NUM_EVENTS, dcgmi_events_str1);
-   gpu_dcgmi_data_alloc(&dcgmi_metrics2);
-   gpu_dcgmi_data_alloc(&dcgmi_metrics_accum2);
-
-   #endif
 
 #endif // USE_GPUS
     debug("metics_load ready");
@@ -537,6 +528,21 @@ static void metrics_static_init(topology_t *tp)
         proc_gpu.ok = (proc_gpu.api   > API_DUMMY);
     }
 #endif
+
+  #if DCGMI & USE_GPUS
+  if (met_gpu.ok == 0) dcgmi = 0;
+  if (dcgmi){
+      verbose_master(1,"DCGMI support ON");
+      gpu_dcgmi_events_to_str(dcgmi_events1, DCGMI_NUM_EVENTS, dcgmi_events_str1);
+      gpu_dcgmi_events_to_str(dcgmi_events2, DCGMI_NUM_EVENTS, dcgmi_events_str2);
+      gpu_dcgmi_init(dcgmi_events_str1, DCGMI_NUM_EVENTS);
+      gpu_dcgmi_data_alloc(&dcgmi_metrics1);
+      gpu_dcgmi_data_alloc(&dcgmi_metrics_accum1);
+      verbose_master(2, "DCGMI initialized with %u events list=%s", DCGMI_NUM_EVENTS, dcgmi_events_str1);
+      gpu_dcgmi_data_alloc(&dcgmi_metrics2);
+      gpu_dcgmi_data_alloc(&dcgmi_metrics_accum2);
+   }
+  #endif
 #endif // USE_GPUS
 	debug("metrics_api ready");
 
@@ -1545,6 +1551,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     /* DCGMI: read only for master */
     #if DCGMI && USE_GPUS
     /* Accumulating */
+    if (dcgmi) {
     if (sign_app_loop_idx == LOO){ 
       dcgmi_elapsed += time_s;
       dcgmi_t *curr, *curr_acum;
@@ -1581,6 +1588,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       gpu_dcgmi_data_str(dcgmi_metrics_accum2, dcgmi_metrics_str, dcgmi_events2, DCGMI_NUM_EVENTS);
       verbose_master(2, "DCGMI app metrics %s elapsed %.3lf sec", dcgmi_metrics_str, dcgmi_elapsed/2);
       report_dcgmi_metrics();
+    }
     }
     #endif
 
