@@ -1013,8 +1013,8 @@ int mysql_retrieve_jobs(MYSQL *connection, char *query, job_t **jobs)
     bind[11].buffer = &job_aux->type;
     bind[12].buffer = &job_aux->def_f;
     bind[13].buffer = &job_aux->user_acc;
-    bind[14].buffer = &job_aux->energy_tag;
-    bind[15].buffer = &job_aux->group_id;
+    bind[14].buffer = &job_aux->group_id;
+    bind[15].buffer = &job_aux->energy_tag;
 
     int ret = EAR_SUCCESS;
     if (mysql_stmt_bind_result(statement, bind)) ret = mysql_statement_error(statement);
