@@ -32,9 +32,8 @@
 #include <common/states.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_generic.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <daemon/local_api/node_mgr.h>
-
-
 #include <daemon/shared_configuration.h>
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"

@@ -81,6 +81,7 @@
 #include <metrics/cache/cache.h>
 #include <metrics/flops/flops.h>
 #include <metrics/cpufreq/cpufreq.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <metrics/imcfreq/imcfreq.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/energy_cpu/energy_cpu.h>
