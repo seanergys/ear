@@ -41,9 +41,10 @@
 #define FILE_CPB   "/sys/devices/system/cpu/cpu0/cpufreq/cpb"
 #define FILE_BST   "/sys/devices/system/cpu/cpufreq/boost"
 
-static cpufreq_base_t static_base;
-static int found_boost;
-static int found_freq;
+static topology_t     tp_static;
+static cpufreq_base_t bs_static;
+static int            found_boost;
+static int            found_freq;
 
 static int basefreq_completed()
 {
@@ -348,8 +349,14 @@ void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
 
 void basefreq_init(topology_t *tp, cpufreq_base_t *base)
 {
-    if (static_base.frequency == 0) {
-        basefreq_init_static(tp, &static_base);
+    if (tp == NULL) {
+        if (!tp_static.initialized) {
+            topology_init(&tp_static);
+        }
+        tp = &tp_static;
     }
-    memcpy(base, &static_base, sizeof(cpufreq_base_t));
+    if (bs_static.frequency == 0) {
+        basefreq_init_static(tp, &bs_static);
+    }
+    memcpy(base, &bs_static, sizeof(cpufreq_base_t));
 }

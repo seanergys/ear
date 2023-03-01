@@ -318,7 +318,8 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
 static void metrics_configuration(topology_t *tp)
 {
 	char topo_str[1024];
-	ulong freq_base;
+    cfb_t bf;
+
 	if (!EARL_LIGHT) return;
 	if (eards_connected()) {
 		verbose_master(2, "EARD connected");
@@ -330,9 +331,8 @@ static void metrics_configuration(topology_t *tp)
 		earl_default_domains.cpu = POL_NOT_SUPPORTED;
 		topology_tostr(tp, topo_str, sizeof(topo_str));
 		verbose_master(ERROR_VERB,"%s", topo_str);
-		if (topology_freq_getbase(0, &freq_base) == EAR_SUCCESS){
-			verbose_master(ERROR_VERB, "Frequency detected %lu", freq_base);
-		}
+        cpufreq_base_init(tp, &bf);
+        verbose_master(ERROR_VERB, "Frequency detected %lu", (ulong) bf.frequency);
 	}
 	if (!mgt_imcfreq.ok){
 		verbose_master(ERROR_VERB, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
