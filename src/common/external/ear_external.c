@@ -63,12 +63,12 @@ ear_mgt_t *ear_connect()
     char *tmp = getenv("EAR_TMP");
     char *jid = getenv("SLURM_JOB_ID");
     char *sid = getenv("SLURM_STEP_ID");
-    if ((jid == NULL) || (sid == NULL)) return EAR_ERROR;
+    if ((jid == NULL) || (sid == NULL)) return NULL;
     
     int jobid = atoi(jid);
     int stepid = atoi(sid);
     uint id = create_ID(jobid, stepid); // jobid i stepid es poden treure de la variable d'entorn de slurm
-    if (get_ear_external_path(tmp, id, path) != EAR_SUCCESS) return EAR_ERROR;
+    if (get_ear_external_path(tmp, id, path) != EAR_SUCCESS) return NULL;
 
     return attach_ear_external_shared_area(path);
 }
