@@ -28,13 +28,39 @@
 #include <common/hardware/defines.h>
 #include <common/environment_common.h>
 #include <management/cpufreq/cpufreq_base.h>
-#include <management/cpufreq/archs/amd17.h>
 #include <metrics/common/msr.h>
+#include <metrics/common/file.h>
 
-static basefreq_t static_base;
+// Taken from arch/amd17.c
+#define REG_HWCONF 0xc0010015
+#define REG_P0	   0xc0010064
+// Taken from drivers/acpi_cpufreq.c and drivers/intel_pstate.c
+#define FILE_SAF   "/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies"
+#define FILE_CMF   "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
+#define FILE_SMF   "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"
+#define FILE_CPB   "/sys/devices/system/cpu/cpu0/cpufreq/cpb"
+#define FILE_BST   "/sys/devices/system/cpu/cpufreq/boost"
 
-static int basefreq_intel_haswell(topology_t *tp, basefreq_t *base)
+static cpufreq_base_t static_base;
+static int found_boost;
+static int found_freq;
+
+static int basefreq_completed()
 {
+    return (found_freq && found_boost);
+}
+
+static int basefreq_found(int f, int b)
+{
+    if (f) found_freq = 1;
+    if (b) found_boost = 1;
+    return basefreq_completed();
+}
+
+static int basefreq_intel_haswell(topology_t *tp, cpufreq_base_t *base)
+{
+    // This is a complete function, it returns the frequency and boost.
+    // There are no points to think that retrieving one of them could fail.
     if (tp->vendor != VENDOR_INTEL || tp->model < MODEL_HASWELL_X) {
         return 0; 
     }
@@ -48,14 +74,13 @@ static int basefreq_intel_haswell(topology_t *tp, basefreq_t *base)
     //
     base->boost_enabled = (ulong) cpuid_getbits(regs.eax, 1, 1);
     debug("detected frequency %llu", base->frequency);
-    return 1;
+    return basefreq_found(1, 1);
 }
 
-static int basefreq_amd_zen(topology_t *tp, basefreq_t *base)
+static int basefreq_amd_zen(topology_t *tp, cpufreq_base_t *base)
 {
+    ullong did, fid;
     ullong aux;
-    ullong did;
-    ullong fid;
 
     // This method is requires permissions to, at least, read the MSR files.
     // If doesn't have enough privileges or the MSR driver is not present,
@@ -67,20 +92,52 @@ static int basefreq_amd_zen(topology_t *tp, basefreq_t *base)
     if (state_fail(msr_open(0, MSR_RD))) {
         return 0;
     }
-    if (state_fail(msr_read(0, (char *) &aux, sizeof(ullong), REG_P0))) {
+    if (state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_P0))) {
+        fid = getbits64(aux,  7, 0);
+        did = getbits64(aux, 13, 8);
+        if (did > 0) {
+            base->frequency = (ulong) (((fid * 200LLU) / did) * 1000);
+            debug("detected frequency %llu", base->frequency);
+            basefreq_found(1, 0);
+        }
+    }
+    if (state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_HWCONF))) {
+        base->boost_enabled = (uint) !getbits64(aux, 25, 25);
+        basefreq_found(0, 1);
+    }
+    return basefreq_completed();
+}
+
+static int basefreq_environment(topology_t *tp, cpufreq_base_t *base)
+{
+    char *freq  = ear_getenv("BASE_FREQ");
+    char *boost = ear_getenv("BASE_BOOST");
+    if (freq != NULL) {
+        base->frequency = (ullong) atoi(freq);
+        basefreq_found(1, 0);
+    }
+    if (boost != NULL) {
+        base->boost_enabled = (uint) atoi(boost);
+        basefreq_found(0, 1);
+    }
+    return basefreq_completed();
+}
+
+static int basefreq_file_cpb(topology_t *tp, cpufreq_base_t *base)
+{
+    char buffer[128];
+    // This function is incomplete, just for boost.
+    if (found_boost) {
         return 0;
     }
-    if (state_fail(msr_read(0, (char *) &aux, sizeof(ullong), REG_HWCONF))) {
-        return 0;
+    if (filemagic_once_read(FILE_BST, buffer, sizeof(buffer))) {
+        base->boost_enabled = atoi(buffer);
+        basefreq_found(0, 1);
+    } else if (filemagic_once_read(FILE_CPB, buffer, sizeof(buffer))) {
+        base->boost_enabled = atoi(buffer);
+        basefreq_found(0, 1);
     }
-    fid = getbits64(aux,  7, 0);
-    did = getbits64(aux, 13, 8);
-    if (did > 0) {
-        base->frequency = (ulong) (((fid * 200LLU) / did) * 1000);
-    }
-    base->frequency = (uint) !getbits64(aux, 25, 25);
-    debug("detected frequency %llu", base->frequency);
-    return 1;
+    return basefreq_completed();
 }
 
 static ullong file_read_value(int fd)
@@ -97,43 +154,34 @@ static ullong file_read_value(int fd)
     return (ullong) atoi(buffer);
 }
 
-static int basefreq_file_saf(topology_t *tp, basefreq_t *base)
+static int basefreq_file_saf(topology_t *tp, cpufreq_base_t *base)
 {
     ullong f0, f1;
     int fd;
-
-    if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies", O_RDONLY)) < 0) {
+    // This is a complete function
+    if ((fd = open(FILE_SAF, O_RDONLY)) < 0) {
         return 0;
     }
     f0 = file_read_value(fd);
     f1 = file_read_value(fd);
     close(fd);
     // If the difference is 1 KHz, base/nominal is f1
-    base->frequency = ((f0 - f1) == 1000) ? f1:f0;
-    debug("detected frequency %llu", base->frequency);
-    return (base->frequency != 0);
+    if (!found_freq)  base->frequency = ((f0 - f1) == 1000) ? f1:f0;
+    if (!found_boost) base->frequency = ((f0 - f1) == 1000) ?  1: 0;
+    return basefreq_found(1, 1);
 }
 
-static int basefreq_file_cmf(topology_t *tp, basefreq_t *base)
-{
-    int fd;
-    if ((fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq", O_RDONLY)) < 0) {
-        return 0;
-    }
-    base->frequency = file_read_value(fd);
-    close(fd);
-    debug("detected frequency %llu", base->frequency);
-    return (base->frequency != 0);
-}
-
-static int basefreq_file_cpuinfo(topology_t *tp, basefreq_t *base)
+static int basefreq_file_cpuinfo(topology_t *tp, cpufreq_base_t *base)
 {
     char *line = NULL;
     char *col  = NULL; //column
     char *aux  = NULL;
     size_t len = 0;
     FILE *fd   = NULL;
-    
+    // This function is incomplete, just for frequency.
+    if (found_freq) {
+        return 0;
+    }
     if ((fd = fopen("/proc/cpuinfo", "r")) == NULL) {
         return 0;
     }
@@ -147,40 +195,56 @@ static int basefreq_file_cpuinfo(topology_t *tp, basefreq_t *base)
                 *col = '\0';
                 // Converted to KHz
                 base->frequency = atof(aux)*1000000;
+                basefreq_found(1, 0);
             }
         }
     }
     fclose(fd);
     free(line);
-    debug("detected frequency %llu", base->frequency);
-    return (base->frequency != 0);
+    return basefreq_completed();
 }
 
-static int basefreq_environment(topology_t *tp, basefreq_t *base)
+static int basefreq_file_smf(topology_t *tp, cpufreq_base_t *base)
 {
-    char *freq          = ear_getenv("EAR_BASE_FREQ");
-    char *boost         = ear_getenv("EAR_BASE_BOOST");
-    base->frequency     = (freq  != NULL) ? (ullong) atoi(freq ) : 0;
-    base->boost_enabled = (boost != NULL) ? (ullong) atoi(boost) : 0;
-    debug("detected frequency %llu", base->frequency);
-    return (base->frequency != 0);
+    char buffer[128];
+    // This function is turbo boost sensitive. Is for frequency, but
+    // if the frequency is already found, and the found frequency is
+    // under the CMF or SMF frequency, it means that turbo boost
+    // could be enabled. We don't considere this method reliable.
+    if (filemagic_once_read(FILE_CMF, buffer, sizeof(buffer)) ||
+        filemagic_once_read(FILE_SMF, buffer, sizeof(buffer))) {
+        if (!found_freq) {
+            base->frequency = (ullong) atoi(buffer);
+            base->not_reliable = 1;
+            basefreq_found(1, 0);
+        }
+        if (!found_boost) {
+            base->boost_enabled = ((ullong) atoi(buffer) > base->frequency);
+            basefreq_found(0, 1);
+        }
+    }
+    return basefreq_completed();
 }
 
-static int basefreq_spec_valid(basefreq_t *base) 
+static int basefreq_spec_valididity_test(cpufreq_base_t *base)
 {
     // Finally, if is under 5 GHz and over 1 GHz we assume that
     // the speculation could be valid.
-    if (base->frequency > 5000000 || base->frequency < 1000000) {
-        base->frequency = 0;
+    if (base->frequency <= 5000000 || base->frequency >= 1000000) {
+        base->not_reliable = 1;
+        return basefreq_found(1, 0);
     }
-    debug("detected frequency %llu (speculative)", base->frequency);
-    return (base->frequency != 0);
+    return 0;
 }
 
-static int basefreq_spec_tsc(topology_t *tp, basefreq_t *base)
+static int basefreq_spec_tsc(topology_t *tp, cpufreq_base_t *base)
 {
-    ullong l1, h1, l2, h2, khz;
+    ullong l1, h1, l2, h2;
     double chz;
+    // This function is incomplete, just for frequency.
+    if (found_freq) {
+        return 0;
+    }
     // The ARM TSC doesn't work at base frequency. CNTFRQ_EL0 has the
     // TSC (CNTVCT_EL0 or CNTPCT_EL0) frequency. From ARMv8.6 is 1GHz.
     if (tp->vendor == VENDOR_ARM) {
@@ -201,13 +265,17 @@ static int basefreq_spec_tsc(topology_t *tp, basefreq_t *base)
     debug("Cycles TSC: %llu, CHz: %0.2lf", h2-h1, chz);
     // Passing to frequency and checking 
     base->frequency = ((ullong) round(chz)) * 100000LU;
-    return basefreq_spec_valid(base);
+    return basefreq_spec_valididity_test(base);
 }
 
-static int basefreq_spec_asm(topology_t *tp, basefreq_t *base)
+static int basefreq_spec_asm(topology_t *tp, cpufreq_base_t *base)
 {
     timestamp_t ts1;
     double ns, chz;
+    // This function is incomplete, just for frequency.
+    if (found_freq) {
+        return 0;
+    }
     // Around 4.0 GHz of ASM instructions. This method is turbo boost
     // sensitive, so can not find the correct frequency in these nodes
     // whose boost technology is enabled. But is better than nothing.
@@ -250,31 +318,38 @@ static int basefreq_spec_asm(topology_t *tp, basefreq_t *base)
     debug("Time nS: %0.2lf, CHz: %0.2lf", ns, chz);
     // Passing to frequency and checking 
     base->frequency = ((ullong) round(chz)) * 100000LLU;
-    return basefreq_spec_valid(base);
+    return basefreq_spec_valididity_test(base);
 }
 
-static int basefreq_spec_hardcode(topology_t *tp, basefreq_t *base)
+static int basefreq_spec_hardcode(topology_t *tp, cpufreq_base_t *base)
 {
-    base->frequency = 2000000; // 2GHz
-    return basefreq_spec_valid(base);
+    // This function is incomplete, just for frequency.
+    if (!found_freq) {
+        base->not_reliable = 1; // Also is not reliable
+        base->frequency = 2000000; // 2GHz
+    }
+    // It the boost is not found yet, we assume is not enabled.
+    return basefreq_found(1, 0);
 }
 
-void basefreq_init_static(topology_t *tp, basefreq_t *base)
+void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
 {
     if (basefreq_intel_haswell(tp, base)) return;
     if (basefreq_amd_zen(tp, base)) return;
+    if (basefreq_environment(tp, base)) return;
+    if (basefreq_file_cpb(tp, base)) return;
     if (basefreq_file_saf(tp, base)) return;
     if (basefreq_file_cpuinfo(tp, base)) return;
-    if (basefreq_environment(tp, base)) return;
+    if (basefreq_file_smf(tp, base)) return;
     if (basefreq_spec_tsc(tp, base)) return;
     if (basefreq_spec_asm(tp, base)) return;
     if (basefreq_spec_hardcode(tp, base)) return;
 }
 
-void basefreq_init(topology_t *tp, basefreq_t *base)
+void basefreq_init(topology_t *tp, cpufreq_base_t *base)
 {
     if (static_base.frequency == 0) {
         basefreq_init_static(tp, &static_base);
     }
-    memcpy(base, &static_base, sizeof(basefreq_t));
+    memcpy(base, &static_base, sizeof(cpufreq_base_t));
 }

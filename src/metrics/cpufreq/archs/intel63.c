@@ -33,7 +33,7 @@
 #define MSR_IA32_MPERF 0x000000E7
 
 static topology_t tp;
-static ulong freq_base;
+static cfb_t bf;
 
 // aperf
 state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
@@ -51,7 +51,7 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 	// Copying the topology
 	topology_copy(&tp, tp_in);
 	// Getting base frequency
-	cpufreq_get_base(&tp, &freq_base);
+    cpufreq_base_init(&tp, &bf);
 	// If it is compatible these functions takes the control
 	replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
 	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
@@ -182,7 +182,7 @@ state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ul
 		// With the percentage applied to the base frequency, finally can be
 		// computed the average frequency of a specific CPU.
 		aperf_pcnt = (aperf_diff * 100LU) / mperf_diff;
-		freq_aux   = (freq_base * aperf_pcnt) / 100LU;
+		freq_aux   = (bf.frequency * aperf_pcnt) / 100LU;
 		//
 		if (freqs != NULL) {
 			freqs[cpu] = freq_aux;

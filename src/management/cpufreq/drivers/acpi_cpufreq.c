@@ -27,6 +27,7 @@
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
 #include <metrics/common/file.h>
+#include <management/cpufreq/cpufreq_base.h>
 #include <management/cpufreq/drivers/acpi_cpufreq.h>
 
 #define N_FREQS 128
@@ -39,14 +40,12 @@
 #define PATH_BST0  "/sys/devices/system/cpu/cpufreq/boost"                              // Test read
 
 static uint    cpu_count;
+static cfb_t   bf;
 static uint    avail_list_count;
 static ullong  avail_list[N_FREQS]; // From 10 GHz to 1 GHz there are 90 items, enough
 static ullong *current_list;
-static uint    boost_enabled;
 static int    *fds_sgv;
 static int    *fds_sss;
-static ullong  freq_base; // KHz
-static ullong  freq_min = 1000000LLU; // 1GHz
 static uint    governor_last;
 static uint    governor0;
 
@@ -57,62 +56,29 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 	int set_frequency   =  1;
 	int set_governor    =  1;
     int fd_sag0         = -1;
-    int fd_saf0         = -1;
-    ullong m            =  0;
-    uint i              =  0;
 
-    // Files RW
+    // This is a userspace driver (based on acpi_cpufreq model)
     if (!filemagic_can_read(PATH_SAG0, &fd_sag0)) return;
+    // Read if there is userspace governor, if not this is not a valid driver.
+    while (!found_userspace && filemagic_word_read(fd_sag0, buffer, 0)) {
+        found_userspace = (strncmp(buffer, "userspace", 9) == 0);
+        debug("read the word '%s' (found userspace? %d)", buffer, found_userspace);
+    }
+    close(fd_sag0);
+    if (!found_userspace) {
+        return_msg(, "Current driver does not have userspace governor.");
+    }
+    // Testing if frequency/governor set files are accessible
     set_frequency = filemagic_can_mwrite(PATH_SSS, tp->cpu_count, &fds_sss);
     set_governor  = filemagic_can_mwrite(PATH_SGV, tp->cpu_count, &fds_sgv);
     if (!set_frequency && !filemagic_can_mread(PATH_SSS, tp->cpu_count, &fds_sss)) return;
     if (!set_governor  && !filemagic_can_mread(PATH_SGV, tp->cpu_count, &fds_sgv)) return;
-    // Building frequency list
-    if (filemagic_can_read(PATH_SAF0, &fd_saf0)) {
-        while (!found_userspace && filemagic_word_read(fd_saf0, buffer, 0)) {
-            avail_list[i] = (ullong) atoll(buffer);
-            debug("avail_list%u: %llu", i, avail_list[i]);
-            ++i;
-        }
-        close(fd_saf0);
-    } else {
-        avail_list[0] = freq_base;
-        if (boost_enabled) {
-            avail_list[0] = freq_base + 1000LLU;
-            i = 1;
-        }
-        while((avail_list[i] = freq_base - (100000LLU*m)) >= freq_min) {
-            debug("avail_list%u: %llu", i, avail_list[i]);
-            ++m;
-            ++i;
-        }
-    }
-    avail_list_count = i;
-    if (avail_list_count == 0) {
-        return_msg(, "No frequencies found");
-    }
-	// Read if there is userspace governor
-	while (!found_userspace && filemagic_word_read(fd_sag0, buffer, 0)) {
-		found_userspace = (strncmp(buffer, "userspace", 9) == 0);
-		debug("read the word '%s' (found userspace? %d)", buffer, found_userspace);
-	}
-	close(fd_sag0);
-	if (!found_userspace) {
-		return_msg(, "Current driver does not have userspace governor.");
-	}
-    // Is boost enabled?
-    if (filemagic_once_read(PATH_BST0, buffer, sizeof(buffer))) {
-        boost_enabled = atoi(buffer);
-    } else if (filemagic_once_read(PATH_CPB0, buffer, sizeof(buffer))) {
-        boost_enabled = atoi(buffer);
-    } else {
-        boost_enabled = tp->boost_enabled;
-    }
-    // Saving some required data
+    // Getting base frequency and boost
+    cpufreq_base_init(tp, &bf);
+    // Allocating space for current list
     cpu_count     = tp->cpu_count;
-    freq_base     = (ullong) tp->base_freq;
     current_list  = calloc(cpu_count, sizeof(ullong));
-    //
+    // Saving initial governor
     mgt_acpi_cpufreq_governor_get(&governor0);
     // Saved initial values
     keeper_macro(uint32, "AcpiCpufreqDefaultGovernor", governor0);
@@ -137,7 +103,32 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 
 state_t mgt_acpi_cpufreq_init()
 {
-	return EAR_SUCCESS;
+    char buffer[PATH_MAX];
+    int fd_saf0 = -1;
+    ullong m    =  0;
+    uint i      =  0;
+    // Building frequency list
+    if (filemagic_can_read(PATH_SAF0, &fd_saf0)) {
+        while (filemagic_word_read(fd_saf0, buffer, 0)) {
+            avail_list[i] = (ullong) atoll(buffer);
+            debug("avail_list%u: %llu", i, avail_list[i]);
+            ++i;
+        }
+        close(fd_saf0);
+    } else {
+        avail_list[0] = bf.frequency;
+        if (bf.boost_enabled) {
+            avail_list[0] = bf.frequency + 1000LLU;
+            i = 1;
+        }
+        while((avail_list[i] = bf.frequency - (100000LLU*m)) >= 1000000LLU) { // 1GHz
+            debug("avail_list%u: %llu", i, avail_list[i]);
+            ++m;
+            ++i;
+        }
+    }
+    avail_list_count = i;
+    return EAR_SUCCESS;
 }
 
 state_t mgt_acpi_cpufreq_dispose()
@@ -183,9 +174,9 @@ state_t mgt_acpi_cpufreq_get_current_list(const ullong **p)
 	return s;
 }
 
-state_t mgt_acpi_cpufreq_get_boost(uint *boost_enabled_in)
+state_t mgt_acpi_cpufreq_get_boost(uint *boost_enabled)
 {
-    *boost_enabled_in = boost_enabled;
+    *boost_enabled = bf.boost_enabled;
 	return EAR_SUCCESS;
 }
 
