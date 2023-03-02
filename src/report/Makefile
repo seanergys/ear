@@ -25,6 +25,7 @@ repo_BINS = \
     csv_ts.so \
     heroes.so \
     dummy.so \
+    prometheus.so \
 		dcdb.so \
 		sysfs.so \
     mpitrace.so
@@ -66,6 +67,9 @@ eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(repo_DEPS)
 
 eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
+
+prometheus.so: prometheus.c $(repo_DEPS)
+	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c -lmicrohttpd 
 
 mysql.so: mysql.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
