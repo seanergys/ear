@@ -53,6 +53,9 @@ static int basefreq_completed()
 
 static int basefreq_found(int f, int b)
 {
+    #if TEST
+    return 0;
+    #endif
     if (f) found_freq = 1;
     if (b) found_boost = 1;
     return basefreq_completed();
@@ -360,3 +363,28 @@ void basefreq_init(topology_t *tp, cpufreq_base_t *base)
     }
     memcpy(base, &bs_static, sizeof(cpufreq_base_t));
 }
+
+#if TEST
+int main(int argc, char *argv[])
+{
+    #define PRINT(call, string) { \
+        memset(&bf, 0, sizeof(cfb_t)); \
+        call; \
+        printf(string "\t%llu (%d %d)\n", bf.frequency, bf.boost_enabled, bf.not_reliable); \
+    }
+    cfb_t bf;
+    topology_t tp;
+    topology_init(&tp);
+    PRINT(basefreq_intel_haswell(&tp, &bf), "intel cpuid    ");
+    PRINT(basefreq_amd_zen(&tp, &bf)      , "amd msr        ");
+    PRINT(basefreq_environment(&tp, &bf)  , "environment    ");
+    PRINT(basefreq_file_cpb(&tp, &bf)     , "cpb/boost files");
+    PRINT(basefreq_file_saf(&tp, &bf)     , "saf file       ");
+    PRINT(basefreq_file_cpuinfo(&tp, &bf) , "proc/cpuinfo   ");
+    PRINT(basefreq_file_smf(&tp, &bf)     , "max_freq files ");
+    PRINT(basefreq_spec_tsc(&tp, &bf)     , "spec tsc       ");
+    PRINT(basefreq_spec_asm(&tp, &bf)     , "spec asm       ");
+    PRINT(basefreq_spec_hardcode(&tp, &bf), "harcode        ");
+    return 1;
+}
+#endif
