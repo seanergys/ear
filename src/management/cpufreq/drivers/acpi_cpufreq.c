@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
@@ -120,6 +120,7 @@ state_t mgt_acpi_cpufreq_init()
         avail_list[0] = bf.frequency;
         if (bf.boost_enabled) {
             avail_list[0] = bf.frequency + 1000LLU;
+            debug("avail_list%u: %llu", i, avail_list[i]);
             i = 1;
         }
         while((avail_list[i] = bf.frequency - (100000LLU*m)) >= 1000000LLU) { // 1GHz

@@ -53,6 +53,8 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     int set_governor  = 1;
     int fd_cmf;
 
+    // Check if other driver is already loaded
+    if (apis_loaded(ops)) return;
     // This is a scaling_max_freq file driver (based on intel_pstate model).
     if (!filemagic_exists(PATH_SMF0)) return;
     // If we can't read cpuinfo_max_freq, something is not good with the driver.
@@ -72,8 +74,8 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     // Saving initial values (DefaultFrequency have to be from SMF, not CMF)
     mgt_intel_pstate_governor_get(&governor0);
     keeper_macro(uint32, "IntelPstateDefaultGovernor", governor0);
-    //keeper_macro(uint64, "IntelPstateDefaultFrequency", freq_max0);
     debug("IntelPstateDefaultGovernor: %u", governor0);
+    //keeper_macro(uint64, "IntelPstateDefaultFrequency", freq_max0);
     //debug("IntelPstateDefaultFrequency: %llu", freq_max0);
 	// Driver references
     apis_put(ops->init                 , mgt_intel_pstate_init                                );
