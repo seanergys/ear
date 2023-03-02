@@ -170,8 +170,8 @@ static int basefreq_file_saf(topology_t *tp, cpufreq_base_t *base)
     f1 = file_read_value(fd);
     close(fd);
     // If the difference is 1 KHz, base/nominal is f1
-    if (!found_freq)  base->frequency = ((f0 - f1) == 1000) ? f1:f0;
-    if (!found_boost) base->frequency = ((f0 - f1) == 1000) ?  1: 0;
+    if (!found_freq)  base->frequency     = ((f0 - f1) == 1000) ? f1:f0;
+    if (!found_boost) base->boost_enabled = ((f0 - f1) == 1000) ?  1: 0;
     return basefreq_found(1, 1);
 }
 
@@ -200,6 +200,15 @@ static int basefreq_file_cpuinfo(topology_t *tp, cpufreq_base_t *base)
                 // Converted to KHz
                 base->frequency = atof(aux)*1000000;
                 basefreq_found(1, 0);
+                break;
+            }
+        }
+        if (strncmp(line,"cpu MHz", 7) == 0) {
+            if ((col = strchr(line, ':')) != NULL) {
+                col++;
+                col++;
+                base->frequency = atof(col)*1000;
+                break;
             }
         }
     }
