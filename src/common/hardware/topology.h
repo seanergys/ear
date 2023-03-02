@@ -26,7 +26,7 @@
 #define TOPO_UNDEFINED        -1
 #define TOPO_CL_COUNT         (4+1) // Cache levels count, L0 to L4, but 0 doesn't exists
 // Supported vendors
-#define VENDOR_UNKNOWN         TOPO_UNDEFINED
+#define VENDOR_UNKNOWN          TOPO_UNDEFINED
 #define VENDOR_INTEL            0
 #define VENDOR_AMD              1
 #define VENDOR_ARM              2
