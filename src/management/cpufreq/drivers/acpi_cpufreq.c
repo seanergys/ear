@@ -57,7 +57,8 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 	int set_governor    =  1;
     int fd_sag0         = -1;
 
-    // This is a userspace driver (based on acpi_cpufreq model)
+    // This is a userspace driver (based on acpi_cpufreq model).
+    // To DEBUG this class, set SHOW_DEBUGS in metrics/common/file.c.
     if (!filemagic_can_read(PATH_SAG0, &fd_sag0)) return;
     // Read if there is userspace governor, if not this is not a valid driver.
     while (!found_userspace && filemagic_word_read(fd_sag0, buffer, 0)) {

@@ -116,7 +116,7 @@ static state_t monitor_apis_init(void *whatever)
 static state_t monitor_apis_update(void *whatever)
 {
     // Printf clear
-    system("clear");
+    //system("clear");
 
     tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
     tprintf("API||Internal||#Devs||Granularity");

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
@@ -56,7 +56,7 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     // This is a scaling_max_freq file driver (based on intel_pstate model).
     if (!filemagic_exists(PATH_SMF0)) return;
     // If we can't read cpuinfo_max_freq, something is not good with the driver.
-    if (filemagic_can_read (PATH_CMF0, &fd_cmf) && filemagic_word_read(fd_cmf, buffer, 0)) return;
+    if (!filemagic_can_read (PATH_CMF0, &fd_cmf) || !filemagic_word_read(fd_cmf, buffer, 0)) return;
     freq_max = (ullong) atoi(buffer);
     close(fd_cmf);
     // Files RW (at least, can we read the current frequency and governors?)

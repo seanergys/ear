@@ -359,7 +359,7 @@ void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
     if (basefreq_spec_hardcode(tp, base)) return;
 }
 
-void basefreq_init(topology_t *tp, cpufreq_base_t *base)
+void cpufreq_base_init(topology_t *tp, cpufreq_base_t *base)
 {
     if (tp == NULL) {
         if (!tp_static.initialized) {
