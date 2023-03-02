@@ -77,7 +77,6 @@ static int basefreq_intel_haswell(topology_t *tp, cpufreq_base_t *base)
     CPUID(regs, 0x06, 0);
     //
     base->boost_enabled = (ulong) cpuid_getbits(regs.eax, 1, 1);
-    debug("detected frequency %llu", base->frequency);
     return basefreq_found(1, 1);
 }
 
@@ -101,7 +100,6 @@ static int basefreq_amd_zen(topology_t *tp, cpufreq_base_t *base)
         did = getbits64(aux, 13, 8);
         if (did > 0) {
             base->frequency = (ulong) (((fid * 200LLU) / did) * 1000);
-            debug("detected frequency %llu", base->frequency);
             basefreq_found(1, 0);
         }
     }

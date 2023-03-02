@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -39,14 +39,14 @@ static uint                api;
 
 state_t mgt_cpufreq_load(topology_t *tp, int eard)
 {
-	state_t s;
-	while (pthread_mutex_trylock(&lock));
-	if (api != API_NONE) {
-		pthread_mutex_unlock(&lock);
-		return EAR_SUCCESS;
-	}
-	cpu_count = tp->cpu_count;
-	// Driver API load
+    state_t s;
+    while (pthread_mutex_trylock(&lock));
+    if (api != API_NONE) {
+        pthread_mutex_unlock(&lock);
+        return EAR_SUCCESS;
+    }
+    cpu_count = tp->cpu_count;
+    // Driver API load
     mgt_acpi_cpufreq_load(tp, &ops_driver);
     mgt_intel_pstate_load(tp, &ops_driver);
 	// API load
@@ -79,8 +79,8 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
     // PRIORITY subsystem
     mgt_cpufreq_prio_load(tp, eard);
     // Finishing
-	pthread_mutex_unlock(&lock);
-	return EAR_SUCCESS;
+    pthread_mutex_unlock(&lock);
+    return EAR_SUCCESS;
 }
 
 state_t mgt_cpufreq_get_api(uint *api_in)

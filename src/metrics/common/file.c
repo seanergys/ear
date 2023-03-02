@@ -30,6 +30,7 @@
 int filemagic_exists(char *path)
 {
     if (access(path, R_OK) != 0) {
+        debug("File '%s' can not be accessed", path);
         return_msg(0, strerror(errno));
     }
     return 1;
@@ -38,6 +39,7 @@ int filemagic_exists(char *path)
 int filemagic_can_read(char *path, int *fd)
 {
     if (access(path, R_OK) != 0) {
+        debug("File '%s' can not be accessed to read", path);
         return_msg(0, strerror(errno));
     }
     if (fd != NULL) {

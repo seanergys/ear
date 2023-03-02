@@ -51,10 +51,10 @@ static uint    governor0;
 
 void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
-	char buffer[PATH_MAX];
-	int found_userspace =  0;
-	int set_frequency   =  1;
-	int set_governor    =  1;
+    char buffer[PATH_MAX];
+    int found_userspace =  0;
+    int set_frequency   =  1;
+    int set_governor    =  1;
     int fd_sag0         = -1;
 
     // This is a userspace driver (based on acpi_cpufreq model).
@@ -84,21 +84,21 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     // Saved initial values
     keeper_macro(uint32, "AcpiCpufreqDefaultGovernor", governor0);
     debug("AcpiCpufreqDefaultGovernor: %u", governor0);
-	// Driver references
-	apis_put(ops->init                 , mgt_acpi_cpufreq_init                                );
-	apis_put(ops->dispose              , mgt_acpi_cpufreq_dispose                             );
+    // Driver references
+    apis_put(ops->init                 , mgt_acpi_cpufreq_init                                );
+    apis_put(ops->dispose              , mgt_acpi_cpufreq_dispose                             );
     apis_put(ops->reset                , mgt_acpi_cpufreq_reset                               );
-	apis_put(ops->get_available_list   , mgt_acpi_cpufreq_get_available_list                  );
-	apis_put(ops->get_current_list     , mgt_acpi_cpufreq_get_current_list                    );
-	apis_put(ops->get_boost            , mgt_acpi_cpufreq_get_boost                           );
-	apis_put(ops->get_governor         , mgt_acpi_cpufreq_governor_get                        );
-	apis_put(ops->get_governor_list    , mgt_acpi_cpufreq_governor_get_list                   );
+    apis_put(ops->get_available_list   , mgt_acpi_cpufreq_get_available_list                  );
+    apis_put(ops->get_current_list     , mgt_acpi_cpufreq_get_current_list                    );
+    apis_put(ops->get_boost            , mgt_acpi_cpufreq_get_boost                           );
+    apis_put(ops->get_governor         , mgt_acpi_cpufreq_governor_get                        );
+    apis_put(ops->get_governor_list    , mgt_acpi_cpufreq_governor_get_list                   );
     apis_put(ops->is_governor_available, mgt_acpi_cpufreq_governor_is_available               );
-	apis_pin(ops->set_current_list     , mgt_acpi_cpufreq_set_current_list     , set_frequency);
-	apis_pin(ops->set_current          , mgt_acpi_cpufreq_set_current          , set_frequency);
-	apis_pin(ops->set_governor         , mgt_acpi_cpufreq_governor_set         , set_governor );
-	apis_pin(ops->set_governor_mask    , mgt_acpi_cpufreq_governor_set_mask    , set_governor );
-	apis_pin(ops->set_governor_list    , mgt_acpi_cpufreq_governor_set_list    , set_governor );
+    apis_pin(ops->set_current_list     , mgt_acpi_cpufreq_set_current_list     , set_frequency);
+    apis_pin(ops->set_current          , mgt_acpi_cpufreq_set_current          , set_frequency);
+    apis_pin(ops->set_governor         , mgt_acpi_cpufreq_governor_set         , set_governor );
+    apis_pin(ops->set_governor_mask    , mgt_acpi_cpufreq_governor_set_mask    , set_governor );
+    apis_pin(ops->set_governor_list    , mgt_acpi_cpufreq_governor_set_list    , set_governor );
     debug("Loaded ACPI_CPUFREQ");
 }
 
