@@ -113,9 +113,13 @@ state_t report_dispose(report_id_t *id)
 state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count)
 {
 
-    sprintf(text_buffers[next_buffer], "periodic_metric_DC_energy_joules{node=\"%s\"} %lu %lu\n", 
+    sprintf(text_buffers[0], "periodic_metric_DC_energy_Joules{node=\"%s\"} %lu %lu\n", 
             mets[0].node_id, mets[0].DC_energy, mets[0].end_time*1000);
-    next_buffer = (next_buffer+1) >= NUM_LINES ? 0 : next_buffer + 1 ;
+    sprintf(text_buffers[1], "periodic_metric_avg_freq_kHz{node=\"%s\"} %lu %lu\n", 
+            mets[0].node_id, mets[0].avg_f, mets[0].end_time*1000);
+    sprintf(text_buffers[2], "periodic_metric_temp_Celsius{node=\"%s\"} %lu %lu\n", 
+            mets[0].node_id, mets[0].temp, mets[0].end_time*1000);
+    //next_buffer = (next_buffer+1) >= NUM_LINES ? 0 : next_buffer + 1 ;
     rebuild_buffer();
     return EAR_SUCCESS;
 }
