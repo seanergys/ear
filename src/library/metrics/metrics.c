@@ -1667,8 +1667,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		metrics->DRAM_power  = energy_cpu_compute_power(metrics->DRAM_power, time_s);
 		metrics->EDP = time_s * time_s * metrics->DC_power;
 		#if EARL_LIGHT
-		verbose_master(1,"computing dram power %.2lf", metrics->DRAM_power);
-		verbose_master(1,"computing pck power %.2lf time %lf", metrics->PCK_power, time_s);
+		verbose_master(2,"computing dram power %.2lf", metrics->DRAM_power);
+		verbose_master(2,"computing pck power %.2lf time %lf", metrics->PCK_power, time_s);
 		#else
 		debug("computing dram power %.2lf", metrics->DRAM_power);
 		debug("computing pck power %.2lf", metrics->PCK_power);

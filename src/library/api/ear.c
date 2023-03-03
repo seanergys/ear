@@ -2387,7 +2387,7 @@ state_t earl_periodic_actions(void *no_arg)
     }
 
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) verbose_master(0,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+            if (ear_guided == TIME_GUIDED) verbose_master(2,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
     }
 
