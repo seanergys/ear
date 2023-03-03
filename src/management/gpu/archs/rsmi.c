@@ -113,6 +113,7 @@ static state_t static_init_dev(int i)
     // Copying (Hz to KHz)
     for (f = 0; f < clock_lens[i]; ++f) {
         clock_list[i][f] = gpu_hz.frequency[INDEX(clock_lens[i], f)] / 1000LU;
+        debug("D%d F%d: %llu KHz", i, f, clock_list[i][f]);
     }
     // Powercap default (microWatts to Watts)
     rsmi.get_powercap_default(i, &pc_list_default[i]);
