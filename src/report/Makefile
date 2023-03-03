@@ -25,7 +25,6 @@ repo_BINS = \
     csv_ts.so \
     heroes.so \
     dummy.so \
-    prometheus.so \
 		dcdb.so \
 		sysfs.so \
     mpitrace.so
@@ -45,6 +44,11 @@ endif
 ifeq ($(FEAT_EXAMON),1)
 repo_BINS += \
         examon.so
+endif
+
+ifeq ($(FEAT_DB_PROMETHEUS), 1)
+repo_BINS += \
+		prometheus.so
 endif
 
 
