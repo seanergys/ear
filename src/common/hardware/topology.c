@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,27 +109,31 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 
     if ((fd = open(path, F_RD)) >= 0) {
         do {
-	    aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
-	    aux1 += aux2;
-	} while(aux2 > 0);
-	// Parsing
-	char *tok = strtok(buffer, ",");
-	//
-	while (tok != NULL) {
-	    if ((aux1 = atoi(tok)) != thread) {
-	    	topo->cpus[thread].sibling_id = aux1;
-    		topo->cpus[thread].core_id    = thread;
-
-            if (thread > aux1) {
-		        topo->cpus[thread].core_id   = aux1;
-		        topo->cpus[thread].is_thread = 1;
-		    }
+            // aux2: number of bytes read. aux1: total bytes read.
+            aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
+            aux1 += aux2;
+	    } while(aux2 > 0);
+        // Parsing
+        char *tok = strtok(buffer, ",");
+        // core_id = thread from argument.
+        // sibling_id = detected sibling (we are setting just one)
+        while (tok != NULL) {
+	        if ((aux1 = atoi(tok)) != thread) {
+                topo->cpus[thread].sibling_id = aux1;
+                topo->cpus[thread].core_id    = thread;
+                if (thread > aux1) {
+                    // Is thread mean is not the main thread in the core
+                    // This algorithm won't be valid when there were more
+                    // than one thread per core, maybe in PowerPCs.
+                    topo->cpus[thread].core_id   = aux1;
+                    topo->cpus[thread].is_thread = 1;
+		        }
+	        }
+	        tok = strtok(NULL, ",");
 	    }
-	    tok = strtok(NULL, ",");
-	}
-	close(fd);
+        close(fd);
     } else {
-        debug("Failed while opening '%s': %s", path, strerror(errno));
+        debug("Could not open '%s': %s", path, strerror(errno));
     }
     // Getting the socket_id
 	sprintf(path, "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", thread);
@@ -141,13 +145,12 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
 			aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
 			aux1 += aux2;
 		} while(aux2 > 0);
-
 		topo->cpus[thread].socket_id = atoi(buffer);
 		close(fd);
 	} else {
-        debug("Failed while opening '%s': %s", path, strerror(errno));
+        debug("Could not open '%s': %s", path, strerror(errno));
     }
-    // Cleaning caches
+    // CACHE: Cleaning caches
 	for (i = 0; i < TOPO_CL_COUNT; ++i) {
         topo->cpus[thread].l[i].id = TOPO_UNDEFINED;
     }
@@ -164,9 +167,9 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
                 aux1 += aux2;
             } while(aux2 > 0);
             aux3 = atoi(buffer);
-	    close(fd);
+            close(fd);
         } else {
-            //debug("Failed while opening '%s': %s", path, strerror(errno));
+            //debug("Could not open '%s': %s", path, strerror(errno));
             continue;
         }
         sprintf(path, "/sys/devices/system/cpu/cpu%d/cache/index%d/id", thread, i);
@@ -189,7 +192,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
             } else {
                 topo->cpus[thread].l[aux3].id = topo->cpus[thread].core_id;
             }
-            //debug("Failed while opening '%s': %s", path, strerror(errno));
+            //debug("Could not open '%s': %s", path, strerror(errno));
         }
         debug("CPU%d L%d id: %d", thread, aux3, topo->cpus[thread].l[aux3].id);
     }
@@ -269,16 +272,15 @@ static void topology_cpuinfo(topology_t *topo)
     free(line);
 }
 
-static int is_online(const char *path)
+static int cpu_exists(uint cpu)
 {
+    char path[PATH_MAX];
 	char c = '0';
+    //
+    sprintf(path, "/sys/devices/system/cpu/cpu%d", cpu);
+    //
 	if (access(path, F_OK) != 0) {
-		return 0;
-	}
-	if (state_fail(ear_file_read(path, &c, sizeof(char)))) {
-		return 0;
-	}
-	if (c != '1') {
+        debug("CPU '%s' not found", path);
 		return 0;
 	}
 	return 1;
@@ -286,7 +288,6 @@ static int is_online(const char *path)
 
 state_t topology_init(topology_t *topo)
 {
-    char path[SZ_NAME_LARGE];
     int i, j;
 
     if (topo_static.initialized) {
@@ -313,10 +314,9 @@ state_t topology_init(topology_t *topo)
     topo->sve_bits         = 0;
     topo->initialized      = 1;
     // Counting number of CPUs
-    do {
-        sprintf(path, "/sys/devices/system/cpu/cpu%d/online", topo->cpu_count + 1);
-	topo->cpu_count += 1;
-    } while(is_online(path));
+    while(cpu_exists(topo->cpu_count)) {
+        topo->cpu_count += 1;
+    }
     // Allocating individual CPU memory
     topo->cpus = calloc(topo->cpu_count, sizeof(cpu_t));
     // First assembly characteristics (random CPU, we are supposing all CPUs are the same).
@@ -325,19 +325,25 @@ state_t topology_init(topology_t *topo)
     // Travelling through all CPUs
     for (i = 0; i < topo->cpu_count; ++i) {
     	topology_init_thread(topo, i);
-	// Counting cores
+        // Counting cores
         topo->core_count += !topo->cpus[i].is_thread;
 	    if (topo->cpus[i].is_thread) {
 	        topo->threads_per_core = 2;
 	        topo->smt_enabled = 1;
         }
         // Counting sockets
-        for (j = 0; j < i; ++j) {
-            if (topo->cpus[j].socket_id == topo->cpus[i].socket_id) {
-                break;
+        debug("CPU%d socket_id: %d", i, topo->cpus[i].socket_id);
+        if (topo->cpus[i].socket_id != -1) {
+            for (j = 0; j < i; ++j) {
+                if (topo->cpus[j].socket_id == -1) {
+                    continue;
+                }
+                if (topo->cpus[j].socket_id == topo->cpus[i].socket_id) { 
+                    break;
+                }
             }
+            topo->socket_count += (j == i);
         }
-        topo->socket_count += (j == i);
         // Counting cache banks
         #define cache_count(level, var) \
         for (j = 0; j <= i; ++j) { \
