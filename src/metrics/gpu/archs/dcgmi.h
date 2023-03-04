@@ -78,6 +78,7 @@ state_t gpu_dcgmi_read(dcgmi_t *d);
 void gpu_dcgmi_data_alloc(dcgmi_t **d);
 void gpu_dcgmi_events_to_str(uint *dcgmi_events, uint num_ev,char * dcgmi_events_str);
 void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str, uint *ev_list, uint num_ev);
+void gpu_dcgmi_data_copy(dcgmi_t *dest, dcgmi_t *src);
 
 /* This function changes the command to be executed
  * warning: it is user responsabiity to allocate data with the right number of events

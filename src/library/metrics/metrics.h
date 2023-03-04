@@ -31,8 +31,10 @@ typedef struct phase_info{
 }phase_info_t;
 
 typedef struct dcgmi_sig{
-  uint    *dcgmi_events;
-  dcgmi_t *dcgmi_metrics;
+  uint    dcgmi_sets;
+  uint    dcgmi_num_ev;
+  uint    **dcgmi_events;
+  dcgmi_t **dcgmi_metrics;
 }dcgmi_sig_t;
 
 typedef struct sig_ext {
@@ -46,7 +48,7 @@ typedef struct sig_ext {
 	float             psaving;
 	float             tpenalty;
   phase_info_t      earl_phase[EARL_MAX_PHASES];
-  dcgmi_sig_t       *dcgmis;
+  dcgmi_sig_t       dcgmis;
 } sig_ext_t;
 
 #define MGT_CPUFREQ 1

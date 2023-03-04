@@ -1674,6 +1674,10 @@ void ear_init()
 				application.job.procs         = my_size;
 				application.job.th            = system_conf->settings[0];
         application.signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+        #if DCGMI
+        sig_ext_t *sig_ext = (sig_ext_t *)application.signature.sig_ext;
+        sig_ext->dcgmis.dcgmi_sets = 0;
+        #endif
 
 
 				// Copying static application info into the loop info

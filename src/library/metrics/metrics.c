@@ -338,6 +338,7 @@ void report_dcgmi_metrics()
   uint gcount = gpu_dcgmi_gpus_detected();
 
   if (!dcgmi) return;
+  
  
   /* Cleaning */
   memset(&total, 0, sizeof(dcgmi_t));
@@ -353,6 +354,7 @@ void report_dcgmi_metrics()
       }
     }
   }
+  
   /* Report */
   for (uint ev = 0; ev < dcgmi_num_events; ev++){
     if (total.values[ev] > 0){
@@ -1507,6 +1509,21 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 	}
 	sig_ext = metrics->sig_ext;
+  #if DCGMI
+  if (dcgmi && master && (sig_ext->dcgmis.dcgmi_sets == 0)){
+      sig_ext->dcgmis.dcgmi_sets = DCGMI_SETS;
+      sig_ext->dcgmis.dcgmi_num_ev = DCGMI_NUM_EVENTS;
+      sig_ext->dcgmis.dcgmi_events = calloc(DCGMI_SETS, sizeof(uint *));
+      sig_ext->dcgmis.dcgmi_metrics = calloc(DCGMI_SETS, sizeof(dcgmi_t *));
+      for (uint set = 0; set < DCGMI_SETS; set++){
+        sig_ext->dcgmis.dcgmi_events[set] = calloc(DCGMI_NUM_EVENTS, sizeof(uint));
+        gpu_dcgmi_data_alloc(&sig_ext->dcgmis.dcgmi_metrics[set]);
+        /* The list of events is static */
+        memcpy(sig_ext->dcgmis.dcgmi_events[set], dcgmi_events[set], DCGMI_NUM_EVENTS * sizeof(uint));
+      }
+  }
+  #endif
+	sig_ext = metrics->sig_ext;
 	sig_ext->elapsed = time_s;
 
 
@@ -1576,12 +1593,16 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     /* Accumulating */
     if (dcgmi) {
     if (sign_app_loop_idx == LOO){ 
+      verbose_master(2, "DCGMI[%u] loop metrics computation", dcgmi_curr_ev_set);
       dcgmi_elapsed += time_s;
       /* Read and accumulate */
       gpu_dcgmi_read(dcgmi_metrics[dcgmi_curr_ev_set]);
       gpu_dcgmi_accum_data(dcgmi_metrics_accum[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set], time_s, dcgmi_events[dcgmi_curr_ev_set],DCGMI_NUM_EVENTS);
       gpu_dcgmi_data_str(dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics_str, dcgmi_events[dcgmi_curr_ev_set], DCGMI_NUM_EVENTS);
       verbose_master(2, "DCGMI[%u] loop metrics %s elapsed %.3lf sec (total %.3lf sec)", dcgmi_curr_ev_set, dcgmi_metrics_str, time_s, dcgmi_elapsed);
+
+      /* Copy in sig_ext */
+      gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set]);
 
       dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % 2;
 
@@ -1591,9 +1612,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       gpu_dcgmi_set_events(dcgmi_events_str[dcgmi_curr_ev_set], DCGMI_NUM_EVENTS);
     }else{
       for (uint set = 0; set < DCGMI_SETS; set ++){
+        verbose_master(2, "DCGMI[%u] accumulated metrics", set);
         gpu_dcgmi_data_avg(dcgmi_metrics_accum[set], dcgmi_elapsed/DCGMI_SETS, dcgmi_events[set], DCGMI_NUM_EVENTS);
         gpu_dcgmi_data_str(dcgmi_metrics_accum[set], dcgmi_metrics_str, dcgmi_events[set], DCGMI_NUM_EVENTS);
         verbose_master(2, "DCGMI app metrics %s elapsed %.3lf sec", dcgmi_metrics_str, dcgmi_elapsed/DCGMI_SETS);
+        gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[set], dcgmi_metrics_accum[set]);
       }
       report_dcgmi_metrics();
     }
@@ -2015,6 +2038,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
   #if METRICS_OVH
   verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
   #endif
+
+  metrics->sig_ext = NULL;
 
 	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
 

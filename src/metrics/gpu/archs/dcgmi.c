@@ -164,6 +164,12 @@ void gpu_dcgmi_set_events(char *events, uint events_count_in)
     events_count = events_count_in;
 }
 
+void gpu_dcgmi_data_copy(dcgmi_t *dest, dcgmi_t *src)
+{
+  if ((dest == NULL) || (src == NULL)) return;
+  memcpy(dest, src, sizeof(dcgmi_t));
+}
+
 void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str, uint *ev_list, uint num_ev)
 {
   uint g, e;
