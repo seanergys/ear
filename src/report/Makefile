@@ -51,6 +51,13 @@ repo_BINS += \
 		prometheus.so
 endif
 
+ifeq ($(DCGMI), 1)
+CFLAGS += \
+	-DDCGMI=1
+repo_BINS += \
+	dcgmi.so
+endif	
+
 
 
 ######## RULES
