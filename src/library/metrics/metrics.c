@@ -434,6 +434,7 @@ static void metrics_configuration(topology_t *tp)
 }
 
 
+#if DCGMI & USE_GPUS
 static void dcgmi_static_events_init()
 {
   dcgmi_events[0][0] = tensor_active;
@@ -445,6 +446,7 @@ static void dcgmi_static_events_init()
   dcgmi_events[1][2] = pcie_rx_bytes;
   dcgmi_events[1][3] = gr_engine_active;
 }
+#endif
 
 
 static void metrics_static_init(topology_t *tp)
