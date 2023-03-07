@@ -105,7 +105,8 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         set_cache(1, zen_l2z, PERF_TYPE_RAW     , OFFSET(02), 1);
 	} else if (tp->vendor == VENDOR_ARM) {
         set_cache(1, arm_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
-        set_cache(1, arm_l2 , PERF_TYPE_RAW     , OFFSET(02), 1);
+        set_cache(1, arm_l2x, PERF_TYPE_RAW     , OFFSET(02), 1);
+        set_cache(1, arm_l2y, PERF_TYPE_RAW     , OFFSET(02), 1);
     }
     if (!counter) {
         debug(Generr.api_incompatible);

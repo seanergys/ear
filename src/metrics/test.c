@@ -181,8 +181,7 @@ static state_t monitor_apis_init(void *whatever)
 
 static state_t monitor_apis_update(void *whatever)
 {
-    stress_bandwidth(1000);
-    
+    //stress_bandwidth(1000);
     metrics_read_copy(&mr2, &mr1, &mrD);
     
     // Printf clear
@@ -231,8 +230,8 @@ int main(int argc, char *argv[])
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 100;
-	sus->time_burst    = 100;
+	sus->time_relax    = 2000;
+	sus->time_burst    = 2000;
 	sa(sus->suscribe(sus));
 
     sleep(100);
