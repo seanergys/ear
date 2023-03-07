@@ -35,13 +35,14 @@
 //     from L2 to DRAM. (Look LIKWID Github: L2-L3-MEM-traffic-on-Intel-Skylake)
 //   - Intel don't offer a a PERF_STORE event for L1D cache.
 static ullong hwl_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
-static ullong hwl_l2 = 0x3f24; // L2_RQSTS.MISS (All requests that missed L2)
+static ullong hwl_l2  = 0x3f24; // L2_RQSTS.MISS (All requests that missed L2)
 static ullong zen_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
-static ullong zen_llr = PERF_LL  | (PERF_LOAD  << 8) | (PERF_MISS << 16);
-static ullong zen_llw = PERF_LL  | (PERF_STORE << 8) | (PERF_MISS << 16);
+static ullong zen_l2x = 0x430864; // L2 Cache Miss from DC Miss
+static ullong zen_l2y = 0x431F71; // L2 Cache Miss from L2 HWPF (1)
+static ullong zen_l2z = 0x431F72; // L2 Cache Miss from L2 HWPF (2)
 static ullong arm_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
-static ullong arm_llr = PERF_LL  | (PERF_LOAD  << 8) | (PERF_MISS << 16);
-static ullong arm_llw = PERF_LL  | (PERF_STORE << 8) | (PERF_MISS << 16);
+static ullong arm_l2x = 0x17; //L2D_CACHE_REFILL
+static ullong arm_l2y = 0x18; //L2D_CACHE_WB
 
 typedef struct cdata_s {
     perf_t perf;
@@ -99,12 +100,12 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 		set_cache(1, hwl_l2 , PERF_TYPE_RAW     , OFFSET(02), 1);
 	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
 		set_cache(1, zen_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
-		set_cache(1, zen_llr, PERF_TYPE_HW_CACHE, OFFSET(LL), 1);
-        set_cache(1, zen_llw, PERF_TYPE_HW_CACHE, OFFSET(LL), 1);
+        set_cache(1, zen_l2x, PERF_TYPE_RAW     , OFFSET(02), 1);
+        set_cache(1, zen_l2y, PERF_TYPE_RAW     , OFFSET(02), 1);
+        set_cache(1, zen_l2z, PERF_TYPE_RAW     , OFFSET(02), 1);
 	} else if (tp->vendor == VENDOR_ARM) {
         set_cache(1, arm_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
-        set_cache(1, arm_llr, PERF_TYPE_HW_CACHE, OFFSET(LL), 1);
-        set_cache(1, arm_llw, PERF_TYPE_HW_CACHE, OFFSET(LL), 1);
+        set_cache(1, arm_l2 , PERF_TYPE_RAW     , OFFSET(02), 1);
     }
     if (!counter) {
         debug(Generr.api_incompatible);
@@ -144,6 +145,9 @@ state_t cache_perf_dispose(ctx_t *c)
 
 state_t cache_perf_read(ctx_t *c, cache_t *ca)
 {
+    //TODO: convert cache_t in a union of unnamed values and the current scheme.
+    //TODO: this is because we can not control the overflow properly with the
+    //TODO: sum of different events in the same variable.
     ullong *p = (ullong *) ca;
 	llong values[7];
 	state_t s;
