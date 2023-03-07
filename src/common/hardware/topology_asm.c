@@ -16,10 +16,13 @@
 */
 
 //#define SHOW_DEBUGS 1
+
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <common/output/debug.h>
+#include <common/hardware/mrs.h>
 #include <common/hardware/cpuid.h>
 #include <common/hardware/bithack.h>
 #include <common/hardware/defines.h>
@@ -108,10 +111,15 @@ __attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 
 __attribute__((unused)) static void topology_getid_arm64(topology_t *topo)
 {
-    debug("GETID ARM");
-    topo->vendor          = VENDOR_ARM;
-    topo->model           = MODEL_A8;
-    topo->cache_line_size = 64; // 64 bytes
+    ullong midr = mrs_midr();
+
+    topo->vendor    = VENDOR_ARM;
+    topo->family    = FAMILY_A8; // By now, we have to learn to identify ARM CPUs
+    topo->model     = getbits64(midr, 31, 24) << 12;
+    topo->model    |= getbits64(midr, 15,  4);
+    //topo->base_freq = TOPO_UNDEFINED;
+    // We don't have these values in accessible registers
+    topo->cache_line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 }
 
 static void topology_asm_getid(topology_t *topo)
@@ -128,7 +136,6 @@ static void topology_getbrand_x86(topology_t *topo)
     cpuid_regs_t r2, r3, r4;
     uint brand[12];
         
-    strcpy(topo->brand, "UNKNOWN");
     if (!cpuid_isleaf(0x80000004)) {
         return;
     }
@@ -154,6 +161,7 @@ static void topology_getbrand_x86(topology_t *topo)
 
 static void topology_asm_getbrand(topology_t *topo)
 {
+    strcpy(topo->brand, "unknown");
     #if __ARCH_X86
     topology_getbrand_x86(topo);
     #endif

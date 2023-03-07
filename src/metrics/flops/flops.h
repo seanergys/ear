@@ -71,9 +71,8 @@ typedef struct flops_s {
 	ullong d128;
 	ullong f256;
 	ullong d256;
-    ullong h512; // 512 field is also used as MAX VECTOR LENGTH flops,
-	ullong f512; // i.e. the ARM's SVE. But in the future maybe a
-	ullong d512; // union could be
+    ullong f512; // 512 field is also used as MAX VECTOR LENGTH flops,
+	ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
     union {
         timestamp_t time;
         double secs;

@@ -23,8 +23,8 @@
 #include <common/hardware/defines.h>
 
 // Topology specifics
-#define TOPO_UNDEFINED         -1
-#define CL_COUNT               (4+1) // Cache levels count, L0 to L4, but 0 doesn't exists
+#define TOPO_UNDEFINED        -1
+#define TOPO_CL_COUNT         (4+1) // Cache levels count, L0 to L4, but 0 doesn't exists
 // Supported vendors
 #define VENDOR_UNKNOWN         TOPO_UNDEFINED
 #define VENDOR_INTEL            0
@@ -44,9 +44,15 @@
 #define FAMILY_JAGUAR           22
 #define FAMILY_ZEN              0x17 // Also 23
 #define FAMILY_ZEN3             25
-// ARM models
+// ARM family (architecture)
 #define MODEL_A8                0x01
-#define MODEL_A9                0x02
+#define FAMILY_A8               0x01
+#define FAMILY_A9               0x02
+// ARM models (implementer 8bits + 12bits)
+#define MODEL_NEOVERSE_N1       0x41D0C
+#define MODEL_NEOVERSE_N2       0x41D4A 
+#define MODEL_NEOVERSE_V1       0x41D40
+#define MODEL_FX1000            0x46001
 
 #define DUMMY_BASE_FREQ         100000
 struct tp_select_s
@@ -84,7 +90,7 @@ typedef struct cpu_s {
     int     sibling_id;     // The thread sibling within a core.
     int     core_id;        // Basically, the lesser sibling_id
     int     socket_id;
-    cl_t l[CL_COUNT];    // Index = level, 0 doesn't exists
+    cl_t    l[TOPO_CL_COUNT]; // Index = level, 0 doesn't exists
 } cpu_t;
 
 typedef struct topology_s {
@@ -94,7 +100,10 @@ typedef struct topology_s {
     int   socket_count;   //
     int   threads_per_core; // Number or threads per core (not the whole system).
     int   smt_enabled;    // Multithreading enabled = 1, disabled = 0.
+    int   l2_count;       // Chunks of L2 in the system.
     int   l3_count;       // Chunks of L3 in the system.
+    int   l4_count;       // Chunks of L4 in the system.
+    int   cache_last_level; // Returns the maximum cache level
     int   cache_line_size;
     int   vendor;         // Take a look to top defines.
     int   family;         // Take a look to top defines.

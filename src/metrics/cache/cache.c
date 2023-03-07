@@ -111,18 +111,19 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     //
     caD->l1d_misses = overflow_zeros_u64(ca2->l1d_misses, ca1->l1d_misses);
     caD->l2_misses  = overflow_zeros_u64(ca2->l2_misses , ca1->l2_misses );
-    caD->llr_misses = overflow_zeros_u64(ca2->llr_misses, ca1->llr_misses);
-    caD->llw_misses = overflow_zeros_u64(ca2->llw_misses, ca1->llw_misses);
+    caD->l3_misses  = overflow_zeros_u64(ca2->l3_misses , ca1->l3_misses );
     caD->ll_misses  = overflow_zeros_u64(ca2->ll_misses , ca1->ll_misses );
+    caD->lbw_misses = overflow_zeros_u64(ca2->lbw_misses, ca1->lbw_misses);
     debug("Total L1D misses: %lld", caD->l1d_misses);
-    debug("Total L2  misses: %lld", caD->l2_misses);
-    debug("Total LLR misses: %lld", caD->l3_misses);
-    debug("Total LLD misses: %lld", caD->l4_misses);
-    debug("Total LL  misses: %lld", caD->ll_misses);
-    cas = (double) caD->ll_misses;
-    cas = (cas / secs);
-    cas = (cas * line_size);
-    cas = (cas / B_TO_GB);
+    debug("Total L2  misses: %lld", caD->l2_misses );
+    debug("Total L3  misses: %lld", caD->l3_misses );
+    debug("Total LL  misses: %lld", caD->ll_misses );
+    debug("Total LBW misses: %lld", caD->lbw_misses);
+    // Converting to bandwidth
+    cas  = (double) caD->lbw_misses;
+    cas  = cas / secs;
+    cas  = cas * ((double) line_size);
+    cas  = cas / ((double) B_TO_GB);
     *gbs = cas;
 }
 
@@ -141,6 +142,6 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
     snprintf(buffer, length,
-         "L1D misses: %llu\nL2 misses : %llu\nL3 misses : %llu (%0.2lf GB/s)\n",
-         ca->l1d_misses, ca->l2_misses, ca->l3_misses, gbs);
+         "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
+         ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
 }
