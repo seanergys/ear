@@ -44,9 +44,20 @@
 #define API_CPUMODEL    16
 #define API_RSMI        17
 // Load EARD API or not
-#define EARD             1
-#define NO_EARD          0
+#define EARD             0x01
+#define NO_EARD          0x00
+#define CONTINUOUS       0x02
 #define no_ctx           NULL
+
+/* EARD         --> use EARD API
+ * NO_EARD      --> not use EARD API
+ * CONTINUOUS   --> Required accumulated metrics
+ * EARD     --> contcatar + pool = 0
+ * NO_EARD  --> no contactar + pool = 0
+ * EARD + CONTINUOUS --> contactar + pool = 1
+ * NO_EARD + CONTINUOUS --> no contactar + pool = 1
+ */
+
 //
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1

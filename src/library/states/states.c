@@ -77,6 +77,11 @@ extern report_id_t    rep_id;
 
 extern cluster_conf_t cconf;
 
+#if DLB
+#include <common/external/ear_external.h>
+extern ear_mgt_t *external_mgt;
+#endif
+
 
 /* Period time computation control. */
 static llong comp_N_begin;
@@ -354,6 +359,18 @@ void states_new_iteration(int my_id, uint period, uint iterations,
       tracer_signature.def_f = sig_shared_region[my_node_id].new_freq;
       traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
     }
+
+
+    #if DLB
+    /* Add the node mgt external feature management . Detect, prints and set to 0 again */
+	if (external_mgt != NULL) {
+		if (external_mgt->new_mask == 1) {
+			verbose_master(0, "External library requested rescheduling");
+			external_mgt->new_mask = 0;
+		}
+	}
+
+    #endif
 
 
     sig_shared_region[my_node_id].iterations++;

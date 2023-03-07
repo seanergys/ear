@@ -31,6 +31,14 @@ else
 CFLAGS += -DEARL_LIGHT=0
 endif
 
+ifeq ($(DCGMI), 1)
+CFLAGS += -DDCGMI=1
+endif
+
+ifeq ($(DLB), 1)
+CFLAGS += -DDLB=1
+endif
+
 
 # export LIBCC
 # export LIBCC_FLAGS
@@ -60,6 +68,12 @@ comm_OBJS = \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/daemon/local_api/libeard.a \
     $(SRCDIR)/common/libcommon.a
+
+ifeq ($(DLB), 1)
+comm_OBJS += \
+	$(SRCDIR)/common/external/ear_external.o
+endif
+
 
 core_OBJS = \
     api/ear.o \

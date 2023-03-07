@@ -58,7 +58,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0;
     float l1_sec=0,l2_sec=0,l3_sec=0;
     float IO_MBS;
-    ulong GPU_UTIL = 0, GPU_FREQ = 0, gpu_used_cnt=0;
+    ulong GPU_UTIL = 0, GPU_FREQ = 0, gpu_used_cnt=0, GPU_mem_util = 0;
     ulong elapsed;
     timestamp end;
     char mode[32];
@@ -212,6 +212,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                     GPU_POWER    += sig->signature.gpu_sig.gpu_data[i].GPU_power; 
                     GPU_FREQ     += sig->signature.gpu_sig.gpu_data[i].GPU_freq; 
                     GPU_UTIL     += sig->signature.gpu_sig.gpu_data[i].GPU_util; 
+                    GPU_mem_util     += sig->signature.gpu_sig.gpu_data[i].GPU_mem_util; 
                 }
             } 
             verbose_master(3, "-------------------------------------");
@@ -220,6 +221,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                 GPU_POWER /= (float) gpu_used_cnt;
                 AVGGPUF = (float) GPU_FREQ / (float) (gpu_used_cnt * 1000000.0); 
                 GPU_UTIL = GPU_UTIL / gpu_used_cnt; 
+                GPU_mem_util = GPU_mem_util / gpu_used_cnt; 
             }
 
             gpu_freq_sum /= gpu_cnt;
@@ -244,7 +246,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         strcpy(gpu_buff," ");
         if (GPU_UTIL) {
             snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(Used GPUS %lu GPU_power %.2lfW (avg) "
-                    "GPU_freq %.2fGHz (avg) GPU_util %lu (avg))", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL);
+                    "GPU_freq %.2fGHz (avg) GPU_util %lu (avg) GPU_mem_util %lu (avg))", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL, GPU_mem_util);
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);

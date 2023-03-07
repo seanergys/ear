@@ -49,6 +49,10 @@ static my_node_conf_t *dummy_node_conf;
 static char nodename[MAX_PATH_SIZE];
 static ear_njob_t *dummy_nodemgr;
 
+static settings_conf_t * dummy_sett;
+static ulong           * dummy_frequencies;
+
+
 #define check_null(p, str, arg) \
 	if (p == NULL){ \
 		verbose_master(2, str, arg);\
@@ -163,7 +167,7 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
         create_dummy_island(&dummy_cc);
         create_dummy_policy(&dummy_cc);
     }
-    print_cluster_conf(&dummy_cc);
+    if (VERB_GET_LV() >= 2) print_cluster_conf(&dummy_cc);
 
     verbose_master(2, "Looking for node conf. Nodename %s", nodename);
     dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
@@ -174,7 +178,7 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
     }
     check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
     if (dummy_node_conf != NULL){
-        print_my_node_conf(dummy_node_conf);
+        if (VERB_GET_LV() >= 2) print_my_node_conf(dummy_node_conf);
     }
 
     /* serialization */
@@ -192,7 +196,6 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 
 state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 {
-				settings_conf_t * dummy_sett;
 				resched_t       * dummy_resch;
   			policy_conf_t   * my_policy;
 			ulong             freq_base;
@@ -304,7 +307,7 @@ state_t eard_dummy_coefficients(char *ear_tmp, uint ID)
 
 state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 {
-				ulong * frequencies, *dummy_frequencies, freq_base;
+				ulong * frequencies, freq_base;
 				int ps;
 				ps = 1;
 				int size = ps * sizeof(ulong);
@@ -321,6 +324,23 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 				return EAR_SUCCESS;
 	
 }
+
+void eard_dummy_replace_base_freq(ulong base)
+{
+        verbose_master(2,"Replacing list of frequencies with freq %lu", base);
+
+        if ((dummy_frequencies == NULL) || (dummy_sett == NULL)) {
+          verbose_master(2,"Error, dummy_frequencies %p dummy_sett %p", dummy_frequencies, dummy_sett);
+          return;
+        }
+        dummy_frequencies[0]         = base;
+
+        verbose_master(2,"EARL settings");
+        dummy_sett->def_freq         = base;
+        dummy_sett->max_freq         = base;
+
+}
+
 
 
 /* This function is called when metrics are not yet initialized */

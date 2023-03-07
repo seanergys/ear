@@ -103,6 +103,12 @@
 #include <library/api/mpi_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
+#if DLB
+#include <common/external/ear_external.h>
+char shexternal_region_path[GENERIC_NAME];
+ear_mgt_t *external_mgt;
+#endif
+
 
 
 void ear_finalize(int exit_status);
@@ -315,6 +321,9 @@ void notify_eard_connection(int status)
 												{       
 																masters_connected+=(int)buffer_recv[i];
 												}
+                        int master_pid = getpid();
+                        PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , masters_info.masters_comm );
+                        verbose(0,"PID for master is %d", master_pid);
 								}
 #else
 								masters_connected=1;
@@ -580,6 +589,15 @@ void create_shared_regions()
 				}
 				exclusive = (current_jobs_in_node == 1);
 				verbose_jobs_in_node(3,node_mgr_data,node_mgr_job_info);
+
+        #if DLB
+        /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
+#warning Compiling with DLB activated
+        get_ear_external_path(tmp, ID, shexternal_region_path);
+        external_mgt = create_ear_external_shared_area(shexternal_region_path);
+        verbose_master(0, "Created shared region for external libraries!");
+        #endif
+
 }
 
 /****************************************************************************************************************************************************************/
@@ -1656,6 +1674,10 @@ void ear_init()
 				application.job.procs         = my_size;
 				application.job.th            = system_conf->settings[0];
         application.signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
+        #if DCGMI
+        sig_ext_t *sig_ext = (sig_ext_t *)application.signature.sig_ext;
+        sig_ext->dcgmis.dcgmi_sets = 0;
+        #endif
 
 
 				// Copying static application info into the loop info
@@ -2369,7 +2391,7 @@ state_t earl_periodic_actions(void *no_arg)
     }
 
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) verbose_master(0,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+            if (ear_guided == TIME_GUIDED) verbose_master(2,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
     }
 

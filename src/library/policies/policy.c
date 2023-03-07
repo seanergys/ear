@@ -855,42 +855,43 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     // functions for converting a pstate value to a khz frequency, and viceversa.
     // The called function is defined at the end of this file.
     if (state_fail(fill_mgt_api_pstate_data(MGT_CPUFREQ, &cpu_pstate_lst, &cpu_pstate_cnt))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read mgt_cpufreq.",
-                COL_RED, COL_CLR);
+        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read mgt_cpufreq: %s",
+                       COL_RED, COL_CLR, state_msg);
     }
     if (state_fail(fill_mgt_api_pstate_data(MGT_IMCFREQ, &imc_pstate_lst, &imc_pstate_cnt))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read mgt_cpufreq.",
-                COL_RED, COL_CLR);
+        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read mgt_cpufreq: %s",
+                       COL_RED, COL_CLR, state_msg);
     }
 
     // Set the minimum CPU and IMC freqs. to the max P-States set by the Admin in ear.conf
 
     debug("max cpu pstate: %u / cpu pstate cnt %u",
-            (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
+          (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
-    if (strcmp(my_policy_name, "monitoring") == 0) {
-				is_monitoring = 1;
-        pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
-                cpu_pstate_cnt - 1, &min_cpufreq);
-    } else {
-    if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt,
-                        (uint) app_settings->cpu_max_pstate, &min_cpufreq))) {
-            verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate.",
-                    COL_RED, COL_CLR);
-        }
+    uint max_cpu_ps = cpu_pstate_cnt - 1;
+    if (strcmp(my_policy_name, "monitoring") == 0)
+    {
+        is_monitoring = 1;
+    } else
+    {
+        max_cpu_ps = ear_min(max_cpu_ps, (uint) app_settings->cpu_max_pstate);
+    }
 
+    if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt, max_cpu_ps, &min_cpufreq)))
+    {
+        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read cpu_max_pstate: %s",
+                       COL_RED, COL_CLR, state_msg);
     }
 
     debug("max imc pstate: %u / imc pstate cnt %u",
-            (uint) app_settings->imc_max_pstate, imc_pstate_cnt);
+          (uint) app_settings->imc_max_pstate, imc_pstate_cnt);
 
-    if (state_fail(pstate_pstofreq(imc_pstate_lst, imc_pstate_cnt,
-                    (uint) app_settings->imc_max_pstate, &min_imcfreq))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate.",
-                COL_RED, COL_CLR);
+    max_policy_imcfreq_ps = ear_min(imc_pstate_cnt - 1, (uint) app_settings->imc_max_pstate);
+    if (state_fail(pstate_pstofreq(imc_pstate_lst, imc_pstate_cnt, max_policy_imcfreq_ps, &min_imcfreq)))
+    {
+        verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate: %s",
+                       COL_RED, COL_CLR, state_msg);
     }
-    max_policy_imcfreq_ps = (uint) app_settings->imc_max_pstate;
-
 
     return policy_init();
 }
@@ -1655,28 +1656,35 @@ state_t policy_get_current_freq(node_freqs_t *freq_set)
     return EAR_SUCCESS;
 }
 
+
 static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint *pstate_cnt)
 {
     debug("Requesting MGT_CPUFREQ (%u) vs. MGT_IMCFREQ (%u): %u",
             MGT_CPUFREQ, MGT_IMCFREQ, api_id);
 
-    if (api_id != MGT_CPUFREQ && api_id != MGT_IMCFREQ) {
-        return_msg(EAR_ERROR, "Requested API not supported.");
+    if (pstate_lst && pstate_cnt)
+    {
+        if (api_id != MGT_CPUFREQ && api_id != MGT_IMCFREQ) {
+            return_msg(EAR_ERROR, Generr.api_incompatible);
+        }
+
+        // Get mgt API from metrics
+        const metrics_t *mgt_api = metrics_get(api_id);
+
+        if (mgt_api == NULL) {
+            return_msg(EAR_ERROR, Generr.api_undefined);
+        } else if (mgt_api->avail_list != NULL) {
+            *pstate_lst = (pstate_t *) mgt_api->avail_list;
+            *pstate_cnt = mgt_api->avail_count;
+
+            return EAR_SUCCESS;
+        }
+
+        return_msg(EAR_ERROR, Generr.api_initialized);
+    } else
+    {
+        return_msg(EAR_ERROR, Generr.input_null)
     }
-
-    // Get mgt API from metrics
-    const metrics_t *mgt_api = metrics_get(api_id);
-
-    if (mgt_api == NULL) {
-        return_msg(EAR_ERROR, "The requested API does not exist.");
-    } else if (mgt_api->avail_list != NULL) {
-        *pstate_lst = (pstate_t *) mgt_api->avail_list;
-        *pstate_cnt = mgt_api->avail_count;
-
-        return EAR_SUCCESS;
-    }
-
-    return_msg(EAR_ERROR, "The requested API has not filled the avail_list field.");
 }
 
 

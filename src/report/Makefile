@@ -46,6 +46,18 @@ repo_BINS += \
         examon.so
 endif
 
+ifeq ($(FEAT_DB_PROMETHEUS), 1)
+repo_BINS += \
+		prometheus.so
+endif
+
+ifeq ($(DCGMI), 1)
+CFLAGS += \
+	-DDCGMI=1
+repo_BINS += \
+	dcgmi.so
+endif	
+
 
 
 ######## RULES
@@ -66,6 +78,9 @@ eard.so: eard.c $(SRCDIR)/daemon/local_api/eard_api.c $(repo_DEPS)
 
 eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
+
+prometheus.so: prometheus.c $(repo_DEPS)
+	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c -lmicrohttpd 
 
 mysql.so: mysql.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
