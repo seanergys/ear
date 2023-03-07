@@ -284,6 +284,9 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.path_temp.ear);
 	printenv_agnostic(sp, Var.ld_preload.ear);
 	printenv_agnostic(sp, Var.ld_library.ear);
+  printenv_agnostic(sp, "EAR_INSTALL_PATH");
+  printenv_agnostic(sp, "EAR_ETC");
+  printenv_agnostic(sp, "EAR_TMP");
     printenv_agnostic(sp, "SLURM_JOBID");
     printenv_agnostic(sp, "SLURM_JOB_ID");
     printenv_agnostic(sp, "SLURM_STEPID");

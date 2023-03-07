@@ -51,10 +51,10 @@ static uint must_report;
 
 
 
-static char extra_header[4096];
-static char extra_header_app[4096];
-static char extra_metrics[4096];
-static char app_header[4096];
+static char extra_header[8192];
+static char extra_header_app[8192];
+static char extra_metrics[8192];
+static char app_header[8192];
 
 #define DCGMI_LOGS_PATH "DCGMI_LOGS_PATH"
 
@@ -149,16 +149,18 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 			debug("Using %d GPUS", num_gpus);
 #endif
       #if DCGMI
-      sigex = (sig_ext_t *)apps->signature.sig_ext;
+      sigex = (sig_ext_t *)apps[0].signature.sig_ext;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis; 
       char dcgmi_ev_name[128];
       strcpy(extra_header_app,"DCGMI_NUM_EVENTS;");
       for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
         for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
           //strcpy(dcgmi_ev_name , gpu_dcgmi_event_to_name(dcgmis->dcgmi_events[set][ev]);
-          sprintf(dcgmi_ev_name, "%u", dcgmis->dcgmi_events[set][ev]);
-          strcat(dcgmi_ev_name, ";");
-          strcat(extra_header_app,dcgmi_ev_name);
+          for (uint gpus = 0; gpus < num_gpus; gpus++){
+          	sprintf(dcgmi_ev_name, "GPU%u_%u", gpus, dcgmis->dcgmi_events[set][ev]);
+         	 	strcat(dcgmi_ev_name, ";");
+          	strcat(extra_header_app,dcgmi_ev_name);
+					}
         }
       }
       #endif
@@ -170,7 +172,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
         strcat(app_header, ";");
       }
 
-      create_app_header(app_header, csv_log_file, num_gpus, 1, 1);
+      create_app_header(app_header, csv_log_file, num_gpus, 1, 0);
       file_app_created = 1;
 			fd_app = open(csv_log_file, O_WRONLY|O_APPEND);
     }
@@ -178,6 +180,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 		
 
     for (i=0;i<count;i++){
+		debug("Reporting app %u", i);
         if (fd_app >= 0){
           #if DCGMI
           sigex = (sig_ext_t *)apps[i].signature.sig_ext;
@@ -188,24 +191,26 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
             for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
               for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
                 for (uint gpu = 0; gpu < num_gpus; gpu++){
-                  sprintf(dcgmi_metrics, "%f-", dcgmis->dcgmi_metrics[set][gpu].values[ev]);
+                  if (apps[i].signature.gpu_sig.num_gpus >= gpu)  sprintf(dcgmi_metrics, "%f;", dcgmis->dcgmi_metrics[set][gpu].values[ev]);
+									else sprintf(dcgmi_metrics, "%f;",0.0);
                   strcat(extra_metrics, dcgmi_metrics);
                 }
               }
-              strcat(extra_metrics,";");
             }
             dprintf(fd_app,"%s", extra_metrics);
           }
           #endif
 
           if (apps[i].signature.sig_ext){
+						debug("Adding phases");
             sigex = (sig_ext_t *) apps[i].signature.sig_ext;
             for (uint ph = 1; ph < EARL_MAX_PHASES; ph++){
               dprintf(fd_app, "%llu;", sigex->earl_phase[ph].elapsed);
             }
           }
         }
-        append_application_text_file(csv_log_file,&apps[i],1, 0, 1);
+				debug("Reporting signature");
+        append_application_text_file(csv_log_file,&apps[i],1, 0, 0);
     }
     return EAR_SUCCESS;
 }
@@ -239,16 +244,18 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
         strcpy(extra_header,"DCGMI_NUM_EVENTS;");
         for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
           for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
-            //strcpy(dcgmi_ev_name , gpu_dcgmi_event_to_name(dcgmis->dcgmi_events[set][ev]);
-            sprintf(dcgmi_ev_name, "%u", dcgmis->dcgmi_events[set][ev]);
-            strcat(dcgmi_ev_name, ";");
-            strcat(extra_header,dcgmi_ev_name);
+						for (uint gpu = 0; gpu < num_gpus; gpu++){
+            	//strcpy(dcgmi_ev_name , gpu_dcgmi_event_to_name(dcgmis->dcgmi_events[set][ev]);
+            	sprintf(dcgmi_ev_name, "GPU%u_%u", gpu, dcgmis->dcgmi_events[set][ev]);
+            	strcat(dcgmi_ev_name, ";");
+            	strcat(extra_header,dcgmi_ev_name);
+						}
           }
         }
       }
       #endif
 
-      create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus, 1);
+      create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus, 0);
 			file_loop_created = 1;
 			fd_loops = open(csv_loop_log_file, O_WRONLY|O_APPEND);
     }
@@ -268,17 +275,17 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
           for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
             for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
               for (uint gpu = 0; gpu < num_gpus; gpu++){
-              sprintf(dcgmi_metrics, "%f-", dcgmis->dcgmi_metrics[set][gpu].values[ev]); 
+							if (loops[i].signature.gpu_sig.num_gpus >= gpu) sprintf(dcgmi_metrics, "%f;", dcgmis->dcgmi_metrics[set][gpu].values[ev]); 
+							else sprintf(dcgmi_metrics, "%f;", 0.0);
               strcat(extra_metrics, dcgmi_metrics);
               }
             }
-            strcat(extra_metrics,";");
           }
           dprintf(fd_loops,"%s", extra_metrics);
         }
         #endif
 				}
-        append_loop_text_file_no_job_with_ts(csv_loop_log_file,&loops[i], currtime, 0, 1, ',');
+        append_loop_text_file_no_job_with_ts(csv_loop_log_file,&loops[i], currtime, 0, 0, ' ');
     }
     return EAR_SUCCESS;
 }
