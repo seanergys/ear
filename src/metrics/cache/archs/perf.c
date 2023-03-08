@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -40,7 +40,6 @@
 //     from L2 to DRAM. (Look LIKWID Github: L2-L3-MEM-traffic-on-Intel-Skylake)
 //   - Intel don't offer a a PERF_STORE event for L1D cache.
 //
-
 static ullong hwl_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
 static ullong hwl_l2x = 0x3f24; // L2_RQSTS.MISS (All requests that missed L2)
 static ullong hwl_l2y = 0x40f0; // L2_TRANS.L2_WB
@@ -109,8 +108,8 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
         set_cache(1, hwl_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
         set_cache(1, hwl_l2x, PERF_TYPE_RAW     , OFFSET(02), 0);
-        set_cache(1, hwl_l2y, PERF_TYPE_RAW     , OFFSET(LBW),1); //BW
-        set_cache(1, hwl_l2z, PERF_TYPE_RAW     , OFFSET(LBW),1); //BW
+        set_cache(1, hwl_l2y, PERF_TYPE_RAW     , OFFSET(LBW),0); //BW
+        set_cache(1, hwl_l2z, PERF_TYPE_RAW     , OFFSET(LBW),0); //BW
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         set_cache(1, zen_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
         set_cache(1, zen_l2x, PERF_TYPE_RAW     , OFFSET(02), 1);
@@ -119,7 +118,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     } else if (tp->vendor == VENDOR_ARM) {
         set_cache(1, arm_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
         set_cache(1, arm_l2x, PERF_TYPE_RAW     , OFFSET(02), 1);
-        set_cache(1, arm_l2y, PERF_TYPE_RAW     , OFFSET(LBW),1); //BW
+        set_cache(1, arm_l2y, PERF_TYPE_RAW     , OFFSET(LBW),0); //BW
     }
     if (!counter) {
         debug(Generr.api_incompatible);

@@ -185,7 +185,7 @@ static state_t monitor_apis_update(void *whatever)
     metrics_read_copy(&mr2, &mr1, &mrD);
     
     // Printf clear
-    //system("clear");
+    system("clear");
 
     tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
     tprintf("API||Internal||#Devs||Granularity");
