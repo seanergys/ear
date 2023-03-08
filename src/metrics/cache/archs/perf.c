@@ -15,10 +15,11 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
+#include <common/math_operations.h>
 #include <metrics/common/perf.h>
 #include <metrics/cache/archs/perf.h>
 
@@ -28,21 +29,29 @@
 #define PERF_STORE   PERF_COUNT_HW_CACHE_OP_WRITE
 #define PERF_MISS    PERF_COUNT_HW_CACHE_RESULT_MISS
 
-// It seems that you can't mix OP_READ and OP_WRITE.
+// - We count bandwidth as the data loading to LL from upper leverls (read), or
+//   stored in upper levels by LL (write). This is because we are interested in
+//   the data traffic to DRAM, not in inter cache communications. LL (last level)
+//   could be L3 or L2. The main events are LL_MISS and LL_WRITE_BACK.
+// - It seems that you can't mix OP_READ and OP_WRITE.
 // 
 // Skylake:
 //   - It has a victim cache, so most of the data avoids the L3, passing directly
 //     from L2 to DRAM. (Look LIKWID Github: L2-L3-MEM-traffic-on-Intel-Skylake)
 //   - Intel don't offer a a PERF_STORE event for L1D cache.
+//
+
 static ullong hwl_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
-static ullong hwl_l2  = 0x3f24; // L2_RQSTS.MISS (All requests that missed L2)
+static ullong hwl_l2x = 0x3f24; // L2_RQSTS.MISS (All requests that missed L2)
+static ullong hwl_l2y = 0x40f0; // L2_TRANS.L2_WB
+static ullong hwl_l2z = 0x1ff1; // L2_LINES_IN.ALL
 static ullong zen_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
 static ullong zen_l2x = 0x430864; // L2 Cache Miss from DC Miss
 static ullong zen_l2y = 0x431F71; // L2 Cache Miss from L2 HWPF (1)
 static ullong zen_l2z = 0x431F72; // L2 Cache Miss from L2 HWPF (2)
 static ullong arm_l1d = PERF_L1D | (PERF_LOAD  << 8) | (PERF_MISS << 16);
 static ullong arm_l2x = 0x17; //L2D_CACHE_REFILL
-static ullong arm_l2y = 0x18; //L2D_CACHE_WB
+static ullong arm_l2y = 0x18; //L2D_CACHE_WB (used for bandwidth)
 
 typedef struct cdata_s {
     perf_t perf;
@@ -60,18 +69,18 @@ static double      line_size;
 
 int set_cache(uint enable, ullong event, uint type, uint offset, uint bandwidth)
 {
-	state_t s;
+    state_t s;
     if (!enable) {
         return 0;
     }
-	if (state_fail(s = perf_open(&cdata[counter].perf, &cdata[0].perf, 0, type, event))) {
-		debug("perf_open for level %d returned %d (%s)", offset, s, state_msg);
-		return 0;
-	}
+    if (state_fail(s = perf_open(&cdata[counter].perf, &cdata[0].perf, 0, type, event))) {
+        debug("perf_open for level %d returned %d (%s)", offset, s, state_msg);
+        return 0;
+    }
     cdata[counter].bandwidth = bandwidth;
     cdata[counter].offset = offset;
     is_level[offset] = 1;
-	counter++;
+    counter++;
     return 1;
 }
 
@@ -97,18 +106,20 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     cache_last_level = tp->cache_last_level;
     line_size = (double) tp->cache_line_size;
     //
-	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-		set_cache(1, hwl_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
-		set_cache(1, hwl_l2 , PERF_TYPE_RAW     , OFFSET(02), 1);
-	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-		set_cache(1, zen_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
+    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+        set_cache(1, hwl_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
+        set_cache(1, hwl_l2x, PERF_TYPE_RAW     , OFFSET(02), 0);
+        set_cache(1, hwl_l2y, PERF_TYPE_RAW     , OFFSET(LBW),1); //BW
+        set_cache(1, hwl_l2z, PERF_TYPE_RAW     , OFFSET(LBW),1); //BW
+    } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+        set_cache(1, zen_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
         set_cache(1, zen_l2x, PERF_TYPE_RAW     , OFFSET(02), 1);
         set_cache(1, zen_l2y, PERF_TYPE_RAW     , OFFSET(02), 1);
         set_cache(1, zen_l2z, PERF_TYPE_RAW     , OFFSET(02), 1);
-	} else if (tp->vendor == VENDOR_ARM) {
+    } else if (tp->vendor == VENDOR_ARM) {
         set_cache(1, arm_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
         set_cache(1, arm_l2x, PERF_TYPE_RAW     , OFFSET(02), 1);
-        set_cache(1, arm_l2y, PERF_TYPE_RAW     , OFFSET(02), 1);
+        set_cache(1, arm_l2y, PERF_TYPE_RAW     , OFFSET(LBW),1); //BW
     }
     if (!counter) {
         debug(Generr.api_incompatible);
@@ -150,8 +161,8 @@ state_t cache_perf_dispose()
 state_t cache_perf_read(cache_t *ca)
 {
     ullong *p = (ullong *) ca;
-	state_t s;
-	int i;
+    state_t s;
+    int i;
     // Cleaning
     memset(ca, 0, sizeof(cache_t));
     // Reading
@@ -160,7 +171,7 @@ state_t cache_perf_read(cache_t *ca)
 	}
 	timestamp_get(&ca->time);
 	for (i = 0; i < counter; ++i) {
-        debug("values[%d]: %llu (%u offset)", i, p[i]);
+        debug("values[%d]: %llu", i, p[i]);
     }
     return EAR_SUCCESS;
 }
@@ -199,7 +210,7 @@ void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     debug("Total L2  misses: %lld", caD->l2_misses );
     debug("Total L3  misses: %lld", caD->l3_misses );
     debug("Total LL  misses: %lld", caD->ll_misses );
-    debug("Total LBW misses: %lld", caD->lbw_misses);
+    debug("Total LBW access: %lld", caD->lbw_misses);
     // Converting to bandwidth
     cas  = (double) caD->lbw_misses;
     cas  = cas / secs;

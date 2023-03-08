@@ -18,7 +18,6 @@
 //#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/output/debug.h>
-#include <common/math_operations.h>
 #include <metrics/cache/cache.h>
 #include <metrics/cache/archs/perf.h>
 #include <metrics/cache/archs/dummy.h>
