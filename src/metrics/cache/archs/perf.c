@@ -165,7 +165,7 @@ state_t cache_perf_read(cache_t *ca)
     // Cleaning
     memset(ca, 0, sizeof(cache_t));
     // Reading
-	if (state_fail(s = perf_read(&cdata[0].perf, p))) {
+	if (state_fail(s = perf_read(&cdata[0].perf, (llong *) p))) {
 		return s;
 	}
 	timestamp_get(&ca->time);

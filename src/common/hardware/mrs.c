@@ -28,8 +28,13 @@
 #define mrs_asm(reg)
 #endif
 
+static ullong mrsf_zero()
+{
+    return 0LLU;
+}
+
 #define mrs_file(name, path) \
-ullong mrsf_  ##name () { \
+static ullong mrsf_  ##name () { \
     char buffer[128]; \
     FILE *file; \
     ullong var = 0; \
@@ -59,7 +64,7 @@ mrs_file(midr,   "/sys/devices/system/cpu/cpu0/regs/identification/midr_el1"  );
 mrs_file(revidr, "/sys/devices/system/cpu/cpu0/regs/identification/revidr_el1");
 // Introduce new register reading functions as required
 mrs_function(midr     , MIDR_EL1       , mrsf_midr());
-mrs_function(cntfrq   , CNTFRQ_EL0     , 0);
-mrs_function(dfr0     , ID_AA64DFR0_EL1, 0);
-mrs_function(pmccntr  , PMCCNTR_EL0    , 0);
-mrs_function(pmccfiltr, PMCCFILTR_EL0  , 0);
+mrs_function(cntfrq   , CNTFRQ_EL0     , mrsf_zero());
+mrs_function(dfr0     , ID_AA64DFR0_EL1, mrsf_zero());
+mrs_function(pmccntr  , PMCCNTR_EL0    , mrsf_zero());
+mrs_function(pmccfiltr, PMCCFILTR_EL0  , mrsf_zero());
