@@ -24,7 +24,7 @@
 static char command[1024];
 static uint events_count  = 0;
 static uint gpus_count    = 0;
-static uint *ev_list;
+//static uint *ev_list;
 
 typedef struct dcgmi_ev_conf{
   char group;
@@ -60,7 +60,7 @@ typedef struct dcgmi_ev_conf{
 +----------------+----------+------------------------------------------------------+
 */
 
-
+#if 0
 static dcgmi_ev_conf_t dcgmi_ev_confs[dcgmi_num_events]={
   {'D',0},
   {'A',1},
@@ -77,6 +77,7 @@ static dcgmi_ev_conf_t dcgmi_ev_confs[dcgmi_num_events]={
   {'A',2},
   {'A',2}
 };
+#endif
 
 static uint dcgmi_ev_type[dcgmi_num_events]={RATIO,RATIO,RATIO,RATIO,RATIO,RATIO,RATIO,RATIO,ACCUM, ACCUM,ACCUM,ACCUM,RATIO,RATIO};
 
@@ -96,15 +97,19 @@ static char *dcgmi_ev_names[dcgmi_num_events]={
   "tensor_imma_active",
   "tensor_hmma_active" /* 1014 */
 };
+
 state_t gpu_dcgmi_init(char *events, uint events_count_in)
 {
     popen_t p;
     state_t s;
 
-
-    debug("gpu_dcgmi_init");
-    if (events == NULL) return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
-
+    if (events == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
+    if (state_fail(s = popen_test("dcgmi"))) {
+        debug("Failed to test: %s", state_msg);
+        return s;
+    }
     // Getting the number of GPUS
     if (state_fail(s = popen_open("dcgmi discovery -l", 0, 1, &p))) {
         debug("Failed to open: %s", state_msg);
@@ -129,9 +134,9 @@ state_t gpu_dcgmi_read(dcgmi_t *d)
     state_t s;
     int gpu;
 
-    debug("gpu_dcgmi_read");
-    if ((gpus_count == 0) || (events_count == 0) || (d == NULL)) return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
-
+    if ((gpus_count == 0) || (events_count == 0) || (d == NULL)) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
     if (state_fail(s = popen_open(command, 2, 1, &p))) {
         return s;
     }
@@ -147,13 +152,14 @@ state_t gpu_dcgmi_read(dcgmi_t *d)
 
 void gpu_dcgmi_data_alloc(dcgmi_t **d)
 {
-
     debug("gpu_dcgmi_data_alloc");
-    if (d == NULL) return;
-
+    if (d == NULL) {
+        return;
+    }
+    *d = NULL;
     if (gpus_count){
-      *d = calloc(gpus_count, sizeof(dcgmi_t));
-    }else *d = NULL;
+        *d = calloc(gpus_count, sizeof(dcgmi_t));
+    }
 }
 
 void gpu_dcgmi_set_events(char *events, uint events_count_in)
@@ -172,11 +178,11 @@ void gpu_dcgmi_data_copy(dcgmi_t *dest, dcgmi_t *src)
 
 void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str, uint *ev_list, uint num_ev)
 {
-  uint g, e;
-  char ev_str[64];
+    uint g, e;
+    char ev_str[64];
 
-  debug("gpu_dcgmi_data_str");
-  if ((d == NULL) || (d_str == NULL) || (num_ev == 0)) return;
+    debug("gpu_dcgmi_data_str");
+    if ((d == NULL) || (d_str == NULL) || (num_ev == 0)) return;
 
   d_str[0] = '\0';
   for (g = 0; g < gpus_count; g++){
@@ -252,7 +258,6 @@ void gpu_dcgmi_data_avg(dcgmi_t *accum, double elapsed, uint *ev_list, uint num_
       }
     }
   }
-
 }
 
 #if TEST
