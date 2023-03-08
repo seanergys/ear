@@ -191,8 +191,10 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
             for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
               for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
                 for (uint gpu = 0; gpu < num_gpus; gpu++){
-                  if (apps[i].signature.gpu_sig.num_gpus >= gpu)  sprintf(dcgmi_metrics, "%f;", dcgmis->dcgmi_metrics[set][gpu].values[ev]);
-									else sprintf(dcgmi_metrics, "%f;",0.0);
+                  if (apps[i].signature.gpu_sig.num_gpus >= gpu){  
+										dcgmi_t *dcgmis_data = dcgmis->dcgmi_metrics[set];	
+										sprintf(dcgmi_metrics, "%f;", dcgmis_data[gpu].values[ev]);
+									}else sprintf(dcgmi_metrics, "%f;",100000.0);
                   strcat(extra_metrics, dcgmi_metrics);
                 }
               }
@@ -275,8 +277,10 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
           for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
             for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
               for (uint gpu = 0; gpu < num_gpus; gpu++){
-							if (loops[i].signature.gpu_sig.num_gpus >= gpu) sprintf(dcgmi_metrics, "%f;", dcgmis->dcgmi_metrics[set][gpu].values[ev]); 
-							else sprintf(dcgmi_metrics, "%f;", 0.0);
+							if (loops[i].signature.gpu_sig.num_gpus >= gpu){ 
+								dcgmi_t *dcgmis_data = dcgmis->dcgmi_metrics[set];	
+								sprintf(dcgmi_metrics, "%f;", dcgmis_data[gpu].values[ev]); 
+							}else sprintf(dcgmi_metrics, "%f;", 100000.0);
               strcat(extra_metrics, dcgmi_metrics);
               }
             }

@@ -167,7 +167,7 @@ void gpu_dcgmi_set_events(char *events, uint events_count_in)
 void gpu_dcgmi_data_copy(dcgmi_t *dest, dcgmi_t *src)
 {
   if ((dest == NULL) || (src == NULL)) return;
-  memcpy(dest, src, sizeof(dcgmi_t));
+  memcpy(dest, src, sizeof(dcgmi_t)*gpus_count);
 }
 
 void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str, uint *ev_list, uint num_ev)
@@ -180,7 +180,7 @@ void gpu_dcgmi_data_str(dcgmi_t *d, char *d_str, uint *ev_list, uint num_ev)
 
   d_str[0] = '\0';
   for (g = 0; g < gpus_count; g++){
-    snprintf(ev_str, sizeof(ev_str), "GPU[%u] ", g);
+    snprintf(ev_str, sizeof(ev_str), "\nGPU[%u] ", g);
     strcat(d_str, ev_str);
     for (e = 0; e < num_ev; e++){
       if (e) strcat(d_str,",");
