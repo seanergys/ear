@@ -32,6 +32,7 @@ typedef struct phase_info{
 
 typedef struct dcgmi_sig{
   uint    dcgmi_sets;
+	uint    dcgmi_gpus;
   uint    dcgmi_num_ev;
   uint    **dcgmi_events;
   dcgmi_t **dcgmi_metrics;

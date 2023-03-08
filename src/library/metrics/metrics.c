@@ -1521,10 +1521,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
   #if DCGMI
   if (dcgmi && master && (sig_ext->dcgmis.dcgmi_sets == 0)){
-      sig_ext->dcgmis.dcgmi_sets = DCGMI_SETS;
-      sig_ext->dcgmis.dcgmi_num_ev = DCGMI_NUM_EVENTS;
-      sig_ext->dcgmis.dcgmi_events = calloc(DCGMI_SETS, sizeof(uint *));
-      sig_ext->dcgmis.dcgmi_metrics = calloc(DCGMI_SETS, sizeof(dcgmi_t *));
+      sig_ext->dcgmis.dcgmi_sets 			= DCGMI_SETS;
+			sig_ext->dcgmis.dcgmi_gpus 			= gpu_dcgmi_gpus_detected();
+      sig_ext->dcgmis.dcgmi_num_ev 		= DCGMI_NUM_EVENTS;
+      sig_ext->dcgmis.dcgmi_events 		= calloc(DCGMI_SETS, sizeof(uint *));
+      sig_ext->dcgmis.dcgmi_metrics 	= calloc(DCGMI_SETS, sizeof(dcgmi_t *));
       for (uint set = 0; set < DCGMI_SETS; set++){
 				verbose_master(2,"Allocating events for set %u", set);
         sig_ext->dcgmis.dcgmi_events[set] = calloc(DCGMI_NUM_EVENTS, sizeof(uint));
