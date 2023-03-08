@@ -18,13 +18,11 @@
 //#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/output/debug.h>
-#include <common/math_operations.h>
 #include <metrics/cache/cache.h>
 #include <metrics/cache/archs/perf.h>
 #include <metrics/cache/archs/dummy.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static double line_size;
 static cache_ops_t ops;
 static uint load;
 
@@ -37,7 +35,6 @@ void cache_load(topology_t *tp, int eard)
     cache_perf_load(tp, &ops);
     cache_dummy_load(tp, &ops);
     // Getting cache line, is used to get the bandwidth
-    line_size = (double) tp->cache_line_size;
 	load = 1;
 out:
 	pthread_mutex_unlock(&lock);
@@ -59,19 +56,19 @@ void cache_get_granularity(uint *granularity)
 state_t cache_init(ctx_t *c)
 {
 	while (pthread_mutex_trylock(&lock));
-	state_t s = ops.init(c);
+	state_t s = ops.init();
 	pthread_mutex_unlock(&lock);
 	return s;
 }
 
 state_t cache_dispose(ctx_t *c)
 {
-	return ops.dispose(c);
+	return ops.dispose();
 }
 
 state_t cache_read(ctx_t *c, cache_t *ca)
 {
-	return ops.read(c, ca);
+	return ops.read(ca);
 }
 
 state_t cache_read_diff(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
@@ -96,35 +93,7 @@ state_t cache_read_copy(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, doub
 
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
-    ullong time = 0LLU;
-    double secs = 0.0;
-    double cas  = 0.0;
-
-    memset(caD, 0, sizeof(cache_t));
-    // Ms to seconds (for decimals)
-    time = timestamp_diff(&ca2->time, &ca1->time, TIME_MSECS);
-    if (time == 0LLU) {
-        return;
-    }
-    secs = (double) time;
-    secs = secs / 1000.0;
-    //
-    caD->l1d_misses = overflow_zeros_u64(ca2->l1d_misses, ca1->l1d_misses);
-    caD->l2_misses  = overflow_zeros_u64(ca2->l2_misses , ca1->l2_misses );
-    caD->l3_misses  = overflow_zeros_u64(ca2->l3_misses , ca1->l3_misses );
-    caD->ll_misses  = overflow_zeros_u64(ca2->ll_misses , ca1->ll_misses );
-    caD->lbw_misses = overflow_zeros_u64(ca2->lbw_misses, ca1->lbw_misses);
-    debug("Total L1D misses: %lld", caD->l1d_misses);
-    debug("Total L2  misses: %lld", caD->l2_misses );
-    debug("Total L3  misses: %lld", caD->l3_misses );
-    debug("Total LL  misses: %lld", caD->ll_misses );
-    debug("Total LBW misses: %lld", caD->lbw_misses);
-    // Converting to bandwidth
-    cas  = (double) caD->lbw_misses;
-    cas  = cas / secs;
-    cas  = cas * ((double) line_size);
-    cas  = cas / ((double) B_TO_GB);
-    *gbs = cas;
+    return ops.data_diff(ca2, ca1, caD, gbs);
 }
 
 void cache_data_copy(cache_t *dst, cache_t *src)
@@ -141,7 +110,7 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
-    snprintf(buffer, length,
-         "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
-         ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
+snprintf(buffer, length,
+    "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
+    ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
 }

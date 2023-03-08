@@ -26,10 +26,12 @@ void cache_perf_get_api(uint *api);
 
 void cache_perf_get_granularity(uint *granularity);
 
-state_t cache_perf_init(ctx_t *c);
+state_t cache_perf_init();
 
-state_t cache_perf_dispose(ctx_t *c);
+state_t cache_perf_dispose();
 
-state_t cache_perf_read(ctx_t *c, cache_t *ca);
+state_t cache_perf_read(cache_t *ca);
+
+void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
 #endif //METRICS_CPI_INTEL63

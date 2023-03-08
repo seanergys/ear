@@ -168,9 +168,9 @@ static metrics_diff_t mrD;
 
 static state_t monitor_apis_init(void *whatever)
 {
-	topology_init(&tp);
+    topology_init(&tp);
     //
-	metrics_init(&tp, EARD);
+    metrics_init(&tp, EARD);
     //
     metrics_data_alloc(&mr1, &mr2, &mrD);
     //
