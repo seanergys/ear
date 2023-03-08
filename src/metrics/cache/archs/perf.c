@@ -52,10 +52,11 @@ typedef struct cdata_s {
 
 static topology_t *tp;
 static int         is_level[5]; // Sorted by cache level
-static cdata_t     cdata[7];
+static cdata_t     cdata[5];
 static uint        counter;
 static uint        started;
 static uint        cache_last_level;
+static double      line_size;
 
 int set_cache(uint enable, ullong event, uint type, uint offset, uint bandwidth)
 {
@@ -94,6 +95,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 {
     // Saving the last cache level (our LX)
     cache_last_level = tp->cache_last_level;
+    line_size = (double) tp->cache_line_size;
     //
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
 		set_cache(1, hwl_l1d, PERF_TYPE_HW_CACHE, OFFSET(01), 0);
@@ -117,6 +119,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     apis_put(ops->init,            cache_perf_init);
     apis_put(ops->dispose,         cache_perf_dispose);
     apis_put(ops->read,            cache_perf_read);
+    apis_put(ops->data_diff,       cache_perf_data_diff);
     debug("Loaded PERF")
 }
 
@@ -130,7 +133,7 @@ void cache_perf_get_granularity(uint *granularity)
     *granularity = GRANULARITY_PROCESS;
 }
 
-state_t cache_perf_init(ctx_t *c)
+state_t cache_perf_init()
 {
 	if (!started) {
 		perf_start(&cdata[0].perf);
@@ -139,48 +142,68 @@ state_t cache_perf_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t cache_perf_dispose(ctx_t *c)
+state_t cache_perf_dispose()
 {
 	return EAR_SUCCESS;
 }
 
-state_t cache_perf_read(ctx_t *c, cache_t *ca)
+state_t cache_perf_read(cache_t *ca)
 {
-    //TODO: convert cache_t in a union of unnamed values and the current scheme.
-    //TODO: this is because we can not control the overflow properly with the
-    //TODO: sum of different events in the same variable.
     ullong *p = (ullong *) ca;
-	llong values[7];
 	state_t s;
 	int i;
-
     // Cleaning
     memset(ca, 0, sizeof(cache_t));
-    memset(values, 0, sizeof(values));
     // Reading
-	if (state_fail(s = perf_read(&cdata[0].perf, values))) {
+	if (state_fail(s = perf_read(&cdata[0].perf, p))) {
 		return s;
 	}
 	timestamp_get(&ca->time);
-    // Accumulating values allows different readings to join into
-    // the same variable, i.e: LLR + LLW.
 	for (i = 0; i < counter; ++i) {
-        debug("values[%d]: %llu (%u offset)", i, values[i]);
-        p[cdata[i].offset] += values[i];
+        debug("values[%d]: %llu (%u offset)", i, p[i]);
+    }
+    return EAR_SUCCESS;
+}
+
+void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
+{
+    ullong *pD = (ullong *) caD;
+    ullong *p2 = (ullong *) ca2;
+    ullong *p1 = (ullong *) ca1;
+    ullong time = 0LLU;
+    double secs = 0.0;
+    double cas  = 0.0;
+    int i;
+
+    memset(caD, 0, sizeof(cache_t));
+    // Ms to seconds (for decimals)
+    time = timestamp_diff(&ca2->time, &ca1->time, TIME_MSECS);
+    if (time == 0LLU) {
+        return;
+    }
+    secs = (double) time;
+    secs = secs / 1000.0;
+    //
+    for (i = 0; i < counter; ++i) {
+        pD[cdata[i].offset] += overflow_zeros_u64(p2[i], p1[i]);
         // If this data is also valid to calc bandwidth
         if (cdata[i].bandwidth) {
-            ca->lbw_misses += values[i];
+            caD->lbw_misses = pD[cdata[i].offset];
         }
     }
     // If LX don't have values, but LL have values
     if (!is_level[OFFSET(LX)] && is_level[OFFSET(LL)]) {
-        p[OFFSET(LX)] = ca->ll_misses;
+        pD[OFFSET(LX)] = caD->ll_misses;
     }
-    debug("total L1D misses: %llu", ca->l1d_misses);
-	debug("total L2  misses: %llu", ca->l2_misses );
-    debug("total L3  misses: %llu", ca->l3_misses );
-    debug("total LL  misses: %llu", ca->ll_misses );
-    debug("total LBW misses: %llu", ca->lbw_misses);
-
-	return EAR_SUCCESS;
+    debug("Total L1D misses: %lld", caD->l1d_misses);
+    debug("Total L2  misses: %lld", caD->l2_misses );
+    debug("Total L3  misses: %lld", caD->l3_misses );
+    debug("Total LL  misses: %lld", caD->ll_misses );
+    debug("Total LBW misses: %lld", caD->lbw_misses);
+    // Converting to bandwidth
+    cas  = (double) caD->lbw_misses;
+    cas  = cas / secs;
+    cas  = cas * ((double) line_size);
+    cas  = cas / ((double) 1E9);
+    *gbs = cas;
 }
