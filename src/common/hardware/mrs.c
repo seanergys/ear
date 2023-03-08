@@ -25,13 +25,37 @@
 #define mrs_asm(reg)
 #endif
 
-#define mrs_function(type, name, reg) \
+// Type formats
+#define tf_ullong "%llu"
+
+#define mrs_file(type, name, path) \
+type mrsf_  ##name () { \
+    FILE *file; \
+    type var; \
+    if (!(file = fopen(path, "r"))) { \
+        return 0; \
+    } \
+    fscanf(file, tf_##type, &var); \
+    fclose(file); \
+    return var; \
+}
+
+#define mrs_function(type, name, reg, fcall) \
 type mrs_ ##name () { \
     type var; \
+    if ((var = fcall)) { \
+        return var; \
+    } \
     mrs_asm(reg) \
     return var; \
 }
 
-mrs_function(ullong, midr  , MIDR_EL1  );
-mrs_function(ullong, cntfrq, CNTFRQ_EL0);
-
+// File functions are hidden
+mrs_file(ullong, midr,   "/sys/devices/system/cpu/cpu0/regs/identification/midr_el1"  );
+mrs_file(ullong, revidr, "/sys/devices/system/cpu/cpu0/regs/identification/revidr_el1");
+// Introduce new register reading functions as required
+mrs_function(ullong, midr     , MIDR_EL1       , mrsf_midr());
+mrs_function(ullong, cntfrq   , CNTFRQ_EL0     , 0);
+mrs_function(ullong, dfr0     , ID_AA64DFR0_EL1, 0);
+mrs_function(ullong, pmccntr  , PMCCNTR_EL0    , 0);
+mrs_function(ullong, pmccfiltr, PMCCFILTR_EL0  , 0);

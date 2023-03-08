@@ -21,16 +21,4 @@
 
 #include <common/types/generic.h>
 
-// Types enumeration
-enum id_types {
-    ID_INT,
-    ID_UINT,
-    ID_LONG,
-    ID_ULONG,
-    ID_LLONG,
-    ID_ULLONG,
-    ID_FLOAT,
-    ID_DOUBLE,
-};
-
 #endif //COMMON_TYPES_H
