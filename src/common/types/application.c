@@ -152,7 +152,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
     char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
                         "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
                         "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
-		char HEADER[1024];
+		char HEADER[4096];
 
 		/* If file already exists we will not add the header */
 		if (file_is_regular(path)) return EAR_SUCCESS;

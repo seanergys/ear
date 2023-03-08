@@ -55,6 +55,9 @@ typedef struct popen_s {
     int   fd;
 } popen_t;
 
+// Tests if a executable (binary or script) exists, before popen_open.
+state_t popen_test(char *exec);
+
 state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p);
 
 void popen_close(popen_t *p);

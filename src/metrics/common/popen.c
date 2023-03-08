@@ -35,12 +35,25 @@
 
 static char no_string = '\0';
 
+state_t popen_test(char *exec)
+{
+    char command[MAX_BUFFER];
+    // This is not fully portable. There are too many
+    // systems, and too many different shells.
+    sprintf(command, "type %s > /dev/null 2>&1", exec);
+    if (system(command)) {
+        return_msg(EAR_ERROR, "command not found");
+    }
+    return EAR_SUCCESS;
+}
+
 state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
 {
     // Cleaning
     memset(p, 0, sizeof(popen_t));
     // System
     if ((p->file = popen(command, "r")) == NULL) {
+        debug("popen error: %s", strerror(errno));
         return_msg(EAR_ERROR, strerror(errno));
     }
     p->fd = fileno(p->file);
@@ -238,7 +251,7 @@ int main(int argc, char *argv[])
     popen_t p;
     int gpu;
 
-    popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, &p);
+    popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, 0, &p);
     while (1) {
         while(popen_read(&p, "aiff", &gpu, &f1, &f2)) {
             printf("RETURNED: %d %f %f\n", gpu, f1, f2);

@@ -39,29 +39,21 @@
 //  - Requires root: no
 
 typedef struct cache_s {
-	timestamp_t time;
-	ullong l1d_misses;
-	ullong l2_misses;
-    union {
-        ullong l3r_misses;
-        ullong llr_misses;
-    };
-    union {
-        ullong l3w_misses;
-        ullong llw_misses;
-    };
-    union {
-        ullong l3_misses;
-        ullong ll_misses;
-    };
+    ullong lbw_misses;
+    ullong l1d_misses;
+    ullong l2_misses;
+    ullong l3_misses;
+    ullong ll_misses;
+    timestamp_t time;
 } cache_t;
 
 typedef struct coche_ops_s {
     void    (*get_api)         (uint *api);
     void    (*get_granularity) (uint *granularity);
-    state_t (*init)            (ctx_t *c);
-	state_t (*dispose)         (ctx_t *c);
-	state_t (*read)            (ctx_t *c, cache_t *ca);
+    state_t (*init)            ();
+	state_t (*dispose)         ();
+	state_t (*read)            (cache_t *ca);
+    void    (*data_diff)       (cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 } cache_ops_t;
 
 void cache_load(topology_t *tp, int eard);

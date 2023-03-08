@@ -87,7 +87,7 @@ state_t cpi_dummy_data_print(cpi_t *ci, double cpi, int fd)
 state_t cpi_dummy_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
 {
 	snprintf(buffer, length,
-		"Instructions: %llu\nCycles: %llu\nStalls: %llu\nCPI: %0.2lf\n",
-		ci->instructions, ci->cycles, ci->stalls, cpi);
+		"Instructions: %llu\nCycles: %llu (cpi: %0.2lf)\n",
+		ci->instructions, ci->cycles, cpi);
 	return EAR_SUCCESS;
 }
