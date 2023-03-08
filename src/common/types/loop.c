@@ -180,7 +180,7 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
                          "DPOPS_512";
 
 #if USE_GPUS
-    char gpu_header[128];
+    char gpu_header[512];
     char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC";
 #endif
 #if REPORT_TIMESTAMP
@@ -188,7 +188,7 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 #else
     char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;ITERATIONS";
 #endif
-    char HEADER[1024] = "";
+    char HEADER[2048] = "";
 
     if (file_is_regular(path)) {
         debug("%s is a regular file", path);

@@ -164,7 +164,7 @@ mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 #if DCGMI && USE_GPUS
 //#define DCGMI_NUM_EVENTS 14
 #define DCGMI_NUM_EVENTS 4
-#define DCGMI_SETS       2
+#define DCGMI_SETS       3
 static dcgmi_t     *dcgmi_metrics[DCGMI_SETS];
 static dcgmi_t     *dcgmi_metrics_accum[DCGMI_SETS];
 static uint        dcgmi_events[DCGMI_SETS][DCGMI_NUM_EVENTS];
@@ -437,14 +437,22 @@ static void metrics_configuration(topology_t *tp)
 #if DCGMI & USE_GPUS
 static void dcgmi_static_events_init()
 {
+	/* Set 0 */
   dcgmi_events[0][0] = tensor_active;
   dcgmi_events[0][1] = fp64_active;
   dcgmi_events[0][2] = dram_active;
   dcgmi_events[0][3] = pcie_tx_bytes;
+	/* Set 1 */
   dcgmi_events[1][0] = fp32_active;
   dcgmi_events[1][1] = fp16_active;
   dcgmi_events[1][2] = pcie_rx_bytes;
   dcgmi_events[1][3] = gr_engine_active;
+	/* Set 2 */
+  dcgmi_events[2][0] = sm_active;
+  dcgmi_events[2][1] = sm_occupancy;
+  dcgmi_events[2][2] = nvlink_tx_bytes;
+  dcgmi_events[2][3] = nvlink_rx_bytes;
+	
 }
 #endif
 
@@ -1513,12 +1521,15 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
   #if DCGMI
   if (dcgmi && master && (sig_ext->dcgmis.dcgmi_sets == 0)){
-      sig_ext->dcgmis.dcgmi_sets = DCGMI_SETS;
-      sig_ext->dcgmis.dcgmi_num_ev = DCGMI_NUM_EVENTS;
-      sig_ext->dcgmis.dcgmi_events = calloc(DCGMI_SETS, sizeof(uint *));
-      sig_ext->dcgmis.dcgmi_metrics = calloc(DCGMI_SETS, sizeof(dcgmi_t *));
+      sig_ext->dcgmis.dcgmi_sets 			= DCGMI_SETS;
+			sig_ext->dcgmis.dcgmi_gpus 			= gpu_dcgmi_gpus_detected();
+      sig_ext->dcgmis.dcgmi_num_ev 		= DCGMI_NUM_EVENTS;
+      sig_ext->dcgmis.dcgmi_events 		= calloc(DCGMI_SETS, sizeof(uint *));
+      sig_ext->dcgmis.dcgmi_metrics 	= calloc(DCGMI_SETS, sizeof(dcgmi_t *));
       for (uint set = 0; set < DCGMI_SETS; set++){
+				verbose_master(2,"Allocating events for set %u", set);
         sig_ext->dcgmis.dcgmi_events[set] = calloc(DCGMI_NUM_EVENTS, sizeof(uint));
+				verbose_master(2,"Allocating metrics for set %u", set);
         gpu_dcgmi_data_alloc(&sig_ext->dcgmis.dcgmi_metrics[set]);
         /* The list of events is static */
         memcpy(sig_ext->dcgmis.dcgmi_events[set], dcgmi_events[set], DCGMI_NUM_EVENTS * sizeof(uint));
@@ -1606,7 +1617,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       /* Copy in sig_ext */
       gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set]);
 
-      dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % 2;
+      dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % DCGMI_SETS;
 
       /* Change the active set of events */
 
