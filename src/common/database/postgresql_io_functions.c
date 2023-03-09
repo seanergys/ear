@@ -420,20 +420,21 @@ int postgresql_retrieve_jobs(PGconn *connection, char *query, job_t **jobs)
     {
         jobs_aux[i].id = htonl( *((int *)PQgetvalue(res, i, 0)));
         jobs_aux[i].step_id = htonl( *((int *)PQgetvalue(res, i, 1)));
-        strcpy(jobs_aux[i].user_id, PQgetvalue(res, i, 2));
-        strcpy(jobs_aux[i].app_id , PQgetvalue(res, i, 3));
-        jobs_aux[i].start_time = htonl( *((time_t *)PQgetvalue(res, i, 4)));
-        jobs_aux[i].end_time = htonl( *((time_t *)PQgetvalue(res, i, 5)));
-        jobs_aux[i].start_mpi_time = htonl( *((time_t *)PQgetvalue(res, i, 6)));
-        jobs_aux[i].end_mpi_time = htonl( *((time_t *)PQgetvalue(res, i, 7)));
-        strcpy(jobs_aux[i].policy, PQgetvalue(res, i, 8));
-        jobs_aux[i].th = double_swap( *((double *)PQgetvalue(res, i, 9)));
-        jobs_aux[i].procs = htonl( *((ulong *)PQgetvalue(res, i, 10))); //this might cause trouble, might have to cast into long
-        jobs_aux[i].type = htonl( *((job_type *)PQgetvalue(res, i, 11)));
-        jobs_aux[i].def_f = htonl( *((ulong *)PQgetvalue(res, i, 12)));
-        strcpy(jobs_aux[i].user_acc, PQgetvalue(res, i, 13));
-        strcpy(jobs_aux[i].group_id, PQgetvalue(res, i, 14));
-        strcpy(jobs_aux[i].energy_tag, PQgetvalue(res, i, 15));
+        jobs_aux[i].local_id = htonl( *((int *)PQgetvalue(res, i, 2)));
+        strcpy(jobs_aux[i].user_id, PQgetvalue(res, i, 3));
+        strcpy(jobs_aux[i].app_id , PQgetvalue(res, i, 4));
+        jobs_aux[i].start_time = htonl( *((time_t *)PQgetvalue(res, i, 5)));
+        jobs_aux[i].end_time = htonl( *((time_t *)PQgetvalue(res, i, 6)));
+        jobs_aux[i].start_mpi_time = htonl( *((time_t *)PQgetvalue(res, i, 7)));
+        jobs_aux[i].end_mpi_time = htonl( *((time_t *)PQgetvalue(res, i, 8)));
+        strcpy(jobs_aux[i].policy, PQgetvalue(res, i, 9));
+        jobs_aux[i].th = double_swap( *((double *)PQgetvalue(res, i, 10)));
+        jobs_aux[i].procs = htonl( *((ulong *)PQgetvalue(res, i, 11))); //this might cause trouble, might have to cast into long
+        jobs_aux[i].type = htonl( *((job_type *)PQgetvalue(res, i, 12)));
+        jobs_aux[i].def_f = htonl( *((ulong *)PQgetvalue(res, i, 13)));
+        strcpy(jobs_aux[i].user_acc, PQgetvalue(res, i, 14));
+        strcpy(jobs_aux[i].group_id, PQgetvalue(res, i, 15));
+        strcpy(jobs_aux[i].energy_tag, PQgetvalue(res, i, 16));
 
     }
    
@@ -765,9 +766,10 @@ int postgresql_retrieve_loops(PGconn *connection, char *query, loop_t **loops)
         loops_aux[i].id.level           = htonl( *((int *)PQgetvalue(res, i, 2)));
         loops_aux[i].jid                = htonl( *((int *)PQgetvalue(res, i, 3)));
         loops_aux[i].step_id            = htonl( *((int *)PQgetvalue(res, i, 4)));
-        loops_aux[i].total_iterations   = htonl( *((int *)PQgetvalue(res, i, 6)));
-        sig_id                          = htonl( *((int *)PQgetvalue(res, i, 7)));
-        strcpy(loops_aux[i].node_id, PQgetvalue(res, i, 5));
+        loops_aux[i].local_id           = htonl( *((int *)PQgetvalue(res, i, 5)));
+        loops_aux[i].total_iterations   = htonl( *((int *)PQgetvalue(res, i, 7)));
+        sig_id                          = htonl( *((int *)PQgetvalue(res, i, 8)));
+        strcpy(loops_aux[i].node_id, PQgetvalue(res, i, 6));
 
         /* SIGNATURE RETRIEVAL */
         if (sig_id > 0)
@@ -1662,56 +1664,59 @@ int postgresql_batch_insert_jobs(PGconn *connection, application_t *apps, int nu
         /* Parameter binding */
         param_values[0  + offset] = (char *) &apps[i].job.id;
         param_values[1  + offset] = (char *) &apps[i].job.step_id;
-        param_values[2  + offset] = (char *) &apps[i].job.user_id;
-        param_values[3  + offset] = (char *) &apps[i].job.app_id;
-        param_values[4  + offset] = (char *) &apps[i].job.start_time;
-        param_values[5  + offset] = (char *) &apps[i].job.end_time;
-        param_values[6  + offset] = (char *) &apps[i].job.start_mpi_time;
-        param_values[7  + offset] = (char *) &apps[i].job.end_mpi_time;
-        param_values[8  + offset] = (char *) &apps[i].job.policy;
-        param_values[9  + offset] = (char *) &apps[i].job.th;
-        param_values[10 + offset] = (char *) &apps[i].job.procs;
-        param_values[11 + offset] = (char *) &apps[i].job.type;
-        param_values[12 + offset] = (char *) &apps[i].job.def_f;
-        param_values[13 + offset] = (char *) &apps[i].job.user_acc;
-        param_values[14 + offset] = (char *) &apps[i].job.group_id;
-        param_values[15 + offset] = (char *) &apps[i].job.energy_tag;
+        param_values[2  + offset] = (char *) &apps[i].job.local_id;
+        param_values[3  + offset] = (char *) &apps[i].job.user_id;
+        param_values[4  + offset] = (char *) &apps[i].job.app_id;
+        param_values[5  + offset] = (char *) &apps[i].job.start_time;
+        param_values[6  + offset] = (char *) &apps[i].job.end_time;
+        param_values[7  + offset] = (char *) &apps[i].job.start_mpi_time;
+        param_values[8  + offset] = (char *) &apps[i].job.end_mpi_time;
+        param_values[9  + offset] = (char *) &apps[i].job.policy;
+        param_values[10 + offset] = (char *) &apps[i].job.th;
+        param_values[11 + offset] = (char *) &apps[i].job.procs;
+        param_values[12 + offset] = (char *) &apps[i].job.type;
+        param_values[13 + offset] = (char *) &apps[i].job.def_f;
+        param_values[14 + offset] = (char *) &apps[i].job.user_acc;
+        param_values[15 + offset] = (char *) &apps[i].job.group_id;
+        param_values[16 + offset] = (char *) &apps[i].job.energy_tag;
 
         /* Parameter sizes */
         param_lengths[0  + offset] = sizeof(int);
         param_lengths[1  + offset] = sizeof(int);
-        param_lengths[2  + offset] = strlen(apps[i].job.user_id);
-        param_lengths[3  + offset] = strlen(apps[i].job.app_id);
-        param_lengths[4  + offset] = sizeof(int);
+        param_lengths[2  + offset] = sizeof(int);
+        param_lengths[3  + offset] = strlen(apps[i].job.user_id);
+        param_lengths[4  + offset] = strlen(apps[i].job.app_id);
         param_lengths[5  + offset] = sizeof(int);
         param_lengths[6  + offset] = sizeof(int);
         param_lengths[7  + offset] = sizeof(int);
-        param_lengths[8  + offset] = strlen(apps[i].job.policy);
-        param_lengths[9  + offset] = sizeof(apps[i].job.th);
-        param_lengths[10 + offset] = sizeof(int);
-        param_lengths[11 + offset] = sizeof(short);
-        param_lengths[12 + offset] = sizeof(int);
-        param_lengths[13 + offset] = strlen(apps[i].job.user_acc);
-        param_lengths[14 + offset] = strlen(apps[i].job.group_id);
-        param_lengths[15 + offset] = strlen(apps[i].job.energy_tag);
+        param_lengths[8  + offset] = sizeof(int);
+        param_lengths[9  + offset] = strlen(apps[i].job.policy);
+        param_lengths[10 + offset] = sizeof(apps[i].job.th);
+        param_lengths[11 + offset] = sizeof(int);
+        param_lengths[12 + offset] = sizeof(short);
+        param_lengths[13 + offset] = sizeof(int);
+        param_lengths[14 + offset] = strlen(apps[i].job.user_acc);
+        param_lengths[15 + offset] = strlen(apps[i].job.group_id);
+        param_lengths[16 + offset] = strlen(apps[i].job.energy_tag);
 
         /* Parameter formats, 1 is binary 0 is string */
         param_formats[0  + offset] = 1;
         param_formats[1  + offset] = 1;
-        param_formats[2  + offset] = 0;
+        param_formats[2  + offset] = 1;
         param_formats[3  + offset] = 0;
-        param_formats[4  + offset] = 1;
+        param_formats[4  + offset] = 0;
         param_formats[5  + offset] = 1;
         param_formats[6  + offset] = 1;
         param_formats[7  + offset] = 1;
-        param_formats[8  + offset] = 0;
-        param_formats[9  + offset] = 1;
+        param_formats[8  + offset] = 1;
+        param_formats[9  + offset] = 0;
         param_formats[10 + offset] = 1;
         param_formats[11 + offset] = 1;
         param_formats[12 + offset] = 1;
-        param_formats[13 + offset] = 0;
+        param_formats[13 + offset] = 1;
         param_formats[14 + offset] = 0;
         param_formats[15 + offset] = 0;
+        param_formats[16 + offset] = 0;
 
         offset += JOB_ARGS;
     }
@@ -1826,9 +1831,10 @@ int postgresql_batch_insert_loops(PGconn *connection, loop_t *loops, int num_loo
         param_values[2  + offset] = (char *) &loops[i].id.level;
         param_values[3  + offset] = (char *) &loops[i].jid;
         param_values[4  + offset] = (char *) &loops[i].step_id;
-        param_values[5  + offset] = (char *) &loops[i].node_id;
-        param_values[6  + offset] = (char *) &loops[i].total_iterations;
-        param_values[7  + offset] = (char *) &sig_ids[i];
+        param_values[5  + offset] = (char *) &loops[i].local_id;
+        param_values[6  + offset] = (char *) &loops[i].node_id;
+        param_values[7  + offset] = (char *) &loops[i].total_iterations;
+        param_values[8  + offset] = (char *) &sig_ids[i];
 
         /* Parameter sizes */
         param_lengths[0  + offset] = sizeof(int);
@@ -1836,9 +1842,10 @@ int postgresql_batch_insert_loops(PGconn *connection, loop_t *loops, int num_loo
         param_lengths[2  + offset] = sizeof(int);
         param_lengths[3  + offset] = sizeof(int);
         param_lengths[4  + offset] = sizeof(int);
-        param_lengths[5  + offset] = strlen(loops[i].node_id);
-        param_lengths[6  + offset] = sizeof(int);
-        param_lengths[7  + offset] = sizeof(sig_ids[i]);
+        param_lengths[5  + offset] = sizeof(int);
+        param_lengths[6  + offset] = strlen(loops[i].node_id);
+        param_lengths[7  + offset] = sizeof(int);
+        param_lengths[8  + offset] = sizeof(sig_ids[i]);
 
         /* Parameter formats, 1 is binary 0 is string */
         for (j = 0; j < LOOP_ARGS; j++)
