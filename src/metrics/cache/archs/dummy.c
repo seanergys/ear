@@ -27,6 +27,8 @@ void cache_dummy_load(topology_t *tp, cache_ops_t *ops)
     apis_put(ops->init,            cache_dummy_init);
     apis_put(ops->dispose,         cache_dummy_dispose);
     apis_put(ops->read,            cache_dummy_read);
+    apis_put(ops->data_diff,       cache_dummy_data_diff);
+    apis_put(ops->info_tostr,      cache_dummy_info_tostr);
 }
 
 void cache_dummy_get_api(uint *api)
@@ -53,4 +55,17 @@ state_t cache_dummy_read(ctx_t *c, cache_t *ca)
 {
 	memset(ca, 0, sizeof(cache_t));
 	return EAR_SUCCESS;
+}
+
+void cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
+{
+    memset(caD, 0, sizeof(cache_t));
+    if (gbs != NULL) {
+        *gbs = 0.0;
+    }
+}
+
+void cache_dummy_info_tostr(char *buffer, int length)
+{
+    sprintf(buffer, "L1 DUMMY: loaded\n");
 }

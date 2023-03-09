@@ -114,3 +114,15 @@ snprintf(buffer, length,
     "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
     ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
 }
+
+void cache_info_print(int fd)
+{
+    char buffer[1024];
+    cache_info_tostr(buffer, 1024);
+    dprintf(fd, "%s", buffer);
+}
+
+void cache_info_tostr(char *buffer, int length)
+{
+    ops.info_tostr(buffer, length);
+}
