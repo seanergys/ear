@@ -835,7 +835,7 @@ void print_warning_level(int warn_level)
 void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_conf) 
 {
     char ***results;
-    int num_columns, num_rows;
+    int num_columns, num_rows = 0;
     char query[1024];
 
     init_db_helper(&my_conf->database);
