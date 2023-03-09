@@ -48,6 +48,7 @@ typedef struct job
 {
 	job_id 	 id;
 	job_id 	 step_id;
+	job_id 	 local_id;
 	char 	   user_id[GENERIC_NAME];
 	char 	   group_id[GENERIC_NAME];
 	char 	   app_id[GENERIC_NAME];
