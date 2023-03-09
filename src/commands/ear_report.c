@@ -855,19 +855,21 @@ void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_co
     }
 
 #if USE_GPUS
-    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%20s\t%20s\n",
-            "Node", "DC power", "PCK power", "DRAM Power", "GPU power", "Temperature", "Avg. Freq", "Start time", "End time");
+    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%15s\t%20s\t%20s\n",
+            "Node", "DC power", "PCK power", "DRAM Power", "GPU power", "Temperature", "Avg. CPU Freq", "Start time", "End time");
     int total_fields = 7;
 #else
-    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%20s\t%20s\n",
-            "Node", "DC power", "PCK power", "DRAM Power", "Temperature", "Avg. Freq", "Start time", "End time");
+    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%15s\t%20s\t%20s\n",
+            "Node", "DC power", "PCK power", "DRAM Power", "Temperature", "Avg. CPU Freq", "Start time", "End time");
     int total_fields = 6;
 #endif
     int i, j;
     for (i = 0; i < num_rows; i++) {
         for (j = 0; j < num_columns; j++) {
-            if (j < total_fields)
+            if (j < total_fields - 1)
                 printf("%10s\t", results[i][j]);
+			else if (j < total_fields)
+                printf("%15s\t", results[i][j]);
             else
                 printf("%20s\t", results[i][j]);
 
