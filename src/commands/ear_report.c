@@ -849,6 +849,11 @@ void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_co
 
     db_run_query_string_results(query, &results, &num_columns, &num_rows);
 
+    if (num_rows < 1) {
+        printf("No periodic_metrics in the specified period of time\n");
+        return;
+    }
+
 #if USE_GPUS
     printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%20s\t%20s\n",
             "Node", "DC power", "PCK power", "DRAM Power", "GPU power", "Temperature", "Avg. Freq", "Start time", "End time");
