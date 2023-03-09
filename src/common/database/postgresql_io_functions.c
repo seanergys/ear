@@ -634,7 +634,7 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
 {
 	is_learning &= USE_LEARNING_APPS;
 
-    long long i, num_rows, job_id, step_id, sig_id, pow_sig_id;
+    long long i, num_rows, job_id, step_id, sig_id, pow_sig_id, local_id;
     char job_query[256], pow_sig_query[256], sig_query[256];
     job_t *job_aux;
     application_t *apps_aux;
@@ -667,15 +667,18 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
     {
         job_id = htonl( *((int *)PQgetvalue(res, i, 0)));
         step_id = htonl( *((int *)PQgetvalue(res, i, 1)));
-        strcpy(apps_aux[i].node_id, PQgetvalue(res, i, 2));
-        sig_id = htonl( *((int *)PQgetvalue(res, i, 3)));
-        pow_sig_id = htonl( *((int *)PQgetvalue(res, i, 4)));
+        local_id = htonl( *((int *)PQgetvalue(res, i, 2)));
+        strcpy(apps_aux[i].node_id, PQgetvalue(res, i, 3));
+        sig_id = htonl( *((int *)PQgetvalue(res, i, 4)));
+        pow_sig_id = htonl( *((int *)PQgetvalue(res, i, 5)));
 
         /* JOB RETRIEVAL */
         if (is_learning)
-            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id = %lld AND step_id = %lld", job_id, step_id);
+            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id = %lld AND step_id = %lld AND local_id = %lld",
+                    job_id, step_id, local_id);
         else
-            sprintf(job_query, "SELECT * FROM Jobs WHERE id = %lld AND step_id = %lld", job_id, step_id);
+            sprintf(job_query, "SELECT * FROM Jobs WHERE id = %lld AND step_id = %lld AND local_id = %lld",
+                    job_id, step_id, local_id);
 
         if (postgresql_retrieve_jobs(connection, job_query, &job_aux) < 1)
         {

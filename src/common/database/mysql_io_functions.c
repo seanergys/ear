@@ -647,7 +647,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) return mysql_statement_error(statement);
     MYSQL_BIND bind[5];
-    unsigned long job_id, step_id, pow_sig_id;
+    unsigned long job_id, step_id, pow_sig_id, local_id;
     long long sig_id = 0; 
     int num_apps;
     memset(bind, 0, sizeof(bind));
@@ -663,9 +663,10 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     //reciever variables assignation
     bind[0].buffer = &job_id;
     bind[1].buffer = &step_id;
-    bind[2].buffer = &app_aux->node_id;
-    bind[3].buffer = &sig_id;
-    bind[4].buffer = &pow_sig_id;
+    bind[2].buffer = &local_id;
+    bind[3].buffer = &app_aux->node_id;
+    bind[4].buffer = &sig_id;
+    bind[5].buffer = &pow_sig_id;
 
     if (mysql_stmt_bind_result(statement, bind))
     {
@@ -711,9 +712,11 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
         if (is_learning)
-            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id=%lu AND step_id=%lu", job_id, step_id);
+            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id=%lu AND step_id=%lu AND local_id=%lu",
+                    job_id, step_id, local_id);
         else
-            sprintf(job_query, "SELECT * FROM Jobs WHERE id=%lu AND step_id=%lu", job_id, step_id);
+            sprintf(job_query, "SELECT * FROM Jobs WHERE id=%lu AND step_id=%lu AND local_id=%lu",
+                    job_id, step_id, local_id);
         num_jobs = mysql_retrieve_jobs(connection, job_query, &job_aux);
         if (num_jobs < 1)
         {
@@ -893,7 +896,7 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
 
 
     //integer types
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < LOOP_ARGS; i++)
     {
         bind[i].buffer_type = MYSQL_TYPE_LONGLONG;
         bind[i].is_unsigned = 1;
@@ -1012,7 +1015,7 @@ int mysql_retrieve_jobs(MYSQL *connection, char *query, job_t **jobs)
     //reciever variables assignation
     bind[0].buffer = &job_aux->id;
     bind[1].buffer = &job_aux->step_id;
-    bind[2].buffer = &job_aux->step_id;
+    bind[2].buffer = &job_aux->local_id;
     bind[3].buffer = &job_aux->user_id;
     bind[4].buffer = &job_aux->app_id;
     bind[5].buffer = &job_aux->start_time;
