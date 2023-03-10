@@ -1457,7 +1457,7 @@ state_t policy_new_iteration(signature_t *sig)
     uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
 
 
-    if (last_phase_io_bnd || last_phase_bw) {
+    if ((last_phase_io_bnd || last_phase_bw) && metrics_CPU_phase_ok()){
         verbose_master(POLICY_INFO , "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
                 COL_BLU, COL_CLR, sig->Gflops, sig->IO_MBS, sig->CPI );
 

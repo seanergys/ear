@@ -315,6 +315,11 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
 }
 #endif // USE_GPUS
 
+uint metrics_CPU_phase_ok()
+{
+    if (!met_cpi.ok || !met_bwidth.ok || !met_flops.ok) return 0;
+    return 1;
+}
 
 static void metrics_configuration(topology_t *tp)
 {
