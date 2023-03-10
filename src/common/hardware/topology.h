@@ -116,6 +116,7 @@ typedef struct topology_s {
     int   avx512;         // 1 if AVX-512 is enabled
     int   sve;            // 1 if ARM-SVE is enabled
     int   sve_bits;       // Counts the ARM-SVE vector bits
+    int   tdp;
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);
