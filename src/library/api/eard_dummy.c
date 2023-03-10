@@ -32,8 +32,9 @@
 #include <common/states.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_generic.h>
-#include <metrics/cpufreq/cpufreq_base.h>
 #include <daemon/local_api/node_mgr.h>
+
+
 #include <daemon/shared_configuration.h>
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
@@ -47,6 +48,10 @@ extern masters_info_t masters_info;
 static my_node_conf_t *dummy_node_conf;
 static char nodename[MAX_PATH_SIZE];
 static ear_njob_t *dummy_nodemgr;
+
+static settings_conf_t * dummy_sett;
+static ulong           * dummy_frequencies;
+
 
 #define check_null(p, str, arg) \
 	if (p == NULL){ \
@@ -162,7 +167,7 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
         create_dummy_island(&dummy_cc);
         create_dummy_policy(&dummy_cc);
     }
-    print_cluster_conf(&dummy_cc);
+    if (VERB_GET_LV() >= 2) print_cluster_conf(&dummy_cc);
 
     verbose_master(2, "Looking for node conf. Nodename %s", nodename);
     dummy_node_conf = get_my_node_conf(&dummy_cc, nodename);
@@ -173,7 +178,7 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
     }
     check_null(dummy_node_conf, "Invalid configuration file for node %s", nodename);
     if (dummy_node_conf != NULL){
-        print_my_node_conf(dummy_node_conf);
+        if (VERB_GET_LV() >= 2) print_my_node_conf(dummy_node_conf);
     }
 
     /* serialization */
@@ -191,15 +196,15 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 
 state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 {
-    settings_conf_t * dummy_sett;
-    resched_t       * dummy_resch;
-    policy_conf_t   * my_policy;
+    resched_t       *dummy_resch;
+    policy_conf_t   *my_policy;
     ulong             freq_base;
     cfb_t             bf;
 
     cpufreq_base_init(NULL, &bf);
     freq_base = (ulong) bf.frequency;
-    //verbose_master(1,"Using freq_base %lu", freq_base);
+
+			//verbose_master(1,"Using freq_base %lu", freq_base);
 
 				verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	
   			my_policy = get_my_policy_conf(dummy_node_conf,dummy_cc.default_policy);
@@ -318,13 +323,29 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
     check_null(frequencies, "Error allocating memory for frequencies %s", " ");
     frequencies[0] = freq_base;
     //verbose_master(1,"Using freq_base %lu", freq_base);
-
     get_frequencies_path(ear_tmp, path);
     dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
     check_null(dummy_frequencies, "Error creating frequencies area at path %s", path);
 
     return EAR_SUCCESS;
 }
+
+void eard_dummy_replace_base_freq(ulong base)
+{
+        verbose_master(2,"Replacing list of frequencies with freq %lu", base);
+
+        if ((dummy_frequencies == NULL) || (dummy_sett == NULL)) {
+          verbose_master(2,"Error, dummy_frequencies %p dummy_sett %p", dummy_frequencies, dummy_sett);
+          return;
+        }
+        dummy_frequencies[0]         = base;
+
+        verbose_master(2,"EARL settings");
+        dummy_sett->def_freq         = base;
+        dummy_sett->max_freq         = base;
+
+}
+
 
 
 /* This function is called when metrics are not yet initialized */

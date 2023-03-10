@@ -147,6 +147,7 @@ state_t rsmi_open(rsmi_t *rsmi_in)
     if (ok && rsmi_in != NULL) {
         memcpy(rsmi_in, &rsmi, sizeof(rsmi_t));
     }
+    pthread_mutex_unlock(&lock);
     #if 0
     rsmi_util_t util[1024];
     rsmi_freqs_t freqs;

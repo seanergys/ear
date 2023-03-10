@@ -33,7 +33,8 @@
 #include <metrics/temperature/temperature.h>
 
 typedef struct apis_info_s {
-	ctx_t c;
+    apinfo_t info;
+	ctx_t    c;
 	uint  api;
     char  api_str[32];
 	uint  gran; // Granularity
