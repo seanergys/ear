@@ -20,6 +20,7 @@
 #include <metrics/common/apis.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
+#include <common/utils/strtable.h>
 
 void apis_append(void *op[], void *func)
 {
@@ -77,4 +78,52 @@ void granularity_tostr(uint granularity, char *buffer, size_t size)
     else if (granularity == GRANULARITY_IMC     ) { snprintf(buffer, size, "imc"     ); }
     else if (granularity == GRANULARITY_SOCKET  ) { snprintf(buffer, size, "socket"  ); }
     else if (granularity == GRANULARITY_NODE    ) { snprintf(buffer, size, "node"    ); }
+}
+
+void scope_tostr(uint scope, char *buffer, size_t size)
+{
+    if      (scope == SCOPE_NONE   ) { snprintf(buffer, size, "none"); }
+    else if (scope == SCOPE_PROCESS) { snprintf(buffer, size, "process"); }
+    else if (scope == SCOPE_NODE   ) { snprintf(buffer, size, "node"); }
+}
+
+void apinfo_print(apinfo_t *info, int fd, int table_fmt)
+{
+    char buffer[STR_MAX_BUFFER];
+    apinfo_tostr(info, buffer, STR_MAX_BUFFER, table_fmt);
+    dprintf(fd, "%s", buffer);
+}
+
+void apinfo_tostr(apinfo_t *info, char *buffer, size_t size, int table_fmt)
+{
+    static strtable_t table;
+    static uint table_init = 0;
+    char buffer_granularity[128];
+    char buffer_scope[128];
+    char buffer_api[128];
+    //
+    granularity_tostr(info->granularity, buffer_granularity, 128);
+    scope_tostr(info->scope, buffer_scope, 128);
+    apis_tostr(info->api, buffer_api, 128);
+    // If table format
+    if (table_fmt) {
+        // Initializing the table
+        if (!table_init) {
+            tprintf_init2(&table, fdout, STR_MODE_COL, "11 9 8 10 20");
+            tprintf2(&table, "E.API||I.API||#Devs||Scope||Granularity");
+            tprintf2(&table, "-----||-----||-----||-----||-----------");
+        }
+        // Spanning the columns and copying the content to the returning buffer
+        tsprintf(buffer, &table, "%s||%s||%u||%s||%s", info->layer, buffer_api,
+                 info->devs_count, buffer_scope, buffer_granularity);
+    } else {
+        // Normal printing
+        sprintf(buffer, "-----------------");
+        sprintf(buffer, "external: %s", info->layer);
+        sprintf(buffer, "internal: %s", buffer_api);
+        sprintf(buffer, "#devices: %u", info->devs_count);
+        sprintf(buffer, "granul. : %s", buffer_granularity);
+        sprintf(buffer, "scope   : %s", buffer_scope);
+        sprintf(buffer, "-----------------");
+    }
 }

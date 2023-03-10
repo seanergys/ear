@@ -56,6 +56,7 @@ typedef struct strtable_s {
 
 strtable_t tprintf_static __attribute__((weak));
 
+// Obsolete, move to tprintf2 and convert tprintf2 to tprintf.
 #define tprintf(...) { \
     snprintf(tprintf_static.buffer_raw, STR_SIZE_BUFFER-1, __VA_ARGS__); \
     tprintf_write(&tprintf_static); \
@@ -66,12 +67,20 @@ strtable_t tprintf_static __attribute__((weak));
     tprintf_write(table); \
     }
 
-// Obsolete, move to tprintf_init2.
+#define tsprintf(buffer, table, ...) { \
+    snprintf((table)->buffer_raw, STR_SIZE_BUFFER-1, __VA_ARGS__); \
+    tprintf_span(table); \
+    strncpy(buffer, (table)->buffer_out, STR_SIZE_BUFFER-1); \
+    }
+
+// Obsolete, move to tprintf_init2 and convert tprintf_init2 to tprintf_init.
 int tprintf_init(int fd, int mode, char *format);
 
 int tprintf_init2(strtable_t *t, int fd, int mode, char *format);
 
 int tprintf_write(strtable_t *t);
+
+int tprintf_span(strtable_t *t);
 
 void tprintf_block(strtable_t *t, int block);
 

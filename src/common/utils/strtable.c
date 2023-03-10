@@ -84,85 +84,91 @@ int tprintf_init2(strtable_t *t, int fd, int mode, char *format)
 		t->columns = 0;
 		return -1;
 	}
-
 	return 0;
 }
 
 int tprintf_write(strtable_t *t)
+{
+    if (tprintf_span(t) == -1) {
+        return -1;
+    }
+    dprintf(t->fd, "%s", t->buffer_out);
+	return 0;
+}
+
+int tprintf_span(strtable_t *t)
 {
     char *pcol = strstr(t->buffer_raw, colsym);
     char *praw = t->buffer_raw;
     char *pout = t->buffer_out;
 
     int len = strlen(t->buffer_raw);
-	int visible = 0;
-	int chr = 0;
-	int col = 0;
+    int visible = 0;
+    int chr = 0;
+    int col = 0;
     int i = 0;
 
     if (t->blocked) {
         return 0;
     }
-	if ((len >= STR_SIZE_BUFFER) || (t->columns == 0)) {
-		return -1;
-	}
-	//
+    if ((len >= STR_SIZE_BUFFER) || (t->columns == 0)) {
+        return -1;
+    }
+    //
     while(pcol && i < t->columns)
     {
-		// If it is a visible wall
-		if (visible) {
-			pout[0] = '|';
+        // If it is a visible wall
+        if (visible) {
+            pout[0] = '|';
             pout[1] = ' ';
             pout++;
             pout++;
-			praw++;
-		}
-    	// If color
-		if (t->mode == STR_MODE_COL) {
-			col = tprintf_color_open(&praw, &pout);
-		}
-    	// Character copy and count
+            praw++;
+        }
+        // If color
+        if (t->mode == STR_MODE_COL) {
+            col = tprintf_color_open(&praw, &pout);
+        }
+        // Character copy and count
         while(praw != pcol) {
             *pout = *praw;
             ++chr;
             ++praw;
             ++pout;
-		}
+        }
         // Number of characters per column
         while(chr < t->format[i]) {
             *pout = ' ';
             ++chr;
             ++pout;
         }
-		//
-		if (col) {
-			tprintf_color_close(&pout);
-			col = 0;
-		}
-		//
-		if (pcol == &t->buffer_raw[len]) {
-			break;
-		}
-		// Visible wall
-		visible = (strncmp(praw, colsymvis, strlen(colsymvis)) == 0);
+        //
+        if (col) {
+            tprintf_color_close(&pout);
+            col = 0;
+        }
+        //
+        if (pcol == &t->buffer_raw[len]) {
+            break;
+        }
+        // Visible wall
+        visible = (strncmp(praw, colsymvis, strlen(colsymvis)) == 0);
 
         ++i;
         pcol++;
         pcol++;
         praw = pcol;
         pcol = strstr(pcol, colsym);
-		//
+        //
         if (!pcol) {
-        	pcol = &t->buffer_raw[len];
+            pcol = &t->buffer_raw[len];
         }
         chr = 0;
     }
-	// Printing
-	pout[0] = '\n';
-	pout[1] = '\0';
-    dprintf(t->fd, "%s", t->buffer_out);
-
-	return 0;
+    // Printing
+    pout[0] = '\n';
+    pout[1] = '\0';
+    return 0;
 }
 
 void tprintf_block(strtable_t *t, int block)

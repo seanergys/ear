@@ -120,20 +120,21 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     if (!counter) {
         return;
     }
-    apis_put(ops->get_api,         cache_perf_get_api);
-    apis_put(ops->get_granularity, cache_perf_get_granularity);
-    apis_put(ops->init,            cache_perf_init);
-    apis_put(ops->dispose,         cache_perf_dispose);
-    apis_put(ops->read,            cache_perf_read);
-    apis_put(ops->data_diff,       cache_perf_data_diff);
-    apis_put(ops->info_tostr,      cache_perf_info_tostr);
-    cache_info_print(fderr);
+    apis_put(ops->get_info,     cache_perf_get_info);
+    apis_put(ops->init,         cache_perf_init);
+    apis_put(ops->dispose,      cache_perf_dispose);
+    apis_put(ops->read,         cache_perf_read);
+    apis_put(ops->data_diff,    cache_perf_data_diff);
+    apis_put(ops->details_tostr,cache_perf_details_tostr);
     debug("Loaded PERF")
 }
 
-void cache_perf_get_api(uint *api)
+void cache_perf_get_info(apinfo_t *info)
 {
-    *api = API_PERF;
+    info->api         = API_PERF;
+    info->scope       = SCOPE_PROCESS;
+    info->granularity = GRANULARITY_PROCESS;
+    info->devs_count  = 1;
 }
 
 void cache_perf_get_granularity(uint *granularity)
@@ -216,7 +217,7 @@ void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     *gbs = cas;
 }
 
-void cache_perf_info_tostr(char *buffer, int length)
+void cache_perf_details_tostr(char *buffer, int length)
 {
     cchar *state[] = { "failed", "loaded" };
     int i, c;

@@ -22,23 +22,20 @@
 
 void cache_dummy_load(topology_t *tp, cache_ops_t *ops)
 {
-    apis_put(ops->get_api,         cache_dummy_get_api);
-    apis_put(ops->get_granularity, cache_dummy_get_granularity);
-    apis_put(ops->init,            cache_dummy_init);
-    apis_put(ops->dispose,         cache_dummy_dispose);
-    apis_put(ops->read,            cache_dummy_read);
-    apis_put(ops->data_diff,       cache_dummy_data_diff);
-    apis_put(ops->info_tostr,      cache_dummy_info_tostr);
+    apis_put(ops->get_info,      cache_dummy_get_info);
+    apis_put(ops->init,          cache_dummy_init);
+    apis_put(ops->dispose,       cache_dummy_dispose);
+    apis_put(ops->read,          cache_dummy_read);
+    apis_put(ops->data_diff,     cache_dummy_data_diff);
+    apis_put(ops->details_tostr, cache_dummy_details_tostr);
 }
 
-void cache_dummy_get_api(uint *api)
+void cache_dummy_get_info(apinfo_t *info)
 {
-    *api = API_DUMMY;
-}
-
-void cache_dummy_get_granularity(uint *granularity)
-{
-    *granularity = GRANULARITY_DUMMY;
+    info->api         = API_DUMMY;
+    info->scope       = SCOPE_PROCESS;
+    info->granularity = GRANULARITY_PROCESS;
+    info->devs_count  = 1;
 }
 
 state_t cache_dummy_init(ctx_t *c)
@@ -65,7 +62,7 @@ void cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs
     }
 }
 
-void cache_dummy_info_tostr(char *buffer, int length)
+void cache_dummy_details_tostr(char *buffer, int length)
 {
     sprintf(buffer, "L1 DUMMY: loaded\n");
 }
