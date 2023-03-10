@@ -24,6 +24,9 @@ root_OBJS = \
     $(SRCDIR)/management/imcfreq/archs/dummy.o \
     $(SRCDIR)/management/imcfreq/archs/eard.o \
     $(SRCDIR)/management/imcfreq/archs/intel63.o \
+    $(SRCDIR)/management/cpupow/cpupow.o \
+    $(SRCDIR)/management/cpupow/archs/intel63.o \
+    $(SRCDIR)/management/cpupow/archs/dummy.o \
     $(SRCDIR)/management/gpu/gpu.o \
     $(SRCDIR)/management/gpu/archs/eard.o \
     $(SRCDIR)/management/gpu/archs/dummy.o \

@@ -32,6 +32,7 @@ void mgt_cpupow_load(topology_t *tp, int eard)
 		goto ret;
 	}
     mgt_cpupow_intel63_load(tp, &ops);
+    mgt_cpupow_dummy_load(tp, &ops);
     loaded = 1;
 ret:
 	pthread_mutex_unlock(&lock);
