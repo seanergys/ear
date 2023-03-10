@@ -835,7 +835,7 @@ void print_warning_level(int warn_level)
 void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_conf) 
 {
     char ***results;
-    int num_columns, num_rows;
+    int num_columns, num_rows = 0;
     char query[1024];
 
     init_db_helper(&my_conf->database);
@@ -849,20 +849,27 @@ void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_co
 
     db_run_query_string_results(query, &results, &num_columns, &num_rows);
 
+    if (num_rows < 1) {
+        printf("No periodic_metrics in the specified period of time\n");
+        return;
+    }
+
 #if USE_GPUS
-    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%20s\t%20s\n",
-            "Node", "DC power", "PCK power", "DRAM Power", "GPU power", "Temperature", "Avg. Freq", "Start time", "End time");
+    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%15s\t%20s\t%20s\n",
+            "Node", "DC power", "PCK power", "DRAM Power", "GPU power", "Temperature", "Avg. CPU Freq", "Start time", "End time");
     int total_fields = 7;
 #else
-    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%10s\t%20s\t%20s\n",
-            "Node", "DC power", "PCK power", "DRAM Power", "Temperature", "Avg. Freq", "Start time", "End time");
+    printf("%10s\t%10s\t%10s\t%10s\t%10s\t%15s\t%20s\t%20s\n",
+            "Node", "DC power", "PCK power", "DRAM Power", "Temperature", "Avg. CPU Freq", "Start time", "End time");
     int total_fields = 6;
 #endif
     int i, j;
     for (i = 0; i < num_rows; i++) {
         for (j = 0; j < num_columns; j++) {
-            if (j < total_fields)
+            if (j < total_fields - 1)
                 printf("%10s\t", results[i][j]);
+			else if (j < total_fields)
+                printf("%15s\t", results[i][j]);
             else
                 printf("%20s\t", results[i][j]);
 
