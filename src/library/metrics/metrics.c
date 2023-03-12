@@ -522,13 +522,13 @@ static void metrics_static_init(topology_t *tp)
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
+    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
     met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
     met_energy.ok  = (met_energy.api  > API_DUMMY);
+    met_cache.ok   = 1;
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
-
-    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
 
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
