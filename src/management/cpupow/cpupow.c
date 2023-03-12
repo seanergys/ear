@@ -19,6 +19,7 @@
 
 #include <pthread.h>
 #include <management/cpupow/cpupow.h>
+#include <management/cpupow/archs/dummy.h>
 #include <management/cpupow/archs/intel63.h>
 
 static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
