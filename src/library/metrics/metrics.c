@@ -540,6 +540,7 @@ static void metrics_static_init(topology_t *tp)
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
     met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
     met_energy.ok  = (met_energy.api  > API_DUMMY);
+    met_cache.ok   = 1;
     met_flops.ok   = (met_flops.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
 
