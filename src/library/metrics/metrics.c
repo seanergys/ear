@@ -1423,7 +1423,7 @@ void copy_node_data(signature_t *dest, signature_t *src)
 static void estimate_metrics_not_available_by_processes(signature_t *metrics)
 {
   if (!master) { return;}
-  verbose_master(2, "Cache BDWITH  %f", metrics->GBS, lib_shared_region->total_cache_bwidth);
+  verbose_master(2, "Cache BDWITH  %f",  lib_shared_region->total_cache_bwidth);
   if (estimate_gbs){ 
     metrics->GBS = lib_shared_region->total_cache_bwidth;
     lib_shared_region->node_signature.GBS = metrics->GBS;
