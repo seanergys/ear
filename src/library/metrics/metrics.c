@@ -1427,6 +1427,7 @@ static void estimate_metrics_not_available_by_processes(signature_t *metrics)
   if (estimate_gbs){ 
     metrics->GBS = lib_shared_region->total_cache_bwidth;
     lib_shared_region->node_signature.GBS = metrics->GBS;
+    lib_shared_region->node_signature.TPI = (metrics->GBS * sig_shared_region[my_node_id].period * 1024*1024*1024) / sig_shared_region[my_node_id].sig.instructions;
     lib_shared_region->cas_counters        = metrics->GBS*1024*1024*1024/(hw_cache_line_size * sig_shared_region[my_node_id].period);
     verbose_master(2, "NODE GBS estimated %lf GB/s (period %lf)", metrics->GBS , sig_shared_region[my_node_id].period);
   }
@@ -1453,15 +1454,6 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
     }
 
   	sig_ext = metrics->sig_ext;
-    #if 0
-		if (estimate_gbs){
-			if (met_cache.ok && metrics->L3_misses){
-				verbose_master(2,"Estimating GB/s based on Cache misses");
-				metrics->GBS = metrics->L3_misses * hw_cache_line_size;
-				metrics->GBS = metrics->GBS/(sig_ext->elapsed*1000000000);
-			}
-		}
-    #endif
 
 		if (estimate_met_cpuf){
 			if (mgt_cpufreq.ok){ 
