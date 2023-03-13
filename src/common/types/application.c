@@ -115,6 +115,7 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
     return i;
 }
 
+
 int print_application_fd(int fd, application_t *app, int new_line, char is_extended, int single_column)
 {
     char buff[1024];
@@ -122,13 +123,21 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
     write(fd, buff, strlen(buff));
     print_job_fd(fd, &app->job);
     dprintf(fd, ";");
+
+    if (!app->is_mpi)
+    {
+        signature_init(&app->signature);
+    }
+
     if (app->signature.DRAM_power == 0) app->signature.DRAM_power = app->power_sig.DRAM_power;
     if (app->signature.PCK_power == 0) app->signature.PCK_power = app->power_sig.PCK_power;
     if (app->signature.DC_power == 0) app->signature.DC_power = app->power_sig.DC_power;
     if (app->signature.avg_f == 0) app->signature.avg_f = app->power_sig.avg_f;
     if (app->signature.def_f == 0) app->signature.def_f = app->power_sig.def_f;
+    if (app->signature.time == 0) app->signature.time = app->power_sig.time;
 
     signature_print_fd(fd, &app->signature, is_extended, single_column,',');
+        
 
     if (new_line) {
         dprintf(fd, "\n");
@@ -143,7 +152,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
     char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
                         "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
                         "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
-		char HEADER[1024];
+		char HEADER[4096];
 
 		/* If file already exists we will not add the header */
 		if (file_is_regular(path)) return EAR_SUCCESS;

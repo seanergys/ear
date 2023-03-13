@@ -21,7 +21,7 @@ AC_DEFUN([X_AC_RSMI_FIND_ROOT_DIR],
 	for d in $_x_ac_rsmi_dirs_root;
 	do
 		test -d "$d" || continue
-		test -f "$d/include/rocm_smi/rocm_smi" || continue
+		test -f "$d/include/rocm_smi/rocm_smi.h" || continue
 
 		AS_VAR_SET(_cv_rsmi_dir_root, $d)
 		test -n "$_cv_rsmi_dir_root" && break

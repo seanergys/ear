@@ -40,6 +40,10 @@ static uint			   ok_init;
 #define myErrorString(r) \
 	((char *) rsmi.ErrorString(r))
 
+int INDEX(uint length, uint index) {
+    return length-index-1;
+}
+
 void mgt_gpu_rsmi_load(mgt_gpu_ops_t *ops)
 {
     debug("Loading RSMI");
@@ -87,7 +91,7 @@ static state_t static_dispose(ctx_t *c, state_t s, char *error)
 {
     return EAR_SUCCESS;
 }
-	
+
 #define static_alloc(v, l, s) \
 	if ((v = calloc(l, s)) == NULL) { return static_dispose(NULL, EAR_ERROR, strerror(errno)); }
 
@@ -108,7 +112,8 @@ static state_t static_init_dev(int i)
     clock_lens[i] = gpu_hz.num_supported;
     // Copying (Hz to KHz)
     for (f = 0; f < clock_lens[i]; ++f) {
-        clock_list[i][f] = gpu_hz.frequency[f] / 1000LU;
+        clock_list[i][f] = gpu_hz.frequency[INDEX(clock_lens[i], f)] / 1000LU;
+        debug("D%d F%d: %llu KHz", i, f, clock_list[i][f]);
     }
     // Powercap default (microWatts to Watts)
     rsmi.get_powercap_default(i, &pc_list_default[i]);
@@ -206,7 +211,7 @@ state_t mgt_gpu_rsmi_freq_limit_get_current(ctx_t *c, ulong *khz)
         // Getting frequency list per device 
         s = rsmi.get_clock(d, RSMI_CLK_TYPE_SYS, &gpu_hz);
         // Hz to KHz
-        khz[d] = gpu_hz.frequency[gpu_hz.current] / 1000LU; 
+        khz[d] = gpu_hz.frequency[INDEX(clock_lens[d], gpu_hz.current)] / 1000LU;
     }
     //
     unused(s);

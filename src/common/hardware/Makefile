@@ -9,7 +9,8 @@ libc_OBJS = \
 	hardware_info.o \
 	mrs.o \
 	topology.o \
-	topology_asm.o
+	topology_asm.o \
+	topology_tdp.o
 
 ######## RULES
 

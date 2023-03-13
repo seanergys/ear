@@ -367,9 +367,13 @@ state_t topology_init(topology_t *topo)
     } else {
         topo->cache_last_level = 1;
     }
+
+    // TDP definition (to avoid redundancy)
+    void topology_tdp(topology_t *topo);
     topology_cpuinfo(topo);
     topology_watchdog(topo);
     topology_simd(topo);
+    topology_tdp(topo);
 
     topology_copy(&topo_static, topo);
 

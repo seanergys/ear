@@ -54,6 +54,7 @@
 #define MODEL_NEOVERSE_V1       0x41D40
 #define MODEL_FX1000            0x46001
 
+#define DUMMY_BASE_FREQ         100000
 struct tp_select_s
 {
 	int core;
@@ -116,6 +117,7 @@ typedef struct topology_s {
     int   avx512;         // 1 if AVX-512 is enabled
     int   sve;            // 1 if ARM-SVE is enabled
     int   sve_bits;       // Counts the ARM-SVE vector bits
+    int   tdp;
 } topology_t;
 
 state_t topology_select(topology_t *t, topology_t *s, int component, int group, int val);

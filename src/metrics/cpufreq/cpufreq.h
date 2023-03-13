@@ -22,6 +22,7 @@
 #include <common/states.h>
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 
 typedef struct cpufreq_s
 {

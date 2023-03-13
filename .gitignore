@@ -139,6 +139,7 @@ src/tools/coeffs_quality
 src/tools/coeffs_show
 src/tools/compute_coefficients_v2
 src/tools/ear_lp_validation
+src/tools/external_attach
 src/tools/get_projections
 src/tools/learn_deleter
 src/tools/learn_validator

@@ -35,6 +35,10 @@
 #define CUDA_EXT                            "gen.so"
 #define OPENMP_EXT                          "gen.so"
 #define DEF_EXT                             "gen.so"
+
+
+#define FUJITSU_MPI_EXT                     "fujitsu.so"
+
 // Maximum number of tries when doing non-blocking communications
 #define MAX_SOCKET_COMM_TRIES               100000000
 //
