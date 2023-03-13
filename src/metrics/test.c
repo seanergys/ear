@@ -53,10 +53,11 @@ void metrics_init(topology_t *tp, int eard)
     frun(    cpi_load(tp, eard));
     fgpu(    gpu_load(    eard));
 
+    frun(cache_get_info(&m.cch.info));
+
     frun(cpufreq_get_api(&m.cpu.api));
     frun(imcfreq_get_api(&m.imc.api));
     frun( bwidth_get_api(&m.ram.api));
-    frun(  cache_get_api(&m.cch.api));
     frun(  flops_get_api(&m.flp.api));
     frun(   temp_get_api(&m.tmp.api));
     frun(    cpi_get_api(&m.cpi.api));
@@ -187,18 +188,16 @@ static state_t monitor_apis_update(void *whatever)
     // Printf clear
     system("clear");
 
-    tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
-    tprintf("API||Internal||#Devs||Granularity");
-    tprintf("---||--------||-----||-----------");
+    apinfo_print(&m.cch.info, fdout, 1);
 
-    frun(tprintf("CPUFREQ||%s||%u||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
-    frun(tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
-    frun(tprintf("BWIDTH ||%s||%u||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str));
-    frun(tprintf("FLOPS  ||%s||%u||%s", m.flp.api_str, m.flp.devs_count, m.flp.gran_str));
-    frun(tprintf("CACHE  ||%s||%u||%s", m.cch.api_str, m.cch.devs_count, m.cch.gran_str));
-    frun(tprintf("TEMP   ||%s||%u||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str));
-    frun(tprintf("CPI    ||%s||%u||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str));
-    fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
+    tprintf_init(fdout, STR_MODE_COL, "11 9 8 10 20");
+    frun(tprintf("CPUFREQ||%s||%u||-||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
+    frun(tprintf("IMCFREQ||%s||%u||-||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
+    frun(tprintf("BWIDTH ||%s||%u||-||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str));
+    frun(tprintf("FLOPS  ||%s||%u||-||%s", m.flp.api_str, m.flp.devs_count, m.flp.gran_str));
+    frun(tprintf("TEMP   ||%s||%u||-||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str));
+    frun(tprintf("CPI    ||%s||%u||-||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str));
+    fgpu(tprintf("GPU    ||%s||%u||-||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
     frun(printf("—— cpi ————————————————————————————————————————————————————————————————————————\n"));
     frun(    cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel));
     frun(printf("—— cache ——————————————————————————————————————————————————————————————————————\n"));

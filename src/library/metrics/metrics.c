@@ -518,7 +518,6 @@ static void metrics_static_init(topology_t *tp)
     sa(    imcfreq_get_api(&met_imcfreq.api));
     sa(     bwidth_get_api(&met_bwidth.api ));
     sa(      flops_get_api(&met_flops.api  ));
-    sa(      cache_get_api(&met_cache.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
 
@@ -542,8 +541,8 @@ static void metrics_static_init(topology_t *tp)
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
     met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
     met_energy.ok  = (met_energy.api  > API_DUMMY);
+    met_cache.ok   = 1;
     met_flops.ok   = (met_flops.api   > API_DUMMY);
-    met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
 
     mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
@@ -681,7 +680,6 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_bwidth.api , "MET_BWIDTH : ");
         apis_print(met_energy.api , "MET_ENERGY : ");
         apis_print(met_flops.api  , "MET_FLOPS  : ");
-        apis_print(met_cache.api  , "MET_CACHE  : ");
         apis_print(met_cpi.api    , "MET_CPI    : ");
         apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
 #if USE_GPUS
@@ -694,7 +692,7 @@ static void metrics_static_init(topology_t *tp)
     }
 #endif
     if (VERB_ON(2) && master){
-      cache_info_tostr(cache_description, sizeof(cache_description));
+      cache_details_tostr(cache_description, sizeof(cache_description));
       verbose_master(2, "%s", cache_description);
     }
 
