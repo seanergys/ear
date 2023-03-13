@@ -258,6 +258,7 @@ void init_frequency_list()
 
 void init_tdps()
 {
+#ifndef __ARCH_ARM
   if (node_desc.vendor == VENDOR_INTEL){
 	if (read_rapl_pck_tdp(fd_rapl, rapl_pck_tdps) == EAR_ERROR){
        error("Reading CPU TDPs");
@@ -288,6 +289,10 @@ void init_tdps()
 
 	  rapl_pck_tdps[0] = reps[0];
   }
+#else
+  /* To be replaced by the call to cpupow API */
+  rapl_pck_tdps[0] = 250;
+#endif
 }
 
 void set_verbose_variables() {
@@ -761,10 +766,12 @@ int main(int argc, char *argv[])
                 verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",
                         node_desc.socket_count, node_desc.core_count, node_desc.cpu_count);
 
+		#ifndef __ARCH_ARM
                 if (msr_test(&node_desc, MSR_WR) != EAR_SUCCESS){
                     error("msr files are not available, please check the msr kernel module is loaded (modprobe msr)");
                     _exit(1);
                 }
+		#endif
 
                 //
                 verbose(VEARD_INIT,"Initializing frequency list");
@@ -909,13 +916,16 @@ int main(int argc, char *argv[])
 #endif
                 // At this point, only one daemon is running
                 // PAST: we had here a frequency set
+		#ifndef __ARCH_ARM
                 verbose(VEARD_INIT,"Initializing RAPL counters");
                 // We initialize rapl counters
                 if (init_rapl_msr(fd_rapl)<0){ 
                     error("Error initializing rapl");
                     error_rapl=1;
                 }
-				init_tdps();
+		#endif
+		init_tdps();
+			
                 verbose(VEARD_INIT,"Initialzing energy plugin");
                 // We initilize energy_node
                 debug("Initializing energy in main EARD thread");

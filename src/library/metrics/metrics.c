@@ -328,6 +328,11 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
 }
 #endif // USE_GPUS
 
+uint metrics_CPU_phase_ok()
+{
+    if (!met_cpi.ok || !met_bwidth.ok || !met_flops.ok) return 0;
+    return 1;
+}
 #if DCGMI && USE_GPUS
 void report_dcgmi_metrics()
 {
@@ -367,6 +372,7 @@ void report_dcgmi_metrics()
 
 }
 #endif
+  
 
 static void metrics_configuration(topology_t *tp)
 {
@@ -385,20 +391,7 @@ static void metrics_configuration(topology_t *tp)
 		verbose_master(ERROR_VERB,"%s", topo_str);
         cpufreq_base_init(tp, &bf);
         verbose_master(ERROR_VERB, "Frequency detected %lu", (ulong) bf.frequency);
-	}else{
-      if (tp->base_freq == DUMMY_BASE_FREQ){
-      uint nominal;
-      pstate_t *pst_list;
-      mgt_cpufreq_get_nominal(no_ctx, &nominal);
-      pst_list                    = mgt_cpufreq.avail_list;
-      tp->base_freq               = pst_list[nominal].khz;
-      arch_desc.top.base_freq     = tp->base_freq;
-      verbose_master(ERROR_VERB, "Using base_freq cpufreq_list[%u] = %lu based on MGT cpufreq",nominal, tp->base_freq);
-
-      eard_dummy_replace_base_freq(tp->base_freq);
-    }    
-
-  }
+	}
 	if (!mgt_imcfreq.ok){
 		verbose_master(ERROR_VERB, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
 		earl_default_domains.mem = POL_NOT_SUPPORTED;
@@ -515,7 +508,6 @@ static void metrics_static_init(topology_t *tp)
     sa(    imcfreq_get_api(&met_imcfreq.api));
     sa(     bwidth_get_api(&met_bwidth.api ));
     sa(      flops_get_api(&met_flops.api  ));
-    sa(      cache_get_api(&met_cache.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
 
@@ -536,14 +528,13 @@ static void metrics_static_init(topology_t *tp)
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
+    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
     met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
     met_energy.ok  = (met_energy.api  > API_DUMMY);
+    met_cache.ok   = 1;
     met_flops.ok   = (met_flops.api   > API_DUMMY);
-    met_cache.ok   = (met_cache.api   > API_DUMMY);
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
-
-    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
 
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
@@ -678,7 +669,6 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_bwidth.api , "MET_BWIDTH : ");
         apis_print(met_energy.api , "MET_ENERGY : ");
         apis_print(met_flops.api  , "MET_FLOPS  : ");
-        apis_print(met_cache.api  , "MET_CACHE  : ");
         apis_print(met_cpi.api    , "MET_CPI    : ");
         apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
 #if USE_GPUS
@@ -690,6 +680,7 @@ static void metrics_static_init(topology_t *tp)
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
     }
 #endif
+
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);

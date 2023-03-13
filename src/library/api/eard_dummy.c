@@ -23,24 +23,22 @@
 #include <unistd.h>
 #include <string.h>
 //#define SHOW_DEBUGS 1
-#include <common/config.h>
-#include <common/config/config_env.h>
-#include <common/output/verbose.h>
-#include <library/common/verbose_lib.h>
-#include <library/common/global_comm.h>
-#include <common/output/debug.h>
 #include <common/states.h>
+#include <common/config.h>
+#include <common/output/debug.h>
+#include <common/output/verbose.h>
+#include <common/config/config_env.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_generic.h>
+#include <library/common/verbose_lib.h>
+#include <library/common/global_comm.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <daemon/local_api/node_mgr.h>
-
-
 #include <daemon/shared_configuration.h>
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
 #define DEFAULT_ENERGY_PLUGIN "energy_rapl.so"
-
 
 static char path[GENERIC_NAME];
 static cluster_conf_t dummy_cc;
