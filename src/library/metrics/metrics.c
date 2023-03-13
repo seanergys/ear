@@ -216,7 +216,8 @@ static flops_t     flops_diff[2];
 static cache_t     cache_read1[2];
 static cache_t     cache_read2[2];
 static cache_t     cache_diff[2];
-static double      cache_avrg[2];
+static char        cache_description[1024];
+static double      cache_bwidth[2];
 static cpi_t       cpi_read1[2];
 static cpi_t       cpi_read2[2];
 static cpi_t       cpi_diff[2];
@@ -680,6 +681,10 @@ static void metrics_static_init(topology_t *tp)
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
     }
 #endif
+    if (VERB_ON(2) && master){
+      cache_details_tostr(cache_description, sizeof(cache_description));
+      verbose_master(2, "%s", cache_description);
+    }
 
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
@@ -1037,7 +1042,7 @@ static void metrics_global_stop()
 	bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], NULL, &bwidth_cas[APP], NULL);
   if (master) lib_shared_region->cas_counters = bwidth_cas[APP];
 	flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
-	cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_avrg[APP]);
+	cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
 	cpi_read_diff(no_ctx,   &cpi_read2[APP],   &cpi_read1[APP],   &cpi_diff[APP],   &cpi_avrg[APP]);
 
   #if USE_CUPTI
@@ -1054,31 +1059,6 @@ static void metrics_global_stop()
 static void metrics_partial_start()
 {
 
-  #if 0
-	if (state_fail(io_read(&ctx_io, &metrics_io_init[LOO]))){
-		verbose_master(2, "%sWarning%s I/O data not available.", COL_RED, COL_CLR);
-	}
-	if (master) {
-		if (state_fail(cpufreq_read(no_ctx, cpufreq_read1[LOO]))) {
-			verbose_master(2, "%sError%s Reading loop's CPUFreq data.", COL_RED, COL_CLR);
-		}
-			if (state_fail(imcfreq_read(no_ctx,imcfreq_read1[LOO]))){
-				verbose_master(2, "%sError%s Reading loop's IMCFreq data.", COL_RED, COL_CLR);
-			}
-		if (state_fail(metrics_compute_total_io(&metrics_io_init[LOO_NODE]))) {
-
-			verbose_master(2, "%sWarning%s Node total I/O could not be"
-					" read (%s)." , COL_RED, COL_CLR, state_msg);
-		}
-    }
-	for (int i = 0; i < rapl_elements; i++) {
-		last_rapl[i] = aux_rapl[i];
-	}
-	bwidth_read(no_ctx, bwidth_read1[LOO]);
-	flops_read(no_ctx, &flops_read1[LOO]);
-	cache_read(no_ctx, &cache_read1[LOO]);
-	cpi_read(no_ctx,   &cpi_read1[LOO]);
-  #endif
 
 	debug("metrics_partial_start starts %p %p %lu",
 			metrics_ipmi[LOO], aux_energy, node_energy_datasize);
@@ -1379,7 +1359,7 @@ static int metrics_partial_stop(uint where)
 	bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], &bwidth_cas[LOO], NULL);
   if (master) lib_shared_region->cas_counters = bwidth_cas[LOO];
 	flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
-	cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_avrg[LOO]);
+	cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
 	cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
 
   #if USE_CUPTI
@@ -1432,6 +1412,10 @@ static void estimate_metrics_not_available(uint sign_app_loop_idx, signature_t *
 			return;
 		}
 		sig_ext_t *sig_ext ;
+
+   verbose_master(2, "NODE GBS %lf vs Cache BDWITH  %f", metrics->GBS, lib_shared_region->total_cache_bwidth);
+
+
     if (estimate_power){
       /* Power error control: There was an error on power computation and we use an estimation */
       double current_ratio;
@@ -1544,11 +1528,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
 	  metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
+    lib_shared_region->total_cache_bwidth = cache_bwidth[sign_app_loop_idx];
 	} else {
 		bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
 		metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
     /* TPI normalized by total instructions */
 	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
+    lib_shared_region->total_cache_bwidth += cache_bwidth[sign_app_loop_idx];
 	}
   verbose_master(TPI_DEBUG, "GBS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 

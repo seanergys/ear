@@ -79,6 +79,7 @@ typedef struct lib_shared_data {
     int         num_processes;
     uint        num_signatures;
     uint        num_cpus;
+    float       total_cache_bwidth;
     ullong      cas_counters;
     signature_t node_signature;
     signature_t job_signature;
