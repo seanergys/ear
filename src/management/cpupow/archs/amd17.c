@@ -19,6 +19,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
 #include <common/hardware/bithack.h>
@@ -89,18 +90,21 @@ struct domain_s {
     msr_energy_status_t *es;
     off_t                es_address;
     timestamp_t          es_time;
-    msr_power_status_t  *ps;
+    hsmp_power_status_t *ps;
     uint                 ps_address;
     hsmp_power_info_t   *pi;
     uint                 pi_address;
 };
+
+static topology_t        tp_cores;
+static topology_t        tp_sockets;
+static msr_power_unit_t *pu;
 
 #define DOMAIN_SET(_tp, dom, cp, pl_kn) { \
     .set = 1, \
 	.tp = _tp, \
     .name = #dom, \
     .capable = cp, \
-    .pu_address = MSR_RAPL_POWER_UNIT, \
 	.pl_address_read = HSMP_ ## dom ## _POWER_LIMIT_READ, \
 	.pl_address_write = HSMP_ ## dom ## _POWER_LIMIT_WRITE, \
     .pl_keeper_name = pl_kn, \
@@ -117,10 +121,6 @@ static struct domain_s domains[] = {
     { 0, NULL },
 };
 
-static topology_t        tp_cores;
-static topology_t        tp_sockets;
-static msr_power_unit_t *pu;
-
 static int domain_init(int domain)
 {
     struct domain_s *d = &domains[domain];
@@ -130,10 +130,10 @@ static int domain_init(int domain)
     int i;
 
     // Allocation
-    d->pl = calloc(d->td->cpu_count    , sizeof(hsmp_power_limit_t));
-    d->es = calloc(d->td->cpu_count    , sizeof(msr_energy_status_t));
-    d->ps = calloc(d->td->cpu_count    , sizeof(hsmp_power_status_s));
-    d->pi = calloc(d->td->cpu_count    , sizeof(hsmp_power_info_t));
+    d->pl = calloc(d->tp->cpu_count    , sizeof(hsmp_power_limit_t));
+    d->es = calloc(d->tp->cpu_count    , sizeof(msr_energy_status_t));
+    d->ps = calloc(d->tp->cpu_count    , sizeof(hsmp_power_status_t));
+    d->pi = calloc(d->tp->cpu_count    , sizeof(hsmp_power_info_t));
     //
     for (i = 0; i < d->tp->cpu_count; ++i) {
         // Reading HSMP_*_POWER_INFO
@@ -153,15 +153,15 @@ static int domain_init(int domain)
                 debug("Failed while reading MSR_%s_POWER_INFO: %s", d->name, state_msg);
                 return 0;
             }
-            d->pl[i]->reg   = reps[0];
-            d->pl[i]->power = reps[0] / 1000U;
-            debug("%s[%d].power_limit: %6u W [%4u / 1000]", d->name, d->tp->cpus[i].id, d->pl[i]->power, d->pl[i]->reg);
+            d->pl[i].reg   = reps[0];
+            d->pl[i].power = reps[0] / 1000U;
+            debug("%s[%d].power_limit: %6u W [%4u / 1000]", d->name, d->tp->cpus[i].id, d->pl[i].power, d->pl[i].reg);
             // Recovering MSR_*_POWER_LIMIT registers
             sprintf(buffer, "%s%d", d->pl_keeper_name, i);
-            if (!keeper_load_uint64(buffer, &d->pl[i].reg)) {
-                keeper_save_uint64(buffer, d->pl[i].reg);
+            if (!keeper_load_uint32(buffer, &d->pl[i].reg)) {
+                keeper_save_uint32(buffer, d->pl[i].reg);
             } else {
-                d->pl[i]->power = d->pl[i]->reg / 1000U;
+                d->pl[i].power = d->pl[i].reg / 1000U;
                 debug("%s[%d].power_limit: %6u W [%4u / 1000] (keeper)", d->name, d->tp->cpus[i].id, d->pl->power, d->pl->reg);
             }
         }
@@ -177,21 +177,23 @@ static int rapl_init()
     pu = calloc(tp_sockets.cpu_count, sizeof(msr_power_unit_t));
     // Reading MSR_RAPL_POWER_UNIT (is per socket)
     for (i = 0; i < tp_sockets.cpu_count; ++i) {
-        if (state_fail(msr_read(tp_sockets.cpus[i].id, &d->pu.reg, sizeof(ullong), d->pu_address))) {
+        if (state_fail(msr_read(tp_sockets.cpus[i].id, &pu[i].reg, sizeof(ullong), MSR_RAPL_POWER_UNIT))) {
             debug("Failed while reading MSR_RAPL_POWER_UNIT: %s", state_msg)
             return 0;
         }
-        pu[i].mult_power  = pow(0.5, (double) getbits64(mult_reg,  3,  0));
-        pu[i].mult_energy = pow(0.5, (double) getbits64(mult_reg, 12,  8));
-        pu[i].mult_time   = pow(0.5, (double) getbits64(mult_reg, 19, 16));
-        debug("RAPL[%d].mult_power : %lf W [1/(2^%u)]", tp_sockets.cpus[i].id, pu[i].mult_power , (uint) getbits64(mult_reg,  3,  0));
-        debug("RAPL[%d].mult_energy: %lf J [1/(2^%u)]", tp_sockets.cpus[i].id, pu[i].mult_energy, (uint) getbits64(mult_reg, 12,  8));
-        debug("RAPL[%d].mult_time  : %lf S [1/(2^%u)]", tp_sockets.cpus[i].id, pu[i].mult_time  , (uint) getbits64(mult_reg, 19, 16));
+        pu[i].mult_power  = pow(0.5, (double) getbits64(pu[i].reg,  3,  0));
+        pu[i].mult_energy = pow(0.5, (double) getbits64(pu[i].reg, 12,  8));
+        pu[i].mult_time   = pow(0.5, (double) getbits64(pu[i].reg, 19, 16));
+        debug("RAPL[%d].mult_power : %lf W [1/(2^%u)]", tp_sockets.cpus[i].id, pu[i].mult_power , (uint) getbits64(pu[i].reg,  3,  0));
+        debug("RAPL[%d].mult_energy: %lf J [1/(2^%u)]", tp_sockets.cpus[i].id, pu[i].mult_energy, (uint) getbits64(pu[i].reg, 12,  8));
+        debug("RAPL[%d].mult_time  : %lf S [1/(2^%u)]", tp_sockets.cpus[i].id, pu[i].mult_time  , (uint) getbits64(pu[i].reg, 19, 16));
     }
+    return 1;
 }
 
 void mgt_cpupow_amd17_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
 {
+    state_t s;
     int i;
 
     if (tp_in->vendor == VENDOR_AMD && tp_in->family >= FAMILY_ZEN) {
@@ -251,7 +253,7 @@ void mgt_cpupow_amd17_get_api(uint *api)
 
 int mgt_cpupow_amd17_count_devices(int domain)
 {
-    return domains[domain].tp.cpu_count;
+    return domains[domain].tp->cpu_count;
 }
 
 int mgt_cpupow_amd17_is_powercap_capable(int domain)
@@ -267,7 +269,7 @@ state_t mgt_cpupow_amd17_powercap_is_enabled(int domain, uint *enabled)
 
 state_t mgt_cpupow_amd17_powercap_get(int domain, uint *watts)
 {
-    struct domains_s *d = &domains[domain];
+    struct domain_s *d = &domains[domain];
     uint reps[2] = {  0, -1 };
     uint args[1] = {  -1 };
     int i;
@@ -283,14 +285,14 @@ state_t mgt_cpupow_amd17_powercap_get(int domain, uint *watts)
 
 state_t mgt_cpupow_amd17_powercap_set(int domain, uint *watts)
 {
-    struct domains_s *d = &domains[domain];
+    struct domain_s *d = &domains[domain];
     uint args[2] = {  0, -1 };
     uint reps[1] = { -1 };
     int i;
     // Iterating
     for (i = 0; i < d->tp->cpu_count; ++i) {
         if (watts[i] == POWERCAP_DISABLE) {
-            args[0] = d->pl->tdp * 1000U;
+            args[0] = d->pi[i].tdp * 1000U;
         } else {
             args[0] = watts[i] * 1000U;
         }
@@ -303,7 +305,7 @@ state_t mgt_cpupow_amd17_powercap_set(int domain, uint *watts)
 
 state_t mgt_cpupow_amd17_powercap_reset(int domain)
 {
-    struct domains_s *d = &domains[domain];
+    struct domain_s *d = &domains[domain];
     uint args[2] = {  0, -1 };
     uint reps[1] = { -1 };
     int i;
@@ -319,7 +321,7 @@ state_t mgt_cpupow_amd17_powercap_reset(int domain)
 
 state_t mgt_cpupow_amd17_tdp_get(int domain, uint *watts)
 {
-    struct domains_s *d = &domains[domain];
+    struct domain_s *d = &domains[domain];
     int i;
     // Cleaning
     memset(watts, 0, sizeof(uint)*d->tp->cpu_count);

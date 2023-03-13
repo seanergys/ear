@@ -3,6 +3,7 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 ######## FILES
 
 freq_OBJS = \
+    amd17.o \
     intel63.o \
     dummy.o
 
