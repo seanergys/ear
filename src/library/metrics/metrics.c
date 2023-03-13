@@ -46,6 +46,7 @@
 #include <sched.h>
 #include <sys/mman.h>
 #include <assert.h>
+#include <semaphore.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -104,6 +105,7 @@
 
 // extern configuration from the main ear library
 extern cluster_conf_t cconf;
+extern sem_t *lib_shared_lock_sem;
 
 extern ear_classify_t phases_limits; // Get from ear.c
 
@@ -275,6 +277,8 @@ extern uint last_earl_phase_classification;
 extern timestamp init_last_phase, init_last_comp;
 extern uint policy_cpu_bound ;
 extern uint policy_mem_bound ;
+
+uint validate_cpu_busy = 1;
 
 
 /** Compute the total node I/O data. */
@@ -514,6 +518,8 @@ static void metrics_static_init(topology_t *tp)
 
 		if (met_cpufreq.api == API_DUMMY) estimate_met_cpuf = 1;
 		if (met_bwidth.api  == API_DUMMY) estimate_gbs = 1;
+
+    if ((met_bwidth.api == API_DUMMY) || (met_cpi.api == API_DUMMY) || (met_flops.api == API_DUMMY)) validate_cpu_busy = 0;
 
 #if USE_GPUS
     mgt_gpu_get_api(&mgt_gpu.api);
@@ -1405,7 +1411,19 @@ void copy_node_data(signature_t *dest, signature_t *src)
 }
 
 
-static void estimate_metrics_not_available(uint sign_app_loop_idx, signature_t *metrics, ulong procs, float gpup)
+static void estimate_metrics_not_available_by_processes(signature_t *metrics)
+{
+  if (!master) { return;}
+  verbose_master(2, "Cache BDWITH  %f", metrics->GBS, lib_shared_region->total_cache_bwidth);
+  if (estimate_gbs){ 
+    metrics->GBS = lib_shared_region->total_cache_bwidth;
+    lib_shared_region->node_signature.GBS = metrics->GBS;
+    lib_shared_region->node_signature.TPI = (metrics->GBS * sig_shared_region[my_node_id].period * 1024*1024*1024) / sig_shared_region[my_node_id].sig.instructions;
+    lib_shared_region->cas_counters        = metrics->GBS*1024*1024*1024/(hw_cache_line_size * sig_shared_region[my_node_id].period);
+    verbose_master(2, "NODE GBS estimated %lf GB/s (period %lf)", metrics->GBS , sig_shared_region[my_node_id].period);
+  }
+}
+static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signature_t *metrics, ulong procs, float gpup)
 {
 		if (!master) {
 			verbose(0,"Warning, estimate metrics and not master task");
@@ -1413,7 +1431,6 @@ static void estimate_metrics_not_available(uint sign_app_loop_idx, signature_t *
 		}
 		sig_ext_t *sig_ext ;
 
-   verbose_master(2, "NODE GBS %lf vs Cache BDWITH  %f", metrics->GBS, lib_shared_region->total_cache_bwidth);
 
 
     if (estimate_power){
@@ -1428,13 +1445,6 @@ static void estimate_metrics_not_available(uint sign_app_loop_idx, signature_t *
     }
 
   	sig_ext = metrics->sig_ext;
-		if (estimate_gbs){
-			if (met_cache.ok && metrics->L3_misses){
-				verbose_master(2,"Estimating GB/s based on Cache misses");
-				metrics->GBS = metrics->L3_misses * hw_cache_line_size;
-				metrics->GBS = metrics->GBS/(sig_ext->elapsed*1000000000);
-			}
-		}
 
 		if (estimate_met_cpuf){
 			if (mgt_cpufreq.ok){ 
@@ -1450,6 +1460,8 @@ static void estimate_metrics_not_available(uint sign_app_loop_idx, signature_t *
 		}
 
 }
+
+
 
 /* This function computes the signature: per loop (global = LOO) or application ( global = APP)
  * The node master has computed the per-node metrics and the rest of processes uses this information. */
@@ -1528,13 +1540,18 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
 	  metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
+    sem_wait(lib_shared_lock_sem);
     lib_shared_region->total_cache_bwidth = cache_bwidth[sign_app_loop_idx];
+    sem_post(lib_shared_lock_sem);
 	} else {
 		bwidth_cas[sign_app_loop_idx] = (ullong) lib_shared_region->cas_counters;
 		metrics->GBS = bwidth_help_castogbs(bwidth_cas[sign_app_loop_idx], time_s);
     /* TPI normalized by total instructions */
 	  metrics->TPI = bwidth_help_castotpi(bwidth_cas[sign_app_loop_idx], metrics->instructions);
+    sem_wait(lib_shared_lock_sem);
     lib_shared_region->total_cache_bwidth += cache_bwidth[sign_app_loop_idx];
+    sem_post(lib_shared_lock_sem);
+    //verbose(2,"CACHE_BW[%u] local %lf total %lf", my_node_id, cache_bwidth[sign_app_loop_idx], lib_shared_region->total_cache_bwidth);
 	}
   verbose_master(TPI_DEBUG, "GBS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 
@@ -1704,7 +1721,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       dc_power_ratio_instances++;
     }
 
-		estimate_metrics_not_available(sign_app_loop_idx, metrics, procs, total_gpu_power);
+		estimate_metrics_not_available_by_node(sign_app_loop_idx, metrics, procs, total_gpu_power);
 #if MPI_OPTIMIZED
     max_app_power = ear_max(max_app_power, metrics->DC_power);
 #endif
@@ -2458,6 +2475,7 @@ void compute_per_process_and_job_metrics(signature_t *dest)
 {
 
 	if (master) {
+    estimate_metrics_not_available_by_processes(dest);
 		update_earl_node_mgr_info();
 		estimate_power_and_gbs(lib_shared_region, sig_shared_region, node_mgr_job_info);
 		accum_estimations(lib_shared_region, sig_shared_region);

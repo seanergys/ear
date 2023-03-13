@@ -164,9 +164,14 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     return EAR_SUCCESS;
 }
 
+extern uint validate_cpu_busy;
 state_t is_process_busy_waiting(ssig_t *sig, uint *busy)
 {
   if (busy == NULL) return EAR_ERROR;
+  
+  *busy = 0;
+  if (!validate_cpu_busy) return EAR_SUCCESS;
+
 	uint c1 = (sig->CPI    < CPI_BUSY_WAITING);
 	uint c2 = (sig->GBS    < GBS_BUSY_WAITING);
 	uint c3 = (sig->Gflops < GFLOPS_BUSY_WAITING);
@@ -188,11 +193,16 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
         return_msg(EAR_ERROR, Generr.input_null);
     }
 
+
+
+	*busy = USEFUL_COMP;
+
+  if (!validate_cpu_busy) return EAR_SUCCESS;
+
 	uint c1 = (sig->CPI    < CPI_BUSY_WAITING);
 	uint c2 = ((sig->GBS/num_cpus)    < GBS_BUSY_WAITING);
 	uint c3 = ((sig->Gflops/num_cpus) < GFLOPS_BUSY_WAITING);
 
-	*busy = USEFUL_COMP;
 
     if (c1 && c2 && c3) {
         *busy = BUSY_WAITING;

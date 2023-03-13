@@ -9,7 +9,8 @@ band_OBJS = \
     intel63.o \
     intel106.o \
     amd17.o \
-	likwid.o
+	likwid.o \
+	perf.o
 
 ######## RULES
 
