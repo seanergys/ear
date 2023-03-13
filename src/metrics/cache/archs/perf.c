@@ -103,17 +103,17 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     line_size = (double) tp->cache_line_size;
     //
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_LD1_MISS_LD");
+        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
         set_cache(1, 0x3f24  , PERF_TYPE_RAW     , OFFSET(002), 0, "L2_RQSTS.MISS"   );
         set_cache(1, 0x40f0  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_TRANS.L2_WB"  );
         set_cache(1, 0x1ff1  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_IN.ALL" );
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_LD1_MISS_LD");
+        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
         set_cache(1, 0x430864, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_DC" );
         set_cache(1, 0x431f71, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF1");
         set_cache(1, 0x431f72, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF2");
     } else if (tp->vendor == VENDOR_ARM) {
-        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_LD1_MISS_LD");
+        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
         set_cache(1, 0x17    , PERF_TYPE_RAW     , OFFSET(002), 1, "L2D_CACHE_REFILL");
         set_cache(1, 0x18    , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2D_CACHE_WB"    );
     }
@@ -220,9 +220,10 @@ void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 void cache_perf_details_tostr(char *buffer, int length)
 {
     cchar *state[] = { "failed", "loaded" };
+    cchar *bwtoo[] = { "", "(also in LBW)" };
     int i, c;
     for (i = c = 0; i < counter; ++i) {
-        c += sprintf(&buffer[c], "%s: %s (event %s)\n",
-            OFFSTR(meta[i].offset), state[meta[i].enabled], meta[i].desc);
+        c += sprintf(&buffer[c], "%s: %s (event %s) %s\n", OFFSTR(meta[i].offset),
+             state[meta[i].enabled], meta[i].desc, bwtoo[meta[i].used_in_bw]);
     }
 }
