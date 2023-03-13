@@ -217,6 +217,7 @@ static flops_t     flops_diff[2];
 static cache_t     cache_read1[2];
 static cache_t     cache_read2[2];
 static cache_t     cache_diff[2];
+static char        cache_description[1024];
 static double      cache_bwidth[2];
 static cpi_t       cpi_read1[2];
 static cpi_t       cpi_read2[2];
@@ -692,6 +693,10 @@ static void metrics_static_init(topology_t *tp)
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
     }
 #endif
+    if (VERB_ON(2) && master){
+      cache_info_tostr(cache_description, sizeof(cache_description));
+      verbose_master(2, "%s", cache_description);
+    }
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);
@@ -1065,31 +1070,6 @@ static void metrics_global_stop()
 static void metrics_partial_start()
 {
 
-  #if 0
-	if (state_fail(io_read(&ctx_io, &metrics_io_init[LOO]))){
-		verbose_master(2, "%sWarning%s I/O data not available.", COL_RED, COL_CLR);
-	}
-	if (master) {
-		if (state_fail(cpufreq_read(no_ctx, cpufreq_read1[LOO]))) {
-			verbose_master(2, "%sError%s Reading loop's CPUFreq data.", COL_RED, COL_CLR);
-		}
-			if (state_fail(imcfreq_read(no_ctx,imcfreq_read1[LOO]))){
-				verbose_master(2, "%sError%s Reading loop's IMCFreq data.", COL_RED, COL_CLR);
-			}
-		if (state_fail(metrics_compute_total_io(&metrics_io_init[LOO_NODE]))) {
-
-			verbose_master(2, "%sWarning%s Node total I/O could not be"
-					" read (%s)." , COL_RED, COL_CLR, state_msg);
-		}
-    }
-	for (int i = 0; i < rapl_elements; i++) {
-		last_rapl[i] = aux_rapl[i];
-	}
-	bwidth_read(no_ctx, bwidth_read1[LOO]);
-	flops_read(no_ctx, &flops_read1[LOO]);
-	cache_read(no_ctx, &cache_read1[LOO]);
-	cpi_read(no_ctx,   &cpi_read1[LOO]);
-  #endif
 
 	debug("metrics_partial_start starts %p %p %lu",
 			metrics_ipmi[LOO], aux_energy, node_energy_datasize);

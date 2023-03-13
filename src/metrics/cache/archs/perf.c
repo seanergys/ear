@@ -127,7 +127,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     apis_put(ops->read,            cache_perf_read);
     apis_put(ops->data_diff,       cache_perf_data_diff);
     apis_put(ops->info_tostr,      cache_perf_info_tostr);
-    cache_info_print(fderr);
+    // cache_info_print(fderr);
     debug("Loaded PERF")
 }
 
