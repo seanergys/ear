@@ -21,6 +21,7 @@
 #include <common/output/debug.h>
 #include <common/utils/overhead.h>
 #include <metrics/bandwidth/bandwidth.h>
+#include <metrics/bandwidth/archs/perf.h>
 #include <metrics/bandwidth/archs/eard.h>
 #include <metrics/bandwidth/archs/dummy.h>
 #include <metrics/bandwidth/archs/bypass.h>
@@ -67,6 +68,10 @@ state_t bwidth_load(topology_t *tp, int eard)
 		api = API_INTEL106;
 		debug("Loaded INTEL106");
 	}
+    if (state_ok(bwidth_perf_load(tp, &ops))) {
+        api = API_PERF;
+        debug("Loaded PERF");
+    }
     #if 0
 	if (state_ok(bwidth_bypass_load(tp, &ops))) {
 		api = API_BYPASS;
