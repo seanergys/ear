@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -486,12 +487,12 @@ int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
         bind[3+offset].buffer_type = bind[4+offset].buffer_type = bind[9+offset].buffer_type = 
             bind[14+offset].buffer_type = bind[15+offset].buffer_type = bind[16+offset].buffer_type = MYSQL_TYPE_STRING;
 
-        bind[2+offset].buffer_length = strlen(app[i].job.user_id);
-        bind[3+offset].buffer_length = strlen(app[i].job.app_id);
-        bind[8+offset].buffer_length = strlen(app[i].job.policy);
-        bind[13+offset].buffer_length = strlen(app[i].job.user_acc);
-        bind[14+offset].buffer_length = strlen(app[i].job.group_id);
-        bind[15+offset].buffer_length = strlen(app[i].job.energy_tag);
+        bind[3+offset].buffer_length = strlen(app[i].job.user_id);
+        bind[4+offset].buffer_length = strlen(app[i].job.app_id);
+        bind[9+offset].buffer_length = strlen(app[i].job.policy);
+        bind[14+offset].buffer_length = strlen(app[i].job.user_acc);
+        bind[15+offset].buffer_length = strlen(app[i].job.group_id);
+        bind[16+offset].buffer_length = strlen(app[i].job.energy_tag);
 
         //double types
         bind[10+offset].buffer_type = MYSQL_TYPE_DOUBLE;
@@ -646,19 +647,21 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     int num_jobs;
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) return mysql_statement_error(statement);
-    MYSQL_BIND bind[5];
+    MYSQL_BIND bind[APPLICATION_ARGS];
     unsigned long job_id, step_id, pow_sig_id, local_id;
     long long sig_id = 0; 
     int num_apps;
     memset(bind, 0, sizeof(bind));
 
     //integer types
-    bind[0].buffer_type = bind[1].buffer_type = bind[3].buffer_type = bind[4].buffer_type = MYSQL_TYPE_LONGLONG;
-    bind[0].is_unsigned = bind[1].is_unsigned = bind[3].is_unsigned = bind[4].is_unsigned = 1;
+    bind[0].buffer_type = bind[1].buffer_type = bind[2].buffer_type = 
+        bind[4].buffer_type = bind[5].buffer_type = MYSQL_TYPE_LONGLONG;
+    bind[0].is_unsigned = bind[1].is_unsigned = bind[2].is_unsigned = 
+        bind[4].is_unsigned = bind[5].is_unsigned;
 
     //string types
-    bind[2].buffer_type = MYSQL_TYPE_VAR_STRING;
-    bind[2].buffer_length = 256;
+    bind[3].buffer_type = MYSQL_TYPE_VAR_STRING;
+    bind[3].buffer_length = 256;
 
     //reciever variables assignation
     bind[0].buffer = &job_id;
