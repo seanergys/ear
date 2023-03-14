@@ -54,11 +54,11 @@ void metrics_init(topology_t *tp, int eard)
     fgpu(    gpu_load(    eard));
 
     frun(cache_get_info(&m.cch.info));
+    frun(flops_get_info(&m.flp.info));
 
     frun(cpufreq_get_api(&m.cpu.api));
     frun(imcfreq_get_api(&m.imc.api));
     frun( bwidth_get_api(&m.ram.api));
-    frun(  flops_get_api(&m.flp.api));
     frun(   temp_get_api(&m.tmp.api));
     frun(    cpi_get_api(&m.cpi.api));
     fgpu(    gpu_get_api(&m.gpu.api));
@@ -180,21 +180,53 @@ static state_t monitor_apis_init(void *whatever)
 	return EAR_SUCCESS;
 }
 
+#include "test_avx.c"
+
+static void stress_flops()
+{
+    #define N       1000000000
+    #define DOUBLE  1
+    #define FLOAT   0
+
+    #if 1
+    double d1 = 3.0,  d2 = 2.0,  d3 = 0.0;
+    float  f1 = 3.0f, f2 = 2.0f, f3 = 0.0f;
+    int i;
+
+    for (i = 0; i < N; ++i) {
+        #if   DOUBLE
+        d3 = d2 + d1;
+        #elif FLOAT
+        f3 = f2 + f1;
+        #endif
+    }
+    #else
+    // N * 30 * 5
+    //add128dp(N);
+    //fma128dp(N);
+    //add256dp(N);
+    //fma256dp(N);
+    //add512dp(N);
+    //fma512dp(N);
+    #endif
+}
+
 static state_t monitor_apis_update(void *whatever)
 {
     //stress_bandwidth(1000);
+    stress_flops();
     metrics_read_copy(&mr2, &mr1, &mrD);
     
     // Printf clear
-    system("clear");
-
-    apinfo_print(&m.cch.info, fdout, 1);
+    //system("clear");
+    // The 2 also prints header
+    apinfo_print(&m.cch.info, fdout, 2);
+    apinfo_print(&m.flp.info, fdout, 1);
 
     tprintf_init(fdout, STR_MODE_COL, "11 9 8 10 20");
     frun(tprintf("CPUFREQ||%s||%u||-||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||-||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
     frun(tprintf("BWIDTH ||%s||%u||-||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str));
-    frun(tprintf("FLOPS  ||%s||%u||-||%s", m.flp.api_str, m.flp.devs_count, m.flp.gran_str));
     frun(tprintf("TEMP   ||%s||%u||-||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str));
     frun(tprintf("CPI    ||%s||%u||-||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str));
     fgpu(tprintf("GPU    ||%s||%u||-||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
@@ -202,6 +234,8 @@ static state_t monitor_apis_update(void *whatever)
     frun(    cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel));
     frun(printf("—— cache ——————————————————————————————————————————————————————————————————————\n"));
     frun(  cache_data_print(&mrD.cch_diff,  mrD.cch_avrg, verb_channel));
+    frun(printf("—— flops ——————————————————————————————————————————————————————————————————————\n"));
+    frun(  flops_data_print(&mrD.flp_diff,  mrD.flp_avrg, verb_channel));
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
     frun(cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel));
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));

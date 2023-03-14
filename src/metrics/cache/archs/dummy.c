@@ -36,6 +36,7 @@ void cache_dummy_get_info(apinfo_t *info)
     info->scope       = SCOPE_PROCESS;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
+    info->bits        = 0;
 }
 
 state_t cache_dummy_init(ctx_t *c)

@@ -70,6 +70,8 @@ typedef struct apinfo_s {
     uint  devs_count;
     uint  granularity;
     uint  scope;
+    uint  bits;
+    void *extra;
 } apinfo_t;
 
 typedef struct metrics_s {

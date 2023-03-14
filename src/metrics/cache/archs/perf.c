@@ -135,11 +135,7 @@ void cache_perf_get_info(apinfo_t *info)
     info->scope       = SCOPE_PROCESS;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
-}
-
-void cache_perf_get_granularity(uint *granularity)
-{
-    *granularity = GRANULARITY_PROCESS;
+    info->bits        = 64;
 }
 
 state_t cache_perf_init()

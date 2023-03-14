@@ -22,16 +22,14 @@
 
 void flops_perf_load(topology_t *tp, flops_ops_t *ops);
 
-void flops_perf_get_api(uint *api);
+void flops_perf_get_info(apinfo_t *info);
 
-void flops_perf_get_granularity(uint *granularity);
+state_t flops_perf_init();
 
-void flops_perf_get_weights(ullong **weights_in);
+state_t flops_perf_dispose();
 
-state_t flops_perf_init(ctx_t *c);
+state_t flops_perf_read(flops_t *ca);
 
-state_t flops_perf_dispose(ctx_t *c);
-
-state_t flops_perf_read(ctx_t *c, flops_t *ca);
+void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
 #endif //METRICS_FLOPS_PERF_H

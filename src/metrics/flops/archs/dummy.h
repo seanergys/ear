@@ -22,16 +22,14 @@
 
 void flops_dummy_load(topology_t *tp, flops_ops_t *ops);
 
-void flops_dummy_get_api(uint *api);
+void flops_dummy_get_info(apinfo_t *info);
 
-void flops_dummy_get_granularity(uint *granularity);
+state_t flops_dummy_init();
 
-void flops_dummy_get_weights(ullong **weights);
+state_t flops_dummy_dispose();
 
-state_t flops_dummy_init(ctx_t *c);
+state_t flops_dummy_read(flops_t *fl);
 
-state_t flops_dummy_dispose(ctx_t *c);
-
-state_t flops_dummy_read(ctx_t *c, flops_t *fl);
+void flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
 #endif //METRICS_FLOPS_DUMMY_H
