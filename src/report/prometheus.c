@@ -18,7 +18,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <semaphore.h>
 #include <microhttpd.h>
+
 
 #include <common/states.h>
 #include <common/types/types.h>
@@ -27,11 +29,16 @@
 #include <report/report.h>
 
 #define NUM_LINES 30 
+#define PERIODIC_FIELDS 6
 
 static struct MHD_Daemon * d;
-static char text_buffers[NUM_LINES][258];
-static char text[NUM_LINES*258];
+static char periodic_text_buffers[NUM_LINES*PERIODIC_FIELDS][258];
+static char loop_text_buffers[NUM_LINES][258];
+static char event_text_buffers[NUM_LINES][258];
+static char text[NUM_LINES*3*258];
 static int next_buffer = 0;
+
+static sem_t prom_sem;
 
 static enum MHD_Result
     ahc_echo(void * cls,
@@ -73,10 +80,18 @@ static enum MHD_Result
 void rebuild_buffer()
 {
     int i;
+    sem_wait(&prom_sem);
     strcpy(text, "");
     for (i = 0; i < NUM_LINES; i++) {
-        strcat(text, text_buffers[i]);
+        strcat(text, periodic_text_buffers[i]);
     }
+    for (i = 0; i < NUM_LINES; i++) {
+        strcat(text, loop_text_buffers[i]);
+    }
+    for (i = 0; i < NUM_LINES; i++) {
+        strcat(text, event_text_buffers[i]);
+    }
+    sem_post(&prom_sem);
 
 }
 
@@ -85,9 +100,14 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 
     int i;
     for (i = 0; i < NUM_LINES; i++) {
-        strcpy(text_buffers[i], "");
+        strcpy(periodic_text_buffers[i], "");
+        strcpy(loop_text_buffers[i], "");
+        strcpy(event_text_buffers[i], "");
     }
     strcpy(text, "");
+
+    sem_init(&prom_sem, 0, 1);
+
     d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
             9011,
             NULL,
@@ -113,16 +133,31 @@ state_t report_dispose(report_id_t *id)
 state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count)
 {
 
-    sprintf(text_buffers[0], "periodic_metric_DC_energy_Joules{node=\"%s\"} %lu %lu\n", 
-            mets[0].node_id, mets[0].DC_energy, mets[0].end_time*1000);
-    sprintf(text_buffers[1], "periodic_metric_avg_freq_kHz{node=\"%s\"} %lu %lu\n", 
-            mets[0].node_id, mets[0].avg_f, mets[0].end_time*1000);
-    sprintf(text_buffers[2], "periodic_metric_temp_Celsius{node=\"%s\"} %lu %lu\n", 
-            mets[0].node_id, mets[0].temp, mets[0].end_time*1000);
+    char job_text[64];
+    int i;
+    for (i = 0; i < count; i++) {
+        strcpy(job_text, "");
+        if (mets[i].job_id != 0) {
+            sprintf(job_text, ", jobid=%lu, stepid=%lu", mets[i].job_id, mets[i].step_id);
+        }
+        sprintf(periodic_text_buffers[i*PERIODIC_FIELDS + 0], "periodic_metric_DC_power_Watts{node=\"%s%s\"} %lu %lu\n", 
+                mets[i].node_id, job_text, mets[i].DC_energy/(mets[i].end_time - mets[i].start_time), mets[i].end_time*1000);
+        sprintf(periodic_text_buffers[i*PERIODIC_FIELDS + 1], "periodic_metric_avg_freq_kHz{node=\"%s%s\"} %lu %lu\n", 
+                mets[i].node_id, job_text, mets[i].avg_f, mets[i].end_time*1000);
+        sprintf(periodic_text_buffers[i*PERIODIC_FIELDS + 2], "periodic_metric_temp_Celsius{node=\"%s%s\"} %lu %lu\n", 
+                mets[i].node_id, job_text, mets[i].temp, mets[i].end_time*1000);
+        sprintf(periodic_text_buffers[i*PERIODIC_FIELDS + 3], "periodic_metric_GPU_power_Watts{node=\"%s%s\"} %lu %lu\n", 
+                mets[i].node_id, job_text, mets[i].GPU_energy/(mets[i].end_time - mets[i].start_time), mets[i].end_time*1000);
+        sprintf(periodic_text_buffers[i*PERIODIC_FIELDS + 4], "periodic_metric_PCK_power_Watts{node=\"%s%s\"} %lu %lu\n", 
+                mets[i].node_id, job_text, mets[i].PCK_energy/(mets[i].end_time - mets[i].start_time), mets[i].end_time*1000);
+        sprintf(periodic_text_buffers[i*PERIODIC_FIELDS + 4], "periodic_metric_DRAM_power_Watts{node=\"%s%s\"} %lu %lu\n", 
+                mets[i].node_id, job_text, mets[i].DRAM_energy/(mets[i].end_time - mets[i].start_time), mets[i].end_time*1000);
+    }
     //next_buffer = (next_buffer+1) >= NUM_LINES ? 0 : next_buffer + 1 ;
     rebuild_buffer();
     return EAR_SUCCESS;
 }
+
 
 state_t report_applications(report_id_t *id, application_t *apps, uint count)
 {
@@ -133,5 +168,7 @@ state_t report_applications(report_id_t *id, application_t *apps, uint count)
 state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 {
     verbose(0, "dummy report_loops");
+
+    rebuild_buffer();
     return EAR_SUCCESS;
 }
