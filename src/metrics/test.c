@@ -184,11 +184,12 @@ static state_t monitor_apis_init(void *whatever)
 
 static void stress_flops()
 {
-    #define N       1000000000
     #define DOUBLE  1
     #define FLOAT   0
 
-    #if 1
+    #if 0
+    #define N       1000000000
+
     double d1 = 3.0,  d2 = 2.0,  d3 = 0.0;
     float  f1 = 3.0f, f2 = 2.0f, f3 = 0.0f;
     int i;
@@ -201,12 +202,14 @@ static void stress_flops()
         #endif
     }
     #else
+    #define N       10000000
+
     // N * 30 * 5
     //add128dp(N);
     //fma128dp(N);
     //add256dp(N);
     //fma256dp(N);
-    //add512dp(N);
+    add512dp(N);
     //fma512dp(N);
     #endif
 }
@@ -246,7 +249,10 @@ static state_t monitor_apis_update(void *whatever)
     frun(   temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel));
     frun(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
     frun(    gpu_data_print( mrD.gpu_diff,                verb_channel));
-    
+
+    ullong flapis[8];
+    flops_help_toold(&mrD.flp_diff, flapis);
+
     return EAR_SUCCESS;
 }
 

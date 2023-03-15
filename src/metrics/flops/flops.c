@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <string.h>
@@ -135,19 +135,36 @@ void flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
     }
 }
 
+void flops_internals_print(int fd)
+{
+    char buffer[1024];
+    flops_internals_tostr(buffer, 1024);
+    dprintf(fd, "%s", buffer);
+}
+
+void flops_internals_tostr(char *buffer, int length)
+{
+    ops.internals_tostr(buffer, length);
+}
+
 ullong *flops_help_toold(flops_t *flD, ullong *flops)
 {
-#if 0
-    flops[0] = (flD->f64  * weights[0]);
-    flops[4] = (flD->d64  * weights[1]);
-    flops[1] = (flD->f128 * weights[2]);
-    flops[5] = (flD->d128 * weights[3]);
-    flops[2] = (flD->f256 * weights[4]);
-    flops[6] = (flD->d256 * weights[5]);
-    flops[3] = (flD->f512 * weights[6]);
-    flops[7] = (flD->d512 * weights[7]);
-    compute_gflops(flD);
+    ops.data_diff(NULL, NULL, flD, NULL);
+    flops[0] = flD->f64;
+    flops[4] = flD->d64;
+    flops[1] = flD->f128;
+    flops[5] = flD->d128;
+    flops[2] = flD->f256;
+    flops[6] = flD->d256;
+    flops[3] = flD->f512;
+    flops[7] = flD->d512;
+    debug("flops[0]: %llu", flops[0]);
+    debug("flops[1]: %llu", flops[1]);
+    debug("flops[2]: %llu", flops[2]);
+    debug("flops[3]: %llu", flops[3]);
+    debug("flops[4]: %llu", flops[4]);
+    debug("flops[5]: %llu", flops[5]);
+    debug("flops[6]: %llu", flops[6]);
+    debug("flops[7]: %llu", flops[7]);
     return flops;
-#endif
-    return 0LLU;
 }

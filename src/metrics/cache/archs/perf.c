@@ -125,7 +125,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     apis_put(ops->dispose,      cache_perf_dispose);
     apis_put(ops->read,         cache_perf_read);
     apis_put(ops->data_diff,    cache_perf_data_diff);
-    apis_put(ops->details_tostr,cache_perf_details_tostr);
+    apis_put(ops->internals_tostr,cache_perf_internals_tostr);
     debug("Loaded PERF")
 }
 
@@ -213,13 +213,13 @@ void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     *gbs = cas;
 }
 
-void cache_perf_details_tostr(char *buffer, int length)
+void cache_perf_internals_tostr(char *buffer, int length)
 {
     cchar *state[] = { "failed", "loaded" };
-    cchar *bwtoo[] = { "", "(also in LBW)" };
+    cchar *bwtoo[] = { "", "(also in LBW) " };
     int i, c;
     for (i = c = 0; i < counter; ++i) {
-        c += sprintf(&buffer[c], "%s: %s (event %s) %s\n", OFFSTR(meta[i].offset),
-             state[meta[i].enabled], meta[i].desc, bwtoo[meta[i].used_in_bw]);
+        c += sprintf(&buffer[c], "CACHE %s : %s event %s %s* %u\n", OFFSTR(meta[i].offset),
+             state[meta[i].enabled], meta[i].desc, bwtoo[meta[i].used_in_bw], (uint) line_size);
     }
 }

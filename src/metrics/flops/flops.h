@@ -87,6 +87,7 @@ typedef struct flops_ops_s {
 	state_t (*dispose)         ();
 	state_t (*read)            (flops_t *fl);
     void    (*data_diff)       (flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+    void    (*internals_tostr) (char *buffer, int length);
 } flops_ops_t;
 
 void flops_load(topology_t *tp, int eard);
@@ -113,6 +114,10 @@ void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
 
 /* Accumulates flops differences and return its data in GFLOPs (accepts NULL). */
 void flops_data_accum(flops_t *fA, flops_t *fD, double *gfs);
+
+void flops_internals_print(int fd);
+
+void flops_internals_tostr(char *buffer, int length);
 
 // Helpers
 /* Converts a flops difference into old FLOPs array system. */

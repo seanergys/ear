@@ -32,4 +32,6 @@ state_t flops_dummy_read(flops_t *fl);
 
 void flops_dummy_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
+void flops_dummy_internals_tostr(char *buffer, int length);
+
 #endif //METRICS_FLOPS_DUMMY_H

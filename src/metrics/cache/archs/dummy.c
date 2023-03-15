@@ -27,7 +27,7 @@ void cache_dummy_load(topology_t *tp, cache_ops_t *ops)
     apis_put(ops->dispose,       cache_dummy_dispose);
     apis_put(ops->read,          cache_dummy_read);
     apis_put(ops->data_diff,     cache_dummy_data_diff);
-    apis_put(ops->details_tostr, cache_dummy_details_tostr);
+    apis_put(ops->internals_tostr, cache_dummy_internals_tostr);
 }
 
 void cache_dummy_get_info(apinfo_t *info)
@@ -63,7 +63,7 @@ void cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs
     }
 }
 
-void cache_dummy_details_tostr(char *buffer, int length)
+void cache_dummy_internals_tostr(char *buffer, int length)
 {
-    sprintf(buffer, "L1 DUMMY: loaded\n");
+    sprintf(buffer, "CACHE LX  : loaded event DUMMY\n");
 }

@@ -32,4 +32,6 @@ state_t flops_perf_read(flops_t *ca);
 
 void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
+void flops_perf_internals_tostr(char *buffer, int length);
+
 #endif //METRICS_FLOPS_PERF_H
