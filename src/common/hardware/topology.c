@@ -207,18 +207,6 @@ state_t topology_copy(topology_t *dst, topology_t *src)
 	return EAR_SUCCESS;
 }
 
-static void topology_simd(topology_t *topo)
-{
-    if (topo->vendor == VENDOR_ARM) {
-        #ifdef __SVE_VQ_MAX
-        topo->sve_bits = __SVE_VQ_MAX;
-        topo->sve = (topo->sve_bits > 0);
-        #else
-        topo->sve = 0;
-        #endif
-    }
-}
-
 static void topology_watchdog(topology_t *topo)
 {
 	char path[SZ_NAME_LARGE];
@@ -389,7 +377,6 @@ state_t topology_init(topology_t *topo)
 
     topology_cpuinfo(topo);
     topology_watchdog(topo);
-    topology_simd(topo);
     topology_tdp(topo);
 
     topology_copy(&topo_static, topo);

@@ -73,8 +73,6 @@ typedef struct flops_s {
 	ullong d256;
     ullong f512; // 512 field is also used as MAX VECTOR LENGTH flops,
 	ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
-    ullong fops; // General floating point operations (for math activity)
-    ullong iops; // General integer operations (for math activity)
     union {
         timestamp_t time;
         double secs;

@@ -225,9 +225,30 @@ static void topology_asm_getboost(topology_t *topo)
     #endif
 }
 
+static void topology_asm_getsimd(topology_t *topo)
+{
+    if (topo->vendor == VENDOR_ARM) {
+        topo->sve      = 0;
+        topo->sve_bits = 0;
+        #if __ARM_FEATURE_SVE
+        topo->sve = 1;
+
+        if (topo->sve) {
+            #if __ARM_FEATURE_SVE_BITS
+            topo->sve_bits = __ARM_FEATURE_SVE_BITS;
+            #endif
+            if (topo->sve_bits == 0 || topo->sve_bits == 1) {
+                topo->sve_bits = svcntw() * 32;
+            }
+        }
+        #endif
+    }
+}
+
 void topology_asm(topology_t *topo)
 {
     topology_asm_getid(topo);
     topology_asm_getbrand(topo);
     topology_asm_getboost(topo);
+    topology_asm_getsimd(topo);
 }
