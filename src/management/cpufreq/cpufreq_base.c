@@ -261,6 +261,8 @@ static int basefreq_spec_tsc(topology_t *tp, cpufreq_base_t *base)
     if (tp->vendor == VENDOR_ARM) {
         return 0;
     }
+    l1 = h1 = 0LLU;
+    l2 = h2 = 0LLU;
     #if __ARCH_X86
     asm volatile("rdtsc" : "=a"(l1), "=d"(h1));
     #endif

@@ -133,7 +133,7 @@ void flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
         flA->gflops += flD->gflops;
     }
     if (gfs != NULL) {
-        gfs = flA->gflops;
+        *gfs = flA->gflops;
     }
 }
 
