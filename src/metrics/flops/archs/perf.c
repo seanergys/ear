@@ -67,18 +67,7 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         // the register readings in 256f by pure arbitrariness.
 		set_flops(0xff03, PERF_TYPE_RAW, 4, 1.0, "FpRetSseAvxOps");
 	}
-    else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_NEOVERSE_N1) {
-        // ASE_SPEC is multiplied by x4 because we are counting float32x4_t, the
-        // mean value of float16x8_t, float32x4_t and float64x2_t.
-        set_flops(0x0075, PERF_TYPE_RAW, 0,  1.0, "VFP_SPEC");
-        set_flops(0x0074, PERF_TYPE_RAW, 2,  4.0, "ASE_SPEC");
-    }
-    else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_NEOVERSE_V1) {
-        // FIXED also counts VFP_SPEC operations.
-        set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");
-        set_flops(0x80c2, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");
-    }
-    else if (tp->vendor == VENDOR_ARM) { // && ARMv8a or greater (including FX1000)
+    else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_FX1000) {
         // We can mix these offsets because share the same weight. FIXED events
         // combines floats, doubles and also SIMD NEON.
         set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_HP_FIXED_OPS_SPEC");
@@ -87,6 +76,17 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x80c2, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_HP_SCALE_OPS_SPEC");
         set_flops(0x80c4, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SP_SCALE_OPS_SPEC");
         set_flops(0x80c6, PERF_TYPE_RAW, 7, ((double) tp->sve_bits) / 128.0, "FP_DP_SCALE_OPS_SPEC");
+    }
+    else if (tp->vendor == VENDOR_ARM && tp->sve) {
+        // FIXED also counts VFP_SPEC operations.
+        set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");
+        set_flops(0x80c2, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");
+    }
+    else if (tp->vendor == VENDOR_ARM) {
+        // ASE_SPEC is multiplied by x4 because we are counting float32x4_t, the
+        // mean value of float16x8_t, float32x4_t and float64x2_t.
+        set_flops(0x0075, PERF_TYPE_RAW, 0,  1.0, "VFP_SPEC");
+        set_flops(0x0074, PERF_TYPE_RAW, 2,  4.0, "ASE_SPEC");
     } else {
 		debug("%s", Generr.api_incompatible);
         return;
