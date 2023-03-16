@@ -17,10 +17,12 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <math.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/hardware/mrs.h>
 #include <common/hardware/cpuid.h>
@@ -111,13 +113,11 @@ __attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 
 __attribute__((unused)) static void topology_getid_arm64(topology_t *topo)
 {
-    ullong midr = mrs_midr();
-
+    ullong midr     = mrs_midr();
     topo->vendor    = VENDOR_ARM;
     topo->family    = FAMILY_A8; // By now, we have to learn to identify ARM CPUs
     topo->model     = getbits64(midr, 31, 24) << 12;
     topo->model    |= getbits64(midr, 15,  4);
-    //topo->base_freq = TOPO_UNDEFINED;
     // We don't have these values in accessible registers
     topo->cache_line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 }
@@ -167,6 +167,7 @@ static void topology_asm_getbrand(topology_t *topo)
     #endif
 }
 
+<<<<<<< HEAD
 static int msr_microread(char *buffer, size_t size, off_t offset)
 {
     size_t size_accum = 0;

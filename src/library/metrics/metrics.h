@@ -105,6 +105,9 @@ void compute_per_process_and_job_metrics(signature_t *sig);
 /* Computes metrics per-iteration, very lightweight */
 state_t metrics_new_iteration(signature_t *sig);
 
+/* Returns true if all the metrics to compute CPU phase are ok*/
+uint metrics_CPU_phase_ok();
+
 
 #if MPI_OPTIMIZED
 void metrics_start_cpupower();

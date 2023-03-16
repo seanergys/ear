@@ -26,7 +26,7 @@
 #define TOPO_UNDEFINED        -1
 #define TOPO_CL_COUNT         (4+1) // Cache levels count, L0 to L4, but 0 doesn't exists
 // Supported vendors
-#define VENDOR_UNKNOWN         TOPO_UNDEFINED
+#define VENDOR_UNKNOWN          TOPO_UNDEFINED
 #define VENDOR_INTEL            0
 #define VENDOR_AMD              1
 #define VENDOR_ARM              2
@@ -114,8 +114,6 @@ typedef struct topology_s {
     int   nmi_watchdog;	  // NMI watdog enabled.
     int   apicids_found;  // List of CPUs ApicId's found.
     int   initialized;    // 1 if the topology is initialized
-    ulong base_freq;      // Nominal CPU clock, in KHz
-    int   boost_enabled;
     int   avx512;         // 1 if AVX-512 is enabled
     int   sve;            // 1 if ARM-SVE is enabled
     int   sve_bits;       // Counts the ARM-SVE vector bits
@@ -133,7 +131,5 @@ state_t topology_close(topology_t *topo);
 state_t topology_print(topology_t *topo, int fd);
 
 state_t topology_tostr(topology_t *topo, char *buffer, size_t n);
-// This function won't be public, use topo.base_freq value instead.
-state_t topology_freq_getbase(uint cpu, ulong *freq_base);
 
 #endif

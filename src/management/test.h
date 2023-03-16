@@ -22,12 +22,14 @@
 #include <management/cpufreq/cpufreq.h>
 #include <management/cpufreq/priority.h>
 #include <management/imcfreq/imcfreq.h>
+#include <management/cpupow/cpupow.h>
 #include <management/gpu/gpu.h>
 
 typedef struct manages_apis_s {
     apis_info_t cpu; // cpufreq
     apis_info_t pri; // cpuprio
     apis_info_t imc; // imcfreq
+    apis_info_t pow; // cpupow
     apis_info_t gpu; // gpu
 } manages_apis_t;
 

@@ -47,11 +47,13 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
     frun(mgt_cpufreq_load(tp, eard      ));
     frun(mgt_cpuprio_load(tp, eard      ));
     frun(mgt_imcfreq_load(tp, eard, NULL));
+    frun( mgt_cpupow_load(tp, eard      ));
     fgpu(    mgt_gpu_load(    eard      ));
 
     frun(mgt_cpufreq_get_api(&m.cpu.api));
     frun(mgt_cpuprio_get_api(&m.pri.api));
     frun(mgt_imcfreq_get_api(&m.imc.api));
+    frun( mgt_cpupow_get_api(&m.pow.api));
     fgpu(    mgt_gpu_get_api(&m.gpu.api));
 
     frun(sa(mgt_cpufreq_init(no_ctx)));
@@ -89,6 +91,7 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
     frun(apis_tostr(m.cpu.api, m.cpu.api_str, 32));
     frun(apis_tostr(m.pri.api, m.pri.api_str, 32));
     frun(apis_tostr(m.imc.api, m.imc.api_str, 32));
+    frun(apis_tostr(m.pow.api, m.pow.api_str, 32));
     fgpu(apis_tostr(m.gpu.api, m.gpu.api_str, 32));
     // Granularities
     frun(sprintf(m.cpu.gran_str, "threads"));
@@ -118,13 +121,14 @@ static state_t monitor_apis_update(void *whatever)
     // Printf clear
     system("clear");
 
-    tprintf_init(fdout, STR_MODE_COL, "11 11 6 20");
+    tprintf_init(fdout, STR_MODE_COL, "11 11 10 20");
     tprintf("API||Internal||#Devs||Granularity");
     tprintf("---||--------||-----||-----------");
 
     frun(tprintf("CPUFREQ||%s||%u||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
     frun(tprintf("CPUPRIO||%s||%u||%s", m.pri.api_str, m.pri.devs_count, m.pri.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
+    frun(tprintf("CPUPOW ||%s||%s||%s", m.pow.api_str, "4Ds"           , "domain"));
     fgpu(tprintf("GPU    ||%s||%u||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
 
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
@@ -133,7 +137,7 @@ static state_t monitor_apis_update(void *whatever)
     frun(mgt_cpuprio_data_print(m.pri.list1, m.pri.list2, verb_channel));
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
     frun(mgt_imcfreq_data_print(m.imc.list1, m.imc.list1_count, verb_channel));
-    fgpu(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
+    fgpu(printf("—— cpupow —————————————————————————————————————————————————————————————————————\n"));
 
     return EAR_SUCCESS;
 }
