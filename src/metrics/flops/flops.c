@@ -120,18 +120,20 @@ void flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
 {
     // flAccum
     if (flD != NULL) {
-        flA->f64  += flD->f64;
-        flA->d64  += flD->d64;
-        flA->f128 += flD->f128;
-        flA->d128 += flD->d128;
-        flA->f256 += flD->f256;
-        flA->d256 += flD->d256;
-        flA->f512 += flD->f512;
-        flA->d512 += flD->d512;
-        flA->secs += flD->secs;
+        // TODO: overflow control
+        flA->f64    += flD->f64;
+        flA->d64    += flD->d64;
+        flA->f128   += flD->f128;
+        flA->d128   += flD->d128;
+        flA->f256   += flD->f256;
+        flA->d256   += flD->d256;
+        flA->f512   += flD->f512;
+        flA->d512   += flD->d512;
+        flA->secs   += flD->secs;
+        flA->gflops += flD->gflops;
     }
     if (gfs != NULL) {
-        ops.data_diff(NULL, NULL, flA, gfs);
+        gfs = flA->gflops;
     }
 }
 
@@ -149,7 +151,6 @@ void flops_internals_tostr(char *buffer, int length)
 
 ullong *flops_help_toold(flops_t *flD, ullong *flops)
 {
-    ops.data_diff(NULL, NULL, flD, NULL);
     flops[0] = flD->f64;
     flops[4] = flD->d64;
     flops[1] = flD->f128;

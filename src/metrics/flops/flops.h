@@ -65,14 +65,15 @@
 #endif
 
 typedef struct flops_s {
-	ullong f64;
-	ullong d64;
-	ullong f128;
-	ullong d128;
-	ullong f256;
-	ullong d256;
+    ullong f64;
+    ullong d64;
+    ullong f128;
+    ullong d128;
+    ullong f256;
+    ullong d256;
     ullong f512; // 512 field is also used as MAX VECTOR LENGTH flops,
-	ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
+    ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
+    double gflops;
     union {
         timestamp_t time;
         double secs;
@@ -81,9 +82,9 @@ typedef struct flops_s {
 
 typedef struct flops_ops_s {
     void    (*get_info)        (apinfo_t *info);
-	state_t (*init)            ();
-	state_t (*dispose)         ();
-	state_t (*read)            (flops_t *fl);
+    state_t (*init)            ();
+    state_t (*dispose)         ();
+    state_t (*read)            (flops_t *fl);
     void    (*data_diff)       (flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
     void    (*internals_tostr) (char *buffer, int length);
 } flops_ops_t;

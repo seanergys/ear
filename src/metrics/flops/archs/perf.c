@@ -155,36 +155,15 @@ state_t flops_perf_read(flops_t *fl)
     return EAR_SUCCESS;
 }
 
-static void compute_gflops(flops_t *flD, double *gfs, int old_style)
+void flops_perf_data_togfs(flops_t *flD, double *gfs)
 {
-    ullong *v = (ullong *) flD;
-    double agfs = 0.0;
-    int i;
-
-    // Iterating over all values
-    for (i = 0; i < counter; ++i) {
-        // Normal style
-        if (!old_style) {
-            agfs += ((double) v[i]) * meta[i].weight;
-            debug("FLOPS[%d->%d] += %llu * %0.2lf", i, meta[i].offset, v[i], meta[i].weight);
-        } else {
-            // In the old style they are asking you for the flops,
-            // but also the individual ops are computed and saved.
-            agfs += ((double) v[meta[i].offset]) * meta[i].weight;
-            v[meta[i].offset] = v[meta[i].offset] * meta[i].weight; 
-        }
-    }
-    agfs = (agfs / flD->secs) / ((double) 1E9);
-    debug("Total GFLOPS: %0.2lf", agfs);
-    if (gfs != NULL) {
-        *gfs = agfs;
-    }
+    
 }
 
 void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 {
-    flops_t flA; // flAux
-    flops_t flB; // flAux
+    flops_t flA; // flAux (holds the temporary flops_t)
+    flops_t flB; // flAux (holds the final flops_t)
     ullong *pA = (ullong *) &flA;
     ullong *pB = (ullong *) &flB;
     ullong *pD = (ullong *)  flD;
@@ -193,23 +172,18 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     ullong time = 0LLU;
     int i;
 
-    // If is not looking for the difference, just to compute de gflops,
-    // and the data is already sorted. The old style.
-    if (fl2 == NULL && fl1 == NULL && flD != NULL) {
-        return compute_gflops(flD, gfs, 1);
-    }
     // Cleaning
-    if (gfs != NULL) { *gfs = 0.0; }
-    if (flD != NULL) { memset(flD, 0, sizeof(flops_t)); }
     memset(&flA, 0, sizeof(flops_t));
     memset(&flB, 0, sizeof(flops_t));
+    if (gfs != NULL) { *gfs = 0.0; }
+    if (flD != NULL) { memset(flD, 0, sizeof(flops_t)); }
     // Reading milliseconds and converting to seconds for decimals
     if ((time = timestamp_diff(&fl2->time, &fl1->time, TIME_MSECS)) == 0LLU) {
         // If no time passed, then flops difference an Gigaflops are zero.
         return;
     }
-    flA.secs = flB.secs = (double) time;
-    flA.secs = flB.secs = flA.secs / 1000.0;
+    flB.secs = (double) time;
+    flB.secs = flB.secs / 1000.0;
     // Instruction differences (PERF registers are 64 bits long)
     for (i = 0; i < counter; ++i) {
         if (meta[i].enabled) {
@@ -217,17 +191,19 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
             // values al time Y, being X greater than Y. This is because perf
             // multiplexing process.
             pA[i] = overflow_zeros_u64(p2[i], p1[i]);
-            debug("values[%d->%d]: %llu = %llu - %llu", i, meta[i].offset, pA[i], p2[i], p1[i]);
+            debug("values[%d->%d]: %llu - %llu = %llu", i, meta[i].offset, p2[i], p1[i], pA[i]);
         }
     }
-    // Computing GFLOPs
-    if (gfs != NULL) {
-        compute_gflops(&flA, gfs, 0);
-    }
-    // Sorting values at the end, and adding values of the same offset
+    // Sorting and computing GFLOPs
     for (i = 0; i < counter; ++i) {
-       pB[meta[i].offset] += pA[i]; 
+        pB[meta[i].offset] += pA[i] * ((ullong) meta[i].weight);
+        debug("FLOPS[%d->%d] += %llu * %0.2lf",
+            i, meta[i].offset, pA[i], meta[i].weight);
+        flB.gflops += ((double) pA[i]) * meta[i].weight;
     }
+    flB.gflops = (flB.gflops / flB.secs) / ((double) 1E9);
+    debug("Total GFLOPS: %0.2lf", flB.gflops);
+    // Debugging
     debug("Total f64  insts: %llu", flB.f64 );
     debug("Total d64  insts: %llu", flB.d64 );
     debug("Total f128 insts: %llu", flB.f128);
@@ -238,6 +214,7 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     debug("Total d512 insts: %llu (%0.2lf s)", flB.d512, flB.secs);
     // Copying data
     if (flD != NULL) { memcpy(flD, &flB, sizeof(flops_t)); }
+    if (gfs != NULL) { *gfs = flB.gflops; }
 }
 
 void flops_perf_internals_tostr(char *buffer, int length)
