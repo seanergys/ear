@@ -51,22 +51,22 @@ void set_flops(ullong event, uint type, int offset, double weight, cchar *desc)
 
 void flops_perf_load(topology_t *tp, flops_ops_t *ops)
 {
-	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-		set_flops(0x02c7, PERF_TYPE_RAW, 0,  1.0, "FP_ARITH_INST_RETIRED.SCALAR_SINGLE");
+    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+        set_flops(0x02c7, PERF_TYPE_RAW, 0,  1.0, "FP_ARITH_INST_RETIRED.SCALAR_SINGLE");
         set_flops(0x01c7, PERF_TYPE_RAW, 1,  1.0, "FP_ARITH_INST_RETIRED.SCALAR_DOUBLE");
-		set_flops(0x08c7, PERF_TYPE_RAW, 2,  4.0, "FP_ARITH_INST_RETIRED.128B_PACKED_SINGLE");
-		set_flops(0x04c7, PERF_TYPE_RAW, 3,  2.0, "FP_ARITH_INST_RETIRED.128B_PACKED_DOUBLE");
-		set_flops(0x20c7, PERF_TYPE_RAW, 4,  8.0, "FP_ARITH_INST_RETIRED.256B_PACKED_SINGLE");
-		set_flops(0x10c7, PERF_TYPE_RAW, 5,  4.0, "FP_ARITH_INST_RETIRED.256B_PACKED_DOUBLE");
-		set_flops(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
-		set_flops(0x40c7, PERF_TYPE_RAW, 7,  8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
-	}
-	else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+        set_flops(0x08c7, PERF_TYPE_RAW, 2,  4.0, "FP_ARITH_INST_RETIRED.128B_PACKED_SINGLE");
+        set_flops(0x04c7, PERF_TYPE_RAW, 3,  2.0, "FP_ARITH_INST_RETIRED.128B_PACKED_DOUBLE");
+	set_flops(0x20c7, PERF_TYPE_RAW, 4,  8.0, "FP_ARITH_INST_RETIRED.256B_PACKED_SINGLE");
+        set_flops(0x10c7, PERF_TYPE_RAW, 5,  4.0, "FP_ARITH_INST_RETIRED.256B_PACKED_DOUBLE");
+	set_flops(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
+	set_flops(0x40c7, PERF_TYPE_RAW, 7,  8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
+    }
+    else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         // In theory, this event counts 128 and 256 bits operations from SSE and
         // AVX FLOPs. But it can not distinguish between types. We are saving
         // the register readings in 256f by pure arbitrariness.
-		set_flops(0xff03, PERF_TYPE_RAW, 4, 1.0, "FpRetSseAvxOps");
-	}
+        set_flops(0xff03, PERF_TYPE_RAW, 4, 1.0, "FpRetSseAvxOps");
+    }
     else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_FX1000) {
         // We can mix these offsets because share the same weight. FIXED events
         // combines floats, doubles and also SIMD NEON.
@@ -88,9 +88,9 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x0075, PERF_TYPE_RAW, 0,  1.0, "VFP_SPEC");
         set_flops(0x0074, PERF_TYPE_RAW, 2,  4.0, "ASE_SPEC");
     } else {
-		debug("%s", Generr.api_incompatible);
+	debug("%s", Generr.api_incompatible);
         return;
-	}
+    }
     if (!counter) {
         return;
     }
@@ -128,7 +128,7 @@ state_t flops_perf_init(ctx_t *c)
 
 state_t flops_perf_dispose(ctx_t *c)
 {
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t flops_perf_read(flops_t *fl)
@@ -162,10 +162,10 @@ static void compute_gflops(flops_t *flD, double *gfs, int overwrite)
     int i;
     // Iterating over all values
     for (i = 0; i < counter; ++i) {
-        agfs += ((double) v[i]) * meta[i].weight;
-        debug("FLOPS[%d] += %llu * %0.2lf", meta[i].offset, v[i], meta[i].weight);
+        agfs += ((double) v[meta[i].offset]) * meta[i].weight;
+        debug("FLOPS[%d] += %llu * %0.2lf", meta[i].offset, v[meta[i].offset], meta[i].weight);
         if (overwrite) {
-            v[i] = v[i] * ((ullong) meta[i].weight);
+            v[meta[i].offset] = v[meta[i].offset] * ((ullong) meta[i].weight);
         }
     }
     agfs = (agfs / flD->secs) / ((double) 1E9);
@@ -210,14 +210,14 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
             debug("values[%d]: %llu = %llu - %llu", meta[i].offset, pA[meta[i].offset], p2[i], p1[i]);
         }
     }
-    debug("Total f64  insts: %llu = %llu - %llu", flA.f64 , fl2->f64 , fl1->f64 );
-	debug("Total d64  insts: %llu = %llu - %llu", flA.d64 , fl2->d64 , fl1->d64 );
-	debug("Total f128 insts: %llu = %llu - %llu", flA.f128, fl2->f128, fl1->f128);
-	debug("Total d128 insts: %llu = %llu - %llu", flA.d128, fl2->d128, fl1->d128);
-	debug("Total f256 insts: %llu = %llu - %llu", flA.f256, fl2->f256, fl1->f256);
-	debug("Total d256 insts: %llu = %llu - %llu", flA.d256, fl2->d256, fl1->d256);
-	debug("Total f512 insts: %llu = %llu - %llu", flA.f512, fl2->f512, fl1->f512);
-	debug("Total d512 insts: %llu = %llu - %llu (%0.2lf s)", flA.d512, fl2->d512, fl1->d512, flA.secs);
+    debug("Total f64  insts: %llu", flA.f64 );
+    debug("Total d64  insts: %llu", flA.d64 );
+    debug("Total f128 insts: %llu", flA.f128);
+    debug("Total d128 insts: %llu", flA.d128);
+    debug("Total f256 insts: %llu", flA.f256);
+    debug("Total d256 insts: %llu", flA.d256);
+    debug("Total f512 insts: %llu", flA.f512);
+    debug("Total d512 insts: %llu (%0.2lf s)", flA.d512, flA.secs);
     // Copying data
     if (gfs != NULL) { compute_gflops(&flA, gfs, 0); }
     if (flD != NULL) { memcpy(flD, &flA, sizeof(flops_t)); }

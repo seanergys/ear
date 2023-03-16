@@ -177,49 +177,45 @@ static state_t monitor_apis_init(void *whatever)
     //
     metrics_read(&mr1);
 	
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
-#include "test_avx.c"
+#include <arm_neon.h>
 
-static void stress_flops()
+static void flops_test()
 {
-    #define DOUBLE  1
-    #define FLOAT   0
-
+    #define N                         1000000000
     #if 0
-    #define N       1000000000
+    #define fl_type                   float
+    #define fl_value(vX, v)           vX = v
+    #define fl_operation(v3, v2, v1)  v3 = v2 + v1
+    #else
+    #define fl_type                   float32x4_t
+    #define fl_value(vX, v)           vX = vdupq_n_f32(v)
+    #define fl_operation(v3, v2, v1)  v3 = vaddq_f32(v2, v1)
+    #endif
 
-    double d1 = 3.0,  d2 = 2.0,  d3 = 0.0;
-    float  f1 = 3.0f, f2 = 2.0f, f3 = 0.0f;
+    #if 1
     int i;
 
-    for (i = 0; i < N; ++i) {
-        #if   DOUBLE
-        d3 = d2 + d1;
-        #elif FLOAT
-        f3 = f2 + f1;
-        #endif
-    }
-    #else
-    #define N       10000000
+    fl_type v1;
+    fl_type v2;
+    fl_type v3;
 
-    // N * 30 * 5
-    //add128dp(N);
-    //fma128dp(N);
-    //add256dp(N);
-    //fma256dp(N);
-    add512dp(N);
-    //fma512dp(N);
+    fl_value(v1, 2.0);
+    fl_value(v2, 3.0);
+
+    for (i = 0; i < N; ++i) {
+        fl_operation(v3, v2, v1);
+    }
+    printf("%d\n", i);
     #endif
 }
 
 static state_t monitor_apis_update(void *whatever)
 {
-    //stress_bandwidth(1000);
-    stress_flops();
+    flops_test();
     metrics_read_copy(&mr2, &mr1, &mrD);
-    
     // Printf clear
     //system("clear");
     // The 2 also prints header
@@ -250,9 +246,6 @@ static state_t monitor_apis_update(void *whatever)
     frun(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
     frun(    gpu_data_print( mrD.gpu_diff,                verb_channel));
 
-    ullong flapis[8];
-    flops_help_toold(&mrD.flp_diff, flapis);
-
     return EAR_SUCCESS;
 }
 
@@ -269,8 +262,8 @@ int main(int argc, char *argv[])
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 2000;
-	sus->time_burst    = 2000;
+	sus->time_relax    = 200;
+	sus->time_burst    = 200;
 	sa(sus->suscribe(sus));
 
     sleep(100);
