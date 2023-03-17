@@ -616,6 +616,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* ******************* MOVED **********************
              * Now we compute the JOB signature for reporting. */
+            /* This function is the one that accumulates per-process metrics */
             if (master) {
                 // curr_loop.signature <- lib_shared_region->job_signature
                 metrics_job_signature(&lib_shared_region->job_signature, &curr_loop.signature);

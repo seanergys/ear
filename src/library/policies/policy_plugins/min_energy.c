@@ -547,8 +547,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                   sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
                   my_node_mpi_calls[i].perc_mpi, local_penalty);
                 }else{
-                  verbose_master(2, "APP[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f  penalty %.2lf", MASTER_ID, i,
-                  my_app->CPI, my_app->TPI, my_app->Gflops, my_app->DC_power, local_penalty);
+                  verbose_master(2, "APP[%u][%u] CPI %.2f GBS %.2lf TPI %.2f GFlops %.2f Power %.2f  penalty %.2lf", MASTER_ID, i,
+                  my_app->CPI, my_app->GBS, my_app->TPI, my_app->Gflops, my_app->DC_power, local_penalty);
                   
                 }
             } else {

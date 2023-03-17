@@ -966,8 +966,8 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 
 #if REPORT_TIMESTAMP
-	strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #else
 	strcpy(line, "%6s-%-4s\t %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
 	printf(line, "JOB", "STEP", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
@@ -986,7 +986,7 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 	printf("\n");
 
-	strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-8.1lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
+	strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
 	for (i = 0; i < num_loops; i++)
 	{
 		signature_copy(&sig, &loops[i].signature);
@@ -1020,7 +1020,7 @@ void print_loops(loop_t *loops, int num_loops)
                 sprintf(date_iter,"%lu", loops[i].total_iterations);
 #endif
 		printf(line, loops[i].jid, loops[i].step_id, loops[i].node_id, date_iter,
-				sig.DC_power, sig.GBS, sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
+				sig.DC_power, sig.GBS, sig.TPI,sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
 #if USE_GPUS
 		sprintf(tmp, "%lu%%/%lu%%", gpuu, gpu_mem_util);
 		if (print_gpus) printf(gpu_line, gpup, gpupu, (double)gpuf/1000000.0, tmp);
