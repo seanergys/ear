@@ -153,7 +153,7 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     if (mpisec < MIN_MPI_TH){
       //if (!is_cuda_enabled()) *ear_guided = TIME_GUIDED;
       if (first_warning_mpi_th) {
-        verbose_master(2,"Warning, going to time guided becuase low number of MPI calls per second");
+        verbose_master(2,"Warning, going to time guided because low number of MPI calls per second");
         first_warning_mpi_th = 0;
       }
       *ear_guided = TIME_GUIDED;

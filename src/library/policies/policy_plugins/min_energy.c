@@ -345,7 +345,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     verbose_master(2, "%sCPU COMP phase%s", COL_BLU, COL_CLR);
 
-    verbose_master(2, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
+    verbose_master(0, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
 
 
     /* GPU Policy : It's independent of the CPU and IMC frequency selection */
@@ -546,6 +546,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                   verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
                   sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
                   my_node_mpi_calls[i].perc_mpi, local_penalty);
+                }else{
+                  verbose_master(2, "APP[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f  penalty %.2lf", MASTER_ID, i,
+                  my_app->CPI, my_app->TPI, my_app->Gflops, my_app->DC_power, local_penalty);
+                  
                 }
             } else {
                 // If application is compute bound, we don't reduce CPU freq
@@ -582,7 +586,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 }
             }
 
-            debug("CPU freq for process %d is %lu", i, new_freq[i]);
+            verbose_master(0,"CPU freq for process %d is %lu", i, new_freq[i]);
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }

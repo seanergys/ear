@@ -1285,7 +1285,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 
 }
 
-
+/* Uncomment this option to use energy savings estimations to decide if policy is ok */
+//#define USE_ENERGY_SAVING
 /* This function checks the CPU freq selection accuracy (only CPU), ok is an output */
 state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 {
@@ -1382,12 +1383,14 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 
         compute_energy_savings(curr, prev);
 
+        #if USE_ENERGY_SAVING
         if (sig_ext->saving < 0) {
 
           *ok = 0;
 
           verbose(2, "%sPOLICY OK%s We are not saving energy.", COL_RED, COL_CLR);
         }
+        #endif
     }
 
     // We finally report the OPT_ACCURACY
