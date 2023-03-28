@@ -407,7 +407,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					strcpy(apps[idx].job.app_id, token);
 				}
 			}
-			if (strlen(apps[idx].job.app_id) > 16) {
+			if (strlen(apps[idx].job.app_id) > 16 && !is_csv) {
 				apps[idx].job.app_id[16] = '\0';
 			}
 
@@ -558,7 +558,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			if (strchr(apps[i-1].job.app_id, '/') != NULL)
 				strcpy(apps[i-1].job.app_id, strrchr(apps[i-1].job.app_id, '/')+1);
 
-		if (strlen(apps[i-1].job.app_id) > 16) {
+		if (strlen(apps[i-1].job.app_id) > 16 && !is_csv) {
 			apps[i-1].job.app_id[16] = '\0';
 		}
 

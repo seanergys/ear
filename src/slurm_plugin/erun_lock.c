@@ -50,10 +50,10 @@ int lock_master(char *path_tmp, int job_id)
         mkdir(path_tmp, PERMS(111,000,000)); 
     }
     // Creating erun folder
-    sprintf(path_job, "%s/erun", path_tmp);
+    sprintf(path_job, "%s/erun%d", path_tmp, job_id);
     mkdir(path_job, PERMS(111,110,110)); 
     // Creating job folder
-    sprintf(path_job, "%s/erun/%d", path_tmp, job_id);
+    sprintf(path_job, "%s/erun%d", path_tmp, job_id);
     mkdir(path_job, PERMS(111,110,110));
     // Setting the paths
     xsprintf(path_master_lock, "%s/master.lock", path_job);
@@ -158,14 +158,14 @@ void files_clean(int job_id, int step_id)
 void folder_clean(int job_id)
 {
 	// 1. Creating the cleaning command
-	xsprintf(command, "rm -rf %s 2> /dev/null", path_job);
+	xsprintf(command, "rm -rfd %s 2> /dev/null", path_job);
     system(command);
 }
 
 // Flag --clean
 void all_clean(char *path_tmp)
 {
-    xsprintf(command, "rm -rf %s/erun &> /dev/null", path_tmp);
+    xsprintf(command, "rm -rfd %s/erun* &> /dev/null", path_tmp);
 	plug_verbose(_sp, 3, "Executing %s", command);
     system(command);
 }
