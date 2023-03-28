@@ -292,4 +292,6 @@ void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);
 void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr);
 void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl);
 
+void update_affinity_mask(lib_shared_data_t *data, shsignature_t *sig);
+
 #endif

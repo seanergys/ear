@@ -801,3 +801,8 @@ void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mg
 #endif
     return;
 }
+
+void update_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
+{
+  
+}

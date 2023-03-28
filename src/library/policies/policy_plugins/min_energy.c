@@ -988,13 +988,13 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
         uint busy_waiting;
         // is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting);
         is_process_busy_waiting(&sig_shared_region[i].sig, &busy_waiting);
+        char ssig_buff[256];
+        ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
         if (busy_waiting) {
-            char ssig_buff[256];
-            ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
             verbose_master(min_ener_bw_veb_lvl, "%s.[%d] Busy waiting config %s", node_name, i, ssig_buff);
-
             freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
         } else {
+            verbose_master(min_ener_bw_veb_lvl, "%s.[%d] NO Busy waiting config %s ", node_name, i, ssig_buff);
             freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
         }
         
@@ -1028,15 +1028,18 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
+    /* WARNING: my_sig can be NULL */
     if (c != NULL) {
+        state_t st = EAR_SUCCESS;
+        verbose_master(2,"min_energy policy_restore_settings");
         node_freqs_copy(freqs, &min_energy_def_freqs);
-        node_freqs_copy(&last_nodefreq_sel,freqs);
 
         if (gpus.restore_settings != NULL){
-            return gpus.restore_settings(c,my_sig,freqs);
+            st = gpus.restore_settings(c,my_sig,freqs);
         }
+        node_freqs_copy(&last_nodefreq_sel,freqs);
 
-        return EAR_SUCCESS;
+        return st;
     } else {
         return EAR_ERROR;
     }

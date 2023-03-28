@@ -883,6 +883,9 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
                        COL_RED, COL_CLR, state_msg);
     }
 
+    verbose_master(POLICY_INFO, "%sPOLICY%s System Min. CPU freq. limited: %llu kHz ", COL_BLU, COL_CLR, min_cpufreq);
+
+
     debug("max imc pstate: %u / imc pstate cnt %u",
           (uint) app_settings->imc_max_pstate, imc_pstate_cnt);
 
@@ -892,6 +895,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
         verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate: %s",
                        COL_RED, COL_CLR, state_msg);
     }
+    verbose_master(POLICY_INFO, "%sPOLICY%s System Min. IMC freq. limited: %llu kHz ", COL_BLU, COL_CLR, min_imcfreq);
 
     return policy_init();
 }
@@ -1216,7 +1220,10 @@ state_t policy_set_default_freq(signature_t *sig)
 {
     signature_t s;
 
+    /* WARNING: sig can be NULL */
+
     if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
+    verbose_master(2,"policy_set_default_freq");
 
 #if USE_GPUS
     s.gpu_sig.num_gpus = my_pol_ctx.num_gpus;
@@ -1777,7 +1784,11 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
 
         /* This is the default use case. EAR uses the CPU affinity mask */
+        #if DLB
+        #endif
         cpu_set_t process_mask = sig_shared_region[proc_lrank].cpu_mask;
+        #if DLB
+        #endif
 
         for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
             if (CPU_ISSET(cpu_idx, &process_mask)) {

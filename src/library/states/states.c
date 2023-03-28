@@ -366,6 +366,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 	if (external_mgt != NULL) {
 		if (external_mgt->new_mask == 1) {
 			verbose_master(0, "External library requested rescheduling");
+      update_affinity_mask(lib_shared_region, sig_shared_region);
 			external_mgt->new_mask = 0;
 		}
 	}
@@ -382,7 +383,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* Accumulate statistics of savings */
             accumulate_phases_summary(&loop_signature, &application.signature);
 
-            policy_set_default_freq(NULL);
+            /* WARNING:  This function was used with a NULL signature */
+            policy_set_default_freq(&loop_signature);
 
             restart_period_time_init(&comp_N_begin);
 

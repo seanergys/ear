@@ -72,7 +72,7 @@
 #if USE_GPUS
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #include <metrics/gpu/gpu.h>
-#define USE_CUPTI 1
+#define USE_CUPTI 0
 #if USE_CUPTI
 #include <metrics/gpu/gpuproc.h>
 #endif
@@ -2698,7 +2698,11 @@ static state_t energy_lib_init(settings_conf_t *conf)
     /* master is defined in metrics_static_init */
     int eard = (master);
 
+
+
     ret = energy_node_load(energy_objc, eard);
+
+    verbose(2, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
 
     // TODO: if ret fails, generate dummy path and load that one
     return ret;
