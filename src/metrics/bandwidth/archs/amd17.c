@@ -31,7 +31,6 @@ static off_t  ctls_l3f[6] = { 0xc0010230, 0xc0010232, 0xc0010234, 0xc0010236, 0x
 static off_t  ctrs_l3f[6] = { 0xc0010231, 0xc0010233, 0xc0010235, 0xc0010237, 0xc0010239, 0xc001023b };
 //static ullong cmds_dfs[4] = { 0x0000000000403807, 0x0000000000403887, 0x0000000100403807, 0x0000000100403887 };
 //static ullong cmds_l3f[4] = { 0x030f000000400104, 0x0c0f000000400104, 0x300f000000400104, 0xc00f000000400104 };
-static ullong cmds_l3l[1] = { 0xff0f000000400104 };
 //static ullong mask_dfs = 0x0000FFFFFFFFFFFF; // 48 bits
 static ullong mask_l3f = 0x0000FFFFFFFFFFFF; // 48 bits
 //static uint count_l3f = 4;
@@ -43,7 +42,7 @@ static uint gran_l3l = GRANULARITY_CCX;
 // Selected
 static off_t *ctls;
 static off_t *ctrs;
-static ullong *cmds;
+static ullong cmds;
 static ullong mask;
 static uint ctrs_count;
 static uint gran;
@@ -65,13 +64,22 @@ state_t bwidth_amd17_load(topology_t *tp_in, bwidth_ops_t *ops)
 	if (state_fail(s = topology_select(tp_in, &tp, TPSelect.l3, TPGroup.merge, 0))) {
 		return s;
 	}
-	// Selected reading (L3 Limited)
-	ctrs_count = count_l3l;
-	ctls = ctls_l3f;
-	ctrs = ctrs_l3f;
-	cmds = cmds_l3l;
-	gran = gran_l3l;
-	mask = mask_l3f;
+	//
+	if (tp_in->family >= FAMILY_ZEN3) {
+		ctrs_count = count_l3l;
+		ctls = ctls_l3f;
+		ctrs = ctrs_l3f;
+		cmds = 0x0300c0000040ff04;
+		gran = gran_l3l;
+		mask = mask_l3f;
+	} else {
+		ctrs_count = count_l3l;
+		ctls = ctls_l3f;
+		ctrs = ctrs_l3f;
+		cmds = 0xff0f000000400104;
+		gran = gran_l3l;
+		mask = mask_l3f;
+	}
 	//
 	devs_count = tp.cpu_count * ctrs_count;
 	//
@@ -99,7 +107,7 @@ state_t bwidth_amd17_init(ctx_t *c)
             return s;
         }
 		for (j = 0; j < ctrs_count; ++j) {
-			msr_write(tp.cpus[i].id, (void *) &cmds[j], sizeof(ullong), ctls[j]);
+			msr_write(tp.cpus[i].id, (void *) &cmds, sizeof(ullong), ctls[j]);
 		}
 	}
 	return EAR_SUCCESS;
