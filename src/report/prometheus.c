@@ -246,6 +246,7 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
     char node_id[64];
     int i;
 
+    verbose(0, "prometheus report_metrics");
     sem_wait(&prom_sem);
     buffer_clean(&general_buffer);
 
@@ -290,7 +291,7 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
 
 state_t report_applications(report_id_t *id, application_t *apps, uint count)
 {
-    verbose(0, "dummy report_applications");
+    verbose(0, "prometheus report_applications");
     return EAR_SUCCESS;
 }
 
@@ -299,10 +300,12 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
     int i;
     char loop_info[128];
     char tmp_text[256];
+    
+    verbose(0, "prometheus report_loops");
     sem_wait(&prom_sem);
-    verbose(0, "dummy report_loops");
     buffer_clean(&general_buffer);
     time_t insert_time = time(NULL);
+
     for (i = 0; i < count; i++) {
         snprintf(loop_info, 64, "jobid=%lu,stepid=%lu,node=\"%s\"",loops[i].jid, loops[i].step_id, loops[i].node_id);
 
@@ -332,13 +335,28 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 
 state_t report_events(report_id_t *id, ear_event_t *events, uint count)
 {
+    int i;
+    char ev_type[64];
+    char tmp_text[256];
+    char job_text[62];
+
+    verbose(0, "prometheus report_events");
     sem_wait(&prom_sem);
     buffer_clean(&general_buffer);
+    time_t insert_time = time(NULL);
 
-    //TODO: implement
+    for (i = 0; i < count; i++) {
+        if (events[i].jid != 0) {
+            sprintf(job_text, ", jobid=%lu, stepid=%lu", events[i].jid, events[i].step_id);
+        }
+        event_type_to_str(&events[i], ev_type, 64);
+        sprintf(tmp_text, "%s{%s%s} %lu %lu\n", ev_type, events[i].node_id, job_text, events[i].freq, events[i].timestamp*1000);
+        buffer_insert(&general_buffer, tmp_text, &insert_time);
+    }
 
 
     buffer_sort(&general_buffer);
     buffer_rebuild(&general_buffer);
     sem_post(&prom_sem);
+    return EAR_SUCCESS;
 }
