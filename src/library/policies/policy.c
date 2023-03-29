@@ -768,20 +768,18 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
         app_mgr = atoi(app_mgr_policy);
     }
 
-#if SHOW_DEBUGS
     if (masters_info.my_master_rank >=0){
         if (obj_path!=NULL){ 
-            debug("%s = %s", HACK_POWER_POLICY, obj_path);
+            verbose_master(2, "%sINFO%s %s = %s", COL_BLU, COL_CLR, HACK_POWER_POLICY, obj_path);
         } else {
             debug("%s undefined",HACK_POWER_POLICY);
         }
         if (ins_path !=NULL) {
-            debug("%s = %s",HACK_EARL_INSTALL_PATH,ins_path);
+            verbose_master(2,"%sINFO%s %s = %s",COL_BLU, COL_CLR, HACK_EARL_INSTALL_PATH,ins_path);
         }else{
             debug("%s undefined",HACK_EARL_INSTALL_PATH);
         }
     }
-#endif
 
     if (earl_default_domains.cpu == POL_NOT_SUPPORTED) {
         my_policy_name = monitoring;
