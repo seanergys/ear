@@ -223,17 +223,18 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
         if (c1 || c2 || c3) {
             char hdr_msg[] = "--- Busy waiting values (value/thresh) ---";
 
+            int ret;
             char cpi_msg[32];
-            snprintf(cpi_msg, sizeof cpi_msg, "CPI class=%u (%.3lf/%.3lf)", c1, sig->CPI, CPI_BUSY_WAITING);
+            ret = snprintf(cpi_msg, sizeof cpi_msg, "CPI class=%u (%.3lf/%.3lf)", c1, sig->CPI, CPI_BUSY_WAITING);
 
             char gbs_msg[32];
-            snprintf(gbs_msg, sizeof gbs_msg, "Mem. bwidth class=%u (%.3lf/%.3lf)", c2, sig->GBS, GBS_BUSY_WAITING);
+            ret = snprintf(gbs_msg, sizeof gbs_msg, "Mem. bwidth class=%u (%.3lf/%.3lf)", c2, sig->GBS, GBS_BUSY_WAITING);
 
             char gflops_msg[32];
-            snprintf(gflops_msg, sizeof gflops_msg, "GFLOP/s class=%u %.3lf/%.3lf)", c3, sig->Gflops, GFLOPS_BUSY_WAITING);
+            ret = snprintf(gflops_msg, sizeof gflops_msg, "GFLOP/s class=%u %.3lf/%.3lf)", c3, sig->Gflops, GFLOPS_BUSY_WAITING);
 
             char busy_waiting_msg[64];
-            snprintf(busy_waiting_msg, sizeof busy_waiting_msg,
+            ret = snprintf(busy_waiting_msg, sizeof busy_waiting_msg,
                     "App node workload declared as busy waiting: %u", *busy);
 
             int max_strlen = strlen(busy_waiting_msg);
