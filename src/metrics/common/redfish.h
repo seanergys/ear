@@ -52,10 +52,10 @@
 //      if (state_fail(redfish_open("localhost", "user123", "password123"))) {
 //          return 0;
 //      }
-//      if (state_fail(redfish_read("/Chassis[0]/MaxPowerWatts", (void *) &int_var, NULL, &count, REDTYPE_INT))) {
+//      if (state_fail(redfish_get("/Chassis[0]/MaxPowerWatts", (void *) &int_var, NULL, &count, REDTYPE_INT))) {
 //          return 0;
 //      }
-//      if (state_fail(redfish_read("/Chassis[%d]/MaxPowerWatts", (void *) int_array, &int_var, &count, REDTYPE_INT))) {
+//      if (state_fail(redfish_get("/Chassis[%d]/MaxPowerWatts", (void *) int_array, &int_var, &count, REDTYPE_INT))) {
 //          return 0;
 //      }
 //
@@ -70,7 +70,11 @@
 /* Given a host, a username and password initializes redfish data. */
 state_t redfish_open(char *host, char *user, char *pass);
 
+/* accum : When asking for arrays, accum is set to the aggregated value for the array member (out)
+ * count : number of elements in the array (out)
+ */
 state_t redfish_get(char *field, void *content, void *accum, uint *count, int type_flag);
+
 /* Count the array items of a field when the returned field is a JSON array. */
 state_t redfish_count_members(char *field, uint *count);
 

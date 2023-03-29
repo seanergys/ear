@@ -611,6 +611,13 @@ state_t policy_init()
         policy_setup_priority();
     }
 
+    if (cmin_cpufreq != NULL) {
+        min_cpufreq = (ulong) atoi(cmin_cpufreq);
+    }
+
+    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
+            " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
+
     // Calling policy plug-in init
     if (polsyms_fun.init != NULL) {
 
@@ -629,11 +636,6 @@ state_t policy_init()
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
 
-    if (cmin_cpufreq != NULL) {
-        min_cpufreq = (ulong) atoi(cmin_cpufreq);
-    }
-    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
-            " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
