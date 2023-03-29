@@ -157,7 +157,7 @@ static uint policy_had_effect(const signature_t *A, const signature_t *B);
 
 /**TODO */
 static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min,
-        uint *loop_perf_count_period, uint *loop_perf_count_period_accel);
+                                      uint *loop_perf_count_period, uint *loop_perf_count_period_accel);
 
 /** Restarts the beginning time counter of the period stored at \p time_init. */
 static void restart_period_time_init(llong *time_init);
@@ -342,17 +342,16 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 {
     ulong prev_cpufreq_khz, lavg;
     int ready;
-    int result;
     int pol_ok;
     int curr_pstate,def_pstate;
     ulong policy_def_freq;
 
     char use_case[SHORT_GENERIC_NAME]; // 16 bytes allocated. Used for verbose signature.
+    int result;
 
     /***************************************************************************************************/
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
-
 
     if (traces_are_on() && ((sig_shared_region[my_node_id].iterations %5 ) == 0)){
       signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
@@ -360,21 +359,23 @@ void states_new_iteration(int my_id, uint period, uint iterations,
       traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
     }
 
-
-    #if DLB
-    /* Add the node mgt external feature management . Detect, prints and set to 0 again */
-	if (external_mgt != NULL) {
-		if (external_mgt->new_mask == 1) {
-			verbose_master(0, "External library requested rescheduling");
-      update_affinity_mask(lib_shared_region, sig_shared_region);
-			external_mgt->new_mask = 0;
-		}
-	}
-
-    #endif
-
+#if DLB
+    /* Add the node mgt external feature management.
+     * Detect, prints and set to 0 again */
+    if (external_mgt != NULL) {
+        if (external_mgt->new_mask == 1) {
+            verbose_master(1, "External library requested rescheduling.");
+            if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
+            {
+                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
+            }
+            external_mgt->new_mask = 0;
+        }
+    }
+#endif // DLB
 
     sig_shared_region[my_node_id].iterations++;
+
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 
@@ -461,13 +462,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 comp_N_begin = comp_N_end;
 
                 EAR_STATE = FIRST_ITERATION;
-                #if SINGLE_CONNECTION
+#if SINGLE_CONNECTION
                 if (master) {
                     traces_start();
                 }
-                #else
+#else
                 traces_start();
-                #endif
+#endif // SINGLE_CONNECTION
             }
 
             break;
@@ -479,15 +480,18 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
             if (comp_N_time == 0) comp_N_time = 1;
+
             compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
-                    &perf_count_period, &perf_count_period_10p);
+                                      &perf_count_period, &perf_count_period_10p);
 
             /* Once min iterations are computed for performance accuracy we start
              * computing application signature. */
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 
             state_report_traces_state(masters_info.my_master_rank, ear_my_rank, my_node_id, EAR_STATE);
+
             metrics_compute_signature_begin();
+
             begin_iter = iterations;
 
             curr_loop.id.event = event;
@@ -502,7 +506,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_end = metrics_time();
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
-            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
+                                      &perf_count_period, &perf_count_period_10p);
 
             EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
 
@@ -521,7 +526,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 error( "EAR(%s): PANIC comp_N_time must be > 0", ear_app_name);
             }
 
-            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time, &perf_count_period, &perf_count_period_10p);
+            compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
+                                      &perf_count_period, &perf_count_period_10p);
 
             EAR_STATE = SIGNATURE_STABLE;
 
@@ -569,7 +575,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* Signature computation */
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
-                    perf_accuracy_min_time, total_threads_cnt);
+                                                      perf_accuracy_min_time, total_threads_cnt);
 
 			/* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
