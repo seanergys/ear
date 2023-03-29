@@ -78,7 +78,7 @@ typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
     uint        num_signatures;
-    uint        num_cpus;
+    uint        num_cpus; // Number of CPUs used for the job. Computed from node_mask attribute.
     float       total_cache_bwidth;
     ullong      cas_counters;
     signature_t node_signature;
@@ -292,6 +292,11 @@ void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);
 void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr);
 void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl);
 
-void update_affinity_mask(lib_shared_data_t *data, shsignature_t *sig);
+/** Updates all affinity masks of shared signatures array pointed by \p sig.
+ * This function also updates the job mask of the lib_shared_data pointed by \p data.
+ * Returns EAR_ERROR with the appropiate messages either when the input arguments are NULL
+ * or when sched_getafinity call returns an error value, with its corresponding errno value.
+ * On error, all modified masks are restored to ones passed within arguments. */
+state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig);
 
-#endif
+#endif // _LIB_SHARED_DATA_H
