@@ -18,6 +18,7 @@
 #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/math_operations.h>
@@ -28,30 +29,30 @@
 // In a 32 cores and 64 threads CPU (ZEN3@7773X):
 // [0-07:1-07][0-47:1-47] are excited by CPUs 00-16
 // [0-87:1-87][0-C7:1-C7] are excited by CPUs 16-31
-static topology_t     tp;
-static uint           devs_count;
-static off_t          ctls[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 };
-static off_t          ctrs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 };
-static ullong         cmds[8] = { 0x0000000000403807, 0x0000000000403847, 0x0000000000403887, 0x00000000004038c7,
-                                  0x0000000100403807, 0x0000000100403847, 0x0000000100403887, 0x00000001004038c7 };
-static uint           imcs[8];
-static ullong        *pool;
-static timestamp_t    pool_time;
-static suscription_t *sus;
+static topology_t      tp;
+static uint            devs_count;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static bwidth_t       *pool;
+static suscription_t  *sus;
+static uint            imcs[8];
+static off_t           ctls[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 };
+static off_t           ctrs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 };
+static ullong          cmds[8] = { 0x0000000000403807, 0x0000000000403847, 0x0000000000403887, 0x00000000004038c7,
+                                   0x0000000100403807, 0x0000000100403847, 0x0000000100403887, 0x00000001004038c7 };
 
-void bwidth_amd17df_load(topology_t *tp_in, bwidth_ops_t *ops)
+BWIDTH_F_LOAD(bwidth_amd17df_load)
 {
     int i;
-    if (tp_in->vendor != VENDOR_AMD || tp_in->family < FAMILY_ZEN) {
-	debug("%s", Generr.api_incompatible);
+    if (tpo->vendor != VENDOR_AMD || tpo->family < FAMILY_ZEN) {
+	    debug("%s", Generr.api_incompatible);
         return_msg(, Generr.api_incompatible);
     }
-    if (state_fail(msr_test(tp_in, MSR_WR))) {
-	debug("msr_test(): %s", state_msg);
+    if (state_fail(msr_test(tpo, MSR_WR))) {
+	    debug("msr_test(): %s", state_msg);
         return;
     }
     // Getting the L3 groups
-    if (state_fail(topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
+    if (state_fail(topology_select(tpo, &tp, TPSelect.socket, TPGroup.merge, 0))) {
         return;
     }
     debug("CPUS %d", tp.cpu_count);
@@ -62,53 +63,75 @@ void bwidth_amd17df_load(topology_t *tp_in, bwidth_ops_t *ops)
                   (getbits64(cmds[i],  7,  6)      );
     }
     devs_count = tp.cpu_count * 4;
-    pool = calloc(devs_count, sizeof(ullong));
+    pool = calloc(devs_count+1, sizeof(ullong));
     //
-    apis_put(ops->init,            bwidth_amd17df_init);
-    apis_put(ops->dispose,         bwidth_amd17df_dispose);
-    apis_put(ops->count_devices,   bwidth_amd17df_count_devices);
-    apis_put(ops->get_granularity, bwidth_amd17df_get_granularity);
-    apis_put(ops->read,            bwidth_amd17df_read);
+    apis_put(ops->get_info, bwidth_amd17df_get_info);
+    apis_put(ops->init,     bwidth_amd17df_init);
+    apis_put(ops->dispose,  bwidth_amd17df_dispose);
+    apis_put(ops->read,     bwidth_amd17df_read);
+}
+
+BWIDTH_F_GET_INFO(bwidth_amd17df_get_info)
+{
+    info->api         = API_AMD17;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_IMC;
+    info->devs_count  = devs_count+1;
+}
+
+static state_t multiread(bwidth_t *bws)
+{
+    ullong value;
+    int sock;
+    int i, j;
+
+    // Pooling
+    timestamp_get(&bws[devs_count]);
+    for (sock = 0; sock < tp.cpu_count; ++sock) {
+        for (i = 0; i < 4; ++i) {
+            msr_read(tp.cpus[sock].id, &value, sizeof(ullong), ctrs[i]);
+            // 48 bits wide registers. Multipied by two because there are 8
+            // channels but just 4 registers. The ideal thing would be postpone
+            // this multiplication until the GB/s are computed, but this class
+            // don't have a diff function yet.
+            value = (value & MAXBITS48) * 2LLU;
+            // We are not cleaning the register, because although we are
+            // setting another event when multiplexing, the value remains
+            // in the counter, then the following = is the correct operator.
+            bws[(sock*4)+i] = value;
+        }
+    }
+    return EAR_SUCCESS;
 }
 
 static state_t multiplex(void *something)
 {
     static int flip = 0; // New commands
-    static int flop = 1; // Last commands
     static int init = 0;
-    ullong value;
     int sock;
     int i, j;
 
     debug("flipflop");
-    // Pooling
-    timestamp_get(&pool_time);
-    for (sock = 0; init && sock < tp.cpu_count; ++sock) {
-        for (i = 0; i < 4; ++i) {
-            msr_read(tp.cpus[sock].id, &value, sizeof(ullong), ctrs[i]);
-            // 48 bits wide registers
-            value = (value & 0x0000FFFFFFFFFFFF);
-	    // We are not cleaning the register, because although we are
-	    // setting another event when multiplexing, the value remains
-	    // in the counter, then the following = is the correct operator.
-            pool[(sock*4)+i] = value;
-        }
+    while (pthread_mutex_trylock(&lock));
+    if (init) {
+        // TODO: convert the pool to bwidth_t
+        multiread((bwidth *) pool);
     }
     // Flip-flopping the controllers and cleaning the counters
     for (sock = 0; sock < tp.cpu_count; ++sock) {
         for (i = 0, j = flip * 4; i < 4; ++i, ++j) {
-            debug("SOCK%d_REG%d: %010llu cas (multiplexing to IMC%d 0x%09lx)",
+            debug("SOCK%d_REG%d: %010llu cas (multiplexing to IMC%d 0x%09llx)",
                 sock, i, pool[(sock*4)+i], imcs[j], cmds[j]);
             msr_write(tp.cpus[sock].id, (void *) &cmds[j], sizeof(ullong), ctls[i]);
         }
     }
     flip = !flip;
-    flop = !flop;
     init = 1;
+    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
-state_t bwidth_amd17df_init(ctx_t *c)
+BWIDTH_F_INIT(bwidth_amd17df_init)
 {
     ullong cmd = 0LLU;
     int i, sock;
@@ -127,37 +150,34 @@ state_t bwidth_amd17df_init(ctx_t *c)
         }
     }
     timestamp_get(&pool_time);
-    // Flipflop suscription
-    sus             = suscription();
-    sus->call_init  = NULL;
-    sus->call_main  = multiplex;
-    sus->time_relax = 2000;
-    sus->time_burst = 2000;
-    return sus->suscribe(sus);
+    // If monitor is running the multiplexing can be done.
+    // If not, we are not pooling nor flipfloping.
+    if ((is_multiplexing = monitor_is_initialized())) {
+        // Multiplexing suscription
+        sus             = suscription();
+        sus->call_init  = NULL;
+        sus->call_main  = multiplex;
+        sus->time_relax = 5000;
+        sus->time_burst = 5000;
+        return sus->suscribe(sus);
+    }
+    return multiplex(NULL);
 }
 
-state_t bwidth_amd17df_dispose(ctx_t *c)
+BWIDTH_F_DISPOSE(bwidth_amd17df_dispose)
 {
     return EAR_SUCCESS;
 }
 
-state_t bwidth_amd17df_count_devices(ctx_t *c, uint *devs_count_in)
+BWIDTH_F_READ(bwidth_amd17df_read)
 {
-    *devs_count_in = devs_count+1;
-    return EAR_SUCCESS;
-}
-
-state_t bwidth_amd17df_get_granularity(ctx_t *c, uint *granularity)
-{
-    *granularity = GRANULARITY_IMC;
-    return EAR_SUCCESS;
-}
-
-state_t bwidth_amd17df_read(ctx_t *c_in, bwidth_t *bws)
-{
+    if (!is_multiplexing) {
+        return multiread(bws);
+    }
+    while (pthread_mutex_trylock(&lock));
     // Copy the pool and multiply per 2
-    memcpy(bws, pool, devs_count);
-    bws[devs_count].time = pool_time;
+    memcpy(bws, pool, devs_count+1);
+    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 

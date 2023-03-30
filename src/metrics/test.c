@@ -74,11 +74,9 @@ void metrics_init(topology_t *tp, int eard)
 	// Count (cache, flops and cpi does not have yet)
     frun(sa(cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count)));
     frun(sa(imcfreq_count_devices(&m.imc.c, &m.imc.devs_count)));
-    frun(sa( bwidth_count_devices(&m.ram.c, &m.ram.devs_count)));
+    frun(sn( bwidth_count_devices(&m.ram.c, &m.ram.devs_count)));
     frun(sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count)));
     fgpu(sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count)));
-    // Getting granularity (or scope)
-    frun(bwidth_get_granularity(no_ctx, &m.ram.gran));
 
     frun(apis_tostr(m.cpu.api, m.cpu.api_str, 32));
     frun(apis_tostr(m.imc.api, m.imc.api_str, 32));
@@ -147,12 +145,12 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
     // Read 1
     frun(sa(cpufreq_data_alloc(&mr1->cpu, empty)));
     frun(sa(imcfreq_data_alloc(&mr1->imc, empty)));
-    frun(sa( bwidth_data_alloc(&mr1->ram)));
+    frun(sn( bwidth_data_alloc(&mr1->ram)));
     fgpu(sa(    gpu_data_alloc(&mr1->gpu)));
     // Read 2
     frun(sa(cpufreq_data_alloc(&mr2->cpu, empty)));
     frun(sa(imcfreq_data_alloc(&mr2->imc, empty)));
-    frun(sa( bwidth_data_alloc(&mr2->ram)));
+    frun(sn( bwidth_data_alloc(&mr2->ram)));
     fgpu(sa(    gpu_data_alloc(&mr2->gpu)));
     // Diff
     frun(sa(cpufreq_data_alloc(empty, &mrD->cpu_diff)));

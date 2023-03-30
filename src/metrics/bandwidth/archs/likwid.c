@@ -146,7 +146,6 @@ state_t bwidth_likwid_load(topology_t *tp_in, bwidth_ops_t *ops)
     replace_ops(ops->init,            bwidth_likwid_init);
     replace_ops(ops->dispose,         bwidth_likwid_dispose);
     replace_ops(ops->count_devices,   bwidth_likwid_count_devices);
-    replace_ops(ops->get_granularity, bwidth_likwid_get_granularity);
     replace_ops(ops->read,            bwidth_likwid_read);
 
     return EAR_SUCCESS;
@@ -162,12 +161,6 @@ state_t bwidth_likwid_dispose(ctx_t *c)
 {
 	// Likwid events close
 	return EAR_SUCCESS;
-}
-
-state_t bwidth_likwid_get_granularity(ctx_t *c, uint *granularity)
-{
-    *granularity = GRANULARITY_IMC;
-    return EAR_SUCCESS;
 }
 
 state_t bwidth_likwid_count_devices(ctx_t *c, uint *devs_count_in)

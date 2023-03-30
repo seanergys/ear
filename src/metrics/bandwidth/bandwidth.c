@@ -17,89 +17,79 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <stdlib.h>
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <common/utils/overhead.h>
+#include <common/math_operations.h>
+#include <metrics/common/apis.h>
 #include <metrics/bandwidth/bandwidth.h>
-#include <metrics/bandwidth/archs/perf.h>
 #include <metrics/bandwidth/archs/eard.h>
 #include <metrics/bandwidth/archs/dummy.h>
-#include <metrics/bandwidth/archs/bypass.h>
 #include <metrics/bandwidth/archs/likwid.h>
 #include <metrics/bandwidth/archs/amd17.h>
+#include <metrics/bandwidth/archs/amd17df.h>
 #include <metrics/bandwidth/archs/intel63.h>
 #include <metrics/bandwidth/archs/intel106.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static double          line_size;
 static bwidth_ops_t    ops;
-static uint            api;
+static uint            load;
+static apinfo_t        api;
 static uint            oid;
 
-state_t bwidth_load(topology_t *tp, int eard)
+void bwidth_load(topology_t *tp, int eard)
 {
-	while (pthread_mutex_trylock(&lock));
-	// Already initialized
-	if (api != API_NONE) {
-		pthread_mutex_unlock(&lock);
-		return EAR_SUCCESS;
-	}
-  #ifndef FAKE_ERROR_USE_DUMMY
-	// Dummy by default
-	api = API_DUMMY;
-	if (state_ok(bwidth_eard_load(tp, &ops, eard))) {
-		debug("Loaded EARD");
-		api = API_EARD;
-	}
-	if (state_ok(bwidth_intel63_load(tp, &ops))) {
-		api = API_INTEL63;
-		debug("Loaded INTEL63");
-	}
-	if (state_ok(bwidth_amd17_load(tp, &ops))) {
-		api = API_AMD17;
-		debug("Loaded AMD17");
-	}
-    // EAR memory bandwith plugin for Icelake using Likwid
-	if (state_ok(bwidth_likwid_load(tp, &ops))) {
-		api = API_LIKWID;
-		debug("Loaded LIKWID");
-	}
-    // EAR memory bandwith plugin for Icelake
-	if (state_ok(bwidth_intel106_load(tp, &ops))) {
-		api = API_INTEL106;
-		debug("Loaded INTEL106");
-	}
-    #if 0
-    if (state_ok(bwidth_perf_load(tp, &ops))) {
-        api = API_PERF;
-        debug("Loaded PERF");
+    while (pthread_mutex_trylock(&lock));
+    if (load) {
+        goto leave;
     }
-	if (state_ok(bwidth_bypass_load(tp, &ops))) {
-		api = API_BYPASS;
-		debug("Loaded BYPASS");
-	}
-    #endif
-    #endif
-	bwidth_dummy_load(tp, &ops);
+    if (state_ok(bwidth_eard_load    (tp, &ops, eard))) { api.api = API_EARD;     }
+    bwidth_amd17_load   (tp, &ops);
+    bwidth_amd17df_load (tp, &ops);
+    if (state_ok(bwidth_intel63_load (tp, &ops)))       { api.api = API_INTEL63;  }
+    if (state_ok(bwidth_likwid_load  (tp, &ops)))       { api.api = API_LIKWID;   }
+    if (state_ok(bwidth_intel106_load(tp, &ops)))       { api.api = API_INTEL106; }
+    bwidth_dummy_load(tp, &ops);
     // Overhead control
     overhead_suscribe("metrics/bandwidth", &oid);
-    // Leaving
-	pthread_mutex_unlock(&lock);
-	return EAR_SUCCESS;
+    line_size = (double) tp->cache_line_size;
+    load = 1;
+leave:
+    pthread_mutex_unlock(&lock);
 }
 
-state_t bwidth_get_api(uint *api_in)
+void bwidth_get_info(apinfo_t *info)
 {
-	*api_in = api;
-	return EAR_SUCCESS;
+    if (ops.get_info != NULL) {
+        if (info->api == API_NONE) {
+            ops.get_info(info);
+        }
+    } else {
+        if (info->devs_count == 0) {
+            ops.count_devices(NULL, &info->devs_count);
+        }
+    }
+    info->layer = "BANDWIDTH";
+}
+
+void bwidth_get_api(uint *api_in)
+{
+    bwidth_get_info(&api);
+	*api_in = api.api;
+}
+
+void bwidth_count_devices(ctx_t *c, uint *dev_count)
+{
+    bwidth_get_info(&api);
+    *dev_count = api.devs_count;
 }
 
 state_t bwidth_init(ctx_t *c)
 {
 	while (pthread_mutex_trylock(&lock));
 	state_t s = ops.init(c);
-	if (state_ok(bwidth_dummy_init_static(c, &ops))) {
-		// Debug
-	}
 	pthread_mutex_unlock(&lock);
 	return s;
 }
@@ -107,16 +97,6 @@ state_t bwidth_init(ctx_t *c)
 state_t bwidth_dispose(ctx_t *c)
 {
 	return ops.dispose(c);
-}
-
-state_t bwidth_count_devices(ctx_t *c, uint *dev_count)
-{
-	return ops.count_devices(c, dev_count);
-}
-
-state_t bwidth_get_granularity(ctx_t *c, uint *granularity)
-{
-	return ops.get_granularity(c, granularity);
 }
 
 state_t bwidth_read(ctx_t *c, bwidth_t *b)
@@ -133,7 +113,8 @@ state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ull
 	if (state_fail(s = bwidth_read(c, b2))) {
 		return s;
 	}
-	return ops.data_diff(b2, b1, bD, cas, gbs);
+	bwidth_data_diff(b2, b1, bD, cas, gbs);
+    return s;
 }
 
 state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
@@ -142,50 +123,120 @@ state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ull
 	if (state_fail(s = bwidth_read_diff(c, b2, b1, bD, cas, gbs))) {
 		return s;
 	}
-	return ops.data_copy(b1, b2);
+	bwidth_data_copy(b1, b2);
+    return s;
 }
 
-state_t bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
+void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
-	return ops.data_diff(b2, b1, bD, cas, gbs);
+    ullong tcas = 0LLU; //Total CAS
+    ullong diff = 0LLU;
+    ullong time = 0LLU;
+    double secs = 0.0;
+    int i;
+
+    if (cas != NULL) { *cas = 0LLU; }
+    if (gbs != NULL) { *gbs = 0.0;  }
+    // Ms to seconds (for decimals)
+    time = timestamp_diff(&b2[api.devs_count-1].time, &b1[api.devs_count-1].time, TIME_MSECS);
+    // If no time, no metrics
+    if (time == 0LLU) {
+        return;
+    }
+    secs = (double) time;
+    secs = secs / 1000.0;
+    if (bD != NULL) {
+        bD[api.devs_count-1].secs = secs;
+    }
+    // Computing differences. 64 bit APIs:
+    // - PERF: it converts all registers widths into 64 bit registers.
+    // - BYPASS: because calls cache which is a PERF API.
+    // - LIKWID: doubt.
+    // Meanwhile this API is not fully updated to get the registers width, we
+    // will convert to 0 the result if the values of b1 are greater than b2.
+    for (i = 0; i < api.devs_count-1; ++i) {
+        diff  = overflow_zeros_u64(b2[i].cas, b1[i].cas);
+        tcas += diff;
+        if (bD != NULL) {
+            bD[i].cas = diff;
+        }
+        debug("IMC%d/%u: %llu - %llu = %llu", i,
+              api.devs_count-2, b2[i].cas, b1[i].cas, diff);
+    }
+    debug("CAS: %llu in %0.2lf secs", tcas, secs);
+    if (gbs != NULL) { *gbs = bwidth_help_castogbs(tcas, secs); }
+    if (cas != NULL) { *cas = tcas; }
 }
 
-state_t bwidth_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs)
+void bwidth_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs)
 {
-	return ops.data_accum(bA, bD, cas, gbs);
+    ullong tcas = 0LLU; //Total CAS
+    int i;
+
+    for (i = 0; i < api.devs_count-1; ++i) {
+        if (bD != NULL) {
+            bA[i].cas += bD[i].cas;
+        }
+        tcas += bA[i].cas;
+    }
+    if (bD  != NULL) { bA[api.devs_count-1].secs += bD[api.devs_count-1].secs; }
+    if (gbs != NULL) { *gbs = bwidth_help_castogbs(tcas, bA[api.devs_count-1].secs); }
+    if (cas != NULL) { *cas = tcas; }
+    debug("CAS: %llu in %0.2lf secs", tcas, bA[api.devs_count-1].secs);
 }
 
-state_t bwidth_data_alloc(bwidth_t **b)
+void bwidth_data_alloc(bwidth_t **b)
 {
-	return ops.data_alloc(b);
+    *b = calloc(api.devs_count, sizeof(bwidth_t));
 }
 
-state_t bwidth_data_free(bwidth_t **b)
+void bwidth_data_free(bwidth_t **b)
 {
-	return ops.data_free(b);
+    free(*b);
+    *b = NULL;
 }
 
-state_t bwidth_data_copy(bwidth_t *dst, bwidth_t *src)
+void bwidth_data_copy(bwidth_t *dst, bwidth_t *src)
 {
-	return ops.data_copy(dst, src);
+    memcpy(dst, src, api.devs_count*sizeof(bwidth_t));
 }
 
-state_t bwidth_data_print(ullong cas, double gbs, int fd)
+void bwidth_data_print(ullong cas, double gbs, int fd)
 {
-	return ops.data_print(cas, gbs, fd);
+    char buffer[4096];
+    bwidth_data_tostr(cas, gbs, buffer, sizeof(buffer));
+    dprintf(fd, "%s", buffer);
 }
 
-state_t bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
+void bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 {
-	return ops.data_tostr(cas, gbs, buffer, length);
+#if 1
+    snprintf(buffer, length, "%0.2lf (GB/s, %llu CAS)\n", gbs, cas);
+#else
+    size_t accum = 0;
+	size_t added = 0;
+	uint i;
+	for (i = 0; i < api.devs_count && length > 0; ++i) {
+		added = snprintf(&buffer[accum], length,
+			"IMC%u: %llu\n", i, b[i].cas);
+		length = length - added;
+		accum  = accum  + added;
+	}
+	snprintf(&buffer[accum], length, "Total: %lf GB/s\n", gbs);
+#endif
 }
 
 double bwidth_help_castogbs(ullong cas, double secs)
 {
-    return bwidth_dummy_help_castogbs(cas, secs);
+    double gbs = (double) cas;
+    gbs = (gbs / secs);
+    gbs = (gbs * line_size);
+    gbs = (gbs / ((double) 1E9));
+    return gbs;
 }
 
 double bwidth_help_castotpi(ullong cas, ullong instructions)
 {
-    return bwidth_dummy_help_castotpi(cas, instructions);
+    return (((double) cas) * line_size) / ((double) instructions);
+
 }

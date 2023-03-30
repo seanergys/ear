@@ -43,7 +43,7 @@
 #define FAMILY_BULLDOZER        21
 #define FAMILY_JAGUAR           22
 #define FAMILY_ZEN              0x17 // Also 23
-#define FAMILY_ZEN3             25
+#define FAMILY_ZEN3             0x19 // Also 25
 // ARM family (architecture)
 #define MODEL_A8                0x01
 #define FAMILY_A8               0x01

@@ -29,13 +29,12 @@ mets_OBJS = \
     $(SRCDIR)/metrics/accumulators/power_metrics.o \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
     $(SRCDIR)/metrics/bandwidth/archs/amd17.o \
-    $(SRCDIR)/metrics/bandwidth/archs/bypass.o \
+    $(SRCDIR)/metrics/bandwidth/archs/amd17df.o \
     $(SRCDIR)/metrics/bandwidth/archs/dummy.o \
     $(SRCDIR)/metrics/bandwidth/archs/eard.o \
     $(SRCDIR)/metrics/bandwidth/archs/intel63.o \
     $(SRCDIR)/metrics/bandwidth/archs/intel106.o \
     $(SRCDIR)/metrics/bandwidth/archs/likwid.o \
-    $(SRCDIR)/metrics/bandwidth/archs/perf.o \
     $(SRCDIR)/metrics/cache/cache.o \
     $(SRCDIR)/metrics/cache/archs/dummy.o \
     $(SRCDIR)/metrics/cache/archs/perf.o \

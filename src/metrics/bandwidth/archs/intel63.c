@@ -89,7 +89,6 @@ state_t bwidth_intel63_load(topology_t *tp, bwidth_ops_t *ops)
 	replace_ops(ops->init,            bwidth_intel63_init);
 	replace_ops(ops->dispose,         bwidth_intel63_dispose);
 	replace_ops(ops->count_devices,   bwidth_intel63_count_devices);
-	replace_ops(ops->get_granularity, bwidth_intel63_get_granularity);
 	replace_ops(ops->read,            bwidth_intel63_read);
 
 	return EAR_SUCCESS;
@@ -109,12 +108,6 @@ state_t bwidth_intel63_dispose(ctx_t *c)
 state_t bwidth_intel63_count_devices(ctx_t *c, uint *devs_count_in)
 {
 	*devs_count_in = devs_count+1;
-	return EAR_SUCCESS;
-}
-
-state_t bwidth_intel63_get_granularity(ctx_t *c, uint *granularity)
-{
-	*granularity = GRANULARITY_IMC;
 	return EAR_SUCCESS;
 }
 
