@@ -41,7 +41,6 @@ state_t bwidth_bypass_load(topology_t *tp, bwidth_ops_t *ops)
 	replace_ops(ops->init,            bwidth_bypass_init);
 	replace_ops(ops->dispose,         bwidth_bypass_dispose);
 	replace_ops(ops->count_devices,   bwidth_bypass_count_devices);
-	replace_ops(ops->get_granularity, bwidth_bypass_get_granularity);
 	replace_ops(ops->read,            bwidth_bypass_read);
 
 	return EAR_SUCCESS;
@@ -60,12 +59,6 @@ state_t bwidth_bypass_dispose(ctx_t *c)
 state_t bwidth_bypass_count_devices(ctx_t *c, uint *devs_count_in)
 {
 	*devs_count_in = devs_count+1;
-	return EAR_SUCCESS;
-}
-
-state_t bwidth_bypass_get_granularity(ctx_t *c, uint *granularity)
-{
-	*granularity = GRANULARITY_PROCESS;
 	return EAR_SUCCESS;
 }
 

@@ -21,6 +21,7 @@
 #include <common/types.h>
 #include <common/states.h>
 #include <common/hardware/topology.h>
+#include <metrics/common/apis.h>
 
 // Domain/device types
 #define CPUPOW_DOMAINS  3
@@ -31,25 +32,46 @@
 // Flag to use in powercap_set
 #define POWERCAP_DISABLE UINT_MAX
 
-typedef struct mgt_cpupow_ops_s
-{
-    void    (*get_api)             (uint *api);
-    int     (*count_devices)       (int domain);
-    int     (*is_powercap_capable) (int domain);
-    state_t (*powercap_is_enabled) (int domain, int *enabled);
-    state_t (*powercap_get)        (int domain, uint *watts);
-    state_t (*powercap_set)        (int domain, uint *watts);
-    state_t (*powercap_reset)      (int domain);
-    state_t (*tdp_get)             (int domain, uint *watts);
+// API building scheme
+#define CPUPOW_F_LOAD(name)                void name (topology_t *tpo, mgt_cpupow_ops_t *ops)
+#define CPUPOW_F_GET_INFO(name)            void name (apinfo_t *info)
+#define CPUPOW_F_COUNT_DEVICES(name)       int name (int domain)
+#define CPUPOW_F_POWERCAP_IS_CAPABLE(name) int name (int domain)
+#define CPUPOW_F_POWERCAP_IS_ENABLED(name) state_t name (int domain, uint *enabled)
+#define CPUPOW_F_POWERCAP_GET(name)        state_t name (int domain, uint *watts)
+#define CPUPOW_F_POWERCAP_SET(name)        state_t name (int domain, uint *watts)
+#define CPUPOW_F_POWERCAP_RESET(name)      state_t name (int domain)
+#define CPUPOW_F_TDP_GET(name)             state_t name (int domain, uint *watts)
+
+#define CPUPOW_DEFINES(name) \
+CPUPOW_F_LOAD                (mgt_cpupow_ ##name ##_load); \
+CPUPOW_F_GET_INFO            (mgt_cpupow_ ##name ##_get_info); \
+CPUPOW_F_COUNT_DEVICES       (mgt_cpupow_ ##name ##_count_devices); \
+CPUPOW_F_POWERCAP_IS_CAPABLE (mgt_cpupow_ ##name ##_powercap_is_capable); \
+CPUPOW_F_POWERCAP_IS_ENABLED (mgt_cpupow_ ##name ##_powercap_is_enabled); \
+CPUPOW_F_POWERCAP_GET        (mgt_cpupow_ ##name ##_powercap_get); \
+CPUPOW_F_POWERCAP_SET        (mgt_cpupow_ ##name ##_powercap_set); \
+CPUPOW_F_POWERCAP_RESET      (mgt_cpupow_ ##name ##_powercap_reset); \
+CPUPOW_F_TDP_GET             (mgt_cpupow_ ##name ##_tdp_get);
+
+typedef struct mgt_cpupow_ops_s {
+    CPUPOW_F_GET_INFO            ((*get_info));
+    CPUPOW_F_COUNT_DEVICES       ((*count_devices));
+    CPUPOW_F_POWERCAP_IS_CAPABLE ((*powercap_is_capable));
+    CPUPOW_F_POWERCAP_IS_ENABLED ((*powercap_is_enabled));
+    CPUPOW_F_POWERCAP_GET        ((*powercap_get));
+    CPUPOW_F_POWERCAP_SET        ((*powercap_set));
+    CPUPOW_F_POWERCAP_RESET      ((*powercap_reset));
+    CPUPOW_F_TDP_GET             ((*tdp_get));
 } mgt_cpupow_ops_t;
 
 void mgt_cpupow_load(topology_t *tp, int eard);
 
-void mgt_cpupow_get_api(uint *api);
+void mgt_cpupow_get_info(apinfo_t *info);
 
 int mgt_cpupow_count_devices(int domain);
 
-int mgt_cpupow_is_powercap_capable(int domain);
+int mgt_cpupow_powercap_is_capable(int domain);
 
 state_t mgt_cpupow_powercap_is_enabled(int domain, int *enabled);
 
