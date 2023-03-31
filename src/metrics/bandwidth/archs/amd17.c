@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -58,6 +58,7 @@ BWIDTH_F_LOAD(bwidth_amd17_load)
     apis_put(ops->init,     bwidth_amd17_init);
     apis_put(ops->dispose,  bwidth_amd17_dispose);
     apis_put(ops->read,     bwidth_amd17_read);
+    debug("Loaded AMD17");
 }
 
 BWIDTH_F_GET_INFO(bwidth_amd17_get_info)
@@ -71,7 +72,7 @@ BWIDTH_F_GET_INFO(bwidth_amd17_get_info)
 BWIDTH_F_INIT(bwidth_amd17_init)
 {
     state_t s;
-    int i, j;
+    int i;
     for (i = 0; i < tp.cpu_count; ++i) {
         if (state_fail(s = msr_open(tp.cpus[i].id, MSR_WR))) {
             return s;
@@ -88,13 +89,13 @@ BWIDTH_F_DISPOSE(bwidth_amd17_dispose)
 
 BWIDTH_F_READ(bwidth_amd17_read)
 {
-    int cpu, dev;
+    int cpu;
     timestamp_get(&bws[devs_count].time);
-    for (cpu = dev = 0; cpu < tp.cpu_count; ++cpu) {
-        msr_read(tp.cpus[cpu].id, &bws[dev].cas, sizeof(ullong), ctr);
+    for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+        msr_read(tp.cpus[cpu].id, &bws[cpu].cas, sizeof(ullong), ctr);
         // 48 bits for all counters from ZEN to ZEN3 (bit 48 is overflow)
-        bws[dev].cas = bws[dev].cas & MAXBITS48;
-        debug("D%d: %llu cas (CPU%d, R%d)", dev, bws[d].cas, cpu, ctr);
+        bws[cpu].cas = bws[cpu].cas & MAXBITS48;
+        debug("D%d: %010llu cas (REG 0x%lx)", cpu, bws[cpu].cas, ctr);
     }
     return EAR_SUCCESS;
 }

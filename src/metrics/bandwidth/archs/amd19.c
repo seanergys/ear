@@ -55,7 +55,7 @@ BWIDTH_F_LOAD(bwidth_amd19_load)
     apis_put(ops->init,      bwidth_amd19_init);
     apis_put(ops->dispose,   bwidth_amd19_dispose);
     apis_put(ops->read,      bwidth_amd19_read);
-//    apis_put(ops->data_diff, bwidth_amd19_data_diff);
+    debug("Loaded AMD19");
 }
 
 BWIDTH_F_GET_INFO(bwidth_amd19_get_info)

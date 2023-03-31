@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -178,8 +178,8 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
                 aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
                 aux1 += aux2;
             } while(aux2 > 0);
-            topo->cpus[thread].l[aux3].id = atoi(buffer);
-    		close(fd);
+            topo->cpus[thread].l[aux3].id = (atoi(buffer)) | (topo->cpus[thread].socket_id << 16);
+            close(fd);
         } else {
             // We are supposing, if the id file doesn't exists, it is
             //  - L1 and L2, per core
@@ -193,7 +193,6 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         }
         debug("CPU%d L%d id: %d", thread, aux3, topo->cpus[thread].l[aux3].id);
     }
-
 	return EAR_SUCCESS;
 }
 

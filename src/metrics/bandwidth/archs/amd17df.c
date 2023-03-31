@@ -69,6 +69,7 @@ BWIDTH_F_LOAD(bwidth_amd17df_load)
     apis_put(ops->init,     bwidth_amd17df_init);
     apis_put(ops->dispose,  bwidth_amd17df_dispose);
     apis_put(ops->read,     bwidth_amd17df_read);
+    debug("Loaded AMD17DF");
 }
 
 BWIDTH_F_GET_INFO(bwidth_amd17df_get_info)
@@ -159,19 +160,3 @@ BWIDTH_F_READ(bwidth_amd17df_read)
     }
     return EAR_SUCCESS;
 }
-
-#if TEST
-static bwidth_ops_t ops;
-static topology_t   tp;
-
-int main(int argc, char *argv[])
-{
-    topology_init(&tp);
-    topology_print(&tp, verb_channel);
-    bwidth_amd17df_load(&tp, &ops);
-    bwidth_amd17df_init(NULL);
-    monitor_init();
-    sleep(100);
-    return 0;
-}
-#endif

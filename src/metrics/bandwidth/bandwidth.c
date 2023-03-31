@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -90,16 +90,17 @@ void bwidth_count_devices(ctx_t *c, uint *dev_count)
 
 state_t bwidth_init(ctx_t *c)
 {
-	while (pthread_mutex_trylock(&lock));
-	state_t s = ops.init(c);
-	pthread_mutex_unlock(&lock);
+    while (pthread_mutex_trylock(&lock));
+    state_t s = ops.init(c);
+    pthread_mutex_unlock(&lock);
     bwidth_get_info(&api);
-	return s;
+    debug("Detected devices: %d", api.devs_count);
+    return s;
 }
 
 state_t bwidth_dispose(ctx_t *c)
 {
-	return ops.dispose(c);
+    return ops.dispose(c);
 }
 
 state_t bwidth_read(ctx_t *c, bwidth_t *b)
@@ -113,21 +114,21 @@ state_t bwidth_read(ctx_t *c, bwidth_t *b)
 
 state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
-	state_t s;
-	if (state_fail(s = bwidth_read(c, b2))) {
-		return s;
-	}
-	bwidth_data_diff(b2, b1, bD, cas, gbs);
+    state_t s;
+    if (state_fail(s = bwidth_read(c, b2))) {
+        return s;
+    }
+    bwidth_data_diff(b2, b1, bD, cas, gbs);
     return s;
 }
 
 state_t bwidth_read_copy(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, double *gbs)
 {
-	state_t s;
-	if (state_fail(s = bwidth_read_diff(c, b2, b1, bD, cas, gbs))) {
-		return s;
-	}
-	bwidth_data_copy(b1, b2);
+    state_t s;
+    if (state_fail(s = bwidth_read_diff(c, b2, b1, bD, cas, gbs))) {
+        return s;
+    }
+    bwidth_data_copy(b1, b2);
     return s;
 }
 
@@ -145,6 +146,7 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
     time = timestamp_diff(&b2[api.devs_count-1].time, &b1[api.devs_count-1].time, TIME_MSECS);
     // If no time, no metrics
     if (time == 0LLU) {
+	debug("Time is 0");
         return;
     }
     secs = (double) time;
@@ -244,3 +246,31 @@ double bwidth_help_castotpi(ullong cas, ullong instructions)
     return (((double) cas) * line_size) / ((double) instructions);
 
 }
+
+#if TEST
+#include <common/system/monitor.h>
+
+static topology_t tp;
+static bwidth_t *bws1;
+static bwidth_t *bws2;
+static bwidth_t *bwsD;
+static ullong cas;
+static double gbs;
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+    bwidth_load(&tp, 0);
+    bwidth_data_alloc(&bws1);
+    bwidth_data_alloc(&bws2);
+    bwidth_init(no_ctx);
+    monitor_init();
+    
+    bwidth_read(no_ctx, bws1);
+    while (1) {
+    	sleep(2);
+	bwidth_read_copy(no_ctx, bws2, bws1, bwsD, &cas, &gbs);
+    }
+    return 0;
+}
+#endif
