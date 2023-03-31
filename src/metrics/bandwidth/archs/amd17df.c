@@ -123,7 +123,7 @@ BWIDTH_F_INIT(bwidth_amd17df_init)
     // If not, we are not flipfloping. But we can already read.
     // Multiplexing suscription
     sus             = suscription();
-    sus->call_init  = NULL
+    sus->call_init  = NULL;
     sus->call_main  = multiplex;
     sus->time_relax = 5000;
     sus->time_burst = 5000;

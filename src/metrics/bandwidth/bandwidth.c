@@ -27,6 +27,7 @@
 #include <metrics/bandwidth/archs/eard.h>
 #include <metrics/bandwidth/archs/dummy.h>
 #include <metrics/bandwidth/archs/likwid.h>
+#include <metrics/bandwidth/archs/amd19.h>
 #include <metrics/bandwidth/archs/amd17.h>
 #include <metrics/bandwidth/archs/amd17df.h>
 #include <metrics/bandwidth/archs/intel63.h>
@@ -92,7 +93,7 @@ state_t bwidth_init(ctx_t *c)
 	while (pthread_mutex_trylock(&lock));
 	state_t s = ops.init(c);
 	pthread_mutex_unlock(&lock);
-    bwidth_get_info(api);
+    bwidth_get_info(&api);
 	return s;
 }
 
@@ -138,10 +139,6 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
     double secs = 0.0;
     int i;
 
-    // Other API is controlling the diff
-    if (ops.data_diff != NULL) {
-        return ops.data_diff(b2, b1, bD, cas, gbs);
-    }
     if (cas != NULL) { *cas = 0LLU; }
     if (gbs != NULL) { *gbs = 0.0;  }
     // Ms to seconds (for decimals)

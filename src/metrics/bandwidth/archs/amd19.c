@@ -104,16 +104,13 @@ static state_t multipool(void *something)
 
 BWIDTH_F_INIT(bwidth_amd19_init)
 {
-    if ((is_pooling = monitor_is_initialized())) {
-        // Multiplexing suscription
-        sus             = suscription();
-        sus->call_init  = NULL;
-        sus->call_main  = multiplex;
-        sus->time_relax = 5000;
-        sus->time_burst = 5000;
-        return sus->suscribe(sus);
-    }
-    return EAR_SUCCESS;
+    // Pool suscription
+    sus             = suscription();
+    sus->call_init  = NULL;
+    sus->call_main  = multipool;
+    sus->time_relax = 5000;
+    sus->time_burst = 5000;
+    return sus->suscribe(sus);
 }
 
 BWIDTH_F_DISPOSE(bwidth_amd19_dispose)

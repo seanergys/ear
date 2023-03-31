@@ -30,6 +30,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/bandwidth/bandwidth.o \
     $(SRCDIR)/metrics/bandwidth/archs/amd17.o \
     $(SRCDIR)/metrics/bandwidth/archs/amd17df.o \
+    $(SRCDIR)/metrics/bandwidth/archs/amd19.o \
     $(SRCDIR)/metrics/bandwidth/archs/dummy.o \
     $(SRCDIR)/metrics/bandwidth/archs/eard.o \
     $(SRCDIR)/metrics/bandwidth/archs/intel63.o \
