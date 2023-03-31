@@ -109,7 +109,7 @@ void timestamp_print(timestamp *ts, int fd)
 
 void timestamp_tostr(timestamp *ts, char *buffer, size_t size)
 {
-	snprintf(buffer, size, "TS->SECS %ld TS->NSECS %ld", ts->tv_sec, ts->tv_nsec);
+    snprintf(buffer, size, "Timestamp: %ld s, %ld ns\n", ts->tv_sec, ts->tv_nsec);
 }
 
 ullong timeval_convert(struct timeval *ts, ullong time_unit)

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,9 +40,10 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 	int i;
 	int j;
 	int c;
-
+	
+	// Just means merge
 	just = (group == TPGroup.merge);
-
+	
 	if (component == TPSelect.l3) {
 		addr_offset = ((ulong) &t->cpus[0].l[3].id) - ((ulong) t->cpus);
 	}
@@ -55,22 +56,26 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 	if (component == TPSelect.socket) {
 		addr_offset = ((ulong) &t->cpus[0].socket_id) - ((ulong) t->cpus);
 	}
-
+	// Allocating CPUs
 	s->cpus = calloc(t->cpu_count, sizeof(cpu_t));
-
+	// Iterating 
 	for (i = 0, c = 0; i < t->cpu_count; ++i)
-	{		
+	{
+		// Getting pointer and value of the CPU I
 		addr_param = ((ulong) &t->cpus[i]) + addr_offset;
 		val1 = (int *) addr_param;
-
+		// Iterating from 0 to I
 		for (j = 0; just && j < i; ++j) {
+			// Getting pointer and value of the CPU J
 			addr_param = (ulong) &t->cpus[j] + addr_offset;
 			val2 = (int *) addr_param;
+			// If values are equal, break
 			if (*val1 == *val2) {
 				break;
 			}
 		}
-	
+		// If is merge and the end is reached, then the CPU
+		// is copied and the CPUs counter is increased
 		if ((just && j == i) || (!just && *val1 == val)) {
 			memcpy(&s->cpus[c], &t->cpus[i], sizeof(cpu_t));
 			c++;
@@ -178,7 +183,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
                 aux2  = pread(fd, (void*) &buffer[aux1], SZ_NAME_LARGE, aux1);
                 aux1 += aux2;
             } while(aux2 > 0);
-            topo->cpus[thread].l[aux3].id = (atoi(buffer)) | (topo->cpus[thread].socket_id << 16);
+            topo->cpus[thread].l[aux3].id = (atoi(buffer));
             close(fd);
         } else {
             // We are supposing, if the id file doesn't exists, it is

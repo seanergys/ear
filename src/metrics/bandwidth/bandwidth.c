@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -36,14 +36,15 @@
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static double          line_size;
 static bwidth_ops_t    ops;
-static uint            load;
+static uint            is_initialized;
+static uint            is_loaded;
 static apinfo_t        api;
 static uint            oid;
 
 void bwidth_load(topology_t *tp, int eard)
 {
     while (pthread_mutex_trylock(&lock));
-    if (load) {
+    if (is_loaded) {
         goto leave;
     }
     if (state_ok(bwidth_eard_load    (tp, &ops, eard))) { api.api = API_EARD;     }
@@ -54,16 +55,20 @@ void bwidth_load(topology_t *tp, int eard)
     if (state_ok(bwidth_likwid_load  (tp, &ops)))       { api.api = API_LIKWID;   }
     if (state_ok(bwidth_intel106_load(tp, &ops)))       { api.api = API_INTEL106; }
     bwidth_dummy_load(tp, &ops);
-    // Overhead control
+    // Bandiwdth wants to know more about the loaded API. This is safe because at 
+    // this point all API's have their devices counter.
+    bwidth_get_info(&api);
+    // Saving some additional data
     overhead_suscribe("metrics/bandwidth", &oid);
     line_size = (double) tp->cache_line_size;
-    load = 1;
+    is_loaded = 1;
 leave:
     pthread_mutex_unlock(&lock);
 }
 
 void bwidth_get_info(apinfo_t *info)
 {
+    // This is a patch until all internal API's have its own
     if (ops.get_info != NULL) {
         if (info->api == API_NONE) {
             ops.get_info(info);
@@ -79,7 +84,7 @@ void bwidth_get_info(apinfo_t *info)
 void bwidth_get_api(uint *api_in)
 {
     bwidth_get_info(&api);
-	*api_in = api.api;
+    *api_in = api.api;
 }
 
 void bwidth_count_devices(ctx_t *c, uint *dev_count)
@@ -90,11 +95,13 @@ void bwidth_count_devices(ctx_t *c, uint *dev_count)
 
 state_t bwidth_init(ctx_t *c)
 {
+    state_t s = EAR_SUCCESS;
     while (pthread_mutex_trylock(&lock));
-    state_t s = ops.init(c);
+    if (!is_initialized) {
+    	s = ops.init(c);
+	is_initialized = 1;
+    }
     pthread_mutex_unlock(&lock);
-    bwidth_get_info(&api);
-    debug("Detected devices: %d", api.devs_count);
     return s;
 }
 
@@ -137,6 +144,7 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
     ullong tcas = 0LLU; //Total CAS
     ullong diff = 0LLU;
     ullong time = 0LLU;
+    double tgbs = 0.0; //Total GB/s
     double secs = 0.0;
     int i;
 
@@ -169,8 +177,10 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
         debug("IMC%d/%u: %llu - %llu = %llu", i,
               api.devs_count-2, b2[i].cas, b1[i].cas, diff);
     }
+    tgbs = bwidth_help_castogbs(tcas, secs);
     debug("CAS: %llu in %0.2lf secs", tcas, secs);
-    if (gbs != NULL) { *gbs = bwidth_help_castogbs(tcas, secs); }
+    debug("GBS: %0.2lf", tgbs);
+    if (gbs != NULL) { *gbs = tgbs; }
     if (cas != NULL) { *cas = tcas; }
 }
 
@@ -263,12 +273,13 @@ int main(int argc, char *argv[])
     bwidth_load(&tp, 0);
     bwidth_data_alloc(&bws1);
     bwidth_data_alloc(&bws2);
+    bwidth_data_alloc(&bwsD);
     bwidth_init(no_ctx);
     monitor_init();
     
     bwidth_read(no_ctx, bws1);
     while (1) {
-    	sleep(2);
+    	sleep(5);
 	bwidth_read_copy(no_ctx, bws2, bws1, bwsD, &cas, &gbs);
     }
     return 0;

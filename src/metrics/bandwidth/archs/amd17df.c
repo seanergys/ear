@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,8 +27,10 @@
 #include <metrics/bandwidth/archs/amd17df.h>
 
 // In a 32 cores and 64 threads CPU (ZEN3@7773X):
-// [0-07:1-07][0-47:1-47] are excited by CPUs 00-16
-// [0-87:1-87][0-C7:1-C7] are excited by CPUs 16-31
+// 007:047 are excited by CPUs 00-15
+// 087:0c7 are excited by CPUs 16-31
+// 107:147 are excited by CPUs 32-47
+// 187:1c7 are excited by CPUs 48-63
 static topology_t      tp;
 static uint            devs_count;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -37,8 +39,8 @@ static suscription_t  *sus;
 static uint            imcs[8];
 static off_t           ctls[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 };
 static off_t           ctrs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 };
-static ullong          cmds[8] = { 0x0000000000403807, 0x0000000000403847, 0x0000000000403887, 0x00000000004038c7,
-                                   0x0000000100403807, 0x0000000100403847, 0x0000000100403887, 0x00000001004038c7 };
+static ullong          cmds[8] = { 0x0000000000403807, 0x0000000000403887, 0x0000000100403807, 0x0000000100403887,
+                                   0x0000000000403847, 0x00000000004038c7, 0x0000000100403847, 0x00000001004038c7 };
 
 BWIDTH_F_LOAD(bwidth_amd17df_load)
 {
@@ -90,8 +92,8 @@ static state_t multiplex(void *something)
     // Flip-flopping the controllers and cleaning the counters
     for (sock = 0; sock < tp.cpu_count; ++sock) {
         for (i = 0, j = flip * 4; i < 4; ++i, ++j) {
-            debug("SOCK%d_REG%d: %010llu cas (multiplexing to IMC%d 0x%09llx)",
-                sock, i, pool[(sock*4)+i].cas, imcs[j], cmds[j]);
+            debug("SOCK%d_REG%d: multiplexing to IMC%d 0x%09llx)",
+                sock, i, imcs[j], cmds[j]);
             msr_write(tp.cpus[sock].id, (void *) &cmds[j], sizeof(ullong), ctls[i]);
         }
     }
@@ -117,7 +119,6 @@ BWIDTH_F_INIT(bwidth_amd17df_init)
             msr_write(tp.cpus[sock].id, (void *) &zero, sizeof(ullong), ctrs[i]);
         }
     }
-    timestamp_get(&pool[devs_count].time);
     // First multiplex;
     multiplex(NULL);
     // If monitor is running the multiplexing can be done.
@@ -141,7 +142,6 @@ BWIDTH_F_READ(bwidth_amd17df_read)
     ullong value;
     int sock;
     int i, j;
-
     // Pooling
     timestamp_get(&bws[devs_count].time);
     for (sock = 0; sock < tp.cpu_count; ++sock) {

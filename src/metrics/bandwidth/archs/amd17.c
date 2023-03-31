@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -52,6 +52,8 @@ BWIDTH_F_LOAD(bwidth_amd17_load)
         ctl = 0xc0010230;
         ctr = 0xc0010231;
     }
+    // It seems that in ZEN2 there are two L3's chunks per CCD, one per CCX.
+    // But in case of ZEN3, there is just one L3 chunk per CCD.
     devs_count = tp.cpu_count;
     //
     apis_put(ops->get_info, bwidth_amd17_get_info);
