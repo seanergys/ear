@@ -5,6 +5,7 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 band_OBJS = \
     amd17.o \
     amd17df.o \
+    amd19.o \
     dummy.o \
     eard.o \
     intel63.o \

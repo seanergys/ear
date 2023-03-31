@@ -63,7 +63,7 @@ BWIDTH_F_LOAD(bwidth_amd17df_load)
                   (getbits64(cmds[i],  7,  6)      );
     }
     devs_count = tp.cpu_count * 4;
-    pool = calloc(devs_count+1, sizeof(ullong));
+    pool = calloc(devs_count+1, sizeof(bwidth_t));
     //
     apis_put(ops->get_info, bwidth_amd17df_get_info);
     apis_put(ops->init,     bwidth_amd17df_init);
@@ -79,61 +79,28 @@ BWIDTH_F_GET_INFO(bwidth_amd17df_get_info)
     info->devs_count  = devs_count+1;
 }
 
-static state_t multiread(bwidth_t *bws)
-{
-    ullong value;
-    int sock;
-    int i, j;
-
-    // Pooling
-    timestamp_get(&bws[devs_count]);
-    for (sock = 0; sock < tp.cpu_count; ++sock) {
-        for (i = 0; i < 4; ++i) {
-            msr_read(tp.cpus[sock].id, &value, sizeof(ullong), ctrs[i]);
-            // 48 bits wide registers. Multipied by two because there are 8
-            // channels but just 4 registers. The ideal thing would be postpone
-            // this multiplication until the GB/s are computed, but this class
-            // don't have a diff function yet.
-            value = (value & MAXBITS48) * 2LLU;
-            // We are not cleaning the register, because although we are
-            // setting another event when multiplexing, the value remains
-            // in the counter, then the following = is the correct operator.
-            bws[(sock*4)+i] = value;
-        }
-    }
-    return EAR_SUCCESS;
-}
-
 static state_t multiplex(void *something)
 {
     static int flip = 0; // New commands
-    static int init = 0;
     int sock;
     int i, j;
 
     debug("flipflop");
-    while (pthread_mutex_trylock(&lock));
-    if (init) {
-        // TODO: convert the pool to bwidth_t
-        multiread((bwidth *) pool);
-    }
     // Flip-flopping the controllers and cleaning the counters
     for (sock = 0; sock < tp.cpu_count; ++sock) {
         for (i = 0, j = flip * 4; i < 4; ++i, ++j) {
             debug("SOCK%d_REG%d: %010llu cas (multiplexing to IMC%d 0x%09llx)",
-                sock, i, pool[(sock*4)+i], imcs[j], cmds[j]);
+                sock, i, pool[(sock*4)+i].cas, imcs[j], cmds[j]);
             msr_write(tp.cpus[sock].id, (void *) &cmds[j], sizeof(ullong), ctls[i]);
         }
     }
     flip = !flip;
-    init = 1;
-    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
 BWIDTH_F_INIT(bwidth_amd17df_init)
 {
-    ullong cmd = 0LLU;
+    ullong zero = 0LLU;
     int i, sock;
     state_t s;
 
@@ -145,23 +112,22 @@ BWIDTH_F_INIT(bwidth_amd17df_init)
     // Cleaning counters and controllers
     for (sock = 0; sock < tp.cpu_count; ++sock) {
         for (i = 0; i < 4; ++i) {
-            msr_write(tp.cpus[sock].id, (void *) &cmd, sizeof(ullong), ctls[i]);
-            msr_write(tp.cpus[sock].id, (void *) &cmd, sizeof(ullong), ctrs[i]);
+            msr_write(tp.cpus[sock].id, (void *) &zero, sizeof(ullong), ctls[i]);
+            msr_write(tp.cpus[sock].id, (void *) &zero, sizeof(ullong), ctrs[i]);
         }
     }
-    timestamp_get(&pool_time);
+    timestamp_get(&pool[devs_count].time);
+    // First multiplex;
+    multiplex(NULL);
     // If monitor is running the multiplexing can be done.
-    // If not, we are not pooling nor flipfloping.
-    if ((is_multiplexing = monitor_is_initialized())) {
-        // Multiplexing suscription
-        sus             = suscription();
-        sus->call_init  = NULL;
-        sus->call_main  = multiplex;
-        sus->time_relax = 5000;
-        sus->time_burst = 5000;
-        return sus->suscribe(sus);
-    }
-    return multiplex(NULL);
+    // If not, we are not flipfloping. But we can already read.
+    // Multiplexing suscription
+    sus             = suscription();
+    sus->call_init  = NULL
+    sus->call_main  = multiplex;
+    sus->time_relax = 5000;
+    sus->time_burst = 5000;
+    return sus->suscribe(sus);
 }
 
 BWIDTH_F_DISPOSE(bwidth_amd17df_dispose)
@@ -171,13 +137,26 @@ BWIDTH_F_DISPOSE(bwidth_amd17df_dispose)
 
 BWIDTH_F_READ(bwidth_amd17df_read)
 {
-    if (!is_multiplexing) {
-        return multiread(bws);
+    ullong value;
+    int sock;
+    int i, j;
+
+    // Pooling
+    timestamp_get(&bws[devs_count].time);
+    for (sock = 0; sock < tp.cpu_count; ++sock) {
+        for (i = 0; i < 4; ++i) {
+            msr_read(tp.cpus[sock].id, &value, sizeof(ullong), ctrs[i]);
+            // 48 bits wide registers. Multipied by two because there are 8
+            // channels but just 4 registers. The ideal thing would be postpone
+            // this multiplication until the GB/s are computed, but this class
+            // don't have a diff function yet.
+            value = (value & MAXBITS48) * 2LLU;
+            // We are not cleaning the register, because although we are
+            // setting another event when multiplexing, the value remains
+            // in the counter, then the following = is the correct operator.
+            bws[(sock*4)+i].cas = value;
+        }
     }
-    while (pthread_mutex_trylock(&lock));
-    // Copy the pool and multiply per 2
-    memcpy(bws, pool, devs_count+1);
-    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 

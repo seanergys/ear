@@ -15,20 +15,24 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
+#include <common/system/monitor.h>
 #include <common/math_operations.h>
-#include <metrics/common/msr.h>
+#include <common/hardware/bithack.h>
+#include <metrics/common/hsmp.h>
 #include <metrics/bandwidth/archs/amd19.h>
 
-static topology_t  tp;
-static uint        fun; //Address
-static uint        is_pooling;
-static bwidth_t    *pool;
-static timestamp_t pool_time;
-
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static topology_t      tp;
+static uint            fun; //Address
+static suscription_t  *sus;
+static uint            is_pooling;
+static bwidth_t       *pool;
+static double          line_size;
 
 BWIDTH_F_LOAD(bwidth_amd19_load)
 {
@@ -43,14 +47,15 @@ BWIDTH_F_LOAD(bwidth_amd19_load)
     }
     // ZEN3
     fun = 0x14;
+    line_size = (double) tpo->cache_line_size;
     //
-    pool = calloc(tp.cpu_count+1, sizeof(ullong));
+    pool = calloc(tp.cpu_count+1, sizeof(bwidth_t));
 
     apis_put(ops->get_info,  bwidth_amd19_get_info);
     apis_put(ops->init,      bwidth_amd19_init);
     apis_put(ops->dispose,   bwidth_amd19_dispose);
     apis_put(ops->read,      bwidth_amd19_read);
-    apis_put(ops->data_diff, bwidth_amd19_data_diff);
+//    apis_put(ops->data_diff, bwidth_amd19_data_diff);
 }
 
 BWIDTH_F_GET_INFO(bwidth_amd19_get_info)
@@ -65,18 +70,36 @@ static state_t multiread(bwidth_t *bws)
 {
     uint args[1] = { -1 };
     uint reps[2] = { 0, -1 };
+    timestamp_t time;
+    double secs;
+    double fcas;
+    int sock;
 
+    // Getting old time
+    time = bws[tp.cpu_count].time;
+    // Getting new time
     timestamp_get(&bws[tp.cpu_count].time);
+    // Working in seconds with the precission of USECS
+    secs = timestamp_fdiff(&bws[tp.cpu_count].time, &time, TIME_SECS, TIME_USECS);
+    // Reading HSMP
     for (sock = 0; sock < tp.cpu_count; ++sock) {
         hsmp_send(sock, fun, args, reps);
-        bws[sock].cas = getbits32(reps[0], 19, 8);
+        // Converting GB/s to GBytes since last read
+        fcas  = (double) getbits32(reps[0], 19, 8);
+        fcas *= (double) 1E9;
+        fcas *= (double) secs;
+        fcas /= (double) line_size;
+        bws[sock].cas += (ullong) fcas;
     }
     return EAR_SUCCESS;
 }
 
-static state_t multiplex(void *something)
+static state_t multipool(void *something)
 {
-    // Call multiread passing pool
+    while (pthread_mutex_trylock(&lock));
+    multiread(pool);
+    pthread_mutex_unlock(&lock);
+    return EAR_SUCCESS;
 }
 
 BWIDTH_F_INIT(bwidth_amd19_init)
@@ -100,11 +123,31 @@ BWIDTH_F_DISPOSE(bwidth_amd19_dispose)
 
 BWIDTH_F_READ(bwidth_amd19_read)
 {
-    memset(bws, 0, (tp.cpu_count+1)*sizeof(bwidth_t));
-    memcpy(...);
+    // Update pool
+    multipool(NULL);
+    while (pthread_mutex_trylock(&lock));
+    memcpy(bws, pool, tp.cpu_count+1);
+    pthread_mutex_unlock(&lock);
+    return EAR_SUCCESS;
 }
 
+#if 0
 BWIDTH_F_DATA_DIFF(bwidth_amd19_data_diff)
 {
-    //     
+    ullong tcas = 0; // Total cas
+    ullong diff = 0;
+    int sock;
+
+    for (sock = 0; sock < tp.cpu_count; ++sock) {
+        diff  = (bws2[sock].cas + bws1[sock].cas) / 2LLU;
+        diff  = ((bws2[sock].cas * 1E9) / line_size);
+        tcas += cas;
+        if (bwsD != NULL) {
+            bwsD[sock].cas = diff;
+        }
+    }
+    // CAS is already GB/s in AMD19
+    if (gbs != NULL) { *gbs = bws2[sock].cas; }
+    if (cas != NULL) { *cas = tcas; }
 }
+#endif

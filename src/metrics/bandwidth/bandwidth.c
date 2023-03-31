@@ -46,6 +46,7 @@ void bwidth_load(topology_t *tp, int eard)
         goto leave;
     }
     if (state_ok(bwidth_eard_load    (tp, &ops, eard))) { api.api = API_EARD;     }
+    bwidth_amd19_load   (tp, &ops);
     bwidth_amd17_load   (tp, &ops);
     bwidth_amd17df_load (tp, &ops);
     if (state_ok(bwidth_intel63_load (tp, &ops)))       { api.api = API_INTEL63;  }
@@ -91,6 +92,7 @@ state_t bwidth_init(ctx_t *c)
 	while (pthread_mutex_trylock(&lock));
 	state_t s = ops.init(c);
 	pthread_mutex_unlock(&lock);
+    bwidth_get_info(api);
 	return s;
 }
 
@@ -102,6 +104,7 @@ state_t bwidth_dispose(ctx_t *c)
 state_t bwidth_read(ctx_t *c, bwidth_t *b)
 {
     overhead_start(oid);
+    memset(b, 0, api.devs_count*sizeof(bwidth_t));
     state_t s = ops.read(c, b);
     overhead_stop(oid);
     return s;
@@ -135,6 +138,10 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
     double secs = 0.0;
     int i;
 
+    // Other API is controlling the diff
+    if (ops.data_diff != NULL) {
+        return ops.data_diff(b2, b1, bD, cas, gbs);
+    }
     if (cas != NULL) { *cas = 0LLU; }
     if (gbs != NULL) { *gbs = 0.0;  }
     // Ms to seconds (for decimals)
