@@ -1160,7 +1160,7 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 	else if (strlen(q_a->job_ids) > 0)
 		add_int_list_filter(query, "job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
-		add_int_filter(query, "step_id", q_a->step_id);
+		add_int_filter(query, "Loops.step_id", q_a->step_id);
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
