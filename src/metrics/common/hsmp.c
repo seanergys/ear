@@ -71,6 +71,7 @@ static uint       hsmp_failed;
 static state_t unlock_msg0(state_t s, char *msg)
 {
     debug("Exitting because: %s", msg);
+    hsmp_failed = state_fail(s);
 	pthread_mutex_unlock(&lock0);
 	return_msg(s, msg);
 }
@@ -111,9 +112,7 @@ state_t hsmp_scan(topology_t *tp)
 		// TODO: test function
         uint args[2] = { 68, -1 };
         uint reps[2] = {  0, -1 };
-	
-        hsmp_failed = 1;
-        // We assumed HSMP has failed, but now we test	
+        
         if (state_fail(s = hsmp_send(0, 0x01, args, reps))) {
             return unlock_msg0(s, "HSMP not enabled");
         }
@@ -123,7 +122,6 @@ state_t hsmp_scan(topology_t *tp)
         }
         debug("Ping returned %d", reps[0]);
 	}
-    hsmp_failed = 0;
 	return unlock_msg0(EAR_SUCCESS, "OK");
 }
 
