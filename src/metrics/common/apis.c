@@ -56,6 +56,7 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_FAKE    ) { snprintf(buffer, size, "FAKE"    ); }
     else if (api == API_CPUMODEL) { snprintf(buffer, size, "CPUMODEL"); }
     else if (api == API_RSMI    ) { snprintf(buffer, size, "RSMI"    ); }
+    else if (api == API_AMD19   ) { snprintf(buffer, size, "AMD19"   ); }
 }
 
 void granularity_print(uint granularity, char *prefix)

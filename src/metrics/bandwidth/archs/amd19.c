@@ -30,7 +30,6 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static topology_t      tp;
 static uint            fun; //Address
 static suscription_t  *sus;
-static uint            is_pooling;
 static bwidth_t       *pool;
 static double          line_size;
 

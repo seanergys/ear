@@ -28,10 +28,12 @@ BWIDTH_F_LOAD(bwidth_dummy_load)
 
 BWIDTH_F_GET_INFO(bwidth_dummy_get_info)
 {
-    info->api         = API_DUMMY;
-    info->scope       = SCOPE_NODE;
-    info->granularity = GRANULARITY_NODE;
-    info->devs_count  = 1+1;
+    if (info->api == API_NONE) {
+        info->api         = API_DUMMY;
+        info->scope       = SCOPE_NODE;
+        info->granularity = GRANULARITY_NODE;
+        info->devs_count  = 1+1;
+    }
 }
 
 BWIDTH_F_INIT(bwidth_dummy_init)

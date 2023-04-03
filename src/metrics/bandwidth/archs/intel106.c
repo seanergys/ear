@@ -104,12 +104,20 @@ state_t bwidth_intel106_load(topology_t *tp, bwidth_ops_t *ops)
 		return s;
 	}
 	// In the future it can be initialized in read only mode
-	replace_ops(ops->init,            bwidth_intel106_init);
-	replace_ops(ops->dispose,         bwidth_intel106_dispose);
-	replace_ops(ops->count_devices,   bwidth_intel106_count_devices);
-	replace_ops(ops->read,            bwidth_intel106_read);
+	apis_put(ops->get_info, bwidth_intel106_get_info);
+	apis_put(ops->init,     bwidth_intel106_init);
+	apis_put(ops->dispose,  bwidth_intel106_dispose);
+	apis_put(ops->read,     bwidth_intel106_read);
 
 	return EAR_SUCCESS;
+}
+
+BWIDTH_F_GET_INFO(bwidth_intel106_get_info)
+{
+    info->api         = API_INTEL106;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_IMC;
+    info->devs_count  = imc_ctrs_count+1;
 }
 
 state_t bwidth_intel106_init(ctx_t *c)

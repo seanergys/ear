@@ -47,14 +47,14 @@ void bwidth_load(topology_t *tp, int eard)
     if (is_loaded) {
         goto leave;
     }
-    if (state_ok(bwidth_eard_load    (tp, &ops, eard))) { api.api = API_EARD;     }
+    bwidth_eard_load    (tp, &ops, eard);
     bwidth_amd19_load   (tp, &ops);
     bwidth_amd17_load   (tp, &ops);
     bwidth_amd17df_load (tp, &ops);
-    if (state_ok(bwidth_intel63_load (tp, &ops)))       { api.api = API_INTEL63;  }
-    if (state_ok(bwidth_likwid_load  (tp, &ops)))       { api.api = API_LIKWID;   }
-    if (state_ok(bwidth_intel106_load(tp, &ops)))       { api.api = API_INTEL106; }
-    bwidth_dummy_load(tp, &ops);
+    bwidth_intel63_load (tp, &ops);
+    bwidth_likwid_load  (tp, &ops);
+    bwidth_intel106_load(tp, &ops);
+    bwidth_dummy_load   (tp, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at 
     // this point all API's have their devices counter.
     bwidth_get_info(&api);
@@ -68,28 +68,17 @@ leave:
 
 void bwidth_get_info(apinfo_t *info)
 {
-    // This is a patch until all internal API's have its own
-    if (ops.get_info != NULL) {
-        if (info->api == API_NONE) {
-            ops.get_info(info);
-        }
-    } else {
-        if (info->devs_count == 0) {
-            ops.count_devices(NULL, &info->devs_count);
-        }
-    }
     info->layer = "BANDWIDTH";
+    return ops.get_info(info);
 }
 
 void bwidth_get_api(uint *api_in)
 {
-    bwidth_get_info(&api);
     *api_in = api.api;
 }
 
 void bwidth_count_devices(ctx_t *c, uint *dev_count)
 {
-    bwidth_get_info(&api);
     *dev_count = api.devs_count;
 }
 
@@ -99,7 +88,7 @@ state_t bwidth_init(ctx_t *c)
     while (pthread_mutex_trylock(&lock));
     if (!is_initialized) {
     	s = ops.init(c);
-	is_initialized = 1;
+        is_initialized = 1;
     }
     pthread_mutex_unlock(&lock);
     return s;
@@ -110,11 +99,11 @@ state_t bwidth_dispose(ctx_t *c)
     return ops.dispose(c);
 }
 
-state_t bwidth_read(ctx_t *c, bwidth_t *b)
+state_t bwidth_read(ctx_t *c, bwidth_t *bws)
 {
     overhead_start(oid);
-    memset(b, 0, api.devs_count*sizeof(bwidth_t));
-    state_t s = ops.read(c, b);
+    bwidth_data_null(bws);
+    state_t s = ops.read(c, bws);
     overhead_stop(oid);
     return s;
 }
@@ -123,7 +112,8 @@ state_t bwidth_read_diff(ctx_t *c, bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ull
 {
     state_t s;
     if (state_fail(s = bwidth_read(c, b2))) {
-        return s;
+        // if read fails, b1 is copies in b2, which produces a 0.
+        bwidth_data_copy(b2, b1);
     }
     bwidth_data_diff(b2, b1, bD, cas, gbs);
     return s;
@@ -154,7 +144,7 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
     time = timestamp_diff(&b2[api.devs_count-1].time, &b1[api.devs_count-1].time, TIME_MSECS);
     // If no time, no metrics
     if (time == 0LLU) {
-	debug("Time is 0");
+        debug("Time is 0");
         return;
     }
     secs = (double) time;
@@ -174,7 +164,7 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
         if (bD != NULL) {
             bD[i].cas = diff;
         }
-        debug("IMC%d/%u: %llu - %llu = %llu", i,
+        debug("IMC%02d/%u: %014llu - %014llu = %llu", i,
               api.devs_count-2, b2[i].cas, b1[i].cas, diff);
     }
     tgbs = bwidth_help_castogbs(tcas, secs);
@@ -210,6 +200,11 @@ void bwidth_data_free(bwidth_t **b)
 {
     free(*b);
     *b = NULL;
+}
+
+void bwidth_data_null(bwidth_t *bws)
+{
+    memset(bws, 0, api.devs_count*sizeof(bwidth_t));
 }
 
 void bwidth_data_copy(bwidth_t *dst, bwidth_t *src)
@@ -259,29 +254,47 @@ double bwidth_help_castotpi(ullong cas, ullong instructions)
 
 #if TEST
 #include <common/system/monitor.h>
+#include <daemon/local_api/eard_api.h>
 
 static topology_t tp;
 static bwidth_t *bws1;
 static bwidth_t *bws2;
 static bwidth_t *bwsD;
-static ullong cas;
-static double gbs;
+static apinfo_t  info;
+static ullong    cas;
+static double    gbs;
 
 int main(int argc, char *argv[])
 {
+    int eard = 0;
+
+    if (argc >= 2) {
+        eard = atoi(argv[1]);
+    }
+    if (eard) {
+        eards_connection();
+    }
+
     topology_init(&tp);
-    bwidth_load(&tp, 0);
+
+    bwidth_load(&tp, eard);
     bwidth_data_alloc(&bws1);
     bwidth_data_alloc(&bws2);
     bwidth_data_alloc(&bwsD);
     bwidth_init(no_ctx);
+
+    bwidth_get_info(&info);
+    apinfo_print(&info, fderr, 1);
+
     monitor_init();
     
     bwidth_read(no_ctx, bws1);
     while (1) {
     	sleep(5);
 	bwidth_read_copy(no_ctx, bws2, bws1, bwsD, &cas, &gbs);
+	bwidth_data_print(cas, gbs, fderr);
     }
+
     return 0;
 }
 #endif

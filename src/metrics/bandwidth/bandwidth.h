@@ -52,9 +52,9 @@ BWIDTH_F_READ     (bwidth_ ##name ##_read);
 typedef struct bwidth_ops_s {
     state_t (*count_devices)   (ctx_t *c, uint *dev_count); // Obsolete
     BWIDTH_F_GET_INFO((*get_info));
-    BWIDTH_F_INIT     ((*init));
-    BWIDTH_F_DISPOSE  ((*dispose));
-    BWIDTH_F_READ     ((*read));
+    BWIDTH_F_INIT    ((*init));
+    BWIDTH_F_DISPOSE ((*dispose));
+    BWIDTH_F_READ    ((*read));
 } bwidth_ops_t;
 
 void bwidth_load(topology_t *tp, int eard);
@@ -85,6 +85,8 @@ void bwidth_data_accum(bwidth_t *bA, bwidth_t *bD, ullong *cas, double *gbs);
 void bwidth_data_alloc(bwidth_t **b);
 
 void bwidth_data_free(bwidth_t **b);
+
+void bwidth_data_null(bwidth_t *bws);
 
 void bwidth_data_copy(bwidth_t *dst, bwidth_t *src);
 

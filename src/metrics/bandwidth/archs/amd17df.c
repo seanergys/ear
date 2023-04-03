@@ -18,7 +18,6 @@
 //#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
-#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/math_operations.h>
@@ -33,7 +32,6 @@
 // 187:1c7 are excited by CPUs 48-63
 static topology_t      tp;
 static uint            devs_count;
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static bwidth_t       *pool;
 static suscription_t  *sus;
 static uint            imcs[8];
@@ -141,7 +139,7 @@ BWIDTH_F_READ(bwidth_amd17df_read)
 {
     ullong value;
     int sock;
-    int i, j;
+    int i;
     // Pooling
     timestamp_get(&bws[devs_count].time);
     for (sock = 0; sock < tp.cpu_count; ++sock) {
