@@ -141,9 +141,9 @@ static int my_size;
 static int num_nodes;
 static int ppnode;
 
+sem_t *lib_shared_lock_sem;
 #if MPI_OPTIMIZED
 uint ear_mpi_opt = 0;
-sem_t *lib_shared_lock_sem;
 uint ear_mpi_opt_num_nodes = 1;
 mpi_opt_policy_t mpi_opt_symbols;
 #endif
@@ -192,7 +192,6 @@ char lib_shared_region_path[GENERIC_NAME];
 char lib_shared_region_path_jobs[GENERIC_NAME];
 /* This lock is used to access the lib_shared_region shared memory */
 int  lib_shared_lock_fd = -1;
-sem_t *lib_shared_lock_sem;
 char sig_shared_region_path_jobs[GENERIC_NAME];
 char dummy_areas_path[GENERIC_NAME];
 int fd_libsh, fd_sigsh;
@@ -413,6 +412,7 @@ void create_shared_regions()
   if (lib_shared_lock_sem == SEM_FAILED){
     error("Creating sempahore %s (%s)", sem_file, strerror(errno));
   }
+  verbose_master(2, "SEM(%s) created", sem_file);
 
 	/* This section allocates shared memory for processes in same node */
     pid_t master_pid = getpid();
@@ -2391,7 +2391,7 @@ state_t earl_periodic_actions(void *no_arg)
     }
 
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) verbose_master(2,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
+            if (ear_guided == TIME_GUIDED) verbose_master(3,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
     }
 

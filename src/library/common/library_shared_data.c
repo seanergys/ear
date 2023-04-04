@@ -28,6 +28,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <semaphore.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -55,6 +56,8 @@ extern char sig_shared_region_path_jobs[GENERIC_NAME];
 static int fd_conf,fd_signatures;
 extern uint exclusive;
 extern uint fake_force_shared_node;
+
+extern sem_t *lib_shared_lock_sem;
 
 int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
 {
@@ -800,4 +803,111 @@ void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mg
     }
 #endif
     return;
+}
+
+
+state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
+{
+    if (data && sig)
+    {
+        verbose(3, "Updating the affinity mask...");
+
+        // Backup current data to be restored in case of error.
+
+        cpu_set_t node_mask_backup = data->node_mask;
+        uint node_mask_num_cpus_backup = data->num_cpus;
+
+        verbosen(3, "Current job mask: %u CPUs ", node_mask_num_cpus_backup);
+        verbose_affinity_mask(3, (const cpu_set_t *) &node_mask_backup, MAX_CPUS_SUPPORTED);
+
+        cpu_set_t *cpu_masks_backup = malloc(sizeof(cpu_set_t) * data->num_processes);
+        uint *num_cpus_backup = malloc(sizeof(uint) * data->num_processes);
+
+        CPU_ZERO(&data->node_mask); // Clean because we'll update it using CPU_OR
+
+        for (int i = 0; i < data->num_processes; i++)
+        {
+            cpu_masks_backup[i] = sig[i].cpu_mask; // Backup
+            num_cpus_backup[i] = sig[i].num_cpus;
+
+            // Update local cpu mask
+
+            int sem_ret_val = sem_wait(lib_shared_lock_sem);
+            if (sem_ret_val < 0)
+            {
+                verbose(1, "%sWARNING%s Locking semaphor for cpu mask update failed: %d",
+                        COL_YLW, COL_CLR, errno);
+            }
+
+            int ret_val = sched_getaffinity(sig[i].pid, sizeof(cpu_set_t), &sig[i].cpu_mask);
+
+            if (!sem_ret_val)
+            {
+                if (sem_post(lib_shared_lock_sem) < 0)
+                {
+                    verbose(1, "%sWARNING%s Unlocking semaphor for cpu mask update failed: %d",
+                            COL_YLW, COL_CLR, errno);
+                }
+            }
+
+            if (!ret_val)
+            {
+                // Update the number of CPUs o the process' mask
+                sig[i].num_cpus = CPU_COUNT(&sig[i].cpu_mask);
+
+                // Update node(job)_mask
+                CPU_OR(&data->node_mask, &data->node_mask, &sig[i].cpu_mask);
+            }
+            else
+            {
+                // Restore masks before returning
+                data->node_mask = node_mask_backup;
+                data->num_cpus = node_mask_num_cpus_backup;
+
+                // We had backed up and updated cpu masks from 0 to i
+                for (int j = 0; j <= i; j++)
+                {
+                    sig[j].cpu_mask = cpu_masks_backup[j];
+                    sig[j].num_cpus = num_cpus_backup[j];
+                }
+                free(cpu_masks_backup);
+                free(num_cpus_backup);
+
+                // Return and error message
+                char ret_msg[64];
+                ret_val = snprintf(ret_msg, sizeof(ret_msg),
+                                   "Getting the affinity mask of local rank (%d)", errno);
+
+                if (ret_val >= sizeof(ret_msg))
+                {
+                    return_msg(EAR_ERROR, "An error occurred and the message was truncated.")
+                }
+
+                return_msg(EAR_ERROR, ret_msg);
+            }
+        }
+
+        // Affinity (local and job) updated with no error
+
+        free(cpu_masks_backup);
+        free(num_cpus_backup);
+
+        // Update all remaining mask related fields
+        data->num_cpus = CPU_COUNT(&data->node_mask);
+
+        verbosen(3, "New job mask: %u CPUs ", data->num_cpus);
+        verbose_affinity_mask(3, (const cpu_set_t *) &data->node_mask, MAX_CPUS_SUPPORTED);
+
+        if (data->num_cpus != node_mask_num_cpus_backup)
+        {
+            verbose(1, "%sWARNING%s The number of job's CPUs changed from %u to %u.", COL_YLW, COL_CLR,
+                    node_mask_num_cpus_backup, data->num_cpus);
+        }
+
+        return EAR_SUCCESS;
+
+    } else
+    {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
 }

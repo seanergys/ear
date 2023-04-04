@@ -48,19 +48,17 @@ typedef struct cache_s {
 } cache_t;
 
 typedef struct coche_ops_s {
-    void    (*get_api)         (uint *api);
-    void    (*get_granularity) (uint *granularity);
+    void    (*get_info)        (apinfo_t *info);
     state_t (*init)            ();
 	state_t (*dispose)         ();
 	state_t (*read)            (cache_t *ca);
     void    (*data_diff)       (cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
+    void    (*details_tostr)      (char *buffer, int length);
 } cache_ops_t;
 
 void cache_load(topology_t *tp, int eard);
 
-void cache_get_api(uint *api);
-
-void cache_get_granularity(uint *granularity);
+void cache_get_info(apinfo_t *info);
 
 state_t cache_init(ctx_t *c);
 
@@ -79,5 +77,9 @@ void cache_data_copy(cache_t *dst, cache_t *src);
 void cache_data_print(cache_t *caD, double gbs, int fd);
 
 void cache_data_tostr(cache_t *caD, double gbs, char *buffer, size_t length);
+
+void cache_details_print(int fd);
+
+void cache_details_tostr(char *buffer, int length);
 
 #endif //METRICS_CACHE_H

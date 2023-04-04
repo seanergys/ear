@@ -23,6 +23,9 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
+#if DLB
+#include <semaphore.h>
+#endif
 // #define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config.h>
@@ -72,6 +75,10 @@
 static ear_event_t curr_policy_event;
 extern uint report_earl_events;
 extern report_id_t rep_id;
+
+#if DLB
+extern sem_t *lib_shared_lock_sem;
+#endif
 
 
 #define REPORT_PHASE(phase) \
@@ -604,6 +611,13 @@ state_t policy_init()
         policy_setup_priority();
     }
 
+    if (cmin_cpufreq != NULL) {
+        min_cpufreq = (ulong) atoi(cmin_cpufreq);
+    }
+
+    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
+            " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
+
     // Calling policy plug-in init
     if (polsyms_fun.init != NULL) {
 
@@ -622,11 +636,6 @@ state_t policy_init()
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
 
-    if (cmin_cpufreq != NULL) {
-        min_cpufreq = (ulong) atoi(cmin_cpufreq);
-    }
-    verbose_master(POLICY_INFO, "%sPOLICY%s Min. CPU freq. limited: %llu kHz"
-            " / Min. IMC freq. limited: %llu kHz", COL_BLU, COL_CLR, min_cpufreq, min_imcfreq);
 
     /* Even though the policy could be at the Node granularity, we will use a list */
 #if USE_GPUS
@@ -768,20 +777,18 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
         app_mgr = atoi(app_mgr_policy);
     }
 
-#if SHOW_DEBUGS
     if (masters_info.my_master_rank >=0){
         if (obj_path!=NULL){ 
-            debug("%s = %s", HACK_POWER_POLICY, obj_path);
+            verbose_master(2, "%sINFO%s %s = %s", COL_BLU, COL_CLR, HACK_POWER_POLICY, obj_path);
         } else {
             debug("%s undefined",HACK_POWER_POLICY);
         }
         if (ins_path !=NULL) {
-            debug("%s = %s",HACK_EARL_INSTALL_PATH,ins_path);
+            verbose_master(2,"%sINFO%s %s = %s",COL_BLU, COL_CLR, HACK_EARL_INSTALL_PATH,ins_path);
         }else{
             debug("%s undefined",HACK_EARL_INSTALL_PATH);
         }
     }
-#endif
 
     if (earl_default_domains.cpu == POL_NOT_SUPPORTED) {
         my_policy_name = monitoring;
@@ -883,6 +890,9 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
                        COL_RED, COL_CLR, state_msg);
     }
 
+    verbose_master(POLICY_INFO, "%sPOLICY%s System Min. CPU freq. limited: %llu kHz ", COL_BLU, COL_CLR, min_cpufreq);
+
+
     debug("max imc pstate: %u / imc pstate cnt %u",
           (uint) app_settings->imc_max_pstate, imc_pstate_cnt);
 
@@ -892,6 +902,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
         verbose_master(POLICY_INFO, "%sERROR%s Policy init could not read imc_max_pstate: %s",
                        COL_RED, COL_CLR, state_msg);
     }
+    verbose_master(POLICY_INFO, "%sPOLICY%s System Min. IMC freq. limited: %llu kHz ", COL_BLU, COL_CLR, min_imcfreq);
 
     return policy_init();
 }
@@ -1216,7 +1227,10 @@ state_t policy_set_default_freq(signature_t *sig)
 {
     signature_t s;
 
+    /* WARNING: sig can be NULL */
+
     if (masters_info.my_master_rank < 0 ) return EAR_SUCCESS;
+    verbose_master(2,"policy_set_default_freq");
 
 #if USE_GPUS
     s.gpu_sig.num_gpus = my_pol_ctx.num_gpus;
@@ -1285,7 +1299,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 
 }
 
-
+/* Uncomment this option to use energy savings estimations to decide if policy is ok */
+//#define USE_ENERGY_SAVING
 /* This function checks the CPU freq selection accuracy (only CPU), ok is an output */
 state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 {
@@ -1382,12 +1397,14 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 
         compute_energy_savings(curr, prev);
 
+        #if USE_ENERGY_SAVING
         if (sig_ext->saving < 0) {
 
           *ok = 0;
 
           verbose(2, "%sPOLICY OK%s We are not saving energy.", COL_RED, COL_CLR);
         }
+        #endif
     }
 
     // We finally report the OPT_ACCURACY
@@ -1774,7 +1791,27 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
 
         /* This is the default use case. EAR uses the CPU affinity mask */
+#if DLB
+        int sem_ret_val = sem_wait(lib_shared_lock_sem);
+        if (sem_ret_val < 0)
+        {
+            verbose(1, "%sWARNING%s Locking semaphor for cpu mask read failed: %d", COL_YLW, COL_CLR, errno);
+        }
+#endif // DLB
+
         cpu_set_t process_mask = sig_shared_region[proc_lrank].cpu_mask;
+
+#if DLB
+        // We only want to increase the semaphor number if the previous lock was successful.
+        if (!sem_ret_val)
+        {
+            if (sem_post(lib_shared_lock_sem) < 0)
+            {
+                verbose(1, "%sWARNING%s Unlocking semaphor for cpu mask read failed: %d",
+                        COL_YLW, COL_CLR, errno);
+            }
+        }
+#endif // DLB
 
         for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
             if (CPU_ISSET(cpu_idx, &process_mask)) {

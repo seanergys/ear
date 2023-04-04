@@ -41,16 +41,10 @@ out:
 	return;
 }
 
-void cache_get_api(uint *api)
+void cache_get_info(apinfo_t *info)
 {
-    *api = API_NONE;
-    return ops.get_api(api);
-}
-
-void cache_get_granularity(uint *granularity)
-{
-    *granularity = GRANULARITY_NONE;
-    return ops.get_granularity(granularity);
+    info->layer = "CACHE";
+    return ops.get_info(info);
 }
 
 state_t cache_init(ctx_t *c)
@@ -113,4 +107,16 @@ void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 snprintf(buffer, length,
     "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
     ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
+}
+
+void cache_details_print(int fd)
+{
+    char buffer[1024];
+    cache_details_tostr(buffer, 1024);
+    dprintf(fd, "%s", buffer);
+}
+
+void cache_details_tostr(char *buffer, int length)
+{
+    ops.details_tostr(buffer, length);
 }

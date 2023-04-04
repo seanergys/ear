@@ -15,16 +15,14 @@
 * and COPYING.EPL files.
 */
 
-#ifndef METRICS_CACHE_PERF
-#define METRICS_CACHE_PERF
+#ifndef METRICS_CACHE_PERF_H
+#define METRICS_CACHE_PERF_H
 
 #include <metrics/cache/cache.h>
 
 void cache_perf_load(topology_t *tp, cache_ops_t *ops);
 
-void cache_perf_get_api(uint *api);
-
-void cache_perf_get_granularity(uint *granularity);
+void cache_perf_get_info(apinfo_t *info);
 
 state_t cache_perf_init();
 
@@ -34,4 +32,6 @@ state_t cache_perf_read(cache_t *ca);
 
 void cache_perf_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
-#endif //METRICS_CPI_INTEL63
+void cache_perf_details_tostr(char *buffer, int length);
+
+#endif //METRICS_CACHE_PERF_H
