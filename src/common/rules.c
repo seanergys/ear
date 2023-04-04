@@ -39,8 +39,16 @@ state_t rule_add(rule_t *rule)
     return EAR_SUCCESS;
 }
 
-state_t rule_add_list()
+state_t rule_add_list(rule_t *rules, int count)
 {
+    if (rules == NULL || num_rules < 1) return EAR_ERROR;
+
+    ruleset = realloc(ruleset, sizeof(rule_t)*num_rules + count);
+
+    memcpy(&ruleset[num_rules], rules, sizeof(rule_t)*count);
+
+    num_rules += count;
+
     return EAR_SUCCESS;
 }
 
@@ -61,10 +69,17 @@ state_t rule_filter(char *filter, enum domain domain)
         i--; //re-do this position (which is now the last one)
     }
 
+    if (num_rules == 0) ruleset = NULL; //to prevent issues with further reallocs down the line
+
     return EAR_SUCCESS;
 }
 
 state_t rule_check(time_t timestamp, uint64_t power)
 {
+    int i;
+    for (i = 0; i < num_rules; i++) {
+        if 
+    }
+
     return EAR_SUCCESS;
 }
