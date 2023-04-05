@@ -1449,8 +1449,6 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
 			verbose(0,"Warning, estimate metrics and not master task");
 			return;
 		}
-		sig_ext_t *sig_ext ;
-
 
 
     if (estimate_power){
@@ -1464,7 +1462,6 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
       estimate_power = 0;
     }
 
-  	sig_ext = metrics->sig_ext;
 
 		if (estimate_met_cpuf){
 			if (mgt_cpufreq.ok){ 
@@ -1530,6 +1527,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			sig_ext->dcgmis.dcgmi_gpus 			= gpu_dcgmi_gpus_detected();
       sig_ext->dcgmis.dcgmi_num_ev 		= DCGMI_NUM_EVENTS;
       sig_ext->dcgmis.dcgmi_events 		= calloc(DCGMI_SETS, sizeof(uint *));
+      sig_ext->dcgmis.dcgmi_instances	= calloc(DCGMI_SETS, sizeof(uint));
       sig_ext->dcgmis.dcgmi_metrics 	= calloc(DCGMI_SETS, sizeof(dcgmi_t *));
       for (uint set = 0; set < DCGMI_SETS; set++){
 				verbose_master(2,"Allocating events for set %u", set);
@@ -1628,6 +1626,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
       /* Copy in sig_ext */
       gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set]);
+      sig_ext->dcgmis.dcgmi_instances[dcgmi_curr_ev_set]++;
 
       dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % DCGMI_SETS;
 

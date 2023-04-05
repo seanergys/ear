@@ -75,15 +75,17 @@ typedef enum {
   CPI      = 0,
   GFLOPS   = 1,
   GFLOPS_W = 2,
+  GBS_W    = 3,
 } opt_metric_t;
 
 typedef enum{
   max_value = 0,
   min_value = 1,
+  ratio_value = 2,
 }opt_type_t;
 static opt_metric_t metric_to_optimize = CPI;
 static opt_type_t   metric_strategy    = min_value;
-char optimize_criteria[1024];
+static char optimize_criteria[1024];
 
 extern ulong *cpufreq_diff;
 
@@ -115,6 +117,7 @@ static uint *sig_ready;
 
 static polsym_t gpus;
 static const ulong **gpuf_pol_list;
+static const ulong **cpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 
 
@@ -131,8 +134,8 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 #define FLAG_METRIC_TO_OPTIMIZE   "EAR_METRIC_TO_OPTIMIZE"
 #define FLAG_STRATEGY_TO_OPTIMIZE "EAR_STRATEGY_TO_OPTIMIZE"
 
-#define metric_is(x)    (x == CPI?"CPI":(x==GFLOPS?"GFLOPS":"GFLOPS_W"))
-#define strategy_is(x)  (x == max_value?"MAX":"MIN")
+#define metric_is(x)    (x == CPI?"CPI":(x == GFLOPS?"GFLOPS":(x == GFLOPS_W?"GFLOPS_W":"GBS_W")))
+#define strategy_is(x)  (x == max_value?"MAX":(x == min_value?"MIN":"RATIO"))
 
 static void update_optimize_options(char *metric,char * strategy)
 {
@@ -140,10 +143,12 @@ static void update_optimize_options(char *metric,char * strategy)
     if (strcmp(metric, "CPI") == 0)       metric_to_optimize = CPI;
     if (strcmp(metric, "GFLOPS") == 0)    metric_to_optimize = GFLOPS;
     if (strcmp(metric, "GFLOPS_W") == 0)  metric_to_optimize = GFLOPS_W;
+    if (strcmp(metric, "GBS_W") == 0)     metric_to_optimize = GBS_W;
   }
   if (strategy != NULL){
-    if (strcmp(strategy, "MAX") == 0)     metric_strategy = max_value;
-    if (strcmp(strategy, "MIN") == 0)     metric_strategy = min_value;
+    if (strcmp(strategy, "MAX") == 0)       metric_strategy = max_value;
+    if (strcmp(strategy, "MIN") == 0)       metric_strategy = min_value;
+    if (strcmp(strategy, "RATIO") == 0)     metric_strategy = ratio_value;
   }
   sprintf(optimize_criteria,"Metric=%s Strategy=%s", metric_is(metric_to_optimize), strategy_is(metric_strategy));
 }
@@ -208,9 +213,10 @@ state_t policy_init(polctx_t *c)
     node_freqs_alloc(&last_nodefreq_sel);
 
 
+
     /* Configuring default freqs */
     for (i=0; i < num_processes; i++) {
-        optimize_def_freqs.cpu_freq[i] = *(c->ear_frequency);
+        optimize_def_freqs.cpu_freq[i] = frequency_pstate_to_freq(0);
     }
 
 
@@ -577,6 +583,7 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
     }
 
     copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+    verbose_master(2,"GPU policy defined %s", (gpus.busy_wait_settings == NULL?"NO":"YES"));
 #if USE_GPUS
     if (gpus.busy_wait_settings != NULL){
       return gpus.busy_wait_settings(c, my_sig, freqs);
@@ -656,11 +663,18 @@ static uint policy_no_models_is_better_optimize(signature_t * curr_sig, signatur
     case CPI      : curr_data = curr_sig->CPI;old_data = prev_sig ->CPI; break;
     case GFLOPS   : curr_data = curr_sig->Gflops;old_data = prev_sig->Gflops; break;
     case GFLOPS_W : curr_data = curr_sig->Gflops/curr_sig->DC_power;old_data = prev_sig->Gflops/prev_sig->DC_power; break;
+    case GBS_W    : curr_data = curr_sig->GBS/curr_sig->DC_power;old_data = prev_sig->GBS/prev_sig->DC_power; break;
   }
 
   switch (metric_strategy){
     case min_value: result = (curr_data < old_data); break;
     case max_value: result = (curr_data > old_data); break;
+    case ratio_value: {
+      float penalty = 100.0 - ((float)curr_sig->def_f/(float)prev_sig->def_f)*100.0;
+      float benefit = 100.0 - (float)(curr_data/old_data)*100.0;
+      result = (benefit > penalty);
+      verbose_master(2,"%sOptimize ratio penalty %f benefit %f%s", COL_GRE, penalty, benefit, COL_CLR);
+    }
   }
   verbose_master(2,"%sOptimize CURR metric %lf PREV metric %lf evaluation %u%s", COL_GRE,curr_data, old_data, result,COL_CLR);
   return result;
