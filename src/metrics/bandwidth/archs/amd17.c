@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -43,7 +43,8 @@ BWIDTH_F_LOAD(bwidth_amd17_load)
     }
     // ZEN3
     if (tpo->family >= FAMILY_ZEN3) {
-        cmd = 0x0300c0000040ff04;
+//        cmd = 0x0300c0000040ff04;
+        cmd = 0x0300c00000400104;
         ctl = 0xc0010230;
         ctr = 0xc0010231;
     }
@@ -97,7 +98,7 @@ BWIDTH_F_READ(bwidth_amd17_read)
         msr_read(tp.cpus[cpu].id, &bws[cpu].cas, sizeof(ullong), ctr);
         // 48 bits for all counters from ZEN to ZEN3 (bit 48 is overflow)
         bws[cpu].cas = bws[cpu].cas & MAXBITS48;
-        debug("D%d: %010llu cas (REG 0x%lx)", cpu, bws[cpu].cas, ctr);
+        debug("CPU%03d: %014llu cas (REG 0x%lx)", tp.cpus[cpu].id, bws[cpu].cas, ctr);
     }
     return EAR_SUCCESS;
 }

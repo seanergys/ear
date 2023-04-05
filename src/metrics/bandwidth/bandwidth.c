@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -164,11 +164,11 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
         if (bD != NULL) {
             bD[i].cas = diff;
         }
-        debug("IMC%02d/%u: %014llu - %014llu = %llu", i,
+        debug("DEV%02d/%u: %014llu - %014llu = %llu", i,
               api.devs_count-2, b2[i].cas, b1[i].cas, diff);
     }
     tgbs = bwidth_help_castogbs(tcas, secs);
-    debug("CAS: %llu in %0.2lf secs", tcas, secs);
+    debug("CAS: %llu in %0.4lf secs", tcas, secs);
     debug("GBS: %0.2lf", tgbs);
     if (gbs != NULL) { *gbs = tgbs; }
     if (cas != NULL) { *cas = tcas; }
