@@ -2439,7 +2439,7 @@ state_t metrics_new_iteration(signature_t *sig)
     if (last_phase_bw){
       cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
       sig->CPI = cpi_avrg[LOO];
-      verbose_master(2, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
+      verbose_master(3, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
       return EAR_SUCCESS;
     }    
         // TODO: We changed the approach, so this message should change.

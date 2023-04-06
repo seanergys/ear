@@ -1476,7 +1476,7 @@ state_t policy_new_iteration(signature_t *sig)
 
 
     if (last_phase_io_bnd || last_phase_bw) {
-        verbose_master(POLICY_INFO , "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
+        verbose_master(POLICY_INFO +1, "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
                 COL_BLU, COL_CLR, sig->Gflops, sig->IO_MBS, sig->CPI );
 
         uint restore = 0;

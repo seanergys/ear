@@ -192,7 +192,7 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
       f32        = (float)(dcgmis_data_32[g].values[FP32_EV]*32);
       f16        = (float)(dcgmis_data_16[g].values[FP16_EV]*16);
       verbose_master(2, " GPU[%u] data for optimization: %f CPU-Flops GPU (%f 64 %f 32 %f 16)", g, cpu_gflops, f64, f32, f16);
-      *curr = (cpu_gflops+ (f64 + f32 +f16)*gpuf_list[g][last_GPU_pstate[g]]/(float)1000000.0)/(float)my_sig->DC_power;
+      *curr = (cpu_gflops+ sigex->elapsed*(f64 + f32 +f16)*gpuf_list[g][last_GPU_pstate[g]]/(float)1000000.0)/(float)my_sig->DC_power;
       verbose_master(2, " GPU[%u] data for optimization: %f",g, *curr);
       break;
       #else
@@ -287,7 +287,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
               new_freq[i] = gfreqs[i];
             }else{
                if (GPU_metric_ready(my_sig,i)){
-                verbose_master(2, "GPU[%d] optimize metric ready instances", i, dcgmi_instances);
+                verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
                 metric_ready = 1;
                 /* GPU data ready */
                 if (GPU_policy_state[i] == FIRST_SELECTION){
