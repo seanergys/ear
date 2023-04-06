@@ -104,6 +104,7 @@
 #include <library/policies/common/mpi_stats_support.h>
 
 #if DLB
+#include <dlb_talp.h>
 #include <common/external/ear_external.h>
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
@@ -254,39 +255,57 @@ uint exclusive = 1;
 ear_classify_t phases_limits;
 static ulong dynais_calls = 0;
 
+#if DLB
+/** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
+ * Init subscription function is left to NULL, and the main rutine is earl_periodic_actions_talp.
+ * If an error occurred, state_msg can be used.
+ *
+ * \param[out] sus The address of the subscription created.
+ *
+ * \return EAR_ERROR if an error ocurred registering the subscription.
+ * \return EAR_SUCCESS otherwise. */
+static state_t earl_create_talp_monitor(suscription_t *sus);
+
+static state_t earl_periodic_actions_talp(void *p);
+
+/** Prints DLB's POP collected metrics.
+ * \param verb_lvl Set the minimum verbose level to for printing (still not used). */
+static void metrics_print_pop_metrics(int verb_lvl);
+#endif
+
 static void print_local_data()
 {
-				char ver[64];
-				if (masters_info.my_master_rank == 0 || using_verb_files) {
-								version_to_str(ver);
+    char ver[64];
+    if (masters_info.my_master_rank == 0 || using_verb_files) {
+        version_to_str(ver);
 #if MPI
-								verbose(1, "---------------- EAR %s MPI enabled ----------------",ver);
+        verbose(1, "---------------- EAR %s MPI enabled ----------------",ver);
 #else
-								verbose(1, "-------------- EAR %s MPI not enabled --------------",ver);
+        verbose(1, "-------------- EAR %s MPI not enabled --------------",ver);
 #endif
-								verbose(1, "%30s: '%s'/'%s'", "App/user id", application.job.app_id,
-                                        application.job.user_id);
-								verbose(1, "%30s: '%s'/'%lu'/'%lu'", "Node/job id/step_id",
-                                        application.node_id, application.job.id,
-                                        application.job.step_id);
-								//verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
-								verbose(1, "%30s: %u/%lu (%d)", "P_STATE/frequency (turbo)",
-                                        EAR_default_pstate, application.job.def_f, ear_use_turbo);
-								verbose(1, "%30s: %u/%d/%d", "Tasks/nodes/ppn", my_size, num_nodes, ppnode);
-								verbose(1, "%30s: %s (%d)", "Policy (learning)",
-                                        application.job.policy, ear_whole_app);
-								verbose(1, "%30s: %0.2lf/%0.2lf", "Policy threshold/Perf accuracy",
-                                        application.job.th, get_ear_performance_accuracy());
-								verbose(1, "%30s: %d/%d/%d", "DynAIS levels/window/AVX512",
-                                        get_ear_dynais_levels(), get_ear_dynais_window_size(),
-                                        dynais_build_type());
-								verbose(1, "%30s: %s", "VAR path", get_ear_tmp());
-								verbose(1, "%30s: %u", "EAR privileged user",
-                                        system_conf->user_type==AUTHORIZED);
-								verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
-								verbose(1, "%30s: %lu", "Max CPU freq", system_conf->max_freq);
-								verbose(1, "-------------------------------------------------------");
-				}
+        verbose(1, "%30s: '%s'/'%s'", "App/user id", application.job.app_id,
+                application.job.user_id);
+        verbose(1, "%30s: '%s'/'%lu'/'%lu'", "Node/job id/step_id",
+                application.node_id, application.job.id,
+                application.job.step_id);
+        //verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
+        verbose(1, "%30s: %u/%lu (%d)", "P_STATE/frequency (turbo)",
+                EAR_default_pstate, application.job.def_f, ear_use_turbo);
+        verbose(1, "%30s: %u/%d/%d", "Tasks/nodes/ppn", my_size, num_nodes, ppnode);
+        verbose(1, "%30s: %s (%d)", "Policy (learning)",
+                application.job.policy, ear_whole_app);
+        verbose(1, "%30s: %0.2lf/%0.2lf", "Policy threshold/Perf accuracy",
+                application.job.th, get_ear_performance_accuracy());
+        verbose(1, "%30s: %d/%d/%d", "DynAIS levels/window/AVX512",
+                get_ear_dynais_levels(), get_ear_dynais_window_size(),
+                dynais_build_type());
+        verbose(1, "%30s: %s", "VAR path", get_ear_tmp());
+        verbose(1, "%30s: %u", "EAR privileged user",
+                system_conf->user_type==AUTHORIZED);
+        verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
+        verbose(1, "%30s: %lu", "Max CPU freq", system_conf->max_freq);
+        verbose(1, "-------------------------------------------------------");
+    }
 }
 
 
@@ -1773,7 +1792,8 @@ void ear_init()
 
         /* For code organization we have a separate subscription for MPI optimization */
         #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt){
+        if (is_mpi_enabled() && ear_mpi_opt)
+        {
           earl_mpi_opt = suscription();
           earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
           earl_mpi_opt->call_main = earl_periodic_actions_mpi_opt;
@@ -1783,18 +1803,27 @@ void ear_init()
           monitor_relax(earl_mpi_opt);
           verbose_master(2,"Monitor for MPI opt created");
         }
-        #endif
+#endif
 
-        #if START_END_OVH
+#if DLB
+        suscription_t earl_talp;
+        if (state_fail(earl_create_talp_monitor(&earl_talp)))
+        {
+            char *err_msg = "Error creating TALP monitor:";
+            verbose(0, "[%d] %s %s", my_node_id, buff, state_msg);
+        }
+#endif // DLB
+
+#if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-				verbose(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
-        #endif
+        verbose(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
+#endif
 
 #if USE_GPUS
-				if (is_cuda_enabled()){
-								ear_cuda_init();
-				}
+        if (is_cuda_enabled()){
+            ear_cuda_init();
+        }
 #endif
 }
 
@@ -2505,5 +2534,130 @@ void ear_constructor()
 }
 void ear_destructor()
 {
+}
+#endif
+
+#if DLB
+static state_t earl_create_talp_monitor(suscription_t *sus)
+{
+    if (is_mpi_enabled())
+    {
+        sus = suscription();
+
+        sus->call_init = NULL;
+        sus->call_main = earl_periodic_actions_talp;
+
+        sus->time_relax = 10000;
+        sus->time_burst = 10000;
+
+        if (state_fail(monitor_register(sus)))
+        {
+            char ret_msg[128];
+
+            int ret = snprintf(ret_msg, sizeof ret_msg, "Registering subscription (%s)", state_msg);
+            if (ret < sizeof ret_msg)
+            {
+                return_msg(EAR_ERROR, ret_msg);
+            } else
+            {
+                return_msg(EAR_ERROR, state_msg);
+            }
+        }
+
+        // monitor_relax(sus);
+    }
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t earl_periodic_actions_talp(void *p)
+{
+    int must_call_libdlb = 0;
+
+    int sem_ret_val = sem_wait(lib_shared_lock_sem);
+    if (sem_ret_val < 0)
+    {
+        verbose(1, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
+                COL_YLW, COL_CLR, strerror(errno));
+    }
+
+    if (lib_shared_region->must_call_libdlb)
+    {
+        sig_shared_region[my_node_id].libdlb_calls_cnt++;
+        must_call_libdlb = 1;
+    }
+
+    if (sem_post(lib_shared_lock_sem) < 0)
+    {
+        verbose(1, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
+                COL_YLW, COL_CLR, strerror(errno));
+    }
+
+    if (must_call_libdlb)
+    {
+        metrics_print_pop_metrics();
+    }
+}
+
+
+static void metrics_print_pop_metrics(int verb_lvl)
+{
+    if (VERB_ON(verb_lvl))
+    {
+        if (is_mpi_enabled())
+        {
+#if 0
+            static int already_printed = 0;
+            if (!already_printed)
+            {
+                int provided;
+                PMPI_Query_thread(&provided);
+
+                switch (provided)
+                {
+                    case MPI_THREAD_SINGLE:
+                        verbose(0, "Thread support: %d (MPI_THREAD_SINGLE %d)",
+                                provided, MPI_THREAD_SINGLE);
+                        break;
+                    case MPI_THREAD_FUNNELED:
+                        verbose(0, "Thread support: %d (MPI_THREAD_FUNNELED %d)",
+                                provided, MPI_THREAD_FUNNELED);
+                        break;
+                    case MPI_THREAD_SERIALIZED:
+                        verbose(0, "Thread support: %d (MPI_THREAD_SERIALIZED %d)", provided, MPI_THREAD_SERIALIZED);
+                        break;
+                    case MPI_THREAD_MULTIPLE:
+                        verbose(0, "Thread support: %d (MPI_THREAD_MULTIPLE %d)", provided, MPI_THREAD_MULTIPLE);
+                        break;
+                    default:
+                        verbose(0, "Thread support %d not found.", provided);
+                }
+
+                already_printed = 1;
+            }
+#endif
+            timestamp_t ts;
+            timestamp_getfast(&ts);
+
+            char ts_buff[64];
+            timestamp_tostr(&ts, ts_buff, sizeof ts_buff);
+
+            verbose(0, "[%s] [%d] Calling to DLB API's TALP interface", ts_buff, my_node_id);
+
+            dlb_node_metrics_t node_metrics;
+            DLB_TALP_CollectNodeMetrics(DLB_MPI_REGION, &node_metrics);
+
+            verbose(0, "Parallel efficiency: %f", node_metrics.parallel_efficiency);
+#if 0
+            dlb_pop_metrics_t pop_metrics;
+            timest = timestamp_getconvert(TIME_MSECS);
+            verbose(0, "[%d] Calling blocking call: %llu", my_node_id, timest);
+            
+            DLB_TALP_CollectPOPMetrics(DLB_MPI_REGION, &pop_metrics);
+            verbose(0, "LB %f LB iner %f LB intra %f", pop_metrics.lb, pop_metrics.lb_in, pop_metrics.lb_out);
+#endif
+        }
+    }
 }
 #endif

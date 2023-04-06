@@ -48,6 +48,10 @@
 #include <assert.h>
 #include <semaphore.h>
 
+#if DLB
+#include <dlb_talp.h>
+#endif
+
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/time.h>
@@ -297,6 +301,13 @@ static state_t energy_lib_init(settings_conf_t *conf);
 
 /** Private function to perfom last operations before returning from dispose call. */
 static void metrics_static_dispose();
+
+
+#if DLB
+/** Prints DLB's POP collected metrics.
+ * \param verb_lvl Set the minimum verbose level to for printing. */
+static void metrics_print_pop_metrics(int verb_lvl);
+#endif
 
 
 node_freq_domain_t earl_default_domains = {
@@ -1490,7 +1501,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	// signature index.
 	sig_ext_t *sig_ext;
 
-	debug("process %d - %sapp/loop(1/0) %u%s",
+	verbose(0, "process %d - %sapp/loop(1/0) %u%s",
 			my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
 
 	/* Total time */
@@ -1808,10 +1819,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             "End compute signature for (l. rank) %d. Period %lf secs",
             my_node_id, sig_shared_region[my_node_id].period);
 
+
 	if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) {
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
-
 
 	/* Compute and print the total savings */
 	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
@@ -1884,9 +1895,7 @@ int metrics_init(topology_t *topo)
 {
 
     char *cimc_max_khz,*cimc_min_khz;
-#if 0
-	char imc_buffer[1024];
-#endif
+
 	pstate_t tmp_def_imc_pstate;
 	state_t st;
 	state_t s;
@@ -2036,11 +2045,10 @@ int metrics_init(topology_t *topo)
 		} else {
 			verbose_master(ERROR_VERB, "%sMETRICS%s IMCFREQ not supported.", COL_BLU, COL_CLR);
 		} // IMC
-	}
+	} // master
 
 #if USE_GPUS
     fflush(stderr);	
-#else
 #endif
 
 	metrics_global_start();
@@ -2062,53 +2070,113 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t job_node_sig;
 	uint num_ready;
-	uint exited;
 	float wait_time = 0;
 
-  #if METRICS_OVH
-  verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
-  #endif
+#if METRICS_OVH
+    verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+#endif
 
-  metrics->sig_ext = NULL;
+    metrics->sig_ext = NULL;
 
-	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
+    ullong time_st = timestamp_getconvert(TIME_MSECS);
+    verbosen(0, "--- %llu Metrics dispose init (l. rank) %d ---", time_st, my_node_id);
 
-	if (!eards_connected() && master){ 
+#if DLB
+        metrics_print_pop_metrics(0);
+#endif
+
+	if (!eards_connected() && master) {
 		if (!EARL_LIGHT){ 
 			return;
 		}
 	}
 
-	verbose_master(INFO_METRICS, "Calling last partial stop...");
+    /* Here we should lock the mutex and look whether another thread is computing a signature,
+     * so we can avoid recomputing again the last loop signature.
+     *
+     * If true, we can simply wait the other thread to mark signature as ready and jump to
+     * compute the application (global) signature. I need to have clearer the second synchro,
+     * but I think that we need it before global stop.
+     * Do we need to call compute_per_process_and_job_metrics ? It's difficult to answer because
+     * this function writes global data maybe wrote by the other thread.
+     *
+     * We could send a pthread_cancel to the other thread, when we enter this function.
+     * The other thread shall not be cancellable if it is computing the signature.
+     */
 
-	/* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
-	while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
-		usleep(10000);
-		wait_time += 0.01;
-	}
-	if (!lib_shared_region->earl_on){ 
-		return;
-	}
-	metrics_compute_signature_data(LOO, metrics, 1, procs);
+#if 0
+    if (state_fail(ear_trylock(&compute_signature_mutex)))
+    {
+        verbose(0, "[EAR] Locking for last signature computation failed.");
+    }
+
+    computing_last_signature = 1;
+
+    if (!computing_loop_signature)
+    {
+#endif
+        verbose_master(INFO_METRICS, "Calling last partial stop...");
+
+        /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
+        state_t ret = metrics_partial_stop(SIG_BEGIN);
+        while (ret == EAR_NOT_READY && wait_time < MAX_SYNCHO_TIME && lib_shared_region->earl_on)
+        { 
+            usleep(10000);
+
+            wait_time += 0.01;
+            ret = metrics_partial_stop(SIG_BEGIN);
+        }
+
+        if (!lib_shared_region->earl_on){ 
+            return;
+        }
+
+        verbose(0, "Computing last signature data");
+        metrics_compute_signature_data(LOO, metrics, 1, procs);
+#if 0
+    }
+
+    ear_unlock(&compute_signature_mutex);
+#endif
 
 	/* Waiting for node signatures */
 	verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
 
-	/* Synchro 2: Waiting for local signatures to compute loops.
-	 * Master will wait for the others and Other will wait for the master */
+	/* Synchro 2: Waiting for last local loops signatures.
+     *
+     * Slaves wait master to be ready for the global stop.
+     *
+     * Control variables:
+     *  - wait_time
+     *  - two_or_more_processes_tobe_exited 
+     *  - all_signs_ready
+     */
 	wait_time = 0;
-	exited = num_processes_exited(lib_shared_region,sig_shared_region);
-	while ((exited < lib_shared_region->num_processes - 1) 
-			&& are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
+
+	uint exited = num_processes_exited(lib_shared_region,sig_shared_region);
+    uint two_or_more_processes_tobe_exited = exited < (lib_shared_region->num_processes - 1);
+
+    uint all_signs_ready = are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready);
+
+	while (two_or_more_processes_tobe_exited && !all_signs_ready && (wait_time < MAX_SYNCHO_TIME))
+    {
 		if (!(master) && lib_shared_region->global_stop_ready) {
 			break;
 		}
+
+        // Why do we have this condition ? if just one process is pending to be exited, the loop is not entered.
 		if (master && (exited == lib_shared_region->num_processes - 1)) {
 			break;
 		}
+
 		usleep(10000);
-		wait_time += 0.01;
+
 		exited = num_processes_exited(lib_shared_region, sig_shared_region);
+        two_or_more_processes_tobe_exited = exited < (lib_shared_region->num_processes - 1);
+
+        all_signs_ready = are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready);
+
+		wait_time += 0.01;
 	}
 
 	// Only master does something in this funcion
@@ -2119,6 +2187,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		free_node_signatures(lib_shared_region,sig_shared_region);
 		lib_shared_region->global_stop_ready = 1;
 	}
+
 	debug("Global stop");
 	metrics_global_stop();
 	debug("metrics_compute_signature_data APP");
@@ -2717,3 +2786,59 @@ static state_t energy_lib_init(settings_conf_t *conf)
 static void metrics_static_dispose()
 {
 }
+
+
+#if DLB
+static void metrics_print_pop_metrics(int verb_lvl)
+{
+    if (VERB_ON(verb_lvl))
+    {
+        if (is_mpi_enabled())
+        {
+            static int already_printed = 0;
+            if (!already_printed)
+            {
+                int provided;
+                PMPI_Query_thread(&provided);
+
+                switch (provided)
+                {
+                    case MPI_THREAD_SINGLE:
+                        verbose(0, "Thread support: %d (MPI_THREAD_SINGLE %d)", provided, MPI_THREAD_SINGLE);
+                        break;
+                    case MPI_THREAD_FUNNELED:
+                        verbose(0, "Thread support: %d (MPI_THREAD_FUNNELED %d)", provided, MPI_THREAD_FUNNELED);
+                        break;
+                    case MPI_THREAD_SERIALIZED:
+                        verbose(0, "Thread support: %d (MPI_THREAD_SERIALIZED %d)", provided, MPI_THREAD_SERIALIZED);
+                        break;
+                    case MPI_THREAD_MULTIPLE:
+                        verbose(0, "Thread support: %d (MPI_THREAD_MULTIPLE %d)", provided, MPI_THREAD_MULTIPLE);
+                        break;
+                    default:
+                        verbose(0, "Thread support %d not found.", provided);
+                }
+
+                already_printed = 1;
+            }
+
+            // dlb_pop_metrics_t pop_metrics;
+            // DLB_TALP_CollectPOPMetrics(DLB_MPI_REGION, &pop_metrics);
+
+            dlb_node_metrics_t node_metrics;
+            ullong timest = timestamp_getconvert(TIME_MSECS);
+            verbose(0, "[%d] Calling blocking call: %llu", my_node_id, timest);
+            DLB_TALP_CollectNodeMetrics(DLB_MPI_REGION, &node_metrics);
+
+            verbose(0, "Parallel efficiency: %f", node_metrics.parallel_efficiency);
+
+            dlb_pop_metrics_t pop_metrics;
+            timest = timestamp_getconvert(TIME_MSECS);
+            verbose(0, "[%d] Calling blocking call: %llu", my_node_id, timest);
+            
+            DLB_TALP_CollectPOPMetrics(DLB_MPI_REGION, &pop_metrics);
+            verbose(0, "LB %f LB iner %f LB intra %f", pop_metrics.lb, pop_metrics.lb_in, pop_metrics.lb_out);
+        }
+    }
+}
+#endif

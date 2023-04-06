@@ -852,7 +852,7 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
 
             if (!ret_val)
             {
-                // Update the number of CPUs o the process' mask
+                // Update the number of CPUs of the process' mask
                 sig[i].num_cpus = CPU_COUNT(&sig[i].cpu_mask);
 
                 // Update node(job)_mask
