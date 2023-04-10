@@ -95,6 +95,7 @@ typedef struct lib_shared_data {
 #endif
 #if DLB
         int     must_call_libdlb; // A control variable to rule processes to call DLB blocking calls.
+        int     max_libdlb_calls; // The maximum times DLB API was called.
 #endif
 } lib_shared_data_t;
 

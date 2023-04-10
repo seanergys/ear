@@ -108,6 +108,8 @@
 #include <common/external/ear_external.h>
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
+
+static suscription_t earl_talp;
 #endif
 
 
@@ -271,6 +273,9 @@ static state_t earl_periodic_actions_talp(void *p);
 /** Prints DLB's POP collected metrics.
  * \param verb_lvl Set the minimum verbose level to for printing (still not used). */
 static void metrics_print_pop_metrics(int verb_lvl);
+
+
+static state_t earl_periodic_actions_talp_finalize();
 #endif
 
 static void print_local_data()
@@ -1806,11 +1811,10 @@ void ear_init()
 #endif
 
 #if DLB
-        suscription_t earl_talp;
         if (state_fail(earl_create_talp_monitor(&earl_talp)))
         {
             char *err_msg = "Error creating TALP monitor:";
-            verbose(0, "[%d] %s %s", my_node_id, buff, state_msg);
+            verbose(0, "[%d] %s %s", my_node_id, err_msg, state_msg);
         }
 #endif // DLB
 
@@ -1896,8 +1900,8 @@ void ear_finalize(int exit_status)
 				}
 #endif
 
-        #if SINGLE_CONNECTION
-				if (masters_info.my_master_rank>=0){
+#if SINGLE_CONNECTION
+        if (masters_info.my_master_rank>=0){
 								verbose_master(2,"Stopping periodic earl thread");	
 								verbose_master(2,"Stopping tracing");
 								traces_stop();
@@ -1905,12 +1909,15 @@ void ear_finalize(int exit_status)
 
 								traces_mpi_end();
 				}
-        #else
+#else
         traces_stop();
         traces_end(ear_my_rank, my_node_id, 0);
         traces_mpi_end();
-        #endif
-				monitor_unregister(earl_monitor);
+#endif
+#if DLB
+        earl_periodic_actions_talp_finalize();
+#endif
+        monitor_unregister(earl_monitor);
 				monitor_dispose();
 				debug("%d: monitor_disposed", my_node_id);
 
@@ -2564,7 +2571,7 @@ static state_t earl_create_talp_monitor(suscription_t *sus)
             }
         }
 
-        // monitor_relax(sus);
+        monitor_relax(sus);
     }
 
     return EAR_SUCCESS;
@@ -2586,6 +2593,17 @@ static state_t earl_periodic_actions_talp(void *p)
     {
         sig_shared_region[my_node_id].libdlb_calls_cnt++;
         must_call_libdlb = 1;
+
+        if (sig_shared_region[my_node_id].libdlb_calls_cnt > lib_shared_region->max_libdlb_calls)
+        {
+            lib_shared_region->max_libdlb_calls = sig_shared_region[my_node_id].libdlb_calls_cnt;
+
+            if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
+            {
+                verbose(1, "%sError%s Memory sync. for lib shared region failed: %s",
+                        COL_RED, COL_CLR, strerror(errno));
+            }
+        }
     }
 
     if (sem_post(lib_shared_lock_sem) < 0)
@@ -2596,7 +2614,7 @@ static state_t earl_periodic_actions_talp(void *p)
 
     if (must_call_libdlb)
     {
-        metrics_print_pop_metrics();
+        metrics_print_pop_metrics(0);
     }
 }
 
@@ -2660,4 +2678,42 @@ static void metrics_print_pop_metrics(int verb_lvl)
         }
     }
 }
+
+
+static state_t earl_periodic_actions_talp_finalize()
+{
+    int must_call_libdlb = 0;
+
+    int sem_ret_val = sem_wait(lib_shared_lock_sem);
+    if (sem_ret_val < 0)
+    {
+        verbose(1, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
+                COL_YLW, COL_CLR, strerror(errno));
+    }
+
+    lib_shared_region->must_call_libdlb = 0;
+
+    if (sig_shared_region[my_node_id].libdlb_calls_cnt < lib_shared_region->max_libdlb_calls)
+    {
+        must_call_libdlb = 1;
+        sig_shared_region[my_node_id].libdlb_calls_cnt++;
+    }
+
+    if (sem_post(lib_shared_lock_sem) < 0)
+    {
+        verbose(1, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
+                COL_YLW, COL_CLR, strerror(errno));
+    }
+
+    if (must_call_libdlb)
+    {
+        metrics_print_pop_metrics(0);
+    }
+
+    monitor_unregister(&earl_talp);
+
+    return EAR_SUCCESS;
+}
+
+
 #endif
