@@ -1501,8 +1501,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	// signature index.
 	sig_ext_t *sig_ext;
 
-	verbose(0, "process %d - %sapp/loop(1/0) %u%s",
-			my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
+	//verbose(0, "process %d - %sapp/loop(1/0) %u%s",
+  //			my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
 
 	/* Total time */
 	metrics_usecs[sign_app_loop_idx] = ear_max(metrics_usecs[sign_app_loop_idx], 1);

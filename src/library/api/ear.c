@@ -109,7 +109,9 @@
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
 
-static suscription_t earl_talp;
+static suscription_t* earl_talp;
+
+#define TALP_INFO  3
 #endif
 
 
@@ -269,6 +271,7 @@ static ulong dynais_calls = 0;
 static state_t earl_create_talp_monitor(suscription_t *sus);
 
 static state_t earl_periodic_actions_talp(void *p);
+static state_t earl_periodic_actions_talp_init(void *p);
 
 /** Prints DLB's POP collected metrics.
  * \param verb_lvl Set the minimum verbose level to for printing (still not used). */
@@ -472,6 +475,9 @@ void create_shared_regions()
 		lib_shared_region->master_rank = masters_info.my_master_rank;
 		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
+    #if DLB
+    lib_shared_region->must_call_libdlb = 1;
+    #endif
 	}
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
@@ -616,10 +622,9 @@ void create_shared_regions()
 
         #if DLB
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
-#warning Compiling with DLB activated
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
-        verbose_master(0, "Created shared region for external libraries!");
+        verbose_master(2, "Created shared region for external libraries!");
         #endif
 
 }
@@ -1811,10 +1816,10 @@ void ear_init()
 #endif
 
 #if DLB
-        if (state_fail(earl_create_talp_monitor(&earl_talp)))
+        if (state_fail(earl_create_talp_monitor(earl_talp)))
         {
             char *err_msg = "Error creating TALP monitor:";
-            verbose(0, "[%d] %s %s", my_node_id, err_msg, state_msg);
+            verbose(TALP_INFO, "[%d] %s %s", my_node_id, err_msg, state_msg);
         }
 #endif // DLB
 
@@ -2551,7 +2556,7 @@ static state_t earl_create_talp_monitor(suscription_t *sus)
     {
         sus = suscription();
 
-        sus->call_init = NULL;
+        sus->call_init = earl_periodic_actions_talp_init;
         sus->call_main = earl_periodic_actions_talp;
 
         sus->time_relax = 10000;
@@ -2572,20 +2577,27 @@ static state_t earl_create_talp_monitor(suscription_t *sus)
         }
 
         monitor_relax(sus);
+        verbose(TALP_INFO, "DLB-TALP subscription created");
     }
 
     return EAR_SUCCESS;
+}
+static state_t earl_periodic_actions_talp_init(void *p)
+{
+  verbose(TALP_INFO,"DLB-TALP Init done");
+  return EAR_SUCCESS;
 }
 
 
 static state_t earl_periodic_actions_talp(void *p)
 {
     int must_call_libdlb = 0;
+    verbose(TALP_INFO,"DLB-TALP Periodic action");
 
     int sem_ret_val = sem_wait(lib_shared_lock_sem);
     if (sem_ret_val < 0)
     {
-        verbose(1, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
+        verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
                 COL_YLW, COL_CLR, strerror(errno));
     }
 
@@ -2600,7 +2612,7 @@ static state_t earl_periodic_actions_talp(void *p)
 
             if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
             {
-                verbose(1, "%sError%s Memory sync. for lib shared region failed: %s",
+                verbose(TALP_INFO, "%sError%s Memory sync. for lib shared region failed: %s",
                         COL_RED, COL_CLR, strerror(errno));
             }
         }
@@ -2608,7 +2620,7 @@ static state_t earl_periodic_actions_talp(void *p)
 
     if (sem_post(lib_shared_lock_sem) < 0)
     {
-        verbose(1, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
+        verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
                 COL_YLW, COL_CLR, strerror(errno));
     }
 
@@ -2616,6 +2628,7 @@ static state_t earl_periodic_actions_talp(void *p)
     {
         metrics_print_pop_metrics(0);
     }
+    return EAR_SUCCESS;
 }
 
 
@@ -2661,12 +2674,15 @@ static void metrics_print_pop_metrics(int verb_lvl)
             char ts_buff[64];
             timestamp_tostr(&ts, ts_buff, sizeof ts_buff);
 
-            verbose(0, "[%s] [%d] Calling to DLB API's TALP interface", ts_buff, my_node_id);
+            verbose(TALP_INFO, "[%s] [%d] Calling to DLB API's TALP interface", ts_buff, my_node_id);
 
             dlb_node_metrics_t node_metrics;
             DLB_TALP_CollectNodeMetrics(DLB_MPI_REGION, &node_metrics);
-
-            verbose(0, "Parallel efficiency: %f", node_metrics.parallel_efficiency);
+           
+            if (VERB_GET_LV() >= TALP_INFO){
+              verbose(0, "PROCESS[%d]: Parallel efficiency: %f", my_node_id, node_metrics.parallel_efficiency);
+            }
+            verbose_master(2, "PROCESS[%d]: Parallel efficiency: %f", my_node_id, node_metrics.parallel_efficiency);
 #if 0
             dlb_pop_metrics_t pop_metrics;
             timest = timestamp_getconvert(TIME_MSECS);
@@ -2687,7 +2703,7 @@ static state_t earl_periodic_actions_talp_finalize()
     int sem_ret_val = sem_wait(lib_shared_lock_sem);
     if (sem_ret_val < 0)
     {
-        verbose(1, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
+        verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
                 COL_YLW, COL_CLR, strerror(errno));
     }
 
@@ -2701,7 +2717,7 @@ static state_t earl_periodic_actions_talp_finalize()
 
     if (sem_post(lib_shared_lock_sem) < 0)
     {
-        verbose(1, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
+        verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
                 COL_YLW, COL_CLR, strerror(errno));
     }
 
@@ -2710,7 +2726,7 @@ static state_t earl_periodic_actions_talp_finalize()
         metrics_print_pop_metrics(0);
     }
 
-    monitor_unregister(&earl_talp);
+    monitor_unregister(earl_talp);
 
     return EAR_SUCCESS;
 }
