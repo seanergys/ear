@@ -175,17 +175,17 @@ static state_t monitor_apis_init(void *whatever)
     //
     metrics_read(&mr1);
 	
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 static state_t monitor_apis_update(void *whatever)
 {
-    //stress_bandwidth(1000);
-    metrics_read_copy(&mr2, &mr1, &mrD);
-    
     // Printf clear
     system("clear");
 
+    //stress_bandwidth(1000);
+    metrics_read_copy(&mr2, &mr1, &mrD);
+    
     apinfo_print(&m.cch.info, fdout, 1);
 
     tprintf_init(fdout, STR_MODE_COL, "11 9 8 10 20");

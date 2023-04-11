@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -252,7 +252,7 @@ double bwidth_help_castotpi(ullong cas, ullong instructions)
 
 }
 
-#if TEST
+#if TEST0
 #include <common/system/monitor.h>
 #include <daemon/local_api/eard_api.h>
 

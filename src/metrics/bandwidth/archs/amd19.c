@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -89,6 +89,8 @@ static state_t multiread(bwidth_t *bws)
         fcas *= (double) secs;
         fcas /= (double) line_size;
         bws[sock].cas += (ullong) fcas;
+	debug("HSMP returned %u in %lf secs, or %0.3lf CAS",
+	    getbits32(reps[0], 19, 8), secs, fcas);
     }
     return EAR_SUCCESS;
 }
@@ -103,6 +105,8 @@ static state_t multipool(void *something)
 
 BWIDTH_F_INIT(bwidth_amd19_init)
 {
+    // Init
+    timestamp_get(&pool[tp.cpu_count].time);
     // Pool suscription
     sus             = suscription();
     sus->call_init  = NULL;
@@ -122,28 +126,7 @@ BWIDTH_F_READ(bwidth_amd19_read)
     // Update pool
     multipool(NULL);
     while (pthread_mutex_trylock(&lock));
-    memcpy(bws, pool, tp.cpu_count+1);
+    memcpy(bws, pool, sizeof(bwidth_t)*(tp.cpu_count+1));
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
-
-#if 0
-BWIDTH_F_DATA_DIFF(bwidth_amd19_data_diff)
-{
-    ullong tcas = 0; // Total cas
-    ullong diff = 0;
-    int sock;
-
-    for (sock = 0; sock < tp.cpu_count; ++sock) {
-        diff  = (bws2[sock].cas + bws1[sock].cas) / 2LLU;
-        diff  = ((bws2[sock].cas * 1E9) / line_size);
-        tcas += cas;
-        if (bwsD != NULL) {
-            bwsD[sock].cas = diff;
-        }
-    }
-    // CAS is already GB/s in AMD19
-    if (gbs != NULL) { *gbs = bws2[sock].cas; }
-    if (cas != NULL) { *cas = tcas; }
-}
-#endif

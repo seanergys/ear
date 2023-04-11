@@ -83,7 +83,8 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
 double timestamp_fdiff(timestamp *ts2, timestamp *ts1, ullong diff_unit, ullong prec_unit)
 {
     ullong idiff = timestamp_diff(ts2, ts1, prec_unit);
-    double fdiff = ((double) idiff) / ((double) diff_unit);
+    double fdiff = ((double) idiff) / (((double) diff_unit) / ((double) prec_unit));
+    return fdiff;
 }
 
 ullong timestamp_diffnow(timestamp *ts1, ullong time_unit)

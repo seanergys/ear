@@ -48,7 +48,6 @@ state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 	}
 	// Opening events
 	if (state_ok(perf_open(&perf_ins, NULL, 0, gen_ins_tp, gen_ins_ev))) {
-	//if (state_ok(perf_open(&perf_ins, NULL, 0, PERF_TYPE_RAW, 0x00c0))) {
 		ins_en = 1;
 	}
 	if (state_ok(perf_open(&perf_cyc, NULL, 0, gen_cyc_tp, gen_cyc_ev))) {
