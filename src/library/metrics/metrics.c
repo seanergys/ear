@@ -48,10 +48,6 @@
 #include <assert.h>
 #include <semaphore.h>
 
-#if DLB
-#include <dlb_talp.h>
-#endif
-
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/time.h>
@@ -301,13 +297,6 @@ static state_t energy_lib_init(settings_conf_t *conf);
 
 /** Private function to perfom last operations before returning from dispose call. */
 static void metrics_static_dispose();
-
-
-#if DLB
-/** Prints DLB's POP collected metrics.
- * \param verb_lvl Set the minimum verbose level to for printing. */
-static void metrics_print_pop_metrics(int verb_lvl);
-#endif
 
 
 node_freq_domain_t earl_default_domains = {
@@ -2079,11 +2068,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     metrics->sig_ext = NULL;
 
     ullong time_st = timestamp_getconvert(TIME_MSECS);
-    verbosen(0, "--- %llu Metrics dispose init (l. rank) %d ---", time_st, my_node_id);
-
-#if DLB
-        metrics_print_pop_metrics(0);
-#endif
+    verbosen(INFO_METRICS + 1, "--- %llu Metrics dispose init (l. rank) %d ---", time_st, my_node_id);
 
 	if (!eards_connected() && master) {
 		if (!EARL_LIGHT){ 
@@ -2786,59 +2771,3 @@ static state_t energy_lib_init(settings_conf_t *conf)
 static void metrics_static_dispose()
 {
 }
-
-
-#if DLB
-static void metrics_print_pop_metrics(int verb_lvl)
-{
-    if (VERB_ON(verb_lvl))
-    {
-        if (is_mpi_enabled())
-        {
-            static int already_printed = 0;
-            if (!already_printed)
-            {
-                int provided;
-                PMPI_Query_thread(&provided);
-
-                switch (provided)
-                {
-                    case MPI_THREAD_SINGLE:
-                        verbose(0, "Thread support: %d (MPI_THREAD_SINGLE %d)", provided, MPI_THREAD_SINGLE);
-                        break;
-                    case MPI_THREAD_FUNNELED:
-                        verbose(0, "Thread support: %d (MPI_THREAD_FUNNELED %d)", provided, MPI_THREAD_FUNNELED);
-                        break;
-                    case MPI_THREAD_SERIALIZED:
-                        verbose(0, "Thread support: %d (MPI_THREAD_SERIALIZED %d)", provided, MPI_THREAD_SERIALIZED);
-                        break;
-                    case MPI_THREAD_MULTIPLE:
-                        verbose(0, "Thread support: %d (MPI_THREAD_MULTIPLE %d)", provided, MPI_THREAD_MULTIPLE);
-                        break;
-                    default:
-                        verbose(0, "Thread support %d not found.", provided);
-                }
-
-                already_printed = 1;
-            }
-
-            // dlb_pop_metrics_t pop_metrics;
-            // DLB_TALP_CollectPOPMetrics(DLB_MPI_REGION, &pop_metrics);
-
-            dlb_node_metrics_t node_metrics;
-            ullong timest = timestamp_getconvert(TIME_MSECS);
-            verbose(0, "[%d] Calling blocking call: %llu", my_node_id, timest);
-            DLB_TALP_CollectNodeMetrics(DLB_MPI_REGION, &node_metrics);
-
-            verbose(0, "Parallel efficiency: %f", node_metrics.parallel_efficiency);
-
-            dlb_pop_metrics_t pop_metrics;
-            timest = timestamp_getconvert(TIME_MSECS);
-            verbose(0, "[%d] Calling blocking call: %llu", my_node_id, timest);
-            
-            DLB_TALP_CollectPOPMetrics(DLB_MPI_REGION, &pop_metrics);
-            verbose(0, "LB %f LB iner %f LB intra %f", pop_metrics.lb, pop_metrics.lb_in, pop_metrics.lb_out);
-        }
-    }
-}
-#endif
