@@ -20,12 +20,11 @@
 #include <stdlib.h>
 #include <common/output/debug.h>
 #include <metrics/common/apis.h>
-#include <management/cpupow/cpupow.h>
 #include <management/cpupow/archs/dummy.h>
 
-CPUPOW_F_LOAD(dummy)
+CPUPOW_F_LOAD(mgt_cpupow_dummy_load)
 {
-    apis_put(ops->get_api            , mgt_cpupow_dummy_get_api);
+    apis_put(ops->get_info           , mgt_cpupow_dummy_get_info);
     apis_put(ops->count_devices      , mgt_cpupow_dummy_count_devices);
     apis_put(ops->powercap_is_capable, mgt_cpupow_dummy_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_dummy_powercap_is_enabled);
@@ -35,7 +34,7 @@ CPUPOW_F_LOAD(dummy)
     apis_put(ops->tdp_get            , mgt_cpupow_dummy_tdp_get);
 }
 
-CPUPOW_F_GET_INFO(dummy)
+CPUPOW_F_GET_INFO(mgt_cpupow_dummy_get_info)
 {
     info->api         = API_DUMMY;
     info->scope       = SCOPE_DUMMY;
@@ -43,38 +42,38 @@ CPUPOW_F_GET_INFO(dummy)
     info->devs_count  = 1;
 }
 
-CPUPOW_F_COUNT_DEVICES(dummy)
+CPUPOW_F_COUNT_DEVICES(mgt_cpupow_dummy_count_devices)
 {
     return 1;
 }
 
-CPUPOW_F_POWERCAP_IS_CAPABLE(dummy)
+CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_dummy_powercap_is_capable)
 {
     return 0;
 }
 
-CPUPOW_F_POWERCAP_IS_ENABLED(dummy)
+CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_dummy_powercap_is_enabled)
 {
     *enabled = 0;
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_GET(dummy)
+CPUPOW_F_POWERCAP_GET(mgt_cpupow_dummy_powercap_get)
 {
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_SET(dummy)
+CPUPOW_F_POWERCAP_SET(mgt_cpupow_dummy_powercap_set)
 {
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_RESET(dummy)
+CPUPOW_F_POWERCAP_RESET(mgt_cpupow_dummy_powercap_reset)
 {
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_TDP_GET(dummy)
+CPUPOW_F_TDP_GET(mgt_cpupow_dummy_tdp_get)
 {
     return EAR_SUCCESS;
 }

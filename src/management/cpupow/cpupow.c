@@ -87,6 +87,7 @@ state_t mgt_cpupow_tdp_get(int domain, uint *watts)
 static topology_t tp;
 static uint tdps[2];
 static uint watts[2];
+static uint enabled[2];
 
 int main(int argc, char *argv[])
 {
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
     topology_print(&tp, verb_channel);
     mgt_cpupow_load(&tp, 0);
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);
+    mgt_cpupow_powercap_is_enabled(CPUPOW_SOCKET, enabled);
     mgt_cpupow_powercap_get(CPUPOW_SOCKET, watts);
 #if 1
     if (argc == 1) {

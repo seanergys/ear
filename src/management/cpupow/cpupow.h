@@ -21,6 +21,7 @@
 #include <common/types.h>
 #include <common/states.h>
 #include <common/hardware/topology.h>
+#include <metrics/common/apis.h>
 
 // Domain/device types
 #define CPUPOW_DOMAINS  3
@@ -32,7 +33,7 @@
 #define POWERCAP_DISABLE UINT_MAX
 
 // API building scheme
-#define CPUPOW_F_LOAD(name)                void name (topology_t *tpo, bwidth_ops_t *ops)
+#define CPUPOW_F_LOAD(name)                void name (topology_t *tpo, mgt_cpupow_ops_t *ops)
 #define CPUPOW_F_GET_INFO(name)            void name (apinfo_t *info)
 #define CPUPOW_F_COUNT_DEVICES(name)       int name (int domain)
 #define CPUPOW_F_POWERCAP_IS_CAPABLE(name) int name (int domain)
@@ -43,18 +44,17 @@
 #define CPUPOW_F_TDP_GET(name)             state_t name (int domain, uint *watts)
 
 #define CPUPOW_DEFINES(name) \
-CPUPOW_F_LOAD                (cpupow_ ##name ##_load); \
-CPUPOW_F_GET_INFO            (cpupow_ ##name ##_get_info); \
-CPUPOW_F_COUNT_DEVICES       (cpupow_ ##name ##_count_devices); \
-CPUPOW_F_POWERCAP_IS_CAPABLE (cpupow_ ##name ##_powercap_is_capable); \
-CPUPOW_F_POWERCAP_IS_ENABLED (cpupow_ ##name ##_powercap_is_enabled); \
-CPUPOW_F_POWERCAP_GET        (cpupow_ ##name ##_powercap_get); \
-CPUPOW_F_POWERCAP_SET        (cpupow_ ##name ##_powercap_set); \
-CPUPOW_F_POWERCAP_RESET      (cpupow_ ##name ##_powercap_reset); \
-CPUPOW_F_TDP_GET             (cpupow_ ##name ##_tdp_get);
+CPUPOW_F_LOAD                (mgt_cpupow_ ##name ##_load); \
+CPUPOW_F_GET_INFO            (mgt_cpupow_ ##name ##_get_info); \
+CPUPOW_F_COUNT_DEVICES       (mgt_cpupow_ ##name ##_count_devices); \
+CPUPOW_F_POWERCAP_IS_CAPABLE (mgt_cpupow_ ##name ##_powercap_is_capable); \
+CPUPOW_F_POWERCAP_IS_ENABLED (mgt_cpupow_ ##name ##_powercap_is_enabled); \
+CPUPOW_F_POWERCAP_GET        (mgt_cpupow_ ##name ##_powercap_get); \
+CPUPOW_F_POWERCAP_SET        (mgt_cpupow_ ##name ##_powercap_set); \
+CPUPOW_F_POWERCAP_RESET      (mgt_cpupow_ ##name ##_powercap_reset); \
+CPUPOW_F_TDP_GET             (mgt_cpupow_ ##name ##_tdp_get);
 
 typedef struct mgt_cpupow_ops_s {
-    CPUPOW_F_LOAD                ((*load));
     CPUPOW_F_GET_INFO            ((*get_info));
     CPUPOW_F_COUNT_DEVICES       ((*count_devices));
     CPUPOW_F_POWERCAP_IS_CAPABLE ((*powercap_is_capable));

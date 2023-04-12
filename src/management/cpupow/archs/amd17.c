@@ -228,7 +228,7 @@ static state_t debug_monitor(void *x)
         if (ener1msr[i] > 0) {
             energy = ((double) (ener2msr[i] - ener1msr[i])) * pu[i].mult_energy;
             power  = energy / 2.0; // We know its 2 seconds
-            debug("MSR_PKG_ENERGY_STATUS[%02u] energy: %lf J, power: %lf W", i, energy, power);
+            debug("MSR_PKG_ENERGY_STATUS[%02u] energy: %0.2lf J, power: %0.2lf W", d->tp->cpus[i].id, energy, power);
         }
         ener1msr[i] = ener2msr[i];
     }
@@ -237,14 +237,14 @@ static state_t debug_monitor(void *x)
         if (state_fail(hsmp_send(d->tp->cpus[i].socket_id, d->ps_address, args, reps))) {
             debug("Failed while reading HSMP_%s_POWER_STATUS: %s", d->name, state_msg);
         }
-        power = reps[0];
-        debug("HSMP_PKG_POWER_STATUS[%02u] energy: power: %lf W", i, power);
+        power = ((double) reps[0]) / 1000.0;
+        debug("HSMP_PKG_POWER_STATUS[%02u] energy: power: %0.2lf W", d->tp->cpus[i].id, power);
     }
     return EAR_SUCCESS;
 }
 #endif
 
-CPUPOW_F_LOAD(amd17)
+CPUPOW_F_LOAD(mgt_cpupow_amd17_load)
 {
     state_t s;
     int i;
@@ -301,7 +301,7 @@ CPUPOW_F_LOAD(amd17)
     monitor_init();
     #endif
     // Ok
-    apis_put(ops->get_api            , mgt_cpupow_amd17_get_api);
+    apis_put(ops->get_info           , mgt_cpupow_amd17_get_info);
     apis_put(ops->count_devices      , mgt_cpupow_amd17_count_devices);
     apis_put(ops->powercap_is_capable, mgt_cpupow_amd17_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_amd17_powercap_is_enabled);
@@ -311,7 +311,7 @@ CPUPOW_F_LOAD(amd17)
     apis_put(ops->tdp_get            , mgt_cpupow_amd17_tdp_get);
 }
 
-CPUPOW_F_GET_INFO(amd17)
+CPUPOW_F_GET_INFO(mgt_cpupow_amd17_get_info)
 {
     info->api         = API_AMD17;
     info->scope       = SCOPE_NODE;
@@ -319,17 +319,17 @@ CPUPOW_F_GET_INFO(amd17)
     info->devs_count  = 1;
 }
 
-CPUPOW_F_COUNT_DEVICES(amd17)
+CPUPOW_F_COUNT_DEVICES(mgt_cpupow_amd17_count_devices)
 {
     return domains[domain].tp->cpu_count;
 }
 
-CPUPOW_F_POWERCAP_IS_CAPABLE(amd17)
+CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_amd17_powercap_is_capable)
 {
     return domains[domain].capable;
 }
 
-CPUPOW_F_POWERCAP_IS_ENABLED(amd17)
+CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_amd17_powercap_is_enabled)
 {
     struct domain_s *d = &domains[domain];
     int watts[16];
@@ -343,12 +343,13 @@ CPUPOW_F_POWERCAP_IS_ENABLED(amd17)
         return s;
     }
     for (i = 0; i < d->tp->cpu_count; ++i) {
-        enabled[i] = (watts[i] == d->pi[i].tdp);
+        enabled[i] = (watts[i] != d->pi[i].tdp);
+        debug("enabled[%d]: %d", d->tp->cpus[i].id, enabled[i]);
     }
     return s;
 }
 
-CPUPOW_F_POWERCAP_GET(amd17)
+CPUPOW_F_POWERCAP_GET(mgt_cpupow_amd17_powercap_get)
 {
     struct domain_s *d = &domains[domain];
     uint reps[2] = { 0, -1 };
@@ -373,7 +374,7 @@ CPUPOW_F_POWERCAP_GET(amd17)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_SET(amd17)
+CPUPOW_F_POWERCAP_SET(mgt_cpupow_amd17_powercap_set)
 {
     struct domain_s *d = &domains[domain];
     uint args[2] = {  0, -1 };
@@ -398,7 +399,7 @@ CPUPOW_F_POWERCAP_SET(amd17)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_RESET(amd17)
+CPUPOW_F_POWERCAP_RESET(mgt_cpupow_amd17_powercap_reset)
 {
     struct domain_s *d = &domains[domain];
     uint args[2] = {  0, -1 };
@@ -418,7 +419,7 @@ CPUPOW_F_POWERCAP_RESET(amd17)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_TDP_GET(amd17)
+CPUPOW_F_TDP_GET(mgt_cpupow_amd17_tdp_get)
 {
     struct domain_s *d = &domains[domain];
     int i;

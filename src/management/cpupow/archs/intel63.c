@@ -324,7 +324,7 @@ static state_t debug_monitor(void *x)
 }
 #endif
 
-CPUPOW_F_LOAD(intel63)
+CPUPOW_F_LOAD(mgt_cpupow_intel63_load)
 {
     int i;
 
@@ -374,7 +374,7 @@ CPUPOW_F_LOAD(intel63)
     monitor_init();
     #endif
     //
-    apis_put(ops->get_api            , mgt_cpupow_intel63_get_api);
+    apis_put(ops->get_info           , mgt_cpupow_intel63_get_info);
     apis_put(ops->count_devices      , mgt_cpupow_intel63_count_devices);
     apis_put(ops->powercap_is_capable, mgt_cpupow_intel63_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_intel63_powercap_is_enabled);
@@ -384,7 +384,7 @@ CPUPOW_F_LOAD(intel63)
     apis_put(ops->tdp_get            , mgt_cpupow_intel63_tdp_get);
 }
 
-CPUPOW_F_GET_INFO(intel63)
+CPUPOW_F_GET_INFO(mgt_cpupow_intel63_get_info)
 {
     info->api         = API_INTEL63;
     info->scope       = SCOPE_NODE;
@@ -392,17 +392,17 @@ CPUPOW_F_GET_INFO(intel63)
     info->devs_count  = 1;
 }
 
-CPUPOW_F_COUNT_DEVICES(intel63)
+CPUPOW_F_COUNT_DEVICES(mgt_cpupow_intel63_count_devices)
 {
     return domains[domain].tp->cpu_count;
 }
 
-CPUPOW_F_POWERCAP_IS_CAPABLE(intel63)
+CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_intel63_powercap_is_capable)
 {
     return domains[domain].capable;
 }
 
-CPUPOW_F_POWERCAP_IS_ENABLED(intel63)
+CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_intel63_powercap_is_enabled)
 {
     struct domain_s *p = &domains[domain];
     msr_power_limit_t pl;
@@ -420,7 +420,7 @@ CPUPOW_F_POWERCAP_IS_ENABLED(intel63)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_GET(intel63)
+CPUPOW_F_POWERCAP_GET(mgt_cpupow_intel63_powercap_get)
 {
     struct domain_s *p = &domains[domain];
     msr_power_limit_t pl;
@@ -442,7 +442,7 @@ CPUPOW_F_POWERCAP_GET(intel63)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_SET(intel63)
+CPUPOW_F_POWERCAP_SET(mgt_cpupow_intel63_powercap_set)
 {
     struct domain_s *p = &domains[domain];
     double power;
@@ -479,7 +479,7 @@ CPUPOW_F_POWERCAP_SET(intel63)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_POWERCAP_RESET(intel63)
+CPUPOW_F_POWERCAP_RESET(mgt_cpupow_intel63_powercap_reset)
 {
     struct domain_s *p = &domains[domain];
     int i;
@@ -493,7 +493,7 @@ CPUPOW_F_POWERCAP_RESET(intel63)
     return EAR_SUCCESS;
 }
 
-CPUPOW_F_TDP_GET(intel63)
+CPUPOW_F_TDP_GET(mgt_cpupow_intel63_tdp_get)
 {
     struct domain_s *p = &domains[domain];
     int i;
