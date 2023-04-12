@@ -324,22 +324,22 @@ static state_t debug_monitor(void *x)
 }
 #endif
 
-void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
+CPUPOW_F_LOAD(intel63)
 {
     int i;
 
-    if (state_fail(msr_test(tp_in, MSR_WR))) {
+    if (state_fail(msr_test(tpo, MSR_WR))) {
         debug("failed msr test: %s", state_msg);
         return;
     }
-    if (tp_in->vendor == VENDOR_INTEL && tp_in->model >= MODEL_HASWELL_X) {
+    if (tpo->vendor == VENDOR_INTEL && tpo->model >= MODEL_HASWELL_X) {
     } else {
         // API incompatible
         debug("api incompatible");
         return;
     }
-    topology_select(tp_in, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
-    topology_select(tp_in, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
+    topology_select(tpo, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
+    topology_select(tpo, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
     // Opening MSRs
     for (i = 0; i < tp_cores.cpu_count; ++i) {
         if (state_fail(msr_open(tp_cores.cpus[i].id, MSR_WR))) {
@@ -376,7 +376,7 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     //
     apis_put(ops->get_api            , mgt_cpupow_intel63_get_api);
     apis_put(ops->count_devices      , mgt_cpupow_intel63_count_devices);
-    apis_put(ops->is_powercap_capable, mgt_cpupow_intel63_is_powercap_capable);
+    apis_put(ops->powercap_is_capable, mgt_cpupow_intel63_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_intel63_powercap_is_enabled);
     apis_put(ops->powercap_get       , mgt_cpupow_intel63_powercap_get);
     apis_put(ops->powercap_set       , mgt_cpupow_intel63_powercap_set);
@@ -384,22 +384,25 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     apis_put(ops->tdp_get            , mgt_cpupow_intel63_tdp_get);
 }
 
-void mgt_cpupow_intel63_get_api(uint *api)
+CPUPOW_F_GET_INFO(intel63)
 {
-    *api = API_INTEL63;
+    info->api         = API_INTEL63;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_SOCKET;
+    info->devs_count  = 1;
 }
 
-int mgt_cpupow_intel63_count_devices(int domain)
+CPUPOW_F_COUNT_DEVICES(intel63)
 {
     return domains[domain].tp->cpu_count;
 }
 
-int mgt_cpupow_intel63_is_powercap_capable(int domain)
+CPUPOW_F_POWERCAP_IS_CAPABLE(intel63)
 {
     return domains[domain].capable;
 }
 
-state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
+CPUPOW_F_POWERCAP_IS_ENABLED(intel63)
 {
     struct domain_s *p = &domains[domain];
     msr_power_limit_t pl;
@@ -417,7 +420,7 @@ state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
+CPUPOW_F_POWERCAP_GET(intel63)
 {
     struct domain_s *p = &domains[domain];
     msr_power_limit_t pl;
@@ -439,7 +442,7 @@ state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
+CPUPOW_F_POWERCAP_SET(intel63)
 {
     struct domain_s *p = &domains[domain];
     double power;
@@ -476,7 +479,7 @@ state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_powercap_reset(int domain)
+CPUPOW_F_POWERCAP_RESET(intel63)
 {
     struct domain_s *p = &domains[domain];
     int i;
@@ -490,7 +493,7 @@ state_t mgt_cpupow_intel63_powercap_reset(int domain)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_tdp_get(int domain, uint *watts)
+CPUPOW_F_TDP_GET(intel63)
 {
     struct domain_s *p = &domains[domain];
     int i;

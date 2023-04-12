@@ -23,11 +23,11 @@
 #include <management/cpupow/cpupow.h>
 #include <management/cpupow/archs/dummy.h>
 
-void mgt_cpupow_dummy_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
+CPUPOW_F_LOAD(dummy)
 {
     apis_put(ops->get_api            , mgt_cpupow_dummy_get_api);
     apis_put(ops->count_devices      , mgt_cpupow_dummy_count_devices);
-    apis_put(ops->is_powercap_capable, mgt_cpupow_dummy_is_powercap_capable);
+    apis_put(ops->powercap_is_capable, mgt_cpupow_dummy_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_dummy_powercap_is_enabled);
     apis_put(ops->powercap_get       , mgt_cpupow_dummy_powercap_get);
     apis_put(ops->powercap_set       , mgt_cpupow_dummy_powercap_set);
@@ -35,43 +35,46 @@ void mgt_cpupow_dummy_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     apis_put(ops->tdp_get            , mgt_cpupow_dummy_tdp_get);
 }
 
-void mgt_cpupow_dummy_get_api(uint *api)
+CPUPOW_F_GET_INFO(dummy)
 {
-    *api = API_DUMMY;
+    info->api         = API_DUMMY;
+    info->scope       = SCOPE_DUMMY;
+    info->granularity = GRANULARITY_DUMMY;
+    info->devs_count  = 1;
 }
 
-int mgt_cpupow_dummy_count_devices(int domain)
+CPUPOW_F_COUNT_DEVICES(dummy)
 {
     return 1;
 }
 
-int mgt_cpupow_dummy_is_powercap_capable(int domain)
+CPUPOW_F_POWERCAP_IS_CAPABLE(dummy)
 {
     return 0;
 }
 
-state_t mgt_cpupow_dummy_powercap_is_enabled(int domain, uint *enabled)
+CPUPOW_F_POWERCAP_IS_ENABLED(dummy)
 {
     *enabled = 0;
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_dummy_powercap_get(int domain, uint *watts)
+CPUPOW_F_POWERCAP_GET(dummy)
 {
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_dummy_powercap_set(int domain, uint *watts)
+CPUPOW_F_POWERCAP_SET(dummy)
 {
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_dummy_powercap_reset(int domain)
+CPUPOW_F_POWERCAP_RESET(dummy)
 {
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_dummy_tdp_get(int domain, uint *watts)
+CPUPOW_F_TDP_GET(dummy)
 {
     return EAR_SUCCESS;
 }

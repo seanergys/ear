@@ -58,6 +58,7 @@
 #define GRANULARITY_SOCKET     9
 #define GRANULARITY_NODE      10
 #define SCOPE_NONE             0
+#define SCOPE_DUMMY            1
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
 

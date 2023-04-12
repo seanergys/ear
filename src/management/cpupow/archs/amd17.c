@@ -16,12 +16,14 @@
 */
 
 #define SHOW_DEBUGS 1
+#define DEBUG_POWER_CONSUMING 1
 
 #include <math.h>
 #include <stdlib.h>
 #include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
+#include <common/system/monitor.h>
 #include <common/hardware/bithack.h>
 #include <metrics/common/msr.h>
 #include <metrics/common/apis.h>
@@ -202,24 +204,64 @@ static int rapl_init()
     return 1;
 }
 
-void mgt_cpupow_amd17_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
+#if DEBUG_POWER_CONSUMING
+static state_t debug_monitor(void *x)
+{
+    struct domain_s *d = &domains[CPUPOW_SOCKET];
+    static ullong ener1hsmp[2] = { 0, 0 };
+    static ullong ener2hsmp[2] = { 0, 0 };
+    static ullong ener1msr[2]  = { 0, 0 };
+    static ullong ener2msr[2]  = { 0, 0 };
+    uint reps[2] = {  0, -1 };
+    uint args[1] = { -1 };
+    double energy;
+    double power;
+    ullong reg;
+    int i;
+
+    // MSR
+    for (i = 0; i < d->tp->cpu_count; ++i) {
+        if (msr_read(d->tp->cpus[i].id, &reg, sizeof(ullong), d->es_address)) {
+            debug("msr_read: %s", state_msg);
+        }
+        ener2msr[i] = getbits64(reg, 31, 0);
+        if (ener1msr[i] > 0) {
+            energy = ((double) (ener2msr[i] - ener1msr[i])) * pu[i].mult_energy;
+            power  = energy / 2.0; // We know its 2 seconds
+            debug("MSR_PKG_ENERGY_STATUS[%02u] energy: %lf J, power: %lf W", i, energy, power);
+        }
+        ener1msr[i] = ener2msr[i];
+    }
+    // HSMP
+    for (i = 0; i < d->tp->cpu_count; ++i) {
+        if (state_fail(hsmp_send(d->tp->cpus[i].socket_id, d->ps_address, args, reps))) {
+            debug("Failed while reading HSMP_%s_POWER_STATUS: %s", d->name, state_msg);
+        }
+        power = reps[0];
+        debug("HSMP_PKG_POWER_STATUS[%02u] energy: power: %lf W", i, power);
+    }
+    return EAR_SUCCESS;
+}
+#endif
+
+CPUPOW_F_LOAD(amd17)
 {
     state_t s;
     int i;
 
-    if (tp_in->vendor == VENDOR_AMD && tp_in->family >= FAMILY_ZEN) {
+    if (tpo->vendor == VENDOR_AMD && tpo->family >= FAMILY_ZEN) {
     } else {
         // API incompatible
         debug("api incompatible");
         return;
     }
     // TODO: CPUID
-    if (state_fail(msr_test(tp_in, MSR_WR))) {
+    if (state_fail(msr_test(tpo, MSR_WR))) {
         debug("failed msr test: %s", state_msg);
         return;
     }
-    topology_select(tp_in, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
-    topology_select(tp_in, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
+    topology_select(tpo, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
+    topology_select(tpo, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
     // Opening MSRs
     for (i = 0; i < tp_cores.cpu_count; ++i) {
         if (state_fail(msr_open(tp_cores.cpus[i].id, MSR_WR))) {
@@ -228,7 +270,7 @@ void mgt_cpupow_amd17_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
         }
     }
     // Opening HSMP
-    if (state_fail(s = hsmp_scan(tp_in))) {
+    if (state_fail(s = hsmp_scan(tpo))) {
         serror("Failed during HSMP open");
         return;
     }
@@ -249,10 +291,19 @@ void mgt_cpupow_amd17_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     if (!domains[CPUPOW_SOCKET].capable) {
         return;
     }
+    // Extreme debugging, power monitor
+    #if DEBUG_POWER_CONSUMING
+    suscription_t *sus = suscription();
+    sus->call_main     = debug_monitor;
+    sus->time_relax    = 2000;
+    sus->time_burst    = 2000;
+    sus->suscribe(sus);
+    monitor_init();
+    #endif
     // Ok
     apis_put(ops->get_api            , mgt_cpupow_amd17_get_api);
     apis_put(ops->count_devices      , mgt_cpupow_amd17_count_devices);
-    apis_put(ops->is_powercap_capable, mgt_cpupow_amd17_is_powercap_capable);
+    apis_put(ops->powercap_is_capable, mgt_cpupow_amd17_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_amd17_powercap_is_enabled);
     apis_put(ops->powercap_get       , mgt_cpupow_amd17_powercap_get);
     apis_put(ops->powercap_set       , mgt_cpupow_amd17_powercap_set);
@@ -260,28 +311,44 @@ void mgt_cpupow_amd17_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     apis_put(ops->tdp_get            , mgt_cpupow_amd17_tdp_get);
 }
 
-void mgt_cpupow_amd17_get_api(uint *api)
+CPUPOW_F_GET_INFO(amd17)
 {
-    *api = API_AMD17;
+    info->api         = API_AMD17;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_SOCKET;
+    info->devs_count  = 1;
 }
 
-int mgt_cpupow_amd17_count_devices(int domain)
+CPUPOW_F_COUNT_DEVICES(amd17)
 {
     return domains[domain].tp->cpu_count;
 }
 
-int mgt_cpupow_amd17_is_powercap_capable(int domain)
+CPUPOW_F_POWERCAP_IS_CAPABLE(amd17)
 {
     return domains[domain].capable;
 }
 
-state_t mgt_cpupow_amd17_powercap_is_enabled(int domain, uint *enabled)
+CPUPOW_F_POWERCAP_IS_ENABLED(amd17)
 {
-    // TODO: this can't be done without testing
-    return EAR_SUCCESS;
+    struct domain_s *d = &domains[domain];
+    int watts[16];
+    state_t s;
+    int i;
+
+    memset(watts, 0, sizeof(int)*16);
+    memset(enabled, 0, sizeof(int)*(d->tp->cpu_count));
+    // Just the socket domain is enabled, so 16 of watts space is enough
+    if (state_fail(s = mgt_cpupow_amd17_powercap_get(domain, watts))) {
+        return s;
+    }
+    for (i = 0; i < d->tp->cpu_count; ++i) {
+        enabled[i] = (watts[i] == d->pi[i].tdp);
+    }
+    return s;
 }
 
-state_t mgt_cpupow_amd17_powercap_get(int domain, uint *watts)
+CPUPOW_F_POWERCAP_GET(amd17)
 {
     struct domain_s *d = &domains[domain];
     uint reps[2] = { 0, -1 };
@@ -306,7 +373,7 @@ state_t mgt_cpupow_amd17_powercap_get(int domain, uint *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_amd17_powercap_set(int domain, uint *watts)
+CPUPOW_F_POWERCAP_SET(amd17)
 {
     struct domain_s *d = &domains[domain];
     uint args[2] = {  0, -1 };
@@ -331,7 +398,7 @@ state_t mgt_cpupow_amd17_powercap_set(int domain, uint *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_amd17_powercap_reset(int domain)
+CPUPOW_F_POWERCAP_RESET(amd17)
 {
     struct domain_s *d = &domains[domain];
     uint args[2] = {  0, -1 };
@@ -351,7 +418,7 @@ state_t mgt_cpupow_amd17_powercap_reset(int domain)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_amd17_tdp_get(int domain, uint *watts)
+CPUPOW_F_TDP_GET(amd17)
 {
     struct domain_s *d = &domains[domain];
     int i;

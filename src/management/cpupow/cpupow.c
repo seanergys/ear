@@ -41,9 +41,9 @@ ret:
 	pthread_mutex_unlock(&lock);
 }
 
-void mgt_cpupow_get_api(uint *api)
+void mgt_cpupow_get_info(apinfo_t *info)
 {
-    return ops.get_api(api);
+    return ops.get_info(info);
 }
 
 int mgt_cpupow_count_devices(int domain)
@@ -51,9 +51,9 @@ int mgt_cpupow_count_devices(int domain)
     return ops.count_devices(domain);
 }
 
-int mgt_cpupow_is_powercap_capable(int domain)
+int mgt_cpupow_powercap_is_capable(int domain)
 {
-    return ops.is_powercap_capable(domain);
+    return ops.powercap_is_capable(domain);
 }
 
 state_t mgt_cpupow_powercap_is_enabled(int domain, int *enabled)
