@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_CPUPOW_INTEL63_H
-#define MANAGEMENT_CPUPOW_INTEL63_H
+#ifndef MANAGEMENT_CPUPOW_AMD17_H
+#define MANAGEMENT_CPUPOW_AMD17_H
 
 #include <management/cpupow/cpupow.h>
 
