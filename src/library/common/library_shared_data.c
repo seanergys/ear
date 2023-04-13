@@ -817,7 +817,7 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
         cpu_set_t node_mask_backup = data->node_mask;
         uint node_mask_num_cpus_backup = data->num_cpus;
 
-        verbosen(3, "Current job mask: %u CPUs ", node_mask_num_cpus_backup);
+        verbose_master(1, "Current job mask: %u CPUs ", node_mask_num_cpus_backup);
         verbose_affinity_mask(3, (const cpu_set_t *) &node_mask_backup, MAX_CPUS_SUPPORTED);
 
         cpu_set_t *cpu_masks_backup = malloc(sizeof(cpu_set_t) * data->num_processes);
@@ -895,7 +895,7 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
         // Update all remaining mask related fields
         data->num_cpus = CPU_COUNT(&data->node_mask);
 
-        verbosen(3, "New job mask: %u CPUs ", data->num_cpus);
+        verbose_master(1, "New job mask: %u CPUs ", data->num_cpus);
         verbose_affinity_mask(3, (const cpu_set_t *) &data->node_mask, MAX_CPUS_SUPPORTED);
 
         if (data->num_cpus != node_mask_num_cpus_backup)
