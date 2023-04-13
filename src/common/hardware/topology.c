@@ -43,7 +43,7 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 	
 	// Just means merge
 	just = (group == TPGroup.merge);
-	
+    // Component to merge (by now L3, CORE and SOCKET, but expandable)	
 	if (component == TPSelect.l3) {
 		addr_offset = ((ulong) &t->cpus[0].l[3].id) - ((ulong) t->cpus);
 	}
@@ -56,7 +56,9 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 	if (component == TPSelect.socket) {
 		addr_offset = ((ulong) &t->cpus[0].socket_id) - ((ulong) t->cpus);
 	}
-	// Allocating CPUs
+    // Copying base topology data
+	memcpy(s, t, sizeof(topology_t));
+	// Allocating newer CPUs (more room than required, but OK).
 	s->cpus = calloc(t->cpu_count, sizeof(cpu_t));
 	// Iterating 
 	for (i = 0, c = 0; i < t->cpu_count; ++i)
@@ -81,14 +83,12 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 			c++;
 		}
 	}
-
-	s->socket_count = t->socket_count;
+    // Replacing number of CPUs
 	s->cpu_count = c;
 
 	if (s->cpu_count <= 0) {
 		return_msg(EAR_ERROR, "invalid topology");
 	}
-	
 	return EAR_SUCCESS;
 }
 

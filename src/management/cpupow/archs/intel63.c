@@ -328,10 +328,6 @@ CPUPOW_F_LOAD(mgt_cpupow_intel63_load)
 {
     int i;
 
-    if (state_fail(msr_test(tpo, MSR_WR))) {
-        debug("failed msr test: %s", state_msg);
-        return;
-    }
     if (tpo->vendor == VENDOR_INTEL && tpo->model >= MODEL_HASWELL_X) {
     } else {
         // API incompatible
@@ -340,7 +336,11 @@ CPUPOW_F_LOAD(mgt_cpupow_intel63_load)
     }
     topology_select(tpo, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
     topology_select(tpo, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
-    // Opening MSRs
+    // Tesing and opening MSRs
+    if (state_fail(msr_test(tpo, MSR_WR))) {
+        debug("failed msr test: %s", state_msg);
+        return;
+    }
     for (i = 0; i < tp_cores.cpu_count; ++i) {
         if (state_fail(msr_open(tp_cores.cpus[i].id, MSR_WR))) {
             debug("Failed while opening CPU%d MSR: %s", tp_cores.cpus[i].id, state_msg);

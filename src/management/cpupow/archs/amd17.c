@@ -123,7 +123,7 @@ static strtable_t        t;
 }
 
 static struct domain_s domains[] = {
-    DOMAIN_SET(&tp_sockets, PKG,  1, "MsrPkgPowerLimit"),
+    DOMAIN_SET(&tp_sockets, PKG,  1, "HsmpPkgPowerLimit"),
     DOMAIN_SET(&tp_sockets, DRAM, 0, ""),
     DOMAIN_SET(&tp_cores  , PP0,  0, ""),
     DOMAIN_SET(&tp_sockets, PP1,  0, ""),
@@ -255,14 +255,13 @@ CPUPOW_F_LOAD(mgt_cpupow_amd17_load)
         debug("api incompatible");
         return;
     }
-    // TODO: CPUID
+    topology_select(tpo, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
+    topology_select(tpo, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
+    // Opening MSRs
     if (state_fail(msr_test(tpo, MSR_WR))) {
         debug("failed msr test: %s", state_msg);
         return;
     }
-    topology_select(tpo, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
-    topology_select(tpo, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
-    // Opening MSRs
     for (i = 0; i < tp_cores.cpu_count; ++i) {
         if (state_fail(msr_open(tp_cores.cpus[i].id, MSR_WR))) {
             debug("msr_open: %s", state_msg);

@@ -22,8 +22,12 @@
 #include <metrics/common/apis.h>
 #include <management/cpupow/archs/dummy.h>
 
+static topology_t tp;
+
 CPUPOW_F_LOAD(mgt_cpupow_dummy_load)
 {
+    topology_select(tpo, &tp, TPSelect.socket, TPGroup.merge, 0);
+
     apis_put(ops->get_info           , mgt_cpupow_dummy_get_info);
     apis_put(ops->count_devices      , mgt_cpupow_dummy_count_devices);
     apis_put(ops->powercap_is_capable, mgt_cpupow_dummy_powercap_is_capable);
@@ -44,7 +48,8 @@ CPUPOW_F_GET_INFO(mgt_cpupow_dummy_get_info)
 
 CPUPOW_F_COUNT_DEVICES(mgt_cpupow_dummy_count_devices)
 {
-    return 1;
+    if (domain != CPUPOW_SOCKET) return 0;
+    return tp.cpu_count;
 }
 
 CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_dummy_powercap_is_capable)
@@ -54,12 +59,16 @@ CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_dummy_powercap_is_capable)
 
 CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_dummy_powercap_is_enabled)
 {
-    *enabled = 0;
+    int i;
+    for (i = 0; i < tp.cpu_count; ++i) {
+        enabled[i] = 0;
+    }
     return EAR_SUCCESS;
 }
 
 CPUPOW_F_POWERCAP_GET(mgt_cpupow_dummy_powercap_get)
 {
+    watts[0] = 0U;
     return EAR_SUCCESS;
 }
 
@@ -75,5 +84,17 @@ CPUPOW_F_POWERCAP_RESET(mgt_cpupow_dummy_powercap_reset)
 
 CPUPOW_F_TDP_GET(mgt_cpupow_dummy_tdp_get)
 {
+    int i;
+    for (i = 0; i < tp.cpu_count; ++i) {
+    // Taken from the sum of TDPs divided by the number of processors of these models/families.
+    if      (tp.vendor == VENDOR_INTEL && tp.model  == MODEL_HASWELL_X  ) { watts[i] = 120; }
+    else if (tp.vendor == VENDOR_INTEL && tp.model  == MODEL_BROADWELL_X) { watts[i] = 130; }
+    else if (tp.vendor == VENDOR_INTEL && tp.model  == MODEL_SKYLAKE_X  ) { watts[i] = 150; }
+    else if (tp.vendor == VENDOR_INTEL && tp.model  == MODEL_ICELAKE_X  ) { watts[i] = 235; }
+    else if (tp.vendor == VENDOR_AMD   && tp.family == FAMILY_ZEN       ) { watts[i] = 170; }
+    else if (tp.vendor == VENDOR_AMD   && tp.family == FAMILY_ZEN3      ) { watts[i] = 225; }
+    else watts[i] = 200;
+    debug("watts[%02d]: %u", tp.cpus[i].id, watts[i]);
+    }
     return EAR_SUCCESS;
 }
