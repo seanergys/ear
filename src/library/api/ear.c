@@ -29,9 +29,9 @@
 /* 1 means master error, 2 means no master error at ear_finalize i. 0 no fake (default)*/
 #define FAKE_PROCESS_ERRROR "FAKE_PROCESS_ERRROR"
 
+#include <inttypes.h>
 #include <sched.h>
 #include <pthread.h>
-
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -106,19 +106,23 @@
 #if DLB
 #include <dlb_talp.h>
 #include <common/external/ear_external.h>
+
+#define TALP_INFO  0 // TALP management verbose level
+
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
 
 static suscription_t* earl_talp;
+static FILE *talp_report = NULL;
 
-#define TALP_INFO  3
-#endif
+static dlb_monitor_t *dlb_loop_monitor = NULL;
+static dlb_monitor_t *dlb_app_monitor = NULL;
 
+#endif // DLB
 
 
 void ear_finalize(int exit_status);
 static uint cancelled = 0;
-
 
 
 #define MASTER_ID masters_info.my_master_rank
@@ -274,12 +278,13 @@ static state_t earl_periodic_actions_talp(void *p);
 static state_t earl_periodic_actions_talp_init(void *p);
 
 /** Prints DLB's POP collected metrics.
- * \param verb_lvl Set the minimum verbose level to for printing (still not used). */
-static void metrics_print_pop_metrics(int verb_lvl);
+ * \param verb_lvl Set the minimum verbose level for printing (still not used). */
+static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle);
 
 
 static state_t earl_periodic_actions_talp_finalize();
-#endif
+#endif // DLB
+
 
 static void print_local_data()
 {
@@ -475,10 +480,10 @@ void create_shared_regions()
 		lib_shared_region->master_rank = masters_info.my_master_rank;
 		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
-    #if DLB
+#if DLB
     lib_shared_region->must_call_libdlb = 1;
-    #endif
-	}
+#endif
+  }
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
 #if ONLY_MASTER == 0
@@ -624,7 +629,7 @@ void create_shared_regions()
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
-        verbose_master(2, "Created shared region for external libraries!");
+        verbose_master(TALP_INFO, "Created shared region for external libraries!");
         #endif
 
 }
@@ -1926,6 +1931,9 @@ void ear_finalize(int exit_status)
 				monitor_dispose();
 				debug("%d: monitor_disposed", my_node_id);
 
+
+        report_dispose(&rep_id);
+
 				// Closing and obtaining global metrics
 				dispose=1;
 				verbose_master(2,"Total resources computed %d",get_total_resources());
@@ -2577,22 +2585,37 @@ static state_t earl_create_talp_monitor(suscription_t *sus)
         }
 
         monitor_relax(sus);
-        verbose(TALP_INFO, "DLB-TALP subscription created");
+        verbose(TALP_INFO, "DLB-TALP subscription created.");
     }
 
     return EAR_SUCCESS;
 }
+
+
 static state_t earl_periodic_actions_talp_init(void *p)
 {
-  verbose(TALP_INFO,"DLB-TALP Init done");
-  return EAR_SUCCESS;
+    dlb_app_monitor = DLB_MonitoringRegionRegister("app");
+    dlb_loop_monitor = DLB_MonitoringRegionRegister("loop");
+
+    if (dlb_app_monitor && dlb_loop_monitor)
+    {
+        DLB_MonitoringRegionStart(dlb_app_monitor);
+        DLB_MonitoringRegionStart(dlb_loop_monitor);
+        verbose_master(TALP_INFO, "DLB-TALP Init done");
+    } else
+    {
+        dlb_app_monitor = dlb_loop_monitor = NULL;
+        verbose(TALP_INFO, "%sERROR%s [%d] registering regions.", COL_RED, COL_CLR, my_node_id);
+    }
+
+    return EAR_SUCCESS;
 }
 
 
 static state_t earl_periodic_actions_talp(void *p)
 {
     int must_call_libdlb = 0;
-    verbose(TALP_INFO,"DLB-TALP Periodic action");
+    verbose(TALP_INFO + 1, "DLB-TALP Periodic action");
 
     int sem_ret_val = sem_wait(lib_shared_lock_sem);
     if (sem_ret_val < 0)
@@ -2626,63 +2649,108 @@ static state_t earl_periodic_actions_talp(void *p)
 
     if (must_call_libdlb)
     {
-        metrics_print_pop_metrics(0);
+        /*
+        if (dlb_loop_monitor)
+        {
+            DLB_MonitoringRegionStop(dlb_loop_monitor);
+        }
+        */
+
+        metrics_print_pop_metrics(TALP_INFO, dlb_loop_monitor);
+
+        if (dlb_loop_monitor)
+        {
+            DLB_MonitoringRegionReset(dlb_loop_monitor);
+            DLB_MonitoringRegionStart(dlb_loop_monitor);
+        }
     }
     return EAR_SUCCESS;
 }
 
 
-static void metrics_print_pop_metrics(int verb_lvl)
+static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle)
 {
     if (VERB_ON(verb_lvl))
     {
         if (is_mpi_enabled())
         {
-#if 0
-            static int already_printed = 0;
-            if (!already_printed)
+            if (MASTER_ID >= 0 && !talp_report)
             {
-                int provided;
-                PMPI_Query_thread(&provided);
-
-                switch (provided)
+                char buff[GENERIC_NAME];
+                int ret = snprintf(buff, sizeof buff, "%d-%d-%d-talp.csv", my_job_id, my_step_id, MASTER_ID);
+                if (ret < sizeof buff)
                 {
-                    case MPI_THREAD_SINGLE:
-                        verbose(0, "Thread support: %d (MPI_THREAD_SINGLE %d)",
-                                provided, MPI_THREAD_SINGLE);
-                        break;
-                    case MPI_THREAD_FUNNELED:
-                        verbose(0, "Thread support: %d (MPI_THREAD_FUNNELED %d)",
-                                provided, MPI_THREAD_FUNNELED);
-                        break;
-                    case MPI_THREAD_SERIALIZED:
-                        verbose(0, "Thread support: %d (MPI_THREAD_SERIALIZED %d)", provided, MPI_THREAD_SERIALIZED);
-                        break;
-                    case MPI_THREAD_MULTIPLE:
-                        verbose(0, "Thread support: %d (MPI_THREAD_MULTIPLE %d)", provided, MPI_THREAD_MULTIPLE);
-                        break;
-                    default:
-                        verbose(0, "Thread support %d not found.", provided);
-                }
+                    talp_report = fopen(buff, "a");
+                    if (talp_report)
+                    {
+                        char talp_report_header[] = "time,node_id,total_useful_time,total_mpi_time,max_useful_time,max_mpi_time,load_balance,parallel_efficiency";
+                        size_t header_len = strlen(talp_report_header);
 
-                already_printed = 1;
+                        size_t fwrite_ret = fwrite((const void *) talp_report_header, sizeof(char), header_len, talp_report);
+                        if (fwrite_ret != header_len)
+                        {
+                            verbose(TALP_INFO, "%sWARNING%s Writing TALP report header: %d", COL_YLW, COL_CLR, errno)
+                        }
+                    } else
+                    {
+                        verbose(TALP_INFO, "%sERROR%s Creating and openning TALP report file: %d", COL_RED, COL_CLR, errno);
+                    }
+                } else
+                {
+                    verbose(TALP_INFO, "%sERROR%s TALP report file name did not created: increase the buffer size.", COL_RED, COL_CLR);
+                }
             }
-#endif
+
             timestamp_t ts;
             timestamp_getfast(&ts);
 
             char ts_buff[64];
             timestamp_tostr(&ts, ts_buff, sizeof ts_buff);
 
-            verbose(TALP_INFO, "[%s] [%d] Calling to DLB API's TALP interface", ts_buff, my_node_id);
+            verbose_master(TALP_INFO, "[%s] [%d] Calling to DLB API's TALP interface", ts_buff, my_node_id);
 
             dlb_node_metrics_t node_metrics;
-            DLB_TALP_CollectNodeMetrics(DLB_MPI_REGION, &node_metrics);
+            DLB_TALP_CollectNodeMetrics(handle, &node_metrics);
            
-            if (VERB_GET_LV() >= TALP_INFO){
-              verbose(0, "PROCESS[%d]: Parallel efficiency: %f", my_node_id, node_metrics.parallel_efficiency);
+            // verbose_master(TALP_INFO, "PROCESS[%d]: Parallel efficiency: %f", my_node_id, node_metrics.parallel_efficiency);
+            // DLB_MonitoringRegionReport(handle);
+
+            if (MASTER_ID >= 0 && talp_report)
+            {
+                // Get the current time
+                time_t curr_time = time(NULL);
+
+                struct tm *loctime = localtime (&curr_time);
+
+                char time_buff[32];
+                strftime(time_buff, sizeof time_buff, "%c", loctime);
+
+                char talp_node_metrics_sum[512];
+
+                int ret = snprintf(talp_node_metrics_sum, sizeof talp_node_metrics_sum,
+                                   "\n%s,%d,%"PRId64",%"PRId64",%"PRId64",%"PRId64",%f,%f",
+                                   time_buff, node_metrics.node_id, node_metrics.total_useful_time,
+                                   node_metrics.total_mpi_time, node_metrics.max_useful_time,
+                                   node_metrics.max_mpi_time, node_metrics.load_balance,
+                                   node_metrics.parallel_efficiency);
+
+                if (ret < sizeof talp_node_metrics_sum)
+                {
+                    size_t char_count = strlen(talp_node_metrics_sum);
+                    size_t fwrite_ret = fwrite((const void *) talp_node_metrics_sum, sizeof(char), char_count, talp_report);
+
+                    if (fwrite_ret != char_count)
+                    {
+                        verbose(TALP_INFO, "%sERROR%s Writing TALP info: %d", errno);
+                    }
+                } else
+                {
+                    verbose(TALP_INFO, "%sERROR%s Writing the node metrics line. Increase the buffer size", COL_RED, COL_CLR);
+                }
+            } else if (MASTER_ID >= 0)
+            {
+                verbose(TALP_INFO, "%sWARNING%s TALP report file not created.", COL_YLW, COL_CLR);
             }
-            verbose_master(2, "PROCESS[%d]: Parallel efficiency: %f", my_node_id, node_metrics.parallel_efficiency);
 #if 0
             dlb_pop_metrics_t pop_metrics;
             timest = timestamp_getconvert(TIME_MSECS);
@@ -2699,7 +2767,7 @@ static void metrics_print_pop_metrics(int verb_lvl)
 static state_t earl_periodic_actions_talp_finalize()
 {
     int must_call_libdlb = 0;
-
+    
     int sem_ret_val = sem_wait(lib_shared_lock_sem);
     if (sem_ret_val < 0)
     {
@@ -2708,6 +2776,12 @@ static state_t earl_periodic_actions_talp_finalize()
     }
 
     lib_shared_region->must_call_libdlb = 0;
+
+    if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
+    {
+        verbose(TALP_INFO, "%sError%s Memory sync. for lib shared region failed: %s",
+                COL_RED, COL_CLR, strerror(errno));
+    }
 
     if (sig_shared_region[my_node_id].libdlb_calls_cnt < lib_shared_region->max_libdlb_calls)
     {
@@ -2723,13 +2797,25 @@ static state_t earl_periodic_actions_talp_finalize()
 
     if (must_call_libdlb)
     {
-        metrics_print_pop_metrics(0);
+        metrics_print_pop_metrics(TALP_INFO, dlb_loop_monitor);
+    }
+
+    if (MASTER_ID >= 0 && talp_report)
+    {
+        if (fclose(talp_report) == EOF)
+        {
+            verbose(TALP_INFO, "%sERROR%s Closing TALP report file: %d", COL_RED, COL_CLR, errno);
+        }
+    }
+
+    if (dlb_app_monitor)
+    {
+        DLB_MonitoringRegionStop(dlb_app_monitor);
+        DLB_MonitoringRegionReport(dlb_app_monitor);
     }
 
     monitor_unregister(earl_talp);
 
     return EAR_SUCCESS;
 }
-
-
-#endif
+#endif // DLB

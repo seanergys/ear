@@ -2278,9 +2278,23 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 
 		// Call report mpitrace
 		report_id_t report_id;
-		report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
-		if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
-			verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+		report_create_id(&report_id, my_node_id,
+                         ear_my_rank, masters_info.my_master_rank);
+
+		if (state_fail(report_misc(&report_id, MPITRACE,
+                                   (cchar *) &sig_shared_region[my_node_id], -1)))
+        {
+			verbose(3, "%sERROR%s Reporting mpitrace for process %d",
+                    COL_RED, COL_CLR, my_node_id);
+		}
+
+    // Report node metrics
+    if (state_fail(report_misc(&report_id, MPI_NODE_METRICS,
+                                   (cchar *) metrics->sig_ext,
+                                   lib_shared_region->num_processes)))
+        {
+			verbose_master(3, "%sERROR%s Reporting mpi node metrics.",
+                    COL_RED, COL_CLR, my_node_id);
 		}
 
 		metrics_partial_start();
