@@ -116,11 +116,22 @@ void compute_per_process_and_job_metrics(signature_t *sig);
 /* Computes metrics per-iteration, very lightweight */
 state_t metrics_new_iteration(signature_t *sig);
 
-
 #if MPI_OPTIMIZED
 void metrics_start_cpupower();
 
 void metrics_read_cpupower();
 #endif
+
+#if DLB
+/** Gets and saves TALP node metrics. It is very important to ensure all processes
+ * call this function, as it blocks callers until the others call it too.
+ *
+ * \param dst_sig The address of the signature extended to save the computed data.
+ * \param region_monitor The target monitoring region. If NULL, implicit MPI Monitoring Region is assumed.
+ *
+ * \return EAR_ERROR if \p dst_sig argument is NULL or DLB's TALP API returns an error.
+ * \return EAR_SUCCESS otherwise. */
+state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor);
+#endif // DLB
 
 #endif //EAR_EAR_METRICS_H

@@ -2785,3 +2785,24 @@ static state_t energy_lib_init(settings_conf_t *conf)
 static void metrics_static_dispose()
 {
 }
+
+#if DLB
+state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor)
+{
+    if (dst_sig)
+    {
+        int ret = DLB_TALP_CollectNodeMetrics(region_monitor, &dst_sig->dlb_talp_node_metrics);
+
+        if (!ret)
+        {
+            return EAR_SUCCESS;
+        } else
+        {
+            return EAR_ERROR;
+        }
+    } else
+    {
+        return EAR_ERROR;
+    }
+}
+#endif // DLB

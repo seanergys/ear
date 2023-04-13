@@ -277,9 +277,12 @@ static state_t earl_create_talp_monitor(suscription_t *sus);
 static state_t earl_periodic_actions_talp(void *p);
 static state_t earl_periodic_actions_talp_init(void *p);
 
-/** Prints DLB's POP collected metrics.
- * \param verb_lvl Set the minimum verbose level for printing (still not used). */
-static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle);
+/** Verboses DLB's TALP API node collected metrics.
+ * Just the master process prints something.
+ *
+ * \param verb_lvl Set the minimum verbose level for printing (still not used).
+ * \param node_metrics The address where target data is stored. */
+static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_metrics);
 
 
 static state_t earl_periodic_actions_talp_finalize();
@@ -2649,14 +2652,18 @@ static state_t earl_periodic_actions_talp(void *p)
 
     if (must_call_libdlb)
     {
-        /*
-        if (dlb_loop_monitor)
+        // TODO: This code is replicated on earl_periodic_actions_talp_finalize
+        sig_ext_t sig_ext_tmp;
+        if (state_ok(metrics_compute_talp_node_metrics(&sig_ext_tmp, dlb_loop_monitor)))
         {
-            DLB_MonitoringRegionStop(dlb_loop_monitor);
+            if (MASTER_ID >= 0)
+            {
+                sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
+                node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
+                // TODO: Move in the outer condition scope
+                verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
+            }
         }
-        */
-
-        metrics_print_pop_metrics(TALP_INFO, dlb_loop_monitor);
 
         if (dlb_loop_monitor)
         {
@@ -2668,7 +2675,7 @@ static state_t earl_periodic_actions_talp(void *p)
 }
 
 
-static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle)
+static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_metrics)
 {
     if (VERB_ON(verb_lvl))
     {
@@ -2677,16 +2684,24 @@ static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle)
             if (MASTER_ID >= 0 && !talp_report)
             {
                 char buff[GENERIC_NAME];
-                int ret = snprintf(buff, sizeof buff, "%d-%d-%d-talp.csv", my_job_id, my_step_id, MASTER_ID);
+                int ret = snprintf(buff, sizeof buff, "%d-%d-%d-talp.csv",
+                                   my_job_id, my_step_id, MASTER_ID);
+
                 if (ret < sizeof buff)
                 {
                     talp_report = fopen(buff, "a");
                     if (talp_report)
                     {
-                        char talp_report_header[] = "time,node_id,total_useful_time,total_mpi_time,max_useful_time,max_mpi_time,load_balance,parallel_efficiency";
+                        char talp_report_header[] = "time,node_id,total_useful_time,"
+                                                    "total_mpi_time,max_useful_time,"                                                    "max_mpi_time,load_balance,"
+                                                    "parallel_efficiency";
+
                         size_t header_len = strlen(talp_report_header);
 
-                        size_t fwrite_ret = fwrite((const void *) talp_report_header, sizeof(char), header_len, talp_report);
+                        size_t fwrite_ret = fwrite((const void *) talp_report_header,
+                                                   sizeof(char), header_len,
+                                                   talp_report);
+
                         if (fwrite_ret != header_len)
                         {
                             verbose(TALP_INFO, "%sWARNING%s Writing TALP report header: %d", COL_YLW, COL_CLR, errno)
@@ -2700,21 +2715,7 @@ static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle)
                     verbose(TALP_INFO, "%sERROR%s TALP report file name did not created: increase the buffer size.", COL_RED, COL_CLR);
                 }
             }
-
-            timestamp_t ts;
-            timestamp_getfast(&ts);
-
-            char ts_buff[64];
-            timestamp_tostr(&ts, ts_buff, sizeof ts_buff);
-
-            verbose_master(TALP_INFO, "[%s] [%d] Calling to DLB API's TALP interface", ts_buff, my_node_id);
-
-            dlb_node_metrics_t node_metrics;
-            DLB_TALP_CollectNodeMetrics(handle, &node_metrics);
            
-            // verbose_master(TALP_INFO, "PROCESS[%d]: Parallel efficiency: %f", my_node_id, node_metrics.parallel_efficiency);
-            // DLB_MonitoringRegionReport(handle);
-
             if (MASTER_ID >= 0 && talp_report)
             {
                 // Get the current time
@@ -2729,10 +2730,10 @@ static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle)
 
                 int ret = snprintf(talp_node_metrics_sum, sizeof talp_node_metrics_sum,
                                    "\n%s,%d,%"PRId64",%"PRId64",%"PRId64",%"PRId64",%f,%f",
-                                   time_buff, node_metrics.node_id, node_metrics.total_useful_time,
-                                   node_metrics.total_mpi_time, node_metrics.max_useful_time,
-                                   node_metrics.max_mpi_time, node_metrics.load_balance,
-                                   node_metrics.parallel_efficiency);
+                                   time_buff, node_metrics->node_id, node_metrics->total_useful_time,
+                                   node_metrics->total_mpi_time, node_metrics->max_useful_time,
+                                   node_metrics->max_mpi_time, node_metrics->load_balance,
+                                   node_metrics->parallel_efficiency);
 
                 if (ret < sizeof talp_node_metrics_sum)
                 {
@@ -2751,14 +2752,6 @@ static void metrics_print_pop_metrics(int verb_lvl, dlb_monitor_t *handle)
             {
                 verbose(TALP_INFO, "%sWARNING%s TALP report file not created.", COL_YLW, COL_CLR);
             }
-#if 0
-            dlb_pop_metrics_t pop_metrics;
-            timest = timestamp_getconvert(TIME_MSECS);
-            verbose(0, "[%d] Calling blocking call: %llu", my_node_id, timest);
-            
-            DLB_TALP_CollectPOPMetrics(DLB_MPI_REGION, &pop_metrics);
-            verbose(0, "LB %f LB iner %f LB intra %f", pop_metrics.lb, pop_metrics.lb_in, pop_metrics.lb_out);
-#endif
         }
     }
 }
@@ -2797,7 +2790,18 @@ static state_t earl_periodic_actions_talp_finalize()
 
     if (must_call_libdlb)
     {
-        metrics_print_pop_metrics(TALP_INFO, dlb_loop_monitor);
+        // TODO: This code is replicated on earl_periodic_actions_talp
+        sig_ext_t sig_ext_tmp;
+        if (state_ok(metrics_compute_talp_node_metrics(&sig_ext_tmp, dlb_loop_monitor)))
+        {
+            if (MASTER_ID >= 0)
+            {
+                sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
+                node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
+                // TODO: Move in the outer condition scope
+                verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
+            }
+        }
     }
 
     if (MASTER_ID >= 0 && talp_report)
@@ -2811,7 +2815,7 @@ static state_t earl_periodic_actions_talp_finalize()
     if (dlb_app_monitor)
     {
         DLB_MonitoringRegionStop(dlb_app_monitor);
-        DLB_MonitoringRegionReport(dlb_app_monitor);
+        // DLB_MonitoringRegionReport(dlb_app_monitor);
     }
 
     monitor_unregister(earl_talp);

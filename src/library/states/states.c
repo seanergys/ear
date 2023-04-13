@@ -353,7 +353,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /**** This function can potentially include data sharing between masters, depends on the policy ****/
     /***************************************************************************************************/
 
-    if (traces_are_on() && ((sig_shared_region[my_node_id].iterations %5 ) == 0)){
+    if (traces_are_on() && ((sig_shared_region[my_node_id].iterations %5 ) == 0))
+    {
       signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
       tracer_signature.def_f = sig_shared_region[my_node_id].new_freq;
       traces_new_signature(ear_my_rank, my_node_id, &tracer_signature);
