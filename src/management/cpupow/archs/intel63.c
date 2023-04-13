@@ -201,7 +201,7 @@ static void domain_bit_power_limit(cchar *name, cchar *keep, cpu_t *cpu, msr_pow
 
 static int domain_read_power_limit(const char *name, off_t address, cpu_t *cpu, msr_power_limit_t *pl, int bl, double div)
 {
-    if ((msr_read(cpu->id, &pl->reg, sizeof(ullong), address))) {
+    if (state_fail(msr_read(cpu->id, &pl->reg, sizeof(ullong), address))) {
         tprintf3(&t, "%s[%d]||error||-||-||MSR_%s_POWER_LIMIT (%s)", name, cpu->id, name, state_msg);
         return 0;
     }
@@ -412,10 +412,11 @@ CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_intel63_powercap_is_enabled)
     memset(enabled, 0, sizeof(uint)*p->tp->cpu_count);
     //
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
+        if (!domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
             return EAR_ERROR;
         }
         enabled[i] = pl.pl1_enable;
+        debug("enabled[%0d]: %d", p->tp->cpus[i].id, enabled[i]);
     }
     return EAR_SUCCESS;
 }
@@ -432,11 +433,12 @@ CPUPOW_F_POWERCAP_GET(mgt_cpupow_intel63_powercap_get)
     }
     //
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
+        if (!domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
             return EAR_ERROR;
         }
         if (watts != NULL && pl.pl1_enable) {
             watts[i] = pl.pl1_power;
+            debug("%s[%02d]: %u W of current powercap", p->name, p->tp->cpus[i].id, watts[i]);
         }
     }
     return EAR_SUCCESS;
