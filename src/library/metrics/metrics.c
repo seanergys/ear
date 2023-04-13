@@ -1717,6 +1717,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		#endif
 
 		float total_gpu_power = 0;
+		ulong total_gpu_util  = 0;
 #if USE_GPUS
         /* GPUS */
         metrics->gpu_sig.num_gpus = met_gpu.devs_count;
@@ -1731,8 +1732,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
             metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
             metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
+						total_gpu_util  += metrics->gpu_sig.gpu_data[p].GPU_util;
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
+		#if DCGMI
+		/* If there is not utilization we reset the number of instances. Instances are used by policies */
+		if (total_gpu_util == 0) for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
+		#endif
 #endif
     if (!estimate_power){
       /* Power error control: computing the ratio */

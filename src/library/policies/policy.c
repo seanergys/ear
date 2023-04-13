@@ -1476,7 +1476,7 @@ state_t policy_new_iteration(signature_t *sig)
 
 
     if (last_phase_io_bnd || last_phase_bw) {
-        verbose_master(POLICY_INFO +1, "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
+        verbose_master(POLICY_INFO , "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
                 COL_BLU, COL_CLR, sig->Gflops, sig->IO_MBS, sig->CPI );
 
         uint restore = 0;
@@ -1484,7 +1484,7 @@ state_t policy_new_iteration(signature_t *sig)
         if (last_phase_io_bnd && (sig->IO_MBS < phases_limits.io_th))         restore = 1; 
         if (last_phase_bw     && (sig->CPI > phases_limits.cpi_busy_waiting)) restore = 1;
         /* WARNING: Below condition won't be accomplished never. */
-        if (sig->Gflops > phases_limits.gflops_busy_waiting)                  restore = 1;
+        if ((sig->Gflops/lib_shared_region->num_cpus) > phases_limits.gflops_busy_waiting)                  restore = 1;
 
         if (restore){
             verbose_master(POLICY_INFO, "Phase has changed, restoring");
