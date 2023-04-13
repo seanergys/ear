@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define DEBUG_POWER_CONSUMING 1
+//#define SHOW_DEBUGS 1
+#define DEBUG_POWER_CONSUMING 0
 
 #include <math.h>
 #include <stdlib.h>

@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define DEBUG_POWER_CONSUMING 1
+//#define SHOW_DEBUGS 1
+#define DEBUG_POWER_CONSUMING 0
 
 #include <math.h>
 #include <stdlib.h>
@@ -404,21 +404,22 @@ CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_intel63_powercap_is_capable)
 
 CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_intel63_powercap_is_enabled)
 {
-    struct domain_s *p = &domains[domain];
-    msr_power_limit_t pl;
-    int i;
+        struct domain_s *p = &domains[domain];
+        int watts[16];
+        state_t s;
+        int i;
 
-    // Cleaning
-    memset(enabled, 0, sizeof(uint)*p->tp->cpu_count);
-    //
-    for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (!domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
-            return EAR_ERROR;
+        memset(watts, 0, sizeof(int)*16);
+        memset(enabled, 0, sizeof(int)*(p->tp->cpu_count));
+        // Just the socket domain is enabled, so 16 of watts space is enough
+        if (state_fail(s = mgt_cpupow_intel63_powercap_get(domain, watts))) {
+            return s;
         }
-        enabled[i] = pl.pl1_enable;
-        debug("enabled[%0d]: %d", p->tp->cpus[i].id, enabled[i]);
-    }
-    return EAR_SUCCESS;
+        for (i = 0; i < p->tp->cpu_count; ++i) {
+            enabled[i] = (watts[i] != p->pi[i].tdp);
+            debug("enabled[%d]: %d", p->tp->cpus[i].id, enabled[i], watts[i], p->pi[i].tdp);
+        }
+        return s;
 }
 
 CPUPOW_F_POWERCAP_GET(mgt_cpupow_intel63_powercap_get)
