@@ -362,14 +362,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 #if DLB
     /* Add the node mgt external feature management.
      * Detect, prints and set to 0 again */
-    if (external_mgt != NULL) {
+    if (external_mgt != NULL && (masters_info.my_master_rank >= 0)) {
         if (external_mgt->new_mask == 1) {
-            verbose_master(1, "External library requested rescheduling.");
+            verbose_master(1, "%sExternal library requested rescheduling%s", COL_RED, COL_CLR);
             if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
             {
                 verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
             }
             external_mgt->new_mask = 0;
+            resched_conf->force_rescheduling = 2;
         }
     }
 #endif // DLB
@@ -426,7 +427,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             resched_conf->force_rescheduling = 0;
 
-            verbose_master(2, "--- [EAR] Re-scheduling forced by EARD ---\n%-20s: %u\n%-20s: %lu\n%-20s: %lu\n%-20s: %lf\n",
+            verbose_master(1, "--- [EAR] Re-scheduling forced by %s ---\n%-20s: %u\n%-20s: %lu\n%-20s: %lu\n%-20s: %lf\n",
+                    (resched_conf->force_rescheduling == 1? "EARD": "External"),
                     "Curr. state", EAR_STATE, "Max CPUfreq", system_conf->max_freq, "Def. CPUfreq",
                     system_conf->def_freq, "Policy th", system_conf->settings[0]);
 

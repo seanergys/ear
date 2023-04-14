@@ -89,10 +89,14 @@ typedef struct lib_shared_data {
     cpu_set_t   node_mask;
     ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     uint        node_mgr_index;
+	uint        reduced_in_barrier; // This variable is only used in an unstable/research policy.
 #if MPI_OPTIMIZED
-		uint        processes_in_barrier;
+		uint    processes_in_barrier;
 #endif
-		uint        reduced_in_barrier;
+#if DLB
+        int     must_call_libdlb; // A control variable to rule processes to call DLB blocking calls.
+        int     max_libdlb_calls; // The maximum times DLB API was called.
+#endif
 } lib_shared_data_t;
 
 
@@ -114,8 +118,12 @@ typedef struct shsignature {
     uint              unbalanced;
     float             perc_MPI;
 	double            period;
-    /* This field is used for mpi opt */
+    /* This field is used for mpi opt
+     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
     ulong             mpi_freq;
+#if DLB
+    int               libdlb_calls_cnt; // Counter for DLB API's blocking functions calls.
+#endif
 } shsignature_t;
 
 
