@@ -118,6 +118,8 @@ static FILE *talp_report = NULL;
 static dlb_monitor_t *dlb_loop_monitor = NULL;
 static dlb_monitor_t *dlb_app_monitor = NULL;
 
+static uint talp_monitor = 1;
+
 #endif // DLB
 
 
@@ -2604,19 +2606,32 @@ static state_t earl_periodic_actions_talp_init(void *p)
     {
         DLB_MonitoringRegionStart(dlb_app_monitor);
         DLB_MonitoringRegionStart(dlb_loop_monitor);
+
         verbose_master(TALP_INFO, "DLB-TALP Init done");
     } else
     {
         dlb_app_monitor = dlb_loop_monitor = NULL;
-        verbose(TALP_INFO, "%sERROR%s [%d] registering regions.", COL_RED, COL_CLR, my_node_id);
+        talp_monitor = 0;
+
+        sem_wait(lib_shared_lock_sem);
+        lib_shared_region->must_call_libdlb = 0;
+        sem_post(lib_shared_lock_sem);
+
+        verbose(TALP_INFO, "%sERROR%s [%d] registering regions.",
+                COL_RED, COL_CLR, my_node_id);
     }
 
-    return EAR_SUCCESS;
+    return (talp_monitor ? EAR_SUCCESS : EAR_ERROR);
 }
 
 
 static state_t earl_periodic_actions_talp(void *p)
 {
+    if (!talp_monitor)
+    {
+        return EAR_SUCCESS;
+    }
+
     int must_call_libdlb = 0;
     verbose(TALP_INFO + 1, "DLB-TALP Periodic action");
 
