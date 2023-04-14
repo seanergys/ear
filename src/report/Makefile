@@ -59,6 +59,11 @@ repo_BINS += \
 	dcgmi.so
 endif	
 
+ifeq ($(DLB), 1)
+CFLAGS += -DDLB=1 -I/home/xvlopez/local/dlb/openmpi/include
+LDFLAGS += -L/home/xvlopez/local/dlb/openmpi/lib -ldlb
+endif
+
 
 
 ######## RULES
