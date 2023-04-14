@@ -2676,7 +2676,7 @@ static state_t earl_periodic_actions_talp(void *p)
                 sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
                 node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
                 // TODO: Move in the outer condition scope
-                verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
+                // verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
             }
         }
 
@@ -2708,8 +2708,8 @@ static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_met
                     if (talp_report)
                     {
                         char talp_report_header[] = "time,node_id,total_useful_time,"
-                                                    "total_mpi_time,max_useful_time,"                                                    "max_mpi_time,load_balance,"
-                                                    "parallel_efficiency";
+                                                    "total_mpi_time,max_useful_time,"
+                                                    "max_mpi_time,load_balance,parallel_efficiency";
 
                         size_t header_len = strlen(talp_report_header);
 
@@ -2814,7 +2814,7 @@ static state_t earl_periodic_actions_talp_finalize()
                 sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
                 node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
                 // TODO: Move in the outer condition scope
-                verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
+                // verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
             }
         }
     }

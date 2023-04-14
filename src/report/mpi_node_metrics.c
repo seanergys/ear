@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/includes.h>
 #include <common/config.h>
@@ -93,7 +93,8 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
         }
 
         char header[] = "time,node_id,total_useful_time,max_useful_time,"
-                        "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi";
+                        "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi"
+                        "talp_load_balance,talp_parallel_efficiency";
 
         if (fprintf(stream, "%s", header) < 0) {
             return EAR_ERROR;
@@ -145,10 +146,10 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
     // MPI %
     double avg_mpi = avg_mpi_time / (double) max_exec_time;
 
-    fprintf(stream, "\n%s,%d,%llu,%llu,%lf,%lf,%lf,%lf,%lf",
+    fprintf(stream, "\n%s,%d,%llu,%llu,%lf,%lf,%lf,%lf,%lf,%f,%f",
             time_buff, id->master_rank, total_useful_time,
             max_useful_time, load_balance, parallel_eff,
-            data->max_mpi, data->min_mpi, avg_mpi);
+            data->max_mpi, data->min_mpi, avg_mpi, data->dlb_talp_node_metrics.load_balance, data->dlb_talp_node_metrics.parallel_efficiency);
 
     return EAR_SUCCESS;
 }
