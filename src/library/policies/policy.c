@@ -23,9 +23,7 @@
 #include <mpi.h>
 #endif
 #include <dlfcn.h>
-#if DLB
 #include <semaphore.h>
-#endif
 // #define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/config.h>
@@ -76,9 +74,7 @@ static ear_event_t curr_policy_event;
 extern uint report_earl_events;
 extern report_id_t rep_id;
 
-#if DLB
 extern sem_t *lib_shared_lock_sem;
-#endif
 
 
 #define REPORT_PHASE(phase) \
@@ -1843,17 +1839,14 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
 
         /* This is the default use case. EAR uses the CPU affinity mask */
-#if DLB
         int sem_ret_val = sem_wait(lib_shared_lock_sem);
         if (sem_ret_val < 0)
         {
             verbose(1, "%sWARNING%s Locking semaphor for cpu mask read failed: %d", COL_YLW, COL_CLR, errno);
         }
-#endif // DLB
 
         cpu_set_t process_mask = sig_shared_region[proc_lrank].cpu_mask;
 
-#if DLB
         // We only want to increase the semaphor number if the previous lock was successful.
         if (!sem_ret_val)
         {
@@ -1863,7 +1856,6 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
                         COL_YLW, COL_CLR, errno);
             }
         }
-#endif // DLB
 
         for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
             if (CPU_ISSET(cpu_idx, &process_mask)) {
