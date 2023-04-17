@@ -27,7 +27,8 @@ repo_BINS = \
     dummy.so \
 		dcdb.so \
 		sysfs.so \
-    mpitrace.so
+    mpitrace.so \
+	mpi_node_metrics.so
 ifeq ($(FEAT_DB_PSQL),1)
 repo_BINS += \
 	psql.so 
@@ -57,6 +58,11 @@ CFLAGS += \
 repo_BINS += \
 	dcgmi.so
 endif	
+
+ifeq ($(DLB), 1)
+CFLAGS += -DDLB=1 -I/home/xvlopez/local/dlb/openmpi/include
+LDFLAGS += -L/home/xvlopez/local/dlb/openmpi/lib -ldlb
+endif
 
 
 

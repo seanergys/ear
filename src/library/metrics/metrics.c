@@ -1449,8 +1449,6 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
 			verbose(0,"Warning, estimate metrics and not master task");
 			return;
 		}
-		sig_ext_t *sig_ext ;
-
 
 
     if (estimate_power){
@@ -1464,7 +1462,6 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
       estimate_power = 0;
     }
 
-  	sig_ext = metrics->sig_ext;
 
 		if (estimate_met_cpuf){
 			if (mgt_cpufreq.ok){ 
@@ -1493,8 +1490,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	// signature index.
 	sig_ext_t *sig_ext;
 
-	debug("process %d - %sapp/loop(1/0) %u%s",
-			my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
+	//verbose(0, "process %d - %sapp/loop(1/0) %u%s",
+  //			my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
 
 	/* Total time */
 	metrics_usecs[sign_app_loop_idx] = ear_max(metrics_usecs[sign_app_loop_idx], 1);
@@ -1530,6 +1527,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			sig_ext->dcgmis.dcgmi_gpus 			= gpu_dcgmi_gpus_detected();
       sig_ext->dcgmis.dcgmi_num_ev 		= DCGMI_NUM_EVENTS;
       sig_ext->dcgmis.dcgmi_events 		= calloc(DCGMI_SETS, sizeof(uint *));
+      sig_ext->dcgmis.dcgmi_instances	= calloc(DCGMI_SETS, sizeof(uint));
       sig_ext->dcgmis.dcgmi_metrics 	= calloc(DCGMI_SETS, sizeof(dcgmi_t *));
       for (uint set = 0; set < DCGMI_SETS; set++){
 				verbose_master(2,"Allocating events for set %u", set);
@@ -1628,6 +1626,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
       /* Copy in sig_ext */
       gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set]);
+      sig_ext->dcgmis.dcgmi_instances[dcgmi_curr_ev_set]++;
 
       dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % DCGMI_SETS;
 
@@ -1718,6 +1717,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		#endif
 
 		float total_gpu_power = 0;
+		ulong total_gpu_util  = 0;
 #if USE_GPUS
         /* GPUS */
         metrics->gpu_sig.num_gpus = met_gpu.devs_count;
@@ -1732,8 +1732,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
             metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
             metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
+						total_gpu_util  += metrics->gpu_sig.gpu_data[p].GPU_util;
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
+		#if DCGMI
+		/* If there is not utilization we reset the number of instances. Instances are used by policies */
+		if (total_gpu_util == 0) for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
+		#endif
 #endif
     if (!estimate_power){
       /* Power error control: computing the ratio */
@@ -1803,10 +1808,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             "End compute signature for (l. rank) %d. Period %lf secs",
             my_node_id, sig_shared_region[my_node_id].period);
 
+
 	if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) {
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
-
 
 	/* Compute and print the total savings */
 	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
@@ -1879,9 +1884,7 @@ int metrics_init(topology_t *topo)
 {
 
     char *cimc_max_khz,*cimc_min_khz;
-#if 0
-	char imc_buffer[1024];
-#endif
+
 	pstate_t tmp_def_imc_pstate;
 	state_t st;
 	state_t s;
@@ -2031,11 +2034,10 @@ int metrics_init(topology_t *topo)
 		} else {
 			verbose_master(ERROR_VERB, "%sMETRICS%s IMCFREQ not supported.", COL_BLU, COL_CLR);
 		} // IMC
-	}
+	} // master
 
 #if USE_GPUS
     fflush(stderr);	
-#else
 #endif
 
 	metrics_global_start();
@@ -2057,53 +2059,109 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	sig_ext_t *se;
 	signature_t job_node_sig;
 	uint num_ready;
-	uint exited;
 	float wait_time = 0;
 
-  #if METRICS_OVH
-  verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
-  #endif
+#if METRICS_OVH
+    verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+#endif
 
-  metrics->sig_ext = NULL;
+    metrics->sig_ext = NULL;
 
-	verbosen_master(INFO_METRICS, "--- Metrics dispose init (l. rank) %d ---", my_node_id);
+    ullong time_st = timestamp_getconvert(TIME_MSECS);
+    verbosen(INFO_METRICS + 1, "--- %llu Metrics dispose init (l. rank) %d ---", time_st, my_node_id);
 
-	if (!eards_connected() && master){ 
+	if (!eards_connected() && master) {
 		if (!EARL_LIGHT){ 
 			return;
 		}
 	}
 
-	verbose_master(INFO_METRICS, "Calling last partial stop...");
+    /* Here we should lock the mutex and look whether another thread is computing a signature,
+     * so we can avoid recomputing again the last loop signature.
+     *
+     * If true, we can simply wait the other thread to mark signature as ready and jump to
+     * compute the application (global) signature. I need to have clearer the second synchro,
+     * but I think that we need it before global stop.
+     * Do we need to call compute_per_process_and_job_metrics ? It's difficult to answer because
+     * this function writes global data maybe wrote by the other thread.
+     *
+     * We could send a pthread_cancel to the other thread, when we enter this function.
+     * The other thread shall not be cancellable if it is computing the signature.
+     */
 
-	/* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
-	while ((metrics_partial_stop(SIG_BEGIN) == EAR_NOT_READY) && (wait_time < MAX_SYNCHO_TIME) && lib_shared_region->earl_on){ 
-		usleep(10000);
-		wait_time += 0.01;
-	}
-	if (!lib_shared_region->earl_on){ 
-		return;
-	}
-	metrics_compute_signature_data(LOO, metrics, 1, procs);
+#if 0
+    if (state_fail(ear_trylock(&compute_signature_mutex)))
+    {
+        verbose(0, "[EAR] Locking for last signature computation failed.");
+    }
+
+    computing_last_signature = 1;
+
+    if (!computing_loop_signature)
+    {
+#endif
+        verbose_master(INFO_METRICS, "Calling last partial stop...");
+
+        /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
+        state_t ret = metrics_partial_stop(SIG_BEGIN);
+        while (ret == EAR_NOT_READY && wait_time < MAX_SYNCHO_TIME && lib_shared_region->earl_on)
+        { 
+            usleep(10000);
+
+            wait_time += 0.01;
+            ret = metrics_partial_stop(SIG_BEGIN);
+        }
+
+        if (!lib_shared_region->earl_on){ 
+            return;
+        }
+
+        verbose(0, "Computing last signature data");
+        metrics_compute_signature_data(LOO, metrics, 1, procs);
+#if 0
+    }
+
+    ear_unlock(&compute_signature_mutex);
+#endif
 
 	/* Waiting for node signatures */
 	verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
 
-	/* Synchro 2: Waiting for local signatures to compute loops.
-	 * Master will wait for the others and Other will wait for the master */
+	/* Synchro 2: Waiting for last local loops signatures.
+     *
+     * Slaves wait master to be ready for the global stop.
+     *
+     * Control variables:
+     *  - wait_time
+     *  - two_or_more_processes_tobe_exited 
+     *  - all_signs_ready
+     */
 	wait_time = 0;
-	exited = num_processes_exited(lib_shared_region,sig_shared_region);
-	while ((exited < lib_shared_region->num_processes - 1) 
-			&& are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0 && (wait_time < MAX_SYNCHO_TIME)) {
+
+	uint exited = num_processes_exited(lib_shared_region,sig_shared_region);
+    uint two_or_more_processes_tobe_exited = exited < (lib_shared_region->num_processes - 1);
+
+    uint all_signs_ready = are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready);
+
+	while (two_or_more_processes_tobe_exited && !all_signs_ready && (wait_time < MAX_SYNCHO_TIME))
+    {
 		if (!(master) && lib_shared_region->global_stop_ready) {
 			break;
 		}
+
+        // Why do we have this condition ? if just one process is pending to be exited, the loop is not entered.
 		if (master && (exited == lib_shared_region->num_processes - 1)) {
 			break;
 		}
+
 		usleep(10000);
-		wait_time += 0.01;
+
 		exited = num_processes_exited(lib_shared_region, sig_shared_region);
+        two_or_more_processes_tobe_exited = exited < (lib_shared_region->num_processes - 1);
+
+        all_signs_ready = are_signatures_ready(lib_shared_region, sig_shared_region, &num_ready);
+
+		wait_time += 0.01;
 	}
 
 	// Only master does something in this funcion
@@ -2114,6 +2172,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		free_node_signatures(lib_shared_region,sig_shared_region);
 		lib_shared_region->global_stop_ready = 1;
 	}
+
 	debug("Global stop");
 	metrics_global_stop();
 	debug("metrics_compute_signature_data APP");
@@ -2219,9 +2278,23 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 
 		// Call report mpitrace
 		report_id_t report_id;
-		report_create_id(&report_id, my_node_id, ear_my_rank, masters_info.my_master_rank);
-		if (state_fail(report_misc(&report_id, MPITRACE, (cchar *) &sig_shared_region[my_node_id], -1))) {
-			verbose(3, "%sERROR%s Reporting mpitrace for process %d", COL_RED, COL_CLR, my_node_id);
+		report_create_id(&report_id, my_node_id,
+                         ear_my_rank, masters_info.my_master_rank);
+
+		if (state_fail(report_misc(&report_id, MPITRACE,
+                                   (cchar *) &sig_shared_region[my_node_id], -1)))
+        {
+			verbose(3, "%sERROR%s Reporting mpitrace for process %d",
+                    COL_RED, COL_CLR, my_node_id);
+		}
+
+    // Report node metrics
+    if (state_fail(report_misc(&report_id, MPI_NODE_METRICS,
+                                   (cchar *) metrics->sig_ext,
+                                   lib_shared_region->num_processes)))
+        {
+			verbose_master(3, "%sERROR%s Reporting mpi node metrics.",
+                    COL_RED, COL_CLR, my_node_id);
 		}
 
 		metrics_partial_start();
@@ -2440,7 +2513,7 @@ state_t metrics_new_iteration(signature_t *sig)
     if (last_phase_bw){
       cpi_read_diff(no_ctx,   &cpi_read2[LOO],   &cpi_read1[LOO],   &cpi_diff[LOO],   &cpi_avrg[LOO]);
       sig->CPI = cpi_avrg[LOO];
-      verbose_master(2, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
+      verbose_master(3, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI , sig->CPI < phases_limits.cpi_busy_waiting);
       return EAR_SUCCESS;
     }    
         // TODO: We changed the approach, so this message should change.
@@ -2712,3 +2785,24 @@ static state_t energy_lib_init(settings_conf_t *conf)
 static void metrics_static_dispose()
 {
 }
+
+#if DLB
+state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor)
+{
+    if (dst_sig)
+    {
+        int ret = DLB_TALP_CollectNodeMetrics(region_monitor, &dst_sig->dlb_talp_node_metrics);
+
+        if (!ret)
+        {
+            return EAR_SUCCESS;
+        } else
+        {
+            return EAR_ERROR;
+        }
+    } else
+    {
+        return EAR_ERROR;
+    }
+}
+#endif // DLB
