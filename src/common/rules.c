@@ -78,7 +78,7 @@ state_t rule_check(time_t timestamp, uint64_t power)
 {
     int i;
     for (i = 0; i < num_rules; i++) {
-        if 
+    //    if 
     }
 
     return EAR_SUCCESS;
