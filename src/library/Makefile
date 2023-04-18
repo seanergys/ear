@@ -68,12 +68,9 @@ comm_OBJS = \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/daemon/local_api/libeard.a \
-    $(SRCDIR)/common/libcommon.a
+    $(SRCDIR)/common/libcommon.a \
+	$(SRCDIR)/common/external/ear_external.o # This file must be included in common
 
-ifeq ($(DLB), 1)
-comm_OBJS += \
-	$(SRCDIR)/common/external/ear_external.o
-endif
 
 
 core_OBJS = \

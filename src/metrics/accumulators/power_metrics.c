@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -301,7 +301,7 @@ void compute_power(energy_data_t *e_begin, energy_data_t *e_end, power_data_t *m
 
 #ifdef SHOW_DEBUGS
     for (p = 0; p < gpu_num  ; p++) {
-        debug("energy gpu pack %d %llu", p, gpu_diff[p].energy_j);
+        debug("energy gpu pack %d %lf", p, gpu_diff[p].energy_j);
     }
 #endif
 

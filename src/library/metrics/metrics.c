@@ -1814,7 +1814,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	}
 
 	/* Compute and print the total savings */
-  verbose_master(1, " Scope %s master %u elapsed %f", (sign_app_loop_idx == APP?"APP":"LOOP"), masters_info.my_master_rank >= 0, sig_ext->telapsed);
+  if (sign_app_loop_idx == APP){
+    verbose_master(1, " Scope %s master %u elapsed %f", (sign_app_loop_idx == APP?"APP":"LOOP"), masters_info.my_master_rank >= 0, sig_ext->telapsed);
+  }
 	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
 
 
@@ -2059,6 +2061,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 {
 	sig_ext_t *se;
 	signature_t job_node_sig;
+  signature_t last_loop_sig;
 	uint num_ready;
 	float wait_time = 0;
 
@@ -2066,7 +2069,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
 #endif
 
-    metrics->sig_ext = NULL;
+    // metrics->sig_ext = NULL;
+    last_loop_sig.sig_ext = NULL;
 
     ullong time_st = timestamp_getconvert(TIME_MSECS);
     verbosen(INFO_METRICS + 1, "--- %llu Metrics dispose init (l. rank) %d ---", time_st, my_node_id);
@@ -2077,30 +2081,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 		}
 	}
 
-    /* Here we should lock the mutex and look whether another thread is computing a signature,
-     * so we can avoid recomputing again the last loop signature.
-     *
-     * If true, we can simply wait the other thread to mark signature as ready and jump to
-     * compute the application (global) signature. I need to have clearer the second synchro,
-     * but I think that we need it before global stop.
-     * Do we need to call compute_per_process_and_job_metrics ? It's difficult to answer because
-     * this function writes global data maybe wrote by the other thread.
-     *
-     * We could send a pthread_cancel to the other thread, when we enter this function.
-     * The other thread shall not be cancellable if it is computing the signature.
-     */
-
-#if 0
-    if (state_fail(ear_trylock(&compute_signature_mutex)))
-    {
-        verbose(0, "[EAR] Locking for last signature computation failed.");
-    }
-
-    computing_last_signature = 1;
-
-    if (!computing_loop_signature)
-    {
-#endif
         verbose_master(INFO_METRICS, "Calling last partial stop...");
 
         /* Synchro 1, waiting for last loop data: partial stop: master will wait if. Others will wait for master signature */
@@ -2117,13 +2097,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
             return;
         }
 
-        verbose(0, "Computing last signature data");
-        metrics_compute_signature_data(LOO, metrics, 1, procs);
-#if 0
-    }
-
-    ear_unlock(&compute_signature_mutex);
-#endif
+        //verbose(0, "Computing last signature data");
+        metrics_compute_signature_data(LOO, &last_loop_sig, 1, procs);
 
 	/* Waiting for node signatures */
 	verbose_master(INFO_METRICS+1, "(l.rank) %d: Waiting for loop node signatures", my_node_id);
@@ -2294,7 +2269,7 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
                                    (cchar *) metrics->sig_ext,
                                    lib_shared_region->num_processes)))
         {
-			verbose_master(3, "%sERROR%s Reporting mpi node metrics.",
+			verbose_master(3, "%sERROR%s Reporting mpi node metrics.[%d]",
                     COL_RED, COL_CLR, my_node_id);
 		}
 

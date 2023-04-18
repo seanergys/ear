@@ -61,7 +61,7 @@
 #define NEW_CPUFREQ_API 1 // Enables the usage of the new metrics API,
                           // instead of the deprecated frequency API.
 #define VERBOSE_WARN    2 // Verbose level for warning messages.
-#define VERB_SAV_PEN    3 // Verbose level for saving and penalty estimation.
+#define VERB_SAV_PEN    1 // Verbose level for saving and penalty estimation.
 #define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
 #if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.

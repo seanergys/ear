@@ -1306,6 +1306,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 // #if 0
 	double tflops;
 // #endif
+//
 	
 	sig_ext_t *sig_ext = curr->sig_ext;
 

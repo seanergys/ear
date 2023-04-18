@@ -103,14 +103,14 @@
 #include <library/api/mpi_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 
-#if DLB
-#include <dlb_talp.h>
 #include <common/external/ear_external.h>
-
-#define TALP_INFO  0 // TALP management verbose level
-
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
+
+#if DLB
+#include <dlb_talp.h>
+
+#define TALP_INFO  0 // TALP management verbose level
 
 static suscription_t* earl_talp;
 static FILE *talp_report = NULL;
@@ -630,12 +630,10 @@ void create_shared_regions()
 				exclusive = (current_jobs_in_node == 1);
 				verbose_jobs_in_node(3,node_mgr_data,node_mgr_job_info);
 
-        #if DLB
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
-        verbose_master(TALP_INFO, "Created shared region for external libraries!");
-        #endif
+        verbose_master(2, "Created shared region for external libraries!");
 
 }
 
