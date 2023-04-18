@@ -1808,6 +1808,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 
 	/* Compute and print the total savings */
+  verbose_master(1, " Scope %s master %u elapsed %f", (sign_app_loop_idx == APP?"APP":"LOOP"), masters_info.my_master_rank >= 0, sig_ext->telapsed);
 	if ((sign_app_loop_idx == APP) && (masters_info.my_master_rank >= 0) && sig_ext->telapsed) {
 
 
