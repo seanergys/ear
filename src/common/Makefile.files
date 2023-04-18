@@ -63,7 +63,8 @@ libc_OBJS = \
 	$(SRCDIR)/common/utils/strtable.o \
 	$(SRCDIR)/common/utils/string.o \
 	$(SRCDIR)/common/utils/serial_buffer.o \
-	$(SRCDIR)/common/utils/stress.o
+	$(SRCDIR)/common/utils/stress.o \
+	$(SRCDIR)/common/external/ear_external.o
 
 ifdef DB_BASE
 libc_OBJS += \
