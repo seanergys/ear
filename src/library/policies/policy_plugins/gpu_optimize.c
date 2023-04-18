@@ -64,6 +64,8 @@ extern unsigned long ext_def_freq;
 #define FP64_EV   1
 #define FP32_EV   0
 #define FP16_EV   1
+#define SM_SET    2
+#define SM_EV     1
 
 static const ulong **gpuf_list;
 static const uint *gpuf_list_items;
@@ -83,6 +85,8 @@ static uint dcgmi_ref_set;
 typedef enum {
   UTIL_W      = 0,
   FLOPS_W     = 1,
+  GFLOPS_W    = 2,
+	SM_OCC      = 3,
 }gpu_opt_metric_t;
 
 typedef enum{
@@ -95,14 +99,16 @@ static char optimize_criteria[1024];
 #define FLAG_GPU_METRIC_TO_OPTIMIZE   "EAR_GPU_METRIC_TO_OPTIMIZE"
 #define FLAG_GPU_STRATEGY_TO_OPTIMIZE "EAR_GPU_STRATEGY_TO_OPTIMIZE"
 
-#define metric_is(x)    (x == UTIL_W?"UTIL_W":(x == FLOPS_W?"FLOPS_W":"UNDEF"))
+#define metric_is(x)    (x == UTIL_W?"UTIL_W":(x == FLOPS_W?"FLOPS_W":(x == GFLOPS_W?"GPU_GFLOPS_W":(x == SM_OCC?"SM_OCC":"UNDEF"))))
 #define strategy_is(x)  (x == max_value?"MAX":"UNDEF")
 
 static void update_optimize_options(char *metric,char * strategy)
 {
   if (metric != NULL){
-    if (strcmp(metric, "UTIL_W") == 0)       metric_to_optimize = UTIL_W;
+    if (strcmp(metric, "UTIL_W") == 0)       	metric_to_optimize = UTIL_W;
     if (strcmp(metric, "GFLOPS_W") == 0)      metric_to_optimize = FLOPS_W;
+    if (strcmp(metric, "GPU_GFLOPS_W") == 0)  metric_to_optimize = GFLOPS_W;
+    if (strcmp(metric, "SM_OCC") == 0)      	metric_to_optimize = SM_OCC;
   }
   if (strategy != NULL){
     if (strcmp(strategy, "MAX") == 0)       metric_strategy = max_value;
@@ -171,6 +177,19 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
   *curr = 0;
   switch(metric_to_optimize){
     case UTIL_W   : *curr = (float)(my_sig->gpu_sig.gpu_data[g].GPU_util*gpuf_list[g][last_GPU_pstate[g]])/(float)my_sig->DC_power;break;
+		case SM_OCC:
+			#if DCGMI
+			if (my_sig == NULL) return;
+			sigex = (sig_ext_t *)my_sig->sig_ext;
+			if (sigex == NULL)  return;
+      dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+      if (dcgmis == NULL) return;
+			dcgmi_t *dcgmis_data_sm = dcgmis->dcgmi_metrics[SM_SET];
+			float sm_occ = (float)(dcgmis_data_sm[g].values[SM_EV]);
+			*curr = sm_occ * gpuf_list[g][last_GPU_pstate[g]]/(float)my_sig->DC_power;
+			#endif
+			break;
+    case GFLOPS_W:
     case FLOPS_W  : {
       #if DCGMI
       if (my_sig == NULL) return;
@@ -178,21 +197,24 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
       if (sigex == NULL)  return;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return;
-      float cpu_gflops;
+      float cpu_gflops = 0;
       float f64,f32,f16;
       ullong cpu_flops = 0;
       dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
       dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
       dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
       verbose_master(2, "GPU[%u] computing CPU gflops ", g);
-      for (uint fe = 0; fe < FLOPS_EVENTS; fe++) cpu_flops += my_sig->FLOPS[fe];
+			if (metric_to_optimize == FLOPS_W){
+      //	for (uint fe = 0; fe < FLOPS_EVENTS; fe++) cpu_flops += my_sig->FLOPS[fe];
+      	cpu_gflops = (float)my_sig->Gflops;
+			}
       verbose_master(2, "GPU[%u] computing GPU gflops ", g);
-      cpu_gflops = (float)cpu_flops/(float)1000000.0;
+      //cpu_gflops = (float)cpu_flops/(float)1000000.0;
       f64        = (float)(dcgmis_data_64[g].values[FP64_EV]*64);
       f32        = (float)(dcgmis_data_32[g].values[FP32_EV]*32);
       f16        = (float)(dcgmis_data_16[g].values[FP16_EV]*16);
-      verbose_master(2, " GPU[%u] data for optimization: %f CPU-Flops GPU (%f 64 %f 32 %f 16)", g, cpu_gflops, f64, f32, f16);
-      *curr = (cpu_gflops+ (f64 + f32 +f16)*gpuf_list[g][last_GPU_pstate[g]]/(float)1000000.0)/(float)my_sig->DC_power;
+      verbose_master(2, " GPU[%u] data for optimization: %f CPU-Flops GPU (%f 64 %f 32 %f 16) elapsed %f", g, cpu_gflops, f64, f32, f16, sigex->elapsed);
+      *curr = (cpu_gflops + (f64 + f32 +f16)*gpuf_list[g][last_GPU_pstate[g]]/(float)1000000.0)/(float)my_sig->DC_power ;
       verbose_master(2, " GPU[%u] data for optimization: %f",g, *curr);
       break;
       #else
@@ -207,6 +229,7 @@ static uint GPU_metric_ready(signature_t *sig, uint g)
 {
   switch(metric_to_optimize){
   case UTIL_W   :return 1;
+	case GFLOPS_W :
   case FLOPS_W  :{
   #if DCGMI
     sig_ext_t *sigex;
@@ -287,12 +310,12 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
               new_freq[i] = gfreqs[i];
             }else{
                if (GPU_metric_ready(my_sig,i)){
-                verbose_master(2, "GPU[%d] optimize metric ready instances", i, dcgmi_instances);
+                verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
                 metric_ready = 1;
                 /* GPU data ready */
                 if (GPU_policy_state[i] == FIRST_SELECTION){
                   debug("Starting linear search for GPU %d", i);
-                  new_freq[i] = gpuf_list[i][0];
+                  new_freq[i] = gpuf_list[i][GPU_PSTATE_JUMP];
                   last_GPU_pstate[i] = 0;
                   GPU_get_metric(i, my_sig, &last_value[i]);
                   /* Save current metrics */
@@ -303,8 +326,8 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
                   GPU_get_metric(i, my_sig, &curr_value[i]);
                   if (GPU_ok(i,my_sig, curr_value[i], last_value[i])){
                     debug("Reducing the GPU frequency for GPU %d", i);
-                    new_freq[i] = gpuf_list[i][last_GPU_pstate[i] + GPU_PSTATE_JUMP];
                     last_GPU_pstate[i] += GPU_PSTATE_JUMP;
+                    new_freq[i] = gpuf_list[i][last_GPU_pstate[i] + GPU_PSTATE_JUMP];
                       /* Save any metrics here */
                     last_value[i] = curr_value[i];
                     signature_copy(&prev_gpu_sig, my_sig);

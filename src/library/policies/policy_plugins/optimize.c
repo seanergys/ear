@@ -76,6 +76,7 @@ typedef enum {
   GFLOPS   = 1,
   GFLOPS_W = 2,
   GBS_W    = 3,
+  GPU      = 4,
 } opt_metric_t;
 
 typedef enum{
@@ -134,7 +135,7 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 #define FLAG_METRIC_TO_OPTIMIZE   "EAR_METRIC_TO_OPTIMIZE"
 #define FLAG_STRATEGY_TO_OPTIMIZE "EAR_STRATEGY_TO_OPTIMIZE"
 
-#define metric_is(x)    (x == CPI?"CPI":(x == GFLOPS?"GFLOPS":(x == GFLOPS_W?"GFLOPS_W":"GBS_W")))
+#define metric_is(x)    (x == CPI?"CPI":(x == GFLOPS?"GFLOPS":(x == GFLOPS_W?"GFLOPS_W":(x == GBS_W?"GBS_W":"GPU"))))
 #define strategy_is(x)  (x == max_value?"MAX":(x == min_value?"MIN":"RATIO"))
 
 static void update_optimize_options(char *metric,char * strategy)
@@ -144,6 +145,7 @@ static void update_optimize_options(char *metric,char * strategy)
     if (strcmp(metric, "GFLOPS") == 0)    metric_to_optimize = GFLOPS;
     if (strcmp(metric, "GFLOPS_W") == 0)  metric_to_optimize = GFLOPS_W;
     if (strcmp(metric, "GBS_W") == 0)     metric_to_optimize = GBS_W;
+    if (strcmp(metric, "GPU") == 0)       metric_to_optimize = GPU;
   }
   if (strategy != NULL){
     if (strcmp(strategy, "MAX") == 0)       metric_strategy = max_value;
@@ -664,6 +666,7 @@ static uint policy_no_models_is_better_optimize(signature_t * curr_sig, signatur
     case GFLOPS   : curr_data = curr_sig->Gflops;old_data = prev_sig->Gflops; break;
     case GFLOPS_W : curr_data = curr_sig->Gflops/curr_sig->DC_power;old_data = prev_sig->Gflops/prev_sig->DC_power; break;
     case GBS_W    : curr_data = curr_sig->GBS/curr_sig->DC_power;old_data = prev_sig->GBS/prev_sig->DC_power; break;
+    case GPU      : return 0;
   }
 
   switch (metric_strategy){
