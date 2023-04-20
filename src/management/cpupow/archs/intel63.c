@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#define DEBUG_POWER_CONSUMING 1
+//#define SHOW_DEBUGS 1
+#define DEBUG_POWER_CONSUMING 0
 
 #include <math.h>
 #include <stdlib.h>
@@ -55,9 +55,9 @@
 #define MSR_PP1_POWER_INFO      MSR_NO_REG
 
 #if SHOW_DEBUGS
-#define tprintf3 tprintf2
+#define tprintf3(...) tprintf2(__VA_ARGS__)
 #else
-#define tprintf3
+#define tprintf3(...)
 #endif
 
 typedef struct msr_power_unit_s {
@@ -201,7 +201,7 @@ static void domain_bit_power_limit(cchar *name, cchar *keep, cpu_t *cpu, msr_pow
 
 static int domain_read_power_limit(const char *name, off_t address, cpu_t *cpu, msr_power_limit_t *pl, int bl, double div)
 {
-    if ((msr_read(cpu->id, &pl->reg, sizeof(ullong), address))) {
+    if (state_fail(msr_read(cpu->id, &pl->reg, sizeof(ullong), address))) {
         tprintf3(&t, "%s[%d]||error||-||-||MSR_%s_POWER_LIMIT (%s)", name, cpu->id, name, state_msg);
         return 0;
     }
@@ -324,23 +324,23 @@ static state_t debug_monitor(void *x)
 }
 #endif
 
-void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
+CPUPOW_F_LOAD(mgt_cpupow_intel63_load)
 {
     int i;
 
-    if (state_fail(msr_test(tp_in, MSR_WR))) {
-        debug("failed msr test: %s", state_msg);
-        return;
-    }
-    if (tp_in->vendor == VENDOR_INTEL && tp_in->model >= MODEL_HASWELL_X) {
+    if (tpo->vendor == VENDOR_INTEL && tpo->model >= MODEL_HASWELL_X) {
     } else {
         // API incompatible
         debug("api incompatible");
         return;
     }
-    topology_select(tp_in, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
-    topology_select(tp_in, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
-    // Opening MSRs
+    topology_select(tpo, &tp_cores  , TPSelect.core  , TPGroup.merge, 0);
+    topology_select(tpo, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
+    // Tesing and opening MSRs
+    if (state_fail(msr_test(tpo, MSR_WR))) {
+        debug("failed msr test: %s", state_msg);
+        return;
+    }
     for (i = 0; i < tp_cores.cpu_count; ++i) {
         if (state_fail(msr_open(tp_cores.cpus[i].id, MSR_WR))) {
             debug("Failed while opening CPU%d MSR: %s", tp_cores.cpus[i].id, state_msg);
@@ -374,9 +374,9 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     monitor_init();
     #endif
     //
-    apis_put(ops->get_api            , mgt_cpupow_intel63_get_api);
+    apis_put(ops->get_info           , mgt_cpupow_intel63_get_info);
     apis_put(ops->count_devices      , mgt_cpupow_intel63_count_devices);
-    apis_put(ops->is_powercap_capable, mgt_cpupow_intel63_is_powercap_capable);
+    apis_put(ops->powercap_is_capable, mgt_cpupow_intel63_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_intel63_powercap_is_enabled);
     apis_put(ops->powercap_get       , mgt_cpupow_intel63_powercap_get);
     apis_put(ops->powercap_set       , mgt_cpupow_intel63_powercap_set);
@@ -384,40 +384,45 @@ void mgt_cpupow_intel63_load(topology_t *tp_in, mgt_cpupow_ops_t *ops)
     apis_put(ops->tdp_get            , mgt_cpupow_intel63_tdp_get);
 }
 
-void mgt_cpupow_intel63_get_api(uint *api)
+CPUPOW_F_GET_INFO(mgt_cpupow_intel63_get_info)
 {
-    *api = API_INTEL63;
+    info->api         = API_INTEL63;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_SOCKET;
+    info->devs_count  = 1;
 }
 
-int mgt_cpupow_intel63_count_devices(int domain)
+CPUPOW_F_COUNT_DEVICES(mgt_cpupow_intel63_count_devices)
 {
     return domains[domain].tp->cpu_count;
 }
 
-int mgt_cpupow_intel63_is_powercap_capable(int domain)
+CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_intel63_powercap_is_capable)
 {
     return domains[domain].capable;
 }
 
-state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled)
+CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_intel63_powercap_is_enabled)
 {
-    struct domain_s *p = &domains[domain];
-    msr_power_limit_t pl;
-    int i;
+        struct domain_s *p = &domains[domain];
+        uint watts[16];
+        state_t s;
+        int i;
 
-    // Cleaning
-    memset(enabled, 0, sizeof(uint)*p->tp->cpu_count);
-    //
-    for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
-            return EAR_ERROR;
+        memset(watts, 0, sizeof(int)*16);
+        memset(enabled, 0, sizeof(int)*(p->tp->cpu_count));
+        // Just the socket domain is enabled, so 16 of watts space is enough
+        if (state_fail(s = mgt_cpupow_intel63_powercap_get(domain, watts))) {
+            return s;
         }
-        enabled[i] = pl.pl1_enable;
-    }
-    return EAR_SUCCESS;
+        for (i = 0; i < p->tp->cpu_count; ++i) {
+            enabled[i] = (watts[i] != p->pi[i].tdp);
+            debug("enabled[%d]: %d", p->tp->cpus[i].id, enabled[i], watts[i], p->pi[i].tdp);
+        }
+        return s;
 }
 
-state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
+CPUPOW_F_POWERCAP_GET(mgt_cpupow_intel63_powercap_get)
 {
     struct domain_s *p = &domains[domain];
     msr_power_limit_t pl;
@@ -429,17 +434,18 @@ state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts)
     }
     //
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
+        if (!domain_read_power_limit(p->name, p->pl_address, &p->tp->cpus[i], &pl, p->pl_bit_lock, p->pl_divisor)) {
             return EAR_ERROR;
         }
         if (watts != NULL && pl.pl1_enable) {
             watts[i] = pl.pl1_power;
+            debug("%s[%02d]: %u W of current powercap", p->name, p->tp->cpus[i].id, watts[i]);
         }
     }
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
+CPUPOW_F_POWERCAP_SET(mgt_cpupow_intel63_powercap_set)
 {
     struct domain_s *p = &domains[domain];
     double power;
@@ -476,7 +482,7 @@ state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_powercap_reset(int domain)
+CPUPOW_F_POWERCAP_RESET(mgt_cpupow_intel63_powercap_reset)
 {
     struct domain_s *p = &domains[domain];
     int i;
@@ -490,7 +496,7 @@ state_t mgt_cpupow_intel63_powercap_reset(int domain)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpupow_intel63_tdp_get(int domain, uint *watts)
+CPUPOW_F_TDP_GET(mgt_cpupow_intel63_tdp_get)
 {
     struct domain_s *p = &domains[domain];
     int i;

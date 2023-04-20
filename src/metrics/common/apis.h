@@ -45,6 +45,7 @@
 #define API_FAKE              15
 #define API_CPUMODEL          16
 #define API_RSMI              17
+#define API_AMD19             18
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2
@@ -57,6 +58,7 @@
 #define GRANULARITY_SOCKET     9
 #define GRANULARITY_NODE      10
 #define SCOPE_NONE             0
+#define SCOPE_DUMMY            1
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
 

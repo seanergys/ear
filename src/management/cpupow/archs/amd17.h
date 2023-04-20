@@ -15,27 +15,11 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#ifndef MANAGEMENT_CPUPOW_INTEL63_H
-#define MANAGEMENT_CPUPOW_INTEL63_H
+#ifndef MANAGEMENT_CPUPOW_AMD17_H
+#define MANAGEMENT_CPUPOW_AMD17_H
 
 #include <management/cpupow/cpupow.h>
 
-void mgt_cpupow_amd17_load(topology_t *tp, mgt_cpupow_ops_t *ops);
-
-void mgt_cpupow_amd17_get_api(uint *api);
-
-int mgt_cpupow_amd17_count_devices(int domain);
-
-int mgt_cpupow_amd17_is_powercap_capable(int domain);
-
-state_t mgt_cpupow_amd17_powercap_is_enabled(int domain, uint *enabled);
-
-state_t mgt_cpupow_amd17_powercap_get(int domain, uint *watts);
-
-state_t mgt_cpupow_amd17_powercap_set(int domain, uint *watts);
-
-state_t mgt_cpupow_amd17_powercap_reset(int domain);
-
-state_t mgt_cpupow_amd17_tdp_get(int domain, uint *watts);
+CPUPOW_DEFINES(amd17);
 
 #endif

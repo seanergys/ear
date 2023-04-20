@@ -72,13 +72,13 @@ spank_context_t spank_context (void)
 spank_err_t spank_get_item (spank_t spank, spank_item_t item, int *p)
 {
 	if (item == S_JOB_ID) {
-		*p = atoi(getenv(Var.job_id.own));
+		*p = atoi(getenv(Var.job_id.slurm));
 	} else if (item == S_JOB_STEPID) {
-		*p = atoi(getenv(Var.step_id.own));
+		*p = atoi(getenv(Var.step_id.slurm));
 	} else if (item == S_TASK_EXIT_STATUS) {
 		*p = sd.subject.exit_status;
     } else if (item == S_TASK_ID) {
-        *p = atoi(getenv(Var.local_id.own));
+        *p = atoi(getenv(Var.local_id.slurm));
     } else if (item == S_STEP_CPUS_PER_TASK) {
         *p = 1;
 	} else {

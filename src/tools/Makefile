@@ -8,7 +8,7 @@ tool_BINS = \
     coeffs_show \
     coeffs_default \
     coeffs_null \
-    external_attach \
+    enode_control \
     ear_conf
 ifdef DB_BASE
 tool_BINS += \
@@ -64,7 +64,7 @@ learning_delete: learning_delete.c $(comm_OBJS)
 ear_conf: ear_conf.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 
-external_attach: external_attach.c $(comm_OBJS) 
+enode_control: ear_node_control.c $(comm_OBJS) 
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
 ######## OPTIONS
 

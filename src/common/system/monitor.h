@@ -66,6 +66,8 @@ state_t monitor_burst(suscription_t *s, uint interrupt);
 
 state_t monitor_relax(suscription_t *suscription);
 
+int monitor_is_initialized();
+
 int monitor_is_bursting(suscription_t *s);
 
 suscription_t *suscription();

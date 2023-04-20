@@ -44,16 +44,15 @@ typedef struct regmon_s
 	int	ok_main;
 } regmon_t;
 
-static regmon_t       queue[N_QUEUE];
+static regmon_t         queue[N_QUEUE];
 static uint             queue_last;
 static pthread_t        thread;
 static pthread_mutex_t  lock_gen = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t  lock[N_QUEUE];
-static uint             enabled = 0;
+static uint             running = 0;
 static uint             locked = 0;
 struct sigaction        action_burst;
 struct sigaction        action_old;
-
 
 static void monitor_main_sleep(int wait_units, int *pass_units, int *alignment)
 {
@@ -140,9 +139,9 @@ static void *monitor_main(void *p)
 	// Initializing
 	monitor_main_init();
     // Main loop
-	while (enabled)
+	while (running)
 	{
-		for (i = 0, wait_units = 10; i < queue_last && enabled; ++i)
+		for (i = 0, wait_units = 10; i < queue_last && running; ++i)
 		{
             // Locking the suscription i
 			while (pthread_mutex_trylock(&lock[i]));
@@ -201,23 +200,23 @@ state_t monitor_init()
 	state_t s;
 
 	while (pthread_mutex_trylock(&lock_gen));
-	if (enabled != 0) {
+	if (running != 0) {
 		pthread_mutex_unlock(&lock_gen);
 		return EAR_SUCCESS;
 	}
 	if (!locked) {
-		if (xtate_fail(s, monitor_lock_alloc())) {
+		if (state_fail(s = monitor_lock_alloc())) {
 			pthread_mutex_unlock(&lock_gen);
 			return s;
 		}
 	}
-	enabled = 1;
+	running = 1;
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0){
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
-	enabled = (m_errno == 0);
-	if (!enabled) {
+	running = (m_errno == 0);
+	if (!running) {
 		pthread_mutex_unlock(&lock_gen);
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
@@ -228,12 +227,12 @@ state_t monitor_init()
 
 state_t monitor_dispose()
 {
-	if (!enabled) {
+	if (!running) {
 		return_msg(EAR_BAD_ARGUMENT, "not initialized");
 	}
 
 	while (pthread_mutex_trylock(&lock_gen));
-	enabled = 0;
+	running = 0;
 	pthread_join(thread, NULL);
 	pthread_mutex_unlock(&lock_gen);
 
@@ -282,6 +281,10 @@ state_t monitor_unregister(suscription_t *s)
 	pthread_mutex_unlock(&lock[s->id]);
 
 	return EAR_SUCCESS;
+}
+int monitor_is_initialized()
+{
+    return running;
 }
 
 int monitor_is_bursting(suscription_t *s)
@@ -339,7 +342,6 @@ suscription_t *suscription()
 	int i = 0;
 
 	while (pthread_mutex_trylock(&lock_gen));
-
 	for (; i < N_QUEUE; ++i)
 	{
 		if (queue[i].delivered == 0) {
@@ -350,17 +352,13 @@ suscription_t *suscription()
 		pthread_mutex_unlock(&lock_gen);
 		return NULL;
 	}
-
 	queue[i].suscription.id			= i;
 	queue[i].delivered				= 1;
 	queue[i].suscription.suscribe	= monitor_register_void;
 	queue[i].bursted				= 0;
-
 	if (queue[i].suscription.id >= queue_last) {
 		queue_last = queue[i].suscription.id + 1;
 	}
-
 	pthread_mutex_unlock(&lock_gen);
-
 	return &queue[i].suscription;
 }

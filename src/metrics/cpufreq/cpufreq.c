@@ -143,12 +143,16 @@ state_t cpufreq_data_free(cpufreq_t **f, ulong **freqs)
 
 state_t cpufreq_data_print(ulong *freqs, ulong average, int fd)
 {
+	static int mod = 8;
 	double freq_ghz;
 	int i;
 
+	if (cpu_count >= 128) {
+		mod = 16;
+	}
 	//
 	for (i = 0; i < cpu_count; ++i) {
-		if ((i != 0) && (i % 8 == 0)) {
+		if ((i != 0) && (i % mod == 0)) {
 			dprintf(fd, "\n");
 		}
 		freq_ghz = ((double) freqs[i]) / 1000000.0;

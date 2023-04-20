@@ -109,7 +109,7 @@ int tprintf_span(strtable_t *t)
     int i = 0;
 
     if (t->blocked) {
-        return 0;
+        return -1;
     }
     if ((len >= STR_SIZE_BUFFER) || (t->columns == 0)) {
         return -1;
