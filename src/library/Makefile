@@ -36,7 +36,8 @@ CFLAGS += -DDCGMI=1
 endif
 
 ifeq ($(DLB), 1)
-CFLAGS += -DDLB=1
+CFLAGS += -DDLB=1 -I/home/xvlopez/local/dlb/openmpi/include
+LDFLAGS += -L/home/xvlopez/local/dlb/openmpi/lib -ldlb
 endif
 
 
@@ -67,12 +68,8 @@ comm_OBJS = \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/daemon/local_api/libeard.a \
-    $(SRCDIR)/common/libcommon.a
+    $(SRCDIR)/common/libcommon.a 
 
-ifeq ($(DLB), 1)
-comm_OBJS += \
-	$(SRCDIR)/common/external/ear_external.o
-endif
 
 
 core_OBJS = \

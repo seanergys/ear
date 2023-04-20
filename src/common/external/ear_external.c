@@ -15,10 +15,13 @@
  * and COPYING.EPL files.
  */
 
+//#define SHOW_DEBUGS 1
+
 #include <fcntl.h>
 #include <stddef.h>
 #include <sys/types.h>
 
+#include <common/output/debug.h>
 #include <common/types/types.h>
 #include <common/types/application.h>
 #include <common/system/shared_areas.h>
@@ -31,18 +34,20 @@ static char path[256];
 int get_ear_external_path(char *tmp, uint ID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/%u/.ear_resched",tmp, ID);
+	sprintf(path,"%s/%u/.ear_resched_affinity",tmp, ID);
 	return EAR_SUCCESS;	
 }
 
 ear_mgt_t *create_ear_external_shared_area(char *path)
 {
     ear_mgt_t mgt;
+    debug("Creating third party shared area in path %s", path);
     return (ear_mgt_t *)create_shared_area(path, (char *)&mgt, sizeof(ear_mgt_t), &fd_resched, 1);
 }
 
 ear_mgt_t *attach_ear_external_shared_area(char *path)
 {
+    debug("Attaching to third party shared area in path %s", path);
     return (ear_mgt_t *) attach_shared_area(path, sizeof(ear_mgt_t), O_RDWR, &fd_resched, NULL);
 }
 
