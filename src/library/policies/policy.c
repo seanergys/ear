@@ -1326,8 +1326,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
                 COL_RED, COL_CLR, state_msg);
     }
 
-    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
-            performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
+    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
+            performance_curr, curr->Gflops, curr->DC_power, \
             performance_prev, prev->Gflops, prev->DC_power); 
 // #endif
 
