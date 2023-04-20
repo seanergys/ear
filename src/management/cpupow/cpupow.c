@@ -57,7 +57,7 @@ int mgt_cpupow_powercap_is_capable(int domain)
     return ops.powercap_is_capable(domain);
 }
 
-state_t mgt_cpupow_powercap_is_enabled(int domain, int *enabled)
+state_t mgt_cpupow_powercap_is_enabled(int domain, uint *enabled)
 {
     return ops.powercap_is_enabled(domain, enabled);
 }

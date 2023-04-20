@@ -55,9 +55,9 @@
 #define MSR_PP1_POWER_INFO      MSR_NO_REG
 
 #if SHOW_DEBUGS
-#define tprintf3 tprintf2
+#define tprintf3(...) tprintf2(__VA_ARGS__)
 #else
-#define tprintf3
+#define tprintf3(...)
 #endif
 
 typedef struct msr_power_unit_s {
@@ -405,7 +405,7 @@ CPUPOW_F_POWERCAP_IS_CAPABLE(mgt_cpupow_intel63_powercap_is_capable)
 CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_intel63_powercap_is_enabled)
 {
         struct domain_s *p = &domains[domain];
-        int watts[16];
+        uint watts[16];
         state_t s;
         int i;
 

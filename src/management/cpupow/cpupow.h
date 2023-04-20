@@ -73,7 +73,7 @@ int mgt_cpupow_count_devices(int domain);
 
 int mgt_cpupow_powercap_is_capable(int domain);
 
-state_t mgt_cpupow_powercap_is_enabled(int domain, int *enabled);
+state_t mgt_cpupow_powercap_is_enabled(int domain, uint *enabled);
 
 state_t mgt_cpupow_powercap_get(int domain, uint *watts);
 
