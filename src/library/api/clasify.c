@@ -40,15 +40,15 @@ extern uint signature_reported;
 
 static float CPI_CPU_BOUND =       0.6;
 static float GBS_CPU_BOUND =      30.0;
-static float CPI_BUSY_WAITING =    0.6;
+static float CPI_BUSY_WAITING =    0.4; // Reduced from 0.6
 static float GBS_BUSY_WAITING =    3.0;
 static float GFLOPS_BUSY_WAITING = 0.1;
 static float IO_TH               = 10.0;
 static float MPI_TH              = 10000;
 static float MPI_BOUND           = 50.0;
 static float MIN_MPI_TH          = 200;
-static float CPI_MEM_BOUND       = 1.0;
-static float GBS_MEM_BOUND       = 60.0;
+static float CPI_MEM_BOUND       = 0.8;   // Reduced from 1.0
+static float GBS_MEM_BOUND       = 100.0; // Increased from 60
 
 void get_classify_limits(ear_classify_t *limits)
 {

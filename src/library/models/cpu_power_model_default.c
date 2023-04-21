@@ -250,7 +250,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
   data->job_signature.TPI = my_job_TPI;
   data->job_signature.DRAM_power = my_job_DRAM_power;
 
-  verbose(2, "My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf total inst %llu", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power, totalinst);
+  debug("My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf total inst %llu", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power, totalinst);
 
   /* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 

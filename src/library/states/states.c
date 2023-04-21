@@ -831,7 +831,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
                     policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
 
-                verbose_master(0, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
+                verbose_master(1, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
                     COL_YLW, COL_CLR, sigs_metrics_buff);
               }
 

@@ -2751,7 +2751,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
     ret = energy_node_load(energy_objc, eard);
 
-    verbose(2, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
+    verbose(3, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
 
     // TODO: if ret fails, generate dummy path and load that one
     return ret;
