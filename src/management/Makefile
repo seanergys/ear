@@ -44,7 +44,7 @@ post: test
 libmgt.a: Makefile $(root_OBJS)
 	$(AR) rvs $@ $(root_OBJS)
 
-test: test.c
+test: management.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmgt.a ../metrics/libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS

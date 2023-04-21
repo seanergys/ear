@@ -23,7 +23,7 @@
 #include <common/system/monitor.h>
 #include <common/config/config_install.h>
 #include <daemon/local_api/eard_api.h>
-#include <management/test.h>
+#include <management/management.h>
 
 static manages_apis_t m;
 
