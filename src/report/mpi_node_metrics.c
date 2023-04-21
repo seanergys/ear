@@ -93,7 +93,7 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
         }
 
         char header[] = "time,node_id,total_useful_time,max_useful_time,"
-                        "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi"
+                        "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi,"
                         "talp_load_balance,talp_parallel_efficiency";
 
         if (fprintf(stream, "%s", header) < 0) {
