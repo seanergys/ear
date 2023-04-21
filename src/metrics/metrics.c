@@ -17,13 +17,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <metrics/test.h>
 #include <common/utils/stress.h>
 #include <common/utils/overhead.h>
 #include <common/output/verbose.h>
 #include <common/system/monitor.h>
 #include <common/config/config_install.h>
 #include <daemon/local_api/eard_api.h>
+#include <metrics/metrics.h>
 
 #define sa(f) \
 	if (state_fail(f)) { \

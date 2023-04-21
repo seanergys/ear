@@ -1425,7 +1425,7 @@ static void estimate_metrics_not_available_by_processes(signature_t *metrics)
 
   /* This function is executed after all processes compute their signature */
   if (!master) { return;}
-  verbose_master(2, "Cache BDWITH  %f",  lib_shared_region->total_cache_bwidth);
+  verbose_master(3, "Cache BDWITH  %f",  lib_shared_region->total_cache_bwidth);
   if (estimate_gbs){ 
     metrics->GBS = lib_shared_region->total_cache_bwidth;
 
@@ -1759,7 +1759,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       //acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
       acum_ipmi[APP] += acum_ipmi[LOO];
       total_acum_time += time_s;
-      verbose_master(2,"Accumulating %.2lu J to the application. Total energy %lu J acum_time %.2lf sec", acum_ipmi[LOO], acum_ipmi[APP] , total_acum_time);
+      verbose_master(3,"Accumulating %.2lu J to the application. Total energy %lu J acum_time %.2lf sec", acum_ipmi[LOO], acum_ipmi[APP] , total_acum_time);
     }
 
 
@@ -2751,7 +2751,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
     ret = energy_node_load(energy_objc, eard);
 
-    verbose(2, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
+    verbose(3, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
 
     // TODO: if ret fails, generate dummy path and load that one
     return ret;

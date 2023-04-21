@@ -243,10 +243,15 @@ state_t mgt_cpufreq_eard_governor_set(ctx_t *c, uint governor)
 
 state_t mgt_cpufreq_eard_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask)
 {
-    return EAR_SUCCESS;
+    // Defining the sending data
+    struct data_s {
+        uint governor;
+        cpu_set_t mask;
+    } data = { .governor = governor, .mask = mask };
+    return eard_rpc(RPC_MGT_CPUFREQ_SET_GOVERNOR_MASK, (char *) &data, sizeof(data), NULL, 0);
 }
 
 state_t mgt_cpufreq_eard_governor_set_list(ctx_t *c, uint *governors)
 {
-    return EAR_SUCCESS;
+    return eard_rpc(RPC_MGT_CPUFREQ_SET_GOVERNOR_LIST, (char *) governors, sizeof(uint)*cpu_count, NULL, 0);
 }

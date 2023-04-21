@@ -51,7 +51,7 @@
 #include <metrics/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
-#include <management/test.h>
+#include <management/management.h>
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <daemon/node_metrics.h>

@@ -190,7 +190,7 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	strcpy(app->job.user_acc, sd->job.user.account);
     app->is_mpi = plug_component_isenabled(sp, Component.library);
     // Getenv things
-	if (!getenv_agnostic(sp, Var.name_app.own, app->job.app_id, GENERIC_NAME)) {
+	if (!getenv_agnostic(sp, Var.name_app.slurm, app->job.app_id, GENERIC_NAME)) {
 		strcpy(app->job.app_id, "");
 	}
 	if (!getenv_agnostic(sp, Var.policy.ear, app->job.policy, POLICY_NAME)) {
@@ -254,7 +254,7 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.learning.flag);
 	printenv_agnostic(sp, Var.tag.flag);
 	printenv_agnostic(sp, Var.path_usdb.flag);
-	printenv_agnostic(sp, Var.cpus_node_num.own);
+	printenv_agnostic(sp, Var.cpus_node_num.slurm);
 	//printenv_agnostic(sp, Var.path_trac.flag);
 //	printenv_agnostic(sp, Var.version.flag);
 	printenv_agnostic(sp, Var.gm_secure.mod);
@@ -263,12 +263,12 @@ int plug_print_variables(spank_t sp)
 	printenv_agnostic(sp, Var.ctx_last.mod);
 	printenv_agnostic(sp, Var.was_sbatch.mod);
 	printenv_agnostic(sp, Var.was_srun.mod);
-	printenv_agnostic(sp, Var.name_app.own);
-	printenv_agnostic(sp, Var.account.own);
-	printenv_agnostic(sp, Var.job_node_list.own);
-	printenv_agnostic(sp, Var.job_node_count.own);
-	printenv_agnostic(sp, Var.step_node_list.own);
-	printenv_agnostic(sp, Var.step_node_count.own);
+	printenv_agnostic(sp, Var.name_app.slurm);
+	printenv_agnostic(sp, Var.account.slurm);
+	printenv_agnostic(sp, Var.job_node_list.slurm);
+	printenv_agnostic(sp, Var.job_node_count.slurm);
+	printenv_agnostic(sp, Var.step_node_list.slurm);
+	printenv_agnostic(sp, Var.step_node_count.slurm);
 	printenv_agnostic(sp, Var.verbose.ear);
 	printenv_agnostic(sp, Var.policy.ear);
 	printenv_agnostic(sp, Var.policy_th.ear);
@@ -480,7 +480,7 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	// User
 	getenv_agnostic(sp, Var.user.info,     sd->job.user.user,    SZ_NAME_MEDIUM);
 	getenv_agnostic(sp, Var.group.info,    sd->job.user.group,   SZ_NAME_MEDIUM);
-	getenv_agnostic(sp, Var.account.own,   sd->job.user.account, SZ_NAME_MEDIUM);
+	getenv_agnostic(sp, Var.account.slurm,   sd->job.user.account, SZ_NAME_MEDIUM);
 
 	// Subject
 	if (isenv_agnostic(sp, Var.ctx_last.mod, Constring.srun)) {
@@ -510,11 +510,11 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	s2 = 0;
 
 	if (plug_context_was(sd, Context.sbatch)) {
-		s1 = getenv_agnostic(sp, Var.job_node_list.own , buffer1, SZ_BUFFER_EXTRA);
-		s2 = getenv_agnostic(sp, Var.job_node_count.own , buffer2, SZ_BUFFER_EXTRA);
+		s1 = getenv_agnostic(sp, Var.job_node_list.slurm , buffer1, SZ_BUFFER_EXTRA);
+		s2 = getenv_agnostic(sp, Var.job_node_count.slurm , buffer2, SZ_BUFFER_EXTRA);
 	} else if (plug_context_was(sd, Context.srun)) {
-		s1 = getenv_agnostic(sp, Var.step_node_list.own, buffer1, SZ_BUFFER_EXTRA);
-		s2 = getenv_agnostic(sp, Var.step_node_count.own, buffer2, SZ_BUFFER_EXTRA);
+		s1 = getenv_agnostic(sp, Var.step_node_list.slurm, buffer1, SZ_BUFFER_EXTRA);
+		s2 = getenv_agnostic(sp, Var.step_node_count.slurm, buffer2, SZ_BUFFER_EXTRA);
 	}
 	if (s1 && s2) {
 		sd->job.nodes_count = atoi(buffer2);
@@ -567,7 +567,7 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 		sd->subject.host, sd->subject.is_master);
 
     // CPUs 
-    if (getenv_agnostic(sp, Var.cpus_node_num.own, buffer1, SZ_BUFFER_EXTRA)) {
+    if (getenv_agnostic(sp, Var.cpus_node_num.slurm, buffer1, SZ_BUFFER_EXTRA)) {
         sd->job.app.job.procs = atoi(buffer1);
     }
     plug_verbose(sp, 2, "%lu cpus detected on plugin", sd->job.app.job.procs);
@@ -672,7 +672,7 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 	}
 
 	// These environment variables are required if loader is loaded.	
-	if (getenv_agnostic(sp, Var.name_app.own, buffer1, sizeof(buffer1)) == 1) {
+	if (getenv_agnostic(sp, Var.name_app.slurm, buffer1, sizeof(buffer1)) == 1) {
 		setenv_agnostic(sp, Var.name_app.ear, buffer1, 1);
 	}
 
