@@ -77,13 +77,13 @@ static state_t set_pstate0(uint cpu);
 state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driver_ops_t *ops_driver)
 {
 	state_t s;
-    int cond1;
-    int cond2;
-
+	int cond1;
+	int cond2;
+	
 	debug("testing AMD17 P_STATE control status");
 	#if AMD_OSCPUFREQ
 	return EAR_ERROR;
-    #endif
+	#endif
 	if (tp_in->vendor != VENDOR_AMD) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
@@ -104,17 +104,16 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 			return s;
 		}
 	}
-    mode_virtual = (ear_getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
-    if (!mode_virtual) {
-        if (state_fail(s = hsmp_scan(tp_in))) {
-            return s;
-        }
-    }
-
-    // Conditional 1, if can set frequencies
-    cond1 = (!mode_virtual || driver->set_current_list != NULL);
-    // Conditional 2, if can set governor
-    cond2 = (driver->set_governor != NULL);
+	mode_virtual = (ear_getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
+	if (!mode_virtual) {
+		if (state_fail(s = hsmp_scan(tp_in))) {
+			return s;
+		}
+	}
+	// Conditional 1, if can set frequencies
+	// Conditional 2, if can set governor
+	cond1 = (!mode_virtual || driver->set_current_list != NULL);
+	cond2 = (driver->set_governor != NULL);
 	// Setting references (if driver set is not available, this API neither)
 	apis_put(ops->init,               mgt_cpufreq_amd17_init);
 	apis_put(ops->dispose,            mgt_cpufreq_amd17_dispose);
@@ -123,9 +122,9 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	apis_put(ops->get_current_list,   mgt_cpufreq_amd17_get_current_list);
 	apis_put(ops->get_nominal,        mgt_cpufreq_amd17_get_nominal);
 	apis_put(ops->get_index,          mgt_cpufreq_amd17_get_index);
-    apis_pin(ops->set_current_list,   mgt_cpufreq_amd17_set_current_list, cond1);
-    apis_pin(ops->set_current,        mgt_cpufreq_amd17_set_current, cond1);
-    apis_pin(ops->reset,              mgt_cpufreq_amd17_reset, cond1);
+	apis_pin(ops->set_current_list,   mgt_cpufreq_amd17_set_current_list, cond1);
+	apis_pin(ops->set_current,        mgt_cpufreq_amd17_set_current, cond1);
+	apis_pin(ops->reset,              mgt_cpufreq_amd17_reset, cond1);
 	apis_put(ops->get_governor,       mgt_cpufreq_amd17_governor_get);
 	apis_put(ops->get_governor_list,  mgt_cpufreq_amd17_governor_get_list);
 	apis_pin(ops->set_governor,       mgt_cpufreq_amd17_governor_set, cond2);

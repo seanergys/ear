@@ -20,22 +20,6 @@
 
 #include <management/cpupow/cpupow.h>
 
-void mgt_cpupow_dummy_load(topology_t *tp, mgt_cpupow_ops_t *ops);
-
-void mgt_cpupow_dummy_get_api(uint *api);
-
-int mgt_cpupow_dummy_count_devices(int domain);
-
-int mgt_cpupow_dummy_is_powercap_capable(int domain);
-
-state_t mgt_cpupow_dummy_powercap_is_enabled(int domain, uint *enabled);
-
-state_t mgt_cpupow_dummy_powercap_get(int domain, uint *watts);
-
-state_t mgt_cpupow_dummy_powercap_set(int domain, uint *watts);
-
-state_t mgt_cpupow_dummy_powercap_reset(int domain);
-
-state_t mgt_cpupow_dummy_tdp_get(int domain, uint *watts);
+CPUPOW_DEFINES(dummy);
 
 #endif

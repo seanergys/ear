@@ -26,11 +26,11 @@
 #include <library/common/verbose_lib.h>
 #include <library/metrics/metrics.h>
 
+extern const int     polsyms_n;
 extern const char     *polsyms_nam[];
 state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
 {
     char *obj_path;
-    int polsyms_n = 17;
     char basic_gpu_path[SZ_PATH_INCOMPLETE];
     char pgpu_name[64];
     conf_install_t *data=&app_settings->installation;

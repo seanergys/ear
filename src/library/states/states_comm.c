@@ -156,7 +156,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
             ulong freq_avg, cpus_count;
 
             pstate_freqtoavg(*mask, lib_shared_region->avg_cpufreq,
-                    metrics_get(MET_CPUFREQ)->devs_count, &freq_avg, &cpus_count);
+                             metrics_get(MET_CPUFREQ)->devs_count, &freq_avg, &cpus_count);
 
             AVGF = (float) freq_avg / 1000000.0;
         } else {

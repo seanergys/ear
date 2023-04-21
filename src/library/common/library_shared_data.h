@@ -78,7 +78,7 @@ typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
     uint        num_signatures;
-    uint        num_cpus;
+    uint        num_cpus; // Number of CPUs used for the job. Computed from node_mask attribute.
     float       total_cache_bwidth;
     ullong      cas_counters;
     signature_t node_signature;
@@ -89,10 +89,14 @@ typedef struct lib_shared_data {
     cpu_set_t   node_mask;
     ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
     uint        node_mgr_index;
+	uint        reduced_in_barrier; // This variable is only used in an unstable/research policy.
 #if MPI_OPTIMIZED
-		uint        processes_in_barrier;
+		uint    processes_in_barrier;
 #endif
-		uint        reduced_in_barrier;
+#if DLB
+        int     must_call_libdlb; // A control variable to rule processes to call DLB blocking calls.
+        int     max_libdlb_calls; // The maximum times DLB API was called.
+#endif
 } lib_shared_data_t;
 
 
@@ -114,8 +118,12 @@ typedef struct shsignature {
     uint              unbalanced;
     float             perc_MPI;
 	double            period;
-    /* This field is used for mpi opt */
+    /* This field is used for mpi opt
+     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
     ulong             mpi_freq;
+#if DLB
+    int               libdlb_calls_cnt; // Counter for DLB API's blocking functions calls.
+#endif
 } shsignature_t;
 
 
@@ -292,4 +300,11 @@ void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);
 void estimate_power_and_gbs(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr);
 void verbose_jobs_in_node(int vl,ear_njob_t *nmgr_eard,node_mgr_sh_data_t *nmgr_earl);
 
-#endif
+/** Updates all affinity masks of shared signatures array pointed by \p sig.
+ * This function also updates the job mask of the lib_shared_data pointed by \p data.
+ * Returns EAR_ERROR with the appropiate messages either when the input arguments are NULL
+ * or when sched_getafinity call returns an error value, with its corresponding errno value.
+ * On error, all modified masks are restored to ones passed within arguments. */
+state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig);
+
+#endif // _LIB_SHARED_DATA_H

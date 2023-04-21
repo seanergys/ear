@@ -56,6 +56,7 @@ void apis_tostr(uint api, char *buffer, size_t size)
     else if (api == API_FAKE    ) { snprintf(buffer, size, "FAKE"    ); }
     else if (api == API_CPUMODEL) { snprintf(buffer, size, "CPUMODEL"); }
     else if (api == API_RSMI    ) { snprintf(buffer, size, "RSMI"    ); }
+    else if (api == API_AMD19   ) { snprintf(buffer, size, "AMD19"   ); }
 }
 
 void granularity_print(uint granularity, char *prefix)
@@ -83,6 +84,7 @@ void granularity_tostr(uint granularity, char *buffer, size_t size)
 void scope_tostr(uint scope, char *buffer, size_t size)
 {
     if      (scope == SCOPE_NONE   ) { snprintf(buffer, size, "none"); }
+    if      (scope == SCOPE_DUMMY  ) { snprintf(buffer, size, "dummy"); }
     else if (scope == SCOPE_PROCESS) { snprintf(buffer, size, "process"); }
     else if (scope == SCOPE_NODE   ) { snprintf(buffer, size, "node"); }
 }
@@ -109,10 +111,7 @@ void apinfo_tostr(apinfo_t *info, char *buffer, size_t size, int table_fmt)
     if (table_fmt) {
         // Initializing the table
         if (!table_init) {
-            tprintf_init2(&table, fdout, STR_MODE_COL, "11 9 8 10 20");
-            table_init = 1;
-        }
-        if (table_fmt == 2) {
+            tprintf_init2(&table, fdout, STR_MODE_COL, "13 9 8 10 20");
             tprintf2(&table, "E.API||I.API||#Devs||Scope||Granularity");
             tprintf2(&table, "-----||-----||-----||-----||-----------");
         }

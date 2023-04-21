@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <common/config.h>
+#include <common/hardware/defines.h>
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <common/hardware/topology.h>
@@ -29,7 +30,7 @@
 #include <library/loader/module_cuda.h>
 #include <library/api/mpi_support.h>
 
-#define INFO_CLASSIFY 3
+#define INFO_CLASSIFY 2
 
 #define flops_per_sig(s) (s->FLOPS[0] + s->FLOPS[1] + s->FLOPS[2] + s->FLOPS[3] +\
   s->FLOPS[4] + s->FLOPS[5] + s->FLOPS[6] + s->FLOPS[7])
@@ -153,7 +154,7 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     if (mpisec < MIN_MPI_TH){
       //if (!is_cuda_enabled()) *ear_guided = TIME_GUIDED;
       if (first_warning_mpi_th) {
-        verbose_master(2,"Warning, going to time guided becuase low number of MPI calls per second");
+        verbose_master(2,"Warning, going to time guided because low number of MPI calls per second");
         first_warning_mpi_th = 0;
       }
       *ear_guided = TIME_GUIDED;
@@ -180,9 +181,11 @@ state_t is_process_busy_waiting(ssig_t *sig, uint *busy)
 
   /* This check is new to detect when the code is doing some FOP 
   * operation. Assumin Busy Waiting is not doint */
+  #ifdef __ARCH_ARM
   if (*busy){
     if (flops_per_sig(sig)) *busy = 0;
   }
+  #endif
   return EAR_SUCCESS;
 }
 
@@ -209,7 +212,9 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
          /* This check is new to detect when the code is doing some FOP 
           * operation. Assumin Busy Waiting is not doint */
         if (*busy){
+        #ifdef __ARCH_ARM
           if (flops_per_sig(sig)) *busy = 0;
+         #endif
         }
     }
 
@@ -218,17 +223,18 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
         if (c1 || c2 || c3) {
             char hdr_msg[] = "--- Busy waiting values (value/thresh) ---";
 
+            int ret;
             char cpi_msg[32];
-            snprintf(cpi_msg, sizeof cpi_msg, "CPI (%.3lf/%.3lf)", sig->CPI, CPI_BUSY_WAITING);
+            ret = snprintf(cpi_msg, sizeof cpi_msg, "CPI class=%u (%.3lf/%.3lf)", c1, sig->CPI, CPI_BUSY_WAITING);
 
             char gbs_msg[32];
-            snprintf(gbs_msg, sizeof gbs_msg, "Mem. bwidth (%.3lf/%.3lf)", sig->GBS, GBS_BUSY_WAITING);
+            ret = snprintf(gbs_msg, sizeof gbs_msg, "Mem. bwidth class=%u (%.3lf/%.3lf)", c2, sig->GBS, GBS_BUSY_WAITING);
 
             char gflops_msg[32];
-            snprintf(gflops_msg, sizeof gflops_msg, "GFLOP/s (%.3lf/%.3lf)", sig->Gflops, GFLOPS_BUSY_WAITING);
+            ret = snprintf(gflops_msg, sizeof gflops_msg, "GFLOP/s class=%u %.3lf/%.3lf)", c3, sig->Gflops, GFLOPS_BUSY_WAITING);
 
             char busy_waiting_msg[64];
-            snprintf(busy_waiting_msg, sizeof busy_waiting_msg,
+            ret = snprintf(busy_waiting_msg, sizeof busy_waiting_msg,
                     "App node workload declared as busy waiting: %u", *busy);
 
             int max_strlen = strlen(busy_waiting_msg);

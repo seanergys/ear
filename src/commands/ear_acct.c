@@ -407,7 +407,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					strcpy(apps[idx].job.app_id, token);
 				}
 			}
-			if (strlen(apps[idx].job.app_id) > 16) {
+			if (strlen(apps[idx].job.app_id) > 16 && !is_csv) {
 				apps[idx].job.app_id[16] = '\0';
 			}
 
@@ -558,7 +558,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			if (strchr(apps[i-1].job.app_id, '/') != NULL)
 				strcpy(apps[i-1].job.app_id, strrchr(apps[i-1].job.app_id, '/')+1);
 
-		if (strlen(apps[i-1].job.app_id) > 16) {
+		if (strlen(apps[i-1].job.app_id) > 16 && !is_csv) {
 			apps[i-1].job.app_id[16] = '\0';
 		}
 
@@ -966,11 +966,11 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 
 #if REPORT_TIMESTAMP
-	strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-8s %-8s %-8s %-8s %-5s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #else
-	strcpy(line, "%6s-%-4s\t %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-5s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s\t %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #endif
 #if USE_GPUS
 	//GPU variable declaration
@@ -986,7 +986,7 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 	printf("\n");
 
-	strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-8.1lf %-8.3lf %-8.3lf %-8.3lf %-5.2lf %-5.2lf %-7.1lf %-5.1lf ");
+	strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
 	for (i = 0; i < num_loops; i++)
 	{
 		signature_copy(&sig, &loops[i].signature);
@@ -1020,7 +1020,7 @@ void print_loops(loop_t *loops, int num_loops)
                 sprintf(date_iter,"%lu", loops[i].total_iterations);
 #endif
 		printf(line, loops[i].jid, loops[i].step_id, loops[i].node_id, date_iter,
-				sig.DC_power, sig.GBS, sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
+				sig.DC_power, sig.GBS, sig.TPI,sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
 #if USE_GPUS
 		sprintf(tmp, "%lu%%/%lu%%", gpuu, gpu_mem_util);
 		if (print_gpus) printf(gpu_line, gpup, gpupu, (double)gpuf/1000000.0, tmp);
@@ -1160,7 +1160,7 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 	else if (strlen(q_a->job_ids) > 0)
 		add_int_list_filter(query, "job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
-		add_int_filter(query, "step_id", q_a->step_id);
+		add_int_filter(query, "Loops.step_id", q_a->step_id);
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{

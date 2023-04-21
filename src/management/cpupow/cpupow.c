@@ -20,6 +20,7 @@
 #include <pthread.h>
 #include <management/cpupow/cpupow.h>
 #include <management/cpupow/archs/dummy.h>
+#include <management/cpupow/archs/amd17.h>
 #include <management/cpupow/archs/intel63.h>
 
 static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
@@ -33,15 +34,17 @@ void mgt_cpupow_load(topology_t *tp, int eard)
 		goto ret;
 	}
     mgt_cpupow_intel63_load(tp, &ops);
+    mgt_cpupow_amd17_load(tp, &ops);
     mgt_cpupow_dummy_load(tp, &ops);
     loaded = 1;
 ret:
 	pthread_mutex_unlock(&lock);
 }
 
-void mgt_cpupow_get_api(uint *api)
+void mgt_cpupow_get_info(apinfo_t *info)
 {
-    return ops.get_api(api);
+    info->layer = "MGT_CPUPOW";
+    return ops.get_info(info);
 }
 
 int mgt_cpupow_count_devices(int domain)
@@ -49,12 +52,12 @@ int mgt_cpupow_count_devices(int domain)
     return ops.count_devices(domain);
 }
 
-int mgt_cpupow_is_powercap_capable(int domain)
+int mgt_cpupow_powercap_is_capable(int domain)
 {
-    return ops.is_powercap_capable(domain);
+    return ops.powercap_is_capable(domain);
 }
 
-state_t mgt_cpupow_powercap_is_enabled(int domain, int *enabled)
+state_t mgt_cpupow_powercap_is_enabled(int domain, uint *enabled)
 {
     return ops.powercap_is_enabled(domain, enabled);
 }
@@ -83,21 +86,36 @@ state_t mgt_cpupow_tdp_get(int domain, uint *watts)
 #include <stdlib.h>
 
 static topology_t tp;
-static uint tdps[2];
+static apinfo_t   info;
+static uint       tdps[2];
+static uint       watts[2];
+static uint       enabled[2];
 
 int main(int argc, char *argv[])
 {
     topology_init(&tp);
     topology_print(&tp, verb_channel);
+    
     mgt_cpupow_load(&tp, 0);
+    mgt_cpupow_get_info(&info);   
+    apinfo_print(&info, verb_channel, 1);
+
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);
+    mgt_cpupow_powercap_is_enabled(CPUPOW_SOCKET, enabled);
+
+    mgt_cpupow_powercap_get(CPUPOW_SOCKET, watts);
+#if 1
     if (argc == 1) {
         tdps[0] = tdps[1] = POWERCAP_DISABLE;
-        mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
+//        mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
+        mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
     } else {
         tdps[0] = tdps[1] = (uint) atoi(argv[1]);
         mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
     }
+#endif
+    mgt_cpupow_powercap_get(CPUPOW_SOCKET, watts);
+
     sleep(2000);
     return 0;
 }

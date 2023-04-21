@@ -20,22 +20,6 @@
 
 #include <management/cpupow/cpupow.h>
 
-void mgt_cpupow_intel63_load(topology_t *tp, mgt_cpupow_ops_t *ops);
-
-void mgt_cpupow_intel63_get_api(uint *api);
-
-int mgt_cpupow_intel63_count_devices(int domain);
-
-int mgt_cpupow_intel63_is_powercap_capable(int domain);
-
-state_t mgt_cpupow_intel63_powercap_is_enabled(int domain, uint *enabled);
-
-state_t mgt_cpupow_intel63_powercap_get(int domain, uint *watts);
-
-state_t mgt_cpupow_intel63_powercap_set(int domain, uint *watts);
-
-state_t mgt_cpupow_intel63_powercap_reset(int domain);
-
-state_t mgt_cpupow_intel63_tdp_get(int domain, uint *watts);
+CPUPOW_DEFINES(intel63);
 
 #endif

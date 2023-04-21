@@ -236,7 +236,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop, int ts, ul
 int append_loop_text_file_no_job(char *path, loop_t *loop, int add_header,
         int single_column, char sep)
 {
-    return append_loop_text_file_no_job_int(path,loop, 0, 0, add_header, single_column, sep);
+    return append_loop_text_file_no_job_int(path,loop, 1, 0, add_header, single_column, sep);
 }
 
 int append_loop_text_file_no_job_with_ts(char *path, loop_t *loop, ullong currtime,

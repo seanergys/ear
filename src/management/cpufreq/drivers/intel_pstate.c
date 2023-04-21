@@ -76,8 +76,8 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     keeper_macro(uint32, "IntelPstateDefaultGovernor", governor0);
     debug("IntelPstateDefaultGovernor: %u", governor0);
     //keeper_macro(uint64, "IntelPstateDefaultFrequency", freq_max0);
-    //debug("IntelPstateDefaultFrequency: %llu", freq_max0);
-	// Driver references
+    debug("IntelPstateDefaultFrequency: %llu", freq_max0);
+    // Driver references
     apis_put(ops->init                 , mgt_intel_pstate_init                                );
     apis_put(ops->dispose              , mgt_intel_pstate_dispose                             );
     apis_put(ops->reset                , mgt_intel_pstate_reset                               );

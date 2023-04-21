@@ -21,6 +21,7 @@
 #include <common/output/debug.h>
 #include <common/hardware/cpuid.h>
 #include <common/hardware/bithack.h>
+#include <management/cpufreq/archs/amd17.h>
 #include <management/cpufreq/archs/default.h>
 
 static topology_t           tp;
@@ -33,19 +34,14 @@ static uint                 boost_enabled;
 state_t mgt_cpufreq_default_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driver_ops_t *ops_driver)
 {
 	state_t s;
-    int cond1;
-    int cond2;
+	int cond1;
+	int cond2;
 
 	// When is AMD ZEN or ZEN2, it has to load the AMD17 API. Set
 	// AMD_OSCPUFREQ compilation variable to switch to DEFAULT.
-	#if !AMD_OSCPUFREQ
-	debug("Not using CPUFREQ frequencies");
-	if (tp_in->vendor == VENDOR_AMD && tp_in->family >= FAMILY_ZEN) {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
+	if (ops->init == mgt_cpufreq_amd17_init) {
+		return_msg(EAR_ERROR, "AMD17 exclusive API already loaded.");
 	}
-	#else
-	debug("Using CPUFREQ frequencies");
-	#endif
 	if (ops_driver->init == NULL) {
 		return_msg(EAR_ERROR, "Driver is not available");
 	}
@@ -54,9 +50,9 @@ state_t mgt_cpufreq_default_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_dr
 	}
 	// Setting our own driver variable
 	driver = ops_driver;
-    // Conditional 1, if can set frequencies
+	// Conditional 1, if can set frequencies
 	cond1 = (driver->set_current_list != NULL);
-    // Conditional 2, if can set governor
+	// Conditional 2, if can set governor
 	cond2 = (driver->set_governor != NULL);
 	// Setting references
 	apis_put(ops->init,               mgt_cpufreq_default_init);

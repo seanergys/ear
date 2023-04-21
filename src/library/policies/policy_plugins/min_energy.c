@@ -345,7 +345,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     verbose_master(2, "%sCPU COMP phase%s", COL_BLU, COL_CLR);
 
-    verbose_master(2, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
+    verbose_master(0, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
 
 
     /* GPU Policy : It's independent of the CPU and IMC frequency selection */
@@ -546,6 +546,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                   verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
                   sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
                   my_node_mpi_calls[i].perc_mpi, local_penalty);
+                }else{
+                  verbose_master(2, "APP[%u][%u] CPI %.2f GBS %.2lf TPI %.2f GFlops %.2f Power %.2f  penalty %.2lf", MASTER_ID, i,
+                  my_app->CPI, my_app->GBS, my_app->TPI, my_app->Gflops, my_app->DC_power, local_penalty);
+                  
                 }
             } else {
                 // If application is compute bound, we don't reduce CPU freq
@@ -582,7 +586,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 }
             }
 
-            debug("CPU freq for process %d is %lu", i, new_freq[i]);
+            verbose_master(0,"CPU freq for process %d is %lu", i, new_freq[i]);
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
@@ -984,13 +988,13 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
         uint busy_waiting;
         // is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting);
         is_process_busy_waiting(&sig_shared_region[i].sig, &busy_waiting);
+        char ssig_buff[256];
+        ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
         if (busy_waiting) {
-            char ssig_buff[256];
-            ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
             verbose_master(min_ener_bw_veb_lvl, "%s.[%d] Busy waiting config %s", node_name, i, ssig_buff);
-
             freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
         } else {
+            verbose_master(min_ener_bw_veb_lvl, "%s.[%d] NO Busy waiting config %s ", node_name, i, ssig_buff);
             freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
         }
         
@@ -1024,15 +1028,18 @@ state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *
 
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
+    /* WARNING: my_sig can be NULL */
     if (c != NULL) {
+        state_t st = EAR_SUCCESS;
+        verbose_master(2,"min_energy policy_restore_settings");
         node_freqs_copy(freqs, &min_energy_def_freqs);
-        node_freqs_copy(&last_nodefreq_sel,freqs);
 
         if (gpus.restore_settings != NULL){
-            return gpus.restore_settings(c,my_sig,freqs);
+            st = gpus.restore_settings(c,my_sig,freqs);
         }
+        node_freqs_copy(&last_nodefreq_sel,freqs);
 
-        return EAR_SUCCESS;
+        return st;
     } else {
         return EAR_ERROR;
     }

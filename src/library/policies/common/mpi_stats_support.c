@@ -70,7 +70,7 @@
 #define WARN_LVL           2
 #define INFO_LVL           WARN_LVL
 
-#define LB_VERB_LVL        INFO_LVL
+#define LB_VERB_LVL        3
 #define MPI_STATS_VERB_LVL INFO_LVL
 #define VAR_DEPRECATED     WARN_LVL - 1 // It's a warning, but more prioritary
 
@@ -854,10 +854,10 @@ state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num
 
     double lb_eff = avg_tcomp / (double) max_tcomp; // Compute the load balance efficiency following the POP model.
 
-    verbose_master(LB_VERB_LVL, "%sLoad Balance efficiency%s %lf %smax tcomp%s %llu %savg tcomp%s %lf %sLB_TH%s %lf",
-            COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH);
 
     *lb = (lb_eff < LB_TH);
+    verbose_master(LB_VERB_LVL, "%sLoad Balance efficiency%s %lf %smax tcomp%s %llu %savg tcomp%s %lf %sLB_TH%s %lf (unbalanced %u)",
+            COL_YLW, COL_CLR, lb_eff, COL_YLW, COL_CLR, max_tcomp, COL_YLW, COL_CLR, avg_tcomp, COL_YLW, COL_CLR, LB_TH, *lb);
 #else
     *lb = 0;
 #endif // NODE_LB

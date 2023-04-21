@@ -17,13 +17,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <metrics/test.h>
 #include <common/utils/stress.h>
 #include <common/utils/overhead.h>
 #include <common/output/verbose.h>
 #include <common/system/monitor.h>
 #include <common/config/config_install.h>
 #include <daemon/local_api/eard_api.h>
+#include <metrics/metrics.h>
 
 #define sa(f) \
 	if (state_fail(f)) { \
@@ -54,11 +54,11 @@ void metrics_init(topology_t *tp, int eard)
     fgpu(    gpu_load(    eard));
 
     frun(cache_get_info(&m.cch.info));
-    frun(flops_get_info(&m.flp.info));
 
     frun(cpufreq_get_api(&m.cpu.api));
     frun(imcfreq_get_api(&m.imc.api));
     frun( bwidth_get_api(&m.ram.api));
+    frun(  flops_get_api(&m.flp.api));
     frun(   temp_get_api(&m.tmp.api));
     frun(    cpi_get_api(&m.cpi.api));
     fgpu(    gpu_get_api(&m.gpu.api));
@@ -74,11 +74,9 @@ void metrics_init(topology_t *tp, int eard)
 	// Count (cache, flops and cpi does not have yet)
     frun(sa(cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count)));
     frun(sa(imcfreq_count_devices(&m.imc.c, &m.imc.devs_count)));
-    frun(sa( bwidth_count_devices(&m.ram.c, &m.ram.devs_count)));
+    frun(sn( bwidth_count_devices(&m.ram.c, &m.ram.devs_count)));
     frun(sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count)));
     fgpu(sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count)));
-    // Getting granularity (or scope)
-    frun(bwidth_get_granularity(no_ctx, &m.ram.gran));
 
     frun(apis_tostr(m.cpu.api, m.cpu.api_str, 32));
     frun(apis_tostr(m.imc.api, m.imc.api_str, 32));
@@ -147,12 +145,12 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
     // Read 1
     frun(sa(cpufreq_data_alloc(&mr1->cpu, empty)));
     frun(sa(imcfreq_data_alloc(&mr1->imc, empty)));
-    frun(sa( bwidth_data_alloc(&mr1->ram)));
+    frun(sn( bwidth_data_alloc(&mr1->ram)));
     fgpu(sa(    gpu_data_alloc(&mr1->gpu)));
     // Read 2
     frun(sa(cpufreq_data_alloc(&mr2->cpu, empty)));
     frun(sa(imcfreq_data_alloc(&mr2->imc, empty)));
-    frun(sa( bwidth_data_alloc(&mr2->ram)));
+    frun(sn( bwidth_data_alloc(&mr2->ram)));
     fgpu(sa(    gpu_data_alloc(&mr2->gpu)));
     // Diff
     frun(sa(cpufreq_data_alloc(empty, &mrD->cpu_diff)));
@@ -180,52 +178,21 @@ static state_t monitor_apis_init(void *whatever)
     return EAR_SUCCESS;
 }
 
-#include <arm_neon.h>
-
-static void flops_test()
-{
-    #define N                         1000000000
-    #if 0
-    #define fl_type                   float
-    #define fl_value(vX, v)           vX = v
-    #define fl_operation(v3, v2, v1)  v3 = v2 + v1
-    #else
-    #define fl_type                   float32x4_t
-    #define fl_value(vX, v)           vX = vdupq_n_f32(v)
-    #define fl_operation(v3, v2, v1)  v3 = vaddq_f32(v2, v1)
-    #endif
-
-    #if 1
-    int i;
-
-    fl_type v1;
-    fl_type v2;
-    fl_type v3;
-
-    fl_value(v1, 2.0);
-    fl_value(v2, 3.0);
-
-    for (i = 0; i < N; ++i) {
-        fl_operation(v3, v2, v1);
-    }
-    printf("%d\n", i);
-    #endif
-}
-
 static state_t monitor_apis_update(void *whatever)
 {
-    flops_test();
-    metrics_read_copy(&mr2, &mr1, &mrD);
     // Printf clear
-    //system("clear");
-    // The 2 also prints header
-    apinfo_print(&m.cch.info, fdout, 2);
-    apinfo_print(&m.flp.info, fdout, 1);
+    system("clear");
+
+    //stress_bandwidth(1000);
+    metrics_read_copy(&mr2, &mr1, &mrD);
+    
+    apinfo_print(&m.cch.info, fdout, 1);
 
     tprintf_init(fdout, STR_MODE_COL, "11 9 8 10 20");
     frun(tprintf("CPUFREQ||%s||%u||-||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||-||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
     frun(tprintf("BWIDTH ||%s||%u||-||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str));
+    frun(tprintf("FLOPS  ||%s||%u||-||%s", m.flp.api_str, m.flp.devs_count, m.flp.gran_str));
     frun(tprintf("TEMP   ||%s||%u||-||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str));
     frun(tprintf("CPI    ||%s||%u||-||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str));
     fgpu(tprintf("GPU    ||%s||%u||-||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
@@ -233,8 +200,6 @@ static state_t monitor_apis_update(void *whatever)
     frun(    cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel));
     frun(printf("—— cache ——————————————————————————————————————————————————————————————————————\n"));
     frun(  cache_data_print(&mrD.cch_diff,  mrD.cch_avrg, verb_channel));
-    frun(printf("—— flops ——————————————————————————————————————————————————————————————————————\n"));
-    frun(  flops_data_print(&mrD.flp_diff,  mrD.flp_avrg, verb_channel));
     frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
     frun(cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel));
     frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
@@ -245,7 +210,7 @@ static state_t monitor_apis_update(void *whatever)
     frun(   temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel));
     frun(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
     frun(    gpu_data_print( mrD.gpu_diff,                verb_channel));
-
+    
     return EAR_SUCCESS;
 }
 
@@ -262,8 +227,8 @@ int main(int argc, char *argv[])
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 200;
-	sus->time_burst    = 200;
+	sus->time_relax    = 2000;
+	sus->time_burst    = 2000;
 	sa(sus->suscribe(sus));
 
     sleep(100);

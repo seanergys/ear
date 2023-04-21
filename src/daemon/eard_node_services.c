@@ -33,7 +33,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
-#include <management/test.h>
+#include <management/management.h>
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -154,13 +154,13 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     #endif
     sf(cpufreq_count_devices(no_ctx, &uc.devs_count));
     sf(imcfreq_count_devices(no_ctx, &ui.devs_count));
-    sf( bwidth_count_devices(no_ctx, &ub.devs_count));
+        bwidth_count_devices(no_ctx, &ub.devs_count);
     #if USE_GPUS
     sf(      gpu_get_devices(no_ctx, (gpu_devs_t **) &ug.avail_list, &ug.devs_count));
     #endif
     sf(cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
-    sf( bwidth_data_alloc((bwidth_t  **) &ub.current_list));
+        bwidth_data_alloc((bwidth_t  **) &ub.current_list);
     #if USE_GPUS
 	sf(    gpu_data_alloc(&eard_read_gpu));
     #endif

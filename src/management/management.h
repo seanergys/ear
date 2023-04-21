@@ -18,7 +18,7 @@
 #ifndef TEST_H
 #define TEST_H
 
-#include <metrics/test.h>
+#include <metrics/metrics.h>
 #include <management/cpufreq/cpufreq.h>
 #include <management/cpufreq/priority.h>
 #include <management/imcfreq/imcfreq.h>
