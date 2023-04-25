@@ -17,6 +17,7 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <stdlib.h>
 #include <pthread.h>
 #include <management/cpupow/cpupow.h>
 #include <management/cpupow/archs/dummy.h>
@@ -80,6 +81,20 @@ state_t mgt_cpupow_powercap_reset(int domain)
 state_t mgt_cpupow_tdp_get(int domain, uint *watts)
 {
     return ops.tdp_get(domain, watts);
+}
+
+void mgt_cpupow_tdp_tostr(int domain, uint *watts, char *buffer, int length)
+{
+    int acc, i;
+    for (acc = i = 0; i < mgt_cpupow_count_devices(domain); ++i) {
+        acc += sprintf(&buffer[acc], "TDP%d: %u", i, watts[i]);
+    }
+}
+
+void mgt_cpupow_data_alloc(int domain, uint *list)
+{
+    int count = mgt_cpupow_count_devices(domain);
+    list = calloc(count, sizeof(uint));
 }
 
 #if TEST

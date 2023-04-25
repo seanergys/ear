@@ -112,11 +112,11 @@ void apinfo_tostr(apinfo_t *info, char *buffer, size_t size, int table_fmt)
         // Initializing the table
         if (!table_init) {
             tprintf_init2(&table, fdout, STR_MODE_COL, "13 9 8 10 20");
-            tprintf2(&table, "E.API||I.API||#Devs||Scope||Granularity");
-            tprintf2(&table, "-----||-----||-----||-----||-----------");
+            tsprintf(buffer, &table, 0, "E.API||I.API||#Devs||Scope||Granularity");
+            tsprintf(buffer, &table, 1, "-----||-----||-----||-----||-----------");
         }
         // Spanning the columns and copying the content to the returning buffer
-        tsprintf(buffer, &table, "%s||%s||%u||%s||%s", info->layer, buffer_api,
+        tsprintf(buffer, &table, 1, "%s||%s||%u||%s||%s", info->layer, buffer_api,
                  info->devs_count, buffer_scope, buffer_granularity);
     } else {
         // Normal printing

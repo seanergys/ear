@@ -34,18 +34,18 @@
 
 typedef struct apis_info_s {
     apinfo_t info;
-	ctx_t    c;
-	uint  api;
-    char  api_str[32];
-	uint  gran; // Granularity
-	char  gran_str[32];
-	uint  devs_count;
-    void *list1;
-    void *list2;
-    void *list3;
-    uint  list1_count;
-    uint  list2_count;
-    uint  list3_count;
+	ctx_t    c; //obsolete
+	uint     api; //obsolete
+    char     api_str[32]; //obsolete
+	uint     gran; //granularity, obsolete
+	char     gran_str[32]; //obsolete
+	uint     devs_count; //obsolete
+    void    *list1;
+    void    *list2;
+    void    *list3;
+    uint     list1_count;
+    uint     list2_count;
+    uint     list3_count;
 } apis_info_t;
 
 typedef struct metrics_apis_s {

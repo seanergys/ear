@@ -60,8 +60,9 @@ libc_OBJS = \
 	$(SRCDIR)/common/utils/keeper.o \
 	$(SRCDIR)/common/utils/data_register.o \
 	$(SRCDIR)/common/utils/overhead.o \
-	$(SRCDIR)/common/utils/strtable.o \
 	$(SRCDIR)/common/utils/string.o \
+	$(SRCDIR)/common/utils/strscreen.o \
+	$(SRCDIR)/common/utils/strtable.o \
 	$(SRCDIR)/common/utils/serial_buffer.o \
 	$(SRCDIR)/common/utils/stress.o \
 	$(SRCDIR)/common/external/ear_external.o

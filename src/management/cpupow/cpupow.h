@@ -67,6 +67,8 @@ typedef struct mgt_cpupow_ops_s {
 
 void mgt_cpupow_load(topology_t *tp, int eard);
 
+#define mgt_cpupow_init()
+
 void mgt_cpupow_get_info(apinfo_t *info);
 
 int mgt_cpupow_count_devices(int domain);
@@ -82,5 +84,11 @@ state_t mgt_cpupow_powercap_set(int domain, uint *watts);
 state_t mgt_cpupow_powercap_reset(int domain);
 
 state_t mgt_cpupow_tdp_get(int domain, uint *watts);
+
+void mgt_cpupow_tdp_print(int domain, uint *watts, char *buffer, int length);
+
+void mgt_cpupow_tdp_tostr(int domain, uint *watts, char *buffer, int length);
+
+void mgt_cpupow_data_alloc(int domain, uint *list);
 
 #endif
