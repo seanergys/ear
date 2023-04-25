@@ -328,7 +328,7 @@ static int execute(int argc, char *argv[])
 
 		// Executting
 		if (execvp(args[0], args) == -1) {
-			plug_verbose(_sp, 0, "failed to run the program (exec)");
+			plug_verbose(_sp, 0, "failed to run the program (%s: %s)", args[0], strerror(errno));
 			exit(0);
 		}
 		// No return
