@@ -81,11 +81,15 @@ int scan_application_fd(FILE *fd, application_t *app, char is_extended);
  */
 
 #define create_ID(id,sid)	(id*100+sid)
+#define EID(app)          (app->job.local_id)
 
 void read_application_fd_binary(int fd,application_t *app);
 
 void print_application_fd_binary(int fd,application_t *app);
 
+/*
+ * These three functions should not be placed here. Move to eard/local_api/eard_api
+ */
 void mark_as_eard_connected(int jid,int sid,int pid);
 uint is_already_connected(int jid,int sid,int pid);
 void mark_as_eard_disconnected(int jid,int sid,int pid);

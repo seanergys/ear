@@ -74,6 +74,8 @@ typedef struct mpi_calls_types
 } mpi_calls_types_t;
 
 
+#define MASTER    (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
 typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;

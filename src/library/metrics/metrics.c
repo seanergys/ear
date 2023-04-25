@@ -102,7 +102,6 @@
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
-// #define MASTER(master_rank) (master_rank >= 0)
 
 // extern configuration from the main ear library
 extern cluster_conf_t cconf;

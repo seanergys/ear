@@ -127,10 +127,10 @@ void ear_finalize(int exit_status);
 static uint cancelled = 0;
 
 
-#define MASTER_ID masters_info.my_master_rank
 
 extern const char *__progname;
 static uint ear_lib_initialized=0;
+uint   my_eid;
 
 // Statics
 #define BUFFSIZE 			128
@@ -357,9 +357,6 @@ void notify_eard_connection(int status)
 												{       
 																masters_connected+=(int)buffer_recv[i];
 												}
-                        int master_pid = getpid();
-                        PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , masters_info.masters_comm );
-                        verbose(0,"PID for master is %d", master_pid);
 								}
 #else
 								masters_connected=1;
@@ -385,6 +382,10 @@ void notify_eard_connection(int status)
 }
 
 static uint clean_job_folder = 0;
+
+/* 
+ * This functions checks if the jid,sid folder is created 
+ */
 void check_job_folder()
 {
 				char block_file_dir[MAX_PATH_SIZE];
@@ -1043,6 +1044,22 @@ static void read_hack_env()
 		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
 	}
 }
+
+static int get_ear_application_id()
+{
+  int master_pid = getpid();
+#if MPI
+  PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , MPI_COMM_WORLD);
+#endif
+  /* For non-MPI there is no problem, for MPI, is it possible the case of having two applications
+   * at the same time with same jid/stepid where the rank 0 have the same PID (two nodes).
+   * If that happen, then we will have a conflict. The probability must be close to 0
+   */
+
+  verbose(0,"EAR Application ID is %d", master_pid);
+  return main_pid;
+}
+
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -1086,7 +1103,7 @@ void ear_init()
 								verbose_master(1,"EAR library already initialized");
 								return;
 				}
-                ear_lib_initialized = 1;
+        ear_lib_initialized = 1;
 				VERB_SET_LV(0);
 
 				timestamp_getfast(&ear_application_time_init);
@@ -1099,6 +1116,8 @@ void ear_init()
 				ear_my_rank=0;
 				my_size=1;
 #endif
+      /* This is new. It is a collective operation to get the PID of rank 0 */
+        my_eid = get_ear_application_id();
 
 				load_app_mgr_env();
 
@@ -1168,9 +1187,13 @@ void ear_init()
 				get_job_identification();
 				check_job_folder();
 				uint ID = create_ID(my_job_id,my_step_id);
+        // Why ?? (validate and remove). This function only creates the filename, it
+        // doesn't open or checks it
 				if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
 								unlink(lib_shared_region_path);
 				}
+        // Checks in TMP folder if ear_tmp/.master.ID.pid exists 
+        // it doesn't create it
 				if (is_already_connected(my_job_id, my_step_id, my_pid)) {
 								verbose_master(VEAR_INIT,
                                         "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",

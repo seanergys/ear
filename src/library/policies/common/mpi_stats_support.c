@@ -62,7 +62,6 @@
 
 #include <report/report.h>
 
-#define MASTER_ID masters_info.my_master_rank
 
 /* Verbose levels */
 #define DEBUG_LVL          0

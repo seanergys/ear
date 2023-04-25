@@ -47,8 +47,6 @@
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/generic.h>
 
-#define MASTER (masters_info.my_master_rank >= 0)
-#define MASTER_ID masters_info.my_master_rank
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
