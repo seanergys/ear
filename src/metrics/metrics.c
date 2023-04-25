@@ -87,8 +87,6 @@ void metrics_init(topology_t *tp, int eard)
     frun(apis_tostr(m.cpi.api, m.cpi.api_str, 32));
     fgpu(apis_tostr(m.gpu.api, m.gpu.api_str, 32));
 
-    frun(granularity_tostr(m.ram.gran, m.ram.gran_str, 32));
-
     frun(sprintf(m.cpu.gran_str, "threads"));
     frun(sprintf(m.imc.gran_str, "sockets"));
     frun(sprintf(m.cch.gran_str, "process"));
@@ -186,8 +184,6 @@ static state_t monitor_apis_update(void *whatever)
     //stress_bandwidth(1000);
     metrics_read_copy(&mr2, &mr1, &mrD);
     
-    apinfo_print(&m.cch.info, fdout, 1);
-
     tprintf_init(fdout, STR_MODE_COL, "11 9 8 10 20");
     frun(tprintf("CPUFREQ||%s||%u||-||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
     frun(tprintf("IMCFREQ||%s||%u||-||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));

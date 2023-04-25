@@ -18,8 +18,11 @@
 #ifndef COMMON_UTILS_STRSCREEN_H
 #define COMMON_UTILS_STRSCREEN_H
 
+#include <common/types.h>
+
 typedef struct screen_s {
     void       *divs;
+    cchar      *title;
     int         divs_count;
     char       *buffer;
     char      **matrix;
@@ -32,10 +35,10 @@ typedef struct screen_s {
 
 void wprintf_init(strscreen_t *screen, int height, int width, int fd, char bckchr);
 
-void wprintf_divide(strscreen_t *screen, int p1[2], int p2[2], int div_index);
+void wprintf_divide(strscreen_t *screen, int p1[2], int p2[2], int div_index, cchar *title);
 
 void wprintf(strscreen_t *s);
 
-void wsprintf(strscreen_t *s, int div_index, int append, char *buffer);
+void wsprintf(strscreen_t *s, int div_index, int append, int set_title, char *buffer);
 
 #endif //COMMON_UTILS_STRSCREEN_H

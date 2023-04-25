@@ -43,54 +43,57 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
      mgt_cpupow_init(      );
         mgt_gpu_init(no_ctx);
 
-    // The next 4 paragraphs are obsolete
-    mgt_cpufreq_get_api(&m.cpu.api);
-    mgt_cpuprio_get_api(&m.pri.api);
-    mgt_imcfreq_get_api(&m.imc.api);
-        mgt_gpu_get_api(&m.gpu.api);
+    // The next 5 paragraphs are obsolete
+    m.cpu.info.layer = "MGT_CPUFREQ";
+    m.pri.info.layer = "MGT_CPUPRIO";
+    m.imc.info.layer = "MGT_IMCFREQ";
+    m.gpu.info.layer = "MGT_GPU";
 
-    apis_tostr(m.cpu.api, m.cpu.api_str, 32);
-    apis_tostr(m.pri.api, m.pri.api_str, 32);
-    apis_tostr(m.imc.api, m.imc.api_str, 32);
-    apis_tostr(m.gpu.api, m.gpu.api_str, 32);
+    mgt_cpufreq_get_api(&m.cpu.info.api);
+    mgt_cpuprio_get_api(&m.pri.info.api);
+    mgt_imcfreq_get_api(&m.imc.info.api);
+        mgt_gpu_get_api(&m.gpu.info.api);
 
-    sprintf(m.cpu.gran_str, "threads");
-    sprintf(m.pri.gran_str, "threads");
-    sprintf(m.imc.gran_str, "sockets");
-    sprintf(m.gpu.gran_str, "gpus");
+    m.cpu.info.granularity = GRANULARITY_THREAD;
+    m.pri.info.granularity = GRANULARITY_THREAD;
+    m.imc.info.granularity = GRANULARITY_SOCKET;
+    m.gpu.info.granularity = GRANULARITY_PERIPHERAL;
 
-    mgt_cpufreq_count_devices(no_ctx, &m.cpu.devs_count);
-    mgt_cpuprio_count_devices(no_ctx, &m.pri.devs_count);
-    mgt_imcfreq_count_devices(no_ctx, &m.imc.devs_count);
-        mgt_gpu_count_devices(no_ctx, &m.gpu.devs_count);
+    m.cpu.info.scope = SCOPE_NODE;
+    m.pri.info.scope = SCOPE_NODE;
+    m.imc.info.scope = SCOPE_NODE;
+    m.gpu.info.scope = SCOPE_NODE;
+
+    mgt_cpufreq_count_devices(no_ctx, &m.cpu.info.devs_count);
+    mgt_cpuprio_count_devices(no_ctx, &m.pri.info.devs_count);
+    mgt_imcfreq_count_devices(no_ctx, &m.imc.info.devs_count);
+        mgt_gpu_count_devices(no_ctx, &m.gpu.info.devs_count);
 
     // New and powerful get_info()
     mgt_cpupow_get_info(&m.pow.info);
 
-    //          | list1         | list2             | list3
-    // -------- | ------------- | ----------------- | -----------------
-    // cpufreq  | avail. ps.    | current ps.       | set index
-    // cpuprio  | avail. clos   | current/set assoc | -
-    // imcfreq  | avail. ps.    | current ps.       | set index
-    // gpu      | devices       | current khz/watts | current khz/watts
+    apinfo_tostr(&m.cpu.info);
+    apinfo_tostr(&m.pri.info);
+    apinfo_tostr(&m.pow.info);
+    apinfo_tostr(&m.imc.info);
+    apinfo_tostr(&m.gpu.info);
 
-    mgt_gpu_get_devices(no_ctx, (gpu_devs_t **) &m.gpu.list1, &m.gpu.list1_count);
-
-    // These current lists are not allocated
-	mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpu.list1, &m.cpu.list1_count);
+    // Get available frequencies
+    mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpu.list1, &m.cpu.list1_count);
     mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imc.list1, &m.imc.list1_count);
 
-    // Current data allocation
-    mgt_cpufreq_data_alloc((pstate_t  **) &m.cpu.list2, (uint **) &m.cpu.list3);
+    // Get available priorities
     mgt_cpuprio_data_alloc((cpuprio_t **) &m.pri.list1, (uint **) &m.pri.list2);
-    mgt_imcfreq_data_alloc((pstate_t  **) &m.imc.list2, (uint **) &m.imc.list3);
-        mgt_gpu_data_alloc((ulong     **) &m.gpu.list2                        );
-        mgt_gpu_data_alloc((ulong     **) &m.gpu.list3                        );
+    mgt_cpuprio_get_available_list(m.pri.list1);
 
-    // Counting data
-    mgt_cpuprio_data_count(&m.pri.list1_count, &m.pri.list2_count);
+    // Get current TDPs
+    mgt_cpupow_data_alloc(CPUPOW_SOCKET, (uint **) &m.pow.list1              );
+    mgt_cpupow_tdp_get(CPUPOW_SOCKET, m.pow.list1);
 
-    if (man != NULL) {    
+    // Get GPUs information
+    mgt_gpu_get_devices(no_ctx, (gpu_devs_t **) &m.gpu.list1, &m.gpu.list1_count);
+
+    if (man != NULL) {
         *man = &m;
     }
 }
@@ -112,59 +115,55 @@ static char *ear_logo()
 
 static state_t monitor_apis_init(void *whatever)
 {
-    char buffer[8196];
+    char buffer[16384];
 
     topology_init(&tp);
 
     management_init(&tp, EARD, NULL);
 
-    wprintf_init(&ss, 50, 180, 0, '#');
-    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 14,  39}, 0);
-    wprintf_divide(&ss, (int[]) { 15,   2}, (int[]) { 29,  39}, 4);
-    wprintf_divide(&ss, (int[]) { 30,   2}, (int[]) { 44,  39}, 5);
-    wprintf_divide(&ss, (int[]) {  1,  39}, (int[]) { 44,  77}, 3);
-    wprintf_divide(&ss, (int[]) {  8, 123}, (int[]) { 15, 178}, 1);
-    wprintf_divide(&ss, (int[]) {  1, 153}, (int[]) {  7, 178}, 2);
+    wprintf_init(&ss, 50, 180, 0, '#'); // 0 to 49, 0 to 179
+    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 14,  39}, 3, "cpufreq"  );
+    wprintf_divide(&ss, (int[]) { 16,   2}, (int[]) { 29,  39}, 4, "cpuprio"  );
+    wprintf_divide(&ss, (int[]) { 31,   2}, (int[]) { 44,  39}, 5, "cpupow"   );
+    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 44,  77}, 6, "imcfreq"  );
+    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, 0, "ear-logo" );
+    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 14, 177}, 1, "api-table");
+    wprintf_divide(&ss, (int[]) { 16, 154}, (int[]) { 31, 177}, 2, "topology" );
+
+    topology_tostr(&tp, buffer, sizeof(buffer));
+    wsprintf(&ss, 2, 0, 0, buffer);
 
     tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
     tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
     tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
-    tsprintf(buffer, &st, 1, "CPUFREQ||%s||%u||node||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str);
-    tsprintf(buffer, &st, 1, "CPUPRIO||%s||%u||node||%s", m.pri.api_str, m.pri.devs_count, m.pri.gran_str);
-    tsprintf(buffer, &st, 1, "IMCFREQ||%s||%u||node||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str);
-    tsprintf(buffer, &st, 1, "GPU    ||%s||%u||node||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.info.layer, m.cpu.info.api_str, m.cpu.info.devs_count, m.cpu.info.scope_str, m.cpu.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pri.info.layer, m.pri.info.api_str, m.pri.info.devs_count, m.pri.info.scope_str, m.pri.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pow.info.layer, m.pow.info.api_str, m.pow.info.devs_count, m.pow.info.scope_str, m.pow.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.info.layer, m.imc.info.api_str, m.imc.info.devs_count, m.imc.info.scope_str, m.imc.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.info.layer, m.gpu.info.api_str, m.gpu.info.devs_count, m.gpu.info.scope_str, m.gpu.info.granularity_str);
 
-    wsprintf(&ss, 1, 0, buffer    );
-    wsprintf(&ss, 2, 0, ear_logo());
+    wsprintf(&ss, 0, 0, 0, ear_logo());
+    wsprintf(&ss, 1, 0, 0, buffer    );
+
+    mgt_cpufreq_data_tostr(m.cpu.list1, m.cpu.list1_count, buffer, sizeof(buffer));
+    wsprintf(&ss, 3, 0, 1, buffer);
+
+    mgt_cpuprio_data_tostr(m.pri.list1, m.pri.list2, buffer, sizeof(buffer));
+    wsprintf(&ss, 4, 0, 1, buffer);
+
+    mgt_cpupow_tdp_tostr(CPUPOW_SOCKET, m.pow.list1, buffer, sizeof(buffer));
+    wsprintf(&ss, 5, 0, 1, buffer);
+
+    mgt_imcfreq_data_tostr(m.imc.list1, m.imc.list1_count, buffer, sizeof(buffer));
+    wsprintf(&ss, 6, 0, 1, buffer);
+
+    wprintf(&ss);
 
     return EAR_SUCCESS;
 }
 
 static state_t monitor_apis_update(void *whatever)
 {
-    char buffer[8196];
-
-    #define append(buffer) &buffer[strlen(buffer)]
-
-    buffer[0] = '\0';
-    sprintf(buffer, "__ cpufreq _____________________________________________\n");
-    mgt_cpufreq_data_tostr(m.cpu.list1, m.cpu.list1_count, append(buffer), 8196);
-    wsprintf(&ss, 0, 0, buffer);
-
-    sprintf(buffer, "__ cpuprio _____________________________________________\n");
-    mgt_cpuprio_data_tostr(m.pri.list1, m.pri.list2, append(buffer), 8196);
-    wsprintf(&ss, 4, 0, buffer);
-
-    sprintf(buffer, "__ cpupow  _____________________________________________\n");
-    mgt_cpupow_tdp_tostr(CPUPOW_SOCKET, m.pow.list1, append(buffer), 8196);
-    wsprintf(&ss, 5, 0, buffer);
-
-    sprintf(buffer, "__ imcfreq _____________________________________________\n");
-    mgt_imcfreq_data_tostr(m.imc.list1, m.imc.list1_count, append(buffer), 8196);
-    wsprintf(&ss, 3, 0, buffer);
-
-    wprintf(&ss);
-
     return EAR_SUCCESS;
 }
 

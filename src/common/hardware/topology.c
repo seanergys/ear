@@ -409,48 +409,38 @@ state_t topology_close(topology_t *topo)
 #define f_print(f, ...) \
     f (__VA_ARGS__, \
     "cpu_count        : %d\n" \
+    "core_count       : %d\n" \
     "socket_count     : %d\n" \
     "threads_per_core : %d\n" \
     "smt_enabled      : %d\n" \
     "l2_count         : %d\n" \
     "l3_count         : %d\n" \
     "l4_count         : %d\n" \
-    "cache_last_level : %d\n" \
     "cache_line_size  : %d\n" \
     "vendor           : %d\n" \
     "family           : %d\n" \
-    "brand            : '%s'\n" \
-    "gpr_count        : %d\n" \
-    "gpr_bits         : %d\n" \
+    "model            : %d\n" \
     "nmi_watchdog     : %d\n" \
-    "base_freq        : %lu\n" \
-    "boost_enabled    : %u\n" \
     "avx512           : %d\n" \
     "sve              : %d\n" \
     "sve_bits         : %d\n" \
-    "tdp              : %d\n" \
     , \
     topo->cpu_count, \
+    topo->core_count, \
     topo->socket_count, \
     topo->threads_per_core, \
     topo->smt_enabled, \
     topo->l2_count, \
     topo->l3_count, \
     topo->l4_count, \
-    topo->cache_last_level, \
     topo->cache_line_size, \
     topo->vendor, \
     topo->family, \
-    topo->brand, \
-    topo->gpr_count, \
-    topo->gpr_bits, \
+    topo->model, \
     topo->nmi_watchdog, \
-    topo->base_freq, \
-    topo->boost_enabled, \
     topo->avx512, \
     topo->sve, \
-    topo->sve_bits, \
-    topo->tdp);
+    topo->sve_bits);
 
 state_t topology_print(topology_t *topo, int fd)
 {

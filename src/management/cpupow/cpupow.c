@@ -91,10 +91,10 @@ void mgt_cpupow_tdp_tostr(int domain, uint *watts, char *buffer, int length)
     }
 }
 
-void mgt_cpupow_data_alloc(int domain, uint *list)
+void mgt_cpupow_data_alloc(int domain, uint **list)
 {
     int count = mgt_cpupow_count_devices(domain);
-    list = calloc(count, sizeof(uint));
+    *list = calloc(count, sizeof(uint));
 }
 
 #if TEST
@@ -110,9 +110,9 @@ int main(int argc, char *argv[])
 {
     topology_init(&tp);
     topology_print(&tp, verb_channel);
-    
+
     mgt_cpupow_load(&tp, 0);
-    mgt_cpupow_get_info(&info);   
+    mgt_cpupow_get_info(&info);
     apinfo_print(&info, verb_channel, 1);
 
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);

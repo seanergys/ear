@@ -89,6 +89,6 @@ void mgt_cpupow_tdp_print(int domain, uint *watts, char *buffer, int length);
 
 void mgt_cpupow_tdp_tostr(int domain, uint *watts, char *buffer, int length);
 
-void mgt_cpupow_data_alloc(int domain, uint *list);
+void mgt_cpupow_data_alloc(int domain, uint **list);
 
 #endif

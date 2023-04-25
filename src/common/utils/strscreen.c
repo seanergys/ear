@@ -54,12 +54,12 @@ static void clean_matrix_background(strscreen_t *s)
 {
     int x, y;
     for (y = 0; y < s->height; ++y)
-        for (x = 0; x < s->width-1; ++x) {
-            s->matrix[y][x] = s->bckchr;
-        }
+    for (x = 0; x < s->width; ++x) {
+        s->matrix[y][x] = s->bckchr;
+    }
 }
 
-void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int div_index)
+void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int div_index, cchar *title)
 {
     strscreen_t *div = &(((strscreen_t *) s->divs)[div_index]);
     int y;
@@ -67,9 +67,10 @@ void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int div_index)
     // Y: #######\0 <- (n-1 = '#')
     if (p2[X] >= s->width ) p2[X] = s->width-3;
     if (p2[Y] >= s->height) p2[Y] = s->height-2;
+    div->title  = title;
     div->buffer = s->buffer;
-    div->width  = p2[X] - p1[X];
-    div->height = p2[Y] - p1[Y];
+    div->width  = (p2[X] - p1[X])+1; // +1 because both
+    div->height = (p2[Y] - p1[Y])+1; // are inclusive.
     div->bckchr = ' ';
     div->matrix = calloc(div->height, sizeof(char *));
     // Setting division pointers
@@ -80,7 +81,7 @@ void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int div_index)
     clean_matrix_background(div);
 }
 
-void wsprintf(strscreen_t *s, int div_index, int append, char *buffer)
+void wsprintf(strscreen_t *s, int div_index, int append, int set_title, char *buffer)
 {
     strscreen_t *div = &(((strscreen_t *) s->divs)[div_index]);
     size_t length = strlen(buffer);
@@ -89,16 +90,19 @@ void wsprintf(strscreen_t *s, int div_index, int append, char *buffer)
     // Cleaning
     if (!append) {
         clean_matrix_background(div);
-        div->y = 0;
+        if (set_title) {
+            for(x = 1; x < (div->width-1); ++x) {
+                div->matrix[0][x] = '=';
+            }
+            div->matrix[0][3] = ' ';
+            div->matrix[0][strlen(div->title)+4] = ' ';
+            memcpy(&div->matrix[0][4], div->title, strlen(div->title));
+        }
+        div->y = set_title;
     }
     // Copying characters
-    for (c = x = 0; c < length && div->y < div->height; ++c) {
-        debug("'%c'\n", buffer[c]);
-        if (x == 0) {
-            div->matrix[div->y][x] = ' ';
-            ++x;
-        }
-        if (x == (div->width-2)) {
+    for (c = 0, x = 1; c < length && div->y < div->height; ++c) {
+        if (x == (div->width-1)) {
             while (buffer[c] != '\n' && buffer[c] != '\0') {
                 c++;
             }
@@ -107,7 +111,7 @@ void wsprintf(strscreen_t *s, int div_index, int append, char *buffer)
             continue;
         }
         if (buffer[c] == '\n') {
-            x = -1;
+            x = 0;
             div->y++;
         } else {
             div->matrix[div->y][x] = buffer[c];
