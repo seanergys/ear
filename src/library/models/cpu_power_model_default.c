@@ -150,7 +150,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
   /* compute_job_node_XXX compute the metrics only for the calling job. It is
    * needed to iterate over the jobs to have per node. */
-  verbose(2,"Node signature GBS %lf TPI (old %lf) new %lf cas counters %llu linst %llu", lsig->GBS, oldTPI, lsig->TPI, data->cas_counters,lsig->instructions);
+  debug("Node signature GBS %lf TPI (old %lf) new %lf cas counters %llu linst %llu", lsig->GBS, oldTPI, lsig->TPI, data->cas_counters,lsig->instructions);
 
   for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
     /* Power condition is to do only in case the signature is ready */
@@ -250,7 +250,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
   data->job_signature.TPI = my_job_TPI;
   data->job_signature.DRAM_power = my_job_DRAM_power;
 
-  verbose(2, "My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf total inst %llu", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power, totalinst);
+  debug("My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf total inst %llu", node_mgr_index, data->job_signature.GBS, data->job_signature.TPI, data->job_signature.DRAM_power, totalinst);
 
   /* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 

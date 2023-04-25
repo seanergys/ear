@@ -33,7 +33,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
-#include <management/test.h>
+#include <management/management.h>
 #include <metrics/common/msr.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/energy/cpu.h>
@@ -271,6 +271,32 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
             if (state_fail(s = mgt_cpufreq_set_governor(no_ctx, (uint) big_chunk1[0]))) {
                 serror(Rpcerr.answer);
             }
+        }
+    break;
+    case RPC_MGT_CPUFREQ_SET_GOVERNOR_MASK:
+        size = sizeof(uint) + sizeof(cpu_set_t);
+        if (state_fail(s = eard_rpc_read_pending(req_fd, big_chunk1, head->size, size))) {
+            serror(Rpcerr.pending);
+        }
+        if (state_ok(s)) {
+            uint governor = *((uint *) &big_chunk1[0]);
+            cpu_set_t mask = *((cpu_set_t *) &big_chunk1[sizeof(uint)]);
+            if (state_fail(s = mgt_cpufreq_governor_set_mask(no_ctx, governor, mask))) {
+                serror("When setting CPU governors");
+            }
+            size = 0;
+        }
+    break;
+    case RPC_MGT_CPUFREQ_SET_GOVERNOR_LIST:
+        size =  man->cpu.devs_count * sizeof(uint);
+        if (state_fail(s = eard_rpc_read_pending(req_fd, man->cpu.list3, head->size, size))) {
+            serror(Rpcerr.pending);
+        }
+        if (state_ok(s)) {
+            if (state_fail(s = mgt_cpufreq_set_current_list(no_ctx, (uint *) man->cpu.list3))) {
+                serror("When setting a governors list");
+            }
+            size = 0;
         }
     break;
     default:
