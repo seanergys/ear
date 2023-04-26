@@ -21,192 +21,212 @@
 #include <common/utils/overhead.h>
 #include <common/output/verbose.h>
 #include <common/system/monitor.h>
+#include <common/utils/strtable.h>
+#include <common/utils/strscreen.h>
 #include <common/config/config_install.h>
 #include <daemon/local_api/eard_api.h>
 #include <metrics/metrics.h>
-
-#define sa(f) \
-	if (state_fail(f)) { \
-		serror(#f " FAILED"); \
-		exit(0); \
-	}
-#define sn(f) \
-    f;
-
-#define frun(f) f
-#if USE_GPUS
-#define fgpu(f) frun(f)
-#else
-#define fgpu(f)
-#endif
 
 static metrics_apis_t m;
 
 void metrics_init(topology_t *tp, int eard)
 {
-    frun(cpufreq_load(tp, eard));
-    frun(imcfreq_load(tp, eard));
-    frun( bwidth_load(tp, eard));
-    frun(  cache_load(tp, eard));
-    frun(  flops_load(tp, eard));
-    frun(   temp_load(tp      ));
-    frun(    cpi_load(tp, eard));
-    fgpu(    gpu_load(    eard));
+    cpufreq_load(tp, eard);
+    imcfreq_load(tp, eard);
+     bwidth_load(tp, eard);
+      cache_load(tp, eard);
+      flops_load(tp, eard);
+       temp_load(tp      );
+        cpi_load(tp, eard);
+        gpu_load(    eard);
 
-    frun(cache_get_info(&m.cch.info));
+    cpufreq_init(&m.cpu.c);
+    imcfreq_init(&m.imc.c);
+     bwidth_init(&m.ram.c);
+      cache_init(&m.cch.c);
+      flops_init(&m.flp.c);
+       temp_init(&m.tmp.c);
+        cpi_init(&m.cpi.c);
+        gpu_init(&m.gpu.c);
 
-    frun(cpufreq_get_api(&m.cpu.api));
-    frun(imcfreq_get_api(&m.imc.api));
-    frun( bwidth_get_api(&m.ram.api));
-    frun(  flops_get_api(&m.flp.api));
-    frun(   temp_get_api(&m.tmp.api));
-    frun(    cpi_get_api(&m.cpi.api));
-    fgpu(    gpu_get_api(&m.gpu.api));
+    //
+    cache_get_info(&m.cch.info);
 
-    frun(sa(cpufreq_init(&m.cpu.c)));
-    frun(sa(imcfreq_init(&m.imc.c)));
-    frun(sa( bwidth_init(&m.ram.c)));
-    frun(sa(  cache_init(&m.cch.c)));
-    frun(sa(  flops_init(&m.flp.c)));
-    frun(sa(   temp_init(&m.tmp.c)));
-    frun(sa(    cpi_init(&m.cpi.c)));
-    fgpu(sa(    gpu_init(&m.gpu.c)));
-	// Count (cache, flops and cpi does not have yet)
-    frun(sa(cpufreq_count_devices(&m.cpu.c, &m.cpu.devs_count)));
-    frun(sa(imcfreq_count_devices(&m.imc.c, &m.imc.devs_count)));
-    frun(sn( bwidth_count_devices(&m.ram.c, &m.ram.devs_count)));
-    frun(sa(   temp_count_devices(&m.tmp.c, &m.tmp.devs_count)));
-    fgpu(sa(    gpu_count_devices(&m.gpu.c, &m.gpu.devs_count)));
+    m.cpu.info.layer = "CPUFREQ";
+    m.imc.info.layer = "IMCFREQ";
+    m.ram.info.layer = "BANDWIDTH";
+    m.flp.info.layer = "FLOPS";
+    m.tmp.info.layer = "TEMPERATURE";
+    m.cpi.info.layer = "CPI";
+    m.gpu.info.layer = "GPU";
 
-    frun(apis_tostr(m.cpu.api, m.cpu.api_str, 32));
-    frun(apis_tostr(m.imc.api, m.imc.api_str, 32));
-    frun(apis_tostr(m.ram.api, m.ram.api_str, 32));
-    frun(apis_tostr(m.cch.api, m.cch.api_str, 32));
-    frun(apis_tostr(m.flp.api, m.flp.api_str, 32));
-    frun(apis_tostr(m.tmp.api, m.tmp.api_str, 32));
-    frun(apis_tostr(m.cpi.api, m.cpi.api_str, 32));
-    fgpu(apis_tostr(m.gpu.api, m.gpu.api_str, 32));
+    cpufreq_get_api(&m.cpu.info.api);
+    imcfreq_get_api(&m.imc.info.api);
+     bwidth_get_api(&m.ram.info.api);
+      flops_get_api(&m.flp.info.api);
+       temp_get_api(&m.tmp.info.api);
+        cpi_get_api(&m.cpi.info.api);
+        gpu_get_api(&m.gpu.info.api);
 
-    frun(sprintf(m.cpu.gran_str, "threads"));
-    frun(sprintf(m.imc.gran_str, "sockets"));
-    frun(sprintf(m.cch.gran_str, "process"));
-    frun(sprintf(m.flp.gran_str, "process"));
-    frun(sprintf(m.tmp.gran_str, "sockets"));
-    frun(sprintf(m.cpi.gran_str, "process"));
-    fgpu(sprintf(m.gpu.gran_str, "gpus"   ));
+    cpufreq_count_devices(&m.cpu.c, &m.cpu.info.devs_count);
+    imcfreq_count_devices(&m.imc.c, &m.imc.info.devs_count);
+     bwidth_count_devices(&m.ram.c, &m.ram.info.devs_count);
+       temp_count_devices(&m.tmp.c, &m.tmp.info.devs_count);
+        gpu_count_devices(&m.gpu.c, &m.gpu.info.devs_count);
 
-    stress_alloc();
+    m.cpu.info.scope = SCOPE_NODE;
+    m.imc.info.scope = SCOPE_NODE;
+    m.ram.info.scope = SCOPE_NODE;
+    m.flp.info.scope = SCOPE_PROCESS;
+    m.tmp.info.scope = SCOPE_NODE;
+    m.cpi.info.scope = SCOPE_PROCESS;
+    m.gpu.info.scope = SCOPE_NODE;
+
+    m.cpu.info.granularity = GRANULARITY_THREAD;
+    m.imc.info.granularity = GRANULARITY_SOCKET;
+    m.ram.info.granularity = GRANULARITY_IMC;
+    m.flp.info.granularity = GRANULARITY_PROCESS;
+    m.tmp.info.granularity = GRANULARITY_SOCKET;
+    m.cpi.info.granularity = GRANULARITY_PROCESS;
+    m.gpu.info.granularity = GRANULARITY_PERIPHERAL;
+
+    apinfo_tostr(&m.cpu.info);
+    apinfo_tostr(&m.imc.info);
+    apinfo_tostr(&m.ram.info);
+    apinfo_tostr(&m.cch.info);
+    apinfo_tostr(&m.flp.info);
+    apinfo_tostr(&m.tmp.info);
+    apinfo_tostr(&m.cpi.info);
+    apinfo_tostr(&m.gpu.info);
+
 }
 
 void metrics_read(metrics_read_t *mr)
 {
     timestamp_get(&mr->time);
 
-    frun(sa(cpufreq_read(&m.cpu.c,  mr->cpu)));
-    frun(sa(imcfreq_read(&m.imc.c,  mr->imc)));
-    frun(sa( bwidth_read(&m.ram.c,  mr->ram)));
-    frun(sa(  cache_read(&m.cch.c, &mr->cch)));
-    frun(sa(  flops_read(&m.flp.c, &mr->flp)));
-    frun(sa(    cpi_read(&m.cpi.c, &mr->cpi)));
-    fgpu(sa(    gpu_read(&m.gpu.c,  mr->gpu)));
-}
-
-void metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
-{
-	mrD->time = timestamp_diffnow(&mr1->time, TIME_SECS);
-
-    frun(sa(cpufreq_read_diff(&m.cpu.c,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg)));
-    frun(sa(imcfreq_read_diff(&m.imc.c,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg)));
-    frun(sa( bwidth_read_diff(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg)));
-    frun(sa(  cache_read_diff(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg)));
-    frun(sa(  flops_read_diff(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg)));
-    frun(sa(    cpi_read_diff(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg)));
-    fgpu(sa(    gpu_read_diff(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                )));
+    cpufreq_read(&m.cpu.c,  mr->cpu);
+    imcfreq_read(&m.imc.c,  mr->imc);
+     bwidth_read(&m.ram.c,  mr->ram);
+      cache_read(&m.cch.c, &mr->cch);
+      flops_read(&m.flp.c, &mr->flp);
+        cpi_read(&m.cpi.c, &mr->cpi);
+        gpu_read(&m.gpu.c,  mr->gpu);
 }
 
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
 {
 	mrD->time = timestamp_diffnow(&mr1->time, TIME_SECS);
 
-    frun(sa(cpufreq_read_copy(&m.cpu.c,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg)));
-    frun(sa(imcfreq_read_copy(&m.imc.c,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg)));
-    frun(sa( bwidth_read_copy(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg)));
-    frun(sa(  cache_read_copy(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg)));
-    frun(sa(  flops_read_copy(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg)));
-    frun(sa(   temp_read     (&m.tmp.c,                              mrD->tmp_diff, &mrD->tmp_avrg)));
-    frun(sa(    cpi_read_copy(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg)));
-    fgpu(sa(    gpu_read_copy(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                )));
+    cpufreq_read_copy(&m.cpu.c,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
+    imcfreq_read_copy(&m.imc.c,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg);
+     bwidth_read_copy(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg);
+      cache_read_copy(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg);
+      flops_read_copy(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg);
+       temp_read     (&m.tmp.c,                              mrD->tmp_diff, &mrD->tmp_avrg);
+        cpi_read_copy(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg);
+        gpu_read_copy(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                );
 }
 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD)
 {
     // Read 1
-    frun(sa(cpufreq_data_alloc(&mr1->cpu, empty)));
-    frun(sa(imcfreq_data_alloc(&mr1->imc, empty)));
-    frun(sn( bwidth_data_alloc(&mr1->ram)));
-    fgpu(sa(    gpu_data_alloc(&mr1->gpu)));
+    cpufreq_data_alloc(&mr1->cpu, empty);
+    imcfreq_data_alloc(&mr1->imc, empty);
+     bwidth_data_alloc(&mr1->ram);
+        gpu_data_alloc(&mr1->gpu);
     // Read 2
-    frun(sa(cpufreq_data_alloc(&mr2->cpu, empty)));
-    frun(sa(imcfreq_data_alloc(&mr2->imc, empty)));
-    frun(sn( bwidth_data_alloc(&mr2->ram)));
-    fgpu(sa(    gpu_data_alloc(&mr2->gpu)));
+    cpufreq_data_alloc(&mr2->cpu, empty);
+    imcfreq_data_alloc(&mr2->imc, empty);
+     bwidth_data_alloc(&mr2->ram);
+        gpu_data_alloc(&mr2->gpu);
     // Diff
-    frun(sa(cpufreq_data_alloc(empty, &mrD->cpu_diff)));
-    frun(sa(imcfreq_data_alloc(empty, &mrD->imc_diff)));
-    frun(sa(   temp_data_alloc(&mrD->tmp_diff)));
-    fgpu(sa(    gpu_data_alloc(&mrD->gpu_diff)));
+    cpufreq_data_alloc(empty, &mrD->cpu_diff);
+    imcfreq_data_alloc(empty, &mrD->imc_diff);
+       temp_data_alloc(&mrD->tmp_diff);
+        gpu_data_alloc(&mrD->gpu_diff);
 }
 
 #if TEST
 static topology_t     tp;
+static strtable_t     st;
+static strscreen_t    ss;
 static metrics_read_t mr1;
 static metrics_read_t mr2;
 static metrics_diff_t mrD;
 
+static char *ear_logo()
+{
+    char *logo = "    _________    ____ \n"
+                 "   / ____/   |  / __ \\\n"
+                 "  / __/ / /| | / /_/ /\n"
+                 " / /___/ ___ |/ _, _/ \n"
+                 "/_____/_/  |_/_/ |_|  \n";
+    return logo;
+}
+
 static state_t monitor_apis_init(void *whatever)
 {
+    char buffer[16384];
+
     topology_init(&tp);
-    //
+
     metrics_init(&tp, EARD);
-    //
     metrics_data_alloc(&mr1, &mr2, &mrD);
-    //
     metrics_read(&mr1);
-	
+
+    wprintf_init(&ss, 50, 180, 0, '#'); // 0 to 49, 0 to 179
+    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, 3, "cpufreq"  );
+    wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, 4, "imcfreq");
+    wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, 5, "bandwidth");
+    wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, 6, "temperature");
+    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, 0, "ear-logo" );
+    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 17, 177}, 1, "api-table");
+    wprintf_divide(&ss, (int[]) { 19, 154}, (int[]) { 34, 177}, 2, "topology" );
+
+    topology_tostr(&tp, buffer, sizeof(buffer));
+    wsprintf(&ss, 2, 0, 0, buffer);
+
+    tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
+    tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
+    tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.info.layer, m.cpu.info.api_str, m.cpu.info.devs_count, m.cpu.info.scope_str, m.cpu.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.info.layer, m.imc.info.api_str, m.imc.info.devs_count, m.imc.info.scope_str, m.imc.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.ram.info.layer, m.ram.info.api_str, m.ram.info.devs_count, m.ram.info.scope_str, m.ram.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cch.info.layer, m.cch.info.api_str, m.cch.info.devs_count, m.cch.info.scope_str, m.cch.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.flp.info.layer, m.flp.info.api_str, m.flp.info.devs_count, m.flp.info.scope_str, m.flp.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.tmp.info.layer, m.tmp.info.api_str, m.tmp.info.devs_count, m.tmp.info.scope_str, m.tmp.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpi.info.layer, m.cpi.info.api_str, m.cpi.info.devs_count, m.cpi.info.scope_str, m.cpi.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.info.layer, m.gpu.info.api_str, m.gpu.info.devs_count, m.gpu.info.scope_str, m.gpu.info.granularity_str);
+
+    wsprintf(&ss, 0, 0, 0, ear_logo());
+    wsprintf(&ss, 1, 0, 0, buffer    );
+
+    wprintf(&ss);
+
     return EAR_SUCCESS;
 }
 
 static state_t monitor_apis_update(void *whatever)
 {
-    // Printf clear
-    system("clear");
+    char b[16384];
 
-    //stress_bandwidth(1000);
     metrics_read_copy(&mr2, &mr1, &mrD);
-    
-    tprintf_init(fdout, STR_MODE_COL, "11 9 8 10 20");
-    frun(tprintf("CPUFREQ||%s||%u||-||%s", m.cpu.api_str, m.cpu.devs_count, m.cpu.gran_str));
-    frun(tprintf("IMCFREQ||%s||%u||-||%s", m.imc.api_str, m.imc.devs_count, m.imc.gran_str));
-    frun(tprintf("BWIDTH ||%s||%u||-||%s", m.ram.api_str, m.ram.devs_count, m.ram.gran_str));
-    frun(tprintf("FLOPS  ||%s||%u||-||%s", m.flp.api_str, m.flp.devs_count, m.flp.gran_str));
-    frun(tprintf("TEMP   ||%s||%u||-||%s", m.tmp.api_str, m.tmp.devs_count, m.tmp.gran_str));
-    frun(tprintf("CPI    ||%s||%u||-||%s", m.cpi.api_str, m.cpi.devs_count, m.cpi.gran_str));
-    fgpu(tprintf("GPU    ||%s||%u||-||%s", m.gpu.api_str, m.gpu.devs_count, m.gpu.gran_str));
-    frun(printf("—— cpi ————————————————————————————————————————————————————————————————————————\n"));
-    frun(    cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel));
-    frun(printf("—— cache ——————————————————————————————————————————————————————————————————————\n"));
-    frun(  cache_data_print(&mrD.cch_diff,  mrD.cch_avrg, verb_channel));
-    frun(printf("—— cpufreq ————————————————————————————————————————————————————————————————————\n"));
-    frun(cpufreq_data_print( mrD.cpu_diff,  mrD.cpu_avrg, verb_channel));
-    frun(printf("—— imcfreq ————————————————————————————————————————————————————————————————————\n"));
-    frun(imcfreq_data_print( mrD.imc_diff, &mrD.imc_avrg, verb_channel));
-    frun(printf("—— bandwidth ——————————————————————————————————————————————————————————————————\n"));
-    frun( bwidth_data_print( mrD.ram_diff,  mrD.ram_avrg, verb_channel));
-    frun(printf("—— temperature ————————————————————————————————————————————————————————————————\n"));
-    frun(   temp_data_print( mrD.tmp_diff,  mrD.tmp_avrg, verb_channel));
-    frun(printf("—— gpu ————————————————————————————————————————————————————————————————————————\n"));
-    frun(    gpu_data_print( mrD.gpu_diff,                verb_channel));
-    
+
+    wsprintf(&ss, 3, 0, 1, cpufreq_data_tostr(mrD.cpu_diff,  mrD.cpu_avrg, b, sizeof(b)));
+    wsprintf(&ss, 4, 0, 1, imcfreq_data_tostr(mrD.imc_diff, &mrD.imc_avrg, b, sizeof(b)));
+    wsprintf(&ss, 5, 0, 1,  bwidth_data_tostr(mrD.ram_diff,  mrD.ram_avrg, b, sizeof(b)));
+    wsprintf(&ss, 6, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
+    wprintf(&ss);
+
+    #if 0
+    printf("—— cpi ————————————————————————————————————————————————————————————————————————\n");
+        cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel);
+    printf("—— cache ——————————————————————————————————————————————————————————————————————\n");
+      cache_data_print(&mrD.cch_diff,  mrD.cch_avrg, verb_channel);
+    printf("—— gpu ————————————————————————————————————————————————————————————————————————\n");
+        gpu_data_print( mrD.gpu_diff,                verb_channel);
+    #endif
     return EAR_SUCCESS;
 }
 
@@ -219,13 +239,13 @@ int main(int argc, char *argv[])
     }
 
 	// Monitoring   
-	sa(monitor_init());
+	monitor_init();
 	suscription_t *sus = suscription();
 	sus->call_init     = monitor_apis_init; 
 	sus->call_main     = monitor_apis_update;
 	sus->time_relax    = 2000;
 	sus->time_burst    = 2000;
-	sa(sus->suscribe(sus));
+	sus->suscribe(sus);
 
     sleep(100);
 

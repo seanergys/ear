@@ -219,10 +219,10 @@ void bwidth_data_print(ullong cas, double gbs, int fd)
     dprintf(fd, "%s", buffer);
 }
 
-void bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
+char *bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 {
 #if 1
-    snprintf(buffer, length, "%0.2lf (GB/s, %llu CAS)\n", gbs, cas);
+    snprintf(buffer, length, "%0.2lf GB/s (%llu CAS)\n", gbs, cas);
 #else
     size_t accum = 0;
 	size_t added = 0;
@@ -235,6 +235,7 @@ void bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 	}
 	snprintf(&buffer[accum], length, "Total: %lf GB/s\n", gbs);
 #endif
+    return buffer;
 }
 
 double bwidth_help_castogbs(ullong cas, double secs)
