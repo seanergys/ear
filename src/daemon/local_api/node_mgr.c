@@ -141,23 +141,37 @@ state_t nodemgr_attach_job(ear_njob_t *my_job, uint *my_index)
 	state_t s = EAR_ERROR;
   if (fd_node_mgr_lck < 0) return EAR_ERROR;
 
-	/* Get the lock */
-	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
+  uint pos;
+  uint new;
+  new = (nodemgr_find_job(&my_job, &pos) == EAR_SUCCESS);
 
-	for (uint i = 0 ; i < MAX_CPUS_SUPPORTED ; i++){
-    if (node_jobs_list[i].jid == -1){
-			debug("Found free position at %d", i);
-			memcpy(&node_jobs_list[i],my_job, sizeof(ear_njob_t));
-			*my_index = i;
-
-			file_unlock(fd_node_mgr_lck);	
-			return EAR_SUCCESS;
-		}else {
-			debug("Looking at index %d", i);
-		}
+  if (new){
+    verbose(0,"Adding new job in NODE MGR region ");
+	  /* Get the lock */
+	  if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
+  
+	  for (uint i = 0 ; i < MAX_CPUS_SUPPORTED ; i++){
+      if (node_jobs_list[i].jid == -1){
+			  debug("Found free position at %d", i);
+			  memcpy(&node_jobs_list[i],my_job, sizeof(ear_njob_t));
+			  *my_index = i;
+  
+			  file_unlock(fd_node_mgr_lck);	
+			  return EAR_SUCCESS;
+		  }else {
+			  debug("Looking at index %d", i);
+		  }
+    }
+  
+	  file_unlock(fd_node_mgr_lck);	
+  }else{
+    verbose(0,"Adding new app in NODE MGR region in pos %u", pos);
+    if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
+    node_jobs_list[pos].modification_time = my_job->modification_time;
+    node_jobs_list[pos].num_earl_apps++;
+    verbose(0,"PENDING add the mask");
+    file_unlock(fd_node_mgr_lck);
   }
-
-	file_unlock(fd_node_mgr_lck);	
 	return s;
 }
 

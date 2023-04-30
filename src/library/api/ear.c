@@ -305,9 +305,9 @@ static void print_local_data()
 #endif
         verbose(1, "%30s: '%s'/'%s'", "App/user id", application.job.app_id,
                 application.job.user_id);
-        verbose(1, "%30s: '%s'/'%lu'/'%lu'", "Node/job id/step_id",
+        verbose(1, "%30s: '%s'/'%lu'/'%lu'/'%u'", "Node/job id/step_id/app_id",
                 application.node_id, application.job.id,
-                application.job.step_id);
+                application.job.step_id, AID);
         //verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
         verbose(1, "%30s: %u/%lu (%d)", "P_STATE/frequency (turbo)",
                 EAR_default_pstate, application.job.def_f, ear_use_turbo);
@@ -439,6 +439,8 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
   char EID_path[MAX_PATH_SIZE];
   int ret;
   eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, AID);
+
+  verbose(0, "EARL: Creating app folder %s", EID_path);
   ret = mkdir(EID_path, S_IRWXU);
   if ((ret < 0 ) && (errno != EEXIST)){
     verbose(WF_SUPPORT_VERB,"EAR error EID folder cannot be created (%s) (%s)", EID_path, strerror(errno));
@@ -696,7 +698,9 @@ void create_shared_regions()
 				ear_njob_t me;
 				me.jid = application.job.id;
 				me.sid = application.job.step_id;
-				me.creation_time = time(NULL);
+        me.num_earl_apps = 1;
+				me.creation_time     = time(NULL);
+				me.modification_time = me.creation_time;
 				CPU_ZERO(&me.node_mask);
 				verbose_master(2,"Attaching to node_mgr region");
 				if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
@@ -1961,7 +1965,16 @@ void ear_finalize(int exit_status)
         #endif
 
 
-				verbose_master(2, "ear_finalize on=%d status %d ", lib_shared_region->earl_on, exit_status);
+
+
+        verbose_master(2, "ear_finalize on=%d status %d PID %d", lib_shared_region->earl_on, exit_status, getpid());
+        #if !MPI
+        if (getpid() != main_pid){
+          verbose(0,"Finalizing pid %d" , getpid());
+          exit(0);
+        }
+        #endif
+
 				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
 		
 				if (fake_error){	
@@ -2637,14 +2650,33 @@ state_t earl_periodic_actions_mpi_opt(void *no_arg)
 
 /************** Constructor & Destructor for NOt MPI versions **************/
 #if !MPI 
+void ear_fork_prolog()
+{
+  verbose(0,"EAR: Fork prolog!");
+}
+void ear_fork_epilog()
+{
+  verbose(0,"EAR: Fork epilog!");
+}
+void ear_fork_new_child()
+{
+  verbose(0,"EAR: New process %d!", getpid());
+  ear_lib_initialized = 0;
+  ear_init();
+}
+
 void ear_constructor()
 {
     debug("Calling ear_init in ear_constructor %d",getpid());
+    verbose(0,"Calling ear_init in ear_constructor %d",getpid());
     ear_init();
+    pthread_atfork(ear_fork_prolog, ear_fork_epilog, ear_fork_new_child);
 }
 void ear_destructor()
 {
     debug("Calling ear_finalize in ear_destructor %d",getpid());
+    verbose(0,"Calling ear_finalize in ear_destructor %d",getpid());
+
 #if ONLY_MASTER
     if (my_id) {
         return;

@@ -233,8 +233,8 @@ int eards_connect(application_t *my_app, ulong lid)
   i = 0;
 	/* There are three channels: One global for acceptance , and the ones for each connection */
   sprintf(ear_commreq_global,"%s/.ear_comm.globalreq",ear_tmp);
-  sprintf(ear_commreq,"%s/%u/.ear_comm.req_%d.%d.%lu",ear_tmp,(uint)my_id, i, my_id,lid);
-  sprintf(ear_commack,"%s/%u/.ear_comm.ack_%d.%d.%lu",ear_tmp,(uint)my_id, i, my_id,lid);
+  sprintf(ear_commreq,"%s/%u/%u/.ear_comm.req_%d.%d.%lu",ear_tmp,(uint)my_id,(uint)my_app->job.local_id, i, my_id,lid);
+  sprintf(ear_commack,"%s/%u/%u/.ear_comm.ack_%d.%d.%lu",ear_tmp,(uint)my_id, (uint)my_app->job.local_id,i, my_id,lid);
   debug("comreq_global %s comreq %s comack %s",ear_commreq_global,ear_commreq,ear_commack);
   /* Private pipes are created before the connection request is sent */
 	//verbose(2,"Creating %s",ear_commack);
@@ -518,3 +518,13 @@ int eards_gpu_support()
   return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
 }
 
+state_t eard_new_application(application_t *app)
+{
+  
+  return EAR_SUCCESS;
+}
+
+state_t eard_end_application(application_t *app)
+{
+  return EAR_SUCCESS;
+}

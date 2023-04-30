@@ -284,6 +284,8 @@ state_t eard_dummy_nodemgr(char *ear_tmp, uint ID)
 				nodemgr_server_init(ear_tmp, &dummy_nodemgr);
 				check_null(dummy_nodemgr, "Error creating dummy node_mgr %s", " ");				
 
+
+
 				verbose_master(2, "Dummy node mgr area done");
 				return EAR_SUCCESS;
 }

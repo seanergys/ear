@@ -51,6 +51,9 @@ void eards_disconnect();
  */
 void eards_connection_failure();
 
+state_t eard_new_application(application_t *app);
+state_t eard_end_application(application_t *app);
+
 /** \defgroup rapl_services RAPL services
  * \ingroup local_api
  * \todo Add a description.
