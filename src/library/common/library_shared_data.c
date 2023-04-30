@@ -59,16 +59,22 @@ extern uint fake_force_shared_node;
 
 extern sem_t *lib_shared_lock_sem;
 
-int  get_lib_shared_data_path(char *tmp, uint ID, char *path)
+void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid)
+{
+  snprintf(dst, size,"%s/%u/%u", tmp, create_ID(jid,sid), aid);
+}
+
+
+int  get_lib_shared_data_path(char *tmp, uint ID, uint AID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/%u/.ear_lib_shared_data",tmp, ID);
+	sprintf(path,"%s/%u/%u/.ear_lib_shared_data",tmp, ID, AID);
 	return EAR_SUCCESS;	
 }
-int  get_shared_signatures_path(char *tmp, uint ID, char *path)
+int  get_shared_signatures_path(char *tmp, uint ID, uint AID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/%u/.ear_shared_signatures",tmp, ID);
+	sprintf(path,"%s/%u/%u/.ear_shared_signatures",tmp, ID, AID);
 	return EAR_SUCCESS;	
 }
 
@@ -662,7 +668,7 @@ void  init_earl_node_mgr_info()
     job_id id,sid;
 
 		char *tmp = get_ear_tmp();
-    id = node_mgr_data[j].jid;
+    id  = node_mgr_data[j].jid;
     sid = node_mgr_data[j].sid;
     if ((id != -1) && (sid != -1)){
       /* Double validation */

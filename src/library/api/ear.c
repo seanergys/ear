@@ -130,7 +130,9 @@ static uint cancelled = 0;
 
 extern const char *__progname;
 static uint ear_lib_initialized=0;
-uint   my_eid;
+/* This is the unique Application ID */
+uint   AID;
+#define WF_SUPPORT_VERB 0
 
 // Statics
 #define BUFFSIZE 			128
@@ -142,7 +144,7 @@ int dispose=0;
 
 #if USE_LOCK_FILES
 #include <common/system/file.h>
-static char fd_lock_filename[BUFFSIZE];
+static char master_lock_filename[BUFFSIZE];
 static int fd_master_lock;
 #endif
 
@@ -423,6 +425,81 @@ void cleanup_job_folder()
 								folder_remove(block_file_dir);
 				}else{ debug("Folder  doesn't need to be removed from the library\n");}
 }
+
+/*
+ *
+ * Functions for WF support
+ *
+ */
+
+
+/* This function creates the new application schema tmp/ID/AIS */
+state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
+{
+  char EID_path[MAX_PATH_SIZE];
+  int ret;
+  eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, AID);
+  ret = mkdir(EID_path, S_IRWXU);
+  if ((ret < 0 ) && (errno != EEXIST)){
+    verbose(WF_SUPPORT_VERB,"EAR error EID folder cannot be created (%s) (%s)", EID_path, strerror(errno));
+    return EAR_ERROR;
+  }
+  chmod(EID_path,S_IRUSR|S_IWUSR|S_IXUSR);
+  verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_path);
+  return EAR_SUCCESS;
+}
+
+void mark_as_eard_connected(char *tmp, int jid,int sid,uint aid, int pid)
+{
+    char EID_path[MAX_PATH_SIZE];
+    int fd;
+    char pid_str[128];
+   
+    snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
+    eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
+    strcat(EID_path, pid_str);
+    
+    debug("Creating %s",EID_path);
+    fd = open(EID_path,O_CREAT|O_WRONLY,S_IRUSR|S_IWUSR);
+    close(fd);
+    return;
+}
+uint is_already_connected(char *tmp, int jid,int sid,uint aid, int pid)
+{
+    char EID_path[MAX_PATH_SIZE];
+    char pid_str[128];
+    int fd;
+
+    snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
+    eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
+    strcat(EID_path, pid_str);
+    
+    debug("Looking for %s ",EID_path);
+    fd = open(EID_path,O_RDONLY);
+    if (fd > = 0){
+        close(fd);
+        return 1;
+    }
+    return 0;
+}
+
+void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
+{
+    char EID_path[MAX_PATH_SIZE];
+    int fd;
+    char pid_str[128];
+
+    snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
+    eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
+    strcat(EID_path, pid_str);
+
+    debug("Removing %s",EID_path);
+    unlink(EID_path);
+}
+
+
+
+
 /****************************************************************************************************************************************************************/
 /****************** This function creates the shared memory region to coordinate processes in same node and with other nodes  ***********************************/
 /****************** It is executed by the node master ***********************************************************************************************************/
@@ -430,22 +507,27 @@ void cleanup_job_folder()
 void create_shared_regions()
 {
 	char *tmp=get_ear_tmp();
-	int bfd=-1;
   int total_elements = 1;
   int per_node_elements = 1;
 	uint current_jobs_in_node;
 	#if SHOW_DEBUGS
 	int total_size;
 	#endif
-	uint ID = create_ID(application.job.id, application.job.step_id);
+
+  #if 0
+  char EID_folder[MAX_PATH_SIZE]
+
+  eid_folder(EID_folder, sizeof(EID_folder), tmp, application.job.id, application.job.step_id, AID);
 
 	/* This file is going to be used to access the lib_shared region in exclusive mode */
-	xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
+	xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",EID_folder, application.job.user_id);
   if ((lib_shared_lock_fd = file_lock_create(block_file))<0){
   	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
   }
+  #endif
 
-  xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", ID, node_name);
+  /* Semaphore based on AID and node */
+  xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", AID, node_name);
   lib_shared_lock_sem = sem_open(sem_file, O_CREAT, S_IRUSR|S_IWUSR, 1);
   if (lib_shared_lock_sem == SEM_FAILED){
     error("Creating sempahore %s (%s)", sem_file, strerror(errno));
@@ -453,14 +535,15 @@ void create_shared_regions()
   verbose_master(2, "SEM(%s) created", sem_file);
 
 	/* This section allocates shared memory for processes in same node */
-    pid_t master_pid = getpid();
+  pid_t master_pid = getpid();
 	verbose(2, "[%s] Master (PID: %d) creating shared regions for node synchronisation...",
             node_name, master_pid);
-
+ #if 0
   xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
   if ((bfd=file_lock_create(block_file))<0){
     error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
   }
+  #endif
 
   /* ****************************************************************************************
    * We have two shared regions, one for the node and other for all the processes in the app.
@@ -471,7 +554,7 @@ void create_shared_regions()
   /* Attaching/Create to lib_shared region */
   /*****************************************/
 
-	if (get_lib_shared_data_path(tmp,ID, lib_shared_region_path) != EAR_SUCCESS) {
+	if (get_lib_shared_data_path(tmp,ID, AID, lib_shared_region_path) != EAR_SUCCESS) {
 		error("Getting the lib_shared_region_path");
 	} else {
 		lib_shared_region=create_lib_shared_data_area(lib_shared_region_path);
@@ -512,7 +595,7 @@ void create_shared_regions()
   /************************************************/
   /* Attaching/Create to shared_signatures region */
   /************************************************/
-	if (get_shared_signatures_path(tmp,ID, shsignature_region_path)!=EAR_SUCCESS) {
+	if (get_shared_signatures_path(tmp,ID, AID, shsignature_region_path)!=EAR_SUCCESS) {
     error("Getting the shsignature_region_path");
 	} else {
 
@@ -848,12 +931,17 @@ void attach_to_master_set(int master)
 static int get_local_id(char *node_name)
 {
 				int master = 1;
-				uint ID = create_ID(my_job_id,my_step_id);
+        char EID_folder[MAX_PATH_SIZE];
+
+        eid_folder(get_ear_tmp(), my_job_id,my_step_id, AID);
+
 
 #if USE_LOCK_FILES
-				sprintf(fd_lock_filename, "%s/%u/.ear_app_lock.%u", get_ear_tmp(), ID, ID);
-				debug("Using lock file %s",fd_lock_filename);
-				if ((fd_master_lock = file_lock_master(fd_lock_filename)) < 0) {
+        /* This lock file is used to select the master */
+				sprintf(master_lock_filename, "%s/.master_lock",EID_folder );
+        verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
+				debug("Using lock file %s",master_lock_filename);
+				if ((fd_master_lock = file_lock_master(master_lock_filename)) < 0) {
 								if (errno != EBUSY) debug("Error creating lock file %s",strerror(errno));
 								master = 1;
 				} else {
@@ -1079,7 +1167,7 @@ void ear_init()
 				state_t st;
 				char *ext_def_freq_str=ear_getenv(HACK_DEF_FREQ);
 				int fd_dummy = -1;
-	topology_t earl_topo;
+	      topology_t earl_topo;
 
 				uint fake_eard_error = 0;
 				char *cfake_eard_error = ear_getenv(FAKE_EARD_ERROR);
@@ -1117,7 +1205,7 @@ void ear_init()
 				my_size=1;
 #endif
       /* This is new. It is a collective operation to get the PID of rank 0 */
-        my_eid = get_ear_application_id();
+        AID = get_ear_application_id();
 
 				load_app_mgr_env();
 
@@ -1136,6 +1224,7 @@ void ear_init()
        pid_t my_pid = getpid();
 				debug("Running in %s process = %d", node_name, my_pid);
 
+        // Test ear tmp folder exists
 				tmp = get_ear_tmp();
 				folder_t tmp_test;
 				if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
@@ -1185,6 +1274,8 @@ void ear_init()
 #endif
 
 				get_job_identification();
+
+        // Test SID folder exists
 				check_job_folder();
 				uint ID = create_ID(my_job_id,my_step_id);
         // Why ?? (validate and remove). This function only creates the filename, it
@@ -1192,9 +1283,12 @@ void ear_init()
 				if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
 								unlink(lib_shared_region_path);
 				}
+        // Create SID/AID folder
+        create_eid_folder(tmp, my_job_id, my_step_id, AID);
+
         // Checks in TMP folder if ear_tmp/.master.ID.pid exists 
         // it doesn't create it
-				if (is_already_connected(my_job_id, my_step_id, my_pid)) {
+				if (is_already_connected(tmp, my_job_id, my_step_id, AID, my_pid)) {
 								verbose_master(VEAR_INIT,
                                         "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",
                                         COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
@@ -1202,12 +1296,13 @@ void ear_init()
 				}
 				// Getting if the local process is the master or not
 				/* my_id reflects whether we are the master or no my_id == 0 means we are the master *****/
+        /* This function uses a lock only gathered by the master */
 				my_id = get_local_id(node_name);
 
 
-                int i_am_master = my_id == 0;
-                int verb_pid_lvl = i_am_master ? 2 : 3;
-                verbose(verb_pid_lvl, "%sEAR INIT%s [PID: %d] [MASTER: %d] [NODE: %s]",
+        int i_am_master = my_id == 0;
+       int verb_pid_lvl = i_am_master ? 2 : 3;
+       verbose(verb_pid_lvl, "%sEAR INIT%s [PID: %d] [MASTER: %d] [NODE: %s]",
                         COL_BLU, COL_CLR, my_pid, i_am_master, node_name);
 
 				debug("attach to master %d", my_id);
@@ -1236,8 +1331,10 @@ void ear_init()
 				/* At this point we haven't connected yet with EARD, but, it these regions doesn't exist, we can not connect */
 				/* Three potential reasons: 1) EARD is not running, 2) there is some version mistmatch between the earl-earplug-eard,
  				 * 3) Paths are not correct and we are looking at incorrect ear_tmp path */
-
+ 
 				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
+
+        /* resched path must be migrated to EID folder */
 				get_resched_path(get_ear_tmp(),ID, resched_conf_path);
 				debug("[%s.%d] system_conf_path  = %s",node_name, ear_my_rank, system_conf_path);
 				debug("[%s.%d] resched_conf_path = %s",node_name, ear_my_rank, resched_conf_path);
@@ -1299,8 +1396,9 @@ void ear_init()
 								verbose_master(2,"EARD not detected");
 #if USE_LOCK_FILES
 								if (!my_id){ 
-												debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
-												file_unlock_master(fd_master_lock,fd_lock_filename);
+                        /* This lock file is created in get_local_id function, and it is used to select the master */
+												debug("Application master releasing the lock %d %s", ear_my_rank,master_lock_filename);
+												file_unlock_master(fd_master_lock,master_lock_filename);
 								}
 #endif
 								/* Only the node master will notify the problem to the other masters */
@@ -1317,7 +1415,7 @@ void ear_init()
 
 				// Application static data and metrics
 				init_application(&application);
-				application.is_mpi   	= 1;
+				application.is_mpi   	  = 1;
         #if FAKE_LEARNING
         application.is_learning = 0;
         #else
@@ -1340,8 +1438,9 @@ void ear_init()
 				debug("User %s",application.job.user_id);
 				strcpy(application.node_id, node_name);
 				strcpy(application.job.user_acc,my_account);
-				application.job.id = my_job_id;
-				application.job.step_id = my_step_id;
+				application.job.id        = my_job_id;
+				application.job.step_id   = my_step_id;
+        application.job.local_id  = AID;
 
 				debug("Starting job");
 				// sets the job start_time
@@ -1349,37 +1448,6 @@ void ear_init()
 				debug("Job time initialized");
 
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
-#if SINGLE_CONNECTION
-        if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(3, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
-                            COL_BLU, ear_my_rank, node_name, get_ear_tmp(), COL_CLR);
-
-                    // Connect process with EARD
-                    state_t ret = eards_connect(&application, my_node_id);
-
-                    // Only for testing purposes
-                    if (fake_eard_error == 3) {
-                        ret = EAR_ERROR;
-                    }
-
-                    // Checking GPU support compatibility with EARD
-                    uint eard_supports_gpu = gpu_is_supported(); // eards_gpu_support();
-                    if (lib_supports_gpu != eard_supports_gpu) {
-                        verbose(1, "%sERROR%s EARL (%u) and EARD (%u) differ on GPU support. Check your EAR installation.",
-                                COL_YLW, COL_CLR, lib_supports_gpu, eard_supports_gpu);
-                        ret = EAR_ERROR;
-                    }
-
-                    if (ret == EAR_SUCCESS) {
-                        debug("%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
-                        notify_eard_connection(1);
-                        mark_as_eard_connected(my_job_id, my_step_id, my_pid);
-                    } else {
-                        eard_ok = 0;
-                        notify_eard_connection(0);
-                    }
-       }
-#else
        if (eard_ok) { // all processes will connect with eard
 
                     char *col;
@@ -1414,7 +1482,7 @@ void ear_init()
 
                         if (!my_id) {
                             notify_eard_connection(1);
-                            mark_as_eard_connected(my_job_id, my_step_id, my_pid);
+                            mark_as_eard_connected(get_ear_tmp(), my_job_id, my_step_id, AID, my_pid);
                         }
 
                     } else {
@@ -1424,7 +1492,6 @@ void ear_init()
                         if (!my_id) notify_eard_connection(0);
                     }
        }
-#endif
        /* At this point, the master has detected EARL must be set to off , we must notify the others processes about that */
 
 				debug("Shared region creation section");
@@ -1576,6 +1643,7 @@ void ear_init()
 
 				// This is not frequency any more
 				if (masters_info.my_master_rank >= 0){
+                /* This region must be migrated after the eard_new_application */
 								get_app_mgt_path(get_ear_tmp(),ID, app_mgt_path);
 								verbose_master(VEAR_INIT,"app_mgt_path %s",app_mgt_path);
 								app_mgt_info = attach_app_mgt_shared_area(app_mgt_path);
@@ -1591,6 +1659,7 @@ void ear_init()
 								/* At this point we have notified the EARD the number of nodes in the application */
 								check_large_job_use_case();
 								/* This area is RW */
+                /* This region must be migrated after the eard_new_application */
 								get_pc_app_info_path(get_ear_tmp(),ID, pc_app_info_path);
 								verbose_master(VEAR_INIT,"pc_app_info path %s",pc_app_info_path);
 								pc_app_info_data=attach_pc_app_info_shared_area(pc_app_info_path);
@@ -1930,8 +1999,9 @@ void ear_finalize(int exit_status)
 				debug("%d: Finalizing", my_node_id);
 #if USE_LOCK_FILES
 				if (!my_id){
-								debug("Application master releasing the lock %d %s", ear_my_rank,fd_lock_filename);
-								file_unlock_master(fd_master_lock,fd_lock_filename);
+                /* Releasing master lock file. Used to select the master */
+								debug("Application master releasing the lock %d %s", ear_my_rank, master_lock_filename);
+								file_unlock_master(fd_master_lock,master_lock_filename);
 								mark_as_eard_disconnected(my_job_id,my_step_id,getpid());
 				}
 #endif

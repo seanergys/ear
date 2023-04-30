@@ -138,12 +138,14 @@ typedef struct node_mgr_sh_data {
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
 
+void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid);
+
 
 /*********** SETTINGS configuration *******************/
 
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param[out] path Output path. */
-int get_lib_shared_data_path(char *tmp, uint ID, char *path);
+int get_lib_shared_data_path(char *tmp, uint ID, uint AID, char *path);
 
 
 /** \brief Creates the shared mmemory.
@@ -173,7 +175,7 @@ void print_lib_shared_data(lib_shared_data_t *setting);
 
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param path (output) */
-int get_shared_signatures_path(char *tmp,uint ID, char *path);
+int get_shared_signatures_path(char *tmp,uint ID, uint AID, char *path);
 
 
 /** Creates the shared mmemory.
