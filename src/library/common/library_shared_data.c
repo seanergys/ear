@@ -32,6 +32,7 @@
 
 #include <common/config.h>
 #include <common/states.h>
+#include <common/system/folder.h>
 #include <common/hardware/hardware_info.h>
 #include <common/output/verbose.h>
 #include <common/types/projection.h>
@@ -661,84 +662,130 @@ void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *
 }
 
 /* Node mgr support functions */
+
+static uint total_num_earl_apps = 0;
 void  init_earl_node_mgr_info()
 {
+  if (node_mgr_info_lock() == EAR_SUCCESS){
+    for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+      if (node_mgr_data[j].jid != -1) total_num_earl_apps += ear_max(node_mgr_data[j].num_earl_apps, 1);
+    }
+    node_mgr_info_unlock();
+  }else{
+    verbose(0,"ERROR: EARL cannot get node_mgr_info_lock");
+    node_mgr_job_info = NULL;
+    return;
+  }
+
+  verbose(0," EARL: %d Apps detected", total_num_earl_apps);
+
+  node_mgr_job_info = calloc(total_num_earl_apps,sizeof(node_mgr_sh_data_t));
+
+  uint curr_app = 0;
+
+  /* Each job could have more than 1 app */
   for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
     uint ID;
-    job_id id,sid;
+    job_id jid,sid;
+    char *appid_folder;
+    folder_t SID_folder;
+    char SID_folder_name[MAX_PATH_SIZE];
+    uint apps;
 
 		char *tmp = get_ear_tmp();
-    id  = node_mgr_data[j].jid;
+    time_t ct, mt;
+    jid  = node_mgr_data[j].jid;
     sid = node_mgr_data[j].sid;
-    if ((id != -1) && (sid != -1)){
+
+    if ((jid != -1) && (sid != -1)){
       /* Double validation */
       if (node_mgr_info_lock() == EAR_SUCCESS){
-        id = node_mgr_data[j].jid;
+        jid = node_mgr_data[j].jid;
         sid = node_mgr_data[j].sid;
-        node_mgr_job_info[j].creation_time = node_mgr_data[j].creation_time;
+        ct  = node_mgr_data[j].creation_time;
+        mt  = node_mgr_data[j].modification_time;
+        apps = node_mgr_data[j].num_earl_apps;
+        /* Creattion time is set at new_job, modification_time is set at new_jon and new_app */
         node_mgr_info_unlock();
       }
-      if ((id != -1) && (sid != -1) && (j != node_mgr_index) ){
-        verbose_master(2,"Job %lu.%lu is sharing the node", id,sid);
-        ID = create_ID(id, sid);
-        if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path_jobs) == EAR_SUCCESS){
-          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd_lib);
-        }else{
-          node_mgr_job_info[j].creation_time = 0;
+
+    snprintf(SID_folder_name, sizeof(SID_folder_name), "%s/%u", tmp, (uint)create_ID(jid, sid)); 
+    if (state_fail(folder_open(&SID_folder,SID_folder_name))){
+      verbose_master(0,"Failed folder open %s", SID_folder_name);
+      continue;
+    }
+    ID = create_ID(jid, sid);
+
+    while (( appid_folder = folder_getnext_type(&SID_folder,"", "", DT_DIR)) != NULL){
+      verbose(0,"New APP[%d] detected for %lu/%lu/%s", curr_app,jid, sid, appid_folder);
+        node_mgr_job_info[curr_app].jid               = jid;
+        node_mgr_job_info[curr_app].sid               = sid;
+        node_mgr_job_info[curr_app].creation_time     = ct;
+        node_mgr_job_info[curr_app].modification_time = mt;
+        node_mgr_job_info[curr_app].fd_lib          = -1;
+        node_mgr_job_info[curr_app].fd_sig          = -1;
+
+        if (apps){
+          /* Mapping lib_shared_region */ 
+          verbose_master(2,"Job %lu.%lu is sharing the node", jid,sid);
+          if (get_lib_shared_data_path(tmp,ID,atoi(appid_folder),lib_shared_region_path_jobs) == EAR_SUCCESS){
+            node_mgr_job_info[curr_app].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[curr_app].fd_lib);
+          }
+          /* Mapping shared signatures */
+				  if (get_shared_signatures_path(tmp,ID,atoi(appid_folder),sig_shared_region_path_jobs) == EAR_SUCCESS){
+					  node_mgr_job_info[curr_app].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[curr_app].libsh->num_processes, &node_mgr_job_info[curr_app].fd_sig);
+				  }
         }
-				if (get_shared_signatures_path(tmp,ID,sig_shared_region_path_jobs) == EAR_SUCCESS){
-					node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
-				}
-      }else if (j == node_mgr_index){
-        node_mgr_job_info[j].libsh =  lib_shared_region;
-				node_mgr_job_info[j].shsig =  sig_shared_region;
-      }
+        curr_app++;
+    }
     }
   }
 }
 
+void release_earl_node_mgr_info()
+{
+  verbose(0,"Releasing Node MGR info");
+  while (node_mgr_info_lock() != EAR_SUCCESS);
+  for (uint curr_app = 0; curr_app < total_num_earl_apps; curr_app++){
+    dettach_lib_shared_data_area(node_mgr_job_info[curr_app].fd_lib);
+    dettach_shared_signatures_area(node_mgr_job_info[curr_app].fd_sig);
+  }
+  free(node_mgr_job_info);
+  total_num_earl_apps = 0;
+  node_mgr_info_unlock();
+}
+
+uint node_manager_job_changed(job_id jid, job_id sid, time_t mt)
+{
+  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++){
+    if ((node_mgr_data[j].jid == jid) && (node_mgr_data[j].sid == sid) && (node_mgr_data[j].modification_time != mt)) return 1;
+  }
+  return 0;
+}
+
+
 void update_earl_node_mgr_info()
 {
     char *tmp = get_ear_tmp();
+    uint release = 0;
 
-    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++) {
-        job_id jid = node_mgr_data[j].jid;
-        job_id sid = node_mgr_data[j].sid;
+    for (uint j = 0; j < total_num_earl_apps; j++) {
+        job_id jid = node_mgr_job_info[j].jid;
+        job_id sid = node_mgr_job_info[j].sid;
+        time_t mt = node_mgr_job_info[j].modification_time;
 
-        time_t ct = node_mgr_data[j].creation_time;
-
-        if (ct != node_mgr_job_info[j].creation_time) {
-            while (node_mgr_info_lock() != EAR_SUCCESS);
-
-            jid = node_mgr_data[j].jid;
-            sid = node_mgr_data[j].sid;
-            ct  = node_mgr_data[j].creation_time;
-
-            node_mgr_info_unlock();
-
-            /* Double validation after getting the lock */
-            if (ct != node_mgr_job_info[j].creation_time) {
-                if (ct == 0) {
-                    dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
-                    dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
-                    node_mgr_job_info[j].creation_time = 0;
-                } else {
-
-                    uint ID = create_ID(jid, sid);
-
-                    get_lib_shared_data_path(tmp, ID, lib_shared_region_path_jobs);
-                    node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,
-                            &node_mgr_job_info[j].fd_lib);
-
-                    get_shared_signatures_path(tmp, ID, sig_shared_region_path_jobs);
-                    node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs,
-                            node_mgr_job_info[j].libsh->num_processes,
-                            &node_mgr_job_info[j].fd_sig);
-
-                    node_mgr_job_info[j].creation_time = ct;
-                }
-            }
+        /* For each app we compare the data */
+        if (node_manager_job_changed(jid, sid, mt)){
+          verbose(0,"Job %lu/%lu has changed", jid, sid);
+          release = 1;
+          break;
         }
+    }
+
+    /* if something has changed, we re-map */
+    if (release){
+      release_earl_node_mgr_info();
+      init_earl_node_mgr_info();
     }
 
     uint current_jobs_in_node = 0;

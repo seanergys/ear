@@ -476,7 +476,7 @@ uint is_already_connected(char *tmp, int jid,int sid,uint aid, int pid)
     
     debug("Looking for %s ",EID_path);
     fd = open(EID_path,O_RDONLY);
-    if (fd > = 0){
+    if (fd >= 0){
         close(fd);
         return 1;
     }
@@ -513,6 +513,8 @@ void create_shared_regions()
 	#if SHOW_DEBUGS
 	int total_size;
 	#endif
+
+  uint ID = create_ID(application.job.id, application.job.step_id);
 
   #if 0
   char EID_folder[MAX_PATH_SIZE]
@@ -706,7 +708,7 @@ void create_shared_regions()
         }
 				verbose_master(2,"Attached! at pos %u", node_mgr_index);
 				/* node_mgr_job_info maps other jobs data sharing the node */
-				node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+				//node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
 				init_earl_node_mgr_info();
 				if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
 								verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
@@ -747,7 +749,7 @@ void attach_shared_regions()
         }
 				/* This link will be used to access the lib_shared_region lock file */
 				lib_shared_lock_fd = bfd;
-				if (get_lib_shared_data_path(tmp,ID,lib_shared_region_path)!=EAR_SUCCESS){
+				if (get_lib_shared_data_path(tmp,ID, AID, lib_shared_region_path)!=EAR_SUCCESS){
 								error("Getting the lib_shared_region_path");
 				}else{
 #if MPI
@@ -779,7 +781,7 @@ void attach_shared_regions()
 				}
 #endif
 				verbose(3,"My node ID is %d/%d", my_node_id, lib_shared_region->num_processes);
-				if (get_shared_signatures_path(tmp,ID, shsignature_region_path) != EAR_SUCCESS){
+				if (get_shared_signatures_path(tmp,ID, AID, shsignature_region_path) != EAR_SUCCESS){
 								error("Getting the shsignature_region_path  ");
 				}else{
 								sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes, &fd_sigsh);
@@ -825,7 +827,7 @@ void attach_shared_regions()
 				}
 				//verbose(3,"Attached no-master! at pos %u", node_mgr_index);
 				/* node_mgr_job_info maps other jobs data sharing the node */
-				if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+				//if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
 				init_earl_node_mgr_info();
 				if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
 								verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
@@ -933,7 +935,7 @@ static int get_local_id(char *node_name)
 				int master = 1;
         char EID_folder[MAX_PATH_SIZE];
 
-        eid_folder(get_ear_tmp(), my_job_id,my_step_id, AID);
+        eid_folder(EID_folder, sizeof(EID_folder), get_ear_tmp(), my_job_id,my_step_id, AID);
 
 
 #if USE_LOCK_FILES
@@ -1103,7 +1105,11 @@ void ear_lib_sig_handler(int s)
 {
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
         /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
-
+        if (s == SIGPIPE){
+          mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
+          eards_connection_failure();
+          return;
+        }
 
         if (s == SIGSEGV){ 
           verbose(0, "%d: EAR finalized by signal SIGSEGV", getpid());
@@ -1114,6 +1120,7 @@ void ear_lib_sig_handler(int s)
         if (syscall(SYS_gettid) != main_pid) return;
 
 				cancelled = 1;
+
 				ear_finalize(EAR_CANCELLED);
 				exit(0);
 }
@@ -1280,7 +1287,7 @@ void ear_init()
 				uint ID = create_ID(my_job_id,my_step_id);
         // Why ?? (validate and remove). This function only creates the filename, it
         // doesn't open or checks it
-				if (get_lib_shared_data_path(tmp, ID, lib_shared_region_path)==EAR_SUCCESS){
+				if (get_lib_shared_data_path(tmp, ID, AID, lib_shared_region_path)==EAR_SUCCESS){
 								unlink(lib_shared_region_path);
 				}
         // Create SID/AID folder
@@ -1885,6 +1892,7 @@ void ear_init()
 				sigaction(SIGTERM, &term_action, NULL);
 				sigaction(SIGINT, &term_action, NULL);
 				sigaction(SIGSEGV, &term_action, NULL);
+				sigaction(SIGPIPE, &term_action, NULL);
 
 
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
@@ -2002,7 +2010,7 @@ void ear_finalize(int exit_status)
                 /* Releasing master lock file. Used to select the master */
 								debug("Application master releasing the lock %d %s", ear_my_rank, master_lock_filename);
 								file_unlock_master(fd_master_lock,master_lock_filename);
-								mark_as_eard_disconnected(my_job_id,my_step_id,getpid());
+								mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
 				}
 #endif
 

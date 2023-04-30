@@ -88,6 +88,58 @@ char *folder_getnext(folder_t *folder, char *prefix, char *suffix)
 	return NULL;
 }
 
+char *folder_getnext_type(folder_t *folder, char *prefix, char *suffix, uint type)
+{
+	struct dirent *file;
+	int lpre, lsuf, lfil;
+	char *pfil;
+
+	pfil = folder->file_name;
+	lpre = (prefix != NULL) ? (int) strlen(prefix) : 0;
+	lsuf = (suffix != NULL) ? (int) strlen(suffix) : 0;
+
+	while ((file = readdir(folder->dir)) != NULL)
+	{
+    if (type != DT_UNKNOWN){
+		  if (file->d_type != type) {
+			  continue;
+		  }
+    }
+
+		if (prefix != NULL)
+		{
+			if (strstr(file->d_name, prefix) != NULL) {
+				strcpy(pfil, &file->d_name[lpre]);
+			} else {
+				continue;
+			}
+		} else {
+			strcpy(pfil, &file->d_name[0]);
+		}
+
+		if ((lfil = (int) strlen(pfil)) <= lsuf) {
+			continue;
+		}
+
+		if (suffix != NULL)
+		{
+			if (strcmp(&pfil[lfil - lsuf], suffix) == 0) {
+				pfil[lfil - lsuf] = '\0';
+				return pfil;
+			} else {
+				continue;
+			}
+		} else {
+			return pfil;
+		}
+	}
+
+	folder_close(folder);
+
+	return NULL;
+}
+
+
 state_t folder_remove(char *path)
 {
   char job_path[MAX_PATH_SIZE];

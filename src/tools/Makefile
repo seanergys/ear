@@ -9,7 +9,8 @@ tool_BINS = \
     coeffs_default \
     coeffs_null \
     enode_control \
-    ear_conf
+    ear_conf \
+		list_folders
 ifdef DB_BASE
 tool_BINS += \
     learning_show \
@@ -66,6 +67,10 @@ ear_conf: ear_conf.c $(comm_OBJS)
 
 enode_control: ear_node_control.c $(comm_OBJS) 
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+
+
+list_folders: list_folders.c $(comm_OBJS)
+	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
 ######## OPTIONS
 
 install: tool.ginstall;

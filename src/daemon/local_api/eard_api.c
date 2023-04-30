@@ -139,29 +139,6 @@ int eards_write(int fd,char *buff,int size)
 #endif
 }
 
-void eards_signal_handler(int s)
-{
-	debug("EARD has been disconnected");
-	mark_as_eard_disconnected(my_job_id,my_step_id,getpid());
-	app_connected=0;
-}
-
-void eards_signal_catcher()
-{
-    struct sigaction action;
-    sigset_t earl_mask;
-    
-    sigfillset(&earl_mask);
-    sigdelset(&earl_mask,SIGPIPE);
-    sigprocmask(SIG_UNBLOCK,&earl_mask,NULL);
-    sigemptyset(&action.sa_mask);
-    action.sa_handler = eards_signal_handler;
-    action.sa_flags = 0;
-    
-    if (sigaction(SIGPIPE, &action, NULL) < 0) {
-    	error( "sigaction error on signal s=%d (%s)", SIGPIPE, strerror(errno));
-    }
-}    
 
 
 // If this approach is selected, we will substitute the function call by the key
@@ -352,9 +329,13 @@ int eards_connect(application_t *my_app, ulong lid)
       close(ear_fd_req_global);
   }
   app_connected = 1;
-  eards_signal_catcher();
   debug("Connected");
   return EAR_SUCCESS;
+}
+
+void eards_connection_failure()
+{
+  app_connected = 0;
 }
 
 void eards_disconnect()

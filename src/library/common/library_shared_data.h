@@ -131,7 +131,10 @@ typedef struct shsignature {
 
 
 typedef struct node_mgr_sh_data {
+  job_id            jid;
+  job_id            sid;
 	time_t            creation_time;
+	time_t            modification_time;
 	int               fd_lib;
 	int               fd_sig;
 	lib_shared_data_t *libsh;

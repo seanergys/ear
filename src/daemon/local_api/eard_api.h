@@ -47,6 +47,10 @@ int eards_connected();
 void eards_disconnect();
 /** @} */
 
+/** Sets the connection status as failed 
+ */
+void eards_connection_failure();
+
 /** \defgroup rapl_services RAPL services
  * \ingroup local_api
  * \todo Add a description.

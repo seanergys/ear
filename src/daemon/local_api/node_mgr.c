@@ -127,7 +127,7 @@ state_t nodemgr_get_num_jobs_attached(uint *num_jobs)
 	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
 
 	for (uint i = 0 ; i < MAX_CPUS_SUPPORTED ; i++){
-		if (node_jobs_list[i].jid != -1) total_jobs ++;
+		if (node_jobs_list[i].jid != -1) total_jobs += ear_max(node_jobs_list[i].num_earl_apps, 1);
 	}
 
 	file_unlock(fd_node_mgr_lck);
@@ -195,7 +195,8 @@ state_t nodemgr_job_end(uint index)
 
 	node_jobs_list[index].jid = -1;
 	node_jobs_list[index].sid = -1;
-	node_jobs_list[index].creation_time = 0;
+	node_jobs_list[index].creation_time     = 0;
+	node_jobs_list[index].modification_time = 0;
 
   file_unlock(fd_node_mgr_lck);
   return s;
@@ -214,7 +215,8 @@ state_t nodemgr_clean_job(job_id jid,job_id sid)
 				if ((node_jobs_list[i].jid == jid) && (node_jobs_list[i].sid == sid)){
 					node_jobs_list[i].jid = -1;
 					node_jobs_list[i].sid = -1;
-					node_jobs_list[i].creation_time = 0;
+					node_jobs_list[i].creation_time     = 0;
+          node_jobs_list[i].modification_time = 0;
 				}
 
   		file_unlock(fd_node_mgr_lck);

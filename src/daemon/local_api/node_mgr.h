@@ -33,6 +33,8 @@ typedef struct ear_njob {
 	job_id     sid;
 	cpu_set_t  node_mask;
 	time_t     creation_time;
+	time_t     modification_time;
+  uint       num_earl_apps;
 } ear_njob_t;
 
 /** Initializes the lock file and attaches the shared memory region.
