@@ -133,6 +133,7 @@ typedef struct shsignature {
 typedef struct node_mgr_sh_data {
   job_id            jid;
   job_id            sid;
+  job_id            lid;
 	time_t            creation_time;
 	time_t            modification_time;
 	int               fd_lib;
@@ -301,6 +302,10 @@ void* mpi_info_get_perc_mpi(void *mpi_inf);
 /* Node mgr earl support functions */
 void init_earl_node_mgr_info();
 void update_earl_node_mgr_info();
+void release_earl_node_mgr_info();
+
+/** Returns how many apps are running in the node */
+uint node_mgr_earl_apps();
 #define PER_PROCESS 0
 #define PER_JOB     1
 void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);

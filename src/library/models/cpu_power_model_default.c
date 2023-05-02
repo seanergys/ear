@@ -124,6 +124,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
   lsig = &data->node_signature;
 
+  if (node_mgr_earl_apps() > MAX_CPUS_SUPPORTED){
+    verbose(0,"EARL ERROR, more apps than CPUS--> return");
+    return EAR_ERROR;
+  }
+
   memset(ipc,0,sizeof(double)*MAX_CPUS_SUPPORTED);
   memset(process_power_ratio,0,sizeof(double)*MAX_CPUS_SUPPORTED);
   memset(tpi,0,sizeof(double)*MAX_CPUS_SUPPORTED);
@@ -152,7 +157,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
    * needed to iterate over the jobs to have per node. */
   debug("Node signature GBS %lf TPI (old %lf) new %lf cas counters %llu linst %llu", lsig->GBS, oldTPI, lsig->TPI, data->cas_counters,lsig->instructions);
 
-  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
+  for (uint j = 0; j < node_mgr_earl_apps(); j ++) {
     /* Power condition is to do only in case the signature is ready */
     if (nmgr[j].creation_time
         && nmgr[j].libsh != NULL
@@ -257,7 +262,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
   /* Per job in node loop */
   double total_power_estimated = 0, CPU_power, GPU_power = 0;
   lp = 0;
-  for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+  for (uint j = 0; j < node_mgr_earl_apps(); j ++){
     /* If job is active we compute its power estimated */
     if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp]){
       for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){

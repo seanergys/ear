@@ -71,6 +71,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	double my_job_GBS, my_job_DRAM_power, my_job_TPI;
 	uint used_cpus = 0;
 
+  if (node_mgr_earl_apps() > MAX_CPUS_SUPPORTED){
+      verbose(0,"EARL ERROR, more apps than CPUS--> return");
+      return EAR_ERROR;
+  }
+
 
 
 
@@ -95,7 +100,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	
 	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
 	
-	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+	for (uint j = 0; j < node_mgr_earl_apps(); j ++){
 		/* Power condition is to do only in case the signature is ready */
 		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
 			used_cpus += nmgr[j].libsh->num_cpus;
@@ -202,7 +207,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	lp = 0;
 	total_power_estimated = 0;
 	double P = (double)CPU_power / (double)cpu_count;
-	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++){
+	for (uint j = 0; j < node_mgr_earl_apps(); j ++){
 		/* If job is active we compute its power estimated */
 		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){

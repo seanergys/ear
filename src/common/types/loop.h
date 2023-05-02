@@ -54,7 +54,7 @@ int set_null_loop(loop_t *loop);
 int is_null(loop_t *loop);
 
 /** Initalizes the loop given by parameter. */
-int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ulong event, ulong size, ulong level);
+int loop_init(loop_t *loop, ulong job_id, ulong step_id, ulong local_id, const char *node_id, ulong event, ulong size, ulong level);
 
 /* Cleans information that could generate DB failures */
 void clean_db_loop(loop_t *loop, double limit);

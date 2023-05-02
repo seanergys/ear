@@ -46,6 +46,7 @@ extern float ratio_PPN;
 extern uint total_mpi;
 extern uint using_verb_files;
 extern uint per_proc_verb_file;
+extern uint   AID;
 
 #ifdef SHOW_DEBUGS
 static void debug_loop_signature(char *title, signature_t *loop);
@@ -231,12 +232,12 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #endif
 
         debug("%swriting app info%s", COL_YLW, COL_CLR);
-        verbose(2, "EAR%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
-                mode, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
+        verbose(2, "EAR%s[%u](%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
+                mode, AID, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
 
         debug("%swriting nname at elapsed%s", COL_YLW, COL_CLR)
-        verbosen(1, "EAR%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
-                mode, aname, PFREQ, nname, master_rank, elapsed); 
+        verbosen(1, "EAR%s[%u](%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
+                mode, AID, aname, PFREQ, nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
 #if USE_GPUS

@@ -44,8 +44,8 @@ void copy_application(application_t *destiny, application_t *source)
 
 void application_print_channel(FILE *file, application_t *app)
 {
-    fprintf(file, "application_t: id '%s', job id '%lu.%lu', node id '%s'\n",
-            app->job.app_id, app->job.id, app->job.step_id, app->node_id);
+    fprintf(file, "application_t: id '%s', job id '%lu.%lu.%lu', node id '%s'\n",
+            app->job.app_id, app->job.id, app->job.step_id, app->job.local_id, app->node_id);
     fprintf(file, "application_t: learning '%d', time '%lf', avg freq '%lu'\n",
             app->is_learning, app->signature.time, app->signature.avg_f);
     fprintf(file, "application_t: pow dc '%lf', pow ram '%lf', pow pack '%lf'\n",
@@ -149,7 +149,7 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
 
 int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column)
 {
-    char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
+    char *HEADER_BASE = "NODENAME;JOBID;STEPID;APPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
                         "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
                         "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
 		char HEADER[4096];
@@ -325,14 +325,14 @@ void verbose_application_data(uint vl, application_t *app)
 
     char job_info_txt[1024]; // app / user / account / job.step
     int ret = snprintf(job_info_txt, sizeof(job_info_txt),
-                       "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
+                       "--- App id: %s / user id: %s / account: %s / job.step.appid: %lu.%lu.%lu ---\n\n"
                        "Processes: %lu\n"
                        "Start time: %s End time: %s\n"
                        "Start MPI : %s End MPI :  %s\n\n"
                        "(Power sign.) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz\n"
                        "              DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n"
                        "              Max/Min DC Power (W): %0.3lf/%0.3lf\n\n",
-                       app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id,
+                       app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id, app->job.local_id,
                        app->job.procs,
                        st, et,
                        stmpi, etmpi,
@@ -455,8 +455,8 @@ void report_mpi_application_data(application_t *app)
     char job_info_txt[1024]; // app / user / account / job.step
 
     snprintf(job_info_txt, sizeof(job_info_txt),
-             "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n",
-             app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id);
+             "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu.%lu ---\n",
+             app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id, app->job.local_id);
 
     char mpi_info_txt[512]; // signature details
 

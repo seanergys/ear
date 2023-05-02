@@ -277,7 +277,7 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
     tries_current_loop_same_freq = 0;
 
     if (state_fail(loop_init(&curr_loop, application.job.id,
-                    application.job.step_id, application.node_id, event, size, level))) {
+                    application.job.step_id, application.job.local_id, application.node_id, event, size, level))) {
         verbose_master(2, "%sEAR Error%s Creating loop: %s", COL_RED, COL_CLR, state_msg);
     }
 

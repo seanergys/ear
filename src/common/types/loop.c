@@ -70,7 +70,7 @@ int create_loop(loop_t *l)
     }
 }
 
-int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ulong event, ulong size, ulong level)
+int loop_init(loop_t *loop, ulong job_id, ulong step_id, ulong local_id, const char *node_id, ulong event, ulong size, ulong level)
 {
     int ret;
 
@@ -78,8 +78,9 @@ int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ul
 
     if ((ret=create_loop_id(&loop->id, event, size, level)) != EAR_SUCCESS) return ret;
 
-    loop->jid     = job_id;
-    loop->step_id = step_id;
+    loop->jid      = job_id;
+    loop->step_id  = step_id;
+    loop->local_id = local_id;
 
     memcpy(loop->node_id, node_id, sizeof loop->node_id);
 
@@ -174,7 +175,7 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header, i
 
 int create_loop_header(char * header, char *path, int ts, uint num_gpus, int single_column)
 {
-    char *HEADER_NOTS = "JOBID;STEPID;NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;" \
+    char *HEADER_NOTS = "JOBID;STEPID;APPID;NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;" \
                          "ITER_TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
                          "L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;" \
                          "DPOPS_512";
@@ -273,7 +274,7 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 
     assert(loop!=NULL);
     assert(loop->node_id!=NULL);
-    dprintf(fd,"%lu;%lu;",loop->jid,loop->step_id);
+    dprintf(fd,"%lu;%lu;%lu;",loop->jid,loop->step_id,loop->local_id);
     dprintf(fd, "%s;", loop->node_id);
     signature_print_fd(fd, &loop->signature,1, single_column, sep);
     print_loop_id_fd(fd, &loop->id);

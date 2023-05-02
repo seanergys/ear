@@ -132,7 +132,7 @@ extern const char *__progname;
 static uint ear_lib_initialized=0;
 /* This is the unique Application ID */
 uint   AID;
-#define WF_SUPPORT_VERB 0
+#define WF_SUPPORT_VERB 2
 
 // Statics
 #define BUFFSIZE 			128
@@ -432,22 +432,30 @@ void cleanup_job_folder()
  *
  */
 
+char EID_application_path[MAX_PATH_SIZE];
+void clean_eid_folder()
+{
+  verbose(WF_SUPPORT_VERB,"EID folder (%s) remove", EID_application_path);
+  folder_remove(EID_application_path);
+}
 
 /* This function creates the new application schema tmp/ID/AIS */
 state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
 {
-  char EID_path[MAX_PATH_SIZE];
   int ret;
-  eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, AID);
 
-  verbose(0, "EARL: Creating app folder %s", EID_path);
-  ret = mkdir(EID_path, S_IRWXU);
+  //verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
+
+  eid_folder(EID_application_path, sizeof(EID_application_path), tmp, jid, sid, AID);
+
+  verbose(WF_SUPPORT_VERB, "EARL: Creating app folder %s", EID_application_path);
+  ret = mkdir(EID_application_path, S_IRWXU);
   if ((ret < 0 ) && (errno != EEXIST)){
-    verbose(WF_SUPPORT_VERB,"EAR error EID folder cannot be created (%s) (%s)", EID_path, strerror(errno));
+    verbose(WF_SUPPORT_VERB,"EAR error EID folder cannot be created (%s) (%s)", EID_application_path, strerror(errno));
     return EAR_ERROR;
   }
-  chmod(EID_path,S_IRUSR|S_IWUSR|S_IXUSR);
-  verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_path);
+  chmod(EID_application_path,S_IRUSR|S_IWUSR|S_IXUSR);
+  //verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
   return EAR_SUCCESS;
 }
 
@@ -461,7 +469,7 @@ void mark_as_eard_connected(char *tmp, int jid,int sid,uint aid, int pid)
     eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
     strcat(EID_path, pid_str);
     
-    debug("Creating %s",EID_path);
+    //verbose(WF_SUPPORT_VERB,"Creating %s",EID_path);
     fd = open(EID_path,O_CREAT|O_WRONLY,S_IRUSR|S_IWUSR);
     close(fd);
     return;
@@ -718,7 +726,7 @@ void create_shared_regions()
 								verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
 				}
 				exclusive = (current_jobs_in_node == 1);
-				verbose_jobs_in_node(3,node_mgr_data,node_mgr_job_info);
+				verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
         get_ear_external_path(tmp, ID, shexternal_region_path);
@@ -828,7 +836,9 @@ void attach_shared_regions()
 				if (nodemgr_find_job(&me, &node_mgr_index) != EAR_SUCCESS){
 								verbose_master(2,"Error attaching to node_mgr region");
 								node_mgr_index = NULL_NODE_MGR_INDEX;
-				}
+				}else{
+          verbose_master(2,"Attached in node_mgr rerion pos %d", node_mgr_index);
+        }
 				//verbose(3,"Attached no-master! at pos %u", node_mgr_index);
 				/* node_mgr_job_info maps other jobs data sharing the node */
 				//if (node_mgr_index != NULL_NODE_MGR_INDEX) node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
@@ -945,7 +955,7 @@ static int get_local_id(char *node_name)
 #if USE_LOCK_FILES
         /* This lock file is used to select the master */
 				sprintf(master_lock_filename, "%s/.master_lock",EID_folder );
-        verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
+        //verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
 				debug("Using lock file %s",master_lock_filename);
 				if ((fd_master_lock = file_lock_master(master_lock_filename)) < 0) {
 								if (errno != EBUSY) debug("Error creating lock file %s",strerror(errno));
@@ -1155,8 +1165,8 @@ static int get_ear_application_id()
    * If that happen, then we will have a conflict. The probability must be close to 0
    */
 
-  verbose(0,"EAR Application ID is %d", master_pid);
-  return main_pid;
+  verbose(WF_SUPPORT_VERB,"EAR Application ID is %d", master_pid);
+  return master_pid;
 }
 
 /*****************************************************************************************************************************************************/
@@ -1186,6 +1196,7 @@ void ear_init()
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
 
+
         #if START_END_OVH
         ullong elap_eard_init;
         timestamp start_eard_init, end_eard_init;
@@ -1196,6 +1207,8 @@ void ear_init()
 
 
         main_pid = syscall(SYS_gettid);
+
+        verbose(2, "%s EAR [%d] init .......................................%s", COL_BLU, main_pid, COL_CLR);
 
 
 				if (ear_lib_initialized){
@@ -1256,8 +1269,9 @@ void ear_init()
 
 				verb_level = get_ear_verbose();
 				verb_channel=2;
-				if ((tmp = ear_getenv(HACK_EARL_VERBOSE)) != NULL) {
-								verb_level = atoi(tmp);
+        char * hack_verb_lv;
+				if (( hack_verb_lv = ear_getenv(HACK_EARL_VERBOSE)) != NULL) {
+								verb_level = atoi(hack_verb_lv);
 								VERB_SET_LV(verb_level);
 				}
 
@@ -1565,10 +1579,10 @@ void ear_init()
                             using_verb_files = 1;
 
                             char file_name[128];
-                            // Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>
-                            sprintf(file_name, "%s/earl_log.%d.%d.%d.%d",
+                            // Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>.<appid>
+                            sprintf(file_name, "%s/earl_log.%d.%d.%d.%d.%u",
                                     verb_path, lib_shared_region->master_rank,
-                                    my_node_id, my_step_id, my_job_id);
+                                    my_node_id, my_step_id, my_job_id, AID);
                             verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
 
                             int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
@@ -1946,6 +1960,7 @@ void ear_init()
             ear_cuda_init();
         }
 #endif
+        verbose(2, "%s EAR [%d] end .......................................%s", COL_BLU, main_pid, COL_CLR);
 }
 
 
@@ -1970,7 +1985,7 @@ void ear_finalize(int exit_status)
         verbose_master(2, "ear_finalize on=%d status %d PID %d", lib_shared_region->earl_on, exit_status, getpid());
         #if !MPI
         if (getpid() != main_pid){
-          verbose(0,"Finalizing pid %d" , getpid());
+          //verbose(WF_SUPPORT_VERB,"Finalizing pid %d" , getpid());
           exit(0);
         }
         #endif
@@ -2113,6 +2128,8 @@ void ear_finalize(int exit_status)
 					eards_disconnect();
 				}
 				#endif
+
+        clean_eid_folder();
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -2652,15 +2669,13 @@ state_t earl_periodic_actions_mpi_opt(void *no_arg)
 #if !MPI 
 void ear_fork_prolog()
 {
-  verbose(0,"EAR: Fork prolog!");
 }
 void ear_fork_epilog()
 {
-  verbose(0,"EAR: Fork epilog!");
 }
 void ear_fork_new_child()
 {
-  verbose(0,"EAR: New process %d!", getpid());
+  verbose(WF_SUPPORT_VERB,"EAR: New process %d!", getpid());
   ear_lib_initialized = 0;
   ear_init();
 }
@@ -2668,14 +2683,14 @@ void ear_fork_new_child()
 void ear_constructor()
 {
     debug("Calling ear_init in ear_constructor %d",getpid());
-    verbose(0,"Calling ear_init in ear_constructor %d",getpid());
+    //verbose(WF_SUPPORT_VERB,"Calling ear_init in ear_constructor %d",getpid());
     ear_init();
     pthread_atfork(ear_fork_prolog, ear_fork_epilog, ear_fork_new_child);
 }
 void ear_destructor()
 {
     debug("Calling ear_finalize in ear_destructor %d",getpid());
-    verbose(0,"Calling ear_finalize in ear_destructor %d",getpid());
+    //verbose(WF_SUPPORT_VERB,"Calling ear_finalize in ear_destructor %d",getpid());
 
 #if ONLY_MASTER
     if (my_id) {
