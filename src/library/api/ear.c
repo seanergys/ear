@@ -1328,7 +1328,7 @@ void ear_init()
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
         if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
+                    verbose(3, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
                             COL_BLU, ear_my_rank, node_name, get_ear_tmp(), COL_CLR);
 
                     // Connect process with EARD
@@ -1387,7 +1387,7 @@ void ear_init()
 
                     if (ret == EAR_SUCCESS) {
 
-                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
+                        verbose(3, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
 
                         if (!my_id) {
                             notify_eard_connection(1);
@@ -1995,7 +1995,7 @@ void ear_finalize(int exit_status)
 				}
 				#else
 				if (eards_connected()){ 
-					verbose(2, "Process %d disconnecting from EARD", my_node_id);
+					verbose(3, "Process %d disconnecting from EARD", my_node_id);
 					eards_disconnect();
 				}
 				#endif
