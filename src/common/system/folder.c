@@ -34,6 +34,7 @@ state_t folder_open(folder_t *folder, char *path)
 
 state_t folder_close(folder_t *folder)
 {
+  if (folder->dir == NULL) return EAR_SUCCESS;
 	closedir(folder->dir);
 	folder->dir = NULL;
 	return EAR_SUCCESS;
@@ -134,7 +135,7 @@ char *folder_getnext_type(folder_t *folder, char *prefix, char *suffix, uint typ
 		}
 	}
 
-	folder_close(folder);
+	//folder_close(folder);
 
 	return NULL;
 }
@@ -154,18 +155,25 @@ state_t folder_remove(char *path)
     debug("Error opening job path %s",job_path);
     return EAR_ERROR;
   }
-  debug("Cleaning job_path: %s", job_path);
+  verbose(0,"Cleaning job_path: %s", job_path);
 
   while ((file = folder_getnext(&job_folder, NULL, NULL)))
   {
     xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-    debug("Deleting: %s",file_path);
+    verbose(0,"Deleting: %s",file_path);
     unlink(file_path);
   }
-  folder_close(&job_folder);
+  //folder_close(&job_folder);
+  verbose(0,"Deleting folder %s", job_path);
   rmdir(job_path);
 	return EAR_SUCCESS;
 
+}
+
+state_t folder_rename(char *oldp, char *newp)
+{
+  if (rename(oldp, newp) >= 0) return EAR_SUCCESS;
+  else                       return EAR_ERROR;
 }
 
 /*

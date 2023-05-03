@@ -247,6 +247,9 @@ static state_t monitor_register_void(void *p)
 
 state_t monitor_register(suscription_t *s)
 {
+	if (!running) {
+		return_msg(EAR_BAD_ARGUMENT, "not initialized");
+	}
 	if (s             == NULL) return_msg(EAR_BAD_ARGUMENT, "the suscription can't be NULL");
 	if (s->time_relax  < 100 ) return_msg(EAR_BAD_ARGUMENT, "time can't be zero");
 	if (s->call_main  == NULL) return_msg(EAR_BAD_ARGUMENT, "reading call is NULL");

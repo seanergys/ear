@@ -39,4 +39,6 @@ char *folder_getnext_type(folder_t *folder, char *prefix, char *suffix, uint typ
 
 state_t folder_remove(char *path);
 
+state_t folder_rename(char *oldp, char *newp);
+
 #endif //EAR_PRIVATE_FOLDER_H

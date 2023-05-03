@@ -70,6 +70,7 @@ state_t flops_init(ctx_t *c)
 
 state_t flops_dispose(ctx_t *c)
 {
+  load = 0;
 	return ops.dispose(c);
 }
 

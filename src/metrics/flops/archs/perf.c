@@ -116,6 +116,14 @@ state_t flops_perf_init(ctx_t *c)
 
 state_t flops_perf_dispose(ctx_t *c)
 {
+  uint i;
+  if (started){
+    for (i = 0; i < counter; ++i) {
+      perf_close(&perfs[i]);
+    }
+    started = 0;
+    counter = 0;
+  }
 	return EAR_SUCCESS;
 }
 

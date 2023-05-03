@@ -460,6 +460,13 @@ static void dcgmi_static_events_init()
 }
 #endif
 
+void metrics_lib_reset()
+{
+    cpi_dispose(no_ctx);
+  flops_dispose(no_ctx);
+  cache_dispose(no_ctx);
+}
+
 
 static void metrics_static_init(topology_t *tp)
 {

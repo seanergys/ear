@@ -39,17 +39,37 @@ static ear_njob_t *node_jobs_list = NULL;
 #define WF_SUPPORT_VERB 2
 
 /** Initialices the lock file and attaches the shared memory region. nodelist is internally allocated. Must be used by earl */
+
+state_t nodemgr_lock_init(char *tmp)
+{
+	mode_t oldm;
+
+  if (fd_node_mgr_lck >= 0) close(fd_node_mgr_lck);
+  strncpy(node_mgr_tmp,tmp, sizeof(node_mgr_tmp));
+  xsnprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
+
+  if (file_is_regular(node_mgr_lock)){
+    fd_node_mgr_lck = file_lock_create(node_mgr_lock);
+    if (fd_node_mgr_lck < 0) return EAR_ERROR;
+  }else{
+    oldm = umask(0);
+    fd_node_mgr_lck = file_lock_create(node_mgr_lock);
+    if (fd_node_mgr_lck >= 0) chmod(node_mgr_lock, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+    umask(oldm);
+    if (fd_node_mgr_lck < 0) return EAR_ERROR;
+  }
+
+  return EAR_SUCCESS;
+}
 state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
 {
 	if (tmp == NULL) return EAR_ERROR;
 	if (nodelist == NULL ) return EAR_ERROR;
 
-	strncpy(node_mgr_tmp,tmp, sizeof(node_mgr_tmp));	
-	xsnprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
-
-  //verbose(WF_SUPPORT_VERB," Using node_mgr lock path %s in EARL", node_mgr_lock);
-	fd_node_mgr_lck = file_lock_create(node_mgr_lock);
-	if (fd_node_mgr_lck < 0) return EAR_ERROR; /* PENDING to return the appropiate message */	
+  if (state_fail(nodemgr_lock_init(tmp))){
+    verbose(WF_SUPPORT_VERB," EAR Error, nodemgr_lock cannot be initialized");
+    return EAR_ERROR;
+  }
 
 	/* If we can open it, we try to access the shared data */
 	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
@@ -72,26 +92,17 @@ state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
 /* Created the lock and the shared region. To be used by eard */
 state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 {
-	mode_t oldm;
   if (tmp == NULL) return EAR_ERROR;
 	if (nodelist == NULL ) return EAR_ERROR;
 
-	oldm = umask(0);
 
-  strncpy(node_mgr_tmp, tmp, sizeof(node_mgr_tmp));  
-	xsnprintf(node_mgr_lock,sizeof(node_mgr_lock),"%s/%s",node_mgr_tmp,LOCK_NODE_MGR_LCK);
-  //verbose(WF_SUPPORT_VERB," Using node_mgr lock path %s in server", node_mgr_lock);
-
-	fd_node_mgr_lck = file_lock_create(node_mgr_lock);
-	if (fd_node_mgr_lck >= 0) chmod(node_mgr_lock, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-	umask(oldm);
-  if (fd_node_mgr_lck < 0){ 
-		return EAR_ERROR; /* PENDING to return the appropiate message */
-	}
+  if (state_fail(nodemgr_lock_init(tmp))){
+    verbose(WF_SUPPORT_VERB," EAR Error, nodemgr_lock cannot be initialized");
+    return EAR_ERROR;
+  }
 
 	node_jobs_list = (ear_njob_t *)calloc(MAX_CPUS_SUPPORTED,sizeof(ear_njob_t));
 	if (node_jobs_list == NULL){ 
-		umask(oldm);
 		return EAR_ERROR;
 	}
 	
@@ -116,6 +127,8 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 	}
   return EAR_SUCCESS;
 }
+
+
 
 
 /* Computes the number of jobs attached */

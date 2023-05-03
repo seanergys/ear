@@ -30,6 +30,7 @@ state_t cpi_load(topology_t *tp, int eard)
 	while (pthread_mutex_trylock(&lock));
 	// Already initialized
 	if (api != API_NONE) {
+	  pthread_mutex_unlock(&lock);
 		return EAR_SUCCESS;
 	}
 	api = API_DUMMY;
@@ -58,6 +59,8 @@ state_t cpi_init(ctx_t *c)
 
 state_t cpi_dispose(ctx_t *c)
 {
+  api  = API_NONE;
+  init = 0;
 	return ops.dispose(c);
 }
 

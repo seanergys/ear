@@ -65,4 +65,7 @@ state_t nodemgr_server_end();
 
 state_t node_mgr_info_lock();
 void node_mgr_info_unlock();
+
+/** Checks and creates the nodemgr_lock file */
+state_t nodemgr_lock_init(char *tmp);
 #endif

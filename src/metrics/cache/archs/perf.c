@@ -153,6 +153,11 @@ state_t cache_perf_init()
 
 state_t cache_perf_dispose()
 {
+  if (started){
+    perf_close(&meta[first].perf);
+  }
+  started = 0;
+  counter = 0;
 	return EAR_SUCCESS;
 }
 

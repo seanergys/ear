@@ -432,11 +432,14 @@ void cleanup_job_folder()
  *
  */
 
-char EID_application_path[MAX_PATH_SIZE];
+static char EID_application_path[MAX_PATH_SIZE];
+static char EID_application_path_finish[MAX_PATH_SIZE];
 void clean_eid_folder()
 {
-  verbose(WF_SUPPORT_VERB,"EID folder (%s) remove", EID_application_path);
-  folder_remove(EID_application_path);
+  while (node_mgr_info_lock() != EAR_SUCCESS){};
+  verbose(WF_SUPPORT_VERB,"EID folder (%s) renamed to %s", EID_application_path, EID_application_path_finish);
+  folder_rename(EID_application_path, EID_application_path_finish);
+  node_mgr_info_unlock();
 }
 
 /* This function creates the new application schema tmp/ID/AIS */
@@ -446,16 +449,22 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
 
   //verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
 
+  while (node_mgr_info_lock() != EAR_SUCCESS){};
   eid_folder(EID_application_path, sizeof(EID_application_path), tmp, jid, sid, AID);
+
+  strcpy(EID_application_path_finish, EID_application_path);
+  strcat(EID_application_path,".app");
 
   verbose(WF_SUPPORT_VERB, "EARL: Creating app folder %s", EID_application_path);
   ret = mkdir(EID_application_path, S_IRWXU);
   if ((ret < 0 ) && (errno != EEXIST)){
     verbose(WF_SUPPORT_VERB,"EAR error EID folder cannot be created (%s) (%s)", EID_application_path, strerror(errno));
+    node_mgr_info_unlock();
     return EAR_ERROR;
   }
   chmod(EID_application_path,S_IRUSR|S_IWUSR|S_IXUSR);
   //verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
+  node_mgr_info_unlock();
   return EAR_SUCCESS;
 }
 
@@ -466,7 +475,7 @@ void mark_as_eard_connected(char *tmp, int jid,int sid,uint aid, int pid)
     char pid_str[128];
    
     snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
-    eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
+    strcpy(EID_path, EID_application_path);
     strcat(EID_path, pid_str);
     
     //verbose(WF_SUPPORT_VERB,"Creating %s",EID_path);
@@ -481,7 +490,7 @@ uint is_already_connected(char *tmp, int jid,int sid,uint aid, int pid)
     int fd;
 
     snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
-    eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
+    strcpy(EID_path, EID_application_path);
     strcat(EID_path, pid_str);
     
     debug("Looking for %s ",EID_path);
@@ -500,7 +509,7 @@ void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
     char pid_str[128];
 
     snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
-    eid_folder(EID_path, sizeof(EID_path), tmp, jid, sid, aid);
+    strcpy(EID_path, EID_application_path);
     strcat(EID_path, pid_str);
 
     debug("Removing %s",EID_path);
@@ -949,7 +958,7 @@ static int get_local_id(char *node_name)
 				int master = 1;
         char EID_folder[MAX_PATH_SIZE];
 
-        eid_folder(EID_folder, sizeof(EID_folder), get_ear_tmp(), my_job_id,my_step_id, AID);
+        strcpy(EID_folder, EID_application_path);
 
 
 #if USE_LOCK_FILES
@@ -1302,13 +1311,18 @@ void ear_init()
 
         // Test SID folder exists
 				check_job_folder();
+
+
 				uint ID = create_ID(my_job_id,my_step_id);
         // Why ?? (validate and remove). This function only creates the filename, it
         // doesn't open or checks it
 				if (get_lib_shared_data_path(tmp, ID, AID, lib_shared_region_path)==EAR_SUCCESS){
 								unlink(lib_shared_region_path);
 				}
+
         // Create SID/AID folder
+        nodemgr_lock_init(tmp);
+       
         create_eid_folder(tmp, my_job_id, my_step_id, AID);
 
         // Checks in TMP folder if ear_tmp/.master.ID.pid exists 
@@ -2673,10 +2687,16 @@ void ear_fork_prolog()
 void ear_fork_epilog()
 {
 }
+static void  reset_earl_environment()
+{
+  ear_lib_initialized = 0;
+  monitor_dispose();
+  metrics_lib_reset();
+}
 void ear_fork_new_child()
 {
   verbose(WF_SUPPORT_VERB,"EAR: New process %d!", getpid());
-  ear_lib_initialized = 0;
+  reset_earl_environment();
   ear_init();
 }
 

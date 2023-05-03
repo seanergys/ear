@@ -71,13 +71,13 @@ void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid)
 int  get_lib_shared_data_path(char *tmp, uint ID, uint AID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/%u/%u/.ear_lib_shared_data",tmp, ID, AID);
+	sprintf(path,"%s/%u/%u.app/.ear_lib_shared_data",tmp, ID, AID);
 	return EAR_SUCCESS;	
 }
 int  get_shared_signatures_path(char *tmp, uint ID, uint AID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/%u/%u/.ear_shared_signatures",tmp, ID, AID);
+	sprintf(path,"%s/%u/%u.app/.ear_shared_signatures",tmp, ID, AID);
 	return EAR_SUCCESS;	
 }
 
@@ -677,59 +677,52 @@ void  init_earl_node_mgr_info()
     for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
       if (node_mgr_data[j].jid != -1) total_num_earl_apps += ear_max(node_mgr_data[j].num_earl_apps, 1);
     }
-    node_mgr_info_unlock();
   }else{
     verbose(WF_SUPPORT_VERB,"ERROR: EARL cannot get node_mgr_info_lock");
     node_mgr_job_info = NULL;
     return;
   }
 
-  //verbose(WF_SUPPORT_VERB," EARL: %d Apps detected", total_num_earl_apps);
+  verbose(WF_SUPPORT_VERB," EARL: allocation %d apps", total_num_earl_apps);
 
   node_mgr_job_info = calloc(total_num_earl_apps,sizeof(node_mgr_sh_data_t));
 
   uint curr_app = 0;
 
   /* Each job could have more than 1 app */
+
   for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
     uint ID;
     job_id jid,sid,lid;
-    char *appid_folder;
+    char *appid_folder, *appid_folder_full;
     folder_t SID_folder;
     char SID_folder_name[MAX_PATH_SIZE];
     uint apps;
 
 		char *tmp = get_ear_tmp();
     time_t ct, mt;
+
     jid  = node_mgr_data[j].jid;
     sid = node_mgr_data[j].sid;
+    ct  = node_mgr_data[j].creation_time;
+    mt  = node_mgr_data[j].modification_time;
+    apps = node_mgr_data[j].num_earl_apps;
 
-    if ((jid != -1) && (sid != -1)){
-      /* Double validation */
-      if (node_mgr_info_lock() == EAR_SUCCESS){
-        jid = node_mgr_data[j].jid;
-        sid = node_mgr_data[j].sid;
-        ct  = node_mgr_data[j].creation_time;
-        mt  = node_mgr_data[j].modification_time;
-        apps = node_mgr_data[j].num_earl_apps;
-        /* Creattion time is set at new_job, modification_time is set at new_jon and new_app */
-        node_mgr_info_unlock();
-      }
+    if (jid == -1) continue;
 
-    snprintf(SID_folder_name, sizeof(SID_folder_name), "%s/%u", tmp, (uint)create_ID(jid, sid)); 
+    ID = create_ID(jid, sid);
+    snprintf(SID_folder_name, sizeof(SID_folder_name), "%s/%u", tmp, ID); 
     if (state_fail(folder_open(&SID_folder,SID_folder_name))){
       verbose_master(WF_SUPPORT_VERB,"Failed folder open %s", SID_folder_name);
       continue;
     }
-    ID = create_ID(jid, sid);
     
     verbose_master(WF_SUPPORT_VERB,"looking for apps in %lu.%lu job folder (%s)", jid, sid, SID_folder_name);
 
-    while (( appid_folder = folder_getnext_type(&SID_folder,"", "", DT_DIR))){
+    while (( appid_folder_full = folder_getnext_type(&SID_folder,NULL, ".app", DT_DIR))){
         /* Filtering . and .. folders */
-        if (strcmp(appid_folder, ".") == 0) continue;
-        if (strcmp(appid_folder, "..") == 0) continue;
 
+        appid_folder = strtok(appid_folder_full,".app");
         lid = (job_id)atoi(appid_folder);
         verbose_master(WF_SUPPORT_VERB,"New APP[%d] detected for %lu/%lu/%lu", curr_app,jid, sid, lid);
         if (curr_app == total_num_earl_apps){
@@ -757,18 +750,19 @@ void  init_earl_node_mgr_info()
         }
         curr_app++;
     }
-    }
   }
+  node_mgr_info_unlock();
   verbose_master(WF_SUPPORT_VERB,"init_earl_node_mgr_info done: Total apps computed %d , based on folders %d", total_num_earl_apps, curr_app);
 }
 
 void release_earl_node_mgr_info()
 {
-  //verbose_master(WF_SUPPORT_VERB,"Releasing Node MGR info");
+  verbose_master(WF_SUPPORT_VERB,"Releasing Node MGR info total apps %u", total_num_earl_apps);
+  if (node_mgr_job_info == NULL) return;
   while (node_mgr_info_lock() != EAR_SUCCESS);
   for (uint curr_app = 0; curr_app < total_num_earl_apps; curr_app++){
-    dettach_lib_shared_data_area(node_mgr_job_info[curr_app].fd_lib);
-    dettach_shared_signatures_area(node_mgr_job_info[curr_app].fd_sig);
+    if (node_mgr_job_info[curr_app].fd_lib != -1) dettach_lib_shared_data_area(node_mgr_job_info[curr_app].fd_lib);
+    if (node_mgr_job_info[curr_app].fd_sig != -1) dettach_shared_signatures_area(node_mgr_job_info[curr_app].fd_sig);
     node_mgr_job_info[curr_app].libsh = NULL;
     node_mgr_job_info[curr_app].shsig = NULL;
   }
