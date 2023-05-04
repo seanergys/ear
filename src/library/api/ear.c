@@ -404,7 +404,7 @@ void check_job_folder()
 				}
 				if (errno == ENOENT){
 								debug("Job folder %s doesn't exist (%s), creating it", block_file_dir, strerror(errno));
-								clean_job_folder = 1;
+								//clean_job_folder = 1;
 								ret = mkdir(block_file_dir, S_IRWXU);
 								if ((ret < 0 ) && (errno != EEXIST)){
 												/* What can we do here EAR OFF */
@@ -440,6 +440,7 @@ void clean_eid_folder()
   verbose(WF_SUPPORT_VERB,"EID folder (%s) renamed to %s", EID_application_path, EID_application_path_finish);
   folder_rename(EID_application_path, EID_application_path_finish);
   node_mgr_info_unlock();
+  verbose(WF_SUPPORT_VERB,"EID folder released");
 }
 
 /* This function creates the new application schema tmp/ID/AIS */
@@ -1137,6 +1138,7 @@ void ear_lib_sig_handler(int s)
         if (s == SIGSEGV){ 
           verbose(0, "%d: EAR finalized by signal SIGSEGV", getpid());
           print_stack(verb_channel);
+          exit(SIGSEGV);
         }
 
         if (cancelled || sig_shared_region[my_node_id].exited) return;
