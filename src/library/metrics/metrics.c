@@ -1828,11 +1828,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     app_energy_saving.event = ENERGY_SAVING_AVG;
 
 		/* We will use freq for the energy saving */
-		app_energy_saving.freq = (llong)avg_esaving;
+		app_energy_saving.value = (llong)avg_esaving;
 		report_events(&rep_id, &app_energy_saving, 1);
 
 		app_energy_saving.event = POWER_SAVING_AVG;
-		app_energy_saving.freq = (llong)avg_psaving;
+		app_energy_saving.value = (llong)avg_psaving;
 		report_events(&rep_id, &app_energy_saving, 1);
 #if 0
 		/* Not yet reported */
@@ -1863,7 +1863,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(PHASES_SUMMARY_VERB, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
         app_phase_summary.event = PHASE_SUMMARY_BASE + ph;
-        app_phase_summary.freq  = sig_ext->earl_phase[ph].elapsed;
+        app_phase_summary.value = sig_ext->earl_phase[ph].elapsed;
         report_events(&rep_id, &app_phase_summary, 1);
       }
     }
@@ -1871,7 +1871,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(PHASES_SUMMARY_VERB, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
         app_phase_summary.event = PHASE_SUMMARY_BASE + ph;
-        app_phase_summary.freq  = sig_ext->earl_phase[ph].elapsed;
+        app_phase_summary.value = sig_ext->earl_phase[ph].elapsed;
         report_events(&rep_id, &app_phase_summary, 1);
       }
     }

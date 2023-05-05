@@ -182,7 +182,7 @@ void fill_common_event(ear_event_t *ev)
 void fill_event(ear_event_t *ev, uint event, llong value)
 {
   ev->event = event;
-  ev->freq  = value;
+  ev->value = value;
   ev->timestamp = time(NULL);
 }
 

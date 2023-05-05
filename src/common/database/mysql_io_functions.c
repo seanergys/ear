@@ -2212,7 +2212,7 @@ int mysql_insert_ear_event(MYSQL *connection, ear_event_t *ear_ev)
     bind[1].buffer = (char *)&ear_ev->event;
     bind[2].buffer = (char *)&ear_ev->jid;
     bind[3].buffer = (char *)&ear_ev->step_id;
-    bind[4].buffer = (char *)&ear_ev->freq;
+    bind[4].buffer = (char *)&ear_ev->value;
     bind[5].buffer = (char *)&ear_ev->node_id;
 
     if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
@@ -2243,7 +2243,7 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
 
     //Prevent freq from going over max value
     for (i = 0; i < num_evs; i++) {
-        ear_ev[i].freq = ear_ev[i].freq > INT_MAX ? INT_MAX : ear_ev[i].freq;
+        ear_ev[i].value = ear_ev[i].value > INT_MAX ? INT_MAX : ear_ev[i].value;
     }
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) {
@@ -2270,7 +2270,7 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
         bind[1+offset].buffer = (char *)&ear_ev[i].event;
         bind[2+offset].buffer = (char *)&ear_ev[i].jid;
         bind[3+offset].buffer = (char *)&ear_ev[i].step_id;
-        bind[4+offset].buffer = (char *)&ear_ev[i].freq;
+        bind[4+offset].buffer = (char *)&ear_ev[i].value;
         bind[5+offset].buffer = (char *)&ear_ev[i].node_id;
     }
 
