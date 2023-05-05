@@ -36,27 +36,37 @@ static strscreen_t   ss;
 static mets_t        *m;
 static rapl_t        *r;
 static rapl_alerts_t *a;
+// Terminal windows
+static int            id_logo;
+static int            id_apis;
+static int            id_topo;
+static int            id_cpu;
+static int            id_imc;
+static int            id_ram;
+static int            id_temp;
+static int            id_rapl;
+static int            id_alert;
 
 UPM_F_INIT()
 {
     char b[16384];
 
     wprintf_init(&ss, 50, 180, -1, '#'); // 0 to 49, 0 to 179
-    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, 0, "ear-logo"   );
-    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 17, 177}, 1, "api-table"  );
-    wprintf_divide(&ss, (int[]) { 19, 154}, (int[]) { 34, 177}, 2, "topology"   );
-    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, 3, "cpufreq"    );
-    wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, 4, "imcfreq"    );
-    wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, 5, "bandwidth"  );
-    wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, 6, "temperature");
-    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) {  2,  79}, 7, "rapl"        );
-    wprintf_divide(&ss, (int[]) {  4,  41}, (int[]) {  5,  79}, 8, "rapl-alerts" );
+    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &id_logo , "ear-logo"   );
+    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 17, 177}, &id_apis , "api-table"  );
+    wprintf_divide(&ss, (int[]) { 19, 154}, (int[]) { 34, 177}, &id_topo , "topology"   );
+    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, &id_cpu  , "cpufreq"    );
+    wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, &id_imc  , "imcfreq"    );
+    wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &id_ram  , "bandwidth"  );
+    wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &id_temp , "temperature");
+    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) {  2,  79}, &id_rapl , "rapl"       );
+    wprintf_divide(&ss, (int[]) {  4,  41}, (int[]) {  5,  79}, &id_alert, "rapl-alerts");
 
     topology_init(&tp);
     topology_tostr(&tp, b, sizeof(b));
 
-    wsprintf(&ss, 2, 0, 0, b);
-    wsprintf(&ss, 0, 0, 0, special_ear_logo());
+    wsprintf(&ss, id_topo, 0, 0, b);
+    wsprintf(&ss, id_logo, 0, 0, special_ear_logo());
 
     return EAR_SUCCESS;
 }
@@ -86,23 +96,23 @@ UPM_F_WORK()
             tsprintf(b, &st, 1, "%s||%s||%u||%s||%s", m->mi.tmp.layer, m->mi.tmp.api_str, m->mi.tmp.devs_count, m->mi.tmp.scope_str, m->mi.tmp.granularity_str);
             tsprintf(b, &st, 1, "%s||%s||%u||%s||%s", m->mi.cpi.layer, m->mi.cpi.api_str, m->mi.cpi.devs_count, m->mi.cpi.scope_str, m->mi.cpi.granularity_str);
             tsprintf(b, &st, 1, "%s||%s||%u||%s||%s", m->mi.gpu.layer, m->mi.gpu.api_str, m->mi.gpu.devs_count, m->mi.gpu.scope_str, m->mi.gpu.granularity_str);
-            wsprintf(&ss, 1, 0, 0, b);
+            wsprintf(&ss, id_apis, 0, 0, b);
             one_time = 1;
         }
-        wsprintf(&ss, 3, 0, 1, cpufreq_data_tostr(m->mrD.cpu_diff,  m->mrD.cpu_avrg, b, sizeof(b)));
-        wsprintf(&ss, 4, 0, 1, imcfreq_data_tostr(m->mrD.imc_diff, &m->mrD.imc_avrg, b, sizeof(b)));
-        wsprintf(&ss, 5, 0, 1,  bwidth_data_tostr(m->mrD.ram_diff,  m->mrD.ram_avrg, b, sizeof(b)));
-        wsprintf(&ss, 6, 0, 1,    temp_data_tostr(m->mrD.tmp_diff,  m->mrD.tmp_avrg, b, sizeof(b)));
+        wsprintf(&ss, id_cpu, 0, 1, cpufreq_data_tostr(m->mrD.cpu_diff,  m->mrD.cpu_avrg, b, sizeof(b)));
+        wsprintf(&ss, id_imc, 0, 1, imcfreq_data_tostr(m->mrD.imc_diff, &m->mrD.imc_avrg, b, sizeof(b)));
+        wsprintf(&ss, id_ram , 0, 1,  bwidth_data_tostr(m->mrD.ram_diff,  m->mrD.ram_avrg, b, sizeof(b)));
+        wsprintf(&ss, id_temp   , 0, 1,    temp_data_tostr(m->mrD.tmp_diff,  m->mrD.tmp_avrg, b, sizeof(b)));
     }
     if (strcmp(tag, "rapl") == 0) {
         r = (rapl_t *) data;
         sprintf(b, "%llu W", r->power);
-        wsprintf(&ss, 7, 0, 1, b);
+        wsprintf(&ss, id_rapl, 0, 1, b);
     }
     if (strcmp(tag, "rapl-alerts") == 0) {
         a = (rapl_alerts_t *) data;
         sprintf(b, "STATUS: %s", a->alert ? "<red>ALERT!</red>": "<green>OK</green>");
-        wsprintf(&ss, 8, 0, 1, b);
+        wsprintf(&ss, id_alert, 0, 1, b);
     }
 
     return EAR_SUCCESS;
