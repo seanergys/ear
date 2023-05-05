@@ -3,7 +3,7 @@ CC_FLAGS += $(CONSTANTS)
 
 ######## FILES
 
-root_BINS = test.o libmgt.a
+root_BINS = libmgt.a
 
 root_OBJS = \
     $(SRCDIR)/management/cpufreq/cpufreq.o \
@@ -30,7 +30,7 @@ root_OBJS = \
     $(SRCDIR)/management/gpu/archs/nvml.o \
     $(SRCDIR)/management/gpu/archs/oneapi.o \
     $(SRCDIR)/management/gpu/archs/rsmi.o \
-    $(SRCDIR)/management/test.o
+    $(SRCDIR)/management/management.o
 
 ######## RULES
 
