@@ -32,32 +32,16 @@
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/temperature/temperature.h>
 
-typedef struct apis_info_s {
-    apinfo_t info;
-	ctx_t    c; //obsolete
-	uint     api; //obsolete
-    char     api_str[32]; //obsolete
-	uint     gran; //granularity, obsolete
-	char     gran_str[32]; //obsolete
-	uint     devs_count; //obsolete
-    void    *list1;
-    void    *list2;
-    void    *list3;
-    uint     list1_count;
-    uint     list2_count;
-    uint     list3_count;
-} apis_info_t;
-
-typedef struct metrics_apis_s {
-	apis_info_t cpu; // cpufreq
-	apis_info_t imc; // imcfreq
-    apis_info_t ram; // bwidth
-    apis_info_t cch; // cache
-    apis_info_t flp; // flops
-    apis_info_t tmp; // temp
-    apis_info_t cpi; // cpi
-	apis_info_t gpu; // gpu
-} metrics_apis_t;
+typedef struct metrics_info_s {
+    apinfo_t cpu; // cpufreq
+    apinfo_t imc; // imcfreq
+    apinfo_t ram; // bwidth
+    apinfo_t cch; // cache
+    apinfo_t flp; // flops
+    apinfo_t tmp; // temp
+    apinfo_t cpi; // cpi
+    apinfo_t gpu; // gpu
+} metrics_info_t;
 
 typedef struct metrics_read_s {
 	timestamp_t time;
@@ -85,22 +69,17 @@ typedef struct metrics_diff_s {
     double  flp_avrg; // Giga F. operations per second
     llong  *tmp_diff;
     llong   tmp_avrg;
-    dreg_t  tmp_dreg;
     cpi_t   cpi_diff;
     double  cpi_avrg; // GPI
 	gpu_t  *gpu_diff;
 } metrics_diff_t;
 
-void metrics_init(topology_t *tp, int eard);
+void metrics_init(metrics_info_t *m, topology_t *tp, int eard);
 
 void metrics_read(metrics_read_t *mr);
-
-void metrics_read_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD);
 
-void metrics_data_print(metrics_diff_t *mrD);
-
-#endif //TEST_H
+#endif //METRICS_H

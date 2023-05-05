@@ -16,6 +16,7 @@
 */
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -41,12 +42,14 @@ static void clean_buffer_background(strscreen_t *s)
 
 void wprintf_init(strscreen_t *s, int height, int width, int fd, char bckchr)
 {
-    s->buffer = calloc((width+1)*height, sizeof(char));
-    s->divs   = calloc(8, sizeof(strscreen_t)); //8 subdivisions is fairly enough
-    s->height = height;
-    s->width  = width;
-    s->fd     = fd;
-    s->bckchr = bckchr;
+    s->buffer       = calloc((width+1+000)*height, sizeof(char));
+    s->buffer_final = calloc((width+1+100)*height, sizeof(char)); //+100 for the colors
+    s->buffer_bench = calloc((width+1+100)*height, sizeof(char)); //+100 for the colors
+    s->divs         = calloc(16, sizeof(strscreen_t)); //16 subdivisions is fairly enough
+    s->height       = height;
+    s->width        = width;
+    s->fd           = fd;
+    s->bckchr       = bckchr;
     clean_buffer_background(s);
 }
 
@@ -85,7 +88,7 @@ void wsprintf(strscreen_t *s, int div_index, int append, int set_title, char *bu
 {
     strscreen_t *div = &(((strscreen_t *) s->divs)[div_index]);
     size_t length = strlen(buffer);
-    int c, x;
+    int c, x, y;
 
     // Cleaning
     if (!append) {
@@ -120,8 +123,40 @@ void wsprintf(strscreen_t *s, int div_index, int append, int set_title, char *bu
     }
 }
 
-void wprintf(strscreen_t *s)
+static void clean_tag(strscreen_t *s, char *tag, char *new_string, uint spaces)
 {
+    static char *thirty_spaces = "                              ";
+    char *ct; //Color tag
+    ulong i, j, k;
+
+    while ((ct = strstr(s->buffer_final, tag)) != NULL) {
+        // Getting sizes
+        i = ct - s->buffer_final;
+        j = strlen(tag);
+        k = strlen(new_string);
+        // Copying the text after the <tag>
+        strcpy(s->buffer_bench, &s->buffer_final[i+j]);
+        // Copying the text after the <tag> before the color and the spaces
+        strcpy(&s->buffer_final[i+k+spaces], s->buffer_bench);
+        // Copying the color in the place where the tag was
+        strncpy(&s->buffer_final[i], new_string, strlen(new_string));
+        // Copying the spaces
+        strncpy(&s->buffer_final[i+k], thirty_spaces, spaces);
+    }
+}
+
+char *wprintf(strscreen_t *s)
+{
+    // Copying original buffer
+    strcpy(&s->buffer_final[0], &s->buffer[0]);
+    // Replacing color tags
+    clean_tag(s, "<red>", "\x1b[31m", 0);
+    clean_tag(s, "</red>", "\x1b[0m", 5+6);
+    clean_tag(s, "<green>", "\x1b[32m", 0);
+    clean_tag(s, "</green>", "\x1b[0m", 7+8);
+    // Returning to the terminal original position
     clrscr();
-    printf("%s", s->buffer);
+    // Printing in case valid file descriptor
+    if (s->fd >= 0) { dprintf(s->fd, "%s\n", s->buffer_final); }
+    return s->buffer_final;
 }

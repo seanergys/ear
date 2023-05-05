@@ -24,7 +24,9 @@ typedef struct screen_s {
     void       *divs;
     cchar      *title;
     int         divs_count;
-    char       *buffer;
+    char       *buffer; //unprocessed buffer
+    char       *buffer_bench; //working bench buffer
+    char       *buffer_final; //buffer ready to print
     char      **matrix;
     char        bckchr;
     int         height;
@@ -37,7 +39,7 @@ void wprintf_init(strscreen_t *screen, int height, int width, int fd, char bckch
 
 void wprintf_divide(strscreen_t *screen, int p1[2], int p2[2], int div_index, cchar *title);
 
-void wprintf(strscreen_t *s);
+char *wprintf(strscreen_t *s);
 
 void wsprintf(strscreen_t *s, int div_index, int append, int set_title, char *buffer);
 

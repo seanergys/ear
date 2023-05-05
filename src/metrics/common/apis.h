@@ -73,19 +73,13 @@ typedef struct apinfo_s {
     char *granularity_str;
     uint  scope;
     char *scope_str;
+    void *list1;
+    void *list2;
+    void *list3;
+    uint  list1_count;
+    uint  list2_count;
+    uint  list3_count;
 } apinfo_t;
-
-typedef struct metrics_s {
-    ctx_t c;
-    uint  api;
-    uint  ok;
-    uint  granularity;
-    uint  devs_count;
-    void *avail_list;
-    uint  avail_count;
-    void *current_list;
-    void *set_list;
-} metrics_t;
 
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
@@ -142,6 +136,18 @@ void apinfo_tostr(apinfo_t *info);
 	if (p1 == NULL) { \
 		p1 = p2; \
 	}
+
+typedef struct metrics_s {
+    ctx_t c;
+    uint  api;
+    uint  ok;
+    uint  granularity;
+    uint  devs_count;
+    void *avail_list;
+    uint  avail_count;
+    void *current_list;
+    void *set_list;
+} metrics_t;
 
 #if USE_GPUS
 // Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs

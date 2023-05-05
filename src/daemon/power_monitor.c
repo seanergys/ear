@@ -98,7 +98,7 @@ extern state_t report_connection_status;
 
 /* from eard_node_services */
 extern manages_apis_t *man;
-extern metrics_apis_t *met;
+extern metrics_info_t *met;
 
 
 state_t s;

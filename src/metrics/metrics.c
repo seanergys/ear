@@ -20,16 +20,10 @@
 #include <common/utils/stress.h>
 #include <common/utils/overhead.h>
 #include <common/output/verbose.h>
-#include <common/system/monitor.h>
-#include <common/utils/strtable.h>
-#include <common/utils/strscreen.h>
 #include <common/config/config_install.h>
-#include <daemon/local_api/eard_api.h>
 #include <metrics/metrics.h>
 
-static metrics_apis_t m;
-
-void metrics_init(topology_t *tp, int eard)
+void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
 {
     cpufreq_load(tp, eard);
     imcfreq_load(tp, eard);
@@ -40,92 +34,91 @@ void metrics_init(topology_t *tp, int eard)
         cpi_load(tp, eard);
         gpu_load(    eard);
 
-    cpufreq_init(&m.cpu.c);
-    imcfreq_init(&m.imc.c);
-     bwidth_init(&m.ram.c);
-      cache_init(&m.cch.c);
-      flops_init(&m.flp.c);
-       temp_init(&m.tmp.c);
-        cpi_init(&m.cpi.c);
-        gpu_init(&m.gpu.c);
+    cpufreq_init(no_ctx);
+    imcfreq_init(no_ctx);
+     bwidth_init(no_ctx);
+      cache_init(no_ctx);
+      flops_init(no_ctx);
+       temp_init(no_ctx);
+        cpi_init(no_ctx);
+        gpu_init(no_ctx);
 
     //
-    cache_get_info(&m.cch.info);
+    cache_get_info(&m->cch);
 
-    m.cpu.info.layer = "CPUFREQ";
-    m.imc.info.layer = "IMCFREQ";
-    m.ram.info.layer = "BANDWIDTH";
-    m.flp.info.layer = "FLOPS";
-    m.tmp.info.layer = "TEMPERATURE";
-    m.cpi.info.layer = "CPI";
-    m.gpu.info.layer = "GPU";
+    m->cpu.layer = "CPUFREQ";
+    m->imc.layer = "IMCFREQ";
+    m->ram.layer = "BANDWIDTH";
+    m->flp.layer = "FLOPS";
+    m->tmp.layer = "TEMPERATURE";
+    m->cpi.layer = "CPI";
+    m->gpu.layer = "GPU";
 
-    cpufreq_get_api(&m.cpu.info.api);
-    imcfreq_get_api(&m.imc.info.api);
-     bwidth_get_api(&m.ram.info.api);
-      flops_get_api(&m.flp.info.api);
-       temp_get_api(&m.tmp.info.api);
-        cpi_get_api(&m.cpi.info.api);
-        gpu_get_api(&m.gpu.info.api);
+    cpufreq_get_api(&m->cpu.api);
+    imcfreq_get_api(&m->imc.api);
+     bwidth_get_api(&m->ram.api);
+      flops_get_api(&m->flp.api);
+       temp_get_api(&m->tmp.api);
+        cpi_get_api(&m->cpi.api);
+        gpu_get_api(&m->gpu.api);
 
-    cpufreq_count_devices(&m.cpu.c, &m.cpu.info.devs_count);
-    imcfreq_count_devices(&m.imc.c, &m.imc.info.devs_count);
-     bwidth_count_devices(&m.ram.c, &m.ram.info.devs_count);
-       temp_count_devices(&m.tmp.c, &m.tmp.info.devs_count);
-        gpu_count_devices(&m.gpu.c, &m.gpu.info.devs_count);
+    cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
+    imcfreq_count_devices(no_ctx, &m->imc.devs_count);
+     bwidth_count_devices(no_ctx, &m->ram.devs_count);
+       temp_count_devices(no_ctx, &m->tmp.devs_count);
+        gpu_count_devices(no_ctx, &m->gpu.devs_count);
 
-    m.cpu.info.scope = SCOPE_NODE;
-    m.imc.info.scope = SCOPE_NODE;
-    m.ram.info.scope = SCOPE_NODE;
-    m.flp.info.scope = SCOPE_PROCESS;
-    m.tmp.info.scope = SCOPE_NODE;
-    m.cpi.info.scope = SCOPE_PROCESS;
-    m.gpu.info.scope = SCOPE_NODE;
+    m->cpu.scope = SCOPE_NODE;
+    m->imc.scope = SCOPE_NODE;
+    m->ram.scope = SCOPE_NODE;
+    m->flp.scope = SCOPE_PROCESS;
+    m->tmp.scope = SCOPE_NODE;
+    m->cpi.scope = SCOPE_PROCESS;
+    m->gpu.scope = SCOPE_NODE;
 
-    m.cpu.info.granularity = GRANULARITY_THREAD;
-    m.imc.info.granularity = GRANULARITY_SOCKET;
-    m.ram.info.granularity = GRANULARITY_IMC;
-    m.flp.info.granularity = GRANULARITY_PROCESS;
-    m.tmp.info.granularity = GRANULARITY_SOCKET;
-    m.cpi.info.granularity = GRANULARITY_PROCESS;
-    m.gpu.info.granularity = GRANULARITY_PERIPHERAL;
+    m->cpu.granularity = GRANULARITY_THREAD;
+    m->imc.granularity = GRANULARITY_SOCKET;
+    m->ram.granularity = GRANULARITY_IMC;
+    m->flp.granularity = GRANULARITY_PROCESS;
+    m->tmp.granularity = GRANULARITY_SOCKET;
+    m->cpi.granularity = GRANULARITY_PROCESS;
+    m->gpu.granularity = GRANULARITY_PERIPHERAL;
 
-    apinfo_tostr(&m.cpu.info);
-    apinfo_tostr(&m.imc.info);
-    apinfo_tostr(&m.ram.info);
-    apinfo_tostr(&m.cch.info);
-    apinfo_tostr(&m.flp.info);
-    apinfo_tostr(&m.tmp.info);
-    apinfo_tostr(&m.cpi.info);
-    apinfo_tostr(&m.gpu.info);
-
+    apinfo_tostr(&m->cpu);
+    apinfo_tostr(&m->imc);
+    apinfo_tostr(&m->ram);
+    apinfo_tostr(&m->cch);
+    apinfo_tostr(&m->flp);
+    apinfo_tostr(&m->tmp);
+    apinfo_tostr(&m->cpi);
+    apinfo_tostr(&m->gpu);
 }
 
 void metrics_read(metrics_read_t *mr)
 {
     timestamp_get(&mr->time);
 
-    cpufreq_read(&m.cpu.c,  mr->cpu);
-    imcfreq_read(&m.imc.c,  mr->imc);
-     bwidth_read(&m.ram.c,  mr->ram);
-      cache_read(&m.cch.c, &mr->cch);
-      flops_read(&m.flp.c, &mr->flp);
-        cpi_read(&m.cpi.c, &mr->cpi);
-        gpu_read(&m.gpu.c,  mr->gpu);
+    cpufreq_read(no_ctx,  mr->cpu);
+    imcfreq_read(no_ctx,  mr->imc);
+     bwidth_read(no_ctx,  mr->ram);
+      cache_read(no_ctx, &mr->cch);
+      flops_read(no_ctx, &mr->flp);
+        cpi_read(no_ctx, &mr->cpi);
+        gpu_read(no_ctx,  mr->gpu);
 }
 
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
 {
 	mrD->time = timestamp_diffnow(&mr1->time, TIME_SECS);
 
-    cpufreq_read_copy(&m.cpu.c,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
-    imcfreq_read_copy(&m.imc.c,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg);
-     bwidth_read_copy(&m.ram.c,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg);
-      cache_read_copy(&m.cch.c, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg);
-      flops_read_copy(&m.flp.c, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg);
-       temp_read     (&m.tmp.c,                              mrD->tmp_diff, &mrD->tmp_avrg);
-        cpi_read_copy(&m.cpi.c, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg);
-        gpu_read_copy(&m.gpu.c,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                );
+    cpufreq_read_copy(no_ctx,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
+    imcfreq_read_copy(no_ctx,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg);
+     bwidth_read_copy(no_ctx,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg);
+      cache_read_copy(no_ctx, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg);
+      flops_read_copy(no_ctx, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg);
+       temp_read     (no_ctx,                              mrD->tmp_diff, &mrD->tmp_avrg);
+        cpi_read_copy(no_ctx, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg);
+        gpu_read_copy(no_ctx,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                );
 }
 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD)
@@ -147,31 +140,22 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
         gpu_data_alloc(&mrD->gpu_diff);
 }
 
-#if TEST
+#if 0
 static topology_t     tp;
 static strtable_t     st;
 static strscreen_t    ss;
+static metrics_info_t m;
 static metrics_read_t mr1;
 static metrics_read_t mr2;
 static metrics_diff_t mrD;
 
-static char *ear_logo()
-{
-    char *logo = "    _________    ____ \n"
-                 "   / ____/   |  / __ \\\n"
-                 "  / __/ / /| | / /_/ /\n"
-                 " / /___/ ___ |/ _, _/ \n"
-                 "/_____/_/  |_/_/ |_|  \n";
-    return logo;
-}
-
-static state_t monitor_apis_init(void *whatever)
+static state_t metrics_monitor_init(void *whatever)
 {
     char buffer[16384];
 
     topology_init(&tp);
 
-    metrics_init(&tp, EARD);
+    metrics_init(&m, &tp, EARD);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
 
@@ -190,24 +174,24 @@ static state_t monitor_apis_init(void *whatever)
     tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
     tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
     tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.info.layer, m.cpu.info.api_str, m.cpu.info.devs_count, m.cpu.info.scope_str, m.cpu.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.info.layer, m.imc.info.api_str, m.imc.info.devs_count, m.imc.info.scope_str, m.imc.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.ram.info.layer, m.ram.info.api_str, m.ram.info.devs_count, m.ram.info.scope_str, m.ram.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cch.info.layer, m.cch.info.api_str, m.cch.info.devs_count, m.cch.info.scope_str, m.cch.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.flp.info.layer, m.flp.info.api_str, m.flp.info.devs_count, m.flp.info.scope_str, m.flp.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.tmp.info.layer, m.tmp.info.api_str, m.tmp.info.devs_count, m.tmp.info.scope_str, m.tmp.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpi.info.layer, m.cpi.info.api_str, m.cpi.info.devs_count, m.cpi.info.scope_str, m.cpi.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.info.layer, m.gpu.info.api_str, m.gpu.info.devs_count, m.gpu.info.scope_str, m.gpu.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.layer, m.cpu.api_str, m.cpu.devs_count, m.cpu.scope_str, m.cpu.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.layer, m.imc.api_str, m.imc.devs_count, m.imc.scope_str, m.imc.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.ram.layer, m.ram.api_str, m.ram.devs_count, m.ram.scope_str, m.ram.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cch.layer, m.cch.api_str, m.cch.devs_count, m.cch.scope_str, m.cch.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.flp.layer, m.flp.api_str, m.flp.devs_count, m.flp.scope_str, m.flp.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.tmp.layer, m.tmp.api_str, m.tmp.devs_count, m.tmp.scope_str, m.tmp.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpi.layer, m.cpi.api_str, m.cpi.devs_count, m.cpi.scope_str, m.cpi.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.layer, m.gpu.api_str, m.gpu.devs_count, m.gpu.scope_str, m.gpu.granularity_str);
 
-    wsprintf(&ss, 0, 0, 0, ear_logo());
-    wsprintf(&ss, 1, 0, 0, buffer    );
+    wsprintf(&ss, 0, 0, 0, special_ear_logo());
+    wsprintf(&ss, 1, 0, 0, buffer);
 
     wprintf(&ss);
 
     return EAR_SUCCESS;
 }
 
-static state_t monitor_apis_update(void *whatever)
+static state_t metrics_update(void *whatever)
 {
     char b[16384];
 
@@ -219,36 +203,6 @@ static state_t monitor_apis_update(void *whatever)
     wsprintf(&ss, 6, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
     wprintf(&ss);
 
-    #if 0
-    printf("—— cpi ————————————————————————————————————————————————————————————————————————\n");
-        cpi_data_print(&mrD.cpi_diff,  mrD.cpi_avrg, verb_channel);
-    printf("—— cache ——————————————————————————————————————————————————————————————————————\n");
-      cache_data_print(&mrD.cch_diff,  mrD.cch_avrg, verb_channel);
-    printf("—— gpu ————————————————————————————————————————————————————————————————————————\n");
-        gpu_data_print( mrD.gpu_diff,                verb_channel);
-    #endif
     return EAR_SUCCESS;
-}
-
-int main(int argc, char *argv[])
-{
-    if (argc > 1) {
-        if (atoi(argv[1])) {
-            eards_connection();
-        }
-    }
-
-	// Monitoring   
-	monitor_init();
-	suscription_t *sus = suscription();
-	sus->call_init     = monitor_apis_init; 
-	sus->call_main     = monitor_apis_update;
-	sus->time_relax    = 2000;
-	sus->time_burst    = 2000;
-	sus->suscribe(sus);
-
-    sleep(100);
-
-    return 0;
 }
 #endif

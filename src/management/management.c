@@ -21,6 +21,7 @@
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/system/monitor.h>
+#include <common/utils/special.h>
 #include <common/utils/strtable.h>
 #include <common/utils/strscreen.h>
 #include <common/config/config_install.h>
@@ -44,39 +45,39 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
         mgt_gpu_init(no_ctx);
 
     // The next 5 paragraphs are obsolete
-    m.cpu.info.layer = "MGT_CPUFREQ";
-    m.pri.info.layer = "MGT_CPUPRIO";
-    m.imc.info.layer = "MGT_IMCFREQ";
-    m.gpu.info.layer = "MGT_GPU";
+    m.cpu.layer = "MGT_CPUFREQ";
+    m.pri.layer = "MGT_CPUPRIO";
+    m.imc.layer = "MGT_IMCFREQ";
+    m.gpu.layer = "MGT_GPU";
 
-    mgt_cpufreq_get_api(&m.cpu.info.api);
-    mgt_cpuprio_get_api(&m.pri.info.api);
-    mgt_imcfreq_get_api(&m.imc.info.api);
-        mgt_gpu_get_api(&m.gpu.info.api);
+    mgt_cpufreq_get_api(&m.cpu.api);
+    mgt_cpuprio_get_api(&m.pri.api);
+    mgt_imcfreq_get_api(&m.imc.api);
+        mgt_gpu_get_api(&m.gpu.api);
 
-    m.cpu.info.granularity = GRANULARITY_THREAD;
-    m.pri.info.granularity = GRANULARITY_THREAD;
-    m.imc.info.granularity = GRANULARITY_SOCKET;
-    m.gpu.info.granularity = GRANULARITY_PERIPHERAL;
+    m.cpu.granularity = GRANULARITY_THREAD;
+    m.pri.granularity = GRANULARITY_THREAD;
+    m.imc.granularity = GRANULARITY_SOCKET;
+    m.gpu.granularity = GRANULARITY_PERIPHERAL;
 
-    m.cpu.info.scope = SCOPE_NODE;
-    m.pri.info.scope = SCOPE_NODE;
-    m.imc.info.scope = SCOPE_NODE;
-    m.gpu.info.scope = SCOPE_NODE;
+    m.cpu.scope = SCOPE_NODE;
+    m.pri.scope = SCOPE_NODE;
+    m.imc.scope = SCOPE_NODE;
+    m.gpu.scope = SCOPE_NODE;
 
-    mgt_cpufreq_count_devices(no_ctx, &m.cpu.info.devs_count);
-    mgt_cpuprio_count_devices(no_ctx, &m.pri.info.devs_count);
-    mgt_imcfreq_count_devices(no_ctx, &m.imc.info.devs_count);
-        mgt_gpu_count_devices(no_ctx, &m.gpu.info.devs_count);
+    mgt_cpufreq_count_devices(no_ctx, &m.cpu.devs_count);
+    mgt_cpuprio_count_devices(no_ctx, &m.pri.devs_count);
+    mgt_imcfreq_count_devices(no_ctx, &m.imc.devs_count);
+        mgt_gpu_count_devices(no_ctx, &m.gpu.devs_count);
 
     // New and powerful get_info()
-    mgt_cpupow_get_info(&m.pow.info);
+    mgt_cpupow_get_info(&m.pow);
 
-    apinfo_tostr(&m.cpu.info);
-    apinfo_tostr(&m.pri.info);
-    apinfo_tostr(&m.pow.info);
-    apinfo_tostr(&m.imc.info);
-    apinfo_tostr(&m.gpu.info);
+    apinfo_tostr(&m.cpu);
+    apinfo_tostr(&m.pri);
+    apinfo_tostr(&m.pow);
+    apinfo_tostr(&m.imc);
+    apinfo_tostr(&m.gpu);
 
     // Get available frequencies
     mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpu.list1, &m.cpu.list1_count);
@@ -103,16 +104,6 @@ static topology_t  tp;
 static strscreen_t ss;
 static strtable_t  st;
 
-static char *ear_logo()
-{
-    char *logo = "    _________    ____ \n"
-                 "   / ____/   |  / __ \\\n"
-                 "  / __/ / /| | / /_/ /\n"
-                 " / /___/ ___ |/ _, _/ \n"
-                 "/_____/_/  |_/_/ |_|  \n";
-    return logo;
-}
-
 static state_t monitor_apis_init(void *whatever)
 {
     char buffer[16384];
@@ -136,13 +127,13 @@ static state_t monitor_apis_init(void *whatever)
     tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
     tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
     tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.info.layer, m.cpu.info.api_str, m.cpu.info.devs_count, m.cpu.info.scope_str, m.cpu.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pri.info.layer, m.pri.info.api_str, m.pri.info.devs_count, m.pri.info.scope_str, m.pri.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pow.info.layer, m.pow.info.api_str, m.pow.info.devs_count, m.pow.info.scope_str, m.pow.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.info.layer, m.imc.info.api_str, m.imc.info.devs_count, m.imc.info.scope_str, m.imc.info.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.info.layer, m.gpu.info.api_str, m.gpu.info.devs_count, m.gpu.info.scope_str, m.gpu.info.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.layer, m.cpu.api_str, m.cpu.devs_count, m.cpu.scope_str, m.cpu.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pri.layer, m.pri.api_str, m.pri.devs_count, m.pri.scope_str, m.pri.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pow.layer, m.pow.api_str, m.pow.devs_count, m.pow.scope_str, m.pow.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.layer, m.imc.api_str, m.imc.devs_count, m.imc.scope_str, m.imc.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.layer, m.gpu.api_str, m.gpu.devs_count, m.gpu.scope_str, m.gpu.granularity_str);
 
-    wsprintf(&ss, 0, 0, 0, ear_logo());
+    wsprintf(&ss, 0, 0, 0, special_ear_logo());
     wsprintf(&ss, 1, 0, 0, buffer    );
 
     mgt_cpufreq_data_tostr(m.cpu.list1, m.cpu.list1_count, buffer, sizeof(buffer));

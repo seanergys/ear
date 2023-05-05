@@ -113,7 +113,7 @@ static char             big_chunk1[16384];
 static char             big_chunk2[16384];
 static wide_buffer_t    wb;
        manages_apis_t  *man;
-       metrics_apis_t  *met;
+       metrics_info_t  *met;
 static metrics_t        uc;
 static metrics_t        ui;
 static metrics_t        ub;
