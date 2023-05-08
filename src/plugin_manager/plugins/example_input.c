@@ -15,36 +15,33 @@
 * and COPYING.EPL files.
 */
 
-#include <metrics/metrics.h>
-#include <plugin_manager/plugins/plugin_metrics.h>
+#include <stdlib.h>
+#include <common/hardware/topology.h>
+#include <plugin_manager/plugin_manager.h>
 
-static topology_t tp;
-static mets_t     m;
+static topology_t topo;
 
 declr_up_init()
 {
-    topology_init(&tp);
-
-    metrics_init(&m.mi, &tp, NO_EARD);
-    metrics_data_alloc(&m.mr1, &m.mr2, &m.mrD);
-    metrics_read(&m.mr1);
-
+    topology_init(&topo);
     return EAR_SUCCESS;
 }
 
 declr_up_get_tag ()
 {
-    *tag = "metrics";
+    *tag = "example";
 }
 
+// cchar *tag, (void *) data
 declr_up_execute()
 {
-    metrics_read_copy(&m.mr2, &m.mr1, &m.mrD);
-
+    uint *cpu_count = (uint *) data;
+    *cpu_count = topo.cpu_count;
     return EAR_SUCCESS;
 }
 
+// (void *) data
 declr_up_data_alloc()
 {
-    *data = &m;
+    *data = calloc(1, sizeof(uint));
 }

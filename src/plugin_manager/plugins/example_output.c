@@ -15,9 +15,29 @@
 * and COPYING.EPL files.
 */
 
-#ifndef UPM_PLUGIN_VISUALS_H
-#define UPM_PLUGIN_VISUALS_H
-
+#include <metrics/metrics.h>
 #include <plugin_manager/plugin_manager.h>
 
-#endif //UPM_PLUGIN_VISUALS_H
+static char buffer[128];
+
+declr_up_init()
+{
+    return EAR_SUCCESS;
+}
+
+declr_up_get_tag ()
+{
+    *tag = "example";
+}
+
+declr_up_execute()
+{
+    uint *cpu_count = (uint *) data;
+    sprintf(buffer, "number of cpus: %d", *cpu_count);
+    return EAR_SUCCESS;
+}
+
+declr_up_data_tostr()
+{
+    return buffer;
+}

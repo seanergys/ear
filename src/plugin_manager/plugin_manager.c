@@ -102,11 +102,11 @@ static void time_and_execute(int i)
     }
     // Time calculation
     timestamp_get(&time_now);
-    time_passed = timestamp_diff(&time_now, &p.plugins[i].time_origin, TIME_SECS);
+    time_passed = timestamp_diff(&time_now, &p.plugins[i].time_origin, TIME_MSECS);
     time_isup   = time_passed >= p.plugins[i].time_lapse;
 
     if (time_isup) {
-        debug("PLUG%d update: %s, called every %llu seconds", i,
+        debug("PLUG%d update: %s, called every %llu ms", i,
                 p.plugins[i].path, p.plugins[i].time_lapse);
         p.plugins[i].time_origin = time_now;
     }
@@ -128,7 +128,7 @@ static void time_and_execute(int i)
     }
     time_and_execute(i+1);
     if (time_isup && p.plugins[i].ops.data_tostr != NULL) {
-        printf("\e[1;1H\e[2J");
+        //printf("\e[1;1H\e[2J");
         printf("%s\n", p.plugins[i].ops.data_tostr(p.plugins[i].data));
     }
 }
@@ -199,8 +199,8 @@ int plugin_manager_init(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
     sus->call_main     = plugins_update;
-    sus->time_relax    = 499;
-    sus->time_burst    = 499;
+    sus->time_relax    = 249;
+    sus->time_burst    = 249;
     sus->suscribe(sus);
     // Monitoring metrics
     monitor_init();
@@ -210,7 +210,9 @@ int plugin_manager_init(int argc, char *argv[])
     return 1;
 }
 
+#if MAIN
 int main(int argc, char *argv[])
 {
     return !plugin_manager_init(argc, argv);
 }
+#endif

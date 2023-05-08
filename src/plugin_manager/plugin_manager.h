@@ -23,6 +23,7 @@
 
 // You can load a set of plugins by passing arguments in this format:
 //  --plugins=plugin1.so:time1,plugin2.so:time2...
+// Time is in milliseconds.
 //
 // From the plugins part, the definition of the tag identifies the data to work
 // with. In example, if your plugin1 tag is "metrics" and you defined the
@@ -50,7 +51,7 @@
 #define declr_up_init()       state_t up_init       ()
 #define declr_up_execute()    state_t up_execute    (cchar *tag, void *data)
 #define declr_up_data_alloc() void    up_data_alloc (void **data)
-#define declr_up_data_tostr() char   *up_data_tostr (void *data)
+#define declr_up_data_tostr() char   *up_data_tostr ()
 
 int plugin_manager_main(int argc, char *argv[]);
 
