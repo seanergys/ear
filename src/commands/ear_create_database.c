@@ -370,7 +370,7 @@ void create_tables(void *connection)
             "event_type INT NOT NULL, "
             "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
-            "value INT unsigned NOT NULL, "
+            "value INT NOT NULL, "
             "node_id VARCHAR(64), "
             "PRIMARY KEY (id))");
     run_query(connection, query);

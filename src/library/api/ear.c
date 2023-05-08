@@ -1328,7 +1328,7 @@ void ear_init()
 				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
 #if SINGLE_CONNECTION
         if (!my_id && eard_ok) { // only the master will connect with eard
-                    verbose(2, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
+                    verbose(3, "%sConnecting with EAR Daemon (EARD) %d node %s (tmp = %s)%s",
                             COL_BLU, ear_my_rank, node_name, get_ear_tmp(), COL_CLR);
 
                     // Connect process with EARD
@@ -1387,7 +1387,7 @@ void ear_init()
 
                     if (ret == EAR_SUCCESS) {
 
-                        verbose(2, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
+                        verbose(3, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
 
                         if (!my_id) {
                             notify_eard_connection(1);
@@ -1995,7 +1995,7 @@ void ear_finalize(int exit_status)
 				}
 				#else
 				if (eards_connected()){ 
-					verbose(2, "Process %d disconnecting from EARD", my_node_id);
+					verbose(3, "Process %d disconnecting from EARD", my_node_id);
 					eards_disconnect();
 				}
 				#endif
@@ -2643,6 +2643,9 @@ static state_t earl_periodic_actions_talp(void *p)
     if (lib_shared_region->must_call_libdlb)
     {
         sig_shared_region[my_node_id].libdlb_calls_cnt++;
+        debug("proc %d libdlb_cnt %d libflb_max %d",
+              my_node_id, sig_shared_region[my_node_id].libdlb_calls_cnt, lib_shared_region->max_libdlb_calls);
+
         must_call_libdlb = 1;
 
         if (sig_shared_region[my_node_id].libdlb_calls_cnt > lib_shared_region->max_libdlb_calls)
@@ -2772,6 +2775,10 @@ static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_met
 
 static state_t earl_periodic_actions_talp_finalize()
 {
+    if (!talp_monitor)
+    {
+        return EAR_SUCCESS;
+    }
     int must_call_libdlb = 0;
     
     int sem_ret_val = sem_wait(lib_shared_lock_sem);
@@ -2780,6 +2787,7 @@ static state_t earl_periodic_actions_talp_finalize()
         verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
                 COL_YLW, COL_CLR, strerror(errno));
     }
+    debug("TALP monitor finalize");
 
     lib_shared_region->must_call_libdlb = 0;
 
@@ -2789,17 +2797,20 @@ static state_t earl_periodic_actions_talp_finalize()
                 COL_RED, COL_CLR, strerror(errno));
     }
 
+    debug("libdlb_cnt %d max %d", sig_shared_region[my_node_id].libdlb_calls_cnt, lib_shared_region->max_libdlb_calls);
     if (sig_shared_region[my_node_id].libdlb_calls_cnt < lib_shared_region->max_libdlb_calls)
     {
         must_call_libdlb = 1;
         sig_shared_region[my_node_id].libdlb_calls_cnt++;
     }
 
+    debug("unlocking semaphore");
     if (sem_post(lib_shared_lock_sem) < 0)
     {
         verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
                 COL_YLW, COL_CLR, strerror(errno));
     }
+    debug("semaphore unlocked");
 
     if (must_call_libdlb)
     {
@@ -2831,6 +2842,7 @@ static state_t earl_periodic_actions_talp_finalize()
         // DLB_MonitoringRegionReport(dlb_app_monitor);
     }
 
+    debug("TALP monitor unregistering");
     monitor_unregister(earl_talp);
 
     return EAR_SUCCESS;

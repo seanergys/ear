@@ -1425,7 +1425,7 @@ static void estimate_metrics_not_available_by_processes(signature_t *metrics)
 
   /* This function is executed after all processes compute their signature */
   if (!master) { return;}
-  verbose_master(2, "Cache BDWITH  %f",  lib_shared_region->total_cache_bwidth);
+  verbose_master(3, "Cache BDWITH  %f",  lib_shared_region->total_cache_bwidth);
   if (estimate_gbs){ 
     metrics->GBS = lib_shared_region->total_cache_bwidth;
 
@@ -1759,7 +1759,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       //acum_ipmi[APP] += master->DC_power *  se->elapsed * node_energy_units;
       acum_ipmi[APP] += acum_ipmi[LOO];
       total_acum_time += time_s;
-      verbose_master(2,"Accumulating %.2lu J to the application. Total energy %lu J acum_time %.2lf sec", acum_ipmi[LOO], acum_ipmi[APP] , total_acum_time);
+      verbose_master(3,"Accumulating %.2lu J to the application. Total energy %lu J acum_time %.2lf sec", acum_ipmi[LOO], acum_ipmi[APP] , total_acum_time);
     }
 
 
@@ -1828,11 +1828,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     app_energy_saving.event = ENERGY_SAVING_AVG;
 
 		/* We will use freq for the energy saving */
-		app_energy_saving.freq = (llong)avg_esaving;
+		app_energy_saving.value = (llong)avg_esaving;
 		report_events(&rep_id, &app_energy_saving, 1);
 
 		app_energy_saving.event = POWER_SAVING_AVG;
-		app_energy_saving.freq = (llong)avg_psaving;
+		app_energy_saving.value = (llong)avg_psaving;
 		report_events(&rep_id, &app_energy_saving, 1);
 #if 0
 		/* Not yet reported */
@@ -1863,7 +1863,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(PHASES_SUMMARY_VERB, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
         app_phase_summary.event = PHASE_SUMMARY_BASE + ph;
-        app_phase_summary.freq  = sig_ext->earl_phase[ph].elapsed;
+        app_phase_summary.value = sig_ext->earl_phase[ph].elapsed;
         report_events(&rep_id, &app_phase_summary, 1);
       }
     }
@@ -1871,7 +1871,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
       if (sig_ext->earl_phase[ph].elapsed){
         verbose_master(PHASES_SUMMARY_VERB, "Phase[%s] percentage %f (%llu msec/%llu msec)", phase_to_str(ph), (ms_total && sig_ext->earl_phase[ph].elapsed)? (float)sig_ext->earl_phase[ph].elapsed / (float)ms_total : 0.0, sig_ext->earl_phase[ph].elapsed, ms_total);
         app_phase_summary.event = PHASE_SUMMARY_BASE + ph;
-        app_phase_summary.freq  = sig_ext->earl_phase[ph].elapsed;
+        app_phase_summary.value = sig_ext->earl_phase[ph].elapsed;
         report_events(&rep_id, &app_phase_summary, 1);
       }
     }
@@ -2751,7 +2751,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
     ret = energy_node_load(energy_objc, eard);
 
-    verbose(2, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
+    verbose(3, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
 
     // TODO: if ret fails, generate dummy path and load that one
     return ret;
