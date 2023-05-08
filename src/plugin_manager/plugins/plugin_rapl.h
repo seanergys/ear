@@ -18,7 +18,7 @@
 #ifndef UPM_PLUGIN_RAPL_H
 #define UPM_PLUGIN_RAPL_H
 
-#include <upm/upm.h>
+#include <plugin_manager/plugin_manager.h>
 
 typedef struct rapl_s {
     ullong *data1;

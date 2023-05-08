@@ -1,24 +1,15 @@
 CC     = /usr/bin/gcc -g
 SRCDIR = /home/jordi/Documents/git/ear_private/src
 
+export CC
+export SRCDIR
+
 ######## RULES
 
-all: upm libupmet.so libupvis.so libuprapl.so libupraplal.so
+all: all.components plugin_manager
 
-upm: upm.c
+plugin_manager: plugin_manager.c
 	$(CC) -rdynamic -I $(SRCDIR) -fPIC -o $@ $^ ../common/utils/strscreen.c ../common/libcommon.a -lm -lpthread -ldl
-
-libupmet.so: plugin_metrics.c $(SRCDIR)/metrics/metrics.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
-
-libupvis.so: plugin_visuals.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
-
-libuprapl.so: plugin_rapl.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/common/libcommon.a
-
-libupraplal.so: plugin_rapl_alerts.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
 
 ######## OPTIONS
 
@@ -27,11 +18,12 @@ install: install.components;
 %.install: %.install.components;
 
 clean: clean.components rclean
-	rm -f upm
+	rm -f plugin_manager
 
 ######## SUBFOLDERS
 
-%.components: ;
+%.components:
+	@ $(MAKE) -C 'plugins' $* || exit
 
 ######## DEPENDENCIES
 

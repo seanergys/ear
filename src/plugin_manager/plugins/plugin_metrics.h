@@ -18,7 +18,7 @@
 #ifndef UPM_PLUGIN_METRICS_H
 #define UPM_PLUGIN_METRICS_H
 
-#include <upm/upm.h>
+#include <plugin_manager/plugin_manager.h>
 
 typedef struct mets_s {
     metrics_info_t mi;

@@ -15,13 +15,13 @@
 * and COPYING.EPL files.
 */
 
-#include <upm/plugin_rapl.h>
 #include <metrics/energy_cpu/energy_cpu.h>
+#include <plugin_manager/plugins/plugin_rapl.h>
 
 static topology_t tp;
 static rapl_t r;
 
-UPM_F_INIT()
+declr_up_init()
 {
     topology_init(&tp);
 
@@ -35,12 +35,12 @@ UPM_F_INIT()
     return EAR_SUCCESS;
 }
 
-UPM_F_GET_INFO ()
+declr_up_get_tag ()
 {
     *tag = "rapl";
 }
 
-UPM_F_WORK()
+declr_up_execute()
 {
     energy_cpu_read(no_ctx, r.data2);
     energy_cpu_data_diff(no_ctx, r.data2, r.data1, r.dataD);
@@ -49,7 +49,7 @@ UPM_F_WORK()
     return EAR_SUCCESS;
 }
 
-UPM_F_DATA_ALLOC()
+declr_up_data_alloc()
 {
     *data = &r;
 }

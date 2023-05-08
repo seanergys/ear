@@ -62,10 +62,13 @@ static void clean_matrix_background(strscreen_t *s)
     }
 }
 
-void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int div_index, cchar *title)
+void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int *id, cchar *title)
 {
-    strscreen_t *div = &(((strscreen_t *) s->divs)[div_index]);
+    strscreen_t *div;
     int y;
+
+    *id = s->divs_count;
+    div = &(((strscreen_t *) s->divs)[*id]);
     // X: #######\n <- (n-2 = '#') (n-1 = '\n')
     // Y: #######\0 <- (n-1 = '#')
     if (p2[X] >= s->width ) p2[X] = s->width-3;

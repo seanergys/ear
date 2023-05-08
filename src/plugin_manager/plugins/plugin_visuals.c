@@ -25,10 +25,10 @@
 #include <common/utils/special.h>
 #include <common/utils/strtable.h>
 #include <common/utils/strscreen.h>
-#include <upm/plugin_rapl.h>
-#include <upm/plugin_rapl_alerts.h>
-#include <upm/plugin_metrics.h>
-#include <upm/plugin_visuals.h>
+#include <plugin_manager/plugins/plugin_rapl.h>
+#include <plugin_manager/plugins/plugin_rapl_alerts.h>
+#include <plugin_manager/plugins/plugin_metrics.h>
+#include <plugin_manager/plugins/plugin_visuals.h>
 
 static topology_t    tp;
 static strtable_t    st;
@@ -47,7 +47,7 @@ static int            id_temp;
 static int            id_rapl;
 static int            id_alert;
 
-UPM_F_INIT()
+declr_up_init()
 {
     char b[16384];
 
@@ -71,12 +71,12 @@ UPM_F_INIT()
     return EAR_SUCCESS;
 }
 
-UPM_F_GET_INFO ()
+declr_up_get_tag ()
 {
     *tag = "metrics,rapl-alerts";
 }
 
-UPM_F_WORK()
+declr_up_execute()
 {
     static int one_time = 0;
     char b[16384];
@@ -118,7 +118,7 @@ UPM_F_WORK()
     return EAR_SUCCESS;
 }
 
-UPM_F_DATA_TOSTR()
+declr_up_data_tostr()
 {
     return wprintf(&ss);
 }

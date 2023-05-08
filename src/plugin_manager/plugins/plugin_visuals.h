@@ -18,6 +18,6 @@
 #ifndef UPM_PLUGIN_VISUALS_H
 #define UPM_PLUGIN_VISUALS_H
 
-#include <upm/upm.h>
+#include <plugin_manager/plugin_manager.h>
 
 #endif //UPM_PLUGIN_VISUALS_H

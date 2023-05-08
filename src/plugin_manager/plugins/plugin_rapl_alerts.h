@@ -18,7 +18,7 @@
 #ifndef UPM_PLUGIN_RAPL_ALERTS_H
 #define UPM_PLUGIN_RAPL_ALERTS_H
 
-#include <upm/upm.h>
+#include <plugin_manager/plugin_manager.h>
 
 typedef struct rapl_alerts_s {
     uint alert;

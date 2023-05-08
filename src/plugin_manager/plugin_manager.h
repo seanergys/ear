@@ -15,46 +15,43 @@
 * and COPYING.EPL files.
 */
 
-#ifndef UMP_H
-#define UMP_H
+#ifndef PLUGIN_MANAGER_H
+#define PLUGIN_MANAGER_H
 
 #include <common/types.h>
 #include <common/hardware/topology.h>
 
-// Universal Plugin
-#define UPM_F_GET_INFO()   void    up_get_info   (cchar **tag)
-#define UPM_F_INIT()       state_t up_init       ()
-#define UPM_F_WORK()       state_t up_work       (cchar *tag, void *data)
-#define UPM_F_DATA_ALLOC() void    up_data_alloc (void **data)
-#define UPM_F_DATA_TOSTR() char   *up_data_tostr (void *data)
+// You can load a set of plugins by passing arguments in this format:
+//  --plugins=plugin1.so:time1,plugin2.so:time2...
+//
+// From the plugins part, the definition of the tag identifies the data to work
+// with. In example, if your plugin1 tag is "metrics" and you defined the
+// 'data_alloc' function, you will allocate space for your data tagged as
+// "metrics". If your plugin1 defines the function 'execute', the data tagged as
+// "metrics" will be passed to 'execute'. Also, if your plugin2 defined its tag
+// as "metrics-viewer", the "metrics" string will be contained in plugin2 tag.
+// So the "metrics" data will be passed to plugin2 'execute' function after the
+// plugin1. Moreover, if your plugin3 defined its tag as "metrics-reporter", and
+// the plugin2 allocated some kind of data, the plugin3 won't receive an
+// 'execute' call with the "metrics-viewer" allocated data because the tag
+// "metrics-viewer" doesn't match with any "metrics-reporter" substring.
+//
+// Take into the account that the 'execute' function have to have some 'strcmp'
+// calls to identify the tags of the data passed if the data treatment is
+// different for each data tag.
+//
+// In case you are programming a plugin, you can use the declr_up_* defines
+// instead naming explictly the functions. This is useful because if we want to
+// add new parameters or change function names we can do it just editing this
+// header.
 
-#define UPM_DEFINES() \
-UPM_F_GET_INFO  (); \
-UPM_F_INIT      (); \
-UPM_F_WORK      (); \
-UPM_F_DATA_ALLOC(); \
-UPM_F_DATA_TOSTR();
+// Universal Plugin function declarations
+#define declr_up_get_tag()    void    up_get_tag    (cchar **tag)
+#define declr_up_init()       state_t up_init       ()
+#define declr_up_execute()    state_t up_execute    (cchar *tag, void *data)
+#define declr_up_data_alloc() void    up_data_alloc (void **data)
+#define declr_up_data_tostr() char   *up_data_tostr (void *data)
 
-#if 0
-// Long version
-#define UPM_F_GET_INFO  () void up_get_info   (cchar *tag)
-#define UPM_F_INIT      () state_t up_init    ()
-#define UPM_F_READ      () state_t up_read    (void *data)
-#define UPM_F_REPORT    () state_t up_report  (void *data)
-#define UPM_F_ALERT     () state_t up_alert   (void *data)
-#define UPM_F_DATA_ALLOC() void up_data_alloc (void **data)
-#define UPM_F_DATA_DIFF () void up_data_diff  (void *data2, void *data1, void *dataD)
-#define UPM_F_DATA_TOSTR() void up_data_tostr (void *data)
+int plugin_manager_main(int argc, char *argv[]);
 
-#define UPM_DEFINES(name) \
-UPM_F_GET_INFO  (); \
-UPM_F_INIT      (); \
-UPM_F_READ      (); \
-UPM_F_REPORT    (); \
-UPM_F_ALERT     (); \
-UPM_F_DATA_ALLOC(); \
-UPM_F_DATA_DIFF (); \
-UPM_F_DATA_TOSTR();
-#endif
-
-#endif //UMP_H
+#endif //PLUGIN_MANAGER_H

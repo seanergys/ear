@@ -15,23 +15,23 @@
 * and COPYING.EPL files.
 */
 
-#include <upm/plugin_rapl.h>
-#include <upm/plugin_rapl_alerts.h>
+#include <plugin_manager/plugins/plugin_rapl.h>
+#include <plugin_manager/plugins/plugin_rapl_alerts.h>
 
 static rapl_alerts_t  a;
 static rapl_t        *r;
 
-UPM_F_INIT()
+declr_up_init()
 {
     return EAR_SUCCESS;
 }
 
-UPM_F_GET_INFO ()
+declr_up_get_tag ()
 {
     *tag = "rapl-alerts";
 }
 
-UPM_F_WORK()
+declr_up_execute()
 {
     if (strcmp(tag, "rapl") == 0) {
         r = (rapl_t *) data;
@@ -40,7 +40,7 @@ UPM_F_WORK()
     return EAR_SUCCESS;
 }
 
-UPM_F_DATA_ALLOC()
+declr_up_data_alloc()
 {
     *data = &a;
 }

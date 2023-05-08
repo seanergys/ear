@@ -15,32 +15,30 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
+#include <stdlib.h>
 #include <common/utils/args.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
-#include <daemon/local_api/eard_api.h>
-#include <metrics/metrics.h>
-#include <upm/upm.h>
+//#include <daemon/local_api/eard_api.h>
+//#include <metrics/metrics.h>
+#include <plugin_manager/plugin_manager.h>
 
 static const char *names[] = {
-    "up_get_info",
+    "up_get_tag",
     "up_init",
-    "up_work",
+    "up_execute",
     "up_data_alloc",
     "up_data_tostr",
 };
 #define N 5
 
-// But by now:
-// --plugins=/path/file1.so:time1,/path/file2.so:time2
-
-typedef struct upm_ops_s {
+typedef struct plugin_manager_ops_s {
     void    (*get_info)   (cchar **tag);
     state_t (*init)       ();
-    state_t (*work)       (cchar *tag, void *data);
+    state_t (*execute)    (cchar *tag, void *data);
     void    (*data_alloc) (void **data);
     char   *(*data_tostr) (void *data);
 } plugin_ops_t;
@@ -64,7 +62,7 @@ typedef struct plugins_s {
 static plugins_t  p;
 static void      *data;
 
-static state_t upm_init(void *whatever)
+static state_t plugins_init(void *whatever)
 {
     int i, j, k;
     for (i = 0; i < p.count; ++i) {
@@ -91,7 +89,7 @@ static state_t upm_init(void *whatever)
     return EAR_SUCCESS;
 }
 
-static void time_and_work(int i)
+static void time_and_execute(int i)
 {
     timestamp_t time_now;
     ullong time_passed;
@@ -108,39 +106,39 @@ static void time_and_work(int i)
     time_isup   = time_passed >= p.plugins[i].time_lapse;
 
     if (time_isup) {
-        verbose(0, "PLUG%d update: %s, called every %llu seconds", i,
+        debug("PLUG%d update: %s, called every %llu seconds", i,
                 p.plugins[i].path, p.plugins[i].time_lapse);
         p.plugins[i].time_origin = time_now;
     }
-    if (time_isup && p.plugins[i].ops.work != NULL) {
+    if (time_isup && p.plugins[i].ops.execute != NULL) {
         // If the plugin has data allocated to work with
         if (p.plugins[i].data != NULL) {
-            p.plugins[i].ops.work(p.plugins[i].tag, p.plugins[i].data);
+            p.plugins[i].ops.execute(p.plugins[i].tag, p.plugins[i].data);
             // Feeding others with own data
             for (j = 0; j < p.count; ++j) {
                 if (j == i) {
                     continue;
                 }
                 // If pluginI has data valid for pluginJ
-                if (p.plugins[j].ops.work != NULL && strstr(p.plugins[j].tag, p.plugins[i].tag)) {
-                    p.plugins[j].ops.work(p.plugins[i].tag, p.plugins[i].data);
+                if (p.plugins[j].ops.execute != NULL && strstr(p.plugins[j].tag, p.plugins[i].tag)) {
+                    p.plugins[j].ops.execute(p.plugins[i].tag, p.plugins[i].data);
                 }
             }
         }
     }
-    time_and_work(i+1);
+    time_and_execute(i+1);
     if (time_isup && p.plugins[i].ops.data_tostr != NULL) {
         printf("\e[1;1H\e[2J");
         printf("%s\n", p.plugins[i].ops.data_tostr(p.plugins[i].data));
     }
 }
 
-static state_t upm_update(void *whatever)
+static state_t plugins_update(void *whatever)
 {
-    time_and_work(0);
+    time_and_execute(0);
 }
 
-static int upm_configure(int argc, char *argv[])
+static int plugin_manager_configure(int argc, char *argv[])
 {
     char buffer[8192];
     char *buffer_p = buffer;
@@ -152,14 +150,14 @@ static int upm_configure(int argc, char *argv[])
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
         verbose(0, "Options:");
-        verbose(0, "    --eard       Connect to EAR Daemon.");
+  //      verbose(0, "    --eard       Connect to EAR Daemon.");
         verbose(0, "    --plugins    List of separated plugins to load.");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }
-    if (args_get(argc, argv, "eard", buffer)) {
+    //if (args_get(argc, argv, "eard", buffer)) {
         //eards_connection();
-    }
+    //}
     if (!args_get(argc, argv, "plugins", buffer)) {
         return 0;
     }
@@ -190,17 +188,17 @@ static int upm_configure(int argc, char *argv[])
     return 1;
 }
 
-static int upm_main(int argc, char *argv[])
+int plugin_manager_init(int argc, char *argv[])
 {
     // Read configuration
-    if (!upm_configure(argc, argv)) {
+    if (!plugin_manager_configure(argc, argv)) {
         // Error message
         return 0;
     }
     // Suscriptions
     suscription_t *sus = suscription();
-    sus->call_init     = upm_init;
-    sus->call_main     = upm_update;
+    sus->call_init     = plugins_init;
+    sus->call_main     = plugins_update;
     sus->time_relax    = 499;
     sus->time_burst    = 499;
     sus->suscribe(sus);
@@ -209,10 +207,10 @@ static int upm_main(int argc, char *argv[])
     // Main thread to sleep
     sleep(100);
 
-    return 0;
+    return 1;
 }
 
 int main(int argc, char *argv[])
 {
-    return upm_main(argc, argv);
+    return !plugin_manager_init(argc, argv);
 }

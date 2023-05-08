@@ -16,12 +16,12 @@
 */
 
 #include <metrics/metrics.h>
-#include <upm/plugin_metrics.h>
+#include <plugin_manager/plugins/plugin_metrics.h>
 
 static topology_t tp;
 static mets_t     m;
 
-UPM_F_INIT()
+declr_up_init()
 {
     topology_init(&tp);
 
@@ -32,19 +32,19 @@ UPM_F_INIT()
     return EAR_SUCCESS;
 }
 
-UPM_F_GET_INFO ()
+declr_up_get_tag ()
 {
     *tag = "metrics";
 }
 
-UPM_F_WORK()
+declr_up_execute()
 {
     metrics_read_copy(&m.mr2, &m.mr1, &m.mrD);
 
     return EAR_SUCCESS;
 }
 
-UPM_F_DATA_ALLOC()
+declr_up_data_alloc()
 {
     *data = &m;
 }
