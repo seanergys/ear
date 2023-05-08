@@ -140,7 +140,19 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
         gpu_data_alloc(&mrD->gpu_diff);
 }
 
-#if 0
+#if TEST
+#include <stdio.h>
+#include <stdlib.h>
+#include <common/utils/stress.h>
+#include <common/utils/special.h>
+#include <common/utils/overhead.h>
+#include <common/utils/strtable.h>
+#include <common/utils/strscreen.h>
+#include <common/output/verbose.h>
+#include <common/system/monitor.h>
+#include <daemon/local_api/eard_api.h>
+#include <metrics/metrics.h>
+
 static topology_t     tp;
 static strtable_t     st;
 static strscreen_t    ss;
@@ -148,8 +160,15 @@ static metrics_info_t m;
 static metrics_read_t mr1;
 static metrics_read_t mr2;
 static metrics_diff_t mrD;
+static int            idc;
+static int            idi;
+static int            idb;
+static int            idt;
+static int            idl;
+static int            ida;
+static int            idh;
 
-static state_t metrics_monitor_init(void *whatever)
+static state_t metrics_apis_init(void *whatever)
 {
     char buffer[16384];
 
@@ -160,16 +179,16 @@ static state_t metrics_monitor_init(void *whatever)
     metrics_read(&mr1);
 
     wprintf_init(&ss, 50, 180, 0, '#'); // 0 to 49, 0 to 179
-    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, 3, "cpufreq"  );
-    wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, 4, "imcfreq");
-    wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, 5, "bandwidth");
-    wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, 6, "temperature");
-    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, 0, "ear-logo" );
-    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 17, 177}, 1, "api-table");
-    wprintf_divide(&ss, (int[]) { 19, 154}, (int[]) { 34, 177}, 2, "topology" );
+    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, &idc, "cpufreq"  );
+    wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, &idi, "imcfreq");
+    wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &idb, "bandwidth");
+    wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &idt, "temperature");
+    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &idl, "ear-logo" );
+    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 17, 177}, &ida, "api-table");
+    wprintf_divide(&ss, (int[]) { 19, 154}, (int[]) { 34, 177}, &idh, "topology" );
 
     topology_tostr(&tp, buffer, sizeof(buffer));
-    wsprintf(&ss, 2, 0, 0, buffer);
+    wsprintf(&ss, idh, 0, 0, buffer);
 
     tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
     tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
@@ -183,26 +202,46 @@ static state_t metrics_monitor_init(void *whatever)
     tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpi.layer, m.cpi.api_str, m.cpi.devs_count, m.cpi.scope_str, m.cpi.granularity_str);
     tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.layer, m.gpu.api_str, m.gpu.devs_count, m.gpu.scope_str, m.gpu.granularity_str);
 
-    wsprintf(&ss, 0, 0, 0, special_ear_logo());
-    wsprintf(&ss, 1, 0, 0, buffer);
+    wsprintf(&ss, idl, 0, 0, special_ear_logo());
+    wsprintf(&ss, ida, 0, 0, buffer);
 
     wprintf(&ss);
 
     return EAR_SUCCESS;
 }
 
-static state_t metrics_update(void *whatever)
+static state_t metrics_apis_update(void *whatever)
 {
     char b[16384];
 
     metrics_read_copy(&mr2, &mr1, &mrD);
 
-    wsprintf(&ss, 3, 0, 1, cpufreq_data_tostr(mrD.cpu_diff,  mrD.cpu_avrg, b, sizeof(b)));
-    wsprintf(&ss, 4, 0, 1, imcfreq_data_tostr(mrD.imc_diff, &mrD.imc_avrg, b, sizeof(b)));
-    wsprintf(&ss, 5, 0, 1,  bwidth_data_tostr(mrD.ram_diff,  mrD.ram_avrg, b, sizeof(b)));
-    wsprintf(&ss, 6, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
+    wsprintf(&ss, idc, 0, 1, cpufreq_data_tostr(mrD.cpu_diff,  mrD.cpu_avrg, b, sizeof(b)));
+    wsprintf(&ss, idi, 0, 1, imcfreq_data_tostr(mrD.imc_diff, &mrD.imc_avrg, b, sizeof(b)));
+    wsprintf(&ss, idb, 0, 1,  bwidth_data_tostr(mrD.ram_diff,  mrD.ram_avrg, b, sizeof(b)));
+    wsprintf(&ss, idt, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
     wprintf(&ss);
 
     return EAR_SUCCESS;
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc > 1) {
+        if (atoi(argv[1])) {
+            eards_connection();
+        }
+    }
+	// Monitoring
+	monitor_init();
+	suscription_t *sus = suscription();
+	sus->call_init     = metrics_apis_init;
+	sus->call_main     = metrics_apis_update;
+	sus->time_relax    = 2000;
+	sus->time_burst    = 2000;
+	sus->suscribe(sus);
+    sleep(100);
+
+    return 0;
 }
 #endif

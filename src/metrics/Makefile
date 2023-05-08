@@ -92,8 +92,9 @@ libmetrics.a: $(mets_OBJS)
 libmetrics.so: $(mets_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(mets_OBJS)
 
-test: voyeur.c metrics.c
+test: metrics.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
+
 
 ######## OPTIONS
 
