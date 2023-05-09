@@ -317,11 +317,16 @@ state_t mpi_app_end(polctx_t *c)
                 if (masters_info.my_master_rank >= 0) {
                     char mpi_stats_hdr_buff_aux[64];
                     mpi_info_head_to_str_csv(mpi_stats_hdr_buff_aux, sizeof(mpi_stats_hdr_buff_aux));
-                    snprintf(mpi_stats_buff, sizeof mpi_stats_buff, "mrank;%s\n", mpi_stats_hdr_buff_aux);
+                    snprintf(mpi_stats_buff, sizeof mpi_stats_buff, "mrank;pid;%s\n", mpi_stats_hdr_buff_aux);
                     write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 }
-                mpi_info_to_str_csv(&mpi_stats, mpi_stats_buff_aux, sizeof(mpi_stats_buff_aux));
-                sprintf(mpi_stats_buff, "%d;%s\n", lib_shared_region->master_rank, mpi_stats_buff_aux);
+
+                mpi_info_to_str_csv(&mpi_stats, mpi_stats_buff_aux,
+                                    sizeof(mpi_stats_buff_aux));
+
+                sprintf(mpi_stats_buff, "%d;%d;%s\n", lib_shared_region->master_rank,
+                        sig_shared_region[my_node_id].pid, mpi_stats_buff_aux);
+
                 write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 close(fd);
             }
