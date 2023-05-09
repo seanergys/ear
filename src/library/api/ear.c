@@ -2694,6 +2694,7 @@ static void  reset_earl_environment()
   ear_lib_initialized = 0;
   monitor_dispose();
   metrics_lib_reset();
+  report_dispose(&rep_id);
 }
 void ear_fork_new_child()
 {

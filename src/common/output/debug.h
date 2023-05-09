@@ -24,7 +24,7 @@
 // You can use _debug to avoid SHOW_DEBUGS definition.
 // Try to avoid including debug in header files.
 
-#define ENABLE_DEBUG 0
+#define ENABLE_DEBUG 1
 
 int debug_channel	__attribute__((weak)) = 2;
 

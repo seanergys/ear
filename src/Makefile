@@ -17,6 +17,14 @@ COMPONENTS = \
 COMPONENTS += database_cache
 #endif
 
+ifdef FEAT_ONLY_EAR_CORE
+COMPONENT_DISABLE = \
+  commands \
+  tools \
+  database_cache
+endif
+
+
 ######## RULES
 
 .PHONY:
