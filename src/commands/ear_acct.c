@@ -751,7 +751,7 @@ void print_event_type(int type, int fd)
     ear_event_t aux;
     aux.event = type;
     event_type_to_str(&aux, str, sizeof(str));
-    dprintf(fd, "%15s ", str);
+    dprintf(fd, "%20s ", str);
 }
 
 #if DB_MYSQL
@@ -770,7 +770,7 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 	{
 		if (!has_records)
 		{
-			dprintf(fd, "%12s %20s %15s %8s %8s %20s %12s\n",
+			dprintf(fd, "%12s %20s %20s %8s %8s %20s %12s\n",
 					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
 			has_records = 1;
 		}
@@ -782,7 +782,8 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 
 				print_event_type(event_type_int, fd);  
 
-                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
+                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING ||
+                    event_type_int == POWER_SAVING_AVG || event_type_int == ENERGY_SAVING_AVG) {
                     possible_negative = 1;
                 }
             }
@@ -829,7 +830,7 @@ void postgresql_print_events(PGresult *res, int fd)
 	{
 		if (!has_records)
 		{
-			dprintf(fd, "%12s %22s %15s %8s %8s %20s %12s\n",
+			dprintf(fd, "%12s %22s %20s %8s %8s %20s %12s\n",
 					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
 			has_records = 1;
 		}

@@ -57,6 +57,7 @@ static char *_apis_tostr(uint api)
     else if (api == API_CPUMODEL) return "CPUMODEL";
     else if (api == API_RSMI    ) return "RSMI";
     else if (api == API_AMD19   ) return "AMD19";
+    return "NONE";
 }
 
 void apis_tostr(uint api, char *buffer, size_t size)
@@ -75,6 +76,7 @@ static char *granularity_tostr(uint granularity)
     else if (granularity == GRANULARITY_L3_SLICE  ) return "l3 slice";
     else if (granularity == GRANULARITY_IMC       ) return "imc";
     else if (granularity == GRANULARITY_SOCKET    ) return "socket";
+    return "none";
 }
 
 static char *scope_tostr(uint scope)
@@ -83,6 +85,7 @@ static char *scope_tostr(uint scope)
     else if (scope == SCOPE_DUMMY  ) return "dummy";
     else if (scope == SCOPE_PROCESS) return "process";
     else if (scope == SCOPE_NODE   ) return "node";
+    return "none";
 }
 
 void apinfo_tostr(apinfo_t *info)
