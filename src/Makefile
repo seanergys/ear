@@ -2,7 +2,6 @@
 
 COMPONENTS = \
     common \
-    plugin_manager \
     report \
     metrics \
     management\
@@ -11,9 +10,7 @@ COMPONENTS = \
     global_manager \
     commands \
     tools \
-    slurm_plugin \
-    plugin_manager/plugins
-
+    slurm_plugin
 
 #ifdef DB_BASE
 COMPONENTS += database_cache
