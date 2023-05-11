@@ -10,7 +10,7 @@ Energy Aware Runtime (EAR) package provides an energy management framework for s
 
 3) A **global energy management** to monitor and control the energy consumed in the system through the EAR global manager daemon (**EARGMD**). This control is configurable, it can dynamically adapt  policy settings based on global energy limits or just offer global cluster monitoring.
 
-For more information, please consult the [wiki](-/wikis/home)
+For more information, please consult the [wiki](https://gitlab.bsc.es/ear_team/ear/-/wikis/home).
 
 
 License
