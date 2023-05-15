@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -29,16 +29,18 @@
 static const char *names[] = {
     "up_get_tag",
     "up_init",
-    "up_execute",
+    "up_callback",
+    "up_post",
     "up_data_alloc",
     "up_data_tostr",
 };
 #define N 5
 
 typedef struct plugin_manager_ops_s {
-    void    (*get_info)   (cchar **tag);
+    void    (*get_tag)    (cchar **tag);
     state_t (*init)       ();
-    state_t (*execute)    (cchar *tag, void *data);
+    state_t (*callback)   (cchar *tag, void *data);
+    void    (*post)       (cchar *msg, void *data);
     void    (*data_alloc) (void **data);
     char   *(*data_tostr) (void *data);
 } plugin_ops_t;
@@ -59,8 +61,8 @@ typedef struct plugins_s {
     uint      count;
 } plugins_t;
 
-static plugins_t  p;
-static void      *data;
+static plugins_t      p;
+//static ups_conf_t conf;
 
 static state_t plugins_init(void *whatever)
 {
@@ -77,8 +79,8 @@ static state_t plugins_init(void *whatever)
             }
             p.plugins[i].init = 1;
         }
-        if (p.plugins[i].ops.get_info != NULL) {
-            p.plugins[i].ops.get_info(&p.plugins[i].tag);
+        if (p.plugins[i].ops.get_tag != NULL) {
+            p.plugins[i].ops.get_tag(&p.plugins[i].tag);
             debug("PLUG%d init: %s, tag %s", i,
                 p.plugins[i].path, (char *) p.plugins[i].tag);
         }
@@ -89,7 +91,7 @@ static state_t plugins_init(void *whatever)
     return EAR_SUCCESS;
 }
 
-static void time_and_execute(int i)
+static void time_and_callback(int i)
 {
     timestamp_t time_now;
     ullong time_passed;
@@ -106,36 +108,36 @@ static void time_and_execute(int i)
     time_isup   = time_passed >= p.plugins[i].time_lapse;
 
     if (time_isup) {
-        debug("PLUG%d update: %s, called every %llu ms", i,
+        debug("PLUG%d callback: %s, called every %llu ms", i,
                 p.plugins[i].path, p.plugins[i].time_lapse);
         p.plugins[i].time_origin = time_now;
     }
-    if (time_isup && p.plugins[i].ops.execute != NULL) {
+    if (time_isup && p.plugins[i].ops.callback != NULL) {
         // If the plugin has data allocated to work with
         if (p.plugins[i].data != NULL) {
-            p.plugins[i].ops.execute(p.plugins[i].tag, p.plugins[i].data);
+            p.plugins[i].ops.callback(p.plugins[i].tag, p.plugins[i].data);
             // Feeding others with own data
             for (j = 0; j < p.count; ++j) {
                 if (j == i) {
                     continue;
                 }
                 // If pluginI has data valid for pluginJ
-                if (p.plugins[j].ops.execute != NULL && strstr(p.plugins[j].tag, p.plugins[i].tag)) {
-                    p.plugins[j].ops.execute(p.plugins[i].tag, p.plugins[i].data);
+                if (p.plugins[j].ops.callback != NULL && strstr(p.plugins[j].tag, p.plugins[i].tag)) {
+                    p.plugins[j].ops.callback(p.plugins[i].tag, p.plugins[i].data);
                 }
             }
         }
     }
-    time_and_execute(i+1);
+    time_and_callback(i+1);
     if (time_isup && p.plugins[i].ops.data_tostr != NULL) {
         //printf("\e[1;1H\e[2J");
         printf("%s\n", p.plugins[i].ops.data_tostr(p.plugins[i].data));
     }
 }
 
-static state_t plugins_update(void *whatever)
+static state_t plugins_callback(void *whatever)
 {
-    time_and_execute(0);
+    time_and_callback(0);
 }
 
 static int plugin_manager_configure(int argc, char *argv[])
@@ -188,6 +190,17 @@ static int plugin_manager_configure(int argc, char *argv[])
     return 1;
 }
 
+void plugin_mananger_post(cchar *msg, void *data)
+{
+    int i;
+    for (i = 0; i < p.count; ++i) {
+        if (p.plugins[i].ops.post == NULL) {
+            continue;
+        }
+        p.plugins[i].ops.post(msg, data);
+    }
+}
+
 int plugin_manager_init(int argc, char *argv[])
 {
     // Read configuration
@@ -198,11 +211,12 @@ int plugin_manager_init(int argc, char *argv[])
     // Suscriptions
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
-    sus->call_main     = plugins_update;
+    sus->call_main     = plugins_callback;
     sus->time_relax    = 249;
     sus->time_burst    = 249;
     sus->suscribe(sus);
     // Monitoring metrics
+    debug("Initializing monitor");
     monitor_init();
     // Main thread to sleep
     sleep(100);

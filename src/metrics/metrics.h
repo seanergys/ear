@@ -29,6 +29,7 @@
 #include <metrics/cache/cache.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/temperature/temperature.h>
 
@@ -39,6 +40,7 @@ typedef struct metrics_info_s {
     apinfo_t cch; // cache
     apinfo_t flp; // flops
     apinfo_t tmp; // temp
+    apinfo_t pow; // power
     apinfo_t cpi; // cpi
     apinfo_t gpu; // gpu
 } metrics_info_t;
@@ -50,6 +52,7 @@ typedef struct metrics_read_s {
     bwidth_t   *ram;
     cache_t     cch;
     flops_t     flp;
+    ullong     *pow;
     cpi_t       cpi;
 	gpu_t      *gpu;
 } metrics_read_t;
@@ -69,6 +72,7 @@ typedef struct metrics_diff_s {
     double  flp_avrg; // Giga F. operations per second
     llong  *tmp_diff;
     llong   tmp_avrg;
+    ullong *pow_diff;
     cpi_t   cpi_diff;
     double  cpi_avrg; // GPI
 	gpu_t  *gpu_diff;

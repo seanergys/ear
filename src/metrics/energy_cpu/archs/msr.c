@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -166,8 +166,9 @@ state_t rapl_msr_read(ctx_t *c, ullong *values)
 		for (t = 0; t < es_pack_count; t++) { //this for loop is a glorified if statement, inherited from previous code
 			msr_read(tp.cpus[i].id, &values[tp.cpu_count+i], sizeof(ullong), es_pack_addr[t]);
 			values[tp.cpu_count + i] &= 0xffffffff;
+            debug("read value %llu from PKG", values[tp.cpu_count + i]);
 			values[tp.cpu_count + i] *= es_pack_units ; //transform to proper units
-			debug("read value %llu from PKG", values[tp.cpu_count + i]);
+            debug("read value %llu from PKG (POST %lf)", values[tp.cpu_count + i], es_pack_units);
 		}
 		// DRAM
 		for (t = 0; t < es_dram_count; t++) {

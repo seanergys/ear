@@ -49,10 +49,23 @@
 // Universal Plugin function declarations
 #define declr_up_get_tag()    void    up_get_tag    (cchar **tag)
 #define declr_up_init()       state_t up_init       ()
-#define declr_up_execute()    state_t up_execute    (cchar *tag, void *data)
+#define declr_up_callback()   void    up_callback   (cchar *tag, void *data)
+#define declr_up_post()       void    up_post       (cchar *msg, void *data)
 #define declr_up_data_alloc() void    up_data_alloc (void **data)
 #define declr_up_data_tostr() char   *up_data_tostr ()
 
-int plugin_manager_main(int argc, char *argv[]);
+#if 0
+typedef struct ups_conf_t {
+    topology_t      topo;
+    my_node_conf_t *node_conf;
+} ups_conf_t;
+//
+topology_init(&conf.topo);
+conf.node_conf = nc;
+#endif
+
+int plugin_manager_init(int argc, char *argv[]);
+
+void plugin_mananger_post(cchar *msg, void *data);
 
 #endif //PLUGIN_MANAGER_H

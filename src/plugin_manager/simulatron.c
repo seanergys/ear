@@ -15,29 +15,17 @@
 * and COPYING.EPL files.
 */
 
-#include <metrics/metrics.h>
 #include <plugin_manager/plugin_manager.h>
 
-static char buffer[128];
-
-declr_up_init()
+int main(int argc, char *argv[])
 {
-    return EAR_SUCCESS;
-}
+    int result = plugin_manager_init(argc, argv);
 
-declr_up_get_tag ()
-{
-    *tag = "example";
-}
+    while (1) {
+        // Scanf
+        // post something
+        // post otherthing
+    }
 
-declr_up_execute()
-{
-    uint *cpu_count = (uint *) data;
-    sprintf(buffer, "number of cpus: %d", *cpu_count);
-    return EAR_SUCCESS;
-}
-
-declr_up_data_tostr()
-{
-    return buffer;
+    return 0;
 }

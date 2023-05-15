@@ -15,8 +15,8 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
-#define DEBUG_POWER_CONSUMING 0
+#define SHOW_DEBUGS 1
+#define DEBUG_POWER_CONSUMING 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -309,14 +309,15 @@ static state_t debug_monitor(void *x)
     int i;
 
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (msr_read(p->tp->cpus[i].id, &reg, sizeof(ullong), p->es_address)) {
-            debug("msr_read: %s", state_msg);
+        if (state_fail(msr_read(p->tp->cpus[i].id, &reg, sizeof(ullong), p->es_address))) {
+            debug("msr_read returned %s", state_msg);
         }
         energy2[i] = getbits64(reg, 31, 0);
+        debug("rapl read: %llu", energy2[i]);
         if (energy1[i] > 0) {
             energy = ((double) (energy2[i] - energy1[i])) * pu[i].mult_energy;
             power  = energy / 2.0; // We know its 2 seconds
-            debug("SOCKET[%u] energy: %lf J, power: %lf W", i, energy, power);
+            debug("SOCKET[%u] energy: %lf J, power: %lf W (POST %lf)", i, energy, power, pu[i].mult_energy);
         }
         energy1[i] = energy2[i];
     }

@@ -1,12 +1,12 @@
 ######## RULES
 
-all: libexin.so libexout.so
+all: libupmet.so libupper.so
 
-libexin.so: example_input.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
+libupmet.so: metrics.c $(SRCDIR)/metrics/metrics.c
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
 
-libexout.so: example_output.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
+libupper.so: periodic_metrics.c
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
 
 ######## OPTIONS
 

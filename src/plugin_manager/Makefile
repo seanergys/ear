@@ -1,6 +1,12 @@
+CC     = /usr/bin/gcc -g
+SRCDIR = /home/jordi/Documents/git/ear_private/src
+
+export CC
+export SRCDIR
+
 ######## RULES
 
-all: libpm.a earpmd
+all: all.components libpm.a earpmd simulatron
 
 plugin_manager.o: plugin_manager.c
 	$(CC) -I $(SRCDIR) -fPIC -c $^
@@ -9,7 +15,10 @@ libpm.a: plugin_manager.o
 	$(AR) rvs $@ $^
 
 earpmd: plugin_manager.c
-	$(CC) -DMAIN=1 -I $(SRCDIR) -fPIC -o $@ $^ ../common/utils/strscreen.c ../common/libcommon.a -lm -lpthread -ldl
+	$(CC) -DMAIN=1 -I $(SRCDIR) -fPIC -o $@ $^ ../common/libcommon.a -lm -lpthread -ldl
+
+simulatron: simulatron.c
+	$(CC) -I $(SRCDIR) -fPIC -o $@ $^ libpm.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 
@@ -23,7 +32,7 @@ clean: clean.components rclean
 ######## SUBFOLDERS
 
 %.components: ;
-#	@ $(MAKE) -C 'plugins' $* || exit
+	@ $(MAKE) -C 'plugins' $* || exit
 
 ######## DEPENDENCIES
 
