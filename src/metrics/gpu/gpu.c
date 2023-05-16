@@ -248,24 +248,25 @@ void gpu_data_print(gpu_t *data, int fd)
 	}
 }
 
-void gpu_data_tostr(gpu_t *data, char *buffer, int length)
+char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 {
+    char *state[2] = { "ok", "error" };
 	int accuml;
 	size_t s;
 	int i;
 
 	for (i = accuml = 0; i < devs_count && length > 0; ++i) {
 		s = snprintf(&buffer[accuml], length,
-			 "gpu%u: %0.2lfJ, %0.2lfW, %luKHz, %luKHz, %lu, %lu, %lu, %lu, %u, %lu correct=%u\n", i,
+			 "gpu%u: %0.2lf J, %0.2lf W, %lu KHz, %lu KHz, %lu usg, %lu usg, %lu , %lu , %lu (%s)\n", i,
 			 data[i].energy_j, data[i].power_w,
 			 data[i].freq_gpu, data[i].freq_mem,
 			 data[i].util_gpu, data[i].util_mem,
 			 data[i].temp_gpu, data[i].temp_mem,
-			 data[i].working , data[i].samples,
-			 data[i].correct);
+             data[i].samples, state[data[i].correct]);
 		length = length - s;
 		accuml = accuml + s;
 	}
+    return buffer;
 }
 
 int gpu_is_supported()

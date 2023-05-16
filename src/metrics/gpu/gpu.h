@@ -129,7 +129,7 @@ state_t gpu_data_copy(gpu_t *data_dst, gpu_t *data_src);
 void gpu_data_print(gpu_t *data, int fd);
 
 // Copies the printing string in a char buffer.
-void gpu_data_tostr(gpu_t *data, char *buffer, int length);
+char *gpu_data_tostr(gpu_t *data, char *buffer, int length);
 
 int gpu_is_supported();
 

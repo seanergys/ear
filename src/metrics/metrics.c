@@ -240,6 +240,7 @@ static int            id_imc;
 static int            id_ram;
 static int            id_tmp;
 static int            id_pow;
+static int            id_gpu;
 static int            id_log;
 static int            id_api;
 static int            id_tpo;
@@ -259,7 +260,8 @@ static state_t metrics_apis_init(void *whatever)
     wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, &id_imc, "imcfreq"  );
     wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &id_ram, "bandwidth");
     wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &id_tmp, "temperature");
-    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) {  2,  79}, &id_pow, "cpupow"   );
+    wprintf_divide(&ss, (int[]) { 45,   2}, (int[]) { 46,  39}, &id_pow, "cpupow"   );
+    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 4, 118}, &id_gpu, "gpu"      );
     wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &id_log, "ear-logo" );
     wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 18, 177}, &id_api, "api-table");
     wprintf_divide(&ss, (int[]) { 20, 154}, (int[]) { 35, 177}, &id_tpo, "topology" );
@@ -312,9 +314,10 @@ static state_t metrics_apis_update(void *whatever)
 
     wsprintf(&ss, id_cpu, 0, 1, cpufreq_data_tostr(mrD.cpu_diff,  mrD.cpu_avrg, b, sizeof(b)));
     wsprintf(&ss, id_imc, 0, 1, imcfreq_data_tostr(mrD.imc_diff, &mrD.imc_avrg, b, sizeof(b)));
+    wsprintf(&ss, id_pow, 0, 1,  cpupow_data_tostr(mrD.pow_diff,                b, sizeof(b)));
     wsprintf(&ss, id_ram, 0, 1,  bwidth_data_tostr(mrD.ram_diff,  mrD.ram_avrg, b, sizeof(b)));
     wsprintf(&ss, id_tmp, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
-    wsprintf(&ss, id_pow, 0, 1,  cpupow_data_tostr(mrD.pow_diff,                b, sizeof(b)));
+    wsprintf(&ss, id_gpu, 0, 1,     gpu_data_tostr(mrD.gpu_diff,                b, sizeof(b)));
     wprintf(&ss);
 
     return EAR_SUCCESS;
