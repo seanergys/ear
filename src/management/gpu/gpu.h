@@ -142,6 +142,8 @@ state_t mgt_gpu_data_null(ulong *list);
 
 int mgt_gpu_is_supported();
 
+char *mgt_gpu_features_tostr(char *buffer, size_t length);
+
 // Renamed functions
 #define mgt_gpu_freq_list mgt_gpu_freq_get_available
 

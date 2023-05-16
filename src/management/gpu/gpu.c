@@ -257,3 +257,22 @@ int mgt_gpu_is_supported()
 {
     return mgt_gpu_eard_is_supported();
 }
+
+char *mgt_gpu_features_tostr(char *buffer, size_t length)
+{
+    ulong list_max[128];
+    ulong list_min[128];
+    const ulong **list;
+    const uint *count;
+    int i, j = 0;
+
+    mgt_gpu_freq_get_available(no_ctx, &list, &count);
+    for (i = 0; i < devs_count; ++i) {
+        j += sprintf(&buffer[j], "GPU%d: %lu to %lu MHz\n", i, list[i][0], list[i][count[i]-1]);
+    }
+    mgt_gpu_power_cap_get_rank(no_ctx, list_min, list_max);
+    for (i = 0; i < devs_count; ++i) {
+        j += sprintf(&buffer[j], "GPU%d: %lu to %lu W\n", i, list_max[i], list_min[i]);
+    }
+    return buffer;
+}

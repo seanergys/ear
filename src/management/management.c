@@ -107,6 +107,7 @@ static int         idc;
 static int         idr;
 static int         idp;
 static int         idi;
+static int         idg;
 static int         idl;
 static int         ida;
 static int         idh;
@@ -124,6 +125,7 @@ static state_t monitor_apis_init(void *whatever)
     wprintf_divide(&ss, (int[]) { 16,   2}, (int[]) { 29,  39}, &idr, "cpuprio"  );
     wprintf_divide(&ss, (int[]) { 31,   2}, (int[]) { 44,  39}, &idp, "cpupow"   );
     wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 44,  77}, &idi, "imcfreq"  );
+    wprintf_divide(&ss, (int[]) {  1,  79}, (int[]) { 44, 115}, &idg, "gpu"      );
     wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &idl, "ear-logo" );
     wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 14, 177}, &ida, "api-table");
     wprintf_divide(&ss, (int[]) { 16, 154}, (int[]) { 31, 177}, &idh, "topology" );
@@ -154,6 +156,8 @@ static state_t monitor_apis_init(void *whatever)
 
     mgt_imcfreq_data_tostr(m.imc.list1, m.imc.list1_count, buffer, sizeof(buffer));
     wsprintf(&ss, idi, 0, 1, buffer);
+
+    wsprintf(&ss, idg, 0, 1, mgt_gpu_features_tostr(buffer, sizeof(buffer)));
 
     wprintf(&ss);
 
