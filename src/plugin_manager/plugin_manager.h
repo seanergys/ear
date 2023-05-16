@@ -23,7 +23,7 @@
 
 // You can load a set of plugins by passing arguments in this format:
 //  --plugins=plugin1.so:time1,plugin2.so:time2...
-// Time is in milliseconds.
+// Time is in milliseconds. The sort order also defines the order of execution.
 //
 // From the plugins part, the definition of the tag identifies the data to work
 // with. In example, if your plugin1 tag is "metrics" and you defined the

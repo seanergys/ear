@@ -23,9 +23,7 @@
 
 typedef struct mets_s {
     metrics_info_t mi;
-    metrics_read_t mr1;
-    metrics_read_t mr2;
-    metrics_diff_t mrD;
+    metrics_read_t mr;
 } mets_t;
 
 #endif //UP_METRICS_H

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -108,8 +108,8 @@ static void time_and_callback(int i)
     time_isup   = time_passed >= p.plugins[i].time_lapse;
 
     if (time_isup) {
-        debug("PLUG%d callback: %s, called every %llu ms", i,
-                p.plugins[i].path, p.plugins[i].time_lapse);
+        debug("PLUG%d callback: %s, called every %llu ms, with allocated data %p", i,
+                p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].data);
         p.plugins[i].time_origin = time_now;
     }
     if (time_isup && p.plugins[i].ops.callback != NULL) {
@@ -174,6 +174,7 @@ static int plugin_manager_configure(int argc, char *argv[])
     // Allocating p
     p.count = list_count;
     p.plugins = calloc(p.count, sizeof(plugin_t));
+    debug("detected plugins: #%d", list_count);
     // Filling p
     for (i = 0; i < list_count; ++i) {
         if ((c = strchr(list[i], ':')) != NULL) {
@@ -218,8 +219,6 @@ int plugin_manager_init(int argc, char *argv[])
     // Monitoring metrics
     debug("Initializing monitor");
     monitor_init();
-    // Main thread to sleep
-    sleep(100);
 
     return 1;
 }

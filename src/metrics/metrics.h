@@ -52,30 +52,32 @@ typedef struct metrics_read_s {
     bwidth_t   *ram;
     cache_t     cch;
     flops_t     flp;
+    llong      *tmp;
     ullong     *pow;
     cpi_t       cpi;
 	gpu_t      *gpu;
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
-	ullong  time; // Seconds
-	ulong  *cpu_diff; // KHz (per device)
-	ulong   cpu_avrg; // KHz
-	ulong  *imc_diff; // KHz (per device)
-	ulong   imc_avrg; // KHz
-    dreg_t  imc_dreg;
-    ullong  ram_diff; // CAS
-    double  ram_avrg; // GB/s
-    cache_t cch_diff; // Misses
-    double  cch_avrg; // GB/s
-    flops_t flp_diff; // F. instructions
-    double  flp_avrg; // Giga F. operations per second
-    llong  *tmp_diff;
-    llong   tmp_avrg;
-    ullong *pow_diff;
-    cpi_t   cpi_diff;
-    double  cpi_avrg; // GPI
-	gpu_t  *gpu_diff;
+	double       time;  // Seconds
+	ulong       *cpu_diff; // KHz (per device)
+	ulong        cpu_avrg; // KHz
+	ulong       *imc_diff; // KHz (per device)
+	ulong        imc_avrg; // KHz
+    ullong       ram_diff; // CAS
+    double       ram_avrg; // GB/s
+    cache_t      cch_diff; // Misses
+    double       cch_avrg; // GB/s
+    flops_t      flp_diff; // F. instructions
+    double       flp_avrg; // Giga F. operations per second
+    llong       *tmp_diff;
+    llong        tmp_avrg;
+    ullong      *pow_diff;
+    ullong       pow_dram; // Average per DRAM
+    ullong       pow_pack; // Average per PACKAGE
+    cpi_t        cpi_diff;
+    double       cpi_avrg; // GPI
+	gpu_t       *gpu_diff;
 } metrics_diff_t;
 
 void metrics_init(metrics_info_t *m, topology_t *tp, int eard);
@@ -85,5 +87,9 @@ void metrics_read(metrics_read_t *mr);
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD);
+
+void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
+
+void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS);
 
 #endif //METRICS_H

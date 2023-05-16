@@ -27,7 +27,7 @@ install: install.components;
 %.install: %.install.components;
 
 clean: clean.components rclean
-	rm -f earpmd
+	rm -f earpmd simulatron
 
 ######## SUBFOLDERS
 

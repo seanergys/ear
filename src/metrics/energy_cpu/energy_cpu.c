@@ -16,6 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <common/plugins.h>
 #include <common/system/lock.h>
@@ -115,11 +116,12 @@ state_t energy_cpu_data_diff(ctx_t *c, ullong *start, ullong *end, ullong *resul
 {
 	int i;
 	for (i = 0; i < socket_count*NUM_PACKS; ++i) {
-		if (start[i] > end[i])
+		if (start[i] > end[i]) {
 			result[i] = ullong_diff_overflow(start[i], end[i]);
-		else
-			result[i] = end[i] - start[i];
-		debug("doing diff %d, result %llu", i, result[i]);
+        } else {
+            result[i] = end[i] - start[i];
+        }
+		debug("doing diff %d, result %llu = %llu - %llu", i, result[i], end[i], start[i]);
 	}
 	return EAR_SUCCESS;
 }
@@ -190,7 +192,18 @@ state_t energy_cpu_read(ctx_t *c, ullong *values)
 	}
 
 	return s;
+}
 
+state_t energy_cpu_read_copy(ctx_t *c, ullong *v2, ullong *v1, ullong *vD)
+{
+    state_t s = energy_cpu_read(c, v2);
+    if (state_ok(s)) {
+        s = energy_cpu_data_diff(c, v1, v2, vD);
+    }
+    if (state_ok(s)) {
+        s = energy_cpu_data_copy(c, v1, v2);
+    }
+    return s;
 }
 
 state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
@@ -215,13 +228,11 @@ state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 
 double energy_cpu_compute_power(double energy, double elapsed_time)
 {
-    
-  if (elapsed_time > 0){
-	  double computed_power = ((energy / 1000000000.0) / elapsed_time);
-
-    debug("computed power: %lf", computed_power);
-    return computed_power;
-  }
-  return (double)0;
+    if (elapsed_time > 0){
+        double computed_power = ((energy / 1000000000.0) / elapsed_time);
+        debug("computed power: %lf", computed_power);
+        return computed_power;
+    }
+    return (double)0;
 }
 

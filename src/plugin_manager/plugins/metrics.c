@@ -15,34 +15,36 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdio.h>
-#include <metrics/metrics.h>
+#include <common/output/debug.h>
 #include <plugin_manager/plugins/metrics.h>
 
 static topology_t tp;
 static mets_t     m;
-
+static cchar     *self_tag = "metrics";
 
 declr_up_get_tag()
 {
-    *tag = "metrics";
+    *tag = self_tag;
 }
 
 declr_up_init()
 {
     topology_init(&tp);
     metrics_init(&m.mi, &tp, NO_EARD);
-    metrics_data_alloc(&m.mr1, &m.mr2, &m.mrD);
-    metrics_read(&m.mr1);
+    metrics_data_alloc(&m.mr, NULL, NULL);
 }
 
 declr_up_callback()
 {
-    fprintf(stderr, "readed metrics\n");
-    metrics_read_copy(&m.mr2, &m.mr1, &m.mrD);
+    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
+    metrics_read(&m.mr);
 }
 
 declr_up_data_alloc()
 {
+    debug("'%s': allocated data '%p'", self_tag, &m);
     *data = &m;
 }

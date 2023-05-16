@@ -43,13 +43,15 @@ state_t energy_cpu_data_copy(ctx_t *c, ullong *dest, ullong *source);
 
 state_t energy_cpu_data_free(ctx_t *c, ullong **temp);
 
-state_t energy_cpu_data_diff(ctx_t *c, ullong *end, ullong *start, ullong *result);
+state_t energy_cpu_data_diff(ctx_t *c, ullong *start, ullong *end, ullong *result);
 
 state_t energy_cpu_count_devices(ctx_t *c, uint *count);
 
 
 // Getters
 state_t energy_cpu_read(ctx_t *c, ullong *values);
+
+state_t energy_cpu_read_copy(ctx_t *c, ullong *v2, ullong *v1, ullong *vD);
 
 // Other
 double energy_cpu_compute_power(double energy, double elapsed_time);

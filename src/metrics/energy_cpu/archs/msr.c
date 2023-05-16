@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -128,7 +128,7 @@ state_t rapl_msr_init(ctx_t *c)
 		return s;
 	}
 	// Take a look to Intel's RAPL test
-	es_pack_units = pow(0.5, (double) ((result >> 8) & 0x1f)) * 1e9;
+    es_pack_units = pow(0.5, (double) ((result >> 8) & 0x1f)) * 1e9;
 	debug("es_pack_units %lf", es_pack_units);
 	es_core_units = es_pack_units;
 	es_dram_units = pow(0.5, (double) 16) * 1e9;
@@ -168,7 +168,7 @@ state_t rapl_msr_read(ctx_t *c, ullong *values)
 			values[tp.cpu_count + i] &= 0xffffffff;
             debug("read value %llu from PKG", values[tp.cpu_count + i]);
 			values[tp.cpu_count + i] *= es_pack_units ; //transform to proper units
-            debug("read value %llu from PKG (POST %lf)", values[tp.cpu_count + i], es_pack_units);
+            debug("read value %llu from PKG (units %lf)", values[tp.cpu_count + i], es_pack_units);
 		}
 		// DRAM
 		for (t = 0; t < es_dram_count; t++) {

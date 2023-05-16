@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/cpufreq/archs/eard.h>
 #include <metrics/cpufreq/archs/dummy.h>

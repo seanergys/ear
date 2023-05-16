@@ -15,59 +15,73 @@
 * and COPYING.EPL files.
 */
 
-#include <plugin_manager/plugins/metrics.h>
+#define SHOW_DEBUGS 1
 
+#include <string.h>
+#include <report/report.h>
+#include <common/output/debug.h>
+#include <plugin_manager/plugins/metrics.h>
 
 static periodic_metric_t  cs; // Current sample
 static my_node_conf_t    *nc; // Node conf
-static timestamp_t        ts1;
-static timestamp_t        ts2;
-static double             seconds;
+static metrics_read_t     mr1;
+static metrics_read_t     mr2;
+static metrics_diff_t     mrD;
+static cchar             *self_tag = "periodic-metrics";
+// Reporting things
+static report_id_t       *rid;
+static ulong              jid;
+static ulong              sid;
+static ulong              mpi;
 
 declr_up_get_tag ()
 {
-    *tag = "periodic-metrics";
+    *tag = self_tag;
 }
 
 declr_up_init()
 {
     init_periodic_metric(&cs); //eard_power_monitoring()
+    metrics_data_alloc(&mr1, &mr2, &mrD);
 }
 
 declr_up_callback()
 {
-    if (nc == NULL) {
-        return;
+    mets_t *mets = (mets_t *) data;
+
+    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
+    if (strcmp(tag, "metrics") == 0) {
+        metrics_data_copy(&mr2, &mets->mr);
     }
-    timestamp_getfast(&ts2);
-    seconds = timestamp_fdiff(&ts2, &ts1, TIME_SECS, TIME_MSECS);
-
-    ts1 = ts2;
-
-    // eard_power_monitoring() -> update_historic_info
-    // update_historic_info() -> current_sample.avg_f = (ulong) get_nm_cpufreq(&my_nm_id, nm);
-    // update_historic_info() -> if (powercap_elapsed_last_powercap() >= f_monitoring) powercap_set_power_per_domain(&pdomain,mpi,current_sample.avg_f);
-    // update_historic_info() -> current_sample.start_time = pmon_info->begin; (time())
-    // update_historic_info() -> current_sample.end_time   = pmon_info->end;
-    // update_historic_info() -> current_sample.DRAM_energy = rapl_dram * time_consumed;
-    // update_historic_info() -> current_sample.PCK_energy  = rapl_pck  * time_consumed;
-    // update_historic_info() -> #if USE_GPUS current_sample.GPU_energy = gpu_power * time_consumed; #endif
-    // update_historic_info() -> current_sample.DC_energy = corrected_power * time_consumed;
-    // update_historic_info() -> current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
-    // update_historic_info() -> if (current_sample.temp > my_node_conf->max_temp){
-    // update_historic_info() ->     syslog(LOG_DAEMON|LOG_ERR,"Node %s reports %lu degress (max %lu)\n",nodename,current_sample.temp,my_node_conf->max_temp);
-    // update_historic_info() ->     log_report_eard_rt_error(&rid, jid, sid, TEMP_ERROR, (llong) current_sample.temp);
-    // update_historic_info() -> }
-    // update_historic_info() -> if ((rapl_dram + rapl_pck) == 0) {
-    // update_historic_info() ->     log_report_eard_rt_error(&rid,jid,sid,RAPL_ERROR,0);
-    // update_historic_info() -> }
-    // update_historic_info() -> if ((current_sample.avg_f == 0) || ((current_sample.avg_f > frequency_get_nominal_freq()) && (mpi))){
-    // update_historic_info() ->     log_report_eard_rt_error(&rid, jid, sid, FREQ_ERROR, (llong) current_sample.avg_f);
-    // update_historic_info() -> }
-    // if (report) {
-    //     report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
-    //     last_power_reported      = corrected_power;
-    // }
+    if (strcmp(tag, "periodic-metrics") == 0) {
+        metrics_data_diff(&mr2, &mr1, &mrD);
+        // Fill the current sample
+        cs.start_time  = mr1.time.tv_sec;
+        cs.end_time    = mr2.time.tv_sec;
+        cs.avg_f       = mrD.cpu_avrg;
+        cs.temp        = mrD.tmp_avrg;
+        cs.DRAM_energy = mrD.pow_dram;
+        cs.PCK_energy  = mrD.pow_pack;
+        cs.DC_energy   = mrD.pow_pack;
+        #if SHOW_DEBUGS
+        periodic_metrict_print_channel(stderr, &cs);
+        #endif
+        // Copying mr2 data in mr1
+        metrics_data_copy(&mr1, &mr2);
+        // Reporting and alert-system
+        if (rid != NULL) {
+            if (nc != NULL && cs.temp > nc->max_temp) {
+                // log_report_eard_rt_error(&rid, jid, sid, TEMP_ERROR, (llong) cs.temp);
+            }
+            if ((cs.DRAM_energy + cs.PCK_energy) == 0) {
+                // log_report_eard_rt_error(&rid, jid, sid, RAPL_ERROR, 0);
+            }
+            if ((cs.avg_f == 0) || ((cs.avg_f > frequency_get_nominal_freq()) && (mpi))) {
+                // log_report_eard_rt_error(&rid, jid, sid, FREQ_ERROR, (llong) cs.avg_f);
+            }
+            report_periodic_metrics(rid, &cs, 1);
+        }
+    }
 }
 
 declr_up_post()
@@ -75,11 +89,16 @@ declr_up_post()
     if (strcmp(msg, "node_conf") == 0) {
         nc = (my_node_conf_t *) data;
     }
+    if (strcmp(msg, "report_id") == 0) {
+        rid = (report_id_t *) data;
+    }
     if (strcmp(msg, "new_job") == 0) {
         new_job_for_period(&cs, ((ulong *) data)[0], ((ulong *) data)[1]);
+        debug("'%s': posted with message '%s' jid '%lu.%lu'", self_tag, msg, cs.job_id, cs.step_id);
     }
     if (strcmp(msg, "end_job") == 0) {
         end_job_for_period(&cs);
+        debug("'%s': posted with message '%s' jid '%lu.%lu'", self_tag, msg, cs.job_id, cs.step_id);
     }
 }
 
