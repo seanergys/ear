@@ -354,6 +354,7 @@ int services_mgt_cpuprio(eard_head_t *head, int fd_req, int fd_ack)
         ret_s    = mgt_cpuprio_get_current_list((uint *) man->pri.list2);
         ret_data = (char *) man->pri.list2;
         ret_size = sizeof(uint) * man->pri.list2_count;
+        ret_size = sizeof(uint) * man->pri.devs_count;
     break;
     case RPC_MGT_PRIO_SET_CURRENT_LIST:
         if (state_fail(ret_s = eard_rpc_read_pending(fd_req, man->pri.list2, rpc_size, 0))) {

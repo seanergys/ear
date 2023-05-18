@@ -232,7 +232,9 @@ static uint GPU_metric_ready(signature_t *sig, uint g)
   switch(metric_to_optimize){
   case UTIL_W   :return 1;
 	case GFLOPS_W :
-  case FLOPS_W  :{
+  case FLOPS_W  :
+  case SM_OCC   :
+  {
   #if DCGMI
     sig_ext_t *sigex;
     dcgmi_sig_t *dcgmis;
@@ -253,7 +255,9 @@ static void GPU_metric_ready_update(signature_t *my_sig)
 {
   switch(metric_to_optimize){
   case UTIL_W   :return ;
-  case FLOPS_W  :{
+  case FLOPS_W  :
+  case SM_OCC   :
+  {
   #if DCGMI
     sig_ext_t *sigex;
     dcgmi_sig_t *dcgmis;
