@@ -29,6 +29,7 @@
 #include <metrics/cache/cache.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <metrics/energy/energy_node.h>
 #include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/temperature/temperature.h>
@@ -40,9 +41,10 @@ typedef struct metrics_info_s {
     apinfo_t cch; // cache
     apinfo_t flp; // flops
     apinfo_t tmp; // temp
-    apinfo_t pow; // power
+    apinfo_t pow; // energy_node
     apinfo_t cpi; // cpi
     apinfo_t gpu; // gpu
+    apinfo_t nod; // energy
 } metrics_info_t;
 
 typedef struct metrics_read_s {
@@ -56,6 +58,7 @@ typedef struct metrics_read_s {
     ullong     *pow;
     cpi_t       cpi;
 	gpu_t      *gpu;
+    char       *nod;
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
@@ -78,6 +81,7 @@ typedef struct metrics_diff_s {
     cpi_t        cpi_diff;
     double       cpi_avrg; // GPI
 	gpu_t       *gpu_diff;
+    ulong        nod_avrg; // Total node energy
 } metrics_diff_t;
 
 void metrics_init(metrics_info_t *m, topology_t *tp, int eard);

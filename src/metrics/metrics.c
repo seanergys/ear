@@ -17,20 +17,24 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <common/utils/stress.h>
 #include <common/utils/overhead.h>
 #include <common/output/verbose.h>
 #include <common/config/config_install.h>
 #include <metrics/metrics.h>
 
+#define nodepow(f, ...) energy_ ##f (__VA_ARGS__)
 #define cpupow(f, ...) energy_cpu_ ##f (__VA_ARGS__)
 
 static topology_t *self_tp;
+static ehandler_t  e_ctx;
 
 void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
 {
     self_tp = tp;
 
+    nodepow(load,getenv("NODEPOW_PLUGIN"));
     cpufreq_load(tp, eard);
     imcfreq_load(tp, eard);
      cpupow(load,tp, eard);
@@ -41,6 +45,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
         cpi_load(tp, eard);
         gpu_load(    eard);
 
+    nodepow(initialization, &e_ctx);
     cpufreq_init(no_ctx);
     imcfreq_init(no_ctx);
      cpupow(init,no_ctx);
@@ -108,21 +113,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
     apinfo_tostr(&m->gpu);
 }
 
-void metrics_read(metrics_read_t *mr)
-{
-    timestamp_getreal(&mr->time);
-
-    cpufreq_read(no_ctx,  mr->cpu);
-    imcfreq_read(no_ctx,  mr->imc);
-     cpupow(read,no_ctx,  mr->pow);
-     bwidth_read(no_ctx,  mr->ram);
-      cache_read(no_ctx, &mr->cch);
-      flops_read(no_ctx, &mr->flp);
-       temp_read(no_ctx,  mr->tmp, NULL);
-        cpi_read(no_ctx, &mr->cpi);
-        gpu_read(no_ctx,  mr->gpu);
-}
-
+// Auxiliars
 void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram)
 {
     int i;
@@ -136,12 +127,55 @@ void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram)
     *dram = *dram / self_tp->socket_count;
 }
 
+void nodepow_read(void *nod)
+{
+    nodepow(dc_read, &e_ctx, nod);
+    ulong *lunod = (ulong *) nod;
+    printf("POWR %lu %lu\n", lunod[0], lunod[1]);
+}
+
+void nodepow_data_diff(void *nod2, void *nod1, ulong *nodD)
+{
+    nodepow(accumulated, &e_ctx, nodD, nod1, nod2);
+    printf("POWD %lu\n", nodD[0]);
+}
+
+void nodepow_data_copy(void *nodD, void *nodS)
+{
+    memcpy(nodD, nodS, 8192);
+}
+
+void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
+{
+    nodepow_read(nod2);
+    nodepow_data_diff(nod2, nod1, nodD);
+    nodepow_data_copy(nod1, nod2);
+    //nodepow_read(nod1);
+}
+
+void metrics_read(metrics_read_t *mr)
+{
+    timestamp_getreal(&mr->time);
+
+    nodepow_read(         mr->nod);
+    cpufreq_read(no_ctx,  mr->cpu);
+    imcfreq_read(no_ctx,  mr->imc);
+     cpupow(read,no_ctx,  mr->pow);
+     bwidth_read(no_ctx,  mr->ram);
+      cache_read(no_ctx, &mr->cch);
+      flops_read(no_ctx, &mr->flp);
+       temp_read(no_ctx,  mr->tmp, NULL);
+        cpi_read(no_ctx, &mr->cpi);
+        gpu_read(no_ctx,  mr->gpu);
+}
+
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
 {
     timestamp_getreal(&mr2->time);
 	mrD->time = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
     mr1->time = mr2->time; // Copying time2 in time1.
 
+    nodepow_read_copy(         mr2->nod,  mr1->nod,                       &mrD->nod_avrg);
     cpufreq_read_copy(no_ctx,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
     imcfreq_read_copy(no_ctx,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg);
      cpupow(read_copy,no_ctx,  mr2->pow,  mr1->pow,        mrD->pow_diff                );
@@ -158,6 +192,7 @@ void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD)
 {
     if (mr1) {
+        mr1->nod = calloc(8192, sizeof(char));
         cpufreq_data_alloc(&mr1->cpu, empty);
         imcfreq_data_alloc(&mr1->imc, empty);
          cpupow(data_alloc, no_ctx, &mr1->pow, NULL);
@@ -166,6 +201,7 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
             gpu_data_alloc(&mr1->gpu);
     }
     if (mr2) {
+        mr2->nod = calloc(8192, sizeof(char));
         cpufreq_data_alloc(&mr2->cpu, empty);
         imcfreq_data_alloc(&mr2->imc, empty);
          cpupow(data_alloc, no_ctx, &mr2->pow, NULL);
@@ -187,6 +223,7 @@ void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
 {
     mrD->time = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
 
+    nodepow_data_diff( mr2->nod,  mr1->nod,                       &mrD->nod_avrg);
     cpufreq_data_diff( mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
     imcfreq_data_diff( mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg);
      cpupow(data_diff, no_ctx, mr1->pow, mr2->pow, mrD->pow_diff);
@@ -204,6 +241,7 @@ void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
 {
     mrD->time = mrS->time;
 
+    nodepow_data_copy( mrD->nod,  mrS->nod);
     cpufreq_data_copy( mrD->cpu,  mrS->cpu);
     imcfreq_data_copy( mrD->imc,  mrS->imc);
      bwidth_data_copy( mrD->ram,  mrS->ram);
@@ -261,7 +299,7 @@ static state_t metrics_apis_init(void *whatever)
     wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &id_ram, "bandwidth");
     wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &id_tmp, "temperature");
     wprintf_divide(&ss, (int[]) { 45,   2}, (int[]) { 46,  39}, &id_pow, "cpupow"   );
-    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 4, 118}, &id_gpu, "gpu"      );
+    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 4,  118}, &id_gpu, "gpu"      );
     wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &id_log, "ear-logo" );
     wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 18, 177}, &id_api, "api-table");
     wprintf_divide(&ss, (int[]) { 20, 154}, (int[]) { 35, 177}, &id_tpo, "topology" );

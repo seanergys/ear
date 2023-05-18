@@ -30,9 +30,8 @@ static metrics_diff_t     mrD;
 static cchar             *self_tag = "periodic-metrics";
 // Reporting things
 static report_id_t       *rid;
-static ulong              jid;
-static ulong              sid;
 static ulong              mpi;
+static ullong             nominal_khz = 5000000;
 
 declr_up_get_tag ()
 {
@@ -48,7 +47,6 @@ declr_up_init()
 declr_up_callback()
 {
     mets_t *mets = (mets_t *) data;
-
     debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
     if (strcmp(tag, "metrics") == 0) {
         metrics_data_copy(&mr2, &mets->mr);
@@ -62,25 +60,33 @@ declr_up_callback()
         cs.temp        = mrD.tmp_avrg;
         cs.DRAM_energy = mrD.pow_dram;
         cs.PCK_energy  = mrD.pow_pack;
-        cs.DC_energy   = mrD.pow_pack;
+        cs.DC_energy   = mrD.nod_avrg;
+        // Corrections
+#if 0
+        if (nc != NULL && cs.DC_energy > nc->max_error_power){
+            cs.DC_energy = nc->max_sig_power;
+        }
+#endif
         #if SHOW_DEBUGS
         periodic_metrict_print_channel(stderr, &cs);
         #endif
         // Copying mr2 data in mr1
         metrics_data_copy(&mr1, &mr2);
         // Reporting and alert-system
+#if 0
         if (rid != NULL) {
             if (nc != NULL && cs.temp > nc->max_temp) {
-                // log_report_eard_rt_error(&rid, jid, sid, TEMP_ERROR, (llong) cs.temp);
+                // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, TEMP_ERROR, (llong) cs.temp);
             }
             if ((cs.DRAM_energy + cs.PCK_energy) == 0) {
-                // log_report_eard_rt_error(&rid, jid, sid, RAPL_ERROR, 0);
+                // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, RA<PL_ERROR, 0);
             }
-            if ((cs.avg_f == 0) || ((cs.avg_f > frequency_get_nominal_freq()) && (mpi))) {
-                // log_report_eard_rt_error(&rid, jid, sid, FREQ_ERROR, (llong) cs.avg_f);
+            if ((cs.avg_f == 0) || ((cs.avg_f > nominal_khz) && (mpi))) {
+                // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, FREQ_ERROR, (llong) cs.avg_f);
             }
             report_periodic_metrics(rid, &cs, 1);
         }
+#endif
     }
 }
 
