@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -33,31 +33,44 @@
 #else
 #define ZE_PATH          ONEAPI_BASE
 #endif
-#define ZE_N             17
+#define ZE_N             27
 #define ZE_LIB           "libze_loader.so"
 
 static const char *ze_names[] = {
+    // Core
     "zeInit",
     "zeDriverGet",
-    "zeDeviceGet",
-    "zeDeviceGetProperties",
-    "zesDeviceEnumPowerDomains",
-    "zesPowerGetEnergyCounter",
-    "zesDeviceEnumFrequencyDomains",
-    "zesFrequencyGetProperties",
-    "zesFrequencyGetState",
-    "zesDeviceEnumEngineGroups",
-    "zesEngineGetProperties",
-    "zesEngineGetActivity",
     "zeDriverGetApiVersion",
     "zeDriverGetProperties",
     "zeDriverGetExtensionProperties",
-    "zeDeviceGetMemoryProperties",
+    "zeDeviceGet",
+    "zeDeviceGetProperties",
     "zeDeviceGetSubDevices",
+    "zeDeviceGetMemoryProperties",
+    // Sysman
+    "zesDeviceGetProperties",
+    "zesDeviceEnumPowerDomains",
+    "zesPowerGetProperties",
+    "zesPowerGetLimits",
+    "zesPowerSetLimits",
+    "zesPowerGetEnergyCounter",
+    "zesDeviceEnumEngineGroups",
+    "zesEngineGetProperties",
+    "zesEngineGetActivity",
+    "zesDeviceEnumFrequencyDomains",
+    "zesFrequencyGetProperties",
+    "zesFrequencyGetState",
+    "zesFrequencyGetAvailableClocks",
+    "zesFrequencyGetRange",
+    "zesFrequencySetRange",
+    "zesDeviceEnumTemperatureSensors",
+    "zesTemperatureGetProperties",
+    "zesTemperatureGetState",
 };
 
 static pthread_mutex_t      lock = PTHREAD_MUTEX_INITIALIZER;
-static zes_device_handle_t *devs;
+static ze_device_handle_t  *cdevs; // Core devices
+static zes_device_handle_t *sdevs; // Sysman devices
 static uint                 devs_count;
 static ze_t                 ze;
 static uint                 ok;
@@ -106,12 +119,9 @@ static state_t print_driver_info(ze_driver_handle_t driver, int dr)
 		if ((z = function) != ZE_RESULT_SUCCESS) { \
 			debug("Failed " #function " with error 0x%x", z); \
 			return EAR_ERROR; \
-		}
-    #if 0
-    } else {
+		} else { \
 		debug("Succeded " #function); \
 	}
-    #endif
 
     // Driver info
     ret_fail(ze.DriverGetProperties(driver, &props));
@@ -142,7 +152,7 @@ static state_t print_device_info(ze_device_handle_t device, int dv)
     ret_fail(ze.DeviceGetMemoryProperties(device, &mem_count, mem));
     ret_fail(ze.DeviceGetSubDevices(device, &sub_count, NULL));
 
-    debug("DEVICE%d name: %s %s (id %s.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
+    debug("DEVICE%d name: %s %s (id 0x%x.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
           props.name, props.vendorId, props.deviceId);
     debug("DEVICE%d performance: %u MHz@%lu MB allocatable", dv,
           props.coreClockRate, props.maxMemAllocSize / 1000000LU);
@@ -159,9 +169,9 @@ static state_t static_init()
 {
     ze_device_properties_t props;
     ze_driver_handle_t    *drivers;
-    ze_device_handle_t    *predevs;
+    ze_device_handle_t    *adevs; // Auxiliar devs
     uint                   drivers_count = 0;
-    uint                   predevs_count = 0;
+    uint                   adevs_count = 0;
     ze_result_t            z;
     int                    dr;
     int                    dv;
@@ -173,32 +183,38 @@ static state_t static_init()
     ret_fail(ze.DriverGet(&drivers_count, NULL));
     drivers = calloc(drivers_count, sizeof(ze_driver_handle_t));
     ret_fail(ze.DriverGet(&drivers_count, drivers));
+    debug("#drivers %u", drivers_count);
 
     for (dr = 0; dr < drivers_count; ++dr) {
         // Printing driver information
         print_driver_info(drivers[dr], dr);
 
         // Discovering all devices
-        ret_fail(ze.DeviceGet(drivers[dr], &predevs_count, NULL));
-        predevs = calloc(predevs_count, sizeof(ze_device_handle_t));
-           devs = calloc(predevs_count, sizeof(ze_device_handle_t));
-        ret_fail(ze.DeviceGet(drivers[dr], &predevs_count, predevs));
+        ret_fail(ze.DeviceGet(drivers[dr], &adevs_count, NULL));
+        adevs = calloc(adevs_count, sizeof(ze_device_handle_t));
+        cdevs = calloc(adevs_count, sizeof(ze_device_handle_t));
+        ret_fail(ze.DeviceGet(drivers[dr], &adevs_count, adevs));
+        debug("#devices %u", adevs_count);
 
         // Getting all sysmans
-        for (dv = 0; dv < predevs_count; ++dv) {
-            // Printing device information
-            print_device_info(predevs[dv], dv);
+        for (dv = 0; dv < adevs_count; ++dv) {
+            ret_fail(ze.DeviceGetProperties(adevs[dv], &props));
+            debug("DEVICE%d name: %s %s (id 0x%x.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
+                  props.name, props.vendorId, props.deviceId);
 
-            ret_fail(ze.DeviceGetProperties(predevs[dv], &props));
+            // Printing device information
+            //print_device_info(adevs[dv], dv);
+
             // If not a GPU
             if(ZE_DEVICE_TYPE_GPU != props.type) {
                 continue;
             }
             // Ok, its a GPU
-            devs[devs_count] = predevs[dv];
+            cdevs[devs_count] = adevs[dv];
             devs_count++;
         }
-        free(predevs);
+        sdevs = (ze_device_handle_t *) cdevs;
+        free(adevs);
     }
     free(drivers);
 
@@ -237,11 +253,11 @@ state_t oneapi_close()
     return EAR_SUCCESS;
 }
 
-state_t oneapi_get_devices(zes_device_handle_t **devs_in, uint *devs_count_in)
+state_t oneapi_get_devices(ze_device_handle_t **cdevs_in, uint *devs_count_in)
 {
-    if (devs != NULL) {
-        *devs_in = malloc(sizeof(zes_device_handle_t)*devs_count);
-        memcpy(*devs_in, devs, sizeof(zes_device_handle_t)*devs_count);
+    if (cdevs != NULL) {
+        *cdevs_in = malloc(sizeof(ze_device_handle_t) * devs_count);
+        memcpy(*cdevs_in, cdevs, sizeof(ze_device_handle_t) * devs_count);
     }
     if (devs_count_in != NULL) {
         *devs_count_in = devs_count;
@@ -257,3 +273,12 @@ int oneapi_is_privileged()
     // Provisional
     return (getuid() == 0);
 }
+
+#if 0
+int main(int argc, char *argv[])
+{
+    oneapi_open(&ze);
+    sleep(100);
+    return 0;
+}
+#endif
