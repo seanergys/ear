@@ -86,6 +86,7 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
     // Get available priorities
     mgt_cpuprio_data_alloc((cpuprio_t **) &m.pri.list1, (uint **) &m.pri.list2);
     mgt_cpuprio_get_available_list(m.pri.list1);
+    mgt_cpuprio_get_current_list((uint *) m.pri.list2);
 
     // Get current TDPs
     mgt_cpupow_data_alloc(CPUPOW_SOCKET, (uint **) &m.pow.list1              );

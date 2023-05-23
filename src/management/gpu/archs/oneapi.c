@@ -28,12 +28,37 @@
 static zes_device_handle_t *devs;
 static uint			        devs_count;
 static ze_t                 ze;
+static zes_freq_handle_t    freq_handle;
+
+static state_t get_freq_handle(int dv, gpu_t *data)
+{
+    zes_freq_handle_t     domains[4]; // Its enough
+    uint                  domains_count;
+    zes_freq_properties_t props;
+    zes_freq_state_t      info;
+    uint                  d;
+    ze_result_t           z;
+
+    // Retrieving the domains
+    ret_fail(ze.sDeviceEnumFrequencyDomains(devs[dv], &domains_count, domains));
+    debug("#ZES_FREQ_DOMAINS: %u", domains_count);
+    for (d = 0; d < domains_count; ++d) {
+        ret_fail(ze.sFrequencyGetProperties(domains[d], &props));
+        ret_fail(ze.sFrequencyGetState(domains[d], &info));
+        if (props.type == ZES_FREQ_DOMAIN_GPU) {
+            debug("ZES_FREQ_DOMAIN_GPU: %lf", info.actual);
+            data->freq_gpu = (ulong) info.actual; // MHz
+        }
+        if (props.type == ZES_FREQ_DOMAIN_MEMORY) {
+            debug("ZES_FREQ_DOMAIN_MEMORY: %lf", info.actual);
+            data->freq_mem = (ulong) info.actual; // MHz
+        }
+    }
+    return EAR_SUCCESS;
+}
 
 void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
 {
-    #if 1
-    return;
-    #endif
     if (state_fail(oneapi_open(&ze))) {
         debug("oneapi_open failed: %s", state_msg);
         return;
@@ -42,6 +67,9 @@ void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
         debug("oneapi_get_devices failed: %s", state_msg);
         return;
     }
+    // Get static values
+
+
     // Set always
     apis_set(ops->init                  , mgt_gpu_oneapi_init);
     apis_set(ops->dispose               , mgt_gpu_oneapi_dispose);

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdio.h>
@@ -50,7 +50,7 @@ void gpu_oneapi_load(gpu_ops_t *ops)
         debug("oneapi_open failed: %s", state_msg);
         return;
     }
-    if (state_fail(oneapi_get_devices(&devs, &devs_count))) {
+    if (state_fail(oneapi_get_devices((ze_device_handle_t **) &devs, &devs_count))) {
         debug("oneapi_get_devices failed: %s", state_msg);
         return;
     }
@@ -103,46 +103,54 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
 {
 	zes_pwr_handle_t           domains[4]; // Its enough
 	uint                       domains_count = 4;
-	//zes_power_properties_t     props;
+	zes_power_properties_t     props;
 	zes_power_energy_counter_t info;
-	uint                       ma;
+	uint                       d;
 	ze_result_t                z;
 
 	// Retrieving the domains
 	ret_fail(ze.sDeviceEnumPowerDomains(devs[dv], &domains_count, domains));
-	
-	for (ma = 0; ma < domains_count; ++ma) {
-		ret_fail(ze.sPowerGetEnergyCounter(domains[ma], &info));
+    debug("#ZES_POWER_DOMAINS: %u", domains_count);
+	for (d = 0; d < domains_count; ++d) {
+        ret_fail(ze.sPowerGetProperties(domains[d], &props));
+		ret_fail(ze.sPowerGetEnergyCounter(domains[d], &info));
+        debug("ZES_POWER_DOMAIN: %lu mJ, %lu us", info.energy, info.timestamp)
 		// It has to be tested.
 		data->energy_j = ((double) info.energy) / 1000000.0;
 	}
+    ret_fail(ze.sDeviceGetCardPowerDomain(devs[dv], &domains[0]));
+    ret_fail(ze.sPowerGetEnergyCounter(domains[0], &info));
+    debug("ZES_CARD_POWER_DOMAIN: %lu mJ, %lu us", info.energy, info.timestamp)
 
 	return EAR_SUCCESS;
 }
 
 static state_t oneapi_read_utilization(int dv, gpu_t *data)
 {
-	zes_engine_handle_t     domains[4]; // Its enough
-	uint                    domains_count = 4;
+	zes_engine_handle_t     groups[4]; // Its enough
+	uint                    groups_count = 4;
 	zes_engine_properties_t props;
 	zes_engine_stats_t      info;
-	uint                    ma;
+	uint                    g;
 	ze_result_t             z;
 
-	// Retrieving the domains
-	ret_fail(ze.sDeviceEnumEngineGroups(devs[dv], &domains_count, domains));
-	
-	for (ma = 0; ma < domains_count; ++ma) {
-		// Getting domain characteristics
-		ret_fail(ze.sEngineGetProperties(domains[ma], &props));
-		// Maybe ZES_ENGINE_GROUP_COMPUTE_ALL?
+	// Retrieving the groups
+	ret_fail(ze.sDeviceEnumEngineGroups(devs[dv], &groups_count, groups));
+    debug("#ZES_ENGINE_GROUPS: %u", groups_count);
+
+	for (g = 0; g < groups_count; ++g) {
+		ret_fail(ze.sEngineGetProperties(groups[g], &props));
+        ret_fail(ze.sEngineGetActivity(groups[g], &info));
+        if (props.type == ZES_ENGINE_GROUP_COMPUTE_ALL) {
+            debug("ZES_ENGINE_GROUP_COMPUTE_ALL: %lu:%lu", info.activeTime, info.timestamp);
+        }
 		if (props.type == ZES_ENGINE_GROUP_ALL) {
-			ret_fail(ze.sEngineGetActivity(domains[ma], &info));
+			ret_fail(ze.sEngineGetActivity(groups[g], &info));
+            debug("ZES_ENGINE_GROUP_ALL: %lu:%lu", info.activeTime, info.timestamp);
 			// Utilization here, it has to be tested
-			data->util_gpu = (ulong) (info.activeTime); // In microseconds
+			data->util_gpu = (ulong) (info.activeTime / info.timestamp); // In microseconds
 		}
 	}
-
 	return EAR_SUCCESS;
 }
 
@@ -152,32 +160,50 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
 	uint                  domains_count;
 	zes_freq_properties_t props;
 	zes_freq_state_t      info;
-	uint                  ma;
+	uint                  d;
 	ze_result_t           z;
 
 	// Retrieving the domains
 	ret_fail(ze.sDeviceEnumFrequencyDomains(devs[dv], &domains_count, domains));
-	for (ma = 0; ma < domains_count; ++ma) {
-		// Getting domain characteristics
-		ret_fail(ze.sFrequencyGetProperties(domains[ma], &props));
-		//
-		ret_fail(ze.sFrequencyGetState(domains[ma], &info));
-		// If is not GPU is MEMORY and we need both
+    debug("#ZES_FREQ_DOMAINS: %u", domains_count);
+	for (d = 0; d < domains_count; ++d) {
+		ret_fail(ze.sFrequencyGetProperties(domains[d], &props));
+		ret_fail(ze.sFrequencyGetState(domains[d], &info));
 		if (props.type == ZES_FREQ_DOMAIN_GPU) {
+            debug("ZES_FREQ_DOMAIN_GPU: %lf", info.actual);
 			data->freq_gpu = (ulong) info.actual; // MHz
 		}
 		if (props.type == ZES_FREQ_DOMAIN_MEMORY) {
+            debug("ZES_FREQ_DOMAIN_MEMORY: %lf", info.actual);
 			data->freq_mem = (ulong) info.actual; // MHz
 		}
 	}
-
 	return EAR_SUCCESS;
 }
 
 static state_t oneapi_read_temperature(int dv, gpu_t *data)
 {
-	//zes_temp_handle_t domains[6]; // Its enough
-	// Future.
+    zes_temp_handle_t     sensors[6]; // Its enough
+    uint                  sensors_count = 0;
+    zes_temp_properties_t config;
+    double                temp;
+    uint                  s;
+    ze_result_t           z;
+
+    ret_fail(ze.sDeviceEnumTemperatureSensors(devs[dv], &sensors_count, sensors));
+    debug("#ZES_TEMP_SENSORS: %u", sensors_count);
+    for (s = 0; s < sensors_count; ++s) {
+        ret_fail(ze.sTemperatureGetProperties(sensors[s], &config));
+        ret_fail(ze.sTemperatureGetState(sensors[s], &temp));
+        if (config.type != ZES_TEMP_SENSORS_GPU) {
+            debug("ZES_TEMP_SENSORS_GPU: %lf", temp);
+            data->temp_gpu = (ulong) temp;
+        }
+        if (config.type != ZES_TEMP_SENSORS_MEMORY) {
+            debug("ZES_TEMP_SENSORS_MEMORY: %lf", temp);
+            data->temp_mem = (ulong) temp;
+        }
+    }
     return EAR_SUCCESS;
 }
 
@@ -219,11 +245,11 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].working   = current.working;
 		pool[dv].correct   = current.correct;
 		
-		debug("dev | metric   | value");
-		debug("--- | -------- | -----");
-		debug("%d   | freq     | %lu MHz", dv, current.freq_gpu);
+		debug("dev | metric   | value    ");
+		debug("--- | -------- | -----    ");
+		debug("%d   | freq     | %lu MHz ", dv, current.freq_gpu);
 		debug("%d   | energy   | %0.2lf J", dv, current.energy_j);
-		debug("%d   | util     | %lu %%", dv, current.util_gpu);
+		debug("%d   | util     | %lu %%  ", dv, current.util_gpu);
 	}
 	// Copying time
 	pool_time1 = pool_time2;
@@ -243,6 +269,6 @@ state_t gpu_oneapi_read(ctx_t *c, gpu_t *data)
 
 state_t gpu_oneapi_read_raw(ctx_t *c, gpu_t *data)
 {
-	// First it requires tests
+    gpu_oneapi_pool(NULL);
 	return EAR_SUCCESS;
 }

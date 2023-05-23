@@ -32,9 +32,6 @@ declr_up_get_tag()
 
 declr_up_init()
 {
-    topology_init(&tp);
-    metrics_init(&m.mi, &tp, NO_EARD);
-    metrics_data_alloc(&m.mr, NULL, NULL);
 }
 
 declr_up_callback()

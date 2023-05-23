@@ -49,8 +49,8 @@
 // Universal Plugin function declarations
 #define declr_up_get_tag()    void    up_get_tag    (cchar **tag)
 #define declr_up_init()       state_t up_init       ()
-#define declr_up_callback()   void    up_callback   (cchar *tag, void *data)
-#define declr_up_post()       void    up_post       (cchar *msg, void *data)
+#define declr_up_callback()   void    up_callback   (cchar *tag, void *data) //periodic_action
+#define declr_up_post()       void    up_post       (cchar *msg, void *data) //post_data
 #define declr_up_data_alloc() void    up_data_alloc (void **data)
 #define declr_up_data_tostr() char   *up_data_tostr ()
 

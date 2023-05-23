@@ -131,13 +131,11 @@ void nodepow_read(void *nod)
 {
     nodepow(dc_read, &e_ctx, nod);
     ulong *lunod = (ulong *) nod;
-    printf("POWR %lu %lu\n", lunod[0], lunod[1]);
 }
 
 void nodepow_data_diff(void *nod2, void *nod1, ulong *nodD)
 {
     nodepow(accumulated, &e_ctx, nodD, nod1, nod2);
-    printf("POWD %lu\n", nodD[0]);
 }
 
 void nodepow_data_copy(void *nodD, void *nodS)
@@ -356,7 +354,7 @@ static state_t metrics_apis_update(void *whatever)
     wsprintf(&ss, id_ram, 0, 1,  bwidth_data_tostr(mrD.ram_diff,  mrD.ram_avrg, b, sizeof(b)));
     wsprintf(&ss, id_tmp, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
     wsprintf(&ss, id_gpu, 0, 1,     gpu_data_tostr(mrD.gpu_diff,                b, sizeof(b)));
-    wprintf(&ss);
+//    wprintf(&ss);
 
     return EAR_SUCCESS;
 }

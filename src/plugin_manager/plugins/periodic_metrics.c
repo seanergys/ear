@@ -61,7 +61,7 @@ declr_up_callback()
         cs.DRAM_energy = mrD.pow_dram;
         cs.PCK_energy  = mrD.pow_pack;
         cs.DC_energy   = mrD.nod_avrg;
-        // Corrections
+        // Corrections SNMP+PDU
 #if 0
         if (nc != NULL && cs.DC_energy > nc->max_error_power){
             cs.DC_energy = nc->max_sig_power;
@@ -84,7 +84,7 @@ declr_up_callback()
             if ((cs.avg_f == 0) || ((cs.avg_f > nominal_khz) && (mpi))) {
                 // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, FREQ_ERROR, (llong) cs.avg_f);
             }
-            report_periodic_metrics(rid, &cs, 1);
+            report_periodic_metrics(rid, &cs, 1); // Un plugin de report que haga un print para probar
         }
 #endif
     }

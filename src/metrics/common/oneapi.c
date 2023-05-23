@@ -33,7 +33,7 @@
 #else
 #define ZE_PATH          ONEAPI_BASE
 #endif
-#define ZE_N             27
+#define ZE_N             28
 #define ZE_LIB           "libze_loader.so"
 
 static const char *ze_names[] = {
@@ -50,6 +50,7 @@ static const char *ze_names[] = {
     // Sysman
     "zesDeviceGetProperties",
     "zesDeviceEnumPowerDomains",
+    "zesDeviceGetCardPowerDomain",
     "zesPowerGetProperties",
     "zesPowerGetLimits",
     "zesPowerSetLimits",
@@ -99,13 +100,6 @@ static state_t static_open()
     return_msg(EAR_ERROR, "Can not load ");
 }
 
-#if 0
-static state_t static_free(state_t s, char *error)
-{
-    return_msg(s, error);
-}
-#endif
-
 static state_t print_driver_info(ze_driver_handle_t driver, int dr)
 {
     ze_driver_extension_properties_t ext[1024];
@@ -113,7 +107,6 @@ static state_t print_driver_info(ze_driver_handle_t driver, int dr)
     ze_driver_properties_t           props;
     ze_api_version_t                 version;
     ze_result_t                      z;
-    //uint                             i;
 
     #define ret_fail(function) \
 		if ((z = function) != ZE_RESULT_SUCCESS) { \
@@ -129,8 +122,9 @@ static state_t print_driver_info(ze_driver_handle_t driver, int dr)
     ret_fail(ze.DriverGetExtensionProperties(driver, &ext_count, ext));
 
     debug("DRIVER%d version: %d (API %d) ", dr, props.driverVersion, version);
-    // Too much info
 #if 0
+    uint i;
+    // Too much info
     for (i = 0; i < ext_count; ++i) {
 		debug("DRIVER%d extension: %s v%d", dr, ext[i].name, ext[i].version);
 	}
@@ -141,9 +135,10 @@ static state_t print_driver_info(ze_driver_handle_t driver, int dr)
 
 static state_t print_device_info(ze_device_handle_t device, int dv)
 {
-    ze_device_memory_properties_t mem[32];
-    uint                          mem_count = 32;
+    ze_device_memory_properties_t mem[1024];
+    uint                          mem_count = 1024;
     uint                          sub_count = 0;
+    uint                          uuid_length;
     ze_device_properties_t        props;
     ze_result_t                   z;
     int                           i;
@@ -151,16 +146,22 @@ static state_t print_device_info(ze_device_handle_t device, int dv)
     ret_fail(ze.DeviceGetProperties(device, &props));
     ret_fail(ze.DeviceGetMemoryProperties(device, &mem_count, mem));
     ret_fail(ze.DeviceGetSubDevices(device, &sub_count, NULL));
-
-    debug("DEVICE%d name: %s %s (id 0x%x.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
-          props.name, props.vendorId, props.deviceId);
-    debug("DEVICE%d performance: %u MHz@%lu MB allocatable", dv,
-          props.coreClockRate, props.maxMemAllocSize / 1000000LU);
-    debug("DEVICE%d sub-devices: %u", dv, sub_count);
-    for (i = 0; i < mem_count; ++i) {
-        debug("DEVICE%d MEM%d: %s, %u MHz, %u bus width, %lu total MB", dv, i,
-              mem[i].name, mem[i].maxClockRate, mem[i].maxBusWidth, mem[i].totalSize / 1000000LU);
+    // If serial doesn't exists, then we are building it.
+    if (!(uuid_length = strnlen(props.uuid.id, ZE_MAX_DEVICE_UUID_SIZE))) {
+        sprintf(props.uuid.id, "%u", 1337+dv);
     }
+    // Printing information
+    debug("-- DEVICE%d ----------------------------", dv);
+    debug("%s %s (0x%x.0x%x)", ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
+          props.name, props.vendorId, props.deviceId);
+    debug("serial '%s'", props.uuid.id);
+    debug("@%u MHz, max %lu MB allocatable", props.coreClockRate, props.maxMemAllocSize / 1000000LU);
+    for (i = 0; i < mem_count; ++i) {
+        debug("%s total %lu MB, %u bus width (%u MHz)",
+              mem[i].name, mem[i].totalSize / 1000000LU, mem[i].maxBusWidth, mem[i].maxClockRate);
+    }
+    debug("sub-devices: %u", sub_count);
+    debug("----------------------------------------");
 
     return EAR_SUCCESS;
 }
@@ -175,8 +176,9 @@ static state_t static_init()
     ze_result_t            z;
     int                    dr;
     int                    dv;
-    //state_t                s;
 
+    // Enabling SYSMAN
+    setenv("ZES_ENABLE_SYSMAN", "1", 1);
     // This functions is protected from above. Lock is not required.
     ret_fail(ze.Init(0));
     // Discovering all drivers
@@ -198,13 +200,10 @@ static state_t static_init()
 
         // Getting all sysmans
         for (dv = 0; dv < adevs_count; ++dv) {
-            ret_fail(ze.DeviceGetProperties(adevs[dv], &props));
-            debug("DEVICE%d name: %s %s (id 0x%x.0x%x)", dv, ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"),
-                  props.name, props.vendorId, props.deviceId);
-
             // Printing device information
-            //print_device_info(adevs[dv], dv);
-
+            print_device_info(adevs[dv], dv);
+            // Getting properties to see if is a GPU device
+            ret_fail(ze.DeviceGetProperties(adevs[dv], &props));
             // If not a GPU
             if(ZE_DEVICE_TYPE_GPU != props.type) {
                 continue;
@@ -273,12 +272,3 @@ int oneapi_is_privileged()
     // Provisional
     return (getuid() == 0);
 }
-
-#if 0
-int main(int argc, char *argv[])
-{
-    oneapi_open(&ze);
-    sleep(100);
-    return 0;
-}
-#endif

@@ -78,6 +78,13 @@ typedef int       zes_temp_handle_t;
 typedef int       zes_temp_properties_t;
 #endif
 
+typedef struct ze_devices_s {
+    ze_driver_handle_t  driver;
+    ze_device_handle_t  handle;
+    zes_device_handle_t shandle;
+    ullong              serial;
+} ze_devices_t;
+
 typedef struct ze_s {
     // Core
     ze_result_t (*Init)                    (ze_init_flags_t flags);
@@ -92,6 +99,7 @@ typedef struct ze_s {
     // Sysman
     ze_result_t (*sDeviceGetProperties)    (zes_device_handle_t h, zes_device_properties_t *p);
     ze_result_t (*sDeviceEnumPowerDomains) (zes_device_handle_t h, uint *n, zes_pwr_handle_t *ph);
+    ze_result_t (*sDeviceGetCardPowerDomain) (zes_device_handle_t h, zes_pwr_handle_t *ph);
     ze_result_t (*sPowerGetProperties)     (zes_pwr_handle_t h, zes_power_properties_t *p); // Get min/max power limits
     ze_result_t (*sPowerGetLimits)         (zes_pwr_handle_t h, zes_power_sustained_limit_t *ps, zes_power_burst_limit_t *pb, zes_power_peak_limit_t *pp); // Get current sustained limit
     ze_result_t (*sPowerSetLimits)         (zes_pwr_handle_t h, const zes_power_sustained_limit_t *ps, const zes_power_burst_limit_t *pb, const zes_power_peak_limit_t *pp); // Set current sustained limit
@@ -105,9 +113,9 @@ typedef struct ze_s {
     ze_result_t (*sFrequencyGetAvailableClocks) (zes_freq_handle_t h, uint32_t *count, double *f); // Get available frequency
     ze_result_t (*sFrequencyGetRange)      (zes_freq_handle_t h, zes_freq_range_t *l); // Get the current min/max frequency limits
     ze_result_t (*sFrequencySetRange)      (zes_freq_handle_t h, const zes_freq_range_t *l); // Set the current min/max frequency limits
-    ze_result_t (*zesDeviceEnumTemperatureSensors) (zes_device_handle_t h, uint32_t *count, zes_temp_handle_t *th);
-    ze_result_t (*zesTemperatureGetProperties) (zes_temp_handle_t h, zes_temp_properties_t *p);
-    ze_result_t (*zesTemperatureGetState)  (zes_temp_handle_t h, double *t);
+    ze_result_t (*sDeviceEnumTemperatureSensors) (zes_device_handle_t h, uint32_t *count, zes_temp_handle_t *th);
+    ze_result_t (*sTemperatureGetProperties) (zes_temp_handle_t h, zes_temp_properties_t *p);
+    ze_result_t (*sTemperatureGetState)  (zes_temp_handle_t h, double *t);
 } ze_t;
 
 state_t oneapi_open(ze_t *ze);
