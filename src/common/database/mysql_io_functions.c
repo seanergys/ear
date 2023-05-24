@@ -941,7 +941,6 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
         sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
-        printf("SELECT * FROM Signatures WHERE id=%lld\n", sig_id);
         ret = mysql_retrieve_signatures(connection, sig_query, &sig_aux);
 
         if (ret > 0 && sig_aux != NULL) { //to prevent it from crashing
