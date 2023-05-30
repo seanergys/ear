@@ -284,6 +284,8 @@ state_t gpu_activity_state(signature_t *sig, gpu_state_t *gpu_state)
 {
 #if USE_GPUS
     int total = 0;
+    *gpu_state = _GPU_NoGPU;
+    if (sig->gpu_sig.num_gpus == 0) return EAR_SUCCESS;
     if (!is_cuda_enabled()) {
         /* One of the following cases:
          * - Node does not have GPUs

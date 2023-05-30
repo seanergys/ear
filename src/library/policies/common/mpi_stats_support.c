@@ -74,7 +74,7 @@
 #define MPI_STATS_VERB_LVL INFO_LVL
 #define VAR_DEPRECATED     WARN_LVL - 1 // It's a warning, but more prioritary
 
-#define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
+#define PER_MPI_CALL_STATS 0 // This macro enables the stats computation on each MPI call.
                              // You can disable it for overhead testing.
 
 #define MPI_STATS          1 // This macro enables the collection of MPI statistics.
@@ -413,8 +413,10 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
         // Accumulate
         mpi_stats.exec_time += time_no_mpi;
 
+#if MPI_STATS
         // Update
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
+#endif
 
         in_mpi_call = 1;
 
@@ -482,13 +484,13 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         mpi_stats.exec_time += elap;
         mpi_stats.total_mpi_calls++;
 
+#if MPI_STATS
         sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
         debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
 
-#if MPI_STATS
         mpi_call nbcall_type;
 
         // Only collect stats for blocking calls
@@ -575,13 +577,14 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         }
 #endif // SHOW_DEBUGS
     }
-#endif // PER_MPI_CALL_STATS
 
 #if MPI_OPTIMIZED
     timestamp_getprecise(&start_no_mpi);
 #else
-    timestamp_getfast(&start_no_mpi);
+    // timestamp_getfast(&start_no_mpi);
+    start_no_mpi = end;
 #endif
+#endif // PER_MPI_CALL_STATS
 
     return EAR_SUCCESS;
 }

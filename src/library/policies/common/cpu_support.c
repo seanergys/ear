@@ -78,6 +78,49 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
     return EAR_SUCCESS;
 }
 
+float get_time_nominal(signature_t *my_app)
+{
+  float t = my_app->time;
+  if (my_app->def_f != frequency_get_nominal_freq()){
+    uint target = frequency_get_nominal_pstate();
+    uint curr   = frequency_closest_pstate(my_app->def_f);
+    project_time(my_app, curr, target, (double *)&t);
+  }
+  return t;
+}
+
+float get_power_nominal(signature_t *my_app)
+{
+  float p = my_app->DC_power;
+  if (my_app->def_f != frequency_get_nominal_freq()){
+    uint target = frequency_get_nominal_pstate();
+    uint curr   = frequency_closest_pstate(my_app->def_f);
+    project_power(my_app, curr, target, (double *)&p);
+  }
+  return p;
+}
+
+float get_time_projected(signature_t *my_app, ulong f)
+{
+  float t = my_app->time;
+  if (f != my_app->def_f){
+    uint curr   = frequency_closest_pstate(my_app->def_f);
+    uint target = frequency_closest_pstate(f);
+    project_time(my_app, curr, target, (double *)&t);
+  }
+  return t;
+}
+float get_power_projected(signature_t *my_app, ulong f)
+{
+  float p = my_app->DC_power;
+  if (f != my_app->def_f){
+    uint curr   = frequency_closest_pstate(my_app->def_f);
+    uint target = frequency_closest_pstate(f);
+    project_power(my_app, curr, target, (double *)&p);
+  }
+  return p;
+}
+
 state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq_ref, double time_ref, double power_ref,
         double penalty, ulong curr_pstate, ulong minp, ulong maxp, ulong *newf)
 {

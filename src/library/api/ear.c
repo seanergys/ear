@@ -359,7 +359,7 @@ void notify_eard_connection(int status)
 												}
                         int master_pid = getpid();
                         PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , masters_info.masters_comm );
-                        verbose(0,"PID for master is %d", master_pid);
+                        verbose(2,"PID for master is %d", master_pid);
 								}
 #else
 								masters_connected=1;
@@ -728,7 +728,7 @@ void attach_shared_regions()
 				}
 				/* Synchro: This value is set by the master */
 				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
-								usleep(10000);
+								usleep(100);
 								verbose(3,"%d:Waiting, current index %u", my_node_id, lib_shared_region->node_mgr_index);
 								if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
 									verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
@@ -1053,7 +1053,7 @@ static void read_hack_env()
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 
-//#define START_END_OVH 1
+#define START_END_OVH 1
 uint fake_force_shared_node = 0;
 void ear_init()
 {
@@ -1794,7 +1794,7 @@ void ear_init()
 				sigaction(SIGINT, &term_action, NULL);
 				sigaction(SIGSEGV, &term_action, NULL);
 
-
+        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
 				if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
@@ -1830,11 +1830,12 @@ void ear_init()
             verbose(TALP_INFO, "[%d] %s %s", my_node_id, err_msg, state_msg);
         }
 #endif // DLB
+      #endif // EAR_OFF
 
 #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
+        verbose_master(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
 #endif
 
 #if USE_GPUS
@@ -2003,7 +2004,7 @@ void ear_finalize(int exit_status)
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose(1,"Finalization cost: %llu useci dynais calls %lu", elap_eard_init, dynais_calls);
+        verbose_master(1,"Finalization cost: %llu useci dynais calls %lu", elap_eard_init, dynais_calls);
         #endif
         if (exit_status != EAR_SUCCESS) exit(exit_status);
 
@@ -2410,6 +2411,7 @@ state_t earl_periodic_actions_init(void *no_arg)
         mpi_calls_in_period = lib_period;
         if (!ear_whole_app) states_new_iteration(my_id, 1, ear_iterations, 1, 1,mpi_calls_in_period,0);
     }
+    pthread_setname_np(pthread_self(), "EARL_monitor");
 
     return EAR_SUCCESS;
 }

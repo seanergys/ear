@@ -76,6 +76,10 @@ extern report_id_t rep_id;
 
 extern sem_t *lib_shared_lock_sem;
 
+float time_policy_penalty = 0.0; 
+float power_policy_saving = 0.0;
+float energy_policy_saving = 0.0;
+
 
 #define REPORT_PHASE(phase) \
   if (report_earl_events){ \
@@ -371,6 +375,35 @@ state_t policy_load(char *obj_path, polsym_t *psyms)
     return st;	
 }
 #endif
+
+
+static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom)
+{
+  ulong *cpu_f = freqs->cpu_freq;
+  float tref, pref;
+  float tnext = 0, pnext = 0;
+  float renergy, nenergy;
+
+  uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
+
+  tref = get_time_nominal(ns);
+  pref = get_power_nominal(ns);
+  
+  for (uint p = 0; p < limit; p++){
+      tnext += get_time_projected(ns, cpu_f[p]);
+      pnext += get_power_projected(ns, cpu_f[p]);
+  }
+  tnext = tnext / limit;
+  pnext = pnext / limit;
+
+  renergy = tref  * pref;
+  nenergy = tnext * pnext;
+
+  energy_policy_saving = (renergy - nenergy)/renergy;
+  power_policy_saving = (pref - pnext)/pref;
+  time_policy_penalty = (tref - tnext)/tref;
+   
+}
 
 
 void fill_cpus_out_of_cgroup(uint exc)
@@ -1208,6 +1241,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
         /* CPU specific function is applied here */
         st = polsyms_fun.node_policy_apply(c, &node_sig, freqs, &cpu_ready);
 
+        if (cpu_ready) compute_policy_savings(&node_sig, freqs, &freqs_domain);
+
         /* Depending on the policy status and granularity we adapt the CPU freq selection */
         if (is_all_ready() || is_try_again())
         {
@@ -1321,6 +1356,10 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	
 	sig_ext_t *sig_ext = curr->sig_ext;
 
+  if (energy_policy_saving == 0) return;
+
+  #if 0
+
 	if ((prev->Gflops == 0) || (curr->Gflops == 0)) {
 		esaving = 0;
 		return;
@@ -1329,6 +1368,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	/* The Energy saving is the ration bettween GFlops/W */
 	performance_prev = prev->Gflops/prev->DC_power;
 	performance_curr = curr->Gflops/curr->DC_power;
+
 
 // #if 0
     if (state_fail(compute_job_node_gflops(sig_shared_region,
@@ -1345,8 +1385,16 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	esaving  = ((performance_curr - performance_prev) / performance_prev) * 100;
 	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) * 100;
 	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
+  #endif
 
-	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
+  tpenalty = time_policy_penalty  * 100;
+  esaving  = energy_policy_saving * 100;
+  psaving  = power_policy_saving  * 100;
+
+
+
+
+	verbose_master(0,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
             masters_info.my_master_rank, esaving, psaving, tpenalty, sig_ext->elapsed);
 
 	sig_ext->saving   = esaving * sig_ext->elapsed;
@@ -1527,6 +1575,7 @@ state_t policy_loop_end(loop_id_t *loop_id)
 /* This function is executed at each loop iteration or beginning of a period */
 state_t policy_new_iteration(signature_t *sig)
 {
+      
 
     // TODO: Here we are doing things useless in monitoring mode.
     /* This validation is common to all policies */

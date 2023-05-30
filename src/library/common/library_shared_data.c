@@ -47,6 +47,10 @@
 #include <library/common/global_comm.h>
 #include <common/environment.h>
 
+
+//#define ear_msync(a,b,c) msync(a,b,c)
+#define ear_msync(a,b,c) 0
+
 /* Node mgr variables */
 extern ear_njob_t *node_mgr_data;
 extern uint node_mgr_index;
@@ -165,7 +169,7 @@ int compute_total_signatures_ready(lib_shared_data_t *data,shsignature_t *sig)
 {
     int i, total = 0;
 
-    if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0)
+    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0)
         verbose_master(2, "Memory sync fails %s", strerror(errno));
 
     for (i=0; i<data->num_processes; i++) {
@@ -214,7 +218,7 @@ void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig)
     for (i=0;i<data->num_processes;i++){
         sig[i].ready = 0;
     }
-    if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 }
 
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
@@ -222,7 +226,7 @@ void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
     int i;
     fflush(stdout);
     for (i=0;i<data->num_processes;i++) sig[i].ready = 0;
-    if (msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 }
 
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig)

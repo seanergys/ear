@@ -928,7 +928,7 @@ static void metrics_global_stop()
                 verbose(2, "%sError%s Memory sync. for lib shared region failed: %s",
                         COL_RED, COL_CLR, strerror(errno));
             }
-            usleep(10000);
+            usleep(100);
         }
     }
 
