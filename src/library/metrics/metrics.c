@@ -176,7 +176,7 @@ static char        dcgmi_metrics_str[2048];
 static double      dcgmi_elapsed = 0;
 static uint        dcgmi = 1;
 #endif
-char        gpu_str[256];
+char        gpu_str[512];
 #endif // USE_GPUS
 
 /* These vectors have position APP for application granularity and LOO for loop granularity. */
