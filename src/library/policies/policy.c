@@ -384,7 +384,14 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
   float tnext = 0, pnext = 0;
   float renergy, nenergy;
 
+  energy_policy_saving = 0;
+  power_policy_saving  = 0;
+  time_policy_penalty  = 0;
+
+
   uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
+
+  if ((limit == 1) && (cpu_f[0] == frequency_get_nominal_freq())) return;
 
   tref = get_time_nominal(ns);
   pref = get_power_nominal(ns);
@@ -398,6 +405,10 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
 
   renergy = tref  * pref;
   nenergy = tnext * pnext;
+
+  if ((renergy == 0) || (nenergy == renergy)) {
+    return;
+  }
 
   energy_policy_saving = (renergy - nenergy)/renergy;
   power_policy_saving = (pref - pnext)/pref;
@@ -1540,6 +1551,8 @@ state_t policy_max_tries(int *intents)
 state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
+
+    verbose_master(0,"Total number of MPI calls %u", total_mpi);
 
 #if MPI_OPTIMIZED
     if (ear_mpi_opt) {

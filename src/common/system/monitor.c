@@ -65,7 +65,6 @@ static void monitor_main_sleep(int wait_units, int *pass_units, int *alignment)
 	// (1000 ms) has 10 time units. Monitor is sleeping 10 units = 1 second.
 	units = ((ullong) wait_units) * 100LL;
 	timestamp_revert(&tW, units, TIME_MSECS);
-	debug("waiting %llu units", units);
 	// Sleeping
 	timestamp_getfast(&t1);
 	nanosleep(&tW, NULL);

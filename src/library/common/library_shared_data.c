@@ -48,8 +48,8 @@
 #include <common/environment.h>
 
 
-//#define ear_msync(a,b,c) msync(a,b,c)
-#define ear_msync(a,b,c) 0
+#define ear_msync(a,b,c) msync(a,b,c)
+//#define ear_msync(a,b,c) 0
 
 /* Node mgr variables */
 extern ear_njob_t *node_mgr_data;

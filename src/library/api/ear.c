@@ -48,6 +48,8 @@
 #include <sys/syscall.h>
 #include <semaphore.h>
 #include <sys/syscall.h>
+#include <sys/resource.h>
+
 
 
 #include <common/config.h>
@@ -729,7 +731,6 @@ void attach_shared_regions()
 				/* Synchro: This value is set by the master */
 				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 								usleep(100);
-								verbose(3,"%d:Waiting, current index %u", my_node_id, lib_shared_region->node_mgr_index);
 								if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
 									verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
 								}
@@ -1652,7 +1653,10 @@ void ear_init()
                     debug("Node mask computed in");
                 } else {
                     // Slaves: wait for master to set up node mask
-                    while (!lib_shared_region->num_cpus) usleep(100);
+                    while (!lib_shared_region->num_cpus){ 
+                      usleep(100);
+                      msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC);
+                    }
                 }
 
                 // Master: Resets ready state of shared signatures
@@ -1794,7 +1798,7 @@ void ear_init()
 				sigaction(SIGINT, &term_action, NULL);
 				sigaction(SIGSEGV, &term_action, NULL);
 
-        #if !EAR_OFF
+        //#if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
 				if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
@@ -1830,7 +1834,7 @@ void ear_init()
             verbose(TALP_INFO, "[%d] %s %s", my_node_id, err_msg, state_msg);
         }
 #endif // DLB
-      #endif // EAR_OFF
+      //#endif // EAR_OFF
 
 #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -1848,6 +1852,14 @@ void ear_init()
 
 /**************************************** ear_finalize ************************/
 
+void print_resource_usage()
+{
+  struct rusage my_usage;
+  getrusage(RUSAGE_SELF, &my_usage);
+
+  verbose_master(0,"User cpu time %llu system cpu time %llu page faults %ld block input %ld block output %ld voluntary ctx %ld involuntary ctx %ld", my_usage.ru_utime.tv_sec*1000+my_usage.ru_utime.tv_usec/1000, my_usage.ru_stime.tv_sec*1000+my_usage.ru_stime.tv_usec/1000, my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock, my_usage.ru_nvcsw, my_usage.ru_nivcsw);
+
+}
 
 void ear_finalize(int exit_status)
 {
@@ -2000,6 +2012,8 @@ void ear_finalize(int exit_status)
 					eards_disconnect();
 				}
 				#endif
+
+        print_resource_usage();
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -2450,7 +2464,7 @@ state_t earl_periodic_actions(void *no_arg)
     }
 
     seconds = period_elapsed - last_check;
-    if (seconds >= 5) {
+    if ((seconds >= 5) && (ear_periodic_mode != PERIODIC_MODE_ON)){
             last_check = period_elapsed;
             /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
             mpi_period = total_mpi_calls - last_mpis;

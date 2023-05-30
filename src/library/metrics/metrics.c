@@ -924,11 +924,11 @@ static void metrics_global_stop()
     if (!master) {
         /* Synchro 4: Waiting for master signature */
         while(!lib_shared_region->global_stop_ready) {
+            usleep(100);
             if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) {
                 verbose(2, "%sError%s Memory sync. for lib shared region failed: %s",
                         COL_RED, COL_CLR, strerror(errno));
             }
-            usleep(100);
         }
     }
 
@@ -1808,7 +1808,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             "End compute signature for (l. rank) %d. Period %lf secs",
             my_node_id, sig_shared_region[my_node_id].period);
 
-
 	if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) {
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
@@ -2087,7 +2086,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         state_t ret = metrics_partial_stop(SIG_BEGIN);
         while (ret == EAR_NOT_READY && wait_time < MAX_SYNCHO_TIME && lib_shared_region->earl_on)
         { 
-            usleep(10000);
+            usleep(100);
 
             wait_time += 0.01;
             ret = metrics_partial_stop(SIG_BEGIN);
@@ -2130,7 +2129,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 			break;
 		}
 
-		usleep(10000);
+		usleep(100);
 
 		exited = num_processes_exited(lib_shared_region, sig_shared_region);
         two_or_more_processes_tobe_exited = exited < (lib_shared_region->num_processes - 1);
@@ -2161,7 +2160,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	exited = num_processes_exited(lib_shared_region,sig_shared_region);
 	while ( (exited != lib_shared_region->num_processes) && (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
 			&& (wait_time < MAX_SYNCHO_TIME) ){ 
-		usleep(100000);
+		usleep(100);
 		wait_time += 0.01;
 		exited = num_processes_exited(lib_shared_region,sig_shared_region);
 	}
@@ -2458,18 +2457,20 @@ state_t metrics_new_iteration(signature_t *sig)
 
 	uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
 	uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
-	if (last_phase_io_bnd || last_phase_bw)
-	{
-		llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-		llong elap_sec = f_time / 1000000;
+  llong elap_sec;
 
+	if ((last_phase_io_bnd || last_phase_bw) || (last_gpu_state & _GPU_Idle)){
+		llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+		elap_sec = f_time / 1000000;
 
 		if (elap_sec <= last_elap_sec) {
 			return EAR_ERROR;
 		}
+  }
 
-		last_elap_sec = elap_sec;
-
+  last_elap_sec = elap_sec;
+	if (last_phase_io_bnd || last_phase_bw)
+	{
 
     /* We should check is we are still on a IO phase */
         if (last_phase_io_bnd){

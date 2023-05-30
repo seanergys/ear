@@ -576,7 +576,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
                                                       perf_accuracy_min_time, total_threads_cnt);
 
-			/* At this point, signatures for all processes in the node are ready.
+			      /* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
             if (result == EAR_NOT_READY)
             {

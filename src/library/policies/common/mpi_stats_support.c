@@ -74,10 +74,10 @@
 #define MPI_STATS_VERB_LVL INFO_LVL
 #define VAR_DEPRECATED     WARN_LVL - 1 // It's a warning, but more prioritary
 
-#define PER_MPI_CALL_STATS 0 // This macro enables the stats computation on each MPI call.
+#define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
                              // You can disable it for overhead testing.
 
-#define MPI_STATS          1 // This macro enables the collection of MPI statistics.
+#define MPI_STATS          0 // This macro enables the collection of MPI statistics.
                              // A test was done in order to probe that no overhead was introduced.
 
 static timestamp pol_time_init, start_no_mpi;
@@ -98,6 +98,7 @@ static uint   mpi_call_count[N_CALL_TYPES];
 static ullong mpi_call_time[N_CALL_TYPES];
 
 static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i);
+static uint get_mpi_stats = 0;
 #endif // MPI_STATS
 
 static int in_mpi_call;
@@ -132,6 +133,7 @@ extern uint ear_mpi_opt; // Whether this module must to try to optimize some MPI
 #if MPI
 extern p2i last_buf, last_dest; // Defined at src/library/api/ear_mpi.c
 #endif
+
 
 typedef struct ear_calls {
     mpi_call call;
@@ -214,6 +216,11 @@ state_t mpi_app_init(polctx_t *c)
         mpi_stats.total_mpi_calls = 0;
         mpi_stats.exec_time       = 0;
         mpi_stats.perc_mpi        = 0;
+        
+        #if MPI_STATS
+        char *stats = ear_getenv(FLAG_GET_MPI_STATS);
+        if (stats != NULL) get_mpi_stats = 1;
+        #endif
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
         if (is_mpi_enabled()) {
@@ -286,9 +293,8 @@ state_t mpi_app_end(polctx_t *c)
     {
         mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
-        char *stats = ear_getenv(FLAG_GET_MPI_STATS);
-
-        if (stats) {
+#if MPI_STATS
+        if (get_mpi_stats) {
 
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
                             mpi_stats_per_call_filename))) {
@@ -331,7 +337,6 @@ state_t mpi_app_end(polctx_t *c)
                 close(fd);
             }
 
-#if MPI_STATS
             // Open mpi_stats_per_call_filename to store per process MPI calls stats
             fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
@@ -387,8 +392,8 @@ state_t mpi_app_end(polctx_t *c)
                         );
                 write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
             }
-#endif // MPI_STATS
         }
+#endif // MPI_STATS
     }
 
     return EAR_SUCCESS;
@@ -465,9 +470,9 @@ uint is_bgather(mpi_call call)
 state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
 #if PER_MPI_CALL_STATS && MPI
+    timestamp_t end;
     if (is_mpi_enabled() && in_mpi_call) {
 
-        timestamp_t end;
         ullong elap = 0;
 
 #if MPI_OPTIMIZED
@@ -484,11 +489,12 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         mpi_stats.exec_time += elap;
         mpi_stats.total_mpi_calls++;
 
-#if MPI_STATS
         sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
+#if MPI_STATS
+        if (get_mpi_stats){
         debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
 
         mpi_call nbcall_type;
@@ -566,6 +572,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_time   = total_mpi_time_collectives;
         sig_shared_region[my_node_id].mpi_types_info.mpi_block_call_time    = total_mpi_time_blocking;
         sig_shared_region[my_node_id].mpi_types_info.max_sync_block         = max_sync_block;
+        }
 #endif // MPI_STATS
 
 #if SHOW_DEBUGS
