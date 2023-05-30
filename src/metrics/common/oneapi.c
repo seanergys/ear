@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -157,7 +157,7 @@ static state_t device_info(int h)
     }
 #endif
     debug("name: %s", hs[h].device_props.name);
-    debug("type: %s", ((props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"));
+    debug("type: %s (%d)", ((hs[h].device_props.vendorId == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"), hs[h].device_props.type);
     debug("vendorId: 0x%x", hs[h].device_props.vendorId);
     debug("deviceId: 0x%x", hs[h].device_props.deviceId);
     debug("subdeviceId: 0x%x", hs[h].device_props.subdeviceId);

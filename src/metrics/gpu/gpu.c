@@ -273,20 +273,3 @@ int gpu_is_supported()
 {
     return gpu_eard_is_supported();
 }
-
-#if TEST
-#include <management/gpu/gpu.h>
-
-static gpu_t gpus[4];
-
-int main(int argc, char *argv[])
-{
-    gpu_load(NO_EARD);
-    gpu_init(no_ctx);
-    gpu_read_raw(no_ctx, gpus);
-    mgt_gpu_load(NO_EARD);
-    mgt_gpu_init(no_ctx);
-    sleep(100);
-    return 0;
-}
-#endif
