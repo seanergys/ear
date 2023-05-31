@@ -158,11 +158,13 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
                KHZ_TO_GHZ((double) prio_list[c].max_khz), KHZ_TO_GHZ((double) prio_list[c].min_khz), strprio[prio_list[c].low]);
         }
     }
+    #if 0
     for (c = 0; idx_list && c < idxs_count; ++c) {
         if ((c != 0) && (c % 8) == 0) acc += sprintf(&buffer[acc], "\n");
         acc += sprintf(&buffer[acc], "[%03d,%2d] ", c, idx_list[c]);
     }
     acc += sprintf(&buffer[acc], "\n");
+    #endif
 }
 
 #if TEST

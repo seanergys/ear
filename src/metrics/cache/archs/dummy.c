@@ -16,6 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
+
 #include <string.h>
 #include <common/output/debug.h>
 #include <metrics/cache/archs/dummy.h>
@@ -28,6 +29,7 @@ void cache_dummy_load(topology_t *tp, cache_ops_t *ops)
     apis_put(ops->read,          cache_dummy_read);
     apis_put(ops->data_diff,     cache_dummy_data_diff);
     apis_put(ops->internals_tostr, cache_dummy_internals_tostr);
+    debug("Loaded DUMMY");
 }
 
 void cache_dummy_get_info(apinfo_t *info)
@@ -51,6 +53,7 @@ state_t cache_dummy_dispose(ctx_t *c)
 
 state_t cache_dummy_read(ctx_t *c, cache_t *ca)
 {
+    debug("DUMMY READ");
 	memset(ca, 0, sizeof(cache_t));
 	return EAR_SUCCESS;
 }

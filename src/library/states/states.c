@@ -61,7 +61,7 @@
 #define NEW_CPUFREQ_API 1 // Enables the usage of the new metrics API,
                           // instead of the deprecated frequency API.
 #define VERBOSE_WARN    2 // Verbose level for warning messages.
-#define VERB_SAV_PEN    1 // Verbose level for saving and penalty estimation.
+#define VERB_SAV_PEN    2 // Verbose level for saving and penalty estimation.
 #define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
 #if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
@@ -182,7 +182,7 @@ void fill_common_event(ear_event_t *ev)
 void fill_event(ear_event_t *ev, uint event, llong value)
 {
   ev->event = event;
-  ev->freq  = value;
+  ev->value = value;
   ev->timestamp = time(NULL);
 }
 
@@ -831,7 +831,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
                     policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
 
-                verbose_master(0, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
+                verbose_master(1, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
                     COL_YLW, COL_CLR, sigs_metrics_buff);
               }
 

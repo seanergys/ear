@@ -92,7 +92,7 @@ void bwidth_data_copy(bwidth_t *dst, bwidth_t *src);
 
 void bwidth_data_print(ullong cas, double gbs, int fd);
 
-void bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length);
+char *bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length);
 
 // Helpers
 /* Converts CAS to GBS given a time in seconds. */

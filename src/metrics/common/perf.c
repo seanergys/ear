@@ -18,28 +18,52 @@
 //#define SHOW_DEBUGS 1
 
 #include <errno.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <asm/unistd.h>
 #include <sys/syscall.h>
 #include <common/output/debug.h>
 #include <metrics/common/perf.h>
+#include <metrics/common/file.h>
 
 // Future TO-DO:
 // - Add a control and static manager for already open events (duplicates are
 //   bad because there are limited counters in each CPU).
 // - Convert to thead safe class (what happens when reading the same FD?).
 
-state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event)
+static int test_paranoid()
 {
-	return perf_opex(perf, group, pid, type, event, 0);
+    static int paranoid_checked = 0;
+    static int paranoid_invalid = 0;
+    char buffer[32];
+
+    if (!paranoid_checked) {
+        // Checking if the paranoid is valid
+        if (filemagic_once_read("/proc/sys/kernel/perf_event_paranoid", buffer, sizeof(buffer))) {
+            paranoid_invalid = (atoi(buffer) > 2 && getuid() > 0);
+        }
+        paranoid_checked = 1;
+    }
+    if (paranoid_invalid) {
+        return 0;
+    }
+    return 1;
 }
 
-state_t perf_opex(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options)
+state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event)
+{
+    return perf_open_ext(perf, group, pid, type, event, 0);
+}
+
+state_t perf_open_ext(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options)
 {
 	int gp_flag =  0;	
 	int gp_fd   = -1;
 
+    if (!test_paranoid()) {
+        return_msg(EAR_ERROR, "perf_event_paranoid value is not valid");
+    }
 	//
 	memset(perf, 0, sizeof(perf_t));
 

@@ -20,6 +20,9 @@ all: $(gpu_OBJS)
 nvml.o: nvml.c nvml.h
 	$(CC) $(CFLAGS) -I$(CUDA_BASE)/include $(gpu_DEFS) -c $<
 
+oneapi.o: oneapi.c oneapi.h
+	$(CC) $(CFLAGS) $(ONEAPI_CFLAGS) -c $<
+
 rsmi.o: rsmi.c rsmi.h
 	$(CC) $(CFLAGS) $(RSMI_CFLAGS) -c $<
 

@@ -91,7 +91,7 @@ void eargm_report_event(uint event_type, ulong value)
     }
 
     event.event     = event_type;
-    event.freq      = value;
+    event.value     = value;
     db_insert_ear_event(&event);
 }
 

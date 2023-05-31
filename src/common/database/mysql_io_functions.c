@@ -934,15 +934,16 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     loops_aux = (loop_t*) xcalloc(num_loops, sizeof(loop_t));
     char sig_query[128];
     signature_t *sig_aux;
+    int ret;
     //fetching and storing of jobs
     i = 0;
     status = mysql_stmt_fetch(statement);
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
         sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
-        mysql_retrieve_signatures(connection, sig_query, &sig_aux);
+        ret = mysql_retrieve_signatures(connection, sig_query, &sig_aux);
 
-        if (sig_aux != NULL) { //to prevent it from crashing
+        if (ret > 0 && sig_aux != NULL) { //to prevent it from crashing
             signature_copy(&loop_aux->signature, sig_aux);
             free(sig_aux);
         }
@@ -2212,7 +2213,7 @@ int mysql_insert_ear_event(MYSQL *connection, ear_event_t *ear_ev)
     bind[1].buffer = (char *)&ear_ev->event;
     bind[2].buffer = (char *)&ear_ev->jid;
     bind[3].buffer = (char *)&ear_ev->step_id;
-    bind[4].buffer = (char *)&ear_ev->freq;
+    bind[4].buffer = (char *)&ear_ev->value;
     bind[5].buffer = (char *)&ear_ev->node_id;
 
     if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
@@ -2243,7 +2244,7 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
 
     //Prevent freq from going over max value
     for (i = 0; i < num_evs; i++) {
-        ear_ev[i].freq = ear_ev[i].freq > INT_MAX ? INT_MAX : ear_ev[i].freq;
+        ear_ev[i].value = ear_ev[i].value > INT_MAX ? INT_MAX : ear_ev[i].value;
     }
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) {
@@ -2270,7 +2271,7 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
         bind[1+offset].buffer = (char *)&ear_ev[i].event;
         bind[2+offset].buffer = (char *)&ear_ev[i].jid;
         bind[3+offset].buffer = (char *)&ear_ev[i].step_id;
-        bind[4+offset].buffer = (char *)&ear_ev[i].freq;
+        bind[4+offset].buffer = (char *)&ear_ev[i].value;
         bind[5+offset].buffer = (char *)&ear_ev[i].node_id;
     }
 

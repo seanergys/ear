@@ -83,9 +83,9 @@ void usage(char *app)
 			"\t\t-s\tspecifies the minimum start time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].\n" \
 			"\t\t-e\tspecifies the maximum end time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].\n" \
 			"\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n" \
-			"\t\t-x\tshows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
+			"\t\t-x\tshows the last EAR events. Users, start and end times, job ids, and step ids can be specified as if were showing job information.\n" \
 			"\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n" \
-			"\t\t-r\tshows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.\n" \
+			"\t\t-r\tshows the EAR loop signatures. Users, job ids, and step ids can be specified as if were showing job information.\n" \
 			"\t\t-o\tmodifies the -r option to also show the corresponding jobs. Should be used with -j.\n", app);
 	printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
 	printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
@@ -751,7 +751,7 @@ void print_event_type(int type, int fd)
     ear_event_t aux;
     aux.event = type;
     event_type_to_str(&aux, str, sizeof(str));
-    dprintf(fd, "%15s ", str);
+    dprintf(fd, "%20s ", str);
 }
 
 #if DB_MYSQL
@@ -770,7 +770,7 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 	{
 		if (!has_records)
 		{
-			dprintf(fd, "%12s %20s %15s %8s %8s %20s %12s\n",
+			dprintf(fd, "%12s %20s %20s %8s %8s %20s %12s\n",
 					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
 			has_records = 1;
 		}
@@ -782,7 +782,8 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 
 				print_event_type(event_type_int, fd);  
 
-                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
+                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING ||
+                    event_type_int == POWER_SAVING_AVG || event_type_int == ENERGY_SAVING_AVG) {
                     possible_negative = 1;
                 }
             }
@@ -829,7 +830,7 @@ void postgresql_print_events(PGresult *res, int fd)
 	{
 		if (!has_records)
 		{
-			dprintf(fd, "%12s %22s %15s %8s %8s %20s %12s\n",
+			dprintf(fd, "%12s %22s %20s %8s %8s %20s %12s\n",
 					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
 			has_records = 1;
 		}

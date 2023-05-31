@@ -17,6 +17,7 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <stdlib.h>
 #include <pthread.h>
 #include <management/cpupow/cpupow.h>
 #include <management/cpupow/archs/dummy.h>
@@ -82,41 +83,16 @@ state_t mgt_cpupow_tdp_get(int domain, uint *watts)
     return ops.tdp_get(domain, watts);
 }
 
-#if TEST
-#include <stdlib.h>
-
-static topology_t tp;
-static apinfo_t   info;
-static uint       tdps[2];
-static uint       watts[2];
-static uint       enabled[2];
-
-int main(int argc, char *argv[])
+void mgt_cpupow_tdp_tostr(int domain, uint *watts, char *buffer, int length)
 {
-    topology_init(&tp);
-    topology_print(&tp, verb_channel);
-    
-    mgt_cpupow_load(&tp, 0);
-    mgt_cpupow_get_info(&info);   
-    apinfo_print(&info, verb_channel, 1);
-
-    mgt_cpupow_tdp_get(CPUPOW_SOCKET, tdps);
-    mgt_cpupow_powercap_is_enabled(CPUPOW_SOCKET, enabled);
-
-    mgt_cpupow_powercap_get(CPUPOW_SOCKET, watts);
-#if 1
-    if (argc == 1) {
-        tdps[0] = tdps[1] = POWERCAP_DISABLE;
-//        mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
-        mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
-    } else {
-        tdps[0] = tdps[1] = (uint) atoi(argv[1]);
-        mgt_cpupow_powercap_set(CPUPOW_SOCKET, tdps);
+    int acc, i;
+    for (acc = i = 0; i < mgt_cpupow_count_devices(domain); ++i) {
+        acc += sprintf(&buffer[acc], "TDP%d: %u\n", i, watts[i]);
     }
-#endif
-    mgt_cpupow_powercap_get(CPUPOW_SOCKET, watts);
-
-    sleep(2000);
-    return 0;
 }
-#endif
+
+void mgt_cpupow_data_alloc(int domain, uint **list)
+{
+    int count = mgt_cpupow_count_devices(domain);
+    *list = calloc(count, sizeof(uint));
+}

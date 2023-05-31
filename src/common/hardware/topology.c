@@ -379,13 +379,13 @@ state_t topology_close(topology_t *topo)
 #define f_print(f, ...) \
     f (__VA_ARGS__, \
     "cpu_count        : %d\n" \
+    "core_count       : %d\n" \
     "socket_count     : %d\n" \
     "threads_per_core : %d\n" \
     "smt_enabled      : %d\n" \
     "l2_count         : %d\n" \
     "l3_count         : %d\n" \
     "l4_count         : %d\n" \
-    "cache_last_level : %d\n" \
     "cache_line_size  : %d\n" \
     "vendor           : %d\n" \
     "family           : %d\n" \
@@ -399,13 +399,13 @@ state_t topology_close(topology_t *topo)
     "sve_bits         : %d\n" \
     , \
     topo->cpu_count, \
+    topo->core_count, \
     topo->socket_count, \
     topo->threads_per_core, \
     topo->smt_enabled, \
     topo->l2_count, \
     topo->l3_count, \
     topo->l4_count, \
-    topo->cache_last_level, \
     topo->cache_line_size, \
     topo->vendor, \
     topo->family, \

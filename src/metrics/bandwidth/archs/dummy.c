@@ -31,7 +31,7 @@ BWIDTH_F_GET_INFO(bwidth_dummy_get_info)
     if (info->api == API_NONE) {
         info->api         = API_DUMMY;
         info->scope       = SCOPE_NODE;
-        info->granularity = GRANULARITY_NODE;
+        info->granularity = GRANULARITY_DUMMY;
         info->devs_count  = 1+1;
     }
 }

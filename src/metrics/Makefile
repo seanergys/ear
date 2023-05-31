@@ -45,6 +45,11 @@ mets_OBJS = \
     $(SRCDIR)/metrics/energy/cpu.o \
     $(SRCDIR)/metrics/energy/energy_node.o \
     $(SRCDIR)/metrics/energy/cpu/intel63.o \
+    $(SRCDIR)/metrics/energy_cpu/energy_cpu.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/cpu_util.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/eard.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/msr.o \
     $(SRCDIR)/metrics/flops/flops.o \
     $(SRCDIR)/metrics/flops/archs/perf.o \
     $(SRCDIR)/metrics/flops/archs/dummy.o \
@@ -72,11 +77,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
-	$(SRCDIR)/metrics/energy_cpu/energy_cpu.o \
-	$(SRCDIR)/metrics/energy_cpu/archs/msr.o \
-	$(SRCDIR)/metrics/energy_cpu/archs/eard.o \
-	$(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
-	$(SRCDIR)/metrics/energy_cpu/archs/cpu_util.o \
     $(SRCDIR)/metrics/io/io.o
 
 ######## RULES
@@ -94,6 +94,7 @@ libmetrics.so: $(mets_OBJS)
 
 test: metrics.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
+
 
 ######## OPTIONS
 

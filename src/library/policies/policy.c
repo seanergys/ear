@@ -378,12 +378,23 @@ void fill_cpus_out_of_cgroup(uint exc)
     int cpu_cnt, cpu_idx;
     if (exc == 0) return;
     cpu_cnt = arch_desc.top.cpu_count;
+    #if DLB
+    verbosen_master(1,"IDLE freq (%lu) cpus --> ", frequency_pstate_to_freq(frequency_get_num_pstates()-1));
+    #endif
+
     for (cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++){
         if (freq_per_core[cpu_idx] == 0){
             debug("Reducing frequency of CPU %d", cpu_idx);
             freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
+            #if DLB
+            verbosen_master(1,"%d ", cpu_idx);
+            #endif
         }
     }
+    #if DLB
+    verbosen_master(1,"\n");
+    #endif
+
 }
 
 #define DEBUG_CPUFREQ_COST 0
@@ -1326,8 +1337,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
                 COL_RED, COL_CLR, state_msg);
     }
 
-    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f, %.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
-            performance_curr, (float)tflops, curr->Gflops, curr->DC_power, \
+    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
+            performance_curr, curr->Gflops, curr->DC_power, \
             performance_prev, prev->Gflops, prev->DC_power); 
 // #endif
 
@@ -1335,8 +1346,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) * 100;
 	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
 
-	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f",
-            masters_info.my_master_rank, esaving, psaving, tpenalty);
+	verbose_master(2,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
+            masters_info.my_master_rank, esaving, psaving, tpenalty, sig_ext->elapsed);
 
 	sig_ext->saving   = esaving * sig_ext->elapsed;
 	sig_ext->psaving  = psaving * sig_ext->elapsed;
@@ -2006,7 +2017,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         }
     }
 
-    if ((dom->cpu == POL_GRAIN_CORE) && (process_id == ALL_PROCESSES)) {
+    if  (process_id == ALL_PROCESSES) {
         fill_cpus_out_of_cgroup(exclusive_mode);
     }
 

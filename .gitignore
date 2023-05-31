@@ -102,6 +102,7 @@ src/common/config/config_install.h
 *ear_types
 *eardbd
 *eardbd_monitor
+*earpmd
 *eargm_end_job
 *eargm_new_job
 *eargmd
