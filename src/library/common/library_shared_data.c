@@ -557,6 +557,23 @@ state_t compute_job_node_gflops(const shsignature_t *sig, int n_procs, double *t
     return EAR_SUCCESS;
 }
 
+state_t compute_job_node_io_mbs(const shsignature_t *sig, int n_procs, double *io_mbs)
+{
+    if (sig == NULL ||  io_mbs == NULL) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    } else if (!n_procs) {
+        return_msg(EAR_WARNING, "Number of processes is zero.");
+    }
+
+	*io_mbs = 0;
+	for (int i = 0; i < n_procs; i++) {
+        *io_mbs += (double)sig[i].sig.IO_MBS;
+  }
+
+  return EAR_SUCCESS;
+}
+
+
 void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
 {
     int i;

@@ -399,11 +399,38 @@ state_t mpi_app_end(polctx_t *c)
     return EAR_SUCCESS;
 }
 
+static uint monitor_mpi     = 1;
+static uint verb            = 1;
+
+#define DYNAMIC_MPI_MONITORING 0
+#if DYNAMIC_MPI_MONITORING
+static uint check_mpi_monitor    = 1;
+static uint mpis_per_sample      = 1;
+static uint curr_mpis_per_sample = 0;
+static uint dynamic_monitor = 0;
+#define MAX_MPI_PER_SECOND 10000
+#define OFF 0
+#define ON  1
+#endif
+
+void monitor_mpi_calls(uint on)
+{
+  if (on){
+    monitor_mpi = 1;
+    timestamp_getfast(&start_no_mpi);
+    verb = 1;
+  }else{
+    if (verb){
+      verb = 0;
+    }
+    monitor_mpi = 0;
+  }
+}
 
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
 #if PER_MPI_CALL_STATS && MPI
-    if (is_mpi_enabled()) {
+    if (is_mpi_enabled() && monitor_mpi) {
 
         // Init the MPI call timer
 #if MPI_OPTIMIZED
@@ -417,11 +444,6 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 
         // Accumulate
         mpi_stats.exec_time += time_no_mpi;
-
-#if MPI_STATS
-        // Update
-        sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
-#endif
 
         in_mpi_call = 1;
 
@@ -488,7 +510,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         mpi_stats.mpi_time  += elap;
         mpi_stats.exec_time += elap;
         mpi_stats.total_mpi_calls++;
-
+        
         sig_shared_region[my_node_id].mpi_info.mpi_time  = mpi_stats.mpi_time;
         sig_shared_region[my_node_id].mpi_info.exec_time = mpi_stats.exec_time;
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
@@ -591,7 +613,33 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     // timestamp_getfast(&start_no_mpi);
     start_no_mpi = end;
 #endif
+
+#if DYNAMIC_MPI_MONITORING
+    /* Dynamic MPI monitoring */
+    if (check_mpi_monitor && (mpi_stats.exec_time > 10000000)){
+      float seconds = (float) (mpi_stats.exec_time / 1000000);
+      float curr_mpi_per_second = (float)mpi_stats.total_mpi_calls / seconds;
+
+      debug("Exec time %d seconds %f mpi per scond %f\n", exec_time, seconds, curr_mpi_per_second);
+      if (curr_mpi_per_second > MAX_MPI_PER_SECOND){
+        mpis_per_sample   = curr_mpi_per_second/10;
+        curr_mpis_per_sample = 0;
+        monitor_mpi_calls(OFF);
+        dynamic_monitor = 1;
+      }
+      check_mpi_monitor = 0;
+    }
+    if (dynamic_monitor){
+      curr_mpis_per_sample++;
+      if (((curr_mpis_per_sample/mpis_per_sample)%10) == 0){
+        monitor_mpi_calls(ON);
+      }else{
+        monitor_mpi_calls(OFF);
+      }
+   }
+#endif
 #endif // PER_MPI_CALL_STATS
+
 
     return EAR_SUCCESS;
 }

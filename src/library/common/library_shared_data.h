@@ -138,6 +138,11 @@ typedef struct shsignature {
 } shsignature_t;
 /**@}*/
 
+typedef struct shsignature_mpi{
+  mpi_information_t mpi_info;
+  mpi_calls_types_t mpi_types_info;
+}shsignature_mpi_t;
+
 
 typedef struct sh_signatures_s
 {
@@ -290,6 +295,9 @@ state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs, ull
  * \param flops The address of this pointer must be the first position of an allocated space of
  * size FLOPS_EVENTS * sizeof (unsigned long). Otherwise you will overwrite memory. */
 state_t compute_job_node_flops(const shsignature_t *sig, int n_procs, ull *flops);
+
+/** Computes the accumulated IO MB_S */
+state_t compute_job_node_io_mbs(const shsignature_t *sig, int n_procs, double *io_mbs);
 
 
 /** Computes the total number of cycles of a job where its \p n_procs processses have their

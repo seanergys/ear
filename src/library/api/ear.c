@@ -1798,19 +1798,23 @@ void ear_init()
 				sigaction(SIGINT, &term_action, NULL);
 				sigaction(SIGSEGV, &term_action, NULL);
 
-        //#if !EAR_OFF
+       #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
 				if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
 				earl_monitor = suscription();
 				earl_monitor->call_init = earl_periodic_actions_init;
 				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = 1000;
-				earl_monitor->time_burst = 1000;
-				ITERS_PER_PERIOD = 1;
+				earl_monitor->time_relax = 10000;
+				earl_monitor->time_burst = 2000;
 				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
-				if (ear_guided == DYNAIS_GUIDED) monitor_relax(earl_monitor);
-        else                             monitor_burst(earl_monitor, 0);
+				if (ear_guided == DYNAIS_GUIDED){
+				  ITERS_PER_PERIOD = 10;
+          monitor_relax(earl_monitor);
+        }else{
+				  ITERS_PER_PERIOD = 2;
+          monitor_burst(earl_monitor, 0);
+        }
 
         /* For code organization we have a separate subscription for MPI optimization */
         #if MPI_OPTIMIZED
@@ -1834,12 +1838,12 @@ void ear_init()
             verbose(TALP_INFO, "[%d] %s %s", my_node_id, err_msg, state_msg);
         }
 #endif // DLB
-      //#endif // EAR_OFF
+      #endif // EAR_OFF
 
 #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose_master(1,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
+        verbose_master(0,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
 #endif
 
 #if USE_GPUS
@@ -1857,7 +1861,7 @@ void print_resource_usage()
   struct rusage my_usage;
   getrusage(RUSAGE_SELF, &my_usage);
 
-  verbose_master(0,"User cpu time %llu system cpu time %llu page faults %ld block input %ld block output %ld voluntary ctx %ld involuntary ctx %ld", my_usage.ru_utime.tv_sec*1000+my_usage.ru_utime.tv_usec/1000, my_usage.ru_stime.tv_sec*1000+my_usage.ru_stime.tv_usec/1000, my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock, my_usage.ru_nvcsw, my_usage.ru_nivcsw);
+  verbose(0,"%s: User cpu time %llu system cpu time %llu page faults %ld block input %ld block output %ld voluntary ctx %ld involuntary ctx %ld", node_name, my_usage.ru_utime.tv_sec*1000+my_usage.ru_utime.tv_usec/1000, my_usage.ru_stime.tv_sec*1000+my_usage.ru_stime.tv_usec/1000, my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock, my_usage.ru_nvcsw, my_usage.ru_nivcsw);
 
 }
 
@@ -2018,7 +2022,7 @@ void ear_finalize(int exit_status)
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose_master(1,"Finalization cost: %llu useci dynais calls %lu", elap_eard_init, dynais_calls);
+        verbose_master(0,"Finalization cost: %llu useci dynais calls %lu dynais_enabled %u", elap_eard_init, dynais_calls, dynais_enabled);
         #endif
         if (exit_status != EAR_SUCCESS) exit(exit_status);
 
@@ -2448,6 +2452,9 @@ state_t earl_periodic_actions(void *no_arg)
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+
+    if ((ear_iterations % 10) == 0) monitor_mpi_calls(1);
+    else                            monitor_mpi_calls(0);
 
 
     debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",

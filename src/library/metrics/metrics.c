@@ -294,6 +294,9 @@ static void read_metrics_options();
 /** Loads the energy plug-in. */
 static state_t energy_lib_init(settings_conf_t *conf);
 
+/* Overhead evaluation */
+static uint validation_new_cpu = 0;
+static uint validation_new_gpu = 0;
 
 /** Private function to perfom last operations before returning from dispose call. */
 static void metrics_static_dispose();
@@ -942,8 +945,10 @@ static void metrics_global_stop()
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
+      #if 0
 			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
+      #endif
 		}
 
         /* Avg CPU frequency */
@@ -1300,8 +1305,10 @@ static int metrics_partial_stop(uint where)
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
+      #if 0
 			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
+      #endif
 		}
 
 		/* Avg CPU freq */
@@ -1334,6 +1341,7 @@ static int metrics_partial_stop(uint where)
 			debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);
 		}
 
+    #if 0
 		/* Per node IO data */
 		if (state_ok(metrics_compute_total_io(&metrics_io_end[LOO_NODE]))) {
 
@@ -1349,6 +1357,8 @@ static int metrics_partial_stop(uint where)
 			verbose_master(ERROR_VERB, "%sWarning%s Node total I/O could not be read (%s). Assuming"
 					" no I/O data for this loop.", COL_RED, COL_CLR, state_msg);
 		}
+    #endif
+    
 
 		/* Only the master read RAPL because is not per-process metric */
 		/* RAPL energy */
@@ -1799,7 +1809,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	sig_shared_region[my_node_id].period = time_s; // TODO: We can ommit this attribute because the shared signature has this metric.
 
-	update_earl_node_mgr_info();
+	// update_earl_node_mgr_info();
 
 	debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
 	signature_ready(&sig_shared_region[my_node_id], 0);
@@ -2063,6 +2073,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
   signature_t last_loop_sig;
 	uint num_ready;
 	float wait_time = 0;
+
+    verbose_master(0,"Number of metrics validation per cpu %u and gpu %u", validation_new_cpu, validation_new_gpu);
 
 #if METRICS_OVH
     verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
@@ -2328,6 +2340,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	double valid_period;
 	ullong L1, L2, L3;
   ullong accesses = 0;
+  double io_mbs;
 
 	se = (sig_ext_t *)master->sig_ext;
 	signature_copy(ns,master);
@@ -2337,8 +2350,10 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 	compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
 	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
+	compute_job_node_io_mbs(sig_shared_region, lib_shared_region->num_processes, &io_mbs);
 
 	ns->CPI = (double) cycles / (double) inst;
+  ns->IO_MBS = io_mbs;
 
 	compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
 
@@ -2434,6 +2449,8 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 				COL_RED, COL_CLR, state_msg);
 	}
 
+  compute_job_node_io_mbs(sig_shared_region, lib_shared_region->num_processes, &dst->IO_MBS);
+
 	compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
 	compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
 	compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
@@ -2446,6 +2463,7 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 
 extern uint last_earl_phase_classification;
 extern gpu_state_t last_gpu_state;
+
 
 state_t metrics_new_iteration(signature_t *sig)
 {
@@ -2471,6 +2489,7 @@ state_t metrics_new_iteration(signature_t *sig)
   last_elap_sec = elap_sec;
 	if (last_phase_io_bnd || last_phase_bw)
 	{
+    validation_new_cpu++;
 
     /* We should check is we are still on a IO phase */
         if (last_phase_io_bnd){
@@ -2515,6 +2534,7 @@ state_t metrics_new_iteration(signature_t *sig)
 #if USE_GPUS
     sig->gpu_sig.num_gpus = 0;
     if (last_gpu_state & _GPU_Idle) {
+        validation_new_gpu++;
 
         debug("Computing GPU util because of application gpu phase is IDLE");
 
