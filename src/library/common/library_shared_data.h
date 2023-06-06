@@ -20,6 +20,8 @@
  *    \brief This file defines the API to create/attach/dettach/release the shared memory area
  *    between the EARD and the EARLib. It is used to communicate the EARLib updates remotelly
  *    requested.
+ *
+ *    It also defines structures to be shared among processes running concurrently the Library.
  */
 
 #ifndef _LIB_SHARED_DATA_H
@@ -38,8 +40,10 @@
 #include <common/system/shared_areas.h>
 #include <daemon/local_api/node_mgr.h>
 
-
+/** \name MPI data */
+/**@{*/
 #if SHARED_MPI_SUMMARY
+/** Used to share information between master ranks. */
 typedef struct mpi_summary {
     float max;
     float min;
@@ -50,30 +54,37 @@ typedef struct mpi_summary {
 #endif
 
 
+/** Basic MPI statistics. Granularity: process. */
 typedef struct mpi_information {
-    uint        total_mpi_calls;
-    ullong      exec_time;       /**< Time stored in USECS. */
-    ullong      mpi_time;
-    int         rank;
-    double      perc_mpi;
+    uint        total_mpi_calls; /**< The number of MPI calls. */
+    ullong      exec_time;       /**< Elapsed time, in microseconds. */
+    ullong      mpi_time;        /**< Time spent in MPI calls, in microseconds. */
+    int         rank;            /**< The process rank. */
+    double      perc_mpi;        /**< Percentage of time spent in MPI calls, i.e., mpi_time / exec_time. */
 } mpi_information_t;
 
 
+/** MPI call types statistics. Granularity: process. */
 typedef struct mpi_calls_types
 {
-    ulong mpi_time;             // Time spent in MPI calls
-    ulong exec_time;            // Execution time
-    ulong mpi_call_cnt;         // Total MPI calls
-    ulong mpi_sync_call_cnt;    // MPI synchronization calls count
-    ulong mpi_collec_call_cnt;  // MPI collective calls count
-    ulong mpi_block_call_cnt;   // MPI blocking calls count
-    ulong mpi_sync_call_time;   // Time spent in MPI synchronization calls
-    ulong mpi_collec_call_time; // Time spent in MPI collective calls
-    ulong mpi_block_call_time;  // Time spent in MPI blocking calls
+    ulong mpi_time;             /**< Time spent in MPI calls. */
+    ulong exec_time;            /**< Execution time. */
+    ulong mpi_call_cnt;         /**< Total MPI calls. */
+    ulong mpi_sync_call_cnt;    /**< MPI synchronization calls count. */
+    ulong mpi_collec_call_cnt;  /**< MPI collective calls count. */
+    ulong mpi_block_call_cnt;   /**< MPI blocking calls count. */
+    ulong mpi_sync_call_time;   /**< Time spent in MPI synchronization calls.*/ 
+    ulong mpi_collec_call_time; /**< Time spent in MPI collective calls. */
+    ulong mpi_block_call_time;  /**< Time spent in MPI blocking calls. */
     ulong max_sync_block;
 } mpi_calls_types_t;
+/**@}*/
 
 
+/** \name Shared info
+ * This group of definitions is used to share data between processes. */
+/**@{*/
+/** Global application data shared between processes. */
 typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
@@ -99,7 +110,7 @@ typedef struct lib_shared_data {
 #endif
 } lib_shared_data_t;
 
-
+/** Per-process application data. */
 typedef struct shsignature {
     uint              master;
     pid_t             pid;
@@ -125,7 +136,35 @@ typedef struct shsignature {
     int               libdlb_calls_cnt; // Counter for DLB API's blocking functions calls.
 #endif
 } shsignature_t;
+/**@}*/
 
+
+typedef struct sh_signatures_s
+{
+    uint              *master;
+    pid_t             *pid;
+    uint              *ready;
+	uint              *exited;
+    uint              *iterations;
+    mpi_information_t *mpi_info;
+    mpi_calls_types_t *mpi_types_info;
+    ssig_t            *sig;
+    int               *app_state;
+    ulong             *new_freq;
+	uint              *num_cpus;
+    cpu_set_t         *cpu_mask;
+    uint              *pstate_index;
+    int               *affinity;
+    uint              *unbalanced;
+    float             *perc_MPI;
+	double            *period;
+    /* This field is used for mpi opt
+     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
+    ulong             *mpi_freq;
+#if DLB
+    int               *libdlb_calls_cnt;
+#endif
+} sh_signatures_t;
 
 
 typedef struct node_mgr_sh_data {
@@ -144,7 +183,7 @@ typedef struct node_mgr_sh_data {
 int get_lib_shared_data_path(char *tmp, uint ID, char *path);
 
 
-/** \brief Creates the shared mmemory.
+/** \brief Creates the shared memory.
  * It is used by node master process. */
 lib_shared_data_t * create_lib_shared_data_area(char * path);
 
