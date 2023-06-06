@@ -63,9 +63,7 @@
 #define VERBOSE_WARN    2 // Verbose level for warning messages.
 #define VERB_SAV_PEN    2 // Verbose level for saving and penalty estimation.
 #define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
-#if 0
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
-#endif
 
 #define MAX_SIG_TIME    10000000 // 10 s. It is a time limit for signature computation.
 
@@ -967,6 +965,7 @@ static uint are_cpi_gbs_eq(double cpi_a, double cpi_b, double gbs_a, double gbs_
 #if DYNAIS_CUTOFF
 static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dynais_on)
 {
+    return;
     assert(A != NULL && B != NULL);
 
     if (!are_cpi_gbs_eq(A->CPI, B->CPI, A->GBS, B->GBS, EAR_ACCEPTED_TH * 2)) {

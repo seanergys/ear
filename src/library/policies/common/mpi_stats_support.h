@@ -36,6 +36,8 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type);
 /** Called once a MPI call just ended */
 state_t mpi_call_end(polctx_t *c, mpi_call call_type);
 
+void monitor_mpi_calls(uint on);
+
 /** Per-Node Executes the read-diff for mpi statistics on mpi calls types */
 state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *sig,
         mpi_calls_types_t *node_mpi_calls, mpi_calls_types_t *last_node);

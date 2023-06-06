@@ -209,7 +209,7 @@ int cpu_ready = EAR_POLICY_NO_STATE;
 int gpu_ready = EAR_POLICY_NO_STATE;
 
 gpu_state_t curr_gpu_state;
-gpu_state_t last_gpu_state = _GPU_Comp;             // Initial GPU state as Computation
+gpu_state_t last_gpu_state = _GPU_NoGPU;             // Initial GPU state as Computation
 
 static uint fake_io_phase = 0;
 static uint fake_bw_phase = 0;
@@ -1061,7 +1061,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     verbose_master(POLICY_INFO + 1, "%sPOLICY%s Policy node apply", COL_BLU, COL_CLR);
 
-    nodemgr_get_num_jobs_attached(&jobs_in_node);
+    //nodemgr_get_num_jobs_attached(&jobs_in_node);
+    jobs_in_node = 1;
     if (jobs_in_node > 1) {
       verbose_jobs_in_node(2, node_mgr_data, node_mgr_job_info);
     }
