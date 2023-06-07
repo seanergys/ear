@@ -134,4 +134,8 @@ void metrics_read_cpupower();
 state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor);
 #endif // DLB
 
+#if DCGMI
+uint metrics_dcgmi_enabled();
+#endif
+
 #endif //EAR_EAR_METRICS_H

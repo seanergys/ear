@@ -401,6 +401,7 @@ state_t mpi_app_end(polctx_t *c)
 
 static uint monitor_mpi     = 1;
 static uint verb            = 1;
+static uint total_mpi_stats = 0;
 
 #define DYNAMIC_MPI_MONITORING 0
 #if DYNAMIC_MPI_MONITORING
@@ -426,6 +427,19 @@ void monitor_mpi_calls(uint on)
     monitor_mpi = 0;
   }
 }
+
+float avg_mpi_calls_per_second()
+{
+ float seconds = (float) (mpi_stats.exec_time / 1000000);
+ float curr_mpi_per_second = (float)mpi_stats.total_mpi_calls / seconds;
+ return curr_mpi_per_second;
+}
+
+uint total_mpi_call_statistics()
+{
+  return total_mpi_stats;
+}
+
 
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
@@ -502,6 +516,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 #else
         timestamp_getfast(&end);
 #endif
+
+        total_mpi_stats++;
 
         elap = timestamp_diff(&end, &pol_time_init, TIME_USECS); // Get the time been in the MPI call
         in_mpi_call = 0;

@@ -154,12 +154,13 @@ state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ea
     if (mpisec < MIN_MPI_TH){
       //if (!is_cuda_enabled()) *ear_guided = TIME_GUIDED;
       if (first_warning_mpi_th) {
-        verbose_master(2,"Warning, going to time guided because low number of MPI calls per second");
+        verbose_master(0,"Warning, going to time guided because low number of MPI calls per second current %f limit %f", mpisec, MIN_MPI_TH);
         first_warning_mpi_th = 0;
       }
       *ear_guided = TIME_GUIDED;
     }
     if (signature_reported && (last_sig_elapsed > ((5*perf_accuracy_min_time)/1000000))){
+      verbose_master(0,"Warning, going to time guided because elapsed time since last signature is %lu ", last_sig_elapsed);
       *ear_guided = TIME_GUIDED;
     }
     return EAR_SUCCESS;

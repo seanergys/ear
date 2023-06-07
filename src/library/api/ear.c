@@ -266,6 +266,7 @@ uint per_proc_verb_file = 0;
 uint exclusive = 1;
 ear_classify_t phases_limits;
 static ulong dynais_calls = 0;
+static uint limit_exceeeded = 0;
 
 #if DLB
 /** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
@@ -1716,8 +1717,10 @@ void ear_init()
 				application.job.th            = system_conf->settings[0];
         application.signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
         #if DCGMI
-        sig_ext_t *sig_ext = (sig_ext_t *)application.signature.sig_ext;
-        sig_ext->dcgmis.dcgmi_sets = 0;
+        if (metrics_dcgmi_enabled()){
+          sig_ext_t *sig_ext = (sig_ext_t *)application.signature.sig_ext;
+          sig_ext->dcgmis.dcgmi_sets = 0;
+        }
         #endif
 
 
@@ -2017,12 +2020,17 @@ void ear_finalize(int exit_status)
 				}
 				#endif
 
-        print_resource_usage();
+        // print_resource_usage();
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose_master(0,"Finalization cost: %llu useci dynais calls %lu dynais_enabled %u", elap_eard_init, dynais_calls, dynais_enabled);
+        verbose(0,"Finalization cost (%s): %llu usec dynais calls %lu dynais_enabled %s  periodic mode %s guided by %s mpi_with_stats %u total mpi %u", \
+          node_name,\
+          elap_eard_init, dynais_calls, \
+          (dynais_enabled == DYNAIS_ENABLED)?"ON":"OFF", \
+          (ear_periodic_mode == PERIODIC_MODE_ON)?"ON":"OFF",\
+          (ear_guided == TIME_GUIDED)?"TIME":"Dynais",total_mpi_call_statistics(), total_mpi_calls);
         #endif
         if (exit_status != EAR_SUCCESS) exit(exit_status);
 
@@ -2047,6 +2055,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
     if (!eard_ok && !EARL_LIGHT) return;
     if (synchronize_masters == 0 ) return;
     if (!lib_shared_region->earl_on) return;
+    total_mpi_calls++;
 #if ONLY_MASTER
     if (my_id) return;
 #endif
@@ -2064,7 +2073,6 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                     (ulong) call_type);
         }
 
-        total_mpi_calls++;
         /* EAR can be driven by Dynais or periodically in those cases where dynais can not detect any period. 
          * ear_periodic_mode can be ON or OFF 
          */
@@ -2080,11 +2088,18 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                             }else{ // Check every N=check_every mpi calls
                                 /* Check here if we must move to periodic mode, do it every N mpicalls to reduce the overhead */
                                 if ((total_mpi_calls%check_every) == 0){
+                                    if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND){
+                                        #if 0
+                                        verbose(0, "Going to periodic mode because limit exceeded avg mpi_per_sec %f limit %u", avg_mpi_calls_per_second(),
+                                        MAX_MPI_CALLS_SECOND);
+                                        #endif
+                                        limit_exceeeded = 1;
+                                    }
                                     time(&curr_time);
                                     time_from_mpi_init = difftime(curr_time,application.job.start_time);
 
                                     /* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
-                                    if (time_from_mpi_init >= dynais_timeout){
+                                    if (limit_exceeeded || time_from_mpi_init >= dynais_timeout){
                                         // we must compute N here
                                         ear_periodic_mode = PERIODIC_MODE_ON;
                                         assert(dynais_timeout > 0);
@@ -2122,6 +2137,11 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                 if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
                     ear_iterations++;
                     states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
+                    if (limit_exceeeded){ 
+                      if ((ear_iterations % 10) == 0) monitor_mpi_calls(1);
+                      else                            monitor_mpi_calls(0);
+                    }
+
                 }
                 break;
         }
@@ -2447,15 +2467,20 @@ state_t earl_periodic_actions(void *no_arg)
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
 
+    if (ear_guided == TIME_GUIDED){
+      ear_iterations += ITERS_PER_PERIOD;
+    }
 
-    ear_iterations += ITERS_PER_PERIOD;
     timestamp_getfast(&curr_periodic_time);
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
-    if ((ear_iterations % 10) == 0) monitor_mpi_calls(1);
-    else                            monitor_mpi_calls(0);
-
+    #if MPI
+    if (limit_exceeeded && (ear_guided == TIME_GUIDED)){
+      if ((ear_iterations % 10) == 0) monitor_mpi_calls(1);
+      else                            monitor_mpi_calls(0);
+    }
+    #endif
 
     debug("[%d] elapsed %lu : first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
               my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
@@ -2487,6 +2512,8 @@ state_t earl_periodic_actions(void *no_arg)
                 ear_periodic_mode = PERIODIC_MODE_ON;
                 if (ear_guided != new_ear_guided){ 
                     if (earl_monitor->time_burst < earl_monitor->time_relax){
+                        ITERS_PER_PERIOD = earl_monitor->time_burst/1000;
+                        if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeeded = 1;
                         monitor_burst(earl_monitor, 0);
                     }
                     verbose(3,"[%d]: Dynais guided --> time guided at time %lu",

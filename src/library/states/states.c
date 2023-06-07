@@ -54,6 +54,7 @@
 #include <library/policies/policy.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/cpu_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 #include <library/states/states_comm.h>
 #include <library/states/states.h>
 #include <library/api/clasify.h>
@@ -590,7 +591,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 char sig_to_vrb[128];
                 signature_to_str(&loop_signature, sig_to_vrb, sizeof(sig_to_vrb));
 
-                verbose(0, "Signature after CPU power model projection: %s", sig_to_vrb);
+                //verbose(0, "Signature after CPU power model projection: %s", sig_to_vrb);
             }
 
             /* Included for dynais test */
@@ -644,7 +645,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 char sig_to_vrb[128];
                 signature_to_str(&norm_signature, sig_to_vrb, sizeof(sig_to_vrb));
 
-                verbose(0, "Signature %s will be passed to the policy.", sig_to_vrb);
+                //verbose(0, "Signature %s will be passed to the policy.", sig_to_vrb);
             }
 
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
@@ -981,7 +982,9 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
     if (loop_signature.time > 0) {
         ulong dynais_overhead_usec = mpi_calls_iter;
 
-        float dynais_overhead_perc = ((float) dynais_overhead_usec / 1000000.0) * 100.0 / loop_signature.time;
+
+        // float dynais_overhead_perc = ((float) dynais_overhead_usec / 1000000.0) * 100.0 / loop_signature.time;
+        float dynais_overhead_perc = avg_mpi_calls_per_second() * 100.0;
 
         if (dynais_overhead_perc > MAX_DYNAIS_OVERHEAD_DYN) {
             // Disable dynais: TODO: API is still pending.
@@ -992,6 +995,12 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
                 log_report_dynais_off(application.job.id, application.job.step_id);
             }
         }
+
+#if 0
+        if (dynais_enabled != DYNAIS_DISABLED){
+          verbose_master(0,"Not setting dynais off . Overhead %f limit %f", dynais_overhead_perc, MAX_DYNAIS_OVERHEAD_DYN);
+        }
+#endif
 
         if (dynais_enabled == DYNAIS_DISABLED) {
             debug("    --- DynAIS disabled ---\n%15s: %lf s\n%15s: %lu us\n%15s: %lu (%lf %%)\n%15s: %lu\n%15s: %lu\n",

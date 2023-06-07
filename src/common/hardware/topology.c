@@ -476,10 +476,11 @@ static ulong read_freq(int fd)
 
 state_t topology_freq_getbase(uint cpu, ulong *freq_base)
 {
+    static uint read_from_file = 0;
     char path[1024];
     int fd;
 
-    if (topo_static.base_freq > 0) {
+    if (topo_static.base_freq > 0 && read_from_file) {
         *freq_base = topo_static.base_freq;
         return EAR_SUCCESS;
     }
@@ -489,6 +490,7 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
         *freq_base = topo_static.base_freq;
         return EAR_ERROR;
     }
+    read_from_file = 1;
     ulong f0 = read_freq(fd);
     ulong f1 = read_freq(fd);
     ulong fx = f0 - f1;
@@ -499,6 +501,8 @@ state_t topology_freq_getbase(uint cpu, ulong *freq_base)
         *freq_base = f0;
     }
     close(fd);
+
+    topo_static.base_freq = *freq_base;
 
     return EAR_SUCCESS;
 }

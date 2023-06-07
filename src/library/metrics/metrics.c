@@ -462,8 +462,12 @@ static void dcgmi_static_events_init()
   dcgmi_events[2][3] = nvlink_rx_bytes;
 	
 }
-#endif
 
+uint metrics_dcgmi_enabled()
+{
+  return dcgmi;
+}
+#endif
 
 static void metrics_static_init(topology_t *tp)
 {
@@ -1747,7 +1751,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         }
 		#if DCGMI
 		/* If there is not utilization we reset the number of instances. Instances are used by policies */
-		if (total_gpu_util == 0) for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
+		if (dgmi && total_gpu_util == 0){
+      for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
+    }
 		#endif
 #endif
     if (!estimate_power){
