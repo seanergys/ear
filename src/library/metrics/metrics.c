@@ -2223,12 +2223,21 @@ int time_ready_signature(ulong min_time_us)
 	return 1;
 }
 
+static llong last_sig_elapsed = 0;
+static uint  last_iterations  = 0;
+float metrics_iter_per_second()
+{
+  float elap_sec = (float)last_sig_elapsed / 1000000.0;
+  if (!last_sig_elapsed || !last_iterations) return 1;
+  return (float) last_iterations / elap_sec;
+}
+
 
 /**********************************************************************************************
  ******************* This function checks if data is ready to be shared ***********************
  **********************************************************************************************/
 state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
-		ulong min_time_us, ulong procs)
+		ulong min_time_us, ulong procs, llong *passed_time)
 {
     #if METRICS_OVH
     timestamp met_ovh_init, met_ovh_end;
@@ -2245,10 +2254,12 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		// Time requirements
 		llong elap_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
+    *passed_time = elap_time;
+
 		uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
 		if (elap_time < min_time_us && !time_eq) {
 			metrics->time = 0;
-			debug("EAR_NOT_READY because of time %lld\n", elap_time);
+			verbose_master(0,"%s : EAR_NOT_READY because of time %lld, iters %u\n", node_name, elap_time, iterations);
       #if METRICS_OVH
       timestamp_getfast(&met_ovh_end);
       total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
@@ -2265,6 +2276,9 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
       #endif
 			return EAR_NOT_READY;
 		}
+
+    last_sig_elapsed = elap_time;
+    last_iterations  = iterations;
 
 		// Marks the signature as ready
 		metrics_compute_signature_data(LOO, metrics, iterations, procs);

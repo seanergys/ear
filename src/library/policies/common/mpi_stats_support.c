@@ -428,12 +428,16 @@ void monitor_mpi_calls(uint on)
   }
 }
 
+#if MPI
 float avg_mpi_calls_per_second()
 {
  float seconds = (float) (mpi_stats.exec_time / 1000000);
  float curr_mpi_per_second = (float)mpi_stats.total_mpi_calls / seconds;
  return curr_mpi_per_second;
 }
+#else
+float avg_mpi_calls_per_second(){ return 0.0;}
+#endif
 
 uint total_mpi_call_statistics()
 {

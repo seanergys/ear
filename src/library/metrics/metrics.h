@@ -96,7 +96,7 @@ void metrics_dispose(signature_t *metrics, ulong procs);
 void metrics_compute_signature_begin();
 
 /** */
-state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs);
+state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations, ulong min_time_us, ulong procs, llong *passed_time);
 
 /** Estimates whether the current time running the loops is enough to compute the signature */
 int time_ready_signature(ulong min_time_us);
@@ -137,5 +137,8 @@ state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *reg
 #if DCGMI
 uint metrics_dcgmi_enabled();
 #endif
+
+/* Returns the number of iterations per second in the last computed signature */
+float metrics_iter_per_second();
 
 #endif //EAR_EAR_METRICS_H

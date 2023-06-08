@@ -1804,19 +1804,21 @@ void ear_init()
        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
-				if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
-				earl_monitor = suscription();
-				earl_monitor->call_init = earl_periodic_actions_init;
-				earl_monitor->call_main = earl_periodic_actions;
-				earl_monitor->time_relax = 10000;
-				earl_monitor->time_burst = 2000;
-				if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
-				if (ear_guided == DYNAIS_GUIDED){
-				  ITERS_PER_PERIOD = 10;
-          monitor_relax(earl_monitor);
-        }else{
-				  ITERS_PER_PERIOD = 2;
-          monitor_burst(earl_monitor, 0);
+        if (ear_guided == TIME_GUIDED){
+				  if (monitor_init() != EAR_SUCCESS) verbose_master(2,"Monitor init fails! %s",state_msg);
+				  earl_monitor = suscription();
+				  earl_monitor->call_init = earl_periodic_actions_init;
+				  earl_monitor->call_main = earl_periodic_actions;
+				  earl_monitor->time_relax = 10000;
+				  earl_monitor->time_burst = 2000;
+				  if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
+				  if (ear_guided == DYNAIS_GUIDED){
+				    ITERS_PER_PERIOD = 10;
+            monitor_relax(earl_monitor);
+          }else{
+				    ITERS_PER_PERIOD = 2;
+            monitor_burst(earl_monitor, 0);
+          }
         }
 
         /* For code organization we have a separate subscription for MPI optimization */
@@ -1950,9 +1952,11 @@ void ear_finalize(int exit_status)
 #if DLB
         earl_periodic_actions_talp_finalize();
 #endif
-        monitor_unregister(earl_monitor);
-				monitor_dispose();
-				debug("%d: monitor_disposed", my_node_id);
+        if (ear_guided == TIME_GUIDED){
+          monitor_unregister(earl_monitor);
+				  monitor_dispose();
+				  debug("%d: monitor_disposed", my_node_id);
+        }
 
 
         report_dispose(&rep_id);
@@ -2103,7 +2107,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                         // we must compute N here
                                         ear_periodic_mode = PERIODIC_MODE_ON;
                                         assert(dynais_timeout > 0);
-                                        mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
+                                        //mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
+                                        mpi_calls_per_second = (uint)avg_mpi_calls_per_second();
                                         #if SINGLE_CONNECTION
                                         if (masters_info.my_master_rank >= 0)
                                         #endif
@@ -2493,6 +2498,7 @@ state_t earl_periodic_actions(void *no_arg)
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
             if (ear_guided == TIME_GUIDED) verbose_master(3,"%lu: Time guided iteration iters %d period %u",period_elapsed,ear_iterations,lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
+            if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeeded = 1;
     }
 
     seconds = period_elapsed - last_check;
@@ -2513,7 +2519,6 @@ state_t earl_periodic_actions(void *no_arg)
                 if (ear_guided != new_ear_guided){ 
                     if (earl_monitor->time_burst < earl_monitor->time_relax){
                         ITERS_PER_PERIOD = earl_monitor->time_burst/1000;
-                        if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeeded = 1;
                         monitor_burst(earl_monitor, 0);
                     }
                     verbose(3,"[%d]: Dynais guided --> time guided at time %lu",
