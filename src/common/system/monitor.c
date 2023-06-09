@@ -91,6 +91,10 @@ static void goto_sleep(int sleep_units, int sleep_reason, int *passed_units, int
 	debug("going to sleep %d units (reason '%s')",
           sleep_units, sleep_str[sleep_reason]);
 
+    // Last check
+    if (!is_running) {
+        return;
+    }
 	// Sleeping
 	timestamp_getfast(&t1);
     wake_reason = nanosleep(&tW, NULL);
@@ -263,12 +267,12 @@ state_t monitor_init()
 state_t monitor_dispose()
 {
 	if (!is_running) return_msg(EAR_ERROR, "not initialized");
-
 	while (pthread_mutex_trylock(&lock_gen));
+    debug("disposing...");
 	is_running = 0;
+    goto_interrupt();
 	pthread_join(thread, NULL);
 	pthread_mutex_unlock(&lock_gen);
-
 	return EAR_SUCCESS;
 }
 
@@ -402,10 +406,12 @@ int main(int argc, char *argv[])
 {
 	monitor_init();
     usleep(400000);
-    monitor_suscribe(NULL, goli, 20000, 20000);
+    monitor_suscribe(NULL, goli, 2000, 2000);
     sleep(1);
-    monitor_suscribe(NULL, golo, 30000, 30000);
-    sleep(2000);
+    monitor_suscribe(NULL, golo, 3000, 3000);
+    sleep(3);
+    monitor_dispose();
+    sleep(30);
     return 0;
 }
 #endif
