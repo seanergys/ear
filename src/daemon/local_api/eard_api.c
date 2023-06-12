@@ -27,6 +27,8 @@
 #include <sys/types.h>
 #define _GNU_SOURCE             
 #include <sched.h>
+#include <time.h>
+#include <pthread.h>
 
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
@@ -392,6 +394,13 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
 				app_connected = 0;
         return_unlock((ulong) EAR_ERROR, &lock_rpc);
     }
+
+
+    struct timespec yield_time;
+    yield_time.tv_sec   = 0;
+    yield_time.tv_nsec  = 500;
+    nanosleep(&yield_time, NULL);
+
     if (eards_read(ear_fd_ack, ack_buf, ack_size, WAIT_DATA) != ack_size) {
 				debug("local api end error read: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
 				app_connected = 0;

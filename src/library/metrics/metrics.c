@@ -2066,7 +2066,7 @@ int metrics_init(topology_t *topo)
 
 
 #define MAX_SYNCHO_TIME 100
-#define METRICS_OVH 0
+#define METRICS_OVH 1
 #if METRICS_OVH
 static ulong total_metrics_ovh = 0;
 #endif
@@ -2083,7 +2083,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     verbose_master(0,"Number of metrics validation per cpu %u and gpu %u", validation_new_cpu, validation_new_gpu);
 
 #if METRICS_OVH
-    verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+    verbose(0,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
 #endif
 
     // metrics->sig_ext = NULL;

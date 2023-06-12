@@ -107,7 +107,7 @@ float LB_TH = EAR_LB_TH;
 
 static float critical_path_th   = 1;
 
-
+extern uint limit_exceeeded;
 #if MPI_OPTIMIZED
 
 static uint              barrier_optimize = 0;
@@ -286,8 +286,10 @@ state_t mpi_app_end(polctx_t *c)
     timestamp_getfast(&end);
 #endif
 
-    elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
-    mpi_stats.exec_time += elap;
+    if (!dynamic_monitor){
+      elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
+      mpi_stats.exec_time += elap;
+    }
 
     if (mpi_stats.total_mpi_calls && mpi_stats.exec_time)
     {
@@ -403,13 +405,10 @@ static uint monitor_mpi     = 1;
 static uint verb            = 1;
 static uint total_mpi_stats = 0;
 
-#define DYNAMIC_MPI_MONITORING 0
-#if DYNAMIC_MPI_MONITORING
-static uint check_mpi_monitor    = 1;
+#if MPI_SAMPLING
 static uint mpis_per_sample      = 1;
 static uint curr_mpis_per_sample = 0;
 static uint dynamic_monitor = 0;
-#define MAX_MPI_PER_SECOND 10000
 #define OFF 0
 #define ON  1
 #endif
@@ -634,20 +633,17 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     start_no_mpi = end;
 #endif
 
-#if DYNAMIC_MPI_MONITORING
+#if MPI_SAMPLING
     /* Dynamic MPI monitoring */
-    if (check_mpi_monitor && (mpi_stats.exec_time > 10000000)){
-      float seconds = (float) (mpi_stats.exec_time / 1000000);
-      float curr_mpi_per_second = (float)mpi_stats.total_mpi_calls / seconds;
+    if (!dynamic_monitor && limit_exceeeded){
+        float mpi_sec = avg_mpi_calls_per_second();
 
-      debug("Exec time %d seconds %f mpi per scond %f\n", exec_time, seconds, curr_mpi_per_second);
-      if (curr_mpi_per_second > MAX_MPI_PER_SECOND){
-        mpis_per_sample   = curr_mpi_per_second/10;
+        if (mpi_sec > 0) mpis_per_sample   =  mpi_sec/ 10;
+        else             mpis_per_sample   = MAX_MPI_CALLS_SECOND/10;
+
         curr_mpis_per_sample = 0;
         monitor_mpi_calls(OFF);
         dynamic_monitor = 1;
-      }
-      check_mpi_monitor = 0;
     }
     if (dynamic_monitor){
       curr_mpis_per_sample++;

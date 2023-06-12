@@ -266,7 +266,7 @@ uint per_proc_verb_file = 0;
 uint exclusive = 1;
 ear_classify_t phases_limits;
 static ulong dynais_calls = 0;
-static uint limit_exceeeded = 0;
+uint limit_exceeeded = 0;
 
 #if DLB
 /** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
@@ -1066,6 +1066,11 @@ void ear_init()
 				int fd_dummy = -1;
 	topology_t earl_topo;
 
+         #if EAR_OFF
+         return;
+         #endif
+
+
 				uint fake_eard_error = 0;
 				char *cfake_eard_error = ear_getenv(FAKE_EARD_ERROR);
         char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
@@ -1810,16 +1815,21 @@ void ear_init()
 				  earl_monitor->call_init = earl_periodic_actions_init;
 				  earl_monitor->call_main = earl_periodic_actions;
 				  earl_monitor->time_relax = 10000;
-				  earl_monitor->time_burst = 2000;
+          if (earl_topo.cpu_count < lib_shared_region->num_cpus){
+				    earl_monitor->time_burst = 2000;
+          }else{
+				    earl_monitor->time_burst = 10000;
+          }
 				  if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				  if (ear_guided == DYNAIS_GUIDED){
-				    ITERS_PER_PERIOD = 10;
+				    ITERS_PER_PERIOD = earl_monitor->time_relax/1000;
             monitor_relax(earl_monitor);
           }else{
-				    ITERS_PER_PERIOD = 2;
+				    ITERS_PER_PERIOD = earl_monitor->time_burst/1000;
             monitor_burst(earl_monitor, 0);
           }
         }
+        verbose_master(0,"Monitor ON relax %d burst %d", earl_monitor->time_relax, earl_monitor->time_burst);
 
         /* For code organization we have a separate subscription for MPI optimization */
         #if MPI_OPTIMIZED
@@ -1875,6 +1885,11 @@ void ear_finalize(int exit_status)
 				uint fake_error = 0;
 				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+
+         #if EAR_OFF
+         print_resource_usage();
+         return;
+         #endif
 
         #if START_END_OVH
         ullong elap_eard_init;
@@ -2024,7 +2039,7 @@ void ear_finalize(int exit_status)
 				}
 				#endif
 
-        // print_resource_usage();
+        print_resource_usage();
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
@@ -2142,10 +2157,12 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                 if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
                     ear_iterations++;
                     states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
+                    #if MPI && MPI_SAMPLING
                     if (limit_exceeeded){ 
                       if ((ear_iterations % 10) == 0) monitor_mpi_calls(1);
                       else                            monitor_mpi_calls(0);
                     }
+                    #endif
 
                 }
                 break;
@@ -2480,7 +2497,7 @@ state_t earl_periodic_actions(void *no_arg)
     period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
-    #if MPI
+    #if 0
     if (limit_exceeeded && (ear_guided == TIME_GUIDED)){
       if ((ear_iterations % 10) == 0) monitor_mpi_calls(1);
       else                            monitor_mpi_calls(0);

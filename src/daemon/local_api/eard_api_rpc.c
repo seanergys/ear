@@ -17,9 +17,13 @@
 
 //#define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE             /* See feature_test_macros(7) */
+#include <pthread.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <time.h>
+
 #include <common/system/lock.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
@@ -167,6 +171,12 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
         return_unlock(s, &lock_rpc);
     }
     // Receiving the data and returning the RPC state
+
+    struct timespec yield_time;
+    yield_time.tv_sec   = 0;
+    yield_time.tv_nsec  = 500;
+    nanosleep(&yield_time, NULL);
+
 	#if SYNC_SET_RPC
     if (expc_size == UINT_MAX) {
         expc_size = 0;
