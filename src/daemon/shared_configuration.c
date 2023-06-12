@@ -265,9 +265,9 @@ void dettach_coeffs_default_shared_area()
 /**** SERVICES **********/
 int get_services_conf_path(char *tmp,char *path)
 {
-		if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
+    if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
     sprintf(path,"%s/.ear_services_conf",tmp);
-		return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 services_conf_t * create_services_conf_shared_area(char * path)
@@ -279,8 +279,8 @@ services_conf_t * create_services_conf_shared_area(char * path)
 
 services_conf_t * attach_services_conf_shared_area(char * path)
 {
-	if (path==NULL) return NULL;
-  return (services_conf_t *)attach_shared_area(path,sizeof(services_conf_t),O_RDONLY,&fd_services,NULL);
+    if (path==NULL) return NULL;
+    return (services_conf_t *)attach_shared_area(path,sizeof(services_conf_t),O_RDONLY,&fd_services,NULL);
 }
 
 void services_conf_shared_area_dispose(char * path)

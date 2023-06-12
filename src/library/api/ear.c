@@ -1960,7 +1960,7 @@ void ear_finalize(int exit_status)
 								verbose_master(2, " Application with %d GPUS", application.signature.gpu_sig.num_gpus);
 #endif
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
-												verbose_master(0,"Error reporting application");
+												verbose_master(1,"Error reporting application");
 								}
 								report_mpi_application_data(&application);
 				}
