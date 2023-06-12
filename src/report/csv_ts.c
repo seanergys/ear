@@ -15,8 +15,8 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
 #include <stdio.h>
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/types.h>
@@ -60,7 +60,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
     int i;
     if (!must_report) return EAR_SUCCESS;
     debug("csv report_applications");
-    if ((apps == NULL) || (count == 0)) return EAR_SUCCESS;
+    if ((apps == NULL) || (count == 0)) return EAR_ERROR;
     for (i=0;i<count;i++){
         append_application_text_file(csv_log_file,&apps[i],1, 1, 0);
     }
@@ -74,7 +74,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
     if (!must_report) return EAR_SUCCESS;
     debug("csv report_loops");
     // TODO: we could return EAR_ERROR
-    if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
+    if ((loops == NULL) || (count == 0)) return EAR_ERROR;
     ullong sec = timestamp_getconvert(TIME_SECS);
     currtime = sec - my_time;
     for (i=0;i<count;i++){

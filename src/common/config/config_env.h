@@ -51,7 +51,6 @@
  * These variables are used by the plugin to configure the EAR environment.
  * @{
  */
-
 #define ENV_PATH_TMP            "EAR_TMP"
 #define ENV_PATH_ETC            "EAR_ETC"
 #define ENV_PATH_EAR            "EAR_INSTALL_PATH"

@@ -1940,7 +1940,6 @@ int metrics_init(topology_t *topo)
 	energy_data_alloc(&metrics_ipmi[1]);
 	acum_ipmi[0]=0;acum_ipmi[1]=0;
 
-
 	if (master) {
 
 
