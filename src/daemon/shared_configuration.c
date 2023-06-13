@@ -42,7 +42,7 @@ static int fd_app_mgt,fd_pc_app_info;
 int  get_settings_conf_path(char *tmp, uint ID, char *path)
 {
 	if ((tmp==NULL) || (path==NULL)) return EAR_ERROR;
-	sprintf(path,"%s/%u/.ear_settings_conf",tmp, ID);
+	sprintf(path,"%s/%u/.ear_settings_conf", tmp, ID);
 	return EAR_SUCCESS;	
 }
 /** This functions creates the name of the file mapping the shared memory for the resched flag, it is placed at TMP 

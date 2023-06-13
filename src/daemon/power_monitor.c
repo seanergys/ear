@@ -244,9 +244,13 @@ uint is_job_in_node(job_id id, job_context_t **jc)
 }
 
 
-void add_job_in_node(job_id id)
+/** Adds the Job ID \p id into the jobs_in_node_list array.
+ * If the Job ID already exists, increments the number of contexts.
+ * Otherwise, it finds a free space in the array and add there the 
+ * passed Job ID. */
+static void add_job_in_node(job_id id)
 {
-    /* Find the job */
+    // Find the job
     uint i = 0;
     while (i < MAX_CPUS_SUPPORTED && jobs_in_node_list[i].id != id) i++;
 
@@ -255,9 +259,11 @@ void add_job_in_node(job_id id)
         return;
     }
 
-    // id is a new job
+    // `id` is a new job.
+
+    // Find a free space, i.e., n-th jobs_in_node_list is 0
     i = 0;
-    while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id)) i++;
+    while (i < MAX_CPUS_SUPPORTED && jobs_in_node_list[i].id) i++;
     if (i == MAX_CPUS_SUPPORTED) {
         error("Not job position free found! This should not happen.");
         return;
@@ -587,7 +593,7 @@ int select_last_context() {
 }
 
 
-/* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created.*/
+/* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created. */
 int new_context(job_id id, job_id sid, int *cc)
 {
     char shmem_path[GENERIC_NAME];
@@ -621,16 +627,20 @@ int new_context(job_id id, job_id sid, int *cc)
     }
 
     int err_num;
-    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex, NULL))) {
-        error("Initializing mutex for context %d (%lu/%lu): %s", ccontext, id, sid, strerror(err_num));
+    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex,
+                                      NULL)))
+    {
+        error("Initializing mutex for context %d (%lu/%lu): %s",
+              ccontext, id, sid, strerror(err_num));
     }
 
-    if (state_fail(ear_trylock(&current_ear_app[ccontext]->powermon_app_mutex))) {
+    if (state_fail(ear_trylock(&current_ear_app[ccontext]->powermon_app_mutex)))
+    {
         error("Locking new context");
         return EAR_ERROR;
     }
 
-    if (ccontext > max_context_created ) max_context_created = ccontext;
+    if (ccontext > max_context_created) max_context_created = ccontext;
 
     alloc_energy_data(&current_ear_app[ccontext]->energy_init);
 
@@ -641,20 +651,21 @@ int new_context(job_id id, job_id sid, int *cc)
 
     add_job_in_node(id);
 
-    /* We must create per jobid,stepid shared memory regions */
-    ID = create_ID(id,sid);
+    /* We must create per jobid, stepid shared memory regions. */
+    ID = create_ID(id, sid);
     get_settings_conf_path(ear_tmp, ID, shmem_path);
-    debug("Settings for new context placed at %s",shmem_path);
+    debug("Settings for new context placed at %s", shmem_path);
 
     current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path);
     if (current_ear_app[ccontext]->settings == NULL) {
-        error("Error creating shared memory between EARD & EARL for (%lu,%lu)",id,sid);
+        error("Error creating shared memory between EARD & EARL for (%lu,%lu)",
+              id,sid);
         ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
         return EAR_ERROR;
     }
 
     /* Context 0 is the default one */
-    memcpy(current_ear_app[ccontext]->settings,current_ear_app[0]->settings,sizeof(settings_conf_t));
+    memcpy(current_ear_app[ccontext]->settings, current_ear_app[0]->settings, sizeof(settings_conf_t));
 
     get_resched_path(ear_tmp, ID, shmem_path);
     debug("Resched path for new context placed at %s",shmem_path);
@@ -689,7 +700,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     get_pc_app_info_path(ear_tmp,ID, shmem_path);
 
-    debug("PC_app_info for new context placed at %s",shmem_path);
+    debug("PC_app_info for new context placed at %s", shmem_path);
 
     current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path);
     if (current_ear_app[ccontext]->pc_app_info == NULL){
@@ -1706,7 +1717,8 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
         }
     }
 
-    if (VERB_ON(VPMON_DEBUG)) {
+    if (VERB_ON(VPMON_DEBUG))
+    {
         verbose(VPMON_DEBUG, "Priority system enabled: %d | Stored current priority list:",
                 mgt_cpuprio_is_enabled());
         mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, pmapp->prio_idx_list, verb_channel);    
@@ -1798,7 +1810,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     job_init_powermon_app(pmapp, eh, appID, from_mpi);
 
-    /* We must report the energy beforesetting the job_id: PENDING */
+    /* TODO: We must report the energy beforesetting the job_id: PENDING */
     new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
 
     // pthread_mutex_unlock(&app_lock);
