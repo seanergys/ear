@@ -571,13 +571,13 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 }
             }
 #endif
-    prev_cpufreq_khz = ear_frequency; // TODO: Why khz are prev, but pstate is curr?
-    curr_pstate      = frequency_closest_pstate(ear_frequency);
+            prev_cpufreq_khz = ear_frequency; // TODO: Why khz are prev, but pstate is curr?
+            curr_pstate      = frequency_closest_pstate(ear_frequency);
 
-    policy_get_default_freq(&node_freqs); // Slaves don't fill node_freqs
+            policy_get_default_freq(&node_freqs); // Slaves don't fill node_freqs
 
-    policy_def_freq  = node_freqs.cpu_freq[0];
-    def_pstate       = frequency_closest_pstate(policy_def_freq);
+            policy_def_freq  = node_freqs.cpu_freq[0];
+            def_pstate       = frequency_closest_pstate(policy_def_freq);
 
             N_iter = iterations - begin_iter;
 

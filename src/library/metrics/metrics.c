@@ -102,6 +102,16 @@
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
+
+
+
+#define METRICS_OVH 1
+#if METRICS_OVH
+#include <common/utils/overhead.h>
+static ulong total_metrics_ovh = 0;
+uint id_ovh_partial_stop;
+uint id_ovh_compute_data;
+#endif
 // #define MASTER(master_rank) (master_rank >= 0)
 
 // extern configuration from the main ear library
@@ -758,6 +768,11 @@ static void metrics_static_init(topology_t *tp)
     debug("metrics_allocation ready");
 
     metrics_configuration(tp); // Check the status of loaded APIs
+
+    #if METRICS_OVH
+    overhead_suscribe("partial_stop", &id_ovh_partial_stop);
+    overhead_suscribe("compute_signature_data", &id_ovh_compute_data);
+    #endif
 }
 
 
@@ -2066,10 +2081,6 @@ int metrics_init(topology_t *topo)
 
 
 #define MAX_SYNCHO_TIME 100
-#define METRICS_OVH 1
-#if METRICS_OVH
-static ulong total_metrics_ovh = 0;
-#endif
 
 
 void metrics_dispose(signature_t *metrics, ulong procs)
@@ -2083,7 +2094,8 @@ void metrics_dispose(signature_t *metrics, ulong procs)
     verbose_master(0,"Number of metrics validation per cpu %u and gpu %u", validation_new_cpu, validation_new_gpu);
 
 #if METRICS_OVH
-    verbose(0,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+    //verbose(0,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+    if (masters_info.my_master_rank >= 0) overhead_report(1);
 #endif
 
     // metrics->sig_ext = NULL;
@@ -2242,6 +2254,7 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
     #if METRICS_OVH
     timestamp met_ovh_init, met_ovh_end;
     timestamp_getfast(&met_ovh_init);
+    overhead_start(id_ovh_partial_stop);
     #endif
 
 
@@ -2263,6 +2276,7 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
       #if METRICS_OVH
       timestamp_getfast(&met_ovh_end);
       total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+      overhead_stop(id_ovh_partial_stop);
       #endif
 			return EAR_NOT_READY;
 		}
@@ -2273,15 +2287,24 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
       #if METRICS_OVH
       timestamp_getfast(&met_ovh_end);
       total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+      overhead_stop(id_ovh_partial_stop);
       #endif
 			return EAR_NOT_READY;
 		}
+    #if METRICS_OVH
+    overhead_stop(id_ovh_partial_stop);
+    overhead_start(id_ovh_compute_data);
+    #endif
 
     last_sig_elapsed = elap_time;
     last_iterations  = iterations;
 
 		// Marks the signature as ready
 		metrics_compute_signature_data(LOO, metrics, iterations, procs);
+
+    #if METRICS_OVH
+    overhead_stop(id_ovh_compute_data);
+    #endif
 
 		// Call report mpitrace
 		report_id_t report_id;

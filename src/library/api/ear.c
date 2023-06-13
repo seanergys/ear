@@ -55,6 +55,7 @@
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
+#include <common/utils/overhead.h>
 #include <common/system/folder.h>
 #include <common/environment.h>
 #include <library/common/verbose_lib.h>
@@ -1818,7 +1819,7 @@ void ear_init()
           if (earl_topo.cpu_count < lib_shared_region->num_cpus){
 				    earl_monitor->time_burst = 2000;
           }else{
-				    earl_monitor->time_burst = 10000;
+				    earl_monitor->time_burst = 2000;
           }
 				  if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose_master(2,"Monitor register fails! %s",state_msg);
 				  if (ear_guided == DYNAIS_GUIDED){
@@ -1887,7 +1888,7 @@ void ear_finalize(int exit_status)
 				if (cfake != NULL) fake_error = atoi(cfake);
 
          #if EAR_OFF
-         print_resource_usage();
+     //    print_resource_usage();
          return;
          #endif
 
@@ -2039,12 +2040,12 @@ void ear_finalize(int exit_status)
 				}
 				#endif
 
-        print_resource_usage();
+        //print_resource_usage();
 
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose(0,"Finalization cost (%s): %llu usec dynais calls %lu dynais_enabled %s  periodic mode %s guided by %s mpi_with_stats %u total mpi %u", \
+        verbose_master(0,"Finalization cost (%s): %llu usec dynais calls %lu dynais_enabled %s  periodic mode %s guided by %s mpi_with_stats %u total mpi %u", \
           node_name,\
           elap_eard_init, dynais_calls, \
           (dynais_enabled == DYNAIS_ENABLED)?"ON":"OFF", \
@@ -2454,6 +2455,8 @@ static mpi_information_t my_mpi_stats[3];
 static mpi_calls_types_t my_mpi_types[3];
 #endif
 
+uint id_ovh_earl_monitor;
+
 state_t earl_periodic_actions_init(void *no_arg)
 {
     verbose_master(2,"RANK %d EARL periodic thread ON",ear_my_rank);
@@ -2473,6 +2476,8 @@ state_t earl_periodic_actions_init(void *no_arg)
     }
     pthread_setname_np(pthread_self(), "EARL_monitor");
 
+    overhead_suscribe("earl_monitor", &id_ovh_earl_monitor);
+
     return EAR_SUCCESS;
 }
 
@@ -2488,6 +2493,8 @@ state_t earl_periodic_actions(void *no_arg)
     ulong period_elapsed, last_signature_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
+
+    overhead_start(id_ovh_earl_monitor);
 
     if (ear_guided == TIME_GUIDED){
       ear_iterations += ITERS_PER_PERIOD;
@@ -2509,6 +2516,7 @@ state_t earl_periodic_actions(void *no_arg)
 
     if (first_exec_monitor) {
             first_exec_monitor = 0;
+            overhead_stop(id_ovh_earl_monitor);
             return EAR_SUCCESS;
     }
 
@@ -2546,6 +2554,7 @@ state_t earl_periodic_actions(void *no_arg)
           }
           ear_guided = new_ear_guided;
     }
+    overhead_stop(id_ovh_earl_monitor);
     return EAR_SUCCESS;
 }
 

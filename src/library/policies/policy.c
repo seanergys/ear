@@ -1059,6 +1059,8 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
         return EAR_SUCCESS;
     }
 
+    if (!is_monitor_mpi_calls_enabled()) enable_load_balance = 0;
+
     verbose_master(POLICY_INFO + 1, "%sPOLICY%s Policy node apply", COL_BLU, COL_CLR);
 
     //nodemgr_get_num_jobs_attached(&jobs_in_node);

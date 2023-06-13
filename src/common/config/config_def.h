@@ -107,7 +107,7 @@
 #define MAX_POWER_ERROR                     0.05
 /* Maximum dynais overhead supported per iteration */
 #define MAX_DYNAIS_OVERHEAD                 5
-#define MAX_MPI_CALLS_SECOND                20000
+#define MAX_MPI_CALLS_SECOND                10000
 #define MIN_MPI_CALLS_SECOND                1000
 /* When set to 1, Pieces of code are activated to reduce the overhead introduced
  * by dynais */

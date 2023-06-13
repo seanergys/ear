@@ -84,6 +84,17 @@ static timestamp pol_time_init, start_no_mpi;
 
 static mpi_information_t mpi_stats;
 
+#if MPI_SAMPLING
+static uint mpis_per_sample      = 1;
+static uint curr_mpis_per_sample = 0;
+static uint dynamic_monitor = 0;
+#define OFF 0
+#define ON  1
+#define MPI_SAMPLING_ENABLED 1
+#define MPI_MONITOR_DISABLED 2
+
+#endif
+
 #if MPI_STATS
 static ulong total_mpi_time_blocking    = 0;
 static ulong total_mpi_time_sync        = 0;
@@ -405,13 +416,6 @@ static uint monitor_mpi     = 1;
 static uint verb            = 1;
 static uint total_mpi_stats = 0;
 
-#if MPI_SAMPLING
-static uint mpis_per_sample      = 1;
-static uint curr_mpis_per_sample = 0;
-static uint dynamic_monitor = 0;
-#define OFF 0
-#define ON  1
-#endif
 
 void monitor_mpi_calls(uint on)
 {
@@ -425,6 +429,22 @@ void monitor_mpi_calls(uint on)
     }
     monitor_mpi = 0;
   }
+}
+
+uint is_monitor_mpi_calls_enabled()
+{
+ #if PER_MPI_CALL_STATS && MPI
+
+#if MPI_SAMPLING
+  return (dynamic_monitor != MPI_MONITOR_DISABLED);
+#else
+  return 1;
+#endif
+ 
+ #else
+  return 0;
+ #endif
+
 }
 
 #if MPI
@@ -638,14 +658,19 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     if (!dynamic_monitor && limit_exceeeded){
         float mpi_sec = avg_mpi_calls_per_second();
 
-        if (mpi_sec > 0) mpis_per_sample   =  mpi_sec/ 10;
-        else             mpis_per_sample   = MAX_MPI_CALLS_SECOND/10;
+        if (mpi_sec > (MAX_MPI_CALLS_SECOND * 2)){
+          dynamic_monitor = MPI_MONITOR_DISABLED;
+        }else{
 
-        curr_mpis_per_sample = 0;
+          if (mpi_sec > 0) mpis_per_sample   =  mpi_sec/ 10;
+          else             mpis_per_sample   = MAX_MPI_CALLS_SECOND/10;
+
+          curr_mpis_per_sample = 0;
+          dynamic_monitor = MPI_SAMPLING_ENABLED;
+        }
         monitor_mpi_calls(OFF);
-        dynamic_monitor = 1;
     }
-    if (dynamic_monitor){
+    if (dynamic_monitor == MPI_SAMPLING_ENABLED){
       curr_mpis_per_sample++;
       if (((curr_mpis_per_sample/mpis_per_sample)%10) == 0){
         monitor_mpi_calls(ON);
@@ -905,6 +930,12 @@ state_t mpi_support_evaluate_lb(const mpi_information_t *node_mpi_calls, int num
 {
     /* Get only the percentage time spent in MPI blocking calls. */
     state_t ret;
+
+    if (!is_monitor_mpi_calls_enabled()){
+      *lb = 0;
+      /* Add verbose here */
+      return EAR_SUCCESS;
+    }
 
     // Get only perc_mpi info.
     ret = mpi_stats_get_only_percs_mpi(node_mpi_calls, num_procs, percs_mpi); // Check whether perc_mpi is ok

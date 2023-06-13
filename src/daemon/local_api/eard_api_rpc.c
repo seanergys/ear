@@ -19,12 +19,14 @@
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <pthread.h>
+#include <sched.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <time.h>
 
 #include <common/system/lock.h>
+#include <common/system/poll.h>
 #include <daemon/local_api/eard_api_rpc.h>
 
 pthread_mutex_t  lock_rpc = PTHREAD_MUTEX_INITIALIZER;
@@ -33,6 +35,9 @@ __thread size_t  rpc_size  = 0;
 static int       rpc_disconnected;
 extern int       ear_fd_req;
 extern int       ear_fd_ack;
+
+extern afd_set_t eard_api_client_fd;
+extern uint ack_ready_negative , ack_ready_positive;
 
 ulong create_sec_tag();
 
@@ -172,10 +177,18 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
     }
     // Receiving the data and returning the RPC state
 
+    #if 0
     struct timespec yield_time;
     yield_time.tv_sec   = 0;
     yield_time.tv_nsec  = 500;
     nanosleep(&yield_time, NULL);
+    #endif
+
+    int ack_ready;
+   ack_ready = aselect(&eard_api_client_fd, 10000, NULL);
+   if (ack_ready > 0) ack_ready_positive++;
+   else               ack_ready_negative++;
+
 
 	#if SYNC_SET_RPC
     if (expc_size == UINT_MAX) {
