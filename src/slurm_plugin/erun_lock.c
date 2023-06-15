@@ -95,13 +95,14 @@ int master_getstep(int job_id, int step_id)
     //          3.2 Read the %step_id in slave.step
 	if (step_id == 0) {
 		if (state_ok(ear_file_read(path_master_step, (char *) &step_id, sizeof(int)))) {
-        	plug_verbose(_sp, 2, "read %d step_id in the file '%s'", step_id, path_master_step);
+            plug_verbose(_sp, 2, "read step_id %d in the file '%s'", step_id, path_master_step);
 			step_id += 1;
 		} else {
 			// In case the reading fails, force step_id to 0
 			step_id = 0;
 		}
 	}
+    plug_verbose(_sp, 4, "returning step_id %d", step_id);
 	return step_id;
 }
 

@@ -40,7 +40,7 @@ static int _clean;
 static int _help;
 //
 static int _at;
-int _sp;
+       int _sp;
 //
 static char *args[128];
 char       **_argv;
@@ -272,10 +272,12 @@ int job(int argc, char *argv[])
         // Setting the SLURM version of the variable
         setenv(Var.job_id.slurm, job_id, 1);
     }
-    if (!(step_id = getenv(Var.step_id.slurm))) {
-        if (!(step_id)) step_id = "0";
+    if ((step_id = getenv(Var.step_id.slurm)) == NULL) {
+        if (step_id == NULL) step_id = "0";
         // Setting the SLURM version of the variable
         setenv(Var.step_id.slurm, step_id, 1);
+    } else {
+        sd.erun.is_step_id = 1;
     }
     // Saving variables
     sd.erun.job_id  = atoi(job_id);
@@ -298,6 +300,11 @@ int job(int argc, char *argv[])
 
 int step(int argc, char *argv[])
 {
+    // If STEP_ID wasn't read
+    if (!sd.erun.is_step_id) {
+        sprintf(buffer, "%d", sd.erun.step_id);
+        setenv("SLURM_STEP_ID", buffer, 1);
+    }
     // Currently, SLURM_LOCALID is only used to determine the master node. In
     // case its value gains new uses, a lock would have to be used to numerate
     // each local task id.
