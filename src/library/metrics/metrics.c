@@ -108,9 +108,15 @@
 #define METRICS_OVH 1
 #if METRICS_OVH
 #include <common/utils/overhead.h>
-static ulong total_metrics_ovh = 0;
 uint id_ovh_partial_stop;
 uint id_ovh_compute_data;
+uint id_ovh_dc_energy;
+uint id_ovh_rapl;
+uint id_ovh_cpufreq;
+uint id_ovh_imcfreq;
+
+static uint partial_stop_cnt = 0;
+static uint compute_sig_cnt = 0;
 #endif
 // #define MASTER(master_rank) (master_rank >= 0)
 
@@ -772,6 +778,10 @@ static void metrics_static_init(topology_t *tp)
     #if METRICS_OVH
     overhead_suscribe("partial_stop", &id_ovh_partial_stop);
     overhead_suscribe("compute_signature_data", &id_ovh_compute_data);
+    overhead_suscribe("DC_energy", &id_ovh_dc_energy);
+    overhead_suscribe("RAPL", &id_ovh_rapl);
+    overhead_suscribe("AVG_CPU_freq", &id_ovh_cpufreq);
+    overhead_suscribe("AVG_IMC_freq", &id_ovh_imcfreq);
     #endif
 }
 
@@ -1196,6 +1206,7 @@ static int metrics_partial_stop(uint where)
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)) {
         debug("Iterations %u ear_guided %u", ear_iterations, ear_guided);
+        debug("%s: master not ready", node_name);
         return EAR_NOT_READY;
     }
 
@@ -1207,7 +1218,14 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	/* Energy node */
 	//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
+ 
+  #if METRICS_OVH
+  overhead_start(id_ovh_dc_energy);
+  #endif
 	int ret = energy_read(NULL, aux_energy_stop);
+  #if METRICS_OVH
+  overhead_stop(id_ovh_dc_energy);
+  #endif
 	if (ret == EAR_ERROR){
 		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
 	}
@@ -1321,7 +1339,7 @@ static int metrics_partial_stop(uint where)
 	// Daemon metrics
 	if (master) {
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (is_mpi_enabled() && is_monitor_mpi_calls_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
       #if 0
@@ -1331,9 +1349,11 @@ static int metrics_partial_stop(uint where)
 		}
 
 		/* Avg CPU freq */
+    overhead_start(id_ovh_cpufreq);
 		if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
 			verbose_master(ERROR_VERB, "%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
 		}
+    overhead_stop(id_ovh_cpufreq);
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(ERROR_VERB, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
@@ -1351,9 +1371,11 @@ static int metrics_partial_stop(uint where)
 
 		/* Avg IMC frequency */
 		if (mgt_imcfreq.ok){
+      overhead_start(id_ovh_imcfreq);
 			if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
 				verbose_master(ERROR_VERB, "%sError%s IMC freq. data read in partial stop", COL_RED, COL_CLR);
 			}
+      overhead_stop(id_ovh_imcfreq);
 			if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
 				verbose_master(ERROR_VERB, "IMC data diff fails");
 			}
@@ -1381,7 +1403,9 @@ static int metrics_partial_stop(uint where)
 
 		/* Only the master read RAPL because is not per-process metric */
 		/* RAPL energy */
+    overhead_start(id_ovh_rapl);
 		energy_cpu_read(no_ctx, aux_rapl);
+    overhead_stop(id_ovh_rapl);
 		// We read acuumulated energy
 		energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
 	
@@ -1475,7 +1499,7 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
     /* This function is executed before all processes compute their signature */
 
 		if (!master) {
-			verbose(0,"Warning, estimate metrics and not master task");
+			debug("Warning, estimate metrics and not master task");
 			return;
 		}
 
@@ -1824,7 +1848,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             char sig_to_vrb[128];
 			// signature_print_simple_fd(verb_channel, metrics);
             signature_to_str(metrics, sig_to_vrb, sizeof(sig_to_vrb));
-			verbose(0, "Signature computed: %s", sig_to_vrb);
+			debug("Signature computed: %s", sig_to_vrb);
 		}
 	}
 
@@ -1835,13 +1859,20 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
 	signature_ready(&sig_shared_region[my_node_id], 0);
 
+  debug("%s signature ready %d", node_name, my_node_id);
+
     verbose_master(INFO_METRICS + 1,
             "End compute signature for (l. rank) %d. Period %lf secs",
             my_node_id, sig_shared_region[my_node_id].period);
-
+#if 0
 	if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) {
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
+  #endif
+	if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC|MS_INVALIDATE) < 0) {
+		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
+	}
+  
 
 	/* Compute and print the total savings */
   if (sign_app_loop_idx == APP){
@@ -2091,7 +2122,6 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	uint num_ready;
 	float wait_time = 0;
 
-    verbose_master(0,"Number of metrics validation per cpu %u and gpu %u", validation_new_cpu, validation_new_gpu);
 
 #if METRICS_OVH
     //verbose(0,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
@@ -2248,17 +2278,18 @@ float metrics_iter_per_second()
 /**********************************************************************************************
  ******************* This function checks if data is ready to be shared ***********************
  **********************************************************************************************/
+
 state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		ulong min_time_us, ulong procs, llong *passed_time)
 {
     #if METRICS_OVH
-    timestamp met_ovh_init, met_ovh_end;
-    timestamp_getfast(&met_ovh_init);
     overhead_start(id_ovh_partial_stop);
+    partial_stop_cnt++;
     #endif
 
 
 	debug("metrics_compute_signature_finish %u", my_node_id);
+  debug("%s :metrics_compute_signature_finish iterations %u ready %u master_ready %u", node_name, iterations, sig_shared_region[my_node_id].ready, lib_shared_region->master_ready);
 
 	if (!sig_shared_region[my_node_id].ready) {
 
@@ -2272,10 +2303,8 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
 		if (elap_time < min_time_us && !time_eq) {
 			metrics->time = 0;
-			verbose_master(0,"%s : EAR_NOT_READY because of time %lld, iters %u\n", node_name, elap_time, iterations);
+			debug("%s : EAR_NOT_READY because of time %lld, iters %u (start %lld end %lld)\n", node_name, elap_time, iterations, metrics_usecs[LOO], metrics_time());
       #if METRICS_OVH
-      timestamp_getfast(&met_ovh_end);
-      total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
       overhead_stop(id_ovh_partial_stop);
       #endif
 			return EAR_NOT_READY;
@@ -2284,9 +2313,8 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		// Master: Returns not ready when power is not ready
 		// Not master: when master signature not ready
 		if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
+      debug("%s: EAR_NOT_READY 2", node_name);
       #if METRICS_OVH
-      timestamp_getfast(&met_ovh_end);
-      total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
       overhead_stop(id_ovh_partial_stop);
       #endif
 			return EAR_NOT_READY;
@@ -2294,6 +2322,7 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
     #if METRICS_OVH
     overhead_stop(id_ovh_partial_stop);
     overhead_start(id_ovh_compute_data);
+    compute_sig_cnt++;
     #endif
 
     last_sig_elapsed = elap_time;
@@ -2341,18 +2370,10 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 			debug("Setting Master ready");
 			lib_shared_region->master_ready = 1;
 		}
-    #if METRICS_OVH
-    timestamp_getfast(&met_ovh_end);
-    total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
-    #endif
 		return EAR_NOT_READY;
 	} else if (master) {
 		lib_shared_region->master_ready = 0;
 	}
-  #if METRICS_OVH
-  timestamp_getfast(&met_ovh_end);
-  total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
-  #endif
 
 	return EAR_SUCCESS;
 }

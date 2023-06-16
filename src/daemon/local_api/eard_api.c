@@ -55,7 +55,6 @@ int ear_fd_req = -1;
 int ear_fd_ack = -1;
 
 afd_set_t eard_api_client_fd;
-uint ack_ready_negative = 0, ack_ready_positive = 0;
 
 static uint8_t app_connected = 0;
 static app_id_t local_con_info;
@@ -361,7 +360,7 @@ int eards_connect(application_t *my_app, ulong lid)
   }
   app_connected = 1;
 
-  AFD_SETT(ear_fd_ack, &eard_api_client_fd, "earl_client_ack_fd");
+  AFD_SETT(ear_fd_ack, &eard_api_client_fd, NULL);
 
   eards_signal_catcher();
   debug("Connected");
@@ -381,7 +380,6 @@ void eards_disconnect()
         "witting req in ear_daemon_client_disconnect");
   }
 
-  // verbose(0,"RPC ready time %u not ready %u", ack_ready_positive, ack_ready_negative);
 
   CLOSE_LOCAL_COMM();
 
@@ -410,17 +408,14 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
         return_unlock((ulong) EAR_ERROR, &lock_rpc);
     }
 
-#if 0
-    struct timespec yield_time;
-    yield_time.tv_sec   = 0;
-    yield_time.tv_nsec  = 500;
-    nanosleep(&yield_time, NULL);
-    #endif
 
+    #if MIX_RPC
     int ack_ready;
     ack_ready = aselect(&eard_api_client_fd, 10000, NULL);
-    if (ack_ready > 0) ack_ready_positive++; 
-    else               ack_ready_negative++;
+    AFD_ZERO(&eard_api_client_fd);
+    AFD_SETT(ear_fd_ack, &eard_api_client_fd, NULL);
+    #endif
+
 
     if (eards_read(ear_fd_ack, ack_buf, ack_size, WAIT_DATA) != ack_size) {
 				debug("local api end error read: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);

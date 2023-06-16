@@ -34,6 +34,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <common/utils/overhead.h>
 #include <common/colors.h>
 #include <common/math_operations.h>
 #include <common/types/log.h>
@@ -85,6 +86,7 @@ static llong comp_N_begin;
 static llong comp_N_end;
 static llong comp_N_time;
 
+
        ulong perf_accuracy_min_time = 1000000; // The minimum period time to be elapsed
                                                // before starting signature computation.
 
@@ -135,6 +137,9 @@ static float        MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maxim
 
 extern uint check_periodic_mode;
 extern uint lib_period;
+
+static uint id_ovh_ev_sig, id_ovh_stable;
+
 
 /** Returns whether \p cpi_a and \p cpi_b and \p gbs_a \p gbs_b are
  * equal, respectively, with a maximum difference of \p eq_thresh permitted. */
@@ -256,6 +261,9 @@ void states_begin_job(int my_id, char *app_name)
 
     total_threads_cnt =  get_total_resources();
     debug("Total threads: %u", total_threads_cnt);
+
+    overhead_suscribe("evaluate_sig",&id_ovh_ev_sig);
+    overhead_suscribe("sig_stable",&id_ovh_stable);
 }
 
 /** This function is executed at application end. */
@@ -355,7 +363,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /***************************************************************************************************/
 
 
-    //verbose_master(0, "%s Iters %u period %u", node_name, iterations, perf_count_period);
+    verbose_master(3, "%s Iters %u period %u lib_period %u mpi_calls_iter %lu", node_name, iterations, perf_count_period, lib_period, mpi_calls_iter);
 
     if (traces_are_on() && ((sig_shared_region[my_node_id].iterations %5 ) == 0)){
       signature_from_ssig(&tracer_signature, &sig_shared_region[my_node_id].sig);
@@ -540,8 +548,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* Included to accelerate the signature computation */
             verbose_master(4, "%s--- EVALUATING LOCAL SIGNATURE ---%s", COL_YLW, COL_CLR);
 
+            overhead_start(id_ovh_ev_sig);
+
             if (!lib_shared_region->master_ready) {
-                if (!dynais_used && (iterations % mpi_calls_iter != 0)) {
+                if (!dynais_used && ((iterations - begin_iter) < mpi_calls_iter )) {
+                    overhead_stop(id_ovh_ev_sig);
                     return;
                 }
 
@@ -557,7 +568,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                         }
                     }
                     //verbose_master(0, "Conditions are Iters %u Iters2 %u", ((iterations - 1) % perf_count_period), (iterations == 1));
-                    if (((iterations - 1) % perf_count_period) || (iterations == 1)) return;
+                    if (((iterations - 1) % perf_count_period) || (iterations == 1)){
+                      overhead_stop(id_ovh_ev_sig);
+                      return;
+                    }
                 }
             }
             //verbose_master(0,"Master ready %u", lib_shared_region->master_ready);
@@ -599,11 +613,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     //verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name, perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
 
                   }
-                  else{
+                  else if (ear_guided != TIME_GUIDED){
                     lib_period = (uint)((float)perf_accuracy_min_time/(float)passed_time)*lib_period;
                     //verbose_master(0,"%s Using new lib_period %u", node_name, lib_period);
                   }
                 }
+                overhead_stop(id_ovh_ev_sig);
                 return;
             }
 
@@ -739,6 +754,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                                     ear_app_name, application.node_id, iterations,
                                     prev_cpufreq_khz, policy_cpufreq_khz, use_case);
 
+            overhead_stop(id_ovh_ev_sig);
             break; // EVALUATING_LOCAL_SIGNATURE
 
         case EVALUATING_GLOBAL_SIGNATURE:
@@ -756,14 +772,17 @@ void states_new_iteration(int my_id, uint period, uint iterations,
          * the number of iterations to compute the signature. */
         case SIGNATURE_STABLE:
             verbose_master(4,"SIGNATURE_STABLE");
+            overhead_start(id_ovh_stable);
 
             if (!lib_shared_region->master_ready) {
-                if (!dynais_used && (iterations % mpi_calls_iter != 0)) {
+                if (!dynais_used && ((iterations - begin_iter) < mpi_calls_iter)) {
+                    overhead_stop(id_ovh_stable);
                     return;
                 }
 
                 // I have executed N iterations more with a new frequency, we must check the signature
                 if (dynais_used && ((iterations - 1) % perf_count_period)) {
+                    overhead_stop(id_ovh_stable);
                     return;
                 }
             }
@@ -799,11 +818,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     perf_count_period_10p = perf_count_period;
                     //verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name, perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
                     }
-                  else{
+                  else if (ear_guided != TIME_GUIDED){
                     lib_period = (uint)((float)perf_accuracy_min_time/(float)passed_time)*lib_period;
                     //verbose_master(0,"%s Using new lib_period %u", node_name, lib_period);
                   }
                 }
+                overhead_stop(id_ovh_stable);
                 return;
             }
 
@@ -875,6 +895,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     COL_YLW, COL_CLR, sigs_metrics_buff);
               }
 
+              overhead_stop(id_ovh_stable);
               break;
             }
 
@@ -903,7 +924,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     perf_count_period_10p = perf_count_period;
                     //verbose_master(0,"%s Using new period %u accel %u ", node_name, perf_count_period, perf_count_period_10p);
                   }
-                  else{
+                  else if (ear_guided != TIME_GUIDED){
                     lib_period = lib_period * 2;
                     //verbose_master(0,"%s Using new lib_period %u", node_name, lib_period);
                   }
@@ -994,7 +1015,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     perf_count_period_10p = perf_count_period;
                     //verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name, perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
                     }
-                  else{
+                  else if (ear_guided != TIME_GUIDED){
                     lib_period = (uint)((float)perf_accuracy_min_time/(float)passed_time)*lib_period;
                     //verbose_master(0,"%s Using new lib_period %u", node_name,lib_period);
                   }

@@ -160,7 +160,9 @@ static void goto_init()
     sigdelset(&set, SIGNAL);
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
   pthread_setschedprio(thread, 10);
+  debug("ready");
 }
+
 
 static void *monitor_main(void *p)
 {
@@ -177,6 +179,7 @@ static void *monitor_main(void *p)
     // Main loop
 	while (is_running)
 	{
+    debug("running");
 		for (i = 0, sleep_units = 1000, sleep_reason = 0; i < queue_last && is_running; ++i)
 		{
             // Locking the suscription [i]
@@ -254,13 +257,15 @@ state_t monitor_init()
 		}
         locks_allocated = 1;
 	}
+	is_running = 1;
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0) {
         pthread_mutex_unlock(&lock_gen);
+        is_running =0;
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
-	is_running = 1;
 	pthread_mutex_unlock(&lock_gen);
+  debug("monitor_init");
 
 	return EAR_SUCCESS;
 }

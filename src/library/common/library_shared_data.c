@@ -218,7 +218,7 @@ void free_node_signatures(lib_shared_data_t *data,shsignature_t *sig)
     for (i=0;i<data->num_processes;i++){
         sig[i].ready = 0;
     }
-    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC|MS_INVALIDATE) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 }
 
 void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
@@ -226,7 +226,7 @@ void clean_signatures(lib_shared_data_t *data,shsignature_t *sig)
     int i;
     fflush(stdout);
     for (i=0;i<data->num_processes;i++) sig[i].ready = 0;
-    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
+    if (ear_msync(sig, sizeof(shsignature_t)* data->num_processes,MS_SYNC|MS_INVALIDATE) < 0) verbose_master(2,"Memory sync fails %s",strerror(errno));
 }
 
 void clean_mpi_info(lib_shared_data_t *data,shsignature_t *sig)

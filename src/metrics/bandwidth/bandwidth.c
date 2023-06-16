@@ -47,13 +47,13 @@ void bwidth_load(topology_t *tp, int eard)
     if (is_loaded) {
         goto leave;
     }
-//    bwidth_eard_load    (tp, &ops, eard);
+    bwidth_eard_load    (tp, &ops, eard);
     bwidth_amd19_load   (tp, &ops);
     bwidth_amd17_load   (tp, &ops);
     bwidth_amd17df_load (tp, &ops);
     bwidth_intel63_load (tp, &ops);
-//    bwidth_likwid_load  (tp, &ops);
     bwidth_intel106_load(tp, &ops);
+    bwidth_likwid_load  (tp, &ops);
     bwidth_dummy_load   (tp, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at 
     // this point all API's have their devices counter.

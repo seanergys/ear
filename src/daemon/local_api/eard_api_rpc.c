@@ -177,17 +177,14 @@ static state_t static_rpc(uint call, char *data, size_t size, char *recv_data, s
     }
     // Receiving the data and returning the RPC state
 
-    #if 0
-    struct timespec yield_time;
-    yield_time.tv_sec   = 0;
-    yield_time.tv_nsec  = 500;
-    nanosleep(&yield_time, NULL);
-    #endif
 
+   #if MIX_RPC
     int ack_ready;
    ack_ready = aselect(&eard_api_client_fd, 10000, NULL);
-   if (ack_ready > 0) ack_ready_positive++;
-   else               ack_ready_negative++;
+   AFD_ZERO(&eard_api_client_fd);
+   AFD_SETT(ear_fd_ack, &eard_api_client_fd, NULL);
+   #endif
+
 
 
 	#if SYNC_SET_RPC
