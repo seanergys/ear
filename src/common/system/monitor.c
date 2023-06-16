@@ -253,14 +253,14 @@ state_t monitor_init()
 		}
         locks_allocated = 1;
 	}
+    is_running = 1;
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0) {
+        is_running = 0;
         pthread_mutex_unlock(&lock_gen);
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
-	is_running = 1;
 	pthread_mutex_unlock(&lock_gen);
-
 	return EAR_SUCCESS;
 }
 

@@ -47,6 +47,8 @@ static state_t load_icelake()
 	imc_ctrs_count = imc_maps_count * 2 * 2; // #MAPs * 2 counters * 2 types (ice and sap)
 	imc_maps = calloc(imc_maps_count, sizeof(void *));
 	imc_ctrs = calloc(imc_ctrs_count, sizeof(uint));
+    debug("#IMC maps: %u", imc_maps_count);
+    debug("#IMC ctrs: %u", imc_ctrs_count);
 
 	for (p = c = 0; p < pcis_count; ++p) {
 		addr_hi = 0x00;
@@ -89,7 +91,7 @@ state_t bwidth_intel143_load(topology_t *tp, bwidth_ops_t *ops)
 	if (tp->vendor == VENDOR_AMD || tp->model != MODEL_SAPPHIRE_RAPIDS) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-	debug("detected Intel ICE LAKE");
+	debug("detected Intel SAPPHIRE RAPIDS");
 	if (state_fail(s = pci_scan(0x8086, sap_ids, sap_dfs, O_RDONLY, &pcis, &pcis_count))) {
 		serror("pci_scan");
 		return s;
