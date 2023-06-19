@@ -15,6 +15,7 @@ LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTI
 CFLAGS     += -DEAR_DEF_TIME_GUIDED=0 -DMPI_SAMPLING=1 -DMIX_RPC
 
 ## MPI_SAMPLING can be used to do an MPI statistic sampling
+## MIX_RPM implements a blocking operation to read in rpcs
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
