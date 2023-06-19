@@ -179,7 +179,7 @@ mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
 
-#if DCGMI && USE_GPUS
+#if DCGMI
 //#define DCGMI_NUM_EVENTS 14
 #define DCGMI_NUM_EVENTS 4
 #define DCGMI_SETS       3
@@ -191,9 +191,12 @@ static uint        dcgmi_curr_ev_set = 0;
 static char        dcgmi_metrics_str[2048];
 static double      dcgmi_elapsed = 0;
 static uint        dcgmi = 1;
+#else
+static uint        dcgmi = 0;
 #endif
 char        gpu_str[256];
 #endif // USE_GPUS
+
 
 /* These vectors have position APP for application granularity and LOO for loop granularity. */
 static llong       last_elap_sec = 0;
@@ -1790,7 +1793,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         }
 		#if DCGMI
 		/* If there is not utilization we reset the number of instances. Instances are used by policies */
-		if (dgmi && total_gpu_util == 0){
+		if (dcgmi && total_gpu_util == 0){
       for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
     }
 		#endif

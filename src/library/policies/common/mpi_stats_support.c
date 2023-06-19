@@ -93,6 +93,8 @@ static uint dynamic_monitor = 0;
 #define MPI_SAMPLING_ENABLED 1
 #define MPI_MONITOR_DISABLED 2
 
+#else
+static uint dynamic_monitor = 0;
 #endif
 
 #if MPI_STATS
