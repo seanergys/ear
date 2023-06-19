@@ -662,8 +662,14 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
           dynamic_monitor = MPI_MONITOR_DISABLED;
         }else{
 
-          if (mpi_sec > 0) mpis_per_sample   =  mpi_sec/ 10;
-          else             mpis_per_sample   = MAX_MPI_CALLS_SECOND/10;
+          if (mpi_sec > 0)
+          {
+            mpis_per_sample = ear_max(1, mpi_sec / 10);
+          }
+          else
+          {
+            mpis_per_sample = MAX_MPI_CALLS_SECOND/10;
+          }
 
           curr_mpis_per_sample = 0;
           dynamic_monitor = MPI_SAMPLING_ENABLED;
