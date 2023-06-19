@@ -32,6 +32,7 @@
 #include <metrics/bandwidth/archs/amd17df.h>
 #include <metrics/bandwidth/archs/intel63.h>
 #include <metrics/bandwidth/archs/intel106.h>
+#include <metrics/bandwidth/archs/intel143.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static double          line_size;
@@ -51,6 +52,7 @@ void bwidth_load(topology_t *tp, int eard)
     bwidth_amd19_load   (tp, &ops);
     bwidth_amd17_load   (tp, &ops);
     bwidth_amd17df_load (tp, &ops);
+    bwidth_intel143_load(tp, &ops);
     bwidth_intel63_load (tp, &ops);
     bwidth_intel106_load(tp, &ops);
     bwidth_likwid_load  (tp, &ops);

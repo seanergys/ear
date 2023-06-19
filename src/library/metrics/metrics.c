@@ -194,7 +194,7 @@ static uint        dcgmi = 1;
 #else
 static uint        dcgmi = 0;
 #endif
-char        gpu_str[256];
+char        gpu_str[512];
 #endif // USE_GPUS
 
 
@@ -2003,7 +2003,6 @@ int metrics_init(topology_t *topo)
 	energy_data_alloc(&metrics_ipmi[0]);
 	energy_data_alloc(&metrics_ipmi[1]);
 	acum_ipmi[0]=0;acum_ipmi[1]=0;
-
 
 	if (master) {
 

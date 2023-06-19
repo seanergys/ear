@@ -45,7 +45,7 @@ char * getenv_ear_tmp();
 char * getenv_ear_install_pathname();
 /** Tries to get the EAR_DB_PATHNAME value and returns it.*/
 char * getenv_ear_db_pathname();
-/** Tries to get the EAR_USER_DB_PATHNAME value and returns it.*/
+/** Tries to get the EAR_USER_DB value and returns it.*/
 char * getenv_ear_user_db_pathname();
 /** Tries to get the EAR_GUI_PATHNAME value and returns it.*/
 char * getenv_ear_gui_pathname();

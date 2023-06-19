@@ -48,7 +48,7 @@ void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 	if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_HASWELL_X) {
 		return;
 	}
-    if (tp_in->vendor == VENDOR_INTEL && tp_in->model == MODEL_TIGERLAKE_U) {
+    if (tp_in->vendor == VENDOR_INTEL && tp_in->model == MODEL_TIGERLAKE) {
         return;
     }
 	debug("testing MSR");

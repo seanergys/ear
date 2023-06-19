@@ -934,15 +934,16 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     loops_aux = (loop_t*) xcalloc(num_loops, sizeof(loop_t));
     char sig_query[128];
     signature_t *sig_aux;
+    int ret;
     //fetching and storing of jobs
     i = 0;
     status = mysql_stmt_fetch(statement);
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
         sprintf(sig_query, "SELECT * FROM Signatures WHERE id=%lld", sig_id);
-        mysql_retrieve_signatures(connection, sig_query, &sig_aux);
+        ret = mysql_retrieve_signatures(connection, sig_query, &sig_aux);
 
-        if (sig_aux != NULL) { //to prevent it from crashing
+        if (ret > 0 && sig_aux != NULL) { //to prevent it from crashing
             signature_copy(&loop_aux->signature, sig_aux);
             free(sig_aux);
         }
