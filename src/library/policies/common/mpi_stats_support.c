@@ -297,10 +297,12 @@ state_t mpi_app_end(polctx_t *c)
     timestamp_getfast(&end);
 #endif
 
+#if MPI_SAMPLING
     if (!dynamic_monitor){
       elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
       mpi_stats.exec_time += elap;
     }
+#endif
 
     if (mpi_stats.total_mpi_calls && mpi_stats.exec_time)
     {
