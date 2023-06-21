@@ -26,10 +26,10 @@
 #include <semaphore.h>
 // #define SHOW_DEBUGS 1
 #include <common/includes.h>
-#include <common/config.h>
 #include <common/system/symplug.h>
 #include <common/environment.h>
 #include <common/types/generic.h>
+#include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
@@ -50,12 +50,11 @@
 #include <library/loader/module_cuda.h>
 #include <library/tracer/tracer.h>
 #include <library/tracer/tracer_paraver_comp.h>
+#include <library/policies/common/pc_support.h>
+#include <library/policies/policy_state.h>
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/powercap/powercap_status_conf.h>
-#include <common/types/pc_app_info.h>
-#include <library/policies/common/pc_support.h>
-#include <library/policies/policy_state.h>
 
 /* Verbose levels */
 #define POLICY_INFO   2
@@ -64,10 +63,10 @@
 
 #define DEF_USE_CPUPRIO 0
 
-
 /* Must be migrated to config_env */
 #define GPU_ENABLE_OPT "EAR_GPU_ENABLE_OPT"
 
+#define is_master masters_info.my_master_rank >= 0
 
 
 static ear_event_t curr_policy_event;
@@ -159,8 +158,6 @@ extern uint ear_mpi_opt;
 #endif
 uint gpu_optimize = 0;
 
-
-
 static pstate_t *cpu_pstate_lst; /*!< The list of available CPU pstates in the current system.*/
 static uint      cpu_pstate_cnt;
 
@@ -244,8 +241,12 @@ static const uint   *gpuf_pol_list_items;
 static uint first_print = 1;
 static uint first_policy_try = 1;
 
-
 static uint  use_cpuprio = DEF_USE_CPUPRIO; // Enables the usage of proiority system
+
+static uint total_mpi_optimized =  0;
+
+/* Governor management for exclusive mode */
+static uint *governor_list_before_init = NULL;
 
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
@@ -272,7 +273,7 @@ static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint
  * CPU freq. found in \process_cpu_freqs_khz.
  */
 static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz,
-        int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min, int process_id);
+                                 int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min, int process_id);
 
 
 /** This function returns whether the CPU frequency selected by the policy itself must be selected.
@@ -302,11 +303,12 @@ static ulong compute_avg_freq(ulong *freq_list, int n);
  * \param[in] dom The domain of the current policy plugin.
  * \param[out] avg_freq After the function, this adress will contain the average CPU freq. selected. */
 static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
-        node_freqs_t *freqs, node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id);
+                                         node_freqs_t *freqs, node_freq_domain_t *dom,
+                                         node_freqs_t *avg_freq, int process_id);
 
 
-/** Verboses the policy context \p policy_ctx if the verbosity level of the job is equal or higher than
- * \p verb_lvl. */
+/** Verboses the policy context \p policy_ctx if the verbosity level
+ * of the job is equal or higher than \p verb_lvl. */
 static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx);
 
 
@@ -314,6 +316,11 @@ static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx);
  * list, for a total number of \p cpu_cnt CPU/processors. Use \p verb_lvl to specify the verbosity level
  * required by the job to print the information. */
 static void verbose_freq_per_core(int verb_lvl, ulong **core_cpu_freqs_khz, int cpu_cnt);
+
+
+/** Verboses the elapsed time on each phase encountered
+ * in the extended signature of the passed signature \p sig. */
+static void verbose_time_in_phases(signature_t *sig);
 
 
 /** Encapsulates priority setup. */
@@ -358,7 +365,15 @@ static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_cou
 static void verbose_cpuprio_list(int verb_lvl, uint *cpuprio_list, uint cpuprio_list_count);
 
 
-static uint total_mpi_optimized =  0;
+/** Sets governor `userspace` to all CPUs that are
+ * not in the CPU set mask of the job in the node after
+ * saving the current list of governors in governor_list_before_init. */
+static state_t policy_set_nonused_cpus_governor();
+
+
+/** Sets the governor list stored at governor_list_before_init. */
+static state_t policy_restore_cpus_governor();
+
 
 /**** Auxiliary functions ***/
 #if 0
@@ -379,7 +394,8 @@ void fill_cpus_out_of_cgroup(uint exc)
     if (exc == 0) return;
     cpu_cnt = arch_desc.top.cpu_count;
     #if DLB
-    verbosen_master(1,"IDLE freq (%lu) cpus --> ", frequency_pstate_to_freq(frequency_get_num_pstates()-1));
+    verbosen_master(1, "IDLE freq (%lu) cpus --> ",
+                    frequency_pstate_to_freq(frequency_get_num_pstates()-1));
     #endif
 
     for (cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++){
@@ -406,19 +422,6 @@ static ulong calls_cpufreq = 0;
 
 timestamp init_last_phase, init_last_comp;
 
-static void verbose_time_in_phases(signature_t *sig)
-{
-  sig_ext_t *se = (sig_ext_t *)sig->sig_ext;
-  if (se != NULL){
-    verbose_master(2, "............Phases");
-    for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
-      if (se->earl_phase[ph].elapsed){ 
-        verbose_master(2, "Phase[%s] elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
-      }
-    }
-    verbose_master(2, "............END-Phases");
-  }
-}
 
 
 static void policy_new_phase(uint phase, signature_t *sig)
@@ -621,7 +624,7 @@ state_t policy_init()
         imc_extra_th = atof(cimc_extra_th);
     }
 
-    if (masters_info.my_master_rank >= 0)
+    if (is_master)
     {
         policy_setup_priority();
     }
@@ -647,6 +650,14 @@ state_t policy_init()
     if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
     verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u",
                    COL_BLU, COL_CLR, exclusive_mode);
+    if (is_master && exclusive_mode)
+    {
+        if (state_fail(policy_set_nonused_cpus_governor()))
+        {
+            verbose(POLICY_INFO, "%sWARNING%s Exclusive mode configuration error: %s",
+                    COL_YLW, COL_CLR, state_msg);
+        }
+    }
 
     if (cuse_earl_phases != NULL) use_earl_phases = atoi(cuse_earl_phases);
     verbose_master(POLICY_INFO, "%sPOLICY%s Phases detection: %u", COL_BLU, COL_CLR, use_earl_phases);
@@ -745,7 +756,7 @@ state_t policy_init()
         verbose_master(POLICY_INFO, "%sERROR%s Getting policy domains.", COL_RED, COL_CLR);
     }
 
-    if (masters_info.my_master_rank >= 0) {
+    if (is_master) {
         // Powercap (?)
         pc_support_init(c);
     }
@@ -756,7 +767,7 @@ state_t policy_init()
     /* We have migrated frequency set from eard to earl */
     policy_get_default_freq(&nf);
 
-    if (masters_info.my_master_rank >= 0) {
+    if (is_master) {
       for (uint lp = 0 ; lp < lib_shared_region->num_processes; lp++) {
         sig_shared_region[lp].unbalanced = 0;
         sig_shared_region[lp].new_freq = nf.cpu_freq[0];
@@ -764,7 +775,8 @@ state_t policy_init()
     }
 
     /* What do we need at this point in the signature ? */
-    policy_master_freq_selection(c, &policy_last_local_signature, &nf, &freqs_domain, &avg_nf, ALL_PROCESSES);
+    policy_master_freq_selection(c, &policy_last_local_signature, &nf,
+                                 &freqs_domain, &avg_nf, ALL_PROCESSES);
 
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
@@ -783,7 +795,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     char *ins_path       = (system_conf->user_type == AUTHORIZED) ? ear_getenv(HACK_EARL_INSTALL_PATH) : NULL; // TODO: this path may be recicled without calling again getenv
 
 #if SHOW_DEBUGS
-    if (masters_info.my_master_rank >= 0)
+    if (is_master)
     {
         if (obj_path != NULL)
         { 
@@ -1007,7 +1019,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     if (!eards_connected() || (masters_info.my_master_rank < 0)) {
 #if EARL_LIGHT
-        if (masters_info.my_master_rank >= 0) {
+        if (is_master) {
             clean_signatures(lib_shared_region, sig_shared_region);
         }
 #endif
@@ -1505,6 +1517,10 @@ state_t policy_end()
 #endif
 
     policy_reset_priority();
+    if (is_master && exclusive_mode)
+    {
+        policy_restore_cpus_governor();
+    }
 
     preturn(polsyms_fun.end, c);
 }
@@ -2256,6 +2272,21 @@ static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx)
 }
 
 
+static void verbose_time_in_phases(signature_t *sig)
+{
+  sig_ext_t *se = (sig_ext_t *)sig->sig_ext;
+  if (se != NULL){
+    verbose_master(2, "............Phases");
+    for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
+      if (se->earl_phase[ph].elapsed){ 
+        verbose_master(2, "Phase[%s] elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
+      }
+    }
+    verbose_master(2, "............END-Phases");
+  }
+}
+
+
 static void policy_setup_priority()
 {
     uint  user_cpuprio_list_count;       // Count of user-prvided priority list
@@ -2492,7 +2523,7 @@ static state_t policy_set_prio_with_mask_inverted(uint *dst_prio_list, uint dst_
 static state_t policy_reset_priority()
 {
     const metrics_t *cpuprio_api = metrics_get(API_ISST);
-    if (masters_info.my_master_rank >= 0 && cpuprio_api)
+    if (is_master && cpuprio_api)
     {
         if (cpuprio_api->ok && use_cpuprio && mgt_cpufreq_prio_is_enabled())
         {
@@ -2562,3 +2593,70 @@ static void verbose_cpuprio_list(int verb_lvl, uint *cpuprio_list, uint cpuprio_
 }
 
 
+static state_t policy_set_nonused_cpus_governor()
+{
+#define free_return_err(msg) \
+        free(governor_list_before_init);\
+        governor_list_before_init = NULL;\
+        return_msg(EAR_ERROR, msg);
+
+#define check(st, msg) \
+    if (state_fail(st)) {free_return_err(msg);}
+
+    // Allocate the governor list
+    if (state_fail(mgt_cpufreq_data_alloc(NULL, &governor_list_before_init)))
+    {
+        return_msg(EAR_ERROR, "Allocating governor list.");
+    }
+
+    // Retrieve the current governor list
+    check(mgt_cpufreq_governor_get_list(no_ctx, governor_list_before_init),
+          "Retrieving the governor list.");
+
+    // Verbose governor list
+    if (VERB_ON(POLICY_INFO))
+    {
+        verbosen(0, "List of governors of %u CPUs: ", lib_shared_region->num_cpus);
+        for (int i = 0; i < metrics_get(MGT_CPUFREQ)->devs_count; i++)
+        {
+            verbosen(0, " %u", governor_list_before_init[i]);;
+        }
+    }
+
+    // Set userspace governor on CPUs not used by the job
+
+    cpu_set_t not_used_cpus;
+    cpus_not_in_mask(&not_used_cpus, &lib_shared_region->node_mask);
+
+    verbosen(POLICY_INFO + 1, "Node used CPUs: ");
+    verbose_affinity_mask(0, (const cpu_set_t *) &lib_shared_region->node_mask, MAX_CPUS_SUPPORTED);
+
+    verbosen(POLICY_INFO + 1, "Non-used CPUs: ");
+    verbose_affinity_mask(0, (const cpu_set_t *) &not_used_cpus, MAX_CPUS_SUPPORTED);
+
+    // Getting a valid ID for 'userspace' governor
+    char *governor_str = "userspace";
+    uint governor_int;
+    check(governor_toint(governor_str, &governor_int),
+          "Converting governor from str to int.");
+
+    // Setting the governor
+    check(mgt_cpufreq_governor_set_mask(no_ctx, governor_int, not_used_cpus),
+          "Setting governor.");
+
+    return EAR_SUCCESS;
+}
+
+
+static state_t policy_restore_cpus_governor()
+{
+    if (governor_list_before_init)
+    {
+        mgt_cpufreq_governor_set_list(no_ctx, governor_list_before_init);
+
+        free(governor_list_before_init);
+        governor_list_before_init = NULL;
+    }
+
+    return EAR_SUCCESS;
+}
