@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -44,7 +44,7 @@ static state_t load_icelake()
 	state_t s;
 
 	imc_maps_count = 4 * pcis_count; // 4 IMCs * #PCIs (or sockets)
-	imc_ctrs_count = imc_maps_count * 2 * 2; // #MAPs * 2 counters * 2 types (ice and sap)
+	imc_ctrs_count = imc_maps_count * 2; // #MAPs * 2 counters (RD and WR)
 	imc_maps = calloc(imc_maps_count, sizeof(void *));
 	imc_ctrs = calloc(imc_ctrs_count, sizeof(uint));
     debug("#IMC maps: %u", imc_maps_count);
@@ -62,22 +62,20 @@ static state_t load_icelake()
         // 4 IMCs
 		for (i = 0; i < 4; ++i) {
 			addr_lo = 0x00;
-            // MEMx_BAR
+            // MEMx_BAR (0xD8, 0xDC, 0xE0 and 0xE4 in the document, which is the same as 0xD8+(i*0x04).
 	    	if (state_fail(s = pci_read(&pcis[p], &addr_lo, sizeof(uint), 0xD8+(i*0x04)))) {
 				// Clean PCIs
 				return s;
 			}
 			addr_lo = (addr_lo & 0x7FF) << 12;
             // Free running counters base address
-			addr_fi = (addr_hi | addr_lo) + 0x2290;
+			addr_fi = (addr_hi | addr_lo) + 0x2318;
 			if (state_ok(s = pci_mmio_map(addr_fi, &imc_maps[(p*4)+i]))) {
                 debug("IMC%u address physical = 0x%llx (0x%llx | 0x%llx)", (p*4)+i, addr_fi, addr_hi, addr_lo);
                 debug("IMC%u address virtual  = 0x%p", (p*4)+i, imc_maps[(p*4)+i]);
                 // Filling RD and WR counters
                 imc_ctrs[c++] = 0x00;
                 imc_ctrs[c++] = 0x08;
-                imc_ctrs[c++] = 0x88;
-                imc_ctrs[c++] = 0x90;
 			}
 		}
 	}
@@ -140,27 +138,18 @@ state_t bwidth_intel143_read(ctx_t *c, bwidth_t *bw)
 {
     addr_t addr0;
     addr_t addr1;
-    addr_t addr2;
-    addr_t addr3;
     int i, j;
 	
 	timestamp_get(&bw[imc_ctrs_count].time);
-
-	for (i = j = 0; i < imc_maps_count; ++i, j+=4) {
+	for (i = j = 0; i < imc_maps_count; ++i, j+=2) {
 		debug("IMC%d: RD DDR addr 0x%p", i, imc_maps[i]);
         addr0 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+0]);
         addr1 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+1]);
-        addr2 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+2]);
-        addr3 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+3]);
 		bw[j+0].cas = (ullong) *((ullong *) (addr0));
         bw[j+1].cas = (ullong) *((ullong *) (addr1));
-        bw[j+2].cas = (ullong) *((ullong *) (addr2));
-        bw[j+3].cas = (ullong) *((ullong *) (addr3));
 		bw[j+0].cas = bw[j+0].cas & 0x0000ffffffffffff;
         bw[j+1].cas = bw[j+1].cas & 0x0000ffffffffffff;
-        bw[j+2].cas = bw[j+2].cas & 0x0000ffffffffffff;
-        bw[j+3].cas = bw[j+3].cas & 0x0000ffffffffffff;
-        debug("IMC%d: %llu %llu %llu %llu cas", i, bw[i+0].cas, bw[i+1].cas, bw[i+2].cas, bw[i+3].cas);
+        debug("IMC%d: %llu %llu cas", i, bw[j+0].cas, bw[j+1].cas);
 	}
 	return EAR_SUCCESS;
 }
