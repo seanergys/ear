@@ -1569,7 +1569,6 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
  * TASK MGT
  *
  */
-// TODO: Thread-save here.
 void powermon_new_task(new_task_req_t *newtask)
 {
     powermon_app_t *pmapp;
@@ -1869,8 +1868,6 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     // we must report the current period for that job before the reset: PENDING
     end_job_for_period(&current_sample);
 
-    // pthread_mutex_unlock(&app_lock); // TODO: Remove
-
     report_powermon_app(&summary);
 
     set_null_loop(&pmapp->last_loop);
@@ -1899,7 +1896,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     if (summary.state != APP_FINISHED)
     {
         if (powermon_is_idle())
-        { 
+        {
             powercap_run_to_idle();
 
 #if !NAIVE_SETTINGS_SAVE
