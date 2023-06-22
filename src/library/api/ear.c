@@ -2130,8 +2130,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                         if (masters_info.my_master_rank >= 0)
                                         #endif
                                         traces_start();
-                                        verbose_master(3, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
-                                                time_from_mpi_init,mpi_calls_in_period,ear_status);
+                                        verbose_master(0, "Going to periodic mode after %lf secs: mpi calls in period %u. \n",
+                                                time_from_mpi_init,mpi_calls_per_second);
                                         ear_iterations = 0;
                                         states_begin_period(my_id, ear_event_l, (ulong) lib_period,1);
                                         states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period,0);
