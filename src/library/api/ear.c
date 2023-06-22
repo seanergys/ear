@@ -18,8 +18,6 @@
 #define _GNU_SOURCE
 // #define SHOW_DEBUGS 1
 
-#define BASIC_PERIOD 1000
-
 /* 1 means invatid shared memory or invalid id (all processes), 
  * 2 means invatid shared memory or invalid id (half processes),
  * 3 eard not present . 0 means no fake (default) */
