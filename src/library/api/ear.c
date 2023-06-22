@@ -1808,13 +1808,17 @@ void ear_init()
        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
+
+        if (!is_mpi_enabled()) ear_guided == TIME_GUIDED;
+        #if 0
         if (ear_guided == TIME_GUIDED){
+        #endif
 				  if (monitor_init() != EAR_SUCCESS) verbose(0,"Monitor init fails! %s",state_msg);
 				  earl_monitor = suscription();
 				  earl_monitor->call_init = earl_periodic_actions_init;
 				  earl_monitor->call_main = earl_periodic_actions;
 				  earl_monitor->time_relax = 10000;
-				  earl_monitor->time_burst = 2000;
+				  earl_monitor->time_burst = 1000;
 
 				  if (monitor_register(earl_monitor) != EAR_SUCCESS) verbose(0,"Monitor register fails! %s",state_msg);
 				  if (ear_guided == DYNAIS_GUIDED){
@@ -1825,7 +1829,9 @@ void ear_init()
             monitor_burst(earl_monitor, 0);
           }
           verbose_master(0,"Monitor ON relax %d burst %d", earl_monitor->time_relax, earl_monitor->time_burst);
+          #if 0
         }
+        #endif
 
         /* For code organization we have a separate subscription for MPI optimization */
         #if MPI_OPTIMIZED
