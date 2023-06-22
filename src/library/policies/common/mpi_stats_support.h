@@ -84,10 +84,6 @@ state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_per
         size_t size, double *similarity);
 /**@}*/
 
-/** Returns the number of total_mpi_calls normalized by a period, e.g., 10 seconds. */
-float compute_mpi_in_period(mpi_information_t *mc);
-
-
 #if MPI_OPTIMIZED
 state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed);
 #endif

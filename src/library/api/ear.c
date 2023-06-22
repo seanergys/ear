@@ -2442,7 +2442,7 @@ void ear_new_iteration(unsigned long loop_id)
 
 /**************** New for iterative code ********************/
 //void *earl_periodic_actions(void *no_arg)
-static uint last_mpis;
+static unsigned long long int last_mpis;
 static timestamp_t periodic_time;
 static ulong last_check = 0;
 static uint first_exec_monitor = 1;

@@ -323,7 +323,7 @@ int select_global_cp(int size,int max,int *ppn,shsignature_t *my_sh_sig,int *nod
 	int i,j;
 	int rank = 0;
 	double minp = 100.0,maxp = 0.0;
-	unsigned int total_mpi = 0;
+	unsigned long long int total_mpi = 0;
 	unsigned long long total_mpi_time = 0, total_exec_time = 0;
 	/* Node loop */
 	for (i=0;i<size;i++){
@@ -341,18 +341,18 @@ int select_global_cp(int size,int max,int *ppn,shsignature_t *my_sh_sig,int *nod
 		}
 	}
 	*rank_cp = rank;
-	debug("(MIN PERC MPI %.1lf, MAX PERC MPI %.1lf) (MPI_CALLS %u MPI_TIME %.3fsec USER_TIME=%.3fsec)\n",minp*100.0,maxp*100.0,total_mpi,(float)total_mpi_time/1000000.0,(float)total_exec_time/1000000.0);
+	debug("(MIN PERC MPI %.1lf, MAX PERC MPI %.1lf) (MPI_CALLS %llu MPI_TIME %.3fsec USER_TIME=%.3fsec)\n",minp*100.0,maxp*100.0,total_mpi,(float)total_mpi_time/1000000.0,(float)total_exec_time/1000000.0);
 	return rank;
 }
 
 void print_local_mpi_info(mpi_information_t *info)
 {
-	fprintf(stderr,"total_mpi_calls %u exec_time %llu mpi_time %llu rank %d perc_mpi %.3lf \n",info->total_mpi_calls,info->exec_time,info->mpi_time,info->rank,info->perc_mpi);
+	fprintf(stderr,"total_mpi_calls %llu exec_time %llu mpi_time %llu rank %d perc_mpi %.3lf \n",info->total_mpi_calls,info->exec_time,info->mpi_time,info->rank,info->perc_mpi);
 }
 
 void mpi_info_to_str(mpi_information_t *info,char *msg,size_t max)
 {
-	snprintf(msg,max,"RANK[%d] total_mpi_calls %u exec_time %llu mpi_time %llu perc_mpi %.3lf ",info->rank,info->total_mpi_calls,info->exec_time,info->mpi_time,info->perc_mpi*100.0);
+	snprintf(msg,max,"RANK[%d] total_mpi_calls %llu exec_time %llu mpi_time %llu perc_mpi %.3lf ",info->rank,info->total_mpi_calls,info->exec_time,info->mpi_time,info->perc_mpi*100.0);
 }
 
 
@@ -364,7 +364,7 @@ void mpi_info_head_to_str_csv(char *msg,size_t max)
 
 void mpi_info_to_str_csv(mpi_information_t *info, char *msg, size_t max)
 {
-  snprintf(msg, max, "%d;%u;%llu;%llu;%.3lf", info->rank, info->total_mpi_calls,
+  snprintf(msg, max, "%d;%llu;%llu;%llu;%.3lf", info->rank, info->total_mpi_calls,
            info->exec_time,info->mpi_time,info->perc_mpi*100.0);
 }
 
@@ -378,7 +378,7 @@ void print_sh_signature(int localid,shsignature_t *sig)
 		newf=(float)sig->new_freq/1000000.0;
     t = (float) sig->mpi_info.exec_time/1000000.0;
 
-	  fprintf(stderr,"RANK[%d]= %d mpi_data={total_mpi_calls %u mpi_time %llu exec_time %.3f PercTime %lf }\n",localid,
+	  fprintf(stderr,"RANK[%d]= %d mpi_data={total_mpi_calls %llu mpi_time %llu exec_time %.3f PercTime %lf }\n",localid,
     sig->mpi_info.rank,sig->mpi_info.total_mpi_calls,sig->mpi_info.mpi_time,t,sig->mpi_info.perc_mpi);
     fprintf(stderr,"RANK[%d]= %d signature={cpi %.3lf tpi %.3lf time %.3lf Gflops %f dc_power %.3lf avgf %.1f deff %.1f} state %d new_freq %.1f\n",localid,sig->mpi_info.rank,sig->sig.CPI,sig->sig.TPI, sig->sig.time,sig->sig.Gflops,sig->sig.DC_power,avgf,deff,sig->app_state,newf);
 }

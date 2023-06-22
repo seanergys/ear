@@ -369,7 +369,7 @@ state_t mpi_app_end(polctx_t *c)
                     write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
                 }
 
-                sprintf(mpi_stats_buff,"%d;%d;%u;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;"
+                sprintf(mpi_stats_buff,"%d;%d;%llu;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;"
                         "%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu\n",
                         lib_shared_region->master_rank,
                         mpi_stats.rank,
@@ -455,7 +455,7 @@ uint is_monitor_mpi_calls_enabled()
 float avg_mpi_calls_per_second()
 {
  float seconds = (float) (mpi_stats.exec_time / 1000000);
- float curr_mpi_per_second = (float)mpi_stats.total_mpi_calls / seconds;
+ float curr_mpi_per_second = mpi_stats.total_mpi_calls / seconds;
  return curr_mpi_per_second;
 }
 #else
@@ -815,16 +815,8 @@ static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types
 
 void verbose_mpi_data(int verb_lvl, mpi_information_t *mc)
 {
-    verbose_master(verb_lvl, "Total mpi calls %u MPI time %llu exec time %llu perc mpi %.2lf",
+    verbose_master(verb_lvl, "Total mpi calls %llu MPI time %llu exec time %llu perc mpi %.2lf",
             mc->total_mpi_calls, mc->mpi_time, mc->exec_time, mc->perc_mpi);
-}
-
-
-float compute_mpi_in_period(mpi_information_t *mc)
-{
-    float mpi_call_cnt  = mc[my_node_id].total_mpi_calls;
-    ullong exec_time_sec = mc[my_node_id].exec_time / 1000000;
-    return mpi_call_cnt / (float) exec_time_sec;
 }
 
 

@@ -56,7 +56,7 @@ typedef struct mpi_summary {
 
 /** Basic MPI statistics. Granularity: process. */
 typedef struct mpi_information {
-    uint        total_mpi_calls; /**< The number of MPI calls. */
+    ullong      total_mpi_calls; /**< The number of MPI calls. */
     ullong      exec_time;       /**< Elapsed time, in microseconds. */
     ullong      mpi_time;        /**< Time spent in MPI calls, in microseconds. */
     int         rank;            /**< The process rank. */
