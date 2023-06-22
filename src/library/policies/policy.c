@@ -394,6 +394,7 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
 
   if ((limit == 1) && (cpu_f[0] == frequency_get_nominal_freq())) return;
 
+
   /* Time reference and power reference is always computed based on the nominal CPU freq 
    * IF the default CPU freq is not the nominal (min_time for example), we project data
    * for the nominal CPU frequency
@@ -426,9 +427,11 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
    * again the node_policy 
    */
 
+  if ((pref == 0) || (tref == 0)) return;
+
   energy_policy_saving = (renergy - nenergy)/renergy;
-  power_policy_saving = (pref - pnext)/pref;
-  time_policy_penalty = (tref - tnext)/tref;
+  if (pref != pnext) power_policy_saving = (pref - pnext)/pref;
+  if (tref != tnext) time_policy_penalty = (tref - tnext)/tref;
    
 }
 
