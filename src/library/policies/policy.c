@@ -383,6 +383,7 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
   float tref, pref;
   float tnext = 0, pnext = 0;
   float renergy, nenergy;
+  ulong cpu_f_avg = 0;
 
   energy_policy_saving = 0;
   power_policy_saving  = 0;
@@ -393,22 +394,37 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
 
   if ((limit == 1) && (cpu_f[0] == frequency_get_nominal_freq())) return;
 
+  /* Time reference and power reference is always computed based on the nominal CPU freq 
+   * IF the default CPU freq is not the nominal (min_time for example), we project data
+   * for the nominal CPU frequency
+   */
   tref = get_time_nominal(ns);
   pref = get_power_nominal(ns);
-  
+ 
+  /* IF we are selecting CPU freqs per process, we aggregate and compute the average */
   for (uint p = 0; p < limit; p++){
       tnext += get_time_projected(ns, cpu_f[p]);
       pnext += get_power_projected(ns, cpu_f[p]);
+      cpu_f_avg += cpu_f[p];
   }
   tnext = tnext / limit;
   pnext = pnext / limit;
+  cpu_f_avg = cpu_f_avg / limit;
 
+  verbose_master(0, "Policy savins: CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
+      ns->def_f, cpu_f_avg, tref, pref, tnext, pnext);
+
+  /* renergy = energy at the nominal , nenergy = energy with policy selected CPu freq */
   renergy = tref  * pref;
   nenergy = tnext * pnext;
 
   if ((renergy == 0) || (nenergy == renergy)) {
     return;
   }
+
+  /* These estimated savings are used in policy_ok, they are constant until we apply 
+   * again the node_policy 
+   */
 
   energy_policy_saving = (renergy - nenergy)/renergy;
   power_policy_saving = (pref - pnext)/pref;
@@ -1400,6 +1416,8 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) * 100;
 	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
   #endif
+
+  /* These policy savings are estimations based on the energy models */
 
   tpenalty = time_policy_penalty  * 100;
   esaving  = energy_policy_saving * 100;
