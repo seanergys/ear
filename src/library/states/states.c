@@ -135,7 +135,8 @@ static float        MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maxim
        timestamp_t  time_last_signature;
        uint         signature_reported           = 0;
 
-extern uint check_periodic_mode;
+// Commented due to it is declared at externs.h
+// extern uint check_periodic_mode;
 extern uint lib_period;
 
 static uint id_ovh_ev_sig, id_ovh_stable;
@@ -1152,8 +1153,8 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
     my_loop->total_iterations = iterations;
 #endif
 
-    if (master ) {
-
+    if (master)
+    {
         clean_db_loop(my_loop, system_conf->max_sig_power);
 
         application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
