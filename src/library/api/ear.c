@@ -190,7 +190,7 @@ static char *creport_earl_events;
 uint 		ear_periodic_mode = PERIODIC_MODE_OFF;
 uint 	mpi_calls_in_period = 10000;
 uint mpi_calls_per_second;
-static uint total_mpi_calls = 0;
+static unsigned long long int total_mpi_calls = 0;
 static uint  dynais_timeout = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
 uint             lib_period = PERIOD;
 static uint     check_every = MPI_CALLS_TO_CHECK_PERIODIC;
@@ -2048,7 +2048,7 @@ void ear_finalize(int exit_status)
         #if START_END_OVH
         timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
-        verbose_master(0,"Finalization cost (%s): %llu usec dynais calls %lu dynais_enabled %s  periodic mode %s guided by %s mpi_with_stats %u total mpi %u", \
+        verbose_master(0,"Finalization cost (%s): %llu usec dynais calls %lu dynais_enabled %s  periodic mode %s guided by %s mpi_with_stats %llu total mpi %llu", \
           node_name,\
           elap_eard_init, dynais_calls, \
           (dynais_enabled == DYNAIS_ENABLED)?"ON":"OFF", \

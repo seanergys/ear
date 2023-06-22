@@ -418,7 +418,7 @@ state_t mpi_app_end(polctx_t *c)
 
 static uint monitor_mpi     = 1;
 static uint verb            = 1;
-static uint total_mpi_stats = 0;
+static unsigned long long int total_mpi_stats = 0;
 
 
 void monitor_mpi_calls(uint on)
@@ -462,7 +462,7 @@ float avg_mpi_calls_per_second()
 float avg_mpi_calls_per_second(){ return 0.0;}
 #endif
 
-uint total_mpi_call_statistics()
+unsigned long long int total_mpi_call_statistics()
 {
   return total_mpi_stats;
 }

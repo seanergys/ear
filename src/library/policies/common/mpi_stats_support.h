@@ -38,7 +38,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type);
 
 void monitor_mpi_calls(uint on);
 float avg_mpi_calls_per_second();
-uint total_mpi_call_statistics();
+unsigned long long int total_mpi_call_statistics();
 uint is_monitor_mpi_calls_enabled();
 
 /** Per-Node Executes the read-diff for mpi statistics on mpi calls types */
