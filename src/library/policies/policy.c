@@ -183,10 +183,10 @@ static signature_t policy_last_global_signature;
 
 polctx_t my_pol_ctx;
 
-uint total_mpi = 0; // This variable only counts the number of MPI calls and it's only used
-                    // at state_comm::verbose_signature. It only is useful when only the master verboses,
-                    // so it's value only shows master info while that signature verbose message tries to
-                    // show per-node info.
+unsigned long long int total_mpi = 0; // This variable only counts the number of MPI calls and it's only used
+                                      // at state_comm::verbose_signature. It only is useful when only the master verboses,
+                                      // so it's value only shows master info while that signature verbose message tries to
+                                      // show per-node info.
 
 node_freqs_t nf;     /*!< Nominal frequency */
 node_freqs_t avg_nf;
@@ -1588,7 +1588,7 @@ state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
 
-    verbose_master(0,"Total number of MPI calls %u", total_mpi);
+    verbose_master(0,"Total number of MPI calls %llu", total_mpi);
 
 #if MPI_OPTIMIZED
     if (ear_mpi_opt) {
