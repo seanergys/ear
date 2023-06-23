@@ -454,6 +454,7 @@ float avg_mpi_calls_per_second()
 {
 
  float seconds = (float) (mpi_stats.exec_time / 1000000);
+ if (seconds == 0 ) return (float)mpi_stats.total_mpi_calls;
  float curr_mpi_per_second = mpi_stats.total_mpi_calls / seconds;
 
  return curr_mpi_per_second;
@@ -683,6 +684,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
           dynamic_monitor = MPI_SAMPLING_ENABLED;
         }
         monitor_mpi_calls(OFF);
+        verbose_master(0,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, mpi_sec, (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
     }
     if (dynamic_monitor == MPI_SAMPLING_ENABLED){
       curr_mpis_per_sample++;

@@ -2148,8 +2148,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                     #endif
                                     traces_start();
 
-                                    verbose_master(0, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
-                                                   time_from_mpi_init, mpi_calls_in_period, ear_status);
+                                    verbose_master(0, "Going to periodic mode after %lf secs: mpi calls in period %u.\n",
+                                                   time_from_mpi_init,mpi_calls_per_second);
 
                                     ear_iterations = 0;
 
@@ -2534,7 +2534,7 @@ state_t earl_periodic_actions(void *no_arg)
     }
 
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) verbose_master(0, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
+            if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
             if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeeded = 1;
     }
@@ -2564,6 +2564,8 @@ state_t earl_periodic_actions(void *no_arg)
                     lib_period = PERIOD;
                     ear_iterations = 0;
                     mpi_calls_in_period = lib_period;
+                    lib_period = PERIOD;
+                    ear_iterations = 1;
                     states_begin_period(my_id, 1, (ulong) lib_period,1);
                }
           }
