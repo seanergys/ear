@@ -437,31 +437,35 @@ void monitor_mpi_calls(uint on)
 
 uint is_monitor_mpi_calls_enabled()
 {
- #if PER_MPI_CALL_STATS && MPI
+#if PER_MPI_CALL_STATS && MPI
 
 #if MPI_SAMPLING
-  return (dynamic_monitor != MPI_MONITOR_DISABLED);
+    return (dynamic_monitor != MPI_MONITOR_DISABLED);
 #else
-  return 1;
-#endif
- 
- #else
-  return 0;
- #endif
-
+    return 1;
+#endif // MPI_SAMPLING
+#else
+    return 0;
+#endif // PER_MPI_CALL_STATS && MPI
 }
 
 #if MPI
 float avg_mpi_calls_per_second()
 {
+
  float seconds = (float) (mpi_stats.exec_time / 1000000);
  if (seconds == 0 ) return (float)mpi_stats.total_mpi_calls;
  float curr_mpi_per_second = mpi_stats.total_mpi_calls / seconds;
+
  return curr_mpi_per_second;
 }
 #else
-float avg_mpi_calls_per_second(){ return 0.0;}
-#endif
+float avg_mpi_calls_per_second()
+{
+    return 0.0;
+}
+#endif // MPI
+
 
 unsigned long long int total_mpi_call_statistics()
 {
