@@ -220,8 +220,9 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach */
             cj = job_in_process[j];
+            float mem_ratio = 0;
             if (used_cpus && nmgr[cj].libsh->num_processes){
-              float mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
+              mem_ratio = ((float)nmgr[cj].libsh->num_cpus/(float)used_cpus)/(float)nmgr[cj].libsh->num_processes;
               gbs[j] = lsig->GBS * mem_ratio;
               tpi[j] = lsig->TPI * mem_ratio;
               debug("case 2[%d]:Using lGBS %.0lf lTPI %.0lf mem ratio %lf", j, lsig->GBS, lsig->TPI, mem_ratio);

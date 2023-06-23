@@ -1417,7 +1417,7 @@ static int metrics_partial_stop(uint where)
 		for (int i = 0; i < rapl_elements; i++) {
 			metrics_rapl[APP][i] += metrics_rapl[LOO][i];
       total_RAPL_energy += metrics_rapl[LOO][i];
-			debug("energy CPU: %llu", metrics_rapl[LOO][i]);
+		  debug("energy CPU: %llu", metrics_rapl[LOO][i]);
 		}
 
 	} //master_rank (metrics collected by node_master)
@@ -1768,8 +1768,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		verbose_master(2,"computing dram power %.2lf", metrics->DRAM_power);
 		verbose_master(2,"computing pck power %.2lf time %lf", metrics->PCK_power, time_s);
 		#else
-		debug("computing dram power %.2lf", metrics->DRAM_power);
-		debug("computing pck power %.2lf", metrics->PCK_power);
+		verbose_master(0,"computing dram power %.2lf (time %.2lf)", metrics->DRAM_power, time_s);
+		verbose_master(0,"computing pck power %.2lf (time %.2lf)", metrics->PCK_power, time_s);
 		#endif
 
 		float total_gpu_power = 0;
@@ -1857,7 +1857,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	sig_shared_region[my_node_id].period = time_s; // TODO: We can ommit this attribute because the shared signature has this metric.
 
-	// update_earl_node_mgr_info();
+	update_earl_node_mgr_info();
 
 	debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
 	signature_ready(&sig_shared_region[my_node_id], 0);

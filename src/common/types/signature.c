@@ -120,7 +120,7 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
 
 void signature_print_simple_fd(int fd, signature_t *sig)
 {
-    dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf TPI=%.2lf POWER=%.2lf]\n",
+    dprintf(fd, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf TPI=%.2lf POWER=%.2lf(%.2lf/%.2lf)]\n",
             (float) sig->avg_f / 1000000.0,
             (float) sig->avg_imc_f / 1000000.0,
             (float) sig->def_f / 1000000.0,
@@ -128,12 +128,14 @@ void signature_print_simple_fd(int fd, signature_t *sig)
             sig->CPI,
             sig->GBS,
             sig->TPI,
-            sig->DC_power);
+            sig->DC_power,
+            sig->PCK_power,
+            sig->DRAM_power);
 }
 
 void signature_to_str(signature_t *sig, char *msg, size_t limit)
 {
-    snprintf(msg, limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf TPI=%.2lf GFLOPS %.2lf POWER=%.2lf]",
+    snprintf(msg, limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf TPI=%.2lf GFLOPS %.2lf POWER=%.2lf((%.2lf/%.2lf)]",
             (float) sig->avg_f / 1000000.0,
             (float) sig->avg_imc_f / 1000000.0,
             (float) sig->def_f / 1000000.0,
@@ -142,7 +144,9 @@ void signature_to_str(signature_t *sig, char *msg, size_t limit)
             sig->GBS,
             sig->TPI,
             sig->Gflops,
-            sig->DC_power);
+            sig->DC_power,
+            sig->PCK_power,
+            sig->DRAM_power);
 }
 
 void compute_sig_vpi(double *vpi, const signature_t *sig)
