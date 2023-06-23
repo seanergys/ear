@@ -1768,8 +1768,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		verbose_master(2,"computing dram power %.2lf", metrics->DRAM_power);
 		verbose_master(2,"computing pck power %.2lf time %lf", metrics->PCK_power, time_s);
 		#else
-		verbose_master(0,"computing dram power %.2lf (time %.2lf)", metrics->DRAM_power, time_s);
-		verbose_master(0,"computing pck power %.2lf (time %.2lf)", metrics->PCK_power, time_s);
+		debug("computing dram power %.2lf (time %.2lf)", metrics->DRAM_power, time_s);
+		debug("computing pck power %.2lf (time %.2lf)", metrics->PCK_power, time_s);
 		#endif
 
 		float total_gpu_power = 0;
