@@ -1809,7 +1809,10 @@ void ear_init()
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
 
-        if (!is_mpi_enabled()) ear_guided == TIME_GUIDED;
+        if (!is_mpi_enabled())
+        {
+            ear_guided = TIME_GUIDED;
+        }
 #if 0
         if (ear_guided == TIME_GUIDED){
 #endif
