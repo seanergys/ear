@@ -2148,7 +2148,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                     #endif
                                     traces_start();
 
-                                    verbose_master(3, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
+                                    verbose_master(0, "Going to periodic mode after %lf secs: mpi calls in period %u. ear_status = %hu\n",
                                                    time_from_mpi_init, mpi_calls_in_period, ear_status);
 
                                     ear_iterations = 0;
@@ -2176,8 +2176,9 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                 break;
             case PERIODIC_MODE_ON:
                 /* EAR energy policy is called periodically */
-                if ((mpi_calls_per_second > 0 ) && (total_mpi_calls%mpi_calls_per_second) == 0){
+                if ((mpi_calls_per_second > 0) && (total_mpi_calls%mpi_calls_per_second) == 0){
                     ear_iterations++;
+                    verbose_master(0, "Periodic mode on calling states_new_iteration");
                     states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
                     #if MPI
                     if (!limit_exceeeded && (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND)) limit_exceeeded = 1;
@@ -2523,7 +2524,7 @@ state_t earl_periodic_actions(void *no_arg)
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
 
-    debug("%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+    verbose_master(0, "%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
               node_name, my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 
     if (first_exec_monitor) {
