@@ -1809,7 +1809,7 @@ void ear_init()
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
 
-        if (!is_mpi_enabled()) ear_guided == TIME_GUIDED;
+        if (!is_mpi_enabled()) ear_guided = TIME_GUIDED;
 #if 0
         if (ear_guided == TIME_GUIDED){
 #endif
@@ -2178,7 +2178,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                 /* EAR energy policy is called periodically */
                 if ((mpi_calls_per_second > 0) && (total_mpi_calls%mpi_calls_per_second) == 0){
                     ear_iterations++;
-                    verbose_master(0, "Periodic mode on calling states_new_iteration");
+                    //verbose_master(0, "Periodic mode on calling states_new_iteration");
                     states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
                     #if MPI
                     if (!limit_exceeeded && (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND)) limit_exceeeded = 1;
@@ -2524,7 +2524,7 @@ state_t earl_periodic_actions(void *no_arg)
     last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
 
-    verbose_master(0, "%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+     debug("%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
               node_name, my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 
     if (first_exec_monitor) {
