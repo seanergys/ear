@@ -10,6 +10,7 @@ band_OBJS = \
     eard.o \
     intel63.o \
     intel106.o \
+    intel143.o \
 	likwid.o \
 
 ######## RULES

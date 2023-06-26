@@ -27,8 +27,6 @@
 
 #define GLBL_CTL_OFS    0x000700 // U_MSR_PMON_GLOBAL_CTL
 #define GLBL_CMD_UNF    0x2000000000000000
-#define UBOX_CTR_OFS	0x000704 // U_MSR_PMON_FIXED_CTL
-#define UBOX_CTL_OFS	0x000703 // U_MSR_PMON_FIXED_CTR
 #define UBOX_CMD_STA	0x400000 //
 #define UBOX_CMD_STO	0x000000
 #define SHIFT           22
@@ -38,34 +36,38 @@
 // See 'Additional IMC Performance Monitoring' in 'Intel Xeon Processor Scalable
 // Memory Family Uncore Performance Monitoring Reference Manual'
 
+static off_t address_ctl;
+static off_t address_ctr;
 static topology_t tp;
 
 void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 {
 	debug("loading");
-    // It seems to fail in:
-    // - TIGER_LAKE
-	if (tp_in->vendor != VENDOR_INTEL || tp_in->model < MODEL_HASWELL_X) {
-		return;
-	}
-    if (tp_in->vendor == VENDOR_INTEL && tp_in->model == MODEL_TIGERLAKE_U) {
+    if (tp_in->vendor != VENDOR_INTEL) {
         return;
     }
-	debug("testing MSR");
+    // We don't know the details in Tiger Lake. Maybe the same SR addresses?
+    if (tp_in->model == MODEL_TIGERLAKE) {
+        return;
+    }
+	if (tp_in->model >= MODEL_SAPPHIRE_RAPIDS) {
+		address_ctl = 0x2FDE; // UCLK Counter Control
+        address_ctr = 0x2FDF; // UCLK Counter
+	} else {
+        address_ctl = 0x000703; // U_MSR_PMON_FIXED_CTL
+        address_ctr = 0x000704; // U_MSR_PMON_FIXED_CTR
+    }
 	if (state_fail(msr_test(tp_in, MSR_WR))) {
 		return;
 	}
-	debug("testing MSR finalized");
 	if(state_fail(topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
 		return;
 	}
-
 	apis_set(ops->get_api,       imcfreq_intel63_get_api);
 	apis_set(ops->init,          imcfreq_intel63_init);
 	apis_set(ops->dispose,       imcfreq_intel63_dispose);
 	apis_set(ops->count_devices, imcfreq_intel63_count_devices);
 	apis_set(ops->read,          imcfreq_intel63_read);
-
 	debug("INTEL63 loaded full API");
 }
 
@@ -89,13 +91,13 @@ state_t imcfreq_intel63_aux_enable_cpu(int cpu)
         com = (com | GLBL_CMD_UNF);
         msr_write(cpu, &com, sizeof(ullong), GLBL_CTL_OFS);
     }
-	if (state_fail(s = msr_read(cpu, &com, sizeof(ullong), UBOX_CTL_OFS))) {
+	if (state_fail(s = msr_read(cpu, &com, sizeof(ullong), address_ctl))) {
 		return s;
 	}
 	com1 = ((com & UBOX_CMD_STA) >> SHIFT);
 	if (!com1) {
 		com = com | UBOX_CMD_STA;
-		if (state_fail(s = msr_write(cpu, &com, sizeof(ullong), UBOX_CTL_OFS))) {
+		if (state_fail(s = msr_write(cpu, &com, sizeof(ullong), address_ctl))) {
 			return s;
 		}
 	}
@@ -104,7 +106,7 @@ state_t imcfreq_intel63_aux_enable_cpu(int cpu)
 
 state_t imcfreq_intel63_aux_read_cpu(int cpu, ulong *freq)
 {
-	return msr_read(cpu, freq, sizeof(ulong), UBOX_CTR_OFS);
+	return msr_read(cpu, freq, sizeof(ulong), address_ctr);
 }
 
 state_t imcfreq_intel63_init(ctx_t *c)

@@ -299,15 +299,14 @@ char *plug_host(spank_t sp)
 
 char *plug_context_str(spank_t sp)
 {
-        if (plug_context_is(sp, Context.srun)) {
-                return "srun";
-        } else if (plug_context_is(sp, Context.sbatch)) {
-                return "sbatch";
-        } else if (plug_context_is(sp, Context.remote)) {
-                return "remote";
-        } else {
-                return "erun";
-        }
+    if (plug_context_is(sp, Context.srun)) {
+        return Strctx.srun;
+    } else if (plug_context_is(sp, Context.sbatch)) {
+        return Strctx.sbatch;
+    } else if (plug_context_is(sp, Context.remote)) {
+        return Strctx.remote;
+    }
+    return Strctx.other;
 }
 
 int plug_context_is(spank_t sp, plug_context_t ctxt)
