@@ -332,25 +332,26 @@ void usage(char *app)
 	exit(0);
 }
 
-void check_ip(status_t status, ip_table_t *ips, int num_ips)
+void check_ip(status_t *status, ip_table_t *ips, int num_ips)
 {
 	int i, j;
 	//printf("checking ip %d with status %d and power %lu\n", status.ip, status.ok, status.node.power);
 	for (i = 0; i < num_ips; i++)
-		if (htonl(status.ip) == htonl(ips[i].ip_int))
+		//if (htonl(status.ip) == htonl(ips[i].ip_int))
+		if (status->ip == ips[i].ip_int)
 		{
-			ips[i].counter |= status.ok;
-			ips[i].power = status.node.power;
-			ips[i].rep_power = status.node.rep_power;
-			ips[i].current_freq = status.node.avg_freq;
-			ips[i].max_freq = status.node.max_freq;
-			ips[i].temp = status.node.temp;
-			ips[i].job_id = status.app.job_id;
-			ips[i].step_id = status.app.step_id;
+			ips[i].counter |= status->ok;
+			ips[i].power = status->node.power;
+			ips[i].rep_power = status->node.rep_power;
+			ips[i].current_freq = status->node.avg_freq;
+			ips[i].max_freq = status->node.max_freq;
+			ips[i].temp = status->node.temp;
+			ips[i].job_id = status->app.job_id;
+			ips[i].step_id = status->app.step_id;
 			//refactor
 			for (j = 0; j < TOTAL_POLICIES; j++)
 			{
-				memcpy(&ips[i].policies[j], &status.policy_conf[j], sizeof(eard_policy_info_t));
+				memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
 			}	
             return;
 		}
@@ -435,8 +436,12 @@ void process_status(int num_status, status_t *status, char error_only)
 		ip_table_t *ips = NULL;
 		num_ips = generate_node_names(my_cluster_conf, &ips);
 		clean_ips(ips, num_ips);
+        //idea to improve this: add an index to ips, sort the list by the ip_int to do the search, resort the list
+        //by the indexes to print the list -> nlogn + mlogn + nlogn
+        //alternatively: pass all the statuses sorted, and search each ip there once -> nlogm + mlogm
+        //it seems the second idea is better in terms of complexity (the second sort kills the first option)
 		for (i = 0; i < num_status; i++)
-			check_ip(status[i], ips, num_ips);
+			check_ip(&status[i], ips, num_ips);
 		print_ips(ips, num_ips, error_only);
 		free(ips);
 		free(status);
@@ -650,7 +655,7 @@ void process_single_status(int num_status, status_t *status, char *node_name, ch
 	{
 		ip_table_t ips;
 		generate_ip(&ips, node_name);
-		check_ip(*status, &ips, 1);
+		check_ip(status, &ips, 1);
 		print_ips(&ips, 1, error_only);
 	}
 	else printf("An error retrieving status has occurred.\n");
