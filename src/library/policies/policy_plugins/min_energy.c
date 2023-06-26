@@ -758,21 +758,48 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
             min_energy_state = SELECT_CPUFREQ;
 
-        }else{
-            /* IMC_MAX is max frequency, min_pstate */
-            /* IMC_MIN is min frequency, max_pstate */
-            for (sid=0; sid < imc_devices; sid ++) {
-                freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = ((freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < imc_max_pstate[sid])?
-                        freqs->imc_freq[sid*IMC_VAL+IMC_MAX]+1:imc_max_pstate[sid]);
-                freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
+        } else
+        {
+            /* IMC_MAX is max frequency, lower bound p-state */
+            /* IMC_MIN is min frequency, upper bound p-state */
+            for (sid = 0; sid < imc_devices; sid++)
+            {
+                // Lower bound IMC p-state index
+                int min_ps_idx = sid * IMC_VAL + IMC_MAX;
+                // The lower bound IMC p-state won't be greather than the maximum
+                // retrieved by hardware.
+                freqs->imc_freq[min_ps_idx] = ear_min(imc_max_pstate[sid],
+                                                      freqs->imc_freq[min_ps_idx] + 1);
+
+                // Lower bound IMC p-state index
+                int max_ps_idx = sid * IMC_VAL + IMC_MIN;
+                freqs->imc_freq[max_ps_idx] = imc_max_pstate[sid];
             }
-            sid = 0;
-            debug("%sTrying a lower IMC freq %llu-%llu%s",COL_GRE,
-                    imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
-                    imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz,COL_CLR);
-            /* We are assuming all sockets uses the same frequency range. */
-            if (freqs->imc_freq[sid*IMC_VAL+IMC_MAX] < max_policy_imcfreq_ps) *ready = EAR_POLICY_TRY_AGAIN;
-            else {
+
+            sid = 0; // We are assuming all sockets use the same frequency range.
+
+            verbose_master(2, "%sTrying a lower IMC freq %llu-%llu%s", COL_GRE,
+                           imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                           imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
+
+            // Check whether the selected p-state is not greather than the maximum configured.
+            int selected_ps_leq_max = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] <= max_policy_imcfreq_ps;
+
+            // The maximum p-state permitted is equal to the maximum p-state accepted by the device.
+            int max_ps_config_eq_dev = imc_min_pstate[sid] == max_policy_imcfreq_ps;
+
+            // Check whether the selected p-state is different than the selected one in the last iteration.
+            // This is needed on cases where the maximum configured is equal to the maximum of the socket,
+            // otherwise the policy would try again and again to increase to a p-state that she thinks it is valid.
+            int selected_ps_eq_last = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] == curr_imc_pstate;
+
+            // The selected p-state is the minimum permitted by the device.
+            int selected_ps_eq_minfreq = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] == imc_max_pstate[sid];
+
+            if (selected_ps_leq_max && !(max_ps_config_eq_dev && selected_ps_eq_minfreq && selected_ps_eq_last))
+            {
+                *ready = EAR_POLICY_TRY_AGAIN;
+            } else {
                 *ready = EAR_POLICY_READY;
                 min_energy_state = SELECT_CPUFREQ;
             }
@@ -780,7 +807,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         memcpy(freqs->cpu_freq,last_nodefreq_sel.cpu_freq,sizeof(ulong)*num_processes);
         memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
     }
-    debug("Next min_energy state %u next policy state %u",min_energy_state,*ready);
+    verbose_master(0, "Next min_energy state %u next policy state %u", min_energy_state, *ready);
     min_energy_readiness = *ready;
     return EAR_SUCCESS;
 }
