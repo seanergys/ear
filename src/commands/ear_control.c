@@ -126,12 +126,13 @@ void fill_ip(char *buff, ip_table_t *table)
 
 int generate_node_names(cluster_conf_t my_cluster_conf, ip_table_t **ips)
 {
-	int k;
+	int k, n;
 	unsigned int i, j;
 	char node_name[256];
 	int num_ips = 0;
-	my_node_conf_t *aux_node_conf;
 	ip_table_t *new_ips = NULL;
+    int tag_id = 0;
+    int default_tag = get_default_tag_id(&my_cluster_conf);
 	for (i = 0; i < my_cluster_conf.num_islands; i++){
 		for (j = 0; j < my_cluster_conf.islands[i].num_ranges; j++)
 		{   
@@ -149,21 +150,47 @@ int generate_node_names(cluster_conf_t my_cluster_conf, ip_table_t **ips)
 				}   
 				new_ips = realloc(new_ips, sizeof(ip_table_t)*(num_ips+1));
 				strcpy(new_ips[num_ips].name, node_name);
-				aux_node_conf = get_my_node_conf(&my_cluster_conf, node_name);
-				if (aux_node_conf == NULL) 
-					fprintf(stderr, "Error reading node %s configuration\n", node_name);
-				else
-					new_ips[num_ips].max_power = (uint) aux_node_conf->max_error_power;
+                for (n = 0; n < my_cluster_conf.islands[i].ranges[j].num_tags; n++) {
+                    tag_id = tag_id_exists(&my_cluster_conf, my_cluster_conf.islands[i].specific_tags[my_cluster_conf.islands[i].ranges[j].specific_tags[n]]);
+                    if (tag_id >= 0) {
+                        break;
+                    }
+                }
+                if (tag_id < 0) {
+                    tag_id = default_tag;
+                }
 
-				/*#if USE_EXT
-				  strcat(node_name,NW_EXT);
-#endif*/
+                if (tag_id >= 0) { //still need to check
+                    new_ips[num_ips].max_power = my_cluster_conf.tags[tag_id].error_power;
+                } else {
+                    printf("Warning, no default tag and no tag_id found for node %s\n", node_name);
+                }
+
 				if (strlen(my_cluster_conf.net_ext) > 0)
 					strcat(node_name, my_cluster_conf.net_ext);
 
 				fill_ip(node_name, &new_ips[num_ips]);
+#if 0
+
+	            my_node_conf_t *aux_node_conf;
+				aux_node_conf = get_my_node_conf(&my_cluster_conf, node_name);
+				if (aux_node_conf == NULL) 
+					fprintf(stderr, "Error reading node %s configuration\n", node_name);
+				else {
+                    if (new_ips[num_ips].max_power != aux_node_conf->max_error_power) {
+                        printf("Warning, the max power is different!!\n");
+                    } else {
+                        printf("Same error power\n");
+                    }
+					new_ips[num_ips].max_power = (uint) aux_node_conf->max_error_power;
+                }
+
 				free(aux_node_conf->policies);
 				free(aux_node_conf);
+#endif
+
+
+
 				num_ips++;
 			}
 		}
@@ -325,7 +352,9 @@ void check_ip(status_t status, ip_table_t *ips, int num_ips)
 			{
 				memcpy(&ips[i].policies[j], &status.policy_conf[j], sizeof(eard_policy_info_t));
 			}	
+            return;
 		}
+   
 }
 
 void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is_master)
