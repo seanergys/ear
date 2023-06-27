@@ -75,10 +75,11 @@ extern report_id_t rep_id;
 
 extern sem_t *lib_shared_lock_sem;
 
-float time_policy_penalty = 0.0; 
-float power_policy_saving = 0.0;
-float energy_policy_saving = 0.0;
-
+static float time_policy_penalty = 0.0; 
+static float power_policy_saving = 0.0;
+static float energy_policy_saving = 0.0;
+static timestamp policy_saving_time_start;
+static uint policy_saving_updated = 0;
 
 #define REPORT_PHASE(phase) \
   if (report_earl_events){ \
@@ -442,6 +443,8 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
       energy_policy_saving = 0;
       power_policy_saving  = 0;
       time_policy_penalty  = 0;
+      timestamp_getfast(&policy_saving_time_start);
+      policy_saving_updated = 1;
       verbose_master(0, "Policy savins[%s]: Reset of policy savings", node_name);
     }
     verbose_master(0, "Policy savins[%s]: Not applied", node_name);
@@ -492,6 +495,9 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
   energy_policy_saving = (float)((renergy - nenergy)/renergy);
   if (pref != pnext) power_policy_saving = (float)((pref - pnext)/pref);
   if (tref != tnext) time_policy_penalty = (float)((tref - tnext)/tref);
+
+  timestamp_getfast(&policy_saving_time_start);
+  policy_saving_updated = 1;
 
   verbose_master(0, "Policy savins[%s]: energy/power/time %f/%f/%f CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
       node_name, energy_policy_saving, power_policy_saving, time_policy_penalty, ns->def_f, cpu_f_avg, tref, pref, tnext, pnext);
@@ -1442,6 +1448,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 	float psaving = 0;
 	float tpenalty = 0;
 	float esaving = 0;
+  ullong saving_elapsed;
 // #if 0
 	double tflops;
 // #endif
@@ -1491,10 +1498,18 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 
 	verbose_master(0,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
             masters_info.my_master_rank, esaving, psaving, tpenalty, sig_ext->elapsed);
+  if (policy_saving_updated){
+    saving_elapsed = timestamp_diffnow(&policy_saving_time_start, TIME_SECS);
+    policy_saving_updated = 0;
+  }else{
+    saving_elapsed = (ullong) sig_ext->elapsed;
+  }
+  verbose_master(0, "Policy savins[%s]: Using elapsed time %llu", node_name, saving_elapsed);
 
-	sig_ext->saving   = esaving * sig_ext->elapsed;
-	sig_ext->psaving  = psaving * sig_ext->elapsed;
-	sig_ext->tpenalty = tpenalty * sig_ext->elapsed;
+
+	sig_ext->saving   = esaving * saving_elapsed;
+	sig_ext->psaving  = psaving * saving_elapsed;
+	sig_ext->tpenalty = tpenalty * saving_elapsed;
 
     REPORT_SAVING(ENERGY_SAVING, (llong) esaving);
     REPORT_SAVING(POWER_SAVING,  (llong) psaving);

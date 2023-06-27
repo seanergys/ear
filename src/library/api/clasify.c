@@ -18,7 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/hardware/defines.h>
 #include <common/states.h>
@@ -311,6 +311,7 @@ state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound)
 
       return EAR_SUCCESS;
     }
+    return EAR_ERROR;
 }
 
 
