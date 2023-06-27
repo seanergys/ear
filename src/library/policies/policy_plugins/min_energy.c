@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <time.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/file.h>
@@ -126,7 +126,7 @@ extern uint use_energy_models;
 extern uint policy_cpu_bound;
 extern uint policy_mem_bound;
 
-static uint network_use_imc = 1; /*!< This variable controls the UFS when the application is communication intensive , set to 1 means UFS will not be applied. */
+static uint network_use_imc = 1; /*!< This variable controls the UFS when the application is communication intensive, set to 1 means UFS will not be applied. */
 
 #if MPI_OPTIMIZED
 extern sem_t *lib_shared_lock_sem;
@@ -405,7 +405,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     if (state_fail(pstate_freqtops_upper((pstate_t *) imc_pstates, imc_num_pstates,
                                          curr_imc_freq, &tmp_pstate)))
     {
-        verbose_master(2, "%sWarning%s Current Avg IMC freq. %lu can not be converted to psate."                       " %llu was set.",
+        verbose_master(2, "%sWarning%s Current Avg IMC freq. %lu could not be converted to psate. %llu was set.",
                        COL_YLW, COL_CLR, curr_imc_freq, tmp_pstate.khz);
     }
 
@@ -420,7 +420,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     /* This function computes the load balance, the critical path etc */
     int_policy_ok(sig, &cpufreq_signature, &policy_stable);
-    debug("Policy ok returns %d",policy_stable);
+    debug("Policy ok returns %d", policy_stable);
 
     /* If there is some change in the Signature, we apply default values and computes again the signature */
 
@@ -635,11 +635,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
              * IMC_MIN means minimum frequency and maximum pstate */
             if ((min_cpufreq_sel == nominal_node) && cbound)
             {
-                //if (sig->GBS <= GBS_BUSY_WAITING){
                 uint lowm;
                 low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &lowm);
                 if (lowm){
-                    debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
+                    debug("Low memory activity");
                     for (sid=0; sid < imc_devices; sid ++) {
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
                     }
@@ -702,7 +701,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     uint i = 0;
                     while((i < num_processes) && (last_nodefreq_sel.cpu_freq[i] == def_freq)) i++;
                     // TODO: why we check here for cbound?
-                    if ((i < num_processes) || (cbound)){
+                    if (i < num_processes || cbound)
+                    {
                         min_energy_state = COMP_IMCREF;
                     }else{
                         ref_imc_pstate = curr_imc_pstate;
@@ -735,7 +735,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }else if ((min_energy_state == SELECT_IMCFREQ) && eUFS){
         /**** IMC_FREQ ***/
         verbose_master(2,"%sSelecting IMC freq%s: nominal %d - last CPU %u,IMC %u -- current CPU %lu, IMC %u",
-                COL_BLU,COL_CLR,min_pstate,last_cpu_pstate,last_imc_pstate,curr_pstate,curr_imc_pstate);
+                       COL_BLU, COL_CLR, min_pstate, last_cpu_pstate, last_imc_pstate, curr_pstate, curr_imc_pstate);
+
         uint increase_imc = must_increase_imc(imc_data,curr_pstate,curr_imc_pstate,curr_pstate,
                 ref_imc_pstate,my_app,imc_extra_th);
 
@@ -778,9 +779,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
             sid = 0; // We are assuming all sockets use the same frequency range.
 
-            verbose_master(2, "%sTrying a lower IMC freq %llu-%llu%s", COL_GRE,
-                           imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
-                           imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
+            debug("%sTrying a lower IMC freq %llu-%llu%s", COL_GRE,
+                  imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
+                  imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz, COL_CLR);
 
             // Check whether the selected p-state is not greather than the maximum configured.
             int selected_ps_leq_max = freqs->imc_freq[sid*IMC_VAL+IMC_MAX] <= max_policy_imcfreq_ps;
