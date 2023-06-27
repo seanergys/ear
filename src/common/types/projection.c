@@ -82,7 +82,7 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
 	{
 		debug("model %s size %u", data->obj_power_model, strlen(data->obj_power_model));
 		if ((strncmp(data->obj_power_model, "default", strlen("default"))==0) || (data->obj_power_model==NULL)) {
-			xsnprintf(basic_path,sizeof(basic_path), "%s/models/basic_model.so", data->dir_plug);
+			xsnprintf(basic_path,sizeof(basic_path), "%s/models/%s", data->dir_plug, def_model);
 		} else if (data->obj_power_model!=NULL) {
 			xsnprintf(basic_path, sizeof(basic_path),"%s/models/%s", data->dir_plug,data->obj_power_model);
 		}
@@ -96,14 +96,14 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
     snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/%s",ins_path, obj_path);
     obj_path=basic_path;
 	}
-	debug("Using power model path  %s", obj_path);
+	verbose(0,"Using power model path  %s", obj_path);
 	
 	st = models_load(obj_path);
 	
 	if (st == EAR_SUCCESS) {
 		freturn(models_syms_fun.init,data->dir_conf, data->dir_temp, arch_desc);
 	}else{
-		verbose(2,"Error when loading shared object %s",obj_path);
+		verbose(0,"Error when loading shared object %s",obj_path);
 	}
 	
 	return st;

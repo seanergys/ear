@@ -78,46 +78,50 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
     return EAR_SUCCESS;
 }
 
-float get_time_nominal(signature_t *my_app)
+double get_time_nominal(signature_t *my_app)
 {
-  float t = my_app->time;
+  double t = my_app->time;
   if (my_app->def_f != frequency_get_nominal_freq()){
     uint target = frequency_get_nominal_pstate();
     uint curr   = frequency_closest_pstate(my_app->def_f);
-    project_time(my_app, curr, target, (double *)&t);
+    project_time(my_app, curr, target, &t);
   }
   return t;
 }
 
-float get_power_nominal(signature_t *my_app)
+double get_power_nominal(signature_t *my_app)
 {
-  float p = my_app->DC_power;
+  double p = my_app->DC_power;
   if (my_app->def_f != frequency_get_nominal_freq()){
     uint target = frequency_get_nominal_pstate();
     uint curr   = frequency_closest_pstate(my_app->def_f);
-    project_power(my_app, curr, target, (double *)&p);
+    project_power(my_app, curr, target, &p);
   }
   return p;
 }
 
-float get_time_projected(signature_t *my_app, ulong f)
+double get_time_projected(signature_t *my_app, ulong f)
 {
-  float t = my_app->time;
+  double t = my_app->time;
+  uint curr, target;
   if (f != my_app->def_f){
-    uint curr   = frequency_closest_pstate(my_app->def_f);
-    uint target = frequency_closest_pstate(f);
-    project_time(my_app, curr, target, (double *)&t);
+    curr   = frequency_closest_pstate(my_app->def_f);
+    target = frequency_closest_pstate(f);
+    project_time(my_app, curr, target, &t);
   }
-  return t;
+  //verbose(0," Projecting from %lu-%u to %lu-%u time %lf (ref %.3lf)", my_app->def_f, curr, f,target, t, my_app->time);
+  return (float)t;
 }
-float get_power_projected(signature_t *my_app, ulong f)
+double get_power_projected(signature_t *my_app, ulong f)
 {
-  float p = my_app->DC_power;
+  double p = my_app->DC_power;
+  uint curr, target;
   if (f != my_app->def_f){
-    uint curr   = frequency_closest_pstate(my_app->def_f);
-    uint target = frequency_closest_pstate(f);
-    project_power(my_app, curr, target, (double *)&p);
+    curr   = frequency_closest_pstate(my_app->def_f);
+    target = frequency_closest_pstate(f);
+    project_power(my_app, curr, target, &p);
   }
+  //verbose(0," Projecting from %lu-%u to %lu-%u power %lf (ref %.2lf)", my_app->def_f, curr, f, target, p, my_app->DC_power);
   return p;
 }
 
