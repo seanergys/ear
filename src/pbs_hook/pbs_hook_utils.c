@@ -18,13 +18,19 @@ int pbs_util_get_eard_port(char *ear_tmp)
     char path[GENERIC_NAME];
     
     ret = get_services_conf_path(ear_tmp, path);
-    services_conf_t *services_conf;
-    services_conf = attach_services_conf_shared_area(path);
-    if (services_conf == NULL) {
+    if (state_ok(ret))
+    {
+        services_conf_t *services_conf;
+        services_conf = attach_services_conf_shared_area(path);
+        if (services_conf == NULL) {
+            return -1;
+        }
+
+        return services_conf->eard.port;
+    } else
+    {
         return -1;
     }
-
-    return services_conf->eard.port;
 }
 
 int pbs_util_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask, int *errno_sym) {
