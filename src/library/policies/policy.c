@@ -391,23 +391,69 @@ state_t policy_load(char *obj_path, polsym_t *psyms)
 }
 #endif
 
+static ulong *policy_savings_comp_freqs = NULL;
+static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom, uint *savings)
+{
+  ulong *cpu_f = freqs->cpu_freq;
+  ulong fref = frequency_get_nominal_freq();
+  ulong at_fref = 1;
+  uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
+
+  *savings = 1;
+
+  /* If the list of CPU freqs is different than last, we must compute savings */
+  for (uint i = 0; i < limit; i++){
+    if (cpu_f[i] != policy_savings_comp_freqs[i]){
+      verbose_master(0,"Policy savins[%s]: f[%u] %lu != f[%u] %lu", node_name, i, cpu_f[i], i, policy_savings_comp_freqs[i]);
+      return 1;
+    }
+  }
+
+  /* if we run at nominal, there is no savings */
+
+  for (uint i = 0; (i < limit) && at_fref; i++){
+    at_fref = at_fref && (cpu_f[i] == fref);
+  }
+
+  if (at_fref){
+    *savings = 0;
+    return 0;
+  }
+  return 0;
+}
 
 static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom)
 {
   ulong *cpu_f = freqs->cpu_freq;
-  float tref, pref;
-  float tnext = 0, pnext = 0;
-  float renergy, nenergy;
+  double tref, pref;
+  double tnext = 0, pnext = 0;
+  double renergy, nenergy;
   ulong cpu_f_avg = 0;
+  uint sav;
 
-  energy_policy_saving = 0;
-  power_policy_saving  = 0;
-  time_policy_penalty  = 0;
+  
+  if (policy_savings_comp_freqs == NULL){
+    policy_savings_comp_freqs = (ulong *)calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
+  }
+
+  if (!must_compute_policy_savings(ns, freqs, dom, &sav)){
+    if (!sav) {
+      /* We are running at nominal */
+      energy_policy_saving = 0;
+      power_policy_saving  = 0;
+      time_policy_penalty  = 0;
+      verbose_master(0, "Policy savins[%s]: Reset of policy savings", node_name);
+    }
+    verbose_master(0, "Policy savins[%s]: Not applied", node_name);
+    return;
+  }
+
+
+  memcpy(policy_savings_comp_freqs, cpu_f, sizeof(ulong)* MAX_CPUS_SUPPORTED);
+
 
 
   uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
-
-  if ((limit == 1) && (cpu_f[0] == frequency_get_nominal_freq())) return;
 
 
   /* Time reference and power reference is always computed based on the nominal CPU freq 
@@ -427,12 +473,11 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
   pnext = pnext / limit;
   cpu_f_avg = cpu_f_avg / limit;
 
-  verbose_master(0, "Policy savins: CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
-      ns->def_f, cpu_f_avg, tref, pref, tnext, pnext);
 
   /* renergy = energy at the nominal , nenergy = energy with policy selected CPu freq */
   renergy = tref  * pref;
   nenergy = tnext * pnext;
+
 
   if ((renergy == 0) || (nenergy == renergy)) {
     return;
@@ -444,9 +489,12 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
 
   if ((pref == 0) || (tref == 0)) return;
 
-  energy_policy_saving = (renergy - nenergy)/renergy;
-  if (pref != pnext) power_policy_saving = (pref - pnext)/pref;
-  if (tref != tnext) time_policy_penalty = (tref - tnext)/tref;
+  energy_policy_saving = (float)((renergy - nenergy)/renergy);
+  if (pref != pnext) power_policy_saving = (float)((pref - pnext)/pref);
+  if (tref != tnext) time_policy_penalty = (float)((tref - tnext)/tref);
+
+  verbose_master(0, "Policy savins[%s]: energy/power/time %f/%f/%f CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
+      node_name, energy_policy_saving, power_policy_saving, time_policy_penalty, ns->def_f, cpu_f_avg, tref, pref, tnext, pnext);
    
 }
 

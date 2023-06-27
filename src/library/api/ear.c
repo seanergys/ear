@@ -2537,7 +2537,7 @@ state_t earl_periodic_actions(void *no_arg)
     }
 
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
+            //if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
             if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeeded = 1;
     }
@@ -2562,8 +2562,8 @@ state_t earl_periodic_actions(void *no_arg)
                         ITERS_PER_PERIOD = earl_monitor->time_burst/1000;
                         monitor_burst(earl_monitor, 0);
                     }
-                    verbose(0,"[%d]: Dynais guided --> time guided at time %lu",
-                            my_node_id, period_elapsed);
+                    //verbose(0,"[%d]: Dynais guided --> time guided at time %lu",
+                    //        my_node_id, period_elapsed);
                     lib_period = PERIOD;
                     ear_iterations = 0;
                     mpi_calls_in_period = lib_period;
