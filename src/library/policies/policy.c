@@ -242,7 +242,6 @@ static node_freq_domain_t freqs_domain;
 static const ulong **gpuf_pol_list;
 static const uint   *gpuf_pol_list_items;
 
-static uint first_print = 1;
 static uint first_policy_try = 1;
 
 static uint  use_cpuprio = DEF_USE_CPUPRIO; // Enables the usage of proiority system
@@ -266,7 +265,6 @@ static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint
 
 
 /** Maps the list of CPU frequencies mapped per process, to a list of CPU frequencies mapped per core.
- * Returns an EAR_ERROR if some argument is invalid.
  * \param[in]  process_cpu_freqs_khz A list of frequencies indexed per local (node-level) rank.
  * \param[in]  process_cnt           The number of elements in \p process_cpu_freqs_khz.
  * \param[out] core_cpu_freqs_khz    A list of frequencies indexed per core.
@@ -275,6 +273,8 @@ static state_t fill_mgt_api_pstate_data(uint api_id, pstate_t **pstate_lst, uint
  * CPU freq. found in \process_cpu_freqs_khz.
  * \param[out] cpu_freq_min          If a non-NULL address is passed, the argument is filled with the minimum
  * CPU freq. found in \process_cpu_freqs_khz.
+ * \return EAR_ERROR if some argument is invalid.
+ * \return EAR_SUCCESS otherwise.
  */
 static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, ulong **core_cpu_freqs_khz,
                                  int cpu_cnt, ulong *cpu_freq_max, ulong *cpu_freq_min, int process_id);
@@ -1927,14 +1927,14 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
       end_rank = process_cnt;
     }else{
       init_rank = proc_id;
-      end_rank  = proc_id +1;
+      end_rank  = proc_id + 1;
     }
     if (proc_id >= 0){
       verbose(3, "from_proc_to_core  [%d] Freq %.2f", proc_id, (float)process_cpu_freqs_khz[proc_id]/(float)1000000.0);
     }
-		if (proc_id == ALL_PROCESSES && (masters_info.my_master_rank < 0)){
-			verbose(2, "Not master setting CPUfreq for ALL (%.2f)", (float)process_cpu_freqs_khz[0]/(float)1000000.0);
-		}
+    if (proc_id == ALL_PROCESSES && (masters_info.my_master_rank < 0)){
+        verbose(2, "Not master setting CPUfreq for ALL (%.2f)", (float)process_cpu_freqs_khz[0]/(float)1000000.0);
+    }
     if (process_cpu_freqs_khz == NULL || process_cnt < 0 || core_cpu_freqs_khz == NULL
             || *core_cpu_freqs_khz == NULL || cpu_cnt < 0) {
         debug("ERROR: invalid arguments");
@@ -1943,6 +1943,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
     int verb_lvl = POLICY_INFO;
 
+    static uint first_print = 1;
     if (first_print) {
         verb_lvl = 1;
         first_print = 0;
@@ -1982,7 +1983,7 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
 
         // The frequency is filtered by the minimum permitted in the EAR configuration
         ulong cpu_freq_khz = ear_max(process_cpu_freqs_khz[proc_lrank], (ulong) min_cpufreq);
-				process_cpu_freqs_khz[proc_lrank] = cpu_freq_khz;
+		process_cpu_freqs_khz[proc_lrank] = cpu_freq_khz;
 
         /* Compute the maximum and minimum if required */
         if (cpu_freq_max != NULL) {
@@ -2285,21 +2286,24 @@ static state_t policy_mem_freq_selection(polctx_t *c, signature_t *my_sig, node_
             }
         }
 
-        if (mgt_imcfreq_set_current_ranged_list(NULL, imc_low, imc_up) != EAR_SUCCESS){
+        if (state_fail(mgt_imcfreq_set_current_ranged_list(NULL, imc_low, imc_up)))
+        {
             uint sid = 0;
-            if (imc_up[sid] != ps_nothing) {
+            if (imc_up[sid] != ps_nothing)
+            {
                 verbose_master(2, "Error setting IMC freq to %llu and %llu",
-                        imc_pstates[imc_low[0]].khz, imc_pstates[imc_up[0]].khz);
-            } else  {
+                               imc_pstates[imc_low[0]].khz, imc_pstates[imc_up[0]].khz);
+            } else
+            {
                 verbose_master(2, "Error setting IMC freq to %llu and min",
-                        imc_pstates[imc_low[0]].khz);
+                               imc_pstates[imc_low[0]].khz);
             }
-        }			
+        }
 
         free(imc_up);
         free(imc_low);
     } else {
-        verbose_master(2,"IMC not compatible");
+        verbose_master(2, "IMC not compatible");
     }
 
     return EAR_SUCCESS;
