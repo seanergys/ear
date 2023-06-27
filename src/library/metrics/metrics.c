@@ -1849,9 +1849,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 		if (VERB_ON(2)) {
             char sig_to_vrb[128];
-			 signature_print_simple_fd(verb_channel, metrics);
-            signature_to_str(metrics, sig_to_vrb, sizeof(sig_to_vrb));
-			debug("Signature computed: %s", sig_to_vrb);
+			signature_print_simple_fd(verb_channel, metrics);
 		}
 	}
 
