@@ -1449,14 +1449,14 @@ state_t policy_set_default_freq(signature_t *sig)
 
 static void compute_energy_savings(signature_t *curr,signature_t *prev)
 {
-	float performance_prev, performance_curr;
+	// float performance_prev, performance_curr;
 	float psaving = 0;
 	float tpenalty = 0;
 	float esaving = 0;
   ullong saving_elapsed;
-// #if 0
+#if 0
 	double tflops;
-// #endif
+#endif
 //
 	
 	sig_ext_t *sig_ext = curr->sig_ext;

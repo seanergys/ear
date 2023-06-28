@@ -1072,11 +1072,14 @@ static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dy
 static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event)
 {
     debug("[%d] Dynais: Time %f ov %f limit %f", my_node_id, loop_signature.time, ((float) mpi_calls_iter / 1000000.0) * 100.0 / loop_signature.time, MAX_DYNAIS_OVERHEAD_DYN);
-    if (loop_signature.time > 0) {
+    if (loop_signature.time > 0)
+    {
+
+#if SHOW_DEBUGS
         ulong dynais_overhead_usec = mpi_calls_iter;
 
-
         // float dynais_overhead_perc = ((float) dynais_overhead_usec / 1000000.0) * 100.0 / loop_signature.time;
+#endif
         float dynais_overhead_perc = avg_mpi_calls_per_second() * 100.0;
 
         if (dynais_overhead_perc > MAX_DYNAIS_OVERHEAD_DYN) {
@@ -1095,6 +1098,7 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
         }
 #endif
 
+#if SHOW_DEBUGS
         if (dynais_enabled == DYNAIS_DISABLED) {
             debug("    --- DynAIS disabled ---\n%15s: %lf s\n%15s: %lu us\n%15s: %lu (%lf %%)\n%15s: %lu\n%15s: %lu\n",
                     "Total time", loop_signature.time,
@@ -1103,6 +1107,7 @@ static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulon
                     "Event", event,
                     "Min. time", perf_accuracy_min_time);
         }
+#endif
     }
 
     last_first_event    = event;          // TODO: where it comes from? usage

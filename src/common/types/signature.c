@@ -133,20 +133,28 @@ void signature_print_simple_fd(int fd, signature_t *sig)
             sig->DRAM_power);
 }
 
-void signature_to_str(signature_t *sig, char *msg, size_t limit)
+state_t signature_to_str(signature_t *sig, char *msg, size_t limit)
 {
-    snprintf(msg, limit, "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf TPI=%.2lf GFLOPS %.2lf POWER=%.2lf((%.2lf/%.2lf)]",
-            (float) sig->avg_f / 1000000.0,
-            (float) sig->avg_imc_f / 1000000.0,
-            (float) sig->def_f / 1000000.0,
-            sig->time,
-            sig->CPI,
-            sig->GBS,
-            sig->TPI,
-            sig->Gflops,
-            sig->DC_power,
-            sig->PCK_power,
-            sig->DRAM_power);
+    int ret = snprintf(msg, limit,
+                       "[AVGF=%.2f/%.2f DEFF=%.2f TIME=%.3lf CPI=%.3lf GBS=%.2lf TPI=%.2lf GFLOPS %.2lf POWER=%.2lf((%.2lf/%.2lf)]",
+                       (float) sig->avg_f / 1000000.0,
+                       (float) sig->avg_imc_f / 1000000.0,
+                       (float) sig->def_f / 1000000.0,
+                       sig->time,
+                       sig->CPI,
+                       sig->GBS,
+                       sig->TPI,
+                       sig->Gflops,
+                       sig->DC_power,
+                       sig->PCK_power,
+                       sig->DRAM_power);
+    if (ret < limit && ret > 0)
+    {
+        return EAR_SUCCESS;
+    } else
+    {
+        return EAR_ERROR;
+    }
 }
 
 void compute_sig_vpi(double *vpi, const signature_t *sig)
