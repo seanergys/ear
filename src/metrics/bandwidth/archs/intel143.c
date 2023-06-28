@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -47,35 +47,35 @@ static state_t load_icelake()
 	imc_ctrs_count = imc_maps_count * 2; // #MAPs * 2 counters (RD and WR)
 	imc_maps = calloc(imc_maps_count, sizeof(void *));
 	imc_ctrs = calloc(imc_ctrs_count, sizeof(uint));
-    debug("#IMC maps: %u", imc_maps_count);
-    debug("#IMC ctrs: %u", imc_ctrs_count);
+	debug("#IMC maps: %u", imc_maps_count);
+	debug("#IMC ctrs: %u", imc_ctrs_count);
 
 	for (p = c = 0; p < pcis_count; ++p) {
 		addr_hi = 0x00;
-        // MMIO_BASE
+		// MMIO_BASE
 		if (state_fail(s = pci_read(&pcis[p], &addr_hi, sizeof(uint), 0xD0))) {
 			// Clean PCIs
 			return s;
 		}
 		addr_hi = (addr_hi & 0x1FFFFFFF) << 23;
-		debug("PCI%u base address %llx", p, addr_hi);
-        // 4 IMCs
+		debug("PCI%u base address 0x%llx", p, addr_hi);
+		// 4 IMCs
 		for (i = 0; i < 4; ++i) {
 			addr_lo = 0x00;
-            // MEMx_BAR (0xD8, 0xDC, 0xE0 and 0xE4 in the document, which is the same as 0xD8+(i*0x04).
-	    	if (state_fail(s = pci_read(&pcis[p], &addr_lo, sizeof(uint), 0xD8+(i*0x04)))) {
+			// MEMx_BAR (0xD8, 0xDC, 0xE0 and 0xE4 in the document, which is the same as 0xD8+(i*0x04).
+			if (state_fail(s = pci_read(&pcis[p], &addr_lo, sizeof(uint), 0xD8+(i*0x04)))) {
 				// Clean PCIs
 				return s;
 			}
 			addr_lo = (addr_lo & 0x7FF) << 12;
-            // Free running counters base address
+			// Free running counters base address
 			addr_fi = (addr_hi | addr_lo) + 0x2318;
 			if (state_ok(s = pci_mmio_map(addr_fi, &imc_maps[(p*4)+i]))) {
-                debug("IMC%u address physical = 0x%llx (0x%llx | 0x%llx)", (p*4)+i, addr_fi, addr_hi, addr_lo);
-                debug("IMC%u address virtual  = 0x%p", (p*4)+i, imc_maps[(p*4)+i]);
-                // Filling RD and WR counters
-                imc_ctrs[c++] = 0x00;
-                imc_ctrs[c++] = 0x08;
+				debug("IMC%u address physical = 0x%lx (0x%lx | 0x%lx + 0x2290) (map 0x%lx)",
+					(p*4)+i, addr_fi, addr_hi, addr_lo, imc_maps[(p*4)+i]);
+				// Filling RD and WR counters
+				imc_ctrs[c++] = 0x00;
+				imc_ctrs[c++] = 0x08;
 			}
 		}
 	}
@@ -89,16 +89,14 @@ state_t bwidth_intel143_load(topology_t *tp, bwidth_ops_t *ops)
 	if (tp->vendor == VENDOR_AMD || tp->model != MODEL_SAPPHIRE_RAPIDS) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-	debug("detected Intel SAPPHIRE RAPIDS");
+	debug("Detected Intel Sapphire Rapids");
 	if (state_fail(s = pci_scan(0x8086, sap_ids, sap_dfs, O_RDONLY, &pcis, &pcis_count))) {
 		serror("pci_scan");
 		return s;
 	}
 	// It is shared by all Intel's architecture from Haswell to Skylake
 	debug("PCIs count: %d", pcis_count);
-	
-    if (state_fail(s = load_icelake())) {
-		// serror("load_icelake");
+	if (state_fail(s = load_icelake())) {
 		return s;
 	}
 	// In the future it can be initialized in read only mode
@@ -112,7 +110,7 @@ state_t bwidth_intel143_load(topology_t *tp, bwidth_ops_t *ops)
 
 BWIDTH_F_GET_INFO(bwidth_intel143_get_info)
 {
-    info->api         = API_INTEL106;
+    info->api         = API_INTEL143;
     info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_IMC;
     info->devs_count  = imc_ctrs_count+1;
@@ -141,15 +139,15 @@ state_t bwidth_intel143_read(ctx_t *c, bwidth_t *bw)
     int i, j;
 	
 	timestamp_get(&bw[imc_ctrs_count].time);
-	for (i = j = 0; i < imc_maps_count; ++i, j+=2) {
+	for (i = j = 0; i < imc_maps_count; ++i, j += 2) {
 		debug("IMC%d: RD DDR addr 0x%p", i, imc_maps[i]);
-        addr0 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+0]);
-        addr1 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+1]);
+		addr0 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+0]);
+		addr1 = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j+1]);
 		bw[j+0].cas = (ullong) *((ullong *) (addr0));
-        bw[j+1].cas = (ullong) *((ullong *) (addr1));
+		bw[j+1].cas = (ullong) *((ullong *) (addr1));
 		bw[j+0].cas = bw[j+0].cas & 0x0000ffffffffffff;
-        bw[j+1].cas = bw[j+1].cas & 0x0000ffffffffffff;
-        debug("IMC%d: %llu %llu cas", i, bw[j+0].cas, bw[j+1].cas);
+		bw[j+1].cas = bw[j+1].cas & 0x0000ffffffffffff;
+		debug("IMC%d: %llu %llu cas", i, bw[j+0].cas, bw[j+1].cas);
 	}
 	return EAR_SUCCESS;
 }

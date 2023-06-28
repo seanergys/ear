@@ -96,6 +96,36 @@ void get_ip_nodelist(cluster_conf_t *conf, char **nodes, int num_nodes, int **ip
     *ips = aux_ips;
 }
 
+int get_num_nodes_in_eargm(cluster_conf_t *my_conf, int eargm_id)
+{
+    int i, j;
+    int total_nodes = 0;
+
+    if (my_conf->num_islands < 1)
+    {
+        error("No island ranges found.");
+        return EAR_ERROR;
+    }
+
+    for (i = 0; i < my_conf->num_islands; i++)
+    {
+        for (j = 0; j < my_conf->islands[i].num_ranges; j++)
+        {
+            node_range_t range = my_conf->islands[i].ranges[j];
+            if (range.eargm_id != eargm_id) continue;
+            if (range.end == -1)
+                total_nodes++;
+            else if (range.end == range.start)
+                total_nodes++;
+            else
+                total_nodes += (range.end - range.start) + 1; //end - start does not count the starting node
+        }
+    }
+
+    return total_nodes;
+
+}
+
 int get_num_nodes(cluster_conf_t *my_conf)
 {
     int i, j;
@@ -271,8 +301,13 @@ int tag_id_exists(cluster_conf_t *conf, char *tag)
 {
     int i;
     if (tag == NULL) return 0;
-    for (i = 0; i < conf->num_tags; i++)
-        if (!strcmp(tag, conf->tags[i].id)) return i;
+    for (i = 0; i < conf->num_tags; i++) {
+        //debug("comparing tag %d (%s) vs input (%s)", i, conf->tags[i].id, tag);
+        if (!strcmp(conf->tags[i].id, tag)) {
+            //debug("Found tag %s on position %d", tag, i);
+            return i;
+        }
+    }
 
     return -1;
 
@@ -287,10 +322,21 @@ int get_default_tag_id(cluster_conf_t *conf)
     return id;
 }
 
+int get_eargm_idx(cluster_conf_t *conf, int eargm_id) {
+    int i;
+    for (i = 0; i < conf->eargm.num_eargms; i++) {
+        if ((int)conf->eargm.eargms[i].id == eargm_id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 
 my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 {
     int i=0, j=0, range_found=0;
+    int island_idx = 0;
     int range_id = -1;
     int tag_id = -1, def_tag_id = -1;
 
@@ -320,6 +366,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         if ((range_id = island_range_conf_contains_node(&my_conf->islands[i], nodename)) >= 0) {
             range_found = 1;
             n->island = my_conf->islands[i].id;
+            island_idx = i;
             int num_ips = my_conf->islands[i].ranges[range_id].db_ip;
             if (my_conf->islands[i].num_ips > num_ips && num_ips >= 0)
                 strcpy(n->db_ip, my_conf->islands[i].db_ips[my_conf->islands[i].ranges[range_id].db_ip]);
@@ -344,9 +391,12 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
                     if (tag_id >= 0) {
                         debug("found tag: %s\n", my_conf->islands[i].specific_tags[my_conf->islands[i].ranges[range_id].specific_tags[j]]);
                         break;
+                    } else {
+                        debug("tag %s could not be found", my_conf->islands[i].specific_tags[my_conf->islands[i].ranges[range_id].specific_tags[j]]);
                     }
                 }
             }
+            break;
         }
         i++;
     }while(i<my_conf->num_islands);
@@ -430,25 +480,82 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
                     n->num_policies ++;
                 }
             }
-
-
         }
     }
+
 	for (i = 0; i < my_conf->num_policies; i++) { //check for the default policy, change the id if we find it
 		if (!strcmp(my_conf->power_policies[my_conf->default_policy].name, n->policies[i].name))
 			my_conf->default_policy = n->policies[i].policy;
 	}
+
+
+
     /* Automatic computation of powercap */
     /* If node powercap is -1, and there is a global powercap, power is equally distributed */
-    if (n->powercap == DEF_POWER_CAP){
-        if (my_conf->eargm.power > 0){
-            n->powercap = my_conf->eargm.power / my_conf->cluster_num_nodes;
-        }else{
-            /* 0 means no limit */
-            n->powercap = 0;
-        }
+    /* If node powercap is 1, we check for powercap missconfigurations*/
+    /* If node powercap is N where N > 1, we only print the powercap*/
+    verbose(VCCONF, "--------------------------------------");
+    verbose(VCCONF, "Checking powercap in configuration");
+    verbose(VCCONF, "--------------------------------------");
+    switch(n->powercap) {
+        case POWER_CAP_DISABLED:
+            verbose(VCCONF, "my_node_conf powercap is DISABLED");
+            break;
+        case POWER_CAP_UNLIMITED:
+            verbose(VCCONF, "my_node_conf powercap is UNLIMITED");
+            if (my_conf->eargm.num_eargms > my_conf->islands[island_idx].ranges[range_id].eargm_id) {
+                if (my_conf->eargm.eargms[my_conf->islands[island_idx].ranges[range_id].eargm_id].power == POWER_CAP_AUTO_CONFIG) {
+                    verbose(VCCONF, "warning: EARGM is set to autoconfigure and node powercap is unlimited, this is unsupported");
+                }
+            }
+            break;
+        case POWER_CAP_AUTO_CONFIG:
+            //When autoconfiguring, if the configuration is not valid we are currently setting the powercap to UNLIMITED.
+            //Another option would be setting it to the DEFAULT value (but it could be -1 which would cause issues) or
+            //set it to DISABLED.
+            verbose(VCCONF, "my_node_conf powercap is being AUTOCONFIGURED");
+            int eargm_idx = get_eargm_idx(my_conf, my_conf->islands[island_idx].ranges[range_id].eargm_id);
+            if (eargm_idx > 0) {
+                int num_nodes = get_num_nodes_in_eargm(my_conf, my_conf->islands[island_idx].ranges[range_id].eargm_id);
+                if (num_nodes < 1) {
+                    verbose(VCCONF, "\nno nodes found when configuring powercap, setting it to unlimited");
+                    n->powercap = POWER_CAP_UNLIMITED;
+                    break;
+                }
+                if (my_conf->eargm.eargms[eargm_idx].power == 0) {
+                    verbose(VCCONF, "\tEARGM powercap is DISABLED (0), this configuration is not supported. Setting powercap to UNLIMITED.");
+                    n->powercap = POWER_CAP_UNLIMITED;
+                    break;
+                }
+                if (my_conf->eargm.eargms[eargm_idx].power == 1) {
+                    verbose(VCCONF, "\tEARGM powercap is UNLIMITED (1), this configuration is not supported. Setting powercap to UNLIMITED.");
+                    n->powercap = POWER_CAP_UNLIMITED;
+                    break;
+                }
+                if (my_conf->eargm.eargms[eargm_idx].power == -1) {
+                    verbose(VCCONF, "\tEARGM powercap is AUTOCONFIGURE (-1), this configuration is not supported. Setting powercap to UNLIMITED.");
+                    n->powercap = POWER_CAP_UNLIMITED;
+                    break;
+                }
+                
+                debug("num nodes %d, eargm power %ld", num_nodes, my_conf->eargm.eargms[eargm_idx].power );
+                n->powercap = my_conf->eargm.eargms[eargm_idx].power / num_nodes;
+                verbose(VCCONF, "\tnode powercap set to %ld (there are %d nodes and %ld power under this eargm id)",
+                        n->powercap, num_nodes, my_conf->eargm.eargms[eargm_idx].power);
+
+            } else {
+                verbose(VCCONF, "\tthis node has an invalid EARGM, setting powercap to UNLIMITED");
+                n->powercap = POWER_CAP_UNLIMITED;
+            }
+            break;
+        default:
+            verbose(VCCONF, "my_node_conf powercap is set to a specific value: %ld", n->powercap);
+            break;
     }
 
+    verbose(VCCONF, "--------------------------------------");
+    verbose(VCCONF, "Finished checking powercap, final powercap value: %ld", n->powercap);
+    verbose(VCCONF, "--------------------------------------");
 
     return n;
 }

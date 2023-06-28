@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,71 +42,82 @@ static topology_t tp;
 
 void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
 {
-	debug("loading");
-    if (tp_in->vendor != VENDOR_INTEL) {
+    if (state_fail(imcfreq_intel63_ext_load_addresses(tp_in))) {
         return;
     }
-    // We don't know the details in Tiger Lake. Maybe the same SR addresses?
-    if (tp_in->model == MODEL_TIGERLAKE) {
+    if (state_fail(msr_test(tp_in, MSR_WR))) {
         return;
     }
-	if (tp_in->model >= MODEL_SAPPHIRE_RAPIDS) {
-		address_ctl = 0x2FDE; // UCLK Counter Control
-        address_ctr = 0x2FDF; // UCLK Counter
-	} else {
-        address_ctl = 0x000703; // U_MSR_PMON_FIXED_CTL
-        address_ctr = 0x000704; // U_MSR_PMON_FIXED_CTR
+    if(state_fail(topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
+        return;
     }
-	if (state_fail(msr_test(tp_in, MSR_WR))) {
-		return;
-	}
-	if(state_fail(topology_select(tp_in, &tp, TPSelect.socket, TPGroup.merge, 0))) {
-		return;
-	}
-	apis_set(ops->get_api,       imcfreq_intel63_get_api);
-	apis_set(ops->init,          imcfreq_intel63_init);
-	apis_set(ops->dispose,       imcfreq_intel63_dispose);
-	apis_set(ops->count_devices, imcfreq_intel63_count_devices);
-	apis_set(ops->read,          imcfreq_intel63_read);
-	debug("INTEL63 loaded full API");
+    apis_set(ops->get_api,       imcfreq_intel63_get_api);
+    apis_set(ops->init,          imcfreq_intel63_init);
+    apis_set(ops->dispose,       imcfreq_intel63_dispose);
+    apis_set(ops->count_devices, imcfreq_intel63_count_devices);
+    apis_set(ops->read,          imcfreq_intel63_read);
+    debug("INTEL63 loaded full API");
 }
 
 void imcfreq_intel63_get_api(uint *api, uint *api_intern)
 {
-	*api = API_INTEL63;
-	if (api_intern) {
-		*api_intern = API_NONE;
-	}
+    *api = API_INTEL63;
+    if (api_intern) {
+        *api_intern = API_NONE;
+    }
 }
 
-state_t imcfreq_intel63_aux_enable_cpu(int cpu)
+state_t imcfreq_intel63_ext_load_addresses(topology_t *tp)
 {
-	ullong com, com1;
+    if (tp->vendor != VENDOR_INTEL) {
+        debug("Detected vendor is not Intel");
+        return EAR_ERROR;
+    }
+    // We don't know the details in Tiger Lake. Maybe the same SR addresses?
+    if (tp->model == MODEL_TIGERLAKE) {
+        debug("Detected vendor is Tiger Lake");
+        return EAR_ERROR;
+    }
+    if (tp->model >= MODEL_SAPPHIRE_RAPIDS) {
+        debug("Detected vendor is Sapphire Rapids");
+        address_ctl = 0x2FDE; // UCLK Counter Control
+        address_ctr = 0x2FDF; // UCLK Counter
+    } else {
+        debug("Detected vendor is Haswell or greater");
+        address_ctl = 0x0703; // U_MSR_PMON_FIXED_CTL
+        address_ctr = 0x0704; // U_MSR_PMON_FIXED_CTR
+    }
+    return EAR_SUCCESS;
+}
+
+state_t imcfreq_intel63_ext_enable_cpu(int cpu)
+{
+    ullong com, com1;
     state_t s;
     // Unfreeze
-	if (state_fail(s = msr_open(cpu, MSR_WR))) {
-		return s;
-	}
+    if (state_fail(s = msr_open(cpu, MSR_WR))) {
+        return s;
+    }
     if (state_ok(msr_read(cpu, &com, sizeof(ullong), GLBL_CTL_OFS))) {
         com = (com | GLBL_CMD_UNF);
         msr_write(cpu, &com, sizeof(ullong), GLBL_CTL_OFS);
     }
-	if (state_fail(s = msr_read(cpu, &com, sizeof(ullong), address_ctl))) {
-		return s;
-	}
-	com1 = ((com & UBOX_CMD_STA) >> SHIFT);
-	if (!com1) {
-		com = com | UBOX_CMD_STA;
-		if (state_fail(s = msr_write(cpu, &com, sizeof(ullong), address_ctl))) {
-			return s;
-		}
-	}
+    if (state_fail(s = msr_read(cpu, &com, sizeof(ullong), address_ctl))) {
+	return s;
+    }
+    com1 = ((com & UBOX_CMD_STA) >> SHIFT);
+    if (!com1) {
+        com = com | UBOX_CMD_STA;
+        if (state_fail(s = msr_write(cpu, &com, sizeof(ullong), address_ctl))) {
+            return s;
+        }
+    }
     return EAR_SUCCESS;
 }
 
-state_t imcfreq_intel63_aux_read_cpu(int cpu, ulong *freq)
+state_t imcfreq_intel63_ext_read_cpu(int cpu, ulong *freq)
 {
-	return msr_read(cpu, freq, sizeof(ulong), address_ctr);
+    return msr_read(cpu, freq, sizeof(ulong), address_ctr);
 }
 
 state_t imcfreq_intel63_init(ctx_t *c)
@@ -120,13 +131,11 @@ state_t imcfreq_intel63_init(ctx_t *c)
 	}	
 	// Opening MSR
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-        if (state_fail(s = imcfreq_intel63_aux_enable_cpu(tp.cpus[cpu].id))) {
-            return s;
-        }
+		if (state_fail(s = imcfreq_intel63_ext_enable_cpu(tp.cpus[cpu].id))) {
+			return s;
+		}
 	}
-	debug("INTEL63 MSRs opened and enabled correctly");
 	init = 1;
-
 	return EAR_SUCCESS;
 }
 
@@ -173,12 +182,11 @@ state_t imcfreq_intel63_read(ctx_t *c, imcfreq_t *i)
 	timestamp_getfast(&i[0].time);
 	// Iterating per socket.
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-		debug("Reading IMC MSR for device %d",tp.cpus[cpu].id);
 		i[cpu].time = i[0].time;
-        if (state_fail(s = imcfreq_intel63_aux_read_cpu(tp.cpus[cpu].id, &i[cpu].freq))) {
+		if (state_fail(s = imcfreq_intel63_ext_read_cpu(tp.cpus[cpu].id, &i[cpu].freq))) {
 			return s;
 		}
-		debug("Freq for cpu %d is %lu",tp.cpus[cpu].id,i[cpu].freq);
+		debug("IMC%d read register: %lu (address 0x%lx)", tp.cpus[cpu].id, i[cpu].freq, address_ctr);
 		i[cpu].error = state_fail(s);
 	}
 
