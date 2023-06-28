@@ -134,6 +134,7 @@
 #define FLAG_LOADER_VERBOSE          "EAR_LOADER_VERBOSE"     // Loader's verbosity.
 #define FLAG_MPI_OPT                 "EAR_MPI_OPTIMIZATION"   // Enables/Disables MPI optimization when supported by policies
 #define FLAG_MIN_USEC_MPI            "EAR_MIN_USEC_MPI_OPT"   // Minimum time to apply MPI optimization
+#define FLAG_MPI_SAMPLING_ENABLED     "EAR_MPI_SAMPLING_ENABLED"  // Allows MPI sampling monitoring to be enabled(1) or disabled (0). Default is 1.
 
 #define FLAG_NO_AFFINITY_MASK        "EAR_NO_AFFINITY_MASK"   // Prevents EARL from using the affinity mask. Only for special use cases
 #define FLAG_REPORT_LOOPS            "EAR_REPORT_LOOPS"       // Reports or not report EAR library loops

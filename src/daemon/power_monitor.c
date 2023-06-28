@@ -1198,7 +1198,7 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 
     // Metrics are not reported in this function
     free_power_data(&app_power);
-    debug("job_end_powermon_app done for %lu/%lu", pmapp->app.job.id, pmapp->app.job.step_id);
+    verbose(VJOBPMON,"job_end_powermon_app done for %lu/%lu", pmapp->app.job.id, pmapp->app.job.step_id);
 }
 
 

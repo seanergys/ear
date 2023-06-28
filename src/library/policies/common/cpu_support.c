@@ -113,7 +113,7 @@ double get_time_projected(signature_t *my_app, ulong f)
     target = frequency_closest_pstate(f);
     project_time(my_app, curr, target, &t);
   }
-  verbose(0,"Policy savins[%s] Projecting from %lu-%u to %lu-%u time %lf (ref %.3lf)", node_name, my_app->def_f, curr, f,target, t, my_app->time);
+  //verbose(0,"Policy savins[%s] Projecting from %lu-%u to %lu-%u time %lf (ref %.3lf)", node_name, my_app->def_f, curr, f,target, t, my_app->time);
   return (float)t;
 }
 double get_power_projected(signature_t *my_app, ulong f)
@@ -125,7 +125,7 @@ double get_power_projected(signature_t *my_app, ulong f)
     target = frequency_closest_pstate(f);
     project_power(my_app, curr, target, &p);
   }
-  verbose(0," Policy savins[%s] Projecting from %lu-%u to %lu-%u power %lf (ref %.2lf)", node_name, my_app->def_f, curr, f, target, p, my_app->DC_power);
+  //verbose(0," Policy savins[%s] Projecting from %lu-%u to %lu-%u power %lf (ref %.2lf)", node_name, my_app->def_f, curr, f, target, p, my_app->DC_power);
   return p;
 }
 

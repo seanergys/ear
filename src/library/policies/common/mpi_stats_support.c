@@ -88,6 +88,7 @@ static mpi_information_t mpi_stats;
 static unsigned long long int mpis_per_sample      = 1;
 static unsigned long long int curr_mpis_per_sample = 0;
 static uint dynamic_monitor = 0;
+static uint mpi_sampling_enabled = 1;
 #define OFF 0
 #define ON  1
 #define MPI_SAMPLING_ENABLED 1
@@ -95,6 +96,7 @@ static uint dynamic_monitor = 0;
 
 #else
 static uint dynamic_monitor = 0;
+static uint mpi_sampling_enabled = 0;
 #endif
 
 #if MPI_STATS
@@ -241,6 +243,13 @@ state_t mpi_app_init(polctx_t *c)
         } else {
             mpi_stats.rank = 0;
         }
+        #if MPI_SAMPLING
+        char * env_mpi_sampling_enabled;
+        if (is_mpi_enabled() && ((env_mpi_sampling_enabled = ear_getenv(FLAG_MPI_SAMPLING_ENABLED)) != NULL)){
+          mpi_sampling_enabled = atoi(env_mpi_sampling_enabled);
+          verbose_master(2,"MPI support: MPI sampling set to %s by env var ", (mpi_sampling_enabled?"Enabled":"Disabled"));
+        }
+        #endif
 
 #if MPI_OPTIMIZED
         timestamp_getprecise(&start_no_mpi);
@@ -664,7 +673,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 
 #if MPI_SAMPLING
     /* Dynamic MPI monitoring */
-    if (!dynamic_monitor && limit_exceeeded){
+    if (mpi_sampling_enabled && !dynamic_monitor && limit_exceeeded){
         float mpi_sec = avg_mpi_calls_per_second();
 
         if (mpi_sec > (MAX_MPI_CALLS_SECOND * 2)){

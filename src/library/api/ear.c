@@ -584,6 +584,7 @@ void create_shared_regions()
 								per_node_elements = 1;
 				}
 				ratio_PPN = (float)lib_shared_region->num_processes/(float)masters_info.max_ppn;
+        verbose_master(0,"ratio_PPN %f = procs node %f max %f", ratio_PPN, (float)lib_shared_region->num_processes, (float)masters_info.max_ppn);
 				masters_info.nodes_info = (shsignature_t *)calloc(total_elements,sizeof(shsignature_t));
 				if (masters_info.nodes_info == NULL){ 
 								error("Allocating memory for node_info");
