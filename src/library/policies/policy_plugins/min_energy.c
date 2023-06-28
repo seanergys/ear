@@ -769,8 +769,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 int min_ps_idx = sid * IMC_VAL + IMC_MAX;
                 // The lower bound IMC p-state won't be greather than the maximum
                 // retrieved by hardware.
+                // freqs->imc_freq[min_ps_idx] = ear_min(imc_max_pstate[sid],
+                //                                       freqs->imc_freq[min_ps_idx] + 1);
                 freqs->imc_freq[min_ps_idx] = ear_min(imc_max_pstate[sid],
-                                                      freqs->imc_freq[min_ps_idx] + 1);
+                                                      curr_imc_pstate + 1);
 
                 // Lower bound IMC p-state index
                 int max_ps_idx = sid * IMC_VAL + IMC_MIN;
