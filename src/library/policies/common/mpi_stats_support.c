@@ -261,8 +261,6 @@ state_t mpi_app_end(polctx_t *c)
     timestamp end;
     ullong elap;
     int fd;
-    char mpi_stats_filename[256];
-    char mpi_stats_per_call_filename[256];
 
 #if MPI_OPTIMIZED
     if (num_mpi_to_optimize) {
@@ -313,14 +311,17 @@ state_t mpi_app_end(polctx_t *c)
 #if MPI_STATS
         if (get_mpi_stats) {
 
+            char mpi_stats_per_call_filename[256];
+            char mpi_stats_filename[256];
+
             if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
-                            mpi_stats_per_call_filename))) {
+                           mpi_stats_per_call_filename))) {
                 verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
                 return EAR_WARNING;
             }
 
             verbose_master(MPI_STATS_VERB_LVL,"      MPI stats file: %s\nMPI calls stats file: %s",
-                    mpi_stats_filename, mpi_stats_per_call_filename);
+                           mpi_stats_filename, mpi_stats_per_call_filename);
 
             // Open mpi_stats_filename to store per process global MPI stats
             fd = open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);

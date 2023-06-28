@@ -1876,7 +1876,8 @@ void ear_init()
 
 /**************************************** ear_finalize ************************/
 
-void print_resource_usage()
+/*
+static void print_resource_usage()
 {
   struct rusage my_usage;
   getrusage(RUSAGE_SELF, &my_usage);
@@ -1884,6 +1885,7 @@ void print_resource_usage()
   verbose(0,"%s: User cpu time %llu system cpu time %llu page faults %ld block input %ld block output %ld voluntary ctx %ld involuntary ctx %ld", node_name, my_usage.ru_utime.tv_sec*1000+my_usage.ru_utime.tv_usec/1000, my_usage.ru_stime.tv_sec*1000+my_usage.ru_stime.tv_usec/1000, my_usage.ru_majflt, my_usage.ru_inblock, my_usage.ru_oublock, my_usage.ru_nvcsw, my_usage.ru_nivcsw);
 
 }
+*/
 
 void ear_finalize(int exit_status)
 {
