@@ -311,7 +311,7 @@ static void print_local_data()
         //verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
         verbose(1, "%30s: %u/%lu (%d)", "P_STATE/frequency (turbo)",
                 EAR_default_pstate, application.job.def_f, ear_use_turbo);
-        verbose(1, "%30s: %u/%d/%d", "Tasks/nodes/ppn", my_size, num_nodes, ppnode);
+        verbose(1, "%30s: %u/%d/%d/%.3f", "Tasks/nodes/ppn/node_ratio", my_size, num_nodes, ppnode, ratio_PPN);
         verbose(1, "%30s: %s (%d)", "Policy (learning)",
                 application.job.policy, ear_whole_app);
         verbose(1, "%30s: %0.2lf/%0.2lf", "Policy threshold/Perf accuracy",

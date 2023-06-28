@@ -81,22 +81,26 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
 double get_time_nominal(signature_t *my_app)
 {
   double t = my_app->time;
+  uint curr, target;
   if (my_app->def_f != frequency_get_nominal_freq()){
-    uint target = frequency_get_nominal_pstate();
-    uint curr   = frequency_closest_pstate(my_app->def_f);
+    target = frequency_get_nominal_pstate();
+    curr   = frequency_closest_pstate(my_app->def_f);
     project_time(my_app, curr, target, &t);
   }
+  verbose_master(0,"Policy savins[%s]: Projecting reference time from %u to %u %lf", node_name, curr, target, t);
   return t;
 }
 
 double get_power_nominal(signature_t *my_app)
 {
   double p = my_app->DC_power;
+  uint curr, target;
   if (my_app->def_f != frequency_get_nominal_freq()){
-    uint target = frequency_get_nominal_pstate();
-    uint curr   = frequency_closest_pstate(my_app->def_f);
+    target = frequency_get_nominal_pstate();
+    curr   = frequency_closest_pstate(my_app->def_f);
     project_power(my_app, curr, target, &p);
   }
+  verbose_master(0,"Policy savins[%s]: Projecting reference power from %u to %u %lf", node_name, curr, target, p);
   return p;
 }
 
@@ -109,19 +113,19 @@ double get_time_projected(signature_t *my_app, ulong f)
     target = frequency_closest_pstate(f);
     project_time(my_app, curr, target, &t);
   }
-  //verbose(0," Projecting from %lu-%u to %lu-%u time %lf (ref %.3lf)", my_app->def_f, curr, f,target, t, my_app->time);
+  verbose(0,"Policy savins[%s] Projecting from %lu-%u to %lu-%u time %lf (ref %.3lf)", node_name, my_app->def_f, curr, f,target, t, my_app->time);
   return (float)t;
 }
 double get_power_projected(signature_t *my_app, ulong f)
 {
   double p = my_app->DC_power;
   uint curr, target;
-  if (f != my_app->def_f){
+  if (f != my_app->def_f) {
     curr   = frequency_closest_pstate(my_app->def_f);
     target = frequency_closest_pstate(f);
     project_power(my_app, curr, target, &p);
   }
-  //verbose(0," Projecting from %lu-%u to %lu-%u power %lf (ref %.2lf)", my_app->def_f, curr, f, target, p, my_app->DC_power);
+  verbose(0," Policy savins[%s] Projecting from %lu-%u to %lu-%u power %lf (ref %.2lf)", node_name, my_app->def_f, curr, f, target, p, my_app->DC_power);
   return p;
 }
 

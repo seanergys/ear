@@ -402,13 +402,6 @@ static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, no
 
   *savings = 1;
 
-  /* If the list of CPU freqs is different than last, we must compute savings */
-  for (uint i = 0; i < limit; i++){
-    if (cpu_f[i] != policy_savings_comp_freqs[i]){
-      verbose_master(0,"Policy savins[%s]: f[%u] %lu != f[%u] %lu", node_name, i, cpu_f[i], i, policy_savings_comp_freqs[i]);
-      return 1;
-    }
-  }
 
   /* if we run at nominal, there is no savings */
 
@@ -416,10 +409,21 @@ static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, no
     at_fref = at_fref && (cpu_f[i] == fref);
   }
 
+  verbose_master(0,"Policy savins[%s]: running at nominal? at_ref %lu f[0] != %lu", node_name, at_fref, fref);
+
   if (at_fref){
     *savings = 0;
     return 0;
   }
+
+  /* If the list of CPU freqs is different than last, we must compute savings */
+  for (uint i = 0; i < limit; i++){
+    if (cpu_f[i] != policy_savings_comp_freqs[i]){
+      verbose_master(0,"Policy savins[%s]: f[%u] %lu != f[%u] %lu", node_name, i, cpu_f[i], i, policy_savings_comp_freqs[i]);
+      return 1;
+    }
+  }
+  
   return 0;
 }
 
@@ -453,6 +457,7 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
 
 
   memcpy(policy_savings_comp_freqs, cpu_f, sizeof(ulong)* MAX_CPUS_SUPPORTED);
+  signature_print_simple_fd(verb_channel, ns);
 
 
 

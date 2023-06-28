@@ -96,7 +96,7 @@ state_t projections_init(uint user_type, conf_install_t *data, architecture_t * 
     snprintf(basic_path,sizeof(basic_path),"%s/plugins/models/%s",ins_path, obj_path);
     obj_path=basic_path;
 	}
-	verbose(0,"Using power model path  %s", obj_path);
+  debug("Using power model path  %s", obj_path);
 	
 	st = models_load(obj_path);
 	

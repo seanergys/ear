@@ -196,7 +196,7 @@ void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PP
     double new_TPI,new_DC_power;
 
     signature_copy(dest,src);
-
+    #if 0
     verbose(3, " TPI %.3lf Power %.3lf ratio %.4f", src->TPI, src->DC_power, ratio_PPN);
 
     if ((ratio_PPN == 0) || (fpclassify(ratio_PPN) != FP_NORMAL)) return;
@@ -208,6 +208,7 @@ void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PP
 
     dest->TPI=new_TPI;
     dest->DC_power=new_DC_power;
+    #endif
 }
 
 void acum_sig_metrics(signature_t *dst,signature_t *src)
