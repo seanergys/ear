@@ -21,7 +21,6 @@
 #if !SHOW_DEBUGS
 #define NDEBUG
 #endif
-#include <assert.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
 #include <common/types/signature.h>
@@ -63,14 +62,12 @@ state_t model_init(char *etc, char *tmp, architecture_t *myarch)
 
   coefficients = (coefficient_t **) malloc(sizeof(coefficient_t *) * num_pstates);
 
-  assert(coefficients != NULL);
   if (coefficients == NULL) {
 		return EAR_ERROR;
   }
   for (i = 0; i < num_pstates; i++)
   {
     coefficients[i] = (coefficient_t *) malloc(sizeof(coefficient_t) * num_pstates);
-    assert(coefficients[i] != NULL);
     if (coefficients[i] == NULL) {
 			return EAR_ERROR;
     }
@@ -247,7 +244,6 @@ state_t model_projections_available()
 			if ((ps != pt) && (model_projection_available(ps, pt) == EAR_SUCCESS)) ready = 1;	
 		}
 	}
-    assert(ready != 0);
 	if (ready) return EAR_SUCCESS;
 	return EAR_ERROR;	
 }
