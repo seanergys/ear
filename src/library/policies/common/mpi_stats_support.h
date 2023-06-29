@@ -36,6 +36,13 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type);
 /** Called once a MPI call just ended */
 state_t mpi_call_end(polctx_t *c, mpi_call call_type);
 
+void monitor_mpi_calls(uint on);
+float avg_mpi_calls_per_second();
+unsigned long long int total_mpi_call_statistics();
+uint is_monitor_mpi_calls_enabled();
+uint is_mpi_intensive();
+uint is_low_mpi_activity();
+
 /** Per-Node Executes the read-diff for mpi statistics on mpi calls types */
 state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *sig,
         mpi_calls_types_t *node_mpi_calls, mpi_calls_types_t *last_node);
@@ -78,10 +85,6 @@ state_t mpi_support_mpi_changed(double current_mag, double prev_mag, uint *cp, u
 state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_perc_mpi,
         size_t size, double *similarity);
 /**@}*/
-
-/** Returns the number of total_mpi_calls normalized by a period, e.g., 10 seconds. */
-float compute_mpi_in_period(mpi_information_t *mc);
-
 
 #if MPI_OPTIMIZED
 state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed);

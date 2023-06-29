@@ -17,9 +17,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <common/output/debug.h>
+#include <common/output/verbose.h>
 #include <common/types/signature.h>
 #include <common/types/coefficient.h>
 #include <common/hardware/architecture.h>
@@ -159,6 +160,7 @@ state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppowe
 			*ppower= (coeff->A * sign->DC_power) +
 		   (coeff->B * sign->TPI) +
 		   (coeff->C);
+       debug("Power %lf = %lf x %lf + %lf x %lf + %lf", *ppower, coeff->A, sign->DC_power, coeff->B, sign->TPI, coeff->C);
 		}else{
 			*ppower=0;
 			st=EAR_ERROR;

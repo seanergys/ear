@@ -510,6 +510,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
             }
             break;
         case POWER_CAP_AUTO_CONFIG:
+            {
             //When autoconfiguring, if the configuration is not valid we are currently setting the powercap to UNLIMITED.
             //Another option would be setting it to the DEFAULT value (but it could be -1 which would cause issues) or
             //set it to DISABLED.
@@ -546,6 +547,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
             } else {
                 verbose(VCCONF, "\tthis node has an invalid EARGM, setting powercap to UNLIMITED");
                 n->powercap = POWER_CAP_UNLIMITED;
+            }
             }
             break;
         default:
@@ -780,7 +782,7 @@ void set_default_island_conf(node_island_t *isl_conf, uint id)
 void set_default_conf_install(conf_install_t *inst)
 {
     sprintf(inst->obj_ener, "default");
-    sprintf(inst->obj_power_model, "basic_model.so");
+    sprintf(inst->obj_power_model, "default");
 }
 
 /*

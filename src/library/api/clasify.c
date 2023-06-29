@@ -15,8 +15,10 @@
 * and COPYING.EPL files.
 */
 
+
 #include <stdio.h>
 #include <stdlib.h>
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/hardware/defines.h>
 #include <common/states.h>
@@ -29,8 +31,12 @@
 #include <library/states/states_comm.h>
 #include <library/loader/module_cuda.h>
 #include <library/api/mpi_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 
-#define INFO_CLASSIFY 2
+
+#define WARN_CLASSIFY  1
+#define INFO_CLASSIFY  2
+#define INFO2_CLASSIFY 3
 
 #define flops_per_sig(s) (s->FLOPS[0] + s->FLOPS[1] + s->FLOPS[2] + s->FLOPS[3] +\
   s->FLOPS[4] + s->FLOPS[5] + s->FLOPS[6] + s->FLOPS[7])
@@ -44,11 +50,9 @@ static float CPI_BUSY_WAITING =    0.4; // Reduced from 0.6
 static float GBS_BUSY_WAITING =    3.0;
 static float GFLOPS_BUSY_WAITING = 0.1;
 static float IO_TH               = 10.0;
-static float MPI_TH              = 10000;
-static float MPI_BOUND           = 50.0;
-static float MIN_MPI_TH          = 200;
 static float CPI_MEM_BOUND       = 0.8;   // Reduced from 1.0
 static float GBS_MEM_BOUND       = 100.0; // Increased from 60
+
 
 void get_classify_limits(ear_classify_t *limits)
 {
@@ -58,12 +62,10 @@ void get_classify_limits(ear_classify_t *limits)
   limits->gbs_busy_waiting  = GBS_BUSY_WAITING;
   limits->gflops_busy_waiting = GFLOPS_BUSY_WAITING;
   limits->io_th               = IO_TH;
-  limits->mpi_th              = MPI_TH;
+  limits->mpi_th              = MAX_MPI_CALLS_SECOND;
   limits->cpi_mem_bound       = CPI_MEM_BOUND;
   limits->gbs_mem_bound       = GBS_MEM_BOUND;
-  limits->mpi_bound           = MPI_BOUND;
 }
-
 
 
 char * phase_to_str(uint phase)
@@ -114,6 +116,7 @@ state_t classify_init(topology_t *tp_in)
   return EAR_SUCCESS;
 }
 
+
 state_t classify(uint iobound,uint mpibound, uint *app_state)
 {
 	*app_state = APP_COMP_BOUND;
@@ -125,6 +128,7 @@ state_t classify(uint iobound,uint mpibound, uint *app_state)
 	return EAR_SUCCESS;
 }
 
+
 state_t is_io_bound(signature_t *sig, uint  num_cpus, uint *iobound)
 {
     float rwsec = sig->IO_MBS;
@@ -134,36 +138,40 @@ state_t is_io_bound(signature_t *sig, uint  num_cpus, uint *iobound)
 
 }
 
+
 state_t is_network_bound(signature_t *sig, uint  num_cpus, uint *mpibound)
 {
 	*mpibound = 0;
-	if (sig->perc_MPI > MPI_BOUND){
+	if (is_mpi_intensive()){
 		*mpibound = 1;
 	}
 	return EAR_SUCCESS;
 }
 
+
 static uint first_warning_mpi_th = 1;
-state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided)
+state_t must_switch_to_time_guide(ulong last_sig_elapsed, uint *ear_guided)
 { 
     /* Changed to force the EARL to use dynais as much as possible */
     if (!is_mpi_enabled()){
       *ear_guided = TIME_GUIDED;
       return EAR_SUCCESS;
     }
-    if (mpisec < MIN_MPI_TH){
+    if (is_low_mpi_activity()){
       //if (!is_cuda_enabled()) *ear_guided = TIME_GUIDED;
       if (first_warning_mpi_th) {
-        verbose_master(2,"Warning, going to time guided because low number of MPI calls per second");
+        verbose_master(WARN_CLASSIFY, "Warning, going to time guided because low number of MPI calls per second current %f ", avg_mpi_calls_per_second());
         first_warning_mpi_th = 0;
       }
       *ear_guided = TIME_GUIDED;
     }
     if (signature_reported && (last_sig_elapsed > ((5*perf_accuracy_min_time)/1000000))){
+      verbose_master(WARN_CLASSIFY, "Warning, going to time guided because elapsed time since last signature is %lu ", last_sig_elapsed);
       *ear_guided = TIME_GUIDED;
     }
     return EAR_SUCCESS;
 }
+
 
 extern uint validate_cpu_busy;
 state_t is_process_busy_waiting(ssig_t *sig, uint *busy)
@@ -188,6 +196,7 @@ state_t is_process_busy_waiting(ssig_t *sig, uint *busy)
   #endif
   return EAR_SUCCESS;
 }
+
 
 state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
 {
@@ -235,7 +244,7 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
 
             char busy_waiting_msg[64];
             ret = snprintf(busy_waiting_msg, sizeof busy_waiting_msg,
-                    "App node workload declared as busy waiting: %u", *busy);
+                           "App node workload declared as busy waiting: %u", *busy);
 
             int max_strlen = strlen(busy_waiting_msg);
             /*
@@ -257,33 +266,58 @@ state_t is_cpu_busy_waiting(signature_t *sig, uint num_cpus, uint *busy)
 	return EAR_SUCCESS;
 }
 
-state_t    low_mem_activity(signature_t *sig,uint num_cpus, uint *lowm)
-{
-  if (lowm == NULL) return EAR_ERROR;
-  float per_proc_gbs = sig->GBS / num_cpus;
-  *lowm = (per_proc_gbs < GBS_BUSY_WAITING);
-  return EAR_SUCCESS;
 
+state_t low_mem_activity(signature_t *sig, uint num_cpus, uint *lowm)
+{
+  if (lowm)
+  {
+    float per_proc_gbs = sig->GBS / num_cpus;
+
+    *lowm = (per_proc_gbs < GBS_BUSY_WAITING);
+
+    debug("GB/s normalized: %lf Thresh %lf", per_proc_gbs, GBS_BUSY_WAITING);
+
+    return EAR_SUCCESS;
+  } else
+  {
+    return EAR_ERROR;
+  }
 }
+
 
 state_t is_cpu_bound(signature_t *sig, uint num_cpus, uint *cbound)
 {
     *cbound = 0;
     if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;
+    verbose_master(0, "CPI %lf thresh %lf GB/s %lf thresh %lf", sig->CPI, CPI_CPU_BOUND, sig->GBS, GBS_CPU_BOUND);
     return EAR_SUCCESS;
 }
 
+
 state_t is_mem_bound(signature_t *sig,uint num_cpus, uint *mbound)
 {
-    *mbound = 0;
-    if ((sig->CPI > CPI_MEM_BOUND) && (sig->GBS > GBS_MEM_BOUND)) *mbound = 1;
-    return EAR_SUCCESS;
+    if (mbound)
+    {
+      *mbound = 0;
+      if ((sig->CPI > CPI_MEM_BOUND) && (sig->GBS > GBS_MEM_BOUND))
+      {
+        *mbound = 1;
+      }
+
+      debug("CPI %lf thresh %lf GB/s %lf thresh %lf", sig->CPI, CPI_MEM_BOUND, sig->GBS, GBS_MEM_BOUND);
+
+      return EAR_SUCCESS;
+    }
+    return EAR_ERROR;
 }
+
 
 state_t gpu_activity_state(signature_t *sig, gpu_state_t *gpu_state)
 {
 #if USE_GPUS
     int total = 0;
+    *gpu_state = _GPU_NoGPU;
+    if (sig->gpu_sig.num_gpus == 0) return EAR_SUCCESS;
     if (!is_cuda_enabled()) {
         /* One of the following cases:
          * - Node does not have GPUs
@@ -309,5 +343,3 @@ state_t gpu_activity_state(signature_t *sig, gpu_state_t *gpu_state)
 #endif // USE_GPUS
 	return EAR_SUCCESS;
 }
-
-
