@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <error.h>
 #include <signal.h>
@@ -159,6 +159,8 @@ static void goto_init()
     sigfillset(&set);
     sigdelset(&set, SIGNAL);
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
+    pthread_setschedprio(thread, 10);
+    debug("ready");
 }
 
 static void *monitor_main(void *p)
@@ -176,6 +178,7 @@ static void *monitor_main(void *p)
     // Main loop
 	while (is_running)
 	{
+        debug("running");
 		for (i = 0, sleep_units = 1000, sleep_reason = 0; i < queue_last && is_running; ++i)
 		{
             // Locking the suscription [i]
@@ -194,8 +197,10 @@ static void *monitor_main(void *p)
             //     - alignment: a number from 0 to 9
             // The upper for while, set sleeping time to 100 seconds (1000 units)
 			goto_time(reg, &sleep_units, &sleep_reason, passed_units, alignment);
+            // Unlocking suscription i because time is calculated
+            pthread_mutex_unlock(&lock[i]);
 
-			if (reg->ok_init) {
+            if (reg->ok_init) {
 				//debug("S%d, called init", i);
 				sus->call_init(sus->memm_init);
 				reg->ok_init = 0;
@@ -205,9 +210,7 @@ static void *monitor_main(void *p)
 				sus->call_main(sus->memm_main);
 				reg->ok_main = 0;
 			}
-            // Unlocking suscription i
-			pthread_mutex_unlock(&lock[i]);
-		}
+ 		}
         if (queue_last == 0) {
             sleep_reason = 2;
         }
@@ -253,14 +256,16 @@ state_t monitor_init()
 		}
         locks_allocated = 1;
 	}
-    is_running = 1;
+	is_running = 1;
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0) {
-        is_running = 0;
         pthread_mutex_unlock(&lock_gen);
+        is_running =0;
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
 	pthread_mutex_unlock(&lock_gen);
+    debug("monitor_init");
+
 	return EAR_SUCCESS;
 }
 
@@ -378,40 +383,3 @@ suscription_t *suscription()
 	pthread_mutex_unlock(&lock_gen);
 	return &queue[i].suscription;
 }
-
-#if TEST
-state_t monitor_suscribe(suscall_f call_init, suscall_f call_main, int time_relax, int time_burst)
-{
-    suscription_t *sus = suscription();
-	sus->call_init     = call_init;
-	sus->call_main     = call_main;
-	sus->time_relax    = time_relax;
-	sus->time_burst    = time_burst;
-	return sus->suscribe(sus);
-}
-
-state_t golo()
-{
-    printf("GOLO!\n");
-    return EAR_SUCCESS;
-}
-
-state_t goli()
-{
-    printf("GOLI!\n");
-    return EAR_SUCCESS;
-}
-
-int main(int argc, char *argv[])
-{
-	monitor_init();
-    usleep(400000);
-    monitor_suscribe(NULL, goli, 2000, 2000);
-    sleep(1);
-    monitor_suscribe(NULL, golo, 3000, 3000);
-    sleep(3);
-    monitor_dispose();
-    sleep(30);
-    return 0;
-}
-#endif

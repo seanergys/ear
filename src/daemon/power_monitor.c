@@ -1198,7 +1198,7 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 
     // Metrics are not reported in this function
     free_power_data(&app_power);
-    debug("job_end_powermon_app done for %lu/%lu", pmapp->app.job.id, pmapp->app.job.step_id);
+    verbose(VJOBPMON,"job_end_powermon_app done for %lu/%lu", pmapp->app.job.id, pmapp->app.job.step_id);
 }
 
 
@@ -1630,11 +1630,13 @@ void powermon_new_task(new_task_req_t *newtask)
         verbose(VCONF + 1, "Setting governor `%s` governor, CPU freq %.2f GHz and pstate %u",
                 cgov, (float) pmapp->policy_freq / 1000000, app_pstate);
 
-        verbose_affinity_mask(VCONF + 2, &newtask->mask, man->cpu.devs_count);
+        verbose_affinity_mask(VCONF + 1, &newtask->mask, man->cpu.devs_count);
 
         // Governor 
         governor_toint(cgov, &gov);
-        mgt_cpufreq_governor_set_mask(no_ctx, gov, newtask->mask);
+        if (state_fail(mgt_cpufreq_governor_set_mask(no_ctx, gov, newtask->mask))){
+          error("Error setting cpufreq userspace governor");
+        }
         
 
         /* CPU freq. */

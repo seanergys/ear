@@ -103,12 +103,14 @@
 #define DEFAULT_POWER                       300
 #define GRACE_T1                            3
 #define MAX_TIME_DYNAIS_WITHOUT_SIGNATURE   15
-#define MPI_CALLS_TO_CHECK_PERIODIC         1000
+#define MPI_CALLS_TO_CHECK_PERIODIC         100000
 /* Maximum power error supported. It is used to compute the min time to compute
  * a valid signature */
 #define MAX_POWER_ERROR                     0.05
 /* Maximum dynais overhead supported per iteration */
 #define MAX_DYNAIS_OVERHEAD                 5
+#define MAX_MPI_CALLS_SECOND                10000
+#define MIN_MPI_CALLS_SECOND                200
 /* When set to 1, Pieces of code are activated to reduce the overhead introduced
  * by dynais */
 #define PERIOD                              10
