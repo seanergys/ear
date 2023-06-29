@@ -370,10 +370,9 @@ static state_t reset_priority_list_with_mask(uint *prio_list, uint prio_list_cou
 static void verbose_cpuprio_list(int verb_lvl, uint *cpuprio_list, uint cpuprio_list_count);
 
 
-/** Sets governor `userspace` to all CPUs that are
- * not in the CPU set mask of the job in the node after
- * saving the current list of governors in governor_list_before_init. */
-static state_t policy_set_nonused_cpus_governor();
+/** Sets governor `userspace` to  CPUs that are
+ * in my node mask or all if exclusive_mode is set */
+static state_t policy_set_cpus_governor(uint exclusive);
 
 
 /** Sets the governor list stored at governor_list_before_init. */
@@ -772,11 +771,11 @@ state_t policy_init()
     if (cexclusive_mode != NULL) exclusive_mode = atoi(cexclusive_mode);
     verbose_master(POLICY_INFO, "%sPOLICY%s Running in exclusive mode: %u",
                    COL_BLU, COL_CLR, exclusive_mode);
-    if (is_master && exclusive_mode)
+    if (is_master)
     {
-        if (state_fail(policy_set_nonused_cpus_governor()))
+        if (state_fail(policy_set_cpus_governor(exclusive_mode)))
         {
-            verbose(POLICY_INFO, "%sWARNING%s Exclusive mode configuration error: %s",
+            verbose(POLICY_INFO, "%sWARNING%s Governor configuration error: %s",
                     COL_YLW, COL_CLR, state_msg);
         }
     }
@@ -2751,7 +2750,7 @@ static void verbose_cpuprio_list(int verb_lvl, uint *cpuprio_list, uint cpuprio_
 }
 
 
-static state_t policy_set_nonused_cpus_governor()
+static state_t policy_set_cpus_governor(uint exclusive)
 {
 #define free_return_err(msg) \
         free(governor_list_before_init);\
@@ -2779,18 +2778,25 @@ static state_t policy_set_nonused_cpus_governor()
         {
             verbosen(0, " %u", governor_list_before_init[i]);;
         }
+        verbose(0, " ");
     }
 
     // Set userspace governor on CPUs not used by the job
 
-    cpu_set_t not_used_cpus;
-    cpus_not_in_mask(&not_used_cpus, &lib_shared_region->node_mask);
+    cpu_set_t cpus_to_be_set;
+    if (exclusive){
+      set_mask_all_ones(&cpus_to_be_set);
+    }else{
+      memcpy(&cpus_to_be_set, &lib_shared_region->node_mask, sizeof(cpu_set_t));
+    }
 
-    verbosen(POLICY_INFO + 1, "Node used CPUs: ");
+    //verbosen(POLICY_INFO + 1, "Node used CPUs: ");
+    verbosen(0, "Node used CPUs: ");
     verbose_affinity_mask(0, (const cpu_set_t *) &lib_shared_region->node_mask, MAX_CPUS_SUPPORTED);
 
-    verbosen(POLICY_INFO + 1, "Non-used CPUs: ");
-    verbose_affinity_mask(0, (const cpu_set_t *) &not_used_cpus, MAX_CPUS_SUPPORTED);
+    //verbosen(POLICY_INFO + 1, "CPUs to be set: ");
+    verbosen(0, "CPUs to be set: ");
+    verbose_affinity_mask(0, (const cpu_set_t *) &cpus_to_be_set, MAX_CPUS_SUPPORTED);
 
     // Getting a valid ID for 'userspace' governor
     char *governor_str = "userspace";
@@ -2799,7 +2805,7 @@ static state_t policy_set_nonused_cpus_governor()
           "Converting governor from str to int.");
 
     // Setting the governor
-    check(mgt_cpufreq_governor_set_mask(no_ctx, governor_int, not_used_cpus),
+    check(mgt_cpufreq_governor_set_mask(no_ctx, governor_int, cpus_to_be_set),
           "Setting governor.");
 
     return EAR_SUCCESS;
