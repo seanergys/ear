@@ -31,6 +31,7 @@
 #include <library/states/states_comm.h>
 #include <library/loader/module_cuda.h>
 #include <library/api/mpi_support.h>
+#include <library/policies/common/mpi_stats_support.h>
 
 
 #define WARN_CLASSIFY  1
@@ -49,9 +50,6 @@ static float CPI_BUSY_WAITING =    0.4; // Reduced from 0.6
 static float GBS_BUSY_WAITING =    3.0;
 static float GFLOPS_BUSY_WAITING = 0.1;
 static float IO_TH               = 10.0;
-static float MPI_TH              = 10000;
-static float MPI_BOUND           = 50.0;
-static float MIN_MPI_TH          = 200;
 static float CPI_MEM_BOUND       = 0.8;   // Reduced from 1.0
 static float GBS_MEM_BOUND       = 100.0; // Increased from 60
 
@@ -64,10 +62,9 @@ void get_classify_limits(ear_classify_t *limits)
   limits->gbs_busy_waiting  = GBS_BUSY_WAITING;
   limits->gflops_busy_waiting = GFLOPS_BUSY_WAITING;
   limits->io_th               = IO_TH;
-  limits->mpi_th              = MPI_TH;
+  limits->mpi_th              = MAX_MPI_CALLS_SECOND;
   limits->cpi_mem_bound       = CPI_MEM_BOUND;
   limits->gbs_mem_bound       = GBS_MEM_BOUND;
-  limits->mpi_bound           = MPI_BOUND;
 }
 
 
@@ -145,7 +142,7 @@ state_t is_io_bound(signature_t *sig, uint  num_cpus, uint *iobound)
 state_t is_network_bound(signature_t *sig, uint  num_cpus, uint *mpibound)
 {
 	*mpibound = 0;
-	if (sig->perc_MPI > MPI_BOUND){
+	if (is_mpi_intensive()){
 		*mpibound = 1;
 	}
 	return EAR_SUCCESS;
@@ -153,17 +150,17 @@ state_t is_network_bound(signature_t *sig, uint  num_cpus, uint *mpibound)
 
 
 static uint first_warning_mpi_th = 1;
-state_t must_switch_to_time_guide(float mpisec, ulong last_sig_elapsed, uint *ear_guided)
+state_t must_switch_to_time_guide(ulong last_sig_elapsed, uint *ear_guided)
 { 
     /* Changed to force the EARL to use dynais as much as possible */
     if (!is_mpi_enabled()){
       *ear_guided = TIME_GUIDED;
       return EAR_SUCCESS;
     }
-    if (mpisec < MIN_MPI_TH){
+    if (is_low_mpi_activity()){
       //if (!is_cuda_enabled()) *ear_guided = TIME_GUIDED;
       if (first_warning_mpi_th) {
-        verbose_master(WARN_CLASSIFY, "Warning, going to time guided because low number of MPI calls per second current %f limit %f", mpisec, MIN_MPI_TH);
+        verbose_master(WARN_CLASSIFY, "Warning, going to time guided because low number of MPI calls per second current %f ", avg_mpi_calls_per_second());
         first_warning_mpi_th = 0;
       }
       *ear_guided = TIME_GUIDED;

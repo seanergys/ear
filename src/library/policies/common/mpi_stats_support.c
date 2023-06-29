@@ -84,20 +84,24 @@ static timestamp pol_time_init, start_no_mpi;
 
 static mpi_information_t mpi_stats;
 
+#define MPI_SAMPLING_IDLE    0
 #if MPI_SAMPLING
-static unsigned long long int mpis_per_sample      = 1;
-static unsigned long long int curr_mpis_per_sample = 0;
-static uint dynamic_monitor = 0;
-static uint mpi_sampling_enabled = 1;
 #define OFF 0
 #define ON  1
 #define MPI_SAMPLING_ENABLED 1
 #define MPI_MONITOR_DISABLED 2
+static unsigned long long int mpis_per_sample      = 1;
+static unsigned long long int curr_mpis_per_sample = 0;
+static uint dynamic_monitor_state = MPI_SAMPLING_IDLE;
+static uint mpi_sampling_enabled = 1;
 
 #else
-static uint dynamic_monitor = 0;
+static uint dynamic_monitor_state = MPI_SAMPLING_IDLE;
 static uint mpi_sampling_enabled = 0;
 #endif
+static uint monitor_mpi     = 1;
+static uint verb            = 1;
+static unsigned long long int total_mpi_stats = 0;
 
 #if MPI_STATS
 static ulong total_mpi_time_blocking    = 0;
@@ -247,8 +251,8 @@ state_t mpi_app_init(polctx_t *c)
         char * env_mpi_sampling_enabled;
         if (is_mpi_enabled() && ((env_mpi_sampling_enabled = ear_getenv(FLAG_MPI_SAMPLING_ENABLED)) != NULL)){
           mpi_sampling_enabled = atoi(env_mpi_sampling_enabled);
-          verbose_master(2,"MPI support: MPI sampling set to %s by env var ", (mpi_sampling_enabled?"Enabled":"Disabled"));
         }
+        verbose_master(2,"MPI support: MPI sampling set to %s by env var ", (mpi_sampling_enabled?"Enabled":"Disabled"));
         #endif
 
 #if MPI_OPTIMIZED
@@ -307,7 +311,7 @@ state_t mpi_app_end(polctx_t *c)
 #endif
 
 #if MPI_SAMPLING
-    if (!dynamic_monitor){
+    if (dynamic_monitor_state == MPI_SAMPLING_IDLE){
       elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
       mpi_stats.exec_time += elap;
     }
@@ -426,9 +430,6 @@ state_t mpi_app_end(polctx_t *c)
     return EAR_SUCCESS;
 }
 
-static uint monitor_mpi     = 1;
-static uint verb            = 1;
-static unsigned long long int total_mpi_stats = 0;
 
 
 void monitor_mpi_calls(uint on)
@@ -450,13 +451,21 @@ uint is_monitor_mpi_calls_enabled()
 #if PER_MPI_CALL_STATS && MPI
 
 #if MPI_SAMPLING
-    return (dynamic_monitor != MPI_MONITOR_DISABLED);
+    return (dynamic_monitor_state != MPI_MONITOR_DISABLED);
 #else
     return 1;
 #endif // MPI_SAMPLING
 #else
     return 0;
 #endif // PER_MPI_CALL_STATS && MPI
+}
+
+uint is_low_mpi_activity()
+{
+  if (dynamic_monitor_state == MPI_SAMPLING_IDLE){
+    if (avg_mpi_calls_per_second() < MIN_MPI_CALLS_SECOND) return 1;
+  }
+  return 0; 
 }
 
 #if MPI
@@ -674,11 +683,11 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 
 #if MPI_SAMPLING
     /* Dynamic MPI monitoring */
-    if (mpi_sampling_enabled && !dynamic_monitor && limit_exceeeded){
+    if (mpi_sampling_enabled && (dynamic_monitor_state == MPI_SAMPLING_IDLE) && limit_exceeeded){
         float mpi_sec = avg_mpi_calls_per_second();
 
         if (mpi_sec > (MAX_MPI_CALLS_SECOND * 2)){
-          dynamic_monitor = MPI_MONITOR_DISABLED;
+          dynamic_monitor_state = MPI_MONITOR_DISABLED;
         }else{
 
           if (mpi_sec > 0)
@@ -691,12 +700,12 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
           }
 
           curr_mpis_per_sample = 0;
-          dynamic_monitor = MPI_SAMPLING_ENABLED;
+          dynamic_monitor_state = MPI_SAMPLING_ENABLED;
         }
         monitor_mpi_calls(OFF);
-        verbose_master(0,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, mpi_sec, (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
+        verbose_master(0,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, mpi_sec, (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor_state == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
     }
-    if (dynamic_monitor == MPI_SAMPLING_ENABLED){
+    if (dynamic_monitor_state == MPI_SAMPLING_ENABLED){
       curr_mpis_per_sample++;
       if (((curr_mpis_per_sample/mpis_per_sample)%10) == 0){
         if (!monitor_mpi) monitor_mpi_calls(ON);
@@ -704,8 +713,8 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         if (monitor_mpi){ 
           monitor_mpi_calls(OFF);
           if (avg_mpi_calls_per_second() > (MAX_MPI_CALLS_SECOND * 2)){
-            dynamic_monitor = MPI_MONITOR_DISABLED;
-            verbose_master(0,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, avg_mpi_calls_per_second(), (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
+            dynamic_monitor_state = MPI_MONITOR_DISABLED;
+            verbose_master(0,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, avg_mpi_calls_per_second(), (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor_state == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
           }
         }
       }
@@ -1568,3 +1577,13 @@ state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func)
 #endif // !SINGLE_CONNECTION && MPI_OPTIMIZED
         return EAR_SUCCESS;
 }
+
+uint is_mpi_intensive()
+{
+#if MPI_SAMPLING
+  if (mpi_sampling_enabled && (dynamic_monitor_state == MPI_SAMPLING_IDLE)) return 0;
+#endif
+  if (avg_mpi_calls_per_second() > (MAX_MPI_CALLS_SECOND * 2)) return 1;
+  return 0;
+}
+

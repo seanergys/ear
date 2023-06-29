@@ -2549,12 +2549,8 @@ state_t earl_periodic_actions(void *no_arg)
     if ((seconds >= 5) && (ear_periodic_mode != PERIODIC_MODE_ON)){
             last_check = period_elapsed;
             /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
-            mpi_period = total_mpi_calls - last_mpis;
-            last_mpis = total_mpi_calls;	
-            if (mpi_period) mpi_in_period = (float)mpi_period/(float)seconds;
-            else mpi_in_period = 0;
             /* IO metrics are now computed in metrics.c as part of the signature */
-            if (must_switch_to_time_guide(mpi_in_period, last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
+            if (must_switch_to_time_guide(last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
                 verbose_master(2,"Error estimating dynais/time guided");
             }
             verbose_master(0, "%d: Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);

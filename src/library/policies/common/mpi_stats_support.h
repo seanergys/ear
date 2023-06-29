@@ -40,6 +40,8 @@ void monitor_mpi_calls(uint on);
 float avg_mpi_calls_per_second();
 unsigned long long int total_mpi_call_statistics();
 uint is_monitor_mpi_calls_enabled();
+uint is_mpi_intensive();
+uint is_low_mpi_activity();
 
 /** Per-Node Executes the read-diff for mpi statistics on mpi calls types */
 state_t read_diff_node_mpi_types_info(lib_shared_data_t *data, shsignature_t *sig,
