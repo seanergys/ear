@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +25,6 @@
 #include <metrics/common/msr.h>
 #include <metrics/imcfreq/archs/intel63.h>
 
-#define GLBL_CTL_OFS    0x000700 // U_MSR_PMON_GLOBAL_CTL
 #define GLBL_CMD_UNF    0x2000000000000000
 #define UBOX_CMD_STA	0x400000 //
 #define UBOX_CMD_STO	0x000000
@@ -35,9 +34,15 @@
 // Means just one register per socket?
 // See 'Additional IMC Performance Monitoring' in 'Intel Xeon Processor Scalable
 // Memory Family Uncore Performance Monitoring Reference Manual'
-
-static off_t address_ctl;
-static off_t address_ctr;
+// Several unit counter control registers are still 32b, some 64b. All are
+// addressable as 64b registers.
+static off_t     address_global_ctl;
+static ullong    command_global_ctl;
+static ullong    mascara_global_ctl;
+static off_t     address_unit_ctl;
+static off_t     address_unit_ctr;
+static ullong    command_unit_ctl;
+static ullong    mascara_unit_ctl;
 static topology_t tp;
 
 void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
@@ -56,7 +61,7 @@ void imcfreq_intel63_load(topology_t *tp_in, imcfreq_ops_t *ops)
     apis_set(ops->dispose,       imcfreq_intel63_dispose);
     apis_set(ops->count_devices, imcfreq_intel63_count_devices);
     apis_set(ops->read,          imcfreq_intel63_read);
-    debug("INTEL63 loaded full API");
+    debug("Loaded Intel63");
 }
 
 void imcfreq_intel63_get_api(uint *api, uint *api_intern)
@@ -80,44 +85,75 @@ state_t imcfreq_intel63_ext_load_addresses(topology_t *tp)
     }
     if (tp->model >= MODEL_SAPPHIRE_RAPIDS) {
         debug("Detected vendor is Sapphire Rapids");
-        address_ctl = 0x2FDE; // UCLK Counter Control
-        address_ctr = 0x2FDF; // UCLK Counter
+        address_global_ctl = 0x2FF0; // Global Control
+        command_global_ctl = 0x0000;
+        mascara_global_ctl = 0x0000;
+        address_unit_ctl   = 0x2FDE; // UCLK Counter Control
+        address_unit_ctr   = 0x2FDF; // UCLK Counter
+        command_unit_ctl   = 0x400000;
+        mascara_unit_ctl   = 0xFFFFFFFFFFBFFFFF;
     } else {
         debug("Detected vendor is Haswell or greater");
-        address_ctl = 0x0703; // U_MSR_PMON_FIXED_CTL
-        address_ctr = 0x0704; // U_MSR_PMON_FIXED_CTR
+        address_global_ctl = 0x0700; // U_MSR_PMON_GLOBAL_CTL
+        command_global_ctl = 0x2000000000000000; // Bit 61
+        mascara_global_ctl = 0x5FFFFFFFFFFFFFFF;
+        address_unit_ctl   = 0x0703; // U_MSR_PMON_FIXED_CTL
+        address_unit_ctr   = 0x0704; // U_MSR_PMON_FIXED_CTR
+        command_unit_ctl   = 0x400000; // Bit 22
+        mascara_unit_ctl   = 0xFFFFFFFFFFBFFFFF;
     }
     return EAR_SUCCESS;
 }
 
+static int fix_global_command(ullong *command)
+{
+    ullong mask = 0LLU;
+    mask = *command & mascara_global_ctl;
+    mask = mask | command_global_ctl;
+    return 1;
+}
+
 state_t imcfreq_intel63_ext_enable_cpu(int cpu)
 {
-    ullong com, com1;
+    ullong aux;
     state_t s;
-    // Unfreeze
+    
+    debug("CPU%d: unfreezing", cpu);
     if (state_fail(s = msr_open(cpu, MSR_WR))) {
+        debug("msr_open failed: %s", state_msg);
         return s;
     }
-    if (state_ok(msr_read(cpu, &com, sizeof(ullong), GLBL_CTL_OFS))) {
-        com = (com | GLBL_CMD_UNF);
-        msr_write(cpu, &com, sizeof(ullong), GLBL_CTL_OFS);
+    // Get global controller configuration
+    if (state_fail(s = msr_read(cpu, &aux, sizeof(ullong), address_global_ctl))) {
+        debug("U_MSR_PMON_GLOBAL_CTL%d: read failed '%s' (address 0x%lx)", cpu, state_msg, address_global_ctl);
+        return s;
     }
-    if (state_fail(s = msr_read(cpu, &com, sizeof(ullong), address_ctl))) {
-	return s;
+    // Writting global controller configuration
+    debug("U_MSR_PMON_GLOBAL_CTL%d: read 0x%llx (address 0x%lx)", cpu, aux, address_global_ctl);
+    aux = (aux & mascara_global_ctl) | command_global_ctl;
+    debug("U_MSR_PMON_GLOBAL_CTL%d: writting new command 0x%llx (address 0x%lx)", cpu, aux, address_global_ctl);
+    if (state_fail(s = msr_write(cpu, &aux, sizeof(ullong), address_global_ctl))) {
+        debug("U_MSR_PMON_GLOBAL_CTL%d: writing 0x%llx failed '%s' (address 0x%lx)", cpu, command_global_ctl, state_msg, address_global_ctl);
+        return s;
     }
-    com1 = ((com & UBOX_CMD_STA) >> SHIFT);
-    if (!com1) {
-        com = com | UBOX_CMD_STA;
-        if (state_fail(s = msr_write(cpu, &com, sizeof(ullong), address_ctl))) {
-            return s;
-        }
+    // Get unit controller configuration
+    if (state_fail(s = msr_read(cpu, &aux, sizeof(ullong), address_unit_ctl))) {
+        debug("U_MSR_PMON_FIXED_CTL%d: read failed '%s' (address 0x%lx)", cpu, state_msg, address_unit_ctl);
+        return s;
+    }
+    // Writting unit controllar configuration
+    aux = (aux & mascara_unit_ctl) | command_unit_ctl; 
+    debug("U_MSR_PMON_FIXED_CTL%d: writting new command 0x%llx (address 0x%lx)", cpu, aux, address_unit_ctl);
+    if (state_fail(s = msr_write(cpu, &aux, sizeof(ullong), address_unit_ctl))) {
+        debug("U_MSR_PMON_FIXED_CTL%d: write failed '%s' (address 0x%lx)", cpu, state_msg, address_unit_ctl);
+        return s;
     }
     return EAR_SUCCESS;
 }
 
 state_t imcfreq_intel63_ext_read_cpu(int cpu, ulong *freq)
 {
-    return msr_read(cpu, freq, sizeof(ulong), address_ctr);
+    return msr_read(cpu, freq, sizeof(ulong), address_unit_ctr);
 }
 
 state_t imcfreq_intel63_init(ctx_t *c)
@@ -186,7 +222,7 @@ state_t imcfreq_intel63_read(ctx_t *c, imcfreq_t *i)
 		if (state_fail(s = imcfreq_intel63_ext_read_cpu(tp.cpus[cpu].id, &i[cpu].freq))) {
 			return s;
 		}
-		debug("IMC%d read register: %lu (address 0x%lx)", tp.cpus[cpu].id, i[cpu].freq, address_ctr);
+        debug("U_MSR_PMON_FIXED_CTR%d: read %lu (address 0x%lx)", tp.cpus[cpu].id, i[cpu].freq, address_unit_ctr);
 		i[cpu].error = state_fail(s);
 	}
 
