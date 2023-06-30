@@ -111,7 +111,7 @@ state_t energy_cpu_dispose(ctx_t *c)
 	preturn(ops.dispose, c);
 }
 
-state_t energy_cpu_data_diff(ctx_t *c, ullong *end, ullong *start, ullong *result)
+state_t energy_cpu_data_diff(ctx_t *c, ullong *start, ullong *end, ullong *result)
 {
 	int i;
 	for (i = 0; i < socket_count*NUM_PACKS; ++i) {

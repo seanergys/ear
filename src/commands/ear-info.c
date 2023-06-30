@@ -95,8 +95,10 @@ int main(int argc,char *argv[])
 	read_cluster_conf(ear_path,&my_cluster);
 	version_to_str(ver);
 	printf("EAR version %s\n",ver);
+  printf("Max CPUS supported set to %d\n", MAX_CPUS_SUPPORTED);
+  printf("Max sockets supported set to %d\n", MAX_SOCKETS_SUPPORTED);
 	#if USE_GPUS
-	printf("EAR installed with GPU support\n");
+	printf("EAR installed with GPU support MAX_GPUS %d\n",MAX_GPUS_SUPPORTED);
 	#else
 	printf("EAR installed without GPU support\n");
 	#endif

@@ -66,7 +66,7 @@ TMPDIR             = @localstatedir@
 DOCDIR             = @docdir@
 CHOWN_USR          = @USER@
 CHOWN_GRP          = @GROUP@
-CONSTANTS          = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1 -DSYNC_SET_RPC=1 -DUSE_CNTD=0
+CONSTANTS          = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1 -DSYNC_SET_RPC=1 -DUSE_CNTD=0 -DMIX_RPC=1
 REPLACE            =
 
 ######## EXPORTS

@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -58,15 +58,15 @@ extern unsigned long ext_def_freq;
 #endif
 
 
-
 /*  IMC management */
 extern uint dyn_unc;
 extern double imc_extra_th;
 extern uint *imc_max_pstate,*imc_min_pstate;
 extern uint imc_num_pstates, imc_devices;
+extern uint max_policy_imcfreq_ps;
+
 static uint imc_set_by_hw = 0;
 static uint last_imc_pstate;
-extern uint max_policy_imcfreq_ps;
 
 static int min_pstate;
 static int ref_imc_pstate = -1;
@@ -78,6 +78,7 @@ static uint first_imc_try = 1;
 /* Frequency management */
 static uint last_cpu_pstate;
 static node_freqs_t min_time_def_freqs, last_nodefreq_sel;
+
 extern ulong *cpufreq_diff;
 
 static uint num_processes;
@@ -406,8 +407,10 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     if (eUFS) {
         /*  Min time has more stable IMC freq. Below code avoids overriding the first IMC ref data*/
         if (ref_imc_pstate == -1 || curr_imc_pstate != ref_imc_pstate) {
-            verbose_master(2,"CPU pstate %lu IMC freq %lu IMC pstate %u",
-                    curr_pstate, my_app->avg_imc_f, curr_imc_pstate);
+
+            verbose_master(2, "CPU pstate %lu IMC freq %lu IMC pstate %u",
+                           curr_pstate, my_app->avg_imc_f, curr_imc_pstate);
+
             copy_imc_data_from_signature(imc_data, curr_pstate, curr_imc_pstate, my_app);
         } else {
             verbose_master(2, "ref_imc_pstate %u curr_imc_pstate %u", ref_imc_pstate, curr_imc_pstate);
@@ -437,8 +440,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         /* Computd in policy */
         cbound = policy_cpu_bound;
-        // mbound = policy_mem_bound; - not used.
-        debug("App CPU bound %u MEM bound %u", cbound, mbound);
 
         // If is not the default P_STATE selected in the environment, a projection
         // is made for the reference P_STATE in case the projections were available.
@@ -576,20 +577,21 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
         /*  IMC freq selection */
         uint app_mpi_bound = earl_phase_classification == APP_MPI_BOUND;
-        if ((use_energy_models || *ready==EAR_POLICY_READY) && eUFS && !(app_mpi_bound && network_use_imc)){
-
+        if ((use_energy_models || *ready==EAR_POLICY_READY) && eUFS && !(app_mpi_bound && network_use_imc))
+        {
             /*  If we are compute bound, and CPU freq is nominal, we can reduce the IMC freq
              *  IMC_MAX means the maximum frequency, lower pstate, IMC_MIN means minimum frequency and maximum pstate */
-            if ((min_cpufreq_sel == nominal_node) && cbound) {
-                //if (sig->GBS <= GBS_BUSY_WAITING){
+            if ((min_cpufreq_sel == nominal_node) && cbound)
+            {
                 uint lowm;
                 low_mem_activity(&lib_shared_region->job_signature, lib_shared_region->num_cpus, &lowm);
-                if (lowm){
-                    debug("GBS LEQ GBS_BUSY_WAITING (%lf, %lf)", sig->GBS, GBS_BUSY_WAITING);
+                if (lowm)
+                {
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = imc_max_pstate[sid] - 1;
                     }
-                } else {
+                } else
+                {
                     debug("GBS GT GBS_BUSY_WAITING selecting the 0.25 pstate...");
                     for (sid=0; sid < imc_devices; sid ++){
                         freqs->imc_freq[sid*IMC_VAL+IMC_MAX] = select_imc_pstate(imc_num_pstates, 0.25);
@@ -613,6 +615,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     }
                 }
             }
+#if 0
             if (!imc_set_by_hw){
                 /*  Fix the imc to the first selected by hardware */
                 for (sid=0; sid < imc_devices; sid++){
@@ -626,13 +629,14 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     freqs->imc_freq[sid*IMC_VAL+IMC_MIN] = imc_max_pstate[sid];
                 }
             }
+#endif
             sid = 0;
             debug("%sIMC freq selection%s %llu-%llu", COL_GRE, COL_CLR,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MAX]].khz,
                     imc_pstates[freqs->imc_freq[sid*IMC_VAL+IMC_MIN]].khz);
         }
         else{
-            verbose_master(3, "%sNot IMC freq selection%s : using energy models %u eUFS %u MPI_BOUND = %u Network_IMC %u",
+            verbose_master(3, "%sNot IMC freq selection%s: using energy models %u eUFS %u MPI_BOUND = %u Network_IMC %u",
                     COL_RED, COL_CLR, use_energy_models, eUFS, app_mpi_bound, network_use_imc);
             /* If application is network bound, we don't reduce the uncore frequency */
             if ((use_energy_models || *ready==EAR_POLICY_READY) && eUFS && app_mpi_bound && network_use_imc){
@@ -645,7 +649,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         }
 
         /*  Next state selection */
-        if (turbo_set){
+        if (turbo_set) {
             // TODO: what happen then if user does not activate IMC controller? The policy will also go to SELECT_IMCFREQ state
             min_time_state = TRY_TURBO_CPUFREQ;
             *ready = EAR_POLICY_TRY_AGAIN;
