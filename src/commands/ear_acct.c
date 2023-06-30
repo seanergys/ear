@@ -32,6 +32,8 @@
 #include <common/types/application.h>
 #include <common/types/log.h>
 #include <common/types/event_type.h>
+#include <common/colors.h>
+#include <common/types/classification_limits.h>
 
 #if USE_DB
 #include <common/states.h>
@@ -41,6 +43,8 @@
 #include <common/types/configuration/cluster_conf.h>
 cluster_conf_t my_conf;
 #endif
+
+#define COLORS 0
 
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
@@ -65,6 +69,31 @@ typedef struct query_addons
 	char app_id[64];
 	char job_ids[64];
 } query_adds_t;
+
+#if COLORS
+static void print_colors_legend()
+{
+  printf("%s CPU busy waiting %s memory bound %s cpu bound %s IO bound%s\n", COL_CYA, COL_GRE, COL_RED, COL_MGT, COL_CLR);
+}
+static void select_color_by_phase(double CPI, double GBS, double IO, double GFLOPS)
+{
+  char *col = NULL;
+  printf("%s", COL_CLR);
+  /* Memory bound */
+  if ((CPI > CPI_MEM_BOUND_DEF) && (GBS > GBS_MEM_BOUND_DEF))                                       col = COL_GRE;
+  /* CPU bound */
+  if (!col && (CPI < CPI_CPU_BOUND_DEF) && (GBS < GBS_CPU_BOUND_DEF) && (GFLOPS > GFLOPS_BUSY_WAITING_DEF)) col = COL_RED;
+  /* Busy waiting */
+  if (!col && (CPI < CPI_BUSY_WAITING_DEF) && (GBS < GBS_BUSY_WAITING_DEF) && (GFLOPS < GFLOPS_BUSY_WAITING_DEF))   col = COL_CYA;
+  /* IO */
+  if (!col && (IO > IO_TH_DEF))      col = COL_MGT;
+  if (col) printf("%s",col);
+  
+}
+#else
+#define print_colors_legend()
+#define select_color_by_phase(A,B,C,D)
+#endif
 
 void usage(char *app)
 {
@@ -136,6 +165,7 @@ void print_full_apps(application_t *apps, int num_apps)
 
 	for (i = 0; i < num_apps; i++)
 	{
+    if (apps[i].is_mpi){ select_color_by_phase(apps[i].signature.CPI, apps[i].signature.GBS, apps[i].signature.IO_MBS, apps[i].signature.Gflops);}
 		is_sbatch = ((uint)apps[i].job.step_id == BATCH_STEP) ? 1 : 0;
 		if (strlen(apps[i].job.app_id) > 30)
 			if (strchr(apps[i].job.app_id, '/') != NULL)
@@ -216,7 +246,6 @@ void print_full_apps(application_t *apps, int num_apps)
 #endif
 			printf("\n");
 		}
-
 	}
 }
 
@@ -424,6 +453,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				avg_CPI /= current_apps;
 				avg_VPI /= current_apps;
 				avg_perc /= current_apps;
+        select_color_by_phase(avg_CPI, avg_GBS, avg_io, gflops_watt * avg_power);
 #if USE_GPUS
 				if (print_gpus)
 				{
@@ -573,6 +603,8 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			avg_imc /= current_apps;
 			avg_CPI /= current_apps;
 			avg_VPI /= current_apps;
+
+      select_color_by_phase(avg_CPI, avg_GBS, avg_io, gflops_watt * avg_power);
 #if USE_GPUS
 			if (print_gpus)
 			{
@@ -991,6 +1023,8 @@ void print_loops(loop_t *loops, int num_loops)
 	for (i = 0; i < num_loops; i++)
 	{
 		signature_copy(&sig, &loops[i].signature);
+    select_color_by_phase(sig.CPI, sig.GBS, sig.IO_MBS, sig.Gflops);
+
 #if USE_GPUS
 		if (print_gpus)
 		{				
@@ -1507,6 +1541,10 @@ int main(int argc, char *argv[])
 		{"start-time", required_argument, 0, 's'},
 		{"end-time",   required_argument, 0, 'e'},
 	};
+  
+  #if COLORS
+  print_colors_legend();
+  #endif
 
 	while (1)
 	{
@@ -1624,6 +1662,10 @@ int main(int argc, char *argv[])
 	else if (is_events) read_events(user, &query_adds);
 	else if (is_loops) read_loops(user, &query_adds);
 	else read_from_database(user, &query_adds); 
+
+  #if COLORS
+  printf("%s",COL_CLR);
+  #endif
 
 	free_cluster_conf(&my_conf);
 	exit(0);

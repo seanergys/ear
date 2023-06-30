@@ -2191,7 +2191,7 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
         fill_cpus_out_of_cgroup(exclusive_mode);
     }
 
-    verbose_freq_per_core(POLICY_INFO + 1, &freq_per_core, arch_desc.top.cpu_count);
+    verbose_freq_per_core(POLICY_INFO , &freq_per_core, arch_desc.top.cpu_count);
 
     // We decided arbitrarely to put show the minimum CPU freq. selected.
     *(c->ear_frequency) = max_cpufreq_sel_khz;
@@ -2346,7 +2346,7 @@ static state_t policy_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_
 #if USE_GPUS
     if (verb_level >= POLICY_GPU) {
         for (i=0; i < c->num_gpus; i++) {
-            verbosen_master(POLICY_GPU," GPU freq[%d] = %.2f ",
+            verbosen_master(POLICY_GPU," GPU freq[%d] = %.3f ",
                     i, (float) gpu_f[i] / GHZ_TO_KHZ);
         }
         verbose_master(POLICY_GPU," ");

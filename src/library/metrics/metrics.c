@@ -608,6 +608,8 @@ static void metrics_static_init(topology_t *tp)
         gpu_dcgmi_data_alloc(&dcgmi_metrics_accum[set]);
         verbose_master(2, "DCGMI[%u] initialized with %u events list=%s", set, DCGMI_NUM_EVENTS, dcgmi_events_str[set]);
       }
+   }else{
+      verbose_master(1,"DCGMI support OFF");
    }
   #endif
 #endif // USE_GPUS
@@ -2793,6 +2795,13 @@ static void read_metrics_options()
       }
       verbose_master(0,"RAPL power traces %s", (report_power_trace?"Enabled":"Disabled"));
     }
+#endif
+#if DCGMI
+  char *use_dcgmi = ear_getenv(FLAG_GPU_DCGMI_ENABLED);
+  if (use_dcgmi != NULL){
+    dcgmi = atoi(use_dcgmi);
+    verbose_master(1,"DCGMI metrics set to %s by env var", (dcgmi?"Enabled":"Disabled"));
+  }
 #endif
 }
 

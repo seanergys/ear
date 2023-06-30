@@ -24,6 +24,7 @@
 #include <common/hardware/topology.h>
 #include <common/types/signature.h>
 #include <common/types/event_type.h>
+#include <common/types/classification_limits.h>
 
 
 

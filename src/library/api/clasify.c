@@ -44,14 +44,14 @@
 extern ulong perf_accuracy_min_time;
 extern uint signature_reported;
 
-static float CPI_CPU_BOUND =       0.6;
-static float GBS_CPU_BOUND =      30.0;
-static float CPI_BUSY_WAITING =    0.4; // Reduced from 0.6
-static float GBS_BUSY_WAITING =    3.0;
-static float GFLOPS_BUSY_WAITING = 0.1;
-static float IO_TH               = 10.0;
-static float CPI_MEM_BOUND       = 0.8;   // Reduced from 1.0
-static float GBS_MEM_BOUND       = 100.0; // Increased from 60
+static float CPI_CPU_BOUND =       CPI_CPU_BOUND_DEF;
+static float GBS_CPU_BOUND =       GBS_CPU_BOUND_DEF;
+static float CPI_BUSY_WAITING =    CPI_BUSY_WAITING_DEF;
+static float GBS_BUSY_WAITING =    GBS_BUSY_WAITING_DEF;
+static float GFLOPS_BUSY_WAITING = GFLOPS_BUSY_WAITING_DEF;
+static float IO_TH               = IO_TH_DEF;
+static float CPI_MEM_BOUND       = CPI_MEM_BOUND_DEF;
+static float GBS_MEM_BOUND       = GBS_MEM_BOUND_DEF;
 
 
 void get_classify_limits(ear_classify_t *limits)
