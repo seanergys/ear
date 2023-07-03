@@ -100,6 +100,8 @@ EARGMEnergyPeriodT1=90
 EARGMEnergyPeriodT2=259200
 # '-' are Joules, 'K' KiloJoules and 'M' MegaJoules.
 EARGMEnergyUnits=K
+# Energy limit applies to EARGMPeriodT2.
+EARGMEnergyLimit=550000
 # Use aggregated periodic metrics or periodic power metrics.
 # Aggregated metrics are only available when EARDBD is running.
 EARGMEnergyUseAggregated=1
