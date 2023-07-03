@@ -345,7 +345,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     verbose_master(2, "%sCPU COMP phase%s", COL_BLU, COL_CLR);
 
-    verbose_master(0, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
+    verbose_master(2, "%sMin_energy_to_solution...........starts.......%s", COL_GRE, COL_CLR);
 
 
     /* GPU Policy : It's independent of the CPU and IMC frequency selection */
@@ -586,7 +586,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 }
             }
 
-            verbose_master(0,"CPU freq for process %d is %lu", i, new_freq[i]);
+            verbose_master(2,"CPU freq for process %d is %lu", i, new_freq[i]);
             max_cpufreq_sel = ear_max(max_cpufreq_sel, new_freq[i]);
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
@@ -810,7 +810,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
         memcpy(freqs->cpu_freq,last_nodefreq_sel.cpu_freq,sizeof(ulong)*num_processes);
         memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
     }
-    verbose_master(0, "Next min_energy state %u next policy state %u", min_energy_state, *ready);
+    verbose_master(2, "Next min_energy state %u next policy state %u", min_energy_state, *ready);
     min_energy_readiness = *ready;
     return EAR_SUCCESS;
 }

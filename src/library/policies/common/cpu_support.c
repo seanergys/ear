@@ -44,6 +44,8 @@
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
 
+#define CPU_SAVINGS_LVL 0
+
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
 extern ear_classify_t phases_limits;
@@ -87,7 +89,7 @@ double get_time_nominal(signature_t *my_app)
     curr   = frequency_closest_pstate(my_app->def_f);
     project_time(my_app, curr, target, &t);
   }
-  verbose_master(0,"Policy savins[%s]: Projecting reference time from %u to %u %lf", node_name, curr, target, t);
+  verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference time from %u to %u %lf", node_name, curr, target, t);
   return t;
 }
 
@@ -100,7 +102,7 @@ double get_power_nominal(signature_t *my_app)
     curr   = frequency_closest_pstate(my_app->def_f);
     project_power(my_app, curr, target, &p);
   }
-  verbose_master(0,"Policy savins[%s]: Projecting reference power from %u to %u %lf", node_name, curr, target, p);
+  verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference power from %u to %u %lf", node_name, curr, target, p);
   return p;
 }
 

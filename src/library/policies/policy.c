@@ -60,6 +60,7 @@
 #define POLICY_INFO   2
 #define POLICY_PHASES 2
 #define POLICY_GPU    2
+#define POLICY_SAVINGS_LVL 0
 
 #define DEF_USE_CPUPRIO 0
 
@@ -408,7 +409,7 @@ static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, no
     at_fref = at_fref && (cpu_f[i] == fref);
   }
 
-  verbose_master(0,"Policy savins[%s]: running at nominal? at_ref %lu f[0] != %lu", node_name, at_fref, fref);
+  verbose_master(POLICY_SAVINGS_LVL,"Policy savins[%s]: running at nominal? at_ref %lu f[0] != %lu", node_name, at_fref, fref);
 
   if (at_fref){
     *savings = 0;
@@ -418,7 +419,7 @@ static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, no
   /* If the list of CPU freqs is different than last, we must compute savings */
   for (uint i = 0; i < limit; i++){
     if (cpu_f[i] != policy_savings_comp_freqs[i]){
-      verbose_master(0,"Policy savins[%s]: f[%u] %lu != f[%u] %lu", node_name, i, cpu_f[i], i, policy_savings_comp_freqs[i]);
+      verbose_master(POLICY_SAVINGS_LVL,"Policy savins[%s]: f[%u] %lu != f[%u] %lu", node_name, i, cpu_f[i], i, policy_savings_comp_freqs[i]);
       return 1;
     }
   }
@@ -448,9 +449,9 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
       time_policy_penalty  = 0;
       timestamp_getfast(&policy_saving_time_start);
       policy_saving_updated = 1;
-      verbose_master(0, "Policy savins[%s]: Reset of policy savings", node_name);
+      verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: Reset of policy savings", node_name);
     }
-    verbose_master(0, "Policy savins[%s]: Not applied", node_name);
+    verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: Not applied", node_name);
     return;
   }
 
@@ -503,7 +504,7 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
   timestamp_getfast(&policy_saving_time_start);
   policy_saving_updated = 1;
 
-  verbose_master(0, "Policy savins[%s]: energy/power/time %f/%f/%f CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
+  verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: energy/power/time %f/%f/%f CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
       node_name, energy_policy_saving, power_policy_saving, time_policy_penalty, ns->def_f, cpu_f_avg, tref, pref, tnext, pnext);
    
 }
@@ -1500,7 +1501,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
 
 
 
-	verbose_master(0,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
+	verbose_master(POLICY_SAVINGS_LVL,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
             masters_info.my_master_rank, esaving, psaving, tpenalty, sig_ext->elapsed);
   if (policy_saving_updated){
     saving_elapsed = timestamp_diffnow(&policy_saving_time_start, TIME_SECS);
@@ -1508,7 +1509,7 @@ static void compute_energy_savings(signature_t *curr,signature_t *prev)
   }else{
     saving_elapsed = (ullong) sig_ext->elapsed;
   }
-  verbose_master(0, "Policy savins[%s]: Using elapsed time %llu", node_name, saving_elapsed);
+  verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: Using elapsed time %llu", node_name, saving_elapsed);
 
 
 	sig_ext->saving   = esaving * saving_elapsed;
@@ -1655,7 +1656,7 @@ state_t policy_end()
 {
     polctx_t *c = &my_pol_ctx;
 
-    verbose_master(0,"Total number of MPI calls %llu", total_mpi);
+    verbose_master(2,"Total number of MPI calls %llu", total_mpi);
 
 #if MPI_OPTIMIZED
     if (ear_mpi_opt) {
@@ -2773,12 +2774,12 @@ static state_t policy_set_cpus_governor(uint exclusive)
     // Verbose governor list
     if (VERB_ON(POLICY_INFO))
     {
-        verbosen(0, "List of governors of %u CPUs: ", lib_shared_region->num_cpus);
+        verbosen(POLICY_INFO , "List of governors of %u CPUs: ", lib_shared_region->num_cpus);
         for (int i = 0; i < metrics_get(MGT_CPUFREQ)->devs_count; i++)
         {
-            verbosen(0, " %u", governor_list_before_init[i]);;
+            verbosen(POLICY_INFO , " %u", governor_list_before_init[i]);;
         }
-        verbose(0, " ");
+        verbose(POLICY_INFO , " ");
     }
 
     // Set userspace governor on CPUs not used by the job
@@ -2790,13 +2791,11 @@ static state_t policy_set_cpus_governor(uint exclusive)
       memcpy(&cpus_to_be_set, &lib_shared_region->node_mask, sizeof(cpu_set_t));
     }
 
-    //verbosen(POLICY_INFO + 1, "Node used CPUs: ");
-    verbosen(0, "Node used CPUs: ");
-    verbose_affinity_mask(0, (const cpu_set_t *) &lib_shared_region->node_mask, MAX_CPUS_SUPPORTED);
+    verbosen(POLICY_INFO , "Node used CPUs: ");
+    verbose_affinity_mask(POLICY_INFO , (const cpu_set_t *) &lib_shared_region->node_mask, MAX_CPUS_SUPPORTED);
 
-    //verbosen(POLICY_INFO + 1, "CPUs to be set: ");
-    verbosen(0, "CPUs to be set: ");
-    verbose_affinity_mask(0, (const cpu_set_t *) &cpus_to_be_set, MAX_CPUS_SUPPORTED);
+    verbosen(POLICY_INFO , "CPUs to be set: ");
+    verbose_affinity_mask(POLICY_INFO , (const cpu_set_t *) &cpus_to_be_set, MAX_CPUS_SUPPORTED);
 
     // Getting a valid ID for 'userspace' governor
     char *governor_str = "userspace";

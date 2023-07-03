@@ -289,7 +289,7 @@ state_t is_cpu_bound(signature_t *sig, uint num_cpus, uint *cbound)
 {
     *cbound = 0;
     if ((sig->CPI < CPI_CPU_BOUND) && (sig->GBS < GBS_CPU_BOUND)) *cbound = 1;
-    verbose_master(0, "CPI %lf thresh %lf GB/s %lf thresh %lf", sig->CPI, CPI_CPU_BOUND, sig->GBS, GBS_CPU_BOUND);
+    //verbose_master(INFO_CLASSIFY, "CPI %lf thresh %lf GB/s %lf thresh %lf", sig->CPI, CPI_CPU_BOUND, sig->GBS, GBS_CPU_BOUND);
     return EAR_SUCCESS;
 }
 

@@ -44,7 +44,7 @@
 cluster_conf_t my_conf;
 #endif
 
-#define COLORS 0
+#define COLORS 1
 
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
@@ -79,6 +79,7 @@ static void select_color_by_phase(double CPI, double GBS, double IO, double GFLO
 {
   char *col = NULL;
   printf("%s", COL_CLR);
+  fflush(stdout);
   /* Memory bound */
   if ((CPI > CPI_MEM_BOUND_DEF) && (GBS > GBS_MEM_BOUND_DEF))                                       col = COL_GRE;
   /* CPU bound */
@@ -88,6 +89,7 @@ static void select_color_by_phase(double CPI, double GBS, double IO, double GFLO
   /* IO */
   if (!col && (IO > IO_TH_DEF))      col = COL_MGT;
   if (col) printf("%s",col);
+  fflush(stdout);
   
 }
 #else
@@ -357,6 +359,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 	for (i = 0; i < num_apps; i ++)
 	{
+    printf("%s", COL_CLR);fflush(stdout);
 		if (apps[i].job.id == current_job_id && apps[i].job.step_id == current_step_id)
 		{
 			if (current_is_mpi && !all_mpi)
@@ -591,7 +594,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 		if (strlen(apps[i-1].job.app_id) > 16 && !is_csv) {
 			apps[i-1].job.app_id[16] = '\0';
 		}
-
+    printf("%s", COL_CLR);fflush(stdout);
 		if (apps[i-1].is_mpi && (apps[i-1].signature.avg_f > 0) && !all_mpi)
 		{
 			gflops_watt /= avg_power;

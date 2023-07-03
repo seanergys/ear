@@ -1344,7 +1344,7 @@ static int metrics_partial_stop(uint where)
 	// Daemon metrics
 	if (master) {
 		/* MPI statistics */
-		if (is_mpi_enabled() && is_monitor_mpi_calls_enabled()) {
+		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
       #if 0
