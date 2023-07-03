@@ -33,6 +33,7 @@
 #include <common/types/configuration/cluster_conf_eard.h>
 #include <common/types/configuration/cluster_conf_eardbd.h>
 #include <common/types/configuration/cluster_conf_db.h>
+#include <global_manager/cluster_powercap.h>
 #include <common/environment.h>
 
 //#define __OLD__CONF__
@@ -553,6 +554,10 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         default:
             verbose(VCCONF, "my_node_conf powercap is set to a specific value: %ld", n->powercap);
             break;
+    }
+
+    if (n->max_powercap < 1 && my_conf->eargm.powercap_mode == SOFT_POWERCAP) {
+        verbose(VCCONF, "WARNING: max powercap is set to a non-valid value (%ld) while the EARGM mode is set to soft powercap. This configuration is not supported and the cluster powercap will not work.", n->max_powercap);
     }
 
     verbose(VCCONF, "--------------------------------------");
