@@ -2131,6 +2131,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 #endif
 
     // metrics->sig_ext = NULL;
+    signature_copy(&last_loop_sig, metrics);
     last_loop_sig.sig_ext = NULL;
 
     ullong time_st = timestamp_getconvert(TIME_MSECS);
