@@ -420,8 +420,8 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         n->min_sig_power   = (double)my_conf->tags[tag_id].min_power;
         n->max_error_power = (double)my_conf->tags[tag_id].error_power;
         n->max_temp        = my_conf->tags[tag_id].max_temp;
-        n->powercap        = (double)my_conf->tags[tag_id].powercap;
-        n->max_powercap    = (double)my_conf->tags[tag_id].max_powercap;
+        n->powercap        = my_conf->tags[tag_id].powercap;
+        n->max_powercap    = my_conf->tags[tag_id].max_powercap;
         n->max_avx512_freq = my_conf->tags[tag_id].max_avx512_freq;
         n->max_avx2_freq   = my_conf->tags[tag_id].max_avx2_freq;
 
@@ -744,7 +744,7 @@ void set_default_tag_values(tag_t *tag)
     tag->powercap_type  = POWERCAP_TYPE_NODE;
 
     tag->max_power      = MAX_SIG_POWER;
-    tag->max_powercap   = DEF_POWER_CAP; //1 -> unlimited and not clipping new values
+    tag->max_powercap   = POWER_CAP_UNLIMITED; //1 -> unlimited and not clipping new values
     tag->error_power    = MAX_ERROR_POWER;
     tag->powercap       = POWER_CAP_UNLIMITED;
     tag->min_power      = MIN_SIG_POWER;

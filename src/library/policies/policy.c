@@ -435,7 +435,7 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
   double renergy, nenergy;
   ulong cpu_f_avg = 0;
   uint sav;
-
+  ulong nominal = frequency_get_nominal_freq();
   
   if (policy_savings_comp_freqs == NULL){
     policy_savings_comp_freqs = (ulong *)calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
@@ -462,6 +462,7 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
 
 
   uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
+  uint procs = 0;
 
 
   /* Time reference and power reference is always computed based on the nominal CPU freq 
@@ -473,13 +474,19 @@ static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_fr
  
   /* IF we are selecting CPU freqs per process, we aggregate and compute the average */
   for (uint p = 0; p < limit; p++){
-      tnext += get_time_projected(ns, cpu_f[p]);
-      pnext += get_power_projected(ns, cpu_f[p]);
-      cpu_f_avg += cpu_f[p];
+    if (cpu_f[p] <= nominal){
+        tnext += get_time_projected(ns, cpu_f[p]);
+        pnext += get_power_projected(ns, cpu_f[p]);
+        cpu_f_avg += cpu_f[p];
+        procs++;
+      }
   }
-  tnext = tnext / limit;
-  pnext = pnext / limit;
-  cpu_f_avg = cpu_f_avg / limit;
+
+  if (!procs) return;
+
+  tnext = tnext / procs;
+  pnext = pnext / procs;
+  cpu_f_avg = cpu_f_avg / procs;
 
 
   /* renergy = energy at the nominal , nenergy = energy with policy selected CPu freq */
