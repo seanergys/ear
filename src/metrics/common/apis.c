@@ -57,6 +57,7 @@ static char *_apis_tostr(uint api)
     else if (api == API_CPUMODEL) return "CPUMODEL";
     else if (api == API_RSMI    ) return "RSMI";
     else if (api == API_AMD19   ) return "AMD19";
+    else if (api == API_INTEL143) return "INTEL143";
     return "NONE";
 }
 

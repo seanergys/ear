@@ -95,7 +95,7 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
     mpi_calls_types_t *mpi_types = &data->mpi_types_info;
     ssig_t            *sig       = &data->sig;
 
-    fprintf(fd, "%s;%d;%s;%d;%d;%u;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%f;%f;%llu;%f\n",
+    fprintf(fd, "%s;%d;%s;%d;%d;%llu;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%f;%f;%llu;%f\n",
             jobid, 0, nodename, id->local_rank, id->global_rank,
             mpi_info->total_mpi_calls, mpi_info->exec_time, mpi_info->mpi_time,
             mpi_types->mpi_block_call_cnt, mpi_types->mpi_block_call_time,

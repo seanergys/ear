@@ -111,6 +111,7 @@
  */
 #define FLAG_TRACE_PLUGIN            "EAR_TRACE_PLUGIN"       // Sets the trace plugin in EARL.
 #define FLAG_GPU_DEF_FREQ            "EAR_GPU_DEF_FREQ"       // This var sets a default GPU frequency.
+#define FLAG_GPU_DCGMI_ENABLED       "EAR_GPU_DCGMI_ENABLED"  // if DCGMI is enable at compile time, this flag allows to explicitly disable it: Default 1. (Use 1/0)
 
 #define FLAG_LOADER_APPLICATION      "EAR_LOADER_APPLICATION" // This variable forces to load the NON MPI version of the library for a given application (i.e. SLURM_LOADER_LOAD_NO_MPI_LIB=gromacs).
 #define FLAG_LOAD_MPI_VERSION        "EAR_LOAD_MPI_VERSION"   // This variable is used for not detected MPI application (python) to specify which version it is: intel, ompi, etc
@@ -134,6 +135,7 @@
 #define FLAG_LOADER_VERBOSE          "EAR_LOADER_VERBOSE"     // Loader's verbosity.
 #define FLAG_MPI_OPT                 "EAR_MPI_OPTIMIZATION"   // Enables/Disables MPI optimization when supported by policies
 #define FLAG_MIN_USEC_MPI            "EAR_MIN_USEC_MPI_OPT"   // Minimum time to apply MPI optimization
+#define FLAG_MPI_SAMPLING_ENABLED     "EAR_MPI_SAMPLING_ENABLED"  // Allows MPI sampling monitoring to be enabled(1) or disabled (0). Default is 1.
 
 #define FLAG_NO_AFFINITY_MASK        "EAR_NO_AFFINITY_MASK"   // Prevents EARL from using the affinity mask. Only for special use cases
 #define FLAG_REPORT_LOOPS            "EAR_REPORT_LOOPS"       // Reports or not report EAR library loops
