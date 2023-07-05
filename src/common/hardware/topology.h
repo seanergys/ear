@@ -36,8 +36,11 @@
 #define MODEL_HASWELL_X         63 // Also 0x3F (extended 3, model F)
 #define MODEL_BROADWELL_X       79 // Also 0x4F (extended 4, model F)
 #define MODEL_SKYLAKE_X         85 // Also 0x55 (extended 5, model 5)
-#define MODEL_ICELAKE_X         106
-#define MODEL_TIGERLAKE_U       140
+#define MODEL_ICELAKE           106
+#define MODEL_ICELAKE_X         MODEL_ICELAKE // It doesn't have the X, just Skylake and Cascadelake
+#define MODEL_TIGERLAKE         140
+#define MODEL_CASCADELAKE_X     85 // ¿Same as Skylake but higher stepping?
+#define MODEL_SAPPHIRE_RAPIDS   143
 // AMD models (https://en.wikichip.org/wiki/amd/cpuid)
 #define FAMILY_BOBCAT           20
 #define FAMILY_BULLDOZER        21

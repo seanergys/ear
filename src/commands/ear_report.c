@@ -159,8 +159,8 @@ void usage(char *app)
         "\t-i eardbd_name|all\t indicates from which eardbd (island) the energy will be computed. Default: none (all islands computed) \n\t\t\t\t\t 'all' option shows all eardbds individually, not aggregated.\n"
         "\t\t-d                 expands the results of -i to individual records. If an island is not specified, it prints all of them.\n"
         "\t-g                \t shows the contents of EAR's database Global_energy table. The default option will show the records for the two previous T2 periods of EARGM.\n\t\t\t\t\t This option can only be modified with -s, not -e\n"
-        "\t-x                \t shows the daemon events from -s to -e. If no time frame is specified, it shows the last 20 events. \n"
-        "\t-z                \t shows the detailed periodic metrics reported during that period. \n"
+        "\t-x                \t shows the daemon events from -s to -e. If no time frame is specified, it uses the default start and end times. \n"
+        "\t-z                \t shows the detailed periodic metrics reported during that period. If no time frame is specified, it uses the default start and end times. \n"
         "\t-v                \t shows current EAR version. \n"
         "\t-h                \t shows this message.\n");
 	exit(0);

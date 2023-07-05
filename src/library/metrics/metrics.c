@@ -102,6 +102,22 @@
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
+
+
+
+#define METRICS_OVH 1
+#if METRICS_OVH
+#include <common/utils/overhead.h>
+uint id_ovh_partial_stop;
+uint id_ovh_compute_data;
+uint id_ovh_dc_energy;
+uint id_ovh_rapl;
+uint id_ovh_cpufreq;
+uint id_ovh_imcfreq;
+
+static uint partial_stop_cnt = 0;
+static uint compute_sig_cnt = 0;
+#endif
 // #define MASTER(master_rank) (master_rank >= 0)
 
 // extern configuration from the main ear library
@@ -158,12 +174,12 @@ static ctx_t       ctx_io;
 /* MPI statistics */
 mpi_information_t *metrics_mpi_info[2];             // Contains the data of the period
 mpi_information_t *metrics_last_mpi_info[2];
-mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
+// mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
 
-#if DCGMI && USE_GPUS
+#if DCGMI
 //#define DCGMI_NUM_EVENTS 14
 #define DCGMI_NUM_EVENTS 4
 #define DCGMI_SETS       3
@@ -175,9 +191,12 @@ static uint        dcgmi_curr_ev_set = 0;
 static char        dcgmi_metrics_str[2048];
 static double      dcgmi_elapsed = 0;
 static uint        dcgmi = 1;
+#else
+static uint        dcgmi = 0;
 #endif
-char        gpu_str[256];
+char        gpu_str[512];
 #endif // USE_GPUS
+
 
 /* These vectors have position APP for application granularity and LOO for loop granularity. */
 static llong       last_elap_sec = 0;
@@ -294,6 +313,9 @@ static void read_metrics_options();
 /** Loads the energy plug-in. */
 static state_t energy_lib_init(settings_conf_t *conf);
 
+/* Overhead evaluation */
+static uint validation_new_cpu = 0;
+static uint validation_new_gpu = 0;
 
 /** Private function to perfom last operations before returning from dispose call. */
 static void metrics_static_dispose();
@@ -459,8 +481,12 @@ static void dcgmi_static_events_init()
   dcgmi_events[2][3] = nvlink_rx_bytes;
 	
 }
-#endif
 
+uint metrics_dcgmi_enabled()
+{
+  return dcgmi;
+}
+#endif
 
 static void metrics_static_init(topology_t *tp)
 {
@@ -582,6 +608,8 @@ static void metrics_static_init(topology_t *tp)
         gpu_dcgmi_data_alloc(&dcgmi_metrics_accum[set]);
         verbose_master(2, "DCGMI[%u] initialized with %u events list=%s", set, DCGMI_NUM_EVENTS, dcgmi_events_str[set]);
       }
+   }else{
+      verbose_master(1,"DCGMI support OFF");
    }
   #endif
 #endif // USE_GPUS
@@ -751,6 +779,15 @@ static void metrics_static_init(topology_t *tp)
     debug("metrics_allocation ready");
 
     metrics_configuration(tp); // Check the status of loaded APIs
+
+    #if METRICS_OVH
+    overhead_suscribe("partial_stop", &id_ovh_partial_stop);
+    overhead_suscribe("compute_signature_data", &id_ovh_compute_data);
+    overhead_suscribe("DC_energy", &id_ovh_dc_energy);
+    overhead_suscribe("RAPL", &id_ovh_rapl);
+    overhead_suscribe("AVG_CPU_freq", &id_ovh_cpufreq);
+    overhead_suscribe("AVG_IMC_freq", &id_ovh_imcfreq);
+    #endif
 }
 
 
@@ -924,11 +961,11 @@ static void metrics_global_stop()
     if (!master) {
         /* Synchro 4: Waiting for master signature */
         while(!lib_shared_region->global_stop_ready) {
+            usleep(100);
             if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0) {
                 verbose(2, "%sError%s Memory sync. for lib shared region failed: %s",
                         COL_RED, COL_CLR, strerror(errno));
             }
-            usleep(10000);
         }
     }
 
@@ -942,9 +979,13 @@ static void metrics_global_stop()
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
+#if 0
+            // Below is useful to have loop's MPI call types info. It is disabled as now MPI
+            // call types data is just collected by using the flag FLAG_GET_MPI_STATS.
 			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
-		}
+#endif
+        }
 
         /* Avg CPU frequency */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[APP]))) {
@@ -1172,6 +1213,7 @@ static int metrics_partial_stop(uint where)
     //debug("My rank is %d",masters_info.my_master_rank);
     if ((masters_info.my_master_rank<0) && (!sig_shared_region[0].ready)) {
         debug("Iterations %u ear_guided %u", ear_iterations, ear_guided);
+        debug("%s: master not ready", node_name);
         return EAR_NOT_READY;
     }
 
@@ -1183,7 +1225,14 @@ static int metrics_partial_stop(uint where)
 	// Manual IPMI accumulation
 	/* Energy node */
 	//int ret = eards_node_dc_energy(aux_energy_stop, node_energy_datasize);
+ 
+  #if METRICS_OVH
+  overhead_start(id_ovh_dc_energy);
+  #endif
 	int ret = energy_read(NULL, aux_energy_stop);
+  #if METRICS_OVH
+  overhead_stop(id_ovh_dc_energy);
+  #endif
 	if (ret == EAR_ERROR){
 		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
 	}
@@ -1300,14 +1349,20 @@ static int metrics_partial_stop(uint where)
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
-			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
+#if 0
+            // Below is useful to have loop's MPI call types info. It is disabled as now
+            // MPI call types data is just collected by using the flag FLAG_GET_MPI_STATS.
+            read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
-		}
+#endif
+        }
 
 		/* Avg CPU freq */
+    overhead_start(id_ovh_cpufreq);
 		if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
 			verbose_master(ERROR_VERB, "%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
 		}
+    overhead_stop(id_ovh_cpufreq);
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(ERROR_VERB, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
@@ -1325,15 +1380,18 @@ static int metrics_partial_stop(uint where)
 
 		/* Avg IMC frequency */
 		if (mgt_imcfreq.ok){
+      overhead_start(id_ovh_imcfreq);
 			if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
 				verbose_master(ERROR_VERB, "%sError%s IMC freq. data read in partial stop", COL_RED, COL_CLR);
 			}
+      overhead_stop(id_ovh_imcfreq);
 			if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
 				verbose_master(ERROR_VERB, "IMC data diff fails");
 			}
 			debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);
 		}
 
+    #if 0
 		/* Per node IO data */
 		if (state_ok(metrics_compute_total_io(&metrics_io_end[LOO_NODE]))) {
 
@@ -1349,10 +1407,14 @@ static int metrics_partial_stop(uint where)
 			verbose_master(ERROR_VERB, "%sWarning%s Node total I/O could not be read (%s). Assuming"
 					" no I/O data for this loop.", COL_RED, COL_CLR, state_msg);
 		}
+    #endif
+    
 
 		/* Only the master read RAPL because is not per-process metric */
 		/* RAPL energy */
+    overhead_start(id_ovh_rapl);
 		energy_cpu_read(no_ctx, aux_rapl);
+    overhead_stop(id_ovh_rapl);
 		// We read acuumulated energy
 		energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
 	
@@ -1361,7 +1423,7 @@ static int metrics_partial_stop(uint where)
 		for (int i = 0; i < rapl_elements; i++) {
 			metrics_rapl[APP][i] += metrics_rapl[LOO][i];
       total_RAPL_energy += metrics_rapl[LOO][i];
-			debug("energy CPU: %llu", metrics_rapl[LOO][i]);
+		  debug("energy CPU: %llu", metrics_rapl[LOO][i]);
 		}
 
 	} //master_rank (metrics collected by node_master)
@@ -1446,7 +1508,7 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
     /* This function is executed before all processes compute their signature */
 
 		if (!master) {
-			verbose(0,"Warning, estimate metrics and not master task");
+			debug("Warning, estimate metrics and not master task");
 			return;
 		}
 
@@ -1678,7 +1740,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 
 		sig_ext->mpi_stats = metrics_mpi_info[sign_app_loop_idx];
-		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
+        // Commented as not used.
+		// sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
 		/* Power: Node, DRAM, PCK */
     /* If power is not estimated, we computed here, later otherwise */
@@ -1712,8 +1775,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		verbose_master(2,"computing dram power %.2lf", metrics->DRAM_power);
 		verbose_master(2,"computing pck power %.2lf time %lf", metrics->PCK_power, time_s);
 		#else
-		debug("computing dram power %.2lf", metrics->DRAM_power);
-		debug("computing pck power %.2lf", metrics->PCK_power);
+		debug("computing dram power %.2lf (time %.2lf)", metrics->DRAM_power, time_s);
+		debug("computing pck power %.2lf (time %.2lf)", metrics->PCK_power, time_s);
 		#endif
 
 		float total_gpu_power = 0;
@@ -1737,7 +1800,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         }
 		#if DCGMI
 		/* If there is not utilization we reset the number of instances. Instances are used by policies */
-		if (total_gpu_util == 0) for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
+		if (dcgmi && total_gpu_util == 0){
+      for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
+    }
 		#endif
 #endif
     if (!estimate_power){
@@ -1791,9 +1856,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 		if (VERB_ON(2)) {
             char sig_to_vrb[128];
-			// signature_print_simple_fd(verb_channel, metrics);
-            signature_to_str(metrics, sig_to_vrb, sizeof(sig_to_vrb));
-			verbose(0, "Signature computed: %s", sig_to_vrb);
+			signature_print_simple_fd(verb_channel, metrics);
 		}
 	}
 
@@ -1804,14 +1867,20 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	debug("Signature ready - local rank %d - time %lld", my_node_id, (metrics_time() - app_start)/1000000);
 	signature_ready(&sig_shared_region[my_node_id], 0);
 
+  debug("%s signature ready %d", node_name, my_node_id);
+
     verbose_master(INFO_METRICS + 1,
             "End compute signature for (l. rank) %d. Period %lf secs",
             my_node_id, sig_shared_region[my_node_id].period);
-
-
+#if 0
 	if (msync(sig_shared_region, sizeof(shsignature_t) * lib_shared_region->num_processes,MS_SYNC) < 0) {
 		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
 	}
+  #endif
+	if (msync(&sig_shared_region[my_node_id], sizeof(shsignature_t),MS_SYNC|MS_INVALIDATE) < 0) {
+		verbose_master(ERROR_VERB, "Memory sync fails: %s", strerror(errno));
+	}
+  
 
 	/* Compute and print the total savings */
   if (sign_app_loop_idx == APP){
@@ -1823,7 +1892,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		float avg_esaving = sig_ext->saving / sig_ext->telapsed;
 		float avg_psaving = sig_ext->psaving / sig_ext->telapsed;
 		float avg_tpenalty = sig_ext->tpenalty / sig_ext->telapsed;
-		verbose_master(ENERGY_EFF_VERB, "MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
+		verbose_master(ENERGY_EFF_VERB, "Policy savins[%s]. MR[%d] Average estimated energy savings %.2f. Average Power reduction %.2f. Time penalty %.2f. Elapsed %.2f", node_name, masters_info.my_master_rank, avg_esaving, avg_psaving, avg_tpenalty, sig_ext->telapsed);
 		
     app_energy_saving.event = ENERGY_SAVING_AVG;
 
@@ -1940,7 +2009,6 @@ int metrics_init(topology_t *topo)
 	energy_data_alloc(&metrics_ipmi[1]);
 	acum_ipmi[0]=0;acum_ipmi[1]=0;
 
-
 	if (master) {
 
 
@@ -1951,9 +2019,9 @@ int metrics_init(topology_t *topo)
 		metrics_last_mpi_info[APP]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 		metrics_mpi_info[LOO]             = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 		metrics_last_mpi_info[LOO]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-		metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+		// metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 		metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-		metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+		// metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 		metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
 		/* IMC management */
@@ -2051,10 +2119,6 @@ int metrics_init(topology_t *topo)
 
 
 #define MAX_SYNCHO_TIME 100
-#define METRICS_OVH 0
-#if METRICS_OVH
-static ulong total_metrics_ovh = 0;
-#endif
 
 
 void metrics_dispose(signature_t *metrics, ulong procs)
@@ -2065,11 +2129,14 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	uint num_ready;
 	float wait_time = 0;
 
+
 #if METRICS_OVH
-    verbose(1,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+    //verbose(0,"[%d] Total usecs in metrics signature finish %lu", my_node_id, total_metrics_ovh);
+    if (masters_info.my_master_rank >= 0) overhead_report(1);
 #endif
 
     // metrics->sig_ext = NULL;
+    signature_copy(&last_loop_sig, metrics);
     last_loop_sig.sig_ext = NULL;
 
     ullong time_st = timestamp_getconvert(TIME_MSECS);
@@ -2087,7 +2154,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
         state_t ret = metrics_partial_stop(SIG_BEGIN);
         while (ret == EAR_NOT_READY && wait_time < MAX_SYNCHO_TIME && lib_shared_region->earl_on)
         { 
-            usleep(10000);
+            usleep(100);
 
             wait_time += 0.01;
             ret = metrics_partial_stop(SIG_BEGIN);
@@ -2130,7 +2197,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 			break;
 		}
 
-		usleep(10000);
+		usleep(100);
 
 		exited = num_processes_exited(lib_shared_region, sig_shared_region);
         two_or_more_processes_tobe_exited = exited < (lib_shared_region->num_processes - 1);
@@ -2161,7 +2228,7 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 	exited = num_processes_exited(lib_shared_region,sig_shared_region);
 	while ( (exited != lib_shared_region->num_processes) && (are_signatures_ready(lib_shared_region,sig_shared_region, &num_ready) == 0) 
 			&& (wait_time < MAX_SYNCHO_TIME) ){ 
-		usleep(100000);
+		usleep(100);
 		wait_time += 0.01;
 		exited = num_processes_exited(lib_shared_region,sig_shared_region);
 	}
@@ -2206,20 +2273,31 @@ int time_ready_signature(ulong min_time_us)
 	return 1;
 }
 
+static llong last_sig_elapsed = 0;
+static uint  last_iterations  = 0;
+float metrics_iter_per_second()
+{
+  float elap_sec = (float)last_sig_elapsed / 1000000.0;
+  if (!last_sig_elapsed || !last_iterations) return 1;
+  return (float) last_iterations / elap_sec;
+}
+
 
 /**********************************************************************************************
  ******************* This function checks if data is ready to be shared ***********************
  **********************************************************************************************/
+
 state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
-		ulong min_time_us, ulong procs)
+		ulong min_time_us, ulong procs, llong *passed_time)
 {
     #if METRICS_OVH
-    timestamp met_ovh_init, met_ovh_end;
-    timestamp_getfast(&met_ovh_init);
+    overhead_start(id_ovh_partial_stop);
+    partial_stop_cnt++;
     #endif
 
 
 	debug("metrics_compute_signature_finish %u", my_node_id);
+  debug("%s :metrics_compute_signature_finish iterations %u ready %u master_ready %u", node_name, iterations, sig_shared_region[my_node_id].ready, lib_shared_region->master_ready);
 
 	if (!sig_shared_region[my_node_id].ready) {
 
@@ -2228,13 +2306,14 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		// Time requirements
 		llong elap_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
 
+    *passed_time = elap_time;
+
 		uint time_eq = equal_with_th((double) elap_time, (double) min_time_us, 0.1);
 		if (elap_time < min_time_us && !time_eq) {
 			metrics->time = 0;
-			debug("EAR_NOT_READY because of time %lld\n", elap_time);
+			debug("%s : EAR_NOT_READY because of time %lld, iters %u (start %lld end %lld)\n", node_name, elap_time, iterations, metrics_usecs[LOO], metrics_time());
       #if METRICS_OVH
-      timestamp_getfast(&met_ovh_end);
-      total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+      overhead_stop(id_ovh_partial_stop);
       #endif
 			return EAR_NOT_READY;
 		}
@@ -2242,15 +2321,27 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 		// Master: Returns not ready when power is not ready
 		// Not master: when master signature not ready
 		if (metrics_partial_stop(SIG_END) == EAR_NOT_READY) {
+      debug("%s: EAR_NOT_READY 2", node_name);
       #if METRICS_OVH
-      timestamp_getfast(&met_ovh_end);
-      total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
+      overhead_stop(id_ovh_partial_stop);
       #endif
 			return EAR_NOT_READY;
 		}
+    #if METRICS_OVH
+    overhead_stop(id_ovh_partial_stop);
+    overhead_start(id_ovh_compute_data);
+    compute_sig_cnt++;
+    #endif
+
+    last_sig_elapsed = elap_time;
+    last_iterations  = iterations;
 
 		// Marks the signature as ready
 		metrics_compute_signature_data(LOO, metrics, iterations, procs);
+
+    #if METRICS_OVH
+    overhead_stop(id_ovh_compute_data);
+    #endif
 
 		// Call report mpitrace
 		report_id_t report_id;
@@ -2287,18 +2378,10 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 			debug("Setting Master ready");
 			lib_shared_region->master_ready = 1;
 		}
-    #if METRICS_OVH
-    timestamp_getfast(&met_ovh_end);
-    total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
-    #endif
 		return EAR_NOT_READY;
 	} else if (master) {
 		lib_shared_region->master_ready = 0;
 	}
-  #if METRICS_OVH
-  timestamp_getfast(&met_ovh_end);
-  total_metrics_ovh += timestamp_diff(&met_ovh_end, &met_ovh_init, TIME_USECS);
-  #endif
 
 	return EAR_SUCCESS;
 }
@@ -2329,6 +2412,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	double valid_period;
 	ullong L1, L2, L3;
   ullong accesses = 0;
+  double io_mbs;
 
 	se = (sig_ext_t *)master->sig_ext;
 	signature_copy(ns,master);
@@ -2338,8 +2422,10 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 
 	compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
 	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
+	compute_job_node_io_mbs(sig_shared_region, lib_shared_region->num_processes, &io_mbs);
 
 	ns->CPI = (double) cycles / (double) inst;
+  ns->IO_MBS = io_mbs;
 
 	compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
 
@@ -2435,6 +2521,8 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 				COL_RED, COL_CLR, state_msg);
 	}
 
+  compute_job_node_io_mbs(sig_shared_region, lib_shared_region->num_processes, &dst->IO_MBS);
+
 	compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
 	compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
 	compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
@@ -2448,6 +2536,7 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 extern uint last_earl_phase_classification;
 extern gpu_state_t last_gpu_state;
 
+
 state_t metrics_new_iteration(signature_t *sig)
 {
     
@@ -2458,18 +2547,21 @@ state_t metrics_new_iteration(signature_t *sig)
 
 	uint last_phase_io_bnd = (last_earl_phase_classification == APP_IO_BOUND);
 	uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
-	if (last_phase_io_bnd || last_phase_bw)
-	{
-		llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
-		llong elap_sec = f_time / 1000000;
+  llong elap_sec;
 
+	if ((last_phase_io_bnd || last_phase_bw) || (last_gpu_state & _GPU_Idle)){
+		llong f_time = metrics_usecs_diff(metrics_time(), metrics_usecs[LOO]);
+		elap_sec = f_time / 1000000;
 
 		if (elap_sec <= last_elap_sec) {
 			return EAR_ERROR;
 		}
+  }
 
-		last_elap_sec = elap_sec;
-
+  last_elap_sec = elap_sec;
+	if (last_phase_io_bnd || last_phase_bw)
+	{
+    validation_new_cpu++;
 
     /* We should check is we are still on a IO phase */
         if (last_phase_io_bnd){
@@ -2514,6 +2606,7 @@ state_t metrics_new_iteration(signature_t *sig)
 #if USE_GPUS
     sig->gpu_sig.num_gpus = 0;
     if (last_gpu_state & _GPU_Idle) {
+        validation_new_gpu++;
 
         debug("Computing GPU util because of application gpu phase is IDLE");
 
@@ -2708,6 +2801,13 @@ static void read_metrics_options()
       }
       verbose_master(0,"RAPL power traces %s", (report_power_trace?"Enabled":"Disabled"));
     }
+#endif
+#if DCGMI
+  char *use_dcgmi = ear_getenv(FLAG_GPU_DCGMI_ENABLED);
+  if (use_dcgmi != NULL){
+    dcgmi = atoi(use_dcgmi);
+    verbose_master(1,"DCGMI metrics set to %s by env var", (dcgmi?"Enabled":"Disabled"));
+  }
 #endif
 }
 

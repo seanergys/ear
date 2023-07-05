@@ -40,12 +40,13 @@
 #define API_LIKWID            10
 #define API_CUPTI             11
 #define API_ONEAPI            12
-#define API_RAPL 		      13
+#define API_RAPL              13
 #define API_ISST              14
 #define API_FAKE              15
 #define API_CPUMODEL          16
 #define API_RSMI              17
 #define API_AMD19             18
+#define API_INTEL143          19
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2

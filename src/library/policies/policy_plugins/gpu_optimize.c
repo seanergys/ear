@@ -178,6 +178,7 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
   switch(metric_to_optimize){
     case UTIL_W   : *curr = (float)(my_sig->gpu_sig.gpu_data[g].GPU_util*gpuf_list[g][last_GPU_pstate[g]])/(float)my_sig->DC_power;break;
 		case SM_OCC:
+    {
 			#if DCGMI
 			if (my_sig == NULL) return;
 			sigex = (sig_ext_t *)my_sig->sig_ext;
@@ -189,6 +190,7 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
 			*curr = sm_occ * gpuf_list[g][last_GPU_pstate[g]]/(float)my_sig->DC_power;
 			#endif
 			break;
+    }
     case GFLOPS_W:
     case FLOPS_W  : {
       #if DCGMI
@@ -230,7 +232,9 @@ static uint GPU_metric_ready(signature_t *sig, uint g)
   switch(metric_to_optimize){
   case UTIL_W   :return 1;
 	case GFLOPS_W :
-  case FLOPS_W  :{
+  case FLOPS_W  :
+  case SM_OCC   :
+  {
   #if DCGMI
     sig_ext_t *sigex;
     dcgmi_sig_t *dcgmis;
@@ -251,7 +255,10 @@ static void GPU_metric_ready_update(signature_t *my_sig)
 {
   switch(metric_to_optimize){
   case UTIL_W   :return ;
-  case FLOPS_W  :{
+  case FLOPS_W  :
+  case GFLOPS_W :
+  case SM_OCC   :
+  {
   #if DCGMI
     sig_ext_t *sigex;
     dcgmi_sig_t *dcgmis;

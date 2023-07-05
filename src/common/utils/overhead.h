@@ -20,7 +20,7 @@
 
 #include <common/types.h>
 
-#define ENABLE_OVERHEAD 1
+#define ENABLE_OVERHEAD 0
 
 // Suscribes a section of code. It receives a description of that code section,
 // and returns a ID which will be used to circle the section by start-stop

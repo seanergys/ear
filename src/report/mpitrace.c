@@ -85,7 +85,9 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
     if (!report_file_created) {
         char header[] = "JOBID;STEPID;NODENAME;L_RANK;G_RANK;MPI_CALLS;TIME_USECS;TIME_MPI;"
             "BLOCK;T_BLOCK;SYNC;T_SYNC;COLLEC;T_COLLEC;GFLOPS;CPI;L3_MISS;GBS";
-        if (fprintf(fd, "%s\n", header) < 0) {
+        if (fprintf(fd, "%s\n", header) < 0)
+        {
+            fclose(fd);
             return EAR_ERROR;
         }
         report_file_created = 1;
@@ -95,7 +97,7 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
     mpi_calls_types_t *mpi_types = &data->mpi_types_info;
     ssig_t            *sig       = &data->sig;
 
-    fprintf(fd, "%s;%d;%s;%d;%d;%u;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%f;%f;%llu;%f\n",
+    fprintf(fd, "%s;%d;%s;%d;%d;%llu;%llu;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%f;%f;%llu;%f\n",
             jobid, 0, nodename, id->local_rank, id->global_rank,
             mpi_info->total_mpi_calls, mpi_info->exec_time, mpi_info->mpi_time,
             mpi_types->mpi_block_call_cnt, mpi_types->mpi_block_call_time,

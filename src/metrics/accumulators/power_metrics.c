@@ -163,7 +163,7 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 	#if USE_GPUS
 	int gpu_error = 0;
 
-	gpu_load(EARD);
+	gpu_load(NO_EARD);
 	if (state_fail(s = gpu_init(no_ctx))) {
 		error("gpu_init returned %d (%s)", s, state_msg);
 		gpu_error = 1;

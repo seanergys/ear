@@ -253,7 +253,7 @@ state_t mgt_acpi_cpufreq_governor_get_list(uint *governors)
     state_t s;
     int i;
     for (i = 0; i < cpu_count; ++i) {
-        if (state_fail(s = static_get_governor(i, governors))) {
+        if (state_fail(s = static_get_governor(i, &governors[i]))) {
             return s;
         }
     }
@@ -286,15 +286,17 @@ state_t mgt_acpi_cpufreq_governor_set(uint governor)
 state_t mgt_acpi_cpufreq_governor_set_mask(uint governor, cpu_set_t mask)
 {
     char buffer[64];
-    state_t s;
+    state_t s = EAR_SUCCESS;
     int cpu;
 
     if (state_fail(s = mgt_governor_tostr(governor, buffer))) {
         return s;
     }
+    strcat(buffer, "\n");
     for (cpu = 0; cpu < cpu_count; ++cpu) {
         if (CPU_ISSET(cpu, &mask)) {
-            if (!filemagic_word_write(fds_sgv[cpu], buffer, strlen(buffer), 1)) {
+            // verbose(0,"Setting cpu %d to governor '%s'", cpu, buffer);
+            if (!filemagic_word_write(fds_sgv[cpu], buffer, strlen(buffer), 0)) {
                 s = EAR_ERROR;
             }
         }

@@ -305,9 +305,8 @@ char *plug_context_str(spank_t sp)
         return Strctx.sbatch;
     } else if (plug_context_is(sp, Context.remote)) {
         return Strctx.remote;
-    } else {
-        return Strctx.other;
     }
+    return Strctx.other;
 }
 
 int plug_context_is(spank_t sp, plug_context_t ctxt)

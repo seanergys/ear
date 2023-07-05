@@ -78,18 +78,25 @@ void management_init(topology_t *tp, int eard, manages_apis_t **man)
     apinfo_tostr(&m.pow);
     apinfo_tostr(&m.imc);
     apinfo_tostr(&m.gpu);
+    
+    // Allocations for system services
+    mgt_cpufreq_data_alloc((pstate_t  **) &m.cpu.list2, (uint **) &m.cpu.list3); // Current PSs and set indexes
+    mgt_imcfreq_data_alloc((pstate_t  **) &m.imc.list2, (uint **) &m.imc.list3); // Current PSs and set indexes
+    mgt_cpuprio_data_alloc((cpuprio_t **) &m.pri.list1, (uint **) &m.pri.list2); // Avail CLOSes and set assocs
+        mgt_gpu_data_alloc((ulong     **) &m.gpu.list2); // Current KHz/Watts
+        mgt_gpu_data_alloc((ulong     **) &m.gpu.list3); // CUrrent KHz/Watts
 
-    // Get available frequencies
+    // Get available frequencies (constants)
     mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m.cpu.list1, &m.cpu.list1_count);
     mgt_imcfreq_get_available_list(no_ctx, (const pstate_t **) &m.imc.list1, &m.imc.list1_count);
 
-    // Get available priorities
-    mgt_cpuprio_data_alloc((cpuprio_t **) &m.pri.list1, (uint **) &m.pri.list2);
+    // Get available priorities (allocated)
+    mgt_cpuprio_data_count(&m.pri.list1_count, &m.pri.list2_count); //
     mgt_cpuprio_get_available_list(m.pri.list1);
     mgt_cpuprio_get_current_list((uint *) m.pri.list2);
 
-    // Get current TDPs
-    mgt_cpupow_data_alloc(CPUPOW_SOCKET, (uint **) &m.pow.list1              );
+    // Get current socket TDPs
+    mgt_cpupow_data_alloc(CPUPOW_SOCKET, (uint **) &m.pow.list1);
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, m.pow.list1);
 
     // Get GPUs information

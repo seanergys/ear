@@ -46,7 +46,6 @@ static state_t get_available_watts()
     zes_power_sustained_limit_t ps;
     zes_power_burst_limit_t     pb;
     zes_power_peak_limit_t      pp;
-    zes_power_properties_t      props;
     uint                        dv;
     uint                        d;
     ze_result_t                 z;
@@ -58,9 +57,6 @@ static state_t get_available_watts()
             ret_fail(ze.sPowerGetLimits(devs[dv].spowers[d], &ps, &pb, &pp));
             power_max_default[dv] = ((ulong) ps.power) / 1000LU; // mW
             debug("-- DEVICE%d POWER DOMAIN%d ---------------", dv, d);
-            debug("defaultLimit: %u", props.defaultLimit);
-            debug("maxLimit: %u", props.maxLimit);
-            debug("minLimit: %u", props.minLimit);
             debug("sustained.enabled: %u", ps.enabled);
             debug("sustained.power: %u", ps.power);
             debug("sustained.interval: %u", ps.interval);
@@ -78,7 +74,6 @@ static state_t get_available_frequencies()
 {
     double                avail_aux[1024];
     zes_freq_range_t      range;
-    zes_freq_state_t      info;
     uint                  dv;
     uint                  d;
     uint                  f;
@@ -193,12 +188,13 @@ state_t mgt_gpu_oneapi_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t mgt_gpu_oneapi_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
-    zes_freq_range_t range;
-    ze_result_t z;
+    //zes_freq_range_t range;
+    //ze_result_t z;
     int dv;
     for (dv = 0; dv < devs_count; ++dv) {
         //ret_fail(ze.sFrequencyGetRange(devs_freq[dv], &range));
-        khz[dv] = (ulong) range.max * 1000LU;
+        //khz[dv] = (ulong) range.max * 1000LU;
+        khz[dv] = freqs_default[dv];
     }
 	return EAR_SUCCESS;
 }

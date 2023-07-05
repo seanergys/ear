@@ -43,7 +43,7 @@
 
 extern masters_info_t masters_info;
 extern float ratio_PPN;
-extern uint total_mpi;
+extern unsigned long long int total_mpi;
 extern uint using_verb_files;
 extern uint per_proc_verb_file;
 
@@ -235,7 +235,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                 mode, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
 
         debug("%swriting nname at elapsed%s", COL_YLW, COL_CLR)
-        verbosen(1, "EAR%s(%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
+        verbosen(1, "EAR%s(%s) at %.3f in %s MR[%d] elapsed %lu sec.: ",
                 mode, aname, PFREQ, nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
@@ -266,9 +266,9 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         verbosen(2,"\n\t L1GB/sec %.2f L2GB/sec %.2f L3GB/sec %.2f TPI %.2lf ",l1_sec,l2_sec,l3_sec, sig->signature.TPI);
 
-        uint n_mpi_calls = (per_proc_verb_file) ? sig_shared_region[my_node_id].mpi_info.total_mpi_calls : total_mpi;
+        ullong n_mpi_calls = (per_proc_verb_file) ? sig_shared_region[my_node_id].mpi_info.total_mpi_calls : total_mpi;
 
-        verbosen(2," VPI %.2f Total MPI calls %u",VPI, n_mpi_calls);
+        verbosen(2," VPI %.2f Total MPI calls %llu",VPI, n_mpi_calls);
         verbosen(2,"\n\t IO DATA: %s ",io_info);
 
         verbose(1,"%s",COL_CLR);
