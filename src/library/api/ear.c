@@ -98,7 +98,7 @@
 #endif
 
 // Verbose levels
-#define EARL_GUIDED_LVL 0
+#define EARL_GUIDED_LVL 2
 
 #if MPI
 #include <mpi.h>
@@ -270,7 +270,7 @@ uint per_proc_verb_file = 0;
 uint exclusive = 1;
 ear_classify_t phases_limits;
 static ulong dynais_calls = 0;
-uint limit_exceeeded = 0;
+uint limit_exceeded = 0;
 
 #if DLB
 /** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
@@ -2136,7 +2136,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                     verbose(0, "Going to periodic mode because limit exceeded avg mpi_per_sec %f limit %u", avg_mpi_calls_per_second(),
                                             MAX_MPI_CALLS_SECOND);
 #endif
-                                    limit_exceeeded = 1;
+                                    limit_exceeded = 1;
                                 }
 
                                 time_t curr_time;
@@ -2145,7 +2145,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                 double time_from_mpi_init = difftime(curr_time, application.job.start_time);
 
                                 /* In that case, the maximum time without signature has been passed, go to set ear_periodic_mode ON */
-                                if (limit_exceeeded || time_from_mpi_init >= dynais_timeout)
+                                if (limit_exceeded || time_from_mpi_init >= dynais_timeout)
                                 {
                                     // we must compute N here
                                     ear_periodic_mode = PERIODIC_MODE_ON;
@@ -2194,7 +2194,7 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                     states_new_iteration(my_id, 1, ear_iterations, 1, 1,lib_period,0);
                     #if MPI
                     /* We add a minimum number of iterations to guarantee the application has run for some time */
-                    if (!limit_exceeeded && (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND)) limit_exceeeded = 1;
+                    if (!limit_exceeded && (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND)) limit_exceeded = 1;
                     #endif
 
                 }
@@ -2549,7 +2549,7 @@ state_t earl_periodic_actions(void *no_arg)
     if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
             //if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
             states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
-            if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeeded = 1;
+            if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeded = 1;
     }
 
     seconds = period_elapsed - last_check;
