@@ -174,7 +174,7 @@ static ctx_t       ctx_io;
 /* MPI statistics */
 mpi_information_t *metrics_mpi_info[2];             // Contains the data of the period
 mpi_information_t *metrics_last_mpi_info[2];
-mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
+// mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 
 #if USE_GPUS
@@ -979,11 +979,13 @@ static void metrics_global_stop()
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
-      #if 0
+#if 0
+            // Below is useful to have loop's MPI call types info. It is disabled as now MPI
+            // call types data is just collected by using the flag FLAG_GET_MPI_STATS.
 			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_calls_types[APP], metrics_last_mpi_calls_types[APP]);
-      #endif
-		}
+#endif
+        }
 
         /* Avg CPU frequency */
         if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[APP]))) {
@@ -1347,11 +1349,13 @@ static int metrics_partial_stop(uint where)
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
-      #if 0
-			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
+#if 0
+            // Below is useful to have loop's MPI call types info. It is disabled as now
+            // MPI call types data is just collected by using the flag FLAG_GET_MPI_STATS.
+            read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_calls_types[LOO], metrics_last_mpi_calls_types[LOO]);
-      #endif
-		}
+#endif
+        }
 
 		/* Avg CPU freq */
     overhead_start(id_ovh_cpufreq);
@@ -1736,7 +1740,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 
 		sig_ext->mpi_stats = metrics_mpi_info[sign_app_loop_idx];
-		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
+        // Commented as not used.
+		// sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 
 		/* Power: Node, DRAM, PCK */
     /* If power is not estimated, we computed here, later otherwise */
@@ -2014,9 +2019,9 @@ int metrics_init(topology_t *topo)
 		metrics_last_mpi_info[APP]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 		metrics_mpi_info[LOO]             = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 		metrics_last_mpi_info[LOO]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-		metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+		// metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 		metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-		metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+		// metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 		metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 
 		/* IMC management */

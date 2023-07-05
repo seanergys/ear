@@ -85,7 +85,9 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
     if (!report_file_created) {
         char header[] = "JOBID;STEPID;NODENAME;L_RANK;G_RANK;MPI_CALLS;TIME_USECS;TIME_MPI;"
             "BLOCK;T_BLOCK;SYNC;T_SYNC;COLLEC;T_COLLEC;GFLOPS;CPI;L3_MISS;GBS";
-        if (fprintf(fd, "%s\n", header) < 0) {
+        if (fprintf(fd, "%s\n", header) < 0)
+        {
+            fclose(fd);
             return EAR_ERROR;
         }
         report_file_created = 1;

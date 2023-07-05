@@ -78,9 +78,6 @@
 #define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
                              // You can disable it for overhead testing.
 
-#define MPI_STATS          0 // This macro enables the collection of MPI statistics.
-                             // A test was done in order to probe that no overhead was introduced.
-
 static timestamp pol_time_init, start_no_mpi;
 
 static mpi_information_t mpi_stats;
@@ -95,8 +92,8 @@ static unsigned long long int mpis_per_sample      = 1;
 static unsigned long long int curr_mpis_per_sample = 0;
 static uint dynamic_monitor_state = MPI_SAMPLING_IDLE;
 static uint mpi_sampling_enabled = 1;
-static unsigned long long int next_mpi_call_to_enable = 0;
-static unsigned long long int mpis_calls_before_reevaluation = 0;
+// static unsigned long long int next_mpi_call_to_enable = 0;
+// static unsigned long long int mpis_calls_before_reevaluation = 0;
 
 #else
 static uint dynamic_monitor_state = MPI_SAMPLING_IDLE;
@@ -121,6 +118,7 @@ static ullong mpi_call_time[N_CALL_TYPES];
 
 static state_t mpi_call_types_read_diff(mpi_calls_types_t *diff, mpi_calls_types_t *last, int i);
 static uint get_mpi_stats = 0;
+static char mpi_stats_prefix[MAX_PATH_SIZE];
 #endif // MPI_STATS
 
 static int in_mpi_call;
@@ -129,7 +127,7 @@ float LB_TH = EAR_LB_TH;
 
 static float critical_path_th   = 1;
 
-extern uint limit_exceeeded;
+extern uint limit_exceeded;
 #if MPI_OPTIMIZED
 
 static uint              barrier_optimize = 0;
@@ -208,15 +206,6 @@ state_t mpi_app_init(polctx_t *c)
 
         if ((clb_th = ear_getenv(FLAG_LOAD_BALANCE_TH)) != NULL) {
             LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
-        } else if ((clb_th = ear_getenv(SCHED_LOAD_BALANCE_TH)) != NULL) {
-
-            // TODO: This check is for the transition to the new environment variables.
-            // It will be removed when SCHED_LOAD_BALANCE_TH will be removed, in the next release.
-            verbose(VAR_DEPRECATED, "%sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
-                    COL_RED, COL_CLR, SCHED_LOAD_BALANCE_TH, FLAG_LOAD_BALANCE_TH);
-
-            LB_TH = strtof(clb_th, NULL); // (float)atoi(clb_th);
         }
 
         verbose_master(MPI_STATS_VERB_LVL, "Load Balance threshold: %.1f. Critical path proximity %.1f", LB_TH, critical_path_th);
@@ -241,7 +230,11 @@ state_t mpi_app_init(polctx_t *c)
         
         #if MPI_STATS
         char *stats = ear_getenv(FLAG_GET_MPI_STATS);
-        if (stats != NULL) get_mpi_stats = 1;
+        if (stats != NULL)
+        {
+            get_mpi_stats = 1;
+            strncpy(mpi_stats_prefix, stats, sizeof(mpi_stats_prefix));
+        }
         #endif
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
@@ -330,7 +323,7 @@ state_t mpi_app_end(polctx_t *c)
             char mpi_stats_per_call_filename[256];
             char mpi_stats_filename[256];
 
-            if (state_fail(build_mpi_ear_stats_filenames(stats, mpi_stats_filename,
+            if (state_fail(build_mpi_ear_stats_filenames(mpi_stats_prefix, mpi_stats_filename,
                            mpi_stats_per_call_filename))) {
                 verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
                 return EAR_WARNING;
@@ -498,8 +491,16 @@ unsigned long long int total_mpi_call_statistics()
 state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 {
 #if PER_MPI_CALL_STATS && MPI
-    if (is_mpi_enabled() && monitor_mpi) {
-      mpis_calls_before_reevaluation++;
+    
+#if MPI_STATS
+    int collect_stats = (is_mpi_enabled() && (monitor_mpi || get_mpi_stats));
+#else
+    int collect_stats = (is_mpi_enabled() && monitor_mpi);
+#endif // MPI_STATS
+
+    if (collect_stats)
+    {
+      // mpis_calls_before_reevaluation++;
 
         // Init the MPI call timer
 #if MPI_OPTIMIZED
@@ -587,13 +588,14 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
         sig_shared_region[my_node_id].mpi_info.total_mpi_calls = mpi_stats.total_mpi_calls;
 
 #if MPI_STATS
-        if (get_mpi_stats){
-        debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
+        if (get_mpi_stats)
+        {
+          debug("MPI END P[%d] sec %ld nsec %ld", my_node_id, end.tv_sec, end.tv_nsec);
 
-        mpi_call nbcall_type;
+          mpi_call nbcall_type;
 
-        // Only collect stats for blocking calls
-        if (is_mpi_blocking(call_type)) {
+          // Only collect stats for blocking calls
+          if (is_mpi_blocking(call_type)) {
 
             total_blocking_calls++;
             total_mpi_time_blocking += (ulong) elap;
@@ -656,7 +658,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                 last_optimized = 0;
             }
 #endif // MPI_OPTIMIZED
-        }
+          }
 
         sig_shared_region[my_node_id].mpi_types_info.mpi_sync_call_cnt      = total_synchronizations;
         sig_shared_region[my_node_id].mpi_types_info.mpi_collec_call_cnt    = total_collectives;
@@ -682,18 +684,28 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     timestamp_getprecise(&start_no_mpi);
 #else
     // timestamp_getfast(&start_no_mpi);
+    // TODO: end can be uninitialized
     start_no_mpi = end;
 #endif
 
 #if MPI_SAMPLING
     /* Dynamic MPI monitoring */
-    if (mpi_sampling_enabled && (dynamic_monitor_state == MPI_SAMPLING_IDLE) && limit_exceeeded){
+    
+#if MPI_STATS
+    int mpi_sampling_check = !get_mpi_stats && mpi_sampling_enabled && (dynamic_monitor_state == MPI_SAMPLING_IDLE) && limit_exceeded;
+#else
+    int mpi_sampling_check = mpi_sampling_enabled && (dynamic_monitor_state == MPI_SAMPLING_IDLE) && limit_exceeded;
+#endif
+
+    if (mpi_sampling_check)
+    {
         float mpi_sec = avg_mpi_calls_per_second();
 
-        if (mpi_sec > (MAX_MPI_CALLS_SECOND * 2)){
+        if (mpi_sec > (MAX_MPI_CALLS_SECOND * 2))
+        {
           dynamic_monitor_state = MPI_MONITOR_DISABLED;
-        }else{
-
+        } else
+        {
           if (mpi_sec > 0)
           {
             mpis_per_sample = ear_max(1, mpi_sec / 10);
@@ -706,26 +718,38 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
           curr_mpis_per_sample = 0;
           dynamic_monitor_state = MPI_SAMPLING_ENABLED;
         }
+
         monitor_mpi_calls(OFF);
-        verbose_master(MPI_SAMPLING_LVL,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, mpi_sec, (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor_state == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
+
+        verbose_master(MPI_SAMPLING_LVL,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s",
+                       node_name, mpi_sec, (float)MAX_MPI_CALLS_SECOND,
+                       (dynamic_monitor_state == MPI_SAMPLING_ENABLED) ? "SAMPLING":"DISABLED");
     }
-    if (dynamic_monitor_state == MPI_SAMPLING_ENABLED){
+    if (dynamic_monitor_state == MPI_SAMPLING_ENABLED)
+    {
       curr_mpis_per_sample++;
-      if (((curr_mpis_per_sample/mpis_per_sample)%10) == 0){
+      if (((curr_mpis_per_sample/mpis_per_sample)%10) == 0)
+      {
         if (!monitor_mpi) monitor_mpi_calls(ON);
-      }else{
-        if (monitor_mpi){ 
+      } else
+      {
+        if (monitor_mpi)
+        { 
           monitor_mpi_calls(OFF);
-          if (avg_mpi_calls_per_second() > (MAX_MPI_CALLS_SECOND * 2)){
+
+          if (avg_mpi_calls_per_second() > (MAX_MPI_CALLS_SECOND * 2))
+          {
             dynamic_monitor_state = MPI_MONITOR_DISABLED;
-            verbose_master(MPI_SAMPLING_LVL,"%s: MPI limit exceeded %f > %f, dynamic monitor set to %s", node_name, avg_mpi_calls_per_second(), (float)MAX_MPI_CALLS_SECOND, (dynamic_monitor_state == MPI_SAMPLING_ENABLED)?"SAMPLING":"DISABLED");
+
+            verbose_master(MPI_SAMPLING_LVL, "%s: MPI limit exceeded %f > %f, dynamic monitor set to %s",
+                           node_name, avg_mpi_calls_per_second(), (float) MAX_MPI_CALLS_SECOND,
+                           (dynamic_monitor_state == MPI_SAMPLING_ENABLED) ? "SAMPLING":"DISABLED");
           }
         }
       }
    }
 #endif
 #endif // PER_MPI_CALL_STATS
-
 
     return EAR_SUCCESS;
 }

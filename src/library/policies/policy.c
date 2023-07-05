@@ -753,11 +753,6 @@ state_t policy_init()
         imc_extra_th = atof(cimc_extra_th);
     }
 
-    if (is_master)
-    {
-        policy_setup_priority();
-    }
-
     if (cmin_cpufreq != NULL) {
         min_cpufreq = (ulong) atoi(cmin_cpufreq);
     }
@@ -906,6 +901,11 @@ state_t policy_init()
     /* What do we need at this point in the signature ? */
     policy_master_freq_selection(c, &policy_last_local_signature, &nf,
                                  &freqs_domain, &avg_nf, ALL_PROCESSES);
+
+    if (is_master && !ignore_affinity_mask)
+    {
+        policy_setup_priority();
+    }
 
     if ((ret == EAR_SUCCESS) && (retg == EAR_SUCCESS)) return EAR_SUCCESS;
     else return EAR_ERROR;
