@@ -7,8 +7,9 @@ endif
 poli_BINS = \
     min_energy.so \
     min_time.so  \
-		optimize.so \
+	optimize.so \
     monitoring.so \
+	min_time_energy.so
 
 ifdef CUDA_BASE
 poli_BINS += \
