@@ -251,6 +251,63 @@ void print_full_apps(application_t *apps, int num_apps)
 	}
 }
 
+struct avg_apps {
+    application_t app;
+    int num_nodes;
+};
+
+void average_applications(application_t *apps, int num_apps, application_t **sorted_apps, int *num_sorted_apps)
+{
+    if (num_apps < 1 || apps == NULL) return; //for safety
+
+
+    int i, current = 0;
+    struct avg_apps *avg_apps = calloc(num_apps, sizeof(struct avg_apps));
+
+
+
+    //copy the frist one manually to simplify the for loop
+    memcpy(&avg_apps[current].app, &apps[0], sizeof(application_t)); 
+    avg_apps[current].num_nodes++; 
+                                   
+                                  
+    //since the first application has been copied, we start at 1
+    for (i = 1; i < num_apps; i++) {
+        //printf("application id %s \n", tapps[i].job.app_id);
+        if (avg_apps[current].app.job.id == apps[i].job.id && avg_apps[current].app.job.step_id == apps[i].job.step_id ) {
+            avg_apps[current].app.signature.DC_power += apps[i].signature.DC_power; //PENDING: to add the rest of fields
+            avg_apps[current].num_nodes++; //either way, we get a +1 to the nodes counter
+        } else {
+            //printf("inserting new application, current apps %d\n", current);
+            current++; 
+            memcpy(&avg_apps[current].app, &apps[i], sizeof(application_t)); //we copy the signature directly
+            avg_apps[current].num_nodes++; //either way, we get a +1 to the nodes counter
+        }
+    }
+    current++;
+
+    //avg_apps = realloc(avg_apps, sizeof(struct avg_apps)*current);
+    application_t *tapps = calloc(current, sizeof(application_t));
+    for (i = 0; i < current; i++) {
+        avg_apps[i].app.signature.DC_power /= avg_apps[i].num_nodes; //PENDING: add the rest of the fields
+        memcpy(&tapps[i], &avg_apps[i].app, sizeof(application_t));
+    }
+    *sorted_apps = tapps;
+
+    *num_sorted_apps = current;
+}
+
+#define IMPROVEMENTS 1
+
+#if IMPROVEMENTS
+void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
+{
+    application_t *sorted_apps = NULL;
+    int new_num_apps = 0;
+    average_applications(apps, num_apps, &sorted_apps, &new_num_apps);
+    print_full_apps(sorted_apps, new_num_apps);
+}
+#else
 void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 {
 	uint current_job_id = -1;
@@ -712,6 +769,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 	printf("\n");
 }
+#endif
 
 void add_string_filter(char *query, char *addition, char *value)
 {
