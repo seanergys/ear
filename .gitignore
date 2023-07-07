@@ -1,6 +1,7 @@
 # General
-/Makefile
-/Makefile.*
+/Makefile*
+!/Makefile.in
+!/Makefile.exports
 *.o
 *.a
 *.so
@@ -9,7 +10,7 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
-src/tests
+/*.sh
 
 # Autotools
 *aclocal.m4
