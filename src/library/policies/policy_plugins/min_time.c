@@ -993,7 +993,6 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
       gpu_ready = EAR_POLICY_READY;
     }
     return EAR_SUCCESS;
-
 #else
     gpu_ready = EAR_POLICY_READY;
 #endif

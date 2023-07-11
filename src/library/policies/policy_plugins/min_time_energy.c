@@ -100,7 +100,6 @@ extern uint use_turbo_for_cp;
 static uint network_use_imc = 0;
 extern uint try_turbo_enabled;
 extern uint use_energy_models;
-extern uint max_pstate_busy_waiting;
 
 #define SELECT_CPUFREQ      100
 #define SELECT_IMCFREQ      101
@@ -940,42 +939,61 @@ state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
 
 state_t policy_io_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-    if (c == NULL) return EAR_ERROR;
-    verbose_master(2, "%sCPU IO phase%s", COL_BLU, COL_CLR);
-    cpu_ready = EAR_POLICY_READY;
-    for (uint i=0;i<num_processes;i++) freqs->cpu_freq[i] = frequency_pstate_to_freq(max_pstate_busy_waiting);
-    memcpy(last_nodefreq_sel.cpu_freq,freqs->cpu_freq,MAX_CPUS_SUPPORTED*sizeof(ulong));
-    if (dyn_unc){
-        for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
-            freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
-            freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
-        }
-        memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
-    }
-#if USE_GPUS
-    gpu_ready = EAR_POLICY_READY;
-    return EAR_SUCCESS;
-    if (gidle){
-        gpu_ready = EAR_POLICY_READY;
-        for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
-            freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
-        }
-        memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
-    }
-#else
-    gpu_ready = EAR_POLICY_READY;
-#endif
-    /* GPU mem is pending */
+  if (c == NULL)
+  {
+    return EAR_ERROR;
+  }
+  verbose_master(2, "%sCPU IO phase%s", COL_BLU, COL_CLR);
 
-    return EAR_SUCCESS;
+  cpu_ready = EAR_POLICY_READY;
+
+  for (uint i=0;i<num_processes;i++)
+  {
+    freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+  }
+  memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
+
+  if (dyn_unc)
+  {
+    for (uint sock_id=0;sock_id < arch_desc.top.socket_count; sock_id++)
+    {
+      freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
+      freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
+    }
+    memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, imc_devices * IMC_VAL * sizeof(ulong));
+  }
+
+#if USE_GPUS
+  gpu_ready = EAR_POLICY_READY;
+  return EAR_SUCCESS;
+  if (gidle){
+    gpu_ready = EAR_POLICY_READY;
+    for (uint gpuid=0;gpuid<c->num_gpus;gpuid++){
+      freqs->gpu_freq[gpuid] = gpuf_pol_list[gpuid][gpuf_pol_list_items[gpuid]-1];
+    }
+    memcpy(last_nodefreq_sel.gpu_freq,freqs->gpu_freq,c->num_gpus*sizeof(ulong));
+  }
+#else
+  gpu_ready = EAR_POLICY_READY;
+#endif
+
+  /* GPU mem is pending */
+
+  return EAR_SUCCESS;
 }
 
 state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-    if (c == NULL) return EAR_ERROR;
+    if (c == NULL) {
+        return EAR_ERROR;
+    }
+
     verbose_master(2, "%sCPU busy waiting phase%s", COL_BLU, COL_CLR);
+
     cpu_ready = EAR_POLICY_READY;
-    for (uint i=0;i<num_processes;i++) set_all_cores(freqs->cpu_freq, num_processes, frequency_pstate_to_freq(max_pstate_busy_waiting));
+
+    set_all_cores(freqs->cpu_freq, num_processes, frequency_pstate_to_freq(c->num_pstates - 1));
+
     copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
     if (dyn_unc){
         for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
