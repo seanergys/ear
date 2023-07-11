@@ -21,6 +21,7 @@
 #include <common/utils/args.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
+#include <common/utils/strscreen.h>
 #include <common/system/symplug.h>
 //#include <daemon/local_api/eard_api.h>
 //#include <metrics/metrics.h>
@@ -48,6 +49,7 @@ typedef struct plugin_manager_ops_s {
 
 typedef struct plugin_s {
     char         path[PATH_MAX];
+    char        *name;
     cchar       *tag;
     plugin_ops_t ops;
     ullong       time_lapse; //In ms
@@ -65,6 +67,7 @@ typedef struct plugins_s {
 } plugins_t;
 
 static plugins_t p;
+static char date[128];
 
 static state_t plugins_init(void *whatever)
 {
@@ -106,7 +109,6 @@ static void time_and_callback(int i)
     if (i == p.count) {
         return;
     }
-    
     // Time calculation
     timestamp_get(&time_now);
     time_passed = timestamp_diff(&time_now, &p.plugins[i].time_origin, TIME_MSECS);
@@ -146,14 +148,20 @@ static void time_and_callback(int i)
     }
     time_and_callback(i+1);
     if (time_isup && p.plugins[i].ops.data_tostr != NULL) {
-        debug("PLUG%d: printing", i);
-        //printf("\e[1;1H\e[2J");
-        printf("%s\n", p.plugins[i].ops.data_tostr(p.plugins[i].data));
+        printf("[%s, %s] %s\n", date, p.plugins[i].name, p.plugins[i].ops.data_tostr(p.plugins[i].data));
     }
+}
+
+static void format_date()
+{
+    time_t tm = time(NULL);
+    sprintf(date, "%s", ctime(&tm));
+    date[strlen(date)-1] = '\0';
 }
 
 static state_t plugins_callback(void *whatever)
 {
+    format_date();
     time_and_callback(0);
 }
 
@@ -203,6 +211,13 @@ static int plugin_manager_configure(int argc, char *argv[])
             p.plugins[i].one_time   = 1;
         }
         sprintf(p.plugins[i].path, "%s", list[i]);
+        // Getting the plugin name for printing purposes
+        for (j = strlen(p.plugins[i].path)-2; j > 0; --j) {
+            p.plugins[i].name = &p.plugins[i].path[j+1];
+            if (p.plugins[i].path[j] == '/') {
+                break;
+            }
+        }
     }
     //free(*list);
     #if SHOW_DEBUGS

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <string.h>
 #include <report/report.h>
@@ -47,67 +47,74 @@ declr_up_init()
     metrics_data_alloc(&mr1, &mr2, &mrD);
 }
 
-declr_up_callback()
+void received_configuration(void *data)
 {
-    //debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
+    conf = (conf_t *) data;
+    // Loading report manager
+    if (state_ok(report_load(conf->cluster.install.dir_plug, conf->cluster.db_manager.plugins))){
+        report_create_id(&rid, 0, 0, 0);
+        // Initializing report manager
+        if (state_ok(report_init(&rid, &conf->cluster))) {
+            can_report = 1;
+        }
+    }
+    debug("reporting: %d", can_report);
+}
+
+void received_metrics(void *data)
+{
     mets_t *mets = (mets_t *) data;
+    if (mr1.samples > 0) {
+        metrics_data_copy(&mr2, &mets->mr);
+    } else {
+        metrics_data_copy(&mr1, &mets->mr);
+    }
+}
 
-    if (is_tag("configuration")) {
-        conf = (conf_t *) data;
-        // Loading report manager
-        if (state_ok(report_load(conf->cluster.install.dir_plug, conf->cluster.db_manager.plugins))){
-            report_create_id(&rid, 0, 0, 0);
-            // Initializing report manager
-            if (state_ok(report_init(&rid, &conf->cluster))) {
-                can_report = 1;
-            }
-        }
-        debug("reporting: %d", can_report);
+void received_periodic_metrics(void *data)
+{
+    if (mr2.samples == 0) {
+        return;
     }
-    if (is_tag("metrics")) {
-        if (mets->mr.samples > 0) {
-            metrics_data_copy(&mr2, &mets->mr);
-        } else {
-            metrics_data_copy(&mr1, &mets->mr);
-        }
+    metrics_data_diff(&mr2, &mr1, &mrD);
+    // Fill the current sample
+    cs.start_time  = mr1.time.tv_sec;
+    cs.end_time    = mr2.time.tv_sec;
+    cs.avg_f       = mrD.cpu_avrg;
+    cs.temp        = mrD.tmp_avrg;
+    cs.DRAM_energy = mrD.pow_dram;
+    cs.PCK_energy  = mrD.pow_pack;
+    cs.DC_energy   = mrD.nod_avrg;
+    debug("%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
+        cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
+    // Corrections SNMP+PDU (power monitor thing)
+    if (conf != NULL && conf->node != NULL && cs.DC_energy > conf->node->max_error_power){
+        // cs.DC_energy = conf->node->max_sig_power;
     }
-    if (is_tag("periodic-metrics")) {
-        metrics_data_diff(&mr2, &mr1, &mrD);
-        if (mrD.samples == 0) {
-            goto pass;
+    // Reporting and alert-system
+    if (can_report) {
+        if (conf->node != NULL && cs.temp > conf->node->max_temp) {
+            // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, TEMP_ERROR, (llong) cs.temp);
         }
-        // Fill the current sample
-        cs.start_time  = mr1.time.tv_sec;
-        cs.end_time    = mr2.time.tv_sec;
-        cs.avg_f       = mrD.cpu_avrg;
-        cs.temp        = mrD.tmp_avrg;
-        cs.DRAM_energy = mrD.pow_dram;
-        cs.PCK_energy  = mrD.pow_pack;
-        cs.DC_energy   = mrD.nod_avrg;
-        cs.temp        = 1337; // Leet, my identifier.
-        debug("%s.%lu.%lu.%llu: %lu J, %lu KHz", cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.avg_f);
-        // Corrections SNMP+PDU (power monitor thing)
-        if (conf != NULL && conf->node != NULL && cs.DC_energy > conf->node->max_error_power){
-            // cs.DC_energy = conf->node->max_sig_power;
+        if ((cs.DRAM_energy + cs.PCK_energy) == 0) {
+            // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, RA<PL_ERROR, 0);
         }
-        // Reporting and alert-system
-        if (can_report) {
-            if (conf->node != NULL && cs.temp > conf->node->max_temp) {
-                // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, TEMP_ERROR, (llong) cs.temp);
-            }
-            if ((cs.DRAM_energy + cs.PCK_energy) == 0) {
-                // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, RA<PL_ERROR, 0);
-            }
-            if ((cs.avg_f == 0) || ((cs.avg_f > nominal_khz) && (mpi))) {
-                // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, FREQ_ERROR, (llong) cs.avg_f);
-            }
-            report_periodic_metrics(&rid, &cs, 1); // Un plugin de report que haga un print para probar
+        if ((cs.avg_f == 0) || ((cs.avg_f > nominal_khz) && (mpi))) {
+            // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, FREQ_ERROR, (llong) cs.avg_f);
         }
-        metrics_data_copy(&mr1, &mr2);
+        report_periodic_metrics(&rid, &cs, 1); // Un plugin de report que haga un print para probar
     }
-
+    metrics_data_copy(&mr1, &mr2);
 pass:
     ; // Passing
+}
+
+declr_up_callback()
+{
+    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
+    if (is_tag("metrics")) return received_metrics(data);
+    if (is_tag("configuration")) return received_configuration(data);
+    if (is_tag("periodic-metrics")) return received_periodic_metrics(data);
 }
 
 declr_up_post()
@@ -130,6 +137,10 @@ declr_up_data_alloc()
 #if 1
 declr_up_data_tostr()
 {
-    return metrics_data_tostr(&mrD);
+    static char buffer[256];
+    sprintf(buffer, "%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
+        cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
+    return buffer;
+    // return metrics_data_tostr(&mrD);
 }
 #endif

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +31,6 @@
 
 #define nodepow(f, ...) energy_ ##f (__VA_ARGS__)
 #define  cpupow(f, ...) energy_cpu_ ##f (__VA_ARGS__)
-//#define nodepow(f, ...)
 
 static ehandler_t      e_ctx;
 static topology_t     *self_tp;
@@ -166,20 +165,29 @@ void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
 }
 
 // Auxiliars
-void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram)
+void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram, double secs)
 {
+    double dpack = 0.0;
+    double ddram = 0.0;
     int i;
+
     *pack = 0;
     *dram = 0;
     for (i = 0; i < self_tp->socket_count; ++i) {
-        *dram += diffs[i];
-        *pack += diffs[self_tp->socket_count+i];
+        ddram += (double) diffs[i];
+        dpack += (double) diffs[self_tp->socket_count+i];
     }
-    *pack = *pack / self_tp->socket_count;
-    *dram = *dram / self_tp->socket_count;
+    dpack = cpupow(compute_power, dpack, secs);
+    ddram = cpupow(compute_power, ddram, secs);
+    dpack = dpack * secs;
+    ddram = ddram * secs;
+    debug("*pack = %0.3lf J (%0.3lf secs)", dpack, secs);
+    debug("*dram = %0.3lf J (%0.3lf secs)", ddram, secs);
+    *pack = (ullong) dpack;
+    *dram = (ullong) ddram;
 }
 
-static char *cpupow_data_tostr(ullong *diffs, char *buffer, size_t length)
+static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t length)
 {
     double power = 0.0;
     double mean = 0.0;
@@ -187,7 +195,7 @@ static char *cpupow_data_tostr(ullong *diffs, char *buffer, size_t length)
 
     buffer[0] = '\0';
     for (i = j = 0; i < self_tp->socket_count; ++i) {
-        power = cpupow(compute_power, diffs[self_tp->socket_count+i], 2.0);
+        power = cpupow(compute_power, diffs[self_tp->socket_count+i], secs);
         j += sprintf(&buffer[j], "%0.1lf ", power);
         mean += power;
     }
@@ -216,7 +224,6 @@ static void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
     nodepow_read(nod2);
     nodepow_data_diff(nod2, nod1, nodD);
     nodepow_data_copy(nod1, nod2);
-    //nodepow_read(nod1);
 }
 
 static char *nodepow_data_tostr(ulong avrg, char *buffer, size_t length)
@@ -227,6 +234,7 @@ static char *nodepow_data_tostr(ulong avrg, char *buffer, size_t length)
 
 void metrics_read(metrics_read_t *mr)
 {
+    debug("read %lu", time(NULL));
     timestamp_getreal(&mr->time);
     mr->samples += 1;
 
@@ -244,26 +252,9 @@ void metrics_read(metrics_read_t *mr)
 
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
 {
-    timestamp_getreal(&mr2->time);
-	mrD->time = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
-    mr1->time = mr2->time; // Copying time2 in time1.
-
-    mr2->samples += 1;
-    mrD->samples  = mr2->samples - mr1->samples; 
-    mr1->samples  = mr2->samples;
-
-    nodepow_read_copy(         mr2->nod,  mr1->nod,                       &mrD->nod_avrg);
-    cpufreq_read_copy(no_ctx,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
-    imcfreq_read_copy(no_ctx,  mr2->imc,  mr1->imc,        mrD->imc_diff, &mrD->imc_avrg);
-     cpupow(read_copy,no_ctx,  mr2->pow,  mr1->pow,        mrD->pow_diff                );
-     bwidth_read_copy(no_ctx,  mr2->ram,  mr1->ram, NULL, &mrD->ram_diff, &mrD->ram_avrg);
-      cache_read_copy(no_ctx, &mr2->cch, &mr1->cch,       &mrD->cch_diff, &mrD->cch_avrg);
-      flops_read_copy(no_ctx, &mr2->flp, &mr1->flp,       &mrD->flp_diff, &mrD->flp_avrg);
-       temp_read_copy(no_ctx,  mr2->tmp,  mr1->tmp,        mrD->tmp_diff, &mrD->tmp_avrg);
-        cpi_read_copy(no_ctx, &mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg);
-        gpu_read_copy(no_ctx,  mr2->gpu,  mr1->gpu,        mrD->gpu_diff                );
-
-    cpupow_tellmemore(mrD->pow_diff, &mrD->pow_pack, &mrD->pow_dram);
+    metrics_read(mr2);
+    metrics_data_diff(mr2, mr1, mrD);
+    metrics_data_copy(mr1, mr2);
 }
 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD)
@@ -299,6 +290,8 @@ void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
 {
     mrD->time    = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
     mrD->samples = mr2->samples - mr1->samples; 
+    debug("time    = %lf s", mrD->time);
+    debug("samples = %llu", mrD->samples);
 
     nodepow_data_diff( mr2->nod,  mr1->nod,                       &mrD->nod_avrg);
     cpufreq_data_diff( mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
@@ -311,7 +304,7 @@ void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
         cpi_data_diff(&mr2->cpi, &mr1->cpi,       &mrD->cpi_diff, &mrD->cpi_avrg);
         gpu_data_diff( mr2->gpu,  mr1->gpu,        mrD->gpu_diff                );
 
-    cpupow_tellmemore(mrD->pow_diff, &mrD->pow_pack, &mrD->pow_dram);
+    cpupow_tellmemore(mrD->pow_diff, &mrD->pow_pack, &mrD->pow_dram, mrD->time);
 }
 
 void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
@@ -331,6 +324,11 @@ void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
         gpu_data_copy( mrD->gpu,  mrS->gpu);
 }
 
+void metrics_data_null(metrics_diff_t *mrD)
+{
+    
+}
+
 void metrics_data_print(metrics_diff_t *mrD, int fd)
 {
     char *string = metrics_data_tostr(mrD);
@@ -342,7 +340,7 @@ char *metrics_data_tostr(metrics_diff_t *mrD)
     static char b[16384];
     scsprintf(&ss, id_cpu, 0, 1, cpufreq_data_tostr(mrD->cpu_diff,  mrD->cpu_avrg, b, sizeof(b)));
     scsprintf(&ss, id_imc, 0, 1, imcfreq_data_tostr(mrD->imc_diff, &mrD->imc_avrg, b, sizeof(b)));
-    scsprintf(&ss, id_pow, 0, 1,  cpupow_data_tostr(mrD->pow_diff,                 b, sizeof(b)));
+    scsprintf(&ss, id_pow, 0, 1,  cpupow_data_tostr(mrD->pow_diff,  mrD->time    , b, sizeof(b)));
     scsprintf(&ss, id_ram, 0, 1,  bwidth_data_tostr(mrD->ram_diff,  mrD->ram_avrg, b, sizeof(b)));
     scsprintf(&ss, id_tmp, 0, 1,    temp_data_tostr(mrD->tmp_diff,  mrD->tmp_avrg, b, sizeof(b)));
     scsprintf(&ss, id_gpu, 0, 1,     gpu_data_tostr(mrD->gpu_diff,                 b, sizeof(b)));
