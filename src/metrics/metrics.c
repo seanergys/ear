@@ -15,23 +15,43 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <common/output/debug.h>
 #include <common/utils/stress.h>
+#include <common/utils/special.h>
+#include <common/utils/strtable.h>
+#include <common/utils/strscreen.h>
 #include <common/utils/overhead.h>
-#include <common/output/verbose.h>
 #include <common/config/config_install.h>
 #include <metrics/metrics.h>
 
 #define nodepow(f, ...) energy_ ##f (__VA_ARGS__)
-#define cpupow(f, ...) energy_cpu_ ##f (__VA_ARGS__)
+#define  cpupow(f, ...) energy_cpu_ ##f (__VA_ARGS__)
+//#define nodepow(f, ...)
 
-static topology_t *self_tp;
-static ehandler_t  e_ctx;
+static ehandler_t      e_ctx;
+static topology_t     *self_tp;
+// Screen
+static strtable_t      st;
+static strscreen_t     ss;
+static int             id_cpu;
+static int             id_imc;
+static int             id_ram;
+static int             id_tmp;
+static int             id_pow;
+static int             id_gpu;
+static int             id_nod;
+static int             id_log;
+static int             id_api;
+static int             id_tpo;
 
 void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
 {
+    static char buffer[16384];
     self_tp = tp;
 
     nodepow(load,getenv("NODEPOW_PLUGIN"));
@@ -111,6 +131,38 @@ void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
     apinfo_tostr(&m->tmp);
     apinfo_tostr(&m->cpi);
     apinfo_tostr(&m->gpu);
+    
+    // Screen initialization 
+    scprintf_init(&ss, 50, 180, -1, '#'); // 0 to 49, 0 to 179
+    scprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, &id_cpu, "cpufreq"  );
+    scprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, &id_imc, "imcfreq"  );
+    scprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &id_ram, "bandwidth");
+    scprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &id_tmp, "temperature");
+    scprintf_divide(&ss, (int[]) { 45,   2}, (int[]) { 46,  39}, &id_pow, "cpupow"   );
+    scprintf_divide(&ss, (int[]) {  1,  41}, (int[]) {  5, 118}, &id_gpu, "gpu"      );
+    scprintf_divide(&ss, (int[]) {  7,  41}, (int[]) { 10,  78}, &id_nod, "nodepow"  );
+    scprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &id_log, "ear-logo" );
+    scprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 18, 177}, &id_api, "api-table");
+    scprintf_divide(&ss, (int[]) { 20, 154}, (int[]) { 35, 177}, &id_tpo, "topology" );
+
+    topology_tostr(tp, buffer, sizeof(buffer));
+    scsprintf(&ss, id_tpo, 0, 0, buffer);
+
+    tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
+    tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
+    tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->cpu.layer, m->cpu.api_str, m->cpu.devs_count, m->cpu.scope_str, m->cpu.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->ram.layer, m->ram.api_str, m->ram.devs_count, m->ram.scope_str, m->ram.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->cch.layer, m->cch.api_str, m->cch.devs_count, m->cch.scope_str, m->cch.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->flp.layer, m->flp.api_str, m->flp.devs_count, m->flp.scope_str, m->flp.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->tmp.layer, m->tmp.api_str, m->tmp.devs_count, m->tmp.scope_str, m->tmp.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->pow.layer, m->pow.api_str, m->pow.devs_count, m->pow.scope_str, m->pow.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->cpi.layer, m->cpi.api_str, m->cpi.devs_count, m->cpi.scope_str, m->cpi.granularity_str);
+    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
+
+    scsprintf(&ss, id_log, 0, 0, special_ear_logo());
+    scsprintf(&ss, id_api, 0, 0, buffer);
 }
 
 // Auxiliars
@@ -125,6 +177,22 @@ void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram)
     }
     *pack = *pack / self_tp->socket_count;
     *dram = *dram / self_tp->socket_count;
+}
+
+static char *cpupow_data_tostr(ullong *diffs, char *buffer, size_t length)
+{
+    double power = 0.0;
+    double mean = 0.0;
+    int i, j;
+
+    buffer[0] = '\0';
+    for (i = j = 0; i < self_tp->socket_count; ++i) {
+        power = cpupow(compute_power, diffs[self_tp->socket_count+i], 2.0);
+        j += sprintf(&buffer[j], "%0.1lf ", power);
+        mean += power;
+    }
+    sprintf(&buffer[j], "!%0.1lf\n", mean);
+    return buffer;
 }
 
 void nodepow_read(void *nod)
@@ -143,7 +211,7 @@ void nodepow_data_copy(void *nodD, void *nodS)
     memcpy(nodD, nodS, 8192);
 }
 
-void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
+static void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
 {
     nodepow_read(nod2);
     nodepow_data_diff(nod2, nod1, nodD);
@@ -151,9 +219,16 @@ void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
     //nodepow_read(nod1);
 }
 
+static char *nodepow_data_tostr(ulong avrg, char *buffer, size_t length)
+{
+    sprintf(buffer, "!%lu", avrg);
+    return buffer;
+}
+
 void metrics_read(metrics_read_t *mr)
 {
     timestamp_getreal(&mr->time);
+    mr->samples += 1;
 
     nodepow_read(         mr->nod);
     cpufreq_read(no_ctx,  mr->cpu);
@@ -172,6 +247,10 @@ void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
     timestamp_getreal(&mr2->time);
 	mrD->time = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
     mr1->time = mr2->time; // Copying time2 in time1.
+
+    mr2->samples += 1;
+    mrD->samples  = mr2->samples - mr1->samples; 
+    mr1->samples  = mr2->samples;
 
     nodepow_read_copy(         mr2->nod,  mr1->nod,                       &mrD->nod_avrg);
     cpufreq_read_copy(no_ctx,  mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
@@ -216,10 +295,10 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
     }
 }
 
-
 void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
 {
-    mrD->time = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
+    mrD->time    = timestamp_fdiff(&mr2->time, &mr1->time, TIME_SECS, TIME_MSECS);
+    mrD->samples = mr2->samples - mr1->samples; 
 
     nodepow_data_diff( mr2->nod,  mr1->nod,                       &mrD->nod_avrg);
     cpufreq_data_diff( mr2->cpu,  mr1->cpu,        mrD->cpu_diff, &mrD->cpu_avrg);
@@ -237,7 +316,8 @@ void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
 
 void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
 {
-    mrD->time = mrS->time;
+    mrD->time    = mrS->time;
+    mrD->samples = mrS->samples;
 
     nodepow_data_copy( mrD->nod,  mrS->nod);
     cpufreq_data_copy( mrD->cpu,  mrS->cpu);
@@ -251,111 +331,50 @@ void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
         gpu_data_copy( mrD->gpu,  mrS->gpu);
 }
 
+void metrics_data_print(metrics_diff_t *mrD, int fd)
+{
+    char *string = metrics_data_tostr(mrD);
+    dprintf(fd, "%s", string); 
+}
+
+char *metrics_data_tostr(metrics_diff_t *mrD)
+{
+    static char b[16384];
+    scsprintf(&ss, id_cpu, 0, 1, cpufreq_data_tostr(mrD->cpu_diff,  mrD->cpu_avrg, b, sizeof(b)));
+    scsprintf(&ss, id_imc, 0, 1, imcfreq_data_tostr(mrD->imc_diff, &mrD->imc_avrg, b, sizeof(b)));
+    scsprintf(&ss, id_pow, 0, 1,  cpupow_data_tostr(mrD->pow_diff,                 b, sizeof(b)));
+    scsprintf(&ss, id_ram, 0, 1,  bwidth_data_tostr(mrD->ram_diff,  mrD->ram_avrg, b, sizeof(b)));
+    scsprintf(&ss, id_tmp, 0, 1,    temp_data_tostr(mrD->tmp_diff,  mrD->tmp_avrg, b, sizeof(b)));
+    scsprintf(&ss, id_gpu, 0, 1,     gpu_data_tostr(mrD->gpu_diff,                 b, sizeof(b)));
+    scsprintf(&ss, id_nod, 0, 1, nodepow_data_tostr(mrD->nod_avrg,                 b, sizeof(b)));
+    return scprintf(&ss);
+}
+
 #if TEST
 #include <stdio.h>
 #include <stdlib.h>
-#include <common/utils/stress.h>
-#include <common/utils/special.h>
-#include <common/utils/overhead.h>
-#include <common/utils/strtable.h>
-#include <common/utils/strscreen.h>
-#include <common/output/verbose.h>
 #include <common/system/monitor.h>
 #include <daemon/local_api/eard_api.h>
-#include <metrics/metrics.h>
 
 static topology_t     tp;
-static strtable_t     st;
-static strscreen_t    ss;
 static metrics_info_t m;
 static metrics_read_t mr1;
 static metrics_read_t mr2;
 static metrics_diff_t mrD;
-static int            id_cpu;
-static int            id_imc;
-static int            id_ram;
-static int            id_tmp;
-static int            id_pow;
-static int            id_gpu;
-static int            id_log;
-static int            id_api;
-static int            id_tpo;
 
 static state_t metrics_apis_init(void *whatever)
 {
-    char buffer[16384];
-
     topology_init(&tp);
-
     metrics_init(&m, &tp, EARD);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
-
-    wprintf_init(&ss, 50, 180, 0, '#'); // 0 to 49, 0 to 179
-    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, &id_cpu, "cpufreq"  );
-    wprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, &id_imc, "imcfreq"  );
-    wprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &id_ram, "bandwidth");
-    wprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &id_tmp, "temperature");
-    wprintf_divide(&ss, (int[]) { 45,   2}, (int[]) { 46,  39}, &id_pow, "cpupow"   );
-    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 4,  118}, &id_gpu, "gpu"      );
-    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &id_log, "ear-logo" );
-    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 18, 177}, &id_api, "api-table");
-    wprintf_divide(&ss, (int[]) { 20, 154}, (int[]) { 35, 177}, &id_tpo, "topology" );
-
-    topology_tostr(&tp, buffer, sizeof(buffer));
-    wsprintf(&ss, id_tpo, 0, 0, buffer);
-
-    tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
-    tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
-    tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpu.layer, m.cpu.api_str, m.cpu.devs_count, m.cpu.scope_str, m.cpu.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.layer, m.imc.api_str, m.imc.devs_count, m.imc.scope_str, m.imc.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.ram.layer, m.ram.api_str, m.ram.devs_count, m.ram.scope_str, m.ram.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cch.layer, m.cch.api_str, m.cch.devs_count, m.cch.scope_str, m.cch.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.flp.layer, m.flp.api_str, m.flp.devs_count, m.flp.scope_str, m.flp.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.tmp.layer, m.tmp.api_str, m.tmp.devs_count, m.tmp.scope_str, m.tmp.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.pow.layer, m.pow.api_str, m.pow.devs_count, m.pow.scope_str, m.pow.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.cpi.layer, m.cpi.api_str, m.cpi.devs_count, m.cpi.scope_str, m.cpi.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.layer, m.gpu.api_str, m.gpu.devs_count, m.gpu.scope_str, m.gpu.granularity_str);
-
-    wsprintf(&ss, id_log, 0, 0, special_ear_logo());
-    wsprintf(&ss, id_api, 0, 0, buffer);
-
-    wprintf(&ss);
-
     return EAR_SUCCESS;
-}
-
-static char *cpupow_data_tostr(ullong *diffs, char *buffer, size_t length)
-{
-    double power = 0.0;
-    double mean = 0.0;
-    int i, j;
-
-    buffer[0] = '\0';
-    for (i = j = 0; i < tp.socket_count; ++i) {
-        power = cpupow(compute_power, diffs[tp.socket_count+i], 2.0);
-        j = sprintf(&buffer[j], "%0.1lf ", power);
-        mean += power;
-    }
-    sprintf(&buffer[j], "!%0.1lf\n", mean);
-    return buffer;
 }
 
 static state_t metrics_apis_update(void *whatever)
 {
-    char b[16384];
-
     metrics_read_copy(&mr2, &mr1, &mrD);
-
-    wsprintf(&ss, id_cpu, 0, 1, cpufreq_data_tostr(mrD.cpu_diff,  mrD.cpu_avrg, b, sizeof(b)));
-    wsprintf(&ss, id_imc, 0, 1, imcfreq_data_tostr(mrD.imc_diff, &mrD.imc_avrg, b, sizeof(b)));
-    wsprintf(&ss, id_pow, 0, 1,  cpupow_data_tostr(mrD.pow_diff,                b, sizeof(b)));
-    wsprintf(&ss, id_ram, 0, 1,  bwidth_data_tostr(mrD.ram_diff,  mrD.ram_avrg, b, sizeof(b)));
-    wsprintf(&ss, id_tmp, 0, 1,    temp_data_tostr(mrD.tmp_diff,  mrD.tmp_avrg, b, sizeof(b)));
-    wsprintf(&ss, id_gpu, 0, 1,     gpu_data_tostr(mrD.gpu_diff,                b, sizeof(b)));
-//    wprintf(&ss);
-
+    metrics_data_print(&mrD, 0);
     return EAR_SUCCESS;
 }
 

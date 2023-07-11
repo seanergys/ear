@@ -128,18 +128,18 @@ static state_t monitor_apis_init(void *whatever)
 
     management_init(&tp, EARD, NULL);
 
-    wprintf_init(&ss, 50, 180, 0, '#'); // 0 to 49, 0 to 179
-    wprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 14,  39}, &idc, "cpufreq"  );
-    wprintf_divide(&ss, (int[]) { 16,   2}, (int[]) { 29,  39}, &idr, "cpuprio"  );
-    wprintf_divide(&ss, (int[]) { 31,   2}, (int[]) { 44,  39}, &idp, "cpupow"   );
-    wprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 44,  77}, &idi, "imcfreq"  );
-    wprintf_divide(&ss, (int[]) {  1,  79}, (int[]) { 44, 115}, &idg, "gpu"      );
-    wprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &idl, "ear-logo" );
-    wprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 14, 177}, &ida, "api-table");
-    wprintf_divide(&ss, (int[]) { 16, 154}, (int[]) { 31, 177}, &idh, "topology" );
+    scprintf_init(&ss, 50, 180, 0, '#'); // 0 to 49, 0 to 179
+    scprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 14,  39}, &idc, "cpufreq"  );
+    scprintf_divide(&ss, (int[]) { 16,   2}, (int[]) { 29,  39}, &idr, "cpuprio"  );
+    scprintf_divide(&ss, (int[]) { 31,   2}, (int[]) { 44,  39}, &idp, "cpupow"   );
+    scprintf_divide(&ss, (int[]) {  1,  41}, (int[]) { 44,  77}, &idi, "imcfreq"  );
+    scprintf_divide(&ss, (int[]) {  1,  79}, (int[]) { 44, 115}, &idg, "gpu"      );
+    scprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &idl, "ear-logo" );
+    scprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 14, 177}, &ida, "api-table");
+    scprintf_divide(&ss, (int[]) { 16, 154}, (int[]) { 31, 177}, &idh, "topology" );
 
     topology_tostr(&tp, buffer, sizeof(buffer));
-    wsprintf(&ss, idh, 0, 0, buffer);
+    scsprintf(&ss, idh, 0, 0, buffer);
 
     tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
     tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
@@ -150,24 +150,24 @@ static state_t monitor_apis_init(void *whatever)
     tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.imc.layer, m.imc.api_str, m.imc.devs_count, m.imc.scope_str, m.imc.granularity_str);
     tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m.gpu.layer, m.gpu.api_str, m.gpu.devs_count, m.gpu.scope_str, m.gpu.granularity_str);
 
-    wsprintf(&ss, idl, 0, 0, special_ear_logo());
-    wsprintf(&ss, ida, 0, 0, buffer    );
+    scsprintf(&ss, idl, 0, 0, special_ear_logo());
+    scsprintf(&ss, ida, 0, 0, buffer    );
 
     mgt_cpufreq_data_tostr(m.cpu.list1, m.cpu.list1_count, buffer, sizeof(buffer));
-    wsprintf(&ss, idc, 0, 1, buffer);
+    scsprintf(&ss, idc, 0, 1, buffer);
 
     mgt_cpuprio_data_tostr(m.pri.list1, m.pri.list2, buffer, sizeof(buffer));
-    wsprintf(&ss, idr, 0, 1, buffer);
+    scsprintf(&ss, idr, 0, 1, buffer);
 
     mgt_cpupow_tdp_tostr(CPUPOW_SOCKET, m.pow.list1, buffer, sizeof(buffer));
-    wsprintf(&ss, idp, 0, 1, buffer);
+    scsprintf(&ss, idp, 0, 1, buffer);
 
     mgt_imcfreq_data_tostr(m.imc.list1, m.imc.list1_count, buffer, sizeof(buffer));
-    wsprintf(&ss, idi, 0, 1, buffer);
+    scsprintf(&ss, idi, 0, 1, buffer);
 
-    wsprintf(&ss, idg, 0, 1, mgt_gpu_features_tostr(buffer, sizeof(buffer)));
+    scsprintf(&ss, idg, 0, 1, mgt_gpu_features_tostr(buffer, sizeof(buffer)));
 
-    wprintf(&ss);
+    scprintf(&ss);
 
     return EAR_SUCCESS;
 }

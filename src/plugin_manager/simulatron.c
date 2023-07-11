@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <report/report.h>
+#include <common/states.h>
 #include <common/output/debug.h>
 #include <plugin_manager/plugin_manager.h>
 

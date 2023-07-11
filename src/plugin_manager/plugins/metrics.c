@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <common/output/debug.h>
@@ -32,16 +32,19 @@ declr_up_get_tag()
 
 declr_up_init()
 {
+    topology_init(&tp);
+    metrics_init(&m.mi, &tp, NO_EARD);
+    metrics_data_alloc(&m.mr, NULL, NULL);
+    metrics_read(&m.mr);
+    return EAR_SUCCESS;
 }
 
 declr_up_callback()
 {
-    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
     metrics_read(&m.mr);
 }
 
 declr_up_data_alloc()
 {
-    debug("'%s': allocated data '%p'", self_tag, &m);
     *data = &m;
 }

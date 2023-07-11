@@ -15,20 +15,6 @@
 * and COPYING.EPL files.
 */
 
-<<<<<<< HEAD:src/plugin_manager/plugins/metrics.h
-#ifndef UP_METRICS_H
-#define UP_METRICS_H
-
-#include <metrics/metrics.h>
-#include <plugin_manager/plugin_manager.h>
-
-typedef struct mets_s {
-    metrics_info_t mi;
-    metrics_read_t mr;
-} mets_t;
-
-#endif //UP_METRICS_H
-=======
 #ifndef APP_CLASSIFICATION_LIMITS
 #define APP_CLASSIFICATION_LIMITS
 
@@ -43,4 +29,3 @@ typedef struct mets_s {
 #define GBS_MEM_BOUND_DEF         100.0
 
 #endif // APP_CLASSIFICATION_LIMITS
->>>>>>> cddce1b4719ecd093db49fb073d5ada84b1ebc1d:src/common/types/classification_limits.h

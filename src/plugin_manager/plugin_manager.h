@@ -54,15 +54,7 @@
 #define declr_up_data_alloc() void    up_data_alloc (void **data)
 #define declr_up_data_tostr() char   *up_data_tostr ()
 
-#if 0
-typedef struct ups_conf_t {
-    topology_t      topo;
-    my_node_conf_t *node_conf;
-} ups_conf_t;
-//
-topology_init(&conf.topo);
-conf.node_conf = nc;
-#endif
+#define is_tag(t) (strcmp(t, tag) == 0)
 
 int plugin_manager_init(int argc, char *argv[]);
 

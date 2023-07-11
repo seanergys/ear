@@ -1,5 +1,5 @@
-CC     = /usr/bin/gcc -g
-SRCDIR = /home/jordi/Documents/git/ear_private/src
+CC     = /opt/rh/devtoolset-7/root/bin/gcc -g
+SRCDIR = /home/xjaneas/ngit/ear_private/src
 
 export CC
 export SRCDIR
@@ -15,10 +15,10 @@ libpm.a: plugin_manager.o
 	$(AR) rvs $@ $^
 
 earpmd: plugin_manager.c
-	$(CC) -DMAIN=1 -I $(SRCDIR) -fPIC -o $@ $^ ../common/libcommon.a -lm -lpthread -ldl
+	$(CC) -DMAIN=1 -I$(SRCDIR) -fPIC -o $@ $^ ../common/libcommon.a -lm -lpthread -ldl
 
 simulatron: simulatron.c
-	$(CC) -I $(SRCDIR) -fPIC -o $@ $^ libpm.a ../common/libcommon.a -lm -lpthread -ldl
+	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ libpm.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 

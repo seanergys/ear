@@ -48,6 +48,7 @@ typedef struct metrics_info_s {
 } metrics_info_t;
 
 typedef struct metrics_read_s {
+    ullong      samples;
 	timestamp_t time;
 	cpufreq_t  *cpu;
 	imcfreq_t  *imc;
@@ -62,7 +63,8 @@ typedef struct metrics_read_s {
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
-	double       time;  // Seconds
+    ullong       samples;
+	double       time;     // Seconds
 	ulong       *cpu_diff; // KHz (per device)
 	ulong        cpu_avrg; // KHz
 	ulong       *imc_diff; // KHz (per device)
@@ -95,5 +97,9 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
 void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
 void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS);
+
+void metrics_data_print(metrics_diff_t *mrD, int fd);
+
+char *metrics_data_tostr(metrics_diff_t *mrD);
 
 #endif //METRICS_H

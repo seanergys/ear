@@ -1,7 +1,6 @@
 CFLAGS        = -fPIC -O3 -I$(SRCDIR)
 CFLAGS_AVX2   = $(CFLAGS) -mavx2
 CFLAGS_AVX512 = $(CFLAGS) -march=skylake-avx512
-CFLAGS_AVX512 = $(CFLAGS) -march=icelake-server
 
 ######## FILES
 

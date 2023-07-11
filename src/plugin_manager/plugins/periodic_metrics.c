@@ -20,16 +20,19 @@
 #include <string.h>
 #include <report/report.h>
 #include <common/output/debug.h>
+#include <plugin_manager/plugins/config.h>
 #include <plugin_manager/plugins/metrics.h>
 
+static cchar             *self_tag = "periodic-metrics";
+// Metrics
 static periodic_metric_t  cs; // Current sample
-static my_node_conf_t    *nc; // Node conf
 static metrics_read_t     mr1;
 static metrics_read_t     mr2;
 static metrics_diff_t     mrD;
-static cchar             *self_tag = "periodic-metrics";
-// Reporting things
-static report_id_t       *rid;
+// Reporting
+static conf_t            *conf;
+static report_id_t        rid;
+static uint               can_report;
 static ulong              mpi;
 static ullong             nominal_khz = 5000000;
 
@@ -46,13 +49,33 @@ declr_up_init()
 
 declr_up_callback()
 {
+    //debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
     mets_t *mets = (mets_t *) data;
-    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
-    if (strcmp(tag, "metrics") == 0) {
-        metrics_data_copy(&mr2, &mets->mr);
+
+    if (is_tag("configuration")) {
+        conf = (conf_t *) data;
+        // Loading report manager
+        if (state_ok(report_load(conf->cluster.install.dir_plug, conf->cluster.db_manager.plugins))){
+            report_create_id(&rid, 0, 0, 0);
+            // Initializing report manager
+            if (state_ok(report_init(&rid, &conf->cluster))) {
+                can_report = 1;
+            }
+        }
+        debug("reporting: %d", can_report);
     }
-    if (strcmp(tag, "periodic-metrics") == 0) {
+    if (is_tag("metrics")) {
+        if (mets->mr.samples > 0) {
+            metrics_data_copy(&mr2, &mets->mr);
+        } else {
+            metrics_data_copy(&mr1, &mets->mr);
+        }
+    }
+    if (is_tag("periodic-metrics")) {
         metrics_data_diff(&mr2, &mr1, &mrD);
+        if (mrD.samples == 0) {
+            goto pass;
+        }
         // Fill the current sample
         cs.start_time  = mr1.time.tv_sec;
         cs.end_time    = mr2.time.tv_sec;
@@ -61,21 +84,15 @@ declr_up_callback()
         cs.DRAM_energy = mrD.pow_dram;
         cs.PCK_energy  = mrD.pow_pack;
         cs.DC_energy   = mrD.nod_avrg;
-        // Corrections SNMP+PDU
-#if 0
-        if (nc != NULL && cs.DC_energy > nc->max_error_power){
-            cs.DC_energy = nc->max_sig_power;
+        cs.temp        = 1337; // Leet, my identifier.
+        debug("%s.%lu.%lu.%llu: %lu J, %lu KHz", cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.avg_f);
+        // Corrections SNMP+PDU (power monitor thing)
+        if (conf != NULL && conf->node != NULL && cs.DC_energy > conf->node->max_error_power){
+            // cs.DC_energy = conf->node->max_sig_power;
         }
-#endif
-        #if SHOW_DEBUGS
-        periodic_metrict_print_channel(stderr, &cs);
-        #endif
-        // Copying mr2 data in mr1
-        metrics_data_copy(&mr1, &mr2);
         // Reporting and alert-system
-#if 0
-        if (rid != NULL) {
-            if (nc != NULL && cs.temp > nc->max_temp) {
+        if (can_report) {
+            if (conf->node != NULL && cs.temp > conf->node->max_temp) {
                 // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, TEMP_ERROR, (llong) cs.temp);
             }
             if ((cs.DRAM_energy + cs.PCK_energy) == 0) {
@@ -84,20 +101,17 @@ declr_up_callback()
             if ((cs.avg_f == 0) || ((cs.avg_f > nominal_khz) && (mpi))) {
                 // log_report_eard_rt_error(&rid, cs.job_id, cs.step_id, FREQ_ERROR, (llong) cs.avg_f);
             }
-            report_periodic_metrics(rid, &cs, 1); // Un plugin de report que haga un print para probar
+            report_periodic_metrics(&rid, &cs, 1); // Un plugin de report que haga un print para probar
         }
-#endif
+        metrics_data_copy(&mr1, &mr2);
     }
+
+pass:
+    ; // Passing
 }
 
 declr_up_post()
 {
-    if (strcmp(msg, "node_conf") == 0) {
-        nc = (my_node_conf_t *) data;
-    }
-    if (strcmp(msg, "report_id") == 0) {
-        rid = (report_id_t *) data;
-    }
     if (strcmp(msg, "new_job") == 0) {
         new_job_for_period(&cs, ((ulong *) data)[0], ((ulong *) data)[1]);
         debug("'%s': posted with message '%s' jid '%lu.%lu'", self_tag, msg, cs.job_id, cs.step_id);
@@ -112,3 +126,10 @@ declr_up_data_alloc()
 {
     *data = &cs;
 }
+
+#if 1
+declr_up_data_tostr()
+{
+    return metrics_data_tostr(&mrD);
+}
+#endif

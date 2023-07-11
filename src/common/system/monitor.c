@@ -71,7 +71,9 @@ static void goto_interrupt()
     if (sigaction(SIGNAL, &action_new, &action_old) < 0) {
         error("SIGACTION1 on signal SIGCONT (%s)", strerror(errno));
     }
-    pthread_kill(thread, SIGNAL);
+    if (is_running) {
+        pthread_kill(thread, SIGNAL);
+    }
 }
 
 static void goto_sleep(int sleep_units, int sleep_reason, int *passed_units, int *alignment)
@@ -260,7 +262,7 @@ state_t monitor_init()
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0) {
         pthread_mutex_unlock(&lock_gen);
-        is_running =0;
+        is_running = 0;
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
 	pthread_mutex_unlock(&lock_gen);

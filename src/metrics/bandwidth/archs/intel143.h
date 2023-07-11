@@ -15,38 +15,6 @@
 * and COPYING.EPL files.
 */
 
-<<<<<<< HEAD:src/plugin_manager/plugins/metrics.c
-#define SHOW_DEBUGS 1
-
-#include <stdio.h>
-#include <common/output/debug.h>
-#include <plugin_manager/plugins/metrics.h>
-
-static topology_t tp;
-static mets_t     m;
-static cchar     *self_tag = "metrics";
-
-declr_up_get_tag()
-{
-    *tag = self_tag;
-}
-
-declr_up_init()
-{
-}
-
-declr_up_callback()
-{
-    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
-    metrics_read(&m.mr);
-}
-
-declr_up_data_alloc()
-{
-    debug("'%s': allocated data '%p'", self_tag, &m);
-    *data = &m;
-}
-=======
 #ifndef METRICS_BANDWIDTH_INTEL143_H
 #define METRICS_BANDWIDTH_INTEL143_H
 
@@ -67,4 +35,3 @@ state_t bwidth_intel143_get_granularity(ctx_t *c, uint *granularity);
 state_t bwidth_intel143_read(ctx_t *c, bwidth_t *b);
 
 #endif
->>>>>>> cddce1b4719ecd093db49fb073d5ada84b1ebc1d:src/metrics/bandwidth/archs/intel143.h

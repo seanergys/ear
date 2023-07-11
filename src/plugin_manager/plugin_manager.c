@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -34,7 +34,8 @@ static const char *names[] = {
     "up_data_alloc",
     "up_data_tostr",
 };
-#define N 5
+
+#define N 6
 
 typedef struct plugin_manager_ops_s {
     void    (*get_tag)    (cchar **tag);
@@ -51,6 +52,8 @@ typedef struct plugin_s {
     plugin_ops_t ops;
     ullong       time_lapse; //In ms
     timestamp_t  time_origin;
+    uint         one_time;
+    uint         no_more;
     void        *data;
     uint         data_count;
     uint         init;
@@ -61,31 +64,32 @@ typedef struct plugins_s {
     uint      count;
 } plugins_t;
 
-static plugins_t      p;
-//static ups_conf_t conf;
+static plugins_t p;
 
 static state_t plugins_init(void *whatever)
 {
     int i, j, k;
     for (i = 0; i < p.count; ++i) {
-        debug("PLUG%d init: %s, called every %llu seconds", i,
-            p.plugins[i].path, p.plugins[i].time_lapse);
+        debug("PLUG%d %s: open, called every %llu seconds", i, p.plugins[i].path, p.plugins[i].time_lapse);
         if (state_fail(plug_open(p.plugins[i].path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
-            debug("loading failed: %s", state_msg)
+            fprintf(stderr, "%s open failed: %s\n", p.plugins[i].path, state_msg);
+            continue;
         }
         if (p.plugins[i].ops.init != NULL) {
+            debug("PLUG%d %s: init", i, p.plugins[i].path);
             if (state_fail(p.plugins[i].ops.init())) {
+                fprintf(stderr, "%s init failed: %s\n", p.plugins[i].path, state_msg);
                 continue;
             }
             p.plugins[i].init = 1;
         }
         if (p.plugins[i].ops.get_tag != NULL) {
             p.plugins[i].ops.get_tag(&p.plugins[i].tag);
-            debug("PLUG%d init: %s, tag %s", i,
-                p.plugins[i].path, (char *) p.plugins[i].tag);
+            debug("PLUG%d %s: get_tag returned, tag %s", i, p.plugins[i].path, (char *) p.plugins[i].tag);
         }
         if (p.plugins[i].ops.data_alloc != NULL) {
             p.plugins[i].ops.data_alloc(&p.plugins[i].data);
+            debug("PLUG%d %s: data_alloc returned, data %p", i, p.plugins[i].path, p.plugins[i].data);
         }
     }
     return EAR_SUCCESS;
@@ -102,34 +106,47 @@ static void time_and_callback(int i)
     if (i == p.count) {
         return;
     }
+    
     // Time calculation
     timestamp_get(&time_now);
     time_passed = timestamp_diff(&time_now, &p.plugins[i].time_origin, TIME_MSECS);
     time_isup   = time_passed >= p.plugins[i].time_lapse;
 
     if (time_isup) {
-        debug("PLUG%d callback: %s, called every %llu ms, with allocated data %p", i,
-                p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].data);
         p.plugins[i].time_origin = time_now;
     }
-    if (time_isup && p.plugins[i].ops.callback != NULL) {
-        // If the plugin has data allocated to work with
-        if (p.plugins[i].data != NULL) {
+    // Switched off
+    if (p.plugins[i].no_more) {
+        time_isup = 0;
+    }
+    // One timers
+    if (p.plugins[i].one_time) {
+        p.plugins[i].one_time = 0;
+        p.plugins[i].no_more = 1;
+        time_isup = 1;
+    }
+    debug("PLUG%d time's up: %d, called every %llu ms, data %p", i,
+        time_isup, p.plugins[i].time_lapse, p.plugins[i].data);
+    // If the plugin has data allocated to work with
+    if (time_isup && p.plugins[i].data != NULL) {
+        if (p.plugins[i].ops.callback != NULL) {
+            debug("PLUG%d: callback calling", i);
             p.plugins[i].ops.callback(p.plugins[i].tag, p.plugins[i].data);
-            // Feeding others with own data
-            for (j = 0; j < p.count; ++j) {
-                if (j == i) {
-                    continue;
-                }
-                // If pluginI has data valid for pluginJ
-                if (p.plugins[j].ops.callback != NULL && strstr(p.plugins[j].tag, p.plugins[i].tag)) {
-                    p.plugins[j].ops.callback(p.plugins[i].tag, p.plugins[i].data);
-                }
+        }
+        // Feeding others with own data
+        for (j = 0; j < p.count; ++j) {
+            if (j == i) {
+                continue;
+            }
+            // If pluginI has data valid for pluginJ
+            if (p.plugins[j].ops.callback != NULL) { //&& strstr(p.plugins[j].tag, p.plugins[i].tag)
+                p.plugins[j].ops.callback(p.plugins[i].tag, p.plugins[i].data);
             }
         }
     }
     time_and_callback(i+1);
     if (time_isup && p.plugins[i].ops.data_tostr != NULL) {
+        debug("PLUG%d: printing", i);
         //printf("\e[1;1H\e[2J");
         printf("%s\n", p.plugins[i].ops.data_tostr(p.plugins[i].data));
     }
@@ -180,8 +197,10 @@ static int plugin_manager_configure(int argc, char *argv[])
         if ((c = strchr(list[i], ':')) != NULL) {
             c[0] = '\0';
             p.plugins[i].time_lapse = (ullong) atoi(&c[1]);
-        } else {
-            p.plugins[i].time_lapse = 1LLU;
+        }
+        if (p.plugins[i].time_lapse == 0LLU) {
+            p.plugins[i].time_lapse = 100000LLU;
+            p.plugins[i].one_time   = 1;
         }
         sprintf(p.plugins[i].path, "%s", list[i]);
     }
