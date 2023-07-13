@@ -18,4 +18,6 @@
 #ifndef UP_PERIODIC_METRICS_H
 #define UP_PERIODIC_METRICS_H
 
+#include <plugin_manager/plugin_manager.h>
+
 #endif //UP_PERIODIC_METRICS_H

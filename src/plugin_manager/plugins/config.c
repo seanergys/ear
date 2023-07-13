@@ -23,7 +23,7 @@
 
 static topology_t tp;
 static cchar     *self_tag = "configuration";
-static conf_t   conf;
+static conf_t     conf;
 
 declr_up_get_tag()
 {
@@ -51,10 +51,6 @@ declr_up_init()
         }
     }
     debug("database: %s", conf.cluster.database.database);
-    return EAR_SUCCESS;
-}
-
-declr_up_data_alloc()
-{
     *data = &conf;
+    return EAR_SUCCESS;
 }

@@ -32,19 +32,15 @@ static const char *names[] = {
     "up_init",
     "up_callback",
     "up_post",
-    "up_data_alloc",
-    "up_data_tostr",
 };
 
-#define N 6
+#define N 4
 
 typedef struct plugin_manager_ops_s {
     void    (*get_tag)    (cchar **tag);
-    state_t (*init)       ();
-    state_t (*callback)   (cchar *tag, void *data);
-    void    (*post)       (cchar *msg, void *data);
-    void    (*data_alloc) (void **data);
-    char   *(*data_tostr) (void *data);
+    state_t (*init)       (void **data);
+    char   *(*callback)   (cchar *tag, void *data);
+    char   *(*post)       (cchar *msg, void *data);
 } plugin_ops_t;
 
 typedef struct plugin_s {
@@ -80,7 +76,7 @@ static state_t plugins_init(void *whatever)
         }
         if (p.plugins[i].ops.init != NULL) {
             debug("PLUG%d %s: init", i, p.plugins[i].path);
-            if (state_fail(p.plugins[i].ops.init())) {
+            if (state_fail(p.plugins[i].ops.init(&p.plugins[i].data))) {
                 fprintf(stderr, "%s init failed: %s\n", p.plugins[i].path, state_msg);
                 continue;
             }
@@ -90,12 +86,22 @@ static state_t plugins_init(void *whatever)
             p.plugins[i].ops.get_tag(&p.plugins[i].tag);
             debug("PLUG%d %s: get_tag returned, tag %s", i, p.plugins[i].path, (char *) p.plugins[i].tag);
         }
-        if (p.plugins[i].ops.data_alloc != NULL) {
-            p.plugins[i].ops.data_alloc(&p.plugins[i].data);
-            debug("PLUG%d %s: data_alloc returned, data %p", i, p.plugins[i].path, p.plugins[i].data);
-        }
     }
     return EAR_SUCCESS;
+}
+
+static void format_output()
+{
+    time_t tm = time(NULL);
+    sprintf(date, "%s", ctime(&tm));
+    date[strlen(date)-1] = '\0';
+}
+
+static void print_output(char *plug, cchar *tag, char *output)
+{
+    if (output != NULL) {
+        printf("[%s, %s, %s] %s\n", date, plug, tag, output);
+    }
 }
 
 static void time_and_callback(int i)
@@ -103,6 +109,7 @@ static void time_and_callback(int i)
     timestamp_t time_now;
     ullong time_passed;
     uint time_isup;
+    char *output;
     int j;
 
     // Caso base
@@ -129,11 +136,12 @@ static void time_and_callback(int i)
     }
     debug("PLUG%d time's up: %d, called every %llu ms, data %p", i,
         time_isup, p.plugins[i].time_lapse, p.plugins[i].data);
+    #define PRINT(f) print_output(p.plugins[i].name, p.plugins[i].tag, f); 
     // If the plugin has data allocated to work with
     if (time_isup && p.plugins[i].data != NULL) {
         if (p.plugins[i].ops.callback != NULL) {
-            debug("PLUG%d: callback calling", i);
-            p.plugins[i].ops.callback(p.plugins[i].tag, p.plugins[i].data);
+            debug("PLUG%d, %s: callback calling itself with tag %s", i, p.plugins[i].name, p.plugins[i].tag);
+            PRINT(p.plugins[i].ops.callback(p.plugins[i].tag, p.plugins[i].data));
         }
         // Feeding others with own data
         for (j = 0; j < p.count; ++j) {
@@ -142,58 +150,32 @@ static void time_and_callback(int i)
             }
             // If pluginI has data valid for pluginJ
             if (p.plugins[j].ops.callback != NULL) { //&& strstr(p.plugins[j].tag, p.plugins[i].tag)
-                p.plugins[j].ops.callback(p.plugins[i].tag, p.plugins[i].data);
+                debug("PLUG%d, %s: callback calling plugin %s with tag %s", i, p.plugins[i].name, p.plugins[j].name, p.plugins[i].tag);
+                PRINT(p.plugins[j].ops.callback(p.plugins[i].tag, p.plugins[i].data));
             }
         }
     }
     time_and_callback(i+1);
-    if (time_isup && p.plugins[i].ops.data_tostr != NULL) {
-        printf("[%s, %s] %s\n", date, p.plugins[i].name, p.plugins[i].ops.data_tostr(p.plugins[i].data));
-    }
-}
-
-static void format_date()
-{
-    time_t tm = time(NULL);
-    sprintf(date, "%s", ctime(&tm));
-    date[strlen(date)-1] = '\0';
 }
 
 static state_t plugins_callback(void *whatever)
 {
-    format_date();
+    format_output();
     time_and_callback(0);
 }
 
-static int plugin_manager_configure(int argc, char *argv[])
+static void plugin_manager_configure_paths(char *plugins, char *ppaths)
 {
-    char buffer[8192];
-    char *buffer_p = buffer;
+    char *p = plugins;
     uint list_count;
     char **list;
-    uint i, j;
-    char *c;
-
-    if (argc == 1 || args_get(argc, argv, "help", buffer)) {
-        verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
-        verbose(0, "Options:");
-  //      verbose(0, "    --eard       Connect to EAR Daemon.");
-        verbose(0, "    --plugins    List of separated plugins to load.");
-        verbose(0, "    --help       If you see it you already typed --help.");
-        return 0;
-    }
-    //if (args_get(argc, argv, "eard", buffer)) {
-        //eards_connection();
-    //}
-    if (!args_get(argc, argv, "plugins", buffer)) {
-        return 0;
-    }
+    
     // Get list of plugins to load and times
-    debug("plugin string: %s", buffer);
-    if (strchr(buffer, ',')) {
-        strtoa(buffer, ',', &list, &list_count);
+    debug("plugin string: %s", plugins);
+    if (strchr(plugins, ',')) {
+        strtoa(plugins, ',', &list, &list_count);
     } else {
-        list = &buffer_p;
+        list = &p;
         list_count = 1;
     }
     // Allocating p
@@ -220,9 +202,34 @@ static int plugin_manager_configure(int argc, char *argv[])
         }
     }
     //free(*list);
-    #if SHOW_DEBUGS
-    #endif
-    return 1;
+}
+
+static int plugin_manager_configure(int argc, char *argv[])
+{
+    char buffer_plugins[8192];
+    char buffer_ppaths[4096];
+    uint i, j;
+    char *c;
+
+    if (argc == 1 || args_get(argc, argv, "help", buffer)) {
+        verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
+        verbose(0, "Options:");
+  //      verbose(0, "    --eard       Connect to EAR Daemon.");
+        verbose(0, "    --plugins    List of separated plugins to load.");
+        verbose(0, "    --path       Add an priority path to search plugins.");
+        verbose(0, "    --help       If you see it you already typed --help.");
+        return 0;
+    }
+    //if (args_get(argc, argv, "eard", buffer)) {
+        //eards_connection();
+    //}
+    if (!args_get(argc, argv, "plugins", buffer_plugins)) {
+        return 0;
+    }
+    if (args_get(argc, argv, "path", buffer_ppaths)) {
+        return plugin_manager_configure_paths(buffer_plugins, buffer_ppaths);
+    }
+    return plugin_manager_configure_paths(buffer_plugins, NULL);
 }
 
 void plugin_mananger_post(cchar *msg, void *data)

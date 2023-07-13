@@ -38,6 +38,10 @@ static int is(char *buf, char *string)
     return strcmp(buf, string) == 0;
 }
 
+// simulatron -> edcmon (data_center_monitor)
+// plugin_manager -> eplugins_*
+// SIGTERM
+// tag = dependencia, sin lib
 int main(int argc, char *argv[])
 {
     int result = plugin_manager_init(argc, argv);

@@ -24,6 +24,7 @@
 
 static cchar *self_tag = "dummy";
 static ullong content = 0LLU;
+static char buffer[128];
 
 declr_up_get_tag ()
 {
@@ -33,21 +34,18 @@ declr_up_get_tag ()
 declr_up_init()
 {
     fprintf(stderr, "dummy init\n");
+    *data = &content;
     return EAR_SUCCESS;
 }
 
 declr_up_callback()
 {
-    fprintf(stderr, "dummy callback: received tag %s\n", tag);
+    sprintf(buffer, "dummy callback: received tag %s\n", tag);
+    return buffer;
 }
 
 declr_up_post()
 {
-    fprintf(stderr, "dummy post\n");
-}
-
-declr_up_data_alloc()
-{
-    fprintf(stderr, "dummy data alloc\n");
-    *data = &content;
+    sprintf(buffer, "dummy post\n");
+    return buffer;
 }

@@ -36,7 +36,7 @@ static uint               can_report;
 static ulong              mpi;
 static ullong             nominal_khz = 5000000;
 
-declr_up_get_tag ()
+declr_up_get_tag()
 {
     *tag = self_tag;
 }
@@ -45,9 +45,11 @@ declr_up_init()
 {
     init_periodic_metric(&cs); //eard_power_monitoring()
     metrics_data_alloc(&mr1, &mr2, &mrD);
+    *data = &cs;
+    return EAR_SUCCESS;
 }
 
-void received_configuration(void *data)
+char *received_configuration(void *data)
 {
     conf = (conf_t *) data;
     // Loading report manager
@@ -59,9 +61,10 @@ void received_configuration(void *data)
         }
     }
     debug("reporting: %d", can_report);
+    return NULL;
 }
 
-void received_metrics(void *data)
+char *received_metrics(void *data)
 {
     mets_t *mets = (mets_t *) data;
     if (mr1.samples > 0) {
@@ -69,12 +72,14 @@ void received_metrics(void *data)
     } else {
         metrics_data_copy(&mr1, &mets->mr);
     }
+    return NULL;
 }
 
-void received_periodic_metrics(void *data)
+char *received_periodic_metrics(void *data)
 {
+    static char buffer[512];
     if (mr2.samples == 0) {
-        return;
+        return NULL;
     }
     metrics_data_diff(&mr2, &mr1, &mrD);
     // Fill the current sample
@@ -106,7 +111,9 @@ void received_periodic_metrics(void *data)
     }
     metrics_data_copy(&mr1, &mr2);
 pass:
-    ; // Passing
+    sprintf(buffer, "%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
+        cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
+    return buffer;
 }
 
 declr_up_callback()
@@ -115,6 +122,7 @@ declr_up_callback()
     if (is_tag("metrics")) return received_metrics(data);
     if (is_tag("configuration")) return received_configuration(data);
     if (is_tag("periodic-metrics")) return received_periodic_metrics(data);
+    return NULL;
 }
 
 declr_up_post()
@@ -127,20 +135,5 @@ declr_up_post()
         end_job_for_period(&cs);
         debug("'%s': posted with message '%s' jid '%lu.%lu'", self_tag, msg, cs.job_id, cs.step_id);
     }
+    return NULL;
 }
-
-declr_up_data_alloc()
-{
-    *data = &cs;
-}
-
-#if 1
-declr_up_data_tostr()
-{
-    static char buffer[256];
-    sprintf(buffer, "%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
-        cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
-    return buffer;
-    // return metrics_data_tostr(&mrD);
-}
-#endif
