@@ -271,6 +271,13 @@ state_t monitor_init()
 	return EAR_SUCCESS;
 }
 
+void monitor_wait()
+{
+    if (!pthread_equal(pthread_self(), thread)) {
+        pthread_join(thread, NULL);
+    }
+}
+
 state_t monitor_dispose()
 {
 	if (!is_running) return_msg(EAR_ERROR, "not initialized");
@@ -278,8 +285,8 @@ state_t monitor_dispose()
     debug("disposing...");
 	is_running = 0;
     goto_interrupt();
-	pthread_join(thread, NULL);
-	pthread_mutex_unlock(&lock_gen);
+    monitor_wait();
+    pthread_mutex_unlock(&lock_gen);
 	return EAR_SUCCESS;
 }
 

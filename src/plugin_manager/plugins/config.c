@@ -28,6 +28,7 @@ static conf_t     conf;
 declr_up_get_tag()
 {
     *tag = self_tag;
+    *tags_deps = NULL;
 }
 
 declr_up_init()

@@ -47,7 +47,7 @@
 // header.
 
 // Universal Plugin function declarations
-#define declr_up_get_tag()    void    up_get_tag    (cchar **tag)
+#define declr_up_get_tag()    void    up_get_tag    (cchar **tag, cchar **tags_deps)
 #define declr_up_init()       state_t up_init       (void **data)
 #define declr_up_callback()   char   *up_callback   (cchar *tag, void *data) //periodic_action
 #define declr_up_post()       char   *up_post       (cchar *msg, void *data) //post_data
@@ -57,5 +57,7 @@
 int plugin_manager_init(int argc, char *argv[]);
 
 void plugin_mananger_post(cchar *msg, void *data);
+
+void plugin_manager_wait();
 
 #endif //PLUGIN_MANAGER_H

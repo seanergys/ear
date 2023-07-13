@@ -1,5 +1,7 @@
 CC     = /opt/rh/devtoolset-7/root/bin/gcc -g
+CC     = gcc -g
 SRCDIR = /home/xjaneas/ngit/ear_private/src
+SRCDIR = /home/jordi/Documents/git/ear_private/src
 
 export CC
 export SRCDIR

@@ -44,8 +44,9 @@ static int is(char *buf, char *string)
 // tag = dependencia, sin lib
 int main(int argc, char *argv[])
 {
-    int result = plugin_manager_init(argc, argv);
-
+    plugin_manager_init(argc, argv);
+    plugin_manager_wait();
+    #if 0
     while (1) {
         scanf("%s", command);
         if (is(command, "new_job")) {
@@ -55,14 +56,8 @@ int main(int argc, char *argv[])
             plugin_mananger_post("new_job", (void *) ids);
         } else if (is(command, "end_job")) {
             plugin_mananger_post("end_job", NULL);
-        } else if (is(command, "node_conf")) {
-            scanf("%s", option);
-            nc.max_temp = (double) atoi(option);
-            plugin_mananger_post("node_conf", &nc);
-        } else if (is(command, "report_id")) {
-            rid.pid = getpid();
-            plugin_mananger_post("report_id", &rid);
         }
     }
+    #endif
     return 0;
 }

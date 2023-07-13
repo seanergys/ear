@@ -49,11 +49,12 @@ int appenv(const char *var, const char *string)
 
 char **strtoa(const char *string, char separator, char ***rows, uint *rows_count)
 {
-    uint str_length = 0;
-    uint char_count = 0;
-    char *pstring;
+    uint   str_length = 0;
+    uint   char_count = 0;
+    char  *pstring;
+    uint   prows_count;
     char **prows;
-    uint i;
+    uint   i;
 
     if (string == NULL) {
         return NULL;
@@ -65,29 +66,29 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     pstring = calloc(str_length+1, sizeof(char));
     strcpy(pstring, string);
     // Counting
-    for (*rows_count = i = 0; i < strlen(pstring)+1; ++i) {
+    for (prows_count = i = 0; i < strlen(pstring)+1; ++i) {
         debug("%c", pstring[i]);
         if (pstring[i] == separator || pstring[i] == '\0') {
-            *rows_count += (char_count > 0);
+            prows_count += (char_count > 0);
             char_count = 0;
         } else {
             char_count += 1;
         }
     }
-    debug("Rows detected %d", *rows_count);
-    if (rows_count == 0) {
+    debug("Rows detected %d", prows_count);
+    if (prows_count == 0) {
         return NULL;
     }
-    // Allocating space for the rows
-    prows = calloc(*rows_count, sizeof(char *));
+    // Allocating space for the rows (plus additional NULL terminated)
+    prows = calloc(prows_count+1, sizeof(char *));
     // Setting new references
-    for (*rows_count = i = 0; i < str_length+1; ++i) {
+    for (prows_count = i = 0; i < str_length+1; ++i) {
         if (pstring[i] == separator || pstring[i] == '\0') {
             if (char_count > 0) {
-                prows[*rows_count] = &pstring[i-char_count];
-                debug("R%d: %s", *rows_count, prows[*rows_count]);
+                prows[prows_count] = &pstring[i-char_count];
+                debug("R%d: %s", prows_count, prows[prows_count]);
                 // Passing to next row
-                *rows_count += 1;
+                prows_count += 1;
             }
             // Setting end char of the row
             pstring[i] = '\0';
@@ -98,6 +99,9 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     }
     if (rows != NULL) {
         *rows = prows;
+    }
+    if (rows_count != NULL) {
+        *rows_count = prows_count;
     }
     return prows;
 }

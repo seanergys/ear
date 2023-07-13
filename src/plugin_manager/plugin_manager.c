@@ -23,6 +23,7 @@
 #include <common/system/monitor.h>
 #include <common/utils/strscreen.h>
 #include <common/system/symplug.h>
+#include <common/config/config_env.h>
 //#include <daemon/local_api/eard_api.h>
 //#include <metrics/metrics.h>
 #include <plugin_manager/plugin_manager.h>
@@ -37,24 +38,25 @@ static const char *names[] = {
 #define N 4
 
 typedef struct plugin_manager_ops_s {
-    void    (*get_tag)    (cchar **tag);
+    void    (*get_tag)    (cchar **tag, cchar **tags_deps);
     state_t (*init)       (void **data);
     char   *(*callback)   (cchar *tag, void *data);
     char   *(*post)       (cchar *msg, void *data);
 } plugin_ops_t;
 
 typedef struct plugin_s {
-    char         path[PATH_MAX];
-    char        *name;
-    cchar       *tag;
-    plugin_ops_t ops;
-    ullong       time_lapse; //In ms
-    timestamp_t  time_origin;
-    uint         one_time;
-    uint         no_more;
-    void        *data;
-    uint         data_count;
-    uint         init;
+    char          path[4096];
+    char         *name;
+    cchar        *tag;
+    cchar        *tags_deps;
+    plugin_ops_t  ops;
+    ullong        time_lapse; //In ms
+    timestamp_t   time_origin;
+    uint          one_time;
+    void         *data;
+    uint          data_count;
+    uint          is_open;
+    uint          is_init;
 } plugin_t;
 
 typedef struct plugins_s {
@@ -62,17 +64,63 @@ typedef struct plugins_s {
     uint      count;
 } plugins_t;
 
-static plugins_t p;
-static char date[128];
+static plugins_t   p;
+static char      **priority_paths;
+static char        date[128];
+
+static state_t plugins_open_so(int i)
+{
+    char new_path[8192];
+    char *e = NULL;
+    int j = 0;
+
+    // Priority paths
+    while(priority_paths != NULL && priority_paths[j] != NULL) {
+        sprintf(new_path, "%s/%s", priority_paths[j], p.plugins[i].path);
+        if (state_ok(plug_open(new_path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
+            verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
+            return EAR_SUCCESS;
+        }
+        verbose(0, "[Configuration] Trying to open: %s... FAILED", new_path);
+        ++j;
+    }
+    // Written paths
+    if (state_ok(plug_open(p.plugins[i].path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
+        verbose(0, "[Configuration] Trying to open: %s... OK", p.plugins[i].path);
+        return EAR_SUCCESS;
+    }
+    verbose(0, "[Configuration] Trying to open: %s... FAILED", p.plugins[i].path);
+    // Environment paths
+    if((e = ear_getenv(ENV_PATH_EAR)) != NULL) {
+        sprintf(new_path, "%s/%s", e, p.plugins[i].path);
+        if (state_ok(plug_open(new_path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
+            verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
+            return EAR_SUCCESS;
+        }
+        verbose(0, "[Configuration] Trying to open: %s... FAILED", new_path);
+    }
+    return EAR_ERROR;
+}
 
 static state_t plugins_init(void *whatever)
 {
-    int i, j, k;
+    int init_count = 0;
+    int i;
+
     for (i = 0; i < p.count; ++i) {
-        debug("PLUG%d %s: open, called every %llu seconds", i, p.plugins[i].path, p.plugins[i].time_lapse);
-        if (state_fail(plug_open(p.plugins[i].path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
-            fprintf(stderr, "%s open failed: %s\n", p.plugins[i].path, state_msg);
+        if (state_fail(plugins_open_so(i))) {
             continue;
+        }
+        p.plugins[i].is_open = 1;
+    }
+    for (i = 0; i < p.count; ++i) {
+        if(!p.plugins[i].is_open) {
+            continue;
+        }
+        if (p.plugins[i].ops.get_tag != NULL) {
+            p.plugins[i].ops.get_tag(&p.plugins[i].tag, &p.plugins[i].tags_deps);
+            verbose(0, "[DEBUG] %s after get_tag(): tag '%s', tags_deps '%s'",
+                    p.plugins[i].path, (char *) p.plugins[i].tag, (char *) p.plugins[i].tags_deps);
         }
         if (p.plugins[i].ops.init != NULL) {
             debug("PLUG%d %s: init", i, p.plugins[i].path);
@@ -80,12 +128,13 @@ static state_t plugins_init(void *whatever)
                 fprintf(stderr, "%s init failed: %s\n", p.plugins[i].path, state_msg);
                 continue;
             }
-            p.plugins[i].init = 1;
+            p.plugins[i].is_init = 1;
+            ++init_count;
         }
-        if (p.plugins[i].ops.get_tag != NULL) {
-            p.plugins[i].ops.get_tag(&p.plugins[i].tag);
-            debug("PLUG%d %s: get_tag returned, tag %s", i, p.plugins[i].path, (char *) p.plugins[i].tag);
-        }
+    }
+    if (init_count == 0) {
+        verbose(0, "[ERROR] No plugins to load.")
+        monitor_dispose();
     }
     return EAR_SUCCESS;
 }
@@ -112,9 +161,13 @@ static void time_and_callback(int i)
     char *output;
     int j;
 
-    // Caso base
+    // Base case
     if (i == p.count) {
         return;
+    }
+    // Not initialized case
+    if (!p.plugins[i].is_init) {
+        goto next;
     }
     // Time calculation
     timestamp_get(&time_now);
@@ -124,14 +177,9 @@ static void time_and_callback(int i)
     if (time_isup) {
         p.plugins[i].time_origin = time_now;
     }
-    // Switched off
-    if (p.plugins[i].no_more) {
-        time_isup = 0;
-    }
     // One timers
     if (p.plugins[i].one_time) {
-        p.plugins[i].one_time = 0;
-        p.plugins[i].no_more = 1;
+        p.plugins[i].is_init = 0;
         time_isup = 1;
     }
     debug("PLUG%d time's up: %d, called every %llu ms, data %p", i,
@@ -155,6 +203,7 @@ static void time_and_callback(int i)
             }
         }
     }
+next:
     time_and_callback(i+1);
 }
 
@@ -164,19 +213,38 @@ static state_t plugins_callback(void *whatever)
     time_and_callback(0);
 }
 
-static void plugin_manager_configure_paths(char *plugins, char *ppaths)
+static int plugin_manager_configure(int argc, char *argv[])
 {
-    char *p = plugins;
+    char buffer[8192];
+    char *buffer_p = buffer;
     uint list_count;
     char **list;
-    
+    uint i, j;
+    char *c;
+
+    if (argc == 1 || args_get(argc, argv, "help", buffer)) {
+        verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
+        verbose(0, "Options:");
+        //      verbose(0, "    --eard       Connect to EAR Daemon.");
+        verbose(0, "    --plugins    List of comma separated plugins to load.");
+        verbose(0, "    --paths      List of comma separated priority paths to search plugins.");
+        verbose(0, "    --help       If you see it you already typed --help.");
+        return 0;
+    }
+
+    // Processing EARD connection
+    //if (args_get(argc, argv, "eard", buffer)) {
+    //eards_connection();
+    //}
+
+    // Processing list of plugins
+    if (!args_get(argc, argv, "plugins", buffer)) {
+        return 0;
+    }
     // Get list of plugins to load and times
-    debug("plugin string: %s", plugins);
-    if (strchr(plugins, ',')) {
-        strtoa(plugins, ',', &list, &list_count);
-    } else {
-        list = &p;
-        list_count = 1;
+    debug("plugin string: %s", buffer);
+    if (strtoa(buffer, ',', &list, &list_count) == NULL) {
+        return 0;
     }
     // Allocating p
     p.count = list_count;
@@ -201,35 +269,14 @@ static void plugin_manager_configure_paths(char *plugins, char *ppaths)
             }
         }
     }
-    //free(*list);
-}
-
-static int plugin_manager_configure(int argc, char *argv[])
-{
-    char buffer_plugins[8192];
-    char buffer_ppaths[4096];
-    uint i, j;
-    char *c;
-
-    if (argc == 1 || args_get(argc, argv, "help", buffer)) {
-        verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
-        verbose(0, "Options:");
-  //      verbose(0, "    --eard       Connect to EAR Daemon.");
-        verbose(0, "    --plugins    List of separated plugins to load.");
-        verbose(0, "    --path       Add an priority path to search plugins.");
-        verbose(0, "    --help       If you see it you already typed --help.");
-        return 0;
+    strtoa_free(list);
+    // Processing list of priority paths
+    if (!args_get(argc, argv, "paths", buffer)) {
+        return 1;
     }
-    //if (args_get(argc, argv, "eard", buffer)) {
-        //eards_connection();
-    //}
-    if (!args_get(argc, argv, "plugins", buffer_plugins)) {
-        return 0;
-    }
-    if (args_get(argc, argv, "path", buffer_ppaths)) {
-        return plugin_manager_configure_paths(buffer_plugins, buffer_ppaths);
-    }
-    return plugin_manager_configure_paths(buffer_plugins, NULL);
+    // NUll terminated list, count is not required
+    strtoa(buffer, ',', &priority_paths, NULL);
+    return 1;
 }
 
 void plugin_mananger_post(cchar *msg, void *data)
@@ -247,7 +294,7 @@ int plugin_manager_init(int argc, char *argv[])
 {
     // Read configuration
     if (!plugin_manager_configure(argc, argv)) {
-        // Error message
+        verbose(0, "[ERROR] No plugins to load.")
         return 0;
     }
     // Suscriptions
@@ -262,6 +309,11 @@ int plugin_manager_init(int argc, char *argv[])
     monitor_init();
 
     return 1;
+}
+
+void plugin_manager_wait()
+{
+    monitor_wait();
 }
 
 #if MAIN

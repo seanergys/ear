@@ -23,29 +23,30 @@
 #include <plugin_manager/plugin_manager.h>
 
 static cchar *self_tag = "dummy";
+static cchar *self_tags_deps = "config,metrics";
 static ullong content = 0LLU;
 static char buffer[128];
 
 declr_up_get_tag ()
 {
     *tag = self_tag;
+    *tags_deps = self_tags_deps;
 }
 
 declr_up_init()
 {
-    fprintf(stderr, "dummy init\n");
     *data = &content;
     return EAR_SUCCESS;
 }
 
 declr_up_callback()
 {
-    sprintf(buffer, "dummy callback: received tag %s\n", tag);
+    sprintf(buffer, "dummy callback: received tag %s", tag);
     return buffer;
 }
 
 declr_up_post()
 {
-    sprintf(buffer, "dummy post\n");
+    sprintf(buffer, "dummy post");
     return buffer;
 }
