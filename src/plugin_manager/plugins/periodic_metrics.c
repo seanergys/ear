@@ -39,14 +39,7 @@ static ullong             nominal_khz = 5000000;
 declr_up_get_tag()
 {
     *tag = self_tag;
-}
-
-declr_up_init()
-{
-    init_periodic_metric(&cs); //eard_power_monitoring()
-    metrics_data_alloc(&mr1, &mr2, &mrD);
-    *data = &cs;
-    return EAR_SUCCESS;
+    *tags_deps = "conf,metrics";
 }
 
 char *received_configuration(void *data)
@@ -64,7 +57,20 @@ char *received_configuration(void *data)
     return NULL;
 }
 
-char *received_metrics(void *data)
+declr_up_action_init()
+{
+    if (is_tag("conf")) {
+        return received_configuration(data);
+    }
+    if (is_tag(self_tag)) {
+        init_periodic_metric(&cs); //eard_power_monitoring()
+        metrics_data_alloc(&mr1, &mr2, &mrD);
+        *data_alloc = &cs;
+    }
+    return NULL;
+}
+
+static char *received_metrics(void *data)
 {
     mets_t *mets = (mets_t *) data;
     if (mr1.samples > 0) {
@@ -75,7 +81,7 @@ char *received_metrics(void *data)
     return NULL;
 }
 
-char *received_periodic_metrics(void *data)
+static char *received_periodic_metrics(void *data)
 {
     static char buffer[512];
     if (mr2.samples == 0) {
@@ -116,16 +122,15 @@ pass:
     return buffer;
 }
 
-declr_up_callback()
+declr_up_action_periodic()
 {
     debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
     if (is_tag("metrics")) return received_metrics(data);
-    if (is_tag("configuration")) return received_configuration(data);
     if (is_tag("periodic-metrics")) return received_periodic_metrics(data);
     return NULL;
 }
 
-declr_up_post()
+declr_up_post_data()
 {
     if (strcmp(msg, "new_job") == 0) {
         new_job_for_period(&cs, ((ulong *) data)[0], ((ulong *) data)[1]);

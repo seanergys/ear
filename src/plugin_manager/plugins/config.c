@@ -22,8 +22,8 @@
 #include <plugin_manager/plugins/config.h>
 
 static topology_t tp;
-static cchar     *self_tag = "configuration";
 static conf_t     conf;
+static cchar     *self_tag = "conf";
 
 declr_up_get_tag()
 {
@@ -31,27 +31,31 @@ declr_up_get_tag()
     *tags_deps = NULL;
 }
 
-declr_up_init()
+declr_up_action_init()
 {
-    char buffer[4096];
+    static char buffer[4096];
+    if (!is_tag(self_tag)) {
+        return NULL;
+    }
     if (state_fail(get_ear_conf_path(buffer))) {
-        return_msg(EAR_ERROR, "Configuration path not found");
+        return "Configuration path not found";
     }
     if (gethostname(conf.hostname_full, sizeof(conf.hostname_full)) < 0) {
-        return_print(EAR_ERROR, "Error getting node name (%s)", strerror(errno));
+        sprintf(buffer, "Error getting node name (%s)", strerror(errno));
+        return buffer;
     }
     strcpy(conf.hostname, conf.hostname_full);
     strtok(conf.hostname, ".");
     debug("Reading ear.conf in '%s' in node '%s'", buffer, conf.hostname);
     if (state_fail(read_cluster_conf(buffer, &conf.cluster))) {
-        return_msg(EAR_ERROR, "Error while reading ear.conf file");
+        return "Error while reading ear.conf file";
     }
     if ((conf.node = get_my_node_conf(&conf.cluster, conf.hostname)) == NULL) {
         if ((conf.node = get_my_node_conf(&conf.cluster, conf.hostname_full)) == NULL) {
-            return_msg(EAR_ERROR, "Node not found in ear.conf");
+            return "Node not found in ear.conf";
         }
     }
     debug("database: %s", conf.cluster.database.database);
-    *data = &conf;
-    return EAR_SUCCESS;
+    *data_alloc = &conf;
+    return NULL;
 }

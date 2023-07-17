@@ -22,31 +22,32 @@
 #include <common/output/debug.h>
 #include <plugin_manager/plugin_manager.h>
 
-static cchar *self_tag = "dummy";
-static cchar *self_tags_deps = "config,metrics";
-static ullong content = 0LLU;
-static char buffer[128];
+static ullong zero = 0LLU;
+static char buffer[512];
 
 declr_up_get_tag ()
 {
-    *tag = self_tag;
-    *tags_deps = self_tags_deps;
+    *tag = "dummy";
+    *tags_deps = "conf,periodic_metrics";
 }
 
-declr_up_init()
+declr_up_action_init()
 {
-    *data = &content;
-    return EAR_SUCCESS;
-}
-
-declr_up_callback()
-{
-    sprintf(buffer, "dummy callback: received tag %s", tag);
+    if (is_tag("dummy")) {
+        *data_alloc = &zero;
+    }
+    sprintf(buffer, "dummy action init: received tag %s", tag);
     return buffer;
 }
 
-declr_up_post()
+declr_up_action_periodic()
 {
-    sprintf(buffer, "dummy post");
+    sprintf(buffer, "dummy action periodic: received tag %s", tag);
+    return buffer;
+}
+
+declr_up_post_data()
+{
+    sprintf(buffer, "dummy post data: received msg %s", msg);
     return buffer;
 }
