@@ -28,21 +28,25 @@ static char buffer[512];
 declr_up_get_tag ()
 {
     *tag = "dummy";
-    *tags_deps = "conf,periodic_metrics";
+    *tags_deps = "conf";
 }
 
-declr_up_action_init()
+declr_up_action_init(_dummy)
 {
-    if (is_tag("dummy")) {
-        *data_alloc = &zero;
-    }
-    sprintf(buffer, "dummy action init: received tag %s", tag);
+    *data_alloc = &zero;
+    sprintf(buffer, "dummy action init(_dummy): received tag %s", tag);
     return buffer;
 }
 
-declr_up_action_periodic()
+declr_up_action_init(_conf)
 {
-    sprintf(buffer, "dummy action periodic: received tag %s", tag);
+    sprintf(buffer, "dummy action init(_conf): received tag %s", tag);
+    return buffer;
+}
+
+declr_up_action_periodic(_dummy)
+{
+    sprintf(buffer, "dummy action periodic(_dummy): received tag %s", tag);
     return buffer;
 }
 

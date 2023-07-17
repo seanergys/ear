@@ -35,29 +35,29 @@ static const char *names[] = {
     "up_post_data",
 };
 
-#define N 4
+#define MAX_SYMBOLS 4
+#define MAX_PLUGINS 128
 
-typedef struct plugin_manager_ops_s {
-    void    (*get_tag)         (cchar **tag, cchar **tags_deps);
-    char   *(*action_init)     (cchar *tag, void **data_alloc, void *data);
-    char   *(*action_periodic) (cchar *tag, void *data);
-    char   *(*post_data)       (cchar *msg, void *data);
-} plugin_ops_t;
+typedef void  (get_tag_f)         (cchar **tag, cchar **tags_deps);
+typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
+typedef char *(action_periodic_f) (cchar *tag, void *data);
+typedef char *(post_data_f)       (cchar *msg, void *data);
 
 typedef struct plugin_s {
-    char          path[4096];
-    char         *file_name;
-    char          tag_supposed[256];
-    cchar        *tag;
-    cchar        *tags_deps;
-    plugin_ops_t  ops;
-    ullong        time_lapse; //In ms
-    timestamp_t   time_origin;
-    uint          one_time;
-    uint          priority;
-    void         *data;
-    uint          data_count;
-    uint          is_enabled;
+    char               path[4096];
+    char              *file_name;
+    cchar             *tag;
+    cchar             *tags_deps;
+    void              *handler;
+    action_init_f     *action_init[MAX_PLUGINS];
+    action_periodic_f *action_periodic[MAX_PLUGINS];
+    post_data_f       *post_data;
+    void              *data;
+    ullong             time_lapse; //In ms
+    timestamp_t        time_origin;
+    uint               one_time;
+    uint               priority;
+    uint               is_enabled;
 } plugin_t;
 
 typedef struct plugins_s {
@@ -150,7 +150,18 @@ static void plugins_open_sort(uint priority, uint index)
     plugins_open_sort(priority-1, index);
 }
 
-static state_t plugins_open_so(int i)
+static state_t plugins_open_so(char *path, void **handler)
+{
+    if (access(path, X_OK) != 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    if ((*handler = dlopen(path, RTLD_NOW | RTLD_GLOBAL)) == NULL) {
+        return_msg(EAR_ERROR, dlerror());
+    }
+    return EAR_SUCCESS;
+}
+
+static state_t plugins_open_file(int i)
 {
     char new_path[8192];
     char *e = NULL;
@@ -159,7 +170,7 @@ static state_t plugins_open_so(int i)
     // Priority paths
     while(priority_paths != NULL && priority_paths[j] != NULL) {
         sprintf(new_path, "%s/%s", priority_paths[j], p.plugins[i].path);
-        if (state_ok(plug_open(new_path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
+        if (state_ok(plugins_open_so(new_path, (void **) &p.plugins[i].handler))) {
             verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
             return EAR_SUCCESS;
         }
@@ -167,7 +178,7 @@ static state_t plugins_open_so(int i)
         ++j;
     }
     // Written paths
-    if (state_ok(plug_open(p.plugins[i].path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
+    if (state_ok(plugins_open_so(p.plugins[i].path, (void **) &p.plugins[i].handler))) {
         verbose(0, "[Configuration] Trying to open: %s... OK", p.plugins[i].path);
         return EAR_SUCCESS;
     }
@@ -175,7 +186,7 @@ static state_t plugins_open_so(int i)
     // Environment paths
     if((e = ear_getenv(ENV_PATH_EAR)) != NULL) {
         sprintf(new_path, "%s/%s", e, p.plugins[i].path);
-        if (state_ok(plug_open(new_path, (void **) &p.plugins[i].ops, names, N, RTLD_NOW | RTLD_GLOBAL))) {
+        if (state_ok(plugins_open_so(new_path, (void **) &p.plugins[i].handler))) {
             verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
             return EAR_SUCCESS;
         }
@@ -186,15 +197,16 @@ static state_t plugins_open_so(int i)
 
 static int plugins_open()
 {
+    get_tag_f *get_tag;
     int open_count = 0;
     int i;
 
     for (i = 0; i < p.count; ++i) {
-        if (state_fail(plugins_open_so(i))) {
+        if (state_fail(plugins_open_file(i))) {
             continue;
         }
-        if (p.plugins[i].ops.get_tag != NULL) {
-            p.plugins[i].ops.get_tag(&p.plugins[i].tag, &p.plugins[i].tags_deps);
+        if ((get_tag = dlsym(p.plugins[i].handler, "up_get_tag")) != NULL) {
+            get_tag(&p.plugins[i].tag, &p.plugins[i].tags_deps);
             verbose(0, "[DEBUG] %s after get_tag(): tag '%s', tags_deps '%s'",
                     p.plugins[i].path, (char *) p.plugins[i].tag, (char *) p.plugins[i].tags_deps);
         }
@@ -222,6 +234,32 @@ static void print_output(char *file_from, char *file_to, cchar *tag, char *outpu
     }
 }
 
+static int plugins_action_periodic_call(int i, int d, void *data)
+{
+    char buffer[256];
+    char *sout;
+
+    if (p.plugins_sorted[i]->action_periodic[d] == (void *) UINT64_MAX) {
+        return 0;
+    }
+    if (p.plugins_sorted[i]->action_periodic[d] == NULL) {
+        sprintf(buffer, "up_action_periodic_%s", p.plugins_sorted[d]->tag);
+        p.plugins_sorted[i]->action_periodic[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
+        // If NULL persist
+        if (p.plugins_sorted[i]->action_periodic[d] == NULL) {
+            p.plugins_sorted[i]->action_periodic[d] = dlsym(p.plugins_sorted[i]->handler, "up_action_periodic");
+        }
+        // If is still NULL, this address is unreachable
+        if (p.plugins_sorted[i]->action_periodic[d] == NULL) {
+            p.plugins_sorted[i]->action_periodic[d] = (void *) UINT64_MAX;
+            return 0;
+        }
+    }
+    sout = p.plugins_sorted[i]->action_periodic[d](p.plugins_sorted[d]->tag, data);
+    print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
+    return 1;
+}
+
 static void plugins_action_periodic(int i)
 {
     timestamp_t time_now;
@@ -236,7 +274,7 @@ static void plugins_action_periodic(int i)
     }
     // Not initialized case
     if (!p.plugins_sorted[i]->is_enabled) {
-        goto next;
+        goto next_ap;
     }
     // Time calculation
     timestamp_get(&time_now);
@@ -251,27 +289,22 @@ static void plugins_action_periodic(int i)
         p.plugins_sorted[i]->is_enabled = 0;
         time_isup = 1;
     }
-    debug("PLUG%d time's up: %d, called every %llu ms, data %p", i,
+    debug("%15s time's up: %d, called every %llu ms, data %p", p.plugins_sorted[i]->file_name,
         time_isup, p.plugins_sorted[i]->time_lapse, p.plugins_sorted[i]->data);
     // If the plugin has data allocated to work with
-    if (time_isup && p.plugins_sorted[i]->data != NULL) {
-        if (p.plugins_sorted[i]->ops.action_periodic != NULL) {
-            sout = p.plugins_sorted[i]->ops.action_periodic(p.plugins_sorted[i]->tag, p.plugins_sorted[i]->data);
-            print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->tag, sout);
+    if (time_isup) {
+        if (!plugins_action_periodic_call(i, i, p.plugins_sorted[i]->data)) {
+            goto next_ap;
         }
         // Feeding others with own data
-        for (j = 0; j < p.count; ++j) {
+        for (j = 0; p.plugins_sorted[i]->data != NULL && j < p.count; ++j) {
             if (j == i) {
                 continue;
             }
-            // If pluginI has data valid for pluginJ
-            if (p.plugins_sorted[j]->ops.action_periodic != NULL) {
-                sout = p.plugins_sorted[j]->ops.action_periodic(p.plugins_sorted[i]->tag, p.plugins_sorted[i]->data);
-                print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->tag, sout);
-            }
+            plugins_action_periodic_call(j, i, p.plugins_sorted[i]->data);
         }
     }
-next:
+next_ap:
     // I think this is OK because the priority system moves the dependencies calls
     // before the own call. I can interpret that a data from a dependency coming
     // before means that data is required to perform the dependent main function,
@@ -279,9 +312,34 @@ next:
     plugins_action_periodic(i+1);
 }
 
+static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
+{
+    char buffer[256];
+    char *sout;
+
+    if (p.plugins_sorted[i]->action_init[d] == (void *) UINT64_MAX) {
+        return 0;
+    }
+    if (p.plugins_sorted[i]->action_init[d] == NULL) {
+        sprintf(buffer, "up_action_init_%s", p.plugins_sorted[d]->tag);
+        p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
+        // If NULL persist
+        if (p.plugins_sorted[i]->action_init[d] == NULL) {
+            p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, "up_action_init");
+        }
+        // If is still NULL, this address is unreachable
+        if (p.plugins_sorted[i]->action_init[d] == NULL) {
+            p.plugins_sorted[i]->action_init[d] = (void *) UINT64_MAX;
+            return 0;
+        }
+    }
+    sout = p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
+    print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
+    return 1;
+}
+
 static void plugins_action_init(int i)
 {
-    char *sout;
     int j;
     // Base case
     if (i == p.count) {
@@ -290,22 +348,19 @@ static void plugins_action_init(int i)
     if (i == 0) {
         format_output();
     }
-    //#define PRINT(f) print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->tag, f)
     p.plugins_sorted[i]->data = NULL;
-    if (p.plugins_sorted[i]->ops.action_init != NULL) {
-        sout = p.plugins_sorted[i]->ops.action_init(p.plugins_sorted[i]->tag, &p.plugins_sorted[i]->data, NULL);
-        print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->tag, sout);
+    if (!plugins_action_init_call(i, i, &p.plugins_sorted[i]->data, NULL)) {
+        goto next_ai;
     }
-    // Feeding others with own data
+    // Feeding others with own data (if it has)
     for (j = 0; p.plugins_sorted[i]->data != NULL && j < p.count; ++j) {
         if (j == i) {
             continue;
         }
-        if (p.plugins_sorted[j]->ops.action_init != NULL) {
-            sout = p.plugins_sorted[j]->ops.action_init(p.plugins_sorted[i]->tag, NULL, p.plugins_sorted[i]->data);
-            print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[j]->file_name, p.plugins_sorted[i]->tag, sout);
-        }
+        // Calling plugin J with plugin I tag/data
+        plugins_action_init_call(j, i, NULL, p.plugins_sorted[i]->data);
     }
+next_ai:
     plugins_action_init(i+1);
 }
 
@@ -354,20 +409,25 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (!args_get(argc, argv, "plugins", buffer)) {
         return 0;
     }
-    p.plugins = calloc(128, sizeof(plugin_t));
-    p.plugins_sorted = calloc(128, sizeof(plugin_t *));
+    p.plugins = calloc(MAX_PLUGINS, sizeof(plugin_t));
+    p.plugins_sorted = calloc(MAX_PLUGINS, sizeof(plugin_t *));
     return plugins_dependencies_read(buffer, 0LLU, 0);
 }
 
 void plugin_mananger_post(cchar *msg, void *data)
 {
     int i;
-    // Wait until action_init has been called at least.
     for (i = 0; i < p.count; ++i) {
-        if (p.plugins[i].ops.post_data == NULL) {
+        if (p.plugins_sorted[i]->post_data == (void *) UINT64_MAX) {
             continue;
         }
-        p.plugins[i].ops.post_data(msg, data);
+        if (p.plugins_sorted[i]->post_data == NULL) {
+            if ((p.plugins_sorted[i]->post_data = dlsym(p.plugins_sorted[i]->handler, "up_post_data")) == NULL) {
+                p.plugins_sorted[i]->post_data = (void *) UINT64_MAX;
+                continue;
+            }
+        }
+        p.plugins_sorted[i]->post_data(msg, data);
     }
 }
 

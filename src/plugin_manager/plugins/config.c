@@ -31,12 +31,9 @@ declr_up_get_tag()
     *tags_deps = NULL;
 }
 
-declr_up_action_init()
+declr_up_action_init(_conf)
 {
     static char buffer[4096];
-    if (!is_tag(self_tag)) {
-        return NULL;
-    }
     if (state_fail(get_ear_conf_path(buffer))) {
         return "Configuration path not found";
     }
@@ -57,5 +54,5 @@ declr_up_action_init()
     }
     debug("database: %s", conf.cluster.database.database);
     *data_alloc = &conf;
-    return NULL;
+    return "Configuration loaded correctly";
 }
