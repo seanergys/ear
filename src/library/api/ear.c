@@ -48,6 +48,8 @@
 #include <sys/syscall.h>
 #include <semaphore.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
+
 
 
 #include <common/config.h>
@@ -1129,6 +1131,13 @@ void ear_lib_sig_handler(int s)
 {
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
         /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
+
+        verbose(0,"EAR[%d] signal %d received", getpid(), s);
+
+        if (s == SIGCHLD){
+          return;
+        }
+
         if (s == SIGPIPE){
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
@@ -1470,7 +1479,7 @@ void ear_init()
 
 				// Getting environment data
 				get_app_name(ear_app_name);
-				debug("App name is %s",ear_app_name);
+				verbose(0, "App name is %s",ear_app_name);
 				if (application.is_learning){
 								verbose_master(VEAR_INIT,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 				}
@@ -1488,7 +1497,7 @@ void ear_init()
 				start_job(&application.job);
 				debug("Job time initialized");
 
-				verbose_master(2,"EARD connection section EARD=%d",eard_ok);
+				verbose_master(0,"EARD connection section EARD=%d",eard_ok);
        if (eard_ok) { // all processes will connect with eard
 
                     char *col;
@@ -1837,6 +1846,7 @@ void ear_init()
 				}
 
 				strcpy(application.job.policy,system_conf->policy_name);
+        verbose(0,"Initializing APP name %s", ear_app_name);
 				strcpy(application.job.app_id, ear_app_name);
 
 				// Passing the frequency in KHz to MHz
@@ -1926,6 +1936,7 @@ void ear_init()
 				sigaction(SIGTERM, &term_action, NULL);
 				sigaction(SIGINT, &term_action, NULL);
 				sigaction(SIGSEGV, &term_action, NULL);
+				sigaction(SIGCHLD, &term_action, NULL);
 				sigaction(SIGPIPE, &term_action, NULL);
 
 
@@ -2689,6 +2700,7 @@ void ear_fork_prolog()
 void ear_fork_epilog()
 {
 }
+
 static void  reset_earl_environment()
 {
   ear_lib_initialized = 0;
@@ -2696,11 +2708,14 @@ static void  reset_earl_environment()
   metrics_lib_reset();
   report_dispose(&rep_id);
 }
+
+
 void ear_fork_new_child()
 {
   verbose(WF_SUPPORT_VERB,"EAR: New process %d!", getpid());
   reset_earl_environment();
   ear_init();
+
 }
 
 void ear_constructor()
@@ -2713,7 +2728,7 @@ void ear_constructor()
 void ear_destructor()
 {
     debug("Calling ear_finalize in ear_destructor %d",getpid());
-    //verbose(WF_SUPPORT_VERB,"Calling ear_finalize in ear_destructor %d",getpid());
+    verbose(WF_SUPPORT_VERB,"Calling ear_finalize in ear_destructor %d",getpid());
 
 #if ONLY_MASTER
     if (my_id) {

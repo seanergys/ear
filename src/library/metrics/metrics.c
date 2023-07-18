@@ -1464,7 +1464,7 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
         current_ratio = dc_power_ratio / (double)dc_power_ratio_instances;
       }else current_ratio = 1.0;
       metrics->DC_power = (gpup + metrics->DRAM_power + metrics->PCK_power) * current_ratio;
-      verbose_master(1,"Warning: Estimated power %.2lf W (DC vs CPU+GPU %.2lf)", metrics->DC_power, current_ratio);
+      verbose_master(2,"Warning: Estimated power %.2lf W (DC vs CPU+GPU %.2lf)", metrics->DC_power, current_ratio);
       estimate_power = 0;
     }
 

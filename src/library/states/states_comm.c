@@ -251,7 +251,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);
-        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
+        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%s%.1lfW%s Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, COL_MGT,POWER, COL_GRE, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
 
         if (new_freq > 0){ verbosen(1,"\n\t Next Frequency %.2f",NFREQ);}
 
