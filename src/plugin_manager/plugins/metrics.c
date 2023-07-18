@@ -19,33 +19,39 @@
 
 #include <stdio.h>
 #include <common/output/debug.h>
+#include <plugin_manager/plugins/conf.h>
 #include <plugin_manager/plugins/metrics.h>
 
 static topology_t tp;
 static mets_t     m;
-static cchar     *self_tag = "metrics";
+static char      *np_path; //Node power
+static char       buffer[4096];
 
 declr_up_get_tag()
 {
-    *tag = self_tag;
+    *tag = "metrics";
     *tags_deps = "conf";
 }
 
-declr_up_action_init()
+declr_up_action_init(_conf)
 {
-    if(is_tag("conf")) {
-        topology_init(&tp);
-        metrics_init(&m.mi, &tp, NO_EARD);
-        metrics_data_alloc(&m.mr, NULL, NULL);
-        *data_alloc = &m;
-    }
+    cluster_conf_t *conf = (cluster_conf_t *) data;
+    sprintf(buffer, "%s/energy/%s", conf->install.dir_plug, conf->install.obj_ener);
+    np_path = buffer;
     return NULL;
 }
 
-declr_up_action_periodic()
+declr_up_action_init(_metrics)
 {
-    if (is_tag(self_tag)) {
-        metrics_read(&m.mr);
-    }
+    *data_alloc = &m;
+    topology_init(&tp);
+    metrics_init(&m.mi, &tp, np_path, NO_EARD);
+    metrics_data_alloc(&m.mr, NULL, NULL);
+    return rsprintf("Metrics plugin initialized correctly %s", (!np_path) ? "(missing np library)": "");
+}
+
+declr_up_action_periodic(_metrics)
+{
+    metrics_read(&m.mr);
     return NULL;
 }

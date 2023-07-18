@@ -20,10 +20,10 @@
 #include <string.h>
 #include <report/report.h>
 #include <common/output/debug.h>
-#include <plugin_manager/plugins/config.h>
+#include <plugin_manager/plugins/conf.h>
 #include <plugin_manager/plugins/metrics.h>
 
-static cchar             *self_tag = "periodic-metrics";
+static cchar             *self_tag = "periodic_metrics";
 // Metrics
 static periodic_metric_t  cs; // Current sample
 static metrics_read_t     mr1;
@@ -38,11 +38,11 @@ static ullong             nominal_khz = 5000000;
 
 declr_up_get_tag()
 {
-    *tag = self_tag;
+    *tag = "periodic_metrics";
     *tags_deps = "conf,metrics";
 }
 
-char *received_configuration(void *data)
+declr_up_action_init(_conf)
 {
     conf = (conf_t *) data;
     // Loading report manager
@@ -53,24 +53,18 @@ char *received_configuration(void *data)
             can_report = 1;
         }
     }
-    debug("reporting: %d", can_report);
     return NULL;
 }
 
-declr_up_action_init()
+declr_up_action_init(_periodic_metrics)
 {
-    if (is_tag("conf")) {
-        return received_configuration(data);
-    }
-    if (is_tag(self_tag)) {
-        init_periodic_metric(&cs); //eard_power_monitoring()
-        metrics_data_alloc(&mr1, &mr2, &mrD);
-        *data_alloc = &cs;
-    }
-    return NULL;
+    init_periodic_metric(&cs); //eard_power_monitoring()
+    metrics_data_alloc(&mr1, &mr2, &mrD);
+    *data_alloc = &cs;
+    return rsprintf("Metrics plugin initialized correctly %s", !(can_report) ? "(missing conf)": "");
 }
 
-static char *received_metrics(void *data)
+declr_up_action_periodic(_metrics)
 {
     mets_t *mets = (mets_t *) data;
     if (mr1.samples > 0) {
@@ -81,7 +75,7 @@ static char *received_metrics(void *data)
     return NULL;
 }
 
-static char *received_periodic_metrics(void *data)
+declr_up_action_periodic(_periodic_metrics)
 {
     static char buffer[512];
     if (mr2.samples == 0) {
@@ -116,27 +110,19 @@ static char *received_periodic_metrics(void *data)
         report_periodic_metrics(&rid, &cs, 1); // Un plugin de report que haga un print para probar
     }
     metrics_data_copy(&mr1, &mr2);
-pass:
     sprintf(buffer, "%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
         cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
+    //return metrics_data_tostr(&mrD);
     return buffer;
-}
-
-declr_up_action_periodic()
-{
-    debug("'%s': received from '%s' data '%p'", self_tag, tag, data);
-    if (is_tag("metrics")) return received_metrics(data);
-    if (is_tag("periodic-metrics")) return received_periodic_metrics(data);
-    return NULL;
 }
 
 declr_up_post_data()
 {
-    if (strcmp(msg, "new_job") == 0) {
+    if (is_msg("new_job") == 0) {
         new_job_for_period(&cs, ((ulong *) data)[0], ((ulong *) data)[1]);
         debug("'%s': posted with message '%s' jid '%lu.%lu'", self_tag, msg, cs.job_id, cs.step_id);
     }
-    if (strcmp(msg, "end_job") == 0) {
+    if (is_msg("end_job") == 0) {
         end_job_for_period(&cs);
         debug("'%s': posted with message '%s' jid '%lu.%lu'", self_tag, msg, cs.job_id, cs.step_id);
     }

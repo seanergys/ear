@@ -18,6 +18,7 @@
 //#define SHOW_DEBUGS 1
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <common/sizes.h>
 #include <common/utils/string.h>
@@ -31,6 +32,16 @@ size_t xsnsize(size_t size)
 
 char *xsnbuffer(char *buffer)
 {
+    return buffer;
+}
+
+char *rsprintf(char *format, ...)
+{
+    static __thread char buffer[4096];
+    va_list args;
+    va_start(args, format);
+    vsprintf(buffer, format, args);
+    va_end(args);
     return buffer;
 }
 

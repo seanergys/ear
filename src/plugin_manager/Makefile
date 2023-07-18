@@ -8,7 +8,7 @@ export SRCDIR
 
 ######## RULES
 
-all: all.components libpm.a earpmd simulatron
+all: all.components libpm.a edcmon
 
 plugin_manager.o: plugin_manager.c
 	$(CC) -I $(SRCDIR) -fPIC -c $^
@@ -16,11 +16,8 @@ plugin_manager.o: plugin_manager.c
 libpm.a: plugin_manager.o
 	$(AR) rvs $@ $^
 
-earpmd: plugin_manager.c
-	$(CC) -DMAIN=1 -I$(SRCDIR) -fPIC -o $@ $^ ../common/libcommon.a -lm -lpthread -ldl
-
-simulatron: simulatron.c
-	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ libpm.a ../common/libcommon.a -lm -lpthread -ldl
+edcmon: edcmon.c libpm.a
+	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 
@@ -29,7 +26,7 @@ install: install.components;
 %.install: %.install.components;
 
 clean: clean.components rclean
-	rm -f earpmd simulatron
+	rm -f earpmd edcmon
 
 ######## SUBFOLDERS
 

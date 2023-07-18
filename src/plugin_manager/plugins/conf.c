@@ -15,13 +15,12 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <common/output/debug.h>
-#include <plugin_manager/plugins/config.h>
+#include <plugin_manager/plugins/conf.h>
 
-static topology_t tp;
 static conf_t     conf;
 static cchar     *self_tag = "conf";
 
@@ -54,5 +53,5 @@ declr_up_action_init(_conf)
     }
     debug("database: %s", conf.cluster.database.database);
     *data_alloc = &conf;
-    return "Configuration loaded correctly";
+    return "Configuration plugin loaded correctly";
 }

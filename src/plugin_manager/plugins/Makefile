@@ -1,18 +1,17 @@
 ######## RULES
 
-#all: libupmetrics.so libupperiodic_metrics.so libupconf.so libupdummy.so
-all: libupconf.so libupdummy.so
+all: metrics.so periodic_metrics.so conf.so dummy.so
 
-libupmetrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
+metrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
 
-libupperiodic_metrics.so: periodic_metrics.c
+periodic_metrics.so: periodic_metrics.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/report/report.o $(SRCDIR)/common/libcommon.a
 
-libupconf.so: config.c
+conf.so: conf.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
 
-libupdummy.so: dummy.c
+dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
 ######## OPTIONS

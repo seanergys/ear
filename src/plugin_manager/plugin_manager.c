@@ -100,7 +100,7 @@ static int plugins_dependencies_read(cchar *string, ullong time_lapse, uint prio
         }
         // Checking if the file have the .so extension
         if (strcmp(&list[l][strlen(list[l])-3], ".so")) {
-            sprintf(p.plugins[p.count].path, "libup%s.so", list[l]);
+            sprintf(p.plugins[p.count].path, "%s.so", list[l]);
         } else {
             sprintf(p.plugins[p.count].path, "%s", list[l]);
         }
@@ -142,7 +142,7 @@ static void plugins_open_sort(uint priority, uint index)
     }
     for (i = 0; i < p.count; ++i) {
         if (priority == p.plugins[i].priority) {
-            verbose(0, "[DEBUG] LOADED %15s: time lapse '%4llu', priority '%u'",
+            debug("[DEBUG] %19s: time lapse '%4llu', priority '%u'",
                     p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].priority);
             p.plugins_sorted[index++] = &p.plugins[i];
         }
@@ -155,7 +155,9 @@ static state_t plugins_open_so(char *path, void **handler)
     if (access(path, X_OK) != 0) {
         return_msg(EAR_ERROR, strerror(errno));
     }
-    if ((*handler = dlopen(path, RTLD_NOW | RTLD_GLOBAL)) == NULL) {
+    // Lazy binding allows to load plugins thar require symbols of other plugins
+    // that haven't been loaded yet.
+    if ((*handler = dlopen(path, RTLD_LAZY | RTLD_GLOBAL)) == NULL) {
         return_msg(EAR_ERROR, dlerror());
     }
     return EAR_SUCCESS;
@@ -207,7 +209,7 @@ static int plugins_open()
         }
         if ((get_tag = dlsym(p.plugins[i].handler, "up_get_tag")) != NULL) {
             get_tag(&p.plugins[i].tag, &p.plugins[i].tags_deps);
-            verbose(0, "[DEBUG] %s after get_tag(): tag '%s', tags_deps '%s'",
+            debug("[DEBUG] %s after call get_tag(): tag '%s', tags_deps '%s'",
                     p.plugins[i].path, (char *) p.plugins[i].tag, (char *) p.plugins[i].tags_deps);
         }
         // Loading dependencies
@@ -230,7 +232,7 @@ static void format_output()
 static void print_output(char *file_from, char *file_to, cchar *tag, char *output)
 {
     if (output != NULL) {
-        printf("[%s, %s -> %s, %s] %s\n", date, file_from, file_to, tag, output);
+        printf("[%s, %s, %s] %s\n", date, file_from, tag, output);
     }
 }
 
@@ -289,7 +291,7 @@ static void plugins_action_periodic(int i)
         p.plugins_sorted[i]->is_enabled = 0;
         time_isup = 1;
     }
-    debug("%15s time's up: %d, called every %llu ms, data %p", p.plugins_sorted[i]->file_name,
+    debug("[DEBUG] %19s time's up: %d, called every %llu ms, data %p", p.plugins_sorted[i]->file_name,
         time_isup, p.plugins_sorted[i]->time_lapse, p.plugins_sorted[i]->data);
     // If the plugin has data allocated to work with
     if (time_isup) {
@@ -325,14 +327,19 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
         p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
         // If NULL persist
         if (p.plugins_sorted[i]->action_init[d] == NULL) {
-            p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, "up_action_init");
+            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer)
+            sprintf(buffer, "up_action_init");
+            p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
         }
         // If is still NULL, this address is unreachable
         if (p.plugins_sorted[i]->action_init[d] == NULL) {
+            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer)
             p.plugins_sorted[i]->action_init[d] = (void *) UINT64_MAX;
             return 0;
         }
+        debug("[DEBUG] %s: function '%s' DETECTED", p.plugins_sorted[i]->file_name, buffer)
     }
+    debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag)
     sout = p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
     print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
     return 1;
@@ -375,7 +382,7 @@ static state_t plugins_init(void *whatever)
     return EAR_SUCCESS;
 }
 
-static state_t plugins_callback(void *whatever)
+static state_t plugins_main(void *whatever)
 {
     format_output();
     plugins_action_periodic(0);
@@ -441,7 +448,7 @@ int plugin_manager_init(int argc, char *argv[])
     // Suscriptions
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
-    sus->call_main     = plugins_callback;
+    sus->call_main     = plugins_main;
     sus->time_relax    = 249;
     sus->time_burst    = 249;
     sus->suscribe(sus);

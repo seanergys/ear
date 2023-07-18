@@ -41,6 +41,9 @@
 size_t xsnsize(size_t size);
 
 char *xsnbuffer(char *buffer);
+// To return a string, it has a static buffer inside using TLS
+char *rsprintf(char *format, ...);
+
 // Given a string and a separator, allocates the space and returns the number of elements
 char **strtoa(const char *string, char separator, char ***list, uint *list_count);
 // Free values allocated by strtoa

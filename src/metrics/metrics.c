@@ -48,12 +48,12 @@ static int             id_log;
 static int             id_api;
 static int             id_tpo;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
+void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, int eard)
 {
     static char buffer[16384];
     self_tp = tp;
 
-    nodepow(load,getenv("NODEPOW_PLUGIN"));
+    nodepow(load,nodepow_path);
     cpufreq_load(tp, eard);
     imcfreq_load(tp, eard);
      cpupow(load,tp, eard);
@@ -363,7 +363,7 @@ static metrics_diff_t mrD;
 static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
-    metrics_init(&m, &tp, EARD);
+    metrics_init(&m, &tp, NULL, EARD);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
     return EAR_SUCCESS;

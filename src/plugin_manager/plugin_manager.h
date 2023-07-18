@@ -53,6 +53,7 @@
 #define declr_up_post_data()             char * up_post_data               (cchar *msg, void *data)
 
 #define is_tag(t) (strcmp(t, tag) == 0)
+#define is_msg(t) (strcmp(t, msg) == 0)
 
 int plugin_manager_init(int argc, char *argv[]);
 
