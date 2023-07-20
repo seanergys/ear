@@ -202,12 +202,12 @@ static void *monitor_main(void *p)
             // Unlocking suscription i because time is calculated
             pthread_mutex_unlock(&lock[i]);
 
-            if (reg->ok_init) {
+            if (reg->ok_init && is_running) {
 				//debug("S%d, called init", i);
 				sus->call_init(sus->memm_init);
 				reg->ok_init = 0;
 			}
-			if (reg->ok_main) {
+			if (reg->ok_main && is_running) {
 				//debug("S%d, called main", i);
 				sus->call_main(sus->memm_main);
 				reg->ok_main = 0;

@@ -20,8 +20,8 @@
 #include <string.h>
 #include <report/report.h>
 #include <common/output/debug.h>
-#include <plugin_manager/plugins/conf.h>
-#include <plugin_manager/plugins/metrics.h>
+#include <data_center_monitor/plugins/conf.h>
+#include <data_center_monitor/plugins/metrics.h>
 
 static cchar             *self_tag = "periodic_metrics";
 // Metrics

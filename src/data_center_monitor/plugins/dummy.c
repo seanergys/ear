@@ -20,7 +20,7 @@
 #include <string.h>
 #include <report/report.h>
 #include <common/output/debug.h>
-#include <plugin_manager/plugin_manager.h>
+#include <common/system/plugin_manager.h>
 
 static ullong zero = 0LLU;
 static char buffer[512];

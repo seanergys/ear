@@ -1,6 +1,13 @@
 ######## RULES
 
-all: metrics.so periodic_metrics.so conf.so dummy.so
+plug_PATH = $(DESTDIR)/lib/plugins/monitoring
+plug_PERM = 0775
+plug_BINS = conf.so metrics.so periodic_metrics.so
+
+all: $(plug_BINS) dummy.so
+
+conf.so: conf.c
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
 
 metrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
@@ -8,28 +15,18 @@ metrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
 periodic_metrics.so: periodic_metrics.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/report/report.o $(SRCDIR)/common/libcommon.a
 
-conf.so: conf.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
-
 dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
 ######## OPTIONS
 
-install: install.components;
+install: plug.ginstall;
 
-%.install: %.install.components;
+%.install: ;
 
-clean: clean.components rclean;
-
-######## SUBFOLDERS
-
-%.components: ;
+clean: rclean;
 
 ######## DEPENDENCIES
 
-depend: depend.components
-
-depend-clean: depend-clean.components
-
+include $(SRCDIR)/Makefile.depend
 include $(SRCDIR)/Makefile.extra

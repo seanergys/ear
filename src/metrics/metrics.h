@@ -86,7 +86,7 @@ typedef struct metrics_diff_s {
     ulong        nod_avrg; // Total node energy
 } metrics_diff_t;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, int eard);
+void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, int flags);
 
 void metrics_read(metrics_read_t *mr);
 

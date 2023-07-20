@@ -26,7 +26,7 @@
 #include <common/config/config_env.h>
 //#include <daemon/local_api/eard_api.h>
 //#include <metrics/metrics.h>
-#include <plugin_manager/plugin_manager.h>
+#include <common/system/plugin_manager.h>
 
 static const char *names[] = {
     "up_get_tag",
@@ -314,6 +314,12 @@ next_ap:
     plugins_action_periodic(i+1);
 }
 
+static state_t plugins_main(void *whatever)
+{
+    format_output();
+    plugins_action_periodic(0);
+}
+
 static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
 {
     char buffer[256];
@@ -373,19 +379,15 @@ next_ai:
 
 static state_t plugins_init(void *whatever)
 {
-    if (plugins_open()) {
+    int enabled = 0;
+    if ((enabled = plugins_open())) {
         plugins_open_sort(p.max_priority, 0);
-        plugins_action_init(0);
-    } else {
+            plugins_action_init(0);
+    }
+    if (!enabled) {
         monitor_dispose();
     }
     return EAR_SUCCESS;
-}
-
-static state_t plugins_main(void *whatever)
-{
-    format_output();
-    plugins_action_periodic(0);
 }
 
 static int plugin_manager_configure(int argc, char *argv[])
@@ -463,10 +465,3 @@ void plugin_manager_wait()
 {
     monitor_wait();
 }
-
-#if MAIN
-int main(int argc, char *argv[])
-{
-    return !plugin_manager_init(argc, argv);
-}
-#endif

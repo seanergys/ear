@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <common/output/debug.h>
-#include <plugin_manager/plugins/conf.h>
+#include <data_center_monitor/plugins/conf.h>
 
 static conf_t     conf;
 static cchar     *self_tag = "conf";

@@ -19,7 +19,7 @@
 #define UP_METRICS_H
 
 #include <metrics/metrics.h>
-#include <plugin_manager/plugin_manager.h>
+#include <common/system/plugin_manager.h>
 
 typedef struct mets_s {
     metrics_info_t mi;

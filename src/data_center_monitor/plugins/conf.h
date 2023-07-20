@@ -15,9 +15,18 @@
 * and COPYING.EPL files.
 */
 
-#ifndef UP_PERIODIC_METRICS_H
-#define UP_PERIODIC_METRICS_H
+#ifndef UP_CONFIG_H
+#define UP_CONFIG_H
 
-#include <plugin_manager/plugin_manager.h>
+#include <metrics/metrics.h>
+#include <common/system/plugin_manager.h>
+#include <common/types/configuration/cluster_conf.h>
 
-#endif //UP_PERIODIC_METRICS_H
+typedef struct conf_s {
+    char            hostname[256]; //Alias
+    char            hostname_full[256];
+    cluster_conf_t  cluster;
+    my_node_conf_t *node;
+} conf_t;
+
+#endif //UP_CONFIG_H

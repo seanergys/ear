@@ -11,9 +11,8 @@ COMPONENTS = \
     commands \
     tools \
     slurm_plugin \
-    pbs_hook
-#    plugin_manager \
-#    plugin_manager/plugins \
+    pbs_hook \
+    data_center_monitor
 
 #ifdef DB_BASE
 COMPONENTS += database_cache

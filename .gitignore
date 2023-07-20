@@ -110,6 +110,7 @@ src/common/config/config_install.h
 *edb_clean_pm
 *edb_clean_apps
 *edb_create
+*edcmon
 *ereport
 *get_active_nodes
 *get_app_list

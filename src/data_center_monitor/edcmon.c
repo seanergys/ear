@@ -25,8 +25,9 @@
 #include <report/report.h>
 #include <common/states.h>
 #include <common/output/debug.h>
-#include <plugin_manager/plugin_manager.h>
+#include <common/system/plugin_manager.h>
 
+#if 0
 static char           command[128];
 static char           option[128];
 static ulong          ids[2];
@@ -37,6 +38,7 @@ static int is(char *buf, char *string)
 {
     return strcmp(buf, string) == 0;
 }
+#endif
 
 int main(int argc, char *argv[])
 {
