@@ -67,8 +67,6 @@ int init_ips(cluster_conf_t *my_conf)
         return EAR_ERROR;
     }
 
-    if (strlen(my_conf->net_ext) > 0)
-    strcat(buff, my_conf->net_ext);
     self_ip = get_ip(buff, my_conf);
     for (i = 0; i < ret; i++)
     {
