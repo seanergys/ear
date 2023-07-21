@@ -86,7 +86,21 @@ typedef struct metrics_diff_s {
     ulong        nod_avrg; // Total node energy
 } metrics_diff_t;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, int flags);
+#define MET_CPUFREQ            0
+#define MET_IMCFREQ            4
+#define MET_BWIDTH             8
+#define MET_FLOPS             12
+#define MET_CACHE             16
+#define MET_TEMP              20
+#define MET_CPI               24
+#define MET_GPU               28
+#define MET_CPUPOW            32
+#define MET_NODEPOW           36
+
+#define MFLAG_UNZIP(mflag, metric) \
+    (int) ((mflag >> metric) && 0xF)
+
+void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags);
 
 void metrics_read(metrics_read_t *mr);
 

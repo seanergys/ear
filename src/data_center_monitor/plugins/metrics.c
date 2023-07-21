@@ -18,6 +18,7 @@
 #define SHOW_DEBUGS 1
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <common/output/debug.h>
 #include <data_center_monitor/plugins/conf.h>
 #include <data_center_monitor/plugins/metrics.h>
@@ -41,11 +42,20 @@ declr_up_action_init(_conf)
     return NULL;
 }
 
+static ullong atoull(const char *str)
+{
+    if (str != NULL) {
+        return strtoull(str, NULL, 16);
+    }
+    return 0LLU;
+}
+
 declr_up_action_init(_metrics)
 {
+    ullong mflag = 0x00000000;
     *data_alloc = &m;
     topology_init(&tp);
-    metrics_init(&m.mi, &tp, np_path, NO_EARD);
+    metrics_init(&m.mi, &tp, np_path, atoull(getenv("MFLAGS")));
     metrics_data_alloc(&m.mr, NULL, NULL);
     return rsprintf("Metrics plugin initialized correctly %s", (!np_path) ? "(missing np library)": "");
 }

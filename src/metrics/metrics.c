@@ -48,21 +48,22 @@ static int             id_log;
 static int             id_api;
 static int             id_tpo;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, int eard)
+void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
 {
     static char buffer[16384];
     self_tp = tp;
 
+fprintf(stderr, "HOLA %llu\n", mflags);
     nodepow(load,nodepow_path);
-    cpufreq_load(tp, eard);
-    imcfreq_load(tp, eard);
-     cpupow(load,tp, eard);
-     bwidth_load(tp, eard);
-      cache_load(tp, eard);
-      flops_load(tp, eard);
-       temp_load(tp      );
-        cpi_load(tp, eard);
-        gpu_load(    eard);
+    cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
+    imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ));
+     cpupow(load,tp, 0);
+     bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH));
+      cache_load(tp, 0);
+      flops_load(tp, 0);
+       temp_load(tp   );
+        cpi_load(tp, 0);
+        gpu_load(    0);
 
     nodepow(initialization, &e_ctx);
     cpufreq_init(no_ctx);

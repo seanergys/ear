@@ -38,7 +38,7 @@ typedef struct cpufreq_ops_s {
 	state_t (*data_diff)     (cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average);
 } cpufreq_ops_t;
 
-state_t cpufreq_load(topology_t *tp, int eard);
+state_t cpufreq_load(topology_t *tp, int force_api);
 
 state_t cpufreq_get_api(uint *api);
 

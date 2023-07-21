@@ -20,14 +20,15 @@
 
 #include <common/types/generic.h>
 
-#define no_ctx           NULL
+#define no_ctx                 NULL
 // Load EARD API or not
-#define EARD                   1
-#define NO_EARD                0
+#define EARD                   API_EARD
+#define NO_EARD                API_FREE
 #define all_devs              -1
 #define all_cpus               all_devs
 #define all_cores             -2
 #define API_NONE               0
+#define API_FREE               API_NONE
 #define API_DUMMY              1
 #define API_EARD               2
 #define API_BYPASS             3
@@ -60,6 +61,9 @@
 #define SCOPE_DUMMY            1
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
+
+#define API_IS(flag, api) \
+    (flag == api)
 
 typedef struct ctx_s {
     void *context;

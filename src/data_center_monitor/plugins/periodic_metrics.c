@@ -112,8 +112,8 @@ declr_up_action_periodic(_periodic_metrics)
     metrics_data_copy(&mr1, &mr2);
     sprintf(buffer, "%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
         cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
-    //return metrics_data_tostr(&mrD);
-    return buffer;
+    return metrics_data_tostr(&mrD);
+    //return buffer;
 }
 
 declr_up_post_data()
