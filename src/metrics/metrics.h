@@ -98,7 +98,7 @@ typedef struct metrics_diff_s {
 #define MET_NODEPOW           36 //0x1000000000
 
 #define MFLAG_UNZIP(mflag, metric) \
-    (int) ((mflag >> metric) && 0xF)
+    (int) ((mflag >> metric) & 0xF)
 
 void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags);
 
