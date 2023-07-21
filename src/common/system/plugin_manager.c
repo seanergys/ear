@@ -25,7 +25,6 @@
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
 //#include <daemon/local_api/eard_api.h>
-//#include <metrics/metrics.h>
 #include <common/system/plugin_manager.h>
 
 static const char *names[] = {
@@ -400,7 +399,7 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "Options:");
         verbose(0, "    --plugins    List of comma separated plugins to load.");
         verbose(0, "    --paths      List of comma separated priority paths to search plugins.");
-        verbose(0, "    --eard       Connect to EAR Daemon.");
+//        verbose(0, "    --eard       Connect to EAR Daemon.");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }

@@ -26,6 +26,7 @@
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <common/system/plugin_manager.h>
+#include <daemon/local_api/eard_api.h>
 
 #if 0
 static char           command[128];
@@ -42,6 +43,11 @@ static int is(char *buf, char *string)
 
 int main(int argc, char *argv[])
 {
+    #if 0
+    if (argc > 1) {
+        eards_connection();
+    }
+    #endif
     plugin_manager_init(argc, argv);
     plugin_manager_wait();
     #if 0
