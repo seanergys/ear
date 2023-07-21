@@ -52,7 +52,6 @@ static ullong atoull(const char *str)
 
 declr_up_action_init(_metrics)
 {
-    ullong mflag = 0x00000000;
     *data_alloc = &m;
     topology_init(&tp);
     metrics_init(&m.mi, &tp, np_path, atoull(getenv("MFLAGS")));

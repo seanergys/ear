@@ -53,10 +53,10 @@ typedef struct coche_ops_s {
 	state_t (*dispose)         ();
 	state_t (*read)            (cache_t *ca);
     void    (*data_diff)       (cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
-    void    (*details_tostr)      (char *buffer, int length);
+    void    (*details_tostr)   (char *buffer, int length);
 } cache_ops_t;
 
-void cache_load(topology_t *tp, int eard);
+void cache_load(topology_t *tp, int force_api);
 
 void cache_get_info(apinfo_t *info);
 

@@ -88,7 +88,7 @@ typedef struct flops_ops_s {
 	state_t (*read)            (ctx_t *c, flops_t *fl);
 } flops_ops_t;
 
-void flops_load(topology_t *tp, int eard);
+void flops_load(topology_t *tp, int force_api);
 
 void flops_get_api(uint *api);
 

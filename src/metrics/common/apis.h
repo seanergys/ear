@@ -41,7 +41,7 @@
 #define API_LIKWID            10
 #define API_CUPTI             11
 #define API_ONEAPI            12
-#define API_RAPL              13
+#define API_RAPL              API_INTEL63
 #define API_ISST              14
 #define API_FAKE              15
 #define API_CPUMODEL          16

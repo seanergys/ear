@@ -53,17 +53,16 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
     static char buffer[16384];
     self_tp = tp;
 
-fprintf(stderr, "HOLA %llu\n", mflags);
     nodepow(load,nodepow_path);
     cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
     imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ));
-     cpupow(load,tp, 0);
+     cpupow(load,tp, MFLAG_UNZIP(mflags, MET_CPUPOW));
      bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH));
-      cache_load(tp, 0);
-      flops_load(tp, 0);
-       temp_load(tp   );
-        cpi_load(tp, 0);
-        gpu_load(    0);
+      cache_load(tp, MFLAG_UNZIP(mflags, MET_CACHE));
+      flops_load(tp, MFLAG_UNZIP(mflags, MET_FLOPS));
+       temp_load(tp                              );
+        cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI));
+        gpu_load(    MFLAG_UNZIP(mflags, MET_GPU));
 
     nodepow(initialization, &e_ctx);
     cpufreq_init(no_ctx);

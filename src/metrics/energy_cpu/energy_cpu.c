@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/plugins.h>
@@ -40,7 +40,7 @@ static struct energy_cpu_ops
 	state_t (*read)          (ctx_t *c, ullong *values);
 } ops;
 
-state_t energy_cpu_load(topology_t *tp, uint eard)
+state_t energy_cpu_load(topology_t *tp, uint force_api)
 {
 	
 	debug("entering cpu_load with tp->initialized %d", tp->initialized);
@@ -52,7 +52,9 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ear_unlock(&lock);
 		return EAR_SUCCESS;
 	}
-
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 	if (state_ok(rapl_msr_load(tp))) {
 		ops.init          = rapl_msr_init;
 		ops.dispose       = rapl_msr_dispose;
@@ -64,7 +66,7 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ops.data_tostr    = energy_cpu_data_tostr; */
 		api = API_RAPL;
 		debug("selected rapl_msr energy_cpu (api %u)", api);
-	} else if (state_ok(energy_cpu_eard_load(tp, eard))) {
+	} else if (state_ok(energy_cpu_eard_load(tp, API_IS(force_api, API_EARD)))) {
 		ops.init          = energy_cpu_eard_init;
 		ops.dispose       = energy_cpu_eard_dispose;
 		ops.read          = energy_cpu_eard_read;
@@ -81,6 +83,7 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		debug("selected CPUMODEL energy_cpu (api %u)", api);
 	} 
 	else if (state_ok(energy_cpu_dummy_load(tp))) {
+dummy:
 		ops.init          = energy_cpu_dummy_init;
 		ops.dispose       = energy_cpu_dummy_dispose;
 		ops.read          = energy_cpu_dummy_read;

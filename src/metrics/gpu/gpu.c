@@ -33,18 +33,22 @@ static gpu_ops_t ops;
 static uint devs_count;
 static uint ok_load;
 
-void gpu_load(int eard)
+void gpu_load(int force_api)
 {
     while (pthread_mutex_trylock(&lock));
     if (ok_load) {
         goto unlock_load;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(&ops, eard);
-    gpu_rsmi_load(&ops, eard);
+    gpu_nvml_load(&ops, API_IS(force_api, API_EARD));
+    gpu_rsmi_load(&ops, API_IS(force_api, API_EARD));
     gpu_oneapi_load(&ops);
-    gpu_eard_load(&ops, eard);
+    gpu_eard_load(&ops, API_IS(force_api, API_EARD));
+dummy:
     gpu_dummy_load(&ops);
     ok_load = 1;
 unlock_load:

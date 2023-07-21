@@ -86,16 +86,16 @@ typedef struct metrics_diff_s {
     ulong        nod_avrg; // Total node energy
 } metrics_diff_t;
 
-#define MET_CPUFREQ            0
-#define MET_IMCFREQ            4
-#define MET_BWIDTH             8
-#define MET_FLOPS             12
-#define MET_CACHE             16
-#define MET_TEMP              20
-#define MET_CPI               24
-#define MET_GPU               28
-#define MET_CPUPOW            32
-#define MET_NODEPOW           36
+#define MET_CPUFREQ            0 //0x0000000001
+#define MET_IMCFREQ            4 //0x0000000010
+#define MET_BWIDTH             8 //0x0000000100
+#define MET_FLOPS             12 //0x0000001000
+#define MET_CACHE             16 //0x0000010000
+#define MET_TEMP              20 //0x0000100000
+#define MET_CPI               24 //0x0001000000
+#define MET_GPU               28 //0x0010000000
+#define MET_CPUPOW            32 //0x0100000000
+#define MET_NODEPOW           36 //0x1000000000
 
 #define MFLAG_UNZIP(mflag, metric) \
     (int) ((mflag >> metric) && 0xF)

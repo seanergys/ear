@@ -79,7 +79,7 @@ typedef struct gpu_ops_s
 } gpu_ops_t;
 
 // Discovers the low level API.
-void gpu_load(int eard);
+void gpu_load(int force_api);
 
 void gpu_get_api(uint *api);
 
