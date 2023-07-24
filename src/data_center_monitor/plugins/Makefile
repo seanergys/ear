@@ -2,12 +2,12 @@
 
 plug_PATH = $(DESTDIR)/lib/plugins/monitoring
 plug_PERM = 0775
-plug_BINS = conf.so metrics.so periodic_metrics.so
+plug_BINS = conf.so eardcon.so metrics.so periodic_metrics.so
 
 all: $(plug_BINS) dummy.so
 
-conf.so: conf.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
+%.so: %.c $(SRCDIR)/common/libcommon.a
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
 metrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
