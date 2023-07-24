@@ -186,7 +186,7 @@ static state_t plugins_open_file(int i)
     verbose(0, "[Configuration] Trying to open: %s... FAILED", p.plugins[i].path);
     // Environment paths
     if((e = ear_getenv(ENV_PATH_EAR)) != NULL) {
-        sprintf(new_path, "%s/%s", e, p.plugins[i].path);
+        sprintf(new_path, "%s/lib/plugins/monitoring/%s", e, p.plugins[i].path);
         if (state_ok(plugins_open_so(new_path, (void **) &p.plugins[i].handler))) {
             verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
             return EAR_SUCCESS;

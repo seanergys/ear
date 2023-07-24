@@ -9,6 +9,9 @@ all: $(plug_BINS) dummy.so
 %.so: %.c $(SRCDIR)/common/libcommon.a
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
+eardcon.so: eardcon.c $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
+
 metrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
 
