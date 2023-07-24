@@ -28,8 +28,10 @@
 #if DB_MYSQL
 #include <common/database/mysql_io_functions.h>
 
-#if MYSQL_VERSION_ID >= 80100
+#ifndef MARIADB_VERSION_ID  //my_bool is always defined in MARIADB, so if we are using it we skip this
+#if MYSQL_VERSION_ID >= 80100 //MYSQL deprecated my_bool in favour of bool in version 8.0.1
 typedef my_bool bool; 
+#endif
 #endif 
 
 #define APPLICATION_MYSQL_QUERY   "INSERT INTO Applications (job_id, step_id, node_id, signature_id, power_signature_id) VALUES" \
