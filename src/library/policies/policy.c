@@ -60,7 +60,7 @@
 #define POLICY_INFO   2
 #define POLICY_PHASES 2
 #define POLICY_GPU    2
-#define POLICY_SAVINGS_LVL 0
+#define POLICY_SAVINGS_LVL 2
 
 #define DEF_USE_CPUPRIO 0
 
