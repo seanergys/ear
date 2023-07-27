@@ -1,4 +1,4 @@
-libc_OBJS = \
+lite_OBJS = \
     $(SRCDIR)/common/environment.o \
     $(SRCDIR)/common/environment_common.o \
     $(SRCDIR)/common/math_operations.o \
@@ -70,8 +70,10 @@ libc_OBJS = \
 	$(SRCDIR)/common/utils/stress.o \
 	$(SRCDIR)/common/external/ear_external.o
 
+full_OBJS = $(lite_OBJS)
+
 ifdef DB_BASE
-libc_OBJS += \
+full_OBJS += \
     $(SRCDIR)/common/database/db_helper.o \
     $(SRCDIR)/common/database/mysql_io_functions.o \
     $(SRCDIR)/common/database/postgresql_io_functions.o

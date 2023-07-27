@@ -3,7 +3,7 @@
 all: all.components edcmon
 
 edcmon: edcmon.c
-	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a) -lm -lpthread -ldl
+	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libusual.a) -lm -lpthread -ldl
 
 ######## OPTIONS
 
