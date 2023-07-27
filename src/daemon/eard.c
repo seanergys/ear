@@ -270,7 +270,7 @@ void init_tdps()
           rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
     }
   } else if (node_desc.vendor == VENDOR_AMD){
-	  if (!hsmp_scan(&node_desc)) {
+	  if (state_fail(hsmp_scan(&node_desc))) {
 		error("Reading CPU TDPs");
         rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
 		error_rapl = 1;
@@ -279,7 +279,7 @@ void init_tdps()
 	  uint args[1] = { -1 };
 	  uint reps[2] = {  0, -1 };
 
-	  if (!hsmp_send(0, 0x07, args, reps)) { // get max_power_limit which is the TDP
+	  if (state_fail(hsmp_send(0, 0x07, args, reps))) { // get max_power_limit which is the TDP
 		  error("Reading CPU TDPs");
           rapl_pck_tdps[0] = DEFAULT_CPU_TDP;
 		  error_rapl = 1;
