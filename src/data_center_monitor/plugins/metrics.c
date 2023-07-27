@@ -23,21 +23,21 @@
 #include <data_center_monitor/plugins/conf.h>
 #include <data_center_monitor/plugins/metrics.h>
 
-static topology_t tp;
 static mets_t     m;
+static conf_t    *conf;
 static char      *np_path; //Node power
 static char       buffer[4096];
 
 declr_up_get_tag()
 {
     *tag = "metrics";
-    *tags_deps = "conf";
+    *tags_deps = "!conf";
 }
 
 declr_up_action_init(_conf)
 {
-    cluster_conf_t *conf = (cluster_conf_t *) data;
-    sprintf(buffer, "%s/energy/%s", conf->install.dir_plug, conf->install.obj_ener);
+    conf = (conf_t *) data;
+    sprintf(buffer, "%s/energy/%s", conf->cluster.install.dir_plug, conf->cluster.install.obj_ener);
     np_path = buffer;
     return NULL;
 }
@@ -53,8 +53,7 @@ static ullong atoull(const char *str)
 declr_up_action_init(_metrics)
 {
     *data_alloc = &m;
-    topology_init(&tp);
-    metrics_init(&m.mi, &tp, np_path, atoull(getenv("MFLAGS")));
+    metrics_init(&m.mi, &conf->tp, np_path, atoull(getenv("MFLAGS")));
     metrics_data_alloc(&m.mr, NULL, NULL);
     return rsprintf("Metrics plugin initialized correctly %s", (!np_path) ? "(missing np library)": "");
 }

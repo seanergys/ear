@@ -22,26 +22,30 @@
 #include <data_center_monitor/plugins/conf.h>
 
 static conf_t     conf;
-static cchar     *self_tag = "conf";
 
 declr_up_get_tag()
 {
-    *tag = self_tag;
+    *tag = "conf";
     *tags_deps = NULL;
 }
 
 declr_up_action_init(_conf)
 {
     static char buffer[4096];
-    if (state_fail(get_ear_conf_path(buffer))) {
-        return "Configuration path not found";
-    }
+    *data_alloc = &conf;
+
+    topology_init(&conf.tp); // It doesn't fail
+    // Getting hostname
     if (gethostname(conf.hostname_full, sizeof(conf.hostname_full)) < 0) {
         sprintf(buffer, "Error getting node name (%s)", strerror(errno));
         return buffer;
     }
     strcpy(conf.hostname, conf.hostname_full);
-    strtok(conf.hostname, ".");
+    strtok(conf.hostname, "."); // Alias
+    // Getting cluster_conf
+    if (state_fail(get_ear_conf_path(buffer))) {
+        return "Configuration path not found";
+    }
     debug("Reading ear.conf in '%s' in node '%s'", buffer, conf.hostname);
     if (state_fail(read_cluster_conf(buffer, &conf.cluster))) {
         return "Error while reading ear.conf file";
@@ -51,7 +55,7 @@ declr_up_action_init(_conf)
             return "Node not found in ear.conf";
         }
     }
+    conf.cluster_loaded = 1;
     debug("database: %s", conf.cluster.database.database);
-    *data_alloc = &conf;
     return "Configuration plugin loaded correctly";
 }

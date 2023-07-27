@@ -25,7 +25,9 @@
 typedef struct conf_s {
     char            hostname[256]; //Alias
     char            hostname_full[256];
-    cluster_conf_t  cluster;
+    topology_t      tp;
+    cluster_conf_t  cluster; //Its a pointer to check if was loaded
+    int             cluster_loaded;
     my_node_conf_t *node;
 } conf_t;
 

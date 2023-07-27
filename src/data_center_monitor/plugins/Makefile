@@ -2,21 +2,24 @@
 
 plug_PATH = $(DESTDIR)/lib/plugins/monitoring
 plug_PERM = 0775
-plug_BINS = conf.so eardcon.so metrics.so periodic_metrics.so
+plug_BINS = conf.so eardcon.so management.so metrics.so periodic_metrics.so
 
 all: $(plug_BINS) dummy.so
 
-%.so: %.c $(SRCDIR)/common/libcommon.a
+%.so: %.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
-eardcon.so: eardcon.c $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a
+eardcon.so: eardcon.c $(SRCDIR)/daemon/local_api/libeard.a
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
-metrics.so: metrics.c $(SRCDIR)/metrics/metrics.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/common/libcommon.a -lm
+management.so: management.c
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(call whole,$(SRCDIR)/management/libmgt.a)
+
+metrics.so: metrics.c
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(call whole,$(SRCDIR)/metrics/libmetrics.a) $(SRCDIR)/daemon/local_api/libeard.a -lm
 
 periodic_metrics.so: periodic_metrics.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/report/report.o $(SRCDIR)/common/libcommon.a
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/report/report.o
 
 dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^

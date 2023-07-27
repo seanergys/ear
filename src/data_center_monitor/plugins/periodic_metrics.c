@@ -20,6 +20,7 @@
 #include <string.h>
 #include <report/report.h>
 #include <common/output/debug.h>
+#include <common/system/plugin_manager.h>
 #include <data_center_monitor/plugins/conf.h>
 #include <data_center_monitor/plugins/metrics.h>
 
@@ -39,13 +40,13 @@ static ullong             nominal_khz = 5000000;
 declr_up_get_tag()
 {
     *tag = "periodic_metrics";
-    *tags_deps = "conf,metrics";
+    *tags_deps = "!conf,!metrics";
 }
 
 declr_up_action_init(_conf)
 {
     conf = (conf_t *) data;
-    // Loading report manager
+    // Loading report manager (is using the same report plugins than EARDBD, by now)
     if (state_ok(report_load(conf->cluster.install.dir_plug, conf->cluster.db_manager.plugins))){
         report_create_id(&rid, 0, 0, 0);
         // Initializing report manager

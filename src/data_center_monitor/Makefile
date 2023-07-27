@@ -2,8 +2,8 @@
 
 all: all.components edcmon
 
-edcmon: edcmon.c $(SRCDIR)/common/libcommon.a
-	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ -lm -lpthread -ldl
+edcmon: edcmon.c
+	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a) -lm -lpthread -ldl
 
 ######## OPTIONS
 

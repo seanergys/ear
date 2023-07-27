@@ -15,9 +15,14 @@
 * and COPYING.EPL files.
 */
 
-#ifndef UP_PERIODIC_METRICS_H
-#define UP_PERIODIC_METRICS_H
+#ifndef UP_MANAGEMENT_H
+#define UP_MANAGEMENT_H
 
+#include <management/management.h>
 #include <common/system/plugin_manager.h>
 
-#endif //UP_PERIODIC_METRICS_H
+typedef struct mans_s {
+    manages_info_t mi;
+} mans_t;
+
+#endif //UP_MANAGEMENT_H
