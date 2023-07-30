@@ -21,6 +21,7 @@
 #include <cuda_runtime.h>
 #include <common/output/debug.h>
 #include <data_center_monitor/plugins/metrics.h>
+#include <data_center_monitor/plugins/management.h>
 
 // Metrics
 static metrics_read_t     mr1;
@@ -29,6 +30,16 @@ static metrics_diff_t     mrD;
 // Information
 static int                devs_count;
 static int                sms_count;
+static const ulong      **freq_list; // KHz
+static const uint        *freq_list_count;
+static ulong             *freq_list_cur;
+static ulong             *freq_list_def;
+static ulong              *pcap_list_max; // W
+static ulong              *pcap_list_min;
+static ulong              *pcap_list_def;
+static ulong              *pcap_list_cur;
+static ulong               pcap_current;
+static int                 cfg_dev;
 
 declr_up_get_tag()
 {
@@ -44,7 +55,7 @@ declr_up_action_init(_metrics)
 
 // Nvidia                      | H100   | V100   | Comments
 // ----------------------------|--------|--------|-----------------------------------------------------------------------------------------------
-// Cuda Cores (CC) (FP32)      | 14.592 | 5120   |
+// Cuda Cores (CC) (FP32)      | 14.592 | 5.120  |
 // Stream Multiprocessors (SM) | 114    | 80     | SMs process only one block at time. You need 114/80 blocks to occupy the system. 
 // CCs (FP32) per SM           | 128    | ?      | ^This is because shared memory, which is a per block resource.
 // Cuda Cores per thread       | 1      | 1      |
@@ -60,12 +71,39 @@ declr_up_action_init(_metrics)
 
 declr_up_action_init(_cuda_test)
 {
+    int i, j;
     struct cudaDeviceProp prop;
+
+    // Configuration
+    if (getenv("GPU_TEST_DEV")) {
+        cfg_dev = atoi(getenv("GPU_TEST_DEV")); // 0 by default
+    }
+
     // We are using CUDA Runtime API
     cudaGetDeviceCount(&devs_count);
     if (devs_count > 0) {
         cudaGetDeviceProperties(&prop, 0);
         sms_count = prop.multiProcessorCount; 
+    }
+    // Allocation
+    mgt_gpu_data_alloc(&pcap_list_min);
+    mgt_gpu_data_alloc(&pcap_list_max);
+    mgt_gpu_data_alloc(&pcap_list_cur);
+    mgt_gpu_data_alloc(&pcap_list_def);
+    mgt_gpu_data_alloc(&freq_list_cur);
+    mgt_gpu_data_alloc(&freq_list_def);
+    // Frequency configuration
+    mgt_gpu_freq_get_available(no_ctx, &freq_list, &freq_list_count);
+    mgt_gpu_freq_limit_get_current(no_ctx, freq_list_def);
+    // Powercap configuration
+    mgt_gpu_power_cap_get_rank(no_ctx, pcap_list_min, pcap_list_max); 
+    mgt_gpu_power_cap_get_current(no_ctx, pcap_list_def);
+
+    for (i = 0; i < devs_count && i < 1; ++i) {
+        fprintf(stderr, "GPU%d: %lu W to %lu W\n", i, pcap_list_min[i], pcap_list_max[i]);
+        for (j = 0; j < freq_list_count[i]; ++j) {
+            //fprintf(stderr, "GPU%d: PS%d %lu KHz\n", i, j, freq_list[i][j]);
+        }
     }
     return rsprintf("CUDA returned %d devices of %d SMs", devs_count, sms_count);
 }
@@ -81,10 +119,72 @@ declr_up_action_periodic(_metrics)
     return NULL;
 }
 
+static char *set_powercap(int dev, ulong pcap)
+{
+    static char buffer[512];
+    mgt_gpu_power_cap_get_current(no_ctx, pcap_list_cur);
+    pcap_list_cur[dev] = pcap;
+    //mgt_gpu_freq_limit_set(no_ctx, pcap_list_cur);
+    sprintf(buffer, "GPU%d: powercap to %lu W", dev, pcap);
+    return buffer;
+}
+
+static int test_powercap(int dev, char **output)
+{
+    static long p = 0;
+    long pcap;
+
+    pcap = (long) pcap_list_max[dev]-p; 
+    if (pcap <= pcap_list_min[dev]) {
+        *output = set_powercap(dev, pcap_list_def[dev]);
+        p = 0;
+        return 0;
+    }
+    *output = set_powercap(dev, (ulong) pcap);
+    p += 20;
+    return 1;
+}
+
+static char *set_frequency(int dev, ulong freq)
+{
+    static char buffer[512];
+    mgt_gpu_freq_limit_get_current(no_ctx, freq_list_cur);
+    freq_list_cur[dev] = freq; 
+    mgt_gpu_freq_limit_set(no_ctx, freq_list_cur);
+    sprintf(buffer, "GPU%d: frequency to %lu KHz", dev, freq);
+    return buffer;
+}
+
+static int test_frequency(int dev, char **output)
+{
+    static int f = 0;
+    
+    if (f >= freq_list_count[dev]) {
+        *output = set_frequency(dev, freq_list_def[dev]);
+        f = 0;
+        return 0;
+    }
+    *output = set_frequency(dev, freq_list[dev][f]);
+    f += 10;
+    return 1;
+}
+
+char *test_select()
+{
+    static int flip_flop = 0;
+    char *output = NULL;
+
+    if (!flip_flop) {
+        flip_flop = !test_frequency(cfg_dev, &output);
+    } else {
+        flip_flop = test_powercap(cfg_dev, &output);
+    }
+    return output;
+}
+
 declr_up_action_periodic(_cuda_test)
 {
     metrics_data_diff(&mr2, &mr1, &mrD);
-    // Launch test
     metrics_data_copy(&mr1, &mr2);
-    return NULL;
+    return test_select();
 }

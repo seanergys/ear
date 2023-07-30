@@ -258,7 +258,7 @@ static int plugins_open()
             }
         }
         plug->is_enabled = plug->is_opened && (j == p.count);
-        verbose(0, "[Summary] %s %s: called every %llu ms with priority %u%s",
+        verbose(0, "[Summary] %s %19s: called every %llu ms with priority %u%s",
                 (plug->is_opened)? "Opened": "Not opened", plug->file_name, plug->time_lapse,
                 plug->priority, (plug->is_enabled)? "": ", but disabled");
         enabled_count += plug->is_enabled;
@@ -273,10 +273,10 @@ static void format_output()
     date[strlen(date)-1] = '\0';
 }
 
-static void print_output(char *file_from, char *file_to, cchar *tag, char *output)
+static void print_output(char *prefix, char *file_from, char *file_to, cchar *tag, char *output)
 {
     if (output != NULL) {
-        printf("[%s, %s, %s] %s\n", date, file_from, tag, output);
+        printf("[%s, %-18s, %-18s] %s%s\n", date, file_from, tag, prefix, output);
     }
 }
 
@@ -302,7 +302,7 @@ static int plugins_action_periodic_call(int i, int d, void *data)
         }
     }
     sout = p.plugins_sorted[i]->action_periodic[d](p.plugins_sorted[d]->tag, data);
-    print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
+    print_output("", p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
     return 1;
 }
 
@@ -386,7 +386,7 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
     }
     debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag)
     sout = p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
-    print_output(p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
+    print_output("Init status: ", p.plugins_sorted[i]->file_name, p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag, sout);
     return 1;
 }
 
