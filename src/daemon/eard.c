@@ -769,7 +769,7 @@ int main(int argc, char *argv[])
                 //
                 verbose(VEARD_INIT,"Initializing frequency list");
                 /* We initialize frecuency */
-                if (frequency_init(node_size) < 0) {
+                if (frequency_init(0) < 0) {
                     error("frequency information can't be initialized");
                     verbose(VEARD_INIT, "frequency information can't be initialized");
                     _exit(1);
