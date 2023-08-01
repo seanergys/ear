@@ -47,7 +47,7 @@
 // header.
 
 // Universal Plugin function declarations
-#define declr_up_get_tag()               void   up_get_tag                (cchar **tag, cchar **tags_deps)
+#define declr_up_get_tag()               void   up_get_tag                 (cchar **tag, cchar **tags_deps)
 #define declr_up_action_init(suffix)     char * up_action_init##suffix     (cchar *tag, void **data_alloc, void *data)
 #define declr_up_action_periodic(suffix) char * up_action_periodic##suffix (cchar *tag, void *data)
 #define declr_up_post_data()             char * up_post_data               (cchar *msg, void *data)

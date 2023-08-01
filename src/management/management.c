@@ -158,12 +158,12 @@ char *management_data_tostr()
 
 #if TEST
 static topology_t tp;
-static manages_info_t m;
+static manages_info_t man;
 
 static state_t monitor_apis_init(void *whatever)
 {
     topology_init(&tp);
-    management_init(&m, &tp, API_EARD);
+    management_init(&man, &tp, API_EARD);
     return EAR_SUCCESS;
 }
 

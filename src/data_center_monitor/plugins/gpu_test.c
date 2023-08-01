@@ -18,7 +18,6 @@
 //#define SHOW_DEBUGS 1
 
 #include <string.h>
-#include <cuda_runtime.h>
 #include <common/output/debug.h>
 #include <data_center_monitor/plugins/metrics.h>
 #include <data_center_monitor/plugins/management.h>
@@ -43,7 +42,7 @@ static int                 cfg_dev;
 
 declr_up_get_tag()
 {
-    *tag = "cuda_test";
+    *tag = "gpu_test";
     *tags_deps = "!metrics,!management";
 }
 
@@ -53,38 +52,19 @@ declr_up_action_init(_metrics)
     return NULL;
 }
 
-// Nvidia                      | H100   | V100   | Comments
-// ----------------------------|--------|--------|-----------------------------------------------------------------------------------------------
-// Cuda Cores (CC) (FP32)      | 14.592 | 5.120  |
-// Stream Multiprocessors (SM) | 114    | 80     | SMs process only one block at time. You need 114/80 blocks to occupy the system. 
-// CCs (FP32) per SM           | 128    | ?      | ^This is because shared memory, which is a per block resource.
-// Cuda Cores per thread       | 1      | 1      |
-// Threads per Warp            | 32     | 32     | Warp is an implementation decision, not part of CUDA programming model.
-// Threads per block (TB)      | 1024   | ?      |
-// Warps per thread block      | 32     | ?      |
-// Concurrent warps per SM     | ?      | 2      | In theory depends on the instruction. 4 FP32 warps fit in an SM. But depends on the schedulers.
-// Thread Block Cluster        | ?      | -      | New concept. 
-
 // module load cuda/12.2.0
 // nvcc -I ../../ -Xcompiler -fPIC -shared -o cuda_test.so cuda_test.c ../../common/libcommon.a 
+// gcc -I ../../ -fPIC -shared -o gpu_test.so gpu_test.c ../../common/libcommon.a 
 // ../edcmon --plugins=cuda_test.so:2000 --paths /home/xjaneas/ngit/ear_private/src/data_center_monitor/plugins
 
 declr_up_action_init(_cuda_test)
 {
     int i, j;
-    struct cudaDeviceProp prop;
-
     // Configuration
     if (getenv("GPU_TEST_DEV")) {
         cfg_dev = atoi(getenv("GPU_TEST_DEV")); // 0 by default
     }
-
-    // We are using CUDA Runtime API
-    cudaGetDeviceCount(&devs_count);
-    if (devs_count > 0) {
-        cudaGetDeviceProperties(&prop, 0);
-        sms_count = prop.multiProcessorCount; 
-    }
+    mgt_gpu_count_devices(no_ctx, &devs_count);
     // Allocation
     mgt_gpu_data_alloc(&pcap_list_min);
     mgt_gpu_data_alloc(&pcap_list_max);
@@ -124,7 +104,7 @@ static char *set_powercap(int dev, ulong pcap)
     static char buffer[512];
     mgt_gpu_power_cap_get_current(no_ctx, pcap_list_cur);
     pcap_list_cur[dev] = pcap;
-    //mgt_gpu_freq_limit_set(no_ctx, pcap_list_cur);
+    //mgt_gpu_power_cap_set(no_ctx, pcap_list_cur);
     sprintf(buffer, "GPU%d: powercap to %lu W", dev, pcap);
     return buffer;
 }
@@ -150,7 +130,7 @@ static char *set_frequency(int dev, ulong freq)
     static char buffer[512];
     mgt_gpu_freq_limit_get_current(no_ctx, freq_list_cur);
     freq_list_cur[dev] = freq; 
-    mgt_gpu_freq_limit_set(no_ctx, freq_list_cur);
+    //mgt_gpu_freq_limit_set(no_ctx, freq_list_cur);
     sprintf(buffer, "GPU%d: frequency to %lu KHz", dev, freq);
     return buffer;
 }
