@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
@@ -28,6 +28,7 @@
 #include <metrics/common/file.h>
 #include <management/cpufreq/drivers/intel_pstate.h>
 
+#define PATH_NTB   "/sys/devices/system/cpu/intel_pstate/no_turbo"          // line break
 #define PATH_SMF   "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq" // line break
 #define PATH_SGV   "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor" // line break
 #define PATH_CMF0  "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"  // Test read
@@ -42,7 +43,7 @@ static uint    boost_enabled;
 static ullong  freq_max; // KHz
 static ullong  freq_max0; // Initial max freq
 static ullong  freq_base; // KHz
-static ullong  freq_batman; // MAX to BASE if boost enabled
+static ullong  freq_ps0; // KHz
 static uint    governor0;
 static uint    governor_last = 0;
 static int    *fds_smf; // FD scaling max freq
@@ -65,6 +66,13 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     if ((fd_cmf = open(PATH_CMF0, O_RDONLY)) < 0) {
         return_msg(, strerror(errno));
     }
+    // Testing boost
+    if (filemagic_once_read(PATH_NTB, buffer, sizeof(buffer))) {
+        boost_enabled = (uint) !(atoi(buffer));
+        debug("%s: %d %d", PATH_NTB, atoi(buffer), boost_enabled);
+    } else {
+        boost_enabled = tp->boost_enabled; // TP is based on CPUID
+    }
     // Reading the content of cpuinfo_max_freq
     if (!filemagic_word_read(fd_cmf, buffer, 0)) {
         debug("Opening '%s' failed: %d (%s)", PATH_CMF0, fd_cmf, strerror(errno));
@@ -72,9 +80,8 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     }
     // Saving some required data
     cpu_count     = tp->cpu_count;
-    boost_enabled = tp->boost_enabled;
-    freq_base     = (ullong) tp->base_freq;
-    freq_max      = (ullong) atoi(buffer);
+    freq_base     = (ullong) tp->base_freq; // TP is based on CPUID
+    freq_max      = (ullong) atoi(buffer); // Based on cpuinfo_max_freq
     freq_max0     = freq_max;
     current_list  = calloc(cpu_count, sizeof(ullong));
     // Small patch for ARMs (provisional)
@@ -111,19 +118,15 @@ state_t mgt_intel_pstate_init()
     ullong m = 0;
     uint i = 0;
 
-    debug("cpuinfo_max_freq: %llu", freq_max);
-    debug("topo->base_freq : %llu", freq_base);
+    debug("freq_max     : %llu", freq_max);
+    debug("freq_base    : %llu", freq_base);
+    debug("boost_enabled: %u  ", boost_enabled);
     // Discovering if boost is enabled
-    if (!boost_enabled) {
-        boost_enabled = (freq_max > freq_base);
-        // A disguised frequency
-        freq_batman = freq_max;
-    }
     if (boost_enabled) {
         // Boost is marked as base clock + 1MHz
-        freq_batman = freq_base + 1000;
-        avail_list[0] = freq_batman;
-        debug("avail_list%u: %llu (B)", 0, freq_batman);
+        freq_ps0 = freq_base + 1000;
+        avail_list[0] = freq_ps0;
+        debug("avail_list%u: %llu (B)", 0, avail_list[0]);
         i = 1;
     }
     // While greater than 1GHz
@@ -173,7 +176,7 @@ state_t mgt_intel_pstate_get_current_list(const ullong **p)
         } else {
             current_list[cpu] = (ullong) atoi(data);
             if (boost_enabled && current_list[cpu] == freq_max) {
-                current_list[cpu] = freq_batman;
+                current_list[cpu] = freq_ps0;
             }
         }
         debug("current_list%d: %llu", cpu, current_list[cpu]);
