@@ -88,7 +88,7 @@ static void freqs_set(char **params)
     freqs_print(NULL);
 }
 
-declr_up_action_init(test_cpufreq)
+declr_up_action_init(_test_cpufreq)
 {
     command_register("governors_print", "", governors_print);
     command_register("governors_set", "%s", governors_set);
