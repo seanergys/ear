@@ -164,6 +164,7 @@ static state_t monitor_apis_init(void *whatever)
 {
     topology_init(&tp);
     management_init(&man, &tp, API_EARD);
+    management_data_tostr();
     return EAR_SUCCESS;
 }
 

@@ -252,7 +252,7 @@ state_t mgt_intel_pstate_governor_get_list(uint *governors)
     state_t s;
     int i;
     for (i = 0; i < cpu_count; ++i) {
-        if (state_fail(s = static_get_governor(i, governors))) {
+        if (state_fail(s = static_get_governor(i, &governors[i]))) {
             return s;
         }
     }
