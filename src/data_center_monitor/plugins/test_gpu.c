@@ -42,7 +42,7 @@ static int                 cfg_dev;
 
 declr_up_get_tag()
 {
-    *tag = "gpu_test";
+    *tag = "test_gpu";
     *tags_deps = "!metrics,!management";
 }
 
@@ -57,7 +57,7 @@ declr_up_action_init(_metrics)
 // gcc -I ../../ -fPIC -shared -o gpu_test.so gpu_test.c ../../common/libcommon.a 
 // ../edcmon --plugins=cuda_test.so:2000 --paths /home/xjaneas/ngit/ear_private/src/data_center_monitor/plugins
 
-declr_up_action_init(_cuda_test)
+declr_up_action_init(_test_gpu)
 {
     int i, j;
     // Configuration
@@ -162,7 +162,7 @@ char *test_select()
     return output;
 }
 
-declr_up_action_periodic(_cuda_test)
+declr_up_action_periodic(_test_gpu)
 {
     metrics_data_diff(&mr2, &mr1, &mrD);
     metrics_data_copy(&mr1, &mr2);

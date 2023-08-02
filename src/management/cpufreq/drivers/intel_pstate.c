@@ -236,6 +236,7 @@ state_t mgt_intel_pstate_set_current(uint freq_index, int cpu)
 static state_t static_get_governor(int cpu, uint *governor)
 {
     char buffer[64];
+    debug("reading governor for CPU%d", cpu);
     if (!filemagic_word_read(fds_sgv[cpu], buffer, 1)) {
         buffer[0] = '\0';
     }
@@ -252,7 +253,7 @@ state_t mgt_intel_pstate_governor_get_list(uint *governors)
     state_t s;
     int i;
     for (i = 0; i < cpu_count; ++i) {
-        if (state_fail(s = static_get_governor(i, governors))) {
+        if (state_fail(s = static_get_governor(i, &governors[i]))) {
             return s;
         }
     }

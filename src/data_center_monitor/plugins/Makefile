@@ -2,7 +2,15 @@
 
 plug_PATH = $(DESTDIR)/lib/plugins/monitoring
 plug_PERM = 0775
-plug_BINS = conf.so eardcon.so management.so metrics.so periodic_metrics.so
+plug_BINS = \
+    conf.so \
+    eardcon.so \
+    keyboard.so \
+    management.so \
+    metrics.so \
+    periodic_metrics.so \
+    test_cpufreq.so \
+    test_gpu.so
 
 all: $(plug_BINS) dummy.so
 

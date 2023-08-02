@@ -41,6 +41,7 @@ declr_up_action_init(_conf)
 
 declr_up_action_init(_management)
 {
+    *data_alloc = &m;
     management_init(&m.mi, &conf->tp, API_EARD);
     return rsprintf("Management plugin initialized correctly");
 }

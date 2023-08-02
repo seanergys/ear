@@ -57,6 +57,8 @@
 
 int plugin_manager_init(int argc, char *argv[]);
 
+int plugin_manager_action(cchar *tag, void *data);
+
 void plugin_mananger_post(cchar *msg, void *data);
 
 void plugin_manager_wait();
