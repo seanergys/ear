@@ -29,6 +29,11 @@
 #if DB_MYSQL
 #include <common/database/mysql_io_functions.h>
 
+#ifndef MARIADB_VERSION_ID  //my_bool is always defined in MARIADB, so if we are using it we skip this
+#if MYSQL_VERSION_ID >= 80100 //MYSQL deprecated my_bool in favour of bool in version 8.0.1
+typedef my_bool bool; 
+#endif
+#endif 
 
 #define APPLICATION_MYSQL_QUERY   "INSERT INTO Applications (job_id, step_id, local_id, node_id, signature_id, power_signature_id) VALUES" \
                             "(?, ?, ?, ?, ?, ?)"
@@ -403,7 +408,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
         if (!is_mpi) {
             bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-            bind[3+offset].is_null = (ear_db_bool*) 1;
+            bind[3+offset].is_null = (my_bool*) 1;
         }
 
         //string types
@@ -603,7 +608,7 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
 
         bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-        bind[3+offset].is_null = (ear_db_bool*) 1;
+        bind[3+offset].is_null = (my_bool*) 1;
 
         //string types
         bind[3+offset].buffer_type = MYSQL_TYPE_STRING;
@@ -1368,7 +1373,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
             else // if no gpu_signatures we set the values to null
             {
                 bind[27+offset].buffer_type = bind[28+offset].buffer_type = MYSQL_TYPE_NULL;
-                bind[27+offset].is_null = bind[28+offset].is_null = (ear_db_bool *) 1;
+                bind[27+offset].is_null = bind[28+offset].is_null = (my_bool *) 1;
                 bind[27+offset].buffer  = bind[28+offset].buffer  = NULL;
             }
 #endif
@@ -1392,7 +1397,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
             else // if no gpu_signatures we set the values to null
             {
                 bind[14+offset].buffer_type = bind[15+offset].buffer_type = MYSQL_TYPE_NULL;
-                bind[14+offset].is_null = bind[15+offset].is_null = (ear_db_bool *) 1;
+                bind[14+offset].is_null = bind[15+offset].is_null = (my_bool *) 1;
                 bind[14+offset].buffer  = bind[15+offset].buffer  = NULL;
             }
 #endif
