@@ -133,25 +133,25 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
         conf->verbose = atoi(token);
         found=EAR_SUCCESS;
     }
-    else if (!strcmp(token, "GLOBALMANAGERUSEAGGREGATED") || !strcmp(token, "EARGMUSEAGGREGATED"))
+    else if (!strcmp(token, "GLOBALMANAGERENERGYUSEAGGREGATED") || !strcmp(token, "EARGMENERGYUSEAGGREGATED"))
     {
         token = strtok(NULL, "=");
         conf->use_aggregation = atoi(token);
         found=EAR_SUCCESS;
     }
-    else if (!strcmp(token, "GLOBALMANAGERPERIODT1") || !strcmp(token, "EARGMPERIODT1"))
+    else if (!strcmp(token, "GLOBALMANAGERENERGYPERIODT1") || !strcmp(token, "EARGMENERGYPERIODT1"))
     {
         token = strtok(NULL, "=");
         conf->t1 = atoi(token);
         found=EAR_SUCCESS;
     }
-    else if (!strcmp(token, "GLOBALMANAGERPERIODT2") || !strcmp(token, "EARGMPERIODT2") )
+    else if (!strcmp(token, "GLOBALMANAGERENERGYPERIODT2") || !strcmp(token, "EARGMENERGYPERIODT2") )
     {
         token = strtok(NULL, "=");
         conf->t2 = atoi(token);
         found=EAR_SUCCESS;
     }
-    else if (!strcmp(token, "GLOBALMANAGERUNITS") || !strcmp(token, "EARGMUNITS"))
+    else if (!strcmp(token, "GLOBALMANAGERENERGYUNITS") || !strcmp(token, "EARGMENERGYUNITS"))
     {
         token = strtok(NULL, "=");
 
@@ -248,7 +248,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
         }
         found=EAR_SUCCESS;
     }
-    else if (!strcmp(token, "GLOBALMANAGERGRACEPERIODS") || !strcmp(token, "EARGMGRACEPERIODS"))
+    else if (!strcmp(token, "GLOBALMANAGERENERGYGRACEPERIODS") || !strcmp(token, "EARGMENERGYGRACEPERIODS"))
     {
         token = strtok(NULL, "=");
         conf->grace_periods = atoi(token);
@@ -260,7 +260,7 @@ state_t EARGM_parse_token(eargm_conf_t *conf, char *token)
         conf->port = atoi(token);
         found=EAR_SUCCESS;
     }
-    else if (!strcmp(token, "GLOBALMANAGERMODE") || !strcmp(token, "EARGMMODE"))
+    else if (!strcmp(token, "GLOBALMANAGERENERGYMODE") || !strcmp(token, "EARGMENERGYMODE"))
     {
         token = strtok(NULL, "=");
         conf->mode = atoi(token);
@@ -358,13 +358,36 @@ void set_default_eargm_conf(eargm_conf_t *eargmc)
 
 }
 
-void print_eargm_def(eargm_def_t *conf)
+void get_powercap_type(uint power, char *buff)
+{
+    switch(power) {
+        case POWER_CAP_DISABLED:
+            strcpy(buff, "(disabled)");
+            break;
+        case POWER_CAP_AUTO_CONFIG:
+            strcpy(buff, "(auto_configure)");
+            break;
+        case POWER_CAP_UNLIMITED:
+            strcpy(buff, "(unlimited, this is not a valid value)");
+            break;
+        default:
+            strcpy(buff, "");
+            break;
+    }
+}
+
+void print_eargm_def(eargm_def_t *conf, char tabulate)
 {
     int i;
-    verbosen(VCCONF,"\t\t->EARGM %d node %s (port %u) ", conf->id, conf->node, conf->port);
-    verbosen(VCCONF,"energy limit %ld power limit %ld ", conf->energy, conf->power);
+    char buff[256];
+    get_powercap_type(conf->power, buff);
+    if (tabulate) {
+        verbosen(VCCONF,"\t\t->");
+    }
+    verbosen(VCCONF,"EARGM %d node %s (port %u) ", conf->id, conf->node, conf->port);
+    verbosen(VCCONF,"energy limit %ld power limit %ld %s", conf->energy, conf->power, buff);
     if (conf->num_subs > 0) {
-        verbosen(VCCONF, "meta-controlled eargms: ");
+        verbosen(VCCONF, "meta-eargm: yes, controlled eargms: ");
     }
     for (i = 0; i<conf->num_subs; i++) {
         verbosen(VCCONF, "%d, ", conf->subs[i]);
@@ -389,6 +412,6 @@ void print_eargm_conf(eargm_conf_t *conf)
     verbosen(VCCONF,"\t energycap_action %s\n",conf->energycap_action);
     verbosen(VCCONF,"\t EARGM definitions\n");
     for (i = 0; i < conf->num_eargms; i++)
-        print_eargm_def(&conf->eargms[i]);
+        print_eargm_def(&conf->eargms[i], 1);
 }
 

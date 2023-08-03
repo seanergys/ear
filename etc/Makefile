@@ -5,6 +5,7 @@ gen_FOLDERS = $(DESTDIR)/bin \
               $(DESTDIR)/bin/tools \
               $(DESTDIR)/include \
               $(DESTDIR)/lib \
+              $(DESTDIR)/lib/pbs \
               $(DESTDIR)/lib/plugins \
               $(DESTDIR)/lib/plugins/energy \
               $(DESTDIR)/lib/plugins/powercap \

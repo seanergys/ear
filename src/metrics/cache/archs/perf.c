@@ -54,21 +54,18 @@ static uint        first; // First perf which worked
 static uint        cache_last_level;
 static double      line_size;
 
-int set_cache(uint enable, ullong event, uint type, uint offset, uint used_in_bw, cchar *desc)
+void set_cache(ullong event, uint type, uint offset, uint used_in_bw, cchar *desc)
 {
-    if (enable) {
-        if (state_fail(perf_open(&meta[counter].perf, &meta[first].perf, 0, type, event))) {
-            debug("perf_open for level %d returned: %s", offset, state_msg);
-            first += (counter == first);
-            enable = 0;
-        }
+    if (state_fail(perf_open(&meta[counter].perf, &meta[first].perf, 0, type, event))) {
+        debug("perf_open for level %d returned: %s", offset, state_msg);
+        return;
     }
     meta[counter].used_in_bw = used_in_bw;
     meta[counter].offset     = offset;
-    meta[counter].enabled    = enable;
+    meta[counter].enabled    = 1;
     meta[counter].desc       = desc;
+    debug("loaded event %s", desc);
     counter++;
-    return enable;
 }
 
 int OFFSET(int level)
@@ -103,19 +100,19 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     line_size = (double) tp->cache_line_size;
     //
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
-        set_cache(1, 0x3f24  , PERF_TYPE_RAW     , OFFSET(002), 0, "L2_RQSTS.MISS"   );
-        set_cache(1, 0x40f0  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_TRANS.L2_WB"  );
-        set_cache(1, 0x1ff1  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_IN.ALL" );
+        set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
+        set_cache(0x3f24  , PERF_TYPE_RAW     , OFFSET(002), 0, "L2_RQSTS.MISS"   );
+        set_cache(0x40f0  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_TRANS.L2_WB"  );
+        set_cache(0x1ff1  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_IN.ALL" );
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
-        set_cache(1, 0x430864, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_DC" );
-        set_cache(1, 0x431f71, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF1");
-        set_cache(1, 0x431f72, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF2");
+        set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
+        set_cache(0x430864, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_DC" );
+        set_cache(0x431f71, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF1");
+        set_cache(0x431f72, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF2");
     } else if (tp->vendor == VENDOR_ARM) {
-        set_cache(1, L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
-        set_cache(1, 0x17    , PERF_TYPE_RAW     , OFFSET(002), 1, "L2D_CACHE_REFILL");
-        set_cache(1, 0x18    , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2D_CACHE_WB"    );
+        set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
+        set_cache(0x17    , PERF_TYPE_RAW     , OFFSET(002), 1, "L2D_CACHE_REFILL");
+        set_cache(0x18    , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2D_CACHE_WB"    );
     }
     if (!counter) {
         return;
@@ -135,11 +132,6 @@ void cache_perf_get_info(apinfo_t *info)
     info->scope       = SCOPE_PROCESS;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
-}
-
-void cache_perf_get_granularity(uint *granularity)
-{
-    *granularity = GRANULARITY_PROCESS;
 }
 
 state_t cache_perf_init()

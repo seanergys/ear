@@ -67,10 +67,10 @@ strtable_t tprintf_static __attribute__((weak));
     tprintf_write(table); \
     }
 
-#define tsprintf(buffer, table, ...) { \
+#define tsprintf(buffer, table, append, ...) { \
     snprintf((table)->buffer_raw, STR_SIZE_BUFFER-1, __VA_ARGS__); \
     tprintf_span(table); \
-    strncpy(buffer, (table)->buffer_out, STR_SIZE_BUFFER-1); \
+    strcpy(&buffer[append ? strlen(buffer) : 0], (table)->buffer_out); \
     }
 
 // Obsolete, move to tprintf_init2 and convert tprintf_init2 to tprintf_init.

@@ -9,9 +9,9 @@ COMPONENTS = \
     library \
     global_manager \
     commands \
-    tools \
-    slurm_plugin
-
+	tools \
+    slurm_plugin \
+	pbs_hook
 
 #ifdef DB_BASE
 COMPONENTS += database_cache
@@ -54,6 +54,8 @@ earl.install: library.install;
 eargmd.install: global_manager.install;
 
 earplug.install: slurm_plugin.install;
+
+pbshook.install: pbs_hook.install;
 
 %.install:
 	@ $(MAKE) -C $* install || exit

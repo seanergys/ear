@@ -117,7 +117,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
     if (!must_report) return EAR_SUCCESS;
     debug("csv report_loops");
     // TODO: we could return EAR_ERROR
-    if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
+    if ((loops == NULL) || (count == 0)) return EAR_ERROR;
     ullong sec = timestamp_getconvert(TIME_SECS);
     currtime = sec - my_time;
 

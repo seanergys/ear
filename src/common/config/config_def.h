@@ -58,8 +58,10 @@
 #define MAX_ERROR_POWER                     1000.0
 #define MAX_TEMP                            150
 #define MAX_POWER_CAP                       0
+#define POWER_CAP_DISABLED                  0
 #define POWER_CAP_UNLIMITED                 1
-#define DEF_POWER_CAP                       POWER_CAP_UNLIMITED
+#define POWER_CAP_AUTO_CONFIG               -1
+#define DEF_POWER_CAP                       POWER_CAP_AUTO_CONFIG
 #define POWER_CAP_TYPE                      "node"
 //
 #define MAX_CPUF_PSTATE                     5
@@ -101,12 +103,15 @@
 #define DEFAULT_POWER                       300
 #define GRACE_T1                            3
 #define MAX_TIME_DYNAIS_WITHOUT_SIGNATURE   15
-#define MPI_CALLS_TO_CHECK_PERIODIC         1000
 /* Maximum power error supported. It is used to compute the min time to compute
  * a valid signature */
 #define MAX_POWER_ERROR                     0.05
 /* Maximum dynais overhead supported per iteration */
 #define MAX_DYNAIS_OVERHEAD                 5
+#define MAX_MPI_CALLS_SECOND                10000
+#define MIN_MPI_CALLS_SECOND                200
+//#define MPI_CALLS_TO_CHECK_PERIODIC         100000
+#define MPI_CALLS_TO_CHECK_PERIODIC         MAX_MPI_CALLS_SECOND
 /* When set to 1, Pieces of code are activated to reduce the overhead introduced
  * by dynais */
 #define PERIOD                              10
@@ -132,7 +137,7 @@
 #define LIMIT_LARGE_JOBS                    2
 #define RED_PSTATES_LARGE_JOBS              1
 /* IMC Management and Phases management default options */
-#define  EAR_eUFS                           0
+#define  EAR_eUFS                           1
 #define  EAR_IMC_TH                         0.02
 #define  EAR_USE_PHASES                     1
 #define  EAR_USE_LB                         1

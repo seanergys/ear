@@ -175,3 +175,16 @@ void tprintf_block(strtable_t *t, int block)
 {
     t->blocked = block;
 }
+
+#if TEST
+static char buffer[4096];
+static strtable_t table;
+int main(int argc, char *argv[])
+{
+    tprintf_init2(&table, 0, STR_MODE_COL, "13 9 8 10 20");
+    tsprintf(buffer, &table, 0, "E.API||I.API||#Devs||Scope||Granularity");
+    tsprintf(buffer, &table, 1, "-----||-----||-----||-----||-----------");
+    printf("%s\n", buffer);
+    return 0;
+}
+#endif

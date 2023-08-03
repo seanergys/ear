@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -41,7 +41,7 @@ CPUPOW_F_LOAD(mgt_cpupow_dummy_load)
 CPUPOW_F_GET_INFO(mgt_cpupow_dummy_get_info)
 {
     info->api         = API_DUMMY;
-    info->scope       = SCOPE_DUMMY;
+    info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_DUMMY;
     info->devs_count  = 1;
 }

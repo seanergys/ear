@@ -240,7 +240,7 @@ void reverse_ear_event_bytes(ear_event_t *events, int num_events)
         events[i].jid = htonl(events[i].jid);
         events[i].step_id = htonl(events[i].step_id);
         events[i].event = htonl(events[i].event);
-        events[i].freq = htonl(events[i].freq);
+        events[i].value = htonl(events[i].value);
         events[i].timestamp = htonl(events[i].timestamp);
     }
 }
@@ -867,7 +867,7 @@ int postgresql_batch_insert_ear_events(PGconn *connection, ear_event_t *events, 
         param_values[1  + offset] = (char *) &events[i].event;
         param_values[2  + offset] = (char *) &events[i].jid;
         param_values[3  + offset] = (char *) &events[i].step_id;
-        param_values[4  + offset] = (char *) &events[i].freq;
+        param_values[4  + offset] = (char *) &events[i].value;
         param_values[5  + offset] = (char *) &events[i].node_id;
 
         /* Parameter sizes */

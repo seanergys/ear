@@ -32,6 +32,7 @@
 #include <metrics/bandwidth/archs/amd17df.h>
 #include <metrics/bandwidth/archs/intel63.h>
 #include <metrics/bandwidth/archs/intel106.h>
+#include <metrics/bandwidth/archs/intel143.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static double          line_size;
@@ -52,8 +53,9 @@ void bwidth_load(topology_t *tp, int eard)
     bwidth_amd17_load   (tp, &ops);
     bwidth_amd17df_load (tp, &ops);
     bwidth_intel63_load (tp, &ops);
-    bwidth_likwid_load  (tp, &ops);
     bwidth_intel106_load(tp, &ops);
+    bwidth_intel143_load(tp, &ops);
+    bwidth_likwid_load  (tp, &ops);
     bwidth_dummy_load   (tp, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at 
     // this point all API's have their devices counter.
@@ -219,10 +221,10 @@ void bwidth_data_print(ullong cas, double gbs, int fd)
     dprintf(fd, "%s", buffer);
 }
 
-void bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
+char *bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 {
 #if 1
-    snprintf(buffer, length, "%0.2lf (GB/s, %llu CAS)\n", gbs, cas);
+    snprintf(buffer, length, "%0.2lf GB/s (%llu CAS)\n", gbs, cas);
 #else
     size_t accum = 0;
 	size_t added = 0;
@@ -235,6 +237,7 @@ void bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 	}
 	snprintf(&buffer[accum], length, "Total: %lf GB/s\n", gbs);
 #endif
+    return buffer;
 }
 
 double bwidth_help_castogbs(ullong cas, double secs)
@@ -251,50 +254,3 @@ double bwidth_help_castotpi(ullong cas, ullong instructions)
     return (((double) cas) * line_size) / ((double) instructions);
 
 }
-
-#if TEST0
-#include <common/system/monitor.h>
-#include <daemon/local_api/eard_api.h>
-
-static topology_t tp;
-static bwidth_t *bws1;
-static bwidth_t *bws2;
-static bwidth_t *bwsD;
-static apinfo_t  info;
-static ullong    cas;
-static double    gbs;
-
-int main(int argc, char *argv[])
-{
-    int eard = 0;
-
-    if (argc >= 2) {
-        eard = atoi(argv[1]);
-    }
-    if (eard) {
-        eards_connection();
-    }
-
-    topology_init(&tp);
-
-    bwidth_load(&tp, eard);
-    bwidth_data_alloc(&bws1);
-    bwidth_data_alloc(&bws2);
-    bwidth_data_alloc(&bwsD);
-    bwidth_init(no_ctx);
-
-    bwidth_get_info(&info);
-    apinfo_print(&info, fderr, 1);
-
-    monitor_init();
-    
-    bwidth_read(no_ctx, bws1);
-    while (1) {
-    	sleep(5);
-	bwidth_read_copy(no_ctx, bws2, bws1, bwsD, &cas, &gbs);
-	bwidth_data_print(cas, gbs, fderr);
-    }
-
-    return 0;
-}
-#endif

@@ -28,9 +28,11 @@
 #include <common/types/periodic_metric.h>
 #include <common/types/power_signature.h>
 #include <common/types/periodic_aggregation.h>
+#include <stdbool.h>
 
 #include <mysql/mysql.h>
-
+#define ear_db_bool my_bool
+//#define ear_db_bool bool
 
 typedef struct
 {
