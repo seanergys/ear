@@ -31,7 +31,7 @@
 
 #ifndef MARIADB_VERSION_ID  //my_bool is always defined in MARIADB, so if we are using it we skip this
 #if MYSQL_VERSION_ID >= 80100 //MYSQL deprecated my_bool in favour of bool in version 8.0.1
-typedef my_bool bool; 
+// typedef my_bool bool; 
 #endif
 #endif 
 
