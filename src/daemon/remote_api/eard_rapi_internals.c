@@ -1151,7 +1151,7 @@ void ear_cluster_ping(cluster_conf_t *my_cluster_conf)
 					else 
 						sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k); 
 				}   
-                if (my_cluster_conf->net_ext != NULL) {
+                if (strlen(my_cluster_conf->net_ext) > 0) {
                     strcat(node_name, my_cluster_conf->net_ext);
                 }
 				rc=remote_connect(node_name,my_cluster_conf->eard.port);
