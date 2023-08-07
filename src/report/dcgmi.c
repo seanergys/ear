@@ -47,6 +47,7 @@ static char path_dir_app[1024], path_dir_loops[1024];
 static ullong my_time = 0;
 
 static uint must_report;
+static uint        dcgmi = DCGMI_DEFAULT;
 
 
 
@@ -67,6 +68,11 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     char *default_dcgmi_log_path = ".";
 #endif
     int ret;
+		char *use_dcgmi = ear_getenv(FLAG_GPU_DCGMI_ENABLED);
+		if (((use_dcgmi != NULL) && (atoi(use_dcgmi) == 0)) || !dcgmi){
+			must_report = 0;
+			return EAR_SUCCESS;
+		}
 		if (id->master_rank >= 0 ) must_report = 1;
 		if (!must_report) return EAR_SUCCESS;
     gethostname(nodename, sizeof(nodename));
