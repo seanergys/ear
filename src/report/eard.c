@@ -26,7 +26,7 @@
 
 static uint must_report;
 static char report_nodename[GENERIC_NAME];
-static uint earl_report_loops = 0;
+static uint earl_report_loops = 1;
 
 state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
