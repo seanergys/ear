@@ -23,7 +23,6 @@
 #include <common/system/plugin_manager.h>
 
 static ullong zero = 0LLU;
-static char buffer[512];
 
 declr_up_get_tag ()
 {
@@ -34,24 +33,20 @@ declr_up_get_tag ()
 declr_up_action_init(_dummy)
 {
     *data_alloc = &zero;
-    sprintf(buffer, "dummy action init(_dummy): received tag %s", tag);
-    return buffer;
+    return rsprintf("dummy action init(_dummy): received tag %s", tag);
 }
 
 declr_up_action_init(_conf)
 {
-    sprintf(buffer, "dummy action init(_conf): received tag %s", tag);
-    return buffer;
+    return rsprintf("dummy action init(_conf): received tag %s", tag);
 }
 
 declr_up_action_periodic(_dummy)
 {
-    sprintf(buffer, "dummy action periodic(_dummy): received tag %s", tag);
-    return buffer;
+    return rsprintf("[X] dummy action periodic(_dummy): received tag %s", tag);
 }
 
 declr_up_post_data()
 {
-    sprintf(buffer, "dummy post data: received msg %s", msg);
-    return buffer;
+    return rsprintf("dummy post data: received msg %s", msg);
 }

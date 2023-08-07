@@ -29,14 +29,15 @@
 #include <management/gpu/archs/rsmi.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static mgt_gpu_ops_t ops;
-static uint devs_count;
-static uint ok_load;
+static mgt_gpu_ops_t   ops;
+static uint            loaded;
+static ulong          *generic_list;
+static uint            devs_count;
 
 __attribute__((used)) void mgt_gpu_load(int eard)
 {
     while (pthread_mutex_trylock(&lock));
-    if (ok_load) {
+    if (loaded) {
         goto unlock_load;
     }
     // NVML and ONEAPI can be partially loaded.
@@ -46,7 +47,7 @@ __attribute__((used)) void mgt_gpu_load(int eard)
     mgt_gpu_oneapi_load(&ops);
     mgt_gpu_eard_load(&ops, eard);
     mgt_gpu_dummy_load(&ops);
-    ok_load = 1;
+    loaded = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
 }
@@ -100,9 +101,29 @@ state_t mgt_gpu_freq_limit_reset(ctx_t *c)
 	preturn (ops.freq_limit_reset, c);
 }
 
+state_t mgt_gpu_freq_limit_reset_dev(ctx_t *c, int gpu)
+{
+    if (generic_list == NULL) {
+        mgt_gpu_data_alloc(&generic_list);
+    }
+    mgt_gpu_freq_limit_get_default(c, generic_list);
+    return mgt_gpu_freq_limit_set_dev(c, generic_list[gpu], gpu);
+}
+
 state_t mgt_gpu_freq_limit_set(ctx_t *c, ulong *khz)
 {
 	preturn (ops.freq_limit_set, c, khz);
+}
+
+state_t mgt_gpu_freq_limit_set_dev(ctx_t *c, ulong freq, int gpu)
+{
+    // Check 0s
+    if (generic_list == NULL) {
+        mgt_gpu_data_alloc(&generic_list);
+    }
+    mgt_gpu_data_null(generic_list);
+    generic_list[gpu] = freq;
+    return mgt_gpu_freq_limit_set(c, generic_list);
 }
 
 state_t mgt_gpu_freq_get_valid(ctx_t *c, uint dev, ulong freq_ref, ulong *freq_near)
@@ -219,9 +240,28 @@ state_t mgt_gpu_power_cap_reset(ctx_t *c)
 	preturn (ops.power_cap_reset, c);
 }
 
+state_t mgt_gpu_power_cap_reset_dev(ctx_t *c, int gpu)
+{
+    if (generic_list == NULL) {
+        mgt_gpu_data_alloc(&generic_list);
+    }
+    mgt_gpu_power_cap_get_default(c, generic_list);
+    return mgt_gpu_power_cap_set_dev(c, generic_list[gpu], gpu);
+}
+
 state_t mgt_gpu_power_cap_set(ctx_t *c, ulong *watts)
 {
 	preturn (ops.power_cap_set, c, watts);
+}
+
+state_t mgt_gpu_power_cap_set_dev(ctx_t *c, ulong watts, int gpu)
+{
+    if (generic_list == NULL) {
+        mgt_gpu_data_alloc(&generic_list);
+    }
+    mgt_gpu_data_null(generic_list);
+    generic_list[gpu] = watts;
+    return mgt_gpu_power_cap_set(c, generic_list);
 }
 
 state_t mgt_gpu_data_alloc(ulong **data)

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <ctype.h>
 #include <stdio.h>
@@ -34,6 +34,7 @@ typedef struct keyboard_s {
 static pthread_t  thread;
 static keyboard_t keys[1024];
 static uint       keys_count;
+static int        is_closing;
 
 declr_up_get_tag()
 {
@@ -73,9 +74,10 @@ void command_register(cchar *command, cchar *format, callback_t callback)
     ++keys_count;
 }
 
-static void command_test(char **params)
+static void command_exit(char **params)
 {
-    printf("Test command received with param %s\n", params[0]);
+    is_closing = 1;
+    plugin_manager_close();
 }
 
 static int is(char *s1, const char *s2)
@@ -93,9 +95,9 @@ static void *command_read(void *x)
     params[1] = calloc(128, sizeof(char));
     params[2] = calloc(128, sizeof(char));
     params[3] = calloc(128, sizeof(char));
-    //command_register("test", "%s", command_test);
+    command_register("exit", "", command_exit);
 
-    while (1) {
+    while (!is_closing) {
         printf("Enter command: ");
         fflush(stdout);
         scanf("%s", command);
@@ -108,6 +110,8 @@ static void *command_read(void *x)
             }
         }
     }
+    // Waiting here until the parent dies
+    while(is_closing);
     return NULL;
 }
 

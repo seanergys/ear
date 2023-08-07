@@ -16,17 +16,18 @@
 */
 
 //#define SHOW_DEBUGS 1
-//#define FAKE_GPUS   1
+#define FAKE_GPUS   1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
 #include <management/gpu/archs/dummy.h>
 
 #if FAKE_GPUS
-#define FAKE_N 4 
+#define FAKE_N 2
 static ulong *clock_list[FAKE_N]; // MHz
 static uint	  clock_lens[FAKE_N];
-static ulong  power_list[FAKE_N];
+static ulong  power_list_max[FAKE_N];
+static ulong  power_list_min[FAKE_N];
 #else
 static ulong  clock_khz;
 static ulong *clock_list[1];
@@ -69,26 +70,22 @@ void mgt_gpu_dummy_get_api(uint *api)
 state_t mgt_gpu_dummy_init(ctx_t *c)
 {
     #if FAKE_GPUS
-    power_list[0] = 100;
-    power_list[1] = 120;
-    power_list[2] = 140;
-    power_list[3] = 160;
-    clock_lens[0] = 2;
-    clock_lens[1] = 2;
-    clock_lens[2] = 2;
-    clock_lens[3] = 2;
+    power_list_max[0] = 300;
+    power_list_max[1] = 220;
+    power_list_min[0] = 100;
+    power_list_min[1] = 100;
+    clock_lens[0] = 4;
+    clock_lens[1] = 4;
     clock_list[0] = calloc(clock_lens[0], sizeof(ulong));
     clock_list[1] = calloc(clock_lens[1], sizeof(ulong));
-    clock_list[2] = calloc(clock_lens[2], sizeof(ulong));
-    clock_list[3] = calloc(clock_lens[3], sizeof(ulong));
-    clock_list[0][0] = 100000;
-    clock_list[0][1] = 150000;
-    clock_list[1][0] = 200000;
-    clock_list[1][1] = 250000;
-    clock_list[2][0] = 300000;
-    clock_list[2][1] = 350000;
-    clock_list[3][0] = 400000;
-    clock_list[3][1] = 450000;
+    clock_list[0][0] = 150000;
+    clock_list[0][1] = 140000;
+    clock_list[0][2] = 130000;
+    clock_list[0][3] = 120000;
+    clock_list[1][0] = 250000;
+    clock_list[1][1] = 240000;
+    clock_list[1][2] = 230000;
+    clock_list[1][3] = 220000;
     #else
 	clock_list[0] = &clock_khz;
 	clock_lens[0] = 1;
@@ -149,8 +146,6 @@ state_t mgt_gpu_dummy_freq_limit_get_default(ctx_t *c, ulong *khz)
         #if FAKE_GPUS
         khz[0] = clock_list[0][0];
         khz[1] = clock_list[1][0];
-        khz[2] = clock_list[2][0];
-        khz[3] = clock_list[3][0];
 		#else
         khz[0] = 0;
         #endif
@@ -164,8 +159,6 @@ state_t mgt_gpu_dummy_freq_limit_get_max(ctx_t *c, ulong *khz)
         #if FAKE_GPUS
         khz[0] = clock_list[0][1];
         khz[1] = clock_list[1][1];
-        khz[2] = clock_list[2][1];
-        khz[3] = clock_list[3][1];
 		#else
         khz[0] = 0;
         #endif
@@ -214,10 +207,8 @@ state_t mgt_gpu_dummy_power_cap_get_current(ctx_t *c, ulong *watts)
 {
 	if (watts != NULL) {
         #if FAKE_GPUS
-        watts[0] = power_list[0];
-        watts[1] = power_list[1];
-        watts[2] = power_list[2];
-        watts[3] = power_list[3];
+        watts[0] = power_list_max[0];
+        watts[1] = power_list_max[1];
 		#else
 		watts[0] = 0;
         #endif
@@ -229,10 +220,8 @@ state_t mgt_gpu_dummy_power_cap_get_default(ctx_t *c, ulong *watts)
 {
 	if (watts != NULL) {
         #if FAKE_GPUS
-        watts[0] = power_list[0];
-        watts[1] = power_list[1];
-        watts[2] = power_list[2];
-        watts[3] = power_list[3];
+        watts[0] = power_list_max[0];
+        watts[1] = power_list_max[1];
 		#else
 		watts[0] = 0;
         #endif
@@ -244,20 +233,16 @@ state_t mgt_gpu_dummy_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watt
 {
 	if (watts_max != NULL) {
         #if FAKE_GPUS
-        watts_max[0] = power_list[0];
-        watts_max[1] = power_list[1];
-        watts_max[2] = power_list[2];
-        watts_max[3] = power_list[3];
+        watts_max[0] = power_list_max[0];
+        watts_max[1] = power_list_max[1];
 		#else
 		watts_max[0] = 0;
         #endif
 	}
 	if (watts_min != NULL) {
         #if FAKE_GPUS
-        watts_min[0] = power_list[0];
-        watts_min[1] = power_list[1];
-        watts_min[2] = power_list[2];
-        watts_min[3] = power_list[3];
+        watts_min[0] = power_list_min[0];
+        watts_min[1] = power_list_min[1];
 		#else
 		watts_min[0] = 0;
         #endif

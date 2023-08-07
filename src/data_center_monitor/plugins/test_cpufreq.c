@@ -29,7 +29,7 @@ static char buffer[4096];
 declr_up_get_tag()
 {
     *tag = "test_cpufreq";
-    *tags_deps = "!management,!keyboard";
+    *tags_deps = "<!management,!keyboard";
 }
 
 declr_up_action_init(_management)
@@ -88,11 +88,11 @@ static void freqs_set(char **params)
     freqs_print(NULL);
 }
 
-declr_up_action_init(_test_cpufreq)
+declr_up_action_periodic(_test_cpufreq)
 {
     command_register("governors_print", "", governors_print);
     command_register("governors_set", "%s", governors_set);
     command_register("freqs_print", "", freqs_print);
     command_register("freqs_set", "%s %s", freqs_set);
-    return NULL;
+    return "[=]";
 }

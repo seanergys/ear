@@ -37,7 +37,7 @@ char *xsnbuffer(char *buffer)
 
 char *rsprintf(char *format, ...)
 {
-    static __thread char buffer[4096];
+    static __thread char buffer[8192];
     va_list args;
     va_start(args, format);
     vsprintf(buffer, format, args);
