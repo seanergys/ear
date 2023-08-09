@@ -43,7 +43,7 @@ declr_up_action_init(_conf)
 
 declr_up_action_periodic(_dummy)
 {
-    return rsprintf("[X] dummy action periodic(_dummy): received tag %s", tag);
+    return rsprintf("dummy action periodic(_dummy): received tag %s", tag);
 }
 
 declr_up_post_data()

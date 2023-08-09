@@ -88,6 +88,7 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     }
     debug("Rows detected %d", prows_count);
     if (prows_count == 0) {
+        free(pstring);
         return NULL;
     }
     // Allocating space for the rows (plus additional NULL terminated)
@@ -175,4 +176,38 @@ void envtoa_free(char **list)
 void *envtoat(const char *var, void **list, uint *list_count, int id_type)
 {
     return strtoat(ear_getenv(var), ',', list, list_count, id_type);
+}
+
+
+int rantoa(char *string, uint *array, uint array_length)
+{
+    uint list_count;
+    char **list;
+    char *c;
+    int i, j;
+    int a, b;
+
+    if (strtoa(string, ',', &list, &list_count) == NULL) {
+        if ((a = atoi(string)) >= array_length) {
+            return 0;
+        }
+        array[a] = 1;
+        return 0;
+    }
+    for (i = 0; i < list_count; ++i) {
+        if ((c = strchr(list[i], '-')) != NULL) {
+            c[0] = '\0';
+            a = atoi(list[i]);
+            b = atoi(&c[1]);
+            while(a <= b) {
+                array[a] = 1;
+                ++a;
+            }
+            c[0] = '-';
+        } else {
+            array[atoi(list[i])] = 1;
+        }
+    }
+    strtoa_free(list);
+    return 1;
 }

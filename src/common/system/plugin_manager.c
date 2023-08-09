@@ -217,26 +217,26 @@ static state_t plugins_open_file(int i)
     while(priority_paths != NULL && priority_paths[j] != NULL) {
         sprintf(new_path, "%s/%s", priority_paths[j], p.plugins[i].path);
         if (state_ok(plugins_open_so(new_path, (void **) &p.plugins[i].handler))) {
-            verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
+            verbose(4, "[Configuration] Trying to open: %s... OK", new_path);
             return EAR_SUCCESS;
         }
-        verbose(0, "[Configuration] Trying to open: %s... FAILED (%s)", new_path, state_msg);
+        verbose(4, "[Configuration] Trying to open: %s... FAILED (%s)", new_path, state_msg);
         ++j;
     }
     // Written paths
     if (state_ok(plugins_open_so(p.plugins[i].path, (void **) &p.plugins[i].handler))) {
-        verbose(0, "[Configuration] Trying to open: %s... OK", p.plugins[i].path);
+        verbose(4, "[Configuration] Trying to open: %s... OK", p.plugins[i].path);
         return EAR_SUCCESS;
     }
-    verbose(0, "[Configuration] Trying to open: %s... FAILED", p.plugins[i].path);
+    verbose(4, "[Configuration] Trying to open: %s... FAILED", p.plugins[i].path);
     // Environment paths
     if((e = ear_getenv(ENV_PATH_EAR)) != NULL) {
         sprintf(new_path, "%s/lib/plugins/monitoring/%s", e, p.plugins[i].path);
         if (state_ok(plugins_open_so(new_path, (void **) &p.plugins[i].handler))) {
-            verbose(0, "[Configuration] Trying to open: %s... OK", new_path);
+            verbose(4, "[Configuration] Trying to open: %s... OK", new_path);
             return EAR_SUCCESS;
         }
-        verbose(0, "[Configuration] Trying to open: %s... FAILED", new_path);
+        verbose(4, "[Configuration] Trying to open: %s... FAILED", new_path);
     }
     return EAR_ERROR;
 }
@@ -277,7 +277,7 @@ static int plugins_open()
         }
         // Enabling if all the dependenciesare opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
-        verbose(0, "[Summary] %s %19s: called every %4llu ms with priority %u%s",
+        verbose(4, "[Summary] %s %19s: called every %4llu ms with priority %u%s",
                 (plug->is_opened)? "Opened": "Not opened", plug->file_name, plug->time_lapse,
                 plug->priority, (plug->is_enabled)? "": ", but disabled");
         enabled_count += plug->is_enabled;
@@ -287,8 +287,9 @@ static int plugins_open()
 
 static void output_print_format()
 {
-    time_t tm = time(NULL);
-    sprintf(date, "%s", ctime(&tm));
+    time_t ti = time(NULL);
+    struct tm tm = *localtime(&ti);
+    sprintf(date, "%d/%d %d:%d:%d", tm.tm_mday, tm.tm_mon+1, tm.tm_hour, tm.tm_min, tm.tm_sec);
     date[strlen(date)-1] = '\0';
 }
 
@@ -318,8 +319,7 @@ static int output_print(int i, int d, char *prefix, char *output)
         ++output;
     }
     if (strlen(output) > 0) {
-        printf("[%s, %19s -> %-17s] %s%s\n", date, p.plugins_sorted[i]->file_name,
-           p.plugins_sorted[d]->tag, prefix, output);
+        verbose(0, "[ %s, %19s ] %s%s", date, p.plugins_sorted[i]->file_name, prefix, output);
     }
     return 1;
 }
@@ -512,17 +512,17 @@ static int plugin_manager_configure(int argc, char *argv[])
     char buffer[8192];
     uint i, j;
 
-    for (i = 0; i < argc; ++i) {
-        printf("%d: %s\n", i, argv[i]);
-    }
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
         verbose(0, "Options:");
         verbose(0, "    --plugins    List of comma separated plugins to load.");
         verbose(0, "    --paths      List of comma separated priority paths to search plugins.");
+        verbose(0, "    --verbose    Show how the things are going.");
+        verbose(0, "    --silence    Hide messages returned by plugins.");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }
+
     // Processing list of priority paths
     if (args_get(argc, argv, "paths", buffer)) {
         // NUll terminated list, count is not required
@@ -531,6 +531,12 @@ static int plugin_manager_configure(int argc, char *argv[])
     // Processing list of plugins (by now is hardcoded)
     if (!args_get(argc, argv, "plugins", buffer)) {
         return 0;
+    }
+    if (args_get(argc, argv, "verbose", NULL)) {
+        VERB_SET_LV(5);
+    }
+    if (args_get(argc, argv, "silence", NULL)) {
+        VERB_SET_EN(0);
     }
     p.plugins = calloc(MAX_PLUGINS, sizeof(plugin_t));
     p.plugins_sorted = calloc(MAX_PLUGINS, sizeof(plugin_t *));
