@@ -12,7 +12,7 @@ plug_BINS = \
     test_cpufreq.so \
     test_gpu.so
 
-all: $(plug_BINS) dummy.so
+all: $(plug_BINS) dummy.so cuda_kernel.so
 
 %.so: %.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
@@ -31,6 +31,9 @@ periodic_metrics.so: periodic_metrics.c
 
 dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
+
+cuda_kernel.so: cuda_kernel.c
+	nvcc -I $(SRCDIR) -Xcompiler -fPIC -shared -o $@ $^
 
 ######## OPTIONS
 
