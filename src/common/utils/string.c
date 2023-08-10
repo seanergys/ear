@@ -187,6 +187,9 @@ int rantoa(char *string, uint *array, uint array_length)
     int i, j;
     int a, b;
 
+    if (string == NULL) {
+        return 0;
+    }
     if (strtoa(string, ',', &list, &list_count) == NULL) {
         if ((a = atoi(string)) >= array_length) {
             return 0;

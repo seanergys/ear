@@ -53,11 +53,13 @@ typedef struct plugin_s {
     void              *handler;
     cchar             *tag;
     cchar             *tags_deps;
+    char               conf[512];
     uint               deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
     action_init_f     *action_init[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
     post_data_f       *post_data;
     void              *data;
+    void              *data_conf;
     ullong             time_accum;
     ullong             time_lapse; // In ms
     timestamp_t        time_origin;
@@ -83,34 +85,45 @@ static uint        exit_called;
 
 static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, int *father_deps_table)
 {
-    uint list_count;
-    int time_inherit;
-    int mandatory;
-    char **list;
-    int l, j;
-    char *c;
+    uint   list1_count;
+    uint   list2_count;
+    char **list1;
+    char **list2;
+    int    time_inherit;
+    int    mandatory;
+    int    l, j;
+    char  *c;
 
     // Get list of plugins to load and times
     debug("plugin string: %s", string);
-    if (strtoa(string, ',', &list, &list_count) == NULL) {
+    if (strtoa(string, '+', &list1, &list1_count) == NULL) {
         return 0;
     }
     // Allocating p
-    debug("detected plugins: #%d", list_count);
+    debug("detected plugins: #%d", list1_count);
     // Filling p (i string index, j plugins index)
-    for (l = 0; l < list_count; ++l) {
+    for (l = 0; l < list1_count; ++l) {
+        debug("list1[%d]: %s", l, list1[l]);
         // Cleaning
         memset(&p.plugins[p.count], 0, sizeof(plugin_t));
         time_inherit = 0;
         mandatory = 0;
         // Configuration = file:path:conf
-        if ((c = strchr(list[l], ':')) != NULL) {
-            c[0] = '\0';
-            p.plugins[p.count].time_lapse = (ullong) atoi(&c[1]);
-            p.plugins[p.count].time_param  = 1;
+        if (strtoa(list1[l], ':', &list2, &list2_count) != NULL) {
+            if (list2_count > 1) {
+                p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
+                p.plugins[p.count].time_param = 1;
+            }
+            // Configuration exists
+            if (list2_count > 2) {
+                strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
+                p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
+            }
+            c = list2[0];
+        } else {
+            c = list1[l];
         }
         // Parsing the file
-        c = list[l];
         while (*c == '!' || *c == '<') {
             if (*c == '!') {
                 mandatory = 1;
@@ -126,6 +139,9 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         } else {
             sprintf(p.plugins[p.count].path, "%s", c);
         }
+        if (list2 != NULL) {
+            strtoa_free(list2);
+        }
         // Getting the plugin file_name for printing and compare purposes
         for (j = strlen(p.plugins[p.count].path)-2; j >= 0; --j) {
             p.plugins[p.count].file_name = &p.plugins[p.count].path[j];
@@ -135,7 +151,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
             }
         }
         // Priority
-        p.plugins[p.count].priority = priority+list_count-l;
+        p.plugins[p.count].priority = priority+list1_count-l;
         if (p.plugins[p.count].priority > p.max_priority) {
             p.max_priority = p.plugins[p.count].priority;
         }
@@ -173,7 +189,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         // Not found, so this is a new plugin
         p.count += 1;
     }
-    strtoa_free(list);
+    strtoa_free(list1);
     return 1;
 }
 
@@ -479,7 +495,7 @@ static void plugins_action_init(int i)
         p.plugins[i].is_paused = 1;
     }
     p.plugins_sorted[i]->data = NULL;
-    if (!plugins_action_init_call(i, i, &p.plugins_sorted[i]->data, NULL)) {
+    if (!plugins_action_init_call(i, i, &p.plugins_sorted[i]->data, p.plugins_sorted[i]->data_conf)) {
         goto next_ai;
     }
     // Feeding others with own data (if it has)
@@ -517,7 +533,7 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "Options:");
         verbose(0, "    --plugins    List of comma separated plugins to load.");
         verbose(0, "    --paths      List of comma separated priority paths to search plugins.");
-        verbose(0, "    --verbose    Show how the things are going.");
+        verbose(0, "    --verbose    Show how the things are going internally.");
         verbose(0, "    --silence    Hide messages returned by plugins.");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
@@ -526,7 +542,7 @@ static int plugin_manager_configure(int argc, char *argv[])
     // Processing list of priority paths
     if (args_get(argc, argv, "paths", buffer)) {
         // NUll terminated list, count is not required
-        strtoa(buffer, ',', &priority_paths, NULL);
+        strtoa(buffer, ':', &priority_paths, NULL);
     }
     // Processing list of plugins (by now is hardcoded)
     if (!args_get(argc, argv, "plugins", buffer)) {

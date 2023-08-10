@@ -30,7 +30,7 @@ static char       buffer[4096];
 declr_up_get_tag()
 {
     *tag = "management";
-    *tags_deps = "!conf,!metrics";
+    *tags_deps = "!conf+!metrics";
 }
 
 declr_up_action_init(_conf)

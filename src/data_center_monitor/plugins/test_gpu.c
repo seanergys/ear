@@ -42,7 +42,7 @@ static strtable_t     table;
 declr_up_get_tag()
 {
     *tag = "test_gpu";
-    *tags_deps = "<!metrics,!management";
+    *tags_deps = "<!metrics+!management";
 }
 
 declr_up_action_init(_metrics)
@@ -73,7 +73,7 @@ declr_up_action_init(_test_gpu)
     list_doing = calloc(devs_count, sizeof(uint));
     list_accum = calloc(devs_count, sizeof(uint));
     // Configuration
-    if (!rantoa(getenv("GPU_TEST_DEV"), list_doing, devs_count)) {
+    if (!rantoa((char *) data, list_doing, devs_count)) {
         // If the list is empty, we are selecting the GPU0.
         list_doing[0] = 1;
     }

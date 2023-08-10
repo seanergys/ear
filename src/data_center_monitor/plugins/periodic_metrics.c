@@ -40,7 +40,7 @@ static ullong             nominal_khz = 5000000;
 declr_up_get_tag()
 {
     *tag = "periodic_metrics";
-    *tags_deps = "!conf,!metrics";
+    *tags_deps = "!conf+!metrics";
 }
 
 declr_up_action_init(_conf)
