@@ -67,4 +67,7 @@ void *envtoat(const char *var, void **list, uint *list_count, int id_type);
 //        return 0;
 //    }
 
+// To parse a rank enumeration like CPUPOWER ('0', '0,1,2', '0-2,4', etc). Returns an array of 1s and 0s.
+int rantoa(char *string, uint *array, uint array_length);
+
 #endif

@@ -40,7 +40,7 @@ static ullong             nominal_khz = 5000000;
 declr_up_get_tag()
 {
     *tag = "periodic_metrics";
-    *tags_deps = "!conf,!metrics";
+    *tags_deps = "!conf+!metrics";
 }
 
 declr_up_action_init(_conf)
@@ -57,31 +57,25 @@ declr_up_action_init(_conf)
     return NULL;
 }
 
-declr_up_action_init(_periodic_metrics)
+static void metrics_read_static(metrics_read_t *mr)
 {
-    init_periodic_metric(&cs); //eard_power_monitoring()
-    metrics_data_alloc(&mr1, &mr2, &mrD);
-    *data_alloc = &cs;
-    return rsprintf("Metrics plugin initialized correctly %s", !(can_report) ? "(missing conf)": "");
+    metrics_data_copy(mr, &((mets_t *) plugin_manager_action("metrics"))->mr);
 }
 
-declr_up_action_periodic(_metrics)
+declr_up_action_init(_periodic_metrics)
 {
-    mets_t *mets = (mets_t *) data;
-    if (mr1.samples > 0) {
-        metrics_data_copy(&mr2, &mets->mr);
-    } else {
-        metrics_data_copy(&mr1, &mets->mr);
-    }
-    return NULL;
+    *data_alloc = &cs;
+    init_periodic_metric(&cs); //eard_power_monitoring()
+    metrics_data_alloc(&mr1, &mr2, &mrD);
+    metrics_read_static(&mr1);
+    return rsprintf("Periodic Metrics plugin initialized correctly %s", !(can_report) ? "(missing conf)": "");
 }
 
 declr_up_action_periodic(_periodic_metrics)
 {
     static char buffer[512];
-    if (mr2.samples == 0) {
-        return NULL;
-    }
+
+    metrics_read_static(&mr2);
     metrics_data_diff(&mr2, &mr1, &mrD);
     // Fill the current sample
     cs.start_time  = mr1.time.tv_sec;
@@ -113,8 +107,7 @@ declr_up_action_periodic(_periodic_metrics)
     metrics_data_copy(&mr1, &mr2);
     sprintf(buffer, "%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz",
         cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy, cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
-    return metrics_data_tostr(&mrD);
-    //return buffer;
+    return buffer;
 }
 
 declr_up_post_data()

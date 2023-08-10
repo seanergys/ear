@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
@@ -185,60 +185,59 @@ state_t mgt_intel_pstate_get_current_list(const ullong **p)
     return s;
 }
 
-state_t mgt_intel_pstate_get_boost(uint *boost_enabled)
+state_t mgt_intel_pstate_get_boost(uint *_boost_enabled)
 {
-    *boost_enabled = 0;
+    *_boost_enabled = boost_enabled;
 	return EAR_SUCCESS;
 }
 
 /** Setters */
-state_t mgt_intel_pstate_set_current_list(uint *freqs_index)
-{
-    char data[SZ_NAME_SHORT];
-    state_t s = EAR_SUCCESS;
-    int cpu;
-
-    for (cpu = 0; cpu < cpu_count; ++cpu) {
-        if (freqs_index[cpu] == ps_nothing) {
-            continue;
-        }
-        if (freqs_index[cpu] > avail_list_count) {
-            freqs_index[cpu] = avail_list_count-1;
-        }
-        sprintf(data, "%llu", avail_list[freqs_index[cpu]]);
-        debug("set_list%d: %llu", cpu, avail_list[freqs_index[cpu]]);
-        if (!filemagic_word_write(fds_smf[cpu], data, strlen(data), 1)) {
-            s = EAR_ERROR;
-        }
-    }
-    return s;
-}
-
 state_t mgt_intel_pstate_set_current(uint freq_index, int cpu)
 {
     char data[SZ_NAME_SHORT];
+    //
+    if (freq_index == ps_nothing) {
+        return EAR_SUCCESS;
+    }
     // Correcting invalid values
     if (freq_index >= avail_list_count) {
         freq_index = avail_list_count-1;
     }
     // If is one P_STATE for all CPUs
     if (cpu == all_cpus) {
-        // Converting frequency to text
-        sprintf(data, "%llu", avail_list[freq_index]);
+        if (boost_enabled && freq_index == 0) {
+            sprintf(data, "%llu", freq_max0);
+        } else {
+            sprintf(data, "%llu", avail_list[freq_index]);
+        }
         return (filemagic_word_mwrite(fds_smf, cpu_count, data, 1) ? EAR_SUCCESS:EAR_ERROR);
     }
     // If it is for a specified CPU
     if (cpu >= 0 && cpu < cpu_count) {
-        sprintf(data, "%llu", avail_list[freq_index]);
+        if (boost_enabled && freq_index == 0) {
+            sprintf(data, "%llu", freq_max0);
+        } else {
+            sprintf(data, "%llu", avail_list[freq_index]);
+        }
         debug("writing a word '%s'", data);
         return (filemagic_word_write(fds_smf[cpu], data, strlen(data), 1) ? EAR_SUCCESS:EAR_ERROR);
     }
     return_msg(EAR_ERROR, Generr.cpu_invalid);
 }
 
+state_t mgt_intel_pstate_set_current_list(uint *freqs_index)
+{
+    int cpu;
+    for (cpu = 0; cpu < cpu_count; ++cpu) {
+        mgt_intel_pstate_set_current(freqs_index[cpu], cpu);
+    }
+    return EAR_SUCCESS;
+}
+
 static state_t static_get_governor(int cpu, uint *governor)
 {
     char buffer[64];
+    debug("reading governor for CPU%d", cpu);
     if (!filemagic_word_read(fds_sgv[cpu], buffer, 1)) {
         buffer[0] = '\0';
     }

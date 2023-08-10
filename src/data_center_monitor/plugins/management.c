@@ -30,7 +30,7 @@ static char       buffer[4096];
 declr_up_get_tag()
 {
     *tag = "management";
-    *tags_deps = "!conf,!metrics";
+    *tags_deps = "!conf+!metrics";
 }
 
 declr_up_action_init(_conf)
@@ -41,6 +41,7 @@ declr_up_action_init(_conf)
 
 declr_up_action_init(_management)
 {
+    *data_alloc = &m;
     management_init(&m.mi, &conf->tp, API_EARD);
     return rsprintf("Management plugin initialized correctly");
 }
