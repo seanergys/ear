@@ -75,6 +75,7 @@ int main(int argc,char *argv[])
         } if (mode && 2) {
             printf("\nEARDBD mirror found in node %s.........\n", nodename);
         }
+        if (mode) print_db_manager(&my_cluster.db_manager);
     }
     printf("releasing cluster_conf\n");
     free_cluster_conf(&my_cluster);
