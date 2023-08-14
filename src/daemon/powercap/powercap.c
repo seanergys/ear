@@ -604,7 +604,7 @@ void powercap_increase_def_power(uint power)
 void powercap_set_powercap(uint power)
 {
     while(pthread_mutex_trylock(&my_pc_opt.lock));
-    set_powercap_value(DOMAIN_NODE, my_pc_opt.last_t1_allocated);
+    set_powercap_value(DOMAIN_NODE, power);
     pthread_mutex_unlock(&my_pc_opt.lock);
 }
 
