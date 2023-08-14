@@ -73,11 +73,11 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 	debug("Using PA file %s", log_file_name_pa);
 	debug("Using events file %s", log_file_name_events);
 
-	fd_pm 		= open(log_file_name_pm,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR);
-	fd_apps 	= open(log_file_name_apps,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR);
-	fd_loops 	= open(log_file_name_loops,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR);
-	fd_pa 		= open(log_file_name_pa,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR);
-	fd_events 	= open(log_file_name_events,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR);
+	fd_pm 		= open(log_file_name_pm,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH);
+	fd_apps 	= open(log_file_name_apps,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH);
+	fd_loops 	= open(log_file_name_loops,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH);
+	fd_pa 		= open(log_file_name_pa,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH);
+	fd_events 	= open(log_file_name_events,O_WRONLY|O_APPEND|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH);
 
 	if ((fd_pm < 0) || (fd_apps < 0) || (fd_loops < 0) || (fd_pa < 0) || (fd_events < 0)){
 		debug("Error creating files, log plugin disabled");
