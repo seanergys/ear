@@ -83,6 +83,13 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 		debug("Error creating files, log plugin disabled");
 		must_report = 0;
 	}
+
+  chmod(log_file_name_pm, S_IRUSR|S_IWUSR|S_IROTH);
+  chmod(log_file_name_apps, S_IRUSR|S_IWUSR|S_IROTH);
+  chmod(log_file_name_loops, S_IRUSR|S_IWUSR|S_IROTH);
+  chmod(log_file_name_pa, S_IRUSR|S_IWUSR|S_IROTH);
+  chmod(log_file_name_events, S_IRUSR|S_IWUSR|S_IROTH);
+
 	return EAR_SUCCESS;
 
 }
