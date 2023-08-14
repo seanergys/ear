@@ -428,6 +428,7 @@ void parse_island(cluster_conf_t *conf, char *line)
             contains_eargm = 1;
             int id_f = idx < 0 ? conf->num_islands: idx;
             token = strtok(NULL, " ");
+            strclean(token, '\n');
             int egm_id = atoi(token);
             for (i = current_ranges; i < conf->islands[id_f].num_ranges; i++)
                 conf->islands[id_f].ranges[i].eargm_id = egm_id;
