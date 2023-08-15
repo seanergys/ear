@@ -38,7 +38,7 @@ static uint           devs_count;
 static gpu_t         *pool;
 static uint           ok_pool;
 
-void gpu_nvml_load(gpu_ops_t *ops, int eard)
+void gpu_nvml_load(gpu_ops_t *ops, int force_api)
 {
     // If EARD is demanded we do not want pooling.
     // If EARD is not demanded but NVML is unprivileged
@@ -47,17 +47,18 @@ void gpu_nvml_load(gpu_ops_t *ops, int eard)
     // EARD = 0 and root --> POOL
     // EARD = 1 --> NO POOL
     // EARD = 2 --> POOL (NEW)
-
-    //ok_pool = (eard == 0) && (nvml_is_privileged() == 1);
-
-		if (eard == 2) 			ok_pool = 1;
-		else if (eard == 1) ok_pool = 0;
-		else if (eard == 0){
-			if (nvml_is_privileged()) ok_pool = 1;
-			else                      ok_pool = 0;
-		} 
-
-
+    debug("Received API %d", force_api);
+    if (API_IS(force_api, API_EARD)) {
+        ok_pool = 0;
+    } else if (API_IS(force_api, API_NVML)) {
+        ok_pool = 1;
+    } else {
+        if (nvml_is_privileged()) {
+            ok_pool = 1;
+        } else {
+            ok_pool = 0;
+        }
+    }
     debug("Pooling %d", ok_pool);
     // The locking and duplicate control is at higher level
     if (state_fail(nvml_open(&nvml))) {

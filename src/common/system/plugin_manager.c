@@ -270,6 +270,7 @@ static int plugins_open()
         }
         plug = &p.plugins[i];
         if ((get_tag = dlsym(plug->handler, "up_get_tag")) == NULL) {
+            debug("[DEBUG] %s get_tag() not detected", plug->path);
             continue;
         }
         // Maybe we can explore in the future a multi tag system
@@ -293,7 +294,7 @@ static int plugins_open()
         }
         // Enabling if all the dependenciesare opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
-        verbose(4, "[Summary] %s %19s: called every %4llu ms with priority %u%s",
+        verbose(4, "[Summary] %s %s: called every %04llu ms with priority %u%s",
                 (plug->is_opened)? "Opened": "Not opened", plug->file_name, plug->time_lapse,
                 plug->priority, (plug->is_enabled)? "": ", but disabled");
         enabled_count += plug->is_enabled;
@@ -306,7 +307,7 @@ static void output_print_format()
     time_t ti = time(NULL);
     struct tm tm = *localtime(&ti);
     sprintf(date, "%d/%d %d:%d:%d", tm.tm_mday, tm.tm_mon+1, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    date[strlen(date)-1] = '\0';
+    date[strlen(date)] = '\0';
 }
 
 static int output_print(int i, int d, char *prefix, char *output)

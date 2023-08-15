@@ -8,6 +8,7 @@ plug_BINS = \
     keyboard.so \
     management.so \
     metrics.so \
+    metrics_viewer.so \
     periodic_metrics.so \
     test_cpufreq.so \
     test_gpu.so
@@ -33,7 +34,9 @@ dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
 cuda_kernel.so: cuda_kernel.c
-	nvcc -I $(SRCDIR) -Xcompiler -fPIC -shared -o $@ $^
+	nvcc -I $(SRCDIR) --compiler-options '-fPIC' -shared -o cuda_kernel.so cuda_kernel.c cuda_ptx.cu
+	#nvcc -I $(SRCDIR) --compiler-options '-fPIC' -c cuda_ptx.cu
+	#$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ cuda_ptx.o -lcudart 
 
 ######## OPTIONS
 

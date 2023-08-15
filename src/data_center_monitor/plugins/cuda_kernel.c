@@ -21,8 +21,9 @@
 #include <common/utils/string.h>
 #include <common/system/plugin_manager.h>
 
-static int devs_count;
-static int sms_count;
+int kcuda_is_running();
+int kcuda_count_devices();
+int kcuda_execute(int dev);
 
 declr_up_get_tag()
 {
@@ -32,14 +33,16 @@ declr_up_get_tag()
 
 declr_up_action_init(_cuda_kernel)
 {
-    struct cudaDeviceProp prop;
-
-    cudaGetDeviceCount(&devs_count);
-    if (devs_count == 0) {
+    if (!kcuda_count_devices()) {
         return "[D]";
     }
-    cudaGetDeviceProperties(&prop, 0);
-    sms_count = prop.multiProcessorCount; 
-    
-    return rsprintf("CUDA returned %d devices of %d SMs", devs_count, sms_count);
+    if (!kcuda_execute(0)) {
+        return "[D]";
+    }
+    return NULL;
+}
+
+declr_up_action_periodic(_cuda_kernel)
+{
+    return rsprintf("Is running CUDA kernel? %d", kcuda_is_running());
 }

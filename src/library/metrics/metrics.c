@@ -521,9 +521,9 @@ static void metrics_static_init(topology_t *tp)
 		}else{
 			/* If master but EARD not connected */
 			if (eard && !eards_connected()){
-					  gpu_load(2);
+					  gpu_load(API_NVML);
 			}	else{
-						gpu_load(0);
+						gpu_load(API_FREE);
 			}
 		}
     mgt_gpu_load(eard);

@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <data_center_monitor/plugins/keyboard.h>
@@ -96,6 +97,7 @@ static void *command_read(void *x)
     params[2] = calloc(128, sizeof(char));
     params[3] = calloc(128, sizeof(char));
     command_register("exit", "", command_exit);
+    sleep(1);
 
     while (!is_closing) {
         printf("Enter command: ");

@@ -44,8 +44,8 @@ void gpu_load(int force_api)
     }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(&ops, API_IS(force_api, API_EARD));
-    gpu_rsmi_load(&ops, API_IS(force_api, API_EARD));
+    gpu_nvml_load(&ops, force_api);
+    gpu_rsmi_load(&ops, force_api);
     gpu_oneapi_load(&ops);
     gpu_eard_load(&ops, API_IS(force_api, API_EARD));
 dummy:
@@ -243,25 +243,25 @@ void gpu_data_print(gpu_t *data, int fd)
 {
 	int i;
 	for (i = 0; i < devs_count; ++i) {
-		dprintf(fd, "gpu%u: %0.2lfJ, %0.2lfW, %luMHz, %luMHz, %lu%%, %lu%%, %luº, %luº, %u, %lu\n", i,
+		dprintf(fd, "gpu%u: %3.0lf J, %3.0lf W, %4lu MHz, %4lu MHz, %lu-%lu usg, %2lu-%lu t, %lu\n", i,
 			data[i].energy_j, data[i].power_w,
 			data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
 			data[i].util_gpu, data[i].util_mem,
 			data[i].temp_gpu, data[i].temp_mem,
-			data[i].working , data[i].samples);
+			data[i].samples);
 	}
 }
 
 char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 {
-    char *state[2] = { "ok", "error" };
+    char *state[2] = { "er", "ok" };
 	int accuml;
 	size_t s;
 	int i;
 
 	for (i = accuml = 0; i < devs_count && length > 0; ++i) {
 		s = snprintf(&buffer[accuml], length,
-			 "gpu%u: %0.2lf J, %0.2lf W, %lu KHz, %lu KHz, %lu usg, %lu usg, %lu , %lu , %lu (%s)\n", i,
+			 "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%lu usg, %2lu-%lu t, %lu (%s)\n", i,
 			 data[i].energy_j, data[i].power_w,
 			 data[i].freq_gpu, data[i].freq_mem,
 			 data[i].util_gpu, data[i].util_mem,
