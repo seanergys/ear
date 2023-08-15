@@ -41,15 +41,15 @@ static int            idl;
 static int            ida;
 static int            idh;
 
-void management_init(manages_info_t *m, topology_t *tp, int force_api)
+void management_init(manages_info_t *m, topology_t *tp, ullong mflags)
 {
     char buffer[16384];
 
-    mgt_cpufreq_load(tp, force_api      );
-    mgt_cpuprio_load(tp, force_api      );
-    mgt_imcfreq_load(tp, force_api, NULL);
-     mgt_cpupow_load(tp, force_api      );
-        mgt_gpu_load(    force_api      );
+    mgt_cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ)      );
+    mgt_cpuprio_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ)      );
+    mgt_imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ), NULL);
+     mgt_cpupow_load(tp, MFLAG_UNZIP(mflags, MET_CPUPOW )      );
+        mgt_gpu_load(    MFLAG_UNZIP(mflags, MET_GPU    )      );
 
     mgt_cpufreq_init(no_ctx);
     mgt_cpuprio_init(no_ctx);

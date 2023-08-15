@@ -7,13 +7,14 @@ plug_BINS = \
     eardcon.so \
     keyboard.so \
     management.so \
+    management_viewer.so \
     metrics.so \
     metrics_viewer.so \
     periodic_metrics.so \
     test_cpufreq.so \
     test_gpu.so
 
-all: $(plug_BINS) dummy.so cuda_kernel.so
+all: $(plug_BINS) dummy.so kernel_cuda.so
 
 %.so: %.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
@@ -33,8 +34,8 @@ periodic_metrics.so: periodic_metrics.c
 dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
-cuda_kernel.so: cuda_kernel.c
-	nvcc -I $(SRCDIR) --compiler-options '-fPIC' -shared -o cuda_kernel.so cuda_kernel.c cuda_ptx.cu
+kernel_cuda.so: kernel_cuda.c
+	nvcc -I $(SRCDIR) --compiler-options '-fPIC' -shared -o $@ kernel_cuda.c kernel_cuda_ptx.cu
 	#nvcc -I $(SRCDIR) --compiler-options '-fPIC' -c cuda_ptx.cu
 	#$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ cuda_ptx.o -lcudart 
 

@@ -24,7 +24,6 @@
 #include <common/utils/strscreen.h>
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
-//#include <daemon/local_api/eard_api.h>
 #include <common/system/plugin_manager.h>
 
 static const char *names[] = {
@@ -69,6 +68,7 @@ typedef struct plugin_s {
     uint               is_opened;
     uint               is_enabled;
     uint               is_paused;
+    uint               is_silenced;
 } plugin_t;
 
 typedef struct plugins_s {
@@ -89,8 +89,10 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
     uint   list2_count;
     char **list1;
     char **list2;
+    int    priority_plus;
     int    time_inherit;
     int    mandatory;
+    int    silenced;
     int    l, j;
     char  *c;
 
@@ -106,9 +108,11 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         debug("list1[%d]: %s", l, list1[l]);
         // Cleaning
         memset(&p.plugins[p.count], 0, sizeof(plugin_t));
-        time_inherit = 0;
-        mandatory = 0;
-        // Configuration = file:path:conf
+        priority_plus = 0;
+        time_inherit  = 0;
+        mandatory     = 0;
+        silenced      = 0;
+        // Configuration = file:path:conf1:conf2
         if (strtoa(list1[l], ':', &list2, &list2_count) != NULL) {
             if (list2_count > 1) {
                 p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
@@ -124,12 +128,18 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
             c = list1[l];
         }
         // Parsing the file
-        while (*c == '!' || *c == '<') {
+        while (*c == '!' || *c == '<' || *c == '^' || *c == '-') {
             if (*c == '!') {
                 mandatory = 1;
             }
             if (*c == '<') {
                 time_inherit = 1;
+            }
+            if (*c == '^') {
+               priority_plus = MAX_PLUGINS;
+            }
+            if (*c == '-') {
+                p.plugins[p.count].is_silenced = 1;
             }
             ++c;
         }
@@ -151,7 +161,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
             }
         }
         // Priority
-        p.plugins[p.count].priority = priority+list1_count-l;
+        p.plugins[p.count].priority = priority+(list1_count-l)+priority_plus;
         if (p.plugins[p.count].priority > p.max_priority) {
             p.max_priority = p.plugins[p.count].priority;
         }
@@ -170,6 +180,10 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
                 // Replacing timelapse
                 if (!p.plugins[j].time_param && time_inherit && p.plugins[j].time_lapse > father_time_lapse && father_time_lapse != 0) {
                     p.plugins[j].time_lapse = father_time_lapse;
+                }
+                // Replacing if the plugin is silenced
+                if (p.plugins[p.count].is_silenced) {
+                    p.plugins[j].is_silenced = 1;
                 }
                 // Replacing dependency type
                 if (father_deps_table != NULL) {
@@ -315,6 +329,9 @@ static int output_print(int i, int d, char *prefix, char *output)
     if (output == NULL) {
         return 1;
     }
+    if (p.plugins_sorted[i]->is_silenced) {
+        return 1;
+    }
     // Returning instructions:
     //  [=] Pause
     //  [D] Disable (Pending dependency test)
@@ -406,7 +423,7 @@ static void plugins_action_periodic(int i, timestamp_t *time_now, ullong time_pa
         }
         // Feeding others with own data
         for (j = 0; p.plugins_sorted[i]->data != NULL && j < p.count; ++j) {
-            if (j == i) {
+            if (j == i || !p.plugins_sorted[j]->is_enabled) {
                 continue;
             }
             plugins_action_periodic_call(j, i, p.plugins_sorted[i]->data);
@@ -501,7 +518,7 @@ static void plugins_action_init(int i)
     }
     // Feeding others with own data (if it has)
     for (j = 0; p.plugins_sorted[i]->data != NULL && j < p.count; ++j) {
-        if (j == i) {
+        if (j == i || !p.plugins_sorted[j]->is_enabled) {
             continue;
         }
         // Calling plugin J with plugin I tag/data

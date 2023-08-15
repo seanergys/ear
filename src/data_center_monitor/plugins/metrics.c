@@ -42,14 +42,6 @@ declr_up_action_init(_conf)
     return NULL;
 }
 
-static ullong atoull(const char *str)
-{
-    if (str != NULL) {
-        return strtoull(str, NULL, 16);
-    }
-    return 0LLU;
-}
-
 declr_up_action_init(_metrics)
 {
     *data_alloc = &m;

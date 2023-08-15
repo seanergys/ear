@@ -214,3 +214,15 @@ int rantoa(char *string, uint *array, uint array_length)
     strtoa_free(list);
     return 1;
 }
+
+ullong atoull(const char *str)
+{
+    int base = 10;
+    if (str != NULL) {
+        if (strchr(str, 'X') != NULL || strchr(str, 'x') != NULL) {
+            base = 16;
+        }
+        return strtoull(str, NULL, base);
+    }
+    return 0LLU;
+}

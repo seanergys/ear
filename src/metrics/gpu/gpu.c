@@ -243,7 +243,7 @@ void gpu_data_print(gpu_t *data, int fd)
 {
 	int i;
 	for (i = 0; i < devs_count; ++i) {
-		dprintf(fd, "gpu%u: %3.0lf J, %3.0lf W, %4lu MHz, %4lu MHz, %lu-%lu usg, %2lu-%lu t, %lu\n", i,
+		dprintf(fd, "gpu%u: %3.0lf J, %3.0lf W, %4lu MHz, %4lu MHz, %2lu-%2lu usg, %2lu-%lu t, %lu\n", i,
 			data[i].energy_j, data[i].power_w,
 			data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
 			data[i].util_gpu, data[i].util_mem,
@@ -261,7 +261,7 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 
 	for (i = accuml = 0; i < devs_count && length > 0; ++i) {
 		s = snprintf(&buffer[accuml], length,
-			 "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%lu usg, %2lu-%lu t, %lu (%s)\n", i,
+			 "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%2lu usg, %2lu-%lu t, %lu (%s)\n", i,
 			 data[i].energy_j, data[i].power_w,
 			 data[i].freq_gpu, data[i].freq_mem,
 			 data[i].util_gpu, data[i].util_mem,

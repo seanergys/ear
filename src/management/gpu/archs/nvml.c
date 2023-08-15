@@ -67,13 +67,13 @@ void mgt_gpu_nvml_load(mgt_gpu_ops_t *ops)
     apis_set(ops->power_cap_get_current , mgt_gpu_nvml_power_cap_get_current);
     apis_set(ops->power_cap_get_default , mgt_gpu_nvml_power_cap_get_default);
     apis_set(ops->power_cap_get_rank    , mgt_gpu_nvml_power_cap_get_rank);
-    apis_set(ops->freq_limit_reset      , mgt_gpu_nvml_freq_limit_reset);
-    apis_set(ops->freq_limit_set        , mgt_gpu_nvml_freq_limit_set);
     // Checking if NVML is capable to run commands
     if (!nvml_is_privileged()) {
         goto done;
     }
     // Commands
+    apis_set(ops->freq_limit_reset      , mgt_gpu_nvml_freq_limit_reset);
+    apis_set(ops->freq_limit_set        , mgt_gpu_nvml_freq_limit_set);
     apis_set(ops->power_cap_reset       , mgt_gpu_nvml_power_cap_reset);
     apis_set(ops->power_cap_set         , mgt_gpu_nvml_power_cap_set);
 done:

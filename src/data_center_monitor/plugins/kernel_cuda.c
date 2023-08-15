@@ -23,26 +23,27 @@
 
 int kcuda_is_running();
 int kcuda_count_devices();
-int kcuda_execute(int dev);
+int kcuda_execute(char *conf);
 
 declr_up_get_tag()
 {
-    *tag = "cuda_kernel";
+    *tag = "kernel_cuda";
     *tags_deps = NULL;
 }
 
-declr_up_action_init(_cuda_kernel)
+declr_up_action_init(_kernel_cuda)
 {
     if (!kcuda_count_devices()) {
-        return "[D]";
+        return "[D] no GPUs detected";
     }
-    if (!kcuda_execute(0)) {
-        return "[D]";
+    if (!kcuda_execute((char *) data)) {
+        return "[D] something is not working";
     }
-    return NULL;
+    return rsprintf("%d GPUs detected", kcuda_count_devices());
 }
 
-declr_up_action_periodic(_cuda_kernel)
+declr_up_action_periodic(_kernel_cuda)
 {
+    //return NULL;
     return rsprintf("Is running CUDA kernel? %d", kcuda_is_running());
 }

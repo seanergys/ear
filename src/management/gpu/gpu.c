@@ -34,7 +34,7 @@ static uint            loaded;
 static ulong          *generic_list;
 static uint            devs_count;
 
-__attribute__((used)) void mgt_gpu_load(int eard)
+__attribute__((used)) void mgt_gpu_load(int force_api)
 {
     while (pthread_mutex_trylock(&lock));
     if (loaded) {
@@ -45,7 +45,7 @@ __attribute__((used)) void mgt_gpu_load(int eard)
     mgt_gpu_nvml_load(&ops);
     mgt_gpu_rsmi_load(&ops);
     mgt_gpu_oneapi_load(&ops);
-    mgt_gpu_eard_load(&ops, eard);
+    mgt_gpu_eard_load(&ops, API_IS(force_api, API_EARD));
     mgt_gpu_dummy_load(&ops);
     loaded = 1;
 unlock_load:
@@ -308,11 +308,11 @@ char *mgt_gpu_features_tostr(char *buffer, size_t length)
 
     mgt_gpu_freq_get_available(no_ctx, &list, &count);
     for (i = 0; i < devs_count; ++i) {
-        j += sprintf(&buffer[j], "GPU%d: %lu to %lu MHz\n", i, list[i][0], list[i][count[i]-1]);
+        j += sprintf(&buffer[j], "GPU%d: %4lu to %4lu MHz\n", i, list[i][0], list[i][count[i]-1]);
     }
     mgt_gpu_power_cap_get_rank(no_ctx, list_min, list_max);
     for (i = 0; i < devs_count; ++i) {
-        j += sprintf(&buffer[j], "GPU%d: %lu to %lu W\n", i, list_max[i], list_min[i]);
+        j += sprintf(&buffer[j], "GPU%d: %4lu to %4lu W\n", i, list_max[i], list_min[i]);
     }
     return buffer;
 }

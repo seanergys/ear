@@ -79,7 +79,7 @@ typedef struct mgt_gpu_ops_s {
 } mgt_gpu_ops_t;
 
 // Discovers the low level API. Returns function pointers, but is not required.
-void mgt_gpu_load(int eard);
+void mgt_gpu_load(int force_api);
 
 void mgt_gpu_get_api(uint *api);
 
